@@ -50,11 +50,17 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Wie hoch sind die Personalkosten?", "geld", {"plan", "produkte", "stellenplan"}),
     ("Was sind die Baukosten der Schule?", "geld", {"plan", "produkte"}),
     # Plan gegen Ist — das kann NUR der Jahresabschluss beantworten.
-    ("Hat die Stadt 2024 mehr ausgegeben als geplant?", "geld", {"plan", "ist"}),
+    # `kassensicht` kommt seit 08/2026 mit jedem `ist` mit: Für 2024 weist die
+    # Ergebnisrechnung einen Überschuss aus und die Finanzrechnung einen
+    # Fehlbetrag an Finanzmitteln. Wer nur eine der beiden nennt, sagt die
+    # halbe Wahrheit — und zwar je nach Zufall die optimistische oder die
+    # pessimistische Hälfte.
+    ("Hat die Stadt 2024 mehr ausgegeben als geplant?", "geld",
+     {"plan", "ist", "kassensicht"}),
     # Das „Warum" steht in den Erläuterungen; die Steuer-Ist-Zahlen und der
     # NFAG-Dämpfer gehören dazu, sonst klingt jede Mehreinnahme nach Gewinn.
     ("Warum kam so viel mehr Gewerbesteuer rein?", "geld",
-     {"gruende", "ist", "steuern", "ausgleich"}),
+     {"gruende", "ist", "steuern", "ausgleich", "kassensicht"}),
     # Präzise und allein: eine Prüfbericht-Frage will keinen Haushaltsplan.
     ("Was hat das Rechnungsprüfungsamt beanstandet?", "thema", {"pruefung"}),
     # „Insgesamt" ist das Stichwort für den Konzern: der Kernhaushalt
@@ -117,6 +123,51 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # „Debatte" ohne Haushalts-Anker ist kein Haushaltsstreit.
     ("Wie viele Anträge stellen die Fraktionen?", "thema", set()),
     ("Wer stellte den Antrag zum Radweg?", "thema", set()),
+
+    # --- Die fünfzehn Goldfragen der Jahresabschluss-Schichten (08/2026) ----
+    # Bilanz, Kassensicht, Nachbewilligungen, Kennzahlen und die drei
+    # Schuldenzahlen kamen mit den Parsern dieser Runde dazu. Ohne diese
+    # Fälle beantwortet die KI-Frage sie aus dem Ergebnishaushalt — also mit
+    # Zahlen, in denen keine davon vorkommt.
+
+    # 1–3: Die Bilanz. Ein STICHTAG, kein Jahr — und deshalb bewusst ohne
+    # `plan`: Wer nach dem Vermögen fragt, soll keine Jahresausgabe daneben
+    # bekommen, die sich damit nicht verrechnen lässt.
+    ("Wie hoch ist das Eigenkapital der Stadt Oldenburg?", "geld", {"bilanz"}),
+    ("Was besitzt die Stadt eigentlich?", "geld", {"bilanz"}),
+    ("Wie viel hat die Stadt für Pensionen zurückgestellt?", "geld", {"bilanz"}),
+
+    # 4–5: Die Kassensicht. Sie kommt auch ungefragt mit, sobald es um das Ist
+    # geht — 2024 weist die Ergebnisrechnung einen Überschuss aus und die
+    # Finanzrechnung einen Fehlbetrag, und nur beide zusammen sind ehrlich.
+    ("Wie viel Geld ist 2024 tatsächlich geflossen?", "geld", {"kassensicht"}),
+    ("Wie hoch waren die liquiden Mittel am Jahresende?", "geld",
+     {"bilanz", "kassensicht"}),   # „liquide" trifft beide Quellen — richtig so
+
+    # 6–7: Nachbewilligungen. Geld außerhalb des beschlossenen Haushalts.
+    ("Was wurde 2024 nachbewilligt?", "geld", {"nachbewilligungen"}),
+    ("Wie viel wurde überplanmäßig bewilligt?", "geld", {"nachbewilligungen"}),
+
+    # 8–10: Die Kennzahlen. Die einzige Quelle, die ihre Formeln mitliefert —
+    # „Eigenkapitalquote" zieht zusätzlich die Bilanz, aus der sie stammt.
+    ("Wie hoch ist die Eigenkapitalquote?", "geld", {"bilanz", "kennzahlen"}),
+    ("Wie hat sich die Steuerquote entwickelt?", "geld",
+     {"kennzahlen", "steuern", "ausgleich"}),
+    ("Welche Kennzahlen nennt die Stadt zu ihrem Abschluss?", "geld",
+     {"kennzahlen"}),
+
+    # 11–13: Die Bürgschaften — 220,3 Mio. €, die in keiner Schuldenreihe
+    # stehen. Sie hängen an der Schulden-Facette, weil sie nur neben den
+    # Schulden einen Sinn ergeben.
+    ("Wofür bürgt die Stadt Oldenburg?", "geld", {"schulden"}),
+    ("Wie hoch ist der Bürgschaftsbestand?", "geld", {"schulden"}),
+    ("Welche Eventualverbindlichkeiten hat die Stadt?", "geld", {"schulden"}),
+
+    # 14–15: Die Gegenprobe. Beide Fragen klingen nach Haushalt und sind
+    # keiner — „Bürgerbegehren" und „Oldenburg" haben beide „burg" im Wort,
+    # und genau daran ist das erste Bürgschafts-Muster gescheitert.
+    ("Wie ist der Stand beim Bürgerbegehren zum Schloss?", "thema", set()),
+    ("Wie viele Bürgerinnen und Bürger hat Oldenburg?", "thema", set()),
 ]
 
 #: Welche Store-Methode eine Facette anfasst. Die zweite Hälfte der Messung:
@@ -137,6 +188,10 @@ ERWARTETE_METHODEN = {
     "gebaut": "investitionen_ist_kontext",
     "stellenplan": "stellenplan_kontext",
     "antraege": "haushaltsantraege_kontext",
+    "bilanz": "bilanz_kontext",
+    "kassensicht": "kassensicht_kontext",
+    "nachbewilligungen": "nachbewilligungen_kontext",
+    "kennzahlen": "kennzahlen_kontext",
 }
 
 
@@ -154,6 +209,18 @@ class _MessStore:
     def _merken(self, name, wert):
         self.aufrufe.append(name)
         return wert
+
+    def bilanz_kontext(self):
+        return self._merken("bilanz_kontext", None)
+
+    def kassensicht_kontext(self):
+        return self._merken("kassensicht_kontext", None)
+
+    def nachbewilligungen_kontext(self, jahr=None):
+        return self._merken("nachbewilligungen_kontext", None)
+
+    def kennzahlen_kontext(self, limit=13):
+        return self._merken("kennzahlen_kontext", None)
 
     def haushalt_fuer_begriffe(self, b, limit=3):
         return self._merken("haushalt_fuer_begriffe", [])

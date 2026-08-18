@@ -9256,6 +9256,150 @@ class CouncilStore:
             pass
         return aus
 
+    def bilanz_kontext(self) -> dict | None:
+        """Was der Stadt gehört und wem es zusteht — der jüngste Stichtag.
+
+        Die Bilanz ist die einzige Quelle des Bereichs, die einen **Stichtag**
+        zählt und kein Jahr. Ihre Beträge mit Erträgen oder Aufwendungen zu
+        verrechnen wäre der Fehler, gegen den diese Methode gebaut ist: „Die
+        Stadt hat 1,48 Mrd. €" und „die Stadt gibt 799 Mio. € aus" sind zwei
+        Sätze über zwei verschiedene Dinge.
+        """
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) AS j FROM council_bilanz").fetchone()
+        except sqlite3.OperationalError:
+            return None
+        if not jahr or jahr["j"] is None:
+            return None
+        jahr = jahr["j"]
+        posten = {r["rolle"]: r["wert"] for r in self._conn.execute(
+            "SELECT rolle, wert FROM council_bilanz WHERE jahr = ? AND rolle IS NOT NULL",
+            (jahr,))}
+        aktiva = ("immaterielles_vermoegen", "sachvermoegen", "finanzvermoegen",
+                  "liquide_mittel", "aktive_rap")
+        summe = sum(posten[r] for r in aktiva if r in posten) or None
+        beleg = self._conn.execute(
+            "SELECT herkunft_id FROM council_bilanz WHERE jahr = ? LIMIT 1",
+            (jahr,)).fetchone()
+        return {
+            "jahr": jahr,
+            "bilanzsumme": summe,
+            "posten": [(r, posten[r]) for r in
+                       ("sachvermoegen", "infrastrukturvermoegen", "finanzvermoegen",
+                        "liquide_mittel", "nettoposition", "sonderposten",
+                        "rueckstellungen", "pensionsrueckstellungen", "schulden")
+                       if r in posten],
+            "beleg": self._beleg(beleg["herkunft_id"] if beleg else None),
+        }
+
+    def kassensicht_kontext(self) -> dict | None:
+        """Was tatsächlich geflossen ist — die Finanzrechnung (Abschnitt 4.1).
+
+        Die zweite Rechnung desselben Jahresabschlusses, und sie kann der
+        ersten scheinbar widersprechen: Für 2024 weist die Ergebnisrechnung
+        einen Überschuss aus und die Finanzrechnung einen Fehlbetrag an
+        Finanzmitteln. Beides stimmt — die eine bucht, wenn ein Anspruch
+        entsteht, die andere, wenn Geld fließt. Ohne die zweite Zahl entsteht
+        ein falscher Eindruck, und zwar in beide Richtungen.
+        """
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) AS j FROM council_finanzrechnung").fetchone()
+        except sqlite3.OperationalError:
+            return None
+        if not jahr or jahr["j"] is None:
+            return None
+        jahr = jahr["j"]
+        zeilen = [dict(r) for r in self._conn.execute(
+            "SELECT nr, bezeichnung, ergebnis, rolle, herkunft_id "
+            "FROM council_finanzrechnung WHERE jahr = ? ORDER BY nr", (jahr,))]
+        if not zeilen:
+            return None
+        # Nur die Summenzeilen: Die Einzelposten sind die Ertragsarten und
+        # stehen schon im Ergebnisrechnungs-Block.
+        summen = [z for z in zeilen if z.get("rolle")]
+        return {"jahr": jahr,
+                "zeilen": [(z["bezeichnung"], z["ergebnis"], z["rolle"]) for z in summen],
+                "beleg": self._beleg(zeilen[0].get("herkunft_id"))}
+
+    def nachbewilligungen_kontext(self, jahr: int | None = None) -> dict | None:
+        """Was beschlossen wurde, NACHDEM der Haushalt beschlossen war (§ 117).
+
+        Die Zahl, die der Haushaltsplan nicht kennt und der Jahresabschluss
+        nur als Summe zeigt. Sie ist außerdem die einzige Stelle, an der
+        sichtbar wird, wie viel der Rat selbst entschieden hat: 2022 waren es
+        89 % der Nachbewilligungen, 2024 nur noch 73 %.
+        """
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_nachbewilligung_jahre ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return None
+        if not rows:
+            return None
+        zeile = next((r for r in rows if r["jahr"] == jahr), rows[-1])
+        kanaele = []
+        try:
+            kanaele = [(r["kanal"], r["betrag_konsumtiv"], r["betrag_investiv"])
+                       for r in self._conn.execute(
+                           "SELECT kanal, betrag_konsumtiv, betrag_investiv "
+                           "FROM council_nachbewilligung_kanaele WHERE jahr = ?",
+                           (zeile["jahr"],))]
+        except sqlite3.OperationalError:
+            pass
+        return {"jahr": zeile["jahr"],
+                "konsumtiv": zeile.get("summe_konsumtiv"),
+                "investiv": zeile.get("summe_investiv"),
+                "gesamt": (zeile.get("summe_konsumtiv") or 0)
+                          + (zeile.get("summe_investiv") or 0),
+                "verpflichtungen": zeile.get("verpflichtungen_betrag"),
+                "kanaele": kanaele,
+                "probe_text": zeile.get("probe_text") if not zeile.get("probe_ok") else None,
+                "beleg": self._beleg(zeile.get("herkunft_id"))}
+
+    def kennzahlen_kontext(self, limit: int = 13) -> dict | None:
+        """Die dreizehn Kennzahlen — jeweils der jüngste Stand, mit Rechenweg.
+
+        Die einzige Quelle des Bereichs, die ihre eigenen Formeln mitliefert.
+        Deshalb darf die Antwort eine Quote nennen, ohne sie zu erfinden — und
+        deshalb steht der Rechenweg im Kontext, nicht nur der Wert.
+
+        ``korrekturen`` sind die Stellen, an denen ein späterer Bericht eine
+        Zahl still geändert hat. Wer nach der Steuerquote 2021 fragt, soll
+        nicht die erste gedruckte Fassung bekommen, ohne dass jemand sagt,
+        dass es eine zweite gab.
+        """
+        from council import kennzahlen as _kz
+
+        staende = self.get_kennzahlen()
+        if not staende:
+            return None
+        reihe = _kz.neueste(staende)
+        _, funde = _kz.ueberlappungsprobe(staende)
+        formeln = {}
+        for f in self.get_kennzahl_formeln():
+            formeln[f["kennzahl"]] = f["formel"]
+        juengstes = max(z["jahr"] for z in reihe)
+        aktuell = [z for z in reihe if z["jahr"] == juengstes][:limit]
+        label = {k.key: k.label for k in _kz.KENNZAHLEN}
+        einheit = {k.key: k.einheit for k in _kz.KENNZAHLEN}
+        return {
+            "jahr": juengstes,
+            "werte": [(label.get(z["kennzahl"], z["kennzahl"]), z["wert"],
+                       einheit.get(z["kennzahl"], "eur"), z["stellen"],
+                       formeln.get(z["kennzahl"]))
+                      for z in aktuell],
+            # Mit Einheit, damit der Prompt-Baustein „45,90 %" schreiben kann
+            # und nicht „45.9" — im deutschen Fließtext ist das ein Zahlwort
+            # mit falschem Trennzeichen und ohne Einheit.
+            "korrekturen": [(label.get(f["kennzahl"], f["kennzahl"]), f["jahr"],
+                             f["alt"], f["alt_bericht"], f["neu"], f["neu_bericht"],
+                             einheit.get(f["kennzahl"], "eur"))
+                            for f in funde if f["art"] == "revision"],
+            "beleg": self._beleg(aktuell[0].get("herkunft_id") if aktuell else None),
+        }
+
     def _buergschafts_kontext(self) -> dict | None:
         """Wofür die Stadt geradesteht — die Zahl, die in keiner Schuldenreihe steht.
 
