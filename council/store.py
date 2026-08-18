@@ -1371,6 +1371,38 @@ class CouncilStore:
             "revidiert INTEGER NOT NULL DEFAULT 0, "   # „r" der Quelle
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Angenommene Zuwendungen je Ratsvorlage (council/spenden.py). Eine
+        # Zeile je Vorlage, nicht je Jahr: Der Jahreswert entsteht erst beim
+        # Lesen, und die Vorlagen-Nummer ist der Weg zur Beschluss-Seite.
+        #
+        # Was hier bewusst FEHLT: eine Spalte für die Gebenden. Die Namen
+        # stehen nur in der Anlage „Zuwendungsliste", die nicht im Bestand ist
+        # — und was die Tabelle nicht führen kann, kann die API nicht liefern
+        # und das Frontend nicht versehentlich zeigen. Das ist keine
+        # Sparsamkeit, sondern die Grenze: Der Ratsbeschluss macht die Summe
+        # öffentlich, nicht die Liste dahinter.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_spenden ("
+            "vorlage_nr TEXT PRIMARY KEY, "
+            "jahr INTEGER NOT NULL, "          # Jahr der Sitzung
+            "sitzung TEXT NOT NULL, "          # ISO-Datum
+            "betrag REAL NOT NULL, "           # in Euro, wie beschlossen
+            "gremium TEXT, "                   # Rat | Verwaltungsausschuss
+            "layout TEXT, "                    # neu | alt — welcher Abschnitt trug
+            "zweitstelle TEXT NOT NULL, "      # identisch | zerlegung
+            "proben TEXT NOT NULL, "           # bestandene Proben, kommagetrennt
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Und die Gegenprobe: die Zeilen ohne Zweitstelle, mit dem Satz, warum.
+        # Eine Lücke ist eine Auskunft — sie steht auf der Seite, statt still
+        # aus der Summe zu fehlen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_spenden_verworfen ("
+            "vorlage_nr TEXT PRIMARY KEY, "
+            "sitzung TEXT, "
+            "grund TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
         # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
         # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
         # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —

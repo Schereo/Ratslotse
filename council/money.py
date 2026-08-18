@@ -142,6 +142,31 @@ _TARIF_TITEL = re.compile(
     r"\w*(?:gebühr|entgelt|tarif|eintrittspreis|fahrpreis|verpflegung)\w*",
     re.IGNORECASE)
 
+#: Der **Sammelbericht**: „Über- und außerplanmäßige Auszahlungen, Aufwendungen
+#: und Verpflichtungsermächtigungen bis zu 50.000 Euro in der Zeit vom
+#: 01.01.2025 bis 30.06.2025". Er berichtet über *alles unterhalb* einer
+#: Grenze — die 50.000 sind die Meldeschwelle, nicht die Summe. Was wirklich
+#: bewilligt wurde, steht nur in der Anlage. Siebzehn solcher Zeilen liegen im
+#: Bestand, jede trug bisher ihre Schwelle als Beschlussbetrag.
+#:
+#: **Warum am Titel und nicht am Fundort.** „bis zu" allein trägt nicht.
+#: Gemessen (18.08.2026): 26 Beträge stehen hinter einem „bis zu" — 14 sind
+#: diese Berichtsgrenze, die anderen **12 sind echte Volumen**
+#: („Ausfallbürgschaft … in Höhe von bis zu 116,5 Millionen Euro",
+#: „Unterstützung bis zu 1,5 Mio. Euro für den BTB"). Eine Regel auf „bis zu"
+#: kostete zwölf echte Beträge, um vierzehn Grenzen zu treffen — der schlechte
+#: Tausch, den dieses Modul gerade vermeiden soll.
+#:
+#: Die Berichtsform dagegen ist eindeutig und verlangt alle drei Teile:
+#: Gegenstand im Plural (Auszahlungen/Aufwendungen), eine Grenze, ein
+#: Berichtszeitraum. Die drei zusammen treffen im Bestand genau die 17 Zeilen
+#: und keine andere.
+_SAMMELBERICHT_TITEL = re.compile(
+    r"planmäßige\w*\s+(?:auszahlungen|aufwendungen)"   # der Gegenstand, im Plural
+    r".{0,120}?\b(?:unter|bis\s+zu)\b"                 # die Grenze
+    r".{0,60}?\bin\s+der\s+Zeit\s+vom\b",              # der Berichtszeitraum
+    re.IGNORECASE | re.DOTALL)
+
 
 def _to_float(num: str) -> float | None:
     num = num.strip()
@@ -181,13 +206,22 @@ def ist_preisbeschluss(titel: str | None) -> bool:
     return bool(_TARIF_TITEL.search(titel or ""))
 
 
+def ist_sammelbericht(titel: str | None) -> bool:
+    """Berichtet der Beschluss über alles *unterhalb* einer Meldeschwelle?
+
+    Dann ist die genannte Zahl die Grenze, nicht die Summe — die tatsächlich
+    bewilligten Beträge stehen nur in der Anlage."""
+    return bool(_SAMMELBERICHT_TITEL.search(titel or ""))
+
+
 def extract_amounts(text: str, titel: str | None = None) -> list[float]:
     """Alle Euro-Beträge des Textes, die ein Beschlussvolumen sein können.
 
     Stückpreise und Schwellenwerte fallen am Fundort heraus (s. Modul-Kopf).
-    ``titel`` ist optional und trägt die eine Entscheidung, die der Fließtext
-    nicht hergibt: ob der ganze Beschluss über Preise geht."""
-    if not text or ist_preisbeschluss(titel):
+    ``titel`` ist optional und trägt die zwei Entscheidungen, die der Fließtext
+    nicht hergibt: ob der ganze Beschluss über Preise geht, und ob er ein
+    Sammelbericht unterhalb einer Meldeschwelle ist."""
+    if not text or ist_preisbeschluss(titel) or ist_sammelbericht(titel):
         return []
     out: list[float] = []
     for rx, skaliert in ((_SCALED, True), (_PLAIN, False)):

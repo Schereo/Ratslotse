@@ -342,6 +342,22 @@ PROBEN: dict[str, str] = {
         "Gesamtergebnisrechnung, also Kernhaushalt und nicht rechtsfähige "
         "Stiftungen zusammen. Genau um deren Aufwendungen liegen die beiden "
         "auseinander — gemessen zwischen 0,03 und 0,05 Prozent.",
+    # Zuwendungen an die Stadt aus den Ratsbeschlüssen (council/spenden.py).
+    # Die erste ist die Pflicht-Probe; ohne sie kommt keine Vorlage herein. Die
+    # zweite ist die stärkere — sie stellt zwei getrennt erzeugte Dokumente
+    # gegeneinander —, kann aber ausfallen, ohne dass die Zeile fällt: Wenn der
+    # Rat die vorgeschlagene Liste ändert, sollen Vorschlag und Beschluss
+    # auseinandergehen.
+    "spenden_zweitstelle":
+        "Der angenommene Betrag steht zweimal in derselben Vorlage: einmal im "
+        "Beschlussvorschlag, einmal im Abschnitt zu den finanziellen "
+        "Auswirkungen. Dort entweder als dieselbe Zahl oder zerlegt in "
+        "Mehrerträge und Sachspenden — und diese Zerlegung addiert sich auf "
+        "den Cent genau auf den Gesamtbetrag.",
+    "spenden_protokollabgleich":
+        "Was die Vorlage vorschlägt, hat der Rat auch beschlossen: Das "
+        "Sitzungsprotokoll nennt denselben Betrag wie der Beschlussvorschlag. "
+        "Zwei getrennt erzeugte Dokumente, dieselbe Zahl.",
     # Beteiligungsbericht nach § 151 NKomVG (council/beteiligungsbericht.py).
     # Die ersten beiden stehen im Dokument selbst, die dritte spannt sich über
     # mehrere Jahrgänge — zusammen decken sie auch das jüngste Berichtsjahr,
@@ -445,6 +461,12 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_schulden",
     # Die lange Ausgabenreihe seit 1972 (Datensatz 1102) — ebenso.
     "council_ausgabenreihe",
+    # Die angenommenen Zuwendungen je Vorlage (council/spenden.py). Die einzige
+    # Schicht des Bereichs, deren Quelle im eigenen Bestand liegt: Sie liest
+    # Ratsbeschlüsse, nicht ein Dokument von oldenburg.de. Jede Zeile trägt
+    # deshalb die Herkunft **ihrer** Vorlage, nicht die eines Jahrgangs.
+    "council_spenden",
+    "council_spenden_verworfen",
     # Der Beteiligungsbericht (council/beteiligungsbericht.py). Die Texte
     # stehen bewusst mit dabei: Sie tragen `UNGEPRUEFT`, aber sie tragen eine
     # Herkunft — Dokument, Abschnitt und Seite. „Keine Probe" ist etwas
