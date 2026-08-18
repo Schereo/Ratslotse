@@ -113,6 +113,12 @@ export type QuellenSchluessel =
   // Die Schuldenzeitreihe — die einzige Quelle des Bereichs aus dem
   // Statistischen Jahrbuch der Stadt.
   | "schulden"
+  // Die Kennzahlenübersicht des Rechenschaftsberichts. Eigener Schlüssel und
+  // nicht ein Absatz unter `jahresabschluss`: Der Rechenschaftsbericht ist ein
+  // ANDERES Dokument als der Abschluss, mit eigener Vorlagennummer — und seine
+  // Besonderheit (jeder Bericht druckt fünf Jahre, die Berichte widersprechen
+  // sich an sieben Stellen) gehört an die Quelle, nicht an eine Zahl.
+  | "kennzahlen"
   // Die lange Ausgabenreihe seit 1972 — die einzige Quelle des Bereichs, die
   // in zwei Veröffentlichungen zugleich steht (Jahrbuch UND Open-Data-Portal)
   // und deshalb einen gemeinsamen Eintrag braucht: Wer nur eine der beiden
@@ -376,13 +382,31 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "3.1 „Pensionsrückstellungen und ähnliche Verpflichtungen“ schließt die " +
       "Beihilfe ein, Position 3.1.1 „Pensionsrückstellungen“ nicht; die " +
       "beiden ältesten Stichtage führen die Aufschlüsselung noch nicht. Die " +
-      "Erläuterungen stammen aus Abschnitt 6.2 desselben Dokuments. Nicht " +
-      "enthalten sind die Anlagen zum Anhang (Anlagen-, Forderungs-, " +
-      "Schulden- und Rückstellungsübersicht) — sie stehen jenseits der " +
-      "Textmenge, die aus den PDFs übernommen wird.",
+      "Erläuterungen stammen aus Abschnitt 6.2 desselben Dokuments, die " +
+      "Anlagenübersicht aus Abschnitt 8.1 („Anlagen zum Anhang“).",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     standWort: "Bilanzstichtage",
     stand: "Bilanzstichtage 2016–2024",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  kennzahlen: {
+    titel: "Kennzahlenübersicht der Rechenschaftsberichte",
+    fundstelle:
+      "Die Anlage „Kennzahlenübersicht und Berechnungsmethoden“ am Ende jedes " +
+      "Rechenschaftsberichts: dreizehn Zahlen, auf die die Stadt ihren " +
+      "Jahresabschluss selbst eindampft — und darunter, im Wortlaut, wie sie " +
+      "jede davon rechnet. Zwei Eigenheiten muss man kennen. Erstens druckt " +
+      "jeder Bericht fünf Jahre, nicht eins; die sechs Berichte decken so " +
+      "2015–2024 ab, und die mittleren Jahrgänge stehen mehrfach da. Zweitens " +
+      "stimmen diese Mehrfachnennungen nicht immer überein: An sieben Stellen " +
+      "hat ein späterer Bericht eine Zahl stillschweigend korrigiert. Wir " +
+      "zeigen den jüngsten Stand und schreiben die Korrektur an. Die Berichte " +
+      "2017 und 2018 führen dieselben Kennzahlen nur als Diagramm ohne " +
+      "Tabelle — ihre Jahrgänge stehen im Bericht 2019.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Rechenschaftsberichte",
+    stand: "Rechenschaftsberichte 2019–2024",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },

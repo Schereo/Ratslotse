@@ -115,6 +115,12 @@ def main() -> int:
             # nicht, und der Beleg trüge eine Probe weniger.
             print("Anlagenspiegel (was aus Investitionen wird):")
             uebernehmen("anlagenspiegel", finanzquellen.lies_anlagenspiegel(store, p))
+            # Der Rechenschaftsbericht ist ein ANDERES Dokument als der
+            # Jahresabschluss, steht aber in derselben Sitzungsvorlage. Sein
+            # Leser kommt zuletzt, weil zwei seiner drei Proben gegen die
+            # Bilanz rechnen — die muss vorher stehen.
+            print("Kennzahlen des Rechenschaftsberichts:")
+            uebernehmen("kennzahlen", finanzquellen.lies_kennzahlen(store, p))
         if args.nur in (None, "teilhaushalte"):
             print("Teilhaushalte (Produktebene):")
             uebernehmen("teilhaushalt",

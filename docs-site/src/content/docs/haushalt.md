@@ -2523,9 +2523,14 @@ bliebe genau die halbe Wahrheit, gegen die dieser Block gebaut ist. Der
 Ops-Workflow hält die Reihenfolge ein.
 
 Die fünf älteren Berichte (2017–2021: 192336, 205649, 219465, 238770, 250437)
-liegen ebenfalls als Anlage vor, ebenfalls ohne Volltext. Sobald der Backfill
-sie erfasst, kommen sie in `BERICHTE` dazu; die Struktur des Kapitels ist seit
-2022 unverändert.
+liegen ebenfalls als Anlage vor. Seit dem 18.08.2026 tragen sie auch Volltext —
+das Label-Muster der Finanzquellen kannte „Rechenschaftsbericht" bis dahin
+nicht. Sie kommen trotzdem **nicht** in `BERICHTE` dazu: Gegen `kapitel3`
+gehalten findet der Parser dort nur einen bis drei der vier Entscheidungswege,
+und die Spaltenprobe reißt in jedem der fünf Jahrgänge (investiv 0,55 bis
+0,92 Mio. €). Das Kapitel gibt es, sein Tabellenlayout ist ein anderes. Die
+Reihe bleibt bei 2022–2024, statt Zahlen zu zeigen, die ihre eigene Probe
+nicht bestehen.
 
 ### Der Nebenbefund
 
@@ -2533,6 +2538,100 @@ In acht Jahren wurde **keine einzige** Nachbewilligung abgelehnt. Das steht
 auf der Seite als Befund, nicht als Vorwurf: Die Vorlagen sind vorher im
 Fachausschuss beraten, und was dort keine Mehrheit findet, erreicht den Rat
 meist gar nicht erst.
+
+## Die dreizehn Kennzahlen: die Zusammenfassung der Stadt selbst
+
+Am Ende jedes Rechenschaftsberichts steht die Anlage „Kennzahlenübersicht und
+Berechnungsmethoden": dreizehn Zahlen, auf die die Stadt ihren ganzen
+Jahresabschluss eindampft — Eigenkapitalquote, Anlagenintensität, Steuerquote,
+Verschuldung je Kopf. Parser: `council/kennzahlen.py`, Tabellen
+`council_kennzahlen` und `council_kennzahl_formeln`, Seite
+`/haushalt/kennzahlen`.
+
+Der Grund, diese Schicht überhaupt zu bauen, steht **unter** der Tabelle: die
+gedruckten Rechenwege. „Ermittlung: Sachvermögen \* 100 / Bilanzsumme" ist ein
+Zitat, keine Definition von uns — und damit die einzige Stelle im Bereich, an
+der eine Kennzahl gezeigt werden darf, ohne dass wir sie erfunden hätten.
+
+### Ein Bericht sind fünf Jahre, und die Berichte widersprechen sich
+
+Jeder Bericht druckt fünf Jahrgänge. Sechs Berichte (2019–2024) decken so
+**2015–2024** ab, und die mittleren Jahre stehen mehrfach da. Von 240
+doppelt gedruckten Zellen stimmen 221 exakt überein. Die übrigen sind der
+Ertrag dieser Schicht:
+
+| Kennzahl | Jahr | alt | neu |
+|---|---|---|---|
+| Steuerquote | 2021 | 45,90 % (Bericht 2021) | 49,05 % (2022), dann 45,92 % (2023) |
+| Steuerquote | 2022 | 46,16 % (Bericht 2022) | 44,00 % (2023) |
+| Verschuldung je Einwohner\*in (mit Rückstellungen) | 2021 | 2.340,30 € | 2.224,11 € |
+| Netto-Neuinvestitionen je Einwohner\*in | 2021 | 120,45 € | 151,81 € |
+
+Die Steuerquote 2021 geht hoch und wieder zurück: Der Bericht 2022 hat diese
+Zeile verrechnet, der Bericht 2023 hat sie ohne Anmerkung geradegezogen.
+Deshalb steht `bericht_jahr` **im Primärschlüssel** — ohne ihn überschriebe der
+jüngere Stand den älteren still, und die Korrektur wäre weg.
+
+### Rechenwegwechsel: drei gedruckte, einer echt
+
+Drei Kennzahlen haben zwischen 2019 und 2024 ihre gedruckte Formel geändert.
+Ob das etwas bedeutet, wird **gemessen**, nicht angenommen — ein geänderter
+Rechenweg schaltet den Wertvergleich nicht ab:
+
+- **Personalintensität** — „Aufwand für Personal (inklusive Versorgung)" wurde
+  „Aufwendungen für aktives Personal". Die Werte springen (2020: 26,03 % →
+  25,09 %). Ein echter Definitionswechsel; über die Stelle läuft auf der Seite
+  keine Linie (`JahrWert.bruchDavor`, GB-00).
+- **Verschuldung je Einwohner\*in** — „Gesamtschulden" wurde „Schulden".
+- **Vermögen je Einwohner\*in** — „Gesamtvermögen (inklusive liquide Mittel)"
+  wurde „Aktiva (ohne aktive Rechnungsabgrenzung)".
+
+Bei den letzten beiden bleiben die Werte über den Wechsel hinweg auf den Cent
+gleich: umformuliert, nicht umgerechnet. Ohne den Vergleich hätte man sie
+zusammen mit der Personalintensität als Brüche behandelt — drei Reihen
+zerschnitten, wo eine es verdient.
+
+### Drei Proben, und die dritte ist die schärfste
+
+1. **`kennzahlen_gegen_bilanz`** — Anlagenintensität, Infrastrukturquote und
+   Eigenkapitalquote II lassen sich aus `council_bilanz` nachrechnen. 87
+   Nachrechnungen über 2016–2024, keine Abweichung über der gedruckten
+   Genauigkeit.
+2. **`kennzahlen_ueberlappung`** — die 240 doppelten Zellen (s. o.).
+3. **`kennzahlen_vermoegensprobe`** — „Vermögen je Einwohner\*in" mal „Anzahl
+   der Einwohnenden", zwei Zeilen derselben Tabelle, ergibt die Bilanzsumme
+   ohne aktive Rechnungsabgrenzung. Vier unabhängige Größen, 20 Jahrgang-
+   Bericht-Paare, Abweichung unter einem Tausendstel Prozent. Die Toleranz ist
+   gerechnet: Ein je-Kopf-Wert mit zwei Nachkommastellen darf um einen halben
+   Cent danebenliegen, mal 176.068 Einwohnenden also um rund 880 €.
+
+### Die Genauigkeit reist mit
+
+`stellen` hält fest, wie viele Nachkommastellen **gedruckt** waren: 2019 stand
+„48%", ab 2021 „53,15%". Ein stumpfer Vergleich meldete deshalb reihenweise
+Abweichungen, die nur Rundung sind; die Toleranz der Überlappungsprobe kommt
+aus der gröberen der beiden Angaben. Auf der Seite hängt daran auch die
+Vorjahresdifferenz: Von 54,62 % auf 50,11 % sind 4,51 **Prozentpunkte**, nicht
+4,51 % — die Grafik hat dafür ein eigenes Format (`differenzFormat`).
+
+### Zwei Berichte ohne Tabelle
+
+2017 und 2018 zeigen dieselben Kennzahlen nur als Diagramm: Die Werte stehen
+als Balkenbeschriftung zwischen den Achsenwerten, und der „Ermittlung:"-Satz
+steht dort *vor* seinem Diagramm statt darunter. Das wäre geraten — und es
+wäre umsonst, denn die Jahrgänge 2015–2018 stehen als Tabelle im Bericht 2019.
+
+### Betrieb
+
+Die Berichte 2017–2021 lagen bis zum 18.08.2026 **ohne Volltext** im Bestand,
+und zwar aus einem Ein-Buchstaben-Grund: Das Label-Muster der Finanzquellen
+kannte `%chlussbericht%` (für die Schlussberichte des Rechnungsprüfungsamts),
+und „Rechenschaftsbericht" endet auf *-chaftsbericht*. Die Berichte ab 2022
+rutschten nur durch, weil ihr Titel zusätzlich „Jahresabschluss" enthält. Die
+Quelle `kennzahlen` bringt das Muster jetzt selbst mit; ausgeschlossen werden
+die Stiftungs-Berichte **namentlich** und nicht über „Stiftung", denn der
+städtische Bericht heißt selbst „… der Kernverwaltung und ihrer nicht
+rechtsfähigen Stiftungen".
 
 ## Was bewusst fehlt
 

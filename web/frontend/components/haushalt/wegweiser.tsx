@@ -171,6 +171,15 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         titel: "Die Prüfung",
         text: "Was das Rechnungsprüfungsamt an den Abschlüssen beanstandet — im Wortlaut.",
       },
+      {
+        // Am Ende von „Was daraus wurde", und zwar hinter der Prüfung: Die
+        // Kennzahlenübersicht ist die Zusammenfassung, die die Stadt SELBST
+        // aus dem geprüften Abschluss zieht. Vorher gelesen wäre sie eine
+        // Liste von Quoten ohne die Zahlen, die sie zusammenfassen.
+        href: "/haushalt/kennzahlen",
+        titel: "Die dreizehn Zahlen",
+        text: "Worauf die Stadt ihren Abschluss selbst eindampft — mit den gedruckten Rechenwegen und sieben stillen Korrekturen.",
+      },
     ],
   },
   {
@@ -185,7 +194,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
       },
       {
         // Direkt hinter dem Gesamtabschluss, weil es dieselben Gesellschaften
-        // von der anderen Seite zeigt: Schritt 10 sagt, wie viel Klinikum,
+        // von der anderen Seite zeigt: Schritt 11 sagt, wie viel Klinikum,
         // Busse und Bäder bewegen; hier steht, was sie damit tun. Vorher
         // gelesen wäre es eine Liste von Firmennamen ohne Anlass.
         href: "/haushalt/beteiligungen",

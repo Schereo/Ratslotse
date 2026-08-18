@@ -171,7 +171,7 @@ export default function KonzernPage() {
         <div className="flex items-end justify-between gap-5">
           <div className="min-w-0">
             <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Stadtfinanzen Oldenburg · Schritt 10
+              Stadtfinanzen Oldenburg · Schritt 11
             </p>
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
               Und ist das die ganze Stadt?
@@ -294,14 +294,14 @@ export default function KonzernPage() {
           </ul>
         </section>
 
-        {/* Arbeitsteilung mit Schritt 11 (H4-10-Review): hier das GANZE,
+        {/* Arbeitsteilung mit Schritt 12 (H4-10-Review): hier das GANZE,
             dort die Gesellschaften einzeln — gegenseitige Verweis-Karte am
             Seitenende, auf jedem Gerät. */}
         <Link href="/haushalt/beteiligungen"
           className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
           <span className="min-w-0">
             <span className="block font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Schritt 11 · Was machen die eigentlich?
+              Schritt 12 · Was machen die eigentlich?
             </span>
             <span className="mt-0.5 block text-[13.5px] font-semibold leading-snug">
               Die Gesellschaften einzeln — mit Auftrag, Aufsicht und Ergebnis-Verlauf.

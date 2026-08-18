@@ -2,8 +2,8 @@
 
 // /haushalt/beteiligungen — „Was machen die eigentlich?" (H3-02 / H4-11)
 //
-// Schritt 11: Die Stadt ist mehr als das Rathaus. Der Gesamtabschluss
-// (/haushalt/konzern, Schritt 10) sagt, wie viel Klinikum, Busse und Bäder
+// Schritt 12: Die Stadt ist mehr als das Rathaus. Der Gesamtabschluss
+// (/haushalt/konzern, Schritt 11) sagt, wie viel Klinikum, Busse und Bäder
 // bewegen — hier steht, WER das ist und was jede*r Einzelne tut. Die
 // Arbeitsteilung der beiden Seiten ist Absicht und steht als Verweis-Karte
 // am Seitenende (H4-10-Review: „hier das Ganze, dort die Gesellschaften
@@ -282,7 +282,7 @@ function Seite() {
           <div className="flex items-end justify-between gap-5">
             <div className="min-w-0">
               <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Stadtfinanzen Oldenburg · Schritt 11
+                Stadtfinanzen Oldenburg · Schritt 12
               </p>
               <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
                 Was machen die eigentlich?
@@ -450,13 +450,13 @@ function Seite() {
             </ul>
           </section>
 
-          {/* Arbeitsteilung mit Schritt 10 (H4-10-Review): hier die
+          {/* Arbeitsteilung mit Schritt 11 (H4-10-Review): hier die
               Gesellschaften einzeln, dort das Ganze. */}
           <Link href="/haushalt/konzern"
             className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
             <span className="min-w-0">
               <span className="block font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Schritt 10 · Und ist das die ganze Stadt?
+                Schritt 11 · Und ist das die ganze Stadt?
               </span>
               <span className="mt-0.5 block text-[13.5px] font-semibold leading-snug">
                 Wie groß der Konzern Stadt insgesamt ist — Kernverwaltung und alle
