@@ -1257,11 +1257,22 @@ class CouncilStore:
                     for r in self._conn.execute(
                         f"SELECT ksinr, item_number, impact, reason FROM agenda_item_impact "
                         f"WHERE ksinr IN ({ph})", [s["ksinr"] for s in sitzungen])}
+        from council.impact import formalakt_deckel
+
         for k in kandidaten:
             eintrag = bewertet.get((k["ksinr"], k["item_number"]))
             if eintrag:
                 k["wichtig"], k["wichtig_grund"] = eintrag[0], eintrag[1]
                 k["wichtig_quelle"] = "tragweite"
+            # Straßenrechtliche Formalakte (Widmung, Einziehung, Umstufung)
+            # deckeln — egal ob Heuristik oder LLM sie hochgestuft hat: Die
+            # Widmung „Im Technologiepark" stand als „wichtig" auf der Karte
+            # (Tims Befund 18.08.). Lesezeitig, damit auch schon gespeicherte
+            # Fehlbewertungen sofort verschwinden.
+            deckel = formalakt_deckel(k["title"])
+            if deckel is not None and k["wichtig"] > deckel:
+                k["wichtig"] = deckel
+                k["wichtig_grund"] = None
         # Treffer zuerst, danach nach Rang: Ein Punkt zu einem eigenen Thema ist
         # relevanter als jeder gut bewertete Fremdpunkt.
         kandidaten.sort(key=lambda p: (0 if p["topic_name"] else 1, -p["wichtig"], p["session_date"]))
@@ -1332,6 +1343,24 @@ class CouncilStore:
                 treffer_je_sitzung[k["ksinr"]] = treffer_je_sitzung.get(k["ksinr"], 0) + 1
             if k["topic_name"] or k["wichtig"] >= self.WICHTIG_MINDEST:
                 relevant[k["ksinr"]] = relevant.get(k["ksinr"], 0) + 1
+        # Die übrigen relevanten Punkte je Sitzung MIT ausliefern (Tims Wunsch
+        # 18.08.): „x weitere Punkte" soll in der Karte aufklappen statt zur
+        # Tagesordnung wegzunavigieren — dafür braucht die Karte die Titel.
+        # kandidaten sind bereits nach Rang sortiert, die Reihenfolge bleibt.
+        gezeigt = {(p["ksinr"], p["item_number"]) for p in punkte}
+        weitere_je_sitzung: dict[int, list[dict]] = {}
+        for k in kandidaten:
+            if (k["ksinr"], k["item_number"]) in gezeigt:
+                continue
+            if not (k["topic_name"] or k["wichtig"] >= self.WICHTIG_MINDEST):
+                continue
+            weitere_je_sitzung.setdefault(k["ksinr"], []).append({
+                "ksinr": k["ksinr"], "item_number": k["item_number"],
+                "title": k["title"], "titel_kurz": k["titel_kurz"],
+                "antragsteller": k["antragsteller"], "topic_name": k["topic_name"],
+                "summary": None, "vorlage_nr": k["vorlage_nr"], "kvonr": k["kvonr"],
+                "committee": k["committee"], "session_date": k["session_date"],
+            })
         return {
             # Seit Design 14 trägt die Karte auch die Sitzungen ohne relevante
             # Punkte (sie ersetzt „Nächste Sitzungen"). Sie hat also Inhalt,
@@ -1342,6 +1371,7 @@ class CouncilStore:
             "sitzungen": sitzungen,
             "punkte": punkte,
             "relevant_je_sitzung": relevant,
+            "weitere_je_sitzung": weitere_je_sitzung,
             "treffer_je_sitzung": treffer_je_sitzung,
             "treffer_gesamt": sum(1 for k in kandidaten if k["topic_name"]),
             "inhaltlich_gesamt": len(kandidaten),

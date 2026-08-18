@@ -26,6 +26,10 @@ export type Wochenvorschau = {
   found: boolean; von: string; bis: string;
   sitzungen: WochenSitzung[]; punkte: WochenPunkt[];
   relevant_je_sitzung?: Record<string, number>;
+  /** Die übrigen relevanten Punkte je Sitzung — sie klappen in der Karte auf
+   *  statt zur Tagesordnung zu verlinken (Tims Wunsch 18.08.). Ältere
+   *  API-Stände kennen das Feld nicht, dann bleibt nur die gezeigte Auswahl. */
+  weitere_je_sitzung?: Record<string, WochenPunkt[]>;
   /** Davon die, die zu einem EIGENEN Thema passen — nur die heißen „für dich". */
   treffer_je_sitzung?: Record<string, number>;
   treffer_gesamt?: number; inhaltlich_gesamt?: number;
@@ -190,9 +194,15 @@ export function WocheImRat({ vorschau, heuteIso }: {
   const maxPunkte = dichte === "desktop" ? 3 : 2;
   const relevant = vorschau.relevant_je_sitzung ?? {};
   const treffer_je = vorschau.treffer_je_sitzung ?? {};
+  const weitereJe = vorschau.weitere_je_sitzung ?? {};
 
   const punkteVon = (ksinr: number | null) =>
     ksinr == null ? [] : vorschau.punkte.filter((p) => p.ksinr === ksinr);
+  // Alles, was die Karte über den Anzeige-Deckel hinaus kennt: erst die
+  // display-gekappten der Auswahl, dann die restlichen relevanten aus der
+  // API — zusammen der Stoff für „x weitere Punkte" zum Aufklappen.
+  const restVon = (ksinr: number | null, gezeigt: number) =>
+    ksinr == null ? [] : [...punkteVon(ksinr).slice(gezeigt), ...(weitereJe[String(ksinr)] ?? [])];
 
   // „Wichtigster Punkt der Woche" darf es nur einmal geben; hebt die Woche
   // zwei Punkte hervor, heißen beide „Schwerpunkt".
@@ -247,8 +257,9 @@ export function WocheImRat({ vorschau, heuteIso }: {
                   key={s.ksinr ?? `${s.committee}|${datum}`}
                   sitzung={s}
                   punkte={alle.slice(0, maxPunkte)}
-                  rest={alle.slice(maxPunkte)}
-                  weitere={Math.max((relevant[String(s.ksinr)] ?? 0) - alle.length, 0)}
+                  rest={restVon(s.ksinr, maxPunkte)}
+                  weitere={Math.max((relevant[String(s.ksinr)] ?? 0) - alle.length
+                    - (weitereJe[String(s.ksinr)]?.length ?? 0), 0)}
                   badge={relevant[String(s.ksinr)] ?? 0}
                   treffer={treffer_je[String(s.ksinr)] ?? 0}
                   heute={datum === heuteIso}
@@ -290,7 +301,7 @@ export function WocheImRat({ vorschau, heuteIso }: {
                     key={s.ksinr ?? `${s.committee}|${datum}`}
                     sitzung={s}
                     punkte={p.slice(0, maxPunkte)}
-                    weitere={Math.max((relevant[String(s.ksinr)] ?? 0) - maxPunkte, 0)}
+                    rest={restVon(s.ksinr, maxPunkte)}
                     badge={relevant[String(s.ksinr)] ?? 0}
                     treffer={treffer_je[String(s.ksinr)] ?? 0}
                     mehrere={mehrereTop}
@@ -345,8 +356,13 @@ function RailTag({ datum, heute, letzter, dichte, children }: {
 }
 
 /** Sitzung mit relevanten Punkten — sie klappt ihre Punkte auf. */
-function RailSitzung({ sitzung, punkte, weitere, badge, treffer, mehrere, dichte }: {
-  sitzung: WochenSitzung; punkte: WochenPunkt[]; weitere: number; badge: number;
+function RailSitzung({ sitzung, punkte, rest, badge, treffer, mehrere, dichte }: {
+  sitzung: WochenSitzung; punkte: WochenPunkt[];
+  /** Die übrigen relevanten Punkte — sie klappen HIER auf, statt zur
+   *  Tagesordnung wegzunavigieren (Tims Wunsch 18.08.; die Mobil-Stufe
+   *  hatte die Mechanik schon, seit 15.08.). */
+  rest: WochenPunkt[];
+  badge: number;
   /** Gibt es in der ganzen Woche mehr als eine Hervorhebung? Dann trägt keine
    *  den Superlativ — „wichtigster" gibt es nur einmal. */
   mehrere: boolean;
@@ -357,6 +373,7 @@ function RailSitzung({ sitzung, punkte, weitere, badge, treffer, mehrere, dichte
 }) {
   const desktop = dichte === "desktop";
   const zeit = (sitzung.session_time || "").slice(0, 5);
+  const [offen, setOffen] = useState(false);
   return (
     <div>
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
@@ -393,18 +410,23 @@ function RailSitzung({ sitzung, punkte, weitere, badge, treffer, mehrere, dichte
         )}
       </div>
       <div className="mt-1.5">
-        {punkte.map((p) => (
+        {[...punkte, ...(offen ? rest : [])].map((p) => (
           <RailPunkt key={`${p.ksinr}-${p.item_number}`} punkt={p} top={!!p.top}
                      mehrere={mehrere} dichte={dichte} />
         ))}
-        {weitere > 0 && (
+        {/* Aufklappen statt wegnavigieren (Tims Wunsch 18.08.): Die Titel
+            sind schon da — ein Seitenwechsel für drei Zeilen war zu viel
+            Weg. Zur vollen Tagesordnung führt der Link im Sitzungskopf. */}
+        {!offen && rest.length > 0 && (
           <div className={cn(desktop ? "px-2.5 py-1.5" : "px-2 py-1.5")}>
-            <Link
-              href={`/council?tab=sessions&ksinr=${sitzung.ksinr}`}
-              className="text-[11.5px] font-medium text-primary hover:underline"
+            <button
+              type="button"
+              onClick={() => setOffen(true)}
+              className="flex items-center gap-1 text-[11.5px] font-medium text-primary hover:underline"
             >
-              {weitere === 1 ? "1 weiterer Punkt" : `${weitere} weitere Punkte`}
-            </Link>
+              <ChevronDown className="h-3 w-3" aria-hidden />
+              {rest.length === 1 ? "1 weiterer Punkt" : `${rest.length} weitere Punkte`}
+            </button>
           </div>
         )}
       </div>
