@@ -135,7 +135,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         className="flex min-w-0 flex-1 flex-col outline-none pb-[calc(var(--rl-unten)+0.75rem)] desk:pb-0">
         {/* Design 11a: Inhalt läuft breiter (~1280 px statt 1024) — die Karten
             atmen wie im Mock; Text-Detailseiten begrenzen sich weiter selbst. */}
-        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        {/* weit (21:9): Der 1280er-Deckel ließ auf Ultrawide-Monitoren den
+            halben Schirm brachliegen (Tims Befund 18.08.). Seiten mit
+            Lesetext deckeln sich weiterhin selbst — hier wächst nur der
+            Rahmen, den z. B. die Fragen-Seite für ihre Spalten nutzt. */}
+        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 weit:max-w-[1600px]">
           {children}
         </div>
         {/* Design 6a③: Der sticky Seiten-Footer entfällt — die Pflicht-Links
@@ -185,7 +189,11 @@ function ShellSkeleton() {
 
       <main style={{ "--rl-unten": TABLEISTE_HOEHE } as React.CSSProperties}
         className="flex min-w-0 flex-1 flex-col pb-[calc(var(--rl-unten)+0.75rem)] desk:pb-0">
-        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        {/* weit (21:9): Der 1280er-Deckel ließ auf Ultrawide-Monitoren den
+            halben Schirm brachliegen (Tims Befund 18.08.). Seiten mit
+            Lesetext deckeln sich weiterhin selbst — hier wächst nur der
+            Rahmen, den z. B. die Fragen-Seite für ihre Spalten nutzt. */}
+        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 weit:max-w-[1600px]">
           <Skeleton className="h-7 w-52" />
           <Skeleton className="mt-2 h-3.5 w-72" />
           <div className="mt-6">
