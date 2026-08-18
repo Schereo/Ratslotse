@@ -342,6 +342,42 @@ PROBEN: dict[str, str] = {
         "Gesamtergebnisrechnung, also Kernhaushalt und nicht rechtsfähige "
         "Stiftungen zusammen. Genau um deren Aufwendungen liegen die beiden "
         "auseinander — gemessen zwischen 0,03 und 0,05 Prozent.",
+    # Die beiden Steuertabellen des Jahrbuchs (council/steuertabellen.py).
+    # 1103 stellt Plan neben Ist je Steuerart, 1105 führt die Hebesätze seit
+    # 1980. Beide hängen an derselben dritten Tabelle — 1104, unserer
+    # Ist-Reihe —, und beide brauchen sie für dasselbe: die Prüfung der
+    # JAHRESBESCHRIFTUNG. Datensatz 1106 hat gezeigt, was eine ungeprüfte
+    # kostet.
+    "steuerplan_summenzeile":
+        "Die einzelnen Steuerarten und die Finanzzuweisungen ergeben zusammen "
+        "genau die Zeile „insgesamt“, die dieselbe Tabelle ausweist — und zwar "
+        "in jeder ihrer sechs Spalten: im Haushaltsplan wie im "
+        "Rechnungsergebnis, für jedes der drei Jahre.",
+    "steuerplan_anteilsprobe":
+        "Neben jedem Betrag druckt die Tabelle seinen Anteil an der "
+        "Gesamtsumme. Der Betrag, geteilt durch die Summe, ergibt genau diesen "
+        "Prozentsatz — damit steht fest, dass jeder Betrag in der Spalte steht, "
+        "in der wir ihn gelesen haben.",
+    "steuerplan_istabgleich":
+        "Das Rechnungsergebnis dieser Tabelle steht ein zweites Mal in Tabelle "
+        "1104, die ihre Jahre einzeln beschriftet. Beide werden getrennt "
+        "gelesen und nennen für jede Steuerart denselben Betrag. Damit ist "
+        "auch die Jahresbeschriftung geprüft: Ein Jahrgang, für den die zweite "
+        "Tabelle nichts hergibt, kommt gar nicht erst herein.",
+    "hebesatz_spaltenkopf":
+        "Welche der drei Spalten die Grundsteuer A, die Grundsteuer B und die "
+        "Gewerbesteuer ist, steht im Tabellenkopf und wird dort gelesen — "
+        "nicht aus der Reihenfolge geraten.",
+    "hebesatz_treppe":
+        "Die Tabelle führt nach ihrer eigenen Fußnote nur die Jahre, in denen "
+        "sich ein Hebesatz geändert hat. Jede Zeile unterscheidet sich deshalb "
+        "von der vorhergehenden — eine Wiederholung wäre ein Fehler.",
+    "hebesatz_sprungjahr":
+        "Wo der Hebesatz der Grundsteuer stieg, zieht das Aufkommen im "
+        "genannten Jahr stärker an als im Jahr danach — nachgerechnet an der "
+        "Ist-Reihe der Tabelle 1104. Unterstellt man die Änderung ein Jahr "
+        "später, geht die Rechnung nicht mehr auf. Damit ist ausgeschlossen, "
+        "dass die Jahresspalte um ein Jahr verrutscht ist.",
     # Beteiligungsbericht nach § 151 NKomVG (council/beteiligungsbericht.py).
     # Die ersten beiden stehen im Dokument selbst, die dritte spannt sich über
     # mehrere Jahrgänge — zusammen decken sie auch das jüngste Berichtsjahr,
@@ -474,6 +510,10 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_nachbewilligungen",
     "council_nachbewilligung_jahre",
     "council_nachbewilligung_kanaele",
+    # Die beiden Steuertabellen des Jahrbuchs: Plan neben Ist je Steuerart
+    # (1103) und die Hebesätze seit 1980 (1105). Beide neu, ohne Altbestand.
+    "council_steuerplan",
+    "council_hebesaetze",
     # Der Beteiligungsbericht (council/beteiligungsbericht.py). Die Texte
     # stehen bewusst mit dabei: Sie tragen `UNGEPRUEFT`, aber sie tragen eine
     # Herkunft — Dokument, Abschnitt und Seite. „Keine Probe" ist etwas

@@ -105,14 +105,12 @@ Aufruf von Hand::
 from __future__ import annotations
 
 import argparse
-import hashlib
 import html
 import json
 import os
 import re
 import sys
 import time
-import urllib.parse
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -124,6 +122,18 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council import schulden  # noqa: E402  — die Jahrbuch-Übersichtsseite
+
+# Der AUFBAU des Archivs steht seit 08/2026 in `council/archiv.py`, nicht mehr
+# hier: Mit `council/steuertabellen.py` liest zum ersten Mal ein Parser aus dem
+# Archiv, und zwei Stellen mit demselben Wissen über Ordnernamen und
+# Fassungs-Sortierung laufen auseinander — dieselbe Begründung, aus der dieser
+# Job seine Jahrbuch-Adresse aus `council/schulden.py` importiert, statt sie
+# abzuschreiben. Der Job SCHREIBT weiterhin allein; er tut es nur nicht mehr
+# nach eigenen Regeln.
+from council.archiv import (  # noqa: E402
+    dateiname, endung, inhalts_hash, manifest_lesen, manifest_schreiben,
+    version_ablegen,
+)
 
 JOB = "archive_statistik"
 
@@ -192,91 +202,12 @@ _LSN_INTERESSANT = re.compile(
 
 
 # --- Namen und Pfade --------------------------------------------------------
-
-def dateiname(url: str) -> str:
-    """Adresse → Dateiname für den Archivordner.
-
-    Prozentkodierung wird aufgelöst (``…Schl%C3%BCsselzuweisung_0.csv`` →
-    ``…Schlüsselzuweisung_0.csv``), Abfrageteil und Anker fallen weg. Alles,
-    was kein harmloses Zeichen ist, wird zu ``_`` — insbesondere ``/`` und
-    ``.``-Folgen, damit aus einer Adresse nie ein Pfad nach oben wird.
-
-    Adressen ohne sprechenden Namen (die LSN-Downloads heißen ``/download/
-    227086``) bekommen den letzten Pfadteil; wie die Datei am Ende heißt,
-    entscheidet der Aufrufer über ``name``.
-    """
-    pfad = urllib.parse.urlsplit(url).path
-    roh = urllib.parse.unquote(pfad.rstrip("/").rsplit("/", 1)[-1]) or "datei"
-    sauber = re.sub(r"[^A-Za-z0-9._\-()äöüÄÖÜß ]+", "_", roh)
-    sauber = re.sub(r"\.{2,}", ".", sauber).strip(". ")
-    return sauber[:120] or "datei"
-
-
-def inhalts_hash(inhalt: bytes) -> str:
-    """Die ersten 12 Stellen des SHA-256 — kurz genug für einen Dateinamen,
-    lang genug, dass zwei Fassungen derselben Tabelle nie kollidieren."""
-    return hashlib.sha256(inhalt).hexdigest()[:12]
-
-
-def endung(name: str) -> str:
-    """``1103-2025-AZ.pdf`` → ``.pdf``; ohne Punkt im Namen ``""``."""
-    stamm, punkt, rest = name.rpartition(".")
-    return f".{rest.lower()}" if punkt and 1 <= len(rest) <= 5 else ""
-
-
-def version_ablegen(archiv: Path, bereich: str, name: str, inhalt: bytes,
-                    heute: date) -> tuple[Path, bool]:
-    """Eine Fassung ablegen — oder feststellen, dass sie schon da liegt.
-
-    Gibt ``(pfad, neu)`` zurück. ``neu=False`` heißt: Dieser Inhalt liegt
-    bereits im Ordner, es wurde **nichts** geschrieben. Das ist die
-    Idempotenz-Zusage dieses Jobs, und sie hängt am Inhalt, nicht am Datum und
-    nicht an den Kopfzeilen der Gegenseite.
-    """
-    h = inhalts_hash(inhalt)
-    ordner = archiv / bereich / name
-    for vorhanden in ordner.glob(f"*_{h}*"):
-        if vorhanden.is_file():
-            return vorhanden, False
-    ordner.mkdir(parents=True, exist_ok=True)
-    ziel = ordner / f"{heute.isoformat()}_{h}{endung(name)}"
-    if ziel.exists():
-        # Derselbe Tag, derselbe Hash-Präfix, andere Bytes — praktisch
-        # ausgeschlossen, aber überschreiben wäre stiller Datenverlust.
-        ziel = ordner / f"{heute.isoformat()}_{hashlib.sha256(inhalt).hexdigest()[:20]}{endung(name)}"
-    ziel.write_bytes(inhalt)
-    return ziel, True
-
-
-# --- Manifest ---------------------------------------------------------------
-
-def manifest_lesen(archiv: Path) -> dict:
-    pfad = archiv / "manifest.json"
-    if not pfad.is_file():
-        return {}
-    try:
-        daten = json.loads(pfad.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        # Ein kaputtes Manifest darf den Lauf nicht beenden: Ohne die
-        # Kopfzeilen von gestern wird eben alles einmal neu geholt, und der
-        # Hash-Vergleich verhindert trotzdem jede Dublette.
-        return {}
-    return daten.get("dateien", {}) if isinstance(daten, dict) else {}
-
-
-def manifest_schreiben(archiv: Path, dateien: dict) -> None:
-    """Atomar schreiben: erst daneben, dann umbenennen. Ein abgebrochener Lauf
-    hinterlässt sonst ein halbes Manifest, und das nächste Mal wird alles neu
-    geladen."""
-    archiv.mkdir(parents=True, exist_ok=True)
-    ziel = archiv / "manifest.json"
-    tmp = archiv / "manifest.json.tmp"
-    tmp.write_text(json.dumps(
-        {"hinweis": "Erzeugt von scripts/archive_statistik.py — je Adresse die "
-                    "zuletzt gesehene Fassung. Die Dateien liegen daneben.",
-         "dateien": dateien}, ensure_ascii=False, indent=1, sort_keys=True),
-        encoding="utf-8")
-    tmp.replace(ziel)
+#
+# `dateiname`, `endung`, `inhalts_hash`, `version_ablegen` und die beiden
+# Manifest-Funktionen stehen in `council/archiv.py` (Import oben) — sie
+# beschreiben den AUFBAU des Archivs, und den muss auch lesen können, wer
+# nicht dieser Job ist. Die Namen bleiben hier verfügbar, damit Aufrufer
+# und Tests unverändert `archive_statistik.dateiname(...)` schreiben.
 
 
 # --- Netz -------------------------------------------------------------------

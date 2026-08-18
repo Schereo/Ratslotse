@@ -84,6 +84,20 @@ jobs:
             # gebaut ist.
             .venv/bin/python scripts/ingest_nachbewilligungen.py
 
+            # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
+            # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
+            # ingest_finanzen_opendata.py, und das ist keine Sortierlaune:
+            # Beide prüfen ihre Jahresbeschriftung gegen `council_steuern` —
+            # die Ist-Reihe, die jenes Skript einliest. Läuft dieses hier
+            # zuerst, kommt gar nichts herein, und der Lauf sagt auch warum.
+            #
+            # Es liest außerdem das ARCHIV mit, nicht nur die Live-Datei:
+            # Tabelle 1103 führt je Ausgabe nur drei Jahrgänge, und die Stadt
+            # hält keine alten Ausgaben online. Deshalb steht es VOR
+            # archive_statistik.py — die heutige Sicherung braucht es nicht,
+            # die von gestern schon.
+            .venv/bin/python scripts/ingest_steuertabellen.py
+
             # Das Archiv läuft ZULETZT und ist kein Ingest: Es schreibt in
             # keine Tabelle, sondern legt die Quelldateien beiseite. Es steht
             # trotzdem hier, weil die Stadt kein Jahrbuch-Archiv führt — nur
@@ -135,6 +149,12 @@ jobs:
                 "council_nachbewilligungen",
                 "council_nachbewilligung_jahre",
                 "council_nachbewilligung_kanaele",
+                # Die beiden Steuertabellen des Jahrbuchs (#606). Bei
+                # `council_steuerplan` sagt die Jahresspanne mehr als die
+                # Zeilenzahl: Sie muss über die Zeit WACHSEN, obwohl jede
+                # Ausgabe nur drei Jahrgänge führt — sonst liest der Lauf das
+                # Archiv nicht mit.
+                "council_steuerplan", "council_hebesaetze",
             ]
             # Die Jahresspalte heißt nicht überall „jahr": council_haushalt
             # führt „year", der Stellenplan „jahrgang". Der erste Lauf meldete

@@ -1445,6 +1445,61 @@ class CouncilStore:
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, kanal))"
         )
+        # Was je Steuerart geplant war und was daraus wurde — Tabelle 1103 des
+        # Statistischen Jahrbuchs (council/steuertabellen.py). Beträge in Euro;
+        # die Quelle rechnet in Tausend Euro.
+        #
+        # `art` trägt GENAU die Schreibweise aus `council_steuern.art`, und das
+        # ist keine Kosmetik: Der Ist-Wert dieser Tabelle muss sich dort
+        # wiederfinden, sonst kommt der Jahrgang nicht herein (Probe
+        # `steuerplan_istabgleich`). Zwei Schreibweisen für dieselbe Steuer
+        # hießen, dass der Abgleich still ins Leere liefe.
+        #
+        # `vorlaeufig` ist die Angabe der Quelle über sich selbst: Die jüngste
+        # Spalte heißt dort „vorläufiges Rechnungsergebnis" statt
+        # „Rechnungsergebnis". Eine Zahl, die noch revidiert werden kann, soll
+        # das an sich tragen und nicht nur im Fließtext einer Seite.
+        #
+        # WAS HIER BEWUSST NICHT STEHT: die Zeile „insgesamt" und die
+        # „Finanzzuweisungen". Beide stehen in derselben Tabelle und tragen die
+        # Summenprobe mit — aber sie haben in `council_steuern` keine
+        # Entsprechung, gegen die sich ihre Jahresbeschriftung prüfen ließe.
+        # Was die Probe nicht erreicht, wird nicht gespeichert. (Bei den
+        # Finanzzuweisungen kommt hinzu, dass sie NICHT dasselbe sind wie die
+        # Schlüsselzuweisungen in `council_steuerkraft` — zwei Abgrenzungen,
+        # ein ähnlicher Name.)
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_steuerplan ("
+            "jahr INTEGER NOT NULL, "
+            "art TEXT NOT NULL, "              # = council_steuern.art
+            "plan REAL NOT NULL, "             # in Euro
+            "ist REAL NOT NULL, "              # in Euro
+            "vorlaeufig INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, art))"
+        )
+        # Die Realsteuer-Hebesätze seit 1980 — Tabelle 1105 desselben Blatts.
+        #
+        # Neun Zeilen für 45 Jahre: Die Tabelle führt nur die Jahre, in denen
+        # sich etwas geändert hat. Ein Satz gilt bis zur nächsten Änderung, und
+        # deshalb ist das eine TREPPE und keine Kurve — zwischen zwei Stufen
+        # wird nichts interpoliert, weder hier noch im Frontend
+        # (`components/grafik/zeitreihe.tsx`, Modus `treppe`).
+        #
+        # `vorheriger` ist der Satz, der bis zu diesem Jahr galt — NULL in der
+        # ersten Zeile. Er steht mit in der Tabelle, weil die Aussage der Zeile
+        # die Änderung ist und nicht der Stand: „445 → 539" ist das, was ein
+        # Rat beschließt. Ihn beim Lesen aus der Vorzeile zu rechnen ginge auch,
+        # aber nur, solange niemand einen Ausschnitt der Reihe abfragt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_hebesaetze ("
+            "jahr INTEGER NOT NULL, "
+            "art TEXT NOT NULL, "              # Grundsteuer A | B | Gewerbesteuer
+            "hebesatz INTEGER NOT NULL, "      # Prozentpunkte
+            "vorheriger INTEGER, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, art))"
+        )
         # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
         # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
         # zugehörigen Beschlüsse abbildet. text_hash = SHA-256 des Volltexts —
@@ -1673,6 +1728,9 @@ class CouncilStore:
         "council_nachbewilligungen":        (None, "quelle_url", "ris"),
         "council_nachbewilligung_jahre":    (None, "quelle_url", "ris"),
         "council_nachbewilligung_kanaele":  (None, "quelle_url", "ris"),
+        # Die beiden Steuertabellen des Jahrbuchs — neu, ohne Altbestand.
+        "council_steuerplan":           (None, "quelle_url", "stadt"),
+        "council_hebesaetze":           (None, "quelle_url", "stadt"),
         # Der Beteiligungsbericht: ebenfalls erst mit der Herkunft entstanden.
         # Seine Dokumente kommen von oldenburg.de, nicht aus dem Bürgerinfo.
         "council_gesellschaften":            (None, "quelle_url", "stadt"),
@@ -4152,6 +4210,8 @@ class CouncilStore:
         "schulden":    ("council_schulden", "jahr", None),
         "gebaut":      ("council_investitionen_ist", "jahr", None),
         "ausgabenreihe": ("council_ausgabenreihe", "jahr", None),
+        "steuerplan":  ("council_steuerplan", "jahr", None),
+        "hebesaetze":  ("council_hebesaetze", "jahr", None),
     }
 
     def haushalt_jahrgaenge(self) -> dict[str, list[int]]:
@@ -5471,6 +5531,84 @@ class CouncilStore:
         try:
             return [r[0] for r in self._conn.execute(
                 "SELECT jahr FROM council_ausgabenreihe ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Steuertabellen des Jahrbuchs (1103 und 1105) -----------------------
+
+    def save_steuerplan(self, zeilen: list[dict], herkunft) -> int:
+        """Plan neben Ist je Steuerart — ersetzt, was die Lieferung mitbringt.
+
+        Nicht die ganze Tabelle: Jede Ausgabe von 1103 führt nur **drei**
+        Jahrgänge, und der Lauf legt mehrere Ausgaben nacheinander ab. Ein
+        ``DELETE`` vor dem Schreiben löschte deshalb genau das, wofür das
+        Archiv gebaut wurde — die Jahrgänge, die nur noch in einer älteren
+        Ausgabe stehen.
+
+        Übergeben wird nur, was seine Proben bestanden hat; diese Methode prüft
+        nichts nach."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_steuerplan "
+                "(jahr, art, plan, ist, vorlaeufig, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?)",
+                [(z["jahr"], z["art"], z["plan"], z["ist"],
+                  int(bool(z.get("vorlaeufig"))), hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_steuerplan(self) -> list[dict]:
+        """Plan und Ist je Steuerart und Jahr, aufsteigend.
+
+        Fehlt die Tabelle (frische Datenbank ohne Ingest-Lauf), ist die Antwort
+        leer statt ein Fehler — die Seite zeigt den Block dann schlicht nicht."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT jahr, art, plan, ist, vorlaeufig FROM council_steuerplan "
+                "ORDER BY jahr, art")]
+        except sqlite3.OperationalError:
+            return []
+
+    def steuerplan_jahre(self) -> list[int]:
+        """Welche Jahrgänge im Bestand stehen — für den Bestandsschutz."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_steuerplan ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_hebesaetze(self, zeilen: list[dict], herkunft) -> int:
+        """Die Hebesatz-Treppe — je Änderungsjahr und Steuerart eine Zeile."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_hebesaetze "
+                "(jahr, art, hebesatz, vorheriger, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?)",
+                [(z["jahr"], z["art"], z["hebesatz"], z.get("vorheriger"),
+                  hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_hebesaetze(self) -> list[dict]:
+        """Die Hebesätze je Änderungsjahr, aufsteigend.
+
+        **Nur Änderungsjahre** — die Lücken dazwischen sind keine fehlenden
+        Daten, sondern die Aussage: Ein Hebesatz gilt, bis der Rat ihn ändert.
+        Wer diese Reihe zeichnet, zeichnet eine Treppe."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT jahr, art, hebesatz, vorheriger FROM council_hebesaetze "
+                "ORDER BY jahr, art")]
+        except sqlite3.OperationalError:
+            return []
+
+    def hebesatz_jahre(self) -> list[int]:
+        """Welche Änderungsjahre im Bestand stehen — für den Bestandsschutz."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_hebesaetze ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
 
@@ -6978,7 +7116,7 @@ class CouncilStore:
         varianten.add(gefaltet)
         teile = " OR ".join(["w.sprecher LIKE ?"] * len(varianten))
         rows = self._conn.execute(
-            f"SELECT w.id, w.sprecher, w.partei, w.art, w.top, w.text, "
+            f"SELECT w.id, w.ksinr, w.sprecher, w.partei, w.art, w.top, w.text, "
             f"       cs.committee, cs.session_date "
             f"FROM council_wortbeitraege w JOIN council_sessions cs ON cs.ksinr = w.ksinr "
             f"WHERE {teile} ORDER BY cs.session_date DESC LIMIT ?",
@@ -8995,6 +9133,19 @@ class CouncilStore:
                 WHERE w.id IN ({ph})""", ids).fetchall()
         by_id = {r["id"]: dict(r) for r in rows}
         return [by_id[i] for i in ids if i in by_id]
+
+    def protokoll_urls_fuer(self, ksinrs: list[int | None]) -> dict[int, str]:
+        """ksinr → getfile-URL des öffentlichen Protokoll-PDFs. Macht die
+        Wortbeitrags-Belege der KI-Frage nachlesbar: Jeder Beitrag stammt aus
+        genau einem Protokoll, und dessen URL steht längst in der DB."""
+        ids = sorted({int(k) for k in ksinrs if k})
+        if not ids:
+            return {}
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"SELECT ksinr, document_url FROM council_protocols "
+            f"WHERE ksinr IN ({ph}) AND document_url IS NOT NULL", ids).fetchall()
+        return {r["ksinr"]: r["document_url"] for r in rows}
 
     # Sammel-TOPs: Hier landet alles, was sonst nirgends hingehört. Ein Treffer
     # darauf koppelt keine Debatte ZUR SACHE, sondern eine Wundertüte.

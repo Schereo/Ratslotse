@@ -20,7 +20,7 @@ from kern.store import Store
 from kern import digest_email
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
-from council.agenda_diff import diff_html, diff_tagesordnung, hat_aenderungen
+from council.agenda_diff import anlagen_schluessel, diff_html, diff_tagesordnung, hat_aenderungen
 from council.committee_summary import sitzungskopf, summarize_agenda_items
 from council.ergebnisse import sitzung_href
 
@@ -29,9 +29,16 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
 def _agenda_hash(agenda_items) -> str:
-    """Stable fingerprint of the agenda; changes if any item is added/edited/removed."""
+    """Stable fingerprint of the agenda; changes if any item is added/edited/removed.
+
+    Seit 18.08.2026 zählen auch die Anhänge (per getfile-id) mit — eine neue
+    Anlage an einem TOP ist eine meldenswerte Änderung (Tims Wunsch). Der
+    einmalige Hash-Sprung durch die Formatänderung bleibt stumm: Der Diff
+    gegen den alten Snapshot findet nichts Nennbares, und genau dieser Fall
+    zieht den Stand nur nach, ohne zu melden."""
     payload = "\n".join(
-        f"{i.item_number}\t{i.title}\t{i.vorlage_nr or ''}\t{int(i.is_public)}"
+        f"{i.item_number}\t{i.title}\t{i.vorlage_nr or ''}\t{int(i.is_public)}\t"
+        f"{','.join(anlagen_schluessel(i.anlagen))}"
         for i in agenda_items
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -100,6 +107,11 @@ def _aenderungs_teil(alt: list[dict] | None, jetzt: list[dict]) -> str | None:
     # deshalb wird dann auch die neue Seite auf die öffentlichen beschnitten.
     if not any("is_public" in i for i in alt):
         jetzt = [i for i in jetzt if i.get("is_public", True)]
+    # Gleiche Migrations-Falle bei den Anhängen (seit 18.08.2026 im Snapshot):
+    # Kennt der Altstand keine Anlagen, würde jeder Anhang als „neu" gelten —
+    # dann werden sie auf beiden Seiten aus dem Vergleich genommen.
+    if not any("anlagen" in i for i in alt):
+        jetzt = [{k: v for k, v in i.items() if k != "anlagen"} for i in jetzt]
     d = diff_tagesordnung(alt, jetzt)
     return diff_html(d) if hat_aenderungen(d) else ""
 
@@ -155,7 +167,12 @@ def main() -> dict:
         # der Sitzungsseite der App (dort mit „nichtöffentlich"-Marke).
         snapshot_items = [{"item_number": i.item_number, "title": i.title,
                            "vorlage_nr": i.vorlage_nr or "",
-                           "is_public": bool(i.is_public)}
+                           "is_public": bool(i.is_public),
+                           # Anhänge mit Label: Der Diff nennt neue Anlagen
+                           # beim Namen, nicht nur „irgendwas ist anders".
+                           "anlagen": [{"label": e.get("label") or "Anlage",
+                                        "url": e.get("url") or ""}
+                                       for e in (i.anlagen or [])]}
                           for i in session.agenda_items]
         council_store.save_agenda_snapshot(ksinr, agenda_hash, snapshot_items)
 
@@ -273,8 +290,15 @@ def main() -> dict:
                 # (Tims Befund 17.08.). Stand nachziehen, nicht melden.
                 council_store.mark_notified(ksinr, owner_id, agenda_hash)
                 continue
+            # Ohne Vergleichsbasis (Meldung von vor der Snapshot-Zeit) kommt
+            # die volle Liste — dann soll die Mail aber SAGEN, dass sie den
+            # ganzen Stand zeigt, statt so zu tun, als wäre alles davon neu
+            # (Tims Befund 18.08. an der Jugendhilfeausschuss-Mail).
+            ohne_basis = ("<p>Was genau sich geändert hat, lässt sich für diese "
+                          "Sitzung nicht mehr nachvollziehen — hier ist der "
+                          "aktuelle Stand der Tagesordnung.</p>\n")
             nachricht = (update_prefix + kopf + diff_teil + wege) if diff_teil is not None \
-                else (update_prefix + base_message)
+                else (update_prefix + ohne_basis + base_message)
             print(f"  {session.session_date} {session.committee} → owner {owner_id} "
                   f"(Änderung{', Diff' if diff_teil is not None else ''})")
             notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,

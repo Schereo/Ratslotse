@@ -10,7 +10,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
@@ -18,6 +18,7 @@ from council.goals import GOALS
 from council.parties import faction_label, normalize_party, order_key
 from council import ausgabenreihe as ausgabenreihe_mod
 from council import nachbewilligungen as nachbewilligungen_mod
+from council import steuertabellen
 from council import beteiligungsbericht, qa
 from council import ernte
 from council import importance
@@ -867,6 +868,18 @@ def haushalt_uebersicht(
       Aufwendungen der Gesamtergebnisrechnung, und über den Schnitt darf keine
       Linie laufen. Eine Einwohnerzahl liefert dieser Block bewusst nicht
       (Begründung an der Tabelle in ``council/store.py``).
+    - ``steuerplan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
+      dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``vorlaeufig`` ist die
+      Angabe der Quelle über sich selbst — die jüngste Spalte heißt dort
+      „vorläufiges Rechnungsergebnis". Die ``art``-Werte sind **dieselben** wie
+      in ``steuern``; daran hängt die Prüfung der Jahresbeschriftung.
+    - ``hebesaetze``: die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980
+      (Tabelle 1105). Die Jahre dazwischen fehlen nicht, sie ändern nichts —
+      ein Satz gilt bis zur nächsten Änderung. Wer die Reihe zeichnet, zeichnet
+      eine Treppe und interpoliert nicht. ``bemessung_neu`` nennt die Jahre, in
+      denen sich die Bemessungsgrundlage mitänderte; **ohne diese Angabe darf
+      kein Hebesatz-Sprung angezeigt werden**, denn 2025 stieg der Satz um
+      21 %, während das Aufkommen um 4,6 % sank.
 
     Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
     zeigt Lücken ehrlich, statt zu interpolieren."""
@@ -946,6 +959,30 @@ def haushalt_uebersicht(
             "serie": store.get_nachbewilligungen(),
             "jahre": store.get_nachbewilligung_jahre(),
             "kanaele": nachbewilligungen_mod.KANAELE,
+        },
+        # Die beiden Steuertabellen des Jahrbuchs (council/steuertabellen.py).
+        # Sie gehören zusammen in EINEN Block, weil sie auf derselben Seite
+        # zusammen gelesen werden: Ein Hebesatz ohne das Aufkommen daneben ist
+        # irreführend (2025: Satz +21 %, Aufkommen −4,6 %).
+        #
+        # `abgrenzung` reist mit den Zahlen, nicht im Frontend — dieselbe Regel
+        # wie bei `ausgabenreihe.regelwerke`: Eine Legende, die es in zwei
+        # Sprachen gibt, driftet.
+        "steuerplan": {
+            "zeilen": store.get_steuerplan(),
+            "abgrenzung": steuertabellen.ABGRENZUNG_1103,
+        },
+        "hebesaetze": {
+            # NUR die Änderungsjahre — die Jahre dazwischen fehlen nicht,
+            # sondern haben nichts geändert. Wer diese Reihe zeichnet, zeichnet
+            # eine TREPPE: Ein Satz gilt bis zur nächsten Änderung, und
+            # zwischen zwei Stufen wird nicht interpoliert.
+            "zeilen": store.get_hebesaetze(),
+            "abgrenzung": steuertabellen.ABGRENZUNG_1105,
+            # Jahre, in denen sich die BEMESSUNGSGRUNDLAGE mitänderte. Ohne
+            # diese Angabe liest sich „Hebesatz +21 %" als „alle zahlen 21 %
+            # mehr", und das war 2025 nachweislich falsch.
+            "bemessung_neu": steuertabellen.BEMESSUNG_NEU,
         },
     }
 
@@ -1395,6 +1432,17 @@ class QaShareDebatte(BaseModel):
     auszug: str = Field(default="", max_length=2000)
     committee: str | None = Field(default=None, max_length=120)
     datum: str | None = Field(default=None, max_length=10)
+    protokoll_url: str | None = Field(default=None, max_length=500)
+
+    @field_validator("protokoll_url")
+    @classmethod
+    def _nur_ratsinfo(cls, v: str | None) -> str | None:
+        # Der Snapshot ist öffentlich und der Client liefert die URL mit —
+        # als „Protokoll" verlinken wir deshalb ausschließlich das
+        # Ratsinfo-System, sonst ließe sich hier Beliebiges unterschieben.
+        if v and not v.startswith(f"{BASE_URL}/"):
+            return None
+        return v
 
 
 class QaSharePresse(BaseModel):
@@ -2106,7 +2154,8 @@ def _debatten_kompakt(rows: list[dict]) -> list[dict]:
              "art": d.get("art"), "top": d.get("top"),
              "auszug": (d.get("text") or "")[:2000],
              "committee": d.get("committee"),
-             "datum": d.get("session_date")} for d in rows]
+             "datum": d.get("session_date"),
+             "protokoll_url": d.get("protokoll_url")} for d in rows]
 
 
 def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
@@ -2286,6 +2335,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 qa.parteien_aufloesen(store, debatten_rows)
             except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker
                 pass
+            # Beleg nachlesbar machen: jeder Beitrag bekommt die PDF-URL
+            # seines Protokolls (Tims Wunsch 18.08.).
+            qa.protokolle_verlinken(store, debatten_rows)
             # 5a/I-10: Orts-Pins für die Mini-Karte — deterministisch aus den
             # geocodierten Entitäten, nie vom Sprachmodell.
             try:
