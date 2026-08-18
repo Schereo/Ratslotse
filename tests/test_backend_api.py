@@ -3823,3 +3823,73 @@ def test_haushalt_bleibt_ohne_spenden_ruhig(client):
     s = client.get("/api/council/haushalt").json()["spenden"]
     assert s["jahre"] == [] and s["vorlagen"] == [] and s["ohne_beleg"] == []
     assert len(s["schwellen"]) == 3
+
+
+def test_haushalt_felder_schneidet_zu_und_meldet_tippfehler(client):
+    """``?felder=`` liefert genau das Angeforderte — und sonst nichts.
+
+    Der Endpunkt trägt neunzehn Blöcke, keine Seite braucht mehr als sechs.
+    Zwei Dinge müssen dabei gelten, und das zweite ist das wichtigere:
+
+    1. **ohne** Parameter kommt weiterhin alles (der alte Vertrag gilt),
+    2. ein **falsch geschriebenes** Feld ist ein Fehler, keine stille Lücke.
+       Ohne (2) wäre ein Tippfehler nicht von „dieser Block ist eben leer" zu
+       unterscheiden — und leere Blöcke sind in diesem Bereich eine Aussage
+       über die Datenlage, keine über den Aufruf.
+    """
+    _register(client)
+
+    alles = client.get("/api/council/haushalt").json()
+    for pflicht in ("jahre", "steuern", "ergebnisrechnung", "spenden",
+                    "nachbewilligungen", "herkunft", "produkt_jahre"):
+        assert pflicht in alles, pflicht
+
+    schmal = client.get("/api/council/haushalt?felder=jahre,produkt_jahre").json()
+    assert set(schmal) == {"jahre", "produkt_jahre"}
+    assert schmal["jahre"] == alles["jahre"]      # zugeschnitten, nicht verändert
+
+    # Leerzeichen und leere Glieder sind Tippfehler-Nachbarn, kein Fehlerfall.
+    assert set(client.get(
+        "/api/council/haushalt?felder= jahre , ,steuern ").json()) == {"jahre", "steuern"}
+
+    antwort = client.get("/api/council/haushalt?felder=jahre,produktjahre")
+    assert antwort.status_code == 400
+    assert "produktjahre" in antwort.json()["detail"]
+
+
+def test_haushalt_schickt_nur_belegte_herkunft(client):
+    """Es reisen nur die Herkunfts-Einträge mit, auf die eine Zeile zeigt.
+
+    Bis 08/2026 ging die vollständige Tabelle mit: auf dev 937 Einträge und
+    753 KB, von denen 643 (69 %) zu Zeilen gehörten, die dieser Endpunkt gar
+    nicht liefert — sie stammen aus den Unter-Endpunkten, die ihre Herkunft
+    längst einschränken.
+
+    Die Probe ist bewusst die Gleichheit beider Mengen und keine Zahl: Ein
+    Eintrag zu wenig heißt, dass irgendwo ein Beleg-Chip ins Leere zeigt, und
+    genau das darf dieser Bereich nicht.
+    """
+    from app.routers.council import _herkunft_ids
+    from council import herkunft as h_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        cs.save_ergebnisrechnung(2024, [
+            {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
+             "ergebnis": 799_057_202.86, "ist_summe": 1},
+        ], h_mod.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+                          label="Jahresabschluss 2024",
+                          url="https://example.org/ja.pdf"))
+    finally:
+        cs.close()
+
+    voll = client.get("/api/council/haushalt").json()
+    gebraucht = _herkunft_ids({k: v for k, v in voll.items() if k != "herkunft"})
+    assert gebraucht, "Fixture zeigt auf keine Herkunft — die Probe wäre wertlos"
+    assert set(voll["herkunft"]) == {str(i) for i in gebraucht}
+
+    # Und andersherum: Wird die Ergebnisrechnung nicht angefordert, zeigt keine
+    # gesendete Zeile mehr auf ihren Beleg — dann reist er auch nicht mit.
+    schmal = client.get("/api/council/haushalt?felder=steuern,herkunft").json()
+    assert schmal["herkunft"] == {}

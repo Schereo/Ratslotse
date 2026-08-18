@@ -225,6 +225,35 @@ export type HaushaltDaten = {
   hebesaetze?: Hebesaetze;
 };
 
+/** Die Adresse der Haushalts-Übersicht, zugeschnitten auf das, was eine Seite
+ *  wirklich rendert.
+ *
+ *  WARUM DAS SEIN MUSS. Der Endpunkt trägt neunzehn Blöcke; keine Seite
+ *  braucht mehr als sechs. `/haushalt/labor` braucht **einen** und lud dafür
+ *  bis 08/2026 knapp 2 MB — auf dem Handy über Mobilfunk, denn die iOS-App
+ *  holt dieselbe Antwort.
+ *
+ *  WARUM ZUSAMMEN MIT `HaushaltAuswahl`. Die Feldliste steht genau einmal im
+ *  Code und speist beides: die Adresse **und** den Typ. Wer ein Feld benutzt,
+ *  das er nicht angefordert hat, bekommt keinen leeren Block, sondern einen
+ *  Fehler beim Bauen — und ein still leerer Block wäre in diesem Bereich der
+ *  schlimmere Fehler, weil eine leere Stelle hier „diese Daten gibt es nicht"
+ *  bedeutet und nicht „falsch abgefragt".
+ *
+ *      const FELDER = ["jahre", "produkt_jahre"] as const;
+ *      const { data } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(
+ *        haushaltUrl(FELDER));
+ *
+ *  `herkunft` ist bewusst **nicht** dabei: Die Belege dieser Seiten hängen am
+ *  Quellen-Schlüssel (`lib/haushalt-quellen.ts` + `/haushalt/dokumente`), nicht
+ *  an der `herkunft_id` der Zeile. Wer sie doch braucht, fordert sie an. */
+export function haushaltUrl(felder: readonly (keyof HaushaltDaten)[]): string {
+  return `/council/haushalt?felder=${felder.join(",")}`;
+}
+
+/** Der Ausschnitt von `HaushaltDaten`, den `haushaltUrl(FELDER)` liefert. */
+export type HaushaltAuswahl<K extends keyof HaushaltDaten> = Pick<HaushaltDaten, K>;
+
 /** Welche Sorte Nachbewilligung eine Zeile ist.
  *
  *  `verpflichtungsermaechtigung` bindet künftige Jahre und fließt in diesem
