@@ -38,6 +38,16 @@ export type SteuerArt = {
   beispiel?: { rechnung: string; hinweis: string };
   /** Hebesatz in Prozentpunkten, falls der Rat einen beschließt. */
   hebesatz?: number;
+  /** Welche Reihen aus `council_hebesaetze` zu diesem Steckbrief gehören —
+   *  die erste ist die Haupt-Treppe, eine zweite läuft dünn daneben.
+   *
+   *  Zwei Einträge gibt es nur bei der Grundsteuer, und dort gehören sie
+   *  zusammen: Der Rat beschließt A und B in derselben Satzung, sie stehen in
+   *  derselben Tabellenzeile, und beide sind Prozentpunkte — also dieselbe
+   *  Achse. Die Reihenfolge ist nicht beliebig: B trifft Wohn- und
+   *  Geschäftsgrundstücke und damit fast alle, A die Land- und
+   *  Forstwirtschaft. B steht deshalb vorn. */
+  hebesatzArten?: string[];
   /** Gesetzt heißt: Der Überschlag „was brächte ein Punkt mehr?" lässt sich
    *  hier NICHT rechnen, und das ist der Grund.
    *
@@ -64,6 +74,7 @@ export const STEUERARTEN: SteuerArt[] = [
     spielraum: "frei",
     stellschraube: "Der Rat setzt den Hebesatz",
     hebesatz: 439,
+    hebesatzArten: ["Gewerbesteuer"],
     stufen: [
       {
         wer: "Bundestag",
@@ -111,6 +122,7 @@ export const STEUERARTEN: SteuerArt[] = [
     spielraum: "frei",
     stellschraube: "Der Rat setzt zwei Hebesätze",
     hebesatz: 539,
+    hebesatzArten: ["Grundsteuer B", "Grundsteuer A"],
     punktUnmoeglich:
       "Was ein Hebesatzpunkt bringt, lässt sich hier nicht überschlagen: Der offene "
       + "Datensatz führt Grundsteuer A und B in einer Spalte zusammen, die Hebesätze "

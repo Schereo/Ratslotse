@@ -23,6 +23,8 @@ import {
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert, LottiVergleich } from "@/components/haushalt/lotti-erklaert";
 import { IstKurve } from "@/components/haushalt/ist-kurve";
+import { SteuerPlanIst } from "@/components/haushalt/steuer-plan-ist";
+import { HebesatzTreppe } from "@/components/haushalt/hebesatz-treppe";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
@@ -84,11 +86,32 @@ function SteuerInner() {
   const proPunkt = art.hebesatz && letzte && !art.punktUnmoeglich
     ? letzte.betrag / art.hebesatz : null;
 
+  // Plan neben Ist — nur diese Steuer, nur die Jahrgänge, die Tabelle 1103
+  // führt (drei je Ausgabe). `datenArt` ist derselbe Schlüssel wie in der
+  // Ist-Reihe; daran hängt im Ingest auch die Prüfung der Jahresbeschriftung.
+  const planIst = (data.steuerplan?.zeilen ?? [])
+    .filter((z) => art.datenArt && z.art === art.datenArt);
+
+  // Die Hebesatz-Treppe dieser Steuer. Zwei Reihen nur bei der Grundsteuer
+  // (B und A, dieselbe Einheit, derselbe Beschluss).
+  const hebeAlle = data.hebesaetze?.zeilen ?? [];
+  const hebeHaupt = art.hebesatzArten?.[0]
+    ? hebeAlle.filter((z) => z.art === art.hebesatzArten![0]) : [];
+  const hebeZweit = art.hebesatzArten?.[1]
+    ? hebeAlle.filter((z) => z.art === art.hebesatzArten![1]) : [];
+
+  // Das Aufkommen als `{jahr: euro}` — der Pflicht-Kontext neben jedem
+  // Hebesatz-Sprung. Ohne ihn liest sich „+21 %" als „alle zahlen 21 % mehr",
+  // und das war 2025 nachweislich falsch.
+  const aufkommen: Record<number, number> = {};
+  for (const s of reihe) aufkommen[s.jahr] = s.betrag;
+
   // Die Quellen dieser Seite in Lese-Reihenfolge — daraus zählt der Provider
   // die Fußnoten-Nummern.
   const quellen: QuellenSchluessel[] = istZuweisung
     ? ["steuerkraft", "plan"]
-    : ["steuern", "hebesaetze"];
+    : ["steuern", ...(planIst.length ? (["steuerplan"] as const) : []),
+       "hebesaetze"];
 
   return (
     <Quellenkontext schluessel={quellen}>
@@ -205,6 +228,17 @@ function SteuerInner() {
         </div>
       )}
 
+      {/* „Geplant und geworden" steht DIREKT unter der Ist-Kurve: Die Kurve
+          zeigt, was hereinkam, dieser Block, was man erwartet hatte. Weiter
+          unten, hinter dem Hebesatz, verlöre er seinen Bezug. */}
+      {planIst.length > 0 && (
+        <SteuerPlanIst
+          zeilen={planIst}
+          abgrenzung={data.steuerplan?.abgrenzung ?? ""}
+          beleg={<Beleg q="steuerplan" />}
+        />
+      )}
+
       {letzte && einwohner > 0 && (
         /* „vom Land" stand hier bis 17.08. und war zu weit: Der Betrag ist
            die Schlüsselzuweisung, also zwei von drei Komponenten des
@@ -220,49 +254,84 @@ function SteuerInner() {
 
       {/* Hebesatz + Überschlag, nur wo der Rat wirklich eine Stellschraube hat. */}
       {art.hebesatz && (
-        <div className="grid gap-3 lg:grid-cols-[1fr_310px]">
+        <>
+        {/* Die Treppe seit 1980 (Jahrbuch 1105). Bis 18.08.2026 stand hier ein
+            einzelner Kasten „2025 · Rat" und darunter der Satz, eine Reihe der
+            Vorjahre liege uns nicht vor. Sie lag die ganze Zeit vor — auf
+            demselben Blatt wie die Steuereinnahmen, die wir längst lesen. */}
+        {hebeHaupt.length >= 2 ? (
+          <HebesatzTreppe
+            reihe={hebeHaupt}
+            zweitreihe={hebeZweit}
+            zweitLabel={art.hebesatzArten?.[1]}
+            titel={art.titel}
+            aufkommen={aufkommen}
+            /* Bei der Grundsteuer heißt das Aufkommen NICHT wie der Hebesatz
+               daneben: Der offene Datensatz führt A und B in einer Spalte, die
+               Sätze gelten getrennt. Dieselbe Grenze, die auch den Überschlag
+               „ein Punkt mehr" verbietet (`punktUnmoeglich`). */
+            aufkommenLabel={art.slug === "grundsteuer"
+              ? "Grundsteuer A und B zusammen" : `${art.titel}`}
+            bemessungNeu={data.hebesaetze?.bemessung_neu ?? {}}
+            abgrenzung={data.hebesaetze?.abgrenzung ?? ""}
+            /* Woran die Bemessungsgrundlage hängt — sonst liest sich die Liste
+               darunter falsch herum. Bei der Gewerbesteuer fiel 2011 das
+               Aufkommen, obwohl der Rat den Hebesatz erhöhte; das lag an den
+               Gewinnen, nicht am Beschluss. Beide Sätze stehen so schon in den
+               Stufen oben („Wer entscheidet was"). */
+            grundlage={
+              art.slug === "gewerbesteuer"
+                ? "Hier ist der Messbetrag der Gewinn der Unternehmen — er schwankt von Jahr zu Jahr stark, und zwar unabhängig davon, was der Rat beschließt."
+                : art.slug === "grundsteuer"
+                  ? "Hier hängt der Messbetrag am Wert des Grundstücks, den das Finanzamt festsetzt. 2025 hat es alle Werte auf einmal neu bestimmt."
+                  : undefined
+            }
+            beleg={<Beleg q="hebesaetze" />}
+            aufkommenBeleg={<Beleg q="steuern" />}
+          />
+        ) : (
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               Der Hebesatz im Rat
             </p>
-            <div className="mt-3 space-y-3">
-              {/* „Bis 2025" stand hier bis 16.08. und behauptete eine Dauer,
-                  die wir nicht belegen können: Wir kennen genau EINEN
-                  Hebesatz, den für 2025. Ob er davor derselbe war, wissen wir
-                  nicht — „bis" und „unverändert" sind deshalb beide raus. */}
-              <div className="rounded-xl bg-muted/40 p-3">
-                <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">2025 · Rat</p>
-                <p className="mt-1 text-[13px] font-semibold">
-                  Hebesatz {art.hebesatz}&nbsp;%
-                  <span className="font-normal text-muted-foreground"> — beschlossen mit der Haushaltssatzung</span>
-                  <Beleg q="hebesaetze" />
-                </p>
-              </div>
-              {art.slug === "gewerbesteuer" && (
-                <div className="rounded-xl bg-primary/[0.06] p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-mono text-[10px] uppercase tracking-wide text-primary">Haushalt 2026 · Rat</p>
-                    <span className="rounded-full border border-[#fecaca] bg-[#fef2f2] px-2 py-0.5 text-[10.5px] font-semibold text-[#b91c1c]">
-                      Abgelehnt
-                    </span>
-                  </div>
-                  <p className="mt-1.5 text-[13px] font-semibold leading-snug">
-                    Die Verwaltung schlug vor, die Hebesätze zu erhöhen. Der Rat lehnte ab.
-                  </p>
-                  <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-                    Genau hier entscheidet Kommunalpolitik über Einnahmen.
-                  </p>
-                </div>
-              )}
+            <div className="mt-3 rounded-xl bg-muted/40 p-3">
+              <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">2025 · Rat</p>
+              <p className="mt-1 text-[13px] font-semibold">
+                Hebesatz {art.hebesatz}&nbsp;%
+                <span className="font-normal text-muted-foreground"> — beschlossen mit der Haushaltssatzung</span>
+                <Beleg q="hebesaetze" />
+              </p>
             </div>
-            {/* „aus zwei Stationen wird eine Treppe" stimmte nur bei der
-                Gewerbesteuer: Nur sie trägt hier zwei Kästen, alle anderen
-                Steckbriefe einen einzigen. */}
             <p className="mt-3 rounded-lg border border-dashed border-border p-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              Die Hebesätze früherer Jahre liegen uns noch nicht als Reihe vor — sobald wir sie
-              haben, wird daraus eine Treppe über die Jahre. Wir schätzen sie nicht.
+              Die Reihe der früheren Hebesätze ist in diesem Bestand noch nicht
+              eingelesen. Wir schätzen sie nicht.
             </p>
           </div>
+        )}
+
+        <div className="grid gap-3 lg:grid-cols-[1fr_310px]">
+          {art.slug === "gewerbesteuer" && (
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-mono text-[10px] uppercase tracking-wide text-primary">Haushalt 2026 · Rat</p>
+                <span className="rounded-full border border-[#fecaca] bg-[#fef2f2] px-2 py-0.5 text-[10.5px] font-semibold text-[#b91c1c]">
+                  Abgelehnt
+                </span>
+              </div>
+              <p className="mt-1.5 text-[13px] font-semibold leading-snug">
+                Die Verwaltung schlug vor, die Hebesätze zu erhöhen. Der Rat lehnte ab.
+              </p>
+              {/* Der Verweis auf die Treppe nur, wo eine steht: Ohne
+                  eingelesene Reihe zeigt der Block darüber einen einzelnen
+                  Kasten, und „die Treppe darüber" zeigte ins Leere. */}
+              <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+                Genau hier entscheidet Kommunalpolitik über Einnahmen
+                {hebeHaupt.length >= 2
+                  ? " — die Treppe darüber hätte 2026 eine Stufe mehr bekommen."
+                  : "."}
+              </p>
+            </div>
+          )}
 
           {art.punktUnmoeglich && (
             <div className="rounded-2xl border border-dashed border-border bg-card p-4">
@@ -319,6 +388,7 @@ function SteuerInner() {
             </div>
           )}
         </div>
+        </>
       )}
 
       <div className="rounded-2xl border border-dashed border-border bg-card p-4">
