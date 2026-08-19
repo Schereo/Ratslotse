@@ -20,11 +20,13 @@ import { QaTab } from "@/components/council-qa";
 function GespraecheHeaderButton() {
   const [sichtbar, setSichtbar] = useState(false);
   const [titel, setTitel] = useState<string | null>(null);
+  const [anzahl, setAnzahl] = useState(0);
   useEffect(() => {
     const auf = (e: Event) => {
       const d = (e as CustomEvent).detail ?? {};
       setSichtbar(!!d.sichtbar);
       setTitel(typeof d.titel === "string" && d.titel.trim() ? d.titel.trim() : null);
+      setAnzahl(typeof d.anzahl === "number" ? d.anzahl : 0);
     };
     window.addEventListener("rl:gespraeche-status", auf);
     return () => window.removeEventListener("rl:gespraeche-status", auf);
@@ -36,15 +38,20 @@ function GespraecheHeaderButton() {
       onClick={() => window.dispatchEvent(new CustomEvent("rl:gespraeche-oeffnen"))}
       aria-label="Meine Gespräche öffnen"
       title={titel ? `Gespräch: ${titel}` : "Meine Gespräche"}
-      className="inline-flex h-9 max-w-[52vw] items-center justify-center rounded-[10px] border border-border bg-card px-2 text-muted-foreground shadow-sm transition-colors active:bg-muted sm:gap-1.5 sm:px-2.5 desk:hidden"
+      className="inline-flex h-10 max-w-[56vw] items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-foreground shadow-sm transition-colors active:bg-muted desk:hidden"
     >
-      <History className="h-4 w-4 shrink-0" aria-hidden />
-      {/* V-03: Wo Platz ist, sagt der Knopf nicht nur WAS er ist, sondern in
-          welchem Gespräch man gerade steckt — nach Tagen ist das die
-          Orientierung, die sonst fehlt. Ohne aktives Gespräch: altes Label. */}
-      <span className="hidden truncate text-xs font-medium sm:inline">
+      <History className="h-[15px] w-[15px] shrink-0 text-primary" aria-hidden />
+      {/* Design 15: Der Knopf trägt sein Wort IMMER — das namenlose Uhr-Icon
+          war der Grund, warum niemand den Verlauf fand. V-03 bleibt: Im
+          aktiven Gespräch steht dessen Titel drin, sonst „Gespräche". */}
+      <span className="truncate text-[13.5px] font-semibold">
         {titel ?? "Gespräche"}
       </span>
+      {anzahl > 0 && (
+        <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 px-1.5 text-[11.5px] font-bold text-primary">
+          {anzahl}
+        </span>
+      )}
     </button>
   );
 }
@@ -61,12 +68,11 @@ function GespraecheHeaderButton() {
 function FragenInner() {
   return (
     <div>
+      {/* Design 15 (WEG): kein Untertitel mehr — dieselbe Botschaft steht
+          einmal, unter „Frag den Rat" im Empty State. Der Kopf gehört dem
+          Titel und dem benannten Gespräche-Knopf. */}
       <PageHeader
         title="Fragen"
-        /* Kurz halten (Tims Befund 12.08.): Auf dem Handy lief der Satz über
-           drei Zeilen und schob den Empty State nach unten — worauf die
-           Antwort fußt, sagt der Empty State selbst. */
-        description="In normaler Sprache fragen — Antwort mit Quellen."
         action={<GespraecheHeaderButton />}
       />
       <QaTab />
