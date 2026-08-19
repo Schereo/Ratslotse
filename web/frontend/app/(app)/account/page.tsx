@@ -289,9 +289,24 @@ export default function AccountPage() {
               keiner von beiden und soll auch nicht zwischen zwei harmlose
               Karten geraten. Ihr Inhalt legt sich bei Platz nebeneinander
               (Erklärung links, Bestätigung rechts), statt eine Karte über die
-              volle Breite mit einem kurzen Feld am linken Rand zu füllen. */}
+              volle Breite mit einem kurzen Feld am linken Rand zu füllen.
+              Kein justify-between: Die Karte ist @3xl/konto:col-span-2, wird
+              also auf `weit`-Monitoren (≥1680 px, bis zu 1600 px Inhalts-
+              breite seit dem 18.08.) selbst sehr breit — das Auseinander-
+              drücken riss dort einen ~350 px breiten Leerraum zwischen
+              Erklärung und Passwortfeld auf (Tims Screenshot 19.08.). Text
+              und Formular gehören zusammen gelesen; der übrige Platz bleibt
+              jetzt hinter dem Button statt mittendrin.
+              items-start statt items-end: Die Zeile richtete sich bisher an
+              der UNTERKANTE aus, aber die Erklärung ist mal zwei, mal drei
+              Zeilen lang (abhängig von der Kartenbreite) — das Feld hing
+              dadurch je nach Breite an einer anderen Stelle des Fließtexts,
+              nie an der Überschrift (Tims zweiter Befund 19.08., „manchmal
+              komisch positioniert"). Oben ausgerichtet liegt „Aktuelles
+              Passwort" unabhängig vom Textumbruch immer auf Höhe von „Konto
+              löschen". */}
           <Card className="border-destructive/30 p-6 @3xl/konto:col-span-2">
-            <div className="@3xl/konto:flex @3xl/konto:items-end @3xl/konto:justify-between @3xl/konto:gap-8">
+            <div className="@3xl/konto:flex @3xl/konto:items-start @3xl/konto:gap-8">
               <div className="@3xl/konto:max-w-xl">
                 <h2 className="font-semibold text-destructive">Konto löschen</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -301,7 +316,10 @@ export default function AccountPage() {
                     : " Zur Bestätigung meldest du dich einmal frisch mit Apple an."}
                 </p>
               </div>
-              <div className="mt-4 flex flex-wrap items-end gap-3 @3xl/konto:mt-0 @3xl/konto:shrink-0 @3xl/konto:justify-end">
+              {/* justify-end hier war seit dem justify-between-Fix oben schon
+                  wirkungslos: Diese Zeile ist @3xl/konto:shrink-0, hat also nie
+                  mehr Breite als ihre Kinder brauchen — kein Rest zum Verteilen. */}
+              <div className="mt-4 flex flex-wrap items-end gap-3 @3xl/konto:mt-0 @3xl/konto:shrink-0">
                 {hasPassword ? (
                   <div className="w-full max-w-xs space-y-1.5 @3xl/konto:w-64">
                     <Label htmlFor="delete-password">Aktuelles Passwort</Label>
