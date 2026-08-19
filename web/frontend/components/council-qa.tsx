@@ -1458,7 +1458,15 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // sich selbst ausrechnet. `breit` (iPad quer) bleibt bei `items-start`:
     // Dort ist die Seite nicht viewport-hoch, und die Belege-Spalte dockt
     // per sticky an.
-    <div className="mx-auto mt-3 max-w-3xl breit:grid breit:max-w-[1220px] breit:grid-cols-[minmax(0,1fr)_320px] breit:items-start breit:gap-6 desk:min-h-0 desk:flex-1 desk:items-stretch weit:max-w-none weit:justify-center weit:grid-cols-[minmax(0,980px)_420px] weit:gap-10">
+    // `w-full` ist hier PFLICHT, nicht Kosmetik: Seit die Seite am Desktop
+    // eine Spalten-Flexbox ist, ist dieses Raster ein Flex-Item — und
+    // `mx-auto` (auto-Ränder in der Querachse) hebelt das Strecken aus.
+    // Ohne definite Breite fällt das Raster auf `fit-content` zurück und
+    // wird damit INHALTSABHÄNGIG breit: Es wuchs sichtbar, sobald die
+    // Antwort eintraf (Tims Befund 19.08., gemessen 355 → 826 px statt
+    // konstant 1096). Mit `w-full` zählt wieder `max-w-*`, wie im
+    // Block-Layout davor.
+    <div className="mx-auto mt-3 w-full max-w-3xl breit:grid breit:max-w-[1220px] breit:grid-cols-[minmax(0,1fr)_320px] breit:items-start breit:gap-6 desk:min-h-0 desk:flex-1 desk:items-stretch weit:max-w-none weit:justify-center weit:grid-cols-[minmax(0,980px)_420px] weit:gap-10">
       {/* Chat-Spalte. Die mobile min-height-Krücke (Design 2①: „Composer
           klebt auch im Empty State unten") ist seit dem FIXED-Composer
           obsolet — und machte die Seite höher als den Viewport, sodass das
