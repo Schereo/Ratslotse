@@ -20,7 +20,17 @@ from kern import llm, prompts
 
 MODEL = os.environ.get("COUNCIL_IMPACT_MODEL", "deepseek/deepseek-v4-pro")
 BATCH_SIZE = 20
-MAX_EXCERPT_CHARS = 600
+MAX_EXCERPT_CHARS = 900
+
+#: Wo der Inhalt einer Vorlage anfängt. Davor stehen rund 300 Zeichen
+#: Briefkopf (Ausdruckdatum, Seitenzahl, Amt, Vorlagen-Nr., wiederholter
+#: Titel, Beratungsfolge) — die fraßen die Hälfte des Auszugs und schoben
+#: genau den Satz heraus, auf den es ankommt: Bei der Unfallstatistik
+#: 26/0602 endete er bei „bedauerlic", direkt vor „nicht möglich", und das
+#: Modell hielt eine abgesagte Berichterstattung für einen Bericht mit Zahlen
+#: (Tims Befund 19.08.26).
+_VORLAGE_KOPF_RE = re.compile(r"\b(Anlass|Sachverhalt|Begr[üu]ndung|Bericht)\s*:",
+                              re.IGNORECASE)
 
 #: Straßenrechtliche Formalakte: Widmung, (Teil-)Einziehung, Umstufung einer
 #: Straße machen einen längst bestehenden Zustand amtlich — für niemanden
@@ -62,6 +72,21 @@ def _batch_text(decisions: list[dict]) -> str:
     return "\n\n".join(lines)
 
 
+def vorlagen_kern(roh: str | None) -> str:
+    """Vorlagentext ab der ersten inhaltlichen Überschrift, in einer Zeile.
+
+    Der Briefkopf sagt nichts, was das Modell nicht ohnehin als Signal
+    bekommt (Amt, Vorlagen-Nr., Beratungsfolge, Titel) — er kostet nur Platz
+    im Auszug. Findet sich keine Überschrift, bleibt der Text wie er ist:
+    lieber ein Briefkopf zu viel als ein leerer Auszug.
+    """
+    text = " ".join((roh or "").split())
+    if not text:
+        return ""
+    m = _VORLAGE_KOPF_RE.search(text)
+    return text[m.start():] if m else text
+
+
 def _agenda_batch_text(items: list[dict]) -> str:
     """Ein Tagesordnungspunkt hat noch keinen Beschlusstext — dafür Signale,
     die das Modell selbst nicht kennen kann: wie oft dieselbe Formulierung
@@ -101,7 +126,7 @@ def _agenda_batch_text(items: list[dict]) -> str:
         # nur den Titel des Punktes" steht wörtlich in ihrem Prompt), das
         # Modell bewertete also eine Umformulierung der Überschrift, obwohl
         # der echte Text danebenlag.
-        text = (it.get("sachverhalt") or it.get("summary") or "").strip().replace("\n", " ")
+        text = vorlagen_kern(it.get("sachverhalt")) or (it.get("summary") or "").strip()
         if text:
             teile.append(f"  Auszug: {text[:MAX_EXCERPT_CHARS]}")
         lines.append("\n".join(teile))
