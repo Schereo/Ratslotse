@@ -67,7 +67,15 @@ function GespraecheHeaderButton() {
  *  hier braucht es keinen Anker mehr. */
 function FragenInner() {
   return (
-    <div>
+    // Am Desktop ist die Seite genau einen Viewport hoch (abzüglich des
+    // Seiten-Polsters `--rl-luft` aus dem App-Layout), und der Kopf und die
+    // Bühne teilen sich diese Höhe per flex: Der Kopf nimmt, was er braucht,
+    // die Bühne den Rest. Vorher rechnete die Bühne selbst mit
+    // `100dvh - 135px` — einer Zahl, die den Kopf MIT Untertitel enthielt.
+    // Als Design 15 den Untertitel strich, blieben 23 px totes Weiß unter der
+    // Bühne stehen (Tims Befund 19.08., nachgemessen). Mit flex kann die
+    // Zahl gar nicht mehr veralten, egal was im Kopf steht.
+    <div className="desk:flex desk:h-[calc(100dvh_-_2_*_var(--rl-luft))] desk:min-h-0 desk:flex-col">
       {/* Design 15 (WEG): kein Untertitel mehr — dieselbe Botschaft steht
           einmal, unter „Frag den Rat" im Empty State. Der Kopf gehört dem
           Titel und dem benannten Gespräche-Knopf. */}
