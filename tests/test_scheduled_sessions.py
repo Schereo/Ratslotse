@@ -466,3 +466,39 @@ def test_inhaltlich_je_sitzung_zaehlt_themen_nicht_zeilen(tmp_path):
         assert d["inhaltlich_je_sitzung"][7] == 3
     finally:
         store.close()
+
+
+def test_top_nummern_sortieren_numerisch():
+    """Lexikografisch stand „Ö 16.4" vor „Ö 5" und „Ö 10" vor „Ö 2" — die
+    Karte listete ihre Punkte in einer Reihenfolge, die es auf der
+    Tagesordnung nicht gibt."""
+    nummern = ["Ö 16.4", "Ö 5", "Ö 10", "Ö 2", "Ö 16.10", "Ö 16.2"]
+    assert sorted(nummern, key=CouncilStore._top_sortierung) == [
+        "Ö 2", "Ö 5", "Ö 10", "Ö 16.2", "Ö 16.4", "Ö 16.10"]
+
+
+def test_vorlagen_auszug_ueberspringt_den_briefkopf():
+    """Die ersten ~300 Zeichen jeder Vorlage sind Briefkopf. Bei der
+    Unfallstatistik 26/0602 endete der Auszug deshalb bei „bedauerlic" —
+    direkt vor „nicht möglich", und das Modell hielt eine abgesagte
+    Berichterstattung für einen Bericht mit Zahlen (Tims Befund 19.08.26)."""
+    from council.impact import vorlagen_kern
+
+    roh = ("Ausdruck vom: 17.07.2026\nSeite: 1/2\n \nAmt für Verkehr und Straßenbau "
+           "Datum: 17.07.2026\nVorlagen-Nr.: 26/0602 Status: öffentlich\n \n"
+           "Verkehrsunfallstatistik 2025 und Unfallhäufungsstellen im \n"
+           "Stadtgebiet Oldenburg (FDP-Fraktion vom 19.06.2026)\n \n"
+           "Beratungsfolge: Termin:\nVerkehrsausschuss 24.08.2026\n \n"
+           "Anlass:\n \nDie FDP-Fraktion bittet mit Antrag vom 19.06.2026 die "
+           "Verwaltung zu berichten.\n \nBericht:\n \nAus terminlichen Gründen ist "
+           "es der Polizeiinspektion nicht möglich, am 24. August zu informieren.")
+    kern = vorlagen_kern(roh)
+    assert kern.startswith("Anlass:")
+    assert "Ausdruck vom" not in kern and "Vorlagen-Nr." not in kern
+    # Der entscheidende Satz liegt jetzt weit innerhalb des Auszugs.
+    from council.impact import MAX_EXCERPT_CHARS
+    assert "nicht möglich" in kern[:MAX_EXCERPT_CHARS]
+    # Ohne erkennbare Überschrift bleibt der Text unangetastet.
+    assert vorlagen_kern("Nur ein Fließtext ohne Gliederung") == \
+        "Nur ein Fließtext ohne Gliederung"
+    assert vorlagen_kern(None) == ""

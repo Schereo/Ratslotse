@@ -1068,6 +1068,20 @@ class CouncilStore:
                 and w not in cls._RUBRIK_WORTE}
 
     @classmethod
+    def _top_sortierung(cls, item_number: str | None) -> tuple:
+        """Sortierschlüssel für eine TOP-Nummer — „Ö 5" vor „Ö 16.4".
+
+        Lexikografisch verglichen stand „Ö 16.4" vor „Ö 5" (und „Ö 10" vor
+        „Ö 2"); die Karte listete ihre Punkte damit in einer Reihenfolge, die
+        es auf der Tagesordnung nicht gibt. Dieselbe Falle steht schon im
+        Frontend dokumentiert (`decision/view.tsx`: „4.10 käme sonst vor 4.2").
+        """
+        m = cls._TOP_NUMMER_RE.match(item_number or "")
+        if not m:
+            return (item_number or "",), ()
+        return (m.group(1),), tuple(int(t) for t in m.group(2).split(".") if t.isdigit())
+
+    @classmethod
     def _eltern_nummer(cls, item_number: str | None) -> str | None:
         """Nummer des übergeordneten Tagesordnungspunkts — „Ö 11.3" → „Ö 11".
 
@@ -1450,7 +1464,7 @@ class CouncilStore:
                 continue
             p["top"] = True
             gesetzt.append(worte)
-        punkte.sort(key=lambda p: (p["session_date"], p["item_number"] or ""))
+        punkte.sort(key=lambda p: (p["session_date"], self._top_sortierung(p["item_number"])))
 
         # Wie viele relevante Punkte hätte jede Sitzung — VOR dem Anzeige-
         # Deckel. Design 14 braucht das zweimal: für das Abzeichen („3 für
@@ -2285,7 +2299,10 @@ class CouncilStore:
                         v.beschlussvorschlag, v.finanz_check, v.amt, v.art,
                         (SELECT COUNT(*) FROM council_beratungen b WHERE b.kvonr = a.kvonr)
                             AS stationen,
-                        substr(v.raw_text, 1, 1200) AS sachverhalt
+                        -- Großzügig: Die ersten ~300 Zeichen sind Briefkopf,
+                        -- den `impact.vorlagen_kern` abschneidet. Bei 1200
+                        -- blieb danach zu wenig Inhalt übrig.
+                        substr(v.raw_text, 1, 2500) AS sachverhalt
                  FROM council_agenda_items a
                  JOIN council_sessions cs ON cs.ksinr = a.ksinr
                  LEFT JOIN agenda_item_summaries s
