@@ -424,7 +424,11 @@ function ChipZeile({ children }: { children: ReactNode }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, [children]);
-  const pfeil = "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted";
+  // Nur für die Maus eine Abkürzung — Touch scrollt die Zeile eh per Wisch
+  // (Tims Wunsch 19.08.: „auf mobil/iPad braucht man die wirklich nicht").
+  // `hidden maus:flex` statt eines Breiten-Gates: reines Eingabegerät, kein
+  // Screen-Deckel — ein Desktop-Fenster in halber Breite behält die Pfeile.
+  const pfeil = "hidden maus:flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted";
   return (
     <div className="mb-2 flex items-center gap-1">
       {zurueck && (
@@ -1572,9 +1576,17 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                   </button>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  {gespraeche.slice(0, 2).map((g) => (
+                  {/* Auf dem iPhone nur der letzte Chat — der zweite kostete
+                      genau die Zeile, die den Empty State knapp über den
+                      Fold trieb (Tims Wunsch 19.08.). Ab Tablet (`md`, 768 px
+                      — kein eigener Screen nötig, den gibt's schon) ist die
+                      Höhe kein Engpass, dort bleiben es zwei. */}
+                  {gespraeche.slice(0, 2).map((g, i) => (
                     <button key={g.id} type="button" onClick={() => void gespraechLaden(g.id)}
-                      className="flex min-h-[52px] items-center gap-2.5 rounded-[13px] border border-border bg-card px-3 py-2 text-left shadow-sm transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]">
+                      className={cn(
+                        "min-h-[52px] items-center gap-2.5 rounded-[13px] border border-border bg-card px-3 py-2 text-left shadow-sm transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]",
+                        i === 0 ? "flex" : "hidden md:flex",
+                      )}>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-foreground">{g.titel}</span>
                         <span className="mt-px block text-[11.5px] text-muted-foreground">
