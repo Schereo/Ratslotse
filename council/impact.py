@@ -77,6 +77,11 @@ def _agenda_batch_text(items: list[dict]) -> str:
             f"Gremium {it.get('committee') or '?'}",
             f"Wiederkehr: {routine}",
         ]
+        # Beschluss- oder Berichtsvorlage — die amtliche Einstufung der
+        # Verwaltung, ob überhaupt etwas entschieden werden soll. Fehlte dem
+        # Modell komplett, obwohl sie in der Vorlage steht.
+        if it.get("art"):
+            signals.append(f"Vorlagenart {it['art']}")
         if it.get("antragsteller"):
             signals.append(f"Antrag von {it['antragsteller']}")
         if it.get("stationen"):
@@ -91,7 +96,12 @@ def _agenda_batch_text(items: list[dict]) -> str:
         if it.get("finanz_check"):
             teile.append("  Kosten laut Vorlage: "
                          + " ".join(str(it["finanz_check"]).split())[:280])
-        text = (it.get("summary") or it.get("sachverhalt") or "").strip().replace("\n", " ")
+        # Der Sachverhalt aus der Vorlage schlägt die Kurzfassung — nicht
+        # umgekehrt. Die Kurzfassung entsteht allein aus dem TITEL („Du kennst
+        # nur den Titel des Punktes" steht wörtlich in ihrem Prompt), das
+        # Modell bewertete also eine Umformulierung der Überschrift, obwohl
+        # der echte Text danebenlag.
+        text = (it.get("sachverhalt") or it.get("summary") or "").strip().replace("\n", " ")
         if text:
             teile.append(f"  Auszug: {text[:MAX_EXCERPT_CHARS]}")
         lines.append("\n".join(teile))
