@@ -7,6 +7,8 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [1.13.0] – 2026-08-19
+
 ### Geändert
 - **Die Vorabend-Erinnerung kommt jetzt immer am Vortag.** Sie teilte sich das
   Kontingent von zwei Meldungen am Tag mit allem anderen — und weil sie als
@@ -16,6 +18,55 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   dem Tag schon kam, und sie nimmt umgekehrt keiner anderen Meldung den Platz.
   An einem Abend mit mehreren Sitzungen wird ab der dritten weiterhin
   gebündelt. (#585)
+- **Auf sehr breiten Monitoren (21:9) nutzt die Fragen-Seite den Platz.** Ab
+  1680 Pixeln Fensterbreite wächst der Seitenrahmen von 1280 auf 1600 Pixel: Die
+  Gesprächs-Bühne wird etwas breiter, die Belege-Spalte deutlich (420 statt 320
+  Pixel), die Abstände atmen. Die Lesebreite der Antworten bleibt dabei
+  gedeckelt — mehr Platz heißt mehr Raum für die Quellen, keine endlosen
+  Textzeilen. Unterhalb dieser Schwelle ändert sich nichts. (#614)
+- **Der Protokoll-Link an Wortbeiträgen springt jetzt direkt zur Seite.** Wo
+  sich die Fundstelle eindeutig bestimmen lässt, öffnet das Dokument-Symbol im
+  Block „Aus den Ratsdebatten" das PDF gleich auf der richtigen Seite (in
+  Chrome, Firefox und Edge; Safari öffnet das PDF wie bisher am Anfang). Der
+  Anker ist der Sprecher-Name, der wörtlich im Protokoll steht; die markanten
+  Wörter der Aussage entscheiden, wenn der Name mehrfach vorkommt — etwa in der
+  Anwesenheitsliste. Ist die Stelle nicht eindeutig, bleibt es beim Link aufs
+  ganze PDF: lieber kein Sprung als ein falscher. Für den Bestand rüstet ein
+  einmaliger Lauf die Seitendaten nach; neue Protokolle tragen sie ab sofort von
+  selbst. (#615)
+- **Die Push zur Tagesordnungs-Änderung sagt jetzt kurz, was passiert ist — die
+  Einzelheiten zeigt die Sitzungsseite.** Bisher stopfte die Mitteilung den
+  ganzen Mail-Text in die Vorschau: Datum, Sitzungsort und dann erst die Sache.
+  Jetzt steht dort nur noch der Änderungssatz („Ein Punkt ist neu und eine
+  Vorlage wurde nachgereicht."), und ein Tipp darauf öffnet die Sitzung in der
+  App — mit einem neuen Block „Zuletzt geändert", der die Änderungen einzeln
+  aufführt: Neues grün, Geändertes gelb, Entferntes rot durchgestrichen, wie in
+  der Mail. Auch die Push zur frisch veröffentlichten Tagesordnung beginnt nun
+  mit den Inhalten statt mit dem Sitzungsort. (#612)
+- **Die „Tagesordnung geändert"-Mail sagt jetzt in einem Satz, was passiert
+  ist.** Über der farbmarkierten Liste steht die Art der Änderung — „Ein Punkt
+  ist neu, eine Vorlage wurde nachgereicht und ein Punkt wurde von der
+  Tagesordnung genommen." Neu erkannt werden dabei auch die **Anhänge** eines
+  Tagesordnungspunkts: Kommt eine Änderungsliste oder Stellungnahme dazu oder
+  verschwindet eine, nennt die Mail sie beim Namen — bisher lösten Anhänge gar
+  keine Meldung aus. Und wo der frühere Stand zum Vergleich fehlt, sagt die Mail
+  ehrlich, dass sie die vollständige aktuelle Tagesordnung zeigt, statt alles
+  wie neu aussehen zu lassen. (#607)
+- **Der Zähler an „Meine Themen" verstummt, sobald man nachgesehen hat.** Bisher
+  blieb die orange Blase in der Navigation stehen, bis man jedes einzelne Thema
+  geöffnet hatte — bei zehn Themen mit neuen Treffern ein zäher Weg. Jetzt
+  reicht ein Blick auf die Themen-Übersicht: Die Blase zeigt danach nur noch,
+  was seitdem dazugekommen ist. Welches Thema neue Beschlüsse hat, steht
+  unverändert als „n neu" an den Themen selbst und verschwindet dort erst, wenn
+  das Thema wirklich offen war. (#637)
+- **„x weitere Punkte" klappt in der Wochen-Karte auf, statt wegzunavigieren.**
+  Die Restzeile unter einer Sitzung führte bisher zur Tagesordnung — für drei
+  Titel ein Seitenwechsel. Jetzt klappen die übrigen relevanten Punkte direkt in
+  der Karte auf, mit Antragsteller-Punkt und Link auf den einzelnen
+  Tagesordnungspunkt; zur vollen Tagesordnung führt weiterhin der Link im
+  Sitzungskopf. Die Mobil-Ansicht konnte das schon — jetzt kann es auch die
+  große Karte, und beide zeigen alle relevanten Punkte, nicht nur die bereits
+  geladenen. (#616)
 
 ### Behoben
 - **„Die Tagesordnung hat sich geändert" verriet nicht, was.** Wurde zu einem
@@ -39,6 +90,29 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Bestand für die Neuigkeiten der Woche. Bekannte Treffer behalten jetzt ihr
   Datum, nur wirklich neue zählen — und ein Reparaturlauf nach einer
   Neu-Extraktion stempelt gar nichts als neu. (#582)
+- **Gleichnamige Tagesordnungspunkte erzeugen keine erfundenen Verschiebungen
+  mehr.** Nichtöffentliche Sitzungsteile führen reihenweise Punkte mit dem Titel
+  „gesperrte Information" — die Änderungsmeldung ließ alle am ersten
+  Namensvetter andocken und meldete dann Verschiebungen, die es nie gab
+  („Verschoben · N 11 → N 12"). Jetzt binden sich erst die nummerntreuen Paare,
+  der Rest der Reihe nach; und fällt einer von mehreren gleichnamigen Punkten
+  weg, taucht das erstmals als „Entfernt" auf, statt unterzugehen. (#611)
+- **Straßen-Widmungen gelten nicht mehr als „wichtig".** Die Widmung einer
+  Straße macht einen längst bestehenden Zustand amtlich — trotzdem stand
+  „Widmung der Straße ‚Im Technologiepark'" als wichtiger Punkt auf der
+  Wochen-Karte. Straßenrechtliche Formalakte (Widmung, Einziehung, Umstufung)
+  werden jetzt fest gedeckelt: in der Bewertung selbst, im Bewertungs-Prompt und
+  beim Lesen — damit verschwinden auch schon gespeicherte Fehlbewertungen sofort
+  von der Karte. Die Umwidmung von Geld ist davon ausdrücklich nicht betroffen.
+  (#616)
+
+### Hinzugefügt
+- **Wortbeiträge in „Frag den Rat" verlinken jetzt ihr Protokoll.** Jede Aussage
+  im Block „Aus den Ratsdebatten" trägt ein kleines Dokument-Symbol, das das
+  Sitzungsprotokoll (PDF) im Ratsinformationssystem öffnet — in der
+  Quellenspalte, in der mobilen Beleg-Ansicht, auf der geteilten Antwort-Seite
+  und in der Gründlichen Recherche. Was der Rat gesagt haben soll, lässt sich
+  damit im Original nachlesen statt nur glauben. (#606)
 
 ## [1.12.0] – 2026-08-16
 
@@ -2541,7 +2615,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.12.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.13.0...main
+[1.13.0]: https://github.com/Schereo/Ratslotse/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Schereo/Ratslotse/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Schereo/Ratslotse/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Schereo/Ratslotse/compare/v1.9.0...v1.10.0
