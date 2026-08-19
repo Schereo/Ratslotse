@@ -977,6 +977,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Fünf Stellen im Haushalt erklären wieder den Haushalt statt uns.** Unter den Zahlen auf „Der Konzern Stadt" und „Steht Oldenburg besser da als Osnabrück?" standen bisher unsere eigenen Rechenproben und darunter „Gemessen: 0,00 % Abweichung" — jetzt steht dort nur noch, in welchem Abschnitt des Dokuments die Zahl zu finden ist, was beim Nachschlagen im 300-Seiten-PDF hilft. Ebenso raus: „Es erscheinen nur Jahre, deren Zahlen unsere Prüfung bestehen" samt drei Rechenproben in Prosa („Plan gegen Wirklichkeit"), die Parser-Bedingung im Fuß der Prüfungs-Seite und der Betriebsablauf im Datenstand („geprüft wird alle zwei Wochen"). Auf „Muss oder kann?" entfällt die Quote, zu wie viel Prozent unsere Einordnung sich mit der Selbstauskunft der Stadt deckt; die **Abweichung** bleibt und steht jetzt vorn, denn wo beide sich widersprechen, ist das eine Auskunft über die Aufgabe. Was bleibt, ist das, was jemandem etwas sagt: die Quelle, der Hinweis auf eigene Rechnungen und echte Grenzen wie „für dieses Jahr liegt der Schlussbericht nicht in lesbarer Form vor". Die Prüfungen selbst laufen unverändert weiter — sie stehen in Tests und in der Technik-Doku. (#542)
 - **„Frag den Rat" kennt jetzt den Haushalt.** Geldfragen sahen bisher nur Beschluss-Beträge, den Haushaltsplan und die Steuereinnahmen — Jahresabschlüsse, die 377 städtischen Aufgaben samt Rechtsgrundlage, die Feststellungen des Rechnungsprüfungsamts, der Konzern Stadt und der Städtevergleich blieben unsichtbar. Jetzt zieht jede Frage genau die Quellen, die sie beantworten: „Hat die Stadt 2024 mehr ausgegeben als geplant?" bekommt den Jahresabschluss samt Begründung der Verwaltung, „Muss die Stadt das Theater betreiben?" die Rechtsgrundlage der Aufgabe, „Was kostet die Stadt insgesamt?" den Konzern statt nur den Kernhaushalt. Jede Zahl kommt mit Jahr und Fundstelle, und Fragen ohne Geldbezug bekommen weiterhin nichts davon. (#543)
 
+## [1.13.2] – 2026-08-19
+
+### Behoben
+- **Kein iOS-Zoom mehr beim Antippen kleiner Eingabefelder.** Safari/WKWebView
+  zoomt automatisch rein, sobald ein Eingabefeld eine Schriftgröße unter 16px
+  hat — auf dem iPhone (und, weil `sm:` an der Fensterbreite statt am
+  Eingabegerät hing, auch auf dem iPad) blieb dieser Zoom in Feldern wie
+  „Gespräch umbenennen", „Neues Thema anlegen" oder der Admin-Suche oft hängen.
+  Betroffene Felder zeigen jetzt überall mindestens 16px, sobald kein Mauszeiger
+  vorhanden ist; am Desktop bleibt die kompaktere Schrift wie gewohnt. (#643)
+
 ## [1.13.1] – 2026-08-19
 
 ### Geändert
@@ -3611,7 +3622,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.13.1...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.13.2...main
+[1.13.2]: https://github.com/Schereo/Ratslotse/compare/v1.13.1...v1.13.2
 [1.13.1]: https://github.com/Schereo/Ratslotse/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/Schereo/Ratslotse/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Schereo/Ratslotse/compare/v1.11.0...v1.12.0
