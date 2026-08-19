@@ -280,6 +280,32 @@ def test_kommende_beratungen_matcht_auf_wortgrenzen(tmp_path):
         store.close()
 
 
+def test_kommende_beratungen_ignoriert_strasse(tmp_path):
+    """Tims Screenshot-Befund 19.08.: Bei „Stadionneubau Maastrichter Straße"
+    hängte „Wie es weitergeht" drei fremde Verkehrsausschuss-Termine an —
+    zwei Straßenwidmungen und einen B-Plan-Sachstand, die nur das Wort
+    „Straße" mit der Frage teilten. Derselbe Fehlerklasse wie „stand"."""
+    store = CouncilStore(tmp_path / "a.sqlite")
+    try:
+        with store._conn:
+            store._conn.executemany(
+                "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+                "VALUES (?, ?, ?, datetime('now'))",
+                [(1, "26/1", "Widmung der Straße \"Sylter Ring\" - Beschluss"),
+                 (2, "26/2", "Sachstand Hannah-Arendt-Straße (B-Plan S-745 A)")])
+            store._conn.executemany(
+                "INSERT INTO council_beratungen (kvonr, datum, gremium, ergebnis, fetched_at) "
+                "VALUES (?, ?, ?, ?, datetime('now'))",
+                [(1, "2099-01-05", "Verkehrsausschuss", "Vorberatung"),
+                 (2, "2099-01-05", "Verkehrsausschuss", "Kenntnisnahme")])
+        # Nur "straße" (gefaltet: "strasse") wäre der einzige Treffer — und
+        # steht jetzt in der Stoppliste. "maastrichter" träfe nichts hier,
+        # weil kein Stadion-Termin in dieser Fixture liegt.
+        assert store.kommende_beratungen(["stadionneubau", "maastrichter", "straße"]) == []
+    finally:
+        store.close()
+
+
 def test_steckbrief_karte_nur_wenn_die_antwort_sie_nicht_wiederholt():
     """Tims Befund 12.08.: Bei „Was ist die GSG?" las sich Steckbrief und
     Antwort doppelt. Zwei Wege halfen gemessen NICHT — das Modell bitten

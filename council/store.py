@@ -4028,9 +4028,16 @@ class CouncilStore:
     #: würden. „stand" ist der Klassiker: Als Teilwort-Suche traf es
     #: „Sachstandsbericht" und „Baumstandort" und hängte einer Frage nach der
     #: Cäcilienbrücke einen EU-Verordnungs-Termin an (gemessen 11.08.).
+    #: „strasse" (gefaltet) ist derselbe Fehler in Grün: Fragen zu einer
+    #: Adresse enthalten das Wort fast immer, und es steckt in jedem zweiten
+    #: Vorlagentitel — Straßenwidmungen, B-Plan-Sachstände, Straßenbau. Bei
+    #: der Stadion-Frage („Maastrichter Straße") hängte es drei fremde
+    #: Verkehrsausschuss-Termine an „Wie es weitergeht" (gemessen 19.08.,
+    #: Tims Screenshot-Befund — nur „strasse" traf, kein n>=2 gefordert).
     _AUSBLICK_STOPP = {
         "stand", "sachstand", "aktuell", "beschluss", "beschlusse", "beschluesse",
         "stadt", "oldenburg", "planung", "bericht", "vorlage", "thema", "themen",
+        "strasse",
     }
 
     def kommende_beratungen(self, begriffe: list[str], limit: int = 3) -> list[dict]:
@@ -7987,8 +7994,26 @@ class CouncilStore:
     # Person — ohne die Anreden entstanden Dubletten im Mitglieder-Verzeichnis
     # (Tims Befund 10.08.). Adelspartikel („zu", „von") bleiben absichtlich
     # stehen — sie gehören zum Nachnamen.
+    # Amtstitel gehören mit rein, wenn sie wie ein Vorname direkt VOR dem
+    # Namen in der Anwesenheitsliste stehen — „Stadtkämmerin Dr. Julia
+    # Figura" statt „Dr. Julia Figura" (Tims Figura-Befund 19.08.: Krogmann
+    # bekam sein Stadt-Badge, weil sein voller Vorname im Sprecher-Text
+    # stand und die Dublette auflöste — „Dr. Figura" allein hatte dazu
+    # keine Chance). Ohne diese Wörter hier entstehen zwei _person_slug()
+    # für dieselbe Person: das Frontend sieht zwei Kandidaten für den
+    # Nachnamen und verweigert bei fehlendem Vornamen lieber jedes Badge,
+    # statt eins zu raten. Dieselbe Wortliste wie in _ROLLEN_RE, nur ohne
+    # das optionale „Erste[rn]"-Präfix (das steht nur im note-Feld, nie
+    # direkt im name-Feld) — dafür in gefalteter UND ungefalteter Form,
+    # weil _person_slug faltet (ä→ae) und namensteile() das nicht tut.
     _HONORIFICS = {"prof", "dr", "dipl", "ing", "med",
-                   "herr", "frau", "ratsherr", "ratsfrau"}
+                   "herr", "frau", "ratsherr", "ratsfrau",
+                   "oberbürgermeister", "oberbürgermeisterin",
+                   "oberbuergermeister", "oberbuergermeisterin",
+                   "stadtkämmerer", "stadtkämmerin",
+                   "stadtkaemmerer", "stadtkaemmerin",
+                   "stadtbaurat", "stadtbaurätin", "stadtbauraetin",
+                   "stadtrat", "stadträtin", "stadtraetin"}
     _ANREDEN = {"herr", "frau", "ratsherr", "ratsfrau"}
 
     @staticmethod
