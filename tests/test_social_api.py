@@ -23,11 +23,28 @@ os.environ["DISABLE_RATE_LIMIT"] = "1"
 from fastapi.testclient import TestClient  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.main import app  # noqa: E402
+from app.deps import get_council_store  # noqa: E402
+from council.store import CouncilStore  # noqa: E402
 
 
 @pytest.fixture
 def client():
     return TestClient(app)
+
+
+@pytest.fixture
+def council_store(tmp_path):
+    """Eigene Wegwerf-Council-DB je Test, über dieselbe Dependency
+    verdrahtet, die die App auch für echte Requests benutzt — die neuen
+    Endpunkte greifen auf ``store._conn`` direkt zu, das braucht echtes
+    Schema statt Mocks."""
+    store = CouncilStore(tmp_path / "council-test.sqlite")
+    app.dependency_overrides[get_council_store] = lambda: store
+    try:
+        yield store
+    finally:
+        del app.dependency_overrides[get_council_store]
+        store.close()
 
 
 def _mit_token(monkeypatch, token="geheim-fuer-den-bot"):
@@ -90,6 +107,80 @@ def test_tag_muss_ein_datum_sein(client, monkeypatch, tmp_path):
             files={"dateien": ("a.jpg", io.BytesIO(b"\xff\xd8\xffrest"), "image/jpeg")},
         )
         assert r.status_code in (400, 404)
+    finally:
+        get_settings.cache_clear()
+
+
+def test_sitzungen_tag_muss_datum_sein(client, monkeypatch):
+    token = _mit_token(monkeypatch)
+    try:
+        r = client.get("/api/social/sitzungen/nicht-datum",
+                       headers={"X-Social-Token": token})
+        assert r.status_code == 400
+    finally:
+        get_settings.cache_clear()
+
+
+def test_sitzungen_liefert_den_kalendertag(client, monkeypatch, council_store):
+    token = _mit_token(monkeypatch)
+    council_store._conn.execute(
+        "INSERT INTO council_sessions (ksinr, committee, session_date, "
+        "session_time, location, fetched_at) VALUES "
+        "(1, 'Verkehrsausschuss', '2026-08-24', '17:00', 'Ratssaal', '')")
+    council_store._conn.commit()
+    try:
+        r = client.get("/api/social/sitzungen/2026-08-24",
+                       headers={"X-Social-Token": token})
+        assert r.status_code == 200
+        daten = r.json()
+        assert len(daten) == 1 and daten[0]["committee"] == "Verkehrsausschuss"
+    finally:
+        get_settings.cache_clear()
+
+
+def test_fundstueck_ohne_eintrag_ist_null(client, monkeypatch, council_store):
+    token = _mit_token(monkeypatch)
+    try:
+        r = client.get("/api/social/fundstueck/2026-08-25",
+                       headers={"X-Social-Token": token})
+        assert r.status_code == 200 and r.json() is None
+    finally:
+        get_settings.cache_clear()
+
+
+def test_neue_beschluesse_filtert_wichtigkeit_und_id(client, monkeypatch, council_store):
+    token = _mit_token(monkeypatch)
+    c = council_store._conn
+    c.execute("INSERT INTO council_sessions (ksinr, committee, session_date, "
+              "session_time, location, fetched_at) VALUES "
+              "(1, 'Rat', '2026-08-24', '18:00', 'Ratssaal', '')")
+    for bid, wichtig in ((10, 80), (11, 10)):  # zweiter liegt unter der Schwelle
+        c.execute(
+            "INSERT INTO council_decisions (id, ksinr, position, kind, title, "
+            "outcome, vote, importance) VALUES (?, 1, 1, 'decision', "
+            "'Beschluss ' || ?, 'angenommen', 'mehrheitlich', ?)",
+            (bid, bid, wichtig))
+    c.execute("INSERT INTO council_decision_votes (decision_id, faction, stance) "
+              "VALUES (10, 'CDU', 'dagegen')")
+    c.commit()
+    try:
+        r = client.get("/api/social/neue-beschluesse",
+                       headers={"X-Social-Token": token},
+                       params={"seit_id": 0, "mindest_wichtig": 55})
+        assert r.status_code == 200
+        daten = r.json()
+        assert [d["id"] for d in daten] == [10]          # 11 fällt durch die Schwelle
+        assert daten[0]["votes"] == [{"faction": "CDU", "stance": "dagegen"}]
+    finally:
+        get_settings.cache_clear()
+
+
+def test_hoechste_beschluss_id_ohne_bestand_ist_null(client, monkeypatch, council_store):
+    token = _mit_token(monkeypatch)
+    try:
+        r = client.get("/api/social/hoechste-beschluss-id",
+                       headers={"X-Social-Token": token})
+        assert r.status_code == 200 and r.json() == {"hoechste_id": 0}
     finally:
         get_settings.cache_clear()
 

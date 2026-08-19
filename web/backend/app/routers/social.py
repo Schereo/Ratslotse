@@ -1,11 +1,12 @@
 """Schnittstelle für den Social-Media-Bot (ratslotse-social, eigenes Repo).
 
 Der Bot läuft auf einer anderen Maschine und baut aus diesen Daten die
-Instagram-Karten. Zwei Endpunkte, weil Instagram Bilder **nur** von einer
-öffentlichen URL abholt (``image_url`` ist laut Meta-Doku für Bilder
-Pflicht, der Direkt-Upload gilt nur für Videos): Der Bot holt sich die
-Wochenvorschau, rendert, und liefert die fertigen JPEGs hier wieder ab,
-damit ratslotse.de sie ausliefert.
+Instagram-Karten: Lese-Endpunkte für Wochenvorschau, Tages-Sitzungen,
+Fundstück und neue Beschlüsse, dazu ein Schreib-Endpunkt für die fertigen
+Karten — weil Instagram Bilder **nur** von einer öffentlichen URL abholt
+(``image_url`` ist laut Meta-Doku für Bilder Pflicht, der Direkt-Upload gilt
+nur für Videos). Der Bot fragt hier alles ab, rendert lokal, und liefert die
+JPEGs wieder hier ab, damit ratslotse.de sie ausliefert.
 
 **Kein Konto, sondern ein fester Token.** Der Bot ist keine Person; ihm ein
 Nutzerkonto zu geben hieße, ein Konto mit gültigem Passwort dauerhaft auf
@@ -88,6 +89,64 @@ def wochenvorschau(
     daten["kommende"] = [s for s in store.upcoming_sessions(limit=100)
                          if s["session_date"] <= bis]
     return daten
+
+
+@router.get("/sitzungen/{tag}", dependencies=[Depends(bot_token)])
+def sitzungen(tag: str, store: CouncilStore = Depends(get_council_store)) -> list[dict]:
+    """Alle Sitzungen eines Kalendertags — Grundlage der Sitzungstag-Story."""
+    if not _TAG_RE.match(tag):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Tag muss ein ISO-Datum sein (JJJJ-MM-TT).")
+    return store.sessions_on(tag)
+
+
+@router.get("/fundstueck/{tag}", dependencies=[Depends(bot_token)])
+def fundstueck(tag: str, store: CouncilStore = Depends(get_council_store)) -> dict | None:
+    """Das vorgenerierte Fundstück des Tages, falls vorhanden."""
+    if not _TAG_RE.match(tag):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Tag muss ein ISO-Datum sein (JJJJ-MM-TT).")
+    return store.get_fundstueck(tag)
+
+
+@router.get("/neue-beschluesse", dependencies=[Depends(bot_token)])
+def neue_beschluesse(
+    seit_id: int,
+    mindest_wichtig: int = 55,
+    limit: int = 3,
+    store: CouncilStore = Depends(get_council_store),
+) -> list[dict]:
+    """Neue, wichtige Beschlüsse seit einer ID — Kandidaten für
+    „So wurde entschieden". Dieselbe Abfrage, die vorher direkt gegen die
+    Datenbank lief (``ratslotse_social.quellen.neue_beschluesse``), nur
+    jetzt hinter dem Token statt hinter einem lokalen DB-Pfad."""
+    zeilen = [dict(r) for r in store._conn.execute(
+        """SELECT d.id, d.title, d.beschluss, d.outcome, d.vote,
+                  d.simple_summary, d.importance, d.item_number,
+                  cs.committee, cs.session_date
+           FROM council_decisions d
+           JOIN council_sessions cs ON cs.ksinr = d.ksinr
+           WHERE d.id > ? AND d.kind = 'decision'
+             AND d.outcome IN ('angenommen', 'abgelehnt')
+             AND COALESCE(d.importance, 0) >= ?
+           ORDER BY d.id""",
+        (seit_id, mindest_wichtig))]
+    for z in zeilen:
+        z["votes"] = []
+    ids = [z["id"] for z in zeilen]
+    if ids:
+        votes = store.decision_votes_for(ids)
+        for z in zeilen:
+            z["votes"] = votes.get(z["id"], [])
+    return zeilen[:limit] if limit else zeilen
+
+
+@router.get("/hoechste-beschluss-id", dependencies=[Depends(bot_token)])
+def hoechste_beschluss_id(store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,
+    damit sein Ereignis-Cron nicht den gesamten Bestand als „neu" meldet."""
+    wert = store._conn.execute("SELECT MAX(id) FROM council_decisions").fetchone()[0]
+    return {"hoechste_id": int(wert or 0)}
 
 
 def _zielverzeichnis(tag: str) -> Path:
