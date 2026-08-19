@@ -349,13 +349,18 @@ def main() -> dict:
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 
-    council_store.close()
-
     # Tragweite der frisch importierten Tagesordnungspunkte bewerten — die
     # Wochen-Karte hebt danach hervor. Läuft hier statt in einem eigenen Cron,
     # weil genau hier die neuen Tagesordnungen hereinkommen; ein Fehler darf
     # den Meldungs-Lauf nicht abbrechen.
+    #
+    # Der Store wird ERST DANACH geschlossen. Stand `close()` davor, warf jeder
+    # Zugriff hier `ProgrammingError: Cannot operate on a closed database`, der
+    # except-Zweig schluckte ihn, und der Lauf meldete trotzdem „ok" mit
+    # „Tragweite bewertet: 0" — vier Tage lang unbemerkt (19.08.26).
     bewertet = 0
+    offen: list = []
+    tragweite_fehler: str | None = None
     try:
         from council.impact import BATCH_SIZE, rate_agenda_batch
 
@@ -372,7 +377,10 @@ def main() -> dict:
         if offen:
             print(f"  Tragweite: {bewertet}/{len(offen)} Tagesordnungspunkte bewertet")
     except Exception as exc:  # noqa: BLE001
+        tragweite_fehler = repr(exc)
         print(f"  ⚠️ Tragweite-Bewertung fehlgeschlagen: {exc!r} — Karte nutzt solange die Regeln")
+
+    council_store.close()
 
     # Der 7-Uhr-Lauf ist zugleich der Wecker der Warteschlange: Was über Nacht
     # anfiel (Nachtruhe 21–7), geht jetzt raus.
@@ -381,14 +389,28 @@ def main() -> dict:
     nwz_store.close()
 
     print(f"Done — {notifications_sent} Meldung(en) eingereiht, {zugestellt} zugestellt.")
-    return {
+    kennzahlen = {
         "Gremien": len(committees),
         "Sitzungen mit Tagesordnung": len(session_ids),
         "Termine im Kalender": len(scheduled),
         "Benachrichtigungen": notifications_sent,
         "Tragweite bewertet": bewertet,
+        "Tragweite offen": len(offen),
         **stats,
     }
+
+    # Offene Punkte, aber kein einziger bewertet: Das ist ein Ausfall, kein
+    # Zustand — und muss als Ausfall gemeldet werden. Vorher stand hier nur
+    # eine Kennzahl „0", die niemandem auffiel. Erst hier werfen, damit die
+    # Meldungen oben trotzdem alle rausgegangen sind.
+    if offen and not bewertet:
+        for k, v in kennzahlen.items():
+            print(f"  {k}: {v}")
+        raise RuntimeError(
+            f"Tragweite-Bewertung hat 0 von {len(offen)} Punkten bewertet"
+            + (f" — {tragweite_fehler}" if tragweite_fehler else
+               " — das Modell lieferte für keinen Batch ein verwertbares Ergebnis"))
+    return kennzahlen
 
 
 if __name__ == "__main__":
