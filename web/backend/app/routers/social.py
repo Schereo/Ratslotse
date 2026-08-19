@@ -49,6 +49,13 @@ JPEG_MAGIC = b"\xff\xd8\xff"
 
 _TAG_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
+#: Kennung eines Beitrags-Bildersatzes. Meist ein ISO-Datum („2026-08-24"),
+#: aber der Bot legt auch „2026-08-24-fundstueck", „beschluss-4711" oder
+#: „stories-2026-08-24" ab. Kleinbuchstaben, Ziffern, Bindestrich — kein
+#: Punkt und kein Schrägstrich, damit hier kein Pfad hineingeschmuggelt
+#: werden kann.
+_KENNUNG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+
 
 def bot_token(request: Request) -> str:
     """Prüft den Bot-Token. 404 statt 401, wenn die Schnittstelle aus ist —
@@ -153,7 +160,7 @@ def _zielverzeichnis(tag: str) -> Path:
     settings = get_settings()
     wurzel = Path(settings.social_media_dir).resolve()
     ziel = (wurzel / tag).resolve()
-    # Gürtel und Hosenträger: ``tag`` ist schon gegen ein Datumsmuster
+    # Gürtel und Hosenträger: ``tag`` ist schon gegen ``_KENNUNG_RE``
     # geprüft, aber der Pfad wird trotzdem gegen die Wurzel aufgelöst.
     if wurzel not in ziel.parents and ziel != wurzel:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unzulässiger Pfad.")
@@ -168,9 +175,9 @@ async def medien_ablegen(tag: str, dateien: list[UploadFile]) -> dict:
     zweiter Aufruf für denselben Tag ersetzt den Satz vollständig — der Bot
     rendert neu, wenn sich die Tagesordnung noch geändert hat.
     """
-    if not _TAG_RE.match(tag):
+    if not _KENNUNG_RE.match(tag):
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            "Tag muss ein ISO-Datum sein (JJJJ-MM-TT).")
+                            "Kennung: Kleinbuchstaben, Ziffern und Bindestriche.")
     if not dateien:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Keine Datei empfangen.")
     if len(dateien) > MAX_BILDER:
