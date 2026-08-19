@@ -7,6 +7,32 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [1.13.1] – 2026-08-19
+
+### Geändert
+- **Zwei Feinheiten auf der Fragen-Seite für Touch-Geräte.** Die
+  Scroll-Klickpfeile neben den Vorschlags-Pillen (Weiterfragen, „Einfacher
+  erklären") erscheinen jetzt nur noch für eine Maus — auf iPhone und iPad
+  reicht der Wisch, die Pfeile waren dort nur ein zusätzliches Element ohne
+  Nutzen. Und der „Zuletzt gefragt"-Block auf dem leeren Fragen-Screen zeigt auf
+  dem iPhone nur noch den letzten Chat statt zweier — der zweite kostete genau
+  die Zeile, die den Screen knapp über den sichtbaren Bereich trieb. Ab
+  Tablet-Breite bleiben es weiterhin zwei. (#641)
+- **Der Gesprächs-Verlauf ist jetzt Inhalt, kein Icon (Design 15).** Wer schon
+  Gespräche gespeichert hat, sieht die letzten zwei direkt auf der Fragen-Seite
+  unter „Zuletzt gefragt" — bisher hing der Verlauf an einem namenlosen
+  Uhr-Symbol, das kaum jemand als „Gespräche" las. Der Knopf oben rechts trägt
+  jetzt immer sein Wort und zählt mit („Gespräche · 4"); im offenen Gespräch
+  steht dessen Titel darin. Das Gespräche-Sheet gruppiert nach Heute · Gestern ·
+  Älter mit Trennlinien, jede Zeile hat ein sichtbares ⋯-Menü für Umbenennen und
+  Löschen (Wisch nach links bleibt als Abkürzung), einen Schließen-Knopf — und
+  ab acht Gesprächen ein Suchfeld. Auch der Desktop nutzt dieses Sheet statt des
+  schmaleren Klapp-Menüs, das nicht einmal umbenennen konnte. Aufgeräumt ist der
+  leere Screen obendrein: ein Erklärsatz statt drei fast gleicher, „Neu" nur
+  noch an wirklich frischen Beispielfragen, das Funkel-Icon einmal statt an
+  jeder Zeile — und Eingabefeld, Recherche-Schalter und der kräftigere
+  Senden-Knopf sind eine Karte. (#639)
+
 ## [1.13.0] – 2026-08-19
 
 ### Geändert
@@ -2615,7 +2641,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.13.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.13.1...main
+[1.13.1]: https://github.com/Schereo/Ratslotse/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/Schereo/Ratslotse/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Schereo/Ratslotse/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Schereo/Ratslotse/compare/v1.10.0...v1.11.0
