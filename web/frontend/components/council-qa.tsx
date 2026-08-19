@@ -1445,7 +1445,13 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // rechts. Hochkant bleibt es einspaltig, dafür ist `breit` die Breiten- und
   // nicht die Geräte-Frage.
   return (
-    <div className="mx-auto mt-3 max-w-3xl breit:grid breit:max-w-[1220px] breit:grid-cols-[minmax(0,1fr)_320px] breit:items-start breit:gap-6 weit:max-w-none weit:justify-center weit:grid-cols-[minmax(0,980px)_420px] weit:gap-10">
+    // desk: Das Raster füllt den Rest der viewport-hohen Seite (die Höhe
+    // steckt im Seiten-Wrapper, s. app/(app)/fragen/view.tsx) — und
+    // `items-stretch` gibt beiden Spalten diese Höhe, statt dass jede sie
+    // sich selbst ausrechnet. `breit` (iPad quer) bleibt bei `items-start`:
+    // Dort ist die Seite nicht viewport-hoch, und die Belege-Spalte dockt
+    // per sticky an.
+    <div className="mx-auto mt-3 max-w-3xl breit:grid breit:max-w-[1220px] breit:grid-cols-[minmax(0,1fr)_320px] breit:items-start breit:gap-6 desk:min-h-0 desk:flex-1 desk:items-stretch weit:max-w-none weit:justify-center weit:grid-cols-[minmax(0,980px)_420px] weit:gap-10">
       {/* Chat-Spalte. Die mobile min-height-Krücke (Design 2①: „Composer
           klebt auch im Empty State unten") ist seit dem FIXED-Composer
           obsolet — und machte die Seite höher als den Viewport, sodass das
@@ -1456,7 +1462,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           der Composer klebt an der Panel-Unterkante statt „irgendwo am
           Seitenende" zu hängen (Tims Whitespace-Befund). */}
       <div className={cn("flex flex-col",
-        "desk:relative desk:h-[calc(100dvh-135px)] desk:min-h-0 desk:overflow-hidden desk:rounded-2xl desk:border desk:border-border desk:bg-primary/[0.04] dark:desk:bg-primary/[0.07]",
+        "desk:relative desk:h-full desk:min-h-0 desk:overflow-hidden desk:rounded-2xl desk:border desk:border-border desk:bg-primary/[0.04] dark:desk:bg-primary/[0.07]",
       )}>
         {/* Desktop (5a): „Gespräche"/„Neues Gespräch" im Bühnen-Kopf. Mobil
             ersetzt die EINE Gesprächs-Zeile (9a①) die zwei Streu-Icons. */}
@@ -1905,7 +1911,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         // ihr Kopf unter die Kopfleiste (gemessen 16.08.: 20 px).
         "tab:sticky tab:top-[calc(var(--rl-kopf)_+_0.75rem)] tab:overflow-hidden",
         "tab:max-h-[calc(100dvh_-_var(--rl-kopf)_-_var(--rl-unten)_-_3rem)]",
-        "desk:h-[calc(100dvh-135px)] desk:overflow-hidden",
+        "desk:h-full desk:overflow-hidden",
       )}
         style={{
           "--rl-kopf": KOPFLEISTE_HOEHE,
