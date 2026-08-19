@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui";
-import { isLiveNow, isStadtrat, minutesSinceTime, O1_STREAM_URL } from "@/lib/live";
+import { isLiveNow, isStadtrat, laufzeitText, O1_STREAM_URL } from "@/lib/live";
 
 type Session = {
   ksinr: number | null;
@@ -40,7 +40,7 @@ export function LiveBanner() {
   const live = (data?.sessions ?? []).find((s) => isLiveNow(s, now));
   if (!live) return null;
 
-  const mins = minutesSinceTime(live.session_time, now);
+  const laufzeit = laufzeitText(live.session_time, now);
   const myCount = new Set((live.my_topic_items ?? []).map((m) => m.item_number)).size;
   const stadtrat = isStadtrat(live.committee);
 
@@ -55,7 +55,7 @@ export function LiveBanner() {
           <span className="relative h-2.5 w-2.5 rounded-full bg-red-500" />
         </span>
         <span className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-red-700 dark:text-red-400">
-          Live · seit {mins} {mins === 1 ? "Minute" : "Minuten"}
+          Live · seit {laufzeit}
         </span>
         {live.location && <span className="ml-auto truncate text-[11px] text-muted-foreground">{live.location}</span>}
       </div>

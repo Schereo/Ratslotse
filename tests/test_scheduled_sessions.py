@@ -502,3 +502,29 @@ def test_vorlagen_auszug_ueberspringt_den_briefkopf():
     assert vorlagen_kern("Nur ein Fließtext ohne Gliederung") == \
         "Nur ein Fließtext ohne Gliederung"
     assert vorlagen_kern(None) == ""
+
+
+def test_weitere_punkte_tragen_ihre_erklaerung_mit(tmp_path):
+    """Die Restliste lieferte `summary: None` — für die Website reichte beim
+    Aufklappen der Titel. Der Instagram-Bot baut daraus aber ganze Karten, und
+    die standen dadurch grundsätzlich ohne Erklärung da (Tims Befund
+    19.08.26)."""
+    store = _vorschau_store(tmp_path)
+    try:
+        with store._conn:
+            store._conn.execute(
+                # Auf „Ö 3", nicht auf den Spitzenpunkt: Mit max_punkte=1
+                # steht der beste Punkt in `punkte`, die Restliste beginnt
+                # dahinter.
+                "INSERT INTO agenda_item_summaries (ksinr, item_number, summary, "
+                "agenda_hash, created_at) VALUES (1, 'Ö 3', 'Der Rat soll seine "
+                "Beschlüsse zum Fliegerhorst umsetzen.', 'h', datetime('now'))")
+        d = store.wochenvorschau(max_punkte=1)
+        weitere = d["weitere_je_sitzung"].get(1, [])
+        assert weitere, "über der Schwelle liegt mehr als ein Punkt"
+        mit_text = [w for w in weitere if w["summary"]]
+        assert mit_text, "mindestens ein Punkt der Restliste hat eine Kurzfassung"
+        # Und der Tragweite-Grund ist als Feld vorhanden (Wert je nach Bestand).
+        assert all("wichtig_grund" in w for w in weitere)
+    finally:
+        store.close()
