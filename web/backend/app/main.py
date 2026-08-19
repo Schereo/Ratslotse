@@ -9,7 +9,10 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+from pathlib import Path
 
 from .config import get_settings
 from .routers import account, admin, auth, auth_apple, council, feedback, onboarding, push, quiz, social, topics, badges
@@ -174,6 +177,20 @@ app.include_router(quiz.admin_router)
 app.include_router(push.router)
 app.include_router(badges.router)
 app.include_router(social.router)
+
+# Die abgelegten Social-Bilder öffentlich ausliefern — Instagram holt sie
+# selbst, also darf hier kein Token davor.
+#
+# Sie liegen bewusst NICHT im public/ des Frontends: Next.js liest dieses
+# Verzeichnis beim BUILD und liefert später hinzugefügte Dateien nie aus. Der
+# Upload lief, die Datei lag auf der Platte, und die URL gab trotzdem 404
+# (19.08.26). Hier hängt die Auslieferung an derselben Anfrage wie das
+# Ablegen — was der Bot hochlädt, ist damit sofort abrufbar.
+_medien = get_settings().social_media_dir
+if _medien:
+    _pfad = Path(_medien)
+    _pfad.mkdir(parents=True, exist_ok=True)
+    app.mount("/api/social-media", StaticFiles(directory=_pfad), name="social-media")
 
 
 @app.exception_handler(OverflowError)
