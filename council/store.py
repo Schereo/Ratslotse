@@ -1505,7 +1505,15 @@ class CouncilStore:
                 "ksinr": k["ksinr"], "item_number": k["item_number"],
                 "title": k["title"], "titel_kurz": k["titel_kurz"],
                 "antragsteller": k["antragsteller"], "topic_name": k["topic_name"],
-                "summary": None, "vorlage_nr": k["vorlage_nr"], "kvonr": k["kvonr"],
+                # Kurzfassung UND Tragweite-Grund gehen mit. Hier stand
+                # `"summary": None`, um die Antwort klein zu halten — für die
+                # Website reichte der Titel beim Aufklappen. Der Instagram-Bot
+                # baut aus dieser Liste aber ganze Karten, und die standen
+                # dadurch grundsätzlich ohne Erklärung da (Tims Befund
+                # 19.08.26: „die zweite Seite hat keine Zusammenfassung").
+                "summary": k["summary"],
+                "wichtig": k["wichtig"], "wichtig_grund": k.get("wichtig_grund"),
+                "vorlage_nr": k["vorlage_nr"], "kvonr": k["kvonr"],
                 "committee": k["committee"], "session_date": k["session_date"],
                 "gruppe_nr": k["gruppe_nr"], "gruppe_titel": k["gruppe_titel"],
                 "gruppe_stationen": k["gruppe_stationen"],

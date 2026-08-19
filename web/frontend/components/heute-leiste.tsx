@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { isLiveTodayTime, isStadtrat, minutesSinceTime, O1_STREAM_URL } from "@/lib/live";
+import { isLiveTodayTime, isStadtrat, laufzeitText, O1_STREAM_URL } from "@/lib/live";
 import { cn } from "@/lib/utils";
 
 type Heute =
@@ -69,7 +69,7 @@ export function HeuteLeiste() {
           {live && data?.state === "heute" && (
             <>
               {stadtrat ? "Der Stadtrat tagt" : `${data.committee} tagt`} — seit{" "}
-              {minutesSinceTime(data.session_time, now)} Minuten
+              {laufzeitText(data.session_time, now)}
               {nTops > 0 && <span className="text-muted-foreground">, {nTops} {nTops === 1 ? "TOP" : "TOPs"}</span>}
             </>
           )}

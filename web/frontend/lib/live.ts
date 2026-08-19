@@ -33,6 +33,21 @@ export function minutesSinceTime(sessionTime: string, now: Date = new Date()): n
   return Math.max(0, Math.floor((now.getTime() - start.getTime()) / 60_000));
 }
 
+/** Laufzeit als Text: „7 Minuten", „1 Stunde", „2,5 Stunden".
+ *
+ * Ab einer Stunde wird umgerechnet, sonst riss die Zeile um: „Live · seit 134
+ * Minuten" brauchte zwei Zeilen und schob den Ort aus der Flucht (Tims Befund
+ * 19.08.26). Halbe Stunden reichen als Auflösung — auf die Minute genau
+ * interessiert es niemanden, und „2,5 Stunden" bleibt kurz.
+ */
+export function laufzeitText(sessionTime: string, now: Date = new Date()): string {
+  const mins = minutesSinceTime(sessionTime, now);
+  if (mins < 60) return `${mins} ${mins === 1 ? "Minute" : "Minuten"}`;
+  const halbe = Math.round(mins / 30) / 2;      // 1, 1.5, 2, 2.5 …
+  if (halbe === 1) return "1 Stunde";
+  return `${String(halbe).replace(".", ",")} Stunden`;
+}
+
 /** Läuft diese Sitzung (Datum + Startzeit) gerade? */
 export function isLiveNow(
   s: { session_date: string; session_time?: string | null },
