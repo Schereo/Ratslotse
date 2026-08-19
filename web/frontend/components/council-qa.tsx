@@ -19,9 +19,9 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Send, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
+import { Sparkles, ArrowUp, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw, ChevronLeft,
-  MessageSquarePlus, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X,
+  MessageSquarePlus, MoreHorizontal, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X,
   BookOpen, SearchX } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
@@ -497,19 +497,10 @@ const fmtDatum = (d?: string | null) =>
  *  ein 00:30-Uhr-Gespräch aufs Vortagsdatum (Befund F14). */
 const fmtUtcKurz = (d: string) =>
   fmtDatumKurz(/Z$|[+-]\d\d:?\d\d$/.test(d) ? d : `${d}Z`);
-/** Datum + Uhrzeit (lokal) für die Gespräche-Liste — „10.08.26, 20:59".
- *  Server-Zeitstempel sind UTC ohne Suffix, daher das Z-Anfügen. */
-const fmtUtcMitZeit = (d: string) => {
-  const iso = /Z$|[+-]\d\d:?\d\d$/.test(d) ? d : `${d}Z`;
-  return new Date(iso).toLocaleString("de-DE", {
-    day: "2-digit", month: "2-digit", year: "2-digit",
-    hour: "2-digit", minute: "2-digit",
-  });
-};
 const jahr = (d?: string | null) => (d ? d.slice(0, 4) : "");
 
-/** Relativer Tag fürs Gespräche-Sheet (9a②): „heute · 3 Fragen", „gestern",
- *  sonst „05.08.". Gleiche UTC-Deutung wie fmtUtcMitZeit. */
+/** Relativer Tag für Sheet und „Zuletzt gefragt": „heute", „gestern", sonst
+ *  „05.08.". Server-Zeitstempel sind UTC ohne Suffix, daher das Z-Anfügen. */
 const relativTag = (d: string) => {
   const iso = /Z$|[+-]\d\d:?\d\d$/.test(d) ? d : `${d}Z`;
   const dann = new Date(iso);
@@ -1181,7 +1172,6 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // zweiter Befund 15.08.: „genauso wie oben der Verlauf-Button").
   const [gespraecheGeladen, setGespraecheGeladen] = useState(false);
   const [hatteGespraeche] = useState(leseHatGespraeche);
-  const [zeigeListe, setZeigeListe] = useState(false);
   const ladeGespraeche = () =>
     fetch(apiUrl("/council/gespraeche"), { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
@@ -1197,6 +1187,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const zeigeGespraecheKnopf =
     einstellung === 1 &&
     (turns.length > 0 || gespraeche.length > 0 || (!gespraecheGeladen && hatteGespraeche));
+  /** Design 15a: Mit Verlauf trägt der leere Screen den „Zuletzt gefragt"-
+   *  Block — und nur noch zwei Beispiele; die dritte Zeile wich dem Block. */
+  const hatVerlauf = einstellung === 1 && gespraeche.length > 0;
+  const beispielAnzahl = hatVerlauf ? 2 : 3;
   useEffect(() => { void ladeGespraeche(); }, []);
   const einwilligen = async (an: boolean) => {
     setEinstellung(an ? 1 : 0);
@@ -1251,7 +1245,6 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         } : {}),
       })));
       setGespraechId(id);
-      setZeigeListe(false);
       setSheetOffen(false);
       requestAnimationFrame(() => endRef.current?.scrollIntoView({ block: "end" }));
     } catch {
@@ -1333,6 +1326,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       detail: {
         sichtbar: zeigeGespraecheKnopf,
         titel: aktiv?.titel ?? null,
+        // Design 15: Der Kopf-Knopf zählt mit („Gespräche · 4").
+        anzahl: gespraeche.length,
       },
     }));
   }, [zeigeGespraecheKnopf, gespraeche, gespraechId]);
@@ -1447,16 +1442,22 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           <div className="mb-1 hidden items-center justify-between gap-2 desk:flex desk:mb-0 desk:px-4 desk:pb-2 desk:pt-3">
             {modeToggle ? <div>{modeToggle}</div> : <span />}
             <div className="relative flex shrink-0 items-center gap-1.5 print:hidden">
-              {/* 5a/I-04: gespeicherte Gespräche — Liste lädt beim Öffnen frisch. */}
+              {/* Design 15: EIN Ziel für den Verlauf — der Knopf öffnet dasselbe
+                  Sheet wie mobil (Zeitgruppen, Umbenennen im ⋯-Menü) statt des
+                  ärmeren Dropdowns, und er zählt mit. */}
               {(zeigeGespraecheKnopf || (einstellung === 1 && gespraechId != null)) && (
                 <button
                   type="button"
-                  onClick={() => { setZeigeListe((v) => !v); if (!zeigeListe) void ladeGespraeche(); }}
-                  aria-expanded={zeigeListe}
+                  onClick={() => { setSheetOffen(true); void ladeGespraeche(); }}
                   className="inline-flex items-center gap-1.5 rounded-[10px] border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <History className="h-3.5 w-3.5" aria-hidden />
-                  <span className="hidden sm:inline">Gespräche</span>
+                  <span>Gespräche</span>
+                  {gespraeche.length > 0 && (
+                    <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary/10 px-1 text-[10.5px] font-bold text-primary">
+                      {gespraeche.length}
+                    </span>
+                  )}
                 </button>
               )}
               {turns.length > 0 && (
@@ -1468,34 +1469,6 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                   <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden />
                   <span className="hidden sm:inline">Neues Gespräch</span>
                 </button>
-              )}
-              {zeigeListe && (
-                <div className="absolute right-0 top-full z-30 mt-1.5 flex max-h-[min(60vh,26rem)] w-72 flex-col rounded-xl border border-border bg-card p-1.5 shadow-lg">
-                  <p className="shrink-0 px-2 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                    Meine Gespräche · in deinem Konto
-                  </p>
-                  {/* Bei vielen Gesprächen wuchs die Liste über den
-                      Bildschirmrand, ohne scrollbar zu sein (Tims Befund) —
-                      jetzt scrollt sie im gedeckelten Panel. */}
-                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                  {gespraeche.map((g) => (
-                    <div key={g.id} className="group flex items-center gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted">
-                      <button type="button" onClick={() => void gespraechLaden(g.id)}
-                        className="min-w-0 flex-1 text-left">
-                        <span className="block truncate text-[12.5px] font-medium text-foreground">{g.titel}</span>
-                        <span className="block text-[10.5px] text-muted-foreground">
-                          {fmtUtcMitZeit(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
-                        </span>
-                      </button>
-                      <button type="button" onClick={() => void gespraechLoeschen(g.id)}
-                        aria-label={`Gespräch „${g.titel}" löschen`} title="Löschen"
-                        className="shrink-0 rounded-md p-1 text-muted-foreground opacity-60 transition-opacity hover:text-signal sm:opacity-0 sm:group-hover:opacity-100">
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                      </button>
-                    </div>
-                  ))}
-                  </div>
-                </div>
               )}
             </div>
           </div>
@@ -1528,7 +1501,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
              sammelte sich dadurch über Lottis Kopf (Tims Befund 12.08.).
              justify-center verteilt ihn auf beide Seiten, pt-2 hält den
              Abstand zum Seitenkopf knapp. */
-          <div className="flex flex-1 flex-col items-center justify-center pb-5 pt-2 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center pb-2 pt-1 text-center">
             {/* 6a①: Erstnutzungs-Frage — einmalig, solange nie beantwortet. */}
             {einstellung === null && (
               <div className="mb-5 w-full max-w-md rounded-2xl border border-primary/25 bg-primary/[0.04] p-4 text-left">
@@ -1564,16 +1537,53 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 </div>
               </div>
             )}
-            {/* Tims UI-Befund 12.08.: Der Empty State soll ohne Scrollen ganz
-                lesbar sein — kürzerer Untertitel (die Fußnoten sieht man an
-                der ersten Antwort selbst), weniger Luft vor „Zum Beispiel",
-                und mobil nur drei Beispiele (das vierte ab lg). */}
-            <Mascot pose="wave" bob className="h-16 w-16 sm:h-20 sm:w-20" />
-            <h2 className="mt-2 text-xl font-bold tracking-tight">Frag den Rat</h2>
-            <p className="mt-1 max-w-md text-sm text-muted-foreground">
-              Die Antwort entsteht aus den echten Ratsbeschlüssen.
-            </p>
-            <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+            {/* Design 15a: EIN Erklärsatz statt drei fast gleicher (Seiten-
+                Untertitel ist weg, Platzhalter sagt nur noch „Deine Frage").
+                Mit Verlauf tritt Lotti zurück (56 px) — der Platz gehört dem
+                „Zuletzt gefragt"-Block; ohne Verlauf darf sie groß sein. */}
+            <div className="flex flex-col items-center text-center">
+              <Mascot pose="wave" bob className={hatVerlauf ? "h-14 w-14" : "h-[88px] w-[88px]"} />
+              <h2 className={cn("font-bold tracking-tight", hatVerlauf ? "mt-2 text-xl" : "mt-3 text-[22px]")}>Frag den Rat</h2>
+              <p className="mt-1 max-w-[36ch] text-[13px] leading-relaxed text-muted-foreground">
+                In normaler Sprache — die Antwort entsteht aus den echten
+                Ratsbeschlüssen, mit Quellen.
+              </p>
+            </div>
+            {/* Design 15a①, der Fund-Fix: Die letzten Gespräche liegen ALS
+                BLOCK auf der Seite — niemand muss ein Icon deuten. Maximal
+                zwei; der Rest wohnt im Sheet hinter „Alle n →". */}
+            {hatVerlauf && (
+              <div className="mt-4 w-full max-w-md text-left">
+                <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+                    Zuletzt gefragt
+                  </p>
+                  <button type="button"
+                    onClick={() => { setSheetOffen(true); void ladeGespraeche(); }}
+                    className="text-xs font-semibold text-primary transition-colors hover:text-primary/80">
+                    Alle {gespraeche.length} →
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {gespraeche.slice(0, 2).map((g) => (
+                    <button key={g.id} type="button" onClick={() => void gespraechLaden(g.id)}
+                      className="flex min-h-[52px] items-center gap-2.5 rounded-[13px] border border-border bg-card px-3 py-2 text-left shadow-sm transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-foreground">{g.titel}</span>
+                        <span className="mt-px block text-[11.5px] text-muted-foreground">
+                          {relativTag(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
+                        </span>
+                      </span>
+                      <ChevronRight className="h-[15px] w-[15px] shrink-0 text-muted-foreground/50" aria-hidden />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="mt-4 w-full max-w-md text-left">
+            {/* Design 15a: EIN Funkel im Kicker statt eines je Zeile. */}
+            <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+              <Sparkles className="h-3 w-3 text-signal" aria-hidden />
               Zum Beispiel
             </p>
             {/* Jede Zeile ist genau zwei Textzeilen hoch (min-h-[3em] bei
@@ -1584,31 +1594,25 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 wird `ex` in voller Länge, die Frage geht also vollständig raus.
                 em statt px, damit größere Systemschrift die Zeilen mitwachsen
                 lässt statt den Text abzuschneiden. */}
-            <div className="mt-1.5 flex w-full max-w-md flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
               {frischeLaedt
-                ? [0, 1, 2, 3].map((i) => (
+                ? Array.from({ length: beispielAnzahl }, (_, i) => (
                     <div key={`skelett-${i}`} aria-hidden
                       /* text-[13.5px] MUSS hier stehen, obwohl kein Text drin
                          ist: Die reservierte Höhe unten rechnet in em, und
                          ohne dieselbe Schriftgröße wie die echte Zeile geriete
-                         der Platzhalter 70 statt 63 px hoch — der Sprung wäre
-                         nur von 0,5 s auf den Moment des Austauschs verschoben. */
-                      className={cn(
-                        "items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-[13.5px]",
-                        i >= 3 ? "hidden desk:flex" : "flex")}>
-                      <div className="h-3.5 w-3.5 shrink-0 animate-pulse rounded-sm bg-muted-foreground/20" />
+                         der Platzhalter zu hoch — der Sprung wäre nur von
+                         0,5 s auf den Moment des Austauschs verschoben. */
+                      className="flex items-center gap-2.5 rounded-[13px] border border-primary/25 bg-primary/[0.04] px-3 py-2 text-[13.5px]">
                       <div className="flex min-h-[3em] min-w-0 flex-1 flex-col justify-center gap-1.5">
                         <div className="h-2.5 w-full animate-pulse rounded-full bg-muted-foreground/15" />
                         <div className="h-2.5 w-2/3 animate-pulse rounded-full bg-muted-foreground/15" />
                       </div>
                     </div>
                   ))
-                : beispiele.map((ex, i) => (
+                : beispiele.slice(0, beispielAnzahl).map((ex, i) => (
                     <button key={ex} type="button" onClick={() => frageStellen(ex)} title={ex}
-                      className={cn(
-                        "items-center gap-2.5 rounded-[11px] border border-border bg-card px-3 py-2.5 text-left text-[13.5px] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-muted active:scale-[0.99]",
-                        i >= 3 ? "hidden desk:flex" : "flex")}>
-                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      className="flex items-center gap-2.5 rounded-[13px] border border-primary/25 bg-primary/[0.04] px-3 py-2 text-left text-[13.5px] text-foreground transition-[background-color,transform] duration-150 ease-out-strong hover:bg-primary/[0.09] active:scale-[0.99]">
                       {/* Zwei Ebenen: außen die reservierte Höhe samt
                           Zentrierung, innen das Klemmen — `line-clamp` setzt
                           selbst `display:-webkit-box` und verträgt sich
@@ -1616,11 +1620,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                       <span className="flex min-h-[3em] min-w-0 flex-1 items-center">
                         <span className="line-clamp-2">{ex}</span>
                       </span>
+                      {/* „Neu" nur an den frischen Vorschlägen aus der letzten
+                          Sitzung — nicht an Klassikern (Design 15, WEG). */}
                       {i < frische.length && (
                         <span className="shrink-0 rounded-full bg-signal/10 px-1.5 py-0.5 text-[10px] font-medium text-signal">Neu</span>
                       )}
                     </button>
                   ))}
+            </div>
             </div>
           </div>
         )}
@@ -1675,7 +1682,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             der Spacer darunter hält im Fluss genau die gemessene
             Composer-Höhe frei, damit das Gesprächsende nie darunter
             verschwindet. Ab lg wie gehabt statisch in der Bühne. */}
-        <div aria-hidden style={{ height: composerHoehe }} className="desk:hidden" />
+        {/* +16: Der weiche Übergangsstreifen ÜBER dem Composer (before:-top-4)
+            gehört mit reserviert — sonst fadet die letzte Zeile des Inhalts
+            in die Composer-Karte (Tims Befund 19.08. am zweiten Beispiel). */}
+        <div aria-hidden style={{ height: composerHoehe + 16 }} className="desk:hidden" />
         <div ref={composerRef}
           /* `bottom` als Inline-Wert statt als Klasse: Es ist derselbe
              Ausdruck, den die Tab-Leiste als `height` bekommt. Ab `desk` ist
@@ -1796,35 +1806,34 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               </button>
             </div>
           ) : (
-            <form onSubmit={(e) => { e.preventDefault(); void (rechercheModus ? askDeep(q) : ask(q)); }} className="flex flex-col gap-1.5">
-              {/* RG-10-Pill ÜBER dem Eingabefeld (Tims TestFlight-Feedback
-                  11.08., zweite Runde): unter dem Feld stand sie im Weg, als
-                  Kolben-Knopf in der Zeile nahm sie der Textbox Breite. */}
-              <div className="flex items-center gap-2">
+            /* Design 15 (ZUSAMMENGELEGT): Feld, Recherche-Pill und Senden
+               sind EINE Karte — vorher schwebte die Pill beziehungslos überm
+               Eingabefeld. Senden ist 40 × 40 und voll gefüllt; das Funkel-
+               Icon im Feld ist raus (das Funkeln wohnt im Beispiel-Kicker). */
+            <form onSubmit={(e) => { e.preventDefault(); void (rechercheModus ? askDeep(q) : ask(q)); }}
+              className="rounded-2xl border border-border bg-card shadow-sm transition-colors focus-within:border-primary/40">
+              <Input ref={inputRef} data-search enterKeyHint="send"
+                className="h-11 rounded-2xl border-0 bg-transparent px-3.5 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                placeholder={rechercheModus ? "Gründlich recherchieren …"
+                  : turns.length > 0 ? "Anschlussfrage stellen …" : "Deine Frage …"}
+                value={q} onChange={(e) => setQ(e.target.value)} />
+              <div className="flex items-center gap-2 px-2 pb-2">
                 <RechercheToggle aktiv={rechercheModus} frei={deepFrei} onToggle={toggleRecherche} />
                 {rechercheModus && !deepHinweis && (
                   <span className="text-[10.5px] text-muted-foreground/70">
                     ~30 Sek{deepFrei !== null ? ` · noch ${deepFrei} heute` : ""}
                   </span>
                 )}
-              </div>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input ref={inputRef} data-search enterKeyHint="send"
-                    className="h-12 rounded-2xl pl-9"
-                    placeholder={rechercheModus ? "Gründlich recherchieren …"
-                      : turns.length > 0 ? "Anschlussfrage stellen …" : "Frag den Rat …"}
-                    value={q} onChange={(e) => setQ(e.target.value)} />
-                </div>
+                <span className="flex-1" />
                 {loading ? (
-                  <Button type="button" variant="secondary" className="h-12 rounded-2xl" onClick={stopAsking} aria-label="Antwort abbrechen">
+                  <Button type="button" variant="secondary" className="h-10 rounded-xl" onClick={stopAsking} aria-label="Antwort abbrechen">
                     <Square className="fill-current" /> Stopp
                   </Button>
                 ) : (
-                  <Button type="submit" className="h-12 w-12 rounded-2xl p-0" disabled={q.trim().length < 4} aria-label="Fragen">
-                    <Send />
-                  </Button>
+                  <button type="submit" disabled={q.trim().length < 4} aria-label="Fragen"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_4px_12px_-4px_hsl(var(--primary)/0.55)] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-primary/90 active:scale-95 disabled:bg-primary/35 disabled:shadow-none">
+                    <ArrowUp className="h-[17px] w-[17px]" strokeWidth={2.2} aria-hidden />
+                  </button>
                 )}
               </div>
             </form>
@@ -2223,13 +2232,29 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   );
 }
 
-/* ---------------- Gespräche-Sheet (Design 9a②, mobil) ---------------- */
+/* ------------- Gespräche-Sheet (Design 9a② → 15b, alle Breiten) ------------- */
 
-/** Eine Sheet-Zeile mit Wisch-nach-links-Aktionen (Umbenennen · Löschen).
- *  Der Wisch folgt dem Finger nur horizontal — vertikale Bewegung bleibt
- *  Scroll. Umbenennen verwandelt die Zeile in ein Eingabefeld. */
-function SheetZeile({ g, aktiv, offen, aufklappen, onLaden, onLoeschen, onUmbenennen }: {
+/** Zeitgruppe einer Gesprächszeile (15b): „Heute" · „Gestern" · „Älter" —
+ *  ersetzt das Datums-Raten in einer flachen Liste. Gleiche UTC-Deutung wie
+ *  fmtUtcMitZeit. */
+function sheetGruppe(updated: string): "Heute" | "Gestern" | "Älter" {
+  const iso = /Z$|[+-]\d\d:?\d\d$/.test(updated) ? updated : `${updated}Z`;
+  const dann = new Date(iso);
+  const tag = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((tag(new Date()) - tag(dann)) / 86_400_000);
+  if (diff <= 0) return "Heute";
+  if (diff === 1) return "Gestern";
+  return "Älter";
+}
+
+/** Eine Sheet-Zeile (15b): Wisch nach links bleibt als Abkürzung, aber die
+ *  Aktionen sind jetzt auch SICHTBAR erreichbar — das ⋯-Menü (36 px) klappt
+ *  dieselbe Leiste auf, die der Wisch freilegt. Umbenennen verwandelt die
+ *  Zeile in ein Eingabefeld. */
+function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen, onUmbenennen }: {
   g: GespraechEintrag; aktiv: boolean; offen: boolean;
+  /** In „Heute"/„Gestern" wäre ein Datum je Zeile doppelt — nur „Älter" trägt eins. */
+  inAelter: boolean;
   aufklappen: (id: number | null) => void;
   onLaden: () => void; onLoeschen: () => void; onUmbenennen: (titel: string) => void;
 }) {
@@ -2238,6 +2263,7 @@ function SheetZeile({ g, aktiv, offen, aufklappen, onLaden, onLoeschen, onUmbene
   const [dx, setDx] = useState(0);            // Finger-Delta während des Wischens
   const [zieht, setZieht] = useState(false);
   const [umbenennen, setUmbenennen] = useState(false);
+  const [menue, setMenue] = useState(false);
   const [entwurf, setEntwurf] = useState(g.titel);
   const basis = offen ? -AKTIONEN_BREITE : 0;
   const verschiebung = zieht ? Math.max(-AKTIONEN_BREITE, Math.min(0, basis + dx)) : basis;
@@ -2262,10 +2288,14 @@ function SheetZeile({ g, aktiv, offen, aufklappen, onLaden, onLoeschen, onUmbene
     );
   }
 
+  const fragen = `${g.n_turns} ${g.n_turns === 1 ? "Frage" : "Fragen"}`;
   return (
-    <div className="relative overflow-hidden border-b border-border/60 last:border-b-0">
-      {/* Aktionsleiste hinter der Zeile — sichtbar nach dem Wisch. */}
-      <div className="absolute inset-y-0 right-0 flex" aria-hidden={!offen}>
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Aktionsleiste hinter der Zeile — sichtbar nach Wisch ODER ⋯-Tap.
+          `invisible` im Ruhezustand: Sonst blitzen ihre Farben an den
+          gerundeten Ecken der davorliegenden Zeile durch. */}
+      <div className={cn("absolute inset-y-0 right-0 flex", !offen && !zieht && "invisible")}
+        aria-hidden={!offen}>
         <button type="button" tabIndex={offen ? 0 : -1}
           onClick={() => { setEntwurf(g.titel); setUmbenennen(true); }}
           className="flex w-[80px] flex-col items-center justify-center gap-0.5 bg-muted text-[10px] font-medium text-foreground">
@@ -2277,7 +2307,7 @@ function SheetZeile({ g, aktiv, offen, aufklappen, onLaden, onLoeschen, onUmbene
         </button>
       </div>
       <div
-        className={cn("relative flex items-center gap-2.5 bg-card px-2.5 py-3",
+        className={cn("relative flex min-h-[54px] items-center gap-1.5 rounded-xl bg-card py-2 pl-3 pr-1",
           aktiv && "bg-primary/[0.07]", !zieht && "transition-transform duration-200")}
         style={{ transform: `translateX(${verschiebung}px)` }}
         onTouchStart={(e) => {
@@ -2298,72 +2328,157 @@ function SheetZeile({ g, aktiv, offen, aufklappen, onLaden, onLoeschen, onUmbene
           start.current = null;
         }}
       >
-        <button type="button" className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+        <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left"
           onClick={() => { if (offen) aufklappen(null); else onLaden(); }}>
           <span className="min-w-0 flex-1">
-            <span className={cn("block truncate text-[13.5px] text-foreground", aktiv && "font-semibold")}>{g.titel}</span>
-            <span className="mt-px block text-[11px] text-muted-foreground">
-              {relativTag(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
+            <span className={cn("block truncate text-[14.5px] text-foreground", aktiv && "font-semibold")}>{g.titel}</span>
+            <span className="mt-px block text-[11.5px] text-muted-foreground">
+              {aktiv ? `${fragen} · gerade offen`
+                : inAelter ? `${relativTag(g.updated)} · ${fragen}` : fragen}
             </span>
           </span>
-          {aktiv ? (
+          {aktiv && (
             <span className="shrink-0 rounded-full bg-primary/[0.12] px-2 py-0.5 text-[10.5px] font-semibold text-primary">aktiv</span>
-          ) : (
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden />
           )}
         </button>
+        {/* 15b: Umbenennen/Löschen sichtbar erreichbar — nicht nur per
+            Wischgeste, die niemand entdeckt. Das ⋯ klappt INLINE zu den zwei
+            Aktionen auf (die Zeile bleibt stehen); der Wisch behält seine
+            Schiebe-Leiste — beim Knopf sähe sie leer aus, weil der Titel
+            mit aus dem Bild rutscht. */}
+        {menue ? (
+          <span className="flex shrink-0 items-center gap-0.5">
+            <button type="button"
+              onClick={() => { setMenue(false); setEntwurf(g.titel); setUmbenennen(true); }}
+              aria-label={`„${g.titel}" umbenennen`} title="Umbenennen"
+              className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-muted text-foreground">
+              <Pencil className="h-4 w-4" aria-hidden />
+            </button>
+            <button type="button" onClick={() => { setMenue(false); onLoeschen(); }}
+              aria-label={`„${g.titel}" löschen`} title="Löschen"
+              className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-signal/10 text-signal">
+              <Trash2 className="h-4 w-4" aria-hidden />
+            </button>
+            <button type="button" onClick={() => setMenue(false)}
+              aria-label="Aktionen schließen"
+              className="flex h-9 w-6 items-center justify-center rounded-[10px] text-muted-foreground">
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </span>
+        ) : (
+          <button type="button" onClick={() => { aufklappen(null); setMenue(true); }}
+            aria-label={`Aktionen für „${g.titel}"`} aria-expanded={menue}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            <MoreHorizontal className="h-4 w-4" aria-hidden />
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-/** Bottom Sheet „Gespräche" (9a②): Neues Gespräch als erste Aktion, darunter
- *  die Liste — das mobile Gegenstück zum Desktop-Dropdown aus 5a/I-04. */
+/** Sheet „Gespräche" (15b): Neues Gespräch als erste Aktion, darunter die
+ *  Liste in Zeitgruppen. Mobil ein Bottom-Sheet, am Desktop ein zentrierter
+ *  Dialog — EIN Bauteil statt Sheet + ärmerem Dropdown (das Dropdown konnte
+ *  nicht einmal umbenennen). */
 function GespraecheSheet({ gespraeche, aktivId, onNeu, onLaden, onLoeschen, onUmbenennen, onClose }: {
   gespraeche: GespraechEintrag[]; aktivId: number | null;
   onNeu: () => void; onLaden: (id: number) => void; onLoeschen: (id: number) => void;
   onUmbenennen: (id: number, titel: string) => void; onClose: () => void;
 }) {
   const [offenId, setOffenId] = useState<number | null>(null);
+  const [suche, setSuche] = useState("");
   const startY = useRef<number | null>(null);
   useEffect(() => {
     const alt = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = alt; };
   }, []);
+  // Am Desktop ist das Sheet ein Dialog — Escape gehört dazu.
+  useEffect(() => {
+    const taste = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", taste);
+    return () => window.removeEventListener("keydown", taste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // 15b: Ab 8 Gesprächen ein schlankes Suchfeld — nicht früher, kein
+  // Element ohne Not. Gefiltert wird nur die Anzeige.
+  const mitSuche = gespraeche.length >= 8;
+  const begriff = suche.trim().toLowerCase();
+  const sichtbar = begriff
+    ? gespraeche.filter((g) => g.titel.toLowerCase().includes(begriff))
+    : gespraeche;
+  const gruppen = (["Heute", "Gestern", "Älter"] as const)
+    .map((name) => ({ name, eintraege: sichtbar.filter((g) => sheetGruppe(g.updated) === name) }))
+    .filter((gr) => gr.eintraege.length > 0);
   return createPortal(
-    <div className="fixed inset-0 z-50 desk:hidden" role="dialog" aria-modal="true" aria-label="Gespräche">
+    <div className="fixed inset-0 z-50 desk:flex desk:items-center desk:justify-center desk:p-6"
+      role="dialog" aria-modal="true" aria-label="Gespräche">
       <button type="button" aria-label="Schließen" onClick={onClose}
         className="absolute inset-0 bg-[hsl(212_50%_12%/0.4)]" />
       <div
-        className="absolute inset-x-0 bottom-0 flex max-h-[80dvh] flex-col rounded-t-[20px] bg-card px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-2 shadow-[0_-18px_50px_-12px_rgba(2,32,71,0.45)]"
+        className={cn(
+          "absolute inset-x-0 bottom-0 flex max-h-[80dvh] flex-col rounded-t-[20px] bg-card px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-2 shadow-[0_-18px_50px_-12px_rgba(2,32,71,0.45)]",
+          "desk:relative desk:inset-auto desk:w-full desk:max-w-md desk:rounded-2xl desk:pb-4 desk:pt-1 desk:shadow-lifted",
+        )}
         onTouchStart={(e) => { startY.current = e.touches[0]?.clientY ?? null; }}
         onTouchMove={(e) => {
           const y = e.touches[0]?.clientY;
           if (startY.current != null && y != null && y - startY.current > 60) onClose();
         }}
       >
-        <span aria-hidden className="mx-auto block h-1 w-[38px] shrink-0 rounded-full bg-border" />
-        <div className="flex shrink-0 items-baseline justify-between gap-2 px-0.5 pb-2.5 pt-3">
+        <span aria-hidden className="mx-auto block h-1 w-[38px] shrink-0 rounded-full bg-border desk:hidden" />
+        <div className="flex shrink-0 items-center gap-2 px-0.5 pb-2.5 pt-2.5">
           <span className="font-display text-[17px] font-bold tracking-tight text-foreground">Gespräche</span>
-          <span className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground">In deinem Konto</span>
+          <span className="text-[12.5px] text-muted-foreground">
+            {gespraeche.length} gespeichert
+          </span>
+          <span className="flex-1" />
+          {/* 15b: expliziter Ausgang zusätzlich zu Wisch + Scrim — der
+              beobachteten Nutzergruppe sind Knöpfe wichtiger als Gesten. */}
+          <button type="button" onClick={onClose} aria-label="Schließen"
+            className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-muted text-muted-foreground transition-colors hover:text-foreground">
+            <X className="h-4 w-4" aria-hidden />
+          </button>
         </div>
         <button type="button" onClick={onNeu}
-          className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-colors active:bg-primary/90">
+          className="flex h-12 shrink-0 items-center justify-center gap-2 rounded-[13px] bg-primary text-sm font-semibold text-primary-foreground shadow-[0_6px_16px_-8px_hsl(var(--primary)/0.6)] transition-colors active:bg-primary/90 desk:hover:bg-primary/90">
           <Plus className="h-4 w-4" aria-hidden /> Neues Gespräch
         </button>
-        <div className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {gespraeche.map((g) => (
-            <SheetZeile key={g.id} g={g} aktiv={g.id === aktivId} offen={offenId === g.id}
-              aufklappen={setOffenId}
-              onLaden={() => onLaden(g.id)}
-              onLoeschen={() => { setOffenId(null); onLoeschen(g.id); }}
-              onUmbenennen={(titel) => onUmbenennen(g.id, titel)} />
+        {mitSuche && (
+          <Input value={suche} onChange={(e) => setSuche(e.target.value)}
+            placeholder="In Gesprächen suchen …" aria-label="Gespräche durchsuchen"
+            className="mt-2 h-9 shrink-0 rounded-[11px] text-[13px]" />
+        )}
+        <div className="mt-1 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {gruppen.map((gr, gi) => (
+            /* Tims Wunsch 19.08.: eine Linie zwischen den Tagen — die
+               Kicker allein trennten die Gruppen zu leise. */
+            <div key={gr.name} className={cn(gi > 0 && "mt-2 border-t border-border/60")}>
+              <p className="px-0.5 pb-1 pt-2.5 font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+                {gr.name}
+              </p>
+              <div className="flex flex-col gap-0.5">
+                {gr.eintraege.map((g) => (
+                  <SheetZeile key={g.id} g={g} aktiv={g.id === aktivId} offen={offenId === g.id}
+                    inAelter={gr.name === "Älter"}
+                    aufklappen={setOffenId}
+                    onLaden={() => onLaden(g.id)}
+                    onLoeschen={() => { setOffenId(null); onLoeschen(g.id); }}
+                    onUmbenennen={(titel) => onUmbenennen(g.id, titel)} />
+                ))}
+              </div>
+            </div>
           ))}
+          {sichtbar.length === 0 && (
+            <p className="px-0.5 py-4 text-[12.5px] text-muted-foreground">
+              {begriff ? `Kein Gespräch passt zu „${suche.trim()}".` : "Noch keine gespeicherten Gespräche."}
+            </p>
+          )}
         </div>
-        <p className="shrink-0 pt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
-          Zeile nach links wischen: Umbenennen · Löschen. Ob Gespräche gespeichert
-          werden, änderst du in den Einstellungen.
+        <p className="shrink-0 border-t border-border/60 pt-2.5 text-[10.5px] leading-relaxed text-muted-foreground/70">
+          Gespeichert in deinem Konto — änderbar in den Einstellungen.
+          <span className="desk:hidden"> Wisch nach links bleibt als Abkürzung für Umbenennen/Löschen.</span>
         </p>
       </div>
     </div>,
