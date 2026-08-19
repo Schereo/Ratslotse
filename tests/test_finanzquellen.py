@@ -959,3 +959,59 @@ def test_jede_schicht_ohne_selbstlauf_sagt_wo_sie_herkommt():
         if not q.automatisch:
             assert q.nachschub, f"{key} sagt nicht, woher der Nachschub kommt"
         assert q.herkunft in finanzquellen.STELLEN, f"{key}: Herkunft ohne Klartext"
+
+
+# --- Die Doku zählt nach, sie legt nichts fest ------------------------------
+
+#: Zahlwörter, wie die Doku sie schreibt. Nur so weit, wie diese Zahlen
+#: realistisch wachsen — eine vollständige Tabelle wäre toter Code.
+ZAHLWORT = {
+    "fünf": 5, "sechs": 6, "sieben": 7, "acht": 8, "neun": 9, "zehn": 10,
+    "elf": 11, "zwölf": 12, "dreizehn": 13, "vierzehn": 14, "fünfzehn": 15,
+    "sechzehn": 16, "siebzehn": 17, "achtzehn": 18, "neunzehn": 19,
+    "zwanzig": 20,
+}
+
+DOKU = ROOT / "docs-site" / "src" / "content" / "docs" / "haushalt.md"
+CRON = ROOT / "scripts" / "check_finanzdaten.py"
+
+
+def test_die_doku_nennt_die_richtige_zahl_der_schichten():
+    """„Fünfzehn Datenschichten … Neun liest er selbst" muss stimmen.
+
+    Diese Zahlen standen zweimal falsch in der Doku: erst „sechs", dann
+    „dreizehn … die sieben", während ``REIHENFOLGE`` längst weitergewachsen
+    war (Befund 19.08.2026 — real 15/9/6). Sie stehen im Fließtext und lassen
+    sich beim Lesen nicht widerlegen; wer den Bereich kennenlernt, glaubt sie.
+
+    Der Test prüft die Aussage, nicht den Wortlaut: Er sucht das Zahlwort vor
+    „Datenschichten" und vergleicht es mit ``REIHENFOLGE``.
+    """
+    import re
+
+    gesamt = len(finanzquellen.REIHENFOLGE)
+    automatisch = sum(1 for k in finanzquellen.REIHENFOLGE
+                      if finanzquellen.QUELLEN[k].automatisch)
+
+    doku = DOKU.read_text(encoding="utf-8")
+    treffer = re.search(r"\*\*(\w+)\*\* Datenschichten", doku)
+    assert treffer, (
+        'Der Satz "**N** Datenschichten" steht nicht mehr in haushalt.md — '
+        'wurde er umformuliert, gehört dieser Test nachgezogen')
+    genannt = ZAHLWORT.get(treffer.group(1).lower())
+    assert genannt == gesamt, (
+        f'haushalt.md nennt "{treffer.group(1)} Datenschichten", '
+        f'finanzquellen.REIHENFOLGE führt {gesamt}')
+
+    # Dieselbe Zahl im Docstring des Jobs, der sie abarbeitet.
+    cron = CRON.read_text(encoding="utf-8")
+    im_cron = re.search(r"von (\w+) Datenschichten", cron)
+    assert im_cron and ZAHLWORT.get(im_cron.group(1).lower()) == gesamt, (
+        f"check_finanzdaten.py nennt eine andere Zahl als die {gesamt} aus "
+        "REIHENFOLGE")
+
+    # Und die Aufteilung: wie viele der Job selbst nachzieht.
+    selbst = re.search(r"holt die \*\*(\w+)\*\*", cron)
+    assert selbst and ZAHLWORT.get(selbst.group(1).lower()) == automatisch, (
+        f"check_finanzdaten.py sagt nicht, dass es {automatisch} automatische "
+        "Schichten sind")

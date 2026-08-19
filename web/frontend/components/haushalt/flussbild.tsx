@@ -59,13 +59,20 @@ function alsPosten(b: FlussBand): FlussPosten {
  *  der der Tausch stand, war eine Zeile über ihr. Wo Daten für das gewählte
  *  Jahr fehlen, sagt die Seite jetzt genau das (Entscheidung Tim, 16.08.).
  *
- *  Der Wortlaut ist mit Absicht ein „noch nicht": Die Aufschlüsselung
- *  EXISTIERT — sie steht für jedes Haushaltsjahr im Gesamtergebnishaushalt,
- *  wir haben sie nur noch nicht eingelesen. „Für Planjahre gibt es das nicht"
- *  wäre schon heute falsch und würde in dem Moment zur Unwahrheit erstarren,
- *  in dem der Bestand nachgezogen ist. Dieser Text verschwindet dann von
- *  selbst: Sobald `flussbild()` für das Jahr etwas liefert, steht hier das
- *  Bild — ohne dass jemand eine Formulierung nachziehen müsste.
+ *  ACHTUNG, der Wortlaut stimmt seit #530 nicht mehr (Befund 19.08.2026):
+ *  Die Einnahmearten der Planjahre SIND inzwischen eingelesen
+ *  (`council_ergebnishaushalt`, 2019–2026). Was dem Bild fehlt, ist die
+ *  andere Seite — der Gesamtergebnishaushalt führt keine Teilhaushalte, und
+ *  `council_haushalt` steht in einem anderen Stand (2026: 24,3 Mio. €
+ *  Abstand, Entwurf gegen Beschluss). Ein Flussbild aus beiden wäre um das
+ *  Fünfhundertfache der Toleranz daneben.
+ *
+ *  Die frühere Annahme, dieser Text verschwinde „von selbst, sobald der
+ *  Bestand nachgezogen ist", trägt deshalb nicht: `flussbild()` liest
+ *  `ergebnisrechnung`, und die endet mit dem letzten Jahresabschluss. Der
+ *  Satz unten sagt einem Leser damit etwas Unzutreffendes über unseren
+ *  eigenen Bestand — er gehört umformuliert, sobald entschieden ist, was
+ *  stattdessen dasteht (nichts, oder die Herkunftsseite allein).
  *
  *  Das jüngste vollständige Jahr ist ein ANGEBOT, keine Ersatzanzeige:
  *  gewechselt wird nur, wenn jemand darauf tippt. */

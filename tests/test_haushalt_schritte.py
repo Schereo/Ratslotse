@@ -30,12 +30,25 @@ from pathlib import Path
 FRONTEND = Path(__file__).resolve().parents[1] / "web" / "frontend"
 BEREICH = FRONTEND / "app" / "(app)" / "haushalt"
 WEGWEISER = FRONTEND / "components" / "haushalt" / "wegweiser.tsx"
+#: Die Technik-Doku führt dieselbe Reihenfolge als Tabelle — die **dritte**
+#: Wahrheit für dieselbe Zahl, und die einzige außerhalb des Codes.
+DOKU = (Path(__file__).resolve().parents[1]
+        / "docs-site" / "src" / "content" / "docs" / "haushalt.md")
 
 #: Der Kicker, den die Seiten schreiben: „Stadtfinanzen Oldenburg · Schritt 9".
 #: Bewusst eng: Ein Kommentar, der beiläufig „Schritt 1" erwähnt (etwa über
 #: das Verwaltungsverfahren in ``jahr/page.tsx``), ist keine Wegweiser-Nummer
 #: und darf hier nicht mitgezählt werden.
 KICKER = re.compile(r"Stadtfinanzen Oldenburg\s*·\s*Schritt (\d+)")
+
+#: Eine Zeile der Routen-Tabelle in der Doku::
+#:
+#:     | `/haushalt/konzern` | Schritt 11 — Kernverwaltung gegen …
+#:
+#: Der Query-Parameter-Anhang mancher Routen (``[?jahr=<jahr>]``) gehört zur
+#: Schreibweise der Tabelle und nicht zum Seitennamen.
+DOKU_ZEILE = re.compile(
+    r"^\|\s*`/haushalt/([a-z-]+)(?:\[[^\]]*\])?`\s*\|\s*Schritt (\d+)", re.MULTILINE)
 
 
 def wegweiser_reihenfolge() -> list[str]:
@@ -96,3 +109,40 @@ def test_jedes_wegweiser_ziel_existiert():
     fehlend = [name for name in wegweiser_reihenfolge()
                if not (BEREICH / name / "page.tsx").exists()]
     assert not fehlend, f"Wegweiser verweist auf Seiten, die es nicht gibt: {fehlend}"
+
+
+def test_die_doku_tabelle_nennt_dieselbe_reihenfolge():
+    """Die Routen-Tabelle der Technik-Doku stimmt mit dem Wegweiser überein.
+
+    Bis 19.08.2026 prüfte dieser Wächter nur Code gegen Code — und genau
+    deshalb driftete die **Doku** unbemerkt ab: „Die dreizehn Zahlen" (#627)
+    kam mitten in die zweite Stufe, der Code zog alle folgenden Nummern nach
+    (dieser Test war grün), und die Tabelle blieb auf dem alten Stand stehen.
+    Sieben Zeilen nannten danach eine Nummer zu wenig, und die Seite fehlte
+    ganz. Wer die Doku liest, liest sie statt des Codes; eine falsche Nummer
+    dort ist deshalb genauso teuer wie eine im Kicker.
+    """
+    reihenfolge = wegweiser_reihenfolge()
+    nummer_von = {name: i for i, name in enumerate(reihenfolge, start=1)}
+    tabelle = DOKU_ZEILE.findall(DOKU.read_text(encoding="utf-8"))
+
+    # Sicherung gegen den stillen Ausfall — dieselbe Sorge wie oben: Findet
+    # der Regex nichts (Tabelle umformatiert), liefe alles Weitere leer durch.
+    assert len(tabelle) >= 10, (
+        f"nur {len(tabelle)} Tabellenzeilen gefunden — Aufbau der Doku geändert?")
+
+    abweichungen = [
+        f"{name}: Doku sagt „Schritt {nr}“, der Wegweiser rechnet "
+        f"{nummer_von.get(name, '— steht gar nicht im Wegweiser')}"
+        for name, nr in ((n, int(s)) for n, s in tabelle)
+        if nummer_von.get(name) != nr
+    ]
+    fehlend = [name for name in reihenfolge
+               if name not in {n for n, _ in tabelle}]
+    if fehlend:
+        abweichungen.append(
+            "in der Doku-Tabelle fehlen ganz: " + ", ".join(fehlend))
+
+    assert not abweichungen, (
+        "Die Routen-Tabelle in docs-site/src/content/docs/haushalt.md weicht "
+        "vom Wegweiser ab:\n  " + "\n  ".join(abweichungen))

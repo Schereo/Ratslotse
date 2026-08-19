@@ -32,7 +32,8 @@ wacht darüber, dass kein neuer Verweis das Gate vergisst.
 
 Der Einstieg trägt einen **Wegweiser** (`components/haushalt/wegweiser.tsx`),
 und der ist keine Linkliste, sondern die Leserichtung des ganzen Bereichs:
-sechzehn Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reihenfolge.
+siebzehn Schritte in vier Stufen (6 · 4 · 4 · 3). Die Tabelle steht deshalb in
+genau dieser Reihenfolge.
 
 | Route | Inhalt |
 |---|---|
@@ -48,15 +49,16 @@ sechzehn Schritte in vier Stufen. Die Tabelle steht deshalb in genau dieser Reih
 | `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 7 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
 | `/haushalt/gebaut` | Schritt 8 — „Was wurde davon wirklich gebaut?": die **tatsächlichen** Investitions-Auszahlungen seit 2003, nach Auszahlungsart, aus dem Statistischen Jahrbuch |
 | `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 9 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
+| `/haushalt/kennzahlen` | Schritt 10 — „Die dreizehn Zahlen": die Kennzahlen, mit denen die Stadt sich selbst zusammenfasst, samt der Rechenwege, die sie danebendruckt |
 | **Der Rahmen** | |
-| `/haushalt/konzern` | Schritt 10 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
-| `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 11 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
-| `/haushalt/vergleich` | Schritt 12 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
-| `/haushalt/schulden` | Schritt 13 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
+| `/haushalt/konzern` | Schritt 11 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
+| `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 12 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
+| `/haushalt/vergleich` | Schritt 13 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
+| `/haushalt/schulden` | Schritt 14 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
-| `/haushalt/jahr` | Schritt 14 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
-| `/haushalt/streit[?jahr=<jahr>]` | Schritt 15 — „Der Streit ums Geld": je Haushaltsjahrgang die Änderungslisten der Fraktionen und Gruppen mit ihrem Abstimmungsergebnis, die Wortbeiträge der Debatte im Protokollwortlaut und die Schlussabstimmung |
-| `/haushalt/labor` | Schritt 16 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
+| `/haushalt/jahr` | Schritt 15 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
+| `/haushalt/streit[?jahr=<jahr>]` | Schritt 16 — „Der Streit ums Geld": je Haushaltsjahrgang die Änderungslisten der Fraktionen und Gruppen mit ihrem Abstimmungsergebnis, die Wortbeiträge der Debatte im Protokollwortlaut und die Schlussabstimmung |
+| `/haushalt/labor` | Schritt 17 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
@@ -67,16 +69,31 @@ dort ein beliebiger Einzelfall. Man erreicht sie aus Schritt 1 und 2 sowie aus
 der Bereichstabelle des Einstiegs.
 
 :::caution[Die Reihenfolge steht an mehreren Stellen]
-Vier Seiten schreiben ihre Nummer selbst in den Kicker: `/haushalt/personal`
-(„Schritt 5"), `/haushalt/konzern` („Schritt 9"), `/haushalt/beteiligungen`
-(„Schritt 10") und `/haushalt/streit` („Schritt 14"). Der Wegweiser ist so
-geordnet, dass das stimmt. Wer Schritte umsortiert oder einen
-dazwischenschiebt, zieht diese Seiten mit nach — sonst widersprechen sich zwei
-Seiten still. Genau das war schon dreimal fällig: „Was wird gebaut?" schob den
-Konzern von 7 auf 8, der Stellenplan von 8 auf 9, der Beteiligungsbericht den
-Städtevergleich von 10 auf 11. Wer eine Seite ans Ende der letzten Stufe hängt,
-verschiebt keine dieser Nummern — „Der Streit ums Geld" (08/2026) ist so ein
-Fall.
+**Sieben** Seiten schreiben ihre Nummer selbst in den Kicker („Stadtfinanzen
+Oldenburg · Schritt N"), weil sie dort oben steht, wo keine Komponente sie
+einsetzt: `/haushalt/personal` (5), `/haushalt/gebaut` (8),
+`/haushalt/kennzahlen` (10), `/haushalt/konzern` (11),
+`/haushalt/beteiligungen` (12), `/haushalt/jahr` (15) und `/haushalt/streit`
+(16). Dazu zwei Querverweise im Fließtext, die eine Nummer mitführen
+(`konzern/page.tsx` nennt Schritt 12, `beteiligungen/page.tsx` Schritt 11).
+
+Wer Schritte umsortiert oder einen dazwischenschiebt, zieht diese Stellen mit
+nach — sonst widersprechen sich zwei Seiten still. Das war schon viermal
+fällig: „Was wird gebaut?" schob den Konzern von 7 auf 8, der Stellenplan von
+8 auf 9, der Beteiligungsbericht den Städtevergleich von 10 auf 11, und „Die
+dreizehn Zahlen" (#627) schob alles ab dem Konzern noch einmal um eins.
+
+Der letzte Fall ist der lehrreiche: Eine Seite ans **Ende** der letzten Stufe
+zu hängen verschiebt nichts (so war es bei „Der Streit ums Geld"). „Die
+dreizehn Zahlen" kam aber **mitten** in die zweite Stufe — und damit rutschte
+jede Nummer danach. Genau dieser Versatz stand anschließend über Wochen
+falsch in dieser Doku, während der Code durchgehend stimmte.
+
+`tests/test_haushalt_schritte.py` hält alle drei Wahrheiten synchron: den
+Wegweiser, die selbstgeschriebenen Kicker **und diese Tabelle**. Bis 19.08.2026
+prüfte er nur Code gegen Code — deshalb konnte die Doku überhaupt so weit
+weglaufen. Wer jetzt einen Schritt einschiebt und die Tabelle vergisst, sieht
+es im Testlauf statt erst beim nächsten Lesen.
 :::
 
 Query-Parameter statt dynamischer Segmente, weil der Capacitor-Export die
@@ -128,7 +145,7 @@ die es nicht zeigen:
 | `council_schulden` | Schuldenstand je Jahr seit 1995 — vier Schuldenarten, Summe und Betrag je Einwohner\*in | Statistisches Jahrbuch der Stadt, Tabelle 1108 (PDF von oldenburg.de) | `scripts/ingest_schulden.py` |
 | `council_ausgabenreihe` | Ausgaben je Jahr seit **1972** (**Ist**) — `regelwerk` (`kameral` bis 2009, `doppik` ab 2010), die bestandenen `proben` je Zeile und, wo die beiden Quellen sich widersprechen, der `konflikt_betrag` der unterlegenen. **Ohne Einwohnerzahl**, s. u. | Datensatz 1102 — Statistisches Jahrbuch, Tabelle 1102 (PDF) **und** Open-Data-Portal (zwei CSV) | `scripts/ingest_ausgabenreihe.py` |
 | `council_steuerplan` | Je Steuerart und Jahr der **Ansatz des Haushaltsplans** neben dem **Rechnungsergebnis**; `vorlaeufig` ist die Angabe der Quelle über sich selbst. `art` trägt dieselbe Schreibweise wie `council_steuern` — daran hängt die Prüfung der Jahresbeschriftung | Statistisches Jahrbuch, Tabelle 1103 (PDF von oldenburg.de), **alle im Archiv gesicherten Ausgaben** | `scripts/ingest_steuertabellen.py` |
-| `council_hebesaetze` | Die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980 — Grundsteuer A, Grundsteuer B, Gewerbesteuer, dazu der `vorheriger` Satz. Neun Zeilen für 45 Jahre | Statistisches Jahrbuch, Tabelle 1105 (auf demselben Blatt wie 1104) | dito |
+| `council_hebesaetze` | Die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980 — Grundsteuer A, Grundsteuer B, Gewerbesteuer, dazu der `vorheriger` Satz. Neun Änderungsjahre (27 Zeilen) decken 45 Jahre — zuletzt 2025, als die Grundsteuerreform A auf 500 und B auf 539 Punkte hob | Statistisches Jahrbuch, Tabelle 1105 (auf demselben Blatt wie 1104) | dito |
 
 :::note[Zwei Tabellen zu denselben Berichten]
 `council_pruefbericht_quellen` hält die **Fundstelle** des Schlussberichts
@@ -137,7 +154,7 @@ die es nicht zeigen:
 Randmarke). Zwei Ebenen, zwei Tabellen — die Namen halten sie auseinander.
 :::
 
-Alle Ingests sind idempotent. Die fünf Schichten aus dem **Ratsinformations-
+Alle Ingests sind idempotent. Die neun Schichten aus dem **Ratsinformations-
 system** zieht seit 08/2026 ein Cron von allein nach (siehe unten); die
 Ingest-Skripte bleiben der Weg von Hand, wenn ein verbesserter Parser über den
 **Bestand** laufen soll. Die Plan- und Open-Data-Schichten (`council_haushalt`,
@@ -496,9 +513,13 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 ## Der Bereich hält sich selbst aktuell
 
-Sechs Datenschichten, jede einmal von Hand eingelesen — ohne Cron veraltet der
-ganze Bereich still, sobald niemand mehr daran denkt. `check_finanzdaten.py`
-(alle zwei Wochen) nimmt das ab. Maßgeblich ist `finanzquellen.REIHENFOLGE`;
+**Fünfzehn** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
+veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
+`check_finanzdaten.py` (alle zwei Wochen) nimmt das ab: **Neun** liest er
+selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **sechs**
+übrigen kommen von außerhalb und werden nur beobachtet — er meldet, dass ein
+Jahrgang fällig wäre, und nennt Quelle und Skript. „Lädt nichts herunter" ist
+die Regel, an der dieser Job hängt. Maßgeblich ist `finanzquellen.REIHENFOLGE`;
 diese Doku zählt nach, sie legt nichts fest.
 
 **Bestandsgesteuert, nicht kalendergesteuert.** Der Job fragt nicht „ist es
@@ -2651,13 +2672,6 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   „Was hat sich zwischen Entwurf und Beschluss geändert?" beantworten will,
   findet hier die Grundlage — aber unter einem anderen Namen als dem geplanten.
 
-- **Produktebene 2024 und 2025** — die Teilhaushalts-Pläne liegen als Anlage
-  vor, aber ihr Tabellenlayout hat sich geändert: Zwischen „21. ordentliches
-  Ergebnis" und den Zahlen stehen jetzt zwei Beschriftungszeilen
-  („Jahresüberschuss(+) / Jahresfehlbetrag (-)"), und die Prüfsumme
-  *Erträge − Aufwendungen = Ergebnis* greift ins Leere. Der Bestand bleibt
-  deshalb bei 2023 stehen. Genau dieser Fall ist der Grund für den Hinweis aus
-  `check_finanzdaten.py`: „Dokument liegt vor, wird aber nicht übernommen".
 - **Der Schlussbericht 2024** — sein PDF bringt keine Zeichenzuordnung mit,
   der Volltext besteht aus Glyphen-Nummern (`/12 /8 /6 □ /13 …`) und läuft in
   die 400.000-Zeichen-Kappung. Eine zweite Kopie gibt es nicht; ein neuer
@@ -2665,17 +2679,31 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   Textanfang-Erkennung, ganz ohne Sonderfall — und die Seite sagt das, statt
   es zu überspielen.
 - **Vollständige Produktebene** — für einige Teilhaushalte fehlen auslesbare
-  Dokumente; die Abdeckung schwankt je Jahr zwischen 63 % und 82 %.
+  Dokumente: Im Bestand stehen 9 der 13 Teilhaushalte (2025: 10). Gemessen an
+  den Aufwendungen, die der Endpunkt als `abdeckung_prozent` ausweist, deckt
+  die Produktebene je Jahrgang **71 % bis 87 %** (2020–2025; für 2018/2019
+  fehlt die Bezugsgröße in `council_haushalt`, für 2026 die Produktebene).
+  Deshalb trägt jedes Produkt ein Abdeckungs-Badge — eine Reihe, die nur die
+  vorhandenen Jahre zeigt, sähe sonst durchgehend aus.
 - Der Open-Data-Datensatz 1102 enthält abweichende Aufwendungen (2024: 764,7
   statt 728,2 Mio. €), ist aber weder als Ist noch als Nachtrag
   gekennzeichnet; genutzt wird daraus nur die Einwohnerspalte.
-- **Grundsteuer A und B getrennt** — das Portal führt sie in einer Spalte.
-  Deshalb eine gemeinsame Karte und im Labor kein Grundsteuer-Regler.
-- **Gebühren und Beiträge** — in keinem der Datensätze enthalten.
-- **Hebesatz-Zeitreihe** — die Sätze der Vorjahre liegen im Realsteuervergleich
-  (Blatt 1) nur nach Größenklassen vor, nicht je Stadt; und über die
-  Grundsteuerreform 2025 hinweg wären sie ohnehin nicht vergleichbar. Der
-  Städtevergleich selbst steht seit 08/2026 unter `/haushalt/vergleich`.
+- **Grundsteuer-*Aufkommen* für A und B getrennt** — die **Hebesätze** liegen
+  seit 08/2026 getrennt vor (`council_hebesaetze` führt „Grundsteuer A" und
+  „Grundsteuer B" als eigene Zeilen, 1980–2025). Das **Aufkommen** nicht: Der
+  Open-Data-Datensatz führt es als eine Spalte, und `council_steuern` wie
+  `council_steuerplan` tragen die Art deshalb als `Grundsteuer A+B`. Daran
+  hängt, dass es im Labor keinen Grundsteuer-Regler gibt: Ein Regler braucht
+  beides, sonst rechnet er einen Satz gegen ein Aufkommen, das zur Hälfte
+  einer anderen Steuer gehört.
+- **Gebühren und Beiträge nach Art** — als *Summe* stehen sie längst da: Posten
+  05 „öffentlich-rechtliche Entgelte" (2026 im Ansatz 26,6 Mio. €) trägt sie in
+  `council_ergebnishaushalt` wie in `council_ergebnisrechnung`, und im
+  Flussbild heißt das Band „Gebühren und Beiträge". Was fehlt, ist die
+  Aufschlüsselung **je Gebührenart** — welcher Betrag aus Kita-Beiträgen kommt
+  und welcher aus Abfallgebühren, sagt keiner der Datensätze. Darum führt
+  `/haushalt/einnahmen` sie nicht als eigene Karte, sondern nennt sie im Text
+  als das, was dort nicht steht.
 - **Verschuldung pro Einwohner im Städtevergleich** — Anlage 2 der
   Gesamtabschlüsse führt sie über acht Jahrgänge samt Osnabrück, Braunschweig
   und Hannover, und die Vorjahres-Kette schließt dort 4/4. Nicht gebaut, weil
@@ -2707,20 +2735,35 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   Investitionsprogramm oder im Anlagenspiegel. Sanierung und Neubau liegen
   beim Eigenbetrieb Gebäudewirtschaft und Hochbau mit eigenem Wirtschaftsplan,
   den keine der drei Quellen enthält.
-- **Erträge je Teilhaushalt nach Herkunft — für Planjahre** —
+- **Erträge je Teilhaushalt nach Herkunft — für Planjahre.** Die
+  Ertragsarten der Planjahre sind seit #530 eingelesen
+  (`council_ergebnishaushalt`, 2019–2026); was fehlt, ist ihre Aufteilung
+  **je Teilhaushalt**, und die ist auch nicht nachrüstbar:
+
   `council_haushalt` kennt je Bereich nur **eine** Ertragssumme. Wer sie in
-  Bund, Land und Gebühren aufteilen will, braucht
-  `council_ergebnisrechnung` — und die löst die Posten 01–11 zwar je
-  Teilhaushalt auf, endet aber mit dem letzten Jahresabschluss. Für das
-  Kopfjahr der Seite gibt es diese Aufteilung also **nicht**. Darum heißt die
-  Leiste auf `/haushalt` „Wo das Geld eingeht" und nicht „Woher das Geld
-  kommt": Im Plan 2026 stehen 529,3 der 812,9 Mio. € Erträge bei
-  „Finanzmanagement und Recht", weil dort die Kämmerei bucht — das ist ein
+  Bund, Land und Gebühren aufteilen will, braucht `council_ergebnisrechnung` —
+  die löst die Posten 01–11 je Teilhaushalt auf, endet aber mit dem letzten
+  Jahresabschluss (2024). Der Gesamtergebnishaushalt reicht bis 2026, führt
+  aber **keine** Teilhaushalte: In allen acht Dokumenten kommt „THH" kein
+  einziges Mal vor.
+
+  Beide zu mischen scheitert an den Ständen. Für 2026 weist
+  `council_haushalt` 812,9 Mio. € Erträge aus, `council_ergebnishaushalt`
+  788,6 Mio. € — **24,3 Mio. € Abstand**, weil das eine der beschlossene Plan
+  ist und das andere Anlage 005 der Einbringungs-Vorlage, also der Entwurf.
+  Das Flussbild rechnet mit einer Toleranz von 0,05 Mio. €; eine Grafik, die
+  ihre linke Seite aus dem Entwurf und ihre rechte aus dem Beschluss nimmt,
+  wäre um das Fünfhundertfache daneben, ohne dass man es ihr ansieht.
+
+  Darum heißt die Leiste auf `/haushalt` „Wo das Geld eingeht" und nicht
+  „Woher das Geld kommt": Im Plan 2026 stehen 529,3 der 812,9 Mio. € Erträge
+  bei „Finanzmanagement und Recht", weil dort die Kämmerei bucht — das ist ein
   Buchungsort, keine Geldquelle. Aus demselben Grund heißt die zweite Spalte
   der Bereichstabelle „eigene Erträge des Bereichs" und nicht „von Bund, Land
-  oder über Gebühren". Nachrüstbar wäre es durch Einlesen des
-  **Gesamtergebnishaushalts** (acht Dokumente, recherchiert) — ein eigener
-  Datenauftrag.
+  oder über Gebühren", und aus demselben Grund zeigt `/haushalt` für 2025 und
+  2026 kein Flussbild, sondern den Satz, dass die Einnahmearten für dieses
+  Jahr noch nicht vorliegen. Was es bräuchte, wäre ein Dokument, das beide
+  Seiten in **einem** Stand führt — im Bestand ist keines.
 
 ## Befunde aus dem Datenabgleich
 
