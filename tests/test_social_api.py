@@ -209,3 +209,40 @@ def test_hochladen_vergibt_die_namen_selbst(client, monkeypatch, tmp_path):
         assert abgelegt == ["2026-08-24-01.jpg", "2026-08-24-02.jpg"]
     finally:
         get_settings.cache_clear()
+
+
+def test_kennung_darf_mehr_als_ein_datum_sein(client, monkeypatch, tmp_path):
+    """Der Bot legt nicht nur Wochen-Karussells ab, sondern auch
+    „2026-08-24-fundstueck", „beschluss-4711" und „stories-2026-08-24".
+    Das Datumsmuster wies die alle ab."""
+    token = _mit_token(monkeypatch)
+    monkeypatch.setenv("SOCIAL_MEDIA_DIR", str(tmp_path))
+    monkeypatch.setenv("SOCIAL_MEDIA_BASE_URL", "https://example.org/social")
+    jpeg = b"\xff\xd8\xff" + b"x" * 64
+    try:
+        for kennung in ("2026-08-24", "2026-08-24-fundstueck", "beschluss-4711",
+                        "stories-2026-08-24"):
+            r = client.post(f"/api/social/medien/{kennung}",
+                            headers={"X-Social-Token": token},
+                            files={"dateien": ("k.jpg", io.BytesIO(jpeg), "image/jpeg")})
+            assert r.status_code == 200, (kennung, r.text)
+            assert r.json()["urls"] == [
+                f"https://example.org/social/{kennung}/{kennung}-01.jpg"]
+    finally:
+        get_settings.cache_clear()
+
+
+def test_kennung_laesst_keinen_pfad_durch(client, monkeypatch, tmp_path):
+    """Weder Schrägstrich noch Punkt noch Großbuchstaben — die Kennung wird
+    zu einem Verzeichnisnamen, also bleibt sie ein Wort."""
+    token = _mit_token(monkeypatch)
+    monkeypatch.setenv("SOCIAL_MEDIA_DIR", str(tmp_path))
+    jpeg = b"\xff\xd8\xff" + b"x" * 64
+    try:
+        for boese in ("stories/2026-08-24", "..", "-start", "a" * 65, "Gross"):
+            r = client.post(f"/api/social/medien/{boese}",
+                            headers={"X-Social-Token": token},
+                            files={"dateien": ("k.jpg", io.BytesIO(jpeg), "image/jpeg")})
+            assert r.status_code in (400, 404), (boese, r.status_code)
+    finally:
+        get_settings.cache_clear()

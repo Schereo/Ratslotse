@@ -397,16 +397,26 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
   );
 }
 
-/** Chip-Zeile mit verstecktem Scrollbalken (Design 4a): die Pfeile stehen
- *  NEBEN der Zeile, nicht darüber.
+/** Chip-Zeile mit verstecktem Scrollbalken (Design 4a): die Maus-Pfeile
+ *  schweben über den Zeilen-Enden, die Chips faden dort per CSS-Maske aus.
  *
- *  Zwei Anläufe zuvor lagen sie als Overlay auf den Chips. Ein Innen-Polster
- *  half nicht: Es sitzt am Anfang und Ende des Inhalts und scrollt mit —
- *  mittendrin schob sich weiter ein Chip unter den Pfeil (Tims Befund
- *  12.08.). Und der Verlauf darunter nahm die Seitenfarbe, die im Panel gar
- *  nicht gilt: In der Bühne lag dadurch ein dunkler Fleck auf hellem Grund.
- *  Als eigene Spalten im Flex-Layout können die Pfeile nichts mehr verdecken,
- *  und der Verlauf entfällt ersatzlos. */
+ *  Historie, damit der vierte Anlauf der letzte bleibt: Overlay-Pfeile gab es
+ *  schon zweimal — verworfen, weil ein Chip voll sichtbar unter den Pfeil
+ *  rutschte und der damalige FARB-Verlauf die Seitenfarbe annahm, die im
+ *  Panel nicht galt (dunkler Fleck auf der Bühne, Tims Befund 12.08.). Der
+ *  dritte Anlauf stellte die Pfeile als Spalten daneben — dann liefen die
+ *  hart abgeschnittenen Pillen optisch in die Pfeil-Rundung (Tims Befund
+ *  19.08.). Die Maske löst beide Alt-Probleme: Sie blendet die Chips SELBST
+ *  aus statt eine Farbe darüberzulegen, stimmt also auf jedem Untergrund,
+ *  und unterm Pfeil liegt nur noch Ausgefadetes. Maske wie Pfeile hängen an
+ *  `maus:` (reines Eingabegerät, kein Breiten-Gate) — Touch behält die
+ *  ungefadete Zeile von heute und scrollt per Wisch (Tims Wunsch 19.08.:
+ *  „auf mobil/iPad braucht man die wirklich nicht").
+ *
+ *  Der Pfeil-Button ist unsichtbar zeilenhoch, das sichtbare Rund nur ein
+ *  span darin: Neben einem kleinen Button lauerte sonst ein fast unsicht-
+ *  barer, aber klickbarer Chip — und ein Fehlklick dort stellt sofort eine
+ *  Frage. */
 function ChipZeile({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [mehr, setMehr] = useState(false);
@@ -424,27 +434,35 @@ function ChipZeile({ children }: { children: ReactNode }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, [children]);
-  // Nur für die Maus eine Abkürzung — Touch scrollt die Zeile eh per Wisch
-  // (Tims Wunsch 19.08.: „auf mobil/iPad braucht man die wirklich nicht").
-  // `hidden maus:flex` statt eines Breiten-Gates: reines Eingabegerät, kein
-  // Screen-Deckel — ein Desktop-Fenster in halber Breite behält die Pfeile.
-  const pfeil = "hidden maus:flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted";
+  const pfeil = "group absolute inset-y-0 hidden w-7 maus:flex items-center";
+  const rund = "flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors group-hover:bg-muted";
   return (
-    <div className="mb-2 flex items-center gap-1">
-      {zurueck && (
-        <button type="button" aria-label="Vorherige Vorschläge zeigen" className={pfeil}
-          onClick={() => ref.current?.scrollBy({ left: -260, behavior: "smooth" })}>
-          <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-        </button>
-      )}
+    <div className="relative mb-2">
       <div ref={ref} onScroll={pruefen}
-        className="scrollbar-none flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]">
+        className={cn(
+          "scrollbar-none flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]",
+          zurueck && mehr && "maus:[mask-image:linear-gradient(to_right,transparent,black_56px,black_calc(100%-56px),transparent)]",
+          zurueck && !mehr && "maus:[mask-image:linear-gradient(to_right,transparent,black_56px,black)]",
+          !zurueck && mehr && "maus:[mask-image:linear-gradient(to_right,black,black_calc(100%-56px),transparent)]",
+        )}>
         {children}
       </div>
+      {zurueck && (
+        <button type="button" aria-label="Vorherige Vorschläge zeigen"
+          className={cn(pfeil, "left-0 justify-start")}
+          onClick={() => ref.current?.scrollBy({ left: -260, behavior: "smooth" })}>
+          <span className={rund}>
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+          </span>
+        </button>
+      )}
       {mehr && (
-        <button type="button" aria-label="Weitere Vorschläge zeigen" className={pfeil}
+        <button type="button" aria-label="Weitere Vorschläge zeigen"
+          className={cn(pfeil, "right-0 justify-end")}
           onClick={() => ref.current?.scrollBy({ left: 260, behavior: "smooth" })}>
-          <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          <span className={rund}>
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          </span>
         </button>
       )}
     </div>
@@ -2765,6 +2783,11 @@ export const parteiMeinungenCache = new Map<string, ParteiMeinung[]>();
 
 /** Lädt die verdichteten Fraktions-Positionen nach und übergibt sie an
  *  `ParteienListe` — die Darstellung teilt sich diese Seite mit app/g. */
+/** Blätter-Pfeile am Steckbrief-Karussell: dasselbe stille Rund wie an der
+ *  Vorschlags-Zeile, und wie dort nur für die Maus (`maus:` = pointer fine) —
+ *  Touch wischt die Karten selbst. Am Anschlag gedimmt statt versteckt. */
+const PFEIL_KNOPF = "hidden maus:flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40";
+
 /** „Worum geht es?" — Steckbrief zu den in der Frage genannten Objekten.
  *
  *  Die Beschreibungen liegen seit dem Themen-Ausbau in der Datenbank, wurden
@@ -2785,6 +2808,19 @@ function SteckbriefBaustein({ steckbriefe }: {
   // Wunsch 15.08.: zwei Kästen untereinander schoben die eigentliche Antwort
   // aus dem Bild, bevor man sie gelesen hatte).
   const karussell = liste.length > 1;
+
+  const springeZu = (i: number) => spur.current?.scrollTo({
+    left: i * (spur.current?.clientWidth || 0), behavior: "smooth",
+  });
+  // Vom Ist-Scrollstand aus rechnen, nicht vom `aktiv`-State: Der hinkt
+  // während der smooth-Animation hinterher, ein schneller Doppelklick
+  // landete sonst wieder auf derselben Karte.
+  const blaettern = (richtung: -1 | 1) => {
+    const el = spur.current;
+    if (!el) return;
+    const seite = Math.round(el.scrollLeft / Math.max(el.clientWidth, 1));
+    springeZu(Math.min(Math.max(seite + richtung, 0), liste.length - 1));
+  };
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -2837,27 +2873,48 @@ function SteckbriefBaustein({ steckbriefe }: {
         })}
       </div>
       {karussell && (
-        /* Punkte statt Pfeilen: Sie sagen „hier ist mehr", ohne eine Fläche
-           zu beanspruchen, und funktionieren auf dem Telefon per Wischen.
-           Antippbar bleiben sie trotzdem — mit der Maus wischt niemand. */
-        <div className="flex items-center justify-center gap-1.5" role="tablist"
-             aria-label={`${liste.length} Steckbriefe`}>
-          {liste.map((s, i) => (
-            <button
-              key={s.slug}
-              type="button"
-              role="tab"
-              aria-selected={i === aktiv}
-              aria-label={s.name}
-              onClick={() => spur.current?.scrollTo({
-                left: i * (spur.current?.clientWidth || 0), behavior: "smooth",
-              })}
-              className={cn(
-                "h-1.5 rounded-full transition-[width,background-color] duration-200",
-                i === aktiv ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30",
-              )}
-            />
-          ))}
+        /* Touch wischt, die Punkte zeigen die Position — ihre Klickfläche ist
+           24 px hoch, nur der sichtbare Punkt bleibt zierlich. Für die Maus
+           stehen Pfeile daneben (gleiches Muster wie an der Vorschlags-Zeile):
+           Horizontal-Scrollen hat am Desktop keine natürliche Geste, und die
+           Punkte allein waren dort zu kleine Ziele (Tims Befund 19.08.). Die
+           Pfeile werden am Rand nur gedimmt, nicht ausgeblendet — sonst
+           verschöbe sich der Indikator unter dem Zeiger. */
+        <div className="flex items-center justify-center gap-2">
+          <button type="button" aria-label="Vorheriger Steckbrief"
+            disabled={aktiv <= 0} onClick={() => blaettern(-1)}
+            className={PFEIL_KNOPF}>
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+          </button>
+          <div className="flex items-center" role="tablist"
+               aria-label={`${liste.length} Steckbriefe`}>
+            {liste.map((s, i) => (
+              <button
+                key={s.slug}
+                type="button"
+                role="tab"
+                aria-selected={i === aktiv}
+                aria-label={s.name}
+                onClick={() => springeZu(i)}
+                className="group flex h-6 items-center px-[3px]"
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "h-1.5 rounded-full transition-[width,background-color] duration-200",
+                    i === aktiv
+                      ? "w-4 bg-primary"
+                      : "w-1.5 bg-muted-foreground/30 group-hover:bg-muted-foreground/55",
+                  )}
+                />
+              </button>
+            ))}
+          </div>
+          <button type="button" aria-label="Nächster Steckbrief"
+            disabled={aktiv >= liste.length - 1} onClick={() => blaettern(1)}
+            className={PFEIL_KNOPF}>
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          </button>
         </div>
       )}
     </div>

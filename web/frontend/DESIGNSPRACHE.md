@@ -130,6 +130,10 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   - `tab` (`(pointer: coarse) and (min-width: 1024px)`) — **breites Touch-
     Gerät.** Für das, was nur dort zu klären ist: Ausrichtung des fixierten
     Composers auf die Lesespalte, Abstand zur Tab-Leiste.
+  - `maus` (`(pointer: fine)`) — **nur Eingabegerät, ohne Breiten-Gate.** Für
+    Bedienhilfen, die einen Präzisions-Zeiger voraussetzen und die Touch nie
+    braucht: die Blätter-Pfeile an Chip-Zeile und Steckbrief-Karussell. Ein
+    Desktop-Fenster in halber Breite behält sie, ein iPad bekommt sie nie.
 
   Ein iPad ist quer 1180–1366 px breit und bekäme die Seitenleiste sonst allein
   wegen seiner Breite — dort gehört die Navigation aber an den Daumen (Tims
@@ -195,6 +199,12 @@ Dot hsl(209 18% 65%), kombiniertes Label.
 - Vorschlags-Chips (antippbare Fragen): primary-Rahmen /30 + bg /4 (auf Tonfläche
   weiß) + Pfeil/Icon; nur am jüngsten Turn.
 - Hover legt Zeilen-Aktionen frei („Dazu fragen") — Fläche primary/5, Radius 9.
+- Horizontales Blättern: Touch wischt, `maus:` bekommt stille runde
+  Blätter-Pfeile (24 px, Rahmen + bg-card + Schatten). An Scroll-Zeilen
+  schweben sie über den Enden, der Inhalt fadet dort per CSS-**Maske** aus
+  (40–56 px) — nie per Farb-Verlauf, der stimmt nicht auf jedem Untergrund.
+  An Snap-Karussells stehen sie neben den Indikator-Punkten und werden am
+  Anschlag gedimmt, nicht versteckt (sonst springt der Indikator).
 - Fortschritt: Häkchen grün ✓ → Spinner (12 px, primary) → gepunkteter Kreis
   (ausstehend); Playful-Zwischenwort erlaubt („Protokolle querlesen …").
 - Fehler/Limits: immer mit Ausweg (Retry, „Als schnelle Frage", Countdown) und
