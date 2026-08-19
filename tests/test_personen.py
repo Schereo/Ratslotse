@@ -464,6 +464,43 @@ def test_tippfehler_heilung_regeln():
     assert heilung("heiko", "meiers", "Ratsmitglied", lex) is None
 
 
+def test_verwaltung_detail_nur_mit_erkanntem_amt(tmp_path):
+    """Tims Wunsch 19.08.: Verwaltungsleute mit erkanntem Amt bekommen einen
+    Steckbrief — ohne (nur Vertretungs-/Zeit-Notiz) gibt es keinen toten
+    Link (s. #588). Kein Nachbau von member_detail(): keine Fraktion, kein
+    Vorsitz-Zähler, keine Gremien-Präsenz — nur Amt, Zeitraum, Beiträge."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        frisch = (date.today() - timedelta(days=30)).isoformat()
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+                "location, fetched_at) VALUES (1, 'Rat', ?, '', '', datetime('now'))", (frisch,))
+            store._conn.executemany(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (1, ?, ?, ?, ?)",
+                [("Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister"),
+                 ("Dagmar Sachse", "Verwaltung", "verwaltung", "Für Oberbürgermeister Krogmann")])
+            store._conn.executemany(
+                "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, top, "
+                "text, extracted_at) VALUES (1, ?, ?, NULL, 'zusage', 'Ö 1', ?, datetime('now'))",
+                [(1, "Krogmann", "Wird geprüft.")])
+
+        kro = store.verwaltung_detail("juergen-krogmann")
+        assert kro["typ"] == "verwaltung" and kro["rolle"] == "Oberbürgermeister"
+        assert kro["aktiv"] is True
+        assert kro["wortbeitraege_gesamt"] == 1
+
+        # Nur eine Vertretungs-Notiz, kein erkanntes Amt → kein Steckbrief.
+        assert store.verwaltung_detail("dagmar-sachse") is None
+        assert store.verwaltung_detail("gibt-es-nicht") is None
+
+        assert store.verwaltung_name("juergen-krogmann") == "Jürgen Krogmann"
+        assert store.verwaltung_name("gibt-es-nicht") is None
+    finally:
+        store.close()
+
+
 def test_personen_lexikon_blocker_fuer_gaeste(tmp_path):
     """Tims Oltmanns-Befund 12.08.: Ein Gast-Namensvetter (Wasserstraßen-Amt)
     muss den kahlen Nachnamen mehrdeutig machen — als blocker-Eintrag ohne

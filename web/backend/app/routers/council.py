@@ -2282,17 +2282,26 @@ def members(_user: dict = Depends(require_active),
 
 @router.get("/person/{slug}")
 def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> dict:
-    """A council member's profile: party, sessions, active span, committees, recent sessions.
+    """Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem
+    Amt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem
+    Mandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.
+    `typ` im Ergebnis unterscheidet ("rat" | "verwaltung") — das Frontend
+    rendert danach zwei verschiedene Ansichten.
 
     Ohne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um
-    Mandatsträger*innen in ihrer öffentlichen Funktion, und die Angaben stammen
-    aus den Anwesenheitslisten der amtlichen Protokolle — keine Privatperson
-    wird hier auffindbar, die es nicht ohnehin schon ist.
+    Mandatsträger:innen bzw. Amtsträger:innen in ihrer öffentlichen Funktion,
+    und die Angaben stammen aus den Anwesenheitslisten der amtlichen
+    Protokolle — keine Privatperson wird hier auffindbar, die es nicht
+    ohnehin schon ist.
     """
     data = store.member_detail(slug)
-    if not data:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ratsmitglied nicht gefunden.")
-    return data
+    if data:
+        data["typ"] = "rat"
+        return data
+    data = store.verwaltung_detail(slug)
+    if data:
+        return data
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Person nicht gefunden.")
 
 
 @router.get("/person/{slug}/wortbeitraege")
@@ -2303,11 +2312,12 @@ def person_wortbeitraege(slug: str, gremium: str | None = None,
     """Wortbeiträge einer Person, seitenweise und nach Gremium filterbar.
 
     Öffentlich wie die Personen-Seite selbst — es ist derselbe Bestand, nur
-    vollständig statt auf die jüngsten zehn gekürzt.
+    vollständig statt auf die jüngsten zehn gekürzt. Gilt für Ratsmitglieder
+    UND Verwaltung mit Steckbrief.
     """
-    name = store.member_name(slug)
+    name = store.member_name(slug) or store.verwaltung_name(slug)
     if not name:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ratsmitglied nicht gefunden.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Person nicht gefunden.")
     return store.wortbeitraege_person(name, gremium=gremium, offset=offset, limit=limit)
 
 

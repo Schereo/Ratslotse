@@ -4,7 +4,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, notFound } from "next/navigation";
 import { ArrowLeft, Gavel, Info, ExternalLink, ChevronDown } from "lucide-react";
-import { MemberDetail } from "@/lib/types";
+import { MemberDetail, PersonProfil, VerwaltungDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { PartyBadge, partyBrand, AffiliationBadge } from "@/components/decision-ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -126,9 +126,7 @@ function cnEllipsis(chair: boolean) {
 
 function PersonInner() {
   const slug = useSearchParams().get("slug");
-  const { zeigen: zeigeZurueck, zurueck } = useZurueck();
-  const { data, loading } = useFetch<MemberDetail>(slug ? `/council/person/${slug}` : null);
-  const [pastOpen, setPastOpen] = useState(false);
+  const { data, loading } = useFetch<PersonProfil>(slug ? `/council/person/${slug}` : null);
 
   // Eine Person kann in den Anwesenheitslisten unter zwei Namensformen stehen;
   // das Backend liefert für beide dasselbe Profil und nennt in `slug` die
@@ -144,6 +142,13 @@ function PersonInner() {
 
   if (loading) return <DetailSkeleton />;
   if (!data) notFound();
+  if (data.typ === "verwaltung") return <VerwaltungProfil data={data} />;
+  return <RatsmitgliedProfil data={data} />;
+}
+
+function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
+  const { zeigen: zeigeZurueck, zurueck } = useZurueck();
+  const [pastOpen, setPastOpen] = useState(false);
 
   const brand = data.party ? partyBrand(data.party) : null;
   // Aktuelle Zugehörigkeit = letzte Phase der Zeitreihe (gruppen-bewusst).
@@ -322,6 +327,67 @@ function PersonInner() {
             ))}
           </div>
         </Section>
+      )}
+    </Card>
+  );
+}
+
+/** Schmaler Steckbrief für Verwaltungsleute mit erkanntem Amt (Tims Wunsch
+ *  19.08., im Anschluss an den Figura-Badge-Fund): kein Mandat, deshalb keine
+ *  Fraktions-Zeitleiste, kein Vorsitz-Zähler, keine Gremien-Präsenz — nur
+ *  Amt, Erwähnungszeitraum und Wortbeiträge/Zusagen. Dieselbe Hafenblau-Farbe
+ *  wie das „Stadt"-Badge im KI-Antworttext (qa-bausteine.tsx), damit beide
+ *  erkennbar zusammengehören. */
+function VerwaltungProfil({ data }: { data: VerwaltungDetail }) {
+  const { zeigen: zeigeZurueck, zurueck } = useZurueck();
+  const zeitraum = data.aktiv
+    ? (data.von ? `In Sitzungsprotokollen erwähnt seit ${data.von}` : null)
+    : (data.von && data.bis ? `In Sitzungsprotokollen erwähnt ${data.von}–${data.bis}` : null);
+
+  return (
+    <Card className="mx-auto max-w-3xl p-5 sm:p-6">
+      {zeigeZurueck && (
+        <button onClick={() => zurueck("/council")} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Zurück
+        </button>
+      )}
+
+      <div className="mt-3.5 flex items-center gap-4">
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full font-display text-xl font-bold text-white shadow-sm"
+          style={{ backgroundColor: "#0764a6" }}>
+          {initials(data.name)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">{data.name}</h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-1.5 py-px text-[10px] font-medium text-muted-foreground">
+              <span aria-hidden className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ backgroundColor: "#0764a6" }} />
+              Stadt
+            </span>
+          </div>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {data.rolle}{zeitraum && <> · {zeitraum}</>}
+          </p>
+        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-input bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent sm:inline-flex">
+              <Info className="h-3.5 w-3.5" /> Wie erfasst?
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 max-w-[calc(100vw-2rem)] text-xs leading-relaxed text-muted-foreground">
+            Amt und Zeitraum stammen aus den Anwesenheitslisten der Protokolle — das
+            Ratsinformationssystem führt die Stadtverwaltung nicht als Mandatsträger:innen,
+            deshalb gibt es hier keine amtliche Amtszeit, nur den Zeitraum der
+            Protokoll-Erwähnungen.
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {(data.wortbeitraege?.length ?? 0) > 0 && (
+        <Wortbeitraege slug={data.slug} erste={data.wortbeitraege ?? []}
+          gesamt={data.wortbeitraege_gesamt ?? (data.wortbeitraege?.length ?? 0)}
+          gremien={data.wortbeitraege_gremien ?? []} />
       )}
     </Card>
   );

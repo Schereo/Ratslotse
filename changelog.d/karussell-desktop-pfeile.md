@@ -1,4 +1,7 @@
-### Geändert
+---
+kategorie: geaendert
+---
+
 - Zeigt „Frag den Rat" mehrere „Worum geht es?"-Steckbriefe, stehen am
   Desktop jetzt Blätter-Pfeile neben den Indikator-Punkten — die Punkte
   allein waren mit der Maus schwer zu treffen. Ihre Klickfläche ist
