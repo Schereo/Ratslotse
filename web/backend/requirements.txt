@@ -2,6 +2,10 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 pydantic-settings>=2.2
 email-validator>=2.1
+# Für UploadFile/Formulardaten (POST /api/social/medien/{tag}) — FastAPI
+# bricht schon beim Import ab, wenn eine Route list[UploadFile] deklariert
+# und das Paket fehlt.
+python-multipart>=0.0.9
 # Password hashing (scrypt) and JWT (HS256) use only the Python standard
 # library — no bcrypt/passlib/cryptography needed.
 # Cosine math for semantic Q&A retrieval. (fastembed is intentionally NOT here —
