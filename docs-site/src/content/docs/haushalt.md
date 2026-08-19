@@ -2691,29 +2691,22 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   eine Gitterlinie ist. **Keine Probe möglich, also nicht eingelesen** — auch
   nicht „mit Vorsicht". Tabelle 1108 deckt dieselbe Frage ab und bringt ihre
   Proben mit.
-- **Einzelne Investitionsvorhaben** — seit 08/2026 gibt es die
-  Investitionen als Schicht (`council_investitionen`,
-  `council/investitionen.py`, Seite `/haushalt/investitionen`), aber nur je
-  **Teilhaushalt**: „Verkehr und Straßenbau: 10,5 Mio. €". Welche Straße,
-  welche Schule, welches Fahrzeug — das steht in keinem der maschinenlesbaren
-  Datensätze. Dafür bräuchte es das Investitionsprogramm aus dem
-  Haushaltsplan-PDF, eine eigene Schicht mit eigener Probe.
-
-  Was der Rest des Bereichs zeigt, bleibt der **Ergebnis**haushalt
-  (`council_haushalt`: `ertraege`, `aufwendungen`, `ergebnis` je
-  Teilhaushalt). Deshalb steht auf der Anzeigetafel weiter, dass das Budget
-  größer ist als die gezeigte Zahl — der Hinweis verweist jetzt auf die neue
-  Seite, statt in einer Sackgasse zu enden. Und deshalb nennt außerhalb von
-  `/haushalt/investitionen` weiterhin **keine** Seite eine Investitionssumme:
-  Der Kassenzettel-Gedanke „227 € für Kultur und Sport" enthält keine neue
-  Sporthalle, wohl aber die Abschreibung auf die alte. Die beiden Haushalte
-  sind nicht addierbar; wer sie nebeneinanderstellt, muss sagen, dass es zwei
-  sind.
-- **Investitionen als Ist** — die Quelle ist der Haushalts**plan**. Was am
-  Jahresende wirklich verbaut wurde, steht in keinem der vier CSVs, und bei
-  Investitionen ist der Abstand notorisch groß (Planung zieht sich, Aufträge
-  werden nicht vergeben). Die Seite sagt das in ihrem Grenzen-Block, statt es
-  zu überspielen.
+- **Ist je Vorhaben — keine der drei Investitions-Schichten führt es.** Das
+  Investitionsprogramm (`council_investitionsmassnahmen`, Anlage 004,
+  Abschnitt „Investitionsprogramm: die einzelne Maßnahme" weiter oben) führt
+  seit 08/2026 4.459 einzelne **geplante** Vorhaben namentlich, durchsuchbar
+  auf `/haushalt/investitionen` — „welche Straße, welche Schule" ist damit
+  zur Hälfte beantwortet. Was am Jahresende wirklich abfloss, kennt seither
+  der Anlagenspiegel (`council_investitionen_ist`, Abschnitt „Gebaut: das Ist
+  zum Investitionsplan" weiter oben) — aber nur nach Auszahlungsart summiert,
+  nicht nach Vorhaben. Keine der beiden Quellen führt die Gliederung der
+  anderen mit; ein Ist je Vorhaben bräuchte eine dritte Quelle, die bisher
+  nicht bekannt ist.
+- **Schulgebäude fehlen in allen drei Investitions-Schichten** — im
+  Finanzhaushalt (`council_investitionen`) so wenig wie im
+  Investitionsprogramm oder im Anlagenspiegel. Sanierung und Neubau liegen
+  beim Eigenbetrieb Gebäudewirtschaft und Hochbau mit eigenem Wirtschaftsplan,
+  den keine der drei Quellen enthält.
 - **Erträge je Teilhaushalt nach Herkunft — für Planjahre** —
   `council_haushalt` kennt je Bereich nur **eine** Ertragssumme. Wer sie in
   Bund, Land und Gebühren aufteilen will, braucht
