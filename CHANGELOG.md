@@ -7,6 +7,17 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [1.13.2] – 2026-08-19
+
+### Behoben
+- **Kein iOS-Zoom mehr beim Antippen kleiner Eingabefelder.** Safari/WKWebView
+  zoomt automatisch rein, sobald ein Eingabefeld eine Schriftgröße unter 16px
+  hat — auf dem iPhone (und, weil `sm:` an der Fensterbreite statt am
+  Eingabegerät hing, auch auf dem iPad) blieb dieser Zoom in Feldern wie
+  „Gespräch umbenennen", „Neues Thema anlegen" oder der Admin-Suche oft hängen.
+  Betroffene Felder zeigen jetzt überall mindestens 16px, sobald kein Mauszeiger
+  vorhanden ist; am Desktop bleibt die kompaktere Schrift wie gewohnt. (#643)
+
 ## [1.13.1] – 2026-08-19
 
 ### Geändert
@@ -2641,7 +2652,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.13.1...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.13.2...main
+[1.13.2]: https://github.com/Schereo/Ratslotse/compare/v1.13.1...v1.13.2
 [1.13.1]: https://github.com/Schereo/Ratslotse/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/Schereo/Ratslotse/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Schereo/Ratslotse/compare/v1.11.0...v1.12.0
