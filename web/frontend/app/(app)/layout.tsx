@@ -139,7 +139,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             halben Schirm brachliegen (Tims Befund 18.08.). Seiten mit
             Lesetext deckeln sich weiterhin selbst — hier wächst nur der
             Rahmen, den z. B. die Fragen-Seite für ihre Spalten nutzt. */}
-        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 weit:max-w-[1600px]">
+        {/* Das Seiten-Polster steht als `--rl-luft` da, statt nur als py-Klasse:
+            Viewport-hohe Seiten (Fragen-Bühne) müssen es von ihrer Höhe
+            abziehen und hatten dafür bisher eine eigene Zahl — die lief beim
+            ersten Kopf-Umbau auseinander (s. fragen/view.tsx). */}
+        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-[var(--rl-luft)] [--rl-luft:1.5rem] sm:px-6 sm:[--rl-luft:2rem] lg:px-8 weit:max-w-[1600px]">
           {children}
         </div>
         {/* Design 6a③: Der sticky Seiten-Footer entfällt — die Pflicht-Links
