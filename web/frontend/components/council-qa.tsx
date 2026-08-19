@@ -2290,9 +2290,12 @@ function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen
     return (
       <form className="flex items-center gap-2 border-b border-border/60 px-2.5 py-2"
         onSubmit={(e) => { e.preventDefault(); speichern(); }}>
+        {/* maus statt einer nackten Größe: unter 16 px zoomt iOS/WKWebView
+            beim Antippen hinein — Tims Befund 19.08. genau an diesem Feld.
+            Ohne die maus-Bedingung erbt es text-base (16 px) von <Input>. */}
         <Input autoFocus value={entwurf} onChange={(e) => setEntwurf(e.target.value)}
           onBlur={speichern} maxLength={120} aria-label="Neuer Gesprächstitel"
-          className="h-9 flex-1 text-[13.5px]" />
+          className="h-9 flex-1 maus:text-[13.5px]" />
         <button type="submit" className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
           Sichern
         </button>
@@ -2460,7 +2463,7 @@ function GespraecheSheet({ gespraeche, aktivId, onNeu, onLaden, onLoeschen, onUm
         {mitSuche && (
           <Input value={suche} onChange={(e) => setSuche(e.target.value)}
             placeholder="In Gesprächen suchen …" aria-label="Gespräche durchsuchen"
-            className="mt-2 h-9 shrink-0 rounded-[11px] text-[13px]" />
+            className="mt-2 h-9 shrink-0 rounded-[11px] maus:text-[13px]" />
         )}
         <div className="mt-1 min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {gruppen.map((gr, gi) => (

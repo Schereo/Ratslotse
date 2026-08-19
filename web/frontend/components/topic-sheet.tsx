@@ -163,10 +163,14 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
 
         <p className="mb-1.5 mt-4 text-xs font-semibold text-muted-foreground">Name</p>
         {nameEditable ? (
-          /* text-base auf dem Telefon aus demselben Grund wie unten bei der
-             Beschreibung: unter 16 px zoomt iOS beim Antippen hinein. */
+          /* text-base aus demselben Grund wie unten bei der Beschreibung:
+             unter 16 px zoomt iOS/WKWebView beim Antippen hinein — und zwar
+             nicht nur „auf dem Telefon", sondern auf jedem Touch-Gerät. Ein
+             iPad ist fast immer ≥640px breit UND ein Touch-Gerät: `sm:`
+             (Breite) griff dort also gar nicht; `maus:` (pointer:fine) ist
+             die richtige Bedingung (Tims Befund 19.08.). */
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} aria-label="Name"
-            className="h-[46px] w-full rounded-xl border-[1.5px] border-primary bg-card px-3.5 text-base font-medium text-foreground outline-none sm:text-[15px]" />
+            className="h-[46px] w-full rounded-xl border-[1.5px] border-primary bg-card px-3.5 text-base font-medium text-foreground outline-none maus:text-[15px]" />
         ) : (
           <div className="flex h-[46px] items-center rounded-xl border border-border bg-card px-3.5 text-[15px] font-medium text-foreground">
             {topic.name}
@@ -189,7 +193,7 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
             components/ui/input.tsx. */}
         <textarea value={description} onChange={(e) => setDescription(e.target.value)}
           rows={6} aria-label="Beschreibung"
-          className="w-full rounded-xl border-[1.5px] border-primary bg-card px-3.5 py-3 text-base leading-relaxed text-foreground outline-none sm:text-[13px]" />
+          className="w-full rounded-xl border-[1.5px] border-primary bg-card px-3.5 py-3 text-base leading-relaxed text-foreground outline-none maus:text-[13px]" />
 
         <div className="mt-3.5 rounded-xl bg-muted/60 px-3.5 py-3">
           {/* „auf den Text im Feld": Dieselbe Definition wie die Themen-Karte,
