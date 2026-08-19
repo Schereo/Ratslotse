@@ -346,3 +346,123 @@ def test_bericht_der_verwaltung_ist_nur_allein_eine_formalie(tmp_path):
             assert not formalie.search(titel), titel
     finally:
         store.close()
+
+
+# ---- Vorlagenart, Unterpunkt-Bündelung, Themen-Zählung (19.08.26) ---------
+
+def _gruppen_store(tmp_path):
+    """Eine Sitzung mit BEIDEN Sorten Überschrift: einem echten Vorhaben mit
+    zwei Stationen und einer Sammel-Rubrik mit unabhängigen Anträgen."""
+    store = CouncilStore(tmp_path / "g.sqlite")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+            "location, fetched_at) VALUES (7, 'Bauausschuss', date('now','+2 day'), "
+            "'17:00', '', datetime('now'))")
+        punkte = [
+            ("Ö 1", "Feststellung der Beschlussfähigkeit", None, None),
+            # Echtes Vorhaben: „Meerweg" steht in beiden Unterpunkten.
+            ("Ö 5", "Bauleitplanung Meerweg", None, None),
+            ("Ö 5.1", "Änderung 5 des Bebauungsplanes 534 (Meerweg) - Aufstellungsbeschluss", "26/1", 101),
+            ("Ö 5.2", "Änderung 5 des Bebauungsplanes 534 (Meerweg) - Grundzüge der Planung", "26/2", 102),
+            # Sammel-Rubrik: die Anträge haben nichts miteinander zu tun.
+            ("Ö 6", "Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder", None, None),
+            ("Ö 6.1", "Ersatzneubau Brücke Tweelbäker See (CDU-Fraktion vom 16.07.2026)", "26/3", 103),
+            ("Ö 6.2", "Ausbau der Fahrradabstellanlagen (SPD-Fraktion vom 10.06.2026)", "26/4", 104),
+        ]
+        store._conn.executemany(
+            "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr, kvonr, is_public) "
+            "VALUES (7, ?, ?, ?, ?, 1)", punkte)
+        store._conn.executemany(
+            "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, art, fetched_at) "
+            "VALUES (?, ?, '', ?, datetime('now'))",
+            [(101, "26/1", "Beschlussvorlage"), (102, "26/2", "Berichtsvorlage"),
+             (103, "26/3", "Beschlussvorlage"), (104, "26/4", "Beschlussvorlage")])
+        store._conn.executemany(
+            "INSERT INTO council_beratungen (kvonr, datum, gremium, ergebnis, fetched_at) "
+            "VALUES (?, date('now','+2 day'), 'Bauausschuss', ?, datetime('now'))",
+            [(101, "Vorberatung"), (102, "Kenntnisnahme"),
+             (103, "Vorberatung"), (104, "Vorberatung")])
+    return store
+
+
+def test_eltern_nummer_liest_die_unterebene():
+    assert CouncilStore._eltern_nummer("Ö 11.3") == "Ö 11"
+    assert CouncilStore._eltern_nummer("N 19.2") == "N 19"
+    assert CouncilStore._eltern_nummer("Ö 11.3.1") == "Ö 11.3"
+    # Punkte ohne Unterebene haben keinen Elternpunkt.
+    assert CouncilStore._eltern_nummer("Ö 11") is None
+    assert CouncilStore._eltern_nummer("") is None
+
+
+def test_stationen_eines_vorhabens_belegen_einen_platz(tmp_path):
+    """Vier Stationen derselben Bauleitplanung sind EIN Vorhaben. Vorher
+    besetzten sie alle drei Plätze der Sitzung, und die Karte zeigte dreimal
+    denselben Bebauungsplan mit unterschiedlichem Verfahrensschritt."""
+    store = _gruppen_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=99)
+        nummern = [p["item_number"] for p in d["punkte"]]
+        # Genau eine der beiden Meerweg-Stationen kommt durch …
+        assert len([n for n in nummern if n.startswith("Ö 5.")]) == 1
+        meerweg = next(p for p in d["punkte"] if p["item_number"].startswith("Ö 5."))
+        assert meerweg["gruppe_titel"] == "Bauleitplanung Meerweg"
+        assert meerweg["gruppe_stationen"] == 2
+        # … und die Überschrift selbst ist kein eigener Punkt.
+        assert "Ö 5" not in nummern
+    finally:
+        store.close()
+
+
+def test_sammelrubrik_buendelt_nicht(tmp_path):
+    """„Anträge der Fraktionen …" ist eine Rubrik, kein Vorhaben: Ihre
+    Unterpunkte behandeln verschiedene Themen und müssen einzeln antreten.
+    Als Gruppe behandelt käme von elf Anträgen nur einer je auf die Karte."""
+    store = _gruppen_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=99)
+        antraege = [p for p in d["punkte"] if p["item_number"].startswith("Ö 6.")]
+        assert len(antraege) == 2, "beide Anträge sind eigenständige Themen"
+        assert all(p["gruppe_titel"] is None for p in antraege)
+    finally:
+        store.close()
+
+
+def test_beschlussvorlage_haelt_die_kenntnisnahme_schranke_auf(tmp_path):
+    """Die VBN-Tarifanpassung ist eine Beschlussvorlage, wird im Fachausschuss
+    aber als „Kenntnisnahme" geführt, weil der Rat entscheidet. Die Schranke
+    drückte sie auf 13 von 100 — unter die Schwelle, während ein Umsatzsteuer-
+    Bericht mit 30 auf der Karte stand (Tims Befund 19.08.26)."""
+    store = CouncilStore(tmp_path / "s.sqlite")
+    try:
+        gemeinsam = {"behandlung": "Kenntnisnahme", "vorgeschichte": 0,
+                     "summary": "Ein Satz dazu.", "vorlage_nr": "26/1",
+                     "committee": "Verkehrsausschuss"}
+        punkte = [
+            {**gemeinsam, "title": "VBN-Tarifanpassung 2027 - Beschluss",
+             "art": "Beschlussvorlage"},
+            {**gemeinsam, "title": "Geplante Änderung der Verordnung über Parkgebühren - Bericht",
+             "art": "Berichtsvorlage"},
+        ]
+        store._punkte_bewerten(punkte)
+        beschluss, bericht = punkte
+        assert beschluss["wichtig"] >= store.WICHTIG_MINDEST, "kommt jetzt auf die Karte"
+        assert beschluss["wichtig"] > bericht["wichtig"], (
+            "die Entscheidung schlägt den Bericht — vorher war es umgekehrt")
+        # Der Bericht bleibt gedeckelt: Die Schranke gilt weiter, wo sie stimmt.
+        assert bericht["rang"] <= 2.5
+    finally:
+        store.close()
+
+
+def test_inhaltlich_je_sitzung_zaehlt_themen_nicht_zeilen(tmp_path):
+    """Die Restzeile nannte bisher nur die weiteren RELEVANTEN Punkte („+ 1"),
+    obwohl auf der Tagesordnung noch Dutzende Themen standen."""
+    store = _gruppen_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=99)
+        # Meerweg (2 Stationen → 1 Thema) + zwei eigenständige Anträge = 3.
+        # Formalie und beide Überschriften zählen nicht mit.
+        assert d["inhaltlich_je_sitzung"][7] == 3
+    finally:
+        store.close()
