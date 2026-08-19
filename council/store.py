@@ -1493,7 +1493,8 @@ class CouncilStore:
                 "antragsteller": k["antragsteller"], "topic_name": k["topic_name"],
                 "summary": None, "vorlage_nr": k["vorlage_nr"], "kvonr": k["kvonr"],
                 "committee": k["committee"], "session_date": k["session_date"],
-                "gruppe_titel": k["gruppe_titel"], "gruppe_stationen": k["gruppe_stationen"],
+                "gruppe_nr": k["gruppe_nr"], "gruppe_titel": k["gruppe_titel"],
+                "gruppe_stationen": k["gruppe_stationen"],
             })
         return {
             # Seit Design 14 trägt die Karte auch die Sitzungen ohne relevante
