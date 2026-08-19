@@ -8261,6 +8261,54 @@ class CouncilStore:
             "wortbeitraege_gremien": wb["gremien"],
         }
 
+    def verwaltung_name(self, slug: str) -> str | None:
+        """Kanonischer Name einer Verwaltungsperson zu ihrem Slug — schlanke
+        Auskunft für den Wortbeiträge-Endpunkt, ohne den ganzen Lexikon-Aufbau
+        aus personen_lexikon(). Gegenstück zu member_name(). Keine
+        Rollen-Prüfung hier: Wer einmal einen Steckbrief hatte
+        (verwaltung_detail), soll auch weitere Seiten seiner Wortbeiträge
+        laden können."""
+        from collections import Counter
+        namen = [r["name"] for r in self._conn.execute(
+            "SELECT name FROM council_attendance WHERE role = 'verwaltung' "
+            "AND name IS NOT NULL AND name != ''")]
+        passend = [n for n in namen if self._person_slug(n) == slug]
+        return self._person_anzeige(Counter(passend).most_common(1)[0][0]) if passend else None
+
+    def verwaltung_detail(self, slug: str) -> dict | None:
+        """Schmaler Steckbrief für Verwaltungsleute mit erkanntem Amt (Tims
+        Wunsch 19.08., im Anschluss an den Figura-Badge-Fund): NUR für
+        Oberbürgermeister/-in, Stadtkämmerer/-in, Stadtbaurat/-rätin,
+        Stadtrat/-rätin — dieselbe Erkennung wie in personen_lexikon()
+        (_ROLLEN_RE übers note-Feld). Ohne erkanntes Amt gibt es keine Seite:
+        „Ein toter Link ist schlimmer als kein Link" (schon in #588 so
+        entschieden, für die Aufsichtsräte-Verlinkung).
+
+        Bewusst KEIN Nachbau von member_detail(): Fraktions-Zeitleiste,
+        Vorsitz-Zähler und Gremien-Präsenz passen auf ein Mandat, nicht auf
+        ein Amt — ein Oberbürgermeister sitzt kraft Amtes in praktisch jedem
+        Gremium, das ist keine gewählte Mitgliedschaft. Der Zeitraum ist
+        ehrlich als Jahres-Spanne der Protokoll-Erwähnungen beschriftet,
+        keine amtliche Amtszeit: SessionNet selbst führt Verwaltung nicht als
+        Mandatsträger:innen (council/stammdaten.py:``fetch_mandatstraeger``).
+
+        Nutzt personen_lexikon() statt einer eigenen Aggregation — dieselbe
+        Gruppierung für alle Verwaltungsleute an einer Stelle, nicht zwei
+        Fassungen, die auseinanderlaufen können."""
+        eintrag = next((p for p in self.personen_lexikon()
+                        if p["slug"] == slug and p["art"] == "stadt" and p["rolle"]), None)
+        if not eintrag:
+            return None
+        wb = self.wortbeitraege_person(eintrag["name"], limit=10)
+        return {
+            "typ": "verwaltung", "name": eintrag["name"], "slug": slug,
+            "rolle": eintrag["rolle"], "aktiv": eintrag["aktiv"],
+            "von": eintrag["von"], "bis": eintrag["bis"],
+            "wortbeitraege": wb["items"],
+            "wortbeitraege_gesamt": wb["gesamt"],
+            "wortbeitraege_gremien": wb["gremien"],
+        }
+
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:
         """Main decisions with their text, for the € extraction backfill."""
         sql = "SELECT id, title, beschluss FROM council_decisions WHERE kind = 'decision'"

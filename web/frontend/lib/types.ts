@@ -272,6 +272,8 @@ export interface Member {
 }
 
 export interface MemberDetail {
+  /** Fehlt bei älteren gecachten Antworten — dann als "rat" behandeln. */
+  typ?: "rat";
   name: string; slug: string; party: string | null;
   n_sessions: number; active_from: string | null; active_to: string | null;
   /** Fraktions-/Gruppen-Verlauf aus der Anwesenheit: Phasen je Zugehörigkeit,
@@ -304,6 +306,21 @@ export interface MemberDetail {
   /** Gremien mit Beitrags-Anzahl, Futter für den Filter. */
   wortbeitraege_gremien?: { committee: string; n: number }[];
 }
+
+/** Schmaler Steckbrief für Verwaltungsleute mit erkanntem Amt (Tims Wunsch
+ *  19.08.) — bewusst kein Nachbau von MemberDetail: kein Mandat, also keine
+ *  Fraktions-Zeitleiste, kein Vorsitz-Zähler, keine Gremien-Präsenz. `von`/
+ *  `bis` sind Jahre der Protokoll-Erwähnung, keine amtliche Amtszeit. */
+export interface VerwaltungDetail {
+  typ: "verwaltung";
+  name: string; slug: string; rolle: string | null;
+  aktiv: boolean; von: string | null; bis: string | null;
+  wortbeitraege?: MemberDetail["wortbeitraege"];
+  wortbeitraege_gesamt?: number;
+  wortbeitraege_gremien?: { committee: string; n: number }[];
+}
+
+export type PersonProfil = MemberDetail | VerwaltungDetail;
 
 /** Eine Station der offiziellen Beratungsfolge einer Vorlage. */
 export interface Beratung {

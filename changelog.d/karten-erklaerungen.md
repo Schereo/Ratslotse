@@ -1,4 +1,7 @@
-### Behoben
+---
+kategorie: behoben
+---
+
 - Die Wochen-Vorschau liefert die Kurzfassung und den Tragweite-Grund jetzt
   auch für die aufklappbaren Punkte mit. Bisher fehlten sie dort, sodass
   Instagram-Karten aus dieser Liste grundsätzlich ohne Erklärung standen.

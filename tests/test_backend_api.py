@@ -3109,6 +3109,35 @@ def test_thema_und_person_sind_ohne_anmeldung_lesbar(client):
     assert client.get("/api/council/person/anke-luedtke/wortbeitraege?offset=-1").status_code == 422
 
 
+def test_verwaltung_mit_erkanntem_amt_hat_eigenen_steckbrief(client):
+    """Tims Wunsch 19.08.: Verwaltungsleute mit erkanntem Amt (OB,
+    Stadtkämmerer/-in etc.) bekommen jetzt einen eigenen Steckbrief — ohne
+    erkanntes Amt bleibt es beim 404 (kein toter Link, s. #588)."""
+    _seed_geteilter_beschluss(ksinr=5153)
+    cs = CouncilStore(COUNCIL_DB)
+    cs._conn.executemany(
+        "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
+        [(5153, "Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister"),
+         (5153, "Dagmar Sachse", "Verwaltung", "verwaltung", "Für Oberbürgermeister Krogmann")])
+    cs._conn.commit()
+    cs.close()
+
+    r = client.get("/api/council/person/juergen-krogmann")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["typ"] == "verwaltung" and body["rolle"] == "Oberbürgermeister"
+
+    # Nur eine Vertretungs-Notiz, kein erkanntes Amt → weiterhin 404.
+    assert client.get("/api/council/person/dagmar-sachse").status_code == 404
+
+    wb = client.get("/api/council/person/juergen-krogmann/wortbeitraege")
+    assert wb.status_code == 200
+    assert set(wb.json()) >= {"items", "total", "gesamt", "gremien"}
+
+    # Ratsmitglieder-Antwort trägt jetzt ebenfalls den typ-Diskriminator.
+    assert client.get("/api/council/person/anke-luedtke").json()["typ"] == "rat"
+
+
 def test_stoebern_und_persoenliches_bleiben_hinter_der_anmeldung(client):
     """Regressionsschutz zur Öffnung oben: Geöffnet wurden GENAU die geteilten
     Detailseiten — Suche, Übersichten und alles Persönliche nicht.

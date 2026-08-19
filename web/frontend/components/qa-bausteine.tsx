@@ -289,7 +289,10 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
           {zeitraum && (
             <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{zeitraum}</span>
           )}
-          {p.art === "rat" && (
+          {/* Verwaltung verlinkt nur mit ERKANNTEM Amt (Tims Wunsch 19.08.) —
+              ohne rolle liefert /person/{slug} 404 (verwaltung_detail() im
+              Backend), und ein toter Link ist schlimmer als kein Link (#588). */}
+          {(p.art === "rat" || (p.art === "stadt" && p.rolle)) && (
             /* Next-Link statt <a>: Der harte Reload warf beim Zurückkommen
                den Gesprächs-State weg (Tims Befund 12.08.) — client-seitig
                bleibt die History intakt und der Restore greift. */

@@ -1,4 +1,7 @@
-### Geändert
+---
+kategorie: geaendert
+---
+
 - Die Wochen-Vorschau wählt ihre Tagesordnungspunkte besser aus: Sie
   berücksichtigt jetzt, ob die Verwaltung etwas zur Entscheidung vorlegt oder
   nur berichtet. Bisher fielen echte Beschlüsse wie die Fahrpreis-Anpassung im
