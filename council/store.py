@@ -2363,6 +2363,60 @@ class CouncilStore:
         r"Beschlussantrag|Berichtsantrag|Antrag|Bericht|Beschluss|Vorlage|Kenntnisnahme)\s*$",
         re.IGNORECASE)
 
+    #: „Ö 11.3" → Präfix „Ö", Nummer „11.3". Das Präfix ist zugleich der
+    #: Öffentlichkeitsmarker (Ö/N) und gehört zur Nummer, nicht davor weg.
+    _TOP_NUMMER_RE = re.compile(r"^\s*([A-Za-zÖÄÜöäü]+)\s+([\d.]+?)\.?\s*$")
+
+    #: Wörter, die in Tagesordnungs-Überschriften stehen, ohne einen
+    #: Gegenstand zu benennen — sie dürfen keine Gruppe begründen.
+    _RUBRIK_WORTE = frozenset({
+        "antraege", "antrag", "fraktionen", "fraktion", "gruppen", "gruppe",
+        "ratsund", "ausschussmitglieder", "mitglieder", "berichte", "bericht",
+        "anfragen", "anregungen", "mitteilungen", "verschiedenes", "verwaltung",
+        "beschluss", "beschluesse", "vorlagen", "sonstiges", "genehmigung",
+        "protokolle", "protokolls", "tagesordnung", "oeffentlicher", "teil",
+    })
+
+    @classmethod
+    def _titel_worte(cls, titel: str | None) -> set[str]:
+        """Tragende Wörter eines Titels — die Handhabe für „ist das dieselbe
+        Sache?". Kurzes und Rubrik-Vokabular fliegt raus, sonst gälte jede
+        Überschrift mit dem Wort „Antrag" als Vorhaben."""
+        gefaltet = cls._falte_namen(titel or "")
+        worte = "".join(c if c.isalnum() else " " for c in gefaltet).split()
+        return {w for w in worte if len(w) >= 5 and not w.isdigit()
+                and w not in cls._RUBRIK_WORTE}
+
+    @classmethod
+    def _top_sortierung(cls, item_number: str | None) -> tuple:
+        """Sortierschlüssel für eine TOP-Nummer — „Ö 5" vor „Ö 16.4".
+
+        Lexikografisch verglichen stand „Ö 16.4" vor „Ö 5" (und „Ö 10" vor
+        „Ö 2"); die Karte listete ihre Punkte damit in einer Reihenfolge, die
+        es auf der Tagesordnung nicht gibt. Dieselbe Falle steht schon im
+        Frontend dokumentiert (`decision/view.tsx`: „4.10 käme sonst vor 4.2").
+        """
+        m = cls._TOP_NUMMER_RE.match(item_number or "")
+        if not m:
+            return (item_number or "",), ()
+        return (m.group(1),), tuple(int(t) for t in m.group(2).split(".") if t.isdigit())
+
+    @classmethod
+    def _eltern_nummer(cls, item_number: str | None) -> str | None:
+        """Nummer des übergeordneten Tagesordnungspunkts — „Ö 11.3" → „Ö 11".
+
+        ``None`` für Punkte ohne Unterebene. Bewusst rein syntaktisch: Ob es
+        den Elternpunkt wirklich gibt (und ob er eine Überschrift ist), prüft
+        der Aufrufer am Bestand der Sitzung.
+        """
+        m = cls._TOP_NUMMER_RE.match(item_number or "")
+        if not m:
+            return None
+        praefix, nummer = m.group(1), m.group(2)
+        if "." not in nummer:
+            return None
+        return f"{praefix} {nummer.rsplit('.', 1)[0]}"
+
     @classmethod
     def _titel_zerlegen(cls, titel: str) -> tuple:
         """Antragsteller heraustrennen und den Titel fürs Anzeigen kürzen.
@@ -2444,6 +2498,17 @@ class CouncilStore:
                 rang += 0.4          # erklärbar schlägt unerklärt bei Gleichstand
             if p.get("vorlage_nr"):
                 rang += 0.2
+            # Beschlussvorlage heißt: Die Verwaltung legt etwas zur
+            # Entscheidung vor. Das ist unabhängig davon, welches Gremium
+            # formal beschließt — und genau daran scheiterte die Auswahl
+            # bisher (Tims Befund 19.08.26): Die VBN-Tarifanpassung ist eine
+            # Beschlussvorlage, wird im Fachausschuss aber als „Kenntnisnahme"
+            # geführt, weil der Rat entscheidet. Sie landete bei 13 von 100
+            # und fiel unter die Schwelle, während ein Umsatzsteuer-Bericht
+            # mit 30 auf der Karte stand.
+            beschlussvorlage = "beschluss" in (p.get("art") or "").lower()
+            if beschlussvorlage:
+                rang += 1.5
             for namen, bonus in self._GREMIUM_GEWICHT:
                 if any(n in (p.get("committee") or "").lower() for n in namen):
                     rang += bonus
@@ -2458,7 +2523,12 @@ class CouncilStore:
             # Bericht zur Kenntnis kann sich nicht mehr über Nebensignale an
             # einer Entscheidung vorbeischieben. Die Deckel entsprechen den
             # Ankern des Tragweite-Prompts (Kenntnisnahme ≈ 20 von 100).
-            if art and "entscheid" not in art and "vorberat" not in art:
+            #
+            # Nicht aber für Beschlussvorlagen: Deren Prämisse — „hier wird
+            # nichts entschieden" — ist schlicht falsch, das Gremium bereitet
+            # dann nur die Entscheidung eines anderen vor.
+            if (art and "entscheid" not in art and "vorberat" not in art
+                    and not beschlussvorlage):
                 rang = min(rang, 2.5)
             p["rang"] = round(max(rang, 0.0), 2)
             # Auf die Tragweite-Skala heben (0–100), damit Heuristik und
@@ -2523,26 +2593,90 @@ class CouncilStore:
                     "sitzungen": [], "punkte": []}
 
         ph = ",".join("?" * len(sitzungen))
+        # ``v.art`` unterscheidet Beschluss- von Berichtsvorlage — das stärkste
+        # verfügbare Signal dafür, ob überhaupt etwas entschieden werden soll.
+        # Es lag bis 19.08.26 ungenutzt in der Datenbank.
         rohe = self._conn.execute(
-            f"SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr, s.summary "
+            f"SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr, s.summary, "
+            f"       v.art "
             f"FROM council_agenda_items a "
             f"LEFT JOIN agenda_item_summaries s ON s.ksinr = a.ksinr AND s.item_number = a.item_number "
+            f"LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
             f"WHERE a.ksinr IN ({ph}) AND a.is_public = 1 ORDER BY a.id",
             [s["ksinr"] for s in sitzungen]).fetchall()
         nach_sitzung = {s["ksinr"]: s for s in sitzungen}
+
+        # Überschriften-Punkte erkennen: „Ö 11 Bauleitplanung Gewerbegebiet
+        # Brokhausen" trägt keine Vorlage, darunter hängen Ö 11.1 … Ö 11.4 als
+        # Stationen DESSELBEN Vorhabens. Ohne diese Bündelung belegen vier
+        # Stationen alle drei Plätze der Sitzung (Tims Befund 19.08.26) — und
+        # die Karte zeigt dreimal denselben Bebauungsplan.
+        eltern_von = {(r["ksinr"], r["item_number"]): self._eltern_nummer(r["item_number"])
+                      for r in rohe}
+        kinder_zahl: dict[tuple, int] = {}
+        for (ksinr, _nr), eltern in eltern_von.items():
+            if eltern:
+                kinder_zahl[(ksinr, eltern)] = kinder_zahl.get((ksinr, eltern), 0) + 1
+        # Nur ein Punkt OHNE eigene Vorlage ist eine reine Überschrift. Ein
+        # Punkt mit Vorlage, unter dem Unterpunkte hängen, ist selbst Inhalt.
+        #
+        # Und nur, wenn er ein VORHABEN benennt statt einer Rubrik: „Anträge
+        # der Fraktionen, Gruppen, Rats- und Ausschussmitglieder" trägt elf
+        # völlig verschiedene Themen unter sich; die zu einer Gruppe zu
+        # bündeln hieße, zehn davon nie zu zeigen. Beleg dafür, dass es
+        # dieselbe Sache ist: ein tragendes Wort der Überschrift steht in
+        # JEDEM Unterpunkt („Meerweg", „Brokhausen") — bei einer Rubrik in
+        # keinem.
+        kinder_worte: dict[tuple, list[set]] = {}
+        for r in rohe:
+            eltern = eltern_von.get((r["ksinr"], r["item_number"]))
+            if eltern:
+                kinder_worte.setdefault((r["ksinr"], eltern), []).append(
+                    self._titel_worte(r["title"]))
+        #
+        # Zwei Dinge, die auseinandergehalten werden müssen: Eine KOPFZEILE
+        # trägt selbst keinen Inhalt (weder Vorlage noch Gegenstand) und darf
+        # nie als Punkt auftauchen — das gilt für Vorhaben UND Rubriken. Nur
+        # die Vorhaben bündeln zusätzlich ihre Unterpunkte.
+        kopfzeile = {(r["ksinr"], r["item_number"]) for r in rohe
+                     if not r["vorlage_nr"] and (r["ksinr"], r["item_number"]) in kinder_worte}
+        ueberschrift = {}
+        for r in rohe:
+            schl = (r["ksinr"], r["item_number"])
+            if schl not in kopfzeile:
+                continue
+            eigene = self._titel_worte(r["title"])
+            if any(all(w in kind for kind in kinder_worte[schl]) for w in eigene):
+                ueberschrift[schl] = (r["title"] or "").strip()
 
         kandidaten = []
         for r in rohe:
             titel = (r["title"] or "").strip()
             if not titel or self._FORMALIE_RE.search(titel):
                 continue
+            schluessel = (r["ksinr"], r["item_number"])
+            if schluessel in kopfzeile:
+                continue          # trägt keinen Inhalt, nur eine Zwischenzeile
             sitz = nach_sitzung[r["ksinr"]]
+            eltern = eltern_von.get(schluessel)
+            gruppe_nr = eltern if (r["ksinr"], eltern) in ueberschrift else r["item_number"]
             kandidaten.append({
                 "ksinr": r["ksinr"], "item_number": r["item_number"], "title": titel,
                 "summary": (r["summary"] or "").strip() or None,
-                "vorlage_nr": r["vorlage_nr"], "kvonr": r["kvonr"],
+                "vorlage_nr": r["vorlage_nr"], "kvonr": r["kvonr"], "art": r["art"],
                 "committee": sitz["committee"], "session_date": sitz["session_date"],
+                "gruppe_nr": gruppe_nr,
+                "gruppe_titel": ueberschrift.get((r["ksinr"], gruppe_nr)),
             })
+
+        # Wie viele Stationen hat jede Gruppe? Die Karte sagt damit „Bauleit-
+        # planung Meerweg · 2 Stationen" statt zweimal fast denselben Titel.
+        gruppe_gross: dict[tuple, int] = {}
+        for k in kandidaten:
+            schl = (k["ksinr"], k["gruppe_nr"])
+            gruppe_gross[schl] = gruppe_gross.get(schl, 0) + 1
+        for k in kandidaten:
+            k["gruppe_stationen"] = gruppe_gross[(k["ksinr"], k["gruppe_nr"])]
 
         # Behandlungsart und Vorgeschichte aus der Beratungsfolge — sie kommt
         # direkt aus dem Ratsinformationssystem und hängt NICHT am Protokoll.
@@ -2596,19 +2730,24 @@ class CouncilStore:
         # Treffer zuerst, danach nach Rang: Ein Punkt zu einem eigenen Thema ist
         # relevanter als jeder gut bewertete Fremdpunkt.
         kandidaten.sort(key=lambda p: (0 if p["topic_name"] else 1, -p["wichtig"], p["session_date"]))
-        je_sitzung: dict[int, int] = {}
+        gruppen_je_sitzung: dict[int, set] = {}
         punkte = []
         for p in kandidaten:
             # Wer ein eigenes Thema trifft, ist per Definition relevant — die
             # Rang-Schwelle gilt nur für die allgemeine Auswahl.
             if not p["topic_name"] and p["wichtig"] < self.WICHTIG_MINDEST:
                 continue
-            # Höchstens drei je Sitzung: Eine volle Tagesordnung soll die
-            # Ausgabe nicht auffressen, aber Qualität schlägt Streuung — der
-            # frühere Deckel von zwei zog schwache Punkte herein.
-            if je_sitzung.get(p["ksinr"], 0) >= 3:
+            # Höchstens drei GRUPPEN je Sitzung — nicht drei Punkte. Eine
+            # Bauleitplanung mit vier Stationen ist ein Vorhaben und bekommt
+            # einen Platz; da die Liste nach Rang sortiert ist, ist der erste
+            # Treffer einer Gruppe zugleich ihr stärkster Punkt.
+            gesehen = gruppen_je_sitzung.setdefault(p["ksinr"], set())
+            gruppe = p["gruppe_nr"]
+            if gruppe in gesehen:
                 continue
-            je_sitzung[p["ksinr"]] = je_sitzung.get(p["ksinr"], 0) + 1
+            if len(gesehen) >= 3:
+                continue
+            gesehen.add(gruppe)
             punkte.append(p)
             if len(punkte) >= max_punkte:
                 break
@@ -2645,7 +2784,7 @@ class CouncilStore:
                 continue
             p["top"] = True
             gesetzt.append(worte)
-        punkte.sort(key=lambda p: (p["session_date"], p["item_number"] or ""))
+        punkte.sort(key=lambda p: (p["session_date"], self._top_sortierung(p["item_number"])))
 
         # Wie viele relevante Punkte hätte jede Sitzung — VOR dem Anzeige-
         # Deckel. Design 14 braucht das zweimal: für das Abzeichen („3 für
@@ -2658,11 +2797,19 @@ class CouncilStore:
         # „N für dich" — bei jemandem ohne passendes Thema war das schlicht
         # falsch (Tims Befund 15.08.).
         treffer_je_sitzung: dict[int, int] = {}
+        # Und wie viele inhaltliche Themen hat die Sitzung ÜBERHAUPT — ohne
+        # Formalien, ohne Überschriften-Zeilen, Stationen eines Vorhabens als
+        # eines gezählt. Das ist die Zahl für „+ N weitere Tagesordnungs-
+        # punkte": Die Karte nannte bisher nur die weiteren RELEVANTEN Punkte
+        # („+ 1"), obwohl auf der Tagesordnung noch 26 Themen standen — das
+        # klang nach einer dünnen Sitzung statt nach einer Auswahl.
+        themen_je_sitzung: dict[int, set] = {}
         for k in kandidaten:
             if k["topic_name"]:
                 treffer_je_sitzung[k["ksinr"]] = treffer_je_sitzung.get(k["ksinr"], 0) + 1
             if k["topic_name"] or k["wichtig"] >= self.WICHTIG_MINDEST:
                 relevant[k["ksinr"]] = relevant.get(k["ksinr"], 0) + 1
+            themen_je_sitzung.setdefault(k["ksinr"], set()).add(k["gruppe_nr"])
         # Die übrigen relevanten Punkte je Sitzung MIT ausliefern (Tims Wunsch
         # 18.08.): „x weitere Punkte" soll in der Karte aufklappen statt zur
         # Tagesordnung wegzunavigieren — dafür braucht die Karte die Titel.
@@ -2680,6 +2827,8 @@ class CouncilStore:
                 "antragsteller": k["antragsteller"], "topic_name": k["topic_name"],
                 "summary": None, "vorlage_nr": k["vorlage_nr"], "kvonr": k["kvonr"],
                 "committee": k["committee"], "session_date": k["session_date"],
+                "gruppe_nr": k["gruppe_nr"], "gruppe_titel": k["gruppe_titel"],
+                "gruppe_stationen": k["gruppe_stationen"],
             })
         return {
             # Seit Design 14 trägt die Karte auch die Sitzungen ohne relevante
@@ -2695,6 +2844,7 @@ class CouncilStore:
             "treffer_je_sitzung": treffer_je_sitzung,
             "treffer_gesamt": sum(1 for k in kandidaten if k["topic_name"]),
             "inhaltlich_gesamt": len(kandidaten),
+            "inhaltlich_je_sitzung": {k: len(v) for k, v in themen_je_sitzung.items()},
         }
 
     def count_upcoming_sessions(self) -> int:
@@ -3466,10 +3616,13 @@ class CouncilStore:
         bis = (date.today() + timedelta(days=tage_voraus)).isoformat()
         sql = """SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr,
                         s.summary, cs.committee, cs.session_date,
-                        v.beschlussvorschlag, v.finanz_check, v.amt,
+                        v.beschlussvorschlag, v.finanz_check, v.amt, v.art,
                         (SELECT COUNT(*) FROM council_beratungen b WHERE b.kvonr = a.kvonr)
                             AS stationen,
-                        substr(v.raw_text, 1, 1200) AS sachverhalt
+                        -- Großzügig: Die ersten ~300 Zeichen sind Briefkopf,
+                        -- den `impact.vorlagen_kern` abschneidet. Bei 1200
+                        -- blieb danach zu wenig Inhalt übrig.
+                        substr(v.raw_text, 1, 2500) AS sachverhalt
                  FROM council_agenda_items a
                  JOIN council_sessions cs ON cs.ksinr = a.ksinr
                  LEFT JOIN agenda_item_summaries s
