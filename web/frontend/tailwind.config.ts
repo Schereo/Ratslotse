@@ -52,6 +52,12 @@ const config: Config = {
         weit: { raw: "(min-width: 1680px)" },
         desk: { raw: "(pointer: fine) and (min-width: 1024px)" },
         tab: { raw: "(pointer: coarse) and (min-width: 1024px)" },
+        /* maus — reines Eingabegerät, OHNE Breiten-Gate (Tims Wunsch 19.08.):
+           Klick-Pfeile neben horizontal scrollenden Pill-Zeilen sind nur für
+           eine Maus eine Abkürzung — Touch scrollt eh per Wisch. `desk` passt
+           hier nicht: Es verlangt zusätzlich min-width:1024px, ein schmales
+           Desktop-Fenster verlöre die Pfeile also grundlos mit. */
+        maus: { raw: "(pointer: fine)" },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
