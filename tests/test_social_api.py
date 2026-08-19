@@ -246,3 +246,38 @@ def test_kennung_laesst_keinen_pfad_durch(client, monkeypatch, tmp_path):
             assert r.status_code in (400, 404), (boese, r.status_code)
     finally:
         get_settings.cache_clear()
+
+
+def test_abgelegte_bilder_sind_oeffentlich_abrufbar(monkeypatch, tmp_path):
+    """Der Upload allein nützt nichts: Instagram holt jedes Bild SELBST von
+    einer öffentlichen Adresse. Bis zum 19.08.26 landeten die Dateien im
+    public/ des Frontends — Next.js liest das aber beim Build und lieferte
+    später hinzugefügte Dateien nie aus (Upload ok, URL 404)."""
+    get_settings.cache_clear()
+    monkeypatch.setenv("SOCIAL_API_TOKEN", "geheim-fuer-den-bot")
+    monkeypatch.setenv("SOCIAL_MEDIA_DIR", str(tmp_path))
+    monkeypatch.setenv("SOCIAL_MEDIA_BASE_URL", "https://example.org/api/social-media")
+    try:
+        # Die Einhängung passiert beim Import — für den Test frisch aufbauen.
+        import importlib
+        import app.main as hauptmodul
+        modul = importlib.reload(hauptmodul)
+        with TestClient(modul.app) as c:
+            jpeg = b"\xff\xd8\xff" + b"y" * 200
+            r = c.post("/api/social/medien/2026-08-24",
+                       headers={"X-Social-Token": "geheim-fuer-den-bot"},
+                       files={"dateien": ("k.jpg", io.BytesIO(jpeg), "image/jpeg")})
+            assert r.status_code == 200, r.text
+            url = r.json()["urls"][0]
+            assert url.startswith("https://example.org/api/social-media/")
+
+            # Und dieselbe Datei kommt OHNE Token wieder heraus.
+            pfad = url.split("https://example.org", 1)[1]
+            hol = c.get(pfad)
+            assert hol.status_code == 200, pfad
+            assert hol.content == jpeg
+    finally:
+        get_settings.cache_clear()
+        import importlib
+        import app.main as hauptmodul
+        importlib.reload(hauptmodul)
