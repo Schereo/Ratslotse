@@ -2832,12 +2832,27 @@ Der Wert existiert nicht mehr; eine Migration in `store.py` hebt Altstände beim
 Ordnung, nur sein Status war es nicht.
 :::
 
-**Maskiert wird jetzt an der Index-Grenze** (`council/kontaktdaten.py`).
-`store.anlagen_missing_embeddings()` und `store.rebuild_fts()` nehmen IBAN, BIC,
-Telefon, Fax, E-Mail und Anschriften aus dem Text, **bevor** er in die
-Chunk-Vektoren bzw. den Volltextindex geht. `council_anlagen.raw_text` bleibt
-vollständig — die Parser brauchen ihn, und ein Beleg, der auf ein PDF zeigt,
-muss auch wiederfinden, was darin steht.
+**Zwei Stufen** (`council/kontaktdaten.py`), und der Unterschied ist wichtig:
+
+| | was | wo |
+|---|---|---|
+| `entfernen()` | **IBAN, BIC, vollständige Anschrift** | schon beim **Speichern** — sie kommen gar nicht erst in den Bestand |
+| `maskieren()` | zusätzlich **Telefon, Fax, E-Mail** | an der **Index-Grenze** — im Bestand bleiben sie |
+
+`entfernen()` ist **ohne erneutes Laden des PDF unumkehrbar**. Deshalb steht
+dort nur, was nachweislich kein Parser braucht: Eine Kontonummer ist nie eine
+Haushaltszahl, und eine vollständige Postanschrift auch nicht — der Straßenname
+allein bleibt ja stehen, und der ist das Einzige, was das Investitionsprogramm
+daraus braucht.
+
+Telefon und E-Mail bleiben bewusst im Bestand: Eine Rufnummer der Verwaltung
+kann der Anker sein, an dem jemand eine Fundstelle im PDF wiederfindet. Am
+Index fallen sie trotzdem — `store.anlagen_missing_embeddings()` und
+`store.rebuild_fts()` schicken ihren Text durch `maskieren()`.
+
+`scripts/bereinige_kontaktdaten.py` holt nach, was vor dem 20.08.2026
+hereinkam: **81 IBAN, 42 BIC und 1.453 Anschriften** in 607 Dokumenten. Der
+Lauf ist idempotent und hängt im Ops-Workflow.
 
 **Das ist kein OCR-Thema.** Gemessen am Prod-Stand vom 16.08.2026 tragen **606
 Anlagen** Kontaktdaten — 1.382 Anschriften, 1.024 Telefon- und Faxnummern, 533

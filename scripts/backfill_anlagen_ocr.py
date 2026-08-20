@@ -51,6 +51,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council import ocr  # noqa: E402
+from council.kontaktdaten import entfernen  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 # DIE SITZUNG DES REPOS, NICHT `requests.get`. Sie setzt
 # `User-Agent: Mozilla/5.0`; mit dem Standard-UA von requests antwortet das
@@ -203,12 +204,18 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
                     print(f"  [{did}] nichts gelesen ({lesung.seiten} Seiten): "
                           f"{grund}", flush=True)
                     continue
+                # Kontonummern und Anschriften kommen GAR NICHT ERST in den
+                # Bestand (`council/kontaktdaten.entfernen`). Telefon und
+                # E-Mail bleiben und werden erst am Index maskiert — sie
+                # können der Anker sein, an dem jemand eine Fundstelle im PDF
+                # wiederfindet, eine Kontonummer nie.
+                text = entfernen(lesung.text)
                 with store._conn:
                     store._conn.execute(
                         "UPDATE council_anlagen SET raw_text = ?, n_pages = ?, "
                         "status = 'ok', ocr_modell = ?, fetched_at = datetime('now') "
                         "WHERE document_id = ?",
-                        (lesung.text, lesung.seiten, lesung.modell, did))
+                        (text, lesung.seiten, lesung.modell, did))
                 gelesen += 1
                 if not lesung.vollstaendig:
                     unvollstaendig.append(did)

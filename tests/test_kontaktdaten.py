@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from council.kontaktdaten import (  # noqa: E402
     PLATZHALTER,
     enthaelt_kontaktdaten,
+    entfernen,
     maskieren,
     zaehlen,
 )
@@ -177,3 +178,52 @@ def test_zaehlen_meldet_die_arten():
     z = zaehlen(BRIEFKOPF)
     assert z["iban"] == 1 and z["bic"] == 1 and z["email"] == 1
     assert z["telefon"] == 2 and z["anschrift"] == 1
+
+
+# --------------------------------------------------------------------------
+# (d) Zwei Sätze: was gar nicht gespeichert wird, was nur den Index meidet
+# --------------------------------------------------------------------------
+
+def test_entfernen_nimmt_konto_und_anschrift_aus_dem_bestand():
+    """Tims Entscheidung: „IBANs und Adresse kannst du auch komplett
+    rausnehmen." Beides braucht kein Parser — eine Kontonummer ist nie eine
+    Haushaltszahl, und der Straßenname allein bleibt ja stehen."""
+    aus = entfernen(BRIEFKOPF)
+    for weg in ("2805", "SLZODE22", "26122", "Lindenallee"):
+        assert weg not in aus, f"„{weg}“ steht noch im gespeicherten Text"
+
+
+def test_entfernen_laesst_telefon_und_mail_stehen():
+    """Sie bleiben im Bestand und werden erst am Index maskiert.
+
+    Der Grund ist nicht Bequemlichkeit: Eine Rufnummer der Verwaltung kann der
+    Anker sein, an dem jemand eine Fundstelle im PDF wiederfindet. Eine
+    Kontonummer ist das nie — und der Eingriff hier ist ohne erneutes Laden
+    des PDF unumkehrbar."""
+    aus = entfernen(BRIEFKOPF)
+    assert "16656" in aus and "example.org" in aus
+
+
+def test_maskieren_nimmt_beides():
+    """Am Index fällt alles — auch das, was im Bestand bleiben darf."""
+    aus = maskieren(BRIEFKOPF)
+    for weg in ("2805", "SLZODE22", "26122", "16656", "example.org"):
+        assert weg not in aus
+
+
+def test_entfernen_faellt_nicht_ueber_strassennamen():
+    """Dieselbe Grenze wie beim Maskieren — und hier wiegt sie schwerer, weil
+    der Eingriff nicht rückgängig zu machen ist."""
+    for text in ("Ausbau Bümmersteder Tredde, 2. Bauabschnitt",
+                 "Sanierung Grundschule Ohmstede, Butjadinger Straße 61",
+                 "Produkt 11101 Verwaltungssteuerung"):
+        assert entfernen(text) == text
+
+
+def test_die_beiden_saetze_ueberschneiden_sich_wie_erwartet():
+    """`HART` ist eine echte Teilmenge dessen, was am Index fällt — sonst
+    stünde im Index etwas, das im Bestand längst weg ist."""
+    from council.kontaktdaten import HART, NUR_INDEX
+
+    assert set(HART).isdisjoint(NUR_INDEX)
+    assert len(HART) + len(NUR_INDEX) == 6

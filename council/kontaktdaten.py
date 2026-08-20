@@ -90,15 +90,45 @@ _ANSCHRIFT = re.compile(
 #:     allein auf einer Zeile; er trägt immer seine Bezeichnung neben sich.
 _PLZ_ZEILE = re.compile(r"^[ \t]*\d{5}\s+" + _ORT + r"[ \t]*$", re.MULTILINE)
 
-_MUSTER = (_IBAN, _BIC, _MAIL, _TELEFON, _ANSCHRIFT, _PLZ_ZEILE)
+#: Was **gar nicht erst gespeichert** wird (Tims Entscheidung 20.08.2026:
+#: „IBANs und Adresse kannst du auch komplett rausnehmen").
+#:
+#: Diese beiden Arten braucht kein Parser des Bestands: Eine Kontonummer ist
+#: nie eine Haushaltszahl, und eine vollständige Postanschrift auch nicht —
+#: der Straßenname allein bleibt ja stehen, und der ist das Einzige, was das
+#: Investitionsprogramm daraus braucht.
+#:
+#: Der Eingriff ist UNUMKEHRBAR ohne erneutes Laden des PDF. Deshalb steht
+#: hier nur, was nachweislich niemand braucht — Telefon und E-Mail gehören
+#: bewusst NICHT dazu: Sie stehen in Zuständigkeits- und Kontaktangaben, und
+#: eine Rufnummer der Verwaltung kann für einen Beleg noch der Anker sein,
+#: an dem jemand die Stelle im PDF wiederfindet.
+HART = (_IBAN, _BIC, _ANSCHRIFT, _PLZ_ZEILE)
+
+#: Was zusätzlich aus dem SUCHINDEX genommen wird, aber im Bestand bleibt.
+NUR_INDEX = (_MAIL, _TELEFON)
+
+_MUSTER = HART + NUR_INDEX
+
+
+def entfernen(text: str | None) -> str:
+    """Kontonummern und Anschriften **aus dem Bestand** nehmen.
+
+    Läuft beim SPEICHERN, nicht beim Indexieren — was hier herausfällt, ist
+    ohne erneutes Laden des PDF weg. Deshalb nur :data:`HART`.
+    """
+    aus = text or ""
+    for muster in HART:
+        aus = muster.sub(PLATZHALTER, aus)
+    return aus
 
 
 def maskieren(text: str | None) -> str:
-    """Kontaktdaten durch :data:`PLATZHALTER` ersetzen.
+    """Alle Kontaktdaten durch :data:`PLATZHALTER` ersetzen — für den INDEX.
 
-    Reihenfolge egal — die fünf Muster überschneiden sich nicht. Läuft über
-    jeden Text, der in einen Suchindex geht, und über keinen, der gespeichert
-    wird.
+    Umfasst :data:`HART` (das ist beim gespeicherten Text ohnehin schon weg,
+    schadet aber nicht) und zusätzlich Telefon und E-Mail, die im Bestand
+    bleiben dürfen.
     """
     aus = text or ""
     for muster in _MUSTER:
