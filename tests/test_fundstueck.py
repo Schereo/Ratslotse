@@ -45,17 +45,27 @@ def test_interest_roundtrip_and_selection(tmp_path):
     store.close()
 
 
+def _bewerten(store, titel_zu_werten):
+    """Interesse UND Tragweite setzen — beides ist seit 20.08.26 Pflicht."""
+    ids = {d["title"]: d["id"] for d in store.decisions_needing_interest()}
+    for titel, (interesse, tragweite) in titel_zu_werten.items():
+        store.save_interest(ids[titel], interesse, "")
+        store.save_impact(ids[titel], tragweite, "")
+    return ids
+
+
 def test_pick_prefers_anniversary_then_archive(tmp_path):
     store = _store(tmp_path)
-    ids = {d["title"]: d["id"] for d in store.decisions_needing_interest()}
-    store.save_interest(ids["Grüne Wellen fürs Rad"], 60, "")
-    store.save_interest(ids["Museumskonzept"], 90, "")
-    store.save_interest(ids["Geschäftsordnung"], 10, "")
+    ids = _bewerten(store, {
+        "Grüne Wellen fürs Rad": (75, 75),      # Jahrestag, ordentlich
+        "Museumskonzept": (80, 70),             # Archiv, nicht deutlich besser
+        "Geschäftsordnung": (10, 10),           # Formalie
+    })
 
     picked = fundstueck.pick_candidate(store, date.today())
     assert picked is not None
     decision, years = picked
-    # Jahrestag schlägt den höheren Archiv-Score.
+    # Jahrestag gewinnt, solange das Archiv nicht deutlich besser ist.
     assert decision["title"] == "Grüne Wellen fürs Rad" and years == 6
 
     # Ist der Jahrestags-Fund kürzlich verwendet, fällt die Wahl aufs Archiv.
@@ -63,6 +73,51 @@ def test_pick_prefers_anniversary_then_archive(tmp_path):
     picked2 = fundstueck.pick_candidate(store, date.today())
     assert picked2 is not None and picked2[0]["title"] == "Museumskonzept" and picked2[1] == 0
     store.close()
+
+
+def test_kuriositaet_ohne_tragweite_gewinnt_nicht(tmp_path):
+    """Der eigentliche Fehler bis 20.08.26: Ausgewählt wurde allein nach
+    Erzählbarkeit. Herausgekommen sind „Straßenbenennung Rotkäppchenweg"
+    (Interesse 90, Tragweite 35) und „Modellvorhaben Cannabis" (90 / 5) —
+    kurios, aber kein Fund, über den man redet (Tims Befund)."""
+    store = _store(tmp_path)
+    _bewerten(store, {
+        "Grüne Wellen fürs Rad": (100, 20),     # Spitzen-Kuriosität, bedeutungslos
+        "Museumskonzept": (65, 85),             # weniger kurios, aber gewichtig
+        "Geschäftsordnung": (10, 10),
+    })
+    picked = fundstueck.pick_candidate(store, date.today())
+    assert picked is not None
+    assert picked[0]["title"] == "Museumskonzept"
+    store.close()
+
+
+def test_starker_archivfund_sticht_schwachen_jahrestag(tmp_path):
+    """Ein Jahrestag ist ein Aufhänger, kein Freifahrtschein."""
+    store = _store(tmp_path)
+    _bewerten(store, {
+        "Grüne Wellen fürs Rad": (55, 55),      # Jahrestag, gerade so
+        "Museumskonzept": (90, 95),             # Archiv, deutlich besser
+        "Geschäftsordnung": (10, 10),
+    })
+    picked = fundstueck.pick_candidate(store, date.today())
+    assert picked is not None
+    assert picked[0]["title"] == "Museumskonzept" and picked[1] == 0
+    store.close()
+
+
+def test_dasselbe_thema_nicht_zweimal_kurz_nacheinander(tmp_path):
+    """Die ID-Sperre reicht nicht: Ein Großprojekt zieht sich über viele
+    EINZELNE Beschlüsse. Ohne Themen-Sperre standen sieben von vierzehn
+    Tagen unter „Stadion"."""
+    from council.fundstueck import _kernworte, _thema_frei
+
+    assert "stadionneubau" in _kernworte("Stadionneubau Maastrichter Straße")
+    assert "oldenburg" not in _kernworte("Stadt Oldenburg: Beschluss")
+
+    gesperrt = [_kernworte("Gründung der Stadion Oldenburg GmbH & Co. KG")]
+    assert not _thema_frei("Stadion Oldenburg GmbH: Grundstücksübertragungen", gesperrt)
+    assert _thema_frei("Fortschreibung des Lärmaktionsplans", gesperrt)
 
 
 def test_fundstueck_persistence_and_lookup(tmp_path):
