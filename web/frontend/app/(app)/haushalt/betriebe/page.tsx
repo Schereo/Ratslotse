@@ -56,6 +56,21 @@ const WAS_SIE_TUN: Record<string, string> = {
   bbgo: "Betreibt die Bäder — OLantis und die übrigen Standorte.",
   stadion: "Betreibt das künftige Stadion.",
   stadion_planung: "Hat den Stadionbau geplant.",
+  hafen: "Betrieb den Stadthafen — Liegeplätze, Anleger und Umschlag.",
+};
+
+/** Betriebe, die es nicht mehr gibt, mit dem Vorgang, der sie beendet hat.
+ *
+ *  Ohne diesen Satz sieht eine Reihe, die 2020 aufhört, aus wie eine Lücke in
+ *  unseren Daten — und der ganze Bereich ist darauf gebaut, Lücken zu zeigen
+ *  statt sie zu verstecken. Hier ist keine: Es gibt schlicht keinen dritten
+ *  Wirtschaftsplan. Warum eine Reihe endet, steht in keiner Tabelle; nur DASS
+ *  sie endet, ist aus den Daten ablesbar. Deshalb der Satz von Hand, und die
+ *  Prüfung, ob er überhaupt gilt, aus den Daten. */
+const ENDE: Record<string, string> = {
+  hafen: "Diesen Eigenbetrieb gibt es nicht mehr: 2020 beschloss der Rat den "
+    + "Rechtsformwechsel (Vorlage 20/0322) und die Auflösungssatzung "
+    + "(20/0809). Zwei Wirtschaftspläne sind deshalb der ganze Bestand.",
 };
 
 /** Wie sicher die Zahl belegt ist. Die drei Lagen stehen so in der Datenbank
@@ -103,7 +118,9 @@ function Betrag({ wert, fehltWeil }: { wert: number | null; fehltWeil: string })
   );
 }
 
-function BetriebsKarte({ zeilen }: { zeilen: WirtschaftsplanZeile[] }) {
+function BetriebsKarte({ zeilen, juengstesJahr }: {
+  zeilen: WirtschaftsplanZeile[]; juengstesJahr: number;
+}) {
   // Der jüngste Jahrgang trägt die Karte; die Reihe darunter ist die
   // Entwicklung. Sortiert wird hier und nicht im Vertrauen auf die API.
   const nach = [...zeilen].sort((a, b) => a.jahr - b.jahr);
@@ -125,6 +142,15 @@ function BetriebsKarte({ zeilen }: { zeilen: WirtschaftsplanZeile[] }) {
       {WAS_SIE_TUN[letzte.betrieb] && (
         <p className="mt-1 max-w-[62ch] text-[12.5px] leading-relaxed text-foreground/80">
           {WAS_SIE_TUN[letzte.betrieb]}
+        </p>
+      )}
+      {/* Nur zeigen, wenn die Reihe wirklich vor dem jüngsten Jahrgang des
+          Bereichs endet — sonst stünde der Satz eines Tages an einer Karte,
+          die längst weiterläuft. */}
+      {ENDE[letzte.betrieb] && letzte.jahr < juengstesJahr && (
+        <p className="mt-1.5 max-w-[62ch] border-l-2 border-border pl-2.5
+                      text-[12px] leading-relaxed text-muted-foreground">
+          {ENDE[letzte.betrieb]}
         </p>
       )}
 
@@ -274,7 +300,8 @@ function BetriebeInner() {
 
         <div className="grid gap-4 lg:grid-cols-2">
           {nachBetrieb.map((zeilen) => (
-            <BetriebsKarte key={zeilen[0].betrieb} zeilen={zeilen} />
+            <BetriebsKarte key={zeilen[0].betrieb} zeilen={zeilen}
+              juengstesJahr={juengstes} />
           ))}
         </div>
 
