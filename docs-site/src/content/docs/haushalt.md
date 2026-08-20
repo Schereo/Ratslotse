@@ -2770,6 +2770,12 @@ sucht ein Anlagen-Label. Diese Schicht wäre die erste, deren Einheit eine
 liegt (kein Download), ist er auch der richtige, wenn ein verbesserter Parser
 über den Bestand laufen soll.
 
+Von Hand über SSH muss er dafür nicht mehr laufen: Der Ops-Workflow
+*„Finanzdaten einlesen (dev)"* ruft ihn mit auf, und sein Bestandsbericht zählt
+`council_wirtschaftsplaene` mit. Sein Exit-Code wird dort bis ans Ende
+aufgehoben — eine gerissene Rechenprobe färbt den Lauf rot, reißt aber nicht
+den Bericht und die Archiv-Sicherung mit sich, die nach ihm kommen.
+
 ## Was bewusst fehlt
 
 Der Bereich zeigt lieber eine Lücke als eine Schätzung:

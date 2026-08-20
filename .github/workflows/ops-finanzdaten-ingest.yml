@@ -96,6 +96,28 @@ jobs:
             # einzige Zeile — deshalb steht das hier und nicht weiter oben.
             .venv/bin/python scripts/ingest_spenden.py
 
+            # Die Wirtschaftspläne der Eigenbetriebe (#663). Wie die
+            # Zuwendungen darüber liest dieser Lauf nicht aus dem Netz — die
+            # Eckwerte stehen im Beschlussvorschlag der Vorlage selbst, also
+            # in `council_vorlagen`. Er hängt deshalb NICHT am Volltext-Lauf
+            # ganz oben (der füllt `council_anlagen`) und an keiner anderen
+            # Zeile dieser Reihe; er steht hier, weil er dieselbe Quelle liest
+            # wie sein Vorgänger. Wiederholen ist gefahrlos: Der Schlüssel ist
+            # (Betrieb, Jahr), ein zweiter Lauf ersetzt den Stand.
+            #
+            # Sein Rückgabewert wird AUFGEHOBEN statt sofort zu wirken. Reißt
+            # eine Rechenprobe, meldet das Skript Exit 1 — die übrigen
+            # Jahrgänge sind dann trotzdem gespeichert, der Riss ist ein
+            # Befund und kein Absturz. Unter `set -e` nähme dieser eine Befund
+            # den ganzen Rest mit: `archive_statistik.py`, dessen Quelldateien
+            # sonst niemand aufhebt, und den Bestandsbericht — ausgerechnet
+            # die Diagnose, die man in dem Moment braucht. Zweimal steht in
+            # dieser Datei schon, wie ein später Abbruch einen fertigen Lauf
+            # entwertet hat (17.08., Exit 2 und „KeyError: slice"). Der Lauf
+            # endet trotzdem rot, aber erst ganz unten.
+            wirtschaftsplaene=0
+            .venv/bin/python scripts/ingest_wirtschaftsplaene.py || wirtschaftsplaene=$?
+
             # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
             # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
             # ingest_finanzen_opendata.py, und das ist keine Sortierlaune:
@@ -185,6 +207,14 @@ jobs:
                 # Sollzustand, nicht ein Mangel: Die Quelle verbietet die
                 # Zeitreihe ausdrücklich.
                 "council_buergschaften", "council_integrierte_schulden",
+                # Die Wirtschaftspläne der Eigenbetriebe (#663). Die
+                # Zeilenzahl ist hier eine echte Aussage und keine Statistik:
+                # Gelesen wird nur, was seine Eckwerte im Beschlusstext trägt,
+                # und das tut allein der EGH — acht Jahrgänge (2019–2026). Wer
+                # hier deutlich weniger sieht, hat entweder keine
+                # Vorlagen-Volltexte im Bestand oder einen Parser, dem ein
+                # Format entglitten ist.
+                "council_wirtschaftsplaene",
             ]
             # Die Jahresspalte heißt nicht überall „jahr": council_haushalt
             # führt „year", der Stellenplan „jahrgang". Der erste Lauf meldete
@@ -226,3 +256,14 @@ jobs:
                 print("\nKeine Zeile ohne Herkunft.")
             s.close()
             PY
+
+            # Der aufgehobene Riss aus dem Wirtschaftsplan-Lauf (Begründung
+            # oben). Jetzt steht der Bericht da, jetzt darf er den Lauf rot
+            # färben — nicht früher.
+            if [ "$wirtschaftsplaene" -ne 0 ]; then
+              echo ""
+              echo "Der Wirtschaftsplan-Lauf hat Exit $wirtschaftsplaene gemeldet —"
+              echo "eine Rechenprobe ist gerissen. Der Wortlaut steht weiter oben,"
+              echo "hinter „Probe gerissen — NICHT gespeichert:\"."
+              exit "$wirtschaftsplaene"
+            fi
