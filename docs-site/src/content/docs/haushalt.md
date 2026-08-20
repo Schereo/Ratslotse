@@ -2814,24 +2814,50 @@ der Cron sie gar nicht liest: Beide Backfills ziehen ihre Label-Muster aus
 genau dieser Registry (`finanz_muster()`).
 :::
 
-### OCR: gelesen heißt nicht veröffentlicht
+### OCR: gelesen ist gelesen — maskiert wird an der Index-Grenze
 
-Der OCR-Lauf setzt **nicht** `status = 'ok'`, sondern `status = 'ocr'`. Der
-Unterschied ist der ganze Punkt.
+Der OCR-Lauf schreibt `status = 'ok'` und vermerkt in `ocr_modell`, welches
+Sehmodell den Text gelesen hat. Ein gescannter Wirtschaftsplan ist damit so
+durchsuchbar wie ein getippter.
 
-`store.anlagen_missing_embeddings()` zieht jede Anlage mit `status = 'ok'` in
-die Chunk-Vektoren — und damit in die Gründliche Recherche und in Antworten der
-KI-Frage. Von den 189 Anlagen, die am 16.08.2026 auf `empty` standen, sind aber
-**54 Förderanträge von Vereinen**: mit Ansprechpartnerinnen, Anschriften und
-handschriftlichen Unterschriften darauf. Diese Dokumente liegen im Bürgerinfo
-öffentlich (`getfile.php` antwortet ohne Login), aber sie sind heute nicht
-durchsuchbar — und ein Lauf, der Zahlen holen soll, darf das nicht nebenbei
-ändern. Wer einzelne Dokumente doch indizieren will, setzt sie gezielt auf
-`'ok'`: eine Entscheidung, kein Nebeneffekt.
+:::caution[Ein Umweg, der erst falsch war]
+Vom 20.08.2026 bis zum selben Abend schrieb der Lauf `status = 'ocr'` und hielt
+damit **jeden** gelesenen Scan aus der Suche. Das war der falsche Ort für die
+Sperre: Sie traf die *Herkunft* des Textes statt dessen, was darin steht — und
+sperrte den AWB-Wirtschaftsplan, den RPA-Schlussbericht und das
+Investitionsprogramm gleich mit aus, auf denen keine Privatperson steht.
 
-Die Finanz-Parser sehen den Text trotzdem, weil `Erkennung.where()` bewusst
-**nicht** auf den Status filtert. Wer dort einmal `status = 'ok'` ergänzt,
-dreht die Sperre in eine Blockade — dagegen steht ein Test.
+Der Wert existiert nicht mehr; eine Migration in `store.py` hebt Altstände beim
+Öffnen der Datenbank auf `'ok'`. Gehoben und nicht neu gelesen: Der Text war in
+Ordnung, nur sein Status war es nicht.
+:::
+
+**Maskiert wird jetzt an der Index-Grenze** (`council/kontaktdaten.py`).
+`store.anlagen_missing_embeddings()` und `store.rebuild_fts()` nehmen IBAN, BIC,
+Telefon, Fax, E-Mail und Anschriften aus dem Text, **bevor** er in die
+Chunk-Vektoren bzw. den Volltextindex geht. `council_anlagen.raw_text` bleibt
+vollständig — die Parser brauchen ihn, und ein Beleg, der auf ein PDF zeigt,
+muss auch wiederfinden, was darin steht.
+
+**Das ist kein OCR-Thema.** Gemessen am Prod-Stand vom 16.08.2026 tragen **606
+Anlagen** Kontaktdaten — 1.382 Anschriften, 1.024 Telefon- und Faxnummern, 533
+E-Mail-Adressen, 81 IBAN, 42 BIC — und sie standen längst im Suchindex, ganz
+ohne Texterkennung. Der Textverlust durch die Maskierung liegt bei **0,22 %**.
+
+**Was bewusst NICHT maskiert wird:**
+
+- **Namen.** Der Bestand nennt 1.271 Ratsmitglieder namentlich, Protokolle
+  führen jede Wortmeldung mit Namen, Vorlagen nennen Amtsleitungen. Namen
+  herauszunehmen hieße, das halbe System unbrauchbar zu machen.
+- **Straßennamen ohne Postleitzahl dahinter.** Das ist die gefährlichste Falle
+  dieses Moduls: „Ausbau Bümmersteder Tredde", „Sanierung Butjadinger Straße
+  61" — der halbe Investitionsbereich besteht aus Straßennamen. Erkannt wird
+  eine Anschrift deshalb nur **am Stück** (Straße, Hausnummer, Postleitzahl,
+  Ort) oder als **eigene Zeile** (`26122 Oldenburg`).
+
+Ein erstes Muster nahm jede fünfstellige Zahl vor einem großgeschriebenen Wort
+für eine Postleitzahl — und traf damit „Produkt **11101
+Verwaltungssteuerung**". Der eigene Test hat das gefunden, nicht der Betrieb.
 
 **Drei Entscheidungen, die vorher gemessen wurden** (an zwei echten AWB-Seiten,
 300 dpi gerade und 200 dpi quer, bewertet gegen die Rechenprobe dieses

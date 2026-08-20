@@ -9,17 +9,23 @@
 # Anschriften und Unterschriften inklusive —, aber nichts davon über „Frag den
 # Rat" zurückkommt.
 #
-# DASS DAS HÄLT, IST KEINE ZUSAGE, SONDERN EIN FILTER. Der Lauf schreibt
-# `status='ocr'`, und es gibt genau zwei Wege, auf denen Anlagentext in eine
-# Nutzerantwort gerät — beide filtern auf `status='ok'`:
+# DER GELESENE TEXT IST GANZ NORMALER ANLAGENTEXT. Der Lauf schreibt
+# `status='ok'` und vermerkt in `ocr_modell`, welches Sehmodell ihn gelesen
+# hat. Ein gescannter Wirtschaftsplan ist damit so durchsuchbar wie ein
+# getippter — alles andere wäre eine Sperre gegen die Herkunft des Textes und
+# nicht gegen das, was darin steht.
 #
-#   * `store.anlagen_missing_embeddings()` → `council_anlage_embeddings` →
-#     die Gründliche Recherche,
-#   * `store.rebuild_fts()`, das Antrags-Anlagen in den Volltextindex der
-#     Beschlüsse zieht.
+# DASS TROTZDEM KEINE KONTONUMMER IN EINER ANTWORT LANDET, leistet
+# `council/kontaktdaten.py` an der **Index-Grenze**:
+# `store.anlagen_missing_embeddings()` und `store.rebuild_fts()` nehmen IBAN,
+# BIC, Telefon, Fax, E-Mail und Anschrift aus dem Text, bevor er in die
+# Chunk-Vektoren bzw. den Volltextindex geht. Gespeichert bleibt alles — die
+# Parser brauchen den vollen Text.
 #
-# `tests/test_ocr.py` hält beide fest. Wer einen davon auf `'ocr'` erweitert,
-# veröffentlicht damit gescannte Förderanträge von Vereinen.
+# Das ist ausdrücklich KEIN OCR-Thema: 606 Anlagen des Bestands tragen
+# Kontaktdaten ganz ohne Texterkennung (1.382 Anschriften, 1.024 Telefon- und
+# Faxnummern, 533 E-Mail-Adressen, 81 IBAN) und standen bis dahin unmaskiert
+# im Index. Der Textverlust liegt bei 0,22 %.
 #
 # WARUM NUR DEV. Der Lauf zielt bewusst auf `VPS_DEV_HOST` und nicht auf
 # `VPS_HOST`. Diese Dokumente liegen im Bürgerinfo zwar öffentlich, aber ihr
@@ -108,15 +114,15 @@ jobs:
                 "SELECT status, COUNT(*) FROM council_anlagen GROUP BY status").fetchall())
             print(f"\nAnlagen nach Status: {zahlen}")
 
-            # Die Zusage, nachgerechnet statt behauptet: Keine Anlage mit
-            # OCR-Text darf in den Chunk-Vektoren stehen.
-            drin = s._conn.execute(
-                "SELECT COUNT(*) FROM council_anlage_embeddings e "
-                "JOIN council_anlagen a ON a.document_id = e.document_id "
-                "WHERE a.status = 'ocr'").fetchone()[0]
-            print(f"OCR-Anlagen in den Chunk-Vektoren: {drin}  "
-                  f"({'in Ordnung' if drin == 0 else 'DARF NICHT SEIN'})")
+            # Die Zusage, nachgerechnet statt behauptet: In den
+            # Chunk-Vektoren darf keine Kontonummer stehen.
+            from council.kontaktdaten import enthaelt_kontaktdaten
+            treffer = [d for d, c in s._conn.execute(
+                "SELECT document_id, chunk_text FROM council_anlage_embeddings")
+                if enthaelt_kontaktdaten(c)]
+            print(f"Chunks mit Kontaktdaten: {len(treffer)}  "
+                  f"({'in Ordnung' if not treffer else 'DARF NICHT SEIN: ' + str(treffer[:5])})")
             s.close()
-            if drin:
+            if treffer:
                 raise SystemExit(1)
             PY
