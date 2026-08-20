@@ -18,9 +18,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from council.wirtschaftsplan import WirtschaftsplanFehler  # noqa: E402
 from council.wirtschaftsplan_tabelle import (  # noqa: E402
     BEREICHE_SCHWELLE,
+    KOPF_FENSTER,
     TOLERANZ_EUR,
     bereichsprobe,
+    einheit_an_der_kopfzeile,
     kopfspalten,
+    kopfzeile_index,
     parse_erfolgsplan,
     prosa_summen,
 )
@@ -224,3 +227,120 @@ def test_speichern_neben_dem_beschlusstext(tmp_path):
         assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
     finally:
         store.close()
+
+
+# --------------------------------------------------------------------------
+# (f) Das Layout der Jahrgänge 2019–2021 — aus einem Scan, per OCR gelesen
+# --------------------------------------------------------------------------
+
+# Echt, aus Anlage 193959 (Wirtschaftsplan 2019). Der Jahrgang lag bis 08/2026
+# nur als Bild vor; `scripts/backfill_anlagen_ocr.py` hat ihn lesbar gemacht.
+# Gekürzt ist, was zwischen den geprüften Zeilen steht.
+LAYOUT_C = """Erfolgsplan Abfallwirtschaftsbetrieb Stadt Oldenburg
+
+Gewinn- und Verlustrechnung
+(für alle Sparten)
+\tIst 2017\tPlan 2018\tPlan 2019\tPlan 2020\tPlan 2021\tPlan 2022
+
+Gesamtertrag\t21.011.173 €\t19.465.433 €\t20.280.001 €\t20.492.447 €\t20.906.615 €\t21.280.307 €
+Gesamtaufwendungen\t20.086.318 €\t19.128.086 €\t19.989.470 €\t20.310.714 €\t20.638.383 €\t20.972.605 €
+Gesamtergebnis\t924.855 €\t337.347 €\t290.531 €\t181.733 €\t268.232 €\t307.702 €
+
+Ergebnis der gewöhnlichen
+Geschäftstätigkeit\t412.363 €\t337.347 €\t290.531 €\t181.733 €\t268.232 €\t307.702 €
+
+Jahresüberschuss\t285.253 €\t337.347 €\t290.531 €\t181.733 €\t268.232 €\t307.702 €
+
+Eigenkapitalverzinsung
+(Zuführung zum städt. Haushalt)
+Sparte 6750 Straßenreinigung\t-28.963 €\t-27.800 €\t-21.500 €\t-21.500 €\t-21.500 €\t-21.500 €
+
+Jahresergebnis\t85.565 €\t139.847 €\t93.031 €\t-15.767 €\t70.732 €\t110.202 €
+
+Der Erfolgsplan 2019 umfasst voraussichtlich anfallende Erträge in Höhe von insgesamt 20.280.001 € und voraussichtlich entstehende Aufwendungen in Höhe von insgesamt 19.989.470 €.
+"""
+
+# Der Vorbericht steht rund 140 Zeilen VOR der Tabelle und redet von Millionen.
+VORBERICHT = ("Der Erfolgsplan ist in Sparten gegliedert. Für 2019 werden "
+              "Gesamterträge in Höhe von ca. 20,3 Mio. € erwartet.\n" + "\n" * 140)
+
+
+def test_das_alte_layout_liest_sich_ohne_zutun():
+    """Die Jahrgänge 2019–2021 brauchten KEINE Parser-Erweiterung.
+
+    Nach dem ersten OCR-Lauf sah es anders aus — dort fehlte die Summenzeile,
+    weil der Lauf nach sechs Seiten abbrach und sie auf Seite fünf der Tabelle
+    steht. Der Befund „der Parser kennt dieses Layout nicht" war ein Artefakt
+    des abgeschnittenen Textes, kein Befund über das Dokument."""
+    plan, proben = parse_erfolgsplan("18/0741", "awb", 2019, LAYOUT_C)
+    assert plan.ertraege == 20_280_001.0
+    assert plan.aufwendungen == 19_989_470.0
+    assert plan.ergebnis == 290_531.0
+    assert len(proben) == 6 and all(p.geht_auf for p in proben)
+
+
+def test_das_ergebnis_ist_nicht_das_jahresergebnis():
+    """Dieselbe Falle wie in Layout B, nur mit anderem Wort: Unter dem
+    Gesamtergebnis (290.531 €) steht noch ein „Jahresergebnis" (93.031 €) —
+    die Differenz ist die Eigenkapitalverzinsung an den städtischen Haushalt."""
+    plan, _ = parse_erfolgsplan("18/0741", "awb", 2019, LAYOUT_C)
+    assert plan.ergebnis == 290_531.0
+    assert plan.ergebnis != 93_031.0
+
+
+# --------------------------------------------------------------------------
+# (g) Die Skalen-Sperre
+# --------------------------------------------------------------------------
+
+def test_eine_tabelle_in_teur_wird_nicht_gelesen():
+    """Die Spaltenprobe ist SKALENINVARIANT: Liegt eine ganze Spalte um den
+    Faktor 1.000 daneben, kürzt sich der Faktor in `Erträge − Aufwendungen =
+    Ergebnis` weg und die Probe geht auf. `TOLERANZ_EUR` kann das prinzipiell
+    nicht sehen — deshalb eine eigene Sperre."""
+    zeilen = LAYOUT_C.splitlines()
+    i = kopfzeile_index(zeilen)
+    zeilen[i - 1] += "  (alle Angaben in TEUR)"
+    with pytest.raises(WirtschaftsplanFehler) as fehler:
+        parse_erfolgsplan("18/0741", "awb", 2019, "\n".join(zeilen))
+    assert "TEUR" in str(fehler.value)
+    assert "skaleninvariant" in str(fehler.value)
+
+
+@pytest.mark.parametrize("angabe", [
+    "in TEUR", "in T€", "in T EUR", "in Tsd. EUR", "in Tausend Euro",
+    "in Mio. €", "in Millionen Euro", "in Mrd. EUR",
+])
+def test_jede_schreibweise_der_einheit_sperrt(angabe):
+    zeilen = LAYOUT_C.splitlines()
+    i = kopfzeile_index(zeilen)
+    zeilen[i - 1] += f"  ({angabe})"
+    with pytest.raises(WirtschaftsplanFehler):
+        parse_erfolgsplan("18/0741", "awb", 2019, "\n".join(zeilen))
+
+
+def test_millionen_im_vorbericht_sperren_nicht():
+    """Jeder Vorbericht redet irgendwo von „Mio. €". Wer darauf anspringt,
+    kann keine einzige Tabelle mehr lesen — deshalb ein enges Fenster um die
+    Kopfzeile statt einer Suche im ganzen Dokument."""
+    plan, _ = parse_erfolgsplan("18/0741", "awb", 2019, VORBERICHT + LAYOUT_C)
+    assert plan.ertraege == 20_280_001.0
+
+
+def test_das_fenster_endet_wo_es_soll():
+    """Vier Zeilen über der Kopfzeile — genug für Titel, Leerzeile,
+    „Gewinn- und Verlustrechnung" und „(für alle Sparten)"."""
+    zeilen = LAYOUT_C.splitlines()
+    i = kopfzeile_index(zeilen)
+    innen = list(zeilen); innen[i - KOPF_FENSTER] += " in TEUR"
+    assert einheit_an_der_kopfzeile(innen, i) == "in TEUR"
+    aussen = list(zeilen); aussen[i - KOPF_FENSTER - 1] += " in TEUR"
+    assert einheit_an_der_kopfzeile(aussen, i) is None
+
+
+def test_volle_euro_werden_nicht_gesperrt():
+    """Die Gegenprobe: Ohne Einheiten-Angabe passiert nichts."""
+    zeilen = LAYOUT_C.splitlines()
+    assert einheit_an_der_kopfzeile(zeilen, kopfzeile_index(zeilen)) is None
+    for text in (LAYOUT_A, LAYOUT_B):
+        assert einheit_an_der_kopfzeile(text.splitlines(),
+                                        kopfzeile_index(text.splitlines(), 4)) is None

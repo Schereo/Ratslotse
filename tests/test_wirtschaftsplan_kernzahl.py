@@ -189,3 +189,59 @@ def test_zeile_ohne_ertraege_laesst_sich_speichern(tmp_path):
         assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
     finally:
         store.close()
+
+
+# --------------------------------------------------------------------------
+# (e) Der Eigenbetrieb Hafen — der einzige, der „Verlust" sagt
+# --------------------------------------------------------------------------
+
+TITEL_HAFEN = ("Wirtschaftsplan 2019 für den Eigenbetrieb Hafen der Stadt "
+               "Oldenburg (Oldb) - Beschluss -")
+# Echt, aus Vorlage 18/0790. Kein „Fehlbetrag", kein „Überschuss" — und die
+# Einheit steht als „EUR", nicht als „€" oder „Euro".
+TEXT_HAFEN = """Beschlussvorschlag:
+Dem Wirtschaftsplan 2019 des Eigenbetriebes Hafen der Stadt Oldenburg (Oldb) wird in der
+als Anlage beigefügten Fassung zugestimmt.
+
+Begründung:
+Für das Wirtschaftsjahr 2019 ist für den Eigenbetrieb Hafen der Stadt Oldenburg (Oldb) im
+vorliegenden Wirtschaftsplan (Erfolgsplan) ein Verlust von 273.950 EUR ermittelt worden.
+Der erwartete Zuschussbedarf 2019 ist damit gegenüber 2018 um 76.050 EUR geringer.
+"""
+# Echt, aus Anlage 194665 — dieselbe Zahl, anderer Satz, anderes Dokument.
+ANLAGE_HAFEN = """Der Erfolgsplan 2019 schließt mit einem erwarteten Verlust von 273.950 EUR ab. Der
+Verlust wird durch den Kernhaushalt ausgeglichen.
+"""
+
+
+def test_verlust_ist_ein_minus():
+    """Der Hafen schreibt weder „Fehlbetrag" noch „Überschuss". Ohne dieses
+    Wort blieben seine beiden einzigen Jahrgänge draußen — und zwar lautlos:
+    Die Vorlage wäre nie erkannt worden, es hätte nie einen Fehler gegeben."""
+    wort, betrag = kernzahl_aus_beschluss(TEXT_HAFEN)
+    assert wort.lower() == "verlust"
+    assert betrag == -273_950.0
+
+
+def test_die_einheit_darf_auch_EUR_heissen():
+    """Die übrigen Betriebe schreiben „€" oder „Euro", der Hafen „EUR"."""
+    assert kernzahl_aus_beschluss(TEXT_HAFEN)[1] == -273_950.0
+
+
+def test_hafen_ist_zweifach_belegt():
+    plan, wort, lage = parse_kernzahl("18/0790", TITEL_HAFEN, TEXT_HAFEN, 2019,
+                                      [ANLAGE_HAFEN])
+    assert plan.betrieb == "hafen"
+    assert plan.betrieb_name == "Eigenbetrieb Hafen der Stadt Oldenburg"
+    assert plan.ergebnis == -273_950.0
+    assert lage == "belegt"
+
+
+def test_gewinn_bleibt_positiv():
+    """Das Gegenstück zu „Verlust" — sonst drehte die Vorzeichen-Regel jede
+    Zahl ins Minus, die zufällig neben einem dieser Wörter steht."""
+    text = TEXT_HAFEN.replace("ein Verlust von 273.950 EUR",
+                              "ein Gewinn von 273.950 EUR")
+    wort, betrag = kernzahl_aus_beschluss(text)
+    assert wort.lower() == "gewinn"
+    assert betrag == 273_950.0

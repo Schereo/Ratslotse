@@ -2776,7 +2776,7 @@ Betrieb, mit Stand 20.08.2026. Die Spalte „Anlage" nennt die
 | Bäderbetrieb (BBO) | 12 | nein | ja (Text vorhanden) |
 | Bäderbetriebsgesellschaft (BBGO) | 10 | nein | ja |
 | Stadion / Stadionplanungsges. | 5 | nein | ja |
-| Eigenbetrieb Hafen | 2 | nein | ungeprüft |
+| Eigenbetrieb Hafen | 2 (2019–2020) | nein — aber die **Kernzahl** steht drin | ja, und sie belegt sie |
 
 **Der AWB im Detail** (geprüft an den heruntergeladenen PDFs):
 
@@ -2852,15 +2852,27 @@ Bereichs):
    liegenden Seite gingen alle 24 Rechenproben auf. Die Modelle kommen mit der
    Drehung zurecht, unsere Metadaten nicht.
 
-**Die Lücke, die dabei aufging.** Die Spaltenprobe ist **skaleninvariant**:
-Steht `in TEUR` in der Kopfzeile und liest das Modell die Einheit falsch, liegt
-die ganze Spalte um den Faktor 1.000 daneben — und die Probe geht trotzdem
-sauber auf. Das ist der einzige bekannte Fehlermodus, den `TOLERANZ_EUR`
-prinzipiell nicht sehen kann. `ocr.skalenhinweise()` findet die Angabe und der
-Lauf schreibt sie ins Log; **geprüft wird sie noch nicht**. Ebenso gilt:
-Vollständigkeit ist keine Richtigkeit — fehlt eine Zeile, prüft die Probe
-*weniger* und geht auf. Deshalb zählt `ocr.Lesung` mit, wie viele Seiten
-wirklich gelesen wurden.
+**Die Lücke, die dabei aufging — und seit dem 20.08. geschlossen ist.** Die
+Spaltenprobe ist **skaleninvariant**: Steht `in TEUR` über der Tabelle und liest
+jemand die Angabe nicht mit, liegt die ganze Spalte um den Faktor 1.000 daneben
+— und `Erträge − Aufwendungen = Ergebnis` geht trotzdem auf, weil sich der
+Faktor auf beiden Seiten wegkürzt. `TOLERANZ_EUR` kann das prinzipiell nicht
+sehen.
+
+`spaltenproben()` bricht deshalb ab, wenn `einheit_an_der_kopfzeile()` eine
+Angabe findet, die nicht volle Euro meint. **Umgerechnet wird bewusst nicht:**
+Eine Tabelle in TEUR gibt es im Bestand bisher nicht, und einen Umrechner zu
+bauen, den niemand an einem echten Dokument geprüft hat, hieße raten. Wer den
+ersten solchen Jahrgang findet, trägt die Umrechnung ein und prüft sie an ihm.
+
+Das Fenster ist eng — vier Zeilen über der Kopfzeile —, und das ist der Punkt:
+Jeder Vorbericht redet irgendwo von „Mio. €" (beim AWB rund 140 Zeilen früher
+von „ca. 20,3 Mio. €"). Wer im ganzen Dokument sucht, kann keine einzige
+Tabelle mehr lesen.
+
+Ebenso gilt: Vollständigkeit ist keine Richtigkeit — fehlt eine Zeile, prüft
+die Probe *weniger* und geht auf. Deshalb zählt `ocr.Lesung` mit, wie viele
+Seiten wirklich gelesen wurden.
 
 **Was der erste Lauf ergab** (Dokument 193959, AWB-Wirtschaftsplan 2019, sechs
 Seiten): 62 von 66 Spaltenproben gehen **cent-genau** auf, vier sind um exakt
@@ -2869,11 +2881,26 @@ und lieferte **zeichengleiche** Zahlen — der Riss steht also im Dokument der
 Stadt, nicht im OCR. Genau der Fall, für den `TOLERANZ_EUR = 2.0` kalibriert
 wurde.
 
-**Was noch nicht geht:** Der Erfolgsplan-Parser kennt das Layout von 2019 bis
-2021 nicht. Dort tragen die Summenzeilen **keine Beschriftung** — `Gesamtertrag`
-oder `Summe Erträge` sucht er vergeblich, die Summe steht in einer Zeile, die
-nur aus Zahlen besteht. Der Text ist also da und geprüft, der Jahrgang aber noch
-nicht im Bestand.
+**Die drei fehlenden Jahrgänge lesen sich ohne jede Parser-Erweiterung.**
+Kurz sah es anders aus: Ein erster Lauf über sechs Seiten fand keine
+Summenzeile, und der Schluss lag nahe, das Layout 2019–2021 sei ein anderes.
+Er war falsch. `Gesamtertrag` / `Gesamtaufwendungen` / `Gesamtergebnis` stehen
+dort sehr wohl — nur auf **Seite fünf** der Tabelle, hinter den elf nach Sparten
+gegliederten Positionsblöcken. Der Befund war ein Artefakt des abgeschnittenen
+Textes, kein Befund über das Dokument. Vollständig gelesen (36 Seiten je
+Jahrgang) gehen alle drei durch, je **6 von 6 Spalten**:
+
+| Jahrgang | Vorlage | Erträge | Aufwendungen | Ergebnis |
+|---|---|---|---|---|
+| 2019 | 18/0691 | 20.280.001 € | 19.989.470 € | 290.531 € |
+| 2020 | 19/0778 | 20.747.250 € | 20.317.670 € | 429.580 € |
+| 2021 | 20/0636 | 21.254.400 € | 20.807.750 € | 446.650 € |
+
+Eine Falle trägt das alte Layout allerdings, dieselbe wie Layout B mit anderem
+Wort: Unter dem `Gesamtergebnis` (2019: 290.531 €) steht weiter unten noch ein
+`Jahresergebnis` (93.031 €). Die Differenz ist die Eigenkapitalverzinsung, die
+der Betrieb an den städtischen Haushalt abführt. Wer die Zeile nimmt, die am
+besten klingt, speichert die falsche.
 
 ### Der zweite Weg: der Erfolgsplan aus der Anlage
 
@@ -2946,17 +2973,36 @@ und dann fällt die Aufteilung und nicht die Summe. Der Abstand wird gemessen
 und reist in der Herkunft mit.
 :::
 
-**Was nicht gelesen wird.** Drei AWB-Jahrgänge (2019–2021) sind Scans ohne
-Textebene. Der Ingest-Lauf nennt sie beim Namen und merkt sie für eine spätere
-OCR vor; im Bestand tragen sie `council_anlagen.status = 'empty'`. Und für
-Bäderbetrieb, Bäderbetriebsgesellschaft, Stadion und Hafen ist **kein
+**Die drei AWB-Scans sind seit dem 20.08.2026 gelesen.** 2019 bis 2021 lagen
+nur als Bild vor; `scripts/backfill_anlagen_ocr.py` hat sie lesbar gemacht (je
+36 Seiten, vollständig), und sie gehen **ohne jede Parser-Erweiterung** durch —
+je 6 von 6 Spalten, größte Abweichung 0,00 €. Ihre Herkunft sagt es dazu:
+*„Erfolgsplan der Anlage (per OCR gelesen)"*, mit dem Namen des Modells.
+
+Für Bäderbetrieb, Bäderbetriebsgesellschaft und Stadion ist weiterhin **kein
 Vokabular** hinterlegt: Ein geratenes fände irgendeine Zeile, und ihre Zahlen
-stünden dann unter einem Namen, den nie jemand nachgeschlagen hat.
+stünden dann unter einem Namen, den nie jemand nachgeschlagen hat. Sie kommen
+über den dritten Weg.
 
 ### Der dritte Weg: die Kernzahl, belegt durch zwei Dokumente
 
-Für Bäderbetriebsgesellschaft, Stadion und Bäderbetrieb trägt keiner der
-beiden Wege — und der Grund ist der lehrreichste Befund dieser Schicht.
+Für Bäderbetriebsgesellschaft, Stadion, Bäderbetrieb und den Hafen trägt
+keiner der beiden Wege — und der Grund ist der lehrreichste Befund dieser
+Schicht.
+
+**Der Eigenbetrieb Hafen sagt „Verlust".** Er ist der einzige Betrieb, der
+weder „Fehlbetrag" noch „Überschuss" schreibt: *„Für das Wirtschaftsjahr 2019
+ist … ein Verlust von 273.950 EUR ermittelt worden"* — und die Einheit heißt
+dort `EUR`, nicht `€` oder `Euro`. Beides kannte das Muster bis zum 20.08.2026
+nicht, und das Ausbleiben war lautlos: Die Vorlage wurde schlicht nie erkannt,
+es gab nie einen Fehler zu sehen. Seine beiden Jahrgänge (2019 und 2020) sind
+jetzt drin, **beide zweifach belegt** — dieselbe Zahl steht im Beschlusstext
+und in der Anlage.
+
+Zwei Jahrgänge sind dabei **keine Lücke, sondern der ganze Bestand**: Der
+Eigenbetrieb wurde aufgelöst (Vorlage 20/0322 Rechtsformwechsel, 20/0809
+Auflösungssatzung). Es gibt keinen dritten Wirtschaftsplan, den man vermissen
+könnte.
 
 **Gleiches Vokabular, andere Bedeutung.** Ihre Erfolgspläne führen dieselben
 Zeilennamen wie der Abfallwirtschaftsbetrieb: `Gesamtleistung`,

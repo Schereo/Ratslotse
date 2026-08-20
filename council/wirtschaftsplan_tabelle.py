@@ -239,6 +239,42 @@ def kopfspalten(zeilen: list[str], mindestens: int = 4) -> list[tuple[str, int]]
     return []
 
 
+def kopfzeile_index(zeilen: list[str], mindestens: int = 4) -> int:
+    """Wo die Kopfzeile steht — ``-1``, wenn es keine gibt."""
+    for i, zeile in enumerate(zeilen):
+        if len(_KOPFSPALTE.findall(zeile)) >= mindestens:
+            return i
+    return -1
+
+
+#: Eine Einheiten-Angabe, die die Größenordnung der Tabelle darunter setzt.
+#: „Euro" selbst steht NICHT drin — nur die Angaben, die etwas verschieben.
+_EINHEIT = re.compile(
+    r"\bin\s+(T\s?(?:EUR|€)|TSD\.?\s*(?:EUR|€)?|Tausend|Mio\.?\s*(?:EUR|€)?|"
+    r"Millionen|Mrd\.?\s*(?:EUR|€)?|Milliarden)", re.IGNORECASE)
+
+#: Wie viele Zeilen über der Kopfzeile noch zur Tabelle zählen. Vier reichen
+#: für „Erfolgsplan …" / Leerzeile / „Gewinn- und Verlustrechnung" /
+#: „(für alle Sparten)" — und halten den Vorbericht draußen, der beim AWB rund
+#: 140 Zeilen früher von „ca. 20,3 Mio. €" spricht.
+KOPF_FENSTER = 4
+
+
+def einheit_an_der_kopfzeile(zeilen: list[str], kopf_index: int) -> str | None:
+    """Die Einheiten-Angabe unmittelbar an der Kopfzeile — oder ``None``.
+
+    Bewusst ein enges Fenster statt des ganzen Dokuments: Jeder Vorbericht
+    redet irgendwo von „Mio. €", und wer darauf anspringt, kann keine einzige
+    Tabelle mehr lesen.
+    """
+    von = max(0, kopf_index - KOPF_FENSTER)
+    for zeile in zeilen[von:kopf_index + 1]:
+        treffer = _EINHEIT.search(zeile)
+        if treffer:
+            return " ".join(treffer.group(0).split())
+    return None
+
+
 def spaltenproben(text: str, betrieb: str) -> list[Spaltenprobe]:
     """Die Rechenprobe jeder Spalte des Erfolgsplans.
 
@@ -254,6 +290,26 @@ def spaltenproben(text: str, betrieb: str) -> list[Spaltenprobe]:
     kopf = kopfspalten(zeilen)
     if not kopf:
         raise WirtschaftsplanFehler("keine Kopfzeile mit Jahresangaben gefunden")
+
+    # DIE LÜCKE, DIE DIESE SPERRE SCHLIESST: Die Spaltenprobe unten ist
+    # **skaleninvariant**. Steht über der Tabelle „in TEUR" und liest jemand
+    # die Angabe nicht mit, liegt jede Zahl der Spalte um den Faktor 1.000
+    # daneben — und `Erträge − Aufwendungen = Ergebnis` geht trotzdem auf, weil
+    # sich der Faktor auf beiden Seiten wegkürzt. `TOLERANZ_EUR` kann das
+    # prinzipiell nicht sehen.
+    #
+    # Umgerechnet wird hier bewusst NICHT. Eine Tabelle in TEUR gibt es im
+    # Bestand bisher nicht; einen Umrechner zu bauen, den niemand an einem
+    # echten Dokument geprüft hat, hieße raten. Eine Lücke ist der zulässige
+    # Zustand, eine stillschweigend verschobene Zahl nicht — wer den ersten
+    # solchen Jahrgang findet, trägt hier die Umrechnung ein und prüft sie an
+    # ihm.
+    einheit = einheit_an_der_kopfzeile(zeilen, kopfzeile_index(zeilen))
+    if einheit:
+        raise WirtschaftsplanFehler(
+            f"Die Tabelle ist in „{einheit}“ ausgewiesen, nicht in vollen Euro. "
+            "Die Spaltenprobe würde das nicht bemerken (sie ist skaleninvariant), "
+            "deshalb wird dieser Jahrgang nicht gelesen.")
 
     gefunden: dict[str, list[float]] = {}
     labels: dict[str, str] = {}
@@ -391,18 +447,29 @@ def parse_erfolgsplan(vorlage_nr: str, betrieb: str, haushaltsjahr: int,
 
 def herkunft_fuer(plan: Wirtschaftsplan, proben: list[Spaltenprobe],
                   url: str | None, dokument_id: int | None,
-                  label: str | None) -> Herkunft:
-    """Die Herkunft: die **Anlage**, nicht die Vorlage."""
+                  label: str | None, ocr_modell: str | None = None) -> Herkunft:
+    """Die Herkunft: die **Anlage**, nicht die Vorlage.
+
+    ``ocr_modell`` steht drin, wenn die Anlage keine Textebene hatte und ein
+    Sehmodell sie gelesen hat (`scripts/backfill_anlagen_ocr.py`). Das gehört
+    an die Zahl und nicht nur ins Log: Wer später eine dieser Zahlen prüft,
+    muss wissen, dass zwischen Papier und Datenbank ein Modell stand — die
+    Spaltenprobe belegt die Rechnung, nicht die Ziffernerkennung.
+    """
     geprueft = len(proben)
     schaerfste = max((abs(p.rest) for p in proben), default=0.0)
+    ergebnis = (f"{geprueft} Spalten geprüft, größte Abweichung "
+                f"{schaerfste:.2f} €")
+    if ocr_modell:
+        ergebnis += f"; Anlage per OCR gelesen ({ocr_modell})"
     return Herkunft(
         art="ris",
         probe=[PROBE_SPALTEN, PROBE_PROSA],
         dokument_id=dokument_id,
         label=label or f"Anlage zu {plan.vorlage_nr}",
         url=url,
-        fundstelle="Erfolgsplan der Anlage",
-        probe_ergebnis=(f"{geprueft} Spalten geprüft, größte Abweichung "
-                        f"{schaerfste:.2f} €"),
+        fundstelle=("Erfolgsplan der Anlage (per OCR gelesen)" if ocr_modell
+                    else "Erfolgsplan der Anlage"),
+        probe_ergebnis=ergebnis,
         stand=f"Wirtschaftsplan {plan.jahr}, Fassung der Anlage",
     )

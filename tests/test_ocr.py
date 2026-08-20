@@ -231,3 +231,50 @@ def test_temperatur_ist_null():
     """Wiederholbarkeit ist die Voraussetzung dafür, dass Uneinigkeit zweier
     Modelle überhaupt etwas bedeutet."""
     assert ocr.TEMPERATUR == 0.0
+
+
+# --------------------------------------------------------------------------
+# (f) Die Sperre darf keine Blockade werden
+# --------------------------------------------------------------------------
+
+def test_der_ingest_liest_auch_aus_ocr_anlagen():
+    """Dieselbe Marke, zwei Rollen — und nur eine davon ist eine Sperre.
+
+    `status='ocr'` hält den Text aus den Chunk-Vektoren heraus (Test oben).
+    Aus den PARSERN darf er ihn nicht heraushalten: Sonst wären die drei
+    AWB-Jahrgänge 2019–2021 gelesen und trotzdem unsichtbar — genau der
+    Zustand, den dieser ganze Lauf beseitigen soll.
+
+    Der Ingest filterte bis zum 20.08.2026 auf `status == 'ok'`. Das war vor
+    dem OCR-Lauf richtig und danach falsch."""
+    from scripts.ingest_wirtschaftsplaene import ANLAGE_LESBAR
+
+    assert "ocr" in ANLAGE_LESBAR, (
+        "Ohne 'ocr' liest der Ingest keine gescannte Anlage mehr — die "
+        "Datenschutz-Marke würde zur Blockade")
+    assert "ok" in ANLAGE_LESBAR
+    assert "empty" not in ANLAGE_LESBAR and "failed" not in ANLAGE_LESBAR
+
+
+def test_die_herkunft_nennt_das_sehmodell():
+    """Wer eine dieser Zahlen später prüft, muss wissen, dass zwischen Papier
+    und Datenbank ein Modell stand. Die Spaltenprobe belegt die Rechnung, nicht
+    die Ziffernerkennung."""
+    from council.wirtschaftsplan import Wirtschaftsplan
+    from council.wirtschaftsplan_tabelle import Spaltenprobe, herkunft_fuer
+
+    plan = Wirtschaftsplan(
+        betrieb="awb", betrieb_name="Abfallwirtschaftsbetrieb Stadt Oldenburg",
+        jahr=2019, vorlage_nr="18/0741", ertraege=20_280_001.0,
+        aufwendungen=19_989_470.0, steuern=0.0, ergebnis=290_531.0,
+        vermoegensplan=None, verpflichtungen=None, entwurf_vom=None)
+    proben = [Spaltenprobe(art="plan", jahr=2019, ertraege=20_280_001.0,
+                           aufwendungen=19_989_470.0, ergebnis=290_531.0)]
+
+    ohne = herkunft_fuer(plan, proben, url=None, dokument_id=1, label="x")
+    assert "OCR" not in ohne.fundstelle and "OCR" not in ohne.probe_ergebnis
+
+    mit = herkunft_fuer(plan, proben, url=None, dokument_id=1, label="x",
+                        ocr_modell="google/gemini-3.1-flash-lite")
+    assert "OCR" in mit.fundstelle
+    assert "gemini-3.1-flash-lite" in mit.probe_ergebnis
