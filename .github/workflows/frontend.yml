@@ -1,0 +1,53 @@
+name: Frontend
+
+# Prüft das Next-Frontend bei jedem PR, der es anfasst.
+#
+# WARUM ES DAS GIBT (20.08.2026): Bis dahin baute die CI ausschließlich die
+# Starlight-Doku (`docs.yml`, dort heißt der Job ebenfalls „build" — daher die
+# Verwechslungsgefahr). Das Frontend wurde erst BEIM DEPLOY übersetzt, auf der
+# Dev- bzw. Prod-VM. Ein Tippfehler in einer .tsx kam also garantiert durch die
+# PR-Prüfung und riss danach den Deploy.
+#
+# Genau das ist an diesem Tag passiert: In einem deutschen Zitat innerhalb
+# eines String-Literals stand als schließendes Zeichen ein gerades `"` statt
+# `“`. Das beendet das Literal — „Unterminated string constant", der Dev-Deploy
+# brach ab, und der PR war zu dem Zeitpunkt längst grün und gemergt.
+#
+# `tsc --noEmit` fängt genau diese Klasse (TS1002/TS1005) und dazu jeden
+# Typfehler. Der volle `next build` liefe zusätzlich Minuten lang für Bundling
+# und Optimierung, das der Deploy ohnehin macht — die Prüfung, die hier fehlt,
+# ist die des Übersetzers, nicht die des Bundlers.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/frontend/**'
+      - '.github/workflows/frontend.yml'
+  pull_request:
+    paths:
+      - 'web/frontend/**'
+      - '.github/workflows/frontend.yml'
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/frontend/package-lock.json
+
+      # `npm ci` statt `npm install`: reproduzierbar aus dem Lockfile, und der
+      # `postinstall`-Schritt (patch-package) läuft mit — ohne ihn fehlten die
+      # Patches, die das Repo an Abhängigkeiten fährt.
+      - run: npm ci
+
+      - name: TypeScript übersetzen (ohne Ausgabe)
+        run: npx tsc --noEmit
