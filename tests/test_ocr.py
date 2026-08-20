@@ -470,3 +470,62 @@ def test_platzhalter_anlagen_kommen_zurueck_auf_die_arbeitsliste(tmp_path):
             "eine Anlage, die nur Platzhalter trägt, ist nicht gelesen")
     finally:
         store.close()
+
+
+# --------------------------------------------------------------------------
+# (j) Die Zusage: in der Datenbank, nicht in „Frag den Rat"
+# --------------------------------------------------------------------------
+
+def test_ocr_text_kommt_in_keinen_index_der_ki_frage(tmp_path):
+    """Tims Entscheidung vom 20.08.2026: **alles** einlesen, aber Namen,
+    Anschriften und Unterschriften nicht über „Frag den Rat" zurückgeben.
+
+    Es gibt genau zwei Wege, auf denen Anlagentext in eine Nutzerantwort
+    gerät, und beide filtern auf `status='ok'`:
+
+    * `anlagen_missing_embeddings()` → `council_anlage_embeddings` → die
+      Gründliche Recherche,
+    * der Volltextindex der Beschlüsse (`council_decisions_fts`), der
+      Antrags-Anlagen mit hineinzieht.
+
+    Dieser Test hält BEIDE fest. Wer einen davon auf `'ocr'` erweitert,
+    veröffentlicht 227 gescannte Förderanträge — mit Ansprechpartnerinnen,
+    Anschriften und handschriftlichen Unterschriften.
+    """
+    store = _store_mit_anlage(tmp_path, "ocr")
+    try:
+        with store._conn:
+            # Als Antrag markieren: sonst greift der FTS-Zweig gar nicht erst.
+            store._conn.execute(
+                "UPDATE council_anlagen SET is_antrag = 1, antragsteller = '[]' "
+                "WHERE document_id = 4711")
+
+        # (1) Chunk-Vektoren
+        assert [z["document_id"] for z in store.anlagen_missing_embeddings()] == []
+
+        # (2) Der Volltextindex — geprüft an der Abfrage selbst, weil ihn
+        #     aufzubauen einen ganzen Sitzungsbestand bräuchte.
+        import inspect
+
+        quelle = inspect.getsource(type(store).rebuild_fts)
+        anlagen_zweig = quelle[quelle.index("FROM council_anlagen a JOIN"):]
+        anlagen_zweig = anlagen_zweig[:anlagen_zweig.index("GROUP BY")]
+        assert "a.status = 'ok'" in anlagen_zweig, (
+            "Der Volltextindex zieht Antrags-Anlagen mit hinein — er MUSS auf "
+            "status='ok' filtern, sonst stehen OCR-Texte in Suchtreffern")
+        assert "'ocr'" not in anlagen_zweig
+    finally:
+        store.close()
+
+
+def test_die_anzeige_von_treffern_traegt_keinen_volltext(tmp_path):
+    """Auch der Weg über die Treffer-Liste gibt nichts preis: Sie nennt Label,
+    Link und Vorlage — nicht den Text."""
+    store = _store_mit_anlage(tmp_path, "ocr")
+    try:
+        zeilen = store.anlagen_by_ids([4711])
+        assert zeilen and "raw_text" not in zeilen[0]
+        assert set(zeilen[0]) <= {"document_id", "label", "url", "kvonr",
+                                  "vorlage_nr", "vorlage_titel"}
+    finally:
+        store.close()
