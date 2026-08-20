@@ -227,3 +227,52 @@ def test_die_beiden_saetze_ueberschneiden_sich_wie_erwartet():
 
     assert set(HART).isdisjoint(NUR_INDEX)
     assert len(HART) + len(NUR_INDEX) == 6
+
+
+# --------------------------------------------------------------------------
+# (e) Die zweite Kopie: die Chunks
+# --------------------------------------------------------------------------
+
+def test_chunks_mit_kontaktdaten_werden_geloescht(tmp_path):
+    """DER FALL, DER DAS ERZWUNGEN HAT (20.08.2026):
+
+    Der erste OCR-Lauf über den ganzen Bestand endete rot — die eigene
+    Prüfung fand **374 Chunks mit Kontaktdaten** in den Vektoren. Sie
+    stammten aus der Zeit vor der Maskierung und wären dort geblieben, bis
+    jemand zufällig die Embeddings neu rechnet.
+
+    Gelöscht und nicht umgeschrieben: Ein Chunk ist ein Textstück MIT Vektor.
+    Den Text zu ändern und den Vektor stehen zu lassen hieße, eine Suche auf
+    etwas antworten zu lassen, das dort nicht mehr steht.
+    """
+    import subprocess
+    import sys as _sys
+
+    store = _store_mit_text(tmp_path, BRIEFKOPF + "Antrag auf Förderung. " * 30)
+    try:
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_anlage_embeddings "
+                "(document_id, chunk_idx, text_hash, chunk_text, vector) "
+                "VALUES (4711, 0, 'alt', ?, X'00')", (BRIEFKOPF,))
+            store._conn.execute(
+                "INSERT INTO council_anlage_embeddings "
+                "(document_id, chunk_idx, text_hash, chunk_text, vector) "
+                "VALUES (4711, 1, 'alt', 'Ganz harmloser Antragstext.', X'00')")
+        pfad = str(store._conn.execute("PRAGMA database_list").fetchone()[2])
+    finally:
+        store.close()
+
+    subprocess.run(
+        [_sys.executable, "scripts/bereinige_kontaktdaten.py", "--db", pfad],
+        cwd=str(Path(__file__).resolve().parents[1]), check=True,
+        capture_output=True)
+
+    nach = CouncilStore(Path(pfad))
+    try:
+        uebrig = [r[0] for r in nach._conn.execute(
+            "SELECT chunk_text FROM council_anlage_embeddings")]
+        assert uebrig == ["Ganz harmloser Antragstext."], (
+            "der Briefkopf-Chunk muss weg, der harmlose bleiben")
+    finally:
+        nach.close()
