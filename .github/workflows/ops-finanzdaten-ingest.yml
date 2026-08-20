@@ -140,6 +140,19 @@ jobs:
             wirtschaftsplaene=0
             .venv/bin/python scripts/ingest_wirtschaftsplaene.py || wirtschaftsplaene=$?
 
+            # Die Haushaltssatzung — Kreditermächtigung (§ 2), Dispo-Höchstbetrag
+            # (§ 4), Verpflichtungsermächtigungen (§ 3) und der Finanzhaushalt
+            # als Ganzes (§ 1.2). Steht NACH dem Anlagen-Backfill oben, weil sie
+            # aus einer Anlage liest; die neun Satzungs-PDFs lagen bis 08/2026
+            # allesamt mit `status='listed'` und leerem Volltext im Bestand.
+            #
+            # Der Lauf färbt hier direkt rot, anders als der
+            # Wirtschaftsplan-Lauf: Ein Riss heißt bei ihm, dass die Satzung
+            # ihrer eigenen Summenzeile widerspricht — dann ist entweder das
+            # Layout gewechselt oder der Text kaputt, und beides will man
+            # sofort sehen und nicht erst hinter dem Bestandsbericht.
+            .venv/bin/python scripts/ingest_haushaltssatzung.py
+
             # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
             # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
             # ingest_finanzen_opendata.py, und das ist keine Sortierlaune:
@@ -236,6 +249,7 @@ jobs:
                 # hier deutlich weniger sieht, hat entweder keine
                 # Vorlagen-Volltexte im Bestand oder einen Parser, dem ein
                 # Format entglitten ist.
+                "council_haushaltssatzung",
                 "council_wirtschaftsplaene",
             ]
             # Die Jahresspalte heißt nicht überall „jahr": council_haushalt

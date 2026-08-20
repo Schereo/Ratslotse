@@ -527,6 +527,20 @@ def _einheiten_konzernabschluss(row: dict) -> set[tuple]:
     return {(jahr,)} if jahr else set()
 
 
+def _bestand_haushaltssatzung(store: CouncilStore) -> set[tuple]:
+    """Die Haushaltsjahre, für die eine Satzung im Bestand steht.
+
+    Einheit ist das Jahr. Nachträge zählen bewusst NICHT mit: Sie sind kein
+    eigener Jahrgang, sondern eine Änderung an einem vorhandenen — und ein
+    Jahr ohne Nachtrag ist der Normalfall, nicht eine Lücke.
+    """
+    try:
+        return {(int(j),) for (j,) in store._conn.execute(  # noqa: SLF001
+            "SELECT DISTINCT jahr FROM council_haushaltssatzung WHERE nachtrag = 0")}
+    except Exception:  # noqa: BLE001 — Tabelle kann fehlen
+        return set()
+
+
 def _bestand_wirtschaftsplan(store: CouncilStore) -> set[tuple]:
     """Die Haushaltsjahre, für die ein Wirtschaftsplan im Bestand steht.
 
@@ -2358,6 +2372,35 @@ for _q in (
         bestand=_bestand_haushaltsplan,
     ),
     Finanzquelle(
+        key="haushaltssatzung",
+        label="Haushaltssatzung",
+        was="Der Rahmen, den der Haushaltsplan bekommt: wie viel die Stadt "
+            "sich für Investitionen leihen darf (§ 2), wie hoch ihr Dispo sein "
+            "darf (§ 4, Liquiditätskredite), welche Verpflichtungen sie für "
+            "kommende Jahre eingehen darf (§ 3) — und der Finanzhaushalt als "
+            "Ganzes (§ 1.2), aus dem der Bereich bisher nur die Investitionen "
+            "las. ACHTUNG: Im Ratsinformationssystem stehen ausschließlich "
+            "Verwaltungsentwürfe; die beschlossene Fassung erscheint im "
+            "Amtsblatt.",
+        tabelle="council_haushaltssatzung",
+        # Gemessen an den sieben Jahrgängen im Bestand: Die Satzung für das
+        # kommende Jahr liegt mit dem Haushaltsentwurf vor, also im Herbst.
+        # Dieselbe Schwelle wie bei den Wirtschaftsplänen, aus demselben
+        # Grund — beide reisen als Teil des Verwaltungsentwurfs.
+        erwarteter_monat=11,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            label_muster=("%Haushaltssatzung%",),
+            # Der Nachtrag trägt dasselbe Wort im Label und eine ganz andere
+            # Tabelle. Er fliegt schon im Parser raus; hier steht er noch
+            # einmal, damit der Backfill ihn gar nicht erst holt.
+            ausschluesse=("%Nachtrag%",),
+        ),
+        nachschub="scripts/ingest_haushaltssatzung.py",
+        bestand=_bestand_haushaltssatzung,
+    ),
+    Finanzquelle(
         key="wirtschaftsplan",
         label="Wirtschaftspläne der Eigenbetriebe",
         was="Was der Rat den Eigenbetrieben für das kommende Jahr genehmigt — "
@@ -2527,7 +2570,8 @@ REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "investitionen",
                "investitionsprogramm", "jahresabschluss", "teilhaushalt",
                "stellenplan", "kennzahlen", "rpa_fundstelle",
                "pruefungsfeststellungen",
-               "konzernabschluss", "beteiligungsbericht", "wirtschaftsplan",
+               "konzernabschluss", "beteiligungsbericht", "haushaltssatzung",
+               "wirtschaftsplan",
                "schulden",
                "lsn_steuerkraft", "lsn_realsteuern")
 

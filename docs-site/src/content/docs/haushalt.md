@@ -515,7 +515,7 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 ## Der Bereich hält sich selbst aktuell
 
-**Sechzehn** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
+**Siebzehn** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
 veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
 `check_finanzdaten.py` (alle zwei Wochen) nimmt das ab: **Neun** liest er
 selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **sechs**
@@ -2901,6 +2901,74 @@ Wort: Unter dem `Gesamtergebnis` (2019: 290.531 €) steht weiter unten noch ein
 `Jahresergebnis` (93.031 €). Die Differenz ist die Eigenkapitalverzinsung, die
 der Betrieb an den städtischen Haushalt abführt. Wer die Zeile nimmt, die am
 besten klingt, speichert die falsche.
+
+## Die Haushaltssatzung: der Rahmen um den Plan
+
+Der Haushaltsplan sagt, wofür das Geld ausgegeben werden soll. Die
+**Haushaltssatzung** sagt, in welchem Rahmen — auf drei Seiten, je Jahrgang,
+und bis zum 20.08.2026 las sie niemand. Sie füllt `council_haushaltssatzung`
+(`council/haushaltssatzung.py`, `scripts/ingest_haushaltssatzung.py`).
+
+| § | Was dort steht | Warum es fehlte |
+|---|---|---|
+| **§ 1.1** | Ergebnishaushalt: ordentliche und außerordentliche Erträge/Aufwendungen | teilweise über `council_ergebnishaushalt` da |
+| **§ 1.2** | Finanzhaushalt: sechs Beträge plus zwei Summen | der Bereich las daraus **nur die Investitionen** |
+| **§ 2** | Kredite für Investitionen | **stand nirgends** |
+| **§ 3** | Verpflichtungsermächtigungen | **stand nirgends** |
+| **§ 4** | Höchstbetrag für Liquiditätskredite — der Dispo der Stadt | **stand nirgends** |
+| **§ 5** | Hebesätze | über Tabelle 1105 da, hier als Gegenprobe |
+
+:::caution[Was hier steht, ist nicht beschlossen]
+Alle neun Satzungen im Ratsinformationssystem tragen auf dem Deckblatt
+**„Verwaltungsentwurf"**, und ihr Text nennt als Sitzungsdatum „xx.xx.20xx" —
+eine Vorlage, kein Beschluss. Die beschlossene Fassung erscheint im **Amtsblatt**,
+nicht im Ratsinformationssystem.
+
+Jede Zeile trägt deshalb `fassung='entwurf'`, und die Herkunft schreibt es in
+den *Stand*, nicht in eine Fußnote. Was der Rat daraus macht, steht auf
+`/haushalt/streit`.
+
+Der Jahrgang 2026 ist die einzige Satzung mit einem echten Datum (15.12.2025) —
+aber auch ihr Deckblatt sagt „Verwaltungsentwurf". Das Datum ist die *geplante*
+Sitzung, nicht ihr Ergebnis. Ein Parser, der es als Beleg nähme, machte aus
+einem Vorschlag einen Beschluss; deshalb heißt der Wert ohne Entwurfs-Vermerk
+`unbekannt` und nie `beschlossen`.
+:::
+
+**Die Satzung prüft sich selbst.** Unter § 1 stehen die drei Einzahlungs- und
+die drei Auszahlungszeilen des Finanzhaushalts einzeln — und darunter noch
+einmal ihre Summe („Nachrichtlich: Gesamtbetrag der Einzahlungen des
+Finanzhaushaltes …"). Über alle sieben eingelesenen Jahrgänge geht diese Probe
+**cent-genau** auf. Sie ist der Grund, dass diese Schicht ohne Zweitquelle
+auskommt, und `TOLERANZ_EUR` steht deshalb auf 0,005 € und nicht höher: Die
+Satzung führt volle Euro, eine Toleranz wäre hier kein Schutz, sondern ein
+blinder Fleck.
+
+**Was der Bestand zeigt.** Die Kreditermächtigung lautet in **jedem** gelesenen
+Jahrgang „werden nicht veranschlagt" — die Stadt nimmt keine
+Investitionskredite auf. Der Dispo dagegen wächst: 60 Mio. € (2019/2020) → 95
+Mio. (2021) → 60 Mio. (2023) → 100 Mio. (ab 2024).
+
+**Drei Fallen:**
+
+1. **`EUR` statt `Euro`.** Die Jahrgänge 2019 und 2020 schreiben die Einheit
+   durchgängig aus. Dieselbe Falle wie beim Eigenbetrieb Hafen, und genauso
+   lautlos: Ein Muster, das nur „Euro" kennt, findet dort nichts und meldet
+   keinen Fehler, sondern eine fehlende Zeile.
+2. **Der Nachtrag trägt dasselbe Wort im Label.** Die
+   Nachtragshaushaltssatzung 2020 führt eine ganz andere Tabelle (*bisher /
+   erhöht um / vermindert um / Gesamtbetrag*) — und in ihrem Textextrakt steht
+   eine Zahl mit einem Leerzeichen mitten drin (`609.717 .785`). Sie wird
+   bewusst **nicht** gelesen; der Parser weist sie am Wort ab, die
+   `erkennung` schließt sie zusätzlich aus.
+3. **Ab 2025 fehlt die Grundsteuer in § 5.** Die Satzung nennt nur noch die
+   Gewerbesteuer und verweist für die Grundsteuer auf eine eigene Satzung. Die
+   beiden Felder sind dann leer — das ist die Auskunft, keine Lücke im
+   Einlesen.
+
+**Was fehlt:** der Jahrgang **2022** (keine Satzung im Bestand) und die
+Nachträge. 2021 liegt doppelt (Anlagen 229865 und 230043, gleicher Inhalt); der
+Primärschlüssel `(jahr, nachtrag)` fängt das.
 
 ### Der zweite Weg: der Erfolgsplan aus der Anlage
 

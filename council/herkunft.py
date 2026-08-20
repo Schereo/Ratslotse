@@ -107,6 +107,16 @@ UNBEKANNT = "unbekannt"
 #: glauben?". Wer eine neue Probe baut, trägt sie hier ein; ein unbekannter
 #: Name fliegt beim Bauen der :class:`Herkunft` auf.
 PROBEN: dict[str, str] = {
+    # Die Haushaltssatzung (council/haushaltssatzung.py) — der Rahmen, den der
+    # Rat dem Haushaltsplan gibt: Kreditermächtigung, Dispo-Höchstbetrag,
+    # Verpflichtungsermächtigungen und der Finanzhaushalt als Ganzes.
+    "satzung_finanzhaushalt":
+        "Die Satzung nennt unter § 1 die drei Einzahlungs- und die drei "
+        "Auszahlungszeilen des Finanzhaushalts einzeln — und darunter noch "
+        "einmal ihre Summe. Beide Summen sind nachgerechnet.",
+    "satzung_hebesatz":
+        "Der Hebesatz aus § 5 der Satzung steht auch in Tabelle 1105 des "
+        "Statistischen Jahrbuchs: zwei Dokumente aus zwei Häusern.",
     # Die Kernzahl aus dem Beschlusstext, bestätigt durch die Anlage
     # (council/wirtschaftsplan_kernzahl.py) — die einzige Probe des Bereichs,
     # die über ZWEI Dokumente geht.
