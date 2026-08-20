@@ -164,7 +164,7 @@ const NICHT_AUSSAGEN: NichtAussage[] = [
     // in „227 € für Kultur und Sport" keine neue Sporthalle.
     text: "Der Zettel zeigt den Ergebnishaushalt, also das Laufende eines Jahres samt "
       + "Abschreibungen auf vorhandene Gebäude. Neubauten, Fahrzeuge und Grundstücke "
-      + "stehen in einem eigenen Haushalt — dem Finanzhaushalt, den „Was wird gebaut?" "
+      + "stehen in einem eigenen Haushalt — dem Finanzhaushalt, den „Was wird gebaut?“ "
       + "zeigt. Die beiden lassen sich nicht zusammenzählen.",
   },
   {
