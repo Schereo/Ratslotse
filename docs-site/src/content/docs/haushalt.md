@@ -2893,6 +2893,72 @@ Bäderbetrieb, Bäderbetriebsgesellschaft, Stadion und Hafen ist **kein
 Vokabular** hinterlegt: Ein geratenes fände irgendeine Zeile, und ihre Zahlen
 stünden dann unter einem Namen, den nie jemand nachgeschlagen hat.
 
+### Der dritte Weg: die Kernzahl, belegt durch zwei Dokumente
+
+Für Bäderbetriebsgesellschaft, Stadion und Bäderbetrieb trägt keiner der
+beiden Wege — und der Grund ist der lehrreichste Befund dieser Schicht.
+
+**Gleiches Vokabular, andere Bedeutung.** Ihre Erfolgspläne führen dieselben
+Zeilennamen wie der Abfallwirtschaftsbetrieb: `Gesamtleistung`,
+`Gesamtkosten`, `Gesamtergebnis`. Die Probe *Gesamtleistung − Gesamtkosten =
+Gesamtergebnis* geht aber auf:
+
+| Betrieb | Spalten, in denen die Rechnung aufgeht |
+|---|---|
+| Stadion | 5 von 5 |
+| Bäderbetrieb | **0** von 11 · 0 von 6 |
+| Bäderbetriebsgesellschaft | **1** von 24 · 2 von 15 |
+
+Bei den beiden Bäder-Gesellschaften stehen zwischen `Gesamtkosten` und
+`Gesamtergebnis` noch Abschreibungen, Zinsen und neutrale Posten —
+`Gesamtkosten` ist dort **nicht** der Gesamtaufwand. Ein Parser, der dem
+Zeilennamen glaubt, hätte plausible und falsche Zahlen geliefert. Genau dafür
+gibt es Rechenproben.
+
+**Was stattdessen trägt**, ist der Beschlusstext der Vorlage:
+
+> …wird in der anliegenden Fassung mit einem für die Gesellschaft
+> ausgewiesenen **Jahresfehlbetrag von −10.128.335 Euro** beschlossen.
+
+Und dieselbe Zahl steht in der Anlage. Zwei getrennte Dokumente, unabhängig
+gesetzt — die einzige Probe des Bereichs, die nicht davon abhängt, eine
+Tabellenzeile richtig zu deuten (`wirtschaftsplan_kernzahl`).
+
+:::caution[Das Wort trägt das Vorzeichen, nicht die Ziffernfolge]
+„maximalen Fehlbetrag in Höhe von **651.500 Euro**" ist **minus** 651.500 €.
+Mal steht das Minus zusätzlich davor („Jahresfehlbetrag von −10.128.335
+Euro"), mal nicht. Wer beides gleich liest, macht aus dem größten Verlust der
+Stadtgesellschaften einen Gewinn. Ein „Fehlbetrag" kann deshalb nie positiv
+gespeichert werden, ein „Überschuss" nie negativ — und ein Dokument, das beides
+gegeneinander schreibt, wirft, statt still umgedreht zu werden.
+:::
+
+**Drei Beleglagen, auseinandergehalten**, weil die eine sich später auflöst und
+die andere nie:
+
+| Lage | Bedeutung | Zahl |
+|---|---|---|
+| `belegt` | dieselbe Zahl steht in der Anlage | 11 |
+| `ausgeglichen` | Ergebnis 0 — die Ziffer 0 steht in jeder Anlage hundertfach, daran ändert auch OCR nichts | 8 |
+| `ohne_anlage` | die Anlage trägt (noch) keinen lesbaren Text | 3 |
+
+**Nur das Ergebnis.** Diese Route liefert kein Erträge/Aufwendungen-Paar; die
+einzige zweifach belegte Zahl dieser Dokumente ist das Jahresergebnis. Darum
+sind `ertraege` und `aufwendungen` in `council_wirtschaftsplaene` seit dem
+20.08.2026 **nullbar** — ein `NULL` sagt „diese Quelle nennt es nicht", eine 0
+wäre eine Behauptung. Der Umbau erkennt Altbestände am Schema selbst
+(`PRAGMA table_info`), kopiert spaltenweise um und bricht ab, wenn die
+Zeilenzahl nicht stimmt.
+
+:::note[Zwei Stadion-Gesellschaften, nicht eine]
+Die **Stadionplanungsgesellschaft mbH** und die **Stadion Oldenburg GmbH & Co.
+KG** legen eigene Wirtschaftspläne vor — 2024 von beiden einen, über
+−152.000 € und −190.000 €. Ein gemeinsames Erkennungsmuster „Stadion" schrieb
+den einen Betrag unter den Namen der anderen, und weil `(betrieb, jahr)` der
+Schlüssel ist, hätte die zweite Zeile die erste stillschweigend überschrieben.
+Beide stehen jetzt getrennt in `BETRIEBE`.
+:::
+
 ### Im Register, damit der nächste Jahrgang sich meldet
 
 Die Schicht steht als **manuelle** Quelle in `finanzquellen.REIHENFOLGE`:

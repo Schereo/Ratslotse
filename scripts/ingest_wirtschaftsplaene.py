@@ -47,6 +47,11 @@ from council.wirtschaftsplan_tabelle import (  # noqa: E402
     herkunft_fuer as herkunft_tabelle,
     parse_erfolgsplan,
 )
+from council.wirtschaftsplan_kernzahl import (  # noqa: E402
+    BELEGLAGE,
+    herkunft_fuer as herkunft_kernzahl,
+    parse_kernzahl,
+)
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
@@ -184,6 +189,39 @@ def main() -> int:
                 print(f"  ! {satz}")
         risse.extend(anlagen_risse)
 
+        # --- Dritter Weg: die Kernzahl aus dem Beschlusstext --------------
+        #
+        # Für die Betriebe, deren Tabelle sich nicht selbst vorrechnet. Greift
+        # nur, wo die beiden anderen Wege nichts geliefert haben — sonst stünde
+        # eine Zeile mit bloßem Ergebnis gegen eine mit vollem Tripel.
+        schon = {(plan.betrieb, plan.jahr) for plan, _ in gefunden} | {
+            (plan.betrieb, plan.jahr) for plan, _, _ in aus_anlage}
+        kernzahlen = []
+        for r in rows:
+            erkannt = betrieb_aus_titel(r["title"])
+            jahr = jahr_aus_titel(r["title"])
+            if not erkannt or jahr is None or (erkannt[0], jahr) in schon:
+                continue
+            texte = [a[0] for a in store._conn.execute(  # noqa: SLF001
+                "SELECT raw_text FROM council_anlagen WHERE kvonr = ? "
+                "AND status = 'ok'", (r["kvonr"],))]
+            try:
+                res = parse_kernzahl(r["vorlage_nr"], r["title"], r["raw_text"],
+                                     jahr, texte)
+            except WirtschaftsplanFehler as fehler:
+                risse.append(str(fehler)); continue
+            if res is None:
+                continue
+            kernzahlen.append((*res, r))
+
+        if kernzahlen:
+            print("\nKernzahl aus dem Beschlusstext:")
+            for plan, wort, lage, _ in sorted(kernzahlen,
+                                              key=lambda x: (x[0].betrieb, x[0].jahr)):
+                print(f"  {plan.jahr}  {plan.betrieb:16s} "
+                      f"Ergebnis {plan.ergebnis / 1e6:+8.3f} Mio. €   "
+                      f"[{lage}] {BELEGLAGE[lage]}")
+
         if args.trockenlauf:
             print("\n— Trockenlauf, nichts gespeichert.")
             return 1 if risse else 0
@@ -196,8 +234,11 @@ def main() -> int:
             store.save_wirtschaftsplan(plan, herkunft_tabelle(
                 plan, proben, url=a["url"], dokument_id=a["document_id"],
                 label=a["label"]))
-        print(f"\n{len(gefunden)} aus dem Beschlusstext, {len(aus_anlage)} aus "
-              "Anlagen gespeichert.")
+        for plan, wort, lage, r in kernzahlen:
+            store.save_wirtschaftsplan(plan, herkunft_kernzahl(
+                plan, wort, lage, url=None, kvonr=r["kvonr"]))
+        print(f"\n{len(gefunden)} Eckwerte, {len(aus_anlage)} Erfolgspläne, "
+              f"{len(kernzahlen)} Kernzahlen gespeichert.")
 
         luecken_ohne_beleg = store.herkunft_luecken().get("council_wirtschaftsplaene")
         if luecken_ohne_beleg:
