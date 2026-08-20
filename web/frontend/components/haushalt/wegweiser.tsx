@@ -29,13 +29,14 @@
 //   1–6   Die Zahlen      Woher das Geld kommt, wohin es geht, was fest ist,
 //                         was einzelne Aufgaben kosten, wer sie tut — und was
 //                         gebaut werden soll.
-//   7–9   Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
+//   7–10  Die Gegenprobe  Ein Haushalt ist ein Plan; was daraus wurde, steht
 //                         im Jahresabschluss und in den Rechnungsergebnissen,
-//                         und geprüft wird er auch.
-//   10–13 Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
+//                         geprüft wird er auch, und am Ende fasst die Stadt
+//                         sich in dreizehn Kennzahlen selbst zusammen.
+//   11–14 Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
 //                         Oldenburg steht nicht allein da, und was aus allen
 //                         Jahren zusammen offen blieb, sind die Schulden.
-//   14–16 Mitreden        Wann entschieden wird, worüber gestritten wurde,
+//   15–17 Mitreden        Wann entschieden wird, worüber gestritten wurde,
 //                         und was sich drehen ließe.
 //
 // AUS DER 16er-LISTE WERDEN VIER ETAPPEN-KARTEN (17.08., vierte Runde,
@@ -69,20 +70,20 @@
 // Kicker-Nummern der Seiten gegen die hier gerechnete Reihenfolge — wer
 // unten etwas einfügt, verschiebt alles danach und zieht die Kicker nach.
 //
-// **Zwei der achtzehn Unterseiten haben bewusst keinen Schritt.**
+// **Zwei der neunzehn Unterseiten haben bewusst keinen Schritt.**
 // `/haushalt/bereich` und `/haushalt/steuer` sind Steckbriefe: Sie brauchen
 // einen Query-Parameter und öffnen ohne ihn den Vorgabefall. Als eigener
-// Schritt stünde ein beliebiger Bereich neben sechzehn Fragen. Sie werden am
-// Fuß benannt, damit die Zählung „sechzehn Schritte, achtzehn Unterseiten"
+// Schritt stünde ein beliebiger Bereich neben siebzehn Fragen. Sie werden am
+// Fuß benannt, damit die Zählung „siebzehn Schritte, neunzehn Unterseiten"
 // nicht wie eine Lücke aussieht. (Die Übersicht `/haushalt` selbst ist kein
 // Ziel dieses Wegweisers — von dort kommt man ja. Sie zählt nur beim
-// Umgebungs-Gate mit, das alle neunzehn Seiten deckt: `lib/haushalt-frei.ts`.)
+// Umgebungs-Gate mit, das alle zwanzig Seiten deckt: `lib/haushalt-frei.ts`.)
 //
 // Zwei Spalten ab 768 px **Container-Innenbreite**, nicht Fensterbreite
 // (Designsprache §4): Am Desktop liegt der Block neben der Seitenleiste, auf
 // dem iPad nicht — dieselbe Fensterbreite meint zwei verschiedene
 // Platzangebote. Und zwar TEXTSPALTEN (`columns`), kein Raster: Die Etappen
-// sind 6, 3, 4 und 3 Schritte lang — in einem Raster würde jede Zeile so
+// sind 6, 4, 4 und 3 Schritte lang — in einem Raster würde jede Zeile so
 // hoch wie ihre höhere Karte, unter der kurzen bliebe Leere stehen.
 
 import { useState } from "react";
@@ -492,7 +493,7 @@ export function Wegweiser() {
       )}
 
       {/* Ohne diesen Satz sähen die Schritte nach einer Lücke aus: Der
-          Bereich hat achtzehn Unterseiten. Die beiden übrigen sind Steckbriefe
+          Bereich hat neunzehn Unterseiten. Die beiden übrigen sind Steckbriefe
           und brauchen einen Bereich bzw. eine Einnahmeart, über die man sie
           aufruft — als Schritt stünde dort ein beliebiger Einzelfall. */}
       <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
