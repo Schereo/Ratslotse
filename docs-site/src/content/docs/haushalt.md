@@ -583,6 +583,22 @@ steht das ausdrücklich drin. Gemeldet wird nur, wenn sich die Liste gegenüber
 dem letzten Lauf geändert hat (Vergleich über `job_runs`) — alle vierzehn Tage
 dieselbe Mail wäre eine, die niemand mehr liest.
 
+Dieselbe Mail trägt seit dem 20.08.2026 einen dritten Block: **Zeilen, die
+dastehen, ohne zu sagen, woher sie kommen** (`store.herkunft_luecken()`). Der
+Befund wurde vorher nur ins Cron-Log geschrieben und als Kennzahl ins
+Admin-Panel gereicht — er stand nicht in `ausbleibend` und löste deshalb nie
+eine Mail aus. Das war die stillste der drei Lagen: Ein fehlender Jahrgang
+fällt in jeder Jahresliste auf, eine Zahl ohne Beleg nicht — der Jahrgang steht
+da, die Zahl steht da, und erst wer auf den Herkunfts-Chip tippt, merkt etwas.
+
+Wichtig für die Einschätzung, wann dieser Block überhaupt erscheint: Bei den
+neun Schichten, die der Job selbst einliest, **heilt** er eine solche Lücke
+beim nächsten Lauf — die Einheit gilt als offen und wird samt frischer Herkunft
+neu geschrieben. Liegen bleibt sie nur dort, wo niemand automatisch nachzieht,
+also in den sechs Schichten von außerhalb. Der Wiederholungs-Schlüssel führt
+die **Zahl** mit (`herkunft:<tabelle>:<n>`): Wächst die Lücke von einer Zeile
+auf dreihundert, ist das eine neue Nachricht und keine Wiederholung.
+
 :::note[Woher der Jahrgang kommt]
 `council_anlagen.fetched_at` trägt bei **allen** Finanzdokumenten den
 10.08.2026 — den Tag des Volltext-Backfills. Als Veröffentlichungsdatum ist das

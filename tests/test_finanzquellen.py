@@ -742,6 +742,65 @@ def test_hinweis_meldet_liegengebliebene_einheiten(thh_bestand, tmp_path, monkey
     assert "2027 THH03" in gemeldet[0]
 
 
+def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkeypatch):
+    """Der stillste Ausfall des Jobs: eine Zahl ohne Beleg.
+
+    `herkunft_luecken()` wurde bis 20.08.2026 gerufen, ins Log geschrieben und
+    als Kennzahl nach `job_runs` gereicht — aber der Befund stand nicht in
+    `ausbleibend` und löste deshalb **nie** eine Mail aus. Ein Cron-Log liest
+    niemand freiwillig, und anders als bei einem fehlenden Jahrgang vermisst
+    hier nichts: Der Jahrgang steht da, die Zahl steht da, nur der Beleg
+    fehlt. Auf einer Seite, deren Anspruch „jede Zahl sagt, woher sie stammt"
+    ist, fällt das erst auf, wenn jemand auf den Chip tippt.
+
+    Geprüft wird an `council_steuern`, und zwar mit Absicht: Bei den neun
+    Schichten, die der Job selbst einliest, **heilt** er eine solche Lücke
+    beim nächsten Lauf (die Einheit gilt als offen und wird neu geschrieben,
+    mitsamt frischer Herkunft). Liegen bleibt sie genau dort, wo niemand
+    automatisch nachzieht — in den sechs Schichten von außerhalb. Das ist
+    zugleich der Grund, warum die Meldung überhaupt gebraucht wird.
+    """
+    from kern.store import Store
+
+    nwz = tmp_path / "nwz.sqlite"
+    Store(nwz).close()
+    monkeypatch.setenv("NWZ_DB", str(nwz))
+
+    # Eine Zeile aus einer von Hand gepflegten Schicht, die ihre Herkunft
+    # nicht trägt — so sieht ein Schreibweg aus, der `herkunft_id` vergisst.
+    with thh_bestand._conn:  # noqa: SLF001
+        thh_bestand._conn.execute(  # noqa: SLF001
+            "INSERT INTO council_steuern (jahr, art, betrag, fetched_at, herkunft_id) "
+            "VALUES (2025, 'Gewerbesteuer (-umlage)', 222117000.0, '2026-08-20', NULL)")
+    thh_bestand.close()
+
+    gemeldet: list[str] = []
+    monkeypatch.setattr("kern.alerts.notify_admin", lambda text, **kw: gemeldet.append(text))
+    bericht = check_finanzdaten.main(db=str(tmp_path / "council.sqlite"),
+                                     heute=date(2027, 1, 15), still=True)
+
+    assert bericht["Zeilen ohne Herkunft"] == 1
+    # Die ZAHL gehört in den Wiederholungs-Schlüssel, nicht nur der Name:
+    # Sonst hieße „schon gemeldet" auch dann Schweigen, wenn aus einer Zeile
+    # ohne Beleg dreihundert geworden sind.
+    assert "herkunft:council_steuern:1" in bericht["ausbleibend"]
+    assert len(gemeldet) == 1, "der Befund muss eine Mail auslösen, nicht nur das Log"
+    assert "nicht sagen, woher sie kommen" in gemeldet[0]
+    assert "council_steuern" in gemeldet[0]
+
+
+def test_hinweis_ohne_herkunftsluecke_schweigt_darueber(bestand):
+    """Der Block erscheint nur, wenn es ihn zu berichten gibt — sonst stünde
+    unter jeder Mail eine leere Überschrift."""
+    stand = finanzquellen.datenstand(bestand, date(2027, 11, 1))
+    ohne = check_finanzdaten._hinweis_text(stand, {}, {}, date(2027, 11, 1))
+    mit = check_finanzdaten._hinweis_text(stand, {}, {}, date(2027, 11, 1),
+                                          {"council_steuern": 7})
+    bestand.close()
+    assert "woher sie kommen" not in ohne
+    assert "woher sie kommen" in mit and "7 Zeile(n)" in mit
+
+
 def test_datenstand_nennt_den_naechsten_jahrgang_und_wann_er_kommt(bestand):
     p = finanzquellen.Protokoll(still=True)
     finanzquellen.lies_jahresabschluesse(bestand, p)
