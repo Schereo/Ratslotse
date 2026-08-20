@@ -598,6 +598,19 @@ def deep_zerlege(frage: str, model: str = EXPAND_MODEL) -> list[dict]:
         return fallback
 
 
+#: Wie viel einer Anlagen-Fundstelle in den Prompt darf.
+#:
+#: Stand bis 20.08.2026 auf 500 — unterhalb dessen, was die Suche überhaupt
+#: liefert. Gemessen an „Mobilitätsplan Oldenburg 2030": Alle sechs
+#: Fundstellen kamen mit rund 1.100 Zeichen und wurden allesamt gekappt, also
+#: flog über die Hälfte des Materials weg, kurz bevor das Modell es sah.
+#:
+#: Das ist teuer, weil Anlagen die fachliche Substanz tragen (siehe unten) —
+#: eine gewöhnliche Vorlage bekommt im selben Prompt 4.000 Zeichen. Sechs
+#: Anlagen zu 1.200 sind 7.200 Zeichen neben rund 40.000 aus den Vorlagen.
+ANLAGEN_ZEICHEN = 1200
+
+
 def _anlagen_block(anlagen: list[dict] | None) -> str:
     """Fundstellen aus Anlagen (Gutachten, Konzepte, Stellungnahmen) — nur im
     Deep-Research-Kontext.
@@ -611,12 +624,23 @@ def _anlagen_block(anlagen: list[dict] | None) -> str:
     """
     if not anlagen:
         return ""
+    # Dieselbe Datei liegt im Bestand teils zweimal (getrennt hochgeladen,
+    # eigene document_id, gleicher Titel). Ohne diese Prüfung verbraucht sie
+    # zwei der sechs Plätze — am 20.08.2026 bei „Mobilitätsplan" passiert.
+    gesehen: set[str] = set()
+    frisch = []
+    for a in anlagen:
+        marke = " ".join(str(a.get("label") or "").split()).lower()[:60]
+        if marke and marke in gesehen:
+            continue
+        gesehen.add(marke)
+        frisch.append(a)
     zeilen = "\n".join(
         f"[A{a.get('nr') or i + 1}] {a.get('label') or 'Anlage'} "
         f"(zur Vorlage {a.get('vorlage_nr') or '?'}"
         f"{' — ' + a['vorlage_titel'][:80] if a.get('vorlage_titel') else ''}): "
-        f"{(a.get('fundstelle') or '').strip()[:500]}"
-        for i, a in enumerate(anlagen))
+        f"{(a.get('fundstelle') or '').strip()[:ANLAGEN_ZEICHEN]}"
+        for i, a in enumerate(frisch))
     return ("\nAUS DEN ANLAGEN (Gutachten, Konzepte, Stellungnahmen zu den Vorlagen —\n"
             "oft die fachliche Substanz hinter einem Beschluss). Nutze sie für Details\n"
             "und Zahlen und belege JEDE daraus übernommene Aussage mit dem Marker,\n"
