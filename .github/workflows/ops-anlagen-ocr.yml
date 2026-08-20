@@ -107,6 +107,12 @@ jobs:
             .venv/bin/python scripts/backfill_anlagen_ocr.py \
               $LIMIT --max-seiten "$OCR_MAX_SEITEN"
 
+            # Kontonummern und Anschriften aus dem Bestand nehmen. Die
+            # Backfills tun das seit dem 20.08. beim Speichern; dieser Aufruf
+            # fängt, was aus früheren Läufen noch dasteht — und er ist
+            # idempotent, ein zweiter Lauf findet nichts mehr.
+            .venv/bin/python scripts/bereinige_kontaktdaten.py
+
             .venv/bin/python - <<'PY'
             from council.store import CouncilStore
             s = CouncilStore("data/council.sqlite")

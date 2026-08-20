@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council.store import CouncilStore  # noqa: E402
+from council.kontaktdaten import entfernen  # noqa: E402
 from council.vorlagen import _pdf_text  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -150,7 +151,10 @@ def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
                             "WHERE document_id = ?", (did,))
                     print(f"  [{did}] FEHLER {exc}", flush=True)
                     continue
-                text = (text or "").strip()[:MAX_TEXT]
+                # Kontonummern und Anschriften gar nicht erst speichern.
+                # Das ist KEIN OCR-Thema: 606 Anlagen des Bestands tragen
+                # Kontaktdaten aus ihrer eigenen Textebene.
+                text = entfernen((text or "").strip())[:MAX_TEXT]
                 # Kaputte Zeichenzuordnung zählt wie „kein Text" — sonst gilt
                 # ein Dokument als gelesen, das niemand lesen kann.
                 if text and buchstabenanteil(text) < MIN_BUCHSTABEN:
