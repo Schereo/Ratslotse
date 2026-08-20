@@ -155,8 +155,8 @@ die es nicht zeigen:
 Randmarke). Zwei Ebenen, zwei Tabellen — die Namen halten sie auseinander.
 :::
 
-Alle Ingests sind idempotent. Die neun Schichten aus dem **Ratsinformations-
-system** zieht seit 08/2026 ein Cron von allein nach (siehe unten); die
+Alle Ingests sind idempotent. Die neun Schichten, die der Cron aus dem **Ratsinformations-
+system** von allein nachzieht, tut er seit 08/2026 (siehe unten); die
 Ingest-Skripte bleiben der Weg von Hand, wenn ein verbesserter Parser über den
 **Bestand** laufen soll. Die Plan- und Open-Data-Schichten (`council_haushalt`,
 `council_steuern`, `council_steuerkraft`, `council_einwohner`) kommen per
@@ -514,7 +514,7 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 ## Der Bereich hält sich selbst aktuell
 
-**Fünfzehn** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
+**Sechzehn** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
 veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
 `check_finanzdaten.py` (alle zwei Wochen) nimmt das ab: **Neun** liest er
 selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **sechs**
@@ -2760,6 +2760,69 @@ wird mitgelesen und gehört an jede Anzeige, dieselbe Vorsicht wie beim
 Gesamtergebnishaushalt. Der Jahrgang 2024 schreibt „des **I.**
 Verwaltungsentwurfes"; die Ordnungszahl zählt die Fassung und wird zugelassen,
 aber nicht ausgewertet.
+
+### Welche Dokumente geprüft wurden — und was daraus wurde
+
+Damit im nächsten Oktober niemand bei null anfängt: Das hier ist der Befund je
+Betrieb, mit Stand 20.08.2026. Die Spalte „Anlage" nennt die
+`council_anlagen.document_id` — der Anker, der Label- und URL-Wechsel
+überlebt.
+
+| Betrieb | Vorlagen | Eckwerte im Beschlusstext | Anlage lesbar? |
+|---|---|---|---|
+| Gebäudewirtschaft und Hochbau (EGH) | 8 (2019–2026) | **ja, alle acht** — eingelesen | nicht nötig |
+| Abfallwirtschaftsbetrieb (AWB) | 8 | nein | **teils** — s. u. |
+| Bäderbetrieb (BBO) | 12 | nein | ja (Text vorhanden) |
+| Bäderbetriebsgesellschaft (BBGO) | 10 | nein | ja |
+| Stadion / Stadionplanungsges. | 5 | nein | ja |
+| Eigenbetrieb Hafen | 2 | nein | ungeprüft |
+
+**Der AWB im Detail** (geprüft an den heruntergeladenen PDFs):
+
+| Jahrgang | Anlage | Befund |
+|---|---|---|
+| 2019 | 193959 | **Scan** — keine Textebene |
+| 2020 | 208461 | **Scan** |
+| 2021 | 224533 | **Scan** |
+| 2023 | 252313 | Text, Layout A (Posten je Bereich) |
+| 2024 | 269051 | Text, Layout A |
+| 2025 | 283481 | Text, Layout A |
+| 2025 (Anpassung) | 292139 | Text, Layout A |
+| 2026 | 299038 | Text, **Layout B** (Positionsnummern, „Summe Erträge") |
+
+Zwei Layouts, drei Scans — der AWB ist also nicht der einfache Fall, als der er
+zuerst aussah. Layout A gliedert jeden Posten nach den vier Betriebszweigen
+(Straßenreinigung · Abfallsammlung · Abfallbehandlungsanlagen · Werkstatt) und
+setzt darunter eine unbeschriftete Summenzeile; die vier ergeben sie exakt
+(5.153.245 + 15.492.551 + 680.984 = 21.326.780). Layout B nummeriert die Posten
+nach § 275 HGB und schreibt „Summe Erträge" aus, rundet dabei aber je Position:
+23.824.312 + 17.812 + 378.352 = 24.220.4**76** gegen ausgewiesene 24.220.4**75**.
+Eine Toleranz von 2 € ist hier Pflicht, cent-genau wie beim EGH geht nicht.
+
+:::note[Scans werden nicht vergessen — sie tragen eine Marke]
+Ein PDF ohne Textebene ist im Bestand **nicht** dasselbe wie ein ungelesenes:
+`backfill_anlagen_texte.py` setzt `council_anlagen.status = 'empty'`, sobald
+ein Dokument weniger als 200 Zeichen hergibt (`MIN_TEXT`). 231 Anlagen tragen
+diese Marke bereits.
+
+Wer später OCR nachrüstet, hat damit seine Arbeitsliste ohne weiteres Zutun:
+`SELECT document_id FROM council_anlagen WHERE status = 'empty'`. Die drei
+AWB-Scans oben stehen heute allerdings noch auf `listed` — der Backfill lief
+über sie nie. Damit das nicht so bleibt, ist die Schicht in
+`finanzquellen.QUELLEN` mit einer `erkennung` eingetragen, obwohl der Cron sie
+gar nicht liest: `backfill_anlagen_texte.py --nur-finanz` zieht seine
+Label-Muster aus genau dieser Registry (`finanz_muster()`), und ohne den
+Eintrag blieben die Wirtschaftsplan-Anlagen für immer unangetastet.
+:::
+
+### Im Register, damit der nächste Jahrgang sich meldet
+
+Die Schicht steht als **manuelle** Quelle in `finanzquellen.REIHENFOLGE`:
+`erwarteter_monat=11`, `versatz=-1`. Beides ist gemessen und nicht geschätzt —
+die acht Entwurfsdaten im Bestand reichen vom 04.09. bis zum 22.11., und die
+Schwelle steht auf dem **spätesten** (zu früh gemeldet wäre der teurere
+Fehler). Der Plan *für* 2027 ist damit ab dem 01.11.2026 fällig; bleibt er aus,
+nennt die Cron-Mail die Schicht samt Skript.
 
 ### Kein Cron — noch nicht
 
