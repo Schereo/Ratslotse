@@ -35,7 +35,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council.kontaktdaten import entfernen, zaehlen  # noqa: E402
+from council.kontaktdaten import (  # noqa: E402
+    enthaelt_kontaktdaten,
+    entfernen,
+    zaehlen,
+)
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -94,14 +98,47 @@ def main() -> dict:
                   f"{zeichen_vorher - zeichen_nachher:>7,} Zeichen entfernt"
                   + ("  (Trockenlauf)" if args.trocken else ""), flush=True)
 
+        # DIE CHUNKS SIND EINE ZWEITE KOPIE. Was `council_anlagen.raw_text`
+        # verlässt, steht in `council_anlage_embeddings.chunk_text` weiter —
+        # dort landete es, bevor es die Maskierung gab, und es bliebe dort,
+        # bis jemand zufällig die Embeddings neu rechnet.
+        #
+        # Der erste OCR-Lauf über den ganzen Bestand (20.08.2026) hat das
+        # sichtbar gemacht: 374 Chunks mit Kontaktdaten, und der Lauf endete
+        # deshalb rot. Richtig so — aber die Meldung allein räumt nichts weg.
+        #
+        # Gelöscht statt umgeschrieben: Ein Chunk ist ein Textstück MIT
+        # Vektor. Den Text zu ändern und den Vektor stehen zu lassen hieße,
+        # eine Suche auf etwas antworten zu lassen, das dort nicht mehr steht.
+        # `embed_anlagen.py` baut sie beim nächsten Lauf aus dem maskierten
+        # Text neu — der Hash passt ohnehin nicht mehr.
+        chunks = 0
+        if not args.trocken:
+            try:
+                betroffen = [r[0] for r in store._conn.execute(  # noqa: SLF001
+                    "SELECT rowid, chunk_text FROM council_anlage_embeddings")
+                    if enthaelt_kontaktdaten(r[1])]
+                if betroffen:
+                    with store.transaktion():
+                        store._conn.executemany(  # noqa: SLF001
+                            "DELETE FROM council_anlage_embeddings WHERE rowid = ?",
+                            [(r,) for r in betroffen])
+                chunks = len(betroffen)
+            except Exception as fehler:  # noqa: BLE001 — Tabelle kann fehlen
+                berichte.append(f"council_anlage_embeddings: {fehler}")
+
         print(f"\nEntfernt: {gesamt['iban']} IBAN, {gesamt['bic']} BIC, "
               f"{gesamt['anschrift']} Anschriften.", flush=True)
+        if chunks:
+            print(f"Dazu {chunks} Chunk(s) mit Kontaktdaten gelöscht — "
+                  "embed_anlagen.py baut sie maskiert neu.", flush=True)
         if args.trocken:
             print("Trockenlauf — nichts geschrieben.", flush=True)
         else:
             print("Die Chunk-Vektoren rechnet embed_anlagen.py beim nächsten "
                   "Lauf neu: Ihr Hash passt nicht mehr.", flush=True)
-        return {**gesamt, "trocken": int(args.trocken), "befund": berichte}
+        return {**gesamt, "chunks": chunks,
+                "trocken": int(args.trocken), "befund": berichte}
     finally:
         store.close()
 
