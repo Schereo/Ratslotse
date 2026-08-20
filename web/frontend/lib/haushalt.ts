@@ -304,6 +304,8 @@ export type HaushaltDaten = {
   wirtschaftsplaene?: WirtschaftsplanZeile[];
   /** Die Haushaltssatzung je Jahrgang — der Rahmen um den Plan. */
   haushaltssatzung?: HaushaltssatzungZeile[];
+  /** Woraus die Abfall- und Straßenreinigungsgebühren entstehen. */
+  gebuehren?: GebuehrenZeile[];
   /** Jahre mit einem beschlossenen **Haushaltsansatz** — das jüngste ist das
    *  Jahr, für das gerade ein Haushalt gilt.
    *
@@ -893,6 +895,33 @@ export function flussbild(
  *  Gebäudewirtschaft im Beschlusstext, der Abfallwirtschaftsbetrieb im
  *  Erfolgsplan seiner Anlage. Bei den übrigen ist die einzige doppelt belegte
  *  Zahl das Jahresergebnis. Eine 0 an diesen Stellen wäre eine Behauptung. */
+/** Ein Bereich einer Gebührenbedarfsberechnung.
+ *
+ *  ACHTUNG BEI DER ANZEIGE: `gebuehr` und `bezugsmenge` sind bei der
+ *  **Abfallsammlung** `null`, und das ist die Auskunft und keine Lücke: Sie
+ *  erhebt eine Grundgebühr UND eine Gebühr je Liter Behältervolumen, es gibt
+ *  dort also keine einzelne Division. Eine 0 wäre eine Behauptung. */
+export type GebuehrenZeile = {
+  jahr: number;
+  /** `abfallbehandlung` · `abfallsammlung` · `strassenreinigung`. */
+  bereich: string;
+  bereich_name: string;
+  /** Was der Bereich im Jahr insgesamt kostet. */
+  kostenkalkulation: number;
+  /** Alles, was davon abgeht — negativ. */
+  abzuege: number;
+  /** Was die Gebührenzahler tragen. */
+  zu_deckende_kosten: number;
+  bezugsmenge: number | null;
+  bezugseinheit: string | null;
+  /** Die errechnete Gebühr, drei Nachkommastellen. */
+  gebuehr: number | null;
+  /** Der gerundete Vorschlag an den Rat — das, was erhoben wird. */
+  gebuehrenvorschlag: number | null;
+  vorlage_nr: string | null;
+  proben: string;
+};
+
 /** Ein Jahrgang der Haushaltssatzung (§§ 1–5).
  *
  *  ACHTUNG BEI DER ANZEIGE: `fassung` ist in jeder Zeile des Bestands

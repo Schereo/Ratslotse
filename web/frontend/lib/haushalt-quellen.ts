@@ -100,6 +100,10 @@ export type QuellenSchluessel =
   // etwas anderes ist als der Haushaltsplan: Der Plan sagt, wofür das Geld
   // ausgegeben werden SOLL, die Satzung, was die Stadt DÜRFTE.
   | "haushaltssatzung"
+  // Die Gebührenbedarfsberechnung — eigener Schlüssel, weil sie ein anderes
+  // Dokument ist als der Wirtschaftsplan desselben Betriebs: Der Plan sagt,
+  // was der Betrieb vorhat, die Berechnung, was die Leute dafür zahlen.
+  | "gebuehren"
   | "gesamtabschluss"
   | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
   // Die Kassensicht aus denselben Jahresabschlüssen. Ein eigener Schlüssel,
@@ -271,6 +275,22 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Betriebsleitungen der Eigenbetriebe",
     standWort: "Wirtschaftspläne",
     stand: "Wirtschaftspläne 2019–2026",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  gebuehren: {
+    titel: "Gebührenbedarfsberechnungen des Abfallwirtschaftsbetriebs",
+    fundstelle:
+      "Die Anlagen 1 bis 4 der jährlichen Ratsvorlage " +
+      "„Gebührenbedarfsberechnungen“: je eine Rechnung für " +
+      "Abfallbehandlungsanlagen, Abfallsammlung und Straßenreinigung. Jede " +
+      "nennt die Kalkulationskosten, alles was davon Dritte tragen oder aus " +
+      "Vorjahren ausgeglichen wird, und die Menge, durch die geteilt wird. " +
+      "Die Gebühr steht doppelt darin: einmal errechnet (drei " +
+      "Nachkommastellen) und einmal als gerundeter Vorschlag an den Rat.",
+    herausgeber: "Abfallwirtschaftsbetrieb Stadt Oldenburg",
+    standWort: "Gebührenbedarfsberechnungen",
+    stand: "Gebührenbedarfsberechnungen 2023–2026",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },

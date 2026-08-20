@@ -954,6 +954,14 @@ def haushalt_uebersicht(
         # Form ein Erträge/Aufwendungen-Paar, die übrigen nur das beschlossene
         # Jahresergebnis. Wer die Spalten anzeigt, muss die Leerstellen
         # anschreiben, statt eine 0 zu zeichnen.
+        # Die Gebührenbedarfsberechnung — woraus die Abfall- und
+        # Straßenreinigungsgebühren entstehen.
+        #
+        # `gebuehr` und `bezugsmenge` sind bei der Abfallsammlung NULL, und das
+        # ist die Auskunft: Sie erhebt eine Grundgebühr UND eine Gebühr je
+        # Liter, dort gibt es keine einzelne Division. Wer die Spalte anzeigt,
+        # schreibt die Leerstelle an, statt eine 0 zu zeichnen.
+        "gebuehren": store.get_gebuehren,
         # Die Haushaltssatzung — der Rahmen um den Plan (Kreditermächtigung,
         # Dispo-Höchstbetrag, Verpflichtungsermächtigungen, Finanzhaushalt).
         #

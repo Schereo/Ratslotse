@@ -211,6 +211,15 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         text: "Die Wirtschaftspläne der Eigenbetriebe — eigene Rechnungen neben dem Stadthaushalt, in derselben Sitzung beschlossen.",
       },
       {
+        // Direkt hinter „Was planen die Betriebe?": Dort steht, was der
+        // Abfallwirtschaftsbetrieb sich vornimmt — hier, was daraus für die
+        // Leute wird. Die Kostenkalkulation dieser Seite ist dieselbe Zahl,
+        // die dort im Erfolgsplan steht, nur weitergerechnet.
+        href: "/haushalt/gebuehren",
+        titel: "Was Sie dafür zahlen",
+        text: "Abfall- und Straßenreinigungsgebühren werden jedes Jahr eigens ausgerechnet — hier steht die Rechnung.",
+      },
+      {
         // Spät, nicht vorn: „Steht Oldenburg besser da?" stellt sich erst,
         // wenn man die eigenen Zahlen kennt — und die Seite besteht zur
         // Hälfte aus der Begründung, warum der Ausgaben-Vergleich nicht trägt.

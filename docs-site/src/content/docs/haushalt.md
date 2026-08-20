@@ -32,7 +32,7 @@ wacht darüber, dass kein neuer Verweis das Gate vergisst.
 
 Der Einstieg trägt einen **Wegweiser** (`components/haushalt/wegweiser.tsx`),
 und der ist keine Linkliste, sondern die Leserichtung des ganzen Bereichs:
-achtzehn Schritte in vier Stufen (6 · 4 · 5 · 3). Die Tabelle steht deshalb in
+neunzehn Schritte in vier Stufen (6 · 4 · 6 · 3). Die Tabelle steht deshalb in
 genau dieser Reihenfolge.
 
 | Route | Inhalt |
@@ -54,12 +54,13 @@ genau dieser Reihenfolge.
 | `/haushalt/konzern` | Schritt 11 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
 | `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 12 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
 | `/haushalt/betriebe` | Schritt 13 — „Was planen die Betriebe?“: die Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften, in derselben Ratssitzung beschlossen wie der Stadthaushalt und mit ihm **nicht addierbar** |
-| `/haushalt/vergleich` | Schritt 14 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
-| `/haushalt/schulden` | Schritt 15 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
+| `/haushalt/gebuehren` | Schritt 14 — „Was Sie dafür zahlen": die Gebührenbedarfsberechnung des Abfallwirtschaftsbetriebs — was der Bereich kostet, was Dritte tragen, und was übrig bleibt, geteilt durch die Menge |
+| `/haushalt/vergleich` | Schritt 15 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
+| `/haushalt/schulden` | Schritt 16 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
-| `/haushalt/jahr` | Schritt 16 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
-| `/haushalt/streit[?jahr=<jahr>]` | Schritt 17 — „Der Streit ums Geld": je Haushaltsjahrgang die Änderungslisten der Fraktionen und Gruppen mit ihrem Abstimmungsergebnis, die Wortbeiträge der Debatte im Protokollwortlaut und die Schlussabstimmung |
-| `/haushalt/labor` | Schritt 18 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
+| `/haushalt/jahr` | Schritt 17 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
+| `/haushalt/streit[?jahr=<jahr>]` | Schritt 18 — „Der Streit ums Geld": je Haushaltsjahrgang die Änderungslisten der Fraktionen und Gruppen mit ihrem Abstimmungsergebnis, die Wortbeiträge der Debatte im Protokollwortlaut und die Schlussabstimmung |
+| `/haushalt/labor` | Schritt 19 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
@@ -74,8 +75,8 @@ der Bereichstabelle des Einstiegs.
 Oldenburg · Schritt N"), weil sie dort oben steht, wo keine Komponente sie
 einsetzt: `/haushalt/personal` (5), `/haushalt/gebaut` (8),
 `/haushalt/kennzahlen` (10), `/haushalt/konzern` (11),
-`/haushalt/beteiligungen` (12), `/haushalt/jahr` (16) und `/haushalt/streit`
-(17). Dazu zwei Querverweise im Fließtext, die eine Nummer mitführen
+`/haushalt/beteiligungen` (12), `/haushalt/jahr` (17) und `/haushalt/streit`
+(18). Dazu zwei Querverweise im Fließtext, die eine Nummer mitführen
 (`konzern/page.tsx` nennt Schritt 12, `beteiligungen/page.tsx` Schritt 11).
 
 Wer Schritte umsortiert oder einen dazwischenschiebt, zieht diese Stellen mit
