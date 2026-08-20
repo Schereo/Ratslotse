@@ -124,15 +124,33 @@ def test_skalenhinweise_ohne_dubletten():
 # (c) Seite → Bild, ohne neue Abhängigkeit
 # --------------------------------------------------------------------------
 
+class _Mediabox:
+    width, height = 842.0, 595.0        # A4 quer, wie die AWB-Scans
+
+
+class _PilBild:
+    """Nur `size` — mehr braucht `_deckt_die_seite` nicht."""
+
+    def __init__(self, size):
+        self.size = size
+
+
 class _Bild:
-    def __init__(self, name, daten=b"\xff\xd8\xff\xe0JPEG"):
+    def __init__(self, name, daten=b"\xff\xd8\xff\xe0JPEG", size=(3507, 2480)):
         self.name = name
         self.data = daten
+        # 3507x2480 px auf 842x595 pt = 300 dpi: ein echter Scan.
+        self.image = _PilBild(size) if size else None
 
 
 class _Seite:
-    def __init__(self, *bilder):
+    def __init__(self, *bilder, text=""):
         self.images = list(bilder)
+        self.mediabox = _Mediabox()
+        self._text = text
+
+    def extract_text(self):
+        return self._text
 
 
 def test_ein_eingebettetes_bild_wird_durchgereicht():
@@ -164,15 +182,20 @@ def test_unbekanntes_bildformat_wird_gerendert(monkeypatch):
 def test_ohne_renderer_bleibt_die_seite_ungelesen(monkeypatch):
     """Eine Lücke ist im Haushalts-Bereich ein zulässiger Zustand, eine
     geratene Zahl nicht — deshalb ein Fehler und kein Notbehelf."""
-    def kein_pymupdf(name, *a, **k):
-        if name == "pymupdf":
-            raise ImportError("no pymupdf")
-        return __import__(name, *a, **k)
+    import builtins
 
-    monkeypatch.setattr("builtins.__import__", kein_pymupdf)
+    echt = builtins.__import__          # VOR dem Patch festhalten, sonst ruft
+    ohne = {"pypdfium2", "pymupdf"}     # sich der Ersatz selbst auf
+
+    def kein_renderer(name, *a, **k):
+        if name in ohne:
+            raise ImportError(f"no {name}")
+        return echt(name, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", kein_renderer)
     with pytest.raises(ocr.OcrFehler) as fehler:
         ocr.seite_als_bild(_Seite())
-    assert "pymupdf" in str(fehler.value)
+    assert "pypdfium2" in str(fehler.value)
 
 
 # --------------------------------------------------------------------------
@@ -335,3 +358,46 @@ def test_ein_dauerhaftes_403_faellt_durch(monkeypatch):
     monkeypatch.setattr(b.time, "sleep", lambda _s: None)
     with pytest.raises(requests.HTTPError):
         b._hole("https://x/1")
+
+
+# --------------------------------------------------------------------------
+# (h) Ein Logo ist nicht die Seite
+# --------------------------------------------------------------------------
+
+def test_ein_briefkopf_logo_wird_nicht_fuer_die_seite_gehalten(monkeypatch):
+    """DER FALL, DER DIESE PRÜFUNG ERZWUNGEN HAT (20.08.2026):
+
+    Seite 1 des RPA-Schlussberichts 2024 ist eine Vektorseite mit **einem**
+    Briefkopf-Logo. Die alte Regel („genau ein Bild = der Scan") schickte also
+    das Logo ans Sehmodell und bekam „Stadt Oldenburg | Rechnungsprüfungsamt"
+    zurück — 62 Zeichen, die aussahen wie ein Ergebnis.
+
+    Gemessen: Logo 528×195 px auf A4 = 64 dpi. Der AWB-Scan: 3507×2480 px auf
+    derselben Fläche = 300 dpi."""
+    gerendert = []
+    monkeypatch.setattr(ocr, "_gerendert", lambda s, dpi: gerendert.append(1)
+                        or ocr.Seitenbild(b"x", "image/png", "gerendert"))
+
+    logo = _Bild("logo.jpg", size=(528, 195))
+    seite = _Seite(logo, text="Ein Deckblatt mit Fließtext darauf." * 5)
+    seite.mediabox = type("_MB", (), {"width": 595.0, "height": 842.0})()
+
+    assert ocr.seite_als_bild(seite).weg == "gerendert"
+    assert gerendert, "eine 64-dpi-Grafik ist kein Seitenscan"
+
+
+def test_ein_seitenfuellender_scan_geht_unveraendert_durch():
+    """Die Gegenprobe — sonst wäre die Prüfung oben nur eine Blockade."""
+    bild = ocr.seite_als_bild(_Seite(_Bild("s0.jpg", size=(3507, 2480))))
+    assert bild.weg == "eingebettet"
+
+
+def test_ohne_pillow_entscheidet_die_textebene(monkeypatch):
+    """Ist die Pixelgröße nicht zu haben, gilt: Eine Seite mit lesbarem Text
+    ist keine gescannte Seite."""
+    monkeypatch.setattr(ocr, "_gerendert",
+                        lambda s, dpi: ocr.Seitenbild(b"x", "image/png", "gerendert"))
+    mit_text = _Seite(_Bild("x.jpg", size=None), text="Lesbarer Fließtext." * 10)
+    ohne_text = _Seite(_Bild("x.jpg", size=None), text="")
+    assert ocr.seite_als_bild(mit_text).weg == "gerendert"
+    assert ocr.seite_als_bild(ohne_text).weg == "eingebettet"

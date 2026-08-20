@@ -93,6 +93,18 @@ jobs:
             # Dev-VM); fehlt er, bricht der Lauf mit Fehler ab und der Rest
             # läuft weiter — die Ampel unten fängt das auf.
             ocr=0
+            # Der Renderer für Seiten OHNE seitenfüllendes Bild. Er steht
+            # bewusst nicht in requirements.txt (dieselbe Zurückhaltung wie bei
+            # fastembed) und wird hier bei Bedarf nachgezogen — ein Wheel mit
+            # gebündeltem pdfium, keine Systemabhängigkeit.
+            #
+            # OHNE IHN FEHLT GENAU DAS DOKUMENT, UM DAS ES GEHT: Der
+            # RPA-Schlussbericht ist born-digital; seine Seiten tragen kein
+            # Bild, sondern Vektoren und eine unbrauchbare Textebene. Die
+            # AWB-Scans kommen ohne Renderer aus, er nicht.
+            .venv/bin/python -c "import pypdfium2" 2>/dev/null \
+              || .venv/bin/pip install --quiet pypdfium2
+
             .venv/bin/python scripts/backfill_anlagen_ocr.py --nur-finanz || ocr=$?
 
             .venv/bin/python scripts/ingest_haushalt.py

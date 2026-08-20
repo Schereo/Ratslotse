@@ -96,16 +96,60 @@ class Seitenbild:
         return f"data:{self.mime};base64,{base64.b64encode(self.daten).decode('ascii')}"
 
 
+#: Ab wie vielen Punkten je Zoll ein eingebettetes Bild als *die Seite* gilt.
+#:
+#: DER FALL, DER DIESE SCHWELLE ERZWUNGEN HAT (20.08.2026): Seite 1 des
+#: RPA-Schlussberichts 2024 ist eine Vektorseite mit **einem** Briefkopf-Logo.
+#: Die alte Regel („genau ein Bild = der Scan") schickte also das LOGO an das
+#: Sehmodell, nicht die Seite — und bekam „Stadt Oldenburg | Rechnungsprüfungs-
+#: amt" zurück, 62 Zeichen, die aussahen wie ein Ergebnis.
+#:
+#: Gemessen: Das Logo ist 528×195 px auf einer A4-Seite → **64 dpi** quer und
+#: rund 17 dpi hoch. Die AWB-Scans sind 3507×2480 px auf derselben Fläche →
+#: **300 dpi** in beiden Richtungen. Zwischen 64 und 300 ist viel Platz; 100
+#: liegt weit genug von beidem entfernt, dass weder ein Logo durchrutscht noch
+#: ein schlechter 150-dpi-Scan abgewiesen wird.
+MIN_DPI = 100
+
+
+def _deckt_die_seite(seite, im) -> bool:
+    """Ist dieses eingebettete Bild plausibel die ganze Seite?
+
+    Ohne Pillow lässt sich die Pixelgröße nicht immer bestimmen; dann
+    entscheidet die Textebene: Eine Seite mit lesbarem Text ist keine
+    gescannte Seite, egal was für ein Bild darauf klebt.
+    """
+    try:
+        breite_pt = float(seite.mediabox.width)
+        hoehe_pt = float(seite.mediabox.height)
+    except Exception:  # noqa: BLE001
+        return False
+    if not (breite_pt > 0 and hoehe_pt > 0):
+        return False
+
+    groesse = getattr(getattr(im, "image", None), "size", None)
+    if groesse is None:
+        # Kein Pillow: Die Textebene entscheidet. Ein echter Scan hat keine.
+        try:
+            return len((seite.extract_text() or "").strip()) < MIN_SEITE
+        except Exception:  # noqa: BLE001
+            return False
+    breite_px, hoehe_px = groesse
+    return (breite_px / (breite_pt / 72.0) >= MIN_DPI
+            and hoehe_px / (hoehe_pt / 72.0) >= MIN_DPI)
+
+
 def seite_als_bild(seite, dpi: int = 200) -> Seitenbild:
     """Eine PDF-Seite als Bild — ohne neue Abhängigkeit, wo es geht.
 
-    Erster Weg: Trägt die Seite **genau ein** eingebettetes Bild, ist das der
-    Scan selbst. Es geht unverändert weiter — keine Neukodierung, kein
-    Qualitätsverlust, kein Renderer.
+    Erster Weg: Trägt die Seite **genau ein** eingebettetes Bild, und deckt
+    dieses Bild die Seite auch wirklich ab, dann IST es der Scan. Es geht
+    unverändert weiter — keine Neukodierung, kein Qualitätsverlust, kein
+    Renderer.
 
-    Bewusst nur bei *genau einem* Bild: Eine Seite mit Briefkopf-Logo *und*
-    Scan trägt zwei, und dann ist nicht entscheidbar, welches die Seite ist.
-    Solche Seiten werden gerendert.
+    Beide Bedingungen zählen. „Genau ein Bild" allein reichte nicht: Eine
+    Vektorseite mit Briefkopf-Logo erfüllt das auch, und dann wandert das Logo
+    ans Modell statt der Seite (s. ``MIN_DPI``).
     """
     try:
         bilder = list(getattr(seite, "images", []))
@@ -115,34 +159,57 @@ def seite_als_bild(seite, dpi: int = 200) -> Seitenbild:
         im = bilder[0]
         endung = os.path.splitext(getattr(im, "name", "") or "")[1].lower()
         mime = _BILDTYPEN.get(endung)
-        if mime and im.data:
+        if mime and im.data and _deckt_die_seite(seite, im):
             return Seitenbild(im.data, mime, "eingebettet")
     return _gerendert(seite, dpi)
 
 
 def _gerendert(seite, dpi: int) -> Seitenbild:
-    """Fallback für Vektorseiten. Braucht PyMuPDF — bewusst optional.
+    """Fallback für Vektorseiten. Braucht einen Renderer — bewusst optional.
 
-    Fehlt es, bleibt die Seite **ungelesen**. Das ist die richtige Richtung:
+    Fehlt er, bleibt die Seite **ungelesen**. Das ist die richtige Richtung:
     Eine Lücke ist im Haushalts-Bereich ein zulässiger Zustand, eine geratene
     Zahl nicht.
-    """
-    try:
-        import pymupdf  # noqa: PLC0415 — optional, nur für Vektorseiten
-    except ImportError as exc:  # pragma: no cover — hängt an der Umgebung
-        raise OcrFehler(
-            "Diese Seite trägt kein einzelnes eingebettetes Bild und müsste "
-            "gerendert werden. Dafür fehlt PyMuPDF (bewusst nicht in "
-            "requirements.txt, wie fastembed): pip install pymupdf"
-        ) from exc
 
-    # Ein Ein-Seiten-PDF bauen und rendern — `seite` ist ein pypdf-Objekt,
-    # pymupdf kennt es nicht.
+    Bevorzugt ``pypdfium2``: ein Wheel mit gebündeltem pdfium, keine
+    Systemabhängigkeit, BSD/Apache. ``pymupdf`` geht auch, ist aber schwerer
+    und AGPL — es steht nur als zweite Wahl da, weil manche Umgebung es schon
+    mitbringt. Keines von beiden gehört in ``requirements.txt``: dieselbe
+    Zurückhaltung wie bei `fastembed`.
+    """
+    # ERST den Renderer suchen, dann das Ein-Seiten-PDF bauen. Andersherum
+    # bezahlt jede Seite den Umbau, bevor sie erfährt, dass niemand sie
+    # rendern kann.
+    renderer = None
+    for name in ("pypdfium2", "pymupdf"):
+        try:
+            renderer = __import__(name)
+            break
+        except ImportError:
+            continue
+    if renderer is None:  # pragma: no cover — hängt an der Umgebung
+        raise OcrFehler(
+            "Diese Seite trägt kein seitenfüllendes Bild und müsste gerendert "
+            "werden. Dafür fehlt ein Renderer (bewusst nicht in "
+            "requirements.txt, wie fastembed): pip install pypdfium2")
+
     schreiber = pypdf.PdfWriter()
     schreiber.add_page(seite)
     puffer = io.BytesIO()
     schreiber.write(puffer)
-    dok = pymupdf.open(stream=puffer.getvalue(), filetype="pdf")
+    roh = puffer.getvalue()
+
+    if renderer.__name__ == "pypdfium2":
+        dok = renderer.PdfDocument(roh)
+        try:
+            bild = dok[0].render(scale=dpi / 72.0).to_pil()
+            aus = io.BytesIO()
+            bild.save(aus, format="PNG")
+            return Seitenbild(aus.getvalue(), "image/png", "gerendert")
+        finally:
+            dok.close()
+
+    dok = renderer.open(stream=roh, filetype="pdf")
     try:
         pix = dok[0].get_pixmap(dpi=dpi)
         return Seitenbild(pix.tobytes("png"), "image/png", "gerendert")

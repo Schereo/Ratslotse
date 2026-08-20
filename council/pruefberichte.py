@@ -52,8 +52,19 @@ MARKEN = ("B", "WB", "H", "K")
 #: Klävemann-Stiftung, VOSS, AWB oder EGH — alle mit ähnlichem Titel und
 #: derselben Jahreszahl. Der Textanfang trennt sauber: Die Stiftungsberichte
 #: schreiben „…über die Prüfung des Jahresabschlusses **zum 31. Dezember**".
+#:
+#: KEIN ``^``-ANKER MEHR (seit 20.08.2026). Er hat nie die Arbeit gemacht —
+#: die leistet „der Stadt Oldenburg“ am Ende: Die Stiftungs- und
+#: Eigenbetriebsberichte schreiben dort „…des Jahresabschlusses **zum 31.
+#: Dezember**“ und fallen schon daran durch, egal wo im Text sie stehen.
+#:
+#: Der Anker stand nur da, weil der PDF-Textextrakt zufällig mit dem Titel
+#: begann. Der Schlussbericht 2024 hat keine brauchbare Textebene und muss
+#: per OCR gelesen werden — und dort steht davor, was auf dem Papier eben
+#: auch davorsteht: der Briefkopf. Mit Anker fiel der Jahrgang durch, ohne
+#: dass irgendetwas an ihm falsch war.
 _ANFANG = re.compile(
-    r"^Schlussbericht des Rechnungsprüfungsamtes über die Prüfung "
+    r"Schlussbericht des Rechnungsprüfungsamtes über die Prüfung "
     r"des Jahresabschlusses (20\d\d) der Stadt Oldenburg")
 
 #: Zeile der Legende: Marke, dann der Name der Marke („Beanstandung").
@@ -115,6 +126,14 @@ _ERGAENZUNG = {"und", "oder", "sowie", "bzw", "beziehungsweise", "wie", "als",
 #: als laufende Nummer 1. Eine strengere Schwelle hätte ihn verschluckt.
 MIN_LAENGE = 40
 
+#: Wie weit vorne der Titel stehen muss. 400 reichten, solange der
+#: Textextrakt mit ihm begann; per OCR steht der Briefkopf davor und
+#: schiebt ihn um rund 60 Zeichen nach hinten. 800 lässt Luft für einen
+#: längeren Briefkopf und hält den Titel trotzdem am Anfang des Dokuments
+#: fest — mitten im Bericht wird ein Schlussbericht ohnehin nicht noch
+#: einmal betitelt.
+KOPF_ZEICHEN = 800
+
 #: Längster Absatz, der noch als „was direkt darauf folgt" durchgeht. Darüber
 #: ist es kein Nachsatz mehr, sondern der nächste Erzählschritt des Berichts.
 FOLGEABSATZ_MAX = 700
@@ -132,8 +151,8 @@ def erkenne_jahrgang(text: str) -> int | None:
 
     Liefert das Jahr des geprüften Abschlusses oder ``None``.
     """
-    flach = re.sub(r"\s+", " ", (text or "")[:400]).strip()
-    m = _ANFANG.match(flach)
+    flach = re.sub(r"\s+", " ", (text or "")[:KOPF_ZEICHEN]).strip()
+    m = _ANFANG.search(flach)
     return int(m.group(1)) if m else None
 
 
