@@ -954,6 +954,14 @@ def haushalt_uebersicht(
         # Form ein Erträge/Aufwendungen-Paar, die übrigen nur das beschlossene
         # Jahresergebnis. Wer die Spalten anzeigt, muss die Leerstellen
         # anschreiben, statt eine 0 zu zeichnen.
+        # Die Haushaltssatzung — der Rahmen um den Plan (Kreditermächtigung,
+        # Dispo-Höchstbetrag, Verpflichtungsermächtigungen, Finanzhaushalt).
+        #
+        # `fassung` GEHÖRT AN JEDE ANZEIGE. Im Ratsinformationssystem liegen
+        # ausschließlich Verwaltungsentwürfe; die beschlossene Satzung
+        # erscheint im Amtsblatt. Wer das Feld wegblendet, macht aus einem
+        # Vorschlag der Verwaltung einen Ratsbeschluss.
+        "haushaltssatzung": store.get_haushaltssatzungen,
         "wirtschaftsplaene": store.get_wirtschaftsplaene,
         "abweichungsgruende": store.get_abweichungsgruende,
         "pruefbericht_quellen": store.get_pruefbericht_quellen,

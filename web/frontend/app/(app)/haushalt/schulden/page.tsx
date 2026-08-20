@@ -49,7 +49,8 @@ import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
-import { deMio } from "@/lib/haushalt";
+import { deMio, haushaltUrl, type HaushaltAuswahl,
+  type HaushaltssatzungZeile } from "@/lib/haushalt";
 import {
   Ansicht, BuergschaftsVorlage, Herkunft, SchuldenDaten, aufteilungen, deEuro,
   herkunftVon,
@@ -63,7 +64,14 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { BilanzBlock } from "@/components/haushalt/bilanz-block";
 
-const QUELLEN = ["schulden", "bilanz"] as const;
+const QUELLEN = ["schulden", "bilanz", "haushaltssatzung"] as const;
+
+/** Die Haushaltssatzung wird über den Bausteine-Endpunkt geholt und nicht über
+ *  `/haushalt/schulden`: Sie gehört inhaltlich hierher (was die Stadt sich
+ *  leihen DARF, neben dem, was sie schuldet), ist aber eine eigene Schicht mit
+ *  eigener Herkunft. Ein zweiter Abruf ist ehrlicher als ein Endpunkt, der
+ *  zwei Quellen zu einer Antwort verrührt. */
+const SATZUNG_FELDER = ["haushaltssatzung"] as const;
 
 /** Wo eine Angabe im Dokument steht: welcher Abschnitt, welcher Stand. Das
  *  Quellenverzeichnis am Seitenende beschreibt die Quelle der ganzen Seite;
@@ -425,9 +433,114 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
   );
 }
 
+/** Was der Rahmen erlaubt — aus der Haushaltssatzung (§§ 2–4).
+ *
+ *  Diese Seite zeigt, was die Stadt SCHULDET. Die Satzung sagt, was sie
+ *  DÜRFTE, und beides nebeneinander beantwortet erst die Frage, die Leute
+ *  wirklich haben. Der interessanteste Wert ist dabei der, den man nicht
+ *  erwartet: Die Kreditermächtigung steht in jedem gelesenen Jahrgang auf
+ *  null.
+ *
+ *  DER ENTWURFS-HINWEIS IST PFLICHT, nicht Zierde. Im Ratsinformationssystem
+ *  liegen ausschließlich Verwaltungsentwürfe; die beschlossene Satzung
+ *  erscheint im Amtsblatt. Ohne den Satz behaupteten diese Zahlen einen
+ *  Ratsbeschluss, den wir nicht belegt haben. */
+function RahmenBlock({ zeile }: { zeile: HaushaltssatzungZeile }) {
+  const posten: { label: string; wert: number | null; erklaerung: string }[] = [
+    {
+      label: "Kredite für Investitionen",
+      wert: zeile.kredite_investitionen,
+      erklaerung: "Wie viel die Stadt sich im Haushaltsjahr für Investitionen "
+        + "leihen darf (§ 2).",
+    },
+    {
+      label: "Höchstbetrag für Liquiditätskredite",
+      wert: zeile.liquiditaetskredite,
+      erklaerung: "Der Dispo der Stadt: bis hierhin darf sie kurzfristig "
+        + "überziehen, um Rechnungen pünktlich zu bezahlen (§ 4). Er wird "
+        + "nicht ausgeschöpft, sondern nur erlaubt.",
+    },
+    {
+      label: "Verpflichtungsermächtigungen",
+      wert: zeile.verpflichtungsermaechtigungen,
+      erklaerung: "Was die Stadt in diesem Jahr bestellen darf, obwohl die "
+        + "Rechnung erst in kommenden Jahren kommt (§ 3).",
+    },
+  ];
+
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 className="font-display text-[17px] font-bold tracking-tight">
+          Was der Rahmen erlaubt
+        </h2>
+        <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+          Satzung {zeile.jahr}
+        </span>
+      </div>
+      <p className="mt-1.5 max-w-[64ch] text-[13px] leading-relaxed text-foreground/85">
+        Oben steht, was die Stadt schuldet. Die Haushaltssatzung sagt, was sie
+        im laufenden Jahr überhaupt aufnehmen dürfte.
+      </p>
+
+      {/* Steht VOR den Zahlen, nicht als Fußnote darunter: Wer sie erst liest
+          und dann erfährt, dass sie nicht beschlossen sind, hat sie schon
+          geglaubt (dieselbe Regel wie der Summen-Kasten auf /haushalt/betriebe). */}
+      {zeile.fassung !== "beschlossen" && (
+        <p className="mt-3 rounded-xl border border-signal/40 bg-signal/5 px-3 py-2
+                      text-[12.5px] leading-relaxed text-foreground/85">
+          <strong>Entwurf der Verwaltung, kein Ratsbeschluss.</strong> Im
+          Ratsinformationssystem steht nur der Verwaltungsentwurf; die
+          beschlossene Satzung erscheint im Amtsblatt. Was der Rat daraus
+          gemacht hat, steht unter{" "}
+          <Link href="/haushalt/streit" className="font-semibold text-primary">
+            Der Streit ums Geld
+          </Link>.
+        </p>
+      )}
+
+      <dl className="mt-3 flex flex-col gap-2.5">
+        {posten.map((p) => (
+          <div key={p.label} className="border-t border-border pt-2.5">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+              <dt className="text-[13px] font-semibold">{p.label}</dt>
+              <dd className="font-display text-[15px] font-bold tabular-nums">
+                {p.wert == null
+                  ? <span className="font-normal text-muted-foreground"
+                          title="Die Satzung sagt dazu nichts.">—</span>
+                  : p.wert === 0
+                    // NICHT „0 €". Die Satzung schreibt einen Satz, keine
+                    // Ziffer, und der Satz ist die genauere Auskunft.
+                    ? <span className="text-[13px]">nicht veranschlagt</span>
+                    : <>{deMio(p.wert / 1e6)}&#8239;Mio.&nbsp;€</>}
+              </dd>
+            </div>
+            <p className="mt-0.5 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
+              {p.erklaerung}
+            </p>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+
 export default function SchuldenPage() {
   const { data, loading } = useFetch<SchuldenDaten>("/council/haushalt/schulden");
+  const { data: satzungDaten } = useFetch<
+    HaushaltAuswahl<typeof SATZUNG_FELDER[number]>>(haushaltUrl(SATZUNG_FELDER));
   const [ansicht, setAnsicht] = useState<Ansicht>("insgesamt");
+
+  // Der jüngste Jahrgang — die Satzung, die gerade gilt bzw. vorgeschlagen
+  // ist. Sortiert wird hier und nicht im Vertrauen auf die API.
+  const satzung = useMemo(() => {
+    const zeilen = (satzungDaten?.haushaltssatzung ?? [])
+      .filter((z) => z.nachtrag === 0);
+    return zeilen.length
+      ? zeilen.reduce((a, b) => (b.jahr > a.jahr ? b : a))
+      : null;
+  }, [satzungDaten]);
 
   const reihe = data?.reihe ?? [];
   const kurve = useMemo(() => punkte(reihe, ansicht), [reihe, ansicht]);
@@ -834,6 +947,8 @@ export default function SchuldenPage() {
             </li>
           </ul>
         </section>
+
+        {satzung && <RahmenBlock zeile={satzung} />}
 
         <Link href="/haushalt"
           className="group flex items-center gap-2 text-[13px] font-semibold text-primary">
