@@ -2815,6 +2815,84 @@ Label-Muster aus genau dieser Registry (`finanz_muster()`), und ohne den
 Eintrag blieben die Wirtschaftsplan-Anlagen für immer unangetastet.
 :::
 
+### Der zweite Weg: der Erfolgsplan aus der Anlage
+
+Seit 08/2026 liest der Bereich auch die Betriebe, die im Beschlusstext **keine**
+Zahl nennen — aus dem Erfolgsplan ihrer Anlage
+(`council/wirtschaftsplan_tabelle.py`). Den Anfang macht der
+Abfallwirtschaftsbetrieb, und zwar aus einem Grund: Aus seinem Erfolgsplan
+werden die **Abfallgebühren** kalkuliert. Von allen Betrieben ist er der, dessen
+Zahlen jeder Haushalt direkt bezahlt.
+
+**Zwei Layouts, dieselbe Aussage.** Der AWB hat zwischen 2025 und 2026
+gewechselt:
+
+| | Layout A (2023–2025) | Layout B (ab 2026) |
+|---|---|---|
+| Erträge | `Gesamtertrag` | `Summe Erträge` |
+| Aufwendungen | `Gesamtaufwendungen` | `Summe Aufwendungen` |
+| Ergebnis | `Gesamtergebnis` | `11. Ergebnis nach Steuern` |
+
+Ein Layout-Schalter ist deshalb nicht nötig: Das Vokabular führt beide
+Schreibweisen, und welche gegriffen hat, hält die Herkunft fest. Beide Male
+gilt *Erträge − Aufwendungen = Ergebnis*, und beide Male steht das Ergebnis
+unmittelbar unter seinen Summanden.
+
+:::caution[Nicht die Zeile nehmen, die „Jahresüberschuss" heißt]
+In Layout B folgen darunter noch „12. Sonstige Steuern" und „13.
+Jahresüberschuss"; in Layout A stecken die sonstigen Steuern schon in den
+Aufwendungen. Gelesen wird deshalb die Zeile **direkt unter den beiden
+Summen** — nicht die mit dem passendsten Namen. Nur so bleibt
+*Erträge − Aufwendungen − Steuern = Ergebnis* in **jeder** Zeile der Tabelle
+wahr, egal ob sie aus einem Beschlusstext oder aus einer Anlage stammt.
+:::
+
+**Drei Proben, alle aus dem Dokument:**
+
+1. `wirtschaftsplan_spalten` — die Rechnung gilt in **jeder** Spalte, nicht nur
+   in der gespeicherten. Ein Dokument führt sechs (ein Ist- und fünf
+   Planjahre); über die fünf lesbaren Jahrgänge sind das 30 Proben, von denen
+   29 auf den Cent aufgehen und eine um 1 € daneben liegt. Die Quelle rundet je
+   Position, deshalb steht die Toleranz auf 2 € statt auf 0,005 € wie beim
+   Beschlusstext.
+2. `wirtschaftsplan_prosa` — Unter der Tabelle steht ein Satz, der die beiden
+   Summen des Planjahres wiederholt („Der Erfolgsplan 2025 umfasst … Erträge in
+   Höhe von insgesamt 25.197.796 € und … Aufwendungen … 24.570.285 €"). Zwei
+   unabhängig gesetzte Stellen desselben Dokuments. **Weich**: Fehlt der Satz,
+   fällt der Jahrgang nicht — widerspricht er, schon.
+3. `wirtschaftsplan_bereiche` — Die Ertragszeile kommt **fünfmal** vor: einmal
+   für alle Bereiche und je einmal in den vier Anlagen (Abfallbehandlung,
+   Abfallsammlung, Straßenreinigung, Werkstatt). Die vier ergeben die erste.
+   Damit ist „die erste Zeile ist die Gesamtrechnung" gemessen und nicht
+   angenommen — ein versehentlich gegriffener Betriebszweig wäre fünf- bis
+   zwölfmal kleiner und fiele sofort durch.
+
+**Welche Spalte der Plan ist**, entscheidet die Kopfzeile: gesucht wird das
+Haushaltsjahr der Vorlage, nicht eine Position. Die Spaltenzahl schwankt, und
+2026 schreibt „Ergebnis 2024" statt „Ist 2024". Findet sich das Jahr nicht,
+wird nichts gespeichert. Die Finanzplanungsjahre werden geprüft, aber **nicht**
+gespeichert — dieselbe Begründung wie beim Gesamtergebnishaushalt.
+
+:::note[Ein Widerspruch im Jahrgang 2025 — gemessen, nicht geglättet]
+Im Wirtschaftsplan 2025 ergeben die vier Betriebszweige in der **Planspalte**
+447.001 € mehr als die ausgewiesene Gesamtzeile (1,77 %). In allen anderen
+Spalten und allen anderen Jahrgängen stimmt es auf ±1 €.
+
+Der Jahrgang bleibt trotzdem im Bestand, und das ist kein Nachlassen: Die
+gespeicherte Zahl ist durch **zwei** unabhängige Proben gedeckt — die
+Spaltenrechnung und den Prosa-Satz, der exakt dieselben 25.197.796 € nennt.
+Dieselbe Lage wie 2022 bei den Schulden: Die Summe trägt, die Aufteilung nicht,
+und dann fällt die Aufteilung und nicht die Summe. Der Abstand wird gemessen
+und reist in der Herkunft mit.
+:::
+
+**Was nicht gelesen wird.** Drei AWB-Jahrgänge (2019–2021) sind Scans ohne
+Textebene. Der Ingest-Lauf nennt sie beim Namen und merkt sie für eine spätere
+OCR vor; im Bestand tragen sie `council_anlagen.status = 'empty'`. Und für
+Bäderbetrieb, Bäderbetriebsgesellschaft, Stadion und Hafen ist **kein
+Vokabular** hinterlegt: Ein geratenes fände irgendeine Zeile, und ihre Zahlen
+stünden dann unter einem Namen, den nie jemand nachgeschlagen hat.
+
 ### Im Register, damit der nächste Jahrgang sich meldet
 
 Die Schicht steht als **manuelle** Quelle in `finanzquellen.REIHENFOLGE`:

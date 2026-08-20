@@ -5893,7 +5893,13 @@ class CouncilStore:
         ``plan`` ist ein :class:`council.wirtschaftsplan.Wirtschaftsplan`; die
         Proben stehen dort und werden nicht hier noch einmal gerechnet.
         """
-        from council.wirtschaftsplan import PROBE_ERFOLGSPLAN, PROBE_JAHR
+        # Die Proben kommen aus der HERKUNFT und stehen nicht hier: Welche
+        # gelaufen sind, weiß der Parser, und es sind je nach Quelle andere —
+        # der Beschlusstext prüft anders als der Erfolgsplan einer Anlage. Eine
+        # feste Liste an dieser Stelle behauptete für jede Zeile dieselben.
+        proben = herkunft.probe
+        if not isinstance(proben, str):
+            proben = ",".join(proben)
 
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self.transaktion():
@@ -5907,7 +5913,7 @@ class CouncilStore:
                 (plan.betrieb, plan.jahr, plan.betrieb_name, plan.vorlage_nr,
                  plan.ertraege, plan.aufwendungen, plan.steuern, plan.ergebnis,
                  plan.vermoegensplan, plan.verpflichtungen, plan.entwurf_vom,
-                 f"{PROBE_ERFOLGSPLAN},{PROBE_JAHR}", hid, now))
+                 proben, hid, now))
         return 1
 
     def get_wirtschaftsplaene(self, betrieb: str | None = None) -> list[dict]:
