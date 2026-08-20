@@ -156,9 +156,16 @@ const NICHT_AUSSAGEN: NichtAussage[] = [
     // Die Bon-Metapher legt nahe, man kaufe hier Dinge; der Ergebnishaushalt
     // enthält aber keine einzige Investition.
     kern: "Nichts Neues gebaut.",
+    // Der Satz endete bis 19.08.2026 mit „… den wir noch nicht eingelesen
+    // haben". Das stimmt seit den Investitions-Schichten nicht mehr: Der
+    // Finanzhaushalt steht auf `/haushalt/investitionen`, samt der einzelnen
+    // Vorhaben aus dem Investitionsprogramm. Geblieben ist die eigentliche
+    // Aussage — die beiden Haushalte sind nicht addierbar, und deshalb steckt
+    // in „227 € für Kultur und Sport" keine neue Sporthalle.
     text: "Der Zettel zeigt den Ergebnishaushalt, also das Laufende eines Jahres samt "
       + "Abschreibungen auf vorhandene Gebäude. Neubauten, Fahrzeuge und Grundstücke "
-      + "stehen in einem eigenen Haushalt, den wir noch nicht eingelesen haben.",
+      + "stehen in einem eigenen Haushalt — dem Finanzhaushalt, den „Was wird gebaut?" "
+      + "zeigt. Die beiden lassen sich nicht zusammenzählen.",
   },
   {
     kern: "Städtevergleiche hinken.",

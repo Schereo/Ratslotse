@@ -36,8 +36,24 @@ export type SteuerArt = {
   stufen: SteuerStufe[];
   /** Rechenbeispiel, wo es eines gibt — konkret statt abstrakt. */
   beispiel?: { rechnung: string; hinweis: string };
-  /** Hebesatz in Prozentpunkten, falls der Rat einen beschließt. */
-  hebesatz?: number;
+  /* Hier stand bis 19.08.2026 `hebesatz?: number` — der aktuelle Satz als
+     Zahl im Quelltext (439 bzw. 539). Sie war nicht bloß Deko: Der Steckbrief
+     rechnete den Überschlag „was brächte ein Punkt mehr?" damit und druckte
+     sie als Rechenweg aus. Seit `council_hebesaetze` die Reihe seit 1980
+     führt, kommt der Satz aus den Daten, und zwar der, der im Jahr des
+     Aufkommens galt. Ob der Rat für eine Steuer überhaupt einen Hebesatz
+     beschließt, sagt jetzt `hebesatzArten` — dasselbe Feld, das auch auf die
+     Daten zeigt, statt einer zweiten Wahrheit daneben.
+
+     WAS BLEIBT: In den Erklärtexten unten stehen die Sätze weiter als Zahl
+     ausgeschrieben — „Der Hebesatz: 439 %", das Rechenbeispiel, die beiden
+     Grundsteuer-Sätze und Lottis Erklärung zum Sprung 445 → 539. Das ist
+     Absicht: Ein Beispiel, das mit `${satz}` rechnet, wäre kein Beispiel mehr,
+     sondern eine zweite Rechnung neben dem Überschlag. Sie stehen aber im
+     Bild neben der Treppe, die die echte Reihe zeichnet — ein Widerspruch
+     fiele beim Lesen auf, anders als bei der stillen Division vorher.
+     WER EINEN HEBESATZ NACHZIEHT, fasst genau diese Stellen an: `stufen[].titel`
+     und `.text`, `beispiel.rechnung` sowie `lotti.text`. Sonst nichts. */
   /** Welche Reihen aus `council_hebesaetze` zu diesem Steckbrief gehören —
    *  die erste ist die Haupt-Treppe, eine zweite läuft dünn daneben.
    *
@@ -73,7 +89,6 @@ export const STEUERARTEN: SteuerArt[] = [
       "eigene Einnahme der Stadt.",
     spielraum: "frei",
     stellschraube: "Der Rat setzt den Hebesatz",
-    hebesatz: 439,
     hebesatzArten: ["Gewerbesteuer"],
     stufen: [
       {
@@ -121,7 +136,6 @@ export const STEUERARTEN: SteuerArt[] = [
       "ob jemand Gewinn macht.",
     spielraum: "frei",
     stellschraube: "Der Rat setzt zwei Hebesätze",
-    hebesatz: 539,
     hebesatzArten: ["Grundsteuer B", "Grundsteuer A"],
     punktUnmoeglich:
       "Was ein Hebesatzpunkt bringt, lässt sich hier nicht überschlagen: Der offene "

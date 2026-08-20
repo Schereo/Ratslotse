@@ -271,6 +271,16 @@ export type HaushaltDaten = {
   pruefbericht_quellen?: Pruefbericht[];
   /** Jahre, für die die Produktebene vorliegt. */
   produkt_jahre?: number[];
+  /** Jahre mit einem beschlossenen **Haushaltsansatz** — das jüngste ist das
+   *  Jahr, für das gerade ein Haushalt gilt.
+   *
+   *  Bewusst OHNE die Finanzplanungsjahre desselben Dokuments: Der Plan
+   *  schreibt über fünf Spalten „Ansatz", aufgestellt ist aber nur eines der
+   *  Jahre; die übrigen sind Vorausschau nach § 8 NKomVG, die jeder neue
+   *  Haushalt neu schreibt (`store.ansatz_jahre` filtert das). Wer diese Liste
+   *  als Jahr-Umschalter benutzt, bekommt deshalb keine Jahre angeboten, für
+   *  die nie ein Haushalt beschlossen wurde. */
+  ansatz_jahre?: number[];
   /** Jahre mit „geplant gegen tatsächlich" je Teilhaushalt. */
   plan_ist_jahre?: number[];
   /** Die lange Ausgabenreihe aus Datensatz 1102 — ein Betrag je Jahr seit 1972. */
