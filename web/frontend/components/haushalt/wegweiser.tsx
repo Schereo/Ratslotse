@@ -33,10 +33,10 @@
 //                         im Jahresabschluss und in den Rechnungsergebnissen,
 //                         geprüft wird er auch, und am Ende fasst die Stadt
 //                         sich in dreizehn Kennzahlen selbst zusammen.
-//   11–14 Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
+//   11–15 Der Rahmen      Der Kernhaushalt ist rund zwei Drittel der Stadt,
 //                         Oldenburg steht nicht allein da, und was aus allen
 //                         Jahren zusammen offen blieb, sind die Schulden.
-//   15–17 Mitreden        Wann entschieden wird, worüber gestritten wurde,
+//   16–18 Mitreden        Wann entschieden wird, worüber gestritten wurde,
 //                         und was sich drehen ließe.
 //
 // AUS DER 16er-LISTE WERDEN VIER ETAPPEN-KARTEN (17.08., vierte Runde,
@@ -70,20 +70,20 @@
 // Kicker-Nummern der Seiten gegen die hier gerechnete Reihenfolge — wer
 // unten etwas einfügt, verschiebt alles danach und zieht die Kicker nach.
 //
-// **Zwei der neunzehn Unterseiten haben bewusst keinen Schritt.**
+// **Zwei der zwanzig Unterseiten haben bewusst keinen Schritt.**
 // `/haushalt/bereich` und `/haushalt/steuer` sind Steckbriefe: Sie brauchen
 // einen Query-Parameter und öffnen ohne ihn den Vorgabefall. Als eigener
-// Schritt stünde ein beliebiger Bereich neben siebzehn Fragen. Sie werden am
-// Fuß benannt, damit die Zählung „siebzehn Schritte, neunzehn Unterseiten"
+// Schritt stünde ein beliebiger Bereich neben achtzehn Fragen. Sie werden am
+// Fuß benannt, damit die Zählung „achtzehn Schritte, zwanzig Unterseiten"
 // nicht wie eine Lücke aussieht. (Die Übersicht `/haushalt` selbst ist kein
 // Ziel dieses Wegweisers — von dort kommt man ja. Sie zählt nur beim
-// Umgebungs-Gate mit, das alle zwanzig Seiten deckt: `lib/haushalt-frei.ts`.)
+// Umgebungs-Gate mit, das alle einundzwanzig Seiten deckt: `lib/haushalt-frei.ts`.)
 //
 // Zwei Spalten ab 768 px **Container-Innenbreite**, nicht Fensterbreite
 // (Designsprache §4): Am Desktop liegt der Block neben der Seitenleiste, auf
 // dem iPad nicht — dieselbe Fensterbreite meint zwei verschiedene
 // Platzangebote. Und zwar TEXTSPALTEN (`columns`), kein Raster: Die Etappen
-// sind 6, 4, 4 und 3 Schritte lang — in einem Raster würde jede Zeile so
+// sind 6, 4, 5 und 3 Schritte lang — in einem Raster würde jede Zeile so
 // hoch wie ihre höhere Karte, unter der kurzen bliebe Leere stehen.
 
 import { useState } from "react";
@@ -201,6 +201,14 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/beteiligungen",
         titel: "Was machen die eigentlich?",
         text: "Die Gesellschaften einzeln: Auftrag, Aufsichtsrat, Ergebnis — vom Klinikum bis zur Volkshochschule.",
+      },
+      {
+        // Hinter „Was machen die eigentlich?" und nicht davor: Dort steht, WAS
+        // ein Betrieb tut, hier, was er sich fürs laufende Jahr vornimmt. Wer
+        // die Zahl zuerst liest, hat keinen Gegenstand dazu.
+        href: "/haushalt/betriebe",
+        titel: "Was planen die Betriebe?",
+        text: "Die Wirtschaftspläne der Eigenbetriebe — eigene Rechnungen neben dem Stadthaushalt, in derselben Sitzung beschlossen.",
       },
       {
         // Spät, nicht vorn: „Steht Oldenburg besser da?" stellt sich erst,
@@ -493,7 +501,7 @@ export function Wegweiser() {
       )}
 
       {/* Ohne diesen Satz sähen die Schritte nach einer Lücke aus: Der
-          Bereich hat neunzehn Unterseiten. Die beiden übrigen sind Steckbriefe
+          Bereich hat zwanzig Unterseiten. Die beiden übrigen sind Steckbriefe
           und brauchen einen Bereich bzw. eine Einnahmeart, über die man sie
           aufruft — als Schritt stünde dort ein beliebiger Einzelfall. */}
       <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">

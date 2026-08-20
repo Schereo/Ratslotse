@@ -47,6 +47,7 @@ import { area, curveStepAfter, line } from "d3-shape";
 import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
 import { istLuecke, type JahrLuecke, type JahrPunkt, type JahrWert } from "./daten";
+import { achsenStellen, ySpanne } from "./skala";
 import { deZahl } from "./format";
 import { LueckenFeld } from "./luecken-feld";
 import {
@@ -264,12 +265,13 @@ export function Zeitreihe({
     ...werte.map((s) => (s.punkt as JahrWert).wert),
     ...zweitStellen.filter(definiert).map((s) => s.punkt.wert),
   ];
+  const [yVon, yBis] = ySpanne(alleWerte, nullbasis);
   const ySkala = scaleLinear()
-    .domain([nullbasis ? 0 : Math.min(...alleWerte), Math.max(...alleWerte)])
+    .domain([yVon, yBis])
     .nice(schmal ? 3 : 4)
     .range([Y0, YTOP + 12]);
   const gitter = ySkala.ticks(schmal ? 3 : 4);
-  const achsenText = gitter.map((v) => deZahl(v, 0));
+  const achsenText = gitter.map((v) => deZahl(v, achsenStellen(gitter)));
 
   // Linker Rand nach der BREITESTEN Achsenzahl (Mono ≈ 0,62 em je Zeichen) —
   // ein fester Wert ragte im schmalen Container aus der Fläche (schulden-kurve).

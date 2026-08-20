@@ -92,6 +92,10 @@ export type QuellenSchluessel =
   // Abschluss zählt, was geflossen IST, dieser Plan, was fließen SOLL — und
   // zwar in der Fassung der Einbringung, nicht des Ratsbeschlusses.
   | "ergebnishaushalt"
+  // Die Wirtschaftspläne der Eigenbetriebe. Eigener Schlüssel, weil es ein
+  // anderer Haushalt ist: Er wird in derselben Ratssitzung beschlossen, gehört
+  // aber nicht zum Kernhaushalt und ist mit ihm nicht addierbar.
+  | "wirtschaftsplan"
   | "gesamtabschluss"
   | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
   // Die Kassensicht aus denselben Jahresabschlüssen. Ein eigener Schlüssel,
@@ -244,6 +248,25 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     standWort: "Jahresabschlüsse",
     stand: "Jahresabschlüsse 2017–2024",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  wirtschaftsplan: {
+    titel: "Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften",
+    fundstelle:
+      "Die Ratsvorlage, mit der ein Wirtschaftsplan beschlossen wird — je nach " +
+      "Betrieb der Beschlusstext selbst (er nennt Erträge, Aufwendungen und " +
+      "Ergebnis) oder der Erfolgsplan der beigefügten Anlage. Bei den " +
+      "Gesellschaften ist die einzige nachprüfbare Zahl das beschlossene " +
+      "Jahresergebnis; Erträge und Aufwendungen bleiben dann leer, statt " +
+      "geschätzt zu werden. " +
+      "Diese Zahlen gehören NICHT zum Stadthaushalt und lassen sich nicht mit " +
+      "ihm zusammenzählen: Der Eigenbetrieb Gebäudewirtschaft vermietet der " +
+      "Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen Aufwand " +
+      "des Kernhaushalts. Herausgerechnet wird das erst im Gesamtabschluss.",
+    herausgeber: "Stadt Oldenburg, Betriebsleitungen der Eigenbetriebe",
+    standWort: "Wirtschaftspläne",
+    stand: "Wirtschaftspläne 2019–2026",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
