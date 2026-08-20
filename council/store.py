@@ -11,6 +11,8 @@ import sqlite3
 from .scraper import CouncilSession
 from .parties import order_key, parties_for_faction
 from . import importance as _importance
+from council.kontaktdaten import maskieren
+
 
 
 def _norm_title(t: str) -> str:
@@ -315,6 +317,12 @@ class CouncilStore:
         # eigene Store-Instanz bekommt (keine parallele Nutzung EINER Verbindung).
         self._conn = sqlite3.connect(path, timeout=15, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        # Kontaktdaten aus dem Text nehmen, der in einen SUCHINDEX geht — als
+        # SQLite-Funktion, damit `rebuild_fts()` eine einzige INSERT-SELECT
+        # bleibt und nicht zu einer Schleife in Python wird
+        # (`council/kontaktdaten.py`). Gespeichert wird weiterhin alles.
+        self._conn.create_function("ohne_kontaktdaten", 1, maskieren,
+                                   deterministic=True)
         # WAL + busy_timeout: scraper cron and the web API share this file.
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
@@ -547,6 +555,18 @@ class CouncilStore:
         if "ocr_modell" not in acols:
             self._conn.execute(
                 "ALTER TABLE council_anlagen ADD COLUMN ocr_modell TEXT")
+        # `status='ocr'` gab es genau einen Tag lang (20.08.2026). Solange galt
+        # gelesener Scan-Text als grundsätzlich nicht durchsuchbar — eine
+        # Sperre gegen die HERKUNFT des Textes statt gegen das, was darin
+        # steht, und sie schloss den AWB-Wirtschaftsplan und den Prüfbericht
+        # gleich mit aus. Die Sperre sitzt jetzt an der Index-Grenze
+        # (`council/kontaktdaten.py`), und diese Zeilen sind ganz normaler
+        # Anlagentext. `ocr_modell` sagt weiterhin, wie sie entstanden sind.
+        #
+        # Gehoben statt neu gelesen: Der Text ist in Ordnung, nur sein Status
+        # war es nicht. Ein erneuter OCR-Lauf kostete Geld für nichts.
+        self._conn.execute(
+            "UPDATE council_anlagen SET status = 'ok' WHERE status = 'ocr'")
         # Beratungsfolge je Vorlage (council.stammdaten): die offiziellen
         # Stationen einer Vorlage durch die Gremien — inkl. geplanter künftiger
         # Beratungen (ergebnis dann NULL). Je kvonr komplett ersetzt, weil
@@ -7201,10 +7221,16 @@ class CouncilStore:
                 "|| COALESCE(v.vtext,'') || ' ' || COALESCE(an.atext,''), "
                 "'ß', 'ss') "  # unicode61 folds ä/ö/ü but not ß
                 "FROM council_decisions d "
-                "LEFT JOIN (SELECT vorlage_nr, substr(MAX(raw_text), 1, 8000) AS vtext "
+                "LEFT JOIN (SELECT vorlage_nr, ohne_kontaktdaten("
+                "             substr(MAX(raw_text), 1, 8000)) AS vtext "
                 "           FROM council_vorlagen WHERE status = 'ok' GROUP BY vorlage_nr) v "
                 "  ON v.vorlage_nr = d.vorlage_nr "
-                "LEFT JOIN (SELECT cv.vorlage_nr, substr(GROUP_CONCAT(a.raw_text, ' '), 1, 4000) AS atext "
+                # `ohne_kontaktdaten()` ist eine SQLite-Funktion (s.
+                # `_verbinden`): Sie nimmt Kontonummern, Telefonnummern,
+                # E-Mail-Adressen und Anschriften aus dem Text, BEVOR er in
+                # den Volltextindex geht. Gespeichert bleibt er vollständig.
+                "LEFT JOIN (SELECT cv.vorlage_nr, ohne_kontaktdaten("
+                "             substr(GROUP_CONCAT(a.raw_text, ' '), 1, 4000)) AS atext "
                 "           FROM council_anlagen a JOIN council_vorlagen cv ON cv.kvonr = a.kvonr "
                 "           WHERE a.is_antrag = 1 AND a.status = 'ok' GROUP BY cv.vorlage_nr) an "
                 "  ON an.vorlage_nr = d.vorlage_nr "
@@ -9023,16 +9049,30 @@ class CouncilStore:
         stored = dict(self._conn.execute(
             "SELECT document_id, MIN(text_hash) FROM council_anlage_embeddings "
             "GROUP BY document_id").fetchall())
+        # `status = 'ok'` schließt nur ungelesene und kaputte Anlagen aus. Wie
+        # der Text entstanden ist — Textebene oder Sehmodell — steht in
+        # `ocr_modell` und ist hier KEIN Kriterium: Ein gescannter
+        # Wirtschaftsplan ist so durchsuchbar wie ein getippter.
         rows = self._conn.execute(
             "SELECT document_id, label, raw_text FROM council_anlagen "
             "WHERE status = 'ok' AND raw_text IS NOT NULL AND raw_text != '' "
             "ORDER BY document_id DESC").fetchall()
         out = []
         for r in rows:
-            h = hashlib.sha256(r["raw_text"].encode("utf-8")).hexdigest()[:16]
+            # HIER wird maskiert und nicht beim Speichern: `raw_text` bleibt
+            # vollständig (die Parser brauchen ihn), aber was in die
+            # Chunk-Vektoren und damit in Antworten der KI-Frage geht, trägt
+            # keine Kontonummern, Telefonnummern, E-Mail-Adressen und
+            # Anschriften mehr (`council/kontaktdaten.py`).
+            #
+            # Der Hash wird über den MASKIERTEN Text gebildet: Sonst gälte eine
+            # Anlage als geändert, sobald sich an der Maskierung etwas dreht,
+            # und der nächste Lauf rechnete den halben Bestand neu.
+            text = maskieren(r["raw_text"])
+            h = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
             if stored.get(r["document_id"]) != h:
                 out.append({"document_id": r["document_id"], "label": r["label"],
-                            "raw_text": r["raw_text"], "text_hash": h})
+                            "raw_text": text, "text_hash": h})
                 if limit and len(out) >= limit:
                     break
         return out

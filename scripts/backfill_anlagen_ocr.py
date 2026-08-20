@@ -14,17 +14,22 @@ die und schickt jede Seite als Bild an ein Sehmodell (``council/ocr.py``).
     # Ein einzelnes Dokument, zwei Seiten, zum Hinschauen
     python scripts/backfill_anlagen_ocr.py --document-id 193959 --max-seiten 2
 
-WAS DER LAUF **NICHT** TUT: Er setzt ``status='ok'``. Er setzt ``status='ocr'``.
-Der Unterschied ist der ganze Punkt — 'ok' hieße „ab in die Chunk-Vektoren und
-damit in Nutzerantworten der KI-Frage". Von den 189 Anlagen, die am 16.08. auf
-'empty' standen, sind 54 Förderanträge von Vereinen: mit Ansprechpartnerinnen,
-Anschriften und handschriftlichen Unterschriften darauf. Diese Dokumente liegen
-im Bürgerinfo öffentlich (getfile.php antwortet ohne Login), aber sie sind heute
-nicht durchsuchbar, und dieser Lauf soll das nicht nebenbei ändern.
+DER GELESENE TEXT IST GANZ NORMALER ANLAGENTEXT. Der Lauf setzt
+``status='ok'`` und vermerkt in ``ocr_modell``, welches Sehmodell ihn gelesen
+hat. Ein gescannter Wirtschaftsplan ist damit so durchsuchbar wie ein
+getippter — alles andere wäre eine Sperre gegen die Herkunft des Textes und
+nicht gegen das, was darin steht.
 
-Die Finanz-Parser lesen den Text trotzdem: ``finanzquellen.Erkennung.where()``
-filtert nicht auf den Status. Wer einzelne Dokumente später doch indizieren
-will, setzt sie gezielt auf 'ok'.
+DASS TROTZDEM KEINE KONTONUMMER IN EINER ANTWORT LANDET, leistet
+``council/kontaktdaten.py`` — und zwar an der **Index-Grenze**, nicht hier:
+``store.anlagen_missing_embeddings()`` und ``store.rebuild_fts()`` nehmen IBAN,
+BIC, Telefon, Fax, E-Mail und Anschrift aus dem Text, bevor er in die
+Chunk-Vektoren bzw. den Volltextindex geht. Gespeichert bleibt alles, denn die
+Parser brauchen den vollen Text.
+
+Das ist ausdrücklich **kein OCR-Thema**: 496 Anlagen des Bestands tragen
+Kontaktdaten, ganz ohne Texterkennung, und standen bis dahin unmaskiert im
+Index.
 
 KOSTEN: gemessen 0,0024 $ je Seite mit dem Vorgabemodell. Die ~46
 Finanzdokumente (~600 Seiten) liegen bei rund 1,50 $, der ganze Bestand bei
@@ -67,19 +72,32 @@ def kandidaten(store: CouncilStore, nur_finanz: bool, document_id: int | None,
     """Die Arbeitsliste: Anlagen ohne Textebene, die noch niemand gelesen hat.
 
     ``status='empty'`` ist die Menge, die ``backfill_anlagen_texte.py``
-    hinterlässt; ``'ocr'`` fällt heraus, damit ein zweiter Lauf nichts doppelt
-    bezahlt.
+    hinterlässt. Was schon gelesen ist, steht auf ``'ok'`` und fällt heraus —
+    ein zweiter Lauf bezahlt nichts doppelt.
+
+    ZWEI AUSNAHMEN KOMMEN ZURÜCK: Anlagen, deren Text nur aus dem Platzhalter
+    besteht (ein Lauf ohne Renderer, s. u.), und Altstände mit
+    ``status='ocr'`` — jenen Wert schrieb dieses Skript bis zum 20.08.2026,
+    als OCR-Text noch pauschal aus der Suche gehalten wurde. Das war der
+    falsche Ort für die Sperre; sie sitzt jetzt an der Index-Grenze
+    (`council/kontaktdaten.py`), und die Altstände werden beim nächsten Lauf
+    auf ``'ok'`` gehoben.
     """
     if document_id is not None:
         wo, werte = "document_id = ?", [document_id]
     else:
-        # `'ocr'` MIT PLATZHALTERN ZÄHLT WIEDER MIT. Ein Lauf ohne Renderer
-        # hat am 20.08.2026 drei Anlagen mit `status='ocr'` hinterlassen,
-        # deren Text ausschließlich aus „[Seite N: nicht lesbar gemacht]"
-        # bestand. Sie sähen für jeden späteren Lauf erledigt aus und wären
-        # es nie gewesen. Der Filter unten holt genau die zurück: Text, der
-        # den Platzhalter trägt und sonst nichts Lesbares.
-        wo = ("(status = 'empty' OR (status = 'ocr' AND raw_text LIKE ?)) "
+        # Anlagen mit Platzhaltern zählen wieder mit. Ein Lauf ohne Renderer
+        # hat am 20.08.2026 drei Anlagen hinterlassen, deren Text
+        # ausschließlich aus „[Seite N: nicht lesbar gemacht]" bestand. Sie
+        # sähen für jeden späteren Lauf erledigt aus und wären es nie gewesen.
+        #
+        # `status='ocr'` ist der Altstand desselben Tages: Solange OCR-Text
+        # pauschal aus der Suche gehalten wurde, schrieb dieses Skript diesen
+        # Wert. Er kommt hier zurück und wird beim Speichern auf 'ok' gehoben.
+        # `status='ocr'` steht hier NICHT mehr: Die Migration in `store.py`
+        # hebt solche Altstände beim Öffnen der Datenbank auf 'ok'. Sie hier
+        # noch einmal aufzunehmen hieße, sie ein zweites Mal zu bezahlen.
+        wo = ("(status = 'empty' OR (status = 'ok' AND raw_text LIKE ?)) "
               "AND url IS NOT NULL")
         werte = ["[Seite %nicht lesbar gemacht]%"]
         if nur_finanz:
@@ -171,8 +189,8 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
                 # vorgeführt: Drei Dokumente ohne Renderer lieferten 737 bzw.
                 # 3253 Zeichen, und zwar ausschließlich die Platzhalter
                 # „[Seite N: nicht lesbar gemacht]". Die Längenprüfung ließ sie
-                # durch, und sie standen danach mit `status='ocr'` im Bestand —
-                # gelesen aussehend, ohne einen einzigen Buchstaben vom Papier.
+                # durch, und sie standen danach als gelesen im Bestand — ohne
+                # einen einzigen Buchstaben vom Papier.
                 #
                 # Sie bleiben jetzt auf `'empty'`. Damit stehen sie weiter auf
                 # der Arbeitsliste und werden beim nächsten Lauf, wenn ein
@@ -188,7 +206,7 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
                 with store._conn:
                     store._conn.execute(
                         "UPDATE council_anlagen SET raw_text = ?, n_pages = ?, "
-                        "status = 'ocr', ocr_modell = ?, fetched_at = datetime('now') "
+                        "status = 'ok', ocr_modell = ?, fetched_at = datetime('now') "
                         "WHERE document_id = ?",
                         (lesung.text, lesung.seiten, lesung.modell, did))
                 gelesen += 1
@@ -217,7 +235,7 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
 
 def main() -> dict:
     ap = argparse.ArgumentParser(
-        description="Gescannte Anlagen per Sehmodell lesen (status='ocr')")
+        description="Gescannte Anlagen per Sehmodell lesen")
     ap.add_argument("--nur-finanz", action="store_true",
                     help="nur Anlagen, aus denen der Haushalts-Bereich liest")
     ap.add_argument("--document-id", type=int, default=None,

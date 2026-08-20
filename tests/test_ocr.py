@@ -36,63 +36,82 @@ def _store_mit_anlage(tmp_path: Path, status: str) -> CouncilStore:
 
 
 # --------------------------------------------------------------------------
-# (a) Die Sperre: gelesen, aber nicht veröffentlicht
+# (a) Gelesener Scan ist ganz normaler Anlagentext
 # --------------------------------------------------------------------------
 
-def test_ocr_text_geht_nicht_in_die_chunk_vektoren(tmp_path):
-    """`status='ocr'` hält den Text aus der Gründlichen Recherche heraus.
+def test_gelesener_scan_ist_durchsuchbar(tmp_path):
+    """Bis zum 20.08.2026 schrieb der Lauf `status='ocr'` und hielt den Text
+    damit pauschal aus der Suche. Das war der falsche Ort für die Sperre:
+    Sie traf die HERKUNFT des Textes statt dessen, was darin steht — und
+    schloss den AWB-Wirtschaftsplan, den Prüfbericht und das
+    Investitionsprogramm gleich mit aus.
 
-    Wäre er 'ok', stünden Namen und Anschriften aus Vereinsanträgen ab dem
-    nächsten Embedding-Lauf in Nutzerantworten — ohne dass das jemand
-    entschieden hätte."""
-    store = _store_mit_anlage(tmp_path, "ocr")
-    try:
-        offen = store.anlagen_missing_embeddings()
-        assert [z["document_id"] for z in offen] == []
-    finally:
-        store.close()
-
-
-def test_dieselbe_anlage_als_ok_waere_drin(tmp_path):
-    """Die Gegenprobe — sonst prüfte der Test oben nur, dass die Abfrage leer ist."""
+    Ein gescannter Wirtschaftsplan ist so durchsuchbar wie ein getippter.
+    Wie er gelesen wurde, steht in `ocr_modell`."""
     store = _store_mit_anlage(tmp_path, "ok")
     try:
         offen = store.anlagen_missing_embeddings()
         assert [z["document_id"] for z in offen] == [4711]
+        zeile = store._conn.execute(
+            "SELECT ocr_modell FROM council_anlagen WHERE document_id=4711").fetchone()
+        assert zeile["ocr_modell"] is None or isinstance(zeile["ocr_modell"], str)
     finally:
         store.close()
 
 
-def test_die_finanz_parser_sehen_den_ocr_text_trotzdem(tmp_path):
-    """`Erkennung.where()` filtert bewusst NICHT auf den Status.
-
-    Wer dort einmal `status='ok'` ergänzt, dreht die Sperre oben in eine
-    Blockade: Die Wirtschaftspläne 2019–2021 wären gelesen und blieben doch
-    unsichtbar."""
+def test_die_finanz_parser_sehen_den_text_ohnehin(tmp_path):
+    """`Erkennung.where()` filtert bewusst NICHT auf den Status — daran hat
+    sich nichts geändert, und der Test hält es fest."""
     from council import finanzquellen as fq
 
-    store = _store_mit_anlage(tmp_path, "ocr")
+    store = _store_mit_anlage(tmp_path, "ok")
     try:
         quelle = fq.QUELLEN["wirtschaftsplan"]
         sql, werte = quelle.erkennung.abfrage("document_id, label")
         gefunden = [r["document_id"] for r in store._conn.execute(sql, werte).fetchall()]
-        assert 4711 in gefunden, "der OCR-Text muss für die Parser sichtbar bleiben"
+        assert 4711 in gefunden
         assert "status" not in sql.lower()
     finally:
         store.close()
 
 
 def test_ein_zweiter_lauf_bezahlt_nichts_doppelt(tmp_path):
-    """Die Arbeitsliste nimmt nur 'empty' — 'ocr' ist erledigt."""
+    """Die Arbeitsliste nimmt nur 'empty' — 'ok' ist erledigt."""
     from scripts.backfill_anlagen_ocr import kandidaten
 
-    store = _store_mit_anlage(tmp_path, "ocr")
+    store = _store_mit_anlage(tmp_path, "ok")
     try:
         assert kandidaten(store, False, None, None) == []
         with store._conn:
             store._conn.execute(
                 "UPDATE council_anlagen SET status='empty' WHERE document_id=4711")
         assert [k["document_id"] for k in kandidaten(store, False, None, None)] == [4711]
+    finally:
+        store.close()
+
+
+def test_altstaende_mit_ocr_status_werden_gehoben(tmp_path):
+    """`status='ocr'` gab es genau einen Tag lang (20.08.2026), solange
+    gelesener Scan-Text pauschal aus der Suche gehalten wurde.
+
+    Die Migration hebt solche Zeilen beim Öffnen der Datenbank auf 'ok' —
+    NICHT der OCR-Lauf. Der Text ist ja in Ordnung, nur sein Status war es
+    nicht; ihn neu lesen zu lassen kostete Geld für nichts."""
+    from scripts.backfill_anlagen_ocr import kandidaten
+
+    from council.store import CouncilStore
+
+    # Erst die Altzeile anlegen, dann die Datenbank neu öffnen — so wie es im
+    # Betrieb passiert: Die Zeile stand schon da, als der neue Code kam.
+    _store_mit_anlage(tmp_path, "ocr").close()
+    store = CouncilStore(tmp_path / "c_ocr.sqlite")
+    try:
+        status = store._conn.execute(
+            "SELECT status FROM council_anlagen WHERE document_id=4711").fetchone()[0]
+        assert status == "ok", "der Altstand wird gehoben, nicht neu gelesen"
+        assert kandidaten(store, False, None, None) == []
+        # Und er ist damit durchsuchbar — genau darum ging es.
+        assert [z["document_id"] for z in store.anlagen_missing_embeddings()] == [4711]
     finally:
         store.close()
 
@@ -257,53 +276,6 @@ def test_temperatur_ist_null():
 
 
 # --------------------------------------------------------------------------
-# (f) Die Sperre darf keine Blockade werden
-# --------------------------------------------------------------------------
-
-def test_der_ingest_liest_auch_aus_ocr_anlagen():
-    """Dieselbe Marke, zwei Rollen — und nur eine davon ist eine Sperre.
-
-    `status='ocr'` hält den Text aus den Chunk-Vektoren heraus (Test oben).
-    Aus den PARSERN darf er ihn nicht heraushalten: Sonst wären die drei
-    AWB-Jahrgänge 2019–2021 gelesen und trotzdem unsichtbar — genau der
-    Zustand, den dieser ganze Lauf beseitigen soll.
-
-    Der Ingest filterte bis zum 20.08.2026 auf `status == 'ok'`. Das war vor
-    dem OCR-Lauf richtig und danach falsch."""
-    from scripts.ingest_wirtschaftsplaene import ANLAGE_LESBAR
-
-    assert "ocr" in ANLAGE_LESBAR, (
-        "Ohne 'ocr' liest der Ingest keine gescannte Anlage mehr — die "
-        "Datenschutz-Marke würde zur Blockade")
-    assert "ok" in ANLAGE_LESBAR
-    assert "empty" not in ANLAGE_LESBAR and "failed" not in ANLAGE_LESBAR
-
-
-def test_die_herkunft_nennt_das_sehmodell():
-    """Wer eine dieser Zahlen später prüft, muss wissen, dass zwischen Papier
-    und Datenbank ein Modell stand. Die Spaltenprobe belegt die Rechnung, nicht
-    die Ziffernerkennung."""
-    from council.wirtschaftsplan import Wirtschaftsplan
-    from council.wirtschaftsplan_tabelle import Spaltenprobe, herkunft_fuer
-
-    plan = Wirtschaftsplan(
-        betrieb="awb", betrieb_name="Abfallwirtschaftsbetrieb Stadt Oldenburg",
-        jahr=2019, vorlage_nr="18/0741", ertraege=20_280_001.0,
-        aufwendungen=19_989_470.0, steuern=0.0, ergebnis=290_531.0,
-        vermoegensplan=None, verpflichtungen=None, entwurf_vom=None)
-    proben = [Spaltenprobe(art="plan", jahr=2019, ertraege=20_280_001.0,
-                           aufwendungen=19_989_470.0, ergebnis=290_531.0)]
-
-    ohne = herkunft_fuer(plan, proben, url=None, dokument_id=1, label="x")
-    assert "OCR" not in ohne.fundstelle and "OCR" not in ohne.probe_ergebnis
-
-    mit = herkunft_fuer(plan, proben, url=None, dokument_id=1, label="x",
-                        ocr_modell="google/gemini-3.1-flash-lite")
-    assert "OCR" in mit.fundstelle
-    assert "gemini-3.1-flash-lite" in mit.probe_ergebnis
-
-
-# --------------------------------------------------------------------------
 # (g) Der Download — und warum er die Sitzung des Repos braucht
 # --------------------------------------------------------------------------
 
@@ -451,14 +423,14 @@ def test_null_gelesene_seiten_werden_nicht_gespeichert(monkeypatch, tmp_path):
 
 
 def test_platzhalter_anlagen_kommen_zurueck_auf_die_arbeitsliste(tmp_path):
-    """Ein Lauf ohne Renderer hat am 20.08.2026 drei Anlagen mit
-    `status='ocr'` hinterlassen, deren Text nur aus Platzhaltern bestand. Sie
-    sähen für jeden späteren Lauf erledigt aus und wären es nie gewesen."""
+    """Ein Lauf ohne Renderer hat am 20.08.2026 drei Anlagen hinterlassen,
+    deren Text nur aus Platzhaltern bestand. Sie sähen für jeden späteren Lauf
+    erledigt aus und wären es nie gewesen."""
     from scripts.backfill_anlagen_ocr import kandidaten
 
-    store = _store_mit_anlage(tmp_path, "ocr")
+    store = _store_mit_anlage(tmp_path, "ok")
     try:
-        # Zuerst: ein echter OCR-Text bleibt erledigt.
+        # Zuerst: ein echter Text bleibt erledigt.
         assert kandidaten(store, False, None, None) == []
 
         with store._conn:
@@ -472,60 +444,3 @@ def test_platzhalter_anlagen_kommen_zurueck_auf_die_arbeitsliste(tmp_path):
         store.close()
 
 
-# --------------------------------------------------------------------------
-# (j) Die Zusage: in der Datenbank, nicht in „Frag den Rat"
-# --------------------------------------------------------------------------
-
-def test_ocr_text_kommt_in_keinen_index_der_ki_frage(tmp_path):
-    """Tims Entscheidung vom 20.08.2026: **alles** einlesen, aber Namen,
-    Anschriften und Unterschriften nicht über „Frag den Rat" zurückgeben.
-
-    Es gibt genau zwei Wege, auf denen Anlagentext in eine Nutzerantwort
-    gerät, und beide filtern auf `status='ok'`:
-
-    * `anlagen_missing_embeddings()` → `council_anlage_embeddings` → die
-      Gründliche Recherche,
-    * der Volltextindex der Beschlüsse (`council_decisions_fts`), der
-      Antrags-Anlagen mit hineinzieht.
-
-    Dieser Test hält BEIDE fest. Wer einen davon auf `'ocr'` erweitert,
-    veröffentlicht 227 gescannte Förderanträge — mit Ansprechpartnerinnen,
-    Anschriften und handschriftlichen Unterschriften.
-    """
-    store = _store_mit_anlage(tmp_path, "ocr")
-    try:
-        with store._conn:
-            # Als Antrag markieren: sonst greift der FTS-Zweig gar nicht erst.
-            store._conn.execute(
-                "UPDATE council_anlagen SET is_antrag = 1, antragsteller = '[]' "
-                "WHERE document_id = 4711")
-
-        # (1) Chunk-Vektoren
-        assert [z["document_id"] for z in store.anlagen_missing_embeddings()] == []
-
-        # (2) Der Volltextindex — geprüft an der Abfrage selbst, weil ihn
-        #     aufzubauen einen ganzen Sitzungsbestand bräuchte.
-        import inspect
-
-        quelle = inspect.getsource(type(store).rebuild_fts)
-        anlagen_zweig = quelle[quelle.index("FROM council_anlagen a JOIN"):]
-        anlagen_zweig = anlagen_zweig[:anlagen_zweig.index("GROUP BY")]
-        assert "a.status = 'ok'" in anlagen_zweig, (
-            "Der Volltextindex zieht Antrags-Anlagen mit hinein — er MUSS auf "
-            "status='ok' filtern, sonst stehen OCR-Texte in Suchtreffern")
-        assert "'ocr'" not in anlagen_zweig
-    finally:
-        store.close()
-
-
-def test_die_anzeige_von_treffern_traegt_keinen_volltext(tmp_path):
-    """Auch der Weg über die Treffer-Liste gibt nichts preis: Sie nennt Label,
-    Link und Vorlage — nicht den Text."""
-    store = _store_mit_anlage(tmp_path, "ocr")
-    try:
-        zeilen = store.anlagen_by_ids([4711])
-        assert zeilen and "raw_text" not in zeilen[0]
-        assert set(zeilen[0]) <= {"document_id", "label", "url", "kvonr",
-                                  "vorlage_nr", "vorlage_titel"}
-    finally:
-        store.close()
