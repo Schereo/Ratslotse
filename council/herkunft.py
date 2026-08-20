@@ -107,6 +107,15 @@ UNBEKANNT = "unbekannt"
 #: glauben?". Wer eine neue Probe baut, trägt sie hier ein; ein unbekannter
 #: Name fliegt beim Bauen der :class:`Herkunft` auf.
 PROBEN: dict[str, str] = {
+    # Die Gebührenbedarfsberechnung (council/gebuehren.py) — die Rechnung, aus
+    # der die Abfall- und Straßenreinigungsgebühren entstehen. Zwei Proben,
+    # beide aus dem Dokument selbst und voneinander unabhängig.
+    "gebuehren_kaskade":
+        "Die Kalkulationskosten minus alle Abzüge, die das Dokument selbst "
+        "benennt, ergeben die Kosten, die durch Gebühren zu decken sind.",
+    "gebuehren_division":
+        "Diese Kosten, geteilt durch die Bezugsmenge, ergeben die gedruckte "
+        "Gebühr — Menge und Gebühr stehen an anderer Stelle als die Kaskade.",
     # Die Haushaltssatzung (council/haushaltssatzung.py) — der Rahmen, den der
     # Rat dem Haushaltsplan gibt: Kreditermächtigung, Dispo-Höchstbetrag,
     # Verpflichtungsermächtigungen und der Finanzhaushalt als Ganzes.

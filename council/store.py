@@ -1421,6 +1421,36 @@ class CouncilStore:
         # ihn überhaupt nicht — dieser Wert steht allein im Dokument des
         # Folgejahres. Ohne beide Spalten sähen sechs verschieden belegte
         # Jahrgänge in der Anzeige gleich aus.
+        # Die Gebührenbedarfsberechnung (`council/gebuehren.py`) — die
+        # Rechnung, aus der die Abfall- und Straßenreinigungsgebühren
+        # entstehen. Von allen Zahlen des Haushalts landet keine so direkt im
+        # Portemonnaie.
+        #
+        # `gebuehr` und `bezugsmenge` sind NULLBAR, und das ist eine Aussage:
+        # Die Abfallsammlung erhebt eine Grundgebühr UND eine Gebühr je Liter
+        # Behältervolumen, dort gibt es keine einzelne Division. Eine 0 wäre
+        # dort eine Behauptung, und eine erfundene Division wäre schlimmer als
+        # keine. Die Kaskade ist trotzdem geprüft — welche Proben liefen,
+        # steht je Zeile in `proben`.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gebuehren ("
+            "jahr INTEGER NOT NULL, "
+            "bereich TEXT NOT NULL, "          # Kürzel aus gebuehren.BEREICHE
+            "bereich_name TEXT NOT NULL, "
+            "kostenkalkulation REAL NOT NULL, "
+            "abzuege REAL NOT NULL, "          # negativ
+            "zu_deckende_kosten REAL NOT NULL, "
+            "bezugsmenge REAL, "
+            "bezugseinheit TEXT, "
+            "gebuehr REAL, "                   # die errechnete, 3 Nachkommast.
+            "gebuehrenvorschlag REAL, "        # die gerundete an den Rat
+            "vorlage_nr TEXT, "
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, "
+            "fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, bereich))"
+        )
+
         # Die Haushaltssatzung — der Rahmen, den der Haushaltsplan bekommt
         # (`council/haushaltssatzung.py`). Drei Größen standen bis 08/2026
         # nirgends im Bereich: die Kreditermächtigung (§ 2), der Höchstbetrag
@@ -6047,6 +6077,49 @@ class CouncilStore:
                  plan.vermoegensplan, plan.verpflichtungen, plan.entwurf_vom,
                  proben, hid, now))
         return 1
+
+    def save_gebuehrenbedarf(self, bedarf, herkunft) -> int:
+        """Einen Gebührenbereich eines Jahrgangs speichern.
+
+        Je Bereich und Jahr eine Zeile, und je Zeile eine eigene Herkunft: Die
+        drei Bereiche stehen in drei Anlagen und prüfen sich einzeln — ein
+        gemeinsamer Beleg wäre für zwei von drei der falsche.
+        """
+        proben = herkunft.probe
+        if not isinstance(proben, str):
+            proben = ",".join(proben)
+
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_gebuehren "
+                "(jahr, bereich, bereich_name, kostenkalkulation, abzuege, "
+                " zu_deckende_kosten, bezugsmenge, bezugseinheit, gebuehr, "
+                " gebuehrenvorschlag, vorlage_nr, proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (bedarf.jahr, bedarf.bereich, bedarf.bereich_name,
+                 bedarf.kostenkalkulation, bedarf.abzuege,
+                 bedarf.zu_deckende_kosten, bedarf.bezugsmenge,
+                 bedarf.bezugseinheit, bedarf.gebuehr,
+                 bedarf.gebuehrenvorschlag, bedarf.vorlage_nr,
+                 proben, hid, now))
+        return 1
+
+    def get_gebuehren(self) -> list[dict]:
+        """Alle Gebührenbereiche, ältester Jahrgang zuerst."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_gebuehren ORDER BY jahr, bereich")]
+        except sqlite3.OperationalError:
+            return []
+
+    def gebuehren_jahre(self) -> list[int]:
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_gebuehren ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
 
     def save_haushaltssatzung(self, satzung, herkunft) -> int:
         """Eine Haushaltssatzung speichern — ein Jahrgang, eine Fassung.
