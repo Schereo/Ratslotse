@@ -53,6 +53,17 @@ from council.wirtschaftsplan_kernzahl import (  # noqa: E402
     parse_kernzahl,
 )
 
+#: Anlagen-Status, aus denen dieser Ingest lesen darf.
+#:
+#: ``'ocr'`` steht hier bewusst neben ``'ok'``: Diese Anlagen tragen keine
+#: Textebene, sondern den Text, den ein Sehmodell aus dem Scan gelesen hat
+#: (`scripts/backfill_anlagen_ocr.py`). Der eigene Status hält sie aus den
+#: Chunk-Vektoren heraus — aus den PARSERN soll er sie nicht heraushalten,
+#: sonst wäre dieselbe Marke zugleich Datenschutz-Sperre und Blockade, und die
+#: drei AWB-Jahrgänge 2019–2021 blieben gelesen und trotzdem unsichtbar.
+#: Geprüft wird ohnehin die Rechnung, und die ist bei OCR-Text dieselbe.
+ANLAGE_LESBAR = ("ok", "ocr")
+
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 #: Woran eine Wirtschaftsplan-Vorlage erkannt wird. Bewusst weit: Lieber eine
@@ -150,11 +161,19 @@ def main() -> int:
             if jahr is None:
                 continue
             anlagen = [dict(a) for a in store._conn.execute(  # noqa: SLF001
-                "SELECT document_id, label, url, status, raw_text "
+                "SELECT document_id, label, url, status, raw_text, ocr_modell "
                 "FROM council_anlagen WHERE kvonr = ? ORDER BY document_id",
                 (r["kvonr"],))]
+            # `'ocr'` ZÄHLT MIT. Diese Anlagen tragen keine Textebene, sondern
+            # den Text, den ein Sehmodell aus dem Scan gelesen hat
+            # (`scripts/backfill_anlagen_ocr.py`). Der Status hält sie aus den
+            # Chunk-Vektoren heraus — aus den Parsern soll er sie NICHT
+            # heraushalten, sonst wäre die Datenschutz-Sperre zugleich eine
+            # Blockade, und die drei AWB-Jahrgänge 2019–2021 blieben gelesen
+            # und trotzdem unsichtbar. Geprüft wird ohnehin die Rechnung, und
+            # die ist bei OCR-Text dieselbe wie bei einer Textebene.
             lesbar = [a for a in anlagen
-                      if a["status"] == "ok" and (a["raw_text"] or "")]
+                      if a["status"] in ANLAGE_LESBAR and (a["raw_text"] or "")]
             if not lesbar:
                 ohne_text.append((r["vorlage_nr"], jahr,
                                   [a["status"] for a in anlagen] or ["keine Anlage"]))
@@ -233,7 +252,7 @@ def main() -> int:
         for plan, proben, a in aus_anlage:
             store.save_wirtschaftsplan(plan, herkunft_tabelle(
                 plan, proben, url=a["url"], dokument_id=a["document_id"],
-                label=a["label"]))
+                label=a["label"], ocr_modell=a.get("ocr_modell")))
         for plan, wort, lage, r in kernzahlen:
             store.save_wirtschaftsplan(plan, herkunft_kernzahl(
                 plan, wort, lage, url=None, kvonr=r["kvonr"]))

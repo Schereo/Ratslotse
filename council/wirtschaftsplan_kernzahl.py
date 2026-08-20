@@ -83,17 +83,25 @@ PROBEN: dict[str, str] = {
         "getrennte Dokumente, unabhängig gesetzt.",
 }
 
-#: Der Satz im Beschlusstext. Drei Schreibweisen kommen vor: „Jahresfehlbetrag
-#: von X", „Jahresfehlbetrag in Höhe von X", „maximalen Fehlbetrag in Höhe von
-#: X". Das erste Wort trägt die Richtung.
+#: Der Satz im Beschlusstext. Fünf Schreibweisen kommen vor:
+#: „Jahresfehlbetrag von X", „Jahresfehlbetrag in Höhe von X", „maximalen
+#: Fehlbetrag in Höhe von X", „ein Verlust von X EUR ermittelt worden" und
+#: „Der ermittelte Verlust in Höhe von X". Das erste Wort trägt die Richtung.
+#:
+#: „Verlust"/„Gewinn" kamen am 20.08.2026 dazu — sie sind die Sprache des
+#: **Eigenbetriebs Hafen**, des einzigen Betriebs, der weder „Fehlbetrag" noch
+#: „Überschuss" schreibt. Ohne sie blieben seine beiden einzigen Jahrgänge
+#: (2019 und 2020) draußen, ohne dass jemand einen Fehler gesehen hätte: Die
+#: Vorlage wäre einfach nie erkannt worden.
 _KERNZAHL = re.compile(
-    r"(?P<wort>Jahresfehlbetrag|Jahres[üu]berschuss|Fehlbetrag|[Üu]berschuss)"
+    r"(?P<wort>Jahresfehlbetrag|Jahres[üu]berschuss|Fehlbetrag|[Üu]berschuss"
+    r"|Verlust|Gewinn)"
     r"[^.]{0,80}?(?:in H[öo]he von|von)\s+"
-    r"(?P<betrag>-?\s*\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|Euro)", re.I)
+    r"(?P<betrag>-?\s*\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|Euro|EUR)", re.I)
 
 #: Wörter, die einen Verlust bezeichnen — sie erzwingen ein negatives
 #: Vorzeichen, egal wie die Ziffernfolge geschrieben ist.
-_VERLUST = ("fehlbetrag",)
+_VERLUST = ("fehlbetrag", "verlust")
 
 
 def _eur(roh: str) -> float:
