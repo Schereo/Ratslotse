@@ -276,3 +276,49 @@ def test_chunks_mit_kontaktdaten_werden_geloescht(tmp_path):
             "der Briefkopf-Chunk muss weg, der harmlose bleiben")
     finally:
         nach.close()
+
+
+# --------------------------------------------------------------------------
+# (f) Die Reihenfolge: erst zusammenziehen, dann maskieren
+# --------------------------------------------------------------------------
+
+# Echt, aus Anlage 269546 (Förderantrag der Kirchenverwaltung 2024).
+UMBROCHEN = """E-Mail: Finanzen.RDSAML-OLS@kirche-
+oldenburg.de
+"""
+
+
+def test_eine_ueber_den_trennstrich_umbrochene_adresse():
+    """DER FALL, DER DAS ERZWUNGEN HAT (20.08.2026):
+
+    Die Maskierung sah „…@kirche-" — keine gültige Adresse, kein Treffer.
+    Dann zog `embeddings.anlage_chunks()` die Zeilen zusammen
+    (`vorlagen._entzeilen` joint Silbentrennungen), und im fertigen Chunk
+    stand die vollständige Adresse. Die Schlussprüfung des Ops-Laufs fand
+    neun solche Chunks.
+
+    Die Reihenfolge war verkehrt herum: Maskiert werden muss die Fassung, die
+    der Index später SIEHT."""
+    aus = maskieren(UMBROCHEN)
+    assert "kirche" not in aus and "oldenburg.de" not in aus
+    assert PLATZHALTER in aus
+
+
+def test_die_pruefung_sieht_dieselbe_fassung_wie_die_maskierung():
+    """Sonst meldet die Schlussprüfung eines Ops-Laufs etwas anderes, als die
+    Maskierung zu sehen bekommt — und genau das ist passiert."""
+    assert enthaelt_kontaktdaten(UMBROCHEN)
+
+
+def test_eine_ueber_zeilen_laufende_iban():
+    """Im Textextrakt bricht eine IBAN gern mitten in der Ziffernfolge um —
+    dann steht dort ein Zeilenumbruch samt Einrückung, also mehr als ein
+    Leerzeichen."""
+    aus = maskieren("IBAN: DE20 2805 0100\n   0014 4046 77")
+    assert "2805" not in aus and PLATZHALTER in aus
+
+
+def test_der_trennstrich_zerlegt_keine_gewoehnlichen_woerter():
+    """Ein umbrochenes Wort wird zusammengezogen — aber nicht maskiert."""
+    assert maskieren("Abfallwirtschafts-\nbetrieb") == "Abfallwirtschaftsbetrieb"
+    assert maskieren("Butjadinger Straße 61") == "Butjadinger Straße 61"

@@ -48,7 +48,10 @@ PLATZHALTER = "[Kontaktdaten entfernt]"
 
 #: Deutsche IBAN. Das Heikelste im Bestand: 81 Stück, und eine Kontonummer
 #: beantwortet keine einzige Frage über den Haushalt.
-_IBAN = re.compile(r"\bDE\s?\d{2}(?:\s?\d{4}){4}\s?\d{2}\b")
+#: `\s*` und nicht `\s?`: Eine IBAN bricht im Textextrakt gern mitten
+#: in der Ziffernfolge um, und dann steht dort ein Zeilenumbruch samt
+#: Einrückung — mehr als ein Leerzeichen.
+_IBAN = re.compile(r"\bDE\s*\d{2}(?:\s*\d{4}){4}\s*\d{2}\b")
 
 #: BIC gleich mit — sie steht neben jeder IBAN und ist ohne sie wertlos.
 _BIC = re.compile(r"\b[A-Z]{4}DE[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b")
@@ -108,6 +111,23 @@ HART = (_IBAN, _BIC, _ANSCHRIFT, _PLZ_ZEILE)
 #: Was zusätzlich aus dem SUCHINDEX genommen wird, aber im Bestand bleibt.
 NUR_INDEX = (_MAIL, _TELEFON)
 
+#: Ein Trennstrich am Zeilenende, der ein Wort zerlegt.
+#:
+#: DER FALL, DER DAS ERZWUNGEN HAT (20.08.2026): Im Förderantrag der
+#: Kirchenverwaltung steht die E-Mail-Adresse als
+#:
+#:     E-Mail: Finanzen.RDSAML-OLS@kirche-
+#:     oldenburg.de
+#:
+#: Die Maskierung sah „…@kirche-" — keine gültige Adresse, kein Treffer. Dann
+#: zog `embeddings.anlage_chunks()` die Zeilen zusammen (`vorlagen._entzeilen`
+#: joint Silbentrennungen), und im fertigen Chunk stand die vollständige
+#: Adresse. Neun solche Chunks fand die Schlussprüfung des Ops-Laufs.
+#:
+#: Die Reihenfolge war verkehrt herum: Maskiert werden muss die Fassung, die
+#: der Index später SIEHT — also die zusammengezogene.
+_TRENNSTRICH = re.compile(r"(?<=[A-Za-z0-9])-\s*\n\s*(?=[A-Za-z0-9])")
+
 _MUSTER = HART + NUR_INDEX
 
 
@@ -117,7 +137,7 @@ def entfernen(text: str | None) -> str:
     Läuft beim SPEICHERN, nicht beim Indexieren — was hier herausfällt, ist
     ohne erneutes Laden des PDF weg. Deshalb nur :data:`HART`.
     """
-    aus = text or ""
+    aus = _TRENNSTRICH.sub("", text or "")
     for muster in HART:
         aus = muster.sub(PLATZHALTER, aus)
     return aus
@@ -130,15 +150,24 @@ def maskieren(text: str | None) -> str:
     schadet aber nicht) und zusätzlich Telefon und E-Mail, die im Bestand
     bleiben dürfen.
     """
-    aus = text or ""
+    # ZUERST die Trennstriche zusammenziehen, DANN maskieren: Der Index sieht
+    # die zusammengezogene Fassung (s. `_TRENNSTRICH`), und was er sieht, muss
+    # geprüft sein.
+    aus = _TRENNSTRICH.sub("", text or "")
     for muster in _MUSTER:
         aus = muster.sub(PLATZHALTER, aus)
     return aus
 
 
 def enthaelt_kontaktdaten(text: str | None) -> bool:
-    """Ob überhaupt etwas zu maskieren wäre — für Berichte und Tests."""
-    return any(muster.search(text or "") for muster in _MUSTER)
+    """Ob überhaupt etwas zu maskieren wäre — für Berichte und Tests.
+
+    Prüft dieselbe zusammengezogene Fassung wie :func:`maskieren`. Täte sie es
+    nicht, meldete die Schlussprüfung eines Ops-Laufs etwas anderes, als die
+    Maskierung zu sehen bekommt — und genau das ist am 20.08.2026 passiert.
+    """
+    flach = _TRENNSTRICH.sub("", text or "")
+    return any(muster.search(flach) for muster in _MUSTER)
 
 
 def zaehlen(text: str | None) -> dict[str, int]:
