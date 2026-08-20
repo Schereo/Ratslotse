@@ -86,6 +86,12 @@ export type QuellenSchluessel =
   // Ist-Reihe führt 28 Jahrgänge, diese hier drei.
   | "steuerplan"
   | "jahresabschluss" | "teilhaushalt" | "stellenplan" | "pruefbericht"
+  // Der Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — dieselbe
+  // Postengliederung wie der Jahresabschluss, aber für Jahre, die noch keinen
+  // haben. Ein eigener Schlüssel, weil es eine andere Sorte Zahl ist: Der
+  // Abschluss zählt, was geflossen IST, dieser Plan, was fließen SOLL — und
+  // zwar in der Fassung der Einbringung, nicht des Ratsbeschlusses.
+  | "ergebnishaushalt"
   | "gesamtabschluss"
   | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
   // Die Kassensicht aus denselben Jahresabschlüssen. Ein eigener Schlüssel,
@@ -238,6 +244,24 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     standWort: "Jahresabschlüsse",
     stand: "Jahresabschlüsse 2017–2024",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  ergebnishaushalt: {
+    titel: "Gesamtergebnishaushalte der Stadt Oldenburg (Planjahre)",
+    fundstelle:
+      "Anlage 005 des Haushaltsplans: die Erträge und Aufwendungen des kommenden " +
+      "Jahres nach denselben Posten 1–24, die auch der Jahresabschluss führt — für " +
+      "Jahre, die noch keinen Abschluss haben. " +
+      "Von den fünf Spalten, die das Dokument „Ansatz“ nennt, ist genau eine der " +
+      "Haushaltsansatz; die übrigen sind mittelfristige Finanzplanung nach § 8 NKomVG " +
+      "und werden hier nicht gezeigt. " +
+      "Es ist der Entwurf der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, " +
+      "nicht am Beschluss. " +
+      "Die Dokumente hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Haushaltspläne",
+    stand: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
