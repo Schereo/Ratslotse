@@ -145,6 +145,7 @@ die es nicht zeigen:
 | `council_schulden` | Schuldenstand je Jahr seit 1995 — vier Schuldenarten, Summe und Betrag je Einwohner\*in | Statistisches Jahrbuch der Stadt, Tabelle 1108 (PDF von oldenburg.de) | `scripts/ingest_schulden.py` |
 | `council_ausgabenreihe` | Ausgaben je Jahr seit **1972** (**Ist**) — `regelwerk` (`kameral` bis 2009, `doppik` ab 2010), die bestandenen `proben` je Zeile und, wo die beiden Quellen sich widersprechen, der `konflikt_betrag` der unterlegenen. **Ohne Einwohnerzahl**, s. u. | Datensatz 1102 — Statistisches Jahrbuch, Tabelle 1102 (PDF) **und** Open-Data-Portal (zwei CSV) | `scripts/ingest_ausgabenreihe.py` |
 | `council_steuerplan` | Je Steuerart und Jahr der **Ansatz des Haushaltsplans** neben dem **Rechnungsergebnis**; `vorlaeufig` ist die Angabe der Quelle über sich selbst. `art` trägt dieselbe Schreibweise wie `council_steuern` — daran hängt die Prüfung der Jahresbeschriftung | Statistisches Jahrbuch, Tabelle 1103 (PDF von oldenburg.de), **alle im Archiv gesicherten Ausgaben** | `scripts/ingest_steuertabellen.py` |
+| `council_wirtschaftsplaene` | Eckwerte der **Wirtschaftspläne** je Eigenbetrieb und Haushaltsjahr — Erfolgsplan (Erträge, Aufwendungen, steuerliche Aufwendungen, Ergebnis), Vermögensplan und Verpflichtungsermächtigungen, dazu der Stand des Verwaltungsentwurfs. Bisher nur der Eigenbetrieb Gebäudewirtschaft und Hochbau, 2019–2026 — als einziger nennt er sie im Beschlusstext | **Die Ratsvorlage selbst** (Beschlussvorschlag), nicht eine Anlage | `scripts/ingest_wirtschaftsplaene.py` |
 | `council_hebesaetze` | Die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980 — Grundsteuer A, Grundsteuer B, Gewerbesteuer, dazu der `vorheriger` Satz. Neun Änderungsjahre (27 Zeilen) decken 45 Jahre — zuletzt 2025, als die Grundsteuerreform A auf 500 und B auf 539 Punkte hob | Statistisches Jahrbuch, Tabelle 1105 (auf demselben Blatt wie 1104) | dito |
 
 :::note[Zwei Tabellen zu denselben Berichten]
@@ -2669,6 +2670,105 @@ Quelle `kennzahlen` bringt das Muster jetzt selbst mit; ausgeschlossen werden
 die Stiftungs-Berichte **namentlich** und nicht über „Stiftung", denn der
 städtische Bericht heißt selbst „… der Kernverwaltung und ihrer nicht
 rechtsfähigen Stiftungen".
+
+## Der Haushalt neben dem Haushalt: die Wirtschaftspläne
+
+Der Kernhaushalt ist nicht alles, was der Rat beschließt. Daneben stehen die
+**Wirtschaftspläne** der Eigenbetriebe und Gesellschaften — eigene Erfolgs- und
+Vermögenspläne, in derselben Sitzung entschieden. Der größte ist der
+Eigenbetrieb Gebäudewirtschaft und Hochbau (EGH): 2026 rund 82,8 Mio. € Erträge
+und Aufwendungen, dazu ein Vermögensplan über 51,1 Mio. €. Er baut und saniert
+die städtischen Gebäude — also auch die Schulen, die im Investitionsprogramm des
+Kernhaushalts ausdrücklich fehlen.
+
+Was `/haushalt/konzern` und `/haushalt/beteiligungen` von diesen Betrieben
+zeigen, ist ihr **Ist**, aus Gesamtabschluss und Beteiligungsbericht, und beides
+hinkt rund zwei Jahre hinterher. Was sie für das laufende Jahr vorhaben, stand
+bis 08/2026 nirgends.
+
+### Die einzige Schicht, deren Quelle eine Vorlage ist
+
+Nicht eine Anlage, sondern der **Beschlussvorschlag der Ratsvorlage**:
+
+```
+im Erfolgsplan
+
+mit Erträgen von 82.815.150 Euro
+mit Aufwendungen von 82.824.771 Euro
+mit steuerlichen Aufwendungen von                6.000 Euro
+und einem Jahresergebnis von              -    15.621 Euro
+
+und im Vermögensplan
+
+mit Einzahlungen und Auszahlungen von je 51.134.100 Euro
+und Verpflichtungsermächtigungen von 104.980.000 Euro
+```
+
+Das ist der Text, über den abgestimmt wird — keine Zusammenfassung und keine
+Anlage, die später ausgetauscht werden könnte. `council_vorlagen` führt ihn
+längst als Volltext; es brauchte nur niemand.
+
+### Zwei Proben, und die erste steht im Text
+
+1. **`wirtschaftsplan_erfolgsplan`** — *Erträge − Aufwendungen − steuerliche
+   Aufwendungen = Jahresergebnis*. Vier Zahlen, von denen die vierte aus den
+   ersten dreien folgt. Über **alle acht Jahrgänge** (2019–2026) geht sie auf
+   den **Cent** auf. Die Toleranz steht deshalb auf 0,005 € und nicht auf 1 €:
+   Die Quelle führt volle Euro, eine Ein-Euro-Toleranz ließe genau den einen
+   Fehler durch, den die Probe sehen könnte (dieselbe Überlegung wie bei
+   `investitionen.TOLERANZ_EUR`).
+2. **`wirtschaftsplan_jahr`** — Das Haushaltsjahr steht im Fließtext *und* im
+   Titel der Vorlage, beide müssen dasselbe sagen. Das ist die wichtigere
+   Probe für den wahrscheinlicheren Fehler: Eine Vorlage **vom Oktober 2025**
+   beschließt das Jahr **2026**. Wer das Jahr aus dem Vorlagen-Datum nähme,
+   verschöbe die ganze Reihe um eins.
+
+### Nur der EGH — und das ist der Befund
+
+Von **46** Wirtschaftsplan-Vorlagen im Bestand (2018–2026) tragen **acht**
+diesen Block, alle acht vom EGH. Die übrigen 38 nennen im Beschlusstext keine
+Zahl:
+
+| Betrieb | Vorlagen | im Beschlusstext |
+|---|---|---|
+| Gebäudewirtschaft und Hochbau | 8 | **vollständige Eckwerte** |
+| Bäderbetrieb (BBO) | 12 | „wird in der als Anlage beigefügten Fassung zugestimmt" |
+| Bäderbetriebsgesellschaft (BBGO) | 10 | eine Zahl (Jahresfehlbetrag), ohne Gegenrechnung |
+| Abfallwirtschaftsbetrieb | 8 | Zustimmung zur Anlage |
+| Stadion | 5 | eine Zahl (maximaler Fehlbetrag) |
+| Eigenbetrieb Hafen | 2 | Zustimmung zur Anlage |
+
+Gelesen wird deshalb **nur, was sich prüfen lässt**. Bei der BBGO stünde eine
+Zahl im Fließtext („Jahresfehlbetrag von −10.128.335 Euro") — sie zu übernehmen
+hieße, eine Angabe ohne Gegenprobe in dieselbe Tabelle zu schreiben, in der
+daneben lauter cent-genau geprüfte stehen. Die Herkunft sagte „ungeprüft", und
+auf der Seite sähe die Zahl aus wie der Rest. Was fehlt, fehlt gezählt
+(`wirtschaftsplan.ohne_eckwerte`, der Ingest-Lauf listet es nach Betrieb).
+
+:::caution[Nicht mit dem Kernhaushalt addieren]
+Der EGH vermietet der Stadt ihre eigenen Gebäude; seine Erträge sind zu großen
+Teilen Aufwand des Kernhaushalts. Wer beide Summen nebeneinanderstellt und
+addiert, zählt dasselbe Geld zweimal. Genau diese Verflechtung rechnet der
+**Gesamtabschluss** heraus — das ist seine Aufgabe, und deshalb ersetzt diese
+Schicht ihn nicht, sondern steht daneben. `wirtschaftsplan.ABGRENZUNG` reist
+mit den Daten mit, damit der Satz nicht nur im Frontend steht.
+:::
+
+Und es ist der **Verwaltungsentwurf**, nicht der Beschluss — der Text sagt das
+selbst („in der Fassung des Verwaltungsentwurfes vom 01.10.2025"). Das Datum
+wird mitgelesen und gehört an jede Anzeige, dieselbe Vorsicht wie beim
+Gesamtergebnishaushalt. Der Jahrgang 2024 schreibt „des **I.**
+Verwaltungsentwurfes"; die Ordnungszahl zählt die Fassung und wird zugelassen,
+aber nicht ausgewertet.
+
+### Kein Cron — noch nicht
+
+`check_finanzdaten` ist auf `council_anlagen` gebaut: `Finanzquelle.erkennung`
+sucht ein Anlagen-Label. Diese Schicht wäre die erste, deren Einheit eine
+**Vorlage** ist — ein eigener Umbau. Bis dahin ist
+`scripts/ingest_wirtschaftsplaene.py` der Weg, und weil die Quelle im Haus
+liegt (kein Download), ist er auch der richtige, wenn ein verbesserter Parser
+über den Bestand laufen soll.
 
 ## Was bewusst fehlt
 
