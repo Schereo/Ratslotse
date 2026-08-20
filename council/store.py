@@ -1386,6 +1386,27 @@ class CouncilStore:
         # Folgejahres. Ohne beide Spalten sähen sechs verschieden belegte
         # Jahrgänge in der Anzeige gleich aus.
         self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_wirtschaftsplaene ("
+            "betrieb TEXT NOT NULL, "          # Kürzel aus wirtschaftsplan.BETRIEBE
+            "jahr INTEGER NOT NULL, "          # Haushaltsjahr, nicht Jahr der Vorlage
+            "betrieb_name TEXT NOT NULL, "
+            "vorlage_nr TEXT NOT NULL, "
+            "ertraege REAL NOT NULL, "         # Erfolgsplan, in Euro
+            "aufwendungen REAL NOT NULL, "
+            "steuern REAL NOT NULL, "          # bis 2020 keine eigene Zeile → 0
+            "ergebnis REAL NOT NULL, "
+            "vermoegensplan REAL, "            # Ein- = Auszahlungen, eine Zahl
+            "verpflichtungen REAL, "           # Verpflichtungsermächtigungen
+            "entwurf_vom TEXT, "               # Stand des Verwaltungsentwurfs
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            # Ein Betrieb, ein Haushaltsjahr, ein Plan. Der Schlüssel ist
+            # bewusst NICHT die Vorlagen-Nummer: Zu einem Jahr kann es eine
+            # Anpassung geben (eine zweite Vorlage), und die soll den Stand
+            # ersetzen und nicht danebenstehen.
+            "PRIMARY KEY (betrieb, jahr))"
+        )
+        self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_buergschaften ("
             "jahr INTEGER PRIMARY KEY, "
             "bestand REAL NOT NULL, "          # in Euro
@@ -5859,6 +5880,58 @@ class CouncilStore:
         return rows
 
     # --- Bürgschaften: wofür die Stadt geradesteht --------------------------
+
+    def save_wirtschaftsplan(self, plan, herkunft) -> int:
+        """Einen Wirtschaftsplan speichern — ein Betrieb, ein Haushaltsjahr.
+
+        Aufgerufen wird sie **je Plan** und nicht für eine ganze Lieferung:
+        Jeder Jahrgang steht in seiner eigenen Ratsvorlage, also hat jeder
+        seine eigene Herkunft. Ein gemeinsamer Beleg wäre für sieben von acht
+        Zeilen der falsche — dieselbe Überlegung wie bei
+        ``save_buergschaften``.
+
+        ``plan`` ist ein :class:`council.wirtschaftsplan.Wirtschaftsplan`; die
+        Proben stehen dort und werden nicht hier noch einmal gerechnet.
+        """
+        from council.wirtschaftsplan import PROBE_ERFOLGSPLAN, PROBE_JAHR
+
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_wirtschaftsplaene "
+                "(betrieb, jahr, betrieb_name, vorlage_nr, ertraege, aufwendungen, "
+                " steuern, ergebnis, vermoegensplan, verpflichtungen, entwurf_vom, "
+                " proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (plan.betrieb, plan.jahr, plan.betrieb_name, plan.vorlage_nr,
+                 plan.ertraege, plan.aufwendungen, plan.steuern, plan.ergebnis,
+                 plan.vermoegensplan, plan.verpflichtungen, plan.entwurf_vom,
+                 f"{PROBE_ERFOLGSPLAN},{PROBE_JAHR}", hid, now))
+        return 1
+
+    def get_wirtschaftsplaene(self, betrieb: str | None = None) -> list[dict]:
+        """Die Wirtschaftspläne, ältester zuerst — je Betrieb oder alle."""
+        try:
+            if betrieb is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_wirtschaftsplaene ORDER BY betrieb, jahr")
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_wirtschaftsplaene WHERE betrieb = ? "
+                    "ORDER BY jahr", (betrieb,))
+            return [dict(r) for r in rows]
+        except sqlite3.OperationalError:
+            return []
+
+    def wirtschaftsplan_jahre(self, betrieb: str) -> list[int]:
+        """Haushaltsjahre, für die ein Plan dieses Betriebs vorliegt."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT jahr FROM council_wirtschaftsplaene WHERE betrieb = ? "
+                "ORDER BY jahr", (betrieb,))]
+        except sqlite3.OperationalError:
+            return []
 
     def save_buergschaften(self, zeilen: list[dict], herkunft) -> int:
         """Bürgschafts-Jahrgänge ersetzen — je Jahr eine Zeile.

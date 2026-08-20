@@ -107,6 +107,16 @@ UNBEKANNT = "unbekannt"
 #: glauben?". Wer eine neue Probe baut, trägt sie hier ein; ein unbekannter
 #: Name fliegt beim Bauen der :class:`Herkunft` auf.
 PROBEN: dict[str, str] = {
+    # Die Wirtschaftspläne der Eigenbetriebe (council/wirtschaftsplan.py) —
+    # die einzige Schicht, deren Quelle die VORLAGE ist und keine Anlage.
+    "wirtschaftsplan_erfolgsplan":
+        "Der Beschlusstext rechnet sich selbst vor: Erträge − Aufwendungen − "
+        "steuerliche Aufwendungen = Jahresergebnis. Über alle acht Jahrgänge "
+        "auf den Cent.",
+    "wirtschaftsplan_jahr":
+        "Das Haushaltsjahr steht im Beschlusstext und im Titel der Vorlage — "
+        "beide müssen dasselbe sagen. Eine Vorlage vom Oktober beschließt das "
+        "FOLGENDE Jahr.",
     "summenzeile":
         "Die Teilbeträge ergeben die Summenzeile des Dokuments (Toleranz 1 %).",
     "strukturprobe":
