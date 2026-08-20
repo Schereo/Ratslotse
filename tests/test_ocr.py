@@ -444,3 +444,21 @@ def test_platzhalter_anlagen_kommen_zurueck_auf_die_arbeitsliste(tmp_path):
         store.close()
 
 
+
+
+def test_ein_zu_grosses_bild_wird_gerendert(monkeypatch):
+    """Anlage 188884 trägt einen Scan von über 30 MB. Die Gegenstelle wies ihn
+    mit „413 — Downloaded image content cannot exceed 30MB" ab, und die
+    Anlage blieb als einzige von 227 ungelesen.
+
+    Gerendert bei 200 dpi sind es ein paar hundert Kilobyte — die Vorlage hat
+    ohnehin mehr Auflösung, als ein Sehmodell nutzt."""
+    monkeypatch.setattr(ocr, "_gerendert",
+                        lambda s, dpi: ocr.Seitenbild(b"x", "image/png", "gerendert"))
+    riesig = _Bild("s0.jpg", daten=b"\xff\xd8" * (ocr.MAX_BILD_BYTES // 2 + 1))
+    assert ocr.seite_als_bild(_Seite(riesig)).weg == "gerendert"
+
+
+def test_ein_normal_grosses_bild_geht_weiter_durch():
+    """Die Gegenprobe — sonst wäre die Grenze nur eine Bremse."""
+    assert ocr.seite_als_bild(_Seite(_Bild("s0.jpg"))).weg == "eingebettet"

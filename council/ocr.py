@@ -118,6 +118,20 @@ class Seitenbild:
 #: ein schlechter 150-dpi-Scan abgewiesen wird.
 MIN_DPI = 100
 
+#: Größer darf ein eingebettetes Bild nicht sein, sonst wird die Seite
+#: gerendert statt durchgereicht.
+#:
+#: DER FALL (20.08.2026): Anlage 188884 trägt einen Scan von über 30 MB. Die
+#: Gegenstelle wies ihn mit „413 — Downloaded image content cannot exceed
+#: 30MB" ab, und die Anlage blieb als einzige von 227 ungelesen. Das Rendern
+#: bei 200 dpi macht daraus ein paar hundert Kilobyte, ohne dass ein
+#: Buchstabe verloren geht — die Vorlage hat ja ohnehin mehr Auflösung, als
+#: ein Sehmodell nutzt.
+#:
+#: 20 MB und nicht 30: Base64 bläht die Daten um ein Drittel auf, und die
+#: Grenze der Gegenstelle gilt für das, was dort ankommt.
+MAX_BILD_BYTES = 20 * 1024 * 1024
+
 
 def _deckt_die_seite(seite, im) -> bool:
     """Ist dieses eingebettete Bild plausibel die ganze Seite?
@@ -166,7 +180,8 @@ def seite_als_bild(seite, dpi: int = 200) -> Seitenbild:
         im = bilder[0]
         endung = os.path.splitext(getattr(im, "name", "") or "")[1].lower()
         mime = _BILDTYPEN.get(endung)
-        if mime and im.data and _deckt_die_seite(seite, im):
+        if (mime and im.data and len(im.data) <= MAX_BILD_BYTES
+                and _deckt_die_seite(seite, im)):
             return Seitenbild(im.data, mime, "eingebettet")
     return _gerendert(seite, dpi)
 
