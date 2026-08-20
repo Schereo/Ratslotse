@@ -3108,11 +3108,21 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   findet hier die Grundlage — aber unter einem anderen Namen als dem geplanten.
 
 - **Der Schlussbericht 2024** — sein PDF bringt keine Zeichenzuordnung mit,
-  der Volltext besteht aus Glyphen-Nummern (`/12 /8 /6 □ /13 …`) und läuft in
-  die 400.000-Zeichen-Kappung. Eine zweite Kopie gibt es nicht; ein neuer
-  Versuch bräuchte OCR. Der Jahrgang scheitert schon an der
-  Textanfang-Erkennung, ganz ohne Sonderfall — und die Seite sagt das, statt
-  es zu überspielen.
+  der Volltext besteht aus Glyphen-Nummern (`/12 /8 /6 □ /13 …`), sein
+  Buchstabenanteil ist **0,000**. Eine zweite Kopie gibt es nicht.
+
+  Seit dem 20.08.2026 führt ein Weg dorthin: `backfill_anlagen_texte.py`
+  setzt ihn wegen `MIN_BUCHSTABEN` auf `status='empty'`, und
+  `backfill_anlagen_ocr.py` liest von dort. Sein Label trifft zwei
+  Finanz-Muster (`%Jahresabschluss%`, `%chlussbericht%`), er steht also in der
+  `--nur-finanz`-Liste. Und er ist der **leichteste** Fall dieser Klasse, nicht
+  der schwerste: Er ist born-digital, randscharf, ohne Rauschen und ohne
+  Schräglage — beim Probelauf las das Modell Seite 33 cent-genau
+  (`Summe Eigenbetriebe 273.295.915,34 €`, geprüft gegen die gedruckte Summe).
+
+  **Eingelesen ist er damit noch nicht.** Der Jahrgang scheitert vorher an der
+  Textanfang-Erkennung, und die ist ein eigener Sonderfall — die Seite sagt das
+  weiterhin, statt es zu überspielen.
 - **Vollständige Produktebene** — für einige Teilhaushalte fehlen auslesbare
   Dokumente: Im Bestand stehen 9 der 13 Teilhaushalte (2025: 10). Gemessen an
   den Aufwendungen, die der Endpunkt als `abdeckung_prozent` ausweist, deckt
