@@ -49,6 +49,32 @@ export type ErgebnisPosten = {
   quelle_label: string | null; quelle_url: string | null;
 };
 
+/** Eine Zeile des **Gesamtergebnishaushalts** — dieselbe Postengliederung wie
+ *  die Ergebnisrechnung, aber für Jahre, die noch keinen Abschluss haben.
+ *
+ *  Zwei Felder tragen die ganze Vorsicht dieser Tabelle:
+ *
+ *  * `art` trennt den **Haushaltsansatz** von der mittelfristigen
+ *    Finanzplanung nach § 8 NKomVG. Das Dokument schreibt über fünf Spalten
+ *    „Ansatz"; aufgestellt ist nur eines der Jahre, die übrigen sind eine
+ *    Vorausschau, die jeder neue Haushalt neu schreibt (von 23 Posten bleiben
+ *    zwischen zwei Plänen 0 bis 2 gleich). **Ohne diese Angabe darf keine Zahl
+ *    aus dieser Liste angezeigt werden.**
+ *  * `plan_jahrgang` sagt, aus welchem Haushalt die Zeile stammt — dasselbe
+ *    Jahr kommt in mehreren Plänen vor. */
+export type ErgebnishaushaltZeile = {
+  /** Der Haushalt, aus dem die Zahl stammt. */
+  plan_jahrgang: number;
+  /** Das Jahr, für das sie gilt. */
+  jahr: number;
+  art: "ansatz" | "finanzplanung";
+  nr: number;
+  bezeichnung: string;
+  betrag: number;
+  ist_summe: 0 | 1;
+  herkunft_id: number | null;
+};
+
 /** Die Zeilen der Finanzrechnung, auf die es ankommt. **An der Rolle hängen,
  *  nicht an der Nummer:** Die Tabelle hat 2017–2020 eine Zeile mehr als ab
  *  2021 (eine Einzahlungsart fiel weg), wodurch sich jede Nummer ab 08 um eins
@@ -271,6 +297,9 @@ export type HaushaltDaten = {
   pruefbericht_quellen?: Pruefbericht[];
   /** Jahre, für die die Produktebene vorliegt. */
   produkt_jahre?: number[];
+  /** Die Postengliederung für Jahre **ohne** Jahresabschluss, aus dem
+   *  Gesamtergebnishaushalt der Haushaltspläne (Anlage 005). */
+  ergebnishaushalt?: ErgebnishaushaltZeile[];
   /** Jahre mit einem beschlossenen **Haushaltsansatz** — das jüngste ist das
    *  Jahr, für das gerade ein Haushalt gilt.
    *
@@ -849,6 +878,82 @@ export function flussbild(
       && Math.abs(summeLinks - skala) <= FLUSS_TOLERANZ,
     aufgeschluesselt: luecke(herkunft) <= 0.02 * herkunft.gesamt
       && luecke(verwendung) <= 0.02 * verwendung.gesamt,
+  };
+}
+
+export type EinnahmeartenPlan = {
+  jahr: number;
+  /** Aus welchem Haushalt die Zahlen stammen — bei uns immer derselbe
+   *  Jahrgang wie `jahr`, aber die Angabe gehört an die Anzeige. */
+  planJahrgang: number;
+  /** Ertragsarten (Posten 01–11), absteigend nach Betrag, in EURO. */
+  arten: { nr: number; label: string; lang: string; betrag: number }[];
+  /** Die ausgewiesene Summenzeile (Posten 12) in Euro. */
+  gesamt: number;
+  /** Summe der Einzelposten — muss `gesamt` treffen, sonst wird nichts
+   *  gezeichnet (siehe unten). */
+  teile: number;
+  /** Was die Anzeigetafel derselben Seite für dieses Jahr ausweist
+   *  (`council_haushalt`), und der Abstand dazu. `null`, wenn die Seite den
+   *  Jahrgang gar nicht führt.
+   *
+   *  Die beiden Zahlen sind NICHT dieselbe Größe: Hier steht der Entwurf aus
+   *  Anlage 005 der Einbringungs-Vorlage, dort der beschlossene Plan. Für 2026
+   *  liegen sie 24,3 Mio. € auseinander. Wer beide auf einer Seite zeigt, muss
+   *  den Abstand benennen — sonst steht dort ein Widerspruch, den sich der
+   *  Leser selbst erklären soll. */
+  tafel: { ertraege: number; abstand: number } | null;
+};
+
+/** Woher das Geld eines **Planjahres** kommen soll — die eine Seite, die es
+ *  für Jahre ohne Jahresabschluss gibt.
+ *
+ *  Das Flussbild braucht beide Seiten aus **einer** Quelle; für Planjahre gibt
+ *  es die nicht (`council_ergebnishaushalt` führt keine Teilhaushalte, und
+ *  `council_haushalt` steht in einem anderen Stand). Statt deshalb gar nichts
+ *  zu zeigen, steht die Herkunftsseite allein da — ausdrücklich als halbes
+ *  Bild und ohne Gegenstück.
+ *
+ *  **Nur `art === "ansatz"`.** Die Finanzplanungsjahre desselben Dokuments
+ *  sind eine Vorausschau nach § 8 NKomVG; sie hier mitzunehmen hieße, für 2029
+ *  einen Haushalt zu zeigen, den nie jemand aufgestellt hat.
+ *
+ *  `null`, wenn das Jahr fehlt oder die Einzelposten ihre eigene Summenzeile
+ *  nicht treffen — dieselbe Regel wie beim Flussbild: Was sich nicht aufaddiert,
+ *  wird nicht gezeichnet. */
+export function einnahmearten(
+  daten: HaushaltAuswahl<"ergebnishaushalt" | "jahre">, jahr: number,
+): EinnahmeartenPlan | null {
+  const zeilen = (daten.ergebnishaushalt ?? [])
+    .filter((z) => z.jahr === jahr && z.art === "ansatz");
+  if (!zeilen.length) return null;
+
+  const arten = zeilen
+    .filter((z) => z.nr >= 1 && z.nr <= 11 && z.betrag > 0)
+    .map((z) => ({
+      nr: z.nr,
+      label: ERTRAGSART_KURZ[z.nr] ?? z.bezeichnung,
+      lang: z.bezeichnung,
+      betrag: z.betrag,
+    }))
+    .sort((a, b) => b.betrag - a.betrag);
+  const gesamt = zeilen.find((z) => z.nr === 12)?.betrag ?? 0;
+  if (!arten.length || gesamt <= 0) return null;
+
+  const teile = arten.reduce((s, a) => s + a.betrag, 0);
+  // Dieselbe Toleranz wie das Flussbild (0,05 Mio. €): Was die ausgewiesene
+  // Summe nicht trifft, ist keine Aufschlüsselung, sondern eine Auswahl.
+  if (Math.abs(gesamt - teile) > FLUSS_TOLERANZ) return null;
+
+  const tafelErtraege = summe(daten.jahre?.[String(jahr)] ?? [])?.ertraege ?? null;
+  return {
+    jahr,
+    planJahrgang: zeilen[0].plan_jahrgang,
+    arten,
+    gesamt,
+    teile,
+    tafel: tafelErtraege == null
+      ? null : { ertraege: tafelErtraege, abstand: tafelErtraege - gesamt },
   };
 }
 

@@ -29,9 +29,12 @@ import {
   fasseKleineZusammen,
 } from "@/components/grafik/flussbild";
 import {
-  FlussBand, FlussDaten, HaushaltAuswahl,
-  deMio, flussJahre, flussbild, mio,
+  EinnahmeartenPlan, FlussBand, FlussDaten, HaushaltAuswahl,
+  deMio, einnahmearten, flussJahre, flussbild, mio,
 } from "@/lib/haushalt";
+import { RanglisteSchiene } from "@/components/grafik/rangliste-schiene";
+import { Beleg } from "@/components/haushalt/quelle";
+import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { ausblick, type Antwort as DatenstandAntwort } from "@/components/haushalt/datenstand";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
@@ -50,8 +53,8 @@ function alsPosten(b: FlussBand): FlussPosten {
   };
 }
 
-/** Was an der Stelle des Bildes steht, wenn für das gewählte Jahr die
- *  Einnahmearten fehlen.
+/** Was an der Stelle des Bildes steht, wenn für das gewählte Jahr kein
+ *  vollständiges Flussbild möglich ist: **die eine Seite, die es gibt.**
  *
  *  Hier stand bis 16.08. ein ANDERES Jahr: das nächstgelegene mit
  *  Jahresabschluss, dazu ein Satz darüber. Der Handel war falsch herum — wer
@@ -59,30 +62,99 @@ function alsPosten(b: FlussBand): FlussPosten {
  *  der der Tausch stand, war eine Zeile über ihr. Wo Daten für das gewählte
  *  Jahr fehlen, sagt die Seite jetzt genau das (Entscheidung Tim, 16.08.).
  *
- *  DER WORTLAUT WURDE AM 19.08.2026 KORRIGIERT. Vorher stand hier „Für {jahr}
- *  liegen uns die Einnahmearten noch nicht vor" — seit #530 unwahr: Die
- *  Einnahmearten der Planjahre SIND eingelesen (`council_ergebnishaushalt`,
- *  2019–2026). Was fehlt, ist die andere Seite. Der Gesamtergebnishaushalt
- *  führt keine Teilhaushalte, und `council_haushalt` steht in einem anderen
- *  Stand (2026: 24,3 Mio. € Abstand, Entwurf gegen Beschluss) — ein Bild aus
- *  beiden wäre um das Fünfhundertfache der Toleranz daneben, ohne dass man es
- *  ihm ansieht. Genau das sagt der Text jetzt.
+ *  Bis 19.08. stand hier „Für {jahr} liegen uns die Einnahmearten noch nicht
+ *  vor" — seit #530 unwahr, sie SIND eingelesen. Seit 20.08. steht deshalb
+ *  nicht mehr eine Fehlanzeige da, sondern die Herkunftsseite selbst.
  *
- *  Die frühere Annahme, er verschwinde „von selbst, sobald der Bestand
- *  nachgezogen ist", trug nicht: `flussbild()` liest `ergebnisrechnung`, und
- *  die endet mit dem letzten Jahresabschluss. Ein Text, der auf ein Nachziehen
- *  wartet, das seine Bedingung gar nicht erfüllt, wird still zur Unwahrheit —
- *  deshalb benennt er die Lage, statt eine Ankündigung zu machen.
+ *  **Warum trotzdem kein Flussbild.** Es braucht beide Seiten aus EINER
+ *  Quelle. Der Gesamtergebnishaushalt führt keine Teilhaushalte (in allen acht
+ *  Dokumenten kommt „THH" kein einziges Mal vor), und `council_haushalt` steht
+ *  in einem anderen Stand — Entwurf gegen Beschluss. Der Abstand wird nicht
+ *  behauptet, sondern gerechnet und hingeschrieben (`einnahmearten().tafel`):
+ *  Für 2026 sind es 24,3 Mio. €, das Fünfhundertfache der Toleranz, mit der
+ *  das Bild rechnet. Ein Bild aus beiden sähe man das nicht an.
  *
- *  Das jüngste vollständige Jahr ist ein ANGEBOT, keine Ersatzanzeige:
+ *  Und genau deshalb steht der Abstand DA: Auf derselben Seite nennt die
+ *  Anzeigetafel eine andere Ertragssumme. Zwei Zahlen nebeneinander, die
+ *  dasselbe zu meinen scheinen, sind schlimmer als eine Lücke — wer sie zeigt,
+ *  muss sagen, dass es zwei sind.
+ *
+ *  Das jüngste vollständige Jahr bleibt ein ANGEBOT, keine Ersatzanzeige:
  *  gewechselt wird nur, wenn jemand darauf tippt. */
-function Luecke({ jahr, letztes, aufJahr }: {
-  jahr: number; letztes: number; aufJahr: (() => void) | null;
+function NurHerkunft({ arten, letztes, aufJahr }: {
+  arten: EinnahmeartenPlan; letztes: number | null; aufJahr: (() => void) | null;
 }) {
   return (
     <div>
-      {/* Der Kicker bleibt: Ohne ihn stünde in der Karte eine Meldung ohne
-          Gegenstand — man wüsste nicht, welcher Abschnitt hier fehlt. */}
+      {/* Der Kicker sagt, was hier steht — und was NICHT: Über dem vollen Bild
+          heißt er „Woher, wohin — und was dazwischen liegt". Denselben Kicker
+          über einer halben Grafik zu setzen, verspräche die Ausgabenseite. */}
+      <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+        Woher das Geld kommen soll
+      </p>
+
+      <RanglisteSchiene
+        zeilen={arten.arten.map((a) => ({
+          label: a.label,
+          wert: a.betrag / 1e6,
+          zusatz: a.label === a.lang ? undefined : (
+            <span className="text-[11px] text-muted-foreground">{a.lang}</span>
+          ),
+        }))}
+        einheit="Mio. €"
+        nachkomma={1}
+        beleg={<Beleg q="ergebnishaushalt" />}
+      />
+
+      <div className="mt-3 rounded-lg border border-dashed border-border bg-muted/40 px-3.5 py-3">
+        <p className="text-[13px] font-semibold leading-relaxed">
+          Nur die eine Seite — und es ist der Entwurf.
+        </p>
+        <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
+          Wohin das Geld {arten.jahr} geht, steht im Haushaltsplan in einer anderen
+          Rechnung als das, woher es kommt. Ein Bild aus beiden würde zwei Stände
+          vermischen, ohne dass man es ihm ansieht — deshalb steht hier keine
+          Ausgabenseite. Die Zahlen stammen aus Anlage 005 des Haushaltsplans{" "}
+          {arten.planJahrgang}, also aus der Fassung, die die Verwaltung eingebracht
+          hat; was der Rat daran geändert hat, steht nicht darin.
+        </p>
+        {/* Der Abstand zur Anzeigetafel derselben Seite. Gerechnet, nicht
+            behauptet — und nur gezeigt, wenn es ihn gibt: Bei einem Jahrgang
+            ohne Tafel-Zeile stünde sonst „0 Mio. € Abstand" als Aussage da. */}
+        {arten.tafel && Math.abs(arten.tafel.abstand) >= 100_000 && (
+          <p className="mt-1.5 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
+            Deshalb ergeben diese Posten zusammen {deMio(arten.gesamt / 1e6)}&#8239;Mio.&nbsp;€
+            und nicht die {deMio(arten.tafel.ertraege / 1e6)}&#8239;Mio.&nbsp;€ von der
+            Anzeigetafel oben — {deMio(Math.abs(arten.tafel.abstand) / 1e6)}&#8239;Mio.&nbsp;€
+            Unterschied zwischen Entwurf und beschlossenem Plan. Beide Zahlen stimmen,
+            sie zählen nur nicht dasselbe.
+          </p>
+        )}
+        {letztes != null && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            <span className="text-[12px] text-muted-foreground">
+              Ein ganzes Bild, mit beiden Seiten, gibt es zuletzt für {letztes}.
+            </span>
+            {aufJahr && (
+              <button type="button" onClick={aufJahr}
+                className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[12px] font-semibold text-primary shadow-sm">
+                {letztes} ansehen <ArrowRight className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Der Rückfall, wenn es auch die Herkunftsseite nicht gibt — etwa auf einem
+ *  Bestand, in dem der Gesamtergebnishaushalt noch nicht eingelesen ist. */
+function Luecke({ jahr, letztes, aufJahr }: {
+  jahr: number; letztes: number | null; aufJahr: (() => void) | null;
+}) {
+  return (
+    <div>
       <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher, wohin — und was dazwischen liegt
       </p>
@@ -91,29 +163,53 @@ function Luecke({ jahr, letztes, aufJahr }: {
           Für {jahr} können wir den Geldfluss nicht zeichnen.
         </p>
         <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
-          Woher das Geld kommt, wissen wir für dieses Jahr — es steht im Haushaltsplan.
-          Wohin es geht, steht dort aber in einer anderen Rechnung, die auf andere Summen
-          kommt. Ein Bild aus beiden würde zwei Stände vermischen, ohne dass man es ihm
-          ansieht. Statt dessen steht hier lieber nichts.
+          Uns fehlen für dieses Jahr die Einnahmearten. Statt ersatzweise ein anderes
+          Jahr zu zeigen, steht hier lieber nichts.
         </p>
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-          <span className="text-[12px] text-muted-foreground">
-            Vollständig haben wir sie zuletzt für {letztes}.
-          </span>
-          {aufJahr && (
-            <button type="button" onClick={aufJahr}
-              className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[12px] font-semibold text-primary shadow-sm">
-              {letztes} ansehen <ArrowRight className="h-3 w-3" />
-            </button>
-          )}
-        </div>
+        {letztes != null && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            <span className="text-[12px] text-muted-foreground">
+              Vollständig haben wir sie zuletzt für {letztes}.
+            </span>
+            {aufJahr && (
+              <button type="button" onClick={aufJahr}
+                className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[12px] font-semibold text-primary shadow-sm">
+                {letztes} ansehen <ArrowRight className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
+/** Welche Quelle dieser Block für ein Jahr WIRKLICH zitiert.
+ *
+ *  Dieselbe Sorgfalt wie beim Kassenzettel (`kassenzettelQuellen`), und aus
+ *  demselben Grund: Die Seite meldet ihre Quellen vorab an, und die
+ *  Nummerierung im Verzeichnis läuft über genau diese Liste. Meldet sie eine
+ *  Quelle an, die hier gar nicht zitiert wird, steht im Verzeichnis ein Beleg
+ *  für nichts; meldet sie eine zu wenig an, verschluckt `<Beleg>` den Chip
+ *  stillschweigend (`quelle.tsx`: „lieber keinen Chip als eine falsche
+ *  Nummer") — die Zahl stünde dann ohne Beleg da, auf einer Seite, deren
+ *  ganzer Anspruch das Gegenteil ist.
+ *
+ *  Die Fallunterscheidung ist dieselbe wie im Render-Zweig unten und muss es
+ *  bleiben: Wo ein Flussbild steht, zitiert es den Jahresabschluss; wo für ein
+ *  Planjahr die Herkunftsseite steht, den Gesamtergebnishaushalt. */
+export function flussbildQuellen(
+  daten: HaushaltAuswahl<"ergebnisrechnung" | "ergebnishaushalt" | "jahre">,
+  jahr: number,
+): QuellenSchluessel[] {
+  if (!flussJahre(daten).length) return [];
+  const bild = flussbild(daten, jahr, "ist") ?? flussbild(daten, jahr, "plan");
+  if (!bild && einnahmearten(daten, jahr)) return ["ergebnishaushalt"];
+  return ["jahresabschluss"];
+}
+
 export function Flussbild({ daten, jahr, onJahrWechsel }: {
-  daten: HaushaltAuswahl<"ergebnisrechnung">;
+  daten: HaushaltAuswahl<"ergebnisrechnung" | "ergebnishaushalt" | "jahre">;
   jahr: number;
   /** Der saubere Weg, das Angebot einzulösen — die Seite hält das Jahr.
    *  Optional, damit die Einbindung unverändert weiterläuft; ohne ihn greift
@@ -138,6 +234,9 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
     () => (letztes == null ? null : flussbild(daten, letztes, "ist")), [daten, letztes]);
   const letztesPlan = useMemo(
     () => (letztes == null ? null : flussbild(daten, letztes, "plan")), [daten, letztes]);
+  // Die Herkunftsseite des GEWÄHLTEN Jahres — für Planjahre die einzige, die
+  // es gibt. Muss ein Hook sein und vor jedem `return` stehen.
+  const nurHerkunft = useMemo(() => einnahmearten(daten, jahr), [daten, jahr]);
   // Wann die Stadt den fehlenden Jahrgang üblicherweise vorlegt — derselbe
   // Satz, den der Datenstand am Seitenfuß baut, statt einer zweiten Fassung.
   const { data: stand_ } = useFetch<DatenstandAntwort>("/council/haushalt/datenstand");
@@ -167,11 +266,21 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
   // in dem Fall ohnehin ganz aus).
   if (letztes == null) return null;
 
-  // Fehlt das gewählte Jahr, zeigen wir das jüngste vollständige — aber die
-  // Ansage steht ÜBER dem Bild, nicht als Fußnote darunter. Bis 16.08. stand
-  // hier gar kein Bild; der Hinweis allein ließ die Karte leer, obwohl wir
-  // etwas zu zeigen haben. Der Fehler der Fassung davor war nicht das
-  // Ersatzjahr, sondern dass der Tausch versteckt war (Entscheidung Tim).
+  // Hat das GEWÄHLTE Jahr eigene Zahlen — wenn auch nur für eine Seite —, dann
+  // gelten die, und das Ersatzjahr wird zum Angebot.
+  //
+  // Das schränkt die Regel vom 16.08. ein, und zwar aus ihrem eigenen Grund.
+  // Sie lautete: „Fehlt das gewählte Jahr, zeigen wir das jüngste vollständige,
+  // aber die Ansage steht ÜBER dem Bild" — beschlossen, weil der Hinweis allein
+  // die Karte leer ließ, „obwohl wir etwas zu zeigen haben". Für Planjahre haben
+  // wir seit #530 etwas Besseres zu zeigen als ein fremdes Jahr: die echten
+  // Ertragsarten des gewählten. Damit ist die Prämisse jener Entscheidung für
+  // diesen Fall weggefallen, nicht die Entscheidung selbst — wo es auch die
+  // Herkunftsseite nicht gibt, bleibt es beim angesagten Ersatzjahr.
+  if (!bild && nurHerkunft) {
+    return <NurHerkunft arten={nurHerkunft} letztes={letztes} aufJahr={aufLetztes} />;
+  }
+
   const ersatz = !bild;
   const zeigJahr = ersatz ? letztes : jahr;
   const zeigBild = bild ?? (stand === "ist" ? letztesIst ?? letztesPlan : letztesPlan ?? letztesIst);
@@ -324,6 +433,18 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
           {!zeigBild.stimmt && " Die Summenprobe geht nicht auf — die Grafik zeigt das, statt zu strecken."}
         </p>
       )}
+
+      {/* Die Quellenzeile steht seit 20.08. HIER und nicht auf der Seite.
+          Grund: Sie muss das benennen, was wirklich gezeichnet wurde, und das
+          weiß nur diese Komponente. Auf der Seite stand sie unbedingt unter
+          dem Block — auch dann, wenn dort für ein Planjahr die Herkunftsseite
+          aus dem Gesamtergebnishaushalt steht (die ihren eigenen Beleg trägt).
+          Dann nannte sie die falsche Quelle. */}
+      <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11px] text-muted-foreground">
+        Quelle: Ergebnisrechnung des jeweiligen Jahresabschlusses<Beleg q="jahresabschluss" /> —
+        Einnahmearten (Posten 01–11) und Aufwendungen je Teilhaushalt (Posten 20) aus
+        derselben Tabelle desselben Jahres.
+      </p>
     </div>
   );
 }

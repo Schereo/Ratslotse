@@ -4618,6 +4618,19 @@ class CouncilStore:
                                  "thh_nr IS NOT NULL", "quelle_url"),
         # Dritte Ebene desselben Dokuments: Abschnitt 4.1, die Kassensicht.
         "finanzrechnung":       ("council_finanzrechnung", "jahr", None, None),
+        # Der Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — dieselbe
+        # Postengliederung für Jahre ohne Abschluss.
+        #
+        # Der Filter auf ``art = 'ansatz'`` ist hier PFLICHT und keine
+        # Verfeinerung: Ein Dokument trägt sein Planjahr UND drei
+        # Finanzplanungsjahre, dieselbe Jahreszahl kommt also in drei
+        # Haushaltsplänen vor (2026 im Plan 2024 als Vorausschau, im Plan 2025
+        # als Vorausschau, im Plan 2026 als Ansatz). Ohne den Filter stünden an
+        # einer Ansatz-Zahl bis zu drei Dokumente, und zwei davon meinen etwas
+        # anderes. Mit ihm gilt ``jahr == plan_jahrgang``, und es bleibt genau
+        # eines.
+        "ergebnishaushalt":     ("council_ergebnishaushalt", "jahr",
+                                 "t.art = 'ansatz'", None),
         # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
         # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
         # deshalb dessen Dokument, mit eigener Fundstelle.

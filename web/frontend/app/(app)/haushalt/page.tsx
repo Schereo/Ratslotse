@@ -36,7 +36,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { Tafel } from "@/components/haushalt/tafel";
 import { Bereichstabelle } from "@/components/haushalt/bereichstabelle";
 import { Gegenbalken } from "@/components/haushalt/gegenbalken";
-import { Flussbild } from "@/components/haushalt/flussbild";
+import { Flussbild, flussbildQuellen } from "@/components/haushalt/flussbild";
 import { Kassenzettel, kassenzettelQuellen } from "@/components/haushalt/kassenzettel";
 import { Steuereuro } from "@/components/haushalt/steuereuro";
 import { Zeitreihe } from "@/components/haushalt/zeitreihe";
@@ -50,7 +50,10 @@ import {
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-const FELDER = ["jahre", "ausgabenreihe", "ergebnisrechnung", "einwohner"] as const;
+const FELDER = ["jahre", "ausgabenreihe", "ergebnisrechnung", "einwohner",
+  // Die Ertragsarten der Planjahre — für Jahre ohne Jahresabschluss die
+  // einzige Seite, die das Flussbild zeigen kann (Posten 01–11, `ansatz`).
+  "ergebnishaushalt"] as const;
 
 export default function HaushaltPage() {
   // Nur den Aufwands-Posten je Teilhaushalt: Das Flussbild zeichnet rechts
@@ -125,7 +128,7 @@ export default function HaushaltPage() {
   const quellen: QuellenSchluessel[] = [
     "plan",
     ...(zeigtZettel ? kassenzettelQuellen(data, aktJahr) : []),
-    ...(flussJahre(data).length > 0 ? (["jahresabschluss"] as const) : []),
+    ...flussbildQuellen(data, aktJahr),
     ...(langeJahre.length > 0 ? (["ausgabenreihe"] as const) : []),
   ];
 
@@ -275,12 +278,11 @@ export default function HaushaltPage() {
       {flussJahre(data).length > 0 && (
         <>
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+            {/* Die Quellenzeile stand bis 20.08. hier und nannte unbedingt den
+                Jahresabschluss — auch dort, wo für ein Planjahr die
+                Herkunftsseite aus dem Gesamtergebnishaushalt steht. Sie wohnt
+                jetzt in der Komponente, die weiß, was sie gezeichnet hat. */}
             <Flussbild daten={data} jahr={aktJahr} />
-            <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11px] text-muted-foreground">
-              Quelle: Ergebnisrechnung des jeweiligen Jahresabschlusses<Beleg q="jahresabschluss" /> —
-              Einnahmearten (Posten 01–11) und Aufwendungen je Teilhaushalt (Posten 20) aus
-              derselben Tabelle desselben Jahres.
-            </p>
           </div>
 
           <LottiErklaert

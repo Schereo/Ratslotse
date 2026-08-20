@@ -37,7 +37,7 @@ genau dieser Reihenfolge.
 
 | Route | Inhalt |
 |---|---|
-| `/haushalt` | Einstieg: Anzeigetafel mit der Kernzahl, Gegenbalken (umschaltbar auf die 100-Euro-Ansicht), Rücklagen-Reichweite, Bereichstabelle, Geldfluss, Zeitreihe, Datenstand |
+| `/haushalt` | Einstieg: Anzeigetafel mit der Kernzahl, Gegenbalken (umschaltbar auf die 100-Euro-Ansicht), Rücklagen-Reichweite, Bereichstabelle, Geldfluss (für Planjahre nur die Herkunftsseite, s. u.), Zeitreihe, Datenstand |
 | **Die Zahlen** | |
 | `/haushalt/einnahmen` | Schritt 1 — alle Einnahmequellen, **nach Entscheidungsmacht gruppiert** statt nach Betrag sortiert |
 | `/haushalt/bereiche` | Schritt 2 — die Teilhaushalte im Klartext: was hinter „Soziales" oder „Finanzmanagement" steckt, mit Betrag |
@@ -2776,10 +2776,22 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   bei „Finanzmanagement und Recht", weil dort die Kämmerei bucht — das ist ein
   Buchungsort, keine Geldquelle. Aus demselben Grund heißt die zweite Spalte
   der Bereichstabelle „eigene Erträge des Bereichs" und nicht „von Bund, Land
-  oder über Gebühren", und aus demselben Grund zeigt `/haushalt` für 2025 und
-  2026 kein Flussbild, sondern den Satz, dass die Einnahmearten für dieses
-  Jahr noch nicht vorliegen. Was es bräuchte, wäre ein Dokument, das beide
-  Seiten in **einem** Stand führt — im Bestand ist keines.
+  oder über Gebühren". Was es bräuchte, wäre ein Dokument, das beide Seiten in
+  **einem** Stand führt — im Bestand ist keines.
+
+  **Was daraus wurde (20.08.2026):** Für Planjahre zeigt `/haushalt` an der
+  Stelle des Flussbilds seitdem die **eine** Seite, die es gibt — die
+  Ertragsarten aus dem Gesamtergebnishaushalt, als Rangliste, ohne
+  Gegenstück. Das halbe Bild ist mehr wert als gar keines, solange es sich
+  als halbes zu erkennen gibt: Der Block heißt „Woher das Geld kommen soll",
+  nennt den Plan-Jahrgang und sagt, dass es der Entwurf der Einbringung ist.
+
+  Und er beziffert den Abstand zur Anzeigetafel derselben Seite, weil die
+  eine andere Ertragssumme nennt: 2026 sind es 24,3 Mio. €, 2025 sogar
+  26,2 Mio. € — einmal liegt der Entwurf darunter, einmal darüber. Gerechnet,
+  nicht geschrieben (`einnahmearten().tafel`), damit die Zahl beim nächsten
+  Jahrgang nicht still falsch wird. Zwei Zahlen auf einer Seite, die dasselbe
+  zu meinen scheinen, sind schlimmer als eine Lücke.
 
 ## Befunde aus dem Datenabgleich
 
