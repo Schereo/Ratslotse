@@ -3188,9 +3188,25 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   Schräglage — beim Probelauf las das Modell Seite 33 cent-genau
   (`Summe Eigenbetriebe 273.295.915,34 €`, geprüft gegen die gedruckte Summe).
 
-  **Eingelesen ist er damit noch nicht.** Der Jahrgang scheitert vorher an der
-  Textanfang-Erkennung, und die ist ein eigener Sonderfall — die Seite sagt das
-  weiterhin, statt es zu überspielen.
+  **Zwei Dinge standen ihm noch im Weg, beide seit dem 20.08.2026 behoben:**
+
+  Erstens hielt `ocr.seite_als_bild()` sein **Briefkopf-Logo** für die Seite —
+  die Regel lautete „genau ein eingebettetes Bild = der Scan", und eine
+  Vektorseite mit Logo erfüllt das auch. Zurück kamen 62 Zeichen, die aussahen
+  wie ein Ergebnis. Jetzt entscheidet die Auflösung: Das Logo liegt bei 64 dpi
+  auf der A4-Fläche, ein echter Scan bei 300 (`MIN_DPI = 100`).
+
+  Zweitens verlangte `pruefberichte.erkenne_jahrgang()` den Titel an
+  **Position 0**. Das ging gut, solange der PDF-Textextrakt mit ihm begann;
+  per OCR steht davor, was auf dem Papier auch davorsteht. Der `^`-Anker hat
+  die eigentliche Arbeit ohnehin nie gemacht — die leistet „**der Stadt
+  Oldenburg**" am Titelende, an dem die Stiftungs- und Eigenbetriebsberichte
+  („…zum 31. Dezember") durchfallen. Genau das bleibt streng.
+
+  **Was noch fehlt:** ein Renderer auf der Maschine. Seine Seiten tragen kein
+  Bild, sondern Vektoren — `pypdfium2` (BSD, ein Wheel mit gebündeltem pdfium)
+  zieht der Ops-Workflow bei Bedarf nach. Erst danach ist der Jahrgang wirklich
+  im Bestand; bis dahin sagt die Seite es weiter, statt es zu überspielen.
 - **Vollständige Produktebene** — für einige Teilhaushalte fehlen auslesbare
   Dokumente: Im Bestand stehen 9 der 13 Teilhaushalte (2025: 10). Gemessen an
   den Aufwendungen, die der Endpunkt als `abdeckung_prozent` ausweist, deckt

@@ -225,3 +225,46 @@ def test_speichern_und_lesen(tmp_path, quelle):
         assert len(store.get_pruefberichte(2023)) == 2
     finally:
         store.close()
+
+
+# --------------------------------------------------------------------------
+# Der Titel muss vorne stehen — aber nicht an Position 0
+# --------------------------------------------------------------------------
+
+BRIEFKOPF = ("Stadt Oldenburg\nStadt Oldenburg (Oldb) | Rechnungsprüfungsamt\n\n"
+             "Schlussbericht des Rechnungsprüfungsamtes über die Prüfung\n"
+             "des Jahresabschlusses 2024 der Stadt Oldenburg (Oldb)\n")
+OHNE_BRIEFKOPF = ("Schlussbericht des Rechnungsprüfungsamtes über die Prüfung\n"
+                  "des Jahresabschlusses 2022 der Stadt Oldenburg (Oldb)\n")
+STIFTUNG = ("Stadt Oldenburg (Oldb) | Rechnungsprüfungsamt\n"
+            "Schlussbericht des Rechnungsprüfungsamtes über die Prüfung\n"
+            "des Jahresabschlusses zum 31. Dezember 2024 der Klävemann-Stiftung\n")
+
+
+def test_briefkopf_vor_dem_titel_faellt_nicht_mehr_durch():
+    """Der Schlussbericht 2024 hat keine brauchbare Textebene und muss per OCR
+    gelesen werden — dort steht davor, was auf dem Papier auch davorsteht.
+
+    Mit dem alten ``^``-Anker fiel der Jahrgang durch, ohne dass irgendetwas
+    an ihm falsch war."""
+    assert pruefberichte.erkenne_jahrgang(BRIEFKOPF) == 2024
+
+
+def test_ohne_briefkopf_geht_es_weiterhin():
+    """Die Textebene der älteren Jahrgänge beginnt direkt mit dem Titel."""
+    assert pruefberichte.erkenne_jahrgang(OHNE_BRIEFKOPF) == 2022
+
+
+def test_ein_stiftungsbericht_geht_weiterhin_nicht_durch():
+    """Die Unterscheidung leistet „der Stadt Oldenburg" am Ende des Titels,
+    nicht die Position: Die Stiftungs- und Eigenbetriebsberichte schreiben
+    dort „…des Jahresabschlusses zum 31. Dezember". Genau das war der Grund
+    für die strenge Erkennung — und genau das bleibt streng."""
+    assert pruefberichte.erkenne_jahrgang(STIFTUNG) is None
+
+
+def test_der_titel_muss_trotzdem_vorne_stehen():
+    """Ein Fenster, kein Freibrief: Mitten im Bericht wird ein Schlussbericht
+    nicht noch einmal betitelt."""
+    weit_hinten = ("Blindtext. " * 200) + OHNE_BRIEFKOPF
+    assert pruefberichte.erkenne_jahrgang(weit_hinten) is None
