@@ -27,6 +27,7 @@ Aufruf::
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -36,9 +37,15 @@ sys.path.insert(0, str(ROOT))
 from council.store import CouncilStore  # noqa: E402
 from council.wirtschaftsplan import (  # noqa: E402
     WirtschaftsplanFehler,
+    betrieb_aus_titel,
     herkunft_fuer,
     ohne_eckwerte,
     parse_wirtschaftsplan,
+)
+from council.wirtschaftsplan_tabelle import (  # noqa: E402
+    VOKABULAR,
+    herkunft_fuer as herkunft_tabelle,
+    parse_erfolgsplan,
 )
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -49,6 +56,18 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 #: wechseln stark — „Wirtschaftsplan des Eigenbetriebes …", „Wirtschaftsplan
 #: und Finanzplan 2026 für den …", „BBGO: Wirtschaftsplan 2026".
 TITEL_MUSTER = "%Wirtschaftsplan%"
+
+
+def jahr_aus_titel(titel: str) -> int | None:
+    """Das Haushaltsjahr aus dem Vorlagentitel.
+
+    Bei den Anlagen-Betrieben gibt es keinen Beschlusstext, der „für das
+    Haushaltsjahr 2026" schreibt — der Titel ist die einzige Angabe. Steht dort
+    mehr als eine Jahreszahl, wird geraten, und das ist hier nicht erlaubt:
+    Dann kommt ``None``, und der Jahrgang bleibt liegen.
+    """
+    jahre = {int(j) for j in re.findall(r"\b(20\d{2})\b", titel)}
+    return jahre.pop() if len(jahre) == 1 else None
 
 
 def main() -> int:
@@ -110,6 +129,61 @@ def main() -> int:
             for name, n in sorted(ohne_nach_betrieb.items(), key=lambda x: -x[1]):
                 print(f"  {n:3d}  {name}")
 
+        # --- Zweiter Weg: der Erfolgsplan aus der ANLAGE ------------------
+        #
+        # Für die Betriebe, die im Beschlusstext keine Zahl nennen. Er greift
+        # nur, wo ein Vokabular hinterlegt ist (bisher der AWB) UND die Anlage
+        # Volltext trägt — ein Scan liefert nichts, und das ist kein Fehler,
+        # sondern eine Lücke mit Marke (`status='empty'`, s. haushalt.md).
+        aus_anlage, anlagen_risse, ohne_text = [], [], []
+        for r in rows:
+            erkannt = betrieb_aus_titel(r["title"])
+            if not erkannt or erkannt[0] not in VOKABULAR:
+                continue
+            betrieb = erkannt[0]
+            jahr = jahr_aus_titel(r["title"])
+            if jahr is None:
+                continue
+            anlagen = [dict(a) for a in store._conn.execute(  # noqa: SLF001
+                "SELECT document_id, label, url, status, raw_text "
+                "FROM council_anlagen WHERE kvonr = ? ORDER BY document_id",
+                (r["kvonr"],))]
+            lesbar = [a for a in anlagen
+                      if a["status"] == "ok" and (a["raw_text"] or "")]
+            if not lesbar:
+                ohne_text.append((r["vorlage_nr"], jahr,
+                                  [a["status"] for a in anlagen] or ["keine Anlage"]))
+                continue
+            for a in lesbar:
+                try:
+                    plan, proben = parse_erfolgsplan(
+                        r["vorlage_nr"], betrieb, jahr, a["raw_text"])
+                except WirtschaftsplanFehler as fehler:
+                    anlagen_risse.append(f"{r['vorlage_nr']} (Anlage "
+                                         f"{a['document_id']}): {fehler}")
+                    continue
+                aus_anlage.append((plan, proben, a))
+                break
+
+        if aus_anlage:
+            print("\nAus dem Erfolgsplan der Anlage:")
+            for plan, proben, a in sorted(aus_anlage, key=lambda x: (x[0].betrieb, x[0].jahr)):
+                print(f"  {plan.jahr}  {plan.betrieb:8s} "
+                      f"Erträge {plan.ertraege / 1e6:7.3f} Mio. €  "
+                      f"Ergebnis {plan.ergebnis / 1e6:+7.3f} Mio. €  "
+                      f"({len(proben)} Spalten geprüft, Anlage {a['document_id']})")
+        if ohne_text:
+            print("\nAnlage ohne Volltext — nichts zu lesen:")
+            for vnr, jahr, stati in ohne_text:
+                print(f"  {jahr}  {vnr}: {', '.join(sorted(set(stati)))}"
+                      + ("  (Scan — für eine spätere OCR vorgemerkt)"
+                         if "empty" in stati else ""))
+        if anlagen_risse:
+            print("\nAnlage gelesen, aber Probe gerissen — NICHT gespeichert:")
+            for satz in anlagen_risse:
+                print(f"  ! {satz}")
+        risse.extend(anlagen_risse)
+
         if args.trockenlauf:
             print("\n— Trockenlauf, nichts gespeichert.")
             return 1 if risse else 0
@@ -118,7 +192,12 @@ def main() -> int:
             url = (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
                    if kvonr else None)
             store.save_wirtschaftsplan(plan, herkunft_fuer(plan, url=url))
-        print(f"\n{len(gefunden)} Wirtschaftsplan/-pläne gespeichert.")
+        for plan, proben, a in aus_anlage:
+            store.save_wirtschaftsplan(plan, herkunft_tabelle(
+                plan, proben, url=a["url"], dokument_id=a["document_id"],
+                label=a["label"]))
+        print(f"\n{len(gefunden)} aus dem Beschlusstext, {len(aus_anlage)} aus "
+              "Anlagen gespeichert.")
 
         luecken_ohne_beleg = store.herkunft_luecken().get("council_wirtschaftsplaene")
         if luecken_ohne_beleg:
