@@ -2806,15 +2806,74 @@ Ein PDF ohne Textebene ist im Bestand **nicht** dasselbe wie ein ungelesenes:
 ein Dokument weniger als 200 Zeichen hergibt (`MIN_TEXT`). 231 Anlagen tragen
 diese Marke bereits.
 
-Wer später OCR nachrüstet, hat damit seine Arbeitsliste ohne weiteres Zutun:
-`SELECT document_id FROM council_anlagen WHERE status = 'empty'`. Die drei
-AWB-Scans oben stehen heute allerdings noch auf `listed` — der Backfill lief
-über sie nie. Damit das nicht so bleibt, ist die Schicht in
-`finanzquellen.QUELLEN` mit einer `erkennung` eingetragen, obwohl der Cron sie
-gar nicht liest: `backfill_anlagen_texte.py --nur-finanz` zieht seine
-Label-Muster aus genau dieser Registry (`finanz_muster()`), und ohne den
-Eintrag blieben die Wirtschaftsplan-Anlagen für immer unangetastet.
+Diese Marke ist die Arbeitsliste, und seit dem 20.08.2026 arbeitet sie jemand
+ab: `scripts/backfill_anlagen_ocr.py` schickt jede Seite als Bild an ein
+Sehmodell (`council/ocr.py`). Damit die Schicht überhaupt in der Liste landet,
+ist sie in `finanzquellen.QUELLEN` mit einer `erkennung` eingetragen, obwohl
+der Cron sie gar nicht liest: Beide Backfills ziehen ihre Label-Muster aus
+genau dieser Registry (`finanz_muster()`).
 :::
+
+### OCR: gelesen heißt nicht veröffentlicht
+
+Der OCR-Lauf setzt **nicht** `status = 'ok'`, sondern `status = 'ocr'`. Der
+Unterschied ist der ganze Punkt.
+
+`store.anlagen_missing_embeddings()` zieht jede Anlage mit `status = 'ok'` in
+die Chunk-Vektoren — und damit in die Gründliche Recherche und in Antworten der
+KI-Frage. Von den 189 Anlagen, die am 16.08.2026 auf `empty` standen, sind aber
+**54 Förderanträge von Vereinen**: mit Ansprechpartnerinnen, Anschriften und
+handschriftlichen Unterschriften darauf. Diese Dokumente liegen im Bürgerinfo
+öffentlich (`getfile.php` antwortet ohne Login), aber sie sind heute nicht
+durchsuchbar — und ein Lauf, der Zahlen holen soll, darf das nicht nebenbei
+ändern. Wer einzelne Dokumente doch indizieren will, setzt sie gezielt auf
+`'ok'`: eine Entscheidung, kein Nebeneffekt.
+
+Die Finanz-Parser sehen den Text trotzdem, weil `Erkennung.where()` bewusst
+**nicht** auf den Status filtert. Wer dort einmal `status = 'ok'` ergänzt,
+dreht die Sperre in eine Blockade — dagegen steht ein Test.
+
+**Drei Entscheidungen, die vorher gemessen wurden** (an zwei echten AWB-Seiten,
+300 dpi gerade und 200 dpi quer, bewertet gegen die Rechenprobe dieses
+Bereichs):
+
+1. **Wir rastern selbst, statt das PDF hochzuladen.** OpenRouters
+   `file-parser`-Plugin läuft über OpenRouters *eigenen* Mistral-Schlüssel —
+   unser `provider`-Block aus `kern.llm` steuert nur die Modell-Endpunkte. Der
+   OCR-Schritt liefe damit still an `NWZ_OPENROUTER_ROUTING` vorbei, also an
+   der Anbieter-Sperre und der Zero-Data-Retention-Pflicht.
+2. **Wir brauchen dafür keinen Renderer.** Jede Seite dieser Scans ist genau
+   *ein* eingebettetes JPEG, das `pypdf` unverändert herausgibt — keine neue
+   Abhängigkeit im Deployment. Nur Vektorseiten (der Schlussbericht des
+   Rechnungsprüfungsamts) bräuchten einen; der ist optional, und fehlt er,
+   bleibt die Seite ungelesen statt falsch gelesen.
+3. **Die Lage-Metadaten lügen.** Von drei AWB-Jahrgängen tragen zwei `/Rotate`
+   passend zum Inhalt, einer nicht. Wir folgen ihm gar nicht — auf der um 90°
+   liegenden Seite gingen alle 24 Rechenproben auf. Die Modelle kommen mit der
+   Drehung zurecht, unsere Metadaten nicht.
+
+**Die Lücke, die dabei aufging.** Die Spaltenprobe ist **skaleninvariant**:
+Steht `in TEUR` in der Kopfzeile und liest das Modell die Einheit falsch, liegt
+die ganze Spalte um den Faktor 1.000 daneben — und die Probe geht trotzdem
+sauber auf. Das ist der einzige bekannte Fehlermodus, den `TOLERANZ_EUR`
+prinzipiell nicht sehen kann. `ocr.skalenhinweise()` findet die Angabe und der
+Lauf schreibt sie ins Log; **geprüft wird sie noch nicht**. Ebenso gilt:
+Vollständigkeit ist keine Richtigkeit — fehlt eine Zeile, prüft die Probe
+*weniger* und geht auf. Deshalb zählt `ocr.Lesung` mit, wie viele Seiten
+wirklich gelesen wurden.
+
+**Was der erste Lauf ergab** (Dokument 193959, AWB-Wirtschaftsplan 2019, sechs
+Seiten): 62 von 66 Spaltenproben gehen **cent-genau** auf, vier sind um exakt
+1 € daneben. Ein Zweitleser (Claude Sonnet 4.6) las dieselbe Seite unabhängig
+und lieferte **zeichengleiche** Zahlen — der Riss steht also im Dokument der
+Stadt, nicht im OCR. Genau der Fall, für den `TOLERANZ_EUR = 2.0` kalibriert
+wurde.
+
+**Was noch nicht geht:** Der Erfolgsplan-Parser kennt das Layout von 2019 bis
+2021 nicht. Dort tragen die Summenzeilen **keine Beschriftung** — `Gesamtertrag`
+oder `Summe Erträge` sucht er vergeblich, die Summe steht in einer Zeile, die
+nur aus Zahlen besteht. Der Text ist also da und geprüft, der Jahrgang aber noch
+nicht im Bestand.
 
 ### Der zweite Weg: der Erfolgsplan aus der Anlage
 

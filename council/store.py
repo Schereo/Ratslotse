@@ -522,7 +522,7 @@ class CouncilStore:
             "document_id INTEGER PRIMARY KEY, kvonr INTEGER NOT NULL, label TEXT, "
             "url TEXT, is_antrag INTEGER NOT NULL DEFAULT 0, antragsteller TEXT, "
             "raw_text TEXT, n_pages INTEGER, fetched_at TEXT NOT NULL, "
-            "status TEXT NOT NULL DEFAULT 'listed')"  # listed | ok | empty | failed
+            "status TEXT NOT NULL DEFAULT 'listed')"  # listed | ok | empty | failed | ocr
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_anlagen_kvonr ON council_anlagen(kvonr)")
         # Gerenderte Planzeichnung (scripts/render_plaene.py): 0 = offen,
@@ -531,6 +531,22 @@ class CouncilStore:
         if "bild" not in acols:
             self._conn.execute(
                 "ALTER TABLE council_anlagen ADD COLUMN bild INTEGER NOT NULL DEFAULT 0")
+        # Welches Sehmodell den Text gelesen hat (scripts/backfill_anlagen_ocr.py).
+        # NULL heißt „aus der Textebene des PDF", also gar nicht geraten.
+        #
+        # `status='ocr'` IST KEINE BUCHHALTUNG, SONDERN EINE SPERRE: Jede Anlage
+        # mit `status='ok'` zieht `anlagen_missing_embeddings()` in die
+        # Chunk-Vektoren und damit in die Gründliche Recherche und in
+        # Nutzerantworten. Für OCR-Text ist das die falsche Voreinstellung —
+        # er ist eine schwächere Quelle als eine echte Textebene, und ein Teil
+        # der betroffenen Dokumente sind Förderanträge von Vereinen mit Namen,
+        # Anschriften und Unterschriften darauf. Die Finanz-Parser lesen
+        # trotzdem mit: `finanzquellen.Erkennung.where()` filtert bewusst NICHT
+        # auf den Status. Wer den Text später auch durchsuchbar machen will,
+        # setzt ihn gezielt auf 'ok' — eine Entscheidung, kein Nebeneffekt.
+        if "ocr_modell" not in acols:
+            self._conn.execute(
+                "ALTER TABLE council_anlagen ADD COLUMN ocr_modell TEXT")
         # Beratungsfolge je Vorlage (council.stammdaten): die offiziellen
         # Stationen einer Vorlage durch die Gremien — inkl. geplanter künftiger
         # Beratungen (ergebnis dann NULL). Je kvonr komplett ersetzt, weil
