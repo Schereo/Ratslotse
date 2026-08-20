@@ -59,20 +59,20 @@ function alsPosten(b: FlussBand): FlussPosten {
  *  der der Tausch stand, war eine Zeile über ihr. Wo Daten für das gewählte
  *  Jahr fehlen, sagt die Seite jetzt genau das (Entscheidung Tim, 16.08.).
  *
- *  ACHTUNG, der Wortlaut stimmt seit #530 nicht mehr (Befund 19.08.2026):
- *  Die Einnahmearten der Planjahre SIND inzwischen eingelesen
- *  (`council_ergebnishaushalt`, 2019–2026). Was dem Bild fehlt, ist die
- *  andere Seite — der Gesamtergebnishaushalt führt keine Teilhaushalte, und
- *  `council_haushalt` steht in einem anderen Stand (2026: 24,3 Mio. €
- *  Abstand, Entwurf gegen Beschluss). Ein Flussbild aus beiden wäre um das
- *  Fünfhundertfache der Toleranz daneben.
+ *  DER WORTLAUT WURDE AM 19.08.2026 KORRIGIERT. Vorher stand hier „Für {jahr}
+ *  liegen uns die Einnahmearten noch nicht vor" — seit #530 unwahr: Die
+ *  Einnahmearten der Planjahre SIND eingelesen (`council_ergebnishaushalt`,
+ *  2019–2026). Was fehlt, ist die andere Seite. Der Gesamtergebnishaushalt
+ *  führt keine Teilhaushalte, und `council_haushalt` steht in einem anderen
+ *  Stand (2026: 24,3 Mio. € Abstand, Entwurf gegen Beschluss) — ein Bild aus
+ *  beiden wäre um das Fünfhundertfache der Toleranz daneben, ohne dass man es
+ *  ihm ansieht. Genau das sagt der Text jetzt.
  *
- *  Die frühere Annahme, dieser Text verschwinde „von selbst, sobald der
- *  Bestand nachgezogen ist", trägt deshalb nicht: `flussbild()` liest
- *  `ergebnisrechnung`, und die endet mit dem letzten Jahresabschluss. Der
- *  Satz unten sagt einem Leser damit etwas Unzutreffendes über unseren
- *  eigenen Bestand — er gehört umformuliert, sobald entschieden ist, was
- *  stattdessen dasteht (nichts, oder die Herkunftsseite allein).
+ *  Die frühere Annahme, er verschwinde „von selbst, sobald der Bestand
+ *  nachgezogen ist", trug nicht: `flussbild()` liest `ergebnisrechnung`, und
+ *  die endet mit dem letzten Jahresabschluss. Ein Text, der auf ein Nachziehen
+ *  wartet, das seine Bedingung gar nicht erfüllt, wird still zur Unwahrheit —
+ *  deshalb benennt er die Lage, statt eine Ankündigung zu machen.
  *
  *  Das jüngste vollständige Jahr ist ein ANGEBOT, keine Ersatzanzeige:
  *  gewechselt wird nur, wenn jemand darauf tippt. */
@@ -88,12 +88,13 @@ function Luecke({ jahr, letztes, aufJahr }: {
       </p>
       <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3.5 py-3">
         <p className="text-[13px] font-semibold leading-relaxed">
-          Für {jahr} liegen uns die Einnahmearten noch nicht vor.
+          Für {jahr} können wir den Geldfluss nicht zeichnen.
         </p>
         <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
-          Womit die Stadt ihr Geld einnimmt, lesen wir aus ihren Haushaltsdokumenten ein — für
-          dieses Jahr sind wir damit noch nicht durch. Statt ersatzweise ein anderes Jahr zu
-          zeigen, steht hier lieber nichts.
+          Woher das Geld kommt, wissen wir für dieses Jahr — es steht im Haushaltsplan.
+          Wohin es geht, steht dort aber in einer anderen Rechnung, die auf andere Summen
+          kommt. Ein Bild aus beiden würde zwei Stände vermischen, ohne dass man es ihm
+          ansieht. Statt dessen steht hier lieber nichts.
         </p>
         <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
           <span className="text-[12px] text-muted-foreground">

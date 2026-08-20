@@ -43,6 +43,26 @@ function steuerartFinden(eingang: string): SteuerArt | undefined {
   return STEUERARTEN.find((a) => norm(a.slug) === gesucht || norm(a.titel) === gesucht);
 }
 
+/** Ein von Hand gepflegter Befund zu **einem** Haushaltsjahr: Die Verwaltung
+ *  schlug höhere Hebesätze vor, der Rat lehnte ab.
+ *
+ *  Er steht hier und nicht in einer Tabelle, weil ihn keine hergibt — ein
+ *  abgelehnter Vorschlag hinterlässt keine Zeile in `council_hebesaetze`
+ *  (dort stehen nur Änderungen, und es gab keine).
+ *
+ *  **Deshalb trägt er sein Jahr als Feld und wird daran geprüft.** Bis
+ *  19.08.2026 hing die Karte allein an `slug === "gewerbesteuer"` und stand
+ *  damit ohne jede Jahresprüfung — ab dem Haushalt 2027 hätte sie eine
+ *  überholte Aussage als aktuelle ausgegeben, und nichts hätte angeschlagen.
+ *  Jetzt verschwindet sie von selbst, sobald der Bestand ein neueres
+ *  Haushaltsjahr führt. Wer sie für das neue Jahr wiederhaben will, prüft den
+ *  Beschluss und zieht `jahr` nach — sichtbar, statt still. */
+const HEBESATZ_ABGELEHNT = {
+  jahr: 2026,
+  steuer: "gewerbesteuer",
+  satz: "Die Verwaltung schlug vor, die Hebesätze zu erhöhen. Der Rat lehnte ab.",
+};
+
 function SteuerInner() {
   const slug = useSearchParams().get("art") ?? "gewerbesteuer";
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
@@ -80,12 +100,6 @@ function SteuerInner() {
   const anteil = letzte && gesamt && !istZuweisung ? Math.round((letzte.betrag / gesamt) * 100) : null;
   const einwohner = data.einwohner?.einwohner ?? 0;
 
-  // Ein Hebesatzpunkt, überschlagen aus dem Ist — bewusst als Überschlag
-  // benannt. Nur wo Betrag und Hebesatz dieselbe Steuer meinen: Bei der
-  // Grundsteuer tun sie das nicht (siehe `punktUnmoeglich`).
-  const proPunkt = art.hebesatz && letzte && !art.punktUnmoeglich
-    ? letzte.betrag / art.hebesatz : null;
-
   // Plan neben Ist — nur diese Steuer, nur die Jahrgänge, die Tabelle 1103
   // führt (drei je Ausgabe). `datenArt` ist derselbe Schlüssel wie in der
   // Ist-Reihe; daran hängt im Ingest auch die Prüfung der Jahresbeschriftung.
@@ -99,6 +113,35 @@ function SteuerInner() {
     ? hebeAlle.filter((z) => z.art === art.hebesatzArten![0]) : [];
   const hebeZweit = art.hebesatzArten?.[1]
     ? hebeAlle.filter((z) => z.art === art.hebesatzArten![1]) : [];
+
+  // Das Jahr, für das gerade ein Haushalt gilt — das jüngste mit einem
+  // beschlossenen Ansatz. Daran hängt, ob der Befund unten noch der aktuelle
+  // ist; `ansatz_jahre` führt die Finanzplanungsjahre bewusst nicht mit.
+  const aktuellerHaushalt = data.ansatz_jahre?.at(-1) ?? null;
+
+  // Der Hebesatz, der im Jahr des Aufkommens GALT.
+  //
+  // Tabelle 1105 führt nur die Änderungsjahre — ein Satz gilt bis zur nächsten
+  // Änderung. Gesucht ist deshalb die letzte Stufe mit `jahr <= letzte.jahr`
+  // und nicht etwa die jüngste Zeile der Reihe: Läge das Aufkommen ein Jahr
+  // hinter einer frischen Erhöhung zurück (der Normalfall, das Ist kommt
+  // später als der Beschluss), teilte man sonst durch einen Satz, der für
+  // dieses Geld nie gegolten hat.
+  //
+  // Bis 19.08.2026 stand hier `art.hebesatz` — eine Zahl im Quelltext
+  // (`439` für die Gewerbesteuer). Sie stimmte zufällig, weil der Rat den Satz
+  // seit 2015 nicht angefasst hat; der nächste Beschluss hätte sie still
+  // falsch gemacht, während die echte Reihe schon danebenlag.
+  const hebesatzGalt = letzte
+    ? hebeHaupt.filter((z) => z.jahr <= letzte.jahr).at(-1) ?? null
+    : null;
+  const punktSatz = hebesatzGalt?.hebesatz ?? null;
+
+  // Ein Hebesatzpunkt, überschlagen aus dem Ist — bewusst als Überschlag
+  // benannt. Nur wo Betrag und Hebesatz dieselbe Steuer meinen: Bei der
+  // Grundsteuer tun sie das nicht (siehe `punktUnmoeglich`).
+  const proPunkt = punktSatz && letzte && !art.punktUnmoeglich
+    ? letzte.betrag / punktSatz : null;
 
   // Das Aufkommen als `{jahr: euro}` — der Pflicht-Kontext neben jedem
   // Hebesatz-Sprung. Ohne ihn liest sich „+21 %" als „alle zahlen 21 % mehr",
@@ -253,7 +296,7 @@ function SteuerInner() {
       )}
 
       {/* Hebesatz + Überschlag, nur wo der Rat wirklich eine Stellschraube hat. */}
-      {art.hebesatz && (
+      {art.hebesatzArten && (
         <>
         {/* Die Treppe seit 1980 (Jahrbuch 1105). Bis 18.08.2026 stand hier ein
             einzelner Kasten „2025 · Rat" und darunter der Satz, eine Reihe der
@@ -290,36 +333,39 @@ function SteuerInner() {
             aufkommenBeleg={<Beleg q="steuern" />}
           />
         ) : (
+          /* Der Rückfall, wenn die Reihe fehlt — und zwar OHNE Zahl.
+             Bis 19.08.2026 stand hier ein Kasten „2025 · Rat — Hebesatz 439 %"
+             aus `art.hebesatz`, also aus dem Quelltext. Das war die schlechteste
+             Stelle für eine hartkodierte Zahl: ein Beleg-Chip daneben, der auf
+             Tabelle 1105 zeigte, während die Zahl gar nicht von dort kam.
+             Fehlt die Reihe, hat die Seite keinen belegten Satz — dann steht
+             hier nichts als der Satz, dass er fehlt. */
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               Der Hebesatz im Rat
             </p>
-            <div className="mt-3 rounded-xl bg-muted/40 p-3">
-              <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">2025 · Rat</p>
-              <p className="mt-1 text-[13px] font-semibold">
-                Hebesatz {art.hebesatz}&nbsp;%
-                <span className="font-normal text-muted-foreground"> — beschlossen mit der Haushaltssatzung</span>
-                <Beleg q="hebesaetze" />
-              </p>
-            </div>
             <p className="mt-3 rounded-lg border border-dashed border-border p-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              Die Reihe der früheren Hebesätze ist in diesem Bestand noch nicht
-              eingelesen. Wir schätzen sie nicht.
+              Für diese Steuer liegt uns die Hebesatz-Reihe gerade nicht vor.
+              Wir schätzen sie nicht und nennen auch keinen einzelnen Satz,
+              den wir nicht belegen können.
             </p>
           </div>
         )}
 
         <div className="grid gap-3 lg:grid-cols-[1fr_310px]">
-          {art.slug === "gewerbesteuer" && (
+          {art.slug === HEBESATZ_ABGELEHNT.steuer
+            && aktuellerHaushalt === HEBESATZ_ABGELEHNT.jahr && (
             <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
               <div className="flex items-center justify-between gap-2">
-                <p className="font-mono text-[10px] uppercase tracking-wide text-primary">Haushalt 2026 · Rat</p>
+                <p className="font-mono text-[10px] uppercase tracking-wide text-primary">
+                  Haushalt {HEBESATZ_ABGELEHNT.jahr} · Rat
+                </p>
                 <span className="rounded-full border border-[#fecaca] bg-[#fef2f2] px-2 py-0.5 text-[10.5px] font-semibold text-[#b91c1c]">
                   Abgelehnt
                 </span>
               </div>
               <p className="mt-1.5 text-[13px] font-semibold leading-snug">
-                Die Verwaltung schlug vor, die Hebesätze zu erhöhen. Der Rat lehnte ab.
+                {HEBESATZ_ABGELEHNT.satz}
               </p>
               {/* Der Verweis auf die Treppe nur, wo eine steht: Ohne
                   eingelesene Reihe zeigt der Block darüber einen einzelnen
@@ -327,7 +373,7 @@ function SteuerInner() {
               <p className="mt-1.5 text-[11.5px] text-muted-foreground">
                 Genau hier entscheidet Kommunalpolitik über Einnahmen
                 {hebeHaupt.length >= 2
-                  ? " — die Treppe darüber hätte 2026 eine Stufe mehr bekommen."
+                  ? ` — die Treppe darüber hätte ${HEBESATZ_ABGELEHNT.jahr} eine Stufe mehr bekommen.`
                   : "."}
               </p>
             </div>
@@ -357,10 +403,14 @@ function SteuerInner() {
                 <span className="text-sm font-semibold text-muted-foreground">&#8239;Mio.&nbsp;€</span>
               </p>
               {/* Die offengelegte Rechnung bleibt stehen — wer die Zahl
-                  nachrechnen will, soll das können, ohne uns zu glauben. */}
+                  nachrechnen will, soll das können, ohne uns zu glauben. Seit
+                  19.08.2026 steht das JAHR beider Größen dabei: Ohne es ließe
+                  sich nicht prüfen, ob Aufkommen und Satz dasselbe Jahr
+                  meinen — und genau das ist die Annahme, auf der der
+                  Überschlag beruht. */}
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/80">
-                Überschlagen: {deMio(letzte!.betrag / 1e6)}&#8239;Mio. bei {art.hebesatz} Punkten,
-                geteilt durch {art.hebesatz}.
+                Überschlagen: {deMio(letzte!.betrag / 1e6)}&#8239;Mio. (Ist {letzte!.jahr})
+                bei {punktSatz} Punkten, geteilt durch {punktSatz}.
               </p>
               {/* Hier stand bis 16.08. „Brutto — was davon in der Stadtkasse
                   bleibt, ist weniger". Falsch: Der Datensatz weist die
@@ -423,7 +473,11 @@ function SteuerInner() {
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-const FELDER = ["steuern", "steuerkraft", "steuerplan", "hebesaetze", "einwohner"] as const;
+// `ansatz_jahre` ist die kleinste Auskunft darüber, für welches Jahr gerade
+// ein Haushalt gilt (eine Liste von Zahlen). Die Seite braucht sie, damit der
+// Befund zum abgelehnten Hebesatz-Vorschlag nicht überlebt, was er beschreibt.
+const FELDER = ["steuern", "steuerkraft", "steuerplan", "hebesaetze", "einwohner",
+  "ansatz_jahre"] as const;
 
 export default function SteuerPage() {
   return (
