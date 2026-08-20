@@ -4901,10 +4901,60 @@ class CouncilStore:
 
     # ---- Haushalt als Geldfragen-Quelle (Tim, 09.08.) ----
 
+    #: Themenwörter, die auf einen Teilhaushalt zeigen, ohne dessen Namen zu
+    #: teilen. „Kongresshalle" und „Kultur, Museen, Sport" haben keinen
+    #: gemeinsamen Wortstamm — rein lexikalisch ist die Zuordnung nicht zu
+    #: finden, obwohl sie eindeutig ist. Bewusst knapp gehalten: Jede Zeile
+    #: ist eine Behauptung darüber, wo etwas im Haushalt steht.
+    HAUSHALTS_SYNONYME = {
+        "verkehr": ("mobilität", "radverkehr", "fahrrad", "bus", "parken",
+                    "parkgebühren", "straßenbahn", "fußverkehr", "damm"),
+        "kultur": ("veranstaltung", "kongress", "halle", "museum", "theater",
+                   "bibliothek", "stadion", "schwimmbad", "bäder"),
+        "klima": ("baum", "baumschutz", "grünfläche", "natur",
+                  "naturschutz", "umweltschutz", "emission"),
+        "stadtplanung": ("bebauungsplan", "sanierungsgebiet", "stadtentwicklung",
+                         "isek", "flächennutzungsplan", "wohnraum", "leerstand"),
+        "schule": ("bildung", "schulbau", "ganztag"),
+        "jugend": ("kita", "kindertagesstätte", "krippe"),
+    }
+
+    @staticmethod
+    def _bereich_passt(bereich: str, woerter: list[str]) -> bool:
+        """Trifft eines der Suchwörter diesen Teilhaushalt?
+
+        Der frühere Test lief in die falsche Richtung: ``wort in bereich``
+        findet „Verkehr" in „Verkehr und Straßenbau", aber nicht
+        „Radverkehr" — und deutsche Suchbegriffe sind fast immer die
+        längeren Komposita. Gemessen am 20.08.2026: „Verkehr" traf, aber
+        „Mobilitätsplan", „Radverkehr", „Kongresshalle" und
+        „Baumschutzsatzung" lieferten allesamt null Zeilen, obwohl es für
+        jedes einen passenden Bereich gibt.
+
+        Deshalb wird der Bereichsname in Wortmarken zerlegt und beidseitig
+        geprüft — ein Kompositum trägt sein Grundwort am Ende („Radverkehr"),
+        eine Ableitung am Anfang („Mobilitätsplan").
+        """
+        marken = [t for t in re.split(r"[^a-zäöüß]+", bereich.lower()) if len(t) >= 4]
+        for wort in woerter:
+            for marke in marken:
+                if wort == marke:
+                    return True
+                kurz, lang = sorted((wort, marke), key=len)
+                # Nur Anfang oder Ende: „Transport" enthält zwar „sport",
+                # aber eben nicht am Rand.
+                if len(kurz) >= 5 and (lang.startswith(kurz) or lang.endswith(kurz)):
+                    return True
+                for kopf, synonyme in CouncilStore.HAUSHALTS_SYNONYME.items():
+                    if marke.startswith(kopf) and any(
+                            wort.startswith(s) or wort.endswith(s) for s in synonyme):
+                        return True
+        return False
+
     def haushalt_fuer_begriffe(self, begriffe: list[str], limit: int = 3) -> list[dict]:
-        """Teilhaushalts-Zeilen des neuesten Jahres, deren Bereich einen der
-        Suchbegriffe trägt („Verkehr" → „Verkehr und Straßenbau"); fragt jemand
-        nach dem Haushalt insgesamt, kommt die Summenzeile. Für den
+        """Teilhaushalts-Zeilen des neuesten Jahres, deren Bereich zu einem der
+        Suchbegriffe passt („Radverkehr" → „Verkehr und Straßenbau"); fragt
+        jemand nach dem Haushalt insgesamt, kommt die Summenzeile. Für den
         Geld-Kontext der KI-Frage — Plan-Zahlen, klar getrennt von Beschlüssen."""
         try:
             jahr = self._conn.execute("SELECT MAX(year) FROM council_haushalt").fetchone()[0]
@@ -4912,18 +4962,19 @@ class CouncilStore:
             return []
         if not jahr:
             return []
-        woerter = [w.lower() for w in begriffe if len(w) >= 4][:10]
+        # 16 statt 10: Die Begriffe der Gründlichen Recherche kommen aus
+        # mehreren Facetten, das treffende Wort steht dort oft weiter hinten.
+        woerter = [w.lower() for w in begriffe if len(w) >= 4][:16]
         rows = self._conn.execute(
             "SELECT year, bereich, ertraege, aufwendungen, ergebnis, is_summe "
             "FROM council_haushalt WHERE year = ?", (jahr,)).fetchall()
         out = []
         for r in rows:
-            b = (r["bereich"] or "").lower()
             if r["is_summe"]:
                 if any(w in ("haushalt", "gesamthaushalt", "haushaltsplan") for w in woerter):
                     out.append(dict(r))
                 continue
-            if any(w in b for w in woerter):
+            if self._bereich_passt(r["bereich"] or "", woerter):
                 out.append(dict(r))
         return out[:limit]
 
