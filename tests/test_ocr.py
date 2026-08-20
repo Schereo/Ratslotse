@@ -401,3 +401,72 @@ def test_ohne_pillow_entscheidet_die_textebene(monkeypatch):
     ohne_text = _Seite(_Bild("x.jpg", size=None), text="")
     assert ocr.seite_als_bild(mit_text).weg == "gerendert"
     assert ocr.seite_als_bild(ohne_text).weg == "eingebettet"
+
+
+# --------------------------------------------------------------------------
+# (i) Platzhalter sind kein Text
+# --------------------------------------------------------------------------
+
+def test_null_gelesene_seiten_werden_nicht_gespeichert(monkeypatch, tmp_path):
+    """DER FALL, DER DAS ERZWUNGEN HAT (20.08.2026):
+
+    Drei Dokumente ohne Renderer lieferten 737 bzw. 3253 Zeichen — und zwar
+    ausschließlich die Platzhalter „[Seite N: nicht lesbar gemacht]". Die
+    Längenprüfung ließ sie durch, und sie standen danach mit `status='ocr'` im
+    Bestand: gelesen aussehend, ohne einen einzigen Buchstaben vom Papier.
+
+    `gelesen == 0` heißt nichts gelesen, egal wie lang der Text ist."""
+    from scripts import backfill_anlagen_ocr as b
+
+    store = _store_mit_anlage(tmp_path, "empty")
+    try:
+        leer = ocr.Lesung(
+            text="[Seite 1: nicht lesbar gemacht]\n" * 22,
+            seiten=22, gelesen=0, uebersprungen=22, skalen=(),
+            modell="modell/x", weg="keiner")
+        assert len(leer.text) > ocr.MIN_SEITE, "der Platzhalter ist lang genug"
+
+        monkeypatch.setattr(b, "_hole", lambda url: b"%PDF-1.4")
+        monkeypatch.setattr(b.ocr, "lies_pdf", lambda *_a, **_k: leer)
+        stats = b.process(Path(store._conn.execute("PRAGMA database_list")
+                               .fetchone()[2]),
+                          nur_finanz=False, document_id=4711, limit=None,
+                          workers=1, max_seiten=120, model="modell/x",
+                          trocken=False)
+        assert stats["gelesen"] == 0 and stats["ohne_text"] == 1
+    finally:
+        store.close()
+
+    # Und die Anlage steht weiter auf der Arbeitsliste.
+    from council.store import CouncilStore
+    nach = CouncilStore(tmp_path / "c_empty.sqlite")
+    try:
+        zeile = nach._conn.execute(
+            "SELECT status, raw_text FROM council_anlagen WHERE document_id=4711"
+        ).fetchone()
+        assert zeile["status"] == "empty", (
+            "ein Dokument ohne gelesene Seite bleibt auf der Arbeitsliste")
+    finally:
+        nach.close()
+
+
+def test_platzhalter_anlagen_kommen_zurueck_auf_die_arbeitsliste(tmp_path):
+    """Ein Lauf ohne Renderer hat am 20.08.2026 drei Anlagen mit
+    `status='ocr'` hinterlassen, deren Text nur aus Platzhaltern bestand. Sie
+    sähen für jeden späteren Lauf erledigt aus und wären es nie gewesen."""
+    from scripts.backfill_anlagen_ocr import kandidaten
+
+    store = _store_mit_anlage(tmp_path, "ocr")
+    try:
+        # Zuerst: ein echter OCR-Text bleibt erledigt.
+        assert kandidaten(store, False, None, None) == []
+
+        with store._conn:
+            store._conn.execute(
+                "UPDATE council_anlagen SET raw_text = ? WHERE document_id = 4711",
+                ("\n".join(ocr.PLATZHALTER.format(nr=n) for n in range(1, 23)),))
+        zurueck = kandidaten(store, False, None, None)
+        assert [k["document_id"] for k in zurueck] == [4711], (
+            "eine Anlage, die nur Platzhalter trägt, ist nicht gelesen")
+    finally:
+        store.close()

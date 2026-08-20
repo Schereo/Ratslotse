@@ -73,7 +73,15 @@ def kandidaten(store: CouncilStore, nur_finanz: bool, document_id: int | None,
     if document_id is not None:
         wo, werte = "document_id = ?", [document_id]
     else:
-        wo, werte = "status = 'empty' AND url IS NOT NULL", []
+        # `'ocr'` MIT PLATZHALTERN ZÄHLT WIEDER MIT. Ein Lauf ohne Renderer
+        # hat am 20.08.2026 drei Anlagen mit `status='ocr'` hinterlassen,
+        # deren Text ausschließlich aus „[Seite N: nicht lesbar gemacht]"
+        # bestand. Sie sähen für jeden späteren Lauf erledigt aus und wären
+        # es nie gewesen. Der Filter unten holt genau die zurück: Text, der
+        # den Platzhalter trägt und sonst nichts Lesbares.
+        wo = ("(status = 'empty' OR (status = 'ocr' AND raw_text LIKE ?)) "
+              "AND url IS NOT NULL")
+        werte = ["[Seite %nicht lesbar gemacht]%"]
         if nur_finanz:
             muster = finanz_muster()
             wo += " AND (" + " OR ".join("label LIKE ?" for _ in muster) + ")"
@@ -157,9 +165,25 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
                     print(f"  [{did}] FEHLER {exc}", flush=True)
                     continue
                 seiten += lesung.seiten
-                if len(lesung.text) < ocr.MIN_SEITE:
+                # `gelesen == 0` HEISST NICHTS GELESEN — auch wenn Text da ist.
+                #
+                # Der erste Lauf auf der Dev-VM (20.08.2026) hat das
+                # vorgeführt: Drei Dokumente ohne Renderer lieferten 737 bzw.
+                # 3253 Zeichen, und zwar ausschließlich die Platzhalter
+                # „[Seite N: nicht lesbar gemacht]". Die Längenprüfung ließ sie
+                # durch, und sie standen danach mit `status='ocr'` im Bestand —
+                # gelesen aussehend, ohne einen einzigen Buchstaben vom Papier.
+                #
+                # Sie bleiben jetzt auf `'empty'`. Damit stehen sie weiter auf
+                # der Arbeitsliste und werden beim nächsten Lauf, wenn ein
+                # Renderer da ist, richtig gelesen.
+                if lesung.gelesen == 0 or len(lesung.text) < ocr.MIN_SEITE:
                     leer += 1
-                    print(f"  [{did}] nichts gelesen ({lesung.seiten} Seiten)", flush=True)
+                    grund = ("keine Seite ließ sich in ein Bild verwandeln — "
+                             "fehlt der Renderer? (pip install pypdfium2)"
+                             if lesung.weg == "keiner" else "kein Text erkannt")
+                    print(f"  [{did}] nichts gelesen ({lesung.seiten} Seiten): "
+                          f"{grund}", flush=True)
                     continue
                 with store._conn:
                     store._conn.execute(
