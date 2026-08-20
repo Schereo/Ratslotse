@@ -1074,3 +1074,54 @@ def test_die_doku_nennt_die_richtige_zahl_der_schichten():
     assert selbst and ZAHLWORT.get(selbst.group(1).lower()) == automatisch, (
         f"check_finanzdaten.py sagt nicht, dass es {automatisch} automatische "
         "Schichten sind")
+
+
+# --------------------------------------------------------------------------
+# Die UND-Falle in Erkennung.where()
+# --------------------------------------------------------------------------
+
+def test_jede_erkennung_findet_ein_dokument_das_zu_ihr_passt(tmp_path):
+    """Ein Label, das EIN Muster einer Quelle erfüllt, muss sie auch finden.
+
+    `Erkennung.where()` verknüpft Muster mit UND, solange `oder` nicht gesetzt
+    ist. Bei EINEM Muster ist das egal, bei mehreren fast nie richtig: Die
+    Wirtschaftsplan-Quelle führte drei Schreibweisen desselben Worts
+    („Wirtschaftsplan", „Wirtschafts- und Finanzplan", „Wirtschafts-und
+    Finanzplan"). Ein Label hätte alle drei gleichzeitig tragen müssen — die
+    Erkennung traf also nie ein einziges Dokument, von 08/2026 bis zum 20.08.
+
+    Gemerkt hat es niemand, weil damals nur `finanz_muster()` diese Muster las
+    und sich sein ODER selbst baut. Der erste Aufruf über den normalen Weg
+    (`quelle.dokumente()`) bekam eine leere Liste — ohne Fehler, ohne Warnung.
+
+    Dieser Test geht den normalen Weg für JEDE Quelle mit Erkennung.
+    """
+    store = CouncilStore(tmp_path / "erkennung.sqlite")
+    try:
+        blind: list[str] = []
+        for key in finanzquellen.REIHENFOLGE:
+            erkennung = getattr(finanzquellen.QUELLEN[key], "erkennung", None)
+            if erkennung is None:
+                continue
+            muster = tuple(getattr(erkennung, "label_muster", None) or ())
+            if not muster:
+                continue          # Quellen, die am Text erkennen, prüft dieser Test nicht
+            with store._conn:
+                store._conn.execute("DELETE FROM council_anlagen")
+                for i, m in enumerate(muster):
+                    # Aus dem LIKE-Muster ein Label bauen, das genau IHM genügt.
+                    label = m.replace("%", "")
+                    store._conn.execute(
+                        "INSERT INTO council_anlagen (document_id, kvonr, label, url, "
+                        "raw_text, n_pages, fetched_at, status) "
+                        "VALUES (?, 1, ?, 'https://x', 'x', 999, datetime('now'), 'ok')",
+                        (1000 + i, label))
+            sql, werte = erkennung.abfrage("document_id")
+            treffer = store._conn.execute(sql, werte).fetchall()
+            if not treffer:
+                blind.append(f"{key} (Muster: {', '.join(muster)})")
+        assert not blind, ("Diese Quellen finden kein Dokument, das eines ihrer "
+                           "eigenen Label-Muster erfüllt — vermutlich fehlt "
+                           "`oder=True`: " + "; ".join(blind))
+    finally:
+        store.close()

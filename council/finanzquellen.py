@@ -2380,9 +2380,16 @@ for _q in (
         # Label-Muster aus dieser Registry, und ohne Eintrag blieben die
         # Wirtschaftsplan-Anlagen der ÜBRIGEN Betriebe für immer auf 'listed'
         # liegen — also unlesbar, ohne dass es jemand merkt.
+        # `oder=True` ist hier PFLICHT und war es von Anfang an: Die drei Muster
+        # sind drei Schreibweisen DESSELBEN Worts. Mit dem Vorgabewert (UND)
+        # müsste ein Label alle drei gleichzeitig enthalten — die Erkennung traf
+        # also nie ein Dokument. Aufgefallen ist das erst am 20.08.2026, weil
+        # bis dahin nur `finanz_muster()` diese Muster las und sich sein ODER
+        # selbst baut. Der Wächter dazu steht in tests/test_finanzquellen.py.
         erkennung=Erkennung(
             label_muster=("%Wirtschaftsplan%", "%Wirtschafts- und Finanzplan%",
                           "%Wirtschafts-und Finanzplan%"),
+            oder=True,
         ),
         nachschub="liegt schon im Bestand (council_vorlagen), "
                   "scripts/ingest_wirtschaftsplaene.py",
