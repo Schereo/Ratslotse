@@ -166,7 +166,16 @@ BETRIEBE: dict[str, tuple[str, str]] = {
             "Bäderbetrieb der Stadt Oldenburg"),
     "bbgo": (r"B[äa]derbetriebsgesellschaft", "Bäderbetriebsgesellschaft Oldenburg mbH"),
     "hafen": (r"Eigenbetrieb\s+Hafen", "Eigenbetrieb Hafen der Stadt Oldenburg"),
-    "stadion": (r"Stadion", "Stadion Oldenburg GmbH & Co. KG"),
+    # ZWEI Gesellschaften, nicht eine. Die Planungsgesellschaft hat das Stadion
+    # geplant, die Betriebsgesellschaft betreibt es — sie legen eigene
+    # Wirtschaftspläne vor, und 2024 gibt es von beiden einen (−152.000 € bzw.
+    # −190.000 €). Ein gemeinsames Muster „Stadion" schrieb den einen Betrag
+    # unter den Namen der anderen. Die Planungsgesellschaft steht ZUERST: Ihr
+    # Name enthält den der anderen nicht, umgekehrt schon nicht — aber die
+    # Reihenfolge entscheidet, und geraten wird hier nichts.
+    "stadion_planung": (r"Stadionplanungsgesellschaft",
+                        "Stadionplanungsgesellschaft mbH"),
+    "stadion": (r"Stadion Oldenburg", "Stadion Oldenburg GmbH & Co. KG"),
 }
 
 

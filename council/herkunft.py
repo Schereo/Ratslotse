@@ -107,6 +107,13 @@ UNBEKANNT = "unbekannt"
 #: glauben?". Wer eine neue Probe baut, trägt sie hier ein; ein unbekannter
 #: Name fliegt beim Bauen der :class:`Herkunft` auf.
 PROBEN: dict[str, str] = {
+    # Die Kernzahl aus dem Beschlusstext, bestätigt durch die Anlage
+    # (council/wirtschaftsplan_kernzahl.py) — die einzige Probe des Bereichs,
+    # die über ZWEI Dokumente geht.
+    "wirtschaftsplan_kernzahl":
+        "Die Zahl, über die der Rat abstimmt, steht im Beschlusstext der "
+        "Vorlage — und dieselbe Zahl steht in der beigefügten Anlage. Zwei "
+        "getrennte Dokumente, unabhängig gesetzt.",
     # Die Erfolgspläne aus den Anlagen (council/wirtschaftsplan_tabelle.py) —
     # für die Betriebe, die im Beschlusstext keine Zahl nennen.
     "wirtschaftsplan_spalten":

@@ -1391,10 +1391,16 @@ class CouncilStore:
             "jahr INTEGER NOT NULL, "          # Haushaltsjahr, nicht Jahr der Vorlage
             "betrieb_name TEXT NOT NULL, "
             "vorlage_nr TEXT NOT NULL, "
-            "ertraege REAL NOT NULL, "         # Erfolgsplan, in Euro
-            "aufwendungen REAL NOT NULL, "
-            "steuern REAL NOT NULL, "          # bis 2020 keine eigene Zeile → 0
-            "ergebnis REAL NOT NULL, "
+            # Nullbar seit 20.08.2026: Nicht jede Quelle gibt das volle Tripel.
+            # Beschlusstext (EGH) und Erfolgsplan-Tabelle (AWB) liefern Erträge,
+            # Aufwendungen UND Ergebnis; bei Bäderbetriebsgesellschaft, Stadion
+            # und Bäderbetrieb nennt nur die **Kernzahl** eine geprüfte Zahl —
+            # das Jahresergebnis, das der Rat beschließt. Eine 0 dort wäre eine
+            # Behauptung, ein NULL ist die Auskunft „diese Quelle sagt es nicht".
+            "ertraege REAL, "                  # Erfolgsplan, in Euro
+            "aufwendungen REAL, "
+            "steuern REAL, "                   # bis 2020 keine eigene Zeile → 0
+            "ergebnis REAL NOT NULL, "         # als einziges immer da
             "vermoegensplan REAL, "            # Ein- = Auszahlungen, eine Zahl
             "verpflichtungen REAL, "           # Verpflichtungsermächtigungen
             "entwurf_vom TEXT, "               # Stand des Verwaltungsentwurfs
@@ -1406,6 +1412,49 @@ class CouncilStore:
             # ersetzen und nicht danebenstehen.
             "PRIMARY KEY (betrieb, jahr))"
         )
+        # Bestände, die vor dem 20.08.2026 angelegt wurden, tragen `ertraege`
+        # und `aufwendungen` noch als NOT NULL. SQLite kann eine Spalte nicht
+        # nachträglich nullbar machen — die Tabelle muss neu gebaut und der
+        # Inhalt umkopiert werden. Erkannt wird der Altstand am Schema selbst
+        # (`PRAGMA table_info`, Spalte `notnull`), nicht an einer Versionsnummer:
+        # So läuft der Umbau genau einmal und auf jedem Bestand von allein.
+        wp_spalten = self._conn.execute(
+            "PRAGMA table_info(council_wirtschaftsplaene)").fetchall()
+        if any(s[1] == "ertraege" and s[3] == 1 for s in wp_spalten):
+            # `with self._conn` und nicht `self.transaktion()`: Diese Migration
+            # läuft aus `_migrate()` heraus, also noch während `__init__` — der
+            # Sammel-Zustand der Transaktionshilfe existiert da noch nicht.
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE council_wirtschaftsplaene RENAME TO _wp_alt")
+                self._conn.execute(
+                    "CREATE TABLE council_wirtschaftsplaene ("
+                    "betrieb TEXT NOT NULL, jahr INTEGER NOT NULL, "
+                    "betrieb_name TEXT NOT NULL, vorlage_nr TEXT NOT NULL, "
+                    "ertraege REAL, aufwendungen REAL, steuern REAL, "
+                    "ergebnis REAL NOT NULL, vermoegensplan REAL, "
+                    "verpflichtungen REAL, entwurf_vom TEXT, proben TEXT NOT NULL, "
+                    "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+                    "PRIMARY KEY (betrieb, jahr))")
+                # Spaltenweise benannt und nicht `SELECT *`: Eine später
+                # ergänzte Spalte in der Altfassung würde die Reihenfolge
+                # verschieben, und dann landeten Beträge in Textfeldern.
+                self._conn.execute(
+                    "INSERT INTO council_wirtschaftsplaene "
+                    "(betrieb, jahr, betrieb_name, vorlage_nr, ertraege, aufwendungen, "
+                    " steuern, ergebnis, vermoegensplan, verpflichtungen, entwurf_vom, "
+                    " proben, herkunft_id, fetched_at) "
+                    "SELECT betrieb, jahr, betrieb_name, vorlage_nr, ertraege, "
+                    " aufwendungen, steuern, ergebnis, vermoegensplan, verpflichtungen, "
+                    " entwurf_vom, proben, herkunft_id, fetched_at FROM _wp_alt")
+                alt_n = self._conn.execute("SELECT COUNT(*) FROM _wp_alt").fetchone()[0]
+                neu_n = self._conn.execute(
+                    "SELECT COUNT(*) FROM council_wirtschaftsplaene").fetchone()[0]
+                if alt_n != neu_n:  # pragma: no cover — Notbremse
+                    raise RuntimeError(
+                        f"Umbau von council_wirtschaftsplaene: {alt_n} Zeilen vorher, "
+                        f"{neu_n} nachher — nichts wird verworfen")
+                self._conn.execute("DROP TABLE _wp_alt")
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_buergschaften ("
             "jahr INTEGER PRIMARY KEY, "
