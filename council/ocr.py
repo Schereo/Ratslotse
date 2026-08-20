@@ -63,6 +63,13 @@ MODEL_ZWEIT = os.environ.get("COUNCIL_OCR_MODEL_ZWEIT") or "anthropic/claude-son
 #: dafür, dass Uneinigkeit ZWEIER Modelle überhaupt etwas bedeutet.
 TEMPERATUR = 0.0
 
+#: Was anstelle einer Seite steht, die sich nicht in ein Bild verwandeln ließ.
+#:
+#: Er hat einen NAMEN, weil ihn zwei Stellen kennen müssen: Hier wird er
+#: geschrieben, und `backfill_anlagen_ocr.kandidaten()` erkennt daran eine
+#: Anlage, die zwar `status='ocr'` trägt, aber nichts vom Papier enthält.
+PLATZHALTER = "[Seite {nr}: nicht lesbar gemacht]"
+
 #: Kürzer als das gilt eine Seite als ungelesen. Eine leere Rückseite gibt es
 #: in diesen Scans durchaus; sie zählt als gelesen-und-leer, nicht als Fehler.
 MIN_SEITE = 40
@@ -340,7 +347,7 @@ def lies_pdf(daten: bytes, model: str = MODEL, max_seiten: int | None = None,
             bild = seite_als_bild(seite, dpi=dpi)
         except OcrFehler:
             uebersprungen += 1
-            teile.append(f"[Seite {nr}: nicht lesbar gemacht]")
+            teile.append(PLATZHALTER.format(nr=nr))
             continue
         wege.add(bild.weg)
         text = lies_seite(bild, model=model)
