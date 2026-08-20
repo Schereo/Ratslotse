@@ -137,7 +137,8 @@ def _kurz(einheiten: set[tuple]) -> str:
 
 
 def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
-                  rest: dict[str, set[tuple]], heute: date) -> str:
+                  rest: dict[str, set[tuple]], heute: date,
+                  ohne_herkunft: dict[str, int] | None = None) -> str:
     """Die Mail: was fehlt, seit wann es fällig wäre — und welcher der beiden
     Gründe es ist.
 
@@ -148,7 +149,14 @@ def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
 
     ``rest`` ist der zweite Block: Einheiten, für die ein Dokument vorliegt,
     die nach dem Lauf aber weiter fehlen. Sie machen keinen Jahrgang
-    überfällig — der steht ja da — und wären ohne diesen Block unsichtbar."""
+    überfällig — der steht ja da — und wären ohne diesen Block unsichtbar.
+
+    ``ohne_herkunft`` ist der dritte: Zeilen, die in der Datenbank stehen,
+    aber nicht sagen, woher sie kommen. Sie sind die schlimmste der drei
+    Lagen, weil sie **nichts** vermissen lässt — der Jahrgang steht da, die
+    Zahl steht da, nur der Beleg fehlt, und auf einer Seite, deren ganzer
+    Anspruch „jede Zahl sagt, woher sie stammt" ist, fällt das erst auf, wenn
+    jemand auf den Chip tippt."""
     teile = []
     faellige = [(z, j) for z in zeilen for j in z["ueberfaellig"]]
     if faellige:
@@ -181,6 +189,18 @@ def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
             q = finanzquellen.QUELLEN[key]
             teile.append(f"• <b>{html.escape(q.label)}</b> — {len(offen)} Einheit(en) "
                          f"offen: {html.escape(_kurz(offen))}")
+
+    if ohne_herkunft:
+        if teile:
+            teile.append("")
+        teile.append("Außerdem stehen Zeilen in der Datenbank, die nicht sagen, "
+                     "woher sie kommen:")
+        for tabelle, n in sorted(ohne_herkunft.items()):
+            teile.append(f"• <b>{html.escape(tabelle)}</b> — {n} Zeile(n) ohne Herkunft")
+        teile.append("Diese Zahlen stehen auf den Seiten ohne Beleg. Meist fehlt der "
+                     "Zieltabelle die <code>herkunft_id</code> im Schreibweg "
+                     "(siehe council/herkunft.py).")
+
     teile.append("")
     teile.append("Der Job hat nichts gelöscht und nichts verändert. Die Muster stehen "
                  "in council/finanzquellen.py.")
@@ -279,17 +299,29 @@ def main(db: str | None = None, heute: date | None = None,
                  f"woher sie kommen (siehe council/herkunft.py)")
 
     # Der Vergleichsschlüssel für „habe ich das schon gemeldet?" — überfällige
-    # Jahrgänge UND liegengebliebene Einheiten. Ohne den zweiten Teil bliebe
-    # ein halb gelesener Jahrgang für immer stumm.
+    # Jahrgänge, liegengebliebene Einheiten UND Zeilen ohne Herkunft. Ohne den
+    # zweiten Teil bliebe ein halb gelesener Jahrgang für immer stumm.
+    #
+    # Der dritte Teil fehlte bis 20.08.2026, und das war die stillste Lücke des
+    # Jobs: `herkunft_luecken()` wurde gerufen, ins Log geschrieben und als
+    # Kennzahl nach `job_runs` gereicht — aber weil er nicht in `ausbleibend`
+    # stand, löste er nie eine Mail aus. Ein Cron-Log liest niemand freiwillig;
+    # der Code nennt diesen Befund selbst das „Frühwarnsystem der Umstellung"
+    # (council/store.py), und ein Frühwarnsystem, das nur flüstert, ist keines.
+    #
+    # Die Zahl gehört mit in den Schlüssel, nicht nur der Tabellenname: Wächst
+    # die Lücke von 3 auf 300 Zeilen, ist das eine neue Nachricht und keine
+    # Wiederholung.
     ausbleibend = sorted(
         [f"{z['key']}:{j}" for z in stand for j in z["ueberfaellig"]]
-        + [f"{key}:offen:{e}" for key, offen in rest.items() for e in sorted(map(str, offen))])
+        + [f"{key}:offen:{e}" for key, offen in rest.items() for e in sorted(map(str, offen))]
+        + [f"herkunft:{tabelle}:{n}" for tabelle, n in ohne_herkunft.items()])
 
     gemeldet = False
     if ausbleibend and not trocken and not _schon_gemeldet(ausbleibend):
         from kern.alerts import notify_admin
 
-        notify_admin(_hinweis_text(stand, gesehen, rest, heute),
+        notify_admin(_hinweis_text(stand, gesehen, rest, heute, ohne_herkunft),
                      betreff="Ratslotse – Haushaltsdaten: es fehlt etwas",
                      fusszeile="Hinweis des Cron-Jobs check_finanzdaten — kein Fehler.")
         gemeldet = True
