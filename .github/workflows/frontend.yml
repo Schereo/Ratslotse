@@ -51,3 +51,10 @@ jobs:
 
       - name: TypeScript übersetzen (ohne Ausgabe)
         run: npx tsc --noEmit
+
+      # Rechnet die Skalen-Regeln des Grafik-Baukastens nach. Der Übersetzer
+      # oben kann das nicht: Eine Achse, die jeden Wert der Reihe aus dem Bild
+      # schiebt, ist typkorrekt. Node liest die `.ts` direkt (Type-Stripping),
+      # die Probe prüft also das echte Modul und keine Kopie seiner Regeln.
+      - name: Skalen des Grafik-Baukastens nachrechnen
+        run: node --experimental-strip-types scripts/pruefe-skala.mjs

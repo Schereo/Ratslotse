@@ -97,6 +97,25 @@ Erklärsatz kompiliert nicht. Gerendert werden sie über `<Einordnung>`.
 `mitVorzeichen` (Differenzen: „+12,4", Null ohne Plus), dazu `deMio` und
 `betrag` aus `lib/haushalt`. Kein `toLocaleString` in Komponenten.
 
+## Skala (`skala.ts`)
+
+Zwei Regeln, die `<Zeitreihe>` aus dem Modul holt statt sie selbst zu rechnen —
+damit `scripts/pruefe-skala.mjs` sie in der CI nachrechnen kann (Node liest die
+`.ts` direkt; die Probe prüft das echte Modul, keine Kopie).
+
+- **`ySpanne(werte, nullbasis)`** — `nullbasis` heißt „die Null gehört ins
+  Bild", **nicht** „die Null ist unten". Vorher stand dort `[0, max]`; eine
+  Reihe ganz im Minus bekam damit die umgedrehte Spanne `[0, −2,65]` und ihr
+  eigenes Minimum lag außerhalb — die Kurve lief oben aus dem Bild. Gemischte
+  Reihen brach dieselbe Zeile.
+- **`achsenStellen(gitter)`** — Nachkommastellen aus dem **Raster**, nicht aus
+  dem `nachkomma` der Reihe. Sonst stünde an der Schuldenkurve „300,0" statt
+  „300", und unter einer Million dreimal „0" übereinander.
+
+Beide Fehler waren typkorrekt und nur auf einem Bildschirm zu sehen. Wer hier
+etwas ändert, lässt die Probe laufen: `node --experimental-strip-types
+scripts/pruefe-skala.mjs`.
+
 ## Farben & Motion
 
 - Nur die Rampen-Tokens `--hh-ein-*` / `--hh-aus-*` (app/globals.css) —

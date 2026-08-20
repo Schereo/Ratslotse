@@ -32,7 +32,7 @@ wacht darüber, dass kein neuer Verweis das Gate vergisst.
 
 Der Einstieg trägt einen **Wegweiser** (`components/haushalt/wegweiser.tsx`),
 und der ist keine Linkliste, sondern die Leserichtung des ganzen Bereichs:
-siebzehn Schritte in vier Stufen (6 · 4 · 4 · 3). Die Tabelle steht deshalb in
+achtzehn Schritte in vier Stufen (6 · 4 · 5 · 3). Die Tabelle steht deshalb in
 genau dieser Reihenfolge.
 
 | Route | Inhalt |
@@ -53,12 +53,13 @@ genau dieser Reihenfolge.
 | **Der Rahmen** | |
 | `/haushalt/konzern` | Schritt 11 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
 | `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 12 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
-| `/haushalt/vergleich` | Schritt 13 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
-| `/haushalt/schulden` | Schritt 14 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
+| `/haushalt/betriebe` | Schritt 13 — „Was planen die Betriebe?“: die Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften, in derselben Ratssitzung beschlossen wie der Stadthaushalt und mit ihm **nicht addierbar** |
+| `/haushalt/vergleich` | Schritt 14 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
+| `/haushalt/schulden` | Schritt 15 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
-| `/haushalt/jahr` | Schritt 15 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
-| `/haushalt/streit[?jahr=<jahr>]` | Schritt 16 — „Der Streit ums Geld": je Haushaltsjahrgang die Änderungslisten der Fraktionen und Gruppen mit ihrem Abstimmungsergebnis, die Wortbeiträge der Debatte im Protokollwortlaut und die Schlussabstimmung |
-| `/haushalt/labor` | Schritt 17 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
+| `/haushalt/jahr` | Schritt 16 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
+| `/haushalt/streit[?jahr=<jahr>]` | Schritt 17 — „Der Streit ums Geld": je Haushaltsjahrgang die Änderungslisten der Fraktionen und Gruppen mit ihrem Abstimmungsergebnis, die Wortbeiträge der Debatte im Protokollwortlaut und die Schlussabstimmung |
+| `/haushalt/labor` | Schritt 18 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
@@ -73,8 +74,8 @@ der Bereichstabelle des Einstiegs.
 Oldenburg · Schritt N"), weil sie dort oben steht, wo keine Komponente sie
 einsetzt: `/haushalt/personal` (5), `/haushalt/gebaut` (8),
 `/haushalt/kennzahlen` (10), `/haushalt/konzern` (11),
-`/haushalt/beteiligungen` (12), `/haushalt/jahr` (15) und `/haushalt/streit`
-(16). Dazu zwei Querverweise im Fließtext, die eine Nummer mitführen
+`/haushalt/beteiligungen` (12), `/haushalt/jahr` (16) und `/haushalt/streit`
+(17). Dazu zwei Querverweise im Fließtext, die eine Nummer mitführen
 (`konzern/page.tsx` nennt Schritt 12, `beteiligungen/page.tsx` Schritt 11).
 
 Wer Schritte umsortiert oder einen dazwischenschiebt, zieht diese Stellen mit
@@ -3167,5 +3168,11 @@ Ausgleichsjahr-Zahl über einem Nenner aus dem Vorjahr.
 2015–2025; weiter zurück stellt das LSN nichts mehr online. Dass die Reihe
 durchgehend derselben Konvention folgt, zeigt die Pro-Kopf-Probe oben auch
 für die Jahre davor — ein Bruch mitten in der Reihe müsste sich dort zeigen
-und tut es nicht. Gemeldet werden sollte der Befund trotzdem: Ansprechpartner
-laut Katalog ist die Statistikstelle der Stadt Oldenburg.
+und tut es nicht.
+
+**Gemeldet am 16.08.2026** an die Stadt Oldenburg (Ansprechpartner laut
+Katalog: die Statistikstelle). Damit liegt der Befund bei der Stelle, die ihn
+beheben kann — die Korrektur in `haushalt.parse_steuerkraft` bleibt bis dahin
+und darüber hinaus bestehen: Sie greift am Bestand, nicht an der Quelle, und
+ein stillschweigend korrigiertes Portal würde sie sonst doppelt anwenden. Wer
+eine neue Lieferung einliest, prüft deshalb zuerst die Pro-Kopf-Probe.

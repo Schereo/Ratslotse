@@ -855,6 +855,14 @@ def haushalt_uebersicht(
       anschreiben,
     - ``ansatz_jahre``: die Jahre mit einem Haushaltsansatz — die Liste, aus
       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
+    - ``wirtschaftsplaene``: die Wirtschaftspläne der Eigenbetriebe und
+      städtischen Gesellschaften, je ``betrieb`` und ``jahr``. **Nicht mit dem
+      Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
+      der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
+      Aufwand des Kernhaushalts; herausgerechnet wird das erst im
+      Gesamtabschluss. ``ertraege``/``aufwendungen`` sind ``null``, wo die
+      Quelle nur das Ergebnis nennt, und ``proben`` sagt, welche Rechenprobe
+      für die Zeile gelaufen ist,
     - ``abweichungsgruende``: warum ein Posten vom Plan abwich, in den Worten
       der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
     - ``pruefberichte``: Fundstelle des RPA-Schlussberichts je Jahrgang,
@@ -937,6 +945,16 @@ def haushalt_uebersicht(
         # aus dieser Liste angezeigt werden.
         "ergebnishaushalt": store.get_ergebnishaushalt,
         "ansatz_jahre": store.ansatz_jahre,
+        # Die Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften
+        # — der Haushalt NEBEN dem Haushalt. Klein genug für die Übersicht (29
+        # Zeilen), deshalb kein eigener Endpunkt.
+        #
+        # `ertraege` und `aufwendungen` sind oft NULL, und das ist die Auskunft
+        # und keine Lücke: Nur zwei der sechs Betriebe nennen in einer prüfbaren
+        # Form ein Erträge/Aufwendungen-Paar, die übrigen nur das beschlossene
+        # Jahresergebnis. Wer die Spalten anzeigt, muss die Leerstellen
+        # anschreiben, statt eine 0 zu zeichnen.
+        "wirtschaftsplaene": store.get_wirtschaftsplaene,
         "abweichungsgruende": store.get_abweichungsgruende,
         "pruefbericht_quellen": store.get_pruefbericht_quellen,
         "produkt_jahre": store.produkte_jahre,

@@ -300,6 +300,8 @@ export type HaushaltDaten = {
   /** Die Postengliederung für Jahre **ohne** Jahresabschluss, aus dem
    *  Gesamtergebnishaushalt der Haushaltspläne (Anlage 005). */
   ergebnishaushalt?: ErgebnishaushaltZeile[];
+  /** Die Wirtschaftspläne der Eigenbetriebe — der Haushalt neben dem Haushalt. */
+  wirtschaftsplaene?: WirtschaftsplanZeile[];
   /** Jahre mit einem beschlossenen **Haushaltsansatz** — das jüngste ist das
    *  Jahr, für das gerade ein Haushalt gilt.
    *
@@ -880,6 +882,34 @@ export function flussbild(
       && luecke(verwendung) <= 0.02 * verwendung.gesamt,
   };
 }
+
+/** Ein Wirtschaftsplan eines Eigenbetriebs oder einer städtischen
+ *  Gesellschaft, wie der Rat ihn beschließt.
+ *
+ *  **`ertraege` und `aufwendungen` sind oft `null`, und das ist die Auskunft.**
+ *  Nur zwei der sechs Betriebe nennen sie in prüfbarer Form — der Eigenbetrieb
+ *  Gebäudewirtschaft im Beschlusstext, der Abfallwirtschaftsbetrieb im
+ *  Erfolgsplan seiner Anlage. Bei den übrigen ist die einzige doppelt belegte
+ *  Zahl das Jahresergebnis. Eine 0 an diesen Stellen wäre eine Behauptung. */
+export type WirtschaftsplanZeile = {
+  /** Kürzel: `egh`, `awb`, `bbo`, `bbgo`, `stadion`, `stadion_planung`. */
+  betrieb: string;
+  betrieb_name: string;
+  jahr: number;
+  vorlage_nr: string;
+  ertraege: number | null;
+  aufwendungen: number | null;
+  steuern: number | null;
+  /** Als einziges immer da. */
+  ergebnis: number;
+  vermoegensplan: number | null;
+  verpflichtungen: number | null;
+  /** Stand des Verwaltungsentwurfs, wo das Dokument ihn nennt. */
+  entwurf_vom: string | null;
+  /** Komma-getrennt, welche Rechenproben für diese Zeile gelaufen sind. */
+  proben: string;
+  herkunft_id: number | null;
+};
 
 export type EinnahmeartenPlan = {
   jahr: number;
