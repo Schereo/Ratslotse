@@ -1,0 +1,128 @@
+# Manuell auslösbarer Ops-Lauf: liest die gescannten Anlagen per Sehmodell
+# (`scripts/backfill_anlagen_ocr.py`) — den GANZEN Bestand, nicht nur die
+# Finanzdokumente.
+#
+# WARUM ES IHN NEBEN `ops-finanzdaten-ingest.yml` GIBT. Jener Lauf holt mit
+# `--nur-finanz` die Dokumente, aus denen der Haushalts-Bereich liest; das ist
+# dort die Regel und keine Sparmaßnahme. Dieser hier ist der andere Fall:
+# Tim hat am 20.08.2026 entschieden, dass **alles** eingelesen wird — Namen,
+# Anschriften und Unterschriften inklusive —, aber nichts davon über „Frag den
+# Rat" zurückkommt.
+#
+# DER GELESENE TEXT IST GANZ NORMALER ANLAGENTEXT. Der Lauf schreibt
+# `status='ok'` und vermerkt in `ocr_modell`, welches Sehmodell ihn gelesen
+# hat. Ein gescannter Wirtschaftsplan ist damit so durchsuchbar wie ein
+# getippter — alles andere wäre eine Sperre gegen die Herkunft des Textes und
+# nicht gegen das, was darin steht.
+#
+# DASS TROTZDEM KEINE KONTONUMMER IN EINER ANTWORT LANDET, leistet
+# `council/kontaktdaten.py` an der **Index-Grenze**:
+# `store.anlagen_missing_embeddings()` und `store.rebuild_fts()` nehmen IBAN,
+# BIC, Telefon, Fax, E-Mail und Anschrift aus dem Text, bevor er in die
+# Chunk-Vektoren bzw. den Volltextindex geht. Gespeichert bleibt alles — die
+# Parser brauchen den vollen Text.
+#
+# Das ist ausdrücklich KEIN OCR-Thema: 606 Anlagen des Bestands tragen
+# Kontaktdaten ganz ohne Texterkennung (1.382 Anschriften, 1.024 Telefon- und
+# Faxnummern, 533 E-Mail-Adressen, 81 IBAN) und standen bis dahin unmaskiert
+# im Index. Der Textverlust liegt bei 0,22 %.
+#
+# WARUM NUR DEV. Der Lauf zielt bewusst auf `VPS_DEV_HOST` und nicht auf
+# `VPS_HOST`. Diese Dokumente liegen im Bürgerinfo zwar öffentlich, aber ihr
+# Volltext ist heute nirgends indiziert; ihn auf die Prod-Datenbank zu legen
+# ist eine eigene Entscheidung und nicht der Nebeneffekt eines Ops-Laufs —
+# dieselbe Überlegung, mit der `ops-finanzdaten-ingest.yml` auf dev bleibt.
+name: "Ops: Gescannte Anlagen lesen (dev)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Höchstens so viele Anlagen (leer = alle)"
+        required: false
+        default: ""
+      max_seiten:
+        description: "Höchstens so viele Seiten je Anlage"
+        required: false
+        default: "120"
+
+concurrency:
+  group: ops-anlagen-ocr
+  cancel-in-progress: false
+
+jobs:
+  ocr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: OCR auf der Dev-VM
+        env:
+          OCR_LIMIT: ${{ inputs.limit }}
+          OCR_MAX_SEITEN: ${{ inputs.max_seiten }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # Rund 227 Anlagen à ~7 Seiten, je Seite ein Modellaufruf von ein
+          # paar Sekunden. Die 10-Minuten-Vorgabe der Action reicht dafür bei
+          # weitem nicht.
+          command_timeout: 180m
+          # Die Eingaben gehen über `envs` an die Shell und NICHT als
+          # `${{ … }}` in den Skripttext. Nur Collaborator können diesen
+          # Workflow auslösen, aber ein Wert, der in einer Kommandozeile
+          # interpoliert wird, ist eine Kommandozeile — und dieses Repo ist
+          # öffentlich. Beide Werte werden unten zusätzlich auf Ziffern
+          # geprüft, bevor sie ein Argument werden.
+          envs: OCR_LIMIT,OCR_MAX_SEITEN
+          script: |
+            set -e
+            cd ~/app
+
+            if [ -n "$OCR_LIMIT" ] && ! echo "$OCR_LIMIT" | grep -qE '^[0-9]+$'; then
+              echo "limit muss eine Zahl sein, war: $OCR_LIMIT"; exit 2
+            fi
+            if ! echo "$OCR_MAX_SEITEN" | grep -qE '^[0-9]+$'; then
+              echo "max_seiten muss eine Zahl sein, war: $OCR_MAX_SEITEN"; exit 2
+            fi
+
+            # Der Renderer für Seiten ohne seitenfüllendes Bild — bewusst nicht
+            # in requirements.txt (wie fastembed), hier bei Bedarf nachgezogen.
+            .venv/bin/python -c "import pypdfium2" 2>/dev/null \
+              || .venv/bin/pip install --quiet pypdfium2
+
+            LIMIT=""
+            if [ -n "$OCR_LIMIT" ]; then
+              LIMIT="--limit $OCR_LIMIT"
+            fi
+
+            # Erst zeigen, was drankäme — kostet nichts und steht im Log,
+            # falls der eigentliche Lauf später abbricht.
+            .venv/bin/python scripts/backfill_anlagen_ocr.py --trocken $LIMIT
+
+            .venv/bin/python scripts/backfill_anlagen_ocr.py \
+              $LIMIT --max-seiten "$OCR_MAX_SEITEN"
+
+            .venv/bin/python - <<'PY'
+            from council.store import CouncilStore
+            s = CouncilStore("data/council.sqlite")
+            zahlen = dict(s._conn.execute(
+                "SELECT status, COUNT(*) FROM council_anlagen GROUP BY status").fetchall())
+            print(f"\nAnlagen nach Status: {zahlen}")
+
+            # Die Zusage, nachgerechnet statt behauptet: In den
+            # Chunk-Vektoren darf keine Kontonummer stehen.
+            from council.kontaktdaten import enthaelt_kontaktdaten
+            treffer = [d for d, c in s._conn.execute(
+                "SELECT document_id, chunk_text FROM council_anlage_embeddings")
+                if enthaelt_kontaktdaten(c)]
+            print(f"Chunks mit Kontaktdaten: {len(treffer)}  "
+                  f"({'in Ordnung' if not treffer else 'DARF NICHT SEIN: ' + str(treffer[:5])})")
+            s.close()
+            if treffer:
+                raise SystemExit(1)
+            PY
