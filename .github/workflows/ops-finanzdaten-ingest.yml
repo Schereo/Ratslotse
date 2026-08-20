@@ -165,6 +165,12 @@ jobs:
             # sofort sehen und nicht erst hinter dem Bestandsbericht.
             .venv/bin/python scripts/ingest_haushaltssatzung.py
 
+            # Die Gebührenbedarfsberechnung — Abfall und Straßenreinigung.
+            # Steht NACH dem OCR-Lauf oben, und das ist keine Sortierlaune:
+            # Der Jahrgang 2020 liegt nur als Scan vor und wird erst dort
+            # lesbar.
+            .venv/bin/python scripts/ingest_gebuehren.py
+
             # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
             # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
             # ingest_finanzen_opendata.py, und das ist keine Sortierlaune:
@@ -261,6 +267,7 @@ jobs:
                 # hier deutlich weniger sieht, hat entweder keine
                 # Vorlagen-Volltexte im Bestand oder einen Parser, dem ein
                 # Format entglitten ist.
+                "council_gebuehren",
                 "council_haushaltssatzung",
                 "council_wirtschaftsplaene",
             ]

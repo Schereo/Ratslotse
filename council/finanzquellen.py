@@ -527,6 +527,22 @@ def _einheiten_konzernabschluss(row: dict) -> set[tuple]:
     return {(jahr,)} if jahr else set()
 
 
+def _bestand_gebuehren(store: CouncilStore) -> set[tuple]:
+    """Die Jahrgänge, für die eine Gebührenbedarfsberechnung im Bestand steht.
+
+    Einheit ist das JAHR und nicht das Paar (Jahr, Bereich): Die drei Bereiche
+    stehen in derselben Anlage und kommen gemeinsam oder gar nicht. Nähme man
+    das Paar, meldete die Ampel für einen Jahrgang, dessen Abfallsammlung an
+    einer Probe scheitert, dauerhaft zwei fehlende Bereiche — und eine Ampel,
+    die dauerhaft rot steht, wird überlesen.
+    """
+    try:
+        return {(int(j),) for (j,) in store._conn.execute(  # noqa: SLF001
+            "SELECT DISTINCT jahr FROM council_gebuehren")}
+    except Exception:  # noqa: BLE001 — Tabelle kann fehlen
+        return set()
+
+
 def _bestand_haushaltssatzung(store: CouncilStore) -> set[tuple]:
     """Die Haushaltsjahre, für die eine Satzung im Bestand steht.
 
@@ -2372,6 +2388,28 @@ for _q in (
         bestand=_bestand_haushaltsplan,
     ),
     Finanzquelle(
+        key="gebuehren",
+        label="Gebührenbedarfsberechnung",
+        was="Die Rechnung, aus der die Abfall- und Straßenreinigungsgebühren "
+            "entstehen: Was der Bereich kostet, was davon Dritte tragen, was "
+            "aus Vorjahren ausgeglichen wird — und was übrig bleibt, geteilt "
+            "durch die Abfallmenge bzw. die gebührenpflichtige Fläche. Von "
+            "allen Zahlen des Haushalts landet keine so direkt im "
+            "Portemonnaie.",
+        tabelle="council_gebuehren",
+        # Gemessen an den vier Jahrgängen im Bestand: Die Berechnung für das
+        # kommende Jahr trägt das Datum des Vorjahres-Herbstes (01.10.2024 für
+        # 2025, 10.10.2023 für 2024). Sie reist mit dem Haushaltsentwurf.
+        erwarteter_monat=11,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=Erkennung(
+            label_muster=("%Gebührenbedarf%",),
+        ),
+        nachschub="scripts/ingest_gebuehren.py",
+        bestand=_bestand_gebuehren,
+    ),
+    Finanzquelle(
         key="haushaltssatzung",
         label="Haushaltssatzung",
         was="Der Rahmen, den der Haushaltsplan bekommt: wie viel die Stadt "
@@ -2570,7 +2608,8 @@ REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "investitionen",
                "investitionsprogramm", "jahresabschluss", "teilhaushalt",
                "stellenplan", "kennzahlen", "rpa_fundstelle",
                "pruefungsfeststellungen",
-               "konzernabschluss", "beteiligungsbericht", "haushaltssatzung",
+               "konzernabschluss", "beteiligungsbericht", "gebuehren",
+               "haushaltssatzung",
                "wirtschaftsplan",
                "schulden",
                "lsn_steuerkraft", "lsn_realsteuern")

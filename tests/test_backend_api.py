@@ -511,7 +511,8 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
                               "jahresabschluss", "teilhaushalt", "stellenplan",
                               "kennzahlen", "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
-                              "beteiligungsbericht", "haushaltssatzung",
+                              "beteiligungsbericht", "gebuehren",
+                              "haushaltssatzung",
                               "wirtschaftsplan",
                               "schulden",
                               "lsn_steuerkraft", "lsn_realsteuern"}

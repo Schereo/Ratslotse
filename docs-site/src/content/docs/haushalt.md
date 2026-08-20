@@ -515,7 +515,7 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 ## Der Bereich hält sich selbst aktuell
 
-**Siebzehn** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
+**Achtzehn** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
 veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
 `check_finanzdaten.py` (alle zwei Wochen) nimmt das ab: **Neun** liest er
 selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **sechs**
@@ -2942,6 +2942,80 @@ Wort: Unter dem `Gesamtergebnis` (2019: 290.531 €) steht weiter unten noch ein
 `Jahresergebnis` (93.031 €). Die Differenz ist die Eigenkapitalverzinsung, die
 der Betrieb an den städtischen Haushalt abführt. Wer die Zeile nimmt, die am
 besten klingt, speichert die falsche.
+
+## Die Gebührenbedarfsberechnung: was im Portemonnaie ankommt
+
+Von allen Zahlen des Haushalts landet keine so direkt bei den Leuten wie die
+Abfall- und Straßenreinigungsgebühr. Wie sie zustande kommt, legt der
+Abfallwirtschaftsbetrieb jedes Jahr als Anlage zur Ratsvorlage vor — und diese
+Anlage ist das **am besten prüfbare Dokument des ganzen Bestands**
+(`council/gebuehren.py`, `scripts/ingest_gebuehren.py`,
+`council_gebuehren`).
+
+Drei Bereiche je Jahrgang, jeder mit eigener Bezugsgröße:
+
+| Anlage | Bereich | Gebühr bemessen nach |
+|---|---|---|
+| 1 | Abfallbehandlungsanlagen | Tonne (Mg) angelieferter Abfall |
+| 2 | Abfallsammlung | Behältervolumen in Litern |
+| 3 | Straßenreinigung | Meter Quadratwurzel gebührenpflichtiger Fläche |
+
+**Zwei Proben je Block, beide aus dem Dokument selbst:**
+
+```
+Kostenkalkulation 2025                    11.661.361 €
+  − von Dritten erstattet                 −3.668.314 €
+  − Erlöse nach § 2                           −5.000 €
+  − aus der Nachsorge-Rückstellung          −240.000 €
+  − Über-/Unterdeckung aus Vorjahren        −361.777 €
+= durch Gebühren zu decken                 7.386.270 €   ← Kaskade
+  ÷ 52.845 Mg
+= Gebühr je Mg                               139,772 €   ← Division
+```
+
+Die Kaskade rechnet nach, was die Zwischenzeilen des Dokuments behaupten. Die
+Division ist davon **unabhängig**: Menge und Gebühr stehen im
+Gebührenermittlungs-Block, nicht in der Kaskade. Über alle zwölf geprüften
+Blöcke gehen beide auf — neunmal cent-genau, zweimal um genau 1 € (dieselbe
+Rundungs-Signatur wie beim Erfolgsplan, `TOLERANZ_EUR = 2.0`).
+
+**Was der Bestand zeigt:**
+
+| Jahrgang | Abfallbehandlung | Straßenreinigung |
+|---|---|---|
+| 2023 | 123,284 €/Mg | 3,660 €/m |
+| 2024 | 134,709 €/Mg | 3,665 €/m |
+| 2025 | 139,772 €/Mg | 3,744 €/m |
+| 2026 | 151,214 €/Mg | 4,039 €/m |
+
+**Vier Eigenheiten, die der Parser kennen muss:**
+
+1. **Zahlen zerreißen an Leerzeichen.** `-295. 000 €` (2026) — dort *ist*
+   entscheidbar, dass die Zahl weitergeht: davor eine Ziffer und ein Punkt,
+   dahinter genau drei Ziffern. Bei `7 71.000` (Straßenreinigung 2026) ist es
+   das **nicht**. Die Bezugsmenge wird deshalb nicht geraten, sondern **an der
+   Division erkannt**: Von allen Kandidaten gilt die, die zusammen mit den zu
+   deckenden Kosten die gedruckte Gebühr ergibt.
+2. **Der Jahrgang 2024 legt erst alle Beträge ab und danach erst ihre
+   Beschriftungen.** Ein Muster, das die Zahl neben ihrem Namen sucht, findet
+   dort nichts. Die Zuordnung kommt aus der Reihenfolge — und gilt nur, weil
+   sie die Kaskade erfüllt.
+3. **Die errechnete Gebühr hat drei Nachkommastellen, der Vorschlag an den Rat
+   zwei** (134,709 gegen 134,70). Wer den Vorschlag nimmt, speichert eine Zahl,
+   die die Division nicht erfüllt — geprüft wird deshalb gegen die
+   dreistellige, und beide werden gespeichert.
+4. **Die Abfallsammlung hat gar keine einzelne Gebühr.** Sie erhebt eine
+   Grundgebühr **und** eine Gebühr je Liter Behältervolumen; eine Division
+   „Kosten ÷ Menge" gibt es dort nicht. Der Jahrgang wird trotzdem gespeichert
+   — seine Kaskade ist geprüft —, aber `gebuehr` und `bezugsmenge` bleiben
+   leer, und `proben` sagt, dass nur eine der beiden Proben lief.
+
+**Was fehlt:** der Jahrgang **2020** (nur als Scan; `backfill_anlagen_ocr.py`
+macht ihn lesbar) und die **Gebührensätze selbst**. Anlage 4 jedes Dokuments
+führt sie als Zeitreihe über zwölf Jahre und zwölf Gebührenarten —
+Grundgebühr, Litergebühr, Sperrmüllkarte, Grüngutanlieferung —, jede Zeile mit
+einer eigenen Prozentprobe (`139,70 → 151,21 = +8,24 %`, gedruckt +8,24 %).
+Das ist eine eigene Schicht, die auf dieser hier aufbaut.
 
 ## Die Haushaltssatzung: der Rahmen um den Plan
 
