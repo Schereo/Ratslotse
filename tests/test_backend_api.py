@@ -511,8 +511,16 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
                               "jahresabschluss", "teilhaushalt", "stellenplan",
                               "kennzahlen", "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
-                              "beteiligungsbericht", "schulden",
+                              "beteiligungsbericht", "wirtschaftsplan",
+                              "schulden",
                               "lsn_steuerkraft", "lsn_realsteuern"}
+    # Die Wirtschaftspläne der Eigenbetriebe: die einzige Schicht, deren
+    # Einheit eine VORLAGE ist und keine Anlage — der Cron kann sie deshalb
+    # nicht selbst lesen und beobachtet sie nur. Ihr Takt ist der einzige mit
+    # negativem Versatz: Der Plan FÜR 2027 wird im Herbst 2026 eingebracht.
+    assert schichten["wirtschaftsplan"]["automatisch"] is False
+    assert schichten["wirtschaftsplan"]["monat"] == "November"
+
     # Vier verschiedene Takte — das ist der Grund, warum der Block existiert.
     assert schichten["jahresabschluss"]["monat"] == "September"
     assert schichten["haushaltsplan"]["monat"] == "Oktober"

@@ -527,6 +527,25 @@ def _einheiten_konzernabschluss(row: dict) -> set[tuple]:
     return {(jahr,)} if jahr else set()
 
 
+def _bestand_wirtschaftsplan(store: CouncilStore) -> set[tuple]:
+    """Die Haushaltsjahre, für die ein Wirtschaftsplan im Bestand steht.
+
+    Die Einheit ist das **Jahr**, nicht das Paar (Jahr, Betrieb). Das ist eine
+    bewusste Entscheidung und keine Vereinfachung: Gelesen wird bisher nur der
+    Eigenbetrieb Gebäudewirtschaft und Hochbau, weil als einziger er seine
+    Eckwerte in den Beschlusstext schreibt. Nähme man das Paar, meldete der
+    Cron ab sofort jeden Monat vier fehlende Betriebe — für etwas, das wir
+    nicht gebaut haben und dessen Fehlen an anderer Stelle dokumentiert steht
+    (haushalt.md, „Der Haushalt neben dem Haushalt"). Eine Ampel, die
+    dauerhaft rot steht, wird überlesen.
+    """
+    try:
+        return {(r[0],) for r in store._conn.execute(  # noqa: SLF001
+            "SELECT DISTINCT jahr FROM council_wirtschaftsplaene")}
+    except sqlite3.OperationalError:
+        return set()
+
+
 def _bestand_schulden(store: CouncilStore) -> set[tuple]:
     """Die Jahrgänge der Schuldenzeitreihe.
 
@@ -2339,6 +2358,37 @@ for _q in (
         bestand=_bestand_haushaltsplan,
     ),
     Finanzquelle(
+        key="wirtschaftsplan",
+        label="Wirtschaftspläne der Eigenbetriebe",
+        was="Was der Rat den Eigenbetrieben für das kommende Jahr genehmigt — "
+            "eigene Erfolgs- und Vermögenspläne neben dem Kernhaushalt. Bisher "
+            "nur der Eigenbetrieb Gebäudewirtschaft und Hochbau; die übrigen "
+            "Betriebe nennen ihre Zahlen nur in einer Anlage.",
+        tabelle="council_wirtschaftsplaene",
+        # Gemessen an den acht Entwurfsdaten im Bestand, nicht geschätzt:
+        # 04.09.2020, 17.09.2019, 01.10.2025, 02.10.2024, 04.10.2023,
+        # 05.10.2018, 12.10.2022, 22.11.2021. Die Schwelle steht auf dem
+        # SPÄTESTEN gemessenen Monat — zu früh gemeldet wäre der teurere
+        # Fehler, und 2021 zeigt, dass der November vorkommt.
+        erwarteter_monat=11,
+        # Der Plan FÜR 2026 wird im Herbst 2025 eingebracht.
+        versatz=-1,
+        herkunft="ris",
+        # Die Erkennung dient hier NICHT dem Cron — er kann diese Schicht nicht
+        # lesen, ihre Einheit ist eine Vorlage und keine Anlage. Sie steht für
+        # `backfill_anlagen_texte.py --nur-finanz`: Das Skript zieht seine
+        # Label-Muster aus dieser Registry, und ohne Eintrag blieben die
+        # Wirtschaftsplan-Anlagen der ÜBRIGEN Betriebe für immer auf 'listed'
+        # liegen — also unlesbar, ohne dass es jemand merkt.
+        erkennung=Erkennung(
+            label_muster=("%Wirtschaftsplan%", "%Wirtschafts- und Finanzplan%",
+                          "%Wirtschafts-und Finanzplan%"),
+        ),
+        nachschub="liegt schon im Bestand (council_vorlagen), "
+                  "scripts/ingest_wirtschaftsplaene.py",
+        bestand=_bestand_wirtschaftsplan,
+    ),
+    Finanzquelle(
         key="schulden",
         label="Schuldenstand",
         was="Wie viel die Stadt schuldet und wie sich das seit 1995 entwickelt "
@@ -2470,7 +2520,8 @@ REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "investitionen",
                "investitionsprogramm", "jahresabschluss", "teilhaushalt",
                "stellenplan", "kennzahlen", "rpa_fundstelle",
                "pruefungsfeststellungen",
-               "konzernabschluss", "beteiligungsbericht", "schulden",
+               "konzernabschluss", "beteiligungsbericht", "wirtschaftsplan",
+               "schulden",
                "lsn_steuerkraft", "lsn_realsteuern")
 
 #: Die Stelle hinter einer Herkunft, im Klartext. Sie steht in der Fußzeile des
