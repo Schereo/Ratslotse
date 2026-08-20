@@ -511,7 +511,8 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
                               "jahresabschluss", "teilhaushalt", "stellenplan",
                               "kennzahlen", "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
-                              "beteiligungsbericht", "wirtschaftsplan",
+                              "beteiligungsbericht", "haushaltssatzung",
+                              "wirtschaftsplan",
                               "schulden",
                               "lsn_steuerkraft", "lsn_realsteuern"}
     # Die Wirtschaftspläne der Eigenbetriebe: die einzige Schicht, deren

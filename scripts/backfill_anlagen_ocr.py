@@ -35,10 +35,10 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-import requests
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -47,6 +47,12 @@ load_dotenv(ROOT / ".env")
 
 from council import ocr  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
+# DIE SITZUNG DES REPOS, NICHT `requests.get`. Sie setzt
+# `User-Agent: Mozilla/5.0`; mit dem Standard-UA von requests antwortet das
+# Bürgerinfo **403 Forbidden**. Der erste Lauf auf der Dev-VM (20.08.2026) hat
+# genau das vorgeführt: sechs Anlagen geladen, zwei mit 403 abgewiesen — und
+# eine davon war der AWB-Wirtschaftsplan 2020, also ein ganzer Jahrgang.
+from council.vorlagen import _session  # noqa: E402
 from scripts.backfill_anlagen_texte import finanz_muster  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -79,6 +85,35 @@ def kandidaten(store: CouncilStore, nur_finanz: bool, document_id: int | None,
     return [dict(r) for r in store._conn.execute(sql, werte).fetchall()]
 
 
+#: Wie oft ein Download wiederholt wird, bevor die Anlage als Fehler gilt.
+#: Von acht Anlagen wies das Bürgerinfo im ersten Lauf zwei ab — sechs
+#: gleichzeitig laufende Downloads waren ihm zu schnell. Ein zweiter Versuch
+#: nach ein paar Sekunden kostet nichts und rettet einen ganzen Jahrgang.
+VERSUCHE = 4
+PAUSE_S = 4.0
+
+
+def _hole(url: str) -> bytes:
+    """Ein PDF holen — mit der Sitzung des Repos und mit Geduld.
+
+    403 wird MIT wiederholt: Das Bürgerinfo antwortet damit auch dann, wenn
+    ihm die Taktung nicht passt, nicht nur bei fehlendem User-Agent. Ein
+    dauerhaftes 403 fällt nach vier Versuchen trotzdem durch — dann steht die
+    Anlage als Fehler im Log, statt still zu fehlen.
+    """
+    letzter: Exception | None = None
+    for versuch in range(VERSUCHE):
+        try:
+            antwort = _session.get(url, timeout=90)
+            antwort.raise_for_status()
+            return antwort.content
+        except Exception as exc:  # noqa: BLE001 — jede Netzstörung ist wiederholbar
+            letzter = exc
+            if versuch < VERSUCHE - 1:
+                time.sleep(PAUSE_S * (versuch + 1))
+    raise letzter  # type: ignore[misc]
+
+
 def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
             limit: int | None, workers: int, max_seiten: int, model: str,
             trocken: bool) -> dict:
@@ -106,9 +141,7 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
         unvollstaendig: list[int] = []
 
         def laden(row: dict):
-            antwort = requests.get(row["url"], timeout=90)
-            antwort.raise_for_status()
-            return row, ocr.lies_pdf(antwort.content, model=model,
+            return row, ocr.lies_pdf(_hole(row["url"]), model=model,
                                      max_seiten=max_seiten)
 
         # Netz + Modell in Workern, DB-Schreiben im Main-Thread — dieselbe

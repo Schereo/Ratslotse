@@ -1401,6 +1401,53 @@ class CouncilStore:
         # ihn überhaupt nicht — dieser Wert steht allein im Dokument des
         # Folgejahres. Ohne beide Spalten sähen sechs verschieden belegte
         # Jahrgänge in der Anzeige gleich aus.
+        # Die Haushaltssatzung — der Rahmen, den der Haushaltsplan bekommt
+        # (`council/haushaltssatzung.py`). Drei Größen standen bis 08/2026
+        # nirgends im Bereich: die Kreditermächtigung (§ 2), der Höchstbetrag
+        # für Liquiditätskredite (§ 4) und der Finanzhaushalt als Ganzes
+        # (§ 1.2) — bisher wurden daraus nur die Investitionen gelesen.
+        #
+        # `fassung` IST KEIN TECHNIKFELD. Alle Satzungen im
+        # Ratsinformationssystem sind **Verwaltungsentwürfe**; die beschlossene
+        # Fassung erscheint im Amtsblatt. Eine Anzeige, die das wegließe,
+        # machte aus einem Vorschlag der Verwaltung einen Ratsbeschluss.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_haushaltssatzung ("
+            "jahr INTEGER NOT NULL, "
+            "nachtrag INTEGER NOT NULL DEFAULT 0, "   # 0 = die Satzung selbst
+            "fassung TEXT NOT NULL, "                 # entwurf | unbekannt
+            "ordentliche_ertraege REAL NOT NULL, "
+            "ordentliche_aufwendungen REAL NOT NULL, "
+            "ao_ertraege REAL NOT NULL, "
+            "ao_aufwendungen REAL NOT NULL, "
+            "ein_laufend REAL NOT NULL, aus_laufend REAL NOT NULL, "
+            "ein_invest REAL NOT NULL, aus_invest REAL NOT NULL, "
+            "ein_finanz REAL NOT NULL, aus_finanz REAL NOT NULL, "
+            # Die beiden „Nachrichtlich"-Zeilen. Sie stehen NICHT nur als
+            # Bequemlichkeit hier: Sie sind die Probe, an der die sechs Zeilen
+            # darüber hängen, und wer sie mitspeichert, kann sie nachrechnen,
+            # ohne das PDF noch einmal zu holen.
+            "ein_gesamt REAL NOT NULL, aus_gesamt REAL NOT NULL, "
+            # Nullbar, weil ein fehlender Paragraph etwas anderes ist als eine
+            # Null: `kredite_investitionen = 0` heißt „nicht veranschlagt" (so
+            # steht es dort in jedem gelesenen Jahrgang), NULL hieße „die
+            # Satzung sagt dazu nichts".
+            "kredite_investitionen REAL, "
+            "verpflichtungsermaechtigungen REAL, "
+            "liquiditaetskredite REAL, "
+            # Ab dem Jahrgang 2025 nennt § 5 nur noch die Gewerbesteuer und
+            # verweist für die Grundsteuer auf eine eigene Satzung.
+            "hebesatz_grundsteuer_a INTEGER, "
+            "hebesatz_grundsteuer_b INTEGER, "
+            "hebesatz_gewerbesteuer INTEGER, "
+            "sitzung_am TEXT, "                       # NULL bei „xx.xx.JJJJ"
+            "vorlage_nr TEXT, "
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, "
+            "fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, nachtrag))"
+        )
+
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_wirtschaftsplaene ("
             "betrieb TEXT NOT NULL, "          # Kürzel aus wirtschaftsplan.BETRIEBE
@@ -5980,6 +6027,64 @@ class CouncilStore:
                  plan.vermoegensplan, plan.verpflichtungen, plan.entwurf_vom,
                  proben, hid, now))
         return 1
+
+    def save_haushaltssatzung(self, satzung, herkunft) -> int:
+        """Eine Haushaltssatzung speichern — ein Jahrgang, eine Fassung.
+
+        Wie bei den Wirtschaftsplänen kommen die Proben aus der HERKUNFT und
+        werden hier nicht noch einmal behauptet: Ob der Hebesatz gegen das
+        Statistische Jahrbuch geprüft werden konnte, hängt daran, ob dessen
+        Tabelle diesen Jahrgang schon trägt — der Parser weiß das, der Store
+        nicht.
+        """
+        proben = herkunft.probe
+        if not isinstance(proben, str):
+            proben = ",".join(proben)
+
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_haushaltssatzung "
+                "(jahr, nachtrag, fassung, ordentliche_ertraege, "
+                " ordentliche_aufwendungen, ao_ertraege, ao_aufwendungen, "
+                " ein_laufend, aus_laufend, ein_invest, aus_invest, "
+                " ein_finanz, aus_finanz, ein_gesamt, aus_gesamt, "
+                " kredite_investitionen, verpflichtungsermaechtigungen, "
+                " liquiditaetskredite, hebesatz_grundsteuer_a, "
+                " hebesatz_grundsteuer_b, hebesatz_gewerbesteuer, sitzung_am, "
+                " vorlage_nr, proben, herkunft_id, fetched_at) "
+                "VALUES (" + ",".join("?" * 26) + ")",
+                (satzung.jahr, satzung.nachtrag, satzung.fassung,
+                 satzung.ordentliche_ertraege, satzung.ordentliche_aufwendungen,
+                 satzung.ao_ertraege, satzung.ao_aufwendungen,
+                 satzung.ein_laufend, satzung.aus_laufend,
+                 satzung.ein_invest, satzung.aus_invest,
+                 satzung.ein_finanz, satzung.aus_finanz,
+                 satzung.ein_gesamt, satzung.aus_gesamt,
+                 satzung.kredite_investitionen,
+                 satzung.verpflichtungsermaechtigungen,
+                 satzung.liquiditaetskredite,
+                 satzung.hebesatz_grundsteuer_a, satzung.hebesatz_grundsteuer_b,
+                 satzung.hebesatz_gewerbesteuer, satzung.sitzung_am,
+                 satzung.vorlage_nr, proben, hid, now))
+        return 1
+
+    def get_haushaltssatzungen(self) -> list[dict]:
+        """Alle Satzungs-Jahrgänge, ältester zuerst."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_haushaltssatzung ORDER BY jahr, nachtrag")]
+        except sqlite3.OperationalError:
+            return []
+
+    def haushaltssatzung_jahre(self) -> list[int]:
+        """Jahrgänge, für die eine Satzung vorliegt."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_haushaltssatzung ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
 
     def get_wirtschaftsplaene(self, betrieb: str | None = None) -> list[dict]:
         """Die Wirtschaftspläne, ältester zuerst — je Betrieb oder alle."""

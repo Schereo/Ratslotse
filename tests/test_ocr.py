@@ -278,3 +278,60 @@ def test_die_herkunft_nennt_das_sehmodell():
                         ocr_modell="google/gemini-3.1-flash-lite")
     assert "OCR" in mit.fundstelle
     assert "gemini-3.1-flash-lite" in mit.probe_ergebnis
+
+
+# --------------------------------------------------------------------------
+# (g) Der Download — und warum er die Sitzung des Repos braucht
+# --------------------------------------------------------------------------
+
+def test_der_download_nutzt_den_browser_user_agent():
+    """Mit dem Standard-UA von `requests` antwortet das Bürgerinfo 403.
+
+    Der erste Lauf auf der Dev-VM (20.08.2026) hat das vorgeführt: sechs
+    Anlagen geladen, zwei abgewiesen — und eine davon war der
+    AWB-Wirtschaftsplan 2020, also ein ganzer Jahrgang, der still fehlte."""
+    from scripts.backfill_anlagen_ocr import _session
+
+    assert _session.headers.get("User-Agent") == "Mozilla/5.0"
+
+
+def test_ein_403_wird_wiederholt(monkeypatch):
+    """403 heißt beim Bürgerinfo nicht nur „falscher User-Agent", sondern auch
+    „zu schnell". Ein zweiter Versuch kostet nichts und rettet den Jahrgang."""
+    import requests
+
+    from scripts import backfill_anlagen_ocr as b
+
+    versuche = []
+
+    class _Antwort:
+        content = b"%PDF-1.4"
+
+        def raise_for_status(self):
+            versuche.append(1)
+            if len(versuche) < 3:
+                raise requests.HTTPError("403 Client Error: Forbidden")
+
+    monkeypatch.setattr(b._session, "get", lambda *_a, **_k: _Antwort())
+    monkeypatch.setattr(b.time, "sleep", lambda _s: None)
+    assert b._hole("https://x/1") == b"%PDF-1.4"
+    assert len(versuche) == 3, "erst der dritte Versuch ging durch"
+
+
+def test_ein_dauerhaftes_403_faellt_durch(monkeypatch):
+    """Sonst hinge der Lauf ewig — und eine Anlage, die es wirklich nicht
+    gibt, stünde als „gelesen" da."""
+    import requests
+
+    from scripts import backfill_anlagen_ocr as b
+
+    class _Antwort:
+        content = b""
+
+        def raise_for_status(self):
+            raise requests.HTTPError("403 Client Error: Forbidden")
+
+    monkeypatch.setattr(b._session, "get", lambda *_a, **_k: _Antwort())
+    monkeypatch.setattr(b.time, "sleep", lambda _s: None)
+    with pytest.raises(requests.HTTPError):
+        b._hole("https://x/1")
