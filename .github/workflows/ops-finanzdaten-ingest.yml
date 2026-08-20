@@ -73,6 +73,28 @@ jobs:
             # Filter greift nicht mehr.
             .venv/bin/python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed --gekappte
 
+            # UND DANN die, die gar keine Textebene haben. Der Lauf oben setzt
+            # sie auf `status='empty'`; dieser hier schickt jede Seite als Bild
+            # an ein Sehmodell (council/ocr.py). Ohne ihn blieben die
+            # Wirtschaftspläne des Abfallwirtschaftsbetriebs 2019–2021 für
+            # immer draußen — sie liegen im Ratsinformationssystem nur als
+            # Scan.
+            #
+            # `--nur-finanz` ist hier KEIN Sparzwang, sondern die Regel: Von
+            # den 235 Anlagen ohne Textebene sind über die Hälfte Anträge, viele
+            # davon Förderanträge von Vereinen mit Namen, Anschriften und
+            # Unterschriften. Die haben in einem Finanzdaten-Lauf nichts
+            # verloren. Der Lauf schreibt `status='ocr'`, nicht `'ok'` — das
+            # hält den Text aus den Chunk-Vektoren und damit aus Antworten der
+            # KI-Frage heraus, während die Parser ihn sehen.
+            #
+            # Kosten: rund 0,0024 $ je Seite, also wenige Euro für den ganzen
+            # Finanzbestand. Braucht OPENROUTER_API_KEY (steht in der .env der
+            # Dev-VM); fehlt er, bricht der Lauf mit Fehler ab und der Rest
+            # läuft weiter — die Ampel unten fängt das auf.
+            ocr=0
+            .venv/bin/python scripts/backfill_anlagen_ocr.py --nur-finanz || ocr=$?
+
             .venv/bin/python scripts/ingest_haushalt.py
             .venv/bin/python scripts/ingest_finanzen_opendata.py
             .venv/bin/python scripts/ingest_schulden.py
@@ -247,6 +269,19 @@ jobs:
             # Liste — das hat den Lauf am 17.08. mit „KeyError: slice" beendet,
             # nachdem alles Inhaltliche schon erledigt war. Leeres dict heißt:
             # keine Zeile ohne Herkunftsnachweis.
+            # Was das Sehmodell gelesen hat — und was noch als Bild liegt.
+            # Steht hier, weil ein OCR-Lauf sonst nur im Log auftaucht: Die
+            # Zahl der verbleibenden Scans ist die eigentliche Arbeitsliste,
+            # und sie soll nicht erst auffallen, wenn eine Seite leer bleibt.
+            try:
+                gelesen, offen = s._conn.execute(
+                    "SELECT SUM(status = 'ocr'), SUM(status = 'empty') "
+                    "FROM council_anlagen").fetchone()
+                print(f"\nAnlagen per OCR gelesen: {gelesen or 0}   "
+                      f"noch als Bild: {offen or 0}")
+            except Exception as e:                          # noqa: BLE001
+                print(f"\nOCR-Stand nicht lesbar: {e}")
+
             luecken = s.herkunft_luecken()
             if luecken:
                 print("\nZeilen OHNE Herkunft — das darf nicht sein:")
@@ -260,10 +295,28 @@ jobs:
             # Der aufgehobene Riss aus dem Wirtschaftsplan-Lauf (Begründung
             # oben). Jetzt steht der Bericht da, jetzt darf er den Lauf rot
             # färben — nicht früher.
+            if [ "$ocr" -ne 0 ]; then
+              echo ""
+              echo "Der OCR-Lauf hat Exit $ocr gemeldet. Die häufigste Ursache ist"
+              echo "ein fehlender OPENROUTER_API_KEY in der .env der Dev-VM; die"
+              echo "zweithäufigste eine Seite, die weder ein eingebettetes Bild"
+              echo "trägt noch gerendert werden konnte (dafür bräuchte es pymupdf,"
+              echo "bewusst nicht in requirements.txt). Der Wortlaut steht oben."
+              echo "Die übrigen Ingests sind trotzdem durchgelaufen."
+            fi
+
             if [ "$wirtschaftsplaene" -ne 0 ]; then
               echo ""
               echo "Der Wirtschaftsplan-Lauf hat Exit $wirtschaftsplaene gemeldet —"
               echo "eine Rechenprobe ist gerissen. Der Wortlaut steht weiter oben,"
               echo "hinter „Probe gerissen — NICHT gespeichert:\"."
               exit "$wirtschaftsplaene"
+            fi
+
+            # Der OCR-Lauf färbt ZULETZT rot: Er ist ein Zulieferer, kein
+            # Ingest. Ein Ausfall heißt „ein Jahrgang fehlt", nicht „eine Zahl
+            # ist falsch" — und der Bestandsbericht oben soll trotzdem lesbar
+            # sein, wenn jemand nachschaut, warum.
+            if [ "$ocr" -ne 0 ]; then
+              exit "$ocr"
             fi
