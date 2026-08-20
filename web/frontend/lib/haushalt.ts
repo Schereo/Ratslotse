@@ -302,6 +302,8 @@ export type HaushaltDaten = {
   ergebnishaushalt?: ErgebnishaushaltZeile[];
   /** Die Wirtschaftspläne der Eigenbetriebe — der Haushalt neben dem Haushalt. */
   wirtschaftsplaene?: WirtschaftsplanZeile[];
+  /** Die Haushaltssatzung je Jahrgang — der Rahmen um den Plan. */
+  haushaltssatzung?: HaushaltssatzungZeile[];
   /** Jahre mit einem beschlossenen **Haushaltsansatz** — das jüngste ist das
    *  Jahr, für das gerade ein Haushalt gilt.
    *
@@ -891,6 +893,56 @@ export function flussbild(
  *  Gebäudewirtschaft im Beschlusstext, der Abfallwirtschaftsbetrieb im
  *  Erfolgsplan seiner Anlage. Bei den übrigen ist die einzige doppelt belegte
  *  Zahl das Jahresergebnis. Eine 0 an diesen Stellen wäre eine Behauptung. */
+/** Ein Jahrgang der Haushaltssatzung (§§ 1–5).
+ *
+ *  ACHTUNG BEI DER ANZEIGE: `fassung` ist in jeder Zeile des Bestands
+ *  `"entwurf"`. Im Ratsinformationssystem liegen ausschließlich
+ *  Verwaltungsentwürfe; die beschlossene Satzung erscheint im Amtsblatt. Eine
+ *  Anzeige, die das wegließe, machte aus einem Vorschlag der Verwaltung einen
+ *  Ratsbeschluss. */
+export type HaushaltssatzungZeile = {
+  jahr: number;
+  /** 0 = die Satzung selbst. Nachträge werden (noch) nicht gelesen. */
+  nachtrag: number;
+  /** `entwurf` | `unbekannt` — nie `beschlossen`, s. o. */
+  fassung: string;
+
+  ordentliche_ertraege: number;
+  ordentliche_aufwendungen: number;
+  ao_ertraege: number;
+  ao_aufwendungen: number;
+
+  ein_laufend: number;
+  aus_laufend: number;
+  ein_invest: number;
+  aus_invest: number;
+  ein_finanz: number;
+  aus_finanz: number;
+  /** Die „Nachrichtlich"-Zeilen der Satzung — nachgerechnet, nicht übernommen. */
+  ein_gesamt: number;
+  aus_gesamt: number;
+
+  /** § 2. `0` heißt „nicht veranschlagt" und ist eine Aussage; `null` hieße
+   *  „die Satzung sagt dazu nichts". */
+  kredite_investitionen: number | null;
+  /** § 3. */
+  verpflichtungsermaechtigungen: number | null;
+  /** § 4 — der Dispo der Stadt. */
+  liquiditaetskredite: number | null;
+
+  /** § 5. Ab dem Jahrgang 2025 nennt die Satzung nur noch die Gewerbesteuer
+   *  und verweist für die Grundsteuer auf eine eigene Satzung — dann sind
+   *  diese beiden Felder leer, und das ist die Auskunft. */
+  hebesatz_grundsteuer_a: number | null;
+  hebesatz_grundsteuer_b: number | null;
+  hebesatz_gewerbesteuer: number | null;
+
+  /** Das im Text genannte Sitzungsdatum, `null` bei „xx.xx.JJJJ". */
+  sitzung_am: string | null;
+  vorlage_nr: string | null;
+  proben: string;
+};
+
 export type WirtschaftsplanZeile = {
   /** Kürzel: `egh`, `awb`, `bbo`, `bbgo`, `stadion`, `stadion_planung`. */
   betrieb: string;

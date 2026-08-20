@@ -96,6 +96,10 @@ export type QuellenSchluessel =
   // anderer Haushalt ist: Er wird in derselben Ratssitzung beschlossen, gehört
   // aber nicht zum Kernhaushalt und ist mit ihm nicht addierbar.
   | "wirtschaftsplan"
+  // Die Haushaltssatzung — der Rahmen um den Plan. Eigener Schlüssel, weil sie
+  // etwas anderes ist als der Haushaltsplan: Der Plan sagt, wofür das Geld
+  // ausgegeben werden SOLL, die Satzung, was die Stadt DÜRFTE.
+  | "haushaltssatzung"
   | "gesamtabschluss"
   | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
   // Die Kassensicht aus denselben Jahresabschlüssen. Ein eigener Schlüssel,
@@ -267,6 +271,25 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Betriebsleitungen der Eigenbetriebe",
     standWort: "Wirtschaftspläne",
     stand: "Wirtschaftspläne 2019–2026",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  haushaltssatzung: {
+    titel: "Haushaltssatzungen der Stadt Oldenburg",
+    fundstelle:
+      "Die Haushaltssatzung, die dem Haushaltsplan als Anlage beiliegt — drei " +
+      "Seiten je Jahrgang: die Gesamtbeträge des Ergebnis- und des " +
+      "Finanzhaushalts (§ 1), die Kreditermächtigung für Investitionen (§ 2), " +
+      "die Verpflichtungsermächtigungen (§ 3), der Höchstbetrag für " +
+      "Liquiditätskredite (§ 4) und die Hebesätze (§ 5). " +
+      "IM RATSINFORMATIONSSYSTEM LIEGEN AUSSCHLIESSLICH VERWALTUNGSENTWÜRFE — " +
+      "sie tragen auf dem Deckblatt „Verwaltungsentwurf“ und als Sitzungsdatum " +
+      "„xx.xx.JJJJ“. Die beschlossene Fassung erscheint im Amtsblatt der Stadt, " +
+      "nicht hier. Was der Rat aus dem Entwurf gemacht hat, steht in den " +
+      "Änderungslisten und Beschlüssen zum Haushalt.",
+    herausgeber: "Stadt Oldenburg, Fachdienst Verwaltung und Finanzen",
+    standWort: "Haushaltssatzungen",
+    stand: "Haushaltssatzungen 2019–2026 (Verwaltungsentwürfe)",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
