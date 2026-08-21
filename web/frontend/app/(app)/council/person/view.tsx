@@ -3,7 +3,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams, notFound } from "next/navigation";
-import { ArrowLeft, Gavel, Info, ExternalLink, ChevronDown } from "lucide-react";
+import { ArrowLeft, Gavel, Info, ExternalLink, ChevronDown, Users } from "lucide-react";
 import { MemberDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { PartyBadge, partyBrand, AffiliationBadge } from "@/components/decision-ui";
@@ -163,7 +163,18 @@ function PersonInner() {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">{data.name}</h1>
-            {currentAffiliation
+            {/* Beratende Ausschuss-Mitglieder haben keine Fraktion, sondern eine
+                entsendende Organisation — „parteilos" wäre hier die falsche
+                Kategorie, nicht bloß eine unschöne Vokabel (Tims Befund
+                21.08.2026). */}
+            {data.art === "beratend"
+              ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                  <Users className="h-3 w-3" aria-hidden />
+                  Beratendes Mitglied{data.organisation ? ` · ${data.organisation}` : ""}
+                </span>
+              )
+              : currentAffiliation
               ? <AffiliationBadge label={currentAffiliation.label} kind={currentAffiliation.kind} parties={currentAffiliation.parties} />
               : data.party && <PartyBadge party={data.party} />}
           </div>

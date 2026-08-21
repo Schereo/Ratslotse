@@ -74,6 +74,12 @@ def order_key(party: str) -> tuple[int, str]:
 # (needles: ALLE müssen im Label vorkommen) → (Anzeigename, Mitglieds-Parteien)
 _GROUPS: list[tuple[tuple[str, ...], str, tuple[str, ...]]] = [
     (("fdp", "volt"), "FDP/Volt", ("FDP", "Volt")),                 # bis 2025, dann getrennt
+    # Ratsgruppe der Wahlperiode bis 2021 (Norrenbrock, Dr. Schreier). Ohne
+    # diesen Eintrag las das Verzeichnis beide als „parteilos", obwohl sie im
+    # Plenum sitzen (Tims Befund 21.08.2026). Das Label steht ausschließlich in
+    # Anwesenheitslisten und Wortbeiträgen, nie in Beschlüssen — die
+    # Antrags-Auswertung ändert sich dadurch nicht.
+    (("wfo",), "WFO-LKR", ("WFO", "LKR")),
     (("linke", "piraten"), "Die Linke/Piraten", ("Die Linke", "Piraten")),
     (("für oldenburg",), "Für Oldenburg", ("parteilos", "Piraten")),  # Finke (parteilos) + Sander (Piraten)
     (("ibo", "live"), "IBO/LiVe", ("IBO", "LiVe")),
