@@ -39,9 +39,14 @@ export function PersonenView() {
   if (all.length === 0) {
     return <EmptyState mascot="sleep" title="Keine Ratsmitglieder" hint="Es wurden noch keine Anwesenheiten aus den Protokollen erfasst." />;
   }
-  const parties = Array.from(new Set(all.map((m) => m.party).filter((p): p is string => !!p))).sort();
+  // Der Filter führt Fraktionen, keine Zusammenschlüsse: „Mitglied der Gruppe
+  // FDP/Volt" ist niemand — man gehört der FDP an oder Volt (Tims Befund
+  // 21.08.2026). Wo die Auflösung nichts fand, zählt das Gruppen-Label für
+  // beide Parteien; die Karte nennt daneben weiter das ehrliche Label.
+  const parties = Array.from(new Set(all.flatMap((m) => m.filter_parteien ?? []))).sort();
   const needle = q.trim().toLowerCase();
-  const filtered = all.filter((m) => (!needle || m.name.toLowerCase().includes(needle)) && (!party || m.party === party));
+  const filtered = all.filter((m) => (!needle || m.name.toLowerCase().includes(needle))
+    && (!party || (m.filter_parteien ?? []).includes(party)));
   const rat = filtered.filter((m) => m.art !== "beratend");
   const beratend = filtered.filter((m) => m.art === "beratend");
 

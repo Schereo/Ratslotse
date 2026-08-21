@@ -269,6 +269,10 @@ export interface Member {
   art: "rat" | "beratend";
   /** Entsendende Organisation der beratenden Mitglieder („Behindertenbeirat"). */
   organisation: string | null;
+  /** Werte, unter denen die Person im Fraktions-Filter erscheint. Meist die
+   *  eine Fraktion; ein verbliebenes Zusammenschluss-Label („Die Linke/
+   *  Piraten") zählt für beide Parteien, damit niemand aus dem Filter fällt. */
+  filter_parteien: string[];
   n: number; committees: number; first: string | null; last: string | null;
 }
 

@@ -4312,6 +4312,62 @@ class CouncilStore:
             return set()
         return {self._person_slug_kanonisch(r["name"]) for r in rows}
 
+    def _ris_fraktionen(self) -> dict[str, str]:
+        """``{Slug: Fraktion laut RIS-Stammdaten}`` — die Stammdaten führen die
+        EINZEL-Partei, wo das Protokoll nur die Gruppe kennt."""
+        try:
+            rows = self._conn.execute(
+                "SELECT name, fraktion_aktuell FROM council_persons "
+                "WHERE fraktion_aktuell IS NOT NULL AND fraktion_aktuell != ''").fetchall()
+        except sqlite3.OperationalError:
+            return {}
+        return {self._person_slug_kanonisch(r["name"]): r["fraktion_aktuell"] for r in rows}
+
+    def _partei_der_person(self, slug: str, label: str | None,
+                           phasen: dict, ris_fraktion: dict[str, str]) -> str | None:
+        """Die Zugehörigkeit, die eine Person WIRKLICH hat — Gruppen-Label der
+        bloßen Zusammenschlüsse aufgelöst.
+
+        Ein Mensch ist Mitglied einer Partei, nicht einer Gruppe: „FDP/Volt"
+        war ein Zusammenschluss von FDP- und Volt-Leuten, und wer ausschied,
+        während es die Gruppe noch gab, blieb im Verzeichnis für immer
+        „FDP/Volt" — obwohl er FDP-Mitglied ist (Tims Befund 21.08.2026).
+        Aufgelöst wird über belegte Quellen: erst die RIS-Stammdaten, dann die
+        eigene Anwesenheits-Historie. Ohne Beleg bleibt das Gruppen-Label
+        stehen — geraten wird nicht. „Für Oldenburg" und „IBO/LiVe" sind
+        eigenständige Gruppen und bleiben unangetastet (s. AUFLOESBARE_GRUPPEN).
+        """
+        from council.parties import AUFLOESBARE_GRUPPEN, classify_faction
+        if not label:
+            return None
+        c = classify_faction(label)
+        if c["kind"] != "gruppe" or c["label"] not in AUFLOESBARE_GRUPPEN:
+            return label
+        mitglieds_parteien = set(c["parties"])
+        aus_ris = classify_faction(ris_fraktion.get(slug))
+        if aus_ris["kind"] == "partei" and aus_ris["label"] in mitglieds_parteien:
+            return aus_ris["label"]
+        # Eigene Historie, jüngste zuerst: Wer irgendwann unter der Einzelpartei
+        # geführt wurde, gehört ihr an.
+        for lab, _zeitraum in sorted(phasen.items(), key=lambda kv: kv[1][1], reverse=True):
+            if lab in mitglieds_parteien and classify_faction(lab)["kind"] == "partei":
+                return lab
+        return label
+
+    def _filter_parteien(self, label: str | None) -> list[str]:
+        """Unter welchen Filter-Werten diese Person erscheinen soll. Parteien
+        und eigenständige Gruppen stehen für sich; ein verbliebenes
+        Zusammenschluss-Label („Die Linke/Piraten", wo die Auflösung nichts
+        fand) zählt für BEIDE Parteien — die Person verschwindet damit nicht
+        aus dem Filter, und ihre Karte nennt weiter das ehrliche Gruppen-Label."""
+        from council.parties import AUFLOESBARE_GRUPPEN, classify_faction
+        if not label:
+            return []
+        c = classify_faction(label)
+        if c["kind"] == "gruppe" and c["label"] in AUFLOESBARE_GRUPPEN:
+            return list(c["parties"])
+        return [c["label"]] if c["kind"] in ("partei", "gruppe") else []
+
     def list_members(self) -> list[dict]:
         """Council members from attendance (role mitglied/vorsitz), grouped by *person*
         so alle Schreibweisen desselben Menschen EINEN Eintrag ergeben — Titel-Varianten
@@ -4365,8 +4421,10 @@ class CouncilStore:
             if org and (e["org_at"] is None or d >= e["org_at"][0]):
                 e["org_at"] = (d, org)
         ris = self._ris_ratsmitglieder()
+        ris_fraktion = self._ris_fraktionen()
         out = [{"slug": sl, "name": self._person_anzeige(self._haeufigster_name(e["names"])),
-                "party": e["party_at"][1] if e["party_at"] else None,
+                "party": self._partei_der_person(
+                    sl, e["party_at"][1] if e["party_at"] else None, e["phasen"], ris_fraktion),
                 "art": "rat" if (e["plenum"] or sl in ris) else "beratend",
                 "organisation": e["org_at"][1] if e["org_at"] else None,
                 "phasen": [{"partei": lab, "von": von[:4], "bis": bis[:4]}
@@ -4378,6 +4436,7 @@ class CouncilStore:
         for m in out:
             if m["art"] == "rat":
                 m["organisation"] = None   # ein Mandat entsendet niemand
+            m["filter_parteien"] = self._filter_parteien(m["party"])
         out.sort(key=lambda m: -m["n"])
         return out
 
