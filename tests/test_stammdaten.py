@@ -218,6 +218,10 @@ def test_classify_faction_groups_vs_parties():
     assert classify_faction("")["kind"] == "parteilos"
     assert classify_faction(None)["kind"] == "parteilos"
     assert classify_faction("Verwaltung")["kind"] == "unbekannt"
+    # WFO-LKR ist eine Ratsgruppe (Norrenbrock, Dr. Schreier sitzen im Plenum) —
+    # ohne den Eintrag las das Verzeichnis beide als „parteilos" (21.08.2026).
+    assert classify_faction("WFO-LKR")["kind"] == "gruppe"
+    assert classify_faction("WFO -LKR")["label"] == "WFO-LKR"
 
 
 def test_member_detail_groups_and_parteilos(tmp_path):

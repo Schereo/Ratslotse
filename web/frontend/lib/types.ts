@@ -263,6 +263,16 @@ export interface EntityDetail {
 
 export interface Member {
   slug: string; name: string; party: string | null;
+  /** „rat" = Ratsmandat (im Plenum geführt oder im RIS als Ratsmitglied),
+   *  „beratend" = beratendes Mitglied eines Ausschusses (Verband, Beirat,
+   *  Fachperson) — dem Rat gehört es nicht an. */
+  art: "rat" | "beratend";
+  /** Entsendende Organisation der beratenden Mitglieder („Behindertenbeirat"). */
+  organisation: string | null;
+  /** Werte, unter denen die Person im Fraktions-Filter erscheint. Meist die
+   *  eine Fraktion; ein verbliebenes Zusammenschluss-Label („Die Linke/
+   *  Piraten") zählt für beide Parteien, damit niemand aus dem Filter fällt. */
+  filter_parteien: string[];
   n: number; committees: number; first: string | null; last: string | null;
   /** Die belegten Schreibweisen dieser Person aus den Anwesenheitslisten —
    *  meist nur eine, gelegentlich zwei Namensformen. Nicht zur Anzeige
@@ -275,6 +285,9 @@ export interface MemberDetail {
   /** Fehlt bei älteren gecachten Antworten — dann als "rat" behandeln. */
   typ?: "rat";
   name: string; slug: string; party: string | null;
+  /** s. `Member.art` — bei „beratend" bleibt `faction_timeline` leer. */
+  art: "rat" | "beratend";
+  organisation: string | null;
   n_sessions: number; active_from: string | null; active_to: string | null;
   /** Fraktions-/Gruppen-Verlauf aus der Anwesenheit: Phasen je Zugehörigkeit,
    *  älteste zuerst. `kind` unterscheidet Partei / (Rats-)Gruppe / parteilos;

@@ -60,6 +60,26 @@ GRUPPEN: tuple[tuple[str, ...], ...] = (
     # Hier ist die kürzere Form die jüngste — die Regel oben löst auch das
     # richtig, weil sie nur auf das Datum sieht.
     ("christine-wolff", "christine-berta-wolff"),
+    # Geprüft am Bestand 21.08.2026 (Tims Befund, dass dieselbe Person zweimal
+    # im Verzeichnis steht). Die vier folgenden Gruppen kommen aus derselben
+    # Prüfung, decken aber einen Fall ab, den `verdachtsfaelle` bewusst nicht
+    # vorschlägt: eine Form OHNE Vornamen bzw. mit Initiale (die Bedingung dort
+    # verlangt zwei Namensteile auf beiden Seiten). Je Gruppe geprüft:
+    # dieselbe Rolle, dasselbe Gremium, keine gemeinsame Anwesenheitsliste.
+    #
+    # 158 + 1 Sitzung, beide SPD, Ausschuss für Finanzen und Beteiligungen;
+    # Ratsmandat seit 2021-11-01, offen. Die kurze Form steht an genau einem
+    # Tag (13.05.2025).
+    ("thomas-klein", "klein"),
+    # 17 + 3 Sitzungen als Verwaltung/Beschäftigtenvertretung, dasselbe
+    # Gremium; „U." ist die Initiale von Ulrich.
+    ("ulrich-helpertz", "u-helpertz"),
+    # 2 + 2 Sitzungen als Verwaltung, dasselbe Gremium, getrennte Zeiträume
+    # (2018/19 als „Dr. Götte", 2021–2024 mit Vornamen).
+    ("walter-goette", "goette"),
+    # 1 + 1 Sitzung als Verwaltung, dasselbe Gremium, 2019 ohne, 2024 mit
+    # Vornamen.
+    ("tim-streit", "streit"),
 )
 
 _ZU_GRUPPE: dict[str, tuple[str, ...]] = {s: g for g in GRUPPEN for s in g}

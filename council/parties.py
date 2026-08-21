@@ -18,6 +18,10 @@ _NON_PARTY = (
     "baurat", "dezernent", "stadtkämmerer", "beauftragt", "beirat", "vertretung",
     "elternrat", "naturschutz", "nabu", "bund", "adfc", "fossil free", "agenda",
     "ratsfrau", "ratsherr", "prof.", "dr. ", "herr ", "frau ",
+    # Rechtsformen: Vereine und Gesellschaften sind nie eine Fraktion. Ohne sie
+    # las „Gemeinsam für Oldenburg e.V." als Ratsgruppe „Für Oldenburg" und
+    # machte einen Verbandsvertreter zum Gruppenmitglied (Befund 21.08.2026).
+    "e.v", "gmbh",
 )
 
 # Recognised factions/groups, checked top-to-bottom (most specific first).
@@ -38,6 +42,16 @@ _RULES: list[tuple[tuple[str, ...], str]] = [
     (("fdp",), "FDP"),
     (("volt",), "Volt"),
 ]
+
+#: Gruppen, die ein bloßer ZUSAMMENSCHLUSS zweier Parteien sind: Ihre
+#: Mitglieder gehören einer der beiden an — „Mitglied der Gruppe FDP/Volt" ist
+#: niemand (Tims Befund 21.08.2026). Wo die Zugehörigkeit belegt ist (RIS oder
+#: eigene Anwesenheits-Historie), zeigt das Verzeichnis deshalb die Partei.
+#: BEWUSST NICHT dabei: „Für Oldenburg" (eigenständige Gruppe aus Parteilosen
+#: und einem Piraten — das RIS führt sie selbst nur als Gruppe) und „IBO/LiVe"
+#: (zwei Wählergemeinschaften, keine Parteien).
+AUFLOESBARE_GRUPPEN = frozenset({"FDP/Volt", "Die Linke/Piraten"})
+
 
 # Display order (current / most active first), then historical.
 CANONICAL_ORDER = [
@@ -74,6 +88,12 @@ def order_key(party: str) -> tuple[int, str]:
 # (needles: ALLE müssen im Label vorkommen) → (Anzeigename, Mitglieds-Parteien)
 _GROUPS: list[tuple[tuple[str, ...], str, tuple[str, ...]]] = [
     (("fdp", "volt"), "FDP/Volt", ("FDP", "Volt")),                 # bis 2025, dann getrennt
+    # Ratsgruppe der Wahlperiode bis 2021 (Norrenbrock, Dr. Schreier). Ohne
+    # diesen Eintrag las das Verzeichnis beide als „parteilos", obwohl sie im
+    # Plenum sitzen (Tims Befund 21.08.2026). Das Label steht ausschließlich in
+    # Anwesenheitslisten und Wortbeiträgen, nie in Beschlüssen — die
+    # Antrags-Auswertung ändert sich dadurch nicht.
+    (("wfo",), "WFO-LKR", ("WFO", "LKR")),
     (("linke", "piraten"), "Die Linke/Piraten", ("Die Linke", "Piraten")),
     (("für oldenburg",), "Für Oldenburg", ("parteilos", "Piraten")),  # Finke (parteilos) + Sander (Piraten)
     (("ibo", "live"), "IBO/LiVe", ("IBO", "LiVe")),

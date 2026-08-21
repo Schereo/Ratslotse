@@ -85,12 +85,17 @@ export type PersonEintrag = {
   /** "blocker": Gäste/Protokoll/beratende Mitglieder — nie ein Badge, aber
    *  ihr Nachname macht einen kahlen Nachnamen im Text mehrdeutig (Tims
    *  Oltmanns-Befund 12.08.).
+   *  "beratend": beratendes Mitglied eines Ausschusses (Verband, Beirat,
+   *  Fachperson) — dem Rat gehört es nicht an.
    *  "beteiligung": nur aus dem Beteiligungsbericht bekannt — Aufsichtsorgane
    *  der städtischen Gesellschaften (Landkreis, Belegschaft,
    *  Mitgesellschafter). `von`/`bis` sind hier BERICHTSJAHRGÄNGE, nicht
    *  Sitzungsjahre, und `aktiv` heißt „steht im jüngsten Bericht". */
-  art: "rat" | "stadt" | "beteiligung" | "blocker";
+  art: "rat" | "beratend" | "stadt" | "beteiligung" | "blocker";
   partei: string | null; rolle: string | null;
+  /** Fraktions-Phasen mit Zeitraum — NUR bei Wechslern gesetzt (13 Personen im
+   *  Bestand). `partei` ist die heutige; hier steht, was vorher war. */
+  phasen?: { partei: string; von: string; bis: string }[] | null;
   aktiv: boolean; von: string | null; bis: string | null;
 };
 
@@ -157,10 +162,11 @@ function klammerIstParteiLabel(inhalt: string, badgePartei: string | null): bool
  *  dieselben Badges tragen wie Namen im Fließtext. Dort läuft ein
  *  Prosa-Matcher; hier steht der Name schon isoliert da, also genügt die
  *  Nachnamen-Suche — MIT derselben Vorsichtsregel: Bei Namensvettern
- *  entscheiden nur BELEGTE Merkmale (Vorname, sonst die Fraktion der Zeile),
- *  sonst gibt es kein Badge (lieber keins als ein geratenes, Tims
+ *  entscheiden nur BELEGTE Merkmale (Vorname, sonst Fraktion und Sitzungsjahr
+ *  der Zeile), sonst gibt es kein Badge (lieber keins als ein geratenes, Tims
  *  Oltmanns-Befund). */
-function usePersonSuche(): (name: string, partei?: string | null) => PersonEintrag | null {
+function usePersonSuche(): (name: string, partei?: string | null,
+                           jahr?: number | null) => PersonEintrag | null {
   const lexikon = usePersonenLexikon();
   const map = useMemo(() => {
     const m = new Map<string, PersonEintrag[]>();
@@ -172,7 +178,7 @@ function usePersonSuche(): (name: string, partei?: string | null) => PersonEintr
     }
     return m;
   }, [lexikon]);
-  return (name: string, partei?: string | null) => {
+  return (name: string, partei?: string | null, jahr?: number | null) => {
     const woerter = (name || "").match(/[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}/g);
     if (!woerter || map.size === 0) return null;
     const nachname = falteName(woerter[woerter.length - 1]);
@@ -186,28 +192,80 @@ function usePersonSuche(): (name: string, partei?: string | null) => PersonEintr
     const treffer = kandidaten.filter(
       (p) => p.name && vornamen.some((v) => falteName(p.name!.split(" ")[0] || "") === v));
     if (treffer.length === 1 && treffer[0].art !== "blocker") return treffer[0];
-    // Kein Vorname im Protokoll — aber die Fraktion der Zeile steht daneben.
-    // „Behrens (SPD)" ist unter neun Lexikon-Behrens genau einer, „Schilling"
-    // je nach Fraktion Rita (Grüne) oder Michael (CDU). Das ist keine
-    // Heuristik, sondern ein zweites belegtes Merkmal — deshalb gilt es nur
-    // bei EINDEUTIGKEIT und nur für erkannte Parteien („Rat" wäre der
-    // Sammeltopf für alles Unbekannte). Am Prod-Bestand gemessen: 1.505
-    // Beiträge bekommen so ihr Badge, KEIN einziges wechselt (21.08.2026).
+    // Kein Vorname im Protokoll — dann entscheiden die anderen BELEGTEN
+    // Merkmale der Zeile: erst die Fraktion, dann das Sitzungsjahr. Beides
+    // steht in den Daten, nichts davon ist geraten.
+    let echte = kandidaten.filter((p) => p.name && p.art !== "blocker");
+    // (1) Fraktion. „Behrens (SPD)" ist unter neun Lexikon-Behrens genau
+    // einer, „Schilling" je nach Fraktion Rita (Grüne) oder Michael (CDU).
+    // Nennt die Zeile eine erkannte Fraktion, in der KEINER der Kandidaten
+    // steht, gibt es kein Badge: Die Zeile widerspricht dann dem Lexikon
+    // (Vally Finke saß 2022 für die SPD, heute für „Für Oldenburg"), und ein
+    // Badge würde eine Zugehörigkeit behaupten, die neben der Zeile falsch
+    // aussieht. Es bewahrt außerdem vor echten Fehlgriffen: „Dr. Niewerth
+    // Baumann (CDU)" hätte sonst das Badge von Udo Baumann bekommen.
     const k = parteiKuerzel(partei ?? null);
-    if (k === "Rat") return null;
-    const perPartei = kandidaten.filter(
-      (p) => p.name && p.art !== "blocker" && parteiKuerzel(p.partei) === k);
-    return perPartei.length === 1 ? perPartei[0] : null;
+    if (k !== "Rat") {
+      echte = echte.filter((p) => hatteFraktion(p, k, jahr));
+      if (echte.length === 0) return null;
+      if (echte.length === 1) return echte[0];
+    }
+    // (2) Sitzungsjahr gegen den belegten Zeitraum. Tanja Behrens saß 2018
+    // eine Sitzung lang im Rat — ein „Behrens" von 2025 ist damit zwangsläufig
+    // Paul Behrens. Am Prod-Bestand gemessen bringt die Stufe rund 1.400
+    // weitere Beiträge, ohne einer Zuordnung der Fraktions-Stufe zu
+    // widersprechen (21.08.2026).
+    if (!jahr) return null;
+    const imZeitraum = echte.filter(
+      (p) => p.von && p.bis && Number(p.von) <= jahr && jahr <= Number(p.bis));
+    return imZeitraum.length === 1 ? imZeitraum[0] : null;
   };
 }
 
-/** Was auf dem Badge STEHT — „ehem.", „Stadt", „Aufsicht" oder das Parteikürzel. Muss mit
+/** Gehörte diese Person (damals) zu dieser Fraktion? Die heutige Zugehörigkeit
+ *  reicht nicht: Vally Finke saß 2022 für die SPD und sitzt heute für „Für
+ *  Oldenburg" — ihre Beiträge von damals tragen zu Recht das SPD-Label
+ *  (Tims Befund 21.08.2026). Belegt bleibt es trotzdem: Gewertet wird nur, was
+ *  in den Anwesenheitslisten steht, und mit Jahr auch nur die passende Phase.
+ *  Wer eine Fraktion nie hatte, bekommt weiter kein Badge — „Dr. Niewerth
+ *  Baumann (CDU)" wird so nicht zu Udo Baumann. */
+function hatteFraktion(p: PersonEintrag, kuerzel: string, jahr?: number | null): boolean {
+  if (parteienPassen(parteiKuerzel(p.partei), kuerzel)) return true;
+  return (p.phasen ?? []).some((ph) =>
+    parteienPassen(parteiKuerzel(ph.partei), kuerzel)
+    && (!jahr || (Number(ph.von) <= jahr && jahr <= Number(ph.bis))));
+}
+
+/** Gruppen-Toleranz beim Fraktions-Vergleich: Die Protokolle labeln mal die
+ *  Gruppe („FDP/Volt"), mal die Einzelpartei — Daniela Pfeiffer steht im
+ *  Lexikon als FDP, ihre Wortbeiträge tragen „FDP/Volt". Beides ist dieselbe
+ *  Zugehörigkeit; alles andere muss exakt stimmen. */
+function parteienPassen(a: string, b: string): boolean {
+  if (a === b) return true;
+  const gruppe = new Set(["FDP", "Volt", "FDP/Volt"]);
+  return gruppe.has(a) && gruppe.has(b) && (a === "FDP/Volt" || b === "FDP/Volt");
+}
+
+/** Jahreszahl aus einem Datum — die Zeilen tragen es mal als ISO
+ *  („2025-06-30"), mal deutsch („30.06.2025"); die erste vierstellige Zahl
+ *  ist in beiden Fällen das Jahr. */
+function jahrAus(datum?: string | null): number | null {
+  const treffer = (datum || "").match(/\d{4}/);
+  return treffer ? Number(treffer[0]) : null;
+}
+
+/** Was auf dem Badge STEHT — „ehem.", „Stadt", „beratend", „Aufsicht" oder das
+ *  Parteikürzel. Muss mit
  *  `PersonBadge` deckungsgleich bleiben: `SprecherName` entscheidet daran, ob
  *  die Fraktion daneben noch etwas hinzufügt oder nur dasselbe wiederholt. */
 function personBadgeLabel(p: PersonEintrag): string {
   return !p.aktiv ? "ehem."
     : p.art === "stadt" ? "Stadt"
     : p.art === "beteiligung" ? "Aufsicht"
+    // Beratende Ausschuss-Mitglieder sind keine Ratsleute: „Rat" (das Ergebnis
+    // von parteiKuerzel(null)) behauptete bei ihnen ein Mandat, das sie nicht
+    // haben (Tims Skiba-Befund 21.08.2026).
+    : p.art === "beratend" ? "beratend"
     : parteiKuerzel(p.partei);
 }
 
@@ -218,23 +276,33 @@ function personBadgeLabel(p: PersonEintrag): string {
  *  (CDU)" war doppelt gemoppelt (Tims Befund 21.08.); „Grösch ·ehem.
  *  (Naturschutzbund)" bleibt dagegen stehen, weil „ehem." die Fraktion nicht
  *  nennt. */
-export function SprecherName({ name, partei, zeigePartei = false }: {
-  name: string; partei?: string | null; zeigePartei?: boolean;
+export function SprecherName({ name, partei, datum, zeigePartei = false }: {
+  name: string; partei?: string | null; datum?: string | null; zeigePartei?: boolean;
 }) {
   const suche = usePersonSuche();
-  const p = suche(name, partei);
-  const label = p ? personBadgeLabel(p) : null;
+  const p = suche(name, partei, jahrAus(datum));
+  // Das Badge zeigt die Zugehörigkeit ZUR ZEIT DES BEITRAGS, nicht die von
+  // heute: So wurde der Beitrag gehalten, und so steht er in der Quelle. Dass
+  // sie heute eine andere ist, sagt das Badge daneben (s. PersonBadge).
+  const zeilenPartei = p && p.art === "rat" && parteiKuerzel(partei ?? null) !== "Rat"
+    ? partei ?? null : null;
+  const label = p ? (zeilenPartei ? parteiKuerzel(zeilenPartei) : personBadgeLabel(p)) : null;
   const doppelt = !!label && label !== "Rat" && label === parteiKuerzel(partei ?? null);
   return (
     <>
       {name}
-      {p && <PersonBadge p={p} />}
+      {p && <PersonBadge p={p} zeilenPartei={zeilenPartei} />}
       {zeigePartei && partei && !doppelt ? ` (${partei})` : ""}
     </>
   );
 }
 
-export function PersonBadge({ p }: { p: PersonEintrag }) {
+export function PersonBadge({ p, zeilenPartei = null }: {
+  p: PersonEintrag;
+  /** Fraktion, unter der die ZEILE den Beitrag führt (nur Quellen/Debatten).
+   *  Gesetzt heißt: Das Badge zeigt sie statt der heutigen Zugehörigkeit. */
+  zeilenPartei?: string | null;
+}) {
   const [offen, setOffen] = useState(false);
   // Das Peek wird FEST am Bildschirm positioniert und in den sichtbaren
   // Bereich geklemmt. Zwei Anläufe zuvor scheiterten je an einer anderen
@@ -275,18 +343,26 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
     };
   }, [offen]);
 
-  // „beteiligung" trägt einen neutralen Punkt und KEINE Parteifarbe: Der
-  // Beteiligungsbericht nennt keine Fraktion, und eine Beschäftigten-
-  // vertreterin hat schlicht keine. Ohne den eigenen Zweig fiele sie hier in
+  // Seit wann jemand wo sitzt, weiß das Lexikon — was die Zeile sagt, gilt
+  // hier trotzdem vor: Der Beitrag stammt aus dieser Zeit.
+  const gewechselt = !!zeilenPartei
+    && !!p.partei
+    && !parteienPassen(parteiKuerzel(zeilenPartei), parteiKuerzel(p.partei));
+  // „beteiligung" und „beratend" tragen einen neutralen Punkt und KEINE
+  // Parteifarbe: Weder der Beteiligungsbericht noch eine Ausschuss-Beratung
+  // nennt eine Fraktion. Ohne die eigenen Zweige fielen sie in
   // `parteiKuerzel(null)` — und das antwortet „Rat".
-  const dot = !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
+  const dot = zeilenPartei ? parteiDot(zeilenPartei)
+    : !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
     : p.art === "stadt" ? { bg: "#0764a6", ring: false }
     : p.art === "beteiligung" ? { bg: "hsl(209 10% 62%)", ring: true }
+    : p.art === "beratend" ? { bg: "hsl(209 18% 65%)", ring: true }
     : parteiDot(p.partei || "");
-  const label = personBadgeLabel(p);
+  const label = zeilenPartei ? parteiKuerzel(zeilenPartei) : personBadgeLabel(p);
   const rolle = p.rolle
     || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}`
       : p.art === "beteiligung" ? "Aufsichtsorgan einer städtischen Gesellschaft"
+      : p.art === "beratend" ? "Beratendes Mitglied"
       : "Stadtverwaltung");
   // Der Zeitraum sagt, WORAUS wir die Person kennen. Bei den Aufsichtsorganen
   // sind das Berichtsjahrgänge, nicht Sitzungen — „In den Sitzungen seit
@@ -309,6 +385,15 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
           style={{ backgroundColor: dot.bg }} />
         {label}
       </button>
+      {/* Der Halbsatz, der die Zeit einordnet: „Finke ·SPD (heute Für
+          Oldenburg)". Er erscheint nur, wenn sich die Zugehörigkeit
+          tatsächlich geändert hat — der Wechsel zwischen Gruppen-Label und
+          Einzelpartei („FDP/Volt" ↔ „FDP") ist keiner. */}
+      {gewechselt && (
+        <span className="ml-1 text-[10.5px] font-normal text-muted-foreground/80">
+          (heute {p.aktiv ? p.partei : "nicht mehr im Rat"})
+        </span>
+      )}
       {offen && pos && (
         <span
           className="fixed z-50 block w-64 rounded-xl border border-border bg-card p-3 text-left shadow-lg"
@@ -317,6 +402,11 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
           <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
             {p.aktiv ? rolle : `Ehemals: ${rolle}`}
           </span>
+          {gewechselt && (
+            <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">
+              Zum Zeitpunkt des Beitrags: <strong className="font-semibold text-foreground">{zeilenPartei}</strong>
+            </span>
+          )}
           {zeitraum && (
             <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{zeitraum}</span>
           )}
@@ -699,7 +789,7 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
       <p className="flex items-baseline gap-2">
         <span className="min-w-0 flex-1 truncate font-medium">
           {d.sprecher
-            ? <SprecherName name={d.sprecher} partei={d.partei} zeigePartei />
+            ? <SprecherName name={d.sprecher} partei={d.partei} datum={d.datum} zeigePartei />
             : <>Ohne Namen{d.partei ? ` (${d.partei})` : ""}</>}
           {/* Zusagen der Verwaltung sind Selbstverpflichtungen — kein
               Meinungsbeitrag unter vielen. Sie bekommen deshalb ein eigenes
@@ -873,7 +963,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                       <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">
                         {p.kernaussage.text}
                         <span className="font-mono text-[10px] not-italic text-muted-foreground/80">
-                          {" "}— {p.kernaussage.sprecher ? <SprecherName name={p.kernaussage.sprecher} partei={p.partei} /> : "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
+                          {" "}— {p.kernaussage.sprecher ? <SprecherName name={p.kernaussage.sprecher} partei={p.partei} datum={p.kernaussage.datum} /> : "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
                         </span>
                       </p>
                     )}
@@ -882,7 +972,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                         {p.beitraege_liste.map((b, bi) => (
                           <li key={bi} className="text-[12px] leading-snug">
                             <p className="font-mono text-[10px] text-muted-foreground">
-                              {b.sprecher ? <SprecherName name={b.sprecher} partei={p.partei} /> : "Ohne Namen"} · {b.datum}
+                              {b.sprecher ? <SprecherName name={b.sprecher} partei={p.partei} datum={b.datum} /> : "Ohne Namen"} · {b.datum}
                               {b.gremium ? ` · ${b.gremium}` : ""}
                             </p>
                             <p className="mt-0.5 text-muted-foreground">{b.text}{b.text.length >= 300 ? "…" : ""}</p>
