@@ -16,8 +16,11 @@ function MemberChip({ m }: { m: Member }) {
       <Card className="card-interactive flex items-center gap-3 p-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">{m.name}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {m.n} {m.n === 1 ? "Sitzung" : "Sitzungen"} · {m.committees} {m.committees === 1 ? "Gremium" : "Gremien"}
+            {/* Bei beratenden Mitgliedern steht im Fraktions-Feld die
+                entsendende Organisation — die sagt hier mehr als die Zahl. */}
+            {m.organisation ? ` · ${m.organisation}` : ""}
           </p>
         </div>
         {m.party && <PartyBadge party={m.party} />}
@@ -39,10 +42,12 @@ export function PersonenView() {
   const parties = Array.from(new Set(all.map((m) => m.party).filter((p): p is string => !!p))).sort();
   const needle = q.trim().toLowerCase();
   const filtered = all.filter((m) => (!needle || m.name.toLowerCase().includes(needle)) && (!party || m.party === party));
+  const rat = filtered.filter((m) => m.art !== "beratend");
+  const beratend = filtered.filter((m) => m.art === "beratend");
 
   return (
     <div className="space-y-4">
-      <AnalysisIntro summary={<>Wer im Rat und in den Ausschüssen sitzt — und wie <strong className="font-semibold text-foreground">präsent</strong>.</>}>
+      <AnalysisIntro summary={<>Wer im Rat sitzt, wer die Ausschüsse <strong className="font-semibold text-foreground">berät</strong> — und wie präsent.</>}>
         Aus den Anwesenheitslisten der Protokolle: wer im Rat und in den Ausschüssen sitzt, in welcher Fraktion und wie
         präsent. Protokolle nennen namentliche Einzelstimmen nur selten — daher zählt hier die{" "}
         <strong className="font-semibold text-foreground">Präsenz</strong>, nicht das Stimmverhalten. Erfasst sind
@@ -58,10 +63,38 @@ export function PersonenView() {
           {parties.map((p) => <option key={p} value={p}>{p}</option>)}
         </Select>
       </div>
-      <p className="text-xs text-muted-foreground">{filtered.length} Personen — nach Präsenz sortiert, klicken für das Profil.</p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {filtered.map((m) => <MemberChip key={m.slug} m={m} />)}
-      </div>
+      <p className="text-xs text-muted-foreground">
+        {rat.length} {rat.length === 1 ? "Ratsmitglied" : "Ratsmitglieder"}
+        {beratend.length > 0 && ` · ${beratend.length} beratende ${beratend.length === 1 ? "Person" : "Personen"}`}
+        {" "}— nach Präsenz sortiert, klicken für das Profil.
+      </p>
+      {/* Zwei Abschnitte statt einer Liste: Ein beratendes Ausschuss-Mitglied
+          (Verband, Beirat, Fachperson) gehört dem Rat NICHT an — es zwischen
+          die Ratsmitglieder zu mischen, behauptet ein Mandat, das es nicht
+          gibt (Tims Skiba-Befund 21.08.2026). */}
+      {rat.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {rat.map((m) => <MemberChip key={m.slug} m={m} />)}
+        </div>
+      )}
+      {beratend.length > 0 && (
+        <>
+          <div className="flex items-baseline gap-2 pt-2">
+            <h3 className="font-display text-base font-bold text-foreground">Beratende Mitglieder</h3>
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+              {beratend.length} Personen
+            </span>
+          </div>
+          <p className="-mt-2 text-xs leading-relaxed text-muted-foreground">
+            Verbände, Beiräte und Fachleute, die in Ausschüssen mitberaten — sie sitzen dort mit
+            Rederecht, gehören dem Rat aber nicht an und stimmen nicht mit ab. Erkannt daran, dass
+            sie in keiner Ratssitzung als Mitglied geführt sind.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {beratend.map((m) => <MemberChip key={m.slug} m={m} />)}
+          </div>
+        </>
+      )}
     </div>
   );
 }

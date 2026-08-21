@@ -64,7 +64,7 @@ export type PersonEintrag = {
   /** "blocker": Gäste/Protokoll/beratende Mitglieder — nie ein Badge, aber
    *  ihr Nachname macht einen kahlen Nachnamen im Text mehrdeutig (Tims
    *  Oltmanns-Befund 12.08.). */
-  art: "rat" | "stadt" | "blocker"; partei: string | null; rolle: string | null;
+  art: "rat" | "beratend" | "stadt" | "blocker"; partei: string | null; rolle: string | null;
   aktiv: boolean; von: string | null; bis: string | null;
 };
 
@@ -209,7 +209,13 @@ function jahrAus(datum?: string | null): number | null {
  *  `PersonBadge` deckungsgleich bleiben: `SprecherName` entscheidet daran, ob
  *  die Fraktion daneben noch etwas hinzufügt oder nur dasselbe wiederholt. */
 function personBadgeLabel(p: PersonEintrag): string {
-  return !p.aktiv ? "ehem." : p.art === "stadt" ? "Stadt" : parteiKuerzel(p.partei);
+  return !p.aktiv ? "ehem."
+    : p.art === "stadt" ? "Stadt"
+    // Beratende Ausschuss-Mitglieder sind keine Ratsleute: „Rat" (das Ergebnis
+    // von parteiKuerzel(null)) behauptete bei ihnen ein Mandat, das sie nicht
+    // haben (Tims Skiba-Befund 21.08.2026).
+    : p.art === "beratend" ? "beratend"
+    : parteiKuerzel(p.partei);
 }
 
 /** Sprechername mit Badge, wenn die Person eindeutig im Lexikon steht.
@@ -278,10 +284,12 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
 
   const dot = !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
     : p.art === "stadt" ? { bg: "#0764a6", ring: false }
+    : p.art === "beratend" ? { bg: "hsl(209 18% 65%)", ring: true }
     : parteiDot(p.partei || "");
   const label = personBadgeLabel(p);
   const rolle = p.rolle
-    || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}` : "Stadtverwaltung");
+    || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}`
+      : p.art === "beratend" ? "Beratendes Mitglied" : "Stadtverwaltung");
   const zeitraum = p.aktiv
     ? (p.von ? `In den Sitzungen seit ${p.von}` : null)
     : (p.von && p.bis ? `In den Sitzungen ${p.von}–${p.bis}` : null);

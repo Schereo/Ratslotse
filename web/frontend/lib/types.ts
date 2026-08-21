@@ -263,11 +263,20 @@ export interface EntityDetail {
 
 export interface Member {
   slug: string; name: string; party: string | null;
+  /** „rat" = Ratsmandat (im Plenum geführt oder im RIS als Ratsmitglied),
+   *  „beratend" = beratendes Mitglied eines Ausschusses (Verband, Beirat,
+   *  Fachperson) — dem Rat gehört es nicht an. */
+  art: "rat" | "beratend";
+  /** Entsendende Organisation der beratenden Mitglieder („Behindertenbeirat"). */
+  organisation: string | null;
   n: number; committees: number; first: string | null; last: string | null;
 }
 
 export interface MemberDetail {
   name: string; slug: string; party: string | null;
+  /** s. `Member.art` — bei „beratend" bleibt `faction_timeline` leer. */
+  art: "rat" | "beratend";
+  organisation: string | null;
   n_sessions: number; active_from: string | null; active_to: string | null;
   /** Fraktions-/Gruppen-Verlauf aus der Anwesenheit: Phasen je Zugehörigkeit,
    *  älteste zuerst. `kind` unterscheidet Partei / (Rats-)Gruppe / parteilos;

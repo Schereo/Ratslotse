@@ -3907,8 +3907,16 @@ class CouncilStore:
             gesehen.add(m["slug"])
             out.append({
                 "slug": m["slug"], "name": m["name"], "vorname": vor,
-                "nachname": nach, "art": "rat", "partei": m["party"],
-                "rolle": None,
+                "nachname": nach,
+                # „beratend" ist KEIN Ratsmandat: Ausschüsse führen Verbände,
+                # Beiräte und Fachleute als beratende Mitglieder. Das Badge
+                # sagt das jetzt, statt sie als Ratsleute „parteilos" zu nennen
+                # (Tims Skiba-Befund 21.08.2026).
+                "art": m["art"], "partei": m["party"],
+                "organisation": m["organisation"],
+                "rolle": ("Beratendes Mitglied"
+                          + (f" · {m['organisation']}" if m["organisation"] else "")
+                          if m["art"] == "beratend" else None),
                 "aktiv": bool(m["last"] and m["last"] >= stichtag),
                 "von": (m["first"] or "")[:4] or None,
                 "bis": (m["last"] or "")[:4] or None,
@@ -3943,7 +3951,7 @@ class CouncilStore:
                 continue
             out.append({
                 "slug": sl, "name": anzeige, "vorname": vor, "nachname": nach,
-                "art": "stadt", "partei": None,
+                "art": "stadt", "partei": None, "organisation": None,
                 "rolle": e["rollen"].most_common(1)[0][0] if e["rollen"] else None,
                 "aktiv": bool(e["last"] and e["last"] >= stichtag),
                 "von": (e["first"] or "")[:4] or None,
@@ -3970,8 +3978,8 @@ class CouncilStore:
             _, nach = namensteile(self._person_anzeige(name))
             if nach:
                 out.append({"slug": sl, "name": None, "vorname": "", "nachname": nach,
-                            "art": "blocker", "partei": None, "rolle": None,
-                            "aktiv": False, "von": None, "bis": None})
+                            "art": "blocker", "partei": None, "organisation": None,
+                            "rolle": None, "aktiv": False, "von": None, "bis": None})
         return out
 
     def personen_suchindex(self) -> list[tuple[str, str]]:
@@ -4259,6 +4267,47 @@ class CouncilStore:
         Götte", während ihr Slug walter-goette lautete."""
         return max(zaehler.items(), key=lambda kv: (kv[1], len(kv[0].split()), kv[0]))[0]
 
+    #: Name des Plenar-Gremiums in den Sitzungsdaten. Es ist der Prüfstein für
+    #: ein Ratsmandat (s. list_members) — die Ausschüsse führen daneben
+    #: beratende Mitglieder, die dem Rat nicht angehören.
+    PLENUM = "Rat"
+
+    #: Wörter, die im Fraktions-Feld nur die ROLLE beschreiben („Beratendes
+    #: Mitglied", „beratend", „Verwaltung") — sie benennen keine entsendende
+    #: Organisation und taugen deshalb nicht als Herkunfts-Label.
+    _ROLLEN_LABEL = re.compile(
+        r"^(beratend\w*|beratende[sr]?\s+mitglied\w*|gast|gäste|verwaltung|"
+        r"protokoll\w*|stellv\w*|vertretung|mitglied\w*)$", re.IGNORECASE)
+
+    def _organisation_label(self, raw: str | None) -> str | None:
+        """Die entsendende Organisation aus einem Anwesenheits-Label —
+        „Fridays for Future Oldenburg", „Behindertenbeirat", „Stadtsportbund".
+        None für Fraktionen, Rollenwörter und Leerwerte."""
+        from council.parties import classify_faction
+        if not raw or not raw.strip():
+            return None
+        label = " ".join(raw.split())
+        if classify_faction(label)["kind"] != "unbekannt":
+            return None          # Partei, Gruppe oder parteilos — keine Organisation
+        if self._ROLLEN_LABEL.match(label):
+            return None
+        return label
+
+    def _ris_ratsmitglieder(self) -> set[str]:
+        """Slugs der Personen, die das RIS selbst als Ratsmitglied führt.
+        Zweite Quelle neben der Plenums-Anwesenheit: Nachrücker:innen, die noch
+        in keiner Ratssitzung protokolliert sind, gehören trotzdem dazu.
+        Das RIS kennt nur die laufende Wahlperiode — frühere Ratsleute trägt
+        die Anwesenheit."""
+        try:
+            rows = self._conn.execute(
+                """SELECT DISTINCT p.name FROM council_persons p
+                   JOIN council_memberships m ON m.kpenr = p.kpenr
+                   WHERE m.rolle LIKE 'Ratsmitglied%' OR m.rolle LIKE 'Grundmandat%'""").fetchall()
+        except sqlite3.OperationalError:   # Stammdaten noch nicht geholt
+            return set()
+        return {self._person_slug_kanonisch(r["name"]) for r in rows}
+
     def list_members(self) -> list[dict]:
         """Council members from attendance (role mitglied/vorsitz), grouped by *person*
         so alle Schreibweisen desselben Menschen EINEN Eintrag ergeben — Titel-Varianten
@@ -4275,7 +4324,8 @@ class CouncilStore:
                WHERE a.role IN ('mitglied','vorsitz') AND a.name IS NOT NULL AND a.name != ''"""
         ).fetchall()
         g: dict = defaultdict(lambda: {"names": Counter(), "ksinrs": set(), "committees": set(),
-                                       "first": None, "last": None, "party_at": None})
+                                       "first": None, "last": None, "party_at": None,
+                                       "plenum": 0, "org_at": None})
         for r in rows:
             # Kanonisch: „Klein" und „Thomas Klein" sind ein Mensch und ein
             # Verzeichnis-Eintrag (s. _personen_varianten).
@@ -4286,6 +4336,8 @@ class CouncilStore:
             e["names"][r["name"]] += 1
             e["ksinrs"].add(r["ksinr"])
             e["committees"].add(r["committee"])
+            if r["committee"] == self.PLENUM:
+                e["plenum"] += 1
             d = r["session_date"]
             e["first"] = d if e["first"] is None else min(e["first"], d)
             e["last"] = d if e["last"] is None else max(e["last"], d)
@@ -4296,11 +4348,22 @@ class CouncilStore:
             p = c["label"] if c["kind"] in ("partei", "gruppe") else None
             if p and (e["party_at"] is None or d >= e["party_at"][0]):
                 e["party_at"] = (d, p)
+            # Entsendende Organisation der beratenden Mitglieder: dasselbe Feld
+            # trägt bei ihnen keinen Fraktions-, sondern einen Verbandsnamen.
+            org = self._organisation_label(r["party"])
+            if org and (e["org_at"] is None or d >= e["org_at"][0]):
+                e["org_at"] = (d, org)
+        ris = self._ris_ratsmitglieder()
         out = [{"slug": sl, "name": self._person_anzeige(self._haeufigster_name(e["names"])),
                 "party": e["party_at"][1] if e["party_at"] else None,
+                "art": "rat" if (e["plenum"] or sl in ris) else "beratend",
+                "organisation": e["org_at"][1] if e["org_at"] else None,
                 "n": len(e["ksinrs"]), "committees": len(e["committees"]),
                 "first": e["first"], "last": e["last"]}
                for sl, e in g.items()]
+        for m in out:
+            if m["art"] == "rat":
+                m["organisation"] = None   # ein Mandat entsendet niemand
         out.sort(key=lambda m: -m["n"])
         return out
 
@@ -4393,11 +4456,23 @@ class CouncilStore:
         # zweiten Rundlauf etwas zeigen); weitere Seiten und der Gremien-Filter
         # laufen über /person/{slug}/wortbeitraege.
         wb = self.wortbeitraege_person(name, limit=10)
+        # Mandat oder beratende Mitwirkung? Dieselbe Unterscheidung wie im
+        # Verzeichnis (s. list_members) — und für beratende Mitglieder ist die
+        # Fraktions-Zeitreihe gegenstandslos: Ihr Anwesenheits-Label nennt die
+        # entsendende Organisation, kein Fraktions-Label. Ohne diese Weiche
+        # stand auf ihrer Seite „Ratsmitglied · parteilos" (Tims Befund
+        # 21.08.2026) — beides falsch.
+        eintrag = next((m for m in self.list_members() if m["slug"] == kanon), None)
+        art = eintrag["art"] if eintrag else "rat"
+        if art == "beratend":
+            timeline = []
         return {
             "name": name, "slug": slug,
             # Aktuelle Zugehörigkeit (Ende der geglätteten Zeitreihe) — nicht die
             # häufigste: Wechsler (FDP/Volt→Volt, Linke→BSW) zeigen sonst die alte.
             "party": timeline[-1]["label"] if timeline else None,
+            "art": art,
+            "organisation": eintrag["organisation"] if eintrag else None,
             "n_sessions": span["n"], "active_from": span["first"], "active_to": span["last"],
             "faction_timeline": timeline,
             "ris": self.person_stammdaten_for_names(matched),
