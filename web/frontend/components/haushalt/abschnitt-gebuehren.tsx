@@ -1,5 +1,11 @@
 "use client";
 
+// „Was Sie dafür zahlen" — der VIERTE Abschnitt von /haushalt/konzern.
+//
+// Bis zum 21.08.2026 die eigene Seite /haushalt/gebuehren. Sie steht hinter
+// den Wirtschaftsplänen, weil die Abfallgebühren aus genau einem davon
+// kalkuliert werden — dem des Abfallwirtschaftsbetriebs.
+
 // /haushalt/gebuehren — was Sie dafür zahlen.
 //
 // Diese Seite steht direkt hinter „Was planen die Betriebe?": Dort erfährt
@@ -34,18 +40,19 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import type { Herkunft } from "@/lib/herkunft";
 import { deZahl } from "@/components/grafik/format";
 import {
-  Beleg, Dokumentbeleg, Quellenkontext, Quellenverzeichnis,
+  Beleg, Dokumentbeleg,
 } from "@/components/haushalt/quelle";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 // `herkunft` mit: Jeder Bereich hat seine eigene Fundstelle in derselben
 // Datei („Gebührenbedarfsberechnung 2026, Straßenreinigung"), und die ist
 // der Unterschied zwischen einem 40-Seiten-PDF und einer Stelle darin.
-const FELDER = ["gebuehren", "herkunft"] as const;
-const QUELLEN: QuellenSchluessel[] = ["gebuehren"];
+/** Was dieser Abschnitt braucht. Die SEITE holt es zusammen mit den
+ *  Wirtschaftsplänen in EINEM Aufruf — beide Abschnitte brauchen `herkunft`,
+ *  und `useFetch` hat keinen Zwischenspeicher. */
+export type GebuehrenDaten = HaushaltAuswahl<"gebuehren" | "herkunft">;
 
 /** Was der Bereich macht — eine Zeile, damit die Zahl einen Gegenstand hat. */
 const WAS_ES_IST: Record<string, string> = {
@@ -193,10 +200,9 @@ function BereichsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
   );
 }
 
-export default function GebuehrenPage() {
-  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(
-    haushaltUrl(FELDER));
-
+export function GebuehrenAbschnitt({ data, loading }: {
+  data: GebuehrenDaten | null; loading: boolean;
+}) {
   const nachBereich = useMemo(() => {
     const zeilen = data?.gebuehren ?? [];
     const gruppen = new Map<string, GebuehrenZeile[]>();
@@ -235,13 +241,11 @@ export default function GebuehrenPage() {
   const aeltestes = Math.min(...jahre);
 
   return (
-    <Quellenkontext schluessel={QUELLEN} jahr={juengstes}>
       <div className="flex flex-col gap-4">
         <header>
-          <SchrittKicker href="/haushalt/gebuehren" className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary" />
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">
+          <h2 className="font-display text-xl font-bold tracking-tight sm:text-[22px]">
             Was Sie dafür zahlen
-          </h1>
+          </h2>
           <p className="mt-2 max-w-[68ch] text-[13.5px] leading-relaxed text-foreground/85">
             Abfall- und Straßenreinigungsgebühren stehen nicht im Haushaltsplan
             wie andere Einnahmen — sie werden jedes Jahr eigens ausgerechnet und
@@ -287,10 +291,6 @@ export default function GebuehrenPage() {
             className="transition-transform group-hover:translate-x-0.5" />
         </Link>
 
-        <SchrittWeiter href="/haushalt/gebuehren" />
-
-        <Quellenverzeichnis schluessel={QUELLEN} />
       </div>
-    </Quellenkontext>
   );
 }

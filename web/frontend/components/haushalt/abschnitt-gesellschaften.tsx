@@ -1,5 +1,12 @@
 "use client";
 
+// „Was machen die eigentlich?" — der ZWEITE Abschnitt von /haushalt/konzern.
+//
+// Bis zum 21.08.2026 die eigene Seite /haushalt/beteiligungen. Vier Seiten
+// beantworteten die Frage „Ist das die ganze Stadt?": die Summe, die
+// Gesellschaften einzeln, ihre Wirtschaftspläne und die Gebühren, die daraus
+// folgen. Sie stehen jetzt als Abschnitte beieinander.
+
 // /haushalt/beteiligungen — „Was machen die eigentlich?" (H3-02 / H4-11)
 //
 // Schritt 12: Die Stadt ist mehr als das Rathaus. Der Gesamtabschluss
@@ -47,7 +54,7 @@
 // Fundstellen, nicht unsere Rechenproben. Eine Ausnahme, begründet: Wo eine
 // Zahl FEHLT, sagt die Seite es — das ist eine Auskunft über die Quelle.
 
-import { Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Building2, FileText } from "lucide-react";
@@ -62,15 +69,12 @@ import { deZahl } from "@/components/grafik/format";
 import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { FormZeichen, Konzernkarte } from "@/components/haushalt/konzernkarte";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/quelle";
 import { Steckbrief } from "@/components/haushalt/beteiligung-steckbrief";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
-import {
-  SchrittKicker, SchrittWeiter, schrittNummer,
-} from "@/components/haushalt/schritt-weiter";
+import { schrittNummer } from "@/components/haushalt/schritt-weiter";
 
-const QUELLEN = ["beteiligungsbericht"] as const;
 
 /** Die Jahresergebnis-Reihe als Daten-Vertrag des Baukastens: Werte in
  *  Mio. €, ohne erfundene Zwischenjahre — was der Bericht nicht nennt,
@@ -216,7 +220,7 @@ function Filterleiste({ liste, form, setForm, suche, setSuche }: {
   );
 }
 
-function Seite() {
+export function GesellschaftenAbschnitt() {
   const params = useSearchParams();
   const router = useRouter();
   const gewaehlt = params.get("g");
@@ -263,30 +267,29 @@ function Seite() {
   }
 
   const oeffne = (key: string) =>
-    router.push(`/haushalt/beteiligungen?g=${encodeURIComponent(key)}`);
+    router.push(`/haushalt/konzern?g=${encodeURIComponent(key)}#gesellschaften`);
 
   // Der Anteil der Stadt je Gesellschaft — aus der Gesellschaftertabelle des
   // Berichts, die nur mit bestandener Probe im Bestand landet.
   const quote = (g: string) => stadtAnteil(data, g);
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]} jahr={bericht}>
-      {aktiv ? (
+      /* MIT `?g=` ersetzt der Steckbrief nur DIESEN Abschnitt, nicht die Seite.
+         Vorher war er eine Seitenübernahme — auf der gemeinsamen Seite hätte er
+         die drei anderen Abschnitte verschluckt, und der Weg zurück wäre der
+         Browser-Zurück gewesen. */
+      aktiv ? (
         <div className="flex flex-col gap-4">
           <Steckbrief daten={data} g={aktiv}
-            zurueck={() => router.push("/haushalt/beteiligungen")} />
-          <SchrittWeiter href="/haushalt/beteiligungen" />
-
-          <Quellenverzeichnis schluessel={[...QUELLEN]} />
+            zurueck={() => router.push("/haushalt/konzern#gesellschaften")} />
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex items-end justify-between gap-5">
             <div className="min-w-0">
-              <SchrittKicker href="/haushalt/beteiligungen" />
-              <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
+              <h2 className="font-display text-xl font-bold tracking-tight sm:text-[22px]">
                 Was machen die eigentlich?
-              </h1>
+              </h2>
               <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
                 Die Stadt ist mehr als das Rathaus: {liste.length} Betriebe und
                 Gesellschaften erledigen städtische Aufgaben — vom Klinikum bis zur
@@ -428,9 +431,7 @@ function Seite() {
                 Mehrere Betriebe führen ihr Ergebnis an die Stadt ab oder bekommen es
                 ausgeglichen; in ihren Büchern bleibt dann eine Null stehen. Was sie
                 erwirtschaftet haben, zeigt der{" "}
-                <Link href="/haushalt/konzern" className="font-semibold text-primary">
-                  Gesamtabschluss
-                </Link>.
+
               </li>
               <li>
                 <strong>Die Jahrgänge vor 2022 fehlen.</strong> Die Stadt hat den Bericht
@@ -467,29 +468,7 @@ function Seite() {
               className="flex-none text-primary transition-transform group-hover:translate-x-0.5" />
           </Link>
 
-          <Link href="/haushalt"
-            className="group flex items-center gap-2 text-[13px] font-semibold text-primary">
-            Zurück zur Übersicht über den Haushalt
-            <ArrowRight size={14} strokeWidth={2}
-              className="transition-transform group-hover:translate-x-0.5" />
-          </Link>
-
-          <Quellenverzeichnis schluessel={[...QUELLEN]} />
         </div>
-      )}
-    </Quellenkontext>
-  );
-}
-
-export default function BeteiligungenSeite() {
-  // useSearchParams braucht eine Suspense-Grenze (Export-Konvention).
-  return (
-    <Suspense fallback={
-      <div className="py-16 text-center text-sm text-muted-foreground">
-        Gesellschaften werden geladen …
-      </div>
-    }>
-      <Seite />
-    </Suspense>
+      )
   );
 }

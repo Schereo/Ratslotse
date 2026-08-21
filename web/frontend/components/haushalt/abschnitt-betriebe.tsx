@@ -1,5 +1,10 @@
 "use client";
 
+// „Was planen die Betriebe?" — der DRITTE Abschnitt von /haushalt/konzern.
+//
+// Bis zum 21.08.2026 die eigene Seite /haushalt/betriebe. Siehe den Kopf von
+// `abschnitt-konzern.tsx`.
+
 // /haushalt/betriebe — der Haushalt neben dem Haushalt.
 //
 // Der Rat beschließt nicht nur den Stadthaushalt, sondern daneben die
@@ -35,19 +40,21 @@ import {
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import type { Herkunft } from "@/lib/herkunft";
 import {
-  Beleg, Dokumentbeleg, Quellenkontext, Quellenverzeichnis,
+  Beleg, Dokumentbeleg,
 } from "@/components/haushalt/quelle";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { SchrittKicker } from "@/components/haushalt/schritt-weiter";
 import { cn } from "@/lib/utils";
 
 // `herkunft` ist hier PFLICHT und keine Zugabe: Ein Jahrgang besteht aus
 // bis zu sieben Plänen von sieben Betrieben, und nur die `herkunft_id` der
 // Zeile sagt, welches der sieben Papiere hinter DIESER Karte steht.
-const FELDER = ["wirtschaftsplaene", "herkunft"] as const;
-const QUELLEN: QuellenSchluessel[] = ["wirtschaftsplan"];
+/** Was dieser Abschnitt an Daten braucht. Die SEITE holt sie — sie muss aus
+ *  denselben Zeilen die Nummerierung der Wirtschaftspläne rechnen
+ *  (`jeDokument`), und `useFetch` hat keinen Zwischenspeicher: Ein zweiter
+ *  Aufruf wäre ein zweiter Request auf dieselbe Adresse. */
+export type BetriebeDaten = HaushaltAuswahl<"wirtschaftsplaene" | "herkunft">;
 
 
 
@@ -277,10 +284,9 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
   );
 }
 
-function BetriebeInner() {
-  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(
-    haushaltUrl(FELDER));
-
+export function BetriebeAbschnitt({ data, loading }: {
+  data: BetriebeDaten | null; loading: boolean;
+}) {
   const nachBetrieb = useMemo(() => {
     const zeilen = data?.wirtschaftsplaene ?? [];
     const gruppen = new Map<string, WirtschaftsplanZeile[]>();
@@ -299,21 +305,6 @@ function BetriebeInner() {
     });
   }, [data]);
 
-  // JEDER PLAN EINE EIGENE NUMMER. Über fünf Wirtschaftsplänen aus fünf
-  // Betrieben stand „1 Quelle" — richtig nach der alten Regel (eine Nummer je
-  // Quellenart) und trotzdem die falsche Auskunft (Tim, 21.08.2026). Hier ruht
-  // jede Karte auf genau EINEM Papier, also verdient jedes seine Ziffer.
-  //
-  // Gesammelt wird aus den KARTEN, nicht aus dem Jahrgang: Den Stadthafen gibt
-  // es seit 2020 nicht mehr, die Stadion-Planung endete 2024 — ihre Papiere
-  // stehen in keiner Jahrgangsliste von 2026, ihre Karten aber sehr wohl auf
-  // der Seite.
-  const jeDokument = useMemo(() => {
-    const urls = nachBetrieb
-      .map((zeilen) => herkunftVon(data, juengsteZeile(zeilen).herkunft_id)?.url)
-      .filter((u): u is string => !!u);
-    return urls.length ? { wirtschaftsplan: urls } : {};
-  }, [nachBetrieb, data]);
 
   if (loading || !data) {
     return (
@@ -335,13 +326,11 @@ function BetriebeInner() {
   const aeltestes = Math.min(...jahre);
 
   return (
-    <Quellenkontext schluessel={QUELLEN} jeDokument={jeDokument} jahr={juengstes}>
       <div className="flex flex-col gap-4">
         <header>
-          <SchrittKicker href="/haushalt/betriebe" className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary" />
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">
+          <h2 className="font-display text-xl font-bold tracking-tight sm:text-[22px]">
             Der Haushalt neben dem Haushalt
-          </h1>
+          </h2>
           <p className="mt-2 max-w-[68ch] text-[13.5px] leading-relaxed text-foreground/85">
             Der Rat beschließt nicht nur den Stadthaushalt. Daneben stehen die
             Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften —
@@ -413,12 +402,6 @@ function BetriebeInner() {
           </ul>
         </div>
 
-        <Quellenverzeichnis schluessel={QUELLEN} />
       </div>
-    </Quellenkontext>
   );
-}
-
-export default function BetriebePage() {
-  return <BetriebeInner />;
 }
