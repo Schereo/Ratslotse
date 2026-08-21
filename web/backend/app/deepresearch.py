@@ -35,6 +35,15 @@ VOLLTEXT_TOP = 10          # so viele Kandidaten mit großem Vorlagen-Auszug …
 VOLLTEXT_ZEICHEN = 4000
 KURZTEXT_ZEICHEN = 800     # … der Rest mit kompaktem
 TOKEN_BUENDEL = 150        # Token-Deltas zu Events bündeln (Replay bleibt schlank)
+
+#: Presse im Bericht — weiter geöffnet als der „Aktuelles von der Stadt"-Block
+#: der schnellen Antwort. Dessen Vorgaben (top_k=3, min_score=0.45) sind dort
+#: richtig: Der Block soll nur erscheinen, wenn es wirklich Einschlägiges gibt.
+#: Für einen Bericht, der 28 Beschlüsse und 12 Wortbeiträge liest, sind drei
+#: Meldungen zu wenig — die Debatten wurden hier längst auf 12 geöffnet, die
+#: Presse nie nachgezogen.
+PRESSE_TOP = 10
+PRESSE_MIN = 0.40
 MAX_PARALLEL = 4           # globaler Deckel gleichzeitiger Recherchen
 TAGES_KONTINGENT = 5       # je Konto (RG-10: „noch n von 5 heute")
 
@@ -311,7 +320,10 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
         anlagen_rows: list[dict] = []
         if emb is not None:
             try:
-                hits_p = emb.search_presse(store, job.frage, begriffe_alle)
+                # Volltext statt Begriffsliste, und breiter als der UI-Block:
+                # siehe PRESSE_TOP.
+                hits_p = emb.search_presse(store, job.frage, job.frage,
+                                           top_k=PRESSE_TOP, min_score=PRESSE_MIN)
                 presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
             except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
                 pass
