@@ -39,7 +39,7 @@ import {
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 // `herkunft` mit: Jeder Bereich hat seine eigene Fundstelle in derselben
 // Datei („Gebührenbedarfsberechnung 2026, Straßenreinigung"), und die ist
@@ -238,9 +238,7 @@ export default function GebuehrenPage() {
     <Quellenkontext schluessel={QUELLEN} jahr={juengstes}>
       <div className="flex flex-col gap-4">
         <header>
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
-            Stadtfinanzen Oldenburg · Schritt 14
-          </p>
+          <SchrittKicker href="/haushalt/gebuehren" className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary" />
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">
             Was Sie dafür zahlen
           </h1>

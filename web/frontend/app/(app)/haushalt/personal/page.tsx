@@ -47,7 +47,7 @@ import { Einordnung } from "@/components/grafik/einordnung";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN = ["stellenplan"] as const;
 
@@ -155,9 +155,7 @@ export default function PersonalPage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-5">
           <div className="min-w-0">
-            <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Stadtfinanzen Oldenburg · Schritt 5
-            </p>
+            <SchrittKicker href="/haushalt/personal" />
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
               Wer macht die Arbeit?
             </h1>

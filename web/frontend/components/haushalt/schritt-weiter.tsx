@@ -59,3 +59,42 @@ export function SchrittWeiter({ href }: { href: string }) {
     </nav>
   );
 }
+
+/** Der Kicker über der Überschrift: „Stadtfinanzen Oldenburg · Schritt N".
+ *
+ *  DIE NUMMER WIRD GERECHNET, NICHT GESCHRIEBEN. Acht Seiten trugen sie bis
+ *  zum 21.08.2026 als Text im Kicker, und damit gab es zwei Wahrheiten für
+ *  dieselbe Zahl: den Wegweiser, der sie durchzählt, und den Satz auf der
+ *  Seite. Sobald eine Seite dazukam, gingen sie auseinander — laut
+ *  `tests/test_haushalt_schritte.py` am 16.08. viermal an einem Tag, und beim
+ *  Zusammenlegen der Etappen (21.08.) wäre es viermal mehr geworden: Jede
+ *  Zusammenlegung verschiebt alles danach um eins.
+ *
+ *  Auffallen kann so ein Widerspruch niemandem — der Wegweiser zeigt die
+ *  richtige Nummer, die Seite die falsche, und beide sehen für sich stimmig
+ *  aus. Deshalb schreibt sie jetzt keine Seite mehr selbst.
+ *
+ *  Kennt die Liste den Pfad nicht (Steckbriefe wie `/haushalt/bereich` haben
+ *  bewusst keinen Schritt), steht nur „Stadtfinanzen Oldenburg" da — eine
+ *  erfundene Nummer wäre schlimmer als keine. */
+export function SchrittKicker({ href, className }: {
+  href: string;
+  className?: string;
+}) {
+  const schritt = SCHRITTE.find((s) => s.href === href);
+  return (
+    <p className={className ?? "font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground"}>
+      Stadtfinanzen Oldenburg{schritt ? ` · Schritt ${schritt.nr}` : ""}
+    </p>
+  );
+}
+
+/** Die Nummer eines Schritts — für Verweis-Karten, die sie im Text mitführen
+ *  („Schritt 11 · Und ist das die ganze Stadt?").
+ *
+ *  Dieselbe Regel wie beim Kicker: nachgeschlagen statt geschrieben. Diese
+ *  beiden Stellen waren die letzten, die eine Nummer als Text trugen — und
+ *  standen nach der ersten Zusammenlegung prompt um eins daneben. */
+export function schrittNummer(href: string): number | null {
+  return SCHRITTE.find((s) => s.href === href)?.nr ?? null;
+}

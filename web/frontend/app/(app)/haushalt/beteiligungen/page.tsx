@@ -66,7 +66,9 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { Steckbrief } from "@/components/haushalt/beteiligung-steckbrief";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import {
+  SchrittKicker, SchrittWeiter, schrittNummer,
+} from "@/components/haushalt/schritt-weiter";
 
 const QUELLEN = ["beteiligungsbericht"] as const;
 
@@ -281,9 +283,7 @@ function Seite() {
         <div className="flex flex-col gap-4">
           <div className="flex items-end justify-between gap-5">
             <div className="min-w-0">
-              <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Stadtfinanzen Oldenburg · Schritt 12
-              </p>
+              <SchrittKicker href="/haushalt/beteiligungen" />
               <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
                 Was machen die eigentlich?
               </h1>
@@ -456,7 +456,7 @@ function Seite() {
             className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
             <span className="min-w-0">
               <span className="block font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Schritt 11 · Und ist das die ganze Stadt?
+                Schritt {schrittNummer("/haushalt/konzern")} · Und ist das die ganze Stadt?
               </span>
               <span className="mt-0.5 block text-[13.5px] font-semibold leading-snug">
                 Wie groß der Konzern Stadt insgesamt ist — Kernverwaltung und alle

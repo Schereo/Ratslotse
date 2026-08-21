@@ -48,17 +48,16 @@ genau dieser Reihenfolge.
 | **Die Gegenprobe** | |
 | `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 7 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
 | `/haushalt/gebaut` | Schritt 8 — „Was wurde davon wirklich gebaut?": die **tatsächlichen** Investitions-Auszahlungen seit 2003, nach Auszahlungsart, aus dem Statistischen Jahrbuch |
-| `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 9 — alle Feststellungen der RPA-Schlussberichte im Wortlaut, mit Textziffer, Seite und Deeplink; dazu die Ketten über die Jahrgänge |
-| `/haushalt/kennzahlen` | Schritt 10 — „Die dreizehn Zahlen": die Kennzahlen, mit denen die Stadt sich selbst zusammenfasst, samt der Rechenwege, die sie danebendruckt |
+| `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 9 — „Geprüft und zusammengefasst", zwei Abschnitte: `#feststellungen` die Feststellungen des Rechnungsprüfungsamts im Wortlaut, je Jahrgang und als Wiederholungskette, `#kennzahlen` die dreizehn Kennzahlen, auf die die Stadt ihren Abschluss selbst eindampft, mit den gedruckten Rechenwegen |
 | **Der Rahmen** | |
-| `/haushalt/konzern` | Schritt 11 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
-| `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 12 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
-| `/haushalt/betriebe` | Schritt 13 — „Was planen die Betriebe?“: die Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften, in derselben Ratssitzung beschlossen wie der Stadthaushalt und mit ihm **nicht addierbar** |
-| `/haushalt/gebuehren` | Schritt 14 — „Was Sie dafür zahlen": die Gebührenbedarfsberechnung des Abfallwirtschaftsbetriebs — was der Bereich kostet, was Dritte tragen, und was übrig bleibt, geteilt durch die Menge |
-| `/haushalt/vergleich` | Schritt 15 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
-| `/haushalt/schulden` | Schritt 16 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
+| `/haushalt/konzern` | Schritt 10 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
+| `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 11 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
+| `/haushalt/betriebe` | Schritt 12 — „Was planen die Betriebe?“: die Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften, in derselben Ratssitzung beschlossen wie der Stadthaushalt und mit ihm **nicht addierbar** |
+| `/haushalt/gebuehren` | Schritt 13 — „Was Sie dafür zahlen": die Gebührenbedarfsberechnung des Abfallwirtschaftsbetriebs — was der Bereich kostet, was Dritte tragen, und was übrig bleibt, geteilt durch die Menge |
+| `/haushalt/vergleich` | Schritt 14 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
+| `/haushalt/schulden` | Schritt 15 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
-| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 17 — „Mitreden", drei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten der Fraktionen mit Abstimmungsergebnis, die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung, `#labor` Was-wäre-wenn mit Hebesatz-Regler und Kürzungen |
+| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 16 — „Mitreden", drei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten der Fraktionen mit Abstimmungsergebnis, die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung, `#labor` Was-wäre-wenn mit Hebesatz-Regler und Kürzungen |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
@@ -68,34 +67,30 @@ Einnahmeart brauchen, über die man sie aufruft — als eigener Schritt stünde
 dort ein beliebiger Einzelfall. Man erreicht sie aus Schritt 1 und 2 sowie aus
 der Bereichstabelle des Einstiegs.
 
-:::caution[Die Reihenfolge steht an mehreren Stellen]
-**Sechs** Seiten schreiben ihre Nummer selbst in den Kicker („Stadtfinanzen
-Oldenburg · Schritt N"), weil sie dort oben steht, wo keine Komponente sie
-einsetzt: `/haushalt/personal` (5), `/haushalt/gebaut` (8),
-`/haushalt/kennzahlen` (10), `/haushalt/konzern` (11),
-`/haushalt/beteiligungen` (12) und `/haushalt/mitreden` (17). Dazu zwei
-Querverweise im Fließtext, die eine Nummer mitführen (`konzern/page.tsx`
-nennt Schritt 12, `beteiligungen/page.tsx` Schritt 11).
+:::caution[Die Reihenfolge steht an zwei Stellen]
+Der Wegweiser (`components/haushalt/wegweiser.tsx`) zählt die Ziele seiner
+vier Stufen durch — das ist die Reihenfolge. Die Tabelle oben ist die zweite
+Stelle, an der dieselben Nummern stehen, und die einzige außerhalb des Codes.
+`tests/test_haushalt_schritte.py` gleicht beide ab.
 
-Wer Schritte umsortiert oder einen dazwischenschiebt, zieht diese Stellen mit
-nach — sonst widersprechen sich zwei Seiten still. Das war schon viermal
-fällig: „Was wird gebaut?" schob den Konzern von 7 auf 8, der Stellenplan von
-8 auf 9, der Beteiligungsbericht den Städtevergleich von 10 auf 11, und „Die
-dreizehn Zahlen" (#627) schob alles ab dem Konzern noch einmal um eins. Beim
-Zusammenlegen der Etappe „Mitreden" (21.08.2026) fiel die Verschiebung aus —
-die drei Seiten standen am Ende —, aber aus drei Nummern wurde eine.
+**Bis zum 21.08.2026 gab es eine dritte:** Acht Seiten schrieben ihre Nummer
+selbst in den Kicker („Stadtfinanzen Oldenburg · Schritt N"), dazu zwei
+Verweis-Karten im Fließtext. Sobald eine Seite dazukam, rutschte alles
+Nachfolgende um eins — am 16.08. viermal an einem Tag, und jedes Mal blieb
+mindestens ein Kicker auf dem alten Stand. Auffallen konnte das niemandem:
+Der Wegweiser zeigte die richtige Nummer, die Seite die falsche, und beide
+sahen für sich stimmig aus.
 
-Der letzte Fall ist der lehrreiche: Eine Seite ans **Ende** der letzten Stufe
-zu hängen verschiebt nichts (so war es bei „Der Streit ums Geld"). „Die
-dreizehn Zahlen" kam aber **mitten** in die zweite Stufe — und damit rutschte
-jede Nummer danach. Genau dieser Versatz stand anschließend über Wochen
-falsch in dieser Doku, während der Code durchgehend stimmte.
+Beim Zusammenlegen der Etappen wäre es viermal mehr geworden — jede
+Zusammenlegung verschiebt ebenfalls alles danach. Statt den Widerspruch
+weiter zu bewachen, ist er abgeschafft: `<SchrittKicker href="…" />` und
+`schrittNummer(href)` (beide in `components/haushalt/schritt-weiter.tsx`)
+schlagen die Zahl in derselben Liste nach, die der Wegweiser zählt. Kennt
+die Liste den Pfad nicht — Steckbriefe wie `/haushalt/bereich` haben bewusst
+keinen Schritt —, steht nur „Stadtfinanzen Oldenburg" da.
 
-`tests/test_haushalt_schritte.py` hält alle drei Wahrheiten synchron: den
-Wegweiser, die selbstgeschriebenen Kicker **und diese Tabelle**. Bis 19.08.2026
-prüfte er nur Code gegen Code — deshalb konnte die Doku überhaupt so weit
-weglaufen. Wer jetzt einen Schritt einschiebt und die Tabelle vergisst, sieht
-es im Testlauf statt erst beim nächsten Lesen.
+Wer eine Seite einfügt oder zusammenlegt, zieht also nur noch **diese
+Tabelle** nach.
 :::
 
 Query-Parameter statt dynamischer Segmente, weil der Capacitor-Export die

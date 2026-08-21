@@ -62,6 +62,9 @@ async function redirects() {
     { source: "/haushalt/jahr", destination: "/haushalt/mitreden#termine", permanent: true },
     { source: "/haushalt/streit", destination: "/haushalt/mitreden#streit", permanent: true },
     { source: "/haushalt/labor", destination: "/haushalt/mitreden#labor", permanent: true },
+    // „Die Prüfung" und „Die dreizehn Zahlen" (21.08.2026): geprüft und
+    // zusammengefasst stehen als Abschnitte auf einer Seite.
+    { source: "/haushalt/kennzahlen", destination: "/haushalt/pruefung#kennzahlen", permanent: true },
   ];
 }
 

@@ -1,5 +1,10 @@
 "use client";
 
+// „Die dreizehn Zahlen" — der ZWEITE Abschnitt von /haushalt/pruefung.
+//
+// Bis zum 21.08.2026 die eigene Seite /haushalt/kennzahlen. Siehe den Kopf
+// von `abschnitt-pruefung.tsx`.
+
 // /haushalt/kennzahlen — „Die dreizehn Zahlen"
 //
 // Am Ende jedes Rechenschaftsberichts steht eine Anlage, die den ganzen
@@ -42,9 +47,8 @@ import {
   korrekturenVon, punkteVon, reiheVon, schreibe,
 } from "@/lib/haushalt-kennzahlen";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 //: Kleine Zahlen schreibt der Bereich aus („aus sechs Berichten"), große als
 //: Ziffern. Die Grenze liegt bei zwölf — darüber wird es zum Zungenbrecher.
@@ -53,7 +57,6 @@ const ZAHLWORT: Record<number, string> = {
   7: "sieben", 8: "acht", 9: "neun", 10: "zehn", 11: "elf", 12: "zwölf",
 };
 
-const QUELLEN = ["kennzahlen", "bilanz"] as const;
 const FELDER = ["kennzahlen"] as const;
 type Daten = HaushaltAuswahl<(typeof FELDER)[number]>;
 
@@ -271,7 +274,7 @@ function Korrekturen({ daten }: { daten: NonNullable<Daten["kennzahlen"]> }) {
   );
 }
 
-export default function KennzahlenSeite() {
+export function KennzahlenAbschnitt() {
   const { data } = useFetch<Daten>(haushaltUrl([...FELDER]));
   const [gewaehlt, setGewaehlt] = useState("eigenkapitalquote_1");
 
@@ -298,16 +301,12 @@ export default function KennzahlenSeite() {
   const quelleUrl = "https://buergerinfo.oldenburg.de";
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]} jahr={jahr}>
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-5">
           <div className="min-w-0">
-            <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Stadtfinanzen Oldenburg · Schritt 10
-            </p>
-            <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
+            <h2 className="font-display text-xl font-bold tracking-tight sm:text-[22px]">
               Die dreizehn Zahlen
-            </h1>
+            </h2>
             <p className="mt-1.5 max-w-[66ch] text-sm leading-relaxed text-muted-foreground">
               Am Ende jedes Rechenschaftsberichts dampft die Stadt ihren ganzen
               Jahresabschluss auf dreizehn Kennzahlen ein — und druckt darunter,
@@ -365,9 +364,6 @@ export default function KennzahlenSeite() {
           </p>
         )}
 
-        <Quellenverzeichnis schluessel={[...QUELLEN]} />
-        <SchrittWeiter href="/haushalt/kennzahlen" />
       </div>
-    </Quellenkontext>
   );
 }

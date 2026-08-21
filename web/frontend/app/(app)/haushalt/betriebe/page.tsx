@@ -40,6 +40,7 @@ import {
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
+import { SchrittKicker } from "@/components/haushalt/schritt-weiter";
 import { cn } from "@/lib/utils";
 
 // `herkunft` ist hier PFLICHT und keine Zugabe: Ein Jahrgang besteht aus
@@ -337,9 +338,7 @@ function BetriebeInner() {
     <Quellenkontext schluessel={QUELLEN} jeDokument={jeDokument} jahr={juengstes}>
       <div className="flex flex-col gap-4">
         <header>
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
-            Stadtfinanzen Oldenburg · Schritt 13
-          </p>
+          <SchrittKicker href="/haushalt/betriebe" className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary" />
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">
             Der Haushalt neben dem Haushalt
           </h1>

@@ -47,7 +47,9 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import {
+  SchrittKicker, SchrittWeiter, schrittNummer,
+} from "@/components/haushalt/schritt-weiter";
 
 // Nur was auf dieser Seite auch zitiert wird: „jahresabschluss" stand hier,
 // solange der Gegenproben-Block stand — er war die einzige Stelle mit einem
@@ -170,9 +172,7 @@ export default function KonzernPage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-5">
           <div className="min-w-0">
-            <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Stadtfinanzen Oldenburg · Schritt 11
-            </p>
+            <SchrittKicker href="/haushalt/konzern" />
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
               Und ist das die ganze Stadt?
             </h1>
@@ -316,7 +316,7 @@ export default function KonzernPage() {
           className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
           <span className="min-w-0">
             <span className="block font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Schritt 12 · Was machen die eigentlich?
+              Schritt {schrittNummer("/haushalt/beteiligungen")} · Was machen die eigentlich?
             </span>
             <span className="mt-0.5 block text-[13.5px] font-semibold leading-snug">
               Die Gesellschaften einzeln — mit Auftrag, Aufsicht und Ergebnis-Verlauf.

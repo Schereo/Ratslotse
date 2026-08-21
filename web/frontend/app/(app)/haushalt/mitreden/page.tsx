@@ -28,7 +28,7 @@ import { ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Abschnitte } from "@/components/haushalt/abschnitte";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { TermineAbschnitt } from "@/components/haushalt/abschnitt-termine";
 import { StreitAbschnitt } from "@/components/haushalt/abschnitt-streit";
 import { LaborAbschnitt } from "@/components/haushalt/abschnitt-labor";
@@ -69,9 +69,7 @@ function MitredenInner() {
         </div>
 
         <div>
-          <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Stadtfinanzen Oldenburg · Schritt 17
-          </p>
+          <SchrittKicker href="/haushalt/mitreden" />
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
             Mitreden
           </h1>
