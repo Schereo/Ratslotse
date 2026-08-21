@@ -76,12 +76,17 @@ from council.wirtschaftsplan import (BETRIEBE, Wirtschaftsplan,
                                     WirtschaftsplanFehler, dokument_name)
 
 PROBE_KERNZAHL = "wirtschaftsplan_kernzahl"
+PROBE_INVESTITIONEN = "wirtschaftsplan_investitionen"
 
 PROBEN: dict[str, str] = {
     PROBE_KERNZAHL:
         "Die Zahl, über die der Rat abstimmt, steht im Beschlusstext der "
         "Vorlage — und dieselbe Zahl steht in der beigefügten Anlage. Zwei "
         "getrennte Dokumente, unabhängig gesetzt.",
+    PROBE_INVESTITIONEN:
+        "Der Beschlusstext nennt die Investitionen des Vermögensplans und "
+        "gleich daneben, woraus sie finanziert werden — Kreditaufnahme und "
+        "eigene Mittel ergeben zusammen die Summe.",
 }
 
 #: Der Satz im Beschlusstext. Fünf Schreibweisen kommen vor:
@@ -213,8 +218,70 @@ def parse_kernzahl(vorlage_nr: str, titel: str, vorlage_text: str,
         ertraege=None, aufwendungen=None, steuern=None,
         ergebnis=betrag,
         vermoegensplan=None, verpflichtungen=None, entwurf_vom=None,
+        # Der zweite Satz über Geld in derselben Vorlage — mit eigener
+        # Probe, sonst `None` (s. `investitionen_aus_beschluss`).
+        investitionen=investitionen_aus_beschluss(vorlage_text),
     )
     return plan, wort, beleglage
+
+
+#: Die Investitionen im Vermögensplan — der zweite Satz, den diese Vorlagen
+#: über Geld sagen.
+#:
+#: WARUM ES IHN BRAUCHT (Tim, 21.08.2026): „Ich habe in den Wirtschaftsplan
+#: vom Bäderbetrieb reingeguckt und da stehen ja ganz, ganz viele Zahlen drin.
+#: Wie kann es sein, dass hier das Jahresergebnis immer Null ist?" Die Null ist
+#: richtig — alle sieben Jahrgänge schreiben wörtlich „schließt mit einem
+#: geplanten Jahresfehlbetrag in Höhe von 0,00 EUR ab", der Betrieb verpachtet
+#: seit 2005 nur noch sein Vermögen an die Betriebsgesellschaft. Nur stand auf
+#: der Karte dann eine Null und sonst nichts, während derselbe Beschlusstext
+#: 10.752.000 € Investitionen nennt.
+#:
+#: „Ursprüngliche[r] Vermögensplan" ist AUSGESCHLOSSEN und das ist der Kern
+#: dieses Musters: Zwei Jahrgänge (2024, 2025) sind Anpassungs-Vorlagen, die
+#: den alten Stand zitieren, bevor sie ihn ändern. Wer ihn liest, speichert
+#: eine überholte Zahl als aktuelle.
+_INVESTITIONEN = re.compile(
+    r"(?<!ursprünglicher )(?<!ursprüngliche )(?<!urspruenglicher )"
+    r"Verm[öo]gensplan(?:\s+\d{4})?\s+weist\s+Investitionen\s+in\s+H[öo]he\s+von\s+"
+    r"(?P<betrag>\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|Euro|EUR)", re.I)
+
+#: Die Finanzierungsteile in Klammern, direkt hinter dem Satz: „durch eine
+#: Kreditaufnahme am Kreditmarkt (10.702.000 Euro) und aus der Verwendung von
+#: Abschreibungen […] und der Liquidität (50.000 Euro)".
+_FINANZTEIL = re.compile(
+    r"\(\s*(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|Euro|EUR)\s*\)", re.I)
+
+#: Wie weit hinter dem Satz nach den Klammern gesucht wird. Der
+#: Finanzierungssatz folgt unmittelbar; weiter hinten stünden Klammerbeträge
+#: aus ganz anderen Absätzen.
+_FINANZ_FENSTER = 420
+
+#: Ein Euro. Die Teile sind auf volle Euro gerundet gedruckt.
+TOLERANZ_INVEST_EUR = 1.0
+
+def investitionen_aus_beschluss(text: str) -> float | None:
+    """Die Investitionen des Vermögensplans — nur, wenn sie sich selbst prüfen.
+
+    DIE PROBE STEHT IM SATZ DANEBEN. Der Beschlusstext nennt die Summe und
+    unmittelbar darauf, woraus sie finanziert wird; die Teile müssen sie
+    ergeben. Für 2026 des Bäderbetriebs: 10.702.000 € Kredit + 50.000 €
+    Liquidität = 10.752.000 €.
+
+    Fehlt der Finanzierungssatz oder geht er nicht auf, wird **nichts**
+    zurückgegeben. Eine Zahl ohne Gegenrechnung wäre in diesem Bereich der
+    schlechtere Tausch — dieselbe Regel wie überall sonst hier.
+    """
+    flach = re.sub(r"\s+", " ", text or "")
+    m = _INVESTITIONEN.search(flach)
+    if m is None:
+        return None
+    gesamt = _eur(m.group("betrag"))
+    teile = [_eur(x) for x in
+             _FINANZTEIL.findall(flach[m.end():m.end() + _FINANZ_FENSTER])]
+    if not teile or abs(sum(teile) - gesamt) > TOLERANZ_INVEST_EUR:
+        return None
+    return gesamt
 
 
 def _betrieb_key(titel: str) -> str | None:
@@ -238,7 +305,10 @@ def herkunft_fuer(plan: Wirtschaftsplan, wort: str, beleglage: str,
     """Die Herkunft: die **Vorlage**, mit der Anlage als Gegenprobe."""
     return Herkunft(
         art="ris",
-        probe=[PROBE_KERNZAHL],
+        # Die zweite Probe steht nur dran, wo sie auch gelaufen ist: Sie hängt
+        # an einem Satz, den nicht jede Vorlage schreibt.
+        probe=([PROBE_KERNZAHL, PROBE_INVESTITIONEN]
+               if plan.investitionen is not None else [PROBE_KERNZAHL]),
         # Der Name statt des Aktenzeichens — s. `wirtschaftsplan.dokument_name`.
         label=dokument_name(plan),
         url=url or (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"

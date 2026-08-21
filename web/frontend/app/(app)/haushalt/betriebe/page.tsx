@@ -197,9 +197,40 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
         </dd>
       </dl>
 
-      {letzte.vermoegensplan != null && (
-        <p className="mt-2 text-[12px] text-muted-foreground">
-          Dazu ein Vermögensplan über {deMio(letzte.vermoegensplan / 1e6)}&#8239;Mio.&nbsp;€
+      {/* DIE NULL ERKLÄREN, WO SIE STEHT. „Wie kann es sein, dass hier das
+          Jahresergebnis immer Null ist? Ist es wirklich Null? Warum ist es Null?
+          Immer?" (Tim, 21.08.2026) — eine berechtigte Frage vor einer Karte, auf
+          der eine 0,0 und zwei Striche stehen. Sie IST Null: Alle sieben
+          Jahrgänge des Bäderbetriebs schreiben wörtlich „schließt mit einem
+          geplanten Jahresfehlbetrag in Höhe von 0,00 EUR ab". Nur sagte die
+          Karte nicht, dass das Absicht ist und keine fehlende Zahl.
+
+          Die Bedingung hängt an der PROBE und nicht am Betriebskürzel: Wer
+          künftig ebenfalls ausgeglichen plant, bekommt denselben Satz, ohne dass
+          ihn jemand hier einträgt. */}
+      {letzte.ergebnis === 0 && letzte.proben.includes("kernzahl") && (
+        <p className="mt-2 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
+          <span className="font-semibold text-foreground">Ein ausgeglichener
+          Plan.</span> Die Null ist keine fehlende Zahl, sondern die Absicht:
+          Der Betrieb plant weder Überschuss noch Fehlbetrag, und der
+          Ergebnishaushalt der Stadt wird dadurch nicht belastet. Was er
+          bewegt, steht im Vermögensplan.
+        </p>
+      )}
+
+      {(letzte.vermoegensplan != null || letzte.investitionen != null) && (
+        <p className="mt-2 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
+          {letzte.vermoegensplan != null ? (
+            <>Dazu ein Vermögensplan über{" "}
+              {deMio(letzte.vermoegensplan / 1e6)}&#8239;Mio.&nbsp;€</>
+          ) : (
+            // NICHT „Vermögensplan über X": Der Beschlusstext nennt hier nur
+            // die Investitionen, und die sind ein Posten des Vermögensplans,
+            // nicht seine Summe (daneben stehen etwa Tilgungen). Wer die
+            // Teilmenge als Summe ausgibt, untertreibt den Plan.
+            <>Im Vermögensplan stehen Investitionen über{" "}
+              {deMio(letzte.investitionen! / 1e6)}&#8239;Mio.&nbsp;€</>
+          )}
           {letzte.verpflichtungen != null && (
             <> und Verpflichtungsermächtigungen über{" "}
               {deMio(letzte.verpflichtungen / 1e6)}&#8239;Mio.&nbsp;€, die künftige

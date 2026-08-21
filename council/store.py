@@ -1515,6 +1515,14 @@ class CouncilStore:
             "steuern REAL, "                   # bis 2020 keine eigene Zeile → 0
             "ergebnis REAL NOT NULL, "         # als einziges immer da
             "vermoegensplan REAL, "            # Ein- = Auszahlungen, eine Zahl
+            # NICHT dasselbe wie `vermoegensplan`, und die Verwechslung wäre
+            # teuer: Der Vermögensplan ist die Gesamtsumme (Ein- = Auszahlungen),
+            # `investitionen` ein POSTEN darin — daneben stehen dort etwa
+            # Tilgungsleistungen. Der Beschlusstext des Bäderbetriebs nennt nur
+            # diesen Posten („Der Vermögensplan weist Investitionen in Höhe von
+            # 10.752.000 Euro aus"), der des EGH nur die Summe. Zwei Spalten,
+            # weil es zwei Angaben sind.
+            "investitionen REAL, "
             "verpflichtungen REAL, "           # Verpflichtungsermächtigungen
             "entwurf_vom TEXT, "               # Stand des Verwaltungsentwurfs
             "proben TEXT NOT NULL, "
@@ -1533,6 +1541,16 @@ class CouncilStore:
         # So läuft der Umbau genau einmal und auf jedem Bestand von allein.
         wp_spalten = self._conn.execute(
             "PRAGMA table_info(council_wirtschaftsplaene)").fetchall()
+        # `investitionen` kam am 21.08.2026 dazu (Tim: „da stehen ja ganz, ganz
+        # viele Zahlen drin" — die Karte des Bäderbetriebs zeigte nur eine Null).
+        # Ein schlichtes ADD COLUMN reicht: Die Spalte ist nullbar, und NULL ist
+        # hier die richtige Auskunft für jeden Bestand, der sie noch nicht kennt.
+        if not any(s[1] == "investitionen" for s in wp_spalten):
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE council_wirtschaftsplaene ADD COLUMN investitionen REAL")
+            wp_spalten = self._conn.execute(
+                "PRAGMA table_info(council_wirtschaftsplaene)").fetchall()
         if any(s[1] == "ertraege" and s[3] == 1 for s in wp_spalten):
             # `with self._conn` und nicht `self.transaktion()`: Diese Migration
             # läuft aus `_migrate()` heraus, also noch während `__init__` — der
@@ -6085,13 +6103,13 @@ class CouncilStore:
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_wirtschaftsplaene "
                 "(betrieb, jahr, betrieb_name, vorlage_nr, ertraege, aufwendungen, "
-                " steuern, ergebnis, vermoegensplan, verpflichtungen, entwurf_vom, "
-                " proben, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " steuern, ergebnis, vermoegensplan, investitionen, verpflichtungen, "
+                " entwurf_vom, proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (plan.betrieb, plan.jahr, plan.betrieb_name, plan.vorlage_nr,
                  plan.ertraege, plan.aufwendungen, plan.steuern, plan.ergebnis,
-                 plan.vermoegensplan, plan.verpflichtungen, plan.entwurf_vom,
-                 proben, hid, now))
+                 plan.vermoegensplan, plan.investitionen, plan.verpflichtungen,
+                 plan.entwurf_vom, proben, hid, now))
         return 1
 
     def save_gebuehrenbedarf(self, bedarf, herkunft) -> int:

@@ -133,6 +133,12 @@ PROBEN: dict[str, str] = {
         "Die Zahl, über die der Rat abstimmt, steht im Beschlusstext der "
         "Vorlage — und dieselbe Zahl steht in der beigefügten Anlage. Zwei "
         "getrennte Dokumente, unabhängig gesetzt.",
+    # Der zweite Satz über Geld in derselben Vorlage: die Investitionen des
+    # Vermögensplans, geprüft an ihrer eigenen Finanzierung.
+    "wirtschaftsplan_investitionen":
+        "Der Beschlusstext nennt die Investitionen des Vermögensplans und "
+        "gleich daneben, woraus sie finanziert werden — Kreditaufnahme und "
+        "eigene Mittel ergeben zusammen die Summe.",
     # Die Erfolgspläne aus den Anlagen (council/wirtschaftsplan_tabelle.py) —
     # für die Betriebe, die im Beschlusstext keine Zahl nennen.
     "wirtschaftsplan_spalten":
