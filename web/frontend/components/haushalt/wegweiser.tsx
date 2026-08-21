@@ -143,9 +143,13 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // Am Ende der Zahlen-Stufe, weil es die einzige Seite ist, die einen
         // ANDEREN Haushalt zeigt: Erst wenn klar ist, was im Ergebnishaushalt
         // steht, ist „und hier steht das alles NICHT drin" eine Aussage.
+        // Seit 21.08.2026 mit dem Ist zusammen: „Was wurde davon wirklich
+        // gebaut?" stand als eigener Schritt in der NÄCHSTEN Etappe. Plan und
+        // Ist derselben Sache — wer wissen will, was aus einem Vorhaben wurde,
+        // sollte dafür nicht die Etappe wechseln müssen.
         href: "/haushalt/investitionen",
-        titel: "Was wird gebaut?",
-        text: "Neubauten, Fahrzeuge, Grundstücke — der Haushalt, in dem die Seiten davor nicht vorkommen.",
+        titel: "Was gebaut wird — und was daraus wurde",
+        text: "Neubauten, Fahrzeuge, Grundstücke — der Haushalt, in dem die Seiten davor nicht vorkommen; dazu, was am Jahresende davon abgeflossen ist.",
       },
     ],
   },
@@ -157,15 +161,6 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/plan-ist",
         titel: "Geplant und geworden",
         text: "Was am Jahresende wirklich zusammenkam — aus den Jahresabschlüssen.",
-      },
-      {
-        // Direkt hinter „Geplant und geworden": Das ist dieselbe Gegenprobe,
-        // nur für den anderen Haushalt. Der Ergebnishaushalt hat seine in
-        // `plan-ist`, der Finanzhaushalt hier. Vor der Prüfung, weil die sich
-        // auf beide bezieht.
-        href: "/haushalt/gebaut",
-        titel: "Was wurde davon wirklich gebaut?",
-        text: "Was am Jahresende tatsächlich abgeflossen ist — seit 2003, nach Auszahlungsart.",
       },
       {
         // EIN Ziel statt zweier (21.08.2026). „Die Prüfung" und „Die dreizehn

@@ -65,6 +65,8 @@ async function redirects() {
     // „Die Prüfung" und „Die dreizehn Zahlen" (21.08.2026): geprüft und
     // zusammengefasst stehen als Abschnitte auf einer Seite.
     { source: "/haushalt/kennzahlen", destination: "/haushalt/pruefung#kennzahlen", permanent: true },
+    // Plan und Ist der Investitionen (21.08.2026).
+    { source: "/haushalt/gebaut", destination: "/haushalt/investitionen#gebaut", permanent: true },
   ];
 }
 

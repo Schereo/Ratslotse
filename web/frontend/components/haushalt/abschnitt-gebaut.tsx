@@ -1,5 +1,12 @@
 "use client";
 
+// „Was wurde davon wirklich gebaut?" — der ZWEITE Abschnitt von
+// /haushalt/investitionen: das IST.
+//
+// Bis zum 21.08.2026 die eigene Seite /haushalt/gebaut, und zwar in einer
+// anderen Etappe als der Plan. Siehe den Kopf von
+// `abschnitt-investitionsplan.tsx`.
+
 // /haushalt/gebaut — „Was wurde davon wirklich gebaut?" (Boards H3-03, H4-08)
 //
 // Die Gegenprobe zu /haushalt/investitionen. Dort steht, was die Stadt bauen
@@ -50,14 +57,12 @@ import { Gegenbalken } from "@/components/grafik/gegenbalken";
 import { LueckenFeld } from "@/components/grafik/luecken-feld";
 import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 // `jahresabschluss` gehört dazu: Zwei Beleg-Chips dieser Seite zeigen
 // darauf, und ohne den Eintrag hier rendern sie nichts — die Zahlen aus
 // dem Anlagenspiegel standen bis zum 21.08.2026 ohne jeden Beleg da.
-const QUELLEN = ["gebaut", "jahresabschluss"] as const;
 
 /** Warum ein Jahrgang fehlt — der Satz am <LueckenFeld>.
  *
@@ -195,6 +200,7 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
             selbst einen <strong>Substanzverlust</strong>.
           </p>
         </div>
+
       ) : null}
 
       {strassenReihe.length > 0 && strassenReihe.length < jahre.length ? (
@@ -217,7 +223,7 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
   );
 }
 
-export default function GebautPage() {
+export function GebautAbschnitt() {
   const { data, loading } = useFetch<GebautDaten>("/council/haushalt/gebaut");
 
   const alle = useMemo(() => reihen(data ?? null), [data]);
@@ -285,14 +291,12 @@ export default function GebautPage() {
   const gross = groessterPosten(letzter);
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]} jahr={letzter.jahr}>
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-5">
           <div className="min-w-0">
-            <SchrittKicker href="/haushalt/gebaut" />
-            <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
+            <h2 className="font-display text-xl font-bold tracking-tight sm:text-[22px]">
               Was wurde davon wirklich gebaut?
-            </h1>
+            </h2>
             <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
               Der Haushaltsplan sagt, was die Stadt bauen und kaufen will. Hier steht,
               was im Jahr {letzter.jahr} tatsächlich abgeflossen ist:{" "}
@@ -306,6 +310,46 @@ export default function GebautPage() {
             </a>
           )}
         </div>
+
+        {/* STEHT VORN, seit Plan und Ist auf einer Seite stehen (21.08.2026).
+            Vorher war es der Schluss der eigenen Seite — dort las man es, NACHDEM
+            man die beiden Summen gesehen hatte. Jetzt stehen sie unmittelbar
+            untereinander, und die Subtraktion liegt noch näher: Der Einwand
+            gehört davor.
+            Warum hier keine Quote steht — eigener Block, kein Kleingedrucktes.
+            Es ist die Zahl, nach der jede Leserin als Nächstes sucht. */}
+        <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
+            Warum hier keine „Umsetzungsquote“ steht
+          </p>
+          <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+            Naheliegend wäre, diese Beträge gegen den Plan zu rechnen und daraus einen
+            Prozentsatz zu machen — „so viel vom Geplanten wurde gebaut“. Diese Zahl
+            steht in keinem Dokument, und ihre beiden Hälften zählen nicht dasselbe:
+          </p>
+          <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
+            <li>
+              <strong>Der Plan</strong> steht im Finanzhaushalt des Haushaltsplans,
+              gegliedert nach Teilhaushalten — also danach, welches Amt das Geld
+              ausgibt.{" "}
+              <a href="#plan" className="font-semibold text-primary">
+                Der Abschnitt darüber
+              </a>{" "}
+              zeigt ihn.
+            </li>
+            <li>
+              <strong>Diese Zahlen</strong> stammen aus der Finanzrechnung der
+              Kernverwaltung, gegliedert nach Auszahlungsarten — also danach, wofür es
+              ausgegeben wurde.
+            </li>
+          </ul>
+          <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+            Keine der beiden Quellen nennt die andere, keine weist eine Differenz aus,
+            und keine sagt, dass ihre Gesamtsumme dieselbe Menge zählt. Beide Abschnitte
+            stehen deshalb untereinander und nicht in einem Bruch — die eine Zahl von
+            der anderen abzuziehen ergäbe keinen Rückstand, sondern einen Fehler.
+          </p>
+        </section>
 
         {/* Der Kopf: die Zahl und die Abgrenzung. Die Abgrenzung ist hier so
             wichtig wie der Betrag — „60,8 Mio. € gebaut" liest sich als das
@@ -456,39 +500,6 @@ export default function GebautPage() {
           </p>
         </section>
 
-        {/* Warum hier keine Quote steht — eigener Block, kein Kleingedrucktes.
-            Es ist die Zahl, nach der jede Leserin als Nächstes sucht. */}
-        <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
-            Warum hier keine „Umsetzungsquote“ steht
-          </p>
-          <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-            Naheliegend wäre, diese Beträge gegen den Plan zu rechnen und daraus einen
-            Prozentsatz zu machen — „so viel vom Geplanten wurde gebaut“. Diese Zahl
-            steht in keinem Dokument, und ihre beiden Hälften zählen nicht dasselbe:
-          </p>
-          <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
-            <li>
-              <strong>Der Plan</strong> steht im Finanzhaushalt des Haushaltsplans,
-              gegliedert nach Teilhaushalten — also danach, welches Amt das Geld
-              ausgibt.{" "}
-              <Link href="/haushalt/investitionen" className="font-semibold text-primary">
-                Was wird gebaut?
-              </Link>{" "}
-              zeigt ihn.
-            </li>
-            <li>
-              <strong>Diese Zahlen</strong> stammen aus der Finanzrechnung der
-              Kernverwaltung, gegliedert nach Auszahlungsarten — also danach, wofür es
-              ausgegeben wurde.
-            </li>
-          </ul>
-          <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-            Keine der beiden Quellen nennt die andere, keine weist eine Differenz aus,
-            und keine sagt, dass ihre Gesamtsumme dieselbe Menge zählt. Beide Seiten
-            stehen deshalb nebeneinander und nicht in einem Bruch.
-          </p>
-        </section>
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
@@ -539,10 +550,6 @@ export default function GebautPage() {
             className="transition-transform group-hover:translate-x-0.5" />
         </Link>
 
-        <SchrittWeiter href="/haushalt/gebaut" />
-
-        <Quellenverzeichnis schluessel={[...QUELLEN]} />
       </div>
-    </Quellenkontext>
   );
 }
