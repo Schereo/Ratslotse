@@ -127,10 +127,11 @@ function klammerIstParteiLabel(inhalt: string, badgePartei: string | null): bool
  *  dieselben Badges tragen wie Namen im Fließtext. Dort läuft ein
  *  Prosa-Matcher; hier steht der Name schon isoliert da, also genügt die
  *  Nachnamen-Suche — MIT derselben Vorsichtsregel: Bei Namensvettern
- *  entscheiden nur BELEGTE Merkmale (Vorname, sonst die Fraktion der Zeile),
- *  sonst gibt es kein Badge (lieber keins als ein geratenes, Tims
+ *  entscheiden nur BELEGTE Merkmale (Vorname, sonst Fraktion und Sitzungsjahr
+ *  der Zeile), sonst gibt es kein Badge (lieber keins als ein geratenes, Tims
  *  Oltmanns-Befund). */
-function usePersonSuche(): (name: string, partei?: string | null) => PersonEintrag | null {
+function usePersonSuche(): (name: string, partei?: string | null,
+                           jahr?: number | null) => PersonEintrag | null {
   const lexikon = usePersonenLexikon();
   const map = useMemo(() => {
     const m = new Map<string, PersonEintrag[]>();
@@ -142,7 +143,7 @@ function usePersonSuche(): (name: string, partei?: string | null) => PersonEintr
     }
     return m;
   }, [lexikon]);
-  return (name: string, partei?: string | null) => {
+  return (name: string, partei?: string | null, jahr?: number | null) => {
     const woerter = (name || "").match(/[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}/g);
     if (!woerter || map.size === 0) return null;
     const nachname = falteName(woerter[woerter.length - 1]);
@@ -156,19 +157,52 @@ function usePersonSuche(): (name: string, partei?: string | null) => PersonEintr
     const treffer = kandidaten.filter(
       (p) => p.name && vornamen.some((v) => falteName(p.name!.split(" ")[0] || "") === v));
     if (treffer.length === 1 && treffer[0].art !== "blocker") return treffer[0];
-    // Kein Vorname im Protokoll — aber die Fraktion der Zeile steht daneben.
-    // „Behrens (SPD)" ist unter neun Lexikon-Behrens genau einer, „Schilling"
-    // je nach Fraktion Rita (Grüne) oder Michael (CDU). Das ist keine
-    // Heuristik, sondern ein zweites belegtes Merkmal — deshalb gilt es nur
-    // bei EINDEUTIGKEIT und nur für erkannte Parteien („Rat" wäre der
-    // Sammeltopf für alles Unbekannte). Am Prod-Bestand gemessen: 1.505
-    // Beiträge bekommen so ihr Badge, KEIN einziges wechselt (21.08.2026).
+    // Kein Vorname im Protokoll — dann entscheiden die anderen BELEGTEN
+    // Merkmale der Zeile: erst die Fraktion, dann das Sitzungsjahr. Beides
+    // steht in den Daten, nichts davon ist geraten.
+    let echte = kandidaten.filter((p) => p.name && p.art !== "blocker");
+    // (1) Fraktion. „Behrens (SPD)" ist unter neun Lexikon-Behrens genau
+    // einer, „Schilling" je nach Fraktion Rita (Grüne) oder Michael (CDU).
+    // Nennt die Zeile eine erkannte Fraktion, in der KEINER der Kandidaten
+    // steht, gibt es kein Badge: Die Zeile widerspricht dann dem Lexikon
+    // (Vally Finke saß 2022 für die SPD, heute für „Für Oldenburg"), und ein
+    // Badge würde eine Zugehörigkeit behaupten, die neben der Zeile falsch
+    // aussieht. Es bewahrt außerdem vor echten Fehlgriffen: „Dr. Niewerth
+    // Baumann (CDU)" hätte sonst das Badge von Udo Baumann bekommen.
     const k = parteiKuerzel(partei ?? null);
-    if (k === "Rat") return null;
-    const perPartei = kandidaten.filter(
-      (p) => p.name && p.art !== "blocker" && parteiKuerzel(p.partei) === k);
-    return perPartei.length === 1 ? perPartei[0] : null;
+    if (k !== "Rat") {
+      echte = echte.filter((p) => parteienPassen(parteiKuerzel(p.partei), k));
+      if (echte.length === 0) return null;
+      if (echte.length === 1) return echte[0];
+    }
+    // (2) Sitzungsjahr gegen den belegten Zeitraum. Tanja Behrens saß 2018
+    // eine Sitzung lang im Rat — ein „Behrens" von 2025 ist damit zwangsläufig
+    // Paul Behrens. Am Prod-Bestand gemessen bringt die Stufe rund 1.400
+    // weitere Beiträge, ohne einer Zuordnung der Fraktions-Stufe zu
+    // widersprechen (21.08.2026).
+    if (!jahr) return null;
+    const imZeitraum = echte.filter(
+      (p) => p.von && p.bis && Number(p.von) <= jahr && jahr <= Number(p.bis));
+    return imZeitraum.length === 1 ? imZeitraum[0] : null;
   };
+}
+
+/** Gruppen-Toleranz beim Fraktions-Vergleich: Die Protokolle labeln mal die
+ *  Gruppe („FDP/Volt"), mal die Einzelpartei — Daniela Pfeiffer steht im
+ *  Lexikon als FDP, ihre Wortbeiträge tragen „FDP/Volt". Beides ist dieselbe
+ *  Zugehörigkeit; alles andere muss exakt stimmen. */
+function parteienPassen(a: string, b: string): boolean {
+  if (a === b) return true;
+  const gruppe = new Set(["FDP", "Volt", "FDP/Volt"]);
+  return gruppe.has(a) && gruppe.has(b) && (a === "FDP/Volt" || b === "FDP/Volt");
+}
+
+/** Jahreszahl aus einem Datum — die Zeilen tragen es mal als ISO
+ *  („2025-06-30"), mal deutsch („30.06.2025"); die erste vierstellige Zahl
+ *  ist in beiden Fällen das Jahr. */
+function jahrAus(datum?: string | null): number | null {
+  const treffer = (datum || "").match(/\d{4}/);
+  return treffer ? Number(treffer[0]) : null;
 }
 
 /** Was auf dem Badge STEHT — „ehem.", „Stadt" oder das Parteikürzel. Muss mit
@@ -185,11 +219,11 @@ function personBadgeLabel(p: PersonEintrag): string {
  *  (CDU)" war doppelt gemoppelt (Tims Befund 21.08.); „Grösch ·ehem.
  *  (Naturschutzbund)" bleibt dagegen stehen, weil „ehem." die Fraktion nicht
  *  nennt. */
-export function SprecherName({ name, partei, zeigePartei = false }: {
-  name: string; partei?: string | null; zeigePartei?: boolean;
+export function SprecherName({ name, partei, datum, zeigePartei = false }: {
+  name: string; partei?: string | null; datum?: string | null; zeigePartei?: boolean;
 }) {
   const suche = usePersonSuche();
-  const p = suche(name, partei);
+  const p = suche(name, partei, jahrAus(datum));
   const label = p ? personBadgeLabel(p) : null;
   const doppelt = !!label && label !== "Rat" && label === parteiKuerzel(partei ?? null);
   return (
@@ -648,7 +682,7 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
       <p className="flex items-baseline gap-2">
         <span className="min-w-0 flex-1 truncate font-medium">
           {d.sprecher
-            ? <SprecherName name={d.sprecher} partei={d.partei} zeigePartei />
+            ? <SprecherName name={d.sprecher} partei={d.partei} datum={d.datum} zeigePartei />
             : <>Ohne Namen{d.partei ? ` (${d.partei})` : ""}</>}
           {/* Zusagen der Verwaltung sind Selbstverpflichtungen — kein
               Meinungsbeitrag unter vielen. Sie bekommen deshalb ein eigenes
@@ -822,7 +856,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                       <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">
                         {p.kernaussage.text}
                         <span className="font-mono text-[10px] not-italic text-muted-foreground/80">
-                          {" "}— {p.kernaussage.sprecher ? <SprecherName name={p.kernaussage.sprecher} partei={p.partei} /> : "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
+                          {" "}— {p.kernaussage.sprecher ? <SprecherName name={p.kernaussage.sprecher} partei={p.partei} datum={p.kernaussage.datum} /> : "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
                         </span>
                       </p>
                     )}
@@ -831,7 +865,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                         {p.beitraege_liste.map((b, bi) => (
                           <li key={bi} className="text-[12px] leading-snug">
                             <p className="font-mono text-[10px] text-muted-foreground">
-                              {b.sprecher ? <SprecherName name={b.sprecher} partei={p.partei} /> : "Ohne Namen"} · {b.datum}
+                              {b.sprecher ? <SprecherName name={b.sprecher} partei={p.partei} datum={b.datum} /> : "Ohne Namen"} · {b.datum}
                               {b.gremium ? ` · ${b.gremium}` : ""}
                             </p>
                             <p className="mt-0.5 text-muted-foreground">{b.text}{b.text.length >= 300 ? "…" : ""}</p>

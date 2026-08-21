@@ -258,6 +258,85 @@ def test_personen_lexikon_rat_verwaltung_und_zeitlichkeit(tmp_path):
         store.close()
 
 
+def _varianten_store(tmp_path):
+    """Ein Bestand mit genau den Schreibweisen, die im Prod-Bestand stehen."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    frisch = (date.today() - timedelta(days=30)).isoformat()
+    mittel = (date.today() - timedelta(days=200)).isoformat()
+    alt = (date.today() - timedelta(days=1200)).isoformat()
+    with store._conn:
+        store._conn.executemany(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+            "location, fetched_at) VALUES (?, 'Rat', ?, '', '', datetime('now'))",
+            [(1, alt), (2, mittel), (3, frisch)])
+        zeilen = []
+        # Thomas Klein: dreimal voll, einmal nur als „Klein" — eine Person.
+        for ks in (1, 2, 3):
+            zeilen.append((ks, "Thomas Klein", "SPD", "mitglied"))
+        zeilen.append((2, "Klein", "SPD", "mitglied"))
+        # Britta Klein sitzt in der Verwaltung — anderer Namensraum, bleibt.
+        zeilen.append((3, "Britta Klein", "Verwaltung", "verwaltung"))
+        # Namensänderung: „Tim Harms" heißt zuletzt „Tim Ebbeke Harms".
+        zeilen += [(1, "Tim Harms", "Bündnis 90/Die Grünen", "mitglied"),
+                   (2, "Tim Harms", "Bündnis 90/Die Grünen", "mitglied"),
+                   (3, "Tim Ebbeke Harms", "Bündnis 90/Die Grünen", "mitglied")]
+        # Zwei echte Namensvetterinnen derselben Fraktion: NICHT zusammenlegen.
+        zeilen += [(3, "Meike Bruns", "CDU", "mitglied"), (3, "Sarah Bruns", "CDU", "mitglied")]
+        # Gleicher Nachname, verschiedene Fraktion: erst recht nicht.
+        zeilen += [(3, "Meyer", "SPD", "mitglied"), (3, "Jan-Martin Meyer", "DIE LINKE.", "mitglied")]
+        store._conn.executemany(
+            "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+            "VALUES (?, ?, ?, ?, NULL)", zeilen)
+    return store
+
+
+def test_personen_varianten_legt_schreibweisen_zusammen(tmp_path):
+    """Ein Mensch, zwei Einträge (Tims Befund 21.08.2026): „Klein" neben
+    „Thomas Klein", „Tim Ebbeke Harms" neben „Tim Harms". Das Verzeichnis
+    führt sie einmal — echte Namensvettern bleiben getrennt."""
+    store = _varianten_store(tmp_path)
+    try:
+        var = store._personen_varianten()
+        assert var == {("rat", "klein"): "thomas-klein",
+                       ("rat", "tim-ebbeke-harms"): "tim-harms"}
+        namen = {m["slug"]: m for m in store.list_members()}
+        assert namen["thomas-klein"]["n"] == 3      # alle Sitzungen, einmal gezählt
+        assert namen["tim-harms"]["n"] == 3
+        assert "klein" not in namen and "tim-ebbeke-harms" not in namen
+        # Zwei Bruns, zwei Meyer: bleiben zwei Personen.
+        assert {"meike-bruns", "sarah-bruns", "meyer", "jan-martin-meyer"} <= set(namen)
+        # Die Verwaltungs-Klein ist ein anderer Mensch (anderer Namensraum).
+        lex = {(p["art"], p["slug"]) for p in store.personen_lexikon()}
+        assert ("stadt", "britta-klein") in lex and ("rat", "thomas-klein") in lex
+        assert not any(slug == "klein" for _art, slug in lex)
+    finally:
+        store.close()
+
+
+def test_person_seite_bleibt_unter_alter_schreibweise_erreichbar(tmp_path):
+    """Die weichende Variante ist ein Link, der irgendwo stehen kann — er muss
+    weiter auf dieselbe Person führen, nicht ins Leere."""
+    store = _varianten_store(tmp_path)
+    try:
+        assert store.member_name("klein") == "Thomas Klein"
+        assert store.member_name("thomas-klein") == "Thomas Klein"
+        detail = store.member_detail("tim-ebbeke-harms")
+        assert detail and detail["name"] == "Tim Harms"
+        assert detail["n_sessions"] == store.member_detail("tim-harms")["n_sessions"] == 3
+        assert store.member_detail("gibt-es-nicht") is None
+    finally:
+        store.close()
+
+
+def test_haeufigster_name_entscheidet_bei_gleichstand_ausfuehrlich(tmp_path):
+    """Bei Gleichstand gewinnt der vollständigere Name — sonst hieß eine Person
+    „Dr. Götte", während ihr Slug walter-goette lautete."""
+    from collections import Counter
+    assert CouncilStore._haeufigster_name(Counter({"Dr. Götte": 2, "Walter Götte": 2})) == "Walter Götte"
+    assert CouncilStore._haeufigster_name(Counter({"Streit": 3, "Tim Streit": 1})) == "Streit"
+
+
 def test_personen_lexikon_blocker_fuer_gaeste(tmp_path):
     """Tims Oltmanns-Befund 12.08.: Ein Gast-Namensvetter (Wasserstraßen-Amt)
     muss den kahlen Nachnamen mehrdeutig machen — als blocker-Eintrag ohne
