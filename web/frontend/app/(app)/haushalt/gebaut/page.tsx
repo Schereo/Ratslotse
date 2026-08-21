@@ -52,7 +52,7 @@ import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
 // `jahresabschluss` gehört dazu: Zwei Beleg-Chips dieser Seite zeigen
 // darauf, und ohne den Eintrag hier rendern sie nichts — die Zahlen aus
@@ -289,9 +289,7 @@ export default function GebautPage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-5">
           <div className="min-w-0">
-            <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Stadtfinanzen Oldenburg · Schritt 8
-            </p>
+            <SchrittKicker href="/haushalt/gebaut" />
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
               Was wurde davon wirklich gebaut?
             </h1>

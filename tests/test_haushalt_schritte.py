@@ -71,33 +71,47 @@ def test_der_wegweiser_ist_lesbar():
     assert len(set(reihenfolge)) == len(reihenfolge), "ein Ziel steht zweimal im Wegweiser"
 
 
-def test_selbstgeschriebene_nummern_stimmen_mit_dem_wegweiser():
-    """Jeder Kicker nennt die Nummer, die der Wegweiser für seine Seite rechnet."""
-    reihenfolge = wegweiser_reihenfolge()
-    nummer_von = {name: i for i, name in enumerate(reihenfolge, start=1)}
+def test_keine_seite_schreibt_ihre_nummer_selbst():
+    """Die Nummer wird GERECHNET, nicht geschrieben.
 
-    gefunden, abweichungen = 0, []
+    Bis zum 21.08.2026 prüfte dieser Test das Gegenteil: dass die von Hand
+    geschriebenen Kicker mit dem Wegweiser übereinstimmen. Acht Seiten trugen
+    ihre Nummer als Text, und jede neue Seite verschob alles danach — laut dem
+    Kopf dieser Datei am 16.08. viermal an einem Tag.
+
+    Beim Zusammenlegen der Etappen wäre es viermal mehr geworden: Jede
+    Zusammenlegung verschiebt ebenfalls alles danach. Statt den Widerspruch
+    weiter zu bewachen, ist er abgeschafft — `SchrittKicker` schlägt die
+    Nummer in derselben Liste nach, die auch der Wegweiser zählt.
+
+    Was bleibt zu prüfen: dass niemand wieder anfängt. Ein Kicker mit Zahl im
+    Quelltext ist ab jetzt der Fehler, nicht die abweichende Zahl darin.
+    """
+    schreiber = []
     for seite in sorted(BEREICH.rglob("page.tsx")):
         treffer = KICKER.search(seite.read_text(encoding="utf-8"))
-        if not treffer:
-            continue
-        gefunden += 1
-        name = seite.parent.name
-        geschrieben = int(treffer.group(1))
-        gerechnet = nummer_von.get(name)
-        if gerechnet is None:
-            abweichungen.append(
-                f"{name}: schreibt „Schritt {geschrieben}“, steht aber gar nicht im Wegweiser")
-        elif geschrieben != gerechnet:
-            abweichungen.append(
-                f"{name}: schreibt „Schritt {geschrieben}“, der Wegweiser rechnet {gerechnet}")
+        if treffer:
+            schreiber.append(f"{seite.parent.name}: „Schritt {treffer.group(1)}“")
 
-    assert gefunden >= 3, (
-        f"nur {gefunden} Seiten mit Kicker gefunden — schreibt niemand mehr seine "
-        "Nummer selbst, kann dieser Test weg")
-    assert not abweichungen, (
-        "Selbstgeschriebene Schritt-Nummern weichen vom Wegweiser ab. Wer eine "
-        "Seite einfügt, verschiebt alles danach:\n  " + "\n  ".join(abweichungen))
+    assert not schreiber, (
+        "Diese Seiten schreiben ihre Schritt-Nummer wieder selbst:\n  "
+        + "\n  ".join(schreiber)
+        + "\nStattdessen <SchrittKicker href=\"/haushalt/…\" /> benutzen — die "
+        "Nummer kommt dann aus derselben Liste wie der Wegweiser und kann nicht "
+        "mehr auseinanderlaufen."
+    )
+
+
+def test_der_kicker_wird_auch_benutzt():
+    """Die Gegenprobe: Der Test oben ist trivial erfüllt, wenn gar keine Seite
+    mehr einen Kicker trägt. Also zählen wir, wie viele ihn RECHNEN."""
+    nutzer = sum(
+        1 for seite in BEREICH.rglob("page.tsx")
+        if "<SchrittKicker" in seite.read_text(encoding="utf-8"))
+    assert nutzer >= 6, (
+        f"nur {nutzer} Seiten benutzen <SchrittKicker> — vorher schrieben acht "
+        "ihre Nummer selbst. Ist der Kicker verschwunden, prüft der Test "
+        "darüber nichts mehr.")
 
 
 def test_jedes_wegweiser_ziel_existiert():

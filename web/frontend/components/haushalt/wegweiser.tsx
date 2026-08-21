@@ -168,18 +168,15 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         text: "Was am Jahresende tatsächlich abgeflossen ist — seit 2003, nach Auszahlungsart.",
       },
       {
+        // EIN Ziel statt zweier (21.08.2026). „Die Prüfung" und „Die dreizehn
+        // Zahlen" beantworten dieselbe Frage aus zwei Richtungen: von außen
+        // geprüft, von innen zusammengefasst. Die Reihenfolge bleibt die alte
+        // — erst die Feststellungen, dann die Selbstauskunft —, weil eine
+        // Liste von Quoten ohne die Zahlen, die sie zusammenfassen, nichts
+        // sagt. Sie ist jetzt nur die Reihenfolge der Abschnitte.
         href: "/haushalt/pruefung",
-        titel: "Die Prüfung",
-        text: "Was das Rechnungsprüfungsamt an den Abschlüssen beanstandet — im Wortlaut.",
-      },
-      {
-        // Am Ende von „Was daraus wurde", und zwar hinter der Prüfung: Die
-        // Kennzahlenübersicht ist die Zusammenfassung, die die Stadt SELBST
-        // aus dem geprüften Abschluss zieht. Vorher gelesen wäre sie eine
-        // Liste von Quoten ohne die Zahlen, die sie zusammenfassen.
-        href: "/haushalt/kennzahlen",
-        titel: "Die dreizehn Zahlen",
-        text: "Worauf die Stadt ihren Abschluss selbst eindampft — mit den gedruckten Rechenwegen und sieben stillen Korrekturen.",
+        titel: "Geprüft und zusammengefasst",
+        text: "Was das Rechnungsprüfungsamt beanstandet — und worauf die Stadt ihren Abschluss selbst eindampft.",
       },
     ],
   },
