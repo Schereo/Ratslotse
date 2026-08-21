@@ -71,7 +71,12 @@ import { MarkePille } from "@/components/haushalt/marke";
 import { cn } from "@/lib/utils";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
-const QUELLEN: QuellenSchluessel[] = ["pruefbericht", "jahresabschluss"];
+// NUR der Prüfbericht. `jahresabschluss` stand bis zum 21.08.2026 daneben und
+// bekam im Verzeichnis eine eigene Nummer — nur zeigte keine Zahl der Seite
+// darauf: Sie holt ausschließlich /council/haushalt/pruefberichte. Eine
+// Quelle, die nichts belegt, ist Schmuck, und Schmuck im Beleg-Apparat ist
+// genau das, was das Vertrauen kostet, das er herstellen soll.
+const QUELLEN: QuellenSchluessel[] = ["pruefbericht"];
 
 /** Wortlaut aus dem Bericht — bewusst als Zitatblock mit Randlinie, damit auf
  *  einen Blick klar ist, wo das Rechnungsprüfungsamt spricht und wo wir. */

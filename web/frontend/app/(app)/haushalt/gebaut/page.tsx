@@ -54,7 +54,10 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
-const QUELLEN = ["gebaut"] as const;
+// `jahresabschluss` gehört dazu: Zwei Beleg-Chips dieser Seite zeigen
+// darauf, und ohne den Eintrag hier rendern sie nichts — die Zahlen aus
+// dem Anlagenspiegel standen bis zum 21.08.2026 ohne jeden Beleg da.
+const QUELLEN = ["gebaut", "jahresabschluss"] as const;
 
 /** Warum ein Jahrgang fehlt — der Satz am <LueckenFeld>.
  *

@@ -48,6 +48,8 @@ import { cn } from "@/lib/utils";
 const FELDER = ["wirtschaftsplaene", "herkunft"] as const;
 const QUELLEN: QuellenSchluessel[] = ["wirtschaftsplan"];
 
+
+
 /** Was ein Betrieb tut — eine Zeile, damit die Zahl einen Gegenstand bekommt.
  *
  *  Redaktionell und bewusst kurz: Der ausführliche Auftrag steht im
@@ -124,6 +126,14 @@ function Betrag({ wert, fehltWeil }: { wert: number | null; fehltWeil: string })
   );
 }
 
+/** Der Jahrgang, der die Karte trägt. EINE Fassung dieser Regel, weil die
+ *  Nummerierung der Quellen dieselbe Zeile treffen muss wie die Anzeige —
+ *  zwei Sortierungen driften, und dann trägt ein Chip die Nummer eines
+ *  fremden Papiers. */
+function juengsteZeile(zeilen: WirtschaftsplanZeile[]): WirtschaftsplanZeile {
+  return [...zeilen].sort((a, b) => a.jahr - b.jahr)[zeilen.length - 1];
+}
+
 function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
   zeilen: WirtschaftsplanZeile[]; juengstesJahr: number;
   /** Die Suche, nicht das Ergebnis: WELCHE Zeile die jüngste ist, entscheidet
@@ -135,7 +145,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
   // Der jüngste Jahrgang trägt die Karte; die Reihe darunter ist die
   // Entwicklung. Sortiert wird hier und nicht im Vertrauen auf die API.
   const nach = [...zeilen].sort((a, b) => a.jahr - b.jahr);
-  const letzte = nach[nach.length - 1];
+  const letzte = juengsteZeile(zeilen);
   const b = beleg(letzte.proben);
   const reihe: JahrPunkt[] = nach.map((z) => ({ jahr: z.jahr, wert: z.ergebnis / 1e6 }));
   const zeigKurve = nach.length >= 3;
@@ -202,7 +212,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
         <p className="text-[11.5px] leading-relaxed text-muted-foreground">
           <span className="font-semibold text-foreground">Beleg: {b.kurz}.</span>{" "}
           {b.lang}
-          <Beleg q="wirtschaftsplan" />
+          <Beleg q="wirtschaftsplan" h={herkunftFuer(letzte.herkunft_id)} />
           {letzte.entwurf_vom && ` · Stand des Verwaltungsentwurfs: ${letzte.entwurf_vom}`}
         </p>
         {/* Bis zum 21.08.2026 stand hier „Vorlage 25/0722" als toter Text —
@@ -257,6 +267,22 @@ function BetriebeInner() {
     });
   }, [data]);
 
+  // JEDER PLAN EINE EIGENE NUMMER. Über fünf Wirtschaftsplänen aus fünf
+  // Betrieben stand „1 Quelle" — richtig nach der alten Regel (eine Nummer je
+  // Quellenart) und trotzdem die falsche Auskunft (Tim, 21.08.2026). Hier ruht
+  // jede Karte auf genau EINEM Papier, also verdient jedes seine Ziffer.
+  //
+  // Gesammelt wird aus den KARTEN, nicht aus dem Jahrgang: Den Stadthafen gibt
+  // es seit 2020 nicht mehr, die Stadion-Planung endete 2024 — ihre Papiere
+  // stehen in keiner Jahrgangsliste von 2026, ihre Karten aber sehr wohl auf
+  // der Seite.
+  const jeDokument = useMemo(() => {
+    const urls = nachBetrieb
+      .map((zeilen) => herkunftVon(data, juengsteZeile(zeilen).herkunft_id)?.url)
+      .filter((u): u is string => !!u);
+    return urls.length ? { wirtschaftsplan: urls } : {};
+  }, [nachBetrieb, data]);
+
   if (loading || !data) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
@@ -277,7 +303,7 @@ function BetriebeInner() {
   const aeltestes = Math.min(...jahre);
 
   return (
-    <Quellenkontext schluessel={QUELLEN} jahr={juengstes}>
+    <Quellenkontext schluessel={QUELLEN} jeDokument={jeDokument} jahr={juengstes}>
       <div className="flex flex-col gap-4">
         <header>
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
