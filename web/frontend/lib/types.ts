@@ -285,6 +285,10 @@ export interface MemberDetail {
   /** Fehlt bei älteren gecachten Antworten — dann als "rat" behandeln. */
   typ?: "rat";
   name: string; slug: string; party: string | null;
+  /** Zugehörigkeit für den Seitenkopf — wie im Verzeichnis aufgelöst
+   *  („FDP/Volt" → FDP, wo es belegt ist). Die Zeitreihe darunter bleibt
+   *  quellentreu. */
+  current_affiliation: { label: string; kind: "partei" | "gruppe" | "parteilos"; parties: string[] } | null;
   /** s. `Member.art` — bei „beratend" bleibt `faction_timeline` leer. */
   art: "rat" | "beratend";
   organisation: string | null;

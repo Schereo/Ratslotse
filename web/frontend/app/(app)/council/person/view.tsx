@@ -151,8 +151,11 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
   const [pastOpen, setPastOpen] = useState(false);
 
   const brand = data.party ? partyBrand(data.party) : null;
-  // Aktuelle Zugehörigkeit = letzte Phase der Zeitreihe (gruppen-bewusst).
-  const currentAffiliation = data.faction_timeline.length ? data.faction_timeline[data.faction_timeline.length - 1] : null;
+  // Aktuelle Zugehörigkeit: vom Server aufgelöst, damit der Kopf dasselbe
+  // sagt wie das Verzeichnis („FDP/Volt" → FDP, wo es belegt ist). Ältere
+  // Antworten ohne das Feld fallen auf die letzte Phase zurück.
+  const currentAffiliation = data.current_affiliation
+    ?? (data.faction_timeline.length ? data.faction_timeline[data.faction_timeline.length - 1] : null);
   const memberships = data.ris?.memberships ?? [];
   const current = memberships.filter((m) => !m.bis);
   const past = memberships.filter((m) => m.bis);
