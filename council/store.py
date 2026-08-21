@@ -3884,23 +3884,52 @@ class CouncilStore:
                 (max(0, min(100, int(score))), reason, decision_id),
             )
 
+    #: Gewichte des Fundwerts. Erzählbarkeit zählt etwas mehr als Tragweite
+    #: — ein Haushaltsbeschluss ist bedeutend, aber kein Fundstück. Die
+    #: Sperren darunter sind der eigentliche Hebel: Ohne sie gewinnt die
+    #: Kuriosität, weil sie leichter hohe Interest-Werte erreicht.
+    FUND_GEWICHT_INTERESSE = 0.55
+    FUND_GEWICHT_TRAGWEITE = 0.45
+    FUND_MIN_INTERESSE = 50
+    FUND_MIN_TRAGWEITE = 50
+
     def fundstueck_candidates(
         self, *, mmdd: str | None = None, exclude_ids: set[int] | None = None, limit: int = 10
     ) -> list[dict]:
-        """Kandidaten fürs Fundstück, bestes Interest zuerst. ``mmdd`` („07-22")
-        filtert auf Jahrestage (gleicher Kalendertag, früheres Jahr)."""
+        """Kandidaten fürs Fundstück, bester Gesamtwert zuerst.
+
+        ZWEI Werte, nicht einer. Bis 20.08.26 entschied allein ``interest``
+        — und der misst Erzählbarkeit, nicht Bedeutung. Herausgekommen sind
+        „Straßenbenennung Rotkäppchenweg" (Interesse 90, Tragweite 35) und
+        „Modellvorhaben Cannabis" (Interesse 90, Tragweite 5), zweimal in
+        derselben Woche sogar zwei Straßenbenennungen. Kurios, aber kein
+        Fund, über den man reden will (Tims Befund).
+
+        Ein Fundstück braucht beides: Es muss etwas BEDEUTEN und sich
+        erzählen lassen. Deshalb ein gewichteter Mittelwert und ein
+        Mindestmaß an Tragweite als Sperre — sonst gewinnt die Kuriosität
+        wieder allein.
+
+        ``mmdd`` („07-22") filtert auf Jahrestage (gleicher Kalendertag,
+        früheres Jahr).
+        """
         exclude = exclude_ids or set()
         sql = """SELECT d.id, d.title, d.beschluss, d.summary, d.outcome, d.vote,
-                        d.amount_eur, d.interest, cs.committee, cs.session_date
+                        d.amount_eur, d.interest, d.impact, d.gegenstimmen,
+                        cs.committee, cs.session_date,
+                        (? * d.interest + ? * d.impact) AS fundwert
                  FROM council_decisions d
                  JOIN council_sessions cs ON cs.ksinr = d.ksinr
-                 WHERE d.kind = 'decision' AND d.interest IS NOT NULL
+                 WHERE d.kind = 'decision'
+                   AND d.interest IS NOT NULL AND d.impact IS NOT NULL
+                   AND d.interest >= ? AND d.impact >= ?
                    AND cs.session_date < date('now')"""
-        args: list = []
+        args: list = [self.FUND_GEWICHT_INTERESSE, self.FUND_GEWICHT_TRAGWEITE,
+                      self.FUND_MIN_INTERESSE, self.FUND_MIN_TRAGWEITE]
         if mmdd:
             sql += " AND strftime('%m-%d', cs.session_date) = ?"
             args.append(mmdd)
-        sql += " ORDER BY d.interest DESC, cs.session_date DESC LIMIT ?"
+        sql += " ORDER BY fundwert DESC, cs.session_date DESC LIMIT ?"
         args.append(limit + len(exclude))
         rows = [dict(r) for r in self._conn.execute(sql, args).fetchall()]
         return [r for r in rows if r["id"] not in exclude][:limit]
@@ -3945,6 +3974,24 @@ class CouncilStore:
             (f"-{int(within_days)} days",),
         ).fetchall()
         return {r["decision_id"] for r in rows}
+
+    def recent_fundstueck_titles(self, within_days: int = 45) -> list[str]:
+        """Titel der zuletzt gezeigten Fundstücke — Grundlage der
+        Themen-Sperre.
+
+        Die ID-Sperre allein reicht nicht: Ein Großprojekt zieht sich über
+        viele EINZELNE Beschlüsse (Stadionneubau, Gründung der GmbH,
+        Ausfallbürgschaft, Grundstücksübertragung, Anmietung der Halle).
+        Alle haben hohe Werte, keiner wiederholt einen anderen — und
+        zusammen ergäben sie eine Woche lang dieselbe Geschichte.
+        """
+        rows = self._conn.execute(
+            """SELECT d.title FROM council_fundstuecke f
+               JOIN council_decisions d ON d.id = f.decision_id
+               WHERE f.day >= date('now', ?)""",
+            (f"-{int(within_days)} days",),
+        ).fetchall()
+        return [r["title"] or "" for r in rows]
 
     def get_decision(self, decision_id: int) -> dict | None:
         row = self._conn.execute(
@@ -9346,10 +9393,60 @@ class CouncilStore:
 
     # ---- Haushalt als Geldfragen-Quelle (Tim, 09.08.) ----
 
+    #: Themenwörter, die auf einen Teilhaushalt zeigen, ohne dessen Namen zu
+    #: teilen. „Kongresshalle" und „Kultur, Museen, Sport" haben keinen
+    #: gemeinsamen Wortstamm — rein lexikalisch ist die Zuordnung nicht zu
+    #: finden, obwohl sie eindeutig ist. Bewusst knapp gehalten: Jede Zeile
+    #: ist eine Behauptung darüber, wo etwas im Haushalt steht.
+    HAUSHALTS_SYNONYME = {
+        "verkehr": ("mobilität", "radverkehr", "fahrrad", "bus", "parken",
+                    "parkgebühren", "straßenbahn", "fußverkehr", "damm"),
+        "kultur": ("veranstaltung", "kongress", "halle", "museum", "theater",
+                   "bibliothek", "stadion", "schwimmbad", "bäder"),
+        "klima": ("baum", "baumschutz", "grünfläche", "natur",
+                  "naturschutz", "umweltschutz", "emission"),
+        "stadtplanung": ("bebauungsplan", "sanierungsgebiet", "stadtentwicklung",
+                         "isek", "flächennutzungsplan", "wohnraum", "leerstand"),
+        "schule": ("bildung", "schulbau", "ganztag"),
+        "jugend": ("kita", "kindertagesstätte", "krippe"),
+    }
+
+    @staticmethod
+    def _bereich_passt(bereich: str, woerter: list[str]) -> bool:
+        """Trifft eines der Suchwörter diesen Teilhaushalt?
+
+        Der frühere Test lief in die falsche Richtung: ``wort in bereich``
+        findet „Verkehr" in „Verkehr und Straßenbau", aber nicht
+        „Radverkehr" — und deutsche Suchbegriffe sind fast immer die
+        längeren Komposita. Gemessen am 20.08.2026: „Verkehr" traf, aber
+        „Mobilitätsplan", „Radverkehr", „Kongresshalle" und
+        „Baumschutzsatzung" lieferten allesamt null Zeilen, obwohl es für
+        jedes einen passenden Bereich gibt.
+
+        Deshalb wird der Bereichsname in Wortmarken zerlegt und beidseitig
+        geprüft — ein Kompositum trägt sein Grundwort am Ende („Radverkehr"),
+        eine Ableitung am Anfang („Mobilitätsplan").
+        """
+        marken = [t for t in re.split(r"[^a-zäöüß]+", bereich.lower()) if len(t) >= 4]
+        for wort in woerter:
+            for marke in marken:
+                if wort == marke:
+                    return True
+                kurz, lang = sorted((wort, marke), key=len)
+                # Nur Anfang oder Ende: „Transport" enthält zwar „sport",
+                # aber eben nicht am Rand.
+                if len(kurz) >= 5 and (lang.startswith(kurz) or lang.endswith(kurz)):
+                    return True
+                for kopf, synonyme in CouncilStore.HAUSHALTS_SYNONYME.items():
+                    if marke.startswith(kopf) and any(
+                            wort.startswith(s) or wort.endswith(s) for s in synonyme):
+                        return True
+        return False
+
     def haushalt_fuer_begriffe(self, begriffe: list[str], limit: int = 3) -> list[dict]:
-        """Teilhaushalts-Zeilen des neuesten Jahres, deren Bereich einen der
-        Suchbegriffe trägt („Verkehr" → „Verkehr und Straßenbau"); fragt jemand
-        nach dem Haushalt insgesamt, kommt die Summenzeile. Für den
+        """Teilhaushalts-Zeilen des neuesten Jahres, deren Bereich zu einem der
+        Suchbegriffe passt („Radverkehr" → „Verkehr und Straßenbau"); fragt
+        jemand nach dem Haushalt insgesamt, kommt die Summenzeile. Für den
         Geld-Kontext der KI-Frage — Plan-Zahlen, klar getrennt von Beschlüssen."""
         try:
             jahr = self._conn.execute("SELECT MAX(year) FROM council_haushalt").fetchone()[0]
@@ -9357,18 +9454,19 @@ class CouncilStore:
             return []
         if not jahr:
             return []
-        woerter = [w.lower() for w in begriffe if len(w) >= 4][:10]
+        # 16 statt 10: Die Begriffe der Gründlichen Recherche kommen aus
+        # mehreren Facetten, das treffende Wort steht dort oft weiter hinten.
+        woerter = [w.lower() for w in begriffe if len(w) >= 4][:16]
         rows = self._conn.execute(
             "SELECT year, bereich, ertraege, aufwendungen, ergebnis, is_summe "
             "FROM council_haushalt WHERE year = ?", (jahr,)).fetchall()
         out = []
         for r in rows:
-            b = (r["bereich"] or "").lower()
             if r["is_summe"]:
                 if any(w in ("haushalt", "gesamthaushalt", "haushaltsplan") for w in woerter):
                     out.append(dict(r))
                 continue
-            if any(w in b for w in woerter):
+            if self._bereich_passt(r["bereich"] or "", woerter):
                 out.append(dict(r))
         out = out[:limit]
         # Entwicklung mitgeben: derselbe Bereich im ältesten vorhandenen Jahr.

@@ -2183,7 +2183,9 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               aller Parteien daneben wäre Rauschen (Tims Befund 10.08.). */}
           {!beschaeftigt && turn.antwort && !turn.fehler && !turn.abgebrochen
             && turn.qtype !== "person" && (turn.debatten?.length ?? 0) >= 1 && (
-            <ParteienBaustein frage={turn.kontext || turn.frage} onFrageStellen={onFrageStellen} />
+            <ParteienBaustein frage={turn.kontext || turn.frage}
+              beschlussIds={turn.sources.slice(0, 20).map((q) => q.id)}
+              onFrageStellen={onFrageStellen} />
           )}
 
           {/* Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom
@@ -2967,19 +2969,25 @@ function DuenneBeleglage({ onGruendlich, mitSteckbrief }: {
   );
 }
 
-function ParteienBaustein({ frage, onFrageStellen }: {
-  frage: string; onFrageStellen?: (text: string) => void;
+function ParteienBaustein({ frage, beschlussIds, onFrageStellen }: {
+  frage: string; beschlussIds: number[]; onFrageStellen?: (text: string) => void;
 }) {
   const [parteien, setParteien] = useState<ParteiMeinung[] | null>(
     () => parteiMeinungenCache.get(frage) ?? null);
   const [ohneBeitraege, setOhneBeitraege] = useState<string[]>([]);
+  // Als Zeichenkette in die Abhängigkeit: Das Array ist bei jedem Render neu,
+  // die Belege sind es nicht — sonst liefe der Effekt endlos.
+  const idsKey = beschlussIds.join(",");
   useEffect(() => {
     if (parteiMeinungenCache.has(frage)) { setParteien(parteiMeinungenCache.get(frage)!); return; }
     let aktiv = true;
     fetch(apiUrl("/council/partei-meinungen"), {
       method: "POST", credentials: "include",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ frage }),
+      // Die belegten Beschlüsse mitgeben: Über sie holt der Endpoint die
+      // Aussprache, die ZU diesen Stationen gehört — die Ähnlichkeitssuche
+      // allein fand je Fraktion oft nur einen Beitrag (Tims Befund 21.08.).
+      body: JSON.stringify({ frage, beschluss_ids: idsKey ? idsKey.split(",").map(Number) : [] }),
     })
       .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then((b) => {
@@ -2996,7 +3004,7 @@ function ParteienBaustein({ frage, onFrageStellen }: {
       // für diesen Moment verstecken, nicht bis zum nächsten Voll-Reload.
       .catch(() => { if (aktiv) setParteien([]); });
     return () => { aktiv = false; };
-  }, [frage]);
+  }, [frage, idsKey]);
 
   if (parteien !== null && parteien.length < 2) return null; // dünne Lage: gar nicht
   return <ParteienListe parteien={parteien} ohneBeitraege={ohneBeitraege} onFrageStellen={onFrageStellen} />;
