@@ -3914,6 +3914,10 @@ class CouncilStore:
                 # (Tims Skiba-Befund 21.08.2026).
                 "art": m["art"], "partei": m["party"],
                 "organisation": m["organisation"],
+                # Nur bei Wechslern: Wer immer dieselbe Fraktion hatte, ist
+                # über `partei` schon erkennbar — und das Lexikon lädt jede
+                # Seite mit, also bleibt es schlank (13 Personen im Bestand).
+                "phasen": m["phasen"] if len(m["phasen"]) > 1 else None,
                 "rolle": ("Beratendes Mitglied"
                           + (f" · {m['organisation']}" if m["organisation"] else "")
                           if m["art"] == "beratend" else None),
@@ -4325,7 +4329,7 @@ class CouncilStore:
         ).fetchall()
         g: dict = defaultdict(lambda: {"names": Counter(), "ksinrs": set(), "committees": set(),
                                        "first": None, "last": None, "party_at": None,
-                                       "plenum": 0, "org_at": None})
+                                       "plenum": 0, "org_at": None, "phasen": {}})
         for r in rows:
             # Kanonisch: „Klein" und „Thomas Klein" sind ein Mensch und ein
             # Verzeichnis-Eintrag (s. _personen_varianten).
@@ -4348,6 +4352,13 @@ class CouncilStore:
             p = c["label"] if c["kind"] in ("partei", "gruppe") else None
             if p and (e["party_at"] is None or d >= e["party_at"][0]):
                 e["party_at"] = (d, p)
+            if p:
+                # Jede je belegte Zugehörigkeit mit ihrem Zeitraum: Wer die
+                # Fraktion gewechselt hat, wird sonst in alten Protokollzeilen
+                # nicht wiedererkannt („Finke (SPD)" ist Vally Finke, auch
+                # wenn sie heute für „Für Oldenburg" sitzt).
+                von, bis = e["phasen"].get(p, (d, d))
+                e["phasen"][p] = (min(von, d), max(bis, d))
             # Entsendende Organisation der beratenden Mitglieder: dasselbe Feld
             # trägt bei ihnen keinen Fraktions-, sondern einen Verbandsnamen.
             org = self._organisation_label(r["party"])
@@ -4358,6 +4369,9 @@ class CouncilStore:
                 "party": e["party_at"][1] if e["party_at"] else None,
                 "art": "rat" if (e["plenum"] or sl in ris) else "beratend",
                 "organisation": e["org_at"][1] if e["org_at"] else None,
+                "phasen": [{"partei": lab, "von": von[:4], "bis": bis[:4]}
+                           for lab, (von, bis) in sorted(e["phasen"].items(),
+                                                         key=lambda kv: kv[1][0])],
                 "n": len(e["ksinrs"]), "committees": len(e["committees"]),
                 "first": e["first"], "last": e["last"]}
                for sl, e in g.items()]
