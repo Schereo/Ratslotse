@@ -110,11 +110,6 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         text: "Alle Einnahmequellen — und bei welchen der Rat etwas zu entscheiden hat.",
       },
       {
-        href: "/haushalt/bereiche",
-        titel: "Was steckt hinter den Namen?",
-        text: "„Soziales“, „Finanzmanagement“: die Teilhaushalte im Klartext, mit Betrag.",
-      },
-      {
         // „Was kostet eigentlich …?" bleibt hinter „Muss oder kann?": Es ist
         // die griffigste Seite, beantwortet aber eine Frage, die erst Sinn
         // ergibt, wenn man weiß, dass der größte Teil des Geldes gar nicht
@@ -124,6 +119,11 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         text: "Wie viel gesetzlich vorgeschrieben ist — und wie die Stadt selbst das sieht.",
       },
       {
+        // Seit 21.08.2026 mit „Was steckt hinter den Namen?" zusammen: Beide
+        // gehen denselben Baum hinunter — erst die zehn Teilhaushalte im
+        // Klartext, dann die Aufgaben darin. Wer den zweiten Schritt ohne den
+        // ersten liest, sucht Aufgaben in Bereichen, deren Namen ihm nichts
+        // sagen.
         href: "/haushalt/produkte",
         titel: "Was kostet eigentlich …?",
         text: "Archiv, Feuerwehr, Schwimmbad: einzelne Aufgaben mit Kosten und Auftrag.",
