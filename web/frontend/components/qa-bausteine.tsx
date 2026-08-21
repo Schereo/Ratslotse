@@ -127,9 +127,10 @@ function klammerIstParteiLabel(inhalt: string, badgePartei: string | null): bool
  *  dieselben Badges tragen wie Namen im Fließtext. Dort läuft ein
  *  Prosa-Matcher; hier steht der Name schon isoliert da, also genügt die
  *  Nachnamen-Suche — MIT derselben Vorsichtsregel: Bei Namensvettern
- *  entscheidet ausschließlich der Vorname, sonst gibt es kein Badge
- *  (lieber keins als ein geratenes, Tims Oltmanns-Befund). */
-function usePersonSuche(): (name: string) => PersonEintrag | null {
+ *  entscheiden nur BELEGTE Merkmale (Vorname, sonst die Fraktion der Zeile),
+ *  sonst gibt es kein Badge (lieber keins als ein geratenes, Tims
+ *  Oltmanns-Befund). */
+function usePersonSuche(): (name: string, partei?: string | null) => PersonEintrag | null {
   const lexikon = usePersonenLexikon();
   const map = useMemo(() => {
     const m = new Map<string, PersonEintrag[]>();
@@ -141,7 +142,7 @@ function usePersonSuche(): (name: string) => PersonEintrag | null {
     }
     return m;
   }, [lexikon]);
-  return (name: string) => {
+  return (name: string, partei?: string | null) => {
     const woerter = (name || "").match(/[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}/g);
     if (!woerter || map.size === 0) return null;
     const nachname = falteName(woerter[woerter.length - 1]);
@@ -154,18 +155,48 @@ function usePersonSuche(): (name: string) => PersonEintrag | null {
     const vornamen = woerter.slice(0, -1).map(falteName);
     const treffer = kandidaten.filter(
       (p) => p.name && vornamen.some((v) => falteName(p.name!.split(" ")[0] || "") === v));
-    return treffer.length === 1 && treffer[0].art !== "blocker" ? treffer[0] : null;
+    if (treffer.length === 1 && treffer[0].art !== "blocker") return treffer[0];
+    // Kein Vorname im Protokoll — aber die Fraktion der Zeile steht daneben.
+    // „Behrens (SPD)" ist unter neun Lexikon-Behrens genau einer, „Schilling"
+    // je nach Fraktion Rita (Grüne) oder Michael (CDU). Das ist keine
+    // Heuristik, sondern ein zweites belegtes Merkmal — deshalb gilt es nur
+    // bei EINDEUTIGKEIT und nur für erkannte Parteien („Rat" wäre der
+    // Sammeltopf für alles Unbekannte). Am Prod-Bestand gemessen: 1.505
+    // Beiträge bekommen so ihr Badge, KEIN einziges wechselt (21.08.2026).
+    const k = parteiKuerzel(partei ?? null);
+    if (k === "Rat") return null;
+    const perPartei = kandidaten.filter(
+      (p) => p.name && p.art !== "blocker" && parteiKuerzel(p.partei) === k);
+    return perPartei.length === 1 ? perPartei[0] : null;
   };
 }
 
-/** Sprechername mit Badge, wenn die Person eindeutig im Lexikon steht. */
-export function SprecherName({ name }: { name: string }) {
+/** Was auf dem Badge STEHT — „ehem.", „Stadt" oder das Parteikürzel. Muss mit
+ *  `PersonBadge` deckungsgleich bleiben: `SprecherName` entscheidet daran, ob
+ *  die Fraktion daneben noch etwas hinzufügt oder nur dasselbe wiederholt. */
+function personBadgeLabel(p: PersonEintrag): string {
+  return !p.aktiv ? "ehem." : p.art === "stadt" ? "Stadt" : parteiKuerzel(p.partei);
+}
+
+/** Sprechername mit Badge, wenn die Person eindeutig im Lexikon steht.
+ *  `partei` ist die Fraktion, unter der die Zeile den Beitrag führt: Sie
+ *  trennt Namensvettern (s. o.) und wird mit `zeigePartei` hinter dem Namen
+ *  ausgegeben — aber NUR, wenn sie mehr sagt als das Badge. „Woltmann ·CDU
+ *  (CDU)" war doppelt gemoppelt (Tims Befund 21.08.); „Grösch ·ehem.
+ *  (Naturschutzbund)" bleibt dagegen stehen, weil „ehem." die Fraktion nicht
+ *  nennt. */
+export function SprecherName({ name, partei, zeigePartei = false }: {
+  name: string; partei?: string | null; zeigePartei?: boolean;
+}) {
   const suche = usePersonSuche();
-  const p = suche(name);
+  const p = suche(name, partei);
+  const label = p ? personBadgeLabel(p) : null;
+  const doppelt = !!label && label !== "Rat" && label === parteiKuerzel(partei ?? null);
   return (
     <>
       {name}
       {p && <PersonBadge p={p} />}
+      {zeigePartei && partei && !doppelt ? ` (${partei})` : ""}
     </>
   );
 }
@@ -214,7 +245,7 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
   const dot = !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
     : p.art === "stadt" ? { bg: "#0764a6", ring: false }
     : parteiDot(p.partei || "");
-  const label = !p.aktiv ? "ehem." : p.art === "stadt" ? "Stadt" : parteiKuerzel(p.partei);
+  const label = personBadgeLabel(p);
   const rolle = p.rolle
     || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}` : "Stadtverwaltung");
   const zeitraum = p.aktiv
@@ -616,7 +647,9 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
     <li className="text-[12.5px] leading-snug">
       <p className="flex items-baseline gap-2">
         <span className="min-w-0 flex-1 truncate font-medium">
-          {d.sprecher ? <SprecherName name={d.sprecher} /> : "Ohne Namen"}{d.partei ? ` (${d.partei})` : ""}
+          {d.sprecher
+            ? <SprecherName name={d.sprecher} partei={d.partei} zeigePartei />
+            : <>Ohne Namen{d.partei ? ` (${d.partei})` : ""}</>}
           {/* Zusagen der Verwaltung sind Selbstverpflichtungen — kein
               Meinungsbeitrag unter vielen. Sie bekommen deshalb ein eigenes
               Abzeichen statt nur ein graues Wörtchen. */}
@@ -702,6 +735,11 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
   // (Tims Wunsch: „auf die Partei klicken, um alle Beiträge zu sehen").
   const [offen, setOffen] = useState<string | null>(null);
   const daten = [...new Set((parteien ?? []).map((p) => p.kernaussage?.datum).filter(Boolean))];
+  // In den Ausschüssen reden auch Verbände und beratende Mitglieder (NABU,
+  // BUND, Ortslandvolkverband) — seit die Beiträge über die belegten
+  // Beschlüsse kommen, oft ein Drittel der Zeilen. „13 Fraktionen" wäre dann
+  // schlicht falsch gezählt.
+  const nurFraktionen = (parteien ?? []).every((p) => parteiKuerzel(p.partei) !== "Rat");
   return (
     <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm print:break-inside-avoid">
       <div className="flex items-baseline justify-between gap-2">
@@ -710,7 +748,8 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
         </p>
         <p className="text-[10.5px] text-muted-foreground/70">
           {parteien === null ? "Positionen werden verdichtet …"
-            : `${parteien.length} Fraktionen${daten.length === 1 ? ` · Sitzung ${daten[0]}` : ""}`}
+            : `${parteien.length} ${nurFraktionen ? "Fraktionen" : "Fraktionen und Verbände"}`
+              + (daten.length === 1 ? ` · Sitzung ${daten[0]}` : "")}
         </p>
       </div>
       {parteien === null ? (
@@ -783,7 +822,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                       <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">
                         {p.kernaussage.text}
                         <span className="font-mono text-[10px] not-italic text-muted-foreground/80">
-                          {" "}— {p.kernaussage.sprecher ? <SprecherName name={p.kernaussage.sprecher} /> : "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
+                          {" "}— {p.kernaussage.sprecher ? <SprecherName name={p.kernaussage.sprecher} partei={p.partei} /> : "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
                         </span>
                       </p>
                     )}
@@ -792,7 +831,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                         {p.beitraege_liste.map((b, bi) => (
                           <li key={bi} className="text-[12px] leading-snug">
                             <p className="font-mono text-[10px] text-muted-foreground">
-                              {b.sprecher ? <SprecherName name={b.sprecher} /> : "Ohne Namen"} · {b.datum}
+                              {b.sprecher ? <SprecherName name={b.sprecher} partei={p.partei} /> : "Ohne Namen"} · {b.datum}
                               {b.gremium ? ` · ${b.gremium}` : ""}
                             </p>
                             <p className="mt-0.5 text-muted-foreground">{b.text}{b.text.length >= 300 ? "…" : ""}</p>

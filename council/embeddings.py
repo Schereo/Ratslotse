@@ -767,6 +767,26 @@ def search_wortbeitraege_von_person(store, query: str, nachname: str,
     return rows
 
 
+#: Kandidatenfeld des Fraktions-Kanals — und der Grund, warum es groß sein muss:
+#: Der frühere Deckel von 120 war ein GLOBALES Top-N, geschnitten VOR der
+#: Fraktions-Auswahl. Genau dort verlieren die Beiträge zur Sache gegen das
+#: bloße Wortfeld. Auf „Was ist die Baumschutzsatzung und wie kam es zu ihr?"
+#: lagen 638 Beiträge über der Schwelle; die Reden aus den entscheidenden
+#: Sitzungen (Behrens/SPD 0.507, Woltmann/CDU 0.505, Adler/BSW 0.504) standen
+#: unter dem Schnitt, während Baum-Beiträge zu ganz anderen Tagesordnungspunkten
+#: darüber lagen. Der Baustein zeigte danach je Fraktion EINEN Beitrag von
+#: 2019/2021, CDU/BSW/FDP galten als „keine passenden Wortbeiträge" — obwohl
+#: alle drei in der Satzungs-Debatte geredet hatten (Tims Befund 21.08.2026).
+#: Deshalb: großes Feld, Auswahl je Fraktion, Torwächter entscheidet über die
+#: Einschlägigkeit. Der Cross-Encoder kann das auch — er bewertete dieselben
+#: 2025er-Reden mit −0.11 bis +0.35, deutlich über dem Cutoff.
+WB_FRAKTION_POOL = int(os.environ.get("COUNCIL_WB_FRAKTION_POOL", "600"))
+#: Deckel auf die Zahl der Fraktions-Töpfe (nach bestem Vektor-Score). Bremse
+#: gegen die Rerank-Kosten: gemessen ~32 ms je Paar, also ~3 s bei 20 Töpfen ×
+#: 5 Beiträgen. Wer hier hochgeht, bezahlt es in Latenz des Bausteins.
+WB_FRAKTION_LABELS = int(os.environ.get("COUNCIL_WB_FRAKTION_LABELS", "20"))
+
+
 def search_wortbeitraege_je_fraktion(store, query: str, expanded: str,
                                      je_partei: int = 5, min_score: float = 0.45) -> list[tuple]:
     """Kandidaten für den Parteien-Baustein: FRAKTIONS-BEWUSST gesammelt.
@@ -774,7 +794,11 @@ def search_wortbeitraege_je_fraktion(store, query: str, expanded: str,
     ohne Fraktion (Verwaltungsantworten, Referenten) — übrig blieben 1–3
     Beiträge je Partei, die „Parteimeinung" war real eine Einzel-Paraphrase
     (Tims Befund 10.08.). Hier: Vektor-Scan → Beiträge ohne Fraktion raus →
-    je Fraktion die besten ``je_partei`` → EIN Torwächter-Rerank über alle."""
+    je Fraktion die besten ``je_partei`` → EIN Torwächter-Rerank über alle.
+
+    Die Auswahl je Fraktion läuft über das GANZE Kandidatenfeld (siehe
+    ``WB_FRAKTION_POOL``) — ein globaler Vorschnitt hätte die Beiträge zur
+    Sache gegen das Wortfeld verloren."""
     from council.qa import _fraktions_label
 
     ids, mat = _wb_matrix(store)
@@ -784,15 +808,23 @@ def search_wortbeitraege_je_fraktion(store, query: str, expanded: str,
     scores = mat @ qv
     kandidaten = sorted(
         ((wid, float(s)) for wid, s in zip(ids, scores) if s >= min_score),
-        key=lambda x: -x[1])[:120]
+        key=lambda x: -x[1])[:WB_FRAKTION_POOL]
     rows = store.wortbeitraege_by_ids([wid for wid, _ in kandidaten])
     text_von = {r["id"]: " — ".join(t for t in (r.get("top"), r.get("text")) if t) for r in rows}
     partei_von = {r["id"]: _fraktions_label(r.get("partei")) for r in rows}
+    # Welche Fraktionen überhaupt antreten: die mit dem besten Einzeltreffer.
+    bester: dict[str, float] = {}
+    for wid, s in kandidaten:
+        label = partei_von.get(wid)
+        if label and s > bester.get(label, -1.0):
+            bester[label] = s
+    zugelassen = {label for label, _ in
+                  sorted(bester.items(), key=lambda kv: -kv[1])[:WB_FRAKTION_LABELS]}
     je_gruppe: dict[str, int] = {}
     auswahl: list[tuple] = []
     for wid, s in kandidaten:
         label = partei_von.get(wid)
-        if not label:
+        if not label or label not in zugelassen:
             continue  # Verwaltung/Einwohner verstopfen keine Fraktions-Slots
         if je_gruppe.get(label, 0) >= je_partei:
             continue

@@ -388,6 +388,104 @@ def test_search_je_fraktion_filtert_und_deckelt(store, monkeypatch):
     assert parteien.count("CDU") == 1
 
 
+def test_search_je_fraktion_sammelt_aus_ganzem_feld(store, monkeypatch):
+    """Regression (Tims Befund 21.08.2026): Die Auswahl je Fraktion darf NICHT
+    hinter einem globalen Top-N stehen. Vorher schnitt der Code das Feld auf
+    120 Kandidaten zusammen — auf „Was ist die Baumschutzsatzung …?" lagen dort
+    ausschließlich Beiträge zu anderen Tagesordnungspunkten, und die Reden aus
+    der Satzungs-Debatte (CDU, SPD, BSW) fielen heraus."""
+    np = pytest.importorskip("numpy")
+    from council import embeddings as emb
+    # 130 Verwaltungs-Beiträge mit HÖHEREM Score als die beiden Fraktions-
+    # Beiträge — genau die Konstellation, die den alten Schnitt auslöste.
+    rows = ([dict(BEITRAG, partei=None, text=f"Verwaltungsantwort Nummer {i} zur Sache.")
+             for i in range(130)]
+            + [dict(BEITRAG, partei="SPD", sprecher="S1", text="SPD-Rede zur Satzung."),
+               dict(BEITRAG, partei="CDU", sprecher="C1", text="CDU-Rede zur Satzung.")])
+    store.save_wortbeitraege(100, rows)
+    alle = [r[0] for r in store._conn.execute("SELECT id FROM council_wortbeitraege ORDER BY id")]
+    # Score = erste Komponente: absteigend, die Fraktions-Beiträge am Ende.
+    cos = np.array([0.9 - 0.002 * i for i in range(len(alle))], dtype="float32")
+    mat = np.stack([cos, np.sqrt(1 - cos ** 2)], axis=1)
+    monkeypatch.setattr(emb, "_wb_matrix", lambda s: (alle, mat))
+    monkeypatch.setattr(emb, "embed", lambda texts: np.array([[1.0, 0.0]], dtype="float32"))
+    monkeypatch.setattr(emb, "rerank", lambda q, docs: [(i, 0.0) for i, _ in docs])
+    hits = emb.search_wortbeitraege_je_fraktion(store, "Frage", "Frage")
+    parteien = [r.get("partei") for r in store.wortbeitraege_by_ids([w for w, _ in hits])]
+    assert sorted(parteien) == ["CDU", "SPD"]
+
+
+def test_partei_meinungen_deckel_und_einzelstimmen(monkeypatch):
+    """Je Fraktion gehen bis zu MAX_BEITRAEGE_JE_PARTEI Beiträge in die
+    Verdichtung — die JÜNGSTEN, chronologisch. Und: ein einzelner Beitrag
+    macht aus einem Verband keine Position, aus einer Ratsfraktion schon."""
+    gesehen = {}
+
+    def fake(**kwargs):
+        gesehen["prompt"] = kwargs["messages"][0]["content"]
+        antwort = json.dumps([{"partei": "SPD", "haltung": "dafür", "position": "Dafür.",
+                               "einig": True},
+                              {"partei": "AfD", "haltung": "dagegen", "position": "Dagegen.",
+                               "einig": True},
+                              {"partei": "Jägerschaft", "haltung": "offen", "position": "Egal.",
+                               "einig": True}])
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=antwort))],
+                               usage=None)
+
+    monkeypatch.setattr(qa.llm, "chat_complete", fake)
+    rows = [{"partei": "SPD", "sprecher": f"Redner {i}", "text": f"SPD-Beitrag {i} zur Sache.",
+             "session_date": f"2026-01-{i + 1:02d}"} for i in range(15)]
+    rows.append({"partei": "AfD", "sprecher": "Einzeln", "text": "Einzige AfD-Rede zur Sache.",
+                 "session_date": "2026-02-01"})
+    rows.append({"partei": "Jägerschaft", "sprecher": "Gast", "text": "Einzige Wortmeldung.",
+                 "session_date": "2026-02-02"})
+    out = qa.partei_meinungen("Frage?", rows)
+    assert [e["partei"] for e in out] == ["SPD", "AfD"]  # Jägerschaft: nur eine Stimme
+    assert out[0]["beitraege"] == qa.MAX_BEITRAEGE_JE_PARTEI == 12
+    assert len(out[0]["beitraege_liste"]) == 12
+    # Gekappt wird vorne: der älteste fällt raus, der jüngste bleibt.
+    assert "SPD-Beitrag 0 " not in gesehen["prompt"]
+    assert "SPD-Beitrag 14 " in gesehen["prompt"]
+    assert "Einzige Wortmeldung" not in gesehen["prompt"]
+
+
+def test_partei_meinungen_fasst_schreibvarianten_zusammen(monkeypatch):
+    """„SPD" und „SPD-Fraktion" sind EINE Fraktion — sonst steht die Partei
+    zweimal im Baustein und teilt sich ihre Beiträge (Stadion-Frage, 21.08.)."""
+    gesehen = {}
+
+    def fake(**kwargs):
+        gesehen["prompt"] = kwargs["messages"][0]["content"]
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+            content=json.dumps([{"partei": "SPD", "haltung": "dafür", "position": "Dafür.",
+                                 "einig": True},
+                                {"partei": "Bündnis 90/Die Grünen", "haltung": "dafür",
+                                 "position": "Auch dafür.", "einig": True}])))], usage=None)
+
+    monkeypatch.setattr(qa.llm, "chat_complete", fake)
+    rows = [{"partei": p, "sprecher": "R", "text": f"Beitrag der {p} zur Sache.",
+             "session_date": "2026-01-01"}
+            for p in ("SPD", "SPD-Fraktion", "Die Grünen", "Bündnis 90/ Die Grünen")]
+    out = qa.partei_meinungen("Frage?", rows)
+    assert [e["partei"] for e in out] == ["SPD", "Bündnis 90/Die Grünen"]
+    assert [e["beitraege"] for e in out] == [2, 2]
+    assert "SPD-Fraktion (" not in gesehen["prompt"]
+
+
+def test_partei_meinungen_rettet_abgeschnittene_antwort(monkeypatch):
+    """Läuft die Verdichtung ins Token-Limit, ist ein halber Baustein besser
+    als gar keiner — der Rest des Arrays wird geborgen (Befund 21.08.)."""
+    torso = ('[{"partei": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": true},'
+             ' {"partei": "CDU", "haltung": "dagegen", "position": "Dage')
+    monkeypatch.setattr(qa.llm, "chat_complete", lambda **k: SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=torso))], usage=None))
+    rows = [{"partei": p, "sprecher": "R", "text": f"Beitrag der {p} zur Sache.",
+             "session_date": "2026-01-01"} for p in ("SPD", "SPD", "CDU", "CDU")]
+    out = qa.partei_meinungen("Frage?", rows)
+    assert [e["partei"] for e in out] == ["SPD"]
+    assert qa._json_array_notfalls_gerettet("kein json") is None
+
+
 def test_partei_meinungen_schwellen(monkeypatch):
     """Unter 2 Fraktionen oder 4 Beiträgen: kein Baustein, KEIN LLM-Call."""
     def nie(**kwargs):
