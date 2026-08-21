@@ -319,6 +319,9 @@ class CouncilStore:
         self._conn.executescript(SCHEMA)
         self._conn.commit()
         self._migrate()
+        # Namensvarianten derselben Person (s. _personen_varianten): einmal je
+        # Store-Instanz gebaut, also einmal je Web-Anfrage.
+        self._varianten_cache: dict[str, str] | None = None
 
     def _migrate(self) -> None:
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
@@ -3919,7 +3922,7 @@ class CouncilStore:
         g: dict = defaultdict(lambda: {"names": Counter(), "rollen": Counter(),
                                        "first": None, "last": None})
         for r in rows:
-            sl = self._person_slug(r["name"])
+            sl = self._person_slug_kanonisch(r["name"], "stadt")
             if not sl:
                 continue
             e = g[sl]
@@ -3934,7 +3937,7 @@ class CouncilStore:
             if sl in gesehen:  # Ratsmandat gewinnt über Gast-Auftritte der Verwaltung
                 continue
             gesehen.add(sl)
-            anzeige = self._person_anzeige(e["names"].most_common(1)[0][0])
+            anzeige = self._person_anzeige(self._haeufigster_name(e["names"]))
             vor, nach = namensteile(anzeige)
             if not nach:
                 continue
@@ -3956,8 +3959,12 @@ class CouncilStore:
                 "SELECT DISTINCT name FROM council_attendance "
                 "WHERE role NOT IN ('mitglied','vorsitz','verwaltung') "
                 "AND name IS NOT NULL AND name != ''"):
+            # Auch eine weichende Namensvariante zählt als „schon bekannt":
+            # Sonst legte ein Gast-Auftritt von „Klein" wieder einen Blocker
+            # an und machte den Nachnamen erneut mehrdeutig.
             sl = self._person_slug(name)
-            if not sl or sl in gesehen:
+            if not sl or sl in gesehen or any(
+                    self._person_slug_kanonisch(name, k) in gesehen for k in ("rat", "stadt")):
                 continue
             gesehen.add(sl)
             _, nach = namensteile(self._person_anzeige(name))
@@ -4129,10 +4136,134 @@ class CouncilStore:
         toks = [t for t in re.split(r"[^a-z0-9]+", s) if t and t not in CouncilStore._HONORIFICS]
         return "-".join(toks)
 
+    #: Rollen, die eine Ratsperson ausmachen — der eine „Namensraum" der
+    #: Varianten-Auflösung; die Verwaltung bildet den zweiten. Ein
+    #: Verwaltungs-Streit und ein Rats-Streit sind zwei Menschen.
+    _ROLLEN_RAT = ("mitglied", "vorsitz")
+
+    @staticmethod
+    def _vornamen_passen(a: set[str], b: set[str]) -> bool:
+        """Stecken die Vornamen von A in denen von B? Einzelbuchstaben gelten
+        als Initiale („U. Helpertz" ist „Ulrich Helpertz"), ein Eintrag ganz
+        ohne Vornamen („Klein") passt auf jeden."""
+        for t in a:
+            if t in b or (len(t) == 1 and any(x.startswith(t) for x in b)):
+                continue
+            return False
+        return True
+
+    def _personen_varianten(self) -> dict[tuple[str, str], str]:
+        """``{(Namensraum, Slug einer Variante): Slug der Person}`` — nur für
+        die tatsächlich zusammengelegten Varianten, alles andere fehlt schlicht.
+
+        Ein Mensch, zwei Einträge: Die Anwesenheitslisten schreiben denselben
+        Namen mal voll, mal knapp. „Thomas Klein" steht an einem einzigen Tag
+        bloß als „Klein" da, „Hans-Georg Heß" einmal als „Georg Hess",
+        „Christine Wolff" führt das RIS zeitweise als „Christine Berta Wolff",
+        und „Tim Harms" heißt seit Mai 2026 „Tim Ebbeke Harms". Jede Variante
+        bekam bisher einen eigenen Slug — also einen zweiten Eintrag im
+        Verzeichnis, eine zweite Personen-Seite mit einem Bruchteil der
+        Redebeiträge, und im Frontend gar kein Badge mehr: Zwei Kandidaten zum
+        selben Nachnamen, kein Vorname im Protokoll, also lieber keins raten.
+        Gemessen am Prod-Bestand (21.08.2026): acht solche Paare, 752
+        Wortbeiträge ohne Badge.
+
+        Zusammengelegt wird nur bei vier erfüllten Bedingungen — die Regel
+        soll Varianten heilen, nicht Menschen verschmelzen:
+
+        1. gleicher Namensraum (Rat bzw. Verwaltung) und gleicher Nachname,
+        2. gleiche Fraktion (die Verwaltung hat keine — dort zählt „beide
+           ohne"), sonst wären „Meyer (SPD)" und „Jan-Martin Meyer (Linke/
+           Piraten)" ein Mensch,
+        3. die Vornamen des einen stecken in denen des anderen — „Meike",
+           „Sarah" und „Thorsten Bruns" bleiben damit unberührt,
+        4. es gibt GENAU EINEN Kandidaten, der die Variante aufnehmen kann;
+           bei Mehrdeutigkeit bleibt es getrennt.
+
+        Der bleibende Slug ist der mit den meisten Anwesenheits-Zeilen (bei
+        Gleichstand der ausführlichere Name) — die weichenden bleiben über
+        diese Abbildung erreichbar, alte Personen-Links laufen also weiter.
+        """
+        if self._varianten_cache is not None:
+            return self._varianten_cache
+        from council.parties import classify_faction
+
+        info: dict[tuple[str, str], dict] = {}
+        for r in self._conn.execute(
+                """SELECT a.name, a.party, a.role, COUNT(*) n, MAX(cs.session_date) letzte
+                   FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                   WHERE a.role IN ('mitglied','vorsitz','verwaltung')
+                     AND a.name IS NOT NULL AND a.name != ''
+                   GROUP BY a.name, a.party, a.role"""):
+            sl = self._person_slug(r["name"])
+            if not sl:
+                continue
+            klasse = "rat" if r["role"] in self._ROLLEN_RAT else "stadt"
+            e = info.setdefault((klasse, sl), {"n": 0, "partei": None, "stand": ""})
+            e["n"] += r["n"]
+            c = classify_faction(r["party"])
+            label = c["label"] if c["kind"] in ("partei", "gruppe") else None
+            if label and (r["letzte"] or "") >= e["stand"]:
+                e["partei"], e["stand"] = label, (r["letzte"] or "")
+
+        gruppen: dict[tuple, list[str]] = {}
+        for (klasse, sl), e in info.items():
+            gruppen.setdefault((klasse, sl.split("-")[-1], e["partei"]), []).append(sl)
+
+        varianten: dict[tuple[str, str], str] = {}
+        for (klasse, _nach, _partei), slugs in gruppen.items():
+            if len(slugs) < 2:
+                continue
+            eltern = {sl: sl for sl in slugs}
+
+            def wurzel(sl: str) -> str:
+                while eltern[sl] != sl:
+                    sl = eltern[sl] = eltern[eltern[sl]]
+                return sl
+
+            for a in slugs:
+                va = set(a.split("-")[:-1])
+                kandidaten = [b for b in slugs
+                              if b != a and self._vornamen_passen(va, set(b.split("-")[:-1]))]
+                if len(kandidaten) != 1:
+                    continue  # keiner oder mehrdeutig → nichts anfassen
+                wa, wb = wurzel(a), wurzel(kandidaten[0])
+                if wa != wb:
+                    eltern[wa] = wb
+            zusammen: dict[str, list[str]] = {}
+            for sl in slugs:
+                zusammen.setdefault(wurzel(sl), []).append(sl)
+            for teil in zusammen.values():
+                if len(teil) < 2:
+                    continue
+                bleibt = max(teil, key=lambda sl: (info[(klasse, sl)]["n"], len(sl.split("-")), sl))
+                for sl in teil:
+                    if sl != bleibt:
+                        varianten[(klasse, sl)] = bleibt
+        self._varianten_cache = varianten
+        return varianten
+
+    def _person_slug_kanonisch(self, name: str, klasse: str = "rat") -> str:
+        """Slug der PERSON statt der Schreibweise (s. _personen_varianten).
+        ``klasse`` trennt die Namensräume: Ein Verwaltungs-Streit wird nicht
+        zum Ratsherrn Streit."""
+        sl = self._person_slug(name)
+        return self._personen_varianten().get((klasse, sl), sl)
+
+    @staticmethod
+    def _haeufigster_name(zaehler) -> str:
+        """Die kanonische Schreibweise aus einem Counter von Namen: die
+        häufigste — bei Gleichstand die ausführlichere. Ohne den Stichentscheid
+        gewann der Zufall der Einfüge-Reihenfolge, und eine Person mit je zwei
+        Zeilen als „Dr. Götte" und „Walter Götte" hieß im Verzeichnis „Dr.
+        Götte", während ihr Slug walter-goette lautete."""
+        return max(zaehler.items(), key=lambda kv: (kv[1], len(kv[0].split()), kv[0]))[0]
+
     def list_members(self) -> list[dict]:
-        """Council members from attendance (role mitglied/vorsitz), grouped by *slug* so
-        title variants of the same person ("Dr. X" and "X") merge into ONE entry (and the
-        React list gets unique keys). Per person: canonical (most-frequent) name, die
+        """Council members from attendance (role mitglied/vorsitz), grouped by *person*
+        so alle Schreibweisen desselben Menschen EINEN Eintrag ergeben — Titel-Varianten
+        („Dr. X" und „X") über den Slug, Namensvarianten („Klein" / „Thomas Klein",
+        „Christine Wolff" / „Christine Berta Wolff") über ``_personen_varianten``. Per person: canonical (most-frequent) name, die
         **letzte aktive Fraktion** (nicht die häufigste — Wechsler wie FDP→Volt oder
         Linke→BSW würden sonst ewig unter der alten laufen), distinct sessions attended
         and committees served. The member directory."""
@@ -4146,7 +4277,9 @@ class CouncilStore:
         g: dict = defaultdict(lambda: {"names": Counter(), "ksinrs": set(), "committees": set(),
                                        "first": None, "last": None, "party_at": None})
         for r in rows:
-            sl = self._person_slug(r["name"])
+            # Kanonisch: „Klein" und „Thomas Klein" sind ein Mensch und ein
+            # Verzeichnis-Eintrag (s. _personen_varianten).
+            sl = self._person_slug_kanonisch(r["name"])
             if not sl:
                 continue
             e = g[sl]
@@ -4163,7 +4296,7 @@ class CouncilStore:
             p = c["label"] if c["kind"] in ("partei", "gruppe") else None
             if p and (e["party_at"] is None or d >= e["party_at"][0]):
                 e["party_at"] = (d, p)
-        out = [{"slug": sl, "name": self._person_anzeige(e["names"].most_common(1)[0][0]),
+        out = [{"slug": sl, "name": self._person_anzeige(self._haeufigster_name(e["names"])),
                 "party": e["party_at"][1] if e["party_at"] else None,
                 "n": len(e["ksinrs"]), "committees": len(e["committees"]),
                 "first": e["first"], "last": e["last"]}
@@ -4179,8 +4312,9 @@ class CouncilStore:
         namen = [r["name"] for r in self._conn.execute(
             "SELECT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
             "AND name IS NOT NULL AND name != ''")]
-        passend = [n for n in namen if self._person_slug(n) == slug]
-        return self._person_anzeige(Counter(passend).most_common(1)[0][0]) if passend else None
+        kanon = self._personen_varianten().get(("rat", slug), slug)
+        passend = [n for n in namen if self._person_slug_kanonisch(n) == kanon]
+        return self._person_anzeige(self._haeufigster_name(Counter(passend))) if passend else None
 
     def member_detail(self, slug: str) -> dict | None:
         """One member — all name variants merged by slug: party, sessions, active span,
@@ -4190,14 +4324,17 @@ class CouncilStore:
         names = [r["name"] for r in self._conn.execute(
             "SELECT DISTINCT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
             "AND name IS NOT NULL AND name != ''")]
-        matched = [n for n in names if self._person_slug(n) == slug]
+        # Über die kanonische Abbildung, damit alle Schreibweisen EINE Seite
+        # ergeben — und der Link auf eine weichende Variante weiter trägt.
+        kanon = self._personen_varianten().get(("rat", slug), slug)
+        matched = [n for n in names if self._person_slug_kanonisch(n) == kanon]
         if not matched:
             return None
         ph = ",".join("?" * len(matched))
-        name = self._person_anzeige(Counter(  # canonical = most-frequent spelling
+        name = self._person_anzeige(self._haeufigster_name(Counter(  # häufigste Schreibweise
             r["name"] for r in self._conn.execute(
                 f"SELECT name FROM council_attendance WHERE name IN ({ph}) AND role IN ('mitglied','vorsitz')",
-                matched)).most_common(1)[0][0])
+                matched))))
         chairs = {r["committee"] for r in self._conn.execute(
             f"SELECT DISTINCT cs.committee FROM council_attendance a JOIN council_sessions cs ON cs.ksinr=a.ksinr "
             f"WHERE a.name IN ({ph}) AND a.role='vorsitz'", matched)}
