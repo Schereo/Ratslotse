@@ -44,20 +44,19 @@ genau dieser Reihenfolge.
 | `/haushalt/pflicht` | Schritt 3 — muss oder kann: Ausgaben nach Gestaltungsspielraum, gegen die Selbstauskunft der Stadt gehalten |
 | `/haushalt/produkte[?nr=<produkt_nr>]` | Schritt 4 — „Was kostet eigentlich …?", Produktsuche mit Filtern (Amt, Spielraum); `nr` öffnet den Steckbrief |
 | `/haushalt/personal` | Schritt 5 — „Wer macht die Arbeit?“: der Stellenplan je Amtsbezeichnung, mit besetzten und unbesetzten Stellen zum Stichtag |
-| `/haushalt/investitionen[?bereich=<thh_nr>]` | Schritt 6 — „Was wird gebaut?": die Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025, mit dem Anteil am ganzen Finanzhaushalt — darunter die **einzelnen Vorhaben** aus dem Investitionsprogramm, 2019–2026, durchsuchbar; `bereich` öffnet einen Teilhaushalt |
+| `/haushalt/investitionen[?jahr=<jahr>&thh=<nr>]` | Schritt 6 — „Was gebaut wird — und was daraus wurde", zwei Abschnitte: `#plan` der Finanzhaushalt je Teilhaushalt mit dem Investitionsprogramm (Vorhaben einzeln, durchsuchbar), `#gebaut` was am Jahresende tatsächlich abgeflossen ist — seit 2003, nach Auszahlungsart |
 | **Die Gegenprobe** | |
 | `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 7 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
-| `/haushalt/gebaut` | Schritt 8 — „Was wurde davon wirklich gebaut?": die **tatsächlichen** Investitions-Auszahlungen seit 2003, nach Auszahlungsart, aus dem Statistischen Jahrbuch |
-| `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 9 — „Geprüft und zusammengefasst", zwei Abschnitte: `#feststellungen` die Feststellungen des Rechnungsprüfungsamts im Wortlaut, je Jahrgang und als Wiederholungskette, `#kennzahlen` die dreizehn Kennzahlen, auf die die Stadt ihren Abschluss selbst eindampft, mit den gedruckten Rechenwegen |
+| `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 8 — „Geprüft und zusammengefasst", zwei Abschnitte: `#feststellungen` die Feststellungen des Rechnungsprüfungsamts im Wortlaut, je Jahrgang und als Wiederholungskette, `#kennzahlen` die dreizehn Kennzahlen, auf die die Stadt ihren Abschluss selbst eindampft, mit den gedruckten Rechenwegen |
 | **Der Rahmen** | |
-| `/haushalt/konzern` | Schritt 10 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
-| `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 11 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
-| `/haushalt/betriebe` | Schritt 12 — „Was planen die Betriebe?“: die Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften, in derselben Ratssitzung beschlossen wie der Stadthaushalt und mit ihm **nicht addierbar** |
-| `/haushalt/gebuehren` | Schritt 13 — „Was Sie dafür zahlen": die Gebührenbedarfsberechnung des Abfallwirtschaftsbetriebs — was der Bereich kostet, was Dritte tragen, und was übrig bleibt, geteilt durch die Menge |
-| `/haushalt/vergleich` | Schritt 14 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
-| `/haushalt/schulden` | Schritt 15 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
+| `/haushalt/konzern` | Schritt 9 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
+| `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 10 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
+| `/haushalt/betriebe` | Schritt 11 — „Was planen die Betriebe?“: die Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften, in derselben Ratssitzung beschlossen wie der Stadthaushalt und mit ihm **nicht addierbar** |
+| `/haushalt/gebuehren` | Schritt 12 — „Was Sie dafür zahlen": die Gebührenbedarfsberechnung des Abfallwirtschaftsbetriebs — was der Bereich kostet, was Dritte tragen, und was übrig bleibt, geteilt durch die Menge |
+| `/haushalt/vergleich` | Schritt 13 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
+| `/haushalt/schulden` | Schritt 14 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
-| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 16 — „Mitreden", drei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten der Fraktionen mit Abstimmungsergebnis, die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung, `#labor` Was-wäre-wenn mit Hebesatz-Regler und Kürzungen |
+| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 15 — „Mitreden", drei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten der Fraktionen mit Abstimmungsergebnis, die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung, `#labor` Was-wäre-wenn mit Hebesatz-Regler und Kürzungen |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
@@ -112,7 +111,7 @@ die es nicht zeigen:
 | `…/haushalt/stellenplan` | `/haushalt/personal` | rund 190 Zeilen je Jahrgang; die Einzelposten kommen nur für den angefragten Jahrgang mit |
 | `…/haushalt/vergleich` | `/haushalt/vergleich` | eigene Tabelle (LSN), acht Städte × Jahrgänge |
 | `…/haushalt/investitionen` | `/haushalt/investitionen` | eigene Tabelle, **anderer Haushalt** (Finanz- statt Ergebnishaushalt) — nicht mit den übrigen Zahlen verrechenbar |
-| `…/haushalt/gebaut` | `/haushalt/gebaut` | eigene Tabellen; **Ist statt Plan** und nach Auszahlungsart statt nach Teilhaushalt — bewusst nicht mit `…/haushalt/investitionen` zusammengelegt, damit die beiden Summen nicht als „geplant gegen gebaut" gelesen und voneinander abgezogen werden |
+| `…/haushalt/gebaut` | `/haushalt/investitionen#gebaut` | eigene Tabellen; **Ist statt Plan** und nach Auszahlungsart statt nach Teilhaushalt — bewusst nicht mit `…/haushalt/investitionen` zusammengelegt, damit die beiden Summen nicht als „geplant gegen gebaut" gelesen und voneinander abgezogen werden. Seit 21.08.2026 stehen sie als zwei ABSCHNITTE einer Seite; die Datenwege bleiben getrennt, und der Einwand („Warum hier keine Umsetzungsquote steht") steht seither VOR den Ist-Zahlen statt dahinter |
 | `…/haushalt/schulden` | `/haushalt/schulden` | eigene Tabelle, eigene Jahrgangsreihe (bis 1995 zurück) |
 | `…/haushalt/weg` | `/haushalt/mitreden#termine` | Ratsdaten statt Finanzdokumenten (Beratungsfolge, Sitzungen) |
 | `…/haushalt/datenstand` | Block „Bis wann die Zahlen reichen" | rechnet über den Bestand, nicht über Inhalte |
