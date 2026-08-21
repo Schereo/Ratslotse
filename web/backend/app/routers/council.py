@@ -1447,6 +1447,15 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
         quellen_json = json.dumps(
             {"sources": [_qa_source(c) for c in candidates if c["id"] in zitiert],
              "cited": cited,
+             # Die KONDENSIERTE Frage mit in den Snapshot: „Und was kostet
+             # das?" wird beim Antworten zu einer eigenständigen Frage
+             # verdichtet, und Bausteine, die danach nachladen (der
+             # Parteien-Baustein), schlüsseln darauf. Ohne sie baute ein
+             # wiederhergestelltes Gespräch den Turn mit der Originalfrage auf
+             # — anderer Schlüssel, also lud der Baustein beim Zurückwechseln
+             # auf den Fragen-Tab komplett neu und fragte dabei mit der
+             # kontextlosen Frage (Tims Befund 21.08.2026).
+             "kontext": q_suche,
              "presse": _presse_kompakt(presse_rows or []),
              "debatten": _debatten_kompakt(debatten_rows or []),
              # Der Ausblick gehört wie Presse und Debatten in den Snapshot,
