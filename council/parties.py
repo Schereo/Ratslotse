@@ -18,6 +18,10 @@ _NON_PARTY = (
     "baurat", "dezernent", "stadtkämmerer", "beauftragt", "beirat", "vertretung",
     "elternrat", "naturschutz", "nabu", "bund", "adfc", "fossil free", "agenda",
     "ratsfrau", "ratsherr", "prof.", "dr. ", "herr ", "frau ",
+    # Rechtsformen: Vereine und Gesellschaften sind nie eine Fraktion. Ohne sie
+    # las „Gemeinsam für Oldenburg e.V." als Ratsgruppe „Für Oldenburg" und
+    # machte einen Verbandsvertreter zum Gruppenmitglied (Befund 21.08.2026).
+    "e.v", "gmbh",
 )
 
 # Recognised factions/groups, checked top-to-bottom (most specific first).
@@ -38,6 +42,16 @@ _RULES: list[tuple[tuple[str, ...], str]] = [
     (("fdp",), "FDP"),
     (("volt",), "Volt"),
 ]
+
+#: Gruppen, die ein bloßer ZUSAMMENSCHLUSS zweier Parteien sind: Ihre
+#: Mitglieder gehören einer der beiden an — „Mitglied der Gruppe FDP/Volt" ist
+#: niemand (Tims Befund 21.08.2026). Wo die Zugehörigkeit belegt ist (RIS oder
+#: eigene Anwesenheits-Historie), zeigt das Verzeichnis deshalb die Partei.
+#: BEWUSST NICHT dabei: „Für Oldenburg" (eigenständige Gruppe aus Parteilosen
+#: und einem Piraten — das RIS führt sie selbst nur als Gruppe) und „IBO/LiVe"
+#: (zwei Wählergemeinschaften, keine Parteien).
+AUFLOESBARE_GRUPPEN = frozenset({"FDP/Volt", "Die Linke/Piraten"})
+
 
 # Display order (current / most active first), then historical.
 CANONICAL_ORDER = [

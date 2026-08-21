@@ -454,6 +454,59 @@ def test_lexikon_fuehrt_fraktions_phasen_nur_bei_wechslern(tmp_path):
         store.close()
 
 
+def test_gruppen_label_wird_zur_partei_aufgeloest(tmp_path):
+    """Tims Filter-Befund 21.08.2026: „Mitglied der Gruppe FDP/Volt" ist
+    niemand. Wo die Zugehörigkeit belegt ist, zeigt das Verzeichnis die
+    Partei — eigenständige Gruppen bleiben, Unbelegtes bleibt auch."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        frisch = (date.today() - timedelta(days=20)).isoformat()
+        frueher = f"{int(frisch[:4]) - 2}{frisch[4:]}"
+        with store._conn:
+            store._conn.executemany(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+                "location, fetched_at) VALUES (?, 'Rat', ?, '', '', datetime('now'))",
+                [(1, frueher), (2, frisch)])
+            store._conn.executemany(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (?, ?, ?, 'mitglied', NULL)",
+                [(1, "Benno Schulz", "FDP"), (2, "Benno Schulz", "FDP/Volt"),
+                 (2, "Dr. Gunnar Meister", "FDP/Volt"),         # nie einzeln geführt
+                 (2, "Jens Lükermann", "FDP/Volt"),             # löst über die Stammdaten auf
+                 (2, "Vally Finke", "Für Oldenburg"),           # eigenständige Gruppe
+                 (2, "Manfred Klöpper", "Gruppe DIE LINKE./Piratenpartei")])
+            store._conn.execute(
+                "INSERT INTO council_persons (kpenr, name, fraktion_aktuell, fetched_at) "
+                "VALUES (7, 'Jens Lükermann', 'Volt', datetime('now'))")
+        m = {x["slug"]: x for x in store.list_members()}
+        assert m["benno-schulz"]["party"] == "FDP"          # aus der eigenen Historie
+        assert m["jens-luekermann"]["party"] == "Volt"      # aus den Stammdaten
+        assert m["vally-finke"]["party"] == "Für Oldenburg"  # eigenständig, bleibt
+        # Ohne Beleg wird nicht geraten — das Label bleibt ehrlich stehen …
+        assert m["gunnar-meister"]["party"] == "FDP/Volt"
+        assert m["manfred-kloepper"]["party"] == "Die Linke/Piraten"
+        # … die Person fällt aber nicht aus dem Filter.
+        assert m["gunnar-meister"]["filter_parteien"] == ["FDP", "Volt"]
+        assert m["manfred-kloepper"]["filter_parteien"] == ["Die Linke", "Piraten"]
+        assert m["benno-schulz"]["filter_parteien"] == ["FDP"]
+        assert m["vally-finke"]["filter_parteien"] == ["Für Oldenburg"]
+        # Kein Zusammenschluss-Label mehr im Dropdown.
+        werte = {w for x in m.values() for w in x["filter_parteien"]}
+        assert "FDP/Volt" not in werte and "Die Linke/Piraten" not in werte
+    finally:
+        store.close()
+
+
+def test_verein_ist_keine_ratsgruppe(tmp_path):
+    """„Gemeinsam für Oldenburg e.V." las als Ratsgruppe „Für Oldenburg" —
+    ein Verbandsvertreter wurde so zum Gruppenmitglied (21.08.2026)."""
+    from council.parties import classify_faction
+    assert classify_faction("Gemeinsam für Oldenburg e.V.")["kind"] == "unbekannt"
+    assert classify_faction("City-Management Oldenburg GmbH")["kind"] == "unbekannt"
+    assert classify_faction("Für Oldenburg")["kind"] == "gruppe"
+
+
 def test_personen_lexikon_blocker_fuer_gaeste(tmp_path):
     """Tims Oltmanns-Befund 12.08.: Ein Gast-Namensvetter (Wasserstraßen-Amt)
     muss den kahlen Nachnamen mehrdeutig machen — als blocker-Eintrag ohne
