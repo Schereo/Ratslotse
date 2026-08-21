@@ -27,16 +27,24 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
-import { GebuehrenZeile, HaushaltAuswahl, deMio, haushaltUrl } from "@/lib/haushalt";
+import {
+  GebuehrenZeile, HaushaltAuswahl, deMio, haushaltUrl, herkunftVon,
+} from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
+import type { Herkunft } from "@/lib/herkunft";
 import { deZahl } from "@/components/grafik/format";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import {
+  Beleg, Dokumentbeleg, Quellenkontext, Quellenverzeichnis,
+} from "@/components/haushalt/quelle";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
-const FELDER = ["gebuehren"] as const;
+// `herkunft` mit: Jeder Bereich hat seine eigene Fundstelle in derselben
+// Datei („Gebührenbedarfsberechnung 2026, Straßenreinigung"), und die ist
+// der Unterschied zwischen einem 40-Seiten-PDF und einer Stelle darin.
+const FELDER = ["gebuehren", "herkunft"] as const;
 const QUELLEN: QuellenSchluessel[] = ["gebuehren"];
 
 /** Was der Bereich macht — eine Zeile, damit die Zahl einen Gegenstand hat. */
@@ -82,8 +90,11 @@ function Zeile({ label, wert, summe = false }: {
   );
 }
 
-function BereichsKarte({ zeilen, juengstesJahr }: {
+function BereichsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
   zeilen: GebuehrenZeile[]; juengstesJahr: number;
+  /** Die Suche, nicht das Ergebnis — welche Zeile die jüngste ist,
+   *  entscheidet diese Karte selbst. */
+  herkunftFuer: (id: number | null) => Herkunft | null;
 }) {
   const nach = [...zeilen].sort((a, b) => a.jahr - b.jahr);
   const letzte = nach[nach.length - 1];
@@ -152,14 +163,17 @@ function BereichsKarte({ zeilen, juengstesJahr }: {
         </p>
       )}
 
-      <p className="mt-2.5 text-[12px] leading-relaxed text-muted-foreground">
-        <Beleg q="gebuehren" />{" "}
-        Nachgerechnet: Die Kalkulationskosten minus alle Abzüge ergeben die zu
-        deckenden Kosten
-        {letzte.gebuehr != null && <>, und diese geteilt durch die Menge die
-          Gebühr</>}.
-        {letzte.vorlage_nr && <> Vorlage {letzte.vorlage_nr}.</>}
-      </p>
+      <div className="mt-2.5">
+        <p className="text-[12px] leading-relaxed text-muted-foreground">
+          <Beleg q="gebuehren" />{" "}
+          Nachgerechnet: Die Kalkulationskosten minus alle Abzüge ergeben die zu
+          deckenden Kosten
+          {letzte.gebuehr != null && <>, und diese geteilt durch die Menge die
+            Gebühr</>}.
+        </p>
+        <Dokumentbeleg h={herkunftFuer(letzte.herkunft_id)}
+          vorlageNr={letzte.vorlage_nr} />
+      </div>
 
       {reihe.length >= 3 && (
         <div className="mt-3">
@@ -255,7 +269,8 @@ export default function GebuehrenPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           {nachBereich.map((zeilen) => (
             <BereichsKarte key={zeilen[0].bereich} zeilen={zeilen}
-              juengstesJahr={juengstes} />
+              juengstesJahr={juengstes}
+              herkunftFuer={(id) => herkunftVon(data, id)} />
           ))}
         </div>
 

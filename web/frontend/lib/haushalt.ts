@@ -10,6 +10,7 @@
 import {
   BEREICHE, bereichSchluessel, type BereichSchluessel,
 } from "@/lib/haushalt-bereiche";
+import type { Herkunft } from "@/lib/herkunft";
 
 export type HaushaltZeile = {
   bereich: string;
@@ -302,6 +303,20 @@ export type HaushaltDaten = {
   ergebnishaushalt?: ErgebnishaushaltZeile[];
   /** Die Wirtschaftspläne der Eigenbetriebe — der Haushalt neben dem Haushalt. */
   wirtschaftsplaene?: WirtschaftsplanZeile[];
+  /** Die Herkunft je `herkunft_id` — nur die Einträge, auf die eine gelieferte
+   *  Zeile zeigt.
+   *
+   *  ANFORDERN MUSS MAN SIE (`FELDER` um `"herkunft"` ergänzen). Die meisten
+   *  Seiten dieses Bereichs brauchen sie nicht: Ihr Beleg hängt am
+   *  Quellen-Schlüssel, und `/haushalt/dokumente` liefert je Jahrgang das
+   *  zugehörige Papier.
+   *
+   *  Wo ein Jahrgang aber aus MEHREREN Papieren besteht, reicht das nicht —
+   *  ein Jahrgang Wirtschaftsplan sind bis zu sieben Pläne von sieben
+   *  Betrieben. Dann ist die `herkunft_id` der Zeile die einzige Angabe, die
+   *  „diese Zahl steht in DIESEM Papier" beantwortet
+   *  (`components/haushalt/quelle.tsx: Dokumentbeleg`). */
+  herkunft?: Record<string, Herkunft>;
   /** Die Haushaltssatzung je Jahrgang — der Rahmen um den Plan. */
   haushaltssatzung?: HaushaltssatzungZeile[];
   /** Woraus die Abfall- und Straßenreinigungsgebühren entstehen. */
@@ -381,6 +396,25 @@ export function haushaltUrl(
 
 /** Der Ausschnitt von `HaushaltDaten`, den `haushaltUrl(FELDER)` liefert. */
 export type HaushaltAuswahl<K extends keyof HaushaltDaten> = Pick<HaushaltDaten, K>;
+
+/** Die Herkunft zu einer `herkunft_id` — oder `null`.
+ *
+ *  Absichtlich strukturell getypt (`{ herkunft?: … }` statt eines konkreten
+ *  Seitentyps): Dieselbe Suche steht in neun Seitenmodulen dieses Bereichs,
+ *  jedes Mal wortgleich, weil jedes seinen eigenen Antworttyp hat. Diese
+ *  Fassung passt auf alle — auch auf `HaushaltAuswahl<…>`, sobald `"herkunft"`
+ *  in `FELDER` steht.
+ *
+ *  Gibt `null` zurück, wenn die Karte gar nicht angefordert wurde. Das ist
+ *  bewusst kein Fehler: Die Anzeige lässt den Dokumentbeleg dann weg und
+ *  behält ihren Quellen-Chip — sichtbar falsch wäre schlimmer als knapp. */
+export function herkunftVon(
+  daten: { herkunft?: Record<string, Herkunft> } | null | undefined,
+  id: number | null | undefined,
+): Herkunft | null {
+  if (!daten?.herkunft || id == null) return null;
+  return daten.herkunft[String(id)] ?? null;
+}
 
 /** Welche Sorte Nachbewilligung eine Zeile ist.
  *
@@ -920,6 +954,7 @@ export type GebuehrenZeile = {
   gebuehrenvorschlag: number | null;
   vorlage_nr: string | null;
   proben: string;
+  herkunft_id: number | null;
 };
 
 /** Ein Jahrgang der Haushaltssatzung (§§ 1–5).
@@ -970,6 +1005,7 @@ export type HaushaltssatzungZeile = {
   sitzung_am: string | null;
   vorlage_nr: string | null;
   proben: string;
+  herkunft_id: number | null;
 };
 
 export type WirtschaftsplanZeile = {

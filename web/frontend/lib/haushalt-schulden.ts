@@ -127,10 +127,12 @@ export function juengsteZinslast(daten: SchuldenDaten | null) {
   return reihe.length ? reihe[reihe.length - 1] : null;
 }
 
-export function herkunftVon(daten: SchuldenDaten | null, id: number | null): Herkunft | null {
-  if (!daten || id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
-}
+// Die Suche stand hier bis zum 21.08.2026 als eigene Fassung — eine von neun
+// wortgleichen im Bereich. Seit die Schulden-Seite auch die Herkunft der
+// HAUSHALTSSATZUNG nachschlägt (anderer Endpunkt, anderer Antworttyp), passt
+// eine auf `SchuldenDaten` festgenagelte Fassung nicht mehr. Die gemeinsame in
+// `lib/haushalt.ts` ist strukturell getypt und deckt beide Fälle.
+export { herkunftVon } from "@/lib/haushalt";
 
 /** Was auf der Y-Achse steht: die Gesamtschuld oder der Betrag je Person.
  *

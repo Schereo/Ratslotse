@@ -252,7 +252,7 @@ def main() -> int:
         for plan, proben, a in aus_anlage:
             store.save_wirtschaftsplan(plan, herkunft_tabelle(
                 plan, proben, url=a["url"], dokument_id=a["document_id"],
-                label=a["label"], ocr_modell=a.get("ocr_modell")))
+                ocr_modell=a.get("ocr_modell")))
         for plan, wort, lage, r in kernzahlen:
             store.save_wirtschaftsplan(plan, herkunft_kernzahl(
                 plan, wort, lage, url=None, kvonr=r["kvonr"]))

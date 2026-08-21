@@ -59,7 +59,9 @@ import {
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { deZahl } from "@/components/grafik/format";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import {
+  Beleg, Dokumentbeleg, Quellenkontext, Quellenverzeichnis,
+} from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { BilanzBlock } from "@/components/haushalt/bilanz-block";
@@ -71,7 +73,10 @@ const QUELLEN = ["schulden", "bilanz", "haushaltssatzung"] as const;
  *  leihen DARF, neben dem, was sie schuldet), ist aber eine eigene Schicht mit
  *  eigener Herkunft. Ein zweiter Abruf ist ehrlicher als ein Endpunkt, der
  *  zwei Quellen zu einer Antwort verrührt. */
-const SATZUNG_FELDER = ["haushaltssatzung"] as const;
+// `herkunft` mit — der Rahmen-Block zeigte seine drei Zahlen bis zum
+// 21.08.2026 ganz ohne Beleg: Die Quelle stand im Verzeichnis am Seitenfuß,
+// an den Zahlen selbst stand nichts.
+const SATZUNG_FELDER = ["haushaltssatzung", "herkunft"] as const;
 
 /** Wo eine Angabe im Dokument steht: welcher Abschnitt, welcher Stand. Das
  *  Quellenverzeichnis am Seitenende beschreibt die Quelle der ganzen Seite;
@@ -445,7 +450,9 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
  *  liegen ausschließlich Verwaltungsentwürfe; die beschlossene Satzung
  *  erscheint im Amtsblatt. Ohne den Satz behaupteten diese Zahlen einen
  *  Ratsbeschluss, den wir nicht belegt haben. */
-function RahmenBlock({ zeile }: { zeile: HaushaltssatzungZeile }) {
+function RahmenBlock({ zeile, herkunft }: {
+  zeile: HaushaltssatzungZeile; herkunft: Herkunft | null;
+}) {
   const posten: { label: string; wert: number | null; erklaerung: string }[] = [
     {
       label: "Kredite für Investitionen",
@@ -472,7 +479,7 @@ function RahmenBlock({ zeile }: { zeile: HaushaltssatzungZeile }) {
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="font-display text-[17px] font-bold tracking-tight">
-          Was der Rahmen erlaubt
+          Was der Rahmen erlaubt<Beleg q="haushaltssatzung" />
         </h2>
         <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
           Satzung {zeile.jahr}
@@ -521,6 +528,8 @@ function RahmenBlock({ zeile }: { zeile: HaushaltssatzungZeile }) {
           </div>
         ))}
       </dl>
+      <Dokumentbeleg h={herkunft} vorlageNr={zeile.vorlage_nr}
+        className="mt-3 border-t border-dashed border-border pt-2.5" />
     </section>
   );
 }
@@ -948,7 +957,8 @@ export default function SchuldenPage() {
           </ul>
         </section>
 
-        {satzung && <RahmenBlock zeile={satzung} />}
+        {satzung && <RahmenBlock zeile={satzung}
+          herkunft={herkunftVon(satzungDaten, satzung.herkunft_id)} />}
 
         <Link href="/haushalt"
           className="group flex items-center gap-2 text-[13px] font-semibold text-primary">

@@ -159,7 +159,14 @@ class Gebuehrenbedarf:
 # Lesen
 # --------------------------------------------------------------------------
 
-_JAHR = re.compile(r"Geb[üu]hrenbedarfsberechnung\s+(\d{4})")
+#: Der Jahrgang steht in der Überschrift des Abschnitts — in zwei
+#: Schreibweisen. Ab 2023 heißt sie „Gebührenbedarfs**be**rechnung", der
+#: Jahrgang 2020 schreibt „Gebührenbedarfsrechnung 2020"; beide Wörter stehen
+#: sogar in derselben Datei nebeneinander (die Überschrift so, die
+#: Erläuterungen darunter anders). Das ``be`` ist deshalb optional — die
+#: Alternative wäre gewesen, einen ganzen Jahrgang liegen zu lassen, weil ein
+#: Sachbearbeiter 2019 zwei Silben kürzer getippt hat.
+_JAHR = re.compile(r"Geb[üu]hrenbedarfs(?:be)?rechnung\s+(\d{4})")
 _KALKULATION = re.compile(r"Kostenkalkulation f[üu]r \d{4}\s*" + _BETRAG)
 _ZU_DECKEN = re.compile(r"decken sind\s*" + _BETRAG)
 #: Die Gebührenzeile MIT ihrer Einheit — beides in einem Griff.

@@ -114,7 +114,11 @@ export function belegziel(
   const passend = jahr == null ? [] : liste.filter((d) => d.jahr === jahr);
   const dokument = passend.length ? passend[0] : neuester(liste);
   if (!dokument) return null;
-  const gleicherJahrgang = liste.filter((d) => d.jahr === dokument.jahr);
+  // Gezählt werden DATEIEN, nicht Fundstellen: Der Satz „Alle 3 Dokumente im
+  // Verzeichnis" führte sonst zu einem Verzeichnis mit einem Eintrag, weil
+  // dieselbe Anlage dreimal gezählt worden war (s. `jeAdresseEinmal`).
+  const gleicherJahrgang = jeAdresseEinmal(
+    liste.filter((d) => d.jahr === dokument.jahr));
   return {
     dokument,
     jahrgang: dokument.jahr,
@@ -124,7 +128,19 @@ export function belegziel(
 }
 
 /** Alle Dokumente eines Jahrgangs — die Langfassung fürs Quellenverzeichnis,
- *  wo Platz für alle neun Teilhaushalte ist. */
+ *  wo Platz für alle neun Teilhaushalte ist.
+ *
+ *  JE ADRESSE EINMAL. Die Antwort führt eine Zeile je *Fundstelle*, nicht je
+ *  Datei, und mehrere Fundstellen liegen oft in demselben PDF: Die
+ *  Gebührenbedarfsberechnung 2026 kam dreimal (Abfallbehandlung,
+ *  Abfallsammlung, Straßenreinigung — eine Anlage), der Stellenplan zweimal
+ *  (Teil A und Teil B). Im Verzeichnis stünden dann drei Links, die alle
+ *  dasselbe öffnen.
+ *
+ *  Für den Beleg-Chip bleibt die Unterscheidung erhalten: `belegziel` wählt
+ *  weiter die Zeile mit IHRER Fundstelle, und die steht dann auch dran. Hier
+ *  geht es um die Frage „welche Papiere sind das?", und darauf ist dieselbe
+ *  Datei eine Antwort und nicht drei. */
 export function belegzieleAlle(
   dokumente: HaushaltDokumente | undefined,
   q: QuellenSchluessel,
@@ -132,7 +148,20 @@ export function belegzieleAlle(
 ): HaushaltDokument[] {
   const ziel = belegziel(dokumente, q, jahr);
   if (!ziel) return [];
-  return (dokumente?.[q] ?? []).filter((d) => d.jahr === ziel.jahrgang);
+  return jeAdresseEinmal(
+    (dokumente?.[q] ?? []).filter((d) => d.jahr === ziel.jahrgang));
+}
+
+/** Aus einer Liste von Fundstellen die Liste der Dateien — Reihenfolge bleibt. */
+function jeAdresseEinmal(liste: HaushaltDokument[]): HaushaltDokument[] {
+  const gesehen = new Set<string>();
+  const aus: HaushaltDokument[] = [];
+  for (const d of liste) {
+    if (gesehen.has(d.url)) continue;
+    gesehen.add(d.url);
+    aus.push(d);
+  }
+  return aus;
 }
 
 /** Wohin ein Link führt — abgelesen an der Adresse, nicht behauptet.

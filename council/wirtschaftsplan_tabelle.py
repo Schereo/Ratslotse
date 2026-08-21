@@ -102,7 +102,8 @@ import re
 from dataclasses import dataclass
 
 from council.herkunft import Herkunft
-from council.wirtschaftsplan import BETRIEBE, Wirtschaftsplan, WirtschaftsplanFehler
+from council.wirtschaftsplan import (BETRIEBE, Wirtschaftsplan,
+                                     WirtschaftsplanFehler, dokument_name)
 
 PROBE_SPALTEN = "wirtschaftsplan_spalten"
 PROBE_PROSA = "wirtschaftsplan_prosa"
@@ -447,7 +448,7 @@ def parse_erfolgsplan(vorlage_nr: str, betrieb: str, haushaltsjahr: int,
 
 def herkunft_fuer(plan: Wirtschaftsplan, proben: list[Spaltenprobe],
                   url: str | None, dokument_id: int | None,
-                  label: str | None, ocr_modell: str | None = None) -> Herkunft:
+                  ocr_modell: str | None = None) -> Herkunft:
     """Die Herkunft: die **Anlage**, nicht die Vorlage.
 
     ``ocr_modell`` steht drin, wenn die Anlage keine Textebene hatte und ein
@@ -466,7 +467,12 @@ def herkunft_fuer(plan: Wirtschaftsplan, proben: list[Spaltenprobe],
         art="ris",
         probe=[PROBE_SPALTEN, PROBE_PROSA],
         dokument_id=dokument_id,
-        label=label or f"Anlage zu {plan.vorlage_nr}",
+        # Nicht das RIS-Label der Datei („25.10.27 - Anlage Wirtschafts-und
+        # Finanzplan 2026 AWB"): Das ist ein Dateiname mit Datumspräfix, kein
+        # Dokumentname. Der Betrieb steht zwar darin, aber hinter Ballast —
+        # und im Verzeichnis stehen die Pläne nebeneinander, wo genau der
+        # Betrieb sie unterscheidet (s. `wirtschaftsplan.dokument_name`).
+        label=dokument_name(plan),
         url=url,
         fundstelle=("Erfolgsplan der Anlage (per OCR gelesen)" if ocr_modell
                     else "Erfolgsplan der Anlage"),
