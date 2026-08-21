@@ -44,7 +44,8 @@
 //    Eintrag dabei auf (`zeigeImVerzeichnis`) — sonst zeigten sie ins Nichts.
 
 import {
-  createContext, useContext, useMemo, useState, type ReactNode,
+  createContext, useContext, useEffect, useMemo, useRef, useState,
+  type CSSProperties, type ReactNode,
 } from "react";
 import { ChevronRight, ExternalLink } from "lucide-react";
 import {
@@ -156,6 +157,7 @@ export function Beleg({ q, h, className }: {
   className?: string;
 }) {
   const [offen, setOffen] = useState(false);
+  const { knopf, lage } = useFaehnchenLage(offen);
   const { schluessel, dokumente, jahrgaenge, jahr, eintraege } =
     useContext(SeitenQuellen);
   const quelle = QUELLEN[q];
@@ -194,6 +196,7 @@ export function Beleg({ q, h, className }: {
   return (
     <span className="relative inline-block">
       <button
+        ref={knopf}
         type="button"
         onClick={() => setOffen((o) => !o)}
         aria-label={`Beleg ${nr}: ${quelle.titel}`}
@@ -207,7 +210,14 @@ export function Beleg({ q, h, className }: {
         {nr}
       </button>
       {offen && (
-        <span className="absolute bottom-full left-1/2 z-20 mb-1.5 block w-[280px] -translate-x-1/2 rounded-xl border border-border bg-card p-3 text-left shadow-[0_12px_32px_-10px_rgba(2,32,71,0.28)]">
+        <span
+          // `fixed` und nicht `absolute`: Ein absolut gesetztes Fähnchen hängt
+          // an seinem Chip, und ein Chip am rechten Textrand schiebt es aus
+          // dem Bild — auf dem Handy zuverlässig (Tim, 21.08.2026). Fixiert
+          // lässt es sich am Fenster ausrichten statt am Absatz.
+          style={lage}
+          className="fixed z-30 block max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-3 text-left shadow-[0_12px_32px_-10px_rgba(2,32,71,0.28)]"
+        >
           <QuelleInhalt
             quelle={quelle} nr={nr}
             ziel={ziel}
@@ -218,6 +228,56 @@ export function Beleg({ q, h, className }: {
       )}
     </span>
   );
+}
+
+/** Wo das Fähnchen steht — am Fenster ausgerichtet, nicht am Absatz.
+ *
+ *  Drei Dinge, die ein `absolute`-Fähnchen nicht kann und die auf einem
+ *  Handybildschirm alle drei vorkommen:
+ *
+ *  * **Nicht seitlich hinausragen.** Die Breite ist auf die Fensterbreite
+ *    minus zweimal `RAND` gedeckelt, und die linke Kante wird in das Fenster
+ *    hineingeschoben, statt vom Chip aus zentriert zu bleiben.
+ *  * **Nicht oben abgeschnitten werden.** Ist über dem Chip kein Platz, klappt
+ *    es darunter.
+ *  * **Beim Scrollen mitgehen.** Sonst stünde es nach zwei Fingerwischen
+ *    irgendwo im Nichts.
+ */
+const RAND = 12;
+const BREITE = 300;
+
+function useFaehnchenLage(offen: boolean) {
+  const knopf = useRef<HTMLButtonElement>(null);
+  const [lage, setLage] = useState<CSSProperties>({ visibility: "hidden" });
+
+  useEffect(() => {
+    if (!offen) return;
+    const messen = () => {
+      const k = knopf.current?.getBoundingClientRect();
+      if (!k) return;
+      const breite = Math.min(BREITE, window.innerWidth - 2 * RAND);
+      const mitte = k.left + k.width / 2 - breite / 2;
+      const links = Math.min(Math.max(mitte, RAND),
+                             window.innerWidth - breite - RAND);
+      // Über dem Chip, wenn dort Platz ist — sonst darunter. Gemessen wird
+      // gegen die halbe Fensterhöhe und nicht gegen die tatsächliche Höhe des
+      // Fähnchens: Die steht erst nach dem Zeichnen fest, und ein zweiter
+      // Durchlauf ließe es sichtbar springen.
+      const obenPlatz = k.top > window.innerHeight * 0.45;
+      setLage(obenPlatz
+        ? { left: links, bottom: window.innerHeight - k.top + 6, width: breite }
+        : { left: links, top: k.bottom + 6, width: breite });
+    };
+    messen();
+    window.addEventListener("scroll", messen, true);
+    window.addEventListener("resize", messen);
+    return () => {
+      window.removeEventListener("scroll", messen, true);
+      window.removeEventListener("resize", messen);
+    };
+  }, [offen]);
+
+  return { knopf, lage };
 }
 
 /** Wo im Dokument die Zahl steht — nur wo die Datenbank es weiß.
@@ -300,25 +360,29 @@ function QuelleInhalt({ quelle, nr, ziel, jahrgaenge, imVerzeichnis }: {
       <span className="block text-[11.5px] font-bold leading-snug">
         {nr}. {quelle.titel}
       </span>
-      <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">
-        {quelle.fundstelle}
-      </span>
+      {/* DER LANGE ABSATZ STEHT HIER NICHT MEHR (Tim, 21.08.2026: „der Text,
+          der dann erscheint, ist wirklich riesig"). `quelle.fundstelle` ist
+          ein redaktioneller Absatz über alle Jahrgänge — bei den
+          Wirtschaftsplänen sechs Zeilen, die auf einem Handybildschirm den
+          halben Platz einnehmen und dabei nicht das beantworten, wofür man
+          den Chip angetippt hat: „Wo steht diese Zahl?"
+
+          Diese Frage beantworten `Fundstelle` und der Link. Der Absatz steht
+          vollständig im Verzeichnis, und der Knopf unten führt hin. */}
       {ziel && <Fundstelle ziel={ziel} />}
       {ziel && <Vorgang ziel={ziel} />}
       <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
-        <span>{quelle.herausgeber}</span>
-        <span>·</span>
         <span>Stand {standText(quelle, jahrgaenge)}</span>
-        {quelle.lizenz && (<><span>·</span><span>{quelle.lizenz}</span></>)}
       </span>
       <Zeile ziel={ziel} quelle={quelle} klein />
-      {/* Der Rückweg ins Verzeichnis. Im Popover ist kein Platz für neun
-          Teilhaushalts-Anlagen — dort stehen sie vollständig. */}
+      {/* Der Rückweg ins Verzeichnis. Dort steht, was hier keinen Platz hat:
+          der Absatz zur Quelle, ihr Herausgeber, die Lizenz — und bei
+          mehreren Papieren alle neun Teilhaushalts-Anlagen. */}
       <button type="button" onClick={imVerzeichnis}
         className="mt-2 inline-flex items-center gap-1 text-[10.5px] font-medium text-muted-foreground underline decoration-dotted underline-offset-2">
         {ziel && ziel.weitere > 0
           ? `Alle ${ziel.weitere + 1} Dokumente im Verzeichnis`
-          : "Im Quellenverzeichnis zeigen"}
+          : "Mehr zu dieser Quelle"}
       </button>
     </>
   );

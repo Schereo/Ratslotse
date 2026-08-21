@@ -256,12 +256,27 @@ export default function KonzernPage() {
           <Fundstelle h={hTraeger} className="mt-3" />
         </section>
 
-        {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
-        <section className="rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
+        {/* Die Grenzen — eigener Block, nicht Kleingedrucktes.
+            ZWEI SPALTEN AUF BREITEN KARTEN. Die Liste stand in einem
+            `max-w-[76ch]`, und auf einem breiten Bildschirm blieb daneben die
+            halbe Karte leer (Tim, 21.08.2026). Die Designsprache sagt dazu
+            selbst: „ein eigenes `max-w-*` auf einem Raster verschenkt genau
+            den Platz, den das Gerät hat" (§ 4).
+
+            Die volle Breite in EINER Spalte wäre aber der falsche Tausch —
+            bei 1.400 px stünden dort 180 Zeichen je Zeile, und das liest
+            niemand mehr zurück an den Zeilenanfang. Zwei Spalten füllen die
+            Fläche und halten die Zeile lesbar.
+
+            `@container` und nicht `lg:`, wie überall in diesem Bereich: Am
+            Desktop liegt die Karte neben einer 240-px-Seitenleiste, auf dem
+            iPad nicht — dieselbe Fensterbreite meint zwei verschiedene
+            Platzangebote. Deshalb misst die Schwelle die KARTE. */}
+        <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
             Was dieser Vergleich nicht kann
           </p>
-          <ul className="mt-2 flex max-w-[76ch] list-disc flex-col gap-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
+          <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
             <li>
               <strong>Ein Gesamtabschluss ist kein Haushalt.</strong> Er rechnet ab, was war,
               und folgt dabei kaufmännischen Regeln. Die Planzahlen auf{" "}
