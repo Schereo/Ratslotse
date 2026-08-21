@@ -3680,6 +3680,10 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
         g = client.get(f"/api/council/gespraeche/{gid}").json()
         q0 = g["turns"][0]["quellen"]
         assert q0["presse"] and q0["debatten"]
+        # … samt der Suchfassung der Frage: Nachladende Bausteine schlüsseln
+        # darauf, und ohne sie baute die Wiederherstellung einen anderen
+        # Schlüssel als der Live-Lauf (Tims Fragen-Tab-Befund 21.08.2026).
+        assert q0["kontext"] == "Was ist mit dem Stadion?"
         # Design 9a②: Umbenennen über die API — fremde ids bleiben 404.
         r = client.patch(f"/api/council/gespraeche/{gid}", json={"titel": "Stadion"})
         assert r.status_code == 200

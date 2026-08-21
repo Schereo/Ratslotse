@@ -4,7 +4,13 @@ Store-Logik direkt; die API-Verdrahtung deckt test_backend_api-Infrastruktur —
 hier zählt: ohne Einwilligung wird nichts gespeichert, Gespräche sind strikt
 ans Konto gebunden, Löschen räumt die Turns mit ab.
 """
+import json
+import sys
+from pathlib import Path
+
 from kern.store import Store
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web" / "backend"))
 
 
 def _user(store, email="a@test.de"):
@@ -127,3 +133,35 @@ def test_share_extras_und_alte_zeilen(tmp_path):
     assert "extras" in {r[1] for r in store._conn.execute("PRAGMA table_info(qa_shares)")}
     assert store.qa_share_get(token)["debatten"] == []
     store.close()
+
+
+def test_snapshot_traegt_die_kondensierte_frage(tmp_path):
+    """Tims Befund 21.08.2026: Beim Zurückwechseln auf den Fragen-Tab lud der
+    Parteien-Baustein komplett neu.
+
+    Ursache war der Snapshot: Gespeichert wurde nur die Frage, WIE SIE GESTELLT
+    wurde („Und was kostet das?"). Bausteine, die nach der Antwort nachladen,
+    schlüsseln aber auf die KONDENSIERTE Fassung — nach dem Wiederherstellen
+    also ein anderer Schlüssel, damit ein Fehlgriff im Zwischenspeicher und ein
+    neuer Lauf, der obendrein mit der kontextlosen Frage suchte."""
+    from app.routers.council import AskBody, _turn_speichern
+
+    store = Store(tmp_path / "nwz.sqlite")
+    try:
+        uid = _user(store)
+        store.set_qa_speichern(uid, True)
+        body = AskBody(question="Und was kostet das?", gespraech_id=None)
+        gid = _turn_speichern(store, {"id": uid}, body,
+                              "Was kostet die Sanierung der Cäcilienbrücke?",
+                              "Rund 40 Mio. € [1].", [], [])
+        assert gid is not None
+        turn = store.qa_gespraech(gid, uid)["turns"][0]
+        # Die Frage bleibt, wie sie gestellt wurde — im Verlauf soll stehen,
+        # was der Mensch getippt hat.
+        assert turn["frage"] == "Und was kostet das?"
+        # … die Suchfassung liegt daneben, damit der wiederhergestellte Turn
+        # denselben Schlüssel trägt wie der live erzeugte.
+        assert json.loads(turn["quellen"])["kontext"] == \
+            "Was kostet die Sanierung der Cäcilienbrücke?"
+    finally:
+        store.close()
