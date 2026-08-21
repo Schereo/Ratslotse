@@ -1,5 +1,14 @@
 "use client";
 
+// „Was steckt hinter den Namen?" — der ERSTE Abschnitt von
+// /haushalt/produkte.
+//
+// Bis zum 21.08.2026 die eigene Seite /haushalt/bereiche. Zusammengelegt mit
+// „Was kostet eigentlich …?": Beide gehen denselben Baum hinunter — erst die
+// zehn Teilhaushalte im Klartext, dann die einzelnen Aufgaben darin. Der
+// Steckbrief eines einzelnen Bereichs (/haushalt/bereich) bleibt eine eigene
+// Seite; er ist die dritte Ebene und hat bewusst keinen Schritt.
+
 // /haushalt/bereiche — „Soziales", „Finanzmanagement": was heißt das eigentlich?
 //
 // Die Bereichsnamen sind die größte Verständnishürde des ganzen Haushalts.
@@ -18,8 +27,7 @@
 import Link from "next/link";
 import { ChevronRight, ArrowRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
-import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
+import { Beleg } from "@/components/haushalt/quelle";
 import { NamenKlartext } from "@/components/haushalt/namen-klartext";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
@@ -28,9 +36,7 @@ import { bereichSchluessel } from "@/lib/haushalt-bereiche";
 import {
   HaushaltAuswahl, haushaltUrl, HaushaltZeile, bereichSlug, bereiche, deMio, jahreSortiert, mio,
 } from "@/lib/haushalt";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
-const QUELLEN: QuellenSchluessel[] = ["plan", "steuern", "steuerkraft", "teilhaushalt"];
 
 /** Ein Posten, der im Finanzmanagement zentral eingeht — Betrag und Jahr aus
  *  den Daten, Titel und Stellschraube aus den Steuer-Steckbriefen.
@@ -185,7 +191,7 @@ const FELDER = ["jahre", "produkt_jahre", "steuern", "steuerkraft"] as const;
 /** Der Ausschnitt, den diese Seite holt. */
 type Daten = HaushaltAuswahl<typeof FELDER[number]>;
 
-export default function BereichePage() {
+export function BereicheAbschnitt() {
   const { data, loading } = useFetch<Daten>(haushaltUrl(FELDER));
 
   if (loading || !data) {
@@ -208,21 +214,14 @@ export default function BereichePage() {
   const produktBis = produktJahre[produktJahre.length - 1] ?? null;
 
   return (
-    <Quellenkontext schluessel={QUELLEN} jahr={jahr}>
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-          <Link href="/haushalt" className="hover:text-foreground">Haushalt {jahr}</Link>
-          <ChevronRight aria-hidden className="h-3 w-3" />
-          <span className="font-semibold text-foreground">Alle Bereiche</span>
-        </div>
-
         <div>
           <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Die Teilhaushalte im Klartext
           </p>
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[26px]">
+          <h2 className="mt-1 font-display text-xl font-bold tracking-tight sm:text-[22px]">
             „Soziales“, „Finanzmanagement“ — was heißt das eigentlich?
-          </h1>
+          </h2>
           <p className="mt-2 max-w-[74ch] text-sm leading-relaxed text-muted-foreground">
             Der Haushalt ist in Teilhaushalte geteilt, und deren Namen stammen aus der
             Verwaltungsgliederung: Sie sagen, wer zuständig ist, nicht, worum es geht.
@@ -283,10 +282,6 @@ export default function BereichePage() {
             + "welche Ausgabe trägt."} />
         </p>
 
-        <SchrittWeiter href="/haushalt/bereiche" />
-
-        <Quellenverzeichnis schluessel={QUELLEN} />
       </div>
-    </Quellenkontext>
   );
 }

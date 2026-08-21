@@ -217,7 +217,7 @@ function BereichInner() {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
         Diesen Bereich kennen wir nicht.{" "}
-        <Link href="/haushalt/bereiche" className="font-semibold text-primary">Alle Bereiche ansehen</Link>
+        <Link href="/haushalt/produkte#bereiche" className="font-semibold text-primary">Alle Bereiche ansehen</Link>
       </div>
     );
   }
@@ -294,7 +294,7 @@ function BereichInner() {
       <div className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt {jahr}</Link>
         <ChevronRight aria-hidden className="h-3 w-3" />
-        <Link href="/haushalt/bereiche" className="hover:text-foreground">Alle Bereiche</Link>
+        <Link href="/haushalt/produkte#bereiche" className="hover:text-foreground">Alle Bereiche</Link>
         <ChevronRight aria-hidden className="h-3 w-3" />
         <span className="font-semibold text-foreground">{kanon.name}</span>
       </div>
@@ -446,7 +446,7 @@ function BereichInner() {
               Strich am teuersten.
             </p>
           )}
-          <Link href="/haushalt/bereiche"
+          <Link href="/haushalt/produkte#bereiche"
             className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
             Alle {alle.length} Bereiche mit einer Zeile Klartext
             <ArrowRight aria-hidden className="h-3.5 w-3.5" />

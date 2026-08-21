@@ -67,6 +67,8 @@ async function redirects() {
     { source: "/haushalt/kennzahlen", destination: "/haushalt/pruefung#kennzahlen", permanent: true },
     // Plan und Ist der Investitionen (21.08.2026).
     { source: "/haushalt/gebaut", destination: "/haushalt/investitionen#gebaut", permanent: true },
+    // Teilhaushalte und Produkte sind derselbe Baum (21.08.2026).
+    { source: "/haushalt/bereiche", destination: "/haushalt/produkte#bereiche", permanent: true },
   ];
 }
 
