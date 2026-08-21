@@ -567,6 +567,10 @@ def qa_feedback(
 
 class ParteiMeinungenBody(BaseModel):
     frage: str = Field(min_length=3, max_length=300)
+    #: Die Beschlüsse, auf denen die Antwort steht (Reihenfolge = Relevanz).
+    #: Über sie kommt die Aussprache dazu, die ZU diesen Stationen gehört —
+    #: siehe Kommentar im Endpoint. Leer (ältere Clients) → nur Vektor-Kanal.
+    beschluss_ids: list[int] = Field(default_factory=list, max_length=20)
 
 
 @router.post("/partei-meinungen")
@@ -577,10 +581,11 @@ def partei_meinungen_endpoint(
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
     """Baustein „Das sagen die Parteien" (Task 30): Wird vom Frontend NACH der
-    gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Zieht
-    deutlich mehr Debatten-Treffer als die Belege (top_k=24, Cross-Encoder-
-    geprüft) und verdichtet sie per LLM je Fraktion. Leer ({parteien: []}),
-    wenn die Datenlage zu dünn ist — der Baustein erscheint dann nicht."""
+    gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Sammelt
+    aus ZWEI Kanälen — fraktions-bewusste Ähnlichkeitssuche (Cross-Encoder-
+    geprüft) und die Aussprache zu den belegten Beschlüssen — und verdichtet
+    das per LLM je Fraktion. Leer ({parteien: []}), wenn die Datenlage zu dünn
+    ist — der Baustein erscheint dann nicht."""
     if not user.get("limits_frei"):
         partei_meinungen_limiter.check(request)
     try:
@@ -591,16 +596,35 @@ def partei_meinungen_endpoint(
         # Top-24 bestand zur Hälfte aus Verwaltungs-Beiträgen ohne Fraktion,
         # die „Parteimeinung" war real eine Einzel-Paraphrase (Befund 10.08.).
         hits = emb.search_wortbeitraege_je_fraktion(store, body.frage, body.frage)
+        # ZWEITER KANAL: die Aussprache, die zu den belegten Beschlüssen GEHÖRT.
+        # Der Vektor-Kanal sucht nach Ähnlichkeit zur Frage und findet damit
+        # das Wortfeld — nicht zwingend die Debatte zur Sache. Auf „Was ist die
+        # Baumschutzsatzung …?" zeigte die Quellenspalte (die diesen Kanal
+        # schon hatte) neun CDU- und zehn SPD-Beiträge, während der Baustein
+        # daneben „keine passenden Wortbeiträge von CDU" behauptete (Tims
+        # Befund 21.08.2026). Zugehörigkeit ist hier das bessere Signal als
+        # Ähnlichkeit — deshalb OHNE Torwächter: Die Station ist ja belegt.
+        anker: list[dict] = []
+        if body.beschluss_ids:
+            try:
+                anker = store.wortbeitraege_zu_beschluessen(
+                    store.get_decisions_by_ids(body.beschluss_ids[:10]),
+                    max_gesamt=60, max_je_top=12)
+            except Exception:  # noqa: BLE001 — Anker ist Zusatz, nie Blocker
+                anker = []
         # Cache über den Hash der Beitrags-IDs: verschieden formulierte Fragen
         # zum selben Thema (Stadion!) sammeln dieselben Beiträge ein → Treffer
         # ohne LLM-Call; ein neuer Beitrag ändert den Hash → Nachverdichtung.
-        # „v2": seit der FDP/Volt-Auflösung — alte Cache-Einträge tragen noch
-        # das Gruppen-Label und sollen nicht 14 Tage weiterleben.
-        schluessel = "v2:" + hashlib.sha1(
-            ",".join(str(wid) for wid, _ in sorted(hits)).encode()).hexdigest()
-        meinungen = store.partei_meinungen_cache_get(schluessel) if hits else None
-        if meinungen is None and hits:
-            rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
+        # „v3": seit dem Beschluss-Anker — die alten Einträge kennen nur den
+        # Vektor-Kanal und sollen nicht 14 Tage weiterleben.
+        alle_ids = sorted({wid for wid, _ in hits} | {r["id"] for r in anker})
+        schluessel = "v3:" + hashlib.sha1(
+            ",".join(str(wid) for wid in alle_ids).encode()).hexdigest()
+        meinungen = store.partei_meinungen_cache_get(schluessel) if alle_ids else None
+        if meinungen is None and alle_ids:
+            vektor = store.wortbeitraege_by_ids([wid for wid, _ in hits])
+            schon = {r["id"] for r in vektor}
+            rows = vektor + [r for r in anker if r["id"] not in schon]
             # FDP/Volt über die Personen-Stammdaten in Einzel-Parteien
             # auflösen (Tims Standing-Punkt) — der Baustein führt die beiden
             # danach getrennt, statt sie in einen Gruppen-Eimer zu werfen.

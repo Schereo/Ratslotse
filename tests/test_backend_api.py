@@ -1837,6 +1837,34 @@ def test_partei_meinungen_endpoint(client, monkeypatch):
     assert r.status_code == 200 and r.json()["parteien"] == meinung
 
 
+def test_partei_meinungen_nimmt_beschluss_anker_dazu(client, monkeypatch):
+    """Die Aussprache ZU den belegten Beschlüssen gehört in die Verdichtung —
+    die Ähnlichkeitssuche allein fand je Fraktion oft nur einen Beitrag,
+    während die Quellenspalte daneben neun zeigte (Tims Befund 21.08.2026)."""
+    from council import embeddings as emb
+    from council import qa as qa_mod
+    from council.store import CouncilStore
+
+    _register(client)
+    monkeypatch.setattr(emb, "search_wortbeitraege_je_fraktion", lambda *a, **k: [])
+    anker = [{"id": 4711, "partei": "CDU", "sprecher": "Woltmann",
+              "text": "Die CDU-Fraktion lehnt die Satzung ab.", "session_date": "2026-06-12"}]
+    gesehen = {}
+    monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen",
+                        lambda self, decisions, **k: (gesehen.update(dec=decisions) or anker))
+    monkeypatch.setattr(CouncilStore, "get_decisions_by_ids",
+                        lambda self, ids: [{"id": i} for i in ids])
+    meinung = [{"partei": "CDU", "haltung": "dagegen", "position": "Dagegen.", "einig": True,
+                "hinweis": None, "kernaussage": None, "beitraege": 1}]
+    monkeypatch.setattr(qa_mod, "partei_meinungen",
+                        lambda frage, rows, **k: (gesehen.update(rows=rows) or meinung))
+    r = client.post("/api/council/partei-meinungen",
+                    json={"frage": "Baumschutzsatzung?", "beschluss_ids": [20032, 20431]})
+    assert r.status_code == 200 and r.json()["parteien"] == meinung
+    assert [d["id"] for d in gesehen["dec"]] == [20032, 20431]
+    assert [row["id"] for row in gesehen["rows"]] == [4711]
+
+
 def test_ask_ersetzt_abgerissenen_stream(client, monkeypatch):
     """Riss der LLM-Stream mitten in der Antwort, generiert /ask einmal
     komplett neu und ersetzt den Torso per replace-Event (Befund 10.08.) —

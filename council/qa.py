@@ -723,6 +723,35 @@ def ratspartei_label(raw: str | None) -> str | None:
     return _RATSPARTEIEN.get(_falte(kern))
 
 
+#: Wie viele Beiträge einer Fraktion in die Verdichtung gehen. Acht war zu
+#: knapp: Zur Baumschutzsatzung hat allein die SPD zehn Mal geredet, die CDU
+#: neun Mal — und Tims Anspruch an den Baustein ist, dass die Position aus
+#: MÖGLICHST ALLEN Beiträgen entsteht, nicht aus einer Handvoll (21.08.2026).
+#: Bei mehr als dem Deckel gewinnen die jüngsten: Die heutige Haltung trägt
+#: den Baustein, die Vorgeschichte steht in der Antwort darüber.
+MAX_BEITRAEGE_JE_PARTEI = 12
+
+
+def _json_array_notfalls_gerettet(content: str) -> list | None:
+    """JSON-Array einer Modellantwort — bei abgeschnittener Ausgabe bis zum
+    letzten vollständigen Objekt gerettet. Ein Baustein mit fünf von acht
+    Fraktionen ist besser als gar keiner. (Schwester von
+    ``wortbeitraege._array_bergen``, dort für die Extraktion.)"""
+    try:
+        data = json.loads(content)
+        return data if isinstance(data, list) else None
+    except (json.JSONDecodeError, TypeError):
+        pass
+    cut = (content or "").rfind("},")
+    if cut == -1:
+        return None
+    try:
+        data = json.loads(content[:cut + 1] + "]")
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return data if isinstance(data, list) and data else None
+
+
 def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> list[dict] | None:
     """Baustein „Das sagen die Parteien" (Task 30): verdichtet Wortbeiträge je
     Fraktion zu Position + Kernaussage (+ „uneinheitlich"-Flag). None, wenn die
@@ -730,10 +759,24 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
     soll nur bei echten Debatten erscheinen."""
     gruppen: dict[str, list[dict]] = {}
     for r in rows:
-        label = _fraktions_label(r.get("partei"))
+        # Kanonisch gruppieren, wo es eine Ratspartei ist: Die Protokolle
+        # schreiben mal „SPD", mal „SPD-Fraktion", mal „Die Grünen" — sonst
+        # steht dieselbe Partei zweimal im Baustein und teilt sich ihre
+        # Beiträge (an der Stadion-Frage gesehen: SPD 10 + SPD-Fraktion 1).
+        # Gruppen („FDP/Volt", „Für Oldenburg") bleiben ungeteilt, alles
+        # Unbekannte behält sein quellentreues Label.
+        label = ratspartei_label(r.get("partei")) or _fraktions_label(r.get("partei"))
         if not label:
             continue  # Verwaltung, Einwohner, Referenten — keine Fraktionsmeinung
         gruppen.setdefault(label, []).append(r)
+    # Ein einzelner Wortbeitrag macht aus einem Verband oder einem beratenden
+    # Mitglied keine „Position": Seit die Beiträge über den Beschluss-Anker
+    # kommen, stehen in den Debatten auch Gutachterbüros und Rollen-Label
+    # („Institut für Partizipatives Gestalten", „Beratendes Mitglied"). Echte
+    # Ratsfraktionen bleiben auch mit einem Beitrag drin — bei ihnen ist die
+    # Zeile eine Aussage über den Rat, nicht Beifang.
+    gruppen = {label: v for label, v in gruppen.items()
+               if len(v) >= 2 or ratspartei_label(label)}
     if len(gruppen) < 2 or sum(len(v) for v in gruppen.values()) < 4:
         return None
     teile = []
@@ -741,24 +784,29 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
         # Chronologisch (älteste zuerst): so kann die Verdichtung eine
         # Entwicklung benennen („anfangs skeptisch, zuletzt dafür") statt den
         # relevantesten Einzelbeitrag nachzuerzählen (Tims Befund 10.08.).
-        gruppen[label] = sorted(gruppen[label], key=lambda b: b.get("session_date") or "")
+        # Der Deckel schneidet VORNE ab — nach Datum sortiert bleiben also die
+        # jüngsten stehen, und die Chronologie im Prompt bleibt intakt.
+        gruppen[label] = sorted(gruppen[label],
+                                key=lambda b: b.get("session_date") or "")[-MAX_BEITRAEGE_JE_PARTEI:]
         zeilen = "\n".join(
             f"  - {b.get('sprecher') or '?'} am {_datum_de(b.get('session_date'))}: "
             f"{(b.get('text') or '').strip()[:300]}"
-            for b in gruppen[label][:8])
+            for b in gruppen[label])
         teile.append(f"{label} ({len(gruppen[label])} Beiträge):\n{zeilen}")
     prompt = prompts.render("partei_meinungen", frage=question.strip()[:300],
                             beitraege="\n".join(teile))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    # 2000 Token reichten nicht mehr: Mit dem Beschluss-Anker stehen bis zu 15
+    # Fraktionen und Verbände im Prompt, die Antwort lief mitten in der AfD-
+    # Position ins Limit („finish_reason: length", an der Baumschutz-Frage
+    # gemessen) — und ein abgeschnittenes Array ließ den Baustein KOMPLETT
+    # verschwinden. Erst Platz schaffen, dann trotzdem retten, was da ist.
     resp = llm.chat_complete(model=model, _feature="partei_meinungen", temperature=0,
-                             max_tokens=2000, messages=[{"role": "user", "content": prompt}],
+                             max_tokens=6000, messages=[{"role": "user", "content": prompt}],
                              **extra)
     content = _strip_fences(resp.choices[0].message.content or "") if resp.choices else ""
-    try:
-        data = json.loads(content)
-    except (json.JSONDecodeError, TypeError):
-        return None
-    if not isinstance(data, list):
+    data = _json_array_notfalls_gerettet(content)
+    if data is None:
         return None
     out = []
     for e in data:
@@ -786,7 +834,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
                 "art": b.get("art"),
                 "gremium": b.get("committee"),
                 "text": (b.get("text") or "").strip()[:2000],
-            } for b in gruppen[e["partei"]][:8]],
+            } for b in gruppen[e["partei"]]],
         })
     return [e for e in out if e["position"]] or None
 
