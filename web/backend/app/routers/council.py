@@ -1092,11 +1092,23 @@ def haushalt_uebersicht(
     # nachgeschlagen wird (`lib/herkunft.ts`).
     #
     # Ohne `felder` bleibt sie drin, weil der Vertrag von vorher weitergilt.
-    # Angefordert wird sie derzeit von niemandem: Die acht Seiten, die diesen
-    # Endpunkt lesen, belegen ihre Zahlen über `/haushalt/dokumente` und
-    # `lib/haushalt-quellen.ts`; ihr Typ `HaushaltDaten` führt das Feld gar
-    # nicht. Das ist kein Versehen, sondern zwei Wege zum selben Zweck — der
-    # Beleg-Chip dieser Seiten hängt am Quellen-Schlüssel, nicht an der Zeile.
+    #
+    # ZWEI WEGE ZUM SELBEN ZWECK, und beide werden gebraucht. Der ältere hängt
+    # am Quellen-SCHLÜSSEL: `/haushalt/dokumente` liefert je Quellenart und
+    # Jahrgang das Dokument, und daran hängt der nummerierte Beleg-Chip. Das
+    # genügt, solange ein Jahrgang ein Papier hat.
+    #
+    # Wo er das nicht tut, genügt es nicht — und `/haushalt/betriebe` ist
+    # dieser Fall: Ein Jahrgang Wirtschaftsplan besteht aus bis zu sieben
+    # Plänen von sieben Betrieben, jeder ein eigenes Papier. Der Chip zeigte
+    # dort auf „irgendeines davon", und im Verzeichnis stand eine einzige
+    # Quelle für 33 Dokumente (Tim, 21.08.2026). Deshalb fordert diese Seite
+    # seit dem 21.08. `herkunft` an und belegt jede Karte mit der Zeile, aus
+    # der sie stammt (`components/haushalt/quelle.tsx: Dokumentbeleg`).
+    #
+    # Die Karte reist dabei nicht als Ganzes: Es gehen nur die Einträge mit,
+    # auf die eine gesendete Zeile zeigt — bei `felder=wirtschaftsplaene`
+    # sind das keine 40.
     if not gewuenscht or "herkunft" in gewuenscht:
         daten["herkunft"] = {str(h["id"]): h
                              for h in store.get_herkunft(sorted(_herkunft_ids(daten)))}

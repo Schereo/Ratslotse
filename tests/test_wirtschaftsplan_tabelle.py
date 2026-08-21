@@ -218,8 +218,7 @@ def test_speichern_neben_dem_beschlusstext(tmp_path):
     try:
         plan, proben = parse_erfolgsplan("24/0671", "awb", 2025, LAYOUT_A)
         store.save_wirtschaftsplan(plan, herkunft_fuer(
-            plan, proben, url="https://example.org/x", dokument_id=283481,
-            label="Anlage Wirtschafts- und Finanzplan 2025"))
+            plan, proben, url="https://example.org/x", dokument_id=283481))
         zeilen = store.get_wirtschaftsplaene("awb")
         assert len(zeilen) == 1 and zeilen[0]["ertraege"] == 25_197_796.0
         assert "wirtschaftsplan_spalten" in zeilen[0]["proben"]

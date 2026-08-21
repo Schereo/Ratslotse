@@ -51,9 +51,11 @@ import {
   QuellenSchluessel, QUELLEN, Quelle, standText, type Jahrgaenge,
 } from "@/lib/haushalt-quellen";
 import {
-  belegziel, belegzieleAlle, zielText, vorgangVerb,
-  type Belegziel, type DokumenteAntwort, type HaushaltDokumente,
+  belegziel, belegzieleAlle, zielart, zielText, vorgangVerb,
+  type Belegziel, type DokumenteAntwort, type HaushaltDokument,
+  type HaushaltDokumente,
 } from "@/lib/haushalt-dokumente";
+import type { Herkunft } from "@/lib/herkunft";
 import { datumLang, gremiumKurz } from "@/lib/haushalt-streit";
 import { GlossaryText } from "@/components/glossary-text";
 import { useFetch } from "@/lib/use-fetch";
@@ -260,6 +262,76 @@ function QuelleInhalt({ quelle, nr, ziel, jahrgaenge, imVerzeichnis }: {
   );
 }
 
+/** Das Dokument hinter EINER Zeile — mit Namen, nicht als Kategorie.
+ *
+ *  Der Unterschied zu :func:`Beleg`: Der hochgestellte Chip dort steht für eine
+ *  Quellen*art* über alle Jahrgänge („Wirtschaftspläne der Eigenbetriebe") und
+ *  führt ins Verzeichnis. Dies hier steht für EIN Papier — den Plan dieses
+ *  Betriebs in diesem Jahr, mit der Stelle, an der die Zahl darin steht.
+ *
+ *  DER BEFUND, DER DAS ERZWUNGEN HAT (Tim, 21.08.2026): Auf `/haushalt/betriebe`
+ *  standen 33 Wirtschaftspläne aus sieben Betrieben unter einer einzigen
+ *  Quellenangabe, und deren Link führte auf die Startseite des
+ *  Ratsinformationssystems — „zu keinem Dokument, zu keiner Suche, zu gar
+ *  nichts". Die Vorlagennummer stand sogar auf jeder Karte, aber als toter
+ *  Text. Die Daten lagen die ganze Zeit bereit: Jede Zeile trägt ihre
+ *  `herkunft_id`, und daran hängen Adresse, Fundstelle und Ratsvorgang.
+ *
+ *  DER LINK TRÄGT DEN NAMEN DES DOKUMENTS, nicht „Dokument öffnen". Bei einer
+ *  Quellenart über acht Jahrgänge ist „Dokument öffnen" die richtige Auskunft —
+ *  hier wäre sie die schwächere, denn die Frage, die diese Zeile beantwortet,
+ *  ist ja gerade: welches.
+ *
+ *  Wo die Adresse keine Datei ist, sondern die Vorlagenseite im RIS, steht das
+ *  dabei. Ein Link, der mehr verspricht, als er hält, war der Anlass für diesen
+ *  ganzen Baustein; ihn hier neu einzuführen wäre absurd. */
+export function Dokumentbeleg({ h, vorlageNr, className }: {
+  h: Herkunft | null | undefined;
+  /** Das Aktenzeichen der Zeile. Bewusst als eigener Wert und nicht aus
+   *  `h.beschluss`: Den Vorgang kennt die Datenbank nur, wo die Vorlage im
+   *  Bestand steht — die Nummer steht dagegen in jeder Datenzeile. */
+  vorlageNr?: string | null;
+  className?: string;
+}) {
+  if (!h) return null;
+  // Die Seitenzahl als Sprungmarke: `#page=` verstehen die PDF-Anzeigen der
+  // Browser. Wo wir keine haben, bleibt es beim Dokument — eine geratene
+  // Seitenzahl wäre schlimmer als keine.
+  const ziel = h.url && h.seite != null ? `${h.url}#page=${h.seite}` : h.url;
+  const name = h.label ?? "Dokument im Ratsinformationssystem";
+  const art = h.url ? zielart(h.url) : null;
+  return (
+    <span className={cn(
+      "mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] leading-relaxed text-muted-foreground",
+      className,
+    )}>
+      {ziel ? (
+        <a href={ziel} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-baseline gap-1 font-semibold text-primary">
+          {name}
+          <ExternalLink className="h-3 w-3 flex-none self-center" />
+        </a>
+      ) : (
+        // Kein Link, aber der Name bleibt: „Wir wissen, aus welchem Papier das
+        // stammt, nur nicht, wo es liegt" ist eine Auskunft. Nichts anzeigen
+        // hieße auf dieser Seite „dazu gibt es keine Quelle".
+        <span className="font-semibold text-foreground/80">{name}</span>
+      )}
+      {art === "vorlage" && <span>· Vorlagenseite, nicht die Datei</span>}
+      {h.fundstelle && <span>· {h.fundstelle}</span>}
+      {h.seite != null && <span>· Seite {h.seite}</span>}
+      {/* Das Aktenzeichen nur, wo es nicht schon im Namen steht: Manche
+          Herkünfte heißen selbst „Vorlage 25/0819", und dann stünde
+          „Vorlage 25/0819 · VORLAGE 25/0819" da. */}
+      {vorlageNr && !name.includes(vorlageNr) && (
+        <span className="font-mono text-[9.5px] uppercase tracking-wide">
+          Vorlage {vorlageNr}
+        </span>
+      )}
+    </span>
+  );
+}
+
 /** Der Apparat am Seitenfuß: zugeklappt, flach, gestrichelt abgesetzt.
  *
  *  Bewusst KEINE Karte. Der Inhalt der Seite steht in Karten; was hier steht,
@@ -288,6 +360,38 @@ export function Apparat({ id, kicker, zusatz, children }: {
   );
 }
 
+/** Mehrere Papiere unter einer Quelle — jedes mit Namen und Fundstelle.
+ *
+ *  Die Langfassung für den Fall, dass ein Jahrgang aus mehr als einem Dokument
+ *  besteht: neun Teilhaushalts-Anlagen, sieben Wirtschaftspläne. Der Name kommt
+ *  aus `council_herkunft.label` und ist das, wonach jemand sucht — „Vorlage
+ *  25/0722" allein wäre ein Aktenzeichen ohne Gegenstand. */
+function Dokumentliste({ dokumente }: { dokumente: HaushaltDokument[] }) {
+  return (
+    <ul className="mt-1.5 flex flex-col gap-1">
+      {dokumente.map((d) => (
+        <li key={d.url} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <a href={d.seite != null ? `${d.url}#page=${d.seite}` : d.url}
+            target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-baseline gap-1 text-[11.5px] font-semibold text-primary">
+            {d.label || zielText(d.url)}
+            <ExternalLink className="h-3 w-3 flex-none self-center" />
+          </a>
+          {d.fundstelle && (
+            <span className="text-[11px] text-muted-foreground">· {d.fundstelle}</span>
+          )}
+          {d.beschluss?.vorlage_nr
+            && !(d.label ?? "").includes(d.beschluss.vorlage_nr) && (
+            <span className="font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
+              Vorlage {d.beschluss.vorlage_nr}
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Quellenverzeichnis am Seitenende — die Langfassung aller benutzten Belege. */
 export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluessel[] }) {
   const { dokumente, jahrgaenge, jahr } = useContext(SeitenQuellen);
@@ -304,10 +408,11 @@ export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluess
           const q = QUELLEN[k];
           const nr = i + 1;
           const ziel = belegziel(dokumente, k, jahr);
-          // Die übrigen Dokumente desselben Jahrgangs — bei der Produktebene
-          // bis zu acht. Im Verzeichnis ist Platz für alle; sie hier
-          // wegzulassen hieße, acht von neun Belegen zu verschweigen.
-          const weitere = belegzieleAlle(dokumente, k, jahr).slice(1);
+          // ALLE Dokumente des Jahrgangs — bei der Produktebene neun, bei den
+          // Wirtschaftsplänen sieben (einer je Betrieb). Im Verzeichnis ist
+          // Platz für alle; nur eines zu zeigen hieße, acht Belege zu
+          // verschweigen.
+          const alle = belegzieleAlle(dokumente, k, jahr);
           return (
             <li key={k} id={eintragId(k)} className="flex scroll-mt-24 gap-2.5">
               <span className="mt-0.5 inline-flex h-4 w-4 flex-none items-center justify-center rounded bg-primary/10 text-[9px] font-bold text-primary">
@@ -328,18 +433,26 @@ export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluess
                   <span>Stand {standText(q, jahrgaenge?.[k])}</span>
                   {q.lizenz && (<><span>·</span><span>{q.lizenz}</span></>)}
                 </p>
-                {ziel && <Fundstelle ziel={ziel} />}
-                {ziel && <Vorgang ziel={ziel} />}
-                <Zeile ziel={ziel} quelle={q} />
-                {weitere.length > 0 && (
-                  <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                    {weitere.map((d) => (
-                      <a key={d.url} href={d.url} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] text-primary/90 underline decoration-dotted underline-offset-2">
-                        {d.label || "weiteres Dokument"}
-                      </a>
-                    ))}
-                  </p>
+                {/* EIN Dokument: Fundstelle und Vorgang stehen darüber, der
+                    Link darunter heißt „Dokument öffnen". Das war die ganze
+                    Bauform dieses Eintrags — und sie stimmt nur, solange es
+                    eines ist.
+
+                    MEHRERE: Dann gehörte die Fundstelle oben zu genau einem
+                    von ihnen und stand doch über allen („Im Dokument:
+                    Erfolgsplan der Anlage" über fünf Wirtschaftsplänen, von
+                    denen vier gar keine Anlage haben). Deshalb bekommt dort
+                    jedes Papier seine eigene Zeile mit seiner eigenen
+                    Fundstelle — das ist die Antwort auf „welche Dokumente
+                    sind hier benutzt worden?". */}
+                {alle.length > 1 ? (
+                  <Dokumentliste dokumente={alle} />
+                ) : (
+                  <>
+                    {ziel && <Fundstelle ziel={ziel} />}
+                    {ziel && <Vorgang ziel={ziel} />}
+                    <Zeile ziel={ziel} quelle={q} />
+                  </>
                 )}
               </div>
             </li>

@@ -72,7 +72,8 @@ from __future__ import annotations
 import re
 
 from council.herkunft import Herkunft
-from council.wirtschaftsplan import BETRIEBE, Wirtschaftsplan, WirtschaftsplanFehler
+from council.wirtschaftsplan import (BETRIEBE, Wirtschaftsplan,
+                                    WirtschaftsplanFehler, dokument_name)
 
 PROBE_KERNZAHL = "wirtschaftsplan_kernzahl"
 
@@ -238,7 +239,8 @@ def herkunft_fuer(plan: Wirtschaftsplan, wort: str, beleglage: str,
     return Herkunft(
         art="ris",
         probe=[PROBE_KERNZAHL],
-        label=f"Vorlage {plan.vorlage_nr}",
+        # Der Name statt des Aktenzeichens — s. `wirtschaftsplan.dokument_name`.
+        label=dokument_name(plan),
         url=url or (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
                     if kvonr else None),
         fundstelle="Beschlussvorschlag der Vorlage",

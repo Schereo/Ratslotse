@@ -4844,6 +4844,22 @@ class CouncilStore:
         # Ein Bericht liefert fünf Jahrgänge, gehört aber zu genau einem
         # Dokument — und das ist seines.
         "kennzahlen":           ("council_kennzahlen", "bericht_jahr", None, None),
+        # Die drei Schichten vom 20.08.2026. Sie standen bis zum 21.08. NICHT
+        # hier, und man hat es der Seite angesehen: Unter 33 Wirtschaftsplänen
+        # aus sieben Betrieben stand eine einzige Quelle, deren Link auf die
+        # Startseite des Ratsinformationssystems führte. Der Eintrag hier ist
+        # der ganze Unterschied zwischen „kommt aus dem RIS" und „steht in
+        # diesem PDF".
+        #
+        # Wie ``teilhaushalt`` tragen alle drei je Jahrgang MEHRERE Dokumente,
+        # und das ist hier keine Eigenheit, sondern der Kern: Ein Jahrgang
+        # Wirtschaftsplan besteht aus sieben Plänen von sieben Betrieben, und
+        # jeder ist ein eigenes Papier mit eigener Vorlagennummer.
+        "wirtschaftsplan":      ("council_wirtschaftsplaene", "jahr", None, None),
+        # Nachträge tragen eine eigene Satzung und ein eigenes Dokument; der
+        # Schlüssel unterscheidet sie nicht, die Fundstelle tut es.
+        "haushaltssatzung":     ("council_haushaltssatzung", "jahr", None, None),
+        "gebuehren":            ("council_gebuehren", "jahr", None, None),
     }
 
     #: Jahresquellen, die KEIN Dokument im Ratsinformationssystem haben und

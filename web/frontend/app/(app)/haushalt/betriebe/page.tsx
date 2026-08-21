@@ -30,16 +30,22 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  HaushaltAuswahl, WirtschaftsplanZeile, deMio, haushaltUrl,
+  HaushaltAuswahl, WirtschaftsplanZeile, deMio, haushaltUrl, herkunftVon,
 } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import type { Herkunft } from "@/lib/herkunft";
+import {
+  Beleg, Dokumentbeleg, Quellenkontext, Quellenverzeichnis,
+} from "@/components/haushalt/quelle";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 
-const FELDER = ["wirtschaftsplaene"] as const;
+// `herkunft` ist hier PFLICHT und keine Zugabe: Ein Jahrgang besteht aus
+// bis zu sieben Plänen von sieben Betrieben, und nur die `herkunft_id` der
+// Zeile sagt, welches der sieben Papiere hinter DIESER Karte steht.
+const FELDER = ["wirtschaftsplaene", "herkunft"] as const;
 const QUELLEN: QuellenSchluessel[] = ["wirtschaftsplan"];
 
 /** Was ein Betrieb tut — eine Zeile, damit die Zahl einen Gegenstand bekommt.
@@ -118,8 +124,13 @@ function Betrag({ wert, fehltWeil }: { wert: number | null; fehltWeil: string })
   );
 }
 
-function BetriebsKarte({ zeilen, juengstesJahr }: {
+function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
   zeilen: WirtschaftsplanZeile[]; juengstesJahr: number;
+  /** Die Suche, nicht das Ergebnis: WELCHE Zeile die jüngste ist, entscheidet
+   *  diese Karte selbst (s. `nach` unten) — der Aufrufer wüsste es nur, wenn
+   *  er dieselbe Sortierung noch einmal schriebe, und zwei Fassungen
+   *  derselben Regel driften. */
+  herkunftFuer: (id: number | null) => Herkunft | null;
 }) {
   // Der jüngste Jahrgang trägt die Karte; die Reihe darunter ist die
   // Entwicklung. Sortiert wird hier und nicht im Vertrauen auf die API.
@@ -187,12 +198,19 @@ function BetriebsKarte({ zeilen, juengstesJahr }: {
         </p>
       )}
 
-      <p className="mt-2.5 border-t border-dashed border-border pt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-        <span className="font-semibold text-foreground">Beleg: {b.kurz}.</span>{" "}
-        {b.lang} Vorlage {letzte.vorlage_nr}
-        <Beleg q="wirtschaftsplan" />
-        {letzte.entwurf_vom && ` · Stand des Verwaltungsentwurfs: ${letzte.entwurf_vom}`}
-      </p>
+      <div className="mt-2.5 border-t border-dashed border-border pt-2">
+        <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+          <span className="font-semibold text-foreground">Beleg: {b.kurz}.</span>{" "}
+          {b.lang}
+          <Beleg q="wirtschaftsplan" />
+          {letzte.entwurf_vom && ` · Stand des Verwaltungsentwurfs: ${letzte.entwurf_vom}`}
+        </p>
+        {/* Bis zum 21.08.2026 stand hier „Vorlage 25/0722" als toter Text —
+            die Nummer des Papiers, aus dem die Zahl stammt, ohne Weg dorthin.
+            Jetzt führt sie hin, und zwar je Betrieb woandershin. */}
+        <Dokumentbeleg h={herkunftFuer(letzte.herkunft_id)}
+          vorlageNr={letzte.vorlage_nr} />
+      </div>
 
       {zeigKurve && (
         <div className="mt-3">
@@ -301,7 +319,8 @@ function BetriebeInner() {
         <div className="grid gap-4 lg:grid-cols-2">
           {nachBetrieb.map((zeilen) => (
             <BetriebsKarte key={zeilen[0].betrieb} zeilen={zeilen}
-              juengstesJahr={juengstes} />
+              juengstesJahr={juengstes}
+              herkunftFuer={(id) => herkunftVon(data, id)} />
           ))}
         </div>
 

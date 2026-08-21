@@ -320,6 +320,28 @@ def ohne_eckwerte(vorlage_nr: str, titel: str) -> dict:
     }
 
 
+def dokument_name(plan: Wirtschaftsplan) -> str:
+    """Wie das Dokument im Quellenverzeichnis heißen soll.
+
+    Bis zum 21.08.2026 stand hier ``f"Vorlage {plan.vorlage_nr}"``, und das
+    Verzeichnis von ``/haushalt/betriebe`` listete für den Jahrgang 2026 fünf
+    Links namens „Vorlage 25/0722", „Vorlage 25/0818/1", „Vorlage 25/0819" …
+    — fünf verschiedene Dokumente, aber keines sagte, WESSEN Plan es ist. Tim
+    am selben Tag: „eigentlich sollte es hier auch unterschiedliche Quellen
+    geben für die unterschiedlichen Wirtschaftspläne der unterschiedlichen
+    Eigenbetriebe."
+
+    Das Aktenzeichen geht dabei nicht verloren: Es steht in der Vorgangszeile
+    unter jedem Beleg („Der Rat hat das am … beschlossen · Vorlage 25/0722").
+    Was dort fehlte, war der Name — und der ist es, wonach man sucht.
+
+    ACHTUNG, das ändert den Herkunfts-Fingerabdruck (``Herkunft.schluessel``
+    schließt ``label`` ein): Der nächste Einlesevorgang legt neue Zeilen in
+    ``council_herkunft`` an und hängt die Daten dort ein. Die alten bleiben
+    unreferenziert liegen — sichtbar wird davon nichts."""
+    return f"{plan.betrieb_name}: Wirtschaftsplan {plan.jahr}"
+
+
 def herkunft_fuer(plan: Wirtschaftsplan, url: str | None,
                   dokument_id: int | None = None) -> Herkunft:
     """Die Herkunft einer Zeile: die Vorlage selbst, nicht eine Anlage."""
@@ -327,7 +349,7 @@ def herkunft_fuer(plan: Wirtschaftsplan, url: str | None,
         art="ris",
         probe=[PROBE_ERFOLGSPLAN, PROBE_JAHR],
         dokument_id=dokument_id,
-        label=f"Vorlage {plan.vorlage_nr}",
+        label=dokument_name(plan),
         url=url,
         fundstelle="Beschlussvorschlag der Vorlage",
         probe_ergebnis=plan.probe_ergebnis,
