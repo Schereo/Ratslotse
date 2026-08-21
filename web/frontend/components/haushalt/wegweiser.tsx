@@ -245,26 +245,14 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
     frage: "Wann entschieden wird, worüber gestritten wurde — und was sich drehen ließe.",
     ziele: [
       {
-        href: "/haushalt/jahr",
-        titel: "Wann wird das entschieden?",
-        text: "Der Weg durch den Rat, Station für Station, aus acht Haushaltsjahren.",
-      },
-      {
-        // Hinter „Wann wird das entschieden?", weil die Seite dieselben
-        // Stationen noch einmal durchgeht, diesmal inhaltlich; vor dem Labor,
-        // weil man erst weiß, worum gestritten wurde, bevor man selbst an den
-        // Schrauben dreht.
-        href: "/haushalt/streit",
-        titel: "Der Streit ums Geld",
-        text: "Wer was ändern wollte, wie abgestimmt wurde — und was im Rat dazu gesagt wurde.",
-      },
-      {
-        // Das Labor rutschte von Platz 4 ans Ende: An Stellschrauben zu
-        // drehen ist der letzte Schritt, nicht der zweite — vorher fehlt der
-        // Bezug, an dem sich ablesen ließe, ob eine Bewegung viel ist.
-        href: "/haushalt/labor",
-        titel: "Haushalts-Labor",
-        text: "Selbst an den Stellschrauben drehen und sehen, was das ausmacht.",
+        // EIN Ziel statt dreier (21.08.2026). „Wann wird das entschieden?",
+        // „Der Streit ums Geld" und das Haushalts-Labor waren drei Schritte
+        // für eine Frage — und zwei davon waren im ganzen Frontend über nichts
+        // als diese Liste erreichbar. Sie stehen jetzt als Abschnitte auf
+        // einer Seite; die Anker führen weiterhin gezielt hin.
+        href: "/haushalt/mitreden",
+        titel: "Mitreden",
+        text: "Wann entschieden wird, worüber die Fraktionen gestritten haben — und was passiert, wenn man selbst an den Stellschrauben dreht.",
       },
     ],
   },

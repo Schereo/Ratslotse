@@ -45,13 +45,32 @@ import { TABLEISTE_HOEHE } from "@/components/nav";
 import {
   HaushaltAuswahl, PLAN_ART_LABEL, Produkt, RUECKLAGE_MIO, bereiche, deMio,
   jahreSortiert, mio, naechstesProdukt, planGegenIst, summe,
+  type HebesatzZeile,
 } from "@/lib/haushalt";
 import { PFLICHT_ZUORDNUNG } from "@/lib/haushalt-pflicht";
 import { Beleg } from "@/components/haushalt/quelle";
 import { Regler } from "@/components/haushalt/regler";
 import { cn } from "@/lib/utils";
 
-const GEWST_HEBESATZ = 439;
+/** Der geltende Gewerbesteuer-Hebesatz kommt aus den DATEN, nicht aus einer
+ *  Konstante.
+ *
+ *  Hier stand bis zum 21.08.2026 `const GEWST_HEBESATZ = 439`. Die Zahl war
+ *  richtig — die Reihe der Hebesätze führt 439 % seit 2015, auch für 2025 —,
+ *  aber sie war eine Behauptung: Die Seite nannte `hebesaetze` als Quelle,
+ *  holte die Daten gar nicht und hätte still eine veraltete Zahl gezeigt,
+ *  sobald der Rat den Satz ändert. Gefunden hat das der Wächter
+ *  `test_keine_quelle_ohne_zahl`: eine Quelle im Verzeichnis, auf die keine
+ *  Zahl der Seite zeigt.
+ *
+ *  Fehlt die Reihe, gibt es keinen Ersatzwert — dann verschwindet der Regler
+ *  lieber, als mit einer geratenen Ausgangslage zu rechnen. */
+function hebesatzHeute(zeilen: HebesatzZeile[] | undefined): number | null {
+  const gew = (zeilen ?? [])
+    .filter((z) => z.art === "Gewerbesteuer" && z.hebesatz != null)
+    .sort((a, b) => a.jahr - b.jahr);
+  return gew.length ? gew[gew.length - 1].hebesatz : null;
+}
 /** Steuermesszahl nach § 11 GewStG — bundesweit gleich, nicht unsere Annahme. */
 const MESSZAHL = 0.035;
 /** Beispielbetrieb wie im Steuer-Steckbrief — dieselbe Zahl an beiden Stellen. */
@@ -145,12 +164,14 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
 }
 
 export function Labor({ daten, produkte, produktJahr }: {
-  daten: HaushaltAuswahl<"jahre" | "steuern" | "steuerkraft" | "einwohner" | "ergebnisrechnung">;
+  daten: HaushaltAuswahl<"jahre" | "steuern" | "steuerkraft" | "einwohner"
+    | "ergebnisrechnung" | "hebesaetze">;
   produkte: Produkt[];
   produktJahr: number | null;
 }) {
   const [punkte, setPunkte] = useState(0);
   const [kuerzung, setKuerzung] = useState<Record<string, number>>({});
+  const GEWST_HEBESATZ = hebesatzHeute(daten.hebesaetze?.zeilen);
 
   const basis = useMemo(() => {
     const jahre = jahreSortiert(daten);
@@ -171,7 +192,11 @@ export function Labor({ daten, produkte, produktJahr }: {
   }, [daten]);
 
   const einwohner = daten.einwohner?.einwohner ?? 0;
-  const proPunkt = basis.gewst ? (basis.gewst.betrag as number) / 1e6 / GEWST_HEBESATZ : 0;
+  // Ohne bekannten Hebesatz gibt es keinen Betrag je Punkt — und damit
+  // keinen Regler (s. unten). Nicht 0 als „kein Effekt" behaupten: Die
+  // Division durch den Satz wäre sonst eine durch null.
+  const proPunkt = basis.gewst && GEWST_HEBESATZ
+    ? (basis.gewst.betrag as number) / 1e6 / GEWST_HEBESATZ : 0;
   const mehrEinnahmen = Math.round(proPunkt * punkte * 10) / 10;
   const gespart = Math.round(
     basis.freiwillig.reduce((s, f) => s + (f.aus * (kuerzung[f.bereich] ?? 0)) / 100, 0) * 10) / 10;
@@ -222,7 +247,9 @@ export function Labor({ daten, produkte, produktJahr }: {
 
       <div className={cn(kompakt && "flex flex-wrap items-baseline gap-x-3")}>
         <p className={cn("text-[11.5px] text-muted-foreground", kompakt ? "order-2" : "mt-2")}>
-          Minus am Jahresende
+          {/* Der Beleg an der Zahl, gegen die alles gerechnet wird: Erträge
+              minus Aufwendungen des jüngsten Haushaltsansatzes. */}
+          Minus am Jahresende<Beleg q="plan" />
         </p>
         <p className={cn("font-display font-bold leading-tight tabular-nums",
           kompakt ? "text-[24px]" : "text-[26px]")}>
@@ -328,6 +355,16 @@ export function Labor({ daten, produkte, produktJahr }: {
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               Einnahmen drehen
             </p>
+            {/* Kein Satz, kein Regler: Eine Ausgangslage zu raten wäre in
+                diesem Bereich der schlechtere Tausch (Designsprache: lieber
+                eine Lücke als eine Schätzung). */}
+            {GEWST_HEBESATZ == null ? (
+              <p className="mt-3 rounded-xl border border-dashed border-border p-3 text-[12px] leading-relaxed text-muted-foreground">
+                Für den Gewerbesteuer-Hebesatz liegt uns gerade keine Reihe vor —
+                ohne den geltenden Satz lässt sich nicht ausrechnen, was ein Punkt
+                mehr oder weniger brächte.
+              </p>
+            ) : (
             <div className="mt-3">
               <Regler
                 id="gewst"
@@ -339,7 +376,9 @@ export function Labor({ daten, produkte, produktJahr }: {
                 marken={{ min: `${GEWST_HEBESATZ - MAX_PUNKTE} %`, max: `${GEWST_HEBESATZ + MAX_PUNKTE} %` }}
                 anzeige={
                   punkte === 0
-                    ? <span className="text-muted-foreground">{GEWST_HEBESATZ}&nbsp;%</span>
+                    ? <span className="text-muted-foreground">
+                        {GEWST_HEBESATZ}&nbsp;%<Beleg q="hebesaetze" />
+                      </span>
                     : <strong className="text-signal">
                         {GEWST_HEBESATZ + punkte}&nbsp;% ({punkte > 0 ? "+" : ""}{punkte})
                       </strong>
@@ -365,6 +404,7 @@ export function Labor({ daten, produkte, produktJahr }: {
                 }
               />
             </div>
+            )}
             {/* Gegenrichtung zum „Im Labor ausprobieren" des Steckbriefs: Wer
                 hier am Hebesatz dreht, will als Nächstes wissen, wer ihn
                 überhaupt beschließt. */}

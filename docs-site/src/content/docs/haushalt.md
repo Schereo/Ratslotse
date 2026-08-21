@@ -58,9 +58,7 @@ genau dieser Reihenfolge.
 | `/haushalt/vergleich` | Schritt 15 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
 | `/haushalt/schulden` | Schritt 16 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
-| `/haushalt/jahr` | Schritt 17 — wann der Haushalt entschieden wird: jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung |
-| `/haushalt/streit[?jahr=<jahr>]` | Schritt 18 — „Der Streit ums Geld": je Haushaltsjahrgang die Änderungslisten der Fraktionen und Gruppen mit ihrem Abstimmungsergebnis, die Wortbeiträge der Debatte im Protokollwortlaut und die Schlussabstimmung |
-| `/haushalt/labor` | Schritt 19 — Was-wäre-wenn: Hebesatz-Regler und Kürzungen, jede Bewegung in Mio. €, € je Einwohner und Anteil an der Lücke; dauerhaft sichtbare Gegenrechnung |
+| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 17 — „Mitreden", drei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten der Fraktionen mit Abstimmungsergebnis, die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung, `#labor` Was-wäre-wenn mit Hebesatz-Regler und Kürzungen |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
@@ -71,19 +69,21 @@ dort ein beliebiger Einzelfall. Man erreicht sie aus Schritt 1 und 2 sowie aus
 der Bereichstabelle des Einstiegs.
 
 :::caution[Die Reihenfolge steht an mehreren Stellen]
-**Sieben** Seiten schreiben ihre Nummer selbst in den Kicker („Stadtfinanzen
+**Sechs** Seiten schreiben ihre Nummer selbst in den Kicker („Stadtfinanzen
 Oldenburg · Schritt N"), weil sie dort oben steht, wo keine Komponente sie
 einsetzt: `/haushalt/personal` (5), `/haushalt/gebaut` (8),
 `/haushalt/kennzahlen` (10), `/haushalt/konzern` (11),
-`/haushalt/beteiligungen` (12), `/haushalt/jahr` (17) und `/haushalt/streit`
-(18). Dazu zwei Querverweise im Fließtext, die eine Nummer mitführen
-(`konzern/page.tsx` nennt Schritt 12, `beteiligungen/page.tsx` Schritt 11).
+`/haushalt/beteiligungen` (12) und `/haushalt/mitreden` (17). Dazu zwei
+Querverweise im Fließtext, die eine Nummer mitführen (`konzern/page.tsx`
+nennt Schritt 12, `beteiligungen/page.tsx` Schritt 11).
 
 Wer Schritte umsortiert oder einen dazwischenschiebt, zieht diese Stellen mit
 nach — sonst widersprechen sich zwei Seiten still. Das war schon viermal
 fällig: „Was wird gebaut?" schob den Konzern von 7 auf 8, der Stellenplan von
 8 auf 9, der Beteiligungsbericht den Städtevergleich von 10 auf 11, und „Die
-dreizehn Zahlen" (#627) schob alles ab dem Konzern noch einmal um eins.
+dreizehn Zahlen" (#627) schob alles ab dem Konzern noch einmal um eins. Beim
+Zusammenlegen der Etappe „Mitreden" (21.08.2026) fiel die Verschiebung aus —
+die drei Seiten standen am Ende —, aber aus drei Nummern wurde eine.
 
 Der letzte Fall ist der lehrreiche: Eine Seite ans **Ende** der letzten Stufe
 zu hängen verschiebt nichts (so war es bei „Der Streit ums Geld"). „Die
@@ -119,7 +119,7 @@ die es nicht zeigen:
 | `…/haushalt/investitionen` | `/haushalt/investitionen` | eigene Tabelle, **anderer Haushalt** (Finanz- statt Ergebnishaushalt) — nicht mit den übrigen Zahlen verrechenbar |
 | `…/haushalt/gebaut` | `/haushalt/gebaut` | eigene Tabellen; **Ist statt Plan** und nach Auszahlungsart statt nach Teilhaushalt — bewusst nicht mit `…/haushalt/investitionen` zusammengelegt, damit die beiden Summen nicht als „geplant gegen gebaut" gelesen und voneinander abgezogen werden |
 | `…/haushalt/schulden` | `/haushalt/schulden` | eigene Tabelle, eigene Jahrgangsreihe (bis 1995 zurück) |
-| `…/haushalt/weg` | `/haushalt/jahr` | Ratsdaten statt Finanzdokumenten (Beratungsfolge, Sitzungen) |
+| `…/haushalt/weg` | `/haushalt/mitreden#termine` | Ratsdaten statt Finanzdokumenten (Beratungsfolge, Sitzungen) |
 | `…/haushalt/datenstand` | Block „Bis wann die Zahlen reichen" | rechnet über den Bestand, nicht über Inhalte |
 | `…/haushalt/dokumente` | Quellenverzeichnis **jeder** Haushalts-Seite | je Quelle und Jahrgang das Dokument — die Angabe, die die statische Quellenliste nicht haben kann |
 
@@ -3042,7 +3042,7 @@ nicht im Ratsinformationssystem.
 
 Jede Zeile trägt deshalb `fassung='entwurf'`, und die Herkunft schreibt es in
 den *Stand*, nicht in eine Fußnote. Was der Rat daraus macht, steht auf
-`/haushalt/streit`.
+`/haushalt/mitreden#streit`.
 
 Der Jahrgang 2026 ist die einzige Satzung mit einem echten Datum (15.12.2025) —
 aber auch ihr Deckblatt sagt „Verwaltungsentwurf". Das Datum ist die *geplante*

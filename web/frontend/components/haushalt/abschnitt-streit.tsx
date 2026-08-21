@@ -1,5 +1,12 @@
 "use client";
 
+// „Der Streit ums Geld" — der ZWEITE Abschnitt von /haushalt/mitreden.
+//
+// Bis zum 21.08.2026 die eigene Seite /haushalt/streit. Zusammengelegt mit
+// „Wann entschieden wird" und dem Haushalts-Labor; Begründung im Kopf von
+// `abschnitt-termine.tsx`. Der Jahrgangs-Umschalter arbeitet weiter mit
+// `?jahr=` — die Suspense-Grenze dafür liegt jetzt bei der Seite.
+
 // /haushalt/streit — „Der Streit ums Geld".
 //
 // Der Bereich zeigt auf zwölf Seiten Zahlen: Plan, Ist, Produkte, Konzern,
@@ -50,7 +57,7 @@
 // sagt deshalb „wer wollte ändern und kam damit durch", nicht „was genau".
 // Das steht im Block „Was hier fehlt", nicht im Kleingedruckten.
 
-import { Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight, ExternalLink, FileText } from "lucide-react";
@@ -62,17 +69,14 @@ import {
   jahrgaenge, ohneZuordnung, redenJeFraktion, runde, schlussbeschluss,
   verhandlungsBilanz, vorschau,
 } from "@/lib/haushalt-streit";
-import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/quelle";
 import { PunkteBilanz, PunkteZeile } from "@/components/grafik/punkte-bilanz";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { OutcomeBadge, OutcomeDot } from "@/components/decision-ui";
 import { parteiDot } from "@/components/qa-bausteine";
 import type { DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
-const QUELLEN: QuellenSchluessel[] = ["ratsbeschluss"];
 
 /** Der neutrale Punkt für kombinierte Label (Designsprache §2). */
 const NEUTRAL = { bg: "hsl(209 18% 65%)", ring: false };
@@ -219,7 +223,7 @@ function StationsAntraege({ s }: { s: StreitStation }) {
   );
 }
 
-function StreitInner() {
+export function StreitAbschnitt() {
   const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
   const { data, loading } = useFetch<StreitDaten>("/council/haushalt/streit");
 
@@ -261,21 +265,11 @@ function StreitInner() {
   }
 
   return (
-    <Quellenkontext schluessel={QUELLEN}>
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-          <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
-          <ChevronRight className="h-3 w-3" />
-          <span className="font-semibold text-foreground">Der Streit ums Geld</span>
-        </div>
-
         <div>
-          <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Stadtfinanzen Oldenburg · Schritt 18
-          </p>
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
+          <h2 className="font-display text-xl font-bold tracking-tight sm:text-[22px]">
             Der Streit ums Geld
-          </h1>
+          </h2>
           <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
             Ein Haushalt ist kein Rechenergebnis, sondern ein Kompromiss. Bevor er beschlossen
             wird, legen die Fraktionen Änderungslisten vor, und im Rat wird stundenlang darüber
@@ -563,33 +557,7 @@ function StreitInner() {
           </ul>
         </div>
 
-        <SchrittWeiter href="/haushalt/streit" />
-
-        <Quellenverzeichnis schluessel={QUELLEN} />
-
-        <Link
-          href="/haushalt"
-          className="group flex items-center gap-2 text-[13px] font-semibold text-primary"
-        >
-          Zurück zur Übersicht über den Haushalt
-          <ChevronRight
-            size={14}
-            strokeWidth={2}
-            className="transition-transform group-hover:translate-x-0.5"
-          />
-        </Link>
       </div>
-    </Quellenkontext>
   );
 }
 
-export default function StreitPage() {
-  // useSearchParams braucht eine Suspense-Grenze (Export-Konvention).
-  return (
-    <Suspense
-      fallback={<div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>}
-    >
-      <StreitInner />
-    </Suspense>
-  );
-}

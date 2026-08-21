@@ -505,7 +505,7 @@ function RahmenBlock({ zeile, herkunft }: {
           Ratsinformationssystem steht nur der Verwaltungsentwurf; die
           beschlossene Satzung erscheint im Amtsblatt. Was der Rat daraus
           gemacht hat, steht unter{" "}
-          <Link href="/haushalt/streit" className="font-semibold text-primary">
+          <Link href="/haushalt/mitreden#streit" className="font-semibold text-primary">
             Der Streit ums Geld
           </Link>.
         </p>
