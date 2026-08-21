@@ -423,6 +423,37 @@ def test_ris_stammdaten_zaehlen_als_mandat(tmp_path):
         store.close()
 
 
+def test_lexikon_fuehrt_fraktions_phasen_nur_bei_wechslern(tmp_path):
+    """Für die Zeile „Finke (SPD)" von 2022 muss das Lexikon wissen, dass Vally
+    Finke damals SPD war — heute sitzt sie für „Für Oldenburg" (Tims Befund
+    21.08.2026). Wer nie gewechselt hat, braucht die Liste nicht."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        frisch = (date.today() - timedelta(days=20)).isoformat()
+        frueher = f"{int(frisch[:4]) - 3}{frisch[4:]}"
+        with store._conn:
+            store._conn.executemany(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+                "location, fetched_at) VALUES (?, 'Rat', ?, '', '', datetime('now'))",
+                [(1, frueher), (2, frisch)])
+            store._conn.executemany(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (?, ?, ?, 'mitglied', NULL)",
+                [(1, "Vally Finke", "SPD"), (2, "Vally Finke", "Für Oldenburg"),
+                 (1, "Paul Behrens", "SPD"), (2, "Paul Behrens", "SPD")])
+        lex = {p["slug"]: p for p in store.personen_lexikon()}
+        finke = lex["vally-finke"]
+        assert finke["partei"] == "Für Oldenburg"      # heute
+        assert [ph["partei"] for ph in finke["phasen"]] == ["SPD", "Für Oldenburg"]
+        assert finke["phasen"][0]["von"] == frueher[:4] and finke["phasen"][0]["bis"] == frueher[:4]
+        # Ohne Wechsel keine Phasen-Liste — das Lexikon lädt jede Seite mit.
+        assert lex["paul-behrens"]["phasen"] is None
+        assert lex["paul-behrens"]["partei"] == "SPD"
+    finally:
+        store.close()
+
+
 def test_personen_lexikon_blocker_fuer_gaeste(tmp_path):
     """Tims Oltmanns-Befund 12.08.: Ein Gast-Namensvetter (Wasserstraßen-Amt)
     muss den kahlen Nachnamen mehrdeutig machen — als blocker-Eintrag ohne

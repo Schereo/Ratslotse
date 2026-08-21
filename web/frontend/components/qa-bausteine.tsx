@@ -65,6 +65,9 @@ export type PersonEintrag = {
    *  ihr Nachname macht einen kahlen Nachnamen im Text mehrdeutig (Tims
    *  Oltmanns-Befund 12.08.). */
   art: "rat" | "beratend" | "stadt" | "blocker"; partei: string | null; rolle: string | null;
+  /** Fraktions-Phasen mit Zeitraum — NUR bei Wechslern gesetzt (13 Personen im
+   *  Bestand). `partei` ist die heutige; hier steht, was vorher war. */
+  phasen?: { partei: string; von: string; bis: string }[] | null;
   aktiv: boolean; von: string | null; bis: string | null;
 };
 
@@ -171,7 +174,7 @@ function usePersonSuche(): (name: string, partei?: string | null,
     // Baumann (CDU)" hätte sonst das Badge von Udo Baumann bekommen.
     const k = parteiKuerzel(partei ?? null);
     if (k !== "Rat") {
-      echte = echte.filter((p) => parteienPassen(parteiKuerzel(p.partei), k));
+      echte = echte.filter((p) => hatteFraktion(p, k, jahr));
       if (echte.length === 0) return null;
       if (echte.length === 1) return echte[0];
     }
@@ -185,6 +188,20 @@ function usePersonSuche(): (name: string, partei?: string | null,
       (p) => p.von && p.bis && Number(p.von) <= jahr && jahr <= Number(p.bis));
     return imZeitraum.length === 1 ? imZeitraum[0] : null;
   };
+}
+
+/** Gehörte diese Person (damals) zu dieser Fraktion? Die heutige Zugehörigkeit
+ *  reicht nicht: Vally Finke saß 2022 für die SPD und sitzt heute für „Für
+ *  Oldenburg" — ihre Beiträge von damals tragen zu Recht das SPD-Label
+ *  (Tims Befund 21.08.2026). Belegt bleibt es trotzdem: Gewertet wird nur, was
+ *  in den Anwesenheitslisten steht, und mit Jahr auch nur die passende Phase.
+ *  Wer eine Fraktion nie hatte, bekommt weiter kein Badge — „Dr. Niewerth
+ *  Baumann (CDU)" wird so nicht zu Udo Baumann. */
+function hatteFraktion(p: PersonEintrag, kuerzel: string, jahr?: number | null): boolean {
+  if (parteienPassen(parteiKuerzel(p.partei), kuerzel)) return true;
+  return (p.phasen ?? []).some((ph) =>
+    parteienPassen(parteiKuerzel(ph.partei), kuerzel)
+    && (!jahr || (Number(ph.von) <= jahr && jahr <= Number(ph.bis))));
 }
 
 /** Gruppen-Toleranz beim Fraktions-Vergleich: Die Protokolle labeln mal die
@@ -230,18 +247,28 @@ export function SprecherName({ name, partei, datum, zeigePartei = false }: {
 }) {
   const suche = usePersonSuche();
   const p = suche(name, partei, jahrAus(datum));
-  const label = p ? personBadgeLabel(p) : null;
+  // Das Badge zeigt die Zugehörigkeit ZUR ZEIT DES BEITRAGS, nicht die von
+  // heute: So wurde der Beitrag gehalten, und so steht er in der Quelle. Dass
+  // sie heute eine andere ist, sagt das Badge daneben (s. PersonBadge).
+  const zeilenPartei = p && p.art === "rat" && parteiKuerzel(partei ?? null) !== "Rat"
+    ? partei ?? null : null;
+  const label = p ? (zeilenPartei ? parteiKuerzel(zeilenPartei) : personBadgeLabel(p)) : null;
   const doppelt = !!label && label !== "Rat" && label === parteiKuerzel(partei ?? null);
   return (
     <>
       {name}
-      {p && <PersonBadge p={p} />}
+      {p && <PersonBadge p={p} zeilenPartei={zeilenPartei} />}
       {zeigePartei && partei && !doppelt ? ` (${partei})` : ""}
     </>
   );
 }
 
-export function PersonBadge({ p }: { p: PersonEintrag }) {
+export function PersonBadge({ p, zeilenPartei = null }: {
+  p: PersonEintrag;
+  /** Fraktion, unter der die ZEILE den Beitrag führt (nur Quellen/Debatten).
+   *  Gesetzt heißt: Das Badge zeigt sie statt der heutigen Zugehörigkeit. */
+  zeilenPartei?: string | null;
+}) {
   const [offen, setOffen] = useState(false);
   // Das Peek wird FEST am Bildschirm positioniert und in den sichtbaren
   // Bereich geklemmt. Zwei Anläufe zuvor scheiterten je an einer anderen
@@ -282,11 +309,17 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
     };
   }, [offen]);
 
-  const dot = !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
+  // Seit wann jemand wo sitzt, weiß das Lexikon — was die Zeile sagt, gilt
+  // hier trotzdem vor: Der Beitrag stammt aus dieser Zeit.
+  const gewechselt = !!zeilenPartei
+    && !!p.partei
+    && !parteienPassen(parteiKuerzel(zeilenPartei), parteiKuerzel(p.partei));
+  const dot = zeilenPartei ? parteiDot(zeilenPartei)
+    : !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
     : p.art === "stadt" ? { bg: "#0764a6", ring: false }
     : p.art === "beratend" ? { bg: "hsl(209 18% 65%)", ring: true }
     : parteiDot(p.partei || "");
-  const label = personBadgeLabel(p);
+  const label = zeilenPartei ? parteiKuerzel(zeilenPartei) : personBadgeLabel(p);
   const rolle = p.rolle
     || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}`
       : p.art === "beratend" ? "Beratendes Mitglied" : "Stadtverwaltung");
@@ -303,6 +336,15 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
           style={{ backgroundColor: dot.bg }} />
         {label}
       </button>
+      {/* Der Halbsatz, der die Zeit einordnet: „Finke ·SPD (heute Für
+          Oldenburg)". Er erscheint nur, wenn sich die Zugehörigkeit
+          tatsächlich geändert hat — der Wechsel zwischen Gruppen-Label und
+          Einzelpartei („FDP/Volt" ↔ „FDP") ist keiner. */}
+      {gewechselt && (
+        <span className="ml-1 text-[10.5px] font-normal text-muted-foreground/80">
+          (heute {p.aktiv ? p.partei : "nicht mehr im Rat"})
+        </span>
+      )}
       {offen && pos && (
         <span
           className="fixed z-50 block w-64 rounded-xl border border-border bg-card p-3 text-left shadow-lg"
@@ -311,6 +353,11 @@ export function PersonBadge({ p }: { p: PersonEintrag }) {
           <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
             {p.aktiv ? rolle : `Ehemals: ${rolle}`}
           </span>
+          {gewechselt && (
+            <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">
+              Zum Zeitpunkt des Beitrags: <strong className="font-semibold text-foreground">{zeilenPartei}</strong>
+            </span>
+          )}
           {zeitraum && (
             <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{zeitraum}</span>
           )}
