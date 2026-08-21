@@ -412,11 +412,11 @@ function Seite() {
           {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. Dieselbe
               Entscheidung wie auf /haushalt/konzern: Wer hier eine Zahl
               herausschreibt, soll wissen, was sie nicht ist. */}
-          <section className="rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
+          <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
               Was dieser Bericht nicht hergibt
             </p>
-            <ul className="mt-2 flex max-w-[76ch] list-disc flex-col gap-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
+            <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
               <li>
                 <strong>Er kommt spät.</strong> Der Bericht zum Geschäftsjahr erscheint
                 rund zwei Jahre später. Für einzelne Gesellschaften stehen sogar noch

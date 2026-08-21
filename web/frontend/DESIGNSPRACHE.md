@@ -157,6 +157,28 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   weiter unten noch lange nicht zu Ende war). Die
   Breite deckelt die Hülle (`max-w-7xl` im App-Layout) — ein eigenes
   `max-w-*` auf einem Raster verschenkt genau den Platz, den das Gerät hat.
+- **Lesebreite: den KASTEN deckeln, nicht den Text darin.** Ein `max-w-[76ch]`
+  an einem Absatz in einer 1.496 px breiten Karte lässt rechts 870 px leer, und
+  eine halb gefüllte Kiste sieht nicht nach Absicht aus, sondern nach Fehler
+  (Tim, 21.08.: „hier ist der ganze rechte Bereich frei, das sieht absolut
+  scheiße aus"). Der Deckel ist trotzdem richtig — ohne ihn läuft Fließtext auf
+  einem breiten Schirm über 120+ Zeichen je Zeile. Er gehört nur an eine andere
+  Stelle. Drei Fälle, drei Antworten:
+  - **Ein Einschub** (`aside`, „Lotti erklärt's einfach") deckelt sich SELBST.
+    Der Leerraum liegt dann außerhalb des Kastens — er ist Seitenrand statt
+    Loch, und dass ein Einschub schmaler steht als der Fluss, sagt genau das
+    Richtige über ihn aus.
+  - **Eine Aufzählung** in einer breiten Karte („Was diese Zahlen nicht
+    hergeben") läuft in ZWEI Spalten (`@3xl:grid-cols-2` am `<ul>`,
+    `@container` an der Sektion). Fläche gefüllt, Zeile lesbar.
+  - **Ein einzelner Absatz** neben Grafik, Tabelle oder Liste in derselben
+    Karte bleibt gedeckelt. Die Karte ist dann nicht leer, und ein Absatz, der
+    kürzer ist als die Tabelle darunter, ist normaler Satz.
+
+  ACHTUNG, `ch` MISST DIE SCHRIFT SEINES ELEMENTS. Steht der Deckel am Kasten
+  (16 px) und der Text darin hat 13 px, sind `92ch` nicht 92 Zeichen, sondern
+  102 — nachgemessen am Lotti-Kasten. Zielwert ist die Zeichenzahl im
+  gerenderten Text, nicht die Zahl in der Klasse.
 
 ## 5. Wiederkehrende Bausteine (Spez im Artboard „Ratsgespräch")
 

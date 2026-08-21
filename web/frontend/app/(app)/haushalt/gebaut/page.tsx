@@ -460,7 +460,7 @@ export default function GebautPage() {
 
         {/* Warum hier keine Quote steht — eigener Block, kein Kleingedrucktes.
             Es ist die Zahl, nach der jede Leserin als Nächstes sucht. */}
-        <section className="rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
+        <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
             Warum hier keine „Umsetzungsquote“ steht
           </p>
@@ -469,7 +469,7 @@ export default function GebautPage() {
             Prozentsatz zu machen — „so viel vom Geplanten wurde gebaut“. Diese Zahl
             steht in keinem Dokument, und ihre beiden Hälften zählen nicht dasselbe:
           </p>
-          <ul className="mt-2 flex max-w-[76ch] list-disc flex-col gap-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
+          <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
             <li>
               <strong>Der Plan</strong> steht im Finanzhaushalt des Haushaltsplans,
               gegliedert nach Teilhaushalten — also danach, welches Amt das Geld
@@ -493,11 +493,11 @@ export default function GebautPage() {
         </section>
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
-        <section className="rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
+        <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
             Was diese Zahlen nicht sagen
           </p>
-          <ul className="mt-2 flex max-w-[76ch] list-disc flex-col gap-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
+          <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
             <li>
               <strong>Nicht die ganze Bautätigkeit der Stadt.</strong> Gezählt wird die
               Kernverwaltung. Was der Eigenbetrieb Gebäudewirtschaft und Hochbau baut —

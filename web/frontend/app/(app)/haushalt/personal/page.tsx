@@ -390,11 +390,11 @@ export default function PersonalPage() {
         </section>
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
-        <section className="rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
+        <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
             Was diese Zahlen nicht hergeben
           </p>
-          <ul className="mt-2 flex max-w-[76ch] list-disc flex-col gap-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
+          <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
             <li>
               <strong>Stellen sind keine Menschen.</strong> Eine Stelle kann sich auf zwei
               Personen in Teilzeit verteilen, und eine halbe Stelle steht als 0,50 im Plan.
