@@ -789,13 +789,13 @@ export default function SchuldenPage() {
             sie nur dort etwas verzerren: Sie liegen im NENNER. In der
             Gesamtsumme kommen sie nicht vor, und sie dort zu erwähnen hieße,
             einen Sprung zu behaupten, den man nicht sieht. */}
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <section className="@container rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             {ansicht === "insgesamt"
               ? "Zwei Sprünge, die keine Politik waren"
               : "Drei Sprünge, die keine Politik waren"}
           </p>
-          <ul className="mt-2 flex max-w-[76ch] list-disc flex-col gap-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
+          <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
             <li>
               <strong>2001 fiel die Schuld um mehr als die Hälfte.</strong> Die Stadt
               übertrug die Stadtentwässerung an den Oldenburgisch-Ostfriesischen
@@ -932,11 +932,11 @@ export default function SchuldenPage() {
         <DritteZahlBlock daten={data} />
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
-        <section className="rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
+        <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
             Was diese Zahl nicht sagt
           </p>
-          <ul className="mt-2 flex max-w-[76ch] list-disc flex-col gap-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
+          <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
             <li>
               <strong>Nicht der Konzern.</strong> Klinikum, Busse, Bäder und die
               städtischen Gesellschaften schulden auf eigene Rechnung und stehen hier

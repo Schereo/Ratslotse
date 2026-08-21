@@ -28,8 +28,29 @@ export function LottiErklaert({
   className?: string;
 }) {
   return (
+    // DER DECKEL SITZT AN DER KARTE, NICHT AM TEXT (Tim, 21.08.2026: „hier ist
+    // der ganze rechte Bereich frei, das sieht absolut scheiße aus").
+    //
+    // Vorher war es umgekehrt: volle Kartenbreite, Text auf 76ch gedeckelt.
+    // Der Deckel war richtig — ohne ihn lief der Erklärtext auf 1.440 px über
+    // 127 Zeichen je Zeile, während die Einstiegstexte derselben Seiten bei 66
+    // enden. Nur stand er an der falschen Stelle: In einer 1.496 px breiten
+    // Karte blieben rechts 873 px leer, und eine halb gefüllte Kiste sieht
+    // nicht nach Absicht aus, sondern nach Fehler.
+    //
+    // Jetzt endet die KARTE dort, wo der Text endet. Der Leerraum liegt damit
+    // außerhalb — er ist Seitenrand statt Loch. Und das ist auch inhaltlich
+    // richtig: Das hier ist ein `aside`, keine Hauptaussage; dass er schmaler
+    // steht als die Karten des Flusses, sagt genau das.
+    //
+    // `74ch` AN DER KARTE, und das sind NICHT 74 Zeichen Text: Die Einheit
+    // `ch` misst die Schrift des Elements, an dem sie steht — hier die 16 px
+    // der Karte, während der Erklärtext 13 px hat. Dazu gehen links 48 px Bild
+    // plus Abstand und Polsterung ab. Nachgemessen kommen so ~80 Zeichen je
+    // Zeile heraus; ein erster Versuch mit `92ch` ergab 102 und war damit
+    // schlechter lesbar als der alte Zustand.
     <aside className={cn(
-      "flex gap-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3.5",
+      "flex max-w-[74ch] gap-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3.5",
       className,
     )}>
       <Mascot pose={pose} decorative className="h-11 w-11 flex-none sm:h-12 sm:w-12" />
@@ -37,13 +58,7 @@ export function LottiErklaert({
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
           {titel}
         </p>
-        {/* Lesebreite gedeckelt (76ch — die im Bereich vorherrschende, 53×
-            verwendet): Ohne den Deckel lief der Erklärtext auf 1440 px über
-            die volle Kartenbreite, gemessen 127 Zeichen je Zeile, während die
-            Einstiegstexte derselben Seiten bei 66 enden. Lotti steht auf 18
-            Seiten — der Deckel gehört deshalb in die Komponente und nicht 18×
-            an die Aufrufstelle. */}
-        <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+        <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
           <GlossaryText text={text} />
         </p>
       </div>
@@ -66,8 +81,9 @@ export function LottiVergleich({
   const proKopf = Math.round((betragMio * 1_000_000) / einwohner);
   const proKopfMonat = Math.round(proKopf / 12);
   return (
+    // Dieselbe Bauform wie `LottiErklaert` — Deckel an der Karte, s. dort.
     <aside className={cn(
-      "flex gap-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3.5",
+      "flex max-w-[74ch] gap-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3.5",
       className,
     )}>
       <Mascot pose="point" decorative className="h-11 w-11 flex-none sm:h-12 sm:w-12" />
@@ -75,12 +91,12 @@ export function LottiVergleich({
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
           Was heißt das pro Kopf?
         </p>
-        <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+        <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
           {betragMio.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&#8239;Mio.&nbsp;€ {was} sind{" "}
           <strong>{proKopf.toLocaleString("de-DE")}&nbsp;€ pro Einwohner*in im Jahr</strong>
           {proKopfMonat >= 1 && <> — rund {proKopfMonat.toLocaleString("de-DE")}&nbsp;€ im Monat</>}.
         </p>
-        <p className="mt-1 max-w-[76ch] text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
           Unsere Rechnung: Betrag geteilt durch {einwohner.toLocaleString("de-DE")} Einwohner*innen.
           Keine amtliche Kennzahl — die Stadt weist sie so nicht aus.
         </p>
