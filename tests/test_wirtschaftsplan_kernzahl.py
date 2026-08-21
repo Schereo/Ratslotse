@@ -245,3 +245,90 @@ def test_gewinn_bleibt_positiv():
     wort, betrag = kernzahl_aus_beschluss(text)
     assert wort.lower() == "gewinn"
     assert betrag == 273_950.0
+
+
+# ---------------------------------------------------------------------------
+# Die Investitionen des Vermögensplans
+#
+# ANLASS (Tim, 21.08.2026): „Ich habe in den Wirtschaftsplan vom Bäderbetrieb
+# reingeguckt und da stehen ja ganz, ganz viele Zahlen drin. Wie kann es sein,
+# dass hier das Jahresergebnis immer Null ist?" — Die Null stimmt (sieben von
+# sieben Jahrgängen schreiben „Jahresfehlbetrag in Höhe von 0,00 EUR"), aber
+# derselbe Beschlusstext nennt zweistellige Millionenbeträge, die wir nicht
+# gelesen haben.
+# ---------------------------------------------------------------------------
+
+#: Der Beschlusstext 2026 des Bäderbetriebs, gekürzt auf die zwei Sätze, um die
+#: es geht. 10.702.000 + 50.000 = 10.752.000 — die Probe steht im Text selbst.
+TEXT_BBO = (
+    "Der Wirtschaftsplan 2026 weist in seiner Erfolgsrechnung ein "
+    "ausgeglichenes Ergebnis aus. Der Vermögensplan weist Investitionen in "
+    "Höhe von 10.752.000 Euro aus. Die Finanzierung der geplanten "
+    "Investitionen erfolgt durch eine Kreditaufnahme am Kreditmarkt "
+    "(10.702.000 Euro) und aus der Verwendung von Abschreibungen (vermindert "
+    "um die Tilgungsleistungen) und der Liquidität (50.000 Euro). "
+    "Der Wirtschaftsplan 2026 schließt mit einem geplanten Jahresfehlbetrag "
+    "in Höhe von 0,00 Euro ab. Der Ergebnishaushalt wird nicht belastet."
+)
+
+
+def test_investitionen_mit_eigener_probe():
+    from council.wirtschaftsplan_kernzahl import investitionen_aus_beschluss
+
+    assert investitionen_aus_beschluss(TEXT_BBO) == 10_752_000.0
+
+
+def test_ursprünglicher_plan_wird_nicht_gelesen():
+    """Die teuerste Falle dieses Musters.
+
+    Zwei Jahrgänge (2024, 2025) sind ANPASSUNGS-Vorlagen: Sie zitieren den
+    alten Stand, bevor sie ihn ändern. Wer „Der ursprüngliche Vermögensplan
+    2025 weist Investitionen in Höhe von 19.535.418 Euro aus" liest,
+    speichert eine überholte Zahl als aktuelle — und sie ginge auch noch
+    durch die Finanzierungsprobe, weil der zitierte Satz seine eigenen
+    Klammerbeträge mitbringt."""
+    from council.wirtschaftsplan_kernzahl import investitionen_aus_beschluss
+
+    text = TEXT_BBO.replace("Der Vermögensplan weist",
+                            "Der ursprüngliche Vermögensplan weist")
+    assert investitionen_aus_beschluss(text) is None
+
+
+def test_ohne_finanzierungssatz_keine_zahl():
+    """Eine Summe ohne Gegenrechnung wird nicht gespeichert."""
+    from council.wirtschaftsplan_kernzahl import investitionen_aus_beschluss
+
+    text = TEXT_BBO.split("Die Finanzierung")[0]
+    assert investitionen_aus_beschluss(text) is None
+
+
+def test_finanzierung_die_nicht_aufgeht_faellt_durch():
+    """Der eigentliche Wert der Probe: Sie fängt einen Lesefehler.
+
+    Wäre der Kreditbetrag verlesen, ergäben die Teile nicht mehr die Summe —
+    und dann steht lieber nichts da als eine falsche Zahl."""
+    from council.wirtschaftsplan_kernzahl import investitionen_aus_beschluss
+
+    text = TEXT_BBO.replace("(10.702.000 Euro)", "(9.702.000 Euro)")
+    assert investitionen_aus_beschluss(text) is None
+
+
+def test_probe_haengt_nur_dran_wo_sie_lief():
+    """Die Herkunft darf keine Probe behaupten, die es nicht gab."""
+    from council.wirtschaftsplan import Wirtschaftsplan
+    from council.wirtschaftsplan_kernzahl import (
+        PROBE_INVESTITIONEN, herkunft_fuer)
+
+    def plan(investitionen):
+        return Wirtschaftsplan(
+            betrieb="bbo", betrieb_name="Bäderbetrieb der Stadt Oldenburg",
+            jahr=2026, vorlage_nr="25/0818/1", ertraege=None, aufwendungen=None,
+            steuern=None, ergebnis=0.0, vermoegensplan=None,
+            verpflichtungen=None, entwurf_vom=None, investitionen=investitionen)
+
+    mit = herkunft_fuer(plan(10_752_000.0), "0,00 Euro", "ausgeglichen",
+                        url=None, kvonr=1)
+    ohne = herkunft_fuer(plan(None), "0,00 Euro", "ausgeglichen",
+                         url=None, kvonr=1)
+    assert PROBE_INVESTITIONEN in mit.probe
+    assert PROBE_INVESTITIONEN not in ohne.probe

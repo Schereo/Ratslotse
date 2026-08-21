@@ -200,6 +200,17 @@ class Wirtschaftsplan:
     verpflichtungen: float | None
     #: Datum des Verwaltungsentwurfs — der Stand, den diese Zahlen tragen.
     entwurf_vom: str | None
+    #: Die Investitionen IM Vermögensplan — ein Posten, nicht die Summe.
+    #:
+    #: Zwei Betriebe, zwei Sprechweisen: Der EGH nennt im Beschlusstext die
+    #: Gesamtsumme („Einzahlungen und Auszahlungen von je 51,6 Mio. €"), der
+    #: Bäderbetrieb nur den Posten („Der Vermögensplan weist Investitionen in
+    #: Höhe von 10.752.000 Euro aus"). Beide Angaben in dieselbe Spalte zu
+    #: legen hieße, eine Teilmenge als Summe auszugeben.
+    #:
+    #: Vorgabe ``None``, damit die drei Lesewege (Beschlusstext, Erfolgsplan
+    #: der Anlage, Kernzahl) nur setzen, was ihre Quelle wirklich nennt.
+    investitionen: float | None = None
 
     @property
     def probe_ergebnis(self) -> str:

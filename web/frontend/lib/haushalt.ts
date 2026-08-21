@@ -1020,6 +1020,14 @@ export type WirtschaftsplanZeile = {
   /** Als einziges immer da. */
   ergebnis: number;
   vermoegensplan: number | null;
+  /** Die Investitionen IM Vermögensplan — ein Posten, nicht die Summe.
+   *
+   *  Nicht mit `vermoegensplan` verwechseln: Der ist die Gesamtsumme
+   *  (Einzahlungen = Auszahlungen), diese Zahl ein Posten darin. Der
+   *  Bäderbetrieb nennt im Beschlusstext nur den Posten, der Eigenbetrieb
+   *  Gebäudewirtschaft nur die Summe — beide dürfen nicht dieselbe Zeile
+   *  bekommen. */
+  investitionen: number | null;
   verpflichtungen: number | null;
   /** Stand des Verwaltungsentwurfs, wo das Dokument ihn nennt. */
   entwurf_vom: string | null;
