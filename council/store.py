@@ -4535,17 +4535,50 @@ class CouncilStore:
         # entsendende Organisation, kein Fraktions-Label. Ohne diese Weiche
         # stand auf ihrer Seite „Ratsmitglied · parteilos" (Tims Befund
         # 21.08.2026) — beides falsch.
-        eintrag = next((m for m in self.list_members() if m["slug"] == kanon), None)
-        art = eintrag["art"] if eintrag else "rat"
+        #
+        # Bewusst aus den Zeilen DIESER Person statt aus `list_members()`: Das
+        # Verzeichnis scannt alle 15.000 Anwesenheitszeilen, und eine
+        # Personen-Seite braucht davon genau eine Person. Der Umweg kostete
+        # rund 300 ms je Aufruf (gemessen 21.08.2026).
+        im_plenum = self._conn.execute(
+            f"""SELECT 1 FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
+                  AND cs.committee = ? LIMIT 1""", matched + [self.PLENUM]).fetchone()
+        art = "rat" if (im_plenum or kanon in self._ris_ratsmitglieder()) else "beratend"
+        organisation = None
         if art == "beratend":
             timeline = []
+            # Jüngstes Label, das eine Organisation nennt (kein Rollenwort).
+            for r in self._conn.execute(
+                    f"""SELECT a.party FROM council_attendance a
+                        JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                        WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
+                        ORDER BY cs.session_date DESC""", matched):
+                organisation = self._organisation_label(r["party"])
+                if organisation:
+                    break
+        aktuell = None
+        if timeline:
+            letzte = timeline[-1]
+            phasen = {t["label"]: (t["first"], t["last"]) for t in timeline}
+            aufgeloest = self._partei_der_person(
+                kanon, letzte["label"], phasen, self._ris_fraktionen())
+            aktuell = ({"label": aufgeloest, "kind": "partei", "parties": [aufgeloest]}
+                       if aufgeloest != letzte["label"]
+                       else {"label": letzte["label"], "kind": letzte["kind"],
+                             "parties": letzte["parties"]})
         return {
             "name": name, "slug": slug,
             # Aktuelle Zugehörigkeit (Ende der geglätteten Zeitreihe) — nicht die
             # häufigste: Wechsler (FDP/Volt→Volt, Linke→BSW) zeigen sonst die alte.
-            "party": timeline[-1]["label"] if timeline else None,
+            "party": aktuell["label"] if aktuell else None,
+            # Der Kopf der Seite nennt dieselbe Zugehörigkeit wie das
+            # Verzeichnis: Zusammenschluss-Label aufgelöst, wo es belegt ist
+            # („FDP/Volt" → FDP). Die Zeitreihe darunter bleibt quellentreu —
+            # sie erzählt, was die Protokolle DAMALS schrieben.
+            "current_affiliation": aktuell,
             "art": art,
-            "organisation": eintrag["organisation"] if eintrag else None,
+            "organisation": organisation,
             "n_sessions": span["n"], "active_from": span["first"], "active_to": span["last"],
             "faction_timeline": timeline,
             "ris": self.person_stammdaten_for_names(matched),
