@@ -498,6 +498,37 @@ def test_gruppen_label_wird_zur_partei_aufgeloest(tmp_path):
         store.close()
 
 
+def test_personen_seite_kopf_loest_gruppe_auf_zeitreihe_bleibt(tmp_path):
+    """Tims Wunsch 21.08.2026: Der Kopf der Personen-Seite sagt dasselbe wie
+    das Verzeichnis — „FDP/Volt" aufgelöst, wo es belegt ist. Die Zeitreihe
+    darunter bleibt quellentreu: Sie erzählt, was die Protokolle DAMALS
+    schrieben."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        frisch = (date.today() - timedelta(days=20)).isoformat()
+        frueher = f"{int(frisch[:4]) - 2}{frisch[4:]}"
+        with store._conn:
+            store._conn.executemany(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+                "location, fetched_at) VALUES (?, 'Rat', ?, '', '', datetime('now'))",
+                [(1, frueher), (2, frisch)])
+            store._conn.executemany(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (?, ?, ?, 'mitglied', NULL)",
+                [(1, "Benno Schulz", "FDP"), (2, "Benno Schulz", "FDP/Volt"),
+                 (1, "Paul Behrens", "SPD"), (2, "Paul Behrens", "SPD")])
+        d = store.member_detail("benno-schulz")
+        assert d["current_affiliation"]["label"] == "FDP"      # Kopf: aufgelöst
+        assert d["party"] == "FDP"
+        assert [t["label"] for t in d["faction_timeline"]] == ["FDP", "FDP/Volt"]  # roh
+        # Ohne Zusammenschluss bleibt alles, wie es war.
+        b = store.member_detail("paul-behrens")
+        assert b["current_affiliation"] == {"label": "SPD", "kind": "partei", "parties": ["SPD"]}
+    finally:
+        store.close()
+
+
 def test_verein_ist_keine_ratsgruppe(tmp_path):
     """„Gemeinsam für Oldenburg e.V." las als Ratsgruppe „Für Oldenburg" —
     ein Verbandsvertreter wurde so zum Gruppenmitglied (21.08.2026)."""
