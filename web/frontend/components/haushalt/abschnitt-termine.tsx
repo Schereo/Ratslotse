@@ -1,5 +1,15 @@
 "use client";
 
+// „Wann der Haushalt entschieden wird" — der ERSTE Abschnitt von
+// /haushalt/mitreden.
+//
+// Bis zum 21.08.2026 war das die eigene Seite /haushalt/jahr. Sie ist mit
+// „Der Streit ums Geld" und dem Haushalts-Labor zusammengelegt worden: Alle
+// drei beantworten dieselbe Frage („Wie rede ich mit?"), und der Bereich war
+// auf neunzehn Schritte gewachsen (Tim, 21.08.: „man wird erschlagen vor
+// Inhalten"). Der Rahmen — Quellenkontext, Verzeichnis, Weiter-Karte — liegt
+// jetzt bei der Seite; hier steht nur noch der Inhalt.
+
 // /haushalt/jahr — „Wann der Haushalt entschieden wird" (H3-06/H4-14,
 // davor H2-10).
 //
@@ -63,15 +73,12 @@ import { gremiumKurz } from "@/lib/haushalt-streit";
 import type { DokumenteAntwort } from "@/lib/haushalt-dokumente";
 import { Zeitstrahl, ZeitstrahlStation } from "@/components/grafik/zeitstrahl";
 import { StationsZeile } from "@/components/haushalt/weg-stationen";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
-import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
+import { Beleg } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { offerIcs } from "@/lib/ics";
 import { toast } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 
-const QUELLEN: QuellenSchluessel[] = ["ratsbeschluss"];
 
 const WOCHENTAG = new Intl.DateTimeFormat("de-DE", { weekday: "short" });
 
@@ -82,7 +89,7 @@ function lokalesDatum(iso: string): Date {
   return new Date(j, (m || 1) - 1, t || 1);
 }
 
-export default function HaushaltsjahrPage() {
+export function TermineAbschnitt() {
   const { data, loading } = useFetch<WegDaten>("/council/haushalt/weg");
   const { data: dokumente } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
   const { data: kommende } = useFetch<{ sessions: KommendeSitzung[] }>(
@@ -170,21 +177,11 @@ export default function HaushaltsjahrPage() {
     : null;
 
   return (
-    <Quellenkontext schluessel={QUELLEN}>
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-          <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
-          <ChevronRight className="h-3 w-3" />
-          <span className="font-semibold text-foreground">Das Haushaltsjahr</span>
-        </div>
-
         <div>
-          <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Stadtfinanzen Oldenburg · Schritt 17
-          </p>
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">
+          <h2 className="font-display text-xl font-bold tracking-tight sm:text-[22px]">
             Wann der Haushalt entschieden wird
-          </h1>
+          </h2>
           <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
             {lebtMonate
               ? `Ein Haushalt lebt rund ${lebtMonate} Monate: vom ersten öffentlichen Auftritt bis zur letzten Abrechnung — gemessen an den Jahrgängen im Bestand, nicht behauptet. `
@@ -348,11 +345,7 @@ export default function HaushaltsjahrPage() {
 
         <Nachlauf />
 
-        <SchrittWeiter href="/haushalt/jahr" />
-
-        <Quellenverzeichnis schluessel={QUELLEN} />
       </div>
-    </Quellenkontext>
   );
 }
 

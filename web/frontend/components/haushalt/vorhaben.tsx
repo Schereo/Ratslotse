@@ -361,7 +361,7 @@ export function Vorhaben({
           Die Zahlen kommen aus dem Entwurf der Verwaltung, Stand der
           Einbringung in den Rat — was die Fraktionen in den Beratungen ändern,
           steht nicht darin; dafür ist{" "}
-          <Link href="/haushalt/streit" className="font-semibold text-primary hover:underline">
+          <Link href="/haushalt/mitreden#streit" className="font-semibold text-primary hover:underline">
             Der Streit ums Geld
           </Link>{" "}
           die passende Seite. Die Summen decken sich absichtlich nicht mit dem

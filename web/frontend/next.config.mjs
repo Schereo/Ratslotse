@@ -51,7 +51,18 @@ async function rewrites() {
 // Die alte /technik-Seite ist durch die Technik-Doku unter /docs ersetzt —
 // alte Bookmarks/Suchtreffer landen per Permanent-Redirect am neuen Ort.
 async function redirects() {
-  return [{ source: "/technik", destination: "/docs", permanent: true }];
+  return [
+    { source: "/technik", destination: "/docs", permanent: true },
+    // Die Etappe „Mitreden" war bis 21.08.2026 auf drei Seiten verteilt; sie
+    // beantworten eine Frage und stehen jetzt als Abschnitte auf einer.
+    //
+    // ACHTUNG, DAS GILT NUR IM WEB-BUILD. Der Capacitor-Export (`output:
+    // "export"`) kennt `redirects` nicht — für die App zählt allein, dass
+    // KEIN interner Link mehr auf die alten Pfade zeigt. Beim Umbau geprüft.
+    { source: "/haushalt/jahr", destination: "/haushalt/mitreden#termine", permanent: true },
+    { source: "/haushalt/streit", destination: "/haushalt/mitreden#streit", permanent: true },
+    { source: "/haushalt/labor", destination: "/haushalt/mitreden#labor", permanent: true },
+  ];
 }
 
 // Basis-Security-Header für alle Antworten.
