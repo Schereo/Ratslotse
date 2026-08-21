@@ -69,6 +69,10 @@ async function redirects() {
     { source: "/haushalt/gebaut", destination: "/haushalt/investitionen#gebaut", permanent: true },
     // Teilhaushalte und Produkte sind derselbe Baum (21.08.2026).
     { source: "/haushalt/bereiche", destination: "/haushalt/produkte#bereiche", permanent: true },
+    // Die ganze Stadt: Summe, Gesellschaften, Pläne, Gebühren (21.08.2026).
+    { source: "/haushalt/beteiligungen", destination: "/haushalt/konzern#gesellschaften", permanent: true },
+    { source: "/haushalt/betriebe", destination: "/haushalt/konzern#betriebe", permanent: true },
+    { source: "/haushalt/gebuehren", destination: "/haushalt/konzern#gebuehren", permanent: true },
   ];
 }
 

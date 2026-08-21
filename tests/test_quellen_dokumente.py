@@ -176,9 +176,19 @@ def _seiten_mit_quellen() -> list[tuple[str, list[str], set[str]]]:
 
 
 def test_seiten_gefunden():
-    """Wieder die Voraussetzung: Ein leeres Ergebnis darf nicht grün sein."""
+    """Wieder die Voraussetzung: Ein leeres Ergebnis darf nicht grün sein.
+
+    Die Schwelle stand bis zum 21.08.2026 bei 12 und ist auf 8 gesenkt: Der
+    Bereich hatte neunzehn Schritte und hat jetzt elf, weil fünf Gruppen von
+    Seiten zusammengelegt wurden, die dieselbe Frage beantworteten. Sie zählt
+    nur noch Seiten MIT eigener Quellenliste — Steckbriefe wie
+    `/haushalt/bereich` haben keine.
+
+    Wer sie wieder anhebt, sollte einen Grund haben: Sie soll verhindern, dass
+    der Regex still nichts mehr findet, nicht die Zahl der Seiten festschreiben.
+    """
     seiten = _seiten_mit_quellen()
-    assert len(seiten) >= 12, f"Nur {len(seiten)} Haushalts-Seiten gefunden."
+    assert len(seiten) >= 8, f"Nur {len(seiten)} Haushalts-Seiten gefunden."
 
 
 def test_kein_stummer_beleg():

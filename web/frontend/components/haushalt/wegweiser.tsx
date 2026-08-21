@@ -181,35 +181,13 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
       + "und was aus allen Jahren zusammen offen blieb, steht in keinem davon.",
     ziele: [
       {
+        // EIN Ziel statt vierer (21.08.2026). Summe, Gesellschaften, ihre
+        // Wirtschaftspläne und die Gebühren, die daraus folgen, sind eine
+        // Kette: Wer bei den Gebühren anfängt, liest eine Zahl ohne Herkunft;
+        // wer bei der Summe aufhört, weiß nicht, wer dahintersteckt.
         href: "/haushalt/konzern",
         titel: "Und ist das die ganze Stadt?",
         text: "Klinikum, Busse, Bäder, Gebäude: was neben dem Haushalt noch läuft.",
-      },
-      {
-        // Direkt hinter dem Gesamtabschluss, weil es dieselben Gesellschaften
-        // von der anderen Seite zeigt: Schritt 11 sagt, wie viel Klinikum,
-        // Busse und Bäder bewegen; hier steht, was sie damit tun. Vorher
-        // gelesen wäre es eine Liste von Firmennamen ohne Anlass.
-        href: "/haushalt/beteiligungen",
-        titel: "Was machen die eigentlich?",
-        text: "Die Gesellschaften einzeln: Auftrag, Aufsichtsrat, Ergebnis — vom Klinikum bis zur Volkshochschule.",
-      },
-      {
-        // Hinter „Was machen die eigentlich?" und nicht davor: Dort steht, WAS
-        // ein Betrieb tut, hier, was er sich fürs laufende Jahr vornimmt. Wer
-        // die Zahl zuerst liest, hat keinen Gegenstand dazu.
-        href: "/haushalt/betriebe",
-        titel: "Was planen die Betriebe?",
-        text: "Die Wirtschaftspläne der Eigenbetriebe — eigene Rechnungen neben dem Stadthaushalt, in derselben Sitzung beschlossen.",
-      },
-      {
-        // Direkt hinter „Was planen die Betriebe?": Dort steht, was der
-        // Abfallwirtschaftsbetrieb sich vornimmt — hier, was daraus für die
-        // Leute wird. Die Kostenkalkulation dieser Seite ist dieselbe Zahl,
-        // die dort im Erfolgsplan steht, nur weitergerechnet.
-        href: "/haushalt/gebuehren",
-        titel: "Was Sie dafür zahlen",
-        text: "Abfall- und Straßenreinigungsgebühren werden jedes Jahr eigens ausgerechnet — hier steht die Rechnung.",
       },
       {
         // Spät, nicht vorn: „Steht Oldenburg besser da?" stellt sich erst,

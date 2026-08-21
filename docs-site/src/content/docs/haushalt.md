@@ -48,14 +48,11 @@ genau dieser Reihenfolge.
 | `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 6 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
 | `/haushalt/pruefung[?jahr=<jahr>]` | Schritt 7 — „Geprüft und zusammengefasst", zwei Abschnitte: `#feststellungen` die Feststellungen des Rechnungsprüfungsamts im Wortlaut, je Jahrgang und als Wiederholungskette, `#kennzahlen` die dreizehn Kennzahlen, auf die die Stadt ihren Abschluss selbst eindampft, mit den gedruckten Rechenwegen |
 | **Der Rahmen** | |
-| `/haushalt/konzern` | Schritt 8 — Kernverwaltung gegen Gesamtabschluss über elf Jahrgänge, Aufschlüsselung nach Aufgabenträgern |
-| `/haushalt/beteiligungen[?g=<gesellschaft>]` | Schritt 9 — „Was machen die eigentlich?": jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsichtsorganen und Kennzahlen-Zeitreihe; `g` öffnet den Steckbrief |
-| `/haushalt/betriebe` | Schritt 10 — „Was planen die Betriebe?“: die Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften, in derselben Ratssitzung beschlossen wie der Stadthaushalt und mit ihm **nicht addierbar** |
-| `/haushalt/gebuehren` | Schritt 11 — „Was Sie dafür zahlen": die Gebührenbedarfsberechnung des Abfallwirtschaftsbetriebs — was der Bereich kostet, was Dritte tragen, und was übrig bleibt, geteilt durch die Menge |
-| `/haushalt/vergleich` | Schritt 12 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
-| `/haushalt/schulden` | Schritt 13 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
+| `/haushalt/konzern[?g=<gesellschaft>]` | Schritt 8 — „Und ist das die ganze Stadt?", vier Abschnitte: `#summe` Kernverwaltung gegen Gesamtabschluss mit der Konsolidierung, `#gesellschaften` jede städtische Gesellschaft mit Auftrag, Eigentümern, Aufsicht und Kennzahlen-Zeitreihe (`g` öffnet den Steckbrief IM Abschnitt), `#betriebe` die Wirtschaftspläne der Eigenbetriebe je Betrieb und Jahrgang, `#gebuehren` die Gebührenbedarfsberechnung für Abfall und Straßenreinigung |
+| `/haushalt/vergleich` | Schritt 9 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
+| `/haushalt/schulden` | Schritt 10 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
-| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 14 — „Mitreden", drei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten der Fraktionen mit Abstimmungsergebnis, die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung, `#labor` Was-wäre-wenn mit Hebesatz-Regler und Kürzungen |
+| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 11 — „Mitreden", drei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten der Fraktionen mit Abstimmungsergebnis, die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung, `#labor` Was-wäre-wenn mit Hebesatz-Regler und Kürzungen |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
