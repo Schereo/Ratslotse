@@ -1249,7 +1249,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       type DbTurn = { frage: string; antwort: string; quellen: {
         sources?: QaSource[]; cited?: number[]; presse?: PresseHinweis[];
         debatten?: DebattenHinweis[]; anlagen?: AnlagenHinweis[];
-        planungen?: Planung[]; recherche?: boolean;
+        planungen?: Planung[]; recherche?: boolean; kontext?: string | null;
         gelesen?: number; zeitraum?: string } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
@@ -1260,7 +1260,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         anlagen: t.quellen?.anlagen ?? [],
         planungen: t.quellen?.planungen ?? [],
         cited: t.quellen?.cited ?? [],
-        followups: [], kontext: t.frage,
+        // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
+        // Sie ist der Schlüssel, unter dem nachladende Bausteine ihr Ergebnis
+        // ablegen — mit `t.frage` statt ihrer lud der Parteien-Baustein nach
+        // jedem Tab-Wechsel neu (Tims Befund 21.08.2026). Turns von vor
+        // diesem Fix tragen sie nicht; für die bleibt es wie bisher.
+        followups: [], kontext: t.quellen?.kontext ?? t.frage,
         ...(t.quellen?.recherche ? {
           recherche: true, deepStatus: "fertig" as const,
           gelesen: t.quellen?.gelesen, zeitraum: t.quellen?.zeitraum,
@@ -2697,7 +2702,7 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
         // Parteien liegen nicht am Turn, sondern im Cache des Bausteins —
         // derselbe Schlüssel wie beim Laden (kondensierte Frage).
         const parteien = turn.qtype !== "person"
-          ? (parteiMeinungenCache.get(turn.kontext || turn.frage) ?? []) : [];
+          ? (parteiMeinungenCache.get(turn.kontext || turn.frage)?.parteien ?? []) : [];
         const r = await fetch(apiUrl("/council/qa-share"), {
           method: "POST", credentials: "include",
           headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -2774,11 +2779,19 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
 
 /* ------------------ Baustein „Das sagen die Parteien" (RG-09) ------------------ */
 
-/** Doppel-Fetches (Remount durch Kompaktzeile, Strict-Mode) kosten echte
- *  LLM-Calls — das Ergebnis je kondensierter Frage einmal festhalten. Der
- *  Cache ist außerdem die Quelle für den Teilen-Snapshot: Was hier steht,
- *  wandert beim Teilen mit in den Link (Tims Befund 10.08.). */
-export const parteiMeinungenCache = new Map<string, ParteiMeinung[]>();
+/** Doppel-Fetches (Remount durch Kompaktzeile, Strict-Mode, Rückkehr auf den
+ *  Fragen-Tab) kosten echte LLM-Calls — das Ergebnis je kondensierter Frage
+ *  einmal festhalten. Der Cache ist außerdem die Quelle für den
+ *  Teilen-Snapshot: Was hier steht, wandert beim Teilen mit in den Link (Tims
+ *  Befund 10.08.).
+ *
+ *  Gespeichert wird das GANZE Ergebnis, auch die Zeile „Keine passenden
+ *  Wortbeiträge gefunden von …": Sie lag vorher nur im Komponenten-State und
+ *  war nach jedem Remount weg — der Baustein kam also selbst bei einem
+ *  Cache-Treffer unvollständig zurück (Tims Befund 21.08.2026). */
+export const parteiMeinungenCache = new Map<string, {
+  parteien: ParteiMeinung[]; ohneBeitraege: string[];
+}>();
 
 /** Lädt die verdichteten Fraktions-Positionen nach und übergibt sie an
  *  `ParteienListe` — die Darstellung teilt sich diese Seite mit app/g. */
@@ -2956,13 +2969,19 @@ function ParteienBaustein({ frage, beschlussIds, onFrageStellen }: {
   frage: string; beschlussIds: number[]; onFrageStellen?: (text: string) => void;
 }) {
   const [parteien, setParteien] = useState<ParteiMeinung[] | null>(
-    () => parteiMeinungenCache.get(frage) ?? null);
-  const [ohneBeitraege, setOhneBeitraege] = useState<string[]>([]);
+    () => parteiMeinungenCache.get(frage)?.parteien ?? null);
+  const [ohneBeitraege, setOhneBeitraege] = useState<string[]>(
+    () => parteiMeinungenCache.get(frage)?.ohneBeitraege ?? []);
   // Als Zeichenkette in die Abhängigkeit: Das Array ist bei jedem Render neu,
   // die Belege sind es nicht — sonst liefe der Effekt endlos.
   const idsKey = beschlussIds.join(",");
   useEffect(() => {
-    if (parteiMeinungenCache.has(frage)) { setParteien(parteiMeinungenCache.get(frage)!); return; }
+    const gemerkt = parteiMeinungenCache.get(frage);
+    if (gemerkt) {
+      setParteien(gemerkt.parteien);
+      setOhneBeitraege(gemerkt.ohneBeitraege);
+      return;
+    }
     let aktiv = true;
     fetch(apiUrl("/council/partei-meinungen"), {
       method: "POST", credentials: "include",
@@ -2977,10 +2996,11 @@ function ParteienBaustein({ frage, beschlussIds, onFrageStellen }: {
         // RG-09: Reihenfolge nach Redeanteil, nicht alphabetisch.
         const sortiert = ((b.parteien as ParteiMeinung[]) ?? [])
           .slice().sort((a, z) => z.beitraege - a.beitraege);
-        parteiMeinungenCache.set(frage, sortiert);
+        const ohne = (b.ohne_beitraege as string[]) ?? [];
+        parteiMeinungenCache.set(frage, { parteien: sortiert, ohneBeitraege: ohne });
         if (aktiv) {
           setParteien(sortiert);
-          setOhneBeitraege((b.ohne_beitraege as string[]) ?? []);
+          setOhneBeitraege(ohne);
         }
       })
       // Fehler NICHT cachen: ein transienter 4xx/5xx soll den Baustein nur
