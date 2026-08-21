@@ -44,16 +44,17 @@
 //    Eintrag dabei auf (`zeigeImVerzeichnis`) — sonst zeigten sie ins Nichts.
 
 import {
-  createContext, useContext, useState, type ReactNode,
+  createContext, useContext, useMemo, useState, type ReactNode,
 } from "react";
 import { ChevronRight, ExternalLink } from "lucide-react";
 import {
   QuellenSchluessel, QUELLEN, Quelle, standText, type Jahrgaenge,
 } from "@/lib/haushalt-quellen";
 import {
-  belegziel, belegzieleAlle, zielart, zielText, vorgangVerb,
-  type Belegziel, type DokumenteAntwort, type HaushaltDokument,
-  type HaushaltDokumente,
+  belegziel, belegzieleAlle, nummerierung, nummerFuer, zielart, zielText,
+  vorgangVerb, type Belegziel, type DokumenteAntwort,
+  type HaushaltDokument, type HaushaltDokumente, type JeDokument,
+  type NummerEintrag,
 } from "@/lib/haushalt-dokumente";
 import type { Herkunft } from "@/lib/herkunft";
 import { datumLang, gremiumKurz } from "@/lib/haushalt-streit";
@@ -69,10 +70,14 @@ type Kontext = {
   jahrgaenge: Jahrgaenge | undefined;
   /** Der Jahrgang, den die Seite gerade zeigt — `null`, wo sie keinen hat. */
   jahr: number | null;
+  /** Die Nummern dieser Seite — je Papier oder je Quellenart, s.
+   *  `nummerierung`. Chips und Verzeichnis lesen daraus dieselbe Ziffer. */
+  eintraege: NummerEintrag[];
 };
 
 const SeitenQuellen = createContext<Kontext>({
   schluessel: [], dokumente: undefined, jahrgaenge: undefined, jahr: null,
+  eintraege: [],
 });
 
 /** Die id des Verzeichnisses am Seitenfuß. Es gibt genau eines je Seite —
@@ -102,8 +107,18 @@ function zeigeImVerzeichnis(k: QuellenSchluessel) {
  *  je nachdem, welches Jahr die Seite gerade anzeigt. Seiten ohne Jahrgang
  *  lassen ihn weg; dann nimmt der Beleg das jüngste Dokument und schreibt den
  *  Jahrgang an. */
-export function Quellenkontext({ schluessel, jahr = null, children }: {
+export function Quellenkontext({ schluessel, jeDokument = LEER, jahr = null, children }: {
   schluessel: QuellenSchluessel[];
+  /** Quellenarten, deren Papiere je eine eigene Nummer bekommen sollen.
+   *
+   *  Je Quellenart die ADRESSEN der Papiere, auf denen einzelne Aussagen der
+   *  Seite ruhen — jede Betriebskarte auf dem Plan ihres Betriebs. Ohne diese
+   *  Angabe bekäme die ganze Art eine Nummer, und „1 Quelle" stünde über fünf
+   *  Dokumenten (s. `nummerierung`).
+   *
+   *  Der Wert muss über Renderdurchläufe stabil sein (`useMemo`), sonst läuft
+   *  die Nummerierung bei jedem Tastendruck neu. */
+  jeDokument?: JeDokument;
   jahr?: number | null;
   children: ReactNode;
 }) {
@@ -111,24 +126,71 @@ export function Quellenkontext({ schluessel, jahr = null, children }: {
   // jeder Seite: Sonst müsste jede von ihnen dieselbe Verkabelung tragen,
   // und die eine, die es vergisst, zeigt wieder auf die Startseite.
   const { data } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
+  const eintraege = useMemo(
+    () => nummerierung(schluessel, jeDokument, data?.dokumente, jahr),
+    [schluessel, jeDokument, data?.dokumente, jahr]);
   return (
     <SeitenQuellen.Provider value={{
       schluessel, dokumente: data?.dokumente, jahrgaenge: data?.jahrgaenge, jahr,
+      eintraege,
     }}>
       {children}
     </SeitenQuellen.Provider>
   );
 }
 
+/** Ein geteiltes leeres Objekt statt `{}` im Vorgabewert: Ein frisches bei
+ *  jedem Rendern wäre eine neue Abhängigkeit für `useMemo`, und die
+ *  Nummerierung liefe bei jedem Tastendruck neu. */
+const LEER: JeDokument = {};
+
 /** Beleg-Chip direkt an der Zahl. Klick öffnet die Fundstelle. */
-export function Beleg({ q, className }: { q: QuellenSchluessel; className?: string }) {
+export function Beleg({ q, h, className }: {
+  q: QuellenSchluessel;
+  /** Die Herkunft der Zeile, auf der diese Zahl steht — dann trägt der Chip
+   *  die Nummer IHRES Papiers und nicht die der Quellenart.
+   *
+   *  Wirkt nur, wo die Seite die Art über `jeDokument` einzeln nummerieren
+   *  lässt; sonst gibt es nur eine Nummer, und die ist auch die richtige. */
+  h?: Herkunft | null;
+  className?: string;
+}) {
   const [offen, setOffen] = useState(false);
-  const { schluessel, dokumente, jahrgaenge, jahr } = useContext(SeitenQuellen);
+  const { schluessel, dokumente, jahrgaenge, jahr, eintraege } =
+    useContext(SeitenQuellen);
   const quelle = QUELLEN[q];
   const idx = schluessel.indexOf(q);
   // Quelle nicht angemeldet: lieber keinen Chip als eine falsche Nummer.
-  if (idx < 0) return null;
-  const nr = idx + 1;
+  //
+  // ABER NICHT LAUTLOS. Genau das ist am 21.08.2026 aufgefallen: Drei Chips
+  // auf zwei Seiten (`/gebaut` zweimal, `/schulden` einmal) zeigten auf
+  // „jahresabschluss", das dort nie angemeldet war — sie rendeten nichts, und
+  // die Sätze endeten mit einer Fußnote, die es nicht gab. Ein statischer
+  // Abgleich findet das nicht zuverlässig, weil Chips auch in Komponenten
+  // stehen, die eine Seite erst zur Laufzeit einbindet.
+  if (idx < 0) {
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[Beleg] „${q}" steht nicht im Quellenkontext dieser Seite — der Chip `
+        + "rendert nichts. Entweder in die QUELLEN der Seite aufnehmen oder "
+        + "den Chip entfernen.");
+    }
+    return null;
+  }
+  // Die Nummer kommt aus der Zuteilung der Seite, nicht mehr aus der
+  // Position in `schluessel`: Wo eine Art mehrere Papiere hat und die Seite
+  // sie einzeln nummerieren lässt, trägt jede Zahl die Ziffer IHRES Papiers.
+  const eintrag = nummerFuer(eintraege, q, h?.url);
+  if (!eintrag) return null;
+  const nr = eintrag.nr;
+  // Steht die Nummer für genau ein Papier, zeigt das Fähnchen dessen
+  // Fundstelle — sonst die der Art (das jüngste Papier des Jahrgangs).
+  const ziel = eintrag.dokument
+    ? { dokument: eintrag.dokument, jahrgang: eintrag.dokument.jahr,
+        abweichend: jahr == null || eintrag.dokument.jahr !== jahr,
+        weitere: 0 }
+    : belegziel(dokumente, q, jahr);
   return (
     <span className="relative inline-block">
       <button
@@ -148,7 +210,7 @@ export function Beleg({ q, className }: { q: QuellenSchluessel; className?: stri
         <span className="absolute bottom-full left-1/2 z-20 mb-1.5 block w-[280px] -translate-x-1/2 rounded-xl border border-border bg-card p-3 text-left shadow-[0_12px_32px_-10px_rgba(2,32,71,0.28)]">
           <QuelleInhalt
             quelle={quelle} nr={nr}
-            ziel={belegziel(dokumente, q, jahr)}
+            ziel={ziel}
             jahrgaenge={jahrgaenge?.[q]}
             imVerzeichnis={() => { setOffen(false); zeigeImVerzeichnis(q); }}
           />
@@ -366,11 +428,25 @@ export function Apparat({ id, kicker, zusatz, children }: {
  *  besteht: neun Teilhaushalts-Anlagen, sieben Wirtschaftspläne. Der Name kommt
  *  aus `council_herkunft.label` und ist das, wonach jemand sucht — „Vorlage
  *  25/0722" allein wäre ein Aktenzeichen ohne Gegenstand. */
-function Dokumentliste({ dokumente }: { dokumente: HaushaltDokument[] }) {
+function Dokumentliste({ dokumente, eintraege }: {
+  /** Papiere ohne eigene Nummer — sie gehören alle zur Nummer der Art. */
+  dokumente?: HaushaltDokument[];
+  /** Papiere MIT eigener Nummer. Dann steht die Ziffer vor jedem Titel, und
+   *  ein Beleg-Chip im Text kann genau auf sie zeigen. */
+  eintraege?: NummerEintrag[];
+}) {
+  const zeilen = eintraege
+    ? eintraege.map((e) => ({ nr: e.nr, d: e.dokument! }))
+    : (dokumente ?? []).map((d) => ({ nr: null as number | null, d }));
   return (
     <ul className="mt-1.5 flex flex-col gap-1">
-      {dokumente.map((d) => (
+      {zeilen.map(({ nr, d }) => (
         <li key={d.url} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          {nr != null && (
+            <span className="inline-flex h-4 w-4 flex-none items-center justify-center self-center rounded bg-primary/10 text-[9px] font-bold text-primary">
+              {nr}
+            </span>
+          )}
           <a href={d.seite != null ? `${d.url}#page=${d.seite}` : d.url}
             target="_blank" rel="noopener noreferrer"
             className="inline-flex items-baseline gap-1 text-[11.5px] font-semibold text-primary">
@@ -392,31 +468,54 @@ function Dokumentliste({ dokumente }: { dokumente: HaushaltDokument[] }) {
   );
 }
 
-/** Quellenverzeichnis am Seitenende — die Langfassung aller benutzten Belege. */
+/** Quellenverzeichnis am Seitenende — die Langfassung aller benutzten Belege.
+ *
+ *  GEZÄHLT WERDEN PAPIERE, NICHT KATEGORIEN (Tim, 21.08.2026). Über fünf
+ *  Wirtschaftsplänen aus fünf Betrieben stand „1 Quelle" — richtig gerechnet
+ *  nach der alten Regel (eine Nummer je Eintrag der Registratur) und trotzdem
+ *  die falsche Auskunft: Wer die Zeile liest, soll sehen, worauf die Seite
+ *  ruht, und das sind fünf Dokumente.
+ *
+ *  Die BESCHREIBUNG der Quellenart steht dabei weiter genau einmal. Sie ist
+ *  redaktioneller Text über alle Jahrgänge („Bei den Gesellschaften ist die
+ *  einzige nachprüfbare Zahl das beschlossene Jahresergebnis …") und wäre
+ *  fünfmal untereinander kein Beleg mehr, sondern eine Wand. */
 export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluessel[] }) {
-  const { dokumente, jahrgaenge, jahr } = useContext(SeitenQuellen);
-  const genutzt = schluessel;
-  if (!genutzt.length) return null;
+  const { dokumente, jahrgaenge, jahr, eintraege } = useContext(SeitenQuellen);
+  if (!schluessel.length) return null;
+  // Die Nummern in Gruppen je Quellenart — sie liegen zusammenhängend, weil
+  // `nummerierung` die Schlüssel der Reihe nach abarbeitet.
+  const gruppen: { k: QuellenSchluessel; nummern: NummerEintrag[] }[] = [];
+  for (const e of eintraege) {
+    const letzte = gruppen[gruppen.length - 1];
+    if (letzte && letzte.k === e.q) letzte.nummern.push(e);
+    else gruppen.push({ k: e.q, nummern: [e] });
+  }
+  const gesamt = eintraege.length;
   return (
     <Apparat
       id={VERZEICHNIS_ID}
       kicker="Quellen"
-      zusatz={`${genutzt.length} ${genutzt.length === 1 ? "Quelle" : "Quellen"} · woher diese Zahlen kommen`}
+      zusatz={`${gesamt} ${gesamt === 1 ? "Quelle" : "Quellen"} · woher diese Zahlen kommen`}
     >
-      <ol className="mt-3 space-y-2.5">
-        {genutzt.map((k, i) => {
+      <div className="mt-3 flex flex-col gap-2.5">
+        {gruppen.map(({ k, nummern }) => {
           const q = QUELLEN[k];
-          const nr = i + 1;
+          const einzeln = nummern.length > 1 || nummern[0].dokument != null;
           const ziel = belegziel(dokumente, k, jahr);
-          // ALLE Dokumente des Jahrgangs — bei der Produktebene neun, bei den
-          // Wirtschaftsplänen sieben (einer je Betrieb). Im Verzeichnis ist
-          // Platz für alle; nur eines zu zeigen hieße, acht Belege zu
-          // verschweigen.
-          const alle = belegzieleAlle(dokumente, k, jahr);
+          const alle = nummern[0].dokumente;
           return (
-            <li key={k} id={eintragId(k)} className="flex scroll-mt-24 gap-2.5">
-              <span className="mt-0.5 inline-flex h-4 w-4 flex-none items-center justify-center rounded bg-primary/10 text-[9px] font-bold text-primary">
-                {nr}
+            <div key={k} id={eintragId(k)} className="flex scroll-mt-24 gap-2.5">
+              {/* Bei einer Nummer trägt sie die Kategorie; bei mehreren steht
+                  vorn keine Ziffer, sondern die Spanne — die Ziffern selbst
+                  stehen an den Papieren darunter, wo sie hingehören. */}
+              <span className={cn(
+                "mt-0.5 inline-flex h-4 flex-none items-center justify-center rounded bg-primary/10 text-[9px] font-bold text-primary",
+                nummern.length > 1 ? "w-8" : "w-4",
+              )}>
+                {nummern.length > 1
+                  ? `${nummern[0].nr}\u2013${nummern[nummern.length - 1].nr}`
+                  : nummern[0].nr}
               </span>
               <div className="min-w-0">
                 <p className="text-[12.5px] font-semibold leading-snug">{q.titel}</p>
@@ -433,19 +532,18 @@ export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluess
                   <span>Stand {standText(q, jahrgaenge?.[k])}</span>
                   {q.lizenz && (<><span>·</span><span>{q.lizenz}</span></>)}
                 </p>
-                {/* EIN Dokument: Fundstelle und Vorgang stehen darüber, der
-                    Link darunter heißt „Dokument öffnen". Das war die ganze
-                    Bauform dieses Eintrags — und sie stimmt nur, solange es
-                    eines ist.
+                {/* EIN Papier ohne eigene Nummer: Fundstelle und Vorgang
+                    stehen darüber, der Link darunter heißt „Dokument öffnen".
+                    Das war die ganze Bauform dieses Eintrags — und sie stimmt
+                    nur, solange es eines ist.
 
                     MEHRERE: Dann gehörte die Fundstelle oben zu genau einem
-                    von ihnen und stand doch über allen („Im Dokument:
-                    Erfolgsplan der Anlage" über fünf Wirtschaftsplänen, von
-                    denen vier gar keine Anlage haben). Deshalb bekommt dort
-                    jedes Papier seine eigene Zeile mit seiner eigenen
-                    Fundstelle — das ist die Antwort auf „welche Dokumente
-                    sind hier benutzt worden?". */}
-                {alle.length > 1 ? (
+                    von ihnen und stand doch über allen („Erfolgsplan der
+                    Anlage" über fünf Plänen, von denen vier keine Anlage
+                    haben). Jedes Papier bekommt deshalb seine eigene Zeile. */}
+                {nummern.length > 1 ? (
+                  <Dokumentliste eintraege={nummern} />
+                ) : alle.length > 1 ? (
                   <Dokumentliste dokumente={alle} />
                 ) : (
                   <>
@@ -455,10 +553,10 @@ export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluess
                   </>
                 )}
               </div>
-            </li>
+            </div>
           );
         })}
-      </ol>
+      </div>
       <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
         Wir hosten diese Unterlagen nicht, sondern verlinken das Original. Rechenwege, die wir
         selbst gebildet haben (Anteile, Differenzen, Reichweiten), stehen an Ort und Stelle als

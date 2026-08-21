@@ -66,7 +66,12 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { BilanzBlock } from "@/components/haushalt/bilanz-block";
 
-const QUELLEN = ["schulden", "bilanz", "haushaltssatzung"] as const;
+// `jahresabschluss` stand bis zum 21.08.2026 NICHT hier, obwohl die Seite
+// einen Beleg-Chip darauf setzt. `Beleg` rendert dann bewusst nichts
+// („lieber keinen Chip als eine falsche Nummer") — und der Satz endete
+// mit einer Fußnote, die es nicht gab.
+const QUELLEN = ["schulden", "bilanz", "haushaltssatzung",
+                 "jahresabschluss"] as const;
 
 /** Die Haushaltssatzung wird über den Bausteine-Endpunkt geholt und nicht über
  *  `/haushalt/schulden`: Sie gehört inhaltlich hierher (was die Stadt sich
@@ -288,7 +293,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
             {deMio(gsLetzt / 1e6)}&#8239;Mio.&nbsp;€. Im selben Zeitraum ist das
             Volumen, für das sie bürgt, auf das {deZahl(schere.faktor, 1)}-Fache
             gestiegen: {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€. Beide
-            Zahlen stehen in denselben Jahresabschlüssen.
+            Zahlen stehen in denselben Jahresabschlüssen.<Beleg q="bilanz" />
           </p>
         ) : null}
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
@@ -331,7 +336,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
           <strong className="text-foreground">Womit die Stadt rechnet:</strong>{" "}
           Für erwartete Ausfälle stehen {deEuro(rsLetzt)}&nbsp;€ in der Bilanz
-          ({letzter.jahr}) — {((rsLetzt / letzter.bestand) * 100).toFixed(2).replace(".", ",")}&nbsp;%
+          ({letzter.jahr})<Beleg q="bilanz" /> — {((rsLetzt / letzter.bestand) * 100).toFixed(2).replace(".", ",")}&nbsp;%
           des verbürgten Volumens. Die {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€ sind
           also nicht das, was die Stadt zu zahlen erwartet, sondern das, wofür sie
           im äußersten Fall einsteht.

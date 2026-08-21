@@ -164,6 +164,97 @@ function jeAdresseEinmal(liste: HaushaltDokument[]): HaushaltDokument[] {
   return aus;
 }
 
+/** Ein nummerierter Eintrag im Quellenverzeichnis.
+ *
+ *  Entweder EIN Papier (`dokument` gesetzt) oder eine Quellenart als Ganzes
+ *  (`dokument === null`, `dokumente` trägt dann ihre Papiere). */
+export type NummerEintrag = {
+  nr: number;
+  q: QuellenSchluessel;
+  dokument: HaushaltDokument | null;
+  dokumente: HaushaltDokument[];
+};
+
+/** Die Nummern einer Seite: was trägt welche Ziffer.
+ *
+ *  WARUM DIE NUMMERN NICHT MEHR DIE QUELLENARTEN ZÄHLEN (Tim, 21.08.2026):
+ *
+ *      „Es steht eine 1, dann stehen da mehrere Quellen drunter. […] Ich will
+ *      als Leser das Gefühl haben, die haben viele Quellen herangezogen, und
+ *      hier sieht es auf den ersten Blick nur aus, als wäre es eine."
+ *
+ *  Auf `/haushalt/betriebe` stand „1 Quelle" über fünf Wirtschaftsplänen aus
+ *  fünf Betrieben. Die Zahl war nicht falsch gerechnet — sie zählte
+ *  Quellen*arten*, und das ging auf, solange eine Art ein Papier bedeutete.
+ *  Hier bedeutet sie fünf, und dann zählt sie die Beleglage klein.
+ *
+ *  ABER NICHT ÜBERALL EINZELN. Die Produktebene eines Jahrgangs verteilt sich
+ *  auf zehn Teilhaushalts-Anlagen, und ein Satz wie „das ist die Angabe der
+ *  Stadt, keine Bewertung von uns" stützt sich auf alle zehn zusammen. Zehn
+ *  Nummern zu vergeben und den Chip auf eine davon zu setzen wäre **weniger**
+ *  genau, nicht mehr. Deshalb entscheidet die Seite über `jeDokument`, und die
+ *  Regel dahinter ist inhaltlich: Eine eigene Nummer bekommt ein Papier dort,
+ *  wo eine einzelne Aussage auf genau ihm ruht. */
+export function nummerierung(
+  schluessel: readonly QuellenSchluessel[],
+  jeDokument: JeDokument,
+  dokumente: HaushaltDokumente | undefined,
+  jahr: number | null | undefined,
+): NummerEintrag[] {
+  const aus: NummerEintrag[] = [];
+  for (const q of schluessel) {
+    const benutzte = jeDokument[q];
+    if (benutzte && benutzte.length > 1) {
+      // DIE SEITE SAGT, WELCHE PAPIERE SIE BENUTZT — nicht der Jahrgang.
+      //
+      // Ein erster Versuch nahm die Dokumente des gezeigten Jahres. Auf
+      // `/haushalt/betriebe` stimmt das für vier von sieben Betrieben: Den
+      // Stadthafen gibt es seit 2020 nicht mehr, die Stadion-Planung endete
+      // 2024. Ihre Karten fanden ihr Papier in der Jahrgangsliste nicht und
+      // trugen deshalb alle die Ziffer 1 — die des AWB-Plans 2026.
+      const alle = dokumente?.[q] ?? [];
+      for (const url of benutzte) {
+        const d = alle.find((x) => x.url === url);
+        if (d) aus.push({ nr: aus.length + 1, q, dokument: d, dokumente: [] });
+      }
+      // Die Papiere der Gruppe stehen erst fest, wenn alle gefunden sind.
+      const gruppe = aus.filter((e) => e.q === q).map((e) => e.dokument!);
+      for (const e of aus) if (e.q === q) e.dokumente = gruppe;
+      if (gruppe.length) continue;
+      // Kein einziges wiedergefunden: lieber die Art als gar keine Nummer.
+    }
+    aus.push({
+      nr: aus.length + 1, q, dokument: null,
+      dokumente: belegzieleAlle(dokumente, q, jahr),
+    });
+  }
+  return aus;
+}
+
+/** Je Quellenart die Adressen der Papiere, auf denen einzelne Aussagen der
+ *  Seite ruhen — in der Reihenfolge, in der sie nummeriert werden sollen. */
+export type JeDokument = Partial<Record<QuellenSchluessel, string[]>>;
+
+/** Die Nummer, die an einer Zahl stehen soll.
+ *
+ *  `url` ist das Papier, auf dem genau diese Zahl ruht (aus der `herkunft_id`
+ *  ihrer Zeile). Fehlt es oder ist die Art nicht einzeln nummeriert, gilt die
+ *  Nummer der Art. Gibt `null`, wenn die Seite die Quelle nicht anmeldet —
+ *  dann rendert der Chip nichts, und `Beleg` sagt das in der Entwicklung. */
+export function nummerFuer(
+  eintraege: NummerEintrag[],
+  q: QuellenSchluessel,
+  url?: string | null,
+): NummerEintrag | null {
+  const derArt = eintraege.filter((e) => e.q === q);
+  if (!derArt.length) return null;
+  if (url) {
+    const genau = derArt.find((e) => e.dokument?.url === url);
+    if (genau) return genau;
+  }
+  return derArt[0];
+}
+
 /** Wohin ein Link führt — abgelesen an der Adresse, nicht behauptet.
  *
  *  Der Grund für diese Funktion ist die Anforderung „kein toter Link": Wo wir

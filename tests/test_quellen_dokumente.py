@@ -119,6 +119,109 @@ def test_ausnahmen_gelten_noch():
             "OHNE_DOKUMENT ist überflüssig geworden.")
 
 
+SEITEN = ROOT / "web" / "frontend" / "app" / "(app)" / "haushalt"
+FRONTEND = ROOT / "web" / "frontend"
+
+_CHIP = re.compile(r'<Beleg\s+q="(\w+)"')
+_IMPORT = re.compile(r'from\s+"(@/[^"]+)"')
+_ANGEMELDET = re.compile(
+    r'QUELLEN(?::\s*QuellenSchluessel\[\])?\s*=\s*\[(.*?)\]', re.S)
+
+
+def _datei(spezifizierer: str) -> Path | None:
+    """`@/components/haushalt/quelle` → die Datei, wenn es sie gibt."""
+    if not spezifizierer.startswith("@/"):
+        return None                      # Paket aus node_modules
+    for endung in (".tsx", ".ts"):
+        kandidat = FRONTEND / (spezifizierer[2:] + endung)
+        if kandidat.exists():
+            return kandidat
+    return None
+
+
+def _erreichbare_chips(pfad: Path, gesehen: set[Path] | None = None) -> set[str]:
+    """Alle Beleg-Schlüssel, die von dieser Datei aus gerendert werden können.
+
+    ÜBER DIE IMPORTE, nicht über Namensähnlichkeit. Ein erster Versuch ordnete
+    einer Seite jede Komponente zu, deren Dateiname irgendwo im Text vorkam —
+    und meldete acht Seiten als kaputt, von denen keine es war. Ein Prüfergebnis,
+    das man erst prüfen muss, ist keins."""
+    gesehen = gesehen if gesehen is not None else set()
+    if pfad in gesehen:
+        return set()
+    gesehen.add(pfad)
+    text = pfad.read_text(encoding="utf-8")
+    aus = set(_CHIP.findall(text))
+    for spez in _IMPORT.findall(text):
+        ziel = _datei(spez)
+        # `haushalt-quellen.ts` ist die Registratur selbst und enthält keine
+        # Chips; sie mitzulesen kostet nur Zeit.
+        if ziel and "haushalt-quellen" not in ziel.name:
+            aus |= _erreichbare_chips(ziel, gesehen)
+    return aus
+
+
+def _seiten_mit_quellen() -> list[tuple[str, list[str], set[str]]]:
+    aus = []
+    for pfad in sorted(SEITEN.rglob("page.tsx")):
+        text = pfad.read_text(encoding="utf-8")
+        treffer = _ANGEMELDET.search(text)
+        if not treffer:
+            continue
+        angemeldet = re.findall(r'"(\w+)"', treffer.group(1))
+        name = str(pfad.parent.relative_to(SEITEN))
+        aus.append((name if name != "." else "/", angemeldet,
+                    _erreichbare_chips(pfad)))
+    return aus
+
+
+def test_seiten_gefunden():
+    """Wieder die Voraussetzung: Ein leeres Ergebnis darf nicht grün sein."""
+    seiten = _seiten_mit_quellen()
+    assert len(seiten) >= 12, f"Nur {len(seiten)} Haushalts-Seiten gefunden."
+
+
+def test_kein_stummer_beleg():
+    """Ein Chip, dessen Quelle die Seite nicht anmeldet, rendert NICHTS.
+
+    `Beleg` gibt dann bewusst `null` zurück — lieber kein Chip als eine
+    falsche Nummer. Der Satz drumherum weiß davon aber nichts und endet mit
+    einer Fußnote, die es nicht gibt: „…aus derselben Tabelle des
+    Jahresabschlusses. " stand so auf `/haushalt/gebaut`, zweimal, und auf
+    `/haushalt/schulden` ein drittes Mal."""
+    fehler = []
+    for name, angemeldet, benutzt in _seiten_mit_quellen():
+        stumm = sorted(benutzt - set(angemeldet))
+        if stumm:
+            fehler.append(f"{name}: {', '.join(stumm)}")
+    assert not fehler, (
+        "Diese Beleg-Chips zeigen auf Quellen, die ihre Seite nicht anmeldet — "
+        "sie rendern nichts:\n  " + "\n  ".join(fehler)
+        + "\nEntweder in die QUELLEN der Seite aufnehmen oder den Chip entfernen."
+    )
+
+
+def test_keine_quelle_ohne_zahl():
+    """Eine angemeldete Quelle bekommt im Verzeichnis eine Nummer — dann muss
+    auch eine Zahl auf sie zeigen.
+
+    Sonst steht am Seitenfuß ein nummerierter Beleg, den nichts auf der Seite
+    einlöst. `/haushalt/pruefung` führte so den „Jahresabschluss", obwohl die
+    Seite ausschließlich Prüfberichte lädt. Schmuck im Beleg-Apparat kostet
+    genau das Vertrauen, das er herstellen soll."""
+    fehler = []
+    for name, angemeldet, benutzt in _seiten_mit_quellen():
+        ohne = [k for k in angemeldet if k not in benutzt]
+        if ohne:
+            fehler.append(f"{name}: {', '.join(ohne)}")
+    assert not fehler, (
+        "Diese Quellen stehen im Verzeichnis, aber keine Zahl der Seite "
+        "belegt sich mit ihnen:\n  " + "\n  ".join(fehler)
+        + "\nEntweder einen <Beleg q=\"…\" /> an die Zahl setzen, die daher "
+        "stammt, oder die Quelle aus QUELLEN nehmen."
+    )
+
+
 def test_dokument_quellen_kennen_ihre_tabellen():
     """Jeder Eintrag zeigt auf eine Tabelle und Spalte, die es gibt.
 

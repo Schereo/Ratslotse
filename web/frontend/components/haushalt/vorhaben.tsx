@@ -55,6 +55,7 @@ import {
   teilhaushaltSumme, teilhaushalte, vorhaben,
 } from "@/lib/haushalt-investitionsprogramm";
 import { Treemap, type TreemapKnoten } from "@/components/grafik/treemap";
+import { Beleg } from "@/components/haushalt/quelle";
 
 /** Eine Zeile der Vorhaben-Liste.
  *
@@ -327,7 +328,7 @@ export function Vorhaben({
           <span className="font-semibold tabular-nums text-foreground">
             {betrag(summe.gesamtsumme).wert} {betrag(summe.gesamtsumme).einheit}
           </span>{" "}
-          aus.
+          aus.<Beleg q="investitionsprogramm" />
         </p>
       ) : (
         <p className="mt-3.5 text-[12px] text-muted-foreground">
