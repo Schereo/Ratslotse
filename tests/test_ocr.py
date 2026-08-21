@@ -462,3 +462,69 @@ def test_ein_zu_grosses_bild_wird_gerendert(monkeypatch):
 def test_ein_normal_grosses_bild_geht_weiter_durch():
     """Die Gegenprobe — sonst wäre die Grenze nur eine Bremse."""
     assert ocr.seite_als_bild(_Seite(_Bild("s0.jpg"))).weg == "eingebettet"
+
+
+class _Schreiber:
+    """Ein PdfWriter-Ersatz — `_gerendert` baut ein Ein-Seiten-PDF, und ein
+    Stub-Seitenobjekt kommt an `add_page` nicht vorbei."""
+
+    def add_page(self, seite):
+        pass
+
+    def write(self, puffer):
+        puffer.write(b"%PDF-1.4")
+
+
+def _renderer_da(monkeypatch, name="pypdfium2"):
+    """`_gerendert` sucht seinen Renderer über `__import__`."""
+    import builtins
+    import types
+
+    echt = builtins.__import__
+    modul = types.ModuleType(name)
+
+    def _import(gesucht, *a, **k):
+        if gesucht == name:
+            return modul
+        if gesucht in ("pypdfium2", "pymupdf"):
+            raise ImportError(gesucht)
+        return echt(gesucht, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", _import)
+    return modul
+
+
+def test_grossformat_wird_heruntergerechnet(monkeypatch):
+    """DER FALL (20.08.2026): Anlage 188884 („Verkehrsregelung
+    Johann-Justus-Weg") ist **45,3 × 34 Zoll** groß — größer als A0. Bei 200
+    dpi sind das rund 6.600 × 9.400 Pixel, und die Gegenstelle wies das
+    dreimal mit „413 — cannot exceed 30MB" ab.
+
+    Beim ersten Anlauf hielt ich das eingebettete Bild für die Ursache und
+    deckelte es (`MAX_BILD_BYTES`). Der 413 blieb: Es war die **gerenderte**
+    Seite selbst."""
+    _renderer_da(monkeypatch)
+    monkeypatch.setattr(ocr.pypdf, "PdfWriter", _Schreiber)
+    versuche = []
+
+    def _rendern(renderer, roh, dpi):
+        versuche.append(dpi)
+        # Erst ab 50 dpi klein genug — 200 und 100 sind zu groß.
+        return b"x" * (1 if dpi <= 50 else ocr.MAX_BILD_BYTES + 1)
+
+    monkeypatch.setattr(ocr, "_einmal_rendern", _rendern)
+    bild = ocr._gerendert(_Seite(), 200)
+    assert versuche == [200.0, 100.0, 50.0], "halbiert, bis es passt"
+    assert bild.weg == "gerendert" and len(bild.daten) == 1
+
+
+def test_was_auch_klein_nicht_passt_bleibt_ungelesen(monkeypatch):
+    """Unter 25 dpi ist nichts mehr zu lesen. Dann lieber ungelesen als
+    unlesbar — dieselbe Regel wie überall im Bereich."""
+    _renderer_da(monkeypatch)
+    monkeypatch.setattr(ocr.pypdf, "PdfWriter", _Schreiber)
+    monkeypatch.setattr(ocr, "_einmal_rendern",
+                        lambda r, roh, dpi: b"x" * (ocr.MAX_BILD_BYTES + 1))
+    with pytest.raises(ocr.OcrFehler) as fehler:
+        ocr._gerendert(_Seite(), 200)
+    assert "Großformat" in str(fehler.value)

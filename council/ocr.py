@@ -221,20 +221,47 @@ def _gerendert(seite, dpi: int) -> Seitenbild:
     schreiber.write(puffer)
     roh = puffer.getvalue()
 
+    # AUFLÖSUNG HALBIEREN, BIS ES PASST. Eine A4-Seite bei 200 dpi ist ein
+    # paar hundert Kilobyte — ein Verkehrsplan im A0-Format aber nicht.
+    #
+    # DER FALL (20.08.2026): Anlage 188884 („Verkehrsregelung
+    # Johann-Justus-Weg", 11 Seiten) scheiterte dreimal an „413 — Downloaded
+    # image content cannot exceed 30MB". Beim ersten Mal hielt ich das
+    # eingebettete Bild für die Ursache und deckelte es (`MAX_BILD_BYTES`) —
+    # der 413 blieb. Es war die gerenderte Seite selbst: A0 bei 200 dpi sind
+    # rund 6.600 × 9.400 Pixel.
+    #
+    # Halbiert wird höchstens dreimal (200 → 100 → 50 → 25 dpi). Darunter ist
+    # nichts mehr zu lesen, und dann bleibt die Seite lieber ungelesen als
+    # falsch gelesen.
+    for versuch in range(4):
+        aufloesung = dpi / (2 ** versuch)
+        bild = _einmal_rendern(renderer, roh, aufloesung)
+        if len(bild) <= MAX_BILD_BYTES or versuch == 3:
+            if len(bild) > MAX_BILD_BYTES:
+                raise OcrFehler(
+                    f"Die Seite bleibt auch bei {aufloesung:.0f} dpi "
+                    f"{len(bild) / 1e6:.1f} MB groß — vermutlich ein Plan im "
+                    "Großformat. Ungelesen ist hier besser als unlesbar.")
+            return Seitenbild(bild, "image/png", "gerendert")
+    raise OcrFehler("unerreichbar")  # pragma: no cover
+
+
+def _einmal_rendern(renderer, roh: bytes, dpi: float) -> bytes:
+    """Eine Seite bei genau dieser Auflösung — als PNG-Bytes."""
     if renderer.__name__ == "pypdfium2":
         dok = renderer.PdfDocument(roh)
         try:
             bild = dok[0].render(scale=dpi / 72.0).to_pil()
             aus = io.BytesIO()
             bild.save(aus, format="PNG")
-            return Seitenbild(aus.getvalue(), "image/png", "gerendert")
+            return aus.getvalue()
         finally:
             dok.close()
 
     dok = renderer.open(stream=roh, filetype="pdf")
     try:
-        pix = dok[0].get_pixmap(dpi=dpi)
-        return Seitenbild(pix.tobytes("png"), "image/png", "gerendert")
+        return dok[0].get_pixmap(dpi=int(dpi)).tobytes("png")
     finally:
         dok.close()
 
