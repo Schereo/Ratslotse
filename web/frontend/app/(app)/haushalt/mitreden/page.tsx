@@ -8,54 +8,45 @@
 //
 // Gemessen war der Befund schärfer als „neunzehn sind viele": Mehrere Seiten
 // waren entlang unserer EINLESE-Geschichte geschnitten, nicht entlang der
-// Frage, die jemand hat. Diese drei beantworten zusammen eine einzige — „Wie
-// rede ich mit?" —, und zwei von ihnen (`/haushalt/jahr`, `/haushalt/labor`)
-// waren im ganzen Frontend über nichts als den Wegweiser erreichbar. Eine
-// Seite, die sonst niemand verlinkt, trägt nicht als eigenes Ziel.
+// Frage, die jemand hat. Diese Abschnitte beantworten zusammen eine einzige —
+// „Wie rede ich mit?" —, und `/haushalt/jahr` war im ganzen Frontend über
+// nichts als den Wegweiser erreichbar. Eine Seite, die sonst niemand
+// verlinkt, trägt nicht als eigenes Ziel.
+//
+// DAS LABOR IST SEIT 24.08.2026 WIEDER EIGENE SEITE (/haushalt/labor). Es
+// stand hier drei Tage als dritter Abschnitt; Tims Entscheidung: Es soll
+// deutlich mehr Stellschrauben bekommen, und ein wachsendes Werkzeug braucht
+// eine eigene Adresse. Der Befund von damals — nichts verlinkte hin — ist
+// damit nicht zurück: Diese Seite, der Steuer-Steckbrief und die
+// Weiter-Navigation am Fuß führen hin.
 //
 // Die Reihenfolge ist die des Mitredens: erst WANN (sonst kommt man zu spät),
-// dann WORÜBER gestritten wurde, dann selbst ausprobieren.
+// dann WORÜBER gestritten wurde — ausprobieren geht danach im Labor.
 //
-// DER RAHMEN LIEGT HIER, der Inhalt in den drei `abschnitt-*.tsx`. Das ist
-// keine Kosmetik: Quellenkontext und Verzeichnis müssen die VEREINIGUNG aller
-// Quellen führen (`ratsbeschluss` plus die sieben des Labors), und der
-// Beleg-Chip nummeriert seitenweise. Drei verschachtelte Quellenkontexte
-// hätten drei konkurrierende Nummerierungen ergeben.
+// DER RAHMEN LIEGT HIER, der Inhalt in den `abschnitt-*.tsx`: Quellenkontext
+// und Verzeichnis führen die VEREINIGUNG aller Quellen, und der Beleg-Chip
+// nummeriert seitenweise. Verschachtelte Quellenkontexte hätten
+// konkurrierende Nummerierungen ergeben.
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Abschnitte } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { TermineAbschnitt } from "@/components/haushalt/abschnitt-termine";
 import { StreitAbschnitt } from "@/components/haushalt/abschnitt-streit";
-import { LaborAbschnitt } from "@/components/haushalt/abschnitt-labor";
 
-/** Die Vereinigung der Quellen aller drei Abschnitte, AUSGESCHRIEBEN.
- *
- *  Ein erster Versuch setzte sie aus einem Spread zusammen
- *  (`["ratsbeschluss", ...LABOR_QUELLEN]`). Das las sich kürzer, aber zwei
- *  Dinge sprechen dagegen: Wer die Seite liest, sieht ihre Beleglage nicht
- *  mehr an einer Stelle — und `tests/test_quellen_dokumente.py` liest die
- *  Literale dieser Liste, um stumme Beleg-Chips zu finden. Durch einen Spread
- *  sieht der Wächter nicht hindurch und meldete fünf Chips als stumm, die es
- *  nicht waren.
- *
- *  `ratsbeschluss` zuerst: Die Reihenfolge ist die Nummerierung der Chips, und
- *  die beiden ersten Abschnitte belegen sich ausschließlich damit. */
-const QUELLEN: QuellenSchluessel[] = [
-  "ratsbeschluss",
-  // ab hier: das Haushalts-Labor
-  "plan", "steuern", "ruecklage", "jahresabschluss", "teilhaushalt",
-  "steuerkraft", "hebesaetze",
-];
+/** Beide Abschnitte belegen sich ausschließlich mit dem
+ *  Ratsinformationssystem — Termine wie Streit sind Ratsdaten, keine
+ *  Finanzdokumente. (`tests/test_quellen_dokumente.py` liest die Literale
+ *  dieser Liste, um stumme Beleg-Chips zu finden.) */
+const QUELLEN: QuellenSchluessel[] = ["ratsbeschluss"];
 
 const MARKEN = [
   { id: "termine", titel: "Wann entschieden wird" },
   { id: "streit", titel: "Der Streit ums Geld" },
-  { id: "labor", titel: "Selbst ausprobieren" },
 ];
 
 function MitredenInner() {
@@ -76,8 +67,11 @@ function MitredenInner() {
           <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
             Ein Haushalt ist kein Rechenergebnis, sondern ein Kompromiss — und er
             entsteht in öffentlichen Sitzungen. Hier steht, wann darüber entschieden
-            wird, worüber die Fraktionen gestritten haben, und was passierte, wenn man
-            selbst an den Stellschrauben drehte.
+            wird und worüber die Fraktionen gestritten haben. Selbst an den
+            Stellschrauben drehen kannst du danach im{" "}
+            <Link href="/haushalt/labor" className="font-semibold text-primary">
+              Haushalts-Labor
+            </Link>.
           </p>
         </div>
 
@@ -94,9 +88,24 @@ function MitredenInner() {
           <StreitAbschnitt />
         </section>
 
-        <section id="labor" className="scroll-mt-20 border-t border-border pt-4">
-          <LaborAbschnitt />
-        </section>
+        {/* Die Anschlussstelle zum Labor — bewusst eine Karte statt nur des
+            Satzes im Kopf: Wer bis hierher gelesen hat, weiß, worum gestritten
+            wurde, und ist genau die Person, die jetzt selbst drehen will. */}
+        <Link
+          href="/haushalt/labor"
+          className="group flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40"
+        >
+          <span>
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Selbst ausprobieren
+            </span>
+            <span className="mt-1 block text-[13.5px] font-semibold">
+              Haushalts-Labor: an den Stellschrauben drehen und sehen, was das ausmacht
+            </span>
+          </span>
+          <ArrowRight size={16} strokeWidth={2}
+            className="shrink-0 text-primary transition-transform group-hover:translate-x-0.5" />
+        </Link>
 
         <SchrittWeiter href="/haushalt/mitreden" />
 

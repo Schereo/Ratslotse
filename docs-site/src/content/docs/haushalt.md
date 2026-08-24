@@ -52,7 +52,8 @@ genau dieser Reihenfolge.
 | `/haushalt/vergleich` | Schritt 9 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
 | `/haushalt/schulden` | Schritt 10 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
-| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 11 — „Mitreden", drei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten der Fraktionen mit Abstimmungsergebnis, die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung, `#labor` Was-wäre-wenn mit Hebesatz-Regler und Kürzungen |
+| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 11 — „Mitreden", zwei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten der Fraktionen mit Abstimmungsergebnis, die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung |
+| `/haushalt/labor` | Schritt 12 — das Haushalts-Labor: Was-wäre-wenn mit Hebesatz-Regler und Kürzungen der freiwilligen Leistungen, gegen den Plan des laufenden Jahres gerechnet |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |
