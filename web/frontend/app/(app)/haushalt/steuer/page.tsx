@@ -29,6 +29,7 @@ import { EntgelteBereiche } from "@/components/haushalt/entgelte-bereiche";
 import { HebesatzTreppe } from "@/components/haushalt/hebesatz-treppe";
 import { AbgelehnteStufe } from "@/components/haushalt/abgelehnte-stufe";
 import { Grenzen } from "@/components/haushalt/steuer-grenzen";
+import { WerZahlt } from "@/components/haushalt/wer-zahlt";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
@@ -418,6 +419,32 @@ function SteuerInner() {
           was={istZuweisung
             ? "an Schlüsselzuweisungen vom Land"
             : art.proKopfWas ?? `aus der ${art.titel}`}
+        />
+      )}
+
+      {/* „Und welche Firmen zahlen das?" — die Frage, die auf die Kurve folgt,
+          und die einzige auf dieser Seite, die niemand beantworten darf.
+          Sie steht HIER, weil sie an das Aufkommen anschließt („so viel kam
+          herein — von wem?") und weil der Hebesatz-Teil darunter dann schon
+          weiß, dass die Sprünge nicht vom Rat kommen.
+
+          Am Slug festgemacht, und anders als beim Befund weiter unten braucht
+          das keine Jahresprüfung: Der Block behauptet nichts über ein
+          bestimmtes Jahr. Alles, was er an Zahlen nennt, rechnet er aus den
+          übergebenen Reihen — veraltet der Bestand, veraltet die Aussage mit,
+          statt stehen zu bleiben. */}
+      {art.slug === "gewerbesteuer" && (
+        <WerZahlt
+          steuern={data.steuern}
+          art={art.datenArt}
+          /* Gemessen wird gegen die ANDERE Steuer mit einem Hebesatz: Nur so
+             ist der Vergleich fair — gleicher Datensatz, gleiche Jahre, gleiche
+             Stellschraube im Rat, und trotzdem hängt nur eine der beiden am
+             Gewinn. Die Schreibweise kommt aus derselben Tabelle wie oben,
+             nicht aus einem zweiten Literal daneben. */
+          vergleichArt={steuerartNachSlug("grundsteuer")?.datenArt ?? null}
+          vergleichTitel={steuerartNachSlug("grundsteuer")?.titel ?? "Grundsteuer"}
+          hebesaetze={hebeHaupt}
         />
       )}
 

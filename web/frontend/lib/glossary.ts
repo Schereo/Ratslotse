@@ -93,6 +93,12 @@ export const GLOSSARY: Record<string, string> = {
     "Ein Prozentwert, den der Rat jedes Jahr beschließt. Er wird auf den vom Finanzamt errechneten Messbetrag angewendet und bestimmt so, wie hoch Gewerbe- und Grundsteuer in Oldenburg tatsächlich ausfallen.",
   "Messbetrag":
     "Zwischenschritt bei Gewerbe- und Grundsteuer: Das Finanzamt rechnet Gewinn bzw. Grundstückswert nach bundesweit gleichen Regeln in eine Zahl um. Erst der Hebesatz der Stadt macht daraus den Steuerbetrag.",
+  // Ergänzt 24.08.2026 für den Block „Wer zahlt das eigentlich" auf dem
+  // Gewerbesteuer-Steckbrief.
+  "Steuergeheimnis":
+    "Die Pflicht der Finanzverwaltung, Verhältnisse einzelner Steuerzahler für sich zu behalten (§ 30 Abgabenordnung). Sie gilt auch für die Stadt: Was ein bestimmtes Unternehmen an Gewerbesteuer zahlt, darf sie weder veröffentlichen noch dem Rat mitteilen.",
+  "Zerlegung":
+    "Die Aufteilung der Gewerbesteuer eines Unternehmens auf alle Gemeinden, in denen es Standorte hat. Maßstab sind die Arbeitslöhne je Standort — nicht der Sitz der Zentrale.",
   "Messzahl":
     "Der bundesweit einheitliche Prozentsatz, mit dem aus dem Gewinn der Messbetrag errechnet wird (bei der Gewerbesteuer 3,5 %).",
   "Steuerkraftmesszahl":
