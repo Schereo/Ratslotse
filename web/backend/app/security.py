@@ -143,19 +143,30 @@ def decode_rs256_token(token: str, jwks_keys: list[dict]) -> dict | None:
     return payload
 
 
-def decode_access_token(token: str) -> tuple[str, int] | None:
-    """Return (subject, token_version) or None if the token is invalid/expired."""
-    settings = get_settings()
+def _verified_payload(token: str) -> dict | None:
+    """Signatur prüfen und die Nutzlast liefern — ohne Ablauf-Prüfung.
+
+    Getrennt von ``decode_access_token``, weil die stille Verlängerung
+    (``app/session.py``) nicht nur wissen muss, *ob* ein Token gilt, sondern
+    auch *wie lange noch*.
+    """
     try:
         header_b64, payload_b64, signature = token.split(".")
     except ValueError:
         return None
-    expected = _sign(f"{header_b64}.{payload_b64}".encode(), settings.web_jwt_secret)
+    expected = _sign(f"{header_b64}.{payload_b64}".encode(), get_settings().web_jwt_secret)
     if not hmac.compare_digest(expected, signature):
         return None
     try:
-        payload = json.loads(_b64url_decode(payload_b64))
+        return json.loads(_b64url_decode(payload_b64))
     except (ValueError, json.JSONDecodeError):
+        return None
+
+
+def decode_access_token(token: str) -> tuple[str, int] | None:
+    """Return (subject, token_version) or None if the token is invalid/expired."""
+    payload = _verified_payload(token)
+    if payload is None:
         return None
     if payload.get("exp", 0) < int(time.time()):
         return None
@@ -163,3 +174,14 @@ def decode_access_token(token: str) -> tuple[str, int] | None:
     if sub is None:
         return None
     return sub, int(payload.get("ver", 0))
+
+
+def token_lifetime_left(token: str) -> int | None:
+    """Restlaufzeit in Sekunden — ``None``, wenn das Token ungültig oder schon
+    abgelaufen ist. Der billige Vorab-Test der Sitzungsverlängerung: In aller
+    Regel steht hier eine große Zahl und der Request ist damit durch."""
+    payload = _verified_payload(token)
+    if payload is None:
+        return None
+    left = int(payload.get("exp", 0)) - int(time.time())
+    return left if left > 0 else None

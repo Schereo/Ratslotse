@@ -1872,6 +1872,139 @@ def test_app_flow_bearer_registers_push_device(client):
     store.close()
 
 
+# ---- angemeldet bleiben: stille Sitzungsverlängerung ----
+def _kurzlebiges_cookie(client, minuten: int = 10) -> str:
+    """Das Sitzungs-Cookie durch eins ersetzen, das bald abläuft.
+
+    Erst leeren: Ein zweites ``access_token`` mit anderer Domain im Jar wäre
+    kein Ersatz, sondern ein Nachbar — der Test würde dann prüfen, welches von
+    beiden httpx zufällig zuerst schickt.
+    """
+    from app.security import create_access_token
+
+    store = Store(NWZ_DB)
+    user = store.get_web_user_by_email("admin@test.de")
+    store.close()
+    token = create_access_token(
+        user["id"], user.get("token_version", 0), expires_minutes=minuten
+    )
+    client.cookies.clear()
+    client.cookies.set("access_token", token)
+    return token
+
+
+def _gesetztes_cookie(response) -> str | None:
+    """Der Token-Wert aus dem ``Set-Cookie`` der Antwort."""
+    roh = response.headers.get("set-cookie")
+    if not roh or "access_token=" not in roh:
+        return None
+    return roh.split("access_token=", 1)[1].split(";", 1)[0]
+
+
+def test_sitzung_verlaengert_sich_bei_nutzung(client):
+    """Kommt das Cookie ans Ende seiner Laufzeit, legt der nächste Request
+    still ein frisches nach — niemand muss sich neu anmelden."""
+    from app.security import token_lifetime_left
+
+    _register(client)
+    alt = _kurzlebiges_cookie(client)
+    r = client.get("/api/auth/me")
+    assert r.status_code == 200
+    frisch = _gesetztes_cookie(r)
+    assert frisch and frisch != alt
+    assert token_lifetime_left(frisch) > 80 * 24 * 3600  # wieder die volle Laufzeit
+
+
+def test_verlaengerung_greift_auch_auf_oeffentlichen_seiten(client):
+    """Auch wer nur öffentliche Seiten liest, behält seine Sitzung."""
+    _register(client)
+    alt = _kurzlebiges_cookie(client)
+    r = client.get("/api/council/decisions?limit=1")
+    assert r.status_code == 200
+    frisch = _gesetztes_cookie(r)
+    assert frisch and frisch != alt
+
+
+def test_frische_sitzung_bekommt_kein_neues_cookie(client):
+    """Solange reichlich Restlaufzeit da ist, bleibt die Antwort unverändert —
+    sonst hinge an jeder Antwort ein Set-Cookie."""
+    _register(client)
+    r = client.get("/api/auth/me")
+    assert r.status_code == 200 and "set-cookie" not in r.headers
+
+
+def test_logout_ueberlebt_die_verlaengerung(client):
+    """Der Ausloggen-Knopf muss stärker sein als die Verlängerung.
+
+    Ausgeloggt wird meist mit einer Sitzung, die noch läuft — hier eine, die
+    ohnehin bald abliefe. Die Abmelde-Antwort darf trotzdem nur das Lösch-
+    Cookie tragen: Hinge ein frisches dahinter, wäre die Person nach dem Klick
+    weiter angemeldet. (Dass Abmelden die Sitzung beendet, prüft
+    ``test_logout_clears_session``.)"""
+    _register(client)
+    _kurzlebiges_cookie(client)
+    r = client.post("/api/auth/logout")
+    assert r.status_code == 200
+    gesetzt = [c for c in r.headers.get_list("set-cookie") if "access_token=" in c]
+    assert len(gesetzt) == 1
+    assert _gesetztes_cookie(r).strip('"') == ""  # gelöscht, nicht erneuert
+
+
+def test_abgelaufene_sitzung_wird_nicht_wiederbelebt(client):
+    """Ein bereits abgelaufenes Token bekommt kein frisches Cookie."""
+    _register(client)
+    _kurzlebiges_cookie(client, minuten=-1)
+    r = client.get("/api/auth/me")
+    assert r.status_code == 401 and "set-cookie" not in r.headers
+
+
+def test_verlaengerung_laesst_den_sse_strom_in_ruhe(client, monkeypatch):
+    """Die KI-Frage antwortet als Server-Sent-Events-Strom. Die Verlängerung
+    hängt nur an der Kopfzeile der Antwort — der Körper muss unverändert
+    durchlaufen, auch wenn genau dieser Request das Cookie erneuert."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
+             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-07-02",
+             "committee": "Verkehrsausschuss", "score": 1.0}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "answer_stream",
+                        lambda *a, **k: iter(["Die Veloroute 4 ", "wird ausgebaut [5]."]))
+    alt = _kurzlebiges_cookie(client)
+
+    with client.stream("POST", "/api/council/ask",
+                       json={"question": "Was ist mit Radwegen?"}) as r:
+        assert r.status_code == 200
+        frisch = _gesetztes_cookie(r)
+        body = "".join(r.iter_text())
+
+    assert frisch and frisch != alt  # verlängert wurde trotzdem
+    events = [json.loads(z[6:]) for z in body.splitlines() if z.startswith("data: ")]
+    antwort = "".join(e["text"] for e in events if e["type"] == "token")
+    assert antwort.strip() == "Die Veloroute 4 wird ausgebaut [5]."
+    assert [e for e in events if e["type"] == "done"]
+
+
+def test_app_me_erneuert_das_token(client):
+    """Das Gegenstück für die App: Jeder Start holt an /me ein frisch
+    datiertes Token, das die App wegschreibt."""
+    r = client.post("/api/auth/register",
+                    json={"email": "admin@test.de", "password": "password123"},
+                    headers={"X-Client": "app"})
+    token = r.json()["access_token"]
+    bare = TestClient(app)  # ohne Cookies, nur Bearer
+    me = bare.get("/api/auth/me",
+                  headers={"Authorization": f"Bearer {token}", "X-Client": "app"})
+    assert me.status_code == 200
+    assert isinstance(me.json()["access_token"], str) and me.json()["access_token"]
+    # Ohne X-Client bleibt das Feld leer — Browser sehen nie ein Token.
+    ohne = bare.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert ohne.status_code == 200 and ohne.json()["access_token"] is None
+
+
 def test_push_register_requires_auth():
     assert TestClient(app).post(
         "/api/push/register", json={"token": "x", "platform": "ios"}

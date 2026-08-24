@@ -109,14 +109,36 @@ Passwörter werden mit **scrypt** gehasht, Sitzungs-Token sind
 
 **Web:** Login/Registrierung setzen ein `access_token`-Cookie — `httponly`,
 `samesite=lax`, `secure` gesteuert über `COOKIE_SECURE` (Default `True`),
-Laufzeit `ACCESS_TOKEN_EXPIRE_MINUTES` (Default 1 Tag). Page-JS sieht das Token
-nie.
+Laufzeit `ACCESS_TOKEN_EXPIRE_MINUTES` (Default 90 Tage). Page-JS sieht das
+Token nie.
 
 **App:** Der Client schickt den Header `X-Client: app`. Erkennt das Backend ihn,
 liefert es zusätzlich ein **langlebiges Token im Antwort-Body**
 (`app_access_token_expire_minutes`, Default 90 Tage), das die App in
 `@capacitor/preferences` ablegt und als `Authorization: Bearer …` mitschickt.
 `deps.get_current_user` akzeptiert beides — Bearer zuerst, sonst Cookie.
+
+**Angemeldet bleiben:** Beide Sitzungen verlängern sich still bei Nutzung, sonst
+stünde man nach Ablauf der Laufzeit trotz täglicher Nutzung wieder vor dem
+Login.
+
+- *Web:* Die Middleware `SitzungsVerlaengerung` (`web/backend/app/session.py`,
+  rohes ASGI, damit der SSE-Strom der KI-Frage unberührt bleibt) hängt ein
+  frisches Cookie an die Antwort, sobald weniger als
+  `SESSION_RENEW_WITHIN_MINUTES` (Default 45 Tage, `0` schaltet ab) Restlaufzeit
+  übrig sind. Weil das erneuerte Cookie wieder voll läuft, fällt die nächste
+  Erneuerung erst eine halbe Laufzeit später an — kein `Set-Cookie` an jeder
+  Antwort. Sie greift auf **allen** Routen, auch den öffentlichen; wer nur
+  Beschluss-Seiten liest, behält seine Sitzung trotzdem. Ausgenommen sind
+  Antworten, die selbst schon ein Cookie setzen (Login, Logout,
+  Passwortwechsel — sonst überschriebe die Verlängerung das Abmelden), sowie
+  `401`-Antworten.
+- *App:* Cookies helfen dort nicht. Stattdessen liefert `GET /api/auth/me` an
+  `X-Client: app` ein frisch datiertes Token, das `lib/auth.tsx` in den
+  Preferences ablegt — die App fragt den Endpunkt bei jedem Start.
+
+Der Widerruf bleibt davon unberührt: Das erneuerte Token trägt dieselbe
+`token_version` wie das alte.
 
 **Widerruf** läuft über `web_users.token_version`: Der Wert steckt als `ver` im
 Token; passt er nicht mehr zur Zeile, ist die Sitzung ungültig. Erhöht wird er
