@@ -199,6 +199,26 @@ def test_ein_geaenderter_beschluss_kommt_nicht_ungeprueft_rein():
     assert "2.500,00" in erg["verworfen"][0]["grund"]
 
 
+def test_der_grund_traegt_die_zahlen_der_zeile_und_nicht_die_deutung():
+    """Was für die ganze Kategorie gilt, steht nicht in jeder einzelnen Zeile.
+
+    Bis 24.08.2026 hängte dieser Grund seine Deutung an — „entweder hat der
+    Rat die Liste geändert oder eines der beiden Dokumente trägt einen
+    Zahlendreher". Der Satz stimmt, gilt aber für jeden Fall dieser Art und
+    stand deshalb auf ``/haushalt/einnahmen`` in vier von sechs Lücken-Feldern
+    wörtlich untereinander. Er steht jetzt einmal über der Liste. Wer ihn
+    hierher zurückholt, löscht diesen Test — dann ist es eine Entscheidung,
+    kein Versehen."""
+    erg = spenden.lies([zeile(
+        "18/0587", VORLAGE_GEAENDERT,
+        "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
+        "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
+        titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
+    grund = erg["verworfen"][0]["grund"]
+    assert "Zahlendreher" not in grund and "geändert" not in grund
+    assert len(grund) < 120, grund
+
+
 def test_ein_abgesetzter_punkt_ist_keine_einnahme():
     """21/0694: „Der Tagesordnungspunkt wurde abgesetzt.“"""
     erg = spenden.lies([zeile(

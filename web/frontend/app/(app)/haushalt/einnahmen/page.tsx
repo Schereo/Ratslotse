@@ -457,11 +457,20 @@ export default function EinnahmenPage() {
                 {/* Der Satz sagt, was der Reihe FEHLT — nicht, dass wir gut
                     geprüft haben. „Statt ungeprüft mitzuzählen" stand hier bis
                     zuletzt und war genau die Selbstvergewisserung, die
-                    DESIGNSPRACHE.md § 7 als Anti-Pattern führt. */}
+                    DESIGNSPRACHE.md § 7 als Anti-Pattern führt.
+
+                    Der zweite Satz stand bis 24.08. in JEDEM Lücken-Feld mit,
+                    das die Vorlage gegen das Protokoll stellte — vier von
+                    sechs Feldern trugen ihn wörtlich untereinander. Er gilt
+                    für die ganze Kategorie und steht deshalb hier, einmal;
+                    `council/spenden.py` schreibt seither je Zeile nur noch
+                    deren eigene Zahlen. */}
                 <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
-                  Ihre Beträge sind in den Summen oben nicht enthalten. In diesen
+                  Ihre Beträge sind in den Summen oben nicht enthalten: In diesen
                   Vorlagen steht der beschlossene Betrag entweder kein zweites Mal,
-                  oder die beiden Stellen widersprechen sich:
+                  oder die beiden Stellen widersprechen sich. Wo sie das tun, hat
+                  entweder der Rat die Liste geändert oder eines der beiden Dokumente
+                  trägt einen Zahlendreher — welches, sagt der Bestand nicht.
                 </dd>
                 {/* <LueckenFeld> statt einer eigenen Liste: Es ist die Textform
                     für Lücken im Baukasten, und sie ist bewusst nie
