@@ -1,8 +1,8 @@
 "use client";
 
 // Teilhaushalt-Dossier. Dramaturgie wie die Beschluss-Seiten: eine These, dann
-// Karte für Karte der Beleg — Wasserfall, Brutto-gegen-Netto-Umschalter (das
-// Lehrstück), Was steckt drin, Entwicklung.
+// Karte für Karte der Beleg — Anzeigetafel mit Gegenbalken im Kopf,
+// Brutto-gegen-Netto-Umschalter (das Lehrstück), Was steckt drin, Entwicklung.
 //
 // Query-Param statt dynamischem Segment (/haushalt/bereich?name=…): Der
 // Capacitor-Export (output: export) kennt die Bereichs-Slugs zur Bauzeit
@@ -11,10 +11,18 @@
 // DREI ÄNDERUNGEN AM BESTAND, jede mit einem Grund:
 //
 // 1. Der Kostendeckungsgrad-Ring ist weg. Ein Ring beantwortet „wie viel
-//    Prozent", die Frage der Seite ist aber „wie viele Millionen". Stattdessen
-//    steht oben der Wasserfall: Ausgaben, davon abgezogen die eigenen Erträge,
-//    übrig der Betrag, den die Allgemeinheit trägt — in Millionen, als eine
-//    Bewegung. Der Prozentsatz bleibt als Satz erhalten, dort wo er trägt:
+//    Prozent", die Frage der Seite ist aber „wie viele Millionen". An seine
+//    Stelle trat zunächst ein Wasserfall (GB-14) neben einer kleinen
+//    Kennzahlen-Karte rechts vom Titel. Beides ist seit 24.08. wieder weg,
+//    aus zwei Befunden (Tim): Die drei Zahlen standen „komisch klein in der
+//    Ecke", und der Wasserfall las sich nicht — dass ein Abzug an der
+//    Laufsumme hängt, muss man wissen, drei unterschiedlich ausgerichtete
+//    Balken sagen es nicht von selbst. Jetzt ist der Seitenkopf eine
+//    Anzeigetafel wie auf dem Haushalts-Einstieg: die drei Summen in der
+//    großen Tafel-Type, darunter die Rechnung als Gegenbalken (GB-04) —
+//    zwei Leisten auf einer Basis, die Lücke heißt sichtbar „trägt die
+//    Stadt". Dieselbe Bauform wie die Einstiegs-Tafel, also schon gelernt.
+//    Der Prozentsatz bleibt als Satz erhalten, dort wo er trägt:
 //    im Vergleich zweier Bereiche.
 // 2. Die Bereichsnamen laufen durch `lib/haushalt-bereiche.ts`. Vorher
 //    verglich diese Seite Namen über ihr erstes Wort („Personal…"), um die
@@ -40,9 +48,10 @@ import {
 import { BEREICHE, bereichKanon, bereichSchluessel } from "@/lib/haushalt-bereiche";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Gegenbalken } from "@/components/grafik/gegenbalken";
 import { Hantel } from "@/components/grafik/hantel";
 import { Warum } from "@/components/haushalt/warum";
-import { Wasserfall, type WasserfallSchritt } from "@/components/grafik/wasserfall";
+import { Summe } from "@/components/haushalt/tafel";
 import { BereichReiter, ReiterTafel, type Reiter } from "@/components/haushalt/bereich-reiter";
 import { Datenstand } from "@/components/haushalt/datenstand";
 import { cn } from "@/lib/utils";
@@ -62,30 +71,6 @@ function Kicker({ children }: { children: React.ReactNode }) {
     <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
       {children}
     </p>
-  );
-}
-
-/** Kennzahl im Seitenkopf. Die Einheit hängt an jeder Zahl statt einmal am
- *  Ende der Reihe: Umbrechen die drei auf 375 px, stünde sie sonst allein in
- *  einer vierten Zeile und gehörte sichtbar zu nichts mehr. */
-function Kopfzahl({ label, wert, ton, beleg }: {
-  label: string; wert: number; ton?: "ein" | "signal"; beleg?: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p className={cn(
-        "text-[11.5px]",
-        ton === "signal" ? "text-signal" : "text-muted-foreground",
-      )}>{label}{beleg}</p>
-      <p className={cn(
-        "mt-0.5 font-display text-xl font-bold tabular-nums sm:text-[23px]",
-        ton === "signal" && "text-signal",
-        ton === "ein" && "text-[color:var(--hh-ein-0)]",
-      )}>
-        {deMio(wert)}
-        <span className="ml-1 text-[11.5px] font-semibold text-muted-foreground">Mio.&nbsp;€</span>
-      </p>
-    </div>
   );
 }
 
@@ -238,6 +223,30 @@ function BereichInner() {
   const maxWert = Math.max(...alle.map((x) => (ranking === "netto" ? x.netto : x.brutto)), 1);
   const d = deckung(z);
 
+  // Der Gegenbalken rechnet mit den ROHEN Mio.-Werten, nicht den gerundeten:
+  // Seine Lücke (Basis − kürzere Leiste) entsteht IN der Grafik, und aus zwei
+  // schon gerundeten Beträgen gerechnet kann sie um eine Anzeigestufe von der
+  // Kopfzahl abweichen — bei den nicht rechtsfähigen Stiftungen kippte durch
+  // Doppelrundung einmal sogar die Richtung (dieselbe Falle, gegen die der
+  // Wasserfall zuvor seine Summenprobe hatte). Auch die RICHTUNG der Rechnung
+  // kommt deshalb aus den Rohwerten, damit Basis und Rest-Label nie
+  // auseinanderfallen.
+  const rohAus = (z.aufwendungen ?? 0) / 1_000_000;
+  const rohEin = (z.ertraege ?? 0) / 1_000_000;
+  const einVoran = rohEin > rohAus; // Überschuss-Fall: die Einnahmen sind die Basis
+  // Kein `imBalken`: Bei EINEM Segment je Leiste stünde im Balken derselbe
+  // Text, der als Legende direkt darunter steht — zweimal untereinander.
+  // Auf dem Einstieg trägt der Text im Balken, weil dort 13 Segmente ihre
+  // Legende entlasten.
+  const balkenAus = {
+    titel: "Was rausgeht", rampe: "aus" as const,
+    segmente: [{ label: "Ausgaben des Bereichs", wert: rohAus }],
+  };
+  const balkenEin = {
+    titel: "Was reinkommt", rampe: "ein" as const,
+    segmente: [{ label: "eigene Einnahmen", wert: rohEin }],
+  };
+
   // Vergleichsbereich für den Kostendeckungs-Satz: der größte andere Bereich
   // nach Ausgaben. „Fast doppelt so viel" stand hier bis 16.08. als feste
   // Wendung — 283,1 zu 169,2 ist Faktor 1,67. Solche Größenverhältnisse
@@ -299,12 +308,14 @@ function BereichInner() {
         <span className="font-semibold text-foreground">{kanon.name}</span>
       </div>
 
-      {/* Kopf und Kennzahlen nebeneinander, sobald Platz ist. Die Absätze
-          bleiben bei 66–68 Zeichen — längere Zeilen liest niemand gern —,
-          aber der Rest der Breite stand vorher leer, weil die Kennzahlen-
-          karte darunter die volle Breite nahm für drei Zahlen. */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-8">
-      <div className="min-w-0 lg:flex-1">
+      {/* Der Kopf ist eine Anzeigetafel (DESIGNSPRACHE § 4) — dieselbe Bauform
+          wie der Haushalts-Einstieg: links die Einordnung, rechts die drei
+          Summen in der großen Tafel-Type, darunter das Kern-Visual. Bis 24.08.
+          standen die drei Zahlen klein in einer Eckkarte am rechten Rand, und
+          zwischen ihr und den 66-ch-Absätzen blieb die Mitte leer. */}
+      <div className="hh-tafel rounded-2xl p-4 sm:p-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+      <div className="min-w-0">
         <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[25px]">{kanon.name}</h1>
         {/* Die Zeile Klartext steht überall dort, wo der Name auftaucht — hier
             als Absatz direkt darunter (Wörterbuch, `lib/haushalt-bereiche.ts`). */}
@@ -339,70 +350,68 @@ function BereichInner() {
         </p>
       </div>
 
-      {/* Kennzahlen — dieselben drei Zahlen wie im Wasserfall, aber sofort
-          lesbar. „trägt die Stadt" ist die Vokabel des ganzen Bereichs
-          (Gegenbalken, Wasserfall, Bereichskarten); „kostet die Stadt" wäre
-          eine zweite für dieselbe Sache. */}
-      <div className="flex flex-none flex-wrap gap-x-8 gap-y-3 rounded-2xl border border-border bg-card px-4 py-3.5 shadow-sm lg:flex-col lg:gap-y-3.5">
-        <Kopfzahl label={`Ausgaben ${jahr}`} wert={aus} beleg={<Beleg q="plan" />} />
-        <Kopfzahl label="eigene Einnahmen" wert={ein} ton="ein" />
-        {/* Dieselbe Schwelle wie im Wasserfall (`netto < 0`), damit Kopf und
-            Bild nie zwei verschiedene Richtungen behaupten. */}
-        <Kopfzahl label={netto < 0 ? "Überschuss" : "trägt die Stadt"} wert={Math.abs(netto)} ton="signal" />
+      {/* Kennzahlen — dieselben drei Zahlen wie im Gegenbalken darunter, aber
+          als Auskunft auf einen Blick. „trägt die Stadt" ist die Vokabel des
+          ganzen Bereichs (Gegenbalken, Bereichskarten); „kostet die Stadt"
+          wäre eine zweite für dieselbe Sache. */}
+      <div className="flex flex-none flex-wrap gap-x-6 gap-y-3 sm:gap-x-7 lg:pt-1">
+        <Summe label={`Ausgaben ${jahr}`} wert={aus} beleg={<Beleg q="plan" />} />
+        <Summe label="eigene Einnahmen" wert={ein} ton="ein" />
+        {/* Dieselbe Schwelle wie unten im Balken (Rohwert-Vergleich), damit
+            Kopf und Bild nie zwei verschiedene Richtungen behaupten. */}
+        <Summe label={einVoran ? "Überschuss" : "trägt die Stadt"} wert={Math.abs(netto)} ton="signal" />
+      </div>
+      </div>
+
+      {/* Die Rechnung als Gegenbalken (GB-04): zwei Leisten auf EINER Basis,
+          die Lücke zwischen der kürzeren und der Basis trägt ihren Namen —
+          Schraffur mit Signal-Kante, die Differenz-Konvention des Bereichs.
+          Bei einem Überschuss dreht sich die Leserichtung um: Dann sind die
+          Einnahmen die Basis, und die Lücke hinter den Ausgaben ist der
+          Überschuss. Kein Rot in beiden Richtungen — ein Zuschussbedarf ist
+          Daseinsvorsorge, keine Schwäche. */}
+      <div className="mt-5">
+        <Gegenbalken
+          zeilen={einVoran ? [balkenEin, balkenAus] : [balkenAus, balkenEin]}
+          basis={Math.max(rohAus, rohEin)}
+          einheit="Mio. €"
+          restLabel={einVoran ? "Überschuss des Bereichs" : "trägt die Stadt"}
+        />
+        {einVoran ? (
+          <p className="mt-3 max-w-[76ch] border-t border-border/60 pt-2.5 text-[12.5px] leading-relaxed text-foreground/85">
+            Dieser Bereich nimmt mehr ein, als er ausgibt — der Überschuss steht
+            dem allgemeinen Topf zur Verfügung, aus dem die Zuschüsse der anderen
+            Bereiche kommen.
+          </p>
+        ) : (
+          <p className="mt-3 max-w-[76ch] border-t border-border/60 pt-2.5 text-[12.5px] leading-relaxed text-foreground/85">
+            Eigene Einnahmen sind Gebühren, Entgelte, Erstattungen und
+            zweckgebundene Zuschüsse. Was sie nicht decken, trägt die Stadt aus
+            dem allgemeinen Topf aus Steuern und Schlüsselzuweisungen.
+            {/* Nur im Zuschuss-Fall: Der Prozentsatz trägt als Satz und im
+                Vergleich — bei einem Überschuss gäbe es nichts zu decken, und
+                auf der Finanzmanagement-Seite stand sonst ein „Bei … sind es
+                60 € von 100", das sich auf nichts bezog. */}
+            {d != null && (
+              <> Von 100&nbsp;€ Ausgaben holt der Bereich {d}&nbsp;€ selbst herein.</>
+            )}
+            {d != null && vergleich?.d != null && (
+              <>
+                {" "}Bei „{bereichKanon(vergleich.r.bereich).name}“ sind es {vergleich.d}&nbsp;€ von 100.
+                Der Unterschied sagt nichts darüber, wo sparsamer gewirtschaftet wird — er hängt
+                daran, für welche Aufgaben Bund und Land Erstattungen zahlen und für welche nicht.
+              </>
+            )}
+          </p>
+        )}
       </div>
       </div>
 
       <BereichReiter reiter={reiterListe} aktiv={aktiv} onChange={setReiter} />
 
       <ReiterTafel id="ueberblick" aktiv={aktiv} className="flex flex-col gap-4">
-        <Karte>
-          {/* Die Rechnung als Wasserfall (GB-14, `components/grafik/`). Die
-              Schritte stellt die SEITE zusammen, weil nur sie die Richtung
-              kennt: Bei einem Überschuss dreht sich die Leserichtung um —
-              dann steht oben, was reinkommt, und die Ausgaben sind der Abzug.
-              Das Ergebnis kommt als eigener Wert mit (aus dem Rohwert
-              gerundet), nicht als `aus − ein`: Beide Beträge sind schon auf
-              0,1 Mio. gerundet, und bei den nicht rechtsfähigen Stiftungen
-              kippte durch die Doppelrundung einmal sogar die Richtung. */}
-          <Wasserfall
-            kicker={netto < 0 ? "Was reinkommt, was rausgeht" : "Was rausgeht, was reinkommt"}
-            einheit={`Mio. € ${jahr}`}
-            schritte={(netto < 0 ? [
-              { label: "Eigene Erträge des Bereichs", wert: ein, art: "start",
-                farbe: "var(--hh-ein-0)" },
-              { label: "Ausgaben des Bereichs", wert: aus, art: "abzug",
-                farbe: "var(--hh-aus-0)",
-                hinweis: "was der Bereich für seine eigenen Aufgaben braucht" },
-              { label: "Überschuss des Bereichs",
-                wert: Math.round(Math.abs(netto) * 10) / 10, art: "ergebnis",
-                hinweis: "steht dem allgemeinen Topf zur Verfügung" },
-            ] : [
-              { label: "Ausgaben des Bereichs", wert: aus, art: "start" },
-              { label: "eigene Erträge des Bereichs", wert: ein, art: "abzug",
-                hinweis: "Gebühren, Entgelte, Erstattungen und zweckgebundene Zuschüsse" },
-              { label: "trägt die Stadt",
-                wert: Math.round(Math.abs(netto) * 10) / 10, art: "ergebnis",
-                hinweis: "aus Steuermitteln, dem allgemeinen Topf aus Steuern und Schlüsselzuweisungen" },
-            ]) as WasserfallSchritt[]}
-          />
-          {/* Nur im Zuschuss-Fall: Der Prozentsatz trägt als Satz und im
-              Vergleich — bei einem Überschuss gäbe es nichts zu decken, und
-              auf der Finanzmanagement-Seite stand sonst ein „Bei … sind es
-              60 € von 100", das sich auf nichts bezog. */}
-          {ein < aus && d != null && (
-            <p className="mt-2.5 max-w-[74ch] border-t border-border/60 pt-2.5 text-[12.5px] leading-relaxed text-foreground/85">
-              Von 100&nbsp;€ Ausgaben holt der Bereich {d}&nbsp;€ selbst herein.
-              {vergleich?.d != null && (
-                <>
-                  {" "}Bei „{bereichKanon(vergleich.r.bereich).name}“ sind es {vergleich.d}&nbsp;€ von 100.
-                  Der Unterschied sagt nichts darüber, wo sparsamer gewirtschaftet wird — er hängt
-                  daran, für welche Aufgaben Bund und Land Erstattungen zahlen und für welche nicht.
-                </>
-              )}
-            </p>
-          )}
-        </Karte>
-
+        {/* Die Rechnung des Bereichs steht seit 24.08. oben auf der Tafel —
+            der Überblick beginnt mit dem Blick HINTER ihre Einnahmen-Leiste. */}
         <EigeneErtraege daten={data} schluessel={kanon.schluessel} planEin={ein} planJahr={jahr} />
 
         {/* Brutto gegen Netto — der Umschalter IST das Lehrstück. */}
