@@ -308,14 +308,31 @@ export default function EinnahmenPage() {
 
           Was hier NICHT steht: wer gespendet hat. Die Namen stehen nur in der
           Anlage „Zuwendungsliste", die nicht im Bestand ist — und der Satz
-          darüber ist Teil des Blocks, nicht eine Fußnote. */}
+          darüber ist Teil des Blocks, nicht eine Fußnote.
+
+          ZWEI BEFUNDE VOM 24.08. (Tim), beide am selben Block:
+
+          1. „Der Text ist nur halbseitig." Stimmt — und zwar überall in dieser
+             Karte gleichzeitig: Vier Absätze mit `max-w-[80ch]` untereinander
+             füllten 631 von 1.102 px, rechts blieben 471 px leer, während die
+             Lücken-Felder darunter über die volle Breite liefen. Genau der
+             Fall aus DESIGNSPRACHE.md § 4 („den KASTEN deckeln, nicht den Text
+             darin"): Eine AUFZÄHLUNG in einer breiten Karte läuft zweispaltig,
+             der Deckel bleibt, die Fläche wird voll. Die Schwelle hängt am
+             CONTAINER, nicht am Fenster — neben der Seitenleiste meint dieselbe
+             Fensterbreite ein anderes Platzangebot.
+          2. „Es wird gar nicht erklärt, was Zuwendungen sind." Stimmte auch:
+             Der Block sprang von der Überschrift direkt zur Summe und erklärte
+             danach nur noch Zuständigkeit und Grenzen. Die Definition steht
+             jetzt oben neben der Kennzahl — dort, wo vorher die Kurve allein
+             die halbe Zeile füllte. */}
       {spendenLetztes && (
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <section className="@container/spenden rounded-2xl border border-border bg-card p-4 shadow-sm">
           <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Auch das sind Einnahmen
           </h2>
-          <div className="mt-2.5 flex flex-col gap-4 @container/spenden sm:flex-row sm:items-start sm:gap-6">
-            <div className="flex-none">
+          <div className="mt-2.5 grid gap-x-8 gap-y-4 @3xl/spenden:grid-cols-2 @3xl/spenden:items-start">
+            <div className="min-w-0">
               <p className="text-[12.5px] font-semibold">
                 Angenommene Zuwendungen {spendenLetztes.jahr}
               </p>
@@ -331,28 +348,54 @@ export default function EinnahmenPage() {
               <p className="mt-1 text-[11.5px] text-muted-foreground">
                 aus {spendenLetztes.vorlagen} Beschlüssen
               </p>
+              {spendenReihe.length > 1 && (
+                <div className="mt-3">
+                  {/* Endpunkt in Tausend, wie die große Zahl darüber — zwei
+                      Einheiten in einem Block ließen die Kurve und die Kennzahl
+                      wie zwei verschiedene Reihen aussehen. Die Kurve steht
+                      UNTER der Zahl, nicht daneben: In voller Kartenbreite lief
+                      sie über 700 px bei 46 px Höhe und zog acht Jahrgänge zu
+                      einem flachen Draht. */}
+                  <ZeitreiheMini
+                    reihe={spendenReihe.map((j) => ({ jahr: j.jahr, wert: j.betrag }))}
+                    format={(v) => `${Math.round(v / 1000).toLocaleString("de-DE")} Tsd.`}
+                    ariaLabel={
+                      `Angenommene Zuwendungen je Jahr, ${spendenReihe[0].jahr} bis `
+                      + `${spendenLetztes.jahr}: von `
+                      + `${Math.round(spendenReihe[0].betrag).toLocaleString("de-DE")} auf `
+                      + `${Math.round(spendenLetztes.betrag).toLocaleString("de-DE")} Euro. `
+                      + `Höchststand ${Math.round(Math.max(...spendenReihe.map((j) => j.betrag)))
+                        .toLocaleString("de-DE")} Euro.`}
+                  />
+                </div>
+              )}
             </div>
-            {spendenReihe.length > 1 && (
-              <div className="min-w-0 flex-1">
-                {/* Endpunkt in Tausend, wie die große Zahl daneben — zwei
-                    Einheiten in einem Block ließen die Kurve und die Kennzahl
-                    wie zwei verschiedene Reihen aussehen. */}
-                <ZeitreiheMini
-                  reihe={spendenReihe.map((j) => ({ jahr: j.jahr, wert: j.betrag }))}
-                  format={(v) => `${Math.round(v / 1000).toLocaleString("de-DE")} Tsd.`}
-                  ariaLabel={
-                    `Angenommene Zuwendungen je Jahr, ${spendenReihe[0].jahr} bis `
-                    + `${spendenLetztes.jahr}: von `
-                    + `${Math.round(spendenReihe[0].betrag).toLocaleString("de-DE")} auf `
-                    + `${Math.round(spendenLetztes.betrag).toLocaleString("de-DE")} Euro. `
-                    + `Höchststand ${Math.round(Math.max(...spendenReihe.map((j) => j.betrag)))
-                      .toLocaleString("de-DE")} Euro.`}
-                />
-              </div>
-            )}
+            {/* Was eine Zuwendung überhaupt ist — der Satz, der bis 24.08.
+                fehlte. Er steht bewusst VOR der Zuständigkeits-Schwelle: Wer
+                nicht weiß, wovon die Rede ist, kann mit „bis 2.000 Euro der
+                Verwaltungsausschuss" nichts anfangen. */}
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold">Wenn jemand der Stadt etwas schenkt</p>
+              <p className="mt-1 max-w-[78ch] text-[13px] leading-relaxed text-foreground/85">
+                Zuwendungen sind Spenden und Schenkungen an die Stadt — Geld ebenso wie
+                Sachen. Behalten darf die Verwaltung sie nicht von sich aus: Jede einzelne
+                muss ein Gremium annehmen, so schreibt es das Kommunalverfassungsgesetz
+                vor (§ 111 Abs. 8 NKomVG). Mehrmals im Jahr steht dafür derselbe
+                Tagesordnungspunkt an, „Annahme von Zuwendungen“ — was dort beschlossen
+                wird, zählen wir hier zusammen.
+              </p>
+            </div>
           </div>
 
-          <dl className="mt-3.5 flex flex-col gap-2.5 border-t border-border pt-3">
+          {/* Zweispaltig ab @3xl, also ab 768 px INNENbreite der Karte (die
+              Karte selbst ist dann 800 px breit): Die kurzen Erklärstücke sind
+              eine Aufzählung, keine Absatzfolge — nebeneinander füllen sie die
+              Karte, und die Zeile bleibt bei 66–80 Zeichen. Der Deckel an den
+              dd greift nur noch im einspaltigen Zustand; in zwei Spalten
+              deckelt die Spalte selbst (gemessen: 535 px ≙ 82 Zeichen bei
+              12,5 px, der Deckel liegt bei 80). Dieselbe Schwelle wie bei den
+              „Was diese Zahlen nicht hergeben"-Listen der Nachbarseiten. */}
+          <dl className="mt-3.5 grid gap-x-8 gap-y-3 border-t border-border pt-3 @3xl/spenden:grid-cols-2">
             <div>
               <dt className="text-[12.5px] font-semibold">
                 Wer entscheidet, hängt an 2.000 Euro
@@ -368,6 +411,17 @@ export default function EinnahmenPage() {
                   ? Math.round((spendenGrem.Rat.betrag / spendenGeld) * 100)
                   : 0}{" "}
                 Prozent des Geldes laufen über den Rat.
+              </dd>
+            </div>
+            {/* Warum diese Reihe überhaupt gebaut wurde — die Auskunft steht
+                sonst nirgends (council/spenden.py: „Weder die Ergebnisrechnung
+                noch der Haushaltsplan weisen Spenden getrennt aus"). */}
+            <div>
+              <dt className="text-[12.5px] font-semibold">Sonst steht diese Summe nirgends</dt>
+              <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
+                Weder der Haushaltsplan noch die Ergebnisrechnung weisen Zuwendungen
+                getrennt aus. Öffentlich wird die Summe allein durch diese Beschlüsse —
+                deshalb steht sie hier und nicht bei den übrigen Einnahmearten.
               </dd>
             </div>
             <div>
@@ -390,7 +444,7 @@ export default function EinnahmenPage() {
               </div>
             )}
             {spendenOhne.length > 0 && (
-              <div>
+              <div className="@3xl/spenden:col-span-2">
                 <dt className="text-[12.5px] font-semibold">
                   {spendenOhne.length}{" "}
                   {spendenOhne.length === 1 ? "Beschluss fehlt" : "Beschlüsse fehlen"} in
@@ -409,8 +463,9 @@ export default function EinnahmenPage() {
                     für Lücken im Baukasten, und sie ist bewusst nie
                     einklappbar (H4-A). Sechs Sätze machen den Block länger —
                     das ist der Preis dafür, dass keine Vorlage stillschweigend
-                    aus der Summe fällt. */}
-                <dd className="mt-1.5 flex flex-col gap-1.5">
+                    aus der Summe fällt. Zweispaltig gesetzt kostet er nur noch
+                    die halbe Höhe; eingeklappt wird trotzdem nichts. */}
+                <dd className="mt-1.5 grid gap-1.5 @3xl/spenden:grid-cols-2">
                   {spendenOhne.map((v) => (
                     <LueckenFeld
                       key={v.vorlage_nr}
