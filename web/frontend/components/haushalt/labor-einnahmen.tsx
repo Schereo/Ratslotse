@@ -242,36 +242,48 @@ export function EinnahmenWerkbank({
         )}
       </div>
 
-      {/* Hundesteuer — zeigt Größenordnung, nicht Sanierung. */}
+      {/* Hundesteuer — zeigt Größenordnung, nicht Sanierung. In BEIDE
+          Richtungen bis zum Anschlag: verdoppeln oder ganz abschaffen — beide
+          Stammtisch-Forderungen, beide winzig (Tims Symmetrie-Befund 24.08.). */}
       {hunde && (
         <div className="mt-4 border-t border-border/60 pt-4">
           <Regler
             id="hunde"
             label="Hundesteuer"
-            wert={hundePct} min={0} max={100} step={25}
+            wert={hundePct} min={-100} max={100} step={25}
             onChange={setHundePct}
-            geaendert={hundePct > 0}
+            geaendert={hundePct !== 0}
             ist={{ wert: 0, label: "heute" }}
-            marken={{ min: "", max: "+100 %" }}
+            marken={{ min: "abschaffen", max: "verdoppeln" }}
             anzeige={
               hundePct === 0
                 ? <span className="text-muted-foreground">
                     {betrag(hunde.betrag).wert}&nbsp;{betrag(hunde.betrag).einheit}<Beleg q="steuern" />
                   </span>
                 : <strong className="text-signal">
-                    {betrag(hunde.betrag * (1 + hundePct / 100)).wert}&nbsp;
-                    {betrag(hunde.betrag * (1 + hundePct / 100)).einheit} (+{hundePct}&nbsp;%)
+                    {hundePct === -100
+                      ? <>0&nbsp;€ (abgeschafft)</>
+                      : <>{betrag(hunde.betrag * (1 + hundePct / 100)).wert}&nbsp;
+                        {betrag(hunde.betrag * (1 + hundePct / 100)).einheit}{" "}
+                        ({hundePct > 0 ? "+" : "−"}{Math.abs(hundePct)}&nbsp;%)</>}
                   </strong>
             }
             wirkung={
               hundePct === 0 ? (
-                <>Aufkommen {hunde.jahr}. Der Regler ist eine Antwort auf den Stammtisch:
-                Selbst eine Verdopplung brächte nur rund {anteilText(hunde.betrag / 1e6)}.</>
-              ) : (
+                <>Aufkommen {hunde.jahr}. Der Regler ist eine Antwort auf den Stammtisch —
+                in beide Richtungen: Verdopplung wie Abschaffung bewegen je rund{" "}
+                {anteilText(hunde.betrag / 1e6)}.</>
+              ) : hundePct > 0 ? (
                 <>
                   <strong className="text-foreground">+{deMio(hundeWirkung)}&#8239;Mio.&nbsp;€</strong>{" "}
                   · {anteilText(hundeWirkung)}. Kleine Steuern sind Symbolik, keine Sanierung —
                   hier kann man es fühlen.
+                </>
+              ) : (
+                <>
+                  <strong className="text-foreground">{deMio(hundeWirkung)}&#8239;Mio.&nbsp;€</strong>{" "}
+                  — das Minus wächst um {anteilText(-hundeWirkung)}. Auch die Abschaffung ist
+                  Symbolik, nur andersherum.
                 </>
               )
             }

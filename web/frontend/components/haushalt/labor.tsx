@@ -9,7 +9,8 @@
 //   * **Einnahmen** — Gewerbesteuer (mit Städte-Leiter und eigener Historie),
 //     Grundsteuer B (neu, mit belegter Aufteilung), Hundesteuer (neu, als
 //     Anti-Stammtisch-Regler), Gebühren als absichtlich gesperrte Schraube.
-//   * **Ausgaben** — die freiwilligen Teilhaushalte, unverändert.
+//   * **Ausgaben** — die freiwilligen Teilhaushalte, seit 24.08. in beide
+//     Richtungen: kürzen wie aufstocken („heute“ in der Mitte).
 //   * **Investitionen & Finanzierung** — Vorhaben-Schalter und der
 //     Kredit-Schalter; bewusst mit EIGENEN Zielgrößen (Kasse, Schulden),
 //     weil Investitionen die Ergebnis-Lücke fast nicht bewegen. Ihre
@@ -173,7 +174,12 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const [punkte, setPunkte] = useState(0);
   const [grundstPunkte, setGrundstPunkte] = useState(0);
   const [hundePct, setHundePct] = useState(0);
-  const [kuerzung, setKuerzung] = useState<Record<string, number>>({});
+  // Prozentuale ÄNDERUNG je freiwilligem Teilhaushalt — negativ = kürzen,
+  // positiv = aufstocken. Bis 24.08.2026 hieß der Zustand `kuerzung` und
+  // konnte nur in eine Richtung (Tims Befund: „ein bisschen random, dass man
+  // viele Regler nicht in die andere Richtung schieben kann") — dieselbe
+  // Symmetrie wie an den Hebesatz-Reglern gilt jetzt überall.
+  const [aenderung, setAenderung] = useState<Record<string, number>>({});
   const [vorhabenAus, setVorhabenAus] = useState<Record<string, boolean>>({});
   const [kredit, setKredit] = useState(false);
 
@@ -217,8 +223,10 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
     (proPunktGewst * punkte
       + (proPunktGrundst ?? 0) * grundstPunkte
       + (hunde ? (hunde.betrag / 1e6) * (hundePct / 100) : 0)) * 10) / 10;
+  // Negativ gedrehte Bereiche sparen, aufgestockte kosten — `gespart` darf
+  // deshalb negativ werden und heißt dann ehrlich „mehr ausgegeben“.
   const gespart = Math.round(
-    basis.freiwillig.reduce((s, f) => s + (f.aus * (kuerzung[f.bereich] ?? 0)) / 100, 0) * 10) / 10;
+    basis.freiwillig.reduce((s, f) => s - (f.aus * (aenderung[f.bereich] ?? 0)) / 100, 0) * 10) / 10;
   const wirkung = mehrEinnahmen + gespart;
   const neuesDefizit = Math.round((basis.defizit - wirkung) * 10) / 10;
   const geschlossen = basis.defizit > 0
@@ -242,7 +250,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const reichweiteNachher = neuesDefizit > 0 ? RUECKLAGE_MIO / neuesDefizit : Infinity;
 
   const lueckeGeaendert = punkte !== 0 || grundstPunkte !== 0 || hundePct !== 0
-    || Object.values(kuerzung).some((v) => v > 0);
+    || Object.values(aenderung).some((v) => v !== 0);
   const etwasGeaendert = lueckeGeaendert || kredit
     || Object.values(vorhabenAus).some(Boolean);
 
@@ -253,17 +261,27 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
 
   const zuruecksetzen = () => {
     setPunkte(0); setGrundstPunkte(0); setHundePct(0);
-    setKuerzung({}); setVorhabenAus({}); setKredit(false);
+    setAenderung({}); setVorhabenAus({}); setKredit(false);
   };
   const alle = (pct: number) =>
     Object.fromEntries(basis.freiwillig.map((f) => [f.bereich, pct]));
   const szenarien = [
     { label: "+20 Punkte Hebesatz", punkte: 20, grundst: 0, hunde: 0, pct: 0 },
-    { label: "10 % weniger für die Kür", punkte: 0, grundst: 0, hunde: 0, pct: 10 },
+    { label: "10 % weniger für die Kür", punkte: 0, grundst: 0, hunde: 0, pct: -10 },
     { label: "Alles auf Anschlag", punkte: MAX_PUNKTE,
       grundst: proPunktGrundst != null ? MAX_PUNKTE : 0,
-      hunde: hunde ? MAX_HUNDE : 0, pct: MAX_KUERZUNG },
+      hunde: hunde ? MAX_HUNDE : 0, pct: -MAX_KUERZUNG },
   ];
+
+  // Die Bestandteile des Ergebnis-Satzes, je nach Vorzeichen benannt —
+  // „−2,7 Mio. € mehr eingenommen“ wäre eine Zahl mit falschem Verb. Seit die
+  // Regler in beide Richtungen laufen, kann jede Komponente jedes Vorzeichen
+  // tragen, auch gemischt (Hebesatz runter, Kultur rauf).
+  const satzteile: string[] = [];
+  if (mehrEinnahmen > 0) satzteile.push(`${deMio(mehrEinnahmen)} Mio. € mehr eingenommen`);
+  if (mehrEinnahmen < 0) satzteile.push(`${deMio(-mehrEinnahmen)} Mio. € weniger eingenommen`);
+  if (gespart > 0) satzteile.push(`${deMio(gespart)} Mio. € gespart`);
+  if (gespart < 0) satzteile.push(`${deMio(-gespart)} Mio. € mehr ausgegeben`);
 
   // Zwei Bausteine, die an verschiedenen Stellen gebraucht werden. Bewusst
   // als Funktionen aufgerufen (`{ergebnisKarte(...)}`), nicht als
@@ -314,17 +332,21 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
             background: "var(--hh-aus-2)" }} />
       </div>
       <p className="mt-1.5 text-[12px] leading-relaxed">
-        {lueckeGeaendert ? (
-          <>
-            <strong>{Math.round(geschlossen)}&#8239;% der Lücke</strong> geschlossen
-            {mehrEinnahmen !== 0 && <> — {deMio(mehrEinnahmen)}&#8239;Mio.&nbsp;€ mehr eingenommen</>}
-            {mehrEinnahmen !== 0 && gespart > 0 && ","}
-            {gespart > 0 && <> {mehrEinnahmen === 0 ? "— " : ""}{deMio(gespart)}&#8239;Mio.&nbsp;€ gespart</>}.
-          </>
-        ) : (
+        {!lueckeGeaendert ? (
           <span className="text-muted-foreground">
             Noch nichts gedreht — die Regler {kompakt ? "oben" : "links"} füllen diesen Balken.
           </span>
+        ) : wirkung > 0 ? (
+          <><strong>{Math.round(geschlossen)}&#8239;% der Lücke</strong> geschlossen
+          {satzteile.length > 0 && <> — {satzteile.join(", ")}</>}.</>
+        ) : wirkung < 0 ? (
+          // Auch das ist ein Ergebnis, kein Fehler: Wer Kultur aufstockt oder
+          // den Hebesatz senkt, soll den Preis sehen, nicht einen leeren Balken.
+          <><strong>Das Minus wächst um {deMio(-wirkung)}&#8239;Mio.&nbsp;€</strong>
+          {satzteile.length > 0 && <> — {satzteile.join(", ")}</>}.</>
+        ) : (
+          <><strong>Unterm Strich ±0</strong>
+          {satzteile.length > 0 && <> — {satzteile.join(", ")} gleichen sich aus</>}.</>
         )}
       </p>
 
@@ -473,12 +495,12 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
         {szenarien.map((s) => {
           const aktiv = punkte === s.punkte && grundstPunkte === s.grundst
             && hundePct === s.hunde
-            && basis.freiwillig.every((f) => (kuerzung[f.bereich] ?? 0) === s.pct);
+            && basis.freiwillig.every((f) => (aenderung[f.bereich] ?? 0) === s.pct);
           return (
             <button key={s.label} type="button"
               onClick={() => {
                 setPunkte(s.punkte); setGrundstPunkte(s.grundst);
-                setHundePct(s.hunde); setKuerzung(alle(s.pct));
+                setHundePct(s.hunde); setAenderung(alle(s.pct));
               }}
               className={cn(
                 "rounded-full border px-3 py-1 text-[12px] font-medium transition-colors",
@@ -516,9 +538,9 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
             <AusgabenWerkbank
               freiwillig={basis.freiwillig}
               produkte={produkte} produktJahr={produktJahr} basisJahr={basis.jahr}
-              kuerzung={kuerzung}
-              setKuerzung={(bereich, pct) => setKuerzung((k) => ({ ...k, [bereich]: pct }))}
-              maxKuerzung={MAX_KUERZUNG}
+              aenderung={aenderung}
+              setAenderung={(bereich, pct) => setAenderung((k) => ({ ...k, [bereich]: pct }))}
+              maxProzent={MAX_KUERZUNG}
               jeEinwohner={jeEinwohner} anteilText={anteilText}
             />
           )}
