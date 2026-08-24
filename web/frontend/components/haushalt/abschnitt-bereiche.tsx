@@ -235,9 +235,9 @@ export function BereicheAbschnitt() {
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <NamenKlartext zeilen={zeilen} jahr={jahr} />
           <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-            Sortiert nach Größe (Ausgaben oder Kosten für die Stadt), nie nach der Nummer im
-            Haushaltsplan<Beleg q="plan" />. „Aus dem allgemeinen Topf" ist der Zuschussbedarf:
-            Ausgaben minus eigene Erträge des Bereichs. Die Beschreibungen sind redaktionell
+            Sortiert nach Größe (was ein Bereich ausgibt oder was die Stadt zuschießt), nie
+            nach der Nummer im Haushaltsplan<Beleg q="plan" />. „Schießt die Stadt zu" ist der
+            Zuschussbedarf: Ausgaben minus eigene Erträge des Bereichs. Die Beschreibungen sind redaktionell
             nach dem Vorbericht des Plans — keine amtliche Gliederung.
           </p>
         </div>

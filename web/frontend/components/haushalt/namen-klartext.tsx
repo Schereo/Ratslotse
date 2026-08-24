@@ -14,8 +14,8 @@
 // (auf der Übersicht) als Zahlen-Tabelle. Zwei Listen derselben 13 Namen sind
 // eine zu viel; jetzt trägt jede Zeile beides: den Satz UND den Balken mit
 // Betrag. Der Balken ist dieselbe Aussage wie in der Bereichstabelle der
-// Übersicht (dunkel = aus dem allgemeinen Topf, hell = eigene Erträge des
-// Bereichs, EINE Skala für alle) — dieselbe Grammatik, damit niemand zwei
+// Übersicht (dunkel = schießt die Stadt zu, hell = nimmt der Bereich selbst
+// ein, EINE Skala für alle) — dieselbe Grammatik, damit niemand zwei
 // Bildsprachen für dieselbe Sache lernt.
 //
 // Die Klartext-Zeile kommt aus `lib/haushalt-bereiche.ts` und NICHT aus einer
@@ -27,7 +27,10 @@
 //
 // SORTIERUNG per Umschalter (H4-A: „Sortier-Select statt Spaltenköpfe"),
 // Vorgabe Ausgaben: Die Nummer im Haushaltsplan ist eine Verwaltungsordnung,
-// die Größe die Antwort auf „worum geht es hier überhaupt". Unter 744 px
+// die Größe die Antwort auf „worum geht es hier überhaupt". Die Labels sind
+// seit 24.08. ein Verb-Paar hinter dem Kicker REIHENFOLGE: „nach Ausgaben" /
+// „nach Kosten für die Stadt" las sich wie ein Ansichts-Wechsel zwischen
+// zwei Synonymen, dabei sortiert der Schalter nur (Tims Befund). Unter 744 px
 // Containerbreite zeigt die Liste erst fünf Zeilen und den Rest hinter
 // „alle N zeigen" (H4-A-Regel ab 8 Zeilen) — Weglassen heißt „hinter einen
 // Auslöser", nie ersatzlos.
@@ -75,10 +78,10 @@ export function klartextZeilen(zeilen: HaushaltZeile[]): KlartextZeile[] {
     .sort((a, b) => b.aus - a.aus);
 }
 
-/** Zwei Balkenstücke auf gemeinsamer Skala: dunkel = aus dem allgemeinen
- *  Topf, hell = eigene Erträge — dieselbe Kodierung wie die Bereichstabelle
- *  der Übersicht. Dekorativ (`aria-hidden`): Was er zeigt, steht als Text
- *  in der Zeile. */
+/** Zwei Balkenstücke auf gemeinsamer Skala: dunkel = schießt die Stadt zu,
+ *  hell = nimmt der Bereich selbst ein — dieselbe Kodierung wie die
+ *  Bereichstabelle der Übersicht. Dekorativ (`aria-hidden`): Was er zeigt,
+ *  steht als Text in der Zeile. */
 function Balken({ z, skala }: { z: KlartextZeile; skala: number }) {
   const b = (v: number) => `${Math.max((v / skala) * 100, 0)}%`;
   const dunkel = Math.max(z.stadt ?? 0, 0);
@@ -113,8 +116,8 @@ function ZahlenZeile({ z }: { z: KlartextZeile }) {
   }
   return (
     <span className="mt-1 block text-[11.5px] tabular-nums text-muted-foreground">
-      {deMio(z.stadt)}&#8239;Mio.&nbsp;€ aus dem allgemeinen Topf · {deMio(z.eigen)}&#8239;Mio.&nbsp;€
-      eigene Erträge
+      {deMio(z.stadt)}&#8239;Mio.&nbsp;€ schießt die Stadt zu · {deMio(z.eigen)}&#8239;Mio.&nbsp;€
+      nimmt der Bereich selbst ein
     </span>
   );
 }
@@ -221,12 +224,17 @@ export function NamenKlartext({ zeilen, jahr, aktiv, className }: {
   return (
     <div ref={box} className={className}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-2.5">
-        <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
-          <Segmented className="w-max" value={sortierung} onChange={setSortierung} tone="primary"
-            options={[
-              { value: "aus", label: "nach Ausgaben" },
-              { value: "stadt", label: "nach Kosten für die Stadt" },
-            ]} />
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="shrink-0 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Reihenfolge
+          </span>
+          <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
+            <Segmented className="w-max" value={sortierung} onChange={setSortierung} tone="primary"
+              options={[
+                { value: "aus", label: "was ein Bereich ausgibt" },
+                { value: "stadt", label: "was die Stadt zuschießt" },
+              ]} />
+          </div>
         </div>
         <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Mio. € · {jahr} · {rows.length} Teilhaushalte
@@ -237,11 +245,11 @@ export function NamenKlartext({ zeilen, jahr, aktiv, className }: {
       <div className="mb-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 px-2.5">
         <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px]" style={{ background: "var(--hh-ein-0)" }} />
-          aus dem allgemeinen Topf
+          schießt die Stadt zu (allgemeiner Topf)
         </span>
         <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px]" style={{ background: "var(--hh-ein-3)" }} />
-          eigene Erträge des Bereichs
+          nimmt der Bereich selbst ein
         </span>
       </div>
 
