@@ -199,7 +199,7 @@ export default function EinnahmenPage() {
                   <p className="mt-1.5 font-display text-[20px] font-bold leading-none tracking-tight tabular-nums">
                     {deMio(betrag / 1e6)}
                     <span className="text-[11px] font-semibold text-muted-foreground">
-                      &#8239;Mio.
+                      &#8239;Mio.&nbsp;€
                     </span>
                     <span className="ml-1 font-sans text-[10px] font-normal text-muted-foreground">
                       {bJahr}

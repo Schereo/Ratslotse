@@ -276,9 +276,9 @@ export function Labor({ daten, produkte, produktJahr }: {
         {etwasGeaendert ? (
           <>
             <strong>{Math.round(geschlossen)}&#8239;% der Lücke</strong> geschlossen
-            {mehrEinnahmen !== 0 && <> — {deMio(mehrEinnahmen)}&#8239;Mio. mehr eingenommen</>}
+            {mehrEinnahmen !== 0 && <> — {deMio(mehrEinnahmen)}&#8239;Mio.&nbsp;€ mehr eingenommen</>}
             {mehrEinnahmen !== 0 && gespart > 0 && ","}
-            {gespart > 0 && <> {mehrEinnahmen === 0 ? "— " : ""}{deMio(gespart)}&#8239;Mio. gespart</>}.
+            {gespart > 0 && <> {mehrEinnahmen === 0 ? "— " : ""}{deMio(gespart)}&#8239;Mio.&nbsp;€ gespart</>}.
           </>
         ) : (
           <span className="text-muted-foreground">
@@ -309,13 +309,13 @@ export function Labor({ daten, produkte, produktJahr }: {
           )}
         </p>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          {RUECKLAGE_MIO}&#8239;Mio. Rücklage <Beleg q="ruecklage" /> geteilt durch das Minus —
+          {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> geteilt durch das Minus —
           unsere Rechnung, keine Prognose der Stadt.
         </p>
       </div>
       {maxWirkung < basis.defizit && (
         <p className="mt-3 rounded-lg bg-muted/50 p-2.5 text-[12px] leading-relaxed">
-          Mehr als {deMio(maxWirkung)}&#8239;Mio. geben diese Regler nicht her — auch mit allen am
+          Mehr als {deMio(maxWirkung)}&#8239;Mio.&nbsp;€ geben diese Regler nicht her — auch mit allen am
           Anschlag blieben {deMio(Math.round((basis.defizit - maxWirkung) * 10) / 10)}&#8239;Mio.&nbsp;€
           Minus. Ein ausgeglichener Haushalt braucht mehr als diese zwei Stellschrauben.
         </p>
@@ -447,7 +447,7 @@ export function Labor({ daten, produkte, produktJahr }: {
                     marken={{ min: "", max: `−${MAX_KUERZUNG} %` }}
                     anzeige={
                       pct === 0
-                        ? <span className="text-muted-foreground">{deMio(f.aus)}&nbsp;Mio.</span>
+                        ? <span className="text-muted-foreground">{deMio(f.aus)}&nbsp;Mio.&nbsp;€</span>
                         : <>
                             <span className="text-muted-foreground line-through">{deMio(f.aus)}</span>
                             <strong className="ml-2 text-signal">
@@ -462,7 +462,7 @@ export function Labor({ daten, produkte, produktJahr }: {
                           {drin.map((p, i) => (
                             <span key={p.produkt_nr}>
                               {i > 0 && ", "}
-                              {p.produkt_name} ({deMio(-(p.ergebnis as number) / 1e6)}&#8239;Mio.)
+                              {p.produkt_name} ({deMio(-(p.ergebnis as number) / 1e6)}&#8239;Mio.&nbsp;€)
                             </span>
                           ))}.</>
                         ) : (
@@ -563,14 +563,14 @@ export function Labor({ daten, produkte, produktJahr }: {
                 <>
                   {" "}Wie stark, schwankt: {basis.kraft[0].jahr} auf {basis.kraft[1].jahr} stieg die
                   Steuerkraft um {deMio(((basis.kraft[1].messzahl ?? 0) - (basis.kraft[0].messzahl ?? 0)) / 1e6)}
-                  &#8239;Mio. und die Zuweisung um{" "}
+                  &#8239;Mio.&nbsp;€ und die Zuweisung um{" "}
                   {deMio(((basis.kraft[1].zuweisungen ?? 0) - (basis.kraft[0].zuweisungen ?? 0)) / 1e6)}
                   {/* Vorher stand hier „im Jahr davor sank sie deutlich" — eine
                       feste Aussage über einen dritten Jahrgang, den basis.kraft
                       gar nicht führt (dort stehen zwei). Sie stimmte beim
                       Schreiben und wäre mit dem nächsten Ausgleichsjahr still
                       falsch geworden. Was immer gilt, ist die Mechanik. */}
-                  &#8239;Mio. — die Richtung kann von Jahr zu Jahr wechseln, weil auch der
+                  &#8239;Mio.&nbsp;€ — die Richtung kann von Jahr zu Jahr wechseln, weil auch der
                   Landestopf schwankt, aus dem das Land verteilt.
                 </>
               )}

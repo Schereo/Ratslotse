@@ -496,7 +496,7 @@ function BereichsZeile({ r, groesster, produktJahr }: {
           />
         </div>
         <span className="flex-none font-display text-[17px] font-bold tabular-nums">
-          {deMio(r.aus)}<span className="text-[11px] font-semibold text-muted-foreground">&#8239;Mio.</span>
+          {deMio(r.aus)}<span className="text-[11px] font-semibold text-muted-foreground">&#8239;Mio.&nbsp;€</span>
         </span>
       </div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">

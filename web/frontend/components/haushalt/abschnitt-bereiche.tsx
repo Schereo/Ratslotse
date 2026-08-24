@@ -100,7 +100,7 @@ function Finanzkachel({ z, daten, jahr }: {
           Der schwierigste Name: „Finanzmanagement und Recht“
         </h2>
         <span className="font-mono text-[10px] uppercase tracking-[0.09em] text-muted-foreground">
-          {deMio(ein)} Mio. Erträge · {deMio(aus)} Mio. Aufwendungen<Beleg q="plan" />
+          {deMio(ein)}&#8239;Mio.&nbsp;€ Erträge · {deMio(aus)}&#8239;Mio.&nbsp;€ Aufwendungen<Beleg q="plan" />
         </span>
       </div>
       {/* Die Formulierung ist genau geprüft: Steuern liegen zu 100 % hier, die

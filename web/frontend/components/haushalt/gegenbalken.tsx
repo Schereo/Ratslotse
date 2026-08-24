@@ -68,6 +68,7 @@ function Leiste({
             style={{ width: `${breite}%`, background: `var(--hh-${seite}-${Math.min(i, seite === "ein" ? 6 : 9)})`, color: "var(--hh-seg-text)" }}
           >
             <SegmentText stufen={[
+              `${kanon.name} · ${deMio(wert)} Mio. €`,
               `${kanon.name} · ${deMio(wert)}`,
               `${kanon.kurz} · ${deMio(wert)}`,
               kanon.kurz,
@@ -102,9 +103,9 @@ function Detail({ z, gepinnt, onClose, onOpen }: {
         )}
       </div>
       <p className="mt-1 text-[11.5px] leading-relaxed text-foreground/80">
-        {deMio(mio(z.aufwendungen))}&#8239;Mio. Ausgaben · {deMio(mio(z.ertraege))} eigene Einnahmen
+        {deMio(mio(z.aufwendungen))}&#8239;Mio.&nbsp;€ Ausgaben · {deMio(mio(z.ertraege))}&#8239;Mio.&nbsp;€ eigene Einnahmen
         <br />
-        <strong className="text-foreground">{deMio(mio(z.ergebnis))}&#8239;Mio.</strong>{" "}
+        <strong className="text-foreground">{deMio(mio(z.ergebnis))}&#8239;Mio.&nbsp;€</strong>{" "}
         {(z.ergebnis ?? 0) < 0 ? "trägt die Stadt" : "bleibt übrig"}
       </p>
       <button type="button" className="mt-1.5 text-[11.5px] font-semibold text-primary"
@@ -186,7 +187,7 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
           wirklich stammt, beantwortet die Seite „Woher kommt das Geld?"
           und das Flussbild darunter. */}
       <p className="mb-1.5 text-[12.5px] font-semibold">
-        Wo das Geld eingeht <span className="font-normal text-muted-foreground">— {deMio(einSumme)}&#8239;Mio.</span>
+        Wo das Geld eingeht <span className="font-normal text-muted-foreground">— {deMio(einSumme)}&#8239;Mio.&nbsp;€</span>
       </p>
       <div style={{ width: `${einEnde}%` }}>
         <Leiste seite="ein" zeilen={ein} skala={einSumme} aktiv={aktiv}
@@ -197,11 +198,11 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
         {einLeg.gezeigt.map(({ z, wert }, i) => (
           <span key={z.bereich} className="inline-flex items-center gap-1.5 text-[11px] text-foreground/80">
             <span className="h-2 w-2 rounded-[2px]" style={{ background: `var(--hh-ein-${Math.min(ein.findIndex((e) => e.z === z), 6)})` }} />
-            {bereichKanon(z.bereich).name} {deMio(wert)}
+            {bereichKanon(z.bereich).name} {deMio(wert)}&#8239;Mio.&nbsp;€
           </span>
         ))}
         {einLeg.rest.length > 0 && (
-          <span className="text-[11px] text-muted-foreground">{einLeg.rest.length} weitere {deMio(einLeg.restSumme)}</span>
+          <span className="text-[11px] text-muted-foreground">{einLeg.rest.length} weitere {deMio(einLeg.restSumme)}&#8239;Mio.&nbsp;€</span>
         )}
       </div>
       {ein[0] && (
@@ -229,13 +230,13 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
             >
               {100 - einEnde >= 20 && (
                 <span className="whitespace-nowrap font-mono text-[9.5px] font-bold uppercase text-signal">
-                  {deMio(-saldo)} aus der Rücklage
+                  {deMio(-saldo)}&#8239;Mio.&nbsp;€ aus der Rücklage
                 </span>
               )}
             </div>
             {100 - einEnde < 20 && (
               <p className="absolute right-0 top-6 font-mono text-[9.5px] font-bold uppercase text-signal">
-                {deMio(-saldo)} aus der Rücklage
+                {deMio(-saldo)}&#8239;Mio.&nbsp;€ aus der Rücklage
               </p>
             )}
           </>
@@ -248,14 +249,14 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
             schlecht, ohne dass irgendwer das behaupten wollte. */}
         {saldo > 0 && (
           <span className="absolute right-0 top-0 rounded-full border border-border bg-muted px-2 py-0.5 text-[10.5px] font-semibold text-foreground/80">
-            +{deMio(saldo)}&#8239;Mio. Überschuss geplant
+            +{deMio(saldo)}&#8239;Mio.&nbsp;€ Überschuss geplant
           </span>
         )}
       </div>
 
       <div onMouseLeave={() => setHover(null)}>
       <p className="mb-1.5 text-[12.5px] font-semibold">
-        Wohin es fließt <span className="font-normal text-muted-foreground">— {deMio(ausSumme)}&#8239;Mio.</span>
+        Wohin es fließt <span className="font-normal text-muted-foreground">— {deMio(ausSumme)}&#8239;Mio.&nbsp;€</span>
       </p>
       <div style={{ width: `${(ausSumme / skala) * 100}%` }}>
         <Leiste seite="aus" zeilen={aus} skala={ausSumme} aktiv={aktiv}
@@ -266,11 +267,11 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
         {ausLeg.gezeigt.map(({ z, wert }) => (
           <span key={z.bereich} className="inline-flex items-center gap-1.5 text-[11px] text-foreground/80">
             <span className="h-2 w-2 rounded-[2px]" style={{ background: `var(--hh-aus-${Math.min(aus.findIndex((a) => a.z === z), 9)})` }} />
-            {bereichKanon(z.bereich).name} {deMio(wert)}
+            {bereichKanon(z.bereich).name} {deMio(wert)}&#8239;Mio.&nbsp;€
           </span>
         ))}
         {ausLeg.rest.length > 0 && (
-          <span className="text-[11px] text-muted-foreground">{ausLeg.rest.length} weitere {deMio(ausLeg.restSumme)}</span>
+          <span className="text-[11px] text-muted-foreground">{ausLeg.rest.length} weitere {deMio(ausLeg.restSumme)}&#8239;Mio.&nbsp;€</span>
         )}
       </div>
       {wahl?.seite === "aus" && <Detail z={gewaehlte} gepinnt={!!gepinnt} onClose={() => { setGepinnt(null); setHover(null); }} onOpen={oeffnen} />}

@@ -49,6 +49,15 @@ function Summe({ label, wert, ton }: {
         ton === "signal" ? "text-signal" : "text-foreground",
       )}>
         {deMio(wert)}
+        {/* Unter sm steht die Einheit UNTER der Zahl: Drei Summen nebeneinander
+            plus je „Mio. €" sind auf 375 px breiter als die Tafel — inline
+            gesetzt kippte die Zeile aus der Karte. */}
+        <span className={cn(
+          "mt-1 block text-[11px] font-semibold leading-none sm:mt-0 sm:ml-1 sm:inline",
+          ton === "signal" ? "text-signal/80" : "text-muted-foreground",
+        )}>
+          Mio.&nbsp;€
+        </span>
       </p>
     </div>
   );

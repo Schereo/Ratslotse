@@ -377,7 +377,7 @@ function PlanIstInner() {
         ) : (
           <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
             Die Stadt hat {jahr} <strong>{deMio(gesamt.ertrIst)}&#8239;Mio.&nbsp;€ eingenommen</strong>{" "}
-            und <strong>{deMio(gesamt.aufwIst)}&#8239;Mio.</strong> ausgegeben
+            und <strong>{deMio(gesamt.aufwIst)}&#8239;Mio.&nbsp;€</strong> ausgegeben
             <Beleg q="jahresabschluss" />. Die Planwerte der Gesamtrechnung konnten wir für
             diesen Jahrgang nicht auslesen — deshalb steht hier kein „geplant" daneben und keine
             Abweichung. Geraten wird sie nicht. Wo der Abschluss einzelne Posten selbst mit
@@ -392,13 +392,13 @@ function PlanIstInner() {
             <div>
               <p className="text-[11.5px] text-muted-foreground">Geplantes Jahresergebnis</p>
               <p className="font-display text-[20px] font-bold tabular-nums">
-                {saldoPlan > 0 ? "+" : ""}{deMio(saldoPlan)}<span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.</span>
+                {saldoPlan > 0 ? "+" : ""}{deMio(saldoPlan)}<span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.&nbsp;€</span>
               </p>
             </div>
             <div>
               <p className="text-[11.5px] text-muted-foreground">Tatsächliches Jahresergebnis</p>
               <p className="font-display text-[20px] font-bold tabular-nums">
-                {saldoIst > 0 ? "+" : ""}{deMio(saldoIst)}<span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.</span>
+                {saldoIst > 0 ? "+" : ""}{deMio(saldoIst)}<span className="text-xs font-semibold text-muted-foreground">&#8239;Mio.&nbsp;€</span>
               </p>
               <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
                 Ordentliches und außerordentliches Ergebnis zusammen — nicht nur
@@ -551,7 +551,7 @@ function PlanIstInner() {
             </div>
             <p className="text-[11.5px] leading-relaxed text-muted-foreground">
               {massstab === "prozent"
-                ? "Gemessen am eigenen Plan — so lässt sich ein Bereich von 231 Mio. mit einem von 6 Mio. vergleichen. Vorn steht, wessen Plan am weitesten danebenlag."
+                ? "Gemessen am eigenen Plan — so lässt sich ein Bereich von 231 Mio. € mit einem von 6 Mio. € vergleichen. Vorn steht, wessen Plan am weitesten danebenlag."
                 : "Gemessen in Euro — vorn steht, wo am meisten Geld anders floss als geplant. Kleine Bereiche verschwinden dabei fast."}
             </p>
           </div>
@@ -586,7 +586,7 @@ function PlanIstInner() {
                         style={{ width: `${Math.min((Math.abs(abw) / groesste) * 100, 100)}%` }} />
                     </div>
                     <span className="whitespace-nowrap text-right text-[12px] font-semibold tabular-nums">
-                      {abw > 0 ? "+" : ""}{deMio(abw)}&#8239;Mio.
+                      {abw > 0 ? "+" : ""}{deMio(abw)}&#8239;Mio.&nbsp;€
                     </span>
                   </div>
                   <Warum grund={grundZuPosten(data, jahr, p.nr)} />
@@ -620,7 +620,7 @@ function PlanIstInner() {
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                   <span className="text-[12.5px] font-semibold">{g.bezeichnung}</span>
                   <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-signal">
-                    {(g.delta_mio ?? 0) > 0 ? "+" : ""}{deMio(g.delta_mio)}&#8239;Mio.
+                    {(g.delta_mio ?? 0) > 0 ? "+" : ""}{deMio(g.delta_mio)}&#8239;Mio.&nbsp;€
                     {g.prozent != null && (
                       <span className="text-muted-foreground">
                         {" "}({g.prozent > 0 ? "+" : ""}
@@ -680,9 +680,9 @@ function PlanIstInner() {
               <thead>
                 <tr className="text-left font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
                   <th className="py-1 pr-2 font-medium">Bereich</th>
-                  <th className="py-1 pr-2 text-right font-medium">geplant</th>
-                  <th className="py-1 pr-2 text-right font-medium">tatsächlich</th>
-                  <th className="py-1 text-right font-medium">Abweichung</th>
+                  <th className="py-1 pr-2 text-right font-medium">geplant Mio.&nbsp;€</th>
+                  <th className="py-1 pr-2 text-right font-medium">tatsächlich Mio.&nbsp;€</th>
+                  <th className="py-1 text-right font-medium">Abweichung Mio.&nbsp;€</th>
                 </tr>
               </thead>
               <tbody>

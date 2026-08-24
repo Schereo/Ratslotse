@@ -99,21 +99,21 @@ function ZahlenZeile({ z }: { z: KlartextZeile }) {
   if (z.stadt == null || z.eigen == null) {
     return (
       <span className="mt-1 block text-[11.5px] tabular-nums text-muted-foreground">
-        {deMio(z.aus)}&#8239;Mio. Ausgaben — die Ertragsseite fehlt in diesem Jahrgang.
+        {deMio(z.aus)}&#8239;Mio.&nbsp;€ Ausgaben — die Ertragsseite fehlt in diesem Jahrgang.
       </span>
     );
   }
   if (z.stadt <= 0) {
     return (
       <span className="mt-1 block text-[11.5px] tabular-nums text-muted-foreground">
-        {deMio(z.aus)}&#8239;Mio. Ausgaben · trägt sich selbst — Überschuss{" "}
-        {deMio(-z.stadt)}&#8239;Mio. für den allgemeinen Topf
+        {deMio(z.aus)}&#8239;Mio.&nbsp;€ Ausgaben · trägt sich selbst — Überschuss{" "}
+        {deMio(-z.stadt)}&#8239;Mio.&nbsp;€ für den allgemeinen Topf
       </span>
     );
   }
   return (
     <span className="mt-1 block text-[11.5px] tabular-nums text-muted-foreground">
-      {deMio(z.stadt)}&#8239;Mio. aus dem allgemeinen Topf · {deMio(z.eigen)}&#8239;Mio.
+      {deMio(z.stadt)}&#8239;Mio.&nbsp;€ aus dem allgemeinen Topf · {deMio(z.eigen)}&#8239;Mio.&nbsp;€
       eigene Erträge
     </span>
   );

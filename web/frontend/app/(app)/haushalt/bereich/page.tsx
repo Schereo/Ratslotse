@@ -419,6 +419,11 @@ function BereichInner() {
               { value: "netto", label: "Kosten für die Stadt (netto)" },
             ]} />
           </div>
+          {/* Eine Kopfzeile nur für die Einheit: In 60 px passt hinter jede
+              Zahl kein „Mio. €", ohne die Balken zu stauchen. */}
+          <p className="mb-1 text-right font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
+            Mio.&nbsp;€
+          </p>
           <div className="grid grid-cols-[minmax(110px,150px)_1fr_60px] items-center gap-x-2.5 gap-y-1.5 text-xs">
             {alle.slice(0, 6).map(({ r, netto: n, brutto: b }, i) => {
               const wert = ranking === "netto" ? n : b;
@@ -440,8 +445,8 @@ function BereichInner() {
           {bruttoTop.r.bereich !== nachNetto[0].r.bereich && (
             <p className="mt-3 rounded-lg bg-muted/60 p-2.5 text-xs leading-relaxed text-foreground/90">
               In der Brutto-Sicht steht {bereichKanon(bruttoTop.r.bereich).name} mit
-              {" "}{deMio(bruttoTop.brutto)}&#8239;Mio. an erster Stelle. Weil dort aber
-              {" "}{deMio(mio(bruttoTop.r.ertraege))}&#8239;Mio. an Erstattungen und eigenen
+              {" "}{deMio(bruttoTop.brutto)}&#8239;Mio.&nbsp;€ an erster Stelle. Weil dort aber
+              {" "}{deMio(mio(bruttoTop.r.ertraege))}&#8239;Mio.&nbsp;€ an Erstattungen und eigenen
               Einnahmen zurückfließen, bleibt {bereichKanon(nachNetto[0].r.bereich).name} unterm
               Strich am teuersten.
             </p>
@@ -573,10 +578,10 @@ function BereichInner() {
                         }} />
                       </div>
                       <span className="text-right">
-                        {werte[i] > 0 ? `−${deMio(werte[i])}` : `+${deMio(-werte[i])}`}&#8239;Mio. netto
+                        {werte[i] > 0 ? `−${deMio(werte[i])}` : `+${deMio(-werte[i])}`}&#8239;Mio.&nbsp;€ netto
                       </span>
                       <span className="text-right text-muted-foreground">
-                        {deMio(mio(zeile.aufwendungen))}&#8239;Mio. Ausgaben
+                        {deMio(mio(zeile.aufwendungen))}&#8239;Mio.&nbsp;€ Ausgaben
                       </span>
                     </div>
                   ))}
@@ -679,7 +684,7 @@ function BereichInner() {
                         <span className="text-[12.5px] font-semibold">
                           {g.bezeichnung}
                           <span className="ml-1.5 font-mono text-[11px] font-normal tabular-nums text-signal">
-                            {(g.delta_mio ?? 0) > 0 ? "+" : ""}{deMio(g.delta_mio)}&#8239;Mio.
+                            {(g.delta_mio ?? 0) > 0 ? "+" : ""}{deMio(g.delta_mio)}&#8239;Mio.&nbsp;€
                           </span>
                         </span>
                         <Warum grund={g} kompakt />

@@ -471,7 +471,7 @@ export function InvestitionsplanAbschnitt() {
                     <span className="w-20 flex-none text-right font-display text-[13px] font-bold tabular-nums">
                       {deMio(mio(z.auszahlungen))}
                       <span className="ml-1 text-[9.5px] font-medium text-muted-foreground">
-                        Mio.
+                        Mio.&nbsp;€
                       </span>
                     </span>
                   </li>

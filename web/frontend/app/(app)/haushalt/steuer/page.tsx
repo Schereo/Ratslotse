@@ -199,12 +199,12 @@ function SteuerInner() {
             </p>
             <p className="mt-1.5 font-display text-[27px] font-bold leading-none tracking-tight tabular-nums text-[color:var(--hh-ein-0)]">
               {deMio(letzte.betrag / 1e6)}
-              <span className="text-sm font-semibold text-muted-foreground">&#8239;Mio.</span>
+              <span className="text-sm font-semibold text-muted-foreground">&#8239;Mio.&nbsp;€</span>
               <Beleg q={istZuweisung ? "steuerkraft" : "steuern"} />
             </p>
             {anteil != null && (
               <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                {anteil}&nbsp;% aller Steuereinnahmen ({deMio(gesamt! / 1e6)}&#8239;Mio.)
+                {anteil}&nbsp;% aller Steuereinnahmen ({deMio(gesamt! / 1e6)}&#8239;Mio.&nbsp;€)
               </p>
             )}
           </div>
@@ -409,7 +409,7 @@ function SteuerInner() {
                   meinen — und genau das ist die Annahme, auf der der
                   Überschlag beruht. */}
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/80">
-                Überschlagen: {deMio(letzte!.betrag / 1e6)}&#8239;Mio. (Ist {letzte!.jahr})
+                Überschlagen: {deMio(letzte!.betrag / 1e6)}&#8239;Mio.&nbsp;€ (Ist {letzte!.jahr})
                 bei {punktSatz} Punkten, geteilt durch {punktSatz}.
               </p>
               {/* Hier stand bis 16.08. „Brutto — was davon in der Stadtkasse
