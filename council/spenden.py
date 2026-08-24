@@ -308,7 +308,20 @@ def euro(betrag: float) -> str:
 
 
 def _grund(raw, abschnitt, kopf, vorschlag, teile) -> str:
-    """Warum diese Zeile draußen bleibt — als Satz, nicht als Fehlercode."""
+    """Warum diese Zeile draußen bleibt — als Satz, nicht als Fehlercode.
+
+    **Je Zeile steht hier nur, was an ihr besonders ist.** Der
+    Auseinander-Fall („Vorschlag 22.500, Protokoll 2.500") hat bis 24.08.2026
+    seine Deutung mitgetragen — „entweder hat der Rat die Liste geändert oder
+    eines der beiden Dokumente trägt einen Zahlendreher; welches, sagt der
+    Bestand nicht". Der Satz gilt für **jeden** Fall dieser Art und stand
+    deshalb in vier von sechs Lücken-Feldern wörtlich untereinander (Tims
+    Befund 24.08.). Er gehört einmal über die Liste, nicht sechsmal hinein;
+    die Anzeige trägt ihn jetzt dort (``/haushalt/einnahmen``).
+
+    Die Regel dahinter, für alle künftigen Gründe: Was an dieser einen Zeile
+    steht, kommt hierher — was für die ganze Kategorie gilt, gehört an die
+    Stelle, die die Kategorie überschreibt."""
     if not raw:
         return ("Der Volltext dieser Vorlage liegt nicht vor; damit gibt es keine "
                 "zweite Stelle, an der sich der Betrag prüfen ließe.")
@@ -317,9 +330,7 @@ def _grund(raw, abschnitt, kopf, vorschlag, teile) -> str:
                 "Auswirkungen — der Betrag steht nur ein einziges Mal.")
     if vorschlag is not None and kopf is not None and abs(vorschlag - kopf) >= _CENT:
         return (f"Die Vorlage schlug {euro(vorschlag)} Euro vor, das Protokoll hält "
-                f"{euro(kopf)} Euro fest. Entweder hat der Rat die Liste geändert "
-                f"oder eines der beiden Dokumente trägt einen Zahlendreher; welches, "
-                f"sagt der Bestand nicht.")
+                f"{euro(kopf)} Euro fest.")
     if teile:
         return ("Die Teilbeträge des Finanz-Abschnitts ergeben zusammen nicht den "
                 "beschlossenen Betrag; im Textextrakt der Vorlage fehlt mindestens "
