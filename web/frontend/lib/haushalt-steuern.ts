@@ -65,14 +65,21 @@ export type SteuerArt = {
    *  Forstwirtschaft. B steht deshalb vorn. */
   hebesatzArten?: string[];
   /** Gesetzt heißt: Der Überschlag „was brächte ein Punkt mehr?" lässt sich
-   *  hier NICHT rechnen, und das ist der Grund.
+   *  hier NICHT als glatte Zahl rechnen, und das ist der Grund.
    *
    *  Bei der Grundsteuer war er bis 16.08.2026 trotzdem zu sehen: Der Betrag
    *  aus dem Open-Data-Satz umfasst A und B zusammen, der Hebesatz daneben
-   *  gilt nur für B — die Division mischte also zwei Steuern. Das Labor
-   *  verweigert genau diese Zahl seit jeher mit derselben Begründung
-   *  (components/haushalt/labor.tsx); zwei Seiten dürfen nicht verschieden
-   *  antworten, wenn die Datenlage dieselbe ist. */
+   *  gilt nur für B — die Division mischte also zwei Steuern.
+   *
+   *  SEIT DEM WERKBANK-UMBAU (Labor 2.0) rechnet das Labor den Punkt doch —
+   *  mit der belegten Aufteilung aus dem Realsteuervergleich des Landes
+   *  (lib/haushalt-labor.ts: grundsteuerAnteilA) und dem Anteil als Fähnchen
+   *  an der Zahl. Das ist kein Widerspruch zu „zwei Seiten dürfen nicht
+   *  verschieden antworten": Der Steckbrief druckt Überschläge als nackte
+   *  Rechenwege, das Labor als ausgewiesenes Was-wäre-wenn samt Herkunft der
+   *  Aufteilung. Der Text hier sagt beides — wer die glatte Zahl auch im
+   *  Steckbrief will, zieht die LSN-Aufteilung dorthin nach, statt diesen
+   *  Text zu kürzen. */
   punktUnmoeglich?: string;
   /** Lotti-Erklärung an der schwersten Stelle der Seite. */
   lotti: { titel: string; text: string };
@@ -138,10 +145,11 @@ export const STEUERARTEN: SteuerArt[] = [
     stellschraube: "Der Rat setzt zwei Hebesätze",
     hebesatzArten: ["Grundsteuer B", "Grundsteuer A"],
     punktUnmoeglich:
-      "Was ein Hebesatzpunkt bringt, lässt sich hier nicht überschlagen: Der offene "
+      "Was ein Hebesatzpunkt bringt, steht hier nicht als glatte Zahl: Der offene "
       + "Datensatz führt Grundsteuer A und B in einer Spalte zusammen, die Hebesätze "
-      + "gelten aber getrennt. Wir schätzen die Aufteilung nicht — sobald wir sie "
-      + "belegen können, steht die Zahl hier.",
+      + "gelten aber getrennt. Das Haushalts-Labor rechnet den Überschlag mit der "
+      + "belegten Aufteilung aus dem Realsteuervergleich des Landes — dort steht er, "
+      + "samt Fähnchen, wie groß der Grundsteuer-A-Anteil darin ist.",
     stufen: [
       {
         wer: "Bundestag & Land",
