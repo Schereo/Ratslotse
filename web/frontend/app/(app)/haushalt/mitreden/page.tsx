@@ -35,6 +35,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Abschnitte } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 import { TermineAbschnitt } from "@/components/haushalt/abschnitt-termine";
 import { StreitAbschnitt } from "@/components/haushalt/abschnitt-streit";
 
@@ -59,20 +60,23 @@ function MitredenInner() {
           <span className="font-semibold text-foreground">Mitreden</span>
         </div>
 
-        <div>
-          <SchrittKicker href="/haushalt/mitreden" />
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-            Mitreden
-          </h1>
-          <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
-            Ein Haushalt ist kein Rechenergebnis, sondern ein Kompromiss — und er
-            entsteht in öffentlichen Sitzungen. Hier steht, wann darüber entschieden
-            wird und worüber die Fraktionen gestritten haben. Selbst an den
-            Stellschrauben drehen kannst du danach im{" "}
-            <Link href="/haushalt/labor" className="font-semibold text-primary">
-              Haushalts-Labor
-            </Link>.
-          </p>
+        <div className="flex items-start justify-between gap-5">
+          <div className="min-w-0">
+            <SchrittKicker href="/haushalt/mitreden" />
+            <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
+              Mitreden
+            </h1>
+            <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
+              Ein Haushalt ist kein Rechenergebnis, sondern ein Kompromiss — und er
+              entsteht in öffentlichen Sitzungen. Hier steht, wann darüber entschieden
+              wird und worüber die Fraktionen gestritten haben. Selbst an den
+              Stellschrauben drehen kannst du danach im{" "}
+              <Link href="/haushalt/labor" className="font-semibold text-primary">
+                Haushalts-Labor
+              </Link>.
+            </p>
+          </div>
+          <SchrittZeichen href="/haushalt/mitreden" />
         </div>
 
         <Abschnitte marken={MARKEN} />

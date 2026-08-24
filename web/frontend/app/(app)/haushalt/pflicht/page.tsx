@@ -59,6 +59,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 
 const STUFEN: PflichtStufe[] = ["pflicht", "spielraum", "freiwillig"];
 const QUELLEN: QuellenSchluessel[] = ["plan", "teilhaushalt"];
@@ -215,13 +216,16 @@ export default function PflichtPage() {
         <span className="font-semibold text-foreground">Muss oder kann?</span>
       </div>
 
-      <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[25px]">Muss oder kann?</h1>
-        <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
-          Über einen großen Teil des Haushalts kann der Rat gar nicht frei entscheiden — Bundes-
-          und Landesgesetze schreiben die Aufgaben vor. Hier steht, welcher Bereich wie viel
-          Spielraum lässt, und wie die Stadt selbst das sieht.
-        </p>
+      <div className="flex items-start justify-between gap-5">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[25px]">Muss oder kann?</h1>
+          <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
+            Über einen großen Teil des Haushalts kann der Rat gar nicht frei entscheiden — Bundes-
+            und Landesgesetze schreiben die Aufgaben vor. Hier steht, welcher Bereich wie viel
+            Spielraum lässt, und wie die Stadt selbst das sieht.
+          </p>
+        </div>
+        <SchrittZeichen href="/haushalt/pflicht" />
       </div>
 
       {/* Die Antwort im ersten Bild: der ganze Ausgabenplan in drei Teilen. */}

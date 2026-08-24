@@ -45,6 +45,7 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 
 const QUELLEN = ["lsn_finanzausgleich", "lsn_realsteuern", "vergleich_2018"] as const;
 
@@ -167,18 +168,21 @@ export default function VergleichSeite() {
   return (
     <Quellenkontext schluessel={[...QUELLEN]}>
       <div className="flex flex-col gap-4">
-        <div className="min-w-0">
-          <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Stadtfinanzen Oldenburg · Einordnung
-          </p>
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-            Steht Oldenburg besser da als Osnabrück?
-          </h1>
-          <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
-            Bei den Steuern lässt sich das beantworten. Bei den Ausgaben nicht — und
-            das liegt nicht an fehlenden Zahlen, sondern daran, was sie messen.
-            Beides steht auf dieser Seite.
-          </p>
+        <div className="flex items-start justify-between gap-5">
+          <div className="min-w-0">
+            <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Stadtfinanzen Oldenburg · Einordnung
+            </p>
+            <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
+              Steht Oldenburg besser da als Osnabrück?
+            </h1>
+            <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
+              Bei den Steuern lässt sich das beantworten. Bei den Ausgaben nicht — und
+              das liegt nicht an fehlenden Zahlen, sondern daran, was sie messen.
+              Beides steht auf dieser Seite.
+            </p>
+          </div>
+          <SchrittZeichen href="/haushalt/vergleich" />
         </div>
 
         {/* --- Teil 1: Was sich vergleichen lässt --- */}

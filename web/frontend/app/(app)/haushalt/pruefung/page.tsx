@@ -21,6 +21,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Abschnitte } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 import { PruefungAbschnitt } from "@/components/haushalt/abschnitt-pruefung";
 import { KennzahlenAbschnitt } from "@/components/haushalt/abschnitt-kennzahlen";
 
@@ -48,19 +49,22 @@ function PruefungInner() {
           <span className="font-semibold text-foreground">Geprüft und zusammengefasst</span>
         </div>
 
-        <div>
-          <SchrittKicker href="/haushalt/pruefung" />
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-            Geprüft und zusammengefasst
-          </h1>
-          <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
-            Jeder Jahresabschluss wird von einer eigenen Stelle geprüft, die dem Rat
-            berichtet und nicht der Verwaltungsspitze untersteht. Und am Ende jedes
-            Rechenschaftsberichts fasst die Stadt denselben Abschluss selbst in
-            dreizehn Kennzahlen zusammen. Beides gehört nebeneinander: Die Kennzahlen
-            sagen, wie die Stadt dasteht — die Feststellungen, wie verlässlich diese
-            Auskunft ist.
-          </p>
+        <div className="flex items-start justify-between gap-5">
+          <div className="min-w-0">
+            <SchrittKicker href="/haushalt/pruefung" />
+            <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
+              Geprüft und zusammengefasst
+            </h1>
+            <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
+              Jeder Jahresabschluss wird von einer eigenen Stelle geprüft, die dem Rat
+              berichtet und nicht der Verwaltungsspitze untersteht. Und am Ende jedes
+              Rechenschaftsberichts fasst die Stadt denselben Abschluss selbst in
+              dreizehn Kennzahlen zusammen. Beides gehört nebeneinander: Die Kennzahlen
+              sagen, wie die Stadt dasteht — die Feststellungen, wie verlässlich diese
+              Auskunft ist.
+            </p>
+          </div>
+          <SchrittZeichen href="/haushalt/pruefung" />
         </div>
 
         <Abschnitte marken={MARKEN} />

@@ -61,6 +61,7 @@ import {
 } from "@/components/haushalt/nachbewilligungen";
 import { cn } from "@/lib/utils";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 
 /** Hinweis auf die Prüfung — hier und nirgends sonst, weil das
  *  Rechnungsprüfungsamt genau diesen Vergleich seit Jahren beanstandet:
@@ -321,14 +322,17 @@ function PlanIstInner() {
         <span className="font-semibold text-foreground">Geplant und geworden</span>
       </div>
 
-      <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[25px]">
-          Geplant und geworden
-        </h1>
-        <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
-          Ein Haushalt ist ein Plan. Was am Jahresende wirklich zusammenkam, steht erst im
-          Jahresabschluss — hier beides nebeneinander.
-        </p>
+      <div className="flex items-start justify-between gap-5">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[25px]">
+            Geplant und geworden
+          </h1>
+          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
+            Ein Haushalt ist ein Plan. Was am Jahresende wirklich zusammenkam, steht erst im
+            Jahresabschluss — hier beides nebeneinander.
+          </p>
+        </div>
+        <SchrittZeichen href="/haushalt/plan-ist" />
       </div>
 
       {/* Jahr-Umschalter: nur Jahre mit echtem Abschluss (scrollbar wie #497). */}

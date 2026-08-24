@@ -48,6 +48,7 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 
 const QUELLEN = ["stellenplan"] as const;
 
@@ -153,7 +154,10 @@ export default function PersonalPage() {
   return (
     <Quellenkontext schluessel={[...QUELLEN]} jahr={aktJahr}>
       <div className="flex flex-col gap-4">
-        <div className="flex items-end justify-between gap-5">
+        {/* items-start statt items-end (24.08.): Rechts steht jetzt das
+            Schritt-Zeichen über dem Quelle-Knopf — die Spalte ist so hoch wie
+            der Text, eine Unterkanten-Ausrichtung hätte nichts mehr zu tun. */}
+        <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
             <SchrittKicker href="/haushalt/personal" />
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
@@ -164,12 +168,15 @@ export default function PersonalPage() {
               legt der Rat mit dem Haushalt fest — im Stellenplan, Zeile für Zeile.
             </p>
           </div>
-          {quelleUrl && (
-            <a href={quelleUrl} target="_blank" rel="noopener noreferrer"
-              className="hidden flex-none items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-primary shadow-sm desk:inline-flex">
-              <FileText className="h-3.5 w-3.5" /> Quelle öffnen
-            </a>
-          )}
+          <div className="flex flex-none flex-col items-end gap-2.5">
+            <SchrittZeichen href="/haushalt/personal" />
+            {quelleUrl && (
+              <a href={quelleUrl} target="_blank" rel="noopener noreferrer"
+                className="hidden flex-none items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-primary shadow-sm desk:inline-flex">
+                <FileText className="h-3.5 w-3.5" /> Quelle öffnen
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Das tragende Bild (H3-01): Waffel links, Jahrgangs-Paare rechts —

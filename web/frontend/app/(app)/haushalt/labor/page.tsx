@@ -29,6 +29,7 @@ import type { ProgrammDaten } from "@/lib/haushalt-investitionsprogramm";
 import type { SchuldenDaten } from "@/lib/haushalt-schulden";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Labor } from "@/components/haushalt/labor";
 
@@ -83,14 +84,17 @@ export default function LaborPage() {
         <span className="font-semibold text-foreground">Haushalts-Labor</span>
       </div>
 
-      <div>
-        <SchrittKicker href="/haushalt/labor" />
-        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">Haushalts-Labor</h1>
-        <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
-          Was passiert, wenn der Rat an den Stellschrauben dreht? Drei Werkbänke, jede mit
-          ihrer eigenen Zielgröße — zum Ausprobieren. Das ist eine Rechnung zum Verstehen,
-          kein Vorschlag und schon gar kein Beschluss.
-        </p>
+      <div className="flex items-start justify-between gap-5">
+        <div className="min-w-0">
+          <SchrittKicker href="/haushalt/labor" />
+          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">Haushalts-Labor</h1>
+          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
+            Was passiert, wenn der Rat an den Stellschrauben dreht? Drei Werkbänke, jede mit
+            ihrer eigenen Zielgröße — zum Ausprobieren. Das ist eine Rechnung zum Verstehen,
+            kein Vorschlag und schon gar kein Beschluss.
+          </p>
+        </div>
+        <SchrittZeichen href="/haushalt/labor" />
       </div>
 
       <Labor

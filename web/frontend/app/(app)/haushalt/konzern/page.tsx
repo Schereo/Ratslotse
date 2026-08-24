@@ -31,6 +31,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Abschnitte } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 import { KonzernAbschnitt } from "@/components/haushalt/abschnitt-konzern";
 import { GesellschaftenAbschnitt } from "@/components/haushalt/abschnitt-gesellschaften";
 import { BetriebeAbschnitt } from "@/components/haushalt/abschnitt-betriebe";
@@ -82,18 +83,21 @@ function KonzernSeiteInner() {
           <span className="font-semibold text-foreground">Die ganze Stadt</span>
         </div>
 
-        <div>
-          <SchrittKicker href="/haushalt/konzern" />
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-            Und ist das die ganze Stadt?
-          </h1>
-          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
-            Nein. Der Haushalt zeigt die Verwaltung. Klinikum, Busse, Bäder und die
-            städtischen Gebäude führen eigene Bücher. Hier stehen sie: erst in einer
-            gemeinsamen Rechnung, dann einzeln mit ihrem Auftrag, dann mit dem, was sie
-            sich fürs Jahr vornehmen — und zuletzt das, was davon als Gebühr bei Ihnen
-            ankommt.
-          </p>
+        <div className="flex items-start justify-between gap-5">
+          <div className="min-w-0">
+            <SchrittKicker href="/haushalt/konzern" />
+            <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
+              Und ist das die ganze Stadt?
+            </h1>
+            <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
+              Nein. Der Haushalt zeigt die Verwaltung. Klinikum, Busse, Bäder und die
+              städtischen Gebäude führen eigene Bücher. Hier stehen sie: erst in einer
+              gemeinsamen Rechnung, dann einzeln mit ihrem Auftrag, dann mit dem, was sie
+              sich fürs Jahr vornehmen — und zuletzt das, was davon als Gebühr bei Ihnen
+              ankommt.
+            </p>
+          </div>
+          <SchrittZeichen href="/haushalt/konzern" />
         </div>
 
         <Abschnitte marken={MARKEN} />
