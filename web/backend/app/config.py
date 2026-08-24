@@ -15,9 +15,17 @@ class Settings(BaseSettings):
 
     # Auth
     web_jwt_secret: str = "dev-insecure-change-me"
-    access_token_expire_minutes: int = 60 * 24  # 1 day (web cookie sessions)
+    # Laufzeit des Sitzungs-Cookies. Lang, weil die Sitzung sich bei Nutzung
+    # still verlängert (app/session.py) — wer die Seite regelmäßig benutzt,
+    # bleibt angemeldet; wer sie ein Vierteljahr nicht anfasst, meldet sich neu
+    # an. Widerruf läuft unabhängig davon über token_version.
+    access_token_expire_minutes: int = 60 * 24 * 90  # 90 Tage
+    # Ab wann verlängert wird: sobald weniger als so viel Restlaufzeit übrig
+    # ist. Die Hälfte der Laufzeit heißt „höchstens ein Set-Cookie alle 45
+    # Tage" — danach ist das Token wieder frisch. 0 schaltet die Verlängerung ab.
+    session_renew_within_minutes: int = 60 * 24 * 45  # 45 Tage
     # Native-app clients (Capacitor) store the JWT in secure device storage and
-    # can't rely on silent cookie refresh, so they get a much longer-lived token.
+    # can't rely on cookies at all; they refresh it on every /auth/me instead.
     # Revocation still works via token_version (bumped on password change/reset).
     app_access_token_expire_minutes: int = 60 * 24 * 90  # 90 days
     # This address becomes admin once it registers AND confirms its email — and

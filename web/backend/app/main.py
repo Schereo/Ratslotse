@@ -16,6 +16,7 @@ from pathlib import Path
 
 from .config import get_settings
 from .routers import account, admin, auth, auth_apple, council, feedback, onboarding, push, quiz, social, topics, badges
+from .session import SitzungsVerlaengerung
 
 logger = logging.getLogger("nwz.web.main")
 
@@ -154,6 +155,9 @@ app = FastAPI(
 
 # Only trust proxy headers forwarded from localhost (nginx/gunicorn on the same host).
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["127.0.0.1", "::1"])
+
+# Stille Sitzungsverlängerung: Wer die Seite benutzt, bleibt angemeldet.
+app.add_middleware(SitzungsVerlaengerung)
 
 app.add_middleware(
     CORSMiddleware,

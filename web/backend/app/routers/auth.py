@@ -24,6 +24,7 @@ from ..schemas import (
     VerifyEmailRequest,
 )
 from ..security import DUMMY_PASSWORD_HASH, create_access_token, hash_password, verify_password
+from ..session import clear_session_cookie, set_session_cookie
 
 # Email-verification links stay valid for 24h (more forgiving than the 1h reset link).
 _VERIFY_TTL_HOURS = 24
@@ -31,8 +32,6 @@ _VERIFY_TTL_HOURS = 24
 logger = logging.getLogger("nwz.web.auth")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-
-COOKIE_NAME = "access_token"
 
 # Ops-Hinweis für Deployments ohne E-Mail-Versand (dort gibt es keinen
 # Bestätigungslink, über den sich der erste Admin selbst freischalten könnte).
@@ -129,17 +128,7 @@ def _notify_admins_registration(new_email: str) -> None:
 
 
 def _set_auth_cookie(response: Response, user: dict) -> None:
-    settings = get_settings()
-    token = create_access_token(user["id"], user.get("token_version", 0))
-    response.set_cookie(
-        key=COOKIE_NAME,
-        value=token,
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60,
-        path="/",
-    )
+    set_session_cookie(response, create_access_token(user["id"], user.get("token_version", 0)))
 
 
 def _is_app_client(request: Request) -> bool:
@@ -255,14 +244,20 @@ def login(
 
 @router.post("/logout")
 def logout(response: Response) -> dict:
-    settings = get_settings()
-    response.delete_cookie(COOKIE_NAME, path="/", httponly=True, secure=settings.cookie_secure, samesite="lax")
+    clear_session_cookie(response)
     return {"ok": True}
 
 
 @router.get("/me", response_model=UserOut)
-def me(user: dict = Depends(get_current_user)) -> UserOut:
-    return _to_out(user)
+def me(request: Request, user: dict = Depends(get_current_user)) -> UserOut:
+    """Das aktuelle Konto — und für die App gleich ein frisches Token.
+
+    Die App fragt diesen Endpunkt bei jedem Start. Das Token, das sie dabei
+    zurückbekommt, läuft wieder die volle Laufzeit — wer die App benutzt,
+    bleibt also angemeldet. Das Gegenstück zur stillen Cookie-Verlängerung im
+    Browser (``app/session.py``), die für Bearer-Clients nicht funktioniert.
+    """
+    return _to_out(user, _app_access_token(request, user))
 
 
 def _send_reset_email(email: str, raw_token: str) -> None:
