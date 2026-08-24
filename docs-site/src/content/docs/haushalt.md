@@ -53,7 +53,7 @@ genau dieser Reihenfolge.
 | `/haushalt/schulden` | Schritt 10 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
 | `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 11 — „Mitreden", zwei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten der Fraktionen mit Abstimmungsergebnis, die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung |
-| `/haushalt/labor` | Schritt 12 — das Haushalts-Labor: Was-wäre-wenn mit Hebesatz-Regler und Kürzungen der freiwilligen Leistungen, gegen den Plan des laufenden Jahres gerechnet |
+| `/haushalt/labor` | Schritt 12 — das Haushalts-Labor, drei Werkbänke mit je eigener Zielgröße: **Einnahmen** (Gewerbesteuer-Hebesatz mit mitlaufender Städte-Leiter und eigener Treppe seit 1980, Grundsteuer B mit belegter LSN-Aufteilung, Hundesteuer, Gebühren als absichtlich gesperrte Schraube), **Ausgaben** (freiwillige Teilhaushalte), **Investitionen & Finanzierung** (Vorhaben-Schalter aus Anlage 004, Kredit-Schalter mit gezahlter Zins-Spanne). Ergebnis-Spalte mit Lücken-Balken, Rücklagen-Pfad über die Finanzplanungsjahre samt Kipp-Jahr und Finanzausgleichs-Spanne aus den echten Ausgleichsjahren |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
 | `/haushalt/steuer?art=<slug>` | Steckbrief je Einnahmeart: „Wer entscheidet was", Ist-Kurve, Hebesatz, Ein-Punkt-Überschlag |

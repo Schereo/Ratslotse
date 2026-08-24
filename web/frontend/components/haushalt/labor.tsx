@@ -1,82 +1,70 @@
 "use client";
 
-// Haushalts-Labor (Design H-19, zweite Runde nach Tims Befund 16.08.:
-// „random Slider mit irgendwelchen Zahlen ohne Referenz").
+// Haushalts-Labor 2.0 (Entwürfe vom 24.08.2026, Tims Freigabe: „so bauen“).
 //
-// Die Rechnung war schon vorher ehrlich, aber bezugslos: Man zog an einem
-// Regler und eine Zahl änderte sich — ohne Maßstab, ohne Gefühl dafür, ob das
-// viel ist. Diese Runde ergänzt vier Bezugsgrößen, alle aus echten Daten:
+// AUS ZWEI REGLERN WERDEN DREI WERKBÄNKE. Das Labor von Runde 2 hatte genau
+// zwei Stellschrauben und war nach einem Zug durchgespielt — für ein Werkzeug
+// mit eigener Adresse (Schritt 12 seit #707) zu wenig Werkstatt. Jetzt:
 //
-//  1. **Die Lücke als Balken.** Jede Bewegung füllt sichtbar einen Anteil des
-//     Minus — „7 % geschlossen" sagt mehr als „66,0 statt 71,1".
-//  2. **Wirkung je Regler**, in drei Einheiten: Millionen, Euro je Einwohner
-//     und Anteil an der Lücke. Beim Hebesatz zusätzlich, was ein Betrieb mit
-//     100.000 € Gewerbeertrag zahlt (Messzahl 3,5 % ist Bundesrecht).
-//  3. **Was für den Betrag sonst im Haushalt steht** — übersetzt in echte
-//     Produkte aus den Teilhaushalts-Plänen (#500): „so viel wie die gesamte
-//     Kulturgutvermittlung".
-//  4. **Der Plan gegen den Jahresabschluss.** In allen fünf vorliegenden
-//     Jahren fiel das Ergebnis besser aus als geplant — ohne diesen Anker
-//     wirkt das Minus wie eine feststehende Tatsache.
+//   * **Einnahmen** — Gewerbesteuer (mit Städte-Leiter und eigener Historie),
+//     Grundsteuer B (neu, mit belegter Aufteilung), Hundesteuer (neu, als
+//     Anti-Stammtisch-Regler), Gebühren als absichtlich gesperrte Schraube.
+//   * **Ausgaben** — die freiwilligen Teilhaushalte, unverändert.
+//   * **Investitionen & Finanzierung** — Vorhaben-Schalter und der
+//     Kredit-Schalter; bewusst mit EIGENEN Zielgrößen (Kasse, Schulden),
+//     weil Investitionen die Ergebnis-Lücke fast nicht bewegen. Ihre
+//     Schalter rechnen deshalb NICHT in den Lücken-Balken hinein.
 //
-// UNVERÄNDERTE REGELN aus Runde 1:
-//  1. Nur Regler, für die es echte Zahlen gibt (keine Grundsteuer — das
-//     Portal führt A und B in einer Spalte).
-//  2. „Was dagegen rechnet" ist immer sichtbar, nicht ausklappbar.
-//  3. Der Finanzausgleichs-Dämpfer wird NICHT als fester Faktor verrechnet.
+// Der ZUSTAND aller Werkbänke liegt hier, nicht in den Panels: Wer die
+// Werkbank wechselt, verliert nichts (die Panels werden unmontiert — die
+// Lehre aus #705 gilt auch innerhalb einer Seite).
 //
-// NEUE REGEL dieser Runde: Die Produktzahlen sind ein **Vergleich**, keine
-// Rechengrundlage. Sie stammen aus dem jüngsten auslesbaren Teilhaushaltsplan
-// (2023), die Simulation rechnet mit dem aktuellen Planjahr — beides zu
-// vermischen wäre eine Zahl, die es nirgends gibt.
+// NEU IN DER ERGEBNIS-SPALTE:
+//   * Der **Rücklagen-Pfad**: „reicht rechnerisch 2,7 Jahre“ wird eine Kurve
+//     über die Planjahre mit Kipp-Jahr — aus den Jahresergebnissen des
+//     Gesamtergebnishaushalts (Entwurf!), die eigene Wirkung konstant
+//     fortgeschrieben. Ohne diese Reihe fällt die Karte auf die alte
+//     Reichweiten-Rechnung zurück.
+//   * Die **Dämpfer-Spanne**: Der Finanzausgleich wird weiter NICHT
+//     verrechnet (Regel seit Runde 1) — aber die Unsicherheit wird gezeigt,
+//     als Spanne aus den echten Ausgleichsjahren statt als Fußnote.
 //
-// AUFBAU (seit 17.08.): Oben zwei Spalten — links, woran man dreht, rechts,
-// was dabei herauskommt. Darunter über die volle Breite, was das Ergebnis
-// einordnet. Vorher standen auch die beiden Einordnungs-Karten in der
-// 330-px-Spalte; sie machten die Rail dreimal so lang wie die Regler daneben
-// (gemessen 1.455 gegen 656 px Inhalt) und ließen links 794 × 823 px weiß.
-// Die Trennlinie ist nicht die Höhe, sondern die Rolle: In die Rail gehört,
-// was sich bei jedem Reglerzug mitbewegt — sonst nichts.
+// UNVERÄNDERTE REGELN:
+//  1. Nur Regler, für die es echte Zahlen gibt — fehlt eine Reihe,
+//     verschwindet der Regler, statt mit einer Schätzung zu rechnen.
+//  2. „Was dagegen rechnet“ ist immer sichtbar, nicht ausklappbar.
+//  3. Produktzahlen und Städtewerte sind Vergleich, nie Rechengrundlage.
+//
+// AUFBAU: Werkbank-Wahl und Szenario-Chips über die volle Breite, darunter
+// links das aktive Panel, rechts die Ergebnis-Spalte (330 px, klebend). Auf
+// Mobil klebt die kompakte Ergebnis-Karte über der Tab-Leiste (H4-16) —
+// dieselbe Mechanik wie bisher, Andockkante `TABLEISTE_HOEHE`.
 
 import { useMemo, useState, type CSSProperties } from "react";
-import Link from "next/link";
 import { RotateCcw } from "lucide-react";
 import { TABLEISTE_HOEHE } from "@/components/nav";
 import {
   HaushaltAuswahl, PLAN_ART_LABEL, Produkt, RUECKLAGE_MIO, bereiche, deMio,
-  jahreSortiert, mio, naechstesProdukt, planGegenIst, summe,
-  type HebesatzZeile,
+  jahreSortiert, mio, planGegenIst, summe,
 } from "@/lib/haushalt";
 import { PFLICHT_ZUORDNUNG } from "@/lib/haushalt-pflicht";
+import {
+  daempferSpanne, grundsteuerAnteilA, hebesatzHeute, letzterSteuerbetrag,
+  planjahrErgebnisse, ruecklagenPfad, staedteHebesaetze,
+} from "@/lib/haushalt-labor";
+import type { VergleichDaten } from "@/lib/haushalt-vergleich";
+import type { ProgrammDaten } from "@/lib/haushalt-investitionsprogramm";
+import type { SchuldenDaten } from "@/lib/haushalt-schulden";
 import { Beleg } from "@/components/haushalt/quelle";
-import { Regler } from "@/components/haushalt/regler";
+import { EinnahmenWerkbank } from "@/components/haushalt/labor-einnahmen";
+import { AusgabenWerkbank } from "@/components/haushalt/labor-ausgaben";
+import { InvestWerkbank } from "@/components/haushalt/labor-invest";
+import { RuecklagenPfadGrafik } from "@/components/haushalt/ruecklagen-pfad";
 import { cn } from "@/lib/utils";
 
-/** Der geltende Gewerbesteuer-Hebesatz kommt aus den DATEN, nicht aus einer
- *  Konstante.
- *
- *  Hier stand bis zum 21.08.2026 `const GEWST_HEBESATZ = 439`. Die Zahl war
- *  richtig — die Reihe der Hebesätze führt 439 % seit 2015, auch für 2025 —,
- *  aber sie war eine Behauptung: Die Seite nannte `hebesaetze` als Quelle,
- *  holte die Daten gar nicht und hätte still eine veraltete Zahl gezeigt,
- *  sobald der Rat den Satz ändert. Gefunden hat das der Wächter
- *  `test_keine_quelle_ohne_zahl`: eine Quelle im Verzeichnis, auf die keine
- *  Zahl der Seite zeigt.
- *
- *  Fehlt die Reihe, gibt es keinen Ersatzwert — dann verschwindet der Regler
- *  lieber, als mit einer geratenen Ausgangslage zu rechnen. */
-function hebesatzHeute(zeilen: HebesatzZeile[] | undefined): number | null {
-  const gew = (zeilen ?? [])
-    .filter((z) => z.art === "Gewerbesteuer" && z.hebesatz != null)
-    .sort((a, b) => a.jahr - b.jahr);
-  return gew.length ? gew[gew.length - 1].hebesatz : null;
-}
-/** Steuermesszahl nach § 11 GewStG — bundesweit gleich, nicht unsere Annahme. */
-const MESSZAHL = 0.035;
-/** Beispielbetrieb wie im Steuer-Steckbrief — dieselbe Zahl an beiden Stellen. */
-const BEISPIEL_GEWINN = 100_000;
 const MAX_KUERZUNG = 30;
 const MAX_PUNKTE = 50;
+const MAX_HUNDE = 100;
 
 function eur(v: number): string {
   return v.toLocaleString("de-DE", { maximumFractionDigits: 0 });
@@ -131,7 +119,7 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
               {/* Jahrgänge, deren „geplant" nicht der nackte Ansatz ist,
                   tragen ein Sternchen — die Fußnote sagt, was gemeint ist. */}
               <span className="w-2 text-left text-muted-foreground">
-                {r.planArt !== "ansatz" ? "*" : " "}
+                {r.planArt !== "ansatz" ? "*" : " "}
               </span>
             </span>
           </div>
@@ -163,15 +151,31 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
   );
 }
 
-export function Labor({ daten, produkte, produktJahr }: {
+type Werkbank = "einnahmen" | "ausgaben" | "invest";
+
+const WERKBAENKE: { id: Werkbank; nr: number; titel: string; zielgroesse: string }[] = [
+  { id: "einnahmen", nr: 1, titel: "Einnahmen", zielgroesse: "Zielgröße: die Lücke" },
+  { id: "ausgaben", nr: 2, titel: "Ausgaben", zielgroesse: "Zielgröße: die Lücke" },
+  { id: "invest", nr: 3, titel: "Investitionen & Finanzierung", zielgroesse: "Zielgröße: Kasse & Schulden" },
+];
+
+export function Labor({ daten, produkte, produktJahr, vergleich, programm, schulden }: {
   daten: HaushaltAuswahl<"jahre" | "steuern" | "steuerkraft" | "einwohner"
-    | "ergebnisrechnung" | "hebesaetze">;
+    | "ergebnisrechnung" | "hebesaetze" | "ergebnishaushalt" | "gebuehren"
+    | "haushaltssatzung">;
   produkte: Produkt[];
   produktJahr: number | null;
+  vergleich: VergleichDaten | null;
+  programm: ProgrammDaten | null;
+  schulden: SchuldenDaten | null;
 }) {
+  const [werkbank, setWerkbank] = useState<Werkbank>("einnahmen");
   const [punkte, setPunkte] = useState(0);
+  const [grundstPunkte, setGrundstPunkte] = useState(0);
+  const [hundePct, setHundePct] = useState(0);
   const [kuerzung, setKuerzung] = useState<Record<string, number>>({});
-  const GEWST_HEBESATZ = hebesatzHeute(daten.hebesaetze?.zeilen);
+  const [vorhabenAus, setVorhabenAus] = useState<Record<string, boolean>>({});
+  const [kredit, setKredit] = useState(false);
 
   const basis = useMemo(() => {
     const jahre = jahreSortiert(daten);
@@ -180,24 +184,39 @@ export function Labor({ daten, produkte, produktJahr }: {
     const g = summe(zeilen);
     const defizit = g?.ertraege != null && g?.aufwendungen != null
       ? mio(g.aufwendungen - g.ertraege) ?? 0 : 0;
-    const gewst = daten.steuern
-      .filter((s) => s.art === "Gewerbesteuer (-umlage)" && s.betrag)
-      .sort((a, b) => a.jahr - b.jahr).at(-1);
     const freiwillig = bereiche(zeilen)
       .filter((z) => PFLICHT_ZUORDNUNG[z.bereich]?.stufe === "freiwillig")
       .map((z) => ({ bereich: z.bereich, aus: mio(z.aufwendungen) ?? 0 }))
       .sort((a, b) => b.aus - a.aus);
     const kraft = daten.steuerkraft.filter((k) => k.messzahl != null && k.zuweisungen != null).slice(-2);
-    return { jahr, defizit, gewst, freiwillig, kraft };
+    return { jahr, defizit, freiwillig, kraft };
   }, [daten]);
 
+  // Die Grundlagen der drei Einnahme-Regler — jeder aus seiner Reihe, keiner
+  // ohne (Regel 1). Die Grundsteuer braucht ZWEI Belege zugleich: den
+  // B-Hebesatz UND die Aufteilung des gemeinsamen Aufkommens „A+B“ aus dem
+  // Realsteuervergleich des Landes — fehlt einer, zeigt die Werkbank den
+  // ehrlichen Kasten von früher statt des Reglers.
+  const gewst = hebesatzHeute(daten.hebesaetze?.zeilen, "Gewerbesteuer");
+  const grundst = hebesatzHeute(daten.hebesaetze?.zeilen, "Grundsteuer B");
+  const gewstBetrag = letzterSteuerbetrag(daten.steuern, "Gewerbesteuer (-umlage)");
+  const grundstBetrag = letzterSteuerbetrag(daten.steuern, "Grundsteuer A+B");
+  // Die Zeile „sonstige Steuern“ IST die Hundesteuer — der Abgleich mit
+  // Jahrbuch 1103 beweist es jahrgangsweise (council/steuertabellen.py).
+  const hunde = letzterSteuerbetrag(daten.steuern, "sonstige Steuern");
+  const anteilA = useMemo(() => grundsteuerAnteilA(vergleich), [vergleich]);
+  const staedte = useMemo(
+    () => staedteHebesaetze(vergleich, "hebesatz_gewerbesteuer"), [vergleich]);
+
+  const proPunktGewst = gewstBetrag && gewst ? gewstBetrag.betrag / 1e6 / gewst.satz : 0;
+  const proPunktGrundst = grundstBetrag && grundst && anteilA != null
+    ? (grundstBetrag.betrag * (1 - anteilA)) / 1e6 / grundst.satz : null;
+
   const einwohner = daten.einwohner?.einwohner ?? 0;
-  // Ohne bekannten Hebesatz gibt es keinen Betrag je Punkt — und damit
-  // keinen Regler (s. unten). Nicht 0 als „kein Effekt" behaupten: Die
-  // Division durch den Satz wäre sonst eine durch null.
-  const proPunkt = basis.gewst && GEWST_HEBESATZ
-    ? (basis.gewst.betrag as number) / 1e6 / GEWST_HEBESATZ : 0;
-  const mehrEinnahmen = Math.round(proPunkt * punkte * 10) / 10;
+  const mehrEinnahmen = Math.round(
+    (proPunktGewst * punkte
+      + (proPunktGrundst ?? 0) * grundstPunkte
+      + (hunde ? (hunde.betrag / 1e6) * (hundePct / 100) : 0)) * 10) / 10;
   const gespart = Math.round(
     basis.freiwillig.reduce((s, f) => s + (f.aus * (kuerzung[f.bereich] ?? 0)) / 100, 0) * 10) / 10;
   const wirkung = mehrEinnahmen + gespart;
@@ -206,24 +225,44 @@ export function Labor({ daten, produkte, produktJahr }: {
     ? Math.max(0, Math.min(100, (wirkung / basis.defizit) * 100)) : 0;
   // Was ginge maximal? Beantwortet die Frage, die jeder als zweites stellt.
   const maxWirkung = Math.round(
-    (proPunkt * MAX_PUNKTE
+    (proPunktGewst * MAX_PUNKTE
+      + (proPunktGrundst ?? 0) * MAX_PUNKTE
+      + (hunde ? (hunde.betrag / 1e6) * (MAX_HUNDE / 100) : 0)
       + basis.freiwillig.reduce((s, f) => s + (f.aus * MAX_KUERZUNG) / 100, 0)) * 10) / 10;
+
+  // Der Rücklagen-Pfad über die Planjahre — und sein Vorgänger als Rückfall:
+  // Ohne die Reihe des Gesamtergebnishaushalts bleibt die alte
+  // Reichweiten-Division stehen.
+  const planjahre = useMemo(
+    () => planjahrErgebnisse(daten.ergebnishaushalt), [daten.ergebnishaushalt]);
+  const pfadOhne = planjahre ? ruecklagenPfad(planjahre.reihe, 0) : null;
+  const pfadMit = planjahre ? ruecklagenPfad(planjahre.reihe, wirkung) : null;
+  const daempfer = useMemo(() => daempferSpanne(daten.steuerkraft), [daten.steuerkraft]);
   const reichweiteVorher = basis.defizit > 0 ? RUECKLAGE_MIO / basis.defizit : Infinity;
   const reichweiteNachher = neuesDefizit > 0 ? RUECKLAGE_MIO / neuesDefizit : Infinity;
-  const etwasGeaendert = punkte !== 0 || Object.values(kuerzung).some((v) => v > 0);
+
+  const lueckeGeaendert = punkte !== 0 || grundstPunkte !== 0 || hundePct !== 0
+    || Object.values(kuerzung).some((v) => v > 0);
+  const etwasGeaendert = lueckeGeaendert || kredit
+    || Object.values(vorhabenAus).some(Boolean);
 
   const anteilText = (m: number) =>
     basis.defizit > 0 ? `${Math.round((m / basis.defizit) * 100)} % der Lücke` : "";
   const jeEinwohner = (m: number) =>
     einwohner > 0 ? `${eur((m * 1e6) / einwohner)} € je Einwohner*in` : "";
 
-  const zuruecksetzen = () => { setPunkte(0); setKuerzung({}); };
+  const zuruecksetzen = () => {
+    setPunkte(0); setGrundstPunkte(0); setHundePct(0);
+    setKuerzung({}); setVorhabenAus({}); setKredit(false);
+  };
   const alle = (pct: number) =>
     Object.fromEntries(basis.freiwillig.map((f) => [f.bereich, pct]));
   const szenarien = [
-    { label: "+20 Punkte Hebesatz", punkte: 20, pct: 0 },
-    { label: "10 % weniger für die Kür", punkte: 0, pct: 10 },
-    { label: "Alles auf Anschlag", punkte: MAX_PUNKTE, pct: MAX_KUERZUNG },
+    { label: "+20 Punkte Hebesatz", punkte: 20, grundst: 0, hunde: 0, pct: 0 },
+    { label: "10 % weniger für die Kür", punkte: 0, grundst: 0, hunde: 0, pct: 10 },
+    { label: "Alles auf Anschlag", punkte: MAX_PUNKTE,
+      grundst: proPunktGrundst != null ? MAX_PUNKTE : 0,
+      hunde: hunde ? MAX_HUNDE : 0, pct: MAX_KUERZUNG },
   ];
 
   // Zwei Bausteine, die an verschiedenen Stellen gebraucht werden. Bewusst
@@ -255,7 +294,7 @@ export function Labor({ daten, produkte, produktJahr }: {
           kompakt ? "text-[24px]" : "text-[26px]")}>
           {neuesDefizit > 0 ? deMio(neuesDefizit) : "0,0"}
           <span className="text-sm font-semibold text-muted-foreground">&#8239;Mio.&nbsp;€</span>
-          {etwasGeaendert && (
+          {lueckeGeaendert && (
             <span className="ml-2 align-middle font-sans text-[13px] text-muted-foreground line-through">
               {deMio(basis.defizit)}
             </span>
@@ -263,17 +302,19 @@ export function Labor({ daten, produkte, produktJahr }: {
         </p>
       </div>
 
-      {/* Die Lücke als Balken: was du geschlossen hast, was bleibt. */}
+      {/* Die Lücke als Balken: was du geschlossen hast, was bleibt. Die
+          Breiten sind geklemmt — ein gesenkter Hebesatz füllt keinen
+          negativen Balken, er vergrößert die Zahl darüber. */}
       <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-muted">
         <span className="h-full transition-[width] duration-200"
-          style={{ width: `${basis.defizit > 0 ? (mehrEinnahmen / basis.defizit) * 100 : 0}%`,
+          style={{ width: `${basis.defizit > 0 ? Math.max(0, (mehrEinnahmen / basis.defizit) * 100) : 0}%`,
             background: "var(--hh-ein-0)" }} />
         <span className="h-full transition-[width] duration-200"
-          style={{ width: `${basis.defizit > 0 ? (gespart / basis.defizit) * 100 : 0}%`,
+          style={{ width: `${basis.defizit > 0 ? Math.max(0, (gespart / basis.defizit) * 100) : 0}%`,
             background: "var(--hh-aus-2)" }} />
       </div>
       <p className="mt-1.5 text-[12px] leading-relaxed">
-        {etwasGeaendert ? (
+        {lueckeGeaendert ? (
           <>
             <strong>{Math.round(geschlossen)}&#8239;% der Lücke</strong> geschlossen
             {mehrEinnahmen !== 0 && <> — {deMio(mehrEinnahmen)}&#8239;Mio.&nbsp;€ mehr eingenommen</>}
@@ -287,6 +328,20 @@ export function Labor({ daten, produkte, produktJahr }: {
         )}
       </p>
 
+      {/* Die Dämpfer-Spanne: weiterhin NICHT verrechnet, aber sichtbar —
+          beziffert aus den echten Ausgleichsjahren, kein fester Faktor. */}
+      {!kompakt && mehrEinnahmen > 0 && daempfer && (
+        <p className="mt-2 rounded-lg bg-muted/50 p-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">Nach Finanzausgleich:</strong> Von{" "}
+          {deMio(mehrEinnahmen)}&#8239;Mio.&nbsp;€ mehr Steuerkraft blieben erfahrungsgemäß{" "}
+          <span className="tabular-nums">
+            {deMio(mehrEinnahmen * daempfer.verbleibVon)} bis {deMio(mehrEinnahmen * daempfer.verbleibBis)}
+          </span>&#8239;Mio.&nbsp;€ übrig <Beleg q="steuerkraft" /> — die Spanne aus{" "}
+          {daempfer.paare} Ausgleichsjahren. Verrechnet wird sie nicht: Auch der Landestopf
+          schwankt, die Richtung kann kippen.
+        </p>
+      )}
+
       {!kompakt && rueckhalt()}
     </div>
   );
@@ -297,27 +352,88 @@ export function Labor({ daten, produkte, produktJahr }: {
   const rueckhalt = ({ trenner = true }: { trenner?: boolean } = {}) => (
     <>
       <div className={trenner ? "mt-3 border-t border-border/60 pt-3" : "mt-2"}>
-        <p className="text-[11.5px] text-muted-foreground">Rücklage reicht rechnerisch</p>
-        <p className="font-display text-[20px] font-bold tabular-nums">
-          {reichweiteNachher === Infinity
-            ? "unbegrenzt"
-            : `${reichweiteNachher.toLocaleString("de-DE", { maximumFractionDigits: 1 })} Jahre`}
-          {etwasGeaendert && reichweiteVorher !== Infinity && (
-            <span className="ml-2 align-middle font-sans text-[13px] text-muted-foreground line-through">
-              {reichweiteVorher.toLocaleString("de-DE", { maximumFractionDigits: 1 })}
-            </span>
-          )}
-        </p>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> geteilt durch das Minus —
-          unsere Rechnung, keine Prognose der Stadt.
-        </p>
+        {pfadOhne && pfadMit ? (
+          <>
+            <p className="text-[11.5px] text-muted-foreground">
+              {kredit ? "Rücklage bliebe stehen" : "Rücklage kippt rechnerisch"}
+            </p>
+            {kredit ? (
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                Liefe das Minus über Kredite, bliebe die Rücklage stehen — dafür wüchse
+                der Schuldenstand Jahr für Jahr, und Zinsen kämen ins Minus dazu. Die
+                Zahlen dahinter stehen in der Werkbank „Investitionen &amp; Finanzierung“.
+              </p>
+            ) : (
+              <>
+                <p className="font-display text-[20px] font-bold tabular-nums">
+                  {pfadMit.kippjahr != null ? (
+                    <>
+                      {pfadMit.kippjahr}
+                      {/* Der Durchgestrichene nur, wenn sich wirklich etwas
+                          verschiebt — „2028 statt 2028“ wäre Rauschen. */}
+                      {pfadOhne.kippjahr != null && pfadOhne.kippjahr !== pfadMit.kippjahr && (
+                        <span className="ml-2 align-middle font-sans text-[13px] text-muted-foreground line-through">
+                          {pfadOhne.kippjahr}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>nicht bis {pfadMit.letztesPlanjahr}</>
+                  )}
+                </p>
+                <RuecklagenPfadGrafik ohne={pfadOhne} mit={pfadMit} />
+                <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-[2px] w-3.5 rounded-full" style={{ background: "var(--hh-aus-4)" }} />
+                    ohne Änderung
+                  </span>
+                  {lueckeGeaendert && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-[2.5px] w-3.5 rounded-full bg-primary" />
+                      dein Szenario
+                    </span>
+                  )}
+                </p>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                  {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> gegen die
+                  Jahresergebnisse der Planjahre <Beleg q="ergebnishaushalt" /> — Entwurf der
+                  Verwaltung, Finanzplanung nach §&nbsp;8 NKomVG, deine Wirkung konstant
+                  fortgeschrieben. Hinter {pfadMit.letztesPlanjahr} liegen keine Planzahlen.
+                  Unsere Rechnung, keine Prognose der Stadt.
+                </p>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="text-[11.5px] text-muted-foreground">Rücklage reicht rechnerisch</p>
+            <p className="font-display text-[20px] font-bold tabular-nums">
+              {reichweiteNachher === Infinity
+                ? "unbegrenzt"
+                : `${reichweiteNachher.toLocaleString("de-DE", { maximumFractionDigits: 1 })} Jahre`}
+              {lueckeGeaendert && reichweiteVorher !== Infinity && (
+                <span className="ml-2 align-middle font-sans text-[13px] text-muted-foreground line-through">
+                  {reichweiteVorher.toLocaleString("de-DE", { maximumFractionDigits: 1 })}
+                </span>
+              )}
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> geteilt durch das Minus —
+              unsere Rechnung, keine Prognose der Stadt.
+              {/* Der Schlüssel `ergebnishaushalt` gehört zum Pfad oben; im
+                  Rückfall ohne die Reihe bliebe er stumm — deshalb hängt er
+                  hier an der Auskunft, WARUM nur die einfache Division steht. */}
+              {" "}Für den Rücklagen-Pfad fehlt gerade die Planjahres-Reihe des
+              Gesamtergebnishaushalts <Beleg q="ergebnishaushalt" />.
+            </p>
+          </>
+        )}
       </div>
       {maxWirkung < basis.defizit && (
         <p className="mt-3 rounded-lg bg-muted/50 p-2.5 text-[12px] leading-relaxed">
           Mehr als {deMio(maxWirkung)}&#8239;Mio.&nbsp;€ geben diese Regler nicht her — auch mit allen am
           Anschlag blieben {deMio(Math.round((basis.defizit - maxWirkung) * 10) / 10)}&#8239;Mio.&nbsp;€
-          Minus. Ein ausgeglichener Haushalt braucht mehr als diese zwei Stellschrauben.
+          Minus. Ein ausgeglichener Haushalt braucht mehr als Stellschrauben.
         </p>
       )}
     </>
@@ -325,185 +441,107 @@ export function Labor({ daten, produkte, produktJahr }: {
 
   return (
     <div className="@container/labor flex flex-col gap-3">
-      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[1fr_330px] lg:items-start">
-        {/* Regler */}
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-[0.11em] text-muted-foreground">
-              Zum Ausprobieren
+      {/* Die drei Werkbänke — auf schmalen Schirmen eine wischbare Zeile,
+          mit Platz ein Dreierraster. Die Schwelle hängt an der
+          CONTAINER-Breite, nicht am Fenster (Designsprache §4). */}
+      <div className="flex gap-2 overflow-x-auto pb-0.5 @3xl/labor:grid @3xl/labor:grid-cols-3 @3xl/labor:overflow-visible @3xl/labor:pb-0">
+        {WERKBAENKE.map((w) => (
+          <button key={w.id} type="button" aria-pressed={werkbank === w.id}
+            onClick={() => setWerkbank(w.id)}
+            className={cn(
+              "min-w-[190px] shrink-0 rounded-2xl border p-3 text-left transition-colors @3xl/labor:min-w-0",
+              werkbank === w.id
+                ? "border-primary/40 bg-primary/5"
+                : "border-border bg-card hover:border-primary/40",
+            )}>
+            <span className={cn("font-mono text-[9.5px] font-medium uppercase tracking-[0.11em]",
+              werkbank === w.id ? "text-primary" : "text-muted-foreground")}>
+              Werkbank {w.nr}{werkbank === w.id && " · aktiv"}
             </span>
-            {szenarien.map((s) => {
-              const aktiv = punkte === s.punkte
-                && basis.freiwillig.every((f) => (kuerzung[f.bereich] ?? 0) === s.pct);
-              return (
-                <button key={s.label} type="button"
-                  onClick={() => { setPunkte(s.punkte); setKuerzung(alle(s.pct)); }}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-[12px] font-medium transition-colors",
-                    aktiv
-                      ? "border-primary/40 bg-primary/10 text-primary"
-                      : "border-border bg-card text-foreground/80 hover:border-primary/40",
-                  )}>
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
+            <span className="mt-0.5 block font-display text-[14.5px] font-bold leading-snug text-foreground">
+              {w.titel}
+            </span>
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">{w.zielgroesse}</span>
+          </button>
+        ))}
+      </div>
 
-          {/* Einnahmen drehen */}
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Einnahmen drehen
-            </p>
-            {/* Kein Satz, kein Regler: Eine Ausgangslage zu raten wäre in
-                diesem Bereich der schlechtere Tausch (Designsprache: lieber
-                eine Lücke als eine Schätzung). */}
-            {GEWST_HEBESATZ == null ? (
-              <p className="mt-3 rounded-xl border border-dashed border-border p-3 text-[12px] leading-relaxed text-muted-foreground">
-                Für den Gewerbesteuer-Hebesatz liegt uns gerade keine Reihe vor —
-                ohne den geltenden Satz lässt sich nicht ausrechnen, was ein Punkt
-                mehr oder weniger brächte.
-              </p>
-            ) : (
-            <div className="mt-3">
-              <Regler
-                id="gewst"
-                label="Gewerbesteuer-Hebesatz"
-                wert={punkte} min={-MAX_PUNKTE} max={MAX_PUNKTE} step={5}
-                onChange={setPunkte}
-                geaendert={punkte !== 0}
-                ist={{ wert: 0, label: `heute ${GEWST_HEBESATZ} %` }}
-                marken={{ min: `${GEWST_HEBESATZ - MAX_PUNKTE} %`, max: `${GEWST_HEBESATZ + MAX_PUNKTE} %` }}
-                anzeige={
-                  punkte === 0
-                    ? <span className="text-muted-foreground">
-                        {GEWST_HEBESATZ}&nbsp;%<Beleg q="hebesaetze" />
-                      </span>
-                    : <strong className="text-signal">
-                        {GEWST_HEBESATZ + punkte}&nbsp;% ({punkte > 0 ? "+" : ""}{punkte})
-                      </strong>
-                }
-                wirkung={
-                  punkte === 0 ? (
-                    <>Ein Punkt brachte {basis.gewst?.jahr} überschlagen {deMio(proPunkt)}&#8239;Mio.&nbsp;€{" "}
-                    <Beleg q="steuern" /> — bei unveränderten Gewinnen.</>
-                  ) : (
-                    <>
-                      <strong className="text-foreground">
-                        {mehrEinnahmen > 0 ? "+" : ""}{deMio(mehrEinnahmen)}&#8239;Mio.&nbsp;€
-                      </strong>{" "}
-                      · {jeEinwohner(Math.abs(mehrEinnahmen))} · {anteilText(Math.abs(mehrEinnahmen))}
-                      {punkte < 0 && " zusätzlich"}.
-                      <br />
-                      Ein Betrieb mit {eur(BEISPIEL_GEWINN)}&nbsp;€ Gewerbeertrag zahlte statt{" "}
-                      {eur((BEISPIEL_GEWINN * MESSZAHL * GEWST_HEBESATZ) / 100)}&nbsp;€ dann{" "}
-                      <strong>{eur((BEISPIEL_GEWINN * MESSZAHL * (GEWST_HEBESATZ + punkte)) / 100)}&nbsp;€</strong>{" "}
-                      im Jahr — Messzahl 3,5&nbsp;% nach Bundesrecht, ohne Freibetrag.
-                    </>
-                  )
-                }
-              />
-            </div>
-            )}
-            {/* Gegenrichtung zum „Im Labor ausprobieren" des Steckbriefs: Wer
-                hier am Hebesatz dreht, will als Nächstes wissen, wer ihn
-                überhaupt beschließt. */}
-            <Link href="/haushalt/steuer?art=gewerbesteuer"
-              className="mt-2.5 inline-flex text-[12px] font-semibold text-primary">
-              Wer den Hebesatz beschließt →
-            </Link>
-            <div className="mt-4 rounded-xl border border-dashed border-border p-3">
-              <p className="text-[12.5px] font-semibold">Grundsteuer B</p>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                Hier fehlt uns der Betrag je Hebesatzpunkt: Der offene Datensatz führt Grundsteuer A
-                und B in einer Spalte zusammen. Wir schätzen ihn nicht — sobald wir die Aufteilung
-                haben, kommt der Regler dazu.
-              </p>
-            </div>
-          </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="font-mono text-[10px] uppercase tracking-[0.11em] text-muted-foreground">
+          Zum Ausprobieren
+        </span>
+        {szenarien.map((s) => {
+          const aktiv = punkte === s.punkte && grundstPunkte === s.grundst
+            && hundePct === s.hunde
+            && basis.freiwillig.every((f) => (kuerzung[f.bereich] ?? 0) === s.pct);
+          return (
+            <button key={s.label} type="button"
+              onClick={() => {
+                setPunkte(s.punkte); setGrundstPunkte(s.grundst);
+                setHundePct(s.hunde); setKuerzung(alle(s.pct));
+              }}
+              className={cn(
+                "rounded-full border px-3 py-1 text-[12px] font-medium transition-colors",
+                aktiv
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border bg-card text-foreground/80 hover:border-primary/40",
+              )}>
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
 
-            {/* Freiwillige Leistungen */}
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Freiwillige Leistungen kürzen
-            </p>
-            <div className="mt-3 flex flex-col gap-4">
-              {basis.freiwillig.map((f) => {
-                const pct = kuerzung[f.bereich] ?? 0;
-                const betrag = Math.round(f.aus * pct) / 100;
-                const drin = produkte
-                  .filter((p) => p.thh_name === f.bereich && p.ergebnis != null && p.ergebnis < 0)
-                  .slice(0, 3);
-                const vergleich = naechstesProdukt(produkte, betrag, f.bereich);
-                return (
-                  <Regler
-                    key={f.bereich}
-                    id={f.bereich}
-                    label={f.bereich}
-                    wert={pct} min={0} max={MAX_KUERZUNG} step={5}
-                    onChange={(v) => setKuerzung((k) => ({ ...k, [f.bereich]: v }))}
-                    geaendert={pct > 0}
-                    ist={{ wert: 0, label: "heute" }}
-                    marken={{ min: "", max: `−${MAX_KUERZUNG} %` }}
-                    anzeige={
-                      pct === 0
-                        ? <span className="text-muted-foreground">{deMio(f.aus)}&nbsp;Mio.&nbsp;€</span>
-                        : <>
-                            <span className="text-muted-foreground line-through">{deMio(f.aus)}</span>
-                            <strong className="ml-2 text-signal">
-                              {deMio(f.aus - betrag)} (−{pct}&nbsp;%)
-                            </strong>
-                          </>
-                    }
-                    wirkung={
-                      pct === 0 ? (
-                        drin.length > 0 ? (
-                          <>Darin stecken u.&nbsp;a.{" "}
-                          {drin.map((p, i) => (
-                            <span key={p.produkt_nr}>
-                              {i > 0 && ", "}
-                              {p.produkt_name} ({deMio(-(p.ergebnis as number) / 1e6)}&#8239;Mio.&nbsp;€)
-                            </span>
-                          ))}.</>
-                        ) : (
-                          <>{deMio(f.aus)}&#8239;Mio.&nbsp;€ Aufwand im Plan {basis.jahr}.</>
-                        )
-                      ) : (
-                        <>
-                          <strong>{deMio(betrag)}&#8239;Mio.&nbsp;€ weniger</strong> ·{" "}
-                          {jeEinwohner(betrag)} · {anteilText(betrag)}.
-                          {vergleich && (
-                            <> Ungefähr so viel, wie <strong>{vergleich.produkt_name}</strong> im
-                            ganzen Jahr kostet.</>
-                          )}
-                        </>
-                      )
-                    }
-                  />
-                );
-              })}
-            </div>
-            <p className="mt-4 text-[11.5px] leading-relaxed text-muted-foreground">
-              Nur ganze Teilhaushalte, nur prozentual: Welche Einrichtung es träfe, entscheidet kein
-              Regler — und ein Beschluss wäre das ohnehin nicht.
-              {produktJahr && (
-                <> Die einzelnen Aufgaben daneben stammen aus dem Teilhaushaltsplan {produktJahr}{" "}
-                <Beleg q="teilhaushalt" /> — zum Einordnen der Größenordnung, nicht zum Mitrechnen.</>
-              )}
-            </p>
-          </div>
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[1fr_330px] lg:items-start">
+        {/* Das aktive Panel. Der Zustand ALLER Werkbänke liegt oben — ein
+            Wechsel montiert das Panel ab, verliert aber nichts. */}
+        <div className="flex flex-col gap-3">
+          {werkbank === "einnahmen" && (
+            <EinnahmenWerkbank
+              basisJahr={basis.jahr}
+              punkte={punkte} setPunkte={setPunkte}
+              gewst={gewst} proPunktGewst={proPunktGewst}
+              gewstBasisJahr={gewstBetrag?.jahr ?? null}
+              grundstPunkte={grundstPunkte} setGrundstPunkte={setGrundstPunkte}
+              grundst={grundst} proPunktGrundst={proPunktGrundst} anteilA={anteilA}
+              hundePct={hundePct} setHundePct={setHundePct} hunde={hunde}
+              staedte={staedte}
+              historie={(daten.hebesaetze?.zeilen ?? []).filter((z) => z.art === "Gewerbesteuer")}
+              gebuehren={daten.gebuehren}
+              maxPunkte={MAX_PUNKTE}
+              jeEinwohner={jeEinwohner} anteilText={anteilText}
+            />
+          )}
+          {werkbank === "ausgaben" && (
+            <AusgabenWerkbank
+              freiwillig={basis.freiwillig}
+              produkte={produkte} produktJahr={produktJahr} basisJahr={basis.jahr}
+              kuerzung={kuerzung}
+              setKuerzung={(bereich, pct) => setKuerzung((k) => ({ ...k, [bereich]: pct }))}
+              maxKuerzung={MAX_KUERZUNG}
+              jeEinwohner={jeEinwohner} anteilText={anteilText}
+            />
+          )}
+          {werkbank === "invest" && (
+            <InvestWerkbank
+              programm={programm} schulden={schulden}
+              satzung={daten.haushaltssatzung}
+              vorhabenAus={vorhabenAus}
+              toggleVorhaben={(s) => setVorhabenAus((v) => ({ ...v, [s]: !v[s] }))}
+              kredit={kredit} setKredit={setKredit}
+              neuesDefizit={neuesDefizit}
+            />
+          )}
 
           {/* Mobil klebt das Ergebnis am UNTEREN Rand, über der Tab-Leiste
               (H4-16): Das Ergebnis folgt der Bewegung — der Daumen ist unten,
               der Regler in der Mitte, die Wirkung direkt darunter, live bei
-              jedem Zug. Bis 17.08. klebte die Karte oben unter der Kopfzeile
-              und fraß dort ein Drittel des Schirms, bevor der erste Regler
-              überhaupt im Bild war. Als LETZTES Kind der Regler-Spalte klebt
-              sie nur, solange es etwas zu drehen gibt, und legt sich danach an
-              ihren Platz — dieselbe Mechanik wie die Ableseleiste des
-              Baukastens (`.gb-ablese-leiste`); die Andockkante ist
-              `TABLEISTE_HOEHE`, nie eine eigene Zahl (Designsprache § 5).
-              z-30: über der eigenen Spalte, unter Kopf- und Tab-Leiste. */}
+              jedem Zug. Als LETZTES Kind der Regler-Spalte klebt sie nur,
+              solange es etwas zu drehen gibt, und legt sich danach an ihren
+              Platz — dieselbe Mechanik wie die Ableseleiste des Baukastens
+              (`.gb-ablese-leiste`); die Andockkante ist `TABLEISTE_HOEHE`,
+              nie eine eigene Zahl (Designsprache § 5). z-30: über der eigenen
+              Spalte, unter Kopf- und Tab-Leiste. */}
           <div
             className="sticky z-30 lg:hidden"
             style={{ bottom: `calc(${TABLEISTE_HOEHE} + 0.5rem)` } as CSSProperties}
@@ -528,19 +566,12 @@ export function Labor({ daten, produkte, produktJahr }: {
         </div>
       </div>
 
-      {/* DIE ZWEI KONTEXT-KARTEN STANDEN BIS 17.08. IN DER 330-PX-SPALTE und
-          machten sie mehr als doppelt so lang wie die Regler daneben: gemessen
-          1.455 px Inhalt rechts gegen 656 px links — 794 × 823 px weiße Fläche
-          neben zwei Karten, die sich derweil in 330 px quetschten
-          (Designsprache §4, Tims iPad-Befund 16.08.). Beide gehören auch
-          inhaltlich nicht in die Rail: Die Rail zeigt, was sich beim Drehen
-          bewegt, diese beiden stehen fest. Unter dem Ganzen haben sie die
-          volle Breite, und der Plan-Ist-Vergleich wird nebenbei lesbar statt
-          gestapelt. Zwei Spalten, weil sie parallele Einwände sind — man liest
-          sie nebeneinander, nicht nacheinander. Die Schwelle hängt am
-          CONTAINER (`@container/labor`), nicht an der Fensterbreite
-          (Designsprache §4): Am Desktop liegt das Raster neben der
-          Seitenleiste, auf dem iPad nicht. */}
+      {/* DIE ZWEI KONTEXT-KARTEN über die volle Breite: In die Rail gehört,
+          was sich bei jedem Reglerzug mitbewegt — diese beiden stehen fest
+          (Messwerte und Vorgeschichte: Git-Historie dieser Datei, 17.08.).
+          Zwei Spalten, weil sie parallele Einwände sind — man liest sie
+          nebeneinander, nicht nacheinander. Die Schwelle hängt am CONTAINER
+          (`@container/labor`), nicht an der Fensterbreite (Designsprache §4). */}
       <div className="grid gap-3 @3xl/labor:grid-cols-2 @3xl/labor:items-start">
         <PlanIst daten={daten} />
 
@@ -558,18 +589,16 @@ export function Labor({ daten, produkte, produktJahr }: {
             </li>
             <li>
               <strong>Das Land rechnet gegen.</strong> Höhere eigene Steuerkraft senkt die
-              Schlüsselzuweisungen. <Beleg q="steuerkraft" />
+              Schlüsselzuweisungen — wie stark, zeigt die Spanne an der Ergebnis-Karte.
               {basis.kraft.length === 2 && (
                 <>
-                  {" "}Wie stark, schwankt: {basis.kraft[0].jahr} auf {basis.kraft[1].jahr} stieg die
+                  {" "}Zuletzt: {basis.kraft[0].jahr} auf {basis.kraft[1].jahr} stieg die
                   Steuerkraft um {deMio(((basis.kraft[1].messzahl ?? 0) - (basis.kraft[0].messzahl ?? 0)) / 1e6)}
                   &#8239;Mio.&nbsp;€ und die Zuweisung um{" "}
                   {deMio(((basis.kraft[1].zuweisungen ?? 0) - (basis.kraft[0].zuweisungen ?? 0)) / 1e6)}
-                  {/* Vorher stand hier „im Jahr davor sank sie deutlich" — eine
-                      feste Aussage über einen dritten Jahrgang, den basis.kraft
-                      gar nicht führt (dort stehen zwei). Sie stimmte beim
-                      Schreiben und wäre mit dem nächsten Ausgleichsjahr still
-                      falsch geworden. Was immer gilt, ist die Mechanik. */}
+                  {/* Keine feste Aussage über dritte Jahrgänge, die basis.kraft
+                      gar nicht führt — was immer gilt, ist die Mechanik
+                      (Vorgeschichte: Git-Historie dieser Datei). */}
                   &#8239;Mio.&nbsp;€ — die Richtung kann von Jahr zu Jahr wechseln, weil auch der
                   Landestopf schwankt, aus dem das Land verteilt.
                 </>
