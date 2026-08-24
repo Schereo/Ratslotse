@@ -215,14 +215,27 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
     frage: "Wann entschieden wird, worüber gestritten wurde — und was sich drehen ließe.",
     ziele: [
       {
-        // EIN Ziel statt dreier (21.08.2026). „Wann wird das entschieden?",
-        // „Der Streit ums Geld" und das Haushalts-Labor waren drei Schritte
-        // für eine Frage — und zwei davon waren im ganzen Frontend über nichts
-        // als diese Liste erreichbar. Sie stehen jetzt als Abschnitte auf
-        // einer Seite; die Anker führen weiterhin gezielt hin.
+        // EIN Ziel statt zweier (21.08.2026). „Wann wird das entschieden?"
+        // und „Der Streit ums Geld" waren zwei Schritte für eine Frage — und
+        // einer davon war im ganzen Frontend über nichts als diese Liste
+        // erreichbar. Sie stehen jetzt als Abschnitte auf einer Seite; die
+        // Anker führen weiterhin gezielt hin.
         href: "/haushalt/mitreden",
         titel: "Mitreden",
-        text: "Wann entschieden wird, worüber die Fraktionen gestritten haben — und was passiert, wenn man selbst an den Stellschrauben dreht.",
+        text: "Wann entschieden wird — und worüber die Fraktionen gestritten haben.",
+      },
+      {
+        // Das Labor stand vom 21. bis 24.08.2026 als dritter Abschnitt auf
+        // /haushalt/mitreden (#698) und ist wieder ein eigener Schritt: Es
+        // soll deutlich mehr Stellschrauben bekommen, und ein wachsendes
+        // Werkzeug braucht eine eigene Adresse statt eines Abschnitts am Fuß
+        // einer langen Seite. Am Ende des Wegs, wie schon vor #698: An
+        // Stellschrauben zu drehen ist der letzte Schritt, nicht der zweite —
+        // vorher fehlt der Bezug, an dem sich ablesen ließe, ob eine Bewegung
+        // viel ist.
+        href: "/haushalt/labor",
+        titel: "Haushalts-Labor",
+        text: "Selbst an den Stellschrauben drehen und sehen, was das ausmacht.",
       },
     ],
   },

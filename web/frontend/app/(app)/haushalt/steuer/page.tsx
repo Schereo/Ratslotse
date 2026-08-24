@@ -431,7 +431,7 @@ function SteuerInner() {
                 Unternehmen gleich bleiben — steigt der Hebesatz, kann sich auch daran etwas
                 ändern.
               </p>
-              <Link href="/haushalt/mitreden#labor"
+              <Link href="/haushalt/labor"
                 className="mt-2.5 inline-flex text-[12px] font-semibold text-primary">
                 Im Labor ausprobieren →
               </Link>
