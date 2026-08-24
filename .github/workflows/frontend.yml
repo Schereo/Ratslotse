@@ -58,3 +58,9 @@ jobs:
       # die Probe prüft also das echte Modul und keine Kopie seiner Regeln.
       - name: Skalen des Grafik-Baukastens nachrechnen
         run: node --experimental-strip-types scripts/pruefe-skala.mjs
+
+      # Dieselbe Sorte Fehler eine Ebene weiter: Ein Posten von 1,8 Mio. €
+      # bekam eine Kachel von 100 × 5 px. Die Zahl stimmte, die Fläche stimmte —
+      # zu sehen war ein Strich.
+      - name: Geometrie der Kachelfläche nachrechnen
+        run: node --experimental-strip-types scripts/pruefe-kachelflaeche.mjs

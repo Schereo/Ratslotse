@@ -54,6 +54,7 @@ import {
   ProgrammDaten, ProgrammZeile, anzahl, gesamtJahr, herkunftVon, suche,
   teilhaushaltSumme, teilhaushalte, vorhaben,
 } from "@/lib/haushalt-investitionsprogramm";
+import { rampenText } from "@/components/grafik/kachelflaeche";
 import { Treemap, type TreemapKnoten } from "@/components/grafik/treemap";
 import { Beleg } from "@/components/haushalt/quelle";
 
@@ -112,7 +113,7 @@ function Zeile({ zeile, skala, bereichName }: {
 type Sortierung = "gesamtsumme" | "alpha";
 
 export function Vorhaben({
-  daten, jahr, gewaehlt, aufWaehlen, zurueckAnker, farbeVonThh,
+  daten, jahr, gewaehlt, aufWaehlen, zurueckAnker, farbeVonThh, stufeVonThh,
 }: {
   daten: ProgrammDaten | null;
   /** Der Jahrgang, den die Seite oben zeigt — Startwert des Filters. */
@@ -125,6 +126,9 @@ export function Vorhaben({
   /** EIN Farbschlüssel je Teilhaushalt für die ganze Seite — kommt von der
    *  Seite, damit Kachelfläche und Überblicksbalken denselben sprechen. */
   farbeVonThh: (thhNr: number) => string;
+  /** Die Rampenstufe hinter dieser Farbe — daran hängt die Textfarbe auf der
+   *  Kachel (`grafik/kachelflaeche.ts`, `rampenText`). */
+  stufeVonThh: (thhNr: number) => number;
 }) {
   const [wort, setWort] = useState("");
   const [sortierung, setSortierung] = useState<Sortierung>("gesamtsumme");
@@ -305,6 +309,13 @@ export function Vorhaben({
           farbe={(gruppe) => {
             const nr = bereiche.find((b) => b.bezeichnung === gruppe)?.thh_nr;
             return nr != null ? farbeVonThh(nr) : "var(--hh-aus-9)";
+          }}
+          // Bis 24.08. stand auf JEDER Kachel weißer Text. Am blassen Ende der
+          // Ausgaben-Rampe (Stufe 3 aufwärts) war er damit unlesbar bis
+          // unsichtbar — „Krippenausbau 2022" auf `--hh-aus-8` hielt 1,25 : 1.
+          textFarbe={(gruppe) => {
+            const nr = bereiche.find((b) => b.bezeichnung === gruppe)?.thh_nr;
+            return rampenText("aus", nr != null ? stufeVonThh(nr) : 9);
           }}
           buendelnAb={12}
           treffer={suchtreffer}

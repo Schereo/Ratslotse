@@ -32,7 +32,8 @@ import {
   EinnahmeartenPlan, FlussBand, FlussDaten, HaushaltAuswahl,
   deMio, einnahmearten, flussJahre, flussbild, mio,
 } from "@/lib/haushalt";
-import { RanglisteSchiene } from "@/components/grafik/rangliste-schiene";
+import { rampenText } from "@/components/grafik/kachelflaeche";
+import { Treemap, type TreemapKnoten } from "@/components/grafik/treemap";
 import { Beleg } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { ausblick, type Antwort as DatenstandAntwort } from "@/components/haushalt/datenstand";
@@ -43,6 +44,11 @@ import { cn } from "@/lib/utils";
  *  viel der Skala trägt — sonst steht es im Sammelposten. Lesbarkeits-, keine
  *  Relevanzentscheidung: Ein 4-px-Band ist seiner Zeile nicht zuzuordnen. */
 const MINDEST_ANTEIL = 0.05;
+
+/** Letzte Stufe der Einnahmen-Rampe (`--hh-ein-0` … `--hh-ein-6`). Wer mehr
+ *  Posten hat als Stufen, teilt sich die letzte — die kleinsten liegen dann
+ *  farblich beieinander, was sie auch der Sache nach sind. */
+const EIN_STUFEN = 6;
 
 /** Die Haushalts-Bänder in den Baukasten-Vertrag übersetzen: `rest` und
  *  `ausgleich` sind beide Differenz-Bänder (Schraffur + Signal-Kante). */
@@ -81,6 +87,69 @@ function alsPosten(b: FlussBand): FlussPosten {
  *
  *  Das jüngste vollständige Jahr bleibt ein ANGEBOT, keine Ersatzanzeige:
  *  gewechselt wird nur, wenn jemand darauf tippt. */
+/** Die zehn, elf Ertragsarten als Kachelfläche (GB-08).
+ *
+ *  Hier stand bis 24.08. eine <RanglisteSchiene>: zehn Balken auf einer
+ *  Schiene von null bis zum größten Posten. Die beantwortet „wer ist größer
+ *  als wer" — nicht die Frage, die über diesem Bild steht. „Woher das Geld
+ *  kommen soll" ist eine Frage nach ANTEILEN an einer Summe, und die Schiene
+ *  misst am Maximum, nicht an der Summe: Steuern nahmen die volle Breite ein,
+ *  weil sie der größte Posten sind, nicht weil sie die halben Erträge sind.
+ *  Dass sie beides sind (49,3 %), stand nirgends.
+ *
+ *  Die Kachelfläche misst an der Summe — 1 mm² ist überall gleich viel Geld,
+ *  und die zehn Kacheln füllen sie restlos. Deshalb auch KEIN Bündeln
+ *  (`buendelnAb` = alle): Die Rest-Kachel ist im Investitionen-Fall Pflicht,
+ *  weil dort Tausende Vorhaben hinter zwölf Kacheln stehen. Hier sind es
+ *  zehn Posten, und sie sind der ganze Ertragshaushalt — wer davon vier
+ *  zusammenfasste, ließe die kleinste Ertragsart verschwinden, obwohl das
+ *  Dokument sie einzeln ausweist.
+ *
+ *  FARBE = RANG, aus der Einnahmen-Rampe (`--hh-ein-*`, dunkel = groß) — die
+ *  Reihenfolge, in der auch der Gegenbalken derselben Seite seine Segmente
+ *  einfärbt. Keine zweite Farbwelt und keine Bewertungsfarben; die Rampe hat
+ *  sieben Stufen, die kleinsten Posten teilen sich also die letzte.
+ *
+ *  TEXTFARBE nach `rampenText` — die Rampe endet auf einer Karte dicht an
+ *  deren Grund, weißer Text stünde dort auf fast Weiß. Die Messung und die
+ *  Grenze wohnen in `components/grafik/kachelflaeche.ts`, damit die
+ *  Investitionen-Kachelfläche dieselbe Regel fährt. */
+function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
+  // Ein Schlüssel für Fläche und Legende: `gruppe` ist hier die Ertragsart
+  // selbst — jede Kachel ist ihre eigene Gruppe, die Legende wird damit zum
+  // Verzeichnis aller Posten (auch der, die für eine Beschriftung zu klein
+  // sind).
+  const knoten: TreemapKnoten[] = useMemo(
+    () => arten.arten.map((a) => ({
+      key: String(a.nr),
+      name: a.label,
+      wert: a.betrag,
+      gruppe: a.label,
+      zusatz: a.label === a.lang ? undefined : a.lang,
+    })),
+    [arten]);
+
+  // `arten.arten` ist absteigend sortiert — der Rang IST die Rampenstufe.
+  const stufe = useMemo(() => {
+    const zu = new Map<string, number>();
+    arten.arten.forEach((a, i) => zu.set(a.label, Math.min(i, EIN_STUFEN)));
+    return (gruppe: string) => zu.get(gruppe) ?? EIN_STUFEN;
+  }, [arten]);
+
+  return (
+    <Treemap
+      knoten={knoten}
+      buendelnAb={knoten.length}
+      farbe={(g) => `var(--hh-ein-${stufe(g)})`}
+      textFarbe={(g) => rampenText("ein", stufe(g))}
+      nomen="Ertragsarten"
+      flaecheLabel="Fläche = Anteil an den Erträgen"
+      anteil
+      beleg={<Beleg q="ergebnishaushalt" />}
+    />
+  );
+}
+
 function NurHerkunft({ arten, letztes, aufJahr }: {
   arten: EinnahmeartenPlan; letztes: number | null; aufJahr: (() => void) | null;
 }) {
@@ -93,18 +162,7 @@ function NurHerkunft({ arten, letztes, aufJahr }: {
         Woher das Geld kommen soll
       </p>
 
-      <RanglisteSchiene
-        zeilen={arten.arten.map((a) => ({
-          label: a.label,
-          wert: a.betrag / 1e6,
-          zusatz: a.label === a.lang ? undefined : (
-            <span className="text-[11px] text-muted-foreground">{a.lang}</span>
-          ),
-        }))}
-        einheit="Mio. €"
-        nachkomma={1}
-        beleg={<Beleg q="ergebnishaushalt" />}
-      />
+      <Herkunftskacheln arten={arten} />
 
       <div className="mt-3 rounded-lg border border-dashed border-border bg-muted/40 px-3.5 py-3">
         <p className="text-[13px] font-semibold leading-relaxed">

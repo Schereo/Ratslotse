@@ -2,17 +2,23 @@
 
 // <Treemap> — Größenordnung als Fläche (GB-08, Board H4-06).
 //
-// Kachel = Vorhaben, Fläche = Gesamtsumme: 1 mm² ist überall gleich viel
-// Geld. Das Layout rechnet `treemapSquarify` aus d3-hierarchy ZUR LAUFZEIT —
-// je Jahrgang, je Filter neu. Genau der Fall, in dem Handrechnen (wie im
-// Artboard) nicht skaliert.
+// Eine Kachel ist ein Posten, ihre Fläche seine Größe: 1 mm² ist überall
+// gleich viel Geld. Gerechnet wird ZUR LAUFZEIT — je Jahrgang, je Filter neu;
+// genau der Fall, in dem Handrechnen (wie im Artboard) nicht skaliert. Die
+// Geometrie samt ihrer Messungen wohnt in `kachelflaeche.ts`, damit die CI
+// sie nachrechnen kann.
 //
-// DIE REST-KACHEL IST PFLICHT, kein Feature: Die Masse der kleinen Vorhaben
-// ist selbst eine Größe. Wer nur die Top-Kacheln zeigte, behauptete, das
-// Programm bestünde aus zwölf Projekten — tatsächlich sind es Tausende, und
-// ihre Summe verdient dieselbe ehrliche Fläche. Ab der Rest-Kachel übernimmt
-// die Suche. Ihre Schraffur ist NEUTRAL (muted), nicht die orange
-// Lücken-Schraffur: Gebündelt ist keine Lücke und keine Abweichung.
+// WO GEBÜNDELT WIRD, IST DIE REST-KACHEL PFLICHT, kein Feature: Die Masse der
+// kleinen Vorhaben ist selbst eine Größe. Wer nur die Top-Kacheln zeigte,
+// behauptete, das Programm bestünde aus zwölf Projekten — tatsächlich sind es
+// Tausende, und ihre Summe verdient dieselbe ehrliche Fläche. Ab der
+// Rest-Kachel übernimmt die Suche. Ihre Schraffur ist NEUTRAL (muted), nicht
+// die orange Lücken-Schraffur: Gebündelt ist keine Lücke und keine Abweichung.
+//
+// Zerlegt die Fläche dagegen eine GESCHLOSSENE Liste — die zehn Ertragsarten
+// eines Haushaltsjahres —, setzt die Seite `buendelnAb` auf deren Länge. Dann
+// gibt es keinen Rest, weil es keinen gibt; vier von zehn Posten zu bündeln
+// ließe Namen verschwinden, die das Dokument einzeln ausweist.
 //
 // NUR POSITIVE WERTE: Eine Fläche kann keinen negativen Betrag zeigen —
 // „weniger als nichts" gibt es als Geometrie nicht. Die Komponente wirft
@@ -20,22 +26,43 @@
 // still zu verschlucken (Tilgungen und Zuschüsse stehen mit Minus im
 // Programm; die Seite erklärt sie in ihrer Liste).
 //
-// FARBE = GRUPPE (Teilhaushalt) aus der Ausgaben-Rampe; KEINE
-// Bewertungsfarben (components/grafik/hantel.tsx). Suchtreffer heben sich
-// per UMRISS hervor (Primärfarbe — finden, nicht bewerten).
+// FARBE = GRUPPE aus einer der beiden Rampen — Teilhaushalt auf der
+// Ausgabenseite, Ertragsart auf der Einnahmenseite; KEINE Bewertungsfarben
+// (components/grafik/hantel.tsx). Suchtreffer heben sich per UMRISS hervor
+// (Primärfarbe — finden, nicht bewerten).
+//
+// WELCHE TEXTFARBE eine Kachel trägt, weiß nur die Seite: Sie hat die
+// Rampenstufe vergeben. `--hh-seg-text` (Vorgabe) trägt nur am lauten Ende
+// der Rampe — am leisen steht der Ton dicht an der Karte, und weißer Text
+// darauf ist weg. `textFarbe` ist deshalb derselbe Schlüssel wie `farbe`, nur
+// für den Text; die Grenze und ihre Messung stehen in `kachelflaeche.ts`
+// (`rampenText`), damit beide Aufrufer dieselbe Regel fahren.
 //
 // BESCHRIFTUNG: Schmale Kacheln beschriften vertikal; unter 40 px zeigt erst
 // Antippen (oder der Fokus) den Namen — jede Kachel ist ein Knopf, die
 // aktive steht als Zeile unter dem Bild. Deshalb HTML statt SVG: Knöpfe mit
 // echtem Fokusring, umbruchfähiger Text, `aria-label` je Kachel.
 //
+// KEIN TOOLTIP, aber HOVER: Die Maus setzt dieselbe Kachel aktiv wie Tippen
+// und Tab — zu sehen ist sie in der Zeile UNTER dem Bild, nicht in einem
+// schwebenden Kasten. Das ist die Ableseleisten-Regel des Baukastens (GB-00):
+// Was nur beim Hovern existiert, fehlt im Ausdruck, im Screenshot und in der
+// Vorlesehilfe. Der Zeiger verlässt die Fläche wieder — die Zeile bleibt
+// stehen, statt zurückzuspringen; eine Leerstelle wäre keine Auskunft.
+//
+// DIE WÖRTER kommen von der Seite (`nomen`, `flaecheLabel`, `verworfenSatz`):
+// Die Form zählt Vorhaben, Ertragsarten oder Bereiche — die Vorgaben sind der
+// Investitionen-Fall, aus dem sie stammt.
+//
 // MOBIL (H4-A, eingebaut, kein Prop): Unter 520 px Containerbreite rendert
 // die Komponente stattdessen eine <RanglisteSchiene> — gleiche Daten, gleiche
 // Sortierung. Flächen-Labels wären auf 390 px schlicht unlesbar.
 
 import { useMemo, useState, type ReactNode } from "react";
-import { hierarchy, treemap, treemapSquarify } from "d3-hierarchy";
-import { betrag, deMio } from "@/components/grafik/format";
+import {
+  beschriftet as traegtText, kachelHoehe, kacheln, namenszeilen, schmal,
+} from "@/components/grafik/kachelflaeche";
+import { betrag, deMio, deZahl } from "@/components/grafik/format";
 import { RanglisteSchiene } from "@/components/grafik/rangliste-schiene";
 import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
@@ -55,12 +82,16 @@ const NEUTRALE_SCHRAFFUR =
   "repeating-linear-gradient(135deg, hsl(var(--muted-foreground) / 0.16) 0 3px, transparent 3px 6px)";
 
 export function Treemap({
-  knoten, farbe, buendelnAb = 12, treffer, aufRest, restHinweis, beleg,
+  knoten, farbe, textFarbe, buendelnAb = 12, treffer, aufRest, restHinweis,
+  beleg, nomen = "Vorhaben", flaecheLabel = "Fläche = Gesamtsumme",
+  verworfenSatz, anteil,
 }: {
   knoten: TreemapKnoten[];
   /** Farbe je Gruppe — EIN Schlüssel für Bild und Legende, von der Seite
    *  vergeben, damit er mit deren übrigen Bildern übereinstimmt. */
   farbe: (gruppe: string) => string;
+  /** Textfarbe je Gruppe. Ohne Angabe `--hh-seg-text` — s. Kopfkommentar. */
+  textFarbe?: (gruppe: string) => string;
   /** Ab diesem Rang bündelt die Rest-Kachel (Pflichtteil). */
   buendelnAb?: number;
   /** Schlüssel der Suchtreffer — Kacheln darin bekommen einen Umriss. */
@@ -71,6 +102,19 @@ export function Treemap({
   restHinweis?: string;
   /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle. */
   beleg?: ReactNode;
+  /** Was hier gezählt wird, im Plural — für Rest-Kachel und Vorlesehilfe. */
+  nomen?: string;
+  /** Der Maßstabssatz der Legende, ohne die Einheit (die hängt die Legende
+   *  selbst an): „Fläche = Anteil an den Erträgen". */
+  flaecheLabel?: string;
+  /** Der Satz über nicht-positive Knoten — die Vorgabe ist der
+   *  Investitionen-Fall (Tilgungen, Zuschüsse, Verkäufe). */
+  verworfenSatz?: (anzahl: number) => string;
+  /** Die Ablesezeile nennt zusätzlich den Anteil an der Gesamtfläche. Nur
+   *  sinnvoll, wo die Kacheln ein GANZES zerlegen — im Investitionen-Fall
+   *  zeigt die Fläche einen Ausschnitt, dort wäre der Anteil eine
+   *  Behauptung über einen Nenner, den es nicht gibt. */
+  anteil?: boolean;
 }) {
   const { box, breite } = useBreite();
   const [aktiv, setAktiv] = useState<string | null>(null);
@@ -83,9 +127,15 @@ export function Treemap({
   const top = positive.slice(0, buendelnAb);
   const rest = positive.slice(buendelnAb);
   const restSumme = rest.reduce((s, k) => s + k.wert, 0);
+  const gesamt = positive.reduce((s, k) => s + k.wert, 0);
+  const textVon = textFarbe ?? (() => "var(--hh-seg-text)");
+  const verworfenText = verworfenSatz ?? ((n: number) =>
+    `${n.toLocaleString("de-DE")} ${nomen} stehen mit null oder minus im `
+    + "Programm (Tilgungen, Zuschüsse, Verkäufe) — eine Fläche kann das nicht "
+    + "zeigen, die Liste unten schon.");
 
   type Blatt = TreemapKnoten & { rest?: boolean };
-  const hoehe = Math.round(Math.min(Math.max(breite * 0.56, 300), 440));
+  const hoehe = kachelHoehe(breite);
 
   const blaetter = useMemo(() => {
     if (breite < 520 || !top.length) return [];
@@ -93,19 +143,12 @@ export function Treemap({
     if (rest.length) {
       kinder.push({
         key: "__rest__", rest: true, wert: restSumme, gruppe: "",
-        name: `+ ${rest.length.toLocaleString("de-DE")} weitere Vorhaben`,
+        name: `+ ${rest.length.toLocaleString("de-DE")} weitere ${nomen}`,
       });
     }
-    const wurzel = hierarchy<{ children?: Blatt[]; wert?: number }>({ children: kinder })
-      .sum((d) => d.wert ?? 0)
-      .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
-    return treemap<{ children?: Blatt[]; wert?: number }>()
-      .tile(treemapSquarify)
-      .size([breite, hoehe])
-      .paddingInner(3)(wurzel)
-      .leaves();
+    return kacheln(kinder, breite, hoehe);
     // `breite` steckt in `hoehe` mit drin; top/rest hängen an `knoten`.
-  }, [breite, hoehe, top, rest, restSumme]);
+  }, [breite, hoehe, top, rest, restSumme, nomen]);
 
   if (!positive.length) return null;
 
@@ -130,15 +173,14 @@ export function Treemap({
         />
         {rest.length > 0 && (
           <p className="border-t border-dashed border-border pt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-            + {rest.length.toLocaleString("de-DE")} weitere Vorhaben · zusammen{" "}
+            + {rest.length.toLocaleString("de-DE")} weitere {nomen} · zusammen{" "}
             <span className="font-semibold tabular-nums text-foreground">{geld(restSumme)}</span>.{" "}
             {restHinweis ?? "Ab hier übernimmt die Suche."}
           </p>
         )}
         {verworfen > 0 && (
           <p className="text-[10.5px] leading-relaxed text-muted-foreground">
-            {verworfen.toLocaleString("de-DE")} Vorhaben stehen mit null oder minus im
-            Programm — eine Fläche kann das nicht zeigen, die Liste unten schon.
+            {verworfenText(verworfen)}
           </p>
         )}
       </div>
@@ -153,20 +195,21 @@ export function Treemap({
   return (
     <div ref={box} className="flex flex-col gap-2.5">
       <div className="relative" style={{ height: hoehe }} role="group"
-        aria-label={`Kachelfläche: die ${top.length} größten Vorhaben, Fläche nach Gesamtsumme`}>
+        aria-label={`Kachelfläche: ${top.length} ${nomen}, ${flaecheLabel}`}>
         {blaetter.map((b) => {
-          const d = b.data as Blatt;
-          const w = b.x1 - b.x0, h = b.y1 - b.y0;
-          const schmalKachel = w < 64;
-          const winzig = w < 40 || h < 34;
+          const d = b.daten;
+          const w = b.breite, h = b.hoehe;
+          const schmalKachel = schmal(w);
           const istTreffer = !d.rest && treffer?.has(d.key);
-          const beschriftet = !winzig && (h >= 40 || w >= 64);
+          const beschriftet = traegtText(w, h);
+          const zeilen = namenszeilen(w, h);
           return (
             <button
               key={d.key}
               type="button"
               onClick={() => (d.rest ? aufRest?.() : setAktiv(d.key))}
               onFocus={() => !d.rest && setAktiv(d.key)}
+              onMouseEnter={() => !d.rest && setAktiv(d.key)}
               aria-label={d.rest
                 ? `${d.name}, zusammen ${geld(d.wert)}. ${restHinweis ?? "Ab hier übernimmt die Suche."}`
                 : `${d.name}${d.zusatz ? `, ${d.zusatz}` : ""}: ${geld(d.wert)}`}
@@ -177,7 +220,7 @@ export function Treemap({
                 aktiv === d.key && !d.rest && "z-10 ring-1 ring-foreground/50",
               )}
               style={{
-                left: b.x0, top: b.y0, width: w, height: h,
+                left: b.x, top: b.y, width: w, height: h,
                 background: d.rest ? undefined : farbe(d.gruppe),
                 backgroundImage: d.rest ? NEUTRALE_SCHRAFFUR : undefined,
                 border: d.rest ? "1px dashed hsl(var(--border))" : undefined,
@@ -207,14 +250,21 @@ export function Treemap({
                       ? "flex-row-reverse items-start justify-end"
                       : "flex-col justify-between",
                   )}
-                  style={{ color: "var(--hh-seg-text)" }}
+                  style={{ color: textVon(d.gruppe) }}
                 >
                   {/* Schmale Kacheln beschriften vertikal (GB-08). */}
                   <span
                     className={cn(
                       "min-h-0 overflow-hidden text-[11px] font-medium leading-tight",
+                      "break-words",
+                      zeilen > 1 && "hyphens-auto",
                       schmalKachel && "[writing-mode:vertical-rl]",
                     )}
+                    style={{
+                      display: "-webkit-box",
+                      WebkitBoxOrient: "vertical",
+                      WebkitLineClamp: zeilen,
+                    }}
                   >
                     {d.name}
                   </span>
@@ -242,20 +292,24 @@ export function Treemap({
             <span className="font-semibold tabular-nums text-foreground">
               {geld(aktiverKnoten.wert)}
             </span>
+            {anteil && gesamt > 0 && (
+              <> · {deZahl((aktiverKnoten.wert / gesamt) * 100, 1)}&nbsp;% der Fläche</>
+            )}
           </>
         ) : (
-          "Kachel antippen oder mit Tab ansteuern — hier steht dann Name und Summe."
+          "Kachel überfahren, antippen oder mit Tab ansteuern — hier steht dann Name und Summe."
         )}
       </p>
 
       {/* Legende: EIN Farbschlüssel je Gruppe, plus die Rest-Schraffur. */}
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
         <span className="font-mono text-[9.5px] uppercase tracking-[0.09em]">
-          Fläche = Gesamtsumme · Zahlen in Mio. €
+          {flaecheLabel} · Zahlen in Mio. €
         </span>
         {gruppen.map((g) => (
           <span key={g} className="inline-flex items-center gap-1.5">
-            <span aria-hidden="true" className="h-2.5 w-2.5 flex-none rounded-[2px]"
+            <span aria-hidden="true"
+              className="h-2.5 w-2.5 flex-none rounded-[2px] ring-1 ring-inset ring-foreground/15"
               style={{ background: farbe(g) }} />
             {g}
           </span>
@@ -273,9 +327,7 @@ export function Treemap({
 
       {verworfen > 0 && (
         <p className="text-[10.5px] leading-relaxed text-muted-foreground">
-          {verworfen.toLocaleString("de-DE")} Vorhaben stehen mit null oder minus im
-          Programm (Tilgungen, Zuschüsse, Verkäufe) — eine Fläche kann das nicht
-          zeigen, die Liste unten schon.
+          {verworfenText(verworfen)}
         </p>
       )}
     </div>
