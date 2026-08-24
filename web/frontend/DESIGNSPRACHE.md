@@ -78,7 +78,9 @@ Dot hsl(209 18% 65%), kombiniertes Label.
 - Icons: Lucide, stroke-width 2, 11–22 px, currentColor.
 - **Anzeigetafel (`.hh-tafel`) — die abgesetzte Fläche.** Neben der *Bühne*
   (Tonfläche, s. o.) gibt es eine zweite Sonderfläche: der Blickfang, auf dem
-  die eine Zahl steht, um die es auf einer Seite geht (Haushalts-Einstieg).
+  die eine Zahl steht, um die es auf einer Seite geht (Haushalts-Einstieg;
+  seit 24.08. auch der Kopf des Bereichs-Steckbriefs — Titel, drei Summen in
+  der Tafel-Type, darunter das Kern-Visual).
   Sie war bis 16.08. in **beiden** Themes dunkel — im Hellmodus ein
   schwarzblaues Feld über die halbe Seite, „sieht sehr dunkel aus" (Tim).
   Jetzt folgt sie dem Theme. Drei Regeln, sonst wird sie falsch:

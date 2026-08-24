@@ -33,8 +33,15 @@ import { Beleg } from "@/components/haushalt/quelle";
 import { HaushaltZeile, deMio, mio, summe } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
 
-function Summe({ label, wert, ton }: {
-  label: string; wert: number | null; ton?: "signal";
+/** Eine Kopfsumme der Tafel. Exportiert, weil auch der Bereichs-Steckbrief
+ *  seine drei Zahlen in dieser Type setzt (bis 24.08. standen sie dort in
+ *  einer kleinen Eckkarte — „komisch klein in der Ecke", Tim). Der Ton `ein`
+ *  bindet die Zahl an das Einnahmen-Segment des Gegenbalkens darunter, so wie
+ *  `signal` an die Schraffur-Lücke. Die Einheit hängt an JEDER Zahl statt
+ *  einmal am Ende der Reihe: Umbrechen die drei, stünde sie sonst allein in
+ *  einer vierten Zeile und gehörte sichtbar zu nichts mehr. */
+export function Summe({ label, wert, ton, beleg }: {
+  label: string; wert: number | null; ton?: "signal" | "ein"; beleg?: ReactNode;
 }) {
   return (
     <div className="min-w-0">
@@ -42,11 +49,13 @@ function Summe({ label, wert, ton }: {
         "text-[11.5px] leading-none",
         ton === "signal" ? "text-signal" : "text-muted-foreground",
       )}>
-        {label}
+        {label}{beleg}
       </p>
       <p className={cn(
         "mt-1.5 font-display text-[21px] font-bold leading-none tracking-tight tabular-nums sm:text-[27px]",
-        ton === "signal" ? "text-signal" : "text-foreground",
+        ton === "signal" ? "text-signal"
+          : ton === "ein" ? "text-[color:var(--hh-ein-0)]"
+          : "text-foreground",
       )}>
         {deMio(wert)}
         {/* Unter sm steht die Einheit UNTER der Zahl: Drei Summen nebeneinander
