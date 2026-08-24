@@ -48,11 +48,18 @@
 // bis dahin beschreibt der „Danach"-Absatz den Schritt ohne Datum, statt
 // eine Lage zu raten.
 //
-// Die TERMIN-KARTE zeigt den nächsten echten Termin von Finanzausschuss
-// oder Rat aus dem Ratskalender — mehr nicht: `council_scheduled_sessions`
-// führt keine Tagesordnung, wir wissen also NICHT, welche der kommenden
-// Sitzungen die Haushaltssitzung wird, und sagen das dazu. Gefiltert wird
-// nach dem Gremium, nie nach einem geratenen Inhalt.
+// KEINE TERMIN-KARTE MEHR (Tim, 22.08.2026: „dass hier immer die nächste
+// Ratssitzung als mögliche Haushaltsdebatte angekündigt wird, das sollten
+// wir nicht so darstellen"). Die Karte zeigte den nächsten Termin von
+// Finanzausschuss oder Rat aus dem Ratskalender — mit ehrlichem
+// Kleingedruckten, aber die Schlagzeile („Rat — Mo, 31. August, 18:00 Uhr")
+// versprach im Haushalts-Kontext trotzdem eine Haushaltssitzung. Der
+// Ratskalender kennt keine Tagesordnungen; ob eine Sitzung den Haushalt
+// aufruft, wissen wir erst kurz vorher. Statt der Sitzung steht jetzt die
+// Auskunft, die wir belegen können: der GEMESSENE Einbringungs-Monat, und
+// warum wir keinen konkreten Termin ankündigen. Derselbe Grund nahm auch
+// den Kalender-Pin vom Zeitstrahl: Er hängte dieselbe beliebige Sitzung an
+// den Haushalts-Weg.
 //
 // Der Jahresabschluss steht auf dem Strahl mit „≈": Seine Lage ist aus den
 // festgestellten Abschlüssen früherer Jahrgänge gemessen (Ratsvorgänge aus
@@ -61,40 +68,25 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronRight, ExternalLink } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import { sessionHref, decisionHref } from "@/lib/routes";
 import {
-  KommendeSitzung, MONATE, WegDaten, WegRunde, WegStation, deDatum, deTagMonat,
-  entscheidung, jahresabschlussMass, monateZwischen, naechsterHaushaltsTermin,
+  MONATE, WegDaten, WegRunde, WegStation, deDatum, deTagMonat,
+  entscheidung, jahresabschlussMass, monateZwischen,
   rhythmus, strahlRunde, versatzWort,
 } from "@/lib/haushalt-jahr";
-import { gremiumKurz } from "@/lib/haushalt-streit";
 import type { DokumenteAntwort } from "@/lib/haushalt-dokumente";
 import { Zeitstrahl, ZeitstrahlStation } from "@/components/grafik/zeitstrahl";
 import { StationsZeile } from "@/components/haushalt/weg-stationen";
 import { Beleg } from "@/components/haushalt/quelle";
-import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { offerIcs } from "@/lib/ics";
-import { toast } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 
-const WOCHENTAG = new Intl.DateTimeFormat("de-DE", { weekday: "short" });
-
-/** ISO-Datum als LOKALES Datum parsen: `new Date("2026-09-03")` wäre
- *  Mitternacht UTC, und der Wochentag kippte je Zeitzone um einen Tag. */
-function lokalesDatum(iso: string): Date {
-  const [j, m, t] = iso.split("-").map(Number);
-  return new Date(j, (m || 1) - 1, t || 1);
-}
 
 export function TermineAbschnitt() {
   const { data, loading } = useFetch<WegDaten>("/council/haushalt/weg");
   const { data: dokumente } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
-  const { data: kommende } = useFetch<{ sessions: KommendeSitzung[] }>(
-    "/council/sessions?scope=upcoming&limit=100",
-  );
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   // Einmal gemerkt statt je Render neu: `heute` ist Anker des Strahls.
   const heute = useMemo(() => new Date(), []);
@@ -117,7 +109,6 @@ export function TermineAbschnitt() {
   const rh = rhythmus(runden);
   const haeufigster = rh.entwurfMonate[0];
   const abschluss = jahresabschlussMass(dokumente?.dokumente?.jahresabschluss);
-  const termin = naechsterHaushaltsTermin(kommende?.sessions);
 
   // ---- Die Stationen des Strahls: Lagen aus der laufenden Runde, --------
   // ---- Zählangaben aus allen Jahrgängen. --------------------------------
@@ -203,82 +194,36 @@ export function TermineAbschnitt() {
               <Beleg q="ratsbeschluss" />
             </span>
           </div>
-          <Zeitstrahl className="mt-3" stationen={stationen} heute={heute}
-            termin={termin ? {
-              label: gremiumKurz(termin.committee),
-              datum: termin.session_date,
-              quelle: "kalender",
-            } : undefined}
-          />
+          <Zeitstrahl className="mt-3" stationen={stationen} heute={heute} />
         </section>
 
-        {/* Der nächste echte Termin — aus dem Ratskalender, ohne zu raten,
-            was auf der Tagesordnung stehen wird. */}
-        {termin ? (
-          <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Nächster Termin · aus dem Ratskalender
-            </h2>
-            <p className="mt-1.5 text-[15px] font-bold leading-snug">
-              {gremiumKurz(termin.committee)}
-              <span className="font-normal text-muted-foreground">
-                {" — "}{WOCHENTAG.format(lokalesDatum(termin.session_date))},{" "}
-                {deDatum(termin.session_date)}
-                {termin.session_time ? `, ${termin.session_time} Uhr` : ""}
-              </span>
-            </p>
-            <p className="mt-1.5 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
-              Über den Haushalt wird im Finanzausschuss und im Rat abgestimmt — ob dieser Termin
-              den Haushalt aufruft, zeigt erst die Tagesordnung, und die steht erst kurz vorher im
-              Ratsinformationssystem.
-              {haeufigster && (
-                <>
-                  {" "}In {haeufigster.anzahl} von {rh.jahrgaenge} Jahrgängen wurde der nächste
-                  Entwurf im {MONATE[haeufigster.monat - 1]} eingebracht — dann beginnt dieser
-                  Strahl von vorn.
-                </>
-              )}
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-dashed border-border pt-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  offerIcs(
-                    {
-                      uid: termin.ksinr
-                        ? `sitzung-${termin.ksinr}`
-                        : `termin-${termin.session_date}-haushalt-jahr`,
-                      committee: termin.committee,
-                      session_date: termin.session_date,
-                      session_time: termin.session_time,
-                      location: termin.location,
-                    },
-                    `ratslotse-${termin.session_date.slice(0, 10)}.ics`,
-                  ).catch(() => toast.error("Kalendereintrag konnte nicht erzeugt werden."));
-                }}
-                className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-primary"
-              >
-                <CalendarPlus className="h-3.5 w-3.5" />
-                In den Kalender
-              </button>
-              {termin.ksinr != null && (
-                <Link href={sessionHref(termin.ksinr)} className="text-[11.5px] font-semibold text-primary">
-                  Sitzung ansehen
-                </Link>
-              )}
-              <Link href="/council?tab=sessions" className="text-[11.5px] font-semibold text-primary">
-                Alle kommenden Sitzungen
-              </Link>
-            </div>
-          </section>
-        ) : (
-          // Ohne Termin im Kalender bleibt die ehrliche Auskunft von früher.
-          <LottiErklaert
-            titel="Und die nächste Runde?"
-            text="Wann der Haushalt für das kommende Jahr beraten wird, können wir dir nicht sagen. Das Ratsinformationssystem veröffentlicht Sitzungstermine, aber erst kurz vorher auch die Tagesordnung dazu — bis dahin steht nirgends, welche der kommenden Sitzungen die Haushaltssitzung wird. Ein Datum zu raten, das dann nicht stimmt, wäre schlechter als keins."
-            pose="confused"
-          />
-        )}
+        {/* Die Frage dieser Karte ist „wann geht es wieder um den Haushalt?" —
+            und die ehrliche Antwort darauf ist ein gemessener Monat, kein
+            Termin (Begründung im Kopf dieser Datei). */}
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Und die nächste Runde?
+          </h2>
+          <p className="mt-1.5 max-w-[70ch] text-[13px] leading-relaxed text-foreground/90">
+            {haeufigster && (
+              <>
+                Erfahrungsgemäß beginnt sie im{" "}
+                <strong>{MONATE[haeufigster.monat - 1]}</strong>: In {haeufigster.anzahl} von{" "}
+                {rh.jahrgaenge} Jahrgängen wurde der nächste Entwurf in diesem Monat
+                eingebracht — dann beginnt dieser Strahl von vorn.{" "}
+              </>
+            )}
+            Welche Sitzung den Haushalt aufruft, steht erst mit ihrer Tagesordnung fest, und
+            die veröffentlicht das Ratsinformationssystem erst kurz vorher. Einen konkreten
+            Termin kündigen wir deshalb nicht an — ein geratenes Datum wäre schlechter als
+            keins.
+          </p>
+          <div className="mt-3 border-t border-dashed border-border pt-2.5">
+            <Link href="/council?tab=sessions" className="text-[11.5px] font-semibold text-primary">
+              Alle kommenden Sitzungen im Ratskalender
+            </Link>
+          </div>
+        </section>
 
         {/* Der Befund über alle Jahrgänge — gerechnet, nicht geschrieben. Ein
             fester Satz („der Haushalt wird im Dezember beschlossen") wäre für
