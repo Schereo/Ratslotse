@@ -15,10 +15,14 @@
 // Rest-Kachel übernimmt die Suche. Ihre Schraffur ist NEUTRAL (muted), nicht
 // die orange Lücken-Schraffur: Gebündelt ist keine Lücke und keine Abweichung.
 //
-// Zerlegt die Fläche dagegen eine GESCHLOSSENE Liste — die zehn Ertragsarten
-// eines Haushaltsjahres —, setzt die Seite `buendelnAb` auf deren Länge. Dann
-// gibt es keinen Rest, weil es keinen gibt; vier von zehn Posten zu bündeln
-// ließe Namen verschwinden, die das Dokument einzeln ausweist.
+// Zerlegt die Fläche eine GESCHLOSSENE Liste — die zehn Ertragsarten eines
+// Haushaltsjahres —, rechnet die Seite den Schnitt mit `buendelGrenze()` aus
+// der Geometrie, statt einen Rang zu raten: gebündelt wird genau so weit,
+// dass jede Kachel (die Rest-Kachel eingeschlossen) über die ganze
+// Breitenspanne ihre Beschriftung trägt. Und weil hier jeder gebündelte
+// Posten einen Namen hat, den das Dokument einzeln ausweist, gibt die Seite
+// `restZusatz` mit — die Aufzählung steht dann in Ablesezeile, Legende und
+// Mobil-Zeile. Weglassen heißt „hinter einen Auslöser", nie ersatzlos.
 //
 // NUR POSITIVE WERTE: Eine Fläche kann keinen negativen Betrag zeigen —
 // „weniger als nichts" gibt es als Geometrie nicht. Die Komponente wirft
@@ -83,7 +87,7 @@ const NEUTRALE_SCHRAFFUR =
 
 export function Treemap({
   knoten, farbe, textFarbe, buendelnAb = 12, treffer, aufRest, restHinweis,
-  beleg, nomen = "Vorhaben", flaecheLabel = "Fläche = Gesamtsumme",
+  restZusatz, beleg, nomen = "Vorhaben", flaecheLabel = "Fläche = Gesamtsumme",
   verworfenSatz, anteil,
 }: {
   knoten: TreemapKnoten[];
@@ -100,6 +104,12 @@ export function Treemap({
   aufRest?: () => void;
   /** Satz auf der Rest-Kachel, Default: „Ab hier übernimmt die Suche." */
   restHinweis?: string;
+  /** Aufzählung dessen, was im Sammelposten steckt („Transfererträge 9,4 ·
+   *  …"). Steht in Ablesezeile, Legende und Mobil-Zeile — Pflicht dem Sinn
+   *  nach, wo die gebündelten Posten NAMEN tragen, die sonst nirgends mehr
+   *  stünden. Ohne sie bleibt es bei der Zahl (Investitionen: 520 Namen
+   *  zählt niemand auf, dort trägt die Suche). */
+  restZusatz?: string;
   /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle. */
   beleg?: ReactNode;
   /** Was hier gezählt wird, im Plural — für Rest-Kachel und Vorlesehilfe. */
@@ -175,7 +185,7 @@ export function Treemap({
           <p className="border-t border-dashed border-border pt-2 text-[11.5px] leading-relaxed text-muted-foreground">
             + {rest.length.toLocaleString("de-DE")} weitere {nomen} · zusammen{" "}
             <span className="font-semibold tabular-nums text-foreground">{geld(restSumme)}</span>.{" "}
-            {restHinweis ?? "Ab hier übernimmt die Suche."}
+            {restZusatz ?? restHinweis ?? "Ab hier übernimmt die Suche."}
           </p>
         )}
         {verworfen > 0 && (
@@ -188,7 +198,10 @@ export function Treemap({
   }
 
   const aktiverKnoten = aktiv === "__rest__"
-    ? null
+    ? (rest.length ? {
+        name: `+ ${rest.length.toLocaleString("de-DE")} weitere ${nomen}`,
+        wert: restSumme, zusatz: restZusatz,
+      } : null)
     : positive.find((k) => k.key === aktiv) ?? null;
   const gruppen = [...new Set(top.map((k) => k.gruppe))];
 
@@ -207,11 +220,11 @@ export function Treemap({
             <button
               key={d.key}
               type="button"
-              onClick={() => (d.rest ? aufRest?.() : setAktiv(d.key))}
-              onFocus={() => !d.rest && setAktiv(d.key)}
-              onMouseEnter={() => !d.rest && setAktiv(d.key)}
+              onClick={() => (d.rest && aufRest ? aufRest() : setAktiv(d.key))}
+              onFocus={() => setAktiv(d.key)}
+              onMouseEnter={() => setAktiv(d.key)}
               aria-label={d.rest
-                ? `${d.name}, zusammen ${geld(d.wert)}. ${restHinweis ?? "Ab hier übernimmt die Suche."}`
+                ? `${d.name}, zusammen ${geld(d.wert)}. ${restZusatz ?? restHinweis ?? "Ab hier übernimmt die Suche."}`
                 : `${d.name}${d.zusatz ? `, ${d.zusatz}` : ""}: ${geld(d.wert)}`}
               className={cn(
                 "absolute overflow-hidden rounded-[4px] text-left transition-shadow",
@@ -228,12 +241,17 @@ export function Treemap({
             >
               {d.rest ? (
                 <span className="flex h-full flex-col justify-between p-2">
-                  <span className="text-[11.5px] font-semibold leading-tight text-foreground/85">
+                  {/* Dieselbe Trennregel wie auf den bunten Kacheln — ohne sie
+                      schnitt „Ertragsarten" quer ab (lang="de" trennt). */}
+                  <span className="hyphens-auto break-words text-[11.5px] font-semibold leading-tight text-foreground/85">
                     {d.name}
                   </span>
                   <span className="text-[10.5px] leading-snug text-muted-foreground">
-                    zusammen{" "}
-                    <span className="font-semibold tabular-nums text-foreground/85">
+                    {/* „zusammen" nur, wo es die Zahl nicht verdrängt: Auf
+                        einer 100-px-Kachel schob das Wort die Summe aus dem
+                        Bild — die Zahl ist die Auskunft, das Wort Beiwerk. */}
+                    {w >= 150 && <>zusammen{" "}</>}
+                    <span className="whitespace-nowrap font-semibold tabular-nums text-foreground/85">
                       {geld(d.wert)}
                     </span>
                     {w >= 150 && h >= 76 && (
@@ -319,7 +337,7 @@ export function Treemap({
             <span aria-hidden="true"
               className="h-2.5 w-2.5 flex-none rounded-[2px] border border-dashed border-border"
               style={{ backgroundImage: NEUTRALE_SCHRAFFUR }} />
-            gebündelte kleine Vorhaben
+            {restZusatz ?? `gebündelte kleine ${nomen}`}
           </span>
         )}
         {beleg}

@@ -32,7 +32,7 @@ import {
   EinnahmeartenPlan, FlussBand, FlussDaten, HaushaltAuswahl,
   deMio, einnahmearten, flussJahre, flussbild, mio,
 } from "@/lib/haushalt";
-import { rampenText } from "@/components/grafik/kachelflaeche";
+import { buendelGrenze, rampenText } from "@/components/grafik/kachelflaeche";
 import { Treemap, type TreemapKnoten } from "@/components/grafik/treemap";
 import { Beleg } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
@@ -98,12 +98,22 @@ function alsPosten(b: FlussBand): FlussPosten {
  *  Dass sie beides sind (49,3 %), stand nirgends.
  *
  *  Die Kachelfläche misst an der Summe — 1 mm² ist überall gleich viel Geld,
- *  und die zehn Kacheln füllen sie restlos. Deshalb auch KEIN Bündeln
- *  (`buendelnAb` = alle): Die Rest-Kachel ist im Investitionen-Fall Pflicht,
- *  weil dort Tausende Vorhaben hinter zwölf Kacheln stehen. Hier sind es
- *  zehn Posten, und sie sind der ganze Ertragshaushalt — wer davon vier
- *  zusammenfasste, ließe die kleinste Ertragsart verschwinden, obwohl das
- *  Dokument sie einzeln ausweist.
+ *  und die Kacheln füllen sie restlos.
+ *
+ *  GEBÜNDELT WIRD GEMESSEN, NICHT GERATEN (Tims Entscheidung 24.08.: ein
+ *  Sammelposten, wenn er die Fläche besser ablesbar macht — er tut es). Die
+ *  erste Fassung zeigte alle zehn Posten einzeln; „Eigenleistungen" (0,23 %)
+ *  war damit an JEDER Breite ein unbeschrifteter Farbfleck. `buendelGrenze`
+ *  rechnet den Schnitt aus der Geometrie: so viele eigene Kacheln wie möglich,
+ *  aber jede — die Rest-Kachel eingeschlossen — trägt über die ganze
+ *  Breitenspanne ihre Beschriftung. Für 2026 heißt das sieben Kacheln plus
+ *  ein Sammelposten aus dreien.
+ *
+ *  Die gebündelten Posten verschwinden dabei NICHT: Ihre Namen stehen mit
+ *  Betrag in `restZusatz` — als Legenden-Zeile (also auch im Ausdruck und im
+ *  Screenshot), in der Ablesezeile beim Überfahren des Sammelpostens und in
+ *  der Mobil-Zeile unter der Rangliste. Weglassen heißt „hinter einen
+ *  Auslöser", nie ersatzlos (Baukasten-Regel, README).
  *
  *  FARBE = RANG, aus der Einnahmen-Rampe (`--hh-ein-*`, dunkel = groß) — die
  *  Reihenfolge, in der auch der Gegenbalken derselben Seite seine Segmente
@@ -136,15 +146,27 @@ function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
     return (gruppe: string) => zu.get(gruppe) ?? EIN_STUFEN;
   }, [arten]);
 
+  // Der gemessene Schnitt (s. Kopfkommentar) und die Aufzählung dessen, was
+  // er bündelt — einmal „Mio. €" am Ende, die Legende nennt die Einheit ohnehin.
+  const grenze = useMemo(
+    () => buendelGrenze(arten.arten.map((a) => a.betrag)), [arten]);
+  const gebuendelt = arten.arten.slice(grenze);
+  const restZusatz = gebuendelt.length
+    ? gebuendelt.map((a) => `${a.label} ${deMio(a.betrag / 1e6)}`).join(" · ")
+      + "\u00a0Mio.\u00a0€"
+    : undefined;
+
   return (
     <Treemap
       knoten={knoten}
-      buendelnAb={knoten.length}
+      buendelnAb={grenze}
       farbe={(g) => `var(--hh-ein-${stufe(g)})`}
       textFarbe={(g) => rampenText("ein", stufe(g))}
       nomen="Ertragsarten"
       flaecheLabel="Fläche = Anteil an den Erträgen"
       anteil
+      restZusatz={restZusatz}
+      restHinweis="Antippen zählt sie einzeln auf."
       beleg={<Beleg q="ergebnishaushalt" />}
     />
   );
