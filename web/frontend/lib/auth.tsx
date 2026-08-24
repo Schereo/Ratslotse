@@ -26,6 +26,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const u = await api.get<User>("/auth/me");
+      // Die App bekommt hier ein frisch datiertes Token — wegschreiben, sonst
+      // läuft das gespeicherte irgendwann ab und der Login kommt zurück. Im
+      // Web ist das Feld null (die Sitzung steckt im Cookie), also passiert
+      // nichts.
+      if (u.access_token) await setToken(u.access_token);
       setUser(u);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setUser(null);
