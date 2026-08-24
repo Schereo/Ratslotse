@@ -24,6 +24,8 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { LottiErklaert, LottiVergleich } from "@/components/haushalt/lotti-erklaert";
 import { IstKurve } from "@/components/haushalt/ist-kurve";
 import { SteuerPlanIst } from "@/components/haushalt/steuer-plan-ist";
+import { EntgeltePlanIst } from "@/components/haushalt/entgelte-plan-ist";
+import { EntgelteBereiche } from "@/components/haushalt/entgelte-bereiche";
 import { HebesatzTreppe } from "@/components/haushalt/hebesatz-treppe";
 import { AbgelehnteStufe } from "@/components/haushalt/abgelehnte-stufe";
 import { Grenzen } from "@/components/haushalt/steuer-grenzen";
@@ -83,6 +85,17 @@ function SteuerInner() {
       .sort((a, b) => a.jahr - b.jahr);
   }, [data, art]);
 
+  // Der zweite Weg an die Zahl: die Ergebnisrechnung des Jahresabschlusses.
+  // Nur die Gesamt-Zeilen der Kernverwaltung (`thh_nr === null`) — die
+  // Teilhaushalte kommen weiter unten als Aufschlüsselung, addiert werden sie
+  // hier nie: Sie ergeben dieselbe Summe noch einmal.
+  const entgelt = useMemo(() => {
+    if (!data || !art?.ergebnisPosten) return [];
+    return (data.ergebnisrechnung ?? [])
+      .filter((z) => z.nr === art.ergebnisPosten && z.thh_nr === null)
+      .sort((a, b) => a.jahr - b.jahr);
+  }, [data, art]);
+
   if (!art) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
@@ -101,11 +114,44 @@ function SteuerInner() {
   const zuwReihe = istZuweisung
     ? zuw.map((k) => ({ jahr: k.jahr, betrag: k.zuweisungen as number }))
     : [];
-  const anzeigeReihe = istZuweisung ? zuwReihe : reihe;
+  // Die dritte Herkunft: der Jahresabschluss. `ergebnis` ist nullbar — ein
+  // Jahrgang, dessen Posten noch nicht gelesen ist, bekommt keinen Punkt auf
+  // der Kurve statt einer Null.
+  const istEntgelt = !!art.ergebnisPosten;
+  const entgeltReihe = entgelt
+    .filter((z) => z.ergebnis != null)
+    .map((z) => ({ jahr: z.jahr, betrag: z.ergebnis as number }));
+
+  const anzeigeReihe = istZuweisung ? zuwReihe : istEntgelt ? entgeltReihe : reihe;
   const letzte = anzeigeReihe.at(-1);
-  const gesamt = data.steuern.find((s) => s.jahr === letzte?.jahr && s.art === "insgesamt")?.betrag ?? null;
-  const anteil = letzte && gesamt && !istZuweisung ? Math.round((letzte.betrag / gesamt) * 100) : null;
+
+  // Der Anteil braucht seinen Nenner IM TEXT: „3 %" ohne „wovon" ist keine
+  // Aussage. Und der Nenner ist nicht überall derselbe — Steuern misst man an
+  // den Steuereinnahmen, Gebühren an allen ordentlichen Erträgen. Beides steht
+  // in derselben Quelle wie der Zähler, gemischt wird nie.
+  const bezug: { wert: number | null; was: string } | null = istZuweisung
+    ? null
+    : istEntgelt
+      ? {
+          wert: (data.ergebnisrechnung ?? []).find(
+            (z) => z.nr === 12 && z.thh_nr === null && z.jahr === letzte?.jahr,
+          )?.ergebnis ?? null,
+          was: "aller ordentlichen Erträge",
+        }
+      : {
+          wert: data.steuern.find(
+            (s) => s.jahr === letzte?.jahr && s.art === "insgesamt",
+          )?.betrag ?? null,
+          was: "aller Steuereinnahmen",
+        };
+  const anteil = letzte && bezug?.wert ? Math.round((letzte.betrag / bezug.wert) * 100) : null;
   const einwohner = data.einwohner?.einwohner ?? 0;
+
+  // Welche Quelle den Hauptbetrag trägt — einmal bestimmt, überall derselbe
+  // Beleg-Chip. Drei Stellen zeigten ihn vorher einzeln an, und eine vierte
+  // hätte die Reihe still zerrissen.
+  const hauptQuelle: QuellenSchluessel = istZuweisung
+    ? "steuerkraft" : istEntgelt ? "jahresabschluss" : "steuern";
 
   // Plan neben Ist — nur diese Steuer, nur die Jahrgänge, die Tabelle 1103
   // führt (drei je Ausgabe). `datenArt` ist derselbe Schlüssel wie in der
@@ -184,8 +230,10 @@ function SteuerInner() {
     && aktuellerHaushalt === HEBESATZ_ABGELEHNT.jahr;
   const quellen: QuellenSchluessel[] = istZuweisung
     ? ["steuerkraft", "plan"]
-    : ["steuern", ...(planIst.length ? (["steuerplan"] as const) : []),
-       "hebesaetze", ...(zeigtBefund ? (["haushaltssatzung"] as const) : [])];
+    : istEntgelt
+      ? ["jahresabschluss", "ergebnisrechnung_thh"]
+      : ["steuern", ...(planIst.length ? (["steuerplan"] as const) : []),
+         "hebesaetze", ...(zeigtBefund ? (["haushaltssatzung"] as const) : [])];
 
   return (
     <Quellenkontext schluessel={quellen}>
@@ -231,11 +279,11 @@ function SteuerInner() {
             <p className="mt-1.5 font-display text-[27px] font-bold leading-none tracking-tight tabular-nums text-[color:var(--hh-ein-0)]">
               {deMio(letzte.betrag / 1e6)}
               <span className="text-sm font-semibold text-muted-foreground">&#8239;Mio.&nbsp;€</span>
-              <Beleg q={istZuweisung ? "steuerkraft" : "steuern"} />
+              <Beleg q={hauptQuelle} />
             </p>
             {anteil != null && (
               <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                {anteil}&nbsp;% aller Steuereinnahmen ({deMio(gesamt! / 1e6)}&#8239;Mio.&nbsp;€)
+                {anteil}&nbsp;% {bezug!.was} ({deMio(bezug!.wert! / 1e6)}&#8239;Mio.&nbsp;€)
               </p>
             )}
           </div>
@@ -296,9 +344,51 @@ function SteuerInner() {
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <IstKurve reihe={anzeigeReihe} />
           <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[11px] text-muted-foreground">
-            Quelle {istZuweisung ? "Schlüsselzuweisungen" : "Steuereinnahmen"}: siehe Verzeichnis unten
-            <Beleg q={istZuweisung ? "steuerkraft" : "steuern"} />
+            Quelle {istZuweisung
+              ? "Schlüsselzuweisungen"
+              : istEntgelt ? "Jahresabschluss" : "Steuereinnahmen"}: siehe Verzeichnis unten
+            <Beleg q={hauptQuelle} />
           </p>
+        </div>
+      )}
+
+      {/* Dieselbe Ordnung wie bei den Steuern: erst was hereinkam, dann was man
+          erwartet hatte — nur aus der anderen Quelle. */}
+      {istEntgelt && (
+        <EntgeltePlanIst zeilen={entgelt} beleg={<Beleg q="jahresabschluss" />} />
+      )}
+
+      {/* Wofür die Leute zahlen. Steht bewusst hinter der Kurve und nicht neben
+          dem Betrag: Die Aufschlüsselung beantwortet die Frage „welche
+          Gebühren eigentlich?", und die stellt sich, nachdem die Summe da ist. */}
+      {istEntgelt && letzte && (
+        <EntgelteBereiche
+          zeilen={(data.ergebnisrechnung ?? []).filter(
+            (z) => z.nr === art.ergebnisPosten && z.thh_nr !== null && z.jahr === letzte.jahr,
+          )}
+          jahr={letzte.jahr}
+          beleg={<Beleg q="ergebnisrechnung_thh" />}
+        />
+      )}
+
+      {/* Die Grenze der Zahl — und zugleich die Brücke dorthin, wo der Rest
+          steht. Beides in einem Block, weil es dieselbe Auskunft ist: Was hier
+          fehlt, fehlt nicht überall. */}
+      {istEntgelt && art.grenze && (
+        <div className="rounded-2xl border border-dashed border-border bg-card p-4">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Was hier nicht drinsteht
+          </p>
+          <p className="mt-1.5 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/80">
+            <GlossaryText text={art.grenze} />
+          </p>
+          <Link
+            href="/haushalt/konzern#gebuehren"
+            className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary hover:underline"
+          >
+            Was Sie dafür zahlen — die Gebührenbedarfsberechnung
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
       )}
 
@@ -322,7 +412,12 @@ function SteuerInner() {
         <LottiVergleich
           betragMio={letzte.betrag / 1e6}
           einwohner={einwohner}
-          was={istZuweisung ? "an Schlüsselzuweisungen vom Land" : `aus der ${art.titel}`}
+          /* Die Steckbrief-Titel haben drei Genera; ein eingesetzter Titel ergab
+             „aus der Gebühren und Beiträge". Wo der Artikel nicht passt, sagt
+             `proKopfWas` den Satz selbst. */
+          was={istZuweisung
+            ? "an Schlüsselzuweisungen vom Land"
+            : art.proKopfWas ?? `aus der ${art.titel}`}
         />
       )}
 
@@ -495,8 +590,12 @@ function SteuerInner() {
 // `ansatz_jahre` ist die kleinste Auskunft darüber, für welches Jahr gerade
 // ein Haushalt gilt (eine Liste von Zahlen). Die Seite braucht sie, damit der
 // Befund zum abgelehnten Hebesatz-Vorschlag nicht überlebt, was er beschreibt.
+// `ergebnisrechnung` kam am 24.08.2026 dazu — der zweite Weg an die Zahl, für
+// Einnahmearten, die keine Steuer sind (`ergebnisPosten`). Die Liste trägt
+// alle Jahrgänge und Teilhaushalte; gefiltert wird hier, nicht im Backend, wie
+// auf /haushalt/bereich und /haushalt/plan-ist auch.
 const FELDER = ["steuern", "steuerkraft", "steuerplan", "hebesaetze", "einwohner",
-  "ansatz_jahre"] as const;
+  "ansatz_jahre", "ergebnisrechnung"] as const;
 const SATZUNG_FELDER = ["haushaltssatzung"] as const;
 
 export default function SteuerPage() {

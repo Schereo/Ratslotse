@@ -9,8 +9,14 @@
 //  1. Das Open-Data-CSV führt **Grundsteuer A und B in einer Spalte**. Der
 //     Entwurf sah zwei Karten mit eigenen Beträgen vor — die gibt es nicht.
 //     Also eine Karte „Grundsteuer A+B" mit beiden Hebesätzen.
-//  2. „Gebühren und Beiträge" ist keine Steuer und steht in keinem der
-//     Datensätze. Die Karte bleibt ohne Betrag, ehrlich gekennzeichnet.
+//  2. „Gebühren und Beiträge" ist keine Steuer — in den Open-Data-Steuerreihen
+//     steht sie deshalb nicht, und `datenArt` bleibt dort `null`. Bis zum
+//     24.08.2026 hieß das auf der Seite „keiner der offenen Datensätze führt
+//     diese Einnahme", und der Steckbrief blieb leer. Die Zahl lag da: Der
+//     Jahresabschluss führt sie als Posten 5 der Ergebnisrechnung
+//     („öffentlich-rechtliche Entgelte"), mit Ansatz und Ergebnis je Jahr und
+//     aufgeschlüsselt nach Teilhaushalt. Dafür ist `ergebnisPosten` da — der
+//     zweite Weg an die Zahl, für Einnahmearten, die keine Steuer sind.
 
 export type Spielraum = "frei" | "begrenzt" | "keiner";
 
@@ -27,6 +33,23 @@ export type SteuerArt = {
   slug: string;
   /** Genau die Schreibweise aus `council_steuern.art`; null = kein Datensatz. */
   datenArt: string | null;
+  /** Die Postennummer der **Ergebnisrechnung**, wo `datenArt` nichts hergibt.
+   *
+   *  Der Jahresabschluss gliedert seine Erträge in 24 Posten; Nummer 5 sind
+   *  die öffentlich-rechtlichen Entgelte, also die Gebühren. Diese Quelle kann
+   *  mehr als die Steuerreihe: Sie führt Ansatz **und** Ergebnis je Jahr und
+   *  schlüsselt beides nach Teilhaushalt auf.
+   *
+   *  Ihre Grenze steht im Titel des Dokuments und gehört an jede Anzeige: Es
+   *  ist der Abschluss **der Kernverwaltung**. Was ein Eigenbetrieb einnimmt —
+   *  allen voran die Abfallgebühren des AWB — steht hier nicht (`grenze`). */
+  ergebnisPosten?: number;
+  /** Was diese Zahl NICHT umfasst, in einem Satz. Pflicht, wo `ergebnisPosten`
+   *  steht: Eine Summe ohne ihre Abgrenzung liest sich als Gesamtsumme. */
+  grenze?: string;
+  /** Der Pro-Kopf-Satz, wo „aus der ${titel}" kein Deutsch ergibt
+   *  („aus der Gebühren und Beiträge"). */
+  proKopfWas?: string;
   titel: string;
   /** Ein Satz, der die Steuer erklärt, ohne ein Fachwort zu benutzen. */
   kurz: string;
@@ -292,11 +315,24 @@ export const STEUERARTEN: SteuerArt[] = [
   },
   {
     slug: "gebuehren",
-    datenArt: null, // In keinem der Open-Data-Sätze enthalten.
+    datenArt: null, // In keiner der Open-Data-Steuerreihen enthalten …
+    // … dafür im Jahresabschluss, als Posten 5 der Ergebnisrechnung.
+    ergebnisPosten: 5,
+    // Der Jahresabschluss heißt selbst „der Kernverwaltung und ihrer nicht
+    // rechtsfähigen Stiftungen" — Eigenbetriebe zählt er nicht mit. Nachgesehen
+    // statt geschlossen: Die Abfallgebühren waren 2024 zusammen 19,4 Mio. €,
+    // die größte Teilhaushalts-Zeile dieses Postens in acht Jahrgängen liegt
+    // bei 7,5 Mio. € — sie können dort nirgends stecken.
+    grenze:
+      "Die Müllgebühr steckt hier nicht drin. Sie läuft über den " +
+      "Abfallwirtschaftsbetrieb, und der ist ein Eigenbetrieb — der " +
+      "Jahresabschluss der Kernverwaltung zählt ihn nicht mit.",
+    proKopfWas: "an Gebühren und Beiträgen",
     titel: "Gebühren und Beiträge",
     kurz:
-      "Kita-Beiträge, Müllgebühren, Friedhofsgebühren: Wer eine Leistung nutzt, zahlt " +
-      "dafür. Die Sätze beschließt der Rat — höher als die Kosten dürfen sie nicht sein.",
+      "Wer eine Leistung der Stadt nutzt, zahlt dafür — vom Kita-Beitrag bis zur " +
+      "Friedhofsgebühr. Die Sätze beschließt der Rat; höher als die Kosten dürfen " +
+      "sie nicht sein.",
     spielraum: "begrenzt",
     stellschraube: "Der Rat beschließt die Sätze, gedeckelt durch die Kosten",
     stufen: [

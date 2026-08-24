@@ -73,7 +73,13 @@ const GRUPPEN: { stufe: Spielraum; titel: string; text: string }[] = [
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-const FELDER = ["steuern", "steuerkraft", "finanzausgleich", "spenden"] as const;
+// `ergebnisrechnung` seit 24.08.2026: Die Gebühren-Karte trug bis dahin
+// „Betrag noch nicht eingelesen", während ihr Steckbrief die Zahl längst
+// hätte holen können. Zwei Seiten dürfen zur selben Zahl nicht
+// Verschiedenes sagen — die Regel stand schon im Steckbrief, nur
+// andersherum.
+const FELDER = ["steuern", "steuerkraft", "finanzausgleich", "spenden",
+  "ergebnisrechnung"] as const;
 
 export default function EinnahmenPage() {
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
@@ -96,11 +102,28 @@ export default function EinnahmenPage() {
 
   // Karten: Betrag aus den Daten, innerhalb der Gruppe nach Betrag sortiert
   // (Quellen ohne Zahl ans Ende).
-  const karten = STEUERARTEN.map((a) => ({
-    art: a,
-    betrag: a.slug === "schluesselzuweisungen" ? zuweisungJahr?.zuweisungen ?? null : betragFuer(a.datenArt),
-    jahr: a.slug === "schluesselzuweisungen" ? zuweisungJahr?.jahr ?? jahr : jahr,
-  })).sort((a, b) => (b.betrag ?? -1) - (a.betrag ?? -1));
+  // Der zweite Weg an die Zahl, für Einnahmearten ohne Steuerreihe: der
+  // jüngste Jahresabschluss, der diesen Posten führt. Sein Jahr ist nicht
+  // zwingend das der Steuerreihe — deshalb trägt jede Karte ihr eigenes,
+  // wie die Schlüsselzuweisungen es längst tun.
+  const entgeltJahr = (posten: number) =>
+    (data.ergebnisrechnung ?? [])
+      .filter((z) => z.nr === posten && z.thh_nr === null && z.ergebnis != null)
+      .sort((a, b) => a.jahr - b.jahr)
+      .at(-1) ?? null;
+
+  const karten = STEUERARTEN.map((a) => {
+    const entgelt = a.ergebnisPosten ? entgeltJahr(a.ergebnisPosten) : null;
+    return {
+      art: a,
+      betrag: a.slug === "schluesselzuweisungen"
+        ? zuweisungJahr?.zuweisungen ?? null
+        : entgelt ? entgelt.ergebnis : betragFuer(a.datenArt),
+      jahr: a.slug === "schluesselzuweisungen"
+        ? zuweisungJahr?.jahr ?? jahr
+        : entgelt ? entgelt.jahr : jahr,
+    };
+  }).sort((a, b) => (b.betrag ?? -1) - (a.betrag ?? -1));
 
   const gruppen = GRUPPEN
     .map((g) => ({ ...g, karten: karten.filter((k) => k.art.spielraum === g.stufe) }))
@@ -115,6 +138,8 @@ export default function EinnahmenPage() {
   const spendenGeld = spendenGrem.Rat.betrag + spendenGrem.Verwaltungsausschuss.betrag;
 
   const quellen: QuellenSchluessel[] = ["steuern", "steuerkraft", "hebesaetze",
+    ...(karten.some((k) => k.art.ergebnisPosten && k.betrag != null)
+      ? (["jahresabschluss"] as const) : []),
     ...(spendenReihe.length ? (["spenden"] as const) : [])];
 
   return (
@@ -203,7 +228,9 @@ export default function EinnahmenPage() {
                     </span>
                     <span className="ml-1 font-sans text-[10px] font-normal text-muted-foreground">
                       {bJahr}
-                      <Beleg q={art.slug === "schluesselzuweisungen" ? "steuerkraft" : "steuern"} />
+                      <Beleg q={art.slug === "schluesselzuweisungen"
+                        ? "steuerkraft"
+                        : art.ergebnisPosten ? "jahresabschluss" : "steuern"} />
                     </span>
                   </p>
                 ) : (
