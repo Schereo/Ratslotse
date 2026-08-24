@@ -143,13 +143,19 @@ function Fraktion({ label, unklar = false }: { label: string | null; unklar?: bo
  *    sprechen für ihr Amt, nicht für eine Fraktion, und eine Parteifarbe
  *    stünde ihnen falsch. Gruppen-Labels mit Schrägstrich bekommen den
  *    neutralen Punkt, aus demselben Grund wie in den Chips (s. NEUTRAL). */
-function RednerPunkt({ b }: { b: StreitWortbeitrag }) {
-  const lage = "absolute left-0 top-[3px] h-[11px] w-[11px] rounded-full";
+function RednerPunkt({ b, rechts }: { b: StreitWortbeitrag; rechts: boolean }) {
+  const lage = cn(
+    "absolute top-[18px] h-[11px] w-[11px] rounded-full",
+    // Schmale Karte: alle Punkte links übereinander. Breite Karte: der Punkt
+    // sitzt am ÄUSSEREN Ufer seiner Karte — der Pfad pendelt dadurch über die
+    // volle Breite, nicht nur bis zur Mitte.
+    rechts ? "left-1 @2xl:left-auto @2xl:right-1" : "left-1",
+  );
   if (b.rolle !== "rat") {
-    return <span aria-hidden data-punkt className={`${lage} border-[1.5px] border-muted-foreground/70 bg-card`} />;
+    return <span aria-hidden data-punkt className={cn(lage, "border-[1.5px] border-muted-foreground/70 bg-card")} />;
   }
   if (b.fraktion_unklar || !b.fraktion) {
-    return <span aria-hidden data-punkt className={`${lage} border border-dashed border-muted-foreground/60 bg-card`} />;
+    return <span aria-hidden data-punkt className={cn(lage, "border border-dashed border-muted-foreground/60 bg-card")} />;
   }
   const dot = b.fraktion.includes("/") ? NEUTRAL : parteiDot(b.fraktion);
   return (
@@ -160,33 +166,6 @@ function RednerPunkt({ b }: { b: StreitWortbeitrag }) {
   );
 }
 
-/** Eine Rede an der Rednerliste.
- *
- *  DIE ALTE FORM WAR EIN STAPEL („Man hat hier die Namen stehen, dann wieder
- *  eine halbe Seite mit Zitat […] das ganze Element sieht nicht schön aus" —
- *  Tim, 21.08.2026): Namenszeile, darunter ein kursiver Absatz mit Randlinie,
- *  darunter der Aufklapp-Knopf, einundzwanzigmal untereinander, rechts die
- *  halbe Karte leer. Jetzt ist die Debatte eine RED­NERLISTE im
- *  Zeitstrahl-Vokabular des Bereichs (Designsprache §5, RG-03): Punkt und
- *  Linie führen durch die Sitzung, und auf breiten Karten stehen Sprecher*in
- *  und Wortlaut in zwei Spalten — die Breite trägt die Struktur, statt leer
- *  danebenzuliegen.
- *
- *  Drei Entscheidungen im Kleinen:
- *  * **Nicht mehr kursiv.** Kursiv ist in der Designsprache die Form der
- *    PARAPHRASE („Paraphrasen kursiv ohne Anführungszeichen") — das hier ist
- *    aber Protokollwortlaut, und der steht im Bereich sonst aufrecht am
- *    Zitatblock (s. den Wortlaut-Block der Prüfungs-Seite). 21 Reden in
- *    Kursivschrift waren zudem schlicht anstrengend zu lesen.
- *  * **Die Fraktionsfarbe wandert an den Punkt.** Vorher trug jede Namenszeile
- *    einen eigenen Chip; jetzt sagt der Punkt an der Linie dasselbe mit der
- *    Marken-Grammatik der Kopfzeile, und der Name bleibt ruhig.
- *  * **Keine Trennstriche mehr zwischen den Reden.** Die Linie übernimmt die
- *    Gliederung; Strich UND Linie wären zwei Systeme für dieselbe Aufgabe.
- *
- *  Die Lesebreite des Wortlauts bleibt gedeckelt (Designsprache §4: ein
- *  einzelner Absatz bleibt gedeckelt — der Kasten ist hier durch die
- *  Spaltenstruktur gefüllt, nicht durch längere Zeilen). */
 /** Die Debatte als geschlungener Pfad (Tims Wunsch, 21.08.2026: „Wäre cool,
  *  wenn der Pfeil nicht linear wäre, sondern so geschlungen von rechts nach
  *  links — und die Personen/Parteien tauchen erst beim Scrollen mit Animation
@@ -233,26 +212,17 @@ function DebattenListe({ reden }: { reden: StreitWortbeitrag[] }) {
         return { x: r.left - basis.left + r.width / 2, y: r.top - basis.top + r.height / 2 };
       });
       if (punkte.length < 2) { setPfad(null); return; }
-      // DER PFAD LÄUFT DURCH DIE FREIEN GASSEN, nicht durch den Text. Zwei
-      // davon gibt es geschenkt: die 28-px-Einrückspur links jeder Rede
-      // (`pl-7` — dort läuft die Linie senkrecht am Beitrag entlang) und das
-      // Polster zwischen zwei Reden (`pb-6` — dort wechselt sie das Ufer).
-      // Ein erster Wurf zog die S-Kurve direkt von Punkt zu Punkt und schnitt
-      // dabei quer durch die Wortbeiträge; `test` unten misst seither, dass
-      // keine Kurve einen Textblock kreuzt.
+      // EIN weicher Bogen je Übergang, kein Eckwerk: Die Steuerpunkte liegen
+      // senkrecht unter bzw. über den Ankern — die Kurve verlässt einen Punkt
+      // nach unten, schwingt über die volle Breite und kommt von oben beim
+      // nächsten an. Weil die Karten opak sind, darf sie dabei überall
+      // langlaufen; auf schmalen Karten (alle Punkte übereinander) ergibt
+      // dieselbe Rechnung von allein eine gerade Linie.
       let d = `M ${punkte[0].x.toFixed(1)} ${punkte[0].y.toFixed(1)}`;
       for (let i = 1; i < punkte.length; i++) {
         const a = punkte[i - 1], b = punkte[i];
-        if (Math.abs(a.x - b.x) < 1) {
-          // Gleiches Ufer (schmale Karte): schlicht senkrecht weiter.
-          d += ` L ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
-          continue;
-        }
-        // Senkrecht in der eigenen Gasse bis kurz vor die nächste Rede …
-        const wende = Math.max(a.y + 10, b.y - 30);
-        d += ` L ${a.x.toFixed(1)} ${wende.toFixed(1)}`;
-        // … dann die Schlinge ans andere Ufer, komplett im Zwischenraum.
-        d += ` C ${a.x.toFixed(1)} ${(b.y - 2).toFixed(1)}, ${b.x.toFixed(1)} ${wende.toFixed(1)}, ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
+        const zug = Math.max(36, (b.y - a.y) * 0.55);
+        d += ` C ${a.x.toFixed(1)} ${(a.y + zug).toFixed(1)}, ${b.x.toFixed(1)} ${(b.y - zug).toFixed(1)}, ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
       }
       setPfad({ d, w: basis.width, h: basis.height });
     };
@@ -267,11 +237,20 @@ function DebattenListe({ reden }: { reden: StreitWortbeitrag[] }) {
     const el = stift.current;
     if (!el || !pfad) return;
     const laenge = el.getTotalLength();
+    // Erst OHNE Übergang auf den Startzustand setzen — sonst „malt" sich der
+    // ganze Pfad beim ersten Rendern einmal quer durchs Bild. Der weiche
+    // Übergang kommt danach: Er lässt den Strich dem Scrollen mit einer
+    // halben Sekunde Nachlauf folgen, statt hart an der Scroll-Position zu
+    // kleben — das war Tims „keine schöne Animation".
+    el.style.transition = "none";
     el.style.strokeDasharray = `${laenge}`;
+    el.style.strokeDashoffset = `${laenge}`;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       el.style.strokeDashoffset = "0";
       return;
     }
+    void el.getBoundingClientRect();
+    el.style.transition = "stroke-dashoffset 0.55s cubic-bezier(0.22, 0.61, 0.36, 1)";
     let angemeldet = 0;
     const zeichnen = () => {
       angemeldet = 0;
@@ -338,8 +317,10 @@ function DebattenListe({ reden }: { reden: StreitWortbeitrag[] }) {
           </defs>
           <path d={pfad.d} stroke="currentColor" strokeWidth="1.5"
             markerEnd="url(#debatten-pfeil)" />
+          {/* Der Stift etwas kräftiger als die blasse Vorzeichnung — er ist
+              die Route, die man schon gegangen ist. */}
           <path ref={stift} d={pfad.d} className="text-primary/45" stroke="currentColor"
-            strokeWidth="1.5" strokeLinecap="round" />
+            strokeWidth="2" strokeLinecap="round" />
         </svg>
       )}
       <ol ref={liste} className="relative list-none">
@@ -355,35 +336,41 @@ function Rede({ b, rechts }: { b: StreitWortbeitrag; rechts: boolean }) {
 
   return (
     <li className={cn(
-      "relative pb-6 pl-7 last:pb-0 transition-[opacity,transform] duration-500 ease-out",
-      "motion-safe:data-[reveal=aus]:translate-y-3 motion-safe:data-[reveal=aus]:opacity-0",
-      "@2xl:grid @2xl:w-[58%] @2xl:grid-cols-[13.5rem_minmax(0,1fr)] @2xl:gap-x-8",
-      // Die Schlangenlinie braucht zwei Ufer: Jede zweite Rede rückt auf
-      // breiten Karten nach rechts, und der Pfad schwingt dazwischen hin und
-      // her. 58 + 42 = 100 — die rechte Kante bleibt in der Karte.
-      rechts && "@2xl:ml-[42%]",
+      "group relative pb-7 last:pb-0",
+      "transition-opacity duration-700 ease-out motion-safe:data-[reveal=aus]:opacity-0",
     )}>
-      <RednerPunkt b={b} />
-      <div className="min-w-0">
-        <p className="text-[13px] font-semibold leading-snug text-foreground">{b.name}</p>
-        {/* Bei Verwaltung und Sitzungsleitung sagt die Anrede die Rolle schon
-            („Oberbürgermeister", „Stadtkämmerin") — ein zusätzliches Wort
-            „Verwaltung" daneben wäre dieselbe Angabe zweimal. */}
-        {b.rolle === "rat" && (b.fraktion_unklar ? (
-          <p className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">
-            Fraktion nicht eindeutig
-          </p>
-        ) : b.fraktion && (
-          <p className="mt-0.5 text-[11.5px] font-medium leading-snug text-foreground/80">
-            {b.fraktion}
-          </p>
-        ))}
-        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80">
-          {b.anrede}
-        </p>
-      </div>
-      <div className="mt-1.5 min-w-0 @2xl:mt-0">
-        <p className="max-w-[76ch] text-[13.5px] leading-relaxed text-foreground/90">
+      <RednerPunkt b={b} rechts={rechts} />
+      {/* DIE KARTE IST OPAK, und das ist keine Kosmetik, sondern die Statik
+          dieses Elements: Der Pfad darf dadurch frei und mit vollem Schwung
+          HINTER den Wortbeiträgen durchlaufen — ein erster Entwurf ließ den
+          Text transparent und musste den Pfad in schmalen Gassen daran
+          vorbeiführen: kantig, halbbreit, und bei schmaleren Fenstern lief
+          er doch durch den Text (Tims Befund). Die Verschiebung beim
+          Auftritt liegt an der Karte, NICHT am <li>: Der Punkt ist der
+          Messanker des Pfads und muss stehen bleiben. */}
+      <div className={cn(
+        "relative ml-7 rounded-xl border border-border bg-card p-3.5 shadow-sm",
+        "transition-transform duration-700 ease-out",
+        "@2xl:w-[56%]",
+        rechts
+          ? "@2xl:ml-auto @2xl:mr-7 motion-safe:group-data-[reveal=aus]:translate-x-4"
+          : "motion-safe:group-data-[reveal=aus]:-translate-x-4",
+      )}>
+        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+          <span className="text-[13px] font-semibold leading-snug text-foreground">{b.name}</span>
+          {/* Bei Verwaltung und Sitzungsleitung sagt die Anrede die Rolle
+              schon („Oberbürgermeister", „Stadtkämmerin") — ein zusätzliches
+              „Verwaltung" daneben wäre dieselbe Angabe zweimal. */}
+          {b.rolle === "rat" && (b.fraktion_unklar ? (
+            <span className="text-[11.5px] text-muted-foreground">Fraktion nicht eindeutig</span>
+          ) : b.fraktion && (
+            <span className="text-[11.5px] font-medium text-foreground/80">{b.fraktion}</span>
+          ))}
+          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80">
+            {b.anrede}
+          </span>
+        </div>
+        <p className="mt-1.5 text-[13.5px] leading-relaxed text-foreground/90">
           {offen ? b.text : kopf}
           {!offen && rest && <span className="text-muted-foreground"> …</span>}
         </p>
