@@ -152,7 +152,7 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
         {faktor >= 1.5 && <> — das {faktor.toLocaleString("de-DE", { maximumFractionDigits: 1 })}-Fache</>}.
         {rueckgaenge.length > 0 && (
           <> Dazwischen ging es auch zurück: am stärksten {rueckgaenge[0].jahr} um{" "}
-          {deMio(-rueckgaenge[0].delta)}&#8239;Mio.</>
+          {deMio(-rueckgaenge[0].delta)}&#8239;Mio.&nbsp;€</>
         )}
       </p>
       {/* Ohne diesen Halbsatz liest sich „das 5,2-Fache" über 27 Jahre wie ein

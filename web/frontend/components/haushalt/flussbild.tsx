@@ -426,9 +426,9 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
           Die Bandbreiten links und rechts liegen auf derselben Skala:{" "}
           {deMio(mio(zeigBild.summeLinks))}&#8239;Mio.&nbsp;€ hier wie dort.{" "}
           {saldoMio < 0
-            ? `Weil die Stadt ${deMio(-saldoMio)} Mio. mehr ausgibt als sie einnimmt, trägt die linke Seite ein zusätzliches Band „aus dem Ersparten“ — sonst wären die Seiten nicht gleich lang.`
+            ? `Weil die Stadt ${deMio(-saldoMio)} Mio. € mehr ausgibt als sie einnimmt, trägt die linke Seite ein zusätzliches Band „aus dem Ersparten“ — sonst wären die Seiten nicht gleich lang.`
             : saldoMio > 0
-              ? `Weil ${deMio(saldoMio)} Mio. übrig bleiben, trägt die rechte Seite ein zusätzliches Band „bleibt übrig“ — sonst wären die Seiten nicht gleich lang.`
+              ? `Weil ${deMio(saldoMio)} Mio. € übrig bleiben, trägt die rechte Seite ein zusätzliches Band „bleibt übrig“ — sonst wären die Seiten nicht gleich lang.`
               : "Einnahmen und Ausgaben liegen gleichauf."}
           {!zeigBild.stimmt && " Die Summenprobe geht nicht auf — die Grafik zeigt das, statt zu strecken."}
         </p>

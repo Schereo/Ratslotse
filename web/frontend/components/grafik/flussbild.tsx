@@ -318,7 +318,7 @@ function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, einhei
 }
 
 export function Flussbild({
-  links, rechts, empfaenger, topf, skala, format, einheit = "Mio.",
+  links, rechts, empfaenger, topf, skala, format, einheit = "Mio. €",
   mindestAnteil = 0.05, beschreibung, className,
 }: {
   /** Die Quellen — laufen in den Topf (Einnahmen-Rampe). */

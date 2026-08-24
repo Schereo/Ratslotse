@@ -155,7 +155,7 @@ export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: nu
         <p className="mt-3.5 border-t border-border/60 pt-3 text-xs leading-relaxed text-foreground/85">
           <strong>Grenze der Metapher:</strong> Es sind nicht 100 Euro Steuergeld — {eingenommen}&nbsp;Euro
           sind eingenommen, {100 - eingenommen}&nbsp;Euro stammen aus dem Ersparten der Stadt
-          ({deMio(fehltMio)}&#8239;Mio. aus der Rücklage).
+          ({deMio(fehltMio)}&#8239;Mio.&nbsp;€ aus der Rücklage).
         </p>
       )}
     </div>

@@ -754,7 +754,7 @@ export default function SchuldenPage() {
               : undefined}
             annotationen={ansicht === "insgesamt" ? [{
               jahr: 2010,
-              kurz: "108,9 Mio. umgebucht",
+              kurz: "108,9 Mio. € umgebucht",
               text: "2010 übertrug die Stadt 108,9 Mio. € Kredite an den neuen "
                 + "Eigenbetrieb Gebäudewirtschaft — eine Spalte sprang, die Summe "
                 + "kaum. Kein Tilgungswunder.",

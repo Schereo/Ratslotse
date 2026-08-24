@@ -73,6 +73,16 @@ function Zusammensetzungsbalken({ stadt, eigen, skala }: {
   );
 }
 
+/** „Mio. €" an der Zahl — nur dort, wo der Spaltenkopf fehlt (unter sm).
+ *  Ohne diese Zeile stünde auf dem Handy eine nackte Zahl ohne Einheit. */
+function Einheit() {
+  return (
+    <span className="ml-0.5 text-[10px] font-medium text-muted-foreground sm:hidden">
+      Mio.&nbsp;€
+    </span>
+  );
+}
+
 function Kopf() {
   return (
     <div className="hidden grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_64px_64px_14px] gap-x-3.5 pb-2 sm:grid">
@@ -80,7 +90,14 @@ function Kopf() {
         <span key={t} className={cn(
           "font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground",
           i >= 2 && "text-right",
-        )}>{t}</span>
+        )}>
+          {t}
+          {/* Die Einheit steht in einer zweiten Zeile, nicht hinter dem Wort:
+              Die Zahlenspalten sind 64 px breit, „Stadt Mio. €" liefe darüber
+              hinaus. Auf schmalen Bildschirmen fehlt dieser Kopf ganz —
+              dort trägt jede Zahl die Einheit selbst. */}
+          {i >= 2 && <span className="block normal-case">Mio.&nbsp;€</span>}
+        </span>
       ))}
       <span />
     </div>
@@ -105,11 +122,11 @@ function Reihe({ z, skala }: { z: Zeile; skala: number }) {
       <span className="flex items-baseline justify-between gap-4 sm:contents">
         <span className="tabular-nums sm:text-right">
           <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground sm:hidden">Stadt</span>
-          <span className="font-semibold">{deMio(z.stadt)}</span>
+          <span className="font-semibold">{deMio(z.stadt)}<Einheit /></span>
         </span>
         <span className="tabular-nums text-muted-foreground sm:text-right">
           <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] sm:hidden">Gesamt</span>
-          {deMio(z.gesamt)}
+          {deMio(z.gesamt)}<Einheit />
         </span>
       </span>
       <span className="hidden justify-self-end sm:block">
@@ -247,11 +264,11 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
                 <span className="flex items-baseline justify-between gap-4 sm:contents">
                   <span className="tabular-nums sm:text-right">
                     <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] sm:hidden">Stadt</span>
-                    {deMio(restStadt)}
+                    {deMio(restStadt)}<Einheit />
                   </span>
                   <span className="tabular-nums sm:text-right">
                     <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] sm:hidden">Gesamt</span>
-                    {deMio(restGesamt)}
+                    {deMio(restGesamt)}<Einheit />
                   </span>
                 </span>
                 <span className="hidden justify-self-end sm:block">
@@ -284,8 +301,8 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
                   <span key={z.roh}>
                     {i > 0 && (i === ueberschuss.length - 1 ? " und " : ", ")}
                     <strong className="font-semibold text-foreground/90">{z.name}</strong>{" "}
-                    (Ausgaben {deMio(z.gesamt)}&#8239;Mio., eigene Erträge {deMio(z.eigen)}&#8239;Mio.,
-                    Überschuss {deMio(z.plus)}&#8239;Mio.)
+                    (Ausgaben {deMio(z.gesamt)}&#8239;Mio.&nbsp;€, eigene Erträge {deMio(z.eigen)}&#8239;Mio.&nbsp;€,
+                    Überschuss {deMio(z.plus)}&#8239;Mio.&nbsp;€)
                   </span>
                 ))}
                 .{" "}
@@ -297,13 +314,13 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
                 {luecke > 0 ? (
                   <>
                     Er reicht dafür nicht: Der Zuschussbedarf der übrigen Bereiche summiert sich
-                    auf {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und liegt {deMio(luecke)}&#8239;Mio.
+                    auf {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und liegt {deMio(luecke)}&#8239;Mio.&nbsp;€
                     darüber — genau das ist das für {jahr} geplante Minus.
                   </>
                 ) : (
                   <>
                     Er reicht dafür: Der Zuschussbedarf der übrigen Bereiche summiert sich auf{" "}
-                    {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und liegt {deMio(-luecke)}&#8239;Mio.
+                    {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und liegt {deMio(-luecke)}&#8239;Mio.&nbsp;€
                     darunter — genau das ist der für {jahr} geplante Überschuss.
                   </>
                 )}
@@ -321,10 +338,10 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
                 {/* Absolut formuliert, nicht als Quote: Ein Prozentwert wäre
                     hier ein Maßstab, den es nicht gibt — kein Bereich soll
                     sich selbst finanzieren. */}
-                {groessteAusgabe.name} gibt {deMio(groessteAusgabe.gesamt)}&#8239;Mio. aus und hat
-                dabei {deMio(groessteAusgabe.eigen)}&#8239;Mio. eigene Erträge;{" "}
-                {groesstenKosten.name} gibt {deMio(groesstenKosten.gesamt)}&#8239;Mio. aus und hat{" "}
-                {deMio(groesstenKosten.eigen)}&#8239;Mio. So kostet der kleinere Posten die Stadt
+                {groessteAusgabe.name} gibt {deMio(groessteAusgabe.gesamt)}&#8239;Mio.&nbsp;€ aus und hat
+                dabei {deMio(groessteAusgabe.eigen)}&#8239;Mio.&nbsp;€ eigene Erträge;{" "}
+                {groesstenKosten.name} gibt {deMio(groesstenKosten.gesamt)}&#8239;Mio.&nbsp;€ aus und hat{" "}
+                {deMio(groesstenKosten.eigen)}&#8239;Mio.&nbsp;€. So kostet der kleinere Posten die Stadt
                 am Ende mehr.
               </p>
             </div>
