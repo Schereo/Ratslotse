@@ -211,11 +211,17 @@ export function InvestitionsplanAbschnitt() {
   // sich die letzte Stufe. Sortiert ist absteigend, die kleinen Bereiche
   // stehen also hinten und liegen farblich beieinander — richtig so, sie sind
   // einzeln kaum sichtbar.
-  const farbe = useMemo(() => {
-    const zu = new Map<number, string>();
-    zeilen.forEach((z, i) => zu.set(z.thh_nr, `var(--hh-aus-${Math.min(i, 9)})`));
-    return (thhNr: number) => zu.get(thhNr) ?? "var(--hh-aus-9)";
+  //
+  // Die STUFE wird mitgegeben, nicht nur das fertige Token: Die Kachelfläche
+  // schreibt Text auf ihre Flächen, und ob der hell oder dunkel sein muss,
+  // hängt genau an dieser Zahl (`grafik/kachelflaeche.ts`, `rampenText`).
+  const stufe = useMemo(() => {
+    const zu = new Map<number, number>();
+    zeilen.forEach((z, i) => zu.set(z.thh_nr, Math.min(i, 9)));
+    return (thhNr: number) => zu.get(thhNr) ?? 9;
   }, [zeilen]);
+  const farbe = useMemo(
+    () => (thhNr: number) => `var(--hh-aus-${stufe(thhNr)})`, [stufe]);
 
   const segmente: Anteil[] = useMemo(
     () => zeilen
@@ -434,6 +440,7 @@ export function InvestitionsplanAbschnitt() {
             // Kachelfläche des Explorers und die Rangliste je Bereich sollen
             // denselben Teilhaushalt in derselben Rampenstufe zeigen.
             farbeVonThh={farbe}
+            stufeVonThh={stufe}
           />
         )}
 
