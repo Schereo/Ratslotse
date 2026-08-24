@@ -4,8 +4,8 @@
 //
 // Ersetzt die Karten-Kacheln der ersten Fassung. Der Gewinn ist nicht Platz,
 // sondern Vergleichbarkeit: Jede Zeile zeigt in EINEM Balken, wie sich die
-// Ausgaben eines Bereichs zusammensetzen — der dunkle Teil kommt aus dem
-// allgemeinen Topf, der helle sind die eigenen Erträge des Bereichs. So wird
+// Ausgaben eines Bereichs zusammensetzen — den dunklen Teil schießt die Stadt
+// aus dem allgemeinen Topf zu, den hellen nimmt der Bereich selbst ein. So wird
 // ohne Fußnote sichtbar, dass der längste Balken nicht der ist, der die Stadt
 // am meisten kostet.
 //
@@ -14,7 +14,7 @@
 //  1. **Alle Balken hängen an EINER Skala** (dem größten Bereich), nicht
 //     zeilenweise an 100 %. Zeilenweise skaliert wären alle gleich lang und
 //     der Vergleich, um den es geht, wäre weg.
-//  2. **Der helle Teil heißt „eigene Erträge des Bereichs", nicht „von Bund,
+//  2. **Der helle Teil heißt „nimmt der Bereich selbst ein", nicht „von Bund,
 //     Land oder über Gebühren".** Für Planjahre lässt sich die Herkunft nicht
 //     belegen: `council_haushalt` kennt je Bereich nur eine Ertragssumme, die
 //     Aufschlüsselung nach Arten endet mit dem Jahresabschluss 2024. Und auch
@@ -221,28 +221,38 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
               : `Die ${traeger.length + ueberschuss.length} Bereiche im Einzelnen`}
           </h2>
           <p className="mt-2 max-w-[74ch] text-[13px] leading-relaxed text-foreground/85">
-            Jeder Balken ist ein Bereich, seine Länge sind die Ausgaben. Der{" "}
-            <strong className="font-semibold">dunkle Teil</strong> wird aus dem allgemeinen Topf
-            bezahlt — Steuern und Schlüsselzuweisungen, die für die ganze Stadt zusammen
-            eingehen. Der <strong className="font-semibold">helle Teil</strong> sind die eigenen
-            Erträge des Bereichs.<Beleg q="plan" />
+            Jeder Balken ist ein Bereich, seine Länge sind die Ausgaben. Den{" "}
+            <strong className="font-semibold">dunklen Teil</strong> schießt die Stadt zu — bezahlt
+            aus dem allgemeinen Topf, in den Steuern und Schlüsselzuweisungen für die ganze
+            Stadt zusammen eingehen. Den <strong className="font-semibold">hellen Teil</strong>{" "}
+            nimmt der Bereich selbst ein: seine eigenen Erträge.<Beleg q="plan" />
           </p>
 
+          {/* „REIHENFOLGE" + Verb-Paar statt „nach Kosten für die Stadt": Der
+              Umschalter sortiert nur, aber neben der Legende las er sich wie
+              ein Ansichts-Wechsel — und „Ausgaben" vs. „Kosten" klang wie
+              zweimal dasselbe (Tim, 24.08.). Die Verben tragen den Unterschied
+              und sprechen dieselbe Sprache wie die Legende daneben. */}
           <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
-              <Segmented className="w-max" value={sortierung} onChange={setSortierung} tone="primary"
-                options={[
-                  { value: "stadt", label: "nach Kosten für die Stadt" },
-                  { value: "gesamt", label: "nach Ausgaben" },
-                ]} />
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="shrink-0 font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
+                Reihenfolge
+              </span>
+              <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
+                <Segmented className="w-max" value={sortierung} onChange={setSortierung} tone="primary"
+                  options={[
+                    { value: "stadt", label: "was die Stadt zuschießt" },
+                    { value: "gesamt", label: "was ein Bereich ausgibt" },
+                  ]} />
+              </div>
             </div>
             <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
               <span className="h-3 w-3 rounded-[3px]" style={{ background: "var(--hh-ein-0)" }} />
-              aus dem allgemeinen Topf
+              schießt die Stadt zu (allgemeiner Topf)
             </span>
             <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
               <span className="h-3 w-3 rounded-[3px]" style={{ background: "var(--hh-ein-3)" }} />
-              eigene Erträge des Bereichs
+              nimmt der Bereich selbst ein
             </span>
           </div>
 
@@ -370,7 +380,8 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
           </div>
 
           <p className="border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-            „Stadt“ ist der Zuschussbedarf: Aufwendungen minus eigene Erträge des Bereichs. Wie
+            „Stadt“ ist das, was die Stadt zuschießt — der Zuschussbedarf: Aufwendungen minus
+            eigene Erträge des Bereichs. Wie
             sich die eigenen Erträge auf Erstattungen, Gebühren und Zuwendungen verteilen, steht
             hier bewusst als Text und nicht als Zahl — der Haushaltsplan weist das auf dieser
             Ebene nicht getrennt aus.<Beleg q="plan" />
