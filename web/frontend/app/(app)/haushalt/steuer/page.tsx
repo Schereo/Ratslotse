@@ -13,7 +13,7 @@
 import { Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import { HaushaltAuswahl, haushaltUrl, deMio } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
@@ -26,6 +26,7 @@ import { IstKurve } from "@/components/haushalt/ist-kurve";
 import { SteuerPlanIst } from "@/components/haushalt/steuer-plan-ist";
 import { HebesatzTreppe } from "@/components/haushalt/hebesatz-treppe";
 import { AbgelehnteStufe } from "@/components/haushalt/abgelehnte-stufe";
+import { Grenzen } from "@/components/haushalt/steuer-grenzen";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
@@ -382,6 +383,7 @@ function SteuerInner() {
           </div>
         )}
 
+        {(zeigtBefund || proPunkt != null) && (
         <div className="grid gap-3 lg:grid-cols-[1fr_310px]">
           {zeigtBefund && (
             <div className="flex flex-col rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -417,20 +419,6 @@ function SteuerInner() {
                 {hebeHaupt.length >= 2
                   ? ` — die Treppe darüber hätte ${HEBESATZ_ABGELEHNT.jahr} eine Stufe mehr bekommen.`
                   : "."}
-              </p>
-            </div>
-          )}
-
-          {art.punktUnmoeglich && (
-            <div className="rounded-2xl border border-dashed border-border bg-card p-4">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Was brächte ein Punkt mehr?
-              </p>
-              {/* Kein Link ins Labor: Dort fehlt derselbe Regler aus demselben
-                  Grund — ein Verweis verspräche, was die nächste Seite auch
-                  nicht kann. */}
-              <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/80">
-                {art.punktUnmoeglich}
               </p>
             </div>
           )}
@@ -480,22 +468,11 @@ function SteuerInner() {
             </div>
           )}
         </div>
+        )}
         </>
       )}
 
-      <div className="rounded-2xl border border-dashed border-border bg-card p-4">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Dazu hat der Rat entschieden
-        </p>
-        <p className="mt-2 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/80">
-          Die automatische Verknüpfung von Beschlüssen mit Einnahmearten bauen wir noch.
-          Bis dahin findet die Suche, was der Rat dazu entschieden hat.
-        </p>
-        <Link href={`/council?q=${encodeURIComponent(art.titel)}`}
-          className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-          <Search className="h-3.5 w-3.5" /> Beschlüsse zu „{art.titel}“ suchen
-        </Link>
-      </div>
+      <Grenzen art={art} />
 
       <div className="flex flex-wrap gap-2">
         {STEUERARTEN.filter((a) => a.slug !== art.slug).map((a) => (
