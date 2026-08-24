@@ -27,6 +27,7 @@ import { SteuerPlanIst } from "@/components/haushalt/steuer-plan-ist";
 import { EntgeltePlanIst } from "@/components/haushalt/entgelte-plan-ist";
 import { EntgelteBereiche } from "@/components/haushalt/entgelte-bereiche";
 import { HebesatzTreppe } from "@/components/haushalt/hebesatz-treppe";
+import { AbgelehnteStufe } from "@/components/haushalt/abgelehnte-stufe";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +69,11 @@ const HEBESATZ_ABGELEHNT = {
 function SteuerInner() {
   const slug = useSearchParams().get("art") ?? "gewerbesteuer";
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
+  // Die Satzung kommt in einem EIGENEN Aufruf (wie auf /haushalt/schulden):
+  // Sie trägt nur den vorgeschlagenen Hebesatz für den Befund unten, und der
+  // Hauptaufruf dieser Seite soll dafür nicht wachsen.
+  const { data: satzungDaten } = useFetch<
+    HaushaltAuswahl<typeof SATZUNG_FELDER[number]>>(haushaltUrl(SATZUNG_FELDER));
   const art = steuerartFinden(slug);
 
   const reihe = useMemo(() => {
@@ -189,6 +195,24 @@ function SteuerInner() {
   const proPunkt = punktSatz && letzte && !art.punktUnmoeglich
     ? letzte.betrag / punktSatz : null;
 
+  // Für den Befund weiter unten („die Verwaltung schlug vor, der Rat lehnte
+  // ab") zwei Zahlen — und zwar bewusst aus ZWEI Quellen:
+  //
+  //  * `geltendeStufe` ist die jüngste Zeile der Hebesatz-Reihe (Tabelle
+  //    1105), also der Satz, der HEUTE gilt. Nicht `hebesatzGalt`: Der ist
+  //    auf das letzte Ist-Jahr bezogen und damit die falsche Bezugsgröße für
+  //    einen Vorschlag, der ein späteres Haushaltsjahr betrifft.
+  //  * `vorgeschlagen` ist § 5 der Haushaltssatzung desselben Jahrgangs. Im
+  //    Ratsinformationssystem liegen ausschließlich Verwaltungsentwürfe
+  //    (`lib/haushalt.ts`, `HaushaltssatzungZeile`) — genau deshalb steht dort
+  //    der Vorschlag, den der Rat abgelehnt hat, und nicht das Ergebnis.
+  //    Trägt der Bestand ihn nicht oder liegt er nicht über dem geltenden
+  //    Satz, zeigt die Grafik keine Höhe (die Komponente entscheidet das).
+  const geltendeStufe = hebeHaupt.at(-1) ?? null;
+  const vorgeschlagen = (satzungDaten?.haushaltssatzung ?? [])
+    .find((z) => z.jahr === HEBESATZ_ABGELEHNT.jahr && z.nachtrag === 0)
+    ?.hebesatz_gewerbesteuer ?? null;
+
   // Das Aufkommen als `{jahr: euro}` — der Pflicht-Kontext neben jedem
   // Hebesatz-Sprung. Ohne ihn liest sich „+21 %" als „alle zahlen 21 % mehr",
   // und das war 2025 nachweislich falsch.
@@ -197,12 +221,18 @@ function SteuerInner() {
 
   // Die Quellen dieser Seite in Lese-Reihenfolge — daraus zählt der Provider
   // die Fußnoten-Nummern.
+  //
+  // „haushaltssatzung" nur, wo der abgelehnte Vorschlag auch steht: Die
+  // Fußnoten dieser Seite sollen keine Quelle führen, aus der auf der
+  // gezeigten Seite keine Zahl stammt.
+  const zeigtBefund = art.slug === HEBESATZ_ABGELEHNT.steuer
+    && aktuellerHaushalt === HEBESATZ_ABGELEHNT.jahr;
   const quellen: QuellenSchluessel[] = istZuweisung
     ? ["steuerkraft", "plan"]
     : istEntgelt
       ? ["jahresabschluss", "ergebnisrechnung_thh"]
       : ["steuern", ...(planIst.length ? (["steuerplan"] as const) : []),
-         "hebesaetze"];
+         "hebesaetze", ...(zeigtBefund ? (["haushaltssatzung"] as const) : [])];
 
   return (
     <Quellenkontext schluessel={quellen}>
@@ -448,9 +478,8 @@ function SteuerInner() {
         )}
 
         <div className="grid gap-3 lg:grid-cols-[1fr_310px]">
-          {art.slug === HEBESATZ_ABGELEHNT.steuer
-            && aktuellerHaushalt === HEBESATZ_ABGELEHNT.jahr && (
-            <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          {zeigtBefund && (
+            <div className="flex flex-col rounded-2xl border border-border bg-card p-4 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="font-mono text-[10px] uppercase tracking-wide text-primary">
                   Haushalt {HEBESATZ_ABGELEHNT.jahr} · Rat
@@ -462,6 +491,19 @@ function SteuerInner() {
               <p className="mt-1.5 text-[13px] font-semibold leading-snug">
                 {HEBESATZ_ABGELEHNT.satz}
               </p>
+              {/* Das Bild dazu — ohne geltenden Satz gar nicht: Ein
+                  schraffiertes Stück ohne Bezugsgröße zeigt nichts. */}
+              {geltendeStufe && (
+                <AbgelehnteStufe
+                  jahr={HEBESATZ_ABGELEHNT.jahr}
+                  geltend={geltendeStufe.hebesatz}
+                  geltendSeit={geltendeStufe.jahr}
+                  vorgeschlagen={vorgeschlagen}
+                  proPunkt={proPunkt}
+                  beleg={<Beleg q="hebesaetze" />}
+                  satzungBeleg={<Beleg q="haushaltssatzung" />}
+                />
+              )}
               {/* Der Verweis auf die Treppe nur, wo eine steht: Ohne
                   eingelesene Reihe zeigt der Block darüber einen einzelnen
                   Kasten, und „die Treppe darüber" zeigte ins Leere. */}
@@ -577,6 +619,7 @@ function SteuerInner() {
 // auf /haushalt/bereich und /haushalt/plan-ist auch.
 const FELDER = ["steuern", "steuerkraft", "steuerplan", "hebesaetze", "einwohner",
   "ansatz_jahre", "ergebnisrechnung"] as const;
+const SATZUNG_FELDER = ["haushaltssatzung"] as const;
 
 export default function SteuerPage() {
   return (
