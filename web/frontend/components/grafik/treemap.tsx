@@ -50,6 +50,14 @@
 // Vorlesehilfe. Der Zeiger verlässt die Fläche wieder — die Zeile bleibt
 // stehen, statt zurückzuspringen; eine Leerstelle wäre keine Auskunft.
 //
+// DESHALB TRÄGT EINE POSTEN-KACHEL AUCH KEINE ZEIGERHAND. Sie ist technisch
+// ein Knopf — Touch und Tastatur brauchen einen —, aber für die Maus ist der
+// Klick folgenlos: Das Überfahren hat die Zeile darunter schon gefüllt, und
+// hinter der Kachel liegt kein Ziel. Tailwinds Preflight gibt jedem `button`
+// `cursor: pointer`; hier versprach die Hand eine Navigation, die es nicht
+// gibt (Tims Befund 24.08.). Die Ausnahme ist die Rest-Kachel MIT `aufRest`:
+// Die führt in die Suche, und das ist ein Ziel.
+//
 // DIE WÖRTER kommen von der Seite (`nomen`, `flaecheLabel`, `verworfenSatz`):
 // Die Form zählt Vorhaben, Ertragsarten oder Bereiche — die Vorgaben sind der
 // Investitionen-Fall, aus dem sie stammt.
@@ -216,6 +224,8 @@ export function Treemap({
               className={cn(
                 "absolute overflow-hidden rounded-[4px] text-left transition-shadow",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
+                // Zeigerhand nur, wo der Klick etwas tut — s. Kopfkommentar.
+                d.rest && aufRest ? "cursor-pointer" : "cursor-default",
                 istTreffer && "z-10 ring-2 ring-primary ring-offset-1 ring-offset-card",
                 aktiv === d.key && !d.rest && "z-10 ring-1 ring-foreground/50",
               )}
