@@ -3,12 +3,13 @@
 // Ein Balken, der eine Summe in ihre Teile zerlegt — und dazuschreibt, was er
 // zeigt.
 //
-// Warum als eigener Baustein: Auf `/haushalt/pflicht` steht dieselbe Form
-// zweimal in verschiedener Bedeutung. Einmal zerlegt sie die geplanten
-// Aufwendungen in Pflicht, Pflicht mit Spielraum und Kür. Einmal zerlegt sie
-// den Aufwand eines Teilhaushalts danach, wie viel Spielraum die STADT bei
-// ihren Aufgaben selbst angibt. Beide Male gilt dieselbe Regel, und die ist
-// der eigentliche Grund für die Komponente:
+// Warum als eigener Baustein: Dieselbe Form steht in verschiedener Bedeutung
+// an mehreren Stellen des Haushalts-Bereichs — sie zerlegt einen Bau-Jahrgang
+// nach Ausgabenarten (Gebaut), geplante Auszahlungen nach Vorhaben
+// (Investitionsprogramm), eine Beteiligung nach Anteilseignern (Konzern) und
+// den Aufwand eines Teilhaushalts nach der Spielraum-Angabe der Stadt
+// (Pflicht). Jedes Mal gilt dieselbe Regel, und die ist der eigentliche
+// Grund für die Komponente:
 //
 //  1. **Der Nenner steht dran.** Ein Anteil ohne Bezugsgröße ist keine Zahl,
 //     sondern ein Gefühl. `gesamt` und `einheit` gehören deshalb in die
@@ -27,8 +28,6 @@
 //
 // Der Balken interpoliert nichts und rundet nur zur Anzeige: Die Breite kommt
 // aus dem ungerundeten Wert, damit sich 13 Segmente nicht auf 100,4 % addieren.
-
-import { cn } from "@/lib/utils";
 
 export type Anteil = {
   label: string;
@@ -151,34 +150,9 @@ export function Anteilsbalken({
   );
 }
 
-/** Die schmale Form ohne Legende: ein Balken, der neben einer Zeile steht.
- *  Die Beschriftung übernimmt dort der Satz daneben — deshalb bekommt der
- *  Balken sein `aria-label` mitgegeben und keinen eigenen Kicker. */
-export function AnteilsbalkenSchmal({
-  segmente, gesamt, beschriftung, className,
-}: {
-  segmente: Anteil[];
-  gesamt: number;
-  beschriftung: string;
-  className?: string;
-}) {
-  const gezeigt = segmente.filter((s) => s.wert > 0);
-  return (
-    <div
-      role="img"
-      aria-label={beschriftung}
-      className={cn("flex h-1.5 overflow-hidden rounded-full bg-muted", className)}
-    >
-      {gezeigt.map((s, i) => (
-        <div
-          key={`${s.label}-${i}`}
-          style={{
-            width: `${prozent(s.wert, gesamt)}%`,
-            background: s.offen ? schraffur(s.farbe) : s.farbe,
-            minWidth: 2,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+// `AnteilsbalkenSchmal` (die 6-px-Form ohne Legende) ist am 24.08. gestrichen
+// worden: Ihr einziger Einsatz war die Selbstauskunft auf /haushalt/pflicht,
+// und dort war sie in 9 von 10 Bereichen ein einfarbiger Streifen, der ohne
+// Legende nicht zu entschlüsseln war („kann da schlecht irgendetwas ablesen",
+// Tim). Ein Anteilsbalken ohne angeschriebene Teile unterbietet Regel 1 —
+// wer die Form wieder braucht, nimmt die große mit `legende`.
