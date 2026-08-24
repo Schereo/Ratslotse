@@ -19,6 +19,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Abschnitte } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 import { BereicheAbschnitt } from "@/components/haushalt/abschnitt-bereiche";
 import { ProdukteAbschnitt } from "@/components/haushalt/abschnitt-produkte";
 
@@ -50,17 +51,20 @@ function ProdukteSeiteInner() {
           <span className="font-semibold text-foreground">Was kostet eigentlich …?</span>
         </div>
 
-        <div>
-          <SchrittKicker href="/haushalt/produkte" />
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-            Was kostet eigentlich …?
-          </h1>
-          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
-            Der Haushalt ist in zehn Teilhaushalte geteilt, und deren Namen stammen aus
-            der Verwaltungsgliederung: Sie sagen, wer zuständig ist, nicht, worum es
-            geht. Zuerst steht deshalb zu jedem eine Zeile, die man ohne Vorwissen lesen
-            kann — und darunter die einzelnen Aufgaben mit ihren Kosten.
-          </p>
+        <div className="flex items-start justify-between gap-5">
+          <div className="min-w-0">
+            <SchrittKicker href="/haushalt/produkte" />
+            <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
+              Was kostet eigentlich …?
+            </h1>
+            <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
+              Der Haushalt ist in zehn Teilhaushalte geteilt, und deren Namen stammen aus
+              der Verwaltungsgliederung: Sie sagen, wer zuständig ist, nicht, worum es
+              geht. Zuerst steht deshalb zu jedem eine Zeile, die man ohne Vorwissen lesen
+              kann — und darunter die einzelnen Aufgaben mit ihren Kosten.
+            </p>
+          </div>
+          <SchrittZeichen href="/haushalt/produkte" />
         </div>
 
         <Abschnitte marken={MARKEN} />

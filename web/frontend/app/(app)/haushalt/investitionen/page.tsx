@@ -24,6 +24,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Abschnitte } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 import { InvestitionsplanAbschnitt } from "@/components/haushalt/abschnitt-investitionsplan";
 import { GebautAbschnitt } from "@/components/haushalt/abschnitt-gebaut";
 
@@ -53,17 +54,20 @@ function InvestitionenInner() {
           <span className="font-semibold text-foreground">Was gebaut wird</span>
         </div>
 
-        <div>
-          <SchrittKicker href="/haushalt/investitionen" />
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-            Was gebaut wird — und was daraus wurde
-          </h1>
-          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
-            Alles, was auf den anderen Seiten dieses Bereichs steht, ist der laufende
-            Betrieb: Personal, Zuschüsse, Energie, Mieten. Neubauten, Fahrzeuge und
-            Grundstücke haben einen eigenen Haushalt. Hier steht er — und gleich
-            darunter, was am Jahresende davon tatsächlich abgeflossen ist.
-          </p>
+        <div className="flex items-start justify-between gap-5">
+          <div className="min-w-0">
+            <SchrittKicker href="/haushalt/investitionen" />
+            <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
+              Was gebaut wird — und was daraus wurde
+            </h1>
+            <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
+              Alles, was auf den anderen Seiten dieses Bereichs steht, ist der laufende
+              Betrieb: Personal, Zuschüsse, Energie, Mieten. Neubauten, Fahrzeuge und
+              Grundstücke haben einen eigenen Haushalt. Hier steht er — und gleich
+              darunter, was am Jahresende davon tatsächlich abgeflossen ist.
+            </p>
+          </div>
+          <SchrittZeichen href="/haushalt/investitionen" />
         </div>
 
         <Abschnitte marken={MARKEN} />

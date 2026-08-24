@@ -213,6 +213,17 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   `components/nav.tsx` — nie eine eigene Zahl.
 - **Turn-Fußzeile**: KI-Disclaimer 10,5–11 px + stille Icon-Aktionen 15 px
   (Teilen, Drucken, Vorlesen, 👍/👎) — keine gerahmten Buttons.
+- **Schritt-Zeichen (Haushalt)**: Jeder Schritt des Haushalts-Wegs trägt ein
+  festes Lucide-Zeichen, definiert EINMAL am Schritt selbst
+  (`components/haushalt/wegweiser.tsx`, Feld `zeichen`) und an drei Stellen
+  gezeigt: klein (14 px, muted) in der Wegweiser-Zeile, als Kachel im
+  Seitenkopf (`schritt-zeichen.tsx`: 64 px, Radius 16, bg primary/6, Rahmen
+  primary/15, Icon 30 px / Strich 1,75 — die eine erlaubte Ausnahme von der
+  11–22-px-UI-Spanne, weil der UI-Strich in Kachelgröße gestaucht wirkt) und
+  15 px im „Weiter"-Link am Fuß. Die Kachel ist rein dekorativ (aria-hidden),
+  füllt die leere Ecke rechts neben dem gedeckelten Kopf-Absatz und
+  verschwindet unter 640 px ersatzlos. Kein erfundenes Zeichen: Seiten ohne
+  Schritt (Steckbriefe) bekommen keins.
 
 ## 6. Interaktions-Grammatik
 

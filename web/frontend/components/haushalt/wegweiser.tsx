@@ -88,7 +88,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, ChevronDown, ChevronRight, Play } from "lucide-react";
+import {
+  BarChart3, Check, ChevronDown, ChevronRight, ClipboardCheck, Coins,
+  FlaskConical, Hammer, LineChart, ListTree, MessagesSquare, Network, Play,
+  Scale, Stamp, Users, type LucideIcon,
+} from "lucide-react";
 import { useFortschritt } from "@/lib/haushalt-fortschritt";
 import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
@@ -97,6 +101,13 @@ type Ziel = {
   href: string;
   titel: string;
   text: string;
+  /** Das Zeichen des Schritts (Tim, 24.08.: „ein paar helfende Icons").
+   *  Es steht HIER, an der einzigen Quelle der Schritte, und taucht an drei
+   *  Stellen wieder auf: klein in den Zeilen dieses Wegweisers, als Kachel im
+   *  Kopf der Seite (`schritt-zeichen.tsx`) und in der Weiter-Navigation am
+   *  Fuß. Dieselbe Form an allen dreien — man erkennt eine Seite wieder,
+   *  statt zwölf Titel zu vergleichen. */
+  zeichen: LucideIcon;
 };
 
 const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
@@ -108,6 +119,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/einnahmen",
         titel: "Woher kommt das Geld?",
         text: "Alle Einnahmequellen — und bei welchen der Rat etwas zu entscheiden hat.",
+        zeichen: Coins,
       },
       {
         // „Was kostet eigentlich …?" bleibt hinter „Muss oder kann?": Es ist
@@ -117,6 +129,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/pflicht",
         titel: "Muss oder kann?",
         text: "Wie viel gesetzlich vorgeschrieben ist — und wie die Stadt selbst das sieht.",
+        zeichen: Scale,
       },
       {
         // Seit 21.08.2026 mit „Was steckt hinter den Namen?" zusammen: Beide
@@ -127,6 +140,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/produkte",
         titel: "Was kostet eigentlich …?",
         text: "Archiv, Feuerwehr, Schwimmbad: einzelne Aufgaben mit Kosten und Auftrag.",
+        zeichen: ListTree,
       },
       {
         // Zwischen „Was kostet …?" und „Was wird gebaut?": „Wer macht die
@@ -138,6 +152,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/personal",
         titel: "Wer macht die Arbeit?",
         text: "Der Stellenplan: wie viele Stellen die Stadt vorhält — und wie viele leer stehen.",
+        zeichen: Users,
       },
       {
         // Am Ende der Zahlen-Stufe, weil es die einzige Seite ist, die einen
@@ -150,6 +165,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/investitionen",
         titel: "Was gebaut wird — und was daraus wurde",
         text: "Neubauten, Fahrzeuge, Grundstücke — der Haushalt, in dem die Seiten davor nicht vorkommen; dazu, was am Jahresende davon abgeflossen ist.",
+        zeichen: Hammer,
       },
     ],
   },
@@ -161,6 +177,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/plan-ist",
         titel: "Geplant und geworden",
         text: "Was am Jahresende wirklich zusammenkam — aus den Jahresabschlüssen.",
+        zeichen: ClipboardCheck,
       },
       {
         // EIN Ziel statt zweier (21.08.2026). „Die Prüfung" und „Die dreizehn
@@ -172,6 +189,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/pruefung",
         titel: "Geprüft und zusammengefasst",
         text: "Was das Rechnungsprüfungsamt beanstandet — und worauf die Stadt ihren Abschluss selbst eindampft.",
+        zeichen: Stamp,
       },
     ],
   },
@@ -188,6 +206,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/konzern",
         titel: "Und ist das die ganze Stadt?",
         text: "Klinikum, Busse, Bäder, Gebäude: was neben dem Haushalt noch läuft.",
+        zeichen: Network,
       },
       {
         // Spät, nicht vorn: „Steht Oldenburg besser da?" stellt sich erst,
@@ -196,6 +215,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/vergleich",
         titel: "Steht Oldenburg besser da?",
         text: "Steuerkraft und Hebesätze der kreisfreien Städte — und warum Ausgaben sich nicht vergleichen lassen.",
+        zeichen: BarChart3,
       },
       {
         // Am Ende des Rahmens: Die Schulden sind die einzige Bestandsgröße
@@ -207,6 +227,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/schulden",
         titel: "Wie viel Schulden hat Oldenburg?",
         text: "Der Schuldenstand seit 1995, insgesamt und je Einwohner*in — und was er zählt.",
+        zeichen: LineChart,
       },
     ],
   },
@@ -223,6 +244,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/mitreden",
         titel: "Mitreden",
         text: "Wann entschieden wird — und worüber die Fraktionen gestritten haben.",
+        zeichen: MessagesSquare,
       },
       {
         // Das Labor stand vom 21. bis 24.08.2026 als dritter Abschnitt auf
@@ -236,6 +258,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         href: "/haushalt/labor",
         titel: "Haushalts-Labor",
         text: "Selbst an den Stellschrauben drehen und sehen, was das ausmacht.",
+        zeichen: FlaskConical,
       },
     ],
   },
@@ -261,9 +284,9 @@ const GESAMT = STUFEN_NUMMERIERT[STUFEN_NUMMERIERT.length - 1].bis;
  *  liest genau diese Datei, um die selbstgeschriebenen Kicker dagegen zu
  *  halten. Eine zweite Liste woanders wäre der Anfang genau der Drift, die
  *  der Wächter verhindern soll. */
-export const SCHRITTE: { href: string; titel: string; nr: number }[] =
+export const SCHRITTE: { href: string; titel: string; nr: number; zeichen: LucideIcon }[] =
   STUFEN_NUMMERIERT.flatMap((stufe) =>
-    stufe.ziele.map((z) => ({ href: z.href, titel: z.titel, nr: z.nr })));
+    stufe.ziele.map((z) => ({ href: z.href, titel: z.titel, nr: z.nr, zeichen: z.zeichen })));
 
 type Zustand = "gelesen" | "naechster" | "offen";
 
@@ -302,6 +325,11 @@ function Station({ z, zustand }: {
             Ziffer vor — das Wort steht deshalb da, nur nicht im Bild. */}
         <span className="sr-only">Schritt </span>{z.nr}
       </span>
+      {/* Das Zeichen des Schritts — dieselbe Form wie in der Kachel im Kopf
+          der Seite. Ruhig grau, nicht Hafenblau: In der Zeile markieren schon
+          ✓/▶ den Stand, ein zweites blaues Element je Zeile wäre Rauschen. */}
+      <z.zeichen aria-hidden size={14} strokeWidth={2}
+        className="flex-none text-muted-foreground/80 transition-colors group-hover:text-primary" />
       <span className={cn(
         "min-w-0 flex-1 text-[13px] leading-snug",
         zustand === "naechster" ? "font-bold" : "font-semibold",

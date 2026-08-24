@@ -64,6 +64,7 @@ import {
 } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 import { BilanzBlock } from "@/components/haushalt/bilanz-block";
 
 // `jahresabschluss` stand bis zum 21.08.2026 NICHT hier, obwohl die Seite
@@ -604,7 +605,10 @@ export default function SchuldenPage() {
   return (
     <Quellenkontext schluessel={[...QUELLEN]} jahr={letzter.jahr}>
       <div className="flex flex-col gap-4">
-        <div className="flex items-end justify-between gap-5">
+        {/* items-start statt items-end (24.08.): Rechts steht jetzt das
+            Schritt-Zeichen über dem Quelle-Knopf — die Spalte ist so hoch wie
+            der Text, eine Unterkanten-Ausrichtung hätte nichts mehr zu tun. */}
+        <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
             <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               Stadtfinanzen Oldenburg
@@ -618,12 +622,15 @@ export default function SchuldenPage() {
               ist das der Unterschied zwischen zwei Antworten.
             </p>
           </div>
-          {quelleUrl && (
-            <a href={quelleUrl} target="_blank" rel="noopener noreferrer"
-              className="hidden flex-none items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-primary shadow-sm desk:inline-flex">
-              <FileText className="h-3.5 w-3.5" /> Quelle öffnen
-            </a>
-          )}
+          <div className="flex flex-none flex-col items-end gap-2.5">
+            <SchrittZeichen href="/haushalt/schulden" />
+            {quelleUrl && (
+              <a href={quelleUrl} target="_blank" rel="noopener noreferrer"
+                className="hidden flex-none items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-primary shadow-sm desk:inline-flex">
+                <FileText className="h-3.5 w-3.5" /> Quelle öffnen
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Der Kopf: zwei Zahlen und die Abgrenzung. Mehr nicht — die
