@@ -61,7 +61,13 @@ async function redirects() {
     // KEIN interner Link mehr auf die alten Pfade zeigt. Beim Umbau geprüft.
     { source: "/haushalt/jahr", destination: "/haushalt/mitreden#termine", permanent: true },
     { source: "/haushalt/streit", destination: "/haushalt/mitreden#streit", permanent: true },
-    { source: "/haushalt/labor", destination: "/haushalt/mitreden#labor", permanent: true },
+    // `/haushalt/labor → mitreden#labor` stand hier vom 21. bis 24.08.2026 —
+    // seit #707 ist das Labor wieder eine eigene Seite, und dieser Redirect
+    // hätte jeden Aufruf zurückgeworfen (aufgefallen erst im Labor-2.0-Bau:
+    // #707 hat ihn übersehen). Er war `permanent`, Browser dürfen ein 308
+    // cachen — wer die Seite in den drei Tagen besucht hat, landet ggf.
+    // weiter auf Mitreden, bis der Browser-Cache fällt. Auf dev verschmerzbar;
+    // ein Gegen-Redirect ließe sich nicht sauber formulieren.
     // „Die Prüfung" und „Die dreizehn Zahlen" (21.08.2026): geprüft und
     // zusammengefasst stehen als Abschnitte auf einer Seite.
     { source: "/haushalt/kennzahlen", destination: "/haushalt/pruefung#kennzahlen", permanent: true },

@@ -163,17 +163,27 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   (Tim, 21.08.: „hier ist der ganze rechte Bereich frei, das sieht absolut
   scheiße aus"). Der Deckel ist trotzdem richtig — ohne ihn läuft Fließtext auf
   einem breiten Schirm über 120+ Zeichen je Zeile. Er gehört nur an eine andere
-  Stelle. Drei Fälle, drei Antworten:
+  Stelle. Vier Fälle, vier Antworten:
   - **Ein Einschub** (`aside`, „Lotti erklärt's einfach") deckelt sich SELBST.
     Der Leerraum liegt dann außerhalb des Kastens — er ist Seitenrand statt
     Loch, und dass ein Einschub schmaler steht als der Fluss, sagt genau das
     Richtige über ihn aus.
   - **Eine Aufzählung** in einer breiten Karte („Was diese Zahlen nicht
     hergeben") läuft in ZWEI Spalten (`@3xl:grid-cols-2` am `<ul>`,
-    `@container` an der Sektion). Fläche gefüllt, Zeile lesbar.
+    `@container` an der Sektion). Fläche gefüllt, Zeile lesbar. Das gilt auch
+    für eine Folge kurzer **beschrifteter Absätze** (`dl` aus `dt`/`dd`) —
+    untereinander sind vier davon vier halbe Zeilen, nebeneinander eine
+    gefüllte Karte (Zuwendungs-Block auf `/haushalt/einnahmen`, Tim 24.08.:
+    „der Text ist auch hier nur halbseitig"). Ein Stück, das eine Liste
+    mitbringt, spannt sich dabei über beide Spalten (`col-span-2`).
   - **Ein einzelner Absatz** neben Grafik, Tabelle oder Liste in derselben
     Karte bleibt gedeckelt. Die Karte ist dann nicht leer, und ein Absatz, der
     kürzer ist als die Tabelle darunter, ist normaler Satz.
+  - **Eine Grafik füllt den Rest der Zeile nicht, nur weil er da ist.** Eine
+    Sparkline neben einer Kennzahl bekam die volle Restbreite und lief über
+    700 px bei 46 px Höhe — acht Jahrgänge als flacher Draht. Sie gehört unter
+    ihre Zahl; die frei gewordene Spalte trägt Text, der etwas erklärt. Ein
+    leeres Feld ist ein Fehler, ein gedehntes Bild aber auch.
 
   ACHTUNG, `ch` MISST DIE SCHRIFT SEINES ELEMENTS. Steht der Deckel am Kasten
   (16 px) und der Text darin hat 13 px, sind `92ch` nicht 92 Zeichen, sondern

@@ -12,7 +12,7 @@
 
 import { readFileSync } from "node:fs";
 import {
-  beschriftet, kachelHoehe, kacheln, namenszeilen, rampenText,
+  beschriftet, buendelGrenze, kachelHoehe, kacheln, namenszeilen, rampenText,
 } from "../components/grafik/kachelflaeche.ts";
 
 let fehler = 0;
@@ -95,6 +95,36 @@ pruefe("Beschriftung: 64 × 40 px trägt sie",
   beschriftet(64, 40), "beschriftet(64, 40) = false");
 pruefe("Beschriftung: eine schmale, hohe Kachel trägt sie (vertikal)",
   beschriftet(44, 120), "beschriftet(44, 120) = false");
+
+// --------------------------------------------------------------------------
+// (f) `buendelGrenze` hält ihren Vertrag: Beim gelieferten Schnitt trägt
+//     JEDE Kachel (Rest eingeschlossen) über die ganze Breitenspanne ihre
+//     Beschriftung — und der Schnitt ist maximal: eine Kachel mehr, und es
+//     stünde wieder etwas Unbeschriftetes da. Die konkrete Zahl (2026: 7)
+//     wird bewusst NICHT festgenagelt — ändert sich die Geometrie, darf sie
+//     legitim wandern; der Vertrag darf es nicht.
+// --------------------------------------------------------------------------
+{
+  const alleBeschriftet = (ab) => {
+    const rest = ERTRAEGE.slice(ab).reduce((s, w) => s + w, 0);
+    const knoten = [...ERTRAEGE.slice(0, ab), ...(rest > 0 ? [rest] : [])]
+      .map((wert) => ({ wert }));
+    for (let b = 520; b <= 1200; b += 8) {
+      for (const k of kacheln(knoten, b, kachelHoehe(b))) {
+        if (!beschriftet(k.breite, k.hoehe)) return false;
+      }
+    }
+    return true;
+  };
+  const ab = buendelGrenze(ERTRAEGE);
+  pruefe("buendelGrenze: liefert einen Rang in der Liste",
+    ab >= 1 && ab <= ERTRAEGE.length, `${ab}`);
+  pruefe("buendelGrenze: beim Schnitt trägt jede Kachel ihre Beschriftung",
+    alleBeschriftet(ab), `Rang ${ab}`);
+  pruefe("buendelGrenze: der Schnitt ist maximal",
+    ab === ERTRAEGE.length || !alleBeschriftet(ab + 1),
+    `Rang ${ab + 1} wäre auch beschriftet`);
+}
 
 // --------------------------------------------------------------------------
 // (d) Die Textfarbe der Kacheln, gegen die ECHTEN Token gerechnet.

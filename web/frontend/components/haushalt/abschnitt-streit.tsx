@@ -57,7 +57,7 @@
 // sagt deshalb „wer wollte ändern und kam damit durch", nicht „was genau".
 // Das steht im Block „Was hier fehlt", nicht im Kleingedruckten.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight, ExternalLink, FileText } from "lucide-react";
@@ -75,6 +75,7 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { OutcomeBadge, OutcomeDot } from "@/components/decision-ui";
 import { parteiDot } from "@/components/qa-bausteine";
 import type { DecisionOutcome } from "@/lib/types";
+import { Schlangenpfad } from "@/components/grafik/schlangenpfad";
 import { cn } from "@/lib/utils";
 
 
@@ -166,167 +167,21 @@ function RednerPunkt({ b, rechts }: { b: StreitWortbeitrag; rechts: boolean }) {
   );
 }
 
-/** Die Debatte als geschlungener Pfad (Tims Wunsch, 21.08.2026: „Wäre cool,
- *  wenn der Pfeil nicht linear wäre, sondern so geschlungen von rechts nach
- *  links — und die Personen/Parteien tauchen erst beim Scrollen mit Animation
- *  auf").
+/** Die Debatte auf dem Schlangenpfad (`components/grafik/schlangenpfad.tsx`,
+ *  dort steht der Vertrag des Bausteins): Jede Rede ist eine opake Station,
+ *  ihr `RednerPunkt` der Anker der Route, und `data-auftritt` lässt sie beim
+ *  ersten Sichtkontakt erscheinen.
  *
- *  DREI TEILE, ALLE OHNE FREMDBIBLIOTHEK:
- *
- *  1. **Die Schlange.** Jede zweite Rede rückt auf breiten Karten nach rechts
- *     (s. `Rede`), und ein SVG-Pfad verbindet die Redner-Punkte mit weichen
- *     S-Kurven — gemessen an den echten Punkt-Positionen, nicht an einer
- *     angenommenen Geometrie: Aufgeklappte Reden ändern die Höhen, der
- *     ResizeObserver zeichnet dann neu. Auf schmalen Karten stehen alle
- *     Punkte übereinander und dieselbe Rechnung ergibt von allein eine
- *     gerade Linie — kein zweiter Codepfad.
- *  2. **Der Pfeil wandert mit.** Über dem blassen Gesamtpfad liegt eine
- *     zweite, kräftigere Kopie, die per `stroke-dashoffset` genau so weit
- *     gezeichnet ist, wie die Liste gescrollt wurde — die Debatte „läuft" zur
- *     Schlussabstimmung. Am Ende sitzt eine Pfeilspitze: Der Weg führt
- *     irgendwohin, nämlich zur Abstimmung darunter. Direktes DOM statt
- *     React-State: Ein setState je Scroll-Ereignis renderte 21 Reden neu.
- *  3. **Der Auftritt.** Jede Rede steht anfangs leicht abgesenkt und
- *     durchsichtig (`data-reveal="aus"`) und tritt beim ersten Sichtkontakt
- *     auf (IntersectionObserver, einmalig je Rede).
- *
- *  `prefers-reduced-motion` schaltet alles Bewegte ab: Der Pfad steht dann
- *  fertig gezeichnet, die Reden stehen sichtbar da — die `motion-safe:`-
- *  Varianten an den Reveal-Klassen und die Weiche unten sorgen dafür. Ohne
- *  JavaScript passiert schlicht nichts: kein Observer, kein `data-reveal`,
- *  alles bleibt sichtbar. */
+ *  Die Liste bekommt an der Aufrufstelle ein `key` je Jahrgang: Die
+ *  Beobachter des Bausteins binden sich beim Einhängen, ein Jahrgangswechsel
+ *  muss den Pfad deshalb neu aufsetzen. */
 function DebattenListe({ reden }: { reden: StreitWortbeitrag[] }) {
-  const huelle = useRef<HTMLDivElement>(null);
-  const liste = useRef<HTMLOListElement>(null);
-  const stift = useRef<SVGPathElement>(null);
-  const [pfad, setPfad] = useState<{ d: string; w: number; h: number } | null>(null);
-
-  // Die Kurve aus den echten Punkt-Positionen.
-  useEffect(() => {
-    const ol = liste.current;
-    if (!ol) return;
-    const messen = () => {
-      const basis = ol.getBoundingClientRect();
-      const punkte = [...ol.querySelectorAll<HTMLElement>("[data-punkt]")].map((el) => {
-        const r = el.getBoundingClientRect();
-        return { x: r.left - basis.left + r.width / 2, y: r.top - basis.top + r.height / 2 };
-      });
-      if (punkte.length < 2) { setPfad(null); return; }
-      // EIN weicher Bogen je Übergang, kein Eckwerk: Die Steuerpunkte liegen
-      // senkrecht unter bzw. über den Ankern — die Kurve verlässt einen Punkt
-      // nach unten, schwingt über die volle Breite und kommt von oben beim
-      // nächsten an. Weil die Karten opak sind, darf sie dabei überall
-      // langlaufen; auf schmalen Karten (alle Punkte übereinander) ergibt
-      // dieselbe Rechnung von allein eine gerade Linie.
-      let d = `M ${punkte[0].x.toFixed(1)} ${punkte[0].y.toFixed(1)}`;
-      for (let i = 1; i < punkte.length; i++) {
-        const a = punkte[i - 1], b = punkte[i];
-        const zug = Math.max(36, (b.y - a.y) * 0.55);
-        d += ` C ${a.x.toFixed(1)} ${(a.y + zug).toFixed(1)}, ${b.x.toFixed(1)} ${(b.y - zug).toFixed(1)}, ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
-      }
-      setPfad({ d, w: basis.width, h: basis.height });
-    };
-    messen();
-    const ro = new ResizeObserver(messen);
-    ro.observe(ol);
-    return () => ro.disconnect();
-  }, [reden.length]);
-
-  // Der wandernde Stift — direktes DOM, s. Kopfkommentar.
-  useEffect(() => {
-    const el = stift.current;
-    if (!el || !pfad) return;
-    const laenge = el.getTotalLength();
-    // Erst OHNE Übergang auf den Startzustand setzen — sonst „malt" sich der
-    // ganze Pfad beim ersten Rendern einmal quer durchs Bild. Der weiche
-    // Übergang kommt danach: Er lässt den Strich dem Scrollen mit einer
-    // halben Sekunde Nachlauf folgen, statt hart an der Scroll-Position zu
-    // kleben — das war Tims „keine schöne Animation".
-    el.style.transition = "none";
-    el.style.strokeDasharray = `${laenge}`;
-    el.style.strokeDashoffset = `${laenge}`;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      el.style.strokeDashoffset = "0";
-      return;
-    }
-    void el.getBoundingClientRect();
-    el.style.transition = "stroke-dashoffset 0.55s cubic-bezier(0.22, 0.61, 0.36, 1)";
-    let angemeldet = 0;
-    const zeichnen = () => {
-      angemeldet = 0;
-      const ol = liste.current;
-      if (!ol) return;
-      const r = ol.getBoundingClientRect();
-      // Gezeichnet ist, was über der Lese-Linie (85 % der Fensterhöhe) liegt.
-      const anteil = Math.min(1, Math.max(0, (window.innerHeight * 0.85 - r.top) / r.height));
-      el.style.strokeDashoffset = `${laenge * (1 - anteil)}`;
-    };
-    const aufScroll = () => {
-      if (!angemeldet) angemeldet = requestAnimationFrame(zeichnen);
-    };
-    zeichnen();
-    window.addEventListener("scroll", aufScroll, { passive: true });
-    window.addEventListener("resize", aufScroll);
-    return () => {
-      if (angemeldet) cancelAnimationFrame(angemeldet);
-      window.removeEventListener("scroll", aufScroll);
-      window.removeEventListener("resize", aufScroll);
-    };
-  }, [pfad]);
-
-  // Der Auftritt der Reden.
-  useEffect(() => {
-    const ol = liste.current;
-    if (!ol) return;
-    const lis = [...ol.querySelectorAll<HTMLElement>(":scope > li")];
-    const io = new IntersectionObserver((eintraege) => {
-      for (const e of eintraege) {
-        if (!e.isIntersecting) continue;
-        (e.target as HTMLElement).dataset.reveal = "an";
-        io.unobserve(e.target);
-      }
-    }, { rootMargin: "0px 0px -12% 0px", threshold: 0.1 });
-    for (const li of lis) {
-      li.dataset.reveal = "aus";
-      io.observe(li);
-    }
-    return () => io.disconnect();
-  }, [reden.length]);
-
   return (
-    <div ref={huelle} className="relative">
-      {pfad && (
-        <svg
-          aria-hidden
-          className="pointer-events-none absolute inset-0 text-border"
-          width={pfad.w} height={pfad.h}
-          viewBox={`0 0 ${pfad.w} ${pfad.h}`}
-          fill="none"
-        >
-          <defs>
-            {/* Die Spitze sitzt am BLASSEN Gesamtpfad, nicht am Stift: Dort
-                flackerte sie beim Scrollen mit jedem Dashoffset-Schritt. */}
-            {/* Der Chevron zeigt im Marker-Raum nach +x; `orient="auto"`
-                dreht ihn in die Laufrichtung des Pfads — am Ende also nach
-                unten, auf die Schlussabstimmung zu. */}
-            <marker id="debatten-pfeil" viewBox="0 0 8 8" refX="6" refY="4"
-              markerWidth="8" markerHeight="8" orient="auto">
-              <path d="M 2 1 L 6 4 L 2 7" stroke="currentColor" strokeWidth="1.5"
-                fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </marker>
-          </defs>
-          <path d={pfad.d} stroke="currentColor" strokeWidth="1.5"
-            markerEnd="url(#debatten-pfeil)" />
-          {/* Der Stift etwas kräftiger als die blasse Vorzeichnung — er ist
-              die Route, die man schon gegangen ist. */}
-          <path ref={stift} d={pfad.d} className="text-primary/45" stroke="currentColor"
-            strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      )}
-      <ol ref={liste} className="relative list-none">
+    <Schlangenpfad>
+      <ol className="relative list-none">
         {reden.map((b, i) => <Rede key={i} b={b} rechts={i % 2 === 1} />)}
       </ol>
-    </div>
+    </Schlangenpfad>
   );
 }
 
@@ -335,7 +190,7 @@ function Rede({ b, rechts }: { b: StreitWortbeitrag; rechts: boolean }) {
   const { kopf, rest } = vorschau(b.text);
 
   return (
-    <li className={cn(
+    <li data-auftritt className={cn(
       "group relative pb-7 last:pb-0",
       "transition-opacity duration-700 ease-out motion-safe:data-[reveal=aus]:opacity-0",
     )}>
@@ -704,7 +559,9 @@ export function StreitAbschnitt() {
               „der wichtigsten Stellen" träfe sonst jemand.
             </p>
             <div className="mt-3 border-t border-dashed border-border pt-4">
-              <DebattenListe reden={debatte.debatte} />
+              {/* `key` je Jahrgang: setzt Pfad und Beobachter des
+                  Bausteins beim Jahrgangswechsel neu auf. */}
+              <DebattenListe key={jahr ?? 0} reden={debatte.debatte} />
             </div>
             <p className="mt-3 max-w-[86ch] border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
               {HINWEIS_REDE}

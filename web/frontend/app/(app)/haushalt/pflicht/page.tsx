@@ -52,7 +52,7 @@ import {
   Abgleich, PFLICHT_ERKLAERUNG, PFLICHT_LABEL, PflichtStufe, SpielraumBefund,
   abgleich, pflichtFuer, spielraumBefunde,
 } from "@/lib/haushalt-pflicht";
-import { AnteilsbalkenSchmal, type Anteil } from "@/components/haushalt/anteilsbalken";
+import { Anteilsbalken, type Anteil } from "@/components/haushalt/anteilsbalken";
 import { Gegenbalken } from "@/components/grafik/gegenbalken";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
@@ -88,6 +88,15 @@ const TON_SPIELRAUM: Record<Spielraum, string> = {
 /** Fehlende Angabe: bewusst NICHT aus der Rampe, sonst liest sie sich als
  *  vierte Stufe. Schraffiert nach der Lücken-Konvention. */
 const TON_OFFEN = "hsl(var(--muted-foreground))";
+
+/** Ab diesem Geld-Anteil zählt eine Spielraum-Stufe als eigene Aussage —
+ *  dieselbe 10-%-Schwelle, ab der ein Gegenbalken-Segment eine Beschriftung
+ *  tragen darf (GB-04). Erst wenn ZWEI Kategorien darüber liegen, ist die
+ *  Selbstauskunft eine Verteilung und bekommt einen Balken; sonst trägt der
+ *  Satz sie allein. Grund (Tims Befund 24.08.): 9 von 10 Bereichen sind zu
+ *  ≥ 93 % EINE Stufe — der Balken war dort ein einfarbiger Streifen, der
+ *  aussah wie ein Ladebalken und nichts sagte, was der Satz nicht sagt. */
+const MISCHUNG_AB = 0.1;
 
 type Zeile = {
   z: HaushaltZeile;
@@ -162,7 +171,6 @@ export default function PflichtPage() {
     };
   }).sort((a, b) => b.aus - a.aus);
 
-  const groesster = rows[0]?.aus || 1;
   const proStufe = (s: PflichtStufe) => rows.filter((r) => r.stufe === s);
   const ohneStufe = rows.filter((r) => r.stufe === null);
   const summeAus = (rs: Zeile[]) => rs.reduce((n, r) => n + r.aus, 0);
@@ -357,7 +365,7 @@ export default function PflichtPage() {
               {PFLICHT_ERKLAERUNG[s]}
             </p>
             {gruppe.map((r) => (
-              <BereichsZeile key={r.z.bereich} r={r} groesster={groesster} produktJahr={produktJahr} />
+              <BereichsZeile key={r.z.bereich} r={r} gesamt={gesamtAus} produktJahr={produktJahr} />
             ))}
           </section>
         );
@@ -372,7 +380,7 @@ export default function PflichtPage() {
             Summen zu fallen.
           </p>
           {ohneStufe.map((r) => (
-            <BereichsZeile key={r.z.bereich} r={r} groesster={groesster} produktJahr={produktJahr} />
+            <BereichsZeile key={r.z.bereich} r={r} gesamt={gesamtAus} produktJahr={produktJahr} />
           ))}
         </section>
       )}
@@ -459,12 +467,37 @@ function DoppelMarker({ stadt, wir }: { stadt: string | null; wir: string | null
  *      meinten Verschiedenes: der obere die Größe des Bereichs, der untere die
  *      Zusammensetzung seiner Aufgaben nach der Angabe der Stadt. Der untere
  *      trägt deshalb das ◇ des Doppelmarkers vorweg — dasselbe Zeichen, das
- *      zwei Zeilen höher „das kommt von der Stadt" bedeutet. */
-function BereichsZeile({ r, groesster, produktJahr }: {
-  r: Zeile; groesster: number; produktJahr: number | null;
+ *      zwei Zeilen höher „das kommt von der Stadt" bedeutet.
+ *
+ *  UND NOCH EINMAL AM 24.08. („irgendwie kann ich da schlecht irgendetwas
+ *  ablesen", Tim) — das Auseinanderziehen hatte die Balken getrennt, aber
+ *  keinen von beiden lesbar gemacht:
+ *
+ *   1. Der Größen-Balken maß „Anteil am größten Bereich" — ein Nenner, der
+ *      nirgends auf der Seite stand. Jetzt misst er den Anteil an ALLEN
+ *      geplanten Ausgaben des Jahres, und genau diese Zahl steht als Text
+ *      an seinem Ende. Balkenlänge und Beschriftung sind dieselbe Zahl —
+ *      erst das macht aus dem Streifen eine Auskunft (die Regel aus
+ *      `anteilsbalken.tsx`: ein Anteil ohne Bezugsgröße ist kein Wert,
+ *      sondern ein Gefühl). Nebeneffekt: Alle 13 Balken der Seite teilen
+ *      jetzt EINEN Maßstab, auch über die Abschnitte hinweg.
+ *   2. Der Selbstauskunft-Streifen ist weg, wo er nichts sagt — siehe
+ *      `MISCHUNG_AB` und `<Selbstauskunft>`. */
+function BereichsZeile({ r, gesamt, produktJahr }: {
+  r: Zeile;
+  /** Geplante Aufwendungen ALLER Bereiche in Mio. € — der eine Nenner. */
+  gesamt: number;
+  produktJahr: number | null;
 }) {
   const kanon = bereichKanon(r.z.bereich);
   const befund = r.befund;
+  const anteil = gesamt > 0 ? Math.min((r.aus / gesamt) * 100, 100) : 0;
+  // Zwei Nachkommastellen erst unter 0,1 %: „0,05 %" (Stiftungen, 0,4 Mio.)
+  // ist eine Auskunft, „0 %" neben einem sichtbaren Balken wäre ein
+  // Widerspruch auf derselben Zeile.
+  const anteilText = anteil.toLocaleString("de-DE", {
+    maximumFractionDigits: anteil < 0.1 ? 2 : 1,
+  });
   return (
     <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
@@ -503,14 +536,27 @@ function BereichsZeile({ r, groesster, produktJahr }: {
           {deMio(r.aus)}<span className="text-[11px] font-semibold text-muted-foreground">&#8239;Mio.&nbsp;€</span>
         </span>
       </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full"
-          style={{
-            width: `${Math.min((r.aus / groesster) * 100, 100)}%`,
-            background: r.stufe ? TON_STUFE[r.stufe] : TON_OFFEN,
-          }}
-        />
+      {/* Die Vergleichszeile nach RG-04 (Balken h 6 · Wert): Länge und
+          angeschriebene Zahl sind DERSELBE Anteil an DEMSELBEN Nenner. Die
+          Beschriftung hat eine feste Breite, damit die Spur in jeder Karte
+          gleich lang ist — sonst wäre „20 %" nicht überall gleich viel
+          Pixel und der Karten-übergreifende Vergleich gelogen. */}
+      <div className="mt-2 flex items-center gap-2.5">
+        <div aria-hidden="true" className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${anteil}%`,
+              // Sichtbar auch bei 0,05 % — ein verschwundener Balken läse
+              // sich als „gibt es nicht".
+              minWidth: 3,
+              background: r.stufe ? TON_STUFE[r.stufe] : TON_OFFEN,
+            }}
+          />
+        </div>
+        <span className="w-[7.5rem] flex-none text-right text-[10.5px] leading-tight tabular-nums text-muted-foreground">
+          {anteilText}&nbsp;% aller Ausgaben
+        </span>
       </div>
 
       {/* Die Angabe der Stadt steht auf einer eigenen, abgesetzten Fläche.
@@ -536,73 +582,95 @@ function BereichsZeile({ r, groesster, produktJahr }: {
   );
 }
 
+/** Was die Stadt selbst angibt — als Satz, und nur dort als Grafik, wo eine
+ *  Grafik etwas zu zeigen hat.
+ *
+ *  Bis 24.08. stand hier IMMER ein 6-px-Streifen. Der zeigte die
+ *  Zusammensetzung der Angaben — aber 9 von 10 Bereichen sind zu ≥ 93 %
+ *  EINE Stufe: ein einfarbiger Balken ohne Legende, der wie eine
+ *  Fortschrittsanzeige aussah und exakt die Zahl wiederholte, die im Satz
+ *  darunter schon stand. Jetzt gilt: Erst wenn die Angaben sich wirklich
+ *  verteilen (`MISCHUNG_AB`), kommt der volle `<Anteilsbalken>` MIT Legende
+ *  und Beträgen — bei „Klima/Umwelt/…" (29/48/23) ist genau das die
+ *  Auskunft der Karte. Der Satz nennt dann keine eigene Quote mehr: Eine
+ *  Mehrheit von 48 % als „die" Antwort auszugeben, während der Balken
+ *  darüber drei zeigt, wäre die halbe Wahrheit in Fettdruck. */
 function Selbstauskunft({ befund, jahr }: { befund: SpielraumBefund; jahr: number }) {
-  const segmente: Anteil[] = [
-    ...(["niedrig", "mittel", "hoch"] as Spielraum[]).map((s) => ({
-      label: SPIELRAUM_TEXT[s].kurz, wert: befund.anteil[s], farbe: TON_SPIELRAUM[s],
-    })),
-    { label: "ohne Angabe", wert: befund.anteil.ohne, farbe: TON_OFFEN, offen: true },
-  ];
   const dominant = befund.dominant!;
   const anteil = Math.round(befund.anteil[dominant] * 100);
   const groesste = befund.groesste;
+  const gemischt = (["niedrig", "mittel", "hoch", "ohne"] as const)
+    .filter((s) => befund.anteil[s] >= MISCHUNG_AB).length >= 2;
+  // Beträge statt nackter Prozente in der Legende: `anteil` ist normiert,
+  // multipliziert mit dem Aufwand des Bereichs wird daraus wieder Geld —
+  // der Anteilsbalken rechnet die Prozente selbst und schreibt beides an.
+  const aufwandMio = befund.aufwand / 1e6;
+  const segmente: Anteil[] = [
+    ...(["niedrig", "mittel", "hoch"] as Spielraum[]).map((s) => ({
+      label: SPIELRAUM_TEXT[s].kurz, wert: befund.anteil[s] * aufwandMio, farbe: TON_SPIELRAUM[s],
+    })),
+    { label: "ohne Angabe", wert: befund.anteil.ohne * aufwandMio, farbe: TON_OFFEN, offen: true },
+  ];
+  // Das ◇ klammert den ganzen Block: Es ist dasselbe Zeichen wie im
+  // Doppelmarker und sagt in einem Glyph, wessen Antwort hier steht —
+  // egal ob sie als Satz oder als Balken kommt.
   return (
-    <>
-      {/* Das ◇ steht vor dem Balken, nicht über ihm: Es ist dasselbe Zeichen
-          wie im Doppelmarker und sagt in einem Glyph, wessen Antwort dieser
-          Balken zeigt — ohne die Zeile darüber noch einmal zu schreiben. */}
-      <div className="flex items-center gap-2">
-        <span aria-hidden="true" className="flex-none text-[11px] leading-none text-muted-foreground">
-          ◇
-        </span>
-        <AnteilsbalkenSchmal
-          className="flex-1"
-          segmente={segmente}
-          gesamt={1}
-          beschriftung={`Selbstauskunft der Stadt, Stand ${jahr}: ` + segmente
-            .filter((s) => s.wert > 0)
-            .map((s) => `${s.label} ${Math.round(s.wert * 100)} %`)
-            .join(", ")}
-        />
+    <div className="flex gap-2">
+      <span aria-hidden="true" className="flex-none translate-y-[3px] text-[11px] leading-none text-muted-foreground">
+        ◇
+      </span>
+      <div className="min-w-0 flex-1">
+        {gemischt && (
+          <Anteilsbalken className="mb-2" segmente={segmente} gesamt={aufwandMio} hoehe={10} />
+        )}
+        <p className="text-[12px] leading-relaxed text-foreground/85">
+          {gemischt ? (
+            <>
+              Hier verteilen sich die Angaben der Stadt über mehrere Stufen
+              ({befund.produkte} {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {jahr}).
+            </>
+          ) : (
+            <>
+              Bei <strong className="tabular-nums">{anteil}&nbsp;%</strong> der Ausgaben dieses Bereichs
+              sieht die Stadt <strong>{SPIELRAUM_TEXT[dominant].kurz}</strong> ({befund.produkte}{" "}
+              {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {jahr}).
+            </>
+          )}
+          <Beleg q="teilhaushalt" />
+        </p>
+        {groesste?.auftragsgrundlage && (
+          <details className="group mt-1.5">
+            <summary className={cn(
+              "cursor-pointer list-none text-[11.5px] font-semibold text-primary",
+              "marker:content-none",
+            )}>
+              <span className="group-open:hidden">Worauf der größte Posten beruht</span>
+              <span className="hidden group-open:inline">Weniger anzeigen</span>
+            </summary>
+            <div className="mt-1.5 rounded-lg border border-border bg-muted/40 p-2.5">
+              <p className="text-[11.5px] font-semibold leading-snug">
+                {groesste.produkt_name}
+                <span className="ml-1.5 font-normal tabular-nums text-muted-foreground">
+                  {betrag(groesste.aufwendungen).wert}&nbsp;{betrag(groesste.aufwendungen).einheit}
+                </span>
+              </p>
+              {/* Wortlaut des Teilhaushaltsplans, ungekürzt: Die Rechtsgrundlagen
+                  sind der Beleg dafür, ob eine Aufgabe von außen vorgegeben ist
+                  oder auf einem Ratsbeschluss beruht — sie zu paraphrasieren
+                  hieße, genau die Auskunft wegzuwerfen. */}
+              <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+                {groesste.auftragsgrundlage}
+              </p>
+              <Link
+                href={`/haushalt/produkte?nr=${encodeURIComponent(groesste.produkt_nr)}`}
+                className="mt-1.5 inline-block text-[11.5px] font-semibold text-primary"
+              >
+                Steckbrief dieser Aufgabe
+              </Link>
+            </div>
+          </details>
+        )}
       </div>
-      <p className="mt-1.5 text-[12px] leading-relaxed text-foreground/85">
-        Bei <strong className="tabular-nums">{anteil}&nbsp;%</strong> der Ausgaben dieses Bereichs
-        sieht die Stadt <strong>{SPIELRAUM_TEXT[dominant].kurz}</strong> ({befund.produkte}{" "}
-        {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {jahr}).
-        <Beleg q="teilhaushalt" />
-      </p>
-      {groesste?.auftragsgrundlage && (
-        <details className="group mt-1.5">
-          <summary className={cn(
-            "cursor-pointer list-none text-[11.5px] font-semibold text-primary",
-            "marker:content-none",
-          )}>
-            <span className="group-open:hidden">Worauf der größte Posten beruht</span>
-            <span className="hidden group-open:inline">Weniger anzeigen</span>
-          </summary>
-          <div className="mt-1.5 rounded-lg border border-border bg-muted/40 p-2.5">
-            <p className="text-[11.5px] font-semibold leading-snug">
-              {groesste.produkt_name}
-              <span className="ml-1.5 font-normal tabular-nums text-muted-foreground">
-                {betrag(groesste.aufwendungen).wert}&nbsp;{betrag(groesste.aufwendungen).einheit}
-              </span>
-            </p>
-            {/* Wortlaut des Teilhaushaltsplans, ungekürzt: Die Rechtsgrundlagen
-                sind der Beleg dafür, ob eine Aufgabe von außen vorgegeben ist
-                oder auf einem Ratsbeschluss beruht — sie zu paraphrasieren
-                hieße, genau die Auskunft wegzuwerfen. */}
-            <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-              {groesste.auftragsgrundlage}
-            </p>
-            <Link
-              href={`/haushalt/produkte?nr=${encodeURIComponent(groesste.produkt_nr)}`}
-              className="mt-1.5 inline-block text-[11.5px] font-semibold text-primary"
-            >
-              Steckbrief dieser Aufgabe
-            </Link>
-          </div>
-        </details>
-      )}
-    </>
+    </div>
   );
 }

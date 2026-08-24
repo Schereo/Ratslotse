@@ -12,17 +12,21 @@
 // Die Mitreden-Seite, der Steuer-Steckbrief und die Weiter-Navigation
 // führen jetzt alle hierher.
 //
-// Diese Datei holt nur die Daten: den Haushalt für die Rechnung und die
-// Produktebene des jüngsten vorliegenden Jahres, aus der die Regler ihre
-// Vergleichsgrößen ziehen („so viel wie …"). Die Regeln, nach denen das Labor
-// rechnet und was es bewusst NICHT rechnet, stehen bei der Komponente:
-// components/haushalt/labor.tsx.
+// Diese Datei holt nur die Daten; die Regeln, nach denen das Labor rechnet
+// und was es bewusst NICHT rechnet, stehen bei der Komponente
+// (components/haushalt/labor.tsx). Vier Aufrufe, drei davon unkritisch:
+// Der Haushalt trägt die Rechnung — Städtevergleich (Städte-Leiter und die
+// belegte Grundsteuer-Aufteilung), Investitionsprogramm und Schuldenreihe
+// sind Zugaben, ohne die das Labor mit weniger Bausteinen weiterläuft.
 
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import { HaushaltAuswahl, haushaltUrl, ProdukteAntwort, jahreSortiert } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
+import type { VergleichDaten } from "@/lib/haushalt-vergleich";
+import type { ProgrammDaten } from "@/lib/haushalt-investitionsprogramm";
+import type { SchuldenDaten } from "@/lib/haushalt-schulden";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
@@ -32,18 +36,24 @@ import { Labor } from "@/components/haushalt/labor";
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-// `hebesaetze` seit 21.08.2026: Der geltende Gewerbesteuer-Satz stand im
-// Labor als Konstante (439) und wurde trotzdem als Quelle zitiert — er
-// kommt jetzt aus der Reihe (s. `hebesatzHeute` in labor.tsx).
+// `hebesaetze` seit 21.08.2026 (der geltende Satz kommt aus der Reihe statt
+// aus einer Konstante); `ergebnishaushalt`, `gebuehren` und
+// `haushaltssatzung` seit dem Werkbank-Umbau (Labor 2.0): Rücklagen-Pfad,
+// gesperrte Gebühren-Schraube und der Kredit-Kasten der dritten Werkbank.
 const FELDER = ["jahre", "produkt_jahre", "steuern", "steuerkraft", "einwohner",
-                "ergebnisrechnung", "hebesaetze"] as const;
+                "ergebnisrechnung", "hebesaetze", "ergebnishaushalt",
+                "gebuehren", "haushaltssatzung"] as const;
 
 /** Reihenfolge = Nummerierung der Beleg-Chips, deshalb nach Leserichtung:
- *  Plan (die Zahl, gegen die gerechnet wird), Steuern am Regler, Rücklage im
- *  Ergebnis, dann die beiden Dokumentquellen, zuletzt der Gegen-Block. */
+ *  Plan (die Zahl, gegen die gerechnet wird), die Regler der ersten Werkbank
+ *  (Steuern, Hebesätze, LSN-Aufteilung, Gebühren), die Ausgaben-Werkbank
+ *  (Teilhaushalt), die dritte Werkbank (Programm, Satzung, Schulden), dann
+ *  die Ergebnis-Spalte (Steuerkraft-Spanne, Rücklage, Planjahre) und der
+ *  Anker unten (Jahresabschluss). */
 const QUELLEN: QuellenSchluessel[] = [
-  "plan", "steuern", "ruecklage", "jahresabschluss", "teilhaushalt",
-  "steuerkraft", "hebesaetze",
+  "plan", "steuern", "hebesaetze", "lsn_realsteuern", "gebuehren",
+  "teilhaushalt", "investitionsprogramm", "haushaltssatzung", "schulden",
+  "steuerkraft", "ruecklage", "ergebnishaushalt", "jahresabschluss",
 ];
 
 export default function LaborPage() {
@@ -55,6 +65,11 @@ export default function LaborPage() {
   const produktJahr = data?.produkt_jahre?.at(-1) ?? null;
   const { data: produkte } = useFetch<ProdukteAntwort>(
     produktJahr ? `/council/haushalt/produkte?jahr=${produktJahr}` : null);
+  // Die drei Zugaben — jede Komponente kommt mit `null` zurecht und lässt
+  // ihren Baustein dann weg, statt mit halben Daten zu rechnen.
+  const { data: vergleich } = useFetch<VergleichDaten>("/council/haushalt/vergleich");
+  const { data: programm } = useFetch<ProgrammDaten>("/council/haushalt/investitionsprogramm");
+  const { data: schulden } = useFetch<SchuldenDaten>("/council/haushalt/schulden");
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Labor wird geladen …</div>;
@@ -74,14 +89,21 @@ export default function LaborPage() {
           <SchrittKicker href="/haushalt/labor" />
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">Haushalts-Labor</h1>
           <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
-            Was passiert, wenn der Rat an den Stellschrauben dreht? Hier kannst du es ausprobieren.
-            Das ist eine Rechnung zum Verstehen — kein Vorschlag und schon gar kein Beschluss.
+            Was passiert, wenn der Rat an den Stellschrauben dreht? Drei Werkbänke, jede mit
+            ihrer eigenen Zielgröße — zum Ausprobieren. Das ist eine Rechnung zum Verstehen,
+            kein Vorschlag und schon gar kein Beschluss.
           </p>
         </div>
         <SchrittZeichen href="/haushalt/labor" />
       </div>
 
-      <Labor daten={data} produkte={produkte?.produkte ?? []} produktJahr={produktJahr} />
+      <Labor
+        daten={data}
+        produkte={produkte?.produkte ?? []} produktJahr={produktJahr}
+        vergleich={vergleich ?? null}
+        programm={programm ?? null}
+        schulden={schulden ?? null}
+      />
 
       <LottiErklaert
         titel="Warum das kein Sparvorschlag ist"

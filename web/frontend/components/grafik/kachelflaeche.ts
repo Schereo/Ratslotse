@@ -128,3 +128,34 @@ export function rampenText(rampe: "ein" | "aus", stufe: number): string {
   const letzteLaute = rampe === "ein" ? 1 : 2;
   return stufe <= letzteLaute ? "var(--hh-seg-text)" : "hsl(var(--foreground))";
 }
+
+/** Ab welchem Rang der Sammelposten übernimmt: das größte `ab`, bei dem über
+ *  die ganze gezeichnete Breitenspanne (520–1200 px, H4-A) JEDE Kachel ihre
+ *  Beschriftung trägt — die Rest-Kachel eingeschlossen.
+ *
+ *  Gerechnet statt gesetzt, weil beides schiefgehen kann: Ohne Bündeln stand
+ *  „Eigenleistungen" (0,23 % der Erträge 2026) an jeder Breite unbeschriftet
+ *  da, und ein zu später Schnitt macht die REST-Kachel selbst zum Splitter —
+ *  bei Rang 8 wäre sie 1,4 % und an 75 von 171 Breiten unlesbar. Für die
+ *  Erträge 2026 liefert die Funktion Rang 7 (unbeschriftet 0,00 je Breite,
+ *  kleinste Kachel 36 px); ein anderer Jahrgang mit anderem Schwanz bekommt
+ *  seinen eigenen Schnitt. Die Probe rechnet den Vertrag nach.
+ *
+ *  `werte` absteigend sortiert (wie überall in der Kachelfläche). Trägt schon
+ *  die volle Liste ihre Beschriftung, ist die Antwort `werte.length` — dann
+ *  wird nicht gebündelt. */
+export function buendelGrenze(werte: number[]): number {
+  for (let ab = werte.length; ab >= 1; ab -= 1) {
+    const rest = werte.slice(ab).reduce((s, w) => s + w, 0);
+    const knoten = [...werte.slice(0, ab), ...(rest > 0 ? [rest] : [])]
+      .map((wert) => ({ wert }));
+    let alle = true;
+    for (let b = 520; b <= 1200 && alle; b += 8) {
+      for (const k of kacheln(knoten, b, kachelHoehe(b))) {
+        if (!beschriftet(k.breite, k.hoehe)) { alle = false; break; }
+      }
+    }
+    if (alle) return ab;
+  }
+  return 1;
+}
