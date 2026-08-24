@@ -97,20 +97,25 @@ export function lottiAnziehen(THREE: TH, lotti: THREE_NS.Group, theme: MascotThe
 
   if (schalFarbe) {
     const wolle = stoff(THREE, schalFarbe);
-    /* Um den Hals: dem Rumpf folgt der Ring (Radius aus der Ei-Silhouette
-       bei y ≈ 0,118, Tiefe 1,02 wie der Körper). */
-    const ring = new THREE.TorusGeometry(0.0855, 0.0125, 14, 48);
+    /* Um den Hals: Der Rumpf hat bei y ≈ 0,118 den Radius 0,086 (Tiefe
+       1,02). Die Mittellinie des Rings liegt AUSSEN darauf (0,092), sodass
+       der Wulst sichtbar aufliegt und nur seine Innenkante im Gefieder
+       steckt — bei 0,0855 war er zur Hälfte im Körper versunken (Tims
+       Befund 24.08.). */
+    const ring = new THREE.TorusGeometry(0.092, 0.013, 14, 48);
     ring.rotateX(Math.PI / 2);
     ring.scale(1, 1, 1.02);
     ring.translate(0, 0.118, 0);
     teil(THREE, lotti, "schal", ring, wolle);
-    /* Das hängende Ende — vorn links auf der Brust, leicht schwingend
-       gestellt. Eine Kapsel statt eines Kastens: Stoff hat keine Kanten. */
+    /* Das hängende Ende liegt AUF der Brust: Die Körperfront steht bei
+       y ≈ 0,082 auf z ≈ 0,088 — die Kapsel sitzt mit ihrer Innenfläche
+       knapp darin und ragt nach vorn heraus. Bei z = 0,079 hing sie
+       komplett IM Rumpf und war unsichtbar (Tims Befund 24.08.). */
     const ende = new THREE.CapsuleGeometry(0.0115, 0.040, 6, 14);
     ende.scale(1, 1, 0.55);
     ende.rotateZ(0.16);
     ende.rotateX(-0.10);
-    ende.translate(0.034, 0.082, 0.079);
+    ende.translate(0.036, 0.080, 0.0915);
     teil(THREE, lotti, "schal-ende", ende, wolle);
   }
 
@@ -188,7 +193,9 @@ export function lottiAnziehen(THREE: TH, lotti: THREE_NS.Group, theme: MascotThe
 /** Winter-Küken: ein Mini-Schal, sonst nichts — wie in der Zeichnung. */
 export function kuekenAnziehen(THREE: TH, kueken: THREE_NS.Group, theme: MascotTheme): void {
   if (theme.season !== "winter") return;
-  const ring = new THREE.TorusGeometry(0.0330, 0.0068, 12, 36);
+  /* Küken-Körper (Kugel r 0,0357, gestaucht) hat bei y ≈ 0,0335 den
+     Radius ~0,0344 — Mittellinie außen darauf, wie bei Lotti. */
+  const ring = new THREE.TorusGeometry(0.0375, 0.0072, 12, 36);
   ring.rotateX(Math.PI / 2);
   ring.translate(0, 0.0335, 0);
   teil(THREE, kueken, "kueken-schal", ring,
