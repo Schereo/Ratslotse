@@ -327,7 +327,8 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `WEB_JWT_SECRET` | Signiergeheimnis der Session-Tokens | ja | `dev-insecure-change-me` — der Start **bricht ab**, solange der Default steht und `COOKIE_SECURE` an ist; bei ausgeschaltetem `COOKIE_SECURE` nur eine Warnung |
 | `WEB_ADMIN_EMAIL` | Diese Adresse wird Admin, sobald sie registriert **und ihre E-Mail bestätigt** hat (nur solange es keinen Admin gibt; ohne Mail-Versand: `scripts/grant_admin.py <adresse>`); Fallback für Alarm- und Feedback-Mails | nein | leer |
 | `COOKIE_SECURE` | Session-Cookies nur über HTTPS | nein | `true` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Laufzeit des Web-Cookie-Tokens | nein | `1440` (1 Tag) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Laufzeit des Web-Cookie-Tokens | nein | `129600` (90 Tage) |
+| `SESSION_RENEW_WITHIN_MINUTES` | Ab welcher Restlaufzeit die Sitzung sich still verlängert; `0` schaltet die Verlängerung ab | nein | `64800` (45 Tage) |
 | `APP_ACCESS_TOKEN_EXPIRE_MINUTES` | Laufzeit des Tokens nativer Apps | nein | `129600` (90 Tage) |
 | `CORS_ORIGINS` | Kommaliste erlaubter Web-Origins (in Prod läuft das Frontend same-origin) | nein | `http://localhost:3000` |
 | `APP_CORS_ORIGINS` | Feste Origins der Capacitor-Apps, immer zusätzlich erlaubt | nein | `capacitor://localhost,https://localhost` |
