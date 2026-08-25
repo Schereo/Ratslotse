@@ -3245,6 +3245,22 @@ class CouncilStore:
             item["summary"] = zus.get(item["item_number"])
         return out
 
+    def sitzungen_am_monatstag(self, monat_tag: str, limit: int = 8) -> list[dict]:
+        """Sitzungen an einem Monatstag (``"-06-17"``) über alle Jahre, neueste
+        zuerst — löst Fragen mit Datum ohne Jahr („am 17.06.") auf
+        (Sitzungs-Fragetyp der KI-Frage, ``qa.finde_sitzungen``)."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT * FROM council_sessions WHERE session_date LIKE ? "
+            "ORDER BY session_date DESC LIMIT ?", (f"%{monat_tag}", int(limit)))]
+
+    def decision_ids_der_sitzung(self, ksinr: int) -> list[int]:
+        """Beschluss-ids einer Sitzung in Tagesordnungs-Reihenfolge, ohne
+        Subvotes (die hängen als Kontext am Hauptbeschluss). Sitzungs-Fragetyp
+        der KI-Frage: die Sitzung kommt damit VOLLSTÄNDIG in den Kontext."""
+        return [r[0] for r in self._conn.execute(
+            "SELECT id FROM council_decisions WHERE ksinr = ? AND kind = 'decision' "
+            "ORDER BY position", (int(ksinr),))]
+
     def get_session(self, ksinr: int) -> dict | None:
         row = self._conn.execute(
             """SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
