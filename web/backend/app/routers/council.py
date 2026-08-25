@@ -2446,6 +2446,9 @@ class AskBody(BaseModel):
 QA_TOP_K = 40
 QA_ANSWER_N = 20
 QA_MIN_SCORE = 0.2
+# Sitzungs-Fragetyp: der Antwort-Kontext trägt die GANZE Sitzung — der Deckel
+# schützt nur vor Ausreißern (größte Rats-Tagesordnung im Bestand: 47 TOPs).
+QA_SITZUNG_N = 60
 # jina-reranker-v2 logits are negative-centred (a clearly relevant match still scores
 # below 0), so a raw sigmoid under-sells good hits (~50 % for the top result). Shift by
 # a fixed bias so a relevant decision reads as a high-but-honest relevance.
@@ -2638,6 +2641,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             person = qa.finde_person(store, q_suche)
             if person and typ not in ("partei", "geld"):
                 typ = "person"
+            # Sitzungs-Fragetyp (25.08.26): Nennt die Frage ein konkretes
+            # Sitzungsdatum oder die letzte/nächste Sitzung eines Gremiums,
+            # wird die Sitzung deterministisch aufgelöst und ihre Beschlüsse
+            # kommen VOLLSTÄNDIG in den Kontext. Die Ähnlichkeitssuche allein
+            # ließ beim Rückblick auf den Jugendhilfeausschuss vom 17.06.2026
+            # drei der sechs TOPs weg, darunter einen echten Beschluss (echte
+            # Nutzerfrage 25.08.). partei/geld/person behalten Vorrang.
+            sitzungen = [] if person else qa.finde_sitzungen(store, q_suche)
+            sitzung_ids = [i for s in sitzungen for i in s.get("beschluss_ids") or []]
+            if sitzungen and typ not in ("partei", "geld"):
+                typ = "sitzung"
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
             candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
@@ -2653,6 +2667,22 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     candidates += store.get_decisions_by_ids([i for i in extra_ids if i not in have])
                 except Exception:  # noqa: BLE001 — Anreicherung ist best-effort
                     pass
+            if sitzung_ids:
+                # Die aufgelöste Sitzung VOLLSTÄNDIG in den Kandidatenpool —
+                # beim Sitzungs-Fragetyp in Tagesordnungs-Reihenfolge nach
+                # vorn, denn daran hängen das Aussprache-Nachladen
+                # (candidates[:8]) und der Antwort-Kontext.
+                have = {c["id"] for c in candidates}
+                nachgeladen = store.get_decisions_by_ids(
+                    [i for i in sitzung_ids if i not in have])
+                if typ == "sitzung":
+                    pos = {i: n for n, i in enumerate(sitzung_ids)}
+                    eigene = sorted(
+                        [c for c in candidates if c["id"] in pos] + nachgeladen,
+                        key=lambda c: pos[c["id"]])
+                    candidates = eigene + [c for c in candidates if c["id"] not in pos]
+                else:
+                    candidates += nachgeladen
             # Beim Vereinfachen zählen die Belege der VORIGEN Antwort: Ihre ids
             # müssen im Kandidatenset stehen, sonst streicht resolve_citations
             # genau die Fußnoten weg, die die einfache Fassung übernehmen soll —
@@ -2748,6 +2778,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             steckbriefe = qa.steckbriefe_fuer(store, q_suche)
             # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
             lage = qa.beleglage(candidates)
+            if typ == "sitzung" and sitzung_ids:
+                # Die Sitzung ist deterministisch aufgelöst, kein Ähnlichkeits-
+                # Raten — die Dünn-Regel hätte hier nichts zu bremsen.
+                lage = "solide"
             zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
             # Haushalts-Kontext: welche der zehn Geld-Quellen diese Frage
             # beantworten, entscheidet `qa.geld_facetten` deterministisch am
@@ -2798,7 +2832,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
-                if debatten_rows:
+                if sitzungen:
+                    # Die gefragte Sitzung IST aufgelöst — sie hat nur (noch)
+                    # keine Beschlüsse: künftiger Termin oder Protokoll-Verzug.
+                    # Das pauschale „nichts gefunden" wäre hier die falsche
+                    # Auskunft.
+                    leer_text = qa.sitzungs_leer_text(sitzungen)
+                elif debatten_rows:
                     # Die Debatten-Treffer stehen bereits sichtbar in den
                     # Belegen — ein hartes „nichts gefunden" daneben wäre
                     # gelogen (Review-Befund zu #387).
@@ -2821,6 +2861,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # verlangt ~500 Wörter mit Zwischenüberschriften — das ist das
             # Gegenteil von dem, was der Knopf verspricht.
             gross = (len(candidates) >= 25 or spanne >= 3) and not einfach
+            if typ == "sitzung":
+                # Länge nach Sitzungsgröße statt Kandidatenzahl — die zählt
+                # nach dem Voll-Merge der Sitzung immer hoch.
+                gross = len(sitzung_ids) >= 12 and not einfach
             ctx = candidates[:QA_ANSWER_N]
             if vorher_ids:
                 # Beim Vereinfachen sieht das Modell NUR die Beschlüsse, die die
@@ -2838,6 +2882,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     ctx = ctx[:QA_ANSWER_N - len(fehlend)] + fehlend
             if typ == "verlauf":
                 ctx = qa.sort_verlauf(ctx)
+            if typ == "sitzung" and sitzung_ids and not einfach:
+                # ALLE Beschlüsse der Sitzung in den Antwort-Kontext — der
+                # QA_ANSWER_N-Deckel würde große Sitzungen wieder anschneiden,
+                # und genau das Anschneiden ist der Anlass dieses Fragetyps.
+                im_set = set(sitzung_ids)
+                ctx = [c for c in candidates if c["id"] in im_set][:QA_SITZUNG_N]
             try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
                 texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
                 for c in ctx:
@@ -2874,7 +2924,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                      else qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                            geld=geld, debatten=debatten_rows,
                                            gross=gross, steckbriefe=steckbriefe,
-                                           duenn=(lage == "duenn"), eng=eng))
+                                           duenn=(lage == "duenn"), eng=eng,
+                                           sitzungen=sitzungen))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -2906,7 +2957,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                               qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                                  geld=geld, debatten=debatten_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
-                                                 duenn=(lage == "duenn"), eng=eng))
+                                                 duenn=(lage == "duenn"), eng=eng,
+                                                 sitzungen=sitzungen))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
