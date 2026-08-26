@@ -18,6 +18,8 @@
 //     aufgeschlüsselt nach Teilhaushalt. Dafür ist `ergebnisPosten` da — der
 //     zweite Weg an die Zahl, für Einnahmearten, die keine Steuer sind.
 
+import type { GesetzSchluessel } from "@/lib/gesetze";
+
 export type Spielraum = "frei" | "begrenzt" | "keiner";
 
 export type SteuerStufe = {
@@ -27,6 +29,15 @@ export type SteuerStufe = {
   text: string;
   /** true = hier entscheidet der Rat (Signal-Rahmen im Design). */
   rat?: boolean;
+  /** Die Vorschrift, auf der diese Stufe beruht — zeigt als Gesetz-Chip auf
+   *  den amtlichen Volltext (`lib/gesetze.ts`).
+   *
+   *  Steht an der Stufe und nicht im Fließtext, weil sie zur Stufe gehört:
+   *  Die Karte sagt „wer entscheidet was", und die Rechtsgrundlage ist die
+   *  Antwort auf die Anschlussfrage „wonach?". Wo keine einzelne Vorschrift
+   *  trägt — der Rat beschließt eine eigene Satzung —, bleibt das Feld leer;
+   *  ein Link auf irgendein nahes Gesetz wäre schlechter als keiner. */
+  gesetz?: GesetzSchluessel;
 };
 
 export type SteuerArt = {
@@ -125,16 +136,19 @@ export const STEUERARTEN: SteuerArt[] = [
         wer: "Bundestag",
         titel: "Was als Gewinn zählt",
         text: "Das Gewerbesteuergesetz legt fest, wer zahlt und was abgezogen werden darf. Daran kann die Stadt nichts ändern.",
+        gesetz: "gewstg",
       },
       {
         wer: "Bundestag",
         titel: "Die Messzahl: 3,5 %",
         text: "Das Finanzamt rechnet den Gewinn mit 3,5 % in einen Messbetrag um — bundesweit gleich.",
+        gesetz: "gewstg-11",
       },
       {
         wer: "Rat Oldenburg",
         titel: "Der Hebesatz: 439 %",
         text: "Der Messbetrag wird mit dem Hebesatz multipliziert. Diese eine Zahl beschließt der Rat — jedes Jahr neu mit dem Haushalt.",
+        gesetz: "gewstg-16",
         rat: true,
       },
     ],
@@ -174,15 +188,31 @@ export const STEUERARTEN: SteuerArt[] = [
       + "belegten Aufteilung aus dem Realsteuervergleich des Landes — dort steht er, "
       + "samt Fähnchen, wie groß der Grundsteuer-A-Anteil darin ist.",
     stufen: [
+      // KORRIGIERT AM 26.08.2026, aufgefallen beim Verlinken der Gesetze:
+      // Hier stand „berechnen die Finanzämter für jedes Grundstück einen neuen
+      // WERT" und „nach bundesweit gleichen Regeln". Beides gilt in
+      // Niedersachsen nicht. Das Land hat bei der Grundsteuerreform die
+      // Öffnungsklausel genutzt und ein eigenes Gesetz beschlossen (NGrStG,
+      // Flächen-Lage-Modell): Gerechnet wird mit Flächen und einem Lage-Faktor,
+      // und die Messzahlen stehen im Landesgesetz, nicht im Bundesrecht. Die
+      // alte Fassung beschrieb das Bundesmodell, nach dem hier niemand zahlt.
       {
-        wer: "Bundestag & Land",
-        titel: "Was das Grundstück wert ist",
-        text: "Nach der Grundsteuerreform berechnen die Finanzämter für jedes Grundstück einen neuen Wert. Die Stadt rechnet daran nicht mit.",
+        wer: "Land",
+        titel: "Was zählt: Fläche und Lage",
+        text:
+          "Für Wohn- und Geschäftsgrundstücke rechnet Niedersachsen seit der Reform nicht " +
+          "mit dem Wert, sondern mit der Fläche von Grundstück und Gebäude — angepasst um " +
+          "einen Lage-Faktor. Festgestellt haben das die Finanzämter; die Stadt rechnet " +
+          "daran nicht mit.",
+        gesetz: "ngrstg",
       },
       {
-        wer: "Bundestag",
+        wer: "Land",
         titel: "Die Steuermesszahl",
-        text: "Aus dem Wert wird nach bundesweit gleichen Regeln ein Messbetrag — je nach Art des Grundstücks unterschiedlich.",
+        text:
+          "Daraus wird der Messbetrag, mit Abschlägen unter anderem für Wohnflächen. Die " +
+          "Messzahlen stehen im Landesgesetz — auch daran ändert die Stadt nichts.",
+        gesetz: "ngrstg-6",
       },
       {
         wer: "Rat Oldenburg",
@@ -191,6 +221,7 @@ export const STEUERARTEN: SteuerArt[] = [
           "539 % für Wohn- und Geschäftsgrundstücke (Grundsteuer B), 500 % für Land- und " +
           "Forstwirtschaft (Grundsteuer A). Beide beschließt der Rat.",
         rat: true,
+        gesetz: "ngrstg-7",
       },
     ],
     lotti: {
@@ -216,11 +247,13 @@ export const STEUERARTEN: SteuerArt[] = [
         wer: "Bundestag",
         titel: "Die Steuer selbst",
         text: "Wie viel Einkommensteuer jemand zahlt, steht im Einkommensteuergesetz.",
+        gesetz: "estg",
       },
       {
         wer: "Bundestag",
         titel: "Der Gemeindeanteil",
         text: "Das Gemeindefinanzreformgesetz legt fest, welcher Anteil an die Kommunen geht und nach welchem Schlüssel er verteilt wird.",
+        gesetz: "gemfinrefg-1",
       },
       {
         wer: "Rat Oldenburg",
@@ -246,8 +279,11 @@ export const STEUERARTEN: SteuerArt[] = [
     spielraum: "keiner",
     stellschraube: "Bundesweit verteilt, nach Schlüssel",
     stufen: [
-      { wer: "Bundestag", titel: "Die Steuer selbst", text: "Höhe und Regeln der Umsatzsteuer sind Bundesrecht." },
-      { wer: "Bundestag", titel: "Der Verteilschlüssel", text: "Er bestimmt, welcher Anteil bei welcher Kommune landet." },
+      { wer: "Bundestag", titel: "Die Steuer selbst",
+        text: "Höhe und Regeln der Umsatzsteuer sind Bundesrecht.", gesetz: "ustg" },
+      { wer: "Bundestag", titel: "Der Verteilschlüssel",
+        text: "Er bestimmt, welcher Anteil bei welcher Kommune landet.",
+        gesetz: "gemfinrefg-5a" },
       { wer: "Rat Oldenburg", titel: "Nichts.", text: "Keine kommunale Stellschraube." },
     ],
     lotti: {
@@ -271,6 +307,7 @@ export const STEUERARTEN: SteuerArt[] = [
         wer: "Land",
         titel: "Der Rahmen",
         text: "Das Kommunalabgabengesetz erlaubt Städten, bestimmte örtliche Steuern zu erheben.",
+        gesetz: "nkag",
       },
       {
         wer: "Rat Oldenburg",
@@ -301,6 +338,7 @@ export const STEUERARTEN: SteuerArt[] = [
         wer: "Land",
         titel: "Die Formel und der Topf",
         text: "Der Landtag beschließt das Finanzausgleichsgesetz und wie viel Geld insgesamt verteilt wird.",
+        gesetz: "nfag",
       },
       {
         wer: "Land",
@@ -348,6 +386,7 @@ export const STEUERARTEN: SteuerArt[] = [
         wer: "Land",
         titel: "Die Grenze",
         text: "Das Kommunalabgabengesetz erlaubt höchstens kostendeckende Gebühren — Gewinn ist nicht vorgesehen.",
+        gesetz: "nkag",
       },
       {
         wer: "Rat Oldenburg",

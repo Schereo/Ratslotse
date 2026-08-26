@@ -246,7 +246,10 @@ export function Beleg({ q, h, className }: {
 const RAND = 12;
 const BREITE = 300;
 
-function useFaehnchenLage(offen: boolean) {
+// Exportiert, weil der Gesetz-Chip (`components/haushalt/gesetz.tsx`) dasselbe
+// Fähnchen öffnet. Zwei Implementierungen hießen: Die Falle, die Tim am
+// 21.08.2026 auf dem Handy gefunden hat, wäre in der zweiten wieder drin.
+export function useFaehnchenLage(offen: boolean) {
   const knopf = useRef<HTMLButtonElement>(null);
   const [lage, setLage] = useState<CSSProperties>({ visibility: "hidden" });
 

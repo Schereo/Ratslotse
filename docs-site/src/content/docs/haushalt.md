@@ -410,6 +410,49 @@ beides nach, weil er den Jahrgang ohnehin ersetzt; `herkunft_aufraeumen()`
 räumt die abgelösten Datensätze weg.
 :::
 
+### Gesetze sind keine Belege
+
+Neben den Rechtsgrundlagen der Steuer-Steckbriefe steht seit 08/2026 ein
+zweiter Chip: eine **Waage** statt einer Ziffer. Ein Klick erklärt die Stelle
+in zwei Sätzen und führt zum amtlichen Volltext — Bundesrecht beim Bundesamt
+für Justiz, Landesrecht im niedersächsischen Vorschrifteninformationssystem
+(VORIS). Register: `web/frontend/lib/gesetze.ts`, Chip:
+`components/haushalt/gesetz.tsx`.
+
+**Warum er nicht mitgezählt wird.** Der Beleg-Apparat beantwortet genau eine
+Frage: „Woher kommt diese *Zahl*?" Jede Ziffer im Verzeichnis zeigt auf ein
+Papier, aus dem wir gelesen haben. Aus einem Gesetz haben wir keine Zahl
+gelesen — es sagt, warum es die Zahl überhaupt gibt. Beides in eine
+Nummernfolge zu werfen hieße, das Verzeichnis um eine zweite Bedeutung zu
+erweitern, die niemand ansagt. Deshalb: dasselbe Fähnchen (`useFaehnchenLage`
+ist aus `quelle.tsx` exportiert, nicht nachgebaut), dieselbe Bedienung,
+anderes Zeichen, außerhalb der Nummerierung.
+
+Im Fähnchen steht außerdem, ob **Bund oder Land** die Vorschrift gemacht hat.
+Das ist keine Deko, sondern die Anschlussfrage: Wer könnte das ändern? Beim
+Hebesatz ist die Antwort „der Rat", beim Steuergeheimnis „der Bundestag" —
+dazwischen liegt der Unterschied zwischen einer politischen und einer
+rechtlichen Grenze.
+
+:::caution[Nicht das nächstliegende Bundesgesetz nehmen]
+Niedersachsen hat bei der Grundsteuerreform die Öffnungsklausel genutzt und
+ein eigenes Gesetz beschlossen (NGrStG, Flächen-Lage-Modell). Ein Link auf
+§ 15 und § 25 GrStG hätte auf Vorschriften gezeigt, nach denen in Oldenburg
+**niemand** zahlt. Beim Eintragen fiel dabei auf, dass auch die Erklärung
+selbst das Bundesmodell beschrieb („für jedes Grundstück einen neuen Wert",
+Messzahl „nach bundesweit gleichen Regeln") — beides korrigiert. Wer eine
+Vorschrift ergänzt, sieht deshalb je Steuerart nach, statt vom Bundesrecht
+auszugehen.
+
+Praktische Folge für die Adressen: Bundesrecht liegt unter sprechenden Pfaden
+(`gesetze-im-internet.de/gewstg/__16.html`), VORIS vergibt UUIDs. Die lassen
+sich nicht raten — dort suchen und die Adresse kopieren.
+:::
+
+Stufen ohne einzelne Vorschrift tragen **keinen** Chip. „Der Rat beschließt
+die Satzung und die Sätze" beruht auf keiner Norm, die man aufschlagen könnte;
+ein Link auf irgendein nahes Gesetz wäre schlechter als keiner.
+
 ### Was ein neuer Parser tun muss
 
 Drei Schritte, mehr nicht:

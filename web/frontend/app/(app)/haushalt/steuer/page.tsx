@@ -30,6 +30,7 @@ import { HebesatzTreppe } from "@/components/haushalt/hebesatz-treppe";
 import { AbgelehnteStufe } from "@/components/haushalt/abgelehnte-stufe";
 import { Grenzen } from "@/components/haushalt/steuer-grenzen";
 import { WerZahlt } from "@/components/haushalt/wer-zahlt";
+import { Gesetz } from "@/components/haushalt/gesetz";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
@@ -338,6 +339,12 @@ function SteuerInner() {
               <p className="mt-2 text-[13px] font-bold leading-snug">{st.titel}</p>
               <p className="mt-1 text-xs leading-relaxed text-foreground/80">
                 <GlossaryText text={st.text} />
+                {/* Die Rechtsgrundlage der Stufe — führt auf den amtlichen
+                    Volltext. Am Ende des Satzes und nicht als eigene Zeile:
+                    Sie beantwortet eine Rückfrage, sie ist nicht die Aussage
+                    der Karte. Stufen ohne einzelne Vorschrift („der Rat
+                    beschließt die Satzung") tragen keinen Chip. */}
+                {st.gesetz && <Gesetz g={st.gesetz} />}
               </p>
             </div>
           ))}
@@ -462,6 +469,7 @@ function SteuerInner() {
           /* Der Nenner und der Satz, der zu ihm gehört. Beide reisen aus der
              API mit: Die Abgrenzung ist Teil der Zahl, nicht des Layouts. */
           statistik={statistik}
+          statistikKurz={data.gewerbesteuerstatistik?.abgrenzung_kurz ?? ""}
           statistikAbgrenzung={data.gewerbesteuerstatistik?.abgrenzung ?? ""}
         />
       )}

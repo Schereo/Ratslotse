@@ -597,6 +597,10 @@ export type Hebesaetze = {
  *  Klartext und kommt deshalb mit den Zahlen aus der API. */
 export type Gewerbesteuerstatistik = {
   zeilen: GewerbesteuerstatistikZeile[];
+  /** Der eine Satz, ohne den die Zahlen irreführen — steht immer. */
+  abgrenzung_kurz: string;
+  /** Der Rest: was gezählt wird, warum Messbetrag nicht Aufkommen ist, wie
+   *  groß der Verzug ist. Darf eingeklappt sein, weggelassen nicht. */
   abgrenzung: string;
 };
 

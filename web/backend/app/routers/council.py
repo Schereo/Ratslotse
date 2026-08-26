@@ -1079,6 +1079,11 @@ def haushalt_uebersicht(
         # anderen Städte wären hier Ballast, den niemand rendert.
         "gewerbesteuerstatistik": lambda: {
             "zeilen": store.get_gewerbesteuerstatistik(gewst.OLDENBURG),
+            # Zwei Fassungen: `abgrenzung_kurz` ist der eine Satz, ohne den die
+            # Zahlen irreführen, und steht auf der Seite immer; `abgrenzung`
+            # setzt ihn fort und darf eingeklappt sein. Warum die Aufteilung
+            # hier liegt und nicht im Frontend, steht im Modulkopf.
+            "abgrenzung_kurz": gewst.ABGRENZUNG_KURZ,
             "abgrenzung": gewst.ABGRENZUNG,
         },
     }
