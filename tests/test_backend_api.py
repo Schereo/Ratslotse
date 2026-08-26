@@ -2690,6 +2690,42 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
     assert s["n_beschluesse"] == 3 and s["n_agenda"] == 0 and s["agenda"] == []
 
 
+def test_ask_sitzungsfrage_ueberlebt_die_kondensierung(client, monkeypatch):
+    """Die Frage-Analyse kondensiert „im Bauausschuss morgen" zu „am morgigen
+    Tag" — und verschluckt dabei gern Signalwörter ganz. Die Erkennung läuft
+    deshalb auf der kondensierten UND der rohen Frage (Tims Befund 26.08.:
+    trotz #738 halluzinierte die Antwort weiter eine Prognose-Tagesordnung)."""
+    from datetime import date, timedelta
+
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    morgen = (date.today() + timedelta(days=1)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+            "VALUES (11, 'Ausschuss für Stadtplanung und Bauen', ?, '17:00', '', '')", (morgen,))
+        cs._conn.execute(
+            "INSERT INTO council_agenda_items (ksinr, item_number, title) "
+            "VALUES (11, 'Ö 5', 'Bebauungsplan N-777')")
+    cs.close()
+    # Analyse liefert eine kondensierte Fassung OHNE erkennbares Signalwort.
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda q, **k: {
+        "frage": "Themen der Sitzung des Bauausschusses", "begriffe": "Bauausschuss Themen",
+        "typ": "thema", "partei": None, "varianten": [], "eng": False})
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: ([], "semantisch"))
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Um was geht es im Bauausschuss morgen?"}) as r:
+        body = "".join(r.iter_text())
+    events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+    src = next(e for e in events if e["type"] == "sources")
+    assert src["qtype"] == "sitzung"
+    answer = "".join(e["text"] for e in events if e["type"] == "token")
+    assert "tagt erst am" in answer and "Bebauungsplan N-777" in answer
+
+
 def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch):
     """Nennt die Frage eine Sitzung, zu der noch kein Protokoll ausgewertet ist
     (1–2 Monate Verzug sind normal), und findet auch die Semantik nichts, kommt

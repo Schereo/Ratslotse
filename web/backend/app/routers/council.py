@@ -2734,7 +2734,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # ließ beim Rückblick auf den Jugendhilfeausschuss vom 17.06.2026
             # drei der sechs TOPs weg, darunter einen echten Beschluss (echte
             # Nutzerfrage 25.08.). partei/geld/person behalten Vorrang.
-            sitzungen = [] if person else qa.finde_sitzungen(store, q_suche)
+            # Erkennung auf der kondensierten UND der rohen Frage: Die Analyse
+            # schreibt „im Bauausschuss morgen" gern zu „am morgigen Tag" um —
+            # was die Kondensierung an Signalwörtern verschluckt, trägt die
+            # Original-Frage noch (Tims Befund 26.08., zweiter Anlauf).
+            sitzungen = [] if person else (qa.finde_sitzungen(store, q_suche)
+                                           or qa.finde_sitzungen(store, q))
             sitzung_ids = [i for s in sitzungen for i in s.get("beschluss_ids") or []]
             if sitzungen and typ not in ("partei", "geld"):
                 typ = "sitzung"
