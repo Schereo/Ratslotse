@@ -51,11 +51,15 @@
 // das eine Angabe über fremde Daten. Die ehrliche Reichweite dieser Seite steht
 // stattdessen am Jahrgangs-Umschalter: ab wann Protokolle im Bestand sind.
 //
-// UND EINE EHRLICHKEIT, die der Seite ihre Grenze setzt: Was in einer
-// Änderungsliste stand — welche Position um welchen Betrag —, steht in den
-// Anlagen-PDFs der Vorlage und liegt nicht als Volltext im Bestand. Die Seite
-// sagt deshalb „wer wollte ändern und kam damit durch", nicht „was genau".
-// Das steht im Block „Was hier fehlt", nicht im Kleingedruckten.
+// DIE GRENZE DER SEITE hat sich am 26.08.2026 verschoben: Seit
+// `council/aenderungslisten.py` die EHH-Listen liest, zeigt der Block „Was
+// in den Listen stand" (streit-listeninhalt.tsx) die Positionen der
+// Verwaltungslisten und der beschlossenen Änderungen — Zeile für Zeile,
+// beim Einlesen gegen die eigene Schlusssumme bewiesen. Was FEHLT, sind
+// weiterhin die Fraktionslisten selbst: Tischvorlagen, in keinem
+// RIS-Dokument; digital belegt ist nur ihre Summenzeile in der
+// Beschluss-Datei. Das steht im Block „Was hier fehlt", nicht im
+// Kleingedruckten.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -70,6 +74,8 @@ import {
   verhandlungsBilanz, vorschau,
 } from "@/lib/haushalt-streit";
 import { Beleg } from "@/components/haushalt/quelle";
+import { StreitListenInhalt } from "@/components/haushalt/streit-listeninhalt";
+import type { AenderungslistenDaten } from "@/lib/haushalt-aenderungslisten";
 import { PunkteBilanz, PunkteZeile } from "@/components/grafik/punkte-bilanz";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { OutcomeBadge, OutcomeDot } from "@/components/decision-ui";
@@ -306,6 +312,9 @@ function StationsAntraege({ s }: { s: StreitStation }) {
 export function StreitAbschnitt() {
   const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
   const { data, loading } = useFetch<StreitDaten>("/council/haushalt/streit");
+  // Die Inhalts-Ebene lädt getrennt: Die Streit-Antwort ist schon ein halbes
+  // MB Protokolle, und die Listen braucht erst, wer bis zu ihrem Block liest.
+  const { data: listen } = useFetch<AenderungslistenDaten>("/council/haushalt/aenderungslisten");
 
   const jahre = useMemo(() => jahrgaenge(data ?? null), [data]);
   const jahr = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre[0] ?? null;
@@ -410,10 +419,10 @@ export function StreitAbschnitt() {
             </p>
             <p className="mt-1 max-w-[66ch] text-[12.5px] leading-relaxed text-muted-foreground">
               Jeder Punkt ist eine Abstimmung über eine Änderungsliste, gefüllt heißt: fand eine
-              Mehrheit. Die Bilanz sagt, wer ändern wollte — was genau, steckt in Anlagen ohne
-              Volltext und wird nicht behauptet. Eine Erfolgsquote steht hier bewusst nicht:
-              Eingebracht und abgelehnt ist parlamentarischer Alltag der Opposition, kein
-              Zeugnis.
+              Mehrheit. Die Bilanz sagt, wer ändern wollte — was in den vorliegenden Listen
+              stand, steht weiter unten; von den Fraktionslisten selbst ist nur die Summe
+              belegt. Eine Erfolgsquote steht hier bewusst nicht: Eingebracht und abgelehnt
+              ist parlamentarischer Alltag der Opposition, kein Zeugnis.
             </p>
             <PunkteBilanz
               className="mt-3"
@@ -513,6 +522,10 @@ export function StreitAbschnitt() {
             </div>
           )}
         </div>
+
+        {/* Was in den Listen stand — die Inhalts-Ebene (Positionen und
+            Fraktions-Summen), seit die Änderungslisten gelesen werden. */}
+        <StreitListenInhalt daten={listen ?? null} jahr={jahr} />
 
         {/* Was gesagt wurde. */}
         {debatte && debatte.debatte.length > 0 && (
@@ -616,10 +629,12 @@ export function StreitAbschnitt() {
           </h2>
           <ul className="mt-2 flex max-w-[70ch] list-disc flex-col gap-1.5 pl-4 text-[12.5px] leading-relaxed text-muted-foreground">
             <li>
-              <strong className="font-semibold text-foreground">Der Inhalt der Änderungslisten.</strong>{" "}
-              Welche Position eine Fraktion um welchen Betrag verschieben wollte, steht in den
-              Anlagen zur Vorlage. Diese PDFs liegen nicht als Volltext vor, deshalb steht hier,
-              wer etwas einbrachte und ob es durchkam — nicht, was genau darin stand.
+              <strong className="font-semibold text-foreground">Die Fraktionslisten selbst.</strong>{" "}
+              Die Änderungslisten der Verwaltung und die beschlossenen Änderungen des
+              Finanzausschusses liegen als Dokumente vor und stehen oben Position für Position.
+              Die Listen der Fraktionen wurden dagegen als Tischvorlagen verteilt und liegen in
+              keinem Dokument des Ratsinformationssystems — digital belegt ist nur ihre
+              Summenzeile in der Beschluss-Datei, mit dem Urheber daneben.
             </li>
             <li>
               <strong className="font-semibold text-foreground">Das Stimmverhalten Einzelner.</strong>{" "}

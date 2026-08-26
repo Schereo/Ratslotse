@@ -104,6 +104,10 @@ export type QuellenSchluessel =
   // Dokument ist als der Wirtschaftsplan desselben Betriebs: Der Plan sagt,
   // was der Betrieb vorhat, die Berechnung, was die Leute dafür zahlen.
   | "gebuehren"
+  // Die Änderungslisten zum Haushalt — eigener Schlüssel, weil sie weder der
+  // Plan noch die Satzung sind: Sie sind das Protokoll dessen, was sich
+  // zwischen Entwurf und Beschluss noch bewegt hat, Position für Position.
+  | "aenderungsliste"
   | "gesamtabschluss"
   | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
   // Die Kassensicht aus denselben Jahresabschlüssen. Ein eigener Schlüssel,
@@ -295,6 +299,25 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Abfallwirtschaftsbetrieb Stadt Oldenburg",
     standWort: "Gebührenbedarfsberechnungen",
     stand: "Gebührenbedarfsberechnungen 2023–2026",
+    art: "pdf",
+    url: "https://buergerinfo.oldenburg.de",
+  },
+  aenderungsliste: {
+    titel: "Änderungslisten zum Haushaltsentwurf",
+    fundstelle:
+      "Die Anlagen der Haushalts-Vorlage, in denen der Entwurf zwischen " +
+      "Einbringung und Beschluss fortgeschrieben wird: die Änderungslisten " +
+      "der Verwaltung (Verw. I–III) und die Datei „beschlossene Änderungen“ " +
+      "des Finanzausschusses. Jede führt ihre Positionen je Planjahr mit " +
+      "Ertrag und Aufwand und am Ende eine „Zusammenstellung der " +
+      "Veränderungen“ — gegen die jede hier gezeigte Positionsliste beim " +
+      "Einlesen aufgehen musste. Die Änderungslisten der Fraktionen sind " +
+      "in keinem dieser Papiere: Sie wurden als Tischvorlagen verteilt und " +
+      "liegen nicht im Ratsinformationssystem; nur ihre Summen stehen in " +
+      "den Beschluss-Dateien, mit dem Urheber daneben.",
+    herausgeber: "Stadt Oldenburg, Finanzverwaltung",
+    standWort: "Änderungslisten",
+    stand: "Änderungslisten 2019–2026",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
