@@ -140,7 +140,7 @@ def main() -> dict:
     targets = nwz_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
 
     # Daten werden auch OHNE Abonnements aktualisiert — die Web-App zeigt
-    # Sitzungen und Terminplan für alle Nutzer:innen, nicht nur Abonnenten.
+    # Sitzungen und Terminplan für alle Nutzer*innen, nicht nur Abonnenten.
     council_store = CouncilStore(COUNCIL_DB)
     scraper = CouncilScraper()
 

@@ -6,16 +6,17 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
   CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon, Command,
-  MoreHorizontal, MessageCircle,
+  MoreHorizontal, MessageCircle, Euro,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { LANDING_HREF } from "@/components/native-redirect";
 import { isNativeApp } from "@/lib/platform";
+import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton, openFeedback } from "@/components/feedback";
-import { LottiThemeSwitch } from "@/components/theme-switch";
+import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { cn, pfad } from "@/lib/utils";
 import { openCommandPalette } from "@/components/command-palette";
 
@@ -99,6 +100,11 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
   { href: "/council?tab=themen", label: "Stadtkarte", icon: MapIcon, tab: "themen" },
   { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
+  // Design-Serie „Haushalt" (H-01): eigener Bereich in der Sidebar; mobil
+  // hängt er im „Mehr"-Sheet — die Tab-Bar bleibt fünfteilig (H-05).
+  // Hinterm Umgebungs-Gate: Wo /haushalt ein 404 ist, darf auch kein Anker
+  // dorthin stehen (lib/haushalt-frei.ts).
+  ...(HAUSHALT_FREI ? [{ href: "/haushalt", label: "Haushalt", icon: Euro }] : []),
 ];
 const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
 const QUIZ: Item = { href: "/quiz", label: "Quiz", icon: Trophy };
@@ -124,17 +130,9 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
   || pathname.startsWith("/council/")
   || ["/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
-/** RL-U09: Der Lotti-Himmel-Schalter ersetzt den Dreistufen-Icon-Toggle — im
- *  Web binär (Erststart folgt dem OS, danach entscheidet der Schalter).
- *  Nur Desktop-Sidebar: Auf Mobilgeräten (Web wie App) läuft die Wahl über
- *  Konto → „Erscheinungsbild" — die Topbar bleibt schlank (Tim, 22.07.).
- *  Mount-Gate: SSR kennt die Plattform nicht. */
-function WebThemeSwitch({ className }: { className?: string }) {
-  const [show, setShow] = useState(false);
-  useEffect(() => setShow(!isNativeApp()), []);
-  if (!show) return null;
-  return <LottiThemeSwitch className={className} />;
-}
+// RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (WebThemeSwitch)
+// nur in der Desktop-Sidebar — mobil läuft die Wahl über Konto →
+// „Erscheinungsbild", die Topbar bleibt schlank (Tim, 22.07.).
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">{children}</p>;
@@ -526,6 +524,7 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
           <MehrZeile href="/council" icon={Search} label="Suche" onClose={onClose} />
           <MehrZeile href="/council?tab=themen" icon={MapIcon} label="Stadtkarte" onClose={onClose} />
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
+          {HAUSHALT_FREI && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
           <MehrZeile href="/quiz" icon={Trophy} label="Quiz" onClose={onClose} />
           {user?.role === "admin" && (
             <MehrZeile href="/admin" icon={Settings} label="Admin" badge={openFeedbackUnread} primaerFarbe={false} onClose={onClose} />

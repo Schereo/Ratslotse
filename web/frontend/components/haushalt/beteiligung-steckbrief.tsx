@@ -1,0 +1,582 @@
+"use client";
+
+// Der Steckbrief einer städtischen Gesellschaft (H3-02, Detailansicht von
+// /haushalt/beteiligungen).
+//
+// WARUM ER UMGEBAUT WURDE: Vorher goss die Seite fünf Abschnitte des
+// Beteiligungsberichts nacheinander als Rohtext aus (bis 2.660 Zeichen am
+// Stück, `whitespace-pre-line`), und darunter stand eine Zahlenliste. Zwei
+// der fünf Abschnitte sind aber gar kein Fließtext: „Beteiligungsverhältnisse"
+// ist eine Tabelle, „Besetzung der Aufsichtsorgane" eine Personenliste. Als
+// Absatz gesetzt, sahen beide aus wie Text und lasen sich wie keiner.
+//
+// DREI FORMEN STATT EINER (jede hält ihre Regel):
+//
+//  1. **Die Zahlen stehen oben.** Jahresergebnis, Bilanzsumme,
+//     Eigenkapitalquote sind das, wonach jemand hier sucht — sie standen im
+//     Keller unter 4.000 Zeichen Prosa. Jede trägt ihr eigenes Jahr, denn die
+//     Reihen enden nicht alle gleich (die Großleitstelle führt im Bericht für
+//     2024 die Jahre bis 2021). KEINE BEWERTUNGSFARBEN: kein Rot am Verlust,
+//     keine Pfeile, keine Ampel. Ein Verkehrsbetrieb mit Verlust erfüllt
+//     seinen Auftrag — deshalb ist die <Einordnung> Pflichtteil.
+//  2. **Wem sie gehört, wird ein Streifen.** Anteile sind Größen, keine
+//     Sätze. Der Balken kommt aus dem Baukasten (`<Anteilsbalken>`), die
+//     Beschriftung aus der QUELLE: Euro und Prozent stehen nur da, wo der
+//     Bericht sie nennt — eine aus dem Betrag gerechnete Quote hätte sonst
+//     dieselbe Autorität wie eine gedruckte.
+//  3. **Wer sie beaufsichtigt, wird zu Personen.** Mit Partei-Punkt und Link
+//     ins Personenverzeichnis, in derselben Sprache wie die Personen-Badges
+//     der KI-Antworten (`parteiDot`/`parteiKuerzel` aus qa-bausteine) — nicht
+//     in einer dritten. Wer keinen Eintrag hat, bleibt ein Element ohne Link;
+//     erfunden wird nichts.
+//
+// `funktion: null` HEISST UNBEKANNT, NICHT „KEINE". Der Bericht führt Namen
+// und Funktionen in zwei getrennten Spalten; paaren lassen sie sich nur nach
+// Position, und das nur bei exakt gleicher Länge. Wo die Probe scheitert
+// (`funktionen_zuordenbar === false`), zeigt die Seite die Namen OHNE Ämter
+// und sagt in einem Satz, warum. Der Vorsitz bleibt trotzdem stehen: Er
+// steht in der Namenszeile selbst („…, Vorsitzende"), nicht in der Spalte.
+//
+// ALLES NEUE IST OPTIONAL. Fehlen `personen`/`eigentuemer` (ältere API) oder
+// bleiben sie für eine Gesellschaft leer (Probe nicht bestanden), steht der
+// Rohtext des Abschnitts da wie bisher — kein leerer Block, kein Spinner ins
+// Nichts.
+//
+// UND KEINE SELBSTVERGEWISSERUNG (DESIGNSPRACHE § 7): Die Seite führt nicht
+// vor, wie gründlich geprüft wurde. Die eine Ausnahme bleibt: Wo eine Zahl
+// FEHLT, sagt sie es — das ist eine Auskunft über die Quelle, keine Selbstlob.
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, ChevronDown } from "lucide-react";
+import {
+  ABSCHNITTE, Aufsichtsperson, BeteiligungsDaten, Eigentuemer, Gesellschaft,
+  KENNZAHL_TITEL, Kennzahl, RECHTSFORM_TITEL,
+  absatzVorschau, anteilsGewicht, aufsichtsgruppen,
+  aufsichtspersonen, eigentuemerVon, einordnungFuer, eur, gremiumName, herkunftVon,
+  prozent, rechtsform, reihen, textVon, wertText,
+} from "@/lib/haushalt-beteiligungen";
+import { personHref } from "@/lib/routes";
+import type { JahrPunkt } from "@/components/grafik/daten";
+import { deZahl } from "@/components/grafik/format";
+import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
+import { Einordnung } from "@/components/grafik/einordnung";
+import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
+import { FormZeichen } from "@/components/haushalt/konzernkarte";
+import { Beleg } from "@/components/haushalt/quelle";
+import { parteiDot, parteiKuerzel } from "@/components/qa-bausteine";
+import { cn } from "@/lib/utils";
+
+/** Die Kennzahlen im Kopf, in dieser Reihenfolge. */
+const TRIO = ["jahresergebnis", "bilanzsumme", "eigenkapitalquote"] as const;
+
+/** Die Überschriften der Abschnitte, aus EINER Quelle (`ABSCHNITTE`): Sonst
+ *  hieße derselbe Abschnitt in der Struktur-Fassung anders als im Rückfall
+ *  auf den Wortlaut. */
+const TITEL: Record<string, string> = Object.fromEntries(
+  ABSCHNITTE.map((a) => [a.key, a.titel]));
+
+/** Wo eine Angabe im Dokument steht — bei 200 Seiten der Unterschied zwischen
+ *  „steht in dem PDF" und „steht auf Seite 178, Abschnitt 2.4.8". */
+export function Fundstelle({ h, className }: {
+  h: ReturnType<typeof herkunftVon>; className?: string;
+}) {
+  if (!h?.fundstelle) return null;
+  const ziel = h.seite && h.url ? `${h.url}#page=${h.seite}` : h.url;
+  return (
+    <div className={cn("border-t border-dashed border-border pt-2.5", className)}>
+      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+        Woher das stammt
+      </p>
+      <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
+        {h.label ?? "Beteiligungsbericht"}, {h.fundstelle}
+        {h.seite ? `, Seite ${h.seite}` : ""}
+        {ziel && (
+          <>
+            {" · "}
+            <a href={ziel} target="_blank" rel="noopener noreferrer"
+              className="font-semibold text-primary">
+              Dokument öffnen
+            </a>
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
+/** Die Karten-Hülle aller Abschnitte: Kicker links, ehrliche Zähl-/
+ *  Zeitraum-Angabe rechts (Designsprache § 5). */
+function Abschnitt({ kicker, zusatz, className, children }: {
+  kicker: string; zusatz?: string; className?: string; children: React.ReactNode;
+}) {
+  return (
+    <section className={cn("rounded-2xl border border-border bg-card p-4 shadow-sm", className)}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          {kicker}
+        </p>
+        {zusatz && (
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            {zusatz}
+          </p>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Die Zeitreihe als `JahrPunkt[]` für den Baukasten: Werte in Mio. €, ohne
+ *  erfundene Zwischenjahre — was der Bericht nicht nennt, bleibt Lücke. */
+function ergebnisReihe(ergebnisse: Kennzahl[]): JahrPunkt[] {
+  return ergebnisse.map((k) => ({ jahr: k.jahr, wert: k.wert / 1_000_000 }));
+}
+
+/** Eine Zahl im Kopf: Kennzahl, Jahr, Betrag — und wo nichts dasteht, der
+ *  Satz, dass nichts dasteht. */
+function Kopfzahl({ titel, k }: { titel: string; k: Kennzahl | null }) {
+  return (
+    <div className="min-w-0">
+      <dt className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+        {titel} {k ? k.jahr : ""}
+      </dt>
+      {k ? (
+        <dd className="font-display text-[21px] font-bold leading-tight tracking-tight tabular-nums">
+          {wertText(k)}
+          <Beleg q="beteiligungsbericht" />
+        </dd>
+      ) : (
+        <dd className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
+          nennt der Bericht nicht
+        </dd>
+      )}
+    </div>
+  );
+}
+
+/** Der Kopf: die drei Zahlen, der Verlauf daneben, die Einordnung darunter.
+ *
+ *  Jede Zahl trägt ihr eigenes Jahr, weil die Reihen verschieden weit
+ *  reichen — ein gemeinsames „Stand 2024" über allen dreien wäre für die
+ *  Eigenkapitalquote schlicht falsch. */
+function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft }) {
+  const alleReihen = useMemo(() => reihen(daten, g.gesellschaft), [daten, g.gesellschaft]);
+  const ergebnisse = alleReihen.get("jahresergebnis") ?? [];
+  const reihe = ergebnisReihe(ergebnisse);
+  const von = ergebnisse[0]?.jahr, bis = ergebnisse[ergebnisse.length - 1]?.jahr;
+  const quote = alleReihen.get("eigenkapitalquote") ?? [];
+  // Die Eigenkapitalquote des jüngsten Jahres trägt keine Probe und steht
+  // deshalb nicht im Bestand (Begründung: council/beteiligungsbericht.py).
+  // Eine stumme Lücke sähe nach Fehler aus.
+  const quoteFehlt = !!ergebnisse.length && !!quote.length
+    && quote[quote.length - 1].jahr < ergebnisse[ergebnisse.length - 1].jahr;
+  const herkunft = herkunftVon(daten, ergebnisse[ergebnisse.length - 1]?.herkunft_id
+    ?? g.herkunft_id);
+
+  return (
+    <Abschnitt kicker="Die Zahlen aus dem Bericht"
+      zusatz={von && bis ? `${von}–${bis}` : undefined}
+      className="@container/zahlen">
+      {/* Die drei Zahlen hängen zusammen und stehen deshalb beieinander, statt
+          sich als Raster über die ganze Kartenbreite zu verteilen: Auf 1440 px
+          lägen sonst 40 cm zwischen Ergebnis und Quote. */}
+      <div className="mt-2.5 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <dl className="flex min-w-[220px] flex-1 flex-wrap gap-x-10 gap-y-3">
+          {TRIO.map((k) => {
+            const liste = alleReihen.get(k) ?? [];
+            return (
+              <Kopfzahl key={k} titel={KENNZAHL_TITEL[k]}
+                k={liste[liste.length - 1] ?? null} />
+            );
+          })}
+        </dl>
+        {reihe.length >= 2 && (
+          <div className="w-[168px] flex-none">
+            <ZeitreiheMini
+              reihe={reihe}
+              format={(v) => deZahl(v, 1)}
+              ariaLabel={`Jahresergebnis ${von} bis ${bis} in Mio. Euro: ${ergebnisse
+                .map((k) => `${k.jahr} ${eur(k.wert)}`).join(", ")}.`}
+            />
+            <p className="mt-0.5 text-center font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+              Jahresergebnis in Mio. €
+            </p>
+          </div>
+        )}
+      </div>
+
+      <Einordnung satz={einordnungFuer(daten, g, ergebnisse)} className="mt-3" />
+
+      {quoteFehlt && (
+        <p className="mt-2.5 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
+          Für {bis} steht die Eigenkapitalquote noch nicht dabei: Der Bericht nennt sie,
+          rechnet sie aber nirgends vor. Sobald sie im nächsten Bericht ein zweites Mal
+          steht, kommt sie hinzu.
+        </p>
+      )}
+      <Fundstelle h={herkunft} className="mt-3" />
+    </Abschnitt>
+  );
+}
+
+/** „Was die Gesellschaft tut": erster Absatz sichtbar, der Rest hinter einem
+ *  Auslöser. Weglassen heißt hinter einen Auslöser, nie ersatzlos (H4-A) —
+ *  gekürzt wird die Darstellung, nicht der Wortlaut. */
+function Auftrag({ text, herkunft }: {
+  text: string; herkunft: ReturnType<typeof herkunftVon>;
+}) {
+  const [offen, setOffen] = useState(false);
+  const { kopf, rest } = useMemo(() => absatzVorschau(text), [text]);
+
+  return (
+    <Abschnitt kicker={TITEL.gegenstand}>
+      <p className="mt-1.5 max-w-[76ch] whitespace-pre-line text-[13.5px] leading-relaxed text-foreground/90">
+        {kopf}
+      </p>
+      {rest && (
+        <>
+          {offen && (
+            <p className="mt-2 max-w-[76ch] whitespace-pre-line text-[13.5px] leading-relaxed text-foreground/90">
+              {rest}
+            </p>
+          )}
+          <button type="button" onClick={() => setOffen(!offen)} aria-expanded={offen}
+            className="mt-2 inline-flex min-h-[36px] items-center gap-1 text-[12.5px] font-semibold text-primary">
+            {offen ? "Wortlaut einklappen" : "Ganzen Wortlaut zeigen"}
+            <ChevronDown size={14} strokeWidth={2}
+              className={cn("transition-transform", offen && "rotate-180")} />
+          </button>
+        </>
+      )}
+      <Fundstelle h={herkunft} className="mt-3" />
+    </Abschnitt>
+  );
+}
+
+/** „Wem sie gehört" als Anteilsstreifen.
+ *
+ *  Die Farben kommen aus der Einnahmen-Rampe (`--hh-ein-*`, dunkel nach
+ *  hell in der Reihenfolge des Berichts) — nie aus Ampelfarben: Ein
+ *  Mitgesellschafter ist nicht „gelb". Beschriftet wird nur, was in der
+ *  Quelle steht: Betrag, wo der Bericht Euro nennt, Quote, wo er Prozent
+ *  nennt, beides, wo beides dasteht. */
+function Eigentuemerstreifen({ liste, herkunft }: {
+  liste: Eigentuemer[]; herkunft: ReturnType<typeof herkunftVon>;
+}) {
+  const summe = liste.reduce((n, e) => n + anteilsGewicht(e), 0);
+  if (!(summe > 0)) return null;
+  const segmente = liste.map((e, i) => ({
+    label: e.name,
+    wert: anteilsGewicht(e),
+    farbe: `var(--hh-ein-${Math.min(i, 6)})`,
+  }));
+
+  return (
+    <Abschnitt kicker={TITEL.beteiligungsverhaeltnisse}
+      zusatz={`${liste.length} Anteilseigner`}>
+      <div className="mt-2.5">
+        <Anteilsbalken segmente={segmente} gesamt={summe} legende={false} hoehe={16} />
+        <ul className="mt-2.5 flex flex-col gap-1.5">
+          {liste.map((e, i) => (
+            <li key={`${e.name}-${i}`} className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 text-[12.5px]">
+              <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 flex-none rounded-[3px]"
+                style={{ background: `var(--hh-ein-${Math.min(i, 6)})` }} />
+              <span className="min-w-0 flex-1 leading-snug">{e.name}</span>
+              {e.betrag_eur != null && (
+                <span className="flex-none tabular-nums text-muted-foreground">
+                  {eur(e.betrag_eur)}
+                </span>
+              )}
+              {e.anteil_prozent != null && (
+                <span className="w-[62px] flex-none text-right font-semibold tabular-nums">
+                  {prozent(e.anteil_prozent)}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p className="mt-2.5 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
+        Angaben aus der Gesellschaftertabelle des Berichts. Beträge und Quoten stehen so da,
+        wie sie gedruckt sind — gerechnet wird hier nichts.
+      </p>
+      <Fundstelle h={herkunft} className="mt-3" />
+    </Abschnitt>
+  );
+}
+
+/** Eine Person im Aufsichtsorgan.
+ *
+ *  Wer im Personenverzeichnis steht, wird verlinkt (`personHref`) und trägt
+ *  seinen Partei-Punkt; wer nicht, bleibt ein schlichtes Element ohne Link —
+ *  ein toter Link wäre schlimmer als keiner. Der Punkt ist ein 8-px-Punkt und
+ *  keine Fläche (Designsprache § 2): Eine parteigefärbte Karte machte aus
+ *  einem Aufsichtsmandat ein Plakat. */
+function Person({ p, zeigeFunktion }: { p: Aufsichtsperson; zeigeFunktion: boolean }) {
+  const dot = p.partei ? parteiDot(p.partei) : null;
+  const zusatz = [zeigeFunktion ? p.funktion : null, p.hinweis].filter(Boolean).join(" · ");
+
+  return (
+    <li className="min-w-0 rounded-xl border border-border px-3 py-2">
+      <span className="flex flex-wrap items-baseline gap-x-1.5">
+        {/* Der Punkt steht nur, wo eine Partei dasteht. Ein Platzhalter für
+            „keine" sähe aus wie „unbekannt" — eine Beschäftigtenvertreterin
+            hat schlicht keine Fraktion. */}
+        {dot && (
+          <span aria-hidden="true" className="h-2 w-2 flex-none translate-y-[-1px] rounded-full"
+            style={{
+              background: dot.bg,
+              boxShadow: dot.ring ? "inset 0 0 0 1px rgba(0,0,0,.15)" : undefined,
+            }} />
+        )}
+        {p.slug ? (
+          <Link href={personHref(p.slug)}
+            className="text-[13px] font-semibold leading-snug text-foreground hover:text-primary hover:underline">
+            {p.name}
+          </Link>
+        ) : (
+          <span className="text-[13px] font-semibold leading-snug">{p.name}</span>
+        )}
+        {p.partei && (
+          <span className="text-[10.5px] font-medium text-muted-foreground">
+            {parteiKuerzel(p.partei)}
+          </span>
+        )}
+      </span>
+      {zusatz && (
+        <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">
+          {zusatz}
+        </span>
+      )}
+    </li>
+  );
+}
+
+/** „Wer sie beaufsichtigt": die Mitglieder, nach Funktion gebündelt. */
+function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
+  personen: Aufsichtsperson[]; zuordenbar: boolean;
+  herkunft: ReturnType<typeof herkunftVon>;
+}) {
+  const gruppen = useMemo(() => aufsichtsgruppen(personen, zuordenbar),
+    [personen, zuordenbar]);
+  const gremium = gremiumName(personen);
+
+  return (
+    <Abschnitt kicker={TITEL.aufsichtsorgane} className="@container/organ"
+      zusatz={`${personen.length} ${personen.length === 1 ? "Person" : "Personen"}`}>
+      {/* Kein „x von y Namen wiedergefunden": Wie gut unser Abgleich mit dem
+          Personenverzeichnis läuft, ist kein Seiteninhalt (DESIGNSPRACHE § 7).
+          Wer einen Eintrag hat, ist verlinkt — das sieht man. */}
+      {gremium && (
+        <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
+          Das Aufsichtsorgan ist der {gremium}.
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-col gap-3">
+        {gruppen.map((gr) => (
+          <div key={gr.key}>
+            <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+              {gr.titel}
+            </p>
+            <ul className="mt-1.5 grid gap-1.5 @xl/organ:grid-cols-2 @4xl/organ:grid-cols-3">
+              {gr.personen.map((p, i) => (
+                <Person key={`${p.name}-${i}`} p={p}
+                  zeigeFunktion={gr.key === "vorsitz" && zuordenbar} />
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      {!zuordenbar && (
+        <p className="mt-3 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
+          Welches Amt zu welchem Namen gehört, gibt der Bericht hier nicht her: Er führt
+          Namen und Funktionen in zwei getrennten Spalten, und die beiden Listen sind
+          verschieden lang. Deshalb stehen die Namen ohne Amt — geraten wird nicht.
+        </p>
+      )}
+      <Fundstelle h={herkunft} className="mt-3" />
+    </Abschnitt>
+  );
+}
+
+/** Ein Abschnitt, der Fließtext bleibt — und der Rückfall für jeden
+ *  Abschnitt, dessen Struktur die Probe nicht bestanden hat.
+ *
+ *  `whitespace-pre-line`, weil der Bericht in den Listen-Abschnitten je
+ *  Eintrag eine Zeile setzt: Zu einem Absatz verschmolzen wären sie unlesbar. */
+function Rohtext({ kicker, text, herkunft, hinweis }: {
+  kicker: string; text: string; herkunft: ReturnType<typeof herkunftVon>;
+  hinweis?: string;
+}) {
+  return (
+    <Abschnitt kicker={kicker}>
+      <p className="mt-1.5 max-w-[76ch] whitespace-pre-line text-[13px] leading-relaxed text-foreground/90">
+        {text}
+      </p>
+      {hinweis && (
+        <p className="mt-2.5 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
+          {hinweis}
+        </p>
+      )}
+      <Fundstelle h={herkunft} className="mt-3" />
+    </Abschnitt>
+  );
+}
+
+/** Die Zeitreihe einer Kennzahl — als Tabelle, und das ist keine
+ *  Bequemlichkeit: Die Reihen sind vier bis acht Werte lang, teils
+ *  lückenhaft, und drei Gesellschaften weisen durchgehend 0,00 € aus
+ *  (Ergebnisabführung). Eine Kurve daraus zeigte vor allem die Lücken als
+ *  Knicke — die Verlaufs-Form zeigt die Sparkline im Kopf. */
+function Reihe({ daten, zeilen }: { daten: BeteiligungsDaten; zeilen: Kennzahl[] }) {
+  if (!zeilen.length) return null;
+  const h = herkunftVon(daten, zeilen[zeilen.length - 1].herkunft_id);
+  return (
+    <div>
+      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+        {KENNZAHL_TITEL[zeilen[0].kennzahl]}
+      </p>
+      <dl className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1.5">
+        {zeilen.map((k) => (
+          <div key={k.jahr} className="flex flex-col">
+            <dt className="font-mono text-[10px] tabular-nums text-muted-foreground">
+              {k.jahr}
+            </dt>
+            <dd className="font-display text-[15px] font-semibold tabular-nums">
+              {wertText(k)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <Fundstelle h={h} className="mt-2.5" />
+    </div>
+  );
+}
+
+export function Steckbrief({ daten, g, zurueck }: {
+  daten: BeteiligungsDaten; g: Gesellschaft; zurueck: () => void;
+}) {
+  const alleReihen = useMemo(() => reihen(daten, g.gesellschaft), [daten, g.gesellschaft]);
+  const vergleich = daten.konzernvergleich.find((z) => z.gesellschaft === g.gesellschaft);
+  const form = rechtsform(g);
+
+  const personen = useMemo(() => aufsichtspersonen(daten, g.gesellschaft),
+    [daten, g.gesellschaft]);
+  const eigentuemer = useMemo(() => eigentuemerVon(daten, g.gesellschaft),
+    [daten, g.gesellschaft]);
+  const text = (key: string) => textVon(daten, g.gesellschaft, key);
+  const gegenstand = text("gegenstand");
+  const besitz = text("beteiligungsverhaeltnisse");
+  const organe = text("aufsichtsorgane");
+  const beteiligungen = text("beteiligungen");
+  const haushalt = text("haushalt");
+
+  return (
+    <div className="flex flex-col gap-3">
+      <button type="button" onClick={zurueck}
+        className="group flex items-center gap-1.5 self-start text-[13px] font-semibold text-primary">
+        <ArrowLeft size={14} strokeWidth={2}
+          className="transition-transform group-hover:-translate-x-0.5" />
+        Alle Gesellschaften
+      </button>
+
+      <div>
+        <p className="flex items-center gap-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          {form && <FormZeichen form={form} className="h-3 w-3" />}
+          {form ? RECHTSFORM_TITEL[form] : "Städtische Einheit"} · Bericht {g.bericht_jahr}
+        </p>
+        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
+          {g.name}
+        </h1>
+      </div>
+
+      <Zahlenkopf daten={daten} g={g} />
+
+      {gegenstand && (
+        <Auftrag text={gegenstand.text} herkunft={herkunftVon(daten, gegenstand.herkunft_id)} />
+      )}
+
+      {/* Struktur, wo die Probe sie hergibt — sonst der Wortlaut. */}
+      {eigentuemer.length > 0 ? (
+        <Eigentuemerstreifen liste={eigentuemer}
+          herkunft={herkunftVon(daten, eigentuemer[0].herkunft_id ?? besitz?.herkunft_id ?? null)} />
+      ) : besitz ? (
+        <Rohtext kicker={TITEL.beteiligungsverhaeltnisse} text={besitz.text}
+          herkunft={herkunftVon(daten, besitz.herkunft_id)} />
+      ) : null}
+
+      {personen.length > 0 ? (
+        <Aufsichtsorgan personen={personen}
+          // Ohne Angabe gilt „unbekannt": Eine alte API, die das Feld nicht
+          // kennt, darf keine Ämter behaupten.
+          zuordenbar={g.funktionen_zuordenbar === true}
+          herkunft={herkunftVon(daten, personen[0].herkunft_id ?? organe?.herkunft_id ?? null)} />
+      ) : organe ? (
+        <Rohtext kicker={TITEL.aufsichtsorgane} text={organe.text}
+          herkunft={herkunftVon(daten, organe.herkunft_id)} />
+      ) : null}
+
+      {/* Zwei kurze Abschnitte — je ein bis drei Sätze. Nebeneinander, wo der
+          Platz da ist: untereinander ergäben sie zwei fast leere Karten. */}
+      {(beteiligungen || haushalt) && (
+        <div className={cn("grid gap-3", beteiligungen && haushalt && "breit:grid-cols-2")}>
+          {beteiligungen && (
+            <Rohtext kicker={TITEL.beteiligungen} text={beteiligungen.text}
+              herkunft={herkunftVon(daten, beteiligungen.herkunft_id)} />
+          )}
+          {haushalt && (
+            <Rohtext kicker={TITEL.haushalt} text={haushalt.text}
+              herkunft={herkunftVon(daten, haushalt.herkunft_id)} />
+          )}
+        </div>
+      )}
+
+      <Abschnitt kicker="Alle Jahre, die der Bericht führt">
+        <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+          Dieselben drei Kennzahlen, vollständig statt nur im jüngsten Jahr.
+          <Beleg q="beteiligungsbericht" />
+        </p>
+        <div className="mt-3 flex flex-col gap-4">
+          {TRIO.map((k) => (
+            <Reihe key={k} daten={daten} zeilen={alleReihen.get(k) ?? []} />
+          ))}
+        </div>
+      </Abschnitt>
+
+      {vergleich && (
+        <Abschnitt kicker="Dieselbe Gesellschaft im Gesamtabschluss">
+          <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+            Der{" "}
+            <Link href="/haushalt/konzern" className="font-semibold text-primary">
+              Gesamtabschluss
+            </Link>{" "}
+            führt {g.name} als eigenen Aufgabenträger. Er rechnet anders: Dort zählen nur
+            die ordentlichen Erträge und Aufwendungen, hier steht das vollständige
+            Jahresergebnis der Gesellschaft.
+          </p>
+          <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
+            <div>
+              <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                Beitrag im Konzern {vergleich.jahr}
+              </dt>
+              <dd className="font-display text-[17px] font-bold tabular-nums">
+                {eur(vergleich.konzern_beitrag)}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                Jahresergebnis {vergleich.jahr}
+              </dt>
+              <dd className="font-display text-[17px] font-bold tabular-nums">
+                {eur(vergleich.jahresergebnis)}
+              </dd>
+            </div>
+          </dl>
+        </Abschnitt>
+      )}
+    </div>
+  );
+}

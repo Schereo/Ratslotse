@@ -1,0 +1,92 @@
+{
+ "slug": "pgm",
+ "partei": {
+  "kurz": "PGM",
+  "name": "Partei für Gerechtigkeit und Menschlichkeit, Landesverband Niedersachsen (PGM NDS)",
+  "typ": "partei",
+  "kandidaten": 7
+ },
+ "programm": {
+  "gefunden": false,
+  "titel": null,
+  "url": null,
+  "format": null,
+  "seiten": null,
+  "stand": null,
+  "hinweis": "Trotz gruendlicher Suche (mehrere Websuchen zur Partei/zum Landesverband Niedersachsen und zu den im Auftrag genannten Themen-Slugs; Volltextpruefung des 56-seitigen offiziellen Registrierungs-dokuments bei der Bundeswahlleiterin [Bundessatzung + Grundsatzprogramm]; Pruefung der aus der offiziellen Partei-E-Mail info@pgm-partei.de abgeleiteten Domain pgm-partei.de inkl. deren sitemap.xml; Test von 8 weiteren plausiblen Domain-Varianten) wurde kein kommunales Wahlprogramm und keine offiziellen kommunalen Kernforderungen/Thesen zur Ratswahl Oldenburg 2026 gefunden. Die PGM wurde laut Presseberichten erst im Mai 2026 in Oldenburg gegruendet und tritt 2026 zum allerersten Mal ueberhaupt bei einer Wahl an. Das einzige auffindbare Parteidokument (Bundessatzung + Grundsatzprogramm, bundeswahlleiterin.de/dam/jcr/fabb90ff-4bb3-41c8-9062-2ed7036a2e8b/pgm.pdf) enthaelt das Wort 'Oldenburg' nur zweimal, beide Male ausschliesslich als Sitzangabe der Partei, keine kommunalpolitischen Inhalte - und ist ohnehin laut Auftrag kein Ersatz fuer ein Kommunalprogramm. Presseberichte (u.a. oldenburger-onlinezeitung.de) dokumentieren nur die Gruendung und allgemeine, ortsunabhaengige Grundsaetze (soziale Gerechtigkeit, oekologische Verantwortung, 'Demokratie von unten'), aber keine kommunalen Thesen zu Oldenburg. Der mitgegebene Hinweis auf themenspezifische Unterseiten (/topic/wohnen-und-stadtentwicklung u.ae.) liess sich NICHT verifizieren, siehe 'besonderes'. Einstufung: Fallstufe 3 (gefunden=false)."
+ },
+ "charakter": "Sehr junge, erst im Mai 2026 in Oldenburg gegruendete Kleinpartei ohne bisherige Wahlteilnahme auf irgendeiner Ebene. Oeffentlich dokumentiert sind ausschliesslich allgemeine Gruendungsgrundsaetze (soziale Gerechtigkeit, oekologische Verantwortung, 'Demokratie von unten') mit idealistisch-menschlicher Tonalitaet ('Politik wieder menschlich machen'), jedoch keine kommunalpolitischen Aussagen zu Oldenburg. Ein inhaltliches Profil zur Ratswahl 2026 laesst sich aus den verfuegbaren Quellen nicht ableiten.",
+ "kernpunkte": [
+  "Kein Wahlprogramm oder Positionspapier zur Kommunalwahl Oldenburg 2026 oeffentlich auffindbar.",
+  "Partei erst im Mai 2026 in Oldenburg gegruendet; tritt 2026 zum ersten Mal ueberhaupt bei einer Wahl an.",
+  "Tritt mit 7 Kandidatinnen/Kandidaten zur Ratswahl an; keine inhaltlichen Einzelpositionen auffindbar.",
+  "Bundessitz und Sitz des Landesverbands Niedersachsen der Partei ist Oldenburg (Oldb).",
+  "Einzige dokumentierte programmatische Aussagen sind ortsunabhaengige Grundsaetze aus Bundessatzung/Grundsatzprogramm (soziale Gerechtigkeit, oekologische Verantwortung, 'Demokratie von unten') ohne Oldenburg-Bezug."
+ ],
+ "themen": {
+  "wohnen": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "mobilitaet": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "klima": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "wirtschaft": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "bildung": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "soziales": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "kultur": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "sicherheit": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "digitales": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "finanzen": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "beteiligung": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "integration": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  }
+ },
+ "besonderes": [
+  "Partei ist zum Zeitpunkt der Auswertung erst ca. 3 Monate alt und nimmt zum allerersten Mal ueberhaupt an einer Wahl teil (auch nicht zuvor auf Landes- oder Bundesebene).",
+  "Der im Arbeitsauftrag mitgegebene Hinweis auf eine Partei-Website mit thematischen Unterseiten (/topic/wohnen-und-stadtentwicklung, /topic/mobilitaet-und-verkehr usw.) konnte in dieser Recherche NICHT verifiziert werden: Die aus der offiziellen Partei-Kontakt-E-Mail (info@pgm-partei.de) abgeleitete Domain pgm-partei.de lieferte bei mehreren Abrufen kein konsistentes eigenes Angebot (u.a. Inhalte der CDU in der Stadt Oldenburg, daneben auch reine Verbindungsfehler); die per sitemap.xml von dort verlinkte Domain echt-oldenburg.de gehoert nachweislich zur unabhaengigen Waehlergemeinschaft 'Echt Oldenburg' (OB-Kandidat Ralph Butzin) und nicht zur PGM. Acht weitere naheliegende Domain-Varianten (u.a. pgm-nds.de, pgm-niedersachsen.de, gerechtigkeit-menschlichkeit.de) existieren nicht (DNS-Fehler). Ausserdem entsprechen die im Hinweis genannten Themen-Slugs auffaellig fast 1:1 der 12-Themen-Taxonomie dieses Auftrags - ein moeglicher Hinweis darauf, dass diese Angabe aus einem frueheren, laut Auftrag am Token-Limit gescheiterten Durchlauf fehlerhaft/erfunden war statt auf einer echten Website-Beobachtung zu beruhen."
+ ]
+}

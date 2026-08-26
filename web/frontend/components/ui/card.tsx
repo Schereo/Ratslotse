@@ -70,7 +70,7 @@ export function EmptyState({
 /** Fehlgeschlagene Abfrage — mit Knopf statt Bitte (Design 29a, P4).
  *
  *  Vorher endeten Ladefehler als roter Satz „… Bitte Seite neu laden." — die
- *  Bitte an die Nutzer:in, unsere Arbeit zu machen. Ein Funkloch in der Bahn
+ *  Bitte an die Nutzer*in, unsere Arbeit zu machen. Ein Funkloch in der Bahn
  *  reichte, und die Seite blieb kaputt, bis jemand den Browser bemühte. Dabei
  *  liegt `refetch()` in jeder dieser Abfragen bereit: Ein Tipp genügt, der Rest
  *  der Seite bleibt stehen.

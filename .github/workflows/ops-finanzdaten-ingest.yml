@@ -64,7 +64,48 @@ jobs:
             # vierzehn Schichten lesen aus `council_anlagen`, und dort lagen
             # 5.186 Anlagen ohne Text. `--nur-finanz` holt die 293, aus denen
             # der Haushalts-Bereich tatsächlich liest, statt aller 5.500.
-            .venv/bin/python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed
+            # `--gekappte` holt zusätzlich die Anlagen, die an einer FRÜHEREN
+            # MAX_TEXT-Grenze abgeschnitten wurden. Sie stehen auf `ok` und
+            # kämen sonst nie wieder an die Reihe — bei 400.000 Zeichen endeten
+            # die Jahresabschlüsse mitten im Dokument, vor Abschnitt 8
+            # („Anlagen zum Anhang"). Der Schalter darf dauerhaft mitlaufen:
+            # Sind die Texte einmal vollständig, ist ihre Länge krumm und der
+            # Filter greift nicht mehr.
+            .venv/bin/python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed --gekappte
+
+            # UND DANN die, die gar keine Textebene haben. Der Lauf oben setzt
+            # sie auf `status='empty'`; dieser hier schickt jede Seite als Bild
+            # an ein Sehmodell (council/ocr.py). Ohne ihn blieben die
+            # Wirtschaftspläne des Abfallwirtschaftsbetriebs 2019–2021 für
+            # immer draußen — sie liegen im Ratsinformationssystem nur als
+            # Scan.
+            #
+            # `--nur-finanz` ist hier KEIN Sparzwang, sondern die Regel: Von
+            # den 235 Anlagen ohne Textebene sind über die Hälfte Anträge, viele
+            # davon Förderanträge von Vereinen mit Namen, Anschriften und
+            # Unterschriften. Die haben in einem Finanzdaten-Lauf nichts
+            # verloren. Der Lauf schreibt `status='ocr'`, nicht `'ok'` — das
+            # hält den Text aus den Chunk-Vektoren und damit aus Antworten der
+            # KI-Frage heraus, während die Parser ihn sehen.
+            #
+            # Kosten: rund 0,0024 $ je Seite, also wenige Euro für den ganzen
+            # Finanzbestand. Braucht OPENROUTER_API_KEY (steht in der .env der
+            # Dev-VM); fehlt er, bricht der Lauf mit Fehler ab und der Rest
+            # läuft weiter — die Ampel unten fängt das auf.
+            ocr=0
+            # Der Renderer für Seiten OHNE seitenfüllendes Bild. Er steht
+            # bewusst nicht in requirements.txt (dieselbe Zurückhaltung wie bei
+            # fastembed) und wird hier bei Bedarf nachgezogen — ein Wheel mit
+            # gebündeltem pdfium, keine Systemabhängigkeit.
+            #
+            # OHNE IHN FEHLT GENAU DAS DOKUMENT, UM DAS ES GEHT: Der
+            # RPA-Schlussbericht ist born-digital; seine Seiten tragen kein
+            # Bild, sondern Vektoren und eine unbrauchbare Textebene. Die
+            # AWB-Scans kommen ohne Renderer aus, er nicht.
+            .venv/bin/python -c "import pypdfium2" 2>/dev/null \
+              || .venv/bin/pip install --quiet pypdfium2
+
+            .venv/bin/python scripts/backfill_anlagen_ocr.py --nur-finanz || ocr=$?
 
             .venv/bin/python scripts/ingest_haushalt.py
             .venv/bin/python scripts/ingest_finanzen_opendata.py
@@ -74,6 +115,91 @@ jobs:
             .venv/bin/python scripts/ingest_konzernabschluss.py
             .venv/bin/python scripts/ingest_investitionen_ist.py
             .venv/bin/python scripts/check_beteiligungsbericht.py
+            .venv/bin/python scripts/ingest_ausgabenreihe.py
+            # Nachbewilligungen nach § 117 NKomVG. Steht NACH dem Backfill
+            # oben, und das ist keine Kosmetik: Die drei Rechenschaftsberichte
+            # (Dokumente 265441, 280862, 295295) liegen mit `status='listed'`
+            # und leerem `raw_text` im Bestand. Ohne den Backfill liest dieser
+            # Lauf nur die Ratsbeschlüsse — also die Teilmenge ohne den Nenner,
+            # zu dem sie gehört. Genau die Halbwahrheit, gegen die der Block
+            # gebaut ist.
+            .venv/bin/python scripts/ingest_nachbewilligungen.py
+            # Die Zuwendungen lesen nicht aus dem Netz, sondern aus dem
+            # eigenen Bestand: Beschlusszeilen plus Vorlagen-Volltexte. Ohne
+            # den Volltext-Lauf oben gibt es keine Zweitstelle und damit keine
+            # einzige Zeile — deshalb steht das hier und nicht weiter oben.
+            .venv/bin/python scripts/ingest_spenden.py
+
+            # Die Wirtschaftspläne der Eigenbetriebe (#663). Wie die
+            # Zuwendungen darüber liest dieser Lauf nicht aus dem Netz — die
+            # Eckwerte stehen im Beschlussvorschlag der Vorlage selbst, also
+            # in `council_vorlagen`. Er hängt deshalb NICHT am Volltext-Lauf
+            # ganz oben (der füllt `council_anlagen`) und an keiner anderen
+            # Zeile dieser Reihe; er steht hier, weil er dieselbe Quelle liest
+            # wie sein Vorgänger. Wiederholen ist gefahrlos: Der Schlüssel ist
+            # (Betrieb, Jahr), ein zweiter Lauf ersetzt den Stand.
+            #
+            # Sein Rückgabewert wird AUFGEHOBEN statt sofort zu wirken. Reißt
+            # eine Rechenprobe, meldet das Skript Exit 1 — die übrigen
+            # Jahrgänge sind dann trotzdem gespeichert, der Riss ist ein
+            # Befund und kein Absturz. Unter `set -e` nähme dieser eine Befund
+            # den ganzen Rest mit: `archive_statistik.py`, dessen Quelldateien
+            # sonst niemand aufhebt, und den Bestandsbericht — ausgerechnet
+            # die Diagnose, die man in dem Moment braucht. Zweimal steht in
+            # dieser Datei schon, wie ein später Abbruch einen fertigen Lauf
+            # entwertet hat (17.08., Exit 2 und „KeyError: slice"). Der Lauf
+            # endet trotzdem rot, aber erst ganz unten.
+            wirtschaftsplaene=0
+            .venv/bin/python scripts/ingest_wirtschaftsplaene.py || wirtschaftsplaene=$?
+
+            # Die Haushaltssatzung — Kreditermächtigung (§ 2), Dispo-Höchstbetrag
+            # (§ 4), Verpflichtungsermächtigungen (§ 3) und der Finanzhaushalt
+            # als Ganzes (§ 1.2). Steht NACH dem Anlagen-Backfill oben, weil sie
+            # aus einer Anlage liest; die neun Satzungs-PDFs lagen bis 08/2026
+            # allesamt mit `status='listed'` und leerem Volltext im Bestand.
+            #
+            # Der Lauf färbt hier direkt rot, anders als der
+            # Wirtschaftsplan-Lauf: Ein Riss heißt bei ihm, dass die Satzung
+            # ihrer eigenen Summenzeile widerspricht — dann ist entweder das
+            # Layout gewechselt oder der Text kaputt, und beides will man
+            # sofort sehen und nicht erst hinter dem Bestandsbericht.
+            .venv/bin/python scripts/ingest_haushaltssatzung.py
+
+            # Die Gebührenbedarfsberechnung — Abfall und Straßenreinigung.
+            # Steht NACH dem OCR-Lauf oben, und das ist keine Sortierlaune:
+            # Der Jahrgang 2020 liegt nur als Scan vor und wird erst dort
+            # lesbar.
+            .venv/bin/python scripts/ingest_gebuehren.py
+
+            # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
+            # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
+            # ingest_finanzen_opendata.py, und das ist keine Sortierlaune:
+            # Beide prüfen ihre Jahresbeschriftung gegen `council_steuern` —
+            # die Ist-Reihe, die jenes Skript einliest. Läuft dieses hier
+            # zuerst, kommt gar nichts herein, und der Lauf sagt auch warum.
+            #
+            # Es liest außerdem das ARCHIV mit, nicht nur die Live-Datei:
+            # Tabelle 1103 führt je Ausgabe nur drei Jahrgänge, und die Stadt
+            # hält keine alten Ausgaben online. Deshalb steht es VOR
+            # archive_statistik.py — die heutige Sicherung braucht es nicht,
+            # die von gestern schon.
+            .venv/bin/python scripts/ingest_steuertabellen.py
+
+            # Die dritte Schuldenzahl (Tabellenband der Statistischen Ämter).
+            # Steht NACH ingest_finanzberichte.py, und das ist Pflicht, keine
+            # Sortierlaune: Der Lauf speichert nur bei bestandener
+            # Kernhaushalts-Probe, und die vergleicht gegen die Bilanz, die
+            # jenes Skript einliest. Ohne sie bricht er ab — mit Begründung.
+            .venv/bin/python scripts/ingest_integrierte_schulden.py
+
+            # Das Archiv läuft ZULETZT und ist kein Ingest: Es schreibt in
+            # keine Tabelle, sondern legt die Quelldateien beiseite. Es steht
+            # trotzdem hier, weil die Stadt kein Jahrbuch-Archiv führt — nur
+            # die neueste Ausgabe liegt online, und Tabellen mit drei
+            # Jahrgängen verlieren mit jeder Ausgabe ihr ältestes Jahr. Der
+            # tägliche Cron ist der eigentliche Schutz; dieser Aufruf sorgt
+            # dafür, dass ein Ops-Lauf ihn nicht überholt.
+            .venv/bin/python scripts/archive_statistik.py
 
             # ingest_staedtevergleich.py läuft hier BEWUSST NICHT mit. Es
             # verlangt drei Datei-URLs als Pflichtargumente (--kfa,
@@ -102,6 +228,48 @@ jobs:
                 "council_stellenplan", "council_schulden",
                 "council_investitionsmassnahmen", "council_investitionen_ist",
                 "council_investitionen_ist_arten",
+                # Seit 08/2026: Finanzrechnung (#600), Bilanz (#602) und die
+                # lange Ausgabenreihe seit 1972 (#604). Eine Tabelle, die hier
+                # fehlt, fällt nur dadurch auf, dass irgendwann jemand eine
+                # leere Seite meldet — genau der Fall, den dieser Bericht
+                # verhindern soll.
+                "council_finanzrechnung", "council_bilanz",
+                "council_bilanz_erlaeuterungen", "council_ausgabenreihe",
+                # Nachbewilligungen (§ 117 NKomVG). Die dritte Tabelle steht
+                # hier mit, obwohl ihre Zeilen an den Jahren hängen: Bleibt
+                # sie leer, während `..._jahre` gefüllt ist, hat das Kapitel
+                # seine vier Entscheidungswege nicht hergegeben — und genau
+                # die sind der Inhalt des Blocks.
+                "council_nachbewilligungen",
+                "council_nachbewilligung_jahre",
+                "council_nachbewilligung_kanaele",
+                # Die Zuwendungen an die Stadt. `council_spenden_verworfen`
+                # steht bewusst mit im Bericht: Die Zeilen ohne Zweitstelle
+                # sind Inhalt der Seite, nicht Abfall — verschwänden sie, ohne
+                # dass es auffällt, sähe die Reihe vollständiger aus, als sie
+                # ist.
+                "council_spenden", "council_spenden_verworfen",
+                # Die beiden Steuertabellen des Jahrbuchs (#606). Bei
+                # `council_steuerplan` sagt die Jahresspanne mehr als die
+                # Zeilenzahl: Sie muss über die Zeit WACHSEN, obwohl jede
+                # Ausgabe nur drei Jahrgänge führt — sonst liest der Lauf das
+                # Archiv nicht mit.
+                "council_steuerplan", "council_hebesaetze",
+                # Bürgschaftsbestand und die dritte Schuldenzahl (#619). Bei
+                # `council_integrierte_schulden` ist EINE Zeile der
+                # Sollzustand, nicht ein Mangel: Die Quelle verbietet die
+                # Zeitreihe ausdrücklich.
+                "council_buergschaften", "council_integrierte_schulden",
+                # Die Wirtschaftspläne der Eigenbetriebe (#663). Die
+                # Zeilenzahl ist hier eine echte Aussage und keine Statistik:
+                # Gelesen wird nur, was seine Eckwerte im Beschlusstext trägt,
+                # und das tut allein der EGH — acht Jahrgänge (2019–2026). Wer
+                # hier deutlich weniger sieht, hat entweder keine
+                # Vorlagen-Volltexte im Bestand oder einen Parser, dem ein
+                # Format entglitten ist.
+                "council_gebuehren",
+                "council_haushaltssatzung",
+                "council_wirtschaftsplaene",
             ]
             # Die Jahresspalte heißt nicht überall „jahr": council_haushalt
             # führt „year", der Stellenplan „jahrgang". Der erste Lauf meldete
@@ -134,6 +302,19 @@ jobs:
             # Liste — das hat den Lauf am 17.08. mit „KeyError: slice" beendet,
             # nachdem alles Inhaltliche schon erledigt war. Leeres dict heißt:
             # keine Zeile ohne Herkunftsnachweis.
+            # Was das Sehmodell gelesen hat — und was noch als Bild liegt.
+            # Steht hier, weil ein OCR-Lauf sonst nur im Log auftaucht: Die
+            # Zahl der verbleibenden Scans ist die eigentliche Arbeitsliste,
+            # und sie soll nicht erst auffallen, wenn eine Seite leer bleibt.
+            try:
+                gelesen, offen = s._conn.execute(
+                    "SELECT SUM(status = 'ocr'), SUM(status = 'empty') "
+                    "FROM council_anlagen").fetchone()
+                print(f"\nAnlagen per OCR gelesen: {gelesen or 0}   "
+                      f"noch als Bild: {offen or 0}")
+            except Exception as e:                          # noqa: BLE001
+                print(f"\nOCR-Stand nicht lesbar: {e}")
+
             luecken = s.herkunft_luecken()
             if luecken:
                 print("\nZeilen OHNE Herkunft — das darf nicht sein:")
@@ -143,3 +324,32 @@ jobs:
                 print("\nKeine Zeile ohne Herkunft.")
             s.close()
             PY
+
+            # Der aufgehobene Riss aus dem Wirtschaftsplan-Lauf (Begründung
+            # oben). Jetzt steht der Bericht da, jetzt darf er den Lauf rot
+            # färben — nicht früher.
+            if [ "$ocr" -ne 0 ]; then
+              echo ""
+              echo "Der OCR-Lauf hat Exit $ocr gemeldet. Die häufigste Ursache ist"
+              echo "ein fehlender OPENROUTER_API_KEY in der .env der Dev-VM; die"
+              echo "zweithäufigste eine Seite, die weder ein eingebettetes Bild"
+              echo "trägt noch gerendert werden konnte (dafür bräuchte es pymupdf,"
+              echo "bewusst nicht in requirements.txt). Der Wortlaut steht oben."
+              echo "Die übrigen Ingests sind trotzdem durchgelaufen."
+            fi
+
+            if [ "$wirtschaftsplaene" -ne 0 ]; then
+              echo ""
+              echo "Der Wirtschaftsplan-Lauf hat Exit $wirtschaftsplaene gemeldet —"
+              echo "eine Rechenprobe ist gerissen. Der Wortlaut steht weiter oben,"
+              echo "hinter „Probe gerissen — NICHT gespeichert:\"."
+              exit "$wirtschaftsplaene"
+            fi
+
+            # Der OCR-Lauf färbt ZULETZT rot: Er ist ein Zulieferer, kein
+            # Ingest. Ein Ausfall heißt „ein Jahrgang fehlt", nicht „eine Zahl
+            # ist falsch" — und der Bestandsbericht oben soll trotzdem lesbar
+            # sein, wenn jemand nachschaut, warum.
+            if [ "$ocr" -ne 0 ]; then
+              exit "$ocr"
+            fi

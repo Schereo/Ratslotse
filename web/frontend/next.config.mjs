@@ -51,7 +51,35 @@ async function rewrites() {
 // Die alte /technik-Seite ist durch die Technik-Doku unter /docs ersetzt —
 // alte Bookmarks/Suchtreffer landen per Permanent-Redirect am neuen Ort.
 async function redirects() {
-  return [{ source: "/technik", destination: "/docs", permanent: true }];
+  return [
+    { source: "/technik", destination: "/docs", permanent: true },
+    // Die Etappe „Mitreden" war bis 21.08.2026 auf drei Seiten verteilt; sie
+    // beantworten eine Frage und stehen jetzt als Abschnitte auf einer.
+    //
+    // ACHTUNG, DAS GILT NUR IM WEB-BUILD. Der Capacitor-Export (`output:
+    // "export"`) kennt `redirects` nicht — für die App zählt allein, dass
+    // KEIN interner Link mehr auf die alten Pfade zeigt. Beim Umbau geprüft.
+    { source: "/haushalt/jahr", destination: "/haushalt/mitreden#termine", permanent: true },
+    { source: "/haushalt/streit", destination: "/haushalt/mitreden#streit", permanent: true },
+    // `/haushalt/labor → mitreden#labor` stand hier vom 21. bis 24.08.2026 —
+    // seit #707 ist das Labor wieder eine eigene Seite, und dieser Redirect
+    // hätte jeden Aufruf zurückgeworfen (aufgefallen erst im Labor-2.0-Bau:
+    // #707 hat ihn übersehen). Er war `permanent`, Browser dürfen ein 308
+    // cachen — wer die Seite in den drei Tagen besucht hat, landet ggf.
+    // weiter auf Mitreden, bis der Browser-Cache fällt. Auf dev verschmerzbar;
+    // ein Gegen-Redirect ließe sich nicht sauber formulieren.
+    // „Die Prüfung" und „Die dreizehn Zahlen" (21.08.2026): geprüft und
+    // zusammengefasst stehen als Abschnitte auf einer Seite.
+    { source: "/haushalt/kennzahlen", destination: "/haushalt/pruefung#kennzahlen", permanent: true },
+    // Plan und Ist der Investitionen (21.08.2026).
+    { source: "/haushalt/gebaut", destination: "/haushalt/investitionen#gebaut", permanent: true },
+    // Teilhaushalte und Produkte sind derselbe Baum (21.08.2026).
+    { source: "/haushalt/bereiche", destination: "/haushalt/produkte#bereiche", permanent: true },
+    // Die ganze Stadt: Summe, Gesellschaften, Pläne, Gebühren (21.08.2026).
+    { source: "/haushalt/beteiligungen", destination: "/haushalt/konzern#gesellschaften", permanent: true },
+    { source: "/haushalt/betriebe", destination: "/haushalt/konzern#betriebe", permanent: true },
+    { source: "/haushalt/gebuehren", destination: "/haushalt/konzern#gebuehren", permanent: true },
+  ];
 }
 
 // Basis-Security-Header für alle Antworten.
@@ -99,6 +127,25 @@ async function headers() {
   ];
 }
 
+// DER DEV-SERVER BAUT IN EIN EIGENES VERZEICHNIS.
+//
+// `next dev` und `next build` teilten sich bis 08/2026 `.next`. Ein Build
+// neben einem laufenden Dev-Server überschreibt dessen Chunks: Die Seite
+// liefert danach für JEDE Chunk-URL eine 404-HTML-Seite, die Konsole meldet
+// „Refused to execute script … MIME type ('text/html')", und die App bleibt
+// bei „wird geladen …" stehen. Das sieht aus wie ein Fehler im Code und ist
+// keiner — ein Reload hilft nicht, nur ein Neustart des Dev-Servers.
+//
+// Passiert ist es an einem Tag zweimal, und zwar aus dem naheliegendsten
+// Grund: Vor einem Merge prüft man mit `npm run build`, während nebenan noch
+// der Server läuft, an dem man gerade gearbeitet hat.
+//
+// Die Konfiguration als FUNKTION zu exportieren, löst das ohne Disziplin:
+// Next reicht die Phase herein, und der Dev-Server bekommt `.next-dev`.
+// `next build` und `next start` bleiben bei `.next` — Deploy, Dockerfile und
+// der rsync-Ausschluss in deploy.yml sind unberührt.
+const DEV_PHASE = "phase-development-server";
+
 const nextConfig = {
   reactStrictMode: true,
   // Don't advertise the framework in the X-Powered-By header.
@@ -116,4 +163,7 @@ const nextConfig = {
     : { rewrites, redirects, headers }),
 };
 
-export default nextConfig;
+export default (phase) => ({
+  ...nextConfig,
+  ...(phase === DEV_PHASE ? { distDir: ".next-dev" } : {}),
+});

@@ -1,4 +1,7 @@
-### Behoben
+---
+kategorie: behoben
+---
+
 - Die Tragweite-Bewertung neuer Tagesordnungspunkte lief seit dem 16.08. gar
   nicht mehr: Der tägliche Lauf schloss die Datenbank, bevor er sie dafür
   benutzte, verschluckte den Fehler und meldete sich trotzdem als erfolgreich.

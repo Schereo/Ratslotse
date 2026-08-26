@@ -52,8 +52,9 @@ import {
 // Antworttext und Belege-Bausteine teilen sich Gespräch und Teilen-Seite
 // (app/g) — sonst driften die beiden Ansichten auseinander.
 import {
-  AnlagenBlock, AntwortText, DebattenBlock, ParteienListe, PresseBlock,
+  AnlagenBlock, AntwortText, DebattenBlock, GrafikKarte, ParteienListe, PresseBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
+  type QaGrafik,
 } from "@/components/qa-bausteine";
 import {
   anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz,
@@ -197,6 +198,8 @@ type Turn = {
   beleglage?: "solide" | "duenn";
   /** Hintergrund zu den in der Frage genannten Objekten („Was ist die GSG?"). */
   steckbriefe?: { name: string; slug: string; beschreibung: string }[];
+  /** Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom Modell. */
+  grafik?: QaGrafik | null;
 };
 
 /** Antwort vorlesen (5a/I-12, nur die TTS-Hälfte): SpeechSynthesis mit
@@ -633,6 +636,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         .then((s: {
           frage: string; antwort: string; quellen: QaSource[];
           presse?: PresseHinweis[]; debatten?: DebattenHinweis[]; anlagen?: AnlagenHinweis[];
+          grafik?: QaGrafik | null;
         }) => {
           setTurns((alt) => alt.length > 0 ? alt : [{
             key: naechsterKey(),
@@ -640,7 +644,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             // Der Snapshot trägt die Bausteine mit — sonst sähe die Person,
             // die dem Link folgt, weniger als auf der geteilten Seite.
             sources: s.quellen ?? [], presse: s.presse ?? [], debatten: s.debatten ?? [],
-            anlagen: s.anlagen ?? [],
+            anlagen: s.anlagen ?? [], grafik: s.grafik ?? null,
             cited: (s.quellen ?? []).map((q) => q.id), followups: [],
             kontext: s.frage,
           }]);
@@ -782,6 +786,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             planungen: (msg.planungen as Planung[]) ?? [],
             beleglage: (msg.beleglage as "solide" | "duenn") ?? undefined,
             steckbriefe: (msg.steckbriefe as Turn["steckbriefe"]) ?? [],
+            grafik: (msg.grafik as QaGrafik | null) ?? null,
           });
           else if (msg.type === "token") patchLast((t) => ({ antwort: t.antwort + (msg.text as string) }));
           // Riss der LLM-Stream mitten in der Antwort, generiert das Backend
@@ -1250,7 +1255,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         sources?: QaSource[]; cited?: number[]; presse?: PresseHinweis[];
         debatten?: DebattenHinweis[]; anlagen?: AnlagenHinweis[];
         planungen?: Planung[]; recherche?: boolean; kontext?: string | null;
-        gelesen?: number; zeitraum?: string } | null };
+        gelesen?: number; zeitraum?: string;
+        grafik?: QaGrafik | null } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
         frage: t.frage, antwort: t.antwort, qtype: null, mode: null,
@@ -1259,6 +1265,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         debatten: t.quellen?.debatten ?? [],
         anlagen: t.quellen?.anlagen ?? [],
         planungen: t.quellen?.planungen ?? [],
+        grafik: t.quellen?.grafik ?? null,
         cited: t.quellen?.cited ?? [],
         // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
         // Sie ist der Schlüssel, unter dem nachladende Bausteine ihr Ergebnis
@@ -2186,6 +2193,13 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               onFrageStellen={onFrageStellen} />
           )}
 
+          {/* Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom
+              Modell. Sie steht VOR dem Quellen-Baustein: Sie gehört zu den
+              Zahlen im Text, nicht zu den Fundstellen darunter. */}
+          {!beschaeftigt && turn.grafik && !turn.fehler && !turn.abgebrochen && (
+            <GrafikKarte grafik={turn.grafik} />
+          )}
+
           {!beschaeftigt && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}
 
           {/* RG-10 (8b): „Wie es weitergeht" — künftige Beratungsstationen
@@ -2739,6 +2753,9 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
               position: (p.position ?? "").slice(0, 800), einig: p.einig,
               hinweis: p.hinweis, kernaussage: p.kernaussage, beitraege: p.beitraege,
             })),
+            // Die Grafik gehört in den Snapshot wie Debatten und Presse:
+            // Wer dem Link folgt, soll sehen, was geteilt wurde.
+            grafik: turn.grafik ?? null,
           }),
         });
         if (!r.ok) throw new Error(String(r.status));

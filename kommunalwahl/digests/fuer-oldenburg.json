@@ -1,0 +1,111 @@
+{
+ "slug": "fuer-oldenburg",
+ "partei": {
+  "kurz": "Für Oldenburg",
+  "name": "Wählergemeinschaft Für Oldenburg (WFO)",
+  "typ": "waehlergruppe",
+  "kandidaten": 24
+ },
+ "programm": {
+  "gefunden": true,
+  "titel": "Kommunalwahl 2026 Oldenburg – WFO Schwerpunkte & Ziele",
+  "url": "https://wfo-wfo.de/kommunalwahl-2026/",
+  "format": "web",
+  "seiten": null,
+  "stand": null,
+  "hinweis": "Kein Langprogramm vorhanden. Die WFO nennt auf ihrer Website zur Kommunalwahl 2026 nur sieben knappe Schwerpunkte; einer davon (Freizeit-/Bewegungsangebote für ältere Kinder und Jugendliche) wird auf derselben Seite deutlich ausführlicher dargestellt. Ergänzend herangezogen: Startseite (wfo-wfo.de) und Über-uns-Seite (wfo-wfo.de/ueber-uns/). Der Archivbereich der Website enthält nur Inhalte zur Kommunalwahl 2021 und wurde nicht verwendet."
+ },
+ "charakter": "Die WFO tritt als parteiunabhängige, bürgernahe Wählergemeinschaft an (seit rund 30 Jahren durch Ratsherrn Franz Norrenbrock im Stadtrat vertreten) und wirbt mit pragmatischer, undogmatischer Kommunalpolitik „nach gesundem Menschenverstand“ statt Ideologie. Das knappe Wahlprogramm 2026 setzt den klaren Schwerpunkt auf Verkehr und Infrastruktur (Verkehrsneuordnung, Fliegerhorst-Anbindung, ausgewogene Radverkehrspolitik, Bauwerkssanierung) und widmet Freizeit-/Bewegungsangeboten für Jugendliche einen vergleichsweise ausführlichen Abschnitt; bezahlbares Wohnen und Bürokratieabbau werden knapp ergänzt. Der Ton ist moderat und lösungsorientiert, mit gelegentlicher Abgrenzung von „einseitigen“ Verkehrslösungen und Vorgaben „von oben“.",
+ "kernpunkte": [
+  "Bezahlbarer Wohnraum insbesondere für Familien, Alleinerziehende, Studierende und Rentner",
+  "Schnellere, einfachere Planungs- und Genehmigungsverfahren statt komplizierter Bürokratie",
+  "Klare Prioritäten bei Sanierung und Instandhaltung maroder Bauwerke",
+  "Neuordnung des Verkehrs mit nachvollziehbarer Verkehrsführung statt Pauschallösungen",
+  "Faires Miteinander aller Verkehrsteilnehmer bei Radwegen, ohne einseitige Bevorzugung",
+  "Bau der Verbindungsstraße zum Fliegerhorst für bessere Erreichbarkeit und wirtschaftliche Perspektiven",
+  "Neue Bolzplätze, Bewegungsflächen und Treffpunkte speziell für ältere Kinder und Jugendliche"
+ ],
+ "themen": {
+  "wohnen": {
+   "positionen": [
+    "Bezahlbarer Wohnraum soll wieder für alle erreichbar werden, insbesondere für Familien, Alleinerziehende, Studierende und Rentner."
+   ],
+   "seiten": [],
+   "praegnanz": 2
+  },
+  "mobilitaet": {
+   "positionen": [
+    "Der Verkehr soll neu geordnet werden, mit klarer, nachvollziehbarer Verkehrsführung statt pauschaler Lösungen.",
+    "Radwege werden befürwortet, aber mit fairem Miteinander aller Verkehrsteilnehmer und ohne einseitige Bevorzugung des Radverkehrs.",
+    "Die Verbindungsstraße zum Fliegerhorst soll gebaut werden, um die Erreichbarkeit dieses Stadtbereichs zu verbessern."
+   ],
+   "seiten": [],
+   "praegnanz": 3
+  },
+  "klima": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "wirtschaft": {
+   "positionen": [
+    "Die geplante Verbindungsstraße zum Fliegerhorst wird von der WFO auch mit wirtschaftlichen Perspektiven für die Stadt begründet."
+   ],
+   "seiten": [],
+   "praegnanz": 1
+  },
+  "bildung": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "soziales": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "kultur": {
+   "positionen": [
+    "Freizeitangebote sollen erhalten, ausgebaut und neu geschaffen werden – für alle Generationen in der Stadt.",
+    "Für ältere Kinder und Jugendliche sollen neue Bolzplätze, Bewegungsflächen und Treffpunkte entstehen, weil es bislang vor allem Spielplätze für kleinere Kinder gibt.",
+    "Diese neuen Freizeit- und Bewegungsangebote sollen möglichst kostengünstig umgesetzt werden und auch außerhalb von Vereinen und kostenpflichtigen Angeboten nutzbar sein."
+   ],
+   "seiten": [],
+   "praegnanz": 3
+  },
+  "sicherheit": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "digitales": {
+   "positionen": [
+    "Planungs- und Genehmigungsverfahren sollen beschleunigt und vereinfacht werden, damit Projekte nicht an komplizierter Bürokratie scheitern."
+   ],
+   "seiten": [],
+   "praegnanz": 2
+  },
+  "finanzen": {
+   "positionen": [
+    "Bei der Sanierung und Instandhaltung maroder Bauwerke sollen klare Prioritäten gesetzt werden."
+   ],
+   "seiten": [],
+   "praegnanz": 2
+  },
+  "beteiligung": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  },
+  "integration": {
+   "positionen": [],
+   "seiten": [],
+   "praegnanz": 0
+  }
+ },
+ "besonderes": [
+  "Verbindungsstraße zum Fliegerhorst als konkretes, ortsspezifisches Infrastrukturprojekt genannt.",
+  "Gezielter Fokus auf Freizeit-/Bewegungsangebote für ältere Kinder und Jugendliche – eine Lücke zwischen Kleinkind-Spielplätzen und kostenpflichtigen Vereinsangeboten, mit explizitem Kostengünstigkeits-Anspruch.",
+  "Explizite Abgrenzung von „einseitiger Bevorzugung“ beim Radverkehr und von „Pauschallösungen“ im Verkehr, bei grundsätzlicher Zustimmung zu Radwegen."
+ ]
+}

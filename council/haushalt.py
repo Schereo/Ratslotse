@@ -20,8 +20,9 @@ import re
 from pypdf import PdfReader
 
 # Beschlossene Haushaltspläne der Stadt Oldenburg (aktuelles Jahr + Archiv).
-# 2024 fehlt bewusst: Die Übersichtsseite dieses PDFs hat eine defekte
-# Text-Kodierung (Zeichensalat statt Text) und ist ohne OCR nicht lesbar.
+# 2024 fehlt hier bewusst: Die Übersichtsseite dieses PDFs hat eine defekte
+# Text-Kodierung (Zeichensalat statt Text) — der Jahrgang kommt stattdessen
+# aus dem Open-Data-CSV (OPENDATA_CSV_URLS unten).
 _ARCHIV = ("https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/"
            "20_Controlling_und_Finanzen/200_Finanzen/Archiv_Haushaltsplaene/")
 HAUSHALT_URLS: dict[int, str] = {
@@ -34,6 +35,221 @@ HAUSHALT_URLS: dict[int, str] = {
            "20_Controlling_und_Finanzen/200_Finanzen/Haushalt_2026/"
            "Genehmigung_Haushalt_2026/04_Haushaltsplan_2026_-_UEbersichten.pdf"),
 }
+
+# --- Open-Data-CSV (opendata.oldenburg.de, Lizenz dl-de/by-2-0) ---------------
+# Die Stadt veröffentlicht die Plan-Ergebnishaushalte 2020–2025 zusätzlich
+# maschinenlesbar. Für 2024 ist das die EINZIGE nutzbare Quelle — die
+# Übersichtsseite des Plan-PDFs hat eine defekte Text-Kodierung (s. o.).
+# Die übrigen Jahre bleiben beim PDF-Parser: Er läuft produktiv, und ein
+# Quellenwechsel änderte Bereichsnamen rückwirkend (Trend-Fragen matchen Namen).
+OPENDATA_CSV_URLS: dict[int, str] = {
+    2024: ("https://opendata.oldenburg.de/sites/default/files/"
+           "1101_Haushaltsplan_StadtOL_2024_Ergebnishaushalt.csv"),
+}
+
+# Das Portal transliteriert Umlaute („Verwaltungsfuehrung"). Bekannte Namen
+# werden auf die PDF-Schreibweise zurückgeführt, damit Jahre vergleichbar
+# bleiben; unbekannte Namen laufen unverändert durch (neue THH-Zuschnitte
+# sollen den Import nicht stoppen). KEIN generisches ue→ü — „Steuer" u. ä.
+# würden zerschossen.
+_CSV_NAMEN = {
+    "Verwaltungsfuehrung": "Verwaltungsführung",
+    "Wirtschaftsfoerderung, Liegenschaften": "Wirtschaftsförderung, Liegenschaften",
+    "Verkehr und Strassenbau": "Verkehr und Straßenbau",
+    "Umwelt, Bauordnung, Gruen und Friedhoefe": "Umwelt, Bauordnung, Grün und Friedhöfe",
+    "Nicht rechtsfaehige Stiftungen": "nicht rechtsfähige Stiftungen",
+}
+
+
+def _csv_num(s: str) -> float | None:
+    """Deutsche Zahl aus dem Portal-CSV („ 446.540,00 ") → float, None bei leer."""
+    s = s.strip()
+    if not s:
+        return None
+    return float(s.replace(".", "").replace(",", "."))
+
+
+def parse_opendata_ergebnishaushalt(csv_text: str) -> list[dict]:
+    """Ergebnishaushalt-CSV des Open-Data-Portals → dieselbe Zeilenform wie
+    ``parse_ergebnishaushalt`` (bereich, ertraege, aufwendungen, ergebnis,
+    is_summe; Summenzeile heißt wie im PDF „Summe"). Validiert wie der
+    PDF-Parser gegen die Gesamtzeile (±1 %) — liefert [] statt Müll.
+
+    Das CSV kennt kein eigenes Ergebnis je Teilhaushalt; es ergibt sich als
+    Erträge − Aufwendungen (so rechnet auch die PDF-Übersicht). Die Zeile
+    „Ordentliches Ergebnis (Fehlbedarf)" ist redundant und fällt weg."""
+    rows: list[dict] = []
+    for line in csv_text.splitlines()[1:]:  # Kopfzeile weg
+        parts = line.split(";")
+        if len(parts) < 4:
+            continue
+        code, name = parts[0].strip(), " ".join(parts[1].split())
+        ertraege, aufwendungen = _csv_num(parts[2]), _csv_num(parts[3])
+        if ertraege is None or aufwendungen is None:
+            continue  # z. B. die Fehlbedarf-Zeile (leere Erträge-Spalte)
+        is_summe = code.startswith("Gesamtergebnishaushalt")
+        rows.append({
+            "bereich": "Summe" if is_summe else _CSV_NAMEN.get(name, name),
+            "ertraege": ertraege, "aufwendungen": aufwendungen,
+            "ergebnis": ertraege - aufwendungen,
+            "is_summe": 1 if is_summe else 0,
+        })
+    parts_ = [r for r in rows if not r["is_summe"]]
+    summe = next((r for r in rows if r["is_summe"]), None)
+    if not summe or len(parts_) < 5:
+        return []
+    for col in ("ertraege", "aufwendungen"):
+        total = sum(r[col] for r in parts_)
+        if abs(total - summe[col]) > 0.01 * max(summe[col], 1):
+            return []  # Layout-Drift → lieber nichts als falsche Zahlen
+    return rows
+
+
+# Weitere Finanz-Datensätze desselben Portals (jährlich fortgeschrieben):
+STEUERN_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
+                   "1104_Steuereinnahmen_0.csv")
+STEUERKRAFT_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
+                       "1106_Steuerkraftmesszahlen-Schl%C3%BCsselzuweisung_0.csv")
+# Hier steht die Einwohnerzahl je Haushaltsjahr (Spalte klar beschriftet).
+#
+# Die Aufwendungs-Spalte derselben Datei lag bis 08/2026 bewusst liegen, mit
+# dieser Begründung: „Sie weicht vom beschlossenen Plan ab (2024: 764,7 statt
+# 728,2 Mio.), ist aber nirgends als Ist oder Nachtrag gekennzeichnet — als
+# ‚Ist‘ ausgewiesen wäre sie eine Behauptung."
+#
+# Die Beschriftung ist inzwischen gefunden — sie steht nicht im CSV, sondern im
+# PDF derselben Tabelle 1102 („Ordentliche Aufwendungen des Ergebnishaushalts
+# — Gesamtergebnisrechnung —"), und der Abgleich gegen die Jahresabschlüsse
+# geht auf den Tausender genau auf. Die Spalte wird deshalb jetzt gelesen, aber
+# NICHT hier: `council/ausgabenreihe.py` liest sie zusammen mit dem PDF und mit
+# der älteren CSV desselben Datensatzes (Verwaltungshaushalt 1972–2009), weil
+# erst die zweite Quelle die Proben liefert, an denen der Wert hängt. Was `Ist`
+# hier heißt und wo der Versatz von 0,03–0,05 % gegen `council_ergebnisrechnung`
+# herkommt, steht im Kopf jenes Moduls.
+EINWOHNER_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
+                     "1102-Ordentliche_Aufwendungen_des_Ergebnishaushaltes_seit_2010.csv")
+
+# Das zweite Tabellenblatt desselben Datensatzes 1101: der **Finanzhaushalt**,
+# aus dem die Investitionen kommen (council/investitionen.py). Anders als beim
+# Ergebnishaushalt oben ist das Portal hier die einzige maschinenlesbare
+# Quelle — und die einzige Portal-CSV des Bereichs mit einer Rechenprobe in der
+# Datei selbst.
+#
+# Die Jahrgänge stehen einzeln da und nicht als Muster: Das Portal liefert sie
+# im Folgejahr nach (2025 erschien am 14.07.2026), und ein geratener Dateiname
+# für ein Jahr, das es noch nicht gibt, ergäbe bei jedem Lauf einen 404. Ein
+# neuer Jahrgang ist eine Zeile hier.
+INVESTITIONEN_CSV_URLS: dict[int, str] = {
+    jahr: ("https://opendata.oldenburg.de/sites/default/files/"
+           f"1101_Haushaltsplan_StadtOL_{jahr}_Finanzhaushalt.csv")
+    for jahr in (2022, 2023, 2024, 2025)
+}
+
+# Steuerarten-Spalten wie im Portal, nur Umlaute restauriert.
+_STEUERART_NAMEN = {
+    "Getraenkesteuer": "Getränkesteuer",
+    "Vergnuegungssteuer": "Vergnügungssteuer",
+}
+
+
+def parse_steuereinnahmen(csv_text: str) -> list[dict]:
+    """Ist-Steuereinnahmen-CSV (eine Zeile je Jahr, Spalten je Steuerart) →
+    Langformat ``{jahr, art, betrag}``. Beträge sind ganze Euro ohne
+    Tausenderzeichen; leere Zellen fallen weg."""
+    lines = [ln for ln in csv_text.splitlines() if ln.strip()]
+    if not lines:
+        return []
+    kopf = [c.strip() for c in lines[0].split(";")]
+    arten = [_STEUERART_NAMEN.get(c, c) for c in kopf[1:]]
+    rows: list[dict] = []
+    for line in lines[1:]:
+        cells = [c.strip() for c in line.split(";")]
+        if not cells[0].isdigit():
+            continue  # Fußnoten-/Leerzeilen
+        jahr = int(cells[0])
+        for art, cell in zip(arten, cells[1:]):
+            if cell:
+                rows.append({"jahr": jahr, "art": art, "betrag": float(cell)})
+    return rows
+
+
+def parse_einwohner(csv_text: str) -> list[dict]:
+    """Einwohnerzahlen je Haushaltsjahr (Stichtag 31.12. des Vorjahres) →
+    ``{jahr, einwohner}``. Basis für Pro-Kopf-Einordnungen; die
+    Aufwendungs-Spalten desselben CSV liest ``council/ausgabenreihe.py``
+    (s. o.)."""
+    rows: list[dict] = []
+    for line in csv_text.splitlines()[1:]:
+        cells = [c.strip() for c in line.split(";")]
+        if len(cells) < 2 or not cells[0].isdigit() or not cells[1].isdigit():
+            continue
+        rows.append({"jahr": int(cells[0]), "einwohner": int(cells[1])})
+    return rows
+
+
+#: Der Datensatz 1106 beschriftet seine Zeilen um ein Jahr zu früh — wir
+#: rücken sie beim Einlesen auf das Ausgleichsjahr, das die Beträge meinen.
+#:
+#: Der Befund (16.08.2026), an drei unabhängigen Strängen geprüft:
+#:
+#: 1. **Landesamt für Statistik Niedersachsen (LSN).** Die KFA-Tabellen
+#:    (Blatt ``ST_KR_MESS_VGL``, Schlüssel-Nr. 403000) führen dieselben
+#:    Beträge auf den Euro genau — aber ein Jahr später. Geprüft über die
+#:    Jahrgänge KFA 2016–2026, also elf Jahre am Stück: **12 von 12**
+#:    Steuerkraftmesszahlen decken sich mit der CSV-Zeile ``Jahr−1``,
+#:    **keine einzige** mit der gleichnamigen. Für die Schlüsselzuweisungen
+#:    (Blatt ``9a``, Gemeinde- + Kreisaufgaben) gilt dasselbe; die wenigen
+#:    Ausreißer sind durchweg vorläufige Jahrgänge oder Nachtragsstände,
+#:    die das LSN später selbst korrigiert hat.
+#: 2. **Die Bücher der Stadt.** Das entscheidet die Frage, weil es kein
+#:    Beschriftungs-, sondern ein Kassenfakt ist: In welchem Haushaltsjahr
+#:    ist das Geld geflossen? Der Ergebnishaushalt des Haushaltsplans 2026
+#:    weist als **Ist 2024** 99.569.132 € Schlüsselzuweisungen aus
+#:    (Konten 31111000 + 31112000), der Haushaltsplan 2025 als **Ist 2023**
+#:    100.319.768 € — beide stehen in der CSV eine Zeile zu früh (unter
+#:    2023 bzw. 2022). Der Jahresabschluss 2024 nennt im Fließtext
+#:    „rund 109,5 Millionen Euro" und trifft damit den LSN-Nettobetrag des
+#:    Ausgleichsjahrs 2024 (109.498 TEUR).
+#: 3. **Die Metadaten widersprechen sich selbst.** Die Spalte heißt
+#:    „Ausgleichsjahr", die Datensatzbeschreibung auf opendata.oldenburg.de
+#:    spricht von „für jedes Haushaltsjahr". Das LSN definiert den Begriff
+#:    und liefert die Zahlen — seine Beschriftung ist die amtliche.
+#:
+#: Direkt belegt ist der Versatz für die CSV-Jahre 2015–2025 (weiter zurück
+#: stellt das LSN nichts mehr online). Dass die Reihe *durchgehend* derselben
+#: Konvention folgt, zeigt die Pro-Kopf-Spalte: Sie geht 16 von 16 Mal
+#: (CSV 2010–2025) mit der Einwohnerzahl auf, die Datensatz 1102 dem
+#: gleichnamigen Jahr zuordnet — auch in den Jahren vor dem Prüffenster.
+#: Ein Bruch mitten in der Reihe müsste sich dort zeigen und tut es nicht,
+#: deshalb rücken wir alle Jahrgänge.
+_STEUERKRAFT_VERSATZ = 1
+
+
+def parse_steuerkraft(csv_text: str) -> list[dict]:
+    """Steuerkraftmesszahl/Schlüsselzuweisungen-CSV → je Jahr ein dict
+    ``{jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew}``.
+
+    ``jahr`` ist das **Ausgleichsjahr** — die CSV-Jahreszahl plus
+    :data:`_STEUERKRAFT_VERSATZ`; die Begründung steht dort.
+
+    Die beiden Pro-Kopf-Spalten kommen bewusst **nicht** mit. Die Stadt
+    rechnet sie gegen die Einwohnerzahl ihrer eigenen (verschobenen)
+    Jahresangabe — nach dem Rücken stünde eine Ausgleichsjahr-Zahl über
+    einer Einwohnerzahl, die ein Jahr zu früh ist. Es gilt hier wie überall im
+    Bereich: lieber keine Zahl als eine, deren Beschriftung nicht trägt. Wer
+    sie braucht, teilt den Absolutwert durch ``council_einwohner``.
+    """
+    rows: list[dict] = []
+    for line in csv_text.splitlines()[1:]:
+        cells = [c.strip() for c in line.split(";")]
+        if len(cells) < 5 or not cells[0].isdigit():
+            continue
+        vals = [float(c) if c else None for c in cells[1:5]]
+        rows.append({"jahr": int(cells[0]) + _STEUERKRAFT_VERSATZ,
+                     "messzahl": vals[0], "messzahl_je_ew": None,
+                     "zuweisungen": vals[2], "zuweisungen_je_ew": None})
+    return rows
+
 
 # Eine Tabellenzeile: Bereichsname (Buchstaben/Satzzeichen), dann 3–6 Zahlen-
 # kolonnen mit deutschen Tausenderpunkten (ordentliche Erträge, Aufwendungen,
@@ -160,16 +376,79 @@ def _estimate(question: str, answer_mio: int, lo: int, hi: int, *, year: int,
 
 # Kuratierte Kurzbeschreibungen der Teilhaushalte — redaktionell gepflegt, bei
 # neuen Jahrgängen prüfen (allgemeines Verwaltungswissen, keine Planzahlen).
-_BEREICH_INFO = {
-    "Soziales und Gesundheit": "vor allem gesetzliche Sozialleistungen, Hilfen zur Pflege und den öffentlichen Gesundheitsdienst",
-    "Jugend und Familie": "vor allem Kitas, Kindertagespflege und Jugendhilfe",
-    "Schule und Bildung": "Schulgebäude, Ausstattung und Ganztagsangebote der Stadt als Schulträgerin",
-    "Finanzmanagement und Recht": "die zentrale Finanzwirtschaft — hier werden Steuern und Zuweisungen für die ganze Stadt verbucht",
-    "Kultur, Museen, Sport": "Museen, Bibliotheken sowie Kultur- und Sportförderung",
-    "Verkehr und Straßenbau": "Straßen, Radwege, Brücken und den Nahverkehr",
-    "Sicherheit und Ordnung": "Feuerwehr, Rettungsdienst und Ordnungsverwaltung",
-    "Stadtplanung": "Bauleitplanung und Stadtentwicklung",
+# Spiegel zu web/frontend/lib/haushalt-bereiche.ts; die Fragmente stehen im
+# Satz hinter „… umfasst".
+#
+# Geschlüsselt auf den kanonischen Teilhaushalt, NICHT auf den Namen: Die
+# Stadt benennt ihre Teilhaushalte um, ohne den Zuschnitt zu ändern (THH 9
+# heißt in sieben Jahrgängen viererlei). Eine Map auf den exakten Namen
+# verliert beim nächsten Jahrgang stillschweigend Einträge.
+def _norm_bereich(name: str) -> str:
+    """Vergleichsform eines Bereichsnamens: fängt Groß-/Kleinschreibung,
+    doppelte Leerzeichen („Grün  u. Friedhöfe"), „u." gegen „und" und den
+    Jahres-Präfix der Ergebnisrechnung („_2019 Stadtplanung") ab."""
+    n = re.sub(r"^_\d{4}\s+", "", name or "")
+    n = re.sub(r"\s+", " ", n).strip().lower()
+    return re.sub(r"(^|\s)u\.(\s|$)", r"\1und\2", n)
+
+
+_BEREICH_ALIASE = {
+    "verwaltungsfuehrung": ("Verwaltungsführung",),
+    "personal": ("Personal/Organisation/Digitalisierung/IT",
+                 "Personal- und Verwaltungsmanagement",
+                 "Personal- u. Verwaltungsmanagement"),
+    "wirtschaft": ("Wirtschaftsförderung, Liegenschaften",),
+    "finanzen": ("Finanzmanagement und Recht",),
+    "sicherheit": ("Sicherheit und Ordnung",),
+    "kultur": ("Kultur, Museen, Sport",),
+    "stadtplanung": ("Stadtplanung",),
+    "verkehr": ("Verkehr und Straßenbau",),
+    "umwelt": ("Klima/Umwelt/Mobilität/Bau/Grün/Friedh.",
+               "Umwelt, Bauordnung, Grün und Friedhöfe",
+               "Klima, Umwelt, Bauordnung, Grün",
+               "Umwelt, Bauordnung, Grün  u. Friedhöfe"),
+    "soziales": ("Soziales und Gesundheit",),
+    "jugend": ("Jugend und Familie",),
+    "schule": ("Schule und Bildung",),
+    "stiftungen": ("nicht rechtsfähige Stiftungen",),
 }
+
+_BEREICH_INFO = {
+    # Reihenfolge nach den Produktzeilen 2023: Die Eingliederungshilfe ist über
+    # ihre drei Produkte zusammen der größte Block (rund 77 Mio. €) — „vor allem
+    # Hilfen zur Pflege" wäre falsch herum.
+    "soziales": "gesetzliche Sozialleistungen — Grundsicherung, Eingliederungshilfe, Hilfe zur Pflege — und den öffentlichen Gesundheitsdienst",
+    "jugend": "vor allem Kitas, Kindertagespflege und Jugendhilfe",
+    "schule": "Schulgebäude, Ausstattung und Ganztagsangebote der Stadt als Schulträgerin",
+    # NICHT „Steuern und Zuweisungen": Die Steuern liegen zu 100 % hier, die
+    # Zuwendungen nur zu rund zwei Dritteln (2024: 115,4 von 179,1 Mio. €).
+    "finanzen": "die zentrale Finanzwirtschaft — hier werden alle Steuern und die allgemeinen Zuweisungen des Landes für die ganze Stadt verbucht",
+    "kultur": "Museen, Bibliotheken sowie Kultur- und Sportförderung",
+    "verkehr": "Straßen, Radwege, Brücken und den Nahverkehr",
+    "sicherheit": "Feuerwehr, Rettungsdienst, Ordnungsverwaltung und die Bürgerdienste vom Einwohnermeldeamt bis zum Standesamt",
+    "stadtplanung": "Bauleitplanung und Stadtentwicklung",
+    # Gegen den Vorbericht gelesen (H2-13): Sitzungsdienst und Presse- und
+    # Öffentlichkeitsarbeit gehören ebenfalls hierher.
+    "verwaltungsfuehrung": "Oberbürgermeister und Dezernate, Ratsbüro und Sitzungsdienst, Presse- und Öffentlichkeitsarbeit, dazu Rechnungsprüfung und Gleichstellungsstelle",
+    # Der Nachsatz ist die wichtigste Auskunft (H2-13): Der Betrag liest sich
+    # sonst wie die Lohnsumme der ganzen Stadt.
+    "personal": "Personal, Organisation und IT der gesamten Verwaltung samt der Versorgung der Pensionär*innen — nicht aber die Gehälter aller Beschäftigten, die in ihren jeweiligen Teilhaushalten stehen",
+    "wirtschaft": "Wirtschaftsförderung und Standortmarketing sowie die Grundstücke und Beteiligungen der Stadt",
+    "umwelt": "Grünflächen und Friedhöfe, Bauordnung sowie Natur- und Klimaschutz",
+    "stiftungen": "treuhänderisch verwaltetes Stiftungsvermögen — zweckgebunden, kein frei verfügbares Geld der Stadt",
+}
+
+_BEREICH_NACH_ALIAS = {
+    _norm_bereich(alias): schluessel
+    for schluessel, aliase in _BEREICH_ALIASE.items()
+    for alias in aliase
+}
+
+
+def bereich_info(name: str) -> str | None:
+    """Kurzbeschreibung eines Teilhaushalts, unabhängig von seiner Schreibweise
+    im jeweiligen Jahrgang. Unbekannter Name → None (nie geraten)."""
+    return _BEREICH_INFO.get(_BEREICH_NACH_ALIAS.get(_norm_bereich(name), ""))
 
 _PFLICHT_SATZ = (
     "Ein großer Teil davon sind gesetzliche Pflichtaufgaben nach Bundes- und "
@@ -193,10 +472,42 @@ def _netto_chart(parts: list[dict], year: int, highlight: str) -> str:
     }, ensure_ascii=False)
 
 
+def _eigen_chart(parts: list[dict], year: int, highlight: str) -> str:
+    """Balken „eigene Einnahmen je Fachbereich" (ordentliche Erträge, Mio. €).
+
+    Gezeigt werden dieselben Bereiche, aus denen die Frage ihre Optionen zieht
+    (``_fachbereiche``) — der zentrale Finanzhaushalt bleibt draußen, sonst
+    stünde neben 170 Mio. ein Balken von 529 Mio., der etwas ganz anderes misst
+    (die Steuern der ganzen Stadt). Die Auslassung steht im Titel."""
+    items = [{"label": r["bereich"], "value": _mio(r["ertraege"]),
+              **({"highlight": True} if r["bereich"] == highlight else {})}
+             for r in sorted(parts, key=lambda r: -r["ertraege"])]
+    return json.dumps({
+        "type": "bars",
+        "title": f"Eigene Einnahmen {year} je Bereich — ohne den zentralen Finanzhaushalt",
+        "unit": "Mio. Euro",
+        "items": items,
+    }, ensure_ascii=False)
+
+
+def _fachbereiche(parts: list[dict]) -> list[dict]:
+    """Die Bereiche, die tatsächlich einen Zuschuss brauchen — absteigend nach
+    eigenen Erträgen.
+
+    Der Filter ist gemessen, nicht benannt: Wer mehr einnimmt als ausgibt, ist
+    kein Fachbereich, sondern die zentrale Finanzwirtschaft (dort stehen alle
+    Steuern) bzw. das treuhänderische Stiftungsvermögen. Eine Namensliste ginge
+    beim nächsten Jahrgang still kaputt — die Stadt benennt ihre Teilhaushalte
+    um, ohne den Zuschnitt zu ändern (s. `_BEREICH_ALIASE`)."""
+    eigen = [r for r in parts
+             if r["aufwendungen"] > 5_000_000 and 0 < r["ertraege"] < r["aufwendungen"]]
+    return sorted(eigen, key=lambda r: -r["ertraege"])
+
+
 def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     """Speicherfertige Quizfragen aus der Ergebnishaushalt-Übersicht — Gesamt,
     Defizit, große Ausgabenblöcke, Anteil (Donut), Erträge, Netto-Sicht und
-    Kostendeckung. Alle content_hashes sind STABILE Schlüssel (nicht der
+    eigene Einnahmen. Alle content_hashes sind STABILE Schlüssel (nicht der
     Fragetext), damit spätere Textfixes per refresh_quiz_payloads dieselbe
     Frage aktualisieren statt Dubletten anzulegen."""
     from council import quiz
@@ -262,7 +573,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         if m < 10:
             continue
         lo_f, hi_f = span_pairs[i % len(span_pairs)]
-        info = _BEREICH_INFO.get(r["bereich"])
+        info = bereich_info(r["bereich"])
         rang = "der größte Posten" if i == 0 else "einer der größten Posten"
         detail = (f"„{r['bereich']}“ umfasst {info} — mit rund {m} Mio. Euro {rang} "
                   f"im Haushalt {year}. " + _PFLICHT_SATZ) if info else (
@@ -283,7 +594,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     rng.shuffle(distractors)
     opts = [top["bereich"], *distractors[:3]]
     rng.shuffle(opts)
-    top_info = _BEREICH_INFO.get(top["bereich"], "zentrale Aufgaben der Stadt")
+    top_info = bereich_info(top["bereich"]) or "zentrale Aufgaben der Stadt"
     qs.append({
         "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
         "difficulty": "leicht", "qtype": "mc",
@@ -361,7 +672,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     if len(mid) >= 4:
         pick = [mid[0], mid[2], mid[-2], mid[-1]]
         kleinster = min(pick, key=lambda r: r["aufwendungen"])
-        k_info = _BEREICH_INFO.get(kleinster["bereich"])
+        k_info = bereich_info(kleinster["bereich"])
         k_opts = [r["bereich"] for r in pick]
         rng.shuffle(k_opts)
         qs.append({
@@ -406,44 +717,214 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                 "content_hash": key("netto"),
             })
 
-    # 12) Kostendeckung: Was finanziert sich (teilweise) selbst?
-    deckbar = [r for r in parts
-               if r["aufwendungen"] > 5_000_000 and 0 < r["ertraege"] / r["aufwendungen"] < 1]
-    if len(deckbar) >= 4:
-        by_deckung = sorted(deckbar, key=lambda r: -(r["ertraege"] / r["aufwendungen"]))
-        d_pick = [by_deckung[0], by_deckung[len(by_deckung) // 2], by_deckung[-2], by_deckung[-1]]
-        d_pick = list({r["bereich"]: r for r in d_pick}.values())
-        if len(d_pick) == 4:
-            d_top = d_pick[0]
-            d_opts = [r["bereich"] for r in d_pick]
-            rng.shuffle(d_opts)
-            d_items = [{"label": r["bereich"],
-                        "value": round(r["ertraege"] / r["aufwendungen"] * 100),
-                        **({"highlight": True} if r["bereich"] == d_top["bereich"] else {})}
-                       for r in by_deckung]
+    # 12) Eigene Einnahmen der Fachbereiche — in Millionen, NICHT als Quote.
+    #
+    # Diese Frage hieß bis 08/2026 „Welcher Bereich deckt den größten Teil
+    # seiner Ausgaben durch eigene Einnahmen?" und antwortete in Prozent. Eine
+    # Deckungsquote behauptet aber ein Ziel, das es nicht gibt: Straßen, Kultur
+    # und Grünflächen sollen sich nicht selbst finanzieren, das ist
+    # Daseinsvorsorge. Der Haushalts-Bereich hat die Kennzahl deshalb überall
+    # abgeräumt — der Kostendeckungsgrad-Ring ist weg (Kopf von
+    # `web/frontend/app/(app)/haushalt/bereich/page.tsx`, Punkt 1), und die
+    # Bereichstabelle formuliert absolut („Ein Prozentwert wäre hier ein
+    # Maßstab, den es nicht gibt", `components/haushalt/bereichstabelle.tsx`).
+    # Hier steht dieselbe Auskunft nun genauso in Millionen: Wer bringt am
+    # meisten mit — nicht, wer „trägt sich am besten".
+    #
+    # DER SCHLÜSSEL BLEIBT `deckung`. Er benennt den SLOT, nicht den Text: Ein
+    # neuer content_hash legte per save_quiz_questions eine zweite Frage an und
+    # ließe die alte aktiv im Bestand liegen — refresh_quiz_payloads findet sie
+    # nur über genau diesen Schlüssel. Aus demselben Grund bleibt es eine
+    # MC-Frage in `schwer`: qtype und difficulty frischt der Refresh nicht auf.
+    #
+    # WAS DIE ÜBERSICHT NICHT HERGIBT: eine Aufteilung der Erträge nach Arten.
+    # Ob ein Bereich sein Geld von Bund und Land oder aus Gebühren bekommt,
+    # steht erst in der Ergebnisrechnung je Teilhaushalt
+    # (`council_ergebnisrechnung`) — und die gibt es nur für Jahre mit
+    # Jahresabschluss. Frage und Erklärung behaupten die Aufteilung deshalb
+    # nicht, sie zählen die Quellen auf und sagen im Detail, was offen bleibt.
+    fach = _fachbereiche(parts)
+    # Bei nahezu gleichem Spitzenwert wäre die Frage nicht fair beantwortbar —
+    # `_mio` rundet, zwei Bereiche stünden im Diagramm auf demselben Balken.
+    if len(fach) >= 4 and fach[0]["ertraege"] > fach[1]["ertraege"] * 1.15:
+        e_top = fach[0]
+        # Die vier stärksten — ein Feld aus Spitze und Schlusslicht machte die
+        # Antwort zur Größenschätzung, nicht zur Frage nach den Einnahmen.
+        f_opts = [r["bereich"] for r in fach[:4]]
+        rng.shuffle(f_opts)
+        qs.append({
+            "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+            "difficulty": "schwer", "qtype": "mc",
+            "question": (f"Welcher dieser Bereiche nimmt {year} selbst am meisten ein — "
+                         "durch Erstattungen und Zuweisungen von Bund und Land, "
+                         "Gebühren und Entgelte?"),
+            "options": f_opts,
+            "correct_index": f_opts.index(e_top["bereich"]),
+            "explanation": (f"„{e_top['bereich']}“ bringt rund {_mio(e_top['ertraege'])} Mio. Euro "
+                            "eigene Erträge mit — mehr als jeder andere Fachbereich. Ausgeben "
+                            f"tut der Bereich mit rund {_mio(e_top['aufwendungen'])} Mio. Euro "
+                            "deutlich mehr; die Differenz trägt die Allgemeinheit."),
+            "detail": ("Hohe eigene Einnahmen sind kein Zeugnis: Wo Bund und Land gesetzliche "
+                       "Leistungen mitfinanzieren, fließt viel Geld in den Haushalt — Straßen, "
+                       "Grünflächen und Kultur haben solche Quellen kaum und sollen sich auch "
+                       "nicht selbst tragen. Wie viel der Summe von Bund und Land kommt und wie "
+                       "viel aus Gebühren, schlüsselt die Übersicht des Haushaltsplans nicht "
+                       "auf; sie nennt je Teilhaushalt eine Ertragssumme."),
+            "topic": "Haushalt",
+            "source_type": "stadt", "source_ref": source_url,
+            "chart": _eigen_chart(fach, year, e_top["bereich"]),
+            "content_hash": key("deckung"),
+        })
+
+    return qs
+
+
+def _komma(wert: float, stellen: int = 1) -> str:
+    """Eine Zahl deutsch schreiben — NUR die Zahl.
+
+    Es gibt in dieser Datei zwei Stellen, an denen ein `.replace(".", ",")`
+    über einen fertigen Satz lief und dabei „Mio." und den Satzpunkt mit
+    erwischte. Deshalb geht die Umstellung hier durch eine Funktion, der man
+    nichts anderes als eine Zahl übergeben kann.
+    """
+    return f"{wert:.{stellen}f}".replace(".", ",")
+
+
+def build_abschluss_questions(store) -> list[dict]:
+    """Drei Fragen aus dem Jahresabschluss — nicht aus dem Haushaltsplan.
+
+    Die übrigen Haushalts-Fragen kommen aus dem PLAN: was die Stadt ausgeben
+    will. Diese drei kommen aus dem ABSCHLUSS und den Anlagen dazu, und sie
+    beantworten Fragen, die der Plan gar nicht stellt.
+
+    Jede hat einen stabilen ``content_hash`` ohne Jahreszahl. Das ist Absicht
+    und der Unterschied zu ``build_questions``: Dort gehört das Jahr in den
+    Schlüssel, weil „der Haushalt 2025" eine andere Frage ist als „der
+    Haushalt 2026". Hier ist es immer dieselbe Frage — sie soll mit dem
+    nächsten Abschluss **aktualisiert** werden (``refresh_quiz_payloads``) und
+    nicht ein zweites Mal danebenstehen.
+
+    Liefert nur, was belegt ist: Fehlt eine Quelle, fehlt ihre Frage.
+    """
+    from council import quiz
+
+    def key(name: str) -> str:
+        return quiz._content_hash("thema", "haushalt", f"abschluss-{name}")
+
+    ris = "https://buergerinfo.oldenburg.de"
+    qs: list[dict] = []
+
+    # 1) Die drei Schuldenzahlen. Die Frage sieht aus wie eine Zahlenfrage und
+    #    ist eine Verständnisfrage — genau das ist der Punkt: „Die Schulden der
+    #    Stadt" gibt es dreimal, und alle drei sind richtig.
+    schulden = store.schulden_kontext()
+    weitere = {w["art"]: w for w in (schulden or {}).get("weitere") or []}
+    kern = weitere.get("Kernhaushalt (nur Geldschulden)")
+    konzern = weitere.get("Konzern Stadt (anteilig, mit Beteiligungen)")
+    if schulden and kern and konzern:
+        # DAS JAHR GEHÖRT AN JEDE ZAHL, und hier besonders: Die drei Stände
+        # kommen aus drei Quellen mit drei Erscheinungsterminen, also nicht
+        # zwangsläufig aus demselben Jahr (das Jahrbuch war 08/2026 schon bei
+        # 2025, Bilanz und Konzern-Tabellenband noch bei 2024). Ohne Jahr
+        # nebeneinandergestellt wäre die Frage angreifbar — zu Recht.
+        richtig = "Alle drei — je nachdem, was mitgezählt wird"
+        opts = [f"{_mio(kern['betrag'])} Mio. Euro ({kern['jahr']})",
+                f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['jahr']})",
+                f"{_mio(konzern['betrag'])} Mio. Euro ({konzern['jahr']})",
+                richtig]
+        jahre = {kern["jahr"], schulden["jahr"], konzern["jahr"]}
+        nachsatz = ("" if len(jahre) == 1 else
+                    " Die drei Stände sind nicht aus demselben Jahr: Jede Quelle "
+                    "erscheint zu ihrer eigenen Zeit, und die jüngste ist immer "
+                    "die, die vorliegt.")
+        qs.append({
+            "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+            "difficulty": "schwer", "qtype": "mc",
+            "question": "Wie hoch sind die Schulden der Stadt Oldenburg?",
+            "options": opts, "correct_index": opts.index(richtig),
+            "explanation": (
+                f"Alle drei Zahlen stimmen — sie zählen Verschiedenes. "
+                f"{_mio(kern['betrag'])} Mio. Euro ({kern['jahr']}) sind die "
+                f"Geldschulden des Kernhaushalts, "
+                f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['jahr']}) die "
+                f"der Stadt samt ihren Eigenbetrieben, und "
+                f"{_mio(konzern['betrag'])} Mio. Euro ({konzern['jahr']}) die des "
+                f"ganzen Konzerns mit allen Beteiligungen." + nachsatz),
+            "detail": ("Wer eine Schuldenzahl nennt, muss die Abgrenzung dazusagen. "
+                       "Addieren darf man sie nie: Die größere enthält die kleinere."),
+            "hint": "Es kommt darauf an, wen man mitzählt.",
+            "topic": "Haushalt", "source_type": "stadt", "source_ref": ris,
+            "content_hash": key("drei-schuldenzahlen"),
+        })
+
+    # 2) Die Bürgschaften — eine Zahl, die in keiner Schuldenreihe steht.
+    buerg = (schulden or {}).get("buergschaften")
+    if buerg and buerg.get("bestand"):
+        betrag = _mio(buerg["bestand"])
+        eigene = _mio(kern["betrag"]) if kern else None
+        vergleich = (f" Das ist rund das {buerg['bestand'] / kern['betrag']:.0f}-Fache "
+                     f"der {eigene} Mio. Euro, die der Kernhaushalt selbst schuldet."
+                     if kern and kern["betrag"] else "")
+        qs.append(_estimate(
+            "Die Stadt Oldenburg steht für Kredite ihrer eigenen Gesellschaften "
+            "gerade — für wie viele Millionen Euro?",
+            betrag, lo=max(5, round(betrag * 0.15)), hi=round(betrag * 3.2, -1),
+            year=buerg["jahr"], source_url=ris, chart_json="",
+            difficulty="schwer",
+            detail=("Eine Bürgschaft kostet nichts, solange sie nicht gezogen wird — "
+                    "deshalb taucht sie in keiner Schuldenzahl auf. Sie steht im "
+                    "Anhang des Jahresabschlusses unter „Eventualverbindlichkeiten“."
+                    + vergleich),
+            hint="Mehr als die Stadt selbst an Krediten offen hat.",
+        ))
+        # Jede Zahl wird EINZELN formatiert. Ein `.replace(".", ",")` über den
+        # fertigen Satz erwischt die Punkte in „Mio." und am Satzende gleich mit
+        # („1,30 Mio, Euro zurück,“) — zweimal hineingelaufen.
+        zusatz = ""
+        if buerg.get("rueckstellung"):
+            rueck = _komma(buerg["rueckstellung"] / 1e6, 2)
+            anteil = _komma(buerg["rueckstellung"] / buerg["bestand"] * 100, 2)
+            zusatz = (f" Für den erwarteten Ausfall hält die Stadt {rueck} Mio. Euro "
+                      f"zurück — {anteil} Prozent des Bestands.")
+        qs[-1]["explanation"] = (
+            f"Zum 31.12.{buerg['jahr']} waren es {betrag} Mio. Euro." + zusatz)
+        qs[-1]["content_hash"] = key("buergschaften")
+
+    # 3) Der Substanzverlust: Was die Stadt jährlich abschreibt, gegen das, was
+    #    sie zubaut. Die Zahl kommt aus dem Anlagenspiegel und ist die Antwort
+    #    auf „Baut die Stadt schneller auf, als ihr Bestand verfällt?".
+    zeilen = [z for z in store.get_anlagenspiegel() if z.get("nr") == "2"]
+    if zeilen:
+        z = max(zeilen, key=lambda r: r["jahr"])
+        zubau, verzehr = z.get("zugaenge") or 0, abs(z.get("abschreibung") or 0)
+        if zubau > 0 and verzehr > 0:
+            faktor = verzehr / zubau
+            richtig = _komma(faktor) + " Euro"
+            opts = sorted({richtig,
+                           _komma(max(0.2, faktor / 3)) + " Euro",
+                           _komma(faktor / 1.8) + " Euro",
+                           _komma(faktor * 2) + " Euro"})
             qs.append({
                 "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
                 "difficulty": "schwer", "qtype": "mc",
-                "question": (f"Welcher dieser Bereiche deckt {year} den größten Teil seiner "
-                             "Ausgaben durch eigene Einnahmen (etwa Gebühren und Erstattungen)?"),
-                "options": d_opts,
-                "correct_index": d_opts.index(d_top["bereich"]),
-                "explanation": (f"„{d_top['bereich']}“ erwirtschaftet rund "
-                                f"{round(d_top['ertraege'] / d_top['aufwendungen'] * 100)} von 100 "
-                                "ausgegebenen Euro selbst — der Rest wird aus Steuern und "
-                                "Zuweisungen finanziert."),
-                "detail": ("Kaum ein Bereich trägt sich selbst: Was nicht über Gebühren oder "
-                           "Erstattungen hereinkommt, bezahlt die Stadt aus Steuern und "
-                           "Zuweisungen. So sieht man, was gebührenfinanziert ist und was die "
-                           "Allgemeinheit trägt."),
-                "topic": "Haushalt",
-                "source_type": "stadt", "source_ref": source_url,
-                "chart": json.dumps({"type": "bars",
-                                     "title": f"Kostendeckung {year} je Teilhaushalt",
-                                     "unit": "Prozent", "items": d_items}, ensure_ascii=False),
-                "content_hash": key("deckung"),
+                "question": (f"Auf jeden Euro, den die Stadt {z['jahr']} in ihr "
+                             f"Sachvermögen — Gebäude, Straßen, Fahrzeuge — "
+                             f"investiert hat: Wie viel Wert hat im selben Jahr "
+                             f"die Abnutzung aufgezehrt?"),
+                "options": opts, "correct_index": opts.index(richtig),
+                "explanation": (
+                    f"{z['jahr']} kamen {_mio(zubau)} Mio. Euro dazu, und "
+                    f"{_mio(verzehr)} Mio. Euro wurden abgeschrieben — auf jeden "
+                    f"investierten Euro also {richtig} Wertverlust."),
+                "detail": ("Abschreibung ist der gebuchte Wertverlust einer "
+                           "Anschaffung über ihre Nutzungsdauer. Liegt sie über den "
+                           "Zugängen, verzehrt die Stadt Substanz — das ist weder "
+                           "gut noch schlecht, sondern eine Frage, wie lange es so "
+                           "weitergehen soll."),
+                "hint": "Mehr als einer.",
+                "topic": "Haushalt", "source_type": "stadt", "source_ref": ris,
+                "content_hash": key("substanzverlust"),
             })
-
     return qs
 
 

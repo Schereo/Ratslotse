@@ -7,6 +7,976 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Der Haushalts-Wegweiser hat jetzt ein Gedächtnis — und Etappen.** Die
+  Liste der sechzehn Schritte auf der Haushalts-Übersicht war zur Wand
+  geworden; jetzt sind es vier Etappen-Karten („Die Zahlen", „Die
+  Gegenprobe", „Der Rahmen", „Mitreden"), auf dem Telefon ein Akkordeon, bei
+  dem nur die aktuelle Etappe offen steht. Besuchte Seiten merkt sich der
+  Browser (lokal, kein Konto nötig): Erledigte Etappen tragen ihr Häkchen,
+  und ein Knopf „Weiter, wo du warst" springt zum ersten noch nicht
+  gelesenen Schritt. Dazu vier Detail-Korrekturen aus dem Board-Review:
+  Auf „Was steckt hinter den Namen?" sind Klartext und Zahlen jetzt EINE
+  Zeile je Bereich (mit Balken, umschaltbarer Sortierung und nachgeschärften
+  Erklärtexten — bei „Personal" steht jetzt dabei, dass dort nicht die
+  Gehälter aller Beschäftigten stehen); auf „Muss oder kann?" tragen die
+  Selbstauskunft der Stadt (◇) und unsere Zuordnung (●) je einen eigenen
+  Marker, weil es zwei Quellen sind; die Produktsuche sagt bei null Treffern,
+  was ähnlich klingt, und jedes Produkt trägt ein Abdeckungs-Badge („ohne
+  2019–2020"), weil nicht jedes Jahr jeden Teilhaushalt deckt; und im
+  Haushalts-Labor klebt das Ergebnis auf dem Telefon jetzt unten über der
+  Tab-Leiste — die Wirkung steht direkt unterm Daumen, statt oben ein
+  Drittel des Schirms zu belegen. (#580)
+- **Vier weitere Formen im Grafik-Baukasten.** Der Gegenbalken (zwei
+  100-%-Leisten, die sich eine einzige Basis teilen — der Maßstabsfehler,
+  bei dem ein Defizit-Haushalt ausgeglichen aussieht, ist damit technisch
+  nicht mehr baubar), der Kassenzettel (der Bon rechnet seine Rundungszeile
+  selbst, trägt den Teiler sichtbar unter dem Zettel und reist nie ohne
+  seinen „Was diese Zahl nicht ist"-Kasten), der Wasserfall (Abzüge hängen
+  an der Laufsumme, eine eingebaute Summenprobe meldet Rechenfehler der
+  Seite, und das Ergebnis wird nie rot — Zuschussbedarf ist Daseinsvorsorge)
+  und das verallgemeinerte Flussbild (bewusst kein Sankey: alle Kurven enden
+  in der EINEN Kasse). Die Haushalts-Seiten benutzen sie bereits; für Leser
+  ändert sich das Bild kaum, aber jede künftige Seite komponiert nur noch,
+  statt zu zeichnen. (#580)
+- **Wer wollte den Haushalt ändern — und kam damit durch?** „Der Streit ums
+  Geld" (`/haushalt/streit`) trägt jetzt eine Verhandlungsbilanz als
+  tragendes Bild: je Fraktion ein Punkt pro Abstimmung über eine
+  Änderungsliste, Finanzausschuss und Rat getrennt, gefüllt heißt „fand
+  eine Mehrheit". Bewusst ohne Erfolgsquote — eingebracht und abgelehnt ist
+  parlamentarischer Alltag der Opposition, kein Zeugnis; die Reihenfolge
+  ist alphabetisch, die Punktgröße für alle gleich. Wortbeiträge ohne
+  Fraktion (Namensvettern in der Anwesenheitsliste) stehen als eigene,
+  gezählte Karte da — es wird keine geraten. (#578)
+- **Ein Haushalt lebt länger als ein Jahr — der Strahl zeigt es.** „Wann
+  der Haushalt entschieden wird" (`/haushalt/jahr`) ersetzt den Jahreskreis
+  durch einen liegenden Zeitstrahl mit „Sie sind hier"-Pin: von der
+  Einbringung über Ausschüsse und Ratsbeschluss bis zum Jahresabschluss,
+  jede Station mit gezählter Angabe („in 7 von 8 Jahrgängen im Oktober")
+  statt Behauptung. Auf dem Telefon kippt der Strahl senkrecht. Dazu eine
+  Termin-Karte mit dem nächsten echten Termin von Finanzausschuss oder Rat
+  aus dem Ratskalender — samt Kalender-Export und dem ehrlichen Hinweis,
+  dass erst die Tagesordnung zeigt, ob dort der Haushalt aufgerufen
+  wird. (#578)
+- **4.459 Vorhaben, durchsuchbar.** „Was wird gebaut?"
+  (`/haushalt/investitionen`) endete bisher bei einer Liste je Bereich —
+  jetzt trägt eine Kachelfläche die Übersicht: Jede Kachel ist ein Vorhaben,
+  ihre Fläche die Gesamtsumme, ein Quadratmillimeter ist überall gleich viel
+  Geld. Die Masse der kleinen Vorhaben steht ehrlich als eigene Kachel da,
+  Suchtreffer heben sich per Umriss hervor, Jahrgang und Bereich lassen sich
+  filtern. Zwei Kästen stehen bewusst, wo man sie braucht: „Wo sind die
+  Schulen?" **vor** den Ergebnissen (Schulgebäude laufen beim Eigenbetrieb,
+  nicht in diesem Programm) und „Planzahlen, keine Beschlüsse" bei den
+  Zahlen. Auf dem Telefon ersetzt eine Rangliste die Kacheln — gleiche
+  Daten, gleiche Reihenfolge, lesbare Beschriftung. (#577)
+- **Der Sprung bei der Grundsteuer, als Bild.** Auf „Steht Oldenburg besser
+  da?" (`/haushalt/vergleich`) zeigt ein Vorher-nachher-Diagramm die
+  Hebesätze aller acht kreisfreien Städte über die Reform 2025 hinweg —
+  Oldenburg hervorgehoben, „unverändert" ausgeschrieben statt als flache
+  Linie versteckt. Mitten im Bild steht der Bruch-Marker „ab 2025 neue
+  Messbeträge": Über die Reform hinweg sind die Sätze nicht vergleichbar,
+  und die Grafik sagt das selbst, statt es einer Fußnote zu überlassen. (#577)
+- **Was der Schuldenstand im Jahr kostet.** Die Schuldenkurve
+  (`/haushalt/schulden`) trägt jetzt die Zinslast als dünne, gestrichelte
+  zweite Linie im selben Bild und auf derselben Skala — dass sie fast auf der
+  Nulllinie klebt, ist die Auskunft. Der auffälligste Knick der Reihe erklärt
+  sich direkt im Bild: „2010: 108,9 Mio. umgebucht" — Kredite wanderten an
+  einen Eigenbetrieb, kein Tilgungswunder. Die Ablesezeile zeigt Summe und
+  Zins gemeinsam. (#577)
+- **Warum ein Bereich vom Plan abwich, steht jetzt an der Abweichung.** Auf
+  „Geplant und geworden" (`/haushalt/plan-ist`) trägt jede Hantel-Zeile den
+  Satz, mit dem der Jahresabschluss selbst die Abweichung erklärt —
+  Wortlaut der Verwaltung, klar gekennzeichnet. Wo der Abschluss einen
+  Bereich nicht erläutert, steht bewusst kein Satz: Erfunden wird nichts.
+  Sortiert ist nach Größe der Abweichung, kleine Bereiche stehen hinter
+  „alle zeigen", und die Achse sagt selbst, in welcher Einheit sie misst. (#577)
+- **Aus „18 %" wird ein zählbares Bild.** Auf „Wer macht die Arbeit?"
+  (`/haushalt/personal`) steht der Stellenplan jetzt als Waffel: Ein Quadrat
+  sind zehn Stellen, die unbesetzten tragen einen orangenen Umriss — samt dem
+  Stichtag, zu dem gezählt wurde, denn die Besetzung wird immer ein Jahr
+  versetzt erhoben. Daneben je Jahrgang ein Balkenpaar aus vorgehaltenen und
+  besetzten Stellen; verrechnet wird weiterhin nichts, weil beide Zahlen zu
+  verschiedenen Zeitpunkten gehören. Der Tarif-Jahrgang 2026, den das PDF der
+  Stadt nicht lesbar hergibt, bleibt als beschriftete Lücke sichtbar stehen.
+  (#576)
+- **22 Jahrgänge Bautätigkeit in einem Bild.** „Was wurde davon wirklich
+  gebaut?" (`/haushalt/gebaut`) zeigte die zwei Rechnungswelten der Stadt
+  bisher als zwei getrennte Diagramme — jetzt stehen alle Säulen von 2003 bis
+  2025 nebeneinander, und der Systemwechsel 2009/2010 ist als gestrichelte
+  Naht im Bild: links die kamerale, rechts die doppische Welt, jede in eigenen
+  Farben, nichts wird über die Naht hinweg verrechnet. 2019 steht als
+  beschriftete Lücke im Bild, weil die Quelltabelle sich dort selbst
+  widerspricht. Jedes Jahr lässt sich zeigen, tippen oder mit den Pfeiltasten
+  ablesen — nach allen Auszahlungsarten getrennt. (#576)
+- **Ein Baukasten für alle Haushalts-Grafiken.** Bisher brachte jede Grafik
+  des Haushalts-Bereichs ihre eigenen Bausteine mit; jetzt gibt es ein
+  gemeinsames Fundament (`components/grafik/`), aus dem die kommenden
+  Diagramme zusammengesetzt werden. Vier Teile stecken drin, weil sie überall
+  gleich sein müssen: der Beleg-Chip an jeder Zahl, das Lücken-Feld („2019 —
+  verworfen: 1,3 Mio. € Differenz im Dokument" — nie einklappbar), die
+  Ableseleiste (zeigen, tippen oder Pfeiltasten; auf dem Telefon bleibt die
+  Wertzeile jetzt beim Scrollen sichtbar) und die Einordnung — der Satz, der
+  eine Zahl davor bewahrt, missverstanden zu werden, samt „Was diese Zahl
+  nicht sagt". Die Geometrie rechnen ab jetzt vier kleine d3-Pakete, das
+  Zeichnen bleibt eigenes SVG in unseren Farben. (#575)
+- **Jede Haushaltszahl sagt jetzt auch, wer sie beschlossen hat.** Der kleine
+  Beleg an einer Zahl nannte bisher das Dokument und die Stelle darin — „im
+  Jahresabschluss 2024, Ergebnisrechnung der Kernverwaltung". Was fehlte, war
+  der Schritt davor: Der Rat hat dieses Papier ja irgendwann beschlossen. Genau
+  das steht nun daneben, mit Datum, Gremium und Vorlagennummer. Ausdrücklich
+  auch dann, wenn noch **nichts** entschieden ist: Ein vertagter Vorgang ist
+  keine Zahl ohne Beleg, sondern eine, bei der die Sache noch läuft — und das
+  ist die interessantere Auskunft. Wo keine Vorlage im Bestand steht, bleibt
+  die Zeile weg; ein erfundener Vorgang wäre der schlimmere Fehler. Das
+  Ergebnis trägt keine Farbe, auch nicht bei „abgelehnt" — der Beleg-Apparat
+  berichtet, er bewertet nicht. (#567)
+- **Was wurde davon wirklich gebaut?** Der Haushalts-Bereich zeigte bisher nur
+  die Bau- und Kaufpläne der Stadt — was am Jahresende tatsächlich abgeflossen
+  ist, stand nirgends. Die neue Seite `/haushalt/gebaut` zeigt es für die Jahre
+  2003 bis 2025, aufgeteilt danach, wofür das Geld ging: Baumaßnahmen,
+  Grundstücke, Fahrzeuge und Geräte, Zuschüsse an Dritte. Zwei Dinge stehen
+  dabei ausdrücklich dabei, weil die Zahl sonst mehr behauptet, als sie sagt.
+  Erstens: Gezählt wird die Kernverwaltung — was der Eigenbetrieb
+  Gebäudewirtschaft baut, und das ist seit 2010 ein großer Teil des
+  städtischen Hochbaus, steht nicht darin. Zweitens: Für **2019 fehlt der
+  Jahrgang**. Die Stadt weist dort eine Summe aus, die ihre eigenen
+  Einzelposten um 1,3 Mio. € verfehlen, und welche Zahl danebenliegt, sagt die
+  Tabelle nicht — also steht das Jahr gar nicht da statt in geschätzter Höhe.
+  Bewusst **nicht** gezeigt wird eine „Umsetzungsquote" aus Plan und Ist:
+  Beide Zahlen sind verschieden abgegrenzt, keine Veröffentlichung der Stadt
+  stellt sie nebeneinander, und der Prozentsatz stünde in keinem Dokument.
+  Die Seite verlinkt stattdessen den Investitionsplan und erklärt den
+  Unterschied. Auch „Frag den Rat" kennt die neuen Zahlen — mit derselben
+  Regel im Gepäck. (#566)
+- **Der Haushalt sagt jetzt, welche Vorhaben hinter den Summen stehen.** „Was
+  wird gebaut?" endete bisher bei „Verkehr und Straßenbau: 10,5 Mio. €" — und
+  die Seite musste selbst zugeben, dass sie die naheliegende Anschlussfrage
+  nicht beantwortet. Das Investitionsprogramm des Haushaltsplans führt jedes
+  Vorhaben einzeln auf; es lag die ganze Zeit im eigenen Anlagenbestand. Statt
+  „Kultur, Museen, Sport: 19,4 Mio. €" stehen dort jetzt das Post-SV-Gelände mit
+  seiner Skatehalle, zwei Kunstrasenplätze und der Sportplatz am Schweriner Weg
+  — 4.459 Vorhaben aus acht Haushaltsjahrgängen, durchsuchbar, und von der
+  Summe je Bereich in beide Richtungen verlinkt. Angegeben sind die
+  Gesamtkosten eines Vorhabens über alle Jahre; wie viel davon in welchem Jahr
+  fließen soll, steht im Plan zwar daneben, ließ sich aus dem Dokument aber
+  nicht verlässlich auslesen, und deshalb zeigen wir es nicht. Ein Befund gehört
+  ausdrücklich dazu: **Schulgebäude stehen nicht darin.** Sanierung und Neubau
+  verantwortet der Eigenbetrieb Gebäudewirtschaft und Hochbau mit einem eigenen
+  Wirtschaftsplan — die Seite sagt das, statt eine Antwort anzudeuten, die sie
+  nicht hat. (#565)
+- **„Frag den Rat" kennt den Haushalt jetzt ganz — und beantwortet vier Fragen
+  nicht mehr aus der falschen Quelle.** Der Haushalts-Bereich war auf dreizehn
+  Datenschichten gewachsen, die KI-Frage kannte zehn davon. Die vier fehlenden
+  wurden nicht etwa gar nicht beantwortet, sondern zum Teil falsch: „Wie viel
+  Schulden hat Oldenburg?" bekam den Ergebnishaushalt — dabei sind Schulden
+  ein Bestand am Stichtag und kommen dort überhaupt nicht vor. Investitions-
+  fragen bekamen denselben Ergebnishaushalt, in dem keine einzige Investition
+  steht (ein Schulneubau taucht dort nur als Abschreibung auf, verteilt über
+  Jahrzehnte). Personalfragen bekamen Aufwendungen in Euro statt Stellen und
+  Besetzungsgrad. Und „Wer wollte was am Haushalt ändern?" bekam nichts,
+  obwohl 664 Änderungslisten im Bestand liegen. Jetzt zieht jede dieser Fragen
+  ihre eigene Quelle — und nur die: Eine Schuldenfrage holt keinen Stellenplan
+  mit. Jede Antwort bekommt dabei die Grenze mitgeliefert, ohne die die Zahl
+  irreführt: bei den Schulden, was mitgezählt ist (Kernhaushalt und
+  Eigenbetriebe, ohne die selbstständigen Beteiligungen); bei den
+  Investitionen, dass Finanz- und Ergebnishaushalt zwei Zahlenwerke sind, die
+  man nicht verrechnen darf; beim Stellenplan, dass sich die Besetzung auf das
+  Vorjahr bezieht und „Stellen minus besetzt" zwei Stichtage mischt; und bei
+  den Änderungslisten, dass die Ratsdaten sagen, **wer** etwas ändern wollte
+  und ob es durchkam — nicht, was genau darin stand. Die „Gründliche
+  Recherche" hing am alten Stand und bekommt jetzt denselben Kontext samt der
+  Haushalts-Regeln, die ihr bislang ganz fehlten; umgekehrt zieht sie den
+  Haushalt nicht mehr in jede Frage, die nur zufällig das Wort „Kosten" in
+  ihren Suchbegriffen trug. (#563)
+- **Ein Knopf, der die Finanzdaten sofort einliest, statt bis zu vierzehn Tage
+  zu warten.** Der Haushalts-Bereich hält sich selbst aktuell, aber für einen
+  frisch gebauten Parser ist der Zwei-Wochen-Takt die falsche Wartezeit: Die
+  Seite steht, die Tabelle ist leer, und niemand sieht, ob der Parser auf dem
+  echten Bestand trägt. Der neue Ops-Lauf zieht den Cron vor und meldet
+  hinterher, wie viele Zeilen je Schicht dastehen — und ob eine davon ohne
+  Herkunftsnachweis durchgerutscht ist. Er zielt bewusst nur auf die
+  Dev-Umgebung. (#556)
+- **„Der Streit ums Geld" — der Haushalt zeigt jetzt auch, worüber gestritten
+  wurde.** Der Bereich führte bisher ausschließlich Zahlen: Plan, Ist,
+  Produkte, Konzern, Prüfberichte. Dass über diese Zahlen politisch
+  gerungen wurde, kam nicht vor — dabei ist ein Haushalt kein Rechenergebnis,
+  sondern ein Kompromiss. Eine neue Seite zeigt je Haushaltsjahrgang 2019 bis
+  2026 drei Dinge: welche Änderungslisten die Fraktionen und Gruppen einbrachten
+  und wie darüber abgestimmt wurde (im Finanzausschuss und im Rat getrennt, weil
+  dieselbe Liste dort verschieden ausgehen kann), die Wortbeiträge der Debatte
+  im Wortlaut des Protokolls — 134 über alle Jahrgänge —, und wie am Ende über
+  die Haushaltssatzung entschieden wurde. Die Fraktion einer Rednerin kommt aus
+  der Anwesenheitsliste derselben Sitzung, nicht aus einer gepflegten Liste:
+  Fraktionen wandern, wer 2023 für Die Linke sprach, saß 2025 für das BSW.
+  Ratsgruppen bleiben Gruppen („FDP/Volt", „Für Oldenburg"), statt auf eine
+  Partei zusammengezogen zu werden. Alle Beiträge stehen in der Reihenfolge des
+  Protokolls und sind auf dieselbe Länge gekürzt — eine Auswahl „der wichtigsten
+  Stellen" träfe sonst jemand. Was **nicht** dabei steht, sagt die Seite selbst:
+  der Inhalt der Änderungslisten (er liegt in Anlagen-PDFs, die nicht als
+  Volltext vorliegen), das Stimmverhalten Einzelner (das Ratsinformationssystem
+  kennt keins) und die Fraktion bei Namensgleichheit im Rat — eine geratene wäre
+  schlimmer als eine fehlende. (#558)
+- **„Wie viel Schulden hat Oldenburg?" — dreißig Jahre Schuldenstand, mit der
+  Angabe, was mitgezählt ist.** Eine der häufigsten Fragen an den Haushalt, und
+  der Bereich konnte sie bisher nicht beantworten. Eine neue Seite zeigt die
+  Zeitreihe seit 1995: Ende 2025 waren es 337,0 Mio. € oder 1.908 € je
+  Einwohner\*in. Beides steht nebeneinander, weil es über dreißig Jahre in
+  verschiedene Richtungen zeigt — insgesamt 35,5 Mio. € mehr als 1995, je
+  Einwohner\*in 106 € weniger, denn die Stadt ist in derselben Zeit gewachsen.
+  Direkt an der großen Zahl steht, **was** sie zählt: die Stadt als
+  Rechtsträger, also mit ihren Eigenbetrieben und ohne die eigenständigen
+  Gesellschaften. Bei Schulden ist das der Unterschied zwischen zwei Antworten,
+  die beide „die Schulden der Stadt" heißen. Die zwei größten Sprünge der Reihe
+  erklärt die Seite im Text, statt sie einer Farbe zu überlassen: 2001 fiel die
+  Schuld um mehr als die Hälfte, weil die Stadtentwässerung samt Darlehen an
+  einen Verband ging, und 2010 wechselten 108,9 Mio. € nur die Spalte, als die
+  Stadt einen Eigenbetrieb gründete. Für 2022 fehlt die Aufteilung nach
+  Schuldenarten — sie geht in der Quelle selbst nicht auf; die Gesamtschuld des
+  Jahres steht trotzdem, weil sie sich gegen die Einwohnerzahlen der Stadt
+  nachrechnen lässt. Quelle ist Tabelle 1108 des Statistischen Jahrbuchs. (#550)
+- **„Wer macht die Arbeit?" — der Stellenplan im Haushalts-Bereich.** Personal
+  ist der größte Ausgabenblock der Stadt, aber bisher zeigte der Bereich nur
+  Euro und nicht, wie viele Menschen dahinterstehen. Eine neue Seite liest den
+  Stellenplan aus, den der Rat mit jedem Haushalt beschließt: 2023 waren es 717
+  Beamtenstellen, für 2026 sind es 815; dazu rund 1.700 Stellen für
+  Tarifbeschäftigte. Die eigentliche Zahl steht daneben — **rund jede sechste
+  bis fünfte Stelle war am Stichtag nicht besetzt** (18,1 % der Beamtenstellen
+  zum 30. Juni 2025). Das erklärt eine Zeile, die im Jahresabschluss sonst wie
+  ein Sparerfolg aussieht: Bleiben die Personalausgaben unter dem Plan, hat die
+  Stadt das Geld nicht gespart, sondern die Leute nicht gefunden. Die Seite
+  bewertet das nicht — sie sagt, was der Plan sagt, und wo seine Grenzen sind:
+  Stellen sind keine Menschen, es ist nur die Kernverwaltung, und die Besetzung
+  bezieht sich auf das Jahr vor dem Plan. Für 2026 fehlen die Tarifbeschäftigten
+  und die Seite sagt auch das: Diese Seiten des PDFs geben keine Buchstaben aus,
+  und geraten wird nicht. (#551)
+- **„Was machen die eigentlich?" — die städtischen Gesellschaften einzeln.**
+  Der Haushalts-Bereich zeigte bisher, wie viel Klinikum, Busse und Bäder
+  bewegen, aber nicht, was sie tun. Eine neue Seite stellt jede städtische
+  Gesellschaft vor: ihren Auftrag im Wortlaut, wem sie gehört, wer im
+  Aufsichtsrat oder Betriebsausschuss sitzt, woran sie selbst beteiligt ist und
+  was sie für den Haushalt bedeutet — dazu Jahresergebnis, Bilanzsumme und
+  Eigenkapitalquote von 2017 bis 2024. Die Angaben stammen aus den
+  Beteiligungsberichten der Stadt (§ 151 NKomVG), die ein neuer Cron seit jetzt
+  selbst von oldenburg.de holt. Eine Kennzahl kommt nur in den Bestand, wenn
+  der Bericht sie belegt: Die Bilanz muss aufgehen, die Gewinn- und
+  Verlustrechnung dieselbe Zahl nennen, oder ein zweiter Bericht sie
+  bestätigen — was keine Probe trägt, wird verworfen statt geschätzt. Die
+  beschreibenden Abschnitte sind Text der Verwaltung und stehen ausdrücklich
+  ungeprüft da. Was der Bericht **nicht** hergibt, steht als eigener Abschnitt
+  auf der Seite: Er kommt zwei Jahre später, ein Jahresergebnis von 0 € heißt
+  nicht „nichts verdient" (mehrere Betriebe führen ihr Ergebnis ab), und die
+  Jahrgänge vor 2022 sind anders aufgebaut. (#555)
+- **„Was wird gebaut?" — der Haushalts-Bereich zeigt jetzt auch die
+  Investitionen.** Bisher stand dort ausschließlich der laufende Betrieb:
+  Personal, Zuschüsse, Energie, Mieten. Neubauten, Fahrzeuge und Grundstücke
+  haben einen eigenen Haushalt, und der kam schlicht nicht vor — ein Schulneubau
+  tauchte nur als Abschreibung auf, verteilt über Jahrzehnte, lange nachdem
+  gebaut wurde. Eine neue Seite zeigt für 2022 bis 2025, was die Stadt sich
+  vorgenommen hat: 2025 sind das 80,8 Mio. € Auszahlungen, davon 39,7 Mio. €
+  durch Zuschüsse, Verkäufe und Beiträge gedeckt — 9,5 % des gesamten
+  Finanzhaushalts. Dazu, in welchen Bereichen das Geld liegt, und was
+  zurückfließt. Übernommen wird ein Jahrgang nur, wenn die Rechnung der Datei
+  aufgeht: Die Teilhaushalte müssen die Summenzeile ergeben, in beiden Spalten.
+  Was diese Zahlen **nicht** sagen, steht als eigener Abschnitt auf der Seite —
+  einzelne Vorhaben nennt die Quelle nicht („Verkehr und Straßenbau:
+  10,5 Mio. €", nicht welche Straße), es sind Planzahlen, und sie enden 2025,
+  weil die Stadt den Datensatz erst im Folgejahr veröffentlicht. (#547)
+- **„Und ist das die ganze Stadt?" — der Haushalt zeigt jetzt auch, was neben
+  ihm läuft.** Klinikum, Busse, Bäder und die städtischen Gebäude führen eigene
+  Bücher; im Haushalt tauchen sie bestenfalls als Zuschusszeile auf. Eine neue
+  Seite stellt beides nebeneinander: 2024 bewegt die Verwaltung 799 Mio. €, die
+  Stadt mit allen Betrieben und Beteiligungen 1.242 Mio. € — der Haushalts-
+  Bereich zeigte bis jetzt also rund zwei Drittel. Dazu über elf Jahre, wer wie
+  viel beiträgt, und eine Erklärung, warum die Geschäfte der Betriebe
+  untereinander wieder herausgerechnet werden. Die Zahlen stammen aus den
+  geprüften Gesamtabschlüssen der Stadt; übernommen wird ein Jahrgang nur, wenn
+  die Rechnungen des Dokuments aufgehen. Was der Vergleich **nicht** kann, steht
+  als eigener Abschnitt auf der Seite: Ein Gesamtabschluss ist kein Haushalt,
+  er kommt zwei Jahre später, und verrechnen lässt sich beides nicht. (#514)
+- **Jede Haushalts-Zahl hält jetzt fest, woher sie stammt — auf den Abschnitt
+  genau.** Bisher stand an einer gespeicherten Zahl bestenfalls eine URL, und
+  bei einem 300-seitigen Jahresabschluss ist das zu wenig: Man sah nicht, an
+  welcher Stelle des Dokuments sie steht und womit sie abgesichert ist. Zu
+  jeder Zeile gehört jetzt ein Herkunfts-Eintrag mit dem Dokument, der
+  Fundstelle darin („Abschnitt 6.3.1 — Erläuterungen zu den Abweichungen"),
+  der bestandenen Rechenprobe samt Messwert („0,00 % Abweichung zur
+  Gesamtrechnung") und dem Stichtag. Wo eine Quelle gar keine Rechenprobe
+  mitbringt — die Steuer-Datensätze des Open-Data-Portals etwa —, steht das
+  jetzt ausdrücklich da, statt offenzubleiben. Bestehende Zahlen ändern sich
+  dadurch nicht; was der alte Bestand nicht festhielt, bleibt leer, statt
+  geraten zu werden, und wird beim nächsten Einlesen nachgetragen. (#513)
+- **Der Haushalts-Bereich hält sich ab jetzt selbst aktuell.** Bisher wurde
+  jeder neue Jahrgang von Hand eingelesen — wer nicht daran dachte, ließ den
+  ganzen Bereich still veralten. Ein neuer Job sieht alle zwei Wochen nach, ob
+  für eine fehlende Jahreszahl inzwischen ein Dokument im
+  Ratsinformationssystem liegt, und liest es ein: Jahresabschluss,
+  Teilhaushalts-Pläne und die Berichte des Rechnungsprüfungsamts. Er richtet
+  sich dabei nach dem Bestand, nicht nach dem Kalender — eine verspätete
+  Veröffentlichung oder ein Nachtragshaushalt wird eingesammelt, sobald sie da
+  ist. Bleibt ein erwarteter Jahrgang vier Wochen über seinen üblichen Monat
+  hinaus aus, gibt es eine Nachricht statt eines stillen Stillstands — ebenso,
+  wenn ein Dokument vorliegt, aber nicht gelesen werden kann. (#511)
+- **Halbe Jahrgänge werden vollständig, sobald die Unterlagen da sind.** Die
+  Zahlen eines Jahres kommen nicht auf einmal: Die Produktebene steckt in rund
+  neun einzelnen Dokumenten, und die werden nacheinander lesbar. Wir tragen
+  jetzt jedes Stück für sich nach, statt ein Jahr für erledigt zu halten,
+  sobald das erste Dokument gelesen ist. Auf der Seite steht außerdem, wenn ein
+  Jahrgang noch unvollständig ist („Für 2023 haben wir 6 von 9
+  Teilhaushalten") — vorher sah ein halbes Jahr aus wie ein ganzes. (#511)
+- **„Bis wann die Zahlen reichen" — der Datenstand steht jetzt auf der Seite.**
+  Am Fuß von `/haushalt` steht, wie weit jede Datenschicht reicht und was als
+  Nächstes erwartet wird: „Der Jahrgang 2025 wird üblicherweise im September
+  2026 vorgelegt." Damit beantwortet sich die Frage „warum steht hier 2024 und
+  nicht 2025?" an einer Stelle, statt auf neun Seiten einzeln. Der Grund liegt
+  bei der Stadt: Den Plan legt sie im Herbst für das kommende Jahr vor, die
+  Abrechnung erst ein knappes Jahr nach dessen Ende. (#511)
+
+- **„Geplant und geworden" reicht jetzt bis 2017 — und sagt, warum.** Bisher
+  waren fünf Jahrgänge zu sehen; 2017, 2018 und 2020 fehlten, weil ihre
+  Tabellen im Jahresabschluss anders aufgebaut sind. Der Parser liest die
+  Spalten jetzt aus dem Tabellenkopf statt aus einer festen Reihenfolge und
+  schafft damit alle acht Jahrgänge; 2022 bekommt außerdem seine zwölf
+  Teilhaushalte zurück. Neu ist auch das *Warum*: Zu jeder erheblichen
+  Abweichung steht die Begründung der Verwaltung aus dem Jahresabschluss
+  daneben — etwa, dass die Mehreinnahmen 2024 fast vollständig aus der
+  Gewerbesteuer stammen und einen Einmaleffekt enthalten. Je Jahrgang gibt es
+  dazu den Verweis auf den Schlussbericht des Rechnungsprüfungsamts. (#510)
+- **Die Seite sagt jetzt, was „geplant" in einem Jahr bedeutet.** Das ist nicht
+  überall dasselbe: 2020 vergleicht der Jahresabschluss mit dem Ansatz
+  einschließlich Corona-Nachtrag, 2018 mit der Gesamtermächtigung. Bei den
+  Ausgaben 2020 sind das 27 Mio. € Unterschied — also der Unterschied zwischen
+  „21,5 Mio. weniger ausgegeben als geplant" und „5,7 Mio. mehr". Beide Werte
+  stehen jetzt in der Datenbank, die Seite schreibt die Bezugsgröße an, und in
+  der Mehrjahres-Kurve tragen die betroffenen Jahre eine Fußnote. (#510)
+- **Das Flussbild: woher das Geld kommt, wohin es geht — und was dazwischen
+  liegt.** Auf der Haushalts-Übersicht steht jetzt ein Bild, das links die
+  Einnahmearten (Steuern, Zuwendungen, Gebühren …) und rechts die Bereiche
+  zeigt. Dazwischen liegt ein einziger Knoten: die Stadtkasse. Kein Band führt
+  von links nach rechts durch, und das ist der Punkt — im kommunalen Haushalt
+  gehört keine Einnahme zu einer bestimmten Ausgabe, alles fließt erst
+  zusammen und wird dann verteilt. Bandbreiten links und rechts liegen auf
+  derselben Skala; ein Minus erscheint als eigenes Band „aus dem Ersparten",
+  statt die kürzere Seite auf Länge zu ziehen. Kleine Posten sammeln sich in
+  „weitere" und lassen sich aufklappen, alle Zahlen stehen unter „Zahlen
+  anzeigen". Auf dem Handy werden daraus zwei Listen statt geschrumpfter
+  Bänder. Für Jahre ohne Jahresabschluss sagt das Bild, welches Jahr es
+  stattdessen zeigt — und wenn die Einzelposten die ausgewiesene Summe nicht
+  tragen, erscheint gar keine Grafik, sondern der Hinweis darauf. (#505)
+- **„Was kostet eigentlich …?" — der Haushalt, aufgeschlüsselt bis zur
+  einzelnen Aufgabe.** Die häufigste Frage zum Haushalt ist keine nach
+  Teilhaushalten, sondern nach einer konkreten Sache: dem Stadtarchiv, der
+  Feuerwehr, dem Schwimmbad. Die neue Seite durchsucht 63 Aufgaben des
+  Haushaltsjahres 2023 nach Name, Nummer, Amt und Beschreibung, filtert nach
+  Amt und Spielraum und öffnet zu jeder einen Steckbrief: was sie kostet, was
+  dahintersteckt, für wen sie da ist — und auf welchen Gesetzen sie beruht.
+  Die Archivierung etwa kostet die Stadt 421 Tsd. € im Jahr und beruht unter
+  anderem auf dem Bundesarchivgesetz und einem Vertrag mit dem Landesarchiv.
+  Neu ist dabei vor allem die Selbstauskunft der Stadt, wie viel Spielraum sie
+  bei einer Aufgabe überhaupt hat: Bei 35 der 63 Aufgaben ist es „kaum" — das
+  macht aus einer Zahl eine Antwort darauf, worüber der Rat streiten kann und
+  worüber nicht. Alle Angaben stammen wörtlich aus den Teilhaushaltsplänen;
+  wo der Plan ein Feld leer lässt, steht auch bei uns nichts. (#504)
+- **„Was das Rechnungsprüfungsamt beanstandet" — die Prüfung des Haushalts,
+  zum ersten Mal lesbar.** Jeder Jahresabschluss der Stadt wird geprüft, und
+  zwar von einer Stelle, die dem Rat berichtet und nicht der
+  Verwaltungsspitze. Ihre Schlussberichte hängen als PDF an einer Ratsvorlage
+  und werden dort nie wieder gelesen. Die neue Seite `/haushalt/pruefung`
+  führt ihre 257 Feststellungen aus den Jahrgängen 2017–2023 einzeln auf — im
+  Wortlaut, mit Textziffer, Seite und Deeplink ins Originaldokument. Die
+  Randmarken des Berichts werden erklärt, nicht bewertet: Die große Mehrheit
+  (166) sind Hinweise, 42 sind Beanstandungen, 37 wiederholte. Ein eigener
+  Block zeigt, was über Jahre offen blieb — den Plan-Ist-Vergleich etwa
+  beanstandet das Amt in allen sieben geprüften Jahren, zuletzt mit dem Satz
+  „Dies widerspricht dem Grundsatz der Haushaltswahrheit". Wo die Verwaltung
+  im Bericht direkt geantwortet hat, steht die Antwort daneben. Keine
+  Bewertungsfarben, wie überall im Haushalts-Bereich. Für 2024 fehlt der
+  Bericht: Sein PDF bringt keine Zeichenzuordnung mit, und eine zweite Kopie
+  gibt es nicht — das steht auf der Seite, statt überspielt zu werden. (#509)
+- **„Geplant und geworden" — was aus dem Haushalt wirklich wurde.** Ein
+  Haushalt ist ein Plan; was am Jahresende zusammenkam, stand bisher nirgends.
+  Die neue Seite stellt beides nebeneinander — für die Stadt insgesamt und für
+  jeden Bereich einzeln. 2024 etwa nahm Oldenburg 799 Mio. € ein statt der
+  geplanten 694, vor allem durch Steuern; aus einem geplanten Minus von 34
+  Mio. wurde ein Überschuss von 35. Auf den Bereichsseiten steht die
+  Entwicklung über alle abgeschlossenen Jahre. Farben bewerten dabei nichts:
+  Mehr ausgegeben kann ein Tarifabschluss sein, weniger ausgegeben heißt oft,
+  dass etwas nicht gebaut wurde. (#502)
+- **„Steht Oldenburg besser da als Osnabrück?" — eine neue Seite beantwortet
+  die Frage, so weit sie sich seriös beantworten lässt, und erklärt den Rest.**
+  Bei der Steuerkraft geht es: Oldenburg liegt mit 1.974 € je Einwohnerin an
+  der Spitze aller acht kreisfreien Städte Niedersachsens, vor Osnabrück
+  (1.651), Braunschweig (1.518) und Delmenhorst (949). Dazu die Hebesätze — auf
+  denselben Messbetrag zahlt man in Braunschweig 750 statt 539 Prozent — und
+  die Steuereinnahmekraft über drei Jahre, an der sich zeigt, was eine hohe
+  Gewerbesteuer kosten kann: In Wolfsburg fiel sie um 30 Prozent, während sie
+  in Oldenburg um 22 Prozent stieg. Alle Zahlen kommen aus zwei Tabellen des
+  Landesamts für Statistik, also für jede Gemeinde nach derselben Vorschrift
+  gerechnet. **Ausgaben, Personal und Schulden je Einwohner stehen bewusst
+  nicht dort**, und die Seite sagt auch, warum: Solche Zahlen messen zuerst,
+  wie weit eine Stadt ausgelagert hat — in Oldenburgs Haushalt stehen rund 64
+  Prozent dessen, was die Stadt insgesamt bewegt, in Osnabrücks knapp 48. Die
+  Stadt Oldenburg hat diesen Vergleich 2018 auf Antrag der FDP-Fraktion selbst
+  angestellt und im selben Dokument festgestellt, dass er nichts aussagt; die
+  Seite zitiert sie wörtlich und verlinkt den Vorgang im Ratsinformationssystem.
+  (#516)
+
+### Geändert
+- **Der Datenstand im Quellenverzeichnis rechnet sich selbst.** Am Fuß jeder
+  Haushalts-Seite steht, welche Jahrgänge eine Quelle abdeckt
+  („Jahresabschlüsse 2017–2024"). Diese Spannen wurden von Hand gepflegt,
+  einundzwanzig Stück — und veralteten zuverlässig, sobald ein Ingest-Lauf
+  einen Jahrgang nachzog: Die Angabe stand nicht neben den Daten, sondern in
+  einer anderen Datei. Vierzehn davon fragen jetzt den Bestand. Die übrigen
+  sieben bleiben von Hand, weil sie sich gar nicht ableiten lassen — ein
+  Genehmigungsdatum, eine einzelne Ratsvorlage von 2018, die Ausgabe-Angaben
+  der Landesstatistik —, und das steht jetzt begründet dabei. (#567)
+- **Die Seite „Streit ums Geld" lädt spürbar schneller.** Sie zerlegte bei
+  jedem Aufruf rund sechzehn vollständige Ratsprotokolle neu, um die
+  Wortbeiträge herauszuholen — gut anderthalb Sekunden Rechenzeit für ein
+  Ergebnis, das jedes Mal dasselbe war. Jetzt merkt sie sich die Zerlegung
+  anhand des Protokoll-Inhalts. Die Zusage der Seite bleibt dabei unangetastet:
+  Sie führt weiter keinen eigenen Datenbestand, kann also nicht veralten, und
+  ein nachgetragenes Protokoll erscheint weiterhin sofort und ohne
+  Nacharbeit. (#567)
+- **Zwei weitere Seiten hören auf, ihre eigene Gründlichkeit vorzuführen.**
+  „Was wird gebaut?" und „Wer macht die Arbeit?" zeigten unter jeder Zahl noch,
+  gegen welche Rechenprobe wir sie geprüft haben — bis hin zum Messwert
+  („Gemessen: 0,00 € Restbetrag"). Das sagt etwas über uns und nichts über den
+  Haushalt; die übrigen Seiten hatten es schon abgelegt. Wo eine Zahl steht,
+  steht weiterhin, **wo im Dokument** man sie findet — und was eine Quelle
+  nicht hergibt, sagen die Seiten unverändert. Die Proben laufen weiter, nur
+  ohne Publikum. (#554)
+- **Der Haushalts-Bereich bleibt vorerst der Dev-Umgebung vorbehalten.** Die
+  dreizehn Seiten unter `/haushalt` sind jetzt — wie der Wahlprogramm-Vergleich
+  — an `NEXT_PUBLIC_RATSLOTSE_ENV` gebunden: Auf ratslotse.de rendern sie
+  nicht, und die Anker dorthin (Seitenleiste, „Mehr"-Sheet, der Verweis auf den
+  Beschluss-Seiten) verschwinden mit ihnen — ein Gate ohne seine Einstiege
+  hinterließe Links, die ins Leere führen. Damit kann der Bereich weiterentwickelt
+  werden, ohne den nächsten Release aufzuhalten. Ein Testwächter prüft künftig,
+  dass kein neuer Verweis das Gate vergisst. (#546)
+- **Kleinkram im Haushalts-Bereich, den sonst niemand bemerkt hätte.** Das
+  Fußnotenzeichen im Städtevergleich ist jetzt ein Kreuz statt eines Sternchens
+  — die Fußnote selbst endet auf „Einwohner*innen", und zwei Sternchen mit
+  verschiedener Bedeutung nebeneinander liest niemand auseinander. Im
+  Quellenverzeichnis stehen nicht mehr unsere Prüfverfahren, sondern nur noch,
+  was eine Quelle hergibt und was nicht. Im Haushalts-Labor behauptet kein Satz
+  mehr, wie sich ein Jahrgang entwickelt hat, den die Seite gar nicht zeigt.
+  Dazu die Sternchenform in den letzten eigenen Dokumenten (Zitate aus
+  Wahlprogrammen bleiben unangetastet) und eine ungenutzte Komponente weniger.
+  (#549)
+- **Zahlen, die eine Rechenprobe nicht bestehen, ersetzen keine vorhandenen
+  mehr.** Liest ein Parser für einen bereits gespeicherten Jahrgang plötzlich
+  nichts oder deutlich weniger — etwa weil die Stadt ihre Tabellen umbaut —,
+  bleibt der alte Stand stehen und der Lauf meldet es, statt den Bestand gegen
+  ein kaputtes Ergebnis zu tauschen. Beim Einlesen von Hand lässt sich das mit
+  `--auch-schrumpfen` übergehen; ein leeres Ergebnis ersetzt auch dann nichts.
+  Ein Jahrgang wird außerdem am Stück gespeichert — bricht ein Lauf mittendrin
+  ab, steht hinterher der alte Stand da und kein halber neuer. (#511)
+- **„Bis wann die Zahlen reichen" sagt es jetzt auch für den Städtevergleich.**
+  Der Block am Fuß von `/haushalt` führte jede Datenschicht auf — außer den
+  beiden Reihen, die den Vergleich mit den anderen kreisfreien Städten tragen.
+  Wer `/haushalt/vergleich` las, erfuhr an keiner Stelle, bis wann sie reichen
+  und wann der nächste Jahrgang kommt. Beide stehen jetzt dort, mit ihrem
+  eigenen Takt: Die Steuerkraft-Reihe erscheint im April desselben Jahres, der
+  Realsteuervergleich im November des Folgejahres. Und die Fußzeile nennt die
+  Stelle beim Namen: Sie versprach bisher pauschal, die Zahlen „vom Portal der
+  Stadt" zu holen — die beiden neuen Reihen kommen vom Landesamt für Statistik
+  Niedersachsen. Bleibt ein Jahrgang aus, meldet das der zweiwöchentliche
+  Prüflauf; geholt werden die Tabellen weiter von Hand, weil sie nur einmal im
+  Jahr erscheinen. (#530)
+
+### Verbessert
+- **Das Flussbild zeigt wieder eine Grafik — und sagt dazu, von wann sie ist.**
+  Für Jahre ohne Jahresabschluss stand zuletzt nur ein Hinweis und sonst
+  nichts. Jetzt steht dort das jüngste Jahr, für das die Aufschlüsselung
+  vorliegt, mit einer Ansage darüber: welches Jahr fehlt, warum, und wann es
+  üblicherweise vorgelegt wird. Der Termin kommt aus denselben Daten wie der
+  Datenstand am Seitenfuß — für den Jahresabschluss 2025 also „September
+  2026". (#PR)
+
+### Behoben
+- **Aufräumen im Fundament des Haushalts-Bereichs**, ohne sichtbare Folgen,
+  aber gegen Fehler, die sonst beim nächsten Ausbau entstanden wären: Die
+  Einlese-Pipelines fragen ihre Datenart jetzt an einer Stelle statt an zweien
+  (vorher konnte eine Änderung an der einen von der anderen still ignoriert
+  werden); fünf Beschreibungen desselben Herkunfts-Formats sind zu einer
+  geworden, nachdem drei von ihnen bereits auseinandergelaufen waren; und die
+  Breitenmessung der Diagramme steht einmal statt viermal. (#567)
+- **Ein Testwächter fiel, weil zwei Änderungen sich nicht kannten.** Der
+  Wächter über den Haushalts-Bereich prüfte, dass die Geld-Abfragen der
+  KI-Frage abgesichert laufen — und suchte sie an der Stelle, an der sie beim
+  Schreiben standen. Parallel zog eine andere Änderung sie an einen besseren
+  Ort. Die Absicherung war die ganze Zeit da, der Wächter schlug trotzdem an.
+  Er prüft jetzt die Eigenschaft statt den Ort. Nebenbei stimmen die Angaben
+  „elf Schritte, vierzehn Seiten" wieder mit dem überein, was der Bereich
+  tatsächlich hat. (#552)
+- **Vier weitere Stellen im Haushalts-Bereich ließen die halbe Breite leer.**
+  Auf „Woher das Geld kommt", „Was kostet eigentlich …?" und im Städtevergleich
+  standen je zwei Absätze untereinander, die Verschiedenes sagen — zusammen
+  nutzten sie rund 600 von 1136 Pixeln, während Karten, Listen und Zitate
+  direkt darunter die volle Breite nahmen. Dieselbe Karte behauptete damit zwei
+  verschiedene Textbreiten. Sie stehen jetzt nebeneinander, sobald der Platz für
+  zwei vollwertige Lesespalten reicht; im Städtevergleich rückt der Beleg aus
+  dem Ratsinformationssystem neben das Argument, das ihn ankündigt, und die drei
+  Vergleichsstädte stehen nebeneinander statt untereinander — sie sind der
+  Vergleich, um den es dort geht. Die Zeilenlänge bleibt überall zwischen 62 und
+  74 Zeichen: breiter zu setzen hätte den leeren Platz gefüllt und das Lesen
+  verschlechtert. Ob zwei Spalten passen, entscheidet der Platz des Blocks
+  selbst und nicht die Fensterbreite — am Desktop liegt er neben der
+  Seitenleiste, auf dem Tablet nicht. Die übrigen elf durchgesehenen Seiten
+  bleiben unverändert: Dort steht je ein einzelner Absatz über einer Grafik,
+  und das ist die richtige Form. (#557)
+- **Der Erklärblock zum Finanzausgleich ließ die halbe Karte leer.** Zwei
+  Absätze, die Verschiedenes sagen, standen untereinander und brachen bei
+  74 Zeichen um — daneben blieb Platz. Sie stehen jetzt auf breiten
+  Bildschirmen nebeneinander. Die Zeilenlänge bleibt: breiter zu setzen wäre
+  schlechter zu lesen, nicht besser. (#PR)
+- **Der Kopf einer Bereichsseite ließ die halbe Breite leer.** Text und
+  Kennzahlen standen untereinander, obwohl die drei Zahlen daneben Platz
+  gehabt hätten. Ab großen Bildschirmen stehen sie jetzt nebeneinander. Die
+  Absätze behalten ihre Zeilenlänge von 66 bis 68 Zeichen — längere Zeilen
+  wären schwerer zu lesen, nicht besser. (#PR)
+- **Was einzelne Aufgaben kosten, endete bei 2023 — obwohl die Pläne längst
+  vorlagen.** Die Stadt hat mit dem Haushaltsplan 2025 zwei Zeilen in ihre
+  Tabellen eingezogen: Zwischen „21. ordentliches Ergebnis" und den Zahlen
+  stehen seitdem „Jahresüberschuss(+)" und „/Jahresfehlbetrag (-)". Der Parser
+  suchte die Kolonne direkt hinter der Beschriftung, fand sie nicht mehr — und
+  weil ohne diese Zeile die Rechenprobe *Erträge − Aufwendungen = Ergebnis*
+  nicht aufgeht, fiel jedes einzelne Produkt der betroffenen Jahrgänge durch:
+  0 von 78 und 0 von 89. Gesucht wird jetzt vorwärts bis zur Zahlenkolonne,
+  aber nur bis zur nächsten Tabellenzeile — ist die eigene Zelle leer, bleibt
+  sie leer, statt sich die Zahlen des Nachbarpostens zu borgen. Damit kommen
+  die Jahrgänge 2024 und 2025 dazu (131 Produkte, 19 Teilhaushalte); an den
+  Jahrgängen 2018–2023 ändert sich keine einzige Zahl. Der Job, der die Lücke
+  gemeldet hat, meldet sie nicht mehr. (#548)
+- **Der Nach-oben-Knopf saß auf dem Tablet hinter der Tab-Leiste.** Er rückte
+  schon ab 768 Pixeln nach unten, obwohl die Leiste erst auf echten Desktops
+  verschwindet — also auf jedem Tablet und jedem großen Touch-Gerät genau in
+  ihren Bereich. Jetzt hängt seine Position am selben Punkt wie die Leiste
+  selbst. (#PR)
+- **Die Überschrift der Anzeigetafel brach mitten im Wort um.** „Oldenburg plant
+  883,9 Mil-/lionen Euro" — dabei blieben rechts daneben rund 400 Pixel frei.
+  Ursache war eine Breitenbegrenzung von 19 Zeichen, die noch aus einer engeren
+  Fassung stammte; die Silbentrennung, die auf schmalen Geräten deutsche
+  Komposita rettet, tat dann ihr Übriges. Der Satz steht jetzt in zwei
+  ausgeglichenen Zeilen. (#539)
+- **Der Kassenzettel erklärte etwas, das niemand erklärt bekommen muss.** „Keine
+  Rechnung — niemand überweist diesen Betrag" stand im Kasten „Was diese Zahl
+  nicht ist". Dass eine Pro-Kopf-Zahl keine Forderung ist, weiß jede Leserin;
+  der Hinweis las sich belehrend. Geblieben sind die vier Punkte, die
+  tatsächlich überraschen — wer mitgezählt wird, woher das Geld kommt, dass
+  keine Investition darin steckt und warum Städtevergleiche hinken. (#532)
+- **Der Herkunfts-Nachweis konnte eine ganze Datenschicht still verlieren.**
+  Das Aufräumen der Herkunfts-Einträge und die Meldung fehlender Herkünfte
+  gingen beide eine von Hand gepflegte Tabellenliste durch. Eine neue
+  Datenschicht, die dort vergessen wird — der Eintrag ist ausdrücklich Schritt
+  drei für einen neuen Parser —, war für beide unsichtbar: Ihre Herkünfte
+  galten als verwaist und wurden gelöscht, während ihre Zeilen weiter auf
+  deren Nummern zeigten, und die Lücken-Meldung schwieg dazu. Weil die Nummern
+  danach neu vergeben werden, zeigte so eine Zeile am Ende nicht ins Leere —
+  das wäre aufgefallen —, sondern auf ein **fremdes Dokument**. Beides fragt
+  jetzt das Datenbankschema statt der Liste; eine vergessene Tabelle ist damit
+  nicht mehr stillgestellt, sondern meldet sich. Aufgefallen ist es am
+  Gesamtabschluss auf der Testumgebung, wo die Jahrgänge 2014–2020 als Quelle
+  einen Teilhaushalts-Plan auswiesen; die Jahrgänge sind neu eingelesen und
+  nennen wieder ihren Prüfbericht. (#537)
+- **Die Vergleichsseite nannte den Jahresversatz noch als offene Frage.** Sie
+  ist mit #516 beantwortet: Der offene Datensatz der Stadt beschriftete die
+  Steuerkraft ein Jahr zu früh, nachgewiesen an den eigenen Büchern der Stadt.
+  Beide Reihen tragen jetzt dieselbe Jahresangabe. Zusammengerechnet werden sie
+  weiterhin nicht — sie stammen aus zwei Veröffentlichungen, die sich in
+  Nachträgen um kleine Beträge unterscheiden können. (#526)
+- **Steuerkraft und Schlüsselzuweisungen standen unter dem falschen Jahr.** Der
+  offene Datensatz der Stadt, aus dem wir beide Reihen lesen, beschriftet seine
+  Zeilen um ein Jahr zu früh — die Beträge selbst stimmen, nur die Jahreszahl
+  daneben nicht. Damit nannte die KI-Frage zu einer richtigen Zahl das falsche
+  Jahr, und auf der Seite „Woher kommt das Geld?" stand der Betrag des
+  laufenden Ausgleichsjahres unter dem Vorjahr. Wir rücken die Jahreszahlen
+  jetzt beim Einlesen zurecht. Belegt ist das doppelt: Die Tabellen des
+  Landesamts für Statistik Niedersachsen führen dieselben Beträge auf den Euro
+  genau, aber ein Jahr später (geprüft für die Ausgleichsjahre 2016 bis 2026),
+  und die Haushaltspläne der Stadt weisen dieselben Summen als abgerechnetes
+  Ergebnis des jeweils späteren Jahres aus. Die Pro-Kopf-Spalten des
+  Datensatzes zeigen wir nicht mehr an — sie rechnen gegen die Einwohnerzahl
+  des zu frühen Jahres. Im Quellenverzeichnis steht die Korrektur samt
+  Begründung. (#516)
+- **Bei doppelt veröffentlichten Teilhaushalts-Plänen stand die schlechtere
+  Quellenangabe an der Zahl.** Sechs Teilhaushalte hängen an zwei Vorlagen —
+  dieselbe Datei, ein zweites Mal unter einem anderen Tagesordnungspunkt
+  hochgeladen. Welche der beiden Angaben an den Zahlen landete, entschied bis
+  jetzt die Sortierreihenfolge, und sie fiel zugunsten der weniger
+  brauchbaren aus: „TOP 5 - Anlage III - THH 08" sagt außerhalb seiner Sitzung
+  nichts, und am Plan für 2018 stand „2019 THH 08" — die falsche Jahreszahl.
+  Jetzt gilt ausdrücklich das zuerst veröffentlichte Dokument, also die Anlage
+  der Haushaltsvorlage selbst. **Keine Zahl ändert sich dadurch** (die
+  Dokumente sind Byte für Byte gleich, nachgemessen), nur die Angabe daneben.
+  Tragen zwei Dokumente einmal wirklich verschiedene Zahlen — ein
+  Nachtragshaushalt etwa —, wird das künftig gemeldet, statt still
+  überschrieben zu werden. (#515)
+- **„Geplant und geworden" behauptete einen Vergleich, den es nicht gab.** Wo
+  ein Jahresabschluss keine Planwerte hergibt, machte die Seite aus der
+  fehlenden Zahl eine Null und schrieb: „799,1 Mio. € eingenommen — geplant
+  waren —, also 799,1 Mio. mehr." Darunter stand eine Überschrift samt Legende
+  über einer leeren Grafik. Jetzt nennt die Seite die tatsächlichen Werte und
+  sagt, dass die Bezugsgröße fehlt, statt eine Abweichung zu erfinden. (#512)
+- **Deckungsgrad der Produktebene mit englischem Dezimalpunkt.** „81.7 %" statt
+  „81,7 %" — mitten in einem Text, der sonst durchgehend Komma schreibt. (#512)
+- **„Geplant und geworden": Die kleinen Bereiche waren nicht zu sehen.** Auch
+  als Euro-Strecke blieben fünf der zwölf Bereiche kürzer als zwei Prozent der
+  Breite — zwischen −0,7 und +20,5 Mio. liegt zu viel. Die Grafik misst jetzt
+  wahlweise in Prozent des jeweiligen Plans; damit wird die mittlere Strecke
+  fünfmal so lang und ein Bereich von 231 Mio. mit einem von 6 Mio.
+  vergleichbar. Der Umschalter dreht dabei die Reihenfolge: nach Euro steht
+  vorn, wo am meisten Geld anders floss, nach Prozent, wessen Plan am
+  weitesten danebenlag. (#507)
+- **„Geplant und geworden": Die Abweichung war nicht zu sehen.** Plan und
+  Ergebnis lagen auf einer Skala, die bei null begann — bei einem Bereich mit
+  6,2 Mio. geplant und 6,3 tatsächlich fielen beide Punkte aufeinander. Die
+  Achse misst jetzt den Abstand zum Plan statt der Höhe des Betrags: Der
+  Nullpunkt ist „wie geplant", die Strecke zeigt, wie weit es davon abwich.
+  Dazu steht die Abweichung auch in Prozent, damit ein großer und ein kleiner
+  Bereich vergleichbar sind. Die Beträge selbst stehen unverändert daneben.
+  (#506)
+
+- **Kostendeckungsgrad über 100 % wurde falsch erklärt.** Bei „Finanzmanagement
+  und Recht" — dort verbucht die Stadt ihre Steuern — stand unter dem Wert von
+  518 %, „der Rest" komme aus Steuern und Zuweisungen. Einen Rest gibt es dort
+  nicht: Der Bereich nimmt mehr ein, als er ausgibt. Der Satz sagt das jetzt,
+  samt Hinweis, dass darin keine besondere Sparsamkeit steckt, sondern die
+  Zuordnung der Einnahmen. (#503)
+
+### Verbessert
+- **Der Haushalts-Bereich einmal am Stück gelesen — mit den Augen von jemandem,
+  der noch nie einen kommunalen Haushalt gesehen hat.** Die neun Seiten sind in
+  zwei Wochen einzeln entstanden; diese Runde ändert keine Zahl und kein
+  Feature, sondern das, was zwischen ihnen stand. Aus den sechs gleichrangigen
+  Wegweiser-Karten wird ein Weg mit sechs nummerierten Schritten, der bei „Woher
+  kommt das Geld?" beginnt und bei der Prüfung endet. Die Balkenleiste auf der
+  Übersicht heißt nicht mehr „Woher das Geld kommt" — sie zeigt, welcher
+  *Bereich* eine Einnahme verbucht, und weil Steuern zentral in der Kämmerei
+  auflaufen, las man dort heraus, das meiste Geld komme aus der Verwaltung
+  selbst. Die Einnahmen- und die Produktseite sagen jetzt oben, dass ihre Jahre
+  nicht die der Übersicht sind, statt es unten nachzureichen. Zwei Seiten
+  behaupteten weiterhin, die Produktebene werde „noch eingelesen" — sie ist seit
+  Wochen da und jetzt von dort aus verlinkt. Große Beträge bekommen eine
+  Bezugsgröße: die Rücklage steht auch je Einwohnerin und Einwohner, „169,2
+  Ausgaben" heißt wieder „169,2 Mio. € Ausgaben". Und der Steuer-Verlauf sagt
+  dazu, dass in „das 5,2-Fache" seit 1998 die Teuerung steckt. (#512)
+- **Widersprüche zwischen zwei Seiten aufgelöst, statt sie zu übertünchen.**
+  Der Steuer-Steckbrief rechnete aus, was ein Hebesatzpunkt Grundsteuer bringt —
+  aus einem Betrag, der A und B zusammenfasst, geteilt durch den Hebesatz von
+  nur B. Das Haushalts-Labor verweigert genau diese Zahl seit jeher mit
+  derselben Begründung. Jetzt tun es beide: Der Steckbrief zeigt statt der Zahl,
+  warum es sie nicht gibt. Ebenso heißt ein Minusbetrag im Bereichs-Dossier
+  nicht mehr „bleibt der Stadt" (als bliebe ihr etwas übrig), sondern „trägt die
+  Stadt" — dasselbe Wort, das die Übersicht dafür benutzt. (#512)
+- **Kein Grün mehr im Haushalt.** Ein geplanter Überschuss trug den Erfolgs-Tint
+  aus der Beschluss-Semantik und stand damit als gute Note neben dem
+  orangefarbenen Minus. Für die Hantel-Grafik ist seit jeher begründet, warum es
+  im Haushalt keine Bewertungsfarben gibt; das gilt jetzt auch für die
+  Überschuss-Pille und die Ergebnis-Spalte der Zeitreihen-Tabelle. (#512)
+- **Das Glossar erklärt die Wörter, über die man wirklich stolpert.** Neu sind
+  unter anderem Ansatz, Gesamtermächtigung, Ertrags- und Aufwandsart,
+  Ergebnisrechnung, ordentliches Ergebnis, Kernverwaltung, Textziffer und
+  Rechnungsprüfungsamt — und das Quellenverzeichnis unter jeder Haushaltsseite
+  erklärt sie jetzt an Ort und Stelle, statt sie nur zu benutzen. Die Erklärung
+  zu „Erschließung" war dort, wo sie automatisch erschien, teils schlicht
+  falsch: Im Steckbrief des Stadtarchivs meint das Wort das Ordnen von
+  Beständen, nicht den Straßenbau. (#512)
+
+- **Das Haushalts-Labor sagt jetzt, ob das viel ist.** Bisher bewegte man
+  Regler und eine Zahl änderte sich — ohne Maßstab. Jetzt füllt jede Bewegung
+  sichtbar einen Anteil der Lücke, und unter jedem Regler steht, was er
+  bewirkt: in Millionen, in Euro je Einwohner und als Anteil am Minus. Am
+  Hebesatz kommt dazu, was ein Betrieb mit 100.000 € Gewerbeertrag danach
+  zahlt. Kürzungen werden in echte Aufgaben übersetzt („ungefähr so viel, wie
+  die Kulturgutvermittlung im ganzen Jahr kostet") — aus den
+  Teilhaushaltsplänen, immer aus demselben Bereich. Drei Szenarien zum
+  Anklicken zeigen die Größenordnungen, „Alles auf Anschlag" auch die
+  Obergrenze: Mehr als 39,4 Mio. € geben diese zwei Stellschrauben nicht her.
+  Auf dem Handy bleibt das Ergebnis beim Drehen sichtbar.
+- **Neu im Labor: „Wie verlässlich ist der Plan?"** Der Ansatz gegen das
+  tatsächliche Ergebnis aus den Jahresabschlüssen — in allen fünf
+  eingelesenen Jahren fiel es besser aus als geplant, zwischen 2,9 und
+  38,1 Mio. €. Damit steht das geplante Minus zum ersten Mal in einem
+  Verhältnis, ohne dass es dadurch unecht würde.
+
+### Behoben
+- **Zahlen übereinander im Steuer-Verlauf.** Auf dem Steuer-Steckbrief lagen die
+  beiden Rückgangs-Marken der Ist-Kurve ineinander und über der Achsenzahl
+  daneben — bei den meisten Steuerarten liegen die größten Einbrüche in
+  benachbarten Jahren ganz links. Die Beschriftungen bleiben jetzt in der
+  Zeichenfläche, weichen sich zeilenweise aus und tragen einen feinen
+  Führungsstrich zu ihrem Punkt; Kurve und Fall-Linien schneiden nicht mehr
+  durch die Ziffern.
+
+### Verbessert
+- **Die drei Wege in die Tiefe sind jetzt zu sehen.** „Woher kommt das Geld?",
+  „Muss oder kann?" und das Haushalts-Labor standen als blasse Textkacheln
+  zwischen zwei großen Diagrammen und gingen dort unter. Sie tragen jetzt ein
+  Piktogramm, ihren Titel in der Display-Schrift und einen Pfeil, der beim
+  Überfahren mitgeht — und stehen unter einer eigenen Zeile „Tiefer
+  einsteigen".
+
+### Hinzugefügt
+- **Geplant und tatsächlich — der Haushalt bekommt seine zweite Hälfte.** Bis
+  jetzt zeigte Ratslotse nur, was die Stadt ausgeben *wollte*. Aus den
+  Jahresabschlüssen, die als Anlagen längst im Ratsinformationssystem lagen,
+  lesen wir nun auch, was daraus geworden ist — für fünf Jahrgänge, samt
+  Aufschlüsselung der Einnahmen nach Steuern, Zuweisungen und Gebühren. 2023
+  etwa nahm die Stadt 733 Mio. € ein statt der geplanten 665. Dazu kommt die
+  Produktebene aus den Teilhaushalts-Plänen: was einzelne Aufgaben kosten,
+  von der Kindertagesbetreuung (71,1 Mio. €) bis zum Brandschutz — mit dem
+  zuständigen Amt und einer ehrlichen Angabe, wie viel des Haushalts diese
+  Liste abdeckt. (#500)
+
+### Hinzugefügt
+- **Der Haushalt erklärt sich jetzt selbst.** Vier neue Seiten machen aus
+  Zahlenkolonnen eine Geschichte: **Woher kommt das Geld?** zeigt alle
+  Einnahmequellen — und dass der Rat nur bei dreien von sieben überhaupt
+  etwas zu entscheiden hat. Die **Steuer-Steckbriefe** beantworten die Frage,
+  mit der die meisten kommen: Wer legt das eigentlich fest? Drei Stufen vom
+  Bundesgesetz über die Messzahl bis zum Hebesatz, den der Rat beschließt,
+  dazu ein Rechenbeispiel und die tatsächlichen Einnahmen seit 1998.
+  **Muss oder kann?** sortiert die Bereiche nach Spielraum und rechnet vor,
+  warum Kürzen allein das Defizit nicht schließt. Und im **Haushalts-Labor**
+  kann man selbst am Hebesatz drehen — mit einer dauerhaft sichtbaren Spalte,
+  was der Rechnung entgegensteht. Lotti übersetzt an den schweren Stellen,
+  Fachwörter erklären sich beim Antippen, und jede Zahl trägt eine Fußnote
+  mit Quelle, Fundstelle, Stand und Lizenz. (#493)
+
+### Verbessert
+- **Beschluss-Seiten sagen, was es kostet.** Steht in der Vorlage eine Angabe
+  zu den finanziellen Auswirkungen, erscheint sie jetzt als „Was kostet das?"
+  — im amtlichen Wortlaut, als Zitat der Verwaltung gekennzeichnet, mit dem
+  Weg in den Haushalt. Rund 1.400 Vorlagen tragen dieses Feld. (#493)
+
+### Verbessert
+- **„Frag den Rat" rechnet jetzt mit echten Steuerzahlen.** Geldfragen bekamen
+  bisher nur die Planzahlen des laufenden Haushaltsjahres mit. Jetzt kennt die
+  Antwort auch, was die Stadt **tatsächlich eingenommen** hat — Gewerbesteuer,
+  Grundsteuer, Einkommen- und Umsatzsteueranteil, jeweils mit dem Wert von vor
+  zehn Jahren daneben —, wie sich ein Haushaltsbereich seit 2020 entwickelt
+  hat, und bei Fragen nach Hebesätzen den Zusammenhang, den man leicht
+  übersieht: Nimmt die Stadt mehr Steuern ein, kürzt das Land seine
+  Zuweisungen. Plan- und Ist-Zahlen bleiben dabei streng getrennt und werden
+  in der Antwort als solche benannt. (#492)
+
+### Hinzugefügt
+- **Neuer Bereich „Haushalt".** Wohin fließt das Geld der Stadt? Unter
+  `/haushalt` steht der Ergebnishaushalt 2020–2026 zum ersten Mal lesbar da:
+  drei Kernzahlen, das Ersparte der Stadt (und wie lange es beim aktuellen
+  Minus noch reicht — als offene Rechnung, nicht als Prognose), zwei
+  Geldfluss-Ansichten („Woher & wohin" als Balken, „Von 100 Euro der Stadt"
+  als Raster), die Einnahmen-Ausgaben-Schere über die Jahre und alle 13
+  Teilhaushalte als Karten — sortiert nach dem, was sie die Stadt unterm
+  Strich kosten, nicht nach dem, was sie brutto ausgeben. Jeder Bereich hat
+  eine eigene Seite mit Kostendeckung, Brutto-gegen-Netto-Vergleich und
+  Entwicklung. Jede Zahl trägt ihre Quelle (Haushaltsplan-PDF bzw.
+  Open-Data-CSV der Stadt); fehlende Daten erscheinen als ehrliche Lücke,
+  nie geschätzt. (#491)
+
+### Verbessert
+- **Haushalts-Quiz ohne 2024-Lücke, Stadtfinanzen als Datenfundament.** Die
+  Trend-Diagramme der Haushalts-Quizfragen übersprangen 2024 — das Plan-PDF
+  dieses Jahrgangs ist technisch unlesbar. Der Jahrgang kommt jetzt aus dem
+  Open-Data-Portal der Stadt (maschinenlesbar, Lizenz dl-de/by-2.0), die
+  Reihe 2020–2026 ist vollständig. Dazu, als Fundament für den kommenden
+  Stadtfinanzen-Bereich: Ist-Steuereinnahmen je Steuerart seit 1998 und
+  Steuerkraft samt Schlüsselzuweisungen seit 1992, aus derselben Quelle. (#489)
+- **Ein umbenannter Haushaltsbereich verliert nicht mehr seine Erklärung.** Die
+  Stadt tauft ihre Teilhaushalte um, ohne den Zuschnitt zu ändern — „Umwelt,
+  Bauordnung, Grün u. Friedhöfe" heißt im Haushalt 2026
+  „Klima/Umwelt/Mobilität/Bau/Grün/Friedh.". Bisher war der Erklärtext an den
+  Namen geknüpft und fiel bei jedem neuen Jahrgang still weg; jetzt hängt er am
+  Bereich selbst, und alle 13 Teilhaushalte haben einen — vorher acht. Zwei
+  davon waren zudem schief: Die Eingliederungshilfe ist bei Soziales der größte
+  Block, und im Finanzmanagement liegen alle Steuern, aber nur die allgemeinen
+  Zuweisungen des Landes. (#517)
+- **„Muss oder kann?" sagt jetzt, was die Stadt selbst dazu sagt.** Die Seite
+  beginnt mit einem Balken, der die geplanten Ausgaben in Pflicht, Pflicht mit
+  Spielraum und Kür zerlegt und das geplante Minus als Marke daneben setzt —
+  statt drei Filterklicks über einer Liste aus 13 Karten. Neu ist der
+  Gegencheck: Die Stadt gibt in ihren Teilhaushaltsplänen zu jeder Aufgabe an,
+  worauf sie beruht und wie viel Spielraum sie bei ihr sieht. Bei 6 von 9
+  Bereichen, für die es diese Angabe gibt, deckt sich das mit unserer
+  Einordnung — bei Jugend und Familie, Finanzmanagement und Recht sowie
+  Stadtplanung nicht, und genau das steht jetzt da, statt geglättet zu werden.
+  Dazu die Rechtsgrundlagen im Wortlaut des Plans und die Korrektur einer
+  schiefen Rechnung: Das Freiwillige zu streichen spart nicht seine 47,1 Mio. €
+  Aufwand, sondern seinen Zuschussbedarf von 43,0 Mio. — rund 60 % des
+  geplanten Minus. (#521)
+- **„Woher kommt das Geld?" sortiert jetzt nach Entscheidungsmacht — und sagt
+  beim Finanzausgleich ehrlich, dass es die Zahl nicht gibt.** Die
+  Einnahmequellen standen bisher nach Betrag sortiert nebeneinander, jede mit
+  ihrem eigenen Spielraum-Zeichen; die eigentliche Aussage musste man sich aus
+  sieben Karten zusammensuchen. Sie stehen jetzt in drei Gruppen: was der Rat
+  selbst beschließt, was er nur innerhalb gesetzlicher Grenzen darf, und worauf
+  er gar keinen Einfluss hat. Neu dazu ein Block über den Finanzausgleich —
+  nimmt die Stadt mehr eigene Steuern ein, rechnet das Land in den
+  Schlüsselzuweisungen dagegen. Wie stark, sagen wir bewusst **nicht**: Über
+  die 33 Jahrespaare des Datensatzes streut dieser Wert so weit, dass jede
+  einzelne Zahl in die Irre führte, und in 15 von 26 Jahren mit steigender
+  Steuerkraft stieg die Zuweisung sogar mit. Der Block zeigt deshalb beide
+  Reihen nebeneinander und zählt aus, statt einen Umrechnungskurs zu erfinden.
+  Im Steuer-Steckbrief außerdem zwei Korrekturen: Der Überschlag „was brächte
+  ein Hebesatzpunkt mehr" war als „brutto" bezeichnet, obwohl der Datensatz die
+  Gewerbesteuer bereits nach Abzug der Umlage führt, und beim Hebesatz stand
+  „bis 2025", obwohl wir genau einen einzigen Jahrgang kennen. (#519)
+- **„Soziales", „Finanzmanagement" — was heißt das eigentlich? Der Haushalt hat
+  jetzt ein Verzeichnis seiner Bereiche.** Unter `/haushalt/bereiche` stehen alle
+  13 Teilhaushalte mit Betrag und einer Zeile Klartext, vorweg der schwierigste
+  Fall: Bei „Finanzmanagement und Recht" geht der Löwenanteil aller Einnahmen
+  ein, nicht weil die Kämmerei etwas erwirtschaftet, sondern weil dort alle
+  Steuern und die allgemeinen Zuweisungen des Landes zentral verbucht werden —
+  was da zusammenkommt, steht jetzt einzeln daneben. Die Bereichsseite selbst
+  rechnet ihre Kernaussage neu vor: ein Wasserfall von den Ausgaben über die
+  eigenen Einnahmen zu dem Betrag, den die Allgemeinheit trägt, in Millionen
+  statt als Prozent-Ring. Dazu die tatsächliche Zusammensetzung der eigenen
+  Einnahmen aus dem Jahresabschluss statt einer Schätzung, die teuersten
+  Aufgaben des Bereichs aus der Produktebene mit Jahresstempel, und drei Reiter
+  statt einer sehr langen Rolle. (#523)
+- **Die Einnahmen-Ausgaben-Schere zeigt jetzt die Lücke selbst — und was
+  tatsächlich daraus wurde.** Zwei Linien zwangen dazu, den Abstand mit dem
+  Auge abzumessen; genau der Abstand ist aber die Aussage. Er ist jetzt eine
+  Fläche mit einer Strebe an jedem Jahr, und der größte Abstand trägt seinen
+  Betrag im Bild. Dazu der Wirklichkeitstest: Für die Jahre, für die ein
+  Jahresabschluss vorliegt, steht als Raute daneben, was am Ende herauskam —
+  2023 und 2024 plante die Stadt ein Minus und schloss mit einem Plus ab.
+  Deshalb heißt die Überschrift jetzt „Seit 2023 *plant* Oldenburg mit mehr
+  Ausgaben als Einnahmen", und sie wird aus den Daten gerechnet statt
+  festgeschrieben. Wo ein Jahrgang seinen Plan an einer anderen Bezugsgröße
+  misst (2020: Ansatz samt Nachtragshaushalt), steht ein Sternchen mit
+  Fußnote. Farbe bewertet dabei weiterhin nichts: Signal-Orange heißt „hier
+  ist die Differenz" — in den Plus- wie in den Minusjahren. (#522)
+- **„Wann wird der Haushalt eigentlich entschieden?" — eine neue Seite zeigt
+  den Weg durch den Rat.** Unter `/haushalt/jahr` steht für acht Haushaltsjahre
+  jede Station mit Datum, Gremium und Ergebnis: Einbringung des Entwurfs,
+  Teilhaushalte in den Fachausschüssen, Vorberatungen, Beschluss — jede Station
+  verlinkt auf ihre Sitzung. Ein Jahreskreis zeigt, wo im Kalender die Runde
+  liegt. Der Befund darin ist der eigentliche Grund für die Seite: Der Entwurf
+  kommt verlässlich im Oktober, die Entscheidung wandert vom 16. Dezember bis
+  zum 28. Februar — fünf der acht Haushalte wurden erst beschlossen, als das
+  Jahr schon lief. Termine der laufenden Runde nennt die Seite bewusst nicht:
+  Das Ratsinformationssystem veröffentlicht Tagesordnungen erst kurz vorher,
+  und ein geratenes Datum wäre schlechter als keins. (#524)
+- **Der Haushalt fängt jetzt mit einer Zahl an — und die Bereiche stehen als
+  Tabelle statt als Kachelwand.** Ganz oben steht auf dunklem Grund, worum es
+  geht („Oldenburg plant 883,9 Millionen Euro", daneben Einnahmen, Ausgaben und
+  Differenz) samt dem Hinweis, dass Investitionen in einem eigenen Haushalt
+  laufen und das Budget also größer ist. Darunter zeigt eine Tabelle für jeden
+  Bereich in einem Balken, wie sich seine Ausgaben zusammensetzen — alle Balken
+  auf einer Skala, sodass ohne Fußnote sichtbar wird, dass der längste
+  Ausgabenposten nicht der ist, der die Stadt am meisten kostet (2026: Soziales
+  und Gesundheit 283,1 Mio. Ausgaben gegen Jugend und Familie 169,2 Mio. — aber
+  113,2 zu 129,9 Mio. Zuschussbedarf). Welche Bereiche in der Liste fehlen und
+  warum, wird gerechnet statt behauptet. Und die Farbskalen der Balken hängen
+  jetzt an der Fläche statt am Hell/Dunkel-Modus: Im hellen Modus wäre der
+  größte Einnahmeposten auf dem dunklen Grund sonst fast unsichtbar. (#525)
+- **„Woher, wohin" zeigt kein anderes Jahr mehr, wenn das gewählte fehlt.** Wer auf der Haushalts-Seite ein Planjahr wählte, bekam wortlos die Grafik des nächstgelegenen Jahres mit Jahresabschluss zu sehen; dass da ein anderes Jahr stand, verriet nur eine Zeile darüber. Jetzt sagt die Seite, was fehlt — die Einnahmearten liegen uns für dieses Jahr noch nicht vor — und bietet das jüngste vollständige Jahr zum Anklicken an, statt es ersatzweise anzuzeigen.
+- **Der Haushalt als Kassenzettel: 883,9 Millionen sind 5.005 Euro je
+  Einwohnerin und Einwohner.** Millionenbeträge lassen sich nicht fühlen, ein
+  Kassenbon schon — er zeigt dieselben Bereiche in derselben Reihenfolge, nur
+  geteilt durch die amtliche Einwohnerzahl: 1.603 € für Soziales und
+  Gesundheit, 958 € für Jugend und Familie, 225 € für Kultur und Sport. Ganz
+  unten steht die Zeile, um die es politisch geht — 402 € kommen aus dem
+  Ersparten, von dem danach noch 702 € je Kopf übrig sind. Daneben steht, was
+  die Zahl **nicht** ist: keine Rechnung, die jemand überweist; geteilt wird
+  durch alle Menschen, nicht durch Steuerzahlende; und nichts davon baut etwas
+  Neues, denn Investitionen laufen in einem eigenen Haushalt. Bezugsgröße sind
+  176.614 Einwohnerinnen und Einwohner zum Stichtag 31.12.2024 — der steht mit
+  an der Rechnung, weil eine Pro-Kopf-Angabe ohne Bezugsjahr nichts wert ist.
+  (#528)
+- **Woher das Geld kommt, steht jetzt auch für 2025 und 2026 da — und was nur
+  Vorausschau ist, sagt es dazu.** Die Aufschlüsselung nach Steuern,
+  Zuwendungen und Gebühren gab es bisher nur bis 2024, weil sie aus den
+  Jahresabschlüssen stammt; für die laufenden Planjahre fehlte sie. Sie steht
+  längst im Haushaltsplan selbst und ist jetzt für acht Planjahre (2019–2026)
+  eingelesen. Der Plan nennt fünf Spalten „Ansatz", aufgestellt ist aber immer
+  nur ein Jahr — die drei danach sind mittelfristige Finanzplanung, und die
+  schreibt jeder neue Haushalt neu (von 23 Posten bleiben zwischen zwei Plänen
+  0 bis 2 gleich). Beides wird deshalb getrennt gespeichert und getrennt
+  beschriftet, damit später nirgends ein „Plan für 2029" behauptet wird, den
+  es nicht gibt. Übernommen wird ein Jahrgang nur, wenn die Tabelle in allen
+  sechs Spalten aufgeht und der Plan seine Ansatz-Spalte selbst markiert. Und
+  weil die Zahlen aus der Vorlage stammen, mit der die Verwaltung den Haushalt
+  einbringt, steht an jeder von ihnen, dass sie der Stand der Einbringung
+  sind — was der Rat in den Beratungen noch ändert, waren zuletzt bis zu
+  13 Mio. €. (#530)
+- **Der Haushalt hat jetzt einen Weg statt einer Kachelwand — und drei Seiten
+  sind überhaupt erst auffindbar.** „Wann wird der Haushalt entschieden?" und
+  der Städtevergleich waren von keiner Seite aus verlinkt, das Verzeichnis der
+  Teilhaushalte nur rückwärts über die Detailseite eines einzelnen Bereichs.
+  Der Wegweiser auf der Übersicht führt jetzt durch alle zehn
+  Vertiefungsseiten, und zwar in vier benannten Stufen statt als lange Liste:
+  erst die Zahlen (woher das Geld kommt, was hinter den Bereichsnamen steckt,
+  was fest ist, was einzelne Aufgaben kosten), dann die Gegenprobe (was
+  daraus wurde, und was das Rechnungsprüfungsamt dazu sagt), dann der Rahmen
+  (die Betriebe neben dem Haushalt, der Vergleich mit anderen Städten),
+  zuletzt das Mitreden (wann entschieden wird, und was sich drehen ließe).
+  Der Städtevergleich steht bewusst spät: Er beantwortet eine Frage, die sich
+  erst stellt, wenn man die eigenen Zahlen kennt. Auf dem Handy braucht das
+  trotz drei zusätzlicher Ziele kaum mehr Platz als vorher. (#529)
+- **Ratslotse gendert jetzt durchgängig — mit Sternchen.** Aus „Nutzer" wird
+  „Nutzer*innen", aus „je Einwohnerin und Einwohner" wird „je Einwohner*in";
+  auch die Anweisungen an die KI sind mitgezogen, damit die Antworten nicht
+  weiter in generischen Maskulina zurückschreiben. Namen und Rechtsbegriffe
+  bleiben, wie sie heißen: Die „Einwohnerfragestunde" steht so im
+  Kommunalverfassungsgesetz, „Bürgerinfo" heißt das Ratsinformationssystem der
+  Stadt, und „Antragsteller" sind hier Fraktionen, keine Personen. (#533)
+- **Die Anzeigetafel des Haushalts ist im Hellmodus hell — und die Tabelle,
+  mit der die Konzern-Seite sich selbst bestätigte, ist weg.** Die Fläche mit
+  „Oldenburg plant 883,9 Millionen Euro" war in beiden Farbmodi dunkel und
+  stand im hellen Modus als schwarzblaues Feld über der halben Seite; sie
+  folgt jetzt dem Modus und bleibt trotzdem vom Rest der Seite abgesetzt. Die
+  Balken darauf wurden dafür neu gestuft, damit auch der kleinste Posten und
+  die schraffierte Rücklagen-Marke sichtbar bleiben — im Hellmodus stehen sie
+  jetzt weiter vom Grund ab als vorher im Dunkelmodus. Von der Konzern-Seite
+  verschwunden ist der Block „Dieselbe Zahl, zwei Quellen": acht Zeilen, in
+  denen jedes Jahr zweimal dieselbe Summe und daneben „unter 1 Tsd. €
+  Unterschied" stand. Dass zwei Dokumente übereinstimmen, ist unsere
+  Qualitätssicherung — sie läuft unverändert weiter, steht in der Technik-Doku
+  und in Tests, aber nicht mehr auf der Seite. (#535)
+- **Die Grafiken im Haushalt schreiben ihre Zahlen jetzt selbst an.** Unter der
+  Zeitreihe auf `/haushalt`, der Steuerkurve auf `/haushalt/steuer` und den
+  beiden Reihen des Finanzausgleichs steht eine Leiste, die immer ein Jahr mit
+  allen seinen Werten zeigt — im Ruhezustand das jüngste. Überfahren, Antippen
+  oder die Pfeiltasten wechseln das Jahr, und weil die Leiste echter Text ist,
+  steht die Zahl auch im Screenshot, im Ausdruck und in der Vorlesehilfe; ein
+  Tooltip wäre nur für die Maus da gewesen. In der 100-Euro-Ansicht hebt ein
+  Bereich seine Felder im Raster hervor, egal ob man ihn in der Liste oder im
+  Bild wählt. Die Zahlentabellen bleiben — 28 Werte nebeneinander kann kein
+  Bild —, starten aber zugeklappt. (#536)
+
+<!-- GEPARKT (nur dev.ratslotse.de, Umgebungs-Gate): Eintrag aktivieren,
+     sobald der Kommunalwahl-Vergleich auf Prod freigeschaltet wird.
+### Hinzugefügt
+- **Wahlprogramm-Vergleich zur Ratswahl am 13. September.** Unter
+  `/kommunalwahl` — öffentlich, ohne Konto — hat Ratslotse alle Programme
+  gelesen: die acht Listen mit eigenem Kommunalwahlprogramm plus BSW (dessen
+  Landesprogramm Oldenburg nirgends erwähnt und deshalb überall markiert ist),
+  entlang von 44 Thesen. Zwölf Themenseiten stellen die Positionen nebeneinander,
+  neun Profilseiten zeigen je ein Programm mit Kernpunkten und Auffälligkeiten,
+  eine Nähe-Matrix rechnet aus, wer wem wie oft zustimmt — und jede einzelne
+  Aussage trägt ein Belegzitat mit Seitenzahl, das direkt ins Original der
+  Partei springt. Die sieben Listen ohne vergleichbares Programm fehlen nicht,
+  sondern stehen mit Rechercheprotokoll dabei. Ausgewertet hat eine KI, keine
+  Redaktion — das sagt die Seite an drei Stellen selbst und lädt zum Nachprüfen
+  ein: Ratslotse hostet die Programme nicht, sondern prüft live, ob hinter dem
+  Partei-Link noch genau die Datei steht, die ausgewertet wurde. Dazu vier
+  Auswertungen, die es sonst nirgends gibt: eine Karte der Nähe (alle 36
+  Paarabstände als Bild), „Steht allein da" (Positionen einer Liste gegen alle
+  anderen), ein Themen-Fingerabdruck je Programm und „Wie dieses Programm
+  redet" (Umfang, Satzlänge, typische Begriffe) — und der **Thesen-Check**:
+  dieselben 44 Thesen selbst beantworten (Überspringen erlaubt, Wichtiges
+  zählt mit ★ doppelt) und sehen, wie oft jede Liste übereinstimmt, Satz für
+  Satz belegt. Kein Wahltipp, und die Antworten bleiben auf dem Gerät. (#356)
+-->
+
+- **„Dokument öffnen" öffnet jetzt das Dokument.** Im Quellenverzeichnis der Haushalts-Seiten führten sechs Quellen auf die Startseite des Ratsinformationssystems — man durfte das PDF selbst suchen. Der Link zeigt jetzt auf das Dokument des gerade gezeigten Jahres (wechselt das Jahr, wechselt das PDF), nennt die Fundstelle darin („Abschnitt 3.2"), und wo wir kein Dokument haben, verspricht er auch keines mehr. Der Knopf „Haushaltsplan als PDF" oben auf der Übersicht entfällt dafür: Er ließ eine von mehreren Quellen wie die einzige aussehen, seine jahresgenaue Adresse steckt jetzt im Beleg. Quellenverzeichnis und Datenstand stehen außerdem nicht mehr in der Kartenform des Inhalts, sondern zugeklappt als Apparat am Seitenfuß. (#538)
+- **Fünf Stellen im Haushalt erklären wieder den Haushalt statt uns.** Unter den Zahlen auf „Der Konzern Stadt" und „Steht Oldenburg besser da als Osnabrück?" standen bisher unsere eigenen Rechenproben und darunter „Gemessen: 0,00 % Abweichung" — jetzt steht dort nur noch, in welchem Abschnitt des Dokuments die Zahl zu finden ist, was beim Nachschlagen im 300-Seiten-PDF hilft. Ebenso raus: „Es erscheinen nur Jahre, deren Zahlen unsere Prüfung bestehen" samt drei Rechenproben in Prosa („Plan gegen Wirklichkeit"), die Parser-Bedingung im Fuß der Prüfungs-Seite und der Betriebsablauf im Datenstand („geprüft wird alle zwei Wochen"). Auf „Muss oder kann?" entfällt die Quote, zu wie viel Prozent unsere Einordnung sich mit der Selbstauskunft der Stadt deckt; die **Abweichung** bleibt und steht jetzt vorn, denn wo beide sich widersprechen, ist das eine Auskunft über die Aufgabe. Was bleibt, ist das, was jemandem etwas sagt: die Quelle, der Hinweis auf eigene Rechnungen und echte Grenzen wie „für dieses Jahr liegt der Schlussbericht nicht in lesbarer Form vor". Die Prüfungen selbst laufen unverändert weiter — sie stehen in Tests und in der Technik-Doku. (#542)
+- **„Frag den Rat" kennt jetzt den Haushalt.** Geldfragen sahen bisher nur Beschluss-Beträge, den Haushaltsplan und die Steuereinnahmen — Jahresabschlüsse, die 377 städtischen Aufgaben samt Rechtsgrundlage, die Feststellungen des Rechnungsprüfungsamts, der Konzern Stadt und der Städtevergleich blieben unsichtbar. Jetzt zieht jede Frage genau die Quellen, die sie beantworten: „Hat die Stadt 2024 mehr ausgegeben als geplant?" bekommt den Jahresabschluss samt Begründung der Verwaltung, „Muss die Stadt das Theater betreiben?" die Rechtsgrundlage der Aufgabe, „Was kostet die Stadt insgesamt?" den Konzern statt nur den Kernhaushalt. Jede Zahl kommt mit Jahr und Fundstelle, und Fragen ohne Geldbezug bekommen weiterhin nichts davon. (#543)
+
 ## [1.13.2] – 2026-08-19
 
 ### Behoben

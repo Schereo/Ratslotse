@@ -16,6 +16,8 @@ LLM-Störung auch geht. Tests, die eine Modellantwort brauchen, mocken sie.
 """
 import os
 
+import pytest
+
 os.environ["RESEND_API_KEY"] = ""
 os.environ["OPENROUTER_API_KEY"] = ""
 
@@ -33,3 +35,20 @@ try:
     dotenv.load_dotenv = lambda *a, **k: False
 except ImportError:  # dotenv ist nur eine Laufzeit-Abhängigkeit der Skripte
     pass
+
+
+@pytest.fixture
+def quelle():
+    """Eine kurze :class:`council.herkunft.Herkunft` für Speicher-Tests.
+
+    Die Finanz-``save_*``-Methoden verlangen seit 08/2026 eine Herkunft statt
+    loser Label/URL-Strings — Tests, die nur das Speichern prüfen, sollen
+    deswegen nicht jedes Mal sieben Felder ausschreiben. Wo die Herkunft
+    selbst zur Sache gehört, wird sie im Test direkt gebaut."""
+    from council.herkunft import Herkunft
+
+    def bauen(label: str = "Testdokument", url: str | None = "https://example.org/d.pdf",
+              probe: str = "strukturprobe", **rest):
+        return Herkunft(art="ris", probe=probe, label=label, url=url, **rest)
+
+    return bauen

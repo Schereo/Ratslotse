@@ -6,7 +6,10 @@ __pycache__/
 *.sqlite
 *.log
 .pytest_cache/
+.ruff_cache/
 web/frontend/.next/
+# Eigenes Build-Verzeichnis des Dev-Servers (next.config.mjs) — trennt
+# `next dev` von `next build`, die sich sonst .next zerlegen.
 web/frontend/.next-dev/
 web/frontend/node_modules/
 
@@ -14,3 +17,7 @@ web/frontend/node_modules/
 .agents/
 .claude/skills/
 skills-lock.json
+
+# Vorher/Nachher-Aufnahmen aus der UI-Prüfung: gehören an den Pull Request,
+# nicht in die Historie — ein paar Megabyte je Runde.
+.screenshots/

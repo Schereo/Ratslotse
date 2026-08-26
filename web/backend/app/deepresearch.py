@@ -367,11 +367,22 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
                 [c.get("kvonr") for c in candidates[:20]])
         except Exception:  # noqa: BLE001
             planungen = []
-        haushalt_zeilen: list[dict] = []
-        try:
-            haushalt_zeilen = store.haushalt_fuer_begriffe(begriffe_alle.split())
-        except Exception:  # noqa: BLE001
-            pass
+        # Der Haushalts-Kontext kommt aus derselben Stelle wie bei /ask
+        # (`qa.geld_kontext`, seit 17.08. vierzehn Quellen). Vorher hingen
+        # hier drei fest verdrahtete Aufrufe — der lange Bericht kannte damit
+        # weder Schulden noch Investitionen, Stellenplan oder Änderungslisten.
+        #
+        # `typ="thema"` und nicht `"geld"`, obwohl das Auffangnetz damit
+        # entfällt: Bis hierher lud diese Stelle die Plan-Zahlen bei JEDER
+        # Frage, und zwar über `begriffe_alle` — also über die expandierten
+        # Begriffe. Die Query-Expansion ist ausdrücklich angewiesen, eine
+        # Sachstands-Frage zusätzlich als Finanzierungs-Frage zu formulieren;
+        # „Wie ist der Stand beim Stadion?" trug damit „Kosten" hinein und zog
+        # den halben Haushalt in einen Bericht, der nichts davon wollte. Genau
+        # gegen diesen Weg sind die Facetten gebaut (s. Abschnittskopf in
+        # `council/qa.py`), und der lange Bericht hat keinen Grund, ihn offen
+        # zu lassen. Die Frage entscheidet, die Begriffe füllen.
+        geld = qa.geld_kontext(store, job.frage, begriffe_alle, "thema")
 
         jahre = sorted({str(c.get("session_date") or "")[:4]
                         for c in candidates if c.get("session_date")})
@@ -381,7 +392,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
 
         job.material = {
             "candidates": candidates, "presse": presse_rows, "debatten": debatten_rows,
-            "haushalt": haushalt_zeilen, "planungen": planungen, "anlagen": anlagen_rows,
+            "geld": geld, "planungen": planungen, "anlagen": anlagen_rows,
             "facetten_namen": [f["name"] for f in facetten],
             "facetten_fertig": job.facetten_fertig, "gelesen": gelesen,
             "zeitraum": zeitraum,
@@ -484,7 +495,7 @@ def _schreiben_und_abschliessen(job: DeepJob, nwz_db: str, council_db: str,
                 for delta in qa.deep_bericht_stream(job.frage, candidates,
                                                     presse=m.get("presse"),
                                                     debatten=m.get("debatten"),
-                                                    haushalt=m.get("haushalt"),
+                                                    geld=m.get("geld"),
                                                     planungen=m.get("planungen"),
                                                     anlagen=m.get("anlagen")):
                     if job.stop.is_set():

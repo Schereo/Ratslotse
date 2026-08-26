@@ -27,6 +27,8 @@ import {
   CITE_EXACT_RE, CITE_SOURCE, citationIds, datenEindeutschen, fmtDatumKurz,
 } from "@/lib/qa-belege";
 import { apiUrl, authHeaders } from "@/lib/api";
+import { Zeitreihe } from "@/components/grafik/zeitreihe";
+import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 
 /* ------------------------------ Typen ------------------------------ */
 
@@ -45,6 +47,25 @@ export type AnlagenHinweis = {
 
 /** Task 16: Wortbeitrag aus einem Sitzungsprotokoll (Rede, Anfrage,
  *  Einwohnerfrage oder Verwaltungs-Zusage) im Belege-Bereich. */
+/** Die Grafik zur Antwort — Rohreihen aus dem Backend, nie vom Modell.
+ *
+ *  Der Vertrag steht in `council/qa.py` (geld_grafik): Die Daten kommen aus
+ *  dem Store, mit denselben Zahlen, die auch in den Prompt gehen. Das Modell
+ *  weiß nicht einmal, dass es die Grafik gibt — sie hängt am
+ *  Quellen-Ereignis, nicht an der Antwort. */
+export type QaGrafik = {
+  art: string;
+  titel: string;
+  einheit: string;
+  nachkomma: number;
+  reihe: { jahr: number; wert: number }[];
+  hinweis?: string | null;
+  quelle?: string | null;
+  /** Anschlussstelle in den Haushalts-Bereich — der Link erscheint nur
+   *  hinter dem Umgebungs-Gate (auf Prod ist /haushalt ein 404). */
+  mehr?: { href: string; label: string } | null;
+};
+
 export type DebattenHinweis = {
   sprecher: string | null; partei: string | null; art: string;
   top: string | null; auszug: string; committee: string | null; datum: string | null;
@@ -63,8 +84,15 @@ export type PersonEintrag = {
   slug: string; name: string | null; vorname: string; nachname: string;
   /** "blocker": Gäste/Protokoll/beratende Mitglieder — nie ein Badge, aber
    *  ihr Nachname macht einen kahlen Nachnamen im Text mehrdeutig (Tims
-   *  Oltmanns-Befund 12.08.). */
-  art: "rat" | "beratend" | "stadt" | "blocker"; partei: string | null; rolle: string | null;
+   *  Oltmanns-Befund 12.08.).
+   *  "beratend": beratendes Mitglied eines Ausschusses (Verband, Beirat,
+   *  Fachperson) — dem Rat gehört es nicht an.
+   *  "beteiligung": nur aus dem Beteiligungsbericht bekannt — Aufsichtsorgane
+   *  der städtischen Gesellschaften (Landkreis, Belegschaft,
+   *  Mitgesellschafter). `von`/`bis` sind hier BERICHTSJAHRGÄNGE, nicht
+   *  Sitzungsjahre, und `aktiv` heißt „steht im jüngsten Bericht". */
+  art: "rat" | "beratend" | "stadt" | "beteiligung" | "blocker";
+  partei: string | null; rolle: string | null;
   /** Fraktions-Phasen mit Zeitraum — NUR bei Wechslern gesetzt (13 Personen im
    *  Bestand). `partei` ist die heutige; hier steht, was vorher war. */
   phasen?: { partei: string; von: string; bis: string }[] | null;
@@ -97,7 +125,11 @@ const _PARTEI_KUERZEL: [RegExp, string][] = [
   [/fdp\/volt/i, "FDP/Volt"], [/für oldenburg/i, "FO"], [/piraten/i, "Piraten"],
 ];
 
-function parteiKuerzel(label: string | null): string {
+/** Das kurze Parteilabel neben einem Namen. Exportiert, weil dieselbe
+ *  Schreibweise auch außerhalb der KI-Antworten gilt (Aufsichtsorgane im
+ *  Beteiligungs-Steckbrief) — zwei Listen mit „Grüne" und „GRÜNE" wären zwei
+ *  Sprachen für dieselbe Fraktion. */
+export function parteiKuerzel(label: string | null): string {
   for (const [re, k] of _PARTEI_KUERZEL) if (label && re.test(label)) return k;
   return "Rat";
 }
@@ -222,12 +254,14 @@ function jahrAus(datum?: string | null): number | null {
   return treffer ? Number(treffer[0]) : null;
 }
 
-/** Was auf dem Badge STEHT — „ehem.", „Stadt" oder das Parteikürzel. Muss mit
+/** Was auf dem Badge STEHT — „ehem.", „Stadt", „beratend", „Aufsicht" oder das
+ *  Parteikürzel. Muss mit
  *  `PersonBadge` deckungsgleich bleiben: `SprecherName` entscheidet daran, ob
  *  die Fraktion daneben noch etwas hinzufügt oder nur dasselbe wiederholt. */
 function personBadgeLabel(p: PersonEintrag): string {
   return !p.aktiv ? "ehem."
     : p.art === "stadt" ? "Stadt"
+    : p.art === "beteiligung" ? "Aufsicht"
     // Beratende Ausschuss-Mitglieder sind keine Ratsleute: „Rat" (das Ergebnis
     // von parteiKuerzel(null)) behauptete bei ihnen ein Mandat, das sie nicht
     // haben (Tims Skiba-Befund 21.08.2026).
@@ -314,18 +348,33 @@ export function PersonBadge({ p, zeilenPartei = null }: {
   const gewechselt = !!zeilenPartei
     && !!p.partei
     && !parteienPassen(parteiKuerzel(zeilenPartei), parteiKuerzel(p.partei));
+  // „beteiligung" und „beratend" tragen einen neutralen Punkt und KEINE
+  // Parteifarbe: Weder der Beteiligungsbericht noch eine Ausschuss-Beratung
+  // nennt eine Fraktion. Ohne die eigenen Zweige fielen sie in
+  // `parteiKuerzel(null)` — und das antwortet „Rat".
   const dot = zeilenPartei ? parteiDot(zeilenPartei)
     : !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
     : p.art === "stadt" ? { bg: "#0764a6", ring: false }
+    : p.art === "beteiligung" ? { bg: "hsl(209 10% 62%)", ring: true }
     : p.art === "beratend" ? { bg: "hsl(209 18% 65%)", ring: true }
     : parteiDot(p.partei || "");
   const label = zeilenPartei ? parteiKuerzel(zeilenPartei) : personBadgeLabel(p);
   const rolle = p.rolle
     || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}`
-      : p.art === "beratend" ? "Beratendes Mitglied" : "Stadtverwaltung");
-  const zeitraum = p.aktiv
-    ? (p.von ? `In den Sitzungen seit ${p.von}` : null)
-    : (p.von && p.bis ? `In den Sitzungen ${p.von}–${p.bis}` : null);
+      : p.art === "beteiligung" ? "Aufsichtsorgan einer städtischen Gesellschaft"
+      : p.art === "beratend" ? "Beratendes Mitglied"
+      : "Stadtverwaltung");
+  // Der Zeitraum sagt, WORAUS wir die Person kennen. Bei den Aufsichtsorganen
+  // sind das Berichtsjahrgänge, nicht Sitzungen — „In den Sitzungen seit
+  // 2022" wäre für eine Betriebsratsvorsitzende schlicht falsch.
+  const zeitraum = p.art === "beteiligung"
+    ? (p.von && p.bis
+      ? (p.von === p.bis ? `Im Beteiligungsbericht ${p.von}`
+        : `In den Beteiligungsberichten ${p.von}–${p.bis}`)
+      : null)
+    : p.aktiv
+      ? (p.von ? `In den Sitzungen seit ${p.von}` : null)
+      : (p.von && p.bis ? `In den Sitzungen ${p.von}–${p.bis}` : null);
 
   return (
     <span ref={ref} className="relative inline-block align-baseline">
@@ -361,7 +410,10 @@ export function PersonBadge({ p, zeilenPartei = null }: {
           {zeitraum && (
             <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{zeitraum}</span>
           )}
-          {p.art === "rat" && (
+          {/* Verwaltung verlinkt nur mit ERKANNTEM Amt (Tims Wunsch 19.08.) —
+              ohne rolle liefert /person/{slug} 404 (verwaltung_detail() im
+              Backend), und ein toter Link ist schlimmer als kein Link (#588). */}
+          {(p.art === "rat" || (p.art === "stadt" && p.rolle)) && (
             /* Next-Link statt <a>: Der harte Reload warf beim Zurückkommen
                den Gesprächs-State weg (Tims Befund 12.08.) — client-seitig
                bleibt die History intakt und der Restore greift. */
@@ -942,6 +994,51 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
             Verdichtet aus den Wortbeiträgen der Sitzungsprotokolle — Paraphrasen, keine wörtlichen Zitate.
           </p>
         </>
+      )}
+    </div>
+  );
+}
+
+
+/** Die Zeitreihe unter der Antwort — dieselbe Komponente wie im
+ *  Haushalts-Bereich (GB-01), mit denselben Regeln: Ableseleiste statt
+ *  Tooltip, Werte-Tabelle zum Aufklappen, keine Bewertungsfarben.
+ *
+ *  Die Quellzeile sagt ausdrücklich, dass die Grafik NICHT vom Modell
+ *  stammt — im Chat ist das die eine Verwechslung, die niemand riskieren
+ *  darf: Alles andere auf dem Bildschirm ist generierter Text. */
+export function GrafikKarte({ grafik }: { grafik: QaGrafik }) {
+  if ((grafik.reihe?.length ?? 0) < 2) return null;
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <Zeitreihe
+        reihe={grafik.reihe}
+        einheit={grafik.einheit}
+        nachkomma={grafik.nachkomma}
+        titel={grafik.titel}
+        ariaTitel={`${grafik.titel} im Verlauf, aus den Daten der Stadt`}
+        tabelle
+        hinweis={grafik.hinweis ?? undefined}
+        // Im Chat klebt schon die Eingabezeile am unteren Rand — eine
+        // zweite klebende Ebene schob sich darüber (Tims Befund 18.08.).
+        leisteHaftet={false}
+      />
+      {grafik.quelle && (
+        <p className="mt-2 border-t border-dashed border-border pt-2 text-[10.5px] leading-relaxed text-muted-foreground">
+          {grafik.quelle} — die Reihe kommt aus unserer Datenbank, nicht aus der
+          KI-Antwort.
+        </p>
+      )}
+      {/* Die Anschlussstelle: Wer mehr wissen will, bekommt die Seite, die
+          genau diese Reihe erklärt. Hinter dem Gate — auf Prod wäre der
+          Link ein 404, und ein Satz, der auf nichts zeigt, bliebe stehen. */}
+      {HAUSHALT_FREI && grafik.mehr?.href && (
+        <Link href={grafik.mehr.href}
+          className="group mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
+          Mehr dazu: {grafik.mehr.label}
+          <ArrowRight size={14} strokeWidth={2}
+            className="transition-transform group-hover:translate-x-0.5" />
+        </Link>
       )}
     </div>
   );

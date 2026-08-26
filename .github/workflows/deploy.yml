@@ -91,6 +91,7 @@ jobs:
             --exclude '.git/' \
             --exclude 'web/frontend/node_modules/' \
             --exclude 'web/frontend/.next/' \
+            --exclude 'web/frontend/.next-dev/' \
             --exclude 'web/frontend/public/docs/' \
             --exclude 'docs-site/node_modules/' \
             --exclude 'docs-site/dist/' \

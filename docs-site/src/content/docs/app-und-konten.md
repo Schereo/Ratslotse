@@ -169,8 +169,8 @@ zeigt die Oberfläche einen Hinweis statt der Inhalte und pollt `/auth/me`
 
 Vier Endpunkte antworten **ohne Anmeldung**. Nicht aus Versehen, sondern weil
 Teilen die Kernhandlung der App ist: Wer einen Beschluss weiterreichte,
-schickte die Empfängerin vorher ins Registrierungsformular — bevor sie
-überhaupt gesehen hatte, worum es geht.
+schickte die Empfänger*innen vorher ins Registrierungsformular — bevor sie
+überhaupt gesehen hatten, worum es geht.
 
 | Endpunkt | Seite |
 |---|---|
@@ -507,7 +507,7 @@ Verarbeiter sind **Resend** (E-Mail-Versand), **Apple/APNs** bzw.
 nur, wenn der entsprechende Kanal aktiv ist. Auf dem Gerät liegen Design-Wahl,
 in der App das Anmelde-Token und der oben beschriebene Inhalts-Zwischenspeicher.
 
-**Nicht** übernommen werden die **Kontaktdaten der Mandatsträger:innen** aus dem
+**Nicht** übernommen werden die **Kontaktdaten der Mandatsträger*innen** aus dem
 Ratsinformationssystem (Adresse, Telefon, Beruf auf den Personenseiten) — das
 ist eine bewusste Entscheidung der Stammdaten-Auswertung, siehe
 [Ratsdokumente & Beschlüsse](/docs/beschluesse/).

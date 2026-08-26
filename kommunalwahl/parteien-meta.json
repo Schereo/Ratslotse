@@ -1,0 +1,19 @@
+{
+  "_hinweis": "Farben dienen nur der Wiedererkennung in Datenmarken (Chips, Balken). Sie sind an die Selbstdarstellung der Listen angelehnt und für hellen wie dunklen Grund auf Kontrast geprüft.",
+  "spd":            {"farbe": "#E3000F", "farbe_dunkel": "#FF4D57", "kurz": "SPD"},
+  "cdu":            {"farbe": "#121212", "farbe_dunkel": "#C9CDD3", "kurz": "CDU"},
+  "gruene":         {"farbe": "#46962B", "farbe_dunkel": "#6FCB4C", "kurz": "Grüne"},
+  "linke":          {"farbe": "#BE3075", "farbe_dunkel": "#E46AA4", "kurz": "Linke"},
+  "fdp":            {"farbe": "#B8960B", "farbe_dunkel": "#FFD32E", "kurz": "FDP"},
+  "fuer-oldenburg": {"farbe": "#0F7A6B", "farbe_dunkel": "#3FBFAA", "kurz": "Für OL"},
+  "buergerbuendnis":{"farbe": "#1F5FA8", "farbe_dunkel": "#5D9DE0", "kurz": "BB-OL"},
+  "afd":            {"farbe": "#0089C7", "farbe_dunkel": "#3FB6EA", "kurz": "AfD"},
+  "volt":           {"farbe": "#502379", "farbe_dunkel": "#A87BD6", "kurz": "Volt"},
+  "piraten":        {"farbe": "#D96C00", "farbe_dunkel": "#FF9B3D", "kurz": "Piraten"},
+  "bsw":            {"farbe": "#7B2E5E", "farbe_dunkel": "#C46BA3", "kurz": "BSW"},
+  "pgm":            {"farbe": "#2E7D6B", "farbe_dunkel": "#5FBFA8", "kurz": "PGM"},
+  "partei":         {"farbe": "#8C1A2B", "farbe_dunkel": "#D95E72", "kurz": "Die PARTEI"},
+  "echt-oldenburg": {"farbe": "#9A6A11", "farbe_dunkel": "#D9A63C", "kurz": "Echt OL"},
+  "dava":           {"farbe": "#146B5C", "farbe_dunkel": "#4FBFA6", "kurz": "DAVA"},
+  "stille":         {"farbe": "#5B6570", "farbe_dunkel": "#98A3AE", "kurz": "M. Stille"}
+}

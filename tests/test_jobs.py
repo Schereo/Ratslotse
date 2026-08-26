@@ -89,6 +89,13 @@ def test_registry_deckt_die_cron_eintraege_ab():
         "abendmeldungen",   # Design 30a: N5 täglich 18 Uhr, N6 sonntags
         "check_presse",     # Stufe 3a: Stadt-Pressemitteilungen, täglich 5:15
         "render_plaene",    # P1: Planzeichnungen als Bilder, sonntags 4:30
+        "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
+        # Der einzige Job, der selbst herunterlädt (oldenburg.de), alle vier
+        # Wochen — die Quelle erscheint einmal im Jahr.
+        "check_beteiligungsbericht",
+        # Sichert die Statistik-Quellen versioniert, täglich: Die Stadt führt
+        # kein Jahrbuch-Archiv, überschriebene Ausgaben sind endgültig weg.
+        "archive_statistik",
     }
     for job in JOBS:
         assert BY_KEY[job["key"]] is job

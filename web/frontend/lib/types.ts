@@ -274,9 +274,16 @@ export interface Member {
    *  Piraten") zählt für beide Parteien, damit niemand aus dem Filter fällt. */
   filter_parteien: string[];
   n: number; committees: number; first: string | null; last: string | null;
+  /** Die belegten Schreibweisen dieser Person aus den Anwesenheitslisten —
+   *  meist nur eine, gelegentlich zwei Namensformen. Nicht zur Anzeige
+   *  gedacht: Die Suche im Verzeichnis findet damit auch, wer die ältere Form
+   *  eintippt, ohne dass die Seite eine Behauptung über den Menschen aufstellt. */
+  formen?: string[];
 }
 
 export interface MemberDetail {
+  /** Fehlt bei älteren gecachten Antworten — dann als "rat" behandeln. */
+  typ?: "rat";
   name: string; slug: string; party: string | null;
   /** Zugehörigkeit für den Seitenkopf — wie im Verzeichnis aufgelöst
    *  („FDP/Volt" → FDP, wo es belegt ist). Die Zeitreihe darunter bleibt
@@ -316,6 +323,21 @@ export interface MemberDetail {
   /** Gremien mit Beitrags-Anzahl, Futter für den Filter. */
   wortbeitraege_gremien?: { committee: string; n: number }[];
 }
+
+/** Schmaler Steckbrief für Verwaltungsleute mit erkanntem Amt (Tims Wunsch
+ *  19.08.) — bewusst kein Nachbau von MemberDetail: kein Mandat, also keine
+ *  Fraktions-Zeitleiste, kein Vorsitz-Zähler, keine Gremien-Präsenz. `von`/
+ *  `bis` sind Jahre der Protokoll-Erwähnung, keine amtliche Amtszeit. */
+export interface VerwaltungDetail {
+  typ: "verwaltung";
+  name: string; slug: string; rolle: string | null;
+  aktiv: boolean; von: string | null; bis: string | null;
+  wortbeitraege?: MemberDetail["wortbeitraege"];
+  wortbeitraege_gesamt?: number;
+  wortbeitraege_gremien?: { committee: string; n: number }[];
+}
+
+export type PersonProfil = MemberDetail | VerwaltungDetail;
 
 /** Eine Station der offiziellen Beratungsfolge einer Vorlage. */
 export interface Beratung {
@@ -383,6 +405,23 @@ export interface DecisionDetail {
     /** Regex-Ernte: Klima-Check der Verwaltung („Auswirkungen: b) Klima"). */
     klima_check?: string | null;
     klima_relevant?: boolean | null;
+    /** „Finanzielle Auswirkungen" aus der Vorlage (amtlicher Wortlaut). */
+    finanz_check?: string | null;
+  } | null;
+  /** Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt über
+   *  eine echte Verknüpfung, nicht über eine Textsuche.
+   *
+   *  `null` heißt „nirgends nachweisbar", und die Seite lässt die Karte dann
+   *  weg. Der pauschale Verweis auf `/haushalt` steht für jeden Beschluss
+   *  gleich da und ist deshalb für keinen eine Auskunft; diese Karte gibt es
+   *  nur, wo sie etwas sagt. */
+  haushalts_anschluss?: {
+    art: "nachbewilligung" | "buergschaft";
+    href: string;
+    titel: string;
+    vorlage_nr: string;
+    jahr?: number | null;
+    betrag?: number | null;
   } | null;
   /** P1: document_id der gerenderten Planzeichnung — B-Plan-Beschlüsse
    *  zeigen sie als Bild statt nur als Anlagen-Download. */

@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any
 
 from kern import digest_email, llm, notify, prompts
 from .ergebnisse import sitzung_href
@@ -297,7 +296,7 @@ def _datum(iso: str) -> str:
 def _einzeilig(text: str, grenze: int = 90) -> str:
     """Für Betreff und Push-Titel: eine Zeile, kein Zeilenumbruch, gekappt.
 
-    Themennamen kommen von Nutzer:innen. Ein Zeilenumbruch darin hat in einer
+    Themennamen kommen von Nutzer*innen. Ein Zeilenumbruch darin hat in einer
     Betreffzeile nichts zu suchen (Mail-Header sind zeilenbasiert), und ein
     Roman auch nicht — Mail-Programme und die Mitteilungszentrale schneiden
     sowieso ab, dann lieber kontrolliert und mit Auslassungszeichen.
@@ -428,7 +427,7 @@ def run_watcher(
         agenda_hash = _agenda_hash(session.agenda_items)
 
         for owner in owners:
-            # Je Nutzer:in klassifizieren — aber nur, wenn sich die
+            # Je Nutzer*in klassifizieren — aber nur, wenn sich die
             # Tagesordnung seit ihrer letzten Klassifikation geändert hat.
             if nwz_store is not None:
                 known = nwz_store.agenda_classified_hash(owner["owner_id"], ksinr)
@@ -448,13 +447,13 @@ def run_watcher(
                     matches = _classify_agenda(session, topics, store=store)
                 except llm.BadRequestError as exc:
                     # Ein 400 hängt am Inhalt DIESER Anfrage, nicht am System:
-                    # Die Themen-Namen/Beschreibungen der Nutzer:in landen im
+                    # Die Themen-Namen/Beschreibungen der Nutzer*in landen im
                     # Prompt, und ein einzelner vergifteter Text (z. B. ein als
                     # Prompt-Injection getarnter Themenname) lässt den Provider-
                     # Content-Filter anschlagen. Ohne dieses Fangnetz reißt eine
-                    # solche Nutzer:in den GANZEN Cron-Lauf für alle ab — ein
+                    # solche Nutzer*in den GANZEN Cron-Lauf für alle ab — ein
                     # DoS, den jedes Konto auslösen könnte. Also nur diese
-                    # Nutzer:in bei dieser Sitzung überspringen und weitermachen.
+                    # Nutzer*in bei dieser Sitzung überspringen und weitermachen.
                     if llm.is_content_filter(exc):
                         print(f"    ⚠️ Content-Filter für owner {owner['owner_id']} "
                               f"(möglicher Prompt-Injection-Versuch in einem Themennamen) "
@@ -467,7 +466,7 @@ def run_watcher(
                               f"{owner['owner_id']}: {exc} — übersprungen.")
                     # agenda_hash NICHT als klassifiziert merken: Sobald das
                     # Thema korrigiert oder gelöscht ist, versucht der nächste
-                    # Lauf es neu, statt die Nutzer:in dauerhaft leer auszugehen.
+                    # Lauf es neu, statt die Nutzer*in dauerhaft leer auszugehen.
                     continue
 
                 if nwz_store is not None:

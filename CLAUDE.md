@@ -5,7 +5,7 @@ verständlich — über ein Web-Frontend ([ratslotse.de](https://ratslotse.de)) 
 Web-Push- und E-Mail-Benachrichtigungen. Aus dem amtlichen Ratsinformationssystem,
 per LLM aufbereitet.
 
-> Diese Datei ist die Kurz-Orientierung für Contributor:innen und Coding-Agents.
+> Diese Datei ist die Kurz-Orientierung für Contributor*innen und Coding-Agents.
 > Ausführliche Technik-Doku: [ratslotse.de/docs](https://ratslotse.de/docs)
 > (Quelle in `docs-site/`).
 
@@ -19,7 +19,9 @@ per LLM aufbereitet.
 | `web/backend/` | FastAPI-Backend (uvicorn) |
 | `web/frontend/` | Next.js-Frontend (+ Capacitor für iOS/Android); **Designsprache: `web/frontend/DESIGNSPRACHE.md`** |
 | `docs-site/` | Astro-Starlight-Technik-Doku |
+| `changelog.d/` | Changelog-Fragmente: je PR eine Datei, beim Versionsschnitt eingesammelt (s. u. „Changelog-Pflicht") |
 | `eval/` | Eval-Harness für die LLM-Qualität |
+| `kommunalwahl/` | Wahlprogramm-Vergleich zur Ratswahl 13.09.2026: Programme, Auswertungen, Thesen-Positionen, fertige Vergleichsseite. Eigenständiger Datenbestand, **noch nicht** ins Backend/Frontend integriert — Einstieg: `kommunalwahl/README.md`, Schnittstelle: `kommunalwahl/data.json` |
 
 ## Woher „nwz" noch stammt
 
@@ -153,11 +155,32 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   gibt es keinen Bestätigungslink — dann nach der Registrierung einmal auf dem
   Server: `.venv/bin/python scripts/grant_admin.py <adresse>` (befördert nur ein
   **vorhandenes** Konto). Beide Fälle stehen als WARNING im Log (`nwz-web-api`).
-- **Changelog-Pflicht:** Jeder nutzerrelevante PR ergänzt einen Eintrag unter
-  `## [Unreleased]` in `CHANGELOG.md` (Keep-a-Changelog, deutsch, „(#PR)"
-  anhängen). Beim Versionsschnitt: Unreleased → `## [x.y.z] – Datum`,
-  annotierten Git-Tag `vx.y.z` setzen + pushen, Compare-Links am Dateiende
-  nachziehen. Die Seite ratslotse.de/changelog rendert die Datei zur Build-Zeit.
+- **Changelog-Pflicht:** Jeder nutzerrelevante PR legt **eine Datei** an:
+  `changelog.d/<slug>.md` — Frontmatter `kategorie: hinzugefuegt | geaendert |
+  behoben`, darunter der Eintrag im gewohnten Stil (deutsch, fett beginnender
+  Kernsatz), **ohne PR-Nummer**:
+
+  ```markdown
+  ---
+  kategorie: hinzugefuegt
+  ---
+
+  **Kernsatz fett.** Dann der Fließtext.
+  ```
+
+  Ein Fragment je PR heißt: zwei parallele Zweige fassen nie dieselbe Datei an,
+  der Merge kollidiert also nicht mehr im Changelog — und die Nummer muss
+  niemand raten (sie existiert beim Schreiben ja noch gar nicht).
+  Direkt in `## [Unreleased]` eingetragene Einträge bleiben gültig; beide Wege
+  koexistieren, der Schnitt kommt mit beiden zurecht.
+  **Versionsschnitt** (gehört in den Release-PR):
+  `.venv/bin/python scripts/changelog_schnitt.py x.y.z [--trocken]` — hängt an
+  jedes Fragment die PR-Nummer aus dem Squash-Commit, der es angelegt hat,
+  sortiert es unter `## [x.y.z] – Datum` in seinen Abschnitt, löscht die
+  Fragmente und zieht die Compare-Links am Dateiende nach. Danach annotierten
+  Git-Tag `vx.y.z` setzen + pushen. Die Seite ratslotse.de/changelog rendert zur
+  Build-Zeit `CHANGELOG.md` **plus** die offenen Fragmente (sie stehen dort
+  unter „Unreleased") — für Leser*innen ändert sich dadurch nichts.
 - **Keine fremden E-Mail-Adressen im Repo.** Das Repo ist öffentlich; die
   Adresse einer echten Person gehört dort nicht hin — auch nicht „nur als
   Beispiel" in einem Docstring. Für Beispiele und Testfixtures: `example.org`

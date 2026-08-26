@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 from datetime import datetime
@@ -7,8 +8,11 @@ from pathlib import Path
 
 import sqlite3
 
-from .scraper import CouncilSession, AgendaItem
+from .scraper import CouncilSession
 from .parties import order_key, parties_for_faction
+from . import importance as _importance
+from council.kontaktdaten import maskieren
+
 
 
 def _norm_title(t: str) -> str:
@@ -313,15 +317,47 @@ class CouncilStore:
         # eigene Store-Instanz bekommt (keine parallele Nutzung EINER Verbindung).
         self._conn = sqlite3.connect(path, timeout=15, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        # Kontaktdaten aus dem Text nehmen, der in einen SUCHINDEX geht — als
+        # SQLite-Funktion, damit `rebuild_fts()` eine einzige INSERT-SELECT
+        # bleibt und nicht zu einer Schleife in Python wird
+        # (`council/kontaktdaten.py`). Gespeichert wird weiterhin alles.
+        self._conn.create_function("ohne_kontaktdaten", 1, maskieren,
+                                   deterministic=True)
         # WAL + busy_timeout: scraper cron and the web API share this file.
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
         self._conn.executescript(SCHEMA)
         self._conn.commit()
         self._migrate()
-        # Namensvarianten derselben Person (s. _personen_varianten): einmal je
-        # Store-Instanz gebaut, also einmal je Web-Anfrage.
-        self._varianten_cache: dict[str, str] | None = None
+        #: Läuft gerade eine geklammerte Transaktion (siehe ``transaktion``)?
+        self._sammelt = False
+        #: Zwischenspeicher für ``personen_kanon`` — je Instanz, also je Anfrage.
+        self._kanon: dict[str, str] | None = None
+
+    @contextlib.contextmanager
+    def transaktion(self):
+        """Mehrere ``save_*``-Aufrufe zu **einer** Transaktion klammern.
+
+        Ohne die Klammer committet jeder Aufruf für sich. Für einen
+        Jahresabschluss sind das 1 + n + 1 Transaktionen (Gesamtrechnung, je
+        Teilhaushalt eine, Erläuterungen) — bricht der Lauf dazwischen ab,
+        bleibt der Jahrgang halb in der Datenbank stehen. Genau das darf einem
+        unbeaufsichtigten Cron nicht passieren, der einen halben Jahrgang
+        anschließend für erledigt hält.
+
+        Verschachtelung ist erlaubt und tut nichts: Die innerste Klammer
+        überlässt Commit und Rollback der äußersten. Die ``save_*``-Methoden
+        benutzen sie deshalb selbst — ein Aufruf ohne äußere Klammer verhält
+        sich wie vorher."""
+        if self._sammelt:
+            yield  # schon geklammert — die äußere Klammer committet
+            return
+        self._sammelt = True
+        try:
+            with self._conn:
+                yield
+        finally:
+            self._sammelt = False
 
     def _migrate(self) -> None:
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
@@ -494,7 +530,7 @@ class CouncilStore:
             "document_id INTEGER PRIMARY KEY, kvonr INTEGER NOT NULL, label TEXT, "
             "url TEXT, is_antrag INTEGER NOT NULL DEFAULT 0, antragsteller TEXT, "
             "raw_text TEXT, n_pages INTEGER, fetched_at TEXT NOT NULL, "
-            "status TEXT NOT NULL DEFAULT 'listed')"  # listed | ok | empty | failed
+            "status TEXT NOT NULL DEFAULT 'listed')"  # listed | ok | empty | failed | ocr
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_anlagen_kvonr ON council_anlagen(kvonr)")
         # Gerenderte Planzeichnung (scripts/render_plaene.py): 0 = offen,
@@ -503,6 +539,34 @@ class CouncilStore:
         if "bild" not in acols:
             self._conn.execute(
                 "ALTER TABLE council_anlagen ADD COLUMN bild INTEGER NOT NULL DEFAULT 0")
+        # Welches Sehmodell den Text gelesen hat (scripts/backfill_anlagen_ocr.py).
+        # NULL heißt „aus der Textebene des PDF", also gar nicht geraten.
+        #
+        # `status='ocr'` IST KEINE BUCHHALTUNG, SONDERN EINE SPERRE: Jede Anlage
+        # mit `status='ok'` zieht `anlagen_missing_embeddings()` in die
+        # Chunk-Vektoren und damit in die Gründliche Recherche und in
+        # Nutzerantworten. Für OCR-Text ist das die falsche Voreinstellung —
+        # er ist eine schwächere Quelle als eine echte Textebene, und ein Teil
+        # der betroffenen Dokumente sind Förderanträge von Vereinen mit Namen,
+        # Anschriften und Unterschriften darauf. Die Finanz-Parser lesen
+        # trotzdem mit: `finanzquellen.Erkennung.where()` filtert bewusst NICHT
+        # auf den Status. Wer den Text später auch durchsuchbar machen will,
+        # setzt ihn gezielt auf 'ok' — eine Entscheidung, kein Nebeneffekt.
+        if "ocr_modell" not in acols:
+            self._conn.execute(
+                "ALTER TABLE council_anlagen ADD COLUMN ocr_modell TEXT")
+        # `status='ocr'` gab es genau einen Tag lang (20.08.2026). Solange galt
+        # gelesener Scan-Text als grundsätzlich nicht durchsuchbar — eine
+        # Sperre gegen die HERKUNFT des Textes statt gegen das, was darin
+        # steht, und sie schloss den AWB-Wirtschaftsplan und den Prüfbericht
+        # gleich mit aus. Die Sperre sitzt jetzt an der Index-Grenze
+        # (`council/kontaktdaten.py`), und diese Zeilen sind ganz normaler
+        # Anlagentext. `ocr_modell` sagt weiterhin, wie sie entstanden sind.
+        #
+        # Gehoben statt neu gelesen: Der Text ist in Ordnung, nur sein Status
+        # war es nicht. Ein erneuter OCR-Lauf kostete Geld für nichts.
+        self._conn.execute(
+            "UPDATE council_anlagen SET status = 'ok' WHERE status = 'ocr'")
         # Beratungsfolge je Vorlage (council.stammdaten): die offiziellen
         # Stationen einer Vorlage durch die Gremien — inkl. geplanter künftiger
         # Beratungen (ergebnis dann NULL). Je kvonr komplett ersetzt, weil
@@ -566,6 +630,1289 @@ class CouncilStore:
             "is_summe INTEGER NOT NULL DEFAULT 0, "
             "source_url TEXT, fetched_at TEXT NOT NULL, "
             "UNIQUE(year, bereich))"
+        )
+        # Ist-Steuereinnahmen je Steuerart und Jahr (Open-Data-Portal der Stadt,
+        # seit 1998) — Grundlage der Steuer-Steckbriefe im Haushalts-Bereich.
+        # Langformat: eine Zeile je (Jahr, Steuerart), 'insgesamt' als eigene Art.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_steuern ("
+            "jahr INTEGER NOT NULL, "
+            "art TEXT NOT NULL, "        # z. B. 'Gewerbesteuer (-umlage)', 'insgesamt'
+            "betrag REAL, "              # Euro, Ist (nicht Plan!)
+            "source_url TEXT, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, art))"
+        )
+        # Ergebnisrechnung aus den Jahresabschlüssen (RIS-Anlagen): Ansatz UND
+        # Ergebnis je Posten — die Grundlage für „geplant gegen tatsächlich"
+        # und für die Aufschlüsselung der Erträge nach Arten.
+        # thh_nr trennt die Ebenen: NULL = Kernverwaltung gesamt, 1–13 = der
+        # jeweilige Teilhaushalt. Beide Ebenen teilen sich die Tabelle, weil
+        # sie dieselben Posten tragen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_ergebnisrechnung ("
+            "jahr INTEGER NOT NULL, "
+            "thh_nr INTEGER, thh_name TEXT, "     # NULL = Gesamtrechnung
+            "nr INTEGER NOT NULL, "               # Postennummer der Tabelle (1–24)
+            "bezeichnung TEXT NOT NULL, "
+            "vorjahr REAL, ansatz REAL, ergebnis REAL, abweichung REAL, "
+            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, thh_nr, nr))"
+        )
+        # Die Tabelle kam mit der Vorversion ohne thh_nr; SQLite kann den
+        # Primärschlüssel nicht per ALTER TABLE erweitern. Neu anlegen ist
+        # hier gefahrlos: Der Inhalt stammt vollständig aus council_anlagen
+        # und wird von scripts/ingest_finanzberichte.py in Sekunden wieder
+        # hergestellt — es geht keine Quelle verloren.
+        spalten = {r[1] for r in self._conn.execute(
+            "PRAGMA table_info(council_ergebnisrechnung)")}
+        if spalten and "thh_nr" not in spalten:
+            self._conn.execute("DROP TABLE council_ergebnisrechnung")
+            self._conn.execute(
+                "CREATE TABLE council_ergebnisrechnung ("
+                "jahr INTEGER NOT NULL, thh_nr INTEGER, thh_name TEXT, "
+                "nr INTEGER NOT NULL, bezeichnung TEXT NOT NULL, "
+                "vorjahr REAL, ansatz REAL, ergebnis REAL, abweichung REAL, "
+                "ist_summe INTEGER NOT NULL DEFAULT 0, "
+                "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+                "PRIMARY KEY (jahr, thh_nr, nr))"
+            )
+        # „Plan" heißt nicht in jedem Jahrgang dasselbe: 2018 ist die
+        # Bezugsgröße der Abweichung die Gesamtermächtigung, 2020 der Ansatz
+        # samt Nachtrag (27 Mio. Unterschied!), sonst der nackte Ansatz.
+        # Deshalb steht in `ansatz` weiter der ursprüngliche Haushaltsansatz,
+        # in `plan` die Bezugsgröße und in `plan_art`, welche davon gemeint
+        # ist. Ohne das letzte Feld wäre eine Mehrjahres-Kurve still falsch.
+        # Nachrüsten per ALTER: Der Primärschlüssel bleibt, nichts geht verloren.
+        for spalte, typ in (("plan", "REAL"), ("plan_art", "TEXT")):
+            if spalte not in spalten:
+                try:
+                    self._conn.execute(
+                        f"ALTER TABLE council_ergebnisrechnung ADD COLUMN {spalte} {typ}")
+                except sqlite3.OperationalError:
+                    pass  # frisch angelegt — Spalte ist schon da
+        # Finanzrechnung der Kernverwaltung (Abschnitt 4.1 desselben
+        # Jahresabschlusses): nicht was gebucht, sondern was **gezahlt** wurde.
+        # Die Ergebnisrechnung darüber weist für 2024 einen Überschuss von
+        # 6,1 Mio. € aus, die Finanzrechnung im selben Heft einen
+        # Finanzmittel-Fehlbetrag von 22,4 Mio. € — beides stimmt, und ohne
+        # die zweite Zahl entsteht ein falscher Eindruck.
+        #
+        # `nr` ist die Nummer, die das Dokument vergibt; sie verschiebt sich
+        # zwischen den Jahrgängen um eins (2017–2020 hat die Tabelle 42
+        # Zeilen, ab 2021 nur 41). Deshalb steht daneben `rolle` — der stabile
+        # Name aus `finanzberichte.ROLLEN`, an dem Frontend und Proben hängen.
+        # `ermaechtigung` ist die Spalte „Ermächtigungen aus Haushalts-
+        # vorjahren": Geld aus früheren Jahren, das noch ausgegeben werden
+        # durfte. Sie ist NULL, wo der Jahrgang sie nicht führt oder wo ihre
+        # eigene Summenprobe gerissen ist.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_finanzrechnung ("
+            "jahr INTEGER NOT NULL, "
+            "nr INTEGER NOT NULL, "               # Zeilennummer DES DOKUMENTS
+            "rolle TEXT, "                        # stabiler Name, NULL = Einzelzeile
+            "bezeichnung TEXT NOT NULL, "         # Wortlaut des Dokuments
+            "vorjahr REAL, ansatz REAL, plan REAL, plan_art TEXT, "
+            "ergebnis REAL, abweichung REAL, ermaechtigung REAL, "
+            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, nr))"
+        )
+        # Warum ein Posten vom Plan abweicht, in den Worten der Verwaltung:
+        # Abschnitt 6.3.1 des Jahresabschlusses, je Posten. Übernommen wird
+        # nur, was die Rechenprobe besteht (siehe finanzberichte).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_abweichungsgruende ("
+            "jahr INTEGER NOT NULL, "
+            "nr INTEGER NOT NULL, "                # Postennummer der Tabelle
+            "bezeichnung TEXT NOT NULL, "          # so, wie der Abschnitt sie nennt
+            "delta_mio REAL, prozent REAL, "       # laut Überschrift des Blocks
+            "text TEXT NOT NULL, "
+            "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, nr))"
+        )
+        # Die Bilanz der Stadt (Abschnitt 2.1 desselben Jahresabschlusses):
+        # nicht was die Stadt einnimmt oder schuldet, sondern was sie **hat**
+        # — und was davon schon vergeben ist. Der größte Passivposten sind
+        # die Pensionsrückstellungen (2024: 311,79 Mio. € einschließlich
+        # Beihilfe, 266,26 Mio. € ohne), ein Vielfaches der 43,69 Mio. €
+        # Kreditschulden (council/bilanz.py).
+        #
+        # `rolle` ist der Schlüssel, nicht `nr`: Die Gliederungsnummer ist ab
+        # 2021 auf beiden Bilanzseiten dieselbe („1.1" gibt es zweimal), und
+        # bis 2020 war sie römisch. Der Name, den das Dokument der Zeile
+        # gibt, ist das einzig Stabile — deshalb steht er in `bezeichnung`
+        # im Wortlaut daneben.
+        #
+        # Kein `wert_vorjahr`: Die zweite Spalte der Bilanz ist der Stichtag
+        # davor, und der ist ein **eigener Jahrgang** in dieser Tabelle. Sie
+        # zusätzlich an der Zeile zu führen hieße, denselben Stand zweimal zu
+        # speichern — mit der Aussicht, dass die beiden eines Tages
+        # auseinanderlaufen. Gebraucht wird sie beim Einlesen (als
+        # Vorjahres-Kette über Dokumentgrenzen) und beim ältesten Jahrgang,
+        # der ausschließlich aus ihr stammt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_bilanz ("
+            "jahr INTEGER NOT NULL, "             # Bilanzstichtag 31.12.jahr
+            "rolle TEXT NOT NULL, "               # stabiler Name (bilanz.ROLLEN)
+            "seite TEXT NOT NULL, "               # 'aktiva' | 'passiva'
+            "ebene INTEGER NOT NULL, "            # 1 = Hauptposten der Bilanzsumme
+            "nr TEXT, "                           # Gliederungsnummer DES DOKUMENTS
+            "bezeichnung TEXT NOT NULL, "         # Wortlaut des Dokuments
+            "wert REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, rolle))"
+        )
+        # Was die Verwaltung zu jedem Hauptposten schreibt: Anhang 6.2.1–6.2.9
+        # desselben Dokuments, ein Abschnitt je Bilanzposition.
+        #
+        # Diese Tabelle ist keine Zierde, sondern eine Auflage. Die Bilanz
+        # 2024 weist Schulden von 207,1 Mio. € aus nach 84,4 Mio. € im
+        # Vorjahr; ohne 6.2.7 läse sich das als Verdreifachung. Der Abschnitt
+        # sagt, dass es eine Bilanzverlängerung aus dem Cash-Pooling ist,
+        # 138,2 Mio. €, mit Gegenposten auf der Aktivseite. **Die Zahl darf
+        # ohne diesen Text nicht angezeigt werden** — dieselbe Bauart wie
+        # `council_abweichungsgruende` für die Ergebnisrechnung.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_bilanz_erlaeuterungen ("
+            "jahr INTEGER NOT NULL, "
+            "rolle TEXT NOT NULL, "               # dieselbe Marke wie council_bilanz
+            "nr INTEGER NOT NULL, "               # 6.2.N
+            "ueberschrift TEXT NOT NULL, "        # Wortlaut der Abschnittsüberschrift
+            "text TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, rolle))"
+        )
+        # Gesamtergebnishaushalt aus den Haushaltsplänen (RIS-Anlage 005):
+        # dieselbe Postengliederung wie die Ergebnisrechnung, aber für Jahre,
+        # die noch gar keinen Jahresabschluss haben (council/ergebnishaushalt.py).
+        #
+        # DREI SPALTEN, DIE ZUSAMMENGEHÖREN — und deren Trennung der ganze
+        # Zweck dieser Tabelle ist:
+        #
+        # `jahr`          Für welches Jahr die Zahl gilt.
+        # `art`           `ansatz` = das Jahr, für das dieser Plan DER Haushalt
+        #                 ist. `finanzplanung` = mittelfristige Vorausschau
+        #                 nach § 8 NKomVG. Das Dokument nennt beides „Ansatz";
+        #                 das ist Haushaltsrecht, aber keine Beschlusslage.
+        #                 Wer die Unterscheidung wegwirft, behauptet für 2029
+        #                 einen Plan. (Und auch `ansatz` ist der Stand der
+        #                 Einbringung, nicht der Beschluss des Rates — die
+        #                 Herkunft sagt es je Zeile, die Messwerte dazu stehen
+        #                 im Kopf von council/ergebnishaushalt.py.)
+        # `plan_jahrgang` Aus welchem Haushalt die Zahl stammt. Sie steht im
+        #                 Schlüssel, weil dasselbe Jahr in mehreren Plänen
+        #                 vorkommt: 2027 ist im Haushalt 2026 die erste
+        #                 Finanzplanungsstufe, im Haushalt 2027 der Ansatz.
+        #                 Und die Finanzplanung wird jedes Jahr neu
+        #                 geschrieben — von 23 Posten stimmen zwischen zwei
+        #                 aufeinanderfolgenden Plänen 0 bis 2 überein.
+        #
+        # Ohne `plan_jahrgang` im Schlüssel überschriebe der jüngste Plan
+        # stillschweigend, was der ältere für dasselbe Jahr sagte. Mit ihm
+        # ist beides nachlesbar, und die Frage „was war der Ansatz für 2026?"
+        # hat genau eine Antwort: art='ansatz'.
+        #
+        # Herkunft ausschließlich über `herkunft_id` — die Tabelle ist neu und
+        # hat keinen Altbestand (s. council/herkunft.py).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_ergebnishaushalt ("
+            "plan_jahrgang INTEGER NOT NULL, "     # Haushalt, aus dem die Zahl stammt
+            "jahr INTEGER NOT NULL, "              # Jahr, für das sie gilt
+            "art TEXT NOT NULL, "                  # ansatz | finanzplanung
+            "nr INTEGER NOT NULL, "                # Postennummer 1–24, wie im Abschluss
+            "bezeichnung TEXT NOT NULL, "
+            "betrag REAL NOT NULL, "
+            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (plan_jahrgang, jahr, nr))"
+        )
+        # Der Lesepfad fragt „welcher Ansatz gilt für Jahr X?" — nicht „was
+        # stand im Plan Y?". Deshalb der Index auf (jahr, art).
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ergebnishaushalt_jahr "
+            "ON council_ergebnishaushalt(jahr, art)")
+        # Der Stellenplan (Anlage 21/22 des Haushaltsplans, council/stellenplan.py):
+        # wie viele Stellen die Stadt vorhält, wie viele davon besetzt sind
+        # und wie viele nicht.
+        #
+        # `teil`  A = Beamtinnen und Beamte, B = Arbeitnehmerinnen und
+        #         Arbeitnehmer. Zwei Tabellen im Dokument, zwei Spaltensätze,
+        #         zwei Rechenproben — und sie kommen einzeln herein: Im
+        #         Stellenplan 2026 ist Teil B im Textextrakt Glyphen-Salat,
+        #         Teil A steht sauber da. Ohne `teil` im Schlüssel wäre dieser
+        #         Jahrgang entweder ganz draußen oder still halb drin.
+        # `art`   posten | gruppe | gesamt — die drei Stufen der Summenzeilen.
+        #         Die Summen stehen als eigene Zeilen in der Tabelle, weil sie
+        #         im Dokument stehen: Eine Seite, die „815 Stellen" zeigt, soll
+        #         die Zahl der Stadt zeigen und nicht unsere Addition.
+        # `zeile` Laufende Nummer innerhalb von (jahrgang, teil, art) —
+        #         nicht die Lfd.Nr. des Plans. Die taugt nicht als Schlüssel:
+        #         Die Summenzeilen tragen keine, und zwei Teile fangen beide
+        #         bei 1 an. Sie steht daneben in `lfd_nr`.
+        # `stimmig` 0 heißt: In dieser Zeile ergeben besetzt + nicht besetzt
+        #         nicht die Stellen des Vorjahres — so steht es im Plan. Zwei
+        #         Zeilen im Bestand sind das (Begründung in
+        #         `council/stellenplan.besetzungsprobe`).
+        #
+        # `besetzt_beamte`/`besetzt_arbeitnehmer` gibt es nur in Teil A: Eine
+        # Beamtenstelle darf mit Tarifbeschäftigten besetzt werden, und der
+        # Plan weist das getrennt aus. Teil B kennt die Unterscheidung nicht
+        # und lässt beide Spalten leer; `besetzt` trägt in beiden Teilen die
+        # Gesamtbesetzung.
+        #
+        # Herkunft ausschließlich über `herkunft_id` — neue Tabelle, kein
+        # Altbestand (s. council/herkunft.py).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_stellenplan ("
+            "jahrgang INTEGER NOT NULL, "          # Haushaltsjahr des Plans
+            "teil TEXT NOT NULL, "                 # A | B
+            "zeile INTEGER NOT NULL, "             # Reihenfolge im Dokument
+            "art TEXT NOT NULL, "                  # posten | gruppe | gesamt
+            "gruppe TEXT, "                        # Laufbahngruppe 2, Beschäftigte TVöD …
+            "lfd_nr INTEGER, "                     # Nummer im Plan (Summen: NULL)
+            "bezeichnung TEXT NOT NULL, "
+            "besoldung TEXT, "                     # A 13, S 08 a, 15 …
+            "stellen_plan REAL NOT NULL, "         # Stellen im Haushaltsjahr
+            "stellen_vorjahr REAL NOT NULL, "      # Stellen im Vorjahr
+            "besetzt REAL NOT NULL, "              # am Stichtag besetzt
+            "besetzt_beamte REAL, "                # davon mit Beamt*innen (Teil A)
+            "besetzt_arbeitnehmer REAL, "          # davon mit Tarifbeschäftigten (Teil A)
+            "nicht_besetzt REAL NOT NULL, "
+            "stichtag TEXT, "                      # auf welchen Tag sich die Besetzung bezieht
+            "stimmig INTEGER NOT NULL DEFAULT 1, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahrgang, teil, zeile))"
+        )
+        # Die Seite fragt fast immer „gib mir die Summen aller Jahrgänge" —
+        # eine Handvoll Zeilen aus rund tausend.
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_stellenplan_art "
+            "ON council_stellenplan(art, jahrgang)")
+        # Die Investitionen des Finanzhaushalts (council/investitionen.py) —
+        # was die Stadt bauen und kaufen will, je Teilhaushalt. Die andere
+        # Hälfte des Haushaltsplans: Im Ergebnishaushalt darüber steht keine
+        # einzige Investition.
+        #
+        # `ebene` trennt drei Dinge, die verschieden weit reichen:
+        #   `teilhaushalt`  eine der 13 Zeilen (thh_nr 1–13)
+        #   `investitionen` die Summenzeile der Datei — das ZIEL der
+        #                   Rechenprobe, nicht unsere Addition
+        #   `finanzhaushalt` der Gesamtbetrag ALLER Ein-/Auszahlungen, also
+        #                   samt laufender Verwaltungstätigkeit. Bezugsgröße,
+        #                   von keiner Probe der Datei gedeckt und deshalb mit
+        #                   eigener Herkunft (herkunft.UNGEPRUEFT).
+        #
+        # `thh_nr` ist 0 auf den beiden Summenzeilen — sie tragen keine
+        # Teilhaushaltsnummer. Bewusst 0 statt NULL: SQLite lässt NULL in einer
+        # PRIMARY KEY zu und hält zwei NULL-Zeilen für verschieden, der
+        # Schlüssel wäre dort also gar keiner.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_investitionen ("
+            "jahr INTEGER NOT NULL, "              # Haushaltsjahr (Plan)
+            "ebene TEXT NOT NULL, "                # teilhaushalt|investitionen|finanzhaushalt
+            "thh_nr INTEGER NOT NULL DEFAULT 0, "  # 0 = Summenzeile
+            "bezeichnung TEXT NOT NULL, "
+            "einzahlungen REAL NOT NULL, "
+            "auszahlungen REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, ebene, thh_nr))"
+        )
+        # Die einzelnen Vorhaben aus Anlage 004 des Haushaltsplans
+        # (council/investitionsprogramm.py) — die Ebene unter
+        # `council_investitionen`: nicht „Schule und Bildung: 8,3 Mio. €",
+        # sondern „BBS Haarentor: Ausstattung".
+        #
+        # `ebene` trennt drei Zeilenarten, die zusammen aus einem Dokument
+        # kommen und einander stützen:
+        #   massnahme     — ein Vorhaben, mit IPSP-Element als `code`
+        #   teilhaushalt  — die Gesamtsumme des Abschnitts (Ziel der Probe)
+        #   gesamt        — die Gesamtsumme des Investitionsprogramms
+        #
+        # Gespeichert wird ausschließlich die **Gesamtinvestitionssumme**. Die
+        # Jahresraten der Tabelle sind aus dem Textextrakt nicht sicher zu
+        # holen, weil leere Zellen darin ersatzlos wegfallen — die Begründung
+        # steht im Kopf von council/investitionsprogramm.py.
+        #
+        # `code` ist '' auf den beiden Summenebenen und `thh_nr` 0 auf
+        # `gesamt` — bewusst leer statt NULL, aus demselben Grund wie bei
+        # `council_investitionen`: SQLite hielte zwei NULL-Zeilen für
+        # verschieden, der Primärschlüssel wäre dort keiner.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_investitionsmassnahmen ("
+            "jahr INTEGER NOT NULL, "              # Haushaltsjahrgang (Plan)
+            "ebene TEXT NOT NULL, "                # massnahme|teilhaushalt|gesamt
+            "thh_nr INTEGER NOT NULL DEFAULT 0, "
+            "code TEXT NOT NULL DEFAULT '', "      # IPSP-Element
+            "bezeichnung TEXT NOT NULL, "
+            "gesamtsumme REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, ebene, thh_nr, code))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_invprog_jahr_thh "
+            "ON council_investitionsmassnahmen(jahr, thh_nr)")
+        # Schlussberichte des Rechnungsprüfungsamts — nur die **Fundstelle**,
+        # nicht der Inhalt: „Das Rechnungsprüfungsamt hat diesen Abschluss
+        # geprüft → Schlussbericht". Eine Zeile je Jahrgang.
+        # `lesbar` = 0 heißt, der Volltext des PDFs ist unbrauchbar (2024).
+        #
+        # Der Name trägt bewusst „_quellen": Die einzelnen
+        # Prüfungsfeststellungen aus denselben Berichten (Beanstandung,
+        # Wiederholte Beanstandung, Hinweis) sind eine andere Ebene mit einer
+        # Zeile je Feststellung und gehören in eine eigene Tabelle.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_pruefbericht_quellen ("
+            "jahr INTEGER PRIMARY KEY, "
+            "label TEXT, url TEXT, n_pages INTEGER, "
+            "lesbar INTEGER NOT NULL DEFAULT 1, fetched_at TEXT NOT NULL)"
+        )
+        # Produktebene aus den Teilhaushalts-Plänen: was einzelne Aufgaben
+        # kosten, mit Produktnummer und zuständigem Amt — dazu der Steckbrief,
+        # den die Pläne zu jedem Produkt führen (was die Aufgabe umfasst, auf
+        # welchem Gesetz sie beruht, wie viel Spielraum die Stadt bei ihr hat).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_produkte ("
+            "jahr INTEGER NOT NULL, "
+            "produkt_nr TEXT NOT NULL, "          # z. B. P10.111023
+            "produkt_name TEXT NOT NULL, "
+            "thh_nr INTEGER, thh_name TEXT, amt TEXT, "
+            "ertraege REAL, aufwendungen REAL, ergebnis REAL, "
+            "kurzbeschreibung TEXT, auftragsgrundlage TEXT, "
+            "beeinflussbarkeit TEXT, "            # normalisiert: niedrig|mittel|hoch
+            "beeinflussbarkeit_roh TEXT, "        # Wortlaut des Plans
+            "wirkungskreis TEXT, zielgruppe TEXT, "
+            "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, produkt_nr))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_produkte_thh ON council_produkte(jahr, thh_nr)")
+        # Prüfungsfeststellungen aus den Schlussberichten des Rechnungs-
+        # prüfungsamts (RIS-Anlagen): die einzige regelmäßige, förmliche
+        # Kontrolle der Verwaltung durch eine eigene Stelle.
+        #
+        # `marke` ist die Randmarke des Berichts (B/WB/H/K), `marke_name` und
+        # `marke_erlaeuterung` sind die Legende DIESES Jahrgangs — nicht unsere
+        # Formulierung. Sie stehen bewusst je Zeile statt in einer zweiten
+        # Tabelle: Die Legende ändert sich zwischen den Jahrgängen (2023 kennt
+        # kein K mehr), und ein Bericht ohne seine eigene Legende wäre gar
+        # nicht erst eingelesen worden.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_pruefberichte ("
+            "jahr INTEGER NOT NULL, "              # geprüfter Jahresabschluss
+            "lfd INTEGER NOT NULL, "               # Reihenfolge im Dokument
+            "marke TEXT NOT NULL, "                # B | WB | H | K
+            "marke_name TEXT NOT NULL, "           # 'Wiederholte Beanstandung'
+            "marke_erlaeuterung TEXT, "            # Legendentext des Jahrgangs
+            "textziffer TEXT NOT NULL, "           # Fundstelle, z. B. '4.5.2'
+            "abschnitt TEXT NOT NULL, "            # Überschrift der Textziffer
+            "kette TEXT, "                         # Schlüssel für WB-Ketten
+            "seite INTEGER, "                      # Seite im Bericht
+            "text TEXT NOT NULL, "
+            "folgeabsatz TEXT, "                   # was im Bericht direkt folgt
+            "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, lfd))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pruefberichte_kette "
+            "ON council_pruefberichte(kette, jahr)")
+        # Einwohnerzahl je Haushaltsjahr (Open-Data, Stichtag 31.12. des
+        # Vorjahres) — Bezugsgröße für Pro-Kopf-Einordnungen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_einwohner ("
+            "jahr INTEGER PRIMARY KEY, einwohner INTEGER NOT NULL, "
+            "source_url TEXT, fetched_at TEXT NOT NULL)"
+        )
+        # Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr (Open-Data,
+        # seit 1993) — zeigt die NFAG-Mechanik: mehr Steuerkraft, weniger
+        # Zuweisungen. Pflichtwissen für jede ehrliche Hebesatz-Simulation.
+        # `jahr` ist das Ausgleichsjahr, nicht die Jahreszahl aus der Quelle:
+        # Der Datensatz 1106 beschriftet um ein Jahr zu früh, wir rücken beim
+        # Einlesen (Beleg in `council/haushalt._STEUERKRAFT_VERSATZ`). Die
+        # beiden `*_je_ew`-Spalten bleiben deshalb leer — sie tragen die
+        # Pro-Kopf-Rechnung der Quelle und damit deren falsches Bezugsjahr.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_steuerkraft ("
+            "jahr INTEGER PRIMARY KEY, "
+            "messzahl REAL, messzahl_je_ew REAL, "          # Euro bzw. Euro/Einwohner
+            "zuweisungen REAL, zuweisungen_je_ew REAL, "    # Anordnungssoll
+            "source_url TEXT, fetched_at TEXT NOT NULL)"
+        )
+        # Herkunft der Finanzzahlen — ein Datensatz je Dokument-und-Abschnitt,
+        # auf den die Datenzeilen per `herkunft_id` zeigen. Warum eine eigene
+        # Tabelle statt Spalten in jeder Zieltabelle, steht ausführlich im
+        # Modulkopf von `council/herkunft.py`; kurz: Eine Zieltabelle trägt
+        # Zeilen aus mehreren Dokumenten (bei den Beteiligungen der
+        # Normalfall), ein neues Herkunftsfeld darf nicht neun ALTER TABLE
+        # kosten, und ein Jahrgang schriebe dieselbe Angabe sonst 200-mal.
+        #
+        # `schluessel` ist der Fingerabdruck über alle Inhaltsfelder und macht
+        # das Eintragen idempotent — `fetched_at` steht bewusst NICHT darin
+        # (s. Herkunft.schluessel), sonst wüchse die Tabelle mit der Zahl der
+        # Läufe statt mit der Zahl der Quellen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_herkunft ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "schluessel TEXT NOT NULL UNIQUE, "
+            "art TEXT NOT NULL, "                  # ris | opendata | stadt
+            "dokument_id INTEGER, "                # council_anlagen.document_id
+            "label TEXT, url TEXT, "
+            "fundstelle TEXT, seite INTEGER, "     # wo IM Dokument
+            "probe TEXT NOT NULL, probe_ergebnis TEXT, "  # womit abgesichert
+            "stand TEXT, "                         # Stichtag des Inhalts
+            "fetched_at TEXT NOT NULL)"            # zuletzt bestätigt
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_herkunft_dokument "
+            "ON council_herkunft(dokument_id)")
+        # Der Konzern Stadt Oldenburg aus dem konsolidierten Gesamtabschluss
+        # (council/konzernabschluss.py). Zwei Ebenen, zwei Tabellen:
+        #
+        # `council_konzern_posten` = die Gesamtergebnisrechnung des Konzerns,
+        # Posten für Posten. `rolle` ist der Grund, warum es diese Spalte gibt:
+        # Bis 2018 ist Posten 15 die Summe der ordentlichen Erträge, ab 2019
+        # ist es Posten 13. Wer über Jahre hinweg nach `nr` fragt, bekommt ab
+        # 2019 stillschweigend die Versorgungsaufwendungen. Gefragt wird
+        # deshalb nach der Rolle; die Nummer steht nur noch als Fundstelle
+        # daneben.
+        #
+        # BEIDE TABELLEN FÜHREN IHRE HERKUNFT AUSSCHLIESSLICH ÜBER
+        # `herkunft_id` — kein `quelle_label`, kein `quelle_url`. Die neun
+        # älteren Finanztabellen tragen ihre Altspalten weiter, weil ein
+        # Umbau dort neun Lesepfade anfasste (s. council/herkunft.py). Diese
+        # zwei sind neu und haben keinen Altbestand; sie hier trotzdem
+        # anzulegen hieße, dieselbe Angabe von Anfang an doppelt zu führen —
+        # mit der bekannten Folge, dass eine der beiden irgendwann veraltet.
+        # Die Spalte selbst rüstet `_migrate_herkunft` über
+        # `herkunft.HERKUNFT_TABELLEN` nach; sie steht hier nur mit, damit
+        # eine frische Datenbank sie sofort trägt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_konzern_posten ("
+            "jahr INTEGER NOT NULL, "
+            "nr INTEGER NOT NULL, "                # Postennummer DIESES Jahrgangs
+            "bezeichnung TEXT NOT NULL, "
+            "rolle TEXT, "                         # ertraege_summe, zinsaufwand, …
+            "betrag REAL NOT NULL, vorjahr REAL, "  # Euro; vorjahr NULL = Spalte unlesbar
+            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, nr))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_konzern_posten_rolle "
+            "ON council_konzern_posten(rolle, jahr)")
+        # `council_konzern_traeger` = wer den Konzern ausmacht: dieselben
+        # Summen, aufgeteilt auf Kernverwaltung, Eigenbetriebe und
+        # Beteiligungen, plus die Zeile „Konsolidierung" (die Verrechnung der
+        # Geschäfte untereinander).
+        #
+        # Die Beträge stehen in **Tausend Euro**, so wie der Bericht sie
+        # ausweist, und die Spalten heißen auch so. Sie in Euro umzurechnen
+        # hieße, sechs Stellen Genauigkeit zu behaupten, die das Dokument
+        # nicht hergibt — und niemand sähe es der Spalte `betrag` später an.
+        #
+        # Eigene `herkunft_id` je Zeile, nicht je Jahrgang: Diese Aufstellung
+        # steht in einem anderen Abschnitt des Berichts als die Posten (4.1.1
+        # statt 3.2) und ist durch andere Proben gedeckt. Und sobald die
+        # Beteiligungen einmal aus ihren Einzelabschlüssen kommen, sitzen in
+        # derselben Tabelle Zeilen aus verschiedenen Dokumenten — genau der
+        # Fall, für den die Herkunft eine eigene Tabelle ist.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_konzern_traeger ("
+            "jahr INTEGER NOT NULL, "
+            "art TEXT NOT NULL, "                  # 'ertraege' | 'aufwendungen'
+            "traeger_key TEXT NOT NULL, "          # stadt, klinikum, egh, konsolidierung, …
+            "traeger TEXT NOT NULL, "
+            "betrag_teur REAL NOT NULL, vorjahr_teur REAL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, art, traeger_key))"
+        )
+        # Der Beteiligungsbericht nach § 151 NKomVG
+        # (council/beteiligungsbericht.py). Drei Tabellen, weil hier drei
+        # verschiedene Dinge zusammenkommen — und weil sie verschieden oft
+        # ihren Wert wechseln.
+        #
+        # ACHTUNG, NAMENSFALLE: `council_beteiligungen` ist etwas ganz
+        # anderes. Dort stehen die **Bürgerbeteiligungen** an Bauleitplänen
+        # (oldenburg.planungsbeteiligung.de, s. `council/beteiligung.py`).
+        # Gesellschaften heißen hier deshalb Gesellschaften.
+        #
+        # `council_gesellschaften` = die Stammdaten je Bericht: Wie die
+        # Gesellschaft heißt, an welcher Stelle sie im Bericht steht, auf
+        # welcher Seite. Je Berichtsjahr eine Zeile, weil sich alles davon
+        # ändern kann — die Gliederungsnummer tut es regelmäßig, sobald eine
+        # Beteiligung dazukommt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gesellschaften ("
+            "bericht_jahr INTEGER NOT NULL, "      # Berichtsjahr des Dokuments
+            "gesellschaft TEXT NOT NULL, "         # stabiler Schlüssel: egh, vwg, …
+            "name TEXT NOT NULL, "
+            "gliederung TEXT NOT NULL, "           # '2.4.9'
+            "seite INTEGER, "                      # gedruckte Seite im Bericht
+            "konzern_key TEXT, "                   # → council_konzern_traeger
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, gesellschaft))"
+        )
+        # `council_gesellschaft_texte` = die beschreibenden Abschnitte.
+        # Langformat, nicht fünf Spalten: Der Bericht führt acht Abschnitte,
+        # gespeichert werden fünf, und welche das sind, ist eine Entscheidung
+        # über den Nutzen — keine über das Schema. Ein sechster kostet so
+        # keine Migration.
+        #
+        # Diese Zeilen tragen `herkunft.UNGEPRUEFT`, und das ist die ehrliche
+        # Angabe: Fließtext lässt sich gegen nichts rechnen. Sie stehen
+        # trotzdem mit Dokument, Fundstelle und Seite da.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gesellschaft_texte ("
+            "bericht_jahr INTEGER NOT NULL, "
+            "gesellschaft TEXT NOT NULL, "
+            "abschnitt TEXT NOT NULL, "            # gegenstand, aufsichtsorgane, …
+            "text TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, gesellschaft, abschnitt))"
+        )
+        # `council_gesellschaft_personen` = wer in den Aufsichtsorganen sitzt.
+        #
+        # Das steht auch im Abschnittstext, und trotzdem ist es keine
+        # Doppelung: Der Text ist der zweispaltige PDF-Extrakt — erst fünfzehn
+        # Namen, dann fünfzehn Ämter —, und was da nebeneinander gehört,
+        # entscheidet eine Rechenprobe (`beteiligungsbericht.aufsichtsorgane`).
+        # Hier steht das Ergebnis dieser Probe; der Text bleibt daneben stehen,
+        # damit ein Mensch nachlesen kann.
+        #
+        # `funktionen_zuordenbar` ist die Probe selbst und steht bewusst an
+        # JEDER Zeile, obwohl sie je Gesellschaft gilt: Wer die Personen liest,
+        # muss ohne zweite Abfrage wissen, ob das Amt daneben gedeckt ist.
+        # Ist sie 0, sind ALLE `funktion` dieser Gesellschaft NULL — nicht
+        # „die meisten". Ein falsch zugeordnetes Amt wäre eine Falschaussage
+        # über eine namentlich genannte Person.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gesellschaft_personen ("
+            "bericht_jahr INTEGER NOT NULL, "
+            "gesellschaft TEXT NOT NULL, "
+            "reihenfolge INTEGER NOT NULL, "   # Position im Bericht
+            "gremium TEXT NOT NULL, "          # Betriebsausschuss, Aufsichtsrat, …
+            "name TEXT NOT NULL, "
+            "funktion TEXT, "                  # NULL, wenn die Probe riss
+            "vorsitz TEXT, "                   # vorsitz | stellvertretung | NULL
+            "hinweis TEXT, "                   # „bis 30. Juni 2022"
+            "funktionen_zuordenbar INTEGER NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, gesellschaft, reihenfolge))"
+        )
+        # `council_gesellschaft_eigentuemer` = wem die Gesellschaft gehört.
+        #
+        # Ohne die Summenzeile: „Stammkapital 22.000.000,00 100,0" sieht im
+        # Extrakt aus wie ein Gesellschafter und ist die Probe, gegen die die
+        # Anteile laufen. Stünde sie hier, hielte die Stadt an ihrem eigenen
+        # Eigenbetrieb die Hälfte und ein „Stammkapital" die andere.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gesellschaft_eigentuemer ("
+            "bericht_jahr INTEGER NOT NULL, "
+            "gesellschaft TEXT NOT NULL, "
+            "reihenfolge INTEGER NOT NULL, "
+            "name TEXT NOT NULL, "
+            "betrag_eur REAL, "                # NULL, wo der Bericht nur % nennt
+            "anteil_prozent REAL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, gesellschaft, reihenfolge))"
+        )
+        # `council_gesellschaft_kennzahlen` = die Zeitreihe.
+        #
+        # SCHLÜSSEL IST DAS BEZUGSJAHR DER KENNZAHL, NICHT DER BERICHT. Jeder
+        # Bericht führt vier bis fünf Jahre; dasselbe Jahr steht also in bis
+        # zu drei Berichten. Als (Bericht, Jahr) abgelegt läge es dreimal da
+        # und jede Auswertung müsste sich entscheiden — mit dem Bezugsjahr als
+        # Schlüssel ist es eine Zeile, und die Frage „stimmen die Berichte
+        # überein?" ist beim Schreiben beantwortet statt beim Lesen.
+        #
+        # `berichte` hält fest, wie viele Berichte den Wert übereinstimmend
+        # nennen. Das ist keine Statistik, sondern das Ergebnis der
+        # Überlappungsprobe: 1 heißt „steht bisher nur in einem Bericht" und
+        # damit „durch eine Dokumentprobe gedeckt, nicht durch die
+        # Überlappung". Die Seite sagt es so auch.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gesellschaft_kennzahlen ("
+            "gesellschaft TEXT NOT NULL, "
+            "kennzahl TEXT NOT NULL, "             # jahresergebnis|bilanzsumme|…
+            "jahr INTEGER NOT NULL, "              # Bezugsjahr der Kennzahl
+            "wert REAL NOT NULL, "
+            "einheit TEXT NOT NULL, "              # eur | prozent
+            "bericht_jahr INTEGER NOT NULL, "      # jüngster Bericht mit diesem Wert
+            "berichte INTEGER NOT NULL, "          # wie viele Berichte ihn nennen
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (gesellschaft, kennzahl, jahr))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_gesellschaft_kennzahlen_jahr "
+            "ON council_gesellschaft_kennzahlen(jahr, kennzahl)")
+        # Städtevergleich aus der amtlichen Statistik des Landesamts für
+        # Statistik Niedersachsen (council/staedtevergleich.py). Langformat —
+        # eine Zeile je Stadt, Jahr und Kennzahl.
+        #
+        # WARUM LANGFORMAT: Die beiden Quellen haben verschiedene Zuschnitte.
+        # Der Finanzausgleich liefert je Stadt zwei Zahlen für EIN Jahr, der
+        # Realsteuervergleich Hebesätze für das Berichtsjahr UND eine
+        # Steuereinnahmekraft-Reihe über drei Jahre. Als Spaltensatz bräuchte
+        # das entweder zwei Tabellen oder eine mit lauter leeren Feldern; so
+        # ist es eine, und eine neunte Kennzahl kostet keine Migration.
+        #
+        # `jahr` ist das Bezugsjahr DER KENNZAHL, nicht der Datei: Der
+        # Realsteuervergleich 2025 führt auch 2023 und 2024. Alles unter dem
+        # Dateijahr abzulegen machte aus drei Jahren eines.
+        #
+        # UND DIE WICHTIGE ABGRENZUNG ZU `council_steuerkraft`: Beide Tabellen
+        # führen Steuerkraftmesszahlen, und sie sind NICHT dasselbe. Unser
+        # Open-Data-Datensatz 1106 trägt dieselben Beträge wie das LSN, aber
+        # unter einer um ein Jahr verschobenen Beschriftung (drei Wertepaare
+        # geprüft, zwei unabhängige Wege). Welche stimmt, ist offen. Deshalb
+        # eine eigene Tabelle mit der Jahresangabe des LSN — und deshalb darf
+        # kein Lesepfad die beiden zu einer Reihe mischen, solange das nicht
+        # geklärt ist. Er plottete zwei Jahre gegeneinander, die nicht dasselbe
+        # meinen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_staedtevergleich ("
+            "reihe TEXT NOT NULL, "                # 'steuerkraft' | 'realsteuern'
+            "jahr INTEGER NOT NULL, "              # Bezugsjahr der Kennzahl (LSN)
+            "schluessel TEXT NOT NULL, "           # amtliche Schlüsselnr., 6-stellig
+            "stadt TEXT NOT NULL, "
+            "kennzahl TEXT NOT NULL, "
+            "wert REAL NOT NULL, "
+            "einheit TEXT NOT NULL, "              # teur | anzahl | prozent | eur_je_ew
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (reihe, jahr, schluessel, kennzahl))"
+        )
+        # Gewerbesteuerstatistik des LSN (council/gewerbesteuerstatistik.py) —
+        # wie viele Betriebe die Gewerbesteuer überhaupt aufbringen.
+        #
+        # WARUM SPALTEN UND NICHT LANGFORMAT wie beim Städtevergleich daneben:
+        # Diese neun Zahlen sind EINE Aussage über eine Stadt in einem Jahr,
+        # und sie hängen rechnerisch aneinander (reine Festsetzungen +
+        # Zerlegungen = insgesamt, dreimal). Im Langformat stünde jede Zahl in
+        # einer eigenen Zeile, und die Probe, die sie zusammenhält, wäre beim
+        # Lesen nicht mehr nachvollziehbar, ohne neun Zeilen wieder
+        # einzusammeln. Der Städtevergleich hat den umgekehrten Zuschnitt: dort
+        # kommen die Kennzahlen aus zwei verschieden gebauten Quellen.
+        #
+        # `messbetrag_eur` und die beiden Teilbeträge sind NULL-bar, die
+        # Anzahlen nicht. Das ist der Fall der GEHEIMHALTUNG: Wo ein einzelner
+        # Zahler die Gemeinde dominiert, druckt das Landesamt statt des Betrags
+        # ein „g" (2021 bei Salzgitter und Wolfsburg) — die Anzahlen stehen
+        # trotzdem da. NULL heißt hier also „gesperrt", nicht „null Euro", und
+        # `gesperrt` sagt es noch einmal ausdrücklich, damit eine Anzeige den
+        # Unterschied nicht raten muss. Wo eine Stadt vollständig gesperrt ist
+        # (Jahrgang 2020), kommt sie gar nicht erst herein.
+        #
+        # ABGRENZUNG, OHNE DIE DIE ZAHLEN IRREFÜHREN: Der Steuermessbetrag ist
+        # die VERANLAGUNG des Erhebungsjahres, nicht das Aufkommen des
+        # Kalenderjahres in `council_steuern`. Messbetrag mal Hebesatz lag in
+        # den drei prüfbaren Jahren zwischen 13 % unter und 27 % über dem
+        # kassenmäßigen Ist. Kein Lesepfad darf die beiden zu einer Reihe
+        # verbinden (ausführlich im Modulkopf).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gewerbesteuerstatistik ("
+            "jahr INTEGER NOT NULL, "              # Erhebungsjahr der Veranlagung
+            "schluessel TEXT NOT NULL, "           # amtliche Schlüsselnr., 6-stellig
+            "stadt TEXT NOT NULL, "
+            "faelle INTEGER NOT NULL, "            # Betriebe und Betriebsstätten
+            "faelle_positiv INTEGER NOT NULL, "    # davon mit positivem Messbetrag
+            "messbetrag_eur INTEGER, "             # NULL = Geheimhaltung
+            "festsetzungen INTEGER, "              # reine Festsetzungen
+            "festsetzungen_positiv INTEGER, "
+            "festsetzung_messbetrag_eur INTEGER, "
+            "zerlegungen INTEGER, "                # zerlegte Betriebsstätten
+            "zerlegungen_positiv INTEGER, "
+            "zerlegung_messbetrag_eur INTEGER, "
+            "hebesatz REAL, "                      # nachrichtlich, aus Blatt 6.2
+            "gesperrt INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, schluessel))"
+        )
+        # Schuldenstand je Jahr (Tabelle 1108 des Statistischen Jahrbuchs,
+        # seit 1995). Beträge in Euro; die Quelle rechnet in Tausend Euro und
+        # ist damit auf Tausend genau — mehr behauptet auch diese Tabelle nicht.
+        #
+        # DIE ABGRENZUNG STEHT IM MODULKOPF VON `council/schulden.py` und ist
+        # die wichtigste Angabe der ganzen Schicht: Gezählt wird die Stadt als
+        # RECHTSTRÄGER, also Kernhaushalt UND Eigenbetriebe — nicht der Konzern
+        # mit seinen rechtlich selbstständigen Beteiligungen. Beide Zahlen
+        # heißen „die Schulden der Stadt" und unterscheiden sich um ein
+        # Vielfaches; kein Lesepfad darf sie zu einer Reihe mischen.
+        #
+        # Die vier Artenspalten sind NULL-bar, `insgesamt` nicht. Das ist kein
+        # Schönheitsfehler, sondern der Fall 2022: Dort ergeben die Arten im
+        # Dokument selbst 1,078 Mio. € mehr als die Summe daneben. Die Summe
+        # trägt die unabhängige Pro-Kopf-Gegenprobe, die Aufteilung trägt
+        # nichts — also kommt die Summe herein und die Aufteilung nicht.
+        # `aufteilung_verworfen` hält fest, wie groß die Lücke war, damit die
+        # Seite den leeren Balken erklären kann statt ihn zu verschweigen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_schulden ("
+            "jahr INTEGER PRIMARY KEY, "
+            "kreditmarkt REAL, "               # Schulden aus Kreditmarktmitteln
+            "sondermittel REAL, "              # aus öffentlichen Sondermitteln
+            "gebietskoerperschaften REAL, "    # bei Gebietskörperschaften
+            "eigenbetriebe REAL, "             # Eigenbetriebe + innere Darlehen
+            "insgesamt REAL NOT NULL, "        # die ausgewiesene Summe
+            "je_einwohner REAL, "              # Euro je Einwohner*in
+            "aufteilung_verworfen REAL, "      # Lücke der Summenprobe, sonst NULL
+            "revidiert INTEGER NOT NULL DEFAULT 0, "   # „r" der Quelle
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Was die Stadt in einem Jahr WIRKLICH investiert hat — Tabellen 1107
+        # (2003–2009) und 1107-1 (2010–2025) des Statistischen Jahrbuchs.
+        # Beträge in Euro; die Quelle rechnet in Tausend Euro.
+        #
+        # NICHT ZU VERWECHSELN mit `council_investitionen`: Das sind die
+        # PLANZAHLEN aus dem Finanzhaushalt des Haushaltsplans, gegliedert nach
+        # Teilhaushalten. Hier stehen die Rechnungsergebnisse, gegliedert nach
+        # Auszahlungsarten. Die beiden Summen sind verschieden abgegrenzt und
+        # dürfen nicht voneinander abgezogen werden — die Begründung steht im
+        # Kopf von `council/investitionen_ist.py`.
+        #
+        # `regelwerk` ist der Grund für die eigene Spalte statt einer stillen
+        # Annahme: Zum 01.01.2010 stellte die Stadt von kameraler auf doppische
+        # Buchführung um, und das Dokument trennt seine beiden Tabellen genau
+        # dort — mit eigener Fußnote. Eine Kurve, die über 2009/2010 hinweg
+        # durchzieht, behauptet eine Vergleichbarkeit, die die Quelle bestreitet.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_investitionen_ist ("
+            "jahr INTEGER PRIMARY KEY, "
+            "regelwerk TEXT NOT NULL, "        # kameral | doppik
+            "insgesamt REAL NOT NULL, "        # die ausgewiesene Summenspalte
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Die Aufteilung nach Auszahlungsart — eigene Tabelle, weil die Zahl
+        # der Arten vom Regelwerk abhängt (kameral vier, doppisch sechs) und
+        # eine gemeinsame Spalte für „bewegliches Vermögen" zwei Begriffe aus
+        # zwei Rechnungswesen unter einen Namen zwänge.
+        #
+        # `titel` reist mit der Zeile, statt im Frontend zu stehen: Die
+        # Legende soll nicht in zwei Sprachen existieren, und die Überschrift
+        # ist eine Angabe der Quelle wie der Betrag selbst.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_investitionen_ist_arten ("
+            "jahr INTEGER NOT NULL, "
+            "feld TEXT NOT NULL, "             # Schlüssel aus investitionen_ist.SPALTEN
+            "titel TEXT NOT NULL, "            # die Überschrift der Quelle
+            "reihenfolge INTEGER NOT NULL, "   # Spaltenfolge der Tabelle
+            "betrag REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, feld))"
+        )
+        # Die Jahrgänge, die es NICHT in den Bestand geschafft haben — mit
+        # dem, was an ihnen gemessen wurde.
+        #
+        # Dieselbe Rolle wie `aufteilung_verworfen` in `council_schulden`, nur
+        # eine Tabelle weiter: Dort trägt die gerettete Zeile ihre Lücke in
+        # einer eigenen Spalte, hier gibt es keine Zeile, die sie tragen
+        # könnte (die Probe reißt, eine zweite gibt es nicht, also fällt der
+        # ganze Jahrgang — s. `council/investitionen_ist.py`).
+        #
+        # `differenz` ist der Grund für diese Tabelle: Ohne sie stünde die
+        # gemessene Lücke nur als Fließtext im `grund` und wäre für die Seite
+        # nicht mehr zu haben, ohne einen Satz zurückzuparsen. `NULL`, wo
+        # nichts zu messen war (eine Zeile, die sich nicht zerlegen ließ) —
+        # eine Null behauptete dort „es passte genau".
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_investitionen_ist_verworfen ("
+            "jahr INTEGER PRIMARY KEY, "
+            "regelwerk TEXT NOT NULL, "        # kameral | doppik
+            "grund TEXT NOT NULL, "            # der Satz aus dem Parser
+            "differenz REAL, "                 # Arten minus Summe, in Euro
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Die lange Ausgabenreihe — Datensatz 1102, ein Betrag je Jahr seit
+        # 1972 (council/ausgabenreihe.py). Beträge in Euro; die Quelle rechnet
+        # in Tausend Euro.
+        #
+        # `regelwerk` trennt die beiden Größen an der Naht 2009/2010, genau
+        # wie in `council_investitionen_ist` und aus derselben Fußnote
+        # derselben Quelle: Links steht das Anordnungssoll des
+        # Verwaltungshaushalts, rechts die ordentlichen Aufwendungen der
+        # Gesamtergebnisrechnung.
+        #
+        # WAS HIER BEWUSST NICHT STEHT: die Einwohnerzahl und der Betrag je
+        # Einwohner*in, obwohl beide Quellen sie führen und die Pro-Kopf-Probe
+        # sie braucht. Sie bleiben im Parser. Der Grund ist keine Sparsamkeit,
+        # sondern eine Sperre: Läge der Divisor in dieser Tabelle, wäre die
+        # naheliegendste Grafik der Seite „Ausgaben pro Kopf seit 1972" — und
+        # die wäre falsch, weil die Einwohnerreihe zwei Zensus-Brüche hat
+        # (2011 und 2022, s. die Fußnote auf /haushalt/schulden). Was die API
+        # nicht liefern kann, kann das Frontend nicht versehentlich zeichnen.
+        #
+        # `konflikt_betrag` ist der Betrag, den die ANDERE Quelle für dieses
+        # Jahr nennt — gefüllt nur, wo PDF und CSV sich widersprechen (2021).
+        # Dieselbe Rolle wie `differenz` in
+        # `council_investitionen_ist_verworfen`: Er macht aus „hier gab es
+        # einen Widerspruch" eine Zahl, die die Seite anschreiben kann.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_ausgabenreihe ("
+            "jahr INTEGER PRIMARY KEY, "
+            "regelwerk TEXT NOT NULL, "        # kameral | doppik
+            "betrag REAL NOT NULL, "           # in Euro
+            "quelle TEXT NOT NULL, "           # pdf | csv — wer den Wert lieferte
+            "proben TEXT NOT NULL, "           # bestandene Proben, kommagetrennt
+            "konflikt_betrag REAL, "           # was die andere Quelle sagt
+            "konflikt_quelle TEXT, "
+            "revidiert INTEGER NOT NULL DEFAULT 0, "   # „r" der Quelle
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Der Bürgschaftsbestand aus dem Jahresabschluss (council/
+        # buergschaften.py) — wofür die Stadt geradesteht, nicht was sie
+        # schuldet. 2024: 220,3 Mio. € gegen 43,7 Mio. € eigene Geldschulden.
+        #
+        # `genau` und `aus_folgejahr` sind keine Technik, sondern Angaben über
+        # die Zahl: Die Quelle nennt den Betrag 2019/2020 auf den Cent und ab
+        # 2022 nur noch gerundet („rd. 220,3 Millionen"), und 2021 nennt sie
+        # ihn überhaupt nicht — dieser Wert steht allein im Dokument des
+        # Folgejahres. Ohne beide Spalten sähen sechs verschieden belegte
+        # Jahrgänge in der Anzeige gleich aus.
+        # Die Gebührenbedarfsberechnung (`council/gebuehren.py`) — die
+        # Rechnung, aus der die Abfall- und Straßenreinigungsgebühren
+        # entstehen. Von allen Zahlen des Haushalts landet keine so direkt im
+        # Portemonnaie.
+        #
+        # `gebuehr` und `bezugsmenge` sind NULLBAR, und das ist eine Aussage:
+        # Die Abfallsammlung erhebt eine Grundgebühr UND eine Gebühr je Liter
+        # Behältervolumen, dort gibt es keine einzelne Division. Eine 0 wäre
+        # dort eine Behauptung, und eine erfundene Division wäre schlimmer als
+        # keine. Die Kaskade ist trotzdem geprüft — welche Proben liefen,
+        # steht je Zeile in `proben`.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gebuehren ("
+            "jahr INTEGER NOT NULL, "
+            "bereich TEXT NOT NULL, "          # Kürzel aus gebuehren.BEREICHE
+            "bereich_name TEXT NOT NULL, "
+            "kostenkalkulation REAL NOT NULL, "
+            "abzuege REAL NOT NULL, "          # negativ
+            "zu_deckende_kosten REAL NOT NULL, "
+            "bezugsmenge REAL, "
+            "bezugseinheit TEXT, "
+            "gebuehr REAL, "                   # die errechnete, 3 Nachkommast.
+            "gebuehrenvorschlag REAL, "        # die gerundete an den Rat
+            "vorlage_nr TEXT, "
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, "
+            "fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, bereich))"
+        )
+
+        # Die Haushaltssatzung — der Rahmen, den der Haushaltsplan bekommt
+        # (`council/haushaltssatzung.py`). Drei Größen standen bis 08/2026
+        # nirgends im Bereich: die Kreditermächtigung (§ 2), der Höchstbetrag
+        # für Liquiditätskredite (§ 4) und der Finanzhaushalt als Ganzes
+        # (§ 1.2) — bisher wurden daraus nur die Investitionen gelesen.
+        #
+        # `fassung` IST KEIN TECHNIKFELD. Alle Satzungen im
+        # Ratsinformationssystem sind **Verwaltungsentwürfe**; die beschlossene
+        # Fassung erscheint im Amtsblatt. Eine Anzeige, die das wegließe,
+        # machte aus einem Vorschlag der Verwaltung einen Ratsbeschluss.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_haushaltssatzung ("
+            "jahr INTEGER NOT NULL, "
+            "nachtrag INTEGER NOT NULL DEFAULT 0, "   # 0 = die Satzung selbst
+            "fassung TEXT NOT NULL, "                 # entwurf | unbekannt
+            "ordentliche_ertraege REAL NOT NULL, "
+            "ordentliche_aufwendungen REAL NOT NULL, "
+            "ao_ertraege REAL NOT NULL, "
+            "ao_aufwendungen REAL NOT NULL, "
+            "ein_laufend REAL NOT NULL, aus_laufend REAL NOT NULL, "
+            "ein_invest REAL NOT NULL, aus_invest REAL NOT NULL, "
+            "ein_finanz REAL NOT NULL, aus_finanz REAL NOT NULL, "
+            # Die beiden „Nachrichtlich"-Zeilen. Sie stehen NICHT nur als
+            # Bequemlichkeit hier: Sie sind die Probe, an der die sechs Zeilen
+            # darüber hängen, und wer sie mitspeichert, kann sie nachrechnen,
+            # ohne das PDF noch einmal zu holen.
+            "ein_gesamt REAL NOT NULL, aus_gesamt REAL NOT NULL, "
+            # Nullbar, weil ein fehlender Paragraph etwas anderes ist als eine
+            # Null: `kredite_investitionen = 0` heißt „nicht veranschlagt" (so
+            # steht es dort in jedem gelesenen Jahrgang), NULL hieße „die
+            # Satzung sagt dazu nichts".
+            "kredite_investitionen REAL, "
+            "verpflichtungsermaechtigungen REAL, "
+            "liquiditaetskredite REAL, "
+            # Ab dem Jahrgang 2025 nennt § 5 nur noch die Gewerbesteuer und
+            # verweist für die Grundsteuer auf eine eigene Satzung.
+            "hebesatz_grundsteuer_a INTEGER, "
+            "hebesatz_grundsteuer_b INTEGER, "
+            "hebesatz_gewerbesteuer INTEGER, "
+            "sitzung_am TEXT, "                       # NULL bei „xx.xx.JJJJ"
+            "vorlage_nr TEXT, "
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, "
+            "fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, nachtrag))"
+        )
+
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_wirtschaftsplaene ("
+            "betrieb TEXT NOT NULL, "          # Kürzel aus wirtschaftsplan.BETRIEBE
+            "jahr INTEGER NOT NULL, "          # Haushaltsjahr, nicht Jahr der Vorlage
+            "betrieb_name TEXT NOT NULL, "
+            "vorlage_nr TEXT NOT NULL, "
+            # Nullbar seit 20.08.2026: Nicht jede Quelle gibt das volle Tripel.
+            # Beschlusstext (EGH) und Erfolgsplan-Tabelle (AWB) liefern Erträge,
+            # Aufwendungen UND Ergebnis; bei Bäderbetriebsgesellschaft, Stadion
+            # und Bäderbetrieb nennt nur die **Kernzahl** eine geprüfte Zahl —
+            # das Jahresergebnis, das der Rat beschließt. Eine 0 dort wäre eine
+            # Behauptung, ein NULL ist die Auskunft „diese Quelle sagt es nicht".
+            "ertraege REAL, "                  # Erfolgsplan, in Euro
+            "aufwendungen REAL, "
+            "steuern REAL, "                   # bis 2020 keine eigene Zeile → 0
+            "ergebnis REAL NOT NULL, "         # als einziges immer da
+            "vermoegensplan REAL, "            # Ein- = Auszahlungen, eine Zahl
+            # NICHT dasselbe wie `vermoegensplan`, und die Verwechslung wäre
+            # teuer: Der Vermögensplan ist die Gesamtsumme (Ein- = Auszahlungen),
+            # `investitionen` ein POSTEN darin — daneben stehen dort etwa
+            # Tilgungsleistungen. Der Beschlusstext des Bäderbetriebs nennt nur
+            # diesen Posten („Der Vermögensplan weist Investitionen in Höhe von
+            # 10.752.000 Euro aus"), der des EGH nur die Summe. Zwei Spalten,
+            # weil es zwei Angaben sind.
+            "investitionen REAL, "
+            "verpflichtungen REAL, "           # Verpflichtungsermächtigungen
+            "entwurf_vom TEXT, "               # Stand des Verwaltungsentwurfs
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            # Ein Betrieb, ein Haushaltsjahr, ein Plan. Der Schlüssel ist
+            # bewusst NICHT die Vorlagen-Nummer: Zu einem Jahr kann es eine
+            # Anpassung geben (eine zweite Vorlage), und die soll den Stand
+            # ersetzen und nicht danebenstehen.
+            "PRIMARY KEY (betrieb, jahr))"
+        )
+        # Bestände, die vor dem 20.08.2026 angelegt wurden, tragen `ertraege`
+        # und `aufwendungen` noch als NOT NULL. SQLite kann eine Spalte nicht
+        # nachträglich nullbar machen — die Tabelle muss neu gebaut und der
+        # Inhalt umkopiert werden. Erkannt wird der Altstand am Schema selbst
+        # (`PRAGMA table_info`, Spalte `notnull`), nicht an einer Versionsnummer:
+        # So läuft der Umbau genau einmal und auf jedem Bestand von allein.
+        wp_spalten = self._conn.execute(
+            "PRAGMA table_info(council_wirtschaftsplaene)").fetchall()
+        # `investitionen` kam am 21.08.2026 dazu (Tim: „da stehen ja ganz, ganz
+        # viele Zahlen drin" — die Karte des Bäderbetriebs zeigte nur eine Null).
+        # Ein schlichtes ADD COLUMN reicht: Die Spalte ist nullbar, und NULL ist
+        # hier die richtige Auskunft für jeden Bestand, der sie noch nicht kennt.
+        if not any(s[1] == "investitionen" for s in wp_spalten):
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE council_wirtschaftsplaene ADD COLUMN investitionen REAL")
+            wp_spalten = self._conn.execute(
+                "PRAGMA table_info(council_wirtschaftsplaene)").fetchall()
+        if any(s[1] == "ertraege" and s[3] == 1 for s in wp_spalten):
+            # `with self._conn` und nicht `self.transaktion()`: Diese Migration
+            # läuft aus `_migrate()` heraus, also noch während `__init__` — der
+            # Sammel-Zustand der Transaktionshilfe existiert da noch nicht.
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE council_wirtschaftsplaene RENAME TO _wp_alt")
+                self._conn.execute(
+                    "CREATE TABLE council_wirtschaftsplaene ("
+                    "betrieb TEXT NOT NULL, jahr INTEGER NOT NULL, "
+                    "betrieb_name TEXT NOT NULL, vorlage_nr TEXT NOT NULL, "
+                    "ertraege REAL, aufwendungen REAL, steuern REAL, "
+                    "ergebnis REAL NOT NULL, vermoegensplan REAL, "
+                    "verpflichtungen REAL, entwurf_vom TEXT, proben TEXT NOT NULL, "
+                    "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+                    "PRIMARY KEY (betrieb, jahr))")
+                # Spaltenweise benannt und nicht `SELECT *`: Eine später
+                # ergänzte Spalte in der Altfassung würde die Reihenfolge
+                # verschieben, und dann landeten Beträge in Textfeldern.
+                self._conn.execute(
+                    "INSERT INTO council_wirtschaftsplaene "
+                    "(betrieb, jahr, betrieb_name, vorlage_nr, ertraege, aufwendungen, "
+                    " steuern, ergebnis, vermoegensplan, verpflichtungen, entwurf_vom, "
+                    " proben, herkunft_id, fetched_at) "
+                    "SELECT betrieb, jahr, betrieb_name, vorlage_nr, ertraege, "
+                    " aufwendungen, steuern, ergebnis, vermoegensplan, verpflichtungen, "
+                    " entwurf_vom, proben, herkunft_id, fetched_at FROM _wp_alt")
+                alt_n = self._conn.execute("SELECT COUNT(*) FROM _wp_alt").fetchone()[0]
+                neu_n = self._conn.execute(
+                    "SELECT COUNT(*) FROM council_wirtschaftsplaene").fetchone()[0]
+                if alt_n != neu_n:  # pragma: no cover — Notbremse
+                    raise RuntimeError(
+                        f"Umbau von council_wirtschaftsplaene: {alt_n} Zeilen vorher, "
+                        f"{neu_n} nachher — nichts wird verworfen")
+                self._conn.execute("DROP TABLE _wp_alt")
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_buergschaften ("
+            "jahr INTEGER PRIMARY KEY, "
+            "bestand REAL NOT NULL, "          # in Euro
+            "genau INTEGER NOT NULL, "         # 1 = auf den Cent belegt
+            "aus_folgejahr INTEGER NOT NULL, " # 1 = Anfangsbestand des Folgejahrs
+            "quelle TEXT NOT NULL, "           # anhang | tabelle
+            "grund TEXT, "                     # Begründung im Wortlaut der Stadt
+            "einzelbetrag REAL, "              # die im Grund genannte Zahl (2022)
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Der Anlagenspiegel (council/anlagenspiegel.py): was aus Investitionen
+        # wird. Je Jahr und Vermögensposition eine Zeile mit dreizehn Werten —
+        # Anschaffungswerte, Abschreibungen, Buchwerte.
+        #
+        # `spalten` steht bewusst DRIN, obwohl es eine Eigenschaft der Vorlage
+        # ist und keine der Zahlen: Bis 2020 fehlt dem Abschreibungs-Block die
+        # Umbuchungs-Spalte, und ohne diese Angabe sähe eine Zeile, deren
+        # Abschreibungskette gar nicht schließen KANN, aus wie eine, die es
+        # nicht tut. Die Anzeige darf den Unterschied benennen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_anlagenspiegel ("
+            "jahr INTEGER NOT NULL, "
+            "nr TEXT NOT NULL, "               # Gliederung: 1, 1.1, 2, 2.3 …
+            "bezeichnung TEXT NOT NULL, "
+            "spalten INTEGER NOT NULL, "       # 12 (bis 2020) oder 13
+            "ahk_anfang REAL, zugaenge REAL, abgaenge REAL, "
+            "umbuchungen REAL, ahk_ende REAL, "
+            "abschr_anfang REAL, abschreibung REAL, aufloesungen REAL, "
+            "zuschreibungen REAL, abschr_umbuchungen REAL, abschr_ende REAL, "
+            "buchwert REAL, buchwert_vorjahr REAL, "
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, nr))"
+        )
+        # Die Untergliederung des Infrastrukturvermögens — Straßen, Brücken,
+        # Gleisanlagen. Sie steht NICHT im Anlagenspiegel (der führt
+        # Infrastruktur als eine Zeile), sondern in den Erläuterungen, und erst
+        # ab 2022 in dieser Form. Eigene Tabelle statt einer Spalte: andere
+        # Quelle im selben Dokument, andere Abdeckung.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_vermoegensgruppen ("
+            "jahr INTEGER NOT NULL, "
+            "gruppe TEXT NOT NULL, "
+            "buchwert REAL NOT NULL, "
+            "buchwert_vorjahr REAL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, gruppe))"
+        )
+        # Die dreizehn Kennzahlen (council/kennzahlen.py): die Anlage, mit der
+        # jeder Rechenschaftsbericht seinen Jahresabschluss zusammenfasst.
+        #
+        # `bericht_jahr` STEHT IM SCHLÜSSEL, und das ist der Kern der Tabelle:
+        # Jeder Bericht druckt fünf Jahre, die Jahrgänge stehen also mehrfach
+        # da — und nicht immer gleich. Die Steuerquote 2021 heißt im Bericht
+        # 2021 45,90 %, im Bericht 2022 49,05 % und im Bericht 2023 wieder
+        # 45,92 %. Ohne den Bericht im Schlüssel überschriebe der jüngere
+        # Stand den älteren still, und die Korrektur — die eigentliche
+        # Nachricht — wäre weg.
+        #
+        # `stellen` ist die Zahl der GEDRUCKTEN Nachkommastellen. 2019 steht
+        # „48%", ab 2021 „53,15%"; ohne diese Angabe meldete der Vergleich
+        # zweier Berichte reihenweise Abweichungen, die nur Rundung sind.
+        #
+        # `fassung` nummeriert den gedruckten Rechenweg. Wechselt er, darf
+        # über die Stelle keine Linie laufen: Aus „Aufwand für Personal
+        # (inklusive Versorgung)" wurde „Aufwendungen für aktives Personal",
+        # und die Quote fällt dadurch um rund einen Prozentpunkt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_kennzahlen ("
+            "bericht_jahr INTEGER NOT NULL, "
+            "kennzahl TEXT NOT NULL, "
+            "jahr INTEGER NOT NULL, "
+            "label TEXT NOT NULL, "
+            "wert REAL NOT NULL, "
+            "einheit TEXT NOT NULL, "          # prozent | eur | anzahl
+            "stellen INTEGER NOT NULL, "
+            "fassung INTEGER, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, kennzahl, jahr))"
+        )
+        # Die gedruckten Rechenwege — „Ermittlung: Sachvermögen * 100 /
+        # Bilanzsumme". Eigene Tabelle, weil sie je Bericht einmal gelten und
+        # nicht je Jahrgang; und weil sie den Text tragen, den die Seite
+        # zitiert, statt einer Formel, die wir uns ausgedacht hätten.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_kennzahl_formeln ("
+            "bericht_jahr INTEGER NOT NULL, "
+            "kennzahl TEXT NOT NULL, "
+            "fassung INTEGER NOT NULL, "
+            "ueberschrift TEXT NOT NULL, "
+            "formel TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (bericht_jahr, kennzahl))"
+        )
+        # Die dritte Schuldenzahl (council/integrierte_schulden.py): was der
+        # ganze „Konzern Stadt" schuldet, anteilig nach Beteiligungshöhe —
+        # 31.12.2024 rund 740,3 Mio. € gegen 294,9 Mio. € der Jahrbuch-Reihe.
+        #
+        # EIN STICHTAG JE AUSGABE, bewusst keine Zeitreihe: Welche Unternehmen
+        # mitgerechnet werden, wechselt zwischen den Ausgaben, und die
+        # Statistischen Ämter raten selbst davon ab, Jahrgänge zu vergleichen.
+        # Die Tabelle kann trotzdem mehrere Jahre führen — sie darf nur nicht
+        # als Kurve gezeichnet werden.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_integrierte_schulden ("
+            "jahr INTEGER PRIMARY KEY, "
+            "ars TEXT NOT NULL, "              # Regionalschlüssel, nie der Name
+            "bevoelkerung REAL, "
+            "insgesamt REAL NOT NULL, je_einwohner REAL, "
+            "kernhaushalt REAL, extrahaushalte REAL, sonstige REAL, "
+            # Die Aufteilung nach Beteiligungshöhe — daraus rechnet sich der
+            # Anteil, der KEINE Haftung begründet (2024: 58 %).
+            "extra_unter_50 REAL, sonstige_unter_50 REAL, "
+            # Die Veränderung, die der Band selbst ausweist. Angabe der Quelle,
+            # nicht unsere Rechnung — deshalb gespeichert statt abgeleitet.
+            "veraenderung REAL, "
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Nachbewilligungen nach § 117 NKomVG (council/nachbewilligungen.py).
+        # Drei Tabellen, weil hier zwei verschiedene Quellen dieselbe Sache
+        # beschreiben und niemals vermischt werden dürfen:
+        #
+        #   council_nachbewilligungen        — was der Rat beschloss (RIS)
+        #   council_nachbewilligung_jahre    — was der Rechenschaftsbericht
+        #                                      fürs Jahr insgesamt ausweist
+        #   council_nachbewilligung_kanaele  — dessen vier Entscheidungswege
+        #
+        # Die Aufteilung der beiden letzten folgt `council_investitionen_ist`
+        # und `..._arten`: Die Summe steht in der einen, die Aufteilung in der
+        # anderen. Sie hier zusammenzuziehen hieße, die Summenzeile des
+        # Dokuments viermal zu wiederholen — und die Probe, dass die Teile sie
+        # ergeben, hätte nichts mehr, wogegen sie prüfen könnte.
+        #
+        # `betrag` ist NULL, wo der Titel nur eine Wertgrenze nennt (die neun
+        # Sammelberichte). Eine 0 stünde dort für „nichts nachbewilligt" und
+        # wäre falsch; NULL heißt „diese Zeile trägt keinen Betrag".
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_nachbewilligungen ("
+            "vorlage_nr TEXT PRIMARY KEY, "
+            "jahr INTEGER, "                   # aus der Vorlagen-Nummer
+            "titel TEXT NOT NULL, "
+            "art TEXT NOT NULL, "              # bewilligung|verpflichtungs…|schwelle
+            "kategorie TEXT NOT NULL, "        # ueberplanmaessig|ausser…|beides
+            "betrag REAL, "                    # NULL bei art='schwelle'
+            "betrag_quelle TEXT, "             # titel | beschlussvorschlag
+            "beschlossen INTEGER NOT NULL DEFAULT 0, "
+            # Zwei Spalten, weil es zwei verschiedene Fragen sind:
+            # `im_rat` = das Plenum hat abgestimmt (die wörtliche Auskunft,
+            # die auf der Seite steht). `ratsentscheidung` = der
+            # Rechenschaftsbericht bucht es als „Beschluss des Rates" —
+            # einschließlich der Fälle, die der Finanzausschuss abschließend
+            # entscheidet. Nur die zweite darf in einen Rats-Anteil; die erste
+            # liegt 2024 um 28 % daneben (s. council/nachbewilligungen.py).
+            "im_rat INTEGER NOT NULL DEFAULT 0, "
+            "ratsentscheidung INTEGER NOT NULL DEFAULT 0, "
+            # Für den Link auf die vorhandene Beschluss-Seite
+            # (/council/decision?id=). Der maßgebliche Beschluss ist der des
+            # Rates, sonst der jüngste — dieselbe Ordnung wie anderswo.
+            "beschluss_id INTEGER, "
+            "gremien TEXT, "                   # JSON: wo sie beraten wurde
+            "volltextprobe INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_nachbewilligung_jahre ("
+            "jahr INTEGER PRIMARY KEY, "
+            # Was die Summenzeile der Tabelle selbst ausweist …
+            "summe_konsumtiv REAL NOT NULL, "
+            "summe_investiv REAL NOT NULL, "
+            # … und was der Fließtext darüber behauptet. Beides wird
+            # gespeichert, gerade WEIL es 2022 auseinanderfällt: Wer nur eine
+            # der beiden Zahlen behielte, hätte den Widerspruch weggeräumt.
+            "text_gesamt REAL, "
+            "verpflichtungen_betrag REAL, "
+            # Das Ergebnis der Tabellenprobe im Klartext — es steht auf der
+            # Seite, nicht nur im Log.
+            "probe_ok INTEGER NOT NULL DEFAULT 0, "
+            "probe_text TEXT, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_nachbewilligung_kanaele ("
+            "jahr INTEGER NOT NULL, "
+            "kanal TEXT NOT NULL, "            # rat|oberbuergermeister|…
+            "label TEXT NOT NULL, "            # der Wortlaut der Stadt
+            "anzahl_konsumtiv INTEGER NOT NULL, "
+            "betrag_konsumtiv REAL NOT NULL, "
+            "anzahl_investiv INTEGER NOT NULL, "
+            "betrag_investiv REAL NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, kanal))"
+        )
+        # Angenommene Zuwendungen je Ratsvorlage (council/spenden.py). Eine
+        # Zeile je Vorlage, nicht je Jahr: Der Jahreswert entsteht erst beim
+        # Lesen, und die Vorlagen-Nummer ist der Weg zur Beschluss-Seite.
+        #
+        # Was hier bewusst FEHLT: eine Spalte für die Gebenden. Die Namen
+        # stehen nur in der Anlage „Zuwendungsliste", die nicht im Bestand ist
+        # — und was die Tabelle nicht führen kann, kann die API nicht liefern
+        # und das Frontend nicht versehentlich zeigen. Das ist keine
+        # Sparsamkeit, sondern die Grenze: Der Ratsbeschluss macht die Summe
+        # öffentlich, nicht die Liste dahinter.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_spenden ("
+            "vorlage_nr TEXT PRIMARY KEY, "
+            "jahr INTEGER NOT NULL, "          # Jahr der Sitzung
+            "sitzung TEXT NOT NULL, "          # ISO-Datum
+            "betrag REAL NOT NULL, "           # in Euro, wie beschlossen
+            "gremium TEXT, "                   # Rat | Verwaltungsausschuss
+            "layout TEXT, "                    # neu | alt — welcher Abschnitt trug
+            "zweitstelle TEXT NOT NULL, "      # identisch | zerlegung
+            "proben TEXT NOT NULL, "           # bestandene Proben, kommagetrennt
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Und die Gegenprobe: die Zeilen ohne Zweitstelle, mit dem Satz, warum.
+        # Eine Lücke ist eine Auskunft — sie steht auf der Seite, statt still
+        # aus der Summe zu fehlen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_spenden_verworfen ("
+            "vorlage_nr TEXT PRIMARY KEY, "
+            "sitzung TEXT, "
+            "grund TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        # Was je Steuerart geplant war und was daraus wurde — Tabelle 1103 des
+        # Statistischen Jahrbuchs (council/steuertabellen.py). Beträge in Euro;
+        # die Quelle rechnet in Tausend Euro.
+        #
+        # `art` trägt GENAU die Schreibweise aus `council_steuern.art`, und das
+        # ist keine Kosmetik: Der Ist-Wert dieser Tabelle muss sich dort
+        # wiederfinden, sonst kommt der Jahrgang nicht herein (Probe
+        # `steuerplan_istabgleich`). Zwei Schreibweisen für dieselbe Steuer
+        # hießen, dass der Abgleich still ins Leere liefe.
+        #
+        # `vorlaeufig` ist die Angabe der Quelle über sich selbst: Die jüngste
+        # Spalte heißt dort „vorläufiges Rechnungsergebnis" statt
+        # „Rechnungsergebnis". Eine Zahl, die noch revidiert werden kann, soll
+        # das an sich tragen und nicht nur im Fließtext einer Seite.
+        #
+        # WAS HIER BEWUSST NICHT STEHT: die Zeile „insgesamt" und die
+        # „Finanzzuweisungen". Beide stehen in derselben Tabelle und tragen die
+        # Summenprobe mit — aber sie haben in `council_steuern` keine
+        # Entsprechung, gegen die sich ihre Jahresbeschriftung prüfen ließe.
+        # Was die Probe nicht erreicht, wird nicht gespeichert. (Bei den
+        # Finanzzuweisungen kommt hinzu, dass sie NICHT dasselbe sind wie die
+        # Schlüsselzuweisungen in `council_steuerkraft` — zwei Abgrenzungen,
+        # ein ähnlicher Name.)
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_steuerplan ("
+            "jahr INTEGER NOT NULL, "
+            "art TEXT NOT NULL, "              # = council_steuern.art
+            "plan REAL NOT NULL, "             # in Euro
+            "ist REAL NOT NULL, "              # in Euro
+            "vorlaeufig INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, art))"
+        )
+        # Die Realsteuer-Hebesätze seit 1980 — Tabelle 1105 desselben Blatts.
+        #
+        # Neun Zeilen für 45 Jahre: Die Tabelle führt nur die Jahre, in denen
+        # sich etwas geändert hat. Ein Satz gilt bis zur nächsten Änderung, und
+        # deshalb ist das eine TREPPE und keine Kurve — zwischen zwei Stufen
+        # wird nichts interpoliert, weder hier noch im Frontend
+        # (`components/grafik/zeitreihe.tsx`, Modus `treppe`).
+        #
+        # `vorheriger` ist der Satz, der bis zu diesem Jahr galt — NULL in der
+        # ersten Zeile. Er steht mit in der Tabelle, weil die Aussage der Zeile
+        # die Änderung ist und nicht der Stand: „445 → 539" ist das, was ein
+        # Rat beschließt. Ihn beim Lesen aus der Vorzeile zu rechnen ginge auch,
+        # aber nur, solange niemand einen Ausschnitt der Reihe abfragt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_hebesaetze ("
+            "jahr INTEGER NOT NULL, "
+            "art TEXT NOT NULL, "              # Grundsteuer A | B | Gewerbesteuer
+            "hebesatz INTEGER NOT NULL, "      # Prozentpunkte
+            "vorheriger INTEGER, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, art))"
         )
         # Vorlagen-Volltexte semantisch auffindbar machen: je Vorlage mehrere
         # Chunk-Vektoren (Sachverhalt/Begründung), die die Hybrid-Suche auf die
@@ -700,6 +2047,8 @@ class CouncilStore:
         self._migrate_quiz_estimate()
         self._migrate_quiz_media()
         self._migrate_quiz_hint()
+        self._migrate_produkt_steckbrief()
+        self._migrate_herkunft()
         self._migrate_owner_id()
 
     def _migrate_quiz_estimate(self) -> None:
@@ -735,6 +2084,223 @@ class CouncilStore:
             for name in ("hint", "topic", "chart"):
                 if name not in cols:
                     self._conn.execute(f"ALTER TABLE council_quiz_questions ADD COLUMN {name} TEXT")
+
+    def _migrate_produkt_steckbrief(self) -> None:
+        """Produkt-Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,
+        Wirkungskreis, Zielgruppe) in bestehende Produkt-Tabellen nachrüsten.
+
+        Anders als bei ``council_ergebnisrechnung`` reicht hier ALTER TABLE:
+        Der Primärschlüssel (jahr, produkt_nr) bleibt, wie er ist — es kommen
+        nur Spalten dazu. Die Werte füllt der nächste Lauf von
+        ``scripts/ingest_finanzberichte.py`` nach; bis dahin sind sie NULL und
+        die Oberfläche zeigt den Steckbrief schlicht nicht an."""
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_produkte)").fetchall()}
+        with self._conn:
+            for name in ("kurzbeschreibung", "auftragsgrundlage", "beeinflussbarkeit",
+                         "beeinflussbarkeit_roh", "wirkungskreis", "zielgruppe"):
+                if name not in cols:
+                    self._conn.execute(f"ALTER TABLE council_produkte ADD COLUMN {name} TEXT")
+
+    #: Wie eine Tabelle ihre Herkunft bisher führte: (Label-Spalte,
+    #: URL-Spalte, Quellenart). Drei Schreibweisen für dieselbe Sache — genau
+    #: das war der Anlass für `council/herkunft.py`.
+    #:
+    #: Die Quellenart steht hier nur, wo sie aus der Tabelle folgt. Bei
+    #: `council_haushalt` folgt sie das nicht: Ein Jahrgang kam als PDF von
+    #: oldenburg.de, ein anderer als CSV aus dem Open-Data-Portal — dort
+    #: entscheidet die URL (s. `_herkunft_art_aus_url`).
+    _HERKUNFT_ALTFELDER: dict[str, tuple[str | None, str, str | None]] = {
+        "council_haushalt":             (None, "source_url", None),
+        "council_steuern":              (None, "source_url", "opendata"),
+        "council_steuerkraft":          (None, "source_url", "opendata"),
+        "council_einwohner":            (None, "source_url", "opendata"),
+        "council_ergebnisrechnung":     ("quelle_label", "quelle_url", "ris"),
+        # Neu mit der Kassensicht, ohne Altbestand — nichts nachzutragen.
+        "council_finanzrechnung":       (None, None, "ris"),
+        # Ebenso die Bilanz und ihre Erläuterungen: erst mit der Herkunft
+        # entstanden, keine Altspalten.
+        "council_bilanz":               (None, None, "ris"),
+        "council_bilanz_erlaeuterungen": (None, None, "ris"),
+        "council_abweichungsgruende":   ("quelle_label", "quelle_url", "ris"),
+        "council_pruefbericht_quellen": ("label", "url", "ris"),
+        "council_produkte":             ("quelle_label", "quelle_url", "ris"),
+        "council_pruefberichte":        ("quelle_label", "quelle_url", "ris"),
+        # Die beiden Konzern-Tabellen sind erst mit der Herkunft entstanden
+        # und tragen gar keine Altspalten. Sie stehen hier trotzdem, weil
+        # `_herkunft_nachtragen` jede Tabelle aus `HERKUNFT_TABELLEN`
+        # nachschlägt; ohne URL-Spalte kehrt es sofort zurück, ohne etwas zu
+        # tun. Ein Eintrag „nichts nachzutragen" ist billiger als eine
+        # Ausnahme im Nachrüst-Weg.
+        "council_konzern_posten":       (None, "quelle_url", "ris"),
+        "council_konzern_traeger":      (None, "quelle_url", "ris"),
+        # Ebenso der Städtevergleich: erst mit der Herkunft entstanden, keine
+        # Altspalten, nichts nachzutragen.
+        "council_staedtevergleich":     (None, "quelle_url", "lsn"),
+        # Und die Gewerbesteuerstatistik, ebenfalls vom Landesamt.
+        "council_gewerbesteuerstatistik": (None, "quelle_url", "lsn"),
+        # Und die Planjahre aus dem Gesamtergebnishaushalt.
+        "council_ergebnishaushalt":     (None, "quelle_url", "ris"),
+        # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
+        # Herkunft ausschließlich über `herkunft_id`.
+        "council_investitionen":        (None, "quelle_url", "opendata"),
+        # Und die Maßnahmen aus Anlage 004: ebenfalls neu, ebenfalls ohne
+        # Altspalten. Der Eintrag muss trotzdem stehen — `_herkunft_nachtragen`
+        # schlägt hier nach, bevor es merkt, dass es nichts nachzutragen gibt.
+        "council_investitionsmassnahmen": (None, "quelle_url", "ris"),
+        # Das Ist-Gegenstück aus dem Statistischen Jahrbuch — anders als Plan
+        # und Programm kommt es weder vom Portal noch aus dem RIS, sondern von
+        # oldenburg.de.
+        "council_investitionen_ist":       (None, "quelle_url", "stadt"),
+        "council_investitionen_ist_arten": (None, "quelle_url", "stadt"),
+        "council_investitionen_ist_verworfen": (None, "quelle_url", "stadt"),
+        # Der Stellenplan — ebenfalls neu und ohne Altbestand.
+        "council_stellenplan":          (None, "quelle_url", "ris"),
+        # Und die Schuldenzeitreihe aus dem Statistischen Jahrbuch.
+        "council_schulden":             (None, "quelle_url", "stadt"),
+        # Die lange Ausgabenreihe: zwei Quellen — das Jahrbuch der Stadt und
+        # das Open-Data-Portal —, deshalb keine feste Art. Nachzutragen ist
+        # ohnehin nichts, die Tabelle ist neu.
+        "council_ausgabenreihe":        (None, "quelle_url", None),
+        # Der Bürgschaftsbestand: eine Quelle, der Jahresabschluss als Anlage
+        # im Ratsinformationssystem.
+        "council_buergschaften":        (None, "quelle_url", "ris"),
+        "council_anlagenspiegel":       (None, "quelle_url", "ris"),
+        # Die Kennzahlen und ihre Rechenwege: Anlage des Rechenschaftsberichts,
+        # also ebenfalls ein Dokument im Ratsinformationssystem.
+        "council_kennzahlen":           (None, "quelle_url", "ris"),
+        "council_kennzahl_formeln":     (None, "quelle_url", "ris"),
+        "council_vermoegensgruppen":    (None, "quelle_url", "ris"),
+        # Die dritte Schuldenzahl: Tabellenband der Statistischen Ämter,
+        # also weder Stadt noch Ratsinformationssystem — eigene Art "lsn"
+        # wie beim Städtevergleich.
+        "council_integrierte_schulden": (None, "quelle_url", "lsn"),
+        # Die Nachbewilligungen: neu, ohne Altspalten. Beide Quellen liegen im
+        # Ratsinformationssystem — die Vorlagen selbst und der
+        # Rechenschaftsbericht als Anlage zum Jahresabschluss.
+        "council_nachbewilligungen":        (None, "quelle_url", "ris"),
+        "council_nachbewilligung_jahre":    (None, "quelle_url", "ris"),
+        "council_nachbewilligung_kanaele":  (None, "quelle_url", "ris"),
+        # Die Zuwendungen: Quelle sind Ratsvorlagen im Bürgerinfo, also „ris".
+        # Nachzutragen ist nichts, beide Tabellen sind neu.
+        "council_spenden":              (None, "quelle_url", "ris"),
+        "council_spenden_verworfen":    (None, "quelle_url", "ris"),
+        # Die beiden Steuertabellen des Jahrbuchs — neu, ohne Altbestand.
+        "council_steuerplan":           (None, "quelle_url", "stadt"),
+        "council_hebesaetze":           (None, "quelle_url", "stadt"),
+        # Der Beteiligungsbericht: ebenfalls erst mit der Herkunft entstanden.
+        # Seine Dokumente kommen von oldenburg.de, nicht aus dem Bürgerinfo.
+        "council_gesellschaften":            (None, "quelle_url", "stadt"),
+        "council_gesellschaft_texte":        (None, "quelle_url", "stadt"),
+        "council_gesellschaft_kennzahlen":   (None, "quelle_url", "stadt"),
+        "council_gesellschaft_personen":     (None, "quelle_url", "stadt"),
+        "council_gesellschaft_eigentuemer":  (None, "quelle_url", "stadt"),
+    }
+
+    @staticmethod
+    def _herkunft_art_aus_url(url: str | None) -> str | None:
+        """Quellenart aus einer gespeicherten URL — abgeleitet, nicht geraten.
+
+        Entschieden wird an Zeichenketten, die wörtlich in der URL stehen —
+        das Portal, die Stadt-Domain, das Bürgerinfo. Alles andere (etwa ein
+        ``file:``-Pfad aus einem Lauf mit ``--pdf``) bleibt ohne Herkunft,
+        statt eine Art zu erfinden; ``herkunft_luecken()`` zeigt es dann an."""
+        if not url:
+            return None
+        if "opendata.oldenburg.de" in url:
+            return "opendata"
+        if "oldenburg.de" in url:
+            return "stadt"
+        if "buergerinfo" in url or "/getfile" in url:
+            return "ris"
+        return None
+
+    def _migrate_herkunft(self) -> None:
+        """Herkunfts-Fundament nachrüsten: `herkunft_id` an jede Zieltabelle,
+        und was in den alten Feldern steht, in `council_herkunft` überführen.
+
+        Rein additiv. Die alten Spalten (`quelle_label`, `quelle_url`,
+        `source_url`, `fetched_at`) bleiben unangetastet — sie zu entfernen
+        hieße, neun Tabellen neu zu schreiben, darunter vier, deren Inhalt nur
+        über einen Download von oldenburg.de wiederzubeschaffen wäre. Deshalb
+        genügt hier durchgehend ALTER TABLE, und kein bestehender Wert ändert
+        sich.
+
+        **Übernommen wird, was in den Daten steht: Label, URL und — neu — die
+        `document_id`, die sich über die URL in `council_anlagen` eindeutig
+        auflösen lässt. Fundstelle und Probe bleiben leer bzw. tragen
+        `unbekannt`:** Der Altbestand sagt nicht, an welchem Abschnitt er
+        gelesen wurde und welche Probe er bestanden hat. Das zu erfinden wäre
+        genau die Sorte Angabe, die diese Umstellung abschaffen soll. Der
+        nächste Ingest-Lauf trägt beides nach, weil er den Jahrgang ohnehin
+        ersetzt."""
+        from council import herkunft as _h
+
+        with self._conn:
+            for tabelle in _h.HERKUNFT_TABELLEN:
+                cols = {r[1] for r in self._conn.execute(
+                    f"PRAGMA table_info({tabelle})")}
+                if not cols:
+                    continue  # Tabelle gibt es in dieser DB (noch) nicht
+                if "herkunft_id" not in cols:
+                    self._conn.execute(
+                        f"ALTER TABLE {tabelle} ADD COLUMN herkunft_id INTEGER")
+                self._herkunft_nachtragen(tabelle)
+
+    def _herkunft_nachtragen(self, tabelle: str) -> int:
+        """Zeilen einer Tabelle ohne `herkunft_id` aus ihren Altfeldern
+        versorgen. Idempotent: Wer schon eine hat, wird nicht angefasst."""
+        from council import herkunft as _h
+
+        label_spalte, url_spalte, feste_art = self._HERKUNFT_ALTFELDER[tabelle]
+        cols = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
+        if url_spalte not in cols:
+            return 0
+        gelesen = [label_spalte, url_spalte] if label_spalte in cols else [url_spalte]
+        # Je *Kombination* aus Label und URL ein Herkunfts-Datensatz — das ist
+        # die Granularität, in der der Altbestand seine Quelle kennt.
+        auswahl = ", ".join(gelesen)
+        gruppen = self._conn.execute(
+            f"SELECT {auswahl}, MAX(fetched_at) AS zuletzt FROM {tabelle} "
+            f"WHERE herkunft_id IS NULL GROUP BY {auswahl}").fetchall()
+        getroffen = 0
+        for g in gruppen:
+            url = g[url_spalte]
+            label = g[label_spalte] if label_spalte in cols else None
+            art = feste_art or self._herkunft_art_aus_url(url)
+            if not art or not url:
+                # Ohne Verweis keine Herkunft. Lieber eine leere Spalte als
+                # ein Datensatz, der auf nichts zeigt.
+                continue
+            hid = self.merke_herkunft(
+                _h.Herkunft(art=art, probe=_h.UNBEKANNT, label=label, url=url,
+                            dokument_id=self._dokument_zu_url(url)),
+                fetched_at=g["zuletzt"])
+            bedingung = f"{url_spalte} IS ?"
+            args: list = [url]
+            if label_spalte in cols:
+                bedingung += f" AND {label_spalte} IS ?"
+                args.append(label)
+            cur = self._conn.execute(
+                f"UPDATE {tabelle} SET herkunft_id = ? "
+                f"WHERE herkunft_id IS NULL AND {bedingung}", [hid, *args])
+            getroffen += cur.rowcount
+        return getroffen
+
+    def _dokument_zu_url(self, url: str | None) -> int | None:
+        """Die `council_anlagen.document_id` zu einer Anlagen-URL.
+
+        Der stabile Anker, den der Altbestand nicht mitführte. Nur bei einem
+        **eindeutigen** Treffer — zwei Anlagen unter derselben URL wären ein
+        Fall für einen Blick, nicht für eine Vermutung."""
+        if not url:
+            return None
+        try:
+            treffer = self._conn.execute(
+                "SELECT document_id FROM council_anlagen WHERE url = ? LIMIT 2",
+                (url,)).fetchall()
+        except sqlite3.OperationalError:
+            return None
+        return treffer[0][0] if len(treffer) == 1 else None
 
     def _migrate_owner_id(self) -> None:
         """Re-key the per-recipient dedup tables from Telegram chat_id to the
@@ -2881,10 +4447,14 @@ class CouncilStore:
         Gremien-Mitgliedschaften mit von/bis, neueste zuerst."""
         if not names:
             return None
-        want = {self._person_slug(n) for n in names}
+        # Gefaltet auf die kanonische Namensform (:meth:`person_slug`): Das
+        # Ratsinformationssystem führt seine Stammdaten unter genau einer Form,
+        # die Anwesenheitslisten können eine andere nennen — ohne die Faltung
+        # stünde ein Profil ohne Mandat und ohne Fraktion da.
+        want = {self.person_slug(n) for n in names}
         person = None
         for r in self._conn.execute("SELECT kpenr, name, fraktion_aktuell FROM council_persons"):
-            if self._person_slug(r["name"]) in want:
+            if self.person_slug(r["name"]) in want:
                 person = dict(r)
                 break
         if not person:
@@ -3117,20 +4687,447 @@ class CouncilStore:
                  "lat": r["lat"], "lon": r["lon"]}
                 for r in rows]
 
+    # --- Herkunft der Finanzzahlen (council.herkunft) ------------------------
+
+    def merke_herkunft(self, h, fetched_at: str | None = None) -> int:
+        """Eine :class:`council.herkunft.Herkunft` eintragen und ihre ID
+        liefern — der eine Weg, auf dem Herkunft in die Datenbank kommt.
+
+        Idempotent über den inhaltlichen Fingerabdruck: Derselbe Abschnitt
+        desselben Dokuments mit derselben Probe bekommt bei jedem Lauf
+        dieselbe ID. Was sich ändert, ist `fetched_at` — „zuletzt bestätigt",
+        nicht „zuerst gesehen".
+
+        Der Zeitstempel wandert dabei nur **vorwärts** (``MAX``). Beim
+        Nachrüsten teilen sich mehrere Tabellen eine Herkunft und bringen je
+        einen eigenen Zeitstempel mit; ohne diese Regel gewönne schlicht die
+        zuletzt bearbeitete Tabelle, und „zuletzt bestätigt" stünde auf einem
+        älteren Datum als eine Zeile, die darauf zeigt.
+
+        Läuft absichtlich **ohne** eigene Transaktion: Der Aufrufer schreibt
+        Herkunft und Datenzeilen zusammen, oder gar nicht."""
+        jetzt = fetched_at or datetime.utcnow().isoformat(timespec="seconds")
+        schluessel = h.schluessel()
+        vorhanden = self._conn.execute(
+            "SELECT id FROM council_herkunft WHERE schluessel = ?",
+            (schluessel,)).fetchone()
+        if vorhanden:
+            self._conn.execute(
+                "UPDATE council_herkunft SET fetched_at = MAX(fetched_at, ?) "
+                "WHERE id = ?", (jetzt, vorhanden[0]))
+            return int(vorhanden[0])
+        f = h.felder()
+        cur = self._conn.execute(
+            "INSERT INTO council_herkunft (schluessel, art, dokument_id, label, url, "
+            " fundstelle, seite, probe, probe_ergebnis, stand, fetched_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (schluessel, f["art"], f["dokument_id"], f["label"], f["url"],
+             f["fundstelle"], f["seite"], f["probe"], f["probe_ergebnis"],
+             f["stand"], jetzt))
+        return int(cur.lastrowid)
+
+    #: Welcher Beschluss zu einem Dokument der maßgebliche ist. Der Rat zuerst
+    #: — eine Vorlage läuft durch mehrere Gremien, aber verabschiedet wird sie
+    #: dort. Innerhalb eines Gremiums die jüngste Sitzung: Ein vertagter Punkt
+    #: kommt wieder, und es gilt, was zuletzt entschieden wurde. Dieselbe
+    #: Ordnung nutzt schon `vorlage_beschluesse` (s. u. „committee LIKE 'Rat%'").
+    _BESCHLUSS_ORDNUNG = ("ORDER BY (cs.committee LIKE 'Rat%') DESC, "
+                          "cs.session_date DESC, d.id DESC")
+
+    def beschluesse_zu_dokumenten(self, dokument_ids: list[int]) -> dict[int, dict]:
+        """Zu jedem Dokument der Ratsbeschluss, der es verabschiedet hat.
+
+        Der Weg ist dreigliedrig und steht so nirgends sonst im Code:
+        ``council_herkunft.dokument_id`` → ``council_anlagen.kvonr`` (an
+        welcher Vorlage die Anlage hängt) → ``council_decisions.kvonr`` (was
+        der Rat mit dieser Vorlage gemacht hat).
+
+        Damit wird aus „steht im Jahresabschluss 2024" ein „der Rat hat das am
+        16.09.2025 beschlossen" — dieselbe Zahl, aber mit dem Vorgang dahinter
+        statt nur mit dem Papier.
+
+        **Das Ergebnis wird mitgeliefert, nicht gefiltert.** Ein Dokument, das
+        an einer vertagten Vorlage hängt, ist keine Zahl ohne Beleg — es ist
+        eine Zahl, deren Vorgang noch läuft, und genau das soll die Seite
+        sagen können. Wer hier auf ``outcome = 'angenommen'`` einschränkte,
+        ließe die interessanteren Fälle stumm verschwinden.
+
+        Eine Anlage ohne Vorlage im Bestand liefert **keinen** Eintrag; die
+        Herkunft bleibt dann bei ihrem Dokument, und der Beleg-Chip zeigt, was
+        er hat. Erfundene Vorgänge wären der schlimmere Fehler.
+        """
+        if not dokument_ids:
+            return {}
+        platz = ",".join("?" * len(dokument_ids))
+        try:
+            rows = self._conn.execute(
+                "SELECT a.document_id, d.id AS beschluss_id, d.ksinr, d.item_number, "
+                "       d.title, d.outcome, d.vote, d.vorlage_nr, a.kvonr, "
+                "       cs.committee, cs.session_date "
+                "FROM council_anlagen a "
+                "JOIN council_decisions d ON d.kvonr = a.kvonr "
+                "JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+                f"WHERE a.document_id IN ({platz}) AND d.kind = 'decision' "
+                + self._BESCHLUSS_ORDNUNG,
+                list(dokument_ids)).fetchall()
+        except sqlite3.OperationalError:
+            return {}
+        # Die Ordnung entscheidet: Der erste Treffer je Dokument gewinnt, alle
+        # weiteren sind frühere Stationen derselben Vorlage.
+        aus: dict[int, dict] = {}
+        for r in rows:
+            aus.setdefault(int(r["document_id"]), {
+                "id": r["beschluss_id"], "ksinr": r["ksinr"],
+                "kvonr": r["kvonr"], "top": r["item_number"],
+                "titel": (r["title"] or "").strip() or None,
+                "outcome": r["outcome"], "vote": r["vote"],
+                "vorlage_nr": r["vorlage_nr"],
+                "gremium": r["committee"], "datum": r["session_date"],
+            })
+        return aus
+
+    def get_herkunft(self, ids: list[int] | None = None) -> list[dict]:
+        """Herkunfts-Datensätze — alle oder eine Auswahl, mit den Erklärsätzen
+        zu ihren Proben.
+
+        Die Sätze kommen aus dem Code (``herkunft.PROBEN``) und nicht aus der
+        Datenbank: Sie sind Text für Leserinnen und dürfen sich verbessern,
+        ohne dass ein Jahrgang neu eingelesen werden muss."""
+        from council import herkunft as _h
+
+        try:
+            if ids is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_herkunft ORDER BY id").fetchall()
+            elif not ids:
+                return []
+            else:
+                platz = ",".join("?" * len(ids))
+                rows = self._conn.execute(
+                    f"SELECT * FROM council_herkunft WHERE id IN ({platz}) ORDER BY id",
+                    list(ids)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        aus = []
+        for r in rows:
+            d = dict(r)
+            d.pop("schluessel", None)   # interner Fingerabdruck, kein Lesestoff
+            d["proben"] = _h.probe_texte(d.get("probe"))
+            aus.append(d)
+        # Der Ratsvorgang zu allen Dokumenten in EINER Abfrage — nicht je
+        # Datensatz eine. Ein Beleg-Apparat zeigt neun Teilhaushalts-Anlagen
+        # nebeneinander; neun Nachschläge daraus zu machen wäre ein N+1 an
+        # genau der Stelle, an der die Seite ohnehin am meisten holt.
+        beschluesse = self.beschluesse_zu_dokumenten(
+            sorted({d["dokument_id"] for d in aus if d.get("dokument_id")}))
+        for d in aus:
+            d["beschluss"] = beschluesse.get(d.get("dokument_id"))
+        return aus
+
+    def _herkunft_verweistabellen(self) -> list[str]:
+        """Jede Tabelle **dieser Datenbank**, die eine ``herkunft_id`` führt.
+
+        Gefragt wird das Schema und nicht ``herkunft.HERKUNFT_TABELLEN``. Die
+        Liste dort ist die Arbeitsanweisung fürs Anlegen der Spalte und fürs
+        Nachrüsten aus den Altfeldern; sie wird von Hand gepflegt, und der
+        Modulkopf von `council/herkunft.py` nennt das Eintragen ausdrücklich
+        als Schritt 3 für einen neuen Parser. Genau dieser Schritt ist der,
+        den man vergisst.
+
+        Fürs Aufräumen wäre das teuer: Eine Tabelle, die die Liste nicht
+        kennt, hat aus Sicht des DELETE **keine** Verweise. Ihre Herkünfte
+        gälten als verwaist und fielen weg — während ihre Zeilen weiter auf
+        deren Nummern zeigen. Weil die Nummern danach neu vergeben werden
+        können, zeigt so eine Zeile am Ende nicht ins Leere (das fiele auf),
+        sondern auf ein **fremdes Dokument**. Und ``herkunft_luecken()``
+        schwiege dazu, weil auch sie nur die Liste durchging.
+
+        Das Schema kennt die Tabelle trotzdem. Deshalb entscheidet es."""
+        aus: list[str] = []
+        for (name,) in self._conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' "
+                "AND name NOT LIKE 'sqlite_%' ORDER BY name").fetchall():
+            cols = {r[1] for r in self._conn.execute(f'PRAGMA table_info("{name}")')}
+            if "herkunft_id" in cols:
+                aus.append(name)
+        return aus
+
+    def herkunft_aufraeumen(self) -> int:
+        """Herkunfts-Datensätze löschen, auf die keine Zeile mehr zeigt.
+
+        Nötig, weil ein erneuter Einlesen-Lauf einen Jahrgang **ersetzt**: Die
+        alten Zeilen verschwinden, ihre Herkunft bliebe sonst liegen. Das
+        passiert planmäßig einmal beim Nachrüsten (die `unbekannt`-Datensätze
+        des Altbestands werden von den echten abgelöst) und danach immer, wenn
+        sich eine Fundstelle oder eine Probe ändert.
+
+        Gefragt wird, wer wirklich zeigt — ``_herkunft_verweistabellen()``
+        liest das Schema, nicht die handgepflegte Liste. Dort steht auch,
+        warum: Eine vergessene Zieltabelle verlöre hier sonst ihre Herkunft.
+
+        Läuft **nur auf Ansage** aus den Ingest-Skripten, nicht beim Öffnen der
+        Datenbank: Aufräumen ist eine Schreiboperation, und die gehört nicht in
+        den Startpfad eines Webservers."""
+        verweise = [f'SELECT herkunft_id FROM "{t}" WHERE herkunft_id IS NOT NULL'
+                    for t in self._herkunft_verweistabellen()]
+        if not verweise:
+            return 0
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM council_herkunft WHERE id NOT IN ("
+                + " UNION ".join(verweise) + ")")
+        return cur.rowcount
+
+    def herkunft_luecken(self) -> dict[str, int]:
+        """Je Zieltabelle: wie viele Zeilen ohne Herkunft dastehen.
+
+        Das Frühwarnsystem der Umstellung. Eine Tabelle, die eine
+        ``herkunft_id`` trägt, sie aber nicht füllt, taucht hier nach jedem
+        Lauf auf — und die Ingest-Skripte schreiben es ins Protokoll. Genannt
+        werden nur Tabellen mit Lücken; eine leere Antwort heißt „jede Zeile
+        weiß, woher sie kommt".
+
+        Der Prüfumfang kommt wie beim Aufräumen aus dem Schema: Eine Tabelle,
+        die in ``HERKUNFT_TABELLEN`` vergessen wurde, ist damit **nicht**
+        stillgestellt, sondern meldet sich hier — sie ist ja gerade der Fall,
+        der eine Meldung verdient."""
+        aus: dict[str, int] = {}
+        for tabelle in self._herkunft_verweistabellen():
+            n = self._conn.execute(
+                f'SELECT COUNT(*) FROM "{tabelle}" WHERE herkunft_id IS NULL'
+            ).fetchone()[0]
+            if n:
+                aus[tabelle] = n
+        return aus
+
+    #: Welches **Dokument** hinter einer Quelle des Haushalts-Bereichs steht —
+    #: je Schlüssel die Tabelle, ihre Jahresspalte, eine Einschränkung und die
+    #: Alt-Spalte mit der URL.
+    #:
+    #: Die Schlüssel sind die des Quellenverzeichnisses im Frontend
+    #: (``web/frontend/lib/haushalt-quellen.ts``). Das ist Absicht und der
+    #: einzige Grund, warum diese Zuordnung hier steht und nicht dort: Welche
+    #: Zeile aus welchem Dokument stammt, weiß die Datenbank — das Frontend
+    #: kennt nur den Absatz, der eine ganze Seite beschreibt. Wer einen
+    #: Schlüssel dort ergänzt, ergänzt ihn hier; wer ihn hier vergisst,
+    #: bekommt keinen kaputten Link, sondern den Rückfall auf die statische
+    #: Adresse (und das Frontend schreibt dann „im Ratsinformationssystem
+    #: suchen" statt „Dokument öffnen").
+    #:
+    #: Die Alt-Spalte ist die Rückfallebene für Bestände, die vor der
+    #: Herkunfts-Vereinheitlichung (#513) geschrieben wurden: Dort steht die
+    #: URL an der Datenzeile, aber noch keine ``herkunft_id``. Die beiden
+    #: Konzern-Tabellen haben keine — sie sind erst mit der Herkunft
+    #: entstanden (s. ``_HERKUNFT_ALTFELDER``).
+    _DOKUMENT_QUELLEN: dict[str, tuple[str, str, str | None, str | None]] = {
+        "plan":                 ("council_haushalt", "year", None, "source_url"),
+        # Die zwei Ebenen eines Jahresabschlusses stehen in derselben Tabelle
+        # und im selben Dokument, tragen aber verschiedene Herkünfte (eigene
+        # Abschnitte, eigene Proben). Beide Schlüssel gibt es im Verzeichnis.
+        "jahresabschluss":      ("council_ergebnisrechnung", "jahr",
+                                 "thh_nr IS NULL", "quelle_url"),
+        "ergebnisrechnung_thh": ("council_ergebnisrechnung", "jahr",
+                                 "thh_nr IS NOT NULL", "quelle_url"),
+        # Dritte Ebene desselben Dokuments: Abschnitt 4.1, die Kassensicht.
+        "finanzrechnung":       ("council_finanzrechnung", "jahr", None, None),
+        # Der Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — dieselbe
+        # Postengliederung für Jahre ohne Abschluss.
+        #
+        # Der Filter auf ``art = 'ansatz'`` ist hier PFLICHT und keine
+        # Verfeinerung: Ein Dokument trägt sein Planjahr UND drei
+        # Finanzplanungsjahre, dieselbe Jahreszahl kommt also in drei
+        # Haushaltsplänen vor (2026 im Plan 2024 als Vorausschau, im Plan 2025
+        # als Vorausschau, im Plan 2026 als Ansatz). Ohne den Filter stünden an
+        # einer Ansatz-Zahl bis zu drei Dokumente, und zwei davon meinen etwas
+        # anderes. Mit ihm gilt ``jahr == plan_jahrgang``, und es bleibt genau
+        # eines.
+        "ergebnishaushalt":     ("council_ergebnishaushalt", "jahr",
+                                 "t.art = 'ansatz'", None),
+        # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
+        # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
+        # deshalb dessen Dokument, mit eigener Fundstelle.
+        "bilanz":               ("council_bilanz", "jahr", None, None),
+        # Der einzige Schlüssel, hinter dem je Jahrgang MEHRERE Dokumente
+        # stehen: Ein Produkt-Jahrgang verteilt sich auf rund neun
+        # Teilhaushalts-Anlagen (s. finanzquellen.Finanzquelle).
+        "teilhaushalt":         ("council_produkte", "jahr", None, "quelle_url"),
+        "pruefbericht":         ("council_pruefbericht_quellen", "jahr", None, "url"),
+        "gesamtabschluss":      ("council_konzern_posten", "jahr", None, None),
+        # Nur die geprüften Zeilen: Die Bezugsgröße „Gesamtbetrag des
+        # Finanzhaushaltes" steht in derselben Datei, aber an einer anderen
+        # Fundstelle und ohne Probe — ohne diesen Filter stünden je Jahrgang
+        # zwei Dokumente im Verzeichnis, wo es eines ist.
+        "investitionen":        ("council_investitionen", "jahr",
+                                 "t.ebene = 'teilhaushalt'", None),
+        # Alle Zeilen eines Jahrgangs teilen sich eine Herkunft; die
+        # `gesamt`-Zeile gibt es genau einmal und steht hier für das Dokument.
+        "investitionsprogramm": ("council_investitionsmassnahmen", "jahr",
+                                 "t.ebene = 'gesamt'", None),
+        # Ein Jahrgang, zwei Herkünfte (Teil A und Teil B im selben PDF, aber
+        # unter verschiedenen Proben). Beide zeigen auf dieselbe Datei; die
+        # Fundstelle unterscheidet sie, und `DISTINCT` fasst sie deshalb nicht
+        # zusammen — genau richtig, denn ein Beleg an einer Beamtenzahl soll
+        # „Teil A" sagen und nicht „Stellenplan".
+        "stellenplan":          ("council_stellenplan", "jahrgang", None, None),
+        # Der einzige Schlüssel, dessen Jahresspalte NICHT das Datenjahr ist:
+        # Ein Bericht liefert fünf Jahrgänge, gehört aber zu genau einem
+        # Dokument — und das ist seines.
+        "kennzahlen":           ("council_kennzahlen", "bericht_jahr", None, None),
+        # Die drei Schichten vom 20.08.2026. Sie standen bis zum 21.08. NICHT
+        # hier, und man hat es der Seite angesehen: Unter 33 Wirtschaftsplänen
+        # aus sieben Betrieben stand eine einzige Quelle, deren Link auf die
+        # Startseite des Ratsinformationssystems führte. Der Eintrag hier ist
+        # der ganze Unterschied zwischen „kommt aus dem RIS" und „steht in
+        # diesem PDF".
+        #
+        # Wie ``teilhaushalt`` tragen alle drei je Jahrgang MEHRERE Dokumente,
+        # und das ist hier keine Eigenheit, sondern der Kern: Ein Jahrgang
+        # Wirtschaftsplan besteht aus sieben Plänen von sieben Betrieben, und
+        # jeder ist ein eigenes Papier mit eigener Vorlagennummer.
+        "wirtschaftsplan":      ("council_wirtschaftsplaene", "jahr", None, None),
+        # Nachträge tragen eine eigene Satzung und ein eigenes Dokument; der
+        # Schlüssel unterscheidet sie nicht, die Fundstelle tut es.
+        "haushaltssatzung":     ("council_haushaltssatzung", "jahr", None, None),
+        "gebuehren":            ("council_gebuehren", "jahr", None, None),
+    }
+
+    #: Jahresquellen, die KEIN Dokument im Ratsinformationssystem haben und
+    #: deshalb nicht in ``_DOKUMENT_QUELLEN`` stehen — Downloads von
+    #: oldenburg.de, Open Data und die Landesstatistik. Für die Frage „welche
+    #: Jahrgänge deckt diese Quelle ab?" zählen sie genauso.
+    _WEITERE_JAHRESQUELLEN: dict[str, tuple[str, str, str | None]] = {
+        "steuern":     ("council_steuern", "jahr", None),
+        "steuerkraft": ("council_steuerkraft", "jahr", None),
+        "einwohner":   ("council_einwohner", "jahr", None),
+        "schulden":    ("council_schulden", "jahr", None),
+        "gebaut":      ("council_investitionen_ist", "jahr", None),
+        "ausgabenreihe": ("council_ausgabenreihe", "jahr", None),
+        "buergschaften": ("council_buergschaften", "jahr", None),
+        "anlagenspiegel": ("council_anlagenspiegel", "jahr", None),
+        "vermoegensgruppen": ("council_vermoegensgruppen", "jahr", None),
+        "integrierte_schulden": ("council_integrierte_schulden", "jahr", None),
+        "spenden":     ("council_spenden", "jahr", None),
+        "steuerplan":  ("council_steuerplan", "jahr", None),
+        "hebesaetze":  ("council_hebesaetze", "jahr", None),
+    }
+
+    def haushalt_jahrgaenge(self) -> dict[str, list[int]]:
+        """Je Quellenschlüssel die Jahrgänge, die **wirklich** im Bestand
+        stehen — aufsteigend, ohne Dubletten.
+
+        Wofür: Das Quellenverzeichnis schrieb seine Datenstände von Hand
+        („Jahresabschlüsse 2017–2024"), einundzwanzig Stück in
+        ``lib/haushalt-quellen.ts``, mit der Bitte im Dateikopf, sie beim
+        Nachziehen eines Haushaltsjahres zu aktualisieren. Genau das passiert
+        naturgemäß nicht zuverlässig: Ein Ingest-Lauf zieht einen Jahrgang
+        nach, die Seite behauptet weiter den alten Stand, und niemand merkt
+        es — die Angabe steht ja nicht neben den Daten, sondern in einer
+        anderen Datei.
+
+        Bewusst **nicht** über ``haushalt_dokumente`` gerechnet: Das dort
+        nötige „hat eine URL" ist eine andere Frage. Ein Jahrgang, der im
+        Bestand steht, dessen Herkunft aber keine Adresse führt, ist für den
+        Datenstand vorhanden und für den Dokumentlink nicht. Wer beides aus
+        einer Abfrage nähme, verschwiege im Datenstand genau die Jahrgänge,
+        die ohnehin schon am dünnsten belegt sind.
+
+        Was hier fehlt, bleibt in der Konstante von Hand gepflegt: Die
+        Ausgabe-Datumsangaben der Statistikstellen („Ausgabe vom 08.07.2026")
+        stehen in keiner Tabelle, und zwei Quellen sind schlicht statisch
+        (eine einzelne Ratsvorlage von 2018; „Sitzungen seit Januar 2018"
+        ohne obere Grenze)."""
+        quellen = {k: (t, j, f) for k, (t, j, f, _) in self._DOKUMENT_QUELLEN.items()}
+        quellen.update(self._WEITERE_JAHRESQUELLEN)
+        aus: dict[str, list[int]] = {}
+        for key, (tabelle, jahrspalte, filter_) in quellen.items():
+            sql = (f"SELECT DISTINCT t.{jahrspalte} AS jahr FROM {tabelle} t"
+                   + (f" WHERE {filter_}" if filter_ else "")
+                   + f" ORDER BY t.{jahrspalte}")
+            try:
+                jahre = [int(r["jahr"]) for r in self._conn.execute(sql)
+                         if r["jahr"] is not None]
+            except sqlite3.OperationalError:
+                continue  # Tabelle oder Spalte gibt es in dieser DB (noch) nicht
+            if jahre:
+                aus[key] = jahre
+        return aus
+
+    def haushalt_dokumente(self) -> dict[str, list[dict]]:
+        """Je Quellenschlüssel die Dokumente, Jahrgang für Jahrgang.
+
+        Die Antwort auf die Frage, die das Quellenverzeichnis stellt: „Der
+        Beleg steht an einer Zahl von 2021 — welches PDF ist das?" Ohne sie
+        führte der Link auf die Startseite des Ratsinformationssystems, und
+        ein Beleg, der nur zur Startseite führt, ist keiner.
+
+        Bevorzugt wird ``council_herkunft``: Dort steht neben der URL auch die
+        **Fundstelle** im Dokument („Abschnitt 3.1") — bei 300 Seiten der
+        Unterschied zwischen Nachschlagen und Suchen. Fehlt die Herkunft
+        (Altbestand), tritt die URL an der Datenzeile ein; fehlt auch die,
+        fällt der Jahrgang weg statt mit einer erfundenen Adresse
+        dazustehen.
+
+        Jedes Dokument aus dem Ratsinformationssystem trägt zusätzlich seinen
+        ``beschluss`` — den Ratsvorgang, der es verabschiedet hat (s.
+        :meth:`beschluesse_zu_dokumenten`). Der Beleg sagt damit nicht nur, in
+        welchem Papier die Zahl steht, sondern wann der Rat darüber entschieden
+        hat. Bei den Schichten von oldenburg.de und vom Landesamt bleibt das
+        Feld ``None``: Die hängen an keiner Vorlage."""
+        aus: dict[str, list[dict]] = {}
+        for key, (tabelle, jahrspalte, filter_, alt) in self._DOKUMENT_QUELLEN.items():
+            wo = [f"{filter_}"] if filter_ else []
+            url = f"COALESCE(k.url, t.{alt})" if alt else "k.url"
+            sql = (f"SELECT DISTINCT t.{jahrspalte} AS jahr, {url} AS url, "
+                   f" k.label AS label, k.fundstelle AS fundstelle, k.seite AS seite, "
+                   f" k.dokument_id AS dokument_id "
+                   f"FROM {tabelle} t "
+                   f"LEFT JOIN council_herkunft k ON k.id = t.herkunft_id"
+                   + (" WHERE " + " AND ".join(wo) if wo else "")
+                   + f" ORDER BY t.{jahrspalte}, url")
+            try:
+                rows = [dict(r) for r in self._conn.execute(sql)]
+            except sqlite3.OperationalError:
+                continue  # Tabelle oder Spalte gibt es in dieser DB (noch) nicht
+            treffer = [r for r in rows if r["url"]]
+            if treffer:
+                aus[key] = treffer
+        # Ein Nachschlag für den ganzen Bereich statt einer je Dokument: Der
+        # Apparat einer Seite zeigt bis zu neun Teilhaushalts-Anlagen, und das
+        # Verzeichnis am Fuß zeigt alle Quellen auf einmal.
+        beschluesse = self.beschluesse_zu_dokumenten(sorted(
+            {r["dokument_id"] for liste in aus.values()
+             for r in liste if r.get("dokument_id")}))
+        for liste in aus.values():
+            for r in liste:
+                # `dokument_id` war nur der Schlüssel für den Nachschlag und
+                # fliegt wieder raus: Was auf die Seite geht, ist der Vorgang,
+                # nicht die RIS-interne Nummer des Anhangs.
+                r["beschluss"] = beschluesse.get(r.pop("dokument_id", None))
+        return aus
+
     # --- Stadt-Haushalt (council.haushalt) -----------------------------------
 
-    def save_haushalt(self, year: int, rows: list[dict], source_url: str) -> int:
+    def save_haushalt(self, year: int, rows: list[dict], herkunft) -> int:
         """Ergebnishaushalt eines Jahres speichern — ersetzt den bisherigen
-        Stand des Jahres komplett (Re-Ingest idempotent)."""
+        Stand des Jahres komplett (Re-Ingest idempotent).
+
+        ``herkunft`` ist eine :class:`council.herkunft.Herkunft` und hat den
+        früheren ``source_url``-String abgelöst: Eine URL allein sagt nicht,
+        an welcher Stelle eines 300-Seiten-PDFs gelesen wurde und was die
+        Zahlen absichert. ``source_url`` steht weiter in der Tabelle und wird
+        aus derselben Angabe gefüllt."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.execute("DELETE FROM council_haushalt WHERE year = ?", (year,))
             for r in rows:
                 self._conn.execute(
                     "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, "
-                    " ergebnis, is_summe, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
+                    " ergebnis, is_summe, source_url, fetched_at, herkunft_id) "
+                    "VALUES (?,?,?,?,?,?,?,?,?)",
                     (year, r["bereich"], r.get("ertraege"), r.get("aufwendungen"),
-                     r.get("ergebnis"), int(r.get("is_summe", 0)), source_url, now))
+                     r.get("ergebnis"), int(r.get("is_summe", 0)),
+                     herkunft.url, now, hid))
         return len(rows)
 
     def get_haushalt(self, year: int) -> list[dict]:
@@ -3145,6 +5142,2207 @@ class CouncilStore:
         """Alle eingelesenen Haushaltsjahre (aufsteigend) — für Trend-Fragen."""
         return [r[0] for r in self._conn.execute(
             "SELECT DISTINCT year FROM council_haushalt ORDER BY year")]
+
+    def save_steuereinnahmen(self, rows: list[dict], herkunft) -> int:
+        """Ist-Steuereinnahmen (jahr, art, betrag) ersetzen — Re-Ingest idempotent."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_steuern "
+                "(jahr, art, betrag, source_url, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?)",
+                [(r["jahr"], r["art"], r.get("betrag"), herkunft.url, now, hid)
+                 for r in rows])
+        return len(rows)
+
+    def get_steuereinnahmen(self) -> list[dict]:
+        """Alle Ist-Steuereinnahmen, älteste zuerst (Langformat je Jahr × Art)."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT jahr, art, betrag FROM council_steuern ORDER BY jahr, art")]
+
+    def save_steuerkraft(self, rows: list[dict], herkunft) -> int:
+        """Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr ersetzen.
+
+        Anders als die Nachbar-Methoden räumt diese auch auf: Der Datensatz
+        1106 liefert die **ganze** Reihe bei jedem Lauf, und seit der
+        Jahres-Korrektur (``haushalt._STEUERKRAFT_VERSATZ``) trägt jede Zeile
+        ein anderes Jahr als beim letzten Mal. Ein reines INSERT OR REPLACE
+        ließe genau einen Jahrgang als Leiche zurück — den ältesten, den es
+        nach dem Rücken nicht mehr gibt. Der stünde dann mit den Beträgen
+        seines Nachfolgers in der Tabelle, und niemand käme je darauf.
+
+        Eine leere Lieferung räumt **nichts** ab: Ein misslungener Download
+        darf den Bestand nicht löschen. Der Ingest bricht in dem Fall ohnehin
+        vorher ab, aber die Methode soll das auch allein aushalten.
+        """
+        if not rows:
+            return 0
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_steuerkraft "
+                "(jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew, "
+                " source_url, fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?)",
+                [(r["jahr"], r.get("messzahl"), r.get("messzahl_je_ew"),
+                  r.get("zuweisungen"), r.get("zuweisungen_je_ew"),
+                  herkunft.url, now, hid) for r in rows])
+            jahre = [r["jahr"] for r in rows]
+            self._conn.execute(
+                "DELETE FROM council_steuerkraft WHERE jahr NOT IN "
+                f"({','.join('?' * len(jahre))})", jahre)
+        return len(rows)
+
+    def save_einwohner(self, rows: list[dict], herkunft) -> int:
+        """Einwohnerzahlen je Jahr ersetzen (idempotent)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_einwohner "
+                "(jahr, einwohner, source_url, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?)",
+                [(r["jahr"], r["einwohner"], herkunft.url, now, hid) for r in rows])
+        return len(rows)
+
+    def einwohner_aktuell(self) -> dict | None:
+        """Jüngste bekannte Einwohnerzahl — Bezugsgröße für Pro-Kopf-Angaben."""
+        try:
+            r = self._conn.execute(
+                "SELECT jahr, einwohner FROM council_einwohner ORDER BY jahr DESC LIMIT 1").fetchone()
+        except sqlite3.OperationalError:
+            return None
+        return dict(r) if r else None
+
+    def save_ergebnisrechnung(self, jahr: int, posten: list[dict], herkunft,
+                              thh_nr: int | None = None, thh_name: str | None = None,
+                              ersetzen: bool = True) -> int:
+        """Ergebnisrechnung einer Ebene speichern — ohne ``thh_nr`` die
+        Gesamtrechnung, sonst der jeweilige Teilhaushalt.
+
+        ``ersetzen`` löscht vorher die betroffene Ebene dieses Jahres; beim
+        Einlesen mehrerer Teilhaushalte nacheinander bleibt es an.
+
+        ``herkunft`` steht, wo früher ``label, url`` standen. Die beiden
+        Ebenen dieses Dokuments bekommen bewusst **verschiedene** Herkünfte:
+        Sie stehen an verschiedenen Stellen des Jahresabschlusses und sind
+        durch verschiedene Proben gedeckt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            if ersetzen:
+                if thh_nr is None:
+                    self._conn.execute(
+                        "DELETE FROM council_ergebnisrechnung WHERE jahr = ? AND thh_nr IS NULL",
+                        (jahr,))
+                else:
+                    self._conn.execute(
+                        "DELETE FROM council_ergebnisrechnung WHERE jahr = ? AND thh_nr = ?",
+                        (jahr, thh_nr))
+            self._conn.executemany(
+                "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, thh_name, nr, bezeichnung, "
+                " vorjahr, ansatz, plan, plan_art, ergebnis, abweichung, ist_summe, "
+                " quelle_label, quelle_url, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                # `plan` fällt auf `ansatz` zurück, wenn der Aufrufer keine
+                # eigene Bezugsgröße mitbringt — und zwar auch bei
+                # ausdrücklichem ``None``. `p.get("plan", …)` täte das nicht:
+                # Der Vorgabewert greift nur bei fehlendem Schlüssel. Dieselbe
+                # Falle stand im Lesepfad (s. `get_plan_ist.plan_von`).
+                [(jahr, thh_nr, thh_name, p["nr"], p["bezeichnung"], p.get("vorjahr"),
+                  p.get("ansatz"),
+                  p.get("ansatz") if p.get("plan") is None else p.get("plan"),
+                  p.get("plan_art"),
+                  p.get("ergebnis"), p.get("abweichung"),
+                  p.get("ist_summe", 0), herkunft.label, herkunft.url, now, hid)
+                 for p in posten])
+        return len(posten)
+
+    def save_abweichungsgruende(self, jahr: int, gruende: list[dict], herkunft) -> int:
+        """Erläuterungen zu den Plan/Ist-Abweichungen eines Jahrgangs
+        ersetzen. Übergeben wird nur, was die Rechenprobe bestanden hat."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_abweichungsgruende WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_abweichungsgruende (jahr, nr, bezeichnung, "
+                " delta_mio, prozent, text, quelle_label, quelle_url, fetched_at, "
+                " herkunft_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, g["nr"], g["bezeichnung"], g.get("delta_mio"), g.get("prozent"),
+                  g["text"], herkunft.label, herkunft.url, now, hid) for g in gruende])
+        return len(gruende)
+
+    def get_abweichungsgruende(self, jahr: int | None = None) -> list[dict]:
+        """Erläuterungen — ein Jahr oder alle, in Tabellenreihenfolge."""
+        try:
+            if jahr is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_abweichungsgruende ORDER BY jahr, nr").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_abweichungsgruende WHERE jahr = ? ORDER BY nr",
+                    (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def save_pruefbericht_quelle(self, jahr: int, herkunft,
+                                 n_pages: int | None, lesbar: bool) -> None:
+        """Fundstelle des RPA-Schlussberichts eines Jahrgangs merken."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_pruefbericht_quellen "
+                "(jahr, label, url, n_pages, lesbar, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (jahr, herkunft.label, herkunft.url, n_pages,
+                 1 if lesbar else 0, now, hid))
+
+    def get_pruefbericht_quellen(self) -> list[dict]:
+        """Alle bekannten Schlussberichte, ältester zuerst."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT jahr, label, url, n_pages, lesbar, herkunft_id "
+                "FROM council_pruefbericht_quellen ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_plan_ist(self, jahr: int) -> dict:
+        """„Geplant und geworden" eines Jahres: die Summenzeilen (Erträge 12,
+        Aufwendungen 20) für die Kernverwaltung und je Teilhaushalt.
+
+        Liefert ``{gesamt: {...}, bereiche: [...]}`` — die Bereiche nach
+        geplanten Aufwendungen absteigend, damit die größten oben stehen."""
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, ergebnis, abweichung "
+            "FROM council_ergebnisrechnung WHERE jahr = ? AND nr IN (12, 20) "
+            "ORDER BY thh_nr, nr", (jahr,))]
+
+        def plan_von(r: dict):
+            """Bezugsgröße der Abweichung — mit Rückfall auf den Ansatz.
+
+            Der Rückfall ist kein Schönheitsfehler, sondern der Normalfall für
+            jeden Bestand, der vor #510 geschrieben wurde: `plan` und
+            `plan_art` kamen damals per ALTER TABLE dazu, und ALTER TABLE füllt
+            nichts nach — alle vorhandenen Zeilen tragen dort seither NULL,
+            obwohl `ansatz` danebensteht und richtig ist. Auf `/haushalt/
+            plan-ist` hieß das: „Die Planwerte der Gesamtrechnung konnten wir
+            für diesen Jahrgang nicht auslesen" für **jeden** Jahrgang, bis
+            jemand von Hand neu einliest.
+
+            Bis 16.08.2026 stand hier ``r.get("plan", r.get("ansatz"))``. Das
+            sieht aus wie genau dieser Rückfall und ist keiner: `r` kommt aus
+            einem ``SELECT plan, …``, der Schlüssel ist also **immer** da, und
+            `dict.get` greift seinen Vorgabewert nur bei fehlendem Schlüssel
+            ab — nie bei ``None``. Der Zweig war toter Code."""
+            wert = r.get("plan")
+            return r.get("ansatz") if wert is None else wert
+
+        def bauen(teil: list[dict]) -> dict:
+            e = next((r for r in teil if r["nr"] == 12), {})
+            a = next((r for r in teil if r["nr"] == 20), {})
+            # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
+            # ursprüngliche Haushaltsansatz — 2018 und 2020 fallen auseinander.
+            return {"ertraege_plan": plan_von(e),
+                    "ertraege_ansatz": e.get("ansatz"),
+                    "ertraege_ist": e.get("ergebnis"),
+                    "aufwendungen_plan": plan_von(a),
+                    "aufwendungen_ansatz": a.get("ansatz"),
+                    "aufwendungen_ist": a.get("ergebnis"),
+                    "plan_art": a.get("plan_art") or e.get("plan_art")}
+
+        gesamt = [r for r in rows if r["thh_nr"] is None]
+        bereiche = []
+        for nr in sorted({r["thh_nr"] for r in rows if r["thh_nr"] is not None}):
+            teil = [r for r in rows if r["thh_nr"] == nr]
+            bereiche.append({"thh_nr": nr, "thh_name": teil[0]["thh_name"], **bauen(teil)})
+        bereiche.sort(key=lambda b: -(b["aufwendungen_plan"] or 0))
+        return {"jahr": jahr, "gesamt": bauen(gesamt) if gesamt else None, "bereiche": bereiche}
+
+    def plan_ist_jahre(self) -> list[int]:
+        """Jahre, für die Teilhaushalts-Ist vorliegt (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_ergebnisrechnung "
+                "WHERE thh_nr IS NOT NULL ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_ergebnisrechnung(self, jahr: int | None = None) -> list[dict]:
+        """Ergebnisrechnung — ein Jahr oder alle, Posten in Tabellenreihenfolge."""
+        if jahr is None:
+            rows = self._conn.execute(
+                "SELECT * FROM council_ergebnisrechnung ORDER BY jahr, nr").fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM council_ergebnisrechnung WHERE jahr = ? ORDER BY nr", (jahr,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def ergebnisrechnung_jahre(self) -> list[int]:
+        """Jahre mit eingelesenem Jahresabschluss (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_ergebnisrechnung ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Finanzrechnung der Kernverwaltung (council.finanzberichte) ----------
+
+    def save_finanzrechnung(self, jahr: int, zeilen: list[dict], herkunft) -> int:
+        """Die Kassensicht eines Jahrgangs ersetzen.
+
+        Übergeben wird nur, was ``finanzberichte.finanzprobe`` durchgelassen
+        hat — die Funktion streicht Ketten, die nicht aufgehen, schon vorher
+        heraus. Hier wird deshalb nichts mehr geprüft, nur geschrieben."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_finanzrechnung WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_finanzrechnung (jahr, nr, rolle, bezeichnung, "
+                " vorjahr, ansatz, plan, plan_art, ergebnis, abweichung, "
+                " ermaechtigung, ist_summe, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, z["nr"], z.get("rolle"), z["bezeichnung"], z.get("vorjahr"),
+                  z.get("ansatz"), z.get("plan"), z.get("plan_art"), z.get("ergebnis"),
+                  z.get("abweichung"), z.get("ermaechtigung"),
+                  z.get("ist_summe", 0), hid, now)
+                 for z in zeilen])
+        return len(zeilen)
+
+    def get_finanzrechnung(self, jahr: int | None = None) -> list[dict]:
+        """Finanzrechnung — ein Jahr oder alle, Zeilen in Dokumentreihenfolge."""
+        try:
+            if jahr is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_finanzrechnung ORDER BY jahr, nr").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_finanzrechnung WHERE jahr = ? ORDER BY nr",
+                    (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def finanzrechnung_jahre(self) -> list[int]:
+        """Jahre mit eingelesener Finanzrechnung (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_finanzrechnung ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Bilanz der Stadt (council.bilanz) -----------------------------------
+
+    def save_bilanz(self, jahr: int, posten: list[dict], herkunft) -> int:
+        """Einen Bilanzstichtag ersetzen.
+
+        Übergeben wird nur, was ``bilanz.bilanzprobe`` durchgelassen hat —
+        eine Bilanz, deren Seiten nicht aufgehen, kommt dort gar nicht erst
+        heraus. Hier wird deshalb nichts mehr geprüft, nur geschrieben."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_bilanz WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_bilanz (jahr, rolle, seite, ebene, nr, "
+                " bezeichnung, wert, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(jahr, p["rolle"], p["seite"], p["ebene"], p.get("nr"),
+                  p["bezeichnung"], p["wert"], hid, now) for p in posten])
+        return len(posten)
+
+    def get_bilanz(self, jahr: int | None = None) -> list[dict]:
+        """Bilanzposten — ein Stichtag oder alle.
+
+        Sortiert nach Jahr, dann Aktiva vor Passiva, dann in der Reihenfolge
+        des Dokuments. ``ORDER BY seite DESC`` ist kein Tippfehler: ``aktiva``
+        steht alphabetisch vor ``passiva``, und die Bilanz druckt die
+        Aktivseite zuerst — absteigend sortiert kommt genau das heraus."""
+        try:
+            sql = ("SELECT * FROM council_bilanz {} "
+                   "ORDER BY jahr, seite ASC, ebene, rolle")
+            if jahr is None:
+                rows = self._conn.execute(sql.format("")).fetchall()
+            else:
+                rows = self._conn.execute(sql.format("WHERE jahr = ?"), (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def bilanz_jahre(self) -> list[int]:
+        """Bilanzstichtage im Bestand (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_bilanz ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_bilanz_erlaeuterungen(self, jahr: int, abschnitte: list[dict],
+                                   herkunft) -> int:
+        """Die Erläuterungen des Anhangs zu einem Jahrgang ersetzen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_bilanz_erlaeuterungen WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_bilanz_erlaeuterungen (jahr, rolle, nr, "
+                " ueberschrift, text, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?)",
+                [(jahr, a["rolle"], a["nr"], a["ueberschrift"], a["text"], hid, now)
+                 for a in abschnitte])
+        return len(abschnitte)
+
+    def get_bilanz_posten(self, rolle: str) -> list[dict]:
+        """Eine einzelne Bilanzposition über alle Stichtage.
+
+        Für Zahlen, die außerhalb der Bilanzseite gebraucht werden und dort
+        ihre Bedeutung erst bekommen — die Geldschulden neben dem
+        Bürgschaftsbestand etwa (`council/buergschaften.py`). Die ganze Bilanz
+        dafür zu holen und im Aufrufer zu filtern hieße, 131 Zeilen zu laden,
+        um drei zu benutzen."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_bilanz WHERE rolle = ? ORDER BY jahr", (rolle,))]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_bilanz_erlaeuterungen(self, jahr: int | None = None) -> list[dict]:
+        """Erläuterungen zur Bilanz — ein Jahrgang oder alle."""
+        try:
+            sql = ("SELECT * FROM council_bilanz_erlaeuterungen {} "
+                   "ORDER BY jahr, nr")
+            if jahr is None:
+                rows = self._conn.execute(sql.format("")).fetchall()
+            else:
+                rows = self._conn.execute(sql.format("WHERE jahr = ?"), (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    # --- Gesamtergebnishaushalt (Planjahre, council.ergebnishaushalt) --------
+
+    def save_ergebnishaushalt(self, plan_jahrgang: int, zeilen: list[dict],
+                              herkunft) -> int:
+        """Einen Haushaltsplan-Jahrgang ersetzen — Ansatz und Finanzplanung
+        zusammen, weil sie aus **einer** Tabelle eines Dokuments stammen.
+
+        Gelöscht wird nach ``plan_jahrgang``, nicht nach ``jahr``: Was der
+        Haushalt 2026 über 2027 sagt, gehört ihm; was der Haushalt 2027 über
+        2027 sagt, ist eine andere Zeile und bleibt stehen.
+
+        Übergeben wird nur, was beide Pflicht-Proben bestanden hat — diese
+        Methode prüft nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_ergebnishaushalt WHERE plan_jahrgang = ?",
+                (plan_jahrgang,))
+            self._conn.executemany(
+                "INSERT INTO council_ergebnishaushalt (plan_jahrgang, jahr, art, nr, "
+                " bezeichnung, betrag, ist_summe, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(plan_jahrgang, z["jahr"], z["art"], z["nr"], z["bezeichnung"],
+                  z["betrag"], 1 if z.get("ist_summe") else 0, now, hid)
+                 for z in zeilen])
+        return len(zeilen)
+
+    def ergebnishaushalt_jahrgaenge(self) -> list[int]:
+        """Haushaltsplan-Jahrgänge, die eingelesen sind (aufsteigend).
+
+        Der **Plan**-Jahrgang, nicht die Jahre darin: Ein Dokument trägt sein
+        Planjahr und drei Finanzplanungsjahre, und vollständig ist es erst,
+        wenn alle vier dastehen — was ``save_ergebnishaushalt`` zusammen
+        schreibt oder gar nicht."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT plan_jahrgang FROM council_ergebnishaushalt "
+                "ORDER BY plan_jahrgang")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_ergebnishaushalt(self, jahr: int | None = None,
+                             art: str | None = None) -> list[dict]:
+        """Planzahlen je Posten — gefiltert nach Jahr und/oder Art.
+
+        ``art="ansatz"`` ist die Frage, die eine Seite fast immer meint: „was
+        ist für dieses Jahr geplant?". Ohne Filter kommt auch die
+        Finanzplanung mit; sie ist als solche beschriftet und darf nur so
+        gezeigt werden."""
+        wo, werte = [], []
+        if jahr is not None:
+            wo.append("jahr = ?")
+            werte.append(jahr)
+        if art is not None:
+            wo.append("art = ?")
+            werte.append(art)
+        satz = (" WHERE " + " AND ".join(wo)) if wo else ""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_ergebnishaushalt" + satz
+                + " ORDER BY jahr, art, nr", werte)]
+        except sqlite3.OperationalError:
+            return []
+
+    def ansatz_jahre(self) -> list[int]:
+        """Jahre, für die ein Haushaltsansatz vorliegt (aufsteigend).
+
+        Bewusst ohne die Finanzplanungsjahre: Eine Jahresliste, die 2029
+        mitführt, wird irgendwo zu einem Umschalter, und dann steht auf der
+        Seite ein Jahr, für das nie ein Haushalt aufgestellt wurde."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_ergebnishaushalt "
+                "WHERE art = 'ansatz' ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Stellenplan (council.stellenplan) ----------------------------------
+
+    def save_stellenplan(self, jahrgang: int, teil: str, zeilen: list[dict],
+                         herkunft, stichtag: str | None = None) -> int:
+        """Einen Teil eines Stellenplan-Jahrgangs ersetzen.
+
+        Ersetzt wird nach ``(jahrgang, teil)``, nicht nach Jahrgang: Die
+        beiden Teile stehen zwar im selben PDF, kommen aber einzeln durch
+        ihre Proben — im Jahrgang 2026 ist Teil B im Textextrakt unlesbar,
+        Teil A tadellos. Wer nach Jahrgang löschte, risse mit dem einen den
+        anderen mit.
+
+        Übergeben wird nur, was seine Proben bestanden hat; diese Methode
+        prüft nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_stellenplan WHERE jahrgang = ? AND teil = ?",
+                (jahrgang, teil))
+            self._conn.executemany(
+                "INSERT INTO council_stellenplan (jahrgang, teil, zeile, art, "
+                " gruppe, lfd_nr, bezeichnung, besoldung, stellen_plan, "
+                " stellen_vorjahr, besetzt, besetzt_beamte, besetzt_arbeitnehmer, "
+                " nicht_besetzt, stichtag, stimmig, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahrgang, teil, i, z["art"], z.get("gruppe"), z.get("lfd_nr"),
+                  z["bezeichnung"], z.get("besoldung"), z["stellen_plan"],
+                  z["stellen_vorjahr"], z["besetzt"], z.get("besetzt_beamte"),
+                  z.get("besetzt_arbeitnehmer"), z["nicht_besetzt"], stichtag,
+                  1 if z.get("stimmig", 1) else 0, now, hid)
+                 for i, z in enumerate(zeilen)])
+        return len(zeilen)
+
+    def stellenplan_einheiten(self) -> set[tuple]:
+        """Welche ``(Jahrgang, Teil)`` im Bestand stehen.
+
+        Die Einheit ist der **Teil**, nicht der Jahrgang: Ein Jahrgang, von
+        dem nur Teil A lesbar war, sähe sonst aus wie ein vollständiger — und
+        eine Seite, die dann „2026: 815 Stellen" schreibt, unterschlüge die
+        1.700 Tarifstellen, statt sie zu vermissen."""
+        try:
+            return {(r[0], r[1]) for r in self._conn.execute(
+                "SELECT DISTINCT jahrgang, teil FROM council_stellenplan")}
+        except sqlite3.OperationalError:
+            return set()
+
+    def get_stellenplan(self, art: str | None = None,
+                        jahrgang: int | None = None) -> list[dict]:
+        """Stellenplan-Zeilen — gefiltert nach Stufe und/oder Jahrgang.
+
+        ``art="gesamt"`` ist die Frage, die die Übersichtsseite meint („wie
+        viele Stellen, wie viele davon unbesetzt?"); ohne Filter kommen alle
+        rund tausend Einzelposten mit."""
+        wo, werte = [], []
+        if art is not None:
+            wo.append("art = ?")
+            werte.append(art)
+        if jahrgang is not None:
+            wo.append("jahrgang = ?")
+            werte.append(jahrgang)
+        satz = (" WHERE " + " AND ".join(wo)) if wo else ""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_stellenplan" + satz
+                + " ORDER BY jahrgang, teil, zeile", werte)]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Investitionen des Finanzhaushalts (council.investitionen) ----------
+
+    def save_investitionen(self, jahr: int, zeilen: list[dict], gesamt: dict,
+                           herkunft, finanzhaushalt: dict | None = None,
+                           herkunft_finanzhaushalt=None) -> int:
+        """Einen Jahrgang Investitionen ersetzen — Teilhaushalte und
+        Summenzeile zusammen, weil sie aus **einer** Tabelle stammen und die
+        Summenzeile das Ziel der Rechenprobe ist.
+
+        Zwei Herkünfte, weil es zwei verschiedene Aussagen sind: Die
+        Investitionen sind durch die Summenprobe der Datei gedeckt, der
+        *Gesamtbetrag des Finanzhaushaltes* ist es nicht (er zählt die laufende
+        Verwaltungstätigkeit mit, und nichts in der Datei summiert sich auf
+        ihn). Eine gemeinsame Herkunft behauptete für ihn eine Probe, die es
+        nicht gibt.
+
+        Übergeben wird nur, was die Probe bestanden hat — diese Methode prüft
+        nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_investitionen WHERE jahr = ?", (jahr,))
+            werte = [(jahr, "teilhaushalt", z["thh_nr"], z["bezeichnung"],
+                      z["einzahlungen"], z["auszahlungen"], now, hid)
+                     for z in zeilen]
+            werte.append((jahr, "investitionen", 0, gesamt["bezeichnung"],
+                          gesamt["einzahlungen"], gesamt["auszahlungen"], now, hid))
+            if finanzhaushalt:
+                hid_fh = (self.merke_herkunft(herkunft_finanzhaushalt, fetched_at=now)
+                          if herkunft_finanzhaushalt is not None else hid)
+                werte.append((jahr, "finanzhaushalt", 0,
+                              finanzhaushalt["bezeichnung"],
+                              finanzhaushalt["einzahlungen"],
+                              finanzhaushalt["auszahlungen"], now, hid_fh))
+            self._conn.executemany(
+                "INSERT INTO council_investitionen (jahr, ebene, thh_nr, bezeichnung, "
+                " einzahlungen, auszahlungen, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?)", werte)
+        return len(werte)
+
+    def investitionen_jahre(self) -> list[int]:
+        """Haushaltsjahre, für die Investitionen vorliegen (aufsteigend).
+
+        Gezählt wird an der **Summenzeile**, nicht an irgendeiner Zeile: Sie
+        kommt nur in die Tabelle, wenn die Rechenprobe aufging, und ist damit
+        das Kennzeichen eines vollständigen Jahrgangs."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_investitionen "
+                "WHERE ebene = 'investitionen' ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_investitionen(self, jahr: int | None = None,
+                          ebene: str | None = None) -> list[dict]:
+        """Investitionszeilen — gefiltert nach Jahr und/oder Ebene.
+
+        Ohne Filter kommen alle drei Ebenen mit; sie sind als ``ebene``
+        beschriftet und dürfen nur so gezeigt werden. Wer die Teilhaushalte
+        addiert und das Ergebnis neben die Summenzeile stellt, zeigt zweimal
+        dieselbe Zahl."""
+        wo, werte = [], []
+        if jahr is not None:
+            wo.append("jahr = ?")
+            werte.append(jahr)
+        if ebene is not None:
+            wo.append("ebene = ?")
+            werte.append(ebene)
+        satz = (" WHERE " + " AND ".join(wo)) if wo else ""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionen" + satz
+                + " ORDER BY jahr, ebene, thh_nr", werte)]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Investitionsprogramm (Anlage 004 des Haushaltsplans) ---------------
+
+    def save_investitionsprogramm(self, jahr: int, gelesen: dict,
+                                  herkunft) -> int:
+        """Einen Jahrgang Investitionsmaßnahmen ersetzen.
+
+        Maßnahmen und beide Summenebenen zusammen, weil sie aus **einem**
+        Dokument stammen und die Summen die Ziele der Rechenproben sind. Eine
+        Herkunft für alles: Anders als beim Finanzhaushalt gibt es hier keine
+        Zeile, die von den Proben nicht gedeckt wäre — was nicht aufgeht, kommt
+        gar nicht erst herein (``investitionsprogramm.lies``).
+
+        Übergeben wird nur, was die Proben bestanden hat; diese Methode prüft
+        nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_investitionsmassnahmen WHERE jahr = ?",
+                (jahr,))
+            werte = []
+            for nr, a in sorted(gelesen["abschnitte"].items()):
+                for m in a["massnahmen"]:
+                    werte.append((jahr, "massnahme", nr, m["code"],
+                                  m["bezeichnung"], m["gesamtsumme"], now, hid))
+                werte.append((jahr, "teilhaushalt", nr, "", a["name"],
+                              a["summe"], now, hid))
+            werte.append((jahr, "gesamt", 0, "", "Gesamtinvestitionsprogramm",
+                          gelesen["kopfsumme"], now, hid))
+            self._conn.executemany(
+                "INSERT INTO council_investitionsmassnahmen "
+                "(jahr, ebene, thh_nr, code, bezeichnung, gesamtsumme, "
+                " fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?)", werte)
+        return len(werte)
+
+    def investitionsprogramm_jahre(self) -> list[int]:
+        """Jahrgänge, für die ein Investitionsprogramm vorliegt (aufsteigend).
+
+        Gezählt an der ``gesamt``-Zeile: Sie kommt nur in die Tabelle, wenn
+        alle drei Proben aufgingen, und kennzeichnet damit einen vollständigen
+        Jahrgang."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_investitionsmassnahmen "
+                "WHERE ebene = 'gesamt' ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_investitionsmassnahmen(self, jahr: int | None = None,
+                                   thh_nr: int | None = None,
+                                   ebene: str | None = None) -> list[dict]:
+        """Zeilen des Investitionsprogramms — nach Jahr, Teilhaushalt, Ebene.
+
+        Ohne ``ebene`` kommen alle drei mit. Sie sind beschriftet und dürfen
+        nur so gezeigt werden: Wer die Maßnahmen addiert und das Ergebnis neben
+        die ``teilhaushalt``-Zeile stellt, zeigt zweimal dieselbe Zahl."""
+        wo, werte = [], []
+        if jahr is not None:
+            wo.append("jahr = ?")
+            werte.append(jahr)
+        if thh_nr is not None:
+            wo.append("thh_nr = ?")
+            werte.append(thh_nr)
+        if ebene is not None:
+            wo.append("ebene = ?")
+            werte.append(ebene)
+        satz = (" WHERE " + " AND ".join(wo)) if wo else ""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionsmassnahmen" + satz
+                + " ORDER BY jahr, thh_nr, ebene, code", werte)]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Konzern Stadt Oldenburg (konsolidierter Gesamtabschluss) -----------
+
+    def save_konzern_jahrgang(self, jahr: int, posten: list[dict],
+                              traeger: list[dict], herkunft,
+                              herkunft_traeger=None) -> dict:
+        """Einen Jahrgang des Gesamtabschlusses ersetzen — beide Ebenen.
+
+        Zusammen, weil sie aus **einem** Dokument stammen und ein halb
+        geschriebener Jahrgang für den nächsten Lauf wie ein fertiger aussähe.
+        Aber mit **zwei** Herkünften: Die Posten stehen in Abschnitt 3.2, die
+        Trägeraufstellung in 4.1.1, und sie sind durch verschiedene Proben
+        gedeckt. Fehlt ``herkunft_traeger``, gilt dieselbe für beide.
+
+        Übergeben wird nur, was die Proben bestanden hat — diese Methode prüft
+        nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            hid_traeger = (self.merke_herkunft(herkunft_traeger, fetched_at=now)
+                           if herkunft_traeger is not None else hid)
+            self._conn.execute("DELETE FROM council_konzern_posten WHERE jahr = ?", (jahr,))
+            self._conn.execute("DELETE FROM council_konzern_traeger WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_konzern_posten (jahr, nr, bezeichnung, rolle, "
+                " betrag, vorjahr, ist_summe, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(jahr, p["nr"], p["bezeichnung"], p.get("rolle"), p["betrag"],
+                  p.get("vorjahr"), 1 if p.get("ist_summe") else 0, now, hid)
+                 for p in posten])
+            self._conn.executemany(
+                "INSERT INTO council_konzern_traeger (jahr, art, traeger_key, traeger, "
+                " betrag_teur, vorjahr_teur, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                [(jahr, t["art"], t["traeger_key"], t["traeger"], t["betrag_teur"],
+                  t.get("vorjahr_teur"), now, hid_traeger) for t in traeger])
+        return {"posten": len(posten), "traeger": len(traeger)}
+
+    def konzern_jahre(self) -> list[int]:
+        """Jahrgänge mit eingelesenem Gesamtabschluss (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_konzern_posten ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_konzern_posten(self, jahr: int | None = None) -> list[dict]:
+        """Posten der Gesamtergebnisrechnung — ein Jahrgang oder alle."""
+        try:
+            if jahr is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_konzern_posten ORDER BY jahr, nr").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_konzern_posten WHERE jahr = ? ORDER BY nr",
+                    (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def kernverwaltung_ist(self) -> dict[int, dict]:
+        """Ist-Summen der Kernverwaltung je Jahr, aus den Jahresabschlüssen.
+
+        Nur die beiden Summenzeilen, und bewusst über die **Bezeichnung**
+        gesucht statt über die Postennummer: Diese Tabelle wird sonst nirgends
+        nach Nummern gefragt, und eine Nummer, die niemand nachprüft, ist
+        genau die, die beim nächsten Formatwechsel still etwas anderes meint.
+
+        Zweck ist die Gegenprobe: Der Gesamtabschluss führt die Kernverwaltung
+        als eigene Trägerzeile. Beide Zahlen stammen aus verschiedenen
+        Dokumenten verschiedener Jahre — dass sie übereinstimmen, ist die
+        stärkste Bestätigung, die dieser Bestand hergibt."""
+        try:
+            rows = self._conn.execute(
+                "SELECT jahr, bezeichnung, ergebnis FROM council_ergebnisrechnung "
+                "WHERE thh_nr IS NULL AND ergebnis IS NOT NULL "
+                "  AND bezeichnung LIKE 'Summe ordentliche%' ORDER BY jahr").fetchall()
+        except sqlite3.OperationalError:
+            return {}
+        aus: dict[int, dict] = {}
+        for r in rows:
+            art = "ertraege" if "Erträge" in r["bezeichnung"] else "aufwendungen"
+            aus.setdefault(r["jahr"], {})[art] = r["ergebnis"]
+        return aus
+
+    # --- Beteiligungsbericht (§ 151 NKomVG) ---------------------------------
+
+    def save_beteiligungsbericht(self, stammdaten: list[dict], texte: list[dict],
+                                 kennzahlen: list[dict],
+                                 personen: list[dict] | None = None,
+                                 eigentuemer: list[dict] | None = None) -> dict:
+        """Den **ganzen** Bestand des Beteiligungsberichts ersetzen.
+
+        Ungewöhnlich für diesen Store, und mit Grund: Die Überlappungsprobe
+        spannt sich über mehrere Berichte. Ob der Wert für 2022 gilt,
+        entscheidet nicht der Bericht 2022 allein, sondern sein Vergleich mit
+        2023 und 2024 — und `berichte` (in wie vielen er steht) ändert sich,
+        sobald ein neuer Jahrgang dazukommt. Jahrgangsweise zu schreiben
+        hieße, diese Zahl in jeder zweiten Zeile veralten zu lassen.
+
+        Das Einlesen liest deshalb immer alle vorhandenen Berichte und
+        übergibt das Ergebnis in einem Stück. Übergeben wird nur, was die
+        Proben bestanden hat — diese Methode prüft nichts nach, sie schreibt.
+
+        Jede Liste bringt ihre eigene ``herkunft`` je Zeile mit: Die Kennzahlen
+        eines Jahres stammen aus einem anderen Bericht als die Texte daneben,
+        und die Probe ist eine andere."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            for tabelle in ("council_gesellschaft_kennzahlen",
+                            "council_gesellschaft_texte",
+                            "council_gesellschaft_personen",
+                            "council_gesellschaft_eigentuemer",
+                            "council_gesellschaften"):
+                self._conn.execute(f"DELETE FROM {tabelle}")
+            for z in stammdaten:
+                self._conn.execute(
+                    "INSERT INTO council_gesellschaften (bericht_jahr, gesellschaft, "
+                    " name, gliederung, seite, konzern_key, fetched_at, herkunft_id) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (z["bericht_jahr"], z["gesellschaft"], z["name"], z["gliederung"],
+                     z.get("seite"), z.get("konzern_key"), now,
+                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
+            for z in texte:
+                self._conn.execute(
+                    "INSERT INTO council_gesellschaft_texte (bericht_jahr, "
+                    " gesellschaft, abschnitt, text, fetched_at, herkunft_id) "
+                    "VALUES (?,?,?,?,?,?)",
+                    (z["bericht_jahr"], z["gesellschaft"], z["abschnitt"], z["text"],
+                     now, self.merke_herkunft(z["herkunft"], fetched_at=now)))
+            for z in kennzahlen:
+                self._conn.execute(
+                    "INSERT INTO council_gesellschaft_kennzahlen (gesellschaft, "
+                    " kennzahl, jahr, wert, einheit, bericht_jahr, berichte, "
+                    " fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?,?)",
+                    (z["gesellschaft"], z["kennzahl"], z["jahr"], z["wert"],
+                     z["einheit"], z["bericht_jahr"], z["berichte"], now,
+                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
+            for z in personen or []:
+                self._conn.execute(
+                    "INSERT INTO council_gesellschaft_personen (bericht_jahr, "
+                    " gesellschaft, reihenfolge, gremium, name, funktion, "
+                    " vorsitz, hinweis, funktionen_zuordenbar, fetched_at, "
+                    " herkunft_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (z["bericht_jahr"], z["gesellschaft"], z["reihenfolge"],
+                     z["gremium"], z["name"], z.get("funktion"), z.get("vorsitz"),
+                     z.get("hinweis"), int(bool(z["funktionen_zuordenbar"])), now,
+                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
+            for z in eigentuemer or []:
+                self._conn.execute(
+                    "INSERT INTO council_gesellschaft_eigentuemer (bericht_jahr, "
+                    " gesellschaft, reihenfolge, name, betrag_eur, "
+                    " anteil_prozent, fetched_at, herkunft_id) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (z["bericht_jahr"], z["gesellschaft"], z["reihenfolge"],
+                     z["name"], z.get("betrag_eur"), z.get("anteil_prozent"), now,
+                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
+        return {"gesellschaften": len(stammdaten), "texte": len(texte),
+                "kennzahlen": len(kennzahlen), "personen": len(personen or []),
+                "eigentuemer": len(eigentuemer or [])}
+
+    def beteiligungsbericht_jahre(self) -> list[int]:
+        """Berichtsjahrgänge, die eingelesen sind (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT bericht_jahr FROM council_gesellschaften "
+                "ORDER BY bericht_jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_gesellschaften(self, bericht_jahr: int | None = None) -> list[dict]:
+        """Die Gesellschaften eines Berichts — ohne Angabe die des jüngsten.
+
+        „Der jüngste" ist hier die richtige Vorgabe und nicht Bequemlichkeit:
+        Die Frage „was macht die GSG?" meint den heutigen Stand, und ein
+        Bericht von 2022 nennt Aufsichtsräte, die längst ausgewechselt sind."""
+        try:
+            if bericht_jahr is None:
+                jahre = self.beteiligungsbericht_jahre()
+                if not jahre:
+                    return []
+                bericht_jahr = jahre[-1]
+            rows = self._conn.execute(
+                "SELECT * FROM council_gesellschaften WHERE bericht_jahr = ? "
+                "ORDER BY gliederung", (bericht_jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def get_gesellschaft_texte(self, gesellschaft: str,
+                               bericht_jahr: int | None = None) -> list[dict]:
+        """Die beschreibenden Abschnitte einer Gesellschaft."""
+        try:
+            if bericht_jahr is None:
+                jahre = self.beteiligungsbericht_jahre()
+                if not jahre:
+                    return []
+                bericht_jahr = jahre[-1]
+            rows = self._conn.execute(
+                "SELECT * FROM council_gesellschaft_texte WHERE gesellschaft = ? "
+                "AND bericht_jahr = ?", (gesellschaft, bericht_jahr)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def _gesellschaft_zeilen(self, tabelle: str, bericht_jahr: int | None,
+                             ordnung: str) -> list[dict]:
+        """Alle Zeilen einer Beteiligungs-Tabelle für **einen** Berichtsjahrgang.
+
+        Ohne Jahresangabe der jüngste — dieselbe Vorgabe wie bei
+        ``get_gesellschaften``, und aus demselben Grund: Wer fragt, wer im
+        Aufsichtsrat sitzt, meint heute und nicht 2022.
+
+        Ein Lesepfad für beide Tabellen, weil die Steckbrief-Seite ohnehin
+        alle Gesellschaften auf einmal zeigt: 45 Einzelabfragen für 500 Zeilen
+        wären eine Schleife um nichts."""
+        try:
+            if bericht_jahr is None:
+                jahre = self.beteiligungsbericht_jahre()
+                if not jahre:
+                    return []
+                bericht_jahr = jahre[-1]
+            rows = self._conn.execute(
+                f"SELECT * FROM {tabelle} WHERE bericht_jahr = ? "
+                f"ORDER BY {ordnung}", (bericht_jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def get_gesellschaft_personen(self, bericht_jahr: int | None = None) -> list[dict]:
+        """Die Aufsichtsorgane eines Berichtsjahrgangs, Person für Person.
+
+        ``funktionen_zuordenbar`` gilt je Gesellschaft: Ist es 0, ist
+        ``funktion`` bei **allen** ihren Personen NULL (s. Tabellenkommentar
+        und ``beteiligungsbericht.aufsichtsorgane``)."""
+        return self._gesellschaft_zeilen("council_gesellschaft_personen",
+                                         bericht_jahr, "gesellschaft, reihenfolge")
+
+    def get_gesellschaft_eigentuemer(self, bericht_jahr: int | None = None) -> list[dict]:
+        """Wem die Gesellschaften gehören — ohne die Stammkapital-Summenzeile."""
+        return self._gesellschaft_zeilen("council_gesellschaft_eigentuemer",
+                                         bericht_jahr, "gesellschaft, reihenfolge")
+
+    def get_gesellschaft_kennzahlen(self, gesellschaft: str | None = None) -> list[dict]:
+        """Die Kennzahlen-Zeitreihe — einer Gesellschaft oder aller."""
+        try:
+            if gesellschaft is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_gesellschaft_kennzahlen "
+                    "ORDER BY gesellschaft, kennzahl, jahr").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_gesellschaft_kennzahlen "
+                    "WHERE gesellschaft = ? ORDER BY kennzahl, jahr",
+                    (gesellschaft,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def get_konzern_traeger(self, jahr: int | None = None) -> list[dict]:
+        """Trägeraufstellung — wer wie viel zum Konzern beiträgt, in TEUR."""
+        try:
+            if jahr is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_konzern_traeger ORDER BY jahr, art, "
+                    "betrag_teur DESC").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_konzern_traeger WHERE jahr = ? "
+                    "ORDER BY art, betrag_teur DESC", (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    # --- Schuldenstand (Tabelle 1108 des Statistischen Jahrbuchs) ------------
+
+    def save_schulden(self, zeilen: list[dict], herkunft) -> int:
+        """Schuldenjahrgänge ersetzen — je Jahr eine Zeile.
+
+        Ersetzt wird **nur, was die Lieferung mitbringt**, nicht die ganze
+        Tabelle: Ein Lauf, dem ein Jahrgang an der Probe durchgefallen ist,
+        darf den vorher gespeicherten Stand dieses Jahrgangs nicht mit
+        wegräumen. Wer wirklich aufräumen will, tut das von Hand.
+
+        Übergeben wird nur, was seine Probe bestanden hat — diese Methode
+        prüft nichts nach, sie schreibt. Was die Aufteilung verloren hat
+        (Fall 2022, s. ``council/schulden.py``), kommt hier mit ``None`` in
+        den vier Artenspalten an und bleibt auch so stehen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_schulden "
+                "(jahr, kreditmarkt, sondermittel, gebietskoerperschaften, "
+                " eigenbetriebe, insgesamt, je_einwohner, aufteilung_verworfen, "
+                " revidiert, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                [(z["jahr"], z.get("kreditmarkt"), z.get("sondermittel"),
+                  z.get("gebietskoerperschaften"), z.get("eigenbetriebe"),
+                  z["insgesamt"], z.get("je_einwohner"),
+                  z.get("aufteilung_verworfen"), int(bool(z.get("revidiert"))),
+                  hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_schulden(self) -> list[dict]:
+        """Die Schuldenzeitreihe, aufsteigend nach Jahr.
+
+        Fehlt die Tabelle (frische Datenbank ohne Ingest-Lauf), ist die Antwort
+        leer statt ein Fehler — der Haushalts-Bereich zeigt die Seite dann ohne
+        Zeitreihe."""
+        try:
+            rows = self._conn.execute(
+                "SELECT * FROM council_schulden ORDER BY jahr").fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    # --- Lange Ausgabenreihe (Datensatz 1102, seit 1972) --------------------
+
+    def save_ausgabenreihe(self, zeilen: list[dict], herkunft) -> int:
+        """Jahrgänge der langen Ausgabenreihe ersetzen — je Jahr eine Zeile.
+
+        Ersetzt wird **nur, was die Lieferung mitbringt**, nicht die ganze
+        Tabelle: Ein Lauf, dem ein Jahrgang an einer Probe durchgefallen ist,
+        darf den vorher gespeicherten Stand dieses Jahrgangs nicht mit
+        wegräumen (dieselbe Regel wie bei ``save_schulden``).
+
+        Übergeben wird nur, was seine Proben bestanden hat — diese Methode
+        prüft nichts nach, sie schreibt. Welche Proben das waren, kommt als
+        Liste in ``proben`` an und wird kommagetrennt gespeichert; die Namen
+        stehen in ``council/herkunft.PROBEN``.
+
+        Aufgerufen wird sie einmal je Herkunfts-Gruppe, nicht einmal für die
+        ganze Reihe: Ein Jahrgang von 1974 steht nur im Open-Data-Portal, einer
+        von 2024 zusätzlich im Jahrbuch und im Jahresabschluss — das sind
+        verschiedene Belege, und jeder soll für seine Zeilen gelten."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_ausgabenreihe "
+                "(jahr, regelwerk, betrag, quelle, proben, konflikt_betrag, "
+                " konflikt_quelle, revidiert, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(z["jahr"], z["regelwerk"], z["betrag"], z["quelle"],
+                  ",".join(z.get("proben") or []), z.get("konflikt_betrag"),
+                  z.get("konflikt_quelle"), int(bool(z.get("revidiert"))),
+                  hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_ausgabenreihe(self) -> list[dict]:
+        """Die lange Ausgabenreihe, aufsteigend nach Jahr.
+
+        ``proben`` kommt als Liste heraus, nicht als gespeicherter String —
+        das Frontend soll die Trennzeichen-Konvention nicht kennen müssen.
+        Fehlt die Tabelle (frische Datenbank ohne Ingest-Lauf), ist die Antwort
+        leer statt ein Fehler."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_ausgabenreihe ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
+        return rows
+
+    # --- Bürgschaften: wofür die Stadt geradesteht --------------------------
+
+    def save_wirtschaftsplan(self, plan, herkunft) -> int:
+        """Einen Wirtschaftsplan speichern — ein Betrieb, ein Haushaltsjahr.
+
+        Aufgerufen wird sie **je Plan** und nicht für eine ganze Lieferung:
+        Jeder Jahrgang steht in seiner eigenen Ratsvorlage, also hat jeder
+        seine eigene Herkunft. Ein gemeinsamer Beleg wäre für sieben von acht
+        Zeilen der falsche — dieselbe Überlegung wie bei
+        ``save_buergschaften``.
+
+        ``plan`` ist ein :class:`council.wirtschaftsplan.Wirtschaftsplan`; die
+        Proben stehen dort und werden nicht hier noch einmal gerechnet.
+        """
+        # Die Proben kommen aus der HERKUNFT und stehen nicht hier: Welche
+        # gelaufen sind, weiß der Parser, und es sind je nach Quelle andere —
+        # der Beschlusstext prüft anders als der Erfolgsplan einer Anlage. Eine
+        # feste Liste an dieser Stelle behauptete für jede Zeile dieselben.
+        proben = herkunft.probe
+        if not isinstance(proben, str):
+            proben = ",".join(proben)
+
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_wirtschaftsplaene "
+                "(betrieb, jahr, betrieb_name, vorlage_nr, ertraege, aufwendungen, "
+                " steuern, ergebnis, vermoegensplan, investitionen, verpflichtungen, "
+                " entwurf_vom, proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (plan.betrieb, plan.jahr, plan.betrieb_name, plan.vorlage_nr,
+                 plan.ertraege, plan.aufwendungen, plan.steuern, plan.ergebnis,
+                 plan.vermoegensplan, plan.investitionen, plan.verpflichtungen,
+                 plan.entwurf_vom, proben, hid, now))
+        return 1
+
+    def save_gebuehrenbedarf(self, bedarf, herkunft) -> int:
+        """Einen Gebührenbereich eines Jahrgangs speichern.
+
+        Je Bereich und Jahr eine Zeile, und je Zeile eine eigene Herkunft: Die
+        drei Bereiche stehen in drei Anlagen und prüfen sich einzeln — ein
+        gemeinsamer Beleg wäre für zwei von drei der falsche.
+        """
+        proben = herkunft.probe
+        if not isinstance(proben, str):
+            proben = ",".join(proben)
+
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_gebuehren "
+                "(jahr, bereich, bereich_name, kostenkalkulation, abzuege, "
+                " zu_deckende_kosten, bezugsmenge, bezugseinheit, gebuehr, "
+                " gebuehrenvorschlag, vorlage_nr, proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (bedarf.jahr, bedarf.bereich, bedarf.bereich_name,
+                 bedarf.kostenkalkulation, bedarf.abzuege,
+                 bedarf.zu_deckende_kosten, bedarf.bezugsmenge,
+                 bedarf.bezugseinheit, bedarf.gebuehr,
+                 bedarf.gebuehrenvorschlag, bedarf.vorlage_nr,
+                 proben, hid, now))
+        return 1
+
+    def get_gebuehren(self) -> list[dict]:
+        """Alle Gebührenbereiche, ältester Jahrgang zuerst."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_gebuehren ORDER BY jahr, bereich")]
+        except sqlite3.OperationalError:
+            return []
+
+    def gebuehren_jahre(self) -> list[int]:
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_gebuehren ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_haushaltssatzung(self, satzung, herkunft) -> int:
+        """Eine Haushaltssatzung speichern — ein Jahrgang, eine Fassung.
+
+        Wie bei den Wirtschaftsplänen kommen die Proben aus der HERKUNFT und
+        werden hier nicht noch einmal behauptet: Ob der Hebesatz gegen das
+        Statistische Jahrbuch geprüft werden konnte, hängt daran, ob dessen
+        Tabelle diesen Jahrgang schon trägt — der Parser weiß das, der Store
+        nicht.
+        """
+        proben = herkunft.probe
+        if not isinstance(proben, str):
+            proben = ",".join(proben)
+
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_haushaltssatzung "
+                "(jahr, nachtrag, fassung, ordentliche_ertraege, "
+                " ordentliche_aufwendungen, ao_ertraege, ao_aufwendungen, "
+                " ein_laufend, aus_laufend, ein_invest, aus_invest, "
+                " ein_finanz, aus_finanz, ein_gesamt, aus_gesamt, "
+                " kredite_investitionen, verpflichtungsermaechtigungen, "
+                " liquiditaetskredite, hebesatz_grundsteuer_a, "
+                " hebesatz_grundsteuer_b, hebesatz_gewerbesteuer, sitzung_am, "
+                " vorlage_nr, proben, herkunft_id, fetched_at) "
+                "VALUES (" + ",".join("?" * 26) + ")",
+                (satzung.jahr, satzung.nachtrag, satzung.fassung,
+                 satzung.ordentliche_ertraege, satzung.ordentliche_aufwendungen,
+                 satzung.ao_ertraege, satzung.ao_aufwendungen,
+                 satzung.ein_laufend, satzung.aus_laufend,
+                 satzung.ein_invest, satzung.aus_invest,
+                 satzung.ein_finanz, satzung.aus_finanz,
+                 satzung.ein_gesamt, satzung.aus_gesamt,
+                 satzung.kredite_investitionen,
+                 satzung.verpflichtungsermaechtigungen,
+                 satzung.liquiditaetskredite,
+                 satzung.hebesatz_grundsteuer_a, satzung.hebesatz_grundsteuer_b,
+                 satzung.hebesatz_gewerbesteuer, satzung.sitzung_am,
+                 satzung.vorlage_nr, proben, hid, now))
+        return 1
+
+    def get_haushaltssatzungen(self) -> list[dict]:
+        """Alle Satzungs-Jahrgänge, ältester zuerst."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_haushaltssatzung ORDER BY jahr, nachtrag")]
+        except sqlite3.OperationalError:
+            return []
+
+    def haushaltssatzung_jahre(self) -> list[int]:
+        """Jahrgänge, für die eine Satzung vorliegt."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_haushaltssatzung ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_wirtschaftsplaene(self, betrieb: str | None = None) -> list[dict]:
+        """Die Wirtschaftspläne, ältester zuerst — je Betrieb oder alle."""
+        try:
+            if betrieb is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_wirtschaftsplaene ORDER BY betrieb, jahr")
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_wirtschaftsplaene WHERE betrieb = ? "
+                    "ORDER BY jahr", (betrieb,))
+            return [dict(r) for r in rows]
+        except sqlite3.OperationalError:
+            return []
+
+    def wirtschaftsplan_jahre(self, betrieb: str) -> list[int]:
+        """Haushaltsjahre, für die ein Plan dieses Betriebs vorliegt."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT jahr FROM council_wirtschaftsplaene WHERE betrieb = ? "
+                "ORDER BY jahr", (betrieb,))]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_buergschaften(self, zeilen: list[dict], herkunft) -> int:
+        """Bürgschafts-Jahrgänge ersetzen — je Jahr eine Zeile.
+
+        Wie bei ``save_ausgabenreihe`` wird nur ersetzt, was die Lieferung
+        mitbringt: Ein Lauf, dem ein Jahrgang durchgefallen ist, räumt den
+        vorher gespeicherten Stand dieses Jahrgangs nicht mit weg.
+
+        Aufgerufen wird sie **je Herkunfts-Gruppe**, nicht einmal für die
+        ganze Reihe — jeder Jahrgang steht in seinem eigenen Jahresabschluss,
+        und 2021 steht sogar in dem des Folgejahres. Ein gemeinsamer Beleg
+        wäre für fünf von sechs Zeilen der falsche."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_buergschaften "
+                "(jahr, bestand, genau, aus_folgejahr, quelle, grund, "
+                " einzelbetrag, proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(z["jahr"], z["bestand"], int(bool(z.get("genau"))),
+                  int(bool(z.get("aus_folgejahr"))), z["quelle"], z.get("grund"),
+                  z.get("einzelbetrag"), ",".join(z.get("proben") or []),
+                  hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def save_kennzahlen(self, bericht_jahr: int, zeilen: list[dict],
+                        formeln: list[dict], herkunft) -> int:
+        """Einen Rechenschaftsbericht ersetzen — Werte und Rechenwege zusammen.
+
+        Ersetzt wird genau **dieser Bericht**, nicht die Jahrgänge, die er
+        zeigt. Der Bericht 2024 druckt 2020–2024; wer nach Datenjahr löschte,
+        risse dem Bericht 2021 vier seiner fünf Spalten heraus — und mit ihnen
+        die Vergleichsstände, aus denen die Korrekturen sichtbar werden.
+        """
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_kennzahlen WHERE bericht_jahr = ?",
+                               (bericht_jahr,))
+            self._conn.execute("DELETE FROM council_kennzahl_formeln WHERE bericht_jahr = ?",
+                               (bericht_jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_kennzahlen "
+                "(bericht_jahr, kennzahl, jahr, label, wert, einheit, stellen, "
+                " fassung, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(bericht_jahr, z["kennzahl"], z["jahr"], z["label"], z["wert"],
+                  z["einheit"], z["stellen"], z.get("fassung"), hid, now)
+                 for z in zeilen])
+            self._conn.executemany(
+                "INSERT INTO council_kennzahl_formeln "
+                "(bericht_jahr, kennzahl, fassung, ueberschrift, formel, "
+                " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?)",
+                [(bericht_jahr, f["kennzahl"], f.get("fassung") or 1,
+                  f["ueberschrift"], f["formel"], hid, now) for f in formeln])
+        return len(zeilen)
+
+    def get_kennzahlen(self) -> list[dict]:
+        """Alle Stände aller Berichte — die Belegkette, nicht die Anzeigereihe.
+
+        Wer die Reihe will, nimmt ``council.kennzahlen.neueste``; wer die
+        Korrekturen zeigen will, braucht alle Stände.
+        """
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_kennzahlen ORDER BY kennzahl, jahr, bericht_jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_kennzahl_formeln(self) -> list[dict]:
+        """Die gedruckten Rechenwege, ältester Bericht zuerst."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_kennzahl_formeln ORDER BY kennzahl, bericht_jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_anlagenspiegel(self, jahr: int, zeilen: list[dict], herkunft) -> int:
+        """Den Anlagenspiegel eines Jahrgangs ersetzen.
+
+        Je Jahrgang ein Aufruf mit einem Beleg: Die Tabelle steht in genau
+        einem Dokument, anders als bei den Bürgschaften, wo ein Jahrgang im
+        Abschluss des Folgejahres stehen kann.
+
+        Ersetzt wird nur DIESER Jahrgang — ein Lauf, dem ein anderer
+        durchgefallen ist, räumt dessen Stand nicht mit weg.
+        """
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_anlagenspiegel WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_anlagenspiegel "
+                "(jahr, nr, bezeichnung, spalten, ahk_anfang, zugaenge, abgaenge, "
+                " umbuchungen, ahk_ende, abschr_anfang, abschreibung, aufloesungen, "
+                " zuschreibungen, abschr_umbuchungen, abschr_ende, buchwert, "
+                " buchwert_vorjahr, proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, z["nr"], z["bezeichnung"], z["spalten"],
+                  z["ahk_anfang"], z["zugaenge"], z["abgaenge"], z["umbuchungen"],
+                  z["ahk_ende"], z["abschr_anfang"], z["abschreibung"],
+                  z["aufloesungen"], z["zuschreibungen"], z["abschr_umbuchungen"],
+                  z["abschr_ende"], z["buchwert"], z["buchwert_vorjahr"],
+                  ",".join(z.get("proben") or []), hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_anlagenspiegel(self) -> list[dict]:
+        """Alle Zeilen, nach Jahr und Gliederung. ``proben`` als Liste."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_anlagenspiegel ORDER BY jahr, nr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
+        return rows
+
+    def save_vermoegensgruppen(self, jahr: int, gruppen: list[dict], herkunft) -> int:
+        """Die Untergliederung des Infrastrukturvermögens eines Jahrgangs."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_vermoegensgruppen WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_vermoegensgruppen "
+                "(jahr, gruppe, buchwert, buchwert_vorjahr, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?)",
+                [(jahr, g["gruppe"], g["buchwert"], g.get("buchwert_vorjahr"), hid, now)
+                 for g in gruppen])
+        return len(gruppen)
+
+    def get_vermoegensgruppen(self) -> list[dict]:
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_vermoegensgruppen ORDER BY jahr, gruppe")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_buergschaften(self) -> list[dict]:
+        """Der Bürgschaftsbestand je Jahr, aufsteigend.
+
+        ``genau`` und ``aus_folgejahr`` kommen als Wahrheitswerte heraus, nicht
+        als 0/1: Sie sind Angaben über die Belegqualität und werden im Frontend
+        als solche gelesen, nicht gerechnet."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_buergschaften ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
+            r["genau"] = bool(r["genau"])
+            r["aus_folgejahr"] = bool(r["aus_folgejahr"])
+        return rows
+
+    def save_integrierte_schulden(self, zeile: dict, herkunft) -> int:
+        """Einen Stichtag der integrierten Schulden ersetzen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_integrierte_schulden "
+                "(jahr, ars, bevoelkerung, insgesamt, je_einwohner, kernhaushalt, "
+                " extrahaushalte, sonstige, extra_unter_50, sonstige_unter_50, "
+                " veraenderung, proben, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (zeile["jahr"], zeile["ars"], zeile.get("bevoelkerung"),
+                 zeile["insgesamt"], zeile.get("je_einwohner"),
+                 zeile.get("kernhaushalt"), zeile.get("extrahaushalte"),
+                 zeile.get("sonstige"), zeile.get("extra_unter_50"),
+                 zeile.get("sonstige_unter_50"), zeile.get("insgesamt_veraenderung"),
+                 ",".join(zeile.get("proben") or []), hid, now))
+        return 1
+
+    def get_integrierte_schulden(self) -> list[dict]:
+        """Die integrierten Schulden je Stichtag, aufsteigend.
+
+        Kommt als Liste, obwohl die Anzeige nur den jüngsten Stichtag zeigt:
+        Eine zweite Ausgabe soll die erste nicht stillschweigend ersetzen —
+        wer sie vergleichen will, sieht wenigstens, dass es zwei gibt (und
+        findet in ``council/integrierte_schulden.KEINE_REIHE``, warum er es
+        besser lässt)."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_integrierte_schulden ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
+        return rows
+
+    # --- Nachbewilligungen nach § 117 NKomVG --------------------------------
+
+    def anlage_text(self, document_id: int) -> str | None:
+        """Der Volltext einer Anlage — oder ``None``, wenn keiner da ist.
+
+        „Kein Text" ist der Normalfall und kein Fehler: Der Bestand führt
+        Anlagen, die noch nie geladen wurden (``scripts/backfill_anlagen_texte
+        .py``), und solche, die als Scan gar keinen Text hergeben. Beide
+        sollen den Aufrufer nicht in einen Fehlerpfad zwingen, sondern in die
+        Meldung „für dieses Jahr liegt die Quelle nicht vor"."""
+        try:
+            row = self._conn.execute(
+                "SELECT raw_text FROM council_anlagen WHERE document_id = ?",
+                (document_id,)).fetchone()
+        except sqlite3.OperationalError:
+            return None
+        return (row["raw_text"] or None) if row else None
+
+    def nachbewilligungs_vorlagen(self) -> tuple[list[dict], dict[str, list[dict]]]:
+        """Die Rohdaten für ``council/nachbewilligungen.aus_vorlagen``.
+
+        → ``(vorlagen, beschluesse)`` — **erst die Vorlagen, dann die nach
+        Vorlagen-Nummer gruppierten Beschlusszeilen**, genau in der
+        Reihenfolge, die der Parser erwartet.
+
+        Der Filter läuft über den **Titel**, nicht über eine Vorlagenart:
+        ``art`` heißt hier „Beschlussvorlage" oder „Berichtsvorlage" und sagt
+        nichts über den Inhalt. Vorgefiltert wird nur grob (SQL kennt unser
+        Muster nicht); die Feinentscheidung trifft
+        ``nachbewilligungen.ist_nachbewilligung``.
+
+        **Der Join läuft über ``vorlage_nr``, nicht über ``kvonr``.** Das ist
+        keine Stilfrage: ``council_decisions.kvonr`` ist im gesamten Bestand
+        ``NULL`` (8.369 von 8.369 Zeilen). Ein Join darüber liefert
+        schweigend null Treffer — und eine Seite, die behauptet, der Rat habe
+        nie über eine Nachbewilligung entschieden."""
+        try:
+            vorlagen = [dict(r) for r in self._conn.execute(
+                "SELECT vorlage_nr, title, beschlussvorschlag, raw_text "
+                "FROM council_vorlagen "
+                "WHERE vorlage_nr IS NOT NULL "
+                "  AND (title LIKE '%planmäßig%' OR title LIKE '%planmässig%')"
+            )]
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT d.id, d.vorlage_nr, d.outcome, d.vote, "
+                "       cs.committee, cs.session_date "
+                "FROM council_decisions d "
+                "JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+                "WHERE d.vorlage_nr IS NOT NULL AND d.kind = 'decision' "
+                + self._BESCHLUSS_ORDNUNG
+            )]
+        except sqlite3.OperationalError:
+            return [], {}
+        beschluesse: dict[str, list[dict]] = {}
+        for r in rows:
+            beschluesse.setdefault(str(r["vorlage_nr"]), []).append(r)
+        return vorlagen, beschluesse
+
+    def save_nachbewilligungen(self, zeilen: list[dict], herkunft) -> int:
+        """Die RIS-Serie ersetzen — je Vorlage eine Zeile.
+
+        Wie bei ``save_schulden`` wird nur ersetzt, was die Lieferung
+        mitbringt. Übergeben wird, was der Parser gelesen hat; diese Methode
+        prüft nichts nach."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_nachbewilligungen "
+                "(vorlage_nr, jahr, titel, art, kategorie, betrag, "
+                " betrag_quelle, beschlossen, im_rat, ratsentscheidung, "
+                " beschluss_id, gremien, "
+                " volltextprobe, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(z["vorlage_nr"], z.get("jahr"), z["titel"], z["art"],
+                  z["kategorie"], z.get("betrag"), z.get("betrag_quelle"),
+                  int(bool(z.get("beschlossen"))), int(bool(z.get("im_rat"))),
+                  int(bool(z.get("ratsentscheidung"))),
+                  z.get("beschluss_id"),
+                  json.dumps(z.get("gremien") or [], ensure_ascii=False),
+                  int(bool(z.get("volltextprobe"))), hid, now)
+                 for z in zeilen])
+        return len(zeilen)
+
+    def save_nachbewilligung_jahr(self, jahr: dict, kanaele: list[dict],
+                                  herkunft) -> int:
+        """Ein Jahrgang aus Kapitel 3 des Rechenschaftsberichts.
+
+        Jahreszeile und Kanäle wandern zusammen in **eine** Transaktion: Ein
+        Bestand, in dem die Summenzeile eines Jahres steht und seine vier
+        Wege fehlen, wäre genau der Zustand, den die Tabellenprobe unmöglich
+        machen soll."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_nachbewilligung_jahre "
+                "(jahr, summe_konsumtiv, summe_investiv, text_gesamt, "
+                " verpflichtungen_betrag, probe_ok, probe_text, herkunft_id, "
+                " fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                (jahr["jahr"], jahr["summe_konsumtiv"], jahr["summe_investiv"],
+                 jahr.get("text_gesamt"), jahr.get("verpflichtungen_betrag"),
+                 int(bool(jahr.get("probe_ok"))), jahr.get("probe_text"),
+                 hid, now))
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_nachbewilligung_kanaele "
+                "(jahr, kanal, label, anzahl_konsumtiv, betrag_konsumtiv, "
+                " anzahl_investiv, betrag_investiv, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(jahr["jahr"], k["kanal"], k["label"], k["anzahl_konsumtiv"],
+                  k["betrag_konsumtiv"], k["anzahl_investiv"],
+                  k["betrag_investiv"], hid, now) for k in kanaele])
+        return len(kanaele)
+
+    def get_nachbewilligungen(self) -> list[dict]:
+        """Die RIS-Serie, chronologisch. ``gremien`` kommt als Liste heraus."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_nachbewilligungen ORDER BY vorlage_nr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            try:
+                r["gremien"] = json.loads(r.get("gremien") or "[]")
+            except (TypeError, ValueError):
+                r["gremien"] = []
+        return rows
+
+    def get_nachbewilligung_jahre(self) -> list[dict]:
+        """Die Jahrgänge aus dem Rechenschaftsbericht, je mit ihren Kanälen.
+
+        Die Kanäle hängen als Liste ``kanaele`` an ihrem Jahr — anders als bei
+        der Herkunft, die als eigenes Verzeichnis reist: Vier Zeilen je Jahr
+        sind keine Wiederholung, die sich zu vermeiden lohnte, und die Seite
+        liest sie ohnehin immer zusammen."""
+        try:
+            jahre = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_nachbewilligung_jahre ORDER BY jahr")]
+            kanaele = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_nachbewilligung_kanaele "
+                "ORDER BY jahr, rowid")]
+        except sqlite3.OperationalError:
+            return []
+        nach_jahr: dict[int, list[dict]] = {}
+        for k in kanaele:
+            nach_jahr.setdefault(int(k["jahr"]), []).append(k)
+        for j in jahre:
+            j["kanaele"] = nach_jahr.get(int(j["jahr"]), [])
+        return jahre
+
+    def ausgabenreihe_jahre(self) -> list[int]:
+        """Welche Jahrgänge im Bestand stehen — Grundlage des Bestandsschutzes
+        vor dem Schreiben (``council/finanzquellen.bestandsschutz``)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT jahr FROM council_ausgabenreihe ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Zuwendungen an die Stadt (aus den Ratsbeschlüssen) ----------------
+
+    def save_spenden(self, zeilen: list[dict], verworfen: list[dict],
+                     herkunft) -> int:
+        """Die geprüfte Spendenreihe schreiben — je Vorlage eine Zeile.
+
+        Anders als bei den übrigen Schichten bringt **jede Zeile ihre eigene
+        Herkunft mit** (``zeile["herkunft"]``): Jede Vorlage ist ein eigenes
+        PDF mit eigener Dokument-ID. ``herkunft`` ist die Rückfallebene für
+        die verworfenen Zeilen und für Zeilen ohne eigenen Anker — sie
+        beschreibt den Lauf, nicht ein Dokument.
+
+        ``INSERT OR REPLACE``, kein ``DELETE FROM``: Eine Teillieferung
+        (etwa nach einem abgebrochenen Volltext-Lauf) ersetzt nur, was sie
+        mitbringt, und räumt den Bestand nicht ab."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            rueck = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_spenden "
+                "(vorlage_nr, jahr, sitzung, betrag, gremium, layout, zweitstelle, "
+                " proben, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(z["vorlage_nr"], z["jahr"], z["sitzung"], z["betrag"], z.get("gremium"),
+                  z.get("layout"), z["zweitstelle"], ",".join(z["proben"]),
+                  self.merke_herkunft(z["herkunft"], fetched_at=now)
+                  if z.get("herkunft") else rueck, now)
+                 for z in zeilen])
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_spenden_verworfen "
+                "(vorlage_nr, sitzung, grund, herkunft_id, fetched_at) VALUES (?,?,?,?,?)",
+                [(v["vorlage_nr"], v.get("sitzung"), v["grund"], rueck, now)
+                 for v in verworfen])
+        return len(zeilen)
+
+    def get_spenden(self) -> list[dict]:
+        """Die Spendenreihe je Vorlage, aufsteigend nach Sitzungsdatum.
+
+        ``proben`` kommt als Liste heraus. Fehlt die Tabelle (frische
+        Datenbank ohne Ingest-Lauf), ist die Antwort leer statt ein Fehler."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_spenden ORDER BY sitzung, vorlage_nr")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
+        return rows
+
+    def get_spenden_verworfen(self) -> list[dict]:
+        """Die Zeilen ohne Zweitstelle, mit dem Satz, warum sie fehlen."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_spenden_verworfen ORDER BY sitzung, vorlage_nr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def spenden_jahre(self) -> list[int]:
+        """Welche Jahrgänge im Bestand stehen — Grundlage des Bestandsschutzes."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_spenden ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def zuwendungsbeschluesse(self) -> list[dict]:
+        """Die Rohzeilen für ``council.spenden.lies()``.
+
+        Absichtlich breit gefasst (``Annahme%Zuwendung%``): Das Aussieben
+        macht ``spenden.erkenne()``, damit die Regel an einer Stelle steht und
+        nicht halb in SQL."""
+        return [dict(r) for r in self._conn.execute(
+            """SELECT d.vorlage_nr, d.title AS titel, d.beschluss, d.outcome,
+                      s.session_date AS sitzung, s.committee AS gremiensitzung,
+                      v.raw_text, v.document_id AS dokument_id,
+                      v.document_url AS dokument_url
+                 FROM council_decisions d
+                 LEFT JOIN council_sessions s ON s.ksinr = d.ksinr
+                 LEFT JOIN council_vorlagen v ON v.vorlage_nr = d.vorlage_nr
+                WHERE d.kind = 'decision' AND d.title LIKE 'Annahme%Zuwendung%'
+                ORDER BY s.session_date, d.vorlage_nr""")]
+
+    # --- Steuertabellen des Jahrbuchs (1103 und 1105) -----------------------
+
+    def save_steuerplan(self, zeilen: list[dict], herkunft) -> int:
+        """Plan neben Ist je Steuerart — ersetzt, was die Lieferung mitbringt.
+
+        Nicht die ganze Tabelle: Jede Ausgabe von 1103 führt nur **drei**
+        Jahrgänge, und der Lauf legt mehrere Ausgaben nacheinander ab. Ein
+        ``DELETE`` vor dem Schreiben löschte deshalb genau das, wofür das
+        Archiv gebaut wurde — die Jahrgänge, die nur noch in einer älteren
+        Ausgabe stehen.
+
+        Übergeben wird nur, was seine Proben bestanden hat; diese Methode prüft
+        nichts nach."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_steuerplan "
+                "(jahr, art, plan, ist, vorlaeufig, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?)",
+                [(z["jahr"], z["art"], z["plan"], z["ist"],
+                  int(bool(z.get("vorlaeufig"))), hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_steuerplan(self) -> list[dict]:
+        """Plan und Ist je Steuerart und Jahr, aufsteigend.
+
+        Fehlt die Tabelle (frische Datenbank ohne Ingest-Lauf), ist die Antwort
+        leer statt ein Fehler — die Seite zeigt den Block dann schlicht nicht."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT jahr, art, plan, ist, vorlaeufig FROM council_steuerplan "
+                "ORDER BY jahr, art")]
+        except sqlite3.OperationalError:
+            return []
+
+    def steuerplan_jahre(self) -> list[int]:
+        """Welche Jahrgänge im Bestand stehen — für den Bestandsschutz."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_steuerplan ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_hebesaetze(self, zeilen: list[dict], herkunft) -> int:
+        """Die Hebesatz-Treppe — je Änderungsjahr und Steuerart eine Zeile."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_hebesaetze "
+                "(jahr, art, hebesatz, vorheriger, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?)",
+                [(z["jahr"], z["art"], z["hebesatz"], z.get("vorheriger"),
+                  hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_hebesaetze(self) -> list[dict]:
+        """Die Hebesätze je Änderungsjahr, aufsteigend.
+
+        **Nur Änderungsjahre** — die Lücken dazwischen sind keine fehlenden
+        Daten, sondern die Aussage: Ein Hebesatz gilt, bis der Rat ihn ändert.
+        Wer diese Reihe zeichnet, zeichnet eine Treppe."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT jahr, art, hebesatz, vorheriger FROM council_hebesaetze "
+                "ORDER BY jahr, art")]
+        except sqlite3.OperationalError:
+            return []
+
+    def hebesatz_jahre(self) -> list[int]:
+        """Welche Änderungsjahre im Bestand stehen — für den Bestandsschutz."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_hebesaetze ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Ist-Investitionen (Tabellen 1107/1107-1 des Jahrbuchs) -------------
+
+    def save_investitionen_ist(self, zeilen: list[dict], herkunft,
+                               verworfen: list[dict] | None = None) -> int:
+        """Investitions-Jahrgänge ersetzen — je Jahr eine Zeile plus ihre Arten.
+
+        Ersetzt wird **nur, was die Lieferung mitbringt**, nicht die ganze
+        Tabelle: Ein Lauf, dem ein Jahrgang an der Probe durchgefallen ist,
+        darf den vorher gespeicherten Stand dieses Jahrgangs nicht mit
+        wegräumen (derselbe Grund wie bei ``save_schulden``).
+
+        Die Arten eines Jahrgangs werden vorher gelöscht statt nur überschrieben:
+        Wechselte die Quelle ihren Spaltenschnitt, bliebe eine abgeschaffte Art
+        sonst als Karteileiche stehen und die Aufteilung summierte sich auf
+        mehr als die Summe daneben.
+
+        ``verworfen`` sind die Jahrgänge, die die Probe **nicht** bestanden
+        haben (``lies()["verworfen"]``): Grund und gemessene ``differenz``
+        werden mitgeschrieben, damit die Seite ihre Lücke beziffern kann
+        statt sie nur zu behaupten. Ein Jahrgang, der jetzt durchkommt,
+        verliert dabei seinen alten Lücken-Eintrag — sonst stünde er in
+        beiden Tabellen und die Seite zeigte eine Lücke, die es nicht mehr
+        gibt.
+
+        Übergeben wird an ``zeilen`` nur, was seine Probe bestanden hat —
+        diese Methode prüft nichts nach, sie schreibt."""
+        from council import investitionen_ist as _ii
+
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_investitionen_ist "
+                "(jahr, regelwerk, insgesamt, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?)",
+                [(z["jahr"], z["regelwerk"], z["insgesamt"], hid, now)
+                 for z in zeilen])
+            self._conn.executemany(
+                "DELETE FROM council_investitionen_ist_arten WHERE jahr = ?",
+                [(z["jahr"],) for z in zeilen])
+            arten = []
+            for z in zeilen:
+                spalten = _ii.SPALTEN[z["regelwerk"]]
+                for i, (feld, titel) in enumerate(spalten[:-1]):
+                    if z.get(feld) is None:
+                        continue
+                    arten.append((z["jahr"], feld, titel, i, z[feld], hid, now))
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_investitionen_ist_arten "
+                "(jahr, feld, titel, reihenfolge, betrag, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?)", arten)
+            # Ein übernommener Jahrgang ist keine Lücke mehr.
+            self._conn.executemany(
+                "DELETE FROM council_investitionen_ist_verworfen WHERE jahr = ?",
+                [(z["jahr"],) for z in zeilen])
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_investitionen_ist_verworfen "
+                "(jahr, regelwerk, grund, differenz, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?)",
+                [(v["jahr"], v["regelwerk"], v["grund"], v.get("differenz"),
+                  hid, now) for v in (verworfen or [])])
+        return len(zeilen)
+
+    def get_investitionen_ist(self) -> list[dict]:
+        """Die Ist-Reihe, aufsteigend nach Jahr, mit ihrer Aufteilung.
+
+        Je Jahrgang ein dict mit ``arten`` — den Auszahlungsarten in der
+        Spaltenfolge der Quelle. Fehlt die Tabelle (frische Datenbank ohne
+        Ingest-Lauf), ist die Antwort leer statt ein Fehler."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionen_ist ORDER BY jahr")]
+            arten = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionen_ist_arten "
+                "ORDER BY jahr, reihenfolge")]
+        except sqlite3.OperationalError:
+            return []
+        je_jahr: dict[int, list[dict]] = {}
+        for a in arten:
+            je_jahr.setdefault(a["jahr"], []).append(
+                {"feld": a["feld"], "titel": a["titel"], "betrag": a["betrag"]})
+        for r in rows:
+            r["arten"] = je_jahr.get(r["jahr"], [])
+        return rows
+
+    def get_investitionen_ist_verworfen(self) -> list[dict]:
+        """Die verworfenen Jahrgänge, aufsteigend — je Jahr Grund und Differenz.
+
+        Was hier steht, steht bewusst **nicht** in der Reihe: Diese Jahrgänge
+        haben ihre Probe nicht bestanden. Die Tabelle beantwortet die eine
+        Frage, die eine Lücke im Bild aufwirft — „wie weit lag es
+        auseinander?" — und beantwortet sie mit der gemessenen Zahl statt mit
+        einem Adjektiv. Fehlt die Tabelle (frische Datenbank ohne
+        Ingest-Lauf), ist die Antwort leer statt ein Fehler."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionen_ist_verworfen ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def investitionen_ist_jahre(self) -> list[int]:
+        """Welche Jahrgänge im Bestand stehen — der Bestandsschutz vergleicht
+        gegen diese Zahl, bevor ein Lauf sie überschreibt."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT jahr FROM council_investitionen_ist ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def investitionen_ist_kontext(self) -> dict | None:
+        """Was die Stadt zuletzt wirklich investiert hat — für die KI-Frage.
+
+        Wenige Zeilen statt Bestand, wie bei allen Geld-Bausteinen: der
+        jüngste Jahrgang mit seiner Aufteilung, das Vorjahr als Maßstab und
+        der höchste Stand der doppischen Reihe.
+
+        **Nur die doppische Reihe.** Die kameralen Jahrgänge bis 2009 zählen
+        etwas anderes (s. ``council/investitionen_ist.py``); in einem
+        Prompt-Baustein nebeneinander wären sie eine Einladung, sie zu einer
+        Reihe zu addieren.
+        """
+        from council import investitionen_ist as _ii
+
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_investitionen_ist "
+                "WHERE regelwerk = 'doppik' ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return None
+        if not rows:
+            return None
+        neu = rows[-1]
+        try:
+            arten = [(r["titel"], r["betrag"]) for r in self._conn.execute(
+                "SELECT titel, betrag FROM council_investitionen_ist_arten "
+                "WHERE jahr = ? ORDER BY reihenfolge", (neu["jahr"],))]
+        except sqlite3.OperationalError:
+            arten = []
+        hoch = max(rows, key=lambda r: r["insgesamt"])
+        # Welche Jahre die Quelle ankündigt, aber nicht belegt — die Lücke
+        # gehört in den Kontext, sonst liest ein Modell die Reihe als
+        # lückenlos und rechnet Durchschnitte über ein Loch.
+        fehlend = [j for j in range(rows[0]["jahr"], neu["jahr"] + 1)
+                   if j not in {r["jahr"] for r in rows}]
+        return {
+            "jahr": neu["jahr"],
+            "insgesamt": neu["insgesamt"],
+            "arten": arten,
+            "davor": ({"jahr": rows[-2]["jahr"], "insgesamt": rows[-2]["insgesamt"]}
+                      if len(rows) > 1 else None),
+            "hoch": ({"jahr": hoch["jahr"], "insgesamt": hoch["insgesamt"]}
+                     if hoch["jahr"] != neu["jahr"] else None),
+            "reihe_ab": rows[0]["jahr"],
+            "fehlend": fehlend,
+            "abgrenzung": _ii.ABGRENZUNG,
+            "beleg": self._beleg(neu.get("herkunft_id")),
+        }
+
+    def schulden_jahre(self) -> list[int]:
+        """Welche Jahrgänge im Bestand stehen."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT jahr FROM council_schulden ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def einwohner_je_jahr(self) -> dict[int, int]:
+        """Alle bekannten Einwohnerzahlen als ``{jahr: zahl}``.
+
+        Der Divisor der Pro-Kopf-Gegenprobe (``council/schulden.py``). Bewusst
+        die ganze Reihe und nicht nur der jüngste Wert wie bei
+        ``einwohner_aktuell``: Geprüft wird jeder Jahrgang gegen die
+        Einwohnerzahl **seines** Jahres, nicht gegen die von heute."""
+        try:
+            return {r[0]: r[1] for r in self._conn.execute(
+                "SELECT jahr, einwohner FROM council_einwohner")}
+        except sqlite3.OperationalError:
+            return {}
+
+    # --- Städtevergleich (amtliche Statistik des LSN) ------------------------
+
+    def save_staedtevergleich(self, reihe: str, zeilen: list[dict], herkunft) -> int:
+        """Eine Reihe des Städtevergleichs ersetzen — ``steuerkraft`` oder
+        ``realsteuern``.
+
+        Ersetzt wird **je Reihe und je betroffenem Jahr**, nicht die ganze
+        Tabelle: Die beiden Reihen kommen aus verschiedenen Dateien, die zu
+        verschiedenen Zeiten im Jahr erscheinen. Ein Lauf, der nur den
+        Realsteuervergleich neu einliest, darf die Steuerkraft-Reihe nicht
+        mitnehmen — sonst hinge der Bestand davon ab, in welcher Reihenfolge
+        jemand die beiden Ingests anstößt.
+
+        Übergeben wird nur, was seine Probe bestanden hat; diese Methode prüft
+        nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        jahre = {int(z["jahr"]) for z in zeilen}
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            for jahr in sorted(jahre):
+                self._conn.execute(
+                    "DELETE FROM council_staedtevergleich WHERE reihe = ? AND jahr = ?",
+                    (reihe, jahr))
+            self._conn.executemany(
+                "INSERT INTO council_staedtevergleich (reihe, jahr, schluessel, "
+                " stadt, kennzahl, wert, einheit, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(reihe, z["jahr"], z["schluessel"], z["stadt"], z["kennzahl"],
+                  z["wert"], z["einheit"], hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_staedtevergleich(self, reihe: str | None = None) -> list[dict]:
+        """Der Städtevergleich — eine Reihe oder beide.
+
+        Sortiert nach Jahr und Stadt, damit die Oberfläche nichts umsortieren
+        muss. Fehlt die Tabelle (frische Datenbank ohne Ingest-Lauf), ist die
+        Antwort leer statt ein Fehler — der Haushalts-Bereich zeigt die Seite
+        dann schlicht ohne Vergleichszahlen."""
+        try:
+            if reihe is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_staedtevergleich "
+                    "ORDER BY reihe, jahr, stadt, kennzahl").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_staedtevergleich WHERE reihe = ? "
+                    "ORDER BY jahr, stadt, kennzahl", (reihe,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def save_gewerbesteuerstatistik(self, zeilen: list[dict], herkunft) -> int:
+        """Einen Erhebungsjahrgang der Gewerbesteuerstatistik ersetzen.
+
+        Ersetzt wird **je Jahr**, nicht die ganze Tabelle: Die Jahrgänge kommen
+        aus je eigenen Berichten, und ein Lauf, der 2021 nachträgt, darf 2017
+        bis 2020 nicht mitnehmen. Ein Jahrgang wird dagegen vollständig
+        ersetzt — das LSN gibt korrigierte Fassungen heraus (der Jahrgang 2020
+        wurde am 11.02.2026 nachgebessert), und eine Korrektur, die alte Zeilen
+        stehen ließe, wäre keine.
+
+        Übergeben wird nur, was seine Proben bestanden hat; diese Methode prüft
+        nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        jahre = {int(z["jahr"]) for z in zeilen}
+        spalten = ("jahr", "schluessel", "stadt", "faelle", "faelle_positiv",
+                   "messbetrag_eur", "festsetzungen", "festsetzungen_positiv",
+                   "festsetzung_messbetrag_eur", "zerlegungen",
+                   "zerlegungen_positiv", "zerlegung_messbetrag_eur",
+                   "hebesatz", "gesperrt")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            for jahr in sorted(jahre):
+                self._conn.execute(
+                    "DELETE FROM council_gewerbesteuerstatistik WHERE jahr = ?",
+                    (jahr,))
+            self._conn.executemany(
+                f"INSERT INTO council_gewerbesteuerstatistik "
+                f"({', '.join(spalten)}, herkunft_id, fetched_at) "
+                f"VALUES ({', '.join('?' * len(spalten))},?,?)",
+                [tuple(z.get(s) for s in spalten) + (hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_gewerbesteuerstatistik(self, schluessel: str | None = None) -> list[dict]:
+        """Die Gewerbesteuerstatistik — eine Stadt oder alle, aufsteigend nach Jahr.
+
+        Fehlt die Tabelle (frische Datenbank ohne Ingest-Lauf), ist die Antwort
+        leer statt ein Fehler: Der Steuer-Steckbrief zeigt den Block dann ohne
+        diese Zahlen, wie bei den anderen Schichten auch."""
+        try:
+            if schluessel is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_gewerbesteuerstatistik "
+                    "ORDER BY jahr, stadt").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_gewerbesteuerstatistik "
+                    "WHERE schluessel = ? ORDER BY jahr", (schluessel,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def save_produkte(self, jahr: int, produkte: list[dict], herkunft) -> int:
+        """Produkte eines Jahres einfügen/aktualisieren. Bewusst KEIN Löschen
+        des Jahrgangs: Die Produkte eines Jahres verteilen sich auf mehrere
+        Teilhaushalts-Dokumente, die nacheinander eingelesen werden.
+
+        ``INSERT OR REPLACE`` ersetzt bei gleichem ``(jahr, produkt_nr)`` die
+        **ganze** Zeile, samt Herkunft — wer zuletzt schreibt, gewinnt. Das ist
+        hier nur deshalb ungefährlich, weil der Aufrufer dafür sorgt, dass ein
+        Teilhaushalt genau einmal geschrieben wird: Sechs (Jahrgang,
+        Teilhaushalt)-Paare liegen doppelt im Anlagenbestand, und welches der
+        beiden Dokumente in der Zeile steht, soll keine Frage der
+        Sortierreihenfolge sein. Die Regel und die Messung dazu stehen in
+        ``council.finanzquellen.lies_teilhaushalte``. Wer einen zweiten
+        Schreibweg zu dieser Tabelle baut, braucht dieselbe Vorentscheidung —
+        die Tabelle selbst kann sie nicht treffen, sie sieht nur eine Zeile."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_produkte (jahr, produkt_nr, produkt_name, "
+                " thh_nr, thh_name, amt, ertraege, aufwendungen, ergebnis, "
+                " kurzbeschreibung, auftragsgrundlage, beeinflussbarkeit, "
+                " beeinflussbarkeit_roh, wirkungskreis, zielgruppe, "
+                " quelle_label, quelle_url, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, p["produkt_nr"], p["produkt_name"], p.get("thh_nr"), p.get("thh_name"),
+                  p.get("amt"), p.get("ertraege"), p.get("aufwendungen"), p.get("ergebnis"),
+                  p.get("kurzbeschreibung"), p.get("auftragsgrundlage"),
+                  p.get("beeinflussbarkeit"), p.get("beeinflussbarkeit_roh"),
+                  p.get("wirkungskreis"), p.get("zielgruppe"),
+                  herkunft.label, herkunft.url, now, hid) for p in produkte])
+        return len(produkte)
+
+    def get_produkte(self, jahr: int, thh_nr: int | None = None,
+                     suche: str | None = None, amt: str | None = None,
+                     beeinflussbarkeit: str | None = None,
+                     limit: int | None = None) -> list[dict]:
+        """Produkte eines Jahres, teuerste zuerst (nach Zuschussbedarf).
+
+        Suche und Filter laufen bewusst HIER und nicht im Frontend: Mit dem
+        Steckbrief trägt jede Zeile mehrere hundert Zeichen Fließtext — knapp
+        400 davon über die Leitung zu schicken, damit der Browser sie filtert,
+        wäre Verschwendung. Gesucht wird über Name, Nummer, Amt und
+        Kurzbeschreibung; ``LIKE`` genügt bei dieser Menge (kein FTS nötig)."""
+        wo = ["jahr = ?"]
+        args: list = [jahr]
+        if thh_nr is not None:
+            wo.append("thh_nr = ?")
+            args.append(thh_nr)
+        if amt:
+            wo.append("amt = ?")
+            args.append(amt)
+        if beeinflussbarkeit:
+            wo.append("beeinflussbarkeit = ?")
+            args.append(beeinflussbarkeit)
+        if suche and suche.strip():
+            # Jeder Begriff muss irgendwo vorkommen (UND über die Begriffe,
+            # ODER über die Felder) — so grenzt „archiv stadt" wirklich ein.
+            for wort in suche.split()[:6]:
+                wo.append("(produkt_name LIKE ? OR produkt_nr LIKE ? OR amt LIKE ? "
+                          "OR kurzbeschreibung LIKE ?)")
+                args.extend([f"%{wort}%"] * 4)
+        sql = ("SELECT * FROM council_produkte WHERE " + " AND ".join(wo)
+               + " ORDER BY ergebnis ASC" + (" LIMIT ?" if limit else ""))
+        if limit:
+            args.append(limit)
+        return [dict(r) for r in self._conn.execute(sql, args)]
+
+    def produkt(self, jahr: int, produkt_nr: str) -> dict | None:
+        """Ein Produkt samt Steckbrief — die Steckbrief-Ansicht braucht es
+        auch dann, wenn es durch Suche oder Filter gerade nicht in der Liste
+        stünde."""
+        row = self._conn.execute(
+            "SELECT * FROM council_produkte WHERE jahr = ? AND produkt_nr = ?",
+            (jahr, produkt_nr)).fetchone()
+        return dict(row) if row else None
+
+    def produkt_facetten(self, jahr: int) -> dict:
+        """Womit sich die Produktliste filtern lässt — Ämter und Spielraum-
+        Stufen mit Anzahl, plus wie viele Produkte überhaupt einen Steckbrief
+        tragen. Letzteres gehört sichtbar auf die Seite: Ein Filter, der die
+        halbe Liste verschluckt, muss sich erklären."""
+        aemter = [{"amt": r[0], "anzahl": r[1]} for r in self._conn.execute(
+            "SELECT amt, COUNT(*) FROM council_produkte WHERE jahr = ? AND amt IS NOT NULL "
+            "GROUP BY amt ORDER BY COUNT(*) DESC, amt", (jahr,))]
+        spielraum = {r[0]: r[1] for r in self._conn.execute(
+            "SELECT beeinflussbarkeit, COUNT(*) FROM council_produkte "
+            "WHERE jahr = ? AND beeinflussbarkeit IS NOT NULL "
+            "GROUP BY beeinflussbarkeit", (jahr,))}
+        felder = {}
+        for feld in ("kurzbeschreibung", "auftragsgrundlage", "beeinflussbarkeit",
+                     "wirkungskreis", "zielgruppe"):
+            felder[feld] = self._conn.execute(
+                f"SELECT COUNT(*) FROM council_produkte WHERE jahr = ? "
+                f"AND {feld} IS NOT NULL AND {feld} != ''", (jahr,)).fetchone()[0]
+        return {"aemter": aemter, "spielraum": spielraum, "mit_feld": felder}
+
+    def produkte_jahre(self) -> list[int]:
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_produkte ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def produkt_abdeckung(self) -> dict[str, list[int]]:
+        """Je Produktnummer die Jahre, in denen sie im Bestand steht.
+
+        Nicht jedes Jahr deckt jeden Teilhaushalt (die Pläne liegen nicht für
+        jeden Jahrgang auslesbar vor) — die Trefferliste soll das je Produkt
+        ehrlich anschreiben können (Abdeckungs-Badge, H4-04), statt eine
+        durchgehende Reihe zu suggerieren. Eine Abfrage für alle Produkte:
+        Die Liste ist klein (wenige hundert Nummern), und je Treffer einzeln
+        zu fragen wäre ein N+1."""
+        out: dict[str, list[int]] = {}
+        try:
+            rows = self._conn.execute(
+                "SELECT produkt_nr, jahr FROM council_produkte ORDER BY jahr")
+        except sqlite3.OperationalError:
+            return out
+        for nr, jahr in rows:
+            out.setdefault(nr, []).append(jahr)
+        return out
+
+    def save_pruefbericht(self, jahr: int, feststellungen: list[dict], herkunft) -> int:
+        """Prüfungsfeststellungen eines Schlussberichts speichern.
+
+        Der Jahrgang wird vorher geleert: Ein Bericht ist ein Dokument, und
+        ein erneuter Ingest liest dasselbe Dokument neu — Zeilen von früheren
+        Läufen stehen zu lassen hieße, alte Parser-Stände zu konservieren.
+
+        Die ``fundstelle`` der Herkunft bleibt hier bewusst grob („Randmarken
+        des Berichts"): Die genaue Fundstelle einer Feststellung ist ihre
+        **Textziffer** und ihre **Seite**, und die stehen je Zeile in der
+        Tabelle. Die Herkunft beschreibt das Dokument, nicht die Zeile."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute("DELETE FROM council_pruefberichte WHERE jahr = ?", (jahr,))
+            self._conn.executemany(
+                "INSERT INTO council_pruefberichte (jahr, lfd, marke, marke_name, "
+                " marke_erlaeuterung, textziffer, abschnitt, kette, seite, text, "
+                " folgeabsatz, quelle_label, quelle_url, fetched_at, herkunft_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahr, f["lfd"], f["marke"], f["marke_name"], f.get("marke_erlaeuterung"),
+                  f["textziffer"], f["abschnitt"], f.get("kette"), f.get("seite"),
+                  f["text"], f.get("folgeabsatz"), herkunft.label, herkunft.url, now, hid)
+                 for f in feststellungen])
+        return len(feststellungen)
+
+    def get_pruefberichte(self, jahr: int | None = None) -> list[dict]:
+        """Prüfungsfeststellungen — ein Jahrgang oder alle, in Dokumentreihenfolge.
+
+        Ohne Argument alle: Die Ketten über die Jahrgänge („seit wann steht
+        das offen?") lassen sich nur aus dem Gesamtbestand bilden."""
+        try:
+            if jahr is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_pruefberichte ORDER BY jahr, lfd").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_pruefberichte WHERE jahr = ? ORDER BY lfd",
+                    (jahr,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def pruefbericht_jahre(self) -> list[int]:
+        """Jahrgänge mit eingelesenem Schlussbericht (aufsteigend)."""
+        try:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT jahr FROM council_pruefberichte ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return []
+
+    def get_steuerkraft(self) -> list[dict]:
+        """Steuerkraft/Zuweisungen je Jahr, älteste zuerst."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew "
+            "FROM council_steuerkraft ORDER BY jahr")]
+
+    def get_finanzausgleich(self, schluessel: str = "403000") -> list[dict]:
+        """Die drei Komponenten des Finanzausgleichs für **eine** Stadt.
+
+        Liest ``reihe='finanzausgleich'`` aus ``council_staedtevergleich`` und
+        dreht sie in eine Zeile je Ausgleichsjahr: ``{jahr,
+        zuweisungen_gemeindeaufgaben, zuweisungen_kreisaufgaben,
+        zuweisungen_uebertragener_wirkungskreis, finanzausgleichsumlage,
+        nettobetrag}``, alle in **Tausend Euro** (so führt das Blatt sie).
+
+        Warum eine eigene Lesefunktion und nicht ``get_staedtevergleich``: Die
+        Haushalts-Übersicht braucht acht Zahlen je Jahr für Oldenburg, nicht
+        die 240 Zeilen aller acht Städte. Die Übersicht ist mit 1,6 MB ohnehin
+        die schwerste Antwort des Bereichs; der Städtevergleich hat seinen
+        eigenen Endpunkt und behält ihn.
+        """
+        try:
+            rows = self._conn.execute(
+                "SELECT jahr, kennzahl, wert FROM council_staedtevergleich "
+                "WHERE reihe = 'finanzausgleich' AND schluessel = ? "
+                "ORDER BY jahr", (schluessel,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        nach_jahr: dict[int, dict] = {}
+        for r in rows:
+            nach_jahr.setdefault(int(r["jahr"]), {"jahr": int(r["jahr"])})[
+                r["kennzahl"]] = r["wert"]
+        return [nach_jahr[j] for j in sorted(nach_jahr)]
 
     def refresh_quiz_payloads(self, rows: list[dict]) -> int:
         """Deterministisch erzeugte Fragen (gleicher content_hash — die Haushalts-
@@ -3292,10 +7490,16 @@ class CouncilStore:
                 "|| COALESCE(v.vtext,'') || ' ' || COALESCE(an.atext,''), "
                 "'ß', 'ss') "  # unicode61 folds ä/ö/ü but not ß
                 "FROM council_decisions d "
-                "LEFT JOIN (SELECT vorlage_nr, substr(MAX(raw_text), 1, 8000) AS vtext "
+                "LEFT JOIN (SELECT vorlage_nr, ohne_kontaktdaten("
+                "             substr(MAX(raw_text), 1, 8000)) AS vtext "
                 "           FROM council_vorlagen WHERE status = 'ok' GROUP BY vorlage_nr) v "
                 "  ON v.vorlage_nr = d.vorlage_nr "
-                "LEFT JOIN (SELECT cv.vorlage_nr, substr(GROUP_CONCAT(a.raw_text, ' '), 1, 4000) AS atext "
+                # `ohne_kontaktdaten()` ist eine SQLite-Funktion (s.
+                # `_verbinden`): Sie nimmt Kontonummern, Telefonnummern,
+                # E-Mail-Adressen und Anschriften aus dem Text, BEVOR er in
+                # den Volltextindex geht. Gespeichert bleibt er vollständig.
+                "LEFT JOIN (SELECT cv.vorlage_nr, ohne_kontaktdaten("
+                "             substr(GROUP_CONCAT(a.raw_text, ' '), 1, 4000)) AS atext "
                 "           FROM council_anlagen a JOIN council_vorlagen cv ON cv.kvonr = a.kvonr "
                 "           WHERE a.is_antrag = 1 AND a.status = 'ok' GROUP BY cv.vorlage_nr) an "
                 "  ON an.vorlage_nr = d.vorlage_nr "
@@ -3885,6 +8089,106 @@ class CouncilStore:
         r"(?i)^(erste[rn]?\s+)?(oberbürgermeister(in)?|stadtkämmer(er|in)|"
         r"stadtbaur(at|ätin)|stadtr(at|ätin))$")
 
+    @classmethod
+    def namensteile(cls, anzeige: str) -> tuple[str, str]:
+        """„Dr. Ruth Regina Drügemöller" → ``("ruth", "druegemoeller")``.
+
+        (vorname_gefaltet, nachname_gefaltet) — Nachname ist das letzte Token
+        (Bindestrich-Namen sind EIN Token), Titel zählen nicht als Vorname.
+
+        Steht hier als Klassenmethode und nicht mehr als Verschachtelung in
+        :meth:`personen_lexikon`, weil sie außerhalb gebraucht wird: Wer einen
+        Namen **gegen** das Lexikon hält (die Aufsichtsorgane des
+        Beteiligungsberichts tun das), muss ihn genauso falten wie das Lexikon
+        selbst. Eine zweite, leicht abweichende Faltung träfe an den Umlauten
+        und Titeln nichts mehr — und niemand sähe es, weil ein Fehltreffer wie
+        ein fehlender Eintrag aussieht.
+
+        Titel-Erkennung mit abgestreiften Satzzeichen (``-Ing`` → ``ing``):
+        ``_person_slug`` zerlegt an allem, was kein Buchstabe ist, und sah
+        „Ing" deshalb schon immer als Titel — hier zählte der Bindestrich noch
+        mit, und „Prof. Dr.-Ing. Manfred Weisensee" bekam den Vornamen „-ing".
+        Zwei Faltungen desselben Namens dürfen nicht verschiedene Personen
+        sehen: Die eine bildete den Slug ``manfred-weisensee``, die andere
+        hielt ihn für einen Namensvetter von „Prof. Dr.-Ing. Weisensee"."""
+        toks = [t for t in anzeige.replace(".", " ").split()
+                if t.strip("-–—").lower() not in cls._HONORIFICS]
+        if not toks:
+            return "", ""
+        return (cls._falte_namen(toks[0]) if len(toks) > 1 else "",
+                cls._falte_namen(toks[-1]))
+
+    #: Funktionsangabe des Beteiligungsberichts, die „diese Person sitzt im
+    #: Stadtrat" behauptet — mit optionalem Klammerzusatz, wie ihn der Bericht
+    #: auch anderswo führt („1. Kreisrat (Vorsitzender)").
+    _FUNKTION_RATSMITGLIED = re.compile(r"(?i)^ratsmitglied(\s*\(.*\))?$")
+
+    @staticmethod
+    def _ein_buchstabe_abstand(a: str, b: str) -> bool:
+        """Unterscheiden sich die beiden Zeichenketten um höchstens einen
+        Buchstaben (Levenshtein ≤ 1)? Gleichheit zählt mit."""
+        if abs(len(a) - len(b)) > 1:
+            return False
+        if len(a) == len(b):
+            return sum(x != y for x, y in zip(a, b)) <= 1
+        kurz, lang = (a, b) if len(a) < len(b) else (b, a)
+        i = 0
+        while i < len(kurz) and kurz[i] == lang[i]:
+            i += 1
+        return kurz[i:] == lang[i + 1:]   # ein Zeichen im langen übersprungen
+
+    @classmethod
+    def tippfehler_ratsmitglied(cls, vorname: str, nachname: str,
+                                funktion: str | None,
+                                nach_paar: dict[tuple[str, str], list[dict]]
+                                ) -> dict | None:
+        """Der Beteiligungsbericht schreibt ein Ratsmitglied falsch — welcher
+        Lexikon-Eintrag ist gemeint? ``None``, wenn die Regel nicht greift.
+
+        Der Bericht ist ein gesetztes PDF und hat Druckfehler: „Claudia
+        Oeljeschl**e**ger" (statt -schläger) und „Jens Lükerman" (statt
+        -mann). Beide sitzen im Rat und stehen längst im Verzeichnis; der
+        strenge Abgleich über Vor- UND Nachnamen findet sie trotzdem nicht,
+        und zwei berechtigte Links auf die Personen-Seite gehen verloren.
+
+        Geraten wird trotzdem nicht — geheilt wird nur, wo **alle drei**
+        Bedingungen zusammenkommen:
+
+        1. **Der Bericht nennt die Funktion „Ratsmitglied".** Die Quelle
+           behauptet also selbst, dass diese Person im Stadtrat sitzt; wir
+           suchen dann im Verzeichnis der Ratsmitglieder nach genau der
+           Person, die sie meint. Ohne diese Bedingung liefe die Regel über
+           alle 116 Namen des Berichts — auch über Beschäftigtenvertretungen
+           und Vertreter der Mitgesellschafter, die im Rat gar nichts zu
+           suchen haben und deren Nachname zufällig um einen Buchstaben neben
+           dem eines Ratsmitglieds liegen darf.
+        2. **Der Vorname stimmt exakt.** Ein Druckfehler trifft selten zwei
+           Wörter; zwei verschiedene Menschen unterscheiden sich dagegen fast
+           immer schon im Vornamen. Ohne diese Bedingung würde aus „Meier"
+           ein „Meyer" und aus zwei Familien eine.
+        3. **Der Nachname weicht um höchstens einen Buchstaben ab.** Das ist
+           die Reichweite eines Druckfehlers — ein fehlendes „n", ein „e"
+           statt „ä". Ohne diese Bedingung (etwa bei Abstand 2) fielen
+           „Schmidt" und „Schmitz" zusammen.
+
+        Jede Bedingung für sich wäre zu lose: Funktion allein heilte jeden
+        Verwechsler unter 300 Ratszeilen, Vorname allein jeden Namensvetter,
+        Buchstabenabstand allein jede zufällige Nachbarschaft im Alphabet.
+        Zusammen treffen sie Druckfehler und nicht zwei verschiedene Menschen.
+
+        **Mehr als ein Kandidat heißt gescheitert.** Ein fehlender Link ist
+        ein fehlender Link; ein falscher ist eine Falschaussage über einen
+        namentlich genannten Menschen.
+        """
+        if not vorname or not nachname:
+            return None
+        if not (funktion and cls._FUNKTION_RATSMITGLIED.match(funktion.strip())):
+            return None
+        treffer = [e for (v, n), liste in nach_paar.items()
+                   if v == vorname and cls._ein_buchstabe_abstand(n, nachname)
+                   for e in liste if e.get("art") == "rat"]
+        return treffer[0] if len(treffer) == 1 else None
+
     def personen_lexikon(self) -> list[dict]:
         """Das Personen-Lexikon für die Badges im Antwort-Text (Tims Wunsch
         12.08.): Ratsmitglieder aus dem Verzeichnis (Partei, Zeitraum,
@@ -3893,26 +8197,20 @@ class CouncilStore:
         „Oberbürgermeister"), nicht aus Weltwissen. `aktiv` heißt: in den
         letzten zwölf Monaten in einer Anwesenheitsliste — dieselbe
         selbstheilende Regel wie bei der Parteien-Zeile; Ehemalige zeigen
-        ehrlich nur den belegten Zeitraum."""
+        ehrlich nur den belegten Zeitraum.
+
+        Dritte Quelle (Tims Auftrag 17.08.): die Aufsichtsorgane der
+        städtischen Gesellschaften aus dem Beteiligungsbericht — Landrätin und
+        Kreistagsmitglieder der Gemeinschaftsgesellschaften, Beschäftigten-
+        und Mitgesellschafter-Vertretungen. Sie standen bis dahin namenlos da,
+        weil sie in keiner Anwesenheitsliste des Stadtrats vorkommen. Ihre
+        Rolle ist die **Funktion aus dem Bericht**, ihr Zeitraum sind die
+        **Berichtsjahrgänge**, in denen sie vorkommen — mehr ist nicht belegt
+        (s. :meth:`_beteiligungs_personen`)."""
         from collections import Counter, defaultdict
         from datetime import date, timedelta
         stichtag = (date.today() - timedelta(days=365)).isoformat()
-
-        def falte(t: str) -> str:
-            t = t.lower()
-            for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
-                t = t.replace(a, b)
-            return t
-
-        def namensteile(anzeige: str) -> tuple[str, str]:
-            """(vorname_gefaltet, nachname_gefaltet) — Nachname ist das letzte
-            Token (Bindestrich-Namen sind EIN Token), Titel zählen nicht als
-            Vorname."""
-            toks = [t for t in anzeige.replace(".", " ").split()
-                    if t.lower().rstrip(".") not in self._HONORIFICS]
-            if not toks:
-                return "", ""
-            return falte(toks[0]) if len(toks) > 1 else "", falte(toks[-1])
+        namensteile = self.namensteile
 
         out: list[dict] = []
         gesehen: set[str] = set()
@@ -3950,7 +8248,7 @@ class CouncilStore:
         g: dict = defaultdict(lambda: {"names": Counter(), "rollen": Counter(),
                                        "first": None, "last": None})
         for r in rows:
-            sl = self._person_slug_kanonisch(r["name"], "stadt")
+            sl = self.person_slug(r["name"])
             if not sl:
                 continue
             e = g[sl]
@@ -3965,18 +8263,43 @@ class CouncilStore:
             if sl in gesehen:  # Ratsmandat gewinnt über Gast-Auftritte der Verwaltung
                 continue
             gesehen.add(sl)
-            anzeige = self._person_anzeige(self._haeufigster_name(e["names"]))
+            anzeige = self._anzeige_name(e["names"], sl)
             vor, nach = namensteile(anzeige)
             if not nach:
                 continue
             out.append({
                 "slug": sl, "name": anzeige, "vorname": vor, "nachname": nach,
-                "art": "stadt", "partei": None, "organisation": None,
+                "art": "stadt", "partei": None, "organisation": None, "phasen": None,
                 "rolle": e["rollen"].most_common(1)[0][0] if e["rollen"] else None,
                 "aktiv": bool(e["last"] and e["last"] >= stichtag),
                 "von": (e["first"] or "")[:4] or None,
                 "bis": (e["last"] or "")[:4] or None,
             })
+
+        # Dritte Quelle: die Aufsichtsorgane des Beteiligungsberichts. Sie
+        # kommt NACH Rat und Verwaltung, weil sie nur ergänzen darf, was fehlt
+        # — sonst überschriebe ein Aufsichtsratsposten ein Ratsmandat, und aus
+        # der Oberbürgermeisterei würde „Vertreter Mitgesellschafter".
+        # Verglichen wird über das Namenspaar und nicht über den Slug: Das
+        # Verzeichnis führt „Ruth Regina Drügemöller", der Bericht „Ruth
+        # Drügemöller" — verschiedene Slugs, derselbe Mensch. Als zweiter
+        # Eintrag angelegt, gewönne die Bericht-Schreibweise beim Abgleich der
+        # Beteiligungsseite den Stichentscheid und nähme dem Ratsmitglied
+        # seine Personen-Seite weg.
+        bekannt: dict[tuple[str, str], list[dict]] = {}
+        for e in out:
+            if e["vorname"]:
+                bekannt.setdefault((e["vorname"], e["nachname"]), []).append(e)
+        for p in self._beteiligungs_personen():
+            if p["slug"] in gesehen or (p["vorname"], p["nachname"]) in bekannt:
+                continue
+            # Und auch der Druckfehler eines bekannten Ratsmitglieds ist kein
+            # neuer Mensch — sonst stünde „Claudia Oeljeschleger" neben
+            # „Claudia Oeljeschläger" im Verzeichnis.
+            if self.tippfehler_ratsmitglied(p["vorname"], p["nachname"], p["rolle"], bekannt):
+                continue
+            gesehen.add(p["slug"])
+            out.append(p)
 
         # Blocker (Tims Oltmanns-Befund 12.08.): Gäste, Protokollführung und
         # beratende Mitglieder bekommen NIE ein Badge — aber ihr Nachname macht
@@ -3987,19 +8310,100 @@ class CouncilStore:
                 "SELECT DISTINCT name FROM council_attendance "
                 "WHERE role NOT IN ('mitglied','vorsitz','verwaltung') "
                 "AND name IS NOT NULL AND name != ''"):
-            # Auch eine weichende Namensvariante zählt als „schon bekannt":
-            # Sonst legte ein Gast-Auftritt von „Klein" wieder einen Blocker
-            # an und machte den Nachnamen erneut mehrdeutig.
-            sl = self._person_slug(name)
-            if not sl or sl in gesehen or any(
-                    self._person_slug_kanonisch(name, k) in gesehen for k in ("rat", "stadt")):
+            sl = self.person_slug(name)
+            if not sl or sl in gesehen:
                 continue
             gesehen.add(sl)
             _, nach = namensteile(self._person_anzeige(name))
             if nach:
                 out.append({"slug": sl, "name": None, "vorname": "", "nachname": nach,
                             "art": "blocker", "partei": None, "organisation": None,
-                            "rolle": None, "aktiv": False, "von": None, "bis": None})
+                            "phasen": None, "rolle": None,
+                            "aktiv": False, "von": None, "bis": None})
+        return out
+
+    def _beteiligungs_personen(self) -> list[dict]:
+        """Lexikon-Einträge aus den Aufsichtsorganen des Beteiligungsberichts.
+
+        Was hier steht, steht so im amtlichen, veröffentlichten Bericht —
+        **Name, Funktion und Berichtsjahrgang, sonst nichts.** Keine Partei
+        (der Bericht nennt keine, und aus einem Aufsichtsmandat eine
+        Zugehörigkeit zu folgern wäre erfunden), keine Zusammenführung mit
+        anderen Quellen, keine Anreicherung. Ein Teil dieser Menschen sind
+        Privatpersonen — Betriebsratsvorsitzende, Beschäftigtenvertretungen —,
+        und ein Verzeichniseintrag macht auffindbar, was der Bericht nur
+        abdruckt. Deshalb genau so viel wie belegt und keine Zeile mehr.
+
+        - ``rolle`` ist die **Funktion aus dem Bericht** („Landrätin",
+          „Beschäftigtenvertreter"), die häufigste, wo mehrere dastehen —
+          dieselbe Haltung wie bei den Verwaltungsleuten, deren Amt aus den
+          Protokoll-Notizen kommt statt aus Weltwissen.
+        - ``von``/``bis`` sind **Berichtsjahrgänge**, nicht Amtszeiten: Belegt
+          ist nur, in welchen Berichten die Person vorkommt. Wann sie berufen
+          wurde, sagt der Bericht nicht.
+        - ``aktiv`` heißt „steht im jüngsten eingelesenen Bericht". Die Berichte
+          hinken der Gegenwart um Jahre hinterher; die Zwölf-Monats-Regel der
+          Anwesenheitslisten träfe hier auf niemanden zu und machte jeden
+          amtierenden Aufsichtsrat zum „Ehemaligen".
+
+        Drei Sorten Zeile werden **nicht** zu Personen:
+
+        1. **Entsendungsrechte statt Menschen.** Die TGO Besitz benennt keine
+           Personen, sondern Ansprüche: „Vertreter/in der Landessparkasse zu
+           Oldenburg". Der Schrägstrich ist das Erkennungszeichen des
+           Berichts für diese Form — kein Personenname trägt einen.
+        2. **Namen ohne Vornamen.** „Prof. Dr. Bruder" ist derselbe Mensch wie
+           „Prof. Dr. Ralph Bruder", zwei Zeilen weiter im selben Bericht —
+           aber ein bloßer Nachname ist von einem Namensvetter nicht zu
+           unterscheiden. Dieselbe Regel, aus der die Beteiligungsseite ihre
+           Links zieht (``_lexikon_zuordnung``).
+        3. **Nachnamen unter drei Buchstaben.** Der Bericht ist zweispaltig
+           gesetzt, und der Extrakt bricht gelegentlich mitten im Namen um
+           („Jens Lükerm an", Bericht 2023). Der Badge-Matcher übergeht solche
+           Nachnamen ohnehin — im Verzeichnis wären sie nur ein Mensch, den es
+           nicht gibt.
+        """
+        from collections import Counter, defaultdict
+        try:
+            rows = self._conn.execute(
+                "SELECT bericht_jahr, name, funktion FROM council_gesellschaft_personen "
+                "WHERE name IS NOT NULL AND name != ''").fetchall()
+        except sqlite3.OperationalError:
+            return []
+        if not rows:
+            return []
+        jungster = max(r["bericht_jahr"] for r in rows)
+
+        g: dict = defaultdict(lambda: {"names": Counter(), "rollen": Counter(),
+                                       "first": None, "last": None})
+        for r in rows:
+            name = r["name"]
+            if "/" in name:                      # Entsendungsrecht, kein Mensch
+                continue
+            sl = self.person_slug(name)
+            if not sl:
+                continue
+            e = g[sl]
+            e["names"][name] += 1
+            if r["funktion"]:
+                e["rollen"][r["funktion"]] += 1
+            j = r["bericht_jahr"]
+            e["first"] = j if e["first"] is None else min(e["first"], j)
+            e["last"] = j if e["last"] is None else max(e["last"], j)
+
+        out: list[dict] = []
+        for sl, e in g.items():
+            anzeige = self._anzeige_name(e["names"], sl)
+            vor, nach = self.namensteile(anzeige)
+            if not vor or len(nach) < 3:
+                continue
+            out.append({
+                "slug": sl, "name": anzeige, "vorname": vor, "nachname": nach,
+                "art": "beteiligung", "partei": None, "organisation": None, "phasen": None,
+                "rolle": e["rollen"].most_common(1)[0][0] if e["rollen"] else None,
+                "aktiv": e["last"] == jungster,
+                "von": str(e["first"]), "bis": str(e["last"]),
+            })
         return out
 
     def personen_suchindex(self) -> list[tuple[str, str]]:
@@ -4044,7 +8448,8 @@ class CouncilStore:
                 "ausschussvorsitzender", "ausschussvorsitzende"}
 
     @classmethod
-    def _spricht_diese_person(cls, sprecher: str, vorname: str, nachname: str) -> bool:
+    def _spricht_diese_person(cls, sprecher: str, vorname: str, nachname: str,
+                              bekannte_teile: frozenset[str] = frozenset()) -> bool:
         """Gehört dieser Sprecher-Eintrag zu genau dieser Person?
 
         Die Protokolle schreiben denselben Menschen mal „Andrea Hufeland", mal
@@ -4056,6 +8461,12 @@ class CouncilStore:
 
         Mehrere Sprecher in einem Eintrag („Christoph Baak, Dr. Esther
         Niewerth-Baumann") gelten für beide — da haben tatsächlich beide geredet.
+
+        ``bekannte_teile`` sind Namensteile, die zu **derselben** Person
+        gehören, aber nicht in dieser Namensform stehen (s.
+        :data:`council.namensformen.GRUPPEN`). Ohne sie fiele „Ratsherr Ebbeke
+        Harms" durch die Fremdnamen-Prüfung, obwohl die Person genau die ist,
+        deren Seite gerade aufgeschlagen wird.
         """
         if not nachname:
             return False
@@ -4072,7 +8483,9 @@ class CouncilStore:
         rest = [t for t in re.split(r"[^\wäöüß]+", sprecher.lower()) if len(t) > 1]
         nach_teile = set(re.split(r"[^\wäöüß]+", nachname.lower()))
         for t in rest:
-            if t in nach_teile or t.rstrip(".") in cls._HONORIFICS or t in cls._ANREDEN:
+            if (t in nach_teile or t in bekannte_teile
+                    or cls._falte_namen(t) in bekannte_teile
+                    or t.rstrip(".") in cls._HONORIFICS or t in cls._ANREDEN):
                 continue
             return False   # ein fremder Namensbestandteil → andere Person
         return True
@@ -4097,16 +8510,40 @@ class CouncilStore:
         Gremien-Filter), ``gesamt`` (ohne Filter) und ``gremien`` als Facetten
         mit Anzahl — damit die Oberfläche gleich sagen kann, wo etwas zu holen
         ist.
+
+        Gesucht wird über **alle** Namensformen der Person (s.
+        :data:`council.namensformen.GRUPPEN`): Die Protokolle schreiben denselben
+        Menschen in einer Sitzung „Tim Harms" und in der nächsten „Ratsherr
+        Ebbeke Harms" — beides gehört auf dieselbe Seite.
         """
-        teile = [t for t in name.replace(".", " ").replace(",", " ").split()
-                 if t.lower().rstrip(".") not in self._HONORIFICS
-                 and t.lower() not in self._ANREDEN]
-        if not teile:
+        def zerlegen(n: str) -> tuple[str, str] | None:
+            teile = [t for t in n.replace(".", " ").replace(",", " ").split()
+                     if t.lower().rstrip(".") not in self._HONORIFICS
+                     and t.lower() not in self._ANREDEN]
+            return (teile[-1], teile[0] if len(teile) > 1 else "") if teile else None
+
+        eigen = zerlegen(name)
+        if not eigen:
             return {"items": [], "total": 0, "gesamt": 0, "gremien": []}
-        nachname, vorname = teile[-1], (teile[0] if len(teile) > 1 else "")
-        roh = self.wortbeitraege_von_sprecher(nachname, limit=5000)
-        meine = [w for w in roh
-                 if self._spricht_diese_person(w.get("sprecher") or "", vorname, nachname)]
+        formen: list[tuple[str, str]] = [eigen]
+        bekannte_teile: set[str] = set()
+        for weitere in self.personen_namensformen(self._person_slug(name)):
+            z = zerlegen(weitere)
+            if z and z not in formen:
+                formen.append(z)
+            for t in weitere.replace(".", " ").replace(",", " ").split():
+                bekannte_teile.add(t.lower())
+                bekannte_teile.add(self._falte_namen(t))
+        bekannt = frozenset(bekannte_teile)
+
+        roh: dict = {}
+        for nachname in dict.fromkeys(n for n, _ in formen):
+            for w in self.wortbeitraege_von_sprecher(nachname, limit=5000):
+                roh[w["id"]] = w
+        meine = [w for w in roh.values()
+                 if any(self._spricht_diese_person(w.get("sprecher") or "", v, n, bekannt)
+                        for n, v in formen)]
+        meine.sort(key=lambda w: (w.get("session_date") or "", w["id"]), reverse=True)
 
         from collections import Counter
         zaehler = Counter(w["committee"] for w in meine if w.get("committee"))
@@ -4164,128 +8601,77 @@ class CouncilStore:
         toks = [t for t in re.split(r"[^a-z0-9]+", s) if t and t not in CouncilStore._HONORIFICS]
         return "-".join(toks)
 
-    #: Rollen, die eine Ratsperson ausmachen — der eine „Namensraum" der
-    #: Varianten-Auflösung; die Verwaltung bildet den zweiten. Ein
-    #: Verwaltungs-Streit und ein Rats-Streit sind zwei Menschen.
-    _ROLLEN_RAT = ("mitglied", "vorsitz")
+    # --- Eine Person, zwei Namensformen (council.namensformen) ----------------
 
-    @staticmethod
-    def _vornamen_passen(a: set[str], b: set[str]) -> bool:
-        """Stecken die Vornamen von A in denen von B? Einzelbuchstaben gelten
-        als Initiale („U. Helpertz" ist „Ulrich Helpertz"), ein Eintrag ganz
-        ohne Vornamen („Klein") passt auf jeden."""
-        for t in a:
-            if t in b or (len(t) == 1 and any(x.startswith(t) for x in b)):
-                continue
-            return False
-        return True
+    def personen_kanon(self) -> dict[str, str]:
+        """``{Namensform → kanonische Form}`` für die geführten Gruppen.
 
-    def _personen_varianten(self) -> dict[tuple[str, str], str]:
-        """``{(Namensraum, Slug einer Variante): Slug der Person}`` — nur für
-        die tatsächlich zusammengelegten Varianten, alles andere fehlt schlicht.
+        Welche Form kanonisch ist, entscheidet die **jüngste Fundstelle** in
+        den Anwesenheitslisten — die Zuordnung selbst ist gepflegt
+        (:data:`council.namensformen.GRUPPEN`), die Anzeige nicht. Zieht eine
+        Quelle auf eine andere Form um, zieht die Seite beim nächsten
+        Protokoll von selbst mit; niemand muss eine Liste von Anzeigenamen
+        nachführen.
 
-        Ein Mensch, zwei Einträge: Die Anwesenheitslisten schreiben denselben
-        Namen mal voll, mal knapp. „Thomas Klein" steht an einem einzigen Tag
-        bloß als „Klein" da, „Hans-Georg Heß" einmal als „Georg Hess",
-        „Christine Wolff" führt das RIS zeitweise als „Christine Berta Wolff",
-        und „Tim Harms" heißt seit Mai 2026 „Tim Ebbeke Harms". Jede Variante
-        bekam bisher einen eigenen Slug — also einen zweiten Eintrag im
-        Verzeichnis, eine zweite Personen-Seite mit einem Bruchteil der
-        Redebeiträge, und im Frontend gar kein Badge mehr: Zwei Kandidaten zum
-        selben Nachnamen, kein Vorname im Protokoll, also lieber keins raten.
-        Gemessen am Prod-Bestand (21.08.2026): acht solche Paare, 752
-        Wortbeiträge ohne Badge.
-
-        Zusammengelegt wird nur bei vier erfüllten Bedingungen — die Regel
-        soll Varianten heilen, nicht Menschen verschmelzen:
-
-        1. gleicher Namensraum (Rat bzw. Verwaltung) und gleicher Nachname,
-        2. gleiche Fraktion (die Verwaltung hat keine — dort zählt „beide
-           ohne"), sonst wären „Meyer (SPD)" und „Jan-Martin Meyer (Linke/
-           Piraten)" ein Mensch,
-        3. die Vornamen des einen stecken in denen des anderen — „Meike",
-           „Sarah" und „Thorsten Bruns" bleiben damit unberührt,
-        4. es gibt GENAU EINEN Kandidaten, der die Variante aufnehmen kann;
-           bei Mehrdeutigkeit bleibt es getrennt.
-
-        Der bleibende Slug ist der mit den meisten Anwesenheits-Zeilen (bei
-        Gleichstand der ausführlichere Name) — die weichenden bleiben über
-        diese Abbildung erreichbar, alte Personen-Links laufen also weiter.
+        Gezählt wird über ``GROUP BY name`` (rund 1.300 verschiedene Namen
+        gegenüber 22.000 Zeilen) und je Instanz einmal — die Karte hängt an
+        jeder Gruppierung nach Person.
         """
-        if self._varianten_cache is not None:
-            return self._varianten_cache
-        from council.parties import classify_faction
-
-        info: dict[tuple[str, str], dict] = {}
-        for r in self._conn.execute(
-                """SELECT a.name, a.party, a.role, COUNT(*) n, MAX(cs.session_date) letzte
-                   FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
-                   WHERE a.role IN ('mitglied','vorsitz','verwaltung')
-                     AND a.name IS NOT NULL AND a.name != ''
-                   GROUP BY a.name, a.party, a.role"""):
-            sl = self._person_slug(r["name"])
-            if not sl:
-                continue
-            klasse = "rat" if r["role"] in self._ROLLEN_RAT else "stadt"
-            e = info.setdefault((klasse, sl), {"n": 0, "partei": None, "stand": ""})
-            e["n"] += r["n"]
-            c = classify_faction(r["party"])
-            label = c["label"] if c["kind"] in ("partei", "gruppe") else None
-            if label and (r["letzte"] or "") >= e["stand"]:
-                e["partei"], e["stand"] = label, (r["letzte"] or "")
-
-        gruppen: dict[tuple, list[str]] = {}
-        for (klasse, sl), e in info.items():
-            gruppen.setdefault((klasse, sl.split("-")[-1], e["partei"]), []).append(sl)
-
-        varianten: dict[tuple[str, str], str] = {}
-        for (klasse, _nach, _partei), slugs in gruppen.items():
-            if len(slugs) < 2:
-                continue
-            eltern = {sl: sl for sl in slugs}
-
-            def wurzel(sl: str) -> str:
-                while eltern[sl] != sl:
-                    sl = eltern[sl] = eltern[eltern[sl]]
-                return sl
-
-            for a in slugs:
-                va = set(a.split("-")[:-1])
-                kandidaten = [b for b in slugs
-                              if b != a and self._vornamen_passen(va, set(b.split("-")[:-1]))]
-                if len(kandidaten) != 1:
-                    continue  # keiner oder mehrdeutig → nichts anfassen
-                wa, wb = wurzel(a), wurzel(kandidaten[0])
-                if wa != wb:
-                    eltern[wa] = wb
-            zusammen: dict[str, list[str]] = {}
-            for sl in slugs:
-                zusammen.setdefault(wurzel(sl), []).append(sl)
-            for teil in zusammen.values():
-                if len(teil) < 2:
+        if self._kanon is None:
+            from council import namensformen
+            fund: dict[str, tuple[str, int]] = {}
+            for r in self._conn.execute(
+                    """SELECT a.name, MAX(cs.session_date) d, COUNT(*) n
+                       FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                       WHERE a.name IS NOT NULL AND a.name != '' GROUP BY a.name"""):
+                sl = self._person_slug(r["name"])
+                if not sl or not r["d"]:
                     continue
-                bleibt = max(teil, key=lambda sl: (info[(klasse, sl)]["n"], len(sl.split("-")), sl))
-                for sl in teil:
-                    if sl != bleibt:
-                        varianten[(klasse, sl)] = bleibt
-        self._varianten_cache = varianten
-        return varianten
+                alt = fund.get(sl)
+                fund[sl] = ((max(alt[0], r["d"]), alt[1] + r["n"]) if alt
+                            else (r["d"], r["n"]))
+            self._kanon = namensformen.kanonisch(fund)
+        return self._kanon
 
-    def _person_slug_kanonisch(self, name: str, klasse: str = "rat") -> str:
-        """Slug der PERSON statt der Schreibweise (s. _personen_varianten).
-        ``klasse`` trennt die Namensräume: Ein Verwaltungs-Streit wird nicht
-        zum Ratsherrn Streit."""
+    def person_slug(self, name: str) -> str:
+        """Slug eines Namens, auf die kanonische Namensform gefaltet.
+
+        Der Ersatz für ``_person_slug`` überall dort, wo nach Person
+        **gruppiert** wird. Ohne die Faltung bekäme dieselbe Person zwei
+        Einträge im Verzeichnis, zwei Personen-Seiten mit je einem Teil ihrer
+        Sitzungen und kein Badge in den KI-Antworten."""
         sl = self._person_slug(name)
-        return self._personen_varianten().get((klasse, sl), sl)
+        return self.personen_kanon().get(sl, sl)
 
-    @staticmethod
-    def _haeufigster_name(zaehler) -> str:
-        """Die kanonische Schreibweise aus einem Counter von Namen: die
-        häufigste — bei Gleichstand die ausführlichere. Ohne den Stichentscheid
-        gewann der Zufall der Einfüge-Reihenfolge, und eine Person mit je zwei
-        Zeilen als „Dr. Götte" und „Walter Götte" hieß im Verzeichnis „Dr.
-        Götte", während ihr Slug walter-goette lautete."""
-        return max(zaehler.items(), key=lambda kv: (kv[1], len(kv[0].split()), kv[0]))[0]
+    def personen_namensformen(self, slug: str) -> list[str]:
+        """Die belegten Schreibweisen einer Person, die der kanonischen Form
+        zuerst — für Abgleiche, die auf **Namen** laufen statt auf Slugs
+        (Wortbeiträge, Suche im Verzeichnis)."""
+        kanon = self.personen_kanon()
+        ziel = kanon.get(slug, slug)
+        gefunden: dict[str, tuple[int, str]] = {}
+        for (name,) in self._conn.execute(
+                "SELECT DISTINCT name FROM council_attendance "
+                "WHERE name IS NOT NULL AND name != ''"):
+            sl = self._person_slug(name)
+            if kanon.get(sl, sl) != ziel:
+                continue
+            anzeige = self._person_anzeige(name)
+            gefunden.setdefault(anzeige, (0 if sl == ziel else 1, anzeige))
+        return [n for n, _ in sorted(gefunden.items(), key=lambda p: p[1])]
+
+    def _anzeige_name(self, namen, slug: str) -> str:
+        """Die anzuzeigende Schreibweise aus einem ``Counter`` von Rohnamen.
+
+        Zweistufig: Die **kanonische Namensform** bestimmt, welcher Name
+        angezeigt wird (jüngste Fundstelle, s. :meth:`personen_kanon`);
+        innerhalb dieser Form entscheidet wie eh und je die häufigste
+        Schreibweise, damit ein einzelnes „Dr." mehr oder weniger die Anzeige
+        nicht umwirft. Ohne Gruppe ändert sich dadurch nichts."""
+        from collections import Counter
+        eigene = Counter({n: c for n, c in namen.items()
+                          if self._person_slug(n) == slug})
+        return self._person_anzeige((eigene or namen).most_common(1)[0][0])
 
     #: Name des Plenar-Gremiums in den Sitzungsdaten. Es ist der Prüfstein für
     #: ein Ratsmandat (s. list_members) — die Ausschüsse führen daneben
@@ -4326,7 +8712,7 @@ class CouncilStore:
                    WHERE m.rolle LIKE 'Ratsmitglied%' OR m.rolle LIKE 'Grundmandat%'""").fetchall()
         except sqlite3.OperationalError:   # Stammdaten noch nicht geholt
             return set()
-        return {self._person_slug_kanonisch(r["name"]) for r in rows}
+        return {self.person_slug(r["name"]) for r in rows}
 
     def _ris_fraktionen(self) -> dict[str, str]:
         """``{Slug: Fraktion laut RIS-Stammdaten}`` — die Stammdaten führen die
@@ -4337,7 +8723,7 @@ class CouncilStore:
                 "WHERE fraktion_aktuell IS NOT NULL AND fraktion_aktuell != ''").fetchall()
         except sqlite3.OperationalError:
             return {}
-        return {self._person_slug_kanonisch(r["name"]): r["fraktion_aktuell"] for r in rows}
+        return {self.person_slug(r["name"]): r["fraktion_aktuell"] for r in rows}
 
     def _partei_der_person(self, slug: str, label: str | None,
                            phasen: dict, ris_fraktion: dict[str, str]) -> str | None:
@@ -4385,13 +8771,18 @@ class CouncilStore:
         return [c["label"]] if c["kind"] in ("partei", "gruppe") else []
 
     def list_members(self) -> list[dict]:
-        """Council members from attendance (role mitglied/vorsitz), grouped by *person*
-        so alle Schreibweisen desselben Menschen EINEN Eintrag ergeben — Titel-Varianten
-        („Dr. X" und „X") über den Slug, Namensvarianten („Klein" / „Thomas Klein",
-        „Christine Wolff" / „Christine Berta Wolff") über ``_personen_varianten``. Per person: canonical (most-frequent) name, die
+        """Council members from attendance (role mitglied/vorsitz), grouped by *slug* so
+        title variants of the same person ("Dr. X" and "X") merge into ONE entry (and the
+        React list gets unique keys). Per person: canonical (most-frequent) name, die
         **letzte aktive Fraktion** (nicht die häufigste — Wechsler wie FDP→Volt oder
         Linke→BSW würden sonst ewig unter der alten laufen), distinct sessions attended
-        and committees served. The member directory."""
+        and committees served. The member directory.
+
+        Zusammengefasst wird über :meth:`person_slug`, also einschließlich der
+        Namensformen aus :data:`council.namensformen.GRUPPEN` — sonst stünde
+        dieselbe Person zweimal im Verzeichnis, jedes Mal mit einem Teil ihrer
+        Sitzungen. ``formen`` nennt die belegten Schreibweisen; das Verzeichnis
+        findet damit auch, wer nach der älteren sucht."""
         from collections import Counter, defaultdict
         from council.parties import classify_faction
         rows = self._conn.execute(
@@ -4403,9 +8794,7 @@ class CouncilStore:
                                        "first": None, "last": None, "party_at": None,
                                        "plenum": 0, "org_at": None, "phasen": {}})
         for r in rows:
-            # Kanonisch: „Klein" und „Thomas Klein" sind ein Mensch und ein
-            # Verzeichnis-Eintrag (s. _personen_varianten).
-            sl = self._person_slug_kanonisch(r["name"])
+            sl = self.person_slug(r["name"])
             if not sl:
                 continue
             e = g[sl]
@@ -4438,9 +8827,14 @@ class CouncilStore:
                 e["org_at"] = (d, org)
         ris = self._ris_ratsmitglieder()
         ris_fraktion = self._ris_fraktionen()
-        out = [{"slug": sl, "name": self._person_anzeige(self._haeufigster_name(e["names"])),
+        out = [{"slug": sl, "name": self._anzeige_name(e["names"], sl),
+                "formen": sorted({self._person_anzeige(n) for n in e["names"]}),
                 "party": self._partei_der_person(
                     sl, e["party_at"][1] if e["party_at"] else None, e["phasen"], ris_fraktion),
+                # „beratend" ist KEIN Ratsmandat: Wer je in einer RATSSITZUNG
+                # als Mitglied geführt wurde, hat eines — die Ausschüsse führen
+                # daneben Verbände, Beiräte und Fachleute (Tims Skiba-Befund
+                # 21.08.2026). Das RIS zählt als zweite Quelle für Nachrücker.
                 "art": "rat" if (e["plenum"] or sl in ris) else "beratend",
                 "organisation": e["org_at"][1] if e["org_at"] else None,
                 "phasen": [{"partei": lab, "von": von[:4], "bis": bis[:4]}
@@ -4461,32 +8855,35 @@ class CouncilStore:
         für Endpunkte, die nicht das ganze Profil brauchen. Ohne Anrede, wie in
         ``member_detail`` und im Verzeichnis (#419)."""
         from collections import Counter
+        slug = self.personen_kanon().get(slug, slug)
         namen = [r["name"] for r in self._conn.execute(
             "SELECT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
             "AND name IS NOT NULL AND name != ''")]
-        kanon = self._personen_varianten().get(("rat", slug), slug)
-        passend = [n for n in namen if self._person_slug_kanonisch(n) == kanon]
-        return self._person_anzeige(self._haeufigster_name(Counter(passend))) if passend else None
+        passend = [n for n in namen if self.person_slug(n) == slug]
+        return self._anzeige_name(Counter(passend), slug) if passend else None
 
     def member_detail(self, slug: str) -> dict | None:
         """One member — all name variants merged by slug: party, sessions, active span,
-        committees served (with counts and chair flag) and their most recent sessions."""
+        committees served (with counts and chair flag) and their most recent sessions.
+
+        Der angefragte Slug wird zuerst auf die kanonische Namensform gefaltet
+        (:meth:`personen_kanon`): Ein geteilter Link auf die ältere Form führt
+        damit auf **dasselbe** Profil, und ``slug`` in der Antwort nennt die
+        kanonische Adresse."""
         from collections import Counter
         from council.parties import classify_faction
+        slug = self.personen_kanon().get(slug, slug)
         names = [r["name"] for r in self._conn.execute(
             "SELECT DISTINCT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
             "AND name IS NOT NULL AND name != ''")]
-        # Über die kanonische Abbildung, damit alle Schreibweisen EINE Seite
-        # ergeben — und der Link auf eine weichende Variante weiter trägt.
-        kanon = self._personen_varianten().get(("rat", slug), slug)
-        matched = [n for n in names if self._person_slug_kanonisch(n) == kanon]
+        matched = [n for n in names if self.person_slug(n) == slug]
         if not matched:
             return None
         ph = ",".join("?" * len(matched))
-        name = self._person_anzeige(self._haeufigster_name(Counter(  # häufigste Schreibweise
+        name = self._anzeige_name(Counter(  # kanonische Form, darin häufigste Schreibweise
             r["name"] for r in self._conn.execute(
                 f"SELECT name FROM council_attendance WHERE name IN ({ph}) AND role IN ('mitglied','vorsitz')",
-                matched))))
+                matched)), slug)
         chairs = {r["committee"] for r in self._conn.execute(
             f"SELECT DISTINCT cs.committee FROM council_attendance a JOIN council_sessions cs ON cs.ksinr=a.ksinr "
             f"WHERE a.name IN ({ph}) AND a.role='vorsitz'", matched)}
@@ -4560,7 +8957,8 @@ class CouncilStore:
             f"""SELECT 1 FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
                 WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
                   AND cs.committee = ? LIMIT 1""", matched + [self.PLENUM]).fetchone()
-        art = "rat" if (im_plenum or kanon in self._ris_ratsmitglieder()) else "beratend"
+        # `slug` ist hier schon die kanonische Namensform (s. Kopf der Methode).
+        art = "rat" if (im_plenum or slug in self._ris_ratsmitglieder()) else "beratend"
         organisation = None
         if art == "beratend":
             timeline = []
@@ -4578,7 +8976,7 @@ class CouncilStore:
             letzte = timeline[-1]
             phasen = {t["label"]: (t["first"], t["last"]) for t in timeline}
             aufgeloest = self._partei_der_person(
-                kanon, letzte["label"], phasen, self._ris_fraktionen())
+                slug, letzte["label"], phasen, self._ris_fraktionen())
             aktuell = ({"label": aufgeloest, "kind": "partei", "parties": [aufgeloest]}
                        if aufgeloest != letzte["label"]
                        else {"label": letzte["label"], "kind": letzte["kind"],
@@ -4607,6 +9005,54 @@ class CouncilStore:
             "wortbeitraege_gremien": wb["gremien"],
         }
 
+    def verwaltung_name(self, slug: str) -> str | None:
+        """Kanonischer Name einer Verwaltungsperson zu ihrem Slug — schlanke
+        Auskunft für den Wortbeiträge-Endpunkt, ohne den ganzen Lexikon-Aufbau
+        aus personen_lexikon(). Gegenstück zu member_name(). Keine
+        Rollen-Prüfung hier: Wer einmal einen Steckbrief hatte
+        (verwaltung_detail), soll auch weitere Seiten seiner Wortbeiträge
+        laden können."""
+        from collections import Counter
+        namen = [r["name"] for r in self._conn.execute(
+            "SELECT name FROM council_attendance WHERE role = 'verwaltung' "
+            "AND name IS NOT NULL AND name != ''")]
+        passend = [n for n in namen if self._person_slug(n) == slug]
+        return self._person_anzeige(Counter(passend).most_common(1)[0][0]) if passend else None
+
+    def verwaltung_detail(self, slug: str) -> dict | None:
+        """Schmaler Steckbrief für Verwaltungsleute mit erkanntem Amt (Tims
+        Wunsch 19.08., im Anschluss an den Figura-Badge-Fund): NUR für
+        Oberbürgermeister/-in, Stadtkämmerer/-in, Stadtbaurat/-rätin,
+        Stadtrat/-rätin — dieselbe Erkennung wie in personen_lexikon()
+        (_ROLLEN_RE übers note-Feld). Ohne erkanntes Amt gibt es keine Seite:
+        „Ein toter Link ist schlimmer als kein Link" (schon in #588 so
+        entschieden, für die Aufsichtsräte-Verlinkung).
+
+        Bewusst KEIN Nachbau von member_detail(): Fraktions-Zeitleiste,
+        Vorsitz-Zähler und Gremien-Präsenz passen auf ein Mandat, nicht auf
+        ein Amt — ein Oberbürgermeister sitzt kraft Amtes in praktisch jedem
+        Gremium, das ist keine gewählte Mitgliedschaft. Der Zeitraum ist
+        ehrlich als Jahres-Spanne der Protokoll-Erwähnungen beschriftet,
+        keine amtliche Amtszeit: SessionNet selbst führt Verwaltung nicht als
+        Mandatsträger:innen (council/stammdaten.py:``fetch_mandatstraeger``).
+
+        Nutzt personen_lexikon() statt einer eigenen Aggregation — dieselbe
+        Gruppierung für alle Verwaltungsleute an einer Stelle, nicht zwei
+        Fassungen, die auseinanderlaufen können."""
+        eintrag = next((p for p in self.personen_lexikon()
+                        if p["slug"] == slug and p["art"] == "stadt" and p["rolle"]), None)
+        if not eintrag:
+            return None
+        wb = self.wortbeitraege_person(eintrag["name"], limit=10)
+        return {
+            "typ": "verwaltung", "name": eintrag["name"], "slug": slug,
+            "rolle": eintrag["rolle"], "aktiv": eintrag["aktiv"],
+            "von": eintrag["von"], "bis": eintrag["bis"],
+            "wortbeitraege": wb["items"],
+            "wortbeitraege_gesamt": wb["gesamt"],
+            "wortbeitraege_gremien": wb["gremien"],
+        }
+
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:
         """Main decisions with their text, for the € extraction backfill."""
         sql = "SELECT id, title, beschluss FROM council_decisions WHERE kind = 'decision'"
@@ -4623,12 +9069,12 @@ class CouncilStore:
     # Titles excluded from the "largest" view: accounting / whole-budget reports
     # (balance totals, not a discrete decision) and treasury operations (debt
     # refinancing / credit reporting) — neither is "the city spends X on Y".
-    _NON_SPENDING_TITLES = (
-        "jahresabschluss", "lagebericht", "gesamtabschluss", "wirtschaftsplan",
-        "haushaltsplan", "haushaltssatzung", "nachtragshaushalt", "finanzbericht",
-        "beteiligungsbericht", "jahresrechnung", "quartalsbericht", "zwischenbericht",
-        "umschuldung", "kreditrichtlinie", "kassenkredite",
-    )
+    #
+    # Die Liste lebt in `council/importance.py` (Blatt-Modul, kein Zirkel) und
+    # wird hier nur weitergereicht. Vorher stand sie ausschließlich hier — mit
+    # der Folge, dass die drei Geld-Ansichten filterten, das Geld-Signal des
+    # Wichtig-Werts aber nicht.
+    _NON_SPENDING_TITLES = _importance.NON_SPENDING_TITLES
 
     def activity_trends(self, quarters: int = 12) -> dict:
         """Council activity over time for the trends view: decisions and recognised €
@@ -5059,16 +9505,30 @@ class CouncilStore:
         stored = dict(self._conn.execute(
             "SELECT document_id, MIN(text_hash) FROM council_anlage_embeddings "
             "GROUP BY document_id").fetchall())
+        # `status = 'ok'` schließt nur ungelesene und kaputte Anlagen aus. Wie
+        # der Text entstanden ist — Textebene oder Sehmodell — steht in
+        # `ocr_modell` und ist hier KEIN Kriterium: Ein gescannter
+        # Wirtschaftsplan ist so durchsuchbar wie ein getippter.
         rows = self._conn.execute(
             "SELECT document_id, label, raw_text FROM council_anlagen "
             "WHERE status = 'ok' AND raw_text IS NOT NULL AND raw_text != '' "
             "ORDER BY document_id DESC").fetchall()
         out = []
         for r in rows:
-            h = hashlib.sha256(r["raw_text"].encode("utf-8")).hexdigest()[:16]
+            # HIER wird maskiert und nicht beim Speichern: `raw_text` bleibt
+            # vollständig (die Parser brauchen ihn), aber was in die
+            # Chunk-Vektoren und damit in Antworten der KI-Frage geht, trägt
+            # keine Kontonummern, Telefonnummern, E-Mail-Adressen und
+            # Anschriften mehr (`council/kontaktdaten.py`).
+            #
+            # Der Hash wird über den MASKIERTEN Text gebildet: Sonst gälte eine
+            # Anlage als geändert, sobald sich an der Maskierung etwas dreht,
+            # und der nächste Lauf rechnete den halben Bestand neu.
+            text = maskieren(r["raw_text"])
+            h = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
             if stored.get(r["document_id"]) != h:
                 out.append({"document_id": r["document_id"], "label": r["label"],
-                            "raw_text": r["raw_text"], "text_hash": h})
+                            "raw_text": text, "text_hash": h})
                 if limit and len(out) >= limit:
                     break
         return out
@@ -5310,7 +9770,986 @@ class CouncilStore:
                 continue
             if self._bereich_passt(r["bereich"] or "", woerter):
                 out.append(dict(r))
-        return out[:limit]
+        out = out[:limit]
+        # Entwicklung mitgeben: derselbe Bereich im ältesten vorhandenen Jahr.
+        # Nur bei EXAKT gleichem Namen — die Teilhaushalts-Zuschnitte ändern
+        # sich über die Jahre, ein Vergleich über Zuschnittgrenzen wäre falsch.
+        if out:
+            frueh = self._conn.execute("SELECT MIN(year) FROM council_haushalt").fetchone()[0]
+            if frueh and frueh != jahr:
+                namen = [r["bereich"] for r in out]
+                platz = ",".join("?" * len(namen))
+                alt = {
+                    r["bereich"]: r for r in self._conn.execute(
+                        f"SELECT bereich, ertraege, aufwendungen FROM council_haushalt "
+                        f"WHERE year = ? AND bereich IN ({platz})", (frueh, *namen))
+                }
+                for r in out:
+                    a = alt.get(r["bereich"])
+                    if a:
+                        r["jahr_davor"] = frueh
+                        r["aufwendungen_davor"] = a["aufwendungen"]
+                        r["ertraege_davor"] = a["ertraege"]
+        return out
+
+    #: Suchbegriffe → Steuerart, wie sie im Open-Data-CSV heißt. Bewusst
+    #: kuratiert statt Substring-Suche: „Steuer" allein trifft sonst jede Art,
+    #: und „Grundsteuer" steckt in „Grundsteuer A+B".
+    _STEUER_SYNONYME = {
+        "gewerbesteuer": "Gewerbesteuer (-umlage)",
+        "gewerbe": "Gewerbesteuer (-umlage)",
+        "grundsteuer": "Grundsteuer A+B",
+        "grundbesitz": "Grundsteuer A+B",
+        "einkommensteuer": "Einkommensteueranteil",
+        "einkommenssteuer": "Einkommensteueranteil",
+        "umsatzsteuer": "Gemeindeanteil an der Umsatzsteuer",
+        "mehrwertsteuer": "Gemeindeanteil an der Umsatzsteuer",
+        "vergnügungssteuer": "Vergnügungssteuer",
+        "vergnuegungssteuer": "Vergnügungssteuer",
+        "getränkesteuer": "Getränkesteuer",
+    }
+
+    def steuern_fuer_begriffe(self, begriffe: list[str]) -> list[dict]:
+        """IST-Steuereinnahmen zu den gefragten Steuerarten: neuester Wert plus
+        der Wert von vor zehn Jahren (Entwicklung), je Art. Fragt jemand
+        allgemein nach „Steuern"/„Einnahmen", kommt die Gesamtsumme.
+
+        Klar getrennt vom Haushalt: Das hier sind ABRECHNUNGSZAHLEN, keine
+        Planwerte — der Prompt-Baustein muss das benennen."""
+        woerter = {w.lower().strip(".,;:!?") for w in begriffe}
+        arten: list[str] = []
+        for w in woerter:
+            art = self._STEUER_SYNONYME.get(w)
+            if art and art not in arten:
+                arten.append(art)
+        if not arten and woerter & {"steuern", "steuereinnahmen", "steuer",
+                                    "einnahmen", "steuerkraft"}:
+            arten = ["insgesamt"]
+        if not arten:
+            return []
+        try:
+            neuestes = self._conn.execute("SELECT MAX(jahr) FROM council_steuern").fetchone()[0]
+        except sqlite3.OperationalError:
+            return []
+        if not neuestes:
+            return []
+        out: list[dict] = []
+        for art in arten[:3]:
+            rows = self._conn.execute(
+                "SELECT jahr, betrag FROM council_steuern WHERE art = ? AND jahr IN (?, ?)",
+                (art, neuestes, neuestes - 10)).fetchall()
+            werte = {r["jahr"]: r["betrag"] for r in rows}
+            if neuestes not in werte:
+                continue
+            out.append({"art": art, "jahr": neuestes, "betrag": werte[neuestes],
+                        "jahr_davor": neuestes - 10 if (neuestes - 10) in werte else None,
+                        "betrag_davor": werte.get(neuestes - 10)})
+        return out
+
+    def steuerkraft_kontext(self) -> dict | None:
+        """Steuerkraftmesszahl + Schlüsselzuweisungen der beiden jüngsten Jahre.
+
+        Für Fragen nach Hebesätzen und „mehr Steuern einnehmen": Steigt die
+        eigene Steuerkraft, sinken die Zuweisungen des Landes (NFAG) — ohne
+        diesen Kontext klingt jede Mehreinnahme nach vollem Gewinn."""
+        try:
+            rows = self._conn.execute(
+                "SELECT jahr, messzahl, zuweisungen FROM council_steuerkraft "
+                "WHERE messzahl IS NOT NULL AND zuweisungen IS NOT NULL "
+                "ORDER BY jahr DESC LIMIT 2").fetchall()
+        except sqlite3.OperationalError:
+            return None
+        if len(rows) < 2:
+            return None
+        neu, alt = dict(rows[0]), dict(rows[1])
+        return {"jahr": neu["jahr"], "messzahl": neu["messzahl"], "zuweisungen": neu["zuweisungen"],
+                "jahr_davor": alt["jahr"], "messzahl_davor": alt["messzahl"],
+                "zuweisungen_davor": alt["zuweisungen"]}
+
+    # ---- Der Haushalts-Bestand als Quelle der KI-Frage (Tim, 16.08.) -------
+    #
+    # Bis hierher kannte die KI-Frage drei Geld-Quellen: Plan (council_haushalt),
+    # Ist-Steuern (council_steuern) und die NFAG-Mechanik (council_steuerkraft).
+    # Der Bestand darunter — Jahresabschlüsse, Produktebene, Prüfberichte,
+    # Konzern, Städtevergleich — war für sie unsichtbar.
+    #
+    # ZWEI REGELN GELTEN FÜR ALLE METHODEN HIER:
+    #
+    # 1. Jede liefert wenige Zeilen, nicht den Bestand. Der Antwort-Prompt hat
+    #    ein Zeichenbudget; ein Baustein, der 377 Produkte anhängt, verdrängt
+    #    die Beschlüsse, nach denen gefragt wurde.
+    # 2. Jede liefert ihren **Beleg** mit (`_beleg`). Eine Zahl ohne Fundstelle
+    #    ist in diesem Bereich keine Zahl, sondern eine Behauptung — und der
+    #    Prompt kann nur zitieren, was im Kontext steht.
+
+    @staticmethod
+    def _falte_wort(wort: str) -> str:
+        """Kleingeschrieben, Umlaute ausgeschrieben, Satzzeichen ab."""
+        w = wort.lower().strip(".,;:!?\"'()[]")
+        for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+            w = w.replace(a, b)
+        return w
+
+    @classmethod
+    def _stamm(cls, wort: str) -> str:
+        """Grober Wortstamm für den Begriffs-Abgleich — auf 6 Zeichen gekappt.
+
+        Die Kappung ist der ganze Zweck. „Gewerbesteuer" und „Steuern und
+        ähnliche Abgaben" haben kein gemeinsames Wort und in der einen
+        Richtung auch keine gemeinsame Teilzeichenkette
+        (``"steuern" not in "gewerbesteuer"``) — wohl aber denselben Stamm
+        ``steuer``. Ohne ihn findet „Warum kam mehr Gewerbesteuer rein?" die
+        zugehörige Erläuterung des Jahresabschlusses nicht."""
+        return cls._falte_wort(wort)[:6]
+
+    @classmethod
+    def _trifft(cls, text: str | None, begriffe: list[str]) -> int:
+        """Wie viele Suchbegriffe stecken in ``text``? 0 = kein Treffer.
+
+        BEIDE RICHTUNGEN, und das ist nötig: Der Begriff kann im Text stecken
+        („Feuerwehr" in „Brandschutz und Feuerwehr") und der Text im Begriff
+        („Steuern" in „Gewerbesteuer"). Eine Richtung allein verfehlt je einen
+        der beiden Fälle, und beide kommen im Bestand vor."""
+        if not text:
+            return 0
+        worte = [w for w in re.split(r"[^\wÄÖÜäöüß]+", text) if w]
+        text_voll = " ".join(cls._falte_wort(w) for w in worte)
+        text_staemme = [s for s in (cls._stamm(w) for w in worte) if len(s) >= 4]
+        n = 0
+        for b in begriffe:
+            b_voll = cls._falte_wort(b)
+            b_stamm = cls._stamm(b)
+            if len(b_stamm) < 4:
+                continue
+            if b_stamm in text_voll or any(s in b_voll for s in text_staemme):
+                n += 1
+        return n
+
+    def _beleg(self, herkunft_id: int | None) -> dict | None:
+        """Fundstelle einer Zahl: Dokument, Stelle darin, Stichtag.
+
+        Bewusst ohne die Erklärsätze zu den Proben (``get_herkunft``): Die
+        gehören auf die Haushalts-Seiten, wo Platz für sie ist. Im Prompt
+        zählt, was die Antwort zitieren können muss — Dokument und Stelle."""
+        if herkunft_id is None:
+            return None
+        try:
+            r = self._conn.execute(
+                "SELECT label, fundstelle, seite, stand, url FROM council_herkunft "
+                "WHERE id = ?", (herkunft_id,)).fetchone()
+        except sqlite3.OperationalError:
+            return None
+        return dict(r) if r else None
+
+    def ergebnis_ist_fuer_begriffe(self, begriffe: list[str], limit: int = 2) -> dict | None:
+        """„Geplant und tatsächlich" aus dem jüngsten Jahresabschluss.
+
+        Der Unterschied zu ``haushalt_fuer_begriffe`` ist das ganze Anliegen:
+        Dort stehen Planwerte, hier steht, was daraus geworden ist. Geliefert
+        werden die Summenzeilen der Gesamtrechnung (Erträge 12, Aufwendungen
+        20) und — wenn die Frage einen Bereich nennt — bis zu ``limit``
+        Teilhaushalte.
+
+        ``plan_art`` reist mit: „Plan" heißt 2018 Gesamtermächtigung und 2020
+        Ansatz samt Nachtrag. Eine Abweichung ohne ihre Bezugsgröße zu nennen,
+        wäre in genau den zwei Jahrgängen falsch, in denen es darauf ankommt."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_ergebnisrechnung "
+                "WHERE ergebnis IS NOT NULL").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, ergebnis, abweichung, "
+            " herkunft_id FROM council_ergebnisrechnung "
+            "WHERE jahr = ? AND nr IN (12, 20) ORDER BY thh_nr, nr", (jahr,))]
+        if not rows:
+            return None
+
+        def paar(teil: list[dict]) -> dict:
+            e = next((r for r in teil if r["nr"] == 12), {})
+            a = next((r for r in teil if r["nr"] == 20), {})
+            # `plan` fällt auf `ansatz` zurück — Zeilen von vor #510 tragen
+            # dort NULL (ALTER TABLE füllt nichts nach), s. get_plan_ist.
+            return {
+                "name": (a.get("thh_name") or e.get("thh_name")),
+                "ertraege_plan": e.get("ansatz") if e.get("plan") is None else e.get("plan"),
+                "ertraege_ist": e.get("ergebnis"),
+                "aufwendungen_plan": a.get("ansatz") if a.get("plan") is None else a.get("plan"),
+                "aufwendungen_ist": a.get("ergebnis"),
+                "plan_art": a.get("plan_art") or e.get("plan_art"),
+                "herkunft_id": a.get("herkunft_id") or e.get("herkunft_id"),
+            }
+
+        gesamt = paar([r for r in rows if r["thh_nr"] is None])
+        bereiche: list[dict] = []
+        if begriffe:
+            nach_thh: dict[int, list[dict]] = {}
+            for r in rows:
+                if r["thh_nr"] is not None:
+                    nach_thh.setdefault(r["thh_nr"], []).append(r)
+            bewertet = [(self._trifft(t[0].get("thh_name"), begriffe), paar(t))
+                        for t in nach_thh.values()]
+            bereiche = [b for n, b in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
+        return {"jahr": jahr, "gesamt": gesamt, "bereiche": bereiche,
+                "beleg": self._beleg(gesamt.get("herkunft_id"))}
+
+    def abweichungsgruende_fuer_begriffe(self, begriffe: list[str],
+                                         limit: int = 3) -> list[dict]:
+        """Das *Warum* zu den Abweichungen, in den Worten der Verwaltung.
+
+        Passt kein Begriff, kommen die **größten** Abweichungen: Wer „Warum
+        wich der Haushalt ab?" fragt, meint die, über die es sich zu reden
+        lohnt — und der Fragetyp-Filter davor sorgt dafür, dass diese Methode
+        gar nicht erst läuft, wenn es nicht um Geld geht."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_abweichungsgruende").fetchone()[0]
+        except sqlite3.OperationalError:
+            return []
+        if not jahr:
+            return []
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT jahr, nr, bezeichnung, delta_mio, prozent, text, herkunft_id "
+            "FROM council_abweichungsgruende WHERE jahr = ? ORDER BY nr", (jahr,))]
+        treffer = [(self._trifft(f"{r['bezeichnung']} {r['text']}", begriffe), r) for r in rows]
+        passend = [r for n, r in sorted(treffer, key=lambda x: -x[0]) if n][:limit]
+        if not passend:
+            passend = sorted(rows, key=lambda r: -abs(r.get("delta_mio") or 0))[:limit]
+        for r in passend:
+            r["beleg"] = self._beleg(r.get("herkunft_id"))
+        return passend
+
+    def pruefberichte_fuer_begriffe(self, begriffe: list[str], limit: int = 4) -> dict | None:
+        """Feststellungen des Rechnungsprüfungsamts zum jüngsten geprüften
+        Jahrgang.
+
+        Ohne Begriffs-Treffer kommen die **wiederholten** Beanstandungen
+        zuerst: Etwas, das der Prüfer zum wiederholten Mal aufschreibt, ist der
+        Kern der Frage „Was wurde beanstandet?" — eine einmalige Randnotiz
+        nicht."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_pruefberichte").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT jahr, marke, marke_name, textziffer, abschnitt, kette, seite, text, "
+            " herkunft_id FROM council_pruefberichte WHERE jahr = ? ORDER BY lfd", (jahr,))]
+        if not rows:
+            return None
+        rang = {"WB": 0, "B": 1, "H": 2, "K": 3}
+        bewertet = [(self._trifft(f"{r['abschnitt']} {r['text']}", begriffe), r) for r in rows]
+        passend = [r for n, r in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
+        if not passend:
+            passend = sorted(rows, key=lambda r: rang.get(r["marke"], 9))[:limit]
+        # Wie viele Feststellungen es insgesamt gibt, gehört dazu: Ohne die
+        # Zahl liest sich eine Auswahl von vier wie der ganze Bericht.
+        zaehl: dict[str, int] = {}
+        for r in rows:
+            zaehl[r["marke_name"]] = zaehl.get(r["marke_name"], 0) + 1
+        return {"jahr": jahr, "feststellungen": passend, "gesamt": len(rows),
+                "nach_marke": zaehl, "beleg": self._beleg(rows[0].get("herkunft_id"))}
+
+    def produkte_fuer_begriffe(self, begriffe: list[str], limit: int = 4) -> dict | None:
+        """Aufgaben der Stadt mit Kosten, Amt, **Rechtsgrundlage** und der
+        Spielraum-Selbstauskunft des Plans.
+
+        Die Rechtsgrundlage ist der Grund, warum diese Quelle in der KI-Frage
+        etwas kann, das keine andere kann: „Muss die Stadt das Theater
+        betreiben?" beantwortet kein Beschluss und keine Haushaltszeile —
+        ``auftragsgrundlage`` schon.
+
+        Anders als ``get_produkte(suche=…)`` verlangt diese Suche **nicht**,
+        dass jeder Begriff trifft: Die Suchbegriffe kommen aus der
+        Query-Expansion und enthalten Synonyme, die absichtlich nicht alle
+        passen. Sortiert wird nach Trefferzahl, dann nach Zuschussbedarf."""
+        try:
+            jahr = self._conn.execute("SELECT MAX(jahr) FROM council_produkte").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT produkt_nr, produkt_name, amt, aufwendungen, ergebnis, "
+            " kurzbeschreibung, auftragsgrundlage, beeinflussbarkeit, herkunft_id "
+            "FROM council_produkte WHERE jahr = ?", (jahr,))]
+        bewertet = [(self._trifft(f"{r['produkt_name']} {r.get('amt') or ''} "
+                                  f"{r.get('kurzbeschreibung') or ''}", begriffe), r)
+                    for r in rows]
+        passend = [r for n, r in sorted(bewertet, key=lambda x: (-x[0], x[1].get("ergebnis") or 0))
+                   if n][:limit]
+        if not passend:
+            return None
+        for r in passend:
+            r["beleg"] = self._beleg(r.get("herkunft_id"))
+        return {"jahr": jahr, "produkte": passend}
+
+    def konzern_kontext(self) -> dict | None:
+        """Der Konzern Stadt: Erträge, Aufwendungen und die größten Träger.
+
+        Dazu die Kernverwaltung desselben Jahres aus dem Jahresabschluss — die
+        Differenz ist der ganze Punkt. „Was kostet die Stadt?" beantwortet der
+        Kernhaushalt zu klein, weil Klinikum, Eigenbetriebe und Beteiligungen
+        nicht darin stehen."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_konzern_posten").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        # Über die ROLLE, nicht über die Nummer: Posten 15 ist bis 2018 die
+        # Ertragssumme und ab 2019 der Versorgungsaufwand (s. Schema-Kommentar).
+        summen = {r["rolle"]: dict(r) for r in self._conn.execute(
+            "SELECT rolle, bezeichnung, betrag, herkunft_id FROM council_konzern_posten "
+            "WHERE jahr = ? AND rolle IN ('ertraege_summe', 'aufwendungen_summe')", (jahr,))}
+        traeger = [dict(r) for r in self._conn.execute(
+            "SELECT art, traeger, betrag_teur FROM council_konzern_traeger "
+            "WHERE jahr = ? AND art = 'aufwendungen' AND traeger_key != 'konsolidierung' "
+            "ORDER BY betrag_teur DESC LIMIT 5", (jahr,))]
+        if not summen and not traeger:
+            return None
+        ertraege = summen.get("ertraege_summe") or {}
+        aufwand = summen.get("aufwendungen_summe") or {}
+        return {"jahr": jahr, "ertraege": ertraege.get("betrag"),
+                "aufwendungen": aufwand.get("betrag"), "traeger": traeger,
+                "kern": self.kernverwaltung_ist().get(jahr) or {},
+                "beleg": self._beleg(aufwand.get("herkunft_id")
+                                     or ertraege.get("herkunft_id"))}
+
+    def staedtevergleich_kontext(self, reihe: str = "steuerkraft") -> dict | None:
+        """Die jüngste Kennzahl einer Reihe für alle acht kreisfreien Städte.
+
+        Eine Kennzahl, nicht alle: Der Vergleich soll die Antwort einordnen
+        („Oldenburg liegt auf Platz 5 von 8"), nicht eine Tabelle in den
+        Prompt schreiben."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_staedtevergleich WHERE reihe = ?",
+                (reihe,)).fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        kennzahl = self._conn.execute(
+            "SELECT kennzahl FROM council_staedtevergleich WHERE reihe = ? AND jahr = ? "
+            "GROUP BY kennzahl ORDER BY COUNT(*) DESC, kennzahl LIMIT 1",
+            (reihe, jahr)).fetchone()
+        if not kennzahl:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT stadt, wert, einheit, herkunft_id FROM council_staedtevergleich "
+            "WHERE reihe = ? AND jahr = ? AND kennzahl = ? ORDER BY wert DESC",
+            (reihe, jahr, kennzahl[0]))]
+        if not rows:
+            return None
+        return {"jahr": jahr, "reihe": reihe, "kennzahl": kennzahl[0],
+                "einheit": rows[0].get("einheit"), "staedte": rows,
+                "beleg": self._beleg(rows[0].get("herkunft_id"))}
+
+    def ansatz_fuer_begriffe(self, begriffe: list[str], limit: int = 4) -> dict | None:
+        """Einnahme- und Ausgabearten des jüngsten **Planjahres** aus dem
+        Gesamtergebnishaushalt.
+
+        Nur ``art='ansatz'``: Die Finanzplanungsjahre desselben Dokuments sind
+        eine Vorausschau nach § 8 NKomVG und kein beschlossener Haushalt. Sie
+        in einen Antwort-Kontext zu legen hieße, dem Modell einen Plan für
+        2029 anzubieten, den nie jemand aufgestellt hat."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_ergebnishaushalt "
+                "WHERE art = 'ansatz'").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT nr, bezeichnung, betrag, ist_summe, herkunft_id "
+            "FROM council_ergebnishaushalt WHERE jahr = ? AND art = 'ansatz' ORDER BY nr",
+            (jahr,))]
+        if not rows:
+            return None
+        bewertet = [(self._trifft(r["bezeichnung"], begriffe), r) for r in rows]
+        passend = [r for n, r in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
+        if not passend:
+            # Ohne Treffer die Summenzeilen — sie beantworten „was nimmt die
+            # Stadt ein, was gibt sie aus" und sind nie daneben.
+            passend = [r for r in rows if r["ist_summe"]][:limit]
+        if not passend:
+            return None
+        return {"jahr": jahr, "posten": passend,
+                "beleg": self._beleg(passend[0].get("herkunft_id"))}
+
+    # ---- Vier Schichten, die die KI-Frage nicht kannte (Tim, 17.08.) -------
+    #
+    # Der Bestand ist seit der Runde oben um vier Schichten gewachsen, und die
+    # KI-Frage beantwortete deren Fragen mit den Quellen, die sie schon kannte
+    # — also falsch:
+    #
+    #   „Wie viel Schulden hat Oldenburg?"      → Ergebnishaushalt. Schulden
+    #        sind ein BESTAND am Stichtag, kein Jahresverlauf; in der
+    #        Ergebnisrechnung stehen sie überhaupt nicht.
+    #   „Was wird gebaut?"                      → Ergebnishaushalt, in dem
+    #        keine einzige Investition steht (ein Schulneubau taucht dort nur
+    #        als Abschreibung auf, verteilt über Jahrzehnte).
+    #   „Wie viele Stellen sind unbesetzt?"     → Personalaufwendungen in Euro.
+    #   „Wer wollte den Haushalt ändern?"       → gar nichts, obwohl 664
+    #        Änderungslisten im Bestand liegen.
+    #
+    # Es gelten dieselben zwei Regeln wie für den Abschnitt darüber: wenige
+    # Zeilen statt Bestand, und jede Zahl mit ihrem Beleg.
+
+    def schulden_kontext(self) -> dict | None:
+        """Der Schuldenstand: jüngstes Jahr, Vorjahr, höchster Stand der Reihe.
+
+        Ein **Bestand**, kein Jahresverlauf — und genau deshalb eine eigene
+        Quelle. Der Haushaltsplan sagt, was die Stadt in einem Jahr einnimmt
+        und ausgibt; was am 31.12. an Krediten offen ist, sagt er nicht.
+
+        Die Abgrenzung reist als Feld mit (``council.schulden.ABGRENZUNG``)
+        und ist nicht schmückendes Beiwerk: Gezählt wird die Stadt als
+        Rechtsträger — Kernhaushalt und Eigenbetriebe, ohne die rechtlich
+        selbstständigen Beteiligungen. Die Konzern-Zahl heißt genauso und ist
+        ein Vielfaches; ohne den Satz daneben ist „337 Mio. €" eine von zwei
+        Zahlen, die beide so heißen.
+
+        Die vier Artenspalten dürfen NULL sein (Fall 2022, s.
+        ``council/schulden.py``) — dann kommt die Aufteilung nicht mit, und
+        ``aufteilung_verworfen`` sagt, warum.
+        """
+        from council import schulden as _schulden
+
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_schulden ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return None
+        if not rows:
+            return None
+        neu = rows[-1]
+        arten = [(titel, neu[feld]) for feld, titel in _schulden.SPALTEN
+                 if feld not in ("insgesamt", "je_einwohner")
+                 and neu.get(feld) is not None]
+        # Der höchste Stand der Reihe ist eine Angabe der Daten, keine
+        # Bewertung: Er sagt, ob die jüngste Zahl im historischen Vergleich
+        # oben oder unten liegt — sonst schwebt sie ohne jeden Maßstab.
+        hoch = max(rows, key=lambda r: r["insgesamt"])
+        return {
+            "jahr": neu["jahr"],
+            "insgesamt": neu["insgesamt"],
+            "je_einwohner": neu.get("je_einwohner"),
+            "arten": arten,
+            "aufteilung_verworfen": neu.get("aufteilung_verworfen"),
+            "revidiert": bool(neu.get("revidiert")),
+            "davor": ({"jahr": rows[-2]["jahr"], "insgesamt": rows[-2]["insgesamt"]}
+                      if len(rows) > 1 else None),
+            "hoch": ({"jahr": hoch["jahr"], "insgesamt": hoch["insgesamt"]}
+                     if hoch["jahr"] != neu["jahr"] else None),
+            "reihe_ab": rows[0]["jahr"],
+            "abgrenzung": _schulden.ABGRENZUNG,
+            "beleg": self._beleg(neu.get("herkunft_id")),
+            "weitere": self._schulden_abgrenzungen(),
+            "buergschaften": self._buergschafts_kontext(),
+        }
+
+    def haushalts_anschluss(self, beschluss_id: int, vorlage_nr: str | None) -> dict | None:
+        """Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht.
+
+        Die Beschluss-Seite verweist seit H-21 auf den Haushalt — aber
+        pauschal („wie sich das im Gesamthaushalt ausnimmt"). Das ist für
+        jeden Beschluss derselbe Satz und deshalb für keinen eine Auskunft.
+
+        Hier steht nur, was **belegt** ist. Zwei Fälle gibt es im Bestand, und
+        beide hängen an einer echten Verknüpfung, nicht an einer Textsuche:
+
+        * **Nachbewilligung** — ``council_nachbewilligungen.beschluss_id``
+          zeigt auf genau diese Zeile. Der Betrag steht dann in der
+          Jahressumme, die ``/haushalt/plan-ist`` zeigt.
+        * **Bürgschaft** — die Vorlage steht im Zeitstrahl auf
+          ``/haushalt/schulden``.
+
+        Trifft keiner der beiden zu, kommt ``None`` — und die Seite lässt die
+        Karte weg, statt einen Satz zu zeigen, der überall gleich stünde.
+        """
+        try:
+            r = self._conn.execute(
+                "SELECT vorlage_nr, titel, betrag, jahr FROM council_nachbewilligungen "
+                "WHERE beschluss_id = ? LIMIT 1", (beschluss_id,)).fetchone()
+        except sqlite3.OperationalError:
+            r = None
+        if r:
+            return {"art": "nachbewilligung", "href": "/haushalt/plan-ist",
+                    "jahr": r["jahr"], "betrag": r["betrag"],
+                    "titel": r["titel"], "vorlage_nr": r["vorlage_nr"]}
+
+        if vorlage_nr:
+            try:
+                b = self._conn.execute(
+                    "SELECT title FROM council_vorlagen "
+                    "WHERE vorlage_nr = ? AND title LIKE '%bürgschaft%'",
+                    (vorlage_nr,)).fetchone()
+            except sqlite3.OperationalError:
+                b = None
+            if b:
+                return {"art": "buergschaft", "href": "/haushalt/schulden",
+                        "titel": b["title"], "vorlage_nr": vorlage_nr}
+        return None
+
+    def buergschafts_vorlagen(self, limit: int = 40) -> list[dict]:
+        """Die Ratsbeschlüsse hinter dem Bürgschaftsbestand, neueste zuerst.
+
+        DIESE BETRÄGE DÜRFEN NIE ADDIERT WERDEN, und die Liste selbst zeigt
+        warum: Unter den 21 Vorlagen im Bestand ist „Verlängerung
+        Ausfallbürgschaft … über 300.000 Euro für die Volkshochschule"
+        (25/0826) dieselbe Bürgschaft wie 23/0112 zwei Jahre zuvor, und
+        „Anpassung Ausfallbürgschaft … Weser-Ems Halle" (25/0929) ändert eine
+        bestehende. Eine Summe über die Liste zählte dieselbe Zusage mehrfach.
+
+        Was der Bestand wirklich ist, sagt nur der Jahresabschluss
+        (``council_buergschaften``) — er ist eine Stichtagsgröße und keine
+        Summe von Beschlüssen. Die Liste hier ist die **Geschichte** dazu:
+        wann der Rat worüber entschieden hat.
+
+        Je Vorlage der jüngste Beschluss: Finanzausschuss und Rat entscheiden
+        dieselbe Sache, und zwei Zeilen für einen Vorgang wären eine Dublette
+        ohne Erkenntnisgewinn.
+        """
+        try:
+            rows = self._conn.execute(
+                """SELECT v.vorlage_nr, v.title, v.document_url,
+                          MAX(s.session_date) AS datum,
+                          (SELECT d2.id FROM council_decisions d2
+                            JOIN council_sessions s2 ON s2.ksinr = d2.ksinr
+                           WHERE d2.vorlage_nr = v.vorlage_nr
+                           ORDER BY s2.session_date DESC LIMIT 1) AS beschluss_id
+                     FROM council_vorlagen v
+                     LEFT JOIN council_decisions d ON d.vorlage_nr = v.vorlage_nr
+                     LEFT JOIN council_sessions s ON s.ksinr = d.ksinr
+                    WHERE v.title LIKE '%bürgschaft%'
+                    GROUP BY v.vorlage_nr
+                    ORDER BY datum DESC NULLS LAST, v.vorlage_nr DESC
+                    LIMIT ?""", (limit,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def _schulden_abgrenzungen(self) -> list[dict]:
+        """Die ANDEREN beiden Zahlen, die auch „die Schulden der Stadt" heißen.
+
+        Es gibt drei, sie unterscheiden sich um das Siebzehnfache, und jede
+        ist für ihre Abgrenzung richtig (Stand 31.12.2024):
+
+        * **43,7 Mio. €** — die Geldschulden des Kernhaushalts allein, wie sie
+          in der Bilanz des Jahresabschlusses stehen.
+        * **294,9 Mio. €** — die Stadt als Rechtsträger, also mit ihren
+          Eigenbetrieben. Das ist die Reihe des Statistischen Jahrbuchs, die
+          Zahl im Block darüber.
+        * **740,3 Mio. €** — der ganze „Konzern Stadt", anteilig nach
+          Beteiligungshöhe, aus dem Tabellenband der Statistischen Ämter.
+
+        Ohne diese Liste beantwortet die KI-Frage „Wie hoch sind die Schulden?"
+        mit **einer** Zahl, und welche das ist, entscheidet der Zufall der
+        Facette. Die drei nebeneinander sind die ehrliche Antwort — addiert
+        werden dürfen sie nie, sie enthalten einander.
+        """
+        aus: list[dict] = []
+        try:
+            r = self._conn.execute(
+                "SELECT jahr, wert FROM council_bilanz WHERE rolle = 'geldschulden' "
+                "ORDER BY jahr DESC LIMIT 1").fetchone()
+            if r:
+                aus.append({"art": "Kernhaushalt (nur Geldschulden)", "jahr": r["jahr"],
+                            "betrag": r["wert"],
+                            "quelle": "Bilanz des Jahresabschlusses"})
+        except sqlite3.OperationalError:
+            pass
+        try:
+            r = self._conn.execute(
+                "SELECT jahr, insgesamt FROM council_integrierte_schulden "
+                "ORDER BY jahr DESC LIMIT 1").fetchone()
+            if r:
+                aus.append({"art": "Konzern Stadt (anteilig, mit Beteiligungen)",
+                            "jahr": r["jahr"], "betrag": r["insgesamt"],
+                            "quelle": "Integrierte Schulden der Statistischen Ämter"})
+        except sqlite3.OperationalError:
+            pass
+        return aus
+
+    def bilanz_kontext(self) -> dict | None:
+        """Was der Stadt gehört und wem es zusteht — der jüngste Stichtag.
+
+        Die Bilanz ist die einzige Quelle des Bereichs, die einen **Stichtag**
+        zählt und kein Jahr. Ihre Beträge mit Erträgen oder Aufwendungen zu
+        verrechnen wäre der Fehler, gegen den diese Methode gebaut ist: „Die
+        Stadt hat 1,48 Mrd. €" und „die Stadt gibt 799 Mio. € aus" sind zwei
+        Sätze über zwei verschiedene Dinge.
+        """
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) AS j FROM council_bilanz").fetchone()
+        except sqlite3.OperationalError:
+            return None
+        if not jahr or jahr["j"] is None:
+            return None
+        jahr = jahr["j"]
+        posten = {r["rolle"]: r["wert"] for r in self._conn.execute(
+            "SELECT rolle, wert FROM council_bilanz WHERE jahr = ? AND rolle IS NOT NULL",
+            (jahr,))}
+        aktiva = ("immaterielles_vermoegen", "sachvermoegen", "finanzvermoegen",
+                  "liquide_mittel", "aktive_rap")
+        summe = sum(posten[r] for r in aktiva if r in posten) or None
+        beleg = self._conn.execute(
+            "SELECT herkunft_id FROM council_bilanz WHERE jahr = ? LIMIT 1",
+            (jahr,)).fetchone()
+        return {
+            "jahr": jahr,
+            "bilanzsumme": summe,
+            "posten": [(r, posten[r]) for r in
+                       ("sachvermoegen", "infrastrukturvermoegen", "finanzvermoegen",
+                        "liquide_mittel", "nettoposition", "sonderposten",
+                        "rueckstellungen", "pensionsrueckstellungen", "schulden")
+                       if r in posten],
+            "beleg": self._beleg(beleg["herkunft_id"] if beleg else None),
+        }
+
+    def kassensicht_kontext(self) -> dict | None:
+        """Was tatsächlich geflossen ist — die Finanzrechnung (Abschnitt 4.1).
+
+        Die zweite Rechnung desselben Jahresabschlusses, und sie kann der
+        ersten scheinbar widersprechen: Für 2024 weist die Ergebnisrechnung
+        einen Überschuss aus und die Finanzrechnung einen Fehlbetrag an
+        Finanzmitteln. Beides stimmt — die eine bucht, wenn ein Anspruch
+        entsteht, die andere, wenn Geld fließt. Ohne die zweite Zahl entsteht
+        ein falscher Eindruck, und zwar in beide Richtungen.
+        """
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) AS j FROM council_finanzrechnung").fetchone()
+        except sqlite3.OperationalError:
+            return None
+        if not jahr or jahr["j"] is None:
+            return None
+        jahr = jahr["j"]
+        zeilen = [dict(r) for r in self._conn.execute(
+            "SELECT nr, bezeichnung, ergebnis, rolle, herkunft_id "
+            "FROM council_finanzrechnung WHERE jahr = ? ORDER BY nr", (jahr,))]
+        if not zeilen:
+            return None
+        # Nur die Summenzeilen: Die Einzelposten sind die Ertragsarten und
+        # stehen schon im Ergebnisrechnungs-Block.
+        summen = [z for z in zeilen if z.get("rolle")]
+        return {"jahr": jahr,
+                "zeilen": [(z["bezeichnung"], z["ergebnis"], z["rolle"]) for z in summen],
+                "beleg": self._beleg(zeilen[0].get("herkunft_id"))}
+
+    def nachbewilligungen_kontext(self, jahr: int | None = None) -> dict | None:
+        """Was beschlossen wurde, NACHDEM der Haushalt beschlossen war (§ 117).
+
+        Die Zahl, die der Haushaltsplan nicht kennt und der Jahresabschluss
+        nur als Summe zeigt. Sie ist außerdem die einzige Stelle, an der
+        sichtbar wird, wie viel der Rat selbst entschieden hat: 2022 waren es
+        89 % der Nachbewilligungen, 2024 nur noch 73 %.
+        """
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_nachbewilligung_jahre ORDER BY jahr")]
+        except sqlite3.OperationalError:
+            return None
+        if not rows:
+            return None
+        zeile = next((r for r in rows if r["jahr"] == jahr), rows[-1])
+        kanaele = []
+        try:
+            kanaele = [(r["kanal"], r["betrag_konsumtiv"], r["betrag_investiv"])
+                       for r in self._conn.execute(
+                           "SELECT kanal, betrag_konsumtiv, betrag_investiv "
+                           "FROM council_nachbewilligung_kanaele WHERE jahr = ?",
+                           (zeile["jahr"],))]
+        except sqlite3.OperationalError:
+            pass
+        return {"jahr": zeile["jahr"],
+                "konsumtiv": zeile.get("summe_konsumtiv"),
+                "investiv": zeile.get("summe_investiv"),
+                "gesamt": (zeile.get("summe_konsumtiv") or 0)
+                          + (zeile.get("summe_investiv") or 0),
+                "verpflichtungen": zeile.get("verpflichtungen_betrag"),
+                "kanaele": kanaele,
+                "probe_text": zeile.get("probe_text") if not zeile.get("probe_ok") else None,
+                "beleg": self._beleg(zeile.get("herkunft_id"))}
+
+    def kennzahlen_kontext(self, limit: int = 13) -> dict | None:
+        """Die dreizehn Kennzahlen — jeweils der jüngste Stand, mit Rechenweg.
+
+        Die einzige Quelle des Bereichs, die ihre eigenen Formeln mitliefert.
+        Deshalb darf die Antwort eine Quote nennen, ohne sie zu erfinden — und
+        deshalb steht der Rechenweg im Kontext, nicht nur der Wert.
+
+        ``korrekturen`` sind die Stellen, an denen ein späterer Bericht eine
+        Zahl still geändert hat. Wer nach der Steuerquote 2021 fragt, soll
+        nicht die erste gedruckte Fassung bekommen, ohne dass jemand sagt,
+        dass es eine zweite gab.
+        """
+        from council import kennzahlen as _kz
+
+        staende = self.get_kennzahlen()
+        if not staende:
+            return None
+        reihe = _kz.neueste(staende)
+        _, funde = _kz.ueberlappungsprobe(staende)
+        formeln = {}
+        for f in self.get_kennzahl_formeln():
+            formeln[f["kennzahl"]] = f["formel"]
+        juengstes = max(z["jahr"] for z in reihe)
+        aktuell = [z for z in reihe if z["jahr"] == juengstes][:limit]
+        label = {k.key: k.label for k in _kz.KENNZAHLEN}
+        einheit = {k.key: k.einheit for k in _kz.KENNZAHLEN}
+        return {
+            "jahr": juengstes,
+            "werte": [(label.get(z["kennzahl"], z["kennzahl"]), z["wert"],
+                       einheit.get(z["kennzahl"], "eur"), z["stellen"],
+                       formeln.get(z["kennzahl"]))
+                      for z in aktuell],
+            # Mit Einheit, damit der Prompt-Baustein „45,90 %" schreiben kann
+            # und nicht „45.9" — im deutschen Fließtext ist das ein Zahlwort
+            # mit falschem Trennzeichen und ohne Einheit.
+            "korrekturen": [(label.get(f["kennzahl"], f["kennzahl"]), f["jahr"],
+                             f["alt"], f["alt_bericht"], f["neu"], f["neu_bericht"],
+                             einheit.get(f["kennzahl"], "eur"))
+                            for f in funde if f["art"] == "revision"],
+            "beleg": self._beleg(aktuell[0].get("herkunft_id") if aktuell else None),
+        }
+
+    def _buergschafts_kontext(self) -> dict | None:
+        """Wofür die Stadt geradesteht — die Zahl, die in keiner Schuldenreihe steht.
+
+        Eine Bürgschaft kostet nichts, solange sie nicht gezogen wird, und
+        taucht deshalb in keiner der drei Schuldenzahlen auf. Ende 2024 waren
+        es 220,3 Mio. € — das Fünffache der eigenen Geldschulden des
+        Kernhaushalts. Wer nach den Schulden fragt, bekommt das dazu, aber
+        ausdrücklich als **eigene** Größe: Eine Bürgschaft ist keine Schuld.
+        """
+        try:
+            r = self._conn.execute(
+                "SELECT jahr, bestand, grund, herkunft_id FROM council_buergschaften "
+                "ORDER BY jahr DESC LIMIT 1").fetchone()
+        except sqlite3.OperationalError:
+            return None
+        if not r:
+            return None
+        rueck = None
+        try:
+            z = self._conn.execute(
+                "SELECT wert FROM council_bilanz WHERE rolle = 'buergschaftsrueckstellung' "
+                "AND jahr = ?", (r["jahr"],)).fetchone()
+            rueck = z["wert"] if z else None
+        except sqlite3.OperationalError:
+            pass
+        return {"jahr": r["jahr"], "bestand": r["bestand"], "grund": r["grund"],
+                "rueckstellung": rueck, "beleg": self._beleg(r["herkunft_id"])}
+
+    def investitionen_fuer_begriffe(self, begriffe: list[str],
+                                    limit: int = 3) -> dict | None:
+        """Was die Stadt bauen und kaufen will — Summenzeile und die
+        Teilhaushalte, die zur Frage passen.
+
+        Die andere Hälfte des Haushaltsplans. Sie mit dem Ergebnishaushalt in
+        einem Satz zu verrechnen wäre der Fehler, gegen den diese Methode
+        gebaut ist: Es sind zwei Haushalte mit zwei Zahlenwerken.
+
+        Geliefert wird die **Summenzeile der Datei** (``ebene``
+        ``investitionen``) — das Ziel der Rechenprobe, nicht unsere Addition.
+        Der *Gesamtbetrag des Finanzhaushaltes* (``ebene``
+        ``finanzhaushalt``) bleibt bewusst draußen: Er zählt die laufende
+        Verwaltungstätigkeit mit, ist von keiner Probe der Datei gedeckt und
+        stünde im Prompt direkt neben einer geprüften Zahl.
+        """
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(jahr) FROM council_investitionen "
+                "WHERE ebene = 'investitionen'").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahr:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT ebene, thh_nr, bezeichnung, einzahlungen, auszahlungen, herkunft_id "
+            "FROM council_investitionen WHERE jahr = ? AND ebene IN "
+            "('investitionen', 'teilhaushalt') ORDER BY thh_nr", (jahr,))]
+        gesamt = next((r for r in rows if r["ebene"] == "investitionen"), None)
+        if not gesamt:
+            return None
+        teile = [r for r in rows if r["ebene"] == "teilhaushalt"]
+        bewertet = [(self._trifft(r["bezeichnung"], begriffe), r) for r in teile]
+        passend = [r for n, r in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
+        if not passend:
+            # Ohne Begriffs-Treffer die größten Brocken: „Was wird gebaut?"
+            # meint die, über die zu reden sich lohnt.
+            passend = sorted(teile, key=lambda r: -(r["auszahlungen"] or 0))[:limit]
+        return {"jahr": jahr, "gesamt": gesamt, "teilhaushalte": passend,
+                "beleg": self._beleg(gesamt.get("herkunft_id"))}
+
+    def stellenplan_kontext(self, jahrgang: int | None = None) -> dict | None:
+        """Die Gesamtzeilen des Stellenplans — Stellen, besetzt, nicht besetzt.
+
+        Die einzige Schicht des Haushalts, die nicht in Euro rechnet. Auf
+        „Wie viele Stellen sind unbesetzt?" antwortet keine Euro-Zahl.
+
+        DREI DINGE, DIE MITREISEN MÜSSEN, weil die Zahlen sonst falsch gelesen
+        werden:
+
+        1. Die Besetzungszahlen gehören zur **Vorjahresspalte**, nicht zum
+           Haushaltsjahr — geplant wird vorwärts, gezählt werden kann nur
+           rückwärts (``stichtag`` sagt, auf welchen Tag). ``stellen_plan``
+           minus ``besetzt`` mischt zwei Stichtage und steht in keinem
+           Dokument; ``nicht_besetzt`` steht dort, und zwar als eigene Spalte.
+        2. Teil A und Teil B sind zwei Tabellen mit zwei Rechenproben, und sie
+           kommen einzeln herein. ``fehlend`` sagt, welcher Teil eines
+           Jahrgangs **nicht** vorliegt — ohne das sähe ein halber Jahrgang
+           wie ein ganzer aus.
+        3. Es gibt im Plan keine Zeile „Stellen insgesamt". Diese Methode
+           bildet auch keine: Was hier steht, steht so im Dokument.
+        """
+        try:
+            jahrgang = jahrgang or self._conn.execute(
+                "SELECT MAX(jahrgang) FROM council_stellenplan "
+                "WHERE art = 'gesamt'").fetchone()[0]
+        except sqlite3.OperationalError:
+            return None
+        if not jahrgang:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT teil, bezeichnung, stellen_plan, stellen_vorjahr, besetzt, "
+            " nicht_besetzt, stichtag, herkunft_id FROM council_stellenplan "
+            "WHERE jahrgang = ? AND art = 'gesamt' ORDER BY teil", (jahrgang,))]
+        if not rows:
+            return None
+        from council import stellenplan as _stellenplan
+
+        for r in rows:
+            r["teil_name"] = _stellenplan.TEIL_NAMEN.get(r["teil"], r["teil"])
+        fehlend = [t for t in sorted(_stellenplan.TEIL_NAMEN)
+                   if t not in {r["teil"] for r in rows}]
+        return {
+            "jahrgang": jahrgang,
+            "stichtag": next((r["stichtag"] for r in rows if r.get("stichtag")), None),
+            "teile": rows,
+            "fehlend": [_stellenplan.TEIL_NAMEN[t] for t in fehlend],
+            "beleg": self._beleg(rows[0].get("herkunft_id")),
+        }
+
+    def haushaltsantraege_kontext(self, jahr: int | None = None,
+                                  limit: int = 8) -> dict | None:
+        """Wer wollte am Haushalt etwas ändern — und kam damit durch?
+
+        Die leichte Schwester von ``haushalt_streit``: dieselben Anker, aber
+        ohne Debatte und ohne Protokoll-Volltext. Die Wortbeiträge kommen im
+        Antwort-Prompt ohnehin über ``_debatten_block``; das Zerlegen jedes
+        Protokolls kostete in einem Web-Request mehr, als es dort einbrächte.
+
+        Gezählt statt aufgezählt: Ein Jahrgang bringt es auf mehrere Dutzend
+        Änderungslisten, und „CDU: 9 Listen, 2 angenommen, 7 abgelehnt" sagt
+        dasselbe wie neun Titelzeilen, die alle „Änderungsliste der
+        CDU-Fraktion zum Ergebnishaushalt" heißen.
+
+        ``jahr`` ist das **Haushaltsjahr**, nicht das Sitzungsjahr: Der
+        Haushalt 2026 wurde im Februar 2026 beschlossen, der Haushalt 2023 im
+        Dezember 2022. Ohne Angabe kommt der jüngste Jahrgang.
+
+        WAS DIESE QUELLE NICHT WEISS, und was der Baustein dazu deshalb
+        ausdrücklich sagt: den **Inhalt** einer Änderungsliste. Welche Position
+        um welchen Betrag — das liegt in den Anlagen-PDFs der Vorlage, die
+        nicht als Volltext im Bestand sind.
+        """
+        from council import haushaltsdebatte as hd
+
+        try:
+            rows = self._conn.execute(
+                "SELECT d.ksinr, d.item_number, d.title, d.outcome, d.vote, "
+                "       cs.committee, cs.session_date "
+                "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+                "WHERE d.kind = 'decision' AND (d.title LIKE 'Haushaltssatzung und Haushaltsplan%' "
+                "   OR d.title LIKE 'Haushalt 2%')").fetchall()
+        except sqlite3.OperationalError:
+            return None
+        anker: dict[int, dict[int, dict]] = {}
+        for r in rows:
+            titel = (r["title"] or "").strip()
+            satzung = self._STREIT_SATZUNG.match(titel)
+            sammel = self._STREIT_SAMMEL.match(titel)
+            if not satzung and not sammel:
+                continue
+            j = int((satzung or sammel).group(1))
+            st = anker.setdefault(j, {}).setdefault(r["ksinr"], {
+                "ksinr": r["ksinr"], "gremium": r["committee"],
+                "datum": r["session_date"], "top": None, "beschluss": None})
+            if sammel:
+                # Der Sammelpunkt selbst ist die verlässlichste Angabe.
+                st["top"] = (r["item_number"] or "").strip() or st["top"]
+            else:
+                if not st["top"]:
+                    st["top"] = self._streit_oberpunkt(r["item_number"])
+                st["beschluss"] = {"outcome": r["outcome"], "vote": r["vote"]}
+        if not anker:
+            return None
+        gewaehlt = jahr if jahr in anker else max(anker)
+
+        stationen = []
+        for st in sorted(anker[gewaehlt].values(),
+                         key=lambda s: (s["datum"], s["gremium"] == "Rat", s["ksinr"])):
+            if not st["top"]:
+                continue
+            praefix = st["top"] + "."
+            traeger: dict[str, dict] = {}
+            verwaltung = gesamt = 0
+            for r in self._conn.execute(
+                    "SELECT ksinr, item_number, title, outcome, vote FROM council_decisions "
+                    "WHERE ksinr = ? AND kind = 'subvote' ORDER BY position",
+                    (st["ksinr"],)).fetchall():
+                nr = (r["item_number"] or "").strip()
+                if nr != st["top"] and not nr.startswith(praefix):
+                    continue
+                antrag = hd.antrag_aus_zeile(dict(r))
+                if not antrag:
+                    continue
+                gesamt += 1
+                if antrag.ist_verwaltung:
+                    verwaltung += 1
+                    continue
+                # Gemeinsame Listen zählen für ALLE Beteiligten — „SPD/Grüne"
+                # ist keine Fraktion, sondern zwei, die sich zusammengetan
+                # haben. Sie unter einem Kunstnamen zu führen ließe die Frage
+                # „Wie viele Anträge stellte die SPD?" ins Leere laufen.
+                for name in (antrag.urheber or "").split(" / "):
+                    if not name:
+                        continue
+                    e = traeger.setdefault(name, {"name": name, "anzahl": 0,
+                                                  "angenommen": 0, "abgelehnt": 0})
+                    e["anzahl"] += 1
+                    if antrag.outcome == "angenommen":
+                        e["angenommen"] += 1
+                    elif antrag.outcome == "abgelehnt":
+                        e["abgelehnt"] += 1
+            if not gesamt:
+                continue
+            stationen.append({
+                "gremium": st["gremium"], "datum": st["datum"],
+                "urheber": sorted(traeger.values(), key=lambda u: (-u["anzahl"], u["name"]))[:limit],
+                "verwaltung": verwaltung, "gesamt": gesamt,
+                "beschluss": st["beschluss"],
+            })
+        if not stationen:
+            return None
+        # Die LETZTEN beiden Stationen, nicht die ersten: In Oldenburg sind das
+        # der Ausschuss für Finanzen und Beteiligungen und der Rat, und der Rat
+        # tagt zuletzt. Käme je eine dritte Station dazu, fiele damit die
+        # früheste heraus — nie die entscheidende.
+        return {"jahr": gewaehlt, "jahre": sorted(anker),
+                "stationen": stationen[-2:]}
 
     # ---- Teilvoten aus raw_result (welche Fraktion stimmte wie) ----
 
@@ -5963,3 +11402,309 @@ class CouncilStore:
             "FROM council_protocols WHERE raw_text IS NOT NULL AND raw_text != ''"
         ).fetchall()
         return [dict(r) for r in rows]
+
+    # ---- Der Weg eines Haushalts durch den Rat (A6, 08/2026) ---------------
+    #
+    # Gebaut aus dem, was das Ratsinformationssystem ohnehin führt: der
+    # Beratungsfolge (`council_beratungen`), den Tagesordnungen
+    # (`council_agenda_items`) und den Protokoll-Beschlüssen
+    # (`council_decisions`). Kein eigener Datenbestand, kein Cron.
+    #
+    # `council_anlagen.fetched_at` ist hier KEINE Quelle: Bei allen
+    # Finanzdokumenten steht dort der 10.08.2026 — der Tag unseres
+    # Volltext-Backfills, nicht der Tag der Veröffentlichung. Das Datum einer
+    # Station kommt ausschließlich aus `council_sessions.session_date`.
+
+    #: Ein Haushaltsjahr trägt drei Sorten Vorlagen, und sie heißen nicht
+    #: einheitlich. Die Jahreszahl steht immer vorn, das Wort davor variiert
+    #: („Haushalt 2026", „Haushaltsentwurf 2024", „HH 2020").
+    _HH_TITEL = re.compile(r"^(?:Haushaltsentwurf|Haushalt|HH)\s*(\d{4})")
+
+    #: Woran ein Verwaltungsentwurf als Teilhaushalts-Bericht erkennbar ist —
+    #: er geht in den jeweiligen Fachausschuss, nicht in den Finanzausschuss.
+    _HH_TEILBERICHT = ("Teilhaushalt", "THH", "Budget", "Stiftung")
+
+    def haushalt_weg(self, jahr: int | None = None) -> list[dict]:
+        """Wann ein Haushaltsjahr welche Station im Rat durchlaufen hat.
+
+        Je Haushaltsjahr eine Runde mit drei Abschnitten:
+
+        - ``einbringung``: die früheste Beratung einer Entwurfs-Vorlage — der
+          Moment, ab dem der Entwurf öffentlich einsehbar ist,
+        - ``fachausschuesse``: die Teilhaushalts-Berichte danach, als Zeitraum
+          und Gremienliste (einzeln aufzuzählen hilft niemandem, es sind rund
+          ein Dutzend Termine),
+        - ``stationen``: die Beratungsfolge der Sammelvorlage „Haushalt
+          <jahr> - Beschluss" bis zur Entscheidung im Rat, je Station mit dem
+          Ergebnis, das die Tagesordnung ausweist.
+
+        **Die Fensterregel** (Einbringung … letzte Beschluss-Station) ist kein
+        Schönheitsfilter, sondern Notwehr gegen falsch betitelte Vorlagen:
+        22/0824 heißt „Haushalt 2022 …", wurde aber im November 2022 beraten
+        und gehört zur Runde 2023; 25/0643 heißt „Haushalt 2025 …" und liegt
+        in der Runde 2026. Ohne die Regel zöge je ein Ausreißer den Zeitraum
+        der Fachausschuss-Runde um ein volles Jahr auf.
+
+        Ohne Sammelvorlage gibt es keine Runde: Das Haushaltsjahr 2018 wurde
+        vor dem Beginn unseres Bestands (Januar 2018) beschlossen.
+        """
+        vorlagen: dict[int, dict[str, list[dict]]] = {}
+        for r in self._conn.execute(
+                "SELECT kvonr, vorlage_nr, title FROM council_vorlagen "
+                "WHERE title LIKE 'Haushalt%' OR title LIKE 'HH %'").fetchall():
+            m = self._HH_TITEL.match(r["title"] or "")
+            if not m:
+                continue                      # „Haushaltsplan der …", „Haushaltsvermerk …"
+            j = int(m.group(1))
+            if jahr is not None and j != jahr:
+                continue
+            titel = r["title"]
+            if "Verwaltungsentwurf" in titel:
+                art = "teil" if any(k in titel for k in self._HH_TEILBERICHT) else "entwurf"
+            elif "Beschluss" in titel:
+                art = "beschluss"
+            else:
+                continue
+            vorlagen.setdefault(j, {"entwurf": [], "teil": [], "beschluss": []})[art].append(dict(r))
+
+        runden = []
+        for j in sorted(vorlagen):
+            runde = self._haushalt_runde(j, vorlagen[j])
+            if runde:
+                runden.append(runde)
+        return runden
+
+    def _haushalt_runde(self, jahr: int, teile: dict[str, list[dict]]) -> dict | None:
+        """Eine Haushaltsrunde zusammensetzen — siehe ``haushalt_weg``."""
+        beschluss_vorlagen = teile["beschluss"]
+        stationen = self._hh_beratungen([v["kvonr"] for v in beschluss_vorlagen])
+        if not stationen:
+            return None
+
+        entwurf_beratungen = self._hh_beratungen(
+            [v["kvonr"] for v in (*teile["entwurf"], *teile["teil"])])
+        einbringung = entwurf_beratungen[0] if entwurf_beratungen else None
+
+        von = einbringung["datum"] if einbringung else stationen[0]["datum"]
+        bis = stationen[-1]["datum"]
+        fach = [b for b in entwurf_beratungen[1:] if von <= b["datum"] <= bis]
+
+        # Der Kernhaushalt ist der Punkt, an dem tatsächlich abgestimmt wird —
+        # die Sammelvorlage bündelt daneben Stiftungen und Eigenbetriebe. Der
+        # Beschluss trägt den Jahrgang im Titel, deshalb ist er ohne Raten
+        # zuzuordnen: über die Sitzung, nicht über eine geratene TOP-Nummer.
+        votum = {}
+        for d in self._conn.execute(
+                "SELECT id, ksinr, item_number, outcome, vote, gegenstimmen, enthaltungen "
+                "FROM council_decisions WHERE kind = 'decision' AND title LIKE ? "
+                "ORDER BY id", (f"Haushaltssatzung und Haushaltsplan {jahr}%",)).fetchall():
+            votum.setdefault(d["ksinr"], dict(d))
+
+        for s in stationen:
+            s["votum"] = votum.get(s["ksinr"])
+
+        return {
+            "jahr": jahr,
+            "vorlage_nr": beschluss_vorlagen[0]["vorlage_nr"] if beschluss_vorlagen else None,
+            "kvonr": beschluss_vorlagen[0]["kvonr"] if beschluss_vorlagen else None,
+            "einbringung": einbringung,
+            "fachausschuesse": {
+                "von": fach[0]["datum"], "bis": fach[-1]["datum"],
+                "anzahl": len(fach),
+                "gremien": sorted({b["gremium"] for b in fach}),
+            } if fach else None,
+            "stationen": stationen,
+        }
+
+    def _hh_beratungen(self, kvonrs: list[int]) -> list[dict]:
+        """Beratungen mehrerer Vorlagen, nach Datum sortiert, je mit dem
+        Ergebnis aus der Tagesordnung.
+
+        Die TOP-Nummer kommt aus `council_agenda_items` und nicht aus
+        `council_beratungen.top`: Nur dort trägt sie das Präfix („Ö 6"), und
+        „Ö 6" und „N 6" sind verschiedene Punkte."""
+        if not kvonrs:
+            return []
+        platz = ",".join("?" * len(kvonrs))
+        rows = self._conn.execute(
+            f"""SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS rolle, b.is_public,
+                       b.ksinr, v.vorlage_nr, v.title AS vorlage_titel,
+                       a.item_number AS top, a.title AS top_titel
+                  FROM council_beratungen b
+                  JOIN council_vorlagen v ON v.kvonr = b.kvonr
+             LEFT JOIN council_agenda_items a ON a.ksinr = b.ksinr AND a.kvonr = b.kvonr
+                 WHERE b.kvonr IN ({platz})
+              ORDER BY b.datum, b.gremium""", kvonrs).fetchall()
+        out = []
+        for r in rows:
+            s = dict(r)
+            s["ergebnis"] = self._hh_ergebnis(s.pop("top_titel"))
+            # Jede Station trägt den Schlüssel, auch wenn nur die Stationen der
+            # Sammelvorlage ihn je füllen — eine Station mit und eine ohne
+            # `votum` wären zwei Formen derselben Sache.
+            s["votum"] = None
+            out.append(s)
+        return out
+
+    @staticmethod
+    def _hh_ergebnis(top_titel: str | None) -> str | None:
+        """Das Ergebnis, das die Tagesordnung an den Punkt schreibt —
+        „geändert beschlossen", „zurückgestellt/abgesetzt", „zur Kenntnis
+        genommen". Die angehängte Stimmenzählung bleibt weg: Sie steht bei
+        einem Teil der Punkte und fehlt beim Rest, taugt also nicht als
+        Angabe, auf die sich eine Seite verlassen könnte."""
+        if not top_titel or "Beschluss: " not in top_titel:
+            return None
+        rest = top_titel.split("Beschluss: ", 1)[1].strip()
+        return rest.split("Abstimmung:")[0].strip() or None
+
+    # ---- Der Streit ums Geld (08/2026) ------------------------------------
+    #
+    # Die Zahlen des Haushalts stehen in den Finanzdokumenten; dass über sie
+    # gestritten wurde, steht nur im Protokoll. Diese Methode setzt beides
+    # zusammen, was die Ratsdaten dazu hergeben: welche Änderungslisten zur
+    # Abstimmung standen (`council_decisions` mit `kind='subvote'`), was in
+    # der Debatte gesagt wurde (`council_protocols.raw_text`, zerlegt in
+    # `council.haushaltsdebatte`) und wie am Ende abgestimmt wurde.
+    #
+    # Kein eigener Datenbestand und kein Cron: Alles wird beim Lesen aus dem
+    # gerechnet, was der Protokoll-Import ohnehin schreibt. Damit kann die
+    # Seite nicht veralten, und ein nachgetragenes Protokoll erscheint ohne
+    # Backfill.
+
+    #: Die Schlussabstimmung trägt in jedem Jahrgang denselben Titel; die
+    #: Jahreszahl darin ist das HAUSHALTSJAHR, nicht das Sitzungsjahr (der
+    #: Haushalt 2023 wurde im Dezember 2022 beschlossen, der Haushalt 2026
+    #: erst im Februar 2026).
+    _STREIT_SATZUNG = re.compile(r"^Haushaltssatzung und Haushaltsplan\s+(\d{4})")
+    #: Der Sammelpunkt, unter dem die Debatte geführt wird. Er steht nicht in
+    #: jedem Protokoll als eigene Beschlusszeile — wo er fehlt, wird der
+    #: Oberpunkt aus der Nummer der Schlussabstimmung abgeleitet.
+    _STREIT_SAMMEL = re.compile(r"^Haushalt\s+(\d{4})\s*$")
+
+    def haushalt_streit(self, jahr: int | None = None) -> list[dict]:
+        """Die politische Auseinandersetzung um jeden Haushaltsjahrgang.
+
+        Je Haushaltsjahr eine Runde mit ihren ``stationen`` — in Oldenburg
+        sind das der Ausschuss für Finanzen und Beteiligungen und der Rat.
+        Jede Station trägt:
+
+        - ``antraege``: die Änderungslisten, die dort zur Abstimmung standen,
+          mit ``urheber`` (Fraktion/Gruppe) und ``outcome``. Der **Inhalt**
+          einer Liste — welche Position um welchen Betrag — steht nicht dabei:
+          Er liegt in den Anlagen-PDFs der Vorlage, die nicht als Volltext im
+          Bestand sind. Was hier steht, ist „wer wollte ändern und kam damit
+          durch", nicht „was genau".
+        - ``debatte``: die Wortbeiträge unter dem Sammelpunkt, in der
+          Reihenfolge des Protokolls. Keine Auswahl, keine Zusammenfassung —
+          wer kürzt, kürzt für alle gleich, und das tut erst die Anzeige.
+        - ``beschluss``: die Schlussabstimmung über die Haushaltssatzung.
+
+        Der Ausschuss stimmt über dieselben Listen ab wie der Rat, oft mit
+        anderem Ergebnis; deshalb stehen beide Stationen nebeneinander statt
+        zusammengefasst.
+        """
+        from council import haushaltsdebatte as hd
+
+        anker: dict[int, dict[int, dict]] = {}
+        for r in self._conn.execute(
+                "SELECT d.id, d.ksinr, d.item_number, d.title, d.outcome, d.vote, "
+                "       d.gegenstimmen, d.enthaltungen, d.raw_result, d.vorlage_nr, "
+                "       cs.committee, cs.session_date "
+                "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
+                "WHERE d.kind = 'decision' AND (d.title LIKE 'Haushaltssatzung und Haushaltsplan%' "
+                "   OR d.title LIKE 'Haushalt 2%')").fetchall():
+            titel = (r["title"] or "").strip()
+            satzung = self._STREIT_SATZUNG.match(titel)
+            sammel = self._STREIT_SAMMEL.match(titel)
+            if not satzung and not sammel:
+                continue
+            j = int((satzung or sammel).group(1))
+            if jahr is not None and j != jahr:
+                continue
+            eintrag = anker.setdefault(j, {}).setdefault(r["ksinr"], {
+                "ksinr": r["ksinr"],
+                "gremium": r["committee"],
+                "datum": r["session_date"],
+                "top": None,
+                "beschluss": None,
+            })
+            if satzung:
+                eintrag["beschluss"] = {
+                    "id": r["id"], "top": r["item_number"], "titel": titel,
+                    "outcome": r["outcome"], "vote": r["vote"],
+                    "gegenstimmen": r["gegenstimmen"], "enthaltungen": r["enthaltungen"],
+                    "wortlaut": (r["raw_result"] or "").strip() or None,
+                    "vorlage_nr": r["vorlage_nr"],
+                }
+                if not eintrag["top"]:
+                    eintrag["top"] = self._streit_oberpunkt(r["item_number"])
+            else:
+                # Der Sammelpunkt selbst — die verlässlichste Angabe für die Debatte.
+                eintrag["top"] = (r["item_number"] or "").strip() or eintrag["top"]
+                if eintrag["beschluss"] is None:
+                    eintrag["beschluss"] = {
+                        "id": r["id"], "top": r["item_number"], "titel": titel,
+                        "outcome": r["outcome"], "vote": r["vote"],
+                        "gegenstimmen": r["gegenstimmen"], "enthaltungen": r["enthaltungen"],
+                        "wortlaut": (r["raw_result"] or "").strip() or None,
+                        "vorlage_nr": r["vorlage_nr"],
+                    }
+
+        runden = []
+        for j in sorted(anker):
+            stationen = []
+            # Am selben Tag tagt erst der Ausschuss, dann der Rat — das Datum
+            # allein stellt sie sonst in beliebiger Reihenfolge nebeneinander.
+            for st in sorted(anker[j].values(),
+                             key=lambda s: (s["datum"], s["gremium"] == "Rat", s["ksinr"])):
+                stationen.append(self._streit_station(st, hd))
+            if stationen:
+                runden.append({"jahr": j, "stationen": stationen})
+        return runden
+
+    @staticmethod
+    def _streit_oberpunkt(item_number: str | None) -> str | None:
+        """Der Sammelpunkt über einer Schlussabstimmung: „6.5" → „6",
+        „7.1.7" → „7.1". Unter ihm steht die Debatte, unter seinen
+        Unterpunkten stehen die Abstimmungen."""
+        nr = (item_number or "").strip().rstrip(".")
+        if "." not in nr:
+            return nr or None
+        return nr.rsplit(".", 1)[0]
+
+    def _streit_station(self, st: dict, hd) -> dict:
+        """Eine Station anreichern: Änderungslisten, Debatte, Protokoll-Link."""
+        ksinr, top = st["ksinr"], st["top"]
+
+        antraege = []
+        if top:
+            praefix = top + "."
+            for r in self._conn.execute(
+                    "SELECT ksinr, item_number, title, outcome, vote FROM council_decisions "
+                    "WHERE ksinr = ? AND kind = 'subvote' ORDER BY position", (ksinr,)).fetchall():
+                nr = (r["item_number"] or "").strip()
+                if nr != top and not nr.startswith(praefix):
+                    continue
+                antrag = hd.antrag_aus_zeile(dict(r))
+                if antrag:
+                    antraege.append(antrag.als_dict())
+
+        prot = self._conn.execute(
+            "SELECT document_url, raw_text FROM council_protocols WHERE ksinr = ?",
+            (ksinr,)).fetchone()
+        debatte: list[dict] = []
+        if prot and prot["raw_text"] and top:
+            anwesende = [dict(a) for a in self._conn.execute(
+                "SELECT name, party, role FROM council_attendance WHERE ksinr = ?", (ksinr,)).fetchall()]
+            # Säubern, schneiden, zerlegen — mit Gedächtnis über den Inhalt.
+            # Es bleibt beim Rechnen zur Lesezeit (s. Kopf von `haushalt_streit`);
+            # nur wird dasselbe Protokoll nicht bei jedem Aufruf neu zerlegt.
+            debatte = hd.debatte_zu_top(prot["raw_text"], top, anwesende)
+
+        return {
+            **st,
+            "antraege": antraege,
+            "debatte": debatte,
+            "protokoll_url": prot["document_url"] if prot else None,
+        }

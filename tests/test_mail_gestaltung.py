@@ -13,7 +13,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from council import watcher
-from council.ergebnisse import sitzung_href
 from kern import digest_email
 
 
@@ -107,7 +106,7 @@ def test_top_titel_wird_entschaerft():
 
 
 def test_betreff_bleibt_einzeilig_und_gekappt():
-    """Themennamen kommen von Nutzer:innen. Ein Zeilenumbruch hat in einer
+    """Themennamen kommen von Nutzer*innen. Ein Zeilenumbruch hat in einer
     Betreffzeile nichts zu suchen — Mail-Header sind zeilenbasiert."""
     assert "\n" not in watcher._einzeilig("Zeile eins\nZeile zwei")
     assert watcher._einzeilig("Zeile eins\nZeile zwei") == "Zeile eins Zeile zwei"

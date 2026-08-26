@@ -1,10 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+// Diagramm der Quiz-Auflösung — ein ADAPTER auf den Grafik-Baukasten, kein
+// eigener Renderer.
+//
+// Diese Datei war bis 08/2026 die letzte Privat-Implementierung im Frontend:
+// drei handgezeichnete Diagramme (Balkenliste, Donut, Trendlinie) mit eigenen
+// Farben (`bg-amber-500`), eigener Zahlenformatierung (`Intl` inline) und
+// eigenen Einstiegs-Animationen von 700–1000 ms. Alle drei Punkte stehen quer
+// zum Vertrag in `components/grafik/README.md`: Farben kommen aus den Rampen-
+// Tokens, Zahlen aus `components/grafik/format.ts`, Animationen dauern höchstens
+// 300 ms. Statt sie einzeln nachzubessern, rendert jetzt der Baukasten:
+//
+//   bars  → <RanglisteSchiene> (GB-03) — sichtbare Schiene, Null-Basis, Label
+//           wandert mobil über den Balken. `highlight` wird `hervorgehoben`:
+//           findet, bewertet nicht.
+//   trend → <Zeitreihe> (GB-01) — statt der alten Min-Max-Linie eine Achse mit
+//           Null-Basis und Ableseleiste (Hover, Tap, Pfeiltasten). Fehlte ein
+//           Jahr, zog die alte Linie stillschweigend durch; die Zeitreihe
+//           bricht dort ab und setzt einen „?"-Kasten.
+//   share → <Gegenbalken> (GB-04) — eine 100-%-Leiste mit zwei Segmenten
+//           statt eines Donuts. Der Baukasten hat bewusst keine Kreisform:
+//           Winkel vergleicht man schlechter als Längen.
+//
+// Das Chart-JSON des Backends (`council/haushalt.py`) bleibt unverändert —
+// getauscht ist nur, wer es zeichnet.
+//
+// WARUM DER RAHMEN `bg-card` TRÄGT: Die Rampen `--hh-ein-*`/`--hh-aus-*` sind
+// gegen die KARTENFLÄCHE gerechnet (weiß bzw. hsl(212 42% 11%), Kommentar in
+// `app/globals.css`). Der Rahmen stand vorher auf `bg-background/60` — das
+// blasse Rampenende hätte dort in beiden Themes zu wenig Abstand zum Grund.
+
+import dynamic from "next/dynamic";
+import { Gegenbalken } from "@/components/grafik/gegenbalken";
+import { RanglisteSchiene, type RanglisteZeile } from "@/components/grafik/rangliste-schiene";
+import type { JahrPunkt } from "@/components/grafik/daten";
 import { cn } from "@/lib/utils";
 
+// Die Zeitreihe ist die einzige der drei Formen, die d3 mitbringt (`d3-scale`
+// samt `d3-format`/`d3-time-format`, `d3-shape`) — gemessen 54 kB der 60 kB,
+// um die dieses Bündel sonst wüchse. Sie erscheint aber nur in zwei der
+// vierzehn Haushalts-Fragen, und auch dort erst nach dem Antworten. Also
+// nachladen, sobald sie gebraucht wird — dasselbe Muster wie die Leaflet-Karte
+// nebenan (`quiz-play.tsx`). Balken und Anteil (~6 kB) bleiben synchron: Sie
+// sind der Regelfall und sollen ohne Nachladeschritt dastehen.
+const Zeitreihe = dynamic(
+  () => import("@/components/grafik/zeitreihe").then((m) => m.Zeitreihe),
+  { ssr: false, loading: () => <div className="h-64 w-full animate-pulse rounded-lg bg-muted" /> },
+);
+
 /** Diagramm-Daten aus dem Answer-Payload (council/haushalt.py):
- *  bars = Balken je Bereich · share = Donut (Anteil) · trend = Jahresverlauf. */
+ *  bars = Balken je Bereich · share = Anteil am Ganzen · trend = Jahresverlauf. */
 export type QuizChartData = {
   type?: "bars" | "share" | "trend";
   title: string;
@@ -12,151 +57,91 @@ export type QuizChartData = {
   items: { label: string; value: number; highlight?: boolean }[];
 };
 
-const nf = new Intl.NumberFormat("de-DE");
-
-/** Einstiegs-Animation: erst nach dem Mount auf Zielgröße wachsen (CSS-
- *  Transition; der globale prefers-reduced-motion-Block legt sie still). */
-function useGrown() {
-  const [grown, setGrown] = useState(false);
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setGrown(true));
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  return grown;
+/** Die Einheit, wie sie hinter einer Zahl steht. Das Backend schreibt sie aus
+ *  („Mio. Euro"), im Diagramm wiederholt sie sich je Zeile — dort ist die
+ *  Kurzform die lesbare. Unbekannte Einheiten laufen unverändert durch. */
+function einheitKurz(unit: string): string {
+  if (unit === "Mio. Euro") return "Mio. €";
+  if (unit === "Prozent") return "%";
+  return unit;
 }
 
-function Bars({ items }: { items: QuizChartData["items"] }) {
-  const grown = useGrown();
-  const max = Math.max(...items.map((i) => i.value), 1);
-  return (
-    <ul className="mt-2 space-y-1.5">
-      {items.map((it) => (
-        <li key={it.label} className="flex items-center gap-2 text-xs">
-          <span className={cn("w-32 shrink-0 truncate sm:w-40",
-            it.highlight ? "font-semibold text-foreground" : "text-muted-foreground")}
-            title={it.label}>
-            {it.label}
-          </span>
-          <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-            <span className={cn("block h-full rounded-full transition-[width] duration-700 ease-out-strong",
-              it.highlight ? "bg-amber-500" : "bg-primary/60")}
-              style={{ width: grown ? `${Math.max((it.value / max) * 100, 1.5)}%` : "0%" }} />
-          </span>
-          <span className={cn("w-12 shrink-0 text-right tabular-nums",
-            it.highlight ? "font-semibold text-foreground" : "text-muted-foreground")}>
-            {nf.format(it.value)}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
+/** Trend-Punkte als Jahresreihe (Daten-Vertrag GB-00) — oder `null`, wenn die
+ *  Labels keine Jahre sind. Dann rendert die Rangliste, statt eine Zeitachse
+ *  zu behaupten, die es nicht gibt. */
+function jahresreihe(items: QuizChartData["items"]): JahrPunkt[] | null {
+  const reihe: JahrPunkt[] = [];
+  for (const it of items) {
+    const jahr = Number(it.label);
+    if (!Number.isInteger(jahr) || jahr < 1900 || jahr > 2200) return null;
+    reihe.push({ jahr, wert: it.value });
+  }
+  return reihe.length >= 2 ? reihe : null;
 }
 
-/** Donut: erster (hervorgehobener) Eintrag als amberfarbenes Segment, Rest
- *  gedeckt — großer Prozentwert in der Mitte, Legende daneben. */
-function Share({ items, unit }: { items: QuizChartData["items"]; unit: string }) {
-  const grown = useGrown();
-  const total = items.reduce((s, i) => s + i.value, 0) || 1;
-  const main = items.find((i) => i.highlight) ?? items[0];
-  const frac = main.value / total;
-  const R = 34;
-  const C = 2 * Math.PI * R;
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-4">
-      <svg viewBox="0 0 96 96" className="h-28 w-28 shrink-0" role="img"
-           aria-label={`${main.label}: ${nf.format(main.value)} ${unit}`}>
-        <circle cx="48" cy="48" r={R} fill="none" strokeWidth="13" className="stroke-muted" />
-        <circle cx="48" cy="48" r={R} fill="none" strokeWidth="13" strokeLinecap="round"
-          className="stroke-amber-500 transition-[stroke-dasharray] duration-700 ease-out-strong"
-          strokeDasharray={`${(grown ? frac : 0) * C} ${C}`}
-          transform="rotate(-90 48 48)" />
-        <text x="48" y="46" textAnchor="middle"
-          className="fill-foreground text-[19px] font-bold tabular-nums">
-          {nf.format(main.value)}
-        </text>
-        <text x="48" y="61" textAnchor="middle" className="fill-muted-foreground text-[9px]">
-          {unit}
-        </text>
-      </svg>
-      <ul className="min-w-0 flex-1 space-y-1.5">
-        {items.map((it) => (
-          <li key={it.label} className="flex items-center gap-2 text-xs">
-            <span className={cn("h-2.5 w-2.5 shrink-0 rounded-sm",
-              it.highlight ? "bg-amber-500" : "bg-muted-foreground/40")} />
-            <span className={cn("min-w-0 truncate",
-              it.highlight ? "font-semibold text-foreground" : "text-muted-foreground")}
-              title={it.label}>
-              {it.label}
-            </span>
-            <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">
-              {nf.format(it.value)} {unit === "Prozent" ? "%" : ""}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+function Rangliste({ chart }: { chart: QuizChartData }) {
+  const zeilen: RanglisteZeile[] = chart.items.map((it) => ({
+    label: it.label,
+    wert: it.value,
+    hervorgehoben: it.highlight,
+  }));
+  return <RanglisteSchiene zeilen={zeilen} einheit={einheitKurz(chart.unit)} />;
 }
 
-/** Trendlinie über Jahre: sanfte Fläche + Linie + Punkte, Endpunkt (aktuelles
- *  Jahr) hervorgehoben, Werte über den Punkten. */
-function Trend({ items }: { items: QuizChartData["items"] }) {
-  const grown = useGrown();
-  const W = 340;
-  const H = 120;
-  const PAD_X = 22;
-  const PAD_TOP = 22;
-  const PAD_BOTTOM = 20;
-  const vals = items.map((i) => i.value);
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
-  const span = Math.max(max - min, 1);
-  const x = (i: number) => PAD_X + (i * (W - 2 * PAD_X)) / Math.max(items.length - 1, 1);
-  const y = (v: number) => PAD_TOP + (1 - (v - min) / span) * (H - PAD_TOP - PAD_BOTTOM);
-  const pts = items.map((it, i) => [x(i), y(it.value)] as const);
-  const line = pts.map(([px, py]) => `${px},${py}`).join(" ");
-  const area = `${PAD_X},${H - PAD_BOTTOM} ${line} ${W - PAD_X},${H - PAD_BOTTOM}`;
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 w-full" role="img"
-         aria-label={items.map((i) => `${i.label}: ${nf.format(i.value)}`).join(", ")}>
-      <polygon points={area} className="fill-primary/10" />
-      <polyline points={line} fill="none" strokeWidth="2.5" strokeLinejoin="round"
-        strokeLinecap="round" pathLength={1}
-        className="stroke-primary transition-[stroke-dashoffset] duration-1000 ease-out-strong"
-        strokeDasharray="1" strokeDashoffset={grown ? 0 : 1} />
-      {items.map((it, i) => (
-        <g key={it.label}>
-          <circle cx={x(i)} cy={y(it.value)} r={it.highlight ? 4.5 : 3}
-            className={cn("transition-opacity duration-700",
-              it.highlight ? "fill-amber-500" : "fill-primary",
-              grown ? "opacity-100" : "opacity-0")} />
-          <text x={x(i)} y={y(it.value) - 8} textAnchor="middle"
-            className={cn("tabular-nums text-[10px] transition-opacity duration-700",
-              it.highlight ? "fill-foreground font-semibold" : "fill-muted-foreground",
-              grown ? "opacity-100" : "opacity-0")}>
-            {nf.format(it.value)}
-          </text>
-          <text x={x(i)} y={H - 6} textAnchor="middle" className="fill-muted-foreground text-[10px]">
-            {it.label}
-          </text>
-        </g>
-      ))}
-    </svg>
-  );
-}
-
-/** Diagramm in der Quiz-Auflösung — rendert je nach `type` Balken, Donut oder
- *  Trendlinie in einem gemeinsamen Rahmen (Titel + Einheiten-Fußnote). */
+/** Diagramm in der Quiz-Auflösung. Die Einheit trägt jede Form selbst (Zeile,
+ *  Achse bzw. Basis-Zeile) — eine Fußnote „Angaben in …" wäre die zweite
+ *  Beschriftung derselben Sache. */
 export function QuizChart({ chart, className }: { chart: QuizChartData; className?: string }) {
   if (!chart.items?.length) return null;
   const type = chart.type ?? "bars";
+  const rahmen = cn("rounded-lg border border-border bg-card p-3", className);
+
+  if (type === "share") {
+    // Das hervorgehobene Segment zuerst, damit der gefragte Bereich auch in
+    // der Legende oben steht. `sort` ist stabil — die übrigen behalten ihre
+    // Reihenfolge aus dem Payload.
+    //
+    // Die Farben stehen hier ausnahmsweise an den Segmenten: Ohne Angabe
+    // verteilt der Gegenbalken seine Rampe Stufe für Stufe (`--hh-aus-0`,
+    // `--hh-aus-1`, …), was bei sechs Posten trägt — bei ZWEIEN sind zwei
+    // Nachbarstufen fast dieselbe Farbe, und aus 32 zu 68 wird ein Balken mit
+    // Naht. Zwei weit auseinanderliegende Stufen derselben Rampe zeigen den
+    // Anteil; eine Bewertung ist das nicht, beide bleiben Schiefer.
+    const segmente = [...chart.items]
+      .sort((a, b) => Number(!!b.highlight) - Number(!!a.highlight))
+      .map((it) => ({
+        label: it.label,
+        wert: it.value,
+        farbe: it.highlight ? "var(--hh-aus-0)" : "var(--hh-aus-5)",
+      }));
+    // Basis ist die SUMME der Segmente, nicht die runde 100: Rundet das
+    // Backend einmal auf 99, zeigt die Leiste 99 als volle Breite statt einer
+    // Lücke, die keine ist.
+    const basis = segmente.reduce((s, x) => s + x.wert, 0);
+    return (
+      <div className={rahmen}>
+        {/* Der Titel steht hier IN der Leiste (`titel`), nicht über dem
+            Rahmen — sonst stünde er zweimal. */}
+        <Gegenbalken
+          zeilen={[{ titel: chart.title, segmente }]}
+          basis={basis}
+          einheit={einheitKurz(chart.unit)}
+          nachkomma={0}
+        />
+      </div>
+    );
+  }
+
+  const reihe = type === "trend" ? jahresreihe(chart.items) : null;
   return (
-    <div className={cn("rounded-lg border border-border bg-background/60 p-3", className)}>
+    <div className={rahmen}>
       <p className="text-xs font-semibold text-foreground">{chart.title}</p>
-      {type === "share" ? <Share items={chart.items} unit={chart.unit} />
-        : type === "trend" ? <Trend items={chart.items} />
-        : <Bars items={chart.items} />}
-      <p className="mt-1.5 text-[11px] text-muted-foreground">Angaben in {chart.unit}</p>
+      <div className="mt-2">
+        {reihe
+          ? <Zeitreihe reihe={reihe} einheit={einheitKurz(chart.unit)}
+              ariaTitel={chart.title} nachkomma={0} />
+          : <Rangliste chart={chart} />}
+      </div>
     </div>
   );
 }

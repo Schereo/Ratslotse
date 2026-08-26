@@ -58,6 +58,44 @@ def test_money_is_monotonic():
     assert big > small
 
 
+def test_bilanzsumme_zaehlt_nicht_als_ausgabe():
+    """Ein „Jahresabschluss … 580.193.969 €" ist eine Bilanzsumme, keine
+    Ausgabe — der Rat stellt sie fest, er gibt sie nicht aus.
+
+    Gemessen am Dev-Bestand (17.08.2026): 259 Beschlüsse tragen einen Betrag
+    UND einen Rechenwerk-Titel, 122 davon über 10 Mio €. Alle bekamen das
+    volle Geld-Signal. Die drei Geld-Ansichten im Store filterten längst,
+    das Geld-Signal des Wichtig-Werts nicht."""
+    rechenwerk = _dec(amount_eur=580_193_969,
+                      title="Jahresabschluss und Lagebericht 2024 für den "
+                            "Eigenbetrieb Gebäudewirtschaft und Hochbau")
+    ausgabe = _dec(amount_eur=580_193_969,
+                   title="Neubau einer Grundschule im Stadtteil Kreyenbrück")
+    assert importance._money_signal(rechenwerk["amount_eur"],
+                                    rechenwerk["title"]) is None
+    assert importance._money_signal(ausgabe["amount_eur"],
+                                    ausgabe["title"]) == 1.0
+    assert importance.importance_score(rechenwerk) < importance.importance_score(ausgabe)
+
+
+def test_fehlendes_geldsignal_zieht_nicht_nach_unten():
+    """Wichtig: Das Rechenwerk verliert sein Signal, nicht seine Punkte.
+
+    `None` nimmt das Geld aus der Rechnung (die übrigen Signale werden neu
+    normiert), eine Null zöge den Beschluss aktiv nach unten. Ein
+    Feststellungsbeschluss ist nicht unwichtig — wir wissen über sein Geld
+    nur nichts."""
+    ohne_betrag = _dec(amount_eur=None, title="Jahresabschluss 2024")
+    mit_bilanzsumme = _dec(amount_eur=580_193_969, title="Jahresabschluss 2024")
+    assert importance.importance_score(ohne_betrag) \
+        == importance.importance_score(mit_bilanzsumme)
+
+
+def test_store_und_score_teilen_eine_liste():
+    """Es darf nicht zwei Wahrheiten geben — genau daran ist es gescheitert."""
+    assert CouncilStore._NON_SPENDING_TITLES is importance.NON_SPENDING_TITLES
+
+
 def test_effort_is_monotonic():
     d = _dec(amount_eur=100_000)
     assert importance.importance_score(d, n_beratungen=7) > importance.importance_score(d, n_beratungen=1)

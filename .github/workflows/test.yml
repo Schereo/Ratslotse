@@ -28,5 +28,13 @@ jobs:
       - name: Fremde E-Mail-Adressen?
         run: python scripts/lint_adressen.py
 
+      # Aus demselben Grund ein eigener Schritt: Ein ungenutzter Import oder
+      # ein undefinierter Name soll oben im Log stehen, nicht hinter 1.500
+      # Testergebnissen. Es läuft NUR die Fehlerklasse „F" — warum, steht in
+      # `ruff.toml`. Kein Stil, keine Zeilenlänge; ein roter Lauf hier heißt,
+      # dass im Code etwas steht, das niemand benutzt oder das es nicht gibt.
+      - name: Python-Linter (ruff, nur Fehler)
+        run: ruff check .
+
       - name: Run tests
         run: python -m pytest tests/ -q

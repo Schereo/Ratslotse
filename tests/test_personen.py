@@ -258,6 +258,55 @@ def test_personen_lexikon_rat_verwaltung_und_zeitlichkeit(tmp_path):
         store.close()
 
 
+def _bericht_personen(store, zeilen):
+    """Aufsichtsorgan-Zeilen einsetzen: (bericht_jahr, name, funktion)."""
+    with store._conn:
+        store._conn.executemany(
+            "INSERT INTO council_gesellschaft_personen (bericht_jahr, gesellschaft, "
+            "reihenfolge, gremium, name, funktion, vorsitz, hinweis, "
+            "funktionen_zuordenbar, fetched_at) "
+            "VALUES (?, 'gsg', ?, 'Aufsichtsrat', ?, ?, NULL, NULL, 1, datetime('now'))",
+            [(j, i, n, f) for i, (j, n, f) in enumerate(zeilen)])
+
+
+def test_personen_lexikon_beteiligung_mit_funktion(tmp_path):
+    """Tims Auftrag 17.08.: Wer in einem Aufsichtsorgan einer städtischen
+    Gesellschaft sitzt, steht mit **seiner Funktion** im Verzeichnis — auch
+    ohne Ratsmandat.
+
+    Die GOL ist eine Gemeinschaftsgesellschaft mit dem Landkreis; Landrätin
+    und Kreistagsmitglieder sind gewählte Mandatsträger*innen, nur eben nicht
+    des Stadtrats. Daneben stehen Beschäftigtenvertretungen. Beide kamen in
+    keiner Anwesenheitsliste vor und standen deshalb namenlos da.
+
+    Belegt ist genau dreierlei: Name, Funktion und die Berichtsjahrgänge, in
+    denen die Person vorkommt — keine Partei, keine Amtszeit."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        _bericht_personen(store, [
+            (2022, "Karin Harms", "Landrätin"),
+            (2023, "Karin Harms", "Landrätin"),
+            (2024, "Karin Harms", "Landrätin"),
+            (2022, "Inga Bartels", "Beschäftigtenvertreterin"),
+        ])
+        lex = {p["slug"]: p for p in store.personen_lexikon()}
+
+        harms = lex["karin-harms"]
+        assert harms["art"] == "beteiligung"
+        assert harms["rolle"] == "Landrätin"      # die Funktion aus dem Bericht
+        assert harms["partei"] is None            # der Bericht nennt keine
+        # Zeitraum = Berichtsjahrgänge, nicht Amtszeit.
+        assert (harms["von"], harms["bis"]) == ("2022", "2024")
+        assert harms["aktiv"] is True             # steht im jüngsten Bericht
+
+        # Wer nur in einem alten Bericht steht, gilt nicht mehr als aktuell.
+        bartels = lex["inga-bartels"]
+        assert bartels["rolle"] == "Beschäftigtenvertreterin"
+        assert (bartels["von"], bartels["bis"], bartels["aktiv"]) == ("2022", "2022", False)
+    finally:
+        store.close()
+
+
 def _varianten_store(tmp_path):
     """Ein Bestand mit genau den Schreibweisen, die im Prod-Bestand stehen."""
     from datetime import date, timedelta
@@ -291,50 +340,67 @@ def _varianten_store(tmp_path):
     return store
 
 
-def test_personen_varianten_legt_schreibweisen_zusammen(tmp_path):
-    """Ein Mensch, zwei Einträge (Tims Befund 21.08.2026): „Klein" neben
-    „Thomas Klein", „Tim Ebbeke Harms" neben „Tim Harms". Das Verzeichnis
-    führt sie einmal — echte Namensvettern bleiben getrennt."""
-    store = _varianten_store(tmp_path)
-    try:
-        var = store._personen_varianten()
-        assert var == {("rat", "klein"): "thomas-klein",
-                       ("rat", "tim-ebbeke-harms"): "tim-harms"}
-        namen = {m["slug"]: m for m in store.list_members()}
-        assert namen["thomas-klein"]["n"] == 3      # alle Sitzungen, einmal gezählt
-        assert namen["tim-harms"]["n"] == 3
-        assert "klein" not in namen and "tim-ebbeke-harms" not in namen
-        # Zwei Bruns, zwei Meyer: bleiben zwei Personen.
-        assert {"meike-bruns", "sarah-bruns", "meyer", "jan-martin-meyer"} <= set(namen)
-        # Die Verwaltungs-Klein ist ein anderer Mensch (anderer Namensraum).
-        lex = {(p["art"], p["slug"]) for p in store.personen_lexikon()}
-        assert ("stadt", "britta-klein") in lex and ("rat", "thomas-klein") in lex
-        assert not any(slug == "klein" for _art, slug in lex)
-    finally:
-        store.close()
-
 
 def test_person_seite_bleibt_unter_alter_schreibweise_erreichbar(tmp_path):
-    """Die weichende Variante ist ein Link, der irgendwo stehen kann — er muss
-    weiter auf dieselbe Person führen, nicht ins Leere."""
+    """Die weichende Namensform ist ein Link, der irgendwo stehen kann — er
+    muss weiter auf dieselbe Person führen, nicht ins Leere. Geführt werden die
+    Formen in ``council.namensformen.GRUPPEN``."""
     store = _varianten_store(tmp_path)
     try:
-        assert store.member_name("klein") == "Thomas Klein"
-        assert store.member_name("thomas-klein") == "Thomas Klein"
-        detail = store.member_detail("tim-ebbeke-harms")
-        assert detail and detail["name"] == "Tim Harms"
-        assert detail["n_sessions"] == store.member_detail("tim-harms")["n_sessions"] == 3
+        # Beide Slugs führen zu EINER Person — angezeigt wird die Form der
+        # jüngsten Fundstelle (die Regel in council/namensformen.py).
+        assert store.member_name("klein") == store.member_name("thomas-klein") == "Thomas Klein"
+        alt_form = store.member_detail("tim-ebbeke-harms")
+        neue_form = store.member_detail("tim-harms")
+        assert alt_form and neue_form
+        assert alt_form["name"] == neue_form["name"] == "Tim Ebbeke Harms"
+        assert alt_form["n_sessions"] == neue_form["n_sessions"] == 3
         assert store.member_detail("gibt-es-nicht") is None
     finally:
         store.close()
 
 
-def test_haeufigster_name_entscheidet_bei_gleichstand_ausfuehrlich(tmp_path):
-    """Bei Gleichstand gewinnt der vollständigere Name — sonst hieß eine Person
-    „Dr. Götte", während ihr Slug walter-goette lautete."""
-    from collections import Counter
-    assert CouncilStore._haeufigster_name(Counter({"Dr. Götte": 2, "Walter Götte": 2})) == "Walter Götte"
-    assert CouncilStore._haeufigster_name(Counter({"Streit": 3, "Tim Streit": 1})) == "Streit"
+def test_personen_lexikon_beteiligung_ueberschreibt_kein_ratsmandat(tmp_path):
+    """Rangfolge: Wer schon als Ratsmitglied oder Verwaltungsperson im Lexikon
+    steht, behält diesen Eintrag — der Bericht ergänzt nur, was fehlt.
+
+    Sonst würde aus einem Ratsmandat ein „Ratsmitglied" ohne Partei und ohne
+    Personen-Seite, und aus der Oberbürgermeisterei „Vertreter
+    Mitgesellschafter". Verglichen wird über das **Namenspaar**, nicht über
+    den Slug: Das Verzeichnis führt „Ruth Regina Drügemöller", der Bericht
+    „Ruth Drügemöller" — verschiedene Slugs, derselbe Mensch."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        frisch = (date.today() - timedelta(days=30)).isoformat()
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, "
+                "session_time, location, fetched_at) "
+                "VALUES (1, 'Rat', ?, '', '', datetime('now'))", (frisch,))
+            store._conn.executemany(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (1, ?, ?, ?, ?)",
+                [("Dr. Ruth Regina Drügemöller", "SPD", "mitglied", None),
+                 ("Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister")])
+        _bericht_personen(store, [
+            (2024, "Ruth Drügemöller", "Ratsmitglied"),
+            (2024, "Jürgen Krogmann", "Oberbürgermeister"),
+        ])
+        lex = store.personen_lexikon()
+        arten = {p["slug"]: p["art"] for p in lex}
+
+        # Das Ratsmandat bleibt — und es entsteht KEIN zweiter Eintrag unter
+        # der Schreibweise des Berichts.
+        assert arten["ruth-regina-druegemoeller"] == "rat"
+        assert "ruth-druegemoeller" not in arten
+        # Dasselbe für die Verwaltung: Amt aus den Protokollen, nicht aus dem
+        # Beteiligungsbericht.
+        assert arten["juergen-krogmann"] == "stadt"
+        krogmann = next(p for p in lex if p["slug"] == "juergen-krogmann")
+        assert krogmann["rolle"] == "Oberbürgermeister"
+    finally:
+        store.close()
 
 
 def _mandats_store(tmp_path):
@@ -384,6 +450,41 @@ def test_list_members_trennt_mandat_von_beratung(tmp_path):
         store.close()
 
 
+def test_personen_lexikon_beteiligung_nur_echte_personennamen(tmp_path):
+    """Nicht jede Zeile des Berichts ist ein Mensch.
+
+    Die TGO Besitz benennt statt Personen ihre Entsendungsrechte
+    („Vertreter/in der Landessparkasse zu Oldenburg"), der Bericht führt
+    denselben Menschen mal mit, mal ohne Vornamen („Prof. Dr. Bruder" neben
+    „Prof. Dr. Ralph Bruder"), und der zweispaltige Extrakt bricht
+    gelegentlich mitten im Namen um („Jens Lükerm an"). Keine dieser drei
+    Zeilen darf zu einem Verzeichniseintrag werden."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        _bericht_personen(store, [
+            (2024, "Vertreter/in der Landessparkasse zu Oldenburg", None),
+            (2024, "Prof. Dr. Bruder", "Vertreter Universität"),
+            (2024, "Prof. Dr. Ralph Bruder", "Vertreter Universität"),
+            (2024, "Jens Lükerm an", "Ratsmitglied"),
+            (2024, "Prof. Dr.-Ing. Weisensee", "Vertreter Hochschule"),
+            (2024, "Prof. Dr.-Ing. Manfred Weisensee", "Vertreter Hochschule"),
+        ])
+        lex = {p["slug"]: p for p in store.personen_lexikon()}
+
+        # Der Mensch mit vollem Namen steht drin …
+        assert lex["ralph-bruder"]["art"] == "beteiligung"
+        assert lex["manfred-weisensee"]["rolle"] == "Vertreter Hochschule"
+        # … die kahlen Nachnamen nicht (von einem Namensvetter nicht zu
+        # unterscheiden) …
+        assert "bruder" not in lex and "weisensee" not in lex
+        # … das Entsendungsrecht nicht …
+        assert not any(s.startswith("vertreter-in-") for s in lex)
+        # … und der abgebrochene Name auch nicht.
+        assert not any("luekerm" in s for s in lex)
+    finally:
+        store.close()
+
+
 def test_beratendes_mitglied_ohne_fraktions_zeitreihe(tmp_path):
     """Auf der Personen-Seite stand „Ratsmitglied · parteilos" — beides falsch.
     Ohne Fraktion gibt es auch keine Fraktions-Zeitreihe."""
@@ -404,6 +505,33 @@ def test_beratendes_mitglied_ohne_fraktions_zeitreihe(tmp_path):
         store.close()
 
 
+def test_personen_lexikon_beteiligung_heilt_druckfehler_nicht_zu_neuer_person(tmp_path):
+    """„Claudia Oeljeschleger" im Bericht ist kein zweiter Mensch neben
+    „Claudia Oeljeschläger" im Verzeichnis — sie darf deshalb auch keinen
+    eigenen Eintrag bekommen. Sonst stünden zwei Personen im Verzeichnis, von
+    denen es nur eine gibt, und die Bericht-Schreibweise nähme dem
+    Ratsmitglied beim Abgleich der Beteiligungsseite die Personen-Seite weg."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        frisch = (date.today() - timedelta(days=30)).isoformat()
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, "
+                "session_time, location, fetched_at) "
+                "VALUES (1, 'Rat', ?, '', '', datetime('now'))", (frisch,))
+            store._conn.execute(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) "
+                "VALUES (1, 'Claudia Oeljeschläger', 'SPD', 'mitglied', NULL)")
+        _bericht_personen(store, [(2024, "Claudia Oeljeschleger", "Ratsmitglied")])
+
+        slugs = {p["slug"] for p in store.personen_lexikon()}
+        assert "claudia-oeljeschlaeger" in slugs
+        assert "claudia-oeljeschleger" not in slugs
+    finally:
+        store.close()
+
+
 def test_ris_stammdaten_zaehlen_als_mandat(tmp_path):
     """Nachrücker:innen stehen im RIS als Ratsmitglied, bevor sie im ersten
     Ratsprotokoll auftauchen — das zählt als zweite Quelle."""
@@ -419,6 +547,95 @@ def test_ris_stammdaten_zaehlen_als_mandat(tmp_path):
                 "VALUES (99, 1, 'Rat', 'Ratsmitglied', '2026-01-01', NULL, datetime('now'))")
         m = {x["slug"]: x for x in store.list_members()}
         assert m["sabine-goerg"]["art"] == "rat"
+    finally:
+        store.close()
+
+
+def test_tippfehler_heilung_regeln():
+    """Die drei Bedingungen der Druckfehler-Heilung, jede einzeln geprüft.
+
+    Sie greift, wo der Bericht „Ratsmitglied" behauptet, der Vorname exakt
+    stimmt und der Nachname um höchstens einen Buchstaben abweicht — und
+    sonst nirgends."""
+    lex = {
+        ("claudia", "oeljeschlaeger"): [
+            {"slug": "claudia-oeljeschlaeger", "name": "Claudia Oeljeschläger",
+             "art": "rat", "partei": "SPD"}],
+        ("jens", "luekermann"): [
+            {"slug": "jens-luekermann", "name": "Jens Lükermann",
+             "art": "rat", "partei": "Volt"}],
+        ("petra", "schmidt"): [
+            {"slug": "petra-schmidt", "name": "Petra Schmidt",
+             "art": "rat", "partei": "CDU"}],
+        ("petra", "schmitz"): [
+            {"slug": "petra-schmitz", "name": "Petra Schmitz",
+             "art": "rat", "partei": "SPD"}],
+        ("heiko", "meier"): [
+            {"slug": "heiko-meier", "name": "Heiko Meier",
+             "art": "stadt", "partei": None}],
+    }
+    heilung = CouncilStore.tippfehler_ratsmitglied
+
+    # Beide echten Druckfehler des Berichts finden ihre Person.
+    assert heilung("claudia", "oeljeschleger", "Ratsmitglied", lex)["slug"] \
+        == "claudia-oeljeschlaeger"
+    assert heilung("jens", "luekerman", "Ratsmitglied", lex)["slug"] == "jens-luekermann"
+
+    # (a) Ohne die Funktion „Ratsmitglied" greift sie nie — eine
+    # Beschäftigtenvertreterin ist keine verschriebene Ratsfrau.
+    assert heilung("claudia", "oeljeschleger", "Beschäftigtenvertreterin", lex) is None
+    assert heilung("claudia", "oeljeschleger", None, lex) is None
+
+    # (b) Der Vorname muss exakt stimmen.
+    assert heilung("claudius", "oeljeschlaeger", "Ratsmitglied", lex) is None
+
+    # (c) Zwei Buchstaben Abstand sind kein Druckfehler mehr (Dreher „ue"→„eu").
+    assert heilung("jens", "leukermann", "Ratsmitglied", lex) is None
+
+    # Zwei verschiedene Menschen mit ähnlichem Namen: „Petra Schmitt" liegt
+    # je einen Buchstaben neben Petra Schmidt UND Petra Schmitz — dann lieber
+    # niemand. Ein fehlender Link ist ein fehlender Link; ein falscher ist
+    # eine Falschaussage über einen namentlich genannten Menschen.
+    assert heilung("petra", "schmitt", "Ratsmitglied", lex) is None
+
+    # Und geheilt wird nur auf ein Ratsmandat: Verwaltungsleute haben gar
+    # keine Personen-Seite, auf die man verlinken könnte.
+    assert heilung("heiko", "meiers", "Ratsmitglied", lex) is None
+
+
+def test_verwaltung_detail_nur_mit_erkanntem_amt(tmp_path):
+    """Tims Wunsch 19.08.: Verwaltungsleute mit erkanntem Amt bekommen einen
+    Steckbrief — ohne (nur Vertretungs-/Zeit-Notiz) gibt es keinen toten
+    Link (s. #588). Kein Nachbau von member_detail(): keine Fraktion, kein
+    Vorsitz-Zähler, keine Gremien-Präsenz — nur Amt, Zeitraum, Beiträge."""
+    from datetime import date, timedelta
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        frisch = (date.today() - timedelta(days=30)).isoformat()
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+                "location, fetched_at) VALUES (1, 'Rat', ?, '', '', datetime('now'))", (frisch,))
+            store._conn.executemany(
+                "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (1, ?, ?, ?, ?)",
+                [("Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister"),
+                 ("Dagmar Sachse", "Verwaltung", "verwaltung", "Für Oberbürgermeister Krogmann")])
+            store._conn.executemany(
+                "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, top, "
+                "text, extracted_at) VALUES (1, ?, ?, NULL, 'zusage', 'Ö 1', ?, datetime('now'))",
+                [(1, "Krogmann", "Wird geprüft.")])
+
+        kro = store.verwaltung_detail("juergen-krogmann")
+        assert kro["typ"] == "verwaltung" and kro["rolle"] == "Oberbürgermeister"
+        assert kro["aktiv"] is True
+        assert kro["wortbeitraege_gesamt"] == 1
+
+        # Nur eine Vertretungs-Notiz, kein erkanntes Amt → kein Steckbrief.
+        assert store.verwaltung_detail("dagmar-sachse") is None
+        assert store.verwaltung_detail("gibt-es-nicht") is None
+
+        assert store.verwaltung_name("juergen-krogmann") == "Jürgen Krogmann"
+        assert store.verwaltung_name("gibt-es-nicht") is None
     finally:
         store.close()
 

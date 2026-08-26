@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { baueKueken, baueLotti } from "@/lib/lotti/modell";
+import { kuekenAnziehen, lichtStimmung, lottiAnziehen, wetterBauen } from "@/lib/lotti/jahreszeit";
+import { getMascotTheme } from "@/lib/mascot-theme";
 
 /* Lotti live: die Lotsenmöwe und drei Küken, gerechnet statt gezeichnet.
  * Aus dem Design-Projekt („Lotti Hero Familie").
@@ -119,9 +121,21 @@ export default function LottiSzene({ className }: { className?: string }) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.06;
 
+    /* Jahreszeit einmal beim Aufbau bestimmen — dieselbe Logik wie beim
+       gezeichneten Fallback (mascot-theme). Kein Hydration-Thema: Diese
+       Datei läuft nur im Browser (`ssr: false` in lotti-hero), das Datum
+       ist also immer das der Besucherin. Läuft die Seite über Mitternacht
+       in eine neue Jahreszeit, bleibt die alte stehen — der nächste Besuch
+       richtet es, ein Umbau der ganzen Szene zur Laufzeit wäre teurer als
+       dieser Grenzfall wert ist. */
+    const jahreszeit = getMascotTheme();
+
+    /* Die vier Lichter behalten Ort und Stärke; nur die FARBEN wandern mit
+       der Jahreszeit (kühles Winterlicht, goldener Herbst — s. jahreszeit.ts). */
+    const licht = lichtStimmung(jahreszeit.season);
     const scene = new THREE.Scene();
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x8ea6bc, 1.9));
-    const key = new THREE.DirectionalLight(0xffffff, 2.5);
+    scene.add(new THREE.HemisphereLight(licht.hemiHimmel, licht.hemiBoden, 1.9));
+    const key = new THREE.DirectionalLight(licht.key, 2.5);
     key.position.set(0.40, 0.70, 0.55);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
@@ -130,10 +144,10 @@ export default function LottiSzene({ className }: { className?: string }) {
     key.shadow.camera.top = 0.40; key.shadow.camera.bottom = -0.40;
     key.shadow.bias = -0.0009;
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xd6e9fa, 1.0);
+    const fill = new THREE.DirectionalLight(licht.fill, 1.0);
     fill.position.set(-0.60, 0.28, 0.42);
     scene.add(fill);
-    const rim = new THREE.DirectionalLight(0xffd9b8, 1.5);
+    const rim = new THREE.DirectionalLight(licht.rim, 1.5);
     rim.position.set(-0.30, 0.42, -0.62);
     scene.add(rim);
 
@@ -145,6 +159,7 @@ export default function LottiSzene({ className }: { className?: string }) {
     /* ── Figuren ── */
     const lotti = baueLotti(THREE);
     lotti.position.set(-0.030, 0, 0);
+    lottiAnziehen(THREE, lotti, jahreszeit);
     scene.add(lotti);
 
     const schulterR = lotti.getObjectByName("schulter-rechts")!;
@@ -159,7 +174,11 @@ export default function LottiSzene({ className }: { className?: string }) {
        Gewinkt wird auf Brusthöhe, nicht neben dem Kopf: Der Mützenschirm reicht
        bis Radius 0.107, der Körper nur bis 0.077. */
     const HANDZIEL = new THREE.Vector3(-0.092, 0.148, 0.150);
-    const FLUEGELACHSE = new THREE.Vector3(-0.0142, -0.0907, 0).normalize();
+    /* Ruhelage des rechten Flügels: Spitze minus Schulter, aus dem MODELL
+       abgelesen — die Schultern sitzen seit dem Studio-Stand vom 20.08.
+       1,2 cm tiefer, die alte Achse (-0.0142, -0.0907, 0) zeigte am neuen
+       Arm vorbei und die Wink-Hand hätte danebengegriffen. */
+    const FLUEGELACHSE = new THREE.Vector3(-0.0118, -0.0941, -0.0155).normalize();
     const Q_RUHE = new THREE.Quaternion();
     const ZACHSE = new THREE.Vector3(0, 0, 1);
     const ARMACHSE = HANDZIEL.clone().sub(SCHULTERWINK).normalize();
@@ -169,6 +188,7 @@ export default function LottiSzene({ className }: { className?: string }) {
     const ROLLE = Math.atan2(N_IST.clone().cross(N_SOLL).dot(ARMACHSE), N_IST.dot(N_SOLL));
     const Q_WINK = new THREE.Quaternion().setFromAxisAngle(ARMACHSE, ROLLE).multiply(Q_ZEIGEN);
     const Q_HEBEN = new THREE.Quaternion(), Q_SCHWUNG = new THREE.Quaternion();
+
 
     const muetze = lotti.getObjectByName("muetze")!;
     const schwanz = lotti.getObjectByName("schwanz-gelenk")!;
@@ -184,6 +204,7 @@ export default function LottiSzene({ className }: { className?: string }) {
     const kuekenGruppe = new THREE.Group();
     const kueken: Kueken[] = KUEKEN.map((k) => {
       const g = baueKueken(THREE, { ton: k.ton });
+      kuekenAnziehen(THREE, g, jahreszeit);
       g.position.set(k.x, 0, k.z);
       g.scale.setScalar(k.s);
       const augenG = ["links", "rechts"].map((s) => g.getObjectByName("kueken-auge-gelenk-" + s)!);
@@ -216,6 +237,10 @@ export default function LottiSzene({ className }: { className?: string }) {
       papiere.add(m);
     }
     scene.add(papiere);
+
+    /* ── Wetter der Jahreszeit: Schnee, Blüten, Blätter — oder die Sonne ── */
+    const wetter = wetterBauen(THREE, jahreszeit.season);
+    scene.add(wetter.gruppe);
 
     /* ── Kamera: Ausschnitt aus der größten Pose ableiten (Flügel oben), damit er
        nie abgeschnitten wird. Eingepasst wird die projizierte Silhouette, nicht
@@ -436,6 +461,7 @@ export default function LottiSzene({ className }: { className?: string }) {
           Math.cos(uhr * 0.33 + d.phase) * 0.18,
         );
       });
+      wetter.animieren(uhr, dt, ruhe);
 
       const px = ruhe ? 0 : blickX, py = ruhe ? 0 : blickY;
       cam.position.set(

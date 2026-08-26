@@ -15,12 +15,81 @@ type Version = { version: string; date: string; sections: Section[] };
 
 // CHANGELOG.md lives at the repo root (two levels up from web/frontend). Read at build
 // time so it ships baked into this static page; it refreshes with every deploy.
+const REPO_ROOT = path.join(process.cwd(), "..", "..");
+
 function readChangelog(): string {
   try {
-    return fs.readFileSync(path.join(process.cwd(), "..", "..", "CHANGELOG.md"), "utf8");
+    return fs.readFileSync(path.join(REPO_ROOT, "CHANGELOG.md"), "utf8");
   } catch {
     return "";
   }
+}
+
+// Noch nicht geschnittene Einträge liegen als einzelne Dateien in changelog.d/
+// (siehe scripts/changelog_schnitt.py) — ein Fragment je Änderung, damit
+// parallele Zweige nicht in denselben Changelog-Zeilen kollidieren. Für
+// Leser*innen ist das unsichtbar: Sie stehen hier unter „Unreleased", genau
+// wie die von Hand eingetragenen. Beim Versionsschnitt wandern sie in
+// CHANGELOG.md und verschwinden hier — dieselbe Anzeige, andere Quelle.
+const KATEGORIEN: Record<string, string> = {
+  hinzugefuegt: "Hinzugefügt",
+  "hinzugefügt": "Hinzugefügt",
+  geaendert: "Geändert",
+  "geändert": "Geändert",
+  behoben: "Behoben",
+};
+const FRAGMENT_REIHENFOLGE = ["Hinzugefügt", "Geändert", "Behoben"];
+
+type Fragment = { section: string; text: string };
+
+function readFragments(): Fragment[] {
+  let namen: string[];
+  try {
+    namen = fs
+      .readdirSync(path.join(REPO_ROOT, "changelog.d"))
+      .filter((n) => n.endsWith(".md") && !n.startsWith("_") && n.toLowerCase() !== "readme.md")
+      .sort(); // nach Dateiname — auf jedem Rechner dieselbe Reihenfolge
+  } catch {
+    return []; // kein Verzeichnis (z. B. frisch nach einem Schnitt) → nichts zu zeigen
+  }
+  const out: Fragment[] = [];
+  for (const name of namen) {
+    let roh = "";
+    try {
+      roh = fs.readFileSync(path.join(REPO_ROOT, "changelog.d", name), "utf8");
+    } catch {
+      continue;
+    }
+    const m = roh.match(/^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*\r?\n([\s\S]*)$/);
+    if (!m) continue;
+    const kat = m[1].match(/^[ \t]*kategorie[ \t]*:[ \t]*(.+?)[ \t]*$/m);
+    const section = kat ? KATEGORIEN[kat[1].trim().toLowerCase()] : undefined;
+    const text = m[2].replace(/\s+/g, " ").trim();
+    // Ein kaputtes Fragment überspringen statt den Build zu kippen — angemeckert
+    // wird es von tests/test_changelog_fragmente.py, nicht von der Seite.
+    if (section && text) out.push({ section, text });
+  }
+  return out;
+}
+
+function mergeFragments(versions: Version[], fragmente: Fragment[]): Version[] {
+  if (fragmente.length === 0) return versions;
+  let unreleased = versions.find((v) => v.version === "Unreleased");
+  if (!unreleased) {
+    unreleased = { version: "Unreleased", date: "", sections: [] };
+    versions = [unreleased, ...versions];
+  }
+  for (const titel of FRAGMENT_REIHENFOLGE) {
+    const passend = fragmente.filter((f) => f.section === titel);
+    if (passend.length === 0) continue;
+    let sec = unreleased.sections.find((s) => s.title === titel);
+    if (!sec) {
+      sec = { title: titel, items: [] };
+      unreleased.sections.push(sec);
+    }
+    sec.items.push(...passend.map((f) => f.text));
+  }
+  return versions;
 }
 
 function parse(md: string): Version[] {
@@ -45,8 +114,7 @@ function parse(md: string): Version[] {
       sec.items[sec.items.length - 1] += " " + line.trim();
     }
   }
-  // Drop an empty "Unreleased" block.
-  return out.filter((v) => v.sections.length > 0);
+  return out;
 }
 
 // Minimal inline markdown → React: **bold**, `code`, [text](url). Safe (no innerHTML).
@@ -68,7 +136,10 @@ function inline(text: string): React.ReactNode[] {
 }
 
 export default function ChangelogPage() {
-  const versions = parse(readChangelog());
+  // Fragmente erst dazumischen, dann leere Blöcke wegwerfen — sonst fiele ein
+  // „Unreleased" ohne eigene Einträge weg, das nur aus Fragmenten besteht.
+  const versions = mergeFragments(parse(readChangelog()), readFragments())
+    .filter((v) => v.sections.length > 0);
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border pt-[env(safe-area-inset-top)]">

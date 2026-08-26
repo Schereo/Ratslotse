@@ -1,0 +1,270 @@
+{
+ "_methodik": "Thesen sind aus den tatsächlich gefundenen Konfliktlinien der Oldenburger Wahlprogramme abgeleitet, nicht aus allgemeinen bundespolitischen Gegensätzen. Aufgenommen wurde nur, wozu sich mehrere Listen erkennbar unterschiedlich äußern. Zustimmung = +1, teils/teils oder mit erheblichen Bedingungen = 0, Ablehnung = -1, keine Aussage im Programm = null.",
+ "stand": "2026-08-07",
+ "thesen": [
+  {
+   "id": "W1",
+   "thema": "wohnen",
+   "these": "Oldenburg soll neben der bestehenden GSG eine zusätzliche städtische Wohnungsbaugesellschaft gründen.",
+   "hinweis": "Der Stadtrat hat die Gründung 2025 bereits beschlossen. Strittig ist deshalb nicht mehr das Ob, sondern ob die neue Gesellschaft ausgebaut oder zurückgedreht wird."
+  },
+  {
+   "id": "W2",
+   "thema": "wohnen",
+   "these": "Die Sozialquote für geförderten Wohnraum soll beibehalten oder erhöht werden (30 % auf privaten, 50 % auf städtischen Flächen).",
+   "hinweis": "Bezug: Ratsbeschluss Dezember 2025 zur Absenkung der Sozialquote am Schützenweg."
+  },
+  {
+   "id": "W3",
+   "thema": "wohnen",
+   "these": "Die Stadt soll gegen dauerhaften Wohnungsleerstand mit harten Instrumenten vorgehen (Zweckentfremdungssatzung, Leerstandsabgabe, notfalls Enteignung).",
+   "hinweis": null
+  },
+  {
+   "id": "W4",
+   "thema": "wohnen",
+   "these": "Für neue Wohngebiete sollen bevorzugt zusätzliche Flächen am Stadtrand ausgewiesen werden statt vorrangig im Bestand nachzuverdichten.",
+   "hinweis": null
+  },
+  {
+   "id": "M1",
+   "thema": "mobilitaet",
+   "these": "Die Fliegerhorststraße soll gebaut werden.",
+   "hinweis": "Verbindungsstraße zum Konversionsgebiet Fliegerhorst; Streitpunkt zwischen Erreichbarkeit und Naturschutz."
+  },
+  {
+   "id": "M2",
+   "thema": "mobilitaet",
+   "these": "Tempo 30 soll die Regelgeschwindigkeit im gesamten Stadtgebiet werden.",
+   "hinweis": null
+  },
+  {
+   "id": "M3",
+   "thema": "mobilitaet",
+   "these": "Die Parkgebühren sollen gesenkt oder zumindest nicht weiter erhöht werden.",
+   "hinweis": null
+  },
+  {
+   "id": "M4",
+   "thema": "mobilitaet",
+   "these": "Der Busverkehr soll schrittweise fahrscheinfrei werden.",
+   "hinweis": "Über das bestehende kostenfreie Samstagsticket hinaus."
+  },
+  {
+   "id": "M5",
+   "thema": "mobilitaet",
+   "these": "Der Radverkehr soll bei Konflikten um Straßenraum Vorrang vor dem Autoverkehr bekommen.",
+   "hinweis": null
+  },
+  {
+   "id": "K1",
+   "thema": "klima",
+   "these": "Oldenburg soll das Ziel Klimaneutralität bis 2035 verbindlich festschreiben.",
+   "hinweis": null
+  },
+  {
+   "id": "K2",
+   "thema": "klima",
+   "these": "Die Baumschutzsatzung soll erhalten und konsequent angewendet werden.",
+   "hinweis": "Bürgerentscheid vom 22.02.2026: 60,6 % für Abschaffung, Quorum verfehlt, Satzung bleibt in Kraft."
+  },
+  {
+   "id": "K3",
+   "thema": "klima",
+   "these": "Die Stadt soll deutlich mehr Flächen für Windenergie ausweisen.",
+   "hinweis": "Bezug u. a. auf das Windeignungsgebiet Bornhorster Seen."
+  },
+  {
+   "id": "K4",
+   "thema": "klima",
+   "these": "Klimaschutz muss sich wirtschaftlicher Machbarkeit unterordnen; städtische Klimavorgaben sollen zurückgefahren werden.",
+   "hinweis": null
+  },
+  {
+   "id": "V1",
+   "thema": "wirtschaft",
+   "these": "Bürokratieabbau und schnellere Genehmigungen sollen Vorrang vor zusätzlichen Auflagen haben.",
+   "hinweis": null
+  },
+  {
+   "id": "V2",
+   "thema": "wirtschaft",
+   "these": "Die Innenstadt soll deutlich autoärmer werden.",
+   "hinweis": null
+  },
+  {
+   "id": "V3",
+   "thema": "wirtschaft",
+   "these": "Die Stadt soll neue Gewerbeflächen ausweisen, auch wenn dafür Freiflächen in Anspruch genommen werden.",
+   "hinweis": null
+  },
+  {
+   "id": "B1",
+   "thema": "bildung",
+   "these": "Oldenburg soll eine vierte Integrierte Gesamtschule einrichten.",
+   "hinweis": null
+  },
+  {
+   "id": "B2",
+   "thema": "bildung",
+   "these": "Kita- und Betreuungsgebühren sollen gesenkt oder abgeschafft werden.",
+   "hinweis": "Nur zwei der neun Listen äußern sich dazu — der Kindergartenbeitrag ab drei Jahren ist in Niedersachsen landesrechtlich beitragsfrei, kommunal bleibt vor allem die Krippe."
+  },
+  {
+   "id": "B3",
+   "thema": "bildung",
+   "these": "Kinder ohne ausreichende Deutschkenntnisse sollen zunächst in eigenen Sprachlernklassen unterrichtet werden statt sofort inklusiv.",
+   "hinweis": "Sprachlernklassen wurden 2018 zugunsten inklusiven Unterrichts zurückgedrängt."
+  },
+  {
+   "id": "B4",
+   "thema": "bildung",
+   "these": "Die Sanierung maroder Schulgebäude soll Vorrang vor anderen städtischen Investitionen haben.",
+   "hinweis": null
+  },
+  {
+   "id": "S1",
+   "thema": "soziales",
+   "these": "Die Stadt soll Wohnungslosenhilfe nach dem Housing-First-Prinzip deutlich ausbauen.",
+   "hinweis": null
+  },
+  {
+   "id": "S2",
+   "thema": "soziales",
+   "these": "Es soll ein städtisch gefördertes Sozialticket für den Nahverkehr geben.",
+   "hinweis": null
+  },
+  {
+   "id": "S3",
+   "thema": "soziales",
+   "these": "Die Stadt soll mehr Geld für Frauenhäuser, Gewaltschutz und Streetwork bereitstellen.",
+   "hinweis": null
+  },
+  {
+   "id": "C1",
+   "thema": "kultur",
+   "these": "Die Stadt soll den Stadion-Neubau nahezu vollständig selbst bezahlen.",
+   "hinweis": "Geplanter Neubau an der Maastrichter Straße, mindestens 60 Mio. Euro. Die Streitfrage ist nicht die Kostenobergrenze — die fordern beide Seiten —, sondern ob Private einen nennenswerten Teil der Baukosten tragen müssen."
+  },
+  {
+   "id": "C2",
+   "thema": "kultur",
+   "these": "Die Förderung von Sportvereinen und Vereinssportanlagen soll erhöht werden.",
+   "hinweis": null
+  },
+  {
+   "id": "C3",
+   "thema": "kultur",
+   "these": "Die Stadt soll mehr Geld für Kultur, Soziokultur und Veranstaltungen ausgeben.",
+   "hinweis": null
+  },
+  {
+   "id": "C4",
+   "thema": "kultur",
+   "these": "Städtische Bäder sollen erhalten und saniert werden, auch wenn das hohe Kosten verursacht.",
+   "hinweis": "Bezug u. a. auf die Kostenentwicklung beim Flötenteichbad."
+  },
+  {
+   "id": "O1",
+   "thema": "sicherheit",
+   "these": "Die Videoüberwachung an Brennpunkten soll ausgeweitet werden.",
+   "hinweis": null
+  },
+  {
+   "id": "O2",
+   "thema": "sicherheit",
+   "these": "Waffenverbotszonen sollen ausgeweitet werden.",
+   "hinweis": "Genannte Orte u. a. Schlossplatz, Lappan, Bahnhofsvorplatz."
+  },
+  {
+   "id": "O3",
+   "thema": "sicherheit",
+   "these": "Der kommunale Ordnungsdienst soll personell verstärkt und sichtbarer werden.",
+   "hinweis": null
+  },
+  {
+   "id": "O4",
+   "thema": "sicherheit",
+   "these": "Sicherheitsprobleme sollen vorrangig über Prävention und Sozialarbeit statt über Kontrolle und Ordnungsrecht angegangen werden.",
+   "hinweis": null
+  },
+  {
+   "id": "D1",
+   "thema": "digitales",
+   "these": "Die Stadtverwaltung soll Personal und Personalkosten spürbar reduzieren.",
+   "hinweis": null
+  },
+  {
+   "id": "D2",
+   "thema": "digitales",
+   "these": "Verwaltungsdaten sollen grundsätzlich als Open Data offen veröffentlicht werden.",
+   "hinweis": null
+  },
+  {
+   "id": "D3",
+   "thema": "digitales",
+   "these": "Städtische Leistungen sollen konsequent digital und online verfügbar sein.",
+   "hinweis": null
+  },
+  {
+   "id": "F1",
+   "thema": "finanzen",
+   "these": "Der Gewerbesteuerhebesatz soll erhöht werden.",
+   "hinweis": "Aktueller Hebesatz 439 %."
+  },
+  {
+   "id": "F2",
+   "thema": "finanzen",
+   "these": "Für Großprojekte sollen bindende Kostenobergrenzen mit Abbruchklauseln gelten.",
+   "hinweis": null
+  },
+  {
+   "id": "F3",
+   "thema": "finanzen",
+   "these": "Das Haushaltsdefizit soll vorrangig über Ausgabenkürzungen statt über höhere Einnahmen ausgeglichen werden.",
+   "hinweis": "Haushalt 2026 mit rund 68 Mio. Euro Defizit beschlossen; strukturelle Lücke laut Kritikern knapp 90 Mio. Euro."
+  },
+  {
+   "id": "P1",
+   "thema": "beteiligung",
+   "these": "Bei teuren Großprojekten soll es verpflichtende Bürgerentscheide geben.",
+   "hinweis": null
+  },
+  {
+   "id": "P2",
+   "thema": "beteiligung",
+   "these": "Ein Jugendparlament soll eigene Rechte im Stadtrat bekommen (Rede- und Antragsrecht, eigenes Budget).",
+   "hinweis": null
+  },
+  {
+   "id": "P3",
+   "thema": "beteiligung",
+   "these": "Ratsarbeit und Verwaltungsentscheidungen sollen deutlich transparenter werden (öffentliche Unterlagen, Livestreams, Transparenzregister).",
+   "hinweis": null
+  },
+  {
+   "id": "I1",
+   "thema": "integration",
+   "these": "Die Stadt soll Vielfalts- und Queer-Politik aktiv fördern (Antidiskriminierungsstelle, CSD, Beratungsangebote).",
+   "hinweis": null
+  },
+  {
+   "id": "I2",
+   "thema": "integration",
+   "these": "Integration soll stärker als Bringschuld der Zugewanderten ausgestaltet werden (verpflichtende Sprachkurse, Wertevermittlung, Sanktionen).",
+   "hinweis": null
+  },
+  {
+   "id": "I3",
+   "thema": "integration",
+   "these": "Die Stadtverwaltung soll geschlechtergerechte Sprache verwenden.",
+   "hinweis": null
+  },
+  {
+   "id": "I4",
+   "thema": "integration",
+   "these": "Die Stadt soll sich aktiv für die Aufnahme und Unterstützung von Geflüchteten einsetzen, auch über gesetzliche Pflichten hinaus.",
+   "hinweis": null
+  }
+ ]
+}

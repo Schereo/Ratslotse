@@ -1,4 +1,7 @@
-### Behoben
+---
+kategorie: behoben
+---
+
 - Die Tragweite-Bewertung liest die Vorlage jetzt ab dem Sachverhalt statt ab
   dem Briefkopf. Bisher füllten Ausdruckdatum, Amt und Beratungsfolge die
   Hälfte des Auszugs — bei einem Bericht, der in der Sitzung gar nicht
