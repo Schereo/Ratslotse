@@ -107,6 +107,17 @@ UNBEKANNT = "unbekannt"
 #: glauben?". Wer eine neue Probe baut, trägt sie hier ein; ein unbekannter
 #: Name fliegt beim Bauen der :class:`Herkunft` auf.
 PROBEN: dict[str, str] = {
+    # Die Änderungslisten zum Haushalt (council/aenderungslisten.py) — was der
+    # Entwurf im Verfahren noch geändert wurde. Zwei Proben aus der
+    # „Zusammenstellung der Veränderungen“ am Ende jedes Dokuments.
+    "aenderungsliste_summen":
+        "Jede Zeile der Zusammenstellung geht in sich auf: Erträge minus "
+        "Aufwendungen ist der gedruckte Saldo.",
+    "aenderungsliste_positionen":
+        "Die Summe der gelesenen Einzelpositionen trifft je Planjahr die "
+        "Zusammenstellung — die Zeile, die dieses Dokument summiert, oder "
+        "bei kumulierten Beschluss-Dateien Endsumme minus Entwurf. Stünde "
+        "ein Betrag in der falschen Spalte, ginge genau das nicht auf.",
     # Die Gebührenbedarfsberechnung (council/gebuehren.py) — die Rechnung, aus
     # der die Abfall- und Straßenreinigungsgebühren entstehen. Zwei Proben,
     # beide aus dem Dokument selbst und voneinander unabhängig.
