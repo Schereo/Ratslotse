@@ -102,12 +102,13 @@ type Ziel = {
   titel: string;
   text: string;
   /** Das Zeichen des Schritts (Tim, 24.08.: „ein paar helfende Icons").
-   *  Es steht HIER, an der einzigen Quelle der Schritte, und taucht an zwei
-   *  Stellen auf: klein in den Zeilen dieses Wegweisers und in der
-   *  Weiter-Navigation am Fuß. Die Zeichen-Kachel im Seitenkopf gab es vom
-   *  24. bis 26.08. — sie wiederholte nur das Zeichen groß („hässlich", Tim)
-   *  und wich dem Schritt-Pfad (`schritt-pfad.tsx`, H5-09), der dort den
-   *  Lesestand zeigt. */
+   *  Es steht HIER, an der einzigen Quelle der Schritte, und taucht an drei
+   *  kleinen Stellen auf: in den Zeilen dieses Wegweisers, in der
+   *  Weiter-Navigation am Fuß und im Fähnchen des Schritt-Pfads. Die
+   *  Zeichen-Kachel im Seitenkopf gab es vom 24. bis 26.08. — sie
+   *  wiederholte nur das Zeichen groß („hässlich", Tim) und wich dem
+   *  Schritt-Pfad (`schritt-pfad.tsx`, H5-09), der dort den Lesestand zeigt
+   *  und seit dem Umbau am selben Tag auch in die Schritte hineinführt. */
   zeichen: LucideIcon;
 };
 
