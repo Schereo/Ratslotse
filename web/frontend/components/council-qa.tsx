@@ -2193,6 +2193,17 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               (Tims Befund 10.08.) — ob es reicht, entscheidet der Endpoint. */}
           {/* Bei Personen-Fragen zielt alles auf EINE Person — die Meinung
               aller Parteien daneben wäre Rauschen (Tims Befund 10.08.). */}
+          {/* Tagesordnungs-Baustein (Sitzungs-Fragetyp): Fragt jemand nach
+              einer konkreten Sitzung ohne (bislang) Beschlüsse — kommender
+              Termin oder Protokoll-Verzug —, reißt die Karte die Tagesordnung
+              an. Deterministisch aus dem Sitzungskalender, nie vom Modell.
+              Sie steht ZUOBERST: Für diese Fragen ist sie die eigentliche
+              Antwort-Beilage — unter dem Parteien-Baustein rutschte sie
+              unter die Falz und blieb unbemerkt (Tims Befund 26.08.). */}
+          {!beschaeftigt && (turn.sitzungen?.length ?? 0) > 0 && (
+            <TagesordnungBlock sitzungen={turn.sitzungen ?? []} />
+          )}
+
           {!beschaeftigt && turn.antwort && !turn.fehler && !turn.abgebrochen
             && turn.qtype !== "person" && (turn.debatten?.length ?? 0) >= 1 && (
             <ParteienBaustein frage={turn.kontext || turn.frage}
@@ -2208,14 +2219,6 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
           )}
 
           {!beschaeftigt && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}
-
-          {/* Tagesordnungs-Baustein (Sitzungs-Fragetyp): Fragt jemand nach
-              einer konkreten Sitzung ohne (bislang) Beschlüsse — kommender
-              Termin oder Protokoll-Verzug —, reißt die Karte die Tagesordnung
-              an. Deterministisch aus dem Sitzungskalender, nie vom Modell. */}
-          {!beschaeftigt && (turn.sitzungen?.length ?? 0) > 0 && (
-            <TagesordnungBlock sitzungen={turn.sitzungen ?? []} />
-          )}
 
           {/* RG-10 (8b): „Wie es weitergeht" — künftige Beratungsstationen
               aus dem Sitzungskalender, deterministisch, nie vom Modell. Seit
