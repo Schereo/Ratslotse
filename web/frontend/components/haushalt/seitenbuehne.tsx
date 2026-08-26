@@ -108,9 +108,15 @@ export function ZaehlZahl({ wert, nachkomma = 0, dauerMs = 600, verzoegerungMs =
 }
 
 export type Minibild = {
-  /** Anker der Hauptform auf derselben Seite — das Minibild klickt dorthin. */
-  href: string;
-  /** Eine Zeile darunter: was die Form ist und dass sie klickt. */
+  /** Anker der Hauptform auf derselben Seite — das Minibild klickt dorthin.
+   *
+   *  WEGLASSEN, wo der Sprung nichts einbringt: Zeigt die Skizze selbst schon
+   *  die Auskunft (Phasen-Strahl auf /mitreden) und stünde das Ziel ohnehin
+   *  direkt darunter, ist ein Link nur eine Erwartung, die er nicht einlöst
+   *  (Tim, 26.08.: „zu einer anderen Section ist auch witzlos"). Ohne `href`
+   *  rendert das Minibild als stiller Block. */
+  href?: string;
+  /** Eine Zeile darunter: was die Form ist (und, wo verlinkt, dass sie klickt). */
   label: string;
   /** Die Skizze selbst — aria-hidden, Farben aus `--sb-voll/-mittel/-blass`. */
   skizze: ReactNode;
@@ -141,7 +147,7 @@ export function Seitenbuehne({ kicker, zahl, sub, minibild, className }: {
             <p className="text-[12px] leading-relaxed text-muted-foreground">{sub}</p>
           )}
         </div>
-        {minibild && (
+        {minibild && (minibild.href ? (
           <Link
             href={minibild.href}
             className="group flex min-w-0 flex-col gap-1.5"
@@ -154,7 +160,16 @@ export function Seitenbuehne({ kicker, zahl, sub, minibild, className }: {
               {minibild.label}
             </span>
           </Link>
-        )}
+        ) : (
+          <span className="flex min-w-0 flex-col gap-1.5">
+            <span aria-hidden="true" className="sb-minibild flex flex-col gap-1">
+              {minibild.skizze}
+            </span>
+            <span className="text-[9.5px] leading-snug text-muted-foreground">
+              {minibild.label}
+            </span>
+          </span>
+        ))}
       </div>
     </div>
   );
