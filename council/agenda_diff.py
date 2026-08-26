@@ -296,6 +296,39 @@ def _anlagen_daten(a: dict, n: dict) -> tuple[str, str]:
     return "Anlagen geändert", f"neu: {_liste(dazu)} · entfernt: {_liste(weg)}"
 
 
+def nur_nummern_versatz(diff: dict) -> bool:
+    """Besteht diese Änderung ausschließlich aus einer Nummern-Kaskade? Dann
+    ist buchstäblich nichts passiert: dieselben Punkte, dieselbe Reihenfolge,
+    nur eine Nummer weiter oben oder unten. Dafür will niemand eine Mail
+    (Tims Entscheidung 26.08.) — auf der Sitzungsseite steht es weiterhin
+    unter „Zuletzt geändert".
+
+    Bewusst NICHT stillgelegt wird die echte Umsortierung: Wandert ein Punkt
+    an eine andere Stelle, ändert sich die Reihenfolge — und wer wegen genau
+    dieses Punktes kommt, muss wissen, dass er früher dran ist. Genau daran
+    verläuft die Grenze zwischen Kaskade und Einzelfall."""
+    if any(diff.get(k) for k in ("neu", "entfernt", "umformuliert", "vorlage", "anlagen")):
+        return False
+    kaskaden, einzeln = verschiebungs_kaskaden(diff.get("verschoben", []))
+    if not kaskaden or einzeln:
+        return False
+    # Und jetzt die Falle, an der diese Regel sonst Schaden anrichtet:
+    # diff_tagesordnung prüft in einer if/elif-Kette, „verschoben" schlägt
+    # „vorlage" und „anlagen". Ein mitgerutschter Punkt, der ZUGLEICH seine
+    # Vorlage nachgereicht bekommt, steht deshalb nur als Verschiebung in der
+    # Liste — für die Anzeige verschmerzbar (eine Zeile gibt es), beim
+    # Stilllegen aber fatal: die Vorlage verschwände spurlos. Darum hier noch
+    # einmal von Hand nachsehen.
+    for paar in (paar for _, mitglieder in kaskaden for paar in mitglieder):
+        a, n = paar[0], paar[1]
+        if _norm_vorlage(a.get("vorlage_nr")) != _norm_vorlage(n.get("vorlage_nr")):
+            return False
+        if ("anlagen" in a and "anlagen" in n
+                and anlagen_schluessel(a.get("anlagen")) != anlagen_schluessel(n.get("anlagen"))):
+            return False
+    return True
+
+
 def _kaskaden_zeile(versatz: int, mitglieder: list) -> dict:
     """Eine Kaskade als einzelne Zeile — mit dem Satz, der sie harmlos macht:
     Die Punkte selbst bleiben, nur ihre Nummern rutschen."""

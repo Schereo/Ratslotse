@@ -381,3 +381,64 @@ def test_kaskade_trennt_oeffentlich_und_nichtoeffentlich():
     zeilen = [z for z in diff_zeilen(diff_tagesordnung(alt, neu)) if z["art"] == "verschoben"]
     assert [z["label"] for z in zeilen] == [
         "Verschoben · TOP N 40 → N 39", "Verschoben · TOP Ö 22 bis Ö 34"]
+
+
+def test_reiner_nummern_versatz_loest_keine_meldung_aus():
+    """Tims Entscheidung 26.08.: Wenn oben ein Punkt wegfällt und der Rest
+    geschlossen nachrückt, ist buchstäblich nichts passiert — gleiche Punkte,
+    gleiche Reihenfolge, neue Nummern. Dafür geht keine Mail raus; auf der
+    Sitzungsseite steht es weiterhin unter „Zuletzt geändert"."""
+    from council.agenda_diff import nur_nummern_versatz
+    d = diff_tagesordnung(_kaskaden_stand(22), _kaskaden_stand(21))
+    assert hat_aenderungen(d)          # die Chronik trägt es weiter
+    assert nur_nummern_versatz(d)      # die Mail nicht
+
+
+def test_echte_umsortierung_meldet_weiter():
+    """Die Grenze: Wandert ein Punkt an eine ANDERE Stelle, ändert sich die
+    Reihenfolge — wer wegen genau dieses Punktes kommt, muss wissen, dass er
+    früher dran ist. Auch neben einer Kaskade."""
+    from council.agenda_diff import nur_nummern_versatz
+    alt = _kaskaden_stand(22) + [_i("Ö 40", "Sondertagesordnungspunkt")]
+    neu = _kaskaden_stand(21) + [_i("Ö 2", "Sondertagesordnungspunkt")]
+    assert not nur_nummern_versatz(diff_tagesordnung(alt, neu))
+    # Und eine einzelne Verschiebung ohne Kaskade erst recht nicht.
+    assert not nur_nummern_versatz(diff_tagesordnung(
+        [_i("Ö 5", "Radweg"), _i("Ö 6", "Kita")],
+        [_i("Ö 5", "Kita"), _i("Ö 6", "Radweg")]))
+
+
+def test_nummern_versatz_neben_echter_aenderung_meldet_weiter():
+    """Jede andere Änderungsart hebt die Stille auf — eine nachgereichte
+    Vorlage oder eine neue Anlage darf nicht mit der Kaskade untergehen."""
+    from council.agenda_diff import nur_nummern_versatz
+    alt = _kaskaden_stand(22)
+    neu = _kaskaden_stand(21)
+    neu[0] = dict(neu[0], vorlage_nr="26/0100")
+    assert not nur_nummern_versatz(diff_tagesordnung(alt, neu))
+    # Ein zusätzlicher neuer Punkt ebenso.
+    assert not nur_nummern_versatz(diff_tagesordnung(alt, neu + [_i("Ö 1", "Einwohnerfragestunde")]))
+    # Und ein Stand ganz ohne Änderung ist kein „Nummern-Versatz".
+    assert not nur_nummern_versatz(diff_tagesordnung(alt, list(alt)))
+
+
+def test_nachgereichte_vorlage_am_mitgerutschten_punkt_bricht_die_stille():
+    """Die gefährlichste Kante: `diff_tagesordnung` prüft in einer if/elif-Kette,
+    „verschoben" schlägt „vorlage". Ein Punkt, der mitrutscht UND seine Vorlage
+    nachgereicht bekommt, steht deshalb nur als Verschiebung in der Liste — beim
+    Stilllegen verschwände die Vorlage sonst spurlos."""
+    from council.agenda_diff import nur_nummern_versatz
+    alt = _kaskaden_stand(22)
+    neu = _kaskaden_stand(21)
+    neu[3] = dict(neu[3], vorlage_nr="26/0100")
+    d = diff_tagesordnung(alt, neu)
+    assert d["vorlage"] == []          # die Kette hat sie geschluckt …
+    assert not nur_nummern_versatz(d)  # … die Stille-Regel sieht trotzdem nach
+
+    # Dasselbe für einen Anhang, der am mitgerutschten Punkt dazukommt.
+    alt_a = [dict(i, anlagen=[]) for i in _kaskaden_stand(22)]
+    neu_a = [dict(i, anlagen=[]) for i in _kaskaden_stand(21)]
+    neu_a[3] = dict(neu_a[3], anlagen=_a(("111", "Lageplan")))
+    assert not nur_nummern_versatz(diff_tagesordnung(alt_a, neu_a))
+    # Ohne den Anhang bleibt es beim reinen Versatz.
+    assert nur_nummern_versatz(diff_tagesordnung(alt_a, [dict(i, anlagen=[]) for i in _kaskaden_stand(21)]))
