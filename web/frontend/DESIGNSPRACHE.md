@@ -164,8 +164,9 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   eine halb gefüllte Kiste sieht nicht nach Absicht aus, sondern nach Fehler
   (Tim, 21.08.: „hier ist der ganze rechte Bereich frei, das sieht absolut
   scheiße aus"). Der Deckel ist trotzdem richtig — ohne ihn läuft Fließtext auf
-  einem breiten Schirm über 120+ Zeichen je Zeile. Er gehört nur an eine andere
-  Stelle. Vier Fälle, vier Antworten:
+  einem breiten Schirm über 145 Zeichen je Zeile (gemessen bei 976 px Karte,
+  13 px Text; auf 21:9 sind es 220), und dort verliert das Auge beim Rücksprung
+  die Zeile. Er gehört nur an eine andere Stelle. Fünf Fälle, fünf Antworten:
   - **Ein Einschub** (`aside`, „Lotti erklärt's einfach") deckelt sich SELBST.
     Der Leerraum liegt dann außerhalb des Kastens — er ist Seitenrand statt
     Loch, und dass ein Einschub schmaler steht als der Fluss, sagt genau das
@@ -178,6 +179,38 @@ Dot hsl(209 18% 65%), kombiniertes Label.
     gefüllte Karte (Zuwendungs-Block auf `/haushalt/einnahmen`, Tim 24.08.:
     „der Text ist auch hier nur halbseitig"). Ein Stück, das eine Liste
     mitbringt, spannt sich dabei über beide Spalten (`col-span-2`).
+  - **Ein langer Fließtext, der SELBST der Inhalt der Karte ist**, läuft
+    ebenfalls in Spalten — dann aber als Textfluss, nicht als Raster:
+
+    ```
+    <section className="@container rounded-2xl … p-4">
+      <p className="max-w-[76ch] @3xl:max-w-none @3xl:columns-2
+                    @3xl:gap-x-8 @6xl:columns-3">
+    ```
+
+    Der Deckel bleibt für die schmale Karte stehen, oberhalb der Schwelle
+    übernehmen die Spalten. Gemessen über alle Kartenbreiten hält das die
+    Zeile zwischen **rund 56 und 95 Zeichen** und lässt nie ein Loch (am
+    schmalsten direkt an einer Schwelle, wo die neue Spalte gerade erst
+    hineinpasst):
+
+    | Karteninhalt | Spalten | Zeichen (13 px) | Zeichen (11,5 px) |
+    |---|---|---|---|
+    | 566 px | 1 | 89 | 95 |
+    | 736 px | 1 | 95 | 95 |
+    | 942 px | 2 | 70 | 79 |
+    | 1.118 px | 2 | 82 | 95 |
+    | 1.366 px | 3 | 64 | 76 |
+
+    Die Schwelle misst den **Innen**raum der Karte, nicht ihre Außenkante:
+    Eine Karte mit `p-4` und 1 px Rahmen braucht 802 px Außenmaß, damit innen
+    die 768 px von `@3xl` zusammenkommen — wer die Schwelle am Fenster
+    nachrechnet, liegt um Polster und Rahmen daneben (nachgemessen: bei
+    800 px Karte greift sie noch nicht).
+    Zwei Bedingungen, sonst wird es schlechter statt besser: Der Text braucht
+    **mindestens sechs Zeilen** (sonst stehen zwei Stummel nebeneinander), und
+    die Karte muss wirklich breit werden können — in einer Rasterspalte
+    (`breit:grid-cols-2`) ist sie es nie, dort greift die Regel von allein nicht.
   - **Ein einzelner Absatz** neben Grafik, Tabelle oder Liste in derselben
     Karte bleibt gedeckelt. Die Karte ist dann nicht leer, und ein Absatz, der
     kürzer ist als die Tabelle darunter, ist normaler Satz.
@@ -187,10 +220,64 @@ Dot hsl(209 18% 65%), kombiniertes Label.
     ihre Zahl; die frei gewordene Spalte trägt Text, der etwas erklärt. Ein
     leeres Feld ist ein Fehler, ein gedehntes Bild aber auch.
 
-  ACHTUNG, `ch` MISST DIE SCHRIFT SEINES ELEMENTS. Steht der Deckel am Kasten
-  (16 px) und der Text darin hat 13 px, sind `92ch` nicht 92 Zeichen, sondern
-  102 — nachgemessen am Lotti-Kasten. Zielwert ist die Zeichenzahl im
-  gerenderten Text, nicht die Zahl in der Klasse.
+- **`ch` ist keine Zeichenzahl. Zwei Umrechnungen, beide gemessen (24.08.2026).**
+  Die Zahl in `max-w-[76ch]` sagt nicht, wie viele Zeichen in einer Zeile
+  stehen — sie sagt es um rund ein Viertel zu niedrig. Wer eine Lesebreite
+  festlegen will, rechnet zweimal um:
+
+  **① `ch` = Breite der Ziffer 0 in der Schrift DIESES Elements.** Nicht der
+  Schrift des Textes darin, und nicht 1 em. Gemessen (`measureText`) an unseren
+  beiden Schriften, unabhängig von der Größe:
+
+  | Schrift | Gewicht | 1 ch | 1 ch bei 11,5 / 12,5 / 13 / 15 px |
+  |---|---|---|---|
+  | Inter (`font-sans`, Fließtext) | 400 | 0,631 em | 7,26 · 7,89 · 8,20 · 9,46 px |
+  | Inter | 500 | 0,645 em | 7,42 · 8,07 · 8,39 · 9,68 px |
+  | Inter | 700 | 0,674 em | 7,75 · 8,43 · 8,76 · 10,11 px |
+  | Bricolage (`font-display`, h1–h3) | 700 | 0,665 em | 7,65 · 8,32 · 8,65 · 9,98 px |
+
+  Also: `76ch` an einem `<p class="text-[13px]">` sind 623 px. Dieselben `76ch`
+  an einem Kasten **ohne** Größenangabe messen die geerbten 16 px des Body und
+  sind 767 px — 23 % mehr, obwohl in der Klasse dieselbe Zahl steht.
+
+  **② Ein `ch` ist 1,26 gerenderte Zeichen.** Die Ziffer 0 ist breiter als ein
+  durchschnittliches Prosa-Zeichen: In Inter 400 ist sie 0,631 em breit, das
+  mittlere Zeichen unserer deutschen Seitentexte 0,484 em (gemessen über 36.000
+  Zeichen echten Haushalts-Textes). Rechnerisch sind das 1,30 Zeichen je `ch`;
+  im echten Umbruch bleibt am Zeilenende ein Wort liegen, gemessen über 500
+  volle Zeilen im Browser sind es **1,257** — und zwar bei jeder Schriftgröße
+  gleich, der Faktor ist reine Geometrie:
+
+  | Klasse | gerenderte Zeichen | Klasse | gerenderte Zeichen |
+  |---|---|---|---|
+  | `46ch` | 57 | `70ch` | 88 |
+  | `52ch` | 65 | `72ch` | 91 |
+  | `56ch` | 70 | `74ch` | 93 |
+  | `58ch` | 72 | `76ch` | **95** |
+  | `62ch` | 78 | `80ch` | 101 |
+  | `66ch` | 83 | `86ch` | 108 |
+  | `68ch` | 85 | `88ch` | 111 |
+
+  Rückwärts: **gewünschte Zeichen × 0,80 = die Zahl in der Klasse.**
+
+  **Der Haushalts-Bereich steht bei `76ch` ≙ rund 95 Zeichen je Zeile** — das
+  ist der gelebte Wert, an dem sich neue Bausteine ausrichten. Die Zahlen 74/76
+  tragen die 115 Fließtext-Stellen des Bereichs; wer eine neue schreibt, nimmt
+  `76ch` und nicht eine frei gewählte Zahl.
+
+  **Wo der Deckel am Kasten sitzt, trägt der Kasten die Schriftgröße seines
+  Textes** — auch wenn sich nichts vererbt, weil jedes Kind seine Größe selbst
+  setzt: `<ul class="max-w-[74ch] text-[13px]">`. Ohne die Angabe misst er die
+  geerbten 16 px des Body, und dieselbe Zahl bedeutet ein Viertel mehr Breite.
+  (Am Text-Element selbst — dem üblichen Fall, 241 der 270 Deckel im Frontend
+  — stimmt ① von allein.) Genau daran hingen am 24.08.2026 vier Stellen: Der
+  Stations-Fließtext lief auf 122 Zeichen, die Leistungsliste auf 114, der
+  Lotti-Kasten auf 101, während der Bereich um sie herum bei 95 stand.
+
+  Und: **nachmessen, nicht nachrechnen.** Rezept im Browser — `Range` über den
+  Textknoten legen, `getClientRects().length` sind die Zeilen, per Binärsuche
+  den Startoffset der letzten Zeile suchen; `Offset / (Zeilen − 1)` ist die
+  Zeichenzahl der vollen Zeilen. Die Zahlen oben stammen genau daher.
 
 ## 5. Wiederkehrende Bausteine (Spez im Artboard „Ratsgespräch")
 

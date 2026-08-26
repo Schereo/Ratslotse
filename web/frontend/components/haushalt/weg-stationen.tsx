@@ -55,9 +55,18 @@ export function StationsZeile({ station, rolle, children }: {
       </div>
       <p className="mt-1 text-[13.5px] font-bold leading-snug">{station.gremium}</p>
       {/* Der Fließtext der Station hält Lesebreite — ohne Deckel lief er über
-          die volle Kartenbreite (gemessen 1.102 px ≙ rund 140 Zeichen je
-          Zeile), während der Einstiegstext derselben Seite bei 66 endet. */}
-      <div className="max-w-[76ch]">{children}</div>
+          die volle Kartenbreite (gemessen 1.102 px, das sind bei 12,5 px
+          Schrift rund 180 Zeichen je Zeile).
+
+          `text-[12.5px]` AM DECKEL, obwohl jedes Kind seine Größe selbst setzt
+          und sich hier nichts vererbt: `ch` misst die Schrift des Elements, an
+          dem es steht. Ohne die Angabe maß der Deckel die geerbten 16 px des
+          Body, und `76ch` waren 767 px statt 599 — der Text lief auf 122
+          Zeichen je Zeile, das Breiteste im ganzen Bereich (24.08.2026).
+          Mit der Größe am Kasten heißt `76ch` das, was es sagt: 599 px,
+          rund 95 Zeichen — der Wert des restlichen Haushalts-Bereichs.
+          Wer die Schriftgröße der Kinder ändert, zieht sie hier nach. */}
+      <div className="max-w-[76ch] text-[12.5px]">{children}</div>
     </div>
   );
 }

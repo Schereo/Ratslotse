@@ -339,8 +339,9 @@ export default function VergleichSeite() {
               leer. Die Reihenfolge bleibt die des Arguments — erst die
               Herleitung, dann der Beleg, den sie ankündigt („Das müssen wir
               nicht selbst herleiten"); links-rechts ist genau diese Richtung.
-              Die Zeilenlänge bleibt bei 76 Zeichen und wird in der Spalte auf
-              rund 69 gedeckelt — beides im Lesebereich. Schwelle am CONTAINER
+              Die Zeile misst einspaltig 95 Zeichen (`76ch` × 1,26, s.
+              DESIGNSPRACHE §4) und in der Spalte rund 78 — beides im
+              Lesebereich. Schwelle am CONTAINER
               (Designsprache §4), nicht am Fenster: Bei 1024 px Fenster ist
               neben der Seitenleiste nur Platz für Spalten von 344 px. */}
           <div className="mt-2 grid items-start gap-x-8 gap-y-3.5 @5xl/kern:grid-cols-2">
@@ -443,8 +444,10 @@ export default function VergleichSeite() {
 
           {/* Steht UNTER beiden Spalten, nicht in einer: „Dieselbe Warnung"
               meint den Beleg daneben mit — der Satz muss also nach ihm
-              gelesen werden, nicht neben ihm. */}
-          <p className="mt-3.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+              gelesen werden, nicht neben ihm. Über die volle Kartenbreite
+              läuft er trotzdem: Unter ihm kommt nichts mehr, der Deckel allein
+              ließe den Kartenboden halb leer (Designsprache §4). */}
+          <p className="mt-3.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90 @3xl/kern:max-w-none @3xl/kern:columns-2 @3xl/kern:gap-x-8 @6xl/kern:columns-3">
             Dieselbe Warnung kommt von zwei weiteren Stellen. Das niedersächsische
             Innenministerium schreibt in seinem Runderlass vom 13.12.2017, Ausgliederungen
             und Fremdvergaben könnten „die Aussagekraft und Vergleichbarkeit der Kennzahlen
@@ -501,11 +504,15 @@ export default function VergleichSeite() {
         </Abschnitt>
 
         {/* --- Die Grenzen, als eigener Block statt als Kleingedrucktes --- */}
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <section className="@container rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Was auf dieser Seite bewusst fehlt
           </p>
-          <ul className="mt-2 flex max-w-[76ch] list-disc flex-col gap-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90">
+          {/* Zwei Spalten, sobald die Karte Platz hat (Designsprache §4): Der
+              Deckel allein ließe hier rechts über 300 px leer, ohne dass die
+              Zeile dadurch besser läge. In der Spalte sind es rund 70 Zeichen
+              statt 95 — Fläche gefüllt UND kürzere Zeile. */}
+          <ul className="mt-2 grid max-w-[76ch] list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:max-w-none @3xl:grid-cols-2">
             <li>
               <strong>Ausgaben, Personal und Schulden je Einwohner*in.</strong> Die Gründe
               stehen oben. Sie gelten auch dann, wenn die Zahlen sauber erhoben sind —

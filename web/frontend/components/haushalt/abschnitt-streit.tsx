@@ -39,12 +39,14 @@
 // die einzige im Bereich, deren Hauptinhalt fremder Fließtext ist — und der
 // kommt ohne jede Gliederung: 214 Wortbeiträge im Bestand, KEIN einziger mit
 // Absatzumbruch, der längste 12.392 Zeichen am Stück. Bis hierher liefen sie
-// über die volle Kartenbreite (gemessen 1.102 px ≙ rund 129 Zeichen je Zeile,
+// über die volle Kartenbreite (gemessen 1.102 px ≙ rund 173 Zeichen je Zeile,
 // kursiv); aufgeklappt war das eine Wand von fast hundert Zeilen, in der das
-// Auge beim Rücksprung die Zeile verliert. Jetzt hält jeder Wortlaut 76
-// Zeichen — dieselbe Breite, die der Beteiligungs-Steckbrief für fremden
-// Fließtext führt. Das ist KEINE Kürzung: Weder Text noch Reihenfolge noch
-// die Vorschau-Regel ändern sich, nur die Spalte, in der sie stehen.
+// Auge beim Rücksprung die Zeile verliert. Jetzt hält jeder Wortlaut `76ch`
+// = rund 93 Zeichen — dieselbe Breite, die der Beteiligungs-Steckbrief für
+// fremden Fließtext führt. (Die beiden Zahlen standen hier bis 24.08.2026 als
+// „129" und „76 Zeichen": Das waren ch, nicht Zeichen — s. DESIGNSPRACHE § 4.)
+// Das ist KEINE Kürzung: Weder Text noch Reihenfolge noch die Vorschau-Regel
+// ändern sich, nur die Spalte, in der sie stehen.
 //
 // KEIN „Stand der Daten“-Block. Der Baustein beschreibt, bis wann die neun
 // FINANZschichten reichen — auf einer Seite ohne eine einzige Zahl daraus wäre
@@ -130,11 +132,12 @@ function Fraktion({ label, unklar = false }: { label: string | null; unklar?: bo
  *  DIE LESEBREITE IST HIER KEINE KOSMETIK. Protokollreden tragen im ganzen
  *  Bestand KEINEN einzigen Absatzumbruch (214 Wortbeiträge geprüft, 0 mit
  *  „\n") — der längste läuft über 12.392 Zeichen am Stück. Ohne Deckel nahm
- *  der Absatz die volle Kartenbreite: gemessen 1.102 px, rund 129 Zeichen je
+ *  der Absatz die volle Kartenbreite: gemessen 1.102 px, rund 173 Zeichen je
  *  Zeile, kursiv. Aufgeklappt waren das knapp hundert Zeilen, bei denen das
- *  Auge den Zeilenanfang verliert. 76 Zeichen sind die Breite, die der
- *  Beteiligungs-Steckbrief für denselben Fall führt (Fließtext aus einer
- *  fremden Quelle) — dieselbe Regel, damit die Seiten eine Sprache sprechen.
+ *  Auge den Zeilenanfang verliert. `76ch` — rund 93 Zeichen, s.
+ *  DESIGNSPRACHE § 4 — ist die Breite, die der Beteiligungs-Steckbrief für
+ *  denselben Fall führt (Fließtext aus einer fremden Quelle); dieselbe Regel,
+ *  damit die Seiten eine Sprache sprechen.
  *  Gekürzt wird dadurch nichts: Der Wortlaut bleibt Zeichen für Zeichen der
  *  des Protokolls. */
 /** Der Punkt an der Rednerliste — wer spricht, in der Marken-Grammatik der
@@ -623,11 +626,13 @@ export function StreitAbschnitt() {
         />
 
         {/* Die Grenze der Seite — sichtbar, nicht im Kleingedruckten. */}
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="@container rounded-2xl border border-border bg-card p-4 shadow-sm">
           <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Was hier fehlt
           </h2>
-          <ul className="mt-2 flex max-w-[70ch] list-disc flex-col gap-1.5 pl-4 text-[12.5px] leading-relaxed text-muted-foreground">
+          {/* Zwei Spalten, sobald die Karte Platz hat (Designsprache §4) —
+              füllt die Fläche und kürzt die Zeile zugleich. */}
+          <ul className="mt-2 grid max-w-[70ch] list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[12.5px] leading-relaxed text-muted-foreground @3xl:max-w-none @3xl:grid-cols-2">
             <li>
               <strong className="font-semibold text-foreground">Die Fraktionslisten selbst.</strong>{" "}
               Die Änderungslisten der Verwaltung und die beschlossenen Änderungen des
