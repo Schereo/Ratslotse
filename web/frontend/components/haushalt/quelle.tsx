@@ -156,8 +156,7 @@ export function Beleg({ q, h, className }: {
   h?: Herkunft | null;
   className?: string;
 }) {
-  const [offen, setOffen] = useState(false);
-  const { knopf, lage } = useFaehnchenLage(offen);
+  const { offen, setOffen, knopf, faehnchen, lage } = useFaehnchen();
   const { schluessel, dokumente, jahrgaenge, jahr, eintraege } =
     useContext(SeitenQuellen);
   const quelle = QUELLEN[q];
@@ -211,6 +210,7 @@ export function Beleg({ q, h, className }: {
       </button>
       {offen && (
         <span
+          ref={faehnchen}
           // `fixed` und nicht `absolute`: Ein absolut gesetztes Fähnchen hängt
           // an seinem Chip, und ein Chip am rechten Textrand schiebt es aus
           // dem Bild — auf dem Handy zuverlässig (Tim, 21.08.2026). Fixiert
@@ -249,9 +249,46 @@ const BREITE = 300;
 // Exportiert, weil der Gesetz-Chip (`components/haushalt/gesetz.tsx`) dasselbe
 // Fähnchen öffnet. Zwei Implementierungen hießen: Die Falle, die Tim am
 // 21.08.2026 auf dem Handy gefunden hat, wäre in der zweiten wieder drin.
-export function useFaehnchenLage(offen: boolean) {
+//
+// SEIT 26.08.2026 GEHÖRT DEM HOOK AUCH DER OFFEN-ZUSTAND. Vorher hielt ihn
+// jeder Chip selbst, und beide hatten denselben Mangel: Das Fähnchen ging nur
+// wieder zu, wenn man denselben Chip ein zweites Mal traf (Tim). Ein Klick
+// daneben — das, was jeder zuerst versucht — tat nichts. Zustand und
+// Schließen-Logik liegen deshalb zusammen an einer Stelle; wer den nächsten
+// Chip baut, bekommt beides, ohne daran zu denken.
+export function useFaehnchen() {
+  const [offen, setOffen] = useState(false);
   const knopf = useRef<HTMLButtonElement>(null);
+  // Das Fähnchen selbst — damit ein Klick DARIN es nicht zuklappt. Sonst
+  // ließe sich der Text darin nicht markieren, und auf dem Handy schlösse
+  // schon das Antippen des Links das Fähnchen, bevor der Link zieht.
+  const faehnchen = useRef<HTMLSpanElement>(null);
   const [lage, setLage] = useState<CSSProperties>({ visibility: "hidden" });
+
+  useEffect(() => {
+    if (!offen) return;
+    const daneben = (e: PointerEvent) => {
+      const ziel = e.target as Node | null;
+      if (!ziel) return;
+      if (knopf.current?.contains(ziel) || faehnchen.current?.contains(ziel)) return;
+      setOffen(false);
+    };
+    const taste = (e: KeyboardEvent) => {
+      // Escape gehört dazu, nicht als Zugabe: Wer mit der Tastatur unterwegs
+      // ist, hat kein „daneben", auf das er klicken könnte.
+      if (e.key === "Escape") { setOffen(false); knopf.current?.focus(); }
+    };
+    // `pointerdown` statt `click`: Auf dem Handy liegen zwischen Berührung und
+    // Klick bis zu 300 ms, in denen das Fähnchen noch offen über dem steht,
+    // was jemand treffen wollte. In der Capture-Phase, damit ein Element, das
+    // den Klick selbst abfängt, das Schließen nicht verschluckt.
+    document.addEventListener("pointerdown", daneben, true);
+    document.addEventListener("keydown", taste);
+    return () => {
+      document.removeEventListener("pointerdown", daneben, true);
+      document.removeEventListener("keydown", taste);
+    };
+  }, [offen]);
 
   useEffect(() => {
     if (!offen) return;
@@ -280,7 +317,7 @@ export function useFaehnchenLage(offen: boolean) {
     };
   }, [offen]);
 
-  return { knopf, lage };
+  return { offen, setOffen, knopf, faehnchen, lage };
 }
 
 /** Wo im Dokument die Zahl steht — nur wo die Datenbank es weiß.

@@ -304,18 +304,43 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
 
       {misst && (
         <div className="mt-3 rounded-xl border border-border bg-muted/25 p-3">
-          <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Veränderung zum Vorjahr, im Mittel {von}–{bis}
+          {/* DIE ÜBERSCHRIFT HAT HIER ZWEIMAL IN DIE IRRE GEFÜHRT. „Veränderung
+              zum Vorjahr, im Mittel 1998–2025" stand über zwei Balken mit
+              13,2 % und 2,8 % — gelesen wurde daraus „die Gewerbesteuer ist um
+              13,2 % gestiegen" bzw. „über den Zeitraum um 13,2 % gewachsen"
+              (Tim, 26.08.2026). Beides ist falsch: Der Balken misst, wie weit
+              es in EINEM Jahr ausschlägt, in beide Richtungen.
+
+              Deshalb steht der Lesesatz jetzt VOR den Balken und nicht als
+              Fußnote darunter — er ist die Einheit der Zahl, nicht ihre
+              Methode. Was die Zahl NICHT ist, steht ausdrücklich dabei: Eine
+              Grafik, die zwei plausible Lesarten hat, muss die falsche
+              benennen, sonst gewinnt sie. */}
+          <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+            <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Wie stark es von Jahr zu Jahr schwankt
+            </p>
+            <span className="font-mono text-[9.5px] uppercase text-muted-foreground">
+              {eigenAend.length} Jahrespaare {von}–{bis}
+            </span>
+          </div>
+
+          <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/90">
+            Um so viel bewegte sich das Aufkommen in einem durchschnittlichen Jahr —
+            nach oben oder nach unten:
           </p>
+
           <div className="mt-2.5 flex flex-col gap-2">
             <Zeile label="Gewerbesteuer" wert={deProzent(eigenMittel)}
               anteil={(eigenMittel / skala) * 100} farbe="var(--hh-ein-0)" />
             <Zeile label={vergleichTitel} wert={deProzent(andereMittel)}
               anteil={(andereMittel / skala) * 100} farbe="var(--hh-ein-3)" />
           </div>
-          <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[11px] text-muted-foreground">
-            Unsere Rechnung aus der Ist-Reihe beider Steuern — Beträge ohne Vorzeichen
-            gemittelt, damit sich ein gutes und ein schlechtes Jahr nicht aufheben.
+          <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
+            <strong className="font-semibold text-foreground/80">Nicht</strong> gemeint ist die
+            Veränderung über den ganzen Zeitraum — die steht in der Kurve oben. Hier zählt jedes
+            Jahr einzeln: Unsere Rechnung aus der Ist-Reihe beider Steuern, Ausschläge ohne
+            Vorzeichen gemittelt, damit sich ein gutes und ein schlechtes Jahr nicht aufheben.
             <Beleg q="steuern" />
           </p>
         </div>

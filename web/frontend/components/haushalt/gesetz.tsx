@@ -19,18 +19,18 @@
 //    „was steht da, das hier gilt", nicht ein Abriss von 36 Paragrafen. Alles
 //    Weitere steht im Volltext, und dorthin führt der Link.
 
-import { useState } from "react";
 import { Scale, ExternalLink } from "lucide-react";
 import { GESETZE, herausgeber, type GesetzSchluessel } from "@/lib/gesetze";
-import { useFaehnchenLage } from "@/components/haushalt/quelle";
+import { useFaehnchen } from "@/components/haushalt/quelle";
 import { cn } from "@/lib/utils";
 
 export function Gesetz({ g, className }: {
   g: GesetzSchluessel;
   className?: string;
 }) {
-  const [offen, setOffen] = useState(false);
-  const { knopf, lage } = useFaehnchenLage(offen);
+  // Zustand, Lage und Schließen kommen aus einem Hook — auch das Zugehen bei
+  // einem Klick daneben, das dieser Chip sonst wieder selbst bräuchte.
+  const { offen, setOffen, knopf, faehnchen, lage } = useFaehnchen();
   const gesetz = GESETZE[g];
   if (!gesetz) return null;
 
@@ -54,6 +54,7 @@ export function Gesetz({ g, className }: {
         // `fixed` wie beim Beleg-Chip und aus demselben Grund — ein absolut
         // gesetztes Fähnchen schiebt sich am rechten Textrand aus dem Bild.
         <span
+          ref={faehnchen}
           style={lage}
           className="fixed z-30 block max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-3 text-left shadow-[0_12px_32px_-10px_rgba(2,32,71,0.28)]"
         >
