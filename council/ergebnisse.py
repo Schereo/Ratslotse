@@ -29,6 +29,7 @@ from urllib.parse import quote
 import logging
 
 from kern import notify
+from council import bookmarks as bookmark_logic
 
 logger = logging.getLogger("council.ergebnisse")
 
@@ -140,19 +141,58 @@ def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
             continue
         alle = {str(d.get("item_number") or ""): d
                 for d in council_store.get_decisions(ksinr) if d.get("kind") != "subvote"}
-        if not alle:
+
+        # Ein ausdrücklich abonnierter Merkeintrag ist ein zweiter, engerer
+        # Weg zum selben Ereignis. Beide Wege hier zusammenführen, damit ein
+        # Konto mit Themen-Treffer UND gemerktem TOP nicht zweimal dieselbe
+        # Protokoll-Veröffentlichung bekommt.
+        bookmark_rows = nwz_store.bookmark_result_targets(ksinr)
+        bookmarks_by_owner: dict[int, list[dict]] = {}
+        for row in bookmark_rows:
+            bookmarks_by_owner.setdefault(row["owner_id"], []).append(row)
+        owners = set(nwz_store.owners_with_agenda_match(ksinr)) | set(bookmarks_by_owner)
+        if not alle and not bookmarks_by_owner:
             continue
 
-        for owner_id in nwz_store.owners_with_agenda_match(ksinr):
+        for owner_id in sorted(owners):
+            eigene_bookmarks = bookmarks_by_owner.get(owner_id, [])
             if nwz_store.result_already_sent(ksinr, owner_id):
+                nwz_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
                 continue
             tops = {m["item_number"] for m in
                     nwz_store.agenda_matches_for_owner(owner_id, [ksinr]).get(ksinr, [])}
             treffer = [alle[t] for t in sorted(tops) if t in alle and alle[t].get("outcome")]
+            # Gemerkte TOPs gegen den aktuellen Stand auflösen — nicht stumpf
+            # über die gespeicherte Nummer, denn die kann sich bis zur Sitzung
+            # verschoben haben.
+            for bookmark in eigene_bookmarks:
+                d = bookmark_logic.resolve_bookmark(bookmark, council_store).get("decision")
+                if d and d.get("outcome") and all(x.get("id") != d.get("id") for x in treffer):
+                    treffer.append(d)
             if not treffer:
-                # Kein Ergebnis zu genau diesen TOPs (vertagt ohne Eintrag,
-                # abweichende Nummerierung) — dann lieber schweigen.
+                # Für einen ausdrücklich gemerkten TOP ist auch „Protokoll da,
+                # aber kein eigener Beschluss erkannt" eine nützliche und
+                # ehrliche Antwort. Themen-Treffer allein bleiben wie bisher
+                # still, wenn keine belastbare Entscheidung vorliegt.
+                if eigene_bookmarks:
+                    erster = eigene_bookmarks[0]
+                    titel = erster.get("title") or "Gemerkter Tagesordnungspunkt"
+                    top_liste = [str(b.get("item_number") or "") for b in eigene_bookmarks]
+                    ziel = sitzung_href(ksinr, top_liste)
+                    queued = notify.einreihen(
+                        nwz_store, owner_id, notify.N3_ERGEBNIS,
+                        f"Protokoll ist da: {titel}",
+                        (f"<p>Das Protokoll des {sitzung['committee']} vom "
+                         f"{_datum(sitzung['session_date'])} ist veröffentlicht.</p>"
+                         "<p>Für den gemerkten TOP wurde kein eigener Beschluss erkannt — "
+                         "etwa weil er abgesetzt, nur beraten oder als Formalie behandelt wurde.</p>"
+                         f'<p><a href="{ziel}">Zum gemerkten TOP →</a></p>'),
+                        ziel,
+                    )
+                    if queued:
+                        eingereiht += 1
                 nwz_store.mark_result_sent(ksinr, owner_id)
+                nwz_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
                 continue
             notify.einreihen(
                 nwz_store, owner_id, notify.N3_ERGEBNIS,
@@ -161,6 +201,7 @@ def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
                 decision_href(treffer[0]["id"]),
             )
             nwz_store.mark_result_sent(ksinr, owner_id)
+            nwz_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
             eingereiht += 1
             logger.info("N3 für owner %s, Sitzung %s: %d Beschluss/Beschlüsse",
                         owner_id, ksinr, len(treffer))

@@ -29,6 +29,7 @@ import { EntitiesTab } from "@/components/council-entities";
 import { cn, relativerTag, wochentagKurz } from "@/lib/utils";
 import { useHeute } from "@/lib/use-heute";
 import { useMerker } from "@/lib/use-merker";
+import { BookmarkButton } from "@/components/bookmark-button";
 
 type Scope = "all" | "upcoming" | "recent";
 type Tab = "sessions" | "decisions" | "themen" | "analysis";
@@ -892,9 +893,10 @@ function YearDivider({ jahr }: { jahr: string }) {
    toter Text — man musste zurück in die Suche, um den Beschluss zu finden, der
    direkt dahinter liegt. TOPs ohne Beschluss (Berichte, künftige Sitzungen)
    bleiben bewusst ruhiger Text, damit der Zeiger nichts verspricht, was fehlt. */
-function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash }: {
+function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr }: {
   it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
+  ksinr?: number;
   /* Ziel des `?top=…`-Sprungs aus einer Benachrichtigung (s. topDomId). */
   domId?: string;
   /** Kurz nach dem Sprung hervorgehoben — sonst sieht die Zielzeile aus wie
@@ -955,19 +957,24 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash }: {
     flash && "bg-primary/[0.07] ring-2 ring-primary",
   );
 
+  const bookmark = it.is_public && ksinr != null
+    ? <BookmarkButton target={{ kind: "agenda_item", ksinr, item_number: it.item_number }} compact className="mt-0.5 shrink-0" />
+    : null;
+
   if (decisionId != null) {
     return (
-      <li id={domId}>
+      <li id={domId} className={cn(layout, tone)}>
         <Link
           href={decisionHref(decisionId)}
-          className={cn(layout, tone, "transition-colors hover:bg-muted/60 active:scale-[0.995]")}
+          className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-1 transition-colors active:scale-[0.995]"
         >
           {body}
         </Link>
+        {bookmark}
       </li>
     );
   }
-  return <li id={domId} className={cn(layout, tone)}>{body}</li>;
+  return <li id={domId} className={cn(layout, tone)}>{body}{bookmark}</li>;
 }
 
 /** „Zuletzt geändert" (Tims Wunsch 18.08.): Ziel der Änderungs-Push — die
@@ -1488,6 +1495,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                             <ul className="space-y-0.5">
                               {(d?.agenda_items ?? []).map((it, i) => (
                                 <AgendaRow key={i} it={it} query={query}
+                                  ksinr={s.ksinr ?? undefined}
                                   outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
@@ -1502,7 +1510,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         matched.length > 0 ? (
                           <>
                             <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">{matched.length} Treffer in der Tagesordnung</p>
-                            <ul className="space-y-0.5">{matched.map((it, i) => <AgendaRow key={i} it={it} query={query} myTopic={myByItem[it.item_number]} />)}</ul>
+                            <ul className="space-y-0.5">{matched.map((it, i) => <AgendaRow key={i} it={it} query={query} ksinr={s.ksinr ?? undefined} myTopic={myByItem[it.item_number]} />)}</ul>
                           </>
                         ) : (
                           <p className="px-2 text-sm text-muted-foreground">Kein Tagesordnungspunkt enthält „{query}" — Treffer im Ausschussnamen.</p>
@@ -1514,6 +1522,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                           {isExpanded ? "Weniger anzeigen" : `Alle ${s.n_items} TOPs anzeigen`}
                         </button>
                         <CalendarButton session={s} agenda={(d?.agenda_items ?? []).map((it) => `${it.item_number} ${it.title}`)} />
+                        <BookmarkButton target={{ kind: "session", ksinr: s.ksinr }} />
                         <a href={sessionUrl(s.ksinr)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
                           Ratsinfo <ExternalLink className="h-3.5 w-3.5" />
                         </a>

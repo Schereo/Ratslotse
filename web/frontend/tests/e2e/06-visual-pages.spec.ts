@@ -12,6 +12,7 @@ const PAGES = [
   { name: "dashboard", path: "/dashboard", auth: true },
   { name: "council", path: "/council", auth: true },
   { name: "topics", path: "/topics", auth: true },
+  { name: "bookmarks", path: "/bookmarks", auth: true },
   { name: "account", path: "/account", auth: true },
 ];
 
@@ -39,6 +40,24 @@ for (const vp of VIEWPORTS) {
         );
         await page.route("**/api/subscriptions", (r) =>
           r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ subscriptions: [] }) }),
+        );
+        await page.route("**/api/bookmarks", (r) =>
+          r.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ bookmarks: pg.name === "bookmarks" ? [
+              {
+                id: 1, kind: "agenda_item", target_key: "agenda_item:42:2026/123",
+                title: "Sichere Radwege an der Alexanderstraße", subtitle: "Bauausschuss · 2026-09-08 · Ö 2",
+                created_at: "2026-08-26T12:00:00", notify_result: true,
+                result_notified_at: null, state: "upcoming",
+                url: "/council?tab=sessions&ksinr=42&top=%C3%96%202", ksinr: 42,
+                item_number: "Ö 2", decision: null,
+                agenda_item: { item_number: "Ö 2", title: "Sichere Radwege an der Alexanderstraße", vorlage_nr: "2026/123", kvonr: 123, is_public: 1 },
+                session: { ksinr: 42, committee: "Bauausschuss", session_date: "2026-09-08", session_time: "17:00", location: "Rathaus", n_items: 3 },
+              },
+            ] : [] }),
+          }),
         );
 
         if (pg.auth) {

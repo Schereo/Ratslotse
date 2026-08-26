@@ -41,6 +41,26 @@ LOOKBACK_DAYS = 90
 def main() -> dict:
     """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
     since = (date.today() - timedelta(days=LOOKBACK_DAYS)).isoformat()
+    # Ein ausdrücklich abonnierter TOP bleibt offen, auch wenn ein Ausschuss
+    # sein Protokoll später als nach 90 Tagen veröffentlicht. Das normale
+    # Fenster bleibt der schnelle Standard; nur echte offene Merker ziehen es
+    # bei Bedarf bis zu ihrer ältesten Sitzung auf.
+    try:
+        from kern.store import Store as _BookmarkStore
+        from council.store import CouncilStore as _BookmarkCouncilStore
+
+        _bookmarks = _BookmarkStore(NWZ_DB)
+        _pending = _bookmarks.pending_bookmark_ksinrs()
+        _bookmarks.close()
+        if _pending:
+            _council_for_bookmarks = _BookmarkCouncilStore(COUNCIL_DB)
+            _dates = [s["session_date"] for k in _pending
+                      if (s := _council_for_bookmarks.get_session(k))]
+            _council_for_bookmarks.close()
+            if _dates:
+                since = min(since, min(_dates))
+    except Exception as exc:  # noqa: BLE001 — Merkliste darf den Grundlauf nie stoppen
+        print(f"Merkliste für Protokoll-Zeitraum übersprungen: {exc}")
     print(f"Checking for new protocols since {since}…")
     stats = process_range(COUNCIL_DB, since=since)
     print(f"Done — {stats['parsed']} newly parsed, {stats['no_protocol']} still without "

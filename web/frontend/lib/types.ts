@@ -191,6 +191,30 @@ export interface SessionDetail extends CouncilSession {
   aenderungen?: AgendaAenderung[];
 }
 
+export type BookmarkKind = "session" | "agenda_item" | "decision";
+export type BookmarkState = "upcoming" | "waiting" | "protocol" | "decided" | "saved" | "unavailable";
+
+/** Persönlicher Merkeintrag, serverseitig gegen den aktuellen Ratsbestand
+ *  aufgelöst. Ein agenda_item bekommt automatisch `decision`, sobald das
+ *  Protokoll verarbeitet wurde. */
+export interface BookmarkEntry {
+  id: number;
+  kind: BookmarkKind;
+  target_key: string;
+  title: string;
+  subtitle: string;
+  created_at: string;
+  notify_result: boolean;
+  result_notified_at: string | null;
+  state: BookmarkState;
+  url: string;
+  ksinr: number | null;
+  item_number: string | null;
+  session: CouncilSession | null;
+  agenda_item: AgendaItem | null;
+  decision: CouncilDecision | null;
+}
+
 export interface AgendaAenderungZeile {
   art: "neu" | "geaendert" | "verschoben" | "vorlage" | "anlagen" | "entfernt";
   label: string;
