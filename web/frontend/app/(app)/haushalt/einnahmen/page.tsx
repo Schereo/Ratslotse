@@ -175,26 +175,42 @@ export default function EinnahmenPage() {
         kicker="Spielraum über alle Quellen"
         zahl={<>Bei <ZaehlZahl wert={frei} /> von {karten.length} Einnahmequellen kann der
           Rat wirklich drehen</>}
-        sub={(["frei", "begrenzt", "keiner"] as Spielraum[])
-          .map((s) => `${karten.filter((k) => k.art.spielraum === s).length} × ${SPIELRAUM_LABEL[s]}`)
-          .join(" · ")}
+        sub={GRUPPEN.find((g) => g.stufe === "frei")?.text}
         minibild={{
-          href: "#spielraum",
-          label: "Quellenregal: 1 ▢ = 1 Quelle, je Zeile eine Gruppe — klickt zur Legende",
-          skizze: (["frei", "begrenzt", "keiner"] as Spielraum[]).map((s) => (
-            <span key={s} className="flex flex-wrap gap-1">
-              {karten.filter((k) => k.art.spielraum === s).map((k) => (
-                <span
-                  key={k.art.slug}
-                  className="h-3.5 w-3.5 rounded-[3px]"
-                  style={{
-                    background: s === "frei" ? "var(--sb-voll)"
-                      : s === "begrenzt" ? "var(--sb-mittel)" : "var(--sb-blass)",
-                  }}
-                />
-              ))}
-            </span>
-          )),
+          // Das Regal beschriftet SICH SELBST (Tim, 26.08.: „sieht eher aus
+          // wie ein Buchstabe C … man sieht nicht, dass die ersten drei die
+          // sind, die die Stadt beeinflussen kann"). Je Gruppe eine Zeile mit
+          // Namen und Zahl, darunter ihre Quadrate — und deshalb ohne
+          // Erklärzeile und ohne Link darunter: Was das Bild sagt, steht im
+          // Bild.
+          label: "",
+          skizze: (["frei", "begrenzt", "keiner"] as Spielraum[]).map((stufe) => {
+            const anzahl = karten.filter((k) => k.art.spielraum === stufe).length;
+            const ton = stufe === "frei" ? "var(--sb-voll)"
+              : stufe === "begrenzt" ? "var(--sb-mittel)" : "var(--sb-blass)";
+            return (
+              // Label und Quadrate in EINER Zeile: So füllt jede Gruppe die
+              // Spalte, statt als schmale Marke oben rechts zu kleben — und
+              // die Quadrate stehen groß genug, um zählbar zu sein.
+              <span key={stufe} className="flex items-center gap-2.5">
+                {/* Feste Label-Spalte: So beginnen alle Reihen an derselben
+                    Kante, und ihre Länge ist vergleichbar wie bei einem
+                    Balken — rechtsbündig sah die Ein-Quadrat-Gruppe aus, als
+                    klebte sie am Rand. */}
+                <span className="w-[74px] flex-none truncate text-[10.5px] leading-none text-muted-foreground">
+                  {SPIELRAUM_LABEL[stufe]}
+                </span>
+                <span className="flex min-w-0 flex-1 flex-wrap gap-1">
+                  {Array.from({ length: anzahl }, (_, i) => (
+                    <span key={i} className="h-4 w-4 rounded-[3px]"
+                      style={stufe === "keiner"
+                        ? { border: "1.5px dashed var(--sb-strich)" }
+                        : { background: ton }} />
+                  ))}
+                </span>
+              </span>
+            );
+          }),
         }}
       />
 
