@@ -344,6 +344,8 @@ export type HaushaltDaten = {
   steuerplan?: Steuerplan;
   /** Die Realsteuer-Hebesätze je Änderungsjahr seit 1980 (Jahrbuch 1105). */
   hebesaetze?: Hebesaetze;
+  /** Wie viele Betriebe die Gewerbesteuer aufbringen (Landesamt für Statistik). */
+  gewerbesteuerstatistik?: Gewerbesteuerstatistik;
   /** Die dreizehn Kennzahlen des Rechenschaftsberichts — mit den Rechenwegen,
    *  die die Stadt danebendruckt, und den Korrekturen zwischen den Berichten. */
   kennzahlen?: Kennzahlen;
@@ -582,6 +584,48 @@ export type Hebesaetze = {
    *  Grund. Ohne diese Angabe darf kein Sprung angezeigt werden: 2025 stieg
    *  der Grundsteuer-B-Satz um 21 %, während das Aufkommen um 4,6 % sank. */
   bemessung_neu: Record<string, string>;
+};
+
+/** Die Gewerbesteuerstatistik des Landesamts (Bericht L IV 13) — der Nenner
+ *  zur Gewerbesteuer.
+ *
+ *  **Das ist die Veranlagung, nicht das Aufkommen.** Der Steuermessbetrag
+ *  entsteht aus dem Gewerbeertrag eines Erhebungsjahres; was in diesem Jahr in
+ *  der Kasse ankam, steht in `steuern` und ist etwas anderes — in den drei
+ *  prüfbaren Jahren lagen beide zwischen 13 % darunter und 27 % darüber. Keine
+ *  Anzeige darf die zwei Reihen zu einer machen; `abgrenzung` sagt es im
+ *  Klartext und kommt deshalb mit den Zahlen aus der API. */
+export type Gewerbesteuerstatistik = {
+  zeilen: GewerbesteuerstatistikZeile[];
+  abgrenzung: string;
+};
+
+export type GewerbesteuerstatistikZeile = {
+  /** Das **Erhebungsjahr** der Veranlagung. Der Bericht dazu erscheint rund
+   *  fünf Jahre später — das jüngste Jahr hier ist nicht das jüngste der
+   *  Aufkommenskurve. */
+  jahr: number;
+  stadt: string;
+  /** Betriebe und Betriebsstätten, für die hier Gewerbesteuer erhoben wird. */
+  faelle: number;
+  /** Davon die, die einen positiven Steuermessbetrag haben — also zahlen. */
+  faelle_positiv: number;
+  /** Summe der Steuermessbeträge in Euro. `null` heißt **gesperrt**
+   *  (Geheimhaltung), nicht „null Euro". */
+  messbetrag_eur: number | null;
+  /** Betriebe, die nur hier eine Betriebsstätte haben. */
+  festsetzungen: number | null;
+  festsetzungen_positiv: number | null;
+  festsetzung_messbetrag_eur: number | null;
+  /** Betriebsstätten, deren Messbetrag nach Arbeitslöhnen auf mehrere
+   *  Gemeinden zerlegt wurde (§ 28 GewStG). */
+  zerlegungen: number | null;
+  zerlegungen_positiv: number | null;
+  zerlegung_messbetrag_eur: number | null;
+  /** Der Hebesatz, den das Landesamt nachrichtlich beilegt (Prozentpunkte). */
+  hebesatz: number | null;
+  /** Ob für diese Stadt ein Betrag der Geheimhaltung unterliegt. */
+  gesperrt: number;
 };
 
 export type HebesatzZeile = {

@@ -308,6 +308,23 @@ PROBEN: dict[str, str] = {
         "auf: Grundbetrag mal Hebesatz ergibt das Aufkommen, das die Tabelle "
         "ausweist. Bei der Gewerbesteuer zusätzlich, dass nach Abzug der "
         "Umlage genau der Betrag bleibt, den wir zeigen.",
+    # Gewerbesteuerstatistik des LSN (council/gewerbesteuerstatistik.py). Drei
+    # Proben, die aufeinander aufbauen: die Rechnung in der Zeile, dieselbe
+    # Zeile im zweiten Blatt, und ein Wert daraus gegen ein Dokument aus einem
+    # anderen Haus.
+    "gewst_summenprobe":
+        "Jeder Fall ist entweder eine reine Festsetzung oder eine Zerlegung. "
+        "Beide Gruppen ergeben zusammen genau die Gesamtzahl, die dieselbe "
+        "Zeile ausweist — für die Betriebe, für die zahlenden darunter und "
+        "für den Steuermessbetrag.",
+    "gewst_blattprobe":
+        "Derselbe Bericht führt die Stadt zweimal: in der Tabelle der "
+        "kreisfreien Städte und in der aller Gemeinden. Beide sind "
+        "verschieden gebaut und nennen trotzdem dieselben Zahlen.",
+    "gewst_hebesatzprobe":
+        "Der Hebesatz, den das Landesamt seiner Statistik nachrichtlich "
+        "beilegt, steht auch im Statistischen Jahrbuch der Stadt — zwei "
+        "Häuser, dieselbe Zahl für dasselbe Jahr.",
     # Die drei Komponenten des Finanzausgleichs (council/steuerkraft.py). Die
     # zweite ist die stärkere: Sie prüft nicht innerhalb eines Dokuments,
     # sondern eine Landesbehörde gegen die Bücher der Stadt.
@@ -593,6 +610,8 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # Der Städtevergleich aus den LSN-Tabellen — ebenfalls ohne Altbestand und
     # deshalb ausschließlich über `herkunft_id` belegt.
     "council_staedtevergleich",
+    # Und die Gewerbesteuerstatistik desselben Landesamts.
+    "council_gewerbesteuerstatistik",
     # Die Planjahre aus dem Gesamtergebnishaushalt — neu, ohne Altbestand.
     "council_ergebnishaushalt",
     # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.

@@ -22,6 +22,7 @@ from council import kennzahlen as kennzahlen_mod
 from council import nachbewilligungen as nachbewilligungen_mod
 from council import spenden as spenden_mod
 from council import steuertabellen
+from council import gewerbesteuerstatistik as gewst
 from council import beteiligungsbericht, qa
 from council import ernte
 from council import importance
@@ -902,6 +903,14 @@ def haushalt_uebersicht(
       denen sich die Bemessungsgrundlage mitänderte; **ohne diese Angabe darf
       kein Hebesatz-Sprung angezeigt werden**, denn 2025 stieg der Satz um
       21 %, während das Aufkommen um 4,6 % sank.
+    - ``gewerbesteuerstatistik``: wie viele Betriebe und Betriebsstätten in
+      Oldenburg erfasst sind, wie viele davon überhaupt einen Steuermessbetrag
+      haben, und wie sich dieser auf reine Festsetzungen und Zerlegungen
+      verteilt (Landesamt für Statistik, Bericht L IV 13). **Das ist die
+      Veranlagung, nicht das Aufkommen**: Messbetrag mal Hebesatz ergibt nicht
+      die Zahl aus ``steuern`` — in den drei prüfbaren Jahren lagen beide
+      zwischen 13 % darunter und 27 % darüber. ``abgrenzung`` sagt das im
+      Klartext und reist deshalb mit den Zahlen mit.
 
     Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
     zeigt Lücken ehrlich, statt zu interpolieren.
@@ -1063,6 +1072,14 @@ def haushalt_uebersicht(
             # diese Angabe liest sich „Hebesatz +21 %" als „alle zahlen 21 %
             # mehr", und das war 2025 nachweislich falsch.
             "bemessung_neu": steuertabellen.BEMESSUNG_NEU,
+        },
+        # Der Nenner zur Gewerbesteuer: wie viele Betriebe sie aufbringen.
+        # Nur Oldenburg, obwohl die Tabelle alle acht kreisfreien Städte führt
+        # — diese Seite ist ein Steckbrief und kein Vergleich, und die sieben
+        # anderen Städte wären hier Ballast, den niemand rendert.
+        "gewerbesteuerstatistik": lambda: {
+            "zeilen": store.get_gewerbesteuerstatistik(gewst.OLDENBURG),
+            "abgrenzung": gewst.ABGRENZUNG,
         },
     }
 

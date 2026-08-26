@@ -1281,6 +1281,52 @@ class CouncilStore:
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (reihe, jahr, schluessel, kennzahl))"
         )
+        # Gewerbesteuerstatistik des LSN (council/gewerbesteuerstatistik.py) —
+        # wie viele Betriebe die Gewerbesteuer überhaupt aufbringen.
+        #
+        # WARUM SPALTEN UND NICHT LANGFORMAT wie beim Städtevergleich daneben:
+        # Diese neun Zahlen sind EINE Aussage über eine Stadt in einem Jahr,
+        # und sie hängen rechnerisch aneinander (reine Festsetzungen +
+        # Zerlegungen = insgesamt, dreimal). Im Langformat stünde jede Zahl in
+        # einer eigenen Zeile, und die Probe, die sie zusammenhält, wäre beim
+        # Lesen nicht mehr nachvollziehbar, ohne neun Zeilen wieder
+        # einzusammeln. Der Städtevergleich hat den umgekehrten Zuschnitt: dort
+        # kommen die Kennzahlen aus zwei verschieden gebauten Quellen.
+        #
+        # `messbetrag_eur` und die beiden Teilbeträge sind NULL-bar, die
+        # Anzahlen nicht. Das ist der Fall der GEHEIMHALTUNG: Wo ein einzelner
+        # Zahler die Gemeinde dominiert, druckt das Landesamt statt des Betrags
+        # ein „g" (2021 bei Salzgitter und Wolfsburg) — die Anzahlen stehen
+        # trotzdem da. NULL heißt hier also „gesperrt", nicht „null Euro", und
+        # `gesperrt` sagt es noch einmal ausdrücklich, damit eine Anzeige den
+        # Unterschied nicht raten muss. Wo eine Stadt vollständig gesperrt ist
+        # (Jahrgang 2020), kommt sie gar nicht erst herein.
+        #
+        # ABGRENZUNG, OHNE DIE DIE ZAHLEN IRREFÜHREN: Der Steuermessbetrag ist
+        # die VERANLAGUNG des Erhebungsjahres, nicht das Aufkommen des
+        # Kalenderjahres in `council_steuern`. Messbetrag mal Hebesatz lag in
+        # den drei prüfbaren Jahren zwischen 13 % unter und 27 % über dem
+        # kassenmäßigen Ist. Kein Lesepfad darf die beiden zu einer Reihe
+        # verbinden (ausführlich im Modulkopf).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gewerbesteuerstatistik ("
+            "jahr INTEGER NOT NULL, "              # Erhebungsjahr der Veranlagung
+            "schluessel TEXT NOT NULL, "           # amtliche Schlüsselnr., 6-stellig
+            "stadt TEXT NOT NULL, "
+            "faelle INTEGER NOT NULL, "            # Betriebe und Betriebsstätten
+            "faelle_positiv INTEGER NOT NULL, "    # davon mit positivem Messbetrag
+            "messbetrag_eur INTEGER, "             # NULL = Geheimhaltung
+            "festsetzungen INTEGER, "              # reine Festsetzungen
+            "festsetzungen_positiv INTEGER, "
+            "festsetzung_messbetrag_eur INTEGER, "
+            "zerlegungen INTEGER, "                # zerlegte Betriebsstätten
+            "zerlegungen_positiv INTEGER, "
+            "zerlegung_messbetrag_eur INTEGER, "
+            "hebesatz REAL, "                      # nachrichtlich, aus Blatt 6.2
+            "gesperrt INTEGER NOT NULL DEFAULT 0, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, schluessel))"
+        )
         # Schuldenstand je Jahr (Tabelle 1108 des Statistischen Jahrbuchs,
         # seit 1995). Beträge in Euro; die Quelle rechnet in Tausend Euro und
         # ist damit auf Tausend genau — mehr behauptet auch diese Tabelle nicht.
@@ -2090,6 +2136,8 @@ class CouncilStore:
         # Ebenso der Städtevergleich: erst mit der Herkunft entstanden, keine
         # Altspalten, nichts nachzutragen.
         "council_staedtevergleich":     (None, "quelle_url", "lsn"),
+        # Und die Gewerbesteuerstatistik, ebenfalls vom Landesamt.
+        "council_gewerbesteuerstatistik": (None, "quelle_url", "lsn"),
         # Und die Planjahre aus dem Gesamtergebnishaushalt.
         "council_ergebnishaushalt":     (None, "quelle_url", "ris"),
         # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
@@ -7017,6 +7065,57 @@ class CouncilStore:
                 rows = self._conn.execute(
                     "SELECT * FROM council_staedtevergleich WHERE reihe = ? "
                     "ORDER BY jahr, stadt, kennzahl", (reihe,)).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
+    def save_gewerbesteuerstatistik(self, zeilen: list[dict], herkunft) -> int:
+        """Einen Erhebungsjahrgang der Gewerbesteuerstatistik ersetzen.
+
+        Ersetzt wird **je Jahr**, nicht die ganze Tabelle: Die Jahrgänge kommen
+        aus je eigenen Berichten, und ein Lauf, der 2021 nachträgt, darf 2017
+        bis 2020 nicht mitnehmen. Ein Jahrgang wird dagegen vollständig
+        ersetzt — das LSN gibt korrigierte Fassungen heraus (der Jahrgang 2020
+        wurde am 11.02.2026 nachgebessert), und eine Korrektur, die alte Zeilen
+        stehen ließe, wäre keine.
+
+        Übergeben wird nur, was seine Proben bestanden hat; diese Methode prüft
+        nichts nach, sie schreibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        jahre = {int(z["jahr"]) for z in zeilen}
+        spalten = ("jahr", "schluessel", "stadt", "faelle", "faelle_positiv",
+                   "messbetrag_eur", "festsetzungen", "festsetzungen_positiv",
+                   "festsetzung_messbetrag_eur", "zerlegungen",
+                   "zerlegungen_positiv", "zerlegung_messbetrag_eur",
+                   "hebesatz", "gesperrt")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            for jahr in sorted(jahre):
+                self._conn.execute(
+                    "DELETE FROM council_gewerbesteuerstatistik WHERE jahr = ?",
+                    (jahr,))
+            self._conn.executemany(
+                f"INSERT INTO council_gewerbesteuerstatistik "
+                f"({', '.join(spalten)}, herkunft_id, fetched_at) "
+                f"VALUES ({', '.join('?' * len(spalten))},?,?)",
+                [tuple(z.get(s) for s in spalten) + (hid, now) for z in zeilen])
+        return len(zeilen)
+
+    def get_gewerbesteuerstatistik(self, schluessel: str | None = None) -> list[dict]:
+        """Die Gewerbesteuerstatistik — eine Stadt oder alle, aufsteigend nach Jahr.
+
+        Fehlt die Tabelle (frische Datenbank ohne Ingest-Lauf), ist die Antwort
+        leer statt ein Fehler: Der Steuer-Steckbrief zeigt den Block dann ohne
+        diese Zahlen, wie bei den anderen Schichten auch."""
+        try:
+            if schluessel is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_gewerbesteuerstatistik "
+                    "ORDER BY jahr, stadt").fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM council_gewerbesteuerstatistik "
+                    "WHERE schluessel = ? ORDER BY jahr", (schluessel,)).fetchall()
         except sqlite3.OperationalError:
             return []
         return [dict(r) for r in rows]

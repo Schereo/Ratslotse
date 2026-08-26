@@ -26,6 +26,18 @@
 //     wenn die Namen naheliegen. Der Block benennt stattdessen den Weg, auf dem
 //     man sich der Frage nähert (die Zerlegung nach Arbeitslöhnen), und wo
 //     dieser Weg bricht.
+//  4. **Der Nenner darf gesagt werden.** Seit 08/2026 steht er auch da: Wie
+//     viele Betriebe erfasst sind und wie viele davon überhaupt zahlen,
+//     veröffentlicht das Landesamt für Statistik je Gemeinde
+//     (`council/gewerbesteuerstatistik.py`). Zwei Dinge gehören zwingend
+//     daneben, und beide stehen im Block: Das ist die **Veranlagung**, nicht
+//     das Aufkommen der Kurve weiter oben (Messbetrag mal Hebesatz lag in den
+//     prüfbaren Jahren zwischen 13 % darunter und 27 % darüber) — und der
+//     Jahrgang ist ein anderer, weil die Statistik rund fünf Jahre nachhinkt.
+//     Was die Statistik NICHT hergibt, ist die Konzentration: Größenklassen des
+//     Gewerbeertrags gibt es nur fürs Land. Deshalb steht hier kein
+//     „x % tragen y %", sondern die Aufteilung, die je Gemeinde veröffentlicht
+//     wird — reine Festsetzung gegen Zerlegung.
 //
 // Alle Zahlen rechnet die Komponente aus den übergebenen Reihen. Keine steht
 // im Quelltext — dieselbe Lehre wie beim Hebesatz „439" (siehe
@@ -34,6 +46,7 @@
 
 import { Beleg } from "@/components/haushalt/quelle";
 import { GlossaryText } from "@/components/glossary-text";
+import type { GewerbesteuerstatistikZeile } from "@/lib/haushalt";
 
 type SteuerZeile = { jahr: number; art: string; betrag: number | null };
 type Hebesatz = { jahr: number; hebesatz: number; vorheriger: number | null };
@@ -68,6 +81,35 @@ function deProzent(v: number, stellen = 1): string {
     minimumFractionDigits: stellen, maximumFractionDigits: stellen });
 }
 
+function deZahl(v: number): string {
+  return Math.round(v).toLocaleString("de-DE");
+}
+
+/** Eine Zahl mit ihrer Erklärung darunter — die drei Kacheln des Nenners.
+ *
+ *  `betont` markiert die eine Zahl, um die es geht (wie viele zahlen). Die
+ *  beiden anderen sind ihr Bezug; alle drei gleich laut zu setzen hieße, die
+ *  Frage nicht zu beantworten. */
+function Kennzahl({ wert, einheit, label, betont = false }: {
+  wert: string; einheit?: string; label: string; betont?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className={betont
+        ? "font-display text-[24px] font-bold leading-none tabular-nums text-primary"
+        : "font-display text-[24px] font-bold leading-none tabular-nums text-foreground"}>
+        {wert}
+        {einheit && (
+          <span className="ml-0.5 text-[14px] font-semibold text-muted-foreground">
+            {einheit}
+          </span>
+        )}
+      </span>
+      <span className="text-[11.5px] leading-snug text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
 /** Eine Vergleichszeile: Label · Balken · Wert (Baustein RG-04). */
 function Zeile({ label, wert, anteil, farbe }: {
   label: string; wert: string; anteil: number; farbe: string;
@@ -88,7 +130,8 @@ function Zeile({ label, wert, anteil, farbe }: {
   );
 }
 
-export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetze }: {
+export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetze,
+                           statistik = null, statistikAbgrenzung = "" }: {
   steuern: SteuerZeile[];
   /** Die Schreibweise der Gewerbesteuer in `council_steuern.art`. */
   art: string | null;
@@ -97,6 +140,14 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   vergleichTitel: string;
   /** Die Hebesatz-Treppe DIESER Steuer, für die Frage, ob ein Sprung am Rat lag. */
   hebesaetze: Hebesatz[];
+  /** Der jüngste Erhebungsjahrgang der Gewerbesteuerstatistik — der Nenner.
+   *  `null`, solange der Ingest auf dieser Maschine nicht lief; dann bleibt
+   *  der Block, was er vorher war. */
+  statistik?: GewerbesteuerstatistikZeile | null;
+  /** Was diese Zahlen umfassen, im Wortlaut der API. Steht klein unter dem
+   *  Nenner — und **nicht** hier im Quelltext, sonst driftet er gegen die
+   *  Angabe an den Daten. */
+  statistikAbgrenzung?: string;
 }) {
   const eigen = reihe(steuern, art);
   const andere = reihe(steuern, vergleichArt);
@@ -142,6 +193,30 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
       .filter((j) => j > von && j <= bis));
   const mitBeschluss = spruenge.filter((p) => beschlussJahre.has(p.jahr)).length;
 
+  // --- Der Nenner ---------------------------------------------------------
+  // Alles gerechnet, nichts geschrieben: Kommt ein neuer Erhebungsjahrgang
+  // herein, ändern sich die Sätze mit. Der Zerlegungs-Anteil bleibt weg, wo
+  // ein Betrag der Geheimhaltung unterliegt (`messbetrag_eur === null`) —
+  // dann gibt es keinen Nenner, durch den sich teilen ließe. Für Oldenburg
+  // ist das in keinem der Jahrgänge 2017–2021 der Fall, für Salzgitter und
+  // Wolfsburg in jedem.
+  const ohneSteuer = statistik ? statistik.faelle - statistik.faelle_positiv : 0;
+  const zahlenAnteil = statistik && statistik.faelle
+    ? (statistik.faelle_positiv / statistik.faelle) * 100 : 0;
+  const zerlegtAnteil = statistik?.messbetrag_eur && statistik.zerlegung_messbetrag_eur != null
+    ? (statistik.zerlegung_messbetrag_eur / statistik.messbetrag_eur) * 100 : null;
+  // Wie viel mehr eine zerlegte Betriebsstätte trägt als eine rein örtliche
+  // Firma — je zahlendem Fall, nicht je Fall: Wer die Betriebe ohne
+  // Steuermessbetrag mitteilte, vergliche zwei Zahlen, in denen unterschiedlich
+  // viele Nullen stecken.
+  const je = (betrag: number | null, faelle: number | null) =>
+    betrag != null && faelle ? betrag / faelle : null;
+  const jeZerlegt = je(statistik?.zerlegung_messbetrag_eur ?? null,
+                       statistik?.zerlegungen_positiv ?? null);
+  const jeOertlich = je(statistik?.festsetzung_messbetrag_eur ?? null,
+                        statistik?.festsetzungen_positiv ?? null);
+  const zerlegtFaktor = jeZerlegt && jeOertlich ? jeZerlegt / jeOertlich : null;
+
   return (
     <section className="@container rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
@@ -164,6 +239,44 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
         Lücke, die wir noch schließen: Es gibt keine Kommune in Deutschland, die eine solche
         Liste veröffentlichen dürfte.
       </p>
+
+      {/* Nennen darf man sie nicht — zählen schon. Der Nenner steht direkt
+          unter dem Rechtsgrund, weil er die Frage ist, die dort offenbleibt.
+          Er kommt aus der Statistik des Landesamts und trägt deshalb ein
+          eigenes Jahr; das steht daneben, nicht im Kleingedruckten. */}
+      {statistik && (
+        <div className="mt-3 rounded-xl border border-border bg-muted/25 p-3">
+          <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+            <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Wie viele es sind
+            </p>
+            <span className="font-mono text-[9.5px] uppercase text-muted-foreground">
+              Erhebungsjahr {statistik.jahr}
+            </span>
+          </div>
+
+          <div className="mt-3 grid gap-3 @sm:grid-cols-3">
+            <Kennzahl
+              wert={deZahl(statistik.faelle)}
+              label="Betriebe und Betriebsstätten sind in Oldenburg erfasst" />
+            <Kennzahl betont
+              wert={deZahl(statistik.faelle_positiv)}
+              label={`davon zahlen überhaupt Gewerbesteuer — ${deProzent(zahlenAnteil, 0)}\u00a0%`} />
+            {zerlegtAnteil != null && statistik.zerlegungen_positiv != null && (
+              <Kennzahl
+                wert={deProzent(zerlegtAnteil)} einheit="%"
+                label={`des Steuermessbetrags kommen von ${deZahl(statistik.zerlegungen_positiv)} `
+                       + "Betriebsstätten größerer Firmen"} />
+            )}
+          </div>
+
+          <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
+            Die übrigen {deZahl(ohneSteuer)} hatten einen Steuermessbetrag von null — Verlust,
+            Freibetrag oder gar kein Gewerbeertrag. {statistikAbgrenzung}
+            <Beleg q="lsn_gewerbesteuer" />
+          </p>
+        </div>
+      )}
 
       {misst && (
         <div className="mt-3 rounded-xl border border-border bg-muted/25 p-3">
@@ -215,6 +328,14 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
               aufgeteilt (<GlossaryText text="Zerlegung" />, § 29 Gewerbesteuergesetz) —
               Maßstab sind die Arbeitslöhne je Standort. Wer hier viele Menschen beschäftigt,
               lässt hier auch einen großen Teil seiner Steuer.
+              {zerlegtAnteil != null && zerlegtFaktor != null && statistik && (
+                <>
+                  {" "}Dieser Weg trägt den größeren Teil: {deProzent(zerlegtAnteil)}&nbsp;% des
+                  Steuermessbetrags kamen {statistik.jahr} aus zerlegten Betriebsstätten, und je
+                  zahlendem Fall war das rund das{" "}
+                  {deProzent(zerlegtFaktor)}-Fache einer Firma, die nur hier sitzt.
+                </>
+              )}
             </li>
             <li>
               <strong>Deshalb sind die großen Arbeitgeber der beste öffentliche

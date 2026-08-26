@@ -507,12 +507,13 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 ## Der Bereich hält sich selbst aktuell
 
-**Achtzehn** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
+**Neunzehn** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
 veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
 `check_finanzdaten.py` (alle zwei Wochen) nimmt das ab: **Neun** liest er
-selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **sechs**
-übrigen kommen von außerhalb und werden nur beobachtet — er meldet, dass ein
-Jahrgang fällig wäre, und nennt Quelle und Skript. „Lädt nichts herunter" ist
+selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **zehn**
+übrigen werden nur beobachtet — er meldet, dass ein Jahrgang fällig wäre, und
+nennt Quelle und Skript. Sieben davon kommen von außerhalb, drei liegen zwar
+im Ratsinformationssystem, haben aber eigene Einlese-Skripte. „Lädt nichts herunter" ist
 die Regel, an der dieser Job hängt. Maßgeblich ist `finanzquellen.REIHENFOLGE`;
 diese Doku zählt nach, sie legt nichts fest.
 
@@ -2016,6 +2017,139 @@ Reihen zusammen, und `/haushalt/vergleich` sagt das in seinem Grenzen-Block.
 Offen ist nur noch die Meldung an die Quelle: Ansprechpartner laut Katalog ist
 die Statistikstelle der Stadt Oldenburg.
 :::
+
+## Gewerbesteuer: wie viele Betriebe sie aufbringen
+
+Der Steuer-Steckbrief erklärt im Block „Wer zahlt das eigentlich", warum
+**Namen** nicht genannt werden dürfen (§ 30 AO, Steuergeheimnis). Die
+Anschlussfrage — *wie viele* Betriebe sind es denn? — blieb bis 08/2026 offen.
+Diese Zahl ist, anders als der einzelne Betrag, amtlich veröffentlicht:
+in der **Gewerbesteuerstatistik** (EVAS 735 11) des Landesamts für Statistik
+Niedersachsen, Statistischer Bericht L IV 13.
+
+Gelesen wird sie von `council/gewerbesteuerstatistik.py` in die Tabelle
+`council_gewerbesteuerstatistik`; eingelesen wird von Hand
+(`scripts/ingest_gewerbesteuerstatistik.py`), weil die Statistik einmal
+jährlich erscheint.
+
+**Was je Gemeinde drinsteht** (Blätter 6.1 und 6.2 des Berichts):
+
+| Merkmal | Oldenburg, Erhebungsjahr 2021 |
+|---|---|
+| Betriebe und Betriebsstätten | 8.421 |
+| davon mit positivem Steuermessbetrag | 3.642 (43,2 %) |
+| Summe der Steuermessbeträge | 30.015.356 € |
+| davon aus reiner Festsetzung | 14.103.549 € (2.763 Betriebe) |
+| davon aus Zerlegung | 15.911.807 € (879 Betriebsstätten) |
+| Hebesatz (nachrichtlich) | 439 % |
+
+Im Bestand stehen die Erhebungsjahre 2017–2021 und alle acht kreisfreien
+Städte — dieselbe Menge wie beim Städtevergleich, weil es derselbe
+Schleifendurchlauf und dieselbe Probe ist.
+
+### Drei Proben, und eine verlässt das Haus
+
+1. **Summenprobe** — reine Festsetzungen + Zerlegungen = insgesamt, und zwar
+   dreimal je Stadt (Fälle, zahlende Fälle, Messbetrag). Das ist nicht eine
+   Kontrollrechnung neben der Tabelle, sondern ihr Aufbau: Jeder Fall ist
+   entweder das eine oder das andere.
+2. **Blattprobe** — Blatt 6.2 (alle Gemeinden) nennt für jede kreisfreie Stadt
+   dieselben drei Zahlen wie Blatt 6.1 (kreisfreie Städte und Landkreise).
+   Zwei verschieden gebaute Tabellen desselben Berichts, getrennt gelesen.
+3. **Hebesatzprobe** — der Hebesatz, den das Landesamt seiner Gemeindetabelle
+   nachrichtlich beilegt, steht auch in Tabelle 1105 des Statistischen
+   Jahrbuchs der Stadt (`council_hebesaetze`). Zwei Häuser, dieselbe Zahl.
+   Sie liest die **Treppe**, nicht das Jahr: Für 2021 gibt es keine Zeile in
+   1105, es gilt der Satz der letzten Änderung davor (2015 → 439 %).
+
+Reißt Probe 1 für eine Stadt, kommt diese Stadt nicht herein; reißen Probe 2
+oder 3, kommt der **ganze Jahrgang** nicht herein.
+
+### „g" ist kein Nullwert
+
+Wo ein einzelner Zahler eine Gemeinde dominiert, sperrt das Landesamt den
+Betrag und druckt `g` — 2021 bei Salzgitter und Wolfsburg, 2020 dort sogar in
+allen neun Spalten. Der Parser unterscheidet deshalb drei Zustände, und die
+Datenbank auch:
+
+- eine Zahl → der Wert;
+- `g` → `messbetrag_eur IS NULL` **plus** `gesperrt = 1`. Die Anzahlen daneben
+  stehen weiter und sind die eigentliche Auskunft. Ein Parser, der `g` zu 0
+  machte, behauptete, dort werde keine Gewerbesteuer gezahlt;
+- alle neun Spalten gesperrt → die Stadt kommt gar nicht herein, und im
+  Protokoll steht **„Geheimhaltung"**, nicht „Probe gerissen". Der Unterschied
+  ist wichtig: Nichts widerspricht sich, es steht nur nichts da.
+
+Oldenburg ist in keinem der fünf eingelesenen Jahrgänge gesperrt.
+
+### Zwei Fallen im Dateiformat
+
+- **Die Spaltenköpfe sind umformuliert worden.** 2017–2019 heißt eine Spalte
+  „Betrag der Festsetzungen und Zerlegungen … mit positivem Steuermessbetrag
+  in €", 2020/2021 „Festsetzungen und Zerlegungen …; darunter mit positivem
+  Steuermessbetrag in Euro"; die Schlüsselspalte wechselte von „Regionale
+  Gliederung nach AGS" zu „Amtlicher Gemeindeschlüssel". Eingeordnet wird
+  deshalb über **Block und Rolle** (`spaltenzuordnung`), nicht über den
+  Kopftext. Und die Einheit taugt nicht als Merkmal: Blatt 6.2 nennt sie im
+  Jahrgang 2017 gar nicht.
+- **Der Städtename wandert** („Oldenburg (Oldenburg), Stadt" → „Oldenburg
+  (Oldb), Stadt"), und die Schlüsselnummer steht in 6.1 dreistellig, in 6.2
+  sechsstellig. Verbunden wird über `schluessel_normalisieren` aus
+  `council/staedtevergleich.py`; gespeichert wird **unser** Name, sonst sähe
+  die Reihe nach zwei Städten aus.
+
+### Was die Statistik nicht hergibt
+
+Der ursprüngliche Wunsch war eine Konzentrationsaussage: „x % der Betriebe
+tragen y % des Messbetrags". **Die gibt es je Gemeinde nicht.** Größenklassen
+des Gewerbeertrags veröffentlicht die Statistik nur für das Land und den Bund;
+die einzige Städte-Tabelle des Bundes führt die 50 Städte mit den höchsten
+Steuermessbeträgen, und Oldenburg liegt mit 30,0 Mio. € knapp unter Platz 50
+(35,7 Mio. €). An Oldenburger Größenklassen käme man nur über die Einzeldaten
+des Forschungsdatenzentrums — Gastwissenschaftsarbeitsplatz oder kontrollierte
+Datenfernverarbeitung, für wissenschaftliche Vorhaben, mit Antrag.
+
+Belegen lässt sich die Konzentration trotzdem, nur anders: über die
+Aufteilung, die je Gemeinde **doch** veröffentlicht wird. 2021 trugen 879
+zerlegte Betriebsstätten — 10,4 % aller erfassten Fälle — 53,0 % des
+Steuermessbetrags, je zahlendem Fall das 3,5-Fache einer rein örtlichen Firma.
+Genau der Weg über die Arbeitslöhne (§ 29 GewStG), den der Block bis dahin nur
+beschreiben konnte.
+
+:::danger[Messbetrag ist nicht Aufkommen]
+Der Steuermessbetrag ist die **Veranlagung** eines Erhebungsjahres
+(Gewerbeertrag × 3,5 %). Das Aufkommen in `council_steuern` ist etwas
+anderes, und der Hebesatz schließt die Lücke nicht. Messbetrag × 439 % gegen
+das kassenmäßige Ist-Aufkommen brutto des Realsteuervergleichs:
+
+| Jahr | Messbetrag × 439 % | Ist brutto | Abstand |
+|---|---|---|---|
+| 2019 | 136.458 T€ | 132.607 T€ | +2,9 % |
+| 2020 | 144.391 T€ | 113.469 T€ | +27,3 % |
+| 2021 | 131.767 T€ | 150.968 T€ | −12,7 % |
+
+Der Abstand wechselt das Vorzeichen, weil Vorauszahlungen, Abschlusszahlungen
+und Berichtigungen nach Betriebsprüfungen sich um Jahre verschieben. Selbst
+die beiden **Aufkommens**reihen weichen voneinander ab — das doppische
+Rechnungsergebnis der Stadt (Tabelle 1104) und das kassenmäßige Netto des
+Landes lagen 2021 um 16,4 % auseinander.
+
+Deshalb: keine gemeinsame Kurve, und aus einem Messbetrag wird kein „das wären
+dann xxx Mio. €". Was die Schicht liefert, ist ein **Nenner**.
+:::
+
+### Der Verzug gehört an die Zahl
+
+Eine Veranlagung ist erst nach den Betriebsprüfungen endgültig; der Bericht
+erscheint rund **fünf Jahre** nach dem Erhebungsjahr (2019 → August 2024,
+2020 → September 2025, 2021 → März 2026). Neben einer Aufkommenskurve bis 2025
+steht also ein Nenner von 2021. Der Block schreibt das Erhebungsjahr deshalb
+sichtbar an, und `ABGRENZUNG` reist als Text **mit den Daten** aus der API —
+nicht als Satz im Frontend, der gegen die Zahlen driften könnte.
+
+Jahrgänge vor 2017 gibt es nur als PDF (für 2013 nachgesehen: die
+Gemeindetabelle ist da, aber im PDF-Satz). Sie brauchten einen zweiten Parser
+und stehen deshalb nicht im Bestand.
 
 ## Investitionen: der zweite Haushalt
 
