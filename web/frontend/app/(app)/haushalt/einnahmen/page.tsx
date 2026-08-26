@@ -182,11 +182,11 @@ export default function EinnahmenPage() {
           href: "#spielraum",
           label: "Quellenregal: 1 ▢ = 1 Quelle, je Zeile eine Gruppe — klickt zur Legende",
           skizze: (["frei", "begrenzt", "keiner"] as Spielraum[]).map((s) => (
-            <span key={s} className="flex flex-wrap gap-[3px]">
+            <span key={s} className="flex flex-wrap gap-1">
               {karten.filter((k) => k.art.spielraum === s).map((k) => (
                 <span
                   key={k.art.slug}
-                  className="h-3 w-3 rounded-[3px]"
+                  className="h-3.5 w-3.5 rounded-[3px]"
                   style={{
                     background: s === "frei" ? "var(--sb-voll)"
                       : s === "begrenzt" ? "var(--sb-mittel)" : "var(--sb-blass)",

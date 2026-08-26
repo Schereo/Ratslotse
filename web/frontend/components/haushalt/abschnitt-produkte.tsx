@@ -642,7 +642,14 @@ export function ProdukteAbschnitt({ onBestand }: {
    *  aus derselben Antwort (H5-02: „gemessen aus denselben Loadern wie der
    *  Fließtext"). Aus den Facetten, nicht aus `treffer`: Die Facetten zählen
    *  das ganze Jahr, egal welcher Filter gerade gesetzt ist. */
-  onBestand?: (b: { anzahl: number; jahr: number } | null) => void;
+  onBestand?: (b: {
+    anzahl: number;
+    jahr: number;
+    /** Die drei größten Aufgaben nach Zuschussbedarf — fürs Minibild der
+     *  Bühne, mit echten Namen statt einer abstrakten Baum-Skizze
+     *  (Tim, 26.08.). `wert` ist |netto| in Euro. */
+    beispiele: { name: string; wert: number }[];
+  } | null) => void;
 } = {}) {
   const router = useRouter();
   const params = useSearchParams();
@@ -687,9 +694,17 @@ export function ProdukteAbschnitt({ onBestand }: {
     // entfällt dann, statt ewig zu laden.
     if (!uebersicht.loading && jahr == null) { onBestand(null); return; }
     if (loading || !data || !jahr) return;
+    // Nur der UNGEFILTERTE Stand wird gemeldet: Die Bühne beschreibt die
+    // Seite, nicht die gerade getippte Suche — beim Filtern bleibt der
+    // zuletzt gemeldete Bestand stehen.
+    if (entprellt.trim() || amt || spielraum) return;
     const anzahl = (data.facetten?.aemter ?? []).reduce((s, a) => s + a.anzahl, 0);
-    onBestand(anzahl > 0 ? { anzahl, jahr } : null);
-  }, [onBestand, uebersicht.loading, loading, data, jahr]);
+    const beispiele = [...data.produkte]
+      .sort((a, b) => Math.abs(netto(b)) - Math.abs(netto(a)))
+      .slice(0, 3)
+      .map((pr) => ({ name: pr.produkt_name, wert: Math.abs(netto(pr)) }));
+    onBestand(anzahl > 0 ? { anzahl, jahr, beispiele } : null);
+  }, [onBestand, uebersicht.loading, loading, data, jahr, entprellt, amt, spielraum]);
 
   // Leerzustand mit „Ähnlich klingen" (H4-04): Erst wenn die gefilterte
   // Suche wirklich leer ist, wird einmal die ungefilterte Liste geholt und

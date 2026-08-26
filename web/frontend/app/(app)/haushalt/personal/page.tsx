@@ -203,11 +203,11 @@ export default function PersonalPage() {
                   ? "Ausschnitt der Waffel — umrandet ist unbesetzt, klickt zu ihr"
                   : "Ausschnitt der Waffel — klickt zu ihr",
                 skizze: (
-                  <span className="flex flex-wrap gap-[2.5px]">
+                  <span className="flex flex-wrap gap-[3px]">
                     {Array.from({ length: quadrate }, (_, i) => (
                       <span
                         key={i}
-                        className="h-[11px] w-[11px] rounded-[2.5px]"
+                        className="h-3.5 w-3.5 rounded-[3px]"
                         style={i < gefuellt
                           ? { background: "var(--sb-voll)" }
                           : { border: "1.5px dashed var(--sb-strich)" }}

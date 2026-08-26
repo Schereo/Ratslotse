@@ -243,13 +243,21 @@ export default function PflichtPage() {
               : undefined}
             minibild={{
               href: "#ausgabenbild",
-              label: "Gegenbalken: alle Ausgaben · Pflichtanteil · überwiegend freiwillig — klickt zum Bild",
+              label: "Gegenbalken — klickt zum ganzen Bild",
               skizze: (
-                <>
-                  <span className="block h-2.5 w-full rounded-[5px]" style={{ background: "var(--sb-blass)" }} />
-                  <span className="block h-2.5 rounded-[5px]" style={{ width: `${pflichtProzent}%`, background: "var(--sb-voll)" }} />
-                  <span className="block h-2.5 rounded-[5px]" style={{ width: `${Math.max(freiwilligProzent, 2)}%`, background: "var(--sb-mittel)" }} />
-                </>
+                // Jede Zeile trägt ihr Label selbst (Tim, 26.08.: „viel zu
+                // klein, ohne richtige Label") — drei nackte Striche sagten
+                // nur dem etwas, der die Legende darunter mitlas.
+                [
+                  { text: "alle Ausgaben", breite: 100, ton: "var(--sb-blass)" },
+                  { text: `Pflichtanteil · ${Math.round(pflichtProzent)} %`, breite: pflichtProzent, ton: "var(--sb-voll)" },
+                  { text: `überwiegend freiwillig · ${Math.round(freiwilligProzent)} %`, breite: Math.max(freiwilligProzent, 2.5), ton: "var(--sb-mittel)" },
+                ].map((z) => (
+                  <span key={z.text} className="flex flex-col gap-[3px]">
+                    <span className="text-[9.5px] leading-none text-muted-foreground">{z.text}</span>
+                    <span className="block h-3 rounded-[4px]" style={{ width: `${z.breite}%`, background: z.ton }} />
+                  </span>
+                ))
               ),
             }}
           />

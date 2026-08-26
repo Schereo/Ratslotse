@@ -43,7 +43,9 @@ function ProdukteSeiteInner() {
   // davon …" trägt. Kein zweiter Abruf, keine zweite Wahrheit.
   // `undefined` = lädt (Platzhalter hält die Höhe), `null` = entschieden
   // nichts (keine Bühne), sonst die Werte.
-  const [bestand, setBestand] = useState<{ anzahl: number; jahr: number } | null | undefined>(undefined);
+  const [bestand, setBestand] = useState<{
+    anzahl: number; jahr: number; beispiele: { name: string; wert: number }[];
+  } | null | undefined>(undefined);
   return (
     // KEIN gemeinsames `jahr`: Die Bereichs-Übersicht zeigt den jüngsten
     // Ansatz, die Produktebene den jüngsten Jahrgang MIT Produktdaten — und
@@ -80,20 +82,22 @@ function ProdukteSeiteInner() {
             sub="jede mit Kosten, zuständigem Amt und Auftragsgrundlage"
             minibild={{
               href: "#produkte",
-              label: "Produktbaum mit Steckbriefen — klickt zur Suche",
-              skizze: (
-                <>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 flex-none rounded-[3px]" style={{ background: "var(--sb-voll)" }} />
-                    <span className="h-2 flex-1 rounded-[4px] opacity-40" style={{ background: "var(--sb-voll)" }} />
+              label: "die drei größten nach Zuschussbedarf — klickt zur Suche",
+              skizze: (() => {
+                // Echte Namen statt Baum-Skizze (Tim, 26.08.: „übersichtlicher
+                // umbauen") — dieselben Zeilen, die die Trefferliste oben
+                // trägt, verkleinert.
+                const max = Math.max(...bestand.beispiele.map((b) => b.wert), 1);
+                return bestand.beispiele.map((b) => (
+                  <span key={b.name} className="flex flex-col gap-[3px]">
+                    <span className="truncate text-[9.5px] leading-none text-muted-foreground">{b.name}</span>
+                    <span className="block h-3 rounded-[4px]" style={{
+                      width: `${Math.max((b.wert / max) * 100, 4)}%`,
+                      background: "var(--sb-voll)",
+                    }} />
                   </span>
-                  <span className="ml-3.5 flex flex-col gap-1 border-l-2 border-dashed pl-2.5" style={{ borderColor: "var(--sb-strich)" }}>
-                    <span className="block h-[7px] w-4/5 rounded-[4px]" style={{ background: "var(--sb-mittel)" }} />
-                    <span className="block h-[7px] w-3/5 rounded-[4px]" style={{ background: "var(--sb-mittel)" }} />
-                    <span className="block h-[7px] w-[70%] rounded-[4px]" style={{ background: "var(--sb-mittel)" }} />
-                  </span>
-                </>
-              ),
+                ));
+              })(),
             }}
           />
         ) : bestand === undefined ? (
