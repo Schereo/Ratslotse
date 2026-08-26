@@ -6,6 +6,12 @@ Der Vergleich läuft zuerst über den TITEL (die stabile Identität eines
 Punktes): Wird ein TOP eingeschoben, verschieben sich alle Nachfolge-NUMMERN
 — ein Nummern-Diff würde dann die halbe Tagesordnung gelb färben, obwohl nur
 ein Punkt neu ist.
+
+Was der Titel-Vergleich nicht verhindern kann: Die Nachfolge-Punkte tragen
+danach trotzdem neue Nummern und werden reihenweise als „verschoben" gemeldet.
+Solche Kaskaden faltet ``verschiebungs_kaskaden`` in eine Zeile zusammen
+(Tims Befund 26.08.) — sie sind die harmloseste Änderung überhaupt und
+verdrängten in Liste und Mail die Punkte, auf die es ankommt.
 """
 from __future__ import annotations
 
@@ -119,6 +125,75 @@ def hat_aenderungen(diff: dict) -> bool:
                ("neu", "entfernt", "verschoben", "umformuliert", "vorlage", "anlagen"))
 
 
+_TOP_NUMMER = re.compile(r"^\s*(\D*?)\s*(\d+(?:\.\d+)*)\s*$")
+
+
+def _nummer_teile(nr) -> tuple[str, tuple[int, ...]] | None:
+    """„Ö 33.1" → ("Ö", (33, 1)). None, wenn die Nummer nicht diesem Muster
+    folgt — dann wird der Punkt nie gebündelt, sondern einzeln gemeldet."""
+    m = _TOP_NUMMER.match(str(nr or ""))
+    if not m:
+        return None
+    return m.group(1), tuple(int(t) for t in m.group(2).split("."))
+
+
+def _kaskaden_schluessel(a: dict, n: dict):
+    """Gehört dieses Paar zu einer Kaskade? Dann (Präfix, Versatz) — sonst
+    None. Bedingung: gleicher Präfix (Ö bleibt Ö, N bleibt N), gleiche
+    Untergliederung (33.1 → 32.1 zählt mit, 33.1 → 32.2 nicht) und ein
+    Versatz auf der obersten Ebene."""
+    ta, tn = _nummer_teile(a.get("item_number")), _nummer_teile(n.get("item_number"))
+    if ta is None or tn is None:
+        return None
+    if ta[0] != tn[0] or ta[1][1:] != tn[1][1:] or ta[1][0] == tn[1][0]:
+        return None
+    return ta[0], tn[1][0] - ta[1][0]
+
+
+def _alt_sortierung(paar) -> tuple[int, ...]:
+    teile = _nummer_teile(paar[0].get("item_number"))
+    return teile[1] if teile else ()
+
+
+def _dicht(mitglieder: list) -> bool:
+    """Deckt die Gruppe ihre Spanne wirklich ab? Drei Punkte mit demselben
+    Versatz, aber über die halbe Tagesordnung verstreut (Ö 5, Ö 9, Ö 20),
+    sind keine Kaskade — „TOP Ö 5 bis Ö 20 rücken eine Nummer" würde die
+    unbeteiligten Punkte dazwischen mitbehaupten. Ein einzelnes Loch (etwa
+    weil ein mitgerutschter Punkt zugleich umformuliert wurde und deshalb
+    anderswo gemeldet wird) darf die Bündelung dagegen nicht kippen."""
+    ebenen = {_alt_sortierung(m)[0] for m in mitglieder if _alt_sortierung(m)}
+    if not ebenen:
+        return False
+    spanne = max(ebenen) - min(ebenen) + 1
+    return len(ebenen) * 2 >= spanne
+
+
+def verschiebungs_kaskaden(paare: list, mindestens: int = 3) -> tuple[list, list]:
+    """Zerlegt die Verschiebungen in Kaskaden und Einzelfälle (Tims Befund
+    26.08.): Wird oben ein Punkt eingeschoben oder gestrichen, rutscht der
+    ganze Rest um dieselbe Zahl — vierzehn Zeilen „Verschoben · Ö 22 → Ö 21",
+    die zusammen genau eine Aussage tragen. Erst ab ``mindestens`` Punkten
+    mit demselben Versatz lohnt die Bündelung; zwei Zeilen sagen einzeln mehr.
+
+    Rückgabe: ``([(versatz, [(alt, neu), …]), …], [(alt, neu), …])`` — die
+    Kaskaden nach ihrer ersten alten Nummer sortiert, die Einzelfälle in der
+    Reihenfolge der Tagesordnung."""
+    gruppen: dict[tuple[str, int], list] = {}
+    for paar in paare:
+        a, n = paar[0], paar[1]
+        schluessel = _kaskaden_schluessel(a, n)
+        if schluessel is not None:
+            gruppen.setdefault(schluessel, []).append(paar)
+    kaskaden = [(schluessel[1], sorted(mitglieder, key=_alt_sortierung))
+                for schluessel, mitglieder in gruppen.items()
+                if len(mitglieder) >= mindestens and _dicht(mitglieder)]
+    kaskaden.sort(key=lambda k: _alt_sortierung(k[1][0]))
+    gebunden = {id(paar) for _, mitglieder in kaskaden for paar in mitglieder}
+    einzeln = [paar for paar in paare if id(paar) not in gebunden]
+    return kaskaden, einzeln
+
+
 def _zaehl(n: int, singular: str, plural: str) -> str:
     return singular if n == 1 else plural.format(n=n)
 
@@ -132,7 +207,14 @@ def diff_satz(diff: dict) -> str:
         teile.append(_zaehl(n, "ein Punkt ist neu", "{n} Punkte sind neu"))
     if n := len(diff.get("umformuliert", [])):
         teile.append(_zaehl(n, "ein Punkt wurde umformuliert", "{n} Punkte wurden umformuliert"))
-    if n := len(diff.get("verschoben", [])):
+    # Nachrücken und Verschieben getrennt zählen: „14 Punkte wurden verschoben"
+    # klang in der Push-Vorschau nach Umbau der halben Sitzung, obwohl nur oben
+    # ein Punkt wegfiel (Tims Befund 26.08.).
+    kaskaden, einzeln = verschiebungs_kaskaden(diff.get("verschoben", []))
+    if n := sum(len(m) for _, m in kaskaden):
+        teile.append(_zaehl(n, "ein Punkt hat eine neue Nummer",
+                            "{n} Punkte haben eine neue Nummer"))
+    if n := len(einzeln):
         teile.append(_zaehl(n, "ein Punkt wurde verschoben", "{n} Punkte wurden verschoben"))
     nach = zurueck = anders = 0
     for a, m in diff.get("vorlage", []):
@@ -214,6 +296,25 @@ def _anlagen_daten(a: dict, n: dict) -> tuple[str, str]:
     return "Anlagen geändert", f"neu: {_liste(dazu)} · entfernt: {_liste(weg)}"
 
 
+def _kaskaden_zeile(versatz: int, mitglieder: list) -> dict:
+    """Eine Kaskade als einzelne Zeile — mit dem Satz, der sie harmlos macht:
+    Die Punkte selbst bleiben, nur ihre Nummern rutschen."""
+    von_a = mitglieder[0][0].get("item_number")
+    bis_a = mitglieder[-1][0].get("item_number")
+    von_n = mitglieder[0][1].get("item_number")
+    bis_n = mitglieder[-1][1].get("item_number")
+    stufen = "eine Nummer" if abs(versatz) == 1 else f"{abs(versatz)} Nummern"
+    richtung = "nach vorn" if versatz < 0 else "nach hinten"
+    return {
+        "art": "verschoben",
+        "label": f"Verschoben · TOP {von_a} bis {bis_a}",
+        "titel": (f"{len(mitglieder)} Punkte rücken {stufen} {richtung} — "
+                  f"jetzt TOP {von_n} bis {bis_n}"),
+        "nichtoeffentlich": all(not m[1].get("is_public", True) for m in mitglieder),
+        "detail": "Untereinander bleibt die Reihenfolge gleich",
+    }
+
+
 def diff_zeilen(diff: dict) -> list[dict]:
     """Der Diff als neutrale Zeilen — EINE Quelle für Mail-HTML und die
     App-Ansicht „Zuletzt geändert" (Tims Wunsch 18.08.). Je Zeile:
@@ -234,8 +335,15 @@ def diff_zeilen(diff: dict) -> list[dict]:
     for a, n in diff["umformuliert"]:
         _z("geaendert", f"Geändert · TOP {n.get('item_number')}", n,
            f"vorher: {a.get('title')}")
-    for a, n in diff["verschoben"]:
+    kaskaden, einzeln = verschiebungs_kaskaden(diff["verschoben"])
+    for paar in einzeln:
+        a, n = paar[0], paar[1]
         _z("verschoben", f"Verschoben · TOP {a.get('item_number')} → {n.get('item_number')}", n)
+    for versatz, mitglieder in kaskaden:
+        # Die Kaskade als EINE Zeile: Was sie zu sagen hat, steht in ihr ganz
+        # — welche Spanne, um wie viel, wohin. Die Einzelzeilen wiederholten
+        # vierzehnmal dasselbe und drängten die echten Änderungen aus dem Blick.
+        zeilen.append(_kaskaden_zeile(versatz, mitglieder))
     for a, n in diff.get("vorlage", []):
         label, detail = _vorlage_daten(a, n)
         _z("vorlage", f"{label} · TOP {n.get('item_number')}", n, detail)

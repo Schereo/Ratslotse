@@ -292,3 +292,92 @@ def test_aenderungs_chronik_roundtrip(tmp_path):
         assert store.agenda_changes(999) == []
     finally:
         store.close()
+
+
+def _kaskaden_stand(erste: int, mit_unterpunkt: bool = True) -> list[dict]:
+    """Zwölf Sachpunkte ab `erste`, dazu ein Unterpunkt — die Bauform des
+    Bauausschusses vom 27.08.2026."""
+    titel = ["B-Plan 858", "Sperre 96", "Sperre 95", "Sperre 94", "EU-Verordnung",
+             "Innenentwicklung", "Dachbegrünung", "VBP 60", "Laufzeiten",
+             "Finanzbericht 2025", "Finanzbericht 2026", "Anträge"]
+    items = [_i(f"Ö {erste + i}", t) for i, t in enumerate(titel)]
+    if mit_unterpunkt:
+        items.append(_i(f"Ö {erste + 11}.1", "Grundsteuer C"))
+    items.append(_i(f"Ö {erste + 12}", "Anfragen und Anregungen"))
+    return items
+
+
+def test_kaskade_wird_zu_einer_zeile_gebuendelt():
+    """Tims Befund 26.08.: Fällt oben ein Punkt weg, rutscht der ganze Rest um
+    eine Nummer — die Chronik trug dafür vierzehn gleichlautende Zeilen, die
+    zusammen genau eine Aussage tragen. Der Unterpunkt „Ö 33.1 → Ö 32.1"
+    gehört mit in die Kaskade, sein Anhängsel bleibt ja gleich."""
+    from council.agenda_diff import diff_zeilen
+    d = diff_tagesordnung(_kaskaden_stand(22), _kaskaden_stand(21))
+    assert len(d["verschoben"]) == 14
+    zeilen = [z for z in diff_zeilen(d) if z["art"] == "verschoben"]
+    assert len(zeilen) == 1
+    assert zeilen[0]["label"] == "Verschoben · TOP Ö 22 bis Ö 34"
+    assert zeilen[0]["titel"] == (
+        "14 Punkte rücken eine Nummer nach vorn — jetzt TOP Ö 21 bis Ö 33")
+    assert diff_satz(d) == "14 Punkte haben eine neue Nummer."
+    # Und in der Mail landet genau diese eine Zeile.
+    html = diff_html(d)
+    assert html.count("Verschoben ·") == 1
+
+
+def test_kaskade_nach_hinten_nennt_die_richtung():
+    """Der Gegenfall (Einschub oben): dieselbe Bündelung, andere Richtung."""
+    from council.agenda_diff import diff_zeilen
+    d = diff_tagesordnung(_kaskaden_stand(21), _kaskaden_stand(23))
+    zeilen = [z for z in diff_zeilen(d) if z["art"] == "verschoben"]
+    assert len(zeilen) == 1
+    assert zeilen[0]["titel"] == (
+        "14 Punkte rücken 2 Nummern nach hinten — jetzt TOP Ö 23 bis Ö 35")
+
+
+def test_kaskade_laesst_echte_umsortierung_stehen():
+    """Nur der gemeinsame Versatz wird gebündelt. Ein Punkt, der wirklich an
+    eine andere Stelle wandert, behält seine eigene Zeile — sonst verschwände
+    die einzige Verschiebung, die jemanden interessiert."""
+    from council.agenda_diff import diff_zeilen
+    alt = _kaskaden_stand(22) + [_i("Ö 40", "Sondertagesordnungspunkt")]
+    neu = _kaskaden_stand(21) + [_i("Ö 2", "Sondertagesordnungspunkt")]
+    d = diff_tagesordnung(alt, neu)
+    zeilen = [z for z in diff_zeilen(d) if z["art"] == "verschoben"]
+    assert [z["label"] for z in zeilen] == [
+        "Verschoben · TOP Ö 40 → Ö 2", "Verschoben · TOP Ö 22 bis Ö 34"]
+    assert diff_satz(d) == "14 Punkte haben eine neue Nummer und ein Punkt wurde verschoben."
+
+
+def test_wenige_verschiebungen_bleiben_einzeln():
+    """Zwei Zeilen sagen einzeln mehr als eine Zusammenfassung — gebündelt
+    wird erst ab drei Punkten."""
+    from council.agenda_diff import diff_zeilen
+    d = diff_tagesordnung([_i("Ö 5", "Alpha"), _i("Ö 6", "Beta")],
+                          [_i("Ö 6", "Alpha"), _i("Ö 7", "Beta")])
+    zeilen = [z for z in diff_zeilen(d) if z["art"] == "verschoben"]
+    assert [z["label"] for z in zeilen] == [
+        "Verschoben · TOP Ö 5 → Ö 6", "Verschoben · TOP Ö 6 → Ö 7"]
+
+
+def test_verstreute_verschiebungen_sind_keine_kaskade():
+    """Gleicher Versatz, aber über die halbe Tagesordnung verteilt: „Ö 5 bis
+    Ö 20 rücken eine Nummer" würde die unbeteiligten Punkte dazwischen
+    mitbehaupten."""
+    from council.agenda_diff import diff_zeilen
+    alt = [_i("Ö 5", "Alpha"), _i("Ö 9", "Beta"), _i("Ö 20", "Gamma")]
+    neu = [_i("Ö 6", "Alpha"), _i("Ö 10", "Beta"), _i("Ö 21", "Gamma")]
+    zeilen = [z for z in diff_zeilen(diff_tagesordnung(alt, neu)) if z["art"] == "verschoben"]
+    assert len(zeilen) == 3
+
+
+def test_kaskade_trennt_oeffentlich_und_nichtoeffentlich():
+    """Ö und N sind eigene Zählungen — eine Kaskade darf nie über die Grenze
+    greifen, selbst wenn beide Teile um dieselbe Zahl rutschen."""
+    from council.agenda_diff import diff_zeilen
+    alt = _kaskaden_stand(22) + [_i("N 40", "gesperrte Information")]
+    neu = _kaskaden_stand(21) + [_i("N 39", "gesperrte Information")]
+    zeilen = [z for z in diff_zeilen(diff_tagesordnung(alt, neu)) if z["art"] == "verschoben"]
+    assert [z["label"] for z in zeilen] == [
+        "Verschoben · TOP N 40 → N 39", "Verschoben · TOP Ö 22 bis Ö 34"]
