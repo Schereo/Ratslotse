@@ -48,13 +48,13 @@ for (const vp of VIEWPORTS) {
             body: JSON.stringify({ bookmarks: pg.name === "bookmarks" ? [
               {
                 id: 1, kind: "agenda_item", target_key: "agenda_item:42:2026/123",
-                title: "Sichere Radwege an der Alexanderstraße", subtitle: "Bauausschuss · 2026-09-08 · Ö 2",
+                title: "Sichere Radwege an der Alexanderstraße", subtitle: "Bauausschuss · 2026-08-20 · Ö 2",
                 created_at: "2026-08-26T12:00:00", notify_result: true,
-                result_notified_at: null, state: "upcoming",
+                result_notified_at: null, state: "waiting", is_group: false,
                 url: "/council?tab=sessions&ksinr=42&top=%C3%96%202", ksinr: 42,
                 item_number: "Ö 2", decision: null,
                 agenda_item: { item_number: "Ö 2", title: "Sichere Radwege an der Alexanderstraße", vorlage_nr: "2026/123", kvonr: 123, is_public: 1 },
-                session: { ksinr: 42, committee: "Bauausschuss", session_date: "2026-09-08", session_time: "17:00", location: "Rathaus", n_items: 3 },
+                session: { ksinr: 42, committee: "Bauausschuss", session_date: "2026-08-20", session_time: "17:00", location: "Rathaus", n_items: 3 },
               },
             ] : [] }),
           }),
@@ -66,6 +66,9 @@ for (const vp of VIEWPORTS) {
         await page.goto(pg.path, { waitUntil: "networkidle" });
         // Just assert the page doesn't show a fatal error
         await expect(page.locator("body")).not.toContainText("Application error");
+        if (pg.name === "bookmarks") {
+          await expect(page.getByText("Sitzung vorbei · Protokoll ausstehend")).toBeVisible();
+        }
         await page.screenshot({
           path: `test-results/screenshots/06-${vp.name}-${pg.name}.png`,
           fullPage: true,
