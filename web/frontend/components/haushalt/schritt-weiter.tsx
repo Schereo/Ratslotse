@@ -37,7 +37,7 @@ export function SchrittWeiter({ href }: { href: string }) {
           className="group inline-flex items-center gap-2 text-[13.5px] font-semibold text-primary"
         >
           {/* Das Zeichen des ZIELS, nicht der aktuellen Seite — dieselbe Form
-              steht dort dann groß im Kopf (schritt-zeichen.tsx). */}
+              steht in seiner Wegweiser-Zeile (`wegweiser.tsx`). */}
           <naechster.zeichen aria-hidden size={15} strokeWidth={2} className="flex-none" />
           Weiter: {naechster.nr} · {naechster.titel}
           <ArrowRight

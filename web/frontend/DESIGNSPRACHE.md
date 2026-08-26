@@ -314,15 +314,36 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   (Teilen, Drucken, Vorlesen, 👍/👎) — keine gerahmten Buttons.
 - **Schritt-Zeichen (Haushalt)**: Jeder Schritt des Haushalts-Wegs trägt ein
   festes Lucide-Zeichen, definiert EINMAL am Schritt selbst
-  (`components/haushalt/wegweiser.tsx`, Feld `zeichen`) und an drei Stellen
-  gezeigt: klein (14 px, muted) in der Wegweiser-Zeile, als Kachel im
-  Seitenkopf (`schritt-zeichen.tsx`: 64 px, Radius 16, bg primary/6, Rahmen
-  primary/15, Icon 30 px / Strich 1,75 — die eine erlaubte Ausnahme von der
-  11–22-px-UI-Spanne, weil der UI-Strich in Kachelgröße gestaucht wirkt) und
-  15 px im „Weiter"-Link am Fuß. Die Kachel ist rein dekorativ (aria-hidden),
-  füllt die leere Ecke rechts neben dem gedeckelten Kopf-Absatz und
-  verschwindet unter 640 px ersatzlos. Kein erfundenes Zeichen: Seiten ohne
-  Schritt (Steckbriefe) bekommen keins.
+  (`components/haushalt/wegweiser.tsx`, Feld `zeichen`) und an zwei Stellen
+  gezeigt: klein (14 px, muted) in der Wegweiser-Zeile und 15 px im
+  „Weiter"-Link am Fuß. Die 64-px-Zeichen-Kachel im Seitenkopf gab es nur vom
+  24. bis 26.08.2026 — sie wiederholte das Zeichen groß und sagte sonst
+  nichts („hässlich", Tim); an ihrer Stelle steht der Schritt-Pfad (s. u.).
+  Kein erfundenes Zeichen: Seiten ohne Schritt (Steckbriefe) bekommen keins.
+- **Schritt-Pfad (Haushalt, H5-09)**: oben rechts im Kopf jeder Schritt-Seite
+  (`schritt-pfad.tsx`). Zwölf Punkte in den vier Etappen-Gruppen des
+  Wegweisers (Gruppen-Lücke 7 px, Punkt-Lücke 3 px): besuchte Seiten gefüllt
+  (Lesestand aus `lib/haushalt-fortschritt.ts`, gefüllt = aufgerufen), die
+  aktuelle als 8-px-Ring mit Halo (primary/14), offene als Border-Punkt.
+  Darunter mono 9 px „SCHRITT N VON 12 · ETAPPE". Der Pfad ist ein Link zum
+  Wegweiser (`/haushalt#wegweiser`), verschwindet unter 640 px ersatzlos und
+  rendert auf Steckbriefen nichts.
+- **Seitenbühne (Haushalt, H5-02/H5-09)**: der Kopf-Blickfang jeder
+  Schritt-Seite (`components/haushalt/seitenbuehne.tsx`, Fläche
+  `.hh-seitenbuehne` in `app/globals.css`) — die dritte benannte Fläche neben
+  Tonfläche und Anzeigetafel, eine Stufe leiser als die Tafel, die exklusiv
+  der Übersicht bleibt (Hierarchie Bereich → Seite). Anatomie: Mono-Kicker →
+  EINE gemessene Zahl (27/32 px Bricolage, tabular) im bestehenden
+  gerechneten Satz der Seite → eine Zeile Einordnung; rechts (224 px, unter
+  ~512 px Container gestapelt) das **Minibild**: die verkleinerte Hauptform
+  der Seite (Waffel, Treppe, Städte-Leiter …, Töne `--sb-voll/-mittel/-blass`,
+  Lücken gestrichelt `--sb-strich`), als Link zum Original-Abschnitt. Die
+  Zahl zählt beim ersten Sichtkontakt (600 ms, ease-out³, einmal je
+  Seitenaufruf; Sequenzen nur, wo die Reihenfolge die Aussage trägt —
+  Schulden-Staffel); bei `prefers-reduced-motion` steht sofort der Endwert.
+  Keine Bewertung, keine erfundene Zahl: Ohne Datengrundlage entfällt die
+  Bühne. Ausnahmen: das Labor (Werkzeug, keine Lektüre) und der
+  Bereichs-Steckbrief (trägt seit 24.08. die Anzeigetafel).
 
 ## 6. Interaktions-Grammatik
 

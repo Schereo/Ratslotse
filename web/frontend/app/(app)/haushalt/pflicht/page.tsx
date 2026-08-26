@@ -58,8 +58,9 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
-import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
+import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
+import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 
 const STUFEN: PflichtStufe[] = ["pflicht", "spielraum", "freiwillig"];
 const QUELLEN: QuellenSchluessel[] = ["plan", "teilhaushalt"];
@@ -218,18 +219,53 @@ export default function PflichtPage() {
 
       <div className="flex items-start justify-between gap-5">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[25px]">Muss oder kann?</h1>
-          <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
-            Über einen großen Teil des Haushalts kann der Rat gar nicht frei entscheiden — Bundes-
-            und Landesgesetze schreiben die Aufgaben vor. Hier steht, welcher Bereich wie viel
-            Spielraum lässt, und wie die Stadt selbst das sieht.
-          </p>
+          <SchrittKicker href="/haushalt/pflicht" />
+          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">Muss oder kann?</h1>
         </div>
-        <SchrittZeichen href="/haushalt/pflicht" />
+        <SchrittPfad href="/haushalt/pflicht" />
       </div>
 
+      {/* Die Bühne (H5-02/H5-09): der Pflichtanteil als die eine Zahl der
+          Seite — dieselbe Rechnung wie im Gegenbalken darunter, zu dem das
+          Minibild springt. „Pflicht" heißt hier wie überall auf der Seite:
+          Stufe „Pflicht" plus „Pflicht mit Spielraum". */}
+      {gesamtAus > 0 && (() => {
+        const pflichtProzent = ((summeAus(proStufe("pflicht"))
+          + summeAus(proStufe("spielraum"))) / gesamtAus) * 100;
+        const freiwilligProzent = (freiwilligAus / gesamtAus) * 100;
+        return (
+          <Seitenbuehne
+            kicker={`Anteil an allen Ausgaben · Plan ${jahr}`}
+            zahl={<><ZaehlZahl wert={pflichtProzent} nachkomma={0} />&#8239;% der Ausgaben
+              sind Pflicht oder Pflicht mit Spielraum</>}
+            sub={weicht.length > 0
+              ? `bei ${weicht.length} von ${geprueft.length} Bereichen sieht die Verwaltung es selbst anders`
+              : undefined}
+            minibild={{
+              href: "#ausgabenbild",
+              label: "Gegenbalken: alle Ausgaben · Pflichtanteil · überwiegend freiwillig — klickt zum Bild",
+              skizze: (
+                <>
+                  <span className="block h-2.5 w-full rounded-[5px]" style={{ background: "var(--sb-blass)" }} />
+                  <span className="block h-2.5 rounded-[5px]" style={{ width: `${pflichtProzent}%`, background: "var(--sb-voll)" }} />
+                  <span className="block h-2.5 rounded-[5px]" style={{ width: `${Math.max(freiwilligProzent, 2)}%`, background: "var(--sb-mittel)" }} />
+                </>
+              ),
+            }}
+          />
+        );
+      })()}
+
+      {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.) — der Kopf ist
+          Titel + Bühne, die Erklärung folgt. */}
+      <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
+        Über einen großen Teil des Haushalts kann der Rat gar nicht frei entscheiden — Bundes-
+        und Landesgesetze schreiben die Aufgaben vor. Hier steht, welcher Bereich wie viel
+        Spielraum lässt, und wie die Stadt selbst das sieht.
+      </p>
+
       {/* Die Antwort im ersten Bild: der ganze Ausgabenplan in drei Teilen. */}
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <section id="ausgabenbild" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Geplante Ausgaben {jahr}

@@ -63,8 +63,9 @@ import {
   Beleg, Dokumentbeleg, Quellenkontext, Quellenverzeichnis,
 } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
-import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
+import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
+import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { BilanzBlock } from "@/components/haushalt/bilanz-block";
 
 // `jahresabschluss` stand bis zum 21.08.2026 NICHT hier, obwohl die Seite
@@ -395,7 +396,10 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
           Warum man drei Zahlen hört
         </p>
         <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
-          43,7 · {traeger ? `${deMio(traeger / 1e6)} · ` : ""}
+          {/* Gerechnet, nicht geschrieben — hier stand „43,7" als Text und
+              wäre beim nächsten Tabellenband still falsch geworden. */}
+          {s.kernhaushalt != null ? `${deMio(s.kernhaushalt / 1e6)} · ` : ""}
+          {traeger ? `${deMio(traeger / 1e6)} · ` : ""}
           {deMio(s.insgesamt / 1e6)}&#8239;Mio.&nbsp;€ — und alle drei stimmen
         </h2>
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
@@ -610,20 +614,13 @@ export default function SchuldenPage() {
             der Text, eine Unterkanten-Ausrichtung hätte nichts mehr zu tun. */}
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
-            <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Stadtfinanzen Oldenburg
-            </p>
+            <SchrittKicker href="/haushalt/schulden" />
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
               Wie viel Schulden hat Oldenburg?
             </h1>
-            <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
-              Ende {letzter.jahr} waren es {deMio(letzter.insgesamt / 1e6)}&#8239;Mio.&nbsp;€.
-              Was diese Zahl zählt und was nicht, steht direkt darunter — bei Schulden
-              ist das der Unterschied zwischen zwei Antworten.
-            </p>
           </div>
           <div className="flex flex-none flex-col items-end gap-2.5">
-            <SchrittZeichen href="/haushalt/schulden" />
+            <SchrittPfad href="/haushalt/schulden" />
             {quelleUrl && (
               <a href={quelleUrl} target="_blank" rel="noopener noreferrer"
                 className="hidden flex-none items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-primary shadow-sm desk:inline-flex">
@@ -632,6 +629,66 @@ export default function SchuldenPage() {
             )}
           </div>
         </div>
+
+        {/* Die Bühne (H5-02/H5-06/H5-09): die Staffel der drei
+            Schuldenbegriffe als Treppe. Die Sequenz trägt die Aussage —
+            eng → weiter → ganz —, deshalb zählen die drei Zahlen der Subline
+            nacheinander (H5-07: 3 × 350 ms, Versatz 150 ms). Das Minibild ist
+            die Treppe, maßstäblich zu den Zahlen, und klickt zum Block
+            „Warum man drei Zahlen hört". Ohne Tabellenband keine Bühne. */}
+        {(() => {
+          const st = data?.integrierte_schulden?.stichtag;
+          if (!st) return null;
+          const traeger = (data?.reihe ?? []).find((z) => z.jahr === st.jahr)?.insgesamt ?? null;
+          const stufen = [
+            { titel: "Kernhaushalt", wert: st.kernhaushalt },
+            { titel: "Stadt als Rechtsträger", wert: traeger },
+            { titel: "der ganze Konzern", wert: st.insgesamt },
+          ].filter((x): x is { titel: string; wert: number } => x.wert != null);
+          if (stufen.length < 2) return null;
+          const max = Math.max(...stufen.map((x) => x.wert));
+          const toene = ["var(--sb-voll)", "var(--sb-mittel)", "var(--sb-blass)"];
+          return (
+            <Seitenbuehne
+              kicker={`Drei Zählweisen, eine Stadt · Stand 31.12.${st.jahr}`}
+              zahl={<><ZaehlZahl wert={st.insgesamt / 1e6} nachkomma={1} />&#8239;Mio.&nbsp;€
+                im weitesten Begriff</>}
+              sub={<>
+                {stufen.map((x, i) => (
+                  <span key={x.titel}>
+                    {i > 0 && " · "}
+                    {x.titel}{" "}
+                    <ZaehlZahl wert={x.wert / 1e6} nachkomma={1} dauerMs={350}
+                      verzoegerungMs={i * 150} className="font-semibold" />
+                  </span>
+                ))}
+                {" "}Mio.&nbsp;€
+              </>}
+              minibild={{
+                href: "#drei-zahlen",
+                label: "Treppe der Schuldenbegriffe — jede Stufe zählt die vorige mit, klickt zur Erklärung",
+                skizze: (
+                  <span className="flex items-end gap-1.5" style={{ height: 64 }}>
+                    {stufen.map((x, i) => (
+                      <span key={x.titel} className="flex-1 rounded-t-[6px] rounded-b-[3px]"
+                        style={{
+                          height: `${Math.max((x.wert / max) * 100, 6)}%`,
+                          background: toene[stufen.length - 1 - i] ?? toene[2],
+                        }} />
+                    ))}
+                  </span>
+                ),
+              }}
+            />
+          );
+        })()}
+
+        {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
+        <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
+          Ende {letzter.jahr} waren es {deMio(letzter.insgesamt / 1e6)}&#8239;Mio.&nbsp;€.
+          Was diese Zahl zählt und was nicht, steht direkt darunter — bei Schulden
+          ist das der Unterschied zwischen zwei Antworten.
+        </p>
 
         {/* Der Kopf: zwei Zahlen und die Abgrenzung. Mehr nicht — die
             Abgrenzung ist hier so wichtig wie die Beträge und steht deshalb
@@ -936,7 +993,7 @@ export default function SchuldenPage() {
         {/* Die dritte Zahl. Steht NACH den Bürgschaften, weil sie die Frage
             beantwortet, die die beiden davor aufwerfen: „Wenn 337 nicht alles
             ist und 220 nicht dazuzählen — was schuldet die Stadt denn nun?" */}
-        <DritteZahlBlock daten={data} />
+        <div id="drei-zahlen" className="scroll-mt-20"><DritteZahlBlock daten={data} /></div>
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">

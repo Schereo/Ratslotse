@@ -636,7 +636,14 @@ function SteckbriefTeil({ aktiv, jahr, alleJahre, aufSchliessen }: {
   );
 }
 
-export function ProdukteAbschnitt() {
+export function ProdukteAbschnitt({ onBestand }: {
+  /** Meldet den ungefilterten Bestand des angezeigten Jahres nach oben — die
+   *  Seitenbühne im Kopf zeigt dieselbe Zahl wie der Satz dieses Abschnitts,
+   *  aus derselben Antwort (H5-02: „gemessen aus denselben Loadern wie der
+   *  Fließtext"). Aus den Facetten, nicht aus `treffer`: Die Facetten zählen
+   *  das ganze Jahr, egal welcher Filter gerade gesetzt ist. */
+  onBestand?: (b: { anzahl: number; jahr: number } | null) => void;
+} = {}) {
   const router = useRouter();
   const params = useSearchParams();
   const nr = params.get("nr") ?? "";
@@ -673,6 +680,16 @@ export function ProdukteAbschnitt() {
   }, [jahr, entprellt, amt, spielraum, nr]);
 
   const { data, loading } = useFetch<ProdukteAntwort>(abfrage);
+
+  useEffect(() => {
+    if (!onBestand) return;
+    // `null` = entschieden nichts (kein Jahr, keine Produkte) — die Bühne
+    // entfällt dann, statt ewig zu laden.
+    if (!uebersicht.loading && jahr == null) { onBestand(null); return; }
+    if (loading || !data || !jahr) return;
+    const anzahl = (data.facetten?.aemter ?? []).reduce((s, a) => s + a.anzahl, 0);
+    onBestand(anzahl > 0 ? { anzahl, jahr } : null);
+  }, [onBestand, uebersicht.loading, loading, data, jahr]);
 
   // Leerzustand mit „Ähnlich klingen" (H4-04): Erst wenn die gefilterte
   // Suche wirklich leer ist, wird einmal die ungefilterte Liste geholt und

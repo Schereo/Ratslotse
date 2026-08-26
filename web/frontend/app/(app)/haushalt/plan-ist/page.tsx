@@ -60,8 +60,9 @@ import {
   NachbewilligungsBefund, NachbewilligungsBlock,
 } from "@/components/haushalt/nachbewilligungen";
 import { cn } from "@/lib/utils";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
-import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
+import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
+import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 
 /** Hinweis auf die Prüfung — hier und nirgends sonst, weil das
  *  Rechnungsprüfungsamt genau diesen Vergleich seit Jahren beanstandet:
@@ -324,16 +325,72 @@ function PlanIstInner() {
 
       <div className="flex items-start justify-between gap-5">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[25px]">
+          <SchrittKicker href="/haushalt/plan-ist" />
+          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">
             Geplant und geworden
           </h1>
-          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
-            Ein Haushalt ist ein Plan. Was am Jahresende wirklich zusammenkam, steht erst im
-            Jahresabschluss — hier beides nebeneinander.
-          </p>
         </div>
-        <SchrittZeichen href="/haushalt/plan-ist" />
+        <SchrittPfad href="/haushalt/plan-ist" />
       </div>
+
+      {/* Die Bühne (H5-02/H5-09): aus dem Satz „geplant … geworden …" werden
+          zwei Zahlen — das Kopf-Paar übernimmt die Hantel-Semantik (○ Plan,
+          ● geworden), die Abweichung bleibt unbewertet. Nur wenn der Jahrgang
+          eine Planspalte hat: Gegen eine fehlende Zahl wird nicht verglichen
+          (Regel an der Kernaussage unten). */}
+      {planVorhanden && gesamt.aufwPlan != null && gesamt.aufwIst != null && (
+        <Seitenbuehne
+          kicker={`Jahresabschluss ${jahr} · Mio. € Aufwand`}
+          zahl={
+            <span className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
+              <span>geplant <ZaehlZahl wert={gesamt.aufwPlan} nachkomma={1} /></span>
+              <span aria-hidden="true" className="relative top-[-0.28em] h-0 w-9 flex-none border-t-2 border-foreground" />
+              <span>geworden <ZaehlZahl wert={gesamt.aufwIst} nachkomma={1} /></span>
+            </span>
+          }
+          sub={<>
+            {gesamt.aufwPlan > 0 && Math.abs(aufwDiff) >= 0.05 ? (
+              <>{aufwDiff > 0 ? "+" : "−"}{(Math.abs(aufwDiff) / gesamt.aufwPlan * 100)
+                .toLocaleString("de-DE", { maximumFractionDigits: 1 })}&#8239;%{" "}
+                {aufwDiff > 0 ? "über" : "unter"} dem Plan — gemessen, nicht bewertet</>
+            ) : (
+              <>fast punktgenau — gemessen, nicht bewertet</>
+            )}
+          </>}
+          minibild={bereiche.some((b) => b.aufwPlan != null && b.aufwIst != null) ? {
+            href: "#hanteln",
+            label: "Hantel: ○ Plan → ● geworden, je Bereich — klickt zu ihnen",
+            skizze: (() => {
+              const zwei = bereiche
+                .filter((b) => b.aufwPlan != null && b.aufwIst != null)
+                .slice(0, 2);
+              const skala = Math.max(...zwei.flatMap((b) => [b.aufwPlan ?? 0, b.aufwIst ?? 0]), 1);
+              return zwei.map((b) => {
+                const links = Math.min((b.aufwPlan! / skala) * 88, 88);
+                const rechts = Math.min((b.aufwIst! / skala) * 88, 88);
+                return (
+                  <span key={b.nr} className="relative block h-4">
+                    <span className="absolute inset-x-0 top-[7px] h-[2px]" style={{ background: "var(--sb-blass)" }} />
+                    <span className="absolute top-[7px] h-[2px]" style={{
+                      left: `${Math.min(links, rechts)}%`,
+                      width: `${Math.abs(rechts - links)}%`,
+                      background: "var(--sb-voll)",
+                    }} />
+                    <span className="absolute top-[3px] h-2.5 w-2.5 rounded-full border-2 bg-card" style={{ left: `${links}%`, borderColor: "var(--sb-voll)" }} />
+                    <span className="absolute top-[3px] h-2.5 w-2.5 rounded-full" style={{ left: `${rechts}%`, background: "var(--sb-voll)" }} />
+                  </span>
+                );
+              });
+            })(),
+          } : undefined}
+        />
+      )}
+
+      {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
+      <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
+        Ein Haushalt ist ein Plan. Was am Jahresende wirklich zusammenkam, steht erst im
+        Jahresabschluss — hier beides nebeneinander.
+      </p>
 
       {/* Jahr-Umschalter: nur Jahre mit echtem Abschluss (scrollbar wie #497). */}
       {jahre.length > 1 && (
@@ -524,7 +581,7 @@ function PlanIstInner() {
           Erklärtext und Legende über einer leeren Fläche — die Hantel selbst
           zeichnet ohne Planwert nichts. */}
       {bereiche.some((b) => b.aufwPlan != null && b.aufwIst != null) && (
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div id="hanteln" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               Ausgaben je Bereich · {jahr}

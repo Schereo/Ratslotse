@@ -113,6 +113,19 @@ export default function HaushaltPage() {
     leiste.scrollLeft = Math.max(0, ziel);
   }, [aktJahr]);
 
+  // Anker-Sprung nach dem Laden: Wer mit `#wegweiser` ankommt (der
+  // Schritt-Pfad der Schritt-Seiten verlinkt hierher), trifft die Seite noch
+  // im Ladezustand — der Browser hat den Anker dann längst aufgegeben, weil
+  // es das Ziel nicht gab. Einmal nachspringen, sobald es gerendert ist.
+  const angesprungen = useRef(false);
+  useEffect(() => {
+    if (loading || !data || angesprungen.current || !window.location.hash) return;
+    const ziel = document.getElementById(window.location.hash.slice(1));
+    if (!ziel) return;
+    angesprungen.current = true;
+    ziel.scrollIntoView({ block: "start" });
+  }, [loading, data]);
+
   if (loading || !data || !aktJahr) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
   }
@@ -269,7 +282,11 @@ export default function HaushaltPage() {
           davon die Stadt selbst trägt. */}
       <Bereichstabelle zeilen={zeilen} jahr={aktJahr} />
 
-      <Wegweiser />
+      {/* `id`: Der Schritt-Pfad im Kopf jeder Schritt-Seite
+          (schritt-pfad.tsx) springt hierher. */}
+      <div id="wegweiser" className="scroll-mt-20">
+        <Wegweiser />
+      </div>
 
       {/* Flussbild (H-18): Einnahmearten → eine Kasse → Bereiche. Steht NACH
           dem Gegenbalken, weil es dessen linke Seite auflöst: Der Balken zeigt,

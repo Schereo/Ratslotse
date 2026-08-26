@@ -63,7 +63,7 @@
 // Beschluss-Datei. Das steht im Block „Was hier fehlt", nicht im
 // Kleingedruckten.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight, ExternalLink, FileText } from "lucide-react";
@@ -312,9 +312,21 @@ function StationsAntraege({ s }: { s: StreitStation }) {
   );
 }
 
-export function StreitAbschnitt() {
+export function StreitAbschnitt({ onBestand }: {
+  /** Meldet den Bestand der Streit-Quelle nach oben — die Subline der
+   *  Seitenbühne zählt dieselben Wortbeiträge wie die Quellenzeile dieses
+   *  Abschnitts, aus derselben Antwort (H5-02). */
+  onBestand?: (b: { beitraege: number; von: number; bis: number } | null) => void;
+} = {}) {
   const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
   const { data, loading } = useFetch<StreitDaten>("/council/haushalt/streit");
+
+  useEffect(() => {
+    if (!onBestand || loading) return;
+    const q = data ? bestand(data) : null;
+    onBestand(q && q.beitraege > 0
+      ? { beitraege: q.beitraege, von: q.von, bis: q.bis } : null);
+  }, [onBestand, loading, data]);
   // Die Inhalts-Ebene lädt getrennt: Die Streit-Antwort ist schon ein halbes
   // MB Protokolle, und die Listen braucht erst, wer bis zu ihrem Block liest.
   const { data: listen } = useFetch<AenderungslistenDaten>("/council/haushalt/aenderungslisten");

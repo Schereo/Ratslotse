@@ -54,7 +54,7 @@
 // Fundstellen, nicht unsere Rechenproben. Eine Ausnahme, begründet: Wo eine
 // Zahl FEHLT, sagt die Seite es — das ist eine Auskunft über die Quelle.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Building2, FileText } from "lucide-react";
@@ -220,7 +220,12 @@ function Filterleiste({ liste, form, setForm, suche, setSuche }: {
   );
 }
 
-export function GesellschaftenAbschnitt() {
+export function GesellschaftenAbschnitt({ onBestand }: {
+  /** Meldet den Bestand des Beteiligungsberichts nach oben — für die
+   *  Subline der Seitenbühne (H5-02): wie viele Gesellschaften, wie viele
+   *  Kennzahlen, aus welchen Jahren. */
+  onBestand?: (b: { gesellschaften: number; kennzahlen: number; von: number; bis: number }) => void;
+} = {}) {
   const params = useSearchParams();
   const router = useRouter();
   const gewaehlt = params.get("g");
@@ -232,6 +237,17 @@ export function GesellschaftenAbschnitt() {
   const [karteOffen, setKarteOffen] = useState(false);
 
   const liste = useMemo(() => sortiert(data), [data]);
+
+  useEffect(() => {
+    if (!onBestand || !data || !liste.length || !data.jahre.length) return;
+    onBestand({
+      gesellschaften: liste.length,
+      kennzahlen: data.kennzahlen.length,
+      von: Math.min(...data.jahre),
+      bis: Math.max(...data.jahre),
+    });
+  }, [onBestand, data, liste]);
+
   const aktiv = liste.find((g) => g.gesellschaft === gewaehlt) ?? null;
   const bericht = data?.berichtsjahre?.[data.berichtsjahre.length - 1] ?? null;
   const jahre = data?.jahre ?? [];

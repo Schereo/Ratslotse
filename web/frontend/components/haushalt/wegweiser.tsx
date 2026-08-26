@@ -102,11 +102,12 @@ type Ziel = {
   titel: string;
   text: string;
   /** Das Zeichen des Schritts (Tim, 24.08.: „ein paar helfende Icons").
-   *  Es steht HIER, an der einzigen Quelle der Schritte, und taucht an drei
-   *  Stellen wieder auf: klein in den Zeilen dieses Wegweisers, als Kachel im
-   *  Kopf der Seite (`schritt-zeichen.tsx`) und in der Weiter-Navigation am
-   *  Fuß. Dieselbe Form an allen dreien — man erkennt eine Seite wieder,
-   *  statt zwölf Titel zu vergleichen. */
+   *  Es steht HIER, an der einzigen Quelle der Schritte, und taucht an zwei
+   *  Stellen auf: klein in den Zeilen dieses Wegweisers und in der
+   *  Weiter-Navigation am Fuß. Die Zeichen-Kachel im Seitenkopf gab es vom
+   *  24. bis 26.08. — sie wiederholte nur das Zeichen groß („hässlich", Tim)
+   *  und wich dem Schritt-Pfad (`schritt-pfad.tsx`, H5-09), der dort den
+   *  Lesestand zeigt. */
   zeichen: LucideIcon;
 };
 
@@ -287,6 +288,14 @@ const GESAMT = STUFEN_NUMMERIERT[STUFEN_NUMMERIERT.length - 1].bis;
 export const SCHRITTE: { href: string; titel: string; nr: number; zeichen: LucideIcon }[] =
   STUFEN_NUMMERIERT.flatMap((stufe) =>
     stufe.ziele.map((z) => ({ href: z.href, titel: z.titel, nr: z.nr, zeichen: z.zeichen })));
+
+/** Die Etappen als Gruppen über den Schritten — für den Schritt-Pfad im Kopf
+ *  der Seiten (`schritt-pfad.tsx`): Er zeigt die zwölf Punkte in genau diesen
+ *  vier Gruppen, damit die Lücken im Pfad dieselben sind wie die Karten des
+ *  Wegweisers. Gleiche Regel wie bei `SCHRITTE`: hier exportiert, nicht
+ *  abgeschrieben. */
+export const ETAPPEN: { kicker: string; von: number; bis: number }[] =
+  STUFEN_NUMMERIERT.map((stufe) => ({ kicker: stufe.kicker, von: stufe.von, bis: stufe.bis }));
 
 type Zustand = "gelesen" | "naechster" | "offen";
 

@@ -22,7 +22,7 @@
 // sie durch. Sie braucht die Wirtschaftsplan-Zeilen ohnehin selbst: Aus ihnen
 // entsteht `jeDokument`, die Nummerierung der einzelnen Pläne.
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
@@ -31,7 +31,8 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Abschnitte } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
-import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
+import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
+import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { KonzernAbschnitt } from "@/components/haushalt/abschnitt-konzern";
 import { GesellschaftenAbschnitt } from "@/components/haushalt/abschnitt-gesellschaften";
 import { BetriebeAbschnitt } from "@/components/haushalt/abschnitt-betriebe";
@@ -56,6 +57,14 @@ const MARKEN = [
 function KonzernSeiteInner() {
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(
     haushaltUrl(FELDER));
+  // Die Zahlen der Bühne kommen aus den Abschnitten selbst (`onBestand`) —
+  // dieselben Antworten, die unten Anteilsbalken und Gesellschafts-Liste
+  // tragen. Kein zweiter Abruf, keine zweite Wahrheit.
+  // `undefined` = lädt, `null` = entschieden nichts — dann keine Bühne.
+  const [kern, setKern] = useState<{ anteil: number; jahr: number } | null | undefined>(undefined);
+  const [bericht, setBericht] = useState<{
+    gesellschaften: number; kennzahlen: number; von: number; bis: number;
+  } | null | undefined>(undefined);
 
   // Die Adressen der Pläne, die die Betriebs-Karten zeigen — aus den KARTEN,
   // nicht aus dem Jahrgang: Den Stadthafen gibt es seit 2020 nicht mehr, die
@@ -89,25 +98,60 @@ function KonzernSeiteInner() {
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
               Und ist das die ganze Stadt?
             </h1>
-            <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
-              Nein. Der Haushalt zeigt die Verwaltung. Klinikum, Busse, Bäder und die
-              städtischen Gebäude führen eigene Bücher. Hier stehen sie: erst in einer
-              gemeinsamen Rechnung, dann einzeln mit ihrem Auftrag, dann mit dem, was sie
-              sich fürs Jahr vornehmen — und zuletzt das, was davon als Gebühr bei Ihnen
-              ankommt.
-            </p>
           </div>
-          <SchrittZeichen href="/haushalt/konzern" />
+          <SchrittPfad href="/haushalt/konzern" />
         </div>
+
+        {/* Die Bühne (H5-02/H5-09). Minibild: der Anteilsbalken Kernhaushalt
+            gegen den Rest des Konzerns — klickt zur gemeinsamen Rechnung. */}
+        {kern ? (
+          <Seitenbuehne
+            kicker={`Gesamtabschluss · Konzern Oldenburg · ${kern.jahr}`}
+            zahl={<>Der Kernhaushalt ist <ZaehlZahl wert={kern.anteil * 100} />&#8239;% der Stadt</>}
+            sub={bericht
+              ? `${bericht.gesellschaften} Beteiligungen · ${bericht.kennzahlen} Kennzahlen aus den Jahren ${bericht.von}–${bericht.bis}`
+              : "gemessen an den Erträgen des jüngsten Gesamtabschlusses"}
+            minibild={{
+              href: "#summe",
+              label: "Anteilsbalken: Kernhaushalt und Rest — klickt zur Summe",
+              skizze: (() => {
+                const prozent = Math.round(kern.anteil * 100);
+                return (
+                  <>
+                    <span className="flex h-[22px] overflow-hidden rounded-[6px]">
+                      <span style={{ width: `${prozent}%`, background: "var(--sb-voll)" }} />
+                      <span className="flex-1" style={{ background: "var(--sb-blass)" }} />
+                    </span>
+                    <span className="flex justify-between text-[9.5px] text-muted-foreground">
+                      <span>Kernhaushalt {prozent}&#8239;%</span>
+                      <span>daneben {100 - prozent}&#8239;%</span>
+                    </span>
+                  </>
+                );
+              })(),
+            }}
+          />
+        ) : kern === undefined ? (
+          <SeitenbuehneLaedt kicker="Gesamtabschluss · Konzern Oldenburg" />
+        ) : null}
+
+        {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
+        <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
+          Nein. Der Haushalt zeigt die Verwaltung. Klinikum, Busse, Bäder und die
+          städtischen Gebäude führen eigene Bücher. Hier stehen sie: erst in einer
+          gemeinsamen Rechnung, dann einzeln mit ihrem Auftrag, dann mit dem, was sie
+          sich fürs Jahr vornehmen — und zuletzt das, was davon als Gebühr bei Ihnen
+          ankommt.
+        </p>
 
         <Abschnitte marken={MARKEN} />
 
         <section id="summe" className="scroll-mt-20">
-          <KonzernAbschnitt />
+          <KonzernAbschnitt onBestand={setKern} />
         </section>
 
         <section id="gesellschaften" className="scroll-mt-20 border-t border-border pt-4">
-          <GesellschaftenAbschnitt />
+          <GesellschaftenAbschnitt onBestand={setBericht} />
         </section>
 
         <section id="betriebe" className="scroll-mt-20 border-t border-border pt-4">

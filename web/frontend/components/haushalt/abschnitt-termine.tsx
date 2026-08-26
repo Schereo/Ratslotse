@@ -66,7 +66,7 @@
 // `/council/haushalt/dokumente`), kein Termin. Ohne diese Messgrundlage
 // entfällt die Station — geraten wird nicht.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, ExternalLink } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
@@ -84,12 +84,30 @@ import { cn } from "@/lib/utils";
 
 
 
-export function TermineAbschnitt() {
+export function TermineAbschnitt({ onBestand }: {
+  /** Meldet den nächsten künftigen Termin der Beratungsfolge nach oben — die
+   *  Seitenbühne im Kopf rechnet ihre Tage aus derselben Antwort wie der
+   *  Zeitstrahl (H5-02). `null`, wenn keiner im Kalender steht: Die Bühne
+   *  erfindet dann keinen. */
+  onBestand?: (b: { naechster: { datum: string; gremium: string } | null }) => void;
+} = {}) {
   const { data, loading } = useFetch<WegDaten>("/council/haushalt/weg");
   const { data: dokumente } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   // Einmal gemerkt statt je Render neu: `heute` ist Anker des Strahls.
   const heute = useMemo(() => new Date(), []);
+
+  useEffect(() => {
+    if (!onBestand || loading) return;
+    if (!data?.runden.length) { onBestand({ naechster: null }); return; }
+    const tag = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`;
+    const kommend = data.runden
+      .flatMap((r) => r.stationen)
+      .filter((st) => st.datum >= tag)
+      .sort((a, b) => a.datum.localeCompare(b.datum));
+    onBestand({ naechster: kommend[0]
+      ? { datum: kommend[0].datum, gremium: kommend[0].gremium } : null });
+  }, [onBestand, loading, data, heute]);
 
   if (loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;

@@ -28,14 +28,16 @@
 // nummeriert seitenweise. Verschachtelte Quellenkontexte hätten
 // konkurrierende Nummerierungen ergeben.
 
-import { Suspense } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Abschnitte } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
-import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
+import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
+import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
+import { deDatum } from "@/lib/haushalt-jahr";
 import { TermineAbschnitt } from "@/components/haushalt/abschnitt-termine";
 import { StreitAbschnitt } from "@/components/haushalt/abschnitt-streit";
 
@@ -52,6 +54,15 @@ const MARKEN = [
 ];
 
 function MitredenInner() {
+  // Die Werte der Bühne kommen aus den Abschnitten selbst (`onBestand`) —
+  // derselbe Ratskalender wie der Zeitstrahl, dieselbe Streit-Quelle wie die
+  // Quellenzeile. Kein zweiter Abruf, keine zweite Wahrheit.
+  // `undefined` = lädt, `null`/leer = entschieden nichts.
+  const [termine, setTermine] = useState<{
+    naechster: { datum: string; gremium: string } | null;
+  } | null | undefined>(undefined);
+  const [streit, setStreit] = useState<{ beitraege: number; von: number; bis: number } | null | undefined>(undefined);
+  const heute = useMemo(() => new Date(), []);
   return (
     <Quellenkontext schluessel={QUELLEN}>
       <div className="flex flex-col gap-4">
@@ -67,18 +78,86 @@ function MitredenInner() {
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
               Mitreden
             </h1>
-            <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
-              Ein Haushalt ist kein Rechenergebnis, sondern ein Kompromiss — und er
-              entsteht in öffentlichen Sitzungen. Hier steht, wann darüber entschieden
-              wird und worüber die Fraktionen gestritten haben. Selbst an den
-              Stellschrauben drehen kannst du danach im{" "}
-              <Link href="/haushalt/labor" className="font-semibold text-primary">
-                Haushalts-Labor
-              </Link>.
-            </p>
           </div>
-          <SchrittZeichen href="/haushalt/mitreden" />
+          <SchrittPfad href="/haushalt/mitreden" />
         </div>
+
+        {/* Die Bühne (H5-02/H5-09): der nächste Termin der Beratungsfolge,
+            in Tagen — steht keiner im Ratskalender, tragen die Wortbeiträge
+            des Streit-Abschnitts die Bühne, statt dass ein Termin erfunden
+            wird. Das Minibild ist der Zeitstrahl (schematisch, der nächste
+            Termin trägt den Halo) und klickt zu den Terminen. */}
+        {termine === undefined && streit === undefined ? (
+          <SeitenbuehneLaedt kicker="Ratskalender" />
+        ) : (() => {
+          const heute0 = new Date(heute.getFullYear(), heute.getMonth(), heute.getDate()).getTime();
+          const naechster = termine?.naechster ?? null;
+          const tage = naechster
+            ? Math.round((new Date(naechster.datum).getTime() - heute0) / 86400000)
+            : null;
+          const streitSatz = streit
+            ? `${streit.beitraege.toLocaleString("de-DE")} Wortbeiträge zum Streit ums Geld`
+            : null;
+          const minibild = {
+            href: naechster ? "#termine" : "#streit",
+            label: naechster
+              ? "Zeitstrahl der Beratungsfolge — der nächste Termin trägt den Halo, klickt zu den Terminen"
+              : "Zeitstrahl der Beratungsfolge — klickt zum Streit ums Geld",
+            skizze: (
+              <span className="relative block h-[18px]">
+                <span className="absolute inset-x-0 top-2 h-[2px]" style={{ background: "var(--sb-blass)" }} />
+                <span className="absolute left-[4%] top-[5px] h-2 w-2 rounded-full" style={{ background: "var(--sb-voll)" }} />
+                <span className="absolute left-[26%] top-[5px] h-2 w-2 rounded-full" style={{ background: "var(--sb-voll)" }} />
+                {naechster ? (
+                  <span className="absolute left-[55%] top-[3px] h-3 w-3 rounded-full shadow-[0_0_0_3.5px_hsl(var(--primary)/0.18)]" style={{ background: "var(--sb-voll)" }} />
+                ) : (
+                  <span className="absolute left-[55%] top-[5px] h-2 w-2 rounded-full" style={{ background: "var(--sb-voll)" }} />
+                )}
+                <span className="absolute left-[84%] top-[5px] h-2 w-2 rounded-full border-[1.5px] bg-transparent" style={{ borderColor: "var(--sb-strich)" }} />
+              </span>
+            ),
+          };
+          if (naechster && tage != null && tage >= 0) {
+            return (
+              <Seitenbuehne
+                kicker="Ratskalender · Beratungsfolge des Haushalts"
+                zahl={tage === 0 ? <>Nächster Termin: heute</>
+                  : tage === 1 ? <>Nächster Termin: morgen</>
+                    : <>Nächster Termin: in <ZaehlZahl wert={tage} /> Tagen</>}
+                sub={`${naechster.gremium} am ${deDatum(naechster.datum)}${streitSatz ? ` — dazu ${streitSatz}` : ""}`}
+                minibild={minibild}
+              />
+            );
+          }
+          if (streit) {
+            return (
+              <Seitenbuehne
+                kicker={`Haushaltsberatungen ${streit.von}–${streit.bis}`}
+                zahl={<><ZaehlZahl wert={streit.beitraege} /> Wortbeiträge zum Streit ums Geld</>}
+                sub="ein nächster Termin steht noch nicht im Ratskalender"
+                minibild={minibild}
+              />
+            );
+          }
+          // Einer von beiden lädt noch: Platzhalter statt Sprung.
+          if (termine === undefined || streit === undefined) {
+            return <SeitenbuehneLaedt kicker="Ratskalender" />;
+          }
+          // Kein künftiger Termin und keine Streit-Quelle: keine Bühne —
+          // die Abschnitte darunter erklären ihre Leere selbst.
+          return null;
+        })()}
+
+        {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
+        <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
+          Ein Haushalt ist kein Rechenergebnis, sondern ein Kompromiss — und er
+          entsteht in öffentlichen Sitzungen. Hier steht, wann darüber entschieden
+          wird und worüber die Fraktionen gestritten haben. Selbst an den
+          Stellschrauben drehen kannst du danach im{" "}
+          <Link href="/haushalt/labor" className="font-semibold text-primary">
+            Haushalts-Labor
+          </Link>.
+        </p>
 
         <Abschnitte marken={MARKEN} />
 
@@ -86,11 +165,11 @@ function MitredenInner() {
             Überschrift sonst zu, wenn jemand mit einem `#anker` von außen
             kommt — dann läuft unser eigener Sprung-Rechner gar nicht. */}
         <section id="termine" className="scroll-mt-20">
-          <TermineAbschnitt />
+          <TermineAbschnitt onBestand={setTermine} />
         </section>
 
         <section id="streit" className="scroll-mt-20 border-t border-border pt-4">
-          <StreitAbschnitt />
+          <StreitAbschnitt onBestand={setStreit} />
         </section>
 
         {/* Die Anschlussstelle zum Labor — bewusst eine Karte statt nur des

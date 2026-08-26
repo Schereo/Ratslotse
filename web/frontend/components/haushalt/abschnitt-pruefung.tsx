@@ -61,7 +61,7 @@
 // Nichts davon rührt an den Wortlaut oder an den Deeplink je Feststellung —
 // Textziffer und Seite sind der halbe Wert dieser Seite.
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight, ExternalLink } from "lucide-react";
@@ -191,9 +191,32 @@ function alsMatrixKetten(ketten: Kette[], jahreAnzahl: number): MatrixKette[] {
   });
 }
 
-export function PruefungAbschnitt() {
+export function PruefungAbschnitt({ onBestand }: {
+  /** Meldet die Zählung aller Feststellungen nach oben — die Seitenbühne im
+   *  Kopf zeigt dieselben Balken wie die KettenMatrix, aus derselben Antwort
+   *  (H5-02). `ohneBericht` sind die Jahrgänge mit Abschluss, aber ohne
+   *  Schlussbericht — die Lücke gehört in den Kopf, nicht in die Fußnote. */
+  onBestand?: (b: {
+    gesamt: number;
+    jeJahr: { jahr: number; anzahl: number }[];
+    ohneBericht: number[];
+  } | null) => void;
+} = {}) {
   const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
   const { data, loading } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte");
+
+  useEffect(() => {
+    if (!onBestand || loading) return;
+    if (!data?.feststellungen.length) { onBestand(null); return; }
+    onBestand({
+      gesamt: data.feststellungen.length,
+      jeJahr: data.jahre.map((j) => ({
+        jahr: j,
+        anzahl: data.feststellungen.filter((f) => f.jahr === j).length,
+      })),
+      ohneBericht: data.ohne_bericht,
+    });
+  }, [onBestand, data]);
   // Der Filter des Jahresberichts. Zustand statt URL-Parameter: Ein geteilter
   // Link soll den Bericht zeigen, wie er ist — vollständig.
   const [nurSchwer, setNurSchwer] = useState(false);

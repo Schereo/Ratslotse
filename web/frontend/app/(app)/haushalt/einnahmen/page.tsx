@@ -26,8 +26,9 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { FinanzausgleichDaempfer } from "@/components/haushalt/finanzausgleich-daempfer";
 import { ZuweisungDreiteilig } from "@/components/haushalt/zuweisung-dreiteilig";
 import { cn } from "@/lib/utils";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
-import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
+import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
+import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 
 /** Drei Striche als Spielraum-Marke — gefüllt, halb, gestrichelt.
  *
@@ -154,45 +155,75 @@ export default function EinnahmenPage() {
 
       <div className="@container/kopf flex items-start justify-between gap-5">
         <div className="min-w-0 flex-1">
-          {/* Die Überschrift zählt aus den Daten. Der Entwurf schrieb „drei von
-              neun" fest — es sind weder drei noch neun, und beides ändert sich,
-              sobald eine Einnahmeart dazukommt. */}
-          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[25px]">
-            Bei {frei} von {karten.length} Einnahmequellen kann der Rat wirklich drehen
+          <SchrittKicker href="/haushalt/einnahmen" />
+          {/* Der gerechnete Satz („Bei N von M …") war bis H5-09 die
+              Überschrift. Er ist die EINE Zahl dieser Seite und steht jetzt
+              groß auf der Bühne darunter; die Überschrift trägt die Frage,
+              unter der der Wegweiser den Schritt führt. */}
+          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">
+            Woher kommt das Geld?
           </h1>
-          {/* Zwei Absätze, zwei Spalten: Der Aufhänger und der Jahres-Hinweis
-              sagen Verschiedenes und standen untereinander — zusammen nutzten
-              sie 618 von 1136 px, rechts blieb die halbe Seite leer. Die
-              Zeilenlänge bleibt, wo sie war (66–70 Zeichen); sie zu verbreitern
-              hätte den Platz gefüllt und das Lesen verschlechtert. Schwelle am
-              CONTAINER, nicht am Fenster (Designsprache §4): Am Desktop liegt
-              der Kopf neben der 240-px-Seitenleiste, auf dem iPad nicht —
-              dieselbe Fensterbreite meint zwei verschiedene Platzangebote, und
-              bei 1024 px Fenster wären zwei Spalten je 344 px breit. */}
-          <div className="mt-2 grid gap-x-8 gap-y-2 @5xl/kopf:grid-cols-2">
-            <p className="max-w-[70ch] text-sm leading-relaxed text-foreground/90">
-              Die Debatte „die Stadt soll sich das Geld doch besorgen“ läuft meistens an den
-              Zuständigkeiten vorbei. Deshalb sortieren wir die Einnahmequellen nicht nach Größe,
-              sondern <strong>nach Entscheidungsmacht</strong>. Gezählt sind Quellen, nicht Euro.
-            </p>
-            {/* Der Jahres-Sprung gehört nach oben, nicht ans Seitenende. Wer von
-                der Übersicht kommt, hat dort Planzahlen des kommenden Jahres
-                gesehen; hier stehen abgerechnete Werte eines früheren. Ohne den
-                Hinweis liest man beide Seiten als dieselbe Rechnung und wundert
-                sich über die Differenz. */}
-            <p className="max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
-              Achtung beim Jahr: Bei den Steuern stehen hier <strong>abgerechnete Beträge
-              aus {jahr}</strong> — was wirklich geflossen ist. Die Übersicht zeigt dagegen den
-              <em>Plan</em> für ein späteres Jahr. Beide Zahlen sind richtig, sie beantworten nur
-              verschiedene Fragen. Jede Karte nennt ihr Jahr selbst — die Schlüsselzuweisungen
-              laufen dem Rest voraus.
-            </p>
-          </div>
         </div>
-        <SchrittZeichen href="/haushalt/einnahmen" />
+        <SchrittPfad href="/haushalt/einnahmen" />
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+      {/* Die Bühne (H5-02/H5-09): der bisherige H1-Satz mit seiner Zahl, groß
+          gesetzt; das Minibild ist das Quellenregal — je Gruppe eine Reihe,
+          ein Quadrat je Quelle — und springt zur Legende, die die drei
+          Gruppen erklärt. */}
+      <Seitenbuehne
+        kicker="Spielraum über alle Quellen"
+        zahl={<>Bei <ZaehlZahl wert={frei} /> von {karten.length} Einnahmequellen kann der
+          Rat wirklich drehen</>}
+        sub={(["frei", "begrenzt", "keiner"] as Spielraum[])
+          .map((s) => `${karten.filter((k) => k.art.spielraum === s).length} × ${SPIELRAUM_LABEL[s]}`)
+          .join(" · ")}
+        minibild={{
+          href: "#spielraum",
+          label: "Quellenregal: 1 ▢ = 1 Quelle, je Zeile eine Gruppe — klickt zur Legende",
+          skizze: (["frei", "begrenzt", "keiner"] as Spielraum[]).map((s) => (
+            <span key={s} className="flex flex-wrap gap-[3px]">
+              {karten.filter((k) => k.art.spielraum === s).map((k) => (
+                <span
+                  key={k.art.slug}
+                  className="h-3 w-3 rounded-[3px]"
+                  style={{
+                    background: s === "frei" ? "var(--sb-voll)"
+                      : s === "begrenzt" ? "var(--sb-mittel)" : "var(--sb-blass)",
+                  }}
+                />
+              ))}
+            </span>
+          )),
+        }}
+      />
+
+      {/* Der Einstiegstext steht UNTER der Bühne, kleiner und in der Breite
+          (Tim, 26.08.: „Der ganze Text über den Heroes sieht echt nicht gut
+          aus"): Der Kopf ist jetzt Titel + Bühne, die Erklärung folgt. Zwei
+          Absätze, zwei Spalten ab Container-Breite (Designsprache §4) —
+          Aufhänger und Jahres-Hinweis sagen Verschiedenes. */}
+      <div className="@container">
+        <div className="grid gap-x-8 gap-y-2 @3xl:grid-cols-2">
+          <p className="max-w-[70ch] text-[13px] leading-relaxed text-foreground/85">
+            Die Debatte „die Stadt soll sich das Geld doch besorgen“ läuft meistens an den
+            Zuständigkeiten vorbei. Deshalb sortieren wir die Einnahmequellen nicht nach Größe,
+            sondern <strong>nach Entscheidungsmacht</strong>. Gezählt sind Quellen, nicht Euro.
+          </p>
+          {/* Der Jahres-Sprung bleibt oben auf der Seite: Wer von der Übersicht
+              kommt, hat dort Planzahlen des kommenden Jahres gesehen; hier
+              stehen abgerechnete Werte eines früheren. */}
+          <p className="max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
+            Achtung beim Jahr: Bei den Steuern stehen hier <strong>abgerechnete Beträge
+            aus {jahr}</strong> — was wirklich geflossen ist. Die Übersicht zeigt dagegen den
+            <em>Plan</em> für ein späteres Jahr. Beide Zahlen sind richtig, sie beantworten nur
+            verschiedene Fragen. Jede Karte nennt ihr Jahr selbst — die Schlüsselzuweisungen
+            laufen dem Rest voraus.
+          </p>
+        </div>
+      </div>
+
+      <div id="spielraum" className="scroll-mt-20 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
         <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
           Spielraum des Rats
         </p>

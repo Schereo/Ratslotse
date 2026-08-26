@@ -44,7 +44,7 @@
 // Investitionstätigkeit" fällt — was das ist, sagt die Quelle nicht, und wir
 // erfinden es nicht dazu.
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
@@ -223,7 +223,12 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
   );
 }
 
-export function GebautAbschnitt() {
+export function GebautAbschnitt({ onBestand }: {
+  /** Meldet die Jahrgänge des Gebaut-Bilds nach oben — die Seitenbühne im
+   *  Kopf nennt dieselbe Zahl wie die NahtSäulen, aus derselben Antwort
+   *  (H5-02). `luecken` sind die Jahre, die als Lücke im Bild stehen. */
+  onBestand?: (b: { jahrgaenge: number; luecken: number[] } | null) => void;
+} = {}) {
   const { data, loading } = useFetch<GebautDaten>("/council/haushalt/gebaut");
 
   const alle = useMemo(() => reihen(data ?? null), [data]);
@@ -247,6 +252,15 @@ export function GebautAbschnitt() {
     }
     return js.sort((a, b) => a.jahr - b.jahr);
   }, [alle]);
+
+  useEffect(() => {
+    if (!onBestand || loading) return;
+    if (!nahtJahre.length) { onBestand(null); return; }
+    onBestand({
+      jahrgaenge: nahtJahre.filter((j) => !("fehlt" in j && j.fehlt)).length,
+      luecken: nahtJahre.filter((j) => "fehlt" in j && j.fehlt).map((j) => j.jahr),
+    });
+  }, [onBestand, loading, nahtJahre]);
 
   // Die Naht liegt zwischen dem letzten Jahr der älteren und dem ersten der
   // jüngeren Reihe — gerechnet aus den Daten, nicht hart codiert.

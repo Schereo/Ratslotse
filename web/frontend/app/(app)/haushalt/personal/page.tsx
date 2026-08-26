@@ -48,7 +48,8 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
-import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
+import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
+import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 
 const QUELLEN = ["stellenplan"] as const;
 
@@ -163,13 +164,9 @@ export default function PersonalPage() {
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
               Wer macht die Arbeit?
             </h1>
-            <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
-              Personal ist der größte Ausgabenblock der Stadt. Wie viele Stellen dahinterstehen,
-              legt der Rat mit dem Haushalt fest — im Stellenplan, Zeile für Zeile.
-            </p>
           </div>
           <div className="flex flex-none flex-col items-end gap-2.5">
-            <SchrittZeichen href="/haushalt/personal" />
+            <SchrittPfad href="/haushalt/personal" />
             {quelleUrl && (
               <a href={quelleUrl} target="_blank" rel="noopener noreferrer"
                 className="hidden flex-none items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] font-semibold text-primary shadow-sm desk:inline-flex">
@@ -179,13 +176,66 @@ export default function PersonalPage() {
           </div>
         </div>
 
+        {/* Die Bühne (H5-02/H5-09): der gerechnete Satz, der bis dahin als
+            <h2> in der Waffel-Karte stand, groß gesetzt — für den GEWÄHLTEN
+            Teil, damit Bühne und Waffel nie zwei verschiedene Zahlen zeigen.
+            KEINE Summe A+B: Sie steht in keinem Dokument (Chips unten), und
+            die Bühne erfindet keine. Das Minibild zeigt den gemessenen
+            Besetzt-Anteil als Waffel-Ausschnitt und klickt zu ihr. */}
+        {kern && (() => {
+          const besetztAnteil = kernLuecke ? 1 - kernLuecke.anteil : null;
+          const quadrate = 24;
+          const gefuellt = besetztAnteil != null
+            ? Math.round(quadrate * besetztAnteil) : quadrate;
+          return (
+            <Seitenbuehne
+              kicker={`Stellenplan Teil ${teil} · ${TEIL_LABEL[teil]} · Plan ${teilNeu}`}
+              zahl={<><ZaehlZahl wert={kern.stellen_plan}
+                nachkomma={Number.isInteger(kern.stellen_plan) ? 0 : 1} /> Stellen
+                hält die Stadt vor</>}
+              sub={kernLuecke
+                ? <>rund {pct(kernLuecke.anteil)}&nbsp;% davon waren zuletzt unbesetzt
+                  (Stichtag {deDatum(kernLuecke.stichtag)}) — Stellen, nicht Köpfe</>
+                : "Stellen, nicht Köpfe — die Besetzung wird ein Jahr versetzt erhoben"}
+              minibild={{
+                href: "#waffel",
+                label: besetztAnteil != null
+                  ? "Ausschnitt der Waffel — umrandet ist unbesetzt, klickt zu ihr"
+                  : "Ausschnitt der Waffel — klickt zu ihr",
+                skizze: (
+                  <span className="flex flex-wrap gap-[2.5px]">
+                    {Array.from({ length: quadrate }, (_, i) => (
+                      <span
+                        key={i}
+                        className="h-[11px] w-[11px] rounded-[2.5px]"
+                        style={i < gefuellt
+                          ? { background: "var(--sb-voll)" }
+                          : { border: "1.5px dashed var(--sb-strich)" }}
+                      />
+                    ))}
+                  </span>
+                ),
+              }}
+            />
+          );
+        })()}
+
+        {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
+        <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
+          Personal ist der größte Ausgabenblock der Stadt. Wie viele Stellen dahinterstehen,
+          legt der Rat mit dem Haushalt fest — im Stellenplan, Zeile für Zeile.
+        </p>
+
         {/* Das tragende Bild (H3-01): Waffel links, Jahrgangs-Paare rechts —
             mobil untereinander, der Umschalter volle Breite (H4-05). */}
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+        <section id="waffel" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2.5">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            {/* Als <h2>, seit der gerechnete Satz auf der Bühne steht (H5-09):
+                Die Karte behält so eine Überschrift für die Gliederung, ohne
+                die Zahl der Bühne zu wiederholen. */}
+            <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               Stellenplan · {TEIL_LABEL[teil]}<Beleg q="stellenplan" />
-            </p>
+            </h2>
             <Segmented<StellenTeil> value={teil} onChange={setTeil}
               className="w-full min-[480px]:w-auto [&_button]:min-h-[44px] sm:[&_button]:min-h-0"
               options={[
@@ -199,10 +249,9 @@ export default function PersonalPage() {
             <div className="flex flex-col gap-3">
               {kern && kernLuecke ? (
                 <>
-                  <h2 className="max-w-[26ch] font-display text-[21px] font-bold leading-snug tracking-tight">
-                    {deStellen(kern.stellen_plan)} Stellen hält die Stadt {teilNeu} vor —
-                    rund {pct(kernLuecke.anteil)}&nbsp;% waren zuletzt unbesetzt
-                  </h2>
+                  {/* Der gerechnete Satz („N Stellen hält die Stadt vor …")
+                      stand bis H5-09 hier als <h2> und steht jetzt groß auf
+                      der Bühne im Kopf — dieselben Werte, eine Stelle. */}
                   <p className="max-w-[58ch] text-[13px] leading-relaxed text-foreground/90">
                     Jedes Quadrat sind zehn Stellen — gezeigt sind die{" "}
                     {deStellen(kernLuecke.stellen)} Stellen, die es am Stichtag{" "}

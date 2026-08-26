@@ -37,7 +37,7 @@
 //
 // KEINE BEWERTUNGSFARBEN, wie im ganzen Bereich (components/grafik/hantel.tsx).
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
@@ -135,8 +135,20 @@ function Lueckenkopf({ daten, jahr }: { daten: KonzernDaten; jahr: number }) {
   );
 }
 
-export function KonzernAbschnitt() {
+export function KonzernAbschnitt({ onBestand }: {
+  /** Meldet den jüngsten Kernhaushalt-Anteil nach oben — die Seitenbühne im
+   *  Kopf zeigt denselben Anteilsbalken wie dieser Abschnitt, aus derselben
+   *  Antwort (H5-02). Erträge, wie im Vergleichsbalken unten. */
+  onBestand?: (b: { anteil: number; jahr: number } | null) => void;
+} = {}) {
   const { data, loading } = useFetch<KonzernDaten>("/council/haushalt/konzern");
+
+  useEffect(() => {
+    if (!onBestand || loading) return;
+    const jahr = data ? juengstesVergleichsjahr(data) : null;
+    const a = data && jahr != null ? kernAnteil(data, jahr) : null;
+    onBestand(jahr != null && a ? { anteil: a.anteil, jahr } : null);
+  }, [onBestand, loading, data]);
   const [art, setArt] = useState<LueckeArt>("ertraege");
   const [jahr, setJahr] = useState<number | null>(null);
 
