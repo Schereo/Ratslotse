@@ -19,6 +19,7 @@
 //    gezahlt hat (Zinsaufwand ÷ Schuldenstand, lib/haushalt-labor.ts).
 
 import Link from "next/link";
+import { Search } from "lucide-react";
 import { deMio, type HaushaltssatzungZeile } from "@/lib/haushalt";
 import type { ProgrammDaten } from "@/lib/haushalt-investitionsprogramm";
 import type { SchuldenDaten } from "@/lib/haushalt-schulden";
@@ -72,6 +73,18 @@ export function InvestWerkbank({
     : [];
   const schluessel = (z: { code: string; bezeichnung: string }) =>
     z.code || z.bezeichnung;
+  /** Detailzeilen, die etwas SAGEN: Wiederholt ein Sachkonto nur den
+   *  Maßnahmen-Namen (ggf. abgeschnitten), trägt es nichts — was bleibt,
+   *  sind die informativen („Eig.kap. Zusch.Stadion Oldb GmbH & Co KG“,
+   *  die Bauabschnitte der Fliegerhorst-Straßen). */
+  const detailInfo = (z: { bezeichnung: string; details: string | null }) => {
+    if (!z.details) return null;
+    const eigene = z.details.split(" · ").filter((d) => {
+      const stamm = d.split(",")[0].trim();
+      return !(z.bezeichnung.startsWith(stamm) || stamm.startsWith(z.bezeichnung));
+    });
+    return eigene.length ? eigene.join(" · ") : null;
+  };
   const gestrichen = vorhaben
     .filter((z) => vorhabenAus[schluessel(z)])
     .reduce((s, z) => s + z.gesamtsumme, 0);
@@ -118,14 +131,40 @@ export function InvestWerkbank({
           <div className="mt-2 flex flex-col">
             {vorhaben.map((z) => {
               const aus = !!vorhabenAus[schluessel(z)];
+              // Kein Vorhaben ohne Namen: Trägt die Summenzeile im Dokument
+              // keinen (und die Detailzeilen keinen gemeinsamen), steht hier
+              // der Code — eine benannte Lücke statt eines leeren Schalters.
+              const name = z.bezeichnung || `Maßnahme ${z.code}`;
               return (
                 <div key={schluessel(z)}
-                  className="flex items-center gap-3 border-t border-border/60 py-2.5 first:border-t-0">
-                  <Schalter an={!aus} label={z.bezeichnung}
-                    onClick={() => toggleVorhaben(schluessel(z))} />
-                  <span className={cn("min-w-0 flex-1 text-[12.5px] leading-snug",
-                    aus ? "text-muted-foreground line-through" : "text-foreground")}>
-                    {z.bezeichnung}
+                  className="flex items-start gap-3 border-t border-border/60 py-2.5 first:border-t-0">
+                  <div className="pt-0.5">
+                    <Schalter an={!aus} label={name}
+                      onClick={() => toggleVorhaben(schluessel(z))} />
+                  </div>
+                  <span className="min-w-0 flex-1">
+                    <span className={cn("text-[12.5px] leading-snug",
+                      aus ? "text-muted-foreground line-through" : "text-foreground")}>
+                      {name}
+                    </span>
+                    {/* Der Weg zum Nachlesen: die Beschluss-Suche mit dem
+                        Namen als Anfrage — ein Suchlink, kein behaupteter
+                        Treffer (eine feste Vorlagen-Zuordnung liegt nicht vor). */}
+                    <Link
+                      href={`/council?tab=decisions&q=${encodeURIComponent(z.bezeichnung || z.code)}`}
+                      title="In Beschlüssen und Anträgen danach suchen"
+                      className="ml-1.5 inline-flex translate-y-[1px] text-muted-foreground hover:text-primary">
+                      <Search className="h-3 w-3" strokeWidth={2.2} />
+                      <span className="sr-only">In Beschlüssen und Anträgen nach „{name}“ suchen</span>
+                    </Link>
+                    {detailInfo(z) && (
+                      <span className="mt-0.5 block text-[10.5px] leading-snug text-muted-foreground">
+                        {/* Die Sachkonto-Zeilen des Dokuments — sie sagen, was
+                            hinter einem generischen Namen steckt (der
+                            „Eigenkapitalzuschuss“ geht an die Stadion-GmbH). */}
+                        {detailInfo(z)}
+                      </span>
+                    )}
                   </span>
                   <span className={cn("shrink-0 font-mono text-[12px] tabular-nums",
                     aus ? "font-medium text-signal" : "text-foreground")}>
@@ -135,6 +174,12 @@ export function InvestWerkbank({
               );
             })}
           </div>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground">
+            Warum diese Auswahl — und so viel Fliegerhorst? Das Programm nennt nur
+            einen Teil seiner Vorhaben einzeln: Straßenbau sehr genau, Schulen
+            dagegen nur als Sammelposten. Hier stehen die größten <em>benannten</em>{" "}
+            Einzelmaßnahmen — die Gewichtung ist die des Dokuments, nicht unsere.
+          </p>
           <p className="mt-2 border-t border-dashed border-border pt-2 text-[11.5px] leading-relaxed">
             {gestrichen > 0 ? (
               <>

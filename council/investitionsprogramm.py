@@ -115,8 +115,11 @@ TOLERANZ_EUR = 0.5
 MINDEST_MASSNAHMEN = 1
 
 #: IPSP-Element. Gruppe 2 ist die Sachkonto-Endung — trägt sie etwas, ist die
-#: Zeile eine Detailzeile und zählt nicht mit (Falle 1).
-CODE = re.compile(r"^(I\d+\.\d+)(\.\d+)?\b")
+#: Zeile eine Detailzeile und zählt nicht mit (Falle 1). Die Endung kann
+#: MEHRSTUFIG sein („I10.780999.500.100“, die Bauabschnitte der
+#: Fliegerhorst-Straßen) — eine einstufige Gruppe ließe „.100“ im Namen
+#: stehen und die Zeile als weitere Detailzeile ihres eigenen Stamms zählen.
+CODE = re.compile(r"^(I\d+\.\d+)((?:\.\d+)+)?\b")
 
 #: Abschnittskopf „THH02 Personal- u. Verwaltungsmanagement".
 THH = re.compile(r"^THH\s*(\d+)\s+(.*)$")
@@ -315,20 +318,53 @@ def _lies_kopftabelle(zeilen: list[str]) -> tuple[list[dict], int | None]:
     return zeilenmenge, summe
 
 
+def _name_aus_details(namen: list[str]) -> str:
+    """Der Maßnahmen-Name aus ihren Detailzeilen — für Summenzeilen OHNE
+    eigenen Namen (I10.000035 trägt 2026 keinen; seine Detailzeile heißt
+    „SG Kreyenbrück Nord, Inv.Zusch.“). Die Detailnamen hängen hinter dem
+    Komma ihr Sachkonto an — davor steht die Maßnahme. Nur wenn ALLE
+    Details denselben Stamm tragen, wird er übernommen; sonst bleibt der
+    Name leer (die Oberfläche zeigt dann den Code, keinen geratenen Namen)."""
+    staemme = {n.rsplit(",", 1)[0].strip() for n in namen if n.strip()}
+    return staemme.pop() if len(staemme) == 1 else ""
+
+
 def _lies_abschnitte(zeilen: list[str]) -> dict[int, dict]:
-    """Je Teilhaushalt seine Maßnahmen und seine ausgewiesene Gesamtsumme."""
+    """Je Teilhaushalt seine Maßnahmen und seine ausgewiesene Gesamtsumme.
+
+    Die Sachkonto-DETAILZEILEN (Falle 1) zählen weiterhin nicht in die
+    Beträge — aber ihre NAMEN werden seit 26.08.2026 eingesammelt: Sie
+    stehen als ``details`` an der Maßnahme (im Labor beantworten sie, WAS
+    ein „Eigenkapitalzuschuss“ ist: „Eig.kap. Zusch.Stadion Oldb GmbH &
+    Co KG“) und liefern den Namen nach, wenn die Summenzeile selbst keinen
+    trägt. Die Details stehen im Dokument VOR ihrer Summenzeile."""
     abschnitte: dict[int, dict] = {}
+    details: dict[str, list[str]] = {}
     akt: int | None = None
     code: str | None = None
     blob: list[str] = []
+    det_code: str | None = None
+    det_blob: list[str] = []
+
+    def det_schliessen() -> None:
+        nonlocal det_code, det_blob
+        if det_code and akt is not None:
+            name, _betrag = _name_und_betrag(det_blob)
+            name = name.strip().rstrip(",")
+            if name:
+                details.setdefault(det_code, []).append(name)
+        det_code, det_blob = None, []
 
     def schliessen() -> None:
         nonlocal code, blob
+        det_schliessen()
         if code and akt is not None:
             name, betrag = _name_und_betrag(blob)
             if betrag is not None:
+                det = details.pop(code, [])
                 abschnitte[akt]["massnahmen"].append(
-                    {"code": code, "bezeichnung": name, "gesamtsumme": betrag})
+                    {"code": code, "bezeichnung": name or _name_aus_details(det),
+                     "gesamtsumme": betrag, "details": det})
         code, blob = None, []
 
     for z in zeilen:
@@ -352,13 +388,21 @@ def _lies_abschnitte(zeilen: list[str]) -> dict[int, dict]:
             continue
         treffer = CODE.match(s)
         if treffer:
+            # JEDE Code-Zeile schließt den offenen Satz — auch eine
+            # Detailzeile: Sonst liefe ihre Wickel-Fortsetzung in den noch
+            # offenen Eltern-Blob („Zusch.Stadion …“ hing an der Ausleihung).
             schliessen()
             if treffer.group(2):
-                continue           # Detailzeile — Falle 1
+                # Detailzeile — ihr Betrag zählt nicht (Falle 1), ihr Name
+                # schon. Sie gehört zur Maßnahme ihres Code-Stamms.
+                det_code, det_blob = treffer.group(1), [s[treffer.end():]]
+                continue
             code, blob = treffer.group(1), [s[treffer.end():]]
             continue
         if code:
             blob.append(s)         # umbrochener Name — Falle 2
+        elif det_code:
+            det_blob.append(s)     # umbrochener Detailname, gleiche Falle
     schliessen()
     return abschnitte
 

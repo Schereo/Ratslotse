@@ -946,9 +946,17 @@ class CouncilStore:
             "code TEXT NOT NULL DEFAULT '', "      # IPSP-Element
             "bezeichnung TEXT NOT NULL, "
             "gesamtsumme REAL NOT NULL, "
+            "details TEXT, "                       # Sachkonto-Detailnamen, " · "-getrennt
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, ebene, thh_nr, code))"
         )
+        # `details` kam am 26.08.2026 dazu (Namen der Sachkonto-Detailzeilen,
+        # council/investitionsprogramm.py) — additiv, füllt der nächste Ingest.
+        inv_cols = {r[1] for r in self._conn.execute(
+            "PRAGMA table_info(council_investitionsmassnahmen)").fetchall()}
+        if inv_cols and "details" not in inv_cols:
+            self._conn.execute(
+                "ALTER TABLE council_investitionsmassnahmen ADD COLUMN details TEXT")
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_invprog_jahr_thh "
             "ON council_investitionsmassnahmen(jahr, thh_nr)")
@@ -5833,15 +5841,18 @@ class CouncilStore:
             for nr, a in sorted(gelesen["abschnitte"].items()):
                 for m in a["massnahmen"]:
                     werte.append((jahr, "massnahme", nr, m["code"],
-                                  m["bezeichnung"], m["gesamtsumme"], now, hid))
+                                  m["bezeichnung"], m["gesamtsumme"],
+                                  " · ".join(m.get("details") or []) or None,
+                                  now, hid))
                 werte.append((jahr, "teilhaushalt", nr, "", a["name"],
-                              a["summe"], now, hid))
+                              a["summe"], None, now, hid))
             werte.append((jahr, "gesamt", 0, "", "Gesamtinvestitionsprogramm",
-                          gelesen["kopfsumme"], now, hid))
+                          gelesen["kopfsumme"], None, now, hid))
             self._conn.executemany(
                 "INSERT INTO council_investitionsmassnahmen "
                 "(jahr, ebene, thh_nr, code, bezeichnung, gesamtsumme, "
-                " fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?)", werte)
+                " details, fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?,?)",
+                werte)
         return len(werte)
 
     def investitionsprogramm_jahre(self) -> list[int]:

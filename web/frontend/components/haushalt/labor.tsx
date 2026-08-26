@@ -64,7 +64,14 @@ import { RuecklagenPfadGrafik } from "@/components/haushalt/ruecklagen-pfad";
 import { cn } from "@/lib/utils";
 
 const MAX_KUERZUNG = 30;
-const MAX_PUNKTE = 50;
+/** Spielraum der Hebesatz-Regler in Punkten, beide Richtungen. ±50 war zu
+ *  eng (Tims Befund 26.08.2026): Wolfsburg stand im 2025er-Städtevergleich
+ *  bei 360 % — von Oldenburgs 439 aus 79 Punkte runter und mit ±50
+ *  unerreichbar. ±100 deckt jede Stadt der Leiter UND die eigene Reihe seit
+ *  1980 (370–439) in beide Richtungen, rund und symmetrisch. Die
+ *  Je-Punkt-Rechnung bleibt der erklärte lineare Überschlag — auch am
+ *  Anschlag steht „bei unveränderten Gewinnen" daneben. */
+const MAX_PUNKTE = 100;
 const MAX_HUNDE = 100;
 
 function eur(v: number): string {
@@ -251,6 +258,18 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
 
   const lueckeGeaendert = punkte !== 0 || grundstPunkte !== 0 || hundePct !== 0
     || Object.values(aenderung).some((v) => v !== 0);
+  // Gestrichene Investitionen — für den Hinweis in der Ergebnis-Karte, WARUM
+  // sich das Minus dort nicht bewegt (Tims Befund 26.08.2026: Schalter aus,
+  // Zahl unverändert, „zurücksetzen" erscheint — und nichts erklärt es).
+  // Gleicher Schlüssel wie in der Invest-Werkbank: code || bezeichnung.
+  const investGestrichenMio = useMemo(() => {
+    const jahrInv = programm?.jahre.at(-1) ?? null;
+    if (jahrInv == null) return 0;
+    const summe = (programm?.massnahmen ?? [])
+      .filter((z) => z.jahr === jahrInv && vorhabenAus[z.code || z.bezeichnung])
+      .reduce((s, z) => s + z.gesamtsumme, 0);
+    return Math.round((summe / 1e6) * 10) / 10;
+  }, [programm, vorhabenAus]);
   const etwasGeaendert = lueckeGeaendert || kredit
     || Object.values(vorhabenAus).some(Boolean);
 
@@ -320,17 +339,39 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
         </p>
       </div>
 
-      {/* Die Lücke als Balken: was du geschlossen hast, was bleibt. Die
-          Breiten sind geklemmt — ein gesenkter Hebesatz füllt keinen
-          negativen Balken, er vergrößert die Zahl darüber. */}
-      <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-muted">
-        <span className="h-full transition-[width] duration-200"
-          style={{ width: `${basis.defizit > 0 ? Math.max(0, (mehrEinnahmen / basis.defizit) * 100) : 0}%`,
-            background: "var(--hh-ein-0)" }} />
-        <span className="h-full transition-[width] duration-200"
-          style={{ width: `${basis.defizit > 0 ? Math.max(0, (gespart / basis.defizit) * 100) : 0}%`,
-            background: "var(--hh-aus-2)" }} />
-      </div>
+      {/* Die Lücke als Balken — in BEIDE Richtungen (Tims Befund 26.08.2026:
+          „wäre cool, wenn der Balken auch in eine andere Richtung gehen
+          könnte"). Netto positiv: die Füllung ist der geschlossene Teil,
+          aufgeteilt auf Einnahmen- und Spar-Farbe. Damit die Füllung bei
+          gemischten Vorzeichen (Hebesatz hoch, Kultur auch) nie mehr zeigt
+          als netto wirkt, werden die positiven Anteile auf die Netto-Wirkung
+          skaliert — vorher zeigte der Balken die Brutto-Anteile und
+          überzeichnete. Netto negativ: dieselbe Fläche läuft in
+          Signal-Orange von links und heißt „so viel kommt zur Lücke DAZU"
+          — der Satz darunter beziffert es. */}
+      {(() => {
+        const posSumme = Math.max(0, mehrEinnahmen) + Math.max(0, gespart);
+        const skala = wirkung > 0 && posSumme > 0 ? wirkung / posSumme : 0;
+        const anteil = (m: number) =>
+          basis.defizit > 0 ? Math.max(0, Math.min(100, (m / basis.defizit) * 100)) : 0;
+        return (
+          <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-muted">
+            {wirkung < 0 ? (
+              <span className="h-full transition-[width] duration-200"
+                style={{ width: `${anteil(-wirkung)}%`, background: "hsl(var(--signal))" }} />
+            ) : (
+              <>
+                <span className="h-full transition-[width] duration-200"
+                  style={{ width: `${anteil(Math.max(0, mehrEinnahmen) * skala)}%`,
+                    background: "var(--hh-ein-0)" }} />
+                <span className="h-full transition-[width] duration-200"
+                  style={{ width: `${anteil(Math.max(0, gespart) * skala)}%`,
+                    background: "var(--hh-aus-2)" }} />
+              </>
+            )}
+          </div>
+        );
+      })()}
       <p className="mt-1.5 text-[12px] leading-relaxed">
         {!lueckeGeaendert ? (
           <span className="text-muted-foreground">
@@ -349,6 +390,20 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
           {satzteile.length > 0 && <> — {satzteile.join(", ")} gleichen sich aus</>}.</>
         )}
       </p>
+
+      {/* Warum bewegt sich das Minus nicht, obwohl ich gestrichen habe?
+          Investitionen wirken auf Kasse und Schuldenpfad, nicht auf diese
+          Zahl — ohne den Satz sieht der Schalter kaputt aus. */}
+      {investGestrichenMio > 0 && (
+        <p className="mt-2 rounded-lg bg-muted/50 p-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">
+            {deMio(investGestrichenMio)}&#8239;Mio.&nbsp;€ Investitionen gestrichen
+          </strong>{" "}
+          — das schont Kasse und Schuldenpfad (Werkbank „Investieren"), aber dieses
+          Minus fast nicht: Im Jahresergebnis stehen von Investitionen nur die
+          Abschreibungen. Deshalb ändert sich die Zahl oben nicht.
+        </p>
+      )}
 
       {/* Die Dämpfer-Spanne: weiterhin NICHT verrechnet, aber sichtbar —
           beziffert aus den echten Ausgleichsjahren, kein fester Faktor. */}

@@ -42,6 +42,11 @@ export type ProgrammZeile = {
   /** Gesamtinvestitionssumme — die Kosten über alle Jahre, nicht die
    *  Jahresrate. Die Jahresaufteilung liegt nicht vor. */
   gesamtsumme: number;
+  /** Die Namen der Sachkonto-Detailzeilen, „ · “-getrennt — sie sagen oft,
+   *  was hinter einem generischen Namen steckt („Eig.kap. Zusch.Stadion
+   *  Oldb GmbH & Co KG“). `null` bei Maßnahmen ohne Detailzeilen und in
+   *  Beständen vor dem Ingest vom 26.08.2026. */
+  details: string | null;
   herkunft_id: number | null;
 };
 

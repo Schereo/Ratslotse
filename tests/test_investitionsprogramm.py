@@ -263,6 +263,56 @@ Gesamtsumme 0 0
     assert massnahmen[0]["gesamtsumme"] == 0
 
 
+# --- Detailnamen (26.08.2026) ------------------------------------------------
+
+def test_detailnamen_werden_eingesammelt(gelesen):
+    """Die Sachkonto-Zeilen zählen nicht in die Beträge, aber ihre Namen
+    stehen an der Maßnahme — sie sagen, was ein generischer Name IST: Der
+    „Eigenkapitalzuschuss" geht laut seiner Detailzeile an die Stadion-GmbH.
+    Der Name wickelt dabei über zwei Zeilen und darf nicht in den noch
+    offenen Blob der VORIGEN Maßnahme laufen (die Ausleihung 2027)."""
+    m = next(m for m in gelesen["abschnitte"][4]["massnahmen"]
+             if m["code"] == "I10.093751")
+    assert m["details"] == ["Eig.kap. Zusch.Stadion Oldb GmbH & Co KG"]
+    vorige = next(m for m in gelesen["abschnitte"][4]["massnahmen"]
+                  if m["code"] == "I10.093127")
+    assert vorige["bezeichnung"] == "Ausleihung an Beteiligungen, 2027"
+
+
+def test_namenlose_summenzeile_erbt_von_der_detailzeile():
+    """I10.000035 trägt 2026 keinen eigenen Namen — nur seine Detailzeile
+    heißt „SG Kreyenbrück Nord, Inv.Zusch.". Der Stamm vor dem Komma wird
+    der Maßnahmen-Name; ohne einigen Stamm bliebe er leer (Code statt
+    geratenem Namen)."""
+    text = """THH07 Stadtentwicklung
+I10.000035.525 SG Kreyenbrück
+Nord, Inv.Zusch.
+14.764.602 13.764.602 500.000 500.000
+I10.000035 14.764.602 13.764.602 500.000 500.000
+Gesamtsumme 14.764.602 13.764.602
+"""
+    massnahmen = ip._lies_abschnitte(text.splitlines())[7]["massnahmen"]
+    assert [m["bezeichnung"] for m in massnahmen] == ["SG Kreyenbrück Nord"]
+    assert massnahmen[0]["gesamtsumme"] == 14_764_602
+
+
+def test_mehrstufige_sachkonten_bleiben_detailzeilen():
+    """„I10.780999.500.100" (die Bauabschnitte der Fliegerhorst-Straßen) ist
+    eine Detailzeile — eine einstufige Code-Gruppe ließe „.100" im Namen
+    stehen und zählte die Zeile beinahe als eigene Maßnahme."""
+    text = """THH03 Wirtschaftsförderung
+I10.780999.500.100 BA N-777 D, 1.234.000 1.034.000 200.000
+I10.780999.500.200 BA N-777 E,
+Straßenbau 8.880.000 7.750.000 1.130.000
+I10.780999 Fliegerhorst:
+Straßenbaumaßnahmen 24.775.700 20.000.000
+Gesamtsumme 24.775.700 20.000.000
+"""
+    massnahmen = ip._lies_abschnitte(text.splitlines())[3]["massnahmen"]
+    assert [m["code"] for m in massnahmen] == ["I10.780999"]
+    assert massnahmen[0]["details"] == ["BA N-777 D", "BA N-777 E, Straßenbau"]
+
+
 # --- Falle 2: umbrochene Namen ----------------------------------------------
 
 def test_name_auf_eigener_zeile_vor_den_betraegen(gelesen):
