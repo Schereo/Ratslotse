@@ -1924,6 +1924,8 @@ class Store:
                 "SELECT MAX(day) FROM user_activity WHERE owner_id = ?", (uid,)).fetchone()[0],
             "apple_linked": bool(u.get("apple_sub")), "has_password": bool(u.get("password_set", 1)),
             "delivery_channel": u.get("delivery_channel", "email"),
+            # Einwilligung „Gespräche speichern": None = nie gefragt, 1 = an, 0 = aus.
+            "qa_speichern": u.get("qa_speichern"),
             # Admin-steuerbare Frage-Limits (10.08.26) — fürs Formular im Detail.
             "deep_limit": u.get("deep_limit"), "limits_frei": bool(u.get("limits_frei")),
             "features": {"ki_frage": feats.get("ki_frage", 0), "suche": feats.get("suche", 0),
