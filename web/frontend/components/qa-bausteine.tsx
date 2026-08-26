@@ -16,7 +16,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, ExternalLink, FileDown, MessageSquarePlus } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronDown, ExternalLink, FileDown, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { personHref } from "@/lib/routes";
 // Reine Beleg-/Datums-Logik liegt in lib/qa-belege.ts — ohne "use client",
@@ -747,6 +747,84 @@ export function PresseBlock({ presse }: { presse: PresseHinweis[] }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+/** Sitzungs-Fragetyp: die aufgelöste Sitzung, wie sie im sources-Event und im
+ *  Gesprächs-Snapshot steht — Termin plus angerissene Tagesordnung. */
+export type SitzungsInfo = {
+  ksinr: number | null;
+  committee: string | null;
+  session_date: string | null;
+  session_time?: string | null;
+  location?: string | null;
+  kuenftig: boolean;
+  n_beschluesse: number;
+  agenda: { item_number: string | null; title: string | null }[];
+  n_agenda: number;
+};
+
+const fmtDatumVoll = (d?: string | null) =>
+  d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
+
+/** Tagesordnungs-Baustein: Fragt jemand nach einer konkreten Sitzung, deren
+ *  Protokoll (noch) fehlt — kommender Termin oder der übliche Wochen-Verzug —,
+ *  reißt diese Karte die Tagesordnung an, deterministisch aus dem
+ *  Sitzungskalender, nie vom Modell. Sitzungen MIT Beschlüssen brauchen die
+ *  Karte nicht: Deren Inhalt steht bereits in den Quellen. */
+export function TagesordnungBlock({ sitzungen }: { sitzungen: SitzungsInfo[] }) {
+  const mitAgenda = sitzungen.filter((s) => s.n_agenda > 0);
+  if (mitAgenda.length === 0) return null;
+  return (
+    <>
+      {mitAgenda.map((s) => (
+        <div key={`${s.ksinr ?? "termin"}-${s.session_date}`}
+          className="rounded-xl border border-border bg-card px-3.5 py-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-primary">
+              Tagesordnung
+            </p>
+            <p className="shrink-0 font-mono text-[10px] text-muted-foreground">
+              {s.n_agenda === 1 ? "1 Punkt" : `${s.n_agenda} Punkte`}
+            </p>
+          </div>
+          <p className="mt-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="min-w-0 truncate">
+              {s.committee || "Sitzung"} · {fmtDatumVoll(s.session_date)}
+              {s.session_time ? `, ${s.session_time} Uhr` : ""}
+            </span>
+          </p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {s.agenda.map((a, i) => (
+              <li key={`${a.item_number ?? i}`} className="flex items-baseline gap-2">
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                  {a.item_number || "·"}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">
+                  {a.title || "—"}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2">
+            <p className="min-w-0 text-[10.5px] leading-relaxed text-muted-foreground/70">
+              {s.kuenftig
+                ? "Die Sitzung steht noch bevor."
+                : s.n_agenda > s.agenda.length
+                  ? `+ ${s.n_agenda - s.agenda.length} weitere Punkte — das Protokoll folgt meist einige Wochen nach dem Termin.`
+                  : "Das Protokoll folgt meist einige Wochen nach dem Termin."}
+            </p>
+            {s.ksinr != null && (
+              <Link href={`/council?tab=sessions&ksinr=${s.ksinr}`}
+                className="shrink-0 text-[11px] font-medium text-primary hover:underline">
+                Zur Sitzung →
+              </Link>
+            )}
+          </div>
+        </div>
+      ))}
+    </>
   );
 }
 
