@@ -640,8 +640,16 @@ def _sitzungen_block(sitzungen: list[dict] | None) -> str:
         elif s.get("kuenftig"):
             kopf += ": Diese Sitzung steht noch BEVOR — Beschlüsse gibt es noch nicht."
         else:
-            kopf += (": Zu dieser Sitzung ist noch kein Protokoll ausgewertet — "
-                     "welche Beschlüsse fielen, ist noch nicht erfasst.")
+            # Der Verzug ist der NORMALFALL, kein Datenloch: Die Stadt
+            # veröffentlicht Protokolle erst Wochen nach dem Termin (gemessen
+            # 1–2 Monate). Wer nach einer vergangenen Sitzung fragt, erwartet
+            # aber ein Protokoll — ohne die Erklärung liest sich das Fehlen
+            # wie ein Fehler von Ratslotse (Tims Hinweis 26.08.).
+            kopf += (": Zu dieser Sitzung liegt noch kein ausgewertetes "
+                     "Protokoll vor — die Stadt veröffentlicht Protokolle in "
+                     "der Regel erst einige Wochen bis ein, zwei Monate nach "
+                     "dem Termin. Erkläre in der Antwort ausdrücklich, dass "
+                     "das der normale Ablauf und kein Fehler ist.")
         zeilen.append(kopf)
         for a in (s.get("agenda") or [])[:_SITZUNG_AGENDA_MAX]:
             zeile = f"  · TOP {a.get('item_number') or '?'}: {(a.get('title') or '')[:160]}"
@@ -669,9 +677,11 @@ def sitzungs_leer_text(sitzungen: list[dict]) -> str:
     if s.get("kuenftig"):
         return (f"{name} tagt erst am {datum} — Beschlüsse gibt es von dieser "
                 f"Sitzung also noch nicht.{to}")
-    return (f"{name} hat am {datum} getagt, aber ein ausgewertetes Protokoll "
-            f"liegt noch nicht vor — welche Beschlüsse dort fielen, kann ich "
-            f"noch nicht sagen.{to}")
+    return (f"{name} hat am {datum} getagt, aber das Protokoll liegt noch "
+            f"nicht vor — die Stadt veröffentlicht Protokolle in der Regel "
+            f"erst einige Wochen bis ein, zwei Monate nach dem Termin. Das "
+            f"ist der normale Ablauf, kein Fehler. Sobald das Protokoll da "
+            f"ist, wertet Ratslotse es automatisch aus.{to}")
 
 
 #: Ab wann gilt die Beleglage als tragfähig? Am Prod-Bestand gemessen und
