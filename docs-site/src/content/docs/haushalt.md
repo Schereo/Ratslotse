@@ -52,7 +52,7 @@ genau dieser Reihenfolge.
 | `/haushalt/vergleich` | Schritt 9 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
 | `/haushalt/schulden` | Schritt 10 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
-| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 11 — „Mitreden", zwei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten der Fraktionen mit Abstimmungsergebnis, die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung |
+| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 11 — „Mitreden", zwei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten mit Abstimmungsergebnis, ihr Inhalt Position für Position („Was in den Listen stand", aus `council_haushalt_aenderungen`), die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung |
 | `/haushalt/labor` | Schritt 12 — das Haushalts-Labor, drei Werkbänke mit je eigener Zielgröße: **Einnahmen** (Gewerbesteuer-Hebesatz mit mitlaufender Städte-Leiter und eigener Treppe seit 1980, Grundsteuer B mit belegter LSN-Aufteilung, Hundesteuer, Gebühren als absichtlich gesperrte Schraube), **Ausgaben** (freiwillige Teilhaushalte), **Investitionen & Finanzierung** (Vorhaben-Schalter aus Anlage 004, Kredit-Schalter mit gezahlter Zins-Spanne). Ergebnis-Spalte mit Lücken-Balken, Rücklagen-Pfad über die Finanzplanungsjahre samt Kipp-Jahr und Finanzausgleichs-Spanne aus den echten Ausgleichsjahren |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
@@ -3402,19 +3402,27 @@ den Bericht und die Archiv-Sicherung mit sich, die nach ihm kommen.
 
 Der Bereich zeigt lieber eine Lücke als eine Schätzung:
 
-- **Fraktions-Änderungslisten — es gibt sie nicht.** Geplant war, aus den
-  Änderungslisten zum Haushaltsentwurf zu zeigen, was die Fraktionen ändern
-  wollten. Der Ladetest am 18.08.2026 hat die Prämisse widerlegt: Von den 52
-  Änderungslisten im Bestand heißt **jede einzelne** „Verwaltung I", „II" oder
-  „III" — es sind die Nachträge der Verwaltung zu ihrem eigenen Entwurf, nicht
-  die Wünsche der Fraktionen. Was Fraktionen wollen, steht in ihren Anträgen,
-  und die liest der Bereich bereits (`haushaltsantraege_kontext`).
+- **Die Fraktions-Änderungslisten selbst — es gibt sie nicht.** Geplant war,
+  aus den Änderungslisten zum Haushaltsentwurf zu zeigen, was die Fraktionen
+  ändern wollten. Der Ladetest am 18.08.2026 hat die Prämisse widerlegt: Die
+  Listen im Bestand heißen „Verwaltung I", „II" oder „III" — Nachträge der
+  Verwaltung zu ihrem eigenen Entwurf. Die Listen der Fraktionen wurden als
+  **Tischvorlagen** verteilt und liegen in keinem Dokument des
+  Ratsinformationssystems.
 
-  Die Dokumente selbst sind brauchbar: Alle zwölf geprüften laden, tragen
-  Volltext mit 60–76 % Buchstabenanteil und dieselbe Tabellenstruktur (*Lfd.
-  Nr. · THH · Produkt/Leistung · Bezeichnung · Ertrag ± · Aufwand ±*). Wer
-  „Was hat sich zwischen Entwurf und Beschluss geändert?" beantworten will,
-  findet hier die Grundlage — aber unter einem anderen Namen als dem geplanten.
+  Seit dem 26.08.2026 liest `council/aenderungslisten.py` diese Dokumente
+  trotzdem — Verwaltungslisten und die „beschlossenen Änderungen" des
+  Finanzausschusses, Position für Position, jede Liste beim Einlesen gegen
+  ihre eigene „Zusammenstellung der Veränderungen" bewiesen (Tabellen
+  `council_haushalt_aenderungen`/`…_summen`, Ingest
+  `scripts/ingest_aenderungslisten.py`, Anzeige auf
+  `/haushalt/mitreden#streit` als „Was in den Listen stand"). Von den
+  Fraktionslisten existiert dort genau eine digitale Spur: ihre
+  **Summenzeile** in der Beschluss-Datei, mit dem Urheber daneben
+  („SPD/ CDU/ FDP …"). Genau so — Summe mit Urheber, nicht mehr — zeigt die
+  Seite sie an. Die frühen Beschluss-Dateien (2020/2021) nennen den Urheber
+  je Position („Vorschlag von"); diese Spalte ist der dokumentierte nächste
+  Ausbauschritt.
 
 - **Der Schlussbericht 2024** — sein PDF bringt keine Zeichenzuordnung mit,
   der Volltext besteht aus Glyphen-Nummern (`/12 /8 /6 □ /13 …`), sein

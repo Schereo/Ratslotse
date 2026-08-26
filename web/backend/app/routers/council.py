@@ -1318,11 +1318,43 @@ def haushalt_streit(
     die Seite lädt sie einmal und schaltet danach ohne Netz zwischen den
     Jahrgängen um.
 
-    Was hier **nicht** steht: der Inhalt der Änderungslisten. Welche Position
-    eine Fraktion um welchen Betrag verschieben wollte, steht in den
-    Anlagen-PDFs der Vorlage — die liegen nicht als Volltext im Bestand.
-    Genannt wird deshalb, **wer** was einbrachte und **ob** es durchkam."""
+    Was hier **nicht** steht: der Inhalt der Änderungslisten — den liefert
+    seit 08/2026 ``/haushalt/aenderungslisten`` (direkt darunter), Position
+    für Position aus den gelesenen EHH-Dokumenten. Hier bleibt die
+    Verfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam."""
     return {"runden": store.haushalt_streit(jahr)}
+
+
+@router.get("/haushalt/aenderungslisten")
+def haushalt_aenderungslisten(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Der Inhalt der Änderungslisten — die Ebene unter ``/haushalt/streit``.
+
+    Dort steht, WER eine Liste einbrachte und ob sie durchkam; hier steht,
+    was drinstand: je Dokument (Verw. I–III und die Beschluss-Datei des
+    Finanzausschusses) die Einzelpositionen samt der „Zusammenstellung der
+    Veränderungen", gegen die jede Positionsliste beim Einlesen bewiesen
+    wurde (``council/aenderungslisten.py``).
+
+    - ``zeilen``: NUR die Positionen des Haushaltsjahrgangs selbst
+      (``jahr == jahrgang``). Dieselbe Maßnahme steht im Dokument je
+      Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
+      Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
+      Summen.
+    - ``summen``: die Zusammenstellungen ALLER Planjahre, inklusive der
+      Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit
+      Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige
+      digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.
+    - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt.
+    """
+    d = store.get_haushalt_aenderungen()
+    zeilen = [z for z in d["zeilen"] if z["jahr"] == z["jahrgang"]]
+    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None}
+                 | {s["herkunft_id"] for s in d["summen"] if s["herkunft_id"] is not None})
+    return {"zeilen": zeilen, "summen": d["summen"],
+            "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)}}
 
 
 # Ohne Anmeldung lesbar (s. `decision_detail`) — die Beschluss-Seite zieht die

@@ -5035,6 +5035,12 @@ class CouncilStore:
         # Schlüssel unterscheidet sie nicht, die Fundstelle tut es.
         "haushaltssatzung":     ("council_haushaltssatzung", "jahr", None, None),
         "gebuehren":            ("council_gebuehren", "jahr", None, None),
+        # Die Änderungslisten zum Haushalt. Wie `wirtschaftsplan` stehen je
+        # Jahrgang MEHRERE Papiere dahinter (Verw. I–III und die
+        # Beschluss-Datei des AFB) — die Summen-Tabelle trägt je Dokument
+        # eine Herkunft, DISTINCT macht daraus die Papierliste des Jahrgangs.
+        "aenderungsliste":      ("council_haushalt_aenderungen_summen",
+                                 "jahrgang", None, None),
     }
 
     #: Jahresquellen, die KEIN Dokument im Ratsinformationssystem haben und

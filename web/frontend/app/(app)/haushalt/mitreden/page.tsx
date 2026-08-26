@@ -39,11 +39,12 @@ import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
 import { TermineAbschnitt } from "@/components/haushalt/abschnitt-termine";
 import { StreitAbschnitt } from "@/components/haushalt/abschnitt-streit";
 
-/** Beide Abschnitte belegen sich ausschließlich mit dem
- *  Ratsinformationssystem — Termine wie Streit sind Ratsdaten, keine
- *  Finanzdokumente. (`tests/test_quellen_dokumente.py` liest die Literale
- *  dieser Liste, um stumme Beleg-Chips zu finden.) */
-const QUELLEN: QuellenSchluessel[] = ["ratsbeschluss"];
+/** Termine und Streit belegen sich mit dem Ratsinformationssystem; seit die
+ *  Änderungslisten gelesen werden, kommt deren Dokumentquelle dazu — der
+ *  Block „Was in den Listen stand" zeigt Positionen aus echten Papieren.
+ *  (`tests/test_quellen_dokumente.py` liest die Literale dieser Liste, um
+ *  stumme Beleg-Chips zu finden.) */
+const QUELLEN: QuellenSchluessel[] = ["ratsbeschluss", "aenderungsliste"];
 
 const MARKEN = [
   { id: "termine", titel: "Wann entschieden wird" },

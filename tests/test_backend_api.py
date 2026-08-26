@@ -603,6 +603,51 @@ def test_haushalt_dokumente_nennt_je_jahrgang_das_richtige_pdf(client):
     assert "gesamtabschluss" not in doks
 
 
+def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
+    """Der Endpunkt unter dem Streit-Abschnitt trennt zwei Ebenen sauber.
+
+    Dieselbe Maßnahme steht im Dokument je Finanzplanungsjahr noch einmal —
+    die ``zeilen`` der Antwort führen deshalb NUR den Haushaltsjahrgang
+    selbst, die Folgejahre stecken in den ``summen``. Und dort muss die
+    politische Urheber-Zeile durchkommen: Sie ist der einzige digitale Beleg
+    der Fraktionslisten (die selbst Tischvorlagen blieben) und darf nicht als
+    „eigene" Zeile des Verwaltungsdokuments markiert sein."""
+    from council.aenderungslisten import Ergebnis, SummenZeile, Zeile, herkunft_fuer
+
+    _register(client)
+    erg = Ergebnis(
+        zeilen=[
+            Zeile(2026, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000),
+            Zeile(2027, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000),
+        ],
+        summen=[
+            SummenZeile(2026, "entwurf", "Verwaltungsentwurf", 0, 0, 0),
+            SummenZeile(2026, "liste", "Änderungsliste Verw. I", 0, 500_000, -500_000),
+            SummenZeile(2026, "liste", "SPD/ CDU/ FDP", 0, -218_299, 218_299),
+            SummenZeile(2026, "endsumme", "Endsumme", 0, 281_701, -281_701),
+            SummenZeile(2027, "endsumme", "Endsumme", 0, 500_000, -500_000),
+        ],
+        eigene_zeile={2026: "Änderungsliste Verw. I"},
+    )
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        cs.save_haushalt_aenderungen(
+            4711, "verwaltung_1", erg,
+            herkunft_fuer("Änderungsliste Verw. I",
+                          "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do", 4711))
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/haushalt/aenderungslisten").json()
+    assert [z["jahr"] for z in b["zeilen"]] == [2026]
+    assert {s["jahr"] for s in b["summen"]} == {2026, 2027}
+    eigene = {s["label"]: s["eigene"] for s in b["summen"] if s["jahr"] == 2026}
+    assert eigene["Änderungsliste Verw. I"] == 1
+    assert eigene["SPD/ CDU/ FDP"] == 0
+    # Jede Zeile findet ihr Papier: Die Herkunft-Karte deckt alle Verweise.
+    assert str(b["zeilen"][0]["herkunft_id"]) in b["herkunft"]
+
+
 def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
     """/haushalt/investitionen liefert die Investitionen je Teilhaushalt — und
     hält die Bezugsgröße davon getrennt.
