@@ -671,8 +671,15 @@ def sitzungs_leer_text(sitzungen: list[dict]) -> str:
     s = sitzungen[0]
     name = s.get("committee") or "Das Gremium"
     datum = _datum_de(s["session_date"]) if s.get("session_date") else "unbekanntem Datum"
-    tops = [f"„{a['title'].strip()}“" for a in (s.get("agenda") or [])[:3]
-            if (a.get("title") or "").strip()]
+    roh = [a for a in (s.get("agenda") or []) if (a.get("title") or "").strip()]
+    try:
+        # Der Anriss nennt INHALTE, keine Formalien (Beschlussfähigkeit,
+        # Protokoll-Genehmigung) — derselbe Filter wie in der Wochenvorschau.
+        from .store import CouncilStore
+        inhalt = [a for a in roh if not CouncilStore._FORMALIE_RE.search(a["title"])]
+    except Exception:  # noqa: BLE001 — Filter ist Zusatz, nie Blocker
+        inhalt = roh
+    tops = [f"„{a['title'].strip()}“" for a in (inhalt or roh)[:3]]
     to = f" Auf der Tagesordnung: {', '.join(tops)}." if tops else ""
     if s.get("kuenftig"):
         return (f"{name} tagt erst am {datum} — Beschlüsse gibt es von dieser "

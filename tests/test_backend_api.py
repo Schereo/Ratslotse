@@ -2662,6 +2662,9 @@ def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch)
             "VALUES (7, 'Sportausschuss', ?, '17:00', '', '')", (bald,))
         cs._conn.execute(
             "INSERT INTO council_agenda_items (ksinr, item_number, title) "
+            "VALUES (7, '1', 'Feststellung der Beschlussfähigkeit')")
+        cs._conn.execute(
+            "INSERT INTO council_agenda_items (ksinr, item_number, title) "
             "VALUES (7, '4', 'Bäderbericht')")
     cs.close()
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: ([], "semantisch"))
@@ -2680,7 +2683,10 @@ def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch)
     assert src["beleglage"] == "solide"
     (s,) = src["sitzungen"]
     assert s["committee"] == "Sportausschuss" and s["kuenftig"] is True
-    assert s["n_agenda"] == 1 and s["agenda"][0]["title"] == "Bäderbericht"
+    # Formalien (Beschlussfähigkeit) zählen mit, füllen aber nicht den Anriss —
+    # der zeigt Inhalte (Wochenvorschau-Filter, dev-Probe 26.08.).
+    assert s["n_agenda"] == 2
+    assert [a["title"] for a in s["agenda"]] == ["Bäderbericht"]
     assert s["ksinr"] == 7 and s["n_beschluesse"] == 0
 
 
