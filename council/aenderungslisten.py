@@ -1,0 +1,627 @@
+"""Die Änderungslisten zum Haushalt — der Inhalt, den der Streit bisher nicht hatte.
+
+Die Streit-Seite (/haushalt/mitreden#streit) sagt seit jeher ehrlich: Welche
+Position eine Liste um welchen Betrag verschieben wollte, „steht in den
+Anlagen-PDFs der Vorlage". Dieses Modul liest genau diese PDFs.
+
+DIE FUNDLAGE, GEMESSEN AM 24.08.2026 — sie begrenzt, was hier je stehen kann:
+
+* **Die Fraktions-Änderungslisten sind nicht im RIS.** Die Listen der
+  Fraktionen (Grüne, BSW, Für Oldenburg, die Koalitionsliste SPD/CDU/FDP)
+  tauchen im Protokoll als Abstimmungen auf, aber weder an der
+  Haushalts-Vorlage noch an den Sitzungen (Rat 09.02.2026 = ksinr 4726,
+  AFB 04.02.2026 = ksinr 4635 — beide Seiten geprüft) hängt ein Dokument
+  dazu: Tischvorlagen. Was es je Jahrgang GIBT, sind die Änderungslisten
+  **der Verwaltung** (Verw. I/II/III — die Fortschreibungen des Entwurfs im
+  Verfahren, z. B. nach der November-Steuerschätzung) und die Datei
+  „beschlossene Änderungen AFB". Wer Fraktions-Positionen zeigen will,
+  braucht eine andere Quelle — nicht ein besseres Parsing.
+* **Nur der Ergebnishaushalt (EHH).** Die FHH-Listen (Finanzhaushalt) tragen
+  eine andere Bauform (Investitionszeilen mit Jahresspalten), die
+  EGH-Dateien gehören dem Eigenbetrieb Gebäudewirtschaft, die
+  Stiftungs-Listen den Stiftungshaushalten. Alle drei bleiben hier bewusst
+  draußen; `liste_aus_label` sortiert sie aus.
+
+Die Bauform (an allen 18 EHH-Dokumenten der Jahrgänge 2019–2026 bewiesen)
+--------------------------------------------------------------------------
+Querformat-Tabellen: ``Lfd. Nr. | THH | Seite im HH-Entwurf | Produkt/
+Leistung | Bezeichnung | Ertrag +/− | Aufwand +/− | Erläuterungen``, in
+Abschnitten je Planjahr („Änderungen 2026" … „Änderungen 2029"), am Ende eine
+„Zusammenstellung der Veränderungen" je Planjahr mit Verwaltungsentwurf,
+jeder Änderungsliste und dem Überschuss/Fehlbedarf. Varianten, die der
+Bestand wirklich führt: „Verw.-Entwurf v. …" und nackte Jahres-Überschriften
+(frühe AFB-Übersichten), ein Block nur mit „Stand: …" (244160), THH „alle"
+(2019), Bezeichnungen über mehrere Grundlinien gewickelt (die Nachlese holt
+sie zurück; ~1 % bleibt lieber leer als falsch zugeordnet).
+
+WAS DIE AFB-DATEIEN ZUSÄTZLICH TRAGEN: die POLITISCH beschlossene Änderung
+als eigene Zusammenstellungs-Zeile mit Urheber-Label — „SPD/CDU/FDP
+0 / −218.299" (2026), „SPD/ BÜNDNIS 90/DIE GRÜNEN" (2021). Die Salden der
+Koalitions-Änderungslisten stehen damit doch im Bestand, obwohl die Listen
+selbst Tischvorlagen blieben.
+
+Warum Wort-Koordinaten statt Textextraktion
+-------------------------------------------
+Beides wurde gebaut und gemessen, bevor diese Fassung blieb: Der
+pypdf-Fließtext zerreißt Zahlen („13.9 69.144") und verliert die Spalten
+ganz. Der Layout-Modus behält beides — staucht aber einspaltige Zeilen
+gelegentlich so, dass ein Aufwand AUF der Ertrag-Spalte landet (gemessen in
+300528: Position 25 endet auf derselben Zeichenspalte wie zwei echte Erträge
+daneben), und ein Summen-Abgleich, der das heilen wollte, war bei runden
+Beträgen mehrdeutig. Erst die ECHTEN Wortkoordinaten (pymupdf, nach
+Derotation der Querformat-Seiten) trennen sicher: Ertrags-Beträge enden bei
+x ≈ 407–415, Aufwands-Beträge bei ≈ 446–473, die Erläuterung beginnt bei
+≈ 480 — dazwischen liegen ganze Spaltenbreiten, keine Toleranzfenster.
+
+``pymupdf`` ist dafür Voraussetzung und bewusst KEINE Abhängigkeit in
+``requirements.txt`` — dieselbe Entscheidung wie bei den PDF-Renderern der
+OCR (council/ocr.py): Deploy und Web-Service bleiben unberührt, die
+Ingest-Maschine installiert sich das Paket einmal von Hand.
+
+Die Proben — ohne sie wird nichts gespeichert
+---------------------------------------------
+1. **Zeilenprobe** je Summenzeile: Erträge − Aufwendungen = Saldo (±2 Euro
+   Rundung; die Dokumente runden selbst — Verw. I trägt 2026 in zwei
+   Dateien 16.629.632 bzw. 16.629.633).
+2. **Kettenprobe** je Planjahr: Verwaltungsentwurf + alle Listen =
+   Überschuss/Fehlbedarf, je Spalte.
+3. **Positionsprobe** je Planjahr: Die Summe der gelesenen Positionen muss
+   GENAU EINE Zusammenstellungs-Zeile treffen (das ist dann „die eigene"
+   Liste des Dokuments) — oder, bei den kumulierten Beschluss-Dateien, die
+   Summe aller Zeilen. Weist eine Zusammenstellung ihre Endsumme nicht
+   vollständig in Zeilen aus (Kettenprobe reißt), tritt an ihre Stelle die
+   härtere Referenz „Endsumme − Entwurf". Diese Probe ist der Wächter über
+   die Spaltenzuordnung: Stünde ein Betrag auf der falschen Seite, ginge
+   sie nicht auf.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+
+from council.herkunft import Herkunft
+
+# --------------------------------------------------------------- Label-Sortierung
+
+#: Was dieses Modul liest: EHH-Änderungslisten des Kernhaushalts.
+_LABEL_EHH = re.compile(r"EHH|Ergebnishaushalt", re.I)
+#: Was bewusst draußen bleibt: andere Bauform (FHH mit Jahresspalten) oder
+#: anderer Haushalt (Eigenbetrieb Gebäudewirtschaft EGH, Bäderbetrieb BBO,
+#: Wirtschaftsförderung WFO, die beiden Stiftungen). Die Labels helfen dabei
+#: nicht immer — „EGH - Ergebnishaushalt, beschlossene Änderungen“ trägt
+#: beide Wörter; deshalb schlägt RAUS vor EHH.
+_LABEL_RAUS = re.compile(
+    r"EGH|FHH|Finanzhaushalt|Erfolgsplan|Vermögensplan|Stiftung|Synopse"
+    r"|\bBBO\b|\bWFO\b", re.I)
+#: „Verwaltung I“ (2022–2026), „Verw. I“ (2019–2021), vereinzelt „Verwaltung 1“.
+_LABEL_VERW = re.compile(r"Verw(?:altung|\.)\s*(III|II|I|[123])\b", re.I)
+_LABEL_AFB = re.compile(r"beschlossene\s+Änderungen", re.I)
+
+_ROEMISCH = {"I": 1, "II": 2, "III": 3, "1": 1, "2": 2, "3": 3}
+
+
+def liste_aus_label(label: str | None) -> str | None:
+    """Anlagen-Label → Listen-Schlüssel, oder ``None`` für „gehört nicht her“.
+
+    ``verwaltung_1``/``_2``/``_3`` für die Verwaltungslisten,
+    ``afb_beschlossen`` für die kumulierte Beschluss-Datei des
+    Finanzausschusses. Die Reihenfolge der Prüfungen ist die Sortierung:
+    Erst raus, was sicher nicht gemeint ist — „2026 FHH Änderungsliste
+    Verwaltung I“ enthält schließlich auch „Verwaltung I“.
+    """
+    t = label or ""
+    if _LABEL_RAUS.search(t):
+        return None
+    if _LABEL_AFB.search(t) and _LABEL_EHH.search(t):
+        return "afb_beschlossen"
+    m = _LABEL_VERW.search(t)
+    if m and _LABEL_EHH.search(t) and "nderungsliste" in t:
+        return f"verwaltung_{_ROEMISCH[m.group(1).upper()]}"
+    return None
+
+
+class ListenFehler(ValueError):
+    """Eine Liste, die ihre eigenen Proben nicht besteht, wird nicht gelesen."""
+
+
+# ------------------------------------------------------------------- Datenformen
+
+#: Ein Wort mit seiner Lage auf der (derotierten) Seite: x0, x1, y, Text.
+#: Als nacktes Tupel, damit Test-Fixtures es als JSON führen können.
+Wort = tuple[float, float, float, str]
+
+
+@dataclass
+class Zeile:
+    """Eine Position einer Änderungsliste — ein Planjahr, eine Zeile."""
+
+    jahr: int
+    lfd: int
+    #: ``None`` = die Position gilt pauschal „alle“ Teilhaushalte — so führt
+    #: der 2019er-Jahrgang globale Minderausgaben (Zeilen 16/17, je „diverse“
+    #: Produkte, zusammen −3,35 Mio. € Aufwand).
+    thh: int | None
+    seite_entwurf: int | None
+    produkt: str | None
+    bezeichnung: str
+    #: Euro, negativ = Minderung. ``None`` = Zeile ohne Betrag in dieser
+    #: Spalte (auch beides ``None`` kommt vor: reine Haushaltsvermerke).
+    ertrag: int | None
+    aufwand: int | None
+
+
+@dataclass
+class SummenZeile:
+    """Eine Zeile der Zusammenstellung: Entwurf, eine Liste oder die Endsumme."""
+
+    jahr: int
+    typ: str  # "entwurf" | "liste" | "endsumme"
+    label: str
+    ertraege: int
+    aufwendungen: int
+    saldo: int
+
+
+@dataclass
+class Ergebnis:
+    zeilen: list[Zeile] = field(default_factory=list)
+    summen: list[SummenZeile] = field(default_factory=list)
+    #: Je Planjahr das Label der Zusammenstellungs-Zeile, die die eigenen
+    #: Positionen summiert — oder "alle", wenn das Dokument kumuliert.
+    eigene_zeile: dict[int, str] = field(default_factory=dict)
+    #: „Stand: 24.11.2025“ vom Deckblatt, wenn vorhanden.
+    stand: str | None = None
+
+    @property
+    def jahrgang(self) -> int:
+        """Der Haushaltsjahrgang = das erste Planjahr der Liste."""
+        return min(z.jahr for z in self.zeilen)
+
+
+# ----------------------------------------------------------------- PDF → Wörter
+
+def seiten_woerter(pdf_bytes: bytes) -> list[list[Wort]]:
+    """Je Seite die Wörter mit derotierten Koordinaten.
+
+    Die Tabellen stehen im Querformat (``/Rotate 90``); ``get_text("words")``
+    liefert Koordinaten aber im UNROTIERTEN Seitenraum — dort ist die
+    Leserichtung die y-Achse. Die ``rotation_matrix`` der Seite dreht jede
+    Wortbox in den angezeigten Raum, danach ist x wieder „links → rechts“.
+    """
+    try:
+        import pymupdf  # noqa: PLC0415 — bewusst optional, s. Modulkopf
+    except ImportError as e:  # pragma: no cover — auf Maschinen mit Paket unerreichbar
+        raise ListenFehler(
+            "pymupdf fehlt — die Spaltenzuordnung braucht Wortkoordinaten. "
+            "Einmalig installieren: .venv/bin/pip install pymupdf"
+        ) from e
+
+    aus: list[list[Wort]] = []
+    with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
+        for seite in doc:
+            mat = seite.rotation_matrix
+            woerter: list[Wort] = []
+            for w in seite.get_text("words"):
+                r = pymupdf.Rect(w[:4]) * mat
+                woerter.append((round(r.x0, 1), round(r.x1, 1),
+                                round(r.y0, 1), w[4]))
+            aus.append(woerter)
+    return aus
+
+
+def _zeilen_bilden(woerter: list[Wort]) -> list[list[Wort]]:
+    """Wörter → visuelle Zeilen: nach y gruppiert, in der Zeile nach x.
+
+    Alle Zellen einer Tabellenzeile teilen ihre Grundlinie auf ein Zehntel
+    (gemessen); die Toleranz von 2,5 pt fängt Hoch-/Tiefstellungen. Die
+    mehrzeiligen Erläuterungs-Absätze haben eigene Grundlinien und werden so
+    von selbst zu eigenen Zeilen — die der Positions-Parser dann ignoriert.
+    """
+    zeilen: list[list[Wort]] = []
+    for w in sorted(woerter, key=lambda w: (w[2], w[0])):
+        if zeilen and abs(w[2] - zeilen[-1][0][2]) <= 2.5:
+            zeilen[-1].append(w)
+        else:
+            zeilen.append([w])
+    for z in zeilen:
+        z.sort(key=lambda w: w[0])
+    return zeilen
+
+
+def _zeilentext(zeile: list[Wort]) -> str:
+    return " ".join(w[3] for w in zeile)
+
+
+# ---------------------------------------------------------------------- Parsing
+
+_STAND = re.compile(r"Stand:\s*([\d.]+)")
+_JAHR_MARKER = re.compile(r"Änderungen\s+(20\d\d)")
+_BLOCK_JAHR = re.compile(r"Ergebnishaushalt\s+(20\d\d)")
+_ZAHL = re.compile(r"-?\d{1,3}(?:\.\d{3})+|-?\d+")
+#: Produkt-/Leistungs-Codes: „P10.111011.003“, auch „I10.090126“.
+_PRODUKT = re.compile(r"^[A-Z]\d[\w.]*$")
+#: Drei Schreibweisen für dieselbe Zeile: „Verwaltungsentwurf, Stand: …“
+#: (Normalfall), „Verw.-Entwurf v. 07.10.2020“ (die frühen AFB-Übersichten)
+#: und nur „Stand: 07.02.2022 …“ (der 2023er-Block in 244160). Der Anker ^
+#: ist gefahrlos: Geprüft werden ohnehin nur Zeilen mit drei Beträgen, das
+#: Deckblatt-„Stand:“ hat keine.
+_ENTWURF = re.compile(r"Verwaltungsentwurf|Verw\.-Entwurf|^Stand:")
+_LISTE = re.compile(r"Änderungsliste")
+_ENDSUMME = re.compile(r"Überschuss\s*/?\s*Fehlbedarf")
+
+
+@dataclass(frozen=True)
+class Spalten:
+    """Die gemessenen Betragsspalten einer Tabellenseite.
+
+    Aus den Kopf-Wörtern „Ertrag“ und „Aufwand“ (ihren x-Mitten). Beträge
+    sind rechtsbündig und enden gemessen bis 31 pt neben ihrer Kopfmitte
+    (302944: 1.500.000 endet bei Kopf + 30,4); die Erläuterungs-Spalte
+    beginnt frühestens 33 pt dahinter, und ihre kürzeste gepunktete Zahl
+    endete nie vor Kopf + 55. Der Puffer von 35 liegt zwischen beiden
+    Messreihen. Eine ZONE um die Köpfe statt einer Grenze zur
+    Erläuterungs-Spalte, weil deren zentrierter KOPF je Seite um über
+    100 pt wandert („Zuschussbedarf von 1.422.430 Euro“ war der Fall, den
+    eine Kopf-Grenze fraß). Reißt ein künftiges Dokument die Messreihen,
+    reißt die Positionsprobe — leiser Drift ist ausgeschlossen.
+    """
+
+    ertrag: float   # x-Mitte des Kopfs „Ertrag“
+    aufwand: float  # x-Mitte des Kopfs „Aufwand“
+    #: Linke Kante des Kopfworts „Bezeichnung“ — für die Fragment-Nachlese
+    #: mehrzeiliger Bezeichnungen. ``None``, wenn der Kopf fehlt.
+    bezeichnung: float | None = None
+
+    @property
+    def mitte(self) -> float:
+        return (self.ertrag + self.aufwand) / 2
+
+    @property
+    def zone(self) -> tuple[float, float]:
+        """(links, rechts): Wo Beträge ENDEN dürfen."""
+        return (self.ertrag - 35, self.aufwand + 35)
+
+
+def _spalten(zeilen: list[list[Wort]]) -> Spalten | None:
+    """Die Betragsspalten aus den Kopf-Wörtern „Ertrag“ und „Aufwand“.
+    Fehlen sie, ist es keine Tabellenseite (Deckblatt, Zusammenstellung —
+    dort heißen die Spalten „Erträge“/„Aufwendungen“)."""
+    ertrag = aufwand = bezeichnung = None
+    for zeile in zeilen[:14]:
+        for x0, x1, _y, text in zeile:
+            if text == "Ertrag" and ertrag is None:
+                ertrag = (x0 + x1) / 2
+            elif text == "Aufwand" and aufwand is None:
+                aufwand = (x0 + x1) / 2
+            elif text == "Bezeichnung" and bezeichnung is None:
+                bezeichnung = x0
+    if ertrag is None or aufwand is None:
+        return None
+    return Spalten(ertrag=ertrag, aufwand=aufwand, bezeichnung=bezeichnung)
+
+
+def _zahl(text: str) -> int:
+    return int(text.replace(".", ""))
+
+
+def _position_lesen(zeile: list[Wort], jahr: int, spalten: Spalten) -> Zeile:
+    lfd = int(zeile[0][3])
+    thh = int(zeile[1][3]) if zeile[1][3] != "alle" else None
+
+    seite_entwurf: int | None = None
+    produkt: str | None = None
+    bezeichnung: list[str] = []
+    ertrag: int | None = None
+    aufwand: int | None = None
+
+    zone_links, zone_rechts = spalten.zone
+    for x0, x1, _y, text in zeile[2:]:
+        if re.fullmatch(_ZAHL, text):
+            if zone_links <= x1 <= zone_rechts:
+                # Ein Betrag — rechtsbündig in seiner Spalte, die Seite der
+                # Mitte entscheidet. Auch ungepunktet: „-470“ ist ein echter
+                # Aufwand aus 300528 (Beträge unter 1.000 Euro gibt es).
+                if x1 <= spalten.mitte:
+                    ertrag = _zahl(text) if ertrag is None else ertrag
+                elif aufwand is None:
+                    aufwand = _zahl(text)
+                continue
+            if x1 > zone_rechts:
+                break  # Zahl in der Erläuterung — dahinter kommt nichts mehr
+            # Kleine Zahl vor der Bezeichnung: die Seite im HH-Entwurf.
+            if (text.isdigit() and seite_entwurf is None
+                    and not bezeichnung and produkt is None):
+                seite_entwurf = int(text)
+            continue
+        if x0 > spalten.mitte:
+            break  # erster Text rechts der Mitte: die Erläuterung beginnt
+        if _PRODUKT.match(text) and not bezeichnung and produkt is None:
+            produkt = text
+            continue
+        bezeichnung.append(text)
+
+    return Zeile(jahr=jahr, lfd=lfd, thh=thh, seite_entwurf=seite_entwurf,
+                 produkt=produkt, bezeichnung=" ".join(bezeichnung),
+                 ertrag=ertrag, aufwand=aufwand)
+
+
+def _ist_position(zeile: list[Wort], spalten: Spalten | None) -> bool:
+    """Positionszeilen beginnen mit Lfd. Nr. und zweistelligem THH — und
+    zwar am linken Tabellenrand, nicht mitten in einer Erläuterung."""
+    return (spalten is not None and len(zeile) >= 3
+            and re.fullmatch(r"\d{1,3}", zeile[0][3]) is not None
+            and (re.fullmatch(r"\d{2}", zeile[1][3]) is not None
+                 or zeile[1][3] == "alle")
+            and zeile[0][0] < spalten.mitte / 2)
+
+
+def _bezeichnungsfragment(zeile: list[Wort], spalten: Spalten) -> str | None:
+    """Der Bezeichnungs-Anteil einer Wickelzeile — oder ``None``.
+
+    Lange Bezeichnungen wickeln auf eigene Grundlinien; die Positionszeile
+    selbst trägt dann nur Nummern und Beträge (14 % der Zeilen im ersten
+    Vollbestand standen so ohne Namen da). Auf derselben Grundlinie darf
+    dabei ERLÄUTERUNGS-Text weiterlaufen (212801: „Verbraucherschutz und |
+    Lebensmittelkontrolleuren durchgeführt …“) — er wird ignoriert, nicht
+    zum Ausschlusskriterium. Ausgeschlossen bleibt, was die Zeile zu etwas
+    anderem macht: Wörter LINKS der Spalte (dann ist es eine Nummern- oder
+    Kopfzeile) und Zahlen in der Betragszone (dann eine verrutschte
+    Betragszeile — lieber gar kein Name als einer mit fremder Herkunft).
+
+    Der Kopf „Bezeichnung“ ist zentriert über seiner linksbündigen Spalte;
+    der Text beginnt gemessen bis 18 pt vor der Kopfkante (212801: Spalte ab
+    264, Kopf ab 282), links davon endet die Produkt-Spalte (212) — die 25 pt
+    Vorlauf lassen dazwischen Luft."""
+    if spalten.bezeichnung is None:
+        return None
+    links = spalten.bezeichnung - 25
+    zone_links, zone_rechts = spalten.zone
+    teil = [w for w in zeile if links <= w[0] and w[1] <= zone_links - 2]
+    if not teil:
+        return None
+    if any(w[1] < links for w in zeile):
+        return None
+    if any(re.fullmatch(_ZAHL, w[3]) and zone_links <= w[1] <= zone_rechts
+           for w in zeile):
+        return None
+    return " ".join(w[3] for w in teil)
+
+
+def _betrag_tokens(zeile: list[Wort]) -> list[Wort]:
+    """Wörter, die als Ganzes eine Zahl sind — die Betrags-Kandidaten einer
+    Summenzeile. Ein Datum wie „01.10.2025“ ist EIN Wort und besteht den
+    Vollabgleich nicht (Zweiergruppen, vierstelliges Jahr)."""
+    return [w for w in zeile if re.fullmatch(_ZAHL, w[3])]
+
+
+def _ist_summenzeile(kandidaten: list[Wort]) -> bool:
+    """Drei Beträge, davon mindestens zwei gepunktet.
+
+    Nur auf Punkte zu bestehen fräße echte Summen: Die Verw.-II-Zeile des
+    2023er-Blocks in 244160 lautet „−390.000 **0** −390.000“. Gar nicht
+    darauf zu bestehen ließe Zähl-Zeilen durch („Seite 7“, Lfd.-Nummern) —
+    zwei gepunktete Millionenbeträge hat dagegen jede echte Summenzeile."""
+    return (len(kandidaten) >= 3
+            and sum(1 for w in kandidaten if "." in w[3]) >= 2)
+
+
+def _summen_zeile(jahr: int, typ: str, zeile: list[Wort]) -> SummenZeile:
+    """Eine Zusammenstellungs-Zeile: die ersten drei Beträge sind
+    Erträge/Aufwendungen/Saldo, was davor und dahinter steht, gehört zum
+    Label (die Beschluss-Dateien schreiben „Verw. I“ HINTER die Zahlen)."""
+    betraege = _betrag_tokens(zeile)
+    if len(betraege) < 3:
+        raise ListenFehler(
+            f"Zusammenstellung {jahr}: Zeile mit weniger als drei Beträgen: "
+            f"{_zeilentext(zeile)[:90]!r}")
+    e, a, s = (_zahl(w[3]) for w in betraege[:3])
+    if abs(e - a - s) > 2:
+        raise ListenFehler(
+            f"Zusammenstellung {jahr}: Erträge − Aufwendungen ≠ Saldo "
+            f"({e:,} − {a:,} ≠ {s:,}) in {_zeilentext(zeile)[:90]!r}")
+    x_erster, x_dritter = betraege[0][0], betraege[2][1]
+    label = " ".join(w[3] for w in zeile
+                     if w[1] <= x_erster or w[0] >= x_dritter).strip()
+    return SummenZeile(jahr=jahr, typ=typ, label=label or typ,
+                       ertraege=e, aufwendungen=a, saldo=s)
+
+
+def parse_ehh_seiten(seiten: list[list[Wort]]) -> Ergebnis:
+    """Die Seiten (Wortlisten) einer EHH-Änderungsliste → geprüfte Zeilen.
+
+    Wirft :class:`ListenFehler`, sobald eine der drei Proben aus dem
+    Modulkopf nicht aufgeht — halb gelesene Listen gibt es nicht.
+    """
+    aus = Ergebnis()
+    if seiten and (m := _STAND.search(_zeilentext([w for z in _zeilen_bilden(seiten[0]) for w in z]))):
+        aus.stand = m.group(1)
+
+    for woerter in seiten:
+        # Blocküberschriften („Ergebnishaushalt JJJJ") gelten nur auf IHRER
+        # Seite: Die Beschluss-Dateien haben auf der Zusammenstellungs-Seite
+        # gar keine — ein dokumentweiter Merker ließe dort das Jahr der
+        # letzten Tabellenseite weitergelten, und alle Blöcke fielen auf
+        # dasselbe Planjahr (der 303358-Befund: viermal 2029).
+        block_jahr: int | None = None
+        zeilen = _zeilen_bilden(woerter)
+        seitentext = " ".join(_zeilentext(z) for z in zeilen)
+        marker = _JAHR_MARKER.search(seitentext)
+        jahr = int(marker.group(1)) if marker else None
+        spalten = _spalten(zeilen)
+
+        seiten_positionen: list[tuple[float, Zeile]] = []
+        fragmente: list[tuple[float, str]] = []
+        for zeile in zeilen:
+            text = _zeilentext(zeile)
+            if (b := _BLOCK_JAHR.search(text)):
+                block_jahr = int(b.group(1))
+            elif spalten is None and re.fullmatch(r"20\d\d", text.strip()):
+                # Die frühen AFB-Übersichten überschreiben ihre Blöcke mit der
+                # nackten Jahreszahl statt „Ergebnishaushalt JJJJ“.
+                block_jahr = int(text.strip())
+            if jahr is not None and spalten is not None:
+                if _ist_position(zeile, spalten):
+                    position = _position_lesen(zeile, jahr, spalten)
+                    aus.zeilen.append(position)
+                    seiten_positionen.append((zeile[0][2], position))
+                    continue
+                if (fragment := _bezeichnungsfragment(zeile, spalten)):
+                    fragmente.append((zeile[0][2], fragment))
+                    continue
+            # Zusammenstellungs-Zeilen erkennt man an ihren DREI Beträgen —
+            # das Deckblatt („Änderungsvorschläge … zum Verwaltungsentwurf“)
+            # und Fließtext-Erwähnungen tragen dieselben Wörter ohne Zahlen.
+            betraege = _betrag_tokens(zeile)
+            if spalten is not None or not _ist_summenzeile(betraege):
+                # Auf Tabellenseiten wäre so eine Zeile eine zweispaltige
+                # Position — Zusammenstellungen stehen auf eigenen Seiten.
+                continue
+            if _ENTWURF.search(text):
+                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "entwurf"), "entwurf", zeile))
+            elif _ENDSUMME.search(text):
+                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "endsumme"), "endsumme", zeile))
+            elif _LISTE.search(text):
+                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "liste"), "liste", zeile))
+            else:
+                # Die frühen AFB-Übersichten führen die POLITISCH beschlossene
+                # Liste ohne jedes Stichwort: nur drei Beträge plus Urheber in
+                # der „Vorschlag von“-Spalte („0 1.728.605 -1.728.605
+                # SPD/ BÜNDNIS 90/DIE GRÜNEN“). Das Label hinter den Zahlen
+                # ist die Bedingung — eine nackte Zahlenreihe bleibt draußen.
+                kandidat = _summen_zeile(_block_jahr(block_jahr, aus, "liste"), "liste", zeile)
+                if kandidat.label != "liste":
+                    aus.summen.append(kandidat)
+
+        _fragmente_anbauen(seiten_positionen, fragmente)
+
+    if not aus.zeilen:
+        raise ListenFehler("Keine Positionszeilen gefunden — andere Bauform?")
+    if not aus.summen:
+        raise ListenFehler("Keine Zusammenstellung gefunden — ohne sie keine Probe.")
+
+    _proben(aus)
+    return aus
+
+
+def _fragmente_anbauen(positionen: list[tuple[float, Zeile]],
+                       fragmente: list[tuple[float, str]]) -> None:
+    """Übergelaufene Bezeichnungs-Zeilen ihrer Position zuschlagen.
+
+    Zugeordnet wird nur, was EINDEUTIG ist: Die nächstgelegene Position muss
+    binnen 13 pt liegen (Wickelabstand gemessen 10 pt) und die zweitnächste
+    mindestens doppelt so weit weg sein — sonst bleibt das Fragment liegen.
+    Eine Lücke im Namen ist billiger als ein Name an der falschen Zeile;
+    die Beträge berührt das ohnehin nicht, über die wachen die Proben.
+    """
+    if not positionen or not fragmente:
+        return
+    anbau: dict[int, list[tuple[float, str]]] = {}
+    for fy, ftext in fragmente:
+        sortiert = sorted(positionen, key=lambda p: abs(p[0] - fy))
+        if abs(sortiert[0][0] - fy) > 13:
+            continue
+        if len(sortiert) > 1 and abs(sortiert[1][0] - fy) < 2 * abs(sortiert[0][0] - fy):
+            continue
+        anbau.setdefault(id(sortiert[0][1]), []).append((fy, ftext))
+    for py, position in positionen:
+        teile = anbau.get(id(position))
+        if not teile:
+            continue
+        # Nach Grundlinie sortiert, die Zeile der Position an ihrem Platz.
+        alle = sorted(teile + [(py, position.bezeichnung)])
+        position.bezeichnung = " ".join(t for _, t in alle if t)
+
+
+def _block_jahr(block_jahr: int | None, aus: Ergebnis, typ: str) -> int:
+    """Das Planjahr eines Zusammenstellungs-Blocks.
+
+    Die Verwaltungs-Dateien überschreiben jeden Block mit „Ergebnishaushalt
+    JJJJ“; die Beschluss-Dateien lassen die Überschrift ganz weg. Dann gilt:
+    Die Blöcke kommen in derselben Reihenfolge wie die Planjahre der
+    Positionen, und jeder beginnt mit seinem Verwaltungsentwurf — der
+    wievielte Entwurf, das wievielte Jahr. Listen und Endsumme gehören zum
+    ZULETZT begonnenen Block, nicht zum nächsten (der Zähler zählt den
+    eigenen Entwurf sonst mit — der 303358-Befund).
+    """
+    if block_jahr is not None:
+        return block_jahr
+    jahre = sorted({z.jahr for z in aus.zeilen})
+    entwuerfe = sum(1 for s in aus.summen if s.typ == "entwurf")
+    idx = entwuerfe if typ == "entwurf" else entwuerfe - 1
+    if 0 <= idx < len(jahre):
+        return jahre[idx]
+    raise ListenFehler("Zusammenstellungs-Block ohne erkennbares Planjahr.")
+
+
+def _proben(aus: Ergebnis) -> None:
+    """Kettenprobe und Positionsprobe je Planjahr (die Zeilenprobe lief schon
+    beim Lesen jeder Summenzeile)."""
+    jahre = sorted({z.jahr for z in aus.zeilen})
+    for jahr in jahre:
+        entwurf = [s for s in aus.summen if s.jahr == jahr and s.typ == "entwurf"]
+        listen = [s for s in aus.summen if s.jahr == jahr and s.typ == "liste"]
+        ende = [s for s in aus.summen if s.jahr == jahr and s.typ == "endsumme"]
+        if len(entwurf) != 1 or len(ende) != 1 or not listen:
+            raise ListenFehler(
+                f"Zusammenstellung {jahr}: erwartet 1×Entwurf, ≥1×Liste, "
+                f"1×Endsumme — gefunden {len(entwurf)}/{len(listen)}/{len(ende)}.")
+
+        # Kettenprobe: Entwurf + alle Listen = Endsumme, je Spalte. Toleranz
+        # 2 Euro je Summand — die Dokumente runden selbst (s. Modulkopf).
+        #
+        # Die Beschluss-Datei des AFB besteht sie NICHT, und zwar zu Recht:
+        # Ihre Endsumme rechnet auch die politisch beschlossenen Änderungen
+        # ein (2026: 218.298 Euro Aufwandsminderung — die im Ausschuss
+        # gestrichene Position der Koalitionsliste), weist als Zeilen aber
+        # nur die Verwaltungslisten aus. Dann trägt eine andere, härtere
+        # Referenz: Die Positionen müssen GENAU auf „Endsumme − Entwurf“
+        # summieren — alles, was das Dokument insgesamt ändert.
+        toleranz = 2 * (len(listen) + 1)
+        kette_ok = all(
+            abs(getattr(entwurf[0], feld)
+                + sum(getattr(s, feld) for s in listen)
+                - getattr(ende[0], feld)) <= toleranz
+            for feld in ("ertraege", "aufwendungen"))
+
+        # Positionsprobe: Wessen Zeile summieren wir hier eigentlich? Die
+        # Kandidaten sind jede Listen-Zeile und — für die kumulierten
+        # Beschluss-Dateien — die Summe aller Zeilen bzw. (wenn die Kette
+        # nicht aufgeht, s. o.) allein „Endsumme − Entwurf“.
+        pos_e = sum(z.ertrag or 0 for z in aus.zeilen if z.jahr == jahr)
+        pos_a = sum(z.aufwand or 0 for z in aus.zeilen if z.jahr == jahr)
+        if kette_ok:
+            ziele = [(s.label, s.ertraege, s.aufwendungen) for s in listen]
+            if len(listen) > 1:
+                ziele.append(("alle", sum(s.ertraege for s in listen),
+                              sum(s.aufwendungen for s in listen)))
+        else:
+            ziele = [("beschlossen",
+                      ende[0].ertraege - entwurf[0].ertraege,
+                      ende[0].aufwendungen - entwurf[0].aufwendungen)]
+        treffer = [label for label, e, a in ziele
+                   if abs(e - pos_e) <= toleranz and abs(a - pos_a) <= toleranz]
+        if len(treffer) != 1:
+            raise ListenFehler(
+                f"Positionsprobe {jahr}: Die Positionen summieren auf "
+                f"{pos_e:,} / {pos_a:,} — "
+                + ("keine Zusammenstellungs-Zeile trifft das" if not treffer
+                   else "mehrere Zusammenstellungs-Zeilen träfen das")
+                + ": " + "; ".join(f"{label}: {e:,}/{a:,}" for label, e, a in ziele))
+        aus.eigene_zeile[jahr] = treffer[0]
+
+
+def lies_ehh_liste(pdf_bytes: bytes) -> Ergebnis:
+    """PDF → geprüfte Änderungsliste. Wirft :class:`ListenFehler`."""
+    return parse_ehh_seiten(seiten_woerter(pdf_bytes))
+
+
+# ---------------------------------------------------------------------- Herkunft
+
+def herkunft_fuer(label: str, url: str | None, dokument_id: int) -> Herkunft:
+    return Herkunft(
+        art="ris",
+        probe=("aenderungsliste_summen", "aenderungsliste_positionen"),
+        label=label,
+        url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={dokument_id}&type=do",
+        dokument_id=dokument_id,
+    )

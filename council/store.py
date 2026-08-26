@@ -1544,6 +1544,52 @@ class CouncilStore:
             "PRIMARY KEY (jahr, nachtrag))"
         )
 
+        # Die Änderungslisten zum Haushalt (council/aenderungslisten.py) —
+        # was am Verwaltungsentwurf im Verfahren noch geändert wurde, Position
+        # für Position. Je Zeile EIN Planjahr: Dieselbe Maßnahme steht im
+        # Dokument je betroffenem Jahr noch einmal, mit eigenem Betrag.
+        #
+        # `thh` ist NULLBAR, und das ist eine Aussage: Der 2019er-Jahrgang
+        # führt pauschale Minderausgaben über „alle" Teilhaushalte.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_haushalt_aenderungen ("
+            "jahrgang INTEGER NOT NULL, "      # Haushaltsjahrgang der Liste
+            "liste TEXT NOT NULL, "            # verwaltung_1..3 | afb_beschlossen
+            "jahr INTEGER NOT NULL, "          # Planjahr der Position
+            "lfd INTEGER NOT NULL, "
+            "thh INTEGER, "                    # NULL = „alle" (pauschal)
+            "seite_entwurf INTEGER, "
+            "produkt TEXT, "
+            "bezeichnung TEXT NOT NULL, "
+            "ertrag REAL, "                    # Euro; NULL = kein Betrag in
+            "aufwand REAL, "                   # dieser Spalte (Vermerke: beide)
+            "dokument_id INTEGER NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahrgang, liste, jahr, lfd))"
+        )
+        # Die „Zusammenstellung der Veränderungen" derselben Dokumente — der
+        # Rahmen, an dem jede Positionsliste bewiesen wurde. Sie trägt auch,
+        # was NUR hier steht: die politisch beschlossene Änderung mit ihrem
+        # Urheber-Label („SPD/CDU/FDP  0 / −218.299") in den AFB-Dateien.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_haushalt_aenderungen_summen ("
+            "jahrgang INTEGER NOT NULL, "
+            "liste TEXT NOT NULL, "            # das DOKUMENT, aus dem sie stammt
+            "jahr INTEGER NOT NULL, "
+            "typ TEXT NOT NULL, "              # entwurf | liste | endsumme
+            "label TEXT NOT NULL, "            # „Änderungsliste Verw. I", „SPD/CDU/FDP" …
+            "ertraege REAL NOT NULL, "
+            "aufwendungen REAL NOT NULL, "
+            "saldo REAL NOT NULL, "
+            # 1 = diese Zeile summiert die Positionen ihres Dokuments („die
+            # eigene"); bei kumulierten Dokumenten trägt keine Zeile die 1 —
+            # dort summieren die Positionen auf ALLE Listen zusammen.
+            "eigene INTEGER NOT NULL DEFAULT 0, "
+            "dokument_id INTEGER NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahrgang, liste, jahr, typ, label))"
+        )
+
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_wirtschaftsplaene ("
             "betrieb TEXT NOT NULL, "          # Kürzel aus wirtschaftsplan.BETRIEBE
@@ -6265,6 +6311,66 @@ class CouncilStore:
                 "SELECT DISTINCT jahr FROM council_gebuehren ORDER BY jahr")]
         except sqlite3.OperationalError:
             return []
+
+    def save_haushalt_aenderungen(self, dokument_id: int, liste: str,
+                                  ergebnis, herkunft) -> int:
+        """Eine geprüfte Änderungsliste speichern — Positionen und Summen.
+
+        Ersetzt wird je ``(jahrgang, liste)``: Ein Jahrgang hat genau ein
+        Verw.-I-Dokument usw. Ob zwei ANLAGEN dasselbe Dokument sind (die
+        2021er-Beschlussdatei liegt doppelt im Bestand), entscheidet der
+        Ingest VOR dem Speichern — diese Methode prüft nichts nach, sie
+        schreibt, was seine Proben bestanden hat (council/aenderungslisten.py).
+        """
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        jahrgang = ergebnis.jahrgang
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            for tabelle in ("council_haushalt_aenderungen",
+                            "council_haushalt_aenderungen_summen"):
+                self._conn.execute(
+                    f"DELETE FROM {tabelle} WHERE jahrgang = ? AND liste = ?",
+                    (jahrgang, liste))
+            self._conn.executemany(
+                "INSERT INTO council_haushalt_aenderungen (jahrgang, liste, "
+                " jahr, lfd, thh, seite_entwurf, produkt, bezeichnung, "
+                " ertrag, aufwand, dokument_id, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahrgang, liste, z.jahr, z.lfd, z.thh, z.seite_entwurf,
+                  z.produkt, z.bezeichnung, z.ertrag, z.aufwand,
+                  dokument_id, hid, now) for z in ergebnis.zeilen])
+            self._conn.executemany(
+                "INSERT INTO council_haushalt_aenderungen_summen (jahrgang, "
+                " liste, jahr, typ, label, ertraege, aufwendungen, saldo, "
+                " eigene, dokument_id, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(jahrgang, liste, s.jahr, s.typ, s.label, s.ertraege,
+                  s.aufwendungen, s.saldo,
+                  1 if ergebnis.eigene_zeile.get(s.jahr) == s.label else 0,
+                  dokument_id, hid, now) for s in ergebnis.summen])
+        return len(ergebnis.zeilen)
+
+    def get_haushalt_aenderungen(self, jahrgang: int | None = None) -> dict:
+        """Positionen und Summen der Änderungslisten, älteste zuerst.
+
+        Fehlen die Tabellen (frische Datenbank ohne Ingest-Lauf), ist die
+        Antwort leer statt ein Fehler — dieselbe Auskunft wie bei den
+        Nachbar-Schichten."""
+        wo, args = ("WHERE jahrgang = ?", (jahrgang,)) if jahrgang else ("", ())
+        try:
+            zeilen = [dict(r) for r in self._conn.execute(
+                "SELECT jahrgang, liste, jahr, lfd, thh, seite_entwurf, "
+                " produkt, bezeichnung, ertrag, aufwand, dokument_id, "
+                " herkunft_id FROM council_haushalt_aenderungen "
+                f"{wo} ORDER BY jahrgang, liste, jahr, lfd", args)]
+            summen = [dict(r) for r in self._conn.execute(
+                "SELECT jahrgang, liste, jahr, typ, label, ertraege, "
+                " aufwendungen, saldo, eigene, dokument_id, herkunft_id "
+                "FROM council_haushalt_aenderungen_summen "
+                f"{wo} ORDER BY jahrgang, liste, jahr", args)]
+        except sqlite3.OperationalError:
+            return {"zeilen": [], "summen": []}
+        return {"zeilen": zeilen, "summen": summen}
 
     def save_haushaltssatzung(self, satzung, herkunft) -> int:
         """Eine Haushaltssatzung speichern — ein Jahrgang, eine Fassung.
