@@ -73,6 +73,13 @@ Die Proben — ohne sie wird nichts gespeichert
    härtere Referenz „Endsumme − Entwurf". Diese Probe ist der Wächter über
    die Spaltenzuordnung: Stünde ein Betrag auf der falschen Seite, ginge
    sie nicht auf.
+
+Die ERLÄUTERUNGS-Spalte (seit 26.08.2026) hat keine Schlusssumme, gegen die
+man Text beweisen könnte — an die Stelle der Rechenprobe tritt Geometrie:
+Alle Dokumente zeichnen ihre Tabellen als echtes Linienraster, und die
+waagerechten Linien machen die Zuordnung der mehrzeilig gewickelten Texte
+zur Zeile eindeutig (:func:`_erlaeuterungen_anbauen`). Ohne Linien bleibt
+das Feld leer statt geraten.
 """
 from __future__ import annotations
 
@@ -148,6 +155,11 @@ class Zeile:
     #: Spalte (auch beides ``None`` kommt vor: reine Haushaltsvermerke).
     ertrag: int | None
     aufwand: int | None
+    #: Der Text der Erläuterungs-Spalte — was diese Änderung IST („VWG: Der
+    #: Entwurf des Wirtschaftsplans 2026 weist einen Zuschussbedarf …“).
+    #: ``None``, wenn die Zelle leer ist oder ihre Zuordnung nicht eindeutig
+    #: über die Tabellenlinien läuft (s. ``_erlaeuterungen_anbauen``).
+    erlaeuterung: str | None = None
 
 
 @dataclass
@@ -206,6 +218,57 @@ def seiten_woerter(pdf_bytes: bytes) -> list[list[Wort]]:
                 woerter.append((round(r.x0, 1), round(r.x1, 1),
                                 round(r.y0, 1), w[4]))
             aus.append(woerter)
+    return aus
+
+
+#: Je Seite die Tabellenlinien: (waagerechte y-Werte, senkrechte x-Werte).
+Linien = tuple[list[float], list[float]]
+
+
+def seiten_linien(pdf_bytes: bytes) -> list[Linien]:
+    """Je Seite die gezeichneten Tabellenlinien, derotiert wie die Wörter.
+
+    Alle 19 EHH-Dokumente 2019–2026 zeichnen ihre Tabellen als echtes
+    Linienraster (gemessen: 11–17 waagerechte, 18 senkrechte Strecken je
+    Tabellenseite). Die waagerechten Linien sind die Zeilengrenzen — sie
+    machen die Zuordnung der mehrzeiligen Erläuterungs-Texte zur richtigen
+    Position zur Geometrie statt zum Abstands-Raten. Linien kommen teils als
+    ``l``-Strecken, teils als hauchdünne ``re``-Rechtecke (beide Kanten
+    einer 1-pt-Linie); ``_linien_buendeln`` legt die Doppel zusammen.
+    """
+    import pymupdf  # noqa: PLC0415 — bewusst optional, s. Modulkopf
+
+    aus: list[Linien] = []
+    with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
+        for seite in doc:
+            mat = seite.rotation_matrix
+            waagerecht: list[float] = []
+            senkrecht: list[float] = []
+            for zug in seite.get_drawings():
+                for item in zug["items"]:
+                    if item[0] == "l":
+                        p1, p2 = item[1] * mat, item[2] * mat
+                        if abs(p1.y - p2.y) <= 0.5 and abs(p1.x - p2.x) > 20:
+                            waagerecht.append((p1.y + p2.y) / 2)
+                        elif abs(p1.x - p2.x) <= 0.5 and abs(p1.y - p2.y) > 20:
+                            senkrecht.append((p1.x + p2.x) / 2)
+                    elif item[0] == "re":
+                        r = item[1] * mat
+                        if r.height <= 1.5 and r.width > 20:
+                            waagerecht.append((r.y0 + r.y1) / 2)
+                        elif r.width <= 1.5 and r.height > 20:
+                            senkrecht.append((r.x0 + r.x1) / 2)
+            aus.append((_linien_buendeln(waagerecht), _linien_buendeln(senkrecht)))
+    return aus
+
+
+def _linien_buendeln(werte: list[float]) -> list[float]:
+    """Nahezu deckungsgleiche Linien (≤ 2 pt) auf einen Wert zusammenlegen."""
+    aus: list[float] = []
+    for w in sorted(werte):
+        if aus and w - aus[-1] <= 2:
+            continue
+        aus.append(w)
     return aus
 
 
@@ -426,17 +489,22 @@ def _summen_zeile(jahr: int, typ: str, zeile: list[Wort]) -> SummenZeile:
                        ertraege=e, aufwendungen=a, saldo=s)
 
 
-def parse_ehh_seiten(seiten: list[list[Wort]]) -> Ergebnis:
+def parse_ehh_seiten(seiten: list[list[Wort]],
+                     linien: list[Linien] | None = None) -> Ergebnis:
     """Die Seiten (Wortlisten) einer EHH-Änderungsliste → geprüfte Zeilen.
 
     Wirft :class:`ListenFehler`, sobald eine der drei Proben aus dem
     Modulkopf nicht aufgeht — halb gelesene Listen gibt es nicht.
+
+    ``linien`` (je Seite die Tabellenlinien, s. :func:`seiten_linien`) ist
+    optional und trägt nur die Erläuterungs-Texte bei: Ohne Linien bleiben
+    die Beträge vollständig und ``erlaeuterung`` einfach ``None``.
     """
     aus = Ergebnis()
     if seiten and (m := _STAND.search(_zeilentext([w for z in _zeilen_bilden(seiten[0]) for w in z]))):
         aus.stand = m.group(1)
 
-    for woerter in seiten:
+    for seiten_nr, woerter in enumerate(seiten):
         # Blocküberschriften („Ergebnishaushalt JJJJ") gelten nur auf IHRER
         # Seite: Die Beschluss-Dateien haben auf der Zusammenstellungs-Seite
         # gar keine — ein dokumentweiter Merker ließe dort das Jahr der
@@ -493,6 +561,9 @@ def parse_ehh_seiten(seiten: list[list[Wort]]) -> Ergebnis:
                     aus.summen.append(kandidat)
 
         _fragmente_anbauen(seiten_positionen, fragmente)
+        if spalten is not None and linien is not None and seiten_nr < len(linien):
+            _erlaeuterungen_anbauen(seiten_positionen, zeilen, spalten,
+                                    linien[seiten_nr])
 
     if not aus.zeilen:
         raise ListenFehler("Keine Positionszeilen gefunden — andere Bauform?")
@@ -530,6 +601,104 @@ def _fragmente_anbauen(positionen: list[tuple[float, Zeile]],
         # Nach Grundlinie sortiert, die Zeile der Position an ihrem Platz.
         alle = sorted(teile + [(py, position.bezeichnung)])
         position.bezeichnung = " ".join(t for _, t in alle if t)
+
+
+def _erlaeuterungen_anbauen(positionen: list[tuple[float, Zeile]],
+                            zeilen: list[list[Wort]], spalten: Spalten,
+                            linien: Linien) -> None:
+    """Die Erläuterungs-Spalte einer Seite ihren Positionen zuschlagen.
+
+    Text hat keine Schlusssumme, gegen die man ihn beweisen könnte — an die
+    Stelle der Rechenprobe tritt Geometrie: Die WAAGERECHTEN Tabellenlinien
+    teilen die Seite in Zeilenbänder, und ein Band gehört genau der
+    Position, deren Grundlinie darin liegt. Mehrzeilige Erläuterungen wickeln
+    innerhalb ihres Bandes ober- UND unterhalb der Positions-Grundlinie
+    (die Zellen sind vertikal zentriert) — mit den Linien ist das keine
+    Abstandsfrage mehr. Die Spaltengrenze ist die erste SENKRECHTE Linie
+    rechts der Aufwand-Kopfmitte: die rechte Kante der Aufwand-Spalte.
+
+    Konservativ wie die Bezeichnungs-Nachlese: Ein Band mit zwei Positionen
+    (käme nur bei gerissenen Linien vor) bleibt draußen, Wörter außerhalb
+    des Linienrasters (Fußzeilen wie „Seite 2 Verw. I 2026“) auch, und ohne
+    brauchbare Linien bekommt die Seite gar keine Erläuterungen — lieber
+    leer als per Raten an der falschen Zeile.
+    """
+    if not positionen:
+        return
+    waagerecht, senkrecht = linien
+    grenzen = [x for x in senkrecht if x > spalten.aufwand]
+    if not grenzen or len(waagerecht) < 2:
+        return
+    erl_links = grenzen[0]
+
+    baender: dict[int, list[Wort]] = {}
+    for zeile in zeilen:
+        for w in zeile:
+            if w[0] < erl_links - 1:
+                continue
+            band = _band(waagerecht, w[2])
+            if band is not None:
+                baender.setdefault(band, []).append(w)
+
+    for py, position in positionen:
+        band = _band(waagerecht, py)
+        if band is None:
+            continue
+        if sum(1 for qy, _ in positionen if _band(waagerecht, qy) == band) > 1:
+            continue
+        woerter = sorted(baender.get(band, []), key=lambda w: (w[2], w[0]))
+        if woerter:
+            position.erlaeuterung = _zeilen_falten(_zeilen_bilden(woerter))
+
+
+#: Wörter, vor denen ein Trennstrich am Zeilenende KEIN Trennstrich ist,
+#: sondern ein Ergänzungsstrich („Brand- und Katastrophenschutz“) — dieselbe
+#: Regel wie in council/pruefberichte.py, dort am RPA-Bestand geeicht.
+_ERGAENZUNG = {"und", "oder", "sowie", "bzw", "beziehungsweise", "wie", "als",
+               "noch", "je", "bis"}
+
+
+def _zeilen_falten(zeilen: list[list[Wort]]) -> str:
+    """Die Grundlinien einer Erläuterungs-Zelle zu einem Text falten.
+
+    Die Silbentrennung wird nur AM Zeilenumbruch zusammengezogen — wo der
+    war, sagen die Wortkoordinaten, nicht eine Textheuristik: Ein Strich
+    mitten in der Zeile („D-Ticket“, „Brand- und …“) bleibt grundsätzlich
+    unberührt. Am Umbruch gelten die Regeln aus council/pruefberichte.py:
+    vor Ergänzungswörtern bleibt „- “, vor Großbuchstaben wird es ein
+    Bindestrich („Programm-Updates“), sonst war es eine Trennung
+    („Bescheini-/gungen“ → „Bescheinigungen“).
+    """
+    aus = ""
+    for zeile in zeilen:
+        text = " ".join(w[3] for w in zeile)
+        if not aus:
+            aus = text
+        elif aus.endswith("-") and len(aus) > 1 and aus[-2].isalnum():
+            erstes = text.split(" ", 1)[0]
+            if erstes.lower().rstrip(".") in _ERGAENZUNG:
+                aus += " " + text
+            elif erstes[:1].isupper():
+                aus += text
+            else:
+                aus = aus[:-1] + text
+        else:
+            aus += " " + text
+    return aus
+
+
+def _band(waagerecht: list[float], y: float) -> int | None:
+    """In welchem Zeilenband (Index der Linie darüber) liegt die Grundlinie?
+
+    ``y`` ist die OBERKANTE der Wortbox; die kleine Toleranz fängt Boxen,
+    die haarscharf auf ihrer Linie beginnen. Oberhalb der ersten oder
+    unterhalb der letzten Linie ist kein Band — dort stehen Überschriften
+    und Fußzeilen, nicht die Tabelle.
+    """
+    for i in range(len(waagerecht) - 1):
+        if waagerecht[i] - 0.5 <= y < waagerecht[i + 1] - 0.5:
+            return i
+    return None
 
 
 def _block_jahr(block_jahr: int | None, aus: Ergebnis, typ: str) -> int:
@@ -612,7 +781,7 @@ def _proben(aus: Ergebnis) -> None:
 
 def lies_ehh_liste(pdf_bytes: bytes) -> Ergebnis:
     """PDF → geprüfte Änderungsliste. Wirft :class:`ListenFehler`."""
-    return parse_ehh_seiten(seiten_woerter(pdf_bytes))
+    return parse_ehh_seiten(seiten_woerter(pdf_bytes), seiten_linien(pdf_bytes))
 
 
 # ---------------------------------------------------------------------- Herkunft
@@ -620,7 +789,8 @@ def lies_ehh_liste(pdf_bytes: bytes) -> Ergebnis:
 def herkunft_fuer(label: str, url: str | None, dokument_id: int) -> Herkunft:
     return Herkunft(
         art="ris",
-        probe=("aenderungsliste_summen", "aenderungsliste_positionen"),
+        probe=("aenderungsliste_summen", "aenderungsliste_positionen",
+               "aenderungsliste_erlaeuterungen"),
         label=label,
         url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={dokument_id}&type=do",
         dokument_id=dokument_id,

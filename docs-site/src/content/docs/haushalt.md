@@ -3459,7 +3459,15 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   ihre eigene „Zusammenstellung der Veränderungen" bewiesen (Tabellen
   `council_haushalt_aenderungen`/`…_summen`, Ingest
   `scripts/ingest_aenderungslisten.py`, Anzeige auf
-  `/haushalt/mitreden#streit` als „Was in den Listen stand"). Von den
+  `/haushalt/mitreden#streit` als „Was in den Listen stand"). Auch die
+  **Erläuterungs-Spalte** wird gelesen: der Text der Verwaltung, was jede
+  Änderung ist. Text hat keine Schlusssumme, gegen die man ihn beweisen
+  könnte — an die Stelle der Rechenprobe tritt Geometrie: Alle Dokumente
+  zeichnen ihre Tabellen als Linienraster, und die waagerechten Linien
+  ordnen die mehrzeilig umbrochenen Texte ihrer Zeile eindeutig zu
+  (Silbentrennung wird nur am gemessenen Umbruch zusammengezogen). Ohne
+  eindeutiges Band bleibt das Feld leer; über 99 % der Positionen tragen
+  ihren Text, die restlichen Zellen sind im Original leer. Von den
   Fraktionslisten existiert dort genau eine digitale Spur: ihre
   **Summenzeile** in der Beschluss-Datei, mit dem Urheber daneben
   („SPD/ CDU/ FDP …"). Genau so — Summe mit Urheber, nicht mehr — zeigt die

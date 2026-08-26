@@ -118,6 +118,11 @@ PROBEN: dict[str, str] = {
         "Zusammenstellung — die Zeile, die dieses Dokument summiert, oder "
         "bei kumulierten Beschluss-Dateien Endsumme minus Entwurf. Stünde "
         "ein Betrag in der falschen Spalte, ginge genau das nicht auf.",
+    "aenderungsliste_erlaeuterungen":
+        "Die Erläuterungs-Texte folgen den gedruckten Tabellenlinien: Jeder "
+        "Absatz steht in dem Zeilenband, in dem auch seine Position steht — "
+        "zugeordnet wird über die Geometrie des Dokuments, nicht über "
+        "Abstands-Schätzung; ohne eindeutiges Band bleibt das Feld leer.",
     # Die Gebührenbedarfsberechnung (council/gebuehren.py) — die Rechnung, aus
     # der die Abfall- und Straßenreinigungsgebühren entstehen. Zwei Proben,
     # beide aus dem Dokument selbst und voneinander unabhängig.

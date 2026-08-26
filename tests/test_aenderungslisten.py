@@ -16,6 +16,10 @@ from council.aenderungslisten import (
     parse_ehh_seiten,
 )
 
+#: Tabellenlinien einer Seite, wie `seiten_linien` sie liefert.
+def linien(waagerecht, senkrecht):
+    return ([float(y) for y in waagerecht], [float(x) for x in senkrecht])
+
 # ------------------------------------------------------------ Label-Sortierung
 
 #: Echte Labels aus council_anlagen — jedes Muster, das der Bestand führt.
@@ -146,6 +150,8 @@ def test_miniliste_rundlauf():
     assert (z3.ertrag, z3.aufwand) == (-4_400_000, None)
     assert z1.seite_entwurf == 300 and z1.produkt == "P10.111011.003"
     assert z4.thh is None and z4.ertrag is None and z4.aufwand is None
+    # Ohne Tabellenlinien gibt es keine Erläuterungen — nie geraten.
+    assert all(z.erlaeuterung is None for z in aus.zeilen)
 
 
 def test_falsche_spalte_reisst():
@@ -235,3 +241,62 @@ def test_wickel_nachlese():
     z1, z2, z3 = aus.zeilen
     assert z1.bezeichnung == "Verbraucherschutz und Veterinärwesen"
     assert z2.bezeichnung == "" and z3.bezeichnung == ""
+
+
+# ---------------------------------------------------------- Erläuterungs-Spalte
+
+def test_erlaeuterungen_folgen_den_tabellenlinien():
+    """Die Erläuterungs-Spalte hat keine Schlusssumme — die Zuordnung läuft
+    über die Zeilenbänder der gedruckten Linien: mehrzeilig gewickelter Text
+    landet an seiner Position, die Silbentrennung wird nur am GEMESSENEN
+    Umbruch zusammengezogen (Ergänzungsstriche bleiben), und Fußzeilen
+    außerhalb des Rasters bleiben draußen."""
+    tabelle = kopf(2026) + [
+        *position(100, 1, "01", [("22.389", "e")]),
+        *position(130, 2, "03", [("200.000", "a")], bezeichnung=("Fliegerhorst",)),
+        # Erläuterung zu Position 1: drei Grundlinien im selben Band, ein
+        # Trennstrich am Umbruch („Bescheini-/gungen“) und ein
+        # Ergänzungsstrich am Umbruch („Brand-/und“).
+        w(490, 520, 95, "Mittel"), w(522, 540, 95, "für"), w(542, 600, 95, "Bescheini-"),
+        w(490, 530, 105, "gungen"), w(532, 545, 105, "im"), w(547, 590, 105, "Brand-"),
+        w(490, 510, 115, "und"), w(512, 610, 115, "Katastrophenschutz."),
+        # Erläuterung zu Position 2 — mit Zahl, die KEIN Betrag werden darf.
+        w(490, 520, 133, "VWG:"), w(522, 570, 133, "Zuschuss"),
+        w(572, 620, 133, "1.234.567"), w(622, 650, 133, "Euro."),
+        # Fußzeile unterhalb des Linienrasters.
+        w(490, 520, 270, "Seite"), w(522, 530, 270, "2"),
+    ]
+    summen = summenblock(2026, [
+        ("Verwaltungsentwurf", "100.000.000", "90.000.000", "10.000.000", ""),
+        ("Änderungsliste Verw. I", "22.389", "200.000", "-177.611", ""),
+        ("Überschuss/ Fehlbedarf", "100.022.389", "90.200.000", "9.822.389", ""),
+    ])
+
+    aus = parse_ehh_seiten(
+        [tabelle, summen],
+        [linien([85, 120, 150, 250], [70, 220, 380, 440, 484]), linien([], [])])
+
+    z1, z2 = aus.zeilen
+    assert z1.erlaeuterung == "Mittel für Bescheinigungen im Brand- und Katastrophenschutz."
+    assert z2.erlaeuterung == "VWG: Zuschuss 1.234.567 Euro."
+    # Die Zahl in der Erläuterung ist Text geblieben, kein Betrag:
+    assert (z2.ertrag, z2.aufwand) == (None, 200_000)
+
+
+def test_zwei_positionen_in_einem_band_bleiben_leer():
+    """Läge eine Zeilengrenze nicht als Linie vor (zwei Positionen in einem
+    Band), bleibt der Text liegen — lieber leer als an der falschen Zeile."""
+    tabelle = kopf(2026) + [
+        *position(100, 1, "01", [("100.000", "e")]),
+        *position(110, 2, "02", [("200.000", "e")]),
+        w(490, 540, 103, "Text"),
+    ]
+    summen = summenblock(2026, [
+        ("Verwaltungsentwurf", "100.000.000", "90.000.000", "10.000.000", ""),
+        ("Änderungsliste Verw. I", "300.000", "0", "300.000", ""),
+        ("Überschuss/ Fehlbedarf", "100.300.000", "90.000.000", "10.300.000", ""),
+    ])
+    aus = parse_ehh_seiten(
+        [tabelle, summen],
+        [linien([85, 150], [484]), linien([], [])])
+    assert all(z.erlaeuterung is None for z in aus.zeilen)

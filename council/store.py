@@ -1563,10 +1563,19 @@ class CouncilStore:
             "bezeichnung TEXT NOT NULL, "
             "ertrag REAL, "                    # Euro; NULL = kein Betrag in
             "aufwand REAL, "                   # dieser Spalte (Vermerke: beide)
+            "erlaeuterung TEXT, "              # die Erläuterungs-Spalte des PDFs
             "dokument_id INTEGER NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahrgang, liste, jahr, lfd))"
         )
+        # Die Erläuterungs-Spalte kam nach dem ersten Ingest dazu (26.08.2026)
+        # — additiv, gefüllt wird sie vom nächsten Ingest-Lauf (der je
+        # (jahrgang, liste) ohnehin löscht und neu schreibt).
+        aend_cols = {r[1] for r in self._conn.execute(
+            "PRAGMA table_info(council_haushalt_aenderungen)").fetchall()}
+        if aend_cols and "erlaeuterung" not in aend_cols:
+            self._conn.execute(
+                "ALTER TABLE council_haushalt_aenderungen ADD COLUMN erlaeuterung TEXT")
         # Die „Zusammenstellung der Veränderungen" derselben Dokumente — der
         # Rahmen, an dem jede Positionsliste bewiesen wurde. Sie trägt auch,
         # was NUR hier steht: die politisch beschlossene Änderung mit ihrem
@@ -6340,11 +6349,12 @@ class CouncilStore:
             self._conn.executemany(
                 "INSERT INTO council_haushalt_aenderungen (jahrgang, liste, "
                 " jahr, lfd, thh, seite_entwurf, produkt, bezeichnung, "
-                " ertrag, aufwand, dokument_id, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " ertrag, aufwand, erlaeuterung, dokument_id, herkunft_id, "
+                " fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(jahrgang, liste, z.jahr, z.lfd, z.thh, z.seite_entwurf,
                   z.produkt, z.bezeichnung, z.ertrag, z.aufwand,
-                  dokument_id, hid, now) for z in ergebnis.zeilen])
+                  z.erlaeuterung, dokument_id, hid, now)
+                 for z in ergebnis.zeilen])
             self._conn.executemany(
                 "INSERT INTO council_haushalt_aenderungen_summen (jahrgang, "
                 " liste, jahr, typ, label, ertraege, aufwendungen, saldo, "
@@ -6366,8 +6376,8 @@ class CouncilStore:
         try:
             zeilen = [dict(r) for r in self._conn.execute(
                 "SELECT jahrgang, liste, jahr, lfd, thh, seite_entwurf, "
-                " produkt, bezeichnung, ertrag, aufwand, dokument_id, "
-                " herkunft_id FROM council_haushalt_aenderungen "
+                " produkt, bezeichnung, ertrag, aufwand, erlaeuterung, "
+                " dokument_id, herkunft_id FROM council_haushalt_aenderungen "
                 f"{wo} ORDER BY jahrgang, liste, jahr, lfd", args)]
             summen = [dict(r) for r in self._conn.execute(
                 "SELECT jahrgang, liste, jahr, typ, label, ertraege, "
