@@ -26,7 +26,9 @@ export default function AdminPage() {
   return (
     <div>
       <PageHeader title="Admin" description="Prompts und Web-Nutzer:innen verwalten." />
-      <div className="mt-4 flex gap-1 border-b border-border">
+      {/* Mobil sind sieben Tabs breiter als der Schirm — die Leiste scrollt
+          seitlich (ohne Scrollbalken), statt über den Rand zu laufen. */}
+      <div className="scrollbar-none mt-4 flex gap-1 overflow-x-auto border-b border-border [-webkit-overflow-scrolling:touch]">
         {([
           ["stats", "Statistik"],
           ["feedback", "Feedback"],
@@ -39,7 +41,7 @@ export default function AdminPage() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium ${
+            className={`shrink-0 whitespace-nowrap px-4 py-2 text-sm font-medium ${
               tab === t ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -820,6 +822,7 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
         <DetailRow label={`${data.topics.length} ${data.topics.length === 1 ? "Thema" : "Themen"}`} value={data.topics.slice(0, 4).join(", ") || "—"} />
         <DetailRow label={`${data.abos.length} Ausschuss-${data.abos.length === 1 ? "Abo" : "Abos"}`} value={data.abos.slice(0, 4).join(", ") || "—"} />
         <DetailRow label="Zustellung" value={data.delivery_channel === "both" ? "Push + E-Mail" : data.delivery_channel === "push" ? "Push" : data.delivery_channel === "off" ? "Aus" : "E-Mail"} />
+        <DetailRow label="Gespräche speichern" value={data.qa_speichern === 1 ? "An" : data.qa_speichern === 0 ? "Bewusst aus" : "Nie gefragt"} />
       </div>
 
       <StatKickerSpaced>Aktivität (30 Tage)</StatKickerSpaced>

@@ -508,6 +508,8 @@ export interface AdminUserDetail {
   apple_linked: boolean;
   has_password: boolean;
   delivery_channel: string;
+  /** Einwilligung „Gespräche speichern": null = nie gefragt, 1 = an, 0 = bewusst aus. */
+  qa_speichern: number | null;
   features: { ki_frage: number; suche: number; quiz: number; analyse: number; karte: number };
   topics: string[];
   abos: string[];
