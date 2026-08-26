@@ -75,6 +75,24 @@ function TopicsInner() {
     queryFn: () => api.get<{ committees: string[] }>("/council/committees").then((d) => d.committees),
   });
 
+  // ?zeig=abos aus der URL (Deep-Link aus den Tagesordnungs-Mails: „Gremien-
+  // Abos verwalten"): zum Ausschuss-Abo-Block springen und ihn kurz
+  // hervorheben. Query statt #-Anker, weil nur Pfad + Query den Login-Umweg
+  // über ?weiter= überleben (app/(app)/layout.tsx nimmt den Hash nicht mit).
+  const [flashAbos, setFlashAbos] = useState(false);
+  const jumpedAbos = useRef(false);
+  const committeesData = committeesQuery.data;
+  useEffect(() => {
+    if (jumpedAbos.current || spNeu.get("zeig") !== "abos") return;
+    if (!committeesData) return; // der Block existiert erst mit Daten
+    jumpedAbos.current = true;
+    setTimeout(() => {
+      document.getElementById("ausschuss-abos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setFlashAbos(true);
+      setTimeout(() => setFlashAbos(false), 2200);
+    }, 50);
+  }, [spNeu, committeesData]);
+
   const addMutation = useMutation({
     mutationFn: ({ name, description }: { name: string; description: string }) =>
       api.post("/topics", { name, description }),
@@ -337,11 +355,11 @@ function TopicsInner() {
           Follow auf der Beschluss-Seite, nicht hier. */}
       <FollowedVorgaenge />
 
-      <h2 className="mt-10 text-lg font-bold text-foreground">Ausschuss-Abos</h2>
+      <h2 id="ausschuss-abos" className="mt-10 scroll-mt-24 text-lg font-bold text-foreground">Ausschuss-Abos</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Benachrichtigungen, sobald eine Tagesordnung veröffentlicht wird — und noch einmal, wenn sie sich danach ändert.
       </p>
-      <Card className="mt-3 divide-y divide-border">
+      <Card className={`mt-3 divide-y divide-border transition-shadow ${flashAbos ? "ring-2 ring-primary" : ""}`}>
         {/* Design 28a/R3: Dieselbe Liste steht im Einrichtungs-Assistenten mit
             Kurznamen, Alltags-Reihenfolge und einem erklärenden Satz — hier
             standen bis zuletzt die amtlichen Langnamen in Ratsinfo-Reihenfolge.
