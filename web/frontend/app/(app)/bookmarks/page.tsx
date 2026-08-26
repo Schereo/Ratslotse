@@ -18,7 +18,7 @@ function status(entry: BookmarkEntry): { label: string; color: "slate" | "blue" 
   if (entry.state === "group") return { label: "Sammelpunkt", color: "slate" };
   if (entry.state === "upcoming") return { label: "Steht an", color: "blue" };
   if (entry.state === "protocol") return { label: "Protokoll liegt vor", color: "amber" };
-  if (entry.state === "waiting") return { label: "Ergebnis folgt", color: "amber" };
+  if (entry.state === "waiting") return { label: "Sitzung vorbei · Protokoll ausstehend", color: "amber" };
   if (entry.kind === "session") return { label: "Sitzung", color: "slate" };
   return { label: "Gespeichert", color: "slate" };
 }
