@@ -2726,6 +2726,59 @@ def test_ask_sitzungsfrage_ueberlebt_die_kondensierung(client, monkeypatch):
     assert "tagt erst am" in answer and "Bebauungsplan N-777" in answer
 
 
+def test_ask_keine_debatten_vor_der_sitzung(client, monkeypatch):
+    """Kommende oder protokolllose Sitzung: Es KANN noch keine Debatte dieser
+    Sitzung geben — semantisch gefundene Alt-Beiträge standen trotzdem als
+    „Aus den Ratsdebatten" neben der Zukunfts-Antwort und zogen den
+    Parteien-Baustein mit hoch (Tims Befund 26.08.). Fragen zu Sitzungen MIT
+    Beschlüssen behalten ihre Debatten."""
+    from datetime import date, timedelta
+
+    import council.embeddings as emb_mod
+    from app.routers import council as council_router
+
+    _register(client)
+    morgen = (date.today() + timedelta(days=1)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+            "VALUES (11, 'Ausschuss für Stadtplanung und Bauen', ?, '17:00', '', '')", (morgen,))
+        cs._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+            "VALUES (12, 'Jugendhilfeausschuss', '2026-06-17', '16:00', '', '')")
+        cs._conn.execute(
+            "INSERT INTO council_decisions (id, ksinr, position, item_number, kind, title, outcome) "
+            "VALUES (1, 12, 0, '5', 'decision', 'Krippengruppe', 'angenommen')")
+    cs.close()
+    # Die Semantik „findet" immer denselben alten Wortbeitrag …
+    monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [(77, 0.9)])
+    monkeypatch.setattr(emb_mod, "search_zusagen", lambda *a, **k: [])
+    monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
+        {"id": 77, "sprecher": "Alt Redner", "partei": None, "art": "rede",
+         "top": "Altes Thema", "text": "Ein alter Beitrag.", "session_date": "2021-01-01",
+         "committee": "Rat", "seite": None, "ksinr": 100}] if ids else [])
+    monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen", lambda self, c: [])
+    alt = {"id": 50, "title": "Altes Bau-Thema", "score": 0.9,
+           "session_date": "2021-01-01", "committee": "Rat", "outcome": "angenommen"}
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: ([dict(alt)], "semantisch"))
+
+    def frag(question):
+        with client.stream("POST", "/api/council/ask", json={"question": question}) as r:
+            body = "".join(r.iter_text())
+        events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+        return next(e for e in events if e["type"] == "sources")
+
+    # Zukunfts-Sitzung: KEINE Debatten, trotz „Treffer" der Semantik.
+    src = frag("Um was geht es im Bauausschuss morgen?")
+    assert src["qtype"] == "sitzung" and src["debatten"] == []
+    # Vergangene Sitzung mit Beschlüssen: Debatten bleiben (Positivprobe —
+    # dieselben Mocks liefern hier sichtbar den Beitrag).
+    src = frag("Was hat der Jugendhilfeausschuss am 17.06.2026 beschlossen?")
+    assert src["qtype"] == "sitzung"
+    assert [d["sprecher"] for d in src["debatten"]] == ["Alt Redner"]
+
+
 def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch):
     """Nennt die Frage eine Sitzung, zu der noch kein Protokoll ausgewertet ist
     (1–2 Monate Verzug sind normal), und findet auch die Semantik nichts, kommt
