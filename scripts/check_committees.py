@@ -21,7 +21,8 @@ from kern import digest_email
 from council.store import CouncilStore
 from council.scraper import CouncilScraper
 from council.agenda_diff import (anlagen_schluessel, diff_html, diff_satz,
-                                 diff_tagesordnung, hat_aenderungen)
+                                 diff_tagesordnung, hat_aenderungen,
+                                 nur_nummern_versatz)
 from council.committee_summary import sitzungskopf, summarize_agenda_items
 from council.ergebnisse import sitzung_href
 
@@ -329,6 +330,18 @@ def main() -> dict:
                 # Punkte wurden angepasst" stand hier früher — ein Satz, der
                 # niemandem sagt, was los ist, und genau deshalb weg muss
                 # (Tims Befund 17.08.). Stand nachziehen, nicht melden.
+                council_store.mark_notified(ksinr, owner_id, agenda_hash)
+                continue
+            if d is not None and nur_nummern_versatz(d):
+                # Oben fiel ein Punkt weg oder kam einer dazu, der Rest ist
+                # geschlossen nachgerückt: gleiche Punkte, gleiche Reihenfolge,
+                # neue Nummern. Dafür will niemand eine Mail (Tims Entscheidung
+                # 26.08.) — die Sitzungsseite zeigt es weiter unter „Zuletzt
+                # geändert". Der Stand wird trotzdem nachgezogen, sonst käme
+                # die Verschiebung mit der nächsten echten Änderung nachträglich
+                # doch noch als Meldung heraus.
+                print(f"  {session.session_date} {session.committee} → owner {owner_id} "
+                      f"(nur Nummern-Versatz, keine Meldung)")
                 council_store.mark_notified(ksinr, owner_id, agenda_hash)
                 continue
             if d is not None:
