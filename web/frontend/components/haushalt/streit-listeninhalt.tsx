@@ -105,6 +105,11 @@ function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
                 <span className="ml-2 font-mono text-[10px] text-muted-foreground">
                   {z.thh != null ? `THH ${String(z.thh).padStart(2, "0")}` : "alle THH"}
                 </span>
+                {z.erlaeuterung && (
+                  <span className="mt-0.5 block max-w-[75ch] text-[11px] leading-relaxed text-muted-foreground">
+                    {z.erlaeuterung}
+                  </span>
+                )}
               </span>
               <span className="whitespace-nowrap text-right font-mono text-[11.5px] tabular-nums text-foreground/85">
                 {deltaBetrag(z.ertrag)}
@@ -150,7 +155,8 @@ export function StreitListenInhalt({ daten, jahr }: {
       <p className="mt-1 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
         Die Änderungslisten der Verwaltung und die im Finanzausschuss beschlossenen
         Änderungen liegen als Dokumente vor — hier stehen ihre Positionen, Zeile für
-        Zeile. Jede Liste ging beim Einlesen gegen ihre eigene Schlusssumme auf;
+        Zeile, samt der Erläuterung aus dem Dokument, was hinter jeder Änderung
+        steckt. Jede Liste ging beim Einlesen gegen ihre eigene Schlusssumme auf;
         was nicht aufgeht, würde hier nicht stehen.
       </p>
 

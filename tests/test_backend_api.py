@@ -617,7 +617,8 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     _register(client)
     erg = Ergebnis(
         zeilen=[
-            Zeile(2026, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000),
+            Zeile(2026, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000,
+                  erlaeuterung="Mehrbedarf laut Schulentwicklungsplan."),
             Zeile(2027, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000),
         ],
         summen=[
@@ -640,6 +641,7 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
 
     b = client.get("/api/council/haushalt/aenderungslisten").json()
     assert [z["jahr"] for z in b["zeilen"]] == [2026]
+    assert b["zeilen"][0]["erlaeuterung"] == "Mehrbedarf laut Schulentwicklungsplan."
     assert {s["jahr"] for s in b["summen"]} == {2026, 2027}
     eigene = {s["label"]: s["eigene"] for s in b["summen"] if s["jahr"] == 2026}
     assert eigene["Änderungsliste Verw. I"] == 1

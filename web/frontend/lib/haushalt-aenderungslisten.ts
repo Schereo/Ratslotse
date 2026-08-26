@@ -24,6 +24,10 @@ export type AenderungsZeile = {
   /** Euro, negativ = Minderung; `null` = kein Betrag in dieser Spalte. */
   ertrag: number | null;
   aufwand: number | null;
+  /** Die Erläuterungs-Spalte des Dokuments — was diese Änderung ist.
+   *  `null` = Zelle leer oder Zuordnung nicht eindeutig (dann lieber gar
+   *  kein Text als einer von der falschen Zeile). */
+  erlaeuterung: string | null;
   dokument_id: number;
   herkunft_id: number | null;
 };

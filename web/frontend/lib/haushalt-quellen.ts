@@ -309,7 +309,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Einbringung und Beschluss fortgeschrieben wird: die Änderungslisten " +
       "der Verwaltung (Verw. I–III) und die Datei „beschlossene Änderungen“ " +
       "des Finanzausschusses. Jede führt ihre Positionen je Planjahr mit " +
-      "Ertrag und Aufwand und am Ende eine „Zusammenstellung der " +
+      "Ertrag, Aufwand und Erläuterung und am Ende eine „Zusammenstellung der " +
       "Veränderungen“ — gegen die jede hier gezeigte Positionsliste beim " +
       "Einlesen aufgehen musste. Die Änderungslisten der Fraktionen sind " +
       "in keinem dieser Papiere: Sie wurden als Tischvorlagen verteilt und " +
