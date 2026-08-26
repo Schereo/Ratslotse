@@ -2543,6 +2543,13 @@ def _sitzungen_kompakt(sitzungen: list[dict]) -> list[dict]:
     out = []
     for s in sitzungen:
         agenda = s.get("agenda") or []
+        # Der Anriss zeigt INHALTE, keine Formalien: Beschlussfähigkeit,
+        # Protokoll-Genehmigung & Co. stehen in jeder Sitzung vorn und füllten
+        # alle sechs Plätze der Rats-Karte (dev-Probe 26.08.). Derselbe Filter
+        # wie in der Wochenvorschau; nur wenn NUR Formalien da sind, bleiben
+        # sie als ehrlicher Rest stehen.
+        inhalt = [a for a in agenda
+                  if not CouncilStore._FORMALIE_RE.search(a.get("title") or "")]
         out.append({
             "ksinr": s.get("ksinr"), "committee": s.get("committee"),
             "session_date": s.get("session_date"),
@@ -2550,7 +2557,7 @@ def _sitzungen_kompakt(sitzungen: list[dict]) -> list[dict]:
             "kuenftig": bool(s.get("kuenftig")),
             "n_beschluesse": len(s.get("beschluss_ids") or []),
             "agenda": [{"item_number": a.get("item_number"),
-                        "title": a.get("title")} for a in agenda[:6]],
+                        "title": a.get("title")} for a in (inhalt or agenda)[:6]],
             "n_agenda": len(agenda),
         })
     return out
