@@ -109,7 +109,7 @@ function KonzernSeiteInner() {
             kicker={`Gesamtabschluss · Konzern Oldenburg · ${kern.jahr}`}
             zahl={<>Der Kernhaushalt ist <ZaehlZahl wert={kern.anteil * 100} />&#8239;% der Stadt</>}
             sub={bericht
-              ? `${bericht.gesellschaften} Beteiligungen · ${bericht.kennzahlen} Kennzahlen aus den Jahren ${bericht.von}–${bericht.bis}`
+              ? `${bericht.gesellschaften} Betriebe und Gesellschaften · ${bericht.kennzahlen} Kennzahlen aus den Jahren ${bericht.von}–${bericht.bis}`
               : "gemessen an den Erträgen des jüngsten Gesamtabschlusses"}
             minibild={{
               href: "#summe",
