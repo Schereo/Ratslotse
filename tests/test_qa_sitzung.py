@@ -26,6 +26,30 @@ def test_datum_in_frage_formate():
     assert f("Was war am 17. Juni?") == (None, "-06-17")
 
 
+def test_datum_in_frage_relative_tage():
+    """„Um was geht es im Bauausschuss MORGEN?" (echte Nutzerfrage 26.08.,
+    am Vorabend einer echten Sitzung) blieb ohne diese Auflösung eine
+    Themen-Frage — die Antwort strickte aus alten Beschlüssen verschiedener
+    Jahre eine „voraussichtlich"-Prognose zusammen."""
+    f = qa._datum_in_frage
+    heute = date.today()
+    tag = lambda d: (heute + timedelta(days=d)).isoformat()  # noqa: E731
+    assert f("Um was geht es im Bauausschuss morgen?") == (tag(1), None)
+    assert f("Was steht morgen früh im Rat an?") == (tag(1), None)
+    assert f("Was hat der Rat gestern beschlossen?") == (tag(-1), None)
+    assert f("Tagt heute ein Ausschuss?") == (tag(0), None)
+    assert f("Was läuft übermorgen im Sozialausschuss?") == (tag(2), None)
+    assert f("Und vorgestern im Schulausschuss?") == (tag(-2), None)
+    # Gruß und Tageszeit sind kein Datum.
+    assert f("Guten Morgen, was hat der Rat beschlossen?") == (None, None)
+    assert f("Was wurde am Morgen entschieden?") == (None, None)
+    # Ein explizites Datum schlägt das relative Wort.
+    assert f("Was war am 17.06.2026, nicht heute?") == ("2026-06-17", None)
+    # „bis heute"/„seit gestern" sind Zeitspannen, keine Sitzungstermine.
+    assert f("Was hat der Rat bis heute zum Stadion beschlossen?") == (None, None)
+    assert f("Was ist seit gestern passiert?") == (None, None)
+
+
 def test_datum_in_frage_zeitraum_und_muell():
     f = qa._datum_in_frage
     # Zeitspannen sind keine Sitzungstermine.
@@ -135,6 +159,30 @@ def test_finde_sitzungen_letzte_sitzung_mit_protokoll_verzug(tmp_path):
     assert [x["session_date"] for x in s] == [juengst, aelter]
     assert s[0]["beschluss_ids"] == [] and s[0]["agenda"][0]["title"] == "Bäderbericht"
     assert len(s[1]["beschluss_ids"]) == 1
+    store.close()
+
+
+def test_finde_sitzungen_morgen(tmp_path):
+    """Tims Frage vom 26.08. wortwörtlich: „morgen" + Gremium löst die
+    Sitzung von morgen auf — mit Tagesordnung statt Prognose-Halluzination."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    morgen = (date.today() + timedelta(days=1)).isoformat()
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, "
+            "session_time, location, fetched_at) "
+            "VALUES (11, 'Ausschuss für Stadtplanung und Bauen', ?, '17:00', '', '')",
+            (morgen,))
+        store._conn.execute(
+            "INSERT INTO council_agenda_items (ksinr, item_number, title) "
+            "VALUES (11, 'Ö 5', 'Bebauungsplan N-777')")
+    s = qa.finde_sitzungen(store, "Um was geht es im Bauausschuss morgen?")
+    assert len(s) == 1 and s[0]["session_date"] == morgen
+    assert s[0]["kuenftig"] is True
+    assert s[0]["agenda"][0]["title"] == "Bebauungsplan N-777"
+    # Ohne Gremium und ohne Sitzungswort bleibt „morgen" folgenlos —
+    # „Was kostet das morgen?" ist keine Sitzungsfrage.
+    assert qa.finde_sitzungen(store, "Was kostet das morgen?") == []
     store.close()
 
 

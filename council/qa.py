@@ -445,6 +445,19 @@ _DATUM_WORT_RE = re.compile(
 _ZEITRAUM_PREP_RE = re.compile(
     r"\b(seit|bis|ab|vor|nach|zwischen)(\s+(dem|der|den|zum|zur))?\s*$", re.IGNORECASE)
 
+# Relative Tagesangaben: „Um was geht es im Bauausschuss MORGEN?" ist eine
+# Sitzungsfrage mit konkretem Datum — ohne diese Auflösung blieb sie eine
+# Themen-Frage, und die Antwort strickte aus alten Beschlüssen verschiedener
+# Jahre eine „voraussichtlich"-Prognose zusammen (Tims Befund 26.08., echte
+# Frage am Vorabend einer echten Bauausschuss-Sitzung). „morgen" zählt nur
+# als Tag, nicht als Tageszeit oder Gruß („Guten Morgen", „am Morgen früh").
+_RELATIV_TAGE = {"vorgestern": -2, "gestern": -1, "heute": 0,
+                 "morgen": 1, "uebermorgen": 2, "übermorgen": 2}
+_RELATIV_RE = re.compile(
+    r"\b(vorgestern|gestern|heute|uebermorgen|übermorgen|morgen)\b", re.IGNORECASE)
+_MORGEN_TAGESZEIT_RE = re.compile(
+    r"\b(guten|am|jeden|den|diesen|des)\s*$", re.IGNORECASE)
+
 
 def _datum_in_frage(frage: str) -> tuple[str | None, str | None]:
     """(ISO-Datum, None) bei vollem Datum, (None, "-MM-DD") ohne Jahr,
@@ -463,6 +476,14 @@ def _datum_in_frage(frage: str) -> tuple[str | None, str | None]:
                 jahr += 2000
             return f"{jahr:04d}-{monat:02d}-{tag:02d}", None
         return None, f"-{monat:02d}-{tag:02d}"
+    for m in _RELATIV_RE.finditer(frage):
+        if _ZEITRAUM_PREP_RE.search(frage[:m.start()]):
+            continue  # „bis heute", „seit gestern", „ab morgen" sind Spannen
+        wort = m.group(1).lower()
+        if wort == "morgen" and _MORGEN_TAGESZEIT_RE.search(frage[:m.start()]):
+            continue  # „Guten Morgen …", „am Morgen" — Gruß/Tageszeit, kein Tag
+        from datetime import date as _date, timedelta as _timedelta
+        return (_date.today() + _timedelta(days=_RELATIV_TAGE[wort])).isoformat(), None
     return None, None
 
 
