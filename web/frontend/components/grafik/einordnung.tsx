@@ -57,11 +57,16 @@ export function Einordnung({ satz, gemessen, nichtAussagen, className }: {
         </div>
       )}
       {hatKasten && (
-        <div className="rounded-xl border border-dashed border-border p-3">
+        <div className="@container rounded-xl border border-dashed border-border p-3">
           <p className="text-[12px] font-semibold leading-snug">
             Was diese Zahl nicht sagt
           </p>
-          <ul className="mt-1 max-w-[74ch] list-disc space-y-1 pl-4 text-[12px] leading-relaxed text-muted-foreground">
+          {/* Zwei Spalten, sobald der Kasten Platz hat (Designsprache §4).
+              Schwelle am CONTAINER und nicht am Fenster, weil dieser Baustein
+              in ganz verschiedenen Breiten steht — unter einer vollen Grafik
+              ebenso wie in einer halben Rasterspalte. Wo er schmal steht,
+              greift die Regel nie. */}
+          <ul className="mt-1 grid max-w-[74ch] list-disc grid-cols-1 gap-x-8 gap-y-1 pl-4 text-[12px] leading-relaxed text-muted-foreground @3xl:max-w-none @3xl:grid-cols-2">
             {nichtAussagen!.map((n) => (
               <li key={n}>{n}</li>
             ))}

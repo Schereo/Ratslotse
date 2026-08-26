@@ -264,7 +264,7 @@ export function KonzernAbschnitt() {
             den Platz, den das Gerät hat" (§ 4).
 
             Die volle Breite in EINER Spalte wäre aber der falsche Tausch —
-            bei 1.400 px stünden dort 180 Zeichen je Zeile, und das liest
+            bei 1.400 px stünden dort rund 220 Zeichen je Zeile, und das liest
             niemand mehr zurück an den Zeilenanfang. Zwei Spalten füllen die
             Fläche und halten die Zeile lesbar.
 

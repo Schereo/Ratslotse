@@ -33,8 +33,8 @@ export function LottiErklaert({
     //
     // Vorher war es umgekehrt: volle Kartenbreite, Text auf 76ch gedeckelt.
     // Der Deckel war richtig — ohne ihn lief der Erklärtext auf 1.440 px über
-    // 127 Zeichen je Zeile, während die Einstiegstexte derselben Seiten bei 66
-    // enden. Nur stand er an der falschen Stelle: In einer 1.496 px breiten
+    // 220 Zeichen je Zeile, während die Einstiegstexte derselben Seiten bei
+    // rund 95 enden. Nur stand er an der falschen Stelle: In einer 1.496 px breiten
     // Karte blieben rechts 873 px leer, und eine halb gefüllte Kiste sieht
     // nicht nach Absicht aus, sondern nach Fehler.
     //
@@ -43,14 +43,21 @@ export function LottiErklaert({
     // richtig: Das hier ist ein `aside`, keine Hauptaussage; dass er schmaler
     // steht als die Karten des Flusses, sagt genau das.
     //
-    // `74ch` AN DER KARTE, und das sind NICHT 74 Zeichen Text: Die Einheit
-    // `ch` misst die Schrift des Elements, an dem sie steht — hier die 16 px
-    // der Karte, während der Erklärtext 13 px hat. Dazu gehen links 48 px Bild
-    // plus Abstand und Polsterung ab. Nachgemessen kommen so ~80 Zeichen je
-    // Zeile heraus; ein erster Versuch mit `92ch` ergab 102 und war damit
-    // schlechter lesbar als der alte Zustand.
+    // `70ch` AN DER KARTE, und das sind NICHT 70 Zeichen Text — hier stecken
+    // ZWEI Umrechnungen drin (beide in DESIGNSPRACHE.md § 4 erklärt):
+    //   1. `ch` misst die Schrift des Elements, an dem es steht — hier die
+    //      16 px der Karte, während der Erklärtext 13 px hat. Dazu gehen links
+    //      48 px Bild + 14 px Abstand + 2 × 14 px Polsterung ab, zusammen 92 px.
+    //      70ch = 706,6 px Karte − 92 px = 614,6 px Textspalte = 74,9ch bei 13 px.
+    //   2. Ein `ch` ist die Ziffernbreite, nicht ein Prosa-Zeichen. In Inter
+    //      ist es 1,26 Zeichen breit: 74,9ch = **95 Zeichen je Zeile**.
+    // Der Wert stand bis 24.08.2026 auf `74ch` und lief damit auf 101 Zeichen —
+    // der einzige Ausreißer über 100 im Bereich, der auf einen Rechenfehler
+    // zurückging und nicht auf eine Entscheidung. Der Kommentar behauptete
+    // „~80 Zeichen", das waren in Wahrheit 80 **ch**. Nachgemessen im Browser
+    // (Range.getClientRects über 120 Absätze echten Seitentexts).
     <aside className={cn(
-      "flex max-w-[74ch] gap-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3.5",
+      "flex max-w-[70ch] gap-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3.5",
       className,
     )}>
       <Mascot pose={pose} decorative className="h-11 w-11 flex-none sm:h-12 sm:w-12" />
@@ -82,8 +89,10 @@ export function LottiVergleich({
   const proKopfMonat = Math.round(proKopf / 12);
   return (
     // Dieselbe Bauform wie `LottiErklaert` — Deckel an der Karte, s. dort.
+    // Auch dieselben 70ch: Der Wert muss mit der Schwester zusammenpassen,
+    // beide Kästen stehen auf denselben Seiten untereinander.
     <aside className={cn(
-      "flex max-w-[74ch] gap-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3.5",
+      "flex max-w-[70ch] gap-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3.5",
       className,
     )}>
       <Mascot pose="point" decorative className="h-11 w-11 flex-none sm:h-12 sm:w-12" />

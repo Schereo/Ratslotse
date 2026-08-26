@@ -450,11 +450,15 @@ function Ablauf({ titel, children }: { titel: string; children: React.ReactNode 
  *  in Lesebreite. Der Inhalt ist unverändert. */
 function Nachlauf() {
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section className="@container rounded-2xl border border-border bg-card p-4 shadow-sm">
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Stationen kommen
       </p>
-      <p className="mt-1.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
+      {/* Dieser Absatz IST der Inhalt der Karte — hier steht neben ihm nichts,
+          was die Fläche füllt. Deshalb Spalten statt bloßem Deckel
+          (Designsprache §4): `86ch` allein hießen 108 Zeichen je Zeile, die
+          längste Zeile des Bereichs; in zwei Spalten sind es rund 79. */}
+      <p className="mt-1.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground @3xl:max-w-none @3xl:columns-2 @3xl:gap-x-8 @6xl:columns-3">
         Aus der Beratungsfolge der Sammelvorlage „Haushalt &lt;Jahr&gt; – Beschluss" im
         Ratsinformationssystem, dem jeweiligen Tagesordnungspunkt und — wo ein Protokoll
         vorliegt — dem Beschluss über die Haushaltssatzung. Alle gezeigten Sitzungen sind

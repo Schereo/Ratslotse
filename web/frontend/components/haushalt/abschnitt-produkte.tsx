@@ -320,7 +320,14 @@ function Dahinter({ text, zielgruppe }: { text: string; zielgruppe?: string | nu
               <GlossaryText text={liste.einleitung} />
             </p>
           )}
-          <ul className="mt-2 flex max-w-[74ch] flex-col gap-1.5">
+          {/* `text-[13px]` an der Liste, obwohl jedes `li` seine Größe selbst
+              setzt: `ch` misst die Schrift SEINES Elements. Ohne die Angabe maß
+              der Deckel die geerbten 16 px, und `74ch` waren 747 px statt 607 —
+              114 Zeichen je Zeile statt 93 (DESIGNSPRACHE § 4).
+              Zwei Spalten, sobald der Steckbrief Platz hat: Die Leistungsliste
+              ist der Hauptinhalt dieser Karte, nicht ein Absatz neben einem
+              Bild — hier ist der Deckel allein zu wenig. */}
+          <ul className="mt-2 grid max-w-[74ch] grid-cols-1 gap-x-8 gap-y-1.5 text-[13px] @3xl/steckbrief:max-w-none @3xl/steckbrief:grid-cols-2">
             {liste.punkte.map((punkt, i) => (
               <li key={`${punkt.slice(0, 24)}-${i}`}
                 className="flex items-baseline gap-2 text-[13px] leading-relaxed text-foreground/90">
