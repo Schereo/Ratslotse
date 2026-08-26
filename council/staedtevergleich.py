@@ -258,11 +258,21 @@ def _kopfzeile(zeilen: list[list[object]]) -> int:
     Zeilen, **wo** er steht. Diesen Hinweis zu lesen ist verlässlicher, als
     eine Zeilennummer zu raten: Er wandert mit, wenn das LSN eine Fußnote
     einfügt.
+
+    **Den Satz gibt es in zwei Fassungen.** Der Realsteuervergleich schreibt
+    „Der Tabellenkopf für Vorlesehilfen befindet sich in Zeile 7.", die
+    Gewerbesteuerstatistik „Vorlesbarer Tabellenkopf in Zeile 8". Gesucht wird
+    deshalb nach dem, was beide gemeinsam haben — dem Wort „Tabellenkopf" und
+    einer Zeilennummer dahinter. Die erste Fassung allein hätte den zweiten
+    Bericht nicht gefunden, und zwar mit einer Fehlermeldung über den Aufbau
+    der Datei statt über den Satz, der fehlt.
     """
     for i, zeile in enumerate(zeilen[:12]):
         for zelle in zeile:
-            treffer = re.search(r"Vorlesehilfen befindet sich in Zeile\s*(\d+)",
-                                str(zelle or ""))
+            text = str(zelle or "")
+            if "Tabellenkopf" not in text:
+                continue
+            treffer = re.search(r"Zeile\s*(\d+)", text)
             if treffer:
                 return int(treffer.group(1)) - 1
     raise ValueError(

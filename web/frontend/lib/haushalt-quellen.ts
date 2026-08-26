@@ -119,6 +119,10 @@ export type QuellenSchluessel =
   // A10: Städtevergleich — die einzigen Quellen des Bereichs, die nicht von
   // der Stadt Oldenburg stammen, sondern vom Land.
   | "lsn_finanzausgleich" | "lsn_realsteuern" | "vergleich_2018"
+  // Die dritte Landesquelle, und die einzige, die NICHT vergleicht: Sie steht
+  // auf dem Steuer-Steckbrief und beantwortet dort eine Oldenburger Frage —
+  // wie viele Betriebe die Gewerbesteuer aufbringen.
+  | "lsn_gewerbesteuer"
   // A11: Die Investitionen des Finanzhaushalts.
   | "investitionen"
   | "investitionsprogramm"
@@ -558,6 +562,32 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     // 18.08.2026 nachgezogen: Das Landesamt hat den Pfad um eine Ebene
     // ergänzt („…/finanzen_steuern_personal/…"); die alte Adresse gibt 404.
     url: "https://www.statistik.niedersachsen.de/startseite/themen/finanzen_steuern_personal/steuern_in_niedersachsen/realsteuervergleich_in_niedersachsen/",
+  },
+  lsn_gewerbesteuer: {
+    titel: "Gewerbesteuerstatistik Niedersachsen",
+    fundstelle:
+      "Blatt 6.1: je kreisfreier Stadt die Zahl der Betriebe und " +
+      "Betriebsstätten, wie viele davon einen positiven Steuermessbetrag " +
+      "haben, und die Summe dieser Messbeträge — aufgeteilt in reine " +
+      "Festsetzungen und Zerlegungen. Blatt 6.2: dieselben Zahlen je " +
+      "Gemeinde, dazu der Hebesatz. " +
+      "Grundlage sind die Steuermessbescheide der Finanzämter, also die " +
+      "VERANLAGUNG eines Erhebungsjahres — nicht das Geld, das in diesem Jahr " +
+      "in der Stadtkasse ankam. " +
+      "Größenklassen des Gewerbeertrags, aus denen sich die Konzentration " +
+      "rechnen ließe, veröffentlicht die Statistik nur für das Land und den " +
+      "Bund, nicht je Gemeinde. " +
+      "Was ein einzelnes Unternehmen zahlt, steht hier so wenig wie sonstwo: " +
+      "Wo ein Zahler eine Gemeinde dominiert, sperrt das Landesamt sogar den " +
+      "Summenbetrag.",
+    herausgeber: "Landesamt für Statistik Niedersachsen",
+    // Die Ausgabe, nicht die Datenspanne — und hier ist der Abstand die
+    // wichtigste Angabe überhaupt: Der Bericht zum Erhebungsjahr 2021
+    // erschien im März 2026.
+    stand: "Erhebungsjahr 2021 (Statistischer Bericht L IV 13, erschienen im März 2026)",
+    lizenz: "Vervielfältigung mit Quellennachweis gestattet",
+    art: "csv",
+    url: "https://www.statistik.niedersachsen.de/themen/gewerbesteuer-niedersachsen/gewerbesteuer-in-niedersachsen-statistische-berichte-179300.html",
   },
   vergleich_2018: {
     titel: "Personalentwicklung seit dem Jahr 2000 — Antrag der FDP-Fraktion und Antwort der Verwaltung",

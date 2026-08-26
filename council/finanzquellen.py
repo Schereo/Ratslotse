@@ -622,6 +622,17 @@ def _bestand_lsn_realsteuern(store: CouncilStore) -> set[tuple]:
                "WHERE reihe = 'realsteuern'")}
 
 
+def _bestand_lsn_gewerbesteuer(store: CouncilStore) -> set[tuple]:
+    """Die Erhebungsjahre der Gewerbesteuerstatistik.
+
+    Gezählt wird das **Erhebungsjahr der Veranlagung**, nicht das Jahr, in dem
+    der Bericht erschien — dazwischen liegen rund fünf Jahre. Die Frage der
+    Seite ist „bis wann reichen die Zahlen?", und darauf antwortet nur das
+    erste."""
+    return {(r[0],) for r in _jahre(
+        store, "SELECT DISTINCT jahr FROM council_gewerbesteuerstatistik")}
+
+
 # --- Einlesen ---------------------------------------------------------------
 #
 # Der Code stand bis 08/2026 in scripts/ingest_finanzberichte.py und
@@ -2562,6 +2573,26 @@ for _q in (
                   "scripts/ingest_staedtevergleich.py --realsteuer",
         bestand=_bestand_lsn_realsteuern,
     ),
+    Finanzquelle(
+        key="lsn_gewerbesteuer",
+        label="Gewerbesteuerstatistik",
+        was="Wie viele Betriebe die Gewerbesteuer aufbringen — und wie viele "
+            "von ihnen überhaupt eine zahlen.",
+        tabelle="council_gewerbesteuerstatistik",
+        # DIE SCHICHT MIT DEM GRÖSSTEN VERZUG DES GANZEN BEREICHS, und das ist
+        # keine Nachlässigkeit des Landesamts: Eine Veranlagung ist erst nach
+        # den Betriebsprüfungen endgültig. Gemessen an drei Jahrgängen —
+        # 2019 → August 2024, 2020 → September 2025, 2021 → März 2026. Fünf
+        # Jahre Versatz, und der September ist der späteste gemessene Monat;
+        # wer den März nähme, meldete für 2019 und 2020 einen Rückstand, den es
+        # nicht gab (dieselbe Überlegung wie beim Finanzausgleich darüber).
+        erwarteter_monat=9,
+        versatz=5,
+        herkunft="lsn",
+        nachschub="Download vom Landesamt für Statistik, "
+                  "scripts/ingest_gewerbesteuerstatistik.py",
+        bestand=_bestand_lsn_gewerbesteuer,
+    ),
 ):
     QUELLEN[_q.key] = _q
 
@@ -2612,7 +2643,7 @@ REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "investitionen",
                "haushaltssatzung",
                "wirtschaftsplan",
                "schulden",
-               "lsn_steuerkraft", "lsn_realsteuern")
+               "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer")
 
 #: Die Stelle hinter einer Herkunft, im Klartext. Sie steht in der Fußzeile des
 #: Datenstands („Nicht dabei: … — die Zahlen holen wir bei …") und muss deshalb

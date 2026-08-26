@@ -168,6 +168,15 @@ function SteuerInner() {
   const hebeZweit = art.hebesatzArten?.[1]
     ? hebeAlle.filter((z) => z.art === art.hebesatzArten![1]) : [];
 
+  // Der Nenner zur Gewerbesteuer: wie viele Betriebe sie aufbringen
+  // (Gewerbesteuerstatistik des Landesamts). Genommen wird der JÜNGSTE
+  // Erhebungsjahrgang — und das ist nicht das jüngste Jahr der Kurve darüber:
+  // Die Statistik erscheint rund fünf Jahre nach dem Erhebungsjahr. Dass beide
+  // Zahlen aus verschiedenen Jahren stammen, schreibt der Block selbst an.
+  const statistik = art.slug === "gewerbesteuer"
+    ? (data.gewerbesteuerstatistik?.zeilen ?? []).at(-1) ?? null
+    : null;
+
   // Das Jahr, für das gerade ein Haushalt gilt — das jüngste mit einem
   // beschlossenen Ansatz. Daran hängt, ob der Befund unten noch der aktuelle
   // ist; `ansatz_jahre` führt die Finanzplanungsjahre bewusst nicht mit.
@@ -234,7 +243,12 @@ function SteuerInner() {
     : istEntgelt
       ? ["jahresabschluss", "ergebnisrechnung_thh"]
       : ["steuern", ...(planIst.length ? (["steuerplan"] as const) : []),
-         "hebesaetze", ...(zeigtBefund ? (["haushaltssatzung"] as const) : [])];
+         "hebesaetze", ...(zeigtBefund ? (["haushaltssatzung"] as const) : []),
+         /* Die Landesstatistik steht nur im Verzeichnis, wenn ihre Zahlen auch
+            auf der Seite stehen — sonst führte die Fußnotenliste eine Quelle,
+            aus der hier nichts stammt (dieselbe Regel wie bei
+            „haushaltssatzung" darüber). */
+         ...(statistik ? (["lsn_gewerbesteuer"] as const) : [])];
 
   return (
     <Quellenkontext schluessel={quellen}>
@@ -445,6 +459,10 @@ function SteuerInner() {
           vergleichArt={steuerartNachSlug("grundsteuer")?.datenArt ?? null}
           vergleichTitel={steuerartNachSlug("grundsteuer")?.titel ?? "Grundsteuer"}
           hebesaetze={hebeHaupt}
+          /* Der Nenner und der Satz, der zu ihm gehört. Beide reisen aus der
+             API mit: Die Abgrenzung ist Teil der Zahl, nicht des Layouts. */
+          statistik={statistik}
+          statistikAbgrenzung={data.gewerbesteuerstatistik?.abgrenzung ?? ""}
         />
       )}
 
@@ -622,7 +640,7 @@ function SteuerInner() {
 // alle Jahrgänge und Teilhaushalte; gefiltert wird hier, nicht im Backend, wie
 // auf /haushalt/bereich und /haushalt/plan-ist auch.
 const FELDER = ["steuern", "steuerkraft", "steuerplan", "hebesaetze", "einwohner",
-  "ansatz_jahre", "ergebnisrechnung"] as const;
+  "ansatz_jahre", "ergebnisrechnung", "gewerbesteuerstatistik"] as const;
 const SATZUNG_FELDER = ["haushaltssatzung"] as const;
 
 export default function SteuerPage() {

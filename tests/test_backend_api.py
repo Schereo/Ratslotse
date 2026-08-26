@@ -515,7 +515,8 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
                               "haushaltssatzung",
                               "wirtschaftsplan",
                               "schulden",
-                              "lsn_steuerkraft", "lsn_realsteuern"}
+                              "lsn_steuerkraft", "lsn_realsteuern",
+                              "lsn_gewerbesteuer"}
     # Die Wirtschaftspläne der Eigenbetriebe: die einzige Schicht, deren
     # Einheit eine VORLAGE ist und keine Anlage — der Cron kann sie deshalb
     # nicht selbst lesen und beobachtet sie nur. Ihr Takt ist der einzige mit
