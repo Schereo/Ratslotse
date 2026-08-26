@@ -16,6 +16,25 @@ def top_number(value: str | None) -> str:
     return m.group(0) if m else ""
 
 
+def has_numbered_children(item: dict, items: list[dict]) -> bool:
+    """Ob ``item`` nur eine Gliederung für konkretere Unter-TOPs ist.
+
+    Öffentlicher und nichtöffentlicher Sitzungsteil zählen getrennt: ``Ö 4``
+    darf nicht versehentlich wegen eines theoretischen ``N 4.1`` als
+    Oberpunkt gelten.
+    """
+    parent = top_number(item.get("item_number"))
+    if not parent:
+        return False
+    public = bool(item.get("is_public"))
+    prefix = parent + "."
+    return any(
+        bool(candidate.get("is_public")) == public
+        and top_number(candidate.get("item_number")).startswith(prefix)
+        for candidate in items
+    )
+
+
 def normalized_title(value: str | None) -> str:
     text = " ".join(str(value or "").split()).lower().replace("ß", "ss")
     # Die Tagesordnungsseite hängt den später nachgetragenen Status teilweise
@@ -87,11 +106,14 @@ def resolve_bookmark(bookmark: dict, council) -> dict:
     session = council.get_session(int(ksinr)) if ksinr else None
     item = None
     decision = None
+    agenda_group = False
 
     if kind == "session":
         pass
     elif kind == "agenda_item" and ksinr:
-        item = _find_agenda_item(bookmark, council.agenda_items(int(ksinr)))
+        items = council.agenda_items(int(ksinr))
+        item = _find_agenda_item(bookmark, items)
+        agenda_group = bool(item and has_numbered_children(item, items))
         decision = _find_decision(bookmark, council.get_decisions(int(ksinr)), item)
     elif kind == "decision":
         if bookmark.get("decision_id"):
@@ -100,7 +122,8 @@ def resolve_bookmark(bookmark: dict, council) -> dict:
             decision = _find_decision(bookmark, council.get_decisions(int(ksinr)))
 
     return {"bookmark": bookmark, "session": session,
-            "agenda_item": item, "decision": decision}
+            "agenda_item": item, "decision": decision,
+            "agenda_group": agenda_group}
 
 
 def bookmark_url(resolved: dict) -> str:
@@ -123,6 +146,7 @@ def serialize_bookmark(resolved: dict) -> dict:
     session = resolved.get("session")
     item = resolved.get("agenda_item")
     decision = resolved.get("decision")
+    is_group = bool(resolved.get("agenda_group"))
     kind = b["kind"]
 
     if kind == "session":
@@ -132,6 +156,8 @@ def serialize_bookmark(resolved: dict) -> dict:
         title = (item or {}).get("title") or (decision or {}).get("title") or b.get("title") or "Tagesordnungspunkt"
         if decision:
             state = "decided"
+        elif is_group:
+            state = "group"
         elif b.get("ksinr") and getattr(resolved.get("council"), "has_protocol", lambda _k: False)(b["ksinr"]):
             state = "protocol"
         elif session and session.get("session_date", "") >= date.today().isoformat():
@@ -150,6 +176,7 @@ def serialize_bookmark(resolved: dict) -> dict:
         "url": bookmark_url(resolved), "ksinr": b.get("ksinr"),
         "item_number": (item or {}).get("item_number") or b.get("item_number"),
         "session": session, "agenda_item": item, "decision": decision,
+        "is_group": is_group,
     }
 
 

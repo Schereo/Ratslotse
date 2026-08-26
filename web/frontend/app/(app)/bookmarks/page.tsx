@@ -15,6 +15,7 @@ function status(entry: BookmarkEntry): { label: string; color: "slate" | "blue" 
   if (entry.decision?.outcome) {
     return { label: OUTCOME_META[entry.decision.outcome]?.label ?? "Entschieden", color: "green" };
   }
+  if (entry.state === "group") return { label: "Sammelpunkt", color: "slate" };
   if (entry.state === "upcoming") return { label: "Steht an", color: "blue" };
   if (entry.state === "protocol") return { label: "Protokoll liegt vor", color: "amber" };
   if (entry.state === "waiting") return { label: "Ergebnis folgt", color: "amber" };
@@ -35,7 +36,7 @@ function BookmarkCard({ entry, onDelete, onNotify, busy }: {
   busy: boolean;
 }) {
   const meta = status(entry);
-  const canNotify = entry.kind === "agenda_item" && !entry.decision;
+  const canNotify = entry.kind === "agenda_item" && !entry.decision && !entry.is_group;
   return (
     <Card className="overflow-hidden p-0">
       <div className="flex items-start gap-2 p-4">
@@ -69,6 +70,12 @@ function BookmarkCard({ entry, onDelete, onNotify, busy }: {
           </Button>
         </div>
       </div>
+      {entry.is_group && !entry.decision && (
+        <div className="border-t border-border bg-muted/30 px-4 py-3">
+          <p className="text-sm font-medium text-foreground">Dieser TOP fasst Unterpunkte zusammen</p>
+          <p className="text-xs text-muted-foreground">Bitte merke stattdessen den konkreten Antrag oder Unterpunkt, der dich interessiert.</p>
+        </div>
+      )}
       {canNotify && (
         <div className="flex items-center gap-3 border-t border-border bg-muted/30 px-4 py-3">
           <Bell className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />

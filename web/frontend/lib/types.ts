@@ -192,7 +192,7 @@ export interface SessionDetail extends CouncilSession {
 }
 
 export type BookmarkKind = "session" | "agenda_item" | "decision";
-export type BookmarkState = "upcoming" | "waiting" | "protocol" | "decided" | "saved" | "unavailable";
+export type BookmarkState = "upcoming" | "waiting" | "protocol" | "decided" | "saved" | "unavailable" | "group";
 
 /** Persönlicher Merkeintrag, serverseitig gegen den aktuellen Ratsbestand
  *  aufgelöst. Ein agenda_item bekommt automatisch `decision`, sobald das
@@ -210,6 +210,7 @@ export interface BookmarkEntry {
   url: string;
   ksinr: number | null;
   item_number: string | null;
+  is_group: boolean;
   session: CouncilSession | null;
   agenda_item: AgendaItem | null;
   decision: CouncilDecision | null;

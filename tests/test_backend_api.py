@@ -146,6 +146,70 @@ def test_merkliste_top_wird_zum_beschluss_und_meldet_ergebnis(client):
     assert client.get("/api/bookmarks").json()["bookmarks"] == []
 
 
+def test_merkliste_akzeptiert_nur_konkrete_unterpunkte(client):
+    """Gliederungs-TOPs haben kein eigenes Ergebnis; nur ihre Blätter sind
+    merk- und abonnierbar. Nummerngleiche Punkte im nichtöffentlichen Teil
+    dürfen einen öffentlichen TOP dabei nicht zum Oberpunkt machen."""
+    _register(client)
+    tag = (date.today() + timedelta(days=3)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(
+        ksinr=8124, committee="Rat", session_date=tag,
+        session_time="17:00", location="Rathaus",
+        agenda_items=[
+            AgendaItem("Ö 4", "Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
+                       None, None, True),
+            AgendaItem("Ö 4.1", "Antrag: Mehr sichere Schulwege", "26/1001", 91001, True),
+            AgendaItem("Ö 4.2", "Antrag: Trinkbrunnen in der Innenstadt", "26/1002", 91002, True),
+            AgendaItem("Ö 5", "Einwohnerfragestunde", None, None, True),
+            AgendaItem("N 5.1", "Nichtöffentlicher Unterpunkt", None, None, False),
+        ],
+    ))
+
+    parent = client.post("/api/bookmarks", json={
+        "kind": "agenda_item", "ksinr": 8124, "item_number": "Ö 4",
+    })
+    assert parent.status_code == 400
+    assert "konkreten Unterpunkt" in parent.json()["detail"]
+
+    child = client.post("/api/bookmarks", json={
+        "kind": "agenda_item", "ksinr": 8124, "item_number": "Ö 4.1",
+    })
+    assert child.status_code == 201
+    standalone = client.post("/api/bookmarks", json={
+        "kind": "agenda_item", "ksinr": 8124, "item_number": "Ö 5",
+    })
+    assert standalone.status_code == 201
+
+    # Altbestand aus der Zeit vor der Blatt-TOP-Regel: sichtbar lassen, aber
+    # den nutzlosen Ergebnis-Schalter selbst ohne vorherigen Seitenaufruf
+    # spätestens im Protokoll-Lauf abschalten.
+    nwz = Store(NWZ_DB)
+    owner_id = nwz.get_web_user_by_email("admin@test.de")["id"]
+    legacy = nwz.add_bookmark(
+        owner_id, kind="agenda_item", target_key="agenda_item:8124:Ö 4",
+        ksinr=8124, item_number="Ö 4",
+        title="Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
+    )
+    nwz.set_bookmark_result_notification(owner_id, legacy["id"], True)
+    from council.ergebnisse import melde_ergebnisse
+    assert melde_ergebnisse(cs, nwz, [8124]) == 0
+    assert nwz.get_bookmark_for_owner(owner_id, legacy["id"])["notify_result"] == 0
+    assert nwz._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 0
+    nwz.close()
+    cs.close()
+
+    listed = client.get("/api/bookmarks").json()["bookmarks"]
+    old_parent = next(entry for entry in listed if entry["id"] == legacy["id"])
+    assert old_parent["is_group"] is True
+    assert old_parent["state"] == "group"
+    assert old_parent["notify_result"] is False
+    rejected = client.put(f"/api/bookmarks/{legacy['id']}/notification",
+                          json={"notify_result": True})
+    assert rejected.status_code == 400
+    assert "kein eigenes Ergebnis" in rejected.json()["detail"]
+
+
 def test_register_never_grants_admin(client):
     """Rechteausweitung (CWE-269): Die Registrierung darf keine Rolle vergeben.
 
