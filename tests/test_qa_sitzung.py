@@ -248,8 +248,11 @@ def test_sitzungen_block_kein_protokoll():
 def test_sitzungs_leer_text():
     kuenftig = qa.sitzungs_leer_text([
         {"committee": "Sportausschuss", "session_date": "2026-09-01", "kuenftig": True,
-         "agenda": [{"title": "Bäderbericht"}]}])
+         "agenda": [{"title": "Feststellung der Beschlussfähigkeit"},
+                    {"title": "Bäderbericht"}]}])
     assert "tagt erst am 01.09.2026" in kuenftig and "„Bäderbericht“" in kuenftig
+    # Formalien füllen den Anriss nicht (Wochenvorschau-Filter).
+    assert "Beschlussfähigkeit" not in kuenftig
     verzug = qa.sitzungs_leer_text([
         {"committee": "Rat", "session_date": "2026-08-20", "kuenftig": False}])
     assert "20.08.2026" in verzug and "Protokoll" in verzug

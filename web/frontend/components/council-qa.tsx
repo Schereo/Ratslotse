@@ -53,7 +53,9 @@ import {
 // (app/g) — sonst driften die beiden Ansichten auseinander.
 import {
   AnlagenBlock, AntwortText, DebattenBlock, ParteienListe, PresseBlock,
+  TagesordnungBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
+  type SitzungsInfo,
 } from "@/components/qa-bausteine";
 import {
   anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz,
@@ -191,6 +193,9 @@ type Turn = {
   gelesen?: number;
   zeitraum?: string;
   planungen?: Planung[];
+  /** Sitzungs-Fragetyp: die aufgelöste Sitzung — Futter für den
+   *  Tagesordnungs-Baustein, wenn es (noch) keine Beschlüsse gibt. */
+  sitzungen?: SitzungsInfo[];
   anlagen?: AnlagenHinweis[];
   /** Wie tragfähig die gefundenen Beschlüsse sind (deterministisch aus den
    *  Relevanz-Werten) — „duenn" blendet einen Ehrlichkeits-Hinweis ein. */
@@ -780,6 +785,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             debatten: (msg.debatten as DebattenHinweis[]) ?? [],
             kontext: (msg.frage as string) ?? null,
             planungen: (msg.planungen as Planung[]) ?? [],
+            sitzungen: (msg.sitzungen as SitzungsInfo[]) ?? [],
             beleglage: (msg.beleglage as "solide" | "duenn") ?? undefined,
             steckbriefe: (msg.steckbriefe as Turn["steckbriefe"]) ?? [],
           });
@@ -1249,7 +1255,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       type DbTurn = { frage: string; antwort: string; quellen: {
         sources?: QaSource[]; cited?: number[]; presse?: PresseHinweis[];
         debatten?: DebattenHinweis[]; anlagen?: AnlagenHinweis[];
-        planungen?: Planung[]; recherche?: boolean; kontext?: string | null;
+        planungen?: Planung[]; sitzungen?: SitzungsInfo[];
+        recherche?: boolean; kontext?: string | null;
         gelesen?: number; zeitraum?: string } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
@@ -1259,6 +1266,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         debatten: t.quellen?.debatten ?? [],
         anlagen: t.quellen?.anlagen ?? [],
         planungen: t.quellen?.planungen ?? [],
+        sitzungen: t.quellen?.sitzungen ?? [],
         cited: t.quellen?.cited ?? [],
         // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
         // Sie ist der Schlüssel, unter dem nachladende Bausteine ihr Ergebnis
@@ -2179,6 +2187,17 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               (Tims Befund 10.08.) — ob es reicht, entscheidet der Endpoint. */}
           {/* Bei Personen-Fragen zielt alles auf EINE Person — die Meinung
               aller Parteien daneben wäre Rauschen (Tims Befund 10.08.). */}
+          {/* Tagesordnungs-Baustein (Sitzungs-Fragetyp): Fragt jemand nach
+              einer konkreten Sitzung ohne (bislang) Beschlüsse — kommender
+              Termin oder Protokoll-Verzug —, reißt die Karte die Tagesordnung
+              an. Deterministisch aus dem Sitzungskalender, nie vom Modell.
+              Sie steht ZUOBERST: Für diese Fragen ist sie die eigentliche
+              Antwort-Beilage — unter dem Parteien-Baustein rutschte sie
+              unter die Falz und blieb unbemerkt (Tims Befund 26.08.). */}
+          {!beschaeftigt && (turn.sitzungen?.length ?? 0) > 0 && (
+            <TagesordnungBlock sitzungen={turn.sitzungen ?? []} />
+          )}
+
           {!beschaeftigt && turn.antwort && !turn.fehler && !turn.abgebrochen
             && turn.qtype !== "person" && (turn.debatten?.length ?? 0) >= 1 && (
             <ParteienBaustein frage={turn.kontext || turn.frage}

@@ -1405,6 +1405,35 @@ def _presse_kompakt(rows: list[dict]) -> list[dict]:
              "datum": p.get("datum")} for p in rows]
 
 
+def _sitzungen_kompakt(sitzungen: list[dict]) -> list[dict]:
+    """Anzeige-Form der aufgelösten Sitzungen (Sitzungs-Fragetyp) für den
+    Tagesordnungs-Baustein im Chat — identisch im sources-Event und im
+    Gesprächs-Snapshot, damit ein geladenes Gespräch nichts verliert. Die
+    Tagesordnung wird auf wenige TOPs angerissen; ``n_agenda`` trägt die
+    Gesamtzahl für die „+ n weitere"-Zeile."""
+    out = []
+    for s in sitzungen:
+        agenda = s.get("agenda") or []
+        # Der Anriss zeigt INHALTE, keine Formalien: Beschlussfähigkeit,
+        # Protokoll-Genehmigung & Co. stehen in jeder Sitzung vorn und füllten
+        # alle sechs Plätze der Rats-Karte (dev-Probe 26.08.). Derselbe Filter
+        # wie in der Wochenvorschau; nur wenn NUR Formalien da sind, bleiben
+        # sie als ehrlicher Rest stehen.
+        inhalt = [a for a in agenda
+                  if not CouncilStore._FORMALIE_RE.search(a.get("title") or "")]
+        out.append({
+            "ksinr": s.get("ksinr"), "committee": s.get("committee"),
+            "session_date": s.get("session_date"),
+            "session_time": s.get("session_time"), "location": s.get("location"),
+            "kuenftig": bool(s.get("kuenftig")),
+            "n_beschluesse": len(s.get("beschluss_ids") or []),
+            "agenda": [{"item_number": a.get("item_number"),
+                        "title": a.get("title")} for a in (inhalt or agenda)[:6]],
+            "n_agenda": len(agenda),
+        })
+    return out
+
+
 def _debatten_kompakt(rows: list[dict]) -> list[dict]:
     return [{"sprecher": d.get("sprecher"), "partei": d.get("partei"),
              "art": d.get("art"), "top": d.get("top"),
@@ -1421,7 +1450,8 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
                     cited: list[int],
                     presse_rows: list[dict] | None = None,
                     debatten_rows: list[dict] | None = None,
-                    planungen: list[dict] | None = None) -> int | None:
+                    planungen: list[dict] | None = None,
+                    sitzungen: list[dict] | None = None) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
@@ -1463,7 +1493,9 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
              "debatten": _debatten_kompakt(debatten_rows or []),
              # Der Ausblick gehört wie Presse und Debatten in den Snapshot,
              # sonst öffnet ein gespeichertes Gespräch ohne „Wie es weitergeht".
-             "planungen": planungen or []}, ensure_ascii=False)
+             "planungen": planungen or [],
+             # Der Tagesordnungs-Baustein ebenso (Sitzungs-Fragetyp).
+             "sitzungen": _sitzungen_kompakt(sitzungen or [])}, ensure_ascii=False)
         if not nwz.qa_turn_speichern(gespraech_id, user["id"],
                                      body.question, answer_text, quellen_json):
             if neu:
@@ -1675,9 +1707,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             steckbriefe = qa.steckbriefe_fuer(store, q_suche)
             # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
             lage = qa.beleglage(candidates)
-            if typ == "sitzung" and sitzung_ids:
+            if typ == "sitzung" and sitzungen:
                 # Die Sitzung ist deterministisch aufgelöst, kein Ähnlichkeits-
-                # Raten — die Dünn-Regel hätte hier nichts zu bremsen.
+                # Raten — die Dünn-Regel hätte hier nichts zu bremsen. Gilt
+                # auch OHNE Beschlüsse (kommender Termin, Protokoll-Verzug):
+                # Da antwortet der Sitzungskalender, und der „mit Vorsicht"-
+                # Hinweis stünde falsch neben der Tagesordnungs-Karte.
                 lage = "solide"
             zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
@@ -1688,6 +1723,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         "presse": _presse_kompakt(presse_rows),
                         "debatten": _debatten_kompakt(debatten_rows),
                         "planungen": planungen,
+                        # Tagesordnungs-Baustein: die aufgelösten Sitzungen des
+                        # Sitzungs-Fragetyps — deterministisch, nie vom Modell.
+                        "sitzungen": _sitzungen_kompakt(sitzungen),
                         "beleglage": lage,
                         # Der Hintergrund geht IMMER in die Antwort; als eigene
                         # Karte erscheint er nur, wenn die Antwort ihn nicht
@@ -1715,7 +1753,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Auch der Kein-Treffer-Turn gehört ins gespeicherte Gespräch —
                 # sonst klafft im Transkript eine Lücke (Review-Befund B4).
                 gespraech_id = _turn_speichern(nwz, user, body, q_suche, leer_text, [], [],
-                                               debatten_rows=debatten_rows)
+                                               debatten_rows=debatten_rows,
+                                               sitzungen=sitzungen)
                 yield _sse({"type": "done", "cited": [], "gespraech_id": gespraech_id})
                 return
             # Task 32: Themengröße deterministisch — viele Treffer über eine
@@ -1855,7 +1894,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            candidates, cited,
                                            presse_rows=presse_rows,
                                            debatten_rows=debatten_rows,
-                                           planungen=planungen)
+                                           planungen=planungen,
+                                           sitzungen=sitzungen)
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
                         "gespraech_id": gespraech_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
