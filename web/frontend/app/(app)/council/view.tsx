@@ -44,6 +44,18 @@ const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.p
    denselben Schlüssel, und der öffentliche Beschluss landete an der falschen
    Zeile. */
 const topKey = (n: string | null | undefined) => (n ?? "").replace(/^\p{L}+\s+/u, "").trim();
+const agendaNumber = (n: string | null | undefined) => n?.match(/\d+(?:\.\d+)*/)?.[0] ?? "";
+
+/** Gliederungs-TOPs wie „Anträge der Fraktionen“ haben kein eigenes Ergebnis.
+ *  Öffentlicher und nichtöffentlicher Teil werden getrennt betrachtet. */
+const hasAgendaChildren = (item: AgendaItem, items: AgendaItem[]) => {
+  const parent = agendaNumber(item.item_number);
+  if (!parent) return false;
+  return items.some((candidate) =>
+    Boolean(candidate.is_public) === Boolean(item.is_public)
+    && agendaNumber(candidate.item_number).startsWith(`${parent}.`),
+  );
+};
 
 /* DOM-Kennung einer Tagesordnungszeile — Ziel des `?top=…`-Sprungs aus einer
    Benachrichtigung. Bewusst die VOLLE Nummer, nicht `topKey`: Der wirft das
@@ -893,10 +905,11 @@ function YearDivider({ jahr }: { jahr: string }) {
    toter Text — man musste zurück in die Suche, um den Beschluss zu finden, der
    direkt dahinter liegt. TOPs ohne Beschluss (Berichte, künftige Sitzungen)
    bleiben bewusst ruhiger Text, damit der Zeiger nichts verspricht, was fehlt. */
-function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr }: {
+function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true }: {
   it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
   ksinr?: number;
+  bookmarkable?: boolean;
   /* Ziel des `?top=…`-Sprungs aus einer Benachrichtigung (s. topDomId). */
   domId?: string;
   /** Kurz nach dem Sprung hervorgehoben — sonst sieht die Zielzeile aus wie
@@ -957,7 +970,7 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksin
     flash && "bg-primary/[0.07] ring-2 ring-primary",
   );
 
-  const bookmark = it.is_public && ksinr != null
+  const bookmark = bookmarkable && it.is_public && ksinr != null
     ? <BookmarkButton target={{ kind: "agenda_item", ksinr, item_number: it.item_number }} compact className="mt-0.5 shrink-0" />
     : null;
 
@@ -1496,6 +1509,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                               {(d?.agenda_items ?? []).map((it, i) => (
                                 <AgendaRow key={i} it={it} query={query}
                                   ksinr={s.ksinr ?? undefined}
+                                  bookmarkable={!hasAgendaChildren(it, d?.agenda_items ?? [])}
                                   outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
@@ -1510,7 +1524,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         matched.length > 0 ? (
                           <>
                             <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">{matched.length} Treffer in der Tagesordnung</p>
-                            <ul className="space-y-0.5">{matched.map((it, i) => <AgendaRow key={i} it={it} query={query} ksinr={s.ksinr ?? undefined} myTopic={myByItem[it.item_number]} />)}</ul>
+                            <ul className="space-y-0.5">{matched.map((it, i) => <AgendaRow key={i} it={it} query={query} ksinr={s.ksinr ?? undefined} bookmarkable={Boolean(d) && !hasAgendaChildren(it, d?.agenda_items ?? [])} myTopic={myByItem[it.item_number]} />)}</ul>
                           </>
                         ) : (
                           <p className="px-2 text-sm text-muted-foreground">Kein Tagesordnungspunkt enthält „{query}" — Treffer im Ausschussnamen.</p>

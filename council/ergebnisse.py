@@ -147,6 +147,16 @@ def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
         # Konto mit Themen-Treffer UND gemerktem TOP nicht zweimal dieselbe
         # Protokoll-Veröffentlichung bekommt.
         bookmark_rows = nwz_store.bookmark_result_targets(ksinr)
+        konkrete_bookmarks = []
+        for row in bookmark_rows:
+            resolved = bookmark_logic.resolve_bookmark(row, council_store)
+            if resolved.get("agenda_group"):
+                # Altbestand: Oberpunkte wurden vor der Blatt-TOP-Regel noch
+                # akzeptiert. Kein Ergebnis versprechen, das es nicht gibt.
+                nwz_store.set_bookmark_result_notification(row["owner_id"], row["id"], False)
+                continue
+            konkrete_bookmarks.append(row)
+        bookmark_rows = konkrete_bookmarks
         bookmarks_by_owner: dict[int, list[dict]] = {}
         for row in bookmark_rows:
             bookmarks_by_owner.setdefault(row["owner_id"], []).append(row)

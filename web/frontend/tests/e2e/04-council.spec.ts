@@ -78,6 +78,29 @@ test.describe("Ratsinformationssystem", () => {
     await page.screenshot({ path: "test-results/screenshots/04-council-detail.png", fullPage: true, animations: "disabled" });
   });
 
+  test("only concrete subitems offer a bookmark button", async ({ page }) => {
+    await page.route("**/api/council/session/42", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...MOCK_DETAIL,
+          agenda_items: [
+            { item_number: "Ö 4", title: "Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder", vorlage_nr: null, kvonr: null, is_public: 1 },
+            { item_number: "Ö 4.1", title: "Antrag: Mehr sichere Schulwege", vorlage_nr: "2026/401", kvonr: 401, is_public: 1 },
+          ],
+        }),
+      }),
+    );
+
+    await page.goto("/council?tab=sessions");
+    await page.locator("main button", { hasText: "Bauausschuss" }).first().click();
+    const parent = page.locator("li", { hasText: "Anträge der Fraktionen" });
+    const child = page.locator("li", { hasText: "Mehr sichere Schulwege" });
+    await expect(parent.getByRole("button", { name: "Zur Merkliste hinzufügen" })).toHaveCount(0);
+    await expect(child.getByRole("button", { name: "Zur Merkliste hinzufügen" })).toBeVisible();
+  });
+
   test("scope tab change triggers reload", async ({ page }) => {
     let callCount = 0;
     await page.route("**/api/council/sessions**", (route) => {

@@ -58,6 +58,11 @@ def list_bookmarks(user: dict = Depends(require_active),
     out = []
     for row in nwz.get_bookmarks(user["id"]):
         entry = bookmark_logic.enrich_bookmark(row, council)
+        # Alte Oberpunkt-Merker bleiben sichtbar, lösen aber keine irreführende
+        # Ergebnis-Meldung mehr aus. Gelöscht wird nichts ohne Zutun des Kontos.
+        if entry.get("is_group") and row.get("notify_result"):
+            nwz.set_bookmark_result_notification(user["id"], row["id"], False)
+            entry["notify_result"] = False
         out.append(entry)
         item, decision = entry.get("agenda_item"), entry.get("decision")
         # Erkannte Nummernverschiebungen und nachträglich entstandene
@@ -97,13 +102,20 @@ def create_bookmark(payload: BookmarkIn,
         if payload.ksinr is None or not (payload.item_number or "").strip():
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Tagesordnungspunkt fehlt.")
         session = council.get_session(payload.ksinr)
-        item = next((i for i in council.agenda_items(payload.ksinr)
+        items = council.agenda_items(payload.ksinr)
+        item = next((i for i in items
                      if i["item_number"] == payload.item_number), None)
         if not session or not item:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
         if not item.get("is_public"):
             raise HTTPException(status.HTTP_400_BAD_REQUEST,
                                 "Nichtöffentliche Tagesordnungspunkte können nicht gemerkt werden.")
+        if bookmark_logic.has_numbered_children(item, items):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Dieser Oberpunkt fasst mehrere Unterpunkte zusammen. "
+                "Bitte merke einen konkreten Unterpunkt.",
+            )
         existing = _existing_agenda_bookmark(nwz.get_bookmarks(owner_id), payload.ksinr, item)
         if existing:
             return bookmark_logic.enrich_bookmark(existing, council)
@@ -155,6 +167,11 @@ def set_notification(bookmark_id: int, payload: BookmarkNotificationIn,
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "Ergebnis-Hinweise gibt es nur für Tagesordnungspunkte.")
     entry = bookmark_logic.enrich_bookmark(row, council)
+    if payload.notify_result and entry.get("is_group"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Dieser Oberpunkt hat kein eigenes Ergebnis. Bitte merke einen konkreten Unterpunkt.",
+        )
     if payload.notify_result and entry.get("decision"):
         raise HTTPException(status.HTTP_409_CONFLICT, "Das Ergebnis liegt bereits vor.")
     updated = nwz.set_bookmark_result_notification(user["id"], bookmark_id,
