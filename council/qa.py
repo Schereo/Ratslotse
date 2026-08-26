@@ -446,9 +446,17 @@ _ZEITRAUM_PREP_RE = re.compile(
 # Frage am Vorabend einer echten Bauausschuss-Sitzung). „morgen" zählt nur
 # als Tag, nicht als Tageszeit oder Gruß („Guten Morgen", „am Morgen früh").
 _RELATIV_TAGE = {"vorgestern": -2, "gestern": -1, "heute": 0,
-                 "morgen": 1, "uebermorgen": 2, "übermorgen": 2}
+                 "morgen": 1, "uebermorgen": 2, "übermorgen": 2,
+                 "vorgestrig": -2, "gestrig": -1, "heutig": 0,
+                 "morgig": 1, "uebermorgig": 2, "übermorgig": 2}
+# Substantive EXAKT („morgens" ist eine Tageszeit, kein Tag), Adjektive mit
+# Endung: Die Frage-Analyse kondensiert „im Bauausschuss morgen" gern zu
+# „am morgigen Tag" — ohne die Adjektiv-Formen fiel genau das durchs Raster
+# (Tims Befund 26.08., zweiter Anlauf).
 _RELATIV_RE = re.compile(
-    r"\b(vorgestern|gestern|heute|uebermorgen|übermorgen|morgen)\b", re.IGNORECASE)
+    r"\b(?:(vorgestern|gestern|heute|uebermorgen|übermorgen|morgen)|"
+    r"(vorgestrig|gestrig|heutig|morgig|uebermorgig|übermorgig)\w*)\b",
+    re.IGNORECASE)
 _MORGEN_TAGESZEIT_RE = re.compile(
     r"\b(guten|am|jeden|den|diesen|des)\s*$", re.IGNORECASE)
 
@@ -473,7 +481,7 @@ def _datum_in_frage(frage: str) -> tuple[str | None, str | None]:
     for m in _RELATIV_RE.finditer(frage):
         if _ZEITRAUM_PREP_RE.search(frage[:m.start()]):
             continue  # „bis heute", „seit gestern", „ab morgen" sind Spannen
-        wort = m.group(1).lower()
+        wort = (m.group(1) or m.group(2)).lower()
         if wort == "morgen" and _MORGEN_TAGESZEIT_RE.search(frage[:m.start()]):
             continue  # „Guten Morgen …", „am Morgen" — Gruß/Tageszeit, kein Tag
         from datetime import date as _date, timedelta as _timedelta

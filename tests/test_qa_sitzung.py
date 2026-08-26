@@ -48,6 +48,14 @@ def test_datum_in_frage_relative_tage():
     # „bis heute"/„seit gestern" sind Zeitspannen, keine Sitzungstermine.
     assert f("Was hat der Rat bis heute zum Stadion beschlossen?") == (None, None)
     assert f("Was ist seit gestern passiert?") == (None, None)
+    # Adjektiv-Formen: Die Frage-Analyse kondensiert „morgen" gern zu
+    # „am morgigen Tag" — genau diese Fassung fiel beim zweiten Anlauf
+    # durchs Raster (dev-Probe 26.08.).
+    assert f("Themen des Bauausschusses am morgigen Tag") == (tag(1), None)
+    assert f("Was stand in der gestrigen Ratssitzung an?") == (tag(-1), None)
+    assert f("Die heutige Tagesordnung des Sozialausschusses?") == (tag(0), None)
+    # „morgens" ist eine Tageszeit, kein Tag.
+    assert f("Was passiert morgens im Rathaus?") == (None, None)
 
 
 def test_datum_in_frage_zeitraum_und_muell():
