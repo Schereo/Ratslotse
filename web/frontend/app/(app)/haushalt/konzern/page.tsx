@@ -29,7 +29,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { HaushaltAuswahl, haushaltUrl, herkunftVon } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
-import { Abschnitte } from "@/components/haushalt/abschnitte";
+import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
@@ -146,19 +146,19 @@ function KonzernSeiteInner() {
 
         <Abschnitte marken={MARKEN} />
 
-        <section id="summe" className="scroll-mt-20">
+        <section id="summe" className={ANKER_KLASSE}>
           <KonzernAbschnitt onBestand={setKern} />
         </section>
 
-        <section id="gesellschaften" className="scroll-mt-20 border-t border-border pt-4">
+        <section id="gesellschaften" className={`${ANKER_KLASSE} border-t border-border pt-4`}>
           <GesellschaftenAbschnitt onBestand={setBericht} />
         </section>
 
-        <section id="betriebe" className="scroll-mt-20 border-t border-border pt-4">
+        <section id="betriebe" className={`${ANKER_KLASSE} border-t border-border pt-4`}>
           <BetriebeAbschnitt data={data} loading={loading} />
         </section>
 
-        <section id="gebuehren" className="scroll-mt-20 border-t border-border pt-4">
+        <section id="gebuehren" className={`${ANKER_KLASSE} border-t border-border pt-4`}>
           <GebuehrenAbschnitt data={data} loading={loading} />
         </section>
 

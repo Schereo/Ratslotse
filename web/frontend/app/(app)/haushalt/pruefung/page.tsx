@@ -19,7 +19,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
-import { Abschnitte } from "@/components/haushalt/abschnitte";
+import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
@@ -124,11 +124,11 @@ function PruefungInner() {
 
         <Abschnitte marken={MARKEN} />
 
-        <section id="feststellungen" className="scroll-mt-20">
+        <section id="feststellungen" className={ANKER_KLASSE}>
           <PruefungAbschnitt onBestand={setBestand} />
         </section>
 
-        <section id="kennzahlen" className="scroll-mt-20 border-t border-border pt-4">
+        <section id="kennzahlen" className={`${ANKER_KLASSE} border-t border-border pt-4`}>
           <KennzahlenAbschnitt />
         </section>
 

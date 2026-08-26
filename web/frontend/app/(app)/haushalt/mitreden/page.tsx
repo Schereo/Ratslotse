@@ -33,7 +33,7 @@ import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
-import { Abschnitte } from "@/components/haushalt/abschnitte";
+import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
@@ -161,14 +161,15 @@ function MitredenInner() {
 
         <Abschnitte marken={MARKEN} />
 
-        {/* `scroll-mt` an jedem Abschnitt: Der klebende Streifen deckt die
+        {/* `ANKER_KLASSE` an jedem Abschnitt: Der klebende Stapel (mobil
+            Header + Streifen, ab `desk` nur der Streifen) deckt die
             Überschrift sonst zu, wenn jemand mit einem `#anker` von außen
             kommt — dann läuft unser eigener Sprung-Rechner gar nicht. */}
-        <section id="termine" className="scroll-mt-20">
+        <section id="termine" className={ANKER_KLASSE}>
           <TermineAbschnitt onBestand={setTermine} />
         </section>
 
-        <section id="streit" className="scroll-mt-20 border-t border-border pt-4">
+        <section id="streit" className={`${ANKER_KLASSE} border-t border-border pt-4`}>
           <StreitAbschnitt onBestand={setStreit} />
         </section>
 
