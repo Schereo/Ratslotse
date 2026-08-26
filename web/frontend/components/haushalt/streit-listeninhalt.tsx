@@ -25,6 +25,7 @@ import {
   politikZeilen,
 } from "@/lib/haushalt-aenderungslisten";
 import { Beleg, Dokumentbeleg } from "@/components/haushalt/quelle";
+import { BetragZelle, TextZelle, ZahlenTabelle } from "@/components/haushalt/zahlen-tabelle";
 import { parteiDot } from "@/components/qa-bausteine";
 import { cn } from "@/lib/utils";
 
@@ -78,22 +79,36 @@ function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
       </summary>
 
       <div className="mt-2 pl-[26px]">
-        {liste.saldo && (
-          <p className="text-[11.5px] leading-relaxed">
-            <SummenWerte e={liste.saldo.ertraege} a={liste.saldo.aufwendungen}
-              s={liste.saldo.saldo} />
-            <Beleg q="aenderungsliste" h={liste.herkunft} />
-          </p>
-        )}
-        <div className="mt-2 overflow-hidden rounded-xl border border-border/60">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-4 border-b border-border/60 bg-muted/40 px-3 py-1.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            <span>Position</span><span className="text-right">Ertrag</span>
-            <span className="text-right">Aufwand</span>
-          </div>
+        {/* Echte <table> statt Grid je Zeile (zahlen-tabelle.tsx): EIN
+            Spaltenraster, Spaltenlinien, klebender Kopf — und die Summe der
+            Liste als Fußzeile, die die Spalten unten noch einmal ankert. */}
+        <ZahlenTabelle
+          className="mt-2"
+          spalten={[
+            { titel: "Position" },
+            { titel: "Ertrag", zahl: true },
+            { titel: "Aufwand", zahl: true },
+          ]}
+          fuss={liste.saldo && (
+            <tr>
+              <TextZelle className="border-t-border/60 py-2">
+                <span className="text-[11.5px] font-semibold text-foreground">Summe der Liste</span>
+                <span className={cn("ml-2 whitespace-nowrap font-mono text-[11px] font-medium tabular-nums",
+                  liste.saldo.saldo < 0 ? "text-signal" : "text-muted-foreground")}>
+                  Saldo {deltaBetrag(liste.saldo.saldo)}
+                </span>
+                <Beleg q="aenderungsliste" h={liste.herkunft} />
+              </TextZelle>
+              <BetragZelle euro={liste.saldo.ertraege} text={deltaBetrag(liste.saldo.ertraege)}
+                className="border-t-border/60 py-2 font-medium" />
+              <BetragZelle euro={liste.saldo.aufwendungen} text={deltaBetrag(liste.saldo.aufwendungen)}
+                className="border-t-border/60 py-2 font-medium" />
+            </tr>
+          )}
+        >
           {liste.zeilen.map((z) => (
-            <div key={z.lfd}
-              className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-baseline gap-x-4 border-b border-border/40 px-3 py-1.5 text-[12px] leading-snug last:border-b-0">
-              <span className="min-w-0">
+            <tr key={z.lfd}>
+              <TextZelle>
                 {z.bezeichnung ? (
                   <span className="text-foreground/90">{z.bezeichnung}</span>
                 ) : (
@@ -110,16 +125,12 @@ function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
                     {z.erlaeuterung}
                   </span>
                 )}
-              </span>
-              <span className="whitespace-nowrap text-right font-mono text-[11.5px] tabular-nums text-foreground/85">
-                {deltaBetrag(z.ertrag)}
-              </span>
-              <span className="whitespace-nowrap text-right font-mono text-[11.5px] tabular-nums text-foreground/85">
-                {deltaBetrag(z.aufwand)}
-              </span>
-            </div>
+              </TextZelle>
+              <BetragZelle euro={z.ertrag} text={deltaBetrag(z.ertrag)} />
+              <BetragZelle euro={z.aufwand} text={deltaBetrag(z.aufwand)} />
+            </tr>
           ))}
-        </div>
+        </ZahlenTabelle>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
           {liste.bisPlanjahr && (
             <p className="text-[11px] leading-relaxed text-muted-foreground">
