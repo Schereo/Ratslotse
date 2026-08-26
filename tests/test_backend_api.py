@@ -2638,6 +2638,11 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
     assert gesehen["typ"] == "sitzung"
     assert gesehen["ids"] == [1, 2, 3]
     assert gesehen["sitzungen"][0]["committee"] == "Jugendhilfeausschuss"
+    # Sitzung MIT Beschlüssen: das sources-Event nennt sie, aber ohne
+    # Tagesordnungs-Anriss — die Inhalte stehen ja schon in den Quellen,
+    # die Chat-Karte (agenda-basiert) bleibt hier bewusst aus.
+    (s,) = src["sitzungen"]
+    assert s["n_beschluesse"] == 3 and s["n_agenda"] == 0 and s["agenda"] == []
 
 
 def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch):
@@ -2667,6 +2672,16 @@ def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch)
     answer = "".join(e["text"] for e in events if e["type"] == "token")
     assert "tagt erst am" in answer and "Bäderbericht" in answer
     assert "keine passenden Beschlüsse" not in answer
+    # Tagesordnungs-Baustein: das sources-Event trägt die aufgelöste Sitzung
+    # samt angerissener Tagesordnung — Futter für die Chat-Karte.
+    src = next(e for e in events if e["type"] == "sources")
+    # Kein „mit Vorsicht"-Hinweis neben der Kalender-Antwort: Die Sitzung ist
+    # deterministisch aufgelöst, auch wenn es (noch) keine Beschlüsse gibt.
+    assert src["beleglage"] == "solide"
+    (s,) = src["sitzungen"]
+    assert s["committee"] == "Sportausschuss" and s["kuenftig"] is True
+    assert s["n_agenda"] == 1 and s["agenda"][0]["title"] == "Bäderbericht"
+    assert s["ksinr"] == 7 and s["n_beschluesse"] == 0
 
 
 def test_ask_einfacher_erklaeren_nimmt_den_eigenen_prompt(client, monkeypatch):
