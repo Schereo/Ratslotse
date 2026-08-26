@@ -10,4 +10,7 @@ Sitzungsdatum oder die letzte/nächste Sitzung eines Gremiums, wird die Sitzung
 im Sitzungskalender aufgelöst und ihre Beschlüsse gehen vollständig und in
 Tagesordnungs-Reihenfolge in die Antwort ein. Steht die Sitzung noch bevor
 oder ist ihr Protokoll noch nicht ausgewertet, sagt die Antwort das ehrlich —
-samt Termin und Tagesordnung, statt Beschlüsse anderer Sitzungen unterzuschieben.
+samt Termin und Tagesordnung, statt Beschlüsse anderer Sitzungen
+unterzuschieben. Bei vergangenen Sitzungen erklärt sie dabei auch, dass die
+Stadt Protokolle in der Regel erst einige Wochen nach dem Termin
+veröffentlicht — das Fehlen ist der normale Ablauf, kein Fehler.

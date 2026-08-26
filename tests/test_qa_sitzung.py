@@ -178,10 +178,15 @@ def test_sitzungen_block_rendert_beide_zustaende():
 
 
 def test_sitzungen_block_kein_protokoll():
+    """Vergangene Sitzung ohne Protokoll: Der Verzug (Wochen bis 1–2 Monate)
+    ist der Normalfall — die Antwort muss ihn ausdrücklich als solchen
+    erklären, sonst liest sich das Fehlen wie ein Fehler von Ratslotse."""
     block = qa._sitzungen_block([
         {"committee": "Rat", "session_date": "2026-08-20", "kuenftig": False,
          "beschluss_ids": [], "agenda": []}])
-    assert "noch kein Protokoll ausgewertet" in block
+    assert "noch kein ausgewertetes Protokoll" in block
+    assert "Wochen" in block
+    assert "normale Ablauf" in block and "kein Fehler" in block
 
 
 def test_sitzungs_leer_text():
@@ -191,8 +196,10 @@ def test_sitzungs_leer_text():
     assert "tagt erst am 01.09.2026" in kuenftig and "„Bäderbericht“" in kuenftig
     verzug = qa.sitzungs_leer_text([
         {"committee": "Rat", "session_date": "2026-08-20", "kuenftig": False}])
-    assert "kein ausgewertetes Protokoll" in verzug or "Protokoll" in verzug
-    assert "20.08.2026" in verzug
+    assert "20.08.2026" in verzug and "Protokoll" in verzug
+    # Der Verzug wird als Normalfall erklärt — nicht nur festgestellt.
+    assert "Wochen" in verzug and "normale Ablauf" in verzug and "kein Fehler" in verzug
+    assert "automatisch" in verzug
 
 
 def test_analyse_sitzung_setzt_nur_der_router(monkeypatch):
