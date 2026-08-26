@@ -319,7 +319,7 @@ function SteuerInner() {
         const stufen = reihe.slice(-4);
         const min = Math.min(...stufen.map((z) => z.hebesatz));
         const max = Math.max(...stufen.map((z) => z.hebesatz));
-        const hoehe = (w: number) => max > min ? 12 + ((w - min) / (max - min)) * 30 : 26;
+        const hoehe = (w: number) => (max > min ? 12 + ((w - min) / (max - min)) * 28 : 24);
         return (
           <Seitenbuehne
             kicker={`Steuer-Steckbrief · Hebesatz ${art.hebesatzArten?.[0] ?? art.titel}`}
@@ -329,28 +329,51 @@ function SteuerInner() {
               href: "#hebesatz",
               label: "Hebesatz-Treppe — klickt zur ganzen Reihe seit 1980",
               skizze: (
-                <span className="relative block" style={{ height: 48 }}>
-                  {stufen.map((z, i) => {
-                    const links = (i / stufen.length) * 100;
-                    const breite = 100 / stufen.length;
-                    return (
-                      <span key={z.jahr}>
-                        <span className="absolute" style={{
-                          left: `${links}%`, width: `${breite}%`,
-                          bottom: hoehe(z.hebesatz), borderTop: "3px solid var(--sb-voll)",
-                        }} />
-                        {i > 0 && (
-                          <span className="absolute" style={{
-                            left: `${links}%`,
-                            bottom: Math.min(hoehe(stufen[i - 1].hebesatz), hoehe(z.hebesatz)),
-                            height: Math.abs(hoehe(z.hebesatz) - hoehe(stufen[i - 1].hebesatz)),
-                            borderLeft: "2px dashed var(--sb-strich)",
+                // Mit Achse und Werten (Tim, 26.08.: „komplett ohne Achse ohne
+                // Daten … wenig sinnvoll"): Erste und letzte Stufe tragen
+                // ihren Satz, darunter stehen die Änderungsjahre. Die Stufen
+                // steigen beim Seitenaufbau nacheinander ein (sb-schritt) —
+                // einmal, keine Schleife (H5-07).
+                <>
+                  <span className="relative block" style={{ height: 56 }}>
+                    {stufen.map((z, i) => {
+                      const links = (i / stufen.length) * 100;
+                      const breite = 100 / stufen.length;
+                      const beschriftet = i === 0 || i === stufen.length - 1;
+                      return (
+                        <span key={z.jahr}>
+                          {i > 0 && (
+                            <span className="sb-schritt absolute" style={{
+                              left: `${links}%`,
+                              bottom: Math.min(hoehe(stufen[i - 1].hebesatz), hoehe(z.hebesatz)),
+                              height: Math.abs(hoehe(z.hebesatz) - hoehe(stufen[i - 1].hebesatz)),
+                              borderLeft: "2px dashed var(--sb-strich)",
+                              animationDelay: `${0.1 + i * 0.16}s`,
+                            }} />
+                          )}
+                          <span className="sb-schritt absolute" style={{
+                            left: `${links}%`, width: `${breite}%`,
+                            bottom: hoehe(z.hebesatz), borderTop: "3px solid var(--sb-voll)",
+                            animationDelay: `${0.18 + i * 0.16}s`,
                           }} />
-                        )}
-                      </span>
-                    );
-                  })}
-                </span>
+                          {beschriftet && (
+                            <span className="sb-schritt absolute font-mono text-[9px] leading-none tabular-nums text-muted-foreground" style={{
+                              [i === 0 ? "left" : "right"]: `${i === 0 ? links : 0}%`,
+                              bottom: hoehe(z.hebesatz) + 5,
+                              animationDelay: `${0.26 + i * 0.16}s`,
+                            }}>
+                              {z.hebesatz}&#8239;%
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </span>
+                  <span className="flex justify-between font-mono text-[9px] leading-none tabular-nums text-muted-foreground">
+                    <span>{stufen[0].jahr}</span>
+                    <span>{stufen[stufen.length - 1].jahr}</span>
+                  </span>
+                </>
               ),
             }}
           />

@@ -783,6 +783,37 @@
   --sb-strich: hsl(207 20% 52%);
 }
 
+/* Minibild der Seitenbühne: Die Skizzen-Zeilen blenden beim Seitenaufbau
+   gestaffelt ein (Tim, 26.08.: „kann man die Grafik im Header auch
+   animieren?") — EINMAL, wie der Zähl-Tween daneben (H5-07: Sichtkontakt
+   zählt einmal pro Seitenaufruf, keine Schleifen: eine Endlos-Animation
+   neben einer Lese-Zahl wäre Dauer-Unruhe). `sb-schritt` ist dieselbe
+   Staffel für Einzel-Elemente INNERHALB einer Skizze (Hebesatz-Treppe:
+   die Stufen steigen nacheinander, Versatz per animation-delay inline). */
+@keyframes sb-einblenden {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.sb-minibild > * {
+  opacity: 0;
+  animation: sb-einblenden 0.3s ease-out forwards;
+}
+.sb-minibild > *:nth-child(1) { animation-delay: 0.10s; }
+.sb-minibild > *:nth-child(2) { animation-delay: 0.22s; }
+.sb-minibild > *:nth-child(3) { animation-delay: 0.34s; }
+.sb-minibild > *:nth-child(4) { animation-delay: 0.46s; }
+.sb-minibild > *:nth-child(n+5) { animation-delay: 0.58s; }
+.sb-schritt {
+  opacity: 0;
+  animation: sb-einblenden 0.3s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sb-minibild > *, .sb-schritt {
+    opacity: 1;
+    animation: none;
+  }
+}
+
 /* Schraffur für Rücklage/Fehlbetrag (H-01/H-03/H-07): Signal nur als Kante
    und Muster, nie als Fläche — die Lücken-Konvention aller Haushalts-Grafiken.
    Die Farbe kommt aus `--hh-schraffur`, damit das Muster auf der Anzeigetafel

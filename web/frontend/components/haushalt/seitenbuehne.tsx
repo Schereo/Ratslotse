@@ -147,7 +147,7 @@ export function Seitenbuehne({ kicker, zahl, sub, minibild, className }: {
             className="group flex min-w-0 flex-col gap-1.5"
             aria-label={minibild.label}
           >
-            <span aria-hidden="true" className="flex flex-col gap-1">
+            <span aria-hidden="true" className="sb-minibild flex flex-col gap-1">
               {minibild.skizze}
             </span>
             <span className="text-[9.5px] leading-snug text-muted-foreground transition-colors group-hover:text-primary">
