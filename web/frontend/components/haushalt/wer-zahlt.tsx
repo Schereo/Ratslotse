@@ -45,6 +45,7 @@
 // zufällig stimmte.
 
 import { Beleg } from "@/components/haushalt/quelle";
+import { Gesetz } from "@/components/haushalt/gesetz";
 import { GlossaryText } from "@/components/glossary-text";
 import type { GewerbesteuerstatistikZeile } from "@/lib/haushalt";
 
@@ -131,7 +132,8 @@ function Zeile({ label, wert, anteil, farbe }: {
 }
 
 export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetze,
-                           statistik = null, statistikAbgrenzung = "" }: {
+                           statistik = null, statistikKurz = "",
+                           statistikAbgrenzung = "" }: {
   steuern: SteuerZeile[];
   /** Die Schreibweise der Gewerbesteuer in `council_steuern.art`. */
   art: string | null;
@@ -144,9 +146,11 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
    *  `null`, solange der Ingest auf dieser Maschine nicht lief; dann bleibt
    *  der Block, was er vorher war. */
   statistik?: GewerbesteuerstatistikZeile | null;
-  /** Was diese Zahlen umfassen, im Wortlaut der API. Steht klein unter dem
-   *  Nenner — und **nicht** hier im Quelltext, sonst driftet er gegen die
-   *  Angabe an den Daten. */
+  /** Der eine Satz, ohne den die Zahlen irreführen — steht immer sichtbar. */
+  statistikKurz?: string;
+  /** Der Rest der Abgrenzung, im Wortlaut der API. Steht hinter „Was diese
+   *  Zahlen genau umfassen" — und **nicht** hier im Quelltext, sonst driftet
+   *  er gegen die Angabe an den Daten. */
   statistikAbgrenzung?: string;
 }) {
   const eigen = reihe(steuern, art);
@@ -233,7 +237,8 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
       <p className="mt-2 max-w-[74ch] text-[13px] leading-relaxed text-foreground/90">
         <strong>Welche Unternehmen die größten Beträge zahlen, darf niemand nennen.</strong>{" "}
         Was eine einzelne Firma an Gewerbesteuer zahlt, fällt unter das{" "}
-        <GlossaryText text="Steuergeheimnis" /> (§ 30 Abgabenordnung). Die Kämmerei kennt die
+        <GlossaryText text="Steuergeheimnis" /> (§ 30 Abgabenordnung<Gesetz g="ao-30" />). Die
+        Kämmerei kennt die
         Namen, veröffentlichen darf sie sie nicht — auch nicht gegenüber dem Rat. In
         Haushaltsberatungen ist deshalb höchstens von „einem Großzahler“ die Rede. Das ist keine
         Lücke, die wir noch schließen: Es gibt keine Kommune in Deutschland, die eine solche
@@ -270,11 +275,30 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
             )}
           </div>
 
-          <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-            Die übrigen {deZahl(ohneSteuer)} hatten einen Steuermessbetrag von null — Verlust,
-            Freibetrag oder gar kein Gewerbeertrag. {statistikAbgrenzung}
-            <Beleg q="lsn_gewerbesteuer" />
-          </p>
+          {/* Sechs Zeilen Kleingedrucktes standen hier bis zum 26.08.2026 am
+              Stück und erschlugen die drei Zahlen darüber (Tim). Sichtbar
+              bleibt, was die Zahlen sonst irreführen ließe; der Rest ist einen
+              Klick entfernt und nicht weg. WELCHER SATZ SICHTBAR BLEIBT,
+              entscheidet die API (`ABGRENZUNG_KURZ`) und nicht diese Datei —
+              das ist eine Aussage über die Daten, keine über das Layout. */}
+          <div className="mt-3 border-t border-dashed border-border pt-2.5">
+            <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+              Die übrigen {deZahl(ohneSteuer)} hatten einen Steuermessbetrag von null — Verlust,
+              Freibetrag oder gar kein Gewerbeertrag. {statistikKurz}
+              <Beleg q="lsn_gewerbesteuer" />
+            </p>
+            {statistikAbgrenzung && (
+              <details className="group mt-1.5">
+                <summary className="cursor-pointer list-none text-[11px] font-semibold text-primary marker:content-none">
+                  <span className="group-open:hidden">Was diese Zahlen genau umfassen</span>
+                  <span className="hidden group-open:inline">Weniger</span>
+                </summary>
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                  {statistikAbgrenzung}
+                </p>
+              </details>
+            )}
+          </div>
         </div>
       )}
 
@@ -325,7 +349,8 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
             <li>
               <strong>Die Steuer folgt der Lohnsumme, nicht der Zentrale.</strong> Hat ein
               Unternehmen Standorte in mehreren Gemeinden, wird seine Gewerbesteuer unter ihnen
-              aufgeteilt (<GlossaryText text="Zerlegung" />, § 29 Gewerbesteuergesetz) —
+              aufgeteilt (<GlossaryText text="Zerlegung" />, § 29
+              Gewerbesteuergesetz<Gesetz g="gewstg-29" />) —
               Maßstab sind die Arbeitslöhne je Standort. Wer hier viele Menschen beschäftigt,
               lässt hier auch einen großen Teil seiner Steuer.
               {zerlegtAnteil != null && zerlegtFaktor != null && statistik && (

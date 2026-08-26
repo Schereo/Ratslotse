@@ -81,8 +81,8 @@ Eine Veranlagung ist erst nach den Betriebsprüfungen endgültig; der Bericht
 erscheint deshalb rund fünf Jahre später (Berichtsjahr 2019 → August 2024,
 2020 → September 2025, 2021 → März 2026). Neben einer Aufkommenskurve bis
 2025 steht hier also ein Nenner von 2021. Das ist kein Grund, ihn wegzulassen
-— aber einer, es dazuzusagen: :data:`ABGRENZUNG` tut das, und es reist mit den
-Zahlen statt im Frontend zu stehen.
+— aber einer, es dazuzusagen: :data:`ABGRENZUNG_KURZ` und :data:`ABGRENZUNG`
+tun das, und beide reisen mit den Zahlen statt im Frontend zu stehen.
 
 Warum kein eigener XLSX-Leser
 -----------------------------
@@ -141,19 +141,33 @@ BLATT_GEMEINDEN = "6.2"
 STAEDTE = sv.KREISFREIE_STAEDTE
 OLDENBURG = sv.OLDENBURG
 
-#: Was diese Zahlen umfassen — in einem Absatz, der neben ihnen stehen kann.
-#: Reist mit den Daten über die API, nicht als Text im Frontend: Eine Legende,
-#: die es in zwei Sprachen gibt, driftet (dieselbe Regel wie bei
+#: Was diese Zahlen umfassen — in **zwei** Fassungen, und beide reisen mit den
+#: Daten über die API statt im Frontend zu stehen (eine Legende, die es in zwei
+#: Sprachen gibt, driftet — dieselbe Regel wie bei
 #: ``steuertabellen.ABGRENZUNG_1103``).
+#:
+#: WARUM ZWEI. Die vollständige Fassung ist sechs Zeilen lang und stand bis zum
+#: 26.08.2026 ungekürzt unter den drei Zahlen — mehr Kleingedrucktes als
+#: Aussage (Tim). Sie bleibt vollständig erhalten, steht auf der Seite aber
+#: hinter einem „Was diese Zahlen genau umfassen"; davor steht der eine Satz,
+#: ohne den die Zahlen irreführen. Die Aufteilung liegt HIER und nicht im
+#: Frontend: Was sichtbar bleiben muss, ist eine Aussage über die Daten und
+#: keine über das Layout.
+#:
+#: :data:`ABGRENZUNG_KURZ` steht immer, :data:`ABGRENZUNG` setzt fort — die
+#: beiden wiederholen einander nicht.
+ABGRENZUNG_KURZ = (
+    "Gezählt wird die Veranlagung des Erhebungsjahres — nicht das Geld, das in "
+    "diesem Jahr in der Kasse ankam.")
+
 ABGRENZUNG = (
-    "Gezählt werden Betriebe und Betriebsstätten nach dem Sitz — also die "
-    "Fälle, für die in Oldenburg Gewerbesteuer erhoben wird, samt der "
-    "Betriebsstätten auswärtiger Unternehmen. Der Steuermessbetrag ist die "
-    "Veranlagung des Erhebungsjahres (Gewerbeertrag × 3,5 %), nicht das Geld, "
-    "das in diesem Jahr in der Kasse ankam: Vorauszahlungen, Abschluss- und "
-    "Berichtigungszahlungen verschieben sich um Jahre. Messbetrag mal Hebesatz "
-    "ergibt deshalb nicht das Aufkommen der Kurve oben — in den Jahren 2019 "
-    "bis 2021 lagen beide zwischen 13 % darunter und 27 % darüber. Die "
+    "Erfasst sind Betriebe und Betriebsstätten nach dem Sitz, also die Fälle, "
+    "für die in Oldenburg Gewerbesteuer erhoben wird — samt der Betriebsstätten "
+    "auswärtiger Unternehmen. Der Steuermessbetrag entsteht aus dem "
+    "Gewerbeertrag (× 3,5 %); Vorauszahlungen, Abschluss- und "
+    "Berichtigungszahlungen verschieben sich dagegen um Jahre. Messbetrag mal "
+    "Hebesatz ergibt deshalb nicht das Aufkommen der Kurve oben — in den Jahren "
+    "2019 bis 2021 lagen beide zwischen 13 % darunter und 27 % darüber. Die "
     "Statistik erscheint rund fünf Jahre nach dem Erhebungsjahr.")
 
 
