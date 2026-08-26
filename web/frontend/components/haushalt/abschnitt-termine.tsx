@@ -89,7 +89,15 @@ export function TermineAbschnitt({ onBestand }: {
    *  Seitenbühne im Kopf rechnet ihre Tage aus derselben Antwort wie der
    *  Zeitstrahl (H5-02). `null`, wenn keiner im Kalender steht: Die Bühne
    *  erfindet dann keinen. */
-  onBestand?: (b: { naechster: { datum: string; gremium: string } | null }) => void;
+  onBestand?: (b: {
+    naechster: { datum: string; gremium: string } | null;
+    /** Die vier Phasen des jüngsten Haushaltswegs, für den Phasen-Strahl der
+     *  Bühne (Tim, 26.08.: „der Zeitstrahl sollte wenigstens anzeigen, wo wir
+     *  uns befinden, welche Phasen es gerade gibt"). Aus derselben Runde, die
+     *  der große Zeitstrahl unten zeichnet. */
+    phasen: { titel: string; datum: string | null; erledigt: boolean; aktuell: boolean }[];
+    jahr: number;
+  }) => void;
 } = {}) {
   const { data, loading } = useFetch<WegDaten>("/council/haushalt/weg");
   const { data: dokumente } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
@@ -99,14 +107,45 @@ export function TermineAbschnitt({ onBestand }: {
 
   useEffect(() => {
     if (!onBestand || loading) return;
-    if (!data?.runden.length) { onBestand({ naechster: null }); return; }
+    if (!data?.runden.length) { onBestand({ naechster: null, phasen: [], jahr: 0 }); return; }
     const tag = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`;
     const kommend = data.runden
       .flatMap((r) => r.stationen)
       .filter((st) => st.datum >= tag)
       .sort((a, b) => a.datum.localeCompare(b.datum));
-    onBestand({ naechster: kommend[0]
-      ? { datum: kommend[0].datum, gremium: kommend[0].gremium } : null });
+
+    // Die Phasen der jüngsten Runde — dieselben vier Stationen, die der
+    // Zeitstrahl unten ausführlich zeichnet. „erledigt" heißt: liegt hinter
+    // uns; „aktuell" ist die erste, die es nicht ist. Das Haushaltsjahr gilt
+    // als erreicht, sobald der Rat beschlossen hat.
+    const r = data.runden[data.runden.length - 1];
+    const ratsbeschluss = [...r.stationen]
+      .filter((st) => st.rolle === "Entscheidung" && st.ergebnis
+        && !/zurückgestellt|abgesetzt|vertagt/i.test(st.ergebnis))
+      .sort((a, b) => a.datum.localeCompare(b.datum))
+      .at(-1) ?? null;
+    const roh = [
+      { titel: "Einbringung", datum: r.einbringung?.datum ?? null },
+      { titel: r.fachausschuesse ? `Beratung, ${r.fachausschuesse.anzahl}\u00d7` : "Beratung",
+        datum: r.fachausschuesse?.bis ?? null },
+      { titel: "Beschluss im Rat", datum: ratsbeschluss?.datum ?? null },
+      { titel: `Haushaltsjahr ${r.jahr}`, datum: `${r.jahr}-01-01` },
+    ];
+    const erledigt = roh.map((ph) => ph.datum != null && ph.datum <= tag);
+    const laufend = erledigt.findIndex((e) => !e);
+    const phasen = roh.map((ph, i) => ({
+      ...ph,
+      erledigt: erledigt[i],
+      // Läuft alles schon: die letzte Phase (das Haushaltsjahr) ist die,
+      // in der wir gerade stecken.
+      aktuell: laufend === -1 ? i === roh.length - 1 : i === laufend,
+    }));
+    onBestand({
+      naechster: kommend[0]
+        ? { datum: kommend[0].datum, gremium: kommend[0].gremium } : null,
+      phasen,
+      jahr: r.jahr,
+    });
   }, [onBestand, loading, data, heute]);
 
   if (loading) {

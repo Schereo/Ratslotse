@@ -38,6 +38,7 @@ import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weit
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { deDatum } from "@/lib/haushalt-jahr";
+import { cn } from "@/lib/utils";
 import { TermineAbschnitt } from "@/components/haushalt/abschnitt-termine";
 import { StreitAbschnitt } from "@/components/haushalt/abschnitt-streit";
 
@@ -47,6 +48,13 @@ import { StreitAbschnitt } from "@/components/haushalt/abschnitt-streit";
  *  (`tests/test_quellen_dokumente.py` liest die Literale dieser Liste, um
  *  stumme Beleg-Chips zu finden.) */
 const QUELLEN: QuellenSchluessel[] = ["ratsbeschluss", "aenderungsliste"];
+
+/** „2025-10-01" → „1.10.2025" — die Kurzform für den Phasen-Strahl der
+ *  Bühne; ausgeschrieben (`deDatum`) wären vier Zeilen zu lang. */
+function deTagMonatJahr(iso: string): string {
+  const [j, m, t] = iso.split("-").map(Number);
+  return `${t}.${m}.${j}`;
+}
 
 const MARKEN = [
   { id: "termine", titel: "Wann entschieden wird" },
@@ -60,6 +68,8 @@ function MitredenInner() {
   // `undefined` = lädt, `null`/leer = entschieden nichts.
   const [termine, setTermine] = useState<{
     naechster: { datum: string; gremium: string } | null;
+    phasen: { titel: string; datum: string | null; erledigt: boolean; aktuell: boolean }[];
+    jahr: number;
   } | null | undefined>(undefined);
   const [streit, setStreit] = useState<{ beitraege: number; von: number; bis: number } | null | undefined>(undefined);
   const heute = useMemo(() => new Date(), []);
@@ -82,11 +92,15 @@ function MitredenInner() {
           <SchrittPfad href="/haushalt/mitreden" />
         </div>
 
-        {/* Die Bühne (H5-02/H5-09): der nächste Termin der Beratungsfolge,
-            in Tagen — steht keiner im Ratskalender, tragen die Wortbeiträge
-            des Streit-Abschnitts die Bühne, statt dass ein Termin erfunden
-            wird. Das Minibild ist der Zeitstrahl (schematisch, der nächste
-            Termin trägt den Halo) und klickt zu den Terminen. */}
+        {/* Die Bühne (H5-02/H5-09). Zwei Nachsteuerungen aus Tims Review
+            (26.08.): Der Kopf sagt „in den Ratsdebatten zum Haushalt" statt
+            „Streit ums Geld" — die Seite berichtet über Ratsdebatten, sie
+            kündigt kein Format an. Und rechts steht kein schematischer
+            Strahl mit unbeschrifteten Punkten mehr, sondern der WEG des
+            jüngsten Haushalts mit seinen vier Phasen und ihren Daten;
+            markiert ist die, in der wir gerade stecken. Er verlinkt bewusst
+            nicht: Die Auskunft steht in ihm selbst, und der ausführliche
+            Zeitstrahl folgt ohnehin direkt darunter. */}
         {termine === undefined && streit === undefined ? (
           <SeitenbuehneLaedt kicker="Ratskalender" />
         ) : (() => {
@@ -95,28 +109,49 @@ function MitredenInner() {
           const tage = naechster
             ? Math.round((new Date(naechster.datum).getTime() - heute0) / 86400000)
             : null;
-          const streitSatz = streit
-            ? `${streit.beitraege.toLocaleString("de-DE")} Wortbeiträge zum Streit ums Geld`
-            : null;
-          const minibild = {
-            href: naechster ? "#termine" : "#streit",
-            label: naechster
-              ? "Zeitstrahl der Beratungsfolge — der nächste Termin trägt den Halo, klickt zu den Terminen"
-              : "Zeitstrahl der Beratungsfolge — klickt zum Streit ums Geld",
-            skizze: (
-              <span className="relative block h-[18px]">
-                <span className="absolute inset-x-0 top-2 h-[2px]" style={{ background: "var(--sb-blass)" }} />
-                <span className="absolute left-[4%] top-[5px] h-2 w-2 rounded-full" style={{ background: "var(--sb-voll)" }} />
-                <span className="absolute left-[26%] top-[5px] h-2 w-2 rounded-full" style={{ background: "var(--sb-voll)" }} />
-                {naechster ? (
-                  <span className="absolute left-[55%] top-[3px] h-3 w-3 rounded-full shadow-[0_0_0_3.5px_hsl(var(--primary)/0.18)]" style={{ background: "var(--sb-voll)" }} />
-                ) : (
-                  <span className="absolute left-[55%] top-[5px] h-2 w-2 rounded-full" style={{ background: "var(--sb-voll)" }} />
+          const phasen = termine?.phasen ?? [];
+          const minibild = phasen.length ? {
+            label: `Der Weg des Haushalts ${termine!.jahr} — der Punkt mit dem Ring ist der Stand heute`,
+            skizze: phasen.map((ph, i) => (
+              // Eine Zeile je Phase: Punkt, Titel, Datum rechtsbündig. Die
+              // Linie läuft DURCH die Zeile (nicht als Stummel unter dem
+              // Punkt, das sah aus wie Karten-Pins), und vier flache Zeilen
+              // halten die Bühne so hoch wie ihren Text — kein Loch daneben.
+              <span key={ph.titel} className="relative flex items-center gap-2 py-[3px]">
+                <span aria-hidden className="relative flex h-4 w-2.5 flex-none items-center justify-center">
+                  {i > 0 && (
+                    <span className="absolute bottom-1/2 left-1/2 h-[11px] w-[1.5px] -translate-x-1/2" style={{
+                      background: ph.erledigt ? "var(--sb-voll)" : "var(--sb-blass)",
+                    }} />
+                  )}
+                  {i < phasen.length - 1 && (
+                    <span className="absolute left-1/2 top-1/2 h-[11px] w-[1.5px] -translate-x-1/2" style={{
+                      background: phasen[i + 1].erledigt ? "var(--sb-voll)" : "var(--sb-blass)",
+                    }} />
+                  )}
+                  {ph.aktuell ? (
+                    <span className="relative h-2.5 w-2.5 rounded-full border-2 bg-card shadow-[0_0_0_2.5px_hsl(var(--primary)/0.16)]"
+                      style={{ borderColor: "var(--sb-voll)" }} />
+                  ) : (
+                    <span className="relative h-2 w-2 rounded-full" style={{
+                      background: ph.erledigt ? "var(--sb-voll)" : "var(--sb-blass)",
+                    }} />
+                  )}
+                </span>
+                <span className={cn("min-w-0 flex-1 truncate text-[10px] leading-none",
+                  ph.aktuell ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                  {ph.titel}
+                </span>
+                {ph.datum && (
+                  <span className="flex-none font-mono text-[9px] leading-none tabular-nums text-muted-foreground">
+                    {ph.titel.startsWith("Haushaltsjahr")
+                      ? (ph.aktuell ? "läuft" : "beendet")
+                      : deTagMonatJahr(ph.datum)}
+                  </span>
                 )}
-                <span className="absolute left-[84%] top-[5px] h-2 w-2 rounded-full border-[1.5px] bg-transparent" style={{ borderColor: "var(--sb-strich)" }} />
               </span>
-            ),
-          };
+            )),
+          } : undefined;
           if (naechster && tage != null && tage >= 0) {
             return (
               <Seitenbuehne
@@ -124,7 +159,7 @@ function MitredenInner() {
                 zahl={tage === 0 ? <>Nächster Termin: heute</>
                   : tage === 1 ? <>Nächster Termin: morgen</>
                     : <>Nächster Termin: in <ZaehlZahl wert={tage} /> Tagen</>}
-                sub={`${naechster.gremium} am ${deDatum(naechster.datum)}${streitSatz ? ` — dazu ${streitSatz}` : ""}`}
+                sub={`${naechster.gremium} am ${deDatum(naechster.datum)}`}
                 minibild={minibild}
               />
             );
@@ -133,7 +168,8 @@ function MitredenInner() {
             return (
               <Seitenbuehne
                 kicker={`Haushaltsberatungen ${streit.von}–${streit.bis}`}
-                zahl={<><ZaehlZahl wert={streit.beitraege} /> Wortbeiträge zum Streit ums Geld</>}
+                zahl={<><ZaehlZahl wert={streit.beitraege} /> Wortbeiträge in den
+                  Ratsdebatten zum Haushalt</>}
                 sub="ein nächster Termin steht noch nicht im Ratskalender"
                 minibild={minibild}
               />
