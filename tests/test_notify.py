@@ -532,6 +532,10 @@ def test_wochenueberblick_fasst_die_woche_zusammen(store, tmp_path):
     assert p["kind"] == "n6_woche"
     assert p["title"] == "Diese Woche: 2 Beschlüsse zu deinen Themen"
     assert "angenommen" in p["body_html"] and "abgelehnt" in p["body_html"]
+    # Die Links müssen absolut sein: In einer E-Mail gibt es keine Basis,
+    # gegen die ein relativer Pfad aufgelöst werden könnte.
+    assert 'href="https://' in p["body_html"]
+    assert 'href="/council' not in p["body_html"]
     council.close()
 
 
