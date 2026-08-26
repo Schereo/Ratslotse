@@ -48,6 +48,10 @@ TAGESGRENZE = 2     # höchstens zwei Zustellungen pro Person und Tag
 #: Anlässe aus 30a/B. Der Schlüssel steht so in der Warteschlange und in den
 #: Schaltern der Einstellungs-Seite.
 N1_TAGESORDNUNG = "n1_tagesordnung"
+#: Unter-Option von N1 (Tims Wunsch 26.08.2026): „Ich möchte zwar die
+#: Tagesordnung bekommen, aber nicht über jede Änderung informiert werden."
+#: Greift nur, solange N1 selbst an ist — siehe ``gewuenscht``.
+N1_AENDERUNG = "n1_aenderung"
 N2_THEMA = "n2_thema"
 N3_ERGEBNIS = "n3_ergebnis"
 N4_VORGANG = "n4_vorgang"
@@ -74,6 +78,7 @@ TERMINGEBUNDEN = frozenset({N5_VORABEND})
 #: Wochenüberblick will, schaltet dafür N1–N3 ab.
 NOTIFY_DEFAULTS: dict[str, bool] = {
     N1_TAGESORDNUNG: True,
+    N1_AENDERUNG: True,
     N2_THEMA: True,
     N3_ERGEBNIS: True,
     N4_VORGANG: True,
@@ -86,6 +91,8 @@ NOTIFY_DEFAULTS: dict[str, bool] = {
 NOTIFY_LABELS: dict[str, tuple[str, str]] = {
     N1_TAGESORDNUNG: ("Tagesordnung in meinen Gremien",
                       "Sobald ein abonniertes Gremium seine Tagesordnung veröffentlicht"),
+    N1_AENDERUNG: ("Änderungen an Tagesordnungen",
+                   "Wenn sich eine schon gemeldete Tagesordnung kurz vor der Sitzung noch einmal ändert"),
     N2_THEMA: ("Meine Themen auf einer Tagesordnung",
                "Wenn ein Thema von dir auf den Tisch kommt — auch in Gremien ohne Abo"),
     N3_ERGEBNIS: ("Ergebnisse zu meinen Themen",
@@ -96,6 +103,15 @@ NOTIFY_LABELS: dict[str, tuple[str, str]] = {
                   "18 Uhr, wenn morgen etwas ansteht"),
     N6_WOCHE: ("Wochenüberblick",
                "Sonntag 18 Uhr, alles in einer Nachricht"),
+}
+
+
+#: Unter-Optionen: Anlass → übergeordneter Anlass. Eine Unter-Option wirkt nur,
+#: solange ihr Elternteil an ist — wer „Tagesordnung in meinen Gremien"
+#: abschaltet, bekommt auch keine Änderungs-Meldungen dazu, egal wie der
+#: Unter-Schalter steht. Die Einstellungs-Seite rückt sie entsprechend ein.
+NOTIFY_PARENT: dict[str, str] = {
+    N1_AENDERUNG: N1_TAGESORDNUNG,
 }
 
 
@@ -128,7 +144,17 @@ def gewuenscht(store, owner_id: int, art: str) -> bool:
     if zustellung_aus(store, owner_id):
         return False
     prefs = store.get_notify_prefs(owner_id)
-    return bool(prefs.get(art, NOTIFY_DEFAULTS.get(art, True)))
+
+    def an(a: str) -> bool:
+        return bool(prefs.get(a, NOTIFY_DEFAULTS.get(a, True)))
+
+    # Unter-Optionen hängen an ihrem Elternteil: „Änderungen an Tagesordnungen"
+    # ohne „Tagesordnung in meinen Gremien" ergäbe Meldungen über Änderungen an
+    # etwas, das man nie bekommen hat.
+    eltern = NOTIFY_PARENT.get(art)
+    if eltern and not an(eltern):
+        return False
+    return an(art)
 
 
 def _jetzt(jetzt: datetime | None = None) -> datetime:
@@ -203,24 +229,23 @@ def einreihen(store, owner_id: int, kind: str, titel: str, html: str, url: str,
     )
 
 
-def _buendel(posten: list[dict]) -> tuple[str, str, str]:
-    """Aus mehreren Fälligen eine Nachricht machen (titel, html, url).
+def _buendel(posten: list[dict]) -> tuple[str, str, str, str]:
+    """Aus mehreren Fälligen eine Nachricht machen (titel, html, url, push_text).
 
-    Das Ziel ist bewusst die Übersicht: Ein Bündel hat mehrere Ereignisse, also
-    kann es nicht auf eine einzelne Seite zeigen — „Heute" listet sie alle.
+    Das Tap-Ziel ist bewusst die Übersicht: Ein Bündel hat mehrere Ereignisse,
+    also kann es nicht auf eine einzelne Seite zeigen — „Heute" listet sie alle.
+    Die Mail selbst baut ``digest_email.buendel``: volle Inhalte je Abschnitt
+    statt einer nackten Linkliste. Der Push-Text bleibt trotzdem die Titelzeile
+    der Posten — die Vorschau soll die Sachen nennen, nicht den Einleitungssatz
+    der Mail.
     """
+    from kern import digest_email
+
     titel = f"{len(posten)} Neuigkeiten aus dem Rat"
-    # In der Warteschlange stehen App-Pfade (das braucht der Push-Tap). In einer
-    # E-Mail ist ein relativer Link aber tot — es gibt dort keine Basis, gegen
-    # die er aufgelöst werden könnte. Fürs Bündel deshalb absolut machen.
-    zeilen = ["<ul style='margin:0;padding-left:18px'>"]
-    for p in posten:
-        ziel = f"{APP_BASE_URL}{p['url']}" if ist_app_pfad(p["url"]) else p["url"]
-        zeilen.append(
-            f"<li style='margin-bottom:6px'><a href=\"{ziel}\">{p['title']}</a></li>"
-        )
-    zeilen.append("</ul>")
-    return titel, "\n".join(zeilen), "/dashboard"
+    push_text = " · ".join(p["title"] for p in posten)
+    if len(push_text) > 180:
+        push_text = push_text[:179] + "…"
+    return titel, digest_email.buendel(posten), "/dashboard", push_text
 
 
 def zustellen(store, jetzt: datetime | None = None, stats: dict | None = None) -> int:
@@ -314,8 +339,9 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
                            push_text=p.get("push_text")):
                 n += 1
         if rest:
-            titel, html, url = _buendel(rest)
-            if _abschicken([p["id"] for p in rest], html, titel, url, True):
+            titel, html, url, push_text = _buendel(rest)
+            if _abschicken([p["id"] for p in rest], html, titel, url, True,
+                           push_text=push_text):
                 n += 1
         return n
 
