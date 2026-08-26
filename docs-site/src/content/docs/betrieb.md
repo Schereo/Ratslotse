@@ -85,7 +85,7 @@ Fünf Workflows in `.github/workflows/`:
 | Workflow | Trigger | Was passiert |
 |---|---|---|
 | `test.yml` | Push auf `main`, jeder Pull Request | Python 3.12, `requirements.txt` + `requirements-dev.txt`, dann `pytest tests/ -q`. |
-| `deploy.yml` | `pull_request: types:[closed]` auf `main` mit `merged == true` | Test-Gate (derselbe Lauf wie `test.yml`, als harte `needs`-Abhängigkeit), dann Doku-Build, rsync des Codes auf die App-VM (SSH mit ProxyJump über die Edge-VM) und Neustart der beiden systemd-Services. |
+| `deploy.yml` | `pull_request: types:[closed]` auf `main` mit `merged == true`, zusätzlich `workflow_dispatch` | Test-Gate (derselbe Lauf wie `test.yml`, als harte `needs`-Abhängigkeit), dann Doku-Build, rsync des Codes auf die App-VM (SSH mit ProxyJump über die Edge-VM) und Neustart der beiden systemd-Services. |
 | `deploy-dev.yml` | jeder Push auf `dev`, zusätzlich `workflow_dispatch` | Deployt auf die Dev-VM — ohne Test-Gate (siehe unten). |
 | `docs.yml` | PR und Push auf `main`, nur bei Änderungen unter `docs-site/**` | Baut die Starlight-Doku und schlägt fehl, wenn sie nicht mehr baut (kaputte Links, Frontmatter, MDX). |
 | `docs-review.yml` | PR `opened` / `reopened` / `ready_for_review`, keine Forks | KI-Review, das den Diff auf Doku-Drift prüft und **genau einen** PR-Kommentar postet. Nur `contents: read` — die Action kann nichts committen. `continue-on-error: true`, der Review ist also kein Qualitäts-Gate. |
@@ -109,6 +109,15 @@ Fünf Workflows in `.github/workflows/`:
 Warum der Umweg über den gemergten PR statt „Push auf `main` deployt": siehe
 [ADR 0008](/docs/adr/0008-deploy-nur-bei-merge/). Kurz — ein direkter Push auf
 `main` läuft nur durch die Tests und erreicht die Produktion nicht.
+
+**Wenn der Merge keinen Deploy auslöst:** Der Workflow lässt sich in der
+Actions-UI von Hand starten („Deploy to VPS" → *Run workflow*, Ref `main`) — mit
+demselben Test-Gate davor. Der Notausgang stammt vom 26.08.2026: Während einer
+GitHub-Actions-Störung fiel das `closed`-Ereignis zweier gemergter PRs ersatzlos
+aus, `main` trug den neuen Stand und Prod nicht. Einen Lauf, den es nie gegeben
+hat, kann man nicht neu starten; erkennbar ist der Fall daran, dass zum
+Merge-Commit gar kein Workflow-Lauf existiert
+(`gh api repos/<owner>/<repo>/actions/runs?head_sha=<sha>` bleibt leer).
 
 **Verwendete GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`,
 `VPS_DEV_HOST`, `VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT` sowie

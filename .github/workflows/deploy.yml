@@ -4,6 +4,13 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
+  # Notausgang: Am 26.08.2026 fiel während einer GitHub-Actions-Störung das
+  # `closed`-Ereignis zweier gemergter PRs ersatzlos aus — `main` trug den
+  # neuen Stand, Prod nicht, und einen Lauf, den es nie gab, kann man nicht
+  # neu starten. Seitdem lässt sich der Deploy in der Actions-UI von Hand
+  # anstoßen (Ref wählen, „Run workflow"); der Test-Job läuft dabei
+  # unverändert davor.
+  workflow_dispatch:
 
 # Deploys müssen sich strikt abwechseln. Zwei kurz hintereinander gemergte PRs
 # starteten sonst zwei Läufe, die gleichzeitig `npm ci` auf demselben Server
@@ -23,7 +30,7 @@ jobs:
   # grünen PR-Check) gemergter Stand kann Produktion nicht mehr erreichen.
   # (Lehre aus dem #154-Ausfall: roter CI wurde gemergt und deployt.)
   test:
-    if: github.event.pull_request.merged == true
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +50,7 @@ jobs:
 
   deploy:
     needs: test
-    if: github.event.pull_request.merged == true
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
