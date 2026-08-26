@@ -18,7 +18,12 @@
 //
 //  * **Klebt oben, aber nur der Streifen.** Wer im dritten Abschnitt liest,
 //    soll ohne Scrollen zurück in den ersten kommen. Der Streifen ist deshalb
-//    `sticky`; die Seite darüber scrollt weg.
+//    `sticky`; die Seite darüber scrollt weg. Unterhalb von `desk` klebt
+//    außerdem der App-Header (layout.tsx, 61 px + Sicherheitszone) — der
+//    Streifen dockt dort unter ihm an, denn bei `top-0` schöbe er sich beim
+//    Scrollen vollständig hinter den Header (z-40 schlägt z-10) und wäre
+//    mobil unsichtbar. Dieselben 61 px stehen in zahlen-tabelle.tsx
+//    (KLEBE_AB); wer Header oder Streifen umbaut, zieht beide Stellen nach.
 //  * **Der laufende Abschnitt ist markiert**, gemessen per
 //    `IntersectionObserver` und nicht am Scroll-Wert: Letzteres rechnet bei
 //    jedem Pixel und liegt bei Abschnitten sehr verschiedener Höhe daneben.
@@ -38,6 +43,25 @@ export type Abschnitt = {
   titel: string;
 };
 
+/** Scroll-Versatz für die Ziel-`<section>`s des Streifens: der Klebe-Stapel
+ *  des jeweiligen Geräts plus Luft. Unterhalb `desk` kleben App-Header
+ *  (61 px + Sicherheitszone) und Streifen (49 px) übereinander, ab `desk`
+ *  nur der Streifen. Gehört an jede Section, deren `id` in `marken` steht —
+ *  sonst springt ein `#anker`-Link von außen unter den Stapel. */
+export const ANKER_KLASSE =
+  "scroll-mt-[calc(env(safe-area-inset-top)+129px)] desk:scroll-mt-20";
+
+/** Unterkante des klebenden Streifens, in px vom oberen Fensterrand:
+ *  `getComputedStyle().top` löst die calc()-Formel (samt Sicherheitszone und
+ *  `desk:`-Weiche) auf, dazu die eigene Höhe. Gemessen statt als Konstante,
+ *  damit Klick-Versatz und Beobachter auf jedem Gerät zur echten Kante
+ *  passen. */
+function klebeUnterkante(streifen: HTMLElement | null): number {
+  if (!streifen) return 49;
+  const oben = parseFloat(getComputedStyle(streifen).top);
+  return (Number.isFinite(oben) ? oben : 0) + streifen.offsetHeight;
+}
+
 export function Abschnitte({ marken, className }: {
   marken: Abschnitt[];
   className?: string;
@@ -53,18 +77,39 @@ export function Abschnitte({ marken, className }: {
 
     // `rootMargin` oben negativ: Ein Abschnitt gilt als der laufende, sobald
     // seine Oberkante unter den klebenden Streifen gewandert ist — nicht schon,
-    // wenn er unten ins Bild ragt.
-    const beobachter = new IntersectionObserver(
-      (eintraege) => {
-        const sichtbar = eintraege
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (sichtbar.length) setAktiv(sichtbar[0].target.id);
-      },
-      { rootMargin: "-72px 0px -55% 0px", threshold: 0 },
-    );
-    ziele.forEach((z) => beobachter.observe(z));
-    return () => beobachter.disconnect();
+    // wenn er unten ins Bild ragt. Die Kante wird gemessen, weil `rootMargin`
+    // kein env()/calc() versteht und der Streifen je Gerät verschieden hoch
+    // klebt; nach Größenwechsel oder Rotation wird neu gemessen.
+    let beobachter: IntersectionObserver | null = null;
+    const beobachten = () => {
+      beobachter?.disconnect();
+      beobachter = new IntersectionObserver(
+        (eintraege) => {
+          const sichtbar = eintraege
+            .filter((e) => e.isIntersecting)
+            .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          if (sichtbar.length) setAktiv(sichtbar[0].target.id);
+        },
+        {
+          rootMargin: `-${Math.round(klebeUnterkante(streifen.current) + 23)}px 0px -55% 0px`,
+          threshold: 0,
+        },
+      );
+      ziele.forEach((z) => beobachter?.observe(z));
+    };
+    beobachten();
+
+    let ruhe: number | undefined;
+    const beiGroessenwechsel = () => {
+      window.clearTimeout(ruhe);
+      ruhe = window.setTimeout(beobachten, 150);
+    };
+    window.addEventListener("resize", beiGroessenwechsel);
+    return () => {
+      window.removeEventListener("resize", beiGroessenwechsel);
+      window.clearTimeout(ruhe);
+      beobachter?.disconnect();
+    };
   }, [marken]);
 
   if (marken.length < 2) return null;
@@ -74,7 +119,7 @@ export function Abschnitte({ marken, className }: {
       ref={streifen}
       aria-label="Abschnitte dieser Seite"
       className={cn(
-        "sticky top-0 z-10 -mx-4 border-b border-border/70 bg-background/85 px-4 py-2 backdrop-blur",
+        "sticky top-[calc(env(safe-area-inset-top)+61px)] z-10 -mx-4 border-b border-border/70 bg-background/85 px-4 py-2 backdrop-blur desk:top-0",
         className,
       )}
     >
@@ -93,7 +138,10 @@ export function Abschnitte({ marken, className }: {
                 const ziel = document.getElementById(m.id);
                 if (!ziel) return;
                 e.preventDefault();
-                const oben = ziel.getBoundingClientRect().top + window.scrollY - 68;
+                const oben =
+                  ziel.getBoundingClientRect().top +
+                  window.scrollY -
+                  (klebeUnterkante(streifen.current) + 19);
                 window.scrollTo({ top: oben, behavior: "smooth" });
                 setAktiv(m.id);
               }}

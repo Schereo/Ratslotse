@@ -35,11 +35,12 @@ import { cn } from "@/lib/utils";
 /** Wo der Tabellenkopf klebt: direkt unter dem, was auf dem jeweiligen
  *  Gerät oben klebt. Ab `desk` ist das der Abschnitts-Streifen
  *  (abschnitte.tsx: py-2 + Chips + border-b — im Browser gemessen: 49 px).
- *  Darunter klebt stattdessen der App-Header (layout.tsx), dessen Höhe mit
- *  `env(safe-area-inset-top)` wächst — gemessen 61 px ohne Notch, daher
- *  dieselbe calc()-Formel wie seine eigene Polsterung. Wer Streifen oder
- *  Header umbaut, misst hier nach. */
-const KLEBE_AB = "top-[calc(env(safe-area-inset-top)+61px)] desk:top-[49px]";
+ *  Darunter kleben ZWEI Dinge übereinander: der App-Header (layout.tsx,
+ *  gemessen 61 px ohne Notch, wächst mit `env(safe-area-inset-top)`) und
+ *  darunter angedockt der Abschnitts-Streifen — zusammen 110 px plus
+ *  Sicherheitszone. Wer Streifen oder Header umbaut, misst hier nach und
+ *  zieht abschnitte.tsx (ANKER_KLASSE) mit. */
+const KLEBE_AB = "top-[calc(env(safe-area-inset-top)+110px)] desk:top-[49px]";
 
 export function ZahlenTabelle({ spalten, fuss, children, className }: {
   spalten: { titel: string; zahl?: boolean }[];
