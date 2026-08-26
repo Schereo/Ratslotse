@@ -29,6 +29,14 @@
 // Breakpoint-Verhalten (H4-A, eingebaut, kein Prop): ab 744 px das
 // Bilanz-Grid (Fraktion · Finanzausschuss · Rat · Zahlen), darunter je
 // Fraktion eine Karte mit zwei Dot-Zeilen FA/RAT.
+//
+// TABELLEN-LESBARKEIT (Tims Befund 26.08.2026): Die Zahlenspalte hieß
+// „Ein · durch" und trug beide Werte in EINER Zelle („2 · 0") — nicht zu
+// entziffern, welche Zahl welche ist, und die Wörter erklärten sich nicht.
+// Jetzt sind es zwei Spalten mit ausgeschriebenen Köpfen („Eingebracht",
+// „Mit Mehrheit" — dieselben Worte wie in der Legende), und jede Spalte
+// nach der Fraktion trägt eine Spaltenlinie. Das ändert nichts an den
+// Fairness-Regeln oben: Es sind weiter absolute Zahlen, keine Quote.
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -50,6 +58,9 @@ export type PunkteZeile = {
 const PUNKT = 11;
 
 const NEUTRAL = "hsl(209 18% 65%)";
+
+/** Spaltenlinie + Innenabstand jeder Zelle nach der Fraktions-Spalte. */
+const TRENNER = "border-l border-border/40 px-3";
 
 function IdentitaetsPunkt({ farbe }: { farbe?: { bg: string; ring?: boolean } }) {
   return (
@@ -126,13 +137,17 @@ export function PunkteBilanz({ zeilen, beleg, className }: {
         <div
           role="table"
           aria-label="Verhandlungsbilanz: Abstimmungen über Änderungslisten je Fraktion"
-          className="grid grid-cols-[150px_minmax(200px,1fr)_minmax(200px,1fr)_84px] gap-x-4 breit:grid-cols-[170px_minmax(200px,1fr)_minmax(200px,1fr)_84px]"
+          className="grid grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_max-content_max-content] breit:grid-cols-[170px_minmax(200px,1fr)_minmax(200px,1fr)_max-content_max-content]"
         >
+          {/* Spaltenlinien: jede Zelle nach der Fraktion trägt border-l —
+              ein Grid ohne gap, der Abstand kommt aus dem Zellen-Padding,
+              damit die Linien von Kopf bis Fuß durchlaufen. */}
           <div role="row" className="contents">
-            <KopfZelle>Fraktion · alphabetisch</KopfZelle>
-            <KopfZelle>Im Finanzausschuss</KopfZelle>
-            <KopfZelle>Im Rat</KopfZelle>
-            <KopfZelle className="text-right">Ein · durch</KopfZelle>
+            <KopfZelle className="pr-3">Fraktion · alphabetisch</KopfZelle>
+            <KopfZelle className={TRENNER}>Im Finanzausschuss</KopfZelle>
+            <KopfZelle className={TRENNER}>Im Rat</KopfZelle>
+            <KopfZelle className={cn(TRENNER, "text-right")}>Eingebracht</KopfZelle>
+            <KopfZelle className={cn(TRENNER, "text-right")}>Mit Mehrheit</KopfZelle>
           </div>
           {sortiert.map((z) => {
             const s = summe(z);
@@ -141,20 +156,23 @@ export function PunkteBilanz({ zeilen, beleg, className }: {
                 {/* Gleiche Zeilenhöhe für alle: min-h statt Inhaltshöhe,
                     damit eine Fraktion mit 18 Punkten keine optisch
                     „schwerere" Zeile bekommt als eine mit 2. */}
-                <div role="rowheader" className="flex min-h-[38px] items-center gap-1.5 border-t border-border/60 pr-1">
+                <div role="rowheader" className="flex min-h-[38px] items-center gap-1.5 border-t border-border/60 pr-3">
                   <IdentitaetsPunkt farbe={z.farbe} />
                   <span className="min-w-0 text-[12.5px] font-semibold leading-tight">
                     {z.fraktion}
                   </span>
                 </div>
-                <div role="cell" className="flex min-h-[38px] items-center border-t border-border/60">
+                <div role="cell" className={cn("flex min-h-[38px] items-center border-t border-border/60", TRENNER)}>
                   <Punkte stand={z.gremien.fa} kontext="Im Finanzausschuss" />
                 </div>
-                <div role="cell" className="flex min-h-[38px] items-center border-t border-border/60">
+                <div role="cell" className={cn("flex min-h-[38px] items-center border-t border-border/60", TRENNER)}>
                   <Punkte stand={z.gremien.rat} kontext="Im Rat" />
                 </div>
-                <div role="cell" className="flex min-h-[38px] items-center justify-end border-t border-border/60 font-mono text-[12px] tabular-nums">
-                  {s.ein}&thinsp;·&thinsp;{s.durch}
+                <div role="cell" className={cn("flex min-h-[38px] items-center justify-end border-t border-border/60 font-mono text-[12px] tabular-nums", TRENNER)}>
+                  {s.ein}
+                </div>
+                <div role="cell" className={cn("flex min-h-[38px] items-center justify-end border-t border-border/60 font-mono text-[12px] tabular-nums", TRENNER)}>
+                  {s.durch}
                 </div>
               </div>
             );
@@ -176,7 +194,7 @@ export function PunkteBilanz({ zeilen, beleg, className }: {
                   {z.fraktion}
                 </span>
                 <span className="font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                  {s.ein} eingebracht · {s.durch} durch
+                  {s.ein} eingebracht · {s.durch} mit Mehrheit
                 </span>
               </div>
               <div className="mt-2 grid grid-cols-[34px_1fr] items-center gap-y-1.5">
