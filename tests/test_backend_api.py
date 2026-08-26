@@ -67,6 +67,85 @@ def test_health(client):
     assert client.get("/api/health").json() == {"status": "ok"}
 
 
+def test_merkliste_top_wird_zum_beschluss_und_meldet_ergebnis(client):
+    """Der Kernpfad der Merkliste: TOP merken, Hinweis einschalten, Protokoll
+    importieren. Derselbe Eintrag zeigt danach den Beschluss und erzeugt genau
+    eine Ergebnis-Meldung — ohne doppelten Beschluss-Merker."""
+    _register(client)
+    tag = (date.today() + timedelta(days=2)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(
+        ksinr=8123, committee="Verkehrsausschuss", session_date=tag,
+        session_time="17:00", location="PFL",
+        agenda_items=[AgendaItem("Ö 5", "Neue Fahrradstraße - Beschluss",
+                                 "26/0999", 90999, True)],
+    ))
+    cs.close()
+
+    created = client.post("/api/bookmarks", json={
+        "kind": "agenda_item", "ksinr": 8123, "item_number": "Ö 5",
+    })
+    assert created.status_code == 201
+    bookmark_id = created.json()["id"]
+    assert created.json()["state"] == "upcoming"
+
+    # Idempotent: derselbe TOP erzeugt keinen zweiten Eintrag.
+    again = client.post("/api/bookmarks", json={
+        "kind": "agenda_item", "ksinr": 8123, "item_number": "Ö 5",
+    })
+    assert again.status_code == 201 and again.json()["id"] == bookmark_id
+    assert len(client.get("/api/bookmarks").json()["bookmarks"]) == 1
+
+    notify_on = client.put(f"/api/bookmarks/{bookmark_id}/notification",
+                           json={"notify_result": True})
+    assert notify_on.status_code == 200 and notify_on.json()["notify_result"] is True
+
+    cs = CouncilStore(COUNCIL_DB)
+    # Ein anderer Punkt wird davor eingeschoben: Die Nummer ändert sich, die
+    # stabile Vorlage bleibt. Die Merkliste muss auf Ö 6 mitwandern.
+    cs.save_session(CouncilSession(
+        ksinr=8123, committee="Verkehrsausschuss", session_date=tag,
+        session_time="17:00", location="PFL",
+        agenda_items=[AgendaItem("Ö 6", "Neue Fahrradstraße - Beschluss",
+                                 "26/0999", 90999, True)],
+    ))
+    shifted = client.get("/api/bookmarks").json()["bookmarks"][0]
+    assert shifted["item_number"] == "Ö 6"
+    cs.save_protocol(
+        8123, {"document_id": 444, "url": "https://example.test/protokoll.pdf"},
+        {"protocol_nr": "V 1/26", "session_start": "17:00", "session_end": "18:00"},
+        "zu 6 Neue Fahrradstraße\nBeschluss: angenommen\n- einstimmig -", 1, "test-model",
+        [{"item_number": "6", "title": "Neue Fahrradstraße", "beschluss": "Die Fahrradstraße wird eingerichtet.",
+          "outcome": "angenommen", "vote": "einstimmig", "gegenstimmen": 0,
+          "enthaltungen": 0, "factions": [], "vorlage_nr": "26/0999", "kvonr": 90999,
+          "raw_result": "einstimmig", "sub_votes": []}],
+        [],
+    )
+    nwz = Store(NWZ_DB)
+    from council.ergebnisse import melde_ergebnisse
+    assert melde_ergebnisse(cs, nwz, [8123]) == 1
+    assert nwz._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 1
+    assert nwz.get_bookmark_for_owner(1, bookmark_id)["result_notified_at"] is not None
+    nwz.close()
+    cs.close()
+
+    listed = client.get("/api/bookmarks").json()["bookmarks"]
+    assert len(listed) == 1
+    assert listed[0]["state"] == "decided"
+    assert listed[0]["decision"]["outcome"] == "angenommen"
+    decision_id = listed[0]["decision"]["id"]
+
+    # Auf der Beschluss-Seite noch einmal „Merken" bleibt derselbe Eintrag.
+    same_decision = client.post("/api/bookmarks", json={
+        "kind": "decision", "decision_id": decision_id,
+    })
+    assert same_decision.status_code == 201 and same_decision.json()["id"] == bookmark_id
+    assert len(client.get("/api/bookmarks").json()["bookmarks"]) == 1
+
+    assert client.delete(f"/api/bookmarks/{bookmark_id}").status_code == 204
+    assert client.get("/api/bookmarks").json()["bookmarks"] == []
+
+
 def test_register_never_grants_admin(client):
     """Rechteausweitung (CWE-269): Die Registrierung darf keine Rolle vergeben.
 

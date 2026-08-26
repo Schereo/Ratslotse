@@ -61,6 +61,32 @@ CREATE TABLE IF NOT EXISTS vorlage_follows (
 );
 CREATE INDEX IF NOT EXISTS idx_vorlage_follows_kvonr ON vorlage_follows(kvonr);
 
+-- Persönliche Merkliste: eine gemeinsame Ablage für Sitzungen, einzelne TOPs
+-- und gefasste Beschlüsse. `target_key` ist die technische Identität beim
+-- Merken; die übrigen Felder sind ein Snapshot und erlauben, einen TOP nach
+-- einer Nummernverschiebung über kvonr/Vorlage/Titel wiederzufinden.
+-- `notify_result` ist bewusst getrennt vom Merken: Eine Ablage ist noch kein
+-- Benachrichtigungs-Abo.
+CREATE TABLE IF NOT EXISTS bookmarks (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id           INTEGER NOT NULL,
+    kind               TEXT NOT NULL,
+    target_key         TEXT NOT NULL,
+    ksinr              INTEGER,
+    item_number        TEXT,
+    decision_id        INTEGER,
+    kvonr              INTEGER,
+    vorlage_nr         TEXT NOT NULL DEFAULT '',
+    title              TEXT NOT NULL DEFAULT '',
+    subtitle           TEXT NOT NULL DEFAULT '',
+    notify_result      INTEGER NOT NULL DEFAULT 0,
+    result_notified_at TEXT,
+    created_at         TEXT NOT NULL,
+    UNIQUE(owner_id, target_key)
+);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_owner ON bookmarks(owner_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_result ON bookmarks(ksinr, notify_result, result_notified_at);
+
 -- Warteschlange für Benachrichtigungen (Design 30a). Alle Anlässe reihen hier
 -- ein statt direkt zu senden; nwz/notify.py stellt zu und hält dabei die zwei
 -- harten Grenzen ein: höchstens zwei am Tag (gebündelt statt gestapelt) und
@@ -395,6 +421,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("topics", "owner_id"),
     ("committee_subscriptions", "owner_id"),
     ("vorlage_follows", "owner_id"),
+    ("bookmarks", "owner_id"),
     ("notification_queue", "owner_id"),
     ("council_results_sent", "owner_id"),
     ("topic_hits_seen", "owner_id"),
@@ -2365,6 +2392,125 @@ class Store:
         targets = {r["owner_id"]: dict(r) for r in rows}
         self._attach_push_tokens(targets)
         return targets
+
+    # ---- persönliche Merkliste --------------------------------------------
+
+    def add_bookmark(self, owner_id: int, *, kind: str, target_key: str,
+                     ksinr: int | None = None, item_number: str | None = None,
+                     decision_id: int | None = None, kvonr: int | None = None,
+                     vorlage_nr: str = "", title: str = "", subtitle: str = "") -> dict:
+        """Einen öffentlichen Ratsinhalt merken und den aktuellen Snapshot ablegen.
+
+        Ein erneuter Klick ist idempotent. Anzeige-Felder werden dabei
+        nachgezogen, ``created_at`` und ein bereits gesetzter Ergebnis-Schalter
+        bleiben erhalten.
+        """
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                """INSERT INTO bookmarks
+                   (owner_id, kind, target_key, ksinr, item_number, decision_id,
+                    kvonr, vorlage_nr, title, subtitle, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(owner_id, target_key) DO UPDATE SET
+                     kind=excluded.kind, ksinr=excluded.ksinr,
+                     item_number=excluded.item_number,
+                     decision_id=COALESCE(excluded.decision_id, bookmarks.decision_id),
+                     kvonr=COALESCE(excluded.kvonr, bookmarks.kvonr),
+                     vorlage_nr=excluded.vorlage_nr, title=excluded.title,
+                     subtitle=excluded.subtitle""",
+                (owner_id, kind, target_key, ksinr, item_number, decision_id,
+                 kvonr, vorlage_nr or "", title or "", subtitle or "", now),
+            )
+        row = self._conn.execute(
+            "SELECT * FROM bookmarks WHERE owner_id = ? AND target_key = ?",
+            (owner_id, target_key),
+        ).fetchone()
+        return dict(row)
+
+    def get_bookmarks(self, owner_id: int) -> list[dict]:
+        return [dict(r) for r in self._conn.execute(
+            "SELECT * FROM bookmarks WHERE owner_id = ? ORDER BY created_at DESC, id DESC",
+            (owner_id,),
+        ).fetchall()]
+
+    def get_bookmark_for_owner(self, owner_id: int, bookmark_id: int) -> dict | None:
+        row = self._conn.execute(
+            "SELECT * FROM bookmarks WHERE id = ? AND owner_id = ?",
+            (bookmark_id, owner_id),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def delete_bookmark(self, owner_id: int, bookmark_id: int) -> bool:
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM bookmarks WHERE id = ? AND owner_id = ?",
+                (bookmark_id, owner_id),
+            )
+        return cur.rowcount > 0
+
+    def set_bookmark_result_notification(self, owner_id: int, bookmark_id: int,
+                                         enabled: bool) -> dict | None:
+        """Ergebnis-Hinweis separat vom Merken schalten.
+
+        Nur TOPs akzeptiert der Router dafür; die Store-Schicht hält die
+        Operation absichtlich allgemein und eigentümergesichert.
+        """
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE bookmarks SET notify_result = ? WHERE id = ? AND owner_id = ?",
+                (1 if enabled else 0, bookmark_id, owner_id),
+            )
+        return self.get_bookmark_for_owner(owner_id, bookmark_id) if cur.rowcount else None
+
+    def update_bookmark_snapshot(self, bookmark_id: int, *, item_number: str | None,
+                                 decision_id: int | None, kvonr: int | None,
+                                 vorlage_nr: str, title: str, subtitle: str) -> None:
+        """Aufgelöste aktuelle Kennungen zurückschreiben.
+
+        So muss eine spätere Nummernverschiebung nur einmal über Titel/Vorlage
+        erkannt werden; danach zeigt der Snapshot wieder auf den aktuellen TOP.
+        """
+        with self._conn:
+            self._conn.execute(
+                """UPDATE bookmarks SET item_number=?, decision_id=?,
+                   kvonr=COALESCE(?, kvonr), vorlage_nr=?, title=?, subtitle=?
+                   WHERE id=?""",
+                (item_number, decision_id, kvonr, vorlage_nr or "", title or "",
+                 subtitle or "", bookmark_id),
+            )
+
+    def bookmark_result_targets(self, ksinr: int) -> list[dict]:
+        """Noch nicht abgeschlossene, ausdrücklich abonnierte TOP-Merker."""
+        return [dict(r) for r in self._conn.execute(
+            """SELECT b.* FROM bookmarks b
+               JOIN web_users u ON u.id = b.owner_id
+               WHERE b.kind = 'agenda_item' AND b.ksinr = ?
+                 AND b.notify_result = 1 AND b.result_notified_at IS NULL
+                 AND u.status = 'active'
+               ORDER BY b.owner_id, b.id""",
+            (ksinr,),
+        ).fetchall()]
+
+    def pending_bookmark_ksinrs(self) -> list[int]:
+        """Sitzungen mit noch offenem Ergebnis-Abo — auch jenseits des
+        normalen 90-Tage-Protokollfensters."""
+        return [r[0] for r in self._conn.execute(
+            """SELECT DISTINCT ksinr FROM bookmarks
+               WHERE kind = 'agenda_item' AND notify_result = 1
+                 AND result_notified_at IS NULL AND ksinr IS NOT NULL"""
+        ).fetchall()]
+
+    def mark_bookmark_results_notified(self, bookmark_ids: list[int]) -> None:
+        if not bookmark_ids:
+            return
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        ph = ",".join("?" * len(bookmark_ids))
+        with self._conn:
+            self._conn.execute(
+                f"UPDATE bookmarks SET result_notified_at = ? WHERE id IN ({ph})",
+                (now, *bookmark_ids),
+            )
 
     # ---- verfolgte Vorgänge (Design 28a/W1) ----
 
