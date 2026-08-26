@@ -361,23 +361,32 @@ function PlanIstInner() {
             href: "#hanteln",
             label: "Hantel: ○ Plan → ● geworden, je Bereich — klickt zu ihnen",
             skizze: (() => {
+              // Schema, kein Maßstab (Tim, 26.08.: „viel zu nah aneinander"):
+              // Eine Skala ab null drückte Plan- und Ist-Punkt bei ±5 %
+              // Abweichung aufeinander. Der Punkt-Abstand ist deshalb
+              // gespreizt — echt bleiben die RICHTUNG je Zeile und das
+              // Verhältnis der Abweichungen zueinander. Die große Hantel
+              // unten misst richtig; das hier ist ihre Vorschau.
               const zwei = bereiche
                 .filter((b) => b.aufwPlan != null && b.aufwIst != null)
                 .slice(0, 2);
-              const skala = Math.max(...zwei.flatMap((b) => [b.aufwPlan ?? 0, b.aufwIst ?? 0]), 1);
-              return zwei.map((b) => {
-                const links = Math.min((b.aufwPlan! / skala) * 88, 88);
-                const rechts = Math.min((b.aufwIst! / skala) * 88, 88);
+              const maxAbw = Math.max(
+                ...zwei.map((b) => Math.abs((b.aufwIst ?? 0) - (b.aufwPlan ?? 0))), 0.001);
+              return zwei.map((b, i) => {
+                const abw = (b.aufwIst ?? 0) - (b.aufwPlan ?? 0);
+                const spann = 14 + (Math.abs(abw) / maxAbw) * 22;
+                const planPos = abw >= 0 ? 30 + i * 10 : 58 + i * 10;
+                const istPos = planPos + (abw >= 0 ? spann : -spann);
                 return (
                   <span key={b.nr} className="relative block h-4">
                     <span className="absolute inset-x-0 top-[7px] h-[2px]" style={{ background: "var(--sb-blass)" }} />
                     <span className="absolute top-[7px] h-[2px]" style={{
-                      left: `${Math.min(links, rechts)}%`,
-                      width: `${Math.abs(rechts - links)}%`,
+                      left: `${Math.min(planPos, istPos)}%`,
+                      width: `${Math.abs(istPos - planPos)}%`,
                       background: "var(--sb-voll)",
                     }} />
-                    <span className="absolute top-[3px] h-2.5 w-2.5 rounded-full border-2 bg-card" style={{ left: `${links}%`, borderColor: "var(--sb-voll)" }} />
-                    <span className="absolute top-[3px] h-2.5 w-2.5 rounded-full" style={{ left: `${rechts}%`, background: "var(--sb-voll)" }} />
+                    <span className="absolute top-[3px] h-2.5 w-2.5 rounded-full border-2 bg-card" style={{ left: `${planPos}%`, borderColor: "var(--sb-voll)" }} />
+                    <span className="absolute top-[3px] h-2.5 w-2.5 rounded-full" style={{ left: `${istPos}%`, background: "var(--sb-voll)" }} />
                   </span>
                 );
               });
