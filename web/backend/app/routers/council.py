@@ -1598,42 +1598,50 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
                 pass
             debatten_rows: list[dict] = []
-            try:
-                # Task 16: Wortbeiträge aus den Protokollen (Reden, Anfragen,
-                # Einwohnerfragen, Zusagen) — die Substanz, die nicht in den
-                # Beschlusstexten steht. Strenge Schwelle, oft leer. Beim
-                # Personen-Fragetyp stattdessen die Beiträge DIESER Person.
-                from council import embeddings as emb
-                if person:
-                    debatten_rows = emb.search_wortbeitraege_von_person(
-                        store, q_suche, person["nachname"])
-                else:
-                    hits_w = emb.search_wortbeitraege(store, q_suche, expanded)
-                    debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
-                    # … plus die Aussprache ZU den gefundenen Beschlüssen:
-                    # Fachsprache (Vinylchlorid, Messpunkte) liegt außerhalb
-                    # des Frage-Wortfelds und fällt durch die Ähnlichkeits-
-                    # suche — Zugehörigkeit trägt hier weiter (Befund 10.08.).
-                    have = {d["id"] for d in debatten_rows}
-                    debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
-                        candidates[:8]) if w["id"] not in have]
-                # Zusagen der Verwaltung als EIGENER Kanal: Im allgemeinen
-                # Debatten-Ranking gingen sie unter (1 von 19 Belegen; selbst
-                # auf „Was hat die Verwaltung zugesagt?" kam keine), weil sie
-                # kurz und nüchtern formuliert sind. Dabei sind sie der
-                # besondere Stoff — eine Selbstverpflichtung mit Datum.
-                if not person:
-                    try:
-                        hits_z = emb.search_zusagen(store, q_suche, expanded)
-                        schon = {r["id"] for r in debatten_rows}
-                        debatten_rows += [r for r in store.wortbeitraege_by_ids(
-                            [wid for wid, _ in hits_z]) if r["id"] not in schon]
-                    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
-                        pass
-                # FDP/Volt-Beiträge in die Einzel-Partei auflösen (Stammdaten).
-                qa.parteien_aufloesen(store, debatten_rows)
-            except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker
-                pass
+            # Kommende oder protokolllose Sitzung: Es KANN noch keine Debatte
+            # dieser Sitzung geben — die Ähnlichkeitssuche fände nur Beiträge
+            # aus ALTEN Sitzungen, und die stünden als „Aus den Ratsdebatten"
+            # irreführend neben der Zukunfts-Antwort; am Debatten-Gate hinge
+            # obendrein der Parteien-Baustein (Tims Befund 26.08.). Fragen zur
+            # „letzten Sitzung" behalten ihre Debatten: Dort ist die Sitzung
+            # MIT Beschlüssen mit aufgelöst (sitzung_ids gefüllt).
+            if typ != "sitzung" or sitzung_ids:
+                try:
+                    # Task 16: Wortbeiträge aus den Protokollen (Reden, Anfragen,
+                    # Einwohnerfragen, Zusagen) — die Substanz, die nicht in den
+                    # Beschlusstexten steht. Strenge Schwelle, oft leer. Beim
+                    # Personen-Fragetyp stattdessen die Beiträge DIESER Person.
+                    from council import embeddings as emb
+                    if person:
+                        debatten_rows = emb.search_wortbeitraege_von_person(
+                            store, q_suche, person["nachname"])
+                    else:
+                        hits_w = emb.search_wortbeitraege(store, q_suche, expanded)
+                        debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
+                        # … plus die Aussprache ZU den gefundenen Beschlüssen:
+                        # Fachsprache (Vinylchlorid, Messpunkte) liegt außerhalb
+                        # des Frage-Wortfelds und fällt durch die Ähnlichkeits-
+                        # suche — Zugehörigkeit trägt hier weiter (Befund 10.08.).
+                        have = {d["id"] for d in debatten_rows}
+                        debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
+                            candidates[:8]) if w["id"] not in have]
+                    # Zusagen der Verwaltung als EIGENER Kanal: Im allgemeinen
+                    # Debatten-Ranking gingen sie unter (1 von 19 Belegen; selbst
+                    # auf „Was hat die Verwaltung zugesagt?" kam keine), weil sie
+                    # kurz und nüchtern formuliert sind. Dabei sind sie der
+                    # besondere Stoff — eine Selbstverpflichtung mit Datum.
+                    if not person:
+                        try:
+                            hits_z = emb.search_zusagen(store, q_suche, expanded)
+                            schon = {r["id"] for r in debatten_rows}
+                            debatten_rows += [r for r in store.wortbeitraege_by_ids(
+                                [wid for wid, _ in hits_z]) if r["id"] not in schon]
+                        except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                            pass
+                    # FDP/Volt-Beiträge in die Einzel-Partei auflösen (Stammdaten).
+                    qa.parteien_aufloesen(store, debatten_rows)
+                except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker
+                    pass
             # Beleg nachlesbar machen: jeder Beitrag bekommt die PDF-URL
             # seines Protokolls (Tims Wunsch 18.08.).
             qa.protokolle_verlinken(store, debatten_rows)
