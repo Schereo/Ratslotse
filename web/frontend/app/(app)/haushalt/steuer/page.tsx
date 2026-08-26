@@ -27,6 +27,7 @@ import { SteuerPlanIst } from "@/components/haushalt/steuer-plan-ist";
 import { EntgeltePlanIst } from "@/components/haushalt/entgelte-plan-ist";
 import { EntgelteBereiche } from "@/components/haushalt/entgelte-bereiche";
 import { HebesatzTreppe } from "@/components/haushalt/hebesatz-treppe";
+import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { AbgelehnteStufe } from "@/components/haushalt/abgelehnte-stufe";
 import { Grenzen } from "@/components/haushalt/steuer-grenzen";
 import { WerZahlt } from "@/components/haushalt/wer-zahlt";
@@ -306,6 +307,56 @@ function SteuerInner() {
         )}
       </div>
 
+      {/* Die Bühne (H5-02/H5-09): Steckbriefe tragen keine Schritt-Nummer,
+          die Bühne gibt ihnen trotzdem ein Gesicht. Die eine Zahl ist der
+          Hebesatz — die Stellschraube des Rats —, nicht der Betrag (der steht
+          in der Kennzahl-Karte oben, mit eigenem Jahr). Nur wo eine
+          Hebesatz-Reihe vorliegt (Realsteuern); erfunden wird keine. */}
+      {(() => {
+        const reihe = [...hebeHaupt].sort((a, b) => a.jahr - b.jahr);
+        const akt = reihe.at(-1);
+        if (reihe.length < 2 || !akt) return null;
+        const stufen = reihe.slice(-4);
+        const min = Math.min(...stufen.map((z) => z.hebesatz));
+        const max = Math.max(...stufen.map((z) => z.hebesatz));
+        const hoehe = (w: number) => max > min ? 12 + ((w - min) / (max - min)) * 30 : 26;
+        return (
+          <Seitenbuehne
+            kicker={`Steuer-Steckbrief · Hebesatz ${art.hebesatzArten?.[0] ?? art.titel}`}
+            zahl={<><ZaehlZahl wert={akt.hebesatz} />&#8239;% seit {akt.jahr}</>}
+            sub={`davor ${reihe.length - 1} ${reihe.length - 1 === 1 ? "Änderung" : "Änderungen"} seit ${reihe[0].jahr} — beschlossen jeweils vom Rat`}
+            minibild={{
+              href: "#hebesatz",
+              label: "Hebesatz-Treppe — klickt zur ganzen Reihe seit 1980",
+              skizze: (
+                <span className="relative block" style={{ height: 48 }}>
+                  {stufen.map((z, i) => {
+                    const links = (i / stufen.length) * 100;
+                    const breite = 100 / stufen.length;
+                    return (
+                      <span key={z.jahr}>
+                        <span className="absolute" style={{
+                          left: `${links}%`, width: `${breite}%`,
+                          bottom: hoehe(z.hebesatz), borderTop: "3px solid var(--sb-voll)",
+                        }} />
+                        {i > 0 && (
+                          <span className="absolute" style={{
+                            left: `${links}%`,
+                            bottom: Math.min(hoehe(stufen[i - 1].hebesatz), hoehe(z.hebesatz)),
+                            height: Math.abs(hoehe(z.hebesatz) - hoehe(stufen[i - 1].hebesatz)),
+                            borderLeft: "2px dashed var(--sb-strich)",
+                          }} />
+                        )}
+                      </span>
+                    );
+                  })}
+                </span>
+              ),
+            }}
+          />
+        );
+      })()}
+
       {/* Wer entscheidet was — das didaktische Herzstück (H-10). */}
       <div className="rounded-2xl border border-primary/20 bg-card p-4 shadow-sm">
         <div className="flex items-baseline justify-between gap-3">
@@ -482,6 +533,7 @@ function SteuerInner() {
             Vorjahre liege uns nicht vor. Sie lag die ganze Zeit vor — auf
             demselben Blatt wie die Steuereinnahmen, die wir längst lesen. */}
         {hebeHaupt.length >= 2 ? (
+          <div id="hebesatz" className="scroll-mt-20">
           <HebesatzTreppe
             reihe={hebeHaupt}
             zweitreihe={hebeZweit}
@@ -511,6 +563,7 @@ function SteuerInner() {
             beleg={<Beleg q="hebesaetze" />}
             aufkommenBeleg={<Beleg q="steuern" />}
           />
+          </div>
         ) : (
           /* Der Rückfall, wenn die Reihe fehlt — und zwar OHNE Zahl.
              Bis 19.08.2026 stand hier ein Kasten „2025 · Rat — Hebesatz 439 %"

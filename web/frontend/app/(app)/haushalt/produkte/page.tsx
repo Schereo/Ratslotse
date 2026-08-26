@@ -12,14 +12,15 @@
 // Steckbrief eines einzelnen Teilhaushalts. Er hat bewusst keinen Schritt im
 // Wegweiser — man kommt dorthin aus der Liste, nicht der Reihe nach.
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { Abschnitte } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
-import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
+import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
+import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { BereicheAbschnitt } from "@/components/haushalt/abschnitt-bereiche";
 import { ProdukteAbschnitt } from "@/components/haushalt/abschnitt-produkte";
 
@@ -37,6 +38,12 @@ const MARKEN = [
 ];
 
 function ProdukteSeiteInner() {
+  // Die eine Zahl der Bühne kommt aus dem Produkte-Abschnitt selbst
+  // (`onBestand`) — dieselbe Antwort, die unten den Satz „Hier stehen N
+  // davon …" trägt. Kein zweiter Abruf, keine zweite Wahrheit.
+  // `undefined` = lädt (Platzhalter hält die Höhe), `null` = entschieden
+  // nichts (keine Bühne), sonst die Werte.
+  const [bestand, setBestand] = useState<{ anzahl: number; jahr: number } | null | undefined>(undefined);
   return (
     // KEIN gemeinsames `jahr`: Die Bereichs-Übersicht zeigt den jüngsten
     // Ansatz, die Produktebene den jüngsten Jahrgang MIT Produktdaten — und
@@ -57,16 +64,46 @@ function ProdukteSeiteInner() {
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
               Was kostet eigentlich …?
             </h1>
-            <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
-              Der Haushalt ist in zehn Teilhaushalte geteilt, und deren Namen stammen aus
-              der Verwaltungsgliederung: Sie sagen, wer zuständig ist, nicht, worum es
-              geht. Zuerst steht deshalb zu jedem eine Zeile, die man ohne Vorwissen lesen
-              kann — und darunter die einzelnen Aufgaben mit ihren Kosten.
-            </p>
           </div>
-          <SchrittZeichen href="/haushalt/produkte" />
+          <SchrittPfad href="/haushalt/produkte" />
         </div>
 
+        {/* Die Bühne (H5-02/H5-09). Minibild: der Produktbaum — ein
+            Teilhaushalt, darunter eingerückt seine Aufgaben — klickt zur
+            Suche. Bis die Antwort des Abschnitts da ist, hält der
+            Platzhalter die Höhe, damit die Seite nicht springt. */}
+        {bestand ? (
+          <Seitenbuehne
+            kicker={`Produktebene · Haushaltsjahr ${bestand.jahr}`}
+            zahl={<><ZaehlZahl wert={bestand.anzahl} /> einzelne Aufgaben, vom Stadtarchiv
+              bis zum Schwimmbad</>}
+            sub="jede mit Kosten, zuständigem Amt und Auftragsgrundlage"
+            minibild={{
+              href: "#produkte",
+              label: "Produktbaum mit Steckbriefen — klickt zur Suche",
+              skizze: (
+                <>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 flex-none rounded-[3px]" style={{ background: "var(--sb-voll)" }} />
+                    <span className="h-2 flex-1 rounded-[4px] opacity-40" style={{ background: "var(--sb-voll)" }} />
+                  </span>
+                  <span className="ml-3.5 flex flex-col gap-1 border-l-2 border-dashed pl-2.5" style={{ borderColor: "var(--sb-strich)" }}>
+                    <span className="block h-[7px] w-4/5 rounded-[4px]" style={{ background: "var(--sb-mittel)" }} />
+                    <span className="block h-[7px] w-3/5 rounded-[4px]" style={{ background: "var(--sb-mittel)" }} />
+                    <span className="block h-[7px] w-[70%] rounded-[4px]" style={{ background: "var(--sb-mittel)" }} />
+                  </span>
+                </>
+              ),
+            }}
+          />
+        ) : bestand === undefined ? (
+          <SeitenbuehneLaedt kicker="Produktebene" />
+        ) : null}
+
+        {/* BEWUSST kein Einstiegstext mehr zwischen Bühne und Abschnitten
+            (Tim, 26.08.): Der Bereichs-Abschnitt beginnt mit fast demselben
+            Satz („Der Haushalt ist in Teilhaushalte geteilt …") — der
+            Kopf-Absatz war seine Dublette. */}
         <Abschnitte marken={MARKEN} />
 
         <section id="bereiche" className="scroll-mt-20">
@@ -74,7 +111,7 @@ function ProdukteSeiteInner() {
         </section>
 
         <section id="produkte" className="scroll-mt-20 border-t border-border pt-4">
-          <ProdukteAbschnitt />
+          <ProdukteAbschnitt onBestand={setBestand} />
         </section>
 
         <SchrittWeiter href="/haushalt/produkte" />

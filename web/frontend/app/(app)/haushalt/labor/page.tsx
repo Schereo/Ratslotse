@@ -29,7 +29,7 @@ import type { ProgrammDaten } from "@/lib/haushalt-investitionsprogramm";
 import type { SchuldenDaten } from "@/lib/haushalt-schulden";
 import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
-import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
+import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Labor } from "@/components/haushalt/labor";
 
@@ -94,7 +94,12 @@ export default function LaborPage() {
             kein Vorschlag und schon gar kein Beschluss.
           </p>
         </div>
-        <SchrittZeichen href="/haushalt/labor" />
+        {/* Bewusst OHNE Bühne (H5-09): Das Labor ist Werkzeug, keine
+              Lektüre — sein Kopf ist der eigene Regler-Stand. Eine
+              Lese-Kennzahl würde hier etwas behaupten, das man gleich selbst
+              verändert. Der Schritt-Pfad bleibt: Das Labor ist der letzte
+              Schritt des Wegs. */}
+          <SchrittPfad href="/haushalt/labor" />
       </div>
 
       <Labor

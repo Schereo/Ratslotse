@@ -44,8 +44,9 @@ import { SlopePaar, type SlopePaarZeile } from "@/components/grafik/slope-paar";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
-import { SchrittWeiter } from "@/components/haushalt/schritt-weiter";
-import { SchrittZeichen } from "@/components/haushalt/schritt-zeichen";
+import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
+import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
+import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 
 const QUELLEN = ["lsn_finanzausgleich", "lsn_realsteuern", "vergleich_2018"] as const;
 
@@ -70,14 +71,14 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
   );
 }
 
-function Abschnitt({ kicker, zusatz, children }: {
-  kicker: string; zusatz?: string; children: React.ReactNode;
+function Abschnitt({ kicker, zusatz, id, children }: {
+  kicker: string; zusatz?: string; id?: string; children: React.ReactNode;
 }) {
   // `@container`: Der Inhalt eines Abschnitts richtet seine Spaltenzahl am
   // eigenen Platz aus, nicht an der Fensterbreite — am Desktop liegt die Karte
   // neben der 240-px-Seitenleiste, auf dem iPad nicht (Designsprache §4).
   return (
-    <section className="@container/abschnitt rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section id={id} className="@container/abschnitt scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           {kicker}
@@ -170,20 +171,54 @@ export default function VergleichSeite() {
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
-            <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Stadtfinanzen Oldenburg · Einordnung
-            </p>
+            <SchrittKicker href="/haushalt/vergleich" />
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
               Steht Oldenburg besser da als Osnabrück?
             </h1>
-            <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
-              Bei den Steuern lässt sich das beantworten. Bei den Ausgaben nicht — und
-              das liegt nicht an fehlenden Zahlen, sondern daran, was sie messen.
-              Beides steht auf dieser Seite.
-            </p>
           </div>
-          <SchrittZeichen href="/haushalt/vergleich" />
+          <SchrittPfad href="/haushalt/vergleich" />
         </div>
+
+        {/* Die Bühne (H5-02/H5-09): der Rangplatz als die eine Zahl der
+            Seite — dieselbe Rechnung wie der Satz an der Rangliste, zu der
+            das Minibild (die Städte-Leiter) springt. Ohne Steuerkraft-Reihe
+            keine Bühne: kein erfundener Platz. */}
+        {platz != null && steuerkraft.length > 1 && skJahr && (
+          <Seitenbuehne
+            kicker="Kreisfreie Städte Niedersachsens"
+            zahl={<>Platz <ZaehlZahl wert={platz} /> von {steuerkraft.length} bei
+              der Steuerkraft</>}
+            sub={`Steuerkraftmesszahl je Einwohner*in · Ausgleichsjahr ${skJahr} — unsere Pro-Kopf-Rechnung, keine amtliche Kennzahl`}
+            minibild={{
+              href: "#steuerkraft",
+              label: "Städte-Leiter — Oldenburg markiert, klickt zur Rangliste",
+              skizze: (() => {
+                const werte = steuerkraft.map((z) => z.wert);
+                const min = Math.min(...werte), max = Math.max(...werte);
+                const pos = (w: number) => max > min ? 2 + ((w - min) / (max - min)) * 90 : 50;
+                return (
+                  <span className="relative block h-[18px]">
+                    <span className="absolute inset-x-0 top-2 h-[2px]" style={{ background: "var(--sb-blass)" }} />
+                    {steuerkraft.map((z) => z.ist_oldenburg ? (
+                      <span key={z.schluessel} className="absolute top-[3px] h-3 w-3 rounded-full shadow-[0_0_0_3px_hsl(var(--primary)/0.18)]"
+                        style={{ left: `${pos(z.wert)}%`, background: "var(--sb-voll)" }} />
+                    ) : (
+                      <span key={z.schluessel} className="absolute top-[5px] h-2 w-2 rounded-full"
+                        style={{ left: `${pos(z.wert)}%`, background: "var(--sb-mittel)" }} />
+                    ))}
+                  </span>
+                );
+              })(),
+            }}
+          />
+        )}
+
+        {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
+        <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
+          Bei den Steuern lässt sich das beantworten. Bei den Ausgaben nicht — und
+          das liegt nicht an fehlenden Zahlen, sondern daran, was sie messen.
+          Beides steht auf dieser Seite.
+        </p>
 
         {/* --- Teil 1: Was sich vergleichen lässt --- */}
         <LottiErklaert
@@ -196,7 +231,7 @@ export default function VergleichSeite() {
         />
 
         {hatZahlen && skJahr && (
-          <Abschnitt kicker="Steuerkraft je Einwohner*in"
+          <Abschnitt id="steuerkraft" kicker="Steuerkraft je Einwohner*in"
             zusatz={`Ausgleichsjahr ${skJahr} · alle acht kreisfreien Städte`}>
             <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
               Die <GlossaryText text="Steuerkraftmesszahl" /> ist die Größe, mit der das

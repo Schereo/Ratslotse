@@ -47,7 +47,7 @@
 // Beleg als Messwert — aber nicht als Absatz auf der Seite. Was hier steht,
 // ist die Quelle, was unsere eigene Rechnung ist, und wo die Zahlen enden.
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
@@ -164,13 +164,29 @@ function Rang({ zeile, skala, farbe, aufVorhaben, vorhandene }: {
   );
 }
 
-export function InvestitionsplanAbschnitt() {
+export function InvestitionsplanAbschnitt({ onBestand }: {
+  /** Meldet den Vorhaben-Bestand des Investitionsprogramms nach oben — die
+   *  Seitenbühne im Kopf zählt dieselben Maßnahmen wie die Vorhaben-Listen
+   *  dieses Abschnitts, aus derselben Antwort (H5-02). Über alle Jahrgänge,
+   *  damit die Zahl nicht am Jahr-Umschalter hängt. */
+  onBestand?: (b: { vorhaben: number; von: number; bis: number } | null) => void;
+} = {}) {
   const { data, loading } = useFetch<InvestitionenDaten>("/council/haushalt/investitionen");
   // Die Vorhaben kommen aus einer anderen Quelle (Haushaltsplan statt
   // Open-Data-Portal) und reichen weiter zurück. Eigener Abruf, eigene
   // Jahresliste — zusammengelegt wäre einer von beiden immer beschnitten.
-  const { data: programm } = useFetch<ProgrammDaten>(
+  const { data: programm, loading: programmLaedt } = useFetch<ProgrammDaten>(
     "/council/haushalt/investitionsprogramm");
+
+  useEffect(() => {
+    if (!onBestand || programmLaedt) return;
+    if (!programm?.massnahmen.length || !programm.jahre.length) { onBestand(null); return; }
+    onBestand({
+      vorhaben: programm.massnahmen.length,
+      von: Math.min(...programm.jahre),
+      bis: Math.max(...programm.jahre),
+    });
+  }, [onBestand, programm, programmLaedt]);
   const jahre = useMemo(() => [...(data?.jahre ?? [])].sort((a, b) => a - b), [data]);
   const [jahr, setJahr] = useState<number | null>(null);
   const aktJahr = jahr ?? (jahre.length ? jahre[jahre.length - 1] : null);
