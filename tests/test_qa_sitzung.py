@@ -1,0 +1,233 @@
+"""Sitzungs-Fragetyp der KI-Frage (25.08.26): deterministische Erkennung von
+Sitzungsdatum und Gremium, Auflösung über die Sitzungstabelle, Kontext-Block.
+
+Anlass war eine echte Nutzerfrage vom 25.08.26: „Was hat der
+Jugendhilfeausschuss am 17.06.2026 beschlossen?" — die Ähnlichkeitssuche fand
+nur die drei Kita-TOPs und ließ die halbe Tagesordnung weg, darunter einen
+echten Beschluss (Richtlinien Jugendarbeit, angenommen).
+"""
+import json
+from datetime import date, timedelta
+
+from council import qa
+from council.store import CouncilStore
+
+
+# ---- Datums-Erkennung -------------------------------------------------------
+
+def test_datum_in_frage_formate():
+    f = qa._datum_in_frage
+    assert f("Was hat der JHA am 17.06.2026 beschlossen?") == ("2026-06-17", None)
+    assert f("Was war am 17.6.26?") == ("2026-06-17", None)
+    assert f("Was wurde am 17. Juni 2026 entschieden?") == ("2026-06-17", None)
+    assert f("Was wurde am 3. März 2025 entschieden?") == ("2025-03-03", None)
+    # Ohne Jahr: Monatstag zurück, Jahr löst finde_sitzungen am Bestand auf.
+    assert f("Was war in der Sitzung am 17.06.?") == (None, "-06-17")
+    assert f("Was war am 17. Juni?") == (None, "-06-17")
+
+
+def test_datum_in_frage_zeitraum_und_muell():
+    f = qa._datum_in_frage
+    # Zeitspannen sind keine Sitzungstermine.
+    assert f("Was wurde seit dem 01.01.2024 zum Stadion beschlossen?") == (None, None)
+    assert f("Alle Beschlüsse bis zum 31.12.2025 bitte") == (None, None)
+    # Beträge und Uhrzeiten sind keine Daten.
+    assert f("Was kostet das, 3.5 Millionen?") == (None, None)
+    assert f("Die Sitzung begann um 18 Uhr") == (None, None)
+    assert f("Was wurde beschlossen?") == (None, None)
+    # Unsinnige Tage/Monate fallen durch.
+    assert f("am 45.13.2026") == (None, None)
+
+
+# ---- Gremiums-Erkennung -----------------------------------------------------
+
+def _store_mit_sitzungen(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        for ksinr, committee, datum in (
+                (1, "Jugendhilfeausschuss", "2026-06-17"),
+                (2, "Sozialausschuss", "2026-06-17"),
+                (3, "Ausschuss für Stadtplanung und Bauen", "2026-06-04"),
+                (4, "Rat", "2026-06-29")):
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, "
+                "session_time, location, fetched_at) VALUES (?, ?, ?, '16:00', 'Rathaus', '')",
+                (ksinr, committee, datum))
+        for ksinr, pos, titel in ((1, 0, "Krippengruppe"), (1, 1, "Kita-Bericht"),
+                                  (1, 2, "Richtlinien Jugendarbeit"),
+                                  (2, 0, "Sozialbericht"), (3, 0, "B-Plan"),
+                                  (4, 0, "Stadionneubau")):
+            store._conn.execute(
+                "INSERT INTO council_decisions (ksinr, position, item_number, kind, title, outcome) "
+                "VALUES (?, ?, ?, 'decision', ?, 'angenommen')", (ksinr, pos, str(pos + 1), titel))
+        # Subvotes zählen nicht als eigene Tagesordnungspunkte.
+        store._conn.execute(
+            "INSERT INTO council_decisions (ksinr, position, kind, title) "
+            "VALUES (1, 9, 'subvote', 'Änderungsantrag')")
+    return store
+
+
+def test_gremium_in_frage_vollname_alias_und_rat(tmp_path):
+    store = _store_mit_sitzungen(tmp_path)
+    g = qa._gremium_in_frage
+    assert g(store, "Was hat der Jugendhilfeausschuss beschlossen?") == "jugendhilfeausschuss"
+    # Kurzform aus der Alias-Tabelle → Fragment des amtlichen Namens.
+    assert g(store, "Was hat der Bauausschuss entschieden?") == "stadtplanung und bauen"
+    # Plenum nur als eigenes Wort — „Rathaus" oder „Beirat" zählen nicht.
+    assert g(store, "Was hat der Rat am 29.06. beschlossen?") == "rat"
+    assert g(store, "Wann ist die nächste Ratssitzung?") == "rat"
+    assert g(store, "Was ist im Rathaus passiert?") is None
+    assert g(store, "Was wurde zum Stadion beschlossen?") is None
+    store.close()
+
+
+# ---- Sitzungs-Auflösung -----------------------------------------------------
+
+def test_finde_sitzungen_mit_datum_und_gremium(tmp_path):
+    store = _store_mit_sitzungen(tmp_path)
+    s = qa.finde_sitzungen(store, "Was hat der Jugendhilfeausschuss am 17.06.2026 beschlossen?")
+    assert len(s) == 1 and s[0]["committee"] == "Jugendhilfeausschuss"
+    # Beschluss-ids in Tagesordnungs-Reihenfolge, ohne den Subvote.
+    rows = store.get_decisions_by_ids(s[0]["beschluss_ids"])
+    assert [r["title"] for r in rows] == ["Krippengruppe", "Kita-Bericht",
+                                         "Richtlinien Jugendarbeit"]
+    # Datum ohne Gremium meint den TAG: beide Sitzungen des 17.06.
+    s = qa.finde_sitzungen(store, "Was wurde am 17.06.2026 beschlossen?")
+    assert {x["committee"] for x in s} == {"Jugendhilfeausschuss", "Sozialausschuss"}
+    # Datum ohne Jahr: jüngste vergangene Sitzung an diesem Monatstag.
+    s = qa.finde_sitzungen(store, "Was hat der Jugendhilfeausschuss am 17.06. beschlossen?")
+    assert [x["session_date"] for x in s] == ["2026-06-17"]
+    store.close()
+
+
+def test_finde_sitzungen_braucht_einen_anlass(tmp_path):
+    store = _store_mit_sitzungen(tmp_path)
+    # Ein Datum allein macht keine Sitzungsfrage — der Brief vom 17.06. ist keine.
+    assert qa.finde_sitzungen(store, "Der Brief vom 17.06.2026 nennt Zahlen, stimmen die?") == []
+    # Ohne Datum und ohne Sitzungs-Phrase passiert nichts, auch mit Gremium.
+    assert qa.finde_sitzungen(store, "Was macht der Jugendhilfeausschuss eigentlich?") == []
+    # Zeitspanne bleibt Zeitspanne.
+    assert qa.finde_sitzungen(store, "Was wurde seit dem 01.01.2026 beschlossen?") == []
+    store.close()
+
+
+def test_finde_sitzungen_letzte_sitzung_mit_protokoll_verzug(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    heute = date.today()
+    juengst = (heute - timedelta(days=7)).isoformat()
+    aelter = (heute - timedelta(days=40)).isoformat()
+    with store._conn:
+        for ksinr, datum in ((1, aelter), (2, juengst)):
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, "
+                "session_time, location, fetched_at) VALUES (?, 'Sportausschuss', ?, '', '', '')",
+                (ksinr, datum))
+        # Nur die ÄLTERE Sitzung hat schon Beschlüsse (Protokoll-Verzug!).
+        store._conn.execute(
+            "INSERT INTO council_decisions (ksinr, position, kind, title) "
+            "VALUES (1, 0, 'decision', 'Sportstättenkonzept')")
+        store._conn.execute(
+            "INSERT INTO council_agenda_items (ksinr, item_number, title) "
+            "VALUES (2, '1', 'Bäderbericht')")
+    s = qa.finde_sitzungen(store, "Was hat der Sportausschuss in seiner letzten Sitzung beschlossen?")
+    # Jüngste zuerst (ehrlich: noch kein Protokoll, Tagesordnung liegt bei),
+    # dazu die letzte MIT Beschlüssen.
+    assert [x["session_date"] for x in s] == [juengst, aelter]
+    assert s[0]["beschluss_ids"] == [] and s[0]["agenda"][0]["title"] == "Bäderbericht"
+    assert len(s[1]["beschluss_ids"]) == 1
+    store.close()
+
+
+def test_finde_sitzungen_naechste_sitzung(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    bald = (date.today() + timedelta(days=5)).isoformat()
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, "
+            "session_time, location, fetched_at) VALUES (9, 'Verkehrsausschuss', ?, '17:00', '', '')",
+            (bald,))
+        store._conn.execute(
+            "INSERT INTO council_agenda_items (ksinr, item_number, title) "
+            "VALUES (9, '5', 'Radweg Alexanderstraße')")
+    s = qa.finde_sitzungen(store, "Was steht auf der Tagesordnung der nächsten Sitzung des Verkehrsausschusses?")
+    assert len(s) == 1 and s[0]["kuenftig"] is True
+    assert s[0]["agenda"] == [{"item_number": "5", "title": "Radweg Alexanderstraße",
+                               "summary": None}]
+    assert qa.finde_sitzungen(store, "Wann tagt der Verkehrsausschuss?")[0]["session_date"] == bald
+    store.close()
+
+
+# ---- Kontext-Block, Leer-Text, Prompt-Regeln --------------------------------
+
+def test_sitzungen_block_rendert_beide_zustaende():
+    block = qa._sitzungen_block([
+        {"committee": "Jugendhilfeausschuss", "session_date": "2026-06-17",
+         "session_time": "16:00", "location": "Rathaus",
+         "beschluss_ids": [1, 2, 3], "kuenftig": False},
+        {"committee": "Sportausschuss", "session_date": "2026-09-01",
+         "kuenftig": True, "beschluss_ids": [],
+         "agenda": [{"item_number": "5", "title": "Bäderbericht",
+                     "summary": "Sanierung  der   Becken."}]},
+    ])
+    assert "Jugendhilfeausschuss am 17.06.2026 um 16:00 Uhr (Rathaus)" in block
+    assert "Alle 3 Tagesordnungspunkte" in block
+    assert "steht noch BEVOR" in block
+    assert "TOP 5: Bäderbericht — Sanierung der Becken." in block
+    assert "NIE mit [id]" in block
+    assert qa._sitzungen_block([]) == "" and qa._sitzungen_block(None) == ""
+
+
+def test_sitzungen_block_kein_protokoll():
+    block = qa._sitzungen_block([
+        {"committee": "Rat", "session_date": "2026-08-20", "kuenftig": False,
+         "beschluss_ids": [], "agenda": []}])
+    assert "noch kein Protokoll ausgewertet" in block
+
+
+def test_sitzungs_leer_text():
+    kuenftig = qa.sitzungs_leer_text([
+        {"committee": "Sportausschuss", "session_date": "2026-09-01", "kuenftig": True,
+         "agenda": [{"title": "Bäderbericht"}]}])
+    assert "tagt erst am 01.09.2026" in kuenftig and "„Bäderbericht“" in kuenftig
+    verzug = qa.sitzungs_leer_text([
+        {"committee": "Rat", "session_date": "2026-08-20", "kuenftig": False}])
+    assert "kein ausgewertetes Protokoll" in verzug or "Protokoll" in verzug
+    assert "20.08.2026" in verzug
+
+
+def test_analyse_sitzung_setzt_nur_der_router(monkeypatch):
+    """Behauptet die LLM-Analyse den Typ „sitzung", fehlt die aufgelöste
+    Sitzung — dann gilt „thema", wie bei „person"."""
+    from types import SimpleNamespace
+    payload = json.dumps({"begriffe": "Sitzung Juni", "typ": "sitzung"})
+    monkeypatch.setattr(qa.llm, "chat_complete", lambda **kw: SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=payload))], usage=None))
+    qa._ANALYSE_CACHE.clear()
+    assert qa.analyse_query("Was war in der Sitzung?")["typ"] == "thema"
+    qa._ANALYSE_CACHE.clear()
+
+
+def test_sitzung_regel_und_tokenbudget():
+    assert qa._answer_tokens("sitzung") == 1400
+    assert qa._answer_tokens("sitzung", gross=True) == 2200
+    assert qa._answer_tokens("sitzung", eng=True) == 320
+    messages, _ = qa._answer_messages(
+        "Was hat der JHA am 17.06.2026 beschlossen?",
+        [{"id": 1, "title": "T", "beschluss": "B"}], typ="sitzung",
+        sitzungen=[{"committee": "Jugendhilfeausschuss", "session_date": "2026-06-17",
+                    "beschluss_ids": [1], "kuenftig": False}])
+    prompt = messages[0]["content"]
+    assert "EINE KONKRETE SITZUNG" in prompt
+    assert "ZUR GEFRAGTEN SITZUNG" in prompt
+    # Ohne Sitzungs-Fund bleibt der Prompt frei von dem Block.
+    messages, _ = qa._answer_messages("Frage?", [], typ="thema")
+    assert "ZUR GEFRAGTEN SITZUNG" not in messages[0]["content"]
+
+
+def test_store_decision_ids_der_sitzung_und_monatstag(tmp_path):
+    store = _store_mit_sitzungen(tmp_path)
+    assert len(store.decision_ids_der_sitzung(1)) == 3  # ohne Subvote
+    assert store.decision_ids_der_sitzung(999) == []
+    tage = store.sitzungen_am_monatstag("-06-17")
+    assert {r["ksinr"] for r in tage} == {1, 2}
+    store.close()

@@ -59,9 +59,10 @@ _EXPAND_CACHE_MAX = 256
 # --- Frage-Analyse (Stufe 2: Fragetyp-Routing) ------------------------------
 # EIN LLM-Call vor der Suche liefert Suchbegriffe UND Fragetyp (+ ggf. die
 # gefragte Fraktion) — kein zweiter Roundtrip gegenüber der reinen Expansion.
-# „person" liefert die LLM-Analyse nie — der Typ wird deterministisch gesetzt,
-# wenn finde_person eine Ratsperson in der Frage erkennt (Router).
-QUERY_TYPES = ("thema", "verlauf", "partei", "geld", "person")
+# „person" und „sitzung" liefert die LLM-Analyse nie — die Typen werden
+# deterministisch gesetzt, wenn finde_person eine Ratsperson bzw.
+# finde_sitzungen eine konkrete Sitzung in der Frage erkennt (Router).
+QUERY_TYPES = ("thema", "verlauf", "partei", "geld", "person", "sitzung")
 _ANALYSE_CACHE: dict[str, dict] = {}
 
 
@@ -121,9 +122,10 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         # knapp statt mit Verlauf + Debatten-Absatz. Reist im ohnehin laufenden
         # Analyse-Call mit, kostet also keine zusätzliche Latenz.
         eng = bool(data.get("eng") is True)
-        if typ not in QUERY_TYPES or typ == "person":
-            # „person" setzt ausschließlich der Router (deterministische
-            # Erkennung) — behauptet das Modell den Typ, fehlt die Person.
+        if typ not in QUERY_TYPES or typ in ("person", "sitzung"):
+            # „person"/„sitzung" setzt ausschließlich der Router
+            # (deterministische Erkennung) — behauptet das Modell den Typ,
+            # fehlt die Person bzw. die aufgelöste Sitzung.
             typ = "thema"
         if typ != "partei":
             partei = None
@@ -197,6 +199,23 @@ EXTRA_REGELN = {
         "Nenne beim ersten Mal die Fraktion, wie sie bei den Beiträgen steht. "
         "Beschlüsse dienen nur als Rahmen. Gibt es keine passenden Beiträge "
         "der Person, sage das ehrlich — erfinde keine Positionen."
+    ),
+    # Sitzungs-Fragetyp (25.08.26): deterministisch gesetzt, wenn die Frage
+    # eine konkrete Sitzung nennt — deren Beschlüsse stehen dann vollständig
+    # und in Sitzungs-Reihenfolge vorn im Kontext (Router).
+    "sitzung": (
+        "Diese Frage zielt auf EINE KONKRETE SITZUNG (siehe Abschnitt ZUR "
+        "GEFRAGTEN SITZUNG): Ihre Tagesordnungspunkte stehen — soweit ein "
+        "Protokoll ausgewertet ist — VOLLSTÄNDIG und in Sitzungs-Reihenfolge "
+        "am Anfang des Kontexts. Fragt die Frage allgemein, was beschlossen "
+        "wurde: Gehe ALLE Punkte dieser Sitzung durch — jeden echten Beschluss "
+        "mit einem Satz Inhalt und Ergebnis [id]; bloße Kenntnisnahmen und "
+        "Berichte knapp, gern gesammelt in einem Absatz am Ende. Lass KEINEN "
+        "Punkt der Sitzung weg — Vollständigkeit geht hier vor Auswahl. Fragt "
+        "die Frage nach einem Aspekt (dem wichtigsten Beschluss, einem Thema, "
+        "einer Abstimmung), beantworte gezielt nur ihn — du siehst die ganze "
+        "Sitzung, es fehlt nichts. Beschlüsse aus ANDEREN Sitzungen gehören "
+        "höchstens als knapper Bezug in die Antwort."
     ),
 }
 
@@ -395,6 +414,258 @@ def steckbriefe_fuer(store, frage: str, max_n: int = 2) -> list[dict]:
         return store.entity_steckbriefe([e["id"] for e in ent]) if ent else []
     except Exception:  # noqa: BLE001
         return []
+
+
+# ---- Sitzungs-Fragetyp (25.08.26) ------------------------------------------
+# „Was hat der Jugendhilfeausschuss am 17.06.2026 beschlossen?" lief bisher
+# rein über die Ähnlichkeitssuche — die fand die drei Kita-TOPs und ließ die
+# halbe Tagesordnung weg, darunter einen echten Beschluss (echte Nutzerfrage,
+# 25.08.26). Nennt die Frage ein konkretes Sitzungsdatum oder die
+# letzte/nächste Sitzung eines Gremiums, wird die Sitzung deterministisch
+# über die Sitzungstabelle aufgelöst und ihre Beschlüsse kommen VOLLSTÄNDIG
+# in den Kontext — nach dem Muster des Haushalts-Blocks (erkennen → gezielt
+# laden → eigener Kontext-Block, vgl. haushalt_fuer_begriffe).
+
+_MONATE = {"januar": 1, "februar": 2, "maerz": 3, "april": 4, "mai": 5,
+           "juni": 6, "juli": 7, "august": 8, "september": 9, "oktober": 10,
+           "november": 11, "dezember": 12}
+
+# Numerische Daten stehen im ROHEN Fragetext — die Faltung wirft Punkte weg.
+_DATUM_NUM_RE = re.compile(r"\b(\d{1,2})\.\s?(\d{1,2})\.(\d{4}|\d{2})?(?!\d)")
+_DATUM_WORT_RE = re.compile(
+    r"\b(\d{1,2})\.?\s+(januar|februar|m[aä]rz|april|mai|juni|juli|august|"
+    r"september|oktober|november|dezember)(?:\s+(\d{4}))?\b", re.IGNORECASE)
+# „seit dem 01.01.2024" ist eine ZEITSPANNE, kein Sitzungstermin.
+_ZEITRAUM_PREP_RE = re.compile(
+    r"\b(seit|bis|ab|vor|nach|zwischen)(\s+(dem|der|den|zum|zur))?\s*$", re.IGNORECASE)
+
+
+def _datum_in_frage(frage: str) -> tuple[str | None, str | None]:
+    """(ISO-Datum, None) bei vollem Datum, (None, "-MM-DD") ohne Jahr,
+    (None, None) ohne Fund. Eine Zeitraum-Präposition davor („seit dem …")
+    disqualifiziert den Fund — das ist eine Spannen-, keine Terminangabe."""
+    for m in list(_DATUM_NUM_RE.finditer(frage)) + list(_DATUM_WORT_RE.finditer(frage)):
+        if _ZEITRAUM_PREP_RE.search(frage[:m.start()]):
+            continue
+        tag, monat_raw = int(m.group(1)), m.group(2)
+        monat = int(monat_raw) if monat_raw.isdigit() else _MONATE[_falte(monat_raw)]
+        if not (1 <= tag <= 31 and 1 <= monat <= 12):
+            continue
+        if m.group(3):
+            jahr = int(m.group(3))
+            if jahr < 100:
+                jahr += 2000
+            return f"{jahr:04d}-{monat:02d}-{tag:02d}", None
+        return None, f"-{monat:02d}-{tag:02d}"
+    return None, None
+
+
+#: Gefaltete Kurzformen → gefaltetes Fragment des amtlichen Gremiumsnamens.
+#: Fragmente statt Vollnamen, weil sich die amtlichen Namen über die Jahre
+#: ändern („… Digitalisierung …" kam beim Wirtschaftsausschuss dazu) — das
+#: Fragment matcht beide Fassungen in der Sitzungstabelle.
+_GREMIUM_ALIASE = {
+    "bauausschuss": "stadtplanung und bauen",
+    "planungsausschuss": "stadtplanung und bauen",
+    "stadtplanungsausschuss": "stadtplanung und bauen",
+    "umweltausschuss": "stadtgruen umwelt und klima",
+    "klimaausschuss": "stadtgruen umwelt und klima",
+    "finanzausschuss": "finanzen und beteiligungen",
+    "wirtschaftsausschuss": "wirtschaftsfoerderung",
+    "digitalisierungsausschuss": "wirtschaftsfoerderung",
+    "integrationsausschuss": "integration und migration",
+    "migrationsausschuss": "integration und migration",
+    "abfallausschuss": "abfallwirtschaftsbetrieb",
+    "hochbauausschuss": "gebaeudewirtschaft",
+    "bahnausschuss": "bahnangelegenheiten",
+}
+
+
+def _gremium_genannt(name_f: str, frage_f: str) -> bool:
+    """Steht der gefaltete Name als eigene Wortfolge in der gefalteten Frage?
+    Jedes Wort darf eine Genitiv-Endung tragen — „des VerkehrsausschussES",
+    „des AusschussES für Stadtplanung und Bauen"."""
+    muster = " " + " ".join(re.escape(t) + "(?:es|s)?" for t in name_f.split()) + " "
+    return re.search(muster, frage_f) is not None
+
+
+def _gremium_in_frage(store, frage: str) -> str | None:
+    """Gefaltetes Namens-Fragment des gefragten Gremiums, ``"rat"`` fürs
+    Plenum, None ohne Gremium. Vollnamen kommen aus dem Bestand (sie ändern
+    sich über die Jahre), Kurzformen („Bauausschuss") aus der Alias-Tabelle.
+    „Rat"/„Stadtrat" allein ist bewusst NUR ein Gremium-Signal — den Ausschlag
+    gibt erst das Datum bzw. die Sitzungs-Phrase (finde_sitzungen)."""
+    frage_f = f" {_falte(frage)} "
+    beste: str | None = None
+    try:
+        namen = store.get_all_committee_names()
+    except Exception:  # noqa: BLE001
+        namen = []
+    for name in namen:
+        name_f = _falte(name)
+        if name_f != "rat" and len(name_f) > len(beste or "") \
+                and _gremium_genannt(name_f, frage_f):
+            beste = name_f
+    if beste:
+        return beste
+    for kurz, fragment in _GREMIUM_ALIASE.items():
+        if _gremium_genannt(kurz, frage_f):
+            return fragment
+    if re.search(r" (stadt)?rat(s|es|ssitzung|sversammlung)? ", frage_f):
+        return "rat"
+    return None
+
+
+def _gremium_passt(fragment: str, committee: str | None) -> bool:
+    c = _falte(committee or "")
+    # Das Plenum heißt schlicht „Rat" — als Substring träfe es jeden Ausschuss.
+    return c == "rat" if fragment == "rat" else fragment in c
+
+
+# Sitzungs-Anlass: Ein Datum allein macht noch keine Sitzungsfrage („Der
+# Bericht vom 12.06. sagt …") — es braucht ein Gremium oder ein Sitzungswort.
+_SITZUNG_ANLASS_RE = re.compile(
+    r"\b(sitzung\w*|beschloss\w*|beschluss\w*|beschluesse\w*|entschied\w*|"
+    r"entscheidung\w*|tagesordnung\w*|getagt|tagte?n?|beraten|abgestimmt|"
+    r"ergebnis\w*)\b")
+_SITZUNG_ZURUECK_RE = re.compile(
+    r"\b(letzt\w*|juengst\w*|vergangen\w*|vorig\w*)\s+(rats)?sitzung\b|\bzuletzt\b")
+_SITZUNG_VORAUS_RE = re.compile(
+    r"\b(naechst\w*|kommend\w*)\s+((rats)?sitzung\w*|mal)\b|\bwann\s+tagt\b|"
+    r"\btagesordnung\w*\b")
+
+#: Mehr als 3 Sitzungen (ein Tag mit vollem Kalender) beantwortet niemand
+#: sinnvoll in einer Antwort.
+_SITZUNGEN_MAX = 3
+
+
+def finde_sitzungen(store, frage: str) -> list[dict]:
+    """Sitzungs-Fragetyp: Nennt die Frage ein konkretes Sitzungsdatum („am
+    17.06.2026", „17. Juni") oder die letzte/nächste Sitzung eines Gremiums?
+    Liefert die gemeinten Sitzungen, jede mit ``beschluss_ids`` in
+    Tagesordnungs-Reihenfolge und — solange es keine Beschlüsse gibt — der
+    Tagesordnung. Deterministisch wie finde_person; leer bei Fehlern, der
+    Sitzungs-Anker ist Zusatz, nie Blocker."""
+    try:
+        return _finde_sitzungen(store, frage)
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _finde_sitzungen(store, frage: str) -> list[dict]:
+    from datetime import date as _date
+    heute = _date.today().isoformat()
+    datum, monat_tag = _datum_in_frage(frage)
+    gremium = _gremium_in_frage(store, frage)
+    frage_f = _falte(frage)
+    rows: list[dict] = []
+    if (datum or monat_tag) and not gremium and not _SITZUNG_ANLASS_RE.search(frage_f):
+        return []
+    if datum:
+        rows = [r for r in store.sessions_on(datum)
+                if gremium is None or _gremium_passt(gremium, r.get("committee"))]
+    elif monat_tag:
+        # Ohne Jahr: die jüngste vergangene Sitzung an diesem Monatstag —
+        # gibt es nur künftige, die nächstliegende.
+        alle = [r for r in store.sitzungen_am_monatstag(monat_tag)
+                if gremium is None or _gremium_passt(gremium, r.get("committee"))]
+        vergangene = [r for r in alle if str(r.get("session_date") or "") <= heute]
+        rows = vergangene[:1] if vergangene else sorted(
+            alle, key=lambda r: str(r.get("session_date") or ""))[:1]
+        if rows and gremium is None:
+            # Datum ohne Gremium meint den TAG — alle Sitzungen dieses Tages.
+            rows = store.sessions_on(rows[0]["session_date"])
+    elif gremium and _SITZUNG_ZURUECK_RE.search(frage_f):
+        rows = [r for r in store.recent_sessions(limit=80)
+                if _gremium_passt(gremium, r.get("committee"))][:1]
+        if rows and not store.decision_ids_der_sitzung(rows[0]["ksinr"]):
+            # Trägt die jüngste Sitzung noch kein ausgewertetes Protokoll,
+            # gehört die letzte MIT Beschlüssen dazu — die Antwort kann dann
+            # beides ehrlich benennen statt stumm leer auszugehen.
+            for r in store.recent_sessions(limit=80):
+                if _gremium_passt(gremium, r.get("committee")) \
+                        and store.decision_ids_der_sitzung(r["ksinr"]):
+                    rows.append(r)
+                    break
+    elif gremium and _SITZUNG_VORAUS_RE.search(frage_f):
+        rows = [r for r in store.upcoming_sessions(limit=40)
+                if _gremium_passt(gremium, r.get("committee"))][:1]
+    out: list[dict] = []
+    for r in rows[:_SITZUNGEN_MAX]:
+        s = {"ksinr": r.get("ksinr"), "committee": r.get("committee"),
+             "session_date": r.get("session_date"),
+             "session_time": r.get("session_time"), "location": r.get("location"),
+             "kuenftig": str(r.get("session_date") or "") > heute}
+        # Terminierte Kalender-Einträge (upcoming) haben noch kein ksinr.
+        s["beschluss_ids"] = (store.decision_ids_der_sitzung(s["ksinr"])
+                              if s["ksinr"] else [])
+        if not s["beschluss_ids"]:
+            agenda = store.agenda_items(s["ksinr"]) if s["ksinr"] else []
+            s["agenda"] = [{"item_number": a.get("item_number"),
+                            "title": a.get("title"), "summary": a.get("summary")}
+                           for a in agenda]
+        out.append(s)
+    return out
+
+
+#: Tagesordnungen großer Rats-Sitzungen haben >40 TOPs — mehr Zeilen braucht
+#: der Block nicht, um die Frage nach dem Anstehenden zu beantworten.
+_SITZUNG_AGENDA_MAX = 40
+
+
+def _sitzungen_block(sitzungen: list[dict] | None) -> str:
+    """Kontext-Absatz zur aufgelösten Sitzung (Sitzungs-Fragetyp): Termin, Ort
+    und — solange kein Protokoll ausgewertet ist — die Tagesordnung. KEINE
+    Beschlüsse: nie mit [id] zitieren, sondern „Laut Sitzungskalender …"."""
+    if not sitzungen:
+        return ""
+    zeilen = []
+    for s in sitzungen:
+        kopf = (f"- {s.get('committee') or 'Sitzung'} am "
+                f"{_datum_de(s['session_date']) if s.get('session_date') else '?'}")
+        if s.get("session_time"):
+            kopf += f" um {s['session_time']} Uhr"
+        if s.get("location"):
+            kopf += f" ({s['location']})"
+        n = len(s.get("beschluss_ids") or [])
+        if n:
+            kopf += (f": Alle {n} Tagesordnungspunkte samt Ergebnis stehen oben "
+                     "im Kontext, in der Reihenfolge der Sitzung.")
+        elif s.get("kuenftig"):
+            kopf += ": Diese Sitzung steht noch BEVOR — Beschlüsse gibt es noch nicht."
+        else:
+            kopf += (": Zu dieser Sitzung ist noch kein Protokoll ausgewertet — "
+                     "welche Beschlüsse fielen, ist noch nicht erfasst.")
+        zeilen.append(kopf)
+        for a in (s.get("agenda") or [])[:_SITZUNG_AGENDA_MAX]:
+            zeile = f"  · TOP {a.get('item_number') or '?'}: {(a.get('title') or '')[:160]}"
+            if a.get("summary"):
+                zeile += f" — {' '.join(a['summary'].split())[:200]}"
+            zeilen.append(zeile)
+    return ("\nZUR GEFRAGTEN SITZUNG (aus dem Sitzungskalender — Termin und "
+            "Tagesordnung als „Laut Sitzungskalender …“ nennen, NIE mit [id]):\n"
+            + "\n".join(zeilen) + "\n"
+            "Liegen zur gefragten Sitzung noch keine Beschlüsse vor, sage das "
+            "ehrlich als Erstes — Beschlüsse ANDERER Sitzungen aus dem Kontext "
+            "sind dann NICHT die Antwort.\n")
+
+
+def sitzungs_leer_text(sitzungen: list[dict]) -> str:
+    """Ehrliche Antwort ohne LLM, wenn die gefragte Sitzung aufgelöst ist, aber
+    weder Beschlüsse noch passende Kandidaten existieren — sonst bekäme eine
+    Frage nach einer protokolllosen Sitzung das pauschale „nichts gefunden"."""
+    s = sitzungen[0]
+    name = s.get("committee") or "Das Gremium"
+    datum = _datum_de(s["session_date"]) if s.get("session_date") else "unbekanntem Datum"
+    tops = [f"„{a['title'].strip()}“" for a in (s.get("agenda") or [])[:3]
+            if (a.get("title") or "").strip()]
+    to = f" Auf der Tagesordnung: {', '.join(tops)}." if tops else ""
+    if s.get("kuenftig"):
+        return (f"{name} tagt erst am {datum} — Beschlüsse gibt es von dieser "
+                f"Sitzung also noch nicht.{to}")
+    return (f"{name} hat am {datum} getagt, aber ein ausgewertetes Protokoll "
+            f"liegt noch nicht vor — welche Beschlüsse dort fielen, kann ich "
+            f"noch nicht sagen.{to}")
 
 
 #: Ab wann gilt die Beleglage als tragfähig? Am Prod-Bestand gemessen und
@@ -995,7 +1266,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                      haushalt: list[dict] | None = None,
                      debatten: list[dict] | None = None,
                      gross: bool = False, steckbriefe: list[dict] | None = None,
-                     duenn: bool = False, eng: bool = False) -> tuple[list[dict], dict]:
+                     duenn: bool = False, eng: bool = False,
+                     sitzungen: list[dict] | None = None) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
                  if vtext else "")
@@ -1004,7 +1276,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                             extra_regeln=(ENG_REGEL if eng else EXTRA_REGELN.get(typ, ""))
                             + ("" if eng else (GROSS_REGEL if gross else ""))
                             + (DUENN_REGEL if duenn else ""),
-                            presse=_steckbrief_block(steckbriefe) + _presse_block(presse)
+                            presse=_sitzungen_block(sitzungen)
+                            + _steckbrief_block(steckbriefe) + _presse_block(presse)
                             + _haushalt_block(haushalt) + _debatten_block(debatten, eng),
                             gespraech=gespraech)
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
@@ -1111,6 +1384,9 @@ def _answer_tokens(typ: str, gross: bool = False, eng: bool = False) -> int:
     # Große Themen (Task 32) bekommen Platz für die gegliederte Langfassung.
     if gross:
         return 2200
+    if typ == "sitzung":
+        # Der Rückblick muss JEDEN Punkt der Sitzung erwähnen dürfen.
+        return 1400
     return 1100 if typ == "verlauf" else 1000
 
 
@@ -1118,10 +1394,12 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                     haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
                     gross: bool = False, steckbriefe: list[dict] | None = None,
-                    duenn: bool = False, eng: bool = False):
+                    duenn: bool = False, eng: bool = False,
+                    sitzungen: list[dict] | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten, gross, steckbriefe, duenn, eng)
+                                       haushalt, debatten, gross, steckbriefe, duenn, eng,
+                                       sitzungen)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -1132,12 +1410,14 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                   haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
                   gross: bool = False, steckbriefe: list[dict] | None = None,
-                  duenn: bool = False, eng: bool = False):
+                  duenn: bool = False, eng: bool = False,
+                  sitzungen: list[dict] | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten, gross, steckbriefe, duenn, eng)
+                                       haushalt, debatten, gross, steckbriefe, duenn, eng,
+                                       sitzungen)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 

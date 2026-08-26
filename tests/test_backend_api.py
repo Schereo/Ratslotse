@@ -2125,6 +2125,96 @@ def test_ask_stream_haelt_marker_zurueck_und_liefert_suggestions(client, monkeyp
     assert [e for e in events if e["type"] == "done"]
 
 
+def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
+    """Sitzungs-Fragetyp (25.08.26): „Was hat der Jugendhilfeausschuss am
+    17.06.2026 beschlossen?" lief rein semantisch — 3 der 6 TOPs fehlten in der
+    Antwort, darunter ein echter Beschluss (echte Nutzerfrage). Jetzt wird die
+    Sitzung deterministisch aufgelöst: ALLE ihre Beschlüsse in Tagesordnungs-
+    Reihenfolge vorn im Kontext, qtype "sitzung", Beleglage solide."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+            "VALUES (4673, 'Jugendhilfeausschuss', '2026-06-17', '16:00', 'Rathaus', '')")
+        for i, titel in ((1, "Krippengruppe"), (2, "Kita-Bericht"), (3, "Richtlinien Jugendarbeit")):
+            cs._conn.execute(
+                "INSERT INTO council_decisions (id, ksinr, position, item_number, kind, title, outcome) "
+                "VALUES (?, 4673, ?, ?, 'decision', ?, 'angenommen')", (i, i, str(i + 4), titel))
+        cs._conn.execute(  # Subvotes sind kein eigener Tagesordnungspunkt
+            "INSERT INTO council_decisions (id, ksinr, position, kind, title) "
+            "VALUES (9, 4673, 9, 'subvote', 'Änderungsantrag')")
+        cs._conn.execute(  # Fremd-Sitzung für den Fremd-Treffer der Semantik
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+            "VALUES (100, 'Rat', '2025-01-01', '17:00', '', '')")
+        cs._conn.execute(
+            "INSERT INTO council_decisions (id, ksinr, position, kind, title, outcome) "
+            "VALUES (50, 100, 0, 'decision', 'Anderes Thema', 'angenommen')")
+    cs.close()
+    # Die Semantik findet nur EINEN der drei TOPs — plus einen fremden Treffer.
+    cand = [{"id": 2, "title": "Kita-Bericht", "score": 0.95, "session_date": "2026-06-17",
+             "committee": "Jugendhilfeausschuss", "outcome": "angenommen"},
+            {"id": 50, "title": "Anderes Thema", "score": 0.9, "session_date": "2025-01-01",
+             "committee": "Rat", "outcome": "angenommen"}]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (list(cand), "semantisch"))
+    gesehen: dict = {}
+
+    def fake_stream(question, ctx, **kw):
+        gesehen["ids"] = [c["id"] for c in ctx]
+        gesehen["typ"] = kw.get("typ")
+        gesehen["sitzungen"] = kw.get("sitzungen")
+        yield "Alle Punkte der Sitzung [1][2][3]."
+
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Was hat der Jugendhilfeausschuss am 17.06.2026 beschlossen?"}) as r:
+        assert r.status_code == 200
+        body = "".join(r.iter_text())
+    events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+    src = next(e for e in events if e["type"] == "sources")
+    assert src["qtype"] == "sitzung"
+    assert src["beleglage"] == "solide"  # deterministisch aufgelöst, nie „dünn"
+    # Die Sitzung steht vollständig und in Tagesordnungs-Reihenfolge vorn.
+    assert [s["id"] for s in src["sources"]] == [1, 2, 3, 50]
+    # Der Antwort-Kontext trägt die GANZE Sitzung — ohne Subvote und ohne den
+    # Fremd-Treffer, der sonst als Sitzungsergebnis durchginge.
+    assert gesehen["typ"] == "sitzung"
+    assert gesehen["ids"] == [1, 2, 3]
+    assert gesehen["sitzungen"][0]["committee"] == "Jugendhilfeausschuss"
+
+
+def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch):
+    """Nennt die Frage eine Sitzung, zu der noch kein Protokoll ausgewertet ist
+    (1–2 Monate Verzug sind normal), und findet auch die Semantik nichts, kommt
+    die ehrliche Termin-Auskunft statt des pauschalen „nichts gefunden"."""
+    from datetime import date, timedelta
+
+    from app.routers import council as council_router
+
+    _register(client)
+    bald = (date.today() + timedelta(days=6)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+            "VALUES (7, 'Sportausschuss', ?, '17:00', '', '')", (bald,))
+        cs._conn.execute(
+            "INSERT INTO council_agenda_items (ksinr, item_number, title) "
+            "VALUES (7, '4', 'Bäderbericht')")
+    cs.close()
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: ([], "semantisch"))
+    with client.stream("POST", "/api/council/ask", json={
+            "question": f"Was hat der Sportausschuss am {bald[8:10]}.{bald[5:7]}.{bald[:4]} beschlossen?"}) as r:
+        body = "".join(r.iter_text())
+    events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+    answer = "".join(e["text"] for e in events if e["type"] == "token")
+    assert "tagt erst am" in answer and "Bäderbericht" in answer
+    assert "keine passenden Beschlüsse" not in answer
+
+
 def test_ask_einfacher_erklaeren_nimmt_den_eigenen_prompt(client, monkeypatch):
     """„Einfacher erklären" (Befund Build 11): Der Knopftext ist keine neue
     Frage, sondern ein Register-Wechsel. /ask erkennt ihn und nimmt den
