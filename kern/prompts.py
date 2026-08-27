@@ -333,8 +333,16 @@ DEFAULTS: dict[str, dict[str, str]] = {
             'oder „Worüber informierte die Verwaltung?“ sind official_updates + press. '
             'Nutze "future_dates" NUR für kommende Sitzungen, Tagesordnungen, nächste '
             'Beratungen oder nächste Schritte; dazu gehört "future_agenda". '
+            'Nutze "documents" NUR, wenn die Antwort Inhalte aus Vorlagen oder Anlagen '
+            'braucht, die nicht schon in Beschluss, Ergebnis und Sitzungsdatum stehen: etwa '
+            'Begründungen, geprüfte Alternativen, technische Ausführung, Kriterien, Risiken, '
+            'Gutachten, Studien oder Stellungnahmen. Dann müssen Kanal UND need "documents" '
+            'gesetzt sein. Für reine Fragen nach ob/wann/wer, Abstimmungsergebnis, zuständigem '
+            'Gremium, neuesten oder bisherigen Beschlüssen, beschlossenen Summen, Presse-Stand, '
+            'Parteiaussagen oder einer Sitzung KEINE documents wählen — außer die Frage nennt '
+            'ausdrücklich einen Inhalt aus Vorlage/Anlage. '
             '"current_info" allein aktiviert NICHT automatisch beide Kanäle.\n'
-            "Wähle lieber einen plausiblen Zusatzkanal zu viel als eine relevante Ratslotse-Quelle zu verpassen.\n"
+            "Wähle Zusatzkanäle gezielt; decisions bleibt immer als sicherer Basiskanal erhalten.\n"
             "Für die begriffe: KEINE Floskeln wie \"Was wurde\", \"beschlossen\", \"Stadtrat\"; "
             "bei Partei-Fragen den Fraktionsnamen NICHT in die begriffe aufnehmen (der wird "
             "separat gefiltert), sondern nur das Sachthema.\n\n"

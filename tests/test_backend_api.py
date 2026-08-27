@@ -2565,6 +2565,102 @@ def test_ask_gueltiger_faktenplan_ueberspringt_presse_und_zukunft(client, monkey
     assert sources["presse"] == [] and sources["planungen"] == []
 
 
+def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkeypatch):
+    """Gutachten sind in der schnellen Frage echte, direkt zitierbare Belege."""
+    from app.routers import council as council_router
+    from council import embeddings as emb_mod
+    from council import qa as qa_mod
+
+    _register(client)
+    candidate = {
+        "id": 106, "title": "Grundsatzbeschluss Stadionneubau",
+        "summary": "Planung", "outcome": "angenommen",
+        "session_date": "2026-06-01", "committee": "Rat", "score": 1.0,
+        "vorlage_nr": "26/0100", "kvonr": 106,
+    }
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "frage": "Was steht im Schallgutachten zum Stadionneubau?",
+        "begriffe": "Schallgutachten Stadionneubau Lärm", "typ": "thema",
+        "partei": None, "varianten": [], "eng": False,
+        "rechercheplan": {
+            "intent": "fact", "channels": ["decisions", "documents"],
+            "sort": "relevance", "needs": ["documents"], "valid": True,
+        },
+    })
+    monkeypatch.setattr(council_router, "_qa_retrieve",
+                        lambda *a, **k: ([dict(candidate)], "semantisch"))
+    monkeypatch.setattr(emb_mod, "search_anlagen",
+                        lambda *a, **k: [(901, 0.8, "Lärmpegel unter dem Grenzwert")])
+    monkeypatch.setattr(CouncilStore, "anlagen_by_ids", lambda self, ids: [{
+        "document_id": 901, "label": "Schalltechnisches Gutachten",
+        "url": "https://ris.test/gutachten.pdf", "vorlage_nr": "26/0100",
+        "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
+    }])
+    monkeypatch.setattr(CouncilStore, "decision_ids_for_vorlagen",
+                        lambda self, nrs: {"26/0100": [106]})
+    monkeypatch.setattr(CouncilStore, "vorlage_texts_for",
+                        lambda self, nrs: {"26/0100": "Sachverhalt zum Lärmschutz"})
+    gesehen = {}
+
+    def antwort(*args, **kwargs):
+        gesehen["anlagen"] = kwargs.get("anlagen")
+        return iter(["Das Gutachten sieht die Grenzwerte eingehalten [A1]."])
+
+    monkeypatch.setattr(qa_mod, "answer_stream", antwort)
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Was steht im Schallgutachten zum Stadionneubau?"}) as response:
+        events = [json.loads(line[6:]) for line in "".join(response.iter_text()).splitlines()
+                  if line.startswith("data: ")]
+
+    sources = next(event for event in events if event["type"] == "sources")
+    assert sources["anlagen"] == [{
+        "nr": 1, "label": "Schalltechnisches Gutachten",
+        "url": "https://ris.test/gutachten.pdf", "vorlage_nr": "26/0100",
+        "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
+        "auszug": "Lärmpegel unter dem Grenzwert",
+    }]
+    assert gesehen["anlagen"][0]["fundstelle"] == "Lärmpegel unter dem Grenzwert"
+    assert "[A1]" in "".join(e.get("text", "") for e in events)
+
+
+def test_ask_ohne_dokumentenbedarf_ueberspringt_anlagen_und_vorlagen(client, monkeypatch):
+    """Eine einfache Abstimmungsfrage lädt weder Matrix noch Vorlagentexte."""
+    from app.routers import council as council_router
+    from council import embeddings as emb_mod
+    from council import qa as qa_mod
+
+    _register(client)
+    candidate = {
+        "id": 107, "title": "Baumschutzsatzung", "summary": "Abstimmung",
+        "outcome": "angenommen", "session_date": "2026-03-01",
+        "committee": "Rat", "score": 1.0, "vorlage_nr": "26/0200",
+    }
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "frage": "Wurde die Baumschutzsatzung beschlossen?",
+        "begriffe": "Baumschutzsatzung Abstimmung", "typ": "thema",
+        "partei": None, "varianten": [], "eng": True,
+        "rechercheplan": {
+            "intent": "fact", "channels": ["decisions", "documents"],
+            "sort": "relevance", "needs": ["votes"], "valid": True,
+        },
+    })
+    monkeypatch.setattr(council_router, "_qa_retrieve",
+                        lambda *a, **k: ([candidate], "semantisch"))
+    monkeypatch.setattr(emb_mod, "search_anlagen", lambda *a, **k: (_ for _ in ()).throw(
+        AssertionError("Anlagenmatrix darf nicht geladen werden")))
+    monkeypatch.setattr(CouncilStore, "vorlage_texts_for", lambda *a, **k: (_ for _ in ()).throw(
+        AssertionError("Vorlagentext darf nicht geladen werden")))
+    monkeypatch.setattr(qa_mod, "answer_stream",
+                        lambda *a, **k: iter(["Ja, die Satzung wurde angenommen [107]."]))
+
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Wurde die Baumschutzsatzung beschlossen?"}) as response:
+        events = [json.loads(line[6:]) for line in "".join(response.iter_text()).splitlines()
+                  if line.startswith("data: ")]
+    sources = next(event for event in events if event["type"] == "sources")
+    assert sources["anlagen"] == []
+
+
 def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
     """Sitzungs-Fragetyp (25.08.26): „Was hat der Jugendhilfeausschuss am
     17.06.2026 beschlossen?" lief rein semantisch — 3 der 6 TOPs fehlten in der
@@ -3839,7 +3935,8 @@ def _deep_mocks(monkeypatch):
                         lambda store, q, e, **k: [(5, 1.2)] if "stadion" in e else [(5, 0.8), (7, 0.4)])
     monkeypatch.setattr(emb_mod, "search_presse", lambda *a, **k: [])
     monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [])
-    # Task 33: Anlagen-Kanal — nur die Gründliche Recherche fragt ihn ab.
+    # Task 33: Anlagen-Kanal; im Deep-Job läuft er unabhängig vom schnellen
+    # Frageplan, weil die gründliche Recherche grundsätzlich alle Quellen liest.
     monkeypatch.setattr(emb_mod, "search_anlagen",
                         lambda *a, **k: [(901, 0.5, "Lärmpegel unter Grenzwert …")])
     monkeypatch.setattr(CouncilStore, "anlagen_by_ids", lambda self, ids: [

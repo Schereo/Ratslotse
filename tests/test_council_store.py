@@ -528,6 +528,8 @@ def test_anlagen_embedding_roundtrip(tmp_path):
         todo = store.anlagen_missing_embeddings()
         # Nur die beiden ok-Anlagen, neueste (höchste id) zuerst; empty fehlt.
         assert [t["document_id"] for t in todo] == [903, 901]
+        assert todo[1]["vorlage_nr"] == "26/0100"
+        assert todo[1]["vorlage_titel"] == "Grundsatzbeschluss Stadionneubau"
 
         for t in todo:
             store.replace_anlage_embeddings(
@@ -560,6 +562,47 @@ def test_anlage_chunks_deckel():
     chunks = emb.anlage_chunks("Wort " * 5000)
     assert 1 <= len(chunks) <= emb.ANLAGE_MAX_CHUNKS
     assert all(len(c) <= emb.ANLAGE_CHUNK_SIZE for c in chunks)
+    mit_kontext = emb.anlage_chunks("Lärmauswirkung " * 1000,
+                                    prefix="Gutachten | Vorlage 26/0100: Stadion")
+    assert mit_kontext
+    assert all(c.startswith("Gutachten | Vorlage 26/0100: Stadion — ") for c in mit_kontext)
+    assert all(len(c) <= emb.ANLAGE_CHUNK_SIZE + emb.ANLAGE_PREFIX_MAX + 3
+               for c in mit_kontext)
+
+
+def test_anlagen_reranking_bekommt_vorlagentitel(tmp_path, monkeypatch):
+    """Auch alte v1-Chunks werden vor dem Reranker thematisch zugeordnet."""
+    import numpy as np
+    from council import embeddings as emb
+    from council.store import CouncilStore
+
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, status, fetched_at) "
+                "VALUES (111, '26/0100', 'Bebauungsplan Fliegerhorst', 'ok', '')")
+            store._conn.execute(
+                "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
+                "fetched_at, status) VALUES (901, 111, 'Umweltbericht', 'https://x', "
+                "'Alter Chunk ohne Thema', '', 'ok')")
+        monkeypatch.setattr(emb, "_anlage_matrix", lambda _store: (
+            [901], ["Umweltbericht — allgemeiner Text"], np.array([[1.0]], dtype="float32")))
+        monkeypatch.setattr(emb, "embed",
+                            lambda texts: np.array([[1.0]], dtype="float32"))
+        gesehen = {}
+
+        def rerank(query, paare, top_k):
+            gesehen["text"] = paare[0][1]
+            return [(901, 0.9)]
+
+        monkeypatch.setattr(emb, "_rerank_kontext", rerank)
+        hits = emb.search_anlagen(store, "Umweltbericht Fliegerhorst",
+                                  "Umweltbericht Fliegerhorst", top_k=1)
+        assert hits[0][0] == 901
+        assert "Vorlage 26/0100: Bebauungsplan Fliegerhorst" in gesehen["text"]
+    finally:
+        store.close()
 
 
 def test_agenda_anlagen_roundtrip(tmp_path):

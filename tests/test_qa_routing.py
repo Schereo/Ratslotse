@@ -211,6 +211,23 @@ def test_reine_zukunftsfrage_entfernt_presse_ueber_bedarfe():
     assert resolved["suppressed_channels"] == []
 
 
+def test_dokumentenkanal_braucht_auch_dokumentenbedarf():
+    vorsorglich = qa._research_plan({"rechercheplan": {
+        "intent": "fact", "channels": ["decisions", "documents"],
+        "needs": ["dates", "votes"],
+    }})
+    resolved = qa.research_plan_with_mandatory(vorsorglich, typ="thema")
+    assert resolved["channels"] == ["decisions"]
+    assert resolved["suppressed_channels"] == ["documents"]
+
+    fachdetail = qa._research_plan({"rechercheplan": {
+        "intent": "fact", "channels": ["decisions"], "needs": ["documents"],
+    }})
+    resolved = qa.research_plan_with_mandatory(fachdetail, typ="thema")
+    assert resolved["channels"] == ["decisions", "documents"]
+    assert resolved["consistency_added"] == ["documents"]
+
+
 def test_eindeutige_stadtmitteilung_aktiviert_presse_als_leitplanke():
     plan = qa._research_plan({"rechercheplan": {
         "intent": "status", "channels": ["decisions"], "sort": "newest",
