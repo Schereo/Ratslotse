@@ -2520,6 +2520,51 @@ def test_ask_gueltiger_plan_ohne_debatten_ueberspringt_den_kanal(client, monkeyp
     assert sources["debatten"] == []
 
 
+def test_ask_gueltiger_faktenplan_ueberspringt_presse_und_zukunft(client, monkeypatch):
+    """Presse und kommende Beratungen dürfen wie Debatten einzeln entfallen."""
+    from app.routers import council as council_router
+    from council import embeddings as emb_mod
+    from council import qa as qa_mod
+
+    _register(client)
+    candidate = {
+        "id": 105, "title": "Antrag Baumschutzsatzung", "summary": "Abstimmung",
+        "outcome": "angenommen", "session_date": "2026-03-01", "committee": "Rat",
+        "score": 1.0, "kvonr": 105,
+    }
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "frage": "Wurde die Baumschutzsatzung angenommen?",
+        "begriffe": "Baumschutzsatzung Abstimmung", "typ": "thema", "partei": None,
+        "varianten": [], "eng": True,
+        "rechercheplan": {
+            "intent": "fact", "channels": ["decisions", "documents"],
+            "sort": "relevance", "needs": ["votes", "documents"], "valid": True,
+        },
+    })
+    monkeypatch.setattr(council_router, "_qa_retrieve",
+                        lambda *a, **k: ([candidate], "semantisch"))
+    monkeypatch.setattr(
+        emb_mod, "search_presse",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("Faktenplan darf keine Presse suchen")),
+    )
+    monkeypatch.setattr(
+        CouncilStore, "geplante_beratungen_fuer",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("Faktenplan darf keine Zukunft suchen")),
+    )
+    monkeypatch.setattr(qa_mod, "answer_stream",
+                        lambda *a, **k: iter(["Der Antrag wurde angenommen [105]."]))
+
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Wurde die Baumschutzsatzung angenommen?"}) as response:
+        assert response.status_code == 200
+        events = [json.loads(line[6:]) for line in "".join(response.iter_text()).splitlines()
+                  if line.startswith("data: ")]
+    sources = next(event for event in events if event["type"] == "sources")
+    assert sources["presse"] == [] and sources["planungen"] == []
+
+
 def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
     """Sitzungs-Fragetyp (25.08.26): „Was hat der Jugendhilfeausschuss am
     17.06.2026 beschlossen?" lief rein semantisch — 3 der 6 TOPs fehlten in der
