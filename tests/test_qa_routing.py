@@ -304,6 +304,47 @@ def test_rechercheplan_entfernt_debatten_bei_neuester_ortsentscheidung():
     assert resolved["suppressed_channels"] == ["debates"]
 
 
+@pytest.mark.parametrize("question,typ", [
+    ("Warum steigen die Abfallgebühren?", "geld"),
+    ("Was hat das Rechnungsprüfungsamt beanstandet?", "thema"),
+    ("Was ist der Verwaltungsausschuss?", "thema"),
+])
+def test_strukturierte_antworten_entfernen_vorsorgliche_debatten(question, typ):
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "fact", "channels": ["decisions", "debates"],
+        "needs": ["statements"],
+    }})
+    resolved = qa.research_plan_with_mandatory(plan, typ=typ, question=question)
+    assert "debates" not in resolved["channels"]
+    assert "debates" in resolved["suppressed_channels"]
+
+
+def test_ausdrueckliche_haushaltsdebatte_behaelt_debattenkanal():
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "timeline", "channels": ["decisions", "debates"],
+        "needs": ["statements"],
+    }})
+    resolved = qa.research_plan_with_mandatory(
+        plan, typ="verlauf", question="Wie lief die Haushaltsdebatte 2026?")
+    assert "debates" in resolved["channels"]
+    assert "debates" not in resolved["suppressed_channels"]
+
+
+@pytest.mark.parametrize("question,typ", [
+    ("Welche Änderungslisten gab es zum Haushalt 2026?", "geld"),
+    ("Was wurde zum Radweg an der Donnerschweer Straße beschlossen?", "thema"),
+    ("Was ist der Verwaltungsausschuss?", "thema"),
+])
+def test_strukturierte_antworten_entfernen_vorsorgliche_dokumente(question, typ):
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "fact", "channels": ["decisions", "documents"],
+        "needs": ["documents"],
+    }})
+    resolved = qa.research_plan_with_mandatory(plan, typ=typ, question=question)
+    assert "documents" not in resolved["channels"]
+    assert "documents" in resolved["suppressed_channels"]
+
+
 def test_recherchekanal_nur_bei_validem_plan_gesteuert():
     assert qa.research_channel_enabled(
         {"valid": True, "channels": ["decisions", "debates"]}, "debates")
