@@ -4,13 +4,14 @@ import { useEffect, useRef } from "react";
 import type { Map as LeafletMap, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { EntityGeo } from "@/lib/types";
+import { basemapUrl } from "@/lib/basemap";
 
 // Minimalist CARTO basemaps that match the clean look of the site — light "Positron"
 // and dark "Dark Matter", swapped live with the site theme. (Replaces the busy default
 // OpenStreetMap raster tiles.)
 const TILES = {
-  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  light: basemapUrl("light"),
+  dark: basemapUrl("dark"),
 };
 
 // Plain Leaflet (no react-leaflet) — client-only (needs `window`), loaded via

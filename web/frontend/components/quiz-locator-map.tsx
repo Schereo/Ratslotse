@@ -4,8 +4,9 @@ import { useEffect, useRef } from "react";
 import type { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { cn } from "@/lib/utils";
+import { basemapUrl } from "@/lib/basemap";
 
-const VOYAGER = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const VOYAGER = basemapUrl("voyager");
 
 /** Kleine Auflösungs-Karte: zeigt entweder einen Punkt (Einzelort/Gebäude), eine
  *  Straßen-Linie oder ein Gebiets-Polygon (`geojson`), je nachdem was das Backend
