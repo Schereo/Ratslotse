@@ -1,0 +1,103 @@
+[
+  {
+    "id": "bplan-61-zwei-strassen",
+    "title": "Vorhabenbezogener Bebauungsplan 61 (südlich Rennplatzstraße/nördlich Hochheider Weg) – Satzungsbeschluss",
+    "expected_locations": ["Rennplatzstraße", "Hochheider Weg"]
+  },
+  {
+    "id": "bplan-851-zwei-strassen",
+    "title": "Bebauungsplan 851 (östlich Schützenweg/nördlich Hamelmannstraße) – Satzungsbeschluss",
+    "expected_locations": ["Schützenweg", "Hamelmannstraße"]
+  },
+  {
+    "id": "stadion-strasse",
+    "title": "Stadion Oldenburg GmbH & Co. KG: Stadionneubau Maastrichter Straße – Beschluss",
+    "expected_locations": ["Maastrichter Straße"]
+  },
+  {
+    "id": "schulstrassenpilot",
+    "title": "Gebührenfreie Ausnahmegenehmigungen für Anwohner im Schulstraßenpilotprojekt Junkerstraße",
+    "expected_locations": ["Junkerstraße"]
+  },
+  {
+    "id": "grundschule-gebaeude",
+    "title": "GS Röwekamp, Umbau und Erweiterung – Umsetzung Baumaßnahme",
+    "expected_locations": ["GS Röwekamp"]
+  },
+  {
+    "id": "stadtteil-kreyenbrueck",
+    "title": "Neubau einer Grundschule in Kreyenbrück",
+    "expected_locations": ["Kreyenbrück"]
+  },
+  {
+    "id": "fliegerhorst",
+    "title": "Altlastensanierung auf dem Fliegerhorst",
+    "expected_locations": ["Fliegerhorst"]
+  },
+  {
+    "id": "caecilienbruecke",
+    "title": "Sanierung der Cäcilienbrücke",
+    "expected_locations": ["Cäcilienbrücke"]
+  },
+  {
+    "id": "schlossplatz",
+    "title": "Neugestaltung Schlossplatz",
+    "expected_locations": ["Schlossplatz"]
+  },
+  {
+    "id": "pferdemarkt",
+    "title": "Verkehrsführung am Pferdemarkt",
+    "expected_locations": ["Pferdemarkt"]
+  },
+  {
+    "id": "heerstrasse",
+    "title": "Radverkehrsanlage an der Ammerländer Heerstraße",
+    "expected_locations": ["Ammerländer Heerstraße"]
+  },
+  {
+    "id": "mehrere-orte-beschlusstext",
+    "title": "Straßenbaumaßnahmen",
+    "beschluss": "Die Maßnahmen an der Nadorster Straße und am Stedinger Weg werden umgesetzt.",
+    "expected_locations": ["Nadorster Straße", "Stedinger Weg"]
+  },
+  {
+    "id": "fahrradstrassen-generisch",
+    "title": "Oldenburger Leitfaden für die Einrichtung von Fahrradstraßen",
+    "expected_locations": []
+  },
+  {
+    "id": "strassensanierung-generisch",
+    "title": "Sondervermögen Straßensanierung",
+    "expected_locations": []
+  },
+  {
+    "id": "bruecken-metapher",
+    "title": "Brücken bauen zwischen Zivilgesellschaft und Polizei",
+    "expected_locations": []
+  },
+  {
+    "id": "bplan-nur-nummer",
+    "title": "Baumoratorium zum Bebauungsplan N-777 G",
+    "expected_locations": []
+  },
+  {
+    "id": "verkehrsprogramm-stadtweit",
+    "title": "Straßen- und Radwegebaumaßnahmen – Arbeitsprogramm 2026",
+    "expected_locations": []
+  },
+  {
+    "id": "wohnquartiere-generisch",
+    "title": "Vermeidung von Durchgangsverkehr in Wohnquartieren",
+    "expected_locations": []
+  },
+  {
+    "id": "kita-programm-stadtweit",
+    "title": "Maßnahmenplanung für den weiteren Ausbau der Kindertagesbetreuung",
+    "expected_locations": []
+  },
+  {
+    "id": "organisation-kein-sitz",
+    "title": "Ausfallbürgschaft der Stadt Oldenburg für die Stadion Oldenburg GmbH & Co. KG",
+    "expected_locations": []
+  }
+]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import sqlite3
@@ -415,6 +415,30 @@ class CouncilStore:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_entobs_slug ON council_entity_obs(slug)")
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_entity_scanned (decision_id INTEGER PRIMARY KEY)"
+        )
+        # Eigene Ortsdaten statt Themen-Entitäten zu überladen: Auch einmalige
+        # Straßen bleiben erhalten, mehrere Orte je Beschluss sind erlaubt und
+        # die Fundstelle/Qualität der Zuordnung bleibt nachprüfbar.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_locations ("
+            "slug TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, "
+            "lat REAL, lon REAL, geojson TEXT, stadtteil TEXT, "
+            "geo_tried INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_decision_locations ("
+            "decision_id INTEGER NOT NULL, location_slug TEXT NOT NULL, "
+            "source TEXT NOT NULL, evidence TEXT NOT NULL, method TEXT NOT NULL, "
+            "confidence REAL NOT NULL, updated_at TEXT NOT NULL, "
+            "PRIMARY KEY (decision_id, location_slug))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_decloc_slug "
+            "ON council_decision_locations(location_slug)"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_decision_location_scans ("
+            "decision_id INTEGER PRIMARY KEY, source_hash TEXT NOT NULL, scanned_at TEXT NOT NULL)"
         )
         # Entity duplicates (council.aliases): the NER names the same thing differently
         # from batch to batch ("Bäderbetrieb Oldenburg" / "Bäderbetrieb der Stadt
@@ -3422,6 +3446,214 @@ class CouncilStore:
             self._conn.execute("DELETE FROM council_entity_obs")
             self._conn.execute("DELETE FROM council_entity_scanned")
 
+    # ---- Explizite Ortszuordnungen je Beschluss ---------------------------
+
+    def decision_location_batches(self, *, batch_size: int = 12,
+                                  pending_only: bool = True,
+                                  limit: int | None = None):
+        """Beschlüsse samt Vorlage speicherschonend in Batches liefern.
+
+        Im Tageslauf kommen nur ungescannte Vorgänge oder solche mit einer
+        später geladenen Vorlage zurück. ``pending_only=False`` ist der
+        bewusste Voll-Backfill nach dem Leeren der Scan-Tabelle.
+        """
+        inner = """SELECT d.id, d.title, d.beschluss, d.vorlage_nr,
+                      COALESCE(
+                        (SELECT v.raw_text FROM council_vorlagen v
+                         WHERE v.kvonr = d.kvonr AND v.status = 'ok' LIMIT 1),
+                        (SELECT v.raw_text FROM council_vorlagen v
+                         WHERE v.status = 'ok' AND v.vorlage_nr = d.vorlage_nr
+                         ORDER BY v.kvonr DESC LIMIT 1),
+                        (SELECT v.raw_text FROM council_vorlagen v
+                         WHERE v.status = 'ok' AND d.vorlage_nr IS NOT NULL
+                           AND instr(d.vorlage_nr, v.vorlage_nr || '/') = 1
+                         ORDER BY v.kvonr DESC LIMIT 1)
+                      ) AS vorlage_text,
+                      COALESCE(
+                        (SELECT v.fetched_at FROM council_vorlagen v
+                         WHERE v.kvonr = d.kvonr AND v.status = 'ok' LIMIT 1),
+                        (SELECT v.fetched_at FROM council_vorlagen v
+                         WHERE v.status = 'ok' AND v.vorlage_nr = d.vorlage_nr
+                         ORDER BY v.kvonr DESC LIMIT 1),
+                        (SELECT v.fetched_at FROM council_vorlagen v
+                         WHERE v.status = 'ok' AND d.vorlage_nr IS NOT NULL
+                           AND instr(d.vorlage_nr, v.vorlage_nr || '/') = 1
+                         ORDER BY v.kvonr DESC LIMIT 1),
+                        ''
+                      ) AS vorlage_fetched_at,
+                      s.source_hash AS existing_source_hash,
+                      s.scanned_at
+               FROM council_decisions d
+               LEFT JOIN council_decision_location_scans s ON s.decision_id = d.id
+               WHERE d.kind = 'decision'"""
+        sql = f"SELECT * FROM ({inner}) q"
+        if pending_only:
+            sql += (" WHERE existing_source_hash IS NULL OR "
+                    "(vorlage_fetched_at != '' AND "
+                    "datetime(vorlage_fetched_at) > datetime(scanned_at))")
+        sql += " ORDER BY id DESC"
+        if limit is not None:
+            sql += f" LIMIT {max(0, int(limit))}"
+        cursor = self._conn.execute(sql)
+        while True:
+            rows = cursor.fetchmany(max(1, int(batch_size)))
+            if not rows:
+                break
+            yield [dict(r) for r in rows]
+
+    def decisions_for_location_extraction(self) -> list[dict]:
+        """Kompatible Listenansicht; große Backfills nutzen die Batch-Methode."""
+        return [row for batch in self.decision_location_batches(pending_only=False)
+                for row in batch]
+
+    def location_scan_hashes(self) -> dict[int, str]:
+        return {r["decision_id"]: r["source_hash"] for r in self._conn.execute(
+            "SELECT decision_id, source_hash FROM council_decision_location_scans")}
+
+    def place_observations_for_decisions(self, ids: list[int]) -> dict[int, list[dict]]:
+        """Einmalige alte NER-Orte als günstige Startbasis übernehmen."""
+        if not ids:
+            return {}
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"SELECT decision_id, name FROM council_entity_obs "
+            f"WHERE kind = 'ort' AND decision_id IN ({ph})", ids).fetchall()
+        out: dict[int, list[dict]] = {}
+        for r in rows:
+            out.setdefault(r["decision_id"], []).append({
+                "name": r["name"], "kind": "sonstiges", "source": "beschluss",
+                "evidence": r["name"], "method": "entity_obs", "confidence": 0.86,
+            })
+        return out
+
+    def save_decision_locations(self, decision_id: int, rows: list[dict],
+                                source_hash: str | None) -> int:
+        """Zuordnungen eines Beschlusses atomar ersetzen und ggf. Scanstand merken.
+
+        ``source_hash=None`` speichert sichere Regex-/Bestandsfunde nach einem
+        LLM-Fehler, markiert den Vorgang aber nicht als fertig: der nächste
+        inkrementelle Lauf versucht die semantische Ergänzung erneut.
+        """
+        from council.locations import location_slug
+
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        by_slug: dict[str, dict] = {}
+        for row in rows:
+            slug = row.get("slug") or location_slug(row.get("name") or "")
+            if not slug:
+                continue
+            if slug not in by_slug or float(row.get("confidence") or 0) > float(by_slug[slug].get("confidence") or 0):
+                by_slug[slug] = row
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM council_decision_locations WHERE decision_id = ?", (decision_id,))
+            for slug, row in by_slug.items():
+                self._conn.execute(
+                    "INSERT INTO council_locations(slug,name,kind,updated_at) VALUES (?,?,?,?) "
+                    "ON CONFLICT(slug) DO UPDATE SET name=excluded.name, kind=excluded.kind, "
+                    "updated_at=excluded.updated_at",
+                    (slug, row["name"], row.get("kind") or "sonstiges", now),
+                )
+                self._conn.execute(
+                    "INSERT INTO council_decision_locations "
+                    "(decision_id,location_slug,source,evidence,method,confidence,updated_at) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    (decision_id, slug, row.get("source") or "beschluss",
+                     (row.get("evidence") or row["name"])[:500], row.get("method") or "llm",
+                     max(0.0, min(1.0, float(row.get("confidence") or 0))), now),
+                )
+            if source_hash is not None:
+                self._conn.execute(
+                    "INSERT INTO council_decision_location_scans(decision_id,source_hash,scanned_at) "
+                    "VALUES (?,?,?) ON CONFLICT(decision_id) DO UPDATE SET "
+                    "source_hash=excluded.source_hash, scanned_at=excluded.scanned_at",
+                    (decision_id, source_hash, now),
+                )
+        return len(by_slug)
+
+    def reset_decision_location_scans(self) -> None:
+        """Vollständigen Neu-Lauf erlauben; Geocodes der Orte bleiben erhalten."""
+        with self._conn:
+            self._conn.execute("DELETE FROM council_decision_locations")
+            self._conn.execute("DELETE FROM council_decision_location_scans")
+
+    def decision_locations(self, decision_id: int) -> list[dict]:
+        rows = self._conn.execute(
+            """SELECT l.*, dl.source, dl.evidence, dl.method, dl.confidence
+               FROM council_decision_locations dl
+               JOIN council_locations l ON l.slug = dl.location_slug
+               WHERE dl.decision_id = ?
+               ORDER BY dl.confidence DESC, l.name""", (decision_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def locations_to_geocode(self, limit: int | None = None) -> list[dict]:
+        sql = (
+            "SELECT l.slug, l.name, l.kind, COUNT(dl.decision_id) AS n "
+            "FROM council_locations l JOIN council_decision_locations dl "
+            "ON dl.location_slug = l.slug WHERE l.geo_tried = 0 "
+            "GROUP BY l.slug ORDER BY n DESC, l.name"
+        )
+        args: tuple = ()
+        if limit is not None:
+            sql += " LIMIT ?"
+            args = (int(limit),)
+        return [dict(r) for r in self._conn.execute(sql, args)]
+
+    def hydrate_location_geo_from_entities(self) -> int:
+        """Vorhandene, gleichnamige Entitäts-Geocodes ohne Netzaufruf übernehmen."""
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                """UPDATE council_locations
+                   SET lat = (SELECT m.lat FROM council_entity_meta m
+                              WHERE m.slug = council_locations.slug),
+                       lon = (SELECT m.lon FROM council_entity_meta m
+                              WHERE m.slug = council_locations.slug),
+                       geojson = (SELECT m.geojson FROM council_entity_meta m
+                                  WHERE m.slug = council_locations.slug),
+                       geo_tried = 1, updated_at = ?
+                   WHERE geo_tried = 0 AND EXISTS (
+                       SELECT 1 FROM council_entity_meta m
+                       WHERE m.slug = council_locations.slug
+                         AND m.lat IS NOT NULL AND m.lon IS NOT NULL)""", (now,))
+        return cur.rowcount
+
+    def backfill_location_stadtteile(self) -> int:
+        """Stadtteil für ältere oder übernommene Ortskoordinaten lokal ableiten."""
+        from council import geo
+
+        rows = self._conn.execute(
+            "SELECT slug,lat,lon FROM council_locations "
+            "WHERE lat IS NOT NULL AND lon IS NOT NULL "
+            "AND (stadtteil IS NULL OR stadtteil = '')"
+        ).fetchall()
+        updates = []
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        for row in rows:
+            stadtteil = geo.stadtteil_for(row["lat"], row["lon"])
+            if stadtteil:
+                updates.append((stadtteil, now, row["slug"]))
+        if updates:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_locations SET stadtteil=?,updated_at=? WHERE slug=?",
+                    updates,
+                )
+        return len(updates)
+
+    def set_location_geo(self, slug: str, lat: float | None, lon: float | None,
+                         geojson: str | None) -> None:
+        from council import geo
+
+        stadtteil = geo.stadtteil_for(lat, lon) if lat is not None and lon is not None else None
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_locations SET lat=?, lon=?, geojson=?, stadtteil=?, "
+                "geo_tried=1, updated_at=? WHERE slug=?",
+                (lat, lon, geojson, stadtteil,
+                 datetime.now(timezone.utc).isoformat(timespec="seconds"), slug),
+            )
+
     def list_entities(self, limit: int = 300, kind: str = "") -> list[dict]:
         """Entities for the directory, most-referenced first — angereichert um
         Aktualität (letzte Sitzung, Beschlüsse der letzten 12 Monate), damit das
@@ -5494,12 +5726,24 @@ class CouncilStore:
         return out
 
     def orte_fuer_decisions(self, ids: list[int]) -> dict[int, dict]:
-        """Erste verortete Orts-Entität je Beschluss (5a/I-10) — Futter für die
-        Mini-Karte unter KI-Antworten. Nur kind='ort': der Sitz einer
-        Organisation wäre als Pin irreführend. Größte Entität (n) zuerst."""
+        """Bestbelegter Ort je Beschluss für die Mini-Karte.
+
+        Die explizite Orts-Pipeline gewinnt; alte Themen-Entitäten bleiben als
+        Fallback, solange der historische Backfill noch nicht vollständig ist.
+        """
         if not ids:
             return {}
         ph = ",".join("?" * len(ids))
+        direct = self._conn.execute(
+            f"""SELECT dl.decision_id, l.name, l.lat, l.lon
+                FROM council_decision_locations dl
+                JOIN council_locations l ON l.slug = dl.location_slug
+                WHERE dl.decision_id IN ({ph}) AND l.lat IS NOT NULL
+                ORDER BY dl.confidence DESC, l.name""", ids).fetchall()
+        out: dict[int, dict] = {}
+        for r in direct:
+            out.setdefault(r["decision_id"], {"ort_name": r["name"],
+                                              "lat": r["lat"], "lon": r["lon"]})
         rows = self._conn.execute(
             f"""SELECT l.decision_id, e.name, m.lat, m.lon
                 FROM council_entity_links l
@@ -5510,7 +5754,6 @@ class CouncilStore:
                 ORDER BY e.n DESC""",
             ids,
         ).fetchall()
-        out: dict[int, dict] = {}
         for r in rows:
             out.setdefault(r["decision_id"], {"ort_name": r["name"],
                                               "lat": r["lat"], "lon": r["lon"]})
