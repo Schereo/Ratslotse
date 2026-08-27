@@ -3703,7 +3703,7 @@ class CouncilStore:
         updates = []
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         for row in rows:
-            stadtteil = geo.stadtteil_for(row["lat"], row["lon"])
+            stadtteil = geo.ortsbereich_for(row["lat"], row["lon"])
             if stadtteil:
                 updates.append((stadtteil, now, row["slug"]))
         if updates:
@@ -3718,7 +3718,7 @@ class CouncilStore:
                          geojson: str | None) -> None:
         from council import geo
 
-        stadtteil = geo.stadtteil_for(lat, lon) if lat is not None and lon is not None else None
+        stadtteil = geo.ortsbereich_for(lat, lon) if lat is not None and lon is not None else None
         with self._conn:
             self._conn.execute(
                 "UPDATE council_locations SET lat=?, lon=?, geojson=?, stadtteil=?, "
@@ -5833,9 +5833,9 @@ class CouncilStore:
         for r in rows:
             # Alte Entitäts-Geocodes entstanden vor der expliziten
             # Orts-Pipeline und können Vergleichsorte außerhalb Oldenburgs
-            # enthalten. Nur Koordinaten innerhalb eines amtlichen
-            # Stadtteilpolygons dürfen als Karten-Pin erscheinen.
-            if not geo.stadtteil_for(r["lat"], r["lon"]):
+            # enthalten. Nur Koordinaten innerhalb eines Ratslotse-
+            # Ortsbereichspolygons dürfen als Karten-Pin erscheinen.
+            if not geo.ortsbereich_for(r["lat"], r["lon"]):
                 continue
             out.setdefault(r["decision_id"], {"ort_name": r["name"],
                                               "lat": r["lat"], "lon": r["lon"]})

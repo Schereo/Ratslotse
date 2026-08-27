@@ -7,6 +7,15 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert
+- **Ein gemeinsamer Ortskatalog für Suche, Quiz, Karten und KI-Frage.** Die 31
+  bisher verteilten Oldenburger Gebietslisten sind jetzt als zentrale
+  „Ratslotse-Ortsbereiche“ mit stabilen IDs, Schreibvarianten, Wahlbereichen und
+  Quellenhinweisen gepflegt. Die Oberfläche bezeichnet sie bewusst nicht mehr
+  als amtliche Stadtteile – denn eine solche amtliche Einteilung gibt es in
+  Oldenburg nicht. Bestehende Zuordnungen, einschließlich Bornhorst, bleiben
+  erhalten und werden nun in allen Funktionen gleich verwendet.
+
 ## [1.13.2] – 2026-08-19
 
 ### Behoben

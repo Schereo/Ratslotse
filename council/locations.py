@@ -12,10 +12,9 @@ import json
 import os
 import re
 from difflib import SequenceMatcher
-from functools import lru_cache
 
 from kern import llm
-from . import geo
+from . import places
 
 MODEL = os.environ.get("COUNCIL_LOCATION_MODEL", "google/gemini-2.5-flash-lite")
 
@@ -90,11 +89,6 @@ def location_slug(name: str) -> str:
     return "-".join(re.findall(r"[a-z0-9]+", s))
 
 
-@lru_cache(maxsize=1)
-def _stadtteil_slugs() -> frozenset[str]:
-    return frozenset(location_slug(name) for name in geo.stadtteile())
-
-
 def _location_words(value: str) -> list[str]:
     value = (value or "").casefold().replace("ß", "ss")
     value = re.sub(r"\bstr\.?\b", "strasse", value)
@@ -135,7 +129,7 @@ def valid_llm_location(name: str, kind: str, evidence: str) -> bool:
         return False
     if not _name_occurs_in_evidence(clean_name, clean_evidence):
         return False
-    if kind == "stadtteil" and slug not in _stadtteil_slugs():
+    if kind == "stadtteil" and not places.resolve(clean_name):
         return False
     return True
 
@@ -158,7 +152,8 @@ def _generic_street(name: str) -> bool:
 def extract_explicit_locations(text: str, *, source: str) -> list[dict]:
     """Hochpräzise, kostenlose Ortsnamen aus einem Titel/Text.
 
-    Die Funktion deckt Straßen-/Platznamen und die amtlichen Stadtteilnamen ab.
+    Die Funktion deckt Straßen-/Platznamen und den zentralen Ratslotse-
+    Ortskatalog ab.
     Komplexe Gebäude oder Gebiete übernimmt anschließend der LLM-Kanal.
     """
     text = " ".join((text or "").split())
@@ -200,16 +195,23 @@ def extract_explicit_locations(text: str, *, source: str) -> list[dict]:
             "confidence": 0.98 if source == "title" else 0.94,
         }
 
-    # Stadtteile sind eine geschlossene, lokal gepflegte Liste. Längere Namen
-    # zuerst verhindert, dass ein kurzer Name einen längeren überdeckt.
-    for name in sorted(geo.stadtteile(), key=len, reverse=True):
-        if re.search(rf"(?<!\w){re.escape(name)}(?!\w)", text, flags=re.IGNORECASE):
-            slug = location_slug(name)
+    # Ortsbereiche sind eine geschlossene, zentral gepflegte Liste. Auch
+    # Schreibvarianten werden erkannt, gespeichert wird stets der kanonische
+    # Name. Längere Varianten zuerst verhindern Teiltreffer.
+    place_names = [
+        (candidate, place)
+        for place in places.all_places()
+        for candidate in (place.name, *place.aliases)
+    ]
+    for candidate, place in sorted(place_names, key=lambda item: len(item[0]), reverse=True):
+        match = re.search(rf"(?<!\w){re.escape(candidate)}(?!\w)", text, flags=re.IGNORECASE)
+        if match:
+            slug = location_slug(place.name)
             found.setdefault(slug, {
-                "name": name,
+                "name": place.name,
                 "kind": "stadtteil",
                 "source": source,
-                "evidence": name,
+                "evidence": match.group(0),
                 "method": "stadtteilliste",
                 "confidence": 0.99,
             })
@@ -292,8 +294,9 @@ def extract_batch(rows: list[dict], model: str = MODEL) -> tuple[dict[int, list[
             # vorkommen. Der Name selbst muss ebenfalls explizit genannt sein.
             if name.lower() not in ctx_low or (evidence and evidence.lower() not in ctx_low):
                 continue
+            canonical = places.canonical_name(name) if kind == "stadtteil" else None
             parsed.append({
-                "name": name,
+                "name": canonical or name,
                 "kind": kind,
                 "source": source,
                 "evidence": evidence or name,

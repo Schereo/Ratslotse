@@ -9,18 +9,38 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
-from council import geo, quiz
+from council import geo, places, quiz
 from council.store import CouncilStore
 
 
 # ---- Gebiets-Geometrie (Spiegel von lib/stadtteile.ts) ----------------------
 
 def test_geo_taxonomy():
-    assert len(geo.stadtteile()) == 31
+    assert len(geo.ortsbereiche()) == 31
+    assert geo.stadtteile() == geo.ortsbereiche()  # kompatibler Altname
     assert geo.WAHLBEREICHE == [1, 2, 3, 4, 5, 6]
     assert geo.wahlbereiche_of("Osternburg") == [5, 2]      # überwiegend 5, ragt in 2
     assert geo.wahlbereiche_of("Eversten") == [6]
     assert "Fliegerhorst" in geo.stadtteile_im_wahlbereich(3)
+
+
+def test_shared_place_catalog_has_stable_ids_aliases_and_sources():
+    catalog = places.public_catalog()
+    assert catalog["singular"] == "Ortsbereich"
+    assert "keine amtlich festgelegten Stadtteile" in catalog["definition"]
+    assert len(catalog["places"]) == 31
+    assert len({place["id"] for place in catalog["places"]}) == 31
+    assert places.resolve("bornhorst").name == "Bornhorst"
+    assert places.resolve("Drielaker Moor").id == "drielaker-moor"
+    assert places.resolve("Nord-Moslesfehn").name == "Nordmoslesfehn"
+    assert {source["type"] for source in catalog["sources"]} == {
+        "definition", "reference", "geometry",
+    }
+
+
+def test_place_catalog_and_geometry_cover_the_same_areas():
+    feature_names = set(geo._by_name())
+    assert feature_names == set(geo.ortsbereiche())
 
 
 def test_geo_multi_wahlbereich():
@@ -36,9 +56,9 @@ def test_geo_multi_wahlbereich():
 
 def test_geo_point_in_stadtteil():
     # bekannte Koordinaten (wie in lib/stadtteile.ts verifiziert)
-    assert geo.stadtteil_for(53.1720, 8.1850) == "Fliegerhorst"
-    assert geo.stadtteil_for(53.128, 8.175) == "Eversten"
-    assert geo.stadtteil_for(53.253, 8.32) is None  # Umland
+    assert geo.ortsbereich_for(53.1720, 8.1850) == "Fliegerhorst"
+    assert geo.ortsbereich_for(53.128, 8.175) == "Eversten"
+    assert geo.ortsbereich_for(53.253, 8.32) is None  # Umland
 
 
 # ---- Parser + Validierung ---------------------------------------------------

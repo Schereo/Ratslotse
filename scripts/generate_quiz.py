@@ -39,9 +39,9 @@ THEME_MIN_DECISIONS = 8
 
 
 def _areas(store: CouncilStore) -> list[dict]:
-    """Alle spielbaren Gebiete: 31 Stadtteile + Top-Themen (Entitäten)."""
-    areas = [{"area_type": "stadtteil", "area_key": n, "label": f"Stadtteil {n}", "slug": None}
-             for n in geo.stadtteile()]
+    """Alle spielbaren Gebiete: 31 Ortsbereiche + Top-Themen (Entitäten)."""
+    areas = [{"area_type": "stadtteil", "area_key": n, "label": f"Ortsbereich {n}", "slug": None}
+             for n in geo.ortsbereiche()]
     themes = 0
     for e in store.list_entities(limit=400):
         if themes >= N_THEMES:
@@ -57,11 +57,12 @@ def _sources(area: dict, facts: str) -> tuple[str, str, str]:
     Netzabruf (Wikipedia/Stadt) — läuft im Worker-Thread."""
     parts: list[str] = []
     src_type, src_ref = "ratsinfo", ""
-    wiki = quiz.fetch_wikipedia(area["label"].replace("Stadtteil ", ""))
+    place_name = area["label"].removeprefix("Ortsbereich ").removeprefix("Stadtteil ")
+    wiki = quiz.fetch_wikipedia(place_name)
     if wiki:
         parts.append(f"Wikipedia:\n{wiki[0]}")
         src_type, src_ref = "wikipedia", wiki[1]
-    stadt = quiz.fetch_stadt_text(area["label"].replace("Stadtteil ", ""))
+    stadt = quiz.fetch_stadt_text(place_name)
     if stadt:
         parts.append(f"Stadt Oldenburg (oldenburg.de):\n{stadt[0]}")
         if not wiki:

@@ -592,6 +592,10 @@ export interface AdminGrowth {
 export interface QuizAreaEntry {
   key: string;
   label?: string;
+  /** Stabile ID aus dem gemeinsamen Ratslotse-Ortskatalog. */
+  place_id?: string;
+  kind?: "ortsbereich";
+  aliases?: string[];
   wahlbereiche?: number[];
   stadtteile?: string[];
   /** Themen: Stadtteil des Themen-Orts (RL-U13); null/fehlend = stadtweit. */

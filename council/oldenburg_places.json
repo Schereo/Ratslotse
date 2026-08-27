@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "id": "ratslotse-oldenburg-ortsbereiche",
+  "label": "Ratslotse-Ortsbereiche",
+  "singular": "Ortsbereich",
+  "plural": "Ortsbereiche",
+  "definition": "31 flächendeckende, lokal gebräuchliche Gebiete für Suche, Karten, Quiz und KI-Antworten. Sie sind eine Ratslotse-Arbeitsebene und keine amtlich festgelegten Stadtteile.",
+  "sources": [
+    {
+      "id": "stadt-oldenburg-quartiersentwicklung",
+      "type": "definition",
+      "title": "Leitfäden zur inklusiven Quartiersentwicklung",
+      "url": "https://www.oldenburg.de/startseite/leben-in-oldenburg/gesellschaft-soziales/strategische-sozialplanung/veroeffentlichungen/leitfaeden.html",
+      "note": "Die Stadt behandelt Nachbarschaften, Quartiere und Stadtteile als lebensweltliche, bedarfsorientierte Ebenen."
+    },
+    {
+      "id": "stadt-oldenburg-statistik-2025",
+      "type": "reference",
+      "title": "Einwohner in Blockgruppen und Unterbezirken 2025",
+      "url": "https://www.oldenburg.de/startseite/rathaus/politik-verwaltung/stadtverwaltung/statistik/statistisches-jahrbuch.html",
+      "note": "Amtliche statistische Bezirke und Unterbezirke sind eine eigene, nicht deckungsgleiche Gebietssystematik."
+    },
+    {
+      "id": "openstreetmap",
+      "type": "geometry",
+      "title": "OpenStreetMap",
+      "url": "https://www.openstreetmap.org/copyright",
+      "license": "ODbL",
+      "note": "Grenzen aus OSM admin_level 10, für Ratslotse vereinfacht."
+    }
+  ],
+  "places": [
+    { "id": "alexandersfeld", "name": "Alexandersfeld", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [4] },
+    { "id": "bahnhofsviertel", "name": "Bahnhofsviertel", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [2] },
+    { "id": "bloherfelde", "name": "Bloherfelde", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [3] },
+    { "id": "bornhorst", "name": "Bornhorst", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [4] },
+    { "id": "buemmerstede", "name": "Bümmerstede", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [5] },
+    { "id": "buergeresch", "name": "Bürgeresch", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [1] },
+    { "id": "buergerfelde", "name": "Bürgerfelde", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [1, 3] },
+    { "id": "dietrichsfeld", "name": "Dietrichsfeld", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [3] },
+    { "id": "dobbenviertel", "name": "Dobbenviertel", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [2] },
+    { "id": "donnerschwee", "name": "Donnerschwee", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [1, 4] },
+    { "id": "drielake", "name": "Drielake", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [2] },
+    { "id": "drielaker-moor", "name": "Drielaker-Moor", "kind": "ortsbereich", "aliases": ["Drielaker Moor", "Drielakermoor"], "wahlbereiche": [5, 2] },
+    { "id": "ehnernviertel", "name": "Ehnernviertel", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [1] },
+    { "id": "etzhorn", "name": "Etzhorn", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [4] },
+    { "id": "eversten", "name": "Eversten", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [6] },
+    { "id": "fliegerhorst", "name": "Fliegerhorst", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [3] },
+    { "id": "gerichtsviertel", "name": "Gerichtsviertel", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [2] },
+    { "id": "haarenesch", "name": "Haarenesch", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [2] },
+    { "id": "haarentor", "name": "Haarentor", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [3, 6] },
+    { "id": "innenstadt", "name": "Innenstadt", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [2] },
+    { "id": "kreyenbrueck", "name": "Kreyenbrück", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [5] },
+    { "id": "krusenbusch", "name": "Krusenbusch", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [5] },
+    { "id": "nadorst", "name": "Nadorst", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [4] },
+    { "id": "neuenwege", "name": "Neuenwege", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [2] },
+    { "id": "nordmoslesfehn", "name": "Nordmoslesfehn", "kind": "ortsbereich", "aliases": ["Nord-Moslesfehn"], "wahlbereiche": [6] },
+    { "id": "ofenerdiek", "name": "Ofenerdiek", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [4] },
+    { "id": "ohmstede", "name": "Ohmstede", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [4] },
+    { "id": "osternburg", "name": "Osternburg", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [5, 2] },
+    { "id": "tweelbaeke", "name": "Tweelbäke", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [5, 2] },
+    { "id": "wechloy", "name": "Wechloy", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [3] },
+    { "id": "ziegelhof", "name": "Ziegelhof", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [1] }
+  ]
+}

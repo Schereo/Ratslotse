@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Neue Beschluss-Orte geokodieren und daraus den Stadtteil ableiten.
+"""Neue Beschluss-Orte geokodieren und daraus den Ortsbereich ableiten.
 
 Bereits vorhandene Entitäts-Geocodes werden zuerst kostenlos übernommen. Für
-amtliche Stadtteile nutzen wir die lokalen Polygone; nur übrige Orte gehen mit
+Ratslotse-Ortsbereiche nutzen wir die lokalen Polygone; nur übrige Orte gehen mit
 höchstens einem Request pro Sekunde an Nominatim/Overpass.
 """
 from __future__ import annotations
@@ -35,9 +35,9 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1) -
     located = missed = failed = 0
     for index, row in enumerate(rows, start=1):
         try:
-            if row["kind"] == "stadtteil" and geo.stadtteil_center(row["name"]):
-                lat, lon = geo.stadtteil_center(row["name"])
-                shape = geo.stadtteil_polygon(row["name"])
+            if row["kind"] == "stadtteil" and geo.ortsbereich_center(row["name"]):
+                lat, lon = geo.ortsbereich_center(row["name"])
+                shape = geo.ortsbereich_polygon(row["name"])
                 result = (lat, lon, json.dumps(shape, separators=(",", ":")))
             else:
                 result = geocode(row["name"])

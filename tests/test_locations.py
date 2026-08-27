@@ -283,10 +283,20 @@ def test_known_stadtteil_is_geocoded_without_network(tmp_path, monkeypatch):
     assert row["lat"] is not None and row["stadtteil"] == "Kreyenbrück"
 
 
+def test_ortskatalog_alias_is_extracted_as_canonical_name():
+    got = locations.extract_explicit_locations(
+        "Die Verwaltung berichtet aus dem Drielaker Moor.", source="title")
+    assert got == [{
+        "name": "Drielaker-Moor", "kind": "stadtteil", "source": "title",
+        "evidence": "Drielaker Moor", "method": "stadtteilliste", "confidence": 0.99,
+    }]
+
+
 def test_existing_location_coordinates_get_a_district(tmp_path):
     db = tmp_path / "council.sqlite"
     store = CouncilStore(db)
-    lat, lon = locations.geo.stadtteil_center("Kreyenbrück")
+    from council import geo
+    lat, lon = geo.ortsbereich_center("Kreyenbrück")
     store._conn.execute(
         "INSERT INTO council_locations "
         "(slug,name,kind,lat,lon,geo_tried,updated_at) "

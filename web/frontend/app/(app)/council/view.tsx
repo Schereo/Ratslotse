@@ -670,7 +670,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         </FilterField>
         <FilterField label="Ortsbezug">
           <Select value={district} onChange={(e) => setUrlParam("district", e.target.value)}>
-            <option value="">Alle Stadtteile</option>
+            <option value="">Alle Ortsbereiche</option>
             {districts.map((item) => (
               <option key={item.name} value={item.name}>{item.name} ({districtCount(item)})</option>
             ))}
