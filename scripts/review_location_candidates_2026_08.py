@@ -11,10 +11,14 @@ import argparse
 import json
 import os
 import sqlite3
+import sys
 import tempfile
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
 from council.store import CouncilStore
 
@@ -71,10 +75,8 @@ CONCRETE: dict[str, tuple[str, str | None]] = {
     "sport-und-gesundheitsbad-am-floetenteich": ("anlage", None),
     "wasserwerk-alexandersfeld": ("anlage", None),
     "esskamp-72": ("gebaeude", None),
-    "havekant": ("strasse", None),
     "olantis": ("anlage", "OLantis"),
     "schuetzenweg-34": ("gebaeude", None),
-    "alten-krusenbusch": ("strasse", "Alter Krusenbusch"),
     "am-schiessstand": ("strasse", None),
     "sporthalle-haarenesch": ("anlage", None),
     "tiefgarage-am-stadtmuseum": ("bauwerk", None),
@@ -92,7 +94,6 @@ CONCRETE: dict[str, tuple[str, str | None]] = {
     "gedenkstein-fuer-wilhelm-den-grossen": ("bauwerk", None),
     "rosa-lazarus-strasse": ("strasse", None),
     "tami-oelfken-strasse": ("strasse", None),
-    "hafen-iprump": ("anlage", None),
     "aeg-motorenwerk": ("anlage", None),
     "sportanlage-kennedystrasse": ("anlage", None),
     "pflegeeinrichtung-schinkelstrasse": ("gebaeude", None),
@@ -143,9 +144,9 @@ APPROVED: dict[str, dict] = {
                     "fliegerhorst/bauabschnitte/n-777-d-mittelweg.html")),
     "ludwig-quidde-hof": dict(
         place_id="ludwig-quidde-hof", name="Ludwig-Quidde-Hof",
-        kind="wohngebiet", parent_id="nadorst", aliases=[],
+        kind="wohngebiet", parent_id="ohmstede", aliases=[],
         description="Wohnprojekt und Geltungsbereich des vorhabenbezogenen Bebauungsplans 56.",
-        source_url=BPLANS),
+        source_url="https://buergerinfo.oldenburg.de/getfile.php?id=235687&type=do"),
     "haarenniederung": dict(
         place_id="haarenniederung", name="Haarenniederung", kind="schutzgebiet",
         parent_id="bloherfelde", aliases=["LSG Haarenniederung"],
@@ -161,7 +162,7 @@ APPROVED: dict[str, dict] = {
         source_url=LSG_DESCRIPTIONS),
     "buschhagenniederung": dict(
         place_id="buschhagenniederung", name="Buschhagenniederung", kind="schutzgebiet",
-        aliases=["LSG Buschhagenniederung"],
+        parent_id="kreyenbrueck", aliases=["LSG Buschhagenniederung"],
         description="Nördlicher Teil des Landschaftsschutzraums Mittlere Hunte im Oldenburger Stadtgebiet.",
         source_url=LSG_DESCRIPTIONS),
     "quartier-am-krusenbusch": dict(
@@ -195,7 +196,7 @@ APPROVED: dict[str, dict] = {
         description="Naturschutzgebiet im Verbund der Hunteniederung.", source_url=NSG),
     "dede-dragoner-und-schulstrasse": dict(
         place_id="dede-dragoner-schulstrasse", name="Quartier Dede-, Dragoner- und Schulstraße",
-        kind="quartier", parent_id="donnerschwee",
+        kind="quartier", parent_id="osternburg",
         aliases=["Quartier rund um Dede-, Dragoner- und Schulstraße"],
         description="In den Ratsunterlagen gemeinsam betrachtetes Quartier um drei Straßen.",
         source_url=("https://www.oldenburg.de/metanavigation/presse/pressemitteilung/"
@@ -206,19 +207,18 @@ APPROVED: dict[str, dict] = {
         description="Städtische Sportanlage an der Gerhard-Stalling-Straße.", source_url=SPORTS),
     "meerkamp-mittagsweg": dict(
         place_id="meerkamp-mittagsweg", name="Meerkamp/Mittagsweg",
-        kind="entwicklungsgebiet", parent_id="ohmstede", aliases=[],
+        kind="entwicklungsgebiet", parent_id="kreyenbrueck", aliases=[],
         description="Nach den angrenzenden Straßen benannter städtebaulicher Planungsbereich.",
-        source_url=BPLANS),
+        source_url="https://buergerinfo.oldenburg.de/getfile.php?id=246577&type=do"),
     "wunderburgpark": dict(
         place_id="wunderburgpark", name="Wunderburgpark", kind="park",
         parent_id="osternburg", aliases=["Landschaftsschutzgebiet Wunderburgpark"],
         description="Geschützte Park- und Grünanlage in Osternburg.", source_url=LSG),
     "gewerbegebiet-brokhausen": dict(
         place_id="gewerbegebiet-brokhausen", name="Gewerbegebiet Brokhausen",
-        kind="entwicklungsgebiet", parent_id="dietrichsfeld", aliases=["Bebauungsplan 869"],
+        kind="entwicklungsgebiet", parent_id="fliegerhorst", aliases=["Bebauungsplan 869"],
         description="Planungsbereich für das Gewerbegebiet Brokhausen.",
-        source_url=("https://www.oldenburg.de/metanavigation/presse/pressemitteilung/"
-                    "news/am-donnerstag-27-august-tagt-der-ausschuss-fuer-stadtplanung-und-bauen.html")),
+        source_url="https://buergerinfo.oldenburg.de/getfile.php?id=308544&type=do"),
     "sportpark-dornstede": dict(
         place_id="sportpark-dornstede", name="Sportpark Dornstede", kind="sportgebiet",
         parent_id="ohmstede", aliases=[], description="Städtische Sportanlage in Dornstede.",
@@ -269,8 +269,23 @@ APPROVED: dict[str, dict] = {
         description="Geltungsbereich des Bebauungsplans N-817 in Etzhorn.", source_url=BPLANS),
     "klaevemann-siedlung": dict(
         place_id="klaevemann-siedlung", name="Klävemann-Siedlung", kind="wohngebiet",
-        parent_id="krusenbusch", aliases=["Klävemann-Siedlung Schramperweg"],
-        description="Historische Siedlung am Schramperweg.", source_url=BPLANS),
+        parent_id="bloherfelde", aliases=["Klävemann-Siedlung Schramperweg"],
+        description="Historische Siedlung am Schramperweg.",
+        source_url=("https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/"
+                    "20_Controlling_und_Finanzen/200_Finanzen/Tautz_Ausarbeitung.pdf")),
+    "havekant": dict(
+        place_id="havekant", name="Havekant", kind="wohngebiet",
+        parent_id="osternburg", aliases=["Neubaugebiet Havekant"],
+        description="Wohngebiet an der Uferstraße südlich des Alten Stadthafens.",
+        source_url=("https://www.oldenburg.de/metanavigation/presse/pressemitteilung/"
+                    "news/sperrung-der-uferstrasse.html")),
+    "alten-krusenbusch": dict(
+        place_id="alter-krusenbusch", name="Alter Krusenbusch", kind="schutzgebiet",
+        parent_id="krusenbusch", aliases=["Rest des Alten Krusenbusches", "Alten Krusenbusch"],
+        description="Bewaldeter Hochmoorrest im nördlichen Krusenbusch.",
+        source_url=("https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/"
+                    "43_Amt_fuer_Umweltschutz_und_Bauordnung/432_Naturschutz_technischer_Umweltschutz/"
+                    "Naturschutz/Natur_und_Landschaft_Gruene_Vielfalt_web.pdf")),
 }
 
 
@@ -317,6 +332,7 @@ REJECTED: dict[str, str] = {
     "vapiano": "Ehemaliger Gastronomiebetrieb; kein dauerhafter kommunalpolitischer Ortsbereich.",
     "ipweger-moor-gellener-torfmoeoerte": "Überwiegend außerhalb des Oldenburger Stadtgebiets.",
     "sager-meer-ahlhorner-fischteiche-und-lethe": "Schutzgebiet außerhalb des Oldenburger Stadtgebiets.",
+    "hafen-iprump": "Hafen in der Gemeinde Hude und damit außerhalb des Oldenburger Stadtgebiets.",
 }
 
 
@@ -344,7 +360,7 @@ def review_manifest() -> dict[str, dict]:
     return reviews
 
 
-def apply_reviews(db_path: str, updated_by: str) -> dict:
+def apply_reviews(db_path: str, updated_by: str, *, refresh_reviewed: bool = False) -> dict:
     reviews = review_manifest()
     store = CouncilStore(db_path)
     try:
@@ -352,7 +368,12 @@ def apply_reviews(db_path: str, updated_by: str) -> dict:
         uncovered = sorted(pending - reviews.keys())
         if uncovered:
             raise ValueError(f"Offene Kandidaten ohne Urteil: {', '.join(uncovered)}")
-        applicable = pending & reviews.keys()
+        if refresh_reviewed:
+            observed = {row["slug"] for row in store.location_candidates(
+                "all", limit=500, min_decisions=1)}
+            applicable = observed & reviews.keys()
+        else:
+            applicable = pending & reviews.keys()
         order = {"approved": 0, "concrete": 1, "alias": 2, "rejected": 3}
         saved = Counter()
         for slug in sorted(applicable, key=lambda key: (order[reviews[key]["status"]], key)):
@@ -384,14 +405,15 @@ def snapshot(db_path: str) -> str:
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "reviews": [dict(row) for row in conn.execute("SELECT * FROM council_place_reviews")],
         "locations": [dict(row) for row in conn.execute(
-            "SELECT slug,place_id,ortsbereich_id,stadtteil,updated_at FROM council_locations")],
+            "SELECT slug,place_id,ortsbereich_id,stadtteil,lat,lon,geojson,geo_tried,updated_at "
+            "FROM council_locations")],
     }
     conn.close()
     backup_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return str(backup_path)
 
 
-def dry_run(db_path: str, updated_by: str) -> dict:
+def dry_run(db_path: str, updated_by: str, *, refresh_reviewed: bool = False) -> dict:
     fd, temp_path = tempfile.mkstemp(prefix="ratslotse-location-review-", suffix=".sqlite")
     os.close(fd)
     source = sqlite3.connect(db_path)
@@ -400,7 +422,7 @@ def dry_run(db_path: str, updated_by: str) -> dict:
     target.close()
     source.close()
     try:
-        return apply_reviews(temp_path, updated_by)
+        return apply_reviews(temp_path, updated_by, refresh_reviewed=refresh_reviewed)
     finally:
         os.remove(temp_path)
 
@@ -410,12 +432,14 @@ def main() -> None:
     parser.add_argument("--db", default="data/council.sqlite")
     parser.add_argument("--updated-by", default="codex-redaktion")
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--refresh-reviewed", action="store_true")
     args = parser.parse_args()
-    result = dry_run(args.db, args.updated_by)
+    result = dry_run(args.db, args.updated_by, refresh_reviewed=args.refresh_reviewed)
     result["mode"] = "dry-run"
     if args.apply:
         result["backup"] = snapshot(args.db)
-        result = {**apply_reviews(args.db, args.updated_by),
+        result = {**apply_reviews(args.db, args.updated_by,
+                                  refresh_reviewed=args.refresh_reviewed),
                   "mode": "applied", "backup": result["backup"]}
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

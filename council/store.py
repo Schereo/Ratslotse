@@ -8422,6 +8422,37 @@ class CouncilStore:
             args = (int(limit),)
         return [dict(r) for r in self._conn.execute(sql, args)]
 
+    def apply_curated_location_geocodes(self) -> int:
+        """Schwierige Ratsorte vor dem freien Geocoder reproduzierbar verorten."""
+        from council import geo
+        from council.locations import curated_location_geocodes
+
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        updates = []
+        for slug, point in curated_location_geocodes().items():
+            lat, lon = point["lat"], point["lon"]
+            stadtteil = geo.ortsbereich_for(lat, lon)
+            primary = self.resolve_place(stadtteil)
+            updates.append((lat, lon, stadtteil, primary.id if primary else None,
+                            now, slug, lat, lon))
+        if not updates:
+            return 0
+        with self._conn:
+            before = self._conn.total_changes
+            self._conn.executemany(
+                """UPDATE council_locations
+                   SET lat=?,lon=?,geojson=NULL,stadtteil=?,ortsbereich_id=?,
+                       geo_tried=1,updated_at=?
+                   WHERE slug=? AND (
+                       lat IS NULL OR lon IS NULL OR ABS(lat-?) > 0.00000001
+                       OR ABS(lon-?) > 0.00000001)""",
+                updates,
+            )
+            changed = self._conn.total_changes - before
+        if changed:
+            self._runtime_places_cache = None
+        return changed
+
     def hydrate_location_geo_from_entities(self) -> int:
         """Vorhandene, gleichnamige Entitäts-Geocodes ohne Netzaufruf übernehmen."""
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
