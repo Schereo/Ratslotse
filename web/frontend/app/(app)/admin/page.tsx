@@ -992,7 +992,12 @@ function QuizModerationTab() {
 }
 
 
-type PlaceReviewStatus = "pending" | "approved" | "alias" | "rejected";
+type PlaceReviewStatus = "pending" | "concrete" | "approved" | "alias" | "rejected";
+
+const concretePlaceKinds = [
+  ["strasse", "Straße"], ["platz", "Platz"],
+  ["gebaeude", "Gebäude"], ["gewaesser", "Gewässer"],
+] as const;
 
 function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
   candidate: PlaceCandidate;
@@ -1003,13 +1008,20 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
 }) {
   const [name, setName] = useState(candidate.review_name ?? candidate.name);
   const [placeId, setPlaceId] = useState(candidate.review_place_id ?? candidate.slug);
-  const [kind, setKind] = useState(candidate.review_kind ?? "quartier");
+  const [kind, setKind] = useState(
+    candidate.status === "approved" ? candidate.review_kind ?? "quartier" : "quartier");
   const [parentId, setParentId] = useState(candidate.parent_id ?? candidate.ortsbereich_id ?? "");
   const [aliases, setAliases] = useState((candidate.aliases ?? []).join(", "));
   const [description, setDescription] = useState(candidate.description ?? "");
   const [sourceUrl, setSourceUrl] = useState(candidate.source_url ?? "");
   const [canonical, setCanonical] = useState(candidate.canonical_place_id ?? "");
   const [quizEnabled, setQuizEnabled] = useState(!!candidate.quiz_enabled);
+  const initialConcreteKind = concretePlaceKinds.some(([key]) => key === candidate.review_kind)
+    ? candidate.review_kind as typeof concretePlaceKinds[number][0]
+    : concretePlaceKinds.some(([key]) => key === candidate.kind)
+      ? candidate.kind as typeof concretePlaceKinds[number][0]
+      : "strasse";
+  const [concreteKind, setConcreteKind] = useState(initialConcreteKind);
   const primaries = catalog.places.filter((p) => p.kind === "ortsbereich");
   const targets = catalog.places.filter((p) => p.id !== placeId);
   const kinds = Object.entries(catalog.kinds).filter(([key]) => key !== "ortsbereich");
@@ -1055,6 +1067,21 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border p-3 sm:flex-row sm:items-end">
+        <label className="min-w-0 flex-1 text-xs text-muted-foreground">Konkreter Ortstyp
+          <Select className="mt-1" value={concreteKind}
+            onChange={(event) => setConcreteKind(event.target.value as typeof concreteKind)}>
+            {concretePlaceKinds.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </Select>
+        </label>
+        <Button variant="secondary" size="sm" disabled={busy}
+          onClick={() => onReview(candidate.slug, {
+            status: "concrete", name: candidate.name, kind: concreteKind,
+          })}>
+          Als konkreten Ort bestätigen
+        </Button>
       </div>
 
       <details className="mt-3" open={candidate.status === "pending"}>
@@ -1156,14 +1183,14 @@ function PlaceCandidatesTab() {
     onRetry={() => void query.refetch()} busy={query.isFetching} />;
   const candidates = query.data?.candidates ?? [];
   const tabs: [PlaceReviewStatus, string][] = [
-    ["pending", "Offen"], ["approved", "Freigegeben"],
+    ["pending", "Offen"], ["concrete", "Konkrete Orte"], ["approved", "Freigegeben"],
     ["alias", "Aliase"], ["rejected", "Verworfen"],
   ];
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         Ortsnamen aus mindestens drei Beschlüssen. Freigegebene Gebiete werden Teil des gemeinsamen
-        Ortskatalogs; konkrete Straßen und Gebäude erscheinen ab drei Beschlüssen automatisch auf der Karte.
+        Ortskatalogs; bestätigte Straßen, Plätze, Gebäude und Gewässer bleiben exakte Kartenpunkte.
       </p>
       <div className="flex flex-wrap gap-1.5">
         {tabs.map(([value, label]) => (
