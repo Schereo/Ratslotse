@@ -37,7 +37,7 @@
 //                         Oldenburg steht nicht allein da, und was aus allen
 //                         Jahren zusammen offen blieb, sind die Schulden.
 //   16–18 Mitreden        Wann entschieden wird, worüber gestritten wurde,
-//                         und was sich drehen ließe.
+//                         und welche Stellschrauben es gibt.
 //
 // AUS DER 16er-LISTE WERDEN VIER ETAPPEN-KARTEN (17.08., vierte Runde,
 // Boards H3-08/H4-00). Die nummerierte Liste trug bis Schritt 10 — bei
@@ -115,12 +115,12 @@ type Ziel = {
 const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
   {
     kicker: "Die Zahlen",
-    frage: "Woher das Geld kommt, wohin es geht — und wie wenig davon frei ist.",
+    frage: "Woher das Geld kommt, wofür es eingeplant ist und welcher Teil politisch gestaltbar bleibt.",
     ziele: [
       {
         href: "/haushalt/einnahmen",
         titel: "Woher kommt das Geld?",
-        text: "Alle Einnahmequellen — und bei welchen der Rat etwas zu entscheiden hat.",
+        text: "Die Einnahmequellen der Stadt und der Einfluss des Rates auf ihre Höhe.",
         zeichen: Coins,
       },
       {
@@ -130,7 +130,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // zur Disposition steht.
         href: "/haushalt/pflicht",
         titel: "Muss oder kann?",
-        text: "Wie viel gesetzlich vorgeschrieben ist — und wie die Stadt selbst das sieht.",
+        text: "Welche Ausgaben gesetzlich gebunden sind und wo politische Entscheidungen möglich bleiben.",
         zeichen: Scale,
       },
       {
@@ -141,7 +141,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // sagen.
         href: "/haushalt/produkte",
         titel: "Was kostet eigentlich …?",
-        text: "Archiv, Feuerwehr, Schwimmbad: einzelne Aufgaben mit Kosten und Auftrag.",
+        text: "Was einzelne Aufgaben wie Archiv, Feuerwehr oder Schwimmbad kosten und welcher Auftrag dahintersteht.",
         zeichen: ListTree,
       },
       {
@@ -153,7 +153,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // Personalausgaben unter dem Plan bleiben können.
         href: "/haushalt/personal",
         titel: "Wer macht die Arbeit?",
-        text: "Der Stellenplan: wie viele Stellen die Stadt vorhält — und wie viele leer stehen.",
+        text: "Wie viele Stellen die Stadt plant, wie viele besetzt sind und wo Personal fehlt.",
         zeichen: Users,
       },
       {
@@ -166,19 +166,19 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // sollte dafür nicht die Etappe wechseln müssen.
         href: "/haushalt/investitionen",
         titel: "Was gebaut wird — und was daraus wurde",
-        text: "Neubauten, Fahrzeuge, Grundstücke — der Haushalt, in dem die Seiten davor nicht vorkommen; dazu, was am Jahresende davon abgeflossen ist.",
+        text: "Welche Neubauten, Fahrzeuge und Grundstücke geplant sind und wie viel davon tatsächlich umgesetzt wurde.",
         zeichen: Hammer,
       },
     ],
   },
   {
     kicker: "Die Gegenprobe",
-    frage: "Ein Haushalt ist ein Plan. Was daraus wurde, steht woanders — und wird geprüft.",
+    frage: "Der Haushalt ist ein Plan. Der Jahresabschluss zeigt, was tatsächlich daraus geworden ist.",
     ziele: [
       {
         href: "/haushalt/plan-ist",
         titel: "Geplant und geworden",
-        text: "Was am Jahresende wirklich zusammenkam — aus den Jahresabschlüssen.",
+        text: "Wie sich Plan und tatsächliches Ergebnis in den Jahresabschlüssen unterscheiden.",
         zeichen: ClipboardCheck,
       },
       {
@@ -190,15 +190,14 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // sagt. Sie ist jetzt nur die Reihenfolge der Abschnitte.
         href: "/haushalt/pruefung",
         titel: "Geprüft und zusammengefasst",
-        text: "Was das Rechnungsprüfungsamt beanstandet — und worauf die Stadt ihren Abschluss selbst eindampft.",
+        text: "Was das Rechnungsprüfungsamt beanstandet und mit welchen Kennzahlen die Stadt ihren Abschluss zusammenfasst.",
         zeichen: Stamp,
       },
     ],
   },
   {
     kicker: "Der Rahmen",
-    frage: "Der Haushalt ist nicht die ganze Stadt, Oldenburg steht nicht allein da — "
-      + "und was aus allen Jahren zusammen offen blieb, steht in keinem davon.",
+    frage: "Zum Gesamtbild gehören auch städtische Unternehmen, der Vergleich mit anderen Städten und die Schulden über mehrere Jahre.",
     ziele: [
       {
         // EIN Ziel statt vierer (21.08.2026). Summe, Gesellschaften, ihre
@@ -207,7 +206,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // wer bei der Summe aufhört, weiß nicht, wer dahintersteckt.
         href: "/haushalt/konzern",
         titel: "Und ist das die ganze Stadt?",
-        text: "Klinikum, Busse, Bäder, Gebäude: was neben dem Haushalt noch läuft.",
+        text: "Welche städtischen Unternehmen und Beteiligungen neben dem Kernhaushalt stehen.",
         zeichen: Network,
       },
       {
@@ -216,7 +215,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // Hälfte aus der Begründung, warum der Ausgaben-Vergleich nicht trägt.
         href: "/haushalt/vergleich",
         titel: "Steht Oldenburg besser da?",
-        text: "Steuerkraft und Hebesätze der kreisfreien Städte — und warum Ausgaben sich nicht vergleichen lassen.",
+        text: "Wie Oldenburg bei Steuerkraft und Hebesätzen dasteht und warum Ausgabenvergleiche Grenzen haben.",
         zeichen: BarChart3,
       },
       {
@@ -228,14 +227,14 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // Kicker-Nummern der Seiten davor.)
         href: "/haushalt/schulden",
         titel: "Wie viel Schulden hat Oldenburg?",
-        text: "Der Schuldenstand seit 1995, insgesamt und je Einwohner*in — und was er zählt.",
+        text: "Wie sich der Schuldenstand seit 1995 entwickelt hat und welche Verbindlichkeiten darin enthalten sind.",
         zeichen: LineChart,
       },
     ],
   },
   {
     kicker: "Mitreden",
-    frage: "Wann entschieden wird, worüber gestritten wurde — und was sich drehen ließe.",
+    frage: "Wann der Rat entscheidet, worüber politisch gestritten wird und welche Stellschrauben es gibt.",
     ziele: [
       {
         // EIN Ziel statt zweier (21.08.2026). „Wann wird das entschieden?"
@@ -245,7 +244,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // Anker führen weiterhin gezielt hin.
         href: "/haushalt/mitreden",
         titel: "Mitreden",
-        text: "Wann entschieden wird — und worüber die Fraktionen gestritten haben.",
+        text: "Wann der Haushalt beschlossen wird und welche Positionen die Fraktionen vertreten.",
         zeichen: MessagesSquare,
       },
       {
@@ -259,7 +258,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // viel ist.
         href: "/haushalt/labor",
         titel: "Haushalts-Labor",
-        text: "Selbst an den Stellschrauben drehen und sehen, was das ausmacht.",
+        text: "Ausprobieren, wie sich veränderte Einnahmen und Ausgaben auf das Ergebnis auswirken.",
         zeichen: FlaskConical,
       },
     ],
@@ -414,10 +413,10 @@ export function Wegweiser() {
         Der Weg durch den Haushalt
       </h2>
       <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
-        {GESAMT} Schritte in vier Etappen, und sie bauen aufeinander auf: erst die Zahlen
-        selbst, dann die Gegenprobe, dann der Blick über den Haushalt hinaus, zuletzt die
-        Frage, was sich ändern ließe. Eine Etappe ist ein Abend — einzeln funktioniert aber
-        jede Seite für sich.
+        {GESAMT} Schritte führen von den Grundlagen zu den politischen Entscheidungen:
+        zuerst die Zahlen, dann der Vergleich von Plan und Ergebnis, anschließend der Blick
+        über den Kernhaushalt hinaus und zuletzt die Möglichkeiten zum Mitreden. Du kannst
+        der Reihenfolge folgen oder jede Seite einzeln öffnen.
       </p>
 
       {/* „Weiter, wo du warst": erst ab dem ersten gemerkten Besuch — vorher
@@ -523,9 +522,9 @@ export function Wegweiser() {
           und brauchen einen Bereich bzw. eine Einnahmeart, über die man sie
           aufruft — als Schritt stünde dort ein beliebiger Einzelfall. */}
       <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-        Dazu kommen zwei Steckbriefe, die keinen eigenen Schritt haben, weil man sie immer aus
-        einer der Seiten oben öffnet: der eines einzelnen Bereichs (aus Schritt 2 oder aus der
-        Bereichstabelle auf dieser Seite) und der einer einzelnen Einnahmeart (aus Schritt 1).
+        Zwei weitere Detailansichten öffnen sich direkt aus den passenden Übersichten: der
+        Steckbrief eines Haushaltsbereichs aus der Bereichstabelle und der Steckbrief einer
+        Einnahmeart aus „Woher kommt das Geld?“.
       </p>
     </div>
   );

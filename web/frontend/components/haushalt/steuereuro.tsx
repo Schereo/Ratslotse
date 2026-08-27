@@ -86,11 +86,11 @@ export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: nu
   return (
     <div>
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Von 100 Euro der Stadt · {jahr}
+        Von 100 Euro geplanter Ausgaben · {jahr}
       </p>
       {top && zweit && (
         <p className="mb-3 mt-1.5 max-w-[38ch] font-display text-[19px] font-bold leading-snug tracking-tight">
-          Gibt Oldenburg {top.euro} Euro für {top.kurz} aus — und {zweit.euro} für {zweit.kurz}.
+          Von 100 Euro entfallen {top.euro} Euro auf {top.kurz} und {zweit.euro} Euro auf {zweit.kurz}.
         </p>
       )}
 
@@ -145,17 +145,19 @@ export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: nu
             </button>
           ))}
           <p className="pt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-            Ein Feld = 1&nbsp;€ von 100, auf ganze Euro gerundet. Ein Bereich in der Liste oder im
-            Raster hebt seine Felder hervor. Genaue Werte zeigt die Balken-Ansicht.
+            Jedes Feld steht für 1&nbsp;€ von 100; die Anteile sind auf ganze Euro gerundet.
+            Wähle einen Bereich in der Liste oder im Raster, um seine Felder hervorzuheben.
+            Die genauen Beträge stehen in der Balkenansicht.
           </p>
         </div>
       </div>
 
       {eingenommen < 100 && (
         <p className="mt-3.5 border-t border-border/60 pt-3 text-xs leading-relaxed text-foreground/85">
-          <strong>Grenze der Metapher:</strong> Es sind nicht 100 Euro Steuergeld — {eingenommen}&nbsp;Euro
-          sind eingenommen, {100 - eingenommen}&nbsp;Euro stammen aus dem Ersparten der Stadt
-          ({deMio(fehltMio)}&#8239;Mio.&nbsp;€ aus der Rücklage).
+          <strong>So ist die Darstellung zu lesen:</strong> Die 100 Euro stehen für alle
+          geplanten Aufwendungen, nicht für Steuereinnahmen. Davon sind rechnerisch
+          {" "}{eingenommen}&nbsp;Euro durch geplante Erträge gedeckt; {100 - eingenommen}&nbsp;Euro
+          entsprechen dem geplanten Minus von {deMio(fehltMio)}&#8239;Mio.&nbsp;€.
         </p>
       )}
     </div>

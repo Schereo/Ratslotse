@@ -4,8 +4,9 @@
 //
 // Ersetzt die Karten-Kacheln der ersten Fassung. Der Gewinn ist nicht Platz,
 // sondern Vergleichbarkeit: Jede Zeile zeigt in EINEM Balken, wie sich die
-// Ausgaben eines Bereichs zusammensetzen — den dunklen Teil schießt die Stadt
-// aus dem allgemeinen Topf zu, den hellen nimmt der Bereich selbst ein. So wird
+// Ausgaben eines Bereichs zusammensetzen — der dunkle Teil zeigt den
+// Zuschussbedarf aus dem allgemeinen Haushalt, der helle die direkt im Bereich
+// verbuchten Erträge. So wird
 // ohne Fußnote sichtbar, dass der längste Balken nicht der ist, der die Stadt
 // am meisten kostet.
 //
@@ -86,7 +87,7 @@ function Einheit() {
 function Kopf() {
   return (
     <div className="hidden grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_64px_64px_14px] gap-x-3.5 pb-2 sm:grid">
-      {["Bereich · was drinsteckt", "Zusammensetzung", "Stadt", "Gesamt"].map((t, i) => (
+      {["Bereich · enthaltene Aufgaben", "Finanzierung", "Zuschuss", "Ausgaben"].map((t, i) => (
         <span key={t} className={cn(
           "font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground",
           i >= 2 && "text-right",
@@ -121,11 +122,11 @@ function Reihe({ z, skala }: { z: Zeile; skala: number }) {
       </span>
       <span className="flex items-baseline justify-between gap-4 sm:contents">
         <span className="tabular-nums sm:text-right">
-          <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground sm:hidden">Stadt</span>
+          <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground sm:hidden">Zuschuss</span>
           <span className="font-semibold">{deMio(z.stadt)}<Einheit /></span>
         </span>
         <span className="tabular-nums text-muted-foreground sm:text-right">
-          <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] sm:hidden">Gesamt</span>
+          <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] sm:hidden">Ausgaben</span>
           {deMio(z.gesamt)}<Einheit />
         </span>
       </span>
@@ -217,15 +218,15 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
         <div className="min-w-0 flex-1">
           <h2 className="max-w-[46ch] text-[17px] font-bold leading-snug tracking-tight sm:text-[20px]">
             {auseinander
-              ? "Der größte Ausgabenposten ist nicht der, der die Stadt am meisten kostet"
-              : `Die ${traeger.length + ueberschuss.length} Bereiche im Einzelnen`}
+              ? "Hohe Ausgaben bedeuten nicht automatisch einen hohen Zuschussbedarf"
+              : `Die ${traeger.length + ueberschuss.length} Bereiche im Überblick`}
           </h2>
           <p className="mt-2 max-w-[74ch] text-[13px] leading-relaxed text-foreground/85">
-            Jeder Balken ist ein Bereich, seine Länge sind die Ausgaben. Den{" "}
-            <strong className="font-semibold">dunklen Teil</strong> schießt die Stadt zu — bezahlt
-            aus dem allgemeinen Topf, in den Steuern und Schlüsselzuweisungen für die ganze
-            Stadt zusammen eingehen. Den <strong className="font-semibold">hellen Teil</strong>{" "}
-            nimmt der Bereich selbst ein: seine eigenen Erträge.<Beleg q="plan" />
+            Die Länge jedes Balkens zeigt die geplanten Ausgaben eines Bereichs. Der{" "}
+            <strong className="font-semibold">dunkle Teil</strong> ist der Zuschussbedarf aus
+            dem allgemeinen Haushalt. Der <strong className="font-semibold">helle Teil</strong>{" "}
+            zeigt Erträge, die direkt in diesem Bereich verbucht werden. Zusammen ergeben
+            beide Teile die geplanten Ausgaben.<Beleg q="plan" />
           </p>
 
           {/* „REIHENFOLGE" + Verb-Paar statt „nach Kosten für die Stadt": Der
@@ -241,18 +242,18 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
               <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
                 <Segmented className="w-max" value={sortierung} onChange={setSortierung} tone="primary"
                   options={[
-                    { value: "stadt", label: "was die Stadt zuschießt" },
-                    { value: "gesamt", label: "was ein Bereich ausgibt" },
+                    { value: "stadt", label: "höchster Zuschuss" },
+                    { value: "gesamt", label: "höchste Ausgaben" },
                   ]} />
               </div>
             </div>
             <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
               <span className="h-3 w-3 rounded-[3px]" style={{ background: "var(--hh-ein-0)" }} />
-              schießt die Stadt zu (allgemeiner Topf)
+              Zuschuss aus dem allgemeinen Haushalt
             </span>
             <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
               <span className="h-3 w-3 rounded-[3px]" style={{ background: "var(--hh-ein-3)" }} />
-              nimmt der Bereich selbst ein
+              im Bereich verbuchte Erträge
             </span>
           </div>
 
@@ -273,11 +274,11 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
                 <span className="hidden sm:block" />
                 <span className="flex items-baseline justify-between gap-4 sm:contents">
                   <span className="tabular-nums sm:text-right">
-                    <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] sm:hidden">Stadt</span>
+                    <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] sm:hidden">Zuschuss</span>
                     {deMio(restStadt)}<Einheit />
                   </span>
                   <span className="tabular-nums sm:text-right">
-                    <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] sm:hidden">Gesamt</span>
+                    <span className="mr-1.5 font-mono text-[9.5px] uppercase tracking-[0.09em] sm:hidden">Ausgaben</span>
                     {deMio(restGesamt)}<Einheit />
                   </span>
                 </span>
@@ -300,9 +301,9 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
                 <Info className="h-3 w-3 text-primary" />
               </span>
               <p className="text-[12px] leading-relaxed text-muted-foreground">
-                {ueberschuss.length === 1 ? "Ein Bereich fehlt" : `${ueberschuss.length} Bereiche fehlen`} in
-                dieser Liste, weil {ueberschuss.length === 1 ? "er" : "sie"} die Stadt unterm Strich
-                nichts {ueberschuss.length === 1 ? "kostet" : "kosten"}:{" "}
+                {ueberschuss.length === 1 ? "Ein Bereich wird" : `${ueberschuss.length} Bereiche werden`} in
+                der Zuschussliste nicht aufgeführt, weil die dort verbuchten Erträge mindestens
+                so hoch sind wie die Ausgaben:{" "}
                 {/* Als Klammerzusatz und nicht als Satz mit Verb: Ein Bereich
                     heißt „nicht rechtsfähige Stiftungen", der nächste
                     „Finanzmanagement und Recht" — jede Vorlage mit Prädikat
@@ -311,7 +312,7 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
                   <span key={z.roh}>
                     {i > 0 && (i === ueberschuss.length - 1 ? " und " : ", ")}
                     <strong className="font-semibold text-foreground/90">{z.name}</strong>{" "}
-                    (Ausgaben {deMio(z.gesamt)}&#8239;Mio.&nbsp;€, eigene Erträge {deMio(z.eigen)}&#8239;Mio.&nbsp;€,
+                    (Ausgaben {deMio(z.gesamt)}&#8239;Mio.&nbsp;€, verbuchte Erträge {deMio(z.eigen)}&#8239;Mio.&nbsp;€,
                     Überschuss {deMio(z.plus)}&#8239;Mio.&nbsp;€)
                   </span>
                 ))}
@@ -319,19 +320,19 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
                 {/* Der Halbsatz „der Topf, aus dem die anderen bezahlt werden" ist
                     für sich genommen irreführend: Er weckt den Eindruck, es gehe
                     auf. Es geht nicht auf — und die Lücke ist genau das Minus. */}
-                Dieser Überschuss ist der Topf, aus dem die dunklen Teile aller anderen Balken
-                bezahlt werden.{" "}
+                Zusammen ergeben diese Bereiche einen Überschuss von {deMio(topfSumme)}&#8239;Mio.&nbsp;€.
+                In der Haushaltsrechnung gleicht er den Zuschussbedarf der übrigen Bereiche aus.{" "}
                 {luecke > 0 ? (
                   <>
-                    Er reicht dafür nicht: Der Zuschussbedarf der übrigen Bereiche summiert sich
-                    auf {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und liegt {deMio(luecke)}&#8239;Mio.&nbsp;€
-                    darüber — genau das ist das für {jahr} geplante Minus.
+                    Deren Zuschussbedarf beträgt {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und ist damit
+                    {" "}{deMio(luecke)}&#8239;Mio.&nbsp;€ höher. Diese Differenz entspricht dem für
+                    {" "}{jahr} geplanten Minus.
                   </>
                 ) : (
                   <>
-                    Er reicht dafür: Der Zuschussbedarf der übrigen Bereiche summiert sich auf{" "}
-                    {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und liegt {deMio(-luecke)}&#8239;Mio.&nbsp;€
-                    darunter — genau das ist der für {jahr} geplante Überschuss.
+                    Deren Zuschussbedarf beträgt {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und ist damit
+                    {" "}{deMio(-luecke)}&#8239;Mio.&nbsp;€ niedriger. Diese Differenz entspricht dem
+                    für {jahr} geplanten Überschuss.
                   </>
                 )}
               </p>
@@ -343,16 +344,16 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
           {auseinander && (
             <div className="rounded-xl border border-signal/30 bg-signal/[0.06] p-3.5">
               <p className="text-[12.5px] leading-relaxed text-foreground/90">
-                <strong className="font-semibold">{groessteAusgabe.name} hat den längsten Balken,{" "}
-                  {groesstenKosten.name} den längsten dunklen.</strong>{" "}
+                <strong className="font-semibold">{groessteAusgabe.name} plant die höchsten
+                  Ausgaben, {groesstenKosten.name} benötigt den höchsten Zuschuss.</strong>{" "}
                 {/* Absolut formuliert, nicht als Quote: Ein Prozentwert wäre
                     hier ein Maßstab, den es nicht gibt — kein Bereich soll
                     sich selbst finanzieren. */}
-                {groessteAusgabe.name} gibt {deMio(groessteAusgabe.gesamt)}&#8239;Mio.&nbsp;€ aus und hat
-                dabei {deMio(groessteAusgabe.eigen)}&#8239;Mio.&nbsp;€ eigene Erträge;{" "}
-                {groesstenKosten.name} gibt {deMio(groesstenKosten.gesamt)}&#8239;Mio.&nbsp;€ aus und hat{" "}
-                {deMio(groesstenKosten.eigen)}&#8239;Mio.&nbsp;€. So kostet der kleinere Posten die Stadt
-                am Ende mehr.
+                {groessteAusgabe.name} plant {deMio(groessteAusgabe.gesamt)}&#8239;Mio.&nbsp;€ Ausgaben
+                und {deMio(groessteAusgabe.eigen)}&#8239;Mio.&nbsp;€ eigene Erträge.{" "}
+                {groesstenKosten.name} plant {deMio(groesstenKosten.gesamt)}&#8239;Mio.&nbsp;€ Ausgaben
+                und {deMio(groesstenKosten.eigen)}&#8239;Mio.&nbsp;€ eigene Erträge. Trotz niedrigerer
+                Gesamtausgaben ist dort deshalb mehr Geld aus dem allgemeinen Haushalt nötig.
               </p>
             </div>
           )}
@@ -361,30 +362,29 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
             <p className="text-[13px] font-bold">Warum die hellen Teile so verschieden groß sind</p>
             <div className="mt-2.5 flex flex-col gap-2.5">
               <Grund titel="Das Gesetz sieht Erstattungen vor"
-                text="Bei vielen Sozialleistungen ist die Stadt nur die auszahlende Stelle — Bund und Land ersetzen einen großen Teil." />
-              <Grund titel="Es gibt eine Gebühr — die höchstens die Kosten deckt"
-                text="Müll, Friedhof, teils Kita: Der Rat setzt die Sätze, verdienen darf die Stadt daran nicht." />
-              <Grund titel="Es gibt gar keine Gegenrechnung"
-                text="Für Straßen, Grünflächen, Feuerwehr oder die Bibliothek zahlt niemand einzeln. Deshalb ist ihr Balken fast vollständig dunkel." />
+                text="Bei vielen Sozialleistungen zahlt die Stadt zunächst aus. Bund und Land erstatten anschließend einen Teil der Kosten." />
+              <Grund titel="Für manche Leistungen erhebt die Stadt Gebühren"
+                text="Das gilt etwa für Müllentsorgung, Friedhöfe und teilweise für Kitas. Die Gebühren sind an die jeweilige Leistung gebunden und dürfen grundsätzlich nicht über deren Kosten hinausgehen." />
+              <Grund titel="Viele Aufgaben haben keine direkten Erträge"
+                text="Straßen, Grünflächen, Feuerwehr oder Bibliotheken werden überwiegend aus allgemeinen Einnahmen finanziert. Ihr Balken ist deshalb fast vollständig dunkel." />
             </div>
           </div>
 
           <div className="rounded-xl border border-border bg-muted/40 p-3.5">
             <p className="text-[12px] leading-relaxed text-foreground/90">
-              <strong className="font-semibold">Ein großer heller Teil ist kein Verdienst, ein
-                kleiner kein Versäumnis.</strong> Kein Bereich einer Stadt soll sich selbst
-              finanzieren. Straßen, Schulen und Grünanlagen werden aus Steuern bezahlt, weil alle
-              sie brauchen. Die Balken zeigen, <em>wer</em> zahlt — nicht, wer gut gewirtschaftet
-              hat.
+              <strong className="font-semibold">Ein hoher Anteil eigener Erträge ist keine
+                Bewertung der Leistung.</strong> Viele kommunale Aufgaben sollen gerade nicht
+              über individuelle Zahlungen finanziert werden. Die Balken zeigen die
+              Finanzierungsstruktur, nicht die Qualität der Arbeit eines Bereichs.
             </p>
           </div>
 
           <p className="border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-            „Stadt“ ist das, was die Stadt zuschießt — der Zuschussbedarf: Aufwendungen minus
-            eigene Erträge des Bereichs. Wie
-            sich die eigenen Erträge auf Erstattungen, Gebühren und Zuwendungen verteilen, steht
-            hier bewusst als Text und nicht als Zahl — der Haushaltsplan weist das auf dieser
-            Ebene nicht getrennt aus.<Beleg q="plan" />
+            „Zuschuss“ bezeichnet den Betrag, der nach Abzug der im Bereich verbuchten
+            Erträge von seinen Aufwendungen übrig bleibt. Wie sich diese Erträge auf
+            Erstattungen, Gebühren und Zuwendungen verteilen, weist der Haushaltsplan auf
+            dieser Ebene nicht getrennt aus. Deshalb erklären wir die möglichen Gründe,
+            nennen dafür aber keine unbelegten Anteile.<Beleg q="plan" />
           </p>
         </div>
       </div>

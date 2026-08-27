@@ -103,10 +103,10 @@ function Detail({ z, gepinnt, onClose, onOpen }: {
         )}
       </div>
       <p className="mt-1 text-[11.5px] leading-relaxed text-foreground/80">
-        {deMio(mio(z.aufwendungen))}&#8239;Mio.&nbsp;€ Ausgaben · {deMio(mio(z.ertraege))}&#8239;Mio.&nbsp;€ eigene Einnahmen
+        {deMio(mio(z.aufwendungen))}&#8239;Mio.&nbsp;€ geplante Ausgaben · {deMio(mio(z.ertraege))}&#8239;Mio.&nbsp;€ Erträge des Bereichs
         <br />
         <strong className="text-foreground">{deMio(mio(z.ergebnis))}&#8239;Mio.&nbsp;€</strong>{" "}
-        {(z.ergebnis ?? 0) < 0 ? "trägt die Stadt" : "bleibt übrig"}
+        {(z.ergebnis ?? 0) < 0 ? "Zuschussbedarf" : "Überschuss"}
       </p>
       <button type="button" className="mt-1.5 text-[11.5px] font-semibold text-primary"
         onClick={() => onOpen(z.bereich)}>
@@ -168,7 +168,7 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
           Kicker in je zwei Zeilen, die dann ineinander verzahnt standen. */}
       <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Woher &amp; wohin · {jahr}
+          Einnahmen und Ausgaben · {jahr}
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
           {parts.length} Teilhaushalte · Mio. Euro
@@ -187,7 +187,7 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
           wirklich stammt, beantwortet die Seite „Woher kommt das Geld?"
           und das Flussbild darunter. */}
       <p className="mb-1.5 text-[12.5px] font-semibold">
-        Wo das Geld eingeht <span className="font-normal text-muted-foreground">— {deMio(einSumme)}&#8239;Mio.&nbsp;€</span>
+        Wo Einnahmen verbucht werden <span className="font-normal text-muted-foreground">— {deMio(einSumme)}&#8239;Mio.&nbsp;€</span>
       </p>
       <div style={{ width: `${einEnde}%` }}>
         <Leiste seite="ein" zeilen={ein} skala={einSumme} aktiv={aktiv}
@@ -207,9 +207,10 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
       </div>
       {ein[0] && (
         <p className="mt-1.5 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
-          Der große Block links ist keine Einnahmequelle: In „{bereichKanon(ein[0].z.bereich).name}“
-          verbucht die Stadt Steuern und Zuweisungen zentral für alle Aufgaben. Aus welchen
-          Quellen das Geld stammt, steht unter <em>Woher kommt das Geld?</em>
+          Der größte Abschnitt ist keine einzelne Einnahmequelle. Im Bereich
+          „{bereichKanon(ein[0].z.bereich).name}“ verbucht die Stadt Steuern und allgemeine
+          Zuweisungen zentral. Die tatsächlichen Einnahmearten zeigt weiter unten der
+          Abschnitt <em>Woher kommt das Geld?</em>
         </p>
       )}
       {wahl?.seite === "ein" && <Detail z={gewaehlte} gepinnt={!!gepinnt} onClose={() => { setGepinnt(null); setHover(null); }} onOpen={oeffnen} />}
@@ -230,13 +231,13 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
             >
               {100 - einEnde >= 20 && (
                 <span className="whitespace-nowrap font-mono text-[9.5px] font-bold uppercase text-signal">
-                  {deMio(-saldo)}&#8239;Mio.&nbsp;€ aus der Rücklage
+                  {deMio(-saldo)}&#8239;Mio.&nbsp;€ geplantes Minus
                 </span>
               )}
             </div>
             {100 - einEnde < 20 && (
               <p className="absolute right-0 top-6 font-mono text-[9.5px] font-bold uppercase text-signal">
-                {deMio(-saldo)}&#8239;Mio.&nbsp;€ aus der Rücklage
+                {deMio(-saldo)}&#8239;Mio.&nbsp;€ geplantes Minus
               </p>
             )}
           </>
@@ -256,7 +257,7 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
 
       <div onMouseLeave={() => setHover(null)}>
       <p className="mb-1.5 text-[12.5px] font-semibold">
-        Wohin es fließt <span className="font-normal text-muted-foreground">— {deMio(ausSumme)}&#8239;Mio.&nbsp;€</span>
+        Wo Ausgaben verbucht werden <span className="font-normal text-muted-foreground">— {deMio(ausSumme)}&#8239;Mio.&nbsp;€</span>
       </p>
       <div style={{ width: `${(ausSumme / skala) * 100}%` }}>
         <Leiste seite="aus" zeilen={aus} skala={ausSumme} aktiv={aktiv}

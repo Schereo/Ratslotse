@@ -134,7 +134,7 @@ export function Kassenzettel({
               {/* Sichtbar trägt die Einheit die Kopfzeile und die Summe. Wer
                   vorgelesen bekommt, hört sonst nur „Soziales 1.603" — die
                   Währung stünde erst zwölf Zeilen später. */}
-              <p className="sr-only">Posten in {teiler.einheit}:</p>
+              <p className="sr-only">Ausgabenposten in Euro:</p>
               {posten.map((p, i) => <Bonzeile key={i} z={p} />)}
             </div>
 
@@ -182,8 +182,8 @@ export function Kassenzettel({
               sieht — Screenshot, Sharepic —, sieht auch, wodurch geteilt
               wurde und woher die Zahl stammt. */}
           <p className="mt-2 px-1 text-center text-[11px] leading-relaxed text-muted-foreground">
-            geteilt durch <span className="font-medium tabular-nums text-foreground/80">{deZahl(teiler.zahl)}</span>{" "}
-            {teiler.einheit} · Stichtag {teiler.stichtag} · {teiler.quelle}
+            Berechnet mit <span className="font-medium tabular-nums text-foreground/80">{deZahl(teiler.zahl)}</span>{" "}
+            {teiler.einheit} · Stand {teiler.stichtag} · {teiler.quelle}
           </p>
         </div>
 
@@ -194,7 +194,7 @@ export function Kassenzettel({
               (Designsprache §4): Die Punkte sind sehr verschieden lang,
               Spalten fließen und balancieren sich selbst. */}
           <div className="rounded-2xl border border-signal/35 bg-card p-4">
-            <p className="text-[12.5px] font-bold text-signal">Was diese Zahl nicht ist</p>
+            <p className="text-[12.5px] font-bold text-signal">So ist die Pro-Kopf-Zahl einzuordnen</p>
             <ul className="mt-2.5 space-y-2.5 @2xl/zettel:columns-2 @2xl/zettel:gap-5 @2xl/zettel:space-y-0">
               {nichtAussagen.map((n) => (
                 <li key={n.kern} className="flex break-inside-avoid gap-2.5 @2xl/zettel:mb-2.5">
