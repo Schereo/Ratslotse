@@ -11,6 +11,7 @@ from types import SimpleNamespace
 
 from council import geo, places, quiz
 from council.store import CouncilStore
+from scripts import generate_quiz
 
 
 # ---- Gebiets-Geometrie (Spiegel von lib/stadtteile.ts) ----------------------
@@ -123,6 +124,39 @@ def test_generate_for_area_parses_and_tags(monkeypatch):
     assert r["area_type"] == "stadtteil" and r["area_key"] == "Osternburg"
     assert r["source_type"] == "wikipedia" and r["content_hash"]
     assert len(r["options"]) == 4 and 0 <= r["correct_index"] < 4
+
+
+def test_generate_does_not_cut_explanation_mid_sentence(monkeypatch):
+    explanation = "Ein vollständiger erster Satz. " + ("Weitere Erklärung " * 50)
+    qs = [{"category": "geschichte", "difficulty": "leicht",
+           "question": "Wann wurde der Beispielort gegründet?",
+           "options": ["1922", "1913", "1891", "1945"], "correct_index": 0,
+           "explanation": explanation}]
+    monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
+    rows = quiz.generate_for_area("stadtteil", "Osternburg", "Osternburg", "x" * 500,
+                                  n=1, source_type="wikipedia", source_ref="http://w",
+                                  verify=False)
+    assert rows[0]["explanation"].endswith((".", "…"))
+    assert len(rows[0]["explanation"]) <= 600
+
+
+def test_quiz_backfill_requests_only_missing_count(tmp_path, monkeypatch):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_quiz_questions([_row("Testort", f"Frage {i}?") for i in range(7)])
+    store.close()
+    area = {"area_type": "stadtteil", "area_key": "Testort", "label": "Testort",
+            "place_name": "Testort", "place_id": None, "slug": None}
+    monkeypatch.setattr(generate_quiz, "_areas", lambda _store: [area])
+    monkeypatch.setattr(generate_quiz.quiz, "council_facts", lambda *args, **kwargs: "")
+    requested = []
+
+    def fake_gen(_area, _facts, n, _verify):
+        requested.append(n)
+        return {"status": "ok", "label": "Testort", "rows": []}
+
+    monkeypatch.setattr(generate_quiz, "_gen", fake_gen)
+    generate_quiz.process(tmp_path / "c.sqlite", target=10, per_run=8, workers=1)
+    assert requested == [3]
 
 
 def test_generate_skips_thin_sources(monkeypatch):

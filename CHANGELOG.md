@@ -18,7 +18,9 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   umfasst nun außerdem erste belegte Quartiere, Parks, Schutz-, Wohn-,
   Sanierungs- und Entwicklungsgebiete. Beschlusssuche, Ortsprofile, Quiz und
   „Frag den Rat“ greifen über dieselben stabilen IDs, Aliase und Hierarchien
-  darauf zu; neue Beschlüsse werden beim Einlesen automatisch verknüpft.
+  darauf zu; neue Beschlüsse werden beim Einlesen automatisch verknüpft. Der
+  Quiz-Backfill fordert dabei nur noch die bis zum Ziel fehlenden Fragen an und
+  kürzt längere Erklärungen nicht mehr mitten im Satz.
 
 ## [1.13.2] – 2026-08-19
 
