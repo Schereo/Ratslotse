@@ -5,9 +5,10 @@
 //
 // Leserichtung: Jahr wählen → Anzeigetafel mit der Kernzahl und dem
 // Kern-Visual (Gegenbalken, umschaltbar auf die 100-Euro-Ansicht) → was der
-// Haushalt überhaupt ist → der Kassenzettel pro Kopf samt Ersparten (die
-// eigentliche Story) → die Bereiche als Tabelle → Wegweiser → woher das Geld
-// kommt (Flussbild) → Zeitreihe. Jede Karte trägt ihre Quelle.
+// Haushalt überhaupt ist → der große Weg durch die Unterseiten → der
+// Kassenzettel pro Kopf samt Ersparten (die eigentliche Story) → Bereiche als
+// Tabelle → woher das Geld kommt (Flussbild) → Zeitreihe. Jede Karte trägt
+// ihre Quelle.
 //
 // Drei Dinge, die hier bewusst NICHT stehen:
 //
@@ -249,6 +250,15 @@ export default function HaushaltPage() {
         text="Der Haushalt ist der Geldplan der Stadt für ein Jahr. Darin schätzt Oldenburg, wie viel Geld hereinkommt, und plant, wie viel für Kitas, Straßen, Feuerwehr und andere Aufgaben zur Verfügung steht. Der Rat beschließt diesen finanziellen Rahmen. Wichtig: Geplant ist noch nicht ausgegeben — was tatsächlich eingenommen und ausgegeben wurde, zeigt später der Jahresabschluss."
       />
 
+      {/* Der Weg ist die zweite Hauptebene des Bereichs, kein Anhang hinter
+          Tabellen und Detailgrafiken. Nach Tafel und Begriffserklärung kennt
+          man genug, um sich für die geführte Route oder den freien Einstieg
+          zu entscheiden. `id`: Der kompakte Schritt-Pfad auf jeder
+          Unterseite springt genau hierher. */}
+      <div id="wegweiser" className="scroll-mt-20">
+        <Wegweiser />
+      </div>
+
       {/* Der Kassenzettel (H2-02): die Kernzahl in einer Einheit, die man
           fühlt — und die Zeile, um die es politisch geht, als letzte des Bons
           („aus dem Ersparten"). */}
@@ -272,12 +282,6 @@ export default function HaushaltPage() {
           Anzeigetafel auf — welcher Bereich wie viel ausgibt und wie viel
           davon die Stadt selbst trägt. */}
       <Bereichstabelle zeilen={zeilen} jahr={aktJahr} />
-
-      {/* `id`: Der Schritt-Pfad im Kopf jeder Schritt-Seite
-          (schritt-pfad.tsx) springt hierher. */}
-      <div id="wegweiser" className="scroll-mt-20">
-        <Wegweiser />
-      </div>
 
       {/* Flussbild (H-18): Einnahmearten → eine Kasse → Bereiche. Steht NACH
           dem Gegenbalken, weil es dessen linke Seite auflöst: Der Balken zeigt,

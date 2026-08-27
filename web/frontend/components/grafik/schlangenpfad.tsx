@@ -1,7 +1,7 @@
 "use client";
 
 // Der Schlangenpfad — eine geschlungene Route, die Stationen einer Liste
-// verbindet und sich beim Scrollen nachzeichnet.
+// verbindet und sich beim Scrollen oder beim ersten Sichtkontakt nachzeichnet.
 //
 // ENTSTANDEN FÜR DIE HAUSHALTSDEBATTE (abschnitt-streit.tsx, Tims Wunsch vom
 // 21.08.2026: „geschlungen von rechts nach links, und die Personen tauchen
@@ -30,11 +30,11 @@
 //
 // WAS DER BAUSTEIN ZEICHNET: eine blasse Vorzeichnung der ganzen Route
 // (`text-border`, mit Pfeilspitze am Ende — der Weg führt irgendwohin) und
-// darüber einen kräftigeren Stift (`text-primary`), der genau so weit
-// gezeichnet ist, wie die Liste gescrollt wurde. Der Stift folgt mit einer
-// halben Sekunde weichem Nachlauf, statt hart an der Scroll-Position zu
-// kleben, und schreibt per direktem DOM (rAF-gedrosselt): Ein setState je
-// Scroll-Ereignis renderte alle Stationen neu.
+// darüber einen kräftigeren Stift (`text-primary`). In der langen
+// Haushaltsdebatte folgt er dem Lesestand beim Scrollen. Für kompaktere
+// Überblickswege kann `zeichnungsart="sichtkontakt"` die ganze Route einmal
+// zeichnen, sobald sie ins Bild kommt. So bleibt die Geometrie wiederverwendbar,
+// ohne jeder Anwendung dieselbe Scroll-Dramaturgie aufzuzwingen.
 //
 // `prefers-reduced-motion` schaltet alles Bewegte ab: Route fertig
 // gezeichnet, Stationen sichtbar. Ohne JavaScript bleibt schlicht alles
@@ -43,9 +43,21 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
-export function Schlangenpfad({ children, className }: {
+export function Schlangenpfad({
+  children,
+  className,
+  zeichnungsart = "scroll",
+  grundKlasse,
+  stiftKlasse,
+}: {
   children: React.ReactNode;
   className?: string;
+  /** `scroll` für lange Leserouten, `sichtkontakt` für eine kompakte Bühne. */
+  zeichnungsart?: "scroll" | "sichtkontakt";
+  /** Farbe der vollständig sichtbaren Vorzeichnung. */
+  grundKlasse?: string;
+  /** Farbe des animierten Stifts. */
+  stiftKlasse?: string;
 }) {
   const inhalt = useRef<HTMLDivElement>(null);
   const stift = useRef<SVGPathElement>(null);
@@ -83,7 +95,9 @@ export function Schlangenpfad({ children, className }: {
     return () => ro.disconnect();
   }, []);
 
-  // Der wandernde Stift — direktes DOM, s. Kopfkommentar.
+  // Der wandernde Stift — direktes DOM, s. Kopfkommentar. Die Überblicks-
+  // Variante braucht keinen Scroll-Listener: Ein IntersectionObserver startet
+  // dort genau einen vollständigen Zug über den Pfad.
   useEffect(() => {
     const el = stift.current;
     if (!el || !pfad) return;
@@ -98,6 +112,20 @@ export function Schlangenpfad({ children, className }: {
       return;
     }
     void el.getBoundingClientRect();
+
+    if (zeichnungsart === "sichtkontakt") {
+      el.style.transition = "stroke-dashoffset 1.15s cubic-bezier(0.16, 1, 0.3, 1)";
+      const basis = inhalt.current;
+      if (!basis) return;
+      const io = new IntersectionObserver((eintraege) => {
+        if (!eintraege.some((e) => e.isIntersecting)) return;
+        el.style.strokeDashoffset = "0";
+        io.disconnect();
+      }, { rootMargin: "0px 0px -12% 0px", threshold: 0.08 });
+      io.observe(basis);
+      return () => io.disconnect();
+    }
+
     el.style.transition = "stroke-dashoffset 0.55s cubic-bezier(0.22, 0.61, 0.36, 1)";
     let angemeldet = 0;
     const zeichnen = () => {
@@ -120,7 +148,7 @@ export function Schlangenpfad({ children, className }: {
       window.removeEventListener("scroll", aufScroll);
       window.removeEventListener("resize", aufScroll);
     };
-  }, [pfad]);
+  }, [pfad, zeichnungsart]);
 
   // Der Auftritt der Stationen.
   useEffect(() => {
@@ -147,7 +175,7 @@ export function Schlangenpfad({ children, className }: {
       {pfad && (
         <svg
           aria-hidden
-          className="pointer-events-none absolute inset-0 text-border"
+          className={cn("pointer-events-none absolute inset-0 text-border", grundKlasse)}
           width={pfad.w} height={pfad.h}
           viewBox={`0 0 ${pfad.w} ${pfad.h}`}
           fill="none"
@@ -166,7 +194,7 @@ export function Schlangenpfad({ children, className }: {
             markerEnd={`url(#${pfeilId})`} />
           {/* Der Stift etwas kräftiger als die blasse Vorzeichnung — er ist
               die Route, die man schon gegangen ist. */}
-          <path ref={stift} d={pfad.d} className="text-primary/45" stroke="currentColor"
+          <path ref={stift} d={pfad.d} className={cn("text-primary/45", stiftKlasse)} stroke="currentColor"
             strokeWidth="2" strokeLinecap="round" />
         </svg>
       )}
