@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, useCallback, Suspense }
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip, MapPin } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { fragenHref, decisionHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
@@ -165,6 +165,8 @@ function subvoteLabel(s: NonNullable<CouncilDecision["subvote_summary"]>): strin
 function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const isSub = d.kind === "subvote";
   const sub = d.subvote_summary;
+  const locationMatches = d.location_matches ?? [];
+  const primaryLocation = locationMatches[0];
   const router = useRouter();
   const sp = useSearchParams();
   // 5a/I-08: aus der Trefferkarte direkt ins Ratsgespräch — die Frage steht
@@ -212,6 +214,22 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
               <Highlight text={d.beschluss} query={query} />
             </p>
+          )}
+          {primaryLocation && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg bg-primary/5 px-2.5 py-2 text-xs">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+              <div className="min-w-0">
+                <p className="text-foreground">
+                  <span className="font-medium">Ortsbezug:</span>{" "}
+                  {locationMatches.slice(0, 2).map((match) => match.name).join(", ")}
+                  {locationMatches.length > 2 ? ` +${locationMatches.length - 2}` : ""}
+                  <span className="text-muted-foreground"> · {primaryLocation.stadtteil}</span>
+                </p>
+                <p className="mt-0.5 line-clamp-1 text-muted-foreground">
+                  Fundstelle: „{primaryLocation.evidence}“
+                </p>
+              </div>
+            </div>
           )}
 
           {/* Zone 3 — Fußzeile */}
@@ -465,6 +483,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [outcome, setOutcome] = useMerker("suche:ergebnis", "");
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
+  const [districts, setDistricts] = useState<{ name: string; count: number }[]>([]);
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [decisions, setDecisions] = useState<CouncilDecision[]>([]);
@@ -507,6 +526,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   }, []);
   const field = sp.get("field") ?? "";
   const party = sp.get("party") ?? "";
+  const district = sp.get("district") ?? "";
   // Design 23a: Änderungsanträge (subvotes) sind standardmäßig aus der Liste
   // ausgeblendet (Kontext am Ursprungsbeschluss). Rechercheure blenden sie
   // optional wieder einzeln ein.
@@ -541,6 +561,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
 
   useEffect(() => {
     api.get<{ fields: PolicyField[] }>("/council/fields").then((d) => setFields(d.fields)).catch(() => {});
+    api.get<{ districts: { name: string; count: number }[] }>("/council/districts")
+      .then((d) => setDistricts(d.districts)).catch(() => {});
   }, []);
 
   const load = useCallback(async () => {
@@ -549,6 +571,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       const data = await api.get<{ total: number; decisions: CouncilDecision[] }>(
         `/council/decisions${qs({
           q, committee, category: mode === "all" ? "" : mode, sort, field, party,
+          district,
           outcome: mode === "vote" ? outcome : "",
           date_from: dateFrom, date_to: dateTo,
           include_subvotes: showSubvotes ? "1" : "",
@@ -564,12 +587,12 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     } finally {
       setLoading(false);
     }
-  }, [q, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page, topicId]);
+  }, [q, committee, mode, outcome, sort, field, party, district, dateFrom, dateTo, showSubvotes, page, topicId]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page, topicId]);
+  }, [debouncedQ, committee, mode, outcome, sort, field, party, district, dateFrom, dateTo, showSubvotes, page, topicId]);
 
   // RL-U02: Seitenwechsel führt zurück zum Listenanfang und setzt den Fokus
   // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
@@ -609,7 +632,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const totalLabel = `${total}${topicCapped ? "+" : ""}`;
 
   // Zeitraum zählt als EIN Filter; Sortierung ist eine Einstellung, kein Filter.
-  const activeFilterCount = [outcome, field, committee, dateFrom || dateTo].filter(Boolean).length;
+  const activeFilterCount = [outcome, field, committee, district, dateFrom || dateTo].filter(Boolean).length;
 
   // Ein JSX-Baum, zwei Einbauorte: Desktop inline in der Karte, mobil im Bottom-Sheet.
   const refineFilters = (
@@ -624,7 +647,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           />
         </FilterField>
       )}
-      <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
         {fields.length > 0 && (
           <FilterField label="Themenfeld">
             <Select value={field} onChange={(e) => setUrlParam("field", e.target.value)}>
@@ -637,6 +660,14 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
             <option value="">Alle Ausschüsse</option>
             {committees.map((c) => <option key={c} value={c} title={c}>{shortCommittee(c)}</option>)}
+          </Select>
+        </FilterField>
+        <FilterField label="Ortsbezug">
+          <Select value={district} onChange={(e) => setUrlParam("district", e.target.value)}>
+            <option value="">Alle Stadtteile</option>
+            {districts.map((item) => (
+              <option key={item.name} value={item.name}>{item.name} ({item.count})</option>
+            ))}
           </Select>
         </FilterField>
         <FilterField label="Sortierung">
@@ -710,6 +741,14 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             onChange={(v) => setUrlParam("field", v)}
           />
         )}
+        {districts.length > 0 && (
+          <ChipPopover
+            label="Ortsbezug"
+            value={district}
+            options={districts.map((item) => ({ value: item.name, label: `${item.name} (${item.count})` }))}
+            onChange={(value) => setUrlParam("district", value)}
+          />
+        )}
         <ChipPopover
           label="Ausschuss"
           value={committee}
@@ -771,6 +810,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               />
             )}
             {committee && <FilterChip label={shortCommittee(committee)} onClear={() => { setCommittee(""); setPage(1); }} />}
+            {district && <FilterChip label={`Ortsbezug: ${district}`} onClear={() => setUrlParam("district", "")} />}
             {(dateFrom || dateTo) && (
               <FilterChip
                 label={`${dateFrom ? formatDate(dateFrom) : "…"} – ${dateTo ? formatDate(dateTo) : "heute"}`}
@@ -826,7 +866,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             </p>
             {/* RL-F07: Trefferzeile gleitet bei Filterwechsel neu ein (key-Remount). */}
             <div className="flex flex-wrap items-center gap-2">
-              <p key={`${total}|${query}|${outcome}|${field}|${committee}`} className="animate-fade-up text-sm font-medium text-muted-foreground">
+              <p key={`${total}|${query}|${outcome}|${field}|${committee}|${district}`} className="animate-fade-up text-sm font-medium text-muted-foreground">
                 {totalLabel} {noun}
                 {query && <> zu <strong className="font-semibold text-foreground">{query}</strong></>}
               </p>

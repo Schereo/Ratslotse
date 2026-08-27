@@ -52,6 +52,15 @@ export interface AgendaItem {
 export type DecisionOutcome =
   | "angenommen" | "abgelehnt" | "vertagt" | "zur_kenntnis" | "kein_beschluss";
 
+export interface DecisionLocationMatch {
+  name: string;
+  stadtteil: string;
+  source: "title" | "beschluss" | "vorlage";
+  evidence: string;
+  method: string;
+  confidence: number;
+}
+
 export interface CouncilDecision {
   id: number;
   ksinr: number;
@@ -84,6 +93,8 @@ export interface CouncilDecision {
   subvote_summary?: { count: number; factions: string[]; outcomes: string[] } | null;
   /** Regex-Ernte: Wie stark weicht der Beschluss vom Verwaltungsvorschlag ab? */
   abweichung?: "unveraendert" | "leicht" | "stark" | null;
+  /** Beim Ortsfilter: konkrete Treffer samt Fundstelle zur manuellen Prüfung. */
+  location_matches?: DecisionLocationMatch[];
 }
 
 export interface PolicyField {

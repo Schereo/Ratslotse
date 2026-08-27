@@ -114,4 +114,47 @@ test.describe("Ratsinformationssystem", () => {
     expect(callCount).toBeGreaterThanOrEqual(2);
     await page.screenshot({ path: "test-results/screenshots/04-council-scope-switch.png", fullPage: true });
   });
+
+  test("filters decisions by location and shows the evidence", async ({ page }) => {
+    await page.route("**/api/council/fields", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ fields: [] }) }),
+    );
+    await page.route("**/api/council/districts", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ districts: [{ name: "Kreyenbrück", count: 2 }] }),
+      }),
+    );
+    let requestedDistrict = "";
+    await page.route("**/api/council/decisions**", (route) => {
+      requestedDistrict = new URL(route.request().url()).searchParams.get("district") ?? "";
+      const decision = {
+        id: 11, ksinr: 42, kind: "decision", parent_item: null, item_number: "5",
+        title: "Widmung Klingenbergplatz", beschluss: "Die Erweiterungsfläche wird gewidmet.",
+        outcome: "angenommen", vote: null, gegenstimmen: null, enthaltungen: null,
+        factions: [], parties: [], vorlage_nr: null, raw_result: null,
+        committee: "Bauausschuss", session_date: "2026-07-15", protocol_url: null,
+        policy_field: null, policy_tags: [], summary: null, amount_eur: null,
+        location_matches: requestedDistrict ? [{
+          name: "Klingenbergplatz", stadtteil: "Kreyenbrück", source: "title",
+          evidence: "Widmung Klingenbergplatz", method: "regex", confidence: 0.98,
+        }] : [],
+      };
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ total: 1, decisions: [decision] }),
+      });
+    });
+
+    await page.goto("/council?tab=decisions");
+    await page.getByRole("button", { name: "Ortsbezug" }).click();
+    await page.getByRole("button", { name: "Kreyenbrück (2)" }).click();
+
+    await expect.poll(() => requestedDistrict).toBe("Kreyenbrück");
+    await expect(page).toHaveURL(/district=Kreyenbr%C3%BCck/);
+    await expect(page.getByText("Ortsbezug:", { exact: true })).toBeVisible();
+    await expect(page.getByText("Fundstelle: „Widmung Klingenbergplatz“")).toBeVisible();
+  });
 });
