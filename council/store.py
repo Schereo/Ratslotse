@@ -3720,12 +3720,14 @@ class CouncilStore:
     def location_candidates(self, status_filter: str = "pending", *, limit: int = 200,
                             min_decisions: int = 3) -> list[dict]:
         """Häufige, noch nicht statisch katalogisierte Ortsnamen samt Belegen."""
-        from council import places
-
         status_filter = status_filter if status_filter in {
             "pending", "concrete", "approved", "alias", "rejected", "all"
         } else "pending"
-        known_ids = {place.id for place in places.all_places()}
+        # Auch zur Laufzeit freigegebene Katalogorte zählen als bekannt. So
+        # verschwinden nach dem Backfill nicht nur statische Stadtteile,
+        # sondern ebenso Schreibvarianten neuer redaktioneller Orte aus
+        # der offenen Kandidatenliste.
+        known_ids = sorted(place.id for place in self.all_places())
         review_where = ""
         review_params: list = []
         if status_filter == "pending":
@@ -3733,6 +3735,12 @@ class CouncilStore:
         elif status_filter != "all":
             review_where = "AND r.status = ?"
             review_params.append(status_filter)
+        known_placeholders = ",".join("?" for _ in known_ids)
+        known_where = (
+            f"AND (r.status IS NOT NULL OR l.place_id IS NULL "
+            f"OR l.place_id NOT IN ({known_placeholders}))"
+            if known_ids else ""
+        )
         # Die offene Liste ist eine Prioritätenliste, kein Dump aller einmalig
         # erwähnten Namen. Bereits geprüfte Einträge müssen dagegen auch dann
         # sichtbar bleiben, wenn sie nur in einem Beschluss vorkommen.
@@ -3750,17 +3758,15 @@ class CouncilStore:
                JOIN council_decisions d ON d.id=dl.decision_id AND d.kind='decision'
                JOIN council_sessions cs ON cs.ksinr=d.ksinr
                LEFT JOIN council_place_reviews r ON r.location_slug=l.slug
-               WHERE l.kind IN ('stadtteil','gebiet','sonstiges') {review_where}
+               WHERE l.kind IN ('stadtteil','gebiet','sonstiges') {review_where} {known_where}
                GROUP BY l.slug
                HAVING COUNT(DISTINCT dl.decision_id) >= ?
                ORDER BY decision_count DESC, last_date DESC, l.name
-               LIMIT ?""", (*review_params, effective_min,
+               LIMIT ?""", (*review_params, *known_ids, effective_min,
                               max(1, min(int(limit), 500)))
         ).fetchall()
         out = []
         for row in rows:
-            if row["place_id"] in known_ids and not row["review_status"]:
-                continue
             state = row["review_status"] or "pending"
             evidence = self._conn.execute(
                 """SELECT d.id,d.title,cs.session_date,dl.evidence,dl.method,dl.confidence
