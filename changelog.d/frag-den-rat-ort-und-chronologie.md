@@ -1,4 +1,7 @@
-### Behoben
+---
+kategorie: behoben
+---
+
 - „Frag den Rat“ verbindet Fragen nach einer Person und einem Ortsbereich nun
   über Sitzung und Tagesordnungspunkt. Belegte Wortbeiträge gehen dadurch beim
   Ortsfilter nicht mehr verloren.

@@ -34,6 +34,7 @@ WEGWEISER = FRONTEND / "components" / "haushalt" / "wegweiser.tsx"
 #: Wahrheit für dieselbe Zahl, und die einzige außerhalb des Codes.
 DOKU = (Path(__file__).resolve().parents[1]
         / "docs-site" / "src" / "content" / "docs" / "haushalt.md")
+UEBERSICHT = BEREICH / "page.tsx"
 
 #: Der Kicker, den die Seiten schreiben: „Stadtfinanzen Oldenburg · Schritt 9".
 #: Bewusst eng: Ein Kommentar, der beiläufig „Schritt 1" erwähnt (etwa über
@@ -123,6 +124,36 @@ def test_jedes_wegweiser_ziel_existiert():
     fehlend = [name for name in wegweiser_reihenfolge()
                if not (BEREICH / name / "page.tsx").exists()]
     assert not fehlend, f"Wegweiser verweist auf Seiten, die es nicht gibt: {fehlend}"
+
+
+def test_der_wegweiser_ist_eine_echte_route():
+    """Der einzige vollständige Einstieg in die zwölf Unterseiten darf nicht
+    wieder zu einer unauffälligen Kartenliste werden.
+
+    Der Schlangenpfad ist derselbe gemessene SVG-Baustein, der auch die
+    Haushaltsdebatte verbindet. `sichtkontakt` ist hier absichtlich die
+    kompakte Variante: einmal zeichnen, nicht über die ganze Übersicht am
+    Scrollstand kleben.
+    """
+    quelle = WEGWEISER.read_text(encoding="utf-8")
+    assert 'import { Schlangenpfad } from "@/components/grafik/schlangenpfad"' in quelle
+    assert '<Schlangenpfad' in quelle
+    assert 'zeichnungsart="sichtkontakt"' in quelle
+    assert 'data-punkt' in quelle
+    assert 'data-auftritt' in quelle
+    assert "Weg beginnen" in quelle
+
+
+def test_der_weg_steht_vor_den_detailgrafiken():
+    """Die Route ist eine Hauptebene der Übersicht und kein Anhang hinter der
+    Bereichstabelle. Nach Tafel und Begriffserklärung müssen Nutzer*innen sie
+    sehen, bevor Kassenzettel und Detailgrafiken weiter in die Tiefe gehen.
+    """
+    quelle = UEBERSICHT.read_text(encoding="utf-8")
+    weg = quelle.index('<div id="wegweiser"')
+    kassenzettel = quelle.index("<Kassenzettel", weg)
+    bereiche = quelle.index("<Bereichstabelle", weg)
+    assert weg < kassenzettel < bereiche
 
 
 def test_die_doku_tabelle_nennt_dieselbe_reihenfolge():
