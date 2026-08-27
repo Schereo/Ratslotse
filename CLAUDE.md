@@ -91,7 +91,22 @@ Code darf also gefahrlos mit einem Release nach `main` fahren, die Seite
 bleibt dort ein 404.
 
 **GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`, `VPS_DEV_HOST`,
-`VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `ANTHROPIC_API_KEY` (für `docs-review.yml`).
+`VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `ANTHROPIC_API_KEY` (für `docs-review.yml`),
+`CARTO_API_KEY` (Kartenkacheln, s. u.).
+
+**Kartenkacheln brauchen einen Key.** Seit 08/2026 brennt CARTO ein
+„API KEY REQUIRED"-Wasserzeichen in jede Kachel, die ohne Key abgerufen wird —
+die Karte funktioniert weiter, sieht aber kaputt aus. Beide Deploy-Workflows
+reichen `CARTO_API_KEY` als `NEXT_PUBLIC_CARTO_API_KEY` in den `npm run
+build`; gebaut wird die URL zentral in
+[`web/frontend/lib/basemap.ts`](web/frontend/lib/basemap.ts), **keine
+Kachel-URL direkt in eine Komponente schreiben**. Zwei Fallen: Der Parameter
+heißt `key`, nicht `api_key` — ein falscher Name liefert Status 200 samt
+Wasserzeichen, der Fehler sieht also aus wie „Key wirkt nicht". Und weil
+`NEXT_PUBLIC_` zur **Build-Zeit** einkompiliert wird, wirkt ein neuer Key erst
+nach einem Neubau, nicht nach einem bloßen Service-Neustart. Lokal gehört der
+Key in `web/frontend/.env.local` (gitignored) — ins Repo nie, das ist
+öffentlich.
 
 ### Dev-Umgebung (dev.ratslotse.de)
 

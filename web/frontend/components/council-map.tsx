@@ -10,6 +10,7 @@ import { EntityMapPoint } from "@/lib/types";
 import type { StadtteilFeature } from "@/lib/stadtteile";
 import { ortHref, themaHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { basemapUrl } from "@/lib/basemap";
 
 // CARTO Voyager als Basemap — zeigt Straßennetz, Grünflächen und Wasser
 // deutlich (light_all/dark_all sind fast konturlos bzw. fast schwarz). Für den
@@ -17,7 +18,7 @@ import { cn } from "@/lib/utils";
 // invertiert (globals.css, .dark .leaflet-tile) — heller und besser lesbar als
 // dark_all. Beide Modi teilen die URL; der Filter macht den Unterschied, also
 // lädt der Theme-Wechsel keine Tiles neu.
-const VOYAGER = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const VOYAGER = basemapUrl("voyager");
 const TILES = { light: VOYAGER, dark: VOYAGER };
 
 // Marker colour by entity kind (the legend in the Themen tab mirrors this).
