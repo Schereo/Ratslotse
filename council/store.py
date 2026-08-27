@@ -1565,6 +1565,26 @@ class CouncilStore:
             "fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, bereich))"
         )
+        # Die zwölf konkreten Verwaltungsvorschläge aus Anlage 4. Eine eigene
+        # Tabelle ist nötig, weil die Abfallsammlung nicht EINEN Satz hat:
+        # Grundgebühr, Litergebühr, Karten und Anlieferungsmengen dürfen nicht
+        # in eine erfundene Durchschnittsgebühr gepresst werden.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_gebuehrensaetze ("
+            "jahr INTEGER NOT NULL, "
+            "schluessel TEXT NOT NULL, "
+            "bereich TEXT NOT NULL, "
+            "bezeichnung TEXT NOT NULL, "
+            "betrag REAL NOT NULL, "
+            "einheit TEXT NOT NULL, "
+            "vorjahr REAL, "
+            "veraenderung_prozent REAL, "
+            "vorlage_nr TEXT, "
+            "proben TEXT NOT NULL, "
+            "herkunft_id INTEGER, "
+            "fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (jahr, schluessel))"
+        )
 
         # Die Haushaltssatzung — der Rahmen, den der Haushaltsplan bekommt
         # (`council/haushaltssatzung.py`). Drei Größen standen bis 08/2026
@@ -2311,6 +2331,10 @@ class CouncilStore:
         # Die beiden Steuertabellen des Jahrbuchs — neu, ohne Altbestand.
         "council_steuerplan":           (None, "quelle_url", "stadt"),
         "council_hebesaetze":           (None, "quelle_url", "stadt"),
+        # Gebührenbedarf und Anlage-4-Tarife sind neu mit Herkunft entstanden;
+        # sie haben keine doppelten Altspalten, die nachzutragen wären.
+        "council_gebuehren":            (None, "quelle_url", "ris"),
+        "council_gebuehrensaetze":      (None, "quelle_url", "ris"),
         # Der Beteiligungsbericht: ebenfalls erst mit der Herkunft entstanden.
         # Seine Dokumente kommen von oldenburg.de, nicht aus dem Bürgerinfo.
         "council_gesellschaften":            (None, "quelle_url", "stadt"),
@@ -6414,6 +6438,37 @@ class CouncilStore:
         try:
             return [dict(r) for r in self._conn.execute(
                 "SELECT * FROM council_gebuehren ORDER BY jahr, bereich")]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_gebuehrensaetze(self, saetze, herkuenfte) -> int:
+        """Die vollständigen zwölf Tarife eines Vorschlagsjahres ersetzen."""
+        saetze, herkuenfte = list(saetze), list(herkuenfte)
+        if len(saetze) != len(herkuenfte):
+            raise ValueError("Jeder Gebührensatz braucht genau eine Herkunft")
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            for satz, herkunft in zip(saetze, herkuenfte, strict=True):
+                proben = herkunft.probe
+                if not isinstance(proben, str):
+                    proben = ",".join(proben)
+                hid = self.merke_herkunft(herkunft, fetched_at=now)
+                self._conn.execute(
+                    "INSERT OR REPLACE INTO council_gebuehrensaetze "
+                    "(jahr, schluessel, bereich, bezeichnung, betrag, einheit, "
+                    " vorjahr, veraenderung_prozent, vorlage_nr, proben, "
+                    " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (satz.jahr, satz.schluessel, satz.bereich, satz.bezeichnung,
+                     satz.betrag, satz.einheit, satz.vorjahr,
+                     satz.veraenderung_prozent, satz.vorlage_nr, proben, hid, now))
+        return len(saetze)
+
+    def get_gebuehrensaetze(self) -> list[dict]:
+        """Alle konkreten Tarife, jüngster Vorschlag zuerst."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_gebuehrensaetze "
+                "ORDER BY jahr DESC, bereich, schluessel")]
         except sqlite3.OperationalError:
             return []
 

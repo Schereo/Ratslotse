@@ -21,12 +21,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from council.gebuehren import (  # noqa: E402
     PROBE_DIVISION,
     PROBE_KASKADE,
+    PROBE_SATZANZAHL,
+    PROBE_VORJAHRESVERGLEICH,
     GebuehrenFehler,
     herkunft_fuer,
+    herkunft_fuer_satz,
     lies,
+    lies_gebuehrensaetze,
     parse_anlage,
     teile_anlagen,
 )
+from council.store import CouncilStore  # noqa: E402
 
 # Echt, Anlage 283467 (2025). Beschriftung und Betrag stehen nebeneinander.
 ANLAGE_1_2025 = """Anlage 1
@@ -128,6 +133,47 @@ bereitgestelltes Behältervolumen (14 - täglich) für:
 35 - 240 l Behälter 6.300.000 l
 400 - 1100 l Behälter 2.000.000 l
 Behältervolumen insgesamt 8.300.000 l
+"""
+
+ANLAGE_3_2025 = """Anlage 3
+- Straßenreinigung -
+Gebührenbedarfsberechnung 2025
+Kostenkalkulation für 2025 4.000 €
+Interessenquote -260 €
+Kosten, die durch Gebühren zu decken sind 3.740 €
+Summe aller gebührenpflichtigen Quadratwurzeln 1.000
+Gebühr je Meter Quadratwurzel 3,740 €
+Gebührenvorschlag je Meter Quadratwurzel 3,74 €
+"""
+
+# Echt, Anlage 283467 (2025): das alte Layout bündelt zwölf Sätze in einer
+# Zeile. Schrägstriche teilen die fünf gestaffelten Anlieferungstarife.
+ANLAGE_4_2025 = """Anlage 4
+Entwicklung abfallwirtschaftlicher Gebühren im langfristigen Vergleich
+Jahr Gebühr je Mg GG allg. Litergebühr BioGrundmenge 60 L Sperrmüllkarte
+Grüngutkarte Sperrmüllanlieferung 1m³/2m³
+Grüngutanlieferung bis 0,5m³/1m³/2m³
+Gebühr je m bei wöchentlicher Reinigung
+Vorschläge 2025 139,70 50,-- 1,34 15,-- 25,-- 20,-- 8,--/16,--
+3,--/6,--/12,-- 3,74
+"""
+
+# Echt, Anlage 299051 (2026), auf die für die Probe nötigen ersten beiden
+# Jahresspalten gekürzt. Das neue Layout rechnet jede Veränderung selbst vor.
+ANLAGE_4_2026 = """Anlage 4 Stand: 27.10.2025
+KTR Bezeichnung Gebühr Veränderung in % (ggü. Vorjahr) Vorschlag 2026 2025
+AB Gebühr je Mg 8,24% 151,21 € 139,70 €
+AS Grundgebühr 24,00% 62,00 € 50,00 €
+AS Allg. Litergebühr 0,00% 1,34 € 1,34 €
+AS Biogrundmenge 60 L 0,00% 15,00 € 15,00 €
+AS Sperrmüllkarte 0,00% 25,00 € 25,00 €
+AS Grüngutkarte 0,00% 20,00 € 20,00 €
+AS Sperrmüllanlieferung 1m³ 0,00% 8,00 € 8,00 €
+AS Sperrmüllanlieferung 2m³ 0,00% 16,00 € 16,00 €
+AS Grüngutanlieferung bis 0,5m³ 0,00% 3,00 € 3,00 €
+AS Grüngutanlieferung bis 1m³ 0,00% 6,00 € 6,00 €
+AS Grüngutanlieferung bis 2m³ 0,00% 12,00 € 12,00 €
+SR Gebühr je Meter Quadratwurzel 8,02% 4,04 € 3,74 €
 """
 
 
@@ -306,3 +352,61 @@ def test_die_drei_bereiche_werden_getrennt():
     assert [b.bereich for b in gelesen] == [
         "abfallbehandlung", "abfallsammlung", "strassenreinigung"]
     assert {b.jahr for b in gelesen} == {2026}
+
+
+# --------------------------------------------------------------------------
+# (f) Anlage 4 — konkrete Tarife
+# --------------------------------------------------------------------------
+
+def test_altes_layout_liefert_zwoelf_benannte_tarife():
+    saetze = lies_gebuehrensaetze(
+        ANLAGE_1_2025 + ANLAGE_3_2025 + ANLAGE_4_2025, "24/0999")
+    assert len(saetze) == 12
+    assert {s.jahr for s in saetze} == {2025}
+    assert next(s for s in saetze if s.schluessel == "grundgebuehr").betrag == 50
+    assert next(s for s in saetze if s.schluessel == "litergebuehr").betrag == 1.34
+    assert next(s for s in saetze if s.schluessel == "sperrmuell_2m3").betrag == 16
+    assert next(s for s in saetze if s.schluessel == "gruengut_05m3").betrag == 3
+
+
+def test_neues_layout_prueft_jede_aenderung_gegen_das_vorjahr():
+    saetze = lies_gebuehrensaetze(
+        ANLAGE_1_2026 + ANLAGE_3_2026 + ANLAGE_4_2026, "25/0999")
+    grund = next(s for s in saetze if s.schluessel == "grundgebuehr")
+    assert len(saetze) == 12
+    assert (grund.betrag, grund.vorjahr, grund.veraenderung_prozent) == (62, 50, 24)
+
+    kaputt = ANLAGE_4_2026.replace("24,00%", "23,00%")
+    with pytest.raises(GebuehrenFehler, match="ergeben 24.00 %"):
+        lies_gebuehrensaetze(ANLAGE_1_2026 + ANLAGE_3_2026 + kaputt)
+
+
+def test_tarifzeile_und_eckwerte_duerfen_nicht_unbemerkt_fehlen():
+    ohne_karte = ANLAGE_4_2026.replace(
+        "AS Sperrmüllkarte 0,00% 25,00 € 25,00 €", "")
+    with pytest.raises(GebuehrenFehler, match="Sperrmüllkarte"):
+        lies_gebuehrensaetze(ANLAGE_1_2026 + ANLAGE_3_2026 + ohne_karte)
+
+    falscher_eckwert = ANLAGE_4_2025.replace("139,70 50,--", "139,80 50,--")
+    with pytest.raises(GebuehrenFehler, match="eigene Bedarfsberechnung"):
+        lies_gebuehrensaetze(ANLAGE_1_2025 + ANLAGE_3_2025 + falscher_eckwert)
+
+
+def test_tarife_werden_mit_eigener_fundstelle_gespeichert(tmp_path):
+    saetze = lies_gebuehrensaetze(
+        ANLAGE_1_2026 + ANLAGE_3_2026 + ANLAGE_4_2026, "25/0999")
+    herkuenfte = [herkunft_fuer_satz(
+        s, url="https://example.org/299051", dokument_id=299051,
+        label="Gebührenbedarfsberechnung 2026") for s in saetze]
+    assert PROBE_SATZANZAHL in herkuenfte[0].probe
+    assert PROBE_VORJAHRESVERGLEICH in herkuenfte[0].probe
+
+    store = CouncilStore(tmp_path / "council.sqlite")
+    try:
+        assert store.save_gebuehrensaetze(saetze, herkuenfte) == 12
+        rows = store.get_gebuehrensaetze()
+        assert len(rows) == 12
+        assert all(r["herkunft_id"] for r in rows)
+        assert store.herkunft_luecken() == {}
+    finally:
+        store.close()

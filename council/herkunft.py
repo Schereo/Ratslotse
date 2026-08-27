@@ -132,6 +132,15 @@ PROBEN: dict[str, str] = {
     "gebuehren_division":
         "Diese Kosten, geteilt durch die Bezugsmenge, ergeben die gedruckte "
         "Gebühr — Menge und Gebühr stehen an anderer Stelle als die Kaskade.",
+    "gebuehrensaetze_anzahl":
+        "Anlage 4 enthält jede der zwölf ausdrücklich benannten Tarifarten "
+        "genau einmal — eine fehlende oder zusätzliche Zahl verwirft die Zeile.",
+    "gebuehrensaetze_eckwerte":
+        "Die Gebühr je Mg und die Straßenreinigungsgebühr aus Anlage 4 stimmen "
+        "mit den getrennt errechneten Vorschlägen in Anlagen 1 und 3 überein.",
+    "gebuehrensaetze_vorjahresvergleich":
+        "Vorschlag und Vorjahressatz ergeben die in Anlage 4 gedruckte "
+        "prozentuale Veränderung — für jede der zwölf Tarifarten nachgerechnet.",
     # Die Haushaltssatzung (council/haushaltssatzung.py) — der Rahmen, den der
     # Rat dem Haushaltsplan gibt: Kreditermächtigung, Dispo-Höchstbetrag,
     # Verpflichtungsermächtigungen und der Finanzhaushalt als Ganzes.
@@ -667,6 +676,9 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # (1103) und die Hebesätze seit 1980 (1105). Beide neu, ohne Altbestand.
     "council_steuerplan",
     "council_hebesaetze",
+    # Bedarfsrechnung und die zwölf konkreten Tarife aus deren Anlage 4.
+    "council_gebuehren",
+    "council_gebuehrensaetze",
     # Der Beteiligungsbericht (council/beteiligungsbericht.py). Die Texte
     # stehen bewusst mit dabei: Sie tragen `UNGEPRUEFT`, aber sie tragen eine
     # Herkunft — Dokument, Abschnitt und Seite. „Keine Probe" ist etwas

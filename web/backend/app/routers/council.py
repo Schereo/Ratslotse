@@ -1035,6 +1035,7 @@ def haushalt_uebersicht(
         # Liter, dort gibt es keine einzelne Division. Wer die Spalte anzeigt,
         # schreibt die Leerstelle an, statt eine 0 zu zeichnen.
         "gebuehren": store.get_gebuehren,
+        "gebuehrensaetze": store.get_gebuehrensaetze,
         # Die Haushaltssatzung — der Rahmen um den Plan (Kreditermächtigung,
         # Dispo-Höchstbetrag, Verpflichtungsermächtigungen, Finanzhaushalt).
         #

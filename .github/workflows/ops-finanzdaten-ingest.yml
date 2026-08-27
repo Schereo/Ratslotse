@@ -267,7 +267,7 @@ jobs:
                 # hier deutlich weniger sieht, hat entweder keine
                 # Vorlagen-Volltexte im Bestand oder einen Parser, dem ein
                 # Format entglitten ist.
-                "council_gebuehren",
+                "council_gebuehren", "council_gebuehrensaetze",
                 "council_haushaltssatzung",
                 "council_wirtschaftsplaene",
             ]

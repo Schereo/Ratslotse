@@ -31,9 +31,13 @@ Kandidaten im Text gilt die, die zusammen mit den zu deckenden Kosten die
 gedruckte Gebühr ergibt. Zwei unabhängig gesetzte Stellen müssen sich einig
 sein, sonst gibt es keine Zeile.
 
-WAS HIER NICHT STEHT: die Gebührensätze selbst. Anlage 4 führt sie als
-Zeitreihe über zwölf Jahre und zwölf Gebührenarten, mit einer eigenen
-Prozentprobe je Zeile — eine eigene Schicht, die auf diese hier aufbaut.
+ANLAGE 4 IST DIE TARIFSCHICHT. Sie führt zwölf fest benannte Gebührenarten:
+unter anderem Grundgebühr, allgemeine Litergebühr, Biogrundmenge sowie die
+Karten und Anlieferungsmengen. Bis 2025 steht das jeweilige Vorschlagsjahr in
+einer kompakten Zeile; 2026 wechselt die Tabelle in zwölf Zeilen und rechnet
+für jede die Veränderung zum Vorjahr vor. Beide Layouts werden gelesen. Eine
+frei kombinierbare Matrix aus Behältergröße und Abfuhrrhythmus steht dort
+hingegen nicht — der Parser erfindet sie deshalb auch nicht.
 """
 from __future__ import annotations
 
@@ -44,6 +48,9 @@ from council.herkunft import Herkunft
 
 PROBE_KASKADE = "gebuehren_kaskade"
 PROBE_DIVISION = "gebuehren_division"
+PROBE_SATZANZAHL = "gebuehrensaetze_anzahl"
+PROBE_ECKWERTE = "gebuehrensaetze_eckwerte"
+PROBE_VORJAHRESVERGLEICH = "gebuehrensaetze_vorjahresvergleich"
 
 PROBEN: dict[str, str] = {
     PROBE_KASKADE:
@@ -54,6 +61,14 @@ PROBEN: dict[str, str] = {
         "Die zu deckenden Kosten, geteilt durch die Bezugsmenge, ergeben die "
         "gedruckte Gebühr. Menge und Gebühr stehen an anderer Stelle als die "
         "Kaskade — zwei unabhängige Angaben desselben Dokuments.",
+    PROBE_SATZANZAHL:
+        "Anlage 4 enthält jede der zwölf benannten Tarifarten genau einmal.",
+    PROBE_ECKWERTE:
+        "Die beiden Eckwerte der Tarifübersicht stimmen mit den getrennten "
+        "Berechnungen in Anlagen 1 und 3 überein.",
+    PROBE_VORJAHRESVERGLEICH:
+        "Neuer Satz und Vorjahressatz ergeben die in Anlage 4 gedruckte "
+        "prozentuale Veränderung.",
 }
 
 #: Wie beim Erfolgsplan des AWB. Gemessen an elf Kaskaden: neun gehen auf den
@@ -155,6 +170,72 @@ class Gebuehrenbedarf:
     vorlage_nr: str | None
 
 
+@dataclass(frozen=True)
+class Gebuehrensatz:
+    """Ein ausdrücklich benannter Tarif aus Anlage 4.
+
+    ``betrag`` ist ein Vorschlag der Verwaltung, nicht automatisch der vom
+    Rat beschlossene Satz. Diese Unterscheidung reist bis zur Herkunft mit.
+    """
+
+    jahr: int
+    schluessel: str
+    bereich: str
+    bezeichnung: str
+    betrag: float
+    einheit: str
+    vorjahr: float | None
+    veraenderung_prozent: float | None
+    vorlage_nr: str | None
+
+
+@dataclass(frozen=True)
+class _Satzart:
+    schluessel: str
+    bereich: str
+    code: str
+    bezeichnung: str
+    einheit: str
+    modernes_muster: str
+
+
+# Reihenfolge = Spaltenreihenfolge der Tabellen 2023–2025. Dieselben zwölf
+# Bezeichnungen stehen 2026 als Zeilen. Die Einheiten sind keine Ableitung,
+# sondern stammen aus deren Kopf bzw. Bezeichnung.
+SATZARTEN: tuple[_Satzart, ...] = (
+    _Satzart("abfallbehandlung_mg", "abfallbehandlung", "AB", "Gebühr je Mg",
+             "Mg", r"Geb[üu]hr je Mg"),
+    _Satzart("grundgebuehr", "abfallsammlung", "AS", "Grundgebühr",
+             "Grundgebühr", r"Grundgeb[üu]hr"),
+    _Satzart("litergebuehr", "abfallsammlung", "AS", "Allgemeine Litergebühr",
+             "Liter Behältervolumen", r"Allg\.\s*Litergeb[üu]hr"),
+    _Satzart("biogrundmenge_60l", "abfallsammlung", "AS", "Biogrundmenge 60 L",
+             "60 L Biogrundmenge", r"Biogrundmenge\s+60\s*L"),
+    _Satzart("sperrmuellkarte", "abfallsammlung", "AS", "Sperrmüllkarte",
+             "Karte", r"Sperrm[üu]llkarte"),
+    _Satzart("gruengutkarte", "abfallsammlung", "AS", "Grüngutkarte",
+             "Karte", r"Gr[üu]ngutkarte"),
+    _Satzart("sperrmuell_1m3", "abfallsammlung", "AS",
+             "Sperrmüllanlieferung 1 m³", "Anlieferung 1 m³",
+             r"Sperrm[üu]llanlieferung\s+1\s*m\s*³"),
+    _Satzart("sperrmuell_2m3", "abfallsammlung", "AS",
+             "Sperrmüllanlieferung 2 m³", "Anlieferung 2 m³",
+             r"Sperrm[üu]llanlieferung\s+2\s*m\s*³"),
+    _Satzart("gruengut_05m3", "abfallsammlung", "AS",
+             "Grüngutanlieferung bis 0,5 m³", "Anlieferung bis 0,5 m³",
+             r"Gr[üu]ngutanlieferung\s+bis\s+0,5\s*m\s*³"),
+    _Satzart("gruengut_1m3", "abfallsammlung", "AS",
+             "Grüngutanlieferung bis 1 m³", "Anlieferung bis 1 m³",
+             r"Gr[üu]ngutanlieferung\s+bis\s+1\s*m\s*³"),
+    _Satzart("gruengut_2m3", "abfallsammlung", "AS",
+             "Grüngutanlieferung bis 2 m³", "Anlieferung bis 2 m³",
+             r"Gr[üu]ngutanlieferung\s+bis\s+2\s*m\s*³"),
+    _Satzart("strassenreinigung_qw", "strassenreinigung", "SR",
+             "Gebühr je Meter Quadratwurzel bei wöchentlicher Reinigung",
+             "Meter Quadratwurzel", r"Geb[üu]hr je Meter Quadratwurzel"),
+)
+
+
 # --------------------------------------------------------------------------
 # Lesen
 # --------------------------------------------------------------------------
@@ -197,6 +278,13 @@ _GEBUEHR_DREISTELLIG = re.compile(r"([\d.]+,\d{3})\s*€")
 #: Alles, was eine Bezugsmenge sein könnte: eine Zahl OHNE €-Zeichen. Welche
 #: es ist, entscheidet die Division und nicht dieses Muster.
 _MENGE = re.compile(r"(?<![\d,.])([\d.]{3,})(?!\s*€)(?![\d,.])")
+
+# Tarifbeträge in der alten Anlage-4-Tabelle. Dort fehlen Eurozeichen in den
+# Datenzeilen und glatte Beträge stehen als „50,--" bzw. „3,-". Jahreszahlen
+# treffen das Muster absichtlich nicht.
+_SATZ_BETRAG = re.compile(
+    r"(?<![\d,.])(\d{1,3}(?:\.\d{3})*(?:,\d{1,2}|,--|,-))(?![\d,.])")
+_SATZ_BETRAG_EURO = r"([\d.]+,\d{2})\s*€"
 
 
 def _bereich_aus_kopf(text: str) -> tuple[str, str] | None:
@@ -412,6 +500,122 @@ def lies(text: str, vorlage_nr: str | None = None
         except GebuehrenFehler as fehler:
             risse.append(str(fehler))
     return gelesen, risse
+
+
+# --------------------------------------------------------------------------
+# Anlage 4 — die zwölf konkreten Tarife
+# --------------------------------------------------------------------------
+
+def _satz_eur(roh: str) -> float:
+    roh = roh.replace(",--", ",00").replace(",-", ",00")
+    return float(roh.replace(".", "").replace(",", "."))
+
+
+def _anlage_4(text: str) -> str | None:
+    flach = _glaetten(text)
+    treffer = list(re.finditer(r"\bAnlage\s+4\b", flach, re.I))
+    return flach[treffer[-1].end():] if treffer else None
+
+
+def _saetze_altes_layout(teil: str, vorlage_nr: str | None) -> list[Gebuehrensatz] | None:
+    """Die eine Vorschlagszeile der Tabellen 2023–2025 lesen."""
+    m = re.search(r"\bVorschl(?:ag|[äa]ge)(?:\s+f[üu]r)?\s+(\d{4})\s+", teil, re.I)
+    if not m:
+        return None
+    jahr = int(m.group(1))
+    werte = [_satz_eur(x) for x in _SATZ_BETRAG.findall(teil[m.end():])]
+    if len(werte) != len(SATZARTEN):
+        raise GebuehrenFehler(
+            f"Anlage 4 für {jahr}: {len(werte)} statt {len(SATZARTEN)} "
+            "Tarifbeträge in der Vorschlagszeile — nichts gespeichert.")
+    return [Gebuehrensatz(
+        jahr=jahr, schluessel=art.schluessel, bereich=art.bereich,
+        bezeichnung=art.bezeichnung, betrag=wert, einheit=art.einheit,
+        vorjahr=None, veraenderung_prozent=None, vorlage_nr=vorlage_nr)
+        for art, wert in zip(SATZARTEN, werte, strict=True)]
+
+
+def _saetze_neues_layout(teil: str, vorlage_nr: str | None) -> list[Gebuehrensatz] | None:
+    """Das Zeilenlayout ab 2026 samt Prozentprobe lesen."""
+    if not re.search(r"Ver[äa]nderung\s+in\s+%", teil, re.I):
+        return None
+    kopf = re.search(r"\bVorschlag\s+(\d{4})(?:\s+\d{4})+", teil, re.I)
+    if not kopf:
+        raise GebuehrenFehler("Anlage 4: Vorschlagsjahr im Tabellenkopf fehlt")
+    jahr = int(kopf.group(1))
+    aus: list[Gebuehrensatz] = []
+    for art in SATZARTEN:
+        m = re.search(
+            rf"\b{art.code}\s+{art.modernes_muster}\s+"
+            rf"(-?[\d.]+,\d{{2}})%\s+{_SATZ_BETRAG_EURO}\s+"
+            rf"{_SATZ_BETRAG_EURO}", teil, re.I)
+        if not m:
+            raise GebuehrenFehler(
+                f"Anlage 4 für {jahr}: Tarifzeile „{art.bezeichnung}“ fehlt")
+        veraenderung = _satz_eur(m.group(1))
+        betrag, vorjahr = _satz_eur(m.group(2)), _satz_eur(m.group(3))
+        errechnet = round((betrag / vorjahr - 1) * 100, 2) if vorjahr else 0.0
+        if abs(errechnet - veraenderung) > 0.011:
+            raise GebuehrenFehler(
+                f"Anlage 4 für {jahr}, {art.bezeichnung}: {betrag:.2f} € gegen "
+                f"{vorjahr:.2f} € ergeben {errechnet:.2f} %, gedruckt sind "
+                f"{veraenderung:.2f} %.")
+        aus.append(Gebuehrensatz(
+            jahr=jahr, schluessel=art.schluessel, bereich=art.bereich,
+            bezeichnung=art.bezeichnung, betrag=betrag, einheit=art.einheit,
+            vorjahr=vorjahr, veraenderung_prozent=veraenderung,
+            vorlage_nr=vorlage_nr))
+    return aus
+
+
+def lies_gebuehrensaetze(text: str, vorlage_nr: str | None = None) -> list[Gebuehrensatz]:
+    """Die Vorschläge aus Anlage 4 lesen und gegen Anlagen 1 und 3 halten.
+
+    Ein bloßes „Anlage 4" ohne Tabelleninhalt (der OCR-Stand von 2020) ist
+    keine kaputte Zahl und liefert deshalb eine leere Liste. Sobald aber ein
+    bekanntes Tabellenlayout beginnt, gilt: alle zwölf Zeilen oder keine.
+    """
+    teil = _anlage_4(text)
+    if not teil or not teil.strip():
+        return []
+    saetze = (_saetze_neues_layout(teil, vorlage_nr)
+              or _saetze_altes_layout(teil, vorlage_nr))
+    if saetze is None:
+        raise GebuehrenFehler("Anlage 4: unbekanntes Tabellenlayout")
+
+    jahr = saetze[0].jahr
+    bedarfe, risse = lies(text, vorlage_nr)
+    eckwerte = {
+        b.bereich: b.gebuehrenvorschlag for b in bedarfe
+        if b.jahr == jahr and b.bereich in ("abfallbehandlung", "strassenreinigung")
+    }
+    tarifwerte = {s.bereich: s.betrag for s in saetze
+                  if s.schluessel in ("abfallbehandlung_mg", "strassenreinigung_qw")}
+    if set(eckwerte) != {"abfallbehandlung", "strassenreinigung"}:
+        details = f"; gerissene Anlagen: {' | '.join(risse)}" if risse else ""
+        raise GebuehrenFehler(
+            f"Anlage 4 für {jahr}: Eckwerte aus Anlagen 1 und 3 fehlen{details}")
+    for bereich, betrag in tarifwerte.items():
+        if eckwerte[bereich] is None or abs(betrag - eckwerte[bereich]) > 0.011:
+            raise GebuehrenFehler(
+                f"Anlage 4 für {jahr}: {bereich} nennt {betrag:.2f} €, "
+                f"die eigene Bedarfsberechnung {eckwerte[bereich]} €.")
+    return saetze
+
+
+def herkunft_fuer_satz(satz: Gebuehrensatz, *, url: str | None,
+                       dokument_id: int | None, label: str | None) -> Herkunft:
+    proben = [PROBE_SATZANZAHL, PROBE_ECKWERTE]
+    ergebnis = ("12 von 12 Tarifarten gelesen; Gebühren je Mg und je Meter "
+                "Quadratwurzel stimmen mit Anlagen 1 und 3 überein")
+    if satz.veraenderung_prozent is not None:
+        proben.append(PROBE_VORJAHRESVERGLEICH)
+        ergebnis += (f"; {satz.betrag:.2f} € gegen {satz.vorjahr:.2f} € = "
+                     f"{satz.veraenderung_prozent:.2f} %")
+    return Herkunft(
+        art="ris", probe=proben, dokument_id=dokument_id, label=label,
+        url=url, fundstelle=f"Anlage 4, {satz.bezeichnung}, Vorschlag {satz.jahr}",
+        probe_ergebnis=ergebnis, stand=f"Gebührenvorschlag {satz.jahr}")
 
 
 def herkunft_fuer(bedarf: Gebuehrenbedarf, *, url: str | None,
