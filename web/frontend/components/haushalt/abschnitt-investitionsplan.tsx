@@ -61,7 +61,6 @@ import {
 import {
   ProgrammDaten, anzahl, passenderJahrgang,
 } from "@/lib/haushalt-investitionsprogramm";
-import { Anteilsbalken, type Anteil } from "@/components/haushalt/anteilsbalken";
 import { Beleg } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Vorhaben } from "@/components/haushalt/vorhaben";
@@ -103,13 +102,9 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
  *  Der Balken misst an den Auszahlungen des größten Bereichs, nicht an der
  *  Gesamtsumme: Sonst wäre die längste Strecke halb so lang wie das Feld und
  *  die zehn kleinen Bereiche unsichtbar. */
-function Rang({ zeile, skala, farbe, aufVorhaben, vorhandene }: {
+function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
   zeile: InvestitionsZeile;
   skala: number;
-  /** Dieselbe Rampenstufe wie im Überblicksbalken darüber — die beiden sind
-   *  sonst zwei Bilder ohne gemeinsamen Schlüssel, und der Balken wäre bloß
-   *  Dekoration. Deshalb trägt er hier keine eigene Legende. */
-  farbe: string;
   /** Der Weg nach unten: von der Summe zu den einzelnen Vorhaben. */
   aufVorhaben: (thhNr: number) => void;
   /** Wie viele Vorhaben das Investitionsprogramm für diesen Bereich führt —
@@ -120,11 +115,13 @@ function Rang({ zeile, skala, farbe, aufVorhaben, vorhandene }: {
   const aus = betrag(zeile.auszahlungen);
   const gegen = zeile.einzahlungen > 0 ? betrag(zeile.einzahlungen) : null;
   const breite = skala > 0 ? Math.max(0.6, (zeile.auszahlungen / skala) * 100) : 0;
-  const gegenBreite = skala > 0 ? (zeile.einzahlungen / skala) * 100 : 0;
+  const gegenAnteil = zeile.auszahlungen > 0
+    ? (zeile.einzahlungen / zeile.auszahlungen) * 100
+    : 0;
   return (
-    <li className="flex flex-col gap-1 py-2">
+    <li className="flex flex-col gap-1.5 py-3">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="min-w-0 truncate text-[13px] font-medium">{zeile.bezeichnung}</span>
+        <span className="min-w-0 text-[13px] font-medium leading-snug">{zeile.bezeichnung}</span>
         <span className="flex-none font-display text-[15px] font-bold tabular-nums">
           {aus.wert}
           <span className="ml-1 text-[10.5px] font-medium text-muted-foreground">
@@ -132,34 +129,36 @@ function Rang({ zeile, skala, farbe, aufVorhaben, vorhandene }: {
           </span>
         </span>
       </div>
-      <div className="relative h-2.5 w-full overflow-hidden rounded-sm bg-muted/60">
+      <div
+        className="h-2 w-full overflow-hidden rounded-full bg-muted/60"
+        role="img"
+        aria-label={`${zeile.bezeichnung}: ${aus.wert} ${aus.einheit} geplante Auszahlungen`}
+      >
         <div
-          className="absolute inset-y-0 left-0 rounded-sm"
-          style={{ width: `${breite}%`, background: farbe }}
+          className="h-full rounded-full bg-[var(--hh-aus-2)]"
+          style={{ width: `${breite}%` }}
         />
-        {/* Was zurückfließt, liegt als schmalerer Balken IN der Ausgabe —
-            nicht daneben: Es ist ein Teil desselben Vorhabens, kein zweiter. */}
-        {gegenBreite > 0 && (
-          <div
-            className="absolute bottom-0 left-0 h-1 rounded-sm"
-            style={{ width: `${gegenBreite}%`, background: "var(--hh-ein-1)" }}
-          />
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        {gegen ? (
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            <span className="font-medium text-foreground/80">Davon gedeckt:</span>{" "}
+            {gegen.wert} {gegen.einheit} durch Zuschüsse, Verkäufe oder Beiträge
+            {gegenAnteil > 0 && (
+              <> · {gegenAnteil.toLocaleString("de-DE", { maximumFractionDigits: 0 })} %</>
+            )}
+          </p>
+        ) : <span />}
+        {vorhandene > 0 && (
+          <button
+            type="button"
+            onClick={() => aufVorhaben(zeile.thh_nr)}
+            className="text-[11px] text-primary hover:underline"
+          >
+            {vorhandene} einzelne Vorhaben ansehen
+          </button>
         )}
       </div>
-      {gegen && (
-        <p className="text-[11px] leading-none text-muted-foreground">
-          davon {gegen.wert} {gegen.einheit} durch Zuschüsse, Verkäufe oder Beiträge gedeckt
-        </p>
-      )}
-      {vorhandene > 0 && (
-        <button
-          type="button"
-          onClick={() => aufVorhaben(zeile.thh_nr)}
-          className="self-start text-[11px] text-primary hover:underline"
-        >
-          {vorhandene} einzelne Vorhaben ansehen
-        </button>
-      )}
     </li>
   );
 }
@@ -217,20 +216,15 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
   const anteil = aktJahr != null ? investitionsAnteil(data, aktJahr) : null;
   const uebrig = netto(gesamt);
 
-  // EIN Farbschlüssel für beide Bilder. Der Überblicksbalken zeigt nur
-  // Bereiche mit Betrag, die Liste darunter alle — würde jedes für sich
-  // durchzählen, liefen die Stufen auseinander, sobald ein Bereich bei null
-  // steht (2025: „Nicht rechtsfähige Stiftungen"). Dann hätte derselbe
-  // Bereich oben und unten zwei verschiedene Farben.
+  // Der Vorhaben-Explorer unter dieser Rangliste braucht weiterhin einen
+  // Farbschlüssel für seine Kachelfläche. Die Rangliste selbst verwendet
+  // bewusst nur eine Farbe: Dort bedeutet die Balkenlänge bereits die Höhe
+  // der Auszahlung, eine zweite Farbcodierung würde nichts hinzufügen.
   //
-  // Die Rampe hat zehn Stufen, die Tabelle 13 Zeilen: Was danach kommt, teilt
-  // sich die letzte Stufe. Sortiert ist absteigend, die kleinen Bereiche
-  // stehen also hinten und liegen farblich beieinander — richtig so, sie sind
-  // einzeln kaum sichtbar.
-  //
-  // Die STUFE wird mitgegeben, nicht nur das fertige Token: Die Kachelfläche
-  // schreibt Text auf ihre Flächen, und ob der hell oder dunkel sein muss,
-  // hängt genau an dieser Zahl (`grafik/kachelflaeche.ts`, `rampenText`).
+  // Die STUFE wird dem Explorer mitgegeben, nicht nur das fertige Token: Die
+  // Kachelfläche schreibt Text auf ihre Flächen, und ob der hell oder dunkel
+  // sein muss, hängt genau an dieser Zahl (`grafik/kachelflaeche.ts`,
+  // `rampenText`).
   const stufe = useMemo(() => {
     const zu = new Map<number, number>();
     zeilen.forEach((z, i) => zu.set(z.thh_nr, Math.min(i, 9)));
@@ -238,17 +232,6 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
   }, [zeilen]);
   const farbe = useMemo(
     () => (thhNr: number) => `var(--hh-aus-${stufe(thhNr)})`, [stufe]);
-
-  const segmente: Anteil[] = useMemo(
-    () => zeilen
-      .filter((z) => z.auszahlungen > 0)
-      .map((z) => ({
-        label: z.bezeichnung,
-        wert: z.auszahlungen,
-        farbe: farbe(z.thh_nr),
-      })),
-    [zeilen, farbe],
-  );
 
   const skala = zeilen.length ? zeilen[0].auszahlungen : 0;
   const h = herkunftVon(data, gesamt?.herkunft_id);
@@ -380,33 +363,32 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
           id={ANKER_BEREICHE}
           className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
         >
-          <div className="flex items-baseline justify-between gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-display text-[15.5px] font-bold tracking-tight">
-              In welchen Bereichen
+              Geplante Auszahlungen nach Bereich
             </h2>
             <span className="font-mono text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
               {zeilen.length} Teilhaushalte · {aktJahr}
             </span>
           </div>
 
-          {/* Ohne Legende, weil die Liste darunter sie ist: gleiche
-              Reihenfolge, gleiche Rampenstufe je Bereich. Zwei Legenden für
-              dieselben 13 Zeilen wären eine zu viel. */}
-          <Anteilsbalken
-            className="mt-3.5"
-            titel={`Geplante Auszahlungen ${aktJahr}`}
-            segmente={segmente}
-            gesamt={gesamt.auszahlungen}
-            legende={false}
-          />
+          <div className="mt-3.5 rounded-xl bg-muted/45 px-3.5 py-3 text-[11.5px] leading-relaxed text-muted-foreground">
+            <p>
+              <span className="font-semibold text-foreground">So liest du die Grafik:</span>{" "}
+              Je länger der blaue Balken, desto höher sind die geplanten
+              Auszahlungen. Alle Balken verwenden denselben Maßstab; der größte
+              Bereich füllt die ganze Breite aus. Wie viel durch Zuschüsse,
+              Verkäufe oder Beiträge gedeckt wird, steht jeweils als Betrag und
+              Anteil darunter.
+            </p>
+          </div>
 
-          <ul className="mt-4 divide-y divide-[color:var(--border)]">
+          <ul className="mt-2 divide-y divide-[color:var(--border)]">
             {zeilen.map((z) => (
               <Rang
                 key={z.thh_nr}
                 zeile={z}
                 skala={skala}
-                farbe={farbe(z.thh_nr)}
                 vorhandene={programmJahr != null
                   ? anzahl(programm, programmJahr, z.thh_nr) : 0}
                 aufVorhaben={(nr) => {
