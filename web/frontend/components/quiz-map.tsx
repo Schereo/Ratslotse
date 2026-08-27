@@ -5,10 +5,11 @@ import type { Map as LeafletMap, GeoJSON as LGeoJSON, Path } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { loadOrtsbereiche } from "@/lib/stadtteile";
 import { cn } from "@/lib/utils";
+import { basemapUrl } from "@/lib/basemap";
 
 // CARTO Voyager — dieselbe Basemap wie die Themen-Karte (dunkel per CSS-Filter,
 // globals.css .dark .leaflet-tile). Keine Marker-Bilder → CSP img-src bleibt eng.
-const VOYAGER = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const VOYAGER = basemapUrl("voyager");
 
 type Style = { color: string; weight: number; fillColor: string; fillOpacity: number };
 const BASE: Style = { color: "#64748b", weight: 1, fillColor: "#64748b", fillOpacity: 0.10 };

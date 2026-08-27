@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
+import { basemapUrl } from "@/lib/basemap";
 
 /** Pin der Mini-Karte unter einer KI-Antwort (5a/I-10): die Fußnoten-Nummer
  *  der zitierten Quelle an ihrem Ort. */
@@ -30,7 +31,7 @@ export default function QaOrteKarte({ pins, onPin }: {
         zoomControl: false, attributionControl: true, scrollWheelZoom: false,
         dragging: pins.length > 1,
       });
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      L.tileLayer(basemapUrl("voyager"), {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
         maxZoom: 18,
       }).addTo(map);

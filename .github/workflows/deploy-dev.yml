@@ -51,7 +51,13 @@ jobs:
             # sein sollen, prüfen NEXT_PUBLIC_RATSLOTSE_ENV === "dev". Der
             # Prod-Build (deploy.yml) setzt die Variable nicht — dort werden
             # solche Seiten zu 404. Zur Build-Zeit einkompiliert (NEXT_PUBLIC_).
-            NEXT_PUBLIC_RATSLOTSE_ENV=dev npm run build
+            #
+            # CARTO_API_KEY: Key für die Kartenkacheln (lib/basemap.ts). Fehlt
+            # das Secret, baut der Build trotzdem durch — die Karten tragen dann
+            # nur wieder das „API KEY REQUIRED"-Wasserzeichen von CARTO.
+            NEXT_PUBLIC_RATSLOTSE_ENV=dev \
+            NEXT_PUBLIC_CARTO_API_KEY="${{ secrets.CARTO_API_KEY }}" \
+            npm run build
             sudo systemctl restart nwz-web-api nwz-web-frontend
             sleep 3
             curl -sf -o /dev/null http://127.0.0.1:3000 && echo "Frontend OK"
