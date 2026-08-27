@@ -133,13 +133,21 @@ def _research_plan(data: dict) -> dict:
 
 
 def research_plan_with_mandatory(plan: dict, *, typ: str, person: bool = False,
-                                 place: bool = False, sessions: bool = False) -> dict:
-    """LLM-Auswahl um nicht verhandelbare deterministische Kanäle ergänzen.
+                                 place: bool = False, sessions: bool = False,
+                                 latest_decision: bool = False) -> dict:
+    """LLM-Auswahl konsistent und mit harten Entitätskanälen machen.
 
     Das ist die zentrale Hybrid-Leitplanke: Ein expliziter Ort, eine Person
-    oder Sitzung darf vom Modell nie weggeplant werden. Im Shadow-Mode wird
-    nur protokolliert, welche Ergänzungen nötig waren.
+    oder Sitzung darf vom Modell nie weggeplant werden. Außerdem muss ein vom
+    Modell erkannter Informationsbedarf technisch ausführbar sein: Wer Beträge
+    braucht, braucht den Haushalt; wer Aussagen braucht, die Debatten usw.
+
+    Umgekehrt sind Debatten bei einer engen Frage nach der neuesten
+    Entscheidung nur Rauschen und werden dort entfernt. Im Shadow-Mode wird
+    protokolliert, wo diese Konsistenzschicht eingegriffen hätte.
     """
+    model_channels = list(dict.fromkeys(
+        c for c in (plan.get("channels") or []) if c in RESEARCH_CHANNELS))
     mandatory = ["decisions"]
     if typ == "geld":
         mandatory.append("budget")
@@ -150,8 +158,29 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, person: bool = False,
     if typ == "sitzung" or sessions:
         mandatory.append("sessions")
     mandatory = list(dict.fromkeys(mandatory))
-    selected = list(dict.fromkeys([*mandatory, *(plan.get("channels") or [])]))
-    return {**plan, "channels": selected, "mandatory_channels": mandatory}
+
+    need_channels = {
+        "amounts": ("budget",),
+        "statements": ("debates",),
+        "locations": ("places",),
+        "documents": ("documents",),
+        "current_info": ("press", "future_agenda"),
+    }
+    consistent = list(dict.fromkeys(
+        channel
+        for need in (plan.get("needs") or [])
+        for channel in need_channels.get(need, ())
+    ))
+    selected = list(dict.fromkeys([*mandatory, *model_channels, *consistent]))
+
+    suppressed: list[str] = []
+    if latest_decision and "debates" in selected and "debates" not in mandatory:
+        selected.remove("debates")
+        suppressed.append("debates")
+    added = [c for c in selected if c not in model_channels]
+    return {**plan, "channels": selected, "model_channels": model_channels,
+            "mandatory_channels": mandatory, "consistency_added": added,
+            "suppressed_channels": suppressed}
 
 
 def research_plan_log_record(question: str, plan: dict, typ: str,
