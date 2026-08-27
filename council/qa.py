@@ -81,6 +81,7 @@ RESEARCH_INTENTS = (
 RESEARCH_SORTS = ("relevance", "newest", "chronological")
 RESEARCH_NEEDS = (
     "amounts", "statements", "dates", "votes", "locations", "documents", "current_info",
+    "official_updates", "future_dates",
 )
 _PLAN_HASH_KEY = ((os.environ.get("WEB_JWT_SECRET") or
                    os.environ.get("COUNCIL_QA_PLAN_HASH_SALT") or "").encode("utf-8")
@@ -164,7 +165,11 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, person: bool = False,
         "statements": ("debates",),
         "locations": ("places",),
         "documents": ("documents",),
-        "current_info": ("press", "future_agenda"),
+        # ``current_info`` allein sagt noch nicht, WO der aktuelle Stand
+        # steckt. Die feineren Bedarfe verhindern, dass Presse und kommende
+        # Beratungen bei jeder Aktualitätsfrage gemeinsam auflaufen.
+        "official_updates": ("press",),
+        "future_dates": ("future_agenda",),
     }
     consistent = list(dict.fromkeys(
         channel

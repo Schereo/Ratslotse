@@ -164,7 +164,8 @@ def test_rechercheplan_shadow_validiert_und_harte_kanaele_ergaenzt(monkeypatch):
 def test_rechercheplan_konsistenz_verknuepft_bedarf_und_kanal():
     plan = qa._research_plan({"rechercheplan": {
         "intent": "status", "channels": ["decisions"], "sort": "newest",
-        "needs": ["amounts", "statements", "documents", "current_info"],
+        "needs": ["amounts", "statements", "documents", "current_info",
+                  "official_updates", "future_dates"],
     }})
     resolved = qa.research_plan_with_mandatory(plan, typ="thema")
     assert resolved["channels"] == [
@@ -173,6 +174,26 @@ def test_rechercheplan_konsistenz_verknuepft_bedarf_und_kanal():
     assert resolved["consistency_added"] == [
         "budget", "debates", "documents", "press", "future_agenda",
     ]
+
+
+def test_current_info_koppelt_presse_und_zukunft_nicht_mehr_pauschal():
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "status", "channels": ["decisions"], "sort": "newest",
+        "needs": ["current_info"],
+    }})
+    resolved = qa.research_plan_with_mandatory(plan, typ="verlauf")
+    assert resolved["channels"] == ["decisions"]
+
+    presse = qa._research_plan({"rechercheplan": {
+        "channels": ["decisions"], "needs": ["official_updates"],
+    }})
+    zukunft = qa._research_plan({"rechercheplan": {
+        "channels": ["decisions"], "needs": ["future_dates"],
+    }})
+    assert qa.research_plan_with_mandatory(presse, typ="thema")["channels"] == [
+        "decisions", "press"]
+    assert qa.research_plan_with_mandatory(zukunft, typ="thema")["channels"] == [
+        "decisions", "future_agenda"]
 
 
 def test_rechercheplan_entfernt_debatten_bei_neuester_ortsentscheidung():

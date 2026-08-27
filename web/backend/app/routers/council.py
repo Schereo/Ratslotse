@@ -2938,14 +2938,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 except Exception:  # noqa: BLE001 — Nachladen ist Zusatz, nie Blocker
                     vorher_ids = []
             presse_rows: list[dict] = []
-            try:
-                # Eigener Kanal neben den Beschlüssen: „Aktuelles von der Stadt"
-                # (Pressemitteilungen) — strenge Schwelle, oft leer.
-                from council import embeddings as emb
-                hits_p = emb.search_presse(store, q_suche, expanded)
-                presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
-            except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
-                pass
+            press_enabled = qa.research_channel_enabled(shadow_plan, "press")
+            if press_enabled:
+                try:
+                    # Eigener Kanal neben den Beschlüssen: „Aktuelles von der
+                    # Stadt" (Pressemitteilungen) — nur wenn der validierte
+                    # Rechercheplan einen offiziellen aktuellen Stand braucht.
+                    from council import embeddings as emb
+                    hits_p = emb.search_presse(store, q_suche, expanded)
+                    presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
+                except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
+                    pass
             debatten_rows: list[dict] = []
             # Kommende oder protokolllose Sitzung: Es KANN noch keine Debatte
             # dieser Sitzung geben — die Ähnlichkeitssuche fände nur Beiträge
@@ -3065,18 +3068,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # der aktuelle Stand zum Stadion?") der häufigste Fragetyp
             # überhaupt, und die Termine stehen längst gepflegt in der DB.
             planungen: list[dict] = []
-            try:
-                planungen = store.geplante_beratungen_fuer(
-                    [c.get("kvonr") for c in candidates[:20]])
-                # Zweiter Weg, weil der erste systematisch leer läuft: Auf der
-                # Tagesordnung stehen die noch NICHT entschiedenen Vorlagen —
-                # die Suche findet aber Beschlüsse. Titel-Abgleich gegen die
-                # Suchbegriffe holt das Kommende zum Thema dazu.
-                gesehen = {p["kvonr"] for p in planungen}
-                planungen += [p for p in store.kommende_beratungen(expanded.split())
-                              if p["kvonr"] not in gesehen]
-            except Exception:  # noqa: BLE001 — Ausblick ist Zusatz, nie Blocker
-                pass
+            future_enabled = qa.research_channel_enabled(shadow_plan, "future_agenda")
+            if future_enabled:
+                try:
+                    planungen = store.geplante_beratungen_fuer(
+                        [c.get("kvonr") for c in candidates[:20]])
+                    # Zweiter Weg, weil der erste systematisch leer läuft: Auf
+                    # der Tagesordnung stehen noch NICHT entschiedene Vorlagen.
+                    gesehen = {p["kvonr"] for p in planungen}
+                    planungen += [p for p in store.kommende_beratungen(expanded.split())
+                                  if p["kvonr"] not in gesehen]
+                except Exception:  # noqa: BLE001 — Ausblick ist Zusatz, nie Blocker
+                    pass
             # Hintergrund zu den genannten Objekten („Was ist die GSG?").
             steckbriefe = qa.steckbriefe_fuer(store, q_suche)
             if ort and ort.get("description"):
