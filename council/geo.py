@@ -31,7 +31,7 @@ _GEOJSON = _ROOT / "web" / "frontend" / "public" / "geo" / "stadtteile-oldenburg
 # Rauschen). Erster Eintrag = überwiegender Bereich. Ausschließlich im zentralen
 # Ortskatalog pflegen; Frontend und Backend beziehen daraus dieselben Werte.
 WAHLBEREICH: dict[str, list[int]] = {
-    place.name: list(place.wahlbereiche) for place in places.all_places()
+    place.name: list(place.wahlbereiche) for place in places.primary_places()
 }
 
 WAHLBEREICHE = sorted({w for ws in WAHLBEREICH.values() for w in ws})
@@ -53,7 +53,7 @@ def is_city_generic(name: str | None) -> bool:
 
 def ortsbereiche() -> list[str]:
     """Alle kanonischen Ratslotse-Ortsbereichsnamen (alphabetisch)."""
-    return sorted(place.name for place in places.all_places())
+    return sorted(place.name for place in places.primary_places())
 
 
 def stadtteile() -> list[str]:

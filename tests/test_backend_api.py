@@ -2953,7 +2953,7 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
 
     catalog = client.get("/api/council/places")
     assert catalog.status_code == 200
-    assert len(catalog.json()["places"]) == 31
+    assert len(catalog.json()["places"]) == 40
     assert next(p for p in catalog.json()["places"] if p["id"] == "bornhorst")["name"] == "Bornhorst"
     assert client.get("/api/council/decisions?district=Atlantis").status_code == 400
 
@@ -2978,6 +2978,54 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
         "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=report"
     ).json()
     assert reports["total"] == 1 and reports["decisions"][0]["id"] == 4
+
+
+def test_curated_place_alias_filters_by_stable_id_and_has_profile(client):
+    """Kuratierten Orten folgen Alias, Suche und Profil über dieselbe stabile ID."""
+    _register(client)
+    council = CouncilStore(COUNCIL_DB)
+    council.save_session(CouncilSession(1, "Rat", "2026-01-15", "17:00", "Ratssaal"))
+    with council._conn:
+        council._conn.execute(
+            "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
+            "VALUES (1,1,0,'Neues aus der Donnerschwee-Kaserne','angenommen','decision')"
+        )
+    council.save_decision_locations(1, [{
+        "name": "Donnerschwee-Kaserne",
+        "kind": "gebiet",
+        "source": "title",
+        "evidence": "Neues aus der Donnerschwee-Kaserne",
+        "method": "ortskatalog",
+        "confidence": 0.99,
+    }], "hash-1")
+    row = council._conn.execute(
+        "SELECT name, place_id, ortsbereich_id, stadtteil FROM council_locations"
+    ).fetchone()
+    assert dict(row) == {
+        "name": "Neu-Donnerschwee",
+        "place_id": "neu-donnerschwee",
+        "ortsbereich_id": "donnerschwee",
+        "stadtteil": "Donnerschwee",
+    }
+    council.close()
+
+    by_id = client.get("/api/council/decisions?district=neu-donnerschwee")
+    assert by_id.status_code == 200
+    assert by_id.json()["total"] == 1
+    assert by_id.json()["decisions"][0]["location_matches"][0]["place_id"] == "neu-donnerschwee"
+
+    by_alias = client.get("/api/council/decisions?district=Donnerschwee-Kaserne")
+    assert by_alias.status_code == 200 and by_alias.json()["total"] == 1
+
+    profile = client.get("/api/council/place/neu-donnerschwee")
+    assert profile.status_code == 200
+    body = profile.json()
+    assert body["place"]["kind_label"] == "Quartier"
+    assert body["place"]["parents"][0]["name"] == "Donnerschwee"
+    assert body["decision_count"] == 1
+
+    districts = client.get("/api/council/districts").json()["districts"]
+    assert next(row for row in districts if row["place_id"] == "neu-donnerschwee")["count"] == 1
 
 
 # --- Vorgänge verfolgen (Design 28a/W1) ------------------------------------

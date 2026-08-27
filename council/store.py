@@ -423,8 +423,19 @@ class CouncilStore:
             "CREATE TABLE IF NOT EXISTS council_locations ("
             "slug TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, "
             "lat REAL, lon REAL, geojson TEXT, stadtteil TEXT, "
+            "place_id TEXT, ortsbereich_id TEXT, "
             "geo_tried INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL)"
         )
+        location_cols = {r[1] for r in self._conn.execute(
+            "PRAGMA table_info(council_locations)").fetchall()}
+        if "place_id" not in location_cols:
+            self._conn.execute("ALTER TABLE council_locations ADD COLUMN place_id TEXT")
+        if "ortsbereich_id" not in location_cols:
+            self._conn.execute("ALTER TABLE council_locations ADD COLUMN ortsbereich_id TEXT")
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_locations_place ON council_locations(place_id)")
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_locations_ortsbereich ON council_locations(ortsbereich_id)")
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_decision_locations ("
             "decision_id INTEGER NOT NULL, location_slug TEXT NOT NULL, "
@@ -2101,14 +2112,21 @@ class CouncilStore:
             filters.append("d.policy_field = ?")
             params.append(field)
         if district:
-            # EXISTS vermeidet doppelte Beschlusszeilen, wenn mehrere konkrete
-            # Orte desselben Vorgangs im gewählten Stadtteil liegen.
-            filters.append(
-                "EXISTS (SELECT 1 FROM council_decision_locations dl "
-                "JOIN council_locations l ON l.slug = dl.location_slug "
-                "WHERE dl.decision_id = d.id AND l.stadtteil = ?)"
-            )
-            params.append(district)
+            # EXISTS vermeidet doppelte Beschlusszeilen bei mehreren Ortslinks.
+            # Primäre Ortsbereiche matchen die geometrisch abgeleitete Eltern-ID,
+            # feinere Katalogorte ihre exakte stabile Orts-ID bzw. Alt-Aliase.
+            from council import places
+            place = places.resolve(district)
+            if place:
+                condition, place_params = self._place_location_condition(place)
+                filters.append(
+                    "EXISTS (SELECT 1 FROM council_decision_locations dl "
+                    "JOIN council_locations l ON l.slug = dl.location_slug "
+                    f"WHERE dl.decision_id = d.id AND {condition})"
+                )
+                params += place_params
+            else:
+                filters.append("0")
         if outcome:
             filters.append("d.outcome = ?")
             params.append(outcome)
@@ -3546,6 +3564,7 @@ class CouncilStore:
         LLM-Fehler, markiert den Vorgang aber nicht als fertig: der nächste
         inkrementelle Lauf versucht die semantische Ergänzung erneut.
         """
+        from council import places
         from council.locations import location_slug
 
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -3560,11 +3579,22 @@ class CouncilStore:
             self._conn.execute(
                 "DELETE FROM council_decision_locations WHERE decision_id = ?", (decision_id,))
             for slug, row in by_slug.items():
+                place = places.resolve(row.get("name"))
+                parents = places.primary_parents(place)
+                primary = parents[0] if len(parents) == 1 else None
                 self._conn.execute(
-                    "INSERT INTO council_locations(slug,name,kind,updated_at) VALUES (?,?,?,?) "
+                    "INSERT INTO council_locations"
+                    "(slug,name,kind,stadtteil,place_id,ortsbereich_id,updated_at) "
+                    "VALUES (?,?,?,?,?,?,?) "
                     "ON CONFLICT(slug) DO UPDATE SET name=excluded.name, kind=excluded.kind, "
+                    "place_id=COALESCE(excluded.place_id,council_locations.place_id), "
+                    "ortsbereich_id=COALESCE(excluded.ortsbereich_id,council_locations.ortsbereich_id), "
+                    "stadtteil=COALESCE(excluded.stadtteil,council_locations.stadtteil), "
                     "updated_at=excluded.updated_at",
-                    (slug, row["name"], row.get("kind") or "sonstiges", now),
+                    (slug, place.name if place else row["name"],
+                     "stadtteil" if place and place.is_primary else row.get("kind") or "sonstiges",
+                     primary.name if primary else None, place.id if place else None,
+                     primary.id if primary else None, now),
                 )
                 self._conn.execute(
                     "INSERT INTO council_decision_locations "
@@ -3598,32 +3628,55 @@ class CouncilStore:
                ORDER BY dl.confidence DESC, l.name""", (decision_id,)).fetchall()
         return [dict(r) for r in rows]
 
-    def decision_location_district_stats(self) -> list[dict]:
-        """Oldenburger Stadtteile mit der Zahl verknüpfter Beschlüsse.
+    @staticmethod
+    def _place_location_condition(place) -> tuple[str, list]:
+        """SQL-Bedingung auf Alias ``l`` für einen kanonischen Katalogort."""
+        from council.locations import location_slug
 
-        Nur geokodierte Ortslinks tragen einen ``stadtteil``. Dadurch kann die
-        Suchoberfläche keine ungeprüften Modellbegriffe als Stadtteilfilter
-        anbieten.
-        """
+        if place.is_primary:
+            return "(l.ortsbereich_id = ? OR l.stadtteil = ?)", [place.id, place.name]
+        slugs = list(dict.fromkeys(location_slug(value)
+                                   for value in (place.name, *place.aliases)))
+        return (f"(l.place_id = ? OR l.slug IN ({','.join('?' * len(slugs))}))",
+                [place.id, *slugs])
+
+    def decision_location_place_stats(self) -> list[dict]:
+        """Belegte Katalogorte mit Beschlusszahlen, über stabile IDs gruppiert."""
+        from council import places
+
         vote_ph = ",".join("?" * len(self._VOTE_OUTCOMES))
         report_ph = ",".join("?" * len(self._REPORT_OUTCOMES))
-        rows = self._conn.execute(
-            f"""SELECT l.stadtteil AS name,
-                       COUNT(DISTINCT dl.decision_id) AS count,
-                       COUNT(DISTINCT CASE WHEN d.outcome IN ({vote_ph})
-                                           THEN dl.decision_id END) AS vote_count,
-                       COUNT(DISTINCT CASE WHEN d.outcome IN ({report_ph}) OR d.outcome IS NULL
-                                           THEN dl.decision_id END) AS report_count
-               FROM council_decision_locations dl
-               JOIN council_locations l ON l.slug = dl.location_slug
-               JOIN council_decisions d ON d.id = dl.decision_id
-               WHERE l.stadtteil IS NOT NULL AND l.stadtteil != ''
-                 AND d.kind = 'decision'
-               GROUP BY l.stadtteil
-               ORDER BY l.stadtteil""",
-            [*self._VOTE_OUTCOMES, *self._REPORT_OUTCOMES],
-        ).fetchall()
-        return [dict(row) for row in rows]
+        out: list[dict] = []
+        for place in places.all_places():
+            if not place.filterable:
+                continue
+            condition, params = self._place_location_condition(place)
+            row = self._conn.execute(
+                f"""SELECT COUNT(DISTINCT dl.decision_id) AS count,
+                           COUNT(DISTINCT CASE WHEN d.outcome IN ({vote_ph})
+                                               THEN dl.decision_id END) AS vote_count,
+                           COUNT(DISTINCT CASE WHEN d.outcome IN ({report_ph}) OR d.outcome IS NULL
+                                               THEN dl.decision_id END) AS report_count
+                    FROM council_decision_locations dl
+                    JOIN council_locations l ON l.slug = dl.location_slug
+                    JOIN council_decisions d ON d.id = dl.decision_id
+                    WHERE {condition} AND d.kind = 'decision'""",
+                [*self._VOTE_OUTCOMES, *self._REPORT_OUTCOMES, *params],
+            ).fetchone()
+            if row and row["count"]:
+                out.append({"place_id": place.id, "name": place.name,
+                            "count": row["count"], "vote_count": row["vote_count"],
+                            "report_count": row["report_count"]})
+        return out
+
+    def decision_location_district_stats(self) -> list[dict]:
+        """Kompatible Statistik der 31 primären Ortsbereiche."""
+        from council import places
+
+        primary_ids = {place.id for place in places.primary_places()}
+        return [{key: value for key, value in row.items() if key != "place_id"}
+                for row in self.decision_location_place_stats()
+                if row["place_id"] in primary_ids]
 
     def location_matches_for_decisions(
         self,
@@ -3640,24 +3693,50 @@ class CouncilStore:
         """
         if not ids or not district:
             return {}
+        from council import places
+        place = places.resolve(district)
+        if not place:
+            return {}
+        condition, condition_params = self._place_location_condition(place)
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
-            f"""SELECT dl.decision_id, l.name, l.stadtteil, dl.source,
+            f"""SELECT dl.decision_id, l.name, l.stadtteil, l.place_id, l.ortsbereich_id, dl.source,
                        dl.evidence, dl.method, dl.confidence
                 FROM council_decision_locations dl
                 JOIN council_locations l ON l.slug = dl.location_slug
-                WHERE dl.decision_id IN ({ph}) AND l.stadtteil = ?
+                WHERE dl.decision_id IN ({ph}) AND {condition}
                 ORDER BY dl.decision_id, dl.confidence DESC, l.name""",
-            [*ids, district],
+            [*ids, *condition_params],
         ).fetchall()
         out: dict[int, list[dict]] = {}
         for row in rows:
             matches = out.setdefault(row["decision_id"], [])
             if len(matches) < max(1, int(per_decision)):
                 matches.append({key: row[key] for key in (
-                    "name", "stadtteil", "source", "evidence", "method", "confidence"
+                    "name", "stadtteil", "place_id", "ortsbereich_id",
+                    "source", "evidence", "method", "confidence"
                 )})
         return out
+
+    def decision_ids_for_place(self, place_id: str, limit: int | None = None) -> list[int]:
+        """Beschlüsse mit belegtem Bezug zu einem Katalogort, neueste zuerst."""
+        from council import places
+
+        place = places.resolve(place_id)
+        if not place:
+            return []
+        condition, params = self._place_location_condition(place)
+        sql = f"""SELECT DISTINCT dl.decision_id
+                  FROM council_decision_locations dl
+                  JOIN council_locations l ON l.slug = dl.location_slug
+                  JOIN council_decisions d ON d.id = dl.decision_id
+                  JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                  WHERE {condition} AND d.kind = 'decision'
+                  ORDER BY cs.session_date DESC, dl.decision_id DESC"""
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(max(1, int(limit)))
+        return [row[0] for row in self._conn.execute(sql, params).fetchall()]
 
     def locations_to_geocode(self, limit: int | None = None) -> list[dict]:
         sql = (
@@ -3705,25 +3784,60 @@ class CouncilStore:
         for row in rows:
             stadtteil = geo.ortsbereich_for(row["lat"], row["lon"])
             if stadtteil:
-                updates.append((stadtteil, now, row["slug"]))
+                from council import places
+                place = places.resolve(stadtteil)
+                updates.append((stadtteil, place.id if place else None, now, row["slug"]))
         if updates:
             with self._conn:
                 self._conn.executemany(
-                    "UPDATE council_locations SET stadtteil=?,updated_at=? WHERE slug=?",
+                    "UPDATE council_locations SET stadtteil=?,ortsbereich_id=?,updated_at=? WHERE slug=?",
                     updates,
                 )
         return len(updates)
 
+    def backfill_location_place_ids(self) -> int:
+        """Katalog- und Eltern-IDs für bestehende Ortsbeobachtungen nachziehen."""
+        from council import geo, places
+
+        rows = self._conn.execute(
+            "SELECT slug,name,lat,lon,stadtteil,place_id,ortsbereich_id FROM council_locations"
+        ).fetchall()
+        updates = []
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        for row in rows:
+            exact = places.resolve(row["name"])
+            primary = places.resolve(row["stadtteil"])
+            if primary and not primary.is_primary:
+                primary = None
+            if not primary and exact:
+                parents = places.primary_parents(exact)
+                primary = parents[0] if len(parents) == 1 else None
+            if not primary and row["lat"] is not None and row["lon"] is not None:
+                primary = places.resolve(geo.ortsbereich_for(row["lat"], row["lon"]))
+            place_id = exact.id if exact else None
+            primary_id = primary.id if primary else None
+            primary_name = primary.name if primary else row["stadtteil"]
+            if (place_id, primary_id, primary_name) != (
+                    row["place_id"], row["ortsbereich_id"], row["stadtteil"]):
+                updates.append((place_id, primary_id, primary_name, now, row["slug"]))
+        if updates:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_locations SET place_id=?,ortsbereich_id=?,stadtteil=?,updated_at=? "
+                    "WHERE slug=?", updates)
+        return len(updates)
+
     def set_location_geo(self, slug: str, lat: float | None, lon: float | None,
                          geojson: str | None) -> None:
-        from council import geo
+        from council import geo, places
 
         stadtteil = geo.ortsbereich_for(lat, lon) if lat is not None and lon is not None else None
+        primary = places.resolve(stadtteil)
         with self._conn:
             self._conn.execute(
-                "UPDATE council_locations SET lat=?, lon=?, geojson=?, stadtteil=?, "
+                "UPDATE council_locations SET lat=?, lon=?, geojson=?, stadtteil=?, ortsbereich_id=?, "
                 "geo_tried=1, updated_at=? WHERE slug=?",
-                (lat, lon, geojson, stadtteil,
+                (lat, lon, geojson, stadtteil, primary.id if primary else None,
                  datetime.now(timezone.utc).isoformat(timespec="seconds"), slug),
             )
 

@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council import geo, quiz  # noqa: E402
+from council import places, quiz  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -39,9 +39,11 @@ THEME_MIN_DECISIONS = 8
 
 
 def _areas(store: CouncilStore) -> list[dict]:
-    """Alle spielbaren Gebiete: 31 Ortsbereiche + Top-Themen (Entitäten)."""
-    areas = [{"area_type": "stadtteil", "area_key": n, "label": f"Ortsbereich {n}", "slug": None}
-             for n in geo.ortsbereiche()]
+    """Alle freigegebenen Katalogorte + Top-Themen (Entitäten)."""
+    areas = [{"area_type": "stadtteil", "area_key": place.name,
+              "label": f"{places.kind_label(place.kind)} {place.name}",
+              "place_name": place.name, "place_id": place.id, "slug": None}
+             for place in places.all_places() if place.quiz_enabled]
     themes = 0
     for e in store.list_entities(limit=400):
         if themes >= N_THEMES:
@@ -57,7 +59,7 @@ def _sources(area: dict, facts: str) -> tuple[str, str, str]:
     Netzabruf (Wikipedia/Stadt) — läuft im Worker-Thread."""
     parts: list[str] = []
     src_type, src_ref = "ratsinfo", ""
-    place_name = area["label"].removeprefix("Ortsbereich ").removeprefix("Stadtteil ")
+    place_name = area.get("place_name") or area["label"]
     wiki = quiz.fetch_wikipedia(place_name)
     if wiki:
         parts.append(f"Wikipedia:\n{wiki[0]}")
@@ -95,8 +97,7 @@ def process(council_db: Path, target: int = 10, per_run: int = 8, workers: int =
 
     # Ratsdaten-Kontext je Gebiet vorab (Main-Thread, DB-Lesen).
     facts = {a["area_key"]: quiz.council_facts(
-                store, stadtteil=None if a["slug"] else a["label"].replace("Stadtteil ", ""),
-                slug=a["slug"]) for a in areas}
+                store, place_id=a.get("place_id"), slug=a["slug"]) for a in areas}
 
     saved = failed = 0
     with ThreadPoolExecutor(max_workers=workers) as ex:

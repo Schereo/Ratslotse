@@ -55,6 +55,8 @@ export type DecisionOutcome =
 export interface DecisionLocationMatch {
   name: string;
   stadtteil: string;
+  place_id?: string | null;
+  ortsbereich_id?: string | null;
   source: "title" | "beschluss" | "vorlage";
   evidence: string;
   method: string;
@@ -594,7 +596,9 @@ export interface QuizAreaEntry {
   label?: string;
   /** Stabile ID aus dem gemeinsamen Ratslotse-Ortskatalog. */
   place_id?: string;
-  kind?: "ortsbereich";
+  kind?: string;
+  kind_label?: string;
+  parent_ids?: string[];
   aliases?: string[];
   wahlbereiche?: number[];
   stadtteile?: string[];

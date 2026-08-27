@@ -40,7 +40,7 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 | `reextract_protocols.py` | Beschlüsse neu extrahieren nach Prompt-Änderung |
 | `build_decisions_fts.py` | Volltext-Index der Beschlüsse neu bauen |
 | `extract_decision_locations.py --full` | Einmaliger Orts-Backfill; danach inkrementell über `check_protocols.py` |
-| `geocode_decision_locations.py` | Neue Beschluss-Orte geokodieren und Stadtteile ableiten |
+| `geocode_decision_locations.py` | Neue Beschluss-Orte geokodieren sowie stabile Katalog- und Ortsbereichs-IDs ableiten |
 | `revalidate_decision_locations.py [--apply]` | Gespeicherte Ortslinks mit aktuellen Präzisionsregeln prüfen/reparieren (Dry-Run-Default) |
 | `purge_nwz_data.py` | Gescrapte NWZ-Artikeldaten aus den DBs entfernen (Dry-Run-Default) |
 

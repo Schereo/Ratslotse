@@ -28,14 +28,25 @@ def test_shared_place_catalog_has_stable_ids_aliases_and_sources():
     catalog = places.public_catalog()
     assert catalog["singular"] == "Ortsbereich"
     assert "keine amtlich festgelegten Stadtteile" in catalog["definition"]
-    assert len(catalog["places"]) == 31
-    assert len({place["id"] for place in catalog["places"]}) == 31
+    assert catalog["schema_version"] == 2
+    assert len(catalog["places"]) == 40
+    assert len(places.primary_places()) == 31
+    assert len(places.secondary_places()) == 9
+    assert len({place["id"] for place in catalog["places"]}) == 40
     assert places.resolve("bornhorst").name == "Bornhorst"
     assert places.resolve("Drielaker Moor").id == "drielaker-moor"
     assert places.resolve("Nord-Moslesfehn").name == "Nordmoslesfehn"
-    assert {source["type"] for source in catalog["sources"]} == {
-        "definition", "reference", "geometry",
+    assert {"definition", "reference", "geometry", "place"} == {
+        source["type"] for source in catalog["sources"]
     }
+    neu = places.resolve("Donnerschwee-Kaserne")
+    assert neu.id == "neu-donnerschwee" and neu.parent_ids == ("donnerschwee",)
+    assert neu.kind == "quartier" and neu.description
+
+
+def test_place_mentions_prefer_specific_child_over_parent():
+    assert [place.id for place in places.find_mentions(
+        "Was wurde in Neu Donnerschwee beschlossen?")] == ["neu-donnerschwee"]
 
 
 def test_place_catalog_and_geometry_cover_the_same_areas():

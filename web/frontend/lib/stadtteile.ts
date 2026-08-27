@@ -25,9 +25,19 @@ export type StadtteilFeature = OrtsbereichFeature;
 export interface OrtsbereichEntry {
   id: string;
   name: string;
-  kind: "ortsbereich";
+  kind: string;
+  kind_label: string;
   aliases: string[];
   wahlbereiche: number[];
+  parent_ids: string[];
+  parents: { id: string; name: string; kind: string }[];
+  description: string | null;
+  source_ids: string[];
+  sources: { id: string; type: string; title: string; url: string; note?: string; license?: string }[];
+  filterable: boolean;
+  quiz_enabled: boolean;
+  lat: number | null;
+  lon: number | null;
 }
 
 export interface OrtsbereichCatalog {
@@ -37,6 +47,7 @@ export interface OrtsbereichCatalog {
   singular: string;
   plural: string;
   definition: string;
+  kinds: Record<string, string>;
   sources: { id: string; type: string; title: string; url: string; note?: string; license?: string }[];
   places: OrtsbereichEntry[];
 }

@@ -1,10 +1,20 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "ratslotse-oldenburg-ortsbereiche",
   "label": "Ratslotse-Ortsbereiche",
   "singular": "Ortsbereich",
   "plural": "Ortsbereiche",
   "definition": "31 flächendeckende, lokal gebräuchliche Gebiete für Suche, Karten, Quiz und KI-Antworten. Sie sind eine Ratslotse-Arbeitsebene und keine amtlich festgelegten Stadtteile.",
+  "kinds": {
+    "ortsbereich": "Ratslotse-Ortsbereich",
+    "quartier": "Quartier",
+    "wohngebiet": "Wohngebiet",
+    "sanierungsgebiet": "Sanierungsgebiet",
+    "entwicklungsgebiet": "Entwicklungsgebiet",
+    "schutzgebiet": "Schutzgebiet",
+    "park": "Park oder Grünanlage",
+    "sportgebiet": "Sport- und Grünbereich"
+  },
   "sources": [
     {
       "id": "stadt-oldenburg-quartiersentwicklung",
@@ -27,6 +37,54 @@
       "url": "https://www.openstreetmap.org/copyright",
       "license": "ODbL",
       "note": "Grenzen aus OSM admin_level 10, für Ratslotse vereinfacht."
+    },
+    {
+      "id": "stadt-oldenburg-noerdliche-innenstadt",
+      "type": "place",
+      "title": "Sanierungsgebiet Nördliche Innenstadt",
+      "url": "https://www.oldenburg.de/startseite/stadtraum/planen-bauen/stadterneuerung-gestaltung-bau/stadterneuerung/aktuelle-stadterneuerungsgebiete/noerdliche-innenstadt.html"
+    },
+    {
+      "id": "stadt-oldenburg-eversten-west",
+      "type": "place",
+      "title": "Bebauungsplan W-750 D – Eversten West",
+      "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/40_Stadtplanungsamt/400_Stadtentwicklung_Bauleitplanung/Bauleitplanung/rechtsverb.Bebauungsplaene/BPlan_Zeichnungen/750_D.pdf"
+    },
+    {
+      "id": "stadt-oldenburg-alte-fleiwa",
+      "type": "place",
+      "title": "Innovationsquartier Alte Fleiwa",
+      "url": "https://www.oldenburg.de/startseite/stadtraum/zentrale-projekte/innovationsquartier-alte-fleiwa.html"
+    },
+    {
+      "id": "stadt-oldenburg-gruenanlagen",
+      "type": "place",
+      "title": "Grün- und Parkanlagen in Oldenburg",
+      "url": "https://www.oldenburg.de/startseite/leben-in-oldenburg/sport-freizeit/gruen-und-parkanlagen.html"
+    },
+    {
+      "id": "stadt-oldenburg-hundsmuehler-hoehe",
+      "type": "place",
+      "title": "Freizeitaktivitäten – Hundsmühler Höhe",
+      "url": "https://www.oldenburg.de/startseite/leben-in-oldenburg/sport-freizeit/sport/freizeitaktivitaeten.html"
+    },
+    {
+      "id": "stadt-oldenburg-bornhorster-huntewiesen",
+      "type": "place",
+      "title": "Naturschutzgebiet Bornhorster Huntewiesen",
+      "url": "https://www.oldenburg.de/startseite/stadtraum/umwelt/naturschutz-und-landschaftspflege/schutzgebiete-und-schutzobjekte/naturschutzgebiete-nsg.html"
+    },
+    {
+      "id": "stadt-oldenburg-neu-donnerschwee",
+      "type": "place",
+      "title": "Quartierskarte Neu-Donnerschwee",
+      "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/50_Amt_fuer_Teilhabe_und_Soziales/Neudonnerschwee/2019-12-11_Quartierskarte_Neu-Donnerschwee.pdf"
+    },
+    {
+      "id": "stadt-oldenburg-technologiepark",
+      "type": "place",
+      "title": "Technologiepark Oldenburg",
+      "url": "https://www.oldenburg.de/startseite/stadtraum/zentrale-projekte/technologiepark-oldenburg.html"
     }
   ],
   "places": [
@@ -60,6 +118,119 @@
     { "id": "osternburg", "name": "Osternburg", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [5, 2] },
     { "id": "tweelbaeke", "name": "Tweelbäke", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [5, 2] },
     { "id": "wechloy", "name": "Wechloy", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [3] },
-    { "id": "ziegelhof", "name": "Ziegelhof", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [1] }
+    { "id": "ziegelhof", "name": "Ziegelhof", "kind": "ortsbereich", "aliases": [], "wahlbereiche": [1] },
+    {
+      "id": "noerdliche-innenstadt",
+      "name": "Nördliche Innenstadt",
+      "kind": "sanierungsgebiet",
+      "aliases": ["Sanierungsgebiet Nördliche Innenstadt"],
+      "parent_ids": [],
+      "description": "Förmlich festgelegtes Sanierungsgebiet der Stadt Oldenburg mit einem Förderzeitraum von 2022 bis 2036.",
+      "source_ids": ["stadt-oldenburg-noerdliche-innenstadt"],
+      "filterable": true,
+      "quiz_enabled": false
+    },
+    {
+      "id": "eversten-west",
+      "name": "Eversten-West",
+      "kind": "wohngebiet",
+      "aliases": ["Eversten West", "Baugebiet Eversten-West", "Baugebiet Eversten West"],
+      "parent_ids": ["eversten"],
+      "description": "Wohnbaugebiet im Oldenburger Westen, das in mehreren Teilbebauungsplänen entwickelt wurde.",
+      "source_ids": ["stadt-oldenburg-eversten-west"],
+      "filterable": true,
+      "quiz_enabled": false
+    },
+    {
+      "id": "alte-fleiwa",
+      "name": "Alte Fleiwa",
+      "kind": "quartier",
+      "aliases": ["Quartier Alte Fleiwa", "Innovationsquartier Alte Fleiwa"],
+      "parent_ids": ["ziegelhof"],
+      "description": "Rund 17 Hektar großes Innovations- und Dienstleistungsquartier auf dem Gelände der ehemaligen Fleischwarenfabrik.",
+      "source_ids": ["stadt-oldenburg-alte-fleiwa"],
+      "filterable": true,
+      "quiz_enabled": true,
+      "lat": 53.1488086,
+      "lon": 8.198444
+    },
+    {
+      "id": "eversten-holz",
+      "name": "Eversten Holz",
+      "kind": "park",
+      "aliases": ["Everstenholz"],
+      "parent_ids": ["eversten"],
+      "description": "Etwa 18 Hektar großer Landschaftspark und geschützter Stadtwald.",
+      "source_ids": ["stadt-oldenburg-gruenanlagen"],
+      "filterable": true,
+      "quiz_enabled": true,
+      "lat": 53.1360951,
+      "lon": 8.2010966
+    },
+    {
+      "id": "hundsmuehler-hoehe",
+      "name": "Hundsmühler Höhe",
+      "kind": "sportgebiet",
+      "aliases": ["Sportanlage Hundsmühler Höhe", "Grünanlage Hundsmühler Höhe"],
+      "parent_ids": ["eversten"],
+      "description": "Sport- und Grünbereich mit Finnenbahn, Bewegungsparcours und Sportanlagen.",
+      "source_ids": ["stadt-oldenburg-hundsmuehler-hoehe"],
+      "filterable": true,
+      "quiz_enabled": true,
+      "lat": 53.1169684,
+      "lon": 8.192907
+    },
+    {
+      "id": "bornhorster-huntewiesen",
+      "name": "Bornhorster Huntewiesen",
+      "kind": "schutzgebiet",
+      "aliases": ["NSG Bornhorster Huntewiesen", "Naturschutzgebiet Bornhorster Huntewiesen"],
+      "parent_ids": ["bornhorst"],
+      "description": "Etwa 370 Hektar großes Naturschutz- und EU-Vogelschutzgebiet in der Hunteniederung.",
+      "source_ids": ["stadt-oldenburg-bornhorster-huntewiesen"],
+      "filterable": true,
+      "quiz_enabled": true,
+      "lat": 53.1599017,
+      "lon": 8.289683
+    },
+    {
+      "id": "neu-donnerschwee",
+      "name": "Neu-Donnerschwee",
+      "kind": "quartier",
+      "aliases": ["Neu Donnerschwee", "NeuDonnerschwee", "Donnerschwee-Kaserne", "Donnerschwee Kaserne", "ehemalige Donnerschwee-Kaserne", "ehemalige Donnerschwee Kaserne", "ehemaligen Donnerschwee-Kaserne", "ehemaligen Donnerschwee Kaserne"],
+      "parent_ids": ["donnerschwee"],
+      "description": "Wohnquartier auf dem Gelände der ehemaligen Donnerschwee-Kaserne.",
+      "source_ids": ["stadt-oldenburg-neu-donnerschwee"],
+      "filterable": true,
+      "quiz_enabled": true,
+      "lat": 53.156897,
+      "lon": 8.2343634
+    },
+    {
+      "id": "technologiepark-oldenburg",
+      "name": "Technologiepark Oldenburg",
+      "kind": "entwicklungsgebiet",
+      "aliases": ["Technologiepark", "TPO"],
+      "parent_ids": ["wechloy"],
+      "description": "Etwa 26 Hektar großes Entwicklungsgebiet für technologieorientierte Unternehmen und Forschungseinrichtungen.",
+      "source_ids": ["stadt-oldenburg-technologiepark"],
+      "filterable": true,
+      "quiz_enabled": true,
+      "lat": 53.1533734,
+      "lon": 8.174596
+    },
+    {
+      "id": "osternburger-utkiek",
+      "name": "Osternburger Utkiek",
+      "kind": "park",
+      "aliases": ["Utkiek"],
+      "parent_ids": ["osternburg"],
+      "description": "Öffentliche Grünanlage und Aussichtspunkt auf einer ehemaligen Deponie im Oldenburger Süden.",
+      "source_ids": ["stadt-oldenburg-gruenanlagen"],
+      "filterable": true,
+      "quiz_enabled": true,
+      "lat": 53.1201898,
+      "lon": 8.2279317
+    }
   ]
 }

@@ -129,8 +129,10 @@ def valid_llm_location(name: str, kind: str, evidence: str) -> bool:
         return False
     if not _name_occurs_in_evidence(clean_name, clean_evidence):
         return False
-    if kind == "stadtteil" and not places.resolve(clean_name):
-        return False
+    if kind == "stadtteil":
+        place = places.resolve(clean_name)
+        if not place or not place.is_primary:
+            return False
     return True
 
 
@@ -198,23 +200,27 @@ def extract_explicit_locations(text: str, *, source: str) -> list[dict]:
     # Ortsbereiche sind eine geschlossene, zentral gepflegte Liste. Auch
     # Schreibvarianten werden erkannt, gespeichert wird stets der kanonische
     # Name. Längere Varianten zuerst verhindern Teiltreffer.
-    place_names = [
-        (candidate, place)
-        for place in places.all_places()
-        for candidate in (place.name, *place.aliases)
-    ]
-    for candidate, place in sorted(place_names, key=lambda item: len(item[0]), reverse=True):
-        match = re.search(rf"(?<!\w){re.escape(candidate)}(?!\w)", text, flags=re.IGNORECASE)
-        if match:
-            slug = location_slug(place.name)
-            found.setdefault(slug, {
-                "name": place.name,
-                "kind": "stadtteil",
-                "source": source,
-                "evidence": match.group(0),
-                "method": "stadtteilliste",
-                "confidence": 0.99,
-            })
+    # Die zentrale Mention-Erkennung entfernt überlappende Teiltreffer. So
+    # wird bei »ehemalige Donnerschwee-Kaserne« nur das Quartier erkannt und
+    # nicht zusätzlich der darin enthaltene Ortsbereich Donnerschwee.
+    for place in places.find_mentions(text, max_n=20):
+        matches = []
+        for candidate in (place.name, *place.aliases):
+            match = re.search(rf"(?<!\w){re.escape(candidate)}(?!\w)", text, flags=re.IGNORECASE)
+            if match:
+                matches.append(match)
+        if not matches:
+            continue
+        match = max(matches, key=lambda item: len(item.group(0)))
+        slug = location_slug(place.name)
+        found[slug] = {
+            "name": place.name,
+            "kind": "stadtteil" if place.is_primary else "gebiet",
+            "source": source,
+            "evidence": match.group(0),
+            "method": "ortskatalog",
+            "confidence": 0.99,
+        }
     return list(found.values())
 
 
@@ -294,7 +300,7 @@ def extract_batch(rows: list[dict], model: str = MODEL) -> tuple[dict[int, list[
             # vorkommen. Der Name selbst muss ebenfalls explizit genannt sein.
             if name.lower() not in ctx_low or (evidence and evidence.lower() not in ctx_low):
                 continue
-            canonical = places.canonical_name(name) if kind == "stadtteil" else None
+            canonical = places.canonical_name(name)
             parsed.append({
                 "name": canonical or name,
                 "kind": kind,

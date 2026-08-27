@@ -23,7 +23,7 @@ from council.store import CouncilStore  # noqa: E402
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
-DETERMINISTIC_METHODS = {"regex", "stadtteilliste", "gebaeudemuster"}
+DETERMINISTIC_METHODS = {"regex", "stadtteilliste", "ortskatalog", "gebaeudemuster"}
 
 
 def invalid_llm_links(store: CouncilStore) -> list[dict]:
@@ -117,6 +117,7 @@ def process(council_db: Path, *, apply: bool = False) -> dict:
                     (row["decision_id"], row["location_slug"], row["source"],
                      row["evidence"][:500], row["method"], row["confidence"], now),
                 )
+        store.backfill_location_place_ids()
     store.close()
     removed = len(llm_rows) + len(deterministic_rows) if apply else 0
     return {"invalid_llm": len(llm_rows), "invalid_deterministic": len(deterministic_rows),

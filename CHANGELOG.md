@@ -14,7 +14,11 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Quellenhinweisen gepflegt. Die Oberfläche bezeichnet sie bewusst nicht mehr
   als amtliche Stadtteile – denn eine solche amtliche Einteilung gibt es in
   Oldenburg nicht. Bestehende Zuordnungen, einschließlich Bornhorst, bleiben
-  erhalten und werden nun in allen Funktionen gleich verwendet.
+  erhalten und werden nun in allen Funktionen gleich verwendet. Der Katalog
+  umfasst nun außerdem erste belegte Quartiere, Parks, Schutz-, Wohn-,
+  Sanierungs- und Entwicklungsgebiete. Beschlusssuche, Ortsprofile, Quiz und
+  „Frag den Rat“ greifen über dieselben stabilen IDs, Aliase und Hierarchien
+  darauf zu; neue Beschlüsse werden beim Einlesen automatisch verknüpft.
 
 ## [1.13.2] – 2026-08-19
 
