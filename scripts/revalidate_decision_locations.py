@@ -39,7 +39,11 @@ def invalid_llm_links(store: CouncilStore) -> list[dict]:
             if not valid_llm_location(row["name"], row["kind"], row["evidence"])]
 
 
-def deterministic_changes(store: CouncilStore) -> tuple[list[dict], list[dict]]:
+def deterministic_changes(
+    store: CouncilStore,
+    *,
+    ignored_current: set[tuple[int, str]] | None = None,
+) -> tuple[list[dict], list[dict]]:
     decisions = store._conn.execute(
         "SELECT id,title,beschluss FROM council_decisions WHERE kind='decision'"
     ).fetchall()
@@ -56,7 +60,12 @@ def deterministic_changes(store: CouncilStore) -> tuple[list[dict], list[dict]]:
     current_rows = store._conn.execute(
         "SELECT decision_id,location_slug,method FROM council_decision_locations"
     ).fetchall()
-    current = {(row["decision_id"], row["location_slug"]) for row in current_rows}
+    ignored_current = ignored_current or set()
+    current = {
+        (row["decision_id"], row["location_slug"])
+        for row in current_rows
+        if (row["decision_id"], row["location_slug"]) not in ignored_current
+    }
     invalid = [dict(row) for row in current_rows
                if row["method"] in DETERMINISTIC_METHODS
                and row["location_slug"] not in expected.get(row["decision_id"], {})]
@@ -71,7 +80,16 @@ def deterministic_changes(store: CouncilStore) -> tuple[list[dict], list[dict]]:
 def process(council_db: Path, *, apply: bool = False) -> dict:
     store = CouncilStore(council_db)
     llm_rows = invalid_llm_links(store)
-    deterministic_rows, additions = deterministic_changes(store)
+    # Ein ungültiger LLM-Link kann denselben Ortsschlüssel wie ein gültiger
+    # Regex-Fund tragen. Da der LLM-Link gleich entfernt wird, darf er bei der
+    # Ermittlung fehlender deterministischer Links nicht mehr als vorhanden
+    # gelten; sonst wäre für die Reparatur ein zweiter Lauf nötig.
+    removed_llm_keys = {
+        (row["decision_id"], row["location_slug"])
+        for row in llm_rows
+    }
+    deterministic_rows, additions = deterministic_changes(
+        store, ignored_current=removed_llm_keys)
     if apply and (llm_rows or deterministic_rows or additions):
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         with store._conn:
