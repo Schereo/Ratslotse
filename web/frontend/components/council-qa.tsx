@@ -798,6 +798,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             qtype: (msg.qtype as string) ?? null,
             presse: (msg.presse as PresseHinweis[]) ?? [],
             debatten: (msg.debatten as DebattenHinweis[]) ?? [],
+            anlagen: (msg.anlagen as AnlagenHinweis[]) ?? [],
             kontext: (msg.frage as string) ?? null,
             planungen: (msg.planungen as Planung[]) ?? [],
             sitzungen: (msg.sitzungen as SitzungsInfo[]) ?? [],
@@ -2050,7 +2051,9 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   const abschnitte = useMemo(
     () => (turn.recherche ? berichtAbschnitte(turn.antwort) : []),
     [turn.recherche, turn.antwort]);
-  const nichtsGefunden = !beschaeftigt && hatAntwort && turn.sources.length === 0 && !turn.fehler;
+  const nichtsGefunden = !beschaeftigt && hatAntwort && turn.sources.length === 0
+    && turn.presse.length === 0 && (turn.debatten?.length ?? 0) === 0
+    && (turn.anlagen?.length ?? 0) === 0 && !turn.fehler;
   // Einspaltig zeigt der jüngste Turn seine Belege inline; sobald die
   // Belege-Spalte danebensteht (`breit`, also auch iPad quer), übernimmt sie —
   // sonst stünden dieselben Quellen zweimal auf dem Schirm. Ältere Turns
@@ -2264,11 +2267,11 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
 
           {/* Kompaktzeile älterer Turns (Design 2⑤). */}
           {/* turn.debatten defensiv (?.) — Fast-Refresh/alte States kennen das Feld nicht. */}
-          {!istLetzter && !aufgeklappt && (turn.sources.length > 0 || turn.presse.length > 0 || (turn.debatten?.length ?? 0) > 0) && (
+          {!istLetzter && !aufgeklappt && (turn.sources.length > 0 || turn.presse.length > 0 || (turn.debatten?.length ?? 0) > 0 || (turn.anlagen?.length ?? 0) > 0) && (
             <button type="button" onClick={() => setAufgeklappt(true)}
               className="flex w-fit items-center gap-1.5 rounded-full border border-border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
               <ChevronDown className="h-3 w-3" aria-hidden />
-              Quellen ({turn.sources.length}){turn.presse.length > 0 ? ` · Presse (${turn.presse.length})` : ""}{(turn.debatten?.length ?? 0) > 0 ? ` · Debatten (${turn.debatten.length})` : ""}
+              Quellen ({turn.sources.length}){turn.presse.length > 0 ? ` · Presse (${turn.presse.length})` : ""}{(turn.debatten?.length ?? 0) > 0 ? ` · Debatten (${turn.debatten.length})` : ""}{(turn.anlagen?.length ?? 0) > 0 ? ` · Anlagen (${turn.anlagen?.length})` : ""}
             </button>
           )}
 
@@ -2594,7 +2597,8 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen }: {
   const idToNum = useIdToNum(turn);
   const anlBuchstaben = useAnlagenBuchstaben(turn);
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
-  if (turn.sources.length === 0 && turn.presse.length === 0 && (turn.debatten?.length ?? 0) === 0) return null;
+  if (turn.sources.length === 0 && turn.presse.length === 0
+      && (turn.debatten?.length ?? 0) === 0 && (turn.anlagen?.length ?? 0) === 0) return null;
   // Scroll und Höhe übernimmt seit Design 4a die Karten-Hülle im QaTab.
   return (
     <div className="flex flex-col gap-3.5">

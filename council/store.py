@@ -2053,8 +2053,8 @@ class CouncilStore:
         )
         # Anlagen-Chunks (Task 33): Gutachten, Konzepte, Stellungnahmen — die
         # Volltexte lädt scripts/backfill_anlagen_texte.py, die Vektoren baut
-        # scripts/embed_anlagen.py. Kanal NUR der Gründlichen Recherche (RG-10);
-        # die schnelle Frage bleibt von der zusätzlichen Matrix unberührt.
+        # scripts/embed_anlagen.py. Der schnelle Fragepfad lädt diese Matrix
+        # nur bei explizitem Dokumentenbedarf, Deep Research grundsätzlich.
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_anlage_embeddings ("
             "document_id INTEGER NOT NULL, "
@@ -10477,7 +10477,7 @@ class CouncilStore:
         data_version = self._conn.execute("PRAGMA data_version").fetchone()[0]
         return (count, data_version)
 
-    # ---- Anlagen-Embeddings (Task 33, Kanal der Gründlichen Recherche) -----
+    # ---- Anlagen-Embeddings (Task 33, Dokumentenkanal) ---------------------
 
     def anlagen_missing_embeddings(self, limit: int | None = None) -> list[dict]:
         """Anlagen mit Text, deren Chunk-Vektoren fehlen oder deren Text sich
@@ -10493,9 +10493,11 @@ class CouncilStore:
         # `ocr_modell` und ist hier KEIN Kriterium: Ein gescannter
         # Wirtschaftsplan ist so durchsuchbar wie ein getippter.
         rows = self._conn.execute(
-            "SELECT document_id, label, raw_text FROM council_anlagen "
-            "WHERE status = 'ok' AND raw_text IS NOT NULL AND raw_text != '' "
-            "ORDER BY document_id DESC").fetchall()
+            "SELECT a.document_id, a.label, a.raw_text, v.vorlage_nr, "
+            "       v.title AS vorlage_titel FROM council_anlagen a "
+            "LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
+            "WHERE a.status = 'ok' AND a.raw_text IS NOT NULL AND a.raw_text != '' "
+            "ORDER BY a.document_id DESC").fetchall()
         out = []
         for r in rows:
             # HIER wird maskiert und nicht beim Speichern: `raw_text` bleibt
@@ -10503,14 +10505,20 @@ class CouncilStore:
             # Chunk-Vektoren und damit in Antworten der KI-Frage geht, trägt
             # keine Kontonummern, Telefonnummern, E-Mail-Adressen und
             # Anschriften mehr (`council/kontaktdaten.py`).
-            #
-            # Der Hash wird über den MASKIERTEN Text gebildet: Sonst gälte eine
-            # Anlage als geändert, sobald sich an der Maskierung etwas dreht,
-            # und der nächste Lauf rechnete den halben Bestand neu.
             text = maskieren(r["raw_text"])
-            h = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+            # v2 nimmt Metadaten in Hash und Vektor auf. Ohne Vorlagentitel
+            # waren gleichnamige Umweltberichte verschiedener Baugebiete kaum
+            # zu unterscheiden. Der Hash verwendet den maskierten Text: In
+            # Vektoren und Antwortfundstellen gelangen weiterhin keine
+            # Kontaktdaten.
+            material = "\0".join(("anlage-v2", r["label"] or "",
+                                  r["vorlage_nr"] or "", r["vorlage_titel"] or "",
+                                  text))
+            h = hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
             if stored.get(r["document_id"]) != h:
                 out.append({"document_id": r["document_id"], "label": r["label"],
+                            "vorlage_nr": r["vorlage_nr"],
+                            "vorlage_titel": r["vorlage_titel"],
                             "raw_text": text, "text_hash": h})
                 if limit and len(out) >= limit:
                     break
@@ -10554,6 +10562,21 @@ class CouncilStore:
             f"WHERE a.document_id IN ({ph})", document_ids).fetchall()
         by_id = {r["document_id"]: dict(r) for r in rows}
         return [by_id[i] for i in document_ids if i in by_id]
+
+    def anlagen_metadata_rows(self) -> list[dict]:
+        """Kleine Metadatenliste für den lexikalischen Anlagen-Sicherungsweg.
+
+        Volltexte und Vektoren bleiben in ihren spezialisierten Tabellen; für
+        exakte Angaben wie „Bodengutachten Kaiserstraße/Bleicherstraße“ reichen
+        Label, Vorlagennummer und -titel. Rund 5.000 kompakte Zeilen sind
+        billiger als ein zweiter großer Suchindex.
+        """
+        return [dict(r) for r in self._conn.execute(
+            "SELECT a.document_id, a.label, v.vorlage_nr, "
+            "       v.title AS vorlage_titel FROM council_anlagen a "
+            "LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
+            "WHERE a.status = 'ok' AND a.raw_text IS NOT NULL AND a.raw_text != '' "
+            "ORDER BY a.document_id DESC").fetchall()]
 
     def decision_ids_for_vorlagen(self, vorlage_nrs: list[str]) -> dict[str, list[int]]:
         """vorlage_nr → Beschluss-ids (alle Beratungsstationen), neueste zuerst.

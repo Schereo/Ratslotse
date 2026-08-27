@@ -2720,11 +2720,25 @@ def _debatten_kompakt(rows: list[dict]) -> list[dict]:
              "protokoll_seite": d.get("seite")} for d in rows]
 
 
+def _anlagen_kompakt(rows: list[dict]) -> list[dict]:
+    """Anzeige- und Snapshot-Form der gefundenen Gutachten/Anlagen.
+
+    ``nr`` verbindet den Marker [A1] im Antworttext stabil mit der Karte. Der
+    längere Fundstellen-Text bleibt nur im Modellkontext; die Oberfläche zeigt
+    einen kurzen, prüfbaren Anriss und verlinkt auf das Originaldokument.
+    """
+    return [{"nr": a.get("nr"), "label": a.get("label"), "url": a.get("url"),
+             "vorlage_nr": a.get("vorlage_nr"),
+             "vorlage_titel": a.get("vorlage_titel"),
+             "auszug": (a.get("fundstelle") or "")[:220]} for a in rows]
+
+
 def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
                     answer_text: str, candidates: list[dict],
                     cited: list[int],
                     presse_rows: list[dict] | None = None,
                     debatten_rows: list[dict] | None = None,
+                    anlagen_rows: list[dict] | None = None,
                     planungen: list[dict] | None = None,
                     grafik: dict | None = None,
                     sitzungen: list[dict] | None = None) -> int | None:
@@ -2767,6 +2781,7 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
              "kontext": q_suche,
              "presse": _presse_kompakt(presse_rows or []),
              "debatten": _debatten_kompakt(debatten_rows or []),
+             "anlagen": _anlagen_kompakt(anlagen_rows or []),
              # Der Ausblick gehört wie Presse und Debatten in den Snapshot,
              # sonst öffnet ein gespeichertes Gespräch ohne „Wie es weitergeht".
              "planungen": planungen or [],
@@ -2937,6 +2952,49 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     vorher_ids = [i for i in zitiert if i in have]
                 except Exception:  # noqa: BLE001 — Nachladen ist Zusatz, nie Blocker
                     vorher_ids = []
+            anlagen_rows: list[dict] = []
+            # Vorlagenauszüge gab es schon vor dem Planer und bleiben bei
+            # Providerfehlern als sicherer Fallback erhalten. Die deutlich
+            # teurere Anlagenmatrix ist neu und läuft ohne validen Plan nicht.
+            documents_enabled = qa.research_channel_enabled(shadow_plan, "documents")
+            anlagen_enabled = qa.research_channel_enabled(
+                shadow_plan, "documents", fallback=False)
+            if anlagen_enabled and not einfach:
+                try:
+                    # Fachliche Details stecken oft nicht im Beschluss, sondern
+                    # in Gutachten, Konzepten und Stellungnahmen. Die schnelle
+                    # Frage nutzt dafür jetzt denselben semantischen Kanal wie
+                    # die gründliche Recherche — aber nur bei dokumentiertem
+                    # Bedarf im validierten Rechercheplan.
+                    from council import embeddings as emb
+                    hits_a = emb.search_anlagen(store, q_suche, expanded, top_k=4)
+                    anlagen_rows = store.anlagen_by_ids([did for did, _, _ in hits_a])
+                    fundstellen = {did: fs for did, _, fs in hits_a}
+                    for i, a in enumerate(anlagen_rows):
+                        a["fundstelle"] = fundstellen.get(a["document_id"], "")
+                        a["nr"] = i + 1
+
+                    # Ein Anlagenfund bekommt seinen entscheidungsbezogenen
+                    # Quellenanker dazu. Bei explizitem Ortsfilter darf auch
+                    # dieser Nachladeweg den belegten Ort nicht umgehen.
+                    by_vorlage = store.decision_ids_for_vorlagen(
+                        [a.get("vorlage_nr") for a in anlagen_rows])
+                    if allowed_place_ids is not None:
+                        erlaubte_nrn = {nr for nr, ids in by_vorlage.items()
+                                       if any(i in allowed_place_ids for i in ids)}
+                        anlagen_rows = [a for a in anlagen_rows
+                                        if a.get("vorlage_nr") in erlaubte_nrn]
+                    related_ids: list[int] = []
+                    for a in anlagen_rows:
+                        ids = by_vorlage.get(a.get("vorlage_nr") or "", [])
+                        if allowed_place_ids is not None:
+                            ids = [i for i in ids if i in allowed_place_ids]
+                        related_ids.extend(ids[:2])
+                    have = {c["id"] for c in candidates}
+                    candidates += store.get_decisions_by_ids(
+                        [i for i in dict.fromkeys(related_ids) if i not in have])
+                except Exception:  # noqa: BLE001 — Dokumente sind Zusatz, nie Blocker
+                    anlagen_rows = []
             presse_rows: list[dict] = []
             press_enabled = qa.research_channel_enabled(shadow_plan, "press")
             if press_enabled:
@@ -3087,6 +3145,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                 "description": ort["description"]}, *steckbriefe]
             # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
             lage = qa.beleglage(candidates)
+            if anlagen_rows and not candidates:
+                # Ein konkreter Gutachten-/Anlagenfund ist ein direkter Beleg,
+                # auch wenn keine verknüpfte Beschlussstation vorhanden ist.
+                lage = "solide"
             if latest_place:
                 # Keine Rerank-Scores im chronologischen Modus; der Ortsbezug
                 # ist dennoch deterministisch. Nur ein Mini-Bestand bleibt
@@ -3135,6 +3197,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         "sources": [_qa_source(c) for c in candidates],
                         "presse": _presse_kompakt(presse_rows),
                         "debatten": _debatten_kompakt(debatten_rows),
+                        "anlagen": _anlagen_kompakt(anlagen_rows),
                         "planungen": planungen,
                         # Tagesordnungs-Baustein: die aufgelösten Sitzungen des
                         # Sitzungs-Fragetyps — deterministisch, nie vom Modell.
@@ -3154,7 +3217,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                         for s in steckbriefe]
                         if qa.steckbrief_karte_zeigen(q_suche) else []})
             yield _sse({"type": "step", "step": "answer"})
-            if not candidates:
+            if not candidates and not anlagen_rows:
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
                 if sitzungen and ort:
                     leer_text = (f"In der gefragten Sitzung habe ich keine Beschlüsse mit "
@@ -3226,14 +3289,15 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # und genau das Anschneiden ist der Anlass dieses Fragetyps.
                 im_set = set(sitzung_ids)
                 ctx = [c for c in candidates if c["id"] in im_set][:QA_SITZUNG_N]
-            try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
-                texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
-                for c in ctx:
-                    t = texts.get((c.get("vorlage_nr") or "").strip())
-                    if t:
-                        c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
-            except Exception:  # noqa: BLE001
-                pass
+            if documents_enabled and not einfach:
+                try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
+                    texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
+                    for c in ctx:
+                        t = texts.get((c.get("vorlage_nr") or "").strip())
+                        if t:
+                            c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
+                except Exception:  # noqa: BLE001
+                    pass
             try:  # Läuft zu einem Kandidaten gerade eine Bauleitplan-Beteiligung?
                 from council import beteiligung as bet_mod
                 bets = store.list_beteiligungen()
@@ -3260,8 +3324,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     "sessions": len(sitzungen),
                     "future_agenda": len(planungen),
                     "places": sum(bool(c.get("location_matches")) for c in candidates),
-                    "documents": sum(bool(c.get("vorlage_excerpt") or c.get("beteiligung"))
-                                     for c in ctx),
+                    "documents": (len(anlagen_rows)
+                                  + sum(bool(c.get("vorlage_excerpt")) for c in ctx)),
                 }
                 _log.info("qa_research_plan_shadow %s", json.dumps(
                     qa.research_plan_log_record(q_suche, shadow_plan, typ, observed),
@@ -3293,6 +3357,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                          if einfach else
                          qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                           geld=geld, debatten=debatten_rows,
+                                          anlagen=anlagen_rows,
                                           gross=gross, steckbriefe=steckbriefe,
                                           duenn=(lage == "duenn"), eng=eng,
                                           sitzungen=sitzungen, ort=ort))
@@ -3326,6 +3391,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                               if einfach else
                               qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                                  geld=geld, debatten=debatten_rows,
+                                                 anlagen=anlagen_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng,
                                                  sitzungen=sitzungen, ort=ort))
@@ -3352,6 +3418,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            candidates, cited,
                                            presse_rows=presse_rows,
                                            debatten_rows=debatten_rows,
+                                           anlagen_rows=anlagen_rows,
                                            planungen=planungen,
                                            grafik=grafik,
                                            sitzungen=sitzungen)

@@ -343,8 +343,8 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             # (deckungsgleich mit /ask, damit beide Wege gleich rendern).
             qa.protokolle_verlinken(store, debatten_rows)
             try:
-                # Task 33: Anlagen (Gutachten, Konzepte) — dieser Kanal existiert
-                # NUR hier; die schnelle Frage lädt die Anlagen-Matrix nie.
+                # Task 33: Anlagen (Gutachten, Konzepte). Die schnelle Frage
+                # nutzt denselben Kanal inzwischen gezielt über ihren Plan.
                 hits_a = emb.search_anlagen(store, job.frage, begriffe_alle, top_k=6)
                 anlagen_rows = store.anlagen_by_ids([did for did, _, _ in hits_a])
                 fundstellen = {did: fs for did, _, fs in hits_a}

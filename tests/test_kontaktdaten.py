@@ -167,8 +167,11 @@ def test_der_hash_haengt_am_maskierten_text(tmp_path):
     store = _store_mit_text(tmp_path, BRIEFKOPF + "x" * 300)
     try:
         offen = store.anlagen_missing_embeddings()[0]
-        erwartet = hashlib.sha256(
-            maskieren(BRIEFKOPF + "x" * 300).encode("utf-8")).hexdigest()[:16]
+        material = "\0".join((
+            "anlage-v2", "Antrag auf Förderung", "", "",
+            maskieren(BRIEFKOPF + "x" * 300),
+        ))
+        erwartet = hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
         assert offen["text_hash"] == erwartet
     finally:
         store.close()
