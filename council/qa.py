@@ -387,6 +387,54 @@ def latest_real_decision(candidates: list[dict]) -> dict | None:
                  if c.get("outcome") in ("angenommen", "abgelehnt")), None)
 
 
+def latest_place_answer(candidates: list[dict]) -> str:
+    """Kurze, deterministische Antwort auf „zuletzt beschlossen“.
+
+    Bei diesem engen Fragetyp ist das Datum selbst die gesuchte Information.
+    Ein Sprachmodell darf deshalb weder einen älteren, wörtlich ähnlich
+    betitelten Beschluss bevorzugen noch eine Kenntnisnahme als Beschluss
+    ausgeben. ``candidates`` kommt aus dem Ortsindex und ist neueste zuerst.
+    """
+    if not candidates:
+        return "Dazu habe ich keine Ratsvorgänge mit belegtem Ortsbezug gefunden."
+
+    decision = latest_real_decision(candidates)
+    if not decision:
+        latest = candidates[0]
+        datum = _datum_de(latest.get("session_date"))
+        title = " ".join(str(latest.get("title") or "Unbenannter Vorgang").split())[:300]
+        return (
+            "Einen angenommenen oder abgelehnten Beschluss habe ich dazu nicht gefunden. "
+            f"Der jüngste Ratsvorgang war am {datum}: „{title}“ "
+            f"(Ergebnis: {latest.get('outcome') or 'nicht angegeben'}) [{latest['id']}]."
+        )
+
+    datum = _datum_de(decision.get("session_date"))
+    title = " ".join(str(decision.get("title") or "Unbenannter Beschluss").split())[:300]
+    if decision.get("outcome") == "abgelehnt":
+        answer = (
+            f"Die jüngste Abstimmungsentscheidung war am {datum}: „{title}“ wurde "
+            f"abgelehnt, also nicht beschlossen [{decision['id']}]."
+        )
+    else:
+        answer = f"Am {datum} wurde „{title}“ beschlossen [{decision['id']}]."
+
+    # Ein neuerer Bericht ist nützlich, darf aber nie als neuerer „Beschluss“
+    # erscheinen. Höchstens einen nennen, damit die Antwort kurz bleibt.
+    newer = next((c for c in candidates
+                  if c.get("id") != decision.get("id")
+                  and (c.get("session_date") or "") > (decision.get("session_date") or "")), None)
+    if newer:
+        neuer_datum = _datum_de(newer.get("session_date"))
+        neuer_titel = " ".join(str(newer.get("title") or "Unbenannter Vorgang").split())[:300]
+        if newer.get("outcome") == "zur_kenntnis":
+            answer += (
+                f" Danach wurde am {neuer_datum} noch „{neuer_titel}“ zur Kenntnis "
+                f"genommen [{newer['id']}]; das war kein neuer Beschluss."
+            )
+    return answer
+
+
 def _falte(text: str) -> str:
     """Suchnormalisierung: Kleinschreibung, Umlaute ausgeschrieben, alles
     Nicht-Alphanumerische zu Leerzeichen — macht „Cäcilienbrücke",

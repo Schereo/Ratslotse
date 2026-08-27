@@ -196,6 +196,35 @@ def test_latest_intent_ist_enger_als_allgemeine_aktualitaet():
     ])["id"] == 3
 
 
+def test_latest_place_answer_ist_deterministisch_und_unterscheidet_berichte():
+    answer = qa.latest_place_answer([
+        {"id": 1, "title": "Neuer Sachstandsbericht", "outcome": "zur_kenntnis",
+         "session_date": "2026-04-28", "committee": "Rat"},
+        {"id": 2, "title": "Jüngster echter Beschluss", "outcome": "angenommen",
+         "session_date": "2026-04-21", "committee": "Rat"},
+        {"id": 3, "title": "Alter Beschluss", "outcome": "angenommen",
+         "session_date": "2025-12-11", "committee": "Rat"},
+    ])
+    assert answer.startswith("Am 21.04.2026")
+    assert "Jüngster echter Beschluss" in answer and "[2]" in answer
+    assert "28.04.2026" in answer and "kein neuer Beschluss" in answer and "[1]" in answer
+    assert "Alter Beschluss" not in answer
+
+    rejected = qa.latest_place_answer([
+        {"id": 4, "title": "Antrag auf Umbau", "outcome": "abgelehnt",
+         "session_date": "2026-05-02", "committee": "Bauausschuss"},
+    ])
+    assert "jüngste Abstimmungsentscheidung" in rejected
+    assert "abgelehnt" in rejected and "nicht beschlossen [4]" in rejected
+
+    report_only = qa.latest_place_answer([
+        {"id": 5, "title": "Bericht", "outcome": "zur_kenntnis",
+         "session_date": "2026-05-03"},
+    ])
+    assert report_only.startswith("Einen angenommenen oder abgelehnten Beschluss")
+    assert "[5]" in report_only
+
+
 def test_duenn_regel_nur_bei_duenner_lage():
     messages, _ = qa._answer_messages("Frage?", [{"id": 1, "title": "T"}], duenn=True)
     assert "DÜNNE BELEGLAGE" in messages[0]["content"]
