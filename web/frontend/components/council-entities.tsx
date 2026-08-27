@@ -11,7 +11,14 @@ import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 import { themaHref } from "@/lib/routes";
 import { KIND_COLOR } from "@/components/council-map";
-import { loadStadtteile, stadtteilFor, stadtteileImWahlbereich, type StadtteilFeature } from "@/lib/stadtteile";
+import {
+  loadOrtsbereiche,
+  loadOrtsbereichCatalog,
+  ortsbereichFor,
+  ortsbereicheImWahlbereich,
+  type OrtsbereichEntry,
+  type OrtsbereichFeature,
+} from "@/lib/stadtteile";
 
 // Form und Höhe der Stadtkarte stehen hier an EINER Stelle — Karte und beide
 // Platzhalter (Chunk, Geo-Fetch) müssen sie teilen, sonst springt das Layout
@@ -99,10 +106,11 @@ function TopEntityCard({ e, maxRecent }: { e: Entity; maxRecent: number }) {
 
 type KindFilter = "" | "ort" | "organisation" | "projekt";
 
-/** Kompakter Mehrfach-Auswahl-Popover für die 31 Stadtteile — filtert die
+/** Kompakter Mehrfach-Auswahl-Popover für die 31 Ortsbereiche — filtert die
  *  Punkte auf der Karte (die Liste darunter bleibt vollständig). */
-function StadtteilFilter({ names, counts, selected, onChange }: {
+function OrtsbereichFilter({ names, places, counts, selected, onChange }: {
   names: string[];
+  places: OrtsbereichEntry[];
   counts: Record<string, number>;
   selected: Set<string>;
   onChange: (next: Set<string>) => void;
@@ -141,7 +149,7 @@ function StadtteilFilter({ names, counts, selected, onChange }: {
         )}
       >
         <MapPin className="h-3.5 w-3.5" />
-        {selected.size > 0 ? `Stadtteile · ${selected.size}` : "Stadtteile"}
+        {selected.size > 0 ? `Ortsbereiche · ${selected.size}` : "Ortsbereiche"}
         <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
@@ -152,7 +160,7 @@ function StadtteilFilter({ names, counts, selected, onChange }: {
           max-sm:fixed max-sm:inset-x-3 max-sm:bottom-[calc(5rem+env(safe-area-inset-bottom))] max-sm:max-h-[70vh] max-sm:overflow-y-auto
           sm:absolute sm:right-0 sm:mt-2 sm:w-72">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-medium text-foreground">Karte nach Stadtteilen filtern</p>
+            <p className="text-xs font-medium text-foreground">Karte nach Ortsbereichen filtern</p>
             {selected.size > 0 && (
               <button type="button" onClick={() => onChange(new Set())}
                 className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
@@ -161,12 +169,12 @@ function StadtteilFilter({ names, counts, selected, onChange }: {
             )}
           </div>
           {/* Schnellauswahl: die 6 Kommunalwahl-Wahlbereiche togglen ihre
-              Stadtteile als Gruppe (aktiv = alle Stadtteile des Bereichs an). */}
-          <div className="mt-2">
+              Ortsbereiche als Gruppe. */}
+          {places.length > 0 && <div className="mt-2">
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Wahlbereiche</p>
             <div className="mt-1 flex flex-wrap gap-1">
               {[1, 2, 3, 4, 5, 6].map((wb) => {
-                const gruppe = stadtteileImWahlbereich(wb);
+                const gruppe = ortsbereicheImWahlbereich(wb, places);
                 const active = gruppe.every((n) => selected.has(n));
                 return (
                   <button
@@ -189,7 +197,7 @@ function StadtteilFilter({ names, counts, selected, onChange }: {
                 );
               })}
             </div>
-          </div>
+          </div>}
           <div className="mt-2 grid max-h-64 grid-cols-2 gap-x-3 gap-y-0.5 overflow-y-auto overscroll-contain pr-1">
             {names.map((name) => (
               <label key={name} className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-xs text-foreground hover:bg-muted">
@@ -205,7 +213,7 @@ function StadtteilFilter({ names, counts, selected, onChange }: {
             ))}
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-            Grenzen: © OpenStreetMap-Mitwirkende · Wahlbereiche: Stadt Oldenburg (openGEOdata)
+            Ratslotse-Ortsbereiche, keine amtlichen Stadtteile · Grenzen: © OpenStreetMap-Mitwirkende · Wahlbereiche: Stadt Oldenburg
           </p>
         </div>
       )}
@@ -234,10 +242,12 @@ export function EntitiesTab() {
   const { data: geo, loading: geoLoading } = useFetch<{ entities: EntityMapPoint[] }>("/council/entities-map");
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<KindFilter>("");
-  const [stadtteile, setStadtteile] = useState<StadtteilFeature[]>([]);
+  const [stadtteile, setStadtteile] = useState<OrtsbereichFeature[]>([]);
+  const [ortskatalog, setOrtskatalog] = useState<OrtsbereichEntry[]>([]);
   const [selectedST, setSelectedST] = useState<Set<string>>(new Set());
   useEffect(() => {
-    void loadStadtteile().then(setStadtteile);
+    void loadOrtsbereiche().then(setStadtteile);
+    void loadOrtsbereichCatalog().then((catalog) => setOrtskatalog(catalog.places)).catch(() => {});
   }, []);
 
   const all = useMemo(() => data?.entities ?? [], [data]);
@@ -251,7 +261,7 @@ export function EntitiesTab() {
   const pointST = useMemo(() => {
     const m = new Map<string, string | null>();
     if (stadtteile.length) {
-      for (const p of geo?.entities ?? []) m.set(p.slug, stadtteilFor(p.lat, p.lon, stadtteile));
+      for (const p of geo?.entities ?? []) m.set(p.slug, ortsbereichFor(p.lat, p.lon, stadtteile));
     }
     return m;
   }, [geo, stadtteile]);
@@ -342,7 +352,7 @@ export function EntitiesTab() {
               auf dem Telefon klickt niemand. */}
           <p className="mt-1.5 px-1 text-[11px] leading-relaxed text-muted-foreground">
             {selectedST.size > 0
-              ? `${points.length} von ${geo!.entities.length} Punkten · ${selectedST.size} ${selectedST.size === 1 ? "Stadtteil" : "Stadtteile"} ausgewählt`
+              ? `${points.length} von ${geo!.entities.length} Punkten · ${selectedST.size} ${selectedST.size === 1 ? "Ortsbereich" : "Ortsbereiche"} ausgewählt`
               : `${points.length} verortete Themen · Punktgröße = Beschlüsse · Punkt öffnet das Thema`}
           </p>
         </div>
@@ -373,8 +383,9 @@ export function EntitiesTab() {
             </button>
           ))}
           {stadtteile.length > 0 && (geo?.entities.length ?? 0) > 0 && (
-            <StadtteilFilter
+            <OrtsbereichFilter
               names={stadtteile.map((f) => f.properties.name)}
+              places={ortskatalog}
               counts={stCounts}
               selected={selectedST}
               onChange={setSelectedST}

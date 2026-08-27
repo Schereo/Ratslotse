@@ -152,7 +152,7 @@ gesetzte Zuordnungen überschreibt ein automatischer Lauf nie.
 ## Quiz-Fragen
 
 Das **Oldenburg-Quiz** erzeugt seine Multiple-Choice-Fragen per LLM, aber
-**streng geerdet**. Pro Gebiet (Stadtteil, Wahlbereich oder stadtweites Thema)
+**streng geerdet**. Pro Gebiet (Ratslotse-Ortsbereich, Wahlbereich oder stadtweites Thema)
 sammelt der Code zuerst Quelltexte — **Wikipedia** (Stadtteil-Artikel), die
 **Stadt-Website** oldenburg.de und die **eigenen Ratsdaten** — und legt sie dem
 LLM vor. Das Modell formuliert daraus Fragen mit vier Antwortoptionen,
@@ -172,9 +172,11 @@ Punkte und Bewertungen in `nwz.sqlite` (pro Konto). Der Backfill
 Anreicherung und lässt sich für den Erstlauf manuell über einen Ops-Workflow
 anstoßen.
 
-Das **Karten-Quiz** („Wo liegt Stadtteil X?") ist die Ausnahme: rein
+Das **Karten-Quiz** („Wo liegt Ortsbereich X?") ist die Ausnahme: rein
 geografisch, ganz **ohne LLM** — die Fragen entstehen deterministisch aus den
-Stadtteil-Polygonen, die Karte selbst ist die Antwortfläche.
+Ortsbereich-Polygonen, die Karte selbst ist die Antwortfläche. Der gemeinsame
+[Ortskatalog](/docs/adr/0009-zentraler-ortskatalog/) dokumentiert, warum diese
+31 Ratslotse-Gebiete keine amtlich festgelegten Stadtteile sind.
 
 Auch die **Haushalts-Fragen** (Thema „Stadt-Haushalt") entstehen **ohne LLM**:
 `council/haushalt.py` parst die „Übersicht Ergebnishaushalt" aus den
@@ -206,8 +208,8 @@ Bei der Karte hat Verlässlichkeit Vorrang, in absteigender Genauigkeit: Für
 verstreute oder mehrfach vergebene Straßennamen (mehrere „Mittelwege") werden
 **verworfen**, damit nie eine falsche Stelle markiert wird. Einen **Punkt**-Marker
 gibt es sonst nur für bekannte Einzelorte (die einen Wikipedia-Artikel haben).
-Und geht es um einen ganzen Stadtteil (oder eine Person/Sache von dort), zeichnet
-die Karte das **ganze Gebiet** als Polygon ein — die Stadtteil-Grenzen besitzen
+Und geht es um einen ganzen Ortsbereich (oder eine Person/Sache von dort), zeichnet
+die Karte das **ganze Gebiet** als Polygon ein — die Ratslotse-Grenzen besitzen
 wir selbst, das ist also immer verlässlich. Bei Fragen zu einer konkreten Person
 oder Sache verweist der **Quelle-Link** außerdem auf deren eigenen
 Wikipedia-Artikel statt auf die Gebiets-Seite. Zu kniffligen Fragen kann es einen

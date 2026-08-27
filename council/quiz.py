@@ -156,7 +156,7 @@ def council_facts(store, *, stadtteil: str | None = None, slug: str | None = Non
         slugs = [slug]
     elif stadtteil:
         for e in store.list_entities_geo():
-            if geo.stadtteil_for(e["lat"], e["lon"]) == stadtteil:
+            if geo.ortsbereich_for(e["lat"], e["lon"]) == stadtteil:
                 slugs.append(e["slug"])
     for s in slugs[:8]:
         det = store.entity_detail(s)
@@ -356,10 +356,10 @@ def enrich_row(row: dict, subject: str, *, area_type: str | None = None,
     if row.get("lat") is None:
         # Noch kein Punkt/keine Linie → das ganze GEBIET einzeichnen: den
         # Stadtteil des Subjekts, sonst den Stadtteil der Frage selbst.
-        poly_name = subject if geo.is_stadtteil(subject) else (
+        poly_name = subject if geo.is_ortsbereich(subject) else (
             area_key if area_type == "stadtteil" else None)
-        poly = geo.stadtteil_polygon(poly_name) if poly_name else None
-        center = geo.stadtteil_center(poly_name) if poly else None
+        poly = geo.ortsbereich_polygon(poly_name) if poly_name else None
+        center = geo.ortsbereich_center(poly_name) if poly else None
         if poly and center:
             row["lat"], row["lon"] = center
             row["place_label"] = poly_name

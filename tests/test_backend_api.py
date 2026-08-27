@@ -2944,10 +2944,18 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
 
     districts = client.get("/api/council/districts")
     assert districts.status_code == 200
-    assert districts.json()["districts"] == [
-        {"name": "Innenstadt", "count": 1, "vote_count": 1, "report_count": 0},
-        {"name": "Kreyenbrück", "count": 3, "vote_count": 2, "report_count": 1},
+    body = districts.json()
+    assert body["catalog"]["singular"] == "Ortsbereich"
+    assert [(row["name"], row["place_id"], row["count"]) for row in body["districts"]] == [
+        ("Innenstadt", "innenstadt", 1),
+        ("Kreyenbrück", "kreyenbrueck", 3),
     ]
+
+    catalog = client.get("/api/council/places")
+    assert catalog.status_code == 200
+    assert len(catalog.json()["places"]) == 31
+    assert next(p for p in catalog.json()["places"] if p["id"] == "bornhorst")["name"] == "Bornhorst"
+    assert client.get("/api/council/decisions?district=Atlantis").status_code == 400
 
     response = client.get(
         "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=vote"

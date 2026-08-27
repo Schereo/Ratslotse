@@ -20,6 +20,7 @@ from council import ernte
 from council import importance
 from council import sitzungspause as pause_mod
 from council import vorlagen as vorlagen_mod
+from council import places
 
 from kern.store import Store
 
@@ -65,8 +66,33 @@ def districts(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
-    """Stadtteile mit mindestens einem geokodierten Beschluss-Ortsbezug."""
-    return {"districts": store.decision_location_district_stats()}
+    """Belegte Ratslotse-Ortsbereiche für den Beschlussfilter."""
+    rows = []
+    for row in store.decision_location_district_stats():
+        place = places.resolve(row["name"])
+        if not place:
+            continue
+        rows.append({
+            **row,
+            "name": place.name,
+            "place_id": place.id,
+            "kind": place.kind,
+            "aliases": list(place.aliases),
+        })
+    catalog = places.public_catalog()
+    return {
+        "catalog": {key: catalog[key] for key in (
+            "schema_version", "id", "label", "singular", "plural",
+            "definition", "sources",
+        )},
+        "districts": rows,
+    }
+
+
+@router.get("/places")
+def place_catalog(_user: dict = Depends(require_active)) -> dict:
+    """Gemeinsamer Ortskatalog für Suche, Karten, Quiz und KI-Funktionen."""
+    return places.public_catalog()
 
 
 @router.get("/sessions")
@@ -332,6 +358,11 @@ def decisions(
     store: CouncilStore = Depends(get_council_store),
     nwz: Store = Depends(get_store),
 ) -> dict:
+    if district:
+        place = places.resolve(district)
+        if not place:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Ortsbereich.")
+        district = place.name
     only_ids: list[int] | None = None
     if topic is not None:
         # Nur eigene Themen — sonst ließe sich über eine fremde id deren
