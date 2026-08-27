@@ -179,11 +179,21 @@ def test_latest_intent_ist_enger_als_allgemeine_aktualitaet():
     assert not qa.latest_intent("Was wurde 2019 zuletzt in Kreyenbrück beschlossen?")
     messages, _ = qa._answer_messages(
         "Was wurde in Kreyenbrück zuletzt beschlossen?",
-        [{"id": 1, "title": "Sachstandsbericht", "outcome": "zur_kenntnis"}],
+        [{"id": 1, "title": "Sachstandsbericht", "outcome": "zur_kenntnis",
+          "session_date": "2026-04-28"},
+         {"id": 2, "title": "Jüngster echter Beschluss", "outcome": "angenommen",
+          "session_date": "2026-04-21"}],
         typ="ort",
     )
     assert "CHRONOLOGIE" in messages[0]["content"]
-    assert "echten Entscheidung" in messages[0]["content"]
+    assert "echte Entscheidung" in messages[0]["content"]
+    assert "[2] vom 2026-04-21" in messages[0]["content"]
+    assert qa.latest_real_decision([
+        {"id": 1, "outcome": "zur_kenntnis"},
+        {"id": 2, "outcome": "vertagt"},
+        {"id": 3, "outcome": "abgelehnt"},
+        {"id": 4, "outcome": "angenommen"},
+    ])["id"] == 3
 
 
 def test_duenn_regel_nur_bei_duenner_lage():

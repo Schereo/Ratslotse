@@ -2962,7 +2962,9 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     assert sources["qtype"] == "ort"
     assert sources["beleglage"] == "solide"
     assert [row["id"] for row in sources["sources"]] == [103, 102, 101]
-    assert gesehen["ids"] == [103, 102, 101]
+    # Quellenband streng nach Datum; Antwortkontext mit der jüngsten echten
+    # Entscheidung vor der bloßen Kenntnisnahme.
+    assert gesehen["ids"] == [102, 103, 101]
 
 
 def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):

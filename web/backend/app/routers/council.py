@@ -3178,6 +3178,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # nach dem Voll-Merge der Sitzung immer hoch.
                 gross = len(sitzung_ids) >= 12 and not einfach
             ctx = candidates[:QA_ANSWER_N]
+            if latest_place:
+                # Das Quellenband bleibt streng chronologisch. Für das Modell
+                # steht die jüngste echte Entscheidung zusätzlich ganz vorn:
+                # Die bloße Prompt-Regel reichte in der Produktionsprobe nicht
+                # aus — es sprang sonst zum älteren Titel mit dem wörtlichen
+                # Ortsnamen statt zum jüngeren geokodierten Straßenbeschluss.
+                latest_real = qa.latest_real_decision(ctx)
+                if latest_real:
+                    ctx = [latest_real] + [c for c in ctx
+                                           if c["id"] != latest_real["id"]]
             if vorher_ids:
                 # Beim Vereinfachen sieht das Modell NUR die Beschlüsse, die die
                 # vorige Antwort belegt haben. Das ist keine Sparmaßnahme,
