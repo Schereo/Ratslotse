@@ -70,7 +70,7 @@ Akzeptanz: Das Radar wird nicht nur eine Übersicht, sondern ein Einstieg in bes
 
 ### Separater Strang: Umsetzungstracking
 
-Nicht in PR #810 und nicht mit offiziellen Ratsinfo-Ständen vermischen.
+Nicht im Beschlussradar-V1-PR und nicht mit offiziellen Ratsinfo-Ständen vermischen.
 
 Offene Modellierungsfragen:
 
