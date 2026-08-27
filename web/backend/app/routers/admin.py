@@ -358,11 +358,13 @@ def place_candidates(
     review_status: str = Query("pending", alias="status",
                                pattern="^(pending|approved|alias|rejected|all)$"),
     limit: int = Query(200, ge=1, le=500),
+    min_decisions: int = Query(3, ge=1, le=100),
     _admin: dict = Depends(require_admin),
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
     """Automatisch gefundene, noch nicht statisch katalogisierte Orte prüfen."""
-    items = store.location_candidates(review_status, limit=limit)
+    items = store.location_candidates(
+        review_status, limit=limit, min_decisions=min_decisions)
     return {"candidates": items, "status": review_status}
 
 

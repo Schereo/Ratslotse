@@ -509,4 +509,6 @@ def test_reviewed_alias_resolves_to_existing_catalog_place(tmp_path):
     extracted = extract_explicit_locations(
         "Neue Planung im Nadorster Gebiet", source="title", catalog_places=store.all_places())
     assert extracted[0]["name"] == "Nadorst"
+    # Geprüfte Einträge bleiben trotz der Drei-Beschlüsse-Schwelle sichtbar.
+    assert store.location_candidates("alias")[0]["slug"] == "nadorster-gebiet"
     store.close()

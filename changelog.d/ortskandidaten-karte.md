@@ -5,7 +5,8 @@
   oder Gewässer gefilterte Beschlussliste.
 - Im Admin-Bereich lassen sich häufige Ortskandidaten anhand von
   Beschluss-Stichproben als Katalogort freigeben, einem bestehenden Ort als
-  Alias zuordnen, verwerfen oder erneut öffnen.
+  Alias zuordnen, verwerfen oder erneut öffnen. Die offene Liste beginnt ab
+  drei verschiedenen Beschlüssen; geprüfte Einträge bleiben immer sichtbar.
 
 ### Geändert
 

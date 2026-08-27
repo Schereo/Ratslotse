@@ -3714,7 +3714,8 @@ class CouncilStore:
         data["places"] = [self.public_place(place) for place in self.all_places()]
         return data
 
-    def location_candidates(self, status_filter: str = "pending", *, limit: int = 200) -> list[dict]:
+    def location_candidates(self, status_filter: str = "pending", *, limit: int = 200,
+                            min_decisions: int = 3) -> list[dict]:
         """Häufige, noch nicht statisch katalogisierte Ortsnamen samt Belegen."""
         from council import places
 
@@ -3729,6 +3730,10 @@ class CouncilStore:
         elif status_filter != "all":
             review_where = "AND r.status = ?"
             review_params.append(status_filter)
+        # Die offene Liste ist eine Prioritätenliste, kein Dump aller einmalig
+        # erwähnten Namen. Bereits geprüfte Einträge müssen dagegen auch dann
+        # sichtbar bleiben, wenn sie nur in einem Beschluss vorkommen.
+        effective_min = max(1, int(min_decisions)) if status_filter == "pending" else 1
         rows = self._conn.execute(
             f"""SELECT l.*, r.status AS review_status, r.place_id AS review_place_id,
                       r.name AS review_name, r.kind AS review_kind, r.parent_id,
@@ -3744,8 +3749,10 @@ class CouncilStore:
                LEFT JOIN council_place_reviews r ON r.location_slug=l.slug
                WHERE l.kind IN ('stadtteil','gebiet','sonstiges') {review_where}
                GROUP BY l.slug
+               HAVING COUNT(DISTINCT dl.decision_id) >= ?
                ORDER BY decision_count DESC, last_date DESC, l.name
-               LIMIT ?""", (*review_params, max(1, min(int(limit), 500)))
+               LIMIT ?""", (*review_params, effective_min,
+                              max(1, min(int(limit), 500)))
         ).fetchall()
         out = []
         for row in rows:

@@ -1162,7 +1162,7 @@ function PlaceCandidatesTab() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Häufige Ortsnamen aus Beschlüssen. Freigegebene Gebiete werden Teil des gemeinsamen
+        Ortsnamen aus mindestens drei Beschlüssen. Freigegebene Gebiete werden Teil des gemeinsamen
         Ortskatalogs; konkrete Straßen und Gebäude erscheinen ab drei Beschlüssen automatisch auf der Karte.
       </p>
       <div className="flex flex-wrap gap-1.5">
