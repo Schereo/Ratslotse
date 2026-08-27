@@ -8,9 +8,9 @@ Das Beschlussradar zeigt Vorlagen/Beschlüsse als ruhiges Kanban: Was ist geplan
 
 ## Aktueller Stand
 
-Draft-PR: https://github.com/Schereo/Ratslotse/pull/810
+V1 entsteht in einem Draft-PR als dev-gatete Vorschau. Den aktuellen Arbeitsstand und Test-/Build-Status bitte im jeweiligen PR prüfen.
 
-V1 ist implementiert als dev-gatete Vorschau:
+Der geplante V1-Umfang:
 
 - Backend-Endpunkt `GET /api/council/beschlussradar`
 - Store-Abfrage auf Vorlage-Ebene
@@ -18,24 +18,23 @@ V1 ist implementiert als dev-gatete Vorschau:
 - Zeitraum: letzte 90 Tage plus zukünftige Beratungen
 - Frontend-Seite `/beschlussradar`
 - Navigation in Desktop-Sidebar, mobilem Mehr-Sheet und Command-Palette
-- Tests und Build lokal grün; GitHub-CI für PR #810 grün vor der Navigationsergänzung
 
 ## Arbeitsregeln
 
-- Neue Feature-Arbeit basiert auf `upstream/dev` und läuft über Branches `agent/<kurzer-slug>`.
-- PRs gehen gegen `Schereo/Ratslotse:dev`.
+- Neue Feature-Arbeit basiert auf dem aktuellen `dev`-Branch des Haupt-Repositories und läuft über Branches `agent/<kurzer-slug>`.
+- PRs gehen gegen `dev`.
 - Das Feature bleibt bis zur Produktfreigabe hinter `NEXT_PUBLIC_RATSLOTSE_ENV === "dev"`.
 - Offizielle Beratungs-/Beschlussstände und reale Umsetzung werden getrennt modelliert.
 - Keine Karte darf Umsetzung, Wirkung oder Vollständigkeit behaupten, wenn nur Ratsinfo-Daten vorliegen.
 
 ## Backlog
 
-### Jetzt: PR #810 prüfen und abrunden
+### Jetzt: V1-PR prüfen und abrunden
 
 - [ ] Menschliche UI-Prüfung: Sind Spalten, Karten und Begriffe verständlich?
 - [ ] Prüfen, ob Navigation an der gewünschten Stelle sitzt.
 - [ ] Kleine Text-/Layout-Politur nur bei konkretem Review-Feedback.
-- [ ] Wenn freigegeben: Draft-PR #810 auf Ready for Review setzen.
+- [ ] Wenn freigegeben: Draft-PR auf Ready for Review setzen.
 
 Akzeptanz: Die Vorschau ist erreichbar, erklärt ihren Datenstand klar und bleibt bewusst ohne Umsetzungsversprechen.
 
@@ -92,7 +91,7 @@ Akzeptanz: Nutzer sehen klar den Unterschied zwischen „politisch entschieden�
 ## Wiederaufnahme-Checkliste für Agenten
 
 1. Diesen Backlog lesen.
-2. Aktuelle PRs gegen `Schereo/Ratslotse:dev` prüfen.
-3. `upstream/dev` holen und neuen `agent/*`-Branch verwenden.
+2. Aktuelle PRs gegen `dev` prüfen.
+3. Aktuellen `dev`-Stand holen und neuen `agent/*`-Branch verwenden.
 4. Vor UI-Arbeit `web/frontend/DESIGNSPRACHE.md` lesen.
 5. Vor PR-Erstellung Tests passend zum Änderungstyp ausführen und eine separate Pi-Review machen.
