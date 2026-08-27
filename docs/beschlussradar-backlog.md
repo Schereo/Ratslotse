@@ -8,7 +8,7 @@ Das Beschlussradar zeigt Vorlagen/Beschlüsse als ruhiges Kanban: Was ist geplan
 
 ## Aktueller Stand
 
-V1 entsteht in einem Draft-PR als dev-gatete Vorschau. Den aktuellen Arbeitsstand und Test-/Build-Status bitte im jeweiligen PR prüfen.
+V1 soll in einem PR als dev-gatete Vorschau entstehen. Den aktuellen Arbeitsstand und Test-/Build-Status bitte im jeweiligen PR prüfen.
 
 Der geplante V1-Umfang:
 
@@ -34,7 +34,7 @@ Der geplante V1-Umfang:
 - [ ] Menschliche UI-Prüfung: Sind Spalten, Karten und Begriffe verständlich?
 - [ ] Prüfen, ob Navigation an der gewünschten Stelle sitzt.
 - [ ] Kleine Text-/Layout-Politur nur bei konkretem Review-Feedback.
-- [ ] Wenn freigegeben: Draft-PR auf Ready for Review setzen.
+- [ ] Wenn freigegeben: PR erstellen/öffnen bzw. Draft-PR auf Ready for Review setzen.
 
 Akzeptanz: Die Vorschau ist erreichbar, erklärt ihren Datenstand klar und bleibt bewusst ohne Umsetzungsversprechen.
 
