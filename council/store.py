@@ -15,7 +15,10 @@ from council.kontaktdaten import maskieren
 
 
 
-CONCRETE_LOCATION_KINDS = {"strasse", "platz", "gebaeude", "gewaesser"}
+CONCRETE_LOCATION_KINDS = {
+    "strasse", "platz", "gebaeude", "gewaesser",
+    "anlage", "bauwerk", "verkehrsweg",
+}
 
 
 def _norm_title(t: str) -> str:
@@ -8609,9 +8612,10 @@ class CouncilStore:
     def decision_location_map_points(self, min_decisions: int = 3) -> list[dict]:
         """Belastbare Beschlussorte für die Stadtkarte.
 
-        Konkrete Straßen, Plätze, Gebäude und Gewässer werden ab drei
-        Beschlüssen automatisch gezeigt. Unscharfe Gebietsbegriffe müssen erst
-        redaktionell freigegeben werden; verworfene Kandidaten bleiben draußen.
+        Konkrete Straßen, Plätze, Gebäude, Gewässer, Anlagen, Bauwerke und
+        Verkehrswege werden ab drei Beschlüssen automatisch gezeigt. Unscharfe
+        Gebietsbegriffe müssen erst redaktionell freigegeben werden;
+        verworfene Kandidaten bleiben draußen.
         """
         rows = self._conn.execute(
             """SELECT l.slug,l.name,l.kind,l.lat,l.lon,l.place_id,l.ortsbereich_id,

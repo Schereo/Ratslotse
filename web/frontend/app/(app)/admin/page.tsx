@@ -1000,6 +1000,8 @@ type PlaceReviewStatus = "pending" | "concrete" | "approved" | "alias" | "reject
 const concretePlaceKinds = [
   ["strasse", "Straße"], ["platz", "Platz"],
   ["gebaeude", "Gebäude"], ["gewaesser", "Gewässer"],
+  ["anlage", "Anlage oder Gelände"], ["bauwerk", "Bauwerk"],
+  ["verkehrsweg", "Verkehrsweg"],
 ] as const;
 
 function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
@@ -1193,7 +1195,7 @@ function PlaceCandidatesTab() {
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         Ortsnamen aus mindestens drei Beschlüssen. Freigegebene Gebiete werden Teil des gemeinsamen
-        Ortskatalogs; bestätigte Straßen, Plätze, Gebäude und Gewässer bleiben exakte Kartenpunkte.
+        Ortskatalogs; bestätigte konkrete Orte bleiben exakte Kartenpunkte.
       </p>
       <div className="flex flex-wrap gap-1.5">
         {tabs.map(([value, label]) => (
