@@ -496,6 +496,50 @@
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
 }
 
+/* Stadtkarte: Einzelorte bleiben die bekannten farbigen Kreise. Im Weitzoom
+   bündelt Leaflet MarkerCluster nahe Orte zu einem ruhigen, gut tippbaren
+   Zähler; beim Heranzoomen zerfällt er wieder in die einzelnen Ortsmarker. */
+.ratslotse-map-point {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  display: flex;
+  justify-content: center;
+}
+.ratslotse-map-point > span {
+  background: color-mix(in srgb, var(--point-color) 55%, transparent);
+  border: 1.5px solid var(--point-color);
+  border-radius: 9999px;
+  display: block;
+  height: var(--point-size);
+  width: var(--point-size);
+}
+.ratslotse-map-cluster {
+  align-items: center;
+  background: hsl(var(--background) / 0.92);
+  border: 2px solid hsl(var(--primary));
+  border-radius: 9999px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+  color: hsl(var(--primary));
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  justify-content: center;
+}
+.ratslotse-map-cluster > span {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  width: 100%;
+}
+.ratslotse-map-cluster:hover,
+.ratslotse-map-cluster:focus-visible {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
 /* Dark-Mode-Karte: die helle Voyager-Basemap per Filter zu einem grauen
    Slate-Ton invertieren. hue-rotate hält Wasser/Grün in etwa an ihrem Platz,
    die gedämpfte Sättigung/Kontrast ergibt einen ruhigen, aber gut lesbaren
