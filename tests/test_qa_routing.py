@@ -189,17 +189,20 @@ def test_orte_fuer_decisions(tmp_path):
             "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,?,?)",
             [(1, "caeci", "Cäcilienbrücke", "ort", 30),
              (2, "huntebad", "Huntebad", "ort", 5),
-             (3, "vhs", "VHS Oldenburg", "organisation", 9)])
+             (3, "vhs", "VHS Oldenburg", "organisation", 9),
+             (4, "hannover", "Hannover", "ort", 20)])
         store._conn.executemany(
             "INSERT INTO council_entity_meta (slug, lat, lon) VALUES (?,?,?)",
-            [("caeci", 53.135, 8.215), ("vhs", 53.14, 8.21)])  # huntebad ohne Geo
+            [("caeci", 53.135, 8.215), ("vhs", 53.14, 8.21),
+             ("hannover", 52.3759, 9.7320)])  # huntebad ohne Geo
         store._conn.executemany(
             "INSERT INTO council_entity_links (entity_id, decision_id) VALUES (?,?)",
-            [(1, 100), (2, 100), (3, 100), (2, 200), (3, 300)])
-    orte = store.orte_fuer_decisions([100, 200, 300])
+            [(1, 100), (2, 100), (3, 100), (2, 200), (3, 300), (4, 400)])
+    orte = store.orte_fuer_decisions([100, 200, 300, 400])
     assert orte[100]["ort_name"] == "Cäcilienbrücke" and orte[100]["lat"] == 53.135
     assert 200 not in orte  # Huntebad hat keine Koordinaten
     assert 300 not in orte  # Organisation zählt nicht als Pin
+    assert 400 not in orte  # Vergleichsort außerhalb Oldenburgs
     assert store.orte_fuer_decisions([]) == {}
     store.close()
 

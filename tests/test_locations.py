@@ -114,6 +114,12 @@ def test_location_storage_replaces_per_decision_and_keeps_one_off_places(tmp_pat
     pin = store.orte_fuer_decisions([7])[7]
     assert pin == {"ort_name": "Junkerstraße", "lat": 53.14, "lon": 8.21}
 
+    # Ein externer Vergleichsort darf trotz Koordinaten nicht auf der
+    # Oldenburg-Karte erscheinen.
+    store.set_location_geo("junkerstrasse", 52.3759, 9.7320, None)
+    assert 7 not in store.orte_fuer_decisions([7])
+    store.set_location_geo("junkerstrasse", 53.14, 8.21, None)
+
     # Ein neuer Lauf ersetzt die Zuordnungen dieses Beschlusses atomar; der Ort
     # muss nicht wie bei Themen-Entitäten in mindestens zwei Beschlüssen vorkommen.
     store.save_decision_locations(7, [{
