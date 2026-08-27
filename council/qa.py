@@ -176,7 +176,10 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
     model_channels = list(dict.fromkeys(
         c for c in (plan.get("channels") or []) if c in RESEARCH_CHANNELS))
     mandatory = ["decisions"]
-    if typ == "geld":
+    # Manche klaren Finanzfragen klassifiziert das Modell sinnvoll als
+    # ``thema`` (Prüfbericht, Pflichtaufgabe, Gebühren). Der deterministische
+    # Quellenrouter erkennt sie trotzdem; der Rechercheplan muss dazu passen.
+    if typ == "geld" or geld_facetten(question, typ):
         mandatory.append("budget")
     if typ in ("person", "partei") or person:
         mandatory.append("debates")
@@ -1685,7 +1688,7 @@ def _steuerkraft_block(k: dict | None) -> str:
 #: der andere drinbliebe, stünde eine Investitionszahl ohne ihr Gegenstück im
 #: Kontext — und die Regel „nie voneinander abziehen" hinge an einer Zahl, die
 #: gar nicht da ist. Nebeneinander fallen sie zusammen oder gar nicht.
-GELD_FACETTEN = ("schulden", "stellenplan", "investitionen", "gebaut",
+GELD_FACETTEN = ("schulden", "gebuehren", "stellenplan", "investitionen", "gebaut",
                  "ist", "gruende", "pruefung", "produkte", "antraege",
                  "plan", "ansatz", "steuern", "ausgleich", "konzern", "vergleich",
                  # Die vier Schichten aus den Jahresabschlüssen (08/2026).
@@ -1761,6 +1764,9 @@ _F_IST_WEICH = re.compile(
 _F_GRUND = re.compile(r"\bwarum|weshalb|wieso|woran liegt|wie kommt|"
                       r"\bgrund\b|\bgruende\b|\bursach|erklaer.{0,12}(sich|das|warum)")
 _F_STEUERN = re.compile(r"steuer|hebesatz|gewerbe|grundbesitz")
+_F_GEBUEHREN = re.compile(
+    r"gebuehr|gebuehrenbedarf|muellgebuehr|abfallgebuehr|"
+    r"strassenreinigungsgebuehr|kehrgebuehr")
 _F_AUSGLEICH = re.compile(
     r"hebesatz|schluesselzuweisung|finanzausgleich|steuerkraft|\bnfag\b|"
     r"zuweisung.{0,10}land|land.{0,15}zuweisung")
@@ -1871,6 +1877,8 @@ def geld_facetten(frage: str, typ: str = "thema") -> set[str]:
         f.add("ist")
     if _F_STEUERN.search(t):
         f.add("steuern")
+    if _F_GEBUEHREN.search(t):
+        f.add("gebuehren")
     # „Was kostet X?" ist die Frage, die die Produktebene beantwortet — dort
     # steht eine Aufgabe mit ihren Kosten. Die Aufgaben-Wörter („muss die
     # Stadt …", „Rechtsgrundlage", „kürzen") ziehen sie auch ohne Kostenwort:
@@ -1914,7 +1922,12 @@ def geld_facetten(frage: str, typ: str = "thema") -> set[str]:
     # bekommen. Fragt jemand nach beidem („Wie viel gibt die Stadt für
     # Investitionen aus?"), kommen beide, und der Baustein sagt, dass es zwei
     # Haushalte sind.
-    if _F_INVEST.search(t):
+    # „Neubau" beschreibt auch bloß ein Thema („Was sagte die SPD zum
+    # Stadionneubau?", „Wie entwickelte sich die Diskussion?"). Bei
+    # Positions- und Verlaufsfragen ist das noch keine Haushaltsfrage; dort
+    # braucht es zusätzlich einen ausdrücklichen Geld-Anker.
+    if (_F_INVEST.search(t)
+            and (typ not in ("partei", "person", "verlauf") or _F_PLAN.search(t))):
         # Immer beide: „Was wird gebaut?" hat einen Plan und ein Ist, und die
         # Frage sagt fast nie, welches von beidem gemeint ist. Nur den Plan zu
         # liefern hieße, jede Rückschau mit Absichtserklärungen zu beantworten;
@@ -1955,6 +1968,8 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "thema") -> d
     # Die Begriffe kommen aus der Expansion; ohne sie tut es die Frage selbst.
     woerter = [w for w in (begriffe or frage or "").split() if w]
     aus: dict = {"facetten": sorted(facetten)}
+    if "gebuehren" in facetten:
+        aus["gebuehren"] = _sicher(store.gebuehren_fuer_begriffe, woerter)
     if "plan" in facetten:
         aus["haushalt"] = _sicher(store.haushalt_fuer_begriffe, woerter, standard=[])
     if "steuern" in facetten:
@@ -2119,6 +2134,48 @@ def _beleg_text(b: dict | None) -> str:
         return ""
     stand = f", Stand {b['stand']}" if b.get("stand") else ""
     return f" — Beleg: {', '.join(str(t) for t in teile)}{stand}"
+
+
+def _gebuehren_block(g: dict | None) -> str:
+    """Geprüfte Gebührenkalkulationen, getrennt vom endgültigen Beschluss."""
+    if not g or not g.get("bereiche"):
+        return ""
+
+    def geld(v, stellen=2):
+        if v is None:
+            return "–"
+        return f"{v:,.{stellen}f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    zeilen: list[str] = []
+    for gruppe in g["bereiche"]:
+        for r in gruppe.get("werte") or []:
+            s = (f"- {r['bereich_name']} {r['jahr']}: Kostenkalkulation "
+                 f"{_eur(r.get('kostenkalkulation'))}, Abzüge "
+                 f"{_eur(r.get('abzuege'))}, durch Gebühren zu decken "
+                 f"{_eur(r.get('zu_deckende_kosten'))}")
+            if r.get("gebuehr") is not None:
+                einheit = f" je {r['bezugseinheit']}" if r.get("bezugseinheit") else ""
+                s += f"; errechnete Gebühr {geld(r['gebuehr'], 3)}{einheit}"
+            else:
+                s += ("; keine einzelne Gebühr ausgewiesen (Grundgebühr und "
+                      "volumenabhängige Gebühr werden getrennt berechnet)")
+            if r.get("gebuehrenvorschlag") is not None:
+                s += f"; gerundeter Gebührenvorschlag {geld(r['gebuehrenvorschlag'])}"
+            if r.get("vorlage_nr"):
+                s += f"; Vorlage {r['vorlage_nr']}"
+            s += _beleg_text(r.get("beleg"))
+            zeilen.append(s)
+    if not zeilen:
+        return ""
+    return (
+        "\nGEBÜHRENBEDARFSBERECHNUNGEN (KALKULATION/VORSCHLAG, nicht automatisch "
+        "der endgültig beschlossene Gebührensatz; Jahr und Quelle nennen, NIE mit [id]):\n"
+        + "\n".join(zeilen)
+        + "\n- REGEL: Erkläre Veränderungen nur aus den ausgewiesenen Größen. Die "
+          "Gesamtkalkulation zeigt, DASS sich Kosten oder Abzüge geändert haben; sie "
+          "belegt ohne einzelne Kostenpositionen nicht, WARUM. Ein Vorschlag wird erst "
+          "durch einen passenden Ratsbeschluss zur beschlossenen Gebühr.\n"
+    )
 
 
 def _ist_block(ist: dict | None) -> str:
@@ -2586,6 +2643,7 @@ GELD_MAX_CHARS = 4500
 #: Baustein je Facette. Reihenfolge steckt in GELD_FACETTEN.
 _GELD_BAUSTEINE = {
     "schulden": ("schulden", _schulden_block),
+    "gebuehren": ("gebuehren", _gebuehren_block),
     "bilanz": ("bilanz", _bilanz_block),
     "kassensicht": ("kassensicht", _kassensicht_block),
     "nachbewilligungen": ("nachbewilligungen", _nachbewilligungen_block),

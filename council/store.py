@@ -10947,6 +10947,53 @@ class CouncilStore:
             return None
         return dict(r) if r else None
 
+    def gebuehren_fuer_begriffe(self, begriffe: list[str],
+                                limit_jahre: int = 4) -> dict | None:
+        """Gebührenbedarfsberechnungen passend zur Frage, jüngste zuerst.
+
+        Die Tabelle enthält drei getrennte Kalkulationen. Eine Müllfrage
+        braucht beide Abfallbereiche, eine Frage zur Straßenreinigung nur
+        deren Anlage; bei einer allgemeinen Gebührenfrage kommen alle drei.
+        Jede Zeile trägt ihren eigenen Beleg, weil die Bereiche aus
+        unterschiedlichen Anlagen stammen.
+        """
+        worte = {self._falte_wort(w) for w in begriffe if w}
+        text = " ".join(sorted(worte))
+        bereiche: list[str] = []
+        if any(w in text for w in ("abfall", "muell", "tonne", "behaelter",
+                                   "restmuell", "biomuell")):
+            bereiche.extend(("abfallbehandlung", "abfallsammlung"))
+        if any(w in text for w in ("strassenreinig", "kehrgeb", "kehrdienst")):
+            bereiche.append("strassenreinigung")
+        if not bereiche and any(w in text for w in ("gebuehr", "gebuehrenbedarf")):
+            bereiche = ["abfallbehandlung", "abfallsammlung", "strassenreinigung"]
+        bereiche = list(dict.fromkeys(bereiche))
+        if not bereiche:
+            return None
+        try:
+            platz = ",".join("?" for _ in bereiche)
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT jahr, bereich, bereich_name, kostenkalkulation, abzuege, "
+                "zu_deckende_kosten, bezugsmenge, bezugseinheit, gebuehr, "
+                "gebuehrenvorschlag, vorlage_nr, herkunft_id "
+                f"FROM council_gebuehren WHERE bereich IN ({platz}) "
+                "ORDER BY bereich, jahr DESC", bereiche)]
+        except sqlite3.OperationalError:
+            return None
+        if not rows:
+            return None
+        gruppen: list[dict] = []
+        for bereich in bereiche:
+            werte = [r for r in rows if r["bereich"] == bereich][:limit_jahre]
+            if not werte:
+                continue
+            for r in werte:
+                r["beleg"] = self._beleg(r.get("herkunft_id"))
+            gruppen.append({"bereich": bereich,
+                            "bereich_name": werte[0]["bereich_name"],
+                            "werte": werte})
+        return {"bereiche": gruppen} if gruppen else None
+
     def ergebnis_ist_fuer_begriffe(self, begriffe: list[str], limit: int = 2) -> dict | None:
         """„Geplant und tatsächlich" aus dem jüngsten Jahresabschluss.
 
