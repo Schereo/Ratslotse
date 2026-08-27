@@ -153,7 +153,7 @@ def council_facts(store, *, stadtteil: str | None = None, place_id: str | None =
     Leerer String, wenn nichts vorliegt."""
     lines: list[str] = []
     slugs: list[str] = []
-    if place_id and (place := places.resolve(place_id)):
+    if place_id and (place := store.resolve_place(place_id)):
         if place.description:
             lines.append(f"{place.name}: {place.description}")
         rows = store.get_decisions_by_ids(store.decision_ids_for_place(place.id, limit=20))

@@ -538,6 +538,10 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const field = sp.get("field") ?? "";
   const party = sp.get("party") ?? "";
   const district = sp.get("district") ?? "";
+  // Exakter, von einem Kartenpunkt gesetzter Beschlussort. Anders als der
+  // Katalogfilter `district` meint dies genau eine Straße/ein Gebäude.
+  const location = sp.get("location") ?? "";
+  const locationName = sp.get("location_name") ?? location;
   // Design 23a: Änderungsanträge (subvotes) sind standardmäßig aus der Liste
   // ausgeblendet (Kontext am Ursprungsbeschluss). Rechercheure blenden sie
   // optional wieder einzeln ein.
@@ -585,7 +589,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       const data = await api.get<{ total: number; decisions: CouncilDecision[] }>(
         `/council/decisions${qs({
           q, committee, category: mode === "all" ? "" : mode, sort, field, party,
-          district,
+          district, location,
           outcome: mode === "vote" ? outcome : "",
           date_from: dateFrom, date_to: dateTo,
           include_subvotes: showSubvotes ? "1" : "",
@@ -601,12 +605,12 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     } finally {
       setLoading(false);
     }
-  }, [q, committee, mode, outcome, sort, field, party, district, dateFrom, dateTo, showSubvotes, page, topicId]);
+  }, [q, committee, mode, outcome, sort, field, party, district, location, dateFrom, dateTo, showSubvotes, page, topicId]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, committee, mode, outcome, sort, field, party, district, dateFrom, dateTo, showSubvotes, page, topicId]);
+  }, [debouncedQ, committee, mode, outcome, sort, field, party, district, location, dateFrom, dateTo, showSubvotes, page, topicId]);
 
   // RL-U02: Seitenwechsel führt zurück zum Listenanfang und setzt den Fokus
   // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
@@ -651,7 +655,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const districtValue = districts.find((item) => item.place_id === district || item.name === district)?.place_id ?? district;
 
   // Zeitraum zählt als EIN Filter; Sortierung ist eine Einstellung, kein Filter.
-  const activeFilterCount = [outcome, field, committee, district, dateFrom || dateTo].filter(Boolean).length;
+  const activeFilterCount = [outcome, field, committee, district, location, dateFrom || dateTo].filter(Boolean).length;
 
   // Ein JSX-Baum, zwei Einbauorte: Desktop inline in der Karte, mobil im Bottom-Sheet.
   const refineFilters = (
@@ -767,6 +771,10 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             onChange={(v) => setUrlParam("field", v)}
           />
         )}
+        {location && (
+          <FilterChip label={`Beschlussort: ${locationName}`}
+            onClear={() => setUrlParams({ location: "", location_name: "" })} />
+        )}
         {districts.length > 0 && (
           <ChipPopover
             label="Ortsbezug"
@@ -840,6 +848,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             )}
             {committee && <FilterChip label={shortCommittee(committee)} onClear={() => { setCommittee(""); setPage(1); }} />}
             {district && <FilterChip label={`Ortsbezug: ${district}`} onClear={() => setUrlParam("district", "")} />}
+            {location && <FilterChip label={`Beschlussort: ${locationName}`}
+              onClear={() => setUrlParams({ location: "", location_name: "" })} />}
             {(dateFrom || dateTo) && (
               <FilterChip
                 label={`${dateFrom ? formatDate(dateFrom) : "…"} – ${dateTo ? formatDate(dateTo) : "heute"}`}

@@ -7,7 +7,7 @@ import type { Map as LeafletMap, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { EntityMapPoint } from "@/lib/types";
 import type { StadtteilFeature } from "@/lib/stadtteile";
-import { themaHref } from "@/lib/routes";
+import { ortHref, themaHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 // CARTO Voyager als Basemap — zeigt Straßennetz, Grünflächen und Wasser
@@ -24,6 +24,7 @@ export const KIND_COLOR: Record<string, string> = {
   ort: "#0764a6",
   organisation: "#7c3aed",
   projekt: "#059669",
+  beschlussort: "#dc6b19",
 };
 
 // Ab diesem Zoom stehen die Themen-Namen direkt an den Punkten — auf dem
@@ -132,7 +133,14 @@ export function CouncilMap({ points, outlines, className }: {
           fillOpacity: 0.55,
         }).addTo(map);
         const hover = `${p.name} · ${p.n} ${p.n === 1 ? "Beschluss" : "Beschlüsse"}`;
-        marker.on("click", () => router.push(themaHref(p.slug)));
+        marker.on("click", () => {
+          if (p.target === "ort" && p.place_id) router.push(ortHref(p.place_id));
+          else if (p.target === "location") {
+            const query = new URLSearchParams({ tab: "decisions", cat: "all",
+              location: p.location_slug ?? p.slug, location_name: p.name });
+            router.push(`/council?${query.toString()}`);
+          } else router.push(themaHref(p.slug));
+        });
         latlngs.push([p.lat, p.lon]);
         markers.push({ marker, label: p.name, hover, n: p.n, radius, dir: undefined });
       }

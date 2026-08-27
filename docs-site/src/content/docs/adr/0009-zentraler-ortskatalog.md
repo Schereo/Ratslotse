@@ -27,9 +27,11 @@ Stadtteile“ genauer, als die Datengrundlage tatsächlich ist.
 
 Ratslotse trennt zwei Ebenen und verbindet sie über stabile IDs:
 
-- Der versionierte Katalog `council/oldenburg_places.json` ist die einzige
-  Quelle für stabile IDs, Anzeigenamen, Schreibvarianten, Typen, Hierarchien
-  und Quellenhinweise.
+- Der versionierte Basiskatalog `council/oldenburg_places.json` enthält die 31
+  flächendeckenden Ortsbereiche und fest recherchierte Startdaten. Eine
+  redaktionelle DB-Schicht (`council_place_reviews`) erweitert ihn um geprüfte
+  Kandidaten, ohne Rohbeobachtungen oder Git-Dateien im laufenden Betrieb zu
+  überschreiben. Beide Schichten bilden gemeinsam den Laufzeitkatalog.
 - Die 31 flächendeckenden **Ortsbereiche** bleiben die primäre Produktebene.
   Zusätzlich darf der Katalog kuratierte, nicht flächendeckende Ortsobjekte wie
   Quartiere, Wohn- und Sanierungsgebiete, Parks, Schutz- oder
@@ -39,12 +41,22 @@ Ratslotse trennt zwei Ebenen und verbindet sie über stabile IDs:
   zunächst **Beobachtungen**. Häufigkeit allein macht sie nicht zum Katalogort.
   In den Katalog aufgenommen werden nur wiederkehrende, politisch nützliche und
   anhand belastbarer Quellen eindeutig benennbare Orte.
+- Der Admin-Bereich zeigt Kandidaten mit Beschlusszahl, Koordinaten und
+  Fundstellen-Stichproben. Ein Urteil kann einen eigenen Katalogort freigeben,
+  den Namen als Alias eines vorhandenen Orts einordnen oder ihn verwerfen; es
+  bleibt reversibel. Neuimporte verwenden freigegebene Namen und Aliase sofort.
 - Grenzen bleiben ein separates, über den stabilen Namen verknüpftes
   GeoJSON-Asset. Sie stammen aus OpenStreetMap (`admin_level=10`, ODbL) und
   sind keine amtlichen Stadtteilgrenzen.
 - Backend, Beschlusssuche, Themenkarte, Quiz und KI-Ortsextraktion lesen
   denselben Katalog. Das Frontend bekommt ihn über `/api/council/places`;
   einzelne Orte besitzen ein Profil unter `/api/council/place/{id}`.
+- Die Stadtkarte ergänzt Themen um konkrete Beschlussorte innerhalb Oldenburgs.
+  Straßen, Plätze, Gebäude und Gewässer werden ab drei verschiedenen
+  Beschlüssen automatisch gezeigt. Unscharfe Gebietsbegriffe erscheinen erst
+  nach redaktioneller Freigabe; verworfene Kandidaten nie. Bei gleichem Namen
+  ersetzt der präzisere Beschlussort den alten Themenpunkt. Ein Klick öffnet
+  das Ortsprofil oder eine exakt auf diesen Rohort gefilterte Beschlussliste.
 - Neue Beschluss-Orte speichern neben dem Rohbeleg eine exakte `place_id` und,
   soweit bekannt, die übergeordnete `ortsbereich_id`. Ein einmaliger Backfill
   ergänzt diese IDs in bestehenden Ortslinks. Aliase bleiben Eingabeformen;

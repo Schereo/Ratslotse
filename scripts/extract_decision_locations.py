@@ -32,6 +32,7 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 def process(council_db: Path, *, full: bool = False, limit: int | None = None,
             use_llm: bool = True, batch_size: int = 12) -> dict:
     store = CouncilStore(council_db)
+    place_catalog = store.all_places()
     if full:
         store.reset_decision_location_scans()
 
@@ -56,9 +57,10 @@ def process(council_db: Path, *, full: bool = False, limit: int | None = None,
 
         for row in batch:
             rid = row["id"]
-            explicit_title = locations.extract_explicit_locations(row.get("title") or "", source="title")
+            explicit_title = locations.extract_explicit_locations(
+                row.get("title") or "", source="title", catalog_places=place_catalog)
             explicit_decision = locations.extract_explicit_locations(
-                row.get("beschluss") or "", source="beschluss")
+                row.get("beschluss") or "", source="beschluss", catalog_places=place_catalog)
             merged = locations.merge_candidates(
                 explicit_title, explicit_decision, old_places.get(rid, []), llm_places.get(rid, []))
             # Nur ein vollständiger LLM-Lauf (oder bewusst --no-llm) setzt den

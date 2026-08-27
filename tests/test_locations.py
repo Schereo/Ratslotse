@@ -432,3 +432,81 @@ def test_backfill_streams_across_multiple_batches(tmp_path):
     stats = process(db, use_llm=False, batch_size=4)
     assert stats["candidates"] == stats["scanned"] == 25
     assert process(db, use_llm=False, batch_size=4)["candidates"] == 0
+
+
+def test_reviewed_place_joins_catalog_extraction_search_and_map(tmp_path):
+    store = CouncilStore(tmp_path / "council.sqlite")
+    store._conn.execute(
+        "INSERT INTO council_sessions "
+        "(ksinr,committee,session_date,session_time,location,fetched_at) "
+        "VALUES (1,'Rat','2026-05-01','18:00','Rathaus','')"
+    )
+    store._conn.executemany(
+        "INSERT INTO council_decisions "
+        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "VALUES (?,1,?,'decision',?,'Planung am Testquartier','Beschlossen')",
+        [(i, i, str(i)) for i in range(1, 4)],
+    )
+    store._conn.commit()
+    for decision_id in range(1, 4):
+        store.save_decision_locations(decision_id, [{
+            "name": "Testquartier", "kind": "gebiet", "source": "title",
+            "evidence": "am Testquartier", "method": "llm", "confidence": 0.91,
+        }], f"hash-{decision_id}")
+    store._conn.execute(
+        "UPDATE council_locations SET lat=53.16,lon=8.22,geo_tried=1,"
+        "stadtteil='Nadorst',ortsbereich_id='nadorst' WHERE slug='testquartier'"
+    )
+    store._conn.commit()
+
+    # Unscharfe Gebietsbegriffe kommen nicht allein wegen Häufigkeit auf die Karte.
+    assert not any(p["slug"] == "testquartier" for p in store.decision_location_map_points())
+    candidate = next(c for c in store.location_candidates() if c["slug"] == "testquartier")
+    assert candidate["decision_count"] == 3 and len(candidate["evidence"]) == 3
+
+    store.review_location_candidate(
+        "testquartier", status="approved", place_id="testquartier",
+        name="Testquartier", kind="quartier", parent_id="nadorst",
+        aliases=["Test-Quartier"], description="Ein Testgebiet.",
+        source_url="https://example.test/ort", updated_by="admin@test.de",
+    )
+    place = store.resolve_place("Test-Quartier")
+    assert place and place.id == "testquartier" and place.parent_ids == ("nadorst",)
+    assert store.count_decisions(district="testquartier") == 3
+    assert store.count_decisions(location_slug="testquartier") == 3
+    assert extract_explicit_locations(
+        "Vorhaben im Test-Quartier", source="title", catalog_places=store.all_places()
+    )[0]["name"] == "Testquartier"
+    point = next(p for p in store.decision_location_map_points() if p["slug"] == "testquartier")
+    assert point["target"] == "ort" and point["place_id"] == "testquartier"
+
+    store.review_location_candidate("testquartier", status="rejected")
+    assert not any(p["slug"] == "testquartier" for p in store.decision_location_map_points())
+    store.close()
+
+
+def test_reviewed_alias_resolves_to_existing_catalog_place(tmp_path):
+    store = CouncilStore(tmp_path / "council.sqlite")
+    store._conn.execute(
+        "INSERT INTO council_sessions "
+        "(ksinr,committee,session_date,session_time,location,fetched_at) "
+        "VALUES (1,'Rat','2026-05-01','18:00','Rathaus','')"
+    )
+    store._conn.execute(
+        "INSERT INTO council_decisions "
+        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "VALUES (1,1,1,'decision','1','Nadorster Gebiet','Beschlossen')"
+    )
+    store._conn.commit()
+    store.save_decision_locations(1, [{
+        "name": "Nadorster Gebiet", "kind": "gebiet", "source": "title",
+        "evidence": "Nadorster Gebiet", "method": "llm", "confidence": 0.9,
+    }], "hash")
+    store.review_location_candidate(
+        "nadorster-gebiet", status="alias", canonical_place_id="nadorst")
+    assert store.resolve_place("Nadorster Gebiet").id == "nadorst"
+    assert store.count_decisions(district="nadorst") == 1
+    extracted = extract_explicit_locations(
+        "Neue Planung im Nadorster Gebiet", source="title", catalog_places=store.all_places())
+    assert extracted[0]["name"] == "Nadorst"
+    store.close()

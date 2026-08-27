@@ -3028,6 +3028,56 @@ def test_curated_place_alias_filters_by_stable_id_and_has_profile(client):
     assert next(row for row in districts if row["place_id"] == "neu-donnerschwee")["count"] == 1
 
 
+def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
+    _register(client)
+    council = CouncilStore(COUNCIL_DB)
+    council.save_session(CouncilSession(1, "Rat", "2026-01-15", "17:00", "Ratssaal"))
+    with council._conn:
+        council._conn.executemany(
+            "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
+            "VALUES (?,1,?,'Planung Testanger','angenommen','decision')",
+            [(1, 0), (2, 1), (3, 2)],
+        )
+    for decision_id in (1, 2, 3):
+        council.save_decision_locations(decision_id, [{
+            "name": "Testanger", "kind": "gebiet", "source": "title",
+            "evidence": "Planung Testanger", "method": "llm", "confidence": 0.92,
+        }], f"hash-{decision_id}")
+    with council._conn:
+        council._conn.execute(
+            "UPDATE council_locations SET lat=53.16,lon=8.22,stadtteil='Nadorst',"
+            "ortsbereich_id='nadorst',geo_tried=1 WHERE slug='testanger'"
+        )
+    council.close()
+
+    pending = client.get("/api/admin/place-candidates?status=pending")
+    assert pending.status_code == 200
+    assert pending.json()["candidates"][0]["slug"] == "testanger"
+    reviewed = client.put("/api/admin/place-candidates/testanger", json={
+        "status": "approved", "place_id": "testanger", "name": "Testanger",
+        "kind": "quartier", "parent_id": "nadorst", "aliases": ["Test-Anger"],
+        "description": "Ein überprüftes Testgebiet.", "source_url": "https://example.test/ort",
+    })
+    assert reviewed.status_code == 200
+
+    catalog = client.get("/api/council/places").json()["places"]
+    assert next(p for p in catalog if p["id"] == "testanger")["parents"][0]["id"] == "nadorst"
+    map_points = client.get("/api/council/entities-map")
+    assert map_points.status_code == 200
+    point = next(p for p in map_points.json()["entities"] if p["slug"] == "testanger")
+    assert point["kind"] == "beschlussort" and point["target"] == "ort"
+
+    exact = client.get("/api/council/decisions?location=testanger&category=vote")
+    assert exact.status_code == 200 and exact.json()["total"] == 3
+    assert exact.json()["decisions"][0]["location_matches"][0]["name"] == "Testanger"
+    assert client.get("/api/council/decisions?location=unbekannt").status_code == 400
+
+    rejected = client.put("/api/admin/place-candidates/testanger", json={"status": "rejected"})
+    assert rejected.status_code == 200
+    assert not any(p["slug"] == "testanger" for p in
+                   client.get("/api/council/entities-map").json()["entities"])
+
+
 # --- Vorgänge verfolgen (Design 28a/W1) ------------------------------------
 
 def _seed_vorlage(kvonr: int = 4711, vorlage_nr: str = "26/0396",

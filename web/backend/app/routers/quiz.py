@@ -54,7 +54,7 @@ def _badges(stats: dict, streak: int, theme_labels: dict[str, str]) -> list[dict
     return out
 
 
-def _expand(areas: list[str]) -> list[tuple[str, str]]:
+def _expand(areas: list[str], council: CouncilStore) -> list[tuple[str, str]]:
     """„type:key"-Strings in (area_type, area_key)-Paare; Wahlbereiche auf ihre
     Stadtteile aufgelöst."""
     out: list[tuple[str, str]] = []
@@ -62,7 +62,7 @@ def _expand(areas: list[str]) -> list[tuple[str, str]]:
         typ, _, key = a.partition(":")
         if typ == "wahlbereich" and key.isdigit():
             out += [("stadtteil", n) for n in geo.ortsbereiche_im_wahlbereich(int(key))]
-        elif typ == "stadtteil" and (place := places.resolve(key)):
+        elif typ == "stadtteil" and (place := council.resolve_place(key)):
             out.append((typ, place.name))
         elif typ == "thema" and key:
             out.append((typ, key))
@@ -80,7 +80,7 @@ def areas(user: dict = Depends(require_active),
     points = store.quiz_points_by_area(user["id"])  # {(type, key): points}
 
     stadtteile = []
-    for place in places.all_places():
+    for place in council.all_places():
         n = counts.get(("stadtteil", place.name), 0)
         if n:
             stadtteile.append({
@@ -124,7 +124,7 @@ def round_(areas: str = Query(..., description="komma-separiert, z. B. wahlberei
            store: Store = Depends(get_store),
            council: CouncilStore = Depends(get_council_store)) -> dict:
     """Eine Runde Fragen — bevorzugt noch nicht beantwortete, OHNE Lösung."""
-    pairs = _expand([a for a in areas.split(",") if a.strip()])
+    pairs = _expand([a for a in areas.split(",") if a.strip()], council)
     if not pairs:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Kein gültiges Gebiet gewählt.")
     cats = [c for c in categories.split(",") if c in CATEGORIES]
@@ -278,11 +278,11 @@ def _auto_range(value: float, unit: str | None = None) -> tuple[float, float]:
     return 0.0, float(max(hi, abs(value) + step))
 
 
-def _validate_own(payload: UserQuizQuestionIn) -> dict:
+def _validate_own(payload: UserQuizQuestionIn, council: CouncilStore) -> dict:
     if payload.category not in CATEGORIES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannte Kategorie.")
     raw_place = (payload.stadtteil or "").strip() or None
-    place = places.resolve(raw_place)
+    place = council.resolve_place(raw_place)
     if raw_place is not None and not place:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Ortsbereich.")
     st = place.name if place else None
@@ -319,19 +319,21 @@ def own_list(user: dict = Depends(require_active),
 @router.post("/own")
 def own_create(payload: UserQuizQuestionIn,
                user: dict = Depends(require_active),
-               store: Store = Depends(get_store)) -> dict:
+               store: Store = Depends(get_store),
+               council: CouncilStore = Depends(get_council_store)) -> dict:
     if len(store.list_user_quiz_questions(user["id"])) >= MAX_OWN_QUESTIONS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             f"Maximal {MAX_OWN_QUESTIONS} eigene Fragen möglich.")
-    qid = store.save_user_quiz_question(user["id"], _validate_own(payload))
+    qid = store.save_user_quiz_question(user["id"], _validate_own(payload, council))
     return {"ok": True, "id": qid}
 
 
 @router.put("/own/{question_id}")
 def own_update(question_id: int, payload: UserQuizQuestionIn,
                user: dict = Depends(require_active),
-               store: Store = Depends(get_store)) -> dict:
-    if store.save_user_quiz_question(user["id"], _validate_own(payload), question_id) is None:
+               store: Store = Depends(get_store),
+               council: CouncilStore = Depends(get_council_store)) -> dict:
+    if store.save_user_quiz_question(user["id"], _validate_own(payload, council), question_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
     return {"ok": True, "id": question_id}
 
