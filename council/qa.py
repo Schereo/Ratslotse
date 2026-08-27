@@ -270,6 +270,10 @@ _RECENCY_RE = re.compile(
     r"\b(stand|aktuell\w*|derzeit\w*|momentan\w*|inzwischen|zurzeit|"
     r"jetzt|heute|zuletzt|neuest\w*|j[üu]ngst\w*)\b", re.IGNORECASE)
 _HISTORISCH_RE = re.compile(r"\b(19|20)\d{2}\b")
+_LATEST_RE = re.compile(
+    r"\b(zuletzt|neueste[nmrs]?|j[üu]ngste[nmrs]?|letzte[nsr]?\s+beschl(?:uss|[üu]sse))\b",
+    re.IGNORECASE,
+)
 
 
 def recency_intent(frage: str) -> bool:
@@ -277,6 +281,17 @@ def recency_intent(frage: str) -> bool:
     deterministisch, kostenlos, testbar. Eine konkrete Jahreszahl in der
     Frage schaltet den Bonus ab (wer nach 2019 fragt, will 2019)."""
     return bool(_RECENCY_RE.search(frage)) and not _HISTORISCH_RE.search(frage)
+
+
+def latest_intent(frage: str) -> bool:
+    """Will die Frage ausdrücklich die zeitlich neuesten Entscheidungen?
+
+    Enger als :func:`recency_intent`: Ein allgemeiner „aktueller Stand“ braucht
+    weiterhin die fachlich relevantesten Stationen. Bei „zuletzt beschlossen“
+    ist dagegen das Datum die eigentliche Antwort und darf nicht gegen den
+    semantisch ähnlichsten älteren Titel verlieren.
+    """
+    return bool(_LATEST_RE.search(frage or "")) and not _HISTORISCH_RE.search(frage or "")
 
 
 def _falte(text: str) -> str:
@@ -2486,6 +2501,13 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
             "belegtem Bezug zu genau diesem Ort; die konkrete Fundstelle steht "
             "im Kontext als „Ortsbezug“. Verwechsle einen kleineren Ort nicht "
             "mit seinem größeren Ortsbereich und benenne eine dünne Datenlage ehrlich."
+        )
+    if latest_intent(question):
+        ortsregel += (
+            "\nCHRONOLOGIE: Die Frage verlangt ausdrücklich das Neueste. Die "
+            "Beschlüsse stehen neueste zuerst. Beginne mit der zeitlich neuesten "
+            "echten Entscheidung; unterscheide angenommene/abgelehnte Beschlüsse "
+            "klar von bloßen Berichten oder Kenntnisnahmen."
         )
     prompt = prompts.render("qa_antwort", question=question.strip()[:300],
                             context=_build_context(candidates),

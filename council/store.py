@@ -12138,7 +12138,8 @@ class CouncilStore:
         return nummer, rest
 
     def wortbeitraege_zu_beschluessen(self, decisions: list[dict], max_gesamt: int = 6,
-                                      max_je_top: int = 4) -> list[dict]:
+                                      max_je_top: int = 4,
+                                      sprecher: str = "") -> list[dict]:
         """Die Debatte, die zu diesen Beschlüssen GEHÖRT — über die Station,
         nicht über Wortähnlichkeit.
 
@@ -12168,13 +12169,17 @@ class CouncilStore:
         if not stationen:
             return []
         ph = ",".join("?" * len(stationen))
+        sprecher_filter = " AND w.sprecher LIKE ?" if sprecher.strip() else ""
+        params: list = list(stationen)
+        if sprecher_filter:
+            params.append(f"%{sprecher.strip()}%")
         rows = self._conn.execute(
             f"""SELECT w.id, w.ksinr, w.seite, w.art, w.top, w.sprecher, w.partei,
                        w.text, w.antwort, cs.committee, cs.session_date
                 FROM council_wortbeitraege w
                 LEFT JOIN council_sessions cs ON cs.ksinr = w.ksinr
-                WHERE w.ksinr IN ({ph}) AND w.top IS NOT NULL
-                ORDER BY cs.session_date DESC, w.id""", list(stationen)).fetchall()
+                WHERE w.ksinr IN ({ph}) AND w.top IS NOT NULL{sprecher_filter}
+                ORDER BY cs.session_date DESC, w.id""", params).fetchall()
         treffer: list[dict] = []
         je_top: dict[tuple[int, str], int] = {}
         for r in rows:
