@@ -25,7 +25,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from kern import llm
-from council import geo
+from council import geo, places
 
 MODEL = os.environ.get("COUNCIL_QUIZ_MODEL", "deepseek/deepseek-v4-pro")
 VERIFY_MODEL = os.environ.get("COUNCIL_QUIZ_VERIFY_MODEL", "openai/gpt-4o-mini")
@@ -146,17 +146,32 @@ def fetch_stadt_text(name: str) -> tuple[str, str] | None:
         return None
 
 
-def council_facts(store, *, stadtteil: str | None = None, slug: str | None = None) -> str:
+def council_facts(store, *, stadtteil: str | None = None, place_id: str | None = None,
+                  slug: str | None = None) -> str:
     """Ratsdaten-Kontext als Text: für einen Stadtteil die dort verorteten
     Entitäten + jüngste Beschlüsse, für ein Thema (slug) die Entität selbst.
     Leerer String, wenn nichts vorliegt."""
     lines: list[str] = []
     slugs: list[str] = []
+    if place_id and (place := store.resolve_place(place_id)):
+        if place.description:
+            lines.append(f"{place.name}: {place.description}")
+        rows = store.get_decisions_by_ids(store.decision_ids_for_place(place.id, limit=20))
+        rows.sort(key=lambda d: ((d.get("interest") or 0) >= 60,
+                                 d.get("importance") or 0), reverse=True)
+        for d in rows[:12]:
+            bits = [d.get("session_date", "")[:10], d.get("title", "").strip()]
+            if d.get("outcome"):
+                bits.append(f"[{d['outcome']}]")
+            if d.get("amount_eur"):
+                bits.append(f"{int(d['amount_eur']):,} €".replace(",", "."))
+            lines.append("- " + " ".join(bit for bit in bits if bit))
+        return _clip("\n".join(lines), 4000)
     if slug:
         slugs = [slug]
     elif stadtteil:
         for e in store.list_entities_geo():
-            if geo.stadtteil_for(e["lat"], e["lon"]) == stadtteil:
+            if geo.ortsbereich_for(e["lat"], e["lon"]) == stadtteil:
                 slugs.append(e["slug"])
     for s in slugs[:8]:
         det = store.entity_detail(s)
@@ -356,14 +371,18 @@ def enrich_row(row: dict, subject: str, *, area_type: str | None = None,
     if row.get("lat") is None:
         # Noch kein Punkt/keine Linie → das ganze GEBIET einzeichnen: den
         # Stadtteil des Subjekts, sonst den Stadtteil der Frage selbst.
-        poly_name = subject if geo.is_stadtteil(subject) else (
+        poly_name = subject if geo.is_ortsbereich(subject) else (
             area_key if area_type == "stadtteil" else None)
-        poly = geo.stadtteil_polygon(poly_name) if poly_name else None
-        center = geo.stadtteil_center(poly_name) if poly else None
+        poly = geo.ortsbereich_polygon(poly_name) if poly_name else None
+        center = geo.ortsbereich_center(poly_name) if poly else None
         if poly and center:
             row["lat"], row["lon"] = center
             row["place_label"] = poly_name
             row["geojson"] = json.dumps(poly, ensure_ascii=False)
+        elif area_type == "stadtteil" and (catalog_place := places.resolve(area_key)) \
+                and catalog_place.lat is not None and catalog_place.lon is not None:
+            row["lat"], row["lon"] = catalog_place.lat, catalog_place.lon
+            row["place_label"] = catalog_place.name
     # „Quelle"-Link präzisieren: bei Wikipedia-Fragen auf den Artikel des
     # konkreten Subjekts verlinken (die Frage stammt aus dem Gebiets-Artikel,
     # aber die Person/Sache hat eine eigene, hilfreichere Seite).
@@ -541,6 +560,23 @@ def _extra_texts(q: dict) -> str:
     return "\n".join(b for b in bits if b)
 
 
+def _clip_explanation(value: object, max_chars: int = 600) -> str | None:
+    """Erklärungen begrenzen, ohne sie mitten im Satz abzuschneiden."""
+    text = value.strip() if isinstance(value, str) else ""
+    if not text:
+        return None
+    if len(text) <= max_chars:
+        return text
+    # Wenn in der zweiten Hälfte ein vollständiger Satz endet, dort sauber
+    # abschließen. Bei einem einzigen sehr langen Satz kennzeichnet die Ellipse
+    # transparent, dass der Darstellungstext gekürzt wurde.
+    sentence_end = max(text.rfind(mark, max_chars // 2, max_chars)
+                       for mark in (".", "!", "?", "…"))
+    if sentence_end >= 0:
+        return text[:sentence_end + 1].rstrip()
+    return text[:max_chars - 1].rsplit(" ", 1)[0].rstrip(" ,;:–—-") + "…"
+
+
 def verify_question(sources: str, q: dict) -> bool:
     """Günstiger Zweit-Check: ist die richtige Antwort eindeutig aus den Quellen
     belegt (bei MC auch: andere klar falsch), beantwortet sie die Frage logisch
@@ -618,7 +654,7 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
             "category": q["category"],
             "difficulty": q.get("difficulty") if q.get("difficulty") in DIFFICULTIES else "mittel",
             "question": q["question"].strip(),
-            "explanation": (q.get("explanation") or "").strip()[:300] or None,
+            "explanation": _clip_explanation(q.get("explanation")),
             "detail": (q.get("detail") or "").strip()[:600] or None,
             "hint": (q.get("hint") or "").strip()[:200] or None,
             "topic": (q.get("topic") or "").strip()[:80] or None,

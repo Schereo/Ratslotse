@@ -1,17 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Play, Plus, Pencil, Trash2, ChevronLeft, Sparkles } from "lucide-react";
 import { UserQuizQuestion } from "@/lib/types";
 import { Card, Button, Input, toast } from "@/components/ui";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CATEGORY_LABEL } from "@/components/quiz-play";
-import { WAHLBEREICH } from "@/lib/stadtteile";
+import { loadOrtsbereichCatalog } from "@/lib/stadtteile";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-
-// Alle Stadtteilnamen (nicht nur die mit Katalog-Fragen) — für den Ort-Dropdown.
-const ALL_STADTTEILE = Object.keys(WAHLBEREICH).sort((a, b) => a.localeCompare(b, "de"));
 
 /** Eigene Quizfragen (RL-U14, Design 12a): Verwaltungsliste + Editor-Dialog.
  *  Privat je Konto; Üben läuft über die normale Spiel-Ansicht, gibt aber
@@ -90,6 +87,14 @@ function QuestionEditor({ open, initial, editId, onClose, onSaved }: {
 }) {
   const [draft, setDraft] = useState<Draft>(initial);
   const [saving, setSaving] = useState(false);
+  const [allOrtsbereiche, setAllOrtsbereiche] = useState<string[]>([]);
+  useEffect(() => {
+    void loadOrtsbereichCatalog()
+      .then((catalog) => setAllOrtsbereiche(
+        catalog.places.map((place) => place.name).sort((a, b) => a.localeCompare(b, "de")),
+      ))
+      .catch(() => {});
+  }, []);
   // Beim (Neu-)Öffnen den Stand des aufrufenden Eintrags übernehmen.
   const [seenInitial, setSeenInitial] = useState(initial);
   if (initial !== seenInitial) { setSeenInitial(initial); setDraft(initial); }
@@ -269,7 +274,7 @@ function QuestionEditor({ open, initial, editId, onClose, onSaved }: {
           <select value={draft.stadtteil} onChange={(e) => setDraft({ ...draft, stadtteil: e.target.value })}
             className="mt-1.5 h-10 w-full rounded-lg border border-input bg-card px-3 text-base text-foreground sm:text-sm">
             <option value="">Stadtweit</option>
-            {ALL_STADTTEILE.map((s) => <option key={s} value={s}>{s}</option>)}
+            {allOrtsbereiche.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
 

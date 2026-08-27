@@ -14,6 +14,9 @@ export WEB_ADMIN_EMAIL="admin@test.de"
 export COOKIE_SECURE="false"
 export DISABLE_RATE_LIMIT="1"
 export TELEGRAM_BOT_USERNAME="testbot"
+# Never inherit a developer's real mail configuration into throwaway browser
+# tests. Without delivery configured, test accounts are active immediately.
+export RESEND_API_KEY=""
 export PYTHONPATH="$REPO_ROOT"
 
 echo "E2E backend tmp dir: $TMP_DIR"
@@ -23,7 +26,8 @@ echo "NWZ_DB=$NWZ_DB"
 trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
 cd "$REPO_ROOT/web/backend"
-exec /usr/bin/python3.11 /usr/local/bin/uvicorn \
+PYTHON_BIN="${PYTHON_BIN:-$REPO_ROOT/.venv/bin/python}"
+exec "$PYTHON_BIN" -m uvicorn \
   app.main:app \
   --host 127.0.0.1 \
   --port 8001 \

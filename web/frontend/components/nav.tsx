@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
   CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon, Command,
-  MoreHorizontal, MessageCircle, Euro,
+  MoreHorizontal, MessageCircle, Bookmark, Euro,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -107,6 +107,7 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
   ...(HAUSHALT_FREI ? [{ href: "/haushalt", label: "Haushalt", icon: Euro }] : []),
 ];
 const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
+const BOOKMARKS: Item = { href: "/bookmarks", label: "Merkliste", icon: Bookmark };
 const QUIZ: Item = { href: "/quiz", label: "Quiz", icon: Trophy };
 
 // Mobile Tab-Bar (Design 9a③): fünf gleichwertige Ziele, kein FAB mehr —
@@ -128,7 +129,7 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
   // (Beschluss, Person, Thema), die ihr Inneres sind.
   (pathname === "/council" && tab !== "sessions")
   || pathname.startsWith("/council/")
-  || ["/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
+  || ["/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 // RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (WebThemeSwitch)
 // nur in der Desktop-Sidebar — mobil läuft die Wahl über Konto →
@@ -180,6 +181,7 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
 
       <SectionHeader>Persönlich</SectionHeader>
       <NavItem item={PERSONAL} active={isActive("/topics")} badge={unread} onNavigate={onNavigate} />
+      <NavItem item={BOOKMARKS} active={isActive("/bookmarks")} onNavigate={onNavigate} />
       <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
       {user?.role === "admin" && (
         <NavItem
@@ -525,6 +527,7 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
           <MehrZeile href="/council?tab=themen" icon={MapIcon} label="Stadtkarte" onClose={onClose} />
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
           {HAUSHALT_FREI && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
+          <MehrZeile href="/bookmarks" icon={Bookmark} label="Merkliste" onClose={onClose} />
           <MehrZeile href="/quiz" icon={Trophy} label="Quiz" onClose={onClose} />
           {user?.role === "admin" && (
             <MehrZeile href="/admin" icon={Settings} label="Admin" badge={openFeedbackUnread} primaerFarbe={false} onClose={onClose} />

@@ -9,18 +9,50 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
-from council import geo, quiz
+from council import geo, places, quiz
 from council.store import CouncilStore
+from scripts import generate_quiz
 
 
 # ---- Gebiets-Geometrie (Spiegel von lib/stadtteile.ts) ----------------------
 
 def test_geo_taxonomy():
-    assert len(geo.stadtteile()) == 31
+    assert len(geo.ortsbereiche()) == 31
+    assert geo.stadtteile() == geo.ortsbereiche()  # kompatibler Altname
     assert geo.WAHLBEREICHE == [1, 2, 3, 4, 5, 6]
     assert geo.wahlbereiche_of("Osternburg") == [5, 2]      # überwiegend 5, ragt in 2
     assert geo.wahlbereiche_of("Eversten") == [6]
     assert "Fliegerhorst" in geo.stadtteile_im_wahlbereich(3)
+
+
+def test_shared_place_catalog_has_stable_ids_aliases_and_sources():
+    catalog = places.public_catalog()
+    assert catalog["singular"] == "Ortsbereich"
+    assert "keine amtlich festgelegten Stadtteile" in catalog["definition"]
+    assert catalog["schema_version"] == 2
+    assert len(catalog["places"]) == 40
+    assert len(places.primary_places()) == 31
+    assert len(places.secondary_places()) == 9
+    assert len({place["id"] for place in catalog["places"]}) == 40
+    assert places.resolve("bornhorst").name == "Bornhorst"
+    assert places.resolve("Drielaker Moor").id == "drielaker-moor"
+    assert places.resolve("Nord-Moslesfehn").name == "Nordmoslesfehn"
+    assert {"definition", "reference", "geometry", "place"} == {
+        source["type"] for source in catalog["sources"]
+    }
+    neu = places.resolve("Donnerschwee-Kaserne")
+    assert neu.id == "neu-donnerschwee" and neu.parent_ids == ("donnerschwee",)
+    assert neu.kind == "quartier" and neu.description
+
+
+def test_place_mentions_prefer_specific_child_over_parent():
+    assert [place.id for place in places.find_mentions(
+        "Was wurde in Neu Donnerschwee beschlossen?")] == ["neu-donnerschwee"]
+
+
+def test_place_catalog_and_geometry_cover_the_same_areas():
+    feature_names = set(geo._by_name())
+    assert feature_names == set(geo.ortsbereiche())
 
 
 def test_geo_multi_wahlbereich():
@@ -36,9 +68,9 @@ def test_geo_multi_wahlbereich():
 
 def test_geo_point_in_stadtteil():
     # bekannte Koordinaten (wie in lib/stadtteile.ts verifiziert)
-    assert geo.stadtteil_for(53.1720, 8.1850) == "Fliegerhorst"
-    assert geo.stadtteil_for(53.128, 8.175) == "Eversten"
-    assert geo.stadtteil_for(53.253, 8.32) is None  # Umland
+    assert geo.ortsbereich_for(53.1720, 8.1850) == "Fliegerhorst"
+    assert geo.ortsbereich_for(53.128, 8.175) == "Eversten"
+    assert geo.ortsbereich_for(53.253, 8.32) is None  # Umland
 
 
 # ---- Parser + Validierung ---------------------------------------------------
@@ -92,6 +124,39 @@ def test_generate_for_area_parses_and_tags(monkeypatch):
     assert r["area_type"] == "stadtteil" and r["area_key"] == "Osternburg"
     assert r["source_type"] == "wikipedia" and r["content_hash"]
     assert len(r["options"]) == 4 and 0 <= r["correct_index"] < 4
+
+
+def test_generate_does_not_cut_explanation_mid_sentence(monkeypatch):
+    explanation = "Ein vollständiger erster Satz. " + ("Weitere Erklärung " * 50)
+    qs = [{"category": "geschichte", "difficulty": "leicht",
+           "question": "Wann wurde der Beispielort gegründet?",
+           "options": ["1922", "1913", "1891", "1945"], "correct_index": 0,
+           "explanation": explanation}]
+    monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
+    rows = quiz.generate_for_area("stadtteil", "Osternburg", "Osternburg", "x" * 500,
+                                  n=1, source_type="wikipedia", source_ref="http://w",
+                                  verify=False)
+    assert rows[0]["explanation"].endswith((".", "…"))
+    assert len(rows[0]["explanation"]) <= 600
+
+
+def test_quiz_backfill_requests_only_missing_count(tmp_path, monkeypatch):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_quiz_questions([_row("Testort", f"Frage {i}?") for i in range(7)])
+    store.close()
+    area = {"area_type": "stadtteil", "area_key": "Testort", "label": "Testort",
+            "place_name": "Testort", "place_id": None, "slug": None}
+    monkeypatch.setattr(generate_quiz, "_areas", lambda _store: [area])
+    monkeypatch.setattr(generate_quiz.quiz, "council_facts", lambda *args, **kwargs: "")
+    requested = []
+
+    def fake_gen(_area, _facts, n, _verify):
+        requested.append(n)
+        return {"status": "ok", "label": "Testort", "rows": []}
+
+    monkeypatch.setattr(generate_quiz, "_gen", fake_gen)
+    generate_quiz.process(tmp_path / "c.sqlite", target=10, per_run=8, workers=1)
+    assert requested == [3]
 
 
 def test_generate_skips_thin_sources(monkeypatch):

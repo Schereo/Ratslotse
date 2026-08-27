@@ -976,6 +976,20 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **„Dokument öffnen" öffnet jetzt das Dokument.** Im Quellenverzeichnis der Haushalts-Seiten führten sechs Quellen auf die Startseite des Ratsinformationssystems — man durfte das PDF selbst suchen. Der Link zeigt jetzt auf das Dokument des gerade gezeigten Jahres (wechselt das Jahr, wechselt das PDF), nennt die Fundstelle darin („Abschnitt 3.2"), und wo wir kein Dokument haben, verspricht er auch keines mehr. Der Knopf „Haushaltsplan als PDF" oben auf der Übersicht entfällt dafür: Er ließ eine von mehreren Quellen wie die einzige aussehen, seine jahresgenaue Adresse steckt jetzt im Beleg. Quellenverzeichnis und Datenstand stehen außerdem nicht mehr in der Kartenform des Inhalts, sondern zugeklappt als Apparat am Seitenfuß. (#538)
 - **Fünf Stellen im Haushalt erklären wieder den Haushalt statt uns.** Unter den Zahlen auf „Der Konzern Stadt" und „Steht Oldenburg besser da als Osnabrück?" standen bisher unsere eigenen Rechenproben und darunter „Gemessen: 0,00 % Abweichung" — jetzt steht dort nur noch, in welchem Abschnitt des Dokuments die Zahl zu finden ist, was beim Nachschlagen im 300-Seiten-PDF hilft. Ebenso raus: „Es erscheinen nur Jahre, deren Zahlen unsere Prüfung bestehen" samt drei Rechenproben in Prosa („Plan gegen Wirklichkeit"), die Parser-Bedingung im Fuß der Prüfungs-Seite und der Betriebsablauf im Datenstand („geprüft wird alle zwei Wochen"). Auf „Muss oder kann?" entfällt die Quote, zu wie viel Prozent unsere Einordnung sich mit der Selbstauskunft der Stadt deckt; die **Abweichung** bleibt und steht jetzt vorn, denn wo beide sich widersprechen, ist das eine Auskunft über die Aufgabe. Was bleibt, ist das, was jemandem etwas sagt: die Quelle, der Hinweis auf eigene Rechnungen und echte Grenzen wie „für dieses Jahr liegt der Schlussbericht nicht in lesbarer Form vor". Die Prüfungen selbst laufen unverändert weiter — sie stehen in Tests und in der Technik-Doku. (#542)
 - **„Frag den Rat" kennt jetzt den Haushalt.** Geldfragen sahen bisher nur Beschluss-Beträge, den Haushaltsplan und die Steuereinnahmen — Jahresabschlüsse, die 377 städtischen Aufgaben samt Rechtsgrundlage, die Feststellungen des Rechnungsprüfungsamts, der Konzern Stadt und der Städtevergleich blieben unsichtbar. Jetzt zieht jede Frage genau die Quellen, die sie beantworten: „Hat die Stadt 2024 mehr ausgegeben als geplant?" bekommt den Jahresabschluss samt Begründung der Verwaltung, „Muss die Stadt das Theater betreiben?" die Rechtsgrundlage der Aufgabe, „Was kostet die Stadt insgesamt?" den Konzern statt nur den Kernhaushalt. Jede Zahl kommt mit Jahr und Fundstelle, und Fragen ohne Geldbezug bekommen weiterhin nichts davon. (#543)
+### Geändert
+- **Ein gemeinsamer Ortskatalog für Suche, Quiz, Karten und KI-Frage.** Die 31
+  bisher verteilten Oldenburger Gebietslisten sind jetzt als zentrale
+  „Ratslotse-Ortsbereiche“ mit stabilen IDs, Schreibvarianten, Wahlbereichen und
+  Quellenhinweisen gepflegt. Die Oberfläche bezeichnet sie bewusst nicht mehr
+  als amtliche Stadtteile – denn eine solche amtliche Einteilung gibt es in
+  Oldenburg nicht. Bestehende Zuordnungen, einschließlich Bornhorst, bleiben
+  erhalten und werden nun in allen Funktionen gleich verwendet. Der Katalog
+  umfasst nun außerdem erste belegte Quartiere, Parks, Schutz-, Wohn-,
+  Sanierungs- und Entwicklungsgebiete. Beschlusssuche, Ortsprofile, Quiz und
+  „Frag den Rat“ greifen über dieselben stabilen IDs, Aliase und Hierarchien
+  darauf zu; neue Beschlüsse werden beim Einlesen automatisch verknüpft. Der
+  Quiz-Backfill fordert dabei nur noch die bis zum Ziel fehlenden Fragen an und
+  kürzt längere Erklärungen nicht mehr mitten im Satz.
 
 ## [1.13.2] – 2026-08-19
 

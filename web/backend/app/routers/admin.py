@@ -13,8 +13,8 @@ from kern.store import Store
 
 from ..config import get_settings
 from ..deps import get_council_store, get_store, require_admin
-from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PromptOut, PromptUpdate,
-                       RoleUpdate, StatusUpdate, WebUserOut)
+from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn, PromptOut,
+                       PromptUpdate, RoleUpdate, StatusUpdate, WebUserOut)
 
 logger = logging.getLogger("nwz.web.admin")
 
@@ -349,3 +349,53 @@ def delete_entity_alias(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Zuordnung nicht gefunden.")
     n_entities, _ = store.rebuild_entities_from_obs()
     return {"ok": True, "entities": n_entities}
+
+
+# ---- Ortskandidaten ---------------------------------------------------------
+
+@router.get("/place-candidates")
+def place_candidates(
+    review_status: str = Query("pending", alias="status",
+                               pattern="^(pending|approved|alias|rejected|all)$"),
+    limit: int = Query(200, ge=1, le=500),
+    min_decisions: int = Query(3, ge=1, le=100),
+    _admin: dict = Depends(require_admin),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Automatisch gefundene, noch nicht statisch katalogisierte Orte prüfen."""
+    items = store.location_candidates(
+        review_status, limit=limit, min_decisions=min_decisions)
+    return {"candidates": items, "status": review_status}
+
+
+@router.put("/place-candidates/{location_slug}")
+def review_place_candidate(
+    location_slug: str,
+    body: PlaceReviewIn,
+    admin: dict = Depends(require_admin),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    try:
+        return store.review_location_candidate(
+            location_slug, status=body.status, place_id=body.place_id,
+            name=body.name, kind=body.kind, parent_id=body.parent_id,
+            aliases=body.aliases, description=body.description,
+            source_url=body.source_url, quiz_enabled=body.quiz_enabled,
+            canonical_place_id=body.canonical_place_id, note=body.note,
+            updated_by=admin.get("email"),
+        )
+    except KeyError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ortskandidat nicht gefunden.")
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+
+
+@router.delete("/place-candidates/{location_slug}")
+def reopen_place_candidate(
+    location_slug: str,
+    _admin: dict = Depends(require_admin),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    if not store.delete_location_review(location_slug):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Prüfung nicht gefunden.")
+    return {"ok": True}

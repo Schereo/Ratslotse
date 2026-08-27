@@ -11,7 +11,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from council import geo
+from council import geo, places
 from council.store import CouncilStore
 from kern.store import Store
 
@@ -54,15 +54,17 @@ def _badges(stats: dict, streak: int, theme_labels: dict[str, str]) -> list[dict
     return out
 
 
-def _expand(areas: list[str]) -> list[tuple[str, str]]:
+def _expand(areas: list[str], council: CouncilStore) -> list[tuple[str, str]]:
     """„type:key"-Strings in (area_type, area_key)-Paare; Wahlbereiche auf ihre
     Stadtteile aufgelöst."""
     out: list[tuple[str, str]] = []
     for a in areas:
         typ, _, key = a.partition(":")
         if typ == "wahlbereich" and key.isdigit():
-            out += [("stadtteil", n) for n in geo.stadtteile_im_wahlbereich(int(key))]
-        elif typ in ("stadtteil", "thema") and key:
+            out += [("stadtteil", n) for n in geo.ortsbereiche_im_wahlbereich(int(key))]
+        elif typ == "stadtteil" and (place := council.resolve_place(key)):
+            out.append((typ, place.name))
+        elif typ == "thema" and key:
             out.append((typ, key))
     # dedup, Reihenfolge egal
     return list(dict.fromkeys(out))
@@ -72,20 +74,30 @@ def _expand(areas: list[str]) -> list[tuple[str, str]]:
 def areas(user: dict = Depends(require_active),
           store: Store = Depends(get_store),
           council: CouncilStore = Depends(get_council_store)) -> dict:
-    """Katalog: Wahlbereiche, Stadtteile, Themen — je mit Fragenzahl und meinen
+    """Katalog: Wahlbereiche, Ortsbereiche, Themen — je mit Fragenzahl und meinen
     Punkten. Leere Gebiete (noch keine Fragen) werden weggelassen."""
     counts = council.quiz_area_counts()          # {(type, key): n}
     points = store.quiz_points_by_area(user["id"])  # {(type, key): points}
 
     stadtteile = []
-    for name in geo.stadtteile():
-        n = counts.get(("stadtteil", name), 0)
+    for place in council.all_places():
+        n = counts.get(("stadtteil", place.name), 0)
         if n:
-            stadtteile.append({"key": name, "wahlbereiche": geo.wahlbereiche_of(name),
-                               "questions": n, "points": points.get(("stadtteil", name), 0)})
+            stadtteile.append({
+                "key": place.name,
+                "place_id": place.id,
+                "label": place.name,
+                "kind": place.kind,
+                "kind_label": places.kind_label(place.kind),
+                "aliases": list(place.aliases),
+                "parent_ids": list(place.parent_ids),
+                "wahlbereiche": list(place.wahlbereiche),
+                "questions": n,
+                "points": points.get(("stadtteil", place.name), 0),
+            })
     wahlbereiche = []
     for wb in geo.WAHLBEREICHE:
-        members = geo.stadtteile_im_wahlbereich(wb)
+        members = geo.ortsbereiche_im_wahlbereich(wb)
         n = sum(counts.get(("stadtteil", m), 0) for m in members)
         if n:
             wahlbereiche.append({"key": str(wb), "label": f"Wahlbereich {wb}", "stadtteile": members,
@@ -96,7 +108,7 @@ def areas(user: dict = Depends(require_active),
         # RL-U13: Themen mit Entity-Geo ihrem Stadtteil zuordnen (Punkt-in-
         # Polygon) — das Setup gruppiert danach in „In deiner Auswahl" /
         # „Stadtweit" / „Außerhalb". Ohne Geo (oder außerhalb) = stadtweit.
-        st = (geo.stadtteil_for(t["lat"], t["lon"])
+        st = (geo.ortsbereich_for(t["lat"], t["lon"])
               if t.get("lat") is not None and t.get("lon") is not None else None)
         themen.append({"key": t["area_key"], "label": t["label"], "stadtteil": st,
                        "questions": counts.get(("thema", t["area_key"]), 0),
@@ -112,7 +124,7 @@ def round_(areas: str = Query(..., description="komma-separiert, z. B. wahlberei
            store: Store = Depends(get_store),
            council: CouncilStore = Depends(get_council_store)) -> dict:
     """Eine Runde Fragen — bevorzugt noch nicht beantwortete, OHNE Lösung."""
-    pairs = _expand([a for a in areas.split(",") if a.strip()])
+    pairs = _expand([a for a in areas.split(",") if a.strip()], council)
     if not pairs:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Kein gültiges Gebiet gewählt.")
     cats = [c for c in categories.split(",") if c in CATEGORIES]
@@ -212,7 +224,7 @@ def daily_complete(payload: QuizDailyIn,
 def map_round(n: int = Query(5, ge=1, le=15), _user: dict = Depends(require_active)) -> dict:
     """Karten-Quiz: n zufällige Stadtteile zum Verorten. Deterministisch aus der
     Geografie (kein LLM, keine DB) — die Karte selbst ist die Antwortfläche."""
-    names = geo.stadtteile()
+    names = geo.ortsbereiche()
     random.shuffle(names)
     return {"questions": [{"target": t, "question": f"Wo liegt {t}?"} for t in names[:n]]}
 
@@ -223,14 +235,16 @@ def map_answer(payload: QuizMapIn,
                store: Store = Depends(get_store)) -> dict:
     """Karten-Antwort auswerten: richtig, wenn der angeklickte Stadtteil der
     gefragte ist. Zählt (wie andere Antworten) auf den Stadtteil-Fortschritt."""
-    if payload.target not in geo.WAHLBEREICH:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Stadtteil.")
-    correct = payload.clicked == payload.target
+    target = places.resolve(payload.target)
+    clicked = places.resolve(payload.clicked)
+    if not target:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Ortsbereich.")
+    correct = clicked == target
     pts = MAP_POINTS if correct else 0
     # question_id=0 = Karten-Frage (keine DB-Frage); fliegt aus dem „Meine
     # Fehler"-Stapel (quiz_wrong_question_ids filtert question_id > 0).
-    store.record_quiz_answer(user["id"], 0, "stadtteil", payload.target, "orte", correct, pts)
-    return {"correct": correct, "target": payload.target, "points": pts}
+    store.record_quiz_answer(user["id"], 0, "stadtteil", target.name, "orte", correct, pts)
+    return {"correct": correct, "target": target.name, "points": pts}
 
 
 # ---- Eigene Fragen (RL-U14): privat je Konto, üben ohne Punkte ----
@@ -264,12 +278,14 @@ def _auto_range(value: float, unit: str | None = None) -> tuple[float, float]:
     return 0.0, float(max(hi, abs(value) + step))
 
 
-def _validate_own(payload: UserQuizQuestionIn) -> dict:
+def _validate_own(payload: UserQuizQuestionIn, council: CouncilStore) -> dict:
     if payload.category not in CATEGORIES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannte Kategorie.")
-    st = (payload.stadtteil or "").strip() or None
-    if st is not None and st not in geo.WAHLBEREICH:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Stadtteil.")
+    raw_place = (payload.stadtteil or "").strip() or None
+    place = council.resolve_place(raw_place)
+    if raw_place is not None and not place:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Ortsbereich.")
+    st = place.name if place else None
     base = {"question": payload.question.strip(), "stadtteil": st,
             "category": payload.category,
             "explanation": (payload.explanation or "").strip() or None}
@@ -303,19 +319,21 @@ def own_list(user: dict = Depends(require_active),
 @router.post("/own")
 def own_create(payload: UserQuizQuestionIn,
                user: dict = Depends(require_active),
-               store: Store = Depends(get_store)) -> dict:
+               store: Store = Depends(get_store),
+               council: CouncilStore = Depends(get_council_store)) -> dict:
     if len(store.list_user_quiz_questions(user["id"])) >= MAX_OWN_QUESTIONS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             f"Maximal {MAX_OWN_QUESTIONS} eigene Fragen möglich.")
-    qid = store.save_user_quiz_question(user["id"], _validate_own(payload))
+    qid = store.save_user_quiz_question(user["id"], _validate_own(payload, council))
     return {"ok": True, "id": qid}
 
 
 @router.put("/own/{question_id}")
 def own_update(question_id: int, payload: UserQuizQuestionIn,
                user: dict = Depends(require_active),
-               store: Store = Depends(get_store)) -> dict:
-    if store.save_user_quiz_question(user["id"], _validate_own(payload), question_id) is None:
+               store: Store = Depends(get_store),
+               council: CouncilStore = Depends(get_council_store)) -> dict:
+    if store.save_user_quiz_question(user["id"], _validate_own(payload, council), question_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
     return {"ok": True, "id": question_id}
 

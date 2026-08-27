@@ -67,6 +67,149 @@ def test_health(client):
     assert client.get("/api/health").json() == {"status": "ok"}
 
 
+def test_merkliste_top_wird_zum_beschluss_und_meldet_ergebnis(client):
+    """Der Kernpfad der Merkliste: TOP merken, Hinweis einschalten, Protokoll
+    importieren. Derselbe Eintrag zeigt danach den Beschluss und erzeugt genau
+    eine Ergebnis-Meldung — ohne doppelten Beschluss-Merker."""
+    _register(client)
+    tag = (date.today() + timedelta(days=2)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(
+        ksinr=8123, committee="Verkehrsausschuss", session_date=tag,
+        session_time="17:00", location="PFL",
+        agenda_items=[AgendaItem("Ö 5", "Neue Fahrradstraße - Beschluss",
+                                 "26/0999", 90999, True)],
+    ))
+    cs.close()
+
+    created = client.post("/api/bookmarks", json={
+        "kind": "agenda_item", "ksinr": 8123, "item_number": "Ö 5",
+    })
+    assert created.status_code == 201
+    bookmark_id = created.json()["id"]
+    assert created.json()["state"] == "upcoming"
+
+    # Idempotent: derselbe TOP erzeugt keinen zweiten Eintrag.
+    again = client.post("/api/bookmarks", json={
+        "kind": "agenda_item", "ksinr": 8123, "item_number": "Ö 5",
+    })
+    assert again.status_code == 201 and again.json()["id"] == bookmark_id
+    assert len(client.get("/api/bookmarks").json()["bookmarks"]) == 1
+
+    notify_on = client.put(f"/api/bookmarks/{bookmark_id}/notification",
+                           json={"notify_result": True})
+    assert notify_on.status_code == 200 and notify_on.json()["notify_result"] is True
+
+    cs = CouncilStore(COUNCIL_DB)
+    # Ein anderer Punkt wird davor eingeschoben: Die Nummer ändert sich, die
+    # stabile Vorlage bleibt. Die Merkliste muss auf Ö 6 mitwandern.
+    cs.save_session(CouncilSession(
+        ksinr=8123, committee="Verkehrsausschuss", session_date=tag,
+        session_time="17:00", location="PFL",
+        agenda_items=[AgendaItem("Ö 6", "Neue Fahrradstraße - Beschluss",
+                                 "26/0999", 90999, True)],
+    ))
+    shifted = client.get("/api/bookmarks").json()["bookmarks"][0]
+    assert shifted["item_number"] == "Ö 6"
+    cs.save_protocol(
+        8123, {"document_id": 444, "url": "https://example.test/protokoll.pdf"},
+        {"protocol_nr": "V 1/26", "session_start": "17:00", "session_end": "18:00"},
+        "zu 6 Neue Fahrradstraße\nBeschluss: angenommen\n- einstimmig -", 1, "test-model",
+        [{"item_number": "6", "title": "Neue Fahrradstraße", "beschluss": "Die Fahrradstraße wird eingerichtet.",
+          "outcome": "angenommen", "vote": "einstimmig", "gegenstimmen": 0,
+          "enthaltungen": 0, "factions": [], "vorlage_nr": "26/0999", "kvonr": 90999,
+          "raw_result": "einstimmig", "sub_votes": []}],
+        [],
+    )
+    nwz = Store(NWZ_DB)
+    from council.ergebnisse import melde_ergebnisse
+    assert melde_ergebnisse(cs, nwz, [8123]) == 1
+    assert nwz._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 1
+    assert nwz.get_bookmark_for_owner(1, bookmark_id)["result_notified_at"] is not None
+    nwz.close()
+    cs.close()
+
+    listed = client.get("/api/bookmarks").json()["bookmarks"]
+    assert len(listed) == 1
+    assert listed[0]["state"] == "decided"
+    assert listed[0]["decision"]["outcome"] == "angenommen"
+    decision_id = listed[0]["decision"]["id"]
+
+    # Auf der Beschluss-Seite noch einmal „Merken" bleibt derselbe Eintrag.
+    same_decision = client.post("/api/bookmarks", json={
+        "kind": "decision", "decision_id": decision_id,
+    })
+    assert same_decision.status_code == 201 and same_decision.json()["id"] == bookmark_id
+    assert len(client.get("/api/bookmarks").json()["bookmarks"]) == 1
+
+    assert client.delete(f"/api/bookmarks/{bookmark_id}").status_code == 204
+    assert client.get("/api/bookmarks").json()["bookmarks"] == []
+
+
+def test_merkliste_akzeptiert_nur_konkrete_unterpunkte(client):
+    """Gliederungs-TOPs haben kein eigenes Ergebnis; nur ihre Blätter sind
+    merk- und abonnierbar. Nummerngleiche Punkte im nichtöffentlichen Teil
+    dürfen einen öffentlichen TOP dabei nicht zum Oberpunkt machen."""
+    _register(client)
+    tag = (date.today() + timedelta(days=3)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(
+        ksinr=8124, committee="Rat", session_date=tag,
+        session_time="17:00", location="Rathaus",
+        agenda_items=[
+            AgendaItem("Ö 4", "Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
+                       None, None, True),
+            AgendaItem("Ö 4.1", "Antrag: Mehr sichere Schulwege", "26/1001", 91001, True),
+            AgendaItem("Ö 4.2", "Antrag: Trinkbrunnen in der Innenstadt", "26/1002", 91002, True),
+            AgendaItem("Ö 5", "Einwohnerfragestunde", None, None, True),
+            AgendaItem("N 5.1", "Nichtöffentlicher Unterpunkt", None, None, False),
+        ],
+    ))
+
+    parent = client.post("/api/bookmarks", json={
+        "kind": "agenda_item", "ksinr": 8124, "item_number": "Ö 4",
+    })
+    assert parent.status_code == 400
+    assert "konkreten Unterpunkt" in parent.json()["detail"]
+
+    child = client.post("/api/bookmarks", json={
+        "kind": "agenda_item", "ksinr": 8124, "item_number": "Ö 4.1",
+    })
+    assert child.status_code == 201
+    standalone = client.post("/api/bookmarks", json={
+        "kind": "agenda_item", "ksinr": 8124, "item_number": "Ö 5",
+    })
+    assert standalone.status_code == 201
+
+    # Altbestand aus der Zeit vor der Blatt-TOP-Regel: sichtbar lassen, aber
+    # den nutzlosen Ergebnis-Schalter selbst ohne vorherigen Seitenaufruf
+    # spätestens im Protokoll-Lauf abschalten.
+    nwz = Store(NWZ_DB)
+    owner_id = nwz.get_web_user_by_email("admin@test.de")["id"]
+    legacy = nwz.add_bookmark(
+        owner_id, kind="agenda_item", target_key="agenda_item:8124:Ö 4",
+        ksinr=8124, item_number="Ö 4",
+        title="Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
+    )
+    nwz.set_bookmark_result_notification(owner_id, legacy["id"], True)
+    from council.ergebnisse import melde_ergebnisse
+    assert melde_ergebnisse(cs, nwz, [8124]) == 0
+    assert nwz.get_bookmark_for_owner(owner_id, legacy["id"])["notify_result"] == 0
+    assert nwz._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 0
+    nwz.close()
+    cs.close()
+
+    listed = client.get("/api/bookmarks").json()["bookmarks"]
+    old_parent = next(entry for entry in listed if entry["id"] == legacy["id"])
+    assert old_parent["is_group"] is True
+    assert old_parent["state"] == "group"
+    assert old_parent["notify_result"] is False
+    rejected = client.put(f"/api/bookmarks/{legacy['id']}/notification",
+                          json={"notify_result": True})
+    assert rejected.status_code == 400
+    assert "kein eigenes Ergebnis" in rejected.json()["detail"]
+
+
 def test_register_never_grants_admin(client):
     """Rechteausweitung (CWE-269): Die Registrierung darf keine Rolle vergeben.
 
@@ -3251,6 +3394,189 @@ def test_decisions_topic_ohne_treffer_liefert_leer(client):
     council.close()
     tid = client.post("/api/topics", json={"name": "Leer", "description": "ohne Treffer"}).json()["id"]
     assert client.get(f"/api/council/decisions?limit=50&topic={tid}").json()["total"] == 0
+
+
+# ---- Beschluss-Suche nach geokodiertem Ortsbezug ---------------------------
+def test_decisions_district_filter_is_combined_and_explains_matches(client):
+    """Der Stadtteilfilter darf Beschlüsse mit mehreren Orten nicht doppeln und
+    liefert die Fundstelle mit, damit die Zuordnung in der Liste prüfbar ist."""
+    _register(client)
+    council = CouncilStore(COUNCIL_DB)
+    council.save_session(CouncilSession(1, "Rat", "2026-01-15", "17:00", "Ratssaal"))
+    with council._conn:
+        council._conn.executemany(
+            "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
+            "VALUES (?,1,?,?,?,'decision')",
+            [
+                (1, 0, "Widmung Klingenbergplatz", "angenommen"),
+                (2, 1, "Sportpark Kreyenbrück", "abgelehnt"),
+                (3, 2, "Sanierung Rathaus", "angenommen"),
+                (4, 3, "Bericht aus Kreyenbrück", "zur_kenntnis"),
+            ],
+        )
+    council.save_decision_locations(1, [
+        {"name": "Klingenbergplatz", "kind": "platz", "source": "title",
+         "evidence": "Widmung Klingenbergplatz", "method": "regex", "confidence": 0.98},
+        {"name": "Cloppenburger Straße", "kind": "strasse", "source": "beschluss",
+         "evidence": "an der Cloppenburger Straße", "method": "regex", "confidence": 0.94},
+    ], "hash-1")
+    council.save_decision_locations(2, [
+        {"name": "Sportpark Kreyenbrück", "kind": "gebaeude", "source": "title",
+         "evidence": "Sportpark Kreyenbrück", "method": "llm", "confidence": 0.9},
+    ], "hash-2")
+    council.save_decision_locations(3, [
+        {"name": "Rathaus", "kind": "gebaeude", "source": "title",
+         "evidence": "Sanierung Rathaus", "method": "llm", "confidence": 0.9},
+    ], "hash-3")
+    council.save_decision_locations(4, [
+        {"name": "Kreyenbrück", "kind": "stadtteil", "source": "title",
+         "evidence": "Bericht aus Kreyenbrück", "method": "stadtteilliste", "confidence": 0.99},
+    ], "hash-4")
+    with council._conn:
+        council._conn.execute(
+            "UPDATE council_locations SET stadtteil='Kreyenbrück' "
+            "WHERE slug IN "
+            "('klingenbergplatz','cloppenburger-strasse','sportpark-kreyenbrueck','kreyenbrueck')"
+        )
+        council._conn.execute(
+            "UPDATE council_locations SET stadtteil='Innenstadt' WHERE slug='rathaus'"
+        )
+    council.close()
+
+    districts = client.get("/api/council/districts")
+    assert districts.status_code == 200
+    body = districts.json()
+    assert body["catalog"]["singular"] == "Ortsbereich"
+    assert [(row["name"], row["place_id"], row["count"]) for row in body["districts"]] == [
+        ("Innenstadt", "innenstadt", 1),
+        ("Kreyenbrück", "kreyenbrueck", 3),
+    ]
+
+    catalog = client.get("/api/council/places")
+    assert catalog.status_code == 200
+    assert len(catalog.json()["places"]) == 40
+    assert next(p for p in catalog.json()["places"] if p["id"] == "bornhorst")["name"] == "Bornhorst"
+    assert client.get("/api/council/decisions?district=Atlantis").status_code == 400
+
+    response = client.get(
+        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=vote"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert {row["id"] for row in body["decisions"]} == {1, 2}
+    first = next(row for row in body["decisions"] if row["id"] == 1)
+    assert [match["name"] for match in first["location_matches"]] == [
+        "Klingenbergplatz", "Cloppenburger Straße"
+    ]
+    assert first["location_matches"][0]["evidence"] == "Widmung Klingenbergplatz"
+    # Ortsbezug und vorhandene Suchfilter greifen gemeinsam.
+    accepted = client.get(
+        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=vote&outcome=angenommen"
+    ).json()
+    assert accepted["total"] == 1 and accepted["decisions"][0]["id"] == 1
+    reports = client.get(
+        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=report"
+    ).json()
+    assert reports["total"] == 1 and reports["decisions"][0]["id"] == 4
+
+
+def test_curated_place_alias_filters_by_stable_id_and_has_profile(client):
+    """Kuratierten Orten folgen Alias, Suche und Profil über dieselbe stabile ID."""
+    _register(client)
+    council = CouncilStore(COUNCIL_DB)
+    council.save_session(CouncilSession(1, "Rat", "2026-01-15", "17:00", "Ratssaal"))
+    with council._conn:
+        council._conn.execute(
+            "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
+            "VALUES (1,1,0,'Neues aus der Donnerschwee-Kaserne','angenommen','decision')"
+        )
+    council.save_decision_locations(1, [{
+        "name": "Donnerschwee-Kaserne",
+        "kind": "gebiet",
+        "source": "title",
+        "evidence": "Neues aus der Donnerschwee-Kaserne",
+        "method": "ortskatalog",
+        "confidence": 0.99,
+    }], "hash-1")
+    row = council._conn.execute(
+        "SELECT name, place_id, ortsbereich_id, stadtteil FROM council_locations"
+    ).fetchone()
+    assert dict(row) == {
+        "name": "Neu-Donnerschwee",
+        "place_id": "neu-donnerschwee",
+        "ortsbereich_id": "donnerschwee",
+        "stadtteil": "Donnerschwee",
+    }
+    council.close()
+
+    by_id = client.get("/api/council/decisions?district=neu-donnerschwee")
+    assert by_id.status_code == 200
+    assert by_id.json()["total"] == 1
+    assert by_id.json()["decisions"][0]["location_matches"][0]["place_id"] == "neu-donnerschwee"
+
+    by_alias = client.get("/api/council/decisions?district=Donnerschwee-Kaserne")
+    assert by_alias.status_code == 200 and by_alias.json()["total"] == 1
+
+    profile = client.get("/api/council/place/neu-donnerschwee")
+    assert profile.status_code == 200
+    body = profile.json()
+    assert body["place"]["kind_label"] == "Quartier"
+    assert body["place"]["parents"][0]["name"] == "Donnerschwee"
+    assert body["decision_count"] == 1
+
+    districts = client.get("/api/council/districts").json()["districts"]
+    assert next(row for row in districts if row["place_id"] == "neu-donnerschwee")["count"] == 1
+
+
+def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
+    _register(client)
+    council = CouncilStore(COUNCIL_DB)
+    council.save_session(CouncilSession(1, "Rat", "2026-01-15", "17:00", "Ratssaal"))
+    with council._conn:
+        council._conn.executemany(
+            "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
+            "VALUES (?,1,?,'Planung Testanger','angenommen','decision')",
+            [(1, 0), (2, 1), (3, 2)],
+        )
+    for decision_id in (1, 2, 3):
+        council.save_decision_locations(decision_id, [{
+            "name": "Testanger", "kind": "gebiet", "source": "title",
+            "evidence": "Planung Testanger", "method": "llm", "confidence": 0.92,
+        }], f"hash-{decision_id}")
+    with council._conn:
+        council._conn.execute(
+            "UPDATE council_locations SET lat=53.16,lon=8.22,stadtteil='Nadorst',"
+            "ortsbereich_id='nadorst',geo_tried=1 WHERE slug='testanger'"
+        )
+    council.close()
+
+    pending = client.get("/api/admin/place-candidates?status=pending")
+    assert pending.status_code == 200
+    assert pending.json()["candidates"][0]["slug"] == "testanger"
+    reviewed = client.put("/api/admin/place-candidates/testanger", json={
+        "status": "approved", "place_id": "testanger", "name": "Testanger",
+        "kind": "quartier", "parent_id": "nadorst", "aliases": ["Test-Anger"],
+        "description": "Ein überprüftes Testgebiet.", "source_url": "https://example.test/ort",
+    })
+    assert reviewed.status_code == 200
+
+    catalog = client.get("/api/council/places").json()["places"]
+    assert next(p for p in catalog if p["id"] == "testanger")["parents"][0]["id"] == "nadorst"
+    map_points = client.get("/api/council/entities-map")
+    assert map_points.status_code == 200
+    point = next(p for p in map_points.json()["entities"] if p["slug"] == "testanger")
+    assert point["kind"] == "beschlussort" and point["target"] == "ort"
+
+    exact = client.get("/api/council/decisions?location=testanger&category=vote")
+    assert exact.status_code == 200 and exact.json()["total"] == 3
+    assert exact.json()["decisions"][0]["location_matches"][0]["name"] == "Testanger"
+    assert client.get("/api/council/decisions?location=unbekannt").status_code == 400
+
+    rejected = client.put("/api/admin/place-candidates/testanger", json={"status": "rejected"})
+    assert rejected.status_code == 200
+    assert not any(p["slug"] == "testanger" for p in
+                   client.get("/api/council/entities-map").json()["entities"])
 
 
 # --- Vorgänge verfolgen (Design 28a/W1) ------------------------------------

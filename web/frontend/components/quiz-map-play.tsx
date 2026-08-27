@@ -17,8 +17,8 @@ const QuizMap = dynamic(() => import("@/components/quiz-map").then((m) => m.Quiz
 
 type MapResult = { correct: boolean; points: number };
 
-/** Karten-Quiz: „Wo liegt Stadtteil X?" — pro Frage die Oldenburg-Karte, der
- *  Nutzer klickt den Stadtteil an, danach Auflösung (grün = richtig). */
+/** Karten-Quiz: „Wo liegt Ortsbereich X?" — pro Frage die Oldenburg-Karte, der
+ *  Nutzer klickt das Gebiet an, danach Auflösung (grün = richtig). */
 export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: () => void }) {
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
@@ -55,8 +55,8 @@ export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: ()
     // Lotti feiert mit bzw. muntert auf — wie im Fragen-Quiz. Ab 90 % tanzt sie.
     const pose = quote >= 80 ? "celebrate" : quote >= 50 ? "wave" : "point";
     const cheer =
-      quote >= 90 ? "Sensationell — du kennst deine Stadtteile wie deine Westentasche! Da tanzt die Möwe!"
-      : quote >= 80 ? "Top — du kennst deine Stadtteile richtig gut!"
+      quote >= 90 ? "Sensationell — du kennst Oldenburg wie deine Westentasche! Da tanzt die Möwe!"
+      : quote >= 80 ? "Top — du kennst Oldenburgs Ortsbereiche richtig gut!"
       : quote >= 50 ? "Gut! Ein paar Ecken zeige ich dir gern noch."
       : "Macht nichts — beim Erkunden lernt man die Stadt am besten kennen. Ich flieg voraus!";
     return (
@@ -97,7 +97,7 @@ export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: ()
           Wo liegt <span className="text-primary">{target}</span>?
         </h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {result ? "Grün = richtig." : "Tippe den Stadtteil auf der Karte an."}
+          {result ? "Grün = richtig." : "Tippe den Ortsbereich auf der Karte an."}
         </p>
 
         <QuizMap

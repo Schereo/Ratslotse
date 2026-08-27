@@ -13,6 +13,7 @@ import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
 import { PrintButton } from "@/components/print-button";
 import { FollowButton } from "@/components/follow-button";
+import { BookmarkButton } from "@/components/bookmark-button";
 import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
 import { useZurueck } from "@/lib/zurueck";
@@ -608,6 +609,7 @@ function DecisionDetailInner() {
           <span />
         )}
         <div className="flex shrink-0 items-center gap-2">
+          <BookmarkButton target={{ kind: "decision", decision_id: d.id }} />
           {/* Design 28a/W3: Das Druck-Stylesheet (globals.css) blendet Navigation
               und Beiwerk längst aus — es gab nur keinen Weg, den Druck aus der
               App heraus zu starten. Für Bürgerinitiativen und Ortsräte ist das

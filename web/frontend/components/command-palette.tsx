@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
-  BarChart3, CalendarDays, CornerDownLeft, Gavel, History, Home, Landmark,
+  BarChart3, Bookmark, CalendarDays, CornerDownLeft, Gavel, History, Home, Landmark,
   Play, Scale, Search, Settings, Sparkles, SunMoon, Tag, Tags, UserCircle, type LucideIcon,
 } from "lucide-react";
 import { api, qs } from "@/lib/api";
@@ -125,6 +125,7 @@ export function CommandPalette() {
       { key: "nav-themen", section: "Navigation", label: "Themen & Karte", icon: Tag, run: () => go("/council?tab=themen") },
       { key: "nav-analyse", section: "Navigation", label: "Analyse", icon: BarChart3, run: () => go("/council?tab=analysis") },
       { key: "nav-meine", section: "Navigation", label: "Meine Themen", icon: Tags, run: () => go("/topics") },
+      { key: "nav-merkliste", section: "Navigation", label: "Merkliste", icon: Bookmark, run: () => go("/bookmarks") },
       { key: "nav-konto", section: "Navigation", label: "Mein Konto", icon: UserCircle, run: () => go("/account") },
       ...(user?.role === "admin"
         ? [{ key: "nav-admin", section: "Navigation", label: "Admin", icon: Settings, run: () => go("/admin") } as Item]
