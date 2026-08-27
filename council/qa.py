@@ -143,17 +143,24 @@ _OFFICIAL_SOURCE_RE = re.compile(
     re.IGNORECASE,
 )
 _EXPLICIT_DOCUMENT_RE = re.compile(
-    r"\b(?:vorlage|anlage|gutachten|studie|stellungnahme|konzept|begr(?:ü|ue)nd\w*|"
+    r"(?:\bvorlage\b|\banlage\b|\b\w*(?:gutachten|studie|konzept)\b|"
+    r"\bstellungnahme\b|\bbegr(?:ü|ue)nd\w*|"
     r"alternative\w*|technisch\w*|ausf(?:ü|ue)hrung|risik\w*|kriteri\w*|"
     r"umweltfolg\w*|wirtschaftlichkeits\w*|kostenannahm\w*|sachverhalt|"
     r"detail\w*|inhalt\w*|r(?:ä|ae)um\w*|umsetz\w*|untersuch\w*)\b",
     re.IGNORECASE,
 )
 _DECISION_METADATA_RE = re.compile(
-    r"^\s*(?:wurde\b|wann\b|wer\b|welch(?:er|es)\s+(?:ausschuss|gremium)\b|"
+    r"^\s*(?:wurde\b|was\s+wurde\b|wann\b|wer\b|welch(?:er|es)\s+(?:ausschuss|gremium)\b|"
     r"wie\s+lautete\s+das\s+abstimmungsergebnis\b|was\s+wurde\s+zuletzt\b|"
     r"welche\s+(?:beschl(?:ü|ue)sse|entscheidungen)\b|"
     r"was\s+hat\b.{0,100}\bbeschlossen\b)",
+    re.IGNORECASE,
+)
+_EXPLICIT_DEBATE_RE = re.compile(
+    r"(?:\b\w*debatte\b|\bdiskussion\b|\bwortbeitr(?:ag|äge|aeg)\b|"
+    r"\bargument(?:e|ation)?\b|\bposition\b|\bhaltung\b|\bwas\s+sagte\b|"
+    r"\bwer\s+sagte\b|\bwie\s+begr(?:ü|ue)ndete\b)",
     re.IGNORECASE,
 )
 
@@ -179,7 +186,8 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
     # Manche klaren Finanzfragen klassifiziert das Modell sinnvoll als
     # ``thema`` (Prüfbericht, Pflichtaufgabe, Gebühren). Der deterministische
     # Quellenrouter erkennt sie trotzdem; der Rechercheplan muss dazu passen.
-    if typ == "geld" or geld_facetten(question, typ):
+    finance_facets = geld_facetten(question, typ)
+    if typ == "geld" or finance_facets:
         mandatory.append("budget")
     if typ in ("person", "partei") or person:
         mandatory.append("debates")
@@ -219,7 +227,11 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
     selected = list(dict.fromkeys([*mandatory, *model_channels, *consistent]))
 
     suppressed: list[str] = []
-    if latest_decision and "debates" in selected and "debates" not in mandatory:
+    definition_only = bool(question and _DEFINITIONSFRAGE.match(question)
+                           and not _EIGENES_PRAEDIKAT.search(question))
+    if ("debates" in selected and "debates" not in mandatory
+            and (latest_decision or definition_only
+                 or (finance_facets and not _EXPLICIT_DEBATE_RE.search(question or "")))):
         selected.remove("debates")
         suppressed.append("debates")
     need_set = set(needs)
@@ -240,7 +252,8 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
     elif ("documents" in selected and question
           and not _EXPLICIT_DOCUMENT_RE.search(question)
           and (typ in ("person", "partei", "sitzung")
-               or latest_decision or _DECISION_METADATA_RE.search(question))):
+               or latest_decision or definition_only or finance_facets
+               or _DECISION_METADATA_RE.search(question))):
         # Das Analysemodell schwankt bei Metadatenfragen trotz klarer Prompt-
         # Regel: In wiederholten Produktionsläufen kamen „welcher Ausschuss?",
         # „welche Beschlüsse bisher?“ und ein konkreter Sitzungsrückblick mit
