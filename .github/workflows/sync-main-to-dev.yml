@@ -1,0 +1,42 @@
+# Produktion darf nie dauerhaft Commits enthalten, die im Integrationsbranch
+# fehlen. Jeder Push auf main wird deshalb als normaler Merge nach dev
+# zurückgeführt. Ein Konflikt überschreibt nichts: Der Job wird rot und macht
+# die notwendige manuelle Auflösung sichtbar.
+name: Sync production back to dev
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-main-to-dev
+  cancel-in-progress: false
+
+jobs:
+  merge-main-into-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Produktionsstand nach dev zurückführen
+        run: |
+          set -e
+          git fetch origin main dev
+
+          if git merge-base --is-ancestor origin/main origin/dev; then
+            echo "dev enthält den vollständigen Produktionsstand bereits."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B dev origin/dev
+          git merge --no-edit origin/main
+          git push origin HEAD:dev
