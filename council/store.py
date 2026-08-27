@@ -5739,6 +5739,7 @@ class CouncilStore:
                 FROM council_decision_locations dl
                 JOIN council_locations l ON l.slug = dl.location_slug
                 WHERE dl.decision_id IN ({ph}) AND l.lat IS NOT NULL
+                  AND l.stadtteil IS NOT NULL AND l.stadtteil != ''
                 ORDER BY dl.confidence DESC, l.name""", ids).fetchall()
         out: dict[int, dict] = {}
         for r in direct:
@@ -5754,7 +5755,15 @@ class CouncilStore:
                 ORDER BY e.n DESC""",
             ids,
         ).fetchall()
+        from council import geo
+
         for r in rows:
+            # Alte Entitäts-Geocodes entstanden vor der expliziten
+            # Orts-Pipeline und können Vergleichsorte außerhalb Oldenburgs
+            # enthalten. Nur Koordinaten innerhalb eines amtlichen
+            # Stadtteilpolygons dürfen als Karten-Pin erscheinen.
+            if not geo.stadtteil_for(r["lat"], r["lon"]):
+                continue
             out.setdefault(r["decision_id"], {"ort_name": r["name"],
                                               "lat": r["lat"], "lon": r["lon"]})
         return out
