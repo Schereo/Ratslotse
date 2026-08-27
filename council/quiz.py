@@ -560,6 +560,23 @@ def _extra_texts(q: dict) -> str:
     return "\n".join(b for b in bits if b)
 
 
+def _clip_explanation(value: object, max_chars: int = 600) -> str | None:
+    """Erklärungen begrenzen, ohne sie mitten im Satz abzuschneiden."""
+    text = value.strip() if isinstance(value, str) else ""
+    if not text:
+        return None
+    if len(text) <= max_chars:
+        return text
+    # Wenn in der zweiten Hälfte ein vollständiger Satz endet, dort sauber
+    # abschließen. Bei einem einzigen sehr langen Satz kennzeichnet die Ellipse
+    # transparent, dass der Darstellungstext gekürzt wurde.
+    sentence_end = max(text.rfind(mark, max_chars // 2, max_chars)
+                       for mark in (".", "!", "?", "…"))
+    if sentence_end >= 0:
+        return text[:sentence_end + 1].rstrip()
+    return text[:max_chars - 1].rsplit(" ", 1)[0].rstrip(" ,;:–—-") + "…"
+
+
 def verify_question(sources: str, q: dict) -> bool:
     """Günstiger Zweit-Check: ist die richtige Antwort eindeutig aus den Quellen
     belegt (bei MC auch: andere klar falsch), beantwortet sie die Frage logisch
@@ -637,7 +654,7 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
             "category": q["category"],
             "difficulty": q.get("difficulty") if q.get("difficulty") in DIFFICULTIES else "mittel",
             "question": q["question"].strip(),
-            "explanation": (q.get("explanation") or "").strip()[:300] or None,
+            "explanation": _clip_explanation(q.get("explanation")),
             "detail": (q.get("detail") or "").strip()[:600] or None,
             "hint": (q.get("hint") or "").strip()[:200] or None,
             "topic": (q.get("topic") or "").strip()[:80] or None,

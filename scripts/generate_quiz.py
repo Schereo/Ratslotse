@@ -89,19 +89,25 @@ def process(council_db: Path, target: int = 10, per_run: int = 8, workers: int =
             limit: int | None = None, verify: bool = True) -> dict:
     store = CouncilStore(council_db)
     counts = store.quiz_area_counts()
-    areas = [a for a in _areas(store)
-             if counts.get((a["area_type"], a["area_key"]), 0) < target]
+    areas = [
+        (a, min(per_run, target - counts.get((a["area_type"], a["area_key"]), 0)))
+        for a in _areas(store)
+        if counts.get((a["area_type"], a["area_key"]), 0) < target
+    ]
     if limit:
         areas = areas[:limit]
     print(f"{len(areas)} Gebiet(e) unter Ziel {target}, bis {workers} Worker.", flush=True)
 
     # Ratsdaten-Kontext je Gebiet vorab (Main-Thread, DB-Lesen).
     facts = {a["area_key"]: quiz.council_facts(
-                store, place_id=a.get("place_id"), slug=a["slug"]) for a in areas}
+                store, place_id=a.get("place_id"), slug=a["slug"]) for a, _ in areas}
 
     saved = failed = 0
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        futs = {ex.submit(_gen, a, facts[a["area_key"]], per_run, verify): a for a in areas}
+        futs = {
+            ex.submit(_gen, a, facts[a["area_key"]], requested, verify): a
+            for a, requested in areas
+        }
         for done, fut in enumerate(as_completed(futs), 1):
             r = fut.result()
             if r["status"] == "failed":
