@@ -3605,15 +3605,23 @@ class CouncilStore:
         Suchoberfläche keine ungeprüften Modellbegriffe als Stadtteilfilter
         anbieten.
         """
+        vote_ph = ",".join("?" * len(self._VOTE_OUTCOMES))
+        report_ph = ",".join("?" * len(self._REPORT_OUTCOMES))
         rows = self._conn.execute(
-            """SELECT l.stadtteil AS name, COUNT(DISTINCT dl.decision_id) AS count
+            f"""SELECT l.stadtteil AS name,
+                       COUNT(DISTINCT dl.decision_id) AS count,
+                       COUNT(DISTINCT CASE WHEN d.outcome IN ({vote_ph})
+                                           THEN dl.decision_id END) AS vote_count,
+                       COUNT(DISTINCT CASE WHEN d.outcome IN ({report_ph}) OR d.outcome IS NULL
+                                           THEN dl.decision_id END) AS report_count
                FROM council_decision_locations dl
                JOIN council_locations l ON l.slug = dl.location_slug
                JOIN council_decisions d ON d.id = dl.decision_id
                WHERE l.stadtteil IS NOT NULL AND l.stadtteil != ''
                  AND d.kind = 'decision'
                GROUP BY l.stadtteil
-               ORDER BY l.stadtteil"""
+               ORDER BY l.stadtteil""",
+            [*self._VOTE_OUTCOMES, *self._REPORT_OUTCOMES],
         ).fetchall()
         return [dict(row) for row in rows]
 
