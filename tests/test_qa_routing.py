@@ -214,6 +214,47 @@ def test_reine_zukunftsfrage_entfernt_presse_ueber_bedarfe():
     assert resolved["suppressed_channels"] == []
 
 
+def test_dokumentenkanal_braucht_auch_dokumentenbedarf():
+    vorsorglich = qa._research_plan({"rechercheplan": {
+        "intent": "fact", "channels": ["decisions", "documents"],
+        "needs": ["dates", "votes"],
+    }})
+    resolved = qa.research_plan_with_mandatory(vorsorglich, typ="thema")
+    assert resolved["channels"] == ["decisions"]
+    assert resolved["suppressed_channels"] == ["documents"]
+
+    fachdetail = qa._research_plan({"rechercheplan": {
+        "intent": "fact", "channels": ["decisions"], "needs": ["documents"],
+    }})
+    resolved = qa.research_plan_with_mandatory(fachdetail, typ="thema")
+    assert resolved["channels"] == ["decisions", "documents"]
+    assert resolved["consistency_added"] == ["documents"]
+
+
+def test_metadatenfragen_entfernen_vorsorgliche_dokumente():
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "overview", "channels": ["decisions", "documents"],
+        "needs": ["dates", "votes", "documents"],
+    }})
+    faelle = [
+        ("thema", "Welcher Ausschuss hat über die Flötenteichschule beraten?"),
+        ("thema", "Welche Beschlüsse gab es bisher zur Cäcilienbrücke?"),
+        ("sitzung", "Was hat der Verkehrsausschuss am 17. Juni 2026 beschlossen?"),
+    ]
+    for typ, question in faelle:
+        resolved = qa.research_plan_with_mandatory(plan, typ=typ, question=question)
+        assert resolved["channels"] == ["decisions"] or resolved["channels"] == [
+            "decisions", "sessions"]
+        assert "documents" in resolved["suppressed_channels"]
+
+    # Die positive Dokumentabsicht hat Vorrang, selbst bei einer Sitzungsfrage.
+    fachfrage = qa.research_plan_with_mandatory(
+        plan, typ="sitzung",
+        question="Was sagt das Gutachten aus der Sitzung zum Verkehrslärm?",
+    )
+    assert "documents" in fachfrage["channels"]
+
+
 def test_eindeutige_stadtmitteilung_aktiviert_presse_als_leitplanke():
     plan = qa._research_plan({"rechercheplan": {
         "intent": "status", "channels": ["decisions"], "sort": "newest",

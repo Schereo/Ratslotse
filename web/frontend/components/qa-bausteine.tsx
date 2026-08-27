@@ -34,10 +34,10 @@ import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 
 export type PresseHinweis = { titel: string; url: string; datum: string | null };
 
-/** Task 33: Anlagen-Fundstelle (Gutachten, Konzept, Stellungnahme) — nur die
- *  Gründliche Recherche liefert diesen Kanal. */
+/** Task 33: Anlagen-Fundstelle (Gutachten, Konzept, Stellungnahme) aus der
+ *  schnellen oder gründlichen Recherche. */
 export type AnlagenHinweis = {
-  /** Beleg-Nummer aus dem Deep-Job; im Text steht sie als „[A<nr>]".
+  /** Beleg-Nummer aus dem Recherchepfad; im Text steht sie als „[A<nr>]".
    *  Ältere gespeicherte Gespräche kennen das Feld nicht — dann bleibt die
    *  Karte einfach ohne Buchstabe (in diesen Texten steht auch kein Marker). */
   nr?: number | null;

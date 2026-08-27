@@ -142,6 +142,20 @@ _OFFICIAL_SOURCE_RE = re.compile(
     r"\b(?:stadt(?:verwaltung)?|verwaltung|oberb(?:ü|ue)rgermeister(?:in)?)\b",
     re.IGNORECASE,
 )
+_EXPLICIT_DOCUMENT_RE = re.compile(
+    r"\b(?:vorlage|anlage|gutachten|studie|stellungnahme|konzept|begr(?:ü|ue)nd\w*|"
+    r"alternative\w*|technisch\w*|ausf(?:ü|ue)hrung|risik\w*|kriteri\w*|"
+    r"umweltfolg\w*|wirtschaftlichkeits\w*|kostenannahm\w*|sachverhalt|"
+    r"detail\w*|inhalt\w*|r(?:ä|ae)um\w*|umsetz\w*|untersuch\w*)\b",
+    re.IGNORECASE,
+)
+_DECISION_METADATA_RE = re.compile(
+    r"^\s*(?:wurde\b|wann\b|wer\b|welch(?:er|es)\s+(?:ausschuss|gremium)\b|"
+    r"wie\s+lautete\s+das\s+abstimmungsergebnis\b|was\s+wurde\s+zuletzt\b|"
+    r"welche\s+(?:beschl(?:ü|ue)sse|entscheidungen)\b|"
+    r"was\s+hat\b.{0,100}\bbeschlossen\b)",
+    re.IGNORECASE,
+)
 
 
 def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
@@ -213,6 +227,25 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
         # obwohl es den feineren Bedarf ``future_dates`` korrekt erkannt hatte.
         selected.remove("press")
         suppressed.append("press")
+    if "documents" not in need_set and "documents" in selected:
+        # Kanal und Bedarf müssen bei Dokumenten bewusst zusammenpassen. Das
+        # Modell setzte den Kanal in der Produktionsmatrix oft vorsorglich bei
+        # einfachen Datums-/Abstimmungsfragen, ohne selbst einen Bedarf an
+        # Dokumentinhalten zu erkennen.
+        selected.remove("documents")
+        suppressed.append("documents")
+    elif ("documents" in selected and question
+          and not _EXPLICIT_DOCUMENT_RE.search(question)
+          and (typ in ("person", "partei", "sitzung")
+               or latest_decision or _DECISION_METADATA_RE.search(question))):
+        # Das Analysemodell schwankt bei Metadatenfragen trotz klarer Prompt-
+        # Regel: In wiederholten Produktionsläufen kamen „welcher Ausschuss?",
+        # „welche Beschlüsse bisher?“ und ein konkreter Sitzungsrückblick mit
+        # documents zurück. Solche Antworten stehen vollständig in Beschluss-
+        # und Sitzungsdaten. Explizite Fachinhalte oben schützen echte
+        # Dokumentfragen vor dieser Negativregel.
+        selected.remove("documents")
+        suppressed.append("documents")
     added = [c for c in selected if c not in model_channels]
     return {**plan, "channels": selected, "needs": needs,
             "model_channels": model_channels, "inferred_needs": inferred_needs,
@@ -1215,7 +1248,7 @@ ANLAGEN_ZEICHEN = 1200
 
 def _anlagen_block(anlagen: list[dict] | None) -> str:
     """Fundstellen aus Anlagen (Gutachten, Konzepte, Stellungnahmen) — nur im
-    Deep-Research-Kontext.
+    Dokumentenkanal der schnellen oder gründlichen Recherche.
 
     Anlagen sind keine Beschlüsse und tragen deshalb keine [id]. Sie bekommen
     einen eigenen Marker ``[A<n>]``; ``n`` ist die Position in dieser Liste und
@@ -2707,6 +2740,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                      verlauf: list[dict] | None = None,
                      haushalt: list[dict] | None = None,
                      debatten: list[dict] | None = None,
+                     anlagen: list[dict] | None = None,
                      gross: bool = False, steckbriefe: list[dict] | None = None,
                      duenn: bool = False, eng: bool = False,
                      steuern: list[dict] | None = None,
@@ -2759,7 +2793,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                             + geld_regeln(geld, eng),
                             presse=_sitzungen_block(sitzungen)
                             + _steckbrief_block(steckbriefe) + _presse_block(presse)
-                            + geld_block(geld) + _debatten_block(debatten, eng),
+                            + geld_block(geld) + _debatten_block(debatten, eng)
+                            + _anlagen_block(anlagen),
                             gespraech=gespraech)
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
     # hing er an der Modul-Konstante und lief bei model=-Overrides ins Leere.
@@ -2874,6 +2909,7 @@ def _answer_tokens(typ: str, gross: bool = False, eng: bool = False) -> int:
 def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
                     presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                     haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
+                    anlagen: list[dict] | None = None,
                     gross: bool = False, steckbriefe: list[dict] | None = None,
                     duenn: bool = False, eng: bool = False,
                     steuern: list[dict] | None = None, steuerkraft: dict | None = None,
@@ -2881,7 +2917,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     ort: dict | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten, gross, steckbriefe, duenn, eng,
+                                       haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        steuern, steuerkraft, geld, sitzungen, ort)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
@@ -2892,6 +2928,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
 def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
                   presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                   haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
+                  anlagen: list[dict] | None = None,
                   gross: bool = False, steckbriefe: list[dict] | None = None,
                   duenn: bool = False, eng: bool = False,
                   steuern: list[dict] | None = None, steuerkraft: dict | None = None,
@@ -2901,7 +2938,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
-                                       haushalt, debatten, gross, steckbriefe, duenn, eng,
+                                       haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        steuern, steuerkraft, geld, sitzungen, ort)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)

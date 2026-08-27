@@ -1,4 +1,7 @@
-### Neu
+---
+kategorie: hinzugefuegt
+---
+
 - „Frag den Rat“ lässt das bestehende Frage-Analysemodell nun zusätzlich einen
   strukturierten Rechercheplan für Beschlüsse, Debatten, Haushalt, Presse,
   Sitzungen, kommende Beratungen, Orte und Dokumente entwerfen. Der Plan läuft

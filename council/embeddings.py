@@ -13,6 +13,7 @@ from __future__ import annotations
 import os
 import re
 import time
+import unicodedata
 
 # Multilingual (incl. German), 384-dim, ~220 MB — good German similarity, light.
 MODEL = os.environ.get("COUNCIL_EMBED_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
@@ -554,28 +555,37 @@ def embed_presse_missing(store) -> int:
 
 
 # ---- Anlagen (Task 33): Gutachten, Konzepte, Stellungnahmen ----------------
-# Kanal NUR der Gründlichen Recherche (RG-10): dort zählt Tiefe, nicht Latenz —
-# die schnelle Frage lädt diese Matrix nie. Chunks größer gedeckelt als bei
-# Vorlagen (Gutachten tragen ihre Substanz über viele Seiten).
+# Der schnelle Fragepfad lädt die Matrix nur bei Dokumentenbedarf, die
+# gründliche Recherche grundsätzlich. Chunks sind größer gedeckelt als bei
+# Vorlagen, weil Gutachten ihre Substanz über viele Seiten tragen.
 ANLAGE_CHUNK_SIZE = 1100
 ANLAGE_MAX_CHUNKS = 8
+ANLAGE_PREFIX_MAX = 320
 
 _anlage_matrix_cache: tuple | None = None  # (version, ids, texts, mat)
 
 
-def anlage_chunks(raw_text: str) -> list[str]:
-    """Anlagen-Text → überlappende Chunks (Muster vorlage_chunks, eigener Deckel)."""
+def anlage_chunks(raw_text: str, prefix: str = "") -> list[str]:
+    """Anlagen-Text → überlappende Chunks mit Dokumentkontext.
+
+    Label und Vorlagentitel stehen vor jedem Chunk. Sonst kann ein späterer
+    Gutachtenabschnitt nicht mehr erkennen lassen, zu welchem Baugebiet er
+    gehört. ``ANLAGE_CHUNK_SIZE`` deckelt weiterhin den fachlichen Text; der
+    kurze Metadaten-Präfix kommt zusätzlich dazu, damit nicht weniger Seiten
+    eines Gutachtens indexiert werden als vor v2.
+    """
     from council.vorlagen import excerpt  # lazy: kein Modul-Import im Web-Pfad
 
     cleaned = excerpt(raw_text, ANLAGE_MAX_CHUNKS * ANLAGE_CHUNK_SIZE + CHUNK_OVERLAP)
     if not cleaned:
         return []
+    prefix = " ".join((prefix or "").split())[:ANLAGE_PREFIX_MAX]
     out = []
     step = ANLAGE_CHUNK_SIZE - CHUNK_OVERLAP
     for start in range(0, len(cleaned), step):
         piece = cleaned[start:start + ANLAGE_CHUNK_SIZE].strip()
         if len(piece) >= 80:
-            out.append(piece)
+            out.append(f"{prefix} — {piece}" if prefix else piece)
         if len(out) >= ANLAGE_MAX_CHUNKS:
             break
     return out
@@ -587,10 +597,12 @@ def embed_anlagen_missing(store, limit: int | None = None) -> int:
     todo = store.anlagen_missing_embeddings(limit=limit)
     n = 0
     for a in todo:
-        # Label voranstellen: „Lärmgutachten — <Text>" macht den ersten Chunk
-        # als Fundstelle und Rerank-Paar deutlich stärker.
-        text = " — ".join(t for t in (a.get("label"), a.get("raw_text")) if t)
-        chunks = anlage_chunks(text)
+        prefix = " | ".join(t for t in (
+            a.get("label"),
+            f"Vorlage {a.get('vorlage_nr')}: {a.get('vorlage_titel')}"
+            if a.get("vorlage_nr") or a.get("vorlage_titel") else None,
+        ) if t)
+        chunks = anlage_chunks(a.get("raw_text") or "", prefix=prefix)
         if not chunks:
             store.replace_anlage_embeddings(a["document_id"], a["text_hash"], [])
             continue
@@ -620,12 +632,56 @@ def _anlage_matrix(store):
     return _anlage_matrix_cache[1], _anlage_matrix_cache[2], _anlage_matrix_cache[3]
 
 
+_ANLAGE_META_STOPP = {
+    "anlage", "anlagen", "dokument", "dokumente", "welche", "welcher", "welchem",
+    "steht", "sagt", "nennt", "wurde", "wurden", "fuer", "uber", "ueber",
+    "beschluss", "beschlossen", "vorlage", "stadt", "oldenburger", "oldenburg",
+}
+
+
+def _anlage_meta_tokens(text: str) -> set[str]:
+    folded = unicodedata.normalize("NFKD", (text or "").lower())
+    folded = "".join(c for c in folded if not unicodedata.combining(c)).replace("ß", "ss")
+    return {t for t in re.findall(r"[a-z0-9]+", folded)
+            if len(t) >= 4 and t not in _ANLAGE_META_STOPP}
+
+
+def _anlage_lexikalisch(store, query: str, expanded: str, limit: int) -> list[int]:
+    """Exakte Dokument-/Ortsnennungen als Union zum Vektor-Vorfilter.
+
+    Ein langer Gutachtentext kann seinen kurzen Titel im gemittelten Vektor
+    überstimmen. Dann lag „Bodengutachten Kaiserstraße/Bleicherstraße“ trotz
+    wortgleicher Metadaten außerhalb der zwölf semantischen Kandidaten. Dieser
+    kleine Pfad rankt nur Metadaten und ersetzt weder Embedding noch Reranker.
+    """
+    frage = f"{query} {expanded}"
+    q_tokens = _anlage_meta_tokens(frage)
+    if not q_tokens:
+        return []
+    scored: list[tuple[float, int]] = []
+    for row in store.anlagen_metadata_rows():
+        label_tokens = _anlage_meta_tokens(row.get("label") or "")
+        title_tokens = _anlage_meta_tokens(
+            f"{row.get('vorlage_nr') or ''} {row.get('vorlage_titel') or ''}")
+        label_hits = q_tokens & label_tokens
+        title_hits = q_tokens & title_tokens
+        # Ein Dokumenttyp im Label ist besonders aussagekräftig; Titelwörter
+        # verankern das konkrete Vorhaben bzw. den Ort.
+        score = 3.0 * len(label_hits) + 2.0 * len(title_hits)
+        if label_tokens and len(" ".join(label_tokens)) >= 6 and label_tokens <= q_tokens:
+            score += 4.0
+        if score >= 2.0:
+            scored.append((score, row["document_id"]))
+    return [did for _score, did in sorted(scored, key=lambda x: (-x[0], -x[1]))[:limit]]
+
+
 def search_anlagen(store, query: str, expanded: str, top_k: int = 6,
                    min_score: float = 0.45) -> list[tuple]:
     """Beste Anlagen (Gutachten, Konzepte) zur Frage →
     ``[(document_id, score, fundstelle)]``. Vektor liefert Kandidaten (bester
-    Chunk je Anlage), der Cross-Encoder bestätigt — kein BM25-Fallback: der
-    Kanal existiert nur in der Gründlichen Recherche und darf leer sein."""
+    Chunk je Anlage), der Cross-Encoder bestätigt — kein BM25-Fallback. Der
+    Kanal läuft nur, wenn der Rechercheplan Dokumentinhalte verlangt, und darf
+    in schneller wie gründlicher Recherche leer sein."""
     try:
         ids, texts, mat = _anlage_matrix(store)
     except Exception:  # noqa: BLE001 — ohne fastembed keine Anlagen
@@ -634,13 +690,40 @@ def search_anlagen(store, query: str, expanded: str, top_k: int = 6,
         return []
     qv = embed([expanded])[0]
     scores = mat @ qv
-    best: dict[int, tuple[float, str]] = {}
+    best_all: dict[int, tuple[float, str]] = {}
     for did, text, s in zip(ids, texts, scores):
-        if s >= min_score and s > best.get(did, (-1.0, ""))[0]:
-            best[did] = (float(s), text)
-    kandidaten = sorted(best.items(), key=lambda x: -x[1][0])[:max(top_k * 3, 12)]
+        if s > best_all.get(did, (-1.0, ""))[0]:
+            best_all[did] = (float(s), text)
+    vektor = [(did, hit) for did, hit in best_all.items() if hit[0] >= min_score]
+    kandidaten = sorted(vektor, key=lambda x: -x[1][0])[:max(top_k * 3, 12)]
+    # Exakte Metadaten ergänzen auch Kandidaten unterhalb der Cosine-Schwelle.
+    # Der Cross-Encoder bleibt danach der gemeinsame, strenge Torwächter.
+    have = {did for did, _ in kandidaten}
+    for did in _anlage_lexikalisch(store, query, expanded, max(top_k * 2, 8)):
+        if did not in have and did in best_all:
+            kandidaten.append((did, best_all[did]))
+            have.add(did)
     fundstellen = {did: t for did, (_s, t) in kandidaten}
-    bestaetigt = _rerank_kontext(query, [(did, t) for did, (_s, t) in kandidaten], top_k)
+    # Rückwärtskompatible Metadaten-Anreicherung: Sie verbessert alte Chunks
+    # sofort; nach dem v2-Backfill steht derselbe Kontext bereits im Vektor.
+    meta = {a["document_id"]: a for a in store.anlagen_by_ids(
+        [did for did, _ in kandidaten])}
+    paare = []
+    for did, (_s, text) in kandidaten:
+        a = meta.get(did, {})
+        metadata = " | ".join(t for t in (
+            a.get("label"),
+            f"Vorlage {a.get('vorlage_nr')}: {a.get('vorlage_titel')}"
+            if a.get("vorlage_nr") or a.get("vorlage_titel") else None,
+        ) if t)
+        # v2-Chunks tragen diese Metadaten bereits. Nicht doppeln: Der
+        # Zusatzkanal-Reranker deckelt bewusst bei 150 Zeichen, und ein
+        # doppelter langer Vorlagentitel würde die eigentliche Fundstelle ganz
+        # aus seinem Sichtfenster schieben.
+        kontext = text if metadata and text.startswith(metadata) else " | ".join(
+            t for t in (metadata, text) if t)
+        paare.append((did, kontext))
+    bestaetigt = _rerank_kontext(query, paare, top_k)
     return [(did, s, fundstellen.get(did, "")) for did, s in bestaetigt]
 
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Chunk-Vektoren für Anlagen-Volltexte (Task 33) — der Anlagen-Kanal der
-Gründlichen Recherche (RG-10). Die Texte lädt scripts/backfill_anlagen_texte.py.
+"""Chunk-Vektoren für Anlagen-Volltexte (Task 33) — Dokumentenkanal der
+schnellen und gründlichen Recherche. Die Texte lädt scripts/backfill_anlagen_texte.py.
 
 Wie embed_decisions ist fastembed bewusst NICHT in requirements — für den Lauf
 installieren, Deploy + Web-Service bleiben unberührt::
