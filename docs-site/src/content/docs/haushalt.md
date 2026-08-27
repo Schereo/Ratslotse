@@ -3119,7 +3119,7 @@ Abfall- und Straßenreinigungsgebühr. Wie sie zustande kommt, legt der
 Abfallwirtschaftsbetrieb jedes Jahr als Anlage zur Ratsvorlage vor — und diese
 Anlage ist das **am besten prüfbare Dokument des ganzen Bestands**
 (`council/gebuehren.py`, `scripts/ingest_gebuehren.py`,
-`council_gebuehren`).
+`council_gebuehren`, `council_gebuehrensaetze`).
 
 Drei Bereiche je Jahrgang, jeder mit eigener Bezugsgröße:
 
@@ -3179,12 +3179,23 @@ Rundungs-Signatur wie beim Erfolgsplan, `TOLERANZ_EUR = 2.0`).
    — seine Kaskade ist geprüft —, aber `gebuehr` und `bezugsmenge` bleiben
    leer, und `proben` sagt, dass nur eine der beiden Proben lief.
 
-**Was fehlt:** der Jahrgang **2020** (nur als Scan; `backfill_anlagen_ocr.py`
-macht ihn lesbar) und die **Gebührensätze selbst**. Anlage 4 jedes Dokuments
-führt sie als Zeitreihe über zwölf Jahre und zwölf Gebührenarten —
-Grundgebühr, Litergebühr, Sperrmüllkarte, Grüngutanlieferung —, jede Zeile mit
-einer eigenen Prozentprobe (`139,70 → 151,21 = +8,24 %`, gedruckt +8,24 %).
-Das ist eine eigene Schicht, die auf dieser hier aufbaut.
+**Anlage 4: die konkreten Tarife.** Neben den drei Kalkulationsblöcken stehen
+jetzt zwölf einzeln benannte Vorschläge in `council_gebuehrensaetze`:
+Grundgebühr, allgemeine Litergebühr, Biogrundmenge 60 L, Sperr- und
+Grüngutkarten, fünf Anlieferungsmengen sowie die Gebühren je Mg und je Meter
+Quadratwurzel. Eine Matrix aus Behältergröße und Abfuhrrhythmus enthält die
+Quelle nicht; eine solche Kombination wird deshalb nicht abgeleitet.
+
+Die Layouts unterscheiden sich: 2023–2025 stehen alle zwölf Werte in einer
+Zeile, 2026 steht jeder Tarif in einer eigenen Zeile. In beiden Fällen müssen
+alle zwölf Tarifarten vorhanden sein. Die Gebühren je Mg und je Meter
+Quadratwurzel werden zusätzlich gegen die getrennten Vorschläge aus Anlagen 1
+und 3 geprüft. Im neuen Layout wird außerdem jede gedruckte Veränderung gegen
+das Vorjahr nachgerechnet (`139,70 → 151,21 = +8,24 %`). Gespeichert wird
+ausdrücklich ein **Verwaltungsvorschlag**, nicht automatisch der endgültige
+Satz aus einer später beschlossenen Gebührensatzung. Anlage 4 des gescannten
+Jahrgangs 2020 ist im OCR-Text noch leer; die direkt belegten Einzeltarife
+beginnen deshalb derzeit 2023.
 
 ## Die Haushaltssatzung: der Rahmen um den Plan
 
