@@ -178,6 +178,14 @@ _GEBUEHR_MIT_EINHEIT = re.compile(
     r"(?:Ergebnis/)?Geb[üu]hr\s*(?:rd\.)?\s*je\s+([A-Za-zÄÖÜäöüß² ]{1,24}?)\s*"
     r"([\d.]+,\d{2,3})\s*€", re.I)
 _VORSCHLAG = re.compile(r"Geb[üu]hrenvorschlag[^0-9]{0,30}?([\d.]+,\d{2})\s*€", re.I)
+# Im Jahrgang 2020 ist die Überdeckung positiv gedruckt, obwohl sie in der
+# Kaskade abgezogen wird. Der Erläuterungstext bestätigt ausdrücklich, dass
+# 280.500 € aus der Überdeckung 2017 eingesetzt werden. Wir drehen das
+# Vorzeichen trotzdem nicht allein aufgrund des Wortes: Nur wenn genau dieser
+# Betrag den Rest der dokumentierten Kaskade schließt, darf er als Abzug
+# gelten. So bleibt ein OCR- oder Layoutfehler ein harter Riss.
+_UEBER_UNTERDECKUNG = re.compile(
+    r"[ÜUu]ber-/Unterdeckung\s+aus\s+Vorjahren\s*" + _BETRAG, re.I)
 
 #: Die ERRECHNETE Gebühr trägt drei Nachkommastellen („134,709 €"), der
 #: gerundete Vorschlag darunter zwei („134,70 €"). Wo der Textextrakt
@@ -316,8 +324,15 @@ def parse_anlage(teil: str, vorlage_nr: str | None = None) -> Gebuehrenbedarf:
     d = _ZU_DECKEN.search(teil)
     if k and d:
         kalkulation, zu_decken = _eur(k.group(1)), _eur(d.group(1))
-        abzuege = sum(_eur(x) for x in _BETRAG_RE.findall(teil[k.end():d.start()])
+        kaskade = teil[k.end():d.start()]
+        abzuege = sum(_eur(x) for x in _BETRAG_RE.findall(kaskade)
                       if x.strip().startswith("-"))
+        rest = kalkulation + abzuege - zu_decken
+        ueberdeckung = _UEBER_UNTERDECKUNG.search(kaskade)
+        if ueberdeckung is not None:
+            wert = _eur(ueberdeckung.group(1))
+            if wert > 0 and abs(rest - wert) <= TOLERANZ_EUR:
+                abzuege -= wert
     else:
         # Beschriftungen und Beträge stehen in getrennten Blöcken (2024).
         ueber_reihenfolge = _kaskade_aus_der_reihenfolge(teil)

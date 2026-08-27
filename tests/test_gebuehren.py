@@ -162,6 +162,37 @@ def test_ein_euro_rundung_reisst_nicht():
     assert b.zu_deckende_kosten == 7_386_271.0
 
 
+def test_positive_ueberdeckung_wird_nur_bei_exakter_kaskade_abgezogen():
+    """2020 druckt die Überdeckung ohne Minuszeichen, zieht sie aber ab.
+
+    Der Parser darf das nicht blind aus dem Wort ableiten: Der Betrag wird nur
+    umgedreht, weil er exakt die Lücke zwischen gebührenwirksamen und zu
+    deckenden Kosten schließt.
+    """
+    text = """
+    Anlage 1 - Abfallbehandlungsanlagen - Gebührenbedarfsrechnung 2020
+    Kostenkalkulation für 2020 9.761.550 €
+    Kosten, die durch Dritte erstattet werden - 2.881.800 €
+    Erlöse - 3.000 €
+    Nachsorgekosten - 168.200 €
+    Gebührenwirksame Kosten 6.708.550 €
+    Über-/Unterdeckung aus Vorjahren 280.500 €
+    Kosten, die durch Gebühren zu decken sind 6.428.050 €
+    Ergebnis/Gebühr je Mg 121,974 €
+    angelieferte Abfallmenge in Mg 52.700
+    Gebührenvorschlag 121,95 €
+    """
+    b = parse_anlage(text)
+    assert b.jahr == 2020
+    assert b.abzuege == -(2_881_800 + 3_000 + 168_200 + 280_500)
+    assert b.zu_deckende_kosten == 6_428_050
+    assert b.gebuehr == 121.974 and b.bezugsmenge == 52_700
+
+    kaputt = text.replace("280.500 €", "280.400 €")
+    with pytest.raises(GebuehrenFehler, match="Rest"):
+        parse_anlage(kaputt)
+
+
 # --------------------------------------------------------------------------
 # (b) Die Division — und wie sie die Bezugsmenge findet
 # --------------------------------------------------------------------------
