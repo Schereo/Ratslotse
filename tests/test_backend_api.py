@@ -2443,13 +2443,11 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     monkeypatch.setattr(council_router, "_qa_retrieve",
                         lambda *a, **k: (_ for _ in ()).throw(
                             AssertionError("Reranker darf hier nicht laufen")))
-    gesehen: dict = {}
-
-    def fake_stream(question, ctx, **kwargs):
-        gesehen["ids"] = [row["id"] for row in ctx]
-        yield "Am 21. April wurde der jüngste echte Beschluss angenommen [102]."
-
-    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+    monkeypatch.setattr(
+        qa_mod, "answer_stream",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("Die enge Datumsantwort darf kein LLM brauchen")),
+    )
     with client.stream("POST", "/api/council/ask", json={
             "question": "Was wurde in Kreyenbrück zuletzt beschlossen?"}) as response:
         assert response.status_code == 200
@@ -2461,9 +2459,12 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     assert sources["qtype"] == "ort"
     assert sources["beleglage"] == "solide"
     assert [row["id"] for row in sources["sources"]] == [103, 102, 101]
-    # Quellenband streng nach Datum; Antwortkontext mit der jüngsten echten
-    # Entscheidung vor der bloßen Kenntnisnahme.
-    assert gesehen["ids"] == [102, 103, 101]
+    tokens = "".join(event["text"] for event in events if event["type"] == "token")
+    # Quellenband streng nach Datum, Faktenantwort deterministisch aus der
+    # jüngsten echten Entscheidung statt aus einer LLM-Auswahl.
+    assert tokens.startswith("Am 21.04.2026")
+    assert "Neuer echter Beschluss" in tokens and "[102]" in tokens
+    assert "28.04.2026" in tokens and "kein neuer Beschluss" in tokens
 
 
 def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
