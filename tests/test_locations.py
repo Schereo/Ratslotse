@@ -12,6 +12,22 @@ from council.store import CouncilStore
 from scripts.extract_decision_locations import process
 from scripts.geocode_decision_locations import process as geocode_process
 from scripts.revalidate_decision_locations import process as revalidate_process
+from scripts.review_location_candidates_2026_08 import review_manifest
+
+
+def test_full_location_review_manifest_is_complete_and_valid():
+    from collections import Counter
+    from council.store import CONCRETE_LOCATION_KINDS
+
+    manifest = review_manifest()
+    assert len(manifest) == 123
+    assert Counter(row["status"] for row in manifest.values()) == {
+        "concrete": 58, "approved": 31, "alias": 8, "rejected": 26,
+    }
+    assert all(row["kind"] in CONCRETE_LOCATION_KINDS
+               for row in manifest.values() if row["status"] == "concrete")
+    assert all(row["source_url"].startswith("https://")
+               for row in manifest.values() if row["status"] == "approved")
 
 
 @pytest.mark.parametrize(
