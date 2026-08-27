@@ -142,6 +142,20 @@ _OFFICIAL_SOURCE_RE = re.compile(
     r"\b(?:stadt(?:verwaltung)?|verwaltung|oberb(?:ü|ue)rgermeister(?:in)?)\b",
     re.IGNORECASE,
 )
+_EXPLICIT_DOCUMENT_RE = re.compile(
+    r"\b(?:vorlage|anlage|gutachten|studie|stellungnahme|konzept|begr(?:ü|ue)nd\w*|"
+    r"alternative\w*|technisch\w*|ausf(?:ü|ue)hrung|risik\w*|kriteri\w*|"
+    r"umweltfolg\w*|wirtschaftlichkeits\w*|kostenannahm\w*|sachverhalt|"
+    r"detail\w*|inhalt\w*|r(?:ä|ae)um\w*|umsetz\w*|untersuch\w*)\b",
+    re.IGNORECASE,
+)
+_DECISION_METADATA_RE = re.compile(
+    r"^\s*(?:wurde\b|wann\b|wer\b|welch(?:er|es)\s+(?:ausschuss|gremium)\b|"
+    r"wie\s+lautete\s+das\s+abstimmungsergebnis\b|was\s+wurde\s+zuletzt\b|"
+    r"welche\s+(?:beschl(?:ü|ue)sse|entscheidungen)\b|"
+    r"was\s+hat\b.{0,100}\bbeschlossen\b)",
+    re.IGNORECASE,
+)
 
 
 def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
@@ -218,6 +232,18 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
         # Modell setzte den Kanal in der Produktionsmatrix oft vorsorglich bei
         # einfachen Datums-/Abstimmungsfragen, ohne selbst einen Bedarf an
         # Dokumentinhalten zu erkennen.
+        selected.remove("documents")
+        suppressed.append("documents")
+    elif ("documents" in selected and question
+          and not _EXPLICIT_DOCUMENT_RE.search(question)
+          and (typ in ("person", "partei", "sitzung")
+               or latest_decision or _DECISION_METADATA_RE.search(question))):
+        # Das Analysemodell schwankt bei Metadatenfragen trotz klarer Prompt-
+        # Regel: In wiederholten Produktionsläufen kamen „welcher Ausschuss?",
+        # „welche Beschlüsse bisher?“ und ein konkreter Sitzungsrückblick mit
+        # documents zurück. Solche Antworten stehen vollständig in Beschluss-
+        # und Sitzungsdaten. Explizite Fachinhalte oben schützen echte
+        # Dokumentfragen vor dieser Negativregel.
         selected.remove("documents")
         suppressed.append("documents")
     added = [c for c in selected if c not in model_channels]
