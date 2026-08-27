@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: sync-main-to-dev
@@ -26,12 +27,14 @@ jobs:
           fetch-depth: 0
 
       - name: Produktionsstand nach dev zurückführen
+        id: sync
         run: |
           set -e
           git fetch origin main dev
 
           if git merge-base --is-ancestor origin/main origin/dev; then
             echo "dev enthält den vollständigen Produktionsstand bereits."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -40,3 +43,13 @@ jobs:
           git checkout -B dev origin/dev
           git merge --no-edit origin/main
           git push origin HEAD:dev
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # Pushes mit dem GITHUB_TOKEN lösen absichtlich keine weiteren
+      # Workflows aus. Ohne den expliziten Dispatch wäre der Branch aktuell,
+      # dev.ratslotse.de bliebe aber auf dem vorherigen Stand stehen.
+      - name: Aktualisierten Dev-Stand deployen
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-dev.yml --ref dev
