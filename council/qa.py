@@ -183,6 +183,18 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, person: bool = False,
             "suppressed_channels": suppressed}
 
 
+def research_channel_enabled(plan: dict, channel: str, *, fallback: bool = True) -> bool:
+    """Darf ein einzelner Recherchekanal laut validiertem Plan laufen?
+
+    Die Kanäle werden bewusst einzeln aktiviert. Ein ungültiger oder fehlender
+    LLM-Plan behält mit ``fallback=True`` das bisherige Verhalten, damit ein
+    Providerfehler keine Quellen verschwinden lässt.
+    """
+    if not plan.get("valid"):
+        return fallback
+    return channel in (plan.get("channels") or [])
+
+
 def research_plan_log_record(question: str, plan: dict, typ: str,
                              observed: dict[str, int | bool]) -> dict:
     """Kompakter, auswertbarer und datensparsamer Shadow-Logeintrag.
