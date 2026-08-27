@@ -2342,6 +2342,128 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
     assert sources["sources"][0]["ort_name"] == "Kreyenbrück"
 
 
+def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch):
+    """Regression aus der Produktionsprobe: Die freie Personensuche lieferte
+    Beiträge ohne ``zu_beschluss``; der Orts-Guard entfernte sie anschließend
+    vollständig. Person + Ort muss stattdessen über Sitzung/TOP koppeln."""
+    from app.routers import council as council_router
+    from council import embeddings as emb
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(88, "Rat", "2026-04-21", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions "
+            "(id,ksinr,position,item_number,title,summary,outcome,kind) "
+            "VALUES (5,88,1,'7','Sporthalle Kreyenbrück - Beschluss','Sanierung',"
+            "'angenommen','decision')")
+    cs.save_decision_locations(5, [{
+        "name": "Kreyenbrück", "kind": "stadtteil", "source": "title",
+        "evidence": "Sporthalle Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
+    }], "local")
+    cs.save_person(42, "Bernhard Ellberg", "SPD")
+    cs.save_wortbeitraege(88, [
+        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "sprecher": "Bernhard Ellberg",
+         "partei": "SPD", "text": "Die Sanierung sei dringend.", "antwort": None},
+        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "sprecher": "Anna Beispiel",
+         "partei": "CDU", "text": "Die Kosten müssten geprüft werden.", "antwort": None},
+    ])
+    cs.close()
+
+    gesehen: dict = {}
+    # Der Name steht nicht im Beschlusstext: Selbst bei leerer semantischer
+    # Suche muss die deterministische Orts-/TOP-Kopplung den Beleg retten.
+    monkeypatch.setattr(council_router, "_qa_retrieve",
+                        lambda *a, **k: ([], "semantisch"))
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "frage": "Was hat Bernhard Ellberg zu Kreyenbrück gesagt?",
+        "begriffe": "Bernhard Ellberg Kreyenbrück", "typ": "thema",
+        "partei": None, "varianten": [], "eng": False,
+    })
+    monkeypatch.setattr(emb, "search_wortbeitraege_von_person",
+                        lambda *a, **k: (_ for _ in ()).throw(
+                            AssertionError("freie Personensuche darf nicht laufen")))
+
+    def fake_stream(question, ctx, **kwargs):
+        gesehen["debatten"] = kwargs.get("debatten")
+        gesehen["typ"] = kwargs.get("typ")
+        yield "Ellberg nannte die Sanierung dringend [5]."
+
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Was hat Bernhard Ellberg zu Kreyenbrück gesagt?"}) as response:
+        assert response.status_code == 200
+        body = "".join(response.iter_text())
+
+    events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+    sources = next(event for event in events if event["type"] == "sources")
+    assert gesehen["typ"] == "person"
+    assert [row["sprecher"] for row in gesehen["debatten"]] == ["Bernhard Ellberg"]
+    assert gesehen["debatten"][0]["zu_beschluss"] == 5
+    assert [row["sprecher"] for row in sources["debatten"]] == ["Bernhard Ellberg"]
+    assert [row["id"] for row in sources["sources"]] == [5]
+    assert sources["beleglage"] == "solide"
+
+
+def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch):
+    """Bei „zuletzt beschlossen“ ist das Datum selbst die Antwort. Deshalb
+    darf der semantische Reranker keinen älteren, ähnlich betitelten Beschluss
+    mehr vor die neuesten Ortsquellen schieben."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    rows = [
+        (101, 901, "2025-12-11", "Alter Beschluss", "angenommen"),
+        (102, 902, "2026-04-21", "Neuer echter Beschluss", "angenommen"),
+        (103, 903, "2026-04-28", "Neuester Sachstandsbericht", "zur_kenntnis"),
+    ]
+    for decision_id, ksinr, datum, title, outcome in rows:
+        cs.save_session(CouncilSession(ksinr, "Rat", datum, "17:00", "Rathaus"))
+        with cs._conn:
+            cs._conn.execute(
+                "INSERT INTO council_decisions "
+                "(id,ksinr,position,item_number,title,summary,outcome,kind) "
+                "VALUES (?,?,1,'7',?,? ,?,'decision')",
+                (decision_id, ksinr, title, "Kreyenbrück", outcome))
+        cs.save_decision_locations(decision_id, [{
+            "name": "Kreyenbrück", "kind": "stadtteil", "source": "summary",
+            "evidence": "Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
+        }], f"local-{decision_id}")
+    cs.close()
+
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "frage": "Was wurde in Kreyenbrück zuletzt beschlossen?",
+        "begriffe": "Kreyenbrück Beschlüsse", "typ": "thema",
+        "partei": None, "varianten": [], "eng": False,
+    })
+    monkeypatch.setattr(council_router, "_qa_retrieve",
+                        lambda *a, **k: (_ for _ in ()).throw(
+                            AssertionError("Reranker darf hier nicht laufen")))
+    gesehen: dict = {}
+
+    def fake_stream(question, ctx, **kwargs):
+        gesehen["ids"] = [row["id"] for row in ctx]
+        yield "Am 21. April wurde der jüngste echte Beschluss angenommen [102]."
+
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Was wurde in Kreyenbrück zuletzt beschlossen?"}) as response:
+        assert response.status_code == 200
+        body = "".join(response.iter_text())
+
+    events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+    sources = next(event for event in events if event["type"] == "sources")
+    assert sources["mode"] == "chronologisch"
+    assert sources["qtype"] == "ort"
+    assert sources["beleglage"] == "solide"
+    assert [row["id"] for row in sources["sources"]] == [103, 102, 101]
+    assert gesehen["ids"] == [103, 102, 101]
+
+
 def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
     """Sitzungs-Fragetyp (25.08.26): „Was hat der Jugendhilfeausschuss am
     17.06.2026 beschlossen?" lief rein semantisch — 3 der 6 TOPs fehlten in der

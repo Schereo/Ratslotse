@@ -608,6 +608,22 @@ def test_wortbeitraege_zu_beschluessen_koppelt_ueber_die_station(store):
     assert store.wortbeitraege_zu_beschluessen([{"id": 9, "ksinr": None, "title": "Irgendwas"}]) == []
 
 
+def test_wortbeitraege_zu_beschluessen_filtert_optional_nach_person(store):
+    """Person + Ort bleibt über den Beschlussanker belegt, ohne Wortmeldungen
+    anderer Personen aus demselben TOP mitzunehmen."""
+    store.save_wortbeitraege(100, [
+        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "sprecher": "Bernhard Ellberg",
+         "partei": "SPD", "text": "Die Halle soll zügig saniert werden.", "antwort": None},
+        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "sprecher": "Anna Beispiel",
+         "partei": "CDU", "text": "Die Finanzierung müsse geklärt werden.", "antwort": None},
+    ])
+    beschluss = {"id": 77, "ksinr": 100, "item_number": "7",
+                 "title": "Sporthalle Kreyenbrück - Beschluss"}
+    got = store.wortbeitraege_zu_beschluessen([beschluss], sprecher="Ellberg")
+    assert [row["sprecher"] for row in got] == ["Bernhard Ellberg"]
+    assert got[0]["zu_beschluss"] == 77
+
+
 def test_wortbeitraege_zu_beschluessen_deckelt_die_menge(store):
     store._conn.execute(
         "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "

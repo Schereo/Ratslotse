@@ -1697,9 +1697,20 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             place_ids = (store.decision_ids_for_place(ort["id"], limit=120)
                          if ort else None)
             allowed_place_ids = set(place_ids or []) if ort else None
-            candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
-                                            varianten=analyse.get("varianten"),
-                                            place_ids=place_ids)
+            latest_place = bool(ort and typ == "ort"
+                                and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
+            if latest_place:
+                # Bei einer reinen Ortsfrage nach dem „zuletzt“ ist das Datum
+                # die Antwort. Der Reranker schob in der Produktionsprobe einen
+                # Beschluss von Dezember 2025 vor einen angenommenen Beschluss
+                # von April 2026. Die Orts-IDs sind bereits neueste zuerst und
+                # exakt belegt — hier braucht es keine Semantik.
+                candidates = store.get_decisions_by_ids((place_ids or [])[:QA_TOP_K])
+                mode = "chronologisch"
+            else:
+                candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
+                                                varianten=analyse.get("varianten"),
+                                                place_ids=place_ids)
             partei_ids: set[int] = set()
             if typ == "partei" and analyse.get("partei"):
                 # Anträge der gefragten Fraktion zum Thema in den Pool — die
@@ -1776,7 +1787,31 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     # Beschlusstexten steht. Strenge Schwelle, oft leer. Beim
                     # Personen-Fragetyp stattdessen die Beiträge DIESER Person.
                     from council import embeddings as emb
-                    if person:
+                    if person and ort:
+                        # Personen-Suche und Ortsfilter müssen über denselben
+                        # Beschlussanker laufen. Die freie Personen-Suche trägt
+                        # kein ``zu_beschluss``-Feld und wurde vom Orts-Guard
+                        # deshalb bisher vollständig entfernt — selbst wenn es
+                        # belegte Beiträge gab (Produktionsprobe Ellberg).
+                        # Nicht nur die semantisch gerankten Beschlüsse prüfen:
+                        # Der Personenname steht typischerweise ausschließlich
+                        # im Protokoll, nicht im Beschlusstitel. Deshalb dienen
+                        # ALLE Ortsbeschlüsse (gedeckelt durch ``place_ids``)
+                        # als Anker; tatsächlich verknüpfte Beschlüsse werden
+                        # anschließend in den sichtbaren Quellen nachgeladen.
+                        orts_candidates = store.get_decisions_by_ids(place_ids or [])
+                        debatten_rows = store.wortbeitraege_zu_beschluessen(
+                            orts_candidates, max_gesamt=10, max_je_top=4,
+                            sprecher=person["nachname"])
+                        linked_ids = list(dict.fromkeys(
+                            row["zu_beschluss"] for row in debatten_rows))
+                        have = {c["id"] for c in candidates}
+                        linked_by_id = {c["id"]: c for c in orts_candidates}
+                        linked = [linked_by_id[i] for i in linked_ids
+                                  if i not in have and i in linked_by_id]
+                        if linked:
+                            candidates = linked + candidates
+                    elif person:
                         debatten_rows = emb.search_wortbeitraege_von_person(
                             store, q_suche, person["nachname"])
                     else:
@@ -1866,6 +1901,15 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                 "description": ort["description"]}, *steckbriefe]
             # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
             lage = qa.beleglage(candidates)
+            if latest_place:
+                # Keine Rerank-Scores im chronologischen Modus; der Ortsbezug
+                # ist dennoch deterministisch. Nur ein Mini-Bestand bleibt
+                # bewusst als dünn markiert.
+                lage = "solide" if len(candidates) >= 3 else "duenn"
+            if person and ort and debatten_rows:
+                # Sitzung + TOP + Sprecher + kuratierter Ortsbezug sind harte
+                # Beziehungen, keine Ähnlichkeitsschätzung.
+                lage = "solide"
             if typ == "sitzung" and sitzungen:
                 # Die Sitzung ist deterministisch aufgelöst, kein Ähnlichkeits-
                 # Raten — die Dünn-Regel hätte hier nichts zu bremsen. Gilt

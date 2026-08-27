@@ -145,6 +145,7 @@ const PLAYFUL = [
 const MODE_LABEL: Record<string, string> = {
   semantisch: "semantische Suche",
   keyword: "Stichwortsuche",
+  chronologisch: "neueste zuerst",
   recherche: "gründliche Recherche",
 };
 

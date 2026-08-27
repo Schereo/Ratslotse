@@ -168,6 +168,24 @@ def test_beleglage_trennt_duenn_von_solide():
     assert qa.beleglage([{"title": "ohne score"}] * 5) == "duenn"
 
 
+def test_latest_intent_ist_enger_als_allgemeine_aktualitaet():
+    """Nur eine ausdrückliche Neueste-Frage darf den semantischen Reranker
+    umgehen. Ein aktueller Sachstand braucht weiterhin die fachlich wichtigen
+    Stationen; ein genanntes historisches Jahr erst recht."""
+    assert qa.latest_intent("Was wurde in Kreyenbrück zuletzt beschlossen?")
+    assert qa.latest_intent("Welche neuesten Beschlüsse gibt es in Nadorst?")
+    assert qa.latest_intent("Was sind die jüngsten Beschlüsse für Eversten?")
+    assert not qa.latest_intent("Wie ist der aktuelle Stand in Kreyenbrück?")
+    assert not qa.latest_intent("Was wurde 2019 zuletzt in Kreyenbrück beschlossen?")
+    messages, _ = qa._answer_messages(
+        "Was wurde in Kreyenbrück zuletzt beschlossen?",
+        [{"id": 1, "title": "Sachstandsbericht", "outcome": "zur_kenntnis"}],
+        typ="ort",
+    )
+    assert "CHRONOLOGIE" in messages[0]["content"]
+    assert "echten Entscheidung" in messages[0]["content"]
+
+
 def test_duenn_regel_nur_bei_duenner_lage():
     messages, _ = qa._answer_messages("Frage?", [{"id": 1, "title": "T"}], duenn=True)
     assert "DÜNNE BELEGLAGE" in messages[0]["content"]
