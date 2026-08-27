@@ -579,28 +579,34 @@ def test_anlagen_reranking_bekommt_vorlagentitel(tmp_path, monkeypatch):
     store = CouncilStore(tmp_path / "c.sqlite")
     try:
         with store._conn:
-            store._conn.execute(
+            store._conn.executemany(
                 "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, status, fetched_at) "
-                "VALUES (111, '26/0100', 'Bebauungsplan Fliegerhorst', 'ok', '')")
-            store._conn.execute(
+                "VALUES (?, ?, ?, 'ok', '')", [
+                    (111, "26/0100", "Bebauungsplan Fliegerhorst"),
+                    (222, "26/0200", "Bebauungsplan anderes Gebiet"),
+                ])
+            store._conn.executemany(
                 "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
-                "fetched_at, status) VALUES (901, 111, 'Umweltbericht', 'https://x', "
-                "'Alter Chunk ohne Thema', '', 'ok')")
+                "fetched_at, status) VALUES (?, ?, 'Umweltbericht', 'https://x', "
+                "'Alter Chunk ohne Thema', '', 'ok')", [(901, 111), (902, 222)])
         monkeypatch.setattr(emb, "_anlage_matrix", lambda _store: (
-            [901], ["Umweltbericht — allgemeiner Text"], np.array([[1.0]], dtype="float32")))
+            [902, 901], ["Umweltbericht — allgemeiner Text", "Alter Ziel-Chunk"],
+            np.array([[1.0], [0.1]], dtype="float32")))
         monkeypatch.setattr(emb, "embed",
                             lambda texts: np.array([[1.0]], dtype="float32"))
         gesehen = {}
 
         def rerank(query, paare, top_k):
-            gesehen["text"] = paare[0][1]
+            gesehen["paare"] = dict(paare)
             return [(901, 0.9)]
 
         monkeypatch.setattr(emb, "_rerank_kontext", rerank)
         hits = emb.search_anlagen(store, "Umweltbericht Fliegerhorst",
                                   "Umweltbericht Fliegerhorst", top_k=1)
         assert hits[0][0] == 901
-        assert "Vorlage 26/0100: Bebauungsplan Fliegerhorst" in gesehen["text"]
+        # Ziel liegt mit Cosine 0.1 deutlich unter min_score=0.45 und kommt
+        # ausschließlich über die exakten Metadaten in den Reranker.
+        assert "Vorlage 26/0100: Bebauungsplan Fliegerhorst" in gesehen["paare"][901]
     finally:
         store.close()
 

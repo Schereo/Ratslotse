@@ -5972,6 +5972,21 @@ class CouncilStore:
         by_id = {r["document_id"]: dict(r) for r in rows}
         return [by_id[i] for i in document_ids if i in by_id]
 
+    def anlagen_metadata_rows(self) -> list[dict]:
+        """Kleine Metadatenliste für den lexikalischen Anlagen-Sicherungsweg.
+
+        Volltexte und Vektoren bleiben in ihren spezialisierten Tabellen; für
+        exakte Angaben wie „Bodengutachten Kaiserstraße/Bleicherstraße“ reichen
+        Label, Vorlagennummer und -titel. Rund 5.000 kompakte Zeilen sind
+        billiger als ein zweiter großer Suchindex.
+        """
+        return [dict(r) for r in self._conn.execute(
+            "SELECT a.document_id, a.label, v.vorlage_nr, "
+            "       v.title AS vorlage_titel FROM council_anlagen a "
+            "LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
+            "WHERE a.status = 'ok' AND a.raw_text IS NOT NULL AND a.raw_text != '' "
+            "ORDER BY a.document_id DESC").fetchall()]
+
     def decision_ids_for_vorlagen(self, vorlage_nrs: list[str]) -> dict[str, list[int]]:
         """vorlage_nr → Beschluss-ids (alle Beratungsstationen), neueste zuerst.
         Bildet Vorlagen-Chunk-Treffer der semantischen Suche auf zitierbare
