@@ -229,8 +229,8 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
   const areaCount = stSel.size + thSel.size;
   const catStr = cats.size ? [...cats].map((c) => CATEGORY_LABEL[c] ?? c).join(", ") : null;
   const summary = areaCount
-    ? `in ${stSel.size ? `${stSel.size} Ortsbereich${stSel.size === 1 ? "" : "en"}` : ""}${stSel.size && thSel.size ? " + " : ""}${thSel.size ? `${thSel.size} Thema${thSel.size === 1 ? "" : "en"}` : ""}${catStr ? ` · ${catStr}` : ""}`
-    : "Noch kein Gebiet gewählt — Schnellwahl oder Ortsbereiche antippen.";
+    ? `in ${stSel.size ? `${stSel.size} Ort${stSel.size === 1 ? "" : "en"}` : ""}${stSel.size && thSel.size ? " + " : ""}${thSel.size ? `${thSel.size} Thema${thSel.size === 1 ? "" : "en"}` : ""}${catStr ? ` · ${catStr}` : ""}`
+    : "Noch kein Gebiet gewählt — Schnellwahl oder Orte antippen.";
 
   const start = () => onStart(
     [...stSel].map((s) => `stadtteil:${s}`).concat([...thSel]),
@@ -282,7 +282,7 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
       )}
 
       <SetupLabel hint={stSel.size ? `${stSel.size} ausgewählt${wbSel.size ? " — aus der Schnellwahl, frei anpassbar" : ""}` : undefined}>
-        Ortsbereiche
+        Orte
       </SetupLabel>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {selectedSt.map((s) => (
@@ -300,14 +300,14 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
         {searchOpen ? (
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input autoFocus className="h-8 w-44 rounded-full pl-8 text-xs" placeholder="Ortsbereich suchen…"
+            <Input autoFocus className="h-8 w-44 rounded-full pl-8 text-xs" placeholder="Ort suchen…"
               value={q} onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Escape") { setSearchOpen(false); setQ(""); } }} />
           </div>
         ) : hiddenCount > 0 && (
           <button type="button" onClick={() => setSearchOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
-            <Search className="h-3 w-3" /> Ortsbereich suchen — {hiddenCount} weitere
+            <Search className="h-3 w-3" /> Ort suchen — {hiddenCount} weitere
           </button>
         )}
       </div>

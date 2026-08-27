@@ -288,7 +288,17 @@ def test_ortskatalog_alias_is_extracted_as_canonical_name():
         "Die Verwaltung berichtet aus dem Drielaker Moor.", source="title")
     assert got == [{
         "name": "Drielaker-Moor", "kind": "stadtteil", "source": "title",
-        "evidence": "Drielaker Moor", "method": "stadtteilliste", "confidence": 0.99,
+        "evidence": "Drielaker Moor", "method": "ortskatalog", "confidence": 0.99,
+    }]
+
+
+def test_secondary_place_alias_is_extracted_with_canonical_id_ready_name():
+    got = locations.extract_explicit_locations(
+        "Die Verbindung zur ehemaligen Donnerschwee-Kaserne wird gebaut.", source="title")
+    assert got == [{
+        "name": "Neu-Donnerschwee", "kind": "gebiet", "source": "title",
+        "evidence": "ehemaligen Donnerschwee-Kaserne", "method": "ortskatalog",
+        "confidence": 0.99,
     }]
 
 

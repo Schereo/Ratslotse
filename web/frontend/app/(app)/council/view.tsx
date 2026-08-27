@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip, MapPin } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
-import { fragenHref, decisionHref } from "@/lib/routes";
+import { fragenHref, decisionHref, ortHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
 import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/recent-searches";
 import { offerIcs } from "@/lib/ics";
@@ -167,6 +167,7 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const sub = d.subvote_summary;
   const locationMatches = d.location_matches ?? [];
   const primaryLocation = locationMatches[0];
+  const locationProfileId = primaryLocation?.place_id ?? primaryLocation?.ortsbereich_id;
   const router = useRouter();
   const sp = useSearchParams();
   // 5a/I-08: aus der Trefferkarte direkt ins Ratsgespräch — die Frage steht
@@ -224,6 +225,13 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
                   {locationMatches.slice(0, 2).map((match) => match.name).join(", ")}
                   {locationMatches.length > 2 ? ` +${locationMatches.length - 2}` : ""}
                   <span className="text-muted-foreground"> · {primaryLocation.stadtteil}</span>
+                  {locationProfileId && (
+                    <button type="button" onClick={(event) => {
+                      event.preventDefault(); event.stopPropagation(); router.push(ortHref(locationProfileId));
+                    }} className="ml-1 font-medium text-primary hover:underline">
+                      Ortsprofil
+                    </button>
+                  )}
                 </p>
                 <p className="mt-0.5 line-clamp-1 text-muted-foreground">
                   Fundstelle: „{primaryLocation.evidence}“
@@ -484,7 +492,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
   const [districts, setDistricts] = useState<{
-    name: string; count: number; vote_count: number; report_count: number;
+    place_id: string; name: string; kind: string; kind_label: string; parent_ids: string[];
+    count: number; vote_count: number; report_count: number;
   }[]>([]);
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -564,7 +573,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   useEffect(() => {
     api.get<{ fields: PolicyField[] }>("/council/fields").then((d) => setFields(d.fields)).catch(() => {});
     api.get<{ districts: {
-      name: string; count: number; vote_count: number; report_count: number;
+      place_id: string; name: string; kind: string; kind_label: string; parent_ids: string[];
+      count: number; vote_count: number; report_count: number;
     }[] }>("/council/districts")
       .then((d) => setDistricts(d.districts)).catch(() => {});
   }, []);
@@ -636,6 +646,9 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const totalLabel = `${total}${topicCapped ? "+" : ""}`;
   const districtCount = (item: typeof districts[number]) =>
     mode === "vote" ? item.vote_count : mode === "report" ? item.report_count : item.count;
+  const primaryPlaces = districts.filter((item) => item.kind === "ortsbereich");
+  const secondaryPlaces = districts.filter((item) => item.kind !== "ortsbereich");
+  const districtValue = districts.find((item) => item.place_id === district || item.name === district)?.place_id ?? district;
 
   // Zeitraum zählt als EIN Filter; Sortierung ist eine Einstellung, kein Filter.
   const activeFilterCount = [outcome, field, committee, district, dateFrom || dateTo].filter(Boolean).length;
@@ -669,11 +682,18 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           </Select>
         </FilterField>
         <FilterField label="Ortsbezug">
-          <Select value={district} onChange={(e) => setUrlParam("district", e.target.value)}>
-            <option value="">Alle Ortsbereiche</option>
-            {districts.map((item) => (
-              <option key={item.name} value={item.name}>{item.name} ({districtCount(item)})</option>
-            ))}
+          <Select value={districtValue} onChange={(e) => setUrlParam("district", e.target.value)}>
+            <option value="">Alle Orte</option>
+            <optgroup label="Ortsbereiche">
+              {primaryPlaces.map((item) => (
+                <option key={item.place_id} value={item.place_id}>{item.name} ({districtCount(item)})</option>
+              ))}
+            </optgroup>
+            {secondaryPlaces.length > 0 && <optgroup label="Quartiere und besondere Gebiete">
+              {secondaryPlaces.map((item) => (
+                <option key={item.place_id} value={item.place_id}>{item.name} · {item.kind_label} ({districtCount(item)})</option>
+              ))}
+            </optgroup>}
           </Select>
         </FilterField>
         <FilterField label="Sortierung">
@@ -750,9 +770,10 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         {districts.length > 0 && (
           <ChipPopover
             label="Ortsbezug"
-            value={district}
+            value={districtValue}
             options={districts.map((item) => ({
-              value: item.name, label: `${item.name} (${districtCount(item)})`,
+              value: item.place_id, label: `${item.name} (${districtCount(item)})`,
+              sub: item.kind === "ortsbereich" ? undefined : item.kind_label,
             }))}
             onChange={(value) => setUrlParam("district", value)}
           />

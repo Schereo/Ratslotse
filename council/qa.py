@@ -62,7 +62,7 @@ _EXPAND_CACHE_MAX = 256
 # „person" und „sitzung" liefert die LLM-Analyse nie — die Typen werden
 # deterministisch gesetzt, wenn finde_person eine Ratsperson bzw.
 # finde_sitzungen eine konkrete Sitzung in der Frage erkennt (Router).
-QUERY_TYPES = ("thema", "verlauf", "partei", "geld", "person", "sitzung")
+QUERY_TYPES = ("thema", "verlauf", "partei", "geld", "person", "sitzung", "ort")
 _ANALYSE_CACHE: dict[str, dict] = {}
 
 
@@ -122,8 +122,8 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         # knapp statt mit Verlauf + Debatten-Absatz. Reist im ohnehin laufenden
         # Analyse-Call mit, kostet also keine zusätzliche Latenz.
         eng = bool(data.get("eng") is True)
-        if typ not in QUERY_TYPES or typ in ("person", "sitzung"):
-            # „person"/„sitzung" setzt ausschließlich der Router
+        if typ not in QUERY_TYPES or typ in ("person", "sitzung", "ort"):
+            # „person"/„sitzung"/„ort" setzt ausschließlich der Router
             # (deterministische Erkennung) — behauptet das Modell den Typ,
             # fehlt die Person bzw. die aufgelöste Sitzung.
             typ = "thema"
@@ -189,6 +189,14 @@ EXTRA_REGELN = {
         "Einordnung, wofür das Geld ist. Tauchen zum selben Vorhaben mehrere "
         "Summen aus verschiedenen Jahren auf, benenne die Entwicklung mit "
         "Ausgangs- und Endwert samt Datum und zitiere beide Beschlüsse."
+    ),
+    "ort": (
+        "Diese Frage zielt auf EINEN KONKRETEN ORT aus dem Ratslotse-Ortskatalog. "
+        "Im Kontext stehen nur Beschlüsse mit belegtem Bezug zu diesem Ort. "
+        "Unterscheide den Ort von seinem größeren Ortsbereich und behaupte nicht, "
+        "dass jeder Beschluss des Elternbereichs auch den kleineren Ort betrifft. "
+        "Nenne bei einem Überblick die wichtigsten Vorgänge mit Datum und Ergebnis; "
+        "ist der Bestand dünn, sage das ausdrücklich."
     ),
     # Personen-Fragetyp (10.08.26): deterministisch gesetzt, wenn die Frage
     # eine Ratsperson nennt — die Debatten-Zeilen sind dann deren Beiträge.
@@ -388,6 +396,23 @@ def finde_person(store, frage: str) -> dict | None:
     if not treffer:
         return None
     return max(treffer, key=lambda t: t[0])[1]
+
+
+def finde_ort(frage: str) -> dict | None:
+    """Katalogort in einer Frage deterministisch erkennen.
+
+    Längere Aliase gewinnen, sodass „Neu-Donnerschwee“ nicht zusätzlich als
+    allgemeines „Donnerschwee“ behandelt wird.
+    """
+    from council import places
+
+    found = places.find_mentions(frage, max_n=1)
+    if not found:
+        return None
+    place = found[0]
+    return {"id": place.id, "name": place.name, "kind": place.kind,
+            "kind_label": places.kind_label(place.kind),
+            "description": place.description}
 
 
 def anker_ids_fuer(store, frage: str) -> list[int]:

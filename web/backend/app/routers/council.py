@@ -68,8 +68,8 @@ def districts(
 ) -> dict:
     """Belegte Ratslotse-Ortsbereiche für den Beschlussfilter."""
     rows = []
-    for row in store.decision_location_district_stats():
-        place = places.resolve(row["name"])
+    for row in store.decision_location_place_stats():
+        place = places.resolve(row["place_id"])
         if not place:
             continue
         rows.append({
@@ -77,13 +77,16 @@ def districts(
             "name": place.name,
             "place_id": place.id,
             "kind": place.kind,
+            "kind_label": places.kind_label(place.kind),
             "aliases": list(place.aliases),
+            "parent_ids": list(place.parent_ids),
+            "description": place.description,
         })
     catalog = places.public_catalog()
     return {
         "catalog": {key: catalog[key] for key in (
             "schema_version", "id", "label", "singular", "plural",
-            "definition", "sources",
+            "definition", "kinds", "sources",
         )},
         "districts": rows,
     }
@@ -93,6 +96,31 @@ def districts(
 def place_catalog(_user: dict = Depends(require_active)) -> dict:
     """Gemeinsamer Ortskatalog für Suche, Karten, Quiz und KI-Funktionen."""
     return places.public_catalog()
+
+
+@router.get("/place/{place_id}")
+def place_detail(
+    place_id: str,
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Öffentliches Ortsprofil aus Katalogstammdaten und belegten Beschlüssen."""
+    place = places.resolve(place_id)
+    if not place:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ort nicht gefunden.")
+    total = store.count_decisions(district=place.id)
+    decisions = store.search_decisions(district=place.id, limit=50)
+    matches = store.location_matches_for_decisions(
+        [row["id"] for row in decisions], district=place.id)
+    for row in decisions:
+        row["location_matches"] = matches.get(row["id"], [])
+    children = [places.public_place(child) for child in places.all_places()
+                if place.id in child.parent_ids]
+    return {
+        "place": places.public_place(place),
+        "children": children,
+        "decision_count": total,
+        "decisions": decisions,
+    }
 
 
 @router.get("/sessions")
@@ -361,8 +389,8 @@ def decisions(
     if district:
         place = places.resolve(district)
         if not place:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Ortsbereich.")
-        district = place.name
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Ort.")
+        district = place.id
     only_ids: list[int] | None = None
     if topic is not None:
         # Nur eigene Themen — sonst ließe sich über eine fremde id deren
@@ -1241,6 +1269,19 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
             ),
         }
 
+    if kind == "ort":
+        place = places.resolve(key)
+        if not place:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Ort nicht gefunden.")
+        n = store.count_decisions(district=place.id)
+        return {
+            "title": f"{place.name} – {places.kind_label(place.kind)}",
+            "description": (
+                f"{place.description or 'Ort im Ratslotse-Ortskatalog.'} "
+                f"{n} {'Beschluss' if n == 1 else 'Beschlüsse'} mit belegtem Ortsbezug."
+            )[:300],
+        }
+
     if kind == "thema":
         e = store.entity_detail(key)
         if not e:
@@ -1394,7 +1435,8 @@ QA_RERANK_BIAS = 1.5
 
 def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
                  timings: dict | None = None,
-                 varianten: list[str] | None = None) -> tuple[list[dict], str]:
+                 varianten: list[str] | None = None,
+                 place_ids: list[int] | None = None) -> tuple[list[dict], str]:
     """Hybrid retrieval + cross-encoder rerank → candidates in relevance order, each
     with an *absolute* relevance score: the sigmoid of the reranker logit, NOT a
     min-max normalisation (which forced the weakest hit to a misleading 0 %). Falls
@@ -1404,9 +1446,12 @@ def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
         # Akkuratheits-Paket: deterministische Signale neben der Semantik —
         # Entitäts-Anker (benannte Objekte der Frage) in den Rerank-Pool,
         # Frische-Bonus bei Sachstands-Formulierungen.
+        entity_anchors = qa.anker_ids_fuer(store, q)
+        anchors = list(dict.fromkeys([*entity_anchors, *(place_ids or [])]))
         hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55, timings=timings,
                                  varianten=varianten,
-                                 anker_ids=qa.anker_ids_fuer(store, q),
+                                 anker_ids=anchors,
+                                 allowed_ids=place_ids,
                                  recency=qa.recency_intent(q))
         if hits:
             candidates = store.get_decisions_by_ids([h[0] for h in hits])  # preserves order
@@ -1421,7 +1466,13 @@ def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
     except Exception:  # noqa: BLE001 — fastembed missing/any failure → keyword fallback
         pass
     cands = store.get_goal_candidates(qa.extract_keywords(q), limit=QA_TOP_K)
-    return store.get_decisions_by_ids([c["id"] for c in cands]), "keyword"
+    ids = [c["id"] for c in cands]
+    if place_ids is not None:
+        allowed = set(place_ids)
+        ids = [decision_id for decision_id in ids if decision_id in allowed]
+        if not ids:
+            ids = place_ids[:QA_TOP_K]
+    return store.get_decisions_by_ids(ids), "keyword"
 
 
 def _sse(obj: dict) -> str:
@@ -1606,6 +1657,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             person = qa.finde_person(store, q_suche)
             if person and typ not in ("partei", "geld"):
                 typ = "person"
+            # Orts-Fragetyp: dieselbe deterministische Stammdaten-Erkennung wie
+            # bei Personen. Ein Alias wie „Donnerschwee-Kaserne“ wird dabei auf
+            # die stabile Orts-ID ``neu-donnerschwee`` aufgelöst.
+            ort = None if person else (qa.finde_ort(q_suche) or qa.finde_ort(q))
+            if ort and typ not in ("partei", "geld"):
+                typ = "ort"
             # Sitzungs-Fragetyp (25.08.26): Nennt die Frage ein konkretes
             # Sitzungsdatum oder die letzte/nächste Sitzung eines Gremiums,
             # wird die Sitzung deterministisch aufgelöst und ihre Beschlüsse
@@ -1624,8 +1681,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 typ = "sitzung"
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
+            place_ids = (store.decision_ids_for_place(ort["id"], limit=120)
+                         if ort and typ == "ort" else None)
             candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
-                                            varianten=analyse.get("varianten"))
+                                            varianten=analyse.get("varianten"),
+                                            place_ids=place_ids)
             partei_ids: set[int] = set()
             if typ == "partei" and analyse.get("partei"):
                 # Anträge der gefragten Fraktion zum Thema in den Pool — die
@@ -1754,6 +1814,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 pass
             # Hintergrund zu den genannten Objekten („Was ist die GSG?").
             steckbriefe = qa.steckbriefe_fuer(store, q_suche)
+            if ort and ort.get("description"):
+                steckbriefe = [{"name": ort["name"],
+                                "description": ort["description"]}, *steckbriefe]
             # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
             lage = qa.beleglage(candidates)
             if typ == "sitzung" and sitzungen:

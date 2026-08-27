@@ -141,6 +141,13 @@ def test_extra_regeln_deckt_alle_typen():
     assert set(qa.EXTRA_REGELN) == set(qa.QUERY_TYPES)
 
 
+def test_finde_ort_nutzt_katalog_und_aliase():
+    ort = qa.finde_ort("Was wurde auf der Donnerschwee-Kaserne beschlossen?")
+    assert ort is not None
+    assert ort["id"] == "neu-donnerschwee"
+    assert ort["name"] == "Neu-Donnerschwee"
+
+
 def test_kontext_markiert_antragsteller_und_volumen():
     ctx = qa._build_context([
         {"id": 7, "title": "Radweg", "summary": "Bau", "factions": json.dumps(["SPD", "Grüne"]),

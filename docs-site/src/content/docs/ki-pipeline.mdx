@@ -95,6 +95,29 @@ eingeordnet — die Grundlage für Filter, Analyse und die Themenfeld-Rückblick
 Details zu den Dokumenten und dem Datenmodell:
 [Ratsdokumente & Beschlüsse](/docs/beschluesse/).
 
+### Ortsentitäten
+
+Orte werden ähnlich wie Personen und Themen in zwei Schichten behandelt. Die
+Extraktion speichert zunächst den konkreten Namen und seine Fundstelle im
+Beschluss. Straßenmuster und Namen aus dem zentralen Ortskatalog erkennt der
+Code deterministisch; ein LLM ergänzt Gebäude und Gebiete, darf aber nur
+wörtlich belegte Fundstellen liefern. Geocoding ordnet freie Beobachtungen
+anschließend, sofern möglich, einem der 31 flächendeckenden Ortsbereiche zu.
+
+Der [zentrale Ortskatalog](/docs/adr/0009-zentraler-ortskatalog/) enthält die
+kuratierten Entitäten: neben den Ortsbereichen auch ausgewählte Quartiere,
+Parks, Schutz-, Wohn-, Sanierungs- und Entwicklungsgebiete. Jeder Eintrag hat
+eine stabile ID, einen Typ, Aliase, Quellen und optional Elternorte sowie
+Koordinaten. Neue Ortslinks erhalten `place_id` und `ortsbereich_id`; ein
+Backfill ergänzt sie im Bestand.
+
+Das wirkt in allen Produkten gleich: Die Beschlusssuche filtert über die
+stabile ID, Ortsprofile zeigen Stammdaten und belegte Beschlüsse, und das Quiz
+verwendet dieselben Namen und Quellen. Erkennt **„Frag den Rat“** einen
+Katalogort in der Frage, begrenzt es semantische und lexikalische Treffer auf
+die direkt diesem Ort zugeordneten Beschlüsse. Die generierte Antwort darf den
+Ortsbezug nur aus den mitgelieferten Fundstellen ableiten.
+
 ## „Lotti erklärt's einfach"
 
 Amtsdeutsch ist die größte Hürde vor den Ratsdaten. Deshalb schreibt
@@ -152,7 +175,8 @@ gesetzte Zuordnungen überschreibt ein automatischer Lauf nie.
 ## Quiz-Fragen
 
 Das **Oldenburg-Quiz** erzeugt seine Multiple-Choice-Fragen per LLM, aber
-**streng geerdet**. Pro Gebiet (Ratslotse-Ortsbereich, Wahlbereich oder stadtweites Thema)
+**streng geerdet**. Pro Ort (Ratslotse-Ortsbereich oder kuratierter Katalogort),
+Wahlbereich oder stadtweitem Thema
 sammelt der Code zuerst Quelltexte — **Wikipedia** (Stadtteil-Artikel), die
 **Stadt-Website** oldenburg.de und die **eigenen Ratsdaten** — und legt sie dem
 LLM vor. Das Modell formuliert daraus Fragen mit vier Antwortoptionen,
