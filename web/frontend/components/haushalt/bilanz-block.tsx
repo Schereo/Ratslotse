@@ -102,9 +102,9 @@ export function BilanzBlock() {
           {deMio(s.bilanzsumme / 1e6)}&#8239;Mio.&nbsp;€<Beleg q="bilanz" />
         </p>
         <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
-          So groß ist die Bilanz der Stadt — und sie hat immer zwei Seiten, die
-          denselben Betrag ergeben: Links steht, worin das Vermögen steckt, rechts,
-          wem es zusteht.
+          Die Bilanz zeigt auf der Aktivseite, worin das Vermögen gebunden ist. Die
+          Passivseite zeigt, wie dieses Vermögen finanziert ist. Beide Seiten ergeben
+          definitionsgemäß dieselbe Bilanzsumme.
         </p>
         <Gegenbalken
           className="mt-1"
@@ -117,9 +117,9 @@ export function BilanzBlock() {
         />
         <Einordnung
           satz={<>
-            „Wem es zusteht" heißt nicht, dass jemand es abholen kommt. Das
-            Eigenkapital ist der Teil, der niemandem sonst gehört; die
-            Rückstellungen sind Zusagen, die über Jahrzehnte fällig werden.
+            „Wem es zusteht“ beschreibt die Finanzierung des Vermögens. Eigenkapital
+            ist der nicht fremdfinanzierte Anteil; Rückstellungen bilden Verpflichtungen
+            ab, deren genaue Höhe oder Fälligkeit noch nicht feststeht.
           </>}
           nichtAussagen={[
             "Ein Stichtag, kein Jahr. Diese Beträge sind mit den Einnahmen und "
@@ -162,8 +162,8 @@ export function BilanzBlock() {
             {v != null && <strong>{vielfachesText(v)} dessen, was sie an Krediten
               schuldet</strong>}
             {v == null && <strong>ein Vielfaches ihrer Kredite</strong>} — und es
-            steht in keiner der Schuldenzahlen weiter oben. Das ist kein Missstand:
-            Genau dafür bildet man Rückstellungen. Es ist nur der größere Posten.
+            steht in keiner der Kredit-Schuldenzahlen weiter oben. Pensionsrückstellungen
+            sind keine Bankkredite, sondern bilanzierte künftige Verpflichtungen.
           </p>
 
           {/* DIE ZWEI ZAHLEN, DIE BEIDE SO HEISSEN. Wer irgendwo „266 Mio."
@@ -172,7 +172,7 @@ export function BilanzBlock() {
           {nurPension != null && beihilfe != null && (
             <div className="rounded-xl bg-muted/60 px-3 py-2.5">
               <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
-                <strong>Zwei Zahlen, beide richtig.</strong> Die Bilanz führt die
+                <strong>Warum zwei unterschiedliche Beträge genannt werden.</strong> Die Bilanz führt die
                 Zusagen in einer Zeile zusammen und schlüsselt sie darunter auf:{" "}
                 {deMio(nurPension / 1e6)}&#8239;Mio.&nbsp;€ für die Pensionen selbst
                 und {deMio(beihilfe / 1e6)}&#8239;Mio.&nbsp;€ für die Beihilfe zu

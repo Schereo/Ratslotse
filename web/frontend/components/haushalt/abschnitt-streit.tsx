@@ -375,9 +375,10 @@ export function StreitAbschnitt({ onBestand }: {
             Der Streit ums Geld
           </h2>
           <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
-            Ein Haushalt ist kein Rechenergebnis, sondern ein Kompromiss. Bevor er beschlossen
-            wird, legen die Fraktionen Änderungslisten vor, und im Rat wird stundenlang darüber
-            geredet. Beides steht in den Protokollen — hier ist es, Jahrgang für Jahrgang.
+            Vor dem Haushaltsbeschluss bringen Fraktionen und Verwaltung Änderungen ein.
+            Ausschüsse und Rat beraten darüber und stimmen über die Listen sowie den fertigen
+            Haushalt ab. Diese Seite ordnet die dokumentierten Änderungen und Wortbeiträge
+            nach Haushaltsjahr.
           </p>
         </div>
 
@@ -433,11 +434,11 @@ export function StreitAbschnitt({ onBestand }: {
               Wer wollte den Haushalt {jahr} ändern — und kam damit durch?
             </p>
             <p className="mt-1 max-w-[66ch] text-[12.5px] leading-relaxed text-muted-foreground">
-              Jeder Punkt ist eine Abstimmung über eine Änderungsliste, gefüllt heißt: fand eine
-              Mehrheit. Die Bilanz sagt, wer ändern wollte — was in den vorliegenden Listen
-              stand, steht weiter unten; von den Fraktionslisten selbst ist nur die Summe
-              belegt. Eine Erfolgsquote steht hier bewusst nicht: Eingebracht und abgelehnt
-              ist parlamentarischer Alltag der Opposition, kein Zeugnis.
+              Jeder Punkt steht für die Abstimmung über eine Änderungsliste; ein gefüllter
+              Punkt kennzeichnet eine Mehrheit. Die Übersicht zeigt, wer Änderungen
+              eingebracht hat. Soweit die Listen vorliegen, stehen ihre Positionen weiter
+              unten. Bei den Fraktionslisten ist nur die Gesamtsumme dokumentiert. Eine
+              Erfolgsquote wäre keine sinnvolle Bewertung politischer Arbeit.
             </p>
             <PunkteBilanz
               className="mt-3"
@@ -582,9 +583,9 @@ export function StreitAbschnitt({ onBestand }: {
               </ul>
             )}
             <p className="mt-2 max-w-[66ch] text-[12.5px] leading-relaxed text-muted-foreground">
-              Alle Wortbeiträge des Tagesordnungspunkts, in der Reihenfolge des Protokolls. Jeder
-              ist auf dieselbe Länge gekürzt und lässt sich vollständig aufklappen — eine Auswahl
-              „der wichtigsten Stellen" träfe sonst jemand.
+              Gezeigt werden alle Wortbeiträge des Haushaltspunkts in der Reihenfolge des
+              Protokolls. Die Vorschau ist einheitlich gekürzt; jeder Beitrag lässt sich
+              vollständig öffnen. Eine redaktionelle Auswahl einzelner Beiträge nehmen wir nicht vor.
             </p>
             <div className="mt-3 border-t border-dashed border-border pt-4">
               {/* `key` je Jahrgang: setzt Pfad und Beobachter des
@@ -613,15 +614,15 @@ export function StreitAbschnitt({ onBestand }: {
                   {zuordnung.ohne} der {zuordnung.gesamt} Wortbeiträge
                 </strong>{" "}
                 aller Jahrgänge tragen keine Fraktion: In der Anwesenheitsliste stehen
-                Namensvettern, und das Protokoll nennt nur den Nachnamen. Sie erscheinen so —
-                es wird keine geraten. Die Sitzungsleitung zählt als Rolle, nicht als Fraktion.
+                Namensvettern, und das Protokoll nennt nur den Nachnamen. Deshalb ist keine
+                eindeutige Zuordnung möglich. Die Sitzungsleitung zählt als Rolle, nicht als Fraktion.
               </p>
             ) : (
               <p className="mt-1.5 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/85">
                 Derzeit tragen alle {zuordnung.gesamt} Wortbeiträge eine eindeutige Zuordnung.
                 Wo das nicht gelingt — etwa bei Namensvettern in der Anwesenheitsliste —,
-                erscheint ein Beitrag ohne Fraktion; geraten wird keine. Die Sitzungsleitung
-                zählt als Rolle, nicht als Fraktion.
+                erscheint ein Beitrag ohne Fraktion. Eine eindeutige Zuordnung ist dann
+                nicht möglich. Die Sitzungsleitung zählt als Rolle, nicht als Fraktion.
               </p>
             )}
           </div>
@@ -665,8 +666,8 @@ export function StreitAbschnitt({ onBestand }: {
             </li>
             <li>
               <strong className="font-semibold text-foreground">Einzelne Fraktionszuordnungen.</strong>{" "}
-              Saßen zwei Ratsmitglieder mit demselben Nachnamen im Rat und nennt das Protokoll nur
-              diesen, bleibt die Fraktion offen — eine geratene wäre schlimmer als eine fehlende.
+              Wenn mehrere Ratsmitglieder denselben Nachnamen tragen und das Protokoll nur
+              diesen nennt, bleibt die Fraktion offen. Eine eindeutige Zuordnung ist dann nicht möglich.
             </li>
           </ul>
         </div>
@@ -674,4 +675,3 @@ export function StreitAbschnitt({ onBestand }: {
       </div>
   );
 }
-

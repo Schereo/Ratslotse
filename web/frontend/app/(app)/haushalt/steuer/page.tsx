@@ -639,7 +639,7 @@ function SteuerInner() {
                   eingelesene Reihe zeigt der Block darüber einen einzelnen
                   Kasten, und „die Treppe darüber" zeigte ins Leere. */}
               <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-                Genau hier entscheidet Kommunalpolitik über Einnahmen
+                Hier entscheidet die Kommunalpolitik über die Höhe der Einnahmen
                 {hebeHaupt.length >= 2
                   ? ` — die Treppe darüber hätte ${HEBESATZ_ABGELEHNT.jahr} eine Stufe mehr bekommen.`
                   : "."}
@@ -681,9 +681,9 @@ function SteuerInner() {
               {/* „und Grundstückswerte" stand hier, solange die Karte auch bei
                   der Grundsteuer erschien — dort tut sie es nicht mehr. */}
               <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                Unsere Rechnung, keine amtliche Kennzahl: Sie unterstellt, dass die Gewinne der
-                Unternehmen gleich bleiben — steigt der Hebesatz, kann sich auch daran etwas
-                ändern.
+                Das ist eine vereinfachte eigene Rechnung, keine amtliche Prognose. Sie
+                unterstellt unveränderte Messbeträge. Tatsächlich können sich Gewinne und
+                damit das Steueraufkommen unabhängig vom Hebesatz verändern.
               </p>
               <Link href="/haushalt/labor"
                 className="mt-2.5 inline-flex text-[12px] font-semibold text-primary">

@@ -106,8 +106,9 @@ export function AusgabenWerkbank({
         })}
       </div>
       <p className="mt-4 text-[11.5px] leading-relaxed text-muted-foreground">
-        Nur ganze Teilhaushalte, nur prozentual: Welche Einrichtung es träfe — oder was das
-        zusätzliche Geld täte —, entscheidet kein Regler. Ein Beschluss wäre das ohnehin nicht.
+        Der Regler verändert ganze Teilhaushalte pauschal. Er legt nicht fest, welche
+        Einrichtungen von einer Kürzung betroffen wären oder wofür zusätzliches Geld
+        eingesetzt würde. Eine solche Entscheidung müsste der Rat konkret beschließen.
         {produktJahr && (
           <> Die einzelnen Aufgaben daneben stammen aus dem Teilhaushaltsplan {produktJahr}{" "}
           <Beleg q="teilhaushalt" /> — zum Einordnen der Größenordnung, nicht zum Mitrechnen.</>

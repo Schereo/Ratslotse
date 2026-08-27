@@ -267,9 +267,10 @@ export default function PflichtPage() {
       {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.) — der Kopf ist
           Titel + Bühne, die Erklärung folgt. */}
       <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-        Über einen großen Teil des Haushalts kann der Rat gar nicht frei entscheiden — Bundes-
-        und Landesgesetze schreiben die Aufgaben vor. Hier steht, welcher Bereich wie viel
-        Spielraum lässt, und wie die Stadt selbst das sieht.
+        Viele Aufgaben der Stadt sind durch Bundes- oder Landesrecht vorgeschrieben. Der Rat
+        entscheidet dann nicht über das Ob, häufig aber noch über die konkrete Ausgestaltung.
+        Hier siehst du, wie wir den Spielraum der Bereiche einordnen und wie die Stadt ihn
+        selbst beschreibt.
       </p>
 
       {/* Die Antwort im ersten Bild: der ganze Ausgabenplan in drei Teilen. */}
@@ -300,11 +301,12 @@ export default function PflichtPage() {
         <p className="mt-3 border-t border-border/60 pt-3 text-[12.5px] leading-relaxed text-foreground/85">
           {reichtNicht ? (
             <>
-              <strong>Striche der Rat alles überwiegend Freiwillige, spart das nicht {deMio(freiwilligAus)} Mio. €.</strong>{" "}
-              Die eigenen Erträge dieser Bereiche fielen mit weg; übrig bliebe ihr Zuschussbedarf von{" "}
+              <strong>Würde der Rat alle überwiegend freiwilligen Bereiche vollständig streichen,
+              entspräche die Entlastung nicht ihren gesamten Ausgaben von {deMio(freiwilligAus)} Mio. €.</strong>{" "}
+              Auch ihre eigenen Erträge fielen weg; übrig bliebe ihr Zuschussbedarf von{" "}
               {deMio(freiwilligNetto)}&nbsp;Mio.&nbsp;€<Beleg q="plan" /> — rund{" "}
-              {Math.round((freiwilligNetto / defizit) * 100)}&nbsp;% des geplanten Minus. Das ist kein
-              Argument gegen Sparen, sondern gegen die Erwartung, dass es dort allein gelingt.
+              {Math.round((freiwilligNetto / defizit) * 100)}&nbsp;% des geplanten Minus. Selbst
+              vollständige Kürzungen in diesen Bereichen würden das Defizit also nicht allein ausgleichen.
             </>
           ) : (
             <>
@@ -379,7 +381,7 @@ export default function PflichtPage() {
       {weicht.length > 0 && (
         <LottiErklaert
           titel="Zwei Antworten auf dieselbe Frage"
-          text={`Wir ordnen ganze Teilhaushalte ein, die Stadt beantwortet eine etwas andere Frage: nicht „muss es diese Aufgabe geben?“, sondern „lassen sich ihre Kosten beeinflussen?“. Dass beide Antworten auseinanderfallen, ist deshalb keine Panne — dort lohnt das Nachlesen am meisten.`}
+          text={`Unsere Einordnung und die Angabe der Stadt beantworten unterschiedliche Fragen. Wir fragen, ob eine Aufgabe verpflichtend ist. Die Stadt bewertet auf Produktebene, wie stark sich ihre Kosten beeinflussen lassen. Deshalb können beide Einschätzungen voneinander abweichen.`}
         />
       )}
 

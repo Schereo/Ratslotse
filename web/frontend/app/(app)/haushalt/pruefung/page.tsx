@@ -114,12 +114,11 @@ function PruefungInner() {
 
         {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
         <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-          Jeder Jahresabschluss wird von einer eigenen Stelle geprüft, die dem Rat
-          berichtet und nicht der Verwaltungsspitze untersteht. Und am Ende jedes
-          Rechenschaftsberichts fasst die Stadt denselben Abschluss selbst in
-          dreizehn Kennzahlen zusammen. Beides gehört nebeneinander: Die Kennzahlen
-          sagen, wie die Stadt dasteht — die Feststellungen, wie verlässlich diese
-          Auskunft ist.
+          Das Rechnungsprüfungsamt prüft jeden Jahresabschluss unabhängig von der
+          Verwaltungsspitze und berichtet dem Rat. Zusätzlich fasst die Stadt ihren
+          Abschluss in dreizehn Kennzahlen zusammen. Die Kennzahlen beschreiben die
+          finanzielle Lage; die Prüfberichte zeigen, wie belastbar die zugrunde liegenden
+          Angaben sind.
         </p>
 
         <Abschnitte marken={MARKEN} />

@@ -369,16 +369,15 @@ export function Vorhaben({
           Planzahlen, keine Beschlüsse
         </p>
         <p className="mt-1 max-w-[86ch] text-[12px] leading-relaxed text-muted-foreground">
-          Die Zahlen kommen aus dem Entwurf der Verwaltung, Stand der
-          Einbringung in den Rat — was die Fraktionen in den Beratungen ändern,
-          steht nicht darin; dafür ist{" "}
+          Die Zahlen stammen aus dem Verwaltungsentwurf zum Zeitpunkt der Einbringung
+          in den Rat. Spätere Änderungen aus den politischen Beratungen sind darin
+          nicht enthalten; diese findest du unter{" "}
           <Link href="/haushalt/mitreden#streit" className="font-semibold text-primary hover:underline">
             Der Streit ums Geld
           </Link>{" "}
-          die passende Seite. Die Summen decken sich absichtlich nicht mit dem
-          Finanzhaushalt weiter oben: Zu aktivierende Eigenleistungen gehören
-          ins Programm, aber nicht in den Finanzhaushalt — das sagt das
-          Dokument selbst. Angegeben ist je Vorhaben, was es{" "}
+          . Die Summen stimmen nicht mit dem Finanzhaushalt weiter oben überein,
+          weil das Investitionsprogramm auch aktivierbare Eigenleistungen enthält,
+          für die kein Geld ausgezahlt wird. Angegeben ist je Vorhaben, was es{" "}
           <strong className="font-semibold text-foreground/85">insgesamt</strong>{" "}
           kosten soll — über alle Jahre, nicht nur {effJahr}; die
           Jahresaufteilung lässt sich aus dem Dokument nicht verlässlich

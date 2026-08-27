@@ -102,10 +102,10 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
              ausgegeben, sie kommt herein. */
           wovon="diese Steuer"
           keineWertung={
-            <>Die Farbe bewertet nicht: Mehr eingenommen als geplant heißt, dass
-              die Wirtschaft besser lief als angenommen — weniger heißt
-              umgekehrt, dass ein Ansatz nicht aufging. Keines von beidem ist
-              für sich genommen gut oder schlecht.</>
+            <>Die Farbe ist keine Bewertung. Höhere oder niedrigere Einnahmen können
+              durch die wirtschaftliche Entwicklung, vorsichtige Planung oder
+              unerwartete Veränderungen entstehen. Eine Abweichung ist für sich
+              genommen weder gut noch schlecht.</>
           }
           beleg={beleg}
         />
@@ -117,11 +117,9 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
             alleUeber
               ? <>In allen {abweichungen.length} Jahren kam mehr herein als
                   geplant, zwischen {deMio(kleinste)}&nbsp;% und {deMio(groesste)}&nbsp;%.
-                  Das ist ein Befund, keine Note: Wer eine schwankende Steuer
-                  vorsichtig ansetzt, plant nicht falsch, sondern vermeidet eine
-                  Lücke, die sich im laufenden Jahr nicht mehr schließen lässt.
-                  Zu niedrig angesetzt heißt am Jahresende Geld übrig — zu hoch
-                  angesetzt heißt Kürzen mitten im Jahr.</>
+                  Das kann auf eine vorsichtige Planung bei schwankenden Einnahmen
+                  hindeuten. Aus der Tabelle allein lässt sich jedoch nicht beurteilen,
+                  warum der Ansatz so gewählt wurde.</>
               : <>Plan und Ergebnis liegen zwischen {deMio(kleinste)}&nbsp;% und{" "}
                   {deMio(groesste)}&nbsp;% auseinander. Ob eine Abweichung viel
                   oder wenig ist, hängt an der Steuer: Der Anteil an der

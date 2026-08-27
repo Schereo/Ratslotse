@@ -402,13 +402,12 @@ export function GebautAbschnitt({ onBestand }: {
 
         <LottiErklaert
           titel="Warum „ausgezahlt“ und nicht „ausgegeben“"
-          text={"Eine Stadt führt zwei Bücher. Im einen steht, was ein Jahr verbraucht: "
-            + "Gehälter, Strom, Zuschüsse — und von einer neuen Schule nur der kleine "
-            + "Teil, der in diesem Jahr an Wert verliert. Im anderen steht, was die "
-            + "Stadt anlegt: das Grundstück, der Bau, die Feuerwehrfahrzeuge, in dem "
-            + "Jahr, in dem das Geld den Konto verlässt. Diese Seite liest das zweite "
-            + "Buch. Deshalb „Auszahlungen“ — und deshalb lassen sich die Beträge hier "
-            + "mit denen aus dem ersten Buch nicht zusammenzählen."}
+          text={"Die Ergebnisrechnung zeigt den Ressourcenverbrauch eines Jahres, etwa "
+            + "Gehälter, Strom, Zuschüsse und Abschreibungen. Die Finanzrechnung erfasst "
+            + "dagegen, wann Geld ein- oder ausgezahlt wird — zum Beispiel für ein "
+            + "Grundstück, einen Bau oder ein Feuerwehrfahrzeug. Diese Seite verwendet "
+            + "die Finanzrechnung. Ihre Beträge lassen sich deshalb nicht zu den "
+            + "Aufwendungen der Ergebnisrechnung addieren."}
         />
 
         {/* Das tragende Bild (H3-03): alle Jahrgänge, eine Naht, die Lücke
@@ -423,8 +422,9 @@ export function GebautAbschnitt({ onBestand }: {
               Tatsächlich ausgezahltes Geld für Investitionen,{" "}
               {erster?.jahr}&nbsp;bis&nbsp;{letzter.jahr} — nicht die Pläne, sondern die
               Kassenlage danach.{" "}
-              {naht && <>Die Naht {naht.zwischen[0]}/{naht.zwischen[1]} ist echt: Die Stadt
-              wechselte das Rechnungswesen, links und rechts zählen andere Regeln.</>}
+              {naht && <>Der Bruch {naht.zwischen[0]}/{naht.zwischen[1]} markiert einen
+              Wechsel des Rechnungswesens. Die Werte davor und danach wurden nach
+              unterschiedlichen Regeln ermittelt.</>}
             </p>
           </div>
           <NahtSaeulen
@@ -444,24 +444,22 @@ export function GebautAbschnitt({ onBestand }: {
         <div className="grid gap-4 breit:grid-cols-2">
           <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Die Naht wird nicht geglättet
+              Warum die Zeitreihe einen Bruch hat
             </p>
             <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
               Zum 1. Januar {juengste.jahre[0].jahr} stellte die Stadt ihr Rechnungswesen
-              von der Kameralistik auf die doppelte Buchführung um. Das Statistische
-              Jahrbuch führt die Jahre davor in einer eigenen Tabelle, mit eigenen Posten
-              und unter einem eigenen Namen — dort heißen sie „Ausgaben für eigene
-              Investitionen“, hier „Auszahlungen für Investitionstätigkeiten“. Ein
-              Verlauf, zwei Regelwerke: vergleichen ja, verrechnen nein. Die
-              Auszahlungsarten sind im Bild zu Gruppen gebündelt; die Ableseleiste
-              trennt alle.
+              von der Kameralistik auf die doppelte Buchführung um. Für frühere Jahre nennt
+              das Statistische Jahrbuch „Ausgaben für eigene Investitionen“, danach
+              „Auszahlungen für Investitionstätigkeiten“. Die Begriffe beruhen auf
+              unterschiedlichen Regelwerken. Die Werte lassen sich zeitlich einordnen,
+              aber nicht zu einer einheitlich berechneten Reihe verbinden.
             </p>
           </section>
           <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               {alleFehlend.length === 1
-                ? `${alleFehlend[0].jahr} ist verworfen — im Bild, nicht in der Fußnote`
-                : "Verworfene Jahrgänge — im Bild, nicht in der Fußnote"}
+                ? `${alleFehlend[0].jahr} kann nicht ausgewiesen werden`
+                : "Nicht ausweisbare Jahrgänge"}
             </p>
             <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
               Für {alleFehlend.map((l) => l.jahr).join(", ")} ergeben die einzelnen
@@ -485,8 +483,7 @@ export function GebautAbschnitt({ onBestand }: {
               gibt es nicht — deshalb {alleFehlend.length === 1
                 ? "steht der Jahrgang"
                 : "stehen die Jahrgänge"}{" "}
-              als beschriftete Lücke im Bild statt in geschätzter Höhe. Lieber eine
-              Lücke als eine Zahl, die sich selbst widerspricht.
+              als beschriftete Lücke im Diagramm. Einen Wert schätzen wir nicht.
             </p>
           </section>
         </div>

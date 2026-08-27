@@ -332,10 +332,10 @@ export function BetriebeAbschnitt({ data, loading }: {
             Der Haushalt neben dem Haushalt
           </h2>
           <p className="mt-2 max-w-[68ch] text-[13.5px] leading-relaxed text-foreground/85">
-            Der Rat beschließt nicht nur den Stadthaushalt. Daneben stehen die
-            Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften —
-            eigene Rechnungen, in derselben Sitzung entschieden. Hier stehen
-            {" "}{nachBetrieb.length} davon, für die Jahre {aeltestes} bis {juengstes}.
+            Neben dem Kernhaushalt beschließt der Rat auch die Wirtschaftspläne
+            städtischer Eigenbetriebe und Gesellschaften. Diese Einheiten führen eigene
+            Rechnungen. Hier stehen {nachBetrieb.length} Wirtschaftspläne aus den Jahren{" "}
+            {aeltestes} bis {juengstes}.
           </p>
         </header>
 
@@ -344,16 +344,14 @@ export function BetriebeAbschnitt({ data, loading }: {
             darf, hat es schon getan. */}
         <div className="rounded-2xl border border-signal/40 bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
-            Diese Zahlen gehören nicht zum Stadthaushalt dazu
+            Warum diese Zahlen nicht addiert werden
           </p>
           <p className="mt-2 max-w-[68ch] text-[13px] leading-relaxed text-foreground/85">
-            Sie lassen sich mit ihm auch nicht zusammenzählen. Der Eigenbetrieb
-            Gebäudewirtschaft vermietet der Stadt ihre eigenen Gebäude: Seine
-            Erträge sind zu großen Teilen Aufwand des Kernhaushalts, und wer
-            beides addiert, zählt dasselbe Geld zweimal. Deshalb steht auf
-            dieser Seite keine Gesamtsumme. Wer wissen will, was die Stadt
-            samt allen Betrieben umsetzt, findet das im Gesamtabschluss —
-            dort ist die Verflechtung herausgerechnet.
+            Die Wirtschaftspläne lassen sich nicht einfach zum Kernhaushalt addieren.
+            Wenn etwa die Gebäudewirtschaft der Stadt Räume vermietet, erscheint dieselbe
+            Zahlung dort als Ertrag und im Kernhaushalt als Aufwand. Eine Addition würde
+            sie doppelt zählen. Der Gesamtabschluss rechnet solche konzerninternen
+            Zahlungen heraus und zeigt deshalb die passende Gesamtsicht.
           </p>
           <Link href="/haushalt/konzern"
             className="mt-2.5 inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[12px] font-semibold text-primary shadow-sm">
@@ -371,7 +369,7 @@ export function BetriebeAbschnitt({ data, loading }: {
 
         <LottiErklaert
           titel="Warum manche Betriebe planmäßig Verlust machen"
-          text="Ein Bad, das sich selbst trägt, gäbe es in Oldenburg nicht — Eintrittsgelder decken die Kosten eines Schwimmbads nirgendwo. Dass die Bäderbetriebsgesellschaft mit einem Minus plant, ist deshalb keine Panne, sondern die Entscheidung, Schwimmbäder anzubieten; die Stadt gleicht den Fehlbetrag aus. Beim Abfallwirtschaftsbetrieb ist es umgekehrt: Er finanziert sich aus Gebühren, die so kalkuliert werden, dass sie die Kosten decken — deshalb steht dort ein kleines Plus."
+          text="Die Eintrittsgelder decken die geplanten Kosten der Oldenburger Schwimmbäder nicht vollständig. Den verbleibenden Fehlbetrag gleicht die Stadt aus, weil sie dieses öffentliche Angebot bereitstellen will. Der Abfallwirtschaftsbetrieb finanziert sich dagegen über kostendeckend kalkulierte Gebühren; deshalb ist sein Plan nahezu ausgeglichen."
         />
 
         {/* Was die Seite NICHT zeigt — gezählt, nicht verschwiegen. */}
@@ -383,9 +381,8 @@ export function BetriebeAbschnitt({ data, loading }: {
             <li>
               <strong className="text-foreground">Der Eigenbetrieb Hafen.</strong>{" "}
               Von ihm liegen nur zwei Wirtschaftspläne vor, beide aus 2019 und
-              2020, in einem Aufbau, den wir nicht gelesen haben. Zwei alte
-              Jahrgänge sind uns einen eigenen Parser nicht wert — und geraten
-              wird hier nichts.
+              2020, in einem Aufbau, den wir nicht maschinell auslesen können.
+              Deshalb weisen wir daraus keine Zahlen aus.
             </li>
             <li>
               <strong className="text-foreground">Erträge und Aufwendungen der

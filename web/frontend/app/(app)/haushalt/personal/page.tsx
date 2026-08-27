@@ -222,8 +222,9 @@ export default function PersonalPage() {
 
         {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
         <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-          Personal ist der größte Ausgabenblock der Stadt. Wie viele Stellen dahinterstehen,
-          legt der Rat mit dem Haushalt fest — im Stellenplan, Zeile für Zeile.
+          Personal ist der größte Aufwandsbereich der Stadt. Mit dem Stellenplan legt der
+          Rat fest, wie viele Stellen die Verwaltung in den einzelnen Besoldungs- und
+          Entgeltgruppen vorhalten darf.
         </p>
 
         {/* Das tragende Bild (H3-01): Waffel links, Jahrgangs-Paare rechts —
@@ -280,10 +281,10 @@ export default function PersonalPage() {
               {/* Der Kasten steht VOR der ersten Zahl-Interaktion — auf jedem
                   Gerät (H4-05). */}
               <div className="max-w-[58ch] rounded-xl bg-muted/40 p-3 text-[12.5px] leading-relaxed text-foreground/90">
-                <strong>Warum wir hier nicht einfach subtrahieren:</strong> Die
-                Stellenzahl gilt fürs Planjahr, die Besetzung für den Stichtag des
-                Vorjahres. „Stellen − besetzt“ über Kreuz wäre eine erfundene Zahl —
-                deshalb stehen beide Angaben getrennt, jede mit ihrem Datum.
+                <strong>Warum wir die Werte nicht voneinander abziehen:</strong> Die
+                Stellenzahl gilt für das Planjahr, die Besetzung für einen Stichtag des
+                Vorjahres. Beide Werte beziehen sich damit auf unterschiedliche Zeitpunkte
+                und werden getrennt mit ihrem jeweiligen Datum gezeigt.
               </div>
             </div>
 
@@ -310,10 +311,10 @@ export default function PersonalPage() {
               <StellenPaareLegende />
               {vglA && vglB && (
                 <Einordnung className="mt-1" satz={<>
-                  <strong>Der Umschalter erzählt einen Vergleich, keinen
-                  Wettbewerb:</strong> Beamt*innenstellen wachsen ({vglA.spanne}),
-                  Tarifstellen auch ({vglB.spanne}) — unbesetzt bleiben beide,
-                  zuletzt rund {vglA.anteil}&nbsp;% hier, rund {vglB.anteil}&nbsp;% dort.
+                  <strong>Der Umschalter vergleicht zwei Beschäftigtengruppen:</strong>{" "}
+                  Beamt*innenstellen verändern sich um {vglA.spanne}, Tarifstellen um{" "}
+                  {vglB.spanne}. Zuletzt waren rund {vglA.anteil}&nbsp;% beziehungsweise{" "}
+                  {vglB.anteil}&nbsp;% unbesetzt.
                 </>} />
               )}
             </div>
@@ -349,14 +350,12 @@ export default function PersonalPage() {
         {/* Der Satz, um den es geht — und die einzige Stelle, an der die
             Seite die Zahl deutet. Sie deutet sie in beide Richtungen. */}
         <p className="max-w-[76ch] rounded-xl bg-muted/40 p-3 text-[13px] leading-relaxed text-foreground/90">
-          Unbesetzte Stellen sind weder ein Sparerfolg noch ein Versäumnis. Sie erklären
-          aber, warum die Personalausgaben im{" "}
+          Unbesetzte Stellen können dazu beitragen, dass die tatsächlichen Personalaufwendungen im{" "}
           <Link href="/haushalt/plan-ist" className="font-semibold text-primary">
             Jahresabschluss
           </Link>{" "}
-          oft unter dem Plan bleiben: Das Geld war eingeplant, die Stelle stand im Plan —
-          besetzt war sie nicht. Ob niemand zu finden war, ob gerade jemand wechselte oder
-          ob eine Stelle bewusst frei blieb, sagt der Stellenplan nicht.
+          unter dem Plan bleiben: Für die Stelle war Geld vorgesehen, sie war am Stichtag
+          jedoch nicht besetzt. Warum eine Stelle frei war, geht aus dem Stellenplan nicht hervor.
         </p>
 
         {/* Wo die Lücken am größten sind — die Einzelposten des gewählten
@@ -468,14 +467,14 @@ export default function PersonalPage() {
               Zahlen voneinander abzuziehen ergäbe eine Lücke, die es so nie gab.
             </li>
             <li>
-              <strong>Es ist der Entwurf der Verwaltung.</strong> Der Stellenplan hängt an der
-              Vorlage, mit der der Haushalt eingebracht wird. Was der Rat in den Beratungen
-              noch ändert, steht nicht darin.
+              <strong>Gezeigt wird der Verwaltungsentwurf.</strong> Der Stellenplan gehört zu
+              der Vorlage, mit der die Verwaltung den Haushalt einbringt. Spätere Änderungen
+              des Rates sind darin nicht enthalten.
             </li>
             <li>
-              <strong>Kein Vergleich mit anderen Städten.</strong> Die Stadt hat genau diesen
-              Vergleich 2018 selbst angestellt und im selben Dokument entwertet — nachzulesen
-              beim{" "}
+              <strong>Kein Vergleich mit anderen Städten.</strong> Die Stadt hat 2018 selbst
+              darauf hingewiesen, dass unterschiedliche Organisationsformen einen solchen
+              Vergleich verzerren. Mehr dazu beim{" "}
               <Link href="/haushalt/vergleich" className="font-semibold text-primary">
                 Städtevergleich
               </Link>.

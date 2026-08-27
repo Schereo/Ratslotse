@@ -397,8 +397,9 @@ function PlanIstInner() {
 
       {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
       <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-        Ein Haushalt ist ein Plan. Was am Jahresende wirklich zusammenkam, steht erst im
-        Jahresabschluss — hier beides nebeneinander.
+        Der Haushalt legt fest, was die Stadt für ein Jahr erwartet und ausgeben darf.
+        Der Jahresabschluss zeigt später, was tatsächlich verbucht wurde. Hier stehen Plan
+        und Ergebnis nebeneinander.
       </p>
 
       {/* Jahr-Umschalter: nur Jahre mit echtem Abschluss (scrollbar wie #497). */}
@@ -430,7 +431,7 @@ function PlanIstInner() {
           dazu, dass die Bezugsgröße fehlt. */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Das Jahr {jahr} in zwei Sätzen
+          Das Haushaltsjahr {jahr} auf einen Blick
         </p>
         {planVorhanden ? (
           <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
@@ -449,9 +450,9 @@ function PlanIstInner() {
             Die Stadt hat {jahr} <strong>{deMio(gesamt.ertrIst)}&#8239;Mio.&nbsp;€ eingenommen</strong>{" "}
             und <strong>{deMio(gesamt.aufwIst)}&#8239;Mio.&nbsp;€</strong> ausgegeben
             <Beleg q="jahresabschluss" />. Die Planwerte der Gesamtrechnung konnten wir für
-            diesen Jahrgang nicht auslesen — deshalb steht hier kein „geplant" daneben und keine
-            Abweichung. Geraten wird sie nicht. Wo der Abschluss einzelne Posten selbst mit
-            ihrem Plan vergleicht, steht das weiter unten.
+            diesen Jahrgang nicht auslesen — deshalb steht hier kein „geplant“ daneben und
+            keine Abweichung. Wo der Abschluss einzelne Posten selbst mit ihrem Plan
+            vergleicht, steht das weiter unten.
           </p>
         )}
         {/* Eigener Schalter, nicht `planVorhanden`: Die Kacheln hängen jetzt an
@@ -496,13 +497,13 @@ function PlanIstInner() {
       {kasse && (
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Und was floss wirklich?
+            Ergebnis und tatsächlicher Geldfluss
           </p>
           <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
-            Die Zahlen oben sind <strong>gebucht</strong>. Ob dabei Geld bewegt wurde,
-            steht in derselben Akte an anderer Stelle: in der Finanzrechnung
-            <Beleg q="finanzrechnung" />. Sie zählt nur, was tatsächlich ein- und
-            ausgezahlt wurde.
+            Die Zahlen oben stammen aus der Ergebnisrechnung: Sie erfasst Erträge und
+            Aufwendungen, auch wenn dabei nicht sofort Geld fließt. Die Finanzrechnung
+            <Beleg q="finanzrechnung" /> zeigt dagegen ausschließlich die tatsächlichen
+            Ein- und Auszahlungen.
           </p>
           <dl className="mt-3 divide-y divide-border/60 border-t border-border/60">
             <KassenZeile
@@ -549,11 +550,11 @@ function PlanIstInner() {
             </p>
           )}
           <p className="mt-3 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
-            Beide Rechnungen stehen im selben Jahresabschluss und widersprechen sich
-            nicht: Abschreibungen mindern das Ergebnis, ohne dass Geld fließt; ein
-            Neubau kostet sofort Geld, im Ergebnis aber erst über die Jahre. Die
-            Finanzrechnung sagt darum nichts über den Werteverzehr, die
-            Ergebnisrechnung nichts über den Kontostand.
+            Beide Rechnungen beantworten unterschiedliche Fragen. Abschreibungen mindern
+            das Ergebnis, ohne eine Auszahlung auszulösen. Ein Neubau verursacht dagegen
+            sofort Auszahlungen, wird in der Ergebnisrechnung aber erst über seine
+            Nutzungsdauer als Aufwand erfasst. Deshalb lassen sich Jahresergebnis und
+            Kassenbestand nicht direkt miteinander vergleichen.
           </p>
         </div>
       )}

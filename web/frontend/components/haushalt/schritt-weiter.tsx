@@ -51,7 +51,7 @@ export function SchrittWeiter({ href }: { href: string }) {
           href="/haushalt"
           className="group inline-flex items-center gap-2 text-[13.5px] font-semibold text-primary"
         >
-          Geschafft — zurück zur Übersicht
+          Zurück zur Haushaltsübersicht
           <ArrowRight
             size={15}
             strokeWidth={2}

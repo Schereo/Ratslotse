@@ -239,12 +239,12 @@ function BereichInner() {
   // Auf dem Einstieg trägt der Text im Balken, weil dort 13 Segmente ihre
   // Legende entlasten.
   const balkenAus = {
-    titel: "Was rausgeht", rampe: "aus" as const,
-    segmente: [{ label: "Ausgaben des Bereichs", wert: rohAus }],
+    titel: "Geplante Aufwendungen", rampe: "aus" as const,
+    segmente: [{ label: "Aufwendungen des Bereichs", wert: rohAus }],
   };
   const balkenEin = {
-    titel: "Was reinkommt", rampe: "ein" as const,
-    segmente: [{ label: "eigene Einnahmen", wert: rohEin }],
+    titel: "Geplante eigene Erträge", rampe: "ein" as const,
+    segmente: [{ label: "eigene Erträge", wert: rohEin }],
   };
 
   // Vergleichsbereich für den Kostendeckungs-Satz: der größte andere Bereich
@@ -327,14 +327,14 @@ function BereichInner() {
         <p className="mt-2.5 max-w-[66ch] text-[15px] leading-relaxed text-foreground/90">
           {netto > 0 ? (
             rangNetto === 1 ? (
-              <>Unterm Strich <strong>trägt die Stadt</strong> für diesen Bereich {deMio(netto)}&#8239;Mio.&nbsp;€
-                aus allgemeinen Steuermitteln — mehr als für jeden anderen
+              <>Der geplante <strong>Zuschussbedarf</strong> dieses Bereichs beträgt {deMio(netto)}&#8239;Mio.&nbsp;€
+                aus allgemeinen Haushaltsmitteln — mehr als bei jedem anderen Bereich
                 {vergleich && faktor != null && faktor > 1 && bruttoTop.r.bereich !== z.bereich
                   ? <>, obwohl „{bereichKanon(vergleich.r.bereich).name}“ das {deMio(faktor)}-fache ausgibt</>
                   : null}.</>
             ) : (
-              <>Unterm Strich trägt die Stadt für diesen Bereich <strong>{deMio(netto)}&#8239;Mio.&nbsp;€</strong> aus
-                allgemeinen Steuermitteln — Platz {rangNetto} von {alle.length} nach Zuschussbedarf.</>
+              <>Der geplante Zuschussbedarf dieses Bereichs beträgt <strong>{deMio(netto)}&#8239;Mio.&nbsp;€</strong> aus
+                allgemeinen Haushaltsmitteln — Platz {rangNetto} von {alle.length}.</>
             )
           ) : netto > -0.05 ? (
             // Unter 0,05 Mio. rundet `mio()` auf 0,0 — „er nimmt 0,0 Mio. €
@@ -344,8 +344,8 @@ function BereichInner() {
               {" "}<strong>{deMio(ein)}&#8239;Mio.&nbsp;€</strong> stehen
               {" "}<strong>{deMio(aus)}&#8239;Mio.&nbsp;€</strong> gegenüber.</>
           ) : (
-            <>Dieser Bereich trägt sich {jahr} selbst — er nimmt <strong>{deMio(-netto)}&#8239;Mio.&nbsp;€</strong> mehr
-              ein, als er ausgibt.</>
+            <>Für {jahr} sind die eigenen Erträge dieses Bereichs um{" "}
+              <strong>{deMio(-netto)}&#8239;Mio.&nbsp;€</strong> höher als seine Aufwendungen.</>
           )}
         </p>
       </div>
@@ -355,11 +355,11 @@ function BereichInner() {
           ganzen Bereichs (Gegenbalken, Bereichskarten); „kostet die Stadt"
           wäre eine zweite für dieselbe Sache. */}
       <div className="flex flex-none flex-wrap gap-x-6 gap-y-3 sm:gap-x-7 lg:pt-1">
-        <Summe label={`Ausgaben ${jahr}`} wert={aus} beleg={<Beleg q="plan" />} />
-        <Summe label="eigene Einnahmen" wert={ein} ton="ein" />
+        <Summe label={`Aufwendungen ${jahr}`} wert={aus} beleg={<Beleg q="plan" />} />
+        <Summe label="eigene Erträge" wert={ein} ton="ein" />
         {/* Dieselbe Schwelle wie unten im Balken (Rohwert-Vergleich), damit
             Kopf und Bild nie zwei verschiedene Richtungen behaupten. */}
-        <Summe label={einVoran ? "Überschuss" : "trägt die Stadt"} wert={Math.abs(netto)} ton="signal" />
+        <Summe label={einVoran ? "Überschuss" : "Zuschussbedarf"} wert={Math.abs(netto)} ton="signal" />
       </div>
       </div>
 
@@ -375,7 +375,7 @@ function BereichInner() {
           zeilen={einVoran ? [balkenEin, balkenAus] : [balkenAus, balkenEin]}
           basis={Math.max(rohAus, rohEin)}
           einheit="Mio. €"
-          restLabel={einVoran ? "Überschuss des Bereichs" : "trägt die Stadt"}
+          restLabel={einVoran ? "Überschuss des Bereichs" : "Zuschussbedarf"}
         />
         {einVoran ? (
           <p className="mt-3 max-w-[76ch] border-t border-border/60 pt-2.5 text-[12.5px] leading-relaxed text-foreground/85">
@@ -385,9 +385,9 @@ function BereichInner() {
           </p>
         ) : (
           <p className="mt-3 max-w-[76ch] border-t border-border/60 pt-2.5 text-[12.5px] leading-relaxed text-foreground/85">
-            Eigene Einnahmen sind Gebühren, Entgelte, Erstattungen und
-            zweckgebundene Zuschüsse. Was sie nicht decken, trägt die Stadt aus
-            dem allgemeinen Topf aus Steuern und Schlüsselzuweisungen.
+            Eigene Erträge sind Gebühren, Entgelte, Erstattungen und
+            zweckgebundene Zuschüsse. Den verbleibenden Zuschussbedarf finanziert
+            der allgemeine Haushalt aus Steuern und Schlüsselzuweisungen.
             {/* Nur im Zuschuss-Fall: Der Prozentsatz trägt als Satz und im
                 Vergleich — bei einem Überschuss gäbe es nichts zu decken, und
                 auf der Finanzmanagement-Seite stand sonst ein „Bei … sind es
@@ -418,7 +418,8 @@ function BereichInner() {
         <Karte>
           <Kicker>Brutto gegen Netto · alle Bereiche</Kicker>
           <p className="mb-3 mt-1 text-[12.5px] text-foreground/80">
-            Umschalten dreht die Reihenfolge — und genau darin steckt der Punkt.
+            Die Sortierung zeigt entweder die gesamten Aufwendungen oder den
+            verbleibenden Zuschussbedarf nach eigenen Erträgen.
           </p>
           {/* Scrollzeile: „Kosten für die Stadt (netto)" ragte auf 375 px über
               den Bildschirmrand und ließ die ganze Seite horizontal wackeln. */}
@@ -472,8 +473,8 @@ function BereichInner() {
             <Kicker>Was steckt drin</Kicker>
             <p className="mt-2 text-[13.5px] leading-relaxed text-foreground/90">{info}</p>
             <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              Redaktionelle Beschreibung nach dem Vorbericht des Haushaltsplans — keine amtliche
-              Gliederung.
+              Diese redaktionelle Beschreibung beruht auf dem Vorbericht des
+              Haushaltsplans; sie ist keine amtliche Gliederung.
             </p>
           </Karte>
         )}
@@ -718,10 +719,10 @@ function BereichInner() {
           <Kicker>Diese Seite in einem Absatz</Kicker>
           <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
             Die Beträge oben sind <strong>Planwerte</strong> aus dem beschlossenen Haushaltsplan
-            {" "}{jahr} — was der Rat vorgesehen hat, nicht, was am Ende wirklich geflossen ist.
-            Was daraus wurde, steht erst im Jahresabschluss, und der liegt zwei Jahre zurück.
-            Der Ergebnishaushalt zeigt außerdem nur die laufende Wirtschaft: Investitionen
-            stehen im Finanzhaushalt und sind hier nicht enthalten.
+            {" "}{jahr}. Sie zeigen, was der Rat vorgesehen hat, nicht das spätere Ergebnis.
+            Tatsächliche Erträge und Aufwendungen veröffentlicht die Stadt im Jahresabschluss,
+            der mit zeitlichem Abstand erscheint. Investitionen sind hier nicht enthalten;
+            sie stehen im Finanzhaushalt.
           </p>
           <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
             Quelle dieser Seite:{" "}

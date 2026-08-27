@@ -206,10 +206,10 @@ export function KonzernAbschnitt({ onBestand }: {
 
         <LottiErklaert
           titel="Was ist ein Gesamtabschluss?"
-          text={"Die Stadt macht vieles nicht selbst, sondern über eigene Betriebe und "
-            + "Gesellschaften. Einmal im Jahr rechnet sie alles zusammen, so als wäre sie "
-            + "ein einziges Unternehmen. Was die Betriebe untereinander abrechnen, wird "
-            + "dabei herausgenommen — sonst stünde es doppelt drin. Das nennt sich "
+          text={"Viele städtische Aufgaben liegen bei Eigenbetrieben oder Gesellschaften. "
+            + "Im Gesamtabschluss führt die Stadt deren Abschlüsse mit dem eigenen Abschluss "
+            + "zusammen. Geschäfte innerhalb des Konzerns werden dabei herausgerechnet, damit "
+            + "dieselben Erträge und Aufwendungen nicht doppelt erscheinen. Das nennt sich "
             + "Konsolidierung."}
         />
 
@@ -310,10 +310,10 @@ export function KonzernAbschnitt({ onBestand }: {
             </li>
             <li>
               <strong>Schulden stehen hier nicht.</strong> Der Bericht führt eine
-              Schuldenübersicht als Pflichtanlage, aber die Seite trägt im PDF keinen Text —
-              wir hätten sie nur raten können, und das tun wir nicht. Für die Stadt als
-              Rechtsträger — Verwaltung und Eigenbetriebe, ohne die Gesellschaften auf
-              dieser Seite — gibt es die Zahlen dagegen seit 1995:{" "}
+              Schuldenübersicht als Pflichtanlage, deren Seite im PDF jedoch keinen
+              maschinenlesbaren Text enthält. Deshalb weisen wir daraus keine Beträge aus.
+              Für die Stadt als Rechtsträger — Verwaltung und Eigenbetriebe, ohne die
+              Gesellschaften auf dieser Seite — gibt es dagegen Zahlen seit 1995:{" "}
               <Link href="/haushalt/schulden" className="font-semibold text-primary">
                 Wie viel Schulden hat Oldenburg?
               </Link>

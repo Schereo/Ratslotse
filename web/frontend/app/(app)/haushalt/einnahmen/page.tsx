@@ -174,7 +174,7 @@ export default function EinnahmenPage() {
       <Seitenbuehne
         kicker="Spielraum über alle Quellen"
         zahl={<>Bei <ZaehlZahl wert={frei} /> von {karten.length} Einnahmequellen kann der
-          Rat wirklich drehen</>}
+          Rat die Höhe selbst festlegen</>}
         sub={GRUPPEN.find((g) => g.stufe === "frei")?.text}
         minibild={{
           // Das Regal beschriftet SICH SELBST (Tim, 26.08.: „sieht eher aus
@@ -222,9 +222,9 @@ export default function EinnahmenPage() {
       <div className="@container">
         <div className="grid gap-x-8 gap-y-2 @3xl:grid-cols-2">
           <p className="max-w-[70ch] text-[13px] leading-relaxed text-foreground/85">
-            Die Debatte „die Stadt soll sich das Geld doch besorgen“ läuft meistens an den
-            Zuständigkeiten vorbei. Deshalb sortieren wir die Einnahmequellen nicht nach Größe,
-            sondern <strong>nach Entscheidungsmacht</strong>. Gezählt sind Quellen, nicht Euro.
+            Nicht jede Einnahmequelle lässt sich vor Ort beeinflussen. Deshalb sortieren wir
+            sie nicht nach ihrer Höhe, sondern <strong>nach dem Entscheidungsspielraum des
+            Rates</strong>. Gezählt sind Einnahmequellen, nicht Eurobeträge.
           </p>
           {/* Der Jahres-Sprung bleibt oben auf der Seite: Wer von der Übersicht
               kommt, hat dort Planzahlen des kommenden Jahres gesehen; hier
@@ -426,14 +426,13 @@ export default function EinnahmenPage() {
                 nicht weiß, wovon die Rede ist, kann mit „bis 2.000 Euro der
                 Verwaltungsausschuss" nichts anfangen. */}
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold">Wenn jemand der Stadt etwas schenkt</p>
+              <p className="text-[13px] font-semibold">Spenden und Schenkungen an die Stadt</p>
               <p className="mt-1 max-w-[78ch] text-[13px] leading-relaxed text-foreground/85">
-                Zuwendungen sind Spenden und Schenkungen an die Stadt — Geld ebenso wie
-                Sachen. Behalten darf die Verwaltung sie nicht von sich aus: Jede einzelne
-                muss ein Gremium annehmen, so schreibt es das Kommunalverfassungsgesetz
-                vor (§ 111 Abs. 8 NKomVG). Mehrmals im Jahr steht dafür derselbe
-                Tagesordnungspunkt an, „Annahme von Zuwendungen“ — was dort beschlossen
-                wird, zählen wir hier zusammen.
+                Zuwendungen sind Geld- oder Sachspenden an die Stadt. Die Verwaltung darf
+                sie nicht allein annehmen: Nach § 111 Abs. 8 NKomVG muss das zuständige
+                Gremium zustimmen. Deshalb erscheint mehrmals im Jahr der Tagesordnungspunkt
+                „Annahme von Zuwendungen“. Die dort beschlossenen Beträge fassen wir hier
+                zusammen.
               </p>
             </div>
           </div>
@@ -468,20 +467,21 @@ export default function EinnahmenPage() {
                 sonst nirgends (council/spenden.py: „Weder die Ergebnisrechnung
                 noch der Haushaltsplan weisen Spenden getrennt aus"). */}
             <div>
-              <dt className="text-[12.5px] font-semibold">Sonst steht diese Summe nirgends</dt>
+              <dt className="text-[12.5px] font-semibold">Warum diese Summe nur hier sichtbar wird</dt>
               <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
-                Weder der Haushaltsplan noch die Ergebnisrechnung weisen Zuwendungen
-                getrennt aus. Öffentlich wird die Summe allein durch diese Beschlüsse —
-                deshalb steht sie hier und nicht bei den übrigen Einnahmearten.
+                Weder der Haushaltsplan noch die Ergebnisrechnung weisen Zuwendungen als
+                eigene Einnahmeart aus. Öffentlich nachvollziehbar wird ihre Gesamthöhe nur
+                über die einzelnen Beschlüsse. Deshalb zeigen wir sie hier getrennt von den
+                übrigen Einnahmen.
               </dd>
             </div>
             <div>
-              <dt className="text-[12.5px] font-semibold">Wir zeigen die Summe, nicht die Gebenden</dt>
+              <dt className="text-[12.5px] font-semibold">Wir zeigen Beträge, keine Namen</dt>
               <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
                 Wer gespendet hat und wofür, steht ausschließlich in der Anlage
-                „Zuwendungsliste“ zur jeweiligen Vorlage. Die lesen wir nicht ein. Der
-                Ratsbeschluss macht die Summe öffentlich — die Liste dahinter bleibt es
-                nicht, und dabei bleibt es auch hier.
+                „Zuwendungsliste“ zur jeweiligen Vorlage. Diese Anlagen lesen wir nicht ein.
+                Ratslotse zeigt daher nur die öffentlich beschlossene Summe, nicht die Namen
+                der Gebenden.
               </dd>
             </div>
             {spendenLauf && (

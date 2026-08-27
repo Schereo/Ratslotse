@@ -232,10 +232,10 @@ export function TermineAbschnitt({ onBestand }: {
           </h2>
           <p className="mt-2 max-w-[66ch] text-sm leading-relaxed text-foreground/90">
             {lebtMonate
-              ? `Ein Haushalt lebt rund ${lebtMonate} Monate: vom ersten öffentlichen Auftritt bis zur letzten Abrechnung — gemessen an den Jahrgängen im Bestand, nicht behauptet. `
-              : "Vom ersten öffentlichen Auftritt bis zur letzten Abrechnung — gemessen an den Jahrgängen im Bestand, nicht behauptet. "}
-            Der Strahl beginnt, wo die Öffentlichkeit beginnt: Was die Verwaltung vorher intern
-            plant, kennt das Ratsinformationssystem nicht.
+              ? `Vom ersten öffentlichen Entwurf bis zum festgestellten Jahresabschluss vergehen im vorhandenen Datenbestand durchschnittlich rund ${lebtMonate} Monate. `
+              : "Die Darstellung reicht vom ersten öffentlichen Entwurf bis zum festgestellten Jahresabschluss. "}
+            Die interne Vorbereitung der Verwaltung erscheint nicht im Ratsinformationssystem
+            und hat deshalb keinen eigenen Termin in dieser Zeitleiste.
           </p>
         </div>
 
@@ -270,10 +270,8 @@ export function TermineAbschnitt({ onBestand }: {
                 eingebracht — dann beginnt dieser Strahl von vorn.{" "}
               </>
             )}
-            Welche Sitzung den Haushalt aufruft, steht erst mit ihrer Tagesordnung fest, und
-            die veröffentlicht das Ratsinformationssystem erst kurz vorher. Einen konkreten
-            Termin kündigen wir deshalb nicht an — ein geratenes Datum wäre schlechter als
-            keins.
+            Welche Sitzung den Haushalt behandelt, steht erst mit der veröffentlichten
+            Tagesordnung fest. Solange sie nicht vorliegt, nennen wir keinen konkreten Termin.
           </p>
           <div className="mt-3 border-t border-dashed border-border pt-2.5">
             <Link href="/council?tab=sessions" className="text-[11.5px] font-semibold text-primary">
@@ -400,9 +398,9 @@ function Weg({ runde }: { runde: WegRunde }) {
               {fach.von === fach.bis
                 ? deDatum(fach.von)
                 : `${deDatum(fach.von)} bis ${deDatum(fach.bis)}`}
-              {" — "}jeder Ausschuss bekommt „seinen" Teilhaushalt vorgestellt. Hier wird
-              beraten und zur Kenntnis genommen; abgestimmt wird darüber im Finanzausschuss
-              und im Rat.
+              {" — "}jeder Ausschuss befasst sich mit den Teilhaushalten seines Fachgebiets.
+              Die abschließenden Entscheidungen über den Gesamthaushalt treffen
+              Finanzausschuss und Rat.
             </p>
             {/* Die zehn Ausschussnamen als Aufzählung statt als Wortkette:
                 Aneinandergereiht liefen sie über 1.102 px in einer Zeile, und

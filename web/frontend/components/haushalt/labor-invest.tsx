@@ -284,13 +284,13 @@ export function InvestWerkbank({
           Datenbaustein ist, sondern der Merksatz der Werkbank. */}
       <div className="rounded-2xl border border-border bg-muted/40 p-4">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Die Lektion dieser Werkbank
+          Was diese Werkbank zeigt
         </p>
         <p className="mt-1.5 max-w-[66ch] text-[12.5px] leading-relaxed">
-          Ein gestrichenes Vorhaben bewegt die Ergebnis-Lücke fast nicht — dort landen
-          nur die Abschreibungen. Es schont die Kasse und den Schuldenpfad. Wer hier
-          dreht, lernt nebenbei den Unterschied zwischen Ergebnis- und Finanzhaushalt —
-          den zweitwichtigsten Begriff des ganzen Bereichs.
+          Ein gestrichenes Vorhaben verändert das geplante Jahresergebnis zunächst kaum,
+          weil dort nur die späteren Abschreibungen erscheinen. Es senkt jedoch die
+          Auszahlungen und damit den möglichen Finanzierungsbedarf. Daran wird der
+          Unterschied zwischen Ergebnis- und Finanzhaushalt sichtbar.
         </p>
       </div>
     </div>
