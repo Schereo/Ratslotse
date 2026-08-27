@@ -493,6 +493,21 @@ def test_reviewed_place_joins_catalog_extraction_search_and_map(tmp_path):
     point = next(p for p in store.decision_location_map_points() if p["slug"] == "testquartier")
     assert point["target"] == "ort" and point["place_id"] == "testquartier"
 
+    # Eine schon vor der Freigabe vorhandene Schreibvariante wird beim
+    # Backfill auf den neuen Katalogort aufgelöst und bleibt nicht als offener
+    # Kandidat stehen.
+    store._conn.execute(
+        "INSERT INTO council_locations(slug,name,kind,place_id,updated_at) "
+        "VALUES ('test-quartier','Test-Quartier','gebiet',NULL,'2026-05-01')")
+    store._conn.execute(
+        "INSERT INTO council_decision_locations(decision_id,location_slug,source,evidence,"
+        "method,confidence,updated_at) "
+        "VALUES (1,'test-quartier','title','Test-Quartier','llm',0.9,'2026-05-01')")
+    store._conn.commit()
+    assert store.backfill_location_place_ids() == 1
+    assert not any(c["slug"] == "test-quartier" for c in
+                   store.location_candidates("pending", min_decisions=1))
+
     store.review_location_candidate("testquartier", status="rejected")
     assert not any(p["slug"] == "testquartier" for p in store.decision_location_map_points())
     store.close()
