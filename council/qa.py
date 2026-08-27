@@ -868,6 +868,19 @@ def _build_context(candidates: list[dict]) -> str:
                        f"erwähne das in der Antwort, wenn es zur Frage passt)")
         if c.get("amt"):
             suffix += f" — Federführung: {c['amt']}"
+        # Bei Ortsfragen ist nicht nur wichtig, DASS ein Beschluss im
+        # gefilterten Pool liegt, sondern WARUM. Die Fundstelle stammt aus dem
+        # Beschluss/der Vorlage und macht die Zuordnung auch für das Modell
+        # nachvollziehbar, statt den Ortsbezug aus dem Titel raten zu lassen.
+        location_matches = c.get("location_matches") or []
+        if location_matches:
+            match = location_matches[0]
+            ort_name = str(match.get("name") or "").strip()
+            evidence = str(match.get("evidence") or "").strip()
+            if ort_name:
+                suffix += f" — Ortsbezug: {ort_name}"
+                if evidence:
+                    suffix += f"; Fundstelle: {evidence[:220]}"
         # Klima-Check nur bei „prüfungsrelevant: Ja" — die Nein-Floskeln würden
         # den Kontext füllen, ohne einer Antwort je zu helfen (Regex-Ernte).
         if ernte.klima_relevant(c.get("klima_check")):
@@ -1339,13 +1352,24 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                      debatten: list[dict] | None = None,
                      gross: bool = False, steckbriefe: list[dict] | None = None,
                      duenn: bool = False, eng: bool = False,
-                     sitzungen: list[dict] | None = None) -> tuple[list[dict], dict]:
+                     sitzungen: list[dict] | None = None,
+                     ort: dict | None = None) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
                  if vtext else "")
+    ortsregel = ""
+    if ort:
+        ortsregel = (
+            f"\nORTSFILTER: Die Frage nennt den Katalogort „{ort.get('name', '')}“ "
+            f"({ort.get('kind_label', 'Ort')}). Verwende nur Beschlüsse mit "
+            "belegtem Bezug zu genau diesem Ort; die konkrete Fundstelle steht "
+            "im Kontext als „Ortsbezug“. Verwechsle einen kleineren Ort nicht "
+            "mit seinem größeren Ortsbereich und benenne eine dünne Datenlage ehrlich."
+        )
     prompt = prompts.render("qa_antwort", question=question.strip()[:300],
                             context=_build_context(candidates),
                             extra_regeln=(ENG_REGEL if eng else EXTRA_REGELN.get(typ, ""))
+                            + ortsregel
                             + ("" if eng else (GROSS_REGEL if gross else ""))
                             + (DUENN_REGEL if duenn else ""),
                             presse=_sitzungen_block(sitzungen)
@@ -1467,11 +1491,12 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
                     gross: bool = False, steckbriefe: list[dict] | None = None,
                     duenn: bool = False, eng: bool = False,
-                    sitzungen: list[dict] | None = None):
+                    sitzungen: list[dict] | None = None,
+                    ort: dict | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, gross, steckbriefe, duenn, eng,
-                                       sitzungen)
+                                       sitzungen, ort)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -1483,13 +1508,14 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
                   gross: bool = False, steckbriefe: list[dict] | None = None,
                   duenn: bool = False, eng: bool = False,
-                  sitzungen: list[dict] | None = None):
+                  sitzungen: list[dict] | None = None,
+                  ort: dict | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, gross, steckbriefe, duenn, eng,
-                                       sitzungen)
+                                       sitzungen, ort)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 

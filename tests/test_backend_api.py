@@ -2268,6 +2268,80 @@ def test_ask_stream_haelt_marker_zurueck_und_liefert_suggestions(client, monkeyp
     assert [e for e in events if e["type"] == "done"]
 
 
+def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeypatch):
+    """Der Ortsbezug ist ein harter, kombinierbarer Filter: Eine Geldfrage
+    behält ihre Betragsregeln, darf aber keinen Beschluss aus einem anderen
+    Ortsbereich in Quellen oder Antwortkontext ziehen."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(77, "Bauausschuss", "2026-05-07", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.executemany(
+            "INSERT INTO council_decisions "
+            "(id,ksinr,position,title,summary,outcome,kind,amount_eur) "
+            "VALUES (?,77,?,?,?,?, 'decision',?)",
+            [
+                (1, 1, "Sporthalle Kreyenbrück", "Sanierung", "angenommen", 2_500_000),
+                (2, 2, "Sanierung Rathaus", "Fassade", "angenommen", 9_000_000),
+            ],
+        )
+    cs.save_decision_locations(1, [{
+        "name": "Kreyenbrück", "kind": "stadtteil", "source": "title",
+        "evidence": "Sporthalle Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
+    }], "local")
+    cs.save_decision_locations(2, [{
+        "name": "Rathaus", "kind": "gebaeude", "source": "title",
+        "evidence": "Sanierung Rathaus", "method": "ortskatalog", "confidence": 0.99,
+    }], "foreign")
+    with cs._conn:
+        cs._conn.execute(
+            "UPDATE council_locations SET lat=53.111, lon=8.222 WHERE place_id='kreyenbrueck'")
+    local, foreign = cs.get_decisions_by_ids([1, 2])
+    cs.close()
+
+    gesehen: dict = {}
+
+    def fake_retrieve(*args, **kwargs):
+        gesehen["place_ids"] = kwargs.get("place_ids")
+        # Absichtlich auch ein Fremdtreffer: Die Router-Schranke muss ihn entfernen.
+        return [local, foreign], "semantisch"
+
+    def fake_stream(question, ctx, **kwargs):
+        gesehen["ctx"] = [c["id"] for c in ctx]
+        gesehen["typ"] = kwargs.get("typ")
+        gesehen["ort"] = kwargs.get("ort")
+        yield "Die Sanierung kostet 2,5 Millionen Euro [1]."
+
+    monkeypatch.setattr(council_router, "_qa_retrieve", fake_retrieve)
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "frage": "Was kostet die Sporthalle in Kreyenbrück?",
+        "begriffe": "Sporthalle Sanierung Kosten Kreyenbrück",
+        "typ": "geld", "partei": None, "varianten": [], "eng": False,
+    })
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Was kostet die Sporthalle in Kreyenbrück?"}) as response:
+        assert response.status_code == 200
+        body = "".join(response.iter_text())
+
+    events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+    sources = next(event for event in events if event["type"] == "sources")
+    assert gesehen["place_ids"] == [1]
+    assert gesehen["typ"] == "geld"
+    assert gesehen["ctx"] == [1]
+    assert gesehen["ort"]["id"] == "kreyenbrueck"
+    assert sources["qtype"] == "geld"
+    assert [source["id"] for source in sources["sources"]] == [1]
+    match = sources["sources"][0]["location_matches"][0]
+    assert match["name"] == "Kreyenbrück"
+    assert match["evidence"] == "Sporthalle Kreyenbrück"
+    assert sources["sources"][0]["ort_name"] == "Kreyenbrück"
+
+
 def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
     """Sitzungs-Fragetyp (25.08.26): „Was hat der Jugendhilfeausschuss am
     17.06.2026 beschlossen?" lief rein semantisch — 3 der 6 TOPs fehlten in der
@@ -2969,6 +3043,8 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
         "Klingenbergplatz", "Cloppenburger Straße"
     ]
     assert first["location_matches"][0]["evidence"] == "Widmung Klingenbergplatz"
+    assert "lat" in first["location_matches"][0]
+    assert "lon" in first["location_matches"][0]
     # Ortsbezug und vorhandene Suchfilter greifen gemeinsam.
     accepted = client.get(
         "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=vote&outcome=angenommen"
