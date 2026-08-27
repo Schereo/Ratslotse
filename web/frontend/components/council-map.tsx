@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Maximize2, Minimize2 } from "lucide-react";
 import type { Map as LeafletMap, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
 import { EntityMapPoint } from "@/lib/types";
 import type { StadtteilFeature } from "@/lib/stadtteile";
 import { ortHref, themaHref } from "@/lib/routes";
@@ -52,9 +53,9 @@ function loadView(): SavedView | null {
 }
 
 // City-wide map: one clickable circle marker per geocoded entity, sized by how many
-// decisions reference it. Plain Leaflet + CARTO tiles, client-only (load via
-// next/dynamic ssr:false), theme-reactive like EntityMap. CircleMarkers only — no
-// marker-icon images to fetch (CSP img-src stays limited to the tiles).
+// decisions reference it. Nahe Punkte werden im Weitzoom gebündelt und springen
+// ab Zoom 15 auseinander. Die Marker bleiben reine HTML-Kreise — es werden keine
+// Marker-Bilder nachgeladen (CSP img-src bleibt auf die Kartenkacheln begrenzt).
 export function CouncilMap({ points, outlines, className }: {
   points: EntityMapPoint[];
   /** Grenzen der ausgewählten Stadtteile — dezent eingezeichnet zur Orientierung. */
@@ -72,6 +73,9 @@ export function CouncilMap({ points, outlines, className }: {
     void (async () => {
       try {
       const L = (await import("leaflet")).default;
+      // Das Plugin erweitert Leaflet zur Laufzeit um markerClusterGroup. Erst
+      // nach Leaflet selbst laden, damit beide dasselbe Browser-Singleton nutzen.
+      await import("leaflet.markercluster");
       // isConnected: im StrictMode-Doppelmount läuft dieser async-Teil auch für
       // bereits verworfene Bäume — dort keine Karte auf den toten Div bauen.
       if (cancelled || !ref.current || !ref.current.isConnected || mapRef.current) return;
@@ -115,24 +119,50 @@ export function CouncilMap({ points, outlines, className }: {
         ).addTo(map);
       }
 
+      const clusters = L.markerClusterGroup({
+        // Im Gesamtblick größere Einzugsbereiche, im Nahbereich enger. Ab Zoom
+        // 15 sind alle Einzelorte sichtbar; deckungsgleiche Punkte spreizt das
+        // Plugin beim Klick als „Spinne" auseinander.
+        maxClusterRadius: (zoom) => (zoom <= 12 ? 55 : 40),
+        disableClusteringAtZoom: 15,
+        spiderfyOnMaxZoom: true,
+        spiderfyDistanceMultiplier: 1.15,
+        zoomToBoundsOnClick: true,
+        showCoverageOnHover: false,
+        removeOutsideVisibleBounds: true,
+        chunkedLoading: true,
+        iconCreateFunction: (cluster) => {
+          const count = cluster.getChildCount();
+          const size = count >= 100 ? 48 : count >= 10 ? 42 : 36;
+          return L.divIcon({
+            html: `<span>${count}</span>`,
+            className: "ratslotse-map-cluster",
+            iconSize: [size, size],
+          });
+        },
+      }).addTo(map);
+
       type Dir = "top" | "bottom" | "right" | "left";
       const latlngs: [number, number][] = [];
       const markers: {
-        marker: ReturnType<typeof L.circleMarker>;
+        marker: ReturnType<typeof L.marker>;
         label: string; hover: string; n: number; radius: number;
         dir: Dir | null | undefined; // undefined = noch nie gebunden
       }[] = [];
       for (const p of points) {
         const color = KIND_COLOR[p.kind] ?? KIND_COLOR.projekt;
         const radius = Math.min(12, 4 + Math.sqrt(p.n));
-        const marker = L.circleMarker([p.lat, p.lon], {
-          radius,
-          color,
-          weight: 1.5,
-          fillColor: color,
-          fillOpacity: 0.55,
-        }).addTo(map);
         const hover = `${p.name} · ${p.n} ${p.n === 1 ? "Beschluss" : "Beschlüsse"}`;
+        const marker = L.marker([p.lat, p.lon], {
+          title: hover,
+          alt: hover,
+          icon: L.divIcon({
+            className: "ratslotse-map-point",
+            html: `<span style="--point-color:${color};--point-size:${radius * 2}px"></span>`,
+            iconSize: [radius * 2, radius * 2],
+            iconAnchor: [radius, radius],
+          }),
+        }).addTo(clusters);
         marker.on("click", () => {
           if (p.target === "ort" && p.place_id) router.push(ortHref(p.place_id));
           else if (p.target === "location") {

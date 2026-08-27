@@ -354,6 +354,7 @@ export function EntitiesTab() {
             {selectedST.size > 0
               ? `${points.length} von ${geo!.entities.length} Punkten · ${selectedST.size} ${selectedST.size === 1 ? "Ortsbereich" : "Ortsbereiche"} ausgewählt`
               : `${points.length} verortete Themen und Beschlussorte · Punktgröße = Beschlüsse`}
+            <span className="ml-2">Zahlenkreise bündeln nahe Orte</span>
             <span className="ml-2 inline-flex items-center gap-1">
               <span className="h-2 w-2 rounded-full" style={{ background: KIND_COLOR.beschlussort }} />
               Orange = konkreter Beschlussort
