@@ -3241,7 +3241,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 observed = {
                     "decisions": len(candidates),
                     "debates": len(debatten_rows),
-                    "budget": len(haushalt_zeilen),
+                    "budget": sum(bool(v) for k, v in geld.items() if k != "facetten"),
                     "press": len(presse_rows),
                     "sessions": len(sitzungen),
                     "future_agenda": len(planungen),
