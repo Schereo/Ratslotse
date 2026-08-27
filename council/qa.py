@@ -133,7 +133,19 @@ def _research_plan(data: dict) -> dict:
             "needs": needs, "valid": valid}
 
 
-def research_plan_with_mandatory(plan: dict, *, typ: str, person: bool = False,
+_OFFICIAL_UPDATE_WORDS_RE = re.compile(
+    r"\b(?:pressemitteilung(?:en)?|presseerkl(?:ä|ae)rung(?:en)?|"
+    r"ver(?:ö|oe)ffentlicht(?:e|en)?|mitgeteilt|meldet|gemeldet|informiert(?:e|en)?)\b",
+    re.IGNORECASE,
+)
+_OFFICIAL_SOURCE_RE = re.compile(
+    r"\b(?:stadt(?:verwaltung)?|verwaltung|oberb(?:ü|ue)rgermeister(?:in)?)\b",
+    re.IGNORECASE,
+)
+
+
+def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
+                                 person: bool = False,
                                  place: bool = False, sessions: bool = False,
                                  latest_decision: bool = False) -> dict:
     """LLM-Auswahl konsistent und mit harten Entitätskanälen machen.
@@ -171,9 +183,20 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, person: bool = False,
         "official_updates": ("press",),
         "future_dates": ("future_agenda",),
     }
+    model_needs = list(plan.get("needs") or [])
+    inferred_needs: list[str] = []
+    if (_OFFICIAL_UPDATE_WORDS_RE.search(question or "")
+            and ("presse" in (question or "").lower()
+                 or _OFFICIAL_SOURCE_RE.search(question or ""))
+            and "official_updates" not in model_needs):
+        # Kleine semantische Leitplanke für eindeutige Formulierungen. In der
+        # Produktionsprobe ließ das Analysemodell „Was hat die Stadt zuletzt …
+        # mitgeteilt?“ trotz klarer Quellenart ohne Pressekanal durch.
+        inferred_needs.append("official_updates")
+    needs = list(dict.fromkeys([*model_needs, *inferred_needs]))
     consistent = list(dict.fromkeys(
         channel
-        for need in (plan.get("needs") or [])
+        for need in needs
         for channel in need_channels.get(need, ())
     ))
     selected = list(dict.fromkeys([*mandatory, *model_channels, *consistent]))
@@ -182,8 +205,8 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, person: bool = False,
     if latest_decision and "debates" in selected and "debates" not in mandatory:
         selected.remove("debates")
         suppressed.append("debates")
-    needs = set(plan.get("needs") or [])
-    if ("future_dates" in needs and "official_updates" not in needs
+    need_set = set(needs)
+    if ("future_dates" in need_set and "official_updates" not in need_set
             and "press" in selected):
         # Eine kommende Beratung ist noch keine Verwaltungsneuigkeit. Das
         # Analysemodell wählte in 3/5 reinen Zukunftsfragen zusätzlich Presse,
@@ -191,7 +214,8 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, person: bool = False,
         selected.remove("press")
         suppressed.append("press")
     added = [c for c in selected if c not in model_channels]
-    return {**plan, "channels": selected, "model_channels": model_channels,
+    return {**plan, "channels": selected, "needs": needs,
+            "model_channels": model_channels, "inferred_needs": inferred_needs,
             "mandatory_channels": mandatory, "consistency_added": added,
             "suppressed_channels": suppressed}
 
