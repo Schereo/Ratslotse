@@ -182,6 +182,14 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, person: bool = False,
     if latest_decision and "debates" in selected and "debates" not in mandatory:
         selected.remove("debates")
         suppressed.append("debates")
+    needs = set(plan.get("needs") or [])
+    if ("future_dates" in needs and "official_updates" not in needs
+            and "press" in selected):
+        # Eine kommende Beratung ist noch keine Verwaltungsneuigkeit. Das
+        # Analysemodell wählte in 3/5 reinen Zukunftsfragen zusätzlich Presse,
+        # obwohl es den feineren Bedarf ``future_dates`` korrekt erkannt hatte.
+        selected.remove("press")
+        suppressed.append("press")
     added = [c for c in selected if c not in model_channels]
     return {**plan, "channels": selected, "model_channels": model_channels,
             "mandatory_channels": mandatory, "consistency_added": added,

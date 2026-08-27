@@ -196,6 +196,24 @@ def test_current_info_koppelt_presse_und_zukunft_nicht_mehr_pauschal():
         "decisions", "future_agenda"]
 
 
+def test_reine_zukunftsfrage_entfernt_presse_ueber_bedarfe():
+    nur_zukunft = qa._research_plan({"rechercheplan": {
+        "intent": "session", "channels": ["decisions", "press", "future_agenda"],
+        "needs": ["current_info", "future_dates"],
+    }})
+    resolved = qa.research_plan_with_mandatory(nur_zukunft, typ="thema")
+    assert resolved["channels"] == ["decisions", "future_agenda"]
+    assert resolved["suppressed_channels"] == ["press"]
+
+    beides = qa._research_plan({"rechercheplan": {
+        "intent": "status", "channels": ["decisions", "press", "future_agenda"],
+        "needs": ["current_info", "official_updates", "future_dates"],
+    }})
+    resolved = qa.research_plan_with_mandatory(beides, typ="verlauf")
+    assert resolved["channels"] == ["decisions", "press", "future_agenda"]
+    assert resolved["suppressed_channels"] == []
+
+
 def test_rechercheplan_entfernt_debatten_bei_neuester_ortsentscheidung():
     plan = qa._research_plan({"rechercheplan": {
         "intent": "fact", "channels": ["decisions", "debates", "places"],
