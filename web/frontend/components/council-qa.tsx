@@ -70,8 +70,8 @@ import {
  *  (Küstenautobahn A20, Straßenbahn, Ärztemangel, E-Ladesäulen), stehen
  *  bewusst NICHT hier — ein Beispiel, das beim ersten Klick eine dünne
  *  Antwort erzeugt, kostet mehr Vertrauen, als Abwechslung einbringt.
- *  Wer die Liste erweitert, misst vorher nach. Die Dokument- und Ortsfragen
- *  unten wurden am 27.08.2026 zusätzlich gegen den produktiven Anlagenindex
+ *  Wer die Liste erweitert, misst vorher nach. Die Orts- und Projektfragen
+ *  unten wurden am 27.08.2026 zusätzlich gegen die produktive Ortszuordnung
  *  und die Rechercheplan-Routingmatrix geprüft.
  */
 const EXAMPLES = [
@@ -97,9 +97,9 @@ const EXAMPLES = [
   "Welche Beschlüsse gibt es zu Tempo 30?",
   "Was wurde zum Thema Obdachlosigkeit beschlossen?",
   "Wie viele Bäume werden gefällt und nachgepflanzt?",
-  "Was steht im Bodengutachten zur Kaiserstraße?",
-  "Welche Probleme nennt das Einzelhandelsgutachten zum Rennplatz?",
-  "Welche Auswirkungen beschreibt die Verkehrsuntersuchung zur Alten Fleiwa?",
+  "Welche Beschlüsse betreffen Eversten?",
+  "Was wurde zuletzt in Osternburg beschlossen?",
+  "Wie ist der Stand beim Innovationsquartier Alte Fleiwa?",
   "Was wurde zuletzt in Kreyenbrück beschlossen?",
 ];
 
