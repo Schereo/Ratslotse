@@ -8373,7 +8373,8 @@ class CouncilStore:
             condition, condition_params = self._place_location_condition(place)
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
-            f"""SELECT dl.decision_id, l.name, l.stadtteil, l.place_id, l.ortsbereich_id, dl.source,
+            f"""SELECT dl.decision_id, l.name, l.stadtteil, l.place_id, l.ortsbereich_id,
+                       l.lat, l.lon, dl.source,
                        dl.evidence, dl.method, dl.confidence
                 FROM council_decision_locations dl
                 JOIN council_locations l ON l.slug = dl.location_slug
@@ -8386,7 +8387,7 @@ class CouncilStore:
             matches = out.setdefault(row["decision_id"], [])
             if len(matches) < max(1, int(per_decision)):
                 matches.append({key: row[key] for key in (
-                    "name", "stadtteil", "place_id", "ortsbereich_id",
+                    "name", "stadtteil", "place_id", "ortsbereich_id", "lat", "lon",
                     "source", "evidence", "method", "confidence"
                 )})
         return out

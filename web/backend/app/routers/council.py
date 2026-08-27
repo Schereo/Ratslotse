@@ -2665,6 +2665,9 @@ def _qa_source(c: dict) -> dict:
         # von X auf Y" belegbar, alles andere wäre ein Äpfel/Birnen-Vergleich.
         "vorlage_nr": c.get("vorlage_nr"),
         "factions": qa._factions_of(c),
+        # Bei einem expliziten Ortsfilter: exakte Zuordnung samt Fundstelle.
+        # So bleibt im UI prüfbar, weshalb dieser Beschluss zum Ort gehört.
+        "location_matches": c.get("location_matches") or [],
         # 5a/I-10: verortete Entität für die Mini-Karte unter der Antwort.
         "ort_name": c.get("ort_name"), "lat": c.get("lat"), "lon": c.get("lon"),
     }
@@ -2836,8 +2839,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Orts-Fragetyp: dieselbe deterministische Stammdaten-Erkennung wie
             # bei Personen. Ein Alias wie „Donnerschwee-Kaserne“ wird dabei auf
             # die stabile Orts-ID ``neu-donnerschwee`` aufgelöst.
-            ort = None if person else (qa.finde_ort(q_suche, store) or qa.finde_ort(q, store))
-            if ort and typ not in ("partei", "geld"):
+            ort = qa.finde_ort(q_suche, store) or qa.finde_ort(q, store)
+            # Der Ort ist grundsätzlich ein Filter, kein exklusiver Fragetyp:
+            # Geld-, Partei-, Verlaufs-, Personen- und Sitzungsfragen behalten
+            # ihre Spezialregeln. Nur eine allgemeine Themenfrage wird zur
+            # reinen Ortsfrage.
+            if ort and typ == "thema" and not person:
                 typ = "ort"
             # Sitzungs-Fragetyp (25.08.26): Nennt die Frage ein konkretes
             # Sitzungsdatum oder die letzte/nächste Sitzung eines Gremiums,
@@ -2858,7 +2865,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
             place_ids = (store.decision_ids_for_place(ort["id"], limit=120)
-                         if ort and typ == "ort" else None)
+                         if ort else None)
+            allowed_place_ids = set(place_ids or []) if ort else None
             candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
                                             varianten=analyse.get("varianten"),
                                             place_ids=place_ids)
@@ -2868,6 +2876,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # semantische Suche kennt den Antragsteller-Filter nicht.
                 try:
                     extra_ids = store.antrag_decision_ids(analyse["partei"], expanded)
+                    if allowed_place_ids is not None:
+                        extra_ids = [i for i in extra_ids if i in allowed_place_ids]
                     partei_ids = set(extra_ids)
                     have = {c["id"] for c in candidates}
                     candidates += store.get_decisions_by_ids([i for i in extra_ids if i not in have])
@@ -2879,16 +2889,23 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # vorn, denn daran hängen das Aussprache-Nachladen
                 # (candidates[:8]) und der Antwort-Kontext.
                 have = {c["id"] for c in candidates}
+                effective_sitzung_ids = ([i for i in sitzung_ids if i in allowed_place_ids]
+                                         if allowed_place_ids is not None else sitzung_ids)
                 nachgeladen = store.get_decisions_by_ids(
-                    [i for i in sitzung_ids if i not in have])
+                    [i for i in effective_sitzung_ids if i not in have])
                 if typ == "sitzung":
-                    pos = {i: n for n, i in enumerate(sitzung_ids)}
+                    pos = {i: n for n, i in enumerate(effective_sitzung_ids)}
                     eigene = sorted(
                         [c for c in candidates if c["id"] in pos] + nachgeladen,
                         key=lambda c: pos[c["id"]])
                     candidates = eigene + [c for c in candidates if c["id"] not in pos]
                 else:
                     candidates += nachgeladen
+            # Letzte harte Schranke nach allen Anreicherungen: Kein später
+            # nachgeladener Partei- oder Sitzungsbeschluss darf den expliziten
+            # Ortsfilter umgehen.
+            if allowed_place_ids is not None:
+                candidates = [c for c in candidates if c["id"] in allowed_place_ids]
             # Beim Vereinfachen zählen die Belege der VORIGEN Antwort: Ihre ids
             # müssen im Kandidatenset stehen, sonst streicht resolve_citations
             # genau die Fußnoten weg, die die einfache Fassung übernehmen soll —
@@ -2959,6 +2976,15 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     qa.parteien_aufloesen(store, debatten_rows)
                 except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker
                     pass
+            if ort and debatten_rows:
+                # Wortbeiträge besitzen selbst noch keinen belastbaren
+                # Ortskatalog. Bei einer Ortsfrage zeigen wir deshalb nur die,
+                # die deterministisch an einen gefilterten Beschluss gekoppelt
+                # sind; freie semantische Treffer könnten sonst aus einem ganz
+                # anderen Stadtgebiet stammen.
+                candidate_ids = {c["id"] for c in candidates}
+                debatten_rows = [d for d in debatten_rows
+                                  if d.get("zu_beschluss") in candidate_ids]
             # Beleg nachlesbar machen: jeder Beitrag bekommt die PDF-URL
             # seines Protokolls (Tims Wunsch 18.08.).
             qa.protokolle_verlinken(store, debatten_rows)
@@ -2970,6 +2996,21 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     c.update(orte.get(c["id"], {}))
             except Exception:  # noqa: BLE001 — Karte ist Zusatz, nie Blocker
                 pass
+            if ort:
+                try:
+                    matches = store.location_matches_for_decisions(
+                        [c["id"] for c in candidates], district=ort["id"])
+                    for c in candidates:
+                        exact = matches.get(c["id"], [])
+                        c["location_matches"] = exact
+                        # Die Mini-Karte soll bei Mehrfach-Orten den tatsächlich
+                        # gefragten Ort zeigen, nicht irgendeinen anderen Pin.
+                        pin = next((m for m in exact
+                                    if m.get("lat") is not None and m.get("lon") is not None), None)
+                        if pin:
+                            c.update({"ort_name": pin["name"], "lat": pin["lat"], "lon": pin["lon"]})
+                except Exception:  # noqa: BLE001 — Nachweis ist Zusatz, nie Blocker
+                    pass
             # „Wie es weitergeht" (Paket 1): künftige Beratungsstationen der
             # gefundenen Vorlagen. Bisher gab es den Blick nach vorn NUR in der
             # Gründlichen Recherche — dabei sind Sachstands-Fragen („Wie ist
@@ -3055,7 +3096,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             yield _sse({"type": "step", "step": "answer"})
             if not candidates:
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
-                if sitzungen:
+                if sitzungen and ort:
+                    leer_text = (f"In der gefragten Sitzung habe ich keine Beschlüsse mit "
+                                 f"belegtem Bezug zu {ort['name']} gefunden.")
+                elif sitzungen:
                     # Die gefragte Sitzung IST aufgelöst — sie hat nur (noch)
                     # keine Beschlüsse: künftiger Termin oder Protokoll-Verzug.
                     # Das pauschale „nichts gefunden" wäre hier die falsche
@@ -3149,7 +3193,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            geld=geld, debatten=debatten_rows,
                                            gross=gross, steckbriefe=steckbriefe,
                                            duenn=(lage == "duenn"), eng=eng,
-                                           sitzungen=sitzungen))
+                                           sitzungen=sitzungen, ort=ort))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -3182,7 +3226,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  geld=geld, debatten=debatten_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng,
-                                                 sitzungen=sitzungen))
+                                                 sitzungen=sitzungen, ort=ort))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)

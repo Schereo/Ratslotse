@@ -167,6 +167,29 @@ def test_antwortprompt_bekommt_extra_regeln():
     assert "VERLAUF" not in messages[0]["content"]
 
 
+def test_ort_ist_mit_geldtyp_kombinierbar_und_fundstelle_im_kontext():
+    ort = {"name": "Kreyenbrück", "kind_label": "Ortsbereich"}
+    candidates = [{
+        "id": 9,
+        "title": "Sporthalle",
+        "summary": "Die Halle wird saniert.",
+        "amount_eur": 2_500_000,
+        "location_matches": [{
+            "name": "Klingenbergplatz",
+            "evidence": "Sanierung am Klingenbergplatz",
+        }],
+    }]
+
+    messages, _ = qa._answer_messages(
+        "Was kostet die Sanierung in Kreyenbrück?", candidates, typ="geld", ort=ort)
+    prompt = messages[0]["content"]
+
+    assert "konkreten Summen" in prompt
+    assert "ORTSFILTER" in prompt
+    assert "Kreyenbrück" in prompt
+    assert "Ortsbezug: Klingenbergplatz; Fundstelle: Sanierung am Klingenbergplatz" in prompt
+
+
 def test_antrag_decision_ids_findet_fraktion(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:

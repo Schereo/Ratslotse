@@ -61,6 +61,8 @@ export interface DecisionLocationMatch {
   evidence: string;
   method: string;
   confidence: number;
+  lat?: number | null;
+  lon?: number | null;
 }
 
 export interface CouncilDecision {
@@ -115,6 +117,8 @@ export interface QaSource {
   /** Kostenentwicklung: gleiche Vorlagen-Familie = belegbares Delta. */
   vorlage_nr?: string | null;
   factions?: string[];
+  /** Bei Ortsfragen: konkrete, quellenbelegte Zuordnung zum gefragten Ort. */
+  location_matches?: DecisionLocationMatch[];
   /** 5a/I-10: verortete Entität für die Mini-Karte unter der Antwort. */
   ort_name?: string | null;
   lat?: number | null;

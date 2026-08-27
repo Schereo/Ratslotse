@@ -22,7 +22,7 @@ import Link from "next/link";
 import { Sparkles, ArrowUp, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw, ChevronLeft,
   MessageSquarePlus, MoreHorizontal, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X,
-  BookOpen, SearchX } from "lucide-react";
+  BookOpen, MapPin, SearchX } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
@@ -309,6 +309,17 @@ function BelegPeek({ quelle, nummer, onClose, onListe }: {
         </div>
         {quelle.summary && (
           <p className="mt-2.5 text-[13px] leading-relaxed text-muted-foreground">{quelle.summary}</p>
+        )}
+        {quelle.location_matches?.[0] && (
+          <div className="mt-2.5 rounded-lg bg-muted/60 px-2.5 py-2 text-[11px] leading-relaxed text-muted-foreground">
+            <p className="flex items-center gap-1 font-semibold text-foreground">
+              <MapPin className="h-3 w-3" aria-hidden />
+              Ortsbezug: {quelle.location_matches[0].name}
+            </p>
+            {quelle.location_matches[0].evidence && (
+              <p className="mt-0.5">Fundstelle: {quelle.location_matches[0].evidence}</p>
+            )}
+          </div>
         )}
         <div className="mt-3 flex items-center gap-2">
           <button type="button" onClick={() => router.push(decisionHref(quelle.id))}
@@ -2693,6 +2704,12 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
                   <span className="block font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
                     {s.committee} · {fmtDatum(s.session_date)}
                   </span>
+                  {s.location_matches?.[0] && (
+                    <span className="mt-0.5 flex items-center gap-1 text-[10.5px] text-muted-foreground">
+                      <MapPin className="h-3 w-3" aria-hidden />
+                      Ortsbezug: {s.location_matches[0].name}
+                    </span>
+                  )}
                 </span>
               </button>
               {typeof s.score === "number" && (
