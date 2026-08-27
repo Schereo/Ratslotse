@@ -326,7 +326,12 @@ DEFAULTS: dict[str, dict[str, str]] = {
             '"future_agenda" für nächste Schritte, "places" für räumliche Fragen und '
             '"documents" für Vorlagen/Anlagen mit fachlichen Details.\n'
             'Erlaubte needs: "amounts", "statements", "dates", "votes", "locations", '
-            '"documents", "current_info".\n'
+            '"documents", "current_info", "official_updates", "future_dates".\n'
+            'Nutze "official_updates" NUR, wenn Veröffentlichungen/Pressemitteilungen der '
+            'Stadt oder ein aktueller Verwaltungsstand gefragt sind; dazu gehört "press". '
+            'Nutze "future_dates" NUR für kommende Sitzungen, Tagesordnungen, nächste '
+            'Beratungen oder nächste Schritte; dazu gehört "future_agenda". '
+            '"current_info" allein aktiviert NICHT automatisch beide Kanäle.\n'
             "Wähle lieber einen plausiblen Zusatzkanal zu viel als eine relevante Ratslotse-Quelle zu verpassen.\n"
             "Für die begriffe: KEINE Floskeln wie \"Was wurde\", \"beschlossen\", \"Stadtrat\"; "
             "bei Partei-Fragen den Fraktionsnamen NICHT in die begriffe aufnehmen (der wird "
