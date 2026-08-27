@@ -69,6 +69,9 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # Keine Betragsfrage — eine Rechtsfrage. Nur die Produktebene führt die
     # Auftragsgrundlage je Aufgabe.
     ("Muss die Stadt das Theater betreiben?", "thema", {"produkte"}),
+    ("Warum steigen die Abfallgebühren?", "thema", {"gebuehren"}),
+    ("Wie hoch ist die Straßenreinigungsgebühr?", "geld", {"gebuehren"}),
+    ("Wie werden die Müllgebühren berechnet?", "thema", {"gebuehren"}),
 
     # --- Weitere echte Fragen ----------------------------------------------
     ("Wie viel gibt Oldenburg für Soziales aus?", "geld", {"plan", "produkte"}),
@@ -116,6 +119,8 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Was wurde zum Radweg an der Donnerschweer Straße beschlossen?", "thema", set()),
     ("Wann tagt der Rat das nächste Mal?", "thema", set()),
     ("Was sagte die SPD zum Klimaschutz?", "partei", set()),
+    ("Was sagte die SPD zum Stadionneubau?", "partei", set()),
+    ("Wie hat sich die Diskussion um den Stadionneubau entwickelt?", "verlauf", set()),
     ("Was ist die GSG?", "thema", set()),
     ("Wer ist im Verwaltungsausschuss?", "thema", set()),
     # Die Gegenprobe zu den vier Neuzugängen: Wörter, die ihnen nahekommen,
@@ -123,6 +128,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # „Debatte" ohne Haushalts-Anker ist kein Haushaltsstreit.
     ("Wie viele Anträge stellen die Fraktionen?", "thema", set()),
     ("Wer stellte den Antrag zum Radweg?", "thema", set()),
+    ("Was wurde zum Müllkonzept beschlossen?", "thema", set()),
 
     # --- Die fünfzehn Goldfragen der Jahresabschluss-Schichten (08/2026) ----
     # Bilanz, Kassensicht, Nachbewilligungen, Kennzahlen und die drei
@@ -173,6 +179,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
 #: Welche Store-Methode eine Facette anfasst. Die zweite Hälfte der Messung:
 #: „richtige Quelle" heißt richtige Facette UND richtiger Datenzugriff.
 ERWARTETE_METHODEN = {
+    "gebuehren": "gebuehren_fuer_begriffe",
     "plan": "haushalt_fuer_begriffe",
     "ansatz": "ansatz_fuer_begriffe",
     "ist": "ergebnis_ist_fuer_begriffe",
@@ -212,6 +219,9 @@ class _MessStore:
 
     def bilanz_kontext(self):
         return self._merken("bilanz_kontext", None)
+
+    def gebuehren_fuer_begriffe(self, b, limit_jahre=4):
+        return self._merken("gebuehren_fuer_begriffe", None)
 
     def kassensicht_kontext(self):
         return self._merken("kassensicht_kontext", None)
@@ -728,8 +738,41 @@ def _befuellter_store(tmp_path) -> CouncilStore:
              (5, "k5", "Haushaltsplan 2026, Stellenplan Teil A",
               "https://example.org/sp-a", "Anlage 21", "besetzungsprobe", "30.06.2025"),
              (6, "k6", "Haushaltsplan 2026, Stellenplan Teil B",
-              "https://example.org/sp-b", "Anlage 22", "besetzungsprobe", "30.06.2025")])
+              "https://example.org/sp-b", "Anlage 22", "besetzungsprobe", "30.06.2025"),
+             (7, "k7", "Gebührenbedarfsberechnung Abfall 2026",
+              "https://example.org/gebuehren", "Anlagen 1 und 2",
+              "gebuehren_kaskade,gebuehren_division", "2026")])
+        store._conn.executemany(
+            "INSERT INTO council_gebuehren (jahr, bereich, bereich_name, "
+            "kostenkalkulation, abzuege, zu_deckende_kosten, bezugsmenge, "
+            "bezugseinheit, gebuehr, gebuehrenvorschlag, vorlage_nr, proben, "
+            "herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,7,'')",
+            [(2025, "abfallbehandlung", "Abfallbehandlungsanlagen", 18_000_000.0,
+              -2_000_000.0, 16_000_000.0, 114_475.0, "Mg", 139.772, 139.70,
+              "24/0999", "gebuehren_kaskade,gebuehren_division"),
+             (2026, "abfallbehandlung", "Abfallbehandlungsanlagen", 19_000_000.0,
+              -1_500_000.0, 17_500_000.0, 115_733.0, "Mg", 151.214, 151.21,
+              "25/0999", "gebuehren_kaskade,gebuehren_division"),
+             (2026, "abfallsammlung", "Abfallsammlung", 12_000_000.0,
+              -1_000_000.0, 11_000_000.0, None, None, None, None,
+              "25/0999", "gebuehren_kaskade")])
     return store
+
+
+def test_gebuehrenquelle_filtert_bereiche_und_traegt_belege(tmp_path):
+    store = _befuellter_store(tmp_path)
+    g = store.gebuehren_fuer_begriffe(["Müllgebühren"])
+    assert [x["bereich"] for x in g["bereiche"]] == [
+        "abfallbehandlung", "abfallsammlung"]
+    assert [r["jahr"] for r in g["bereiche"][0]["werte"]] == [2026, 2025]
+    text = qa._gebuehren_block(g)
+    assert "151,214 € je Mg" in text and "Gebührenvorschlag 151,21 €" in text
+    assert "Grundgebühr und volumenabhängige Gebühr" in text
+    assert "Gebührenbedarfsberechnung Abfall 2026" in text
+    assert "nicht automatisch der endgültig beschlossene Gebührensatz" in text
+    assert "WARUM" in text and "NIE mit [id]" in text
+    assert store.gebuehren_fuer_begriffe(["Radweg"]) is None
+    store.close()
 
 
 def test_ist_block_nennt_jahr_plan_ist_und_beleg(tmp_path):

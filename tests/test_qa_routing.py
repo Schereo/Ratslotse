@@ -176,6 +176,22 @@ def test_rechercheplan_konsistenz_verknuepft_bedarf_und_kanal():
     ]
 
 
+@pytest.mark.parametrize("question", [
+    "Was hat das Rechnungsprüfungsamt beanstandet?",
+    "Muss die Stadt das Theater betreiben?",
+    "Warum steigen die Abfallgebühren?",
+])
+def test_deterministische_finanzquelle_macht_budget_zum_pflichtkanal(question):
+    """Auch bei Modelltyp ``thema`` muss der Plan den realen Datenzugriff zeigen."""
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "fact", "channels": ["decisions"], "needs": [],
+    }})
+    resolved = qa.research_plan_with_mandatory(
+        plan, typ="thema", question=question)
+    assert "budget" in resolved["channels"]
+    assert "budget" in resolved["mandatory_channels"]
+
+
 def test_current_info_koppelt_presse_und_zukunft_nicht_mehr_pauschal():
     plan = qa._research_plan({"rechercheplan": {
         "intent": "status", "channels": ["decisions"], "sort": "newest",
