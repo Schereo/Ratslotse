@@ -214,6 +214,28 @@ def test_reine_zukunftsfrage_entfernt_presse_ueber_bedarfe():
     assert resolved["suppressed_channels"] == []
 
 
+def test_eindeutige_stadtmitteilung_aktiviert_presse_als_leitplanke():
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "status", "channels": ["decisions"], "sort": "newest",
+        "needs": ["current_info"],
+    }})
+    resolved = qa.research_plan_with_mandatory(
+        plan, typ="thema",
+        question="Was hat die Stadt zuletzt zum Radverkehr mitgeteilt?",
+    )
+    assert resolved["channels"] == ["decisions", "press"]
+    assert resolved["needs"] == ["current_info", "official_updates"]
+    assert resolved["inferred_needs"] == ["official_updates"]
+
+    # Das Verb allein reicht nicht: Eine Aussage irgendeiner Person ist keine
+    # offizielle Veröffentlichung der Stadtverwaltung.
+    ohne_offizielle_quelle = qa.research_plan_with_mandatory(
+        plan, typ="thema", question="Was hat Müller zuletzt mitgeteilt?",
+    )
+    assert ohne_offizielle_quelle["channels"] == ["decisions"]
+    assert ohne_offizielle_quelle["inferred_needs"] == []
+
+
 def test_rechercheplan_entfernt_debatten_bei_neuester_ortsentscheidung():
     plan = qa._research_plan({"rechercheplan": {
         "intent": "fact", "channels": ["decisions", "debates", "places"],

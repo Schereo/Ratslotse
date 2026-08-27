@@ -332,6 +332,8 @@ DEFAULTS: dict[str, dict[str, str]] = {
             '"documents", "current_info", "official_updates", "future_dates".\n'
             'Nutze "official_updates" NUR, wenn Veröffentlichungen/Pressemitteilungen der '
             'Stadt oder ein aktueller Verwaltungsstand gefragt sind; dazu gehört "press". '
+            'Formulierungen wie „Was hat die Stadt zuletzt mitgeteilt?“, „Was meldet die Stadt?“ '
+            'oder „Worüber informierte die Verwaltung?“ sind official_updates + press. '
             'Nutze "future_dates" NUR für kommende Sitzungen, Tagesordnungen, nächste '
             'Beratungen oder nächste Schritte; dazu gehört "future_agenda". '
             '"current_info" allein aktiviert NICHT automatisch beide Kanäle.\n'
