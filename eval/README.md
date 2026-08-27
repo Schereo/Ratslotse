@@ -11,6 +11,7 @@ sollen messbar besser/schlechter werden, statt „gefühlt".
 | `watcher` | Tagesordnung → Thema | `council.watcher._classify_agenda` | Label-Sets | `cases_watcher.json` |
 | `committee` | Routine-Filter (Inhalt ja/nein) | `council.committee_summary.summarize_agenda` | binär | `cases_committee.json` |
 | `qa` | KI-Frage: Retrieval + Antwort-Zitate (A/B mit/ohne Tragweite) | `council.qa` + `council.embeddings` | Trefferquote/MRR + Zitat-Metriken | `cases_qa.json` |
+| `locations` | Beschluss → konkrete physische Orte | `council.locations` | Precision/Recall/F1 | `cases_locations.json` |
 
 Die `qa`-Suite (`run_qa.py`) braucht die **echte** `council.sqlite` (Embeddings,
 FTS, Reranker-Modell) und läuft deshalb praktisch nur auf dem Server:
@@ -31,6 +32,9 @@ Braucht `OPENROUTER_API_KEY` in der Umgebung / `.env` (echte LLM-Calls):
 ```bash
 python eval/run_watcher.py    # nur watcher
 python eval/run_committee.py  # nur committee
+python eval/run_locations.py  # kostenlose Regex-/Stadtteillisten-Baseline
+python eval/run_locations.py --llm  # vollständige Orts-Pipeline
+python eval/audit_location_sample.py --db data/council.sqlite --method llm --limit 50 --current-rules
 python eval/run_all.py        # alle Suiten + Scoreboard
 
 # Baseline-Workflow:

@@ -22,7 +22,8 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 ## Sub-Steps (von einem Cron-Skript aufgerufen, nicht selbst geplant)
 
 `check_protocols.py` importiert und ruft der Reihe nach:
-`backfill_protocols.py` · `classify_decisions.py` · `extract_amounts.py` · `track_goals.py`
+`backfill_protocols.py` · `classify_decisions.py` · `extract_amounts.py` · `track_goals.py` ·
+`extract_decision_locations.py` · `geocode_decision_locations.py`
 
 `weekly_enrich.py` startet per Subprocess:
 `extract_entities.py` → `describe_entities.py` → `geocode_entities.py` →
@@ -38,6 +39,9 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 | `grant_admin.py` | Adminrechte an ein **bestehendes** Konto geben (Erst-Einrichtung ohne Mail-Versand, ausgesperrter Admin) |
 | `reextract_protocols.py` | Beschlüsse neu extrahieren nach Prompt-Änderung |
 | `build_decisions_fts.py` | Volltext-Index der Beschlüsse neu bauen |
+| `extract_decision_locations.py --full` | Einmaliger Orts-Backfill; danach inkrementell über `check_protocols.py` |
+| `geocode_decision_locations.py` | Neue Beschluss-Orte geokodieren und Stadtteile ableiten |
+| `revalidate_decision_locations.py [--apply]` | Gespeicherte Ortslinks mit aktuellen Präzisionsregeln prüfen/reparieren (Dry-Run-Default) |
 | `purge_nwz_data.py` | Gescrapte NWZ-Artikeldaten aus den DBs entfernen (Dry-Run-Default) |
 
 > **Ersten Admin einrichten:** Die Registrierung vergibt keine Rollen. Die Adresse

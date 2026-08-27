@@ -27,7 +27,9 @@ from scripts.backfill_beratungen import rescan_recent as rescan_beratungen  # no
 from scripts.backfill_vorlagen import process_missing as fetch_vorlagen  # noqa: E402
 from scripts.classify_decisions import process as classify_decisions  # noqa: E402
 from scripts.extract_amounts import process as extract_amounts  # noqa: E402
+from scripts.extract_decision_locations import process as extract_locations  # noqa: E402
 from scripts.generate_simple_summaries import process as generate_simple  # noqa: E402
+from scripts.geocode_decision_locations import process as geocode_locations  # noqa: E402
 from scripts.rate_impact import process as rate_impact  # noqa: E402
 from scripts.rate_interest import process as rate_interest  # noqa: E402
 from scripts.track_goals import process as track_goals  # noqa: E402
@@ -122,6 +124,18 @@ def main() -> dict:
     print(f"Beratungsfolge: {bstats['stationen'] + b2stats['stationen']} Stationen "
           f"({bstats['geplant'] + b2stats['geplant']} geplant), "
           f"{bstats['failed'] + b2stats['failed']} Fehler.")
+    # Orte erst NACH den Vorlagen laden: Der Source-Hash umfasst deren Volltext.
+    # Neue oder später vervollständigte Beschlüsse werden dadurch automatisch
+    # erneut verarbeitet; der historische Bestand kommt per einmaligem --full.
+    # Harte Tagesgrenze: Beim ersten Deploy darf der Cron nicht versehentlich
+    # den gesamten historischen Bestand per LLM abarbeiten. Der bewusste
+    # Einmal-Lauf bleibt `extract_decision_locations.py --full`.
+    lstats = extract_locations(COUNCIL_DB, limit=120)
+    print(f"Ortszuordnung: {lstats['assigned']}/{lstats['candidates']} Beschlüsse, "
+          f"{lstats['links']} Verknüpfungen, {lstats['failed_batches']} LLM-Fehler.")
+    geostats = geocode_locations(COUNCIL_DB, limit=60)
+    print(f"Orts-Geocoding: {geostats['located']} neu, {geostats['reused']} übernommen, "
+          f"{geostats['missed']} ohne Treffer, {geostats['failed']} Fehler.")
     # Keep the full-text index in sync for hybrid retrieval (pure SQLite, instant).
     from council.store import CouncilStore
     _store = CouncilStore(COUNCIL_DB)
@@ -154,6 +168,8 @@ def main() -> dict:
         "Tragweite bewertet": prated,
         "Wortbeiträge": wstats["beitraege"],
         "Vorlagen geladen": vstats["fetched"],
+        "Beschlüsse mit Ortszuordnung": lstats["assigned"],
+        "Orte geokodiert": geostats["located"],
         "Wichtig-Score neu": wichtig,
         "Ergebnis-Meldungen": ergebnisse,
         "LLM-Kosten $": round(cstats["cost"] + gstats["cost"], 4),
