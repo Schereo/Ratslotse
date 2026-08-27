@@ -205,7 +205,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
 
   const W = breite;
   const X0 = schmal ? 40 : 44;                       // links: Platz für „900"
-  const reserve = Math.ceil(fs.legende * 2.4) + 12;  // rechts: „ein" / „aus"
+  const reserve = Math.ceil(fs.legende * 5.5) + 12;  // rechts: „Ertrag" / „Aufwand"
   const XP = W - reserve;                            // letzter Datenpunkt
   const x = (jahr: number) =>
     X0 + 10 + ((jahr - alleJahre[0]) / Math.max(alleJahre.length - 1, 1)) * (XP - X0 - 10);
@@ -284,18 +284,18 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
     const p = punkte.find((q) => q.jahr === jahr);
     const ist = istNach.get(jahr);
     const werte: AbleseWert[] = [
-      { label: "ein", wert: p ? deMio(p.ein) : "—", farbe: "var(--hh-ein-0)" },
-      { label: "aus", wert: p ? deMio(p.aus) : "—", farbe: "var(--hh-aus-0)" },
-      { label: "Ergebnis", wert: p ? vorzeichen(p.saldo) : "—", signal: !!p && p.saldo < 0 },
+      { label: "Erträge", wert: p ? deMio(p.ein) : "—", farbe: "var(--hh-ein-0)" },
+      { label: "Aufwand", wert: p ? deMio(p.aus) : "—", farbe: "var(--hh-aus-0)" },
+      { label: "Plan-Saldo", wert: p ? vorzeichen(p.saldo) : "—", signal: !!p && p.saldo < 0 },
     ];
     if (istPunkte.length) {
-      werte.push({ label: "tatsächlich", wert: ist ? vorzeichen(ist.saldo) : "—" });
+      werte.push({ label: "Ist-Saldo", wert: ist ? vorzeichen(ist.saldo) : "—" });
     }
     const vorlesen = p
       ? [
           `${jahr}: geplant ${deMio(p.ein)} Millionen Euro Einnahmen,`,
           `${deMio(p.aus)} Millionen Euro Ausgaben,`,
-          `Ergebnis ${alsSatz(p.saldo)}.`,
+          `Geplantes Ergebnis: ${alsSatz(p.saldo)}.`,
           ist ? `Tatsächlich laut Jahresabschluss ${alsSatz(ist.saldo)}.` : "Noch kein Jahresabschluss.",
         ].join(" ")
       : `${jahr}: keine Daten.`;
@@ -336,13 +336,14 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
           <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/80">
             sind die geplanten Ausgaben gestiegen — von {deMio(erster.aus)} auf{" "}
             {deMio(letzter.aus)}&#8239;Mio.&nbsp;€<Beleg q="plan" />. Die geplanten Einnahmen
-            wuchsen um {wachsEin > 0 ? "+" : ""}{wachsEin}&nbsp;%.
+            stiegen im selben Zeitraum um {wachsEin > 0 ? "+" : ""}{wachsEin}&nbsp;%.
           </p>
           {/* Ohne diesen Absatz liest sich „+52 %" als Zuwachs an Spielraum. */}
           <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-            Beträge in Euro des jeweiligen Jahres — Teuerung und Tarifabschlüsse sind darin
-            enthalten und nicht herausgerechnet. Dass die Reihe {erster.jahr} beginnt, ist
-            eine Eigenschaft unseres Datenbestands, nicht der Stadtgeschichte.
+            Die Beträge sind nicht inflationsbereinigt. Preissteigerungen und
+            Tarifabschlüsse sind also im Anstieg enthalten. Die Reihe beginnt {erster.jahr},
+            weil unsere auswertbaren Daten dort beginnen — nicht, weil der Haushalt der
+            Stadt erst seitdem existiert.
           </p>
         </div>
   );
@@ -361,7 +362,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
         {tabelleOffen && (<>
           <div className={`mt-1.5 grid ${istPunkte.length
             ? "grid-cols-[auto_1fr_1fr_1fr_1fr]" : "grid-cols-[auto_1fr_1fr_1fr]"} gap-x-2 text-[11.5px] tabular-nums`}>
-            {["Jahr", "Ein", "Aus", "Ergebnis", ...(istPunkte.length ? ["tatsächlich"] : [])].map((k, i) => (
+            {["Jahr", "Erträge", "Aufwand", "Plan-Saldo", ...(istPunkte.length ? ["Ist-Saldo"] : [])].map((k, i) => (
               <span key={k} className={`py-1 font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground ${i ? "text-right" : ""}`}>
                 {k}
               </span>
@@ -393,10 +394,11 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
             })}
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-            Alle Werte in Mio.&nbsp;€, ordentliches Ergebnis
-            {istPunkte.length > 0 && <>. „Tatsächlich" ist das ordentliche Ergebnis aus dem
-              Jahresabschluss<Beleg q="jahresabschluss" />; für die übrigen Jahre gibt es
-              noch keinen</>}.
+            Alle Werte in Mio.&nbsp;€. Der Plan-Saldo bezeichnet das geplante ordentliche
+            Ergebnis.
+            {istPunkte.length > 0 && <> Der Ist-Saldo stammt aus dem jeweiligen
+              Jahresabschluss<Beleg q="jahresabschluss" />; für die übrigen Jahre liegt
+              noch kein Abschluss vor.</>}
           </p>
         </>)}
       </div>
@@ -405,14 +407,14 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   const hinweis = (
       <div className="rounded-xl border border-dashed border-border p-3.5">
         <p className="text-[12px] leading-relaxed text-muted-foreground">
-          <strong className="text-foreground">Was diese Grafik nicht zeigt:</strong>{" "}
-          Die Linien sind Planwerte — beschlossen, bevor das Jahr begann
-          <Beleg q="plan" />.{" "}
+          <strong className="text-foreground">Plan und Ergebnis sind nicht dasselbe:</strong>{" "}
+          Die Linien zeigen die Planwerte aus den beschlossenen Haushaltsplänen
+          <Beleg q="plan" />. Rauten markieren die tatsächlichen Werte aus den
+          Jahresabschlüssen.{" "}
           {letzterIst ? (
-            <>Für {letzterIst.jahr} liegt der Abschluss vor: geplant war{" "}
-            {alsSatz(punkte.find((p) => p.jahr === letzterIst.jahr)?.saldo ?? 0)}, tatsächlich
-            wurde es {alsSatz(letzterIst.saldo)}. Ein Plan rechnet vorsichtig; das Ergebnis
-            weicht regelmäßig ab.</>
+            <>Für {letzterIst.jahr} sah der Plan{" "}
+            {alsSatz(punkte.find((p) => p.jahr === letzterIst.jahr)?.saldo ?? 0)} vor.
+            Der Jahresabschluss weist dagegen {alsSatz(letzterIst.saldo)} aus.</>
           ) : (
             <>Was am Jahresende tatsächlich herauskam, steht im Jahresabschluss.</>
           )}{" "}
@@ -420,7 +422,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
             Plan gegen Ist
           </Link>{" "}
           stellt beides Jahr für Jahr gegenüber. Investitionen laufen außerdem in einer
-          eigenen Rechnung und sind hier nicht enthalten.
+          eigenen Rechnung und sind in dieser Grafik nicht enthalten.
         </p>
         {andererBezug.length > 0 && (
           <p className="mt-2 border-t border-dashed border-border pt-2 text-[11px] leading-relaxed text-muted-foreground">
@@ -452,18 +454,18 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
           </h2>
           <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
             {letztesPlus && (
-              <>Bis {letztesPlus.jahr} plante die Stadt mit einem Plus.{" "}</>
+              <>Bis {letztesPlus.jahr} sahen die Haushaltspläne einen Überschuss vor.{" "}</>
             )}
             {groessteLuecke.saldo < 0 ? (
-              <>Am weitesten liegen die geplanten Ausgaben {groessteLuecke.jahr} über den
-              Einnahmen — <strong>{deMio(-groessteLuecke.saldo)}&#8239;Mio.&nbsp;€</strong>{" "}
-              Abstand<Beleg q="plan" />.</>
+              <>Die größte geplante Lücke zeigt {groessteLuecke.jahr}: Die Ausgaben liegen
+              <strong> {deMio(-groessteLuecke.saldo)}&#8239;Mio.&nbsp;€</strong> über den
+              Einnahmen<Beleg q="plan" />.</>
             ) : (
               <>In keinem Jahr der Reihe liegen die geplanten Ausgaben über den Einnahmen<Beleg q="plan" />.</>
             )}
             {letzterIst && (
-              <> Für {letzterIst.jahr} liegt inzwischen der Jahresabschluss vor: tatsächlich
-              wurde es {alsSatz(letzterIst.saldo)}<Beleg q="jahresabschluss" />.</>
+              <> Der Jahresabschluss {letzterIst.jahr} weist tatsächlich
+              {" "}{alsSatz(letzterIst.saldo)} aus<Beleg q="jahresabschluss" />.</>
             )}
           </p>
 
@@ -587,9 +589,9 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                 </g>
               ))}
               <text x={x(letzter.jahr) + 9} y={y(letzter.ein) + 4} fontSize={fs.legende} fontWeight={600}
-                className="stroke-card" {...halo} style={{ fill: "var(--hh-ein-0)" }}>ein</text>
+                className="stroke-card" {...halo} style={{ fill: "var(--hh-ein-0)" }}>Ertrag</text>
               <text x={x(letzter.jahr) + 9} y={y(letzter.aus) + 4} fontSize={fs.legende} fontWeight={600}
-                className="stroke-card" {...halo} style={{ fill: "var(--hh-aus-0)" }}>aus</text>
+                className="stroke-card" {...halo} style={{ fill: "var(--hh-aus-0)" }}>Aufwand</text>
 
               {/* Der größte Abstand trägt seinen Betrag im Bild — der Sinn der
                   Fläche ist, dass man sie sieht UND liest, ohne den Blick zur
@@ -646,7 +648,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
           </div>
 
           <Ableseleiste className="mt-2" stelle={stellen[ablesen.aktiv]} steuerung={ablesen}
-            hinweis="Mio. € · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln." />
+            hinweis="Mio. € · Jahr mit Maus, Fingertipp oder Pfeiltasten auswählen." />
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border/60 pt-2">
             <span className="inline-flex items-center gap-1.5 text-[11.5px] text-foreground/80">
@@ -664,7 +666,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                   <path d="M6.5 1.4 L11.6 6.5 L6.5 11.6 L1.4 6.5 Z" className="fill-card"
                     strokeWidth={1.9} style={{ stroke: "var(--hh-aus-0)" }} />
                 </svg>
-                tatsächlich
+                Ist-Werte
               </span>
             )}
             {luecken.length > 0 && (

@@ -144,33 +144,33 @@ function Karte({ kicker, children, className }: {
  *  geblieben ist, was überrascht (Begründung im Kopfkommentar). */
 const NICHT_AUSSAGEN: NichtAussage[] = [
   {
-    kern: "Geteilt wird durch alle.",
-    text: "Auch durch Kinder, Rentner*innen und Menschen ohne eigenes Einkommen — "
-      + "nicht durch die Zahl der Steuerzahlenden.",
+    kern: "Die Rechnung umfasst die gesamte Bevölkerung.",
+    text: "Dazu gehören auch Kinder, Rentner*innen und Menschen ohne eigenes Einkommen. "
+      + "Geteilt wird nicht nur durch die Zahl der Steuerzahlenden.",
   },
   {
-    kern: "Das Geld kommt nicht nur aus Oldenburg.",
-    text: "Ein großer Teil sind Zuweisungen des Landes und Anteile an Bundessteuern.",
+    kern: "Nicht alle Einnahmen stammen aus Oldenburg.",
+    text: "Zur Finanzierung gehören auch Zuweisungen des Landes und Anteile an Bundessteuern.",
   },
   {
     // Die Bon-Metapher legt nahe, man kaufe hier Dinge; der Ergebnishaushalt
     // enthält aber keine einzige Investition.
-    kern: "Nichts Neues gebaut.",
+    kern: "Investitionen sind nicht enthalten.",
     // Der Satz endete bis 19.08.2026 mit „… den wir noch nicht eingelesen
     // haben". Das stimmt seit den Investitions-Schichten nicht mehr: Der
     // Finanzhaushalt steht auf `/haushalt/investitionen`, samt der einzelnen
     // Vorhaben aus dem Investitionsprogramm. Geblieben ist die eigentliche
     // Aussage — die beiden Haushalte sind nicht addierbar, und deshalb steckt
     // in „227 € für Kultur und Sport" keine neue Sporthalle.
-    text: "Der Zettel zeigt den Ergebnishaushalt, also das Laufende eines Jahres samt "
-      + "Abschreibungen auf vorhandene Gebäude. Neubauten, Fahrzeuge und Grundstücke "
-      + "stehen in einem eigenen Haushalt — dem Finanzhaushalt, den „Was wird gebaut?“ "
-      + "zeigt. Die beiden lassen sich nicht zusammenzählen.",
+    text: "Der Zettel zeigt den Ergebnishaushalt: laufende Aufwendungen einschließlich "
+      + "Abschreibungen. Neubauten, Fahrzeuge und Grundstücke stehen im Finanzhaushalt "
+      + "auf der Investitionsseite. Die beiden Haushalte bilden unterschiedliche "
+      + "Rechnungen und dürfen nicht einfach addiert werden.",
   },
   {
-    kern: "Städtevergleiche hinken.",
-    text: "Oldenburg ist kreisfrei und trägt Aufgaben, die anderswo der Landkreis "
-      + "zahlt — pro Kopf steht die Stadt dadurch automatisch höher.",
+    kern: "Für Städtevergleiche reicht die Zahl allein nicht aus.",
+    text: "Oldenburg ist kreisfrei und übernimmt Aufgaben, die andernorts ein Landkreis "
+      + "finanziert. Dadurch fallen die Pro-Kopf-Ausgaben grundsätzlich höher aus.",
   },
 ];
 
@@ -217,9 +217,9 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
   const gross = posten.slice(0, 2);
 
   const bezahltMit: BonZeile[] | undefined = einJeKopf != null ? [
-    { label: `Einnahmen ${jahr}`, wert: einJeKopf },
+    { label: `geplante Erträge ${jahr}`, wert: einJeKopf },
     ...(fehltEuro != null
-      ? [{ label: "aus dem Ersparten", wert: jeKopf(fehltEuro), ton: "signal" as const }] : []),
+      ? [{ label: "geplantes Minus", wert: jeKopf(fehltEuro), ton: "signal" as const }] : []),
     ...(ueberEuro != null
       ? [{ label: "bleibt übrig", wert: jeKopf(ueberEuro) }] : []),
   ] : undefined;
@@ -241,6 +241,7 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
         summe={summeJeKopf}
         summeLabel={<>Summe<Beleg q="plan" /></>}
         bezahltMit={bezahltMit}
+        bezahltMitTitel="Im Plan gedeckt durch"
         teiler={{
           zahl: kopf,
           einheit: "Einwohner*innen",
@@ -254,11 +255,11 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                 war ein Rechenfehler: Das ist der Stand VOR dem Zugriff
                 dieses Jahres. Deshalb zwei Zeilen statt einer. */}
             <div className="flex items-baseline justify-between gap-3">
-              <span>Erspartes vor diesem Jahr<Beleg q="ruecklage" /></span>
+              <span>Rücklage vor dem Planjahr<Beleg q="ruecklage" /></span>
               <span className="flex-none tabular-nums">{de(ruecklageJeKopf)}&nbsp;€</span>
             </div>
             <div className="flex items-baseline justify-between gap-3">
-              <span>danach noch</span>
+              <span>rechnerisch danach</span>
               <span className="flex-none font-medium tabular-nums text-foreground">
                 {de(restJeKopf)}&nbsp;€
               </span>
@@ -272,17 +273,17 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
           <div>
             <h2 id="kassenzettel-titel"
               className="font-display text-[21px] font-bold leading-tight tracking-tight sm:text-[25px]">
-              Was die Stadt pro Kopf ausgibt
+              Geplante Ausgaben pro Einwohner*in
             </h2>
             <p className="mt-2.5 max-w-[58ch] text-[13.5px] leading-relaxed text-foreground/90 sm:text-[14.5px]">
-              Millionenbeträge lassen sich nicht fühlen. Teilt man die geplanten
-              Ausgaben von {deMio(mio(gesamt.aufwendungen))}&#8239;Mio.&nbsp;€ durch die
-              Einwohnerzahl, wird daraus ein Betrag, den man mit dem eigenen Leben
-              vergleichen kann
+              Die Stadt plant für {jahr} Aufwendungen von{" "}
+              {deMio(mio(gesamt.aufwendungen))}&#8239;Mio.&nbsp;€. Um diese Größenordnung
+              einzuordnen, teilen wir die Summe durch die Einwohnerzahl. Das ergibt
+              rechnerisch {de(summeJeKopf)}&nbsp;€ pro Einwohner*in
               {gross.length === 2 && (
-                <> — <strong className="font-semibold">
-                  {de(gross[0].wert)}&nbsp;€ für {gross[0].kanon.name},{" "}
-                  {de(gross[1].wert)}&nbsp;€ für {gross[1].kanon.name}
+                <>. Davon entfallen <strong className="font-semibold">
+                  {de(gross[0].wert)}&nbsp;€ auf {gross[0].kanon.name} und{" "}
+                  {de(gross[1].wert)}&nbsp;€ auf {gross[1].kanon.name}
                 </strong></>
               )}.
             </p>
@@ -301,26 +302,30 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                   <strong className="font-semibold">{de(summeJeKopf)}&nbsp;€</strong>.
                 </p>
                 <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-                  Die Einwohnerzahl ist die des Haushaltsjahrs {einwohner.jahr} — Stichtag
-                  31.12.{einwohner.jahr - 1}
-                  {einwohner.jahr < jahr && <>; für {jahr} führt die Stadt noch keine.
-                    Ist Oldenburg seither gewachsen, liegt der Betrag je Kopf etwas
-                    niedriger</>}. Unsere Rechnung, keine amtliche Kennzahl.
+                  Die Einwohnerzahl gehört zum Haushaltsjahr {einwohner.jahr}; Stichtag ist
+                  der 31.12.{einwohner.jahr - 1}
+                  {einwohner.jahr < jahr && <>. Für {jahr} hat die Stadt noch keine amtliche
+                    Zahl veröffentlicht. Ist die Bevölkerung seitdem gewachsen, fällt der
+                    tatsächliche Pro-Kopf-Wert etwas niedriger aus</>}. Der Pro-Kopf-Betrag
+                  ist unsere Rechnung und keine amtliche Kennzahl.
                 </p>
               </Karte>
 
               {fehltEuro != null && (
-                <Karte kicker="Das Ersparte">
+                <Karte kicker="Geplante Entnahme aus der Rücklage">
                   <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/90">
-                    Das Minus wird aus der Rücklage von rund {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€
-                    gedeckt<Beleg q="ruecklage" /> — {de(ruecklageJeKopf)}&nbsp;€ je Kopf, von
-                    denen dieses Jahr {de(jeKopf(fehltEuro))}&nbsp;€ abgehen.
-                    {leerAb != null && <> Bliebe es bei einem Minus dieser Größe, wäre das
-                      Ersparte zu Beginn von {leerAb} aufgebraucht. Was dann geschieht,
-                      entscheidet der Rat.</>}
+                    Im Haushaltsplan soll das Minus durch die Rücklage von rund
+                    {" "}{RUECKLAGE_MIO}&#8239;Mio.&nbsp;€ ausgeglichen werden
+                    <Beleg q="ruecklage" />. Das entspricht {de(ruecklageJeKopf)}&nbsp;€ je
+                    Einwohner*in; für dieses Planjahr würden rechnerisch
+                    {" "}{de(jeKopf(fehltEuro))}&nbsp;€ davon benötigt.
+                    {leerAb != null && <> Würde in jedem Folgejahr ein Minus derselben Größe
+                      entstehen, wäre die Rücklage zu Beginn von {leerAb} aufgebraucht.</>}
                   </p>
                   <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-                    Rechnerische Reichweite, keine Prognose der Stadt. {RUECKLAGE_STAND}.
+                    Diese Rechnung veranschaulicht nur die Größenordnung. Sie ist keine
+                    Prognose, denn die tatsächlichen Jahresergebnisse können deutlich vom
+                    Plan abweichen. {RUECKLAGE_STAND}.
                   </p>
                 </Karte>
               )}
@@ -329,12 +334,12 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
             {/* Eine Zeile des Bons liest sich anders, als sie gemeint ist. */}
             {finanzenZeile && (
               <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-                Eine Zeile führt in die Irre: Die {de(finanzenZeile.wert)}&nbsp;€ bei{" "}
-                <strong className="font-semibold text-foreground">{finanzen.kurz}</strong> sind
-                nicht der Preis der Kämmerei. In diesem Teilhaushalt bucht die Stadt auch, was
-                sie nur weiterreicht — Gewerbesteuer- und Finanzausgleichsumlage
+                Die {de(finanzenZeile.wert)}&nbsp;€ im Bereich{" "}
+                <strong className="font-semibold text-foreground">{finanzen.kurz}</strong>{" "}
+                sind nicht die Verwaltungskosten der Kämmerei. Dort verbucht die Stadt auch
+                Transferzahlungen wie die Gewerbesteuer- und Finanzausgleichsumlage
                 {transfer && <>; im Jahresabschluss {transfer.jahr} waren {transfer.prozent}&nbsp;%
-                  der Aufwendungen dieses Bereichs solche Transferzahlungen<Beleg q="ergebnisrechnung_thh" /></>}.
+                  der Aufwendungen dieses Bereichs solche Zahlungen<Beleg q="ergebnisrechnung_thh" /></>}.
               </p>
             )}
           </>

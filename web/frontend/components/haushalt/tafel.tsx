@@ -110,13 +110,14 @@ export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
               mit einem Wort stehen zu lassen. */}
           <h1 className="mt-2.5 max-w-[30ch] text-balance font-display text-[23px] font-bold leading-[1.15] tracking-tight sm:text-[32px]">
             {aktuell
-              ? <>Oldenburg plant {deMio(ausMio)} Millionen&nbsp;Euro.</>
-              : <>{jahr} plante Oldenburg {deMio(ausMio)} Millionen&nbsp;Euro.</>}
+              ? <>Oldenburg plant Ausgaben von {deMio(ausMio)} Millionen&nbsp;Euro.</>
+              : <>Für {jahr} plante Oldenburg Ausgaben von {deMio(ausMio)} Millionen&nbsp;Euro.</>}
           </h1>
           {fehlt != null && (
             <p className="mt-3 max-w-[52ch] text-[13.5px] leading-relaxed text-muted-foreground sm:text-[15px]">
-              {deMio(fehlt)} Millionen Euro davon sind durch Einnahmen nicht gedeckt —
-              sie {aktuell ? "kommen" : "kamen"} aus dem Ersparten der Stadt.
+              Den geplanten Einnahmen fehlen {deMio(fehlt)} Millionen Euro, um diese
+              Ausgaben vollständig zu decken. Im Haushaltsplan wird dieses Minus durch
+              die Rücklage ausgeglichen.
             </p>
           )}
           {ueber != null && (
@@ -129,12 +130,12 @@ export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
         </div>
 
         <div className="flex flex-none gap-6 sm:gap-7 sm:pt-1">
-          <Summe label={aktuell ? "nimmt ein" : "nahm ein"} wert={einMio} />
-          <Summe label={aktuell ? "gibt aus" : "gab aus"} wert={ausMio} />
+          <Summe label="geplante Einnahmen" wert={einMio} />
+          <Summe label="geplante Ausgaben" wert={ausMio} />
           {fehlt != null
-            ? <Summe label="fehlt" wert={fehlt} ton="signal" />
+            ? <Summe label="geplantes Minus" wert={fehlt} ton="signal" />
             : ueber != null
-              ? <Summe label="bleibt übrig" wert={ueber} />
+              ? <Summe label="geplantes Plus" wert={ueber} />
               : null}
         </div>
       </div>
@@ -142,14 +143,15 @@ export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
       {/* Steht bei der Zahl, nicht in einer Fußnote: Wer „883,9 Millionen"
           liest, hält das sonst für das ganze Budget der Stadt. */}
       <p className="mt-3.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        Diese Summe ist der{" "}
+        Gezeigt wird der{" "}
         <strong className="font-semibold text-foreground/90">Ergebnishaushalt</strong>
-        <Beleg q="plan" />: alles Laufende eines Jahres. Investitionen — Neubauten,
-        Fahrzeuge, Grundstücke — stehen in einem eigenen Haushalt und damit{" "}
+        <Beleg q="plan" />: die laufenden Erträge und Aufwendungen eines Jahres,
+        einschließlich Abschreibungen. Investitionen wie Neubauten, Fahrzeuge oder
+        Grundstücke stehen im Finanzhaushalt und damit{" "}
         <Link href="/haushalt/investitionen" className="text-primary hover:underline">
           auf einer eigenen Seite
         </Link>
-        . Das Budget der Stadt ist also größer als die Zahl oben.
+        . Die Zahl oben bildet deshalb nicht den gesamten Haushalt ab.
       </p>
 
       {children && <div className="mt-5">{children}</div>}

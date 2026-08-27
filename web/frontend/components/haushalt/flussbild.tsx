@@ -157,7 +157,7 @@ function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
     : undefined;
 
   return (
-    <Treemap
+      <Treemap
       knoten={knoten}
       buendelnAb={grenze}
       farbe={(g) => `var(--hh-ein-${stufe(g)})`}
@@ -166,7 +166,7 @@ function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
       flaecheLabel="Fläche = Anteil an den Erträgen"
       anteil
       restZusatz={restZusatz}
-      restHinweis="Antippen zählt sie einzeln auf."
+      restHinweis="Antippen zeigt die einzelnen Posten."
       beleg={<Beleg q="ergebnishaushalt" />}
     />
   );
@@ -181,39 +181,37 @@ function NurHerkunft({ arten, letztes, aufJahr }: {
           heißt er „Woher, wohin — und was dazwischen liegt". Denselben Kicker
           über einer halben Grafik zu setzen, verspräche die Ausgabenseite. */}
       <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher das Geld kommen soll
+        Geplante Einnahmearten
       </p>
 
       <Herkunftskacheln arten={arten} />
 
       <div className="mt-3 rounded-lg border border-dashed border-border bg-muted/40 px-3.5 py-3">
         <p className="text-[13px] font-semibold leading-relaxed">
-          Nur die eine Seite — und es ist der Entwurf.
+          Für {arten.jahr} können wir bisher nur die Einnahmeseite zeigen.
         </p>
         <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
-          Wohin das Geld {arten.jahr} geht, steht im Haushaltsplan in einer anderen
-          Rechnung als das, woher es kommt. Ein Bild aus beiden würde zwei Stände
-          vermischen, ohne dass man es ihm ansieht — deshalb steht hier keine
-          Ausgabenseite. Die Zahlen stammen aus Anlage 005 des Haushaltsplans{" "}
-          {arten.planJahrgang}, also aus der Fassung, die die Verwaltung eingebracht
-          hat; was der Rat daran geändert hat, steht nicht darin.
+          Die Einnahmearten stammen aus Anlage 005 des von der Verwaltung eingebrachten
+          Haushaltsplans {arten.planJahrgang}. Die Ausgaben nach Bereichen liegen nur aus
+          dem später beschlossenen Plan vor. Ein gemeinsames Bild würde damit Entwurf und
+          Beschluss vermischen. Deshalb zeigen wir die Ausgabenseite für dieses Jahr nicht.
         </p>
         {/* Der Abstand zur Anzeigetafel derselben Seite. Gerechnet, nicht
             behauptet — und nur gezeigt, wenn es ihn gibt: Bei einem Jahrgang
             ohne Tafel-Zeile stünde sonst „0 Mio. € Abstand" als Aussage da. */}
         {arten.tafel && Math.abs(arten.tafel.abstand) >= 100_000 && (
           <p className="mt-1.5 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
-            Deshalb ergeben diese Posten zusammen {deMio(arten.gesamt / 1e6)}&#8239;Mio.&nbsp;€
-            und nicht die {deMio(arten.tafel.ertraege / 1e6)}&#8239;Mio.&nbsp;€ von der
-            Anzeigetafel oben — {deMio(Math.abs(arten.tafel.abstand) / 1e6)}&#8239;Mio.&nbsp;€
-            Unterschied zwischen Entwurf und beschlossenem Plan. Beide Zahlen stimmen,
-            sie zählen nur nicht dasselbe.
+            Die Einnahmeposten des Entwurfs ergeben zusammen
+            {" "}{deMio(arten.gesamt / 1e6)}&#8239;Mio.&nbsp;€. In der Anzeigetafel oben stehen
+            {" "}{deMio(arten.tafel.ertraege / 1e6)}&#8239;Mio.&nbsp;€ aus dem beschlossenen
+            Plan. Der Unterschied von {deMio(Math.abs(arten.tafel.abstand) / 1e6)}&#8239;Mio.&nbsp;€
+            entsteht, weil beide Zahlen aus verschiedenen Fassungen stammen.
           </p>
         )}
         {letztes != null && (
           <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
             <span className="text-[12px] text-muted-foreground">
-              Ein ganzes Bild, mit beiden Seiten, gibt es zuletzt für {letztes}.
+              Einnahmen und Ausgaben aus demselben Datenstand liegen zuletzt für {letztes} vor.
             </span>
             {aufJahr && (
               <button type="button" onClick={aufJahr}
@@ -243,13 +241,13 @@ function Luecke({ jahr, letztes, aufJahr }: {
           Für {jahr} können wir den Geldfluss nicht zeichnen.
         </p>
         <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
-          Uns fehlen für dieses Jahr die Einnahmearten. Statt ersatzweise ein anderes
-          Jahr zu zeigen, steht hier lieber nichts.
+          Für dieses Jahr fehlen die Einnahmearten. Wir zeigen deshalb keine Grafik mit
+          Zahlen aus einem anderen Jahr.
         </p>
         {letztes != null && (
           <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
             <span className="text-[12px] text-muted-foreground">
-              Vollständig haben wir sie zuletzt für {letztes}.
+              Vollständige Daten liegen zuletzt für {letztes} vor.
             </span>
             {aufJahr && (
               <button type="button" onClick={aufJahr}
@@ -407,19 +405,19 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
       {ersatz && (
         <div className="mb-2.5 rounded-lg border border-dashed border-border bg-muted/40 px-3.5 py-2.5">
           <p className="text-[13px] font-semibold leading-relaxed">
-            Für {jahr} liegen uns die Einnahmearten noch nicht vor — hier steht {zeigJahr}.
+            Für {jahr} fehlen die Einnahmearten. Die Grafik zeigt deshalb {zeigJahr}.
           </p>
           <p className="mt-1 max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
-            Woher das Geld kommt, steht erst im Jahresabschluss.{" "}
+            Die vollständige Aufschlüsselung steht erst im Jahresabschluss.{" "}
             {ausblickText ?? "Er wird üblicherweise im September des Folgejahres vorgelegt."}{" "}
-            Bis dahin zeigt diese Grafik das jüngste Jahr, für das die Aufschlüsselung vorliegt.
+            Bis dahin verwenden wir das jüngste Jahr mit vollständigen Daten.
           </p>
         </div>
       )}
 
       <div className="mb-1.5 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Woher, wohin — und was dazwischen liegt
+          Woher das Geld kommt und wofür es eingeplant ist
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
           {echterStand === "ist" ? `Jahresabschluss ${zeigBild.jahr}` : `Haushaltsplan ${zeigBild.jahr}`} · Mio. Euro
@@ -428,10 +426,10 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
 
       {/* Die Aussage des Bildes gehört AN das Bild, nicht in eine Fußnote. */}
       <p className="mb-2.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
-        Die Stadt hat <strong>eine Kasse</strong>. Was links hereinkommt, ist nicht für einen
-        bestimmten Zweck reserviert — es fließt erst zusammen, und dann entscheidet der Rat,
-        wofür alles zusammen ausgegeben wird. Deshalb führt hier kein Band von links nach
-        rechts durch.
+        Viele Einnahmen sind nicht für eine bestimmte Aufgabe reserviert. Sie fließen in
+        den Gesamthaushalt, und der Rat entscheidet im Rahmen der gesetzlichen Pflichten,
+        wofür das Geld eingesetzt wird. Deshalb verbindet die Grafik keine einzelne
+        Einnahmeart mit einem bestimmten Ausgabenbereich.
       </p>
 
       {beideStaende && (
@@ -447,22 +445,22 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
         // Ehrlich statt gestreckt: Wenn die Einzelposten die ausgewiesene
         // Summe nicht tragen, wird nichts hochgerechnet und nichts gedehnt.
         <p className="rounded-lg border border-dashed border-signal/60 bg-card px-3 py-2.5 text-[12px] leading-relaxed text-foreground/85">
-          Die Einzelposten dieses Jahres ergeben zusammen nicht die ausgewiesene Summe:{" "}
+          Die ausgelesenen Einzelposten ergeben nicht die ausgewiesene Gesamtsumme:{" "}
           {luecken.map((l) => `bei den ${l.seite} ${l.teile} statt ${l.gesamt}`).join(", ")}
-          &#8239;Mio.&nbsp;€. Wir haben also nicht alle Zeilen des Dokuments lesen können. Ein Bild
-          daraus wäre gestreckt — die Zahlen stehen deshalb nur in der Tabelle.
+          &#8239;Mio.&nbsp;€. Damit fehlen Teile der Datengrundlage. Eine proportionale Grafik wäre
+          irreführend; die verfügbaren Zahlen stehen deshalb nur in der Tabelle.
         </p>
       ) : (
         <FlussbildGrafik
           links={links}
           rechts={rechts}
           topf={{
-            kurz: "Eine Kasse",
-            lang: "Alles in einer Kasse",
+            kurz: "Gesamthaushalt",
+            lang: "Alle Einnahmen im Gesamthaushalt",
             wert: zeigBild.skala,
-            satz: "Alles Geld der Stadt",
-            hinweis: "Kein Posten links gehört zu einem Posten rechts: Alles fließt erst "
-              + "zusammen und wird dann verteilt.",
+            satz: "Gemeinsamer Finanzierungsrahmen",
+            hinweis: "Einzelne Einnahmearten sind nicht direkt bestimmten Ausgabenbereichen "
+              + "zugeordnet.",
           }}
           skala={zeigBild.skala}
           format={format}
@@ -503,14 +501,14 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
       {/* Die Skalen-Erklärung gehört nur unter ein Bild, das es auch gibt. */}
       {zeigBild.aufgeschluesselt && (
         <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-          Die Bandbreiten links und rechts liegen auf derselben Skala:{" "}
-          {deMio(mio(zeigBild.summeLinks))}&#8239;Mio.&nbsp;€ hier wie dort.{" "}
+          Beide Seiten verwenden dieselbe Skala von
+          {" "}{deMio(mio(zeigBild.summeLinks))}&#8239;Mio.&nbsp;€.{" "}
           {saldoMio < 0
-            ? `Weil die Stadt ${deMio(-saldoMio)} Mio. € mehr ausgibt als sie einnimmt, trägt die linke Seite ein zusätzliches Band „aus dem Ersparten“ — sonst wären die Seiten nicht gleich lang.`
+            ? `Das zusätzliche schraffierte Band zeigt das geplante Minus von ${deMio(-saldoMio)} Mio. €; es ist keine weitere Einnahmeart.`
             : saldoMio > 0
-              ? `Weil ${deMio(saldoMio)} Mio. € übrig bleiben, trägt die rechte Seite ein zusätzliches Band „bleibt übrig“ — sonst wären die Seiten nicht gleich lang.`
-              : "Einnahmen und Ausgaben liegen gleichauf."}
-          {!zeigBild.stimmt && " Die Summenprobe geht nicht auf — die Grafik zeigt das, statt zu strecken."}
+              ? `Das zusätzliche Band auf der Ausgabenseite zeigt den geplanten Überschuss von ${deMio(saldoMio)} Mio. €.`
+              : "Die geplanten Einnahmen und Ausgaben sind gleich hoch."}
+          {!zeigBild.stimmt && " Die Einzelposten stimmen nicht mit der Gesamtsumme überein; die Grafik macht diese Abweichung sichtbar."}
         </p>
       )}
 
@@ -576,8 +574,8 @@ function Tabelle({ bild }: { bild: FlussDaten }) {
       <p className={cn("mt-2 text-[11px] leading-relaxed",
         bild.stimmt ? "text-muted-foreground" : "text-signal")}>
         {bild.stimmt
-          ? `Summenprobe: beide Seiten ${deMio(mio(bild.summeLinks))} Mio. € — dieselbe Skala, nichts gestreckt.`
-          : `Summenprobe: links ${deMio(mio(bild.summeLinks))}, rechts ${deMio(mio(bild.summeRechts))} Mio. € — die Seiten gehen nicht auf.`}
+          ? `Prüfung der Summen: Beide Seiten ergeben ${deMio(mio(bild.summeLinks))} Mio. € und verwenden dieselbe Skala.`
+          : `Prüfung der Summen: links ${deMio(mio(bild.summeLinks))}, rechts ${deMio(mio(bild.summeRechts))} Mio. €. Die Einzelwerte ergeben keine gemeinsame Gesamtsumme.`}
       </p>
     </div>
   );

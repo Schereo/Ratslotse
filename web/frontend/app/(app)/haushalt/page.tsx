@@ -202,7 +202,8 @@ export default function HaushaltPage() {
           </div>
           {luecken.length > 0 && (
             <span className="mt-1 block text-[11.5px] text-muted-foreground">
-              Für {luecken.join(", ")} fehlen uns die Daten — die Zeitreihe zeigt die Lücke.
+              Für {luecken.join(", ")} liegen keine auswertbaren Daten vor. In der Zeitreihe
+              bleiben diese Jahre deshalb frei.
             </span>
           )}
         </div>
@@ -240,21 +241,12 @@ export default function HaushaltPage() {
         </p>
       )}
 
-      {/* „Haushaltsbuch" stand hier bis 16.08. — das Wort fing die
-          Glossar-Erklärung zu „Haushalt" ein und erklärte das Bild mit der
-          Sache, die es erklären sollte. „Kassenbuch" kollidiert mit keinem
-          Eintrag. Die Einwohnerzahl kommt aus den Daten statt fest im Text:
-          Sie steht auf dem Kassenzettel gleich darunter noch einmal, und zwei
-          Stände derselben Zahl auf einer Seite sind eine Frage zu viel. */}
+      {/* Lotti erklärt hier zuerst den Begriff und trennt den Plan ausdrücklich
+          vom späteren Ergebnis. Die Einwohnerzahl steht erst im Kassenzettel
+          darunter, weil sie dort für die Pro-Kopf-Rechnung benötigt wird. */}
       <LottiErklaert
-        titel="Was ist der Haushalt überhaupt?"
-        text={"Einmal im Jahr legt die Stadt fest, wofür sie ihr Geld ausgeben will — wie ein "
-          + "Kassenbuch für "
-          + (data.einwohner
-            ? `${data.einwohner.einwohner.toLocaleString("de-DE")} Menschen`
-            : "eine ganze Stadt")
-          + ". Der Rat beschließt diesen Plan; danach darf die Verwaltung nur ausgeben, "
-          + "was darin steht."}
+        titel="Was ist der Haushalt?"
+        text="Der Haushalt ist der Geldplan der Stadt für ein Jahr. Darin schätzt Oldenburg, wie viel Geld hereinkommt, und plant, wie viel für Kitas, Straßen, Feuerwehr und andere Aufgaben zur Verfügung steht. Der Rat beschließt diesen finanziellen Rahmen. Wichtig: Geplant ist noch nicht ausgegeben — was tatsächlich eingenommen und ausgegeben wurde, zeigt später der Jahresabschluss."
       />
 
       {/* Der Kassenzettel (H2-02): die Kernzahl in einer Einheit, die man
@@ -268,11 +260,10 @@ export default function HaushaltPage() {
             Abgeschlossenes Haushaltsjahr
           </p>
           <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
-            Für {aktJahr} plante die Stadt ein Minus von {deMio(defizit)}&#8239;Mio.&nbsp;€. Wie viel
-            davon am Ende wirklich fehlte und wie hoch die Rücklage damals war, steht im
-            Jahresabschluss — den lesen wir noch ein. Die Reichweite der heutigen Rücklage
-            zeigen wir nur beim aktuellen Haushaltsjahr, weil sie sonst eine Rechnung wäre,
-            die es so nie gab.
+            Für {aktJahr} plante die Stadt ein Minus von {deMio(defizit)}&#8239;Mio.&nbsp;€.
+            Wie das Jahr tatsächlich endete, zeigt der Jahresabschluss. Für dieses Jahr
+            liegt er hier noch nicht vor. Deshalb übertragen wir auch den heutigen
+            Rücklagenstand nicht rückwirkend auf {aktJahr}.
           </p>
         </div>
       ) : null}
@@ -303,8 +294,8 @@ export default function HaushaltPage() {
           </div>
 
           <LottiErklaert
-            titel="Warum die Gewerbesteuer nicht der Feuerwehr gehört"
-            text="Was die Stadt einnimmt, ist fast nie für einen bestimmten Zweck reserviert: Steuern, Gebühren und Zuweisungen landen erst alle zusammen in einer Kasse, und aus dieser einen Kasse wird dann jede Aufgabe bezahlt. Nur wenige Zuschüsse von Bund und Land sind ausdrücklich an einen Zweck gebunden. Deshalb lässt sich nicht sagen, welche Einnahme welche Ausgabe trägt."
+            titel="Kann man Einnahmen einzelnen Ausgaben zuordnen?"
+            text="Meistens nicht. Steuern und allgemeine Zuweisungen fließen in den Gesamthaushalt, aus dem die Stadt ihre verschiedenen Aufgaben finanziert. Zweckgebundene Zuschüsse und bestimmte Gebühren sind Ausnahmen. Deshalb lässt sich zum Beispiel nicht sagen, dass die Gewerbesteuer unmittelbar die Feuerwehr bezahlt."
           />
         </>
       )}
@@ -330,17 +321,17 @@ export default function HaushaltPage() {
         <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div>
             <h2 className="max-w-[30ch] font-display text-[19px] font-bold leading-snug tracking-tight">
-              So viel gibt die Stadt aus — seit {langErster.jahr}
+              Die Ausgaben der Stadt seit {langErster.jahr}
             </h2>
             <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
-              Die Ausgaben eines ganzen Jahres, {langErster.jahr}&nbsp;bis&nbsp;
-              {langLetzter.jahr}: von {deMio(langErster.betrag / 1e6)}&#8239;Mio.&nbsp;€
-              auf {deMio(langLetzter.betrag / 1e6)}&#8239;Mio.&nbsp;€
+              Die Veröffentlichungen der Stadt nennen für {langErster.jahr} insgesamt{" "}
+              {deMio(langErster.betrag / 1e6)}&#8239;Mio.&nbsp;€ und für {langLetzter.jahr}{" "}
+              {deMio(langLetzter.betrag / 1e6)}&#8239;Mio.&nbsp;€ Ausgaben
               <Beleg q="ausgabenreihe" />.{" "}
               {nahtAb != null && (
-                <>Die Naht {nahtAb - 1}/{nahtAb} ist echt: Dort wechselte die Stadt
-                ihr Rechnungswesen, und links und rechts davon zählt die Tabelle
-                etwas anderes.</>
+                <>Zwischen {nahtAb - 1} und {nahtAb} wechselte die Stadt ihr
+                Rechnungswesen. Die Werte vor und nach diesem Wechsel beruhen deshalb
+                auf unterschiedlichen Abgrenzungen.</>
               )}
             </p>
           </div>
@@ -349,10 +340,10 @@ export default function HaushaltPage() {
             naht={nahtAb != null ? {
               zwischen: [nahtAb - 1, nahtAb],
               text: `Zum 1. Januar ${nahtAb} stellte die Stadt von der `
-                + "Kameralistik auf die doppelte Buchführung um — die Fußnote "
-                + "der Tabelle nennt die Umstellung selbst. Links und rechts "
-                + "der Naht zählt sie deshalb etwas anderes; vergleichen lässt "
-                + "sich das, verrechnen nicht.",
+                + "Kameralistik auf die doppelte Buchführung um. Dadurch änderte "
+                + "sich, welche Ausgaben die Statistik erfasst. Werte vor und nach "
+                + "dem Wechsel dürfen deshalb nicht zu einer gemeinsamen Entwicklung "
+                + "verrechnet werden.",
             } : undefined}
             einheit="Mio. €"
             titel="Ausgaben der Stadt Oldenburg"
@@ -377,11 +368,10 @@ export default function HaushaltPage() {
             </dl>
           )}
           <p className="max-w-[76ch] text-[11.5px] leading-relaxed text-muted-foreground">
-            Alle Beträge in Euro des jeweiligen Jahres — die Teuerung ist nicht
-            herausgerechnet. Ein Teil der Bewegung ist also verändertes Preisniveau
-            und nicht mehr Leistung. Aus demselben Grund steht hier kein Betrag je
-            Einwohner*in: Die Einwohnerreihe hat zwei Zensus-Brüche (2011 und 2022),
-            an denen die Zahl springt, ohne dass sich etwas verändert hätte.
+            Die Beträge sind nicht inflationsbereinigt. Ein Anstieg kann daher auch auf
+            höhere Preise oder Tarifabschlüsse zurückgehen und bedeutet nicht automatisch
+            mehr Leistungen. Eine Pro-Kopf-Reihe zeigen wir hier nicht, weil die
+            Einwohnerstatistik durch die Zensusjahre 2011 und 2022 methodische Brüche hat.
           </p>
         </section>
       )}
@@ -396,32 +386,33 @@ export default function HaushaltPage() {
             <section key={k.jahr}
               className="rounded-2xl border border-border bg-card p-4 shadow-sm">
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Zwei amtliche Quellen, zwei Beträge
+                Amtliche Quellen widersprechen sich
               </p>
               <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-                Für {k.jahr} nennt {AUSGABEN_QUELLE_LABEL[k.quelle]}{" "}
-                {deMio(k.betrag / 1e6)}&#8239;Mio.&nbsp;€,{" "}
+                Für {k.jahr} stehen zwei amtliche Gesamtsummen nebeneinander:{" "}
+                {AUSGABEN_QUELLE_LABEL[k.quelle]} nennt {deMio(k.betrag / 1e6)}&#8239;Mio.&nbsp;€,{" "}
                 {k.konflikt_quelle
                   ? AUSGABEN_QUELLE_LABEL[k.konflikt_quelle]
                   : "die andere Veröffentlichung"}{" "}
-                {deMio((k.konflikt_betrag ?? 0) / 1e6)}&#8239;Mio.&nbsp;€ — rund{" "}
+                dagegen {deMio((k.konflikt_betrag ?? 0) / 1e6)}&#8239;Mio.&nbsp;€.
+                Das sind rund{" "}
                 {deMio(Math.abs((k.konflikt_betrag ?? 0) - k.betrag) / 1e6)}
-                &#8239;Mio.&nbsp;€ Unterschied. Im Bild steht der erste Wert:{" "}
+                &#8239;Mio.&nbsp;€ Unterschied. Die Grafik verwendet den ersten Wert.{" "}
                 {/* Nur behaupten, was diese Zeile auch belegt hat: Der Verweis
                     auf den Abschluss steht an der Zeile als bestandene Probe.
                     Ohne ihn trägt der Wert allein die Rechnung, die in der
                     Tabelle selbst steht. */}
                 {k.proben.includes("ausgabenreihe_jahresabschluss") ? (
-                  <>Es ist derselbe, den auch der Jahresabschluss {k.jahr} in seiner
-                  Gesamtergebnisrechnung ausweist<Beleg q="jahresabschluss" />.</>
+                  <>Er stimmt mit der Gesamtergebnisrechnung im Jahresabschluss {k.jahr}
+                  überein<Beleg q="jahresabschluss" />.</>
                 ) : (
-                  <>Er ist der einzige der beiden, der zu dem Betrag je Einwohner*in
-                  passt, den dieselbe Zeile daneben nennt.</>
+                  <>Nur dieser Wert passt zu dem Pro-Kopf-Betrag in derselben
+                  Tabellenzeile.</>
                 )}{" "}
-                Die abweichende Zahl steht hier, damit sie nicht stillschweigend
-                verschwindet.{konflikte.length === 1 && (
-                  <> Es ist das einzige der {lange.length} Jahre, in dem die beiden
-                  Veröffentlichungen auseinandergehen.</>
+                Den abweichenden Wert zeigen wir mit, statt den Widerspruch zu
+                verbergen.{konflikte.length === 1 && (
+                  <> In den übrigen {lange.length - 1} Jahren stimmen die beiden
+                  Veröffentlichungen überein.</>
                 )}
               </p>
             </section>
@@ -429,15 +420,15 @@ export default function HaushaltPage() {
           {vorDemAbschluss && (
             <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                {vorDemAbschluss} steht hier vor seinem Jahresabschluss
+                {vorDemAbschluss}: Gesamtsumme schon vor dem Jahresabschluss
               </p>
               <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-                Der jüngste Jahresabschluss der Stadt ist der von {juengsterAbschluss};
-                bis der von {vorDemAbschluss} beschlossen und veröffentlicht ist,
-                vergehen Monate. Die Gesamtsumme des Jahres steht in dieser Tabelle
-                trotzdem schon<Beleg q="ausgabenreihe" />. Was sich hinter ihr
-                verbirgt — welcher Bereich wie viel ausgegeben hat, wie der Plan
-                dazu stand —, steht dort nicht: Das kommt erst mit dem Abschluss.
+                Der jüngste verfügbare Jahresabschluss ist der von {juengsterAbschluss}.
+                Die Gesamtausgaben für {vorDemAbschluss} veröffentlicht die Stadt bereits
+                vor dem vollständigen Abschluss<Beleg q="ausgabenreihe" />. Die Tabelle
+                zeigt aber noch nicht, wie sich die Summe auf die Bereiche verteilt oder
+                wie stark das Ergebnis vom Plan abweicht. Diese Angaben folgen erst mit
+                dem Jahresabschluss.
               </p>
             </section>
           )}
