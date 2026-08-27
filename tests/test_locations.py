@@ -355,6 +355,37 @@ def test_revalidation_repairs_changed_regex_matches(tmp_path):
     store.close()
 
 
+def test_revalidation_replaces_invalid_llm_link_with_regex_in_one_run(tmp_path):
+    db = tmp_path / "council.sqlite"
+    store = CouncilStore(db)
+    store._conn.execute(
+        "INSERT INTO council_sessions "
+        "(ksinr,committee,session_date,session_time,location,fetched_at) "
+        "VALUES (1,'Rat','2026-01-01','18:00','Rathaus','')"
+    )
+    store._conn.execute(
+        "INSERT INTO council_decisions "
+        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "VALUES (9,1,0,'decision','1','Sanierung Alan-Turing-Straße','')"
+    )
+    store._conn.commit()
+    store.save_decision_locations(9, [{
+        "name": "Alan-Turing-Straße", "kind": "strasse", "source": "title",
+        "evidence": "unbelegte Fundstelle", "method": "llm", "confidence": 0.9,
+    }], "hash")
+    store.close()
+
+    dry = revalidate_process(db)
+    assert dry["invalid_llm"] == 1 and dry["additions"] == 1
+    revalidate_process(db, apply=True)
+    assert revalidate_process(db)["invalid_llm"] == 0
+    assert revalidate_process(db)["additions"] == 0
+    store = CouncilStore(db)
+    rows = store.decision_locations(9)
+    assert len(rows) == 1 and rows[0]["method"] == "regex"
+    store.close()
+
+
 def test_backfill_streams_across_multiple_batches(tmp_path):
     db = tmp_path / "council.sqlite"
     store = CouncilStore(db)
