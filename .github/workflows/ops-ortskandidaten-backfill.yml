@@ -1,0 +1,85 @@
+# Manuell auslösbarer, wiederholbarer Datenlauf für redaktionell geprüfte
+# Beschlussorte. Nutzt den Deploy-Zugang, falls lokal kein SSH verfügbar ist.
+name: "Ops: Ortskandidaten-Backfill"
+
+on:
+  workflow_dispatch:
+    inputs:
+      schreiben:
+        description: "Reviews und kuratierte Koordinaten wirklich schreiben"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ops-ortskandidaten-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Review und Geocoding auf dem Server ausführen
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          script: |
+            set -e
+            cd ~/app
+            .venv/bin/python -m scripts.review_location_candidates_2026_08 \
+              --db data/council.sqlite --refresh-reviewed \
+              ${{ inputs.schreiben && '--apply' || '' }}
+
+            if [ "${{ inputs.schreiben }}" = "true" ]; then
+              # Limit 0 wendet nur den kuratierten Katalog und lokale
+              # Ortsbereichs-Zuordnungen an; kein freier Netz-Geocoder läuft.
+              .venv/bin/python scripts/geocode_decision_locations.py \
+                --db data/council.sqlite --limit 0
+              .venv/bin/python - <<'PY'
+            from council.store import CouncilStore
+            from scripts.review_location_candidates_2026_08 import review_manifest
+
+            store = CouncilStore("data/council.sqlite")
+            manifest = review_manifest()
+            kept = {slug for slug, row in manifest.items() if row["status"] != "rejected"}
+            locations = {
+                row["slug"]: row for row in store._conn.execute(
+                    "SELECT slug,lat,lon,ortsbereich_id FROM council_locations"
+                )
+            }
+            map_points = store.decision_location_map_points()
+            map_slugs = {
+                row["location_slug"] for row in map_points if row["location_slug"]
+            }
+            pending = store.location_candidates("pending", limit=500)
+            missing_coords = sorted(
+                slug for slug in kept
+                if slug not in locations
+                or locations[slug]["lat"] is None
+                or locations[slug]["lon"] is None
+            )
+            missing_areas = sorted(
+                slug for slug in kept
+                if slug not in locations or not locations[slug]["ortsbereich_id"]
+            )
+            missing_map = sorted(kept - map_slugs)
+            result = {
+                "pending": len(pending),
+                "kept": len(kept),
+                "map_points": len(map_points),
+                "missing_coords": missing_coords,
+                "missing_areas": missing_areas,
+                "missing_map": missing_map,
+            }
+            print("Endkontrolle:", result)
+            store.close()
+            if pending or missing_coords or missing_areas or missing_map:
+                raise SystemExit("Ortskandidaten-Endkontrolle fehlgeschlagen")
+            PY
+            fi
