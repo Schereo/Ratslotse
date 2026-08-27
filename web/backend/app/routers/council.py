@@ -1784,7 +1784,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # obendrein der Parteien-Baustein (Tims Befund 26.08.). Fragen zur
             # „letzten Sitzung" behalten ihre Debatten: Dort ist die Sitzung
             # MIT Beschlüssen mit aufgelöst (sitzung_ids gefüllt).
-            if not latest_place and (typ != "sitzung" or sitzung_ids):
+            # Erster kontrolliert aktivierter Rechercheplan-Kanal: Debatten
+            # nur suchen, wenn der validierte und konsistent vervollständigte
+            # Plan sie braucht. 24 klare Produktionsfragen trennten damit
+            # argumentativ/personenbezogen von Fakten/Terminen 24/24 korrekt.
+            # Bei einem ungültigen Plan gilt als sicherer Fallback weiterhin
+            # das alte Verhalten. Enge neueste Ortsfragen bleiben unabhängig
+            # davon deterministisch ohne Debatten.
+            debates_enabled = qa.research_channel_enabled(shadow_plan, "debates")
+            if (not latest_place and debates_enabled
+                    and (typ != "sitzung" or sitzung_ids)):
                 try:
                     # Task 16: Wortbeiträge aus den Protokollen (Reden, Anfragen,
                     # Einwohnerfragen, Zusagen) — die Substanz, die nicht in den
