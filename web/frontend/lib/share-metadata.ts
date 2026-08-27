@@ -21,7 +21,7 @@ import type { Metadata } from "next";
  *  keine Link-Vorschau zu bauen (und keine geben zu dürfen). */
 export const istExport = () => process.env.MOBILE === "1";
 
-export type VorschauArt = "decision" | "person" | "thema" | "sitzung";
+export type VorschauArt = "decision" | "person" | "thema" | "sitzung" | "ort";
 
 /** Backend-Origin für den Server-seitigen Abruf. Im Betrieb läuft das Frontend
  *  neben dem Backend auf demselben Host; `BACKEND_URL` ist dieselbe Variable,

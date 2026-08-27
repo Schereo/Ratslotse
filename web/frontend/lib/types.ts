@@ -52,6 +52,17 @@ export interface AgendaItem {
 export type DecisionOutcome =
   | "angenommen" | "abgelehnt" | "vertagt" | "zur_kenntnis" | "kein_beschluss";
 
+export interface DecisionLocationMatch {
+  name: string;
+  stadtteil: string;
+  place_id?: string | null;
+  ortsbereich_id?: string | null;
+  source: "title" | "beschluss" | "vorlage";
+  evidence: string;
+  method: string;
+  confidence: number;
+}
+
 export interface CouncilDecision {
   id: number;
   ksinr: number;
@@ -84,6 +95,8 @@ export interface CouncilDecision {
   subvote_summary?: { count: number; factions: string[]; outcomes: string[] } | null;
   /** Regex-Ernte: Wie stark weicht der Beschluss vom Verwaltungsvorschlag ab? */
   abweichung?: "unveraendert" | "leicht" | "stark" | null;
+  /** Beim Ortsfilter: konkrete Treffer samt Fundstelle zur manuellen Prüfung. */
+  location_matches?: DecisionLocationMatch[];
 }
 
 export interface PolicyField {
@@ -191,6 +204,31 @@ export interface SessionDetail extends CouncilSession {
   aenderungen?: AgendaAenderung[];
 }
 
+export type BookmarkKind = "session" | "agenda_item" | "decision";
+export type BookmarkState = "upcoming" | "waiting" | "protocol" | "decided" | "saved" | "unavailable" | "group";
+
+/** Persönlicher Merkeintrag, serverseitig gegen den aktuellen Ratsbestand
+ *  aufgelöst. Ein agenda_item bekommt automatisch `decision`, sobald das
+ *  Protokoll verarbeitet wurde. */
+export interface BookmarkEntry {
+  id: number;
+  kind: BookmarkKind;
+  target_key: string;
+  title: string;
+  subtitle: string;
+  created_at: string;
+  notify_result: boolean;
+  result_notified_at: string | null;
+  state: BookmarkState;
+  url: string;
+  ksinr: number | null;
+  item_number: string | null;
+  is_group: boolean;
+  session: CouncilSession | null;
+  agenda_item: AgendaItem | null;
+  decision: CouncilDecision | null;
+}
+
 export interface AgendaAenderungZeile {
   art: "neu" | "geaendert" | "verschoben" | "vorlage" | "anlagen" | "entfernt";
   label: string;
@@ -228,6 +266,27 @@ export interface Entity {
 
 export interface EntityMapPoint {
   slug: string; name: string; kind: string; n: number; lat: number; lon: number;
+  target?: "thema" | "ort" | "location";
+  place_id?: string | null;
+  location_slug?: string | null;
+  ortsbereich_id?: string | null;
+}
+
+export interface PlaceCandidateEvidence {
+  id: number; title: string | null; session_date: string;
+  evidence: string; method: string; confidence: number;
+}
+
+export interface PlaceCandidate {
+  slug: string; name: string; kind: string; lat: number | null; lon: number | null;
+  stadtteil: string | null; ortsbereich_id: string | null;
+  status: "pending" | "approved" | "alias" | "rejected";
+  decision_count: number; last_date: string; avg_confidence: number;
+  review_place_id?: string | null; review_name?: string | null;
+  review_kind?: string | null; parent_id?: string | null; aliases?: string[];
+  description?: string | null; source_url?: string | null;
+  quiz_enabled?: boolean; canonical_place_id?: string | null; note?: string | null;
+  evidence: PlaceCandidateEvidence[];
 }
 
 export interface EntityGeo {
@@ -597,6 +656,12 @@ export interface AdminGrowth {
 export interface QuizAreaEntry {
   key: string;
   label?: string;
+  /** Stabile ID aus dem gemeinsamen Ratslotse-Ortskatalog. */
+  place_id?: string;
+  kind?: string;
+  kind_label?: string;
+  parent_ids?: string[];
+  aliases?: string[];
   wahlbereiche?: number[];
   stadtteile?: string[];
   /** Themen: Stadtteil des Themen-Orts (RL-U13); null/fehlend = stadtweit. */

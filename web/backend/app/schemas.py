@@ -129,6 +129,21 @@ class EntityAliasOut(BaseModel):
     canonical_n: int | None = None
 
 
+class PlaceReviewIn(BaseModel):
+    """Redaktionelles Urteil zu einem automatisch gefundenen Ortsnamen."""
+    status: str
+    place_id: str | None = None
+    name: str | None = None
+    kind: str | None = None
+    parent_id: str | None = None
+    aliases: list[str] = Field(default_factory=list)
+    description: str | None = None
+    source_url: str | None = None
+    quiz_enabled: bool = False
+    canonical_place_id: str | None = None
+    note: str | None = None
+
+
 # ---- admin: web users ----
 class WebUserOut(BaseModel):
     id: int

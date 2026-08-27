@@ -14,8 +14,12 @@ export async function registerAdmin(page: Page) {
 
 /** Login an already-existing admin account. */
 export async function loginAdmin(page: Page) {
-  // Try to register first (idempotent for the test suite),
-  // then just login if already registered.
+  // Make the helper independent from test-file order. The register endpoint
+  // may answer 409 when the account already exists; either way the following
+  // login is the authoritative step.
+  await page.request.post("/api/auth/register", {
+    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+  });
   await page.goto("/login");
   await page.locator("#email").fill(ADMIN_EMAIL);
   await page.locator("#password").fill(ADMIN_PASSWORD);

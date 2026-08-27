@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { Map as LeafletMap, GeoJSON as LGeoJSON, Path } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { loadStadtteile } from "@/lib/stadtteile";
+import { loadOrtsbereiche } from "@/lib/stadtteile";
 import { cn } from "@/lib/utils";
 
 // CARTO Voyager — dieselbe Basemap wie die Themen-Karte (dunkel per CSS-Filter,
@@ -18,7 +18,7 @@ const CORRECT: Style = { color: "#16a34a", weight: 2.5, fillColor: "#16a34a", fi
 const WRONG: Style = { color: "#dc2626", weight: 2.5, fillColor: "#dc2626", fillOpacity: 0.45 };
 const DIM: Style = { color: "#94a3b8", weight: 0.5, fillColor: "#94a3b8", fillOpacity: 0.04 };
 
-/** Klickbare Stadtteil-Karte für das Karten-Quiz. Init einmalig; Umfärben bei
+/** Klickbare Ortsbereich-Karte für das Karten-Quiz. Init einmalig; Umfärben bei
  *  Auswahl/Auflösung läuft über einen zweiten Effekt, ohne die Karte neu zu
  *  bauen. Bewusst OHNE Beschriftung — sonst wäre die Antwort verraten. */
 export function QuizMap({ picked, solution, disabled, onPick, className }: {
@@ -81,7 +81,7 @@ export function QuizMap({ picked, solution, disabled, onPick, className }: {
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
         void isDark; // Dark-Mode kommt per CSS-Filter, kein URL-Wechsel nötig
 
-        const features = await loadStadtteile();
+        const features = await loadOrtsbereiche();
         if (cancelled || !mapRef.current) return;
         const gj = L.geoJSON(
           { type: "FeatureCollection", features } as never,
@@ -135,7 +135,7 @@ export function QuizMap({ picked, solution, disabled, onPick, className }: {
 
   return (
     <div className={cn("relative isolate overflow-hidden rounded-xl border border-border", className)}>
-      <div ref={ref} className="h-full w-full" aria-label="Oldenburg-Karte zum Verorten der Stadtteile" />
+      <div ref={ref} className="h-full w-full" aria-label="Oldenburg-Karte zum Verorten der Ortsbereiche" />
     </div>
   );
 }

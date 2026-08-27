@@ -164,6 +164,7 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
                   timings: dict | None = None,
                   varianten: list[str] | None = None,
                   anker_ids: list[int] | None = None,
+                  allowed_ids: list[int] | None = None,
                   recency: bool = False) -> list[tuple]:
     """Hybrid retrieval (RAG-SOTA): vector candidates (on the expanded query) ∪
     Vorlagen-Chunk-Treffer (Sachverhalt/Begründung, auf Beschlüsse abgebildet) ∪
@@ -234,6 +235,9 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
         cand_ids += anker_neu
         if timings is not None:
             timings["anker_neu"] = len(anker_neu)
+    if allowed_ids is not None:
+        allowed = set(allowed_ids)
+        cand_ids = [decision_id for decision_id in cand_ids if decision_id in allowed]
     if RERANK_MAX and len(cand_ids) > RERANK_MAX:
         # Reihum aus den drei Quellen (je score-sortiert) ziehen — so behalten
         # alle Kanäle ihre besten Kandidaten, statt dass der Zufall der

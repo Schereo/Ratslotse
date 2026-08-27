@@ -28,6 +28,7 @@ from council import ernte
 from council import importance
 from council import sitzungspause as pause_mod
 from council import vorlagen as vorlagen_mod
+from council import places
 
 from kern.store import Store
 
@@ -66,6 +67,69 @@ def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(
     ]
     out.sort(key=lambda f: f["count"], reverse=True)
     return {"fields": out}
+
+
+@router.get("/districts")
+def districts(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Belegte Ratslotse-Ortsbereiche für den Beschlussfilter."""
+    rows = []
+    for row in store.decision_location_place_stats():
+        place = store.resolve_place(row["place_id"])
+        if not place:
+            continue
+        rows.append({
+            **row,
+            "name": place.name,
+            "place_id": place.id,
+            "kind": place.kind,
+            "kind_label": places.kind_label(place.kind),
+            "aliases": list(place.aliases),
+            "parent_ids": list(place.parent_ids),
+            "description": place.description,
+        })
+    catalog = store.public_place_catalog()
+    return {
+        "catalog": {key: catalog[key] for key in (
+            "schema_version", "id", "label", "singular", "plural",
+            "definition", "kinds", "sources",
+        )},
+        "districts": rows,
+    }
+
+
+@router.get("/places")
+def place_catalog(_user: dict = Depends(require_active),
+                  store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Gemeinsamer Ortskatalog für Suche, Karten, Quiz und KI-Funktionen."""
+    return store.public_place_catalog()
+
+
+@router.get("/place/{place_id}")
+def place_detail(
+    place_id: str,
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Öffentliches Ortsprofil aus Katalogstammdaten und belegten Beschlüssen."""
+    place = store.resolve_place(place_id)
+    if not place:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ort nicht gefunden.")
+    total = store.count_decisions(district=place.id)
+    decisions = store.search_decisions(district=place.id, limit=50)
+    matches = store.location_matches_for_decisions(
+        [row["id"] for row in decisions], district=place.id)
+    for row in decisions:
+        row["location_matches"] = matches.get(row["id"], [])
+    children = [store.public_place(child) for child in store.all_places()
+                if place.id in child.parent_ids]
+    return {
+        "place": store.public_place(place),
+        "children": children,
+        "decision_count": total,
+        "decisions": decisions,
+    }
 
 
 @router.get("/sessions")
@@ -1412,6 +1476,8 @@ def decisions(
     sort: str = Query("date_desc", pattern="^(date_desc|date_asc|faction|importance|interest)$"),
     field: str = "",
     party: str = "",
+    district: str = Query("", max_length=100),
+    location: str = Query("", max_length=120),
     # Design 23a: Standard blendet Änderungsanträge (subvotes) aus der Trefferliste
     # aus — sie hängen als Kontext am Ursprungsbeschluss. Rechercheure können sie
     # per Filter „Änderungsanträge einzeln zeigen" wieder einblenden.
@@ -1426,6 +1492,14 @@ def decisions(
     store: CouncilStore = Depends(get_council_store),
     nwz: Store = Depends(get_store),
 ) -> dict:
+    if district:
+        place = store.resolve_place(district)
+        if not place:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Ort.")
+        district = place.id
+    location_row = store.location_by_slug(location) if location else None
+    if location and not location_row:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Beschlussort.")
     only_ids: list[int] | None = None
     if topic is not None:
         # Nur eigene Themen — sonst ließe sich über eine fremde id deren
@@ -1433,17 +1507,26 @@ def decisions(
         if not nwz.get_topic_for_owner(user["id"], topic):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Thema nicht gefunden.")
         only_ids = [m["decision_id"] for m in nwz.get_topic_decision_matches(topic)]
-    total = store.count_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, field, party,
-                                  include_subvotes=include_subvotes, only_ids=only_ids)
+    total = store.count_decisions(
+        q, committee, outcome, faction, date_from, date_to, kind, category, field, party,
+        include_subvotes=include_subvotes, only_ids=only_ids, district=district,
+        location_slug=location,
+    )
     rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, category,
                                   sort=sort, field=field, party=party, limit=limit, offset=offset,
-                                  include_subvotes=include_subvotes, only_ids=only_ids)
+                                  include_subvotes=include_subvotes, only_ids=only_ids,
+                                  district=district, location_slug=location)
+    location_matches = store.location_matches_for_decisions(
+        [row["id"] for row in rows], district=district, location_slug=location
+    )
     # Design 23a: je Beschluss die kompakte Änderungsantrags-Zusammenfassung
     # anhängen (Anzahl · Fraktion · Ergebnis) für die Karten-Unterzeile.
     pairs = [(r["ksinr"], r["item_number"]) for r in rows
              if r.get("kind") == "decision" and r.get("item_number")]
     summaries = store.subvote_summaries(pairs)
     for r in rows:
+        if district or location:
+            r["location_matches"] = location_matches.get(r["id"], [])
         s = summaries.get((r.get("ksinr"), r.get("item_number")))
         if s:
             r["subvote_summary"] = s
@@ -2237,8 +2320,8 @@ def entities_list(kind: str = "", _user: dict = Depends(require_active),
 @router.get("/entities-map")
 def entities_map(_user: dict = Depends(require_active),
                  store: CouncilStore = Depends(get_council_store)) -> dict:
-    """All geocoded entities (points) for the city-wide map."""
-    return {"entities": store.list_entities_geo()}
+    """Geocodierte Themen und belastbare Beschlussorte für die Stadtkarte."""
+    return {"entities": store.city_map_points()}
 
 
 @router.get("/public-stats")
@@ -2346,6 +2429,19 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
                 + (f" · {gremien} Gremien" if gremien else "")
                 + ". Anwesenheit und Beschlüsse im Ratslotse."
             ),
+        }
+
+    if kind == "ort":
+        place = places.resolve(key)
+        if not place:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Ort nicht gefunden.")
+        n = store.count_decisions(district=place.id)
+        return {
+            "title": f"{place.name} – {places.kind_label(place.kind)}",
+            "description": (
+                f"{place.description or 'Ort im Ratslotse-Ortskatalog.'} "
+                f"{n} {'Beschluss' if n == 1 else 'Beschlüsse'} mit belegtem Ortsbezug."
+            )[:300],
         }
 
     if kind == "thema":
@@ -2511,7 +2607,8 @@ QA_RERANK_BIAS = 1.5
 
 def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
                  timings: dict | None = None,
-                 varianten: list[str] | None = None) -> tuple[list[dict], str]:
+                 varianten: list[str] | None = None,
+                 place_ids: list[int] | None = None) -> tuple[list[dict], str]:
     """Hybrid retrieval + cross-encoder rerank → candidates in relevance order, each
     with an *absolute* relevance score: the sigmoid of the reranker logit, NOT a
     min-max normalisation (which forced the weakest hit to a misleading 0 %). Falls
@@ -2521,9 +2618,12 @@ def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
         # Akkuratheits-Paket: deterministische Signale neben der Semantik —
         # Entitäts-Anker (benannte Objekte der Frage) in den Rerank-Pool,
         # Frische-Bonus bei Sachstands-Formulierungen.
+        entity_anchors = qa.anker_ids_fuer(store, q)
+        anchors = list(dict.fromkeys([*entity_anchors, *(place_ids or [])]))
         hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55, timings=timings,
                                  varianten=varianten,
-                                 anker_ids=qa.anker_ids_fuer(store, q),
+                                 anker_ids=anchors,
+                                 allowed_ids=place_ids,
                                  recency=qa.recency_intent(q))
         if hits:
             candidates = store.get_decisions_by_ids([h[0] for h in hits])  # preserves order
@@ -2538,7 +2638,13 @@ def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
     except Exception:  # noqa: BLE001 — fastembed missing/any failure → keyword fallback
         pass
     cands = store.get_goal_candidates(qa.extract_keywords(q), limit=QA_TOP_K)
-    return store.get_decisions_by_ids([c["id"] for c in cands]), "keyword"
+    ids = [c["id"] for c in cands]
+    if place_ids is not None:
+        allowed = set(place_ids)
+        ids = [decision_id for decision_id in ids if decision_id in allowed]
+        if not ids:
+            ids = place_ids[:QA_TOP_K]
+    return store.get_decisions_by_ids(ids), "keyword"
 
 
 def _sse(obj: dict) -> str:
@@ -2727,6 +2833,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             person = qa.finde_person(store, q_suche)
             if person and typ not in ("partei", "geld"):
                 typ = "person"
+            # Orts-Fragetyp: dieselbe deterministische Stammdaten-Erkennung wie
+            # bei Personen. Ein Alias wie „Donnerschwee-Kaserne“ wird dabei auf
+            # die stabile Orts-ID ``neu-donnerschwee`` aufgelöst.
+            ort = None if person else (qa.finde_ort(q_suche, store) or qa.finde_ort(q, store))
+            if ort and typ not in ("partei", "geld"):
+                typ = "ort"
             # Sitzungs-Fragetyp (25.08.26): Nennt die Frage ein konkretes
             # Sitzungsdatum oder die letzte/nächste Sitzung eines Gremiums,
             # wird die Sitzung deterministisch aufgelöst und ihre Beschlüsse
@@ -2745,8 +2857,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 typ = "sitzung"
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
+            place_ids = (store.decision_ids_for_place(ort["id"], limit=120)
+                         if ort and typ == "ort" else None)
             candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
-                                            varianten=analyse.get("varianten"))
+                                            varianten=analyse.get("varianten"),
+                                            place_ids=place_ids)
             partei_ids: set[int] = set()
             if typ == "partei" and analyse.get("partei"):
                 # Anträge der gefragten Fraktion zum Thema in den Pool — die
@@ -2875,6 +2990,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 pass
             # Hintergrund zu den genannten Objekten („Was ist die GSG?").
             steckbriefe = qa.steckbriefe_fuer(store, q_suche)
+            if ort and ort.get("description"):
+                steckbriefe = [{"name": ort["name"],
+                                "description": ort["description"]}, *steckbriefe]
             # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
             lage = qa.beleglage(candidates)
             if typ == "sitzung" and sitzungen:

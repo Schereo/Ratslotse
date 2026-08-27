@@ -15,7 +15,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from pathlib import Path
 
 from .config import get_settings
-from .routers import account, admin, auth, auth_apple, council, feedback, kommunalwahl, onboarding, push, quiz, social, topics, badges
+from .routers import account, admin, auth, auth_apple, bookmarks, council, feedback, kommunalwahl, onboarding, push, quiz, social, topics, badges
 from .session import SitzungsVerlaengerung
 
 logger = logging.getLogger("nwz.web.main")
@@ -171,6 +171,7 @@ app.include_router(auth.router)
 app.include_router(auth_apple.router)
 app.include_router(account.router)
 app.include_router(council.router)
+app.include_router(bookmarks.router)
 app.include_router(topics.router)
 app.include_router(topics.sub_router)
 app.include_router(admin.router)

@@ -4,9 +4,9 @@ import { Fragment, useEffect, useMemo, useRef, useState, useCallback, Suspense }
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip, MapPin } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
-import { fragenHref, decisionHref } from "@/lib/routes";
+import { fragenHref, decisionHref, ortHref } from "@/lib/routes";
 import { useDebounce } from "@/lib/use-debounce";
 import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/recent-searches";
 import { offerIcs } from "@/lib/ics";
@@ -29,6 +29,7 @@ import { EntitiesTab } from "@/components/council-entities";
 import { cn, relativerTag, wochentagKurz } from "@/lib/utils";
 import { useHeute } from "@/lib/use-heute";
 import { useMerker } from "@/lib/use-merker";
+import { BookmarkButton } from "@/components/bookmark-button";
 
 type Scope = "all" | "upcoming" | "recent";
 type Tab = "sessions" | "decisions" | "themen" | "analysis";
@@ -43,6 +44,18 @@ const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.p
    denselben Schlüssel, und der öffentliche Beschluss landete an der falschen
    Zeile. */
 const topKey = (n: string | null | undefined) => (n ?? "").replace(/^\p{L}+\s+/u, "").trim();
+const agendaNumber = (n: string | null | undefined) => n?.match(/\d+(?:\.\d+)*/)?.[0] ?? "";
+
+/** Gliederungs-TOPs wie „Anträge der Fraktionen“ haben kein eigenes Ergebnis.
+ *  Öffentlicher und nichtöffentlicher Teil werden getrennt betrachtet. */
+const hasAgendaChildren = (item: AgendaItem, items: AgendaItem[]) => {
+  const parent = agendaNumber(item.item_number);
+  if (!parent) return false;
+  return items.some((candidate) =>
+    Boolean(candidate.is_public) === Boolean(item.is_public)
+    && agendaNumber(candidate.item_number).startsWith(`${parent}.`),
+  );
+};
 
 /* DOM-Kennung einer Tagesordnungszeile — Ziel des `?top=…`-Sprungs aus einer
    Benachrichtigung. Bewusst die VOLLE Nummer, nicht `topKey`: Der wirft das
@@ -152,6 +165,9 @@ function subvoteLabel(s: NonNullable<CouncilDecision["subvote_summary"]>): strin
 function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const isSub = d.kind === "subvote";
   const sub = d.subvote_summary;
+  const locationMatches = d.location_matches ?? [];
+  const primaryLocation = locationMatches[0];
+  const locationProfileId = primaryLocation?.place_id ?? primaryLocation?.ortsbereich_id;
   const router = useRouter();
   const sp = useSearchParams();
   // 5a/I-08: aus der Trefferkarte direkt ins Ratsgespräch — die Frage steht
@@ -199,6 +215,29 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
               <Highlight text={d.beschluss} query={query} />
             </p>
+          )}
+          {primaryLocation && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg bg-primary/5 px-2.5 py-2 text-xs">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+              <div className="min-w-0">
+                <p className="text-foreground">
+                  <span className="font-medium">Ortsbezug:</span>{" "}
+                  {locationMatches.slice(0, 2).map((match) => match.name).join(", ")}
+                  {locationMatches.length > 2 ? ` +${locationMatches.length - 2}` : ""}
+                  <span className="text-muted-foreground"> · {primaryLocation.stadtteil}</span>
+                  {locationProfileId && (
+                    <button type="button" onClick={(event) => {
+                      event.preventDefault(); event.stopPropagation(); router.push(ortHref(locationProfileId));
+                    }} className="ml-1 font-medium text-primary hover:underline">
+                      Ortsprofil
+                    </button>
+                  )}
+                </p>
+                <p className="mt-0.5 line-clamp-1 text-muted-foreground">
+                  Fundstelle: „{primaryLocation.evidence}“
+                </p>
+              </div>
+            </div>
           )}
 
           {/* Zone 3 — Fußzeile */}
@@ -452,6 +491,10 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [outcome, setOutcome] = useMerker("suche:ergebnis", "");
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
+  const [districts, setDistricts] = useState<{
+    place_id: string; name: string; kind: string; kind_label: string; parent_ids: string[];
+    count: number; vote_count: number; report_count: number;
+  }[]>([]);
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [decisions, setDecisions] = useState<CouncilDecision[]>([]);
@@ -494,6 +537,11 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   }, []);
   const field = sp.get("field") ?? "";
   const party = sp.get("party") ?? "";
+  const district = sp.get("district") ?? "";
+  // Exakter, von einem Kartenpunkt gesetzter Beschlussort. Anders als der
+  // Katalogfilter `district` meint dies genau eine Straße/ein Gebäude.
+  const location = sp.get("location") ?? "";
+  const locationName = sp.get("location_name") ?? location;
   // Design 23a: Änderungsanträge (subvotes) sind standardmäßig aus der Liste
   // ausgeblendet (Kontext am Ursprungsbeschluss). Rechercheure blenden sie
   // optional wieder einzeln ein.
@@ -528,6 +576,11 @@ function DecisionsTab({ committees }: { committees: string[] }) {
 
   useEffect(() => {
     api.get<{ fields: PolicyField[] }>("/council/fields").then((d) => setFields(d.fields)).catch(() => {});
+    api.get<{ districts: {
+      place_id: string; name: string; kind: string; kind_label: string; parent_ids: string[];
+      count: number; vote_count: number; report_count: number;
+    }[] }>("/council/districts")
+      .then((d) => setDistricts(d.districts)).catch(() => {});
   }, []);
 
   const load = useCallback(async () => {
@@ -536,6 +589,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       const data = await api.get<{ total: number; decisions: CouncilDecision[] }>(
         `/council/decisions${qs({
           q, committee, category: mode === "all" ? "" : mode, sort, field, party,
+          district, location,
           outcome: mode === "vote" ? outcome : "",
           date_from: dateFrom, date_to: dateTo,
           include_subvotes: showSubvotes ? "1" : "",
@@ -551,12 +605,12 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     } finally {
       setLoading(false);
     }
-  }, [q, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page, topicId]);
+  }, [q, committee, mode, outcome, sort, field, party, district, location, dateFrom, dateTo, showSubvotes, page, topicId]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, committee, mode, outcome, sort, field, party, dateFrom, dateTo, showSubvotes, page, topicId]);
+  }, [debouncedQ, committee, mode, outcome, sort, field, party, district, location, dateFrom, dateTo, showSubvotes, page, topicId]);
 
   // RL-U02: Seitenwechsel führt zurück zum Listenanfang und setzt den Fokus
   // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
@@ -594,9 +648,14 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     : isReport ? (einer ? "Bericht" : "Berichte") : (einer ? "Beschluss" : "Beschlüsse");
   /* „40+" statt „40": s. topicCapped. Steht überall dort, wo die Zahl steht. */
   const totalLabel = `${total}${topicCapped ? "+" : ""}`;
+  const districtCount = (item: typeof districts[number]) =>
+    mode === "vote" ? item.vote_count : mode === "report" ? item.report_count : item.count;
+  const primaryPlaces = districts.filter((item) => item.kind === "ortsbereich");
+  const secondaryPlaces = districts.filter((item) => item.kind !== "ortsbereich");
+  const districtValue = districts.find((item) => item.place_id === district || item.name === district)?.place_id ?? district;
 
   // Zeitraum zählt als EIN Filter; Sortierung ist eine Einstellung, kein Filter.
-  const activeFilterCount = [outcome, field, committee, dateFrom || dateTo].filter(Boolean).length;
+  const activeFilterCount = [outcome, field, committee, district, location, dateFrom || dateTo].filter(Boolean).length;
 
   // Ein JSX-Baum, zwei Einbauorte: Desktop inline in der Karte, mobil im Bottom-Sheet.
   const refineFilters = (
@@ -611,7 +670,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           />
         </FilterField>
       )}
-      <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
         {fields.length > 0 && (
           <FilterField label="Themenfeld">
             <Select value={field} onChange={(e) => setUrlParam("field", e.target.value)}>
@@ -624,6 +683,21 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
             <option value="">Alle Ausschüsse</option>
             {committees.map((c) => <option key={c} value={c} title={c}>{shortCommittee(c)}</option>)}
+          </Select>
+        </FilterField>
+        <FilterField label="Ortsbezug">
+          <Select value={districtValue} onChange={(e) => setUrlParam("district", e.target.value)}>
+            <option value="">Alle Orte</option>
+            <optgroup label="Ortsbereiche">
+              {primaryPlaces.map((item) => (
+                <option key={item.place_id} value={item.place_id}>{item.name} ({districtCount(item)})</option>
+              ))}
+            </optgroup>
+            {secondaryPlaces.length > 0 && <optgroup label="Quartiere und besondere Gebiete">
+              {secondaryPlaces.map((item) => (
+                <option key={item.place_id} value={item.place_id}>{item.name} · {item.kind_label} ({districtCount(item)})</option>
+              ))}
+            </optgroup>}
           </Select>
         </FilterField>
         <FilterField label="Sortierung">
@@ -697,6 +771,21 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             onChange={(v) => setUrlParam("field", v)}
           />
         )}
+        {location && (
+          <FilterChip label={`Beschlussort: ${locationName}`}
+            onClear={() => setUrlParams({ location: "", location_name: "" })} />
+        )}
+        {districts.length > 0 && (
+          <ChipPopover
+            label="Ortsbezug"
+            value={districtValue}
+            options={districts.map((item) => ({
+              value: item.place_id, label: `${item.name} (${districtCount(item)})`,
+              sub: item.kind === "ortsbereich" ? undefined : item.kind_label,
+            }))}
+            onChange={(value) => setUrlParam("district", value)}
+          />
+        )}
         <ChipPopover
           label="Ausschuss"
           value={committee}
@@ -758,6 +847,9 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               />
             )}
             {committee && <FilterChip label={shortCommittee(committee)} onClear={() => { setCommittee(""); setPage(1); }} />}
+            {district && <FilterChip label={`Ortsbezug: ${district}`} onClear={() => setUrlParam("district", "")} />}
+            {location && <FilterChip label={`Beschlussort: ${locationName}`}
+              onClear={() => setUrlParams({ location: "", location_name: "" })} />}
             {(dateFrom || dateTo) && (
               <FilterChip
                 label={`${dateFrom ? formatDate(dateFrom) : "…"} – ${dateTo ? formatDate(dateTo) : "heute"}`}
@@ -813,7 +905,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             </p>
             {/* RL-F07: Trefferzeile gleitet bei Filterwechsel neu ein (key-Remount). */}
             <div className="flex flex-wrap items-center gap-2">
-              <p key={`${total}|${query}|${outcome}|${field}|${committee}`} className="animate-fade-up text-sm font-medium text-muted-foreground">
+              <p key={`${total}|${query}|${outcome}|${field}|${committee}|${district}`} className="animate-fade-up text-sm font-medium text-muted-foreground">
                 {totalLabel} {noun}
                 {query && <> zu <strong className="font-semibold text-foreground">{query}</strong></>}
               </p>
@@ -892,9 +984,11 @@ function YearDivider({ jahr }: { jahr: string }) {
    toter Text — man musste zurück in die Suche, um den Beschluss zu finden, der
    direkt dahinter liegt. TOPs ohne Beschluss (Berichte, künftige Sitzungen)
    bleiben bewusst ruhiger Text, damit der Zeiger nichts verspricht, was fehlt. */
-function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash }: {
+function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true }: {
   it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
+  ksinr?: number;
+  bookmarkable?: boolean;
   /* Ziel des `?top=…`-Sprungs aus einer Benachrichtigung (s. topDomId). */
   domId?: string;
   /** Kurz nach dem Sprung hervorgehoben — sonst sieht die Zielzeile aus wie
@@ -955,19 +1049,24 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash }: {
     flash && "bg-primary/[0.07] ring-2 ring-primary",
   );
 
+  const bookmark = bookmarkable && it.is_public && ksinr != null
+    ? <BookmarkButton target={{ kind: "agenda_item", ksinr, item_number: it.item_number }} compact className="mt-0.5 shrink-0" />
+    : null;
+
   if (decisionId != null) {
     return (
-      <li id={domId}>
+      <li id={domId} className={cn(layout, tone)}>
         <Link
           href={decisionHref(decisionId)}
-          className={cn(layout, tone, "transition-colors hover:bg-muted/60 active:scale-[0.995]")}
+          className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-1 transition-colors active:scale-[0.995]"
         >
           {body}
         </Link>
+        {bookmark}
       </li>
     );
   }
-  return <li id={domId} className={cn(layout, tone)}>{body}</li>;
+  return <li id={domId} className={cn(layout, tone)}>{body}{bookmark}</li>;
 }
 
 /** „Zuletzt geändert" (Tims Wunsch 18.08.): Ziel der Änderungs-Push — die
@@ -1488,6 +1587,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
                             <ul className="space-y-0.5">
                               {(d?.agenda_items ?? []).map((it, i) => (
                                 <AgendaRow key={i} it={it} query={query}
+                                  ksinr={s.ksinr ?? undefined}
+                                  bookmarkable={!hasAgendaChildren(it, d?.agenda_items ?? [])}
                                   outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
@@ -1502,7 +1603,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         matched.length > 0 ? (
                           <>
                             <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">{matched.length} Treffer in der Tagesordnung</p>
-                            <ul className="space-y-0.5">{matched.map((it, i) => <AgendaRow key={i} it={it} query={query} myTopic={myByItem[it.item_number]} />)}</ul>
+                            <ul className="space-y-0.5">{matched.map((it, i) => <AgendaRow key={i} it={it} query={query} ksinr={s.ksinr ?? undefined} bookmarkable={Boolean(d) && !hasAgendaChildren(it, d?.agenda_items ?? [])} myTopic={myByItem[it.item_number]} />)}</ul>
                           </>
                         ) : (
                           <p className="px-2 text-sm text-muted-foreground">Kein Tagesordnungspunkt enthält „{query}" — Treffer im Ausschussnamen.</p>
@@ -1514,6 +1615,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                           {isExpanded ? "Weniger anzeigen" : `Alle ${s.n_items} TOPs anzeigen`}
                         </button>
                         <CalendarButton session={s} agenda={(d?.agenda_items ?? []).map((it) => `${it.item_number} ${it.title}`)} />
+                        <BookmarkButton target={{ kind: "session", ksinr: s.ksinr }} />
                         <a href={sessionUrl(s.ksinr)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
                           Ratsinfo <ExternalLink className="h-3.5 w-3.5" />
                         </a>

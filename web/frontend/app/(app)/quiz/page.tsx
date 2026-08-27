@@ -229,8 +229,8 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
   const areaCount = stSel.size + thSel.size;
   const catStr = cats.size ? [...cats].map((c) => CATEGORY_LABEL[c] ?? c).join(", ") : null;
   const summary = areaCount
-    ? `in ${stSel.size ? `${stSel.size} Stadtteil${stSel.size === 1 ? "" : "en"}` : ""}${stSel.size && thSel.size ? " + " : ""}${thSel.size ? `${thSel.size} Thema${thSel.size === 1 ? "" : "en"}` : ""}${catStr ? ` · ${catStr}` : ""}`
-    : "Noch kein Gebiet gewählt — Schnellwahl oder Stadtteile antippen.";
+    ? `in ${stSel.size ? `${stSel.size} Ort${stSel.size === 1 ? "" : "en"}` : ""}${stSel.size && thSel.size ? " + " : ""}${thSel.size ? `${thSel.size} Thema${thSel.size === 1 ? "" : "en"}` : ""}${catStr ? ` · ${catStr}` : ""}`
+    : "Noch kein Gebiet gewählt — Schnellwahl oder Orte antippen.";
 
   const start = () => onStart(
     [...stSel].map((s) => `stadtteil:${s}`).concat([...thSel]),
@@ -256,7 +256,7 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
 
       {catalog.wahlbereiche.length > 0 && (
         <>
-          <SetupLabel hint="— wählt seine Stadtteile vor">Schnellwahl · Wahlbereich</SetupLabel>
+          <SetupLabel hint="— wählt seine Ortsbereiche vor">Schnellwahl · Wahlbereich</SetupLabel>
           <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
             {catalog.wahlbereiche.map((w) => {
               const active = wbSel.has(w.key);
@@ -282,7 +282,7 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
       )}
 
       <SetupLabel hint={stSel.size ? `${stSel.size} ausgewählt${wbSel.size ? " — aus der Schnellwahl, frei anpassbar" : ""}` : undefined}>
-        Stadtteile
+        Orte
       </SetupLabel>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {selectedSt.map((s) => (
@@ -300,14 +300,14 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
         {searchOpen ? (
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input autoFocus className="h-8 w-44 rounded-full pl-8 text-xs" placeholder="Stadtteil suchen…"
+            <Input autoFocus className="h-8 w-44 rounded-full pl-8 text-xs" placeholder="Ort suchen…"
               value={q} onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Escape") { setSearchOpen(false); setQ(""); } }} />
           </div>
         ) : hiddenCount > 0 && (
           <button type="button" onClick={() => setSearchOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
-            <Search className="h-3 w-3" /> Stadtteil suchen — {hiddenCount} weitere
+            <Search className="h-3 w-3" /> Ort suchen — {hiddenCount} weitere
           </button>
         )}
       </div>
@@ -316,7 +316,7 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
         <>
           {(inSelection.length > 0 || selectedOutside.length > 0) && (
             <>
-              <SetupLabel hint="— liegen in den gewählten Stadtteilen">Themen in deiner Auswahl</SetupLabel>
+              <SetupLabel hint="— liegen in den gewählten Ortsbereichen">Themen in deiner Auswahl</SetupLabel>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {inSelection.map((t) => themeChip(t))}
                 {selectedOutside.map((t) => themeChip(t, true))}
@@ -547,7 +547,7 @@ function QuizInner() {
   tiles.push({
     key: "map", icon: <MapPin className="h-[18px] w-[18px]" />,
     iconClass: "bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-400",
-    title: "Karten-Quiz", sub: "Stadtteile auf der Karte finden", onClick: () => void startMap(),
+    title: "Karten-Quiz", sub: "Ortsbereiche auf der Karte finden", onClick: () => void startMap(),
   });
   tiles.push({
     key: "own", icon: <PencilLine className="h-[18px] w-[18px]" />, iconClass: "bg-muted text-muted-foreground",
@@ -579,7 +579,7 @@ function QuizInner() {
               )}
             </div>
           ) : (
-            <p className="mt-1 text-sm text-muted-foreground">Teste dein Wissen über deine Stadt — nach Wahlbereich, Stadtteil oder großem Thema.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Teste dein Wissen über deine Stadt — nach Wahlbereich, Ortsbereich oder großem Thema.</p>
           )}
         </div>
         {answered > 0 && stats && (

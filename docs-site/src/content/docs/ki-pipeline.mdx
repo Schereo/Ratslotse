@@ -95,6 +95,40 @@ eingeordnet — die Grundlage für Filter, Analyse und die Themenfeld-Rückblick
 Details zu den Dokumenten und dem Datenmodell:
 [Ratsdokumente & Beschlüsse](/docs/beschluesse/).
 
+### Ortsentitäten
+
+Orte werden ähnlich wie Personen und Themen in zwei Schichten behandelt. Die
+Extraktion speichert zunächst den konkreten Namen und seine Fundstelle im
+Beschluss. Straßenmuster und Namen aus dem zentralen Ortskatalog erkennt der
+Code deterministisch; ein LLM ergänzt Gebäude und Gebiete, darf aber nur
+wörtlich belegte Fundstellen liefern. Geocoding ordnet freie Beobachtungen
+anschließend, sofern möglich, einem der 31 flächendeckenden Ortsbereiche zu.
+
+Der [zentrale Ortskatalog](/docs/adr/0009-zentraler-ortskatalog/) enthält die
+kuratierten Entitäten: neben den Ortsbereichen auch ausgewählte Quartiere,
+Parks, Schutz-, Wohn-, Sanierungs- und Entwicklungsgebiete. Jeder Eintrag hat
+eine stabile ID, einen Typ, Aliase, Quellen und optional Elternorte sowie
+Koordinaten. Neue Ortslinks erhalten `place_id` und `ortsbereich_id`; ein
+Backfill ergänzt sie im Bestand.
+
+Häufige, noch unbekannte Gebietsnamen landen mit ihren Fundstellen in der
+Admin-Prüfung. Freigaben oder Alias-Zuordnungen erweitern den Laufzeitkatalog
+sofort und werden beim nächsten Beschlussimport deterministisch erkannt;
+Verwerfungen blenden unzuverlässige Namen aus öffentlichen Karten aus.
+
+Das wirkt in allen Produkten gleich: Die Beschlusssuche filtert über die
+stabile ID, Ortsprofile zeigen Stammdaten und belegte Beschlüsse, und das Quiz
+verwendet dieselben Namen und Quellen. Erkennt **„Frag den Rat“** einen
+Katalogort in der Frage, begrenzt es semantische und lexikalische Treffer auf
+die direkt diesem Ort zugeordneten Beschlüsse. Die generierte Antwort darf den
+Ortsbezug nur aus den mitgelieferten Fundstellen ableiten.
+
+Auf der Stadtkarte erscheinen außerdem konkrete, geocodierte Beschlussorte.
+Für automatisch erkannte Straßen, Plätze, Gebäude und Gewässer gilt eine
+Mindestbelegung von drei Beschlüssen; unscharfe Gebiete benötigen vorher eine
+redaktionelle Freigabe. Kartenpunkte führen auf das Ortsprofil oder auf eine
+exakte Beschluss-Suche für diesen Ort.
+
 ## „Lotti erklärt's einfach"
 
 Amtsdeutsch ist die größte Hürde vor den Ratsdaten. Deshalb schreibt
@@ -152,7 +186,8 @@ gesetzte Zuordnungen überschreibt ein automatischer Lauf nie.
 ## Quiz-Fragen
 
 Das **Oldenburg-Quiz** erzeugt seine Multiple-Choice-Fragen per LLM, aber
-**streng geerdet**. Pro Gebiet (Stadtteil, Wahlbereich oder stadtweites Thema)
+**streng geerdet**. Pro Ort (Ratslotse-Ortsbereich oder kuratierter Katalogort),
+Wahlbereich oder stadtweitem Thema
 sammelt der Code zuerst Quelltexte — **Wikipedia** (Stadtteil-Artikel), die
 **Stadt-Website** oldenburg.de und die **eigenen Ratsdaten** — und legt sie dem
 LLM vor. Das Modell formuliert daraus Fragen mit vier Antwortoptionen,
@@ -172,9 +207,11 @@ Punkte und Bewertungen in `nwz.sqlite` (pro Konto). Der Backfill
 Anreicherung und lässt sich für den Erstlauf manuell über einen Ops-Workflow
 anstoßen.
 
-Das **Karten-Quiz** („Wo liegt Stadtteil X?") ist die Ausnahme: rein
+Das **Karten-Quiz** („Wo liegt Ortsbereich X?") ist die Ausnahme: rein
 geografisch, ganz **ohne LLM** — die Fragen entstehen deterministisch aus den
-Stadtteil-Polygonen, die Karte selbst ist die Antwortfläche.
+Ortsbereich-Polygonen, die Karte selbst ist die Antwortfläche. Der gemeinsame
+[Ortskatalog](/docs/adr/0009-zentraler-ortskatalog/) dokumentiert, warum diese
+31 Ratslotse-Gebiete keine amtlich festgelegten Stadtteile sind.
 
 Auch die **Haushalts-Fragen** (Thema „Stadt-Haushalt") entstehen **ohne LLM**:
 `council/haushalt.py` parst die „Übersicht Ergebnishaushalt" aus den
@@ -206,8 +243,8 @@ Bei der Karte hat Verlässlichkeit Vorrang, in absteigender Genauigkeit: Für
 verstreute oder mehrfach vergebene Straßennamen (mehrere „Mittelwege") werden
 **verworfen**, damit nie eine falsche Stelle markiert wird. Einen **Punkt**-Marker
 gibt es sonst nur für bekannte Einzelorte (die einen Wikipedia-Artikel haben).
-Und geht es um einen ganzen Stadtteil (oder eine Person/Sache von dort), zeichnet
-die Karte das **ganze Gebiet** als Polygon ein — die Stadtteil-Grenzen besitzen
+Und geht es um einen ganzen Ortsbereich (oder eine Person/Sache von dort), zeichnet
+die Karte das **ganze Gebiet** als Polygon ein — die Ratslotse-Grenzen besitzen
 wir selbst, das ist also immer verlässlich. Bei Fragen zu einer konkreten Person
 oder Sache verweist der **Quelle-Link** außerdem auf deren eigenen
 Wikipedia-Artikel statt auf die Gebiets-Seite. Zu kniffligen Fragen kann es einen

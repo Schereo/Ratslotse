@@ -23,7 +23,8 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 ## Sub-Steps (von einem Cron-Skript aufgerufen, nicht selbst geplant)
 
 `check_protocols.py` importiert und ruft der Reihe nach:
-`backfill_protocols.py` · `classify_decisions.py` · `extract_amounts.py` · `track_goals.py`
+`backfill_protocols.py` · `classify_decisions.py` · `extract_amounts.py` · `track_goals.py` ·
+`extract_decision_locations.py` · `geocode_decision_locations.py`
 
 `weekly_enrich.py` startet per Subprocess:
 `extract_entities.py` → `describe_entities.py` → `geocode_entities.py` →
@@ -39,6 +40,9 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 | `grant_admin.py` | Adminrechte an ein **bestehendes** Konto geben (Erst-Einrichtung ohne Mail-Versand, ausgesperrter Admin) |
 | `reextract_protocols.py` | Beschlüsse neu extrahieren nach Prompt-Änderung |
 | `build_decisions_fts.py` | Volltext-Index der Beschlüsse neu bauen |
+| `extract_decision_locations.py --full` | Einmaliger Orts-Backfill; danach inkrementell über `check_protocols.py` |
+| `geocode_decision_locations.py` | Neue Beschluss-Orte geokodieren sowie stabile Katalog- und Ortsbereichs-IDs ableiten |
+| `revalidate_decision_locations.py [--apply]` | Gespeicherte Ortslinks mit aktuellen Präzisionsregeln prüfen/reparieren (Dry-Run-Default) |
 | `purge_nwz_data.py` | Gescrapte NWZ-Artikeldaten aus den DBs entfernen (Dry-Run-Default) |
 | `ingest_finanzberichte.py`, `ingest_pruefberichte.py` | **Alle** Haushalts-Jahrgänge neu einlesen — der Weg, einen verbesserten Parser über den Bestand zu ziehen. Neue Jahrgänge holt `check_finanzdaten.py` von allein; diese Skripte fassen auch Vorhandenes an |
 | `ingest_haushalt.py` | Haushaltsplan eines Jahres von oldenburg.de laden (der Cron lädt bewusst nichts herunter) |

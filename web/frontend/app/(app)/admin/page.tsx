@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, AdminUserRow, AdminUserDetail, AdminGrowth, AdminJob, QuizFlagged, AdminQuizStats, EntityAlias, AdminFeedback } from "@/lib/types";
-import { Badge, Button, Card, ChartSkeleton, ConfirmDialog, ErrorState, PageHeader, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
+import { Prompt, AdminUserRow, AdminUserDetail, AdminGrowth, AdminJob, QuizFlagged, AdminQuizStats, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
+import { Badge, Button, Card, ChartSkeleton, ConfirmDialog, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
+import type { OrtsbereichCatalog } from "@/lib/stadtteile";
 
-type Tab = "stats" | "feedback" | "llm" | "prompts" | "users" | "quiz" | "themen";
+type Tab = "stats" | "feedback" | "llm" | "prompts" | "users" | "quiz" | "orte" | "themen";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -36,6 +37,7 @@ export default function AdminPage() {
           ["prompts", "Prompts"],
           ["users", "Web-Nutzer*innen"],
           ["quiz", "Quiz"],
+          ["orte", "Ortskandidaten"],
           ["themen", "Themen-Dubletten"],
         ] as [Tab, string][]).map(([t, label]) => (
           <button
@@ -56,6 +58,7 @@ export default function AdminPage() {
         {tab === "prompts" && <PromptsTab />}
         {tab === "users" && <UsersTab currentUserId={user.id} />}
         {tab === "quiz" && <QuizModerationTab />}
+        {tab === "orte" && <PlaceCandidatesTab />}
         {tab === "themen" && <EntityAliasTab />}
       </div>
     </div>
@@ -987,6 +990,199 @@ function QuizModerationTab() {
         ))}
       </Card>
       </>)}
+    </div>
+  );
+}
+
+
+type PlaceReviewStatus = "pending" | "approved" | "alias" | "rejected";
+
+function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
+  candidate: PlaceCandidate;
+  catalog: OrtsbereichCatalog;
+  busy: boolean;
+  onReview: (slug: string, body: Record<string, unknown>) => void;
+  onReopen: (slug: string) => void;
+}) {
+  const [name, setName] = useState(candidate.review_name ?? candidate.name);
+  const [placeId, setPlaceId] = useState(candidate.review_place_id ?? candidate.slug);
+  const [kind, setKind] = useState(candidate.review_kind ?? "quartier");
+  const [parentId, setParentId] = useState(candidate.parent_id ?? candidate.ortsbereich_id ?? "");
+  const [aliases, setAliases] = useState((candidate.aliases ?? []).join(", "));
+  const [description, setDescription] = useState(candidate.description ?? "");
+  const [sourceUrl, setSourceUrl] = useState(candidate.source_url ?? "");
+  const [canonical, setCanonical] = useState(candidate.canonical_place_id ?? "");
+  const [quizEnabled, setQuizEnabled] = useState(!!candidate.quiz_enabled);
+  const primaries = catalog.places.filter((p) => p.kind === "ortsbereich");
+  const targets = catalog.places.filter((p) => p.id !== placeId);
+  const kinds = Object.entries(catalog.kinds).filter(([key]) => key !== "ortsbereich");
+  const payload = {
+    place_id: placeId, name, kind, parent_id: parentId || null,
+    aliases: aliases.split(",").map((value) => value.trim()).filter(Boolean),
+    description: description || null, source_url: sourceUrl || null,
+    quiz_enabled: quizEnabled,
+  };
+
+  return (
+    <Card className="p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold">{candidate.name}</p>
+            <Badge color="slate">{candidate.kind}</Badge>
+            <Badge color={candidate.lat != null ? "green" : "amber"}>
+              {candidate.lat != null ? `verortet · ${candidate.stadtteil ?? "Oldenburg"}` : "ohne Koordinate"}
+            </Badge>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {candidate.decision_count} Beschlüsse · ⌀ {Math.round(candidate.avg_confidence * 100)} % Sicherheit
+            {candidate.last_date ? ` · zuletzt ${formatDate(candidate.last_date)}` : ""}
+          </p>
+        </div>
+        {candidate.status !== "pending" && (
+          <Button variant="ghost" size="sm" disabled={busy} onClick={() => onReopen(candidate.slug)}>
+            Erneut prüfen
+          </Button>
+        )}
+      </div>
+
+      <div className="mt-3 rounded-lg bg-muted/55 p-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Stichproben</p>
+        <ul className="mt-1.5 space-y-2">
+          {candidate.evidence.map((sample) => (
+            <li key={sample.id} className="text-xs leading-relaxed">
+              <a className="font-medium text-primary hover:underline" href={`/council/decision?id=${sample.id}`}>
+                {sample.title || `Beschluss ${sample.id}`}
+              </a>
+              <span className="text-muted-foreground"> · {formatDate(sample.session_date)} · „{sample.evidence}“</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <details className="mt-3" open={candidate.status === "pending"}>
+        <summary className="cursor-pointer text-xs font-semibold text-primary">Katalog-Zuordnung bearbeiten</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="text-xs text-muted-foreground">Anzeigename
+            <Input className="mt-1" value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+          <label className="text-xs text-muted-foreground">Stabile ID
+            <Input className="mt-1" value={placeId} onChange={(event) => setPlaceId(event.target.value)} />
+          </label>
+          <label className="text-xs text-muted-foreground">Ortstyp
+            <Select className="mt-1" value={kind} onChange={(event) => setKind(event.target.value)}>
+              {kinds.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </Select>
+          </label>
+          <label className="text-xs text-muted-foreground">Übergeordneter Ortsbereich
+            <Select className="mt-1" value={parentId} onChange={(event) => setParentId(event.target.value)}>
+              <option value="">Noch unklar</option>
+              {primaries.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </Select>
+          </label>
+          <label className="text-xs text-muted-foreground sm:col-span-2">Weitere Namen, komma-getrennt
+            <Input className="mt-1" value={aliases} onChange={(event) => setAliases(event.target.value)} />
+          </label>
+          <label className="text-xs text-muted-foreground sm:col-span-2">Beschreibung
+            <Textarea className="mt-1 min-h-20" value={description} onChange={(event) => setDescription(event.target.value)} />
+          </label>
+          <label className="text-xs text-muted-foreground sm:col-span-2">Beleg / Quellen-URL (Pflicht bei Freigabe)
+            <Input className="mt-1" type="url" required value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} />
+          </label>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input type="checkbox" checked={quizEnabled} onChange={(event) => setQuizEnabled(event.target.checked)} />
+            Für neue Quizfragen zulassen
+          </label>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" disabled={busy || !sourceUrl.trim()} onClick={() => onReview(candidate.slug, { status: "approved", ...payload })}>
+            Als Katalogort freigeben
+          </Button>
+          <Button variant="danger" size="sm" disabled={busy}
+            onClick={() => onReview(candidate.slug, { status: "rejected" })}>
+            Verwerfen
+          </Button>
+        </div>
+        <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-end">
+          <label className="min-w-0 flex-1 text-xs text-muted-foreground">Oder als Alias zuordnen
+            <Select className="mt-1" value={canonical} onChange={(event) => setCanonical(event.target.value)}>
+              <option value="">Zielort wählen</option>
+              {targets.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.kind_label}</option>)}
+            </Select>
+          </label>
+          <Button variant="secondary" size="sm" disabled={busy || !canonical}
+            onClick={() => onReview(candidate.slug, { status: "alias", canonical_place_id: canonical })}>
+            Als Alias speichern
+          </Button>
+        </div>
+      </details>
+    </Card>
+  );
+}
+
+/** Redaktionelle Brücke zwischen automatischer Extraktion und gemeinsamem
+ * Ortskatalog. Die Beschluss-Belege stehen direkt am Kandidaten. */
+function PlaceCandidatesTab() {
+  const qc = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<PlaceReviewStatus>("pending");
+  const { data: catalog } = useQuery({
+    queryKey: ["council", "places"],
+    queryFn: () => api.get<OrtsbereichCatalog>("/council/places"),
+  });
+  const query = useQuery({
+    queryKey: ["admin", "place-candidates", statusFilter],
+    queryFn: () => api.get<{ candidates: PlaceCandidate[] }>(
+      `/admin/place-candidates?status=${statusFilter}&limit=300`),
+  });
+  const review = useMutation({
+    mutationFn: ({ slug, body }: { slug: string; body: Record<string, unknown> }) =>
+      api.put(`/admin/place-candidates/${encodeURIComponent(slug)}`, body),
+    onSuccess: () => {
+      toast.success("Ortsprüfung gespeichert.");
+      qc.invalidateQueries({ queryKey: ["admin", "place-candidates"] });
+      qc.invalidateQueries({ queryKey: ["council", "places"] });
+    },
+    onError: () => toast.error("Ortsprüfung konnte nicht gespeichert werden."),
+  });
+  const reopen = useMutation({
+    mutationFn: (slug: string) => api.del(`/admin/place-candidates/${encodeURIComponent(slug)}`),
+    onSuccess: () => {
+      toast.success("Kandidat ist wieder offen.");
+      qc.invalidateQueries({ queryKey: ["admin", "place-candidates"] });
+      qc.invalidateQueries({ queryKey: ["council", "places"] });
+    },
+    onError: () => toast.error("Prüfung konnte nicht geöffnet werden."),
+  });
+
+  if (query.isPending || !catalog) return <Spinner />;
+  if (query.isError) return <ErrorState title="Die Ortskandidaten kamen nicht durch"
+    onRetry={() => void query.refetch()} busy={query.isFetching} />;
+  const candidates = query.data?.candidates ?? [];
+  const tabs: [PlaceReviewStatus, string][] = [
+    ["pending", "Offen"], ["approved", "Freigegeben"],
+    ["alias", "Aliase"], ["rejected", "Verworfen"],
+  ];
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Ortsnamen aus mindestens drei Beschlüssen. Freigegebene Gebiete werden Teil des gemeinsamen
+        Ortskatalogs; konkrete Straßen und Gebäude erscheinen ab drei Beschlüssen automatisch auf der Karte.
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {tabs.map(([value, label]) => (
+          <button key={value} type="button" onClick={() => setStatusFilter(value)}
+            className={cn("rounded-full border px-3 py-1.5 text-xs font-medium",
+              statusFilter === value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground")}>{label}</button>
+        ))}
+      </div>
+      {candidates.length === 0 ? (
+        <Card className="p-8 text-center text-sm text-muted-foreground">In dieser Gruppe gibt es keine Kandidaten.</Card>
+      ) : candidates.map((candidate) => (
+        <PlaceCandidateCard key={candidate.slug} candidate={candidate} catalog={catalog}
+          busy={review.isPending || reopen.isPending}
+          onReview={(slug, body) => review.mutate({ slug, body })}
+          onReopen={(slug) => reopen.mutate(slug)} />
+      ))}
     </div>
   );
 }
