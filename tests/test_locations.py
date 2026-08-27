@@ -464,6 +464,19 @@ def test_reviewed_place_joins_catalog_extraction_search_and_map(tmp_path):
     candidate = next(c for c in store.location_candidates() if c["slug"] == "testquartier")
     assert candidate["decision_count"] == 3 and len(candidate["evidence"]) == 3
 
+    with pytest.raises(ValueError, match="gültigen Ortstyp"):
+        store.review_location_candidate(
+            "testquartier", status="concrete", kind="quartier")
+    concrete = store.review_location_candidate(
+        "testquartier", status="concrete", kind="gebaeude", updated_by="admin@test.de")
+    assert concrete["status"] == "concrete" and concrete["review_kind"] == "gebaeude"
+    assert not store.resolve_place("Testquartier")
+    point = next(p for p in store.decision_location_map_points() if p["slug"] == "testquartier")
+    assert point["target"] == "location" and point["place_id"] is None
+    assert store.location_candidates("concrete")[0]["slug"] == "testquartier"
+    assert store.delete_location_review("testquartier")
+    assert not any(p["slug"] == "testquartier" for p in store.decision_location_map_points())
+
     store.review_location_candidate(
         "testquartier", status="approved", place_id="testquartier",
         name="Testquartier", kind="quartier", parent_id="nadorst",

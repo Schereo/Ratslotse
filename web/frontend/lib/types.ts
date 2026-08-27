@@ -280,7 +280,7 @@ export interface PlaceCandidateEvidence {
 export interface PlaceCandidate {
   slug: string; name: string; kind: string; lat: number | null; lon: number | null;
   stadtteil: string | null; ortsbereich_id: string | null;
-  status: "pending" | "approved" | "alias" | "rejected";
+  status: "pending" | "concrete" | "approved" | "alias" | "rejected";
   decision_count: number; last_date: string; avg_confidence: number;
   review_place_id?: string | null; review_name?: string | null;
   review_kind?: string | null; parent_id?: string | null; aliases?: string[];
