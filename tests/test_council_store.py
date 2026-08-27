@@ -639,3 +639,89 @@ def test_agenda_anlagen_roundtrip(tmp_path):
         assert store.agenda_items(9)[0]["anlagen"] == []
     finally:
         store.close()
+
+
+def _radar_store(tmp_path):
+    store = CouncilStore(tmp_path / "radar.sqlite")
+    now = "2026-08-27T10:00:00"
+    vorlagen = [
+        (1, "26/0001", "Neue Radabstellanlage", "Beschlussvorlage"),
+        (2, "26/0002", "Schulhof entsiegeln", "Beschlussvorlage"),
+        (3, "26/0003", "Bebauungsplan beschließen", "Beschlussvorlage"),
+        (4, "26/0004", "Sportplatz vertagen", "Beschlussvorlage"),
+        (5, "26/0005", "Alter Vorgang", "Beschlussvorlage"),
+    ]
+    for kvonr, nr, titel, art in vorlagen:
+        store._conn.execute(
+            "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, art, fetched_at, status) "
+            "VALUES (?,?,?,?,?, 'ok')",
+            (kvonr, nr, titel, art, now),
+        )
+    for ksinr, gremium, tag in [
+        (10, "Verkehrsausschuss", "2026-09-03"),
+        (11, "Jugendhilfeausschuss", "2026-08-01"),
+        (12, "Rat", "2026-08-15"),
+        (13, "Sportausschuss", "2026-08-20"),
+        (14, "Sportausschuss", "2026-09-10"),
+        (15, "Rat", "2026-01-15"),
+    ]:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+            "VALUES (?,?,?,?,?,?)",
+            (ksinr, gremium, tag, "17:00", "Rathaus", now),
+        )
+    beratungen = [
+        (1, "2026-09-03", "Verkehrsausschuss", "Ö 5", "Vorberatung", 10),
+        (2, "2026-08-01", "Jugendhilfeausschuss", "Ö 7", "Vorberatung", 11),
+        (3, "2026-08-15", "Rat", "Ö 9", "Beschluss", 12),
+        (4, "2026-08-20", "Sportausschuss", "Ö 6", "Beschluss", 13),
+        (4, "2026-09-10", "Sportausschuss", "Ö 6", "Beschluss", 14),
+        (5, "2026-01-15", "Rat", "Ö 1", "Beschluss", 15),
+    ]
+    for kvonr, tag, gremium, top, ergebnis, ksinr in beratungen:
+        store._conn.execute(
+            "INSERT INTO council_beratungen (kvonr, datum, gremium, top, is_public, ergebnis, ksinr, fetched_at) "
+            "VALUES (?,?,?,?,1,?,?,?)",
+            (kvonr, tag, gremium, top, ergebnis, ksinr, now),
+        )
+    decisions = [
+        (3, 12, "26/0003", "Bebauungsplan beschließen", "angenommen", "Einstimmig angenommen."),
+        (4, 13, "26/0004", "Sportplatz vertagen", "vertagt", "Vertagt."),
+        (5, 15, "26/0005", "Alter Vorgang", "angenommen", "Angenommen."),
+    ]
+    for kvonr, ksinr, nr, titel, outcome, raw in decisions:
+        store._conn.execute(
+            "INSERT INTO council_decisions "
+            "(ksinr, position, kind, item_number, title, beschluss, outcome, vorlage_nr, kvonr, raw_result) "
+            "VALUES (?, 1, 'decision', 'Ö 1', ?, 'Beschluss', ?, ?, ?, ?)",
+            (ksinr, titel, outcome, nr, kvonr, raw),
+        )
+    store._conn.commit()
+    return store
+
+
+def test_beschlussradar_gruppiert_vorlagen_nach_verfahrensstand(tmp_path):
+    store = _radar_store(tmp_path)
+    try:
+        board = store.beschlussradar(today="2026-08-27", days_back=90)
+    finally:
+        store.close()
+
+    columns = {c["key"]: c for c in board["columns"]}
+    assert [i["kvonr"] for i in columns["geplant"]["items"]] == [1]
+    assert [i["kvonr"] for i in columns["in_beratung"]["items"]] == [4, 2]
+    assert [i["kvonr"] for i in columns["entschieden"]["items"]] == [3]
+    assert columns["in_beratung"]["items"][0]["latest_result"]["outcome"] == "vertagt"
+    assert "Alter Vorgang" not in {i["title"] for c in columns.values() for i in c["items"]}
+
+
+def test_beschlussradar_limitiert_nur_die_ausgabe_nicht_die_zaehlung(tmp_path):
+    store = _radar_store(tmp_path)
+    try:
+        board = store.beschlussradar(today="2026-08-27", days_back=90, limit_per_column=1)
+    finally:
+        store.close()
+
+    in_beratung = next(c for c in board["columns"] if c["key"] == "in_beratung")
+    assert in_beratung["count"] == 2
+    assert len(in_beratung["items"]) == 1

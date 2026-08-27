@@ -107,6 +107,20 @@ def place_catalog(_user: dict = Depends(require_active),
     return store.public_place_catalog()
 
 
+@router.get("/beschlussradar")
+def beschlussradar(
+    days: int = Query(90, ge=1, le=365),
+    limit: int = Query(60, ge=1, le=200),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Dev-Radar für Vorlagen nach verlässlichem Beratungsstand."""
+    board = store.beschlussradar(days_back=days, limit_per_column=limit)
+    for column in board.get("columns", []):
+        for item in column.get("items", []):
+            item["vorlage_url"] = _vorlage_url(item["kvonr"])
+    return board
+
+
 @router.get("/place/{place_id}")
 def place_detail(
     place_id: str,

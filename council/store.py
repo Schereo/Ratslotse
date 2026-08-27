@@ -3,7 +3,8 @@ from __future__ import annotations
 import contextlib
 import json
 import re
-from datetime import datetime, timezone
+from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import sqlite3
@@ -4534,6 +4535,156 @@ class CouncilStore:
                 bewertet[r["kvonr"]] = (n, dict(r))
         beste = sorted(bewertet.values(), key=lambda t: (-t[0], t[1]["datum"]))
         return [d for _n, d in beste[:limit]]
+
+    def beschlussradar(self, days_back: int = 90, today: str | None = None,
+                       limit_per_column: int = 60) -> dict:
+        """Vorlagen-Kanban aus belastbaren Ratsinfo-Signalen.
+
+        Das Radar behauptet bewusst nur den Verfahrensstand: geplante Station,
+        laufende Beratung oder gefasster Beschluss. Ob ein Beschluss draußen in
+        der Stadt schon umgesetzt ist, steht im Ratsinfo nicht zuverlässig.
+        """
+        heute = date.fromisoformat(today) if today else datetime.now(timezone.utc).date()
+        heute_s = heute.isoformat()
+        cutoff = (heute - timedelta(days=max(1, int(days_back)))).isoformat()
+        limit_per_column = max(1, int(limit_per_column))
+
+        rows = self._conn.execute(
+            """SELECT DISTINCT v.kvonr
+               FROM council_vorlagen v JOIN council_beratungen b ON b.kvonr = v.kvonr
+               WHERE b.datum IS NOT NULL AND b.datum >= ?
+               UNION
+               SELECT DISTINCT v.kvonr
+               FROM council_vorlagen v
+               JOIN council_decisions d ON d.kvonr = v.kvonr
+                    OR (v.vorlage_nr IS NOT NULL AND v.vorlage_nr != ''
+                        AND d.vorlage_nr = v.vorlage_nr)
+               JOIN council_sessions s ON s.ksinr = d.ksinr
+               WHERE s.session_date >= ?""",
+            (cutoff, cutoff),
+        ).fetchall()
+        kvonrs = sorted({int(r[0]) for r in rows if r[0] is not None})
+        if not kvonrs:
+            return {"today": heute_s, "window_days": days_back, "columns": [
+                {"key": "geplant", "title": "Geplant", "count": 0, "items": []},
+                {"key": "in_beratung", "title": "In Beratung", "count": 0, "items": []},
+                {"key": "entschieden", "title": "Entschieden", "count": 0, "items": []},
+            ]}
+
+        ph = ",".join("?" * len(kvonrs))
+        vorlagen = [dict(r) for r in self._conn.execute(
+            f"SELECT kvonr, vorlage_nr, title, art FROM council_vorlagen "
+            f"WHERE kvonr IN ({ph}) ORDER BY title",
+            kvonrs,
+        ).fetchall()]
+        vorlage_nrs = sorted({v["vorlage_nr"] for v in vorlagen if v.get("vorlage_nr")})
+
+        stationen: dict[int, list[dict]] = defaultdict(list)
+        for r in self._conn.execute(
+            f"SELECT kvonr, datum, gremium, top, is_public, ergebnis, ksinr "
+            f"FROM council_beratungen WHERE kvonr IN ({ph}) "
+            f"ORDER BY datum IS NULL, datum, id",
+            kvonrs,
+        ).fetchall():
+            stationen[int(r["kvonr"])].append(dict(r))
+
+        entscheidungen_nach_kvonr: dict[int, list[dict]] = defaultdict(list)
+        entscheidungen_nach_nr: dict[str, list[dict]] = defaultdict(list)
+        params: list = list(kvonrs)
+        where = [f"d.kvonr IN ({ph})"]
+        if vorlage_nrs:
+            ph_nr = ",".join("?" * len(vorlage_nrs))
+            where.append(f"d.vorlage_nr IN ({ph_nr})")
+            params.extend(vorlage_nrs)
+        for r in self._conn.execute(
+            "SELECT d.id, d.kvonr, d.vorlage_nr, d.title, d.outcome, d.raw_result, "
+            "       d.item_number, s.session_date, s.committee "
+            "FROM council_decisions d JOIN council_sessions s ON s.ksinr = d.ksinr "
+            f"WHERE d.kind = 'decision' AND ({' OR '.join(where)}) "
+            "ORDER BY s.session_date DESC, d.position DESC, d.id DESC",
+            params,
+        ).fetchall():
+            d = dict(r)
+            if d.get("kvonr") is not None:
+                entscheidungen_nach_kvonr[int(d["kvonr"])].append(d)
+            if d.get("vorlage_nr"):
+                entscheidungen_nach_nr[d["vorlage_nr"]].append(d)
+
+        def station(row: dict | None) -> dict | None:
+            if not row:
+                return None
+            return {"date": row.get("datum"), "committee": row.get("gremium"),
+                    "top": row.get("top"), "result": row.get("ergebnis"),
+                    "ksinr": row.get("ksinr")}
+
+        def entscheidung(row: dict | None) -> dict | None:
+            if not row:
+                return None
+            return {"id": row.get("id"), "title": row.get("title"),
+                    "outcome": row.get("outcome"), "raw_result": row.get("raw_result"),
+                    "item_number": row.get("item_number"),
+                    "date": row.get("session_date"), "committee": row.get("committee")}
+
+        spalten: dict[str, list[dict]] = {"geplant": [], "in_beratung": [], "entschieden": []}
+        for v in vorlagen:
+            kvonr = int(v["kvonr"])
+            alle_stationen = stationen.get(kvonr, [])
+            vergangen = [s for s in alle_stationen if (s.get("datum") or "9999-99-99") < heute_s]
+            kuenftig = [s for s in alle_stationen if (s.get("datum") or "0000-00-00") >= heute_s]
+            entscheidungen = list(entscheidungen_nach_kvonr.get(kvonr, []))
+            for d in entscheidungen_nach_nr.get(v.get("vorlage_nr") or "", []):
+                if all(d["id"] != e["id"] for e in entscheidungen):
+                    entscheidungen.append(d)
+            entscheidungen.sort(key=lambda d: (d.get("session_date") or "", d.get("id") or 0), reverse=True)
+            finale = next((d for d in entscheidungen
+                           if (d.get("outcome") or "") and d.get("outcome") != "vertagt"), None)
+            neueste_entscheidung = entscheidungen[0] if entscheidungen else None
+            naechste = kuenftig[0] if kuenftig else None
+            letzte = vergangen[-1] if vergangen else None
+
+            if neueste_entscheidung and neueste_entscheidung.get("outcome") == "vertagt":
+                key = "in_beratung"
+                sort_date = neueste_entscheidung.get("session_date") or ""
+                reason = f"Zuletzt vertagt am {sort_date or 'unbekannt'}"
+            elif finale:
+                key = "entschieden"
+                sort_date = finale.get("session_date") or (letzte or {}).get("datum") or ""
+                reason = f"Entschieden am {finale.get('session_date') or 'unbekannt'}"
+            elif naechste and not letzte:
+                key = "geplant"
+                sort_date = naechste.get("datum") or "9999-99-99"
+                reason = f"Nächste Beratung am {naechste.get('datum')}"
+            else:
+                key = "in_beratung"
+                sort_date = (letzte or naechste or {}).get("datum") or ""
+                reason = (f"Zuletzt beraten am {letzte.get('datum')}" if letzte
+                          else "Beratungsfolge noch nicht vollständig verknüpft.")
+
+            spalten[key].append({
+                "kvonr": kvonr, "vorlage_nr": v.get("vorlage_nr"),
+                "title": v.get("title") or "Ohne Titel", "art": v.get("art"),
+                "status": key, "reason": reason,
+                "next_station": station(naechste), "last_station": station(letzte),
+                "latest_result": entscheidung(finale or neueste_entscheidung),
+                "sort_date": sort_date,
+            })
+
+        spalten["geplant"].sort(key=lambda x: x["sort_date"] or "9999-99-99")
+        spalten["in_beratung"].sort(key=lambda x: x["sort_date"] or "", reverse=True)
+        spalten["entschieden"].sort(key=lambda x: x["sort_date"] or "", reverse=True)
+        meta = {
+            "geplant": "Nächste Station steht im Kalender, bisher ohne vergangene Beratung.",
+            "in_beratung": "Mindestens eine Station lief schon, aber es gibt noch keinen abschließenden Beschluss.",
+            "entschieden": "Ein verknüpfter Beschluss hat ein abschließendes Ergebnis.",
+        }
+        titel = {"geplant": "Geplant", "in_beratung": "In Beratung", "entschieden": "Entschieden"}
+        return {"today": heute_s, "window_days": days_back, "columns": [
+            {"key": key, "title": titel[key], "description": meta[key],
+             "count": len(items),
+             "items": [{k: v for k, v in item.items() if k != "sort_date"}
+                       for item in items[:limit_per_column]]}
+            for key, items in spalten.items()
+        ]}
 
     def kvonrs_without_beratungen(self, limit: int | None = None) -> list[int]:
         """Ingested Vorlagen whose Beratungsfolge has never been fetched,
