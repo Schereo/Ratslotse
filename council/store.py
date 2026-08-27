@@ -2068,7 +2068,7 @@ class CouncilStore:
 
     def _decision_where(self, query, committee, outcome, faction, date_from, date_to,
                         kind, category, field="", party_ids=None, include_subvotes=False,
-                        only_ids=None):
+                        only_ids=None, district=""):
         """Build the WHERE clause + params shared by search and count."""
         filters: list[str] = []
         params: list = []
@@ -2100,6 +2100,15 @@ class CouncilStore:
         if field:
             filters.append("d.policy_field = ?")
             params.append(field)
+        if district:
+            # EXISTS vermeidet doppelte Beschlusszeilen, wenn mehrere konkrete
+            # Orte desselben Vorgangs im gewählten Stadtteil liegen.
+            filters.append(
+                "EXISTS (SELECT 1 FROM council_decision_locations dl "
+                "JOIN council_locations l ON l.slug = dl.location_slug "
+                "WHERE dl.decision_id = d.id AND l.stadtteil = ?)"
+            )
+            params.append(district)
         if outcome:
             filters.append("d.outcome = ?")
             params.append(outcome)
@@ -2147,6 +2156,7 @@ class CouncilStore:
         offset: int = 0,
         include_subvotes: bool = False,
         only_ids: list[int] | None = None,
+        district: str = "",
     ) -> list[dict]:
         """Search extracted decisions, joined with their session (committee + date).
         ``category`` is "vote" (decided) or "report" (zur Kenntnis / no decision).
@@ -2174,7 +2184,8 @@ class CouncilStore:
         party_ids = self.decision_ids_for_party(party) if party else None
         where, params = self._decision_where(query, committee, outcome, faction,
                                               date_from, date_to, kind, category, field, party_ids,
-                                              include_subvotes=include_subvotes, only_ids=only_ids)
+                                              include_subvotes=include_subvotes, only_ids=only_ids,
+                                              district=district)
         rows = self._conn.execute(
             f"""SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
                 FROM council_decisions d
@@ -2221,12 +2232,13 @@ class CouncilStore:
     def count_decisions(
         self, query="", committee="", outcome="", faction="", date_from="", date_to="",
         kind="", category="", field="", party="", include_subvotes=False,
-        only_ids: list[int] | None = None,
+        only_ids: list[int] | None = None, district: str = "",
     ) -> int:
         party_ids = self.decision_ids_for_party(party) if party else None
         where, params = self._decision_where(query, committee, outcome, faction,
                                              date_from, date_to, kind, category, field, party_ids,
-                                             include_subvotes=include_subvotes, only_ids=only_ids)
+                                             include_subvotes=include_subvotes, only_ids=only_ids,
+                                             district=district)
         row = self._conn.execute(
             f"""SELECT COUNT(*) FROM council_decisions d
                 JOIN council_sessions cs ON cs.ksinr = d.ksinr {where}""",
@@ -3585,6 +3597,59 @@ class CouncilStore:
                WHERE dl.decision_id = ?
                ORDER BY dl.confidence DESC, l.name""", (decision_id,)).fetchall()
         return [dict(r) for r in rows]
+
+    def decision_location_district_stats(self) -> list[dict]:
+        """Oldenburger Stadtteile mit der Zahl verknüpfter Beschlüsse.
+
+        Nur geokodierte Ortslinks tragen einen ``stadtteil``. Dadurch kann die
+        Suchoberfläche keine ungeprüften Modellbegriffe als Stadtteilfilter
+        anbieten.
+        """
+        rows = self._conn.execute(
+            """SELECT l.stadtteil AS name, COUNT(DISTINCT dl.decision_id) AS count
+               FROM council_decision_locations dl
+               JOIN council_locations l ON l.slug = dl.location_slug
+               JOIN council_decisions d ON d.id = dl.decision_id
+               WHERE l.stadtteil IS NOT NULL AND l.stadtteil != ''
+                 AND d.kind = 'decision'
+               GROUP BY l.stadtteil
+               ORDER BY l.stadtteil"""
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def location_matches_for_decisions(
+        self,
+        ids: list[int],
+        *,
+        district: str,
+        per_decision: int = 4,
+    ) -> dict[int, list[dict]]:
+        """Belegte Ortslinks eines Suchtreffers innerhalb eines Stadtteils.
+
+        Die Fundstelle wird bewusst mitgeliefert: Der Filter soll nicht nur
+        Treffer einschränken, sondern die Ortszuordnung in der Liste
+        nachvollziehbar und damit manuell prüfbar machen.
+        """
+        if not ids or not district:
+            return {}
+        ph = ",".join("?" * len(ids))
+        rows = self._conn.execute(
+            f"""SELECT dl.decision_id, l.name, l.stadtteil, dl.source,
+                       dl.evidence, dl.method, dl.confidence
+                FROM council_decision_locations dl
+                JOIN council_locations l ON l.slug = dl.location_slug
+                WHERE dl.decision_id IN ({ph}) AND l.stadtteil = ?
+                ORDER BY dl.decision_id, dl.confidence DESC, l.name""",
+            [*ids, district],
+        ).fetchall()
+        out: dict[int, list[dict]] = {}
+        for row in rows:
+            matches = out.setdefault(row["decision_id"], [])
+            if len(matches) < max(1, int(per_decision)):
+                matches.append({key: row[key] for key in (
+                    "name", "stadtteil", "source", "evidence", "method", "confidence"
+                )})
+        return out
 
     def locations_to_geocode(self, limit: int | None = None) -> list[dict]:
         sql = (

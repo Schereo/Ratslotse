@@ -60,6 +60,15 @@ def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(
     return {"fields": out}
 
 
+@router.get("/districts")
+def districts(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> dict:
+    """Stadtteile mit mindestens einem geokodierten Beschluss-Ortsbezug."""
+    return {"districts": store.decision_location_district_stats()}
+
+
 @router.get("/sessions")
 def sessions(
     q: str = "",
@@ -308,6 +317,7 @@ def decisions(
     sort: str = Query("date_desc", pattern="^(date_desc|date_asc|faction|importance|interest)$"),
     field: str = "",
     party: str = "",
+    district: str = Query("", max_length=100),
     # Design 23a: Standard blendet Änderungsanträge (subvotes) aus der Trefferliste
     # aus — sie hängen als Kontext am Ursprungsbeschluss. Rechercheure können sie
     # per Filter „Änderungsanträge einzeln zeigen" wieder einblenden.
@@ -329,17 +339,25 @@ def decisions(
         if not nwz.get_topic_for_owner(user["id"], topic):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Thema nicht gefunden.")
         only_ids = [m["decision_id"] for m in nwz.get_topic_decision_matches(topic)]
-    total = store.count_decisions(q, committee, outcome, faction, date_from, date_to, kind, category, field, party,
-                                  include_subvotes=include_subvotes, only_ids=only_ids)
+    total = store.count_decisions(
+        q, committee, outcome, faction, date_from, date_to, kind, category, field, party,
+        include_subvotes=include_subvotes, only_ids=only_ids, district=district,
+    )
     rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, category,
                                   sort=sort, field=field, party=party, limit=limit, offset=offset,
-                                  include_subvotes=include_subvotes, only_ids=only_ids)
+                                  include_subvotes=include_subvotes, only_ids=only_ids,
+                                  district=district)
+    location_matches = store.location_matches_for_decisions(
+        [row["id"] for row in rows], district=district
+    )
     # Design 23a: je Beschluss die kompakte Änderungsantrags-Zusammenfassung
     # anhängen (Anzahl · Fraktion · Ergebnis) für die Karten-Unterzeile.
     pairs = [(r["ksinr"], r["item_number"]) for r in rows
              if r.get("kind") == "decision" and r.get("item_number")]
     summaries = store.subvote_summaries(pairs)
     for r in rows:
+        if district:
+            r["location_matches"] = location_matches.get(r["id"], [])
         s = summaries.get((r.get("ksinr"), r.get("item_number")))
         if s:
             r["subvote_summary"] = s

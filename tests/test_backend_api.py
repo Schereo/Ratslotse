@@ -2895,6 +2895,71 @@ def test_decisions_topic_ohne_treffer_liefert_leer(client):
     assert client.get(f"/api/council/decisions?limit=50&topic={tid}").json()["total"] == 0
 
 
+# ---- Beschluss-Suche nach geokodiertem Ortsbezug ---------------------------
+def test_decisions_district_filter_is_combined_and_explains_matches(client):
+    """Der Stadtteilfilter darf Beschlüsse mit mehreren Orten nicht doppeln und
+    liefert die Fundstelle mit, damit die Zuordnung in der Liste prüfbar ist."""
+    _register(client)
+    council = CouncilStore(COUNCIL_DB)
+    council.save_session(CouncilSession(1, "Rat", "2026-01-15", "17:00", "Ratssaal"))
+    with council._conn:
+        council._conn.executemany(
+            "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
+            "VALUES (?,1,?,?,?,'decision')",
+            [
+                (1, 0, "Widmung Klingenbergplatz", "angenommen"),
+                (2, 1, "Sportpark Kreyenbrück", "abgelehnt"),
+                (3, 2, "Sanierung Rathaus", "angenommen"),
+            ],
+        )
+    council.save_decision_locations(1, [
+        {"name": "Klingenbergplatz", "kind": "platz", "source": "title",
+         "evidence": "Widmung Klingenbergplatz", "method": "regex", "confidence": 0.98},
+        {"name": "Cloppenburger Straße", "kind": "strasse", "source": "beschluss",
+         "evidence": "an der Cloppenburger Straße", "method": "regex", "confidence": 0.94},
+    ], "hash-1")
+    council.save_decision_locations(2, [
+        {"name": "Sportpark Kreyenbrück", "kind": "gebaeude", "source": "title",
+         "evidence": "Sportpark Kreyenbrück", "method": "llm", "confidence": 0.9},
+    ], "hash-2")
+    council.save_decision_locations(3, [
+        {"name": "Rathaus", "kind": "gebaeude", "source": "title",
+         "evidence": "Sanierung Rathaus", "method": "llm", "confidence": 0.9},
+    ], "hash-3")
+    with council._conn:
+        council._conn.execute(
+            "UPDATE council_locations SET stadtteil='Kreyenbrück' "
+            "WHERE slug IN ('klingenbergplatz','cloppenburger-strasse','sportpark-kreyenbrueck')"
+        )
+        council._conn.execute(
+            "UPDATE council_locations SET stadtteil='Innenstadt' WHERE slug='rathaus'"
+        )
+    council.close()
+
+    districts = client.get("/api/council/districts")
+    assert districts.status_code == 200
+    assert districts.json()["districts"] == [
+        {"name": "Innenstadt", "count": 1},
+        {"name": "Kreyenbrück", "count": 2},
+    ]
+
+    response = client.get("/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert {row["id"] for row in body["decisions"]} == {1, 2}
+    first = next(row for row in body["decisions"] if row["id"] == 1)
+    assert [match["name"] for match in first["location_matches"]] == [
+        "Klingenbergplatz", "Cloppenburger Straße"
+    ]
+    assert first["location_matches"][0]["evidence"] == "Widmung Klingenbergplatz"
+    # Ortsbezug und vorhandene Suchfilter greifen gemeinsam.
+    accepted = client.get(
+        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&outcome=angenommen"
+    ).json()
+    assert accepted["total"] == 1 and accepted["decisions"][0]["id"] == 1
+
+
 # --- Vorgänge verfolgen (Design 28a/W1) ------------------------------------
 
 def _seed_vorlage(kvonr: int = 4711, vorlage_nr: str = "26/0396",
