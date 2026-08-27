@@ -12,6 +12,8 @@ import json
 import os
 import re
 from difflib import SequenceMatcher
+from functools import lru_cache
+from pathlib import Path
 
 from kern import llm
 from . import places
@@ -19,6 +21,44 @@ from . import places
 MODEL = os.environ.get("COUNCIL_LOCATION_MODEL", "google/gemini-2.5-flash-lite")
 
 KINDS = {"strasse", "platz", "gebaeude", "gebiet", "stadtteil", "gewaesser", "sonstiges"}
+
+_CURATED_GEOCODES = Path(__file__).with_name("oldenburg_location_geocodes.json")
+_GEOCODE_PRECISIONS = {"site", "area", "street", "route", "catalog"}
+
+
+@lru_cache(maxsize=1)
+def curated_location_geocodes() -> dict[str, dict]:
+    """Versionierte, redaktionell geprüfte Koordinaten für schwierige Ortsnamen.
+
+    Freie Geocoder finden Planungsgebiete, neue Straßen und lokale Bezeichnungen
+    oft gar nicht oder liefern einen gleichnamigen Ort außerhalb Oldenburgs. Die
+    kuratierte Schicht wird vor jedem Netzaufruf angewendet und ist damit sowohl
+    für den einmaligen Backfill als auch für neu eingelesene Beschlüsse wirksam.
+    """
+    data = json.loads(_CURATED_GEOCODES.read_text(encoding="utf-8"))
+    if data.get("schema_version") != 1:
+        raise ValueError("Unbekannte Version des kuratierten Orts-Geocodings")
+    rows = data.get("locations") or []
+    out: dict[str, dict] = {}
+    for row in rows:
+        slug = str(row.get("slug") or "").strip()
+        lat = row.get("lat")
+        lon = row.get("lon")
+        if not slug or slug in out:
+            raise ValueError(f"Fehlender oder doppelter Geocode-Slug: {slug}")
+        if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+            raise ValueError(f"Geocode ohne Koordinaten: {slug}")
+        # Der Katalog enthält wenige unmittelbar angrenzende Ratsorte, etwa den
+        # Moorhauser Polder. Die Schranke bleibt trotzdem
+        # eng genug, um Treffer in anderen Oldenburgs sicher zu verhindern.
+        if not (53.05 <= float(lat) <= 53.24 and 8.08 <= float(lon) <= 8.33):
+            raise ValueError(f"Geocode außerhalb des Oldenburger Kartenraums: {slug}")
+        if row.get("precision") not in _GEOCODE_PRECISIONS:
+            raise ValueError(f"Unbekannte Geocode-Präzision: {slug}")
+        if not str(row.get("source_url") or "").startswith("https://"):
+            raise ValueError(f"Geocode ohne HTTPS-Quelle: {slug}")
+        out[slug] = {**row, "lat": float(lat), "lon": float(lon)}
+    return out
 
 # Bewusst Singular: »Fahrradstraßen«, »Straßensanierung« oder metaphorische
 # »Brücken« dürfen keine Orts-Pins erzeugen. Zusammengesetzte Eigennamen beginnen
