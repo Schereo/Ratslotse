@@ -22,12 +22,33 @@ def test_full_location_review_manifest_is_complete_and_valid():
     manifest = review_manifest()
     assert len(manifest) == 123
     assert Counter(row["status"] for row in manifest.values()) == {
-        "concrete": 58, "approved": 31, "alias": 8, "rejected": 26,
+        "concrete": 55, "approved": 33, "alias": 8, "rejected": 27,
     }
     assert all(row["kind"] in CONCRETE_LOCATION_KINDS
                for row in manifest.values() if row["status"] == "concrete")
     assert all(row["source_url"].startswith("https://")
                for row in manifest.values() if row["status"] == "approved")
+
+
+def test_curated_location_geocodes_are_complete_valid_and_idempotent(tmp_path):
+    geocodes = locations.curated_location_geocodes()
+    assert len(geocodes) == 44
+    assert "hafen-iprump" not in geocodes
+    assert all(point["source_url"].startswith("https://") for point in geocodes.values())
+
+    store = CouncilStore(tmp_path / "council.sqlite")
+    store._conn.execute(
+        "INSERT INTO council_locations "
+        "(slug,name,kind,lat,lon,geo_tried,updated_at) "
+        "VALUES ('skateanlage-eversten','Skateanlage Eversten','sonstiges',NULL,NULL,1,'')"
+    )
+    store._conn.commit()
+    assert store.apply_curated_location_geocodes() == 1
+    row = store.location_by_slug("skateanlage-eversten")
+    assert (row["lat"], row["lon"], row["ortsbereich_id"]) == (
+        53.1379232, 8.1719987, "eversten")
+    assert store.apply_curated_location_geocodes() == 0
+    store.close()
 
 
 @pytest.mark.parametrize(

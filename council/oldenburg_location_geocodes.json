@@ -1,0 +1,315 @@
+{
+  "schema_version": 1,
+  "id": "ratslotse-oldenburg-kuratierte-ortskoordinaten",
+  "definition": "Redaktionell geprüfte Kartenmittelpunkte für Ratsorte, die freie Geocoder mit ihrem beobachteten Namen nicht zuverlässig finden.",
+  "locations": [
+    {
+      "slug": "dobbenanlagen",
+      "lat": 53.1400184,
+      "lon": 8.1972915,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/startseite/leben-in-oldenburg/sport-freizeit/gruen-und-parkanlagen/dobbenanlage.html"
+    },
+    {
+      "slug": "stadion-maastrichter-strasse",
+      "lat": 53.1458,
+      "lon": 8.2356,
+      "precision": "site",
+      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=304854&type=do"
+    },
+    {
+      "slug": "alexanderstrasse-nord",
+      "lat": 53.1695,
+      "lon": 8.1985,
+      "precision": "area",
+      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=287378&type=do"
+    },
+    {
+      "slug": "mittlere-innenstadt",
+      "lat": 53.1405,
+      "lon": 8.214,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/planen-bauen/stadterneuerung-gestaltung-bau/stadterneuerung/mittlere-innenstadt.html"
+    },
+    {
+      "slug": "skateanlage-eversten",
+      "lat": 53.1379232,
+      "lon": 8.1719987,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/startseite/leben-in-oldenburg/sport-freizeit/sport/freizeitaktivitaeten.html"
+    },
+    {
+      "slug": "ludwig-quidde-hof",
+      "lat": 53.1702319,
+      "lon": 8.2444542,
+      "precision": "site",
+      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=235687&type=do"
+    },
+    {
+      "slug": "mittlere-hunte",
+      "lat": 53.0855,
+      "lon": 8.223,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/umwelt/naturschutz-und-landschaftspflege/schutzgebiete-und-schutzobjekte/naturschutzgebiete-nsg.html"
+    },
+    {
+      "slug": "quartier-am-krusenbusch",
+      "lat": 53.101,
+      "lon": 8.2495,
+      "precision": "area",
+      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=308528&type=do"
+    },
+    {
+      "slug": "sportpark-kreyenbrueck",
+      "lat": 53.1111628,
+      "lon": 8.2233552,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/30_Amt_fuer_Kultur_Museen_und_Sport/304_Sport/Sportstaetten/Sportplaetze/Steckbrief_Sportpark_Kreyenbrueck_2021_b.pdf"
+    },
+    {
+      "slug": "hallensichel",
+      "lat": 53.1716296,
+      "lon": 8.1881942,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/zentrale-projekte/fliegerhorst/bauabschnitte/n-777-d-mittelweg.html"
+    },
+    {
+      "slug": "moorhauser-polder",
+      "lat": 53.1602235,
+      "lon": 8.3124405,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/umwelt/naturschutz-und-landschaftspflege/schutzgebiete-und-schutzobjekte/naturschutzgebiete-nsg.html"
+    },
+    {
+      "slug": "dede-dragoner-und-schulstrasse",
+      "lat": 53.1346,
+      "lon": 8.2311,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/metanavigation/presse/pressemitteilung/news/am-montag-21-maerz-tagt-der-verkehrsausschuss.html"
+    },
+    {
+      "slug": "quartier-haarentor",
+      "lat": 53.148815,
+      "lon": 8.18477,
+      "precision": "catalog",
+      "source_url": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "slug": "meerkamp-mittagsweg",
+      "lat": 53.10654,
+      "lon": 8.22033,
+      "precision": "area",
+      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=246577&type=do"
+    },
+    {
+      "slug": "fliegerhorstgelaende",
+      "lat": 53.174255,
+      "lon": 8.17505,
+      "precision": "catalog",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/zentrale-projekte/fliegerhorst.html"
+    },
+    {
+      "slug": "finanzamtsgelaende",
+      "lat": 53.1454,
+      "lon": 8.2134,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/planen-bauen/aktuelles/ehemaliges-finanzamtsgelaende.html"
+    },
+    {
+      "slug": "sporthalle-maastrichter-strasse",
+      "lat": 53.1462094,
+      "lon": 8.2286272,
+      "precision": "site",
+      "source_url": "https://www.openstreetmap.org/?mlat=53.1462094&mlon=8.2286272#map=19/53.1462094/8.2286272"
+    },
+    {
+      "slug": "oldenburger-kompostwerk",
+      "lat": 53.1322077,
+      "lon": 8.2881255,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/umwelt/abfall-entsorgung/awb-von-a-bis-z/adressen-anfahrtswege-und-oeffnungszeiten.html"
+    },
+    {
+      "slug": "fliegerhorst-gelaende",
+      "lat": 53.174255,
+      "lon": 8.17505,
+      "precision": "catalog",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/zentrale-projekte/fliegerhorst.html"
+    },
+    {
+      "slug": "sport-und-gesundheitsbad-am-floetenteich",
+      "lat": 53.1667324,
+      "lon": 8.2340567,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/zentrale-projekte/sport-und-gesundheitsbad-am-floetenteich.html"
+    },
+    {
+      "slug": "wasserwerk-alexandersfeld",
+      "lat": 53.182703,
+      "lon": 8.1772441,
+      "precision": "site",
+      "source_url": "https://www.vwg.de/ueber-uns-unternehmensbereich-trinkwasser.html"
+    },
+    {
+      "slug": "havekant",
+      "lat": 53.1386532,
+      "lon": 8.2264543,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/metanavigation/presse/pressemitteilung/news/sperrung-der-uferstrasse.html"
+    },
+    {
+      "slug": "alten-krusenbusch",
+      "lat": 53.1025,
+      "lon": 8.249,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/43_Amt_fuer_Umweltschutz_und_Bauordnung/432_Naturschutz_technischer_Umweltschutz/Naturschutz/Natur_und_Landschaft_Gruene_Vielfalt_web.pdf"
+    },
+    {
+      "slug": "gewerbegebiet-brokhausen",
+      "lat": 53.168,
+      "lon": 8.1687,
+      "precision": "area",
+      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=308544&type=do"
+    },
+    {
+      "slug": "sporthalle-haarenesch",
+      "lat": 53.1449783,
+      "lon": 8.1962793,
+      "precision": "site",
+      "source_url": "https://www.openstreetmap.org/?mlat=53.1449783&mlon=8.1962793#map=19/53.1449783/8.1962793"
+    },
+    {
+      "slug": "tiefgarage-am-stadtmuseum",
+      "lat": 53.1444,
+      "lon": 8.2141,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/zentrale-projekte/tiefgarage-am-stadtmuseum.html"
+    },
+    {
+      "slug": "fussgaengerzone",
+      "lat": 53.1419602,
+      "lon": 8.2136624,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/startseite/wirtschaft/standort-oldenburg/innenstadtmanagement/virtuelle-innenstadt.html"
+    },
+    {
+      "slug": "fahrradstation-nord",
+      "lat": 53.1448758,
+      "lon": 8.2237287,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/verkehr-mobilitaet/radverkehr/fahrrad-parken/fahrradstationen.html"
+    },
+    {
+      "slug": "park-und-kramermarktsflaeche",
+      "lat": 53.1475338,
+      "lon": 8.2320773,
+      "precision": "site",
+      "source_url": "https://www.openstreetmap.org/?mlat=53.1475338&mlon=8.2320773#map=18/53.1475338/8.2320773"
+    },
+    {
+      "slug": "kunstrasenplatz-ofenerdiek",
+      "lat": 53.1919913,
+      "lon": 8.2120213,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/startseite/leben-in-oldenburg/sport-freizeit/sport/sportbuero/aktuelles/kicken-auf-kunstrasenplaetzen/kunstrasenplatz-in-ofenerdiek.html"
+    },
+    {
+      "slug": "bahnuebergang-am-stadtrand",
+      "lat": 53.1859339,
+      "lon": 8.2013453,
+      "precision": "site",
+      "source_url": "https://www.openstreetmap.org/?mlat=53.1859339&mlon=8.2013453#map=19/53.1859339/8.2013453"
+    },
+    {
+      "slug": "tiefgarage-cco",
+      "lat": 53.1443798,
+      "lon": 8.2135886,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/zentrale-projekte/tiefgarage-am-stadtmuseum.html"
+    },
+    {
+      "slug": "alten-stadthafen",
+      "lat": 53.1408128,
+      "lon": 8.2295742,
+      "precision": "catalog",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/planen-bauen/stadterneuerung-gestaltung-bau/stadterneuerung/aktuelle-stadterneuerungsgebiete/alter-stadthafen.html"
+    },
+    {
+      "slug": "autobahn-a-29",
+      "lat": 53.1589586,
+      "lon": 8.256981,
+      "precision": "route",
+      "source_url": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "slug": "oldenburg-ost",
+      "lat": 53.1048508,
+      "lon": 8.278,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/metanavigation/presse/pressemitteilung/news/arbeiten-im-autobahnkreuz-oldenburg-ost.html"
+    },
+    {
+      "slug": "gedenkstein-fuer-wilhelm-den-grossen",
+      "lat": 53.1561116,
+      "lon": 8.2339075,
+      "precision": "site",
+      "source_url": "https://www.openstreetmap.org/?mlat=53.1561116&mlon=8.2339075#map=19/53.1561116/8.2339075"
+    },
+    {
+      "slug": "rosa-lazarus-strasse",
+      "lat": 53.1742,
+      "lon": 8.1765,
+      "precision": "street",
+      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=235883&type=do"
+    },
+    {
+      "slug": "innenstadtbereich",
+      "lat": 53.14115,
+      "lon": 8.212865,
+      "precision": "catalog",
+      "source_url": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "slug": "aeg-motorenwerk",
+      "lat": 53.1065375,
+      "lon": 8.2110577,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/planen-bauen/stadterneuerung-gestaltung-bau/stadtplanung/bauleitplanung.html"
+    },
+    {
+      "slug": "sportanlage-kennedystrasse",
+      "lat": 53.1358795,
+      "lon": 8.1677425,
+      "precision": "site",
+      "source_url": "https://www.oldenburg.de/startseite/leben-in-oldenburg/sport-freizeit/sport/sportbuero/aktuelles/kicken-auf-kunstrasenplaetzen/kunstrasenplatz-kennedystrasse.html"
+    },
+    {
+      "slug": "haaren-und-wold-bei-wechloy",
+      "lat": 53.156,
+      "lon": 8.146,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/22_Rechtsamt/NSG/NSG_7_Haarenniederung_Karte.pdf"
+    },
+    {
+      "slug": "mittlere-und-untere-hunte",
+      "lat": 53.15,
+      "lon": 8.285,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/startseite/stadtraum/umwelt/naturschutz-und-landschaftspflege/schutzgebiete-und-schutzobjekte/naturschutzgebiete-nsg.html"
+    },
+    {
+      "slug": "pflegeeinrichtung-schinkelstrasse",
+      "lat": 53.1776179,
+      "lon": 8.1903517,
+      "precision": "site",
+      "source_url": "https://www.openstreetmap.org/?mlat=53.1776179&mlon=8.1903517#map=19/53.1776179/8.1903517"
+    },
+    {
+      "slug": "klaevemann-siedlung",
+      "lat": 53.1335,
+      "lon": 8.1537,
+      "precision": "area",
+      "source_url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Tautz_Ausarbeitung.pdf"
+    }
+  ]
+}

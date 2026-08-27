@@ -28,6 +28,7 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1) -> dict:
     store = CouncilStore(council_db)
+    curated = store.apply_curated_location_geocodes()
     reused = store.hydrate_location_geo_from_entities()
     districts = store.backfill_location_stadtteile()
     catalog_links = store.backfill_location_place_ids()
@@ -67,7 +68,8 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1) -
                 flush=True,
             )
     store.close()
-    return {"reused": reused, "districts": districts, "catalog_links": catalog_links,
+    return {"curated": curated, "reused": reused, "districts": districts,
+            "catalog_links": catalog_links,
             "pending": len(rows), "located": located,
             "missed": missed, "failed": failed}
 
