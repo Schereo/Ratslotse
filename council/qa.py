@@ -288,6 +288,19 @@ def latest_intent(frage: str) -> bool:
     return bool(_LATEST_RE.search(frage or "")) and not _HISTORISCH_RE.search(frage or "")
 
 
+def latest_real_decision(candidates: list[dict]) -> dict | None:
+    """Neueste tatsächliche Abstimmungsentscheidung im bereits chronologisch
+    sortierten Ortsbestand.
+
+    Berichte/Kenntnisnahmen und Vertagungen sind zwar Ratsvorgänge, beantworten
+    aber nicht die Frage „Was wurde zuletzt beschlossen?“. Auch eine Ablehnung
+    ist eine echte Entscheidung — die Antwort muss dann nur klar sagen, dass
+    der Antrag gerade nicht beschlossen wurde.
+    """
+    return next((c for c in candidates
+                 if c.get("outcome") in ("angenommen", "abgelehnt")), None)
+
+
 def _falte(text: str) -> str:
     """Suchnormalisierung: Kleinschreibung, Umlaute ausgeschrieben, alles
     Nicht-Alphanumerische zu Leerzeichen — macht „Cäcilienbrücke",
@@ -1382,11 +1395,22 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
             "mit seinem größeren Ortsbereich und benenne eine dünne Datenlage ehrlich."
         )
     if latest_intent(question):
+        latest = latest_real_decision(candidates)
+        anker = ""
+        if latest:
+            anker = (
+                f" Der ERSTE Kontext-Eintrag [{latest['id']}] vom "
+                f"{latest.get('session_date') or 'unbekannten Datum'} ist die "
+                f"deterministisch ermittelte neueste echte Entscheidung "
+                f"(Ergebnis: {latest.get('outcome') or 'unbekannt'})."
+            )
         ortsregel += (
             "\nCHRONOLOGIE: Die Frage verlangt ausdrücklich das Neueste. Die "
-            "Beschlüsse stehen neueste zuerst. Beginne mit der zeitlich neuesten "
-            "echten Entscheidung; unterscheide angenommene/abgelehnte Beschlüsse "
-            "klar von bloßen Berichten oder Kenntnisnahmen."
+            "neueste echte Entscheidung steht im Kontext absichtlich an erster "
+            "Stelle; die übrigen Vorgänge folgen neueste zuerst. Beginne den ERSTEN "
+            "Satz zwingend mit dieser Entscheidung und ihrem Datum. Unterscheide "
+            "angenommene/abgelehnte Beschlüsse klar von bloßen Berichten oder "
+            f"Kenntnisnahmen.{anker}"
         )
     prompt = prompts.render("qa_antwort", question=question.strip()[:300],
                             context=_build_context(candidates),
