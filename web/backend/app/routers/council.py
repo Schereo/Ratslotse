@@ -1695,7 +1695,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             latest_place = bool(ort and typ == "ort"
                                 and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
             shadow_plan = qa.research_plan_with_mandatory(
-                analyse.get("rechercheplan") or {}, typ=typ,
+                analyse.get("rechercheplan") or {}, typ=typ, question=q_suche,
                 person=bool(person), place=bool(ort), sessions=bool(sitzungen),
                 latest_decision=latest_place)
             yield _sse({"type": "step", "step": "search"})
