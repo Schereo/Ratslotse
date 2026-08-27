@@ -356,7 +356,7 @@ def delete_entity_alias(
 @router.get("/place-candidates")
 def place_candidates(
     review_status: str = Query("pending", alias="status",
-                               pattern="^(pending|approved|alias|rejected|all)$"),
+                               pattern="^(pending|concrete|approved|alias|rejected|all)$"),
     limit: int = Query(200, ge=1, le=500),
     min_decisions: int = Query(3, ge=1, le=100),
     _admin: dict = Depends(require_admin),

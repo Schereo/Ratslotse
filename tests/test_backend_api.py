@@ -3554,6 +3554,18 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
     pending = client.get("/api/admin/place-candidates?status=pending")
     assert pending.status_code == 200
     assert pending.json()["candidates"][0]["slug"] == "testanger"
+    concrete = client.put("/api/admin/place-candidates/testanger", json={
+        "status": "concrete", "name": "Testanger", "kind": "gebaeude",
+    })
+    assert concrete.status_code == 200 and concrete.json()["status"] == "concrete"
+    concrete_list = client.get("/api/admin/place-candidates?status=concrete")
+    assert concrete_list.status_code == 200
+    assert concrete_list.json()["candidates"][0]["slug"] == "testanger"
+    concrete_point = next(
+        p for p in client.get("/api/council/entities-map").json()["entities"]
+        if p["slug"] == "testanger")
+    assert concrete_point["target"] == "location"
+
     reviewed = client.put("/api/admin/place-candidates/testanger", json={
         "status": "approved", "place_id": "testanger", "name": "Testanger",
         "kind": "quartier", "parent_id": "nadorst", "aliases": ["Test-Anger"],

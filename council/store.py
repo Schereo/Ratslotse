@@ -15,6 +15,9 @@ from council.kontaktdaten import maskieren
 
 
 
+CONCRETE_LOCATION_KINDS = {"strasse", "platz", "gebaeude", "gewaesser"}
+
+
 def _norm_title(t: str) -> str:
     """Normalised title for dedup: drops amounts, years, doc-suffixes and punctuation
     so the same matter across committees ('… - Beschluss' vs '…') and recurring series
@@ -8059,7 +8062,7 @@ class CouncilStore:
         from council import places
 
         status_filter = status_filter if status_filter in {
-            "pending", "approved", "alias", "rejected", "all"
+            "pending", "concrete", "approved", "alias", "rejected", "all"
         } else "pending"
         known_ids = {place.id for place in places.all_places()}
         review_where = ""
@@ -8131,7 +8134,7 @@ class CouncilStore:
         from council import places
         from council.locations import location_slug as slugify
 
-        if status not in {"approved", "alias", "rejected"}:
+        if status not in {"concrete", "approved", "alias", "rejected"}:
             raise ValueError("Unbekannter Prüfstatus")
         observed = self._conn.execute(
             "SELECT * FROM council_locations WHERE slug=?", (location_slug,)).fetchone()
@@ -8152,6 +8155,17 @@ class CouncilStore:
             parent = places.resolve(parent_id) if parent_id else None
             if parent_id and (not parent or not parent.is_primary):
                 raise ValueError("Elternort muss ein primärer Ortsbereich sein")
+        elif status == "concrete":
+            name = (name or observed["name"]).strip()
+            if not name or kind not in CONCRETE_LOCATION_KINDS:
+                raise ValueError("Konkreter Ort braucht Name und gültigen Ortstyp")
+            # Konkrete Punkte bleiben exakte Fundorte und werden absichtlich
+            # nicht Teil des flächigen Ortskatalogs.
+            place_id = None
+            canonical_place_id = None
+            parent_id = observed["ortsbereich_id"]
+            source_url = None
+            quiz_enabled = False
         elif status == "alias":
             target = self.resolve_place(canonical_place_id)
             if not target:
@@ -8182,10 +8196,16 @@ class CouncilStore:
                  json.dumps(clean_aliases, ensure_ascii=False), description, source_url,
                  int(quiz_enabled), canonical_place_id, note, updated_by, now),
             )
-            self._conn.execute(
-                "UPDATE council_locations SET place_id=?,ortsbereich_id=?,updated_at=? WHERE slug=?",
-                (place_id, parent_id, now, location_slug),
-            )
+            if status == "concrete":
+                self._conn.execute(
+                    "UPDATE council_locations SET place_id=NULL,updated_at=? WHERE slug=?",
+                    (now, location_slug),
+                )
+            else:
+                self._conn.execute(
+                    "UPDATE council_locations SET place_id=?,ortsbereich_id=?,updated_at=? WHERE slug=?",
+                    (place_id, parent_id, now, location_slug),
+                )
         self._runtime_places_cache = None
         self._place_aliases_cache = None
         return next(item for item in self.location_candidates("all", limit=500)
@@ -8589,7 +8609,7 @@ class CouncilStore:
         """
         rows = self._conn.execute(
             """SELECT l.slug,l.name,l.kind,l.lat,l.lon,l.place_id,l.ortsbereich_id,
-                      r.status AS review_status,
+                      r.status AS review_status,r.kind AS review_kind,
                       COUNT(DISTINCT dl.decision_id) AS n,
                       MAX(cs.session_date) AS last_date,
                       COUNT(DISTINCT CASE WHEN cs.session_date >= date('now','-12 months')
@@ -8604,19 +8624,21 @@ class CouncilStore:
                GROUP BY l.slug
                ORDER BY n DESC,l.name"""
         ).fetchall()
-        concrete = {"strasse", "platz", "gebaeude", "gewaesser"}
         out = []
         for row in rows:
             if row["review_status"] == "rejected":
                 continue
             place = self.resolve_place(row["place_id"] or row["name"])
             approved = row["review_status"] in {"approved", "alias"}
+            reviewed_concrete = row["review_status"] == "concrete"
+            effective_kind = (row["review_kind"] if reviewed_concrete else row["kind"])
             # Flächendeckende Ortsbereiche sind bereits als Filter und Umriss
             # vorhanden; als riesige Sammelpunkte würden sie die exakten Orte
             # überdecken. Kuratierte Teilräume dürfen dagegen auf die Karte.
             catalog_secondary = bool(place and not place.is_primary)
-            if not (approved or catalog_secondary or
-                    (row["kind"] in concrete and row["n"] >= max(1, int(min_decisions)))):
+            if not (approved or reviewed_concrete or catalog_secondary or
+                    (effective_kind in CONCRETE_LOCATION_KINDS and
+                     row["n"] >= max(1, int(min_decisions)))):
                 continue
             target = "ort" if place and (approved or catalog_secondary) else "location"
             out.append({
