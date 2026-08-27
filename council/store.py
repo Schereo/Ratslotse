@@ -8210,7 +8210,6 @@ class CouncilStore:
         LLM-Fehler, markiert den Vorgang aber nicht als fertig: der nächste
         inkrementelle Lauf versucht die semantische Ergänzung erneut.
         """
-        from council import places
         from council.locations import location_slug
 
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
