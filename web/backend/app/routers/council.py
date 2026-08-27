@@ -3241,7 +3241,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 observed = {
                     "decisions": len(candidates),
                     "debates": len(debatten_rows),
-                    "budget": len(haushalt_zeilen),
+                    "budget": sum(len(value) if isinstance(value, list) else int(bool(value))
+                                  for key, value in geld.items() if key != "facetten"),
                     "press": len(presse_rows),
                     "sessions": len(sitzungen),
                     "future_agenda": len(planungen),
@@ -3267,12 +3268,21 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             frage_thema = q_suche
             if einfach and frage_thema.strip() == q and verlauf:
                 frage_thema = verlauf[-1].get("frage") or q
-            strom = (qa.vereinfachen_stream(frage_thema, body.vorherige_antwort, ctx) if einfach
-                     else qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
-                                           geld=geld, debatten=debatten_rows,
-                                           gross=gross, steckbriefe=steckbriefe,
-                                           duenn=(lage == "duenn"), eng=eng,
-                                           sitzungen=sitzungen, ort=ort))
+            if latest_place and not einfach:
+                # Bei „zuletzt beschlossen“ ist das Ergebnis vollständig aus
+                # Datum + Abstimmung ableitbar. Die Produktionsprobe zeigte,
+                # dass selbst ein expliziter Prompt-Anker vom Modell zugunsten
+                # eines älteren Titels ignoriert werden kann. Deshalb kommt
+                # diese enge Faktenantwort ohne generative Auswahl aus.
+                strom = iter([qa.latest_place_answer(candidates[:QA_ANSWER_N])])
+            else:
+                strom = (qa.vereinfachen_stream(frage_thema, body.vorherige_antwort, ctx)
+                         if einfach else
+                         qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
+                                          geld=geld, debatten=debatten_rows,
+                                          gross=gross, steckbriefe=steckbriefe,
+                                          duenn=(lage == "duenn"), eng=eng,
+                                          sitzungen=sitzungen, ort=ort))
             try:
                 for delta in strom:
                     if not buf and delta:
