@@ -2910,6 +2910,7 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
                 (1, 0, "Widmung Klingenbergplatz", "angenommen"),
                 (2, 1, "Sportpark Kreyenbrück", "abgelehnt"),
                 (3, 2, "Sanierung Rathaus", "angenommen"),
+                (4, 3, "Bericht aus Kreyenbrück", "zur_kenntnis"),
             ],
         )
     council.save_decision_locations(1, [
@@ -2926,10 +2927,15 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
         {"name": "Rathaus", "kind": "gebaeude", "source": "title",
          "evidence": "Sanierung Rathaus", "method": "llm", "confidence": 0.9},
     ], "hash-3")
+    council.save_decision_locations(4, [
+        {"name": "Kreyenbrück", "kind": "stadtteil", "source": "title",
+         "evidence": "Bericht aus Kreyenbrück", "method": "stadtteilliste", "confidence": 0.99},
+    ], "hash-4")
     with council._conn:
         council._conn.execute(
             "UPDATE council_locations SET stadtteil='Kreyenbrück' "
-            "WHERE slug IN ('klingenbergplatz','cloppenburger-strasse','sportpark-kreyenbrueck')"
+            "WHERE slug IN "
+            "('klingenbergplatz','cloppenburger-strasse','sportpark-kreyenbrueck','kreyenbrueck')"
         )
         council._conn.execute(
             "UPDATE council_locations SET stadtteil='Innenstadt' WHERE slug='rathaus'"
@@ -2939,11 +2945,13 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
     districts = client.get("/api/council/districts")
     assert districts.status_code == 200
     assert districts.json()["districts"] == [
-        {"name": "Innenstadt", "count": 1},
-        {"name": "Kreyenbrück", "count": 2},
+        {"name": "Innenstadt", "count": 1, "vote_count": 1, "report_count": 0},
+        {"name": "Kreyenbrück", "count": 3, "vote_count": 2, "report_count": 1},
     ]
 
-    response = client.get("/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck")
+    response = client.get(
+        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=vote"
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["total"] == 2
@@ -2955,9 +2963,13 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
     assert first["location_matches"][0]["evidence"] == "Widmung Klingenbergplatz"
     # Ortsbezug und vorhandene Suchfilter greifen gemeinsam.
     accepted = client.get(
-        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&outcome=angenommen"
+        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=vote&outcome=angenommen"
     ).json()
     assert accepted["total"] == 1 and accepted["decisions"][0]["id"] == 1
+    reports = client.get(
+        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=report"
+    ).json()
+    assert reports["total"] == 1 and reports["decisions"][0]["id"] == 4
 
 
 # --- Vorgänge verfolgen (Design 28a/W1) ------------------------------------

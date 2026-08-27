@@ -123,7 +123,9 @@ test.describe("Ratsinformationssystem", () => {
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ districts: [{ name: "Kreyenbrück", count: 2 }] }),
+        body: JSON.stringify({
+          districts: [{ name: "Kreyenbrück", count: 2, vote_count: 1, report_count: 1 }],
+        }),
       }),
     );
     let requestedDistrict = "";
@@ -150,7 +152,7 @@ test.describe("Ratsinformationssystem", () => {
 
     await page.goto("/council?tab=decisions");
     await page.getByRole("button", { name: "Ortsbezug" }).click();
-    await page.getByRole("button", { name: "Kreyenbrück (2)" }).click();
+    await page.getByRole("button", { name: "Kreyenbrück (1)" }).click();
 
     await expect.poll(() => requestedDistrict).toBe("Kreyenbrück");
     await expect(page).toHaveURL(/district=Kreyenbr%C3%BCck/);

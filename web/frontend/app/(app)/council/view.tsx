@@ -483,7 +483,9 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const [outcome, setOutcome] = useMerker("suche:ergebnis", "");
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
-  const [districts, setDistricts] = useState<{ name: string; count: number }[]>([]);
+  const [districts, setDistricts] = useState<{
+    name: string; count: number; vote_count: number; report_count: number;
+  }[]>([]);
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [decisions, setDecisions] = useState<CouncilDecision[]>([]);
@@ -561,7 +563,9 @@ function DecisionsTab({ committees }: { committees: string[] }) {
 
   useEffect(() => {
     api.get<{ fields: PolicyField[] }>("/council/fields").then((d) => setFields(d.fields)).catch(() => {});
-    api.get<{ districts: { name: string; count: number }[] }>("/council/districts")
+    api.get<{ districts: {
+      name: string; count: number; vote_count: number; report_count: number;
+    }[] }>("/council/districts")
       .then((d) => setDistricts(d.districts)).catch(() => {});
   }, []);
 
@@ -630,6 +634,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     : isReport ? (einer ? "Bericht" : "Berichte") : (einer ? "Beschluss" : "Beschlüsse");
   /* „40+" statt „40": s. topicCapped. Steht überall dort, wo die Zahl steht. */
   const totalLabel = `${total}${topicCapped ? "+" : ""}`;
+  const districtCount = (item: typeof districts[number]) =>
+    mode === "vote" ? item.vote_count : mode === "report" ? item.report_count : item.count;
 
   // Zeitraum zählt als EIN Filter; Sortierung ist eine Einstellung, kein Filter.
   const activeFilterCount = [outcome, field, committee, district, dateFrom || dateTo].filter(Boolean).length;
@@ -666,7 +672,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           <Select value={district} onChange={(e) => setUrlParam("district", e.target.value)}>
             <option value="">Alle Stadtteile</option>
             {districts.map((item) => (
-              <option key={item.name} value={item.name}>{item.name} ({item.count})</option>
+              <option key={item.name} value={item.name}>{item.name} ({districtCount(item)})</option>
             ))}
           </Select>
         </FilterField>
@@ -745,7 +751,9 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           <ChipPopover
             label="Ortsbezug"
             value={district}
-            options={districts.map((item) => ({ value: item.name, label: `${item.name} (${item.count})` }))}
+            options={districts.map((item) => ({
+              value: item.name, label: `${item.name} (${districtCount(item)})`,
+            }))}
             onChange={(value) => setUrlParam("district", value)}
           />
         )}
