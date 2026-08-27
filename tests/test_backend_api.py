@@ -2913,6 +2913,7 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     darf der semantische Reranker keinen älteren, ähnlich betitelten Beschluss
     mehr vor die neuesten Ortsquellen schieben."""
     from app.routers import council as council_router
+    from council import embeddings as emb_mod
     from council import qa as qa_mod
 
     _register(client)
@@ -2945,6 +2946,11 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
                         lambda *a, **k: (_ for _ in ()).throw(
                             AssertionError("Reranker darf hier nicht laufen")))
     monkeypatch.setattr(
+        emb_mod, "search_wortbeitraege",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("Neueste Ortsentscheidung braucht keine Debatten")),
+    )
+    monkeypatch.setattr(
         qa_mod, "answer_stream",
         lambda *a, **k: (_ for _ in ()).throw(
             AssertionError("Die enge Datumsantwort darf kein LLM brauchen")),
@@ -2959,6 +2965,7 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     assert sources["mode"] == "chronologisch"
     assert sources["qtype"] == "ort"
     assert sources["beleglage"] == "solide"
+    assert sources["debatten"] == []
     assert [row["id"] for row in sources["sources"]] == [103, 102, 101]
     tokens = "".join(event["text"] for event in events if event["type"] == "token")
     # Quellenband streng nach Datum, Faktenantwort deterministisch aus der

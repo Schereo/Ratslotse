@@ -156,6 +156,34 @@ def test_rechercheplan_shadow_validiert_und_harte_kanaele_ergaenzt(monkeypatch):
         plan, typ="person", person=True, place=True)
     assert resolved["mandatory_channels"] == ["decisions", "debates", "places"]
     assert resolved["channels"] == ["decisions", "debates", "places", "press"]
+    assert resolved["model_channels"] == ["decisions", "debates", "press"]
+    assert resolved["consistency_added"] == ["places"]
+    assert resolved["suppressed_channels"] == []
+
+
+def test_rechercheplan_konsistenz_verknuepft_bedarf_und_kanal():
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "status", "channels": ["decisions"], "sort": "newest",
+        "needs": ["amounts", "statements", "documents", "current_info"],
+    }})
+    resolved = qa.research_plan_with_mandatory(plan, typ="thema")
+    assert resolved["channels"] == [
+        "decisions", "budget", "debates", "documents", "press", "future_agenda",
+    ]
+    assert resolved["consistency_added"] == [
+        "budget", "debates", "documents", "press", "future_agenda",
+    ]
+
+
+def test_rechercheplan_entfernt_debatten_bei_neuester_ortsentscheidung():
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "fact", "channels": ["decisions", "debates", "places"],
+        "sort": "newest", "needs": ["dates", "statements"],
+    }})
+    resolved = qa.research_plan_with_mandatory(
+        plan, typ="ort", place=True, latest_decision=True)
+    assert resolved["channels"] == ["decisions", "places"]
+    assert resolved["suppressed_channels"] == ["debates"]
 
 
 def test_rechercheplan_shadow_loggt_keinen_fragetext():

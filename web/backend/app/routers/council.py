@@ -2862,16 +2862,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             sitzung_ids = [i for s in sitzungen for i in s.get("beschluss_ids") or []]
             if sitzungen and typ not in ("partei", "geld"):
                 typ = "sitzung"
+            latest_place = bool(ort and typ == "ort"
+                                and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
             shadow_plan = qa.research_plan_with_mandatory(
                 analyse.get("rechercheplan") or {}, typ=typ,
-                person=bool(person), place=bool(ort), sessions=bool(sitzungen))
+                person=bool(person), place=bool(ort), sessions=bool(sitzungen),
+                latest_decision=latest_place)
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
             place_ids = (store.decision_ids_for_place(ort["id"], limit=120)
                          if ort else None)
             allowed_place_ids = set(place_ids or []) if ort else None
-            latest_place = bool(ort and typ == "ort"
-                                and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
             if latest_place:
                 # Bei einer reinen Ortsfrage nach dem „zuletzt“ ist das Datum
                 # die Antwort. Der Reranker schob in der Produktionsprobe einen
@@ -2953,7 +2954,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # obendrein der Parteien-Baustein (Tims Befund 26.08.). Fragen zur
             # „letzten Sitzung" behalten ihre Debatten: Dort ist die Sitzung
             # MIT Beschlüssen mit aufgelöst (sitzung_ids gefüllt).
-            if typ != "sitzung" or sitzung_ids:
+            if not latest_place and (typ != "sitzung" or sitzung_ids):
                 try:
                     # Task 16: Wortbeiträge aus den Protokollen (Reden, Anfragen,
                     # Einwohnerfragen, Zusagen) — die Substanz, die nicht in den
