@@ -69,7 +69,7 @@ def districts(
     """Belegte Ratslotse-Ortsbereiche für den Beschlussfilter."""
     rows = []
     for row in store.decision_location_place_stats():
-        place = places.resolve(row["place_id"])
+        place = store.resolve_place(row["place_id"])
         if not place:
             continue
         rows.append({
@@ -82,7 +82,7 @@ def districts(
             "parent_ids": list(place.parent_ids),
             "description": place.description,
         })
-    catalog = places.public_catalog()
+    catalog = store.public_place_catalog()
     return {
         "catalog": {key: catalog[key] for key in (
             "schema_version", "id", "label", "singular", "plural",
@@ -93,9 +93,10 @@ def districts(
 
 
 @router.get("/places")
-def place_catalog(_user: dict = Depends(require_active)) -> dict:
+def place_catalog(_user: dict = Depends(require_active),
+                  store: CouncilStore = Depends(get_council_store)) -> dict:
     """Gemeinsamer Ortskatalog für Suche, Karten, Quiz und KI-Funktionen."""
-    return places.public_catalog()
+    return store.public_place_catalog()
 
 
 @router.get("/place/{place_id}")
@@ -104,7 +105,7 @@ def place_detail(
     store: CouncilStore = Depends(get_council_store),
 ) -> dict:
     """Öffentliches Ortsprofil aus Katalogstammdaten und belegten Beschlüssen."""
-    place = places.resolve(place_id)
+    place = store.resolve_place(place_id)
     if not place:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ort nicht gefunden.")
     total = store.count_decisions(district=place.id)
@@ -113,10 +114,10 @@ def place_detail(
         [row["id"] for row in decisions], district=place.id)
     for row in decisions:
         row["location_matches"] = matches.get(row["id"], [])
-    children = [places.public_place(child) for child in places.all_places()
+    children = [store.public_place(child) for child in store.all_places()
                 if place.id in child.parent_ids]
     return {
-        "place": places.public_place(place),
+        "place": store.public_place(place),
         "children": children,
         "decision_count": total,
         "decisions": decisions,
@@ -372,6 +373,7 @@ def decisions(
     field: str = "",
     party: str = "",
     district: str = Query("", max_length=100),
+    location: str = Query("", max_length=120),
     # Design 23a: Standard blendet Änderungsanträge (subvotes) aus der Trefferliste
     # aus — sie hängen als Kontext am Ursprungsbeschluss. Rechercheure können sie
     # per Filter „Änderungsanträge einzeln zeigen" wieder einblenden.
@@ -387,10 +389,13 @@ def decisions(
     nwz: Store = Depends(get_store),
 ) -> dict:
     if district:
-        place = places.resolve(district)
+        place = store.resolve_place(district)
         if not place:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Ort.")
         district = place.id
+    location_row = store.location_by_slug(location) if location else None
+    if location and not location_row:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Beschlussort.")
     only_ids: list[int] | None = None
     if topic is not None:
         # Nur eigene Themen — sonst ließe sich über eine fremde id deren
@@ -401,13 +406,14 @@ def decisions(
     total = store.count_decisions(
         q, committee, outcome, faction, date_from, date_to, kind, category, field, party,
         include_subvotes=include_subvotes, only_ids=only_ids, district=district,
+        location_slug=location,
     )
     rows = store.search_decisions(q, committee, outcome, faction, date_from, date_to, kind, category,
                                   sort=sort, field=field, party=party, limit=limit, offset=offset,
                                   include_subvotes=include_subvotes, only_ids=only_ids,
-                                  district=district)
+                                  district=district, location_slug=location)
     location_matches = store.location_matches_for_decisions(
-        [row["id"] for row in rows], district=district
+        [row["id"] for row in rows], district=district, location_slug=location
     )
     # Design 23a: je Beschluss die kompakte Änderungsantrags-Zusammenfassung
     # anhängen (Anzahl · Fraktion · Ergebnis) für die Karten-Unterzeile.
@@ -415,7 +421,7 @@ def decisions(
              if r.get("kind") == "decision" and r.get("item_number")]
     summaries = store.subvote_summaries(pairs)
     for r in rows:
-        if district:
+        if district or location:
             r["location_matches"] = location_matches.get(r["id"], [])
         s = summaries.get((r.get("ksinr"), r.get("item_number")))
         if s:
@@ -1158,8 +1164,8 @@ def entities_list(kind: str = "", _user: dict = Depends(require_active),
 @router.get("/entities-map")
 def entities_map(_user: dict = Depends(require_active),
                  store: CouncilStore = Depends(get_council_store)) -> dict:
-    """All geocoded entities (points) for the city-wide map."""
-    return {"entities": store.list_entities_geo()}
+    """Geocodierte Themen und belastbare Beschlussorte für die Stadtkarte."""
+    return {"entities": store.city_map_points()}
 
 
 @router.get("/public-stats")
@@ -1660,7 +1666,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Orts-Fragetyp: dieselbe deterministische Stammdaten-Erkennung wie
             # bei Personen. Ein Alias wie „Donnerschwee-Kaserne“ wird dabei auf
             # die stabile Orts-ID ``neu-donnerschwee`` aufgelöst.
-            ort = None if person else (qa.finde_ort(q_suche) or qa.finde_ort(q))
+            ort = None if person else (qa.finde_ort(q_suche, store) or qa.finde_ort(q, store))
             if ort and typ not in ("partei", "geld"):
                 typ = "ort"
             # Sitzungs-Fragetyp (25.08.26): Nennt die Frage ein konkretes

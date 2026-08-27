@@ -43,7 +43,7 @@ def _areas(store: CouncilStore) -> list[dict]:
     areas = [{"area_type": "stadtteil", "area_key": place.name,
               "label": f"{places.kind_label(place.kind)} {place.name}",
               "place_name": place.name, "place_id": place.id, "slug": None}
-             for place in places.all_places() if place.quiz_enabled]
+             for place in store.all_places() if place.quiz_enabled]
     themes = 0
     for e in store.list_entities(limit=400):
         if themes >= N_THEMES:

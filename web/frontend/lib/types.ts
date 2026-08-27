@@ -266,6 +266,27 @@ export interface Entity {
 
 export interface EntityMapPoint {
   slug: string; name: string; kind: string; n: number; lat: number; lon: number;
+  target?: "thema" | "ort" | "location";
+  place_id?: string | null;
+  location_slug?: string | null;
+  ortsbereich_id?: string | null;
+}
+
+export interface PlaceCandidateEvidence {
+  id: number; title: string | null; session_date: string;
+  evidence: string; method: string; confidence: number;
+}
+
+export interface PlaceCandidate {
+  slug: string; name: string; kind: string; lat: number | null; lon: number | null;
+  stadtteil: string | null; ortsbereich_id: string | null;
+  status: "pending" | "approved" | "alias" | "rejected";
+  decision_count: number; last_date: string; avg_confidence: number;
+  review_place_id?: string | null; review_name?: string | null;
+  review_kind?: string | null; parent_id?: string | null; aliases?: string[];
+  description?: string | null; source_url?: string | null;
+  quiz_enabled?: boolean; canonical_place_id?: string | null; note?: string | null;
+  evidence: PlaceCandidateEvidence[];
 }
 
 export interface EntityGeo {

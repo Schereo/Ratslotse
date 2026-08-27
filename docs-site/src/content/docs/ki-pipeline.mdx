@@ -111,12 +111,23 @@ eine stabile ID, einen Typ, Aliase, Quellen und optional Elternorte sowie
 Koordinaten. Neue Ortslinks erhalten `place_id` und `ortsbereich_id`; ein
 Backfill ergänzt sie im Bestand.
 
+Häufige, noch unbekannte Gebietsnamen landen mit ihren Fundstellen in der
+Admin-Prüfung. Freigaben oder Alias-Zuordnungen erweitern den Laufzeitkatalog
+sofort und werden beim nächsten Beschlussimport deterministisch erkannt;
+Verwerfungen blenden unzuverlässige Namen aus öffentlichen Karten aus.
+
 Das wirkt in allen Produkten gleich: Die Beschlusssuche filtert über die
 stabile ID, Ortsprofile zeigen Stammdaten und belegte Beschlüsse, und das Quiz
 verwendet dieselben Namen und Quellen. Erkennt **„Frag den Rat“** einen
 Katalogort in der Frage, begrenzt es semantische und lexikalische Treffer auf
 die direkt diesem Ort zugeordneten Beschlüsse. Die generierte Antwort darf den
 Ortsbezug nur aus den mitgelieferten Fundstellen ableiten.
+
+Auf der Stadtkarte erscheinen außerdem konkrete, geocodierte Beschlussorte.
+Für automatisch erkannte Straßen, Plätze, Gebäude und Gewässer gilt eine
+Mindestbelegung von drei Beschlüssen; unscharfe Gebiete benötigen vorher eine
+redaktionelle Freigabe. Kartenpunkte führen auf das Ortsprofil oder auf eine
+exakte Beschluss-Suche für diesen Ort.
 
 ## „Lotti erklärt's einfach"
 

@@ -398,7 +398,7 @@ def finde_person(store, frage: str) -> dict | None:
     return max(treffer, key=lambda t: t[0])[1]
 
 
-def finde_ort(frage: str) -> dict | None:
+def finde_ort(frage: str, store=None) -> dict | None:
     """Katalogort in einer Frage deterministisch erkennen.
 
     Längere Aliase gewinnen, sodass „Neu-Donnerschwee“ nicht zusätzlich als
@@ -406,7 +406,8 @@ def finde_ort(frage: str) -> dict | None:
     """
     from council import places
 
-    found = places.find_mentions(frage, max_n=1)
+    catalog_places = store.all_places() if store is not None else None
+    found = places.find_mentions(frage, max_n=1, catalog_places=catalog_places)
     if not found:
         return None
     place = found[0]

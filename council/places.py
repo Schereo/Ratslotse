@@ -2,8 +2,10 @@
 
 Oldenburg hat keine amtlich festgelegten Stadtteile. Ratslotse verwendet daher
 eine dokumentierte, flächendeckende Arbeitsebene aus 31 lokal gebräuchlichen
-Gebieten. Suche, Karten, Quiz und KI-Pipeline müssen Namen, Aliase und stabile
-IDs ausschließlich aus diesem Katalog beziehen.
+Gebieten. Dieses Modul liefert den versionierten Basiskatalog; im laufenden
+Betrieb ergänzt ``CouncilStore.all_places()`` redaktionell geprüfte Kandidaten.
+Suche, Karten, Quiz und KI-Pipeline beziehen Namen, Aliase und stabile IDs aus
+diesem gemeinsamen Laufzeitkatalog.
 """
 from __future__ import annotations
 
@@ -128,7 +130,8 @@ def primary_parents(place: Place | str | None) -> tuple[Place, ...]:
                  if (parent := resolve(parent_id)) and parent.is_primary)
 
 
-def find_mentions(text: str, max_n: int = 3) -> list[Place]:
+def find_mentions(text: str, max_n: int = 3,
+                  catalog_places: tuple[Place, ...] | list[Place] | None = None) -> list[Place]:
     """Explizit genannte Katalogorte, längste überlappungsfrei zuerst.
 
     So gewinnt ``Neu-Donnerschwee`` gegen das darin enthaltene
@@ -137,7 +140,7 @@ def find_mentions(text: str, max_n: int = 3) -> list[Place]:
     """
     folded = _lookup_key(text)
     candidates: list[tuple[int, int, Place]] = []
-    for place in all_places():
+    for place in catalog_places if catalog_places is not None else all_places():
         for value in (place.name, *place.aliases):
             key = _lookup_key(value)
             if not key:

@@ -151,7 +151,8 @@ def _generic_street(name: str) -> bool:
         low.startswith(prefix) for prefix in _GENERIC_STREET_PREFIXES)
 
 
-def extract_explicit_locations(text: str, *, source: str) -> list[dict]:
+def extract_explicit_locations(text: str, *, source: str,
+                               catalog_places: tuple[places.Place, ...] | list[places.Place] | None = None) -> list[dict]:
     """Hochpräzise, kostenlose Ortsnamen aus einem Titel/Text.
 
     Die Funktion deckt Straßen-/Platznamen und den zentralen Ratslotse-
@@ -203,7 +204,7 @@ def extract_explicit_locations(text: str, *, source: str) -> list[dict]:
     # Die zentrale Mention-Erkennung entfernt überlappende Teiltreffer. So
     # wird bei »ehemalige Donnerschwee-Kaserne« nur das Quartier erkannt und
     # nicht zusätzlich der darin enthaltene Ortsbereich Donnerschwee.
-    for place in places.find_mentions(text, max_n=20):
+    for place in places.find_mentions(text, max_n=20, catalog_places=catalog_places):
         matches = []
         for candidate in (place.name, *place.aliases):
             match = re.search(rf"(?<!\w){re.escape(candidate)}(?!\w)", text, flags=re.IGNORECASE)
