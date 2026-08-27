@@ -2862,6 +2862,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             sitzung_ids = [i for s in sitzungen for i in s.get("beschluss_ids") or []]
             if sitzungen and typ not in ("partei", "geld"):
                 typ = "sitzung"
+            shadow_plan = qa.research_plan_with_mandatory(
+                analyse.get("rechercheplan") or {}, typ=typ,
+                person=bool(person), place=bool(ort), sessions=bool(sitzungen))
             yield _sse({"type": "step", "step": "search"})
             t0 = time.perf_counter()
             place_ids = (store.decision_ids_for_place(ort["id"], limit=120)
@@ -3228,6 +3231,28 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         frist = f" bis {b['bis']}" if b.get("bis") else ""
                         c["beteiligung"] = f"{b['schritt']}{frist}"
             except Exception:  # noqa: BLE001 — Zusatzsignal, nie Blocker
+                pass
+            # Rechercheplaner zunächst ausschließlich beobachten: Die Antwort
+            # benutzt weiterhin exakt die bewährte Pipeline. Der JSON-Logeintrag
+            # zeigt später, welche Kanäle das Modell gewählt hätte, welche durch
+            # harte Entitäten zwingend waren und wo heutige Kanäle tatsächlich
+            # Material fanden — ohne den Fragetext zu speichern.
+            try:
+                observed = {
+                    "decisions": len(candidates),
+                    "debates": len(debatten_rows),
+                    "budget": len(haushalt_zeilen),
+                    "press": len(presse_rows),
+                    "sessions": len(sitzungen),
+                    "future_agenda": len(planungen),
+                    "places": sum(bool(c.get("location_matches")) for c in candidates),
+                    "documents": sum(bool(c.get("vorlage_excerpt") or c.get("beteiligung"))
+                                     for c in ctx),
+                }
+                _log.info("qa_research_plan_shadow %s", json.dumps(
+                    qa.research_plan_log_record(q_suche, shadow_plan, typ, observed),
+                    ensure_ascii=False, separators=(",", ":")))
+            except Exception:  # noqa: BLE001 — Telemetrie darf nie antwortkritisch sein
                 pass
             # Der Antworttext wird live gestreamt, die angehängten Folgefragen
             # (24a) dürfen dabei NICHT als Text erscheinen. Deshalb halten wir

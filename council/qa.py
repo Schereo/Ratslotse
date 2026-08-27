@@ -7,6 +7,8 @@ embedding retrieval is the planned upgrade (see council-ai-roadmap).
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -65,6 +67,25 @@ _EXPAND_CACHE_MAX = 256
 QUERY_TYPES = ("thema", "verlauf", "partei", "geld", "person", "sitzung", "ort")
 _ANALYSE_CACHE: dict[str, dict] = {}
 
+# Rechercheplaner im Shadow-Mode: Diese Kanäle existieren heute bereits oder
+# sind als klar begrenzte Ratslotse-Schnittstelle vorgesehen. Das Modell darf
+# nur aus dieser Liste wählen; ausgeführt wird der Plan zunächst ausdrücklich
+# NICHT. So messen wir seine Vorschläge, ohne Antworten unbemerkt zu verändern.
+RESEARCH_CHANNELS = (
+    "decisions", "debates", "budget", "press", "sessions",
+    "future_agenda", "places", "documents",
+)
+RESEARCH_INTENTS = (
+    "fact", "overview", "status", "timeline", "money", "position", "session",
+)
+RESEARCH_SORTS = ("relevance", "newest", "chronological")
+RESEARCH_NEEDS = (
+    "amounts", "statements", "dates", "votes", "locations", "documents", "current_info",
+)
+_PLAN_HASH_KEY = ((os.environ.get("WEB_JWT_SECRET") or
+                   os.environ.get("COUNCIL_QA_PLAN_HASH_SALT") or "").encode("utf-8")
+                  or os.urandom(32))
+
 
 # Wie viel Gespräch die Analyse/Antwort sieht: die letzten Runden reichen —
 # ältere Bezüge löst niemand mehr per „dazu" auf.
@@ -84,6 +105,70 @@ def _verlauf_zeilen(verlauf: list[dict] | None) -> str:
     return "\n".join(zeilen)
 
 
+def _research_plan(data: dict) -> dict:
+    """Streng validierter LLM-Plan für den Shadow-Mode.
+
+    Freitext, unbekannte Kanäle und falsche Typen kommen nie bis zum Executor.
+    ``decisions`` bleibt als sicherer Basiskanal immer enthalten. ``valid``
+    zeigt, ob das Modell überhaupt ein strukturell brauchbares Planobjekt
+    geliefert hat — alte Admin-Prompt-Overrides fallen dadurch sichtbar, aber
+    folgenlos auf den Basiskanal zurück.
+    """
+    raw = data.get("rechercheplan")
+    valid = isinstance(raw, dict)
+    raw = raw if valid else {}
+    raw_channels = raw.get("channels") if isinstance(raw.get("channels"), list) else []
+    channels = [c for c in raw_channels
+                if isinstance(c, str) and c in RESEARCH_CHANNELS]
+    channels = list(dict.fromkeys(["decisions", *channels]))
+    intent = raw.get("intent") if raw.get("intent") in RESEARCH_INTENTS else "overview"
+    sort = raw.get("sort") if raw.get("sort") in RESEARCH_SORTS else "relevance"
+    raw_needs = raw.get("needs") if isinstance(raw.get("needs"), list) else []
+    needs = list(dict.fromkeys(
+        n for n in raw_needs
+        if isinstance(n, str) and n in RESEARCH_NEEDS
+    ))
+    return {"intent": intent, "channels": channels, "sort": sort,
+            "needs": needs, "valid": valid}
+
+
+def research_plan_with_mandatory(plan: dict, *, typ: str, person: bool = False,
+                                 place: bool = False, sessions: bool = False) -> dict:
+    """LLM-Auswahl um nicht verhandelbare deterministische Kanäle ergänzen.
+
+    Das ist die zentrale Hybrid-Leitplanke: Ein expliziter Ort, eine Person
+    oder Sitzung darf vom Modell nie weggeplant werden. Im Shadow-Mode wird
+    nur protokolliert, welche Ergänzungen nötig waren.
+    """
+    mandatory = ["decisions"]
+    if typ == "geld":
+        mandatory.append("budget")
+    if typ in ("person", "partei") or person:
+        mandatory.append("debates")
+    if place:
+        mandatory.append("places")
+    if typ == "sitzung" or sessions:
+        mandatory.append("sessions")
+    mandatory = list(dict.fromkeys(mandatory))
+    selected = list(dict.fromkeys([*mandatory, *(plan.get("channels") or [])]))
+    return {**plan, "channels": selected, "mandatory_channels": mandatory}
+
+
+def research_plan_log_record(question: str, plan: dict, typ: str,
+                             observed: dict[str, int | bool]) -> dict:
+    """Kompakter, auswertbarer und datensparsamer Shadow-Logeintrag.
+
+    Der Fragetext wird bewusst NICHT geloggt: Gespräche speichert Ratslotse nur
+    mit Einwilligung. Ein stabiler Kurz-Hash reicht, um wiederholte Fragen und
+    Cache-Effekte zu erkennen.
+    """
+    normalized = " ".join((question or "").lower().split())
+    fingerprint = hmac.new(_PLAN_HASH_KEY, normalized.encode("utf-8"),
+                           hashlib.sha256).hexdigest()[:16]
+    return {"event": "qa_research_plan_shadow", "question_hash": fingerprint,
+            "qtype": typ, "plan": plan, "observed": observed}
+
+
 def analyse_query(question: str, model: str = EXPAND_MODEL,
                   verlauf: list[dict] | None = None) -> dict:
     """{"frage", "begriffe", "typ", "partei"} zur Frage. ``frage`` ist die
@@ -93,7 +178,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
     Reranker arbeiten mit dieser Fassung. Robust: bei kaputtem JSON oder
     LLM-Fehler kommt das Verhalten von vor dem Routing zurück."""
     fallback = {"frage": question, "begriffe": question, "typ": "thema", "partei": None,
-                "varianten": [], "eng": False}
+                "varianten": [], "eng": False, "rechercheplan": _research_plan({})}
     vtext = _verlauf_zeilen(verlauf)
     key = f"{model}|{hash(vtext)}|{' '.join(question.split()).lower()[:300]}"
     hit = _ANALYSE_CACHE.get(key)
@@ -104,7 +189,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         block = f"\nBisheriges Gespräch (für Rückbezüge):\n{vtext}\n" if vtext else ""
         prompt = prompts.render("qa_analyse", question=question.strip()[:300], verlauf=block)
         resp = llm.chat_complete(
-            model=model, _feature="qa_analyse", temperature=0, max_tokens=320,
+            model=model, _feature="qa_analyse", temperature=0, max_tokens=480,
             timeout=8.0, response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}], **extra,
         )
@@ -130,7 +215,8 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         if typ != "partei":
             partei = None
         out = {"frage": frage or question, "begriffe": begriffe or question,
-               "typ": typ, "partei": partei, "varianten": varianten, "eng": eng}
+               "typ": typ, "partei": partei, "varianten": varianten, "eng": eng,
+               "rechercheplan": _research_plan(data)}
         if begriffe:  # nur brauchbare Analysen cachen
             if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
                 _ANALYSE_CACHE.pop(next(iter(_ANALYSE_CACHE)))

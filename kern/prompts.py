@@ -289,7 +289,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     "qa_analyse": {
         "title": "Frag den Rat – Frage-Analyse",
-        "description": "Ein Call vor der Suche: eigenständige Frage (bei Gesprächsverlauf), Suchbegriffe, Fragetyp (+ ggf. Fraktion) als JSON. Platzhalter: {question}, {verlauf}.",
+        "description": "Ein Call vor der Suche: eigenständige Frage, Suchbegriffe, Fragetyp und Rechercheplan im Shadow-Mode als JSON. Platzhalter: {question}, {verlauf}.",
         "template": (
             "Analysiere die Nutzerfrage an ein Stadtrats-Archiv (Oldenburg).{verlauf} Antworte NUR als JSON:\n"
             '{{"frage": "die Frage als EIGENSTÄNDIGE Suchfrage — löse Rückbezüge wie „dazu“, '
@@ -307,7 +307,11 @@ DEFAULTS: dict[str, dict[str, str]] = {
             ', "typ": "thema|verlauf|partei|geld", "partei": "Fraktionsname oder null", '
             '"varianten": ["bis zu 2 UMFORMULIERUNGEN der Frage aus anderem Blickwinkel — z. B. die '
             "Sachstands-Frage zusätzlich als Finanzierungs- oder Planungs-Frage, die vage Frage "
-            'konkretisiert aufs wahrscheinlich gemeinte Vorhaben; jeweils ein kurzer Suchsatz"]}}\n\n'
+            'konkretisiert aufs wahrscheinlich gemeinte Vorhaben; jeweils ein kurzer Suchsatz"], '
+            '"rechercheplan": {{"intent": "fact|overview|status|timeline|money|position|session", '
+            '"channels": ["ein oder mehrere erlaubte Kanalnamen"], '
+            '"sort": "relevance|newest|chronological", '
+            '"needs": ["ein oder mehrere erlaubte Bedarfsnamen"]}}}}\n\n'
             "typ-Regeln:\n"
             '- "verlauf": Die Frage zielt auf Werdegang/Chronik/Stand eines Vorgangs '
             '("Wie lief …", "Wie ist der Stand …", "Was wurde aus …", "Chronologie").\n'
@@ -319,6 +323,14 @@ DEFAULTS: dict[str, dict[str, str]] = {
             'Stadt ("Wie viel gibt Oldenburg für Soziales aus?", "Hat die Stadt mehr ausgegeben '
             'als geplant?", "Was kostet die Stadt insgesamt?").\n'
             '- sonst "thema".\n'
+            "Rechercheplan-Regeln (nur planen, keine Quellen erfinden):\n"
+            '- "decisions" immer; "debates" für Aussagen/Positionen, "budget" für Haushaltszahlen, '
+            '"press" für aktuellen Verwaltungsstand, "sessions" für konkrete Sitzungen, '
+            '"future_agenda" für nächste Schritte, "places" für räumliche Fragen und '
+            '"documents" für Vorlagen/Anlagen mit fachlichen Details.\n'
+            'Erlaubte needs: "amounts", "statements", "dates", "votes", "locations", '
+            '"documents", "current_info".\n'
+            "Wähle lieber einen plausiblen Zusatzkanal zu viel als eine relevante Ratslotse-Quelle zu verpassen.\n"
             "Für die begriffe: KEINE Floskeln wie \"Was wurde\", \"beschlossen\", \"Stadtrat\"; "
             "bei Partei-Fragen den Fraktionsnamen NICHT in die begriffe aufnehmen (der wird "
             "separat gefiltert), sondern nur das Sachthema.\n\n"

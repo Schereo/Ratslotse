@@ -37,7 +37,9 @@ def test_analyse_parst_sauberes_json(monkeypatch):
     # `eng` kam mit den Kurzantworten für Punktfragen dazu (12.08.).
     assert a == {"frage": "Wie lief das mit dem Radweg?",
                  "begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None,
-                 "varianten": [], "eng": False}
+                 "varianten": [], "eng": False,
+                 "rechercheplan": {"intent": "overview", "channels": ["decisions"],
+                                    "sort": "relevance", "needs": [], "valid": False}}
     # Zweiter Aufruf kommt aus dem Cache — kein weiterer LLM-Call.
     qa.analyse_query("Wie lief das mit dem Radweg?")
     assert calls["n"] == 1
@@ -131,7 +133,43 @@ def test_analyse_fehler_liefert_fallback(monkeypatch):
     monkeypatch.setattr(qa.llm, "chat_complete", boom)
     a = qa.analyse_query("Frage?")
     assert a == {"frage": "Frage?", "begriffe": "Frage?", "typ": "thema", "partei": None,
-                 "varianten": [], "eng": False}
+                 "varianten": [], "eng": False,
+                 "rechercheplan": {"intent": "overview", "channels": ["decisions"],
+                                    "sort": "relevance", "needs": [], "valid": False}}
+
+
+def test_rechercheplan_shadow_validiert_und_harte_kanaele_ergaenzt(monkeypatch):
+    _llm_antwort(monkeypatch, json.dumps({
+        "begriffe": "Ellberg Kreyenbrück Schule", "typ": "thema",
+        "rechercheplan": {
+            "intent": "position",
+            "channels": ["debates", "press", "freies_internet", "debates"],
+            "sort": "newest", "needs": ["statements", "locations", "halluzination"],
+        },
+    }))
+    plan = qa.analyse_query("Was sagte Ellberg zu Kreyenbrück?")["rechercheplan"]
+    assert plan == {
+        "intent": "position", "channels": ["decisions", "debates", "press"],
+        "sort": "newest", "needs": ["statements", "locations"], "valid": True,
+    }
+    resolved = qa.research_plan_with_mandatory(
+        plan, typ="person", person=True, place=True)
+    assert resolved["mandatory_channels"] == ["decisions", "debates", "places"]
+    assert resolved["channels"] == ["decisions", "debates", "places", "press"]
+
+
+def test_rechercheplan_shadow_loggt_keinen_fragetext():
+    plan = qa.research_plan_with_mandatory(
+        qa._research_plan({}), typ="geld", place=True)
+    record = qa.research_plan_log_record(
+        "Was kostet die Sporthalle in Kreyenbrück?", plan, "geld",
+        {"decisions": 4, "budget": 2, "places": 4},
+    )
+    text = json.dumps(record, ensure_ascii=False)
+    assert record["event"] == "qa_research_plan_shadow"
+    assert len(record["question_hash"]) == 16
+    assert "Sporthalle" not in text and "Kreyenbrück" not in text
+    assert record["plan"]["mandatory_channels"] == ["decisions", "budget", "places"]
 
 
 def test_sort_verlauf_aelteste_zuerst():
