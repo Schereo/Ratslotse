@@ -247,9 +247,9 @@ export function GebuehrenAbschnitt({ data, loading }: {
             Was Sie dafür zahlen
           </h2>
           <p className="mt-2 max-w-[68ch] text-[13.5px] leading-relaxed text-foreground/85">
-            Abfall- und Straßenreinigungsgebühren stehen nicht im Haushaltsplan
-            wie andere Einnahmen — sie werden jedes Jahr eigens ausgerechnet und
-            dem Rat vorgelegt. Diese Rechnung steht hier, für die Jahre{" "}
+            Abfall- und Straßenreinigungsgebühren werden jährlich anhand der erwarteten
+            Kosten kalkuliert und dem Rat zur Entscheidung vorgelegt. Hier zeigen wir
+            diese Gebührenbedarfsberechnungen für die Jahre{" "}
             {aeltestes} bis {juengstes}.
           </p>
         </header>
@@ -259,12 +259,11 @@ export function GebuehrenAbschnitt({ data, loading }: {
             Warum das eine eigene Rechnung ist
           </p>
           <p className="mt-2 max-w-[68ch] text-[13px] leading-relaxed text-foreground/85">
-            Gebühren dürfen nur decken, was die Leistung wirklich kostet — nicht
-            mehr und auf Dauer auch nicht weniger. Deshalb wird jedes Jahr
-            nachgerechnet und ein Über- oder Unterschuss des Vorjahres
-            eingerechnet. Was dabei herauskommt, ist keine politische Zahl,
-            sondern das Ergebnis einer Division; entschieden wird über die
-            Kosten, die oben hineingehen.
+            Gebühren sollen die Kosten der jeweiligen Leistung decken, dürfen aber keine
+            dauerhaften Überschüsse für den allgemeinen Haushalt erzeugen. Deshalb fließen
+            Über- oder Unterdeckungen früherer Jahre in spätere Kalkulationen ein. Der Rat
+            entscheidet über die Satzung und die zugrunde gelegten Kosten; der rechnerische
+            Gebührensatz ergibt sich anschließend aus Kosten und erwarteter Nutzungsmenge.
           </p>
         </div>
 
@@ -278,10 +277,9 @@ export function GebuehrenAbschnitt({ data, loading }: {
 
         <LottiErklaert
           titel="Warum steigt meine Müllgebühr?"
-          text={"Selten, weil die Stadt mehr verdienen will — sie darf daran "
-            + "gar nichts verdienen. Meistens sind es gestiegene Kosten für "
-            + "die Entsorgung, oder das Vorjahr hat ein Minus hinterlassen, "
-            + "das jetzt ausgeglichen wird."}
+          text={"Gebühren ändern sich vor allem, wenn die erwarteten Kosten oder Mengen "
+            + "steigen oder sinken. Auch Über- und Unterdeckungen aus Vorjahren werden "
+            + "in späteren Kalkulationen ausgeglichen."}
         />
 
         <Link href="/haushalt"

@@ -133,9 +133,10 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
       </div>
 
       <p className="mt-2 max-w-[74ch] text-[13px] leading-relaxed text-foreground/90">
-        <strong>Auch die dritte Gruppe hängt am Rat — nur andersherum.</strong> In die Formel des
-        Landes geht Oldenburgs eigene Steuerkraft mit ein: Wer selbst mehr einnimmt, gilt als
-        weniger bedürftig und bekommt rechnerisch weniger aus dem Landestopf.
+        <strong>Auch bei den Landeszuweisungen wirkt sich die eigene Steuerkraft aus.</strong>{" "}
+        Das Land berücksichtigt in seiner Formel, wie viele Steuereinnahmen Oldenburg
+        rechnerisch erzielen kann. Mit höherer eigener Steuerkraft sinkt grundsätzlich der
+        errechnete Finanzbedarf.
       </p>
 
       <div ref={box} className="mt-3">
@@ -223,19 +224,18 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
           nicht besser (Designsprache §4). */}
       <div className="mt-3 grid gap-x-8 gap-y-2 border-t border-dashed border-border pt-3 lg:grid-cols-2">
         <p className="max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
-          <strong>Wie stark das gegenrechnet, sagen diese Zahlen nicht.</strong> In{" "}
+          <strong>Wie stark dieser Ausgleich wirkt, lässt sich aus diesen Zahlen allein nicht ableiten.</strong>{" "}In{" "}
           {steigend.length} Ausgleichsjahren stieg Oldenburgs Steuerkraft gegenüber dem Vorjahr —
           die Zuweisung sank dabei nur {gegenlaeufig}-mal, in den übrigen{" "}
           {steigend.length - gegenlaeufig} stieg sie mit. Denn es bewegt sich beides zugleich:
           Oldenburg und der Landestopf, aus dem alle Kommunen bedient werden.
         </p>
         <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground lg:mt-0">
-          Deshalb nennen wir hier <strong>keinen Umrechnungskurs</strong> — kein „von jedem Euro
-          bleiben X Cent". Ein einzelnes Jahrespaar ergäbe eine solche Zahl mühelos, sie wäre nur
-          im nächsten Jahr eine völlig andere. Dazu kommt: Die Messzahl bildet das Land mit
-          fiktiven Sätzen, die für alle Städte einer Größenklasse gleich sind. Ein höherer
-          Hebesatz aus Oldenburg schlägt dort also nicht eins zu eins durch — anders als ein
-          echter Zuwachs an Gewinnen und Grundstückswerten.
+          Deshalb lässt sich kein fester Betrag nach dem Muster „Von jedem zusätzlichen Euro
+          bleiben X Cent“ angeben. Die Berechnung hängt auch von der Entwicklung der anderen
+          Kommunen und der verfügbaren Ausgleichsmasse ab. Außerdem arbeitet das Land mit
+          einheitlichen fiktiven Hebesätzen. Eine Oldenburger Hebesatzänderung geht daher nicht
+          eins zu eins in die Steuerkraftmesszahl ein.
         </p>
       </div>
     </div>

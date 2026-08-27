@@ -76,7 +76,7 @@ function InvestitionenInner() {
         {plan ? (
           <Seitenbuehne
             kicker={`Investitionsprogramm · Pläne ${plan.von}–${plan.bis}`}
-            zahl={<><ZaehlZahl wert={plan.vorhaben} /> Vorhaben stehen in den Plänen</>}
+            zahl={<><ZaehlZahl wert={plan.vorhaben} /> Vorhaben sind einzeln aufgeführt</>}
             sub={gebaut
               ? `dazu ${gebaut.jahrgaenge} Jahrgänge Gebautes${gebaut.luecken.length
                 ? ` — mit sichtbarer Lücke ${gebaut.luecken.join(", ")}` : ""}`

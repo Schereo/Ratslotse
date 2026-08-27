@@ -89,9 +89,10 @@ export default function LaborPage() {
           <SchrittKicker href="/haushalt/labor" />
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">Haushalts-Labor</h1>
           <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
-            Was passiert, wenn der Rat an den Stellschrauben dreht? Drei Werkbänke, jede mit
-            ihrer eigenen Zielgröße — zum Ausprobieren. Das ist eine Rechnung zum Verstehen,
-            kein Vorschlag und schon gar kein Beschluss.
+            Was würde sich ändern, wenn der Rat Einnahmen, freiwillige Ausgaben oder
+            Investitionen anpasst? Drei Werkbänke rechnen mögliche Auswirkungen vor.
+            Die Ergebnisse dienen zum Verstehen: Sie sind weder eine Prognose noch ein
+            politischer Vorschlag oder Beschluss.
           </p>
         </div>
         {/* Bewusst OHNE Bühne (H5-09): Das Labor ist Werkzeug, keine
@@ -112,7 +113,7 @@ export default function LaborPage() {
 
       <LottiErklaert
         titel="Warum das kein Sparvorschlag ist"
-        text="Dieses Labor rechnet mit ganzen Bereichen und festen Annahmen. Ein echter Haushalt entsteht anders: Die Verwaltung rechnet jede Position durch, Ausschüsse beraten monatelang, und am Ende stimmt der Rat ab. Was du hier siehst, ist ein Gefühl für Größenordnungen — mehr nicht, aber auch nicht weniger."
+        text="Dieses Labor rechnet mit ganzen Bereichen und vereinfachten Annahmen. Der echte Haushalt wird dagegen Position für Position geplant, in den Ausschüssen beraten und vom Rat beschlossen. Die Ergebnisse des Labors zeigen Größenordnungen; sie sind keine Prognose und kein Haushaltsentwurf."
       />
 
       <SchrittWeiter href="/haushalt/labor" />

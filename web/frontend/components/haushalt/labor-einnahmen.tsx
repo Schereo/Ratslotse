@@ -270,14 +270,15 @@ export function EinnahmenWerkbank({
             }
             wirkung={
               hundePct === 0 ? (
-                <>Aufkommen {hunde.jahr}. Der Regler ist eine Antwort auf den Stammtisch —
-                in beide Richtungen: Verdopplung wie Abschaffung bewegen je rund{" "}
+                <>Aufkommen {hunde.jahr}. Der Regler zeigt die Größenordnung in beide
+                Richtungen: Sowohl eine Verdopplung als auch die Abschaffung verändern
+                das Ergebnis um rund{" "}
                 {anteilText(hunde.betrag / 1e6)}.</>
               ) : hundePct > 0 ? (
                 <>
                   <strong className="text-foreground">+{deMio(hundeWirkung)}&#8239;Mio.&nbsp;€</strong>{" "}
-                  · {anteilText(hundeWirkung)}. Kleine Steuern sind Symbolik, keine Sanierung —
-                  hier kann man es fühlen.
+                  · {anteilText(hundeWirkung)}. Damit lässt sich das Haushaltsdefizit
+                  allein nicht ausgleichen.
                 </>
               ) : (
                 <>
@@ -297,17 +298,17 @@ export function EinnahmenWerkbank({
         <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} />
         <div>
           <p className="text-[12.5px] font-semibold">
-            Abfall- und Straßenreinigungsgebühren — festgeschweißt
+            Abfall- und Straßenreinigungsgebühren sind kostengebunden
           </p>
           <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
             {gebSumme != null && gebJahr != null ? (
               <>{deMio(gebSumme / 1e6)}&#8239;Mio.&nbsp;€ legt die Stadt {gebJahr} auf die
               Gebührenzahler um<Beleg q="gebuehren" /> — mehr darf es nicht sein: </>
             ) : (
-              <>Hier lässt sich nichts holen, und das ist Absicht: </>
+              <>Der Rat kann diese Gebühren nicht zur allgemeinen Haushaltsfinanzierung erhöhen: </>
             )}
-            Kostenrechnende Einrichtungen dürfen keinen Überschuss erwirtschaften.
-            Diese Schraube lässt sich deshalb absichtlich nicht drehen.{" "}
+            Kostenrechnende Einrichtungen dürfen auf Dauer keinen Überschuss erwirtschaften.
+            Deshalb gibt es dafür im Labor keinen frei einstellbaren Regler.{" "}
             <Link href="/haushalt/konzern#gebuehren" className="font-semibold text-primary">
               Wie die Gebühren entstehen →
             </Link>

@@ -215,19 +215,18 @@ export default function VergleichSeite() {
 
         {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
         <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-          Bei den Steuern lässt sich das beantworten. Bei den Ausgaben nicht — und
-          das liegt nicht an fehlenden Zahlen, sondern daran, was sie messen.
-          Beides steht auf dieser Seite.
+          Bei Steuereinnahmen ist ein Vergleich möglich, weil die Werte nach einheitlichen
+          Regeln ermittelt werden. Ausgaben lassen sich dagegen nur vergleichen, wenn Städte
+          dieselben Aufgaben in ihren Kernhaushalten führen. Diese Seite erklärt beide Fälle.
         </p>
 
         {/* --- Teil 1: Was sich vergleichen lässt --- */}
         <LottiErklaert
           titel="Warum ausgerechnet Steuern?"
-          text={"Steuern zieht immer die Stadt selbst ein — nie einer ihrer Betriebe. "
-            + "Und wie viel Steuerkraft eine Stadt hat, rechnet das Land für alle "
-            + "Gemeinden nach derselben Formel aus. Deshalb bedeuten diese Zahlen "
-            + "überall dasselbe. Bei den Ausgaben ist das anders: Dort kommt es "
-            + "darauf an, was eine Stadt selbst macht und was ihre Betriebe machen."}
+          text={"Steuern erhebt die Stadt selbst. Die Steuerkraft berechnet das Land für "
+            + "alle Gemeinden nach derselben Formel. Dadurch sind diese Werte grundsätzlich "
+            + "vergleichbar. Bei Ausgaben hängt der Wert dagegen davon ab, welche Aufgaben "
+            + "im Kernhaushalt stehen und welche bei Eigenbetrieben oder Gesellschaften."}
         />
 
         {hatZahlen && skJahr && (
@@ -382,10 +381,10 @@ export default function VergleichSeite() {
           <div className="mt-2 grid items-start gap-x-8 gap-y-3.5 @5xl/kern:grid-cols-2">
             <div className="flex max-w-[76ch] flex-col gap-2.5 text-[13px] leading-relaxed text-foreground/90">
               <p>
-                Was gibt Oldenburg je Einwohner*in aus, was Osnabrück? Die Zahl steht in
-                beiden Haushalten, man könnte sie nebeneinanderlegen. Sie würde nur etwas
-                anderes bedeuten, als man denkt: <strong>zuerst misst sie, wie eine Stadt
-                sich organisiert hat</strong> — und erst danach, was sie leistet.
+                Die Ausgaben je Einwohner*in stehen in beiden Haushalten. Ein direkter
+                Vergleich wäre trotzdem irreführend: <strong>Zunächst zeigt die Zahl,
+                welche Aufgaben eine Stadt im Kernhaushalt führt</strong> — erst danach
+                lässt sie Rückschlüsse auf die Leistungsausgaben zu.
               </p>
               <p>
                 Oldenburg führt Gebäudewirtschaft, Abfallwirtschaft und Bäder als
@@ -533,8 +532,8 @@ export default function VergleichSeite() {
             obwohl der Gesamtabschluss der Stadt es seit Jahren danebenstellt. Die
             Landeshauptstadt trägt Sozialhilfe, Krankenhäuser, Abfallwirtschaft und die
             Berufsschulen nicht selbst — das macht die Region Hannover, wofür 2026 rund
-            539 Millionen Euro Umlage abfließen. Ein Vergleich verglich zwei verschiedene
-            Aufgabenpakete.
+            539 Millionen Euro Umlage abfließen. Damit würden zwei unterschiedliche
+            Aufgabenpakete miteinander verglichen.
           </p>
         </Abschnitt>
 

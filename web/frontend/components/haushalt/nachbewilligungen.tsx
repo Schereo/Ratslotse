@@ -178,7 +178,7 @@ export function NachbewilligungsBlock({ daten, jahr }: {
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Beschlossen am Plan vorbei · {jahr}
+          Nachträglich bewilligte Ausgaben · {jahr}
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
           {berichte.length
@@ -188,13 +188,12 @@ export function NachbewilligungsBlock({ daten, jahr }: {
       </div>
 
       <p className="max-w-[74ch] text-[13px] leading-relaxed text-foreground/90">
-        Was im beschlossenen Haushalt nicht steht, darf trotzdem ausgegeben
-        werden — es braucht dafür eine eigene Bewilligung nach § 117 NKomVG.{" "}
-        <strong className="font-semibold">Außerplanmäßig heißt dabei nicht
-        ungedeckt:</strong> Jede dieser Vorlagen nennt, aus welchem anderen
-        Posten das Geld kommt. Überplanmäßig heißt, der Posten stand im
-        Haushalt und das Geld reichte nicht; außerplanmäßig, dass es ihn dort
-        gar nicht gab.
+        Reicht ein Haushaltsansatz nicht aus oder fehlt er vollständig, kann eine
+        über- oder außerplanmäßige Ausgabe nach § 117 NKomVG bewilligt werden.{" "}
+        <strong className="font-semibold">Außerplanmäßig bedeutet nicht automatisch
+        ungedeckt:</strong> Die Vorlagen nennen jeweils eine Deckung. „Überplanmäßig“
+        heißt, dass ein vorhandener Ansatz nicht ausreicht; „außerplanmäßig“, dass
+        für diesen Zweck kein Ansatz bestand.
       </p>
 
       {gesamt != null && (
@@ -228,17 +227,17 @@ export function NachbewilligungsBlock({ daten, jahr }: {
       {bericht && (
         <div className="mt-4">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Wer zugestimmt hat
+            Wer über die Bewilligung entscheidet
           </p>
           <div className="mt-2.5">
             <KanalRangliste kanaele={bericht.kanaele}
               beleg={<Beleg q="jahresabschluss" />} />
           </div>
           <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
-            Die vier Wege, auf denen eine Nachbewilligung zustande kommt, in
-            den Worten des Rechenschaftsberichts. Nur der erste ist eine
-            Abstimmung im Rat; die anderen entscheidet die Verwaltung, der Rat
-            wird darüber unterrichtet.
+            Der Rechenschaftsbericht unterscheidet vier Entscheidungswege. Nur einer
+            führt über eine Abstimmung im Rat; in den übrigen Fällen entscheidet die
+            Verwaltung oder es handelt sich um eine Eilentscheidung. Der Rat wird
+            darüber unterrichtet.
           </p>
           {bericht.verpflichtungen_betrag != null
             && bericht.verpflichtungen_betrag > 0 && (
@@ -265,7 +264,7 @@ export function NachbewilligungsBlock({ daten, jahr }: {
         <div className="mt-4 border-t border-border/60 pt-3">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Diese Beschlüsse waren es
+              Die einzelnen Beschlüsse
             </p>
             <span className="font-mono text-[10px] uppercase text-muted-foreground">
               {posten.length} {posten.length === 1 ? "Vorlage" : "Vorlagen"}

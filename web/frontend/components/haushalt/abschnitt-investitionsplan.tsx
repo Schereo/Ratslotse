@@ -288,10 +288,10 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
             Was baut und kauft die Stadt?
           </h2>
           <p className="max-w-[70ch] text-[13.5px] leading-relaxed text-foreground/90">
-            Alles, was du auf den anderen Seiten dieses Bereichs siehst, ist der
-            laufende Betrieb: Personal, Zuschüsse, Energie, Mieten. Neubauten,
-            Fahrzeuge und Grundstücke stehen dort nicht — sie haben einen eigenen
-            Haushalt. Das ist er.
+            Die übrigen Haushaltsseiten zeigen vor allem den laufenden Betrieb:
+            Personal, Zuschüsse, Energie oder Mieten. Neubauten, Fahrzeuge und
+            Grundstücke werden dagegen im Finanzhaushalt geplant. Diese Seite zeigt
+            diesen Teil des Haushalts.
           </p>
         </header>
 
@@ -367,12 +367,12 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
         <LottiErklaert
           titel="Zwei Haushalte, nicht einer"
           text={
-            "Eine Stadt führt zwei Bücher. Im Ergebnishaushalt steht, was ein Jahr " +
-            "kostet — Löhne, Strom, Zuschüsse. Im Finanzhaushalt steht, was Geld " +
-            "kostet, aber etwas hinterlässt: ein Schulgebäude, ein Löschfahrzeug, " +
-            "ein Grundstück. Deshalb taucht ein Neubau im Ergebnishaushalt erst " +
-            "später auf, in kleinen Scheiben über die Jahre seiner Nutzung — und " +
-            "in dem Jahr, in dem er wirklich gebaut wird, findest du ihn nur hier."
+            "Ergebnis- und Finanzhaushalt betrachten dieselbe Tätigkeit aus zwei Perspektiven. " +
+            "Im Ergebnishaushalt stehen die laufenden Aufwendungen eines Jahres, etwa Löhne, " +
+            "Strom und Zuschüsse. Der Finanzhaushalt erfasst Ein- und Auszahlungen, darunter " +
+            "auch Investitionen in Gebäude, Fahrzeuge oder Grundstücke. Ein Neubau verursacht " +
+            "dort während der Bauzeit Auszahlungen; im Ergebnishaushalt erscheint sein " +
+            "Werteverzehr später über jährliche Abschreibungen."
           }
         />
 
@@ -419,13 +419,13 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
           </ul>
 
           <p className="mt-3.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-            Die Bereiche heißen im Haushalt „Teilhaushalte" — dieselbe Einteilung
+            Die Bereiche heißen im Haushalt „Teilhaushalte“ — dieselbe Einteilung
             wie unter{" "}
             <Link href="/haushalt/bereiche" className="text-primary hover:underline">
               Was steckt hinter den Namen?
             </Link>
-            . Ein Bereich mit hohen Investitionen ist nicht besser dran als einer
-            mit niedrigen: Es heißt nur, dass dort gerade gebaut wird.
+            . Hohe Investitionsauszahlungen bedeuten zunächst nur, dass in diesem
+            Bereich größere Anschaffungen oder Baumaßnahmen geplant sind.
           </p>
           {/* Dieselbe Falle wie bei den Erträgen auf /haushalt (dort steht sie
               in `BEREICH_TEXTE.finanzen`): Ein Teilhaushalt ist der Ort, an dem
@@ -538,12 +538,12 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
             </li>
             <li>
               <strong className="font-semibold text-foreground">
-                Es ist der Plan, nicht das Ergebnis.
+                Gezeigt werden Planwerte.
               </strong>{" "}
-              Was am Jahresende wirklich gebaut und bezahlt wurde, steht in
-              diesem Datensatz nicht. Gerade bei Investitionen ist der Abstand
-              oft groß: Planungen ziehen sich, Aufträge werden nicht vergeben,
-              Vorhaben rutschen ins nächste Jahr.
+              Der Datensatz zeigt nicht, was am Jahresende tatsächlich gebaut oder
+              bezahlt wurde. Investitionen können sich verschieben, etwa wenn
+              Planungen länger dauern, Vergaben scheitern oder Vorhaben erst im
+              Folgejahr umgesetzt werden.
             </li>
             <li>
               <strong className="font-semibold text-foreground">

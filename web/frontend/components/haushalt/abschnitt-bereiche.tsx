@@ -223,10 +223,9 @@ export function BereicheAbschnitt() {
             „Soziales“, „Finanzmanagement“ — was heißt das eigentlich?
           </h2>
           <p className="mt-2 max-w-[74ch] text-sm leading-relaxed text-muted-foreground">
-            Der Haushalt ist in Teilhaushalte geteilt, und deren Namen stammen aus der
-            Verwaltungsgliederung: Sie sagen, wer zuständig ist, nicht, worum es geht.
-            Hier steht zu jedem eine Zeile, die man ohne Vorwissen lesen kann — und der
-            schwierigste Fall gleich vorweg.
+            Der Haushalt ist in Teilhaushalte gegliedert. Ihre Namen folgen der
+            Verwaltungsorganisation und zeigen vor allem, wer zuständig ist. Wir erklären
+            deshalb bei jedem Bereich in Alltagssprache, welche Aufgaben dahinterstehen.
           </p>
         </div>
 
@@ -235,10 +234,10 @@ export function BereicheAbschnitt() {
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <NamenKlartext zeilen={zeilen} jahr={jahr} />
           <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-            Sortiert nach Größe (was ein Bereich ausgibt oder was die Stadt zuschießt), nie
-            nach der Nummer im Haushaltsplan<Beleg q="plan" />. „Schießt die Stadt zu" ist der
-            Zuschussbedarf: Ausgaben minus eigene Erträge des Bereichs. Die Beschreibungen sind redaktionell
-            nach dem Vorbericht des Plans — keine amtliche Gliederung.
+            Sortiert nach Größe: entweder nach den gesamten Aufwendungen oder nach dem
+            Zuschussbedarf, also Aufwendungen minus eigene Erträge des Bereichs
+            <Beleg q="plan" />. Die Beschreibungen haben wir aus dem Vorbericht des
+            Haushaltsplans abgeleitet; sie sind keine amtliche Gliederung.
           </p>
         </div>
 
@@ -276,10 +275,10 @@ export function BereicheAbschnitt() {
         />
 
         <p className="max-w-[86ch] text-xs leading-relaxed text-muted-foreground">
-          <GlossaryText text={"Übrigens: Ein Teilhaushalt ist kein eigener Geldbeutel. Alle "
-            + "Einnahmen der Stadt landen zusammen in einer Kasse, und aus dieser einen Kasse "
-            + "wird jede Aufgabe bezahlt — deshalb lässt sich nicht sagen, welche Einnahme "
-            + "welche Ausgabe trägt."} />
+          <GlossaryText text={"Ein Teilhaushalt besitzt keine eigene zweckfreie Kasse. "
+            + "Allgemeine Einnahmen wie Steuern und Schlüsselzuweisungen finanzieren den "
+            + "Gesamthaushalt. Nur bei zweckgebundenen Einnahmen lässt sich eine direkte "
+            + "Verbindung zu bestimmten Ausgaben herstellen."} />
         </p>
 
       </div>

@@ -394,7 +394,8 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
         <p className="mt-3 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
           Welches Amt zu welchem Namen gehört, gibt der Bericht hier nicht her: Er führt
           Namen und Funktionen in zwei getrennten Spalten, und die beiden Listen sind
-          verschieden lang. Deshalb stehen die Namen ohne Amt — geraten wird nicht.
+          verschieden lang. Deshalb stehen die Namen ohne Amt; eine eindeutige Zuordnung
+          ist aus dieser Tabelle nicht möglich.
         </p>
       )}
       <Fundstelle h={herkunft} className="mt-3" />

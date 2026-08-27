@@ -458,12 +458,14 @@ function Steckbrief({ p, jahr, alleJahre }: { p: Produkt; jahr: number; alleJahr
         </p>
         <p className="mt-2 max-w-[62ch] text-[12.5px] leading-relaxed text-foreground/85">
           {n > 0 ? (
-            <>Geplant für {jahr}: <strong>{aus.wert}&#8239;{aus.einheit}</strong> Ausgaben,
-              davon holt das Produkt <strong>{ein.wert}&#8239;{ein.einheit}</strong> selbst herein
-              (Gebühren, Erstattungen). Der Rest kommt aus allgemeinen Steuermitteln.</>
+            <>Für {jahr} sind <strong>{aus.wert}&#8239;{aus.einheit}</strong> Aufwendungen
+              geplant. Dem stehen <strong>{ein.wert}&#8239;{ein.einheit}</strong> eigene
+              Erträge gegenüber, etwa Gebühren oder Erstattungen. Den verbleibenden
+              Zuschussbedarf finanziert der allgemeine Haushalt.</>
           ) : (
-            <>Dieses Produkt trägt sich {jahr} selbst: {ein.wert}&#8239;{ein.einheit} Einnahmen
-              stehen {aus.wert}&#8239;{aus.einheit} Ausgaben gegenüber.</>
+            <>Bei diesem Produkt übersteigen die geplanten eigenen Erträge von{" "}
+              <strong>{ein.wert}&#8239;{ein.einheit}</strong> die geplanten Aufwendungen
+              von {aus.wert}&#8239;{aus.einheit}.</>
           )}
         </p>
         {/* Zwei Ehrlichkeits-Zeilen, auf jedem Gerät (H4-04): Ist-Zahlen gibt
@@ -513,7 +515,8 @@ function Steckbrief({ p, jahr, alleJahre }: { p: Produkt; jahr: number; alleJahr
           ) : p.beeinflussbarkeit_roh ? (
             <p className="mt-2 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
               Der Plan gibt hier keine der drei Stufen an, sondern schreibt:{" "}
-              <em>„{p.beeinflussbarkeit_roh}"</em>. Wir sortieren das bewusst nicht ein.
+              <em>„{p.beeinflussbarkeit_roh}"</em>. Diese Formulierung lässt sich keiner
+              der drei Stufen eindeutig zuordnen.
             </p>
           ) : null}
           <p className="mt-2.5 border-t border-border/60 pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
@@ -762,10 +765,11 @@ export function ProdukteAbschnitt({ onBestand }: {
               Platz nimmt und dieselbe Fensterbreite auf dem iPad mehr hergibt. */}
           <div className="mt-2 grid gap-x-8 gap-y-2 @5xl/kopf:grid-cols-2">
             <p className="max-w-[68ch] text-[15px] leading-relaxed text-foreground/90">
-              Der Haushalt ist in <GlossaryText text="Produkte" /> gegliedert — einzelne Aufgaben mit
-              eigener Nummer, eigenem Budget und zuständigem Amt. Hier stehen{" "}
-              <strong>{gesamt}</strong> davon aus dem Haushaltsjahr {jahr}: was sie kosten, was
-              dahintersteckt und wie viel Spielraum die Stadt bei ihnen sieht.
+              Der Haushalt gliedert die Arbeit der Stadt in <GlossaryText text="Produkte" />:
+              einzelne Aufgaben mit eigener Nummer, Budget und zuständigem Amt. Hier stehen{" "}
+              <strong>{gesamt}</strong> Produkte aus dem Haushaltsjahr {jahr} mit ihren
+              geplanten Aufwendungen, Beschreibungen und der Einschätzung der Stadt zum
+              finanziellen Spielraum.
             </p>
             {/* Der Jahres-Sprung stand bisher nur ganz unten im Abdeckungs-Block.
                 Wer von der Übersicht kommt, hat dort ein späteres Planjahr
@@ -781,10 +785,10 @@ export function ProdukteAbschnitt({ onBestand }: {
 
         <LottiErklaert
           titel="Warum das interessant ist"
-          text={"Bei einem Produkt steht nicht nur der Betrag, sondern auch der Grad der "
-            + "Beeinflussbarkeit — die Selbstauskunft der Stadt, wie viel sie hier überhaupt "
-            + "ändern könnte. Das macht aus einer Zahl eine Antwort auf die Frage, worüber der "
-            + "Rat streiten kann und worüber nicht."}
+          text={"Bei vielen Produkten nennt die Stadt zusätzlich den Grad der "
+            + "Beeinflussbarkeit. Damit beschreibt sie, wie stark sich die Kosten aus ihrer "
+            + "Sicht verändern lassen. Diese Angabe hilft einzuordnen, wo der Rat "
+            + "finanziellen Spielraum hat."}
         />
 
         {/* Suche + Filter */}

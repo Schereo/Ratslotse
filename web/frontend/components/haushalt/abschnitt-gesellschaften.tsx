@@ -307,9 +307,10 @@ export function GesellschaftenAbschnitt({ onBestand }: {
                 Was machen die eigentlich?
               </h2>
               <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
-                Die Stadt ist mehr als das Rathaus: {liste.length} Betriebe und
-                Gesellschaften erledigen städtische Aufgaben — vom Klinikum bis zur
-                Volkshochschule. Die Form sagt, wie nah sie der Stadt stehen; die Zahlen
+                Städtische Aufgaben liegen nicht nur in der Verwaltung: {liste.length}
+                Betriebe und Gesellschaften übernehmen Leistungen vom Klinikum bis zur
+                Volkshochschule. Die Rechtsform bestimmt, wie die Einheit rechtlich und
+                organisatorisch zur Stadt gehört; die Zahlen
                 reichen {jahre.length ? `von ${jahre[0]} bis ${jahre.at(-1)}` : "mehrere Jahre"} zurück.
               </p>
             </div>
@@ -328,7 +329,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
               gehört. Eine GmbH bleibt eine GmbH, auch bei 34,5 %. */}
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Die Form sagt, wie nah sie der Stadt stehen
+              Was die Rechtsform bedeutet
             </p>
             <dl className="mt-2 flex flex-col gap-1.5">
               <div className="flex items-baseline gap-2.5">
@@ -393,12 +394,11 @@ export function GesellschaftenAbschnitt({ onBestand }: {
 
           <LottiErklaert
             titel="Warum hat eine Stadt Gesellschaften?"
-            text={"Manche Aufgaben laufen leichter außerhalb der Verwaltung — ein "
-              + "Krankenhaus oder ein Verkehrsbetrieb braucht eigene Verträge, eigenes "
-              + "Personal und eine eigene Buchhaltung. Die Stadt gründet dafür Betriebe "
-              + "und Gesellschaften, bleibt aber Eigentümerin und besetzt die "
-              + "Aufsichtsräte. Einmal im Jahr muss sie öffentlich Rechenschaft darüber "
-              + "ablegen; das ist der Beteiligungsbericht."}
+            text={"Für Aufgaben wie ein Krankenhaus oder einen Verkehrsbetrieb nutzt die "
+              + "Stadt rechtlich oder organisatorisch eigenständige Einheiten mit eigenen "
+              + "Verträgen, Beschäftigten und Büchern. Je nach Rechtsform bleibt die Stadt "
+              + "Trägerin oder Eigentümerin und wirkt in den Aufsichtsgremien mit. Der "
+              + "Beteiligungsbericht informiert regelmäßig über diese Einheiten."}
           />
 
           <section className="flex flex-col gap-2.5">

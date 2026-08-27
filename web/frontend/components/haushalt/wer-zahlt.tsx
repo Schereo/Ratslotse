@@ -368,7 +368,7 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
       <div className="mt-3 grid gap-x-8 gap-y-3 border-t border-dashed border-border pt-3 @3xl:grid-cols-2">
         <div>
           <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-primary">
-            Woran man sich herantasten kann
+            Welche öffentlichen Daten Anhaltspunkte geben
           </p>
           <ul className="mt-2 list-disc space-y-1.5 pl-4 text-[12.5px] leading-relaxed text-foreground/85">
             <li>
@@ -421,7 +421,8 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
       </div>
 
       <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        Namen nennen wir deshalb keine: Jede Liste an dieser Stelle wäre geraten.
+        Deshalb nennen wir keine Unternehmen. Aus den öffentlich verfügbaren Daten lässt
+        sich keine belastbare Rangliste der Gewerbesteuerzahlenden ableiten.
       </p>
     </section>
   );

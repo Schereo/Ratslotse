@@ -269,11 +269,10 @@ export function PruefungAbschnitt({ onBestand }: {
           {alle.length} Feststellungen — {wiederholt} kehren Jahr für Jahr wieder
         </h2>
         <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
-          Jeder Jahresabschluss der Stadt wird geprüft — von einer eigenen Stelle, die dem Rat
-          berichtet und nicht der Verwaltungsspitze untersteht. Ihre Befunde stehen in einem
-          Schlussbericht, der als Anlage an einer Ratsvorlage hängt. Die Wiederholungen sind
-          die Geschichte: Was seit Jahren angemahnt wird, steht hier als Kette — und der
-          Wortlaut bleibt das Zentrum.
+          Das Rechnungsprüfungsamt prüft jeden Jahresabschluss und berichtet seine
+          Feststellungen dem Rat. Der Schlussbericht wird als Anlage zu einer Ratsvorlage
+          veröffentlicht. Wiederholt beanstandete Themen führen wir über mehrere Jahrgänge
+          zusammen; die einzelnen Feststellungen bleiben im Wortlaut des Berichts erhalten.
         </p>
       </div>
 
@@ -300,10 +299,10 @@ export function PruefungAbschnitt({ onBestand }: {
         </div>
         <p className="mt-3 max-w-[70ch] text-[13px] leading-relaxed text-foreground/90">
           In den Berichten stehen <strong>{alle.length} Feststellungen</strong>
-          <Beleg q="pruefbericht" />. Die große Mehrheit sind Hinweise — Dinge, die künftig zu
-          beachten sind. Eine Beanstandung meint einen bedeutsamen Mangel; „wiederholt" ist
-          die eigene Aussage des Amts, dass ein Mangel aus einem Vorjahr noch nicht
-          ausgeräumt war.
+          <Beleg q="pruefbericht" />. Hinweise benennen Punkte, die künftig beachtet werden
+          sollen. Eine Beanstandung bezeichnet einen bedeutsamen Mangel. „Wiederholt“
+          bedeutet, dass das Amt denselben Mangel bereits in einem früheren Bericht
+          festgestellt hatte.
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
           {marken.map((m) => (
@@ -457,9 +456,8 @@ export function PruefungAbschnitt({ onBestand }: {
 
         {nurSchwer && (
           <p className="mt-3 max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
-            {imJahr.length - schwerImJahr} Hinweise und Korrekturen sind gerade ausgeblendet.
-            Sie sind nicht weniger echt — nur etwas anderes: „Alle ({imJahr.length})" zeigt
-            den Bericht wieder vollständig.
+            {imJahr.length - schwerImJahr} Hinweise und Korrekturen sind derzeit ausgeblendet.
+            Mit „Alle ({imJahr.length})“ wird der Bericht wieder vollständig angezeigt.
           </p>
         )}
 

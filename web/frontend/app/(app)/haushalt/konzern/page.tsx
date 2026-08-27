@@ -137,11 +137,11 @@ function KonzernSeiteInner() {
 
         {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
         <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-          Nein. Der Haushalt zeigt die Verwaltung. Klinikum, Busse, Bäder und die
-          städtischen Gebäude führen eigene Bücher. Hier stehen sie: erst in einer
-          gemeinsamen Rechnung, dann einzeln mit ihrem Auftrag, dann mit dem, was sie
-          sich fürs Jahr vornehmen — und zuletzt das, was davon als Gebühr bei Ihnen
-          ankommt.
+          Nein. Der Kernhaushalt bildet vor allem die Stadtverwaltung ab. Klinikum,
+          Busse, Bäder und die städtische Gebäudewirtschaft führen eigene Bücher. Diese
+          Seite zeigt zunächst den zusammengefassten Konzernabschluss, anschließend die
+          einzelnen Betriebe und Gesellschaften, ihre Wirtschaftspläne und die daraus
+          berechneten Gebühren.
         </p>
 
         <Abschnitte marken={MARKEN} />

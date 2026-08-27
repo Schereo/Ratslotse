@@ -186,10 +186,10 @@ function MitredenInner() {
 
         {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
         <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-          Ein Haushalt ist kein Rechenergebnis, sondern ein Kompromiss — und er
-          entsteht in öffentlichen Sitzungen. Hier steht, wann darüber entschieden
-          wird und worüber die Fraktionen gestritten haben. Selbst an den
-          Stellschrauben drehen kannst du danach im{" "}
+          Über den Haushalt wird politisch entschieden: Die Verwaltung legt einen
+          Entwurf vor, Ausschüsse beraten darüber und der Rat beschließt den endgültigen
+          Plan. Hier siehst du die Termine und die Streitpunkte der Fraktionen. Eigene
+          Annahmen kannst du anschließend im{" "}
           <Link href="/haushalt/labor" className="font-semibold text-primary">
             Haushalts-Labor
           </Link>.

@@ -156,7 +156,7 @@ export function Fussnote({ schichten }: { schichten: Datenschicht[] }) {
        (`luecken`, „Für 2019 liegen uns keine auswertbaren Zahlen vor"), und
        zwar am richtigen Ort und ohne Prüfzeugnis. DESIGNSPRACHE.md § 7. */
     <p className="mt-3.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-      Was im Ratsinformationssystem veröffentlicht wird, tragen wir automatisch nach.
+      Veröffentlichungen aus dem Ratsinformationssystem werden automatisch ergänzt.
       {/* Aufzählung ohne Artikel und ohne Verb-Kongruenz: Die Namen kommen
           aus den Daten, „Nur den Haushaltsplan holen wir …" ließe sich für
           eine beliebige Liste nicht grammatisch bilden. Die Stelle steht in
@@ -165,7 +165,7 @@ export function Fussnote({ schichten }: { schichten: Datenschicht[] }) {
         <span key={g.quelle}>
           {i > 0 && "; "}{aufzaehlung(g.labels)} ({g.quelle})
         </span>
-      ))} — die Zahlen dafür holen wir von Hand.</>}
+      ))} — diese Zahlen werden aus weiteren amtlichen Veröffentlichungen übernommen.</>}
     </p>
   );
 }
@@ -191,10 +191,10 @@ export function Datenstand() {
         : "bis wann die Zahlen reichen"}
     >
       <p className="mt-3 max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
-        Die Stadt legt ihre Zahlen zu verschiedenen Zeiten vor: den Plan im Herbst für das
-        kommende Jahr, die Abrechnung ein knappes Jahr nach dessen Ende — und was die
-        Betriebe der Stadt einschließt, noch einmal später. Deshalb reicht nicht jede Seite
-        gleich weit; welcher Takt wo gilt, steht an jeder Zeile.
+        Die Datensätze erscheinen zu unterschiedlichen Zeitpunkten. Der Haushaltsplan wird
+        vor dem Planjahr veröffentlicht, der Jahresabschluss erst nach dessen Ende. Berichte,
+        die Eigenbetriebe und Gesellschaften einbeziehen, folgen meist noch später. Deshalb
+        reichen die Zeitreihen auf den einzelnen Seiten unterschiedlich weit.
       </p>
 
       <ul className="mt-3 flex flex-col gap-2.5">

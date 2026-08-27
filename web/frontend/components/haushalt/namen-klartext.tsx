@@ -116,8 +116,8 @@ function ZahlenZeile({ z }: { z: KlartextZeile }) {
   }
   return (
     <span className="mt-1 block text-[11.5px] tabular-nums text-muted-foreground">
-      {deMio(z.stadt)}&#8239;Mio.&nbsp;€ schießt die Stadt zu · {deMio(z.eigen)}&#8239;Mio.&nbsp;€
-      nimmt der Bereich selbst ein
+      {deMio(z.stadt)}&#8239;Mio.&nbsp;€ Zuschussbedarf · {deMio(z.eigen)}&#8239;Mio.&nbsp;€
+      eigene Erträge
     </span>
   );
 }
@@ -232,7 +232,7 @@ export function NamenKlartext({ zeilen, jahr, aktiv, className }: {
             <Segmented className="w-max" value={sortierung} onChange={setSortierung} tone="primary"
               options={[
                 { value: "aus", label: "was ein Bereich ausgibt" },
-                { value: "stadt", label: "was die Stadt zuschießt" },
+                { value: "stadt", label: "Zuschussbedarf des Bereichs" },
               ]} />
           </div>
         </div>
@@ -245,11 +245,11 @@ export function NamenKlartext({ zeilen, jahr, aktiv, className }: {
       <div className="mb-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 px-2.5">
         <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px]" style={{ background: "var(--hh-ein-0)" }} />
-          schießt die Stadt zu (allgemeiner Topf)
+          Zuschussbedarf aus dem allgemeinen Haushalt
         </span>
         <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px]" style={{ background: "var(--hh-ein-3)" }} />
-          nimmt der Bereich selbst ein
+          eigene Erträge des Bereichs
         </span>
       </div>
 

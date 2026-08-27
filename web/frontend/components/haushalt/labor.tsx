@@ -375,7 +375,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
       <p className="mt-1.5 text-[12px] leading-relaxed">
         {!lueckeGeaendert ? (
           <span className="text-muted-foreground">
-            Noch nichts gedreht — die Regler {kompakt ? "oben" : "links"} füllen diesen Balken.
+            Noch keine Annahmen verändert — die Regler {kompakt ? "oben" : "links"} füllen diesen Balken.
           </span>
         ) : wirkung > 0 ? (
           <><strong>{Math.round(geschlossen)}&#8239;% der Lücke</strong> geschlossen
@@ -508,9 +508,10 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
       </div>
       {maxWirkung < basis.defizit && (
         <p className="mt-3 rounded-lg bg-muted/50 p-2.5 text-[12px] leading-relaxed">
-          Mehr als {deMio(maxWirkung)}&#8239;Mio.&nbsp;€ geben diese Regler nicht her — auch mit allen am
-          Anschlag blieben {deMio(Math.round((basis.defizit - maxWirkung) * 10) / 10)}&#8239;Mio.&nbsp;€
-          Minus. Ein ausgeglichener Haushalt braucht mehr als Stellschrauben.
+          Mit den hier abgebildeten Änderungen lassen sich höchstens {deMio(maxWirkung)}&#8239;Mio.&nbsp;€
+          ausgleichen. Selbst bei den maximalen Einstellungen bliebe ein Minus von{" "}
+          {deMio(Math.round((basis.defizit - maxWirkung) * 10) / 10)}&#8239;Mio.&nbsp;€.
+          Weitere Maßnahmen wären notwendig.
         </p>
       )}
     </>
@@ -687,8 +688,8 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
             </li>
           </ul>
           <p className="mt-2.5 max-w-[76ch] border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-            Deshalb ist das Ergebnis oben eine <strong>Obergrenze</strong>: In Wirklichkeit bliebe
-            weniger übrig, als hier steht.
+            Das Ergebnis oben ist deshalb eine <strong>vereinfachte Obergrenze</strong>. Es
+            berücksichtigt diese Folgewirkungen nicht vollständig.
           </p>
         </div>
       </div>

@@ -285,7 +285,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         </p>
         <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
           {schere
-            ? "Die Stadt schuldet immer weniger — und steht für immer mehr gerade"
+            ? "Eigene Geldschulden sinken, Bürgschaften steigen"
             : <>Bürgschaften: {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€</>}
         </h2>
         {schere && gsLetzt != null ? (
@@ -330,7 +330,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
             <>ab {gerundet[0]} nur noch auf Zehntel-Millionen gerundet („rd.").{" "}
             </>
           ) : null}
-          Die Reihe mischt also zwei Darreichungsformen derselben Quelle.
+          Die Reihe enthält daher unterschiedlich stark gerundete Werte aus derselben Quelle.
         </p>
       ) : null}
 
@@ -346,10 +346,9 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
       ) : null}
 
       <p className="max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
-        <strong className="text-foreground">Nicht selbst addierbar.</strong>{" "}
-        Die einzelnen Bürgschafts-Beschlüsse des Rates zusammenzuzählen ergäbe eine
-        falsche Summe: Verlängerungen ersetzen einander, statt sich zu addieren.
-        Was hier steht, ist der Bestand, den die Stadt selbst als Bestand ausweist —
+        <strong className="text-foreground">Ein Bestand, keine Summe der Beschlüsse.</strong>{" "}
+        Die einzelnen Bürgschaftsbeschlüsse lassen sich nicht addieren, weil Verlängerungen
+        frühere Beschlüsse ersetzen können. Gezeigt wird der von der Stadt ausgewiesene Bestand —
         {erster.jahr === letzter.jahr ? " ein Stichtag." : ` ${reihe.length} Stichtage.`}
       </p>
 
@@ -400,10 +399,11 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
               wäre beim nächsten Tabellenband still falsch geworden. */}
           {s.kernhaushalt != null ? `${deMio(s.kernhaushalt / 1e6)} · ` : ""}
           {traeger ? `${deMio(traeger / 1e6)} · ` : ""}
-          {deMio(s.insgesamt / 1e6)}&#8239;Mio.&nbsp;€ — und alle drei stimmen
+          {deMio(s.insgesamt / 1e6)}&#8239;Mio.&nbsp;€ — drei unterschiedliche Abgrenzungen
         </h2>
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-          Sie zählen Verschiedenes mit. Stand 31.12.{s.jahr}:
+          Die Beträge unterscheiden sich danach, welche Einheiten einbezogen werden.
+          Stand 31.12.{s.jahr}:
         </p>
       </div>
 
@@ -473,9 +473,9 @@ function RahmenBlock({ zeile, herkunft }: {
     {
       label: "Höchstbetrag für Liquiditätskredite",
       wert: zeile.liquiditaetskredite,
-      erklaerung: "Der Dispo der Stadt: bis hierhin darf sie kurzfristig "
-        + "überziehen, um Rechnungen pünktlich zu bezahlen (§ 4). Er wird "
-        + "nicht ausgeschöpft, sondern nur erlaubt.",
+      erklaerung: "Bis zu diesem Höchstbetrag darf die Stadt kurzfristige Kredite "
+        + "aufnehmen, um ihre Zahlungsfähigkeit zu sichern (§ 4). Der Betrag ist eine "
+        + "Ermächtigung und nicht der tatsächlich genutzte Kredit.",
     },
     {
       label: "Verpflichtungsermächtigungen",
@@ -820,8 +820,8 @@ export default function SchuldenPage() {
               jahr: 2010,
               kurz: "108,9 Mio. € umgebucht",
               text: "2010 übertrug die Stadt 108,9 Mio. € Kredite an den neuen "
-                + "Eigenbetrieb Gebäudewirtschaft — eine Spalte sprang, die Summe "
-                + "kaum. Kein Tilgungswunder.",
+                + "Eigenbetrieb Gebäudewirtschaft. Dadurch änderte sich die Aufteilung, "
+                + "während die Gesamtsumme nahezu gleich blieb.",
             }] : []}
             hinweis="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln."
           />
@@ -856,15 +856,16 @@ export default function SchuldenPage() {
         <section className="@container rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             {ansicht === "insgesamt"
-              ? "Zwei Sprünge, die keine Politik waren"
-              : "Drei Sprünge, die keine Politik waren"}
+              ? "Zwei Brüche durch organisatorische Änderungen"
+              : "Drei Brüche durch Organisation oder Statistik"}
           </p>
           <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
             <li>
               <strong>2001 fiel die Schuld um mehr als die Hälfte.</strong> Die Stadt
               übertrug die Stadtentwässerung an den Oldenburgisch-Ostfriesischen
               Wasserverband; der übernahm dabei Darlehen über 139,5&#8239;Mio.&nbsp;€.
-              Kein Abbau, sondern ein Übergang mit der Aufgabe.<Beleg q="schulden" />
+              Der Rückgang entstand damit durch die Aufgabenübertragung und nicht durch
+              Tilgung.<Beleg q="schulden" />
             </li>
             <li>
               <strong>2010 verschob sich eine Spalte um 108,9&#8239;Mio.&nbsp;€</strong>,
@@ -1019,9 +1020,10 @@ export default function SchuldenPage() {
               ist dieser Wert <strong>nicht verrechenbar</strong>.
             </li>
             <li>
-              <strong>Kein Urteil über „zu viel".</strong> Ob ein Schuldenstand tragbar
-              ist, hängt daran, was mit dem Geld gebaut wurde und was die Stadt
-              erwirtschaftet. Diese Seite zeigt den Verlauf, nicht seine Bewertung.
+              <strong>Keine Bewertung der Tragfähigkeit.</strong> Ob ein Schuldenstand
+              tragbar ist, hängt unter anderem von Investitionen, Vermögen, laufenden
+              Ergebnissen und künftigen Belastungen ab. Diese Seite zeigt den Verlauf,
+              bewertet ihn aber nicht.
             </li>
           </ul>
         </section>

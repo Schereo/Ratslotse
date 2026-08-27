@@ -308,9 +308,9 @@ export function KennzahlenAbschnitt() {
               Die dreizehn Zahlen
             </h2>
             <p className="mt-1.5 max-w-[66ch] text-sm leading-relaxed text-muted-foreground">
-              Am Ende jedes Rechenschaftsberichts dampft die Stadt ihren ganzen
-              Jahresabschluss auf dreizehn Kennzahlen ein — und druckt darunter,
-              wie sie jede davon rechnet. {jahre[0]}–{jahre[jahre.length - 1]} aus{" "}
+              Am Ende jedes Rechenschaftsberichts fasst die Stadt ihren Jahresabschluss
+              in dreizehn Kennzahlen zusammen. Zu jeder Kennzahl veröffentlicht sie auch
+              den verwendeten Rechenweg. {jahre[0]}–{jahre[jahre.length - 1]} aus{" "}
               {ZAHLWORT[berichte.length] ?? berichte.length} Berichten.
             </p>
           </div>
@@ -328,11 +328,10 @@ export function KennzahlenAbschnitt() {
             Warum diese dreizehn
           </p>
           <p className="mt-1.5 max-w-[76ch] text-[13.5px] leading-relaxed text-foreground/90">
-            Es sind nicht unsere Kennzahlen, sondern ihre: Die Stadt wählt sie aus,
-            sie rechnet sie, und sie schreibt den Rechenweg daneben. Wir zeigen
-            beides im Wortlaut. Drei der Quoten haben wir aus der Bilanz desselben
-            Abschlusses nachgerechnet — sie stimmen auf die letzte gedruckte
-            Nachkommastelle.<Beleg q="bilanz" />
+            Die Stadt wählt diese Kennzahlen aus und veröffentlicht die jeweilige
+            Berechnung. Wir geben Werte und Rechenwege im Wortlaut wieder. Drei Quoten
+            haben wir anhand der Bilanz desselben Abschlusses geprüft; sie stimmen mit
+            den veröffentlichten Nachkommastellen überein.<Beleg q="bilanz" />
           </p>
         </section>
 
@@ -343,16 +342,14 @@ export function KennzahlenAbschnitt() {
         <Korrekturen daten={daten} />
 
         <LottiErklaert
-          titel="Warum eine Kennzahl ohne ihren Rechenweg wenig wert ist"
+          titel="Warum der Rechenweg zu jeder Kennzahl gehört"
           text={
-            "Eine Quote ist immer ein Bruch: etwas geteilt durch etwas anderes. "
-            + "Wer den Nenner ändert, ändert das Ergebnis, ohne dass sich in der "
-            + "Stadt irgendetwas bewegt hätte. Genau das ist hier einmal passiert: "
-            + "Bei der Personalintensität fielen die Versorgungsempfänger aus dem "
-            + "Zähler, und die Quote sank für 2020 von 26,03 % auf 25,09 % — ohne "
-            + "dass eine einzige Stelle gestrichen worden wäre. Deshalb steht auf "
-            + "dieser Seite an jeder Reihe, wie die Stadt sie rechnet, und deshalb "
-            + "läuft an dieser Stelle keine Linie durch."
+            "Eine Quote setzt zwei Größen ins Verhältnis. Ändert sich ihre Definition, "
+            + "kann sich die Quote verändern, obwohl die zugrunde liegende Situation gleich "
+            + "bleibt. Bei der Personalintensität wurden Versorgungsempfänger später nicht "
+            + "mehr mitgerechnet. Dadurch sank der Wert für 2020 von 26,03 % auf 25,09 %, "
+            + "ohne dass dafür eine Stelle gestrichen wurde. Deshalb zeigen wir zu jeder "
+            + "Reihe den Rechenweg und unterbrechen die Linie beim Definitionswechsel."
           }
         />
 
