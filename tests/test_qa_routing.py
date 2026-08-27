@@ -183,6 +183,18 @@ def test_rechercheplan_entfernt_debatten_bei_neuester_ortsentscheidung():
     assert resolved["suppressed_channels"] == ["debates"]
 
 
+def test_recherchekanal_nur_bei_validem_plan_gesteuert():
+    assert qa.research_channel_enabled(
+        {"valid": True, "channels": ["decisions", "debates"]}, "debates")
+    assert not qa.research_channel_enabled(
+        {"valid": True, "channels": ["decisions", "documents"]}, "debates")
+    # Provider-/Promptfehler dürfen keine bisher verfügbaren Quellen verstecken.
+    assert qa.research_channel_enabled(
+        {"valid": False, "channels": ["decisions"]}, "debates")
+    assert not qa.research_channel_enabled(
+        {"valid": False, "channels": ["decisions"]}, "debates", fallback=False)
+
+
 def test_rechercheplan_shadow_loggt_keinen_fragetext():
     plan = qa.research_plan_with_mandatory(
         qa._research_plan({}), typ="geld", place=True)
