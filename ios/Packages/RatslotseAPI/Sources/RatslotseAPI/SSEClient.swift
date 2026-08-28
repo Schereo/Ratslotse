@@ -25,10 +25,17 @@ public struct SSEEvent: Codable, Sendable, Equatable {
 /// `: ping`, joins repeated data lines, and dispatches only on a blank line.
 public struct SSEParser: Sendable {
     private var dataLines: [String] = []
+    private var lineBytes: [UInt8] = []
+    private var previousByteWasCarriageReturn = false
 
     public init() {}
 
     public mutating func consume(line: String) -> String? {
+        var line = line
+        // Proxys dürfen SSE mit CRLF statt nur LF ausliefern. Behandeln wir
+        // das verbleibende CR nicht als Zeileninhalt, kleben sonst mehrere
+        // JSON-Frames aneinander und der Decoder verwirft den ganzen Stream.
+        if line.last == "\r" { line.removeLast() }
         if line.isEmpty {
             guard !dataLines.isEmpty else { return nil }
             defer { dataLines.removeAll(keepingCapacity: true) }
@@ -42,8 +49,37 @@ public struct SSEParser: Sendable {
         return nil
     }
 
+    /// Verarbeitet den Stream byteweise, damit leere SSE-Trennzeilen nicht
+    /// von `AsyncBytes.lines` verschluckt werden können. Unterstützt LF,
+    /// CRLF und reine CR-Zeilenenden.
+    public mutating func consume(byte: UInt8) -> String? {
+        if byte == 0x0A { // LF
+            if previousByteWasCarriageReturn {
+                previousByteWasCarriageReturn = false
+                return nil
+            }
+            return consumeBufferedLine()
+        }
+        if byte == 0x0D { // CR
+            previousByteWasCarriageReturn = true
+            return consumeBufferedLine()
+        }
+
+        previousByteWasCarriageReturn = false
+        lineBytes.append(byte)
+        return nil
+    }
+
     public mutating func finish() -> String? {
-        consume(line: "")
+        if !lineBytes.isEmpty {
+            _ = consumeBufferedLine()
+        }
+        return consume(line: "")
+    }
+
+    private mutating func consumeBufferedLine() -> String? {
+        defer { lineBytes.removeAll(keepingCapacity: true) }
+        return consume(line: String(decoding: lineBytes, as: UTF8.self))
     }
 }
 
@@ -76,14 +112,14 @@ public struct SSEClient: Sendable {
                         )
                     }
                     var parser = SSEParser()
-                    for try await line in bytes.lines {
+                    for try await byte in bytes {
                         try Task.checkCancellation()
-                        if let payload = parser.consume(line: line) {
-                            try yield(payload: payload, to: continuation)
+                        if let payload = parser.consume(byte: byte) {
+                            yield(payload: payload, to: continuation)
                         }
                     }
                     if let payload = parser.finish() {
-                        try yield(payload: payload, to: continuation)
+                        yield(payload: payload, to: continuation)
                     }
                     continuation.finish()
                 } catch is CancellationError {
@@ -99,9 +135,18 @@ public struct SSEClient: Sendable {
     private func yield(
         payload: String,
         to continuation: AsyncThrowingStream<SSEEvent, Error>.Continuation
-    ) throws {
-        guard let data = payload.data(using: .utf8) else { return }
-        continuation.yield(try decoder.decode(SSEEvent.self, from: data))
+    ) {
+        // Ein beschädigtes Zusatz-Frame darf eine bereits laufende Antwort
+        // nicht beenden. Der Web-Client behandelt den Stream genauso: Nicht
+        // parsebare Frames werden verworfen, spätere Token/Done-Events aber
+        // weiterhin gelesen. Netzwerk- und HTTP-Fehler bleiben echte Fehler.
+        guard let event = decode(payload: payload) else { return }
+        continuation.yield(event)
+    }
+
+    func decode(payload: String) -> SSEEvent? {
+        guard let data = payload.data(using: .utf8) else { return nil }
+        return try? decoder.decode(SSEEvent.self, from: data)
     }
 
     private static func errorMessage(from data: Data, statusCode: Int) -> String {

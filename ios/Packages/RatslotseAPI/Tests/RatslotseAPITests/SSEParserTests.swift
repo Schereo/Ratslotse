@@ -29,6 +29,47 @@ import Testing
     #expect(parser.consume(line: "") == "first\nsecond")
 }
 
+@Test func parserAcceptsCRLFFrames() {
+    var parser = SSEParser()
+    #expect(parser.consume(line: #"data: {"type":"done"}"# + "\r") == nil)
+    #expect(parser.consume(line: "\r") == #"{"type":"done"}"#)
+}
+
+@Test(arguments: ["\n", "\r\n", "\r"])
+func byteParserPreservesEmptyEventSeparators(lineEnding: String) {
+    var parser = SSEParser()
+    let stream = [
+        #"data: {"type":"step","step":"search"}"#,
+        "",
+        #"data: {"type":"done"}"#,
+        "",
+    ].joined(separator: lineEnding)
+    var payloads: [String] = []
+    for byte in stream.utf8 {
+        if let payload = parser.consume(byte: byte) { payloads.append(payload) }
+    }
+    if let payload = parser.finish() { payloads.append(payload) }
+
+    #expect(payloads == [
+        #"{"type":"step","step":"search"}"#,
+        #"{"type":"done"}"#,
+    ])
+}
+
+@Test func malformedFrameDoesNotAbortFollowingAnswerEvents() {
+    let client = SSEClient()
+    let payloads = [
+        #"{"type":"step","step":"expand"}"#,
+        #"{this frame is not json}"#,
+        #"{"type":"token","text":"Die Antwort bleibt erhalten."}"#,
+        #"{"type":"done"}"#,
+    ]
+    let events = payloads.compactMap { client.decode(payload: $0) }
+
+    #expect(events.map(\.type) == ["step", "token", "done"])
+    #expect(events.compactMap(\.text).joined() == "Die Antwort bleibt erhalten.")
+}
+
 @Test func streamingErrorsKeepBackendMessageAndRetryDelay() async throws {
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [RateLimitURLProtocol.self]

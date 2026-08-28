@@ -311,9 +311,23 @@ public final class AppModel {
     }
 
     private func accept(user: User) async throws {
-        if let token = user.accessToken { try await api.setAccessToken(token) }
+        var tokenPersistenceFailed = false
+        if let token = user.accessToken {
+            do {
+                try await api.setAccessToken(token)
+            } catch {
+                // APIClient setzt den Token vor dem Keychain-Schreibversuch
+                // bereits für die laufende Sitzung. Ein lokaler
+                // Keychain-Ausfall darf deshalb einen erfolgreichen
+                // Server-Login nicht in einen Loginfehler verwandeln.
+                tokenPersistenceFailed = true
+            }
+        }
         if user.isActive { await synchronizeOnboarding() }
         session = user.isActive ? .active(user) : .pending(user)
+        if tokenPersistenceFailed {
+            alertMessage = "Du bist angemeldet. Die Sitzung konnte auf diesem Gerät jedoch nicht dauerhaft gespeichert werden."
+        }
         if user.isActive {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             if settings.authorizationStatus == .authorized {
