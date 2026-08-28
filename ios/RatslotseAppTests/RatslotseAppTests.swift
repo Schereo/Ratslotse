@@ -168,6 +168,60 @@ import Testing
     #expect(!markdown.contains("999"))
 }
 
+@Test func personAffiliationChipsFollowDesktopDisambiguationRules() {
+    let ulf = QuestionPerson(
+        slug: "ulf-prange",
+        name: "Ulf Prange",
+        vorname: "ulf",
+        nachname: "prange",
+        art: "rat",
+        partei: "SPD",
+        aktiv: true
+    )
+    let oldUlf = QuestionPerson(
+        slug: "ulf-prange-alt",
+        name: "Ulf Prange",
+        vorname: "ulf",
+        nachname: "prange-alt",
+        art: "rat",
+        partei: "SPD",
+        aktiv: false
+    )
+    let anna = QuestionPerson(
+        slug: "anna-oltmanns",
+        name: "Anna Oltmanns",
+        vorname: "anna",
+        nachname: "oltmanns",
+        art: "rat",
+        partei: "Bündnis 90/Die Grünen",
+        aktiv: true
+    )
+    let bernd = QuestionPerson(
+        slug: "bernd-oltmanns",
+        name: "Bernd Oltmanns",
+        vorname: "bernd",
+        nachname: "oltmanns",
+        art: "blocker",
+        partei: nil,
+        aktiv: false
+    )
+
+    let marked = questionPersonBadgeMarkdown(
+        text: "Ulf Prange (SPD) sagte es. Prange ergänzte später.",
+        people: [ulf, oldUlf]
+    )
+    #expect(marked.contains("Prange [● SPD](ratslotse://person/ulf-prange) sagte"))
+    #expect(marked.components(separatedBy: "ratslotse://person/ulf-prange").count == 2)
+    #expect(!marked.contains("(SPD)"))
+
+    let ambiguous = questionPersonBadgeMarkdown(text: "Oltmanns äußerte sich.", people: [anna, bernd])
+    #expect(ambiguous == "Oltmanns äußerte sich.")
+
+    let identified = questionPersonBadgeMarkdown(text: "Anna Oltmanns äußerte sich.", people: [anna, bernd])
+    #expect(identified.contains("Oltmanns [● Grüne](ratslotse://person/anna-oltmanns)"))
+    #expect(questionPersonBadgeLabel(oldUlf) == "ehem.")
+}
+
 @Test func extraEvidenceFollowsBackendSelectedChannels() {
     let generic = QuestionEvidenceAvailability(fields: ["qtype": .string("thema")])
     #expect(!generic.showsPartyOpinions)

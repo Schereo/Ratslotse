@@ -56,6 +56,20 @@ private struct QuestionTurn: Identifiable {
     var research: ResearchState?
 }
 
+struct QuestionPerson: Decodable, Sendable, Hashable {
+    let slug: String
+    let name: String?
+    let vorname: String
+    let nachname: String
+    let art: String
+    let partei: String?
+    let aktiv: Bool
+}
+
+private struct QuestionPeopleEnvelope: Decodable, Sendable {
+    let personen: [QuestionPerson]
+}
+
 struct QuestionsView: View {
     let model: AppModel
     @Environment(\.scenePhase) private var scenePhase
@@ -70,6 +84,7 @@ struct QuestionsView: View {
     @State private var showConversations = false
     @State private var isSavingConversationPreference = false
     @State private var conversationPreferenceError: String?
+    @State private var personLexicon: [QuestionPerson] = []
 
     private var isSending: Bool {
         streamTask != nil || turns.contains { $0.research?.status == "laeuft" }
@@ -129,6 +144,7 @@ struct QuestionsView: View {
         }
         .task { await restoreCurrentResearch() }
         .task { await restoreActiveConversationIfNeeded() }
+        .task { await loadPersonLexicon() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { reconnectRunningResearchIfNeeded() }
             else { researchStreamTask?.cancel(); researchStreamTask = nil }
@@ -216,6 +232,7 @@ struct QuestionsView: View {
                             QuestionTurnView(
                                 turn: turn,
                                 model: model,
+                                people: personLexicon,
                                 ask: askUsingSelectedMode,
                                 stopResearch: stopResearch,
                                 requestPartialResearch: requestPartialResearch,
@@ -260,6 +277,14 @@ struct QuestionsView: View {
             .padding(.bottom, composerBottomPadding)
             .frame(maxWidth: .infinity)
         }
+    }
+
+    private func loadPersonLexicon() async {
+        guard personLexicon.isEmpty else { return }
+        guard let response: QuestionPeopleEnvelope = try? await model.api.get("/api/council/personen-lexikon") else {
+            return
+        }
+        personLexicon = response.personen
     }
 
     private func submitOrStop() {
@@ -777,7 +802,7 @@ struct QuestionsView: View {
         else { return nil }
         return QuestionTurn(
             question: "Was bringen die neuen Busspuren?",
-            answer: "Der Rat hat **zwei neue Busspuren** und bessere Ampelvorrangschaltungen beschlossen. Dafür sind 8,9 Millionen Euro vorgesehen [20947].Für diesen Abschnitt sind kürzere und verlässlichere Fahrzeiten das Ziel.",
+            answer: "Ulf Prange (SPD) erläuterte den Beschluss: Der Rat hat **zwei neue Busspuren** und bessere Ampelvorrangschaltungen beschlossen. Dafür sind 8,9 Millionen Euro vorgesehen [20947].Für diesen Abschnitt sind kürzere und verlässlichere Fahrzeiten das Ziel.",
             sources: [source, otherSource],
             evidence: evidence,
             suggestions: ["Wann beginnt der Bau?", "Welche Linien profitieren?"],
@@ -1166,6 +1191,7 @@ private struct ResearchStoppedCard: View {
 private struct QuestionTurnView: View {
     let turn: QuestionTurn
     let model: AppModel
+    let people: [QuestionPerson]
     let ask: (String) -> Void
     let stopResearch: (UUID) -> Void
     let requestPartialResearch: (UUID) -> Void
@@ -1214,7 +1240,8 @@ private struct QuestionTurnView: View {
                     text: turn.answer,
                     model: model,
                     sources: turn.sources,
-                    evidence: turn.evidence
+                    evidence: turn.evidence,
+                    people: people
                 )
                     .font(RatsFont.body(15))
                     .foregroundStyle(RatsColor.bodyText)
@@ -2237,11 +2264,151 @@ private struct EvidenceChartData {
     }
 }
 
+func questionPersonBadgeLabel(_ person: QuestionPerson) -> String {
+    if !person.aktiv { return "ehem." }
+    switch person.art {
+    case "stadt": return "Stadt"
+    case "beteiligung": return "Aufsicht"
+    case "beratend": return "beratend"
+    default: return questionPartyAbbreviation(person.partei)
+    }
+}
+
+func questionPersonBadgeMarkdown(text: String, people: [QuestionPerson]) -> String {
+    guard !people.isEmpty,
+          let wordRegex = try? NSRegularExpression(pattern: #"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}"#)
+    else { return text }
+
+    let candidatesByLastName = Dictionary(grouping: people.filter { $0.nachname.count >= 3 }) {
+        questionFoldedName($0.nachname)
+    }
+    let source = text as NSString
+    let matches = wordRegex.matches(in: text, range: NSRange(location: 0, length: source.length))
+    var seen = Set<String>()
+    var cursor = 0
+    var output = ""
+
+    for match in matches where match.range.location >= cursor {
+        let word = source.substring(with: match.range)
+        guard let candidates = candidatesByLastName[questionFoldedName(word)] else { continue }
+
+        let person: QuestionPerson?
+        if candidates.count == 1 {
+            person = candidates[0]
+        } else {
+            let previousMatches = wordRegex.matches(
+                in: text,
+                range: NSRange(location: 0, length: match.range.location)
+            )
+            if let previous = previousMatches.last {
+                let gapStart = NSMaxRange(previous.range)
+                let gap = source.substring(with: NSRange(location: gapStart, length: match.range.location - gapStart))
+                let disallowedGap = CharacterSet.whitespacesAndNewlines
+                    .union(CharacterSet(charactersIn: "*_"))
+                    .inverted
+                let previousWord = source.substring(with: previous.range)
+                let byFirstName = gap.rangeOfCharacter(from: disallowedGap) == nil
+                    ? candidates.filter { questionFoldedName($0.vorname) == questionFoldedName(previousWord) }
+                    : []
+                person = byFirstName.count == 1 ? byFirstName[0] : nil
+            } else {
+                person = nil
+            }
+        }
+
+        guard let person, person.name != nil, person.art != "blocker", !seen.contains(person.slug) else {
+            continue
+        }
+        seen.insert(person.slug)
+
+        var end = NSMaxRange(match.range)
+        output += source.substring(with: NSRange(location: cursor, length: end - cursor))
+        output += " [●\u{202F}\(questionPersonBadgeLabel(person))](ratslotse://person/\(person.slug))"
+
+        let remainder = source.substring(from: end)
+        if let bracketRegex = try? NSRegularExpression(pattern: #"^\s*\(([^()]{2,40})\)"#),
+           let bracket = bracketRegex.firstMatch(
+               in: remainder,
+               range: NSRange(location: 0, length: (remainder as NSString).length)
+           ),
+           bracket.numberOfRanges == 2 {
+            let content = (remainder as NSString).substring(with: bracket.range(at: 1))
+            if questionIsMatchingPartyParenthesis(content, person.partei) {
+                end += NSMaxRange(bracket.range)
+            }
+        }
+        cursor = end
+    }
+
+    guard cursor > 0 else { return text }
+    output += source.substring(from: cursor)
+    return output
+}
+
+private func questionFoldedName(_ value: String) -> String {
+    value.lowercased()
+        .replacingOccurrences(of: "ä", with: "ae")
+        .replacingOccurrences(of: "ö", with: "oe")
+        .replacingOccurrences(of: "ü", with: "ue")
+        .replacingOccurrences(of: "ß", with: "ss")
+}
+
+private func questionPartyAbbreviation(_ party: String?) -> String {
+    guard let party else { return "Rat" }
+    let value = party.lowercased()
+    if value.contains("grün") { return "Grüne" }
+    if value.contains("linke") { return "Linke" }
+    if value.contains("spd") { return "SPD" }
+    if value.contains("cdu") { return "CDU" }
+    if value.contains("bsw") { return "BSW" }
+    if value.contains("afd") { return "AfD" }
+    if value == "volt" { return "Volt" }
+    if value == "fdp" { return "FDP" }
+    if value.contains("fdp/volt") { return "FDP/Volt" }
+    if value.contains("für oldenburg") { return "FO" }
+    if value.contains("piraten") { return "Piraten" }
+    return "Rat"
+}
+
+private func questionIsMatchingPartyParenthesis(_ content: String, _ party: String?) -> Bool {
+    guard party != nil else { return false }
+    let normalized = questionFoldedName(content)
+        .replacingOccurrences(of: #"[^a-z0-9 ]+"#, with: " ", options: .regularExpression)
+        .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+        .trimmingCharacters(in: .whitespaces)
+    let known: Set<String> = [
+        "spd", "cdu", "fdp", "volt", "afd", "bsw", "linke", "die linke",
+        "gruene", "die gruenen", "buendnis 90 die gruenen", "buendnis90 die gruenen",
+        "fuer oldenburg", "fdp volt", "piraten", "die partei",
+    ]
+    return known.contains(normalized) && questionPartyAbbreviation(content) == questionPartyAbbreviation(party)
+}
+
+private func questionPersonBadgeColor(_ person: QuestionPerson) -> Color {
+    if !person.aktiv { return RatsColor.muted }
+    switch person.art {
+    case "stadt": return RatsColor.primary
+    case "beteiligung", "beratend": return RatsColor.secondary
+    default: break
+    }
+    let party = person.partei?.lowercased() ?? ""
+    if party.contains("grün") { return Color(red: 0.24, green: 0.56, blue: 0.16) }
+    if party.contains("linke") { return Color(red: 0.90, green: 0.00, blue: 0.49) }
+    if party.contains("spd") { return Color(red: 0.89, green: 0.00, blue: 0.06) }
+    if party.contains("cdu") { return RatsColor.text }
+    if party.contains("bsw") { return Color(red: 0.49, green: 0.15, blue: 0.31) }
+    if party.contains("afd") { return Color(red: 0.00, green: 0.52, blue: 0.74) }
+    if party == "volt" { return Color(red: 0.31, green: 0.14, blue: 0.47) }
+    if party == "fdp" { return Color(red: 0.61, green: 0.45, blue: 0.00) }
+    return RatsColor.secondary
+}
+
 struct CitedAnswerText: View {
     let text: String
     let model: AppModel
     var sources: [DecisionSummary] = []
     var evidence: [String: JSONValue] = [:]
+    var people: [QuestionPerson] = []
 
     var body: some View {
         Text(attributed)
@@ -2256,12 +2423,16 @@ struct CitedAnswerText: View {
                     UIApplication.shared.open(target)
                     return .handled
                 }
+                if url.host == "person" {
+                    model.navigation.append(.person(slug: url.lastPathComponent))
+                    return .handled
+                }
                 return .discarded
             })
     }
 
     private var attributed: AttributedString {
-        let markdown = citationMarkdown
+        let markdown = questionPersonBadgeMarkdown(text: citationMarkdown, people: people)
         var output = (try? AttributedString(markdown: markdown)) ?? AttributedString(markdown)
         for run in output.runs {
             guard let link = run.link, link.scheme == "ratslotse" else { continue }
@@ -2269,6 +2440,12 @@ struct CitedAnswerText: View {
             if link.host == "decision" {
                 output[run.range].font = .system(size: 12, weight: .semibold, design: .rounded)
                 output[run.range].baselineOffset = 1
+            } else if link.host == "person" {
+                output[run.range].font = .system(size: 10, weight: .semibold, design: .rounded)
+                output[run.range].baselineOffset = 1
+                if let person = people.first(where: { $0.slug == link.lastPathComponent }) {
+                    output[run.range].foregroundColor = questionPersonBadgeColor(person)
+                }
             } else {
                 output[run.range].font = RatsFont.body(10, weight: .bold)
             }
