@@ -83,9 +83,6 @@ struct PublicProfileView: View {
 
     private func profileIntro(_ preview: LinkPreview) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            MonoKicker(kicker)
-            Text(person?.name ?? preview.title)
-                .font(RatsFont.title(usesTabletOverview ? 34 : 28))
             if let person {
                 PersonProfileOverview(
                     model: model,
@@ -93,6 +90,9 @@ struct PublicProfileView: View {
                     usesWideLayout: usesWidePersonLayout
                 )
             } else {
+                MonoKicker(kicker)
+                Text(preview.title)
+                    .font(RatsFont.title(usesTabletOverview ? 34 : 28))
                 Text(profileDescription ?? preview.description)
                     .font(RatsFont.body(16))
                     .foregroundStyle(RatsColor.bodyText)
@@ -170,6 +170,8 @@ struct PublicProfileView: View {
                 )
                 person = PublicPersonProfile(
                     name: "Anne Beispiel",
+                    slug: "anne-beispiel",
+                    type: "rat",
                     party: "SPD",
                     currentAffiliation: .init(
                         label: "SPD-Fraktion",
@@ -181,6 +183,14 @@ struct PublicProfileView: View {
                     nSessions: 18,
                     activeFrom: "2021-11-01",
                     activeTo: nil,
+                    factionTimeline: [
+                        .init(label: "SPD-Fraktion", kind: "partei", parties: ["SPD"], first: "2021-11-01", last: "2026-08-28", n: 18),
+                    ],
+                    ris: .init(kpenr: 42, name: "Anne Beispiel", currentFaction: "SPD-Fraktion", memberships: [
+                        .init(kgrnr: 1, committee: "Verkehrsausschuss", role: "Vorsitzende", from: "2021-11-01", until: nil),
+                        .init(kgrnr: 2, committee: "Sozialausschuss", role: "Mitglied", from: "2023-03-01", until: nil),
+                        .init(kgrnr: 3, committee: "Schulausschuss", role: "Mitglied", from: "2018-01-01", until: "2021-10-31"),
+                    ]),
                     committees: [
                         .init(committee: "Verkehrsausschuss", n: 9, chair: true),
                         .init(committee: "Sozialausschuss", n: 7, chair: false),
@@ -188,7 +198,20 @@ struct PublicProfileView: View {
                     recent: [
                         .init(ksinr: 8101, committee: "Verkehrsausschuss", sessionDate: "2026-08-28"),
                         .init(ksinr: 8102, committee: "Sozialausschuss", sessionDate: "2026-08-21"),
-                    ]
+                    ],
+                    speeches: [
+                        .init(kind: "rede", agendaItem: "Fahrradstraßen in Oldenburg", text: "Anne Beispiel hebt hervor, dass sichere Schulwege und durchgehende Radverbindungen gemeinsam geplant werden müssen.", committee: "Verkehrsausschuss", sessionDate: "2026-08-28"),
+                        .init(kind: "anfrage", agendaItem: "Ganztagsbetreuung", text: "Sie fragt nach dem Zeitplan für zusätzliche Betreuungsplätze und der Beteiligung der Schulen.", committee: "Sozialausschuss", sessionDate: "2026-08-21"),
+                    ],
+                    speechCount: 24,
+                    speechCommittees: [
+                        .init(committee: "Verkehrsausschuss", n: 15),
+                        .init(committee: "Sozialausschuss", n: 9),
+                    ],
+                    administrationRole: nil,
+                    isActive: nil,
+                    mentionedFrom: nil,
+                    mentionedUntil: nil
                 )
             case .topic:
                 preview = LinkPreview(
@@ -310,7 +333,70 @@ struct PublicPersonProfile: Codable, Sendable {
         }
     }
 
+    struct FactionPhase: Codable, Sendable, Identifiable {
+        var id: String { "\(label)-\(first)" }
+        let label: String
+        let kind: String
+        let parties: [String]
+        let first: String
+        let last: String
+        let n: Int
+    }
+
+    struct RISProfile: Codable, Sendable {
+        struct Membership: Codable, Sendable, Identifiable {
+            var id: String { "\(committee)-\(from ?? "")-\(until ?? "")" }
+            let kgrnr: Int?
+            let committee: String
+            let role: String?
+            let from: String?
+            let until: String?
+
+            enum CodingKeys: String, CodingKey {
+                case kgrnr
+                case committee = "gremium"
+                case role = "rolle"
+                case from = "von"
+                case until = "bis"
+            }
+        }
+
+        let kpenr: Int
+        let name: String
+        let currentFaction: String?
+        let memberships: [Membership]
+
+        enum CodingKeys: String, CodingKey {
+            case kpenr, name, memberships
+            case currentFaction = "fraktion_aktuell"
+        }
+    }
+
+    struct Speech: Codable, Sendable, Identifiable {
+        var id: String { "\(sessionDate)-\(agendaItem ?? "")-\(text.prefix(24))" }
+        let kind: String
+        let agendaItem: String?
+        let text: String
+        let committee: String?
+        let sessionDate: String
+
+        enum CodingKeys: String, CodingKey {
+            case text, committee
+            case kind = "art"
+            case agendaItem = "top"
+            case sessionDate = "session_date"
+        }
+    }
+
+    struct SpeechCommittee: Codable, Sendable, Identifiable {
+        var id: String { committee }
+        let committee: String
+        let n: Int
+    }
+
     let name: String
+    let slug: String
+    let type: String
     let party: String?
     let currentAffiliation: Affiliation?
     let art: String?
@@ -318,19 +404,109 @@ struct PublicPersonProfile: Codable, Sendable {
     let nSessions: Int
     let activeFrom: String?
     let activeTo: String?
+    let factionTimeline: [FactionPhase]
+    let ris: RISProfile?
     let committees: [Committee]
     let recent: [RecentSession]
+    let speeches: [Speech]
+    let speechCount: Int
+    let speechCommittees: [SpeechCommittee]
+    let administrationRole: String?
+    let isActive: Bool?
+    let mentionedFrom: String?
+    let mentionedUntil: String?
 
     enum CodingKeys: String, CodingKey {
-        case name, party, art, organisation, committees, recent
+        case name, slug, party, art, organisation, committees, recent, ris
+        case type = "typ"
         case currentAffiliation = "current_affiliation"
         case nSessions = "n_sessions"
         case activeFrom = "active_from"
         case activeTo = "active_to"
+        case factionTimeline = "faction_timeline"
+        case speeches = "wortbeitraege"
+        case speechCount = "wortbeitraege_gesamt"
+        case speechCommittees = "wortbeitraege_gremien"
+        case administrationRole = "rolle"
+        case isActive = "aktiv"
+        case mentionedFrom = "von"
+        case mentionedUntil = "bis"
+    }
+
+    init(
+        name: String,
+        slug: String,
+        type: String,
+        party: String?,
+        currentAffiliation: Affiliation?,
+        art: String?,
+        organisation: String?,
+        nSessions: Int,
+        activeFrom: String?,
+        activeTo: String?,
+        factionTimeline: [FactionPhase],
+        ris: RISProfile?,
+        committees: [Committee],
+        recent: [RecentSession],
+        speeches: [Speech],
+        speechCount: Int,
+        speechCommittees: [SpeechCommittee],
+        administrationRole: String?,
+        isActive: Bool?,
+        mentionedFrom: String?,
+        mentionedUntil: String?
+    ) {
+        self.name = name
+        self.slug = slug
+        self.type = type
+        self.party = party
+        self.currentAffiliation = currentAffiliation
+        self.art = art
+        self.organisation = organisation
+        self.nSessions = nSessions
+        self.activeFrom = activeFrom
+        self.activeTo = activeTo
+        self.factionTimeline = factionTimeline
+        self.ris = ris
+        self.committees = committees
+        self.recent = recent
+        self.speeches = speeches
+        self.speechCount = speechCount
+        self.speechCommittees = speechCommittees
+        self.administrationRole = administrationRole
+        self.isActive = isActive
+        self.mentionedFrom = mentionedFrom
+        self.mentionedUntil = mentionedUntil
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        name = try values.decode(String.self, forKey: .name)
+        slug = try values.decodeIfPresent(String.self, forKey: .slug) ?? ""
+        type = try values.decodeIfPresent(String.self, forKey: .type) ?? "rat"
+        party = try values.decodeIfPresent(String.self, forKey: .party)
+        currentAffiliation = try values.decodeIfPresent(Affiliation.self, forKey: .currentAffiliation)
+        art = try values.decodeIfPresent(String.self, forKey: .art)
+        organisation = try values.decodeIfPresent(String.self, forKey: .organisation)
+        nSessions = try values.decodeIfPresent(Int.self, forKey: .nSessions) ?? 0
+        activeFrom = try values.decodeIfPresent(String.self, forKey: .activeFrom)
+        activeTo = try values.decodeIfPresent(String.self, forKey: .activeTo)
+        factionTimeline = try values.decodeIfPresent([FactionPhase].self, forKey: .factionTimeline) ?? []
+        ris = try values.decodeIfPresent(RISProfile.self, forKey: .ris)
+        committees = try values.decodeIfPresent([Committee].self, forKey: .committees) ?? []
+        recent = try values.decodeIfPresent([RecentSession].self, forKey: .recent) ?? []
+        speeches = try values.decodeIfPresent([Speech].self, forKey: .speeches) ?? []
+        speechCount = try values.decodeIfPresent(Int.self, forKey: .speechCount) ?? speeches.count
+        speechCommittees = try values.decodeIfPresent([SpeechCommittee].self, forKey: .speechCommittees) ?? []
+        administrationRole = try values.decodeIfPresent(String.self, forKey: .administrationRole)
+        isActive = try values.decodeIfPresent(Bool.self, forKey: .isActive)
+        mentionedFrom = try values.decodeIfPresent(String.self, forKey: .mentionedFrom)
+        mentionedUntil = try values.decodeIfPresent(String.self, forKey: .mentionedUntil)
     }
 
     var roleLabel: String {
-        switch art {
+        if type == "verwaltung" { return administrationRole ?? "Stadtverwaltung" }
+        return switch art {
         case "rat": "Ratsmitglied"
         case "beratend": "Beratendes Mitglied"
         case "verwaltung": "Stadtverwaltung"
@@ -339,7 +515,8 @@ struct PublicPersonProfile: Codable, Sendable {
     }
 
     var affiliation: String? {
-        [party, currentAffiliation?.label, organisation]
+        if type == "verwaltung" { return "Stadt Oldenburg" }
+        return [currentAffiliation?.label, party, organisation]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
     }
@@ -349,92 +526,275 @@ private struct PersonProfileOverview: View {
     let model: AppModel
     let person: PublicPersonProfile
     let usesWideLayout: Bool
+    @State private var speeches: [PublicPersonProfile.Speech]
+    @State private var selectedCommittee = ""
+    @State private var totalSpeeches: Int
+    @State private var isLoadingSpeeches = false
+    @State private var speechError: String?
+    @State private var showsPastOffices = false
+    @State private var showsMethodology = false
+
+    init(model: AppModel, person: PublicPersonProfile, usesWideLayout: Bool) {
+        self.model = model
+        self.person = person
+        self.usesWideLayout = usesWideLayout
+        _speeches = State(initialValue: person.speeches)
+        _totalSpeeches = State(initialValue: person.speechCount)
+    }
 
     @ViewBuilder
     var body: some View {
         if usesWideLayout {
             HStack(alignment: .top, spacing: 20) {
                 VStack(alignment: .leading, spacing: 16) {
-                    identityCard
-                    recentSessionsCard
+                    hero
+                    officesCard
+                    affiliationTimeline
                 }
-                .frame(maxWidth: 390, alignment: .topLeading)
+                .frame(maxWidth: 430, alignment: .topLeading)
 
                 VStack(alignment: .leading, spacing: 16) {
-                    committeesCard
+                    presenceChart
+                    speechesCard
+                    recentSessionsCard
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         } else {
-            identityCard
-            committeesCard
+            hero
+            officesCard
+            affiliationTimeline
+            presenceChart
+            speechesCard
             recentSessionsCard
         }
     }
 
-    private var identityCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 14) {
-                RatsGlyphView(glyph: .profile, color: RatsColor.primaryText, lineWidth: 1.55)
-                    .frame(width: 34, height: 34)
-                    .frame(width: 58, height: 58)
-                    .background(RatsColor.primary)
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 15) {
+                Text(initials)
+                    .font(RatsFont.title(21))
+                    .foregroundStyle(partyForeground)
+                    .frame(width: 64, height: 64)
+                    .background(partyColor)
                     .clipShape(Circle())
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 5) {
+                    .overlay(Circle().stroke(Color.white.opacity(0.48), lineWidth: 1))
+                    .shadow(color: partyColor.opacity(0.20), radius: 10, y: 4)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(person.name)
+                        .font(RatsFont.title(28))
+                        .foregroundStyle(RatsColor.text)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(person.roleLabel)
-                        .font(RatsFont.body(16, weight: .semibold))
+                        .font(RatsFont.body(14, weight: .semibold))
+                        .foregroundStyle(RatsColor.bodyText)
                     if let affiliation = person.affiliation {
-                        Pill(affiliation, symbol: "person.3")
+                        partyBadge(affiliation, parties: person.currentAffiliation?.parties ?? [person.party].compactMap { $0 })
                     }
-                    if let period {
-                        Text(period)
-                            .font(RatsFont.mono(10))
-                            .foregroundStyle(RatsColor.muted)
-                    }
+                }
+                Spacer(minLength: 0)
+                Button { showsMethodology = true } label: {
+                    Image(systemName: "info")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(partyColor)
+                        .frame(width: 36, height: 36)
+                        .background(RatsColor.card.opacity(0.82))
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(partyColor.opacity(0.22)))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Wie wird dieses Profil erfasst?")
+                .popover(isPresented: $showsMethodology) {
+                    methodologyPopover
+                        .presentationCompactAdaptation(.popover)
                 }
             }
 
-            HStack(spacing: 24) {
-                metric(value: person.nSessions, label: "Sitzungen")
-                metric(value: person.committees.count, label: "Gremien")
-                let chaired = person.committees.filter(\.chair).count
-                if chaired > 0 { metric(value: chaired, label: "Vorsitze") }
+            if let period {
+                Label(period, systemImage: "calendar.badge.clock")
+                    .font(RatsFont.mono(10))
+                    .foregroundStyle(RatsColor.secondary)
+            }
+
+            if person.type != "verwaltung" {
+                HStack(spacing: 0) {
+                    metric(value: person.nSessions, label: "Sitzungen")
+                    metricDivider
+                    metric(value: person.committees.count, label: "Gremien")
+                    let chaired = person.committees.filter(\.chair).count
+                    metricDivider
+                    metric(value: chaired, label: chaired == 1 ? "Vorsitz" : "Vorsitze")
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ratsCard()
+        .padding(20)
+        .background(
+            LinearGradient(
+                colors: [partyColor.opacity(0.18), RatsColor.card, RatsColor.card],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .overlay(alignment: .top) { Rectangle().fill(partyColor).frame(height: 5) }
+        .overlay(RoundedRectangle(cornerRadius: RatsRadius.card).stroke(partyColor.opacity(0.30)))
+        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous))
     }
 
     @ViewBuilder
-    private var committeesCard: some View {
-        if !person.committees.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                MonoKicker("Gremien", trailing: "\(person.committees.count)")
-                ForEach(person.committees) { committee in
-                    HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(committee.committee)
-                                .font(RatsFont.body(14, weight: .semibold))
-                            Text("\(committee.n) \(committee.n == 1 ? "Sitzung" : "Sitzungen")")
-                                .font(RatsFont.mono(10))
-                                .foregroundStyle(RatsColor.muted)
+    private var officesCard: some View {
+        let current = person.ris?.memberships.filter { $0.until == nil } ?? []
+        let past = person.ris?.memberships.filter { $0.until != nil } ?? []
+        if !current.isEmpty || !past.isEmpty {
+            RatsSectionPanel("Ämter im Rat", detail: "Offizielle Mitgliedschaften im Zeitverlauf", symbol: "building.columns") {
+                if !current.isEmpty {
+                    VStack(spacing: 13) {
+                        ForEach(current) { membership in
+                            officeTimelineRow(membership)
                         }
-                        Spacer()
-                        if committee.chair { Pill("Vorsitz", symbol: "star") }
                     }
-                    if committee.id != person.committees.last?.id { Divider().overlay(RatsColor.separator) }
+                }
+
+                if !past.isEmpty {
+                    DisclosureGroup(isExpanded: $showsPastOffices) {
+                        VStack(spacing: 10) {
+                            ForEach(past) { membership in pastOfficeRow(membership) }
+                        }
+                        .padding(.top, 10)
+                    } label: {
+                        Text("Frühere Ämter · \(past.count)")
+                            .font(RatsFont.body(13, weight: .semibold))
+                            .foregroundStyle(RatsColor.bodyText)
+                    }
+                    .tint(partyColor)
                 }
             }
-            .ratsCard()
+        }
+    }
+
+    @ViewBuilder
+    private var affiliationTimeline: some View {
+        if !person.factionTimeline.isEmpty {
+            RatsSectionPanel("Zugehörigkeit im Zeitverlauf", detail: "Fraktion, Gruppe oder parteilos – so, wie es die Protokolle zur jeweiligen Zeit führen.", symbol: "point.3.connected.trianglepath.dotted") {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(person.factionTimeline.enumerated()), id: \.element.id) { index, phase in
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(spacing: 0) {
+                                Circle().fill(color(for: phase.label)).frame(width: 12, height: 12)
+                                if index < person.factionTimeline.count - 1 {
+                                    Rectangle().fill(RatsColor.border).frame(width: 2, height: 42)
+                                }
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                partyBadge(phase.label, parties: phase.parties)
+                                Text("\(year(phase.first)) – \(year(phase.last)) · \(phase.n) Sitzungen")
+                                    .font(RatsFont.mono(9.5))
+                                    .foregroundStyle(RatsColor.muted)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var presenceChart: some View {
+        if !person.committees.isEmpty {
+            let maximum = max(1, person.committees.map(\.n).max() ?? 1)
+            RatsSectionPanel("Präsenz je Gremium", detail: "Besuchte Sitzungen im Vergleich", symbol: "chart.bar.xaxis") {
+                VStack(spacing: 14) {
+                    ForEach(person.committees) { committee in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(shortCommittee(committee.committee))
+                                    .font(RatsFont.body(13, weight: .semibold))
+                                    .lineLimit(2)
+                                if committee.chair {
+                                    Label("Vorsitz", systemImage: "gavel")
+                                        .font(RatsFont.body(9.5, weight: .semibold))
+                                        .foregroundStyle(RatsColor.signal)
+                                }
+                                Spacer()
+                                Text("\(committee.n)").font(RatsFont.mono(10)).foregroundStyle(RatsColor.secondary)
+                            }
+                            GeometryReader { proxy in
+                                ZStack(alignment: .leading) {
+                                    Capsule().fill(RatsColor.stage)
+                                    Capsule()
+                                        .fill(LinearGradient(colors: [partyColor, partyColor.opacity(0.58)], startPoint: .leading, endPoint: .trailing))
+                                        .frame(width: max(10, proxy.size.width * CGFloat(committee.n) / CGFloat(maximum)))
+                                }
+                            }
+                            .frame(height: 9)
+                            .accessibilityLabel("\(committee.committee): \(committee.n) besuchte Sitzungen")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var speechesCard: some View {
+        if person.speechCount > 0 || !speeches.isEmpty {
+            RatsSectionPanel("Aus den Protokollen", detail: "Sinngemäß zusammengefasste Wortbeiträge – direkt aus den Niederschriften.", symbol: "quote.bubble") {
+                if person.speechCommittees.count > 1 {
+                    Menu {
+                        Button("Alle Gremien (\(person.speechCount))") { selectSpeechCommittee("") }
+                        ForEach(person.speechCommittees) { entry in
+                            Button("\(shortCommittee(entry.committee)) (\(entry.n))") { selectSpeechCommittee(entry.committee) }
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "line.3.horizontal.decrease")
+                            Text(selectedCommittee.isEmpty ? "Alle Gremien" : shortCommittee(selectedCommittee))
+                                .lineLimit(1)
+                            Spacer()
+                            Image(systemName: "chevron.up.chevron.down")
+                        }
+                        .font(RatsFont.body(12, weight: .semibold))
+                        .foregroundStyle(RatsColor.bodyText)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 40)
+                        .background(RatsColor.stage)
+                        .clipShape(RoundedRectangle(cornerRadius: 11))
+                    }
+                }
+
+                VStack(spacing: 0) {
+                    ForEach(Array(speeches.enumerated()), id: \.element.id) { index, speech in
+                        speechRow(speech)
+                        if index < speeches.count - 1 { Divider().overlay(RatsColor.separator) }
+                    }
+                }
+
+                if isLoadingSpeeches {
+                    ProgressView().frame(maxWidth: .infinity).padding(.vertical, 8)
+                } else if speeches.count < totalSpeeches {
+                    Button { Task { await loadSpeeches(reset: false) } } label: {
+                        Text("Mehr anzeigen · noch \(totalSpeeches - speeches.count)")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
+                }
+                if let speechError {
+                    Text(speechError).font(RatsFont.body(11)).foregroundStyle(RatsColor.danger)
+                }
+                Text("Niederschriften sind Verlaufsprotokolle: Nicht jede Wortmeldung wird erfasst.")
+                    .font(RatsFont.body(10.5))
+                    .foregroundStyle(RatsColor.muted)
+                    .lineSpacing(2)
+            }
         }
     }
 
     @ViewBuilder
     private var recentSessionsCard: some View {
         if !person.recent.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                MonoKicker("Letzte Sitzungen")
+            RatsSectionPanel("Zuletzt anwesend", detail: "Die jüngsten protokollierten Teilnahmen", symbol: "clock.arrow.circlepath") {
                 ForEach(person.recent.prefix(5)) { session in
                     Button {
                         model.navigation.append(.sessions(ksinr: session.ksinr, tops: []))
@@ -457,11 +817,17 @@ private struct PersonProfileOverview: View {
                     if session.id != person.recent.prefix(5).last?.id { Divider().overlay(RatsColor.separator) }
                 }
             }
-            .ratsCard()
         }
     }
 
     private var period: String? {
+        if person.type == "verwaltung" {
+            switch (person.mentionedFrom, person.mentionedUntil, person.isActive) {
+            case let (start?, _, true): return "In Protokollen erwähnt seit \(start)"
+            case let (start?, end?, _): return "In Protokollen erwähnt \(start)–\(end)"
+            default: return nil
+            }
+        }
         let start = person.activeFrom.flatMap(RatsDate.short)
         let end = person.activeTo.flatMap(RatsDate.short)
         return switch (start, end) {
@@ -476,6 +842,198 @@ private struct PersonProfileOverview: View {
             Text("\(value)").font(RatsFont.title(22))
             Text(label).font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var methodologyPopover: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Lotti3DView(scene: .reading, animated: false)
+                .frame(width: 82, height: 92)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("So entsteht das Profil")
+                    .font(RatsFont.title(18))
+                Text(methodologyText)
+                    .font(RatsFont.body(12.5))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineSpacing(3)
+            }
+        }
+        .padding(18)
+        .frame(idealWidth: 390)
+        .background(RatsColor.card)
+    }
+
+    private var methodologyText: String {
+        if person.type == "verwaltung" {
+            return "Amt und Zeitraum stammen aus den Anwesenheitslisten der Protokolle. Der Zeitraum beschreibt Erwähnungen – keine amtliche Amtszeit."
+        }
+        return "Präsenz stammt aus den Anwesenheitslisten der Protokolle ab 2018. Offizielle Gremien-Zeiträume reichen – soweit verfügbar – bis 2001 zurück. Präsenz zeigt Aktivität, nicht das Stimmverhalten."
+    }
+
+    private var metricDivider: some View {
+        Rectangle().fill(RatsColor.border).frame(width: 1, height: 35).padding(.horizontal, 10)
+    }
+
+    private var initials: String {
+        person.name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
+    }
+
+    private var partyColor: Color { color(for: person.affiliation ?? person.party ?? "Stadt") }
+    private var partyForeground: Color {
+        let folded = (person.affiliation ?? person.party ?? "").lowercased()
+        return folded.contains("fdp") ? Color.black.opacity(0.78) : .white
+    }
+
+    private func color(for label: String) -> Color {
+        let value = label.lowercased()
+        if value.contains("grün") { return Color(red: 0.24, green: 0.56, blue: 0.16) }
+        if value.contains("linke") { return Color(red: 0.90, green: 0.00, blue: 0.49) }
+        if value.contains("spd") { return Color(red: 0.89, green: 0.00, blue: 0.06) }
+        if value.contains("cdu") { return Color(red: 0.20, green: 0.22, blue: 0.24) }
+        if value.contains("bsw") { return Color(red: 0.49, green: 0.15, blue: 0.31) }
+        if value.contains("afd") { return Color(red: 0.00, green: 0.52, blue: 0.74) }
+        if value.contains("volt") { return Color(red: 0.31, green: 0.14, blue: 0.47) }
+        if value.contains("fdp") { return Color(red: 1.00, green: 0.84, blue: 0.00) }
+        if value.contains("pirat") { return Color(red: 0.95, green: 0.45, blue: 0.05) }
+        return RatsColor.primary
+    }
+
+    private func partyBadge(_ label: String, parties: [String]) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(color(for: label)).frame(width: 8, height: 8)
+            Text(label).lineLimit(1)
+            if parties.count > 1 {
+                HStack(spacing: -2) {
+                    ForEach(parties.prefix(3), id: \.self) { party in
+                        Circle().fill(color(for: party)).frame(width: 9, height: 9)
+                            .overlay(Circle().stroke(RatsColor.card, lineWidth: 1))
+                    }
+                }
+            }
+        }
+        .font(RatsFont.body(11, weight: .semibold))
+        .foregroundStyle(RatsColor.bodyText)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(color(for: label).opacity(0.10))
+        .overlay(Capsule().stroke(color(for: label).opacity(0.26)))
+        .clipShape(Capsule())
+    }
+
+    private func officeTimelineRow(_ membership: PublicPersonProfile.RISProfile.Membership) -> some View {
+        let startYear = Int(membership.from?.prefix(4) ?? "") ?? Calendar.current.component(.year, from: .now) - 4
+        let currentYear = Calendar.current.component(.year, from: .now)
+        let earliest = person.ris?.memberships.compactMap { Int($0.from?.prefix(4) ?? "") }.min() ?? startYear
+        let span = max(1, currentYear - earliest)
+        let offset = min(0.9, max(0, Double(startYear - earliest) / Double(span)))
+        let isChair = membership.role?.localizedCaseInsensitiveContains("vorsitz") == true
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                if isChair { Image(systemName: "gavel").font(.caption).foregroundStyle(RatsColor.signal) }
+                Text(shortCommittee(membership.committee)).font(RatsFont.body(13, weight: isChair ? .semibold : .regular))
+                Spacer()
+                Text("seit " + String(startYear)).font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.secondary)
+            }
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(RatsColor.stage)
+                    Capsule().fill(isChair ? RatsColor.signal : partyColor)
+                        .frame(width: max(14, proxy.size.width * (1 - offset)))
+                        .offset(x: proxy.size.width * offset)
+                }
+            }
+            .frame(height: 9)
+        }
+    }
+
+    private func pastOfficeRow(_ membership: PublicPersonProfile.RISProfile.Membership) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(shortCommittee(membership.committee)).font(RatsFont.body(12.5)).lineLimit(2)
+            Spacer()
+            Text("\(year(membership.from)) – \(year(membership.until))")
+                .font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
+        }
+    }
+
+    private func speechRow(_ speech: PublicPersonProfile.Speech) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(speechKind(speech.kind))
+                    .font(RatsFont.mono(9.5)).foregroundStyle(partyColor)
+                if let agendaItem = speech.agendaItem, !agendaItem.isEmpty {
+                    Text("· \(agendaItem)").font(RatsFont.body(11.5, weight: .semibold)).lineLimit(1)
+                }
+                Spacer()
+                Text(RatsDate.short(speech.sessionDate) ?? speech.sessionDate)
+                    .font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted)
+            }
+            Text(speech.text)
+                .font(RatsFont.body(13))
+                .foregroundStyle(RatsColor.bodyText)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+            if let committee = speech.committee {
+                Text(shortCommittee(committee)).font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted)
+            }
+        }
+        .padding(.vertical, 11)
+    }
+
+    private func speechKind(_ kind: String) -> String {
+        switch kind {
+        case "rede": "REDE"
+        case "anfrage": "ANFRAGE"
+        case "einwohnerfrage": "EINWOHNERFRAGE"
+        case "zusage": "ZUSAGE"
+        default: kind.uppercased()
+        }
+    }
+
+    private func selectSpeechCommittee(_ committee: String) {
+        selectedCommittee = committee
+        Task { await loadSpeeches(reset: true) }
+    }
+
+    private func loadSpeeches(reset: Bool) async {
+        guard !isLoadingSpeeches, !person.slug.isEmpty else { return }
+        isLoadingSpeeches = true
+        speechError = nil
+        defer { isLoadingSpeeches = false }
+        do {
+            let offset = reset ? 0 : speeches.count
+            var query = [
+                URLQueryItem(name: "offset", value: String(offset)),
+                URLQueryItem(name: "limit", value: "20"),
+            ]
+            if !selectedCommittee.isEmpty {
+                query.append(URLQueryItem(name: "gremium", value: selectedCommittee))
+            }
+            let page: SpeechPage = try await model.api.get(
+                "/api/council/person/\(person.slug)/wortbeitraege",
+                query: query
+            )
+            speeches = reset ? page.items : speeches + page.items
+            totalSpeeches = page.total
+        } catch {
+            speechError = "Die Wortbeiträge konnten nicht geladen werden."
+        }
+    }
+
+    private func year(_ value: String?) -> String {
+        guard let value, value.count >= 4 else { return "?" }
+        return String(value.prefix(4))
+    }
+
+    private func shortCommittee(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "Ausschuss für ", with: "")
+            .replacingOccurrences(of: "Ausschuss ", with: "")
+    }
+
+    private struct SpeechPage: Codable {
+        let items: [PublicPersonProfile.Speech]
+        let total: Int
     }
 }
 

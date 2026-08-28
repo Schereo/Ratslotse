@@ -26,6 +26,9 @@ public struct NativeRootView: View {
     public var body: some View {
         NavigationStack(path: $model.navigation) {
             Group {
+                if showsDebugPersonProfile {
+                    PublicProfileView(model: model, kind: .person, key: "anne-beispiel")
+                } else {
                 if model.updateRequired {
                     UpdateRequiredView(notice: model.updateNotice)
                 } else {
@@ -49,6 +52,7 @@ public struct NativeRootView: View {
                             MainTabsView(model: model)
                         }
                     }
+                }
                 }
             }
             .navigationDestination(for: AppRoute.self) { route in
@@ -119,6 +123,14 @@ public struct NativeRootView: View {
             await model.bootstrap()
 #endif
         }
+    }
+
+    private var showsDebugPersonProfile: Bool {
+#if DEBUG
+        ratsDebugValue("RATSLOTSE_DEBUG_MAIN") == "person-detail"
+#else
+        false
+#endif
     }
 
     private var preferredColorScheme: ColorScheme? {
@@ -335,6 +347,9 @@ private struct MainTabsView: View {
             case "decision-detail":
                 model.selectedTab = .council
                 model.navigation = [.decision(id: 1)]
+            case "person-detail":
+                model.selectedTab = .council
+                model.navigation = [.person(slug: "anne-beispiel")]
             case "decisions":
                 model.navigation.removeAll()
                 model.councilSection = .decisions

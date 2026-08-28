@@ -436,8 +436,19 @@ private final class FeedbackURLProtocol: URLProtocol {
           "n_sessions": 136,
           "active_from": "2021-11-22",
           "active_to": "2026-06-16",
+          "faction_timeline": [{
+            "label": "Grüne", "kind": "partei", "parties": ["Grüne"],
+            "first": "2021-11-22", "last": "2026-06-16", "n": 136
+          }],
+          "ris": {
+            "kpenr": 17, "name": "Tim Ebbeke Harms", "fraktion_aktuell": "Grüne",
+            "memberships": [{"kgrnr": 2, "gremium": "Rat", "rolle": "Mitglied", "von": "2021-11-01", "bis": null}]
+          },
           "committees": [{"committee": "Rat", "n": 39, "chair": true}],
-          "recent": [{"ksinr": 4599, "committee": "Kulturausschuss", "session_date": "2026-06-16"}]
+          "recent": [{"ksinr": 4599, "committee": "Kulturausschuss", "session_date": "2026-06-16"}],
+          "wortbeitraege": [{"art": "rede", "top": "TOP 5", "text": "Beitrag", "committee": "Rat", "session_date": "2026-06-16"}],
+          "wortbeitraege_gesamt": 18,
+          "wortbeitraege_gremien": [{"committee": "Rat", "n": 18}]
         }
         """.data(using: .utf8)
     )
@@ -448,6 +459,35 @@ private final class FeedbackURLProtocol: URLProtocol {
     #expect(profile.nSessions == 136)
     #expect(profile.committees.count == 1)
     #expect(profile.recent.count == 1)
+    #expect(profile.factionTimeline.first?.n == 136)
+    #expect(profile.ris?.memberships.first?.committee == "Rat")
+    #expect(profile.speeches.first?.agendaItem == "TOP 5")
+    #expect(profile.speechCount == 18)
+}
+
+@Test func administrationPersonProfileDecodesWithoutCouncilMetrics() throws {
+    let data = try #require(
+        """
+        {
+          "typ": "verwaltung",
+          "name": "Jürgen Krogmann",
+          "slug": "juergen-krogmann",
+          "rolle": "Oberbürgermeister",
+          "aktiv": true,
+          "von": "2014",
+          "bis": "2026",
+          "wortbeitraege": [],
+          "wortbeitraege_gesamt": 0,
+          "wortbeitraege_gremien": []
+        }
+        """.data(using: .utf8)
+    )
+
+    let profile = try JSONDecoder().decode(PublicPersonProfile.self, from: data)
+    #expect(profile.type == "verwaltung")
+    #expect(profile.roleLabel == "Oberbürgermeister")
+    #expect(profile.nSessions == 0)
+    #expect(profile.committees.isEmpty)
 }
 
 @Test func personProfileStillDecodesLegacyStringAffiliation() throws {
