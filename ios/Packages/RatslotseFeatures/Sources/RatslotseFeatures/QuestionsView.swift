@@ -111,8 +111,7 @@ struct QuestionsView: View {
             .frame(maxWidth: .infinity)
         }
         .background(RatsColor.stage)
-        .navigationTitle("Frag den Rat")
-        .toolbarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             if !model.questionPrefill.isEmpty {
                 input = model.questionPrefill
