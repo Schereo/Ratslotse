@@ -74,6 +74,7 @@ public final class AppModel {
     public var badgeSnapshot: BadgeSnapshot?
     public var badgeCelebration: EarnedBadge?
     public var appearance: AppAppearance
+    public var activeConversationID: Int?
 
     private let network = NetworkMonitor()
     private let defaults: UserDefaults
@@ -86,6 +87,7 @@ public final class AppModel {
     private static let legacyIntroKey = "ratslotse.intro.done"
     private static let pushPrimerSnoozeKey = "ratslotse.push-primer.snoozed-until"
     private static let appearanceKey = "ratslotse.appearance"
+    private static let activeConversationKeyPrefix = "ratslotse.qa.active-conversation."
 
     public init(
         api: APIClient = APIClient(),
@@ -98,6 +100,7 @@ public final class AppModel {
         self.router = router
         self.defaults = defaults
         appearance = AppAppearance(rawValue: defaults.string(forKey: Self.appearanceKey) ?? "") ?? .system
+        activeConversationID = nil
         if defaults.object(forKey: Self.onboardingDoneKey) != nil
             || defaults.object(forKey: Self.legacyIntroKey) != nil {
             onboardingStep = nil
@@ -258,6 +261,15 @@ public final class AppModel {
             body: Body(an: enabled)
         )
         conversationSavingPreferenceOverride = response.setting
+        if !enabled { setActiveConversationID(nil) }
+    }
+
+    public func setActiveConversationID(_ id: Int?) {
+        activeConversationID = id
+        guard let user else { return }
+        let key = Self.activeConversationKeyPrefix + String(user.id)
+        if let id { defaults.set(id, forKey: key) }
+        else { defaults.removeObject(forKey: key) }
     }
 
     public func refreshBadges(celebrate: Bool = true) async {
@@ -326,6 +338,7 @@ public final class AppModel {
         badgeSnapshot = nil
         badgeCelebration = nil
         badgeCelebrationQueue.removeAll()
+        activeConversationID = nil
         tabletPage = nil
         navigation.removeAll()
         session = .loggedOut
@@ -432,6 +445,16 @@ public final class AppModel {
         }
         if user.isActive { await synchronizeOnboarding() }
         conversationSavingPreferenceOverride = nil
+        let conversationKey = Self.activeConversationKeyPrefix + String(user.id)
+        if user.savesConversations == 1,
+           defaults.object(forKey: conversationKey) != nil {
+            activeConversationID = defaults.integer(forKey: conversationKey)
+        } else {
+            activeConversationID = nil
+            if user.savesConversations == 0 {
+                defaults.removeObject(forKey: conversationKey)
+            }
+        }
         session = user.isActive ? .active(user) : .pending(user)
         if tokenPersistenceFailed {
             alertMessage = "Du bist angemeldet. Die Sitzung konnte auf diesem Gerät jedoch nicht dauerhaft gespeichert werden."

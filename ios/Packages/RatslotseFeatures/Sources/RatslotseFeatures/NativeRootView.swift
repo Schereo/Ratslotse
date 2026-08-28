@@ -3,6 +3,21 @@ import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
 
+#if DEBUG
+func ratsDebugValue(_ key: String) -> String? {
+    if let value = ProcessInfo.processInfo.environment[key] { return value }
+    let prefix = key + "="
+    if let value = CommandLine.arguments.first(where: { $0.hasPrefix(prefix) }).map({
+        String($0.dropFirst(prefix.count))
+    }) { return value }
+    if let index = CommandLine.arguments.firstIndex(of: "-" + key),
+       CommandLine.arguments.indices.contains(index + 1) {
+        return CommandLine.arguments[index + 1]
+    }
+    return nil
+}
+#endif
+
 public struct NativeRootView: View {
     @Bindable private var model: AppModel
 
@@ -77,28 +92,31 @@ public struct NativeRootView: View {
             Text(model.alertMessage ?? "")
         }
         .task {
-            await model.bootstrap()
 #if DEBUG
-            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ACTIVE_SESSION"] == "1",
+            if ratsDebugValue("RATSLOTSE_DEBUG_ACTIVE_SESSION") == "1",
                let user = debugActiveUser() {
                 model.session = .active(user)
                 model.onboardingStep = nil
+            } else {
+                await model.bootstrap()
             }
-            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_BADGES"] == "1",
+            if ratsDebugValue("RATSLOTSE_DEBUG_BADGES") == "1",
                let snapshot = debugBadgeSnapshot() {
                 model.badgeSnapshot = snapshot
             }
-            switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_AUTH"] {
+            switch ratsDebugValue("RATSLOTSE_DEBUG_AUTH") {
             case "login": model.authPresentation = .login
             case "register": model.authPresentation = .register
             case "forgot": model.authPresentation = .forgotPassword
             case "reset": model.authPresentation = .resetPassword(token: "visual-qa")
             default: break
             }
-            if let rawStep = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ONBOARDING"],
+            if let rawStep = ratsDebugValue("RATSLOTSE_DEBUG_ONBOARDING"),
                let step = Int(rawStep), (0...3).contains(step) {
                 model.onboardingStep = step
             }
+#else
+            await model.bootstrap()
 #endif
         }
     }
@@ -113,7 +131,10 @@ public struct NativeRootView: View {
 
 #if DEBUG
     private func debugActiveUser() -> User? {
-        let json = #"{"id":1,"email":"visual-qa@ratslotse.de","role":"user","status":"active","delivery_channel":"push","email_verified":true,"apple_linked":false,"has_password":false,"access_token":null,"display_name":"Visual QA","qa_speichern":0}"#
+        let savesConversations = ratsDebugValue("RATSLOTSE_DEBUG_CONVERSATIONS") == "1" ? 1 : 0
+        let json = #"{"id":1,"email":"visual-qa@ratslotse.de","role":"user","status":"active","delivery_channel":"push","email_verified":true,"apple_linked":false,"has_password":false,"access_token":null,"display_name":"Visual QA","qa_speichern":"#
+            + String(savesConversations)
+            + "}"
         return try? JSONDecoder().decode(User.self, from: Data(json.utf8))
     }
 
@@ -332,7 +353,7 @@ private struct MainTabsView: View {
         .onAppear {
             if horizontalSizeClass == .regular { showsMore = false }
 #if DEBUG
-            switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MAIN"] {
+            switch ratsDebugValue("RATSLOTSE_DEBUG_MAIN") {
             case "decisions":
                 model.navigation.removeAll()
                 model.councilSection = .decisions

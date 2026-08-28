@@ -110,6 +110,79 @@ import Testing
     #expect(try JSONDecoder().decode(ConversationSettingRequest.self, from: body).an)
 }
 
+@MainActor
+@Test func activeConversationIsScopedToTheSignedInAccount() async throws {
+    let suiteName = "de.ratslotse.tests.conversation.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let userData = try #require(
+        #"{"id":17,"email":"chat@example.org","role":"user","status":"pending","delivery_channel":"email","email_verified":false,"apple_linked":false,"has_password":true,"access_token":null,"display_name":"Chat Test","qa_speichern":1}"#.data(using: .utf8)
+    )
+    let user = try JSONDecoder().decode(User.self, from: userData)
+
+    let first = AppModel(defaults: defaults)
+    first.session = .pending(user)
+    first.setActiveConversationID(812)
+
+    let relaunched = AppModel(defaults: defaults)
+    try await relaunched.adopt(user: user)
+    #expect(relaunched.activeConversationID == 812)
+
+    let disabledData = try #require(
+        #"{"id":17,"email":"chat@example.org","role":"user","status":"pending","delivery_channel":"email","email_verified":false,"apple_linked":false,"has_password":true,"access_token":null,"display_name":"Chat Test","qa_speichern":0}"#.data(using: .utf8)
+    )
+    let disabledUser = try JSONDecoder().decode(User.self, from: disabledData)
+    try await relaunched.adopt(user: disabledUser)
+    #expect(relaunched.activeConversationID == nil)
+
+    let cleared = AppModel(defaults: defaults)
+    try await cleared.adopt(user: user)
+    #expect(cleared.activeConversationID == nil)
+}
+
+@Test func citedSourcesExcludeUnrelatedSearchHitsAndMapPinsAreDeduplicated() throws {
+    let data = Data(
+        #"[{"id":20947,"title":"Stadionneubau","committee":"Rat","session_date":"2026-06-01","lat":53.143,"lon":8.214},{"id":42,"title":"Fahrradstraße Haareneschstraße","committee":"Verkehrsausschuss","session_date":"2026-08-20","lat":53.143,"lon":8.214},{"id":43,"title":"Radverkehrsprogramm","committee":"Verkehrsausschuss","session_date":"2026-07-01","lat":53.143,"lon":8.214}]"#.utf8
+    )
+    let sources = try JSONDecoder().decode([DecisionSummary].self, from: data)
+    let index = QuestionCitationIndex(
+        text: "Die Fahrradstraße wurde beschlossen [42, 43].",
+        sources: sources
+    )
+
+    #expect(index.numberByID == [42: 1, 43: 2])
+    #expect(index.citedSources.map(\.id) == [42, 43])
+    #expect(index.uncitedSources.map(\.id) == [20947])
+    #expect(questionMapPins(for: index.citedSources).count == 1)
+
+    let markdown = questionCitationMarkdown(
+        text: "Die **Fahrradstraße** ist beschlossen [42].Für diesen Abschnitt gilt Tempo 30 [999].",
+        sources: sources
+    )
+    #expect(markdown.contains("**Fahrradstraße**"))
+    #expect(markdown.contains("[1](ratslotse://decision/42). Für"))
+    #expect(!markdown.contains("20947"))
+    #expect(!markdown.contains("999"))
+}
+
+@Test func agendasOnlyAppearForExplicitSessionQuestions() {
+    #expect(!questionRequestsSessionContext("Was wurde zur Fahrradstraße Haareneschstraße beschlossen?"))
+    #expect(!questionRequestsSessionContext("Welche Radverkehrsprojekte sind aktuell?"))
+    #expect(questionRequestsSessionContext("Was steht auf der nächsten Tagesordnung?"))
+    #expect(questionRequestsSessionContext("Wann tagt der Verkehrsausschuss?"))
+}
+
+@Test func conversationDatesUseTodayAndYesterday() throws {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = try #require(TimeZone(identifier: "Europe/Berlin"))
+    let parser = ISO8601DateFormatter()
+    let now = try #require(parser.date(from: "2026-08-28T12:00:00Z"))
+
+    #expect(conversationDateLabel("2026-08-28T08:30:00", now: now, calendar: calendar) == "Heute")
+    #expect(conversationDateLabel("2026-08-27T21:30:00", now: now, calendar: calendar) == "Gestern")
+    #expect(conversationDateLabel("2026-08-26T12:00:00", now: now, calendar: calendar) == "26. Aug. 2026")
+}
+
 private struct ConversationSettingRequest: Decodable {
     let an: Bool
 }

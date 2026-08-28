@@ -218,3 +218,20 @@ import Testing
     #expect(preview.contentItemCount == 11)
     #expect(preview.contentItemsPerSession?["88"] == 8)
 }
+
+@Test func newAskRequestEncodesAnExplicitNullConversationID() throws {
+    let data = try JSONEncoder().encode(AskRequest(question: "Was wurde beschlossen?"))
+    let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+    #expect(object.keys.contains("gespraech_id"))
+    #expect(object["gespraech_id"] is NSNull)
+}
+
+@Test func newDeepResearchRequestEncodesAnExplicitNullConversationID() throws {
+    let data = try JSONEncoder().encode(
+        DeepResearchRequest(frage: "Wie entwickelt sich der Radverkehr?", gespraechID: nil)
+    )
+    let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+    #expect(object["gespraech_id"] is NSNull)
+}

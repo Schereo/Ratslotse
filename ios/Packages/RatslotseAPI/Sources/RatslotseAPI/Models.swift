@@ -873,4 +873,44 @@ public struct AskRequest: Codable, Sendable {
         self.verlauf = verlauf
         self.gespraechID = gespraechID
     }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        question = try values.decode(String.self, forKey: .question)
+        verlauf = try values.decodeIfPresent([AskRound].self, forKey: .verlauf) ?? []
+        gespraechID = try values.decodeIfPresent(Int.self, forKey: .gespraechID)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(question, forKey: .question)
+        try values.encode(verlauf, forKey: .verlauf)
+        // Das Backend unterscheidet bewusst zwischen einem alten Client, der
+        // `gespraech_id` gar nicht kennt, und einem neuen Gespräch (`null`).
+        // `encodeIfPresent` würde nil unterschlagen und damit das Speichern
+        // des allerersten Turns unbemerkt deaktivieren.
+        try values.encode(gespraechID, forKey: .gespraechID)
+    }
+}
+
+public struct DeepResearchRequest: Encodable, Sendable {
+    public let frage: String
+    public let gespraechID: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case frage
+        case gespraechID = "gespraech_id"
+    }
+
+    public init(frage: String, gespraechID: Int?) {
+        self.frage = frage
+        self.gespraechID = gespraechID
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(frage, forKey: .frage)
+        // `null` bedeutet auch bei der Recherche: ein neues Gespräch beginnen.
+        try values.encode(gespraechID, forKey: .gespraechID)
+    }
 }

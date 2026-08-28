@@ -79,7 +79,7 @@ struct QuestionsView: View {
     }
     private var shouldAutoScroll: Bool {
 #if DEBUG
-        ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_FIXTURE"] != "1"
+        ratsDebugValue("RATSLOTSE_DEBUG_QUESTION_FIXTURE") != "1"
 #else
         true
 #endif
@@ -120,15 +120,16 @@ struct QuestionsView: View {
             }
 #if DEBUG
             if turns.isEmpty,
-               ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_FIXTURE"] == "1",
+               ratsDebugValue("RATSLOTSE_DEBUG_QUESTION_FIXTURE") == "1",
                let fixture = debugQuestionFixture() {
                 turns = [fixture]
             }
-            researchMode = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_RESEARCH_MODE"] == "1"
-            showConversations = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_SHEET"] == "conversations"
+            researchMode = ratsDebugValue("RATSLOTSE_DEBUG_RESEARCH_MODE") == "1"
+            showConversations = ratsDebugValue("RATSLOTSE_DEBUG_QUESTION_SHEET") == "conversations"
 #endif
         }
         .task { await restoreCurrentResearch() }
+        .task { await restoreActiveConversationIfNeeded() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { reconnectRunningResearchIfNeeded() }
             else { researchStreamTask?.cancel(); researchStreamTask = nil }
@@ -140,7 +141,15 @@ struct QuestionsView: View {
             researchStreamTask = nil
         }
         .sheet(isPresented: $showConversations) {
-            ConversationsView(model: model)
+            ConversationsView(
+                model: model,
+                activeConversationID: model.activeConversationID,
+                currentTitle: turns.first?.question,
+                currentTurnCount: turns.count,
+                onNew: startNewConversation,
+                onOpen: loadConversation,
+                onDeletedActive: startNewConversation
+            )
                 .ratsLargeSheet()
         }
     }
@@ -157,6 +166,19 @@ struct QuestionsView: View {
                 }
                 Spacer(minLength: 0)
                 if model.conversationSavingPreference == 1 {
+                    if !turns.isEmpty || model.activeConversationID != nil {
+                        Button(action: startNewConversation) {
+                            Label("Neu", systemImage: "square.and.pencil")
+                                .font(RatsFont.body(12, weight: .semibold))
+                                .padding(.horizontal, 12)
+                                .frame(height: 40)
+                                .background(RatsColor.card)
+                                .overlay(Capsule().stroke(RatsColor.border))
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Neues Gespräch")
+                    }
                     Button { showConversations = true } label: {
                         RatsGlyphView(glyph: .history, color: RatsColor.bodyText)
                             .frame(width: 20, height: 20)
@@ -274,6 +296,63 @@ struct QuestionsView: View {
         }
     }
 
+    private func startNewConversation() {
+        streamTask?.cancel()
+        streamTask = nil
+        researchStreamTask?.cancel()
+        researchStreamTask = nil
+        turns.removeAll()
+        input = ""
+        rateLimitUntil = nil
+        model.setActiveConversationID(nil)
+    }
+
+    private func loadConversation(_ id: Int, payload: JSONValue) {
+        streamTask?.cancel()
+        streamTask = nil
+        researchStreamTask?.cancel()
+        researchStreamTask = nil
+        let restored = (payload.object?["turns"]?.array ?? []).compactMap { value -> QuestionTurn? in
+            guard let fields = value.object else { return nil }
+            let question = fields["frage"]?.string ?? fields["question"]?.string ?? ""
+            guard !question.isEmpty else { return nil }
+            let answer = fields["antwort"]?.string ?? fields["answer"]?.string ?? ""
+            let evidence = fields["quellen"]?.object ?? [:]
+            let sources = evidence["sources"]?.array?.compactMap {
+                try? $0.decoded(DecisionSummary.self)
+            } ?? []
+            let research = evidence["recherche"]?.bool == true
+                ? ResearchState(status: "fertig")
+                : nil
+            return QuestionTurn(
+                question: question,
+                answer: answer,
+                sources: sources,
+                evidence: evidence,
+                research: research
+            )
+        }
+        turns = restored
+        model.setActiveConversationID(id)
+    }
+
+    private func restoreActiveConversationIfNeeded() async {
+        guard model.conversationSavingPreference == 1,
+              turns.isEmpty,
+              let id = model.activeConversationID
+        else { return }
+        do {
+            let payload: JSONValue = try await model.api.get("/api/council/gespraeche/\(id)")
+            guard turns.isEmpty else { return }
+            loadConversation(id, payload: payload)
+        } catch let error as APIError where error.statusCode == 404 || error.isUnauthorized {
+            model.setActiveConversationID(nil)
+        } catch {
+            // Offline bleibt die Referenz erhalten; beim nächsten Öffnen kann
+            // das Gespräch wiederhergestellt werden.
+        }
+    }
+
     private func ask(_ raw: String) {
         let question = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard question.count >= 4 else { return }
@@ -289,7 +368,12 @@ struct QuestionsView: View {
             defer { streamTask = nil }
             do {
                 let request = try await model.api.makeStreamingRequest(
-                    "/api/council/ask", body: AskRequest(question: question, verlauf: history)
+                    "/api/council/ask",
+                    body: AskRequest(
+                        question: question,
+                        verlauf: history,
+                        gespraechID: model.activeConversationID
+                    )
                 )
                 for try await event in model.sse.events(for: request) {
                     guard !Task.isCancelled, turns.indices.contains(index) else { break }
@@ -312,7 +396,11 @@ struct QuestionsView: View {
                         turns[index].status = "Die Verbindung brach ab. Die bisherige Antwort bleibt sichtbar."
                         input = question
                     case "error": throw APIError(statusCode: 0, message: event.text ?? "Die Antwort ist abgebrochen.", retryAfter: nil)
-                    case "done": turns[index].status = nil
+                    case "done":
+                        turns[index].status = nil
+                        if let conversationID = event.conversationID {
+                            model.setActiveConversationID(conversationID)
+                        }
                     default: break
                     }
                 }
@@ -349,13 +437,15 @@ struct QuestionsView: View {
         researchStreamTask?.cancel()
         researchStreamTask = Task {
             defer { researchStreamTask = nil }
-            struct Body: Codable, Sendable { let frage: String }
             guard let index = turns.firstIndex(where: { $0.id == turnID }) else { return }
             let question = turns[index].question
             do {
                 let response: ResearchStartResponse = try await model.api.send(
                     "/api/council/deep-research",
-                    body: Body(frage: question)
+                    body: DeepResearchRequest(
+                        frage: question,
+                        gespraechID: model.activeConversationID
+                    )
                 )
                 guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
                 turns[current].research?.jobID = response.jobID
@@ -455,6 +545,9 @@ struct QuestionsView: View {
             turns[index].research?.status = "fertig"
             turns[index].error = nil
             model.hasRecoverableResearch = false
+            if let conversationID = event.conversationID {
+                model.setActiveConversationID(conversationID)
+            }
             if let jobID {
                 Task { try? await model.api.sendVoid("/api/council/deep-research/\(jobID)/gesehen") }
             }
@@ -598,7 +691,7 @@ struct QuestionsView: View {
         let raw = #"""
         {
           "source": {
-            "id": 1,
+            "id": 20947,
             "title": "Neue Busspuren für Oldenburg",
             "committee": "Rat der Stadt",
             "session_date": "2026-08-26",
@@ -609,7 +702,18 @@ struct QuestionsView: View {
             "vote": "mehrheitlich",
             "no_votes": 4,
             "abstentions": 2,
-            "factions": ["SPD", "GRÜNE"]
+            "factions": ["SPD", "GRÜNE"],
+            "lat": 53.143,
+            "lon": 8.214
+          },
+          "other_source": {
+            "id": 30001,
+            "title": "Stadionneubau an der Maastrichter Straße",
+            "committee": "Rat der Stadt",
+            "session_date": "2026-07-01",
+            "outcome": "angenommen",
+            "lat": 53.151,
+            "lon": 8.229
           },
           "evidence": {
             "sources": [],
@@ -668,12 +772,14 @@ struct QuestionsView: View {
             let object = root.object,
             let sourceValue = object["source"],
             let source = try? sourceValue.decoded(DecisionSummary.self),
+            let otherSourceValue = object["other_source"],
+            let otherSource = try? otherSourceValue.decoded(DecisionSummary.self),
             let evidence = object["evidence"]?.object
         else { return nil }
         return QuestionTurn(
             question: "Was bringen die neuen Busspuren?",
-            answer: "Der Rat hat **zwei neue Busspuren** und bessere Ampelvorrangschaltungen beschlossen. Dafür sind 8,9 Millionen Euro vorgesehen. Ziel sind kürzere und verlässlichere Fahrzeiten. [1]",
-            sources: [source],
+            answer: "Der Rat hat **zwei neue Busspuren** und bessere Ampelvorrangschaltungen beschlossen. Dafür sind 8,9 Millionen Euro vorgesehen [20947].Für diesen Abschnitt sind kürzere und verlässlichere Fahrzeiten das Ziel.",
+            sources: [source, otherSource],
             evidence: evidence,
             suggestions: ["Wann beginnt der Bau?", "Welche Linien profitieren?"],
             status: nil,
@@ -1105,7 +1211,12 @@ private struct QuestionTurnView: View {
                 }
             }
             if !turn.answer.isEmpty {
-                CitedAnswerText(text: turn.answer, model: model, evidence: turn.evidence)
+                CitedAnswerText(
+                    text: turn.answer,
+                    model: model,
+                    sources: turn.sources,
+                    evidence: turn.evidence
+                )
                     .font(RatsFont.body(15))
                     .foregroundStyle(RatsColor.bodyText)
                     .lineSpacing(6)
@@ -1118,31 +1229,12 @@ private struct QuestionTurnView: View {
             }
             if showsEvidenceInline {
                 if !turn.sources.isEmpty {
-                    DisclosureGroup {
-                        VStack(spacing: 12) {
-                            ForEach(Array(turn.sources.enumerated()), id: \.element.id) { index, source in
-                                Button { model.navigation.append(.decision(id: source.id)) } label: {
-                                    SourceRow(
-                                        number: source.id,
-                                        title: source.title,
-                                        meta: [source.committee, source.sessionDate].compactMap { $0 }.joined(separator: " · ")
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                if index < turn.sources.count - 1 { Divider().overlay(RatsColor.separator) }
-                            }
-                        }
-                        .padding(.top, 10)
-                    } label: {
-                        MonoKicker("Quellen", trailing: "\(turn.sources.count) gefunden")
-                    }
-                    .padding(14)
-                    .background(RatsColor.card)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    QuestionSourcesCard(turn: turn, model: model)
+                }
+                if !citationIndex.citedSources.isEmpty {
                     PartyOpinionsView(turn: turn, model: model)
                 }
-                CouncilEvidenceBlocks(fields: turn.evidence, model: model)
+                CouncilEvidenceBlocks(fields: turn.evidence, model: model, question: turn.question)
                 if !mapPins.isEmpty {
                     QuestionEvidenceMap(pins: mapPins)
                 }
@@ -1164,11 +1256,207 @@ private struct QuestionTurnView: View {
     }
 
     private var mapPins: [QuestionMapPin] {
-        questionMapPins(for: turn.sources)
+        questionMapPins(for: citationIndex.citedSources)
+    }
+
+    private var citationIndex: QuestionCitationIndex {
+        QuestionCitationIndex(text: turn.answer, sources: turn.sources)
     }
 }
 
-private struct QuestionMapPin: Identifiable {
+struct QuestionCitationIndex {
+    let numberByID: [Int: Int]
+    let citedSources: [DecisionSummary]
+    let uncitedSources: [DecisionSummary]
+
+    init(text: String, sources: [DecisionSummary]) {
+        var seenSources = Set<Int>()
+        let uniqueSources = sources.filter { seenSources.insert($0.id).inserted }
+        let validIDs = Set(uniqueSources.map(\.id))
+        var orderedIDs: [Int] = []
+        var seenIDs = Set<Int>()
+        for id in questionCitationIDs(in: text) where validIDs.contains(id) && seenIDs.insert(id).inserted {
+            orderedIDs.append(id)
+        }
+        let numbers = Dictionary(uniqueKeysWithValues: orderedIDs.enumerated().map { ($0.element, $0.offset + 1) })
+        numberByID = numbers
+        let sourcesByID = Dictionary(uniqueKeysWithValues: uniqueSources.map { ($0.id, $0) })
+        citedSources = orderedIDs.compactMap { sourcesByID[$0] }
+        uncitedSources = uniqueSources.filter { numbers[$0.id] == nil }
+    }
+}
+
+func questionCitationIDs(in text: String) -> [Int] {
+    guard let regex = try? NSRegularExpression(pattern: #"\[\d[^\]\n]{0,160}\]"#) else { return [] }
+    let ns = text as NSString
+    return regex.matches(in: text, range: NSRange(location: 0, length: ns.length)).flatMap { match -> [Int] in
+        let marker = ns.substring(with: match.range)
+        let inner = String(marker.dropFirst().dropLast())
+        if inner.range(of: #"^[\d,\s]+$"#, options: .regularExpression) != nil {
+            guard let digits = try? NSRegularExpression(pattern: #"\d+"#) else { return [] }
+            let innerNS = inner as NSString
+            return digits.matches(in: inner, range: NSRange(location: 0, length: innerNS.length)).compactMap {
+                Int(innerNS.substring(with: $0.range))
+            }
+        }
+        guard let first = try? NSRegularExpression(pattern: #"^\s*(\d+)"#),
+              let match = first.firstMatch(in: inner, range: NSRange(location: 0, length: (inner as NSString).length))
+        else { return [] }
+        return [Int((inner as NSString).substring(with: match.range(at: 1)))].compactMap { $0 }
+    }
+}
+
+func questionCitationMarkdown(
+    text: String,
+    sources: [DecisionSummary],
+    attachmentNumbers: Set<Int> = []
+) -> String {
+    let normalized = text.replacingOccurrences(
+        of: #"(\[(?:A\d{1,2}|\d[^\]\n]{0,160})\])([.!?])(?=\p{Lu})"#,
+        with: "$1$2 ",
+        options: .regularExpression
+    )
+    guard let regex = try? NSRegularExpression(
+        pattern: #"\[(?:A\d{1,2}|\d[^\]\n]{0,160})\]"#
+    ) else { return normalized }
+    let ns = normalized as NSString
+    let citationIndex = QuestionCitationIndex(text: normalized, sources: sources)
+    var attachmentLetters: [Int: String] = [:]
+    var result = ""
+    var cursor = 0
+    for match in regex.matches(in: normalized, range: NSRange(location: 0, length: ns.length)) {
+        guard match.range.location >= cursor else { continue }
+        result += ns.substring(with: NSRange(location: cursor, length: match.range.location - cursor))
+        let marker = ns.substring(with: match.range)
+        if marker.hasPrefix("[A"), let number = Int(marker.dropFirst(2).dropLast()),
+           attachmentNumbers.contains(number) {
+            let scalar = UnicodeScalar(97 + attachmentLetters.count) ?? UnicodeScalar(97)!
+            let letter = attachmentLetters[number] ?? String(Character(scalar))
+            attachmentLetters[number] = letter
+            result += "[\(letter)](ratslotse://attachment/\(number))"
+        } else {
+            let links = questionCitationIDs(in: marker).compactMap { id -> String? in
+                guard let number = citationIndex.numberByID[id] else { return nil }
+                return "[\(number)](ratslotse://decision/\(id))"
+            }
+            result += links.joined(separator: " ")
+        }
+        cursor = NSMaxRange(match.range)
+    }
+    if cursor < ns.length {
+        result += ns.substring(from: cursor)
+    }
+    return result
+}
+
+private struct QuestionSourcesCard: View {
+    let turn: QuestionTurn
+    let model: AppModel
+    @State private var showsSearchResults = false
+
+    private var index: QuestionCitationIndex {
+        QuestionCitationIndex(text: turn.answer, sources: turn.sources)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            MonoKicker(
+                "Amtliche Quellen",
+                trailing: "\(index.citedSources.count) zitiert · \(index.citedSources.count + index.uncitedSources.count) gefunden"
+            )
+
+            if index.citedSources.isEmpty {
+                Text("Die Suche hat Ratsunterlagen gefunden, aber die Antwort zitiert noch keine davon direkt.")
+                    .font(RatsFont.body(11.5))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineSpacing(2)
+            } else {
+                ForEach(Array(index.citedSources.enumerated()), id: \.element.id) { position, source in
+                    Button { model.navigation.append(.decision(id: source.id)) } label: {
+                        SourceRow(
+                            number: index.numberByID[source.id] ?? position + 1,
+                            title: source.title,
+                            meta: questionSourceMeta(source)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    if position < index.citedSources.count - 1 {
+                        Divider().overlay(RatsColor.separator)
+                    }
+                }
+            }
+
+            if !index.uncitedSources.isEmpty {
+                DisclosureGroup(isExpanded: $showsSearchResults) {
+                    VStack(spacing: 10) {
+                        Text("Diese Unterlagen wurden gefunden, im Antworttext aber nicht als Beleg verwendet.")
+                            .font(RatsFont.body(10.5))
+                            .foregroundStyle(RatsColor.muted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        ForEach(Array(index.uncitedSources.enumerated()), id: \.element.id) { position, source in
+                            Button { model.navigation.append(.decision(id: source.id)) } label: {
+                                UncitedQuestionSourceRow(source: source)
+                            }
+                            .buttonStyle(.plain)
+                            if position < index.uncitedSources.count - 1 {
+                                Divider().overlay(RatsColor.separator)
+                            }
+                        }
+                    }
+                    .padding(.top, 10)
+                } label: {
+                    Text("\(index.uncitedSources.count) weitere Suchtreffer")
+                        .font(RatsFont.body(12, weight: .semibold))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+            }
+        }
+        .ratsCard()
+    }
+}
+
+private struct UncitedQuestionSourceRow: View {
+    let source: DecisionSummary
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(RatsColor.border)
+                .frame(width: 6, height: 6)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(source.title)
+                    .font(RatsFont.body(12.5, weight: .medium))
+                    .foregroundStyle(RatsColor.text)
+                    .lineLimit(2)
+                Text(questionSourceMeta(source))
+                    .font(RatsFont.mono(9))
+                    .foregroundStyle(RatsColor.muted)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(RatsColor.muted)
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+private func questionSourceMeta(_ source: DecisionSummary) -> String {
+    let type: String = {
+        let kind = source.kind?.lowercased() ?? ""
+        if kind.contains("beschluss") || source.outcome != nil { return "Beschluss" }
+        if kind.contains("vorlage") || source.templateNumber != nil { return "Vorlage" }
+        return "Ratsunterlage"
+    }()
+    return [type, source.committee, RatsDate.short(source.sessionDate)]
+        .compactMap { value in
+            guard let value, !value.isEmpty else { return nil }
+            return value
+        }
+        .joined(separator: " · ")
+}
+
+struct QuestionMapPin: Identifiable {
     let id: Int
     let name: String
     let coordinate: CLLocationCoordinate2D
@@ -1179,7 +1467,7 @@ private struct QuestionEvidenceMap: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            MonoKicker("Orte in der Antwort", trailing: "\(pins.count)")
+            MonoKicker("Orte aus zitierten Quellen", trailing: "\(pins.count)")
             Map(initialPosition: .region(questionMapRegion(for: pins))) {
                 ForEach(pins) { pin in
                     Marker(pin.name, coordinate: pin.coordinate).tint(RatsColor.signal)
@@ -1193,9 +1481,12 @@ private struct QuestionEvidenceMap: View {
     }
 }
 
-private func questionMapPins(for sources: [DecisionSummary]) -> [QuestionMapPin] {
-    sources.compactMap { source in
+func questionMapPins(for sources: [DecisionSummary]) -> [QuestionMapPin] {
+    var seen = Set<String>()
+    return sources.compactMap { source in
         guard let latitude = source.latitude, let longitude = source.longitude else { return nil }
+        let key = String(format: "%.4f,%.4f", latitude, longitude)
+        guard seen.insert(key).inserted else { return nil }
         return QuestionMapPin(
             id: source.id,
             name: source.placeName ?? source.title,
@@ -1269,34 +1560,17 @@ private struct QuestionEvidenceSidebar: View {
             RatsLoadingState(message: "Belege werden zusammengestellt …")
         }
 
+        let index = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
         if !turn.sources.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                MonoKicker("Amtliche Quellen", trailing: "\(turn.sources.count)")
-                ForEach(Array(turn.sources.enumerated()), id: \.element.id) { index, source in
-                    Button { model.navigation.append(.decision(id: source.id)) } label: {
-                        SourceRow(
-                            number: source.id,
-                            title: source.title,
-                            meta: [source.committee, source.sessionDate].compactMap { $0 }.joined(separator: " · ")
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    if index < turn.sources.count - 1 {
-                        Divider().overlay(RatsColor.separator)
-                    }
-                }
-            }
-            .padding(14)
-            .background(RatsColor.card)
-            .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(RatsColor.border))
-            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-
+            QuestionSourcesCard(turn: turn, model: model)
+        }
+        if !index.citedSources.isEmpty {
             PartyOpinionsView(turn: turn, model: model)
         }
 
-        CouncilEvidenceBlocks(fields: turn.evidence, model: model)
+        CouncilEvidenceBlocks(fields: turn.evidence, model: model, question: turn.question)
 
-        let pins = questionMapPins(for: turn.sources)
+        let pins = questionMapPins(for: index.citedSources)
         if !pins.isEmpty {
             QuestionEvidenceMap(pins: pins)
         }
@@ -1304,7 +1578,7 @@ private struct QuestionEvidenceSidebar: View {
         if turn.status == nil,
            turn.research?.status != "laeuft",
            turn.sources.isEmpty,
-           !hasCouncilEvidence(turn.evidence) {
+           !hasCouncilEvidence(turn.evidence, question: turn.question) {
             VStack(alignment: .leading, spacing: 8) {
                 MonoKicker("Beleglage")
                 Text(turn.answer.isEmpty ? "Stell links eine Frage – passende Ratsunterlagen erscheinen dann hier." : "Zu dieser Antwort wurden keine zusätzlichen Ratsunterlagen gefunden.")
@@ -1338,12 +1612,14 @@ private struct QuestionEvidenceSidebar: View {
         .padding(.vertical, 28)
     }
 
-    private func hasCouncilEvidence(_ fields: [String: JSONValue]) -> Bool {
+    private func hasCouncilEvidence(_ fields: [String: JSONValue], question: String) -> Bool {
         if fields["beleglage"]?.string == "duenn" || EvidenceChartData(fields["grafik"]) != nil {
             return true
         }
-        return ["anlagen", "presse", "debatten", "sitzungen", "planungen", "steckbriefe"]
-            .contains { !(fields[$0]?.array ?? []).isEmpty }
+        let keys = ["anlagen", "presse", "debatten", "planungen", "steckbriefe"]
+        if keys.contains(where: { !(fields[$0]?.array ?? []).isEmpty }) { return true }
+        return questionRequestsSessionContext(question)
+            && !(fields["sitzungen"]?.array ?? []).isEmpty
     }
 }
 
@@ -1425,12 +1701,16 @@ private struct PartyOpinionsView: View {
 
     private func load() async {
         struct Body: Codable, Sendable { let frage: String; let beschluss_ids: [Int] }
+        let citedIDs = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
+            .citedSources
+            .map(\.id)
+        guard !citedIDs.isEmpty else { return }
         isLoading = true
         defer { isLoading = false }
         do {
             response = try await model.api.send(
                 "/api/council/partei-meinungen",
-                body: Body(frage: String(turn.question.prefix(300)), beschluss_ids: turn.sources.map(\.id))
+                body: Body(frage: String(turn.question.prefix(300)), beschluss_ids: citedIDs)
             )
         } catch { self.error = error.localizedDescription }
     }
@@ -1600,11 +1880,18 @@ private struct ActivityView: UIViewControllerRepresentable {
 struct CouncilEvidenceBlocks: View {
     let fields: [String: JSONValue]
     let model: AppModel
+    var question: String? = nil
 
     private var attachments: [[String: JSONValue]] { objects("anlagen") }
     private var press: [[String: JSONValue]] { objects("presse") }
     private var debates: [[String: JSONValue]] { objects("debatten") }
-    private var sessions: [[String: JSONValue]] { objects("sitzungen") }
+    private var sessions: [[String: JSONValue]] {
+        let rows = objects("sitzungen")
+        guard !rows.isEmpty else { return [] }
+        if let type = fields["qtype"]?.string, type != "sitzung" { return [] }
+        guard questionRequestsSessionContext(question ?? "") else { return [] }
+        return rows
+    }
     private var planning: [[String: JSONValue]] { objects("planungen") }
     private var briefs: [[String: JSONValue]] { objects("steckbriefe") }
 
@@ -1819,6 +2106,13 @@ struct CouncilEvidenceBlocks: View {
     }
 }
 
+func questionRequestsSessionContext(_ question: String) -> Bool {
+    question.range(
+        of: #"\b(sitzung|ratssitzung|tagesordnung|tagt|tagung|sitzungstermin|wann|heute|morgen)\b|\bam\s+\d{1,2}[.]?\s*(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember|\d{1,2}[.])"#,
+        options: [.regularExpression, .caseInsensitive]
+    ) != nil
+}
+
 private struct EvidenceTextRow: View {
     let title: String
     let detail: String?
@@ -1894,6 +2188,7 @@ private struct EvidenceChartData {
 struct CitedAnswerText: View {
     let text: String
     let model: AppModel
+    var sources: [DecisionSummary] = []
     var evidence: [String: JSONValue] = [:]
 
     var body: some View {
@@ -1914,27 +2209,27 @@ struct CitedAnswerText: View {
     }
 
     private var attributed: AttributedString {
-        var output = (try? AttributedString(markdown: text)) ?? AttributedString(text)
-        applyLinks(pattern: #"\[(\d+)\]"#, host: "decision", in: &output)
-        applyLinks(pattern: #"\[A(\d+)\]"#, host: "attachment", in: &output)
+        let markdown = citationMarkdown
+        var output = (try? AttributedString(markdown: markdown)) ?? AttributedString(markdown)
+        for run in output.runs {
+            guard let link = run.link, link.scheme == "ratslotse" else { continue }
+            output[run.range].foregroundColor = RatsColor.primary
+            output[run.range].font = RatsFont.body(10, weight: .bold)
+        }
         return output
     }
 
-    private func applyLinks(pattern: String, host: String, in output: inout AttributedString) {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return }
-        let ns = text as NSString
-        for match in regex.matches(in: text, range: NSRange(location: 0, length: ns.length)).reversed() {
-            guard
-                let range = Range(match.range, in: text),
-                let idRange = Range(match.range(at: 1), in: text),
-                let lower = AttributedString.Index(range.lowerBound, within: output),
-                let upper = AttributedString.Index(range.upperBound, within: output),
-                let url = URL(string: "ratslotse://\(host)/\(text[idRange])")
-            else { continue }
-            output[lower..<upper].link = url
-            output[lower..<upper].foregroundColor = RatsColor.primary
-            output[lower..<upper].font = RatsFont.body(11, weight: .bold)
-        }
+    private var citationMarkdown: String {
+        let attachmentNumbers = Set(
+            (evidence["anlagen"]?.array ?? []).enumerated().map { offset, value in
+                value.object?["nr"]?.int ?? offset + 1
+            }
+        )
+        return questionCitationMarkdown(
+            text: text,
+            sources: sources,
+            attachmentNumbers: attachmentNumbers
+        )
     }
 
     private func attachmentURL(number: Int) -> URL? {
