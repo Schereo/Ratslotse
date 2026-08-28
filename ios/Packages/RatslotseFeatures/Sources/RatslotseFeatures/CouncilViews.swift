@@ -7,6 +7,7 @@ import SwiftUI
 
 struct CouncilBrowserView: View {
     @Bindable var model: AppModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var query = ""
     @State private var outcome = ""
     @State private var committee = ""
@@ -87,27 +88,29 @@ struct CouncilBrowserView: View {
             .padding(.top, 16)
             .padding(.bottom, 4)
 
-            HStack(spacing: 4) {
-                ForEach(CouncilSection.allCases) { item in
-                    Button {
-                        withAnimation(.easeOut(duration: 0.16)) { model.councilSection = item }
-                    } label: {
-                        Text(item.rawValue)
-                            .font(RatsFont.body(12.5, weight: .semibold))
-                            .foregroundStyle(model.councilSection == item ? RatsColor.primaryText : RatsColor.bodyText)
-                            .frame(maxWidth: .infinity, minHeight: 34)
-                            .background(model.councilSection == item ? RatsColor.primary : Color.clear)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            if horizontalSizeClass != .regular {
+                HStack(spacing: 4) {
+                    ForEach(CouncilSection.allCases) { item in
+                        Button {
+                            withAnimation(.easeOut(duration: 0.16)) { model.councilSection = item }
+                        } label: {
+                            Text(item.rawValue)
+                                .font(RatsFont.body(12.5, weight: .semibold))
+                                .foregroundStyle(model.councilSection == item ? RatsColor.primaryText : RatsColor.bodyText)
+                                .frame(maxWidth: .infinity, minHeight: 34)
+                                .background(model.councilSection == item ? RatsColor.primary : Color.clear)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding(4)
+                .background(RatsColor.separator)
+                .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(RatsColor.border))
+                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
             }
-            .padding(4)
-            .background(RatsColor.separator)
-            .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(RatsColor.border))
-            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
 
             HStack(spacing: 9) {
                 RatsGlyphView(glyph: .search, color: RatsColor.secondary)
@@ -133,6 +136,7 @@ struct CouncilBrowserView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.horizontal, 18)
+            .padding(.top, horizontalSizeClass == .regular ? 12 : 0)
             .padding(.bottom, 10)
 
             if model.councilSection == .decisions {
