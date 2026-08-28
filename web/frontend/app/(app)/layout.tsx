@@ -76,7 +76,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Ohne Konto auf einer geteilten Detailseite: lesen lassen, statt zur
   // Anmeldung zu schicken. Die App-Hülle passt hier nicht — ihre Navigation
   // führt ausschließlich zu Seiten, die ein Konto verlangen.
-  if (!loading && !user && oeffentlich) return <PublicShell>{children}</PublicShell>;
+  if (!loading && !user && oeffentlich) {
+    return <PublicShell variante={pathname === "/probleme" ? "probleme" : "rat"}>{children}</PublicShell>;
+  }
 
   // Design 29a (P3): Der erste Eindruck war ein Spinner auf weißem Grund — die
   // Marke verschwand ausgerechnet in der Sekunde, die zählt, und jeder App-Start

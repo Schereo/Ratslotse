@@ -10,6 +10,7 @@ from .security import decode_access_token
 
 from kern.store import Store
 from council.store import CouncilStore
+from buergerportal.store import ProblemStore
 
 
 def get_store() -> Iterator[Store]:
@@ -24,6 +25,16 @@ def get_store() -> Iterator[Store]:
 def get_council_store() -> Iterator[CouncilStore]:
     settings = get_settings()
     store = CouncilStore(settings.council_db)
+    try:
+        yield store
+    finally:
+        store.close()
+
+
+def get_problem_store() -> Iterator[ProblemStore]:
+    """Öffentliche Problemprojektion in derselben SQLite-Datei wie Konten."""
+    settings = get_settings()
+    store = ProblemStore(settings.nwz_db)
     try:
         yield store
     finally:

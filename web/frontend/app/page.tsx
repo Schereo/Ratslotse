@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark, ArrowRight } from "lucide-react";
+import { Search, Sparkles, MapPin, BarChart3, Bell, CircleAlert, Landmark, ArrowRight } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { SeasonalMascot } from "@/components/seasonal-mascot";
 import { PeekingChick } from "@/components/peeking-chick";
@@ -30,6 +30,7 @@ const FEATURES = [
   { icon: Sparkles, title: "Frag den Rat", desc: "Stell eine Frage in normaler Sprache; Ratslotse findet die passenden Beschlüsse und antwortet mit Quellen und Fußnoten.", href: "/fragen", wide: true, hero: true },
   { icon: Search, title: "Beschlüsse durchsuchen", desc: "Volltextsuche mit Filtern nach Fraktion, Themenfeld und Geldbeträgen — statt PDF-Wälzen.", href: "/council" },
   { icon: MapPin, title: "Themen & Karte", desc: "Orte, Straßen und Projekte verständlich beschrieben — und auf einer Stadtkarte, wo der Rat aktiv ist.", href: "/council?tab=themen" },
+  { icon: CircleAlert, title: "Problemkarte", desc: "Kommunale Probleme in Oldenburg entdecken — private Beobachtungen, geprüft und öffentlich gebündelt.", href: "/probleme", wide: true },
   { icon: BarChart3, title: "Analyse", desc: "Wer ist im Rat präsent, wo fließt das Geld, welche Themen bewegen — Parteien, Personen, Finanzen, Trends.", href: "/council?tab=analysis", wide: true },
   { icon: Landmark, title: "Amtliche Quelle", desc: "Direkt aus dem Ratsinformationssystem der Stadt Oldenburg, verlinkt zu den Originaldokumenten.", href: "/docs" },
   { icon: Bell, title: "Benachrichtigungen", desc: "Lege Themen an und werde bei neuen Beschlüssen informiert — per Push oder E-Mail, sobald der Rat entscheidet.", href: "/topics", wide: true },

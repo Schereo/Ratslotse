@@ -109,11 +109,16 @@ Die Reihenfolge beschreibt Produktpriorität. Jeder Block soll als testbarer ver
 
 ### P1 — Öffentliche Problemkarte als dünner vertikaler Schnitt
 
-- [ ] Öffentliche API für freigegebene Probleme mit Karte, Filtern und Listenansicht bereitstellen.
+Erster Review-Schnitt: `/probleme` zeigt in Vercel-Preview-Deployments deutlich
+markierte, frei erfundene Beispieldaten; Produktion liest ausschließlich die
+öffentliche FastAPI-Projektion. Die Beispieldaten werden entfernt, sobald das
+Preview-Backend freigegebene Testprobleme bereitstellt.
+
+- [x] Öffentliche API für freigegebene Probleme mit Karte, Filtern und Listenansicht bereitstellen.
 - [ ] Punkt, Einrichtung, Route, Gebiet/Stadtteil und stadtweite Probleme darstellbar machen.
 - [ ] Problem-Detailseite mit erlaubten Aggregaten und öffentlicher Zeitleiste bauen.
-- [ ] Kennzeichnung als unabhängiges Ratslotse-Angebot und Erklärung der Statusaussage sichtbar platzieren.
-- [ ] Leere, Lade-, Fehler- und mobile Zustände sowie Tastaturbedienung und Screenreader-Texte abdecken.
+- [x] Kennzeichnung als unabhängiges Ratslotse-Angebot und Erklärung der Statusaussage sichtbar platzieren.
+- [x] Leere, Lade-, Fehler- und mobile Zustände sowie Tastaturbedienung und Screenreader-Texte abdecken.
 
 **Fertig, wenn:** Ein manuell angelegtes und freigegebenes Problem auf Karte und Liste auffindbar ist, seine Detailseite ausschließlich öffentliche Felder ausliefert und die Darstellung mobil sowie per Tastatur nutzbar ist.
 

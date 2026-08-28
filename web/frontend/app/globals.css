@@ -540,6 +540,40 @@
   color: hsl(var(--primary-foreground));
 }
 
+/* Problemkarte: Die Zahl im Marker ist die Zahl unabhängiger Reporter*innen.
+   HTML-Kreise statt Markerbilder halten CSP und Retina-Darstellung einfach. */
+.problem-map-icon {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  display: flex;
+  justify-content: center;
+}
+.problem-map-pin {
+  align-items: center;
+  background: hsl(var(--primary));
+  border: 3px solid hsl(var(--card));
+  border-radius: 9999px;
+  box-shadow: 0 3px 12px rgb(0 0 0 / 0.28);
+  color: hsl(var(--primary-foreground));
+  display: flex;
+  font-size: 12px;
+  height: var(--problem-pin-size);
+  justify-content: center;
+  line-height: 1;
+  transition: transform 160ms var(--ease-out-strong), box-shadow 160ms ease;
+  width: var(--problem-pin-size);
+}
+.problem-map-pin.is-selected {
+  background: hsl(var(--signal));
+  color: hsl(var(--signal-foreground));
+  box-shadow: 0 0 0 4px hsl(var(--signal) / 0.24), 0 4px 14px rgb(0 0 0 / 0.32);
+  transform: scale(1.12);
+}
+.problem-map-icon:focus-visible .problem-map-pin {
+  box-shadow: 0 0 0 4px hsl(var(--ring) / 0.35), 0 4px 14px rgb(0 0 0 / 0.32);
+}
+
 /* Dark-Mode-Karte: die helle Voyager-Basemap per Filter zu einem grauen
    Slate-Ton invertieren. hue-rotate hält Wasser/Grün in etwa an ihrem Platz,
    die gedämpfte Sättigung/Kontrast ergibt einen ruhigen, aber gut lesbaren

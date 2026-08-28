@@ -20,6 +20,48 @@ export interface User {
   qa_speichern?: number | null;
 }
 
+export type ProblemScope = "point" | "facility" | "route" | "area" | "citywide";
+export type ProblemStatus = "new" | "multiple_reports" | "verified" | "persists" | "apparently_resolved";
+export type ProblemConfidence = "unconfirmed" | "supported" | "verified";
+
+export interface PublicProblemEvent {
+  kind: string;
+  title: string;
+  detail: string;
+  source_kind: string | null;
+  source_url: string | null;
+  event_at: string;
+}
+
+/** Ausschließlich die freigegebene öffentliche Projektion eines Problems. */
+export interface PublicProblem {
+  id: number;
+  title: string;
+  summary: string;
+  category: string;
+  tags: string[];
+  scope_kind: ProblemScope;
+  location_label: string;
+  latitude: number | null;
+  longitude: number | null;
+  geometry: Record<string, unknown> | null;
+  status: ProblemStatus;
+  confidence: ProblemConfidence;
+  unique_reporters: number;
+  current_observations: number;
+  total_observations: number;
+  first_observed_at: string;
+  last_observed_at: string;
+  published_at: string;
+  updated_at: string;
+  events?: PublicProblemEvent[] | null;
+}
+
+export interface ProblemListResponse {
+  problems: PublicProblem[];
+  total: number;
+}
+
 export interface CouncilSession {
   // null = terminierte Sitzung aus dem RIS-Kalender, Tagesordnung noch
   // nicht veröffentlicht (dann gibt es weder Detailseite noch TOPs).
