@@ -1006,6 +1006,15 @@ struct DecisionDetailView: View {
                     let decision = detail.decision
                     DecisionDetailHeader(detail: detail)
 
+                    DecisionActionBar(
+                        isBookmarked: bookmarkID != nil,
+                        follow: detail.follow,
+                        shareLink: model.router.universalLink(for: .decision(id: decisionID)),
+                        isWorking: isWorking,
+                        toggleBookmark: toggleBookmark,
+                        toggleFollow: toggleFollow
+                    )
+
                     if let participation = detail.participation,
                        let url = URL(string: participation.url) {
                         DecisionParticipationBanner(participation: participation, url: url)
@@ -1054,27 +1063,6 @@ struct DecisionDetailView: View {
                             }
                         }
                         .ratsCard()
-                    }
-
-                    HStack(spacing: 12) {
-                        Button {
-                            toggleBookmark()
-                        } label: {
-                            Label(bookmarkID == nil ? "Merken" : "Gemerkt", systemImage: bookmarkID == nil ? "bookmark" : "bookmark.fill")
-                        }
-                        .buttonStyle(SecondaryButtonStyle())
-                        .disabled(isWorking)
-                        if let follow = detail.follow {
-                            Button { toggleFollow(follow) } label: {
-                                Label(follow.following ? "Wird verfolgt" : "Vorgang folgen", systemImage: follow.following ? "bell.fill" : "bell")
-                            }
-                            .buttonStyle(SecondaryButtonStyle())
-                            .disabled(isWorking)
-                        }
-                        if let link = model.router.universalLink(for: .decision(id: decisionID)) {
-                            ShareLink(item: link) { Label("Teilen", systemImage: "square.and.arrow.up") }
-                                .buttonStyle(SecondaryButtonStyle())
-                        }
                     }
 
                     if let raw = detail.ratsinfoURL, let url = URL(string: raw) {
@@ -1240,6 +1228,113 @@ struct DecisionDetailView: View {
                 guard let current = detail else { return }
                 detail = current.replacing(follow: updated)
             } catch { self.error = error.localizedDescription }
+        }
+    }
+}
+
+private struct DecisionActionBar: View {
+    let isBookmarked: Bool
+    let follow: FollowStatus?
+    let shareLink: URL?
+    let isWorking: Bool
+    let toggleBookmark: () -> Void
+    let toggleFollow: (FollowStatus) -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if let follow {
+                Button { toggleFollow(follow) } label: {
+                    HStack(spacing: 9) {
+                        Image(systemName: follow.following ? "bell.fill" : "bell.badge")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text(follow.following ? "Wird verfolgt" : "Vorgang folgen")
+                            .font(RatsFont.body(14, weight: .semibold))
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        Image(systemName: follow.following ? "checkmark" : "plus")
+                            .font(.system(size: 12, weight: .bold))
+                    }
+                    .foregroundStyle(follow.following ? RatsColor.primary : RatsColor.primaryText)
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .background(follow.following ? RatsColor.primary.opacity(0.10) : RatsColor.primary)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 15, style: .continuous)
+                            .stroke(RatsColor.primary.opacity(follow.following ? 0.28 : 0), lineWidth: 1)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                }
+                .buttonStyle(DecisionActionPressStyle())
+                .disabled(isWorking)
+                .accessibilityHint(follow.following ? "Beendet die Verfolgung dieses Vorgangs" : "Meldet neue Stationen dieses Vorgangs")
+            }
+
+            Button(action: toggleBookmark) {
+                DecisionUtilityAction(
+                    symbol: isBookmarked ? "bookmark.fill" : "bookmark",
+                    active: isBookmarked
+                )
+            }
+            .buttonStyle(DecisionActionPressStyle())
+            .disabled(isWorking)
+            .accessibilityLabel(isBookmarked ? "Aus Merkliste entfernen" : "Beschluss merken")
+            .accessibilityValue(isBookmarked ? "Gemerkt" : "Nicht gemerkt")
+
+            if let shareLink {
+                ShareLink(item: shareLink) {
+                    DecisionUtilityAction(symbol: "square.and.arrow.up", active: false)
+                }
+                .buttonStyle(DecisionActionPressStyle())
+                .accessibilityLabel("Beschluss teilen")
+            }
+        }
+        .frame(maxWidth: 560, alignment: .leading)
+    }
+}
+
+private struct DecisionUtilityAction: View {
+    let symbol: String
+    let active: Bool
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(active ? RatsColor.primaryText : RatsColor.primary)
+            .frame(width: 50, height: 50)
+            .decisionUtilitySurface(active: active)
+    }
+}
+
+private struct DecisionActionPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .opacity(configuration.isPressed ? 0.78 : 1)
+            .animation(.snappy(duration: 0.16), value: configuration.isPressed)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func decisionUtilitySurface(active: Bool) -> some View {
+        if #available(iOS 26.0, *) {
+            self
+                .glassEffect(
+                    .regular.tint(active ? RatsColor.primary.opacity(0.72) : RatsColor.card.opacity(0.22)),
+                    in: .rect(cornerRadius: 15)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .stroke(active ? RatsColor.primary.opacity(0.36) : .white.opacity(0.30), lineWidth: 0.8)
+                }
+        } else {
+            self
+                .background(active ? RatsColor.primary : RatsColor.card)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .stroke(active ? RatsColor.primary : RatsColor.border, lineWidth: 1)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
         }
     }
 }
