@@ -266,15 +266,18 @@ struct RatsSheetHeader: View {
                 Text(title)
                     .font(RatsFont.body(11.5, weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .allowsTightening(true)
                     .padding(.horizontal, 11)
-                    .frame(width: 88, height: 34)
+                    .frame(width: 104, height: 34)
                     .background(RatsColor.primary.opacity(0.08))
                     .overlay(Capsule().stroke(RatsColor.primary.opacity(0.16)))
                     .clipShape(Capsule())
             }
             .buttonStyle(RatsSheetHeaderButtonStyle())
         } else {
-            Color.clear.frame(width: 88, height: 34)
+            Color.clear.frame(width: 104, height: 34)
         }
     }
 }
