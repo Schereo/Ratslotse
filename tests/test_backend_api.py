@@ -1485,6 +1485,26 @@ def _seed_datierte_beschluesse(tage: list[str]) -> list[int]:
     return ids
 
 
+def test_sechs_monats_fenster_rechnet_kalendarisch():
+    """Das Fenster hinter „n in 6 Monaten" ist ein halbes Jahr, keine 183
+    Tage — der Wert steht als Monatsangabe auf der Karte. Am Monatsende, das
+    es im Zielmonat nicht gibt, rutscht der Stichtag auf dessen letzten Tag.
+
+    30 Tage waren es bis zum 28.08.2026, und damit stand bei fast jedem Thema
+    eine 0: Die Gremien tagen monatlich, im Sommer gar nicht.
+    """
+    from app.routers.topics import _vor_sechs_monaten
+
+    assert _vor_sechs_monaten(date(2026, 8, 28)) == date(2026, 2, 28)
+    assert _vor_sechs_monaten(date(2026, 3, 15)) == date(2025, 9, 15)
+    # 31. August → im Februar gibt es keinen 31.
+    assert _vor_sechs_monaten(date(2026, 8, 31)) == date(2026, 2, 28)
+    # Schaltjahr: derselbe Fall, ein Tag mehr.
+    assert _vor_sechs_monaten(date(2028, 8, 31)) == date(2028, 2, 29)
+    # Jahreswechsel rückwärts.
+    assert _vor_sechs_monaten(date(2026, 1, 10)) == date(2025, 7, 10)
+
+
 def test_karte_traegt_ihre_juengsten_treffer(client):
     """Der Kern des Umbaus: Die Karte trug bisher eine Zahl und einen einzigen
     Titel — wer wissen wollte, was in seinen Themen steckt, musste jedes
@@ -1504,9 +1524,10 @@ def test_karte_traegt_ihre_juengsten_treffer(client):
     assert t["recent_hits"][0]["committee"] == "Sozialausschuss"
     assert t["recent_hits"][0]["outcome"] == "angenommen"
     assert t["decision_count"] == len(ids)
-    # „3 in 30 Tagen" ist die zweite Hälfte der Kicker-Zeile: Sie sagt, ob ein
+    # „3 in 6 Monaten" ist die zweite Hälfte der Kicker-Zeile: Sie sagt, ob ein
     # Thema gerade läuft oder ruht — die Gesamtzahl kann beides bedeuten.
-    assert t["hits_30d"] == 2
+    # Von den sechs Beschlüssen liegen die aus 1, 5 und 40 Tagen im Fenster.
+    assert t["hits_6m"] == 3
 
 
 def test_punkte_und_abzeichen_zaehlen_dieselbe_menge(client):

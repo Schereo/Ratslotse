@@ -529,9 +529,10 @@ export interface Topic {
    *  zeigt sie direkt — vorher stand dort eine Zahl und ein einziger Titel,
    *  man musste also jedes Thema öffnen, um zu sehen, was drinsteht. */
   recent_hits?: TopicHit[];
-  /** Treffer der letzten 30 Tage — sagt, ob ein Thema gerade läuft oder ruht.
-   *  Die Gesamtzahl allein kann beides bedeuten. */
-  hits_30d?: number;
+  /** Treffer des letzten halben Jahres — sagt, ob ein Thema gerade läuft
+   *  oder ruht. Die Gesamtzahl allein kann beides bedeuten. 30 Tage waren zu
+   *  kurz: Die Gremien tagen monatlich, im Sommer gar nicht. */
+  hits_6m?: number;
 }
 
 export interface TopicHit {
