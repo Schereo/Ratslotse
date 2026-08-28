@@ -44,7 +44,7 @@ from council.store import CouncilStore
 
 from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
-from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, TopicOut
+from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, TopicOut, TopicSeenIn
 
 logger = logging.getLogger("nwz.web.topics")
 
@@ -410,10 +410,26 @@ def uebersicht_gesehen(user: dict = Depends(require_active),
 
 
 @router.post("/{topic_id}/seen")
-def mark_seen(topic_id: int, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
-    """RL-903: alle aktuellen Treffer eines Themas als gesehen markieren —
-    das Frontend ruft das beim Öffnen der Beschlussliste des Themas."""
+def mark_seen(
+    topic_id: int,
+    body: TopicSeenIn | None = None,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> dict:
+    """RL-903: Treffer eines Themas als gesehen markieren.
+
+    Ohne ``decision_id`` alle — das ist der Weg über „alle ansehen" und über
+    das „n neue"-Abzeichen, das sich selbst wegräumt. MIT ``decision_id`` nur
+    dieser eine: Seit dem 28.08.2026 stehen die Treffer direkt auf der Karte,
+    wer einen anklickt, hat genau den gelesen und keinen anderen — aus „2
+    neue" wird dann „1 neuer" (Tims Wunsch).
+
+    Der Body ist optional, damit ältere App-Versionen, die nur ``{}`` senden,
+    unverändert alles markieren.
+    """
     _own_topic(store, user["id"], topic_id)
+    if body is not None and body.decision_id is not None:
+        return {"marked": int(store.mark_topic_hit_seen(user["id"], topic_id, body.decision_id))}
     return {"marked": store.mark_topic_hits_seen(user["id"], topic_id)}
 
 

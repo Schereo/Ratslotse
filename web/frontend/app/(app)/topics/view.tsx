@@ -111,12 +111,16 @@ export function TopicsView() {
      Trefferliste. Fire-and-forget — ein Fehler darf weder den Seitenwechsel
      aufhalten noch die Seite stören; beim nächsten Laden steht der Zähler
      dann eben noch. */
-  const alleGelesen = (t: Topic) => {
-    if ((t.unread_count ?? 0) <= 0) return;
-    api.post(`/topics/${t.id}/seen`, {}).then(() => {
+  const gelesenMelden = (topicId: number, decisionId?: number) => {
+    api.post(`/topics/${topicId}/seen`, decisionId ? { decision_id: decisionId } : {}).then(() => {
       qc.invalidateQueries({ queryKey: ["topics"] });
       qc.invalidateQueries({ queryKey: ["topics-unread"] });
     }).catch(() => {});
+  };
+
+  const alleGelesen = (t: Topic) => {
+    if ((t.unread_count ?? 0) <= 0) return;
+    gelesenMelden(t.id);
   };
 
   const anlegen = () => {
@@ -261,6 +265,7 @@ export function TopicsView() {
                 loeschFrage={loeschFrage === t.id}
                 onLoeschFrage={(offen) => setLoeschFrage(offen ? t.id : null)}
                 onAlleGelesen={() => alleGelesen(t)}
+                onTrefferGelesen={(did) => gelesenMelden(t.id, did)}
               />
             ))}
             <button

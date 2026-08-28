@@ -69,6 +69,14 @@ class TopicDescribeIn(BaseModel):
     description: str = Field(default="", max_length=2000)
 
 
+class TopicSeenIn(BaseModel):
+    """Was als gesehen gilt: ohne ``decision_id`` alle Treffer des Themas, mit
+    ihr genau dieser eine. Optional, damit ältere App-Versionen, die nur
+    ``{}`` senden, weiterhin alles markieren."""
+
+    decision_id: int | None = None
+
+
 class TopicHitOut(BaseModel):
     """Ein Beschluss-Treffer, wie ihn die Themen-Karte zeigt.
 

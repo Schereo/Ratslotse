@@ -22,7 +22,7 @@ import type { Topic } from "@/lib/types";
  *  unterscheidet, ist nur die Spaltenzahl außen herum.
  */
 export function ThemenKarte({
-  topic, onEdit, onDelete, loeschFrage, onLoeschFrage, onAlleGelesen,
+  topic, onEdit, onDelete, loeschFrage, onLoeschFrage, onAlleGelesen, onTrefferGelesen,
 }: {
   topic: Topic;
   onEdit: () => void;
@@ -33,6 +33,8 @@ export function ThemenKarte({
   onLoeschFrage: (offen: boolean) => void;
   /** Alle Treffer dieses Themas als gelesen markieren. */
   onAlleGelesen: () => void;
+  /** EINEN Treffer als gelesen markieren — wer ihn öffnet, hat ihn gelesen. */
+  onTrefferGelesen: (decisionId: number) => void;
 }) {
   const treffer = topic.recent_hits ?? [];
   const gesamt = topic.decision_count;
@@ -132,8 +134,13 @@ export function ThemenKarte({
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-1.5">
                   {h.is_new && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-signal" aria-label="neu" />}
+                  {/* Wer einen Beschluss öffnet, hat genau den gelesen — aus
+                      „2 neue" wird „1 neuer" (Tims Wunsch 28.08.2026). Vorher
+                      räumte nur ein Klick auf das Abzeichen oder auf „alle
+                      ansehen" auf, und der räumte gleich alles weg. */}
                   <Link
                     href={decisionHref(h.id)}
+                    onClick={() => h.is_new && onTrefferGelesen(h.id)}
                     className={`truncate text-[13.5px] text-foreground hover:underline ${h.is_new ? "font-semibold" : "font-medium"}`}
                   >
                     {h.title}

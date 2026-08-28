@@ -1533,6 +1533,47 @@ def test_punkte_und_abzeichen_zaehlen_dieselbe_menge(client):
     assert [h["id"] for h in t["recent_hits"] if h["is_new"]] == [neu]
 
 
+def test_einzelner_treffer_laesst_sich_als_gelesen_melden(client):
+    """Tims Wunsch 28.08.: Wer einen Beschluss auf der Karte anklickt, hat
+    genau den gelesen — aus „2 neue" wird „1 neuer", nicht „gar nichts neu"."""
+    owner_id = _register(client).json()["id"]
+    heute = date.today()
+    ids = _seed_datierte_beschluesse([(heute - timedelta(days=n)).isoformat() for n in (1, 2, 3)])
+    tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
+    st = Store(NWZ_DB)
+    st.save_topic_decision_matches(tid, owner_id, [(d, 0.8) for d in ids])
+    st.close()
+    assert client.get("/api/topics").json()[0]["unread_count"] == 3
+
+    r = client.post(f"/api/topics/{tid}/seen", json={"decision_id": ids[0]})
+    assert r.status_code == 200 and r.json()["marked"] == 1
+    t = client.get("/api/topics").json()[0]
+    assert t["unread_count"] == 2
+    assert [h["id"] for h in t["recent_hits"] if h["is_new"]] == ids[1:]
+
+    # Zweimal derselbe Treffer ändert nichts mehr.
+    assert client.post(f"/api/topics/{tid}/seen", json={"decision_id": ids[0]}).json()["marked"] == 0
+    # Ohne decision_id bleibt es beim „alles" — der Weg über das Abzeichen.
+    assert client.post(f"/api/topics/{tid}/seen", json={}).json()["marked"] == 2
+    assert client.get("/api/topics").json()[0]["unread_count"] == 0
+
+
+def test_fremder_beschluss_kommt_nicht_in_die_gelesen_liste(client):
+    """Das SELECT aus council_topic_matches ist die Zugangsprüfung: Ohne sie
+    ließe sich die Tabelle über einen direkten API-Aufruf mit beliebigen
+    decision_ids füllen."""
+    owner_id = _register(client).json()["id"]
+    ids = _seed_datierte_beschluesse([date.today().isoformat()])
+    tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
+    st = Store(NWZ_DB)
+    st.save_topic_decision_matches(tid, owner_id, [(ids[0], 0.8)])
+    st.close()
+
+    # 999999 ist kein Treffer dieses Themas — es darf keine Zeile entstehen.
+    assert client.post(f"/api/topics/{tid}/seen", json={"decision_id": 999999}).json()["marked"] == 0
+    assert client.get("/api/topics").json()[0]["unread_count"] == 1
+
+
 def test_topic_decisions_replace_on_rerun(client):
     """Re-running the matcher replaces a topic's matches (no stale duplicates)."""
     owner_id = _register(client).json()["id"]
