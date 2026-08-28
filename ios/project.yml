@@ -1,0 +1,97 @@
+name: Ratslotse
+options:
+  bundleIdPrefix: de.ratslotse
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: de
+  createIntermediateGroups: true
+  groupSortPosition: top
+packages:
+  RatslotseAPI:
+    path: Packages/RatslotseAPI
+  RatslotseDesign:
+    path: Packages/RatslotseDesign
+  RatslotseFeatures:
+    path: Packages/RatslotseFeatures
+settings:
+  base:
+    DEVELOPMENT_TEAM: YM87689GUY
+    SWIFT_VERSION: 5.0
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CURRENT_PROJECT_VERSION: 18
+    MARKETING_VERSION: 2.0.0
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+targets:
+  Ratslotse:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: RatslotseApp
+      - path: Resources
+        buildPhase: resources
+        excludes:
+          - "Preview Content"
+    dependencies:
+      - package: RatslotseAPI
+      - package: RatslotseDesign
+      - package: RatslotseFeatures
+    configFiles:
+      Debug: Config/Debug.xcconfig
+      Release: Config/Release.xcconfig
+    info:
+      path: RatslotseApp/Info.plist
+      properties:
+        CFBundleDisplayName: Ratslotse
+        CFBundleDevelopmentRegion: de
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UILaunchScreen:
+          UIImageName: Splash
+        UIRequiredDeviceCapabilities:
+          - arm64
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSCalendarsFullAccessUsageDescription: Ratslotse trägt von dir gewählte Ratssitzungen in deinen Kalender ein.
+        UIAppFonts:
+          - Inter-Variable.ttf
+          - BricolageGrotesque-Variable.ttf
+          - IBMPlexMono-Regular.ttf
+          - IBMPlexMono-Medium.ttf
+    settings:
+      base:
+        PRODUCT_NAME: Ratslotse
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        SUPPORTS_MACCATALYST: NO
+  RatslotseAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: RatslotseAppTests
+    dependencies:
+      - target: Ratslotse
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Ratslotse:
+    build:
+      targets:
+        Ratslotse: all
+        RatslotseAppTests: [test]
+    test:
+      targets:
+        - RatslotseAppTests

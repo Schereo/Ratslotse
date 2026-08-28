@@ -1,0 +1,13 @@
+: ping
+
+data: {"type":"step","step":"expand"}
+
+data: {"type":"sources","sources":[{"id":42,"title":"Radverkehr"}]}
+
+data: {"type":"token","text":"Die Stadt "}
+
+data: {"type":"token","text":"baut aus [42]."}
+
+data: {"type":"suggestions","suggestions":["Wann beginnt das?"]}
+
+data: {"type":"done","gespraech_id":7}

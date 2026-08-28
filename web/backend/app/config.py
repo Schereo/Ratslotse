@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # can't rely on cookies at all; they refresh it on every /auth/me instead.
     # Revocation still works via token_version (bumped on password change/reset).
     app_access_token_expire_minutes: int = 60 * 24 * 90  # 90 days
+    # Native builds check this value before authenticated bootstrap requests.
+    # Zero keeps every build enabled until an operator deliberately raises it.
+    app_min_build: int = 0
+    app_update_notice: str = ""
     # This address becomes admin once it registers AND confirms its email — and
     # only while the deployment has no admin yet (see routers/auth.py). Without
     # email delivery: scripts/grant_admin.py.

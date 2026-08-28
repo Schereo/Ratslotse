@@ -55,6 +55,13 @@ class UserOut(BaseModel):
     qa_speichern: int | None = None
 
 
+class AppConfigOut(BaseModel):
+    """Compatibility contract consumed before a native app starts loading data."""
+
+    min_build: int = 0
+    hinweis: str | None = None
+
+
 class TopicIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = Field(min_length=1, max_length=2000)

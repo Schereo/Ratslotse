@@ -1,10 +1,11 @@
 # Ratslotse nativ — Umbauplan Capacitor → SwiftUI
 
-> **Status:** Plan, noch nicht begonnen. Erhoben am 28.08.2026 aus dem Repo-Stand
-> (main @ `1fe5bed`) über drei Recherche-Läufe: Frontend-Inventar, Backend-API-
-> Kartierung, iOS-Projekt-Bestandsaufnahme. Wer hiermit startet: erst
-> [Abschnitt 9 (offene Entscheidungen)](#9-offene-entscheidungen) mit Tim klären —
-> die Empfehlungen dort sind Vorschläge, keine Beschlüsse.
+> **Status:** Implementiert als native 2.0-Grundlage am 28.08.2026. Phase 0,
+> Kern-MVP und die zentralen Rats-Browser-/Paritätsbausteine sind im neuen
+> Top-Level-Verzeichnis `ios/` umgesetzt. Die Empfehlungen aus Abschnitt 9
+> wurden als Arbeitsannahmen übernommen: iOS 17, iPhone + iPad, MapKit,
+> GitHub-Actions-Build und TestFlight-Cutover vor dem späteren
+> Capacitor-Aufräumen. Details und Buildbefehle: `ios/README.md`.
 
 Ziel: Aus der heutigen Capacitor-Shell (statischer Next-Export in einer WebView)
 eine **wirklich native iOS-App** in Swift/SwiftUI machen, die direkt gegen die

@@ -31,10 +31,17 @@ class RateLimiter:
             del self._calls[k]
         self._last_cleanup = now
 
-    def check(self, request: Request) -> None:
+    def check(self, request: Request, *, subject: str | int | None = None) -> None:
+        """Count a request in a fixed-window bucket.
+
+        Authenticated, expensive endpoints can pass a stable account id as
+        ``subject``. Anonymous endpoints deliberately keep using the network
+        address. Prefixes prevent an account id from ever sharing a bucket
+        with an equal-looking IP address.
+        """
         if os.environ.get("DISABLE_RATE_LIMIT") == "1":
             return
-        key = self._key(request)
+        key = f"account:{subject}" if subject is not None else f"ip:{self._key(request)}"
         now = time.monotonic()
         with self._lock:
             if now - self._last_cleanup > _CLEANUP_INTERVAL:

@@ -2837,7 +2837,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
     the wait feel far shorter (sources show in ~2 s) and degrades gracefully if a
     proxy buffers it (the client then renders the same final state at once)."""
     if not user.get("limits_frei"):  # Admin kann Konten befreien (web_users.limits_frei)
-        qa_limiter.check(request)  # LLM-Kosten pro Aufruf — nicht unbegrenzt feuern lassen
+        # Mobilfunkanbieter bündeln viele Geräte hinter derselben öffentlichen
+        # Adresse. Das Konto ist hier bereits sicher authentifiziert und damit
+        # der faire, stabile Schlüssel für das Kosten-Limit.
+        qa_limiter.check(request, subject=user["id"])
     nwz.record_activity(user["id"], "ki_frage")  # Admin-Statistik (20a)
     q = body.question.strip()
     if len(q) < 4:

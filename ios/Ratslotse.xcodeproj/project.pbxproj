@@ -1,0 +1,564 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		09FDEB594DB17AD7A86F1844 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB30C7E925B562746E8169C7 /* Assets.xcassets */; };
+		28BD30569358E8A521F9C957 /* OFL-BricolageGrotesque.txt in Resources */ = {isa = PBXBuildFile; fileRef = 33A534B0F668B3947D9DD409 /* OFL-BricolageGrotesque.txt */; };
+		2CCEC9C8A8DB932EBFB273E8 /* OFL-IBMPlexMono.txt in Resources */ = {isa = PBXBuildFile; fileRef = 70CBFFFD61C9295634F5B654 /* OFL-IBMPlexMono.txt */; };
+		2E7AA5A9CC0BFD650267BA48 /* Inter-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F6217EB0DE76D0F28ACDDE9D /* Inter-Variable.ttf */; };
+		3DC82352060A9FC7219544CD /* OFL-Inter.txt in Resources */ = {isa = PBXBuildFile; fileRef = 8DBAB4419FA85A27A102C122 /* OFL-Inter.txt */; };
+		4D7A784B6B316F54E6CB3B87 /* RatslotseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C327482D77E35E3D932EB51 /* RatslotseApp.swift */; };
+		54DC27AF1E6BB13AC93B7844 /* RatslotseAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EABA56FCF5C2D393432D171 /* RatslotseAppDelegate.swift */; };
+		649DB469A3F85842662ACC49 /* RatslotseDesign in Frameworks */ = {isa = PBXBuildFile; productRef = F9FCBC0F2FA0B250E3B174C6 /* RatslotseDesign */; };
+		6ABFEDB2A8803C9DE060C4CA /* RatslotseAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C2D5448BA212656A6B890F /* RatslotseAppTests.swift */; };
+		70E48ADF8EA66F7332243AB4 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B4D5A7A73D7B0847301DC406 /* IBMPlexMono-Regular.ttf */; };
+		76EE984AE63A9BBA12A9806E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2E0527A1C047C39F746509A8 /* PrivacyInfo.xcprivacy */; };
+		8B63FA9C87C24D3BA7F73301 /* RatslotseFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = 47DA8380009C9C1263B18CA6 /* RatslotseFeatures */; };
+		A0246E965BDFE016AD176FB3 /* stadtteile-oldenburg.json in Resources */ = {isa = PBXBuildFile; fileRef = 71991107FF7E56E02998B6A7 /* stadtteile-oldenburg.json */; };
+		A09D3F22A10C89AACDE3958C /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3B8E61A6D22EEC9444ADC6F5 /* IBMPlexMono-Medium.ttf */; };
+		A7519997B2B46A65936251BA /* BricolageGrotesque-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C15D21A7E586A8F88CAE7931 /* BricolageGrotesque-Variable.ttf */; };
+		F28BF9B8C6133720D9DDDC99 /* RatslotseAPI in Frameworks */ = {isa = PBXBuildFile; productRef = 551CB3585296AB547F917939 /* RatslotseAPI */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C4DF31FA0C3DAD9B651A6018 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E5C25F5077A833CE3A524194 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BE16A533BA826FB0CB5C9AD6;
+			remoteInfo = Ratslotse;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		2C327482D77E35E3D932EB51 /* RatslotseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatslotseApp.swift; sourceTree = "<group>"; };
+		2E0527A1C047C39F746509A8 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		33A534B0F668B3947D9DD409 /* OFL-BricolageGrotesque.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-BricolageGrotesque.txt"; sourceTree = "<group>"; };
+		3B8E61A6D22EEC9444ADC6F5 /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
+		3EABA56FCF5C2D393432D171 /* RatslotseAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatslotseAppDelegate.swift; sourceTree = "<group>"; };
+		539BE405E3F2DA865A1B09AC /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		6583B3132ED8165355A43F96 /* RatslotseAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RatslotseAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		70CBFFFD61C9295634F5B654 /* OFL-IBMPlexMono.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-IBMPlexMono.txt"; sourceTree = "<group>"; };
+		71991107FF7E56E02998B6A7 /* stadtteile-oldenburg.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "stadtteile-oldenburg.json"; sourceTree = "<group>"; };
+		8ABC5A2010B5F609931EE1EF /* RatslotseAPI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RatslotseAPI; path = Packages/RatslotseAPI; sourceTree = SOURCE_ROOT; };
+		8DBAB4419FA85A27A102C122 /* OFL-Inter.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Inter.txt"; sourceTree = "<group>"; };
+		92EA087D6385B77FD45C7BED /* Ratslotse.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Ratslotse.entitlements; sourceTree = "<group>"; };
+		9DBF609C73075B10FBC92670 /* Ratslotse.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Ratslotse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B15E58EF777C521849F4194F /* RatslotseDesign */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RatslotseDesign; path = Packages/RatslotseDesign; sourceTree = SOURCE_ROOT; };
+		B4D5A7A73D7B0847301DC406 /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
+		BB30C7E925B562746E8169C7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BCE81BC2553908052D21734E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		C15D21A7E586A8F88CAE7931 /* BricolageGrotesque-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BricolageGrotesque-Variable.ttf"; sourceTree = "<group>"; };
+		E140ED40D24CFEA81D628ADE /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		E3C2D5448BA212656A6B890F /* RatslotseAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatslotseAppTests.swift; sourceTree = "<group>"; };
+		E60A8FF280F6CB476028D701 /* RatslotseFeatures */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RatslotseFeatures; path = Packages/RatslotseFeatures; sourceTree = SOURCE_ROOT; };
+		F6217EB0DE76D0F28ACDDE9D /* Inter-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Variable.ttf"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		9DC8EBED8D10FBF20CC92786 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F28BF9B8C6133720D9DDDC99 /* RatslotseAPI in Frameworks */,
+				649DB469A3F85842662ACC49 /* RatslotseDesign in Frameworks */,
+				8B63FA9C87C24D3BA7F73301 /* RatslotseFeatures in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0C29FB5C35A0C25078BD9C5D /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				C15D21A7E586A8F88CAE7931 /* BricolageGrotesque-Variable.ttf */,
+				3B8E61A6D22EEC9444ADC6F5 /* IBMPlexMono-Medium.ttf */,
+				B4D5A7A73D7B0847301DC406 /* IBMPlexMono-Regular.ttf */,
+				F6217EB0DE76D0F28ACDDE9D /* Inter-Variable.ttf */,
+				33A534B0F668B3947D9DD409 /* OFL-BricolageGrotesque.txt */,
+				70CBFFFD61C9295634F5B654 /* OFL-IBMPlexMono.txt */,
+				8DBAB4419FA85A27A102C122 /* OFL-Inter.txt */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		1E9A2FA28BCD37418E665B42 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				8ABC5A2010B5F609931EE1EF /* RatslotseAPI */,
+				B15E58EF777C521849F4194F /* RatslotseDesign */,
+				E60A8FF280F6CB476028D701 /* RatslotseFeatures */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		27B8C1BEFC54947CDBB65A60 /* RatslotseApp */ = {
+			isa = PBXGroup;
+			children = (
+				BCE81BC2553908052D21734E /* Info.plist */,
+				92EA087D6385B77FD45C7BED /* Ratslotse.entitlements */,
+				2C327482D77E35E3D932EB51 /* RatslotseApp.swift */,
+				3EABA56FCF5C2D393432D171 /* RatslotseAppDelegate.swift */,
+			);
+			path = RatslotseApp;
+			sourceTree = "<group>";
+		};
+		703895942CB681F607678EA1 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9DBF609C73075B10FBC92670 /* Ratslotse.app */,
+				6583B3132ED8165355A43F96 /* RatslotseAppTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		82A3E9513E3498551868E67D = {
+			isa = PBXGroup;
+			children = (
+				E88989A8084ED65EDABAED10 /* Config */,
+				1E9A2FA28BCD37418E665B42 /* Packages */,
+				27B8C1BEFC54947CDBB65A60 /* RatslotseApp */,
+				BC7158BC47BC7764AE30DCFE /* RatslotseAppTests */,
+				C094639EB2DC040AC6D1AFBA /* Resources */,
+				703895942CB681F607678EA1 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BC7158BC47BC7764AE30DCFE /* RatslotseAppTests */ = {
+			isa = PBXGroup;
+			children = (
+				E3C2D5448BA212656A6B890F /* RatslotseAppTests.swift */,
+			);
+			path = RatslotseAppTests;
+			sourceTree = "<group>";
+		};
+		C094639EB2DC040AC6D1AFBA /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				0C29FB5C35A0C25078BD9C5D /* Fonts */,
+				BB30C7E925B562746E8169C7 /* Assets.xcassets */,
+				2E0527A1C047C39F746509A8 /* PrivacyInfo.xcprivacy */,
+				71991107FF7E56E02998B6A7 /* stadtteile-oldenburg.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		E88989A8084ED65EDABAED10 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				539BE405E3F2DA865A1B09AC /* Debug.xcconfig */,
+				E140ED40D24CFEA81D628ADE /* Release.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		899DA1B9F02BB68F603EC68F /* RatslotseAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 25C8FD52A8A8987FC9BE704B /* Build configuration list for PBXNativeTarget "RatslotseAppTests" */;
+			buildPhases = (
+				8879A2BC9A26327A910B5B6E /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D476AB90D3E6804B7BE3F12F /* PBXTargetDependency */,
+			);
+			name = RatslotseAppTests;
+			packageProductDependencies = (
+			);
+			productName = RatslotseAppTests;
+			productReference = 6583B3132ED8165355A43F96 /* RatslotseAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		BE16A533BA826FB0CB5C9AD6 /* Ratslotse */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F5644869B078E2F8A191EA18 /* Build configuration list for PBXNativeTarget "Ratslotse" */;
+			buildPhases = (
+				BAE4BF8798D2FE62890CAAE2 /* Sources */,
+				8BD993B9E7D65961088C7E27 /* Resources */,
+				9DC8EBED8D10FBF20CC92786 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Ratslotse;
+			packageProductDependencies = (
+				551CB3585296AB547F917939 /* RatslotseAPI */,
+				F9FCBC0F2FA0B250E3B174C6 /* RatslotseDesign */,
+				47DA8380009C9C1263B18CA6 /* RatslotseFeatures */,
+			);
+			productName = Ratslotse;
+			productReference = 9DBF609C73075B10FBC92670 /* Ratslotse.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E5C25F5077A833CE3A524194 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					899DA1B9F02BB68F603EC68F = {
+						DevelopmentTeam = YM87689GUY;
+					};
+					BE16A533BA826FB0CB5C9AD6 = {
+						DevelopmentTeam = YM87689GUY;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = DFC776DDE2C01FE5F16A1377 /* Build configuration list for PBXProject "Ratslotse" */;
+			developmentRegion = de;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				de,
+			);
+			mainGroup = 82A3E9513E3498551868E67D;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				EEBAAC635D6307FAE00D931A /* XCLocalSwiftPackageReference "Packages/RatslotseAPI" */,
+				9522023131B60A7D82AC7934 /* XCLocalSwiftPackageReference "Packages/RatslotseDesign" */,
+				13BD886983E215AD121CDFA1 /* XCLocalSwiftPackageReference "Packages/RatslotseFeatures" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 703895942CB681F607678EA1 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BE16A533BA826FB0CB5C9AD6 /* Ratslotse */,
+				899DA1B9F02BB68F603EC68F /* RatslotseAppTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8BD993B9E7D65961088C7E27 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				09FDEB594DB17AD7A86F1844 /* Assets.xcassets in Resources */,
+				A7519997B2B46A65936251BA /* BricolageGrotesque-Variable.ttf in Resources */,
+				A09D3F22A10C89AACDE3958C /* IBMPlexMono-Medium.ttf in Resources */,
+				70E48ADF8EA66F7332243AB4 /* IBMPlexMono-Regular.ttf in Resources */,
+				2E7AA5A9CC0BFD650267BA48 /* Inter-Variable.ttf in Resources */,
+				28BD30569358E8A521F9C957 /* OFL-BricolageGrotesque.txt in Resources */,
+				2CCEC9C8A8DB932EBFB273E8 /* OFL-IBMPlexMono.txt in Resources */,
+				3DC82352060A9FC7219544CD /* OFL-Inter.txt in Resources */,
+				76EE984AE63A9BBA12A9806E /* PrivacyInfo.xcprivacy in Resources */,
+				A0246E965BDFE016AD176FB3 /* stadtteile-oldenburg.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8879A2BC9A26327A910B5B6E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6ABFEDB2A8803C9DE060C4CA /* RatslotseAppTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BAE4BF8798D2FE62890CAAE2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D7A784B6B316F54E6CB3B87 /* RatslotseApp.swift in Sources */,
+				54DC27AF1E6BB13AC93B7844 /* RatslotseAppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D476AB90D3E6804B7BE3F12F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BE16A533BA826FB0CB5C9AD6 /* Ratslotse */;
+			targetProxy = C4DF31FA0C3DAD9B651A6018 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		04E96BCB019D5FCA593BE7F8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.ratslotse.RatslotseAppTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ratslotse.app/Ratslotse";
+			};
+			name = Release;
+		};
+		0F9FFE47CEC924C169E9E540 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 18;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = YM87689GUY;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 2.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		0FD2C65694D91EBA0912AE8D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 18;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = YM87689GUY;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 2.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4300A4B4DBA7B2AA3DCD4AE0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E140ED40D24CFEA81D628ADE /* Release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = RatslotseApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_NAME = Ratslotse;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		59FC31F00569D83205349DD6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 539BE405E3F2DA865A1B09AC /* Debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = RatslotseApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_NAME = Ratslotse;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		95B3FDA069B66245AC1BE0C0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.ratslotse.RatslotseAppTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ratslotse.app/Ratslotse";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		25C8FD52A8A8987FC9BE704B /* Build configuration list for PBXNativeTarget "RatslotseAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				95B3FDA069B66245AC1BE0C0 /* Debug */,
+				04E96BCB019D5FCA593BE7F8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DFC776DDE2C01FE5F16A1377 /* Build configuration list for PBXProject "Ratslotse" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0FD2C65694D91EBA0912AE8D /* Debug */,
+				0F9FFE47CEC924C169E9E540 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F5644869B078E2F8A191EA18 /* Build configuration list for PBXNativeTarget "Ratslotse" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				59FC31F00569D83205349DD6 /* Debug */,
+				4300A4B4DBA7B2AA3DCD4AE0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		13BD886983E215AD121CDFA1 /* XCLocalSwiftPackageReference "Packages/RatslotseFeatures" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/RatslotseFeatures;
+		};
+		9522023131B60A7D82AC7934 /* XCLocalSwiftPackageReference "Packages/RatslotseDesign" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/RatslotseDesign;
+		};
+		EEBAAC635D6307FAE00D931A /* XCLocalSwiftPackageReference "Packages/RatslotseAPI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/RatslotseAPI;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		47DA8380009C9C1263B18CA6 /* RatslotseFeatures */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RatslotseFeatures;
+		};
+		551CB3585296AB547F917939 /* RatslotseAPI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RatslotseAPI;
+		};
+		F9FCBC0F2FA0B250E3B174C6 /* RatslotseDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RatslotseDesign;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = E5C25F5077A833CE3A524194 /* Project object */;
+}

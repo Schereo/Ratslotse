@@ -1,18 +1,50 @@
 ---
 title: App & Konten
-description: Die native iOS-/Android-App (Capacitor), die Anmeldung (klassisch und mit Apple) und was alles am Nutzerkonto hängt.
+description: Die native SwiftUI-App, die Anmeldung (klassisch und mit Apple) und was alles am Nutzerkonto hängt.
 ---
 
-Dieselbe Next.js-Oberfläche läuft im Browser und — statisch exportiert und in
-eine **Capacitor**-Hülle gepackt — als native App. Beide sprechen dasselbe
-FastAPI-Backend an; unterschiedlich ist nur, wie die Sitzung transportiert wird
-(Cookie im Web, Bearer-Token in der App) und welche Bedienmuster greifen.
+Seit Version 2.0 hat Ratslotse eine eigene **SwiftUI-App** für iPhone und iPad.
+Sie spricht direkt mit demselben FastAPI-Backend wie die Website; die Sitzung
+läuft im Web über ein Cookie und in der App über ein Bearer-Token im Keychain.
+Eine WebView gehört nicht mehr zum nativen Produkt.
 
-## Native App (Capacitor)
+## Native App (SwiftUI)
 
-Die nativen Projekte liegen im Repo (`web/frontend/ios/` **und**
-`web/frontend/android/`, beide eingecheckt). Bau-Anleitung, Xcode-Capabilities
-und die Einreichungs-Checkliste stehen in `web/frontend/MOBILE.md`.
+Das Projekt liegt unter `ios/`, sein technischer Einstiegspunkt ist
+`ios/README.md`. Es besteht aus drei lokalen Swift Packages:
+
+| Paket | Verantwortung |
+|---|---|
+| `RatslotseAPI` | URLSession, Codable-Verträge, Keychain, SSE und Link-Routing |
+| `RatslotseDesign` | Farben, Schriften und SwiftUI-Bausteine der Ratslotse-Designsprache |
+| `RatslotseFeatures` | Auth, Heute, Fragen, Rat, Themen, Quiz und Konto |
+
+Die App läuft ab iOS 17 auf iPhone und iPad. Sie nutzt native Systembausteine:
+Sign in with Apple, APNs, Universal Links, `NWPathMonitor`, MapKit, EventKit und
+das Share-Sheet. Der Ratsdialog spricht als POST-SSE direkt mit FastAPI;
+gründliche Recherchen werden nach einem Verbindungsabriss ab dem letzten Event
+fortgesetzt.
+
+Der Release-Build behält `de.ratslotse.app`. Debug verwendet
+`de.ratslotse.dev`, damit die alte und die neue App während des TestFlight-
+Vergleichs nebeneinander installiert sein können. Vorhandene TestFlight-
+Anmeldungen werden einmalig aus `CapacitorStorage.access_token` in den Keychain
+übernommen.
+
+```bash
+xcodegen generate --spec ios/project.yml
+swift test --package-path ios/Packages/RatslotseAPI
+xcodebuild -project ios/Ratslotse.xcodeproj -scheme Ratslotse \
+  -configuration Debug -destination 'platform=iOS Simulator,name=Ratslotse iPhone 17' \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+## Alte Capacitor-App während des Übergangs
+
+Die bisherigen Projekte liegen weiterhin unter `web/frontend/ios/` und
+`web/frontend/android/`. Sie bleiben bis zum bestätigten Cutover als Rollback
+baubar. Bau-Anleitung und Einreichungs-Checkliste stehen in
+`web/frontend/MOBILE.md`; neue iOS-Funktionen entstehen nur noch in SwiftUI.
 
 ### Vom Next-Build zur App
 
@@ -114,9 +146,11 @@ Token nie.
 
 **App:** Der Client schickt den Header `X-Client: app`. Erkennt das Backend ihn,
 liefert es zusätzlich ein **langlebiges Token im Antwort-Body**
-(`app_access_token_expire_minutes`, Default 90 Tage), das die App in
-`@capacitor/preferences` ablegt und als `Authorization: Bearer …` mitschickt.
-`deps.get_current_user` akzeptiert beides — Bearer zuerst, sonst Cookie.
+(`app_access_token_expire_minutes`, Default 90 Tage), das die SwiftUI-App im
+Keychain ablegt und als `Authorization: Bearer …` mitschickt.
+`deps.get_current_user` akzeptiert beides — Bearer zuerst, sonst Cookie. Reset
+und Passwortwechsel liefern unmittelbar ein Ersatz-Token, weil beide die
+`token_version` erhöhen.
 
 **Angemeldet bleiben:** Beide Sitzungen verlängern sich still bei Nutzung, sonst
 stünde man nach Ablauf der Laufzeit trotz täglicher Nutzung wieder vor dem
@@ -134,8 +168,8 @@ Login.
   Passwortwechsel — sonst überschriebe die Verlängerung das Abmelden), sowie
   `401`-Antworten.
 - *App:* Cookies helfen dort nicht. Stattdessen liefert `GET /api/auth/me` an
-  `X-Client: app` ein frisch datiertes Token, das `lib/auth.tsx` in den
-  Preferences ablegt — die App fragt den Endpunkt bei jedem Start.
+  `X-Client: app` ein frisch datiertes Token, das der native `APIClient` im
+  Keychain ersetzt — die App fragt den Endpunkt bei jedem Start.
 
 Der Widerruf bleibt davon unberührt: Das erneuerte Token trägt dieselbe
 `token_version` wie das alte.
@@ -214,9 +248,9 @@ unterscheidet die Fälle nicht — es zählt auch fremde Einträge.
 
 ### Sign in with Apple
 
-`web/backend/app/routers/auth_apple.py`. Die App holt über das Apple-SDK
-(`@capacitor-community/apple-sign-in`) ein **Identity-Token**, im Browser tut
-das „Sign in with Apple JS" als Popup-Flow (`lib/apple.ts`). Beide Wege schicken
+`web/backend/app/routers/auth_apple.py`. Die App holt über das native
+`AuthenticationServices`-Framework ein **Identity-Token**, im Browser tut das
+„Sign in with Apple JS" als Popup-Flow (`lib/apple.ts`). Beide Wege schicken
 dasselbe Token an `POST /api/auth/apple` — Secrets oder Schlüssel braucht keine
 Seite.
 
