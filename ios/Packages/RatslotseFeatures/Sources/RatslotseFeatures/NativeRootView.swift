@@ -555,39 +555,53 @@ private struct RatsBottomNavigation: View {
     let select: (MainNavigationDestination) -> Void
     let openMore: () -> Void
 
+    @Namespace private var selectionAnimation
+
     var body: some View {
+        navigationItems
+            .padding(6)
+            .frame(maxWidth: 430)
+            .bottomNavigationGlassSurface()
+            .padding(.horizontal, 12)
+            .padding(.top, 7)
+            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity)
+    }
+
+    private var navigationItems: some View {
         HStack(spacing: 2) {
             ForEach(MainNavigationDestination.phoneCases) { destination in
                 Button {
-                    if destination == .more { openMore() }
-                    else { select(destination) }
+                    withAnimation(.snappy(duration: 0.28, extraBounce: 0.08)) {
+                        if destination == .more { openMore() }
+                        else { select(destination) }
+                    }
                 } label: {
                     VStack(spacing: 3) {
-                        ZStack {
-                            if active == destination {
-                                Capsule()
-                                    .fill(RatsColor.primary.opacity(0.10))
-                                    .frame(width: 43, height: 27)
-                                    .overlay(
-                                        Capsule()
-                                            .stroke(RatsColor.primary.opacity(0.12), lineWidth: 0.75)
-                                    )
-                            }
-                            RatsGlyphView(
-                                glyph: destination.glyph,
-                                color: active == destination ? RatsColor.primary : RatsColor.secondary,
-                                lineWidth: active == destination ? 1.95 : 1.7
-                            )
-                            .frame(width: 20, height: 20)
-                        }
-                        .frame(height: 27)
+                        RatsGlyphView(
+                            glyph: destination.glyph,
+                            color: active == destination ? RatsColor.primary : RatsColor.secondary,
+                            lineWidth: active == destination ? 2.05 : 1.65
+                        )
+                        .frame(width: 20, height: 20)
 
                         Text(destination.label)
                             .font(RatsFont.body(9.5, weight: active == destination ? .semibold : .medium))
                             .foregroundStyle(active == destination ? RatsColor.primary : RatsColor.secondary)
                             .lineLimit(1)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 51)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background {
+                        if active == destination {
+                            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                .fill(RatsColor.primary.opacity(0.10))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                        .stroke(.white.opacity(0.32), lineWidth: 0.75)
+                                }
+                                .matchedGeometryEffect(id: "active-navigation", in: selectionAnimation)
+                        }
+                    }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(RatsNavigationButtonStyle())
@@ -595,16 +609,39 @@ private struct RatsBottomNavigation: View {
                 .accessibilityAddTraits(active == destination ? .isSelected : [])
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 5)
-        .padding(.bottom, 2)
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(RatsColor.border.opacity(0.72))
-                .frame(height: 0.75)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func bottomNavigationGlassSurface() -> some View {
+        if #available(iOS 26.0, *) {
+            self
+                .glassEffect(
+                    .regular.tint(RatsColor.card.opacity(0.16)),
+                    in: .rect(cornerRadius: 27)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 27, style: .continuous)
+                        .stroke(.white.opacity(0.30), lineWidth: 0.75)
+                }
+                .shadow(color: RatsColor.primary.opacity(0.13), radius: 18, y: 8)
+        } else {
+            self
+                .background {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 27, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                        RoundedRectangle(cornerRadius: 27, style: .continuous)
+                            .fill(RatsColor.card.opacity(0.62))
+                    }
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 27, style: .continuous)
+                        .stroke(.white.opacity(0.44), lineWidth: 1)
+                }
+                .shadow(color: RatsColor.primary.opacity(0.11), radius: 16, y: 7)
         }
-        .shadow(color: .black.opacity(0.06), radius: 12, y: -4)
     }
 }
 
