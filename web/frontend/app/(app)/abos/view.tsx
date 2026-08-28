@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Bell, Check } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { CommitteeDetail } from "@/lib/types";
@@ -30,13 +31,19 @@ function terminText(d: CommitteeDetail): { kurz: string; lang: string } | null {
   return { kurz: `${praefix}${ohneJahr}${zeit}`, lang: `${praefix}${voll}${zeit}` };
 }
 
-function Zeile({ d, abonniert, onToggle, busy }: {
+function Zeile({ d, abonniert, onToggle, busy, laeutet }: {
   d: CommitteeDetail; abonniert: boolean; onToggle: () => void; busy: boolean;
+  /** Gerade abonniert — die Glocke schwingt einmal aus. */
+  laeutet: boolean;
 }) {
   const termin = terminText(d);
   const erklaerung = committeeExplains(d.name);
+  /* `items-center`: Seit die Zeile drei Zeilen trägt (Name, Erklärung,
+     Termin), klebten Beschlusszahl und Knopf oben am Namen und die Zeile sah
+     unten angeschnitten aus (Tim, 28.08.2026). Beide gehören zur ganzen Zeile,
+     nicht zum Namen — also in ihre Mitte. */
   return (
-    <div className="flex items-start gap-3 px-4 py-3">
+    <div className="flex items-center gap-3 px-4 py-3">
       <div className="min-w-0 flex-1">
         {/* Der amtliche Name bleibt im title erreichbar — angezeigt wird der
             Kurzname, wie im Einrichtungs-Assistenten (Design 28a/R3). */}
@@ -75,7 +82,13 @@ function Zeile({ d, abonniert, onToggle, busy }: {
             : "inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-xl bg-primary px-3 text-[13px] font-medium text-primary-foreground shadow-[0_1px_2px_hsl(var(--primary)/0.25)] transition-opacity hover:opacity-90 disabled:opacity-50"
         }
       >
-        {abonniert && <Check className="h-3.5 w-3.5" />}
+        {/* Direkt nach dem Abonnieren läutet kurz die Glocke — sie sagt, was
+            das Abo zusagt („ab jetzt melde ich mich"). Danach steht dort
+            wieder das ruhige Häkchen; ein dauerhaftes Glockensymbol wäre in
+            einer Liste mit zehn Zeilen nur Unruhe. */}
+        {laeutet
+          ? <Bell className="glocke-laeutet h-3.5 w-3.5" aria-hidden />
+          : abonniert && <Check className="h-3.5 w-3.5" aria-hidden />}
         {abonniert ? "Abonniert" : "Abonnieren"}
       </button>
     </div>
@@ -95,12 +108,25 @@ export function AbosView() {
     queryFn: () => api.get<{ subscriptions: string[] }>("/subscriptions").then((d) => d.subscriptions),
   });
 
+  /* Welches Gremium gerade läutet. Nur beim Abonnieren, nicht beim Abbestellen
+     — die Bewegung feiert die Zusage, und eine Glocke beim Abschalten hieße
+     das Gegenteil von dem, was gerade passiert. */
+  const [laeutet, setLaeutet] = useState<string | null>(null);
+  useEffect(() => {
+    if (!laeutet) return;
+    const t = setTimeout(() => setLaeutet(null), 950);
+    return () => clearTimeout(t);
+  }, [laeutet]);
+
   const subMutation = useMutation({
     mutationFn: ({ committee, subscribed }: { committee: string; subscribed: boolean }) =>
       subscribed
         ? api.del("/subscriptions", { committee_name: committee })
         : api.post("/subscriptions", { committee_name: committee }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["subscriptions"] }),
+    onSuccess: (_daten, { committee, subscribed }) => {
+      if (!subscribed) setLaeutet(committee);
+      qc.invalidateQueries({ queryKey: ["subscriptions"] });
+    },
     onError: () => toast.error("Abo konnte nicht geändert werden."),
   });
 
@@ -145,8 +171,7 @@ export function AbosView() {
     committeeRank(a.name) - committeeRank(b.name)
     || shortCommittee(a.name).localeCompare(shortCommittee(b.name), "de"));
 
-  const meine = sortiert.filter((d) => abos.includes(d.name));
-  const rest = sortiert.filter((d) => !abos.includes(d.name));
+  const anzahlAbos = sortiert.filter((d) => abos.includes(d.name)).length;
 
   const toggle = (name: string, subscribed: boolean) =>
     subMutation.mutate({ committee: name, subscribed });
@@ -155,33 +180,26 @@ export function AbosView() {
     <div className="@container">
       <PageHeader title="Ausschuss-Abos" description={HEADER_DESC} />
 
-      <p className="mt-7 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-        Abonniert ({meine.length})
-      </p>
-      <div className="mt-2 divide-y divide-border/60 overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-        {meine.length === 0 ? (
-          <p className="px-4 py-3.5 text-[13.5px] text-muted-foreground">
-            Noch keine Abos — wähle unten ein Gremium aus.
-          </p>
-        ) : (
-          meine.map((d) => (
-            <Zeile key={d.name} d={d} abonniert onToggle={() => toggle(d.name, true)} busy={subMutation.isPending} />
-          ))
-        )}
+      {/* EINE Liste, nicht zwei nach Abo-Status getrennte. Getrennt sprang das
+          Gremium beim Abonnieren in die obere Liste, und alles darunter
+          verschob sich — man verlor die Stelle, an der man gerade war, und
+          traf beim zweiten Klick etwas anderes (Tim, 28.08.2026). Die
+          Reihenfolge hängt jetzt nur am Alltagsbezug und ändert sich durch
+          einen Klick nie; dass etwas abonniert ist, sagt der Knopf. */}
+      <div className="mt-7 flex items-baseline justify-between gap-3 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+        <span>Gremien ({sortiert.length})</span>
+        <span>{anzahlAbos} abonniert</span>
       </div>
-
-      {rest.length > 0 && (
-        <>
-          <p className="mt-7 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-            Weitere Gremien ({rest.length})
-          </p>
-          <div className="mt-2 divide-y divide-border/60 overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-            {rest.map((d) => (
-              <Zeile key={d.name} d={d} abonniert={false} onToggle={() => toggle(d.name, false)} busy={subMutation.isPending} />
-            ))}
-          </div>
-        </>
-      )}
+      <div className="mt-2 divide-y divide-border/60 overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        {sortiert.map((d) => {
+          const abonniert = abos.includes(d.name);
+          return (
+            <Zeile key={d.name} d={d} abonniert={abonniert}
+              onToggle={() => toggle(d.name, abonniert)} busy={subMutation.isPending}
+              laeutet={laeutet === d.name} />
+          );
+        })}
+      </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-muted/60 px-4 py-3.5">
         <p className="text-[13.5px] text-muted-foreground">
