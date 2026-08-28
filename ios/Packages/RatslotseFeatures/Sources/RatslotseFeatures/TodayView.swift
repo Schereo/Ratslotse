@@ -12,6 +12,7 @@ struct TodayView: View {
     @State private var upcomingSessions: [CouncilSession] = []
     @State private var latestTopicHits: [DashboardTopicHit] = []
     @State private var weekNumber: DashboardWeekNumber?
+    @State private var pause: CouncilPause?
     @State private var now = Date.now
     @State private var error: String?
 
@@ -72,6 +73,7 @@ struct TodayView: View {
         .toolbarTitleDisplayMode(.inline)
         .refreshable { await load() }
         .task {
+            recent = Array(RecentDecisionStore.load().prefix(5))
 #if DEBUG
             if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_TODAY_LIVE"] == "1" {
                 installDebugDashboard()
@@ -90,6 +92,9 @@ struct TodayView: View {
 
     @ViewBuilder
     private var primaryColumn: some View {
+        if let pause, pause.active {
+            CouncilPauseCard(pause: pause)
+        }
         if let liveSession {
             LiveCouncilCard(session: liveSession, now: now) {
                 if let id = liveSession.ksinr { model.navigation.append(.sessions(ksinr: id, tops: [])) }
@@ -159,7 +164,7 @@ struct TodayView: View {
 
         if !recent.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                MonoKicker("Letzte Beschlüsse", trailing: "\(recent.count) gezeigt")
+                MonoKicker("Zuletzt angesehen", trailing: "\(recent.count)")
                 ForEach(recent) { decision in
                     Button { model.navigation.append(.decision(id: decision.id)) } label: {
                         DecisionRow(decision: decision)
@@ -216,9 +221,6 @@ struct TodayView: View {
             async let weekRequest: WeekDecision = model.api.get("/api/council/diese-woche")
             async let previewRequest: WeekPreview = model.api.get("/api/council/wochenvorschau")
             async let foundRequest: FoundPiece = model.api.get("/api/council/fundstueck")
-            async let decisionsRequest: DecisionPage = model.api.get(
-                "/api/council/decisions", query: [.init(name: "limit", value: "5")]
-            )
             async let sessionsRequest: SessionPage? = try? await model.api.get(
                 "/api/council/sessions",
                 query: [.init(name: "scope", value: "upcoming"), .init(name: "limit", value: "3")]
@@ -227,17 +229,19 @@ struct TodayView: View {
                 "/api/topics/latest-hits", query: [.init(name: "limit", value: "2")]
             )
             async let numberRequest: DashboardWeekNumber? = try? await model.api.get("/api/council/zahl-der-woche")
-            let (newToday, newWeek, newPreview, newFound, page) = try await (
-                todayRequest, weekRequest, previewRequest, foundRequest, decisionsRequest
+            async let pauseRequest: CouncilPause? = try? await model.api.get("/api/council/sitzungspause")
+            let (newToday, newWeek, newPreview, newFound) = try await (
+                todayRequest, weekRequest, previewRequest, foundRequest
             )
             today = newToday
             week = newWeek
             preview = newPreview
             foundPiece = newFound
-            recent = page.decisions
+            recent = Array(RecentDecisionStore.load().prefix(5))
             if let sessions = await sessionsRequest { upcomingSessions = sessions.sessions }
             if let hits = await hitsRequest { latestTopicHits = hits.hits }
             if let number = await numberRequest { weekNumber = number }
+            if let newPause = await pauseRequest { pause = newPause }
         } catch {
             self.error = error.localizedDescription
         }
@@ -1128,6 +1132,95 @@ private func shortDecisionCommittee(_ name: String) -> String {
     name
         .replacingOccurrences(of: "Ausschuss für ", with: "")
         .replacingOccurrences(of: "Rat der Stadt", with: "Rat")
+}
+
+private struct CouncilPause: Decodable, Sendable {
+    let active: Bool
+    let label: String?
+    let until: String?
+    let nextSessionDate: String?
+    let note: String
+
+    enum CodingKeys: String, CodingKey {
+        case active, label, until, note
+        case nextSessionDate = "next_session_date"
+    }
+}
+
+private struct CouncilPauseCard: View {
+    let pause: CouncilPause
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Button { withAnimation(.snappy) { isExpanded.toggle() } } label: {
+                HStack(spacing: 12) {
+                    Lotti3DView(scene: .reading, animated: false)
+                        .frame(width: 54, height: 48)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        MonoKicker("Sitzungspause")
+                        Text(pause.label ?? "Der Rat macht gerade Pause")
+                            .font(RatsFont.body(14, weight: .semibold))
+                            .foregroundStyle(RatsColor.text)
+                        if let returnLabel {
+                            Text(returnLabel)
+                                .font(RatsFont.body(11.5))
+                                .foregroundStyle(RatsColor.secondary)
+                        }
+                    }
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.down")
+                        .font(.caption.bold())
+                        .foregroundStyle(RatsColor.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded, !pause.note.isEmpty {
+                Divider().overlay(RatsColor.separator).padding(.vertical, 12)
+                Text(pause.note)
+                    .font(RatsFont.body(12.5))
+                    .foregroundStyle(RatsColor.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(14)
+        .background {
+            RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous)
+                .fill(RatsColor.primary.opacity(0.075))
+                .overlay(CouncilPauseWaves().stroke(RatsColor.primary.opacity(0.08), lineWidth: 1))
+        }
+        .overlay(RoundedRectangle(cornerRadius: RatsRadius.card).stroke(RatsColor.primary.opacity(0.18)))
+        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
+
+    private var returnLabel: String? {
+        if let next = pause.nextSessionDate { return "Nächste veröffentlichte Sitzung: \(RatsDate.short(next))" }
+        if let until = pause.until { return "Pause bis \(RatsDate.short(until))" }
+        return nil
+    }
+}
+
+private struct CouncilPauseWaves: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        for y in stride(from: CGFloat(18), through: rect.height, by: 28) {
+            path.move(to: CGPoint(x: 0, y: y))
+            for x in stride(from: CGFloat(0), through: rect.width, by: 32) {
+                path.addCurve(
+                    to: CGPoint(x: min(x + 32, rect.width), y: y),
+                    control1: CGPoint(x: x + 8, y: y - 4),
+                    control2: CGPoint(x: x + 24, y: y + 4)
+                )
+            }
+        }
+        return path
+    }
 }
 
 struct ErrorCard: View {

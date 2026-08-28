@@ -1113,9 +1113,12 @@ struct DecisionDetailView: View {
                 async let bookmarksRequest: BookmarkPage = model.api.get("/api/bookmarks")
                 let (loadedDetail, bookmarks) = try await (detailRequest, bookmarksRequest)
                 detail = loadedDetail
+                RecentDecisionStore.track(loadedDetail.decision)
                 bookmarkID = bookmarks.bookmarks.first { $0.decision?.id == decisionID }?.id
             } else {
-                detail = try await detailRequest
+                let loadedDetail = try await detailRequest
+                detail = loadedDetail
+                RecentDecisionStore.track(loadedDetail.decision)
             }
             error = nil
         } catch { self.error = error.localizedDescription }
@@ -2127,10 +2130,22 @@ private struct QuickLookPreview: UIViewControllerRepresentable {
     }
 }
 
+private enum SavedCouncilFilter: String, CaseIterable, Identifiable {
+    case all = "Alle"
+    case open = "Offen"
+    case decided = "Entschieden"
+    case sessions = "Sitzungen"
+
+    var id: String { rawValue }
+}
+
 struct SavedCouncilView: View {
     let model: AppModel
     @State private var bookmarks: [BookmarkEntry] = []
     @State private var follows: [FollowEntry] = []
+    @State private var search = ""
+    @State private var filter: SavedCouncilFilter = .all
+    @State private var workingBookmarks: Set<Int> = []
     @State private var isLoading = true
     @State private var error: String?
 
@@ -2165,26 +2180,22 @@ struct SavedCouncilView: View {
                 }
 
                 if !bookmarks.isEmpty {
-                    MonoKicker("Merkliste", trailing: "\(bookmarks.count)")
-                    ForEach(bookmarks) { bookmark in
-                        HStack(alignment: .top, spacing: 10) {
-                            savedDestination(bookmark)
-                            Menu {
-                                Button("Aus Merkliste entfernen", systemImage: "trash", role: .destructive) {
-                                    removeBookmark(bookmark)
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                                    .foregroundStyle(RatsColor.secondary)
-                                    .frame(width: 32, height: 32)
-                            }
-                            .accessibilityLabel("Eintrag verwalten")
+                    savedControls
+                    if filteredBookmarks.isEmpty {
+                        RatsEmptyState(
+                            title: "Nichts Passendes gespeichert",
+                            message: "Ändere den Filter oder suche mit einem anderen Begriff.",
+                            symbol: "magnifyingglass"
+                        )
+                    } else {
+                        MonoKicker("Merkliste", trailing: "\(filteredBookmarks.count) von \(bookmarks.count)")
+                        ForEach(filteredBookmarks) { bookmark in
+                            savedBookmarkCard(bookmark)
                         }
-                        .ratsCard()
                     }
                 }
 
-                if !follows.isEmpty {
+                if !follows.isEmpty && filter == .all && search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     MonoKicker("Verfolgte Vorgänge", trailing: "\(follows.count)")
                     ForEach(follows) { follow in
                         HStack(alignment: .top, spacing: 10) {
@@ -2231,6 +2242,102 @@ struct SavedCouncilView: View {
         .task { await load() }
     }
 
+    private var savedControls: some View {
+        VStack(spacing: 11) {
+            HStack(spacing: 9) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(RatsColor.muted)
+                TextField("Merkliste durchsuchen …", text: $search)
+                    .font(RatsFont.body(13))
+                    .textFieldStyle(.plain)
+                    .submitLabel(.search)
+                if !search.isEmpty {
+                    Button { search = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(RatsColor.muted)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Suche leeren")
+                }
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 42)
+            .background(RatsColor.stage)
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(RatsColor.border))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 7) {
+                    ForEach(SavedCouncilFilter.allCases) { item in
+                        Button { filter = item } label: {
+                            Text("\(item.rawValue)  \(filterCount(item))")
+                                .font(RatsFont.body(11, weight: .semibold))
+                                .foregroundStyle(filter == item ? RatsColor.primaryText : RatsColor.bodyText)
+                                .padding(.horizontal, 11)
+                                .frame(height: 32)
+                                .background(filter == item ? RatsColor.primary : RatsColor.card)
+                                .overlay(Capsule().stroke(filter == item ? Color.clear : RatsColor.border))
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(RatsColor.card)
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(RatsColor.border))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func savedBookmarkCard(_ bookmark: BookmarkEntry) -> some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 10) {
+                savedDestination(bookmark)
+                Menu {
+                    Button("Aus Merkliste entfernen", systemImage: "trash", role: .destructive) {
+                        removeBookmark(bookmark)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(RatsColor.secondary)
+                        .frame(width: 32, height: 32)
+                }
+                .accessibilityLabel("Eintrag verwalten")
+            }
+            .padding(14)
+
+            if canNotify(bookmark) {
+                Divider().overlay(RatsColor.separator)
+                HStack(spacing: 10) {
+                    Image(systemName: "bell")
+                        .foregroundStyle(RatsColor.primary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Beim Ergebnis benachrichtigen")
+                            .font(RatsFont.body(12.5, weight: .semibold))
+                        Text("Sobald das öffentliche Protokoll verarbeitet ist.")
+                            .font(RatsFont.body(10))
+                            .foregroundStyle(RatsColor.secondary)
+                    }
+                    Spacer(minLength: 4)
+                    Toggle("", isOn: Binding(
+                        get: { bookmark.notifyResult },
+                        set: { setNotification(bookmark, enabled: $0) }
+                    ))
+                    .labelsHidden()
+                    .disabled(workingBookmarks.contains(bookmark.id))
+                    .accessibilityLabel("Beim Ergebnis benachrichtigen")
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 11)
+                .background(RatsColor.stage.opacity(0.75))
+            }
+        }
+        .background(RatsColor.card)
+        .overlay(RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous).stroke(RatsColor.border))
+        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous))
+    }
+
     @ViewBuilder
     private func savedDestination(_ bookmark: BookmarkEntry) -> some View {
         if let decision = bookmark.decision {
@@ -2250,10 +2357,48 @@ struct SavedCouncilView: View {
         VStack(alignment: .leading, spacing: 5) {
             Text(bookmark.title).font(RatsFont.body(15, weight: .semibold))
             Text(savedSubtitle(bookmark)).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary)
-            Pill(bookmark.decision?.outcome ?? bookmark.state, symbol: bookmark.decision == nil ? "clock" : "checkmark")
+            if let preview = bookmark.decision?.simpleSummary ?? bookmark.decision?.summary,
+               !preview.isEmpty {
+                Text(preview)
+                    .font(RatsFont.body(12))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineLimit(3)
+                    .padding(.top, 2)
+            }
+            Pill(savedStateLabel(bookmark), symbol: bookmark.decision == nil ? "clock" : "checkmark")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+    }
+
+    private var filteredBookmarks: [BookmarkEntry] {
+        let needle = search.trimmingCharacters(in: .whitespacesAndNewlines).localizedLowercase
+        return bookmarks.filter { bookmark in
+            if filter != .all && category(bookmark) != filter { return false }
+            guard !needle.isEmpty else { return true }
+            let haystack = [
+                bookmark.title, bookmark.subtitle, bookmark.itemNumber,
+                bookmark.session?.committee, bookmark.session?.location,
+                bookmark.decision?.simpleSummary, bookmark.decision?.summary,
+            ].compactMap { $0 }.joined(separator: " ").localizedLowercase
+            return haystack.contains(needle)
+        }
+    }
+
+    private func category(_ bookmark: BookmarkEntry) -> SavedCouncilFilter? {
+        if bookmark.kind == "session" { return .sessions }
+        if bookmark.decision != nil { return .decided }
+        if bookmark.kind == "agenda_item" { return .open }
+        return nil
+    }
+
+    private func filterCount(_ item: SavedCouncilFilter) -> Int {
+        guard item != .all else { return bookmarks.count }
+        return bookmarks.filter { category($0) == item }.count
+    }
+
+    private func canNotify(_ bookmark: BookmarkEntry) -> Bool {
+        bookmark.kind == "agenda_item" && bookmark.decision == nil && bookmark.state != "group"
     }
 
     private func savedSubtitle(_ bookmark: BookmarkEntry) -> String {
@@ -2270,7 +2415,23 @@ struct SavedCouncilView: View {
         return bookmark.subtitle
     }
 
+    private func savedStateLabel(_ bookmark: BookmarkEntry) -> String {
+        if let outcome = bookmark.decision?.outcome { return outcome }
+        switch bookmark.state {
+        case "upcoming", "open": return "bevorstehend"
+        case "decided": return "entschieden"
+        case "group": return "Sitzung"
+        default: return bookmark.state
+        }
+    }
+
     private func load() async {
+#if DEBUG
+        if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_SAVED_FIXTURE"] == "1" {
+            installDebugSavedFixture()
+            return
+        }
+#endif
         guard model.user != nil else {
             isLoading = false
             error = "Melde dich an, um deine Merkliste zu sehen."
@@ -2288,6 +2449,78 @@ struct SavedCouncilView: View {
         } catch { self.error = error.localizedDescription }
     }
 
+#if DEBUG
+    private func installDebugSavedFixture() {
+        let data = Data(#"""
+        {
+          "bookmarks": [
+            {
+              "id": 701,
+              "kind": "agenda_item",
+              "title": "Sichere Querung an der Cloppenburger Straße",
+              "subtitle": "Verkehrsausschuss · TOP 6",
+              "state": "upcoming",
+              "url": "https://ratsinfo.oldenburg.de/",
+              "ksinr": 8801,
+              "item_number": "Ö 6",
+              "notify_result": true,
+              "session": {
+                "ksinr": 8801,
+                "committee": "Verkehrsausschuss",
+                "session_date": "2026-09-03",
+                "session_time": "17:00",
+                "location": "Alte Fleiwa",
+                "title": "Verkehrsausschuss",
+                "n_items": 8
+              }
+            },
+            {
+              "id": 702,
+              "kind": "decision",
+              "title": "Neue Busspuren für Oldenburg",
+              "subtitle": "Rat · 26. Aug. 2026",
+              "state": "decided",
+              "url": "https://ratsinfo.oldenburg.de/",
+              "notify_result": false,
+              "decision": {
+                "id": 9201,
+                "title": "Neue Busspuren für Oldenburg",
+                "simple_summary": "Der Rat schafft die Grundlage für schnellere und verlässlichere Busverbindungen.",
+                "committee": "Rat",
+                "session_date": "2026-08-26",
+                "outcome": "angenommen",
+                "item_number": "Ö 10"
+              }
+            },
+            {
+              "id": 703,
+              "kind": "session",
+              "title": "Stadtplanung & Bauen",
+              "subtitle": "31. Aug. · 18:00 · 9 TOPs",
+              "state": "upcoming",
+              "url": "https://ratsinfo.oldenburg.de/",
+              "ksinr": 8802,
+              "notify_result": false,
+              "session": {
+                "ksinr": 8802,
+                "committee": "Stadtplanung & Bauen",
+                "session_date": "2026-08-31",
+                "session_time": "18:00",
+                "location": "Alte Fleiwa",
+                "title": "Stadtplanung & Bauen",
+                "n_items": 9
+              }
+            }
+          ]
+        }
+        """#.utf8)
+        bookmarks = (try? JSONDecoder().decode(BookmarkPage.self, from: data).bookmarks) ?? []
+        follows = []
+        error = nil
+        isLoading = false
+    }
+#endif
+
     private func removeBookmark(_ bookmark: BookmarkEntry) {
         Task {
             do {
@@ -2304,6 +2537,23 @@ struct SavedCouncilView: View {
                     "/api/council/vorlage/\(follow.templateID)/follow", method: .delete
                 )
                 follows.removeAll { $0.id == follow.id }
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    private func setNotification(_ bookmark: BookmarkEntry, enabled: Bool) {
+        guard workingBookmarks.insert(bookmark.id).inserted else { return }
+        struct Body: Codable, Sendable { let notify_result: Bool }
+        Task {
+            defer { workingBookmarks.remove(bookmark.id) }
+            do {
+                let _: JSONValue = try await model.api.send(
+                    "/api/bookmarks/\(bookmark.id)/notification",
+                    method: .put,
+                    body: Body(notify_result: enabled)
+                )
+                let page: BookmarkPage = try await model.api.get("/api/bookmarks")
+                bookmarks = page.bookmarks
             } catch { self.error = error.localizedDescription }
         }
     }

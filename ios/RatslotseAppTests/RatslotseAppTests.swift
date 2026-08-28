@@ -178,6 +178,28 @@ import Testing
     #expect(roundTrip.importance == 82)
 }
 
+@MainActor
+@Test func recentlyViewedDecisionsKeepOrderAndDeduplicate() throws {
+    let suiteName = "de.ratslotse.tests.recent.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let first = try JSONDecoder().decode(
+        DecisionSummary.self,
+        from: Data(#"{"id":17,"title":"Sichere Schulwege"}"#.utf8)
+    )
+    let second = try JSONDecoder().decode(
+        DecisionSummary.self,
+        from: Data(#"{"id":18,"title":"Neue Busspuren"}"#.utf8)
+    )
+
+    RecentDecisionStore.track(first, defaults: defaults)
+    RecentDecisionStore.track(second, defaults: defaults)
+    RecentDecisionStore.track(first, defaults: defaults)
+
+    let loaded = RecentDecisionStore.load(defaults: defaults)
+    #expect(loaded.map(\.id) == [17, 18])
+}
+
 @Test func decisionDetailKeepsTheWebParityFields() throws {
     let data = Data(#"""
     {
