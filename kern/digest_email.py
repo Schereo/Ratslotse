@@ -110,7 +110,10 @@ def gremium_abo_begruendung(gremium: str, mit_aenderungs_schalter: bool = False)
         return (f"<a href=\"{absolut(pfad)}\" style='color:{_GRAU};"
                 f"text-decoration:underline'>{_esc(text)}</a>")
 
-    wege = link("/topics?zeig=abos", "Gremien-Abos verwalten")
+    # Seit dem 28.08.2026 haben die Abos eine eigene Seite; vorher waren sie
+    # ein Block unter „Meine Themen", den `?zeig=abos` hervorhob. Ältere Mails
+    # tragen den alten Link noch — `/topics` leitet ihn deshalb weiter.
+    wege = link("/abos", "Gremien-Abos verwalten")
     if mit_aenderungs_schalter:
         wege += " &middot; " + link("/account?zeig=n1_aenderung",
                                     "Nur Änderungs-Meldungen abschalten")

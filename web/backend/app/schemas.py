@@ -69,6 +69,24 @@ class TopicDescribeIn(BaseModel):
     description: str = Field(default="", max_length=2000)
 
 
+class TopicHitOut(BaseModel):
+    """Ein Beschluss-Treffer, wie ihn die Themen-Karte zeigt.
+
+    Bewusst schlank: Titel, Herkunft, Ergebnis. Die Karte listet seit dem
+    Umbau vom 28.08.2026 die jüngsten Treffer direkt, statt nur den letzten
+    zu nennen — „Meine Themen" soll man durchsehen können, ohne erst jedes
+    Thema einzeln zu öffnen.
+    """
+
+    id: int
+    title: str
+    committee: str
+    session_date: str
+    outcome: str | None = None
+    # Noch nicht gesehen (dieselbe Menge, die das „n neue"-Abzeichen zählt).
+    is_new: bool = False
+
+
 class TopicOut(BaseModel):
     id: int
     name: str
@@ -93,6 +111,15 @@ class TopicOut(BaseModel):
     last_hit_title: str | None = None
     last_hit_date: str | None = None
     unread_count: int = 0
+    # Die jüngsten Treffer selbst (neueste zuerst, höchstens fünf) — der Kern
+    # des Umbaus vom 28.08.2026: Die Karte trug bisher eine Zahl und einen
+    # einzigen Titel, man musste also jedes Thema öffnen, um zu sehen, was
+    # drinsteht.
+    recent_hits: list[TopicHitOut] = []
+    # Treffer der letzten 30 Tage — die zweite Hälfte der Zeile „12 gesamt ·
+    # 3 in 30 Tagen". Sie sagt, ob ein Thema gerade läuft oder ruht; die
+    # Gesamtzahl allein kann beides bedeuten.
+    hits_30d: int = 0
 
 
 # ---- subscriptions ----

@@ -2072,6 +2072,31 @@ class Store:
         ).fetchall()
         return {r["topic_id"]: r["n"] for r in rows}
 
+    def unseen_hit_ids(self, owner_id: int) -> dict[int, set[int]]:
+        """{topic_id: {decision_id, …}} der noch nicht gesehenen Treffer.
+
+        Dieselbe Menge, die ``unseen_hit_counts`` zählt — nur eben aufgelöst.
+        Die Themen-Karte zeigt seit dem Umbau vom 28.08.2026 ihre jüngsten
+        Treffer einzeln und setzt vor die neuen einen Punkt; dafür reicht eine
+        Zahl nicht mehr. Bewusst dieselbe Abfrage inklusive ``JOIN topics``:
+        Ohne ihn zählten Treffer eines gelöschten Themas mit, und die beiden
+        Ansichten (Abzeichen „2 neue" und die Punkte davor) gingen auseinander.
+        """
+        rows = self._conn.execute(
+            """SELECT m.topic_id, m.decision_id
+               FROM council_topic_matches m
+               JOIN topics t ON t.id = m.topic_id AND t.owner_id = m.owner_id
+               LEFT JOIN topic_hits_seen s
+                 ON s.owner_id = m.owner_id AND s.topic_id = m.topic_id
+                    AND s.decision_id = m.decision_id
+               WHERE m.owner_id = ? AND s.decision_id IS NULL""",
+            (owner_id,),
+        ).fetchall()
+        out: dict[int, set[int]] = {}
+        for r in rows:
+            out.setdefault(r["topic_id"], set()).add(r["decision_id"])
+        return out
+
     def neue_treffer_seit_uebersicht(self, owner_id: int) -> int:
         """Zahl der Treffer, die seit dem letzten Besuch der Themen-Übersicht
         dazugekommen sind — der Zähler an „Meine Themen" (Seitenleiste und

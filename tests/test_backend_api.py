@@ -1458,6 +1458,81 @@ def test_gescheiterter_abgleich_laesst_den_bestand_stehen(client, monkeypatch):
     assert r.json()["matched"] is True
 
 
+# ---- Themen-Karte zeigt ihren Bestand (Umbau 28.08.2026) -------------------
+
+def _seed_datierte_beschluesse(tage: list[str]) -> list[int]:
+    """Je Datum eine Sitzung mit genau einem Beschluss — Rückgabe in derselben
+    Reihenfolge wie ``tage``.
+
+    Die Sitzungsnummer zählt über den vorhandenen Bestand hinaus weiter: Ein
+    zweiter Aufruf im selben Test legte sonst dieselbe ksinr noch einmal an,
+    der „neue" Beschluss landete an einer schon belegten Sitzung, und die
+    Abfrage lieferte die ID des alten zurück.
+    """
+    cs = CouncilStore(COUNCIL_DB)
+    basis = 900 + (cs._conn.execute("SELECT COUNT(*) FROM council_sessions").fetchone()[0])
+    ids = []
+    for i, tag in enumerate(tage):
+        ksinr = basis + i
+        cs.save_session(CouncilSession(ksinr, "Sozialausschuss", tag, "18:00", "Rathaus",
+                                       agenda_items=[AgendaItem("Ö 1", f"Punkt {i}")]))
+        cs._insert_decision(ksinr, 0, "decision", None, "1", f"Beschluss vom {tag}",
+                            "Beschluss", "angenommen", None, None, None, [], None, None, None)
+        cs._conn.commit()
+        ids.append(cs._conn.execute(
+            "SELECT id FROM council_decisions WHERE ksinr = ?", (ksinr,)).fetchone()[0])
+    cs.close()
+    return ids
+
+
+def test_karte_traegt_ihre_juengsten_treffer(client):
+    """Der Kern des Umbaus: Die Karte trug bisher eine Zahl und einen einzigen
+    Titel — wer wissen wollte, was in seinen Themen steckt, musste jedes
+    einzeln öffnen. Jetzt kommen die jüngsten Treffer mit, neueste zuerst und
+    höchstens fünf."""
+    owner_id = _register(client).json()["id"]
+    heute = date.today()
+    tage = [(heute - timedelta(days=n)).isoformat() for n in (1, 5, 40, 200, 300, 400)]
+    ids = _seed_datierte_beschluesse(tage)
+    tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
+    st = Store(NWZ_DB)
+    st.save_topic_decision_matches(tid, owner_id, [(d, 0.8) for d in ids], als_neu=False)
+    st.close()
+
+    t = client.get("/api/topics").json()[0]
+    assert [h["id"] for h in t["recent_hits"]] == ids[:5]          # neueste zuerst, gedeckelt bei 5
+    assert t["recent_hits"][0]["committee"] == "Sozialausschuss"
+    assert t["recent_hits"][0]["outcome"] == "angenommen"
+    assert t["decision_count"] == len(ids)
+    # „3 in 30 Tagen" ist die zweite Hälfte der Kicker-Zeile: Sie sagt, ob ein
+    # Thema gerade läuft oder ruht — die Gesamtzahl kann beides bedeuten.
+    assert t["hits_30d"] == 2
+
+
+def test_punkte_und_abzeichen_zaehlen_dieselbe_menge(client):
+    """Das „n neue"-Abzeichen und die Punkte vor den Zeilen stammen aus
+    derselben Abfrage. Gingen sie auseinander, stünde „2 neue" über einer
+    Liste mit drei Punkten."""
+    owner_id = _register(client).json()["id"]
+    heute = date.today()
+    ids = _seed_datierte_beschluesse([(heute - timedelta(days=n)).isoformat() for n in (1, 2, 3)])
+    tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
+    st = Store(NWZ_DB)
+    st.save_topic_decision_matches(tid, owner_id, [(d, 0.8) for d in ids])
+    # Einen als gesehen markieren, indem alle markiert und dann einer neu
+    # dazugelegt wird — so entsteht derselbe Zustand wie im Betrieb.
+    st.mark_topic_hits_seen(owner_id, tid)
+    neu = _seed_datierte_beschluesse([heute.isoformat()])[0]
+    st.save_topic_decision_matches(tid, owner_id, [(d, 0.8) for d in ids + [neu]])
+    ids_unseen = st.unseen_hit_ids(owner_id)
+    st.close()
+
+    assert ids_unseen[tid] == {neu}
+    t = client.get("/api/topics").json()[0]
+    assert t["unread_count"] == 1
+    assert [h["id"] for h in t["recent_hits"] if h["is_new"]] == [neu]
+
+
 def test_topic_decisions_replace_on_rerun(client):
     """Re-running the matcher replaces a topic's matches (no stale duplicates)."""
     owner_id = _register(client).json()["id"]
@@ -5408,3 +5483,39 @@ def test_integrierte_schulden_kommen_nur_mit_bestandener_kernprobe():
     # Und ein echter Widerspruch fliegt auf.
     ok, warum = isch.kernprobe(gefunden, 40_000_000.0)
     assert not ok and "Unterschied" in warum
+
+
+def test_committees_bleibt_eine_reine_namensliste(client):
+    """Regressionsschutz für die Ausschuss-Abos: ``committees`` ist eine reine
+    String-Liste.
+
+    Themen-Seite und Einrichtungs-Assistent lesen den Schlüssel direkt als
+    Namensliste. Die neuen Angaben je Gremium (nächster Termin, Beschlüsse im
+    laufenden Jahr) hängen deshalb daneben in ``details``, statt die Liste in
+    Objekte umzubauen — das hätte beide Stellen gebrochen.
+    """
+    _register(client)
+    kommend = (date.today() + timedelta(days=9)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(7101, "Verkehrsausschuss", kommend, "16:30", "PFL"))
+    cs.save_session(CouncilSession(7102, "Kulturausschuss", "2019-03-04", "17:00", "PFL"))
+    cs._insert_decision(7101, 0, "decision", None, "Ö 2", "Radweg", "Wird gebaut.",
+                        "angenommen", None, None, None, [], None, None, None)
+    cs._conn.commit()
+    cs.close()
+
+    body = client.get("/api/council/committees").json()
+
+    assert body["committees"] == ["Kulturausschuss", "Verkehrsausschuss"]
+    assert all(isinstance(name, str) for name in body["committees"])
+
+    # ``details`` läuft in derselben Reihenfolge mit.
+    assert [d["name"] for d in body["details"]] == body["committees"]
+    verkehr = body["details"][1]
+    assert verkehr["next_date"] == kommend and verkehr["next_time"] == "16:30"
+    # Die Sitzung liegt in der Zukunft, der Beschluss also im laufenden Jahr.
+    assert verkehr["decisions_year"] == 1
+    # Ohne künftigen Termin steht null statt einer erfundenen Angabe.
+    kultur = body["details"][0]
+    assert kultur["next_date"] is None and kultur["next_time"] is None
+    assert kultur["decisions_year"] == 0

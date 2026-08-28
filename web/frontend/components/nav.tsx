@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
   CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon, Command,
-  MoreHorizontal, MessageCircle, Bookmark, Euro,
+  MoreHorizontal, MessageCircle, Bookmark, Euro, Bell,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -107,6 +107,11 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
   ...(HAUSHALT_FREI ? [{ href: "/haushalt", label: "Haushalt", icon: Euro }] : []),
 ];
 const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
+// Split 28.08.2026: Ausschuss-Abos hingen als Block unter „Meine Themen" und
+// bekamen dadurch weder Platz noch einen eigenen Weg dorthin — man musste an
+// den Themen vorbeiscrollen. Zwei Arten, dem Rat zu folgen (ein Anliegen vs.
+// ein ganzes Gremium), sind jetzt zwei Ziele.
+const ABOS: Item = { href: "/abos", label: "Abos", icon: Bell };
 const BOOKMARKS: Item = { href: "/bookmarks", label: "Merkliste", icon: Bookmark };
 const QUIZ: Item = { href: "/quiz", label: "Quiz", icon: Trophy };
 
@@ -129,7 +134,7 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
   // (Beschluss, Person, Thema), die ihr Inneres sind.
   (pathname === "/council" && tab !== "sessions")
   || pathname.startsWith("/council/")
-  || ["/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
+  || ["/abos", "/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 // RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (WebThemeSwitch)
 // nur in der Desktop-Sidebar — mobil läuft die Wahl über Konto →
@@ -181,6 +186,7 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
 
       <SectionHeader>Persönlich</SectionHeader>
       <NavItem item={PERSONAL} active={isActive("/topics")} badge={unread} onNavigate={onNavigate} />
+      <NavItem item={ABOS} active={isActive("/abos")} onNavigate={onNavigate} />
       <NavItem item={BOOKMARKS} active={isActive("/bookmarks")} onNavigate={onNavigate} />
       <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
       {user?.role === "admin" && (
@@ -527,6 +533,10 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
           <MehrZeile href="/council?tab=themen" icon={MapIcon} label="Stadtkarte" onClose={onClose} />
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
           {HAUSHALT_FREI && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
+          {/* Direkt hinter „Themen" in der Tab-Leiste gedacht: Die Abos sind
+              die zweite Art, dem Rat zu folgen, und hatten seit dem Split vom
+              28.08.2026 keinen eigenen Weg mehr auf dem Telefon. */}
+          <MehrZeile href="/abos" icon={Bell} label="Ausschuss-Abos" onClose={onClose} />
           <MehrZeile href="/bookmarks" icon={Bookmark} label="Merkliste" onClose={onClose} />
           <MehrZeile href="/quiz" icon={Trophy} label="Quiz" onClose={onClose} />
           {user?.role === "admin" && (
