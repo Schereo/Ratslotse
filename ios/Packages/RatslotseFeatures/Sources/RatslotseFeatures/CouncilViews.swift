@@ -25,6 +25,7 @@ struct CouncilBrowserView: View {
     @State private var page = 0
     @State private var committees: [String] = []
     @State private var fields: [PolicyFieldOption] = []
+    @State private var parties: [PartyOption] = []
     @State private var districts: [DistrictOption] = []
     @State private var decisions: [DecisionSummary] = []
     @State private var sessions: [CouncilSession] = []
@@ -244,6 +245,7 @@ struct CouncilBrowserView: View {
                 dateTo: $dateTo,
                 committees: committees,
                 fields: fields,
+                parties: parties,
                 districts: districts,
                 clear: clearFilters,
                 apply: {
@@ -374,9 +376,11 @@ struct CouncilBrowserView: View {
     private func loadFilterOptions() async {
         async let committeeRequest: CommitteeOptions = model.api.get("/api/council/committees")
         async let fieldRequest: PolicyFieldOptions = model.api.get("/api/council/fields")
+        async let partyRequest: PartyOptions = model.api.get("/api/council/parties")
         async let districtRequest: DistrictOptions = model.api.get("/api/council/districts")
         if let response = try? await committeeRequest { committees = response.committees }
         if let response = try? await fieldRequest { fields = response.fields }
+        if let response = try? await partyRequest { parties = response.parties }
         if let response = try? await districtRequest { districts = response.districts }
     }
 
@@ -506,6 +510,7 @@ private struct CouncilFilterSheet: View {
     @Binding var dateTo: Date
     let committees: [String]
     let fields: [PolicyFieldOption]
+    let parties: [PartyOption]
     let districts: [DistrictOption]
     let clear: () -> Void
     let apply: () -> Void
@@ -593,11 +598,18 @@ private struct CouncilFilterSheet: View {
                                         }
                                 )
                             }
-                            RatsLabeledField(label: "Antragsteller-Partei", hint: "optional") {
-                                TextField("z. B. SPD", text: $party)
-                                    .textInputAutocapitalization(.characters)
-                                    .textFieldStyle(.plain)
+                            Divider().overlay(RatsColor.separator)
+                            RatsSettingsRow("Partei", symbol: "person.2.badge.gearshape") {
+                                CouncilFilterMenu(
+                                    title: "Antragsteller-Partei",
+                                    selection: $party,
+                                    options: [CouncilFilterOption(value: "", label: "Alle Parteien")]
+                                        + parties.map {
+                                            CouncilFilterOption(value: $0.key, label: "\($0.label) (\($0.count))")
+                                        }
+                                )
                             }
+                            Divider().overlay(RatsColor.separator)
                             RatsSettingsRow("Änderungsanträge einzeln", detail: "Zusätzliche Einzelbeschlüsse anzeigen", symbol: "doc.on.doc") {
                                 Toggle("", isOn: $includeSubvotes)
                                     .labelsHidden()

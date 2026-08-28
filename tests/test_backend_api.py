@@ -97,6 +97,7 @@ def test_native_api_top_level_contracts(client):
         ("/api/council/gespraeche", {"einstellung", "gespraeche"}),
         ("/api/council/deep-research/aktuell", {"job", "frei"}),
         ("/api/council/decisions?limit=5", {"total", "decisions"}),
+        ("/api/council/parties", {"parties"}),
         ("/api/council/sessions?limit=5", {"count", "total", "sessions"}),
         ("/api/council/heute", {"state"}),
         ("/api/council/diese-woche", {"found"}),
@@ -5675,3 +5676,25 @@ def test_committees_bleibt_eine_reine_namensliste(client):
     kultur = body["details"][0]
     assert kultur["next_date"] is None and kultur["next_time"] is None
     assert kultur["decisions_year"] == 0
+
+
+def test_council_parties_liefert_kanonische_filterwerte(client):
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(7201, "Rat der Stadt", "2026-08-28", "17:00", "Rathaus"))
+    cs._insert_decision(7201, 0, "decision", None, "Ö 2", "Gemeinsamer Antrag", "Beschlossen.",
+                        "angenommen", None, None, None, ["Gruppe FDP/Volt", "SPD-Fraktion"],
+                        None, None, None)
+    cs._conn.commit()
+    cs.close()
+
+    response = client.get("/api/council/parties")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "parties": [
+            {"key": "SPD", "label": "SPD", "count": 1},
+            {"key": "FDP", "label": "FDP", "count": 1},
+            {"key": "Volt", "label": "Volt", "count": 1},
+        ]
+    }

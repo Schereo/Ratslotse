@@ -92,6 +92,23 @@ def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(
     return {"fields": out}
 
 
+@router.get("/parties")
+def parties(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+    """Kanonische Antragsteller-Parteien für den Beschlussfilter.
+
+    Die Werte kommen aus derselben normalisierten Auswertung wie der
+    Parteienvergleich. So filtern Web und native App mit exakt den Labels, die
+    ``decision_ids_for_party`` versteht, statt Schreibvarianten zu erfinden.
+    """
+    stats = store.party_analysis()["success_rates"]
+    return {
+        "parties": [
+            {"key": row["party"], "label": row["party"], "count": row["motions"]}
+            for row in sorted(stats, key=lambda row: order_key(row["party"]))
+        ]
+    }
+
+
 @router.get("/districts")
 def districts(
     _user: dict = Depends(require_active),

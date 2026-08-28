@@ -516,6 +516,17 @@ public struct PolicyFieldOptions: Codable, Sendable {
     public let fields: [PolicyFieldOption]
 }
 
+public struct PartyOption: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { key }
+    public let key: String
+    public let label: String
+    public let count: Int
+}
+
+public struct PartyOptions: Codable, Sendable {
+    public let parties: [PartyOption]
+}
+
 public struct DistrictOption: Codable, Sendable, Hashable, Identifiable {
     public var id: String { placeID }
     public let placeID: String

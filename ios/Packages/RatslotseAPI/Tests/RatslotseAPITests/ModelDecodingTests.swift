@@ -162,6 +162,19 @@ import Testing
     #expect(topic.unreadCount == 0)
 }
 
+@Test func partyFilterOptionsDecodeCanonicalLabelsAndCounts() throws {
+    let json = #"""
+    {"parties":[
+      {"key":"Grüne","label":"Grüne","count":31},
+      {"key":"SPD","label":"SPD","count":24}
+    ]}
+    """#
+
+    let options = try JSONDecoder().decode(PartyOptions.self, from: Data(json.utf8))
+    #expect(options.parties.map(\.key) == ["Grüne", "SPD"])
+    #expect(options.parties.first?.count == 31)
+}
+
 @Test func weekPreviewDecodesTheFullEditorialHierarchy() throws {
     let json = #"""
     {
