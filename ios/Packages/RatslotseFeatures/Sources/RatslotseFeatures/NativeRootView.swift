@@ -2,7 +2,6 @@ import Foundation
 import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
-import UIKit
 
 #if DEBUG
 func ratsDebugValue(_ key: String) -> String? {
@@ -396,14 +395,6 @@ private struct MainTabsView: View {
                 model.navigation.removeAll()
                 model.selectedTab = .account
             default: break
-            }
-            if let orientation = ratsDebugValue("RATSLOTSE_DEBUG_ORIENTATION"),
-               let windowScene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
-                let mask: UIInterfaceOrientationMask = orientation == "landscape" ? .landscape : .portrait
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(600))
-                    windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: mask))
-                }
             }
 #endif
         }
