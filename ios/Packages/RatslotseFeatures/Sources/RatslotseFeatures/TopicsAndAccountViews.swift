@@ -371,18 +371,7 @@ struct AccountView: View {
             LazyVStack(alignment: .leading, spacing: 16) {
                 if let user = model.user {
                     HStack(alignment: .center, spacing: 14) {
-                        ZStack(alignment: .bottomTrailing) {
-                            Circle()
-                                .fill(RatsColor.primary)
-                                .frame(width: 58, height: 58)
-                            RatsGlyphView(glyph: .profile, color: RatsColor.primaryText, lineWidth: 1.75)
-                                .frame(width: 28, height: 28)
-                                .frame(width: 58, height: 58)
-                            Circle()
-                                .fill(RatsColor.signal)
-                                .frame(width: 14, height: 14)
-                                .overlay(Circle().stroke(RatsColor.page, lineWidth: 2))
-                        }
+                        LottiProfileAvatar(accountID: user.id, size: 58)
                         VStack(alignment: .leading, spacing: 4) {
                             MonoKicker("Dein Ratslotse")
                             Text(user.displayName ?? "Moin!")

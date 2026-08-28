@@ -567,17 +567,11 @@ private struct RatsSidebarNavigation: View {
 
             Button { select(.account) } label: {
                 HStack(spacing: 10) {
-                    Circle()
-                        .fill(active == .account ? RatsColor.primary : RatsColor.primary.opacity(0.10))
-                        .frame(width: 38, height: 38)
-                        .overlay(
-                            RatsGlyphView(
-                                glyph: .profile,
-                                color: active == .account ? RatsColor.primaryText : RatsColor.primary,
-                                lineWidth: 1.7
-                            )
-                            .frame(width: 19, height: 19)
-                        )
+                    LottiProfileAvatar(
+                        accountID: model.user?.id ?? 0,
+                        size: 38,
+                        isSelected: active == .account
+                    )
                     VStack(alignment: .leading, spacing: 2) {
                         Text(model.user?.displayName ?? "Mein Konto")
                             .font(RatsFont.body(12.5, weight: .semibold))

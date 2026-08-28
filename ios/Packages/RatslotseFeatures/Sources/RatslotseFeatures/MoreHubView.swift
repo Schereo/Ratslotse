@@ -143,17 +143,7 @@ struct MoreHubView: View {
             dismiss()
         } label: {
             HStack(spacing: 14) {
-                ZStack(alignment: .bottomTrailing) {
-                    Circle()
-                        .fill(RatsColor.primary)
-                        .frame(width: 54, height: 54)
-                    RatsGlyphView(glyph: .profile, color: RatsColor.primaryText, lineWidth: 1.65)
-                        .frame(width: 27, height: 27)
-                    Circle()
-                        .fill(RatsColor.signal)
-                        .frame(width: 13, height: 13)
-                        .overlay(Circle().stroke(RatsColor.card, lineWidth: 2))
-                }
+                LottiProfileAvatar(accountID: model.user?.id ?? 0)
                 VStack(alignment: .leading, spacing: 3) {
                     MonoKicker("Dein Ratslotse")
                     Text(model.user?.displayName ?? "Moin Oldenburg")
@@ -175,13 +165,7 @@ struct MoreHubView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(
-                LinearGradient(
-                    colors: [RatsColor.primary.opacity(0.10), RatsColor.card],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .background(RatsColor.card)
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(RatsColor.primary.opacity(0.20)))
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }

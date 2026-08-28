@@ -1,3 +1,4 @@
+import RatslotseDesign
 import SwiftUI
 
 /// Original renders from the procedural Three.js model in the
@@ -56,5 +57,55 @@ struct Lotti3DView: View {
                     isFloating = true
                 }
             }
+    }
+}
+
+/// A compact, account-stable profile portrait made from the existing Lotti
+/// scenes. The account id deliberately selects a pose deterministically so
+/// the avatar feels personal without changing unexpectedly between launches.
+struct LottiProfileAvatar: View {
+    let accountID: Int
+    var size: CGFloat = 54
+    var isSelected = false
+
+    private var scene: Lotti3DScene {
+        let scenes: [Lotti3DScene] = [.wave, .reading, .questions]
+        let index = Int(accountID.magnitude % UInt(scenes.count))
+        return scenes[index]
+    }
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: size * 0.30, style: .continuous)
+    }
+
+    var body: some View {
+        ZStack {
+            shape
+                .fill(RatsColor.primary.opacity(isSelected ? 0.20 : 0.11))
+
+            Image(scene.assetName)
+                .resizable()
+                .renderingMode(.original)
+                .interpolation(.high)
+                .scaledToFit()
+                .padding(size * 0.055)
+        }
+        .frame(width: size, height: size)
+        .clipShape(shape)
+        .overlay {
+            shape.stroke(
+                isSelected ? RatsColor.primary.opacity(0.42) : RatsColor.primary.opacity(0.20),
+                lineWidth: 1
+            )
+        }
+        .overlay(alignment: .bottomTrailing) {
+            Circle()
+                .fill(RatsColor.signal)
+                .frame(width: size * 0.24, height: size * 0.24)
+                .overlay(Circle().stroke(RatsColor.card, lineWidth: size < 44 ? 1.5 : 2))
+                .padding(size * 0.035)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Lotti als Profilbild")
     }
 }
