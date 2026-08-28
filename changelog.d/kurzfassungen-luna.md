@@ -1,3 +1,7 @@
+---
+kategorie: geaendert
+---
+
 ### Kurzfassungen: genauer, aktuelleres Modell, keine stillen Ausfälle
 
 Die Tragweite-Gründe und TOP-Kurzfassungen laufen jetzt auf `gpt-5.6-luna`
