@@ -484,6 +484,7 @@ private struct TopicEditorView: View {
 
 struct AccountView: View {
     let model: AppModel
+    let back: () -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var notifications: NotificationSettings?
     @State private var prefs: [String: Bool] = [:]
@@ -494,7 +495,11 @@ struct AccountView: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView {
+            VStack(spacing: 0) {
+                if horizontalSizeClass == .compact {
+                    accountHeader
+                }
+                ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
                 if let user = model.user {
                     HStack(alignment: .center, spacing: 14) {
@@ -681,10 +686,10 @@ struct AccountView: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 22)
                 .padding(.bottom, 22)
+                }
             }
             .background(RatsColor.page)
-            .navigationTitle("Konto")
-            .toolbarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .task {
                 await load()
 #if DEBUG
@@ -714,6 +719,34 @@ struct AccountView: View {
                 DeleteAccountView(model: model)
                     .ratsLargeSheet()
             }
+        }
+    }
+
+    private var accountHeader: some View {
+        HStack {
+            Button(action: back) {
+                RatsGlyphView(glyph: .back, color: RatsColor.bodyText, lineWidth: 2)
+                    .frame(width: 20, height: 20)
+                    .frame(width: 42, height: 42)
+                    .background(RatsColor.card)
+                    .overlay(Circle().stroke(RatsColor.border))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Zurück zu Mehr")
+
+            Spacer()
+            Text("Konto")
+                .font(RatsFont.title(18))
+                .foregroundStyle(RatsColor.text)
+            Spacer()
+            Color.clear.frame(width: 42, height: 42)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(RatsColor.page)
+        .overlay(alignment: .bottom) {
+            Divider().overlay(RatsColor.separator)
         }
     }
 

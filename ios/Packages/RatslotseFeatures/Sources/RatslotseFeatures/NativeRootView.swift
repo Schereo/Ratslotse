@@ -306,6 +306,7 @@ private struct MainTabsView: View {
     @Bindable var model: AppModel
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showsMore = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MORE"] == "1"
+    @State private var accountReturnTab: AppTab = .today
 
     var body: some View {
         Group {
@@ -332,12 +333,23 @@ private struct MainTabsView: View {
             }
         }
         .sheet(isPresented: $showsMore) {
-            MoreHubView(model: model) { section in
-                model.navigation.removeAll()
-                model.tabletPage = nil
-                model.councilSection = section
-                model.selectedTab = .council
-            }
+            MoreHubView(
+                model: model,
+                openCouncil: { section in
+                    model.navigation.removeAll()
+                    model.tabletPage = nil
+                    model.councilSection = section
+                    model.selectedTab = .council
+                },
+                openAccount: {
+                    if model.selectedTab != .account {
+                        accountReturnTab = model.selectedTab
+                    }
+                    model.navigation.removeAll()
+                    model.tabletPage = nil
+                    model.selectedTab = .account
+                }
+            )
             .ratsLargeSheet()
         }
         .onAppear {
@@ -374,6 +386,9 @@ private struct MainTabsView: View {
             case "topics":
                 model.navigation.removeAll()
                 model.selectedTab = .topics
+            case "account":
+                model.navigation.removeAll()
+                model.selectedTab = .account
             case "analysis":
                 model.navigation.removeAll()
                 model.tabletPage = .analysis
@@ -391,9 +406,6 @@ private struct MainTabsView: View {
                     model.selectedTab = .questions
                     model.navigation.append(.quiz(area: nil))
                 }
-            case "account":
-                model.navigation.removeAll()
-                model.selectedTab = .account
             default: break
             }
 #endif
@@ -425,7 +437,10 @@ private struct MainTabsView: View {
                 TopicsView(model: model)
                     .tag(AppTab.topics)
                     .toolbar(.hidden, for: .tabBar)
-                AccountView(model: model)
+                AccountView(model: model) {
+                    model.selectedTab = accountReturnTab
+                    showsMore = true
+                }
                     .tag(AppTab.account)
                     .toolbar(.hidden, for: .tabBar)
             }

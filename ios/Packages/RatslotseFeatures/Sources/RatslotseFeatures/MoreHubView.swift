@@ -12,6 +12,7 @@ private enum MoreDestination: Hashable {
 struct MoreHubView: View {
     let model: AppModel
     let openCouncil: (CouncilSection) -> Void
+    let openAccount: () -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showsFeedback = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_FEEDBACK"] == "1"
@@ -144,8 +145,7 @@ struct MoreHubView: View {
 
     private var profileCard: some View {
         Button {
-            model.tabletPage = nil
-            model.selectedTab = .account
+            openAccount()
             dismiss()
         } label: {
             HStack(spacing: 14) {
