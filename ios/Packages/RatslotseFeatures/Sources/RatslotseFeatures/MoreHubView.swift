@@ -602,23 +602,11 @@ struct CommitteeSubscriptionsView: View {
                 if isLoading {
                     RatsLoadingState(message: "Gremien werden geladen …")
                 } else {
-                    if subscriptions.isEmpty {
-                        RatsEmptyState(
-                            title: "Noch kein Gremium abonniert",
-                            message: "Wähle unten die Ausschüsse, die Ratslotse für dich im Blick behalten soll.",
-                            symbol: "bell"
-                        )
-                    } else {
-                        MonoKicker("Abonniert", trailing: "\(subscriptions.count)")
-                        committeeList(committees.filter { subscriptions.contains($0.name) })
-                    }
-
-                    let remaining = committees.filter { !subscriptions.contains($0.name) }
-                    if !remaining.isEmpty {
-                        MonoKicker("Weitere Gremien", trailing: "\(remaining.count)")
-                            .padding(.top, 4)
-                        committeeList(remaining)
-                    }
+                    MonoKicker(
+                        "Gremien",
+                        trailing: "\(subscriptions.count) von \(committees.count) abonniert"
+                    )
+                    committeeList(committees)
                 }
                 if let error { ErrorCard(message: error) { Task { await load() } } }
 
