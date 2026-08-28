@@ -6,6 +6,44 @@ import RatslotseDesign
 import SwiftUI
 import UIKit
 
+private struct ResearchCurrentResponse: Codable, Sendable {
+    let job: ResearchSnapshot?
+    let frei: Int?
+}
+
+private struct ResearchStartResponse: Codable, Sendable {
+    let jobID: String
+    let frei: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case jobID = "job_id"
+        case frei
+    }
+}
+
+private struct ResearchSnapshot: Codable, Sendable {
+    let id: String
+    let frage: String
+    let status: String
+    let bericht: String?
+    let quellen: JSONValue?
+}
+
+private struct ResearchFacet: Identifiable {
+    let id = UUID()
+    let name: String
+    var hits: Int?
+}
+
+private struct ResearchState {
+    var jobID: String?
+    var status = "laeuft"
+    var phase = "zerlegen"
+    var facets: [ResearchFacet] = []
+    var eventsSeen = 0
+    var partialPossible = false
+}
+
 private struct QuestionTurn: Identifiable {
     let id = UUID()
     let question: String
@@ -15,18 +53,24 @@ private struct QuestionTurn: Identifiable {
     var suggestions: [String] = []
     var status: String?
     var error: String?
+    var research: ResearchState?
 }
 
 struct QuestionsView: View {
     let model: AppModel
+    @Environment(\.scenePhase) private var scenePhase
     @State private var input = ""
     @State private var turns: [QuestionTurn] = []
     @State private var streamTask: Task<Void, Never>?
+    @State private var researchStreamTask: Task<Void, Never>?
     @State private var rateLimitUntil: Date?
-    @State private var showDeepResearch = false
+    @State private var researchMode = false
+    @State private var researchRemaining: Int?
     @State private var showConversations = false
 
-    private var isSending: Bool { streamTask != nil }
+    private var isSending: Bool {
+        streamTask != nil || turns.contains { $0.research?.status == "laeuft" }
+    }
     private var shouldAutoScroll: Bool {
 #if DEBUG
         ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_FIXTURE"] != "1"
@@ -36,6 +80,62 @@ struct QuestionsView: View {
     }
 
     var body: some View {
+        GeometryReader { geometry in
+            let showsEvidenceSidebar = geometry.size.width >= 1_040
+
+            HStack(spacing: 0) {
+                chatColumn(showsEvidenceInline: !showsEvidenceSidebar)
+                    .frame(maxWidth: showsEvidenceSidebar ? 744 : .infinity)
+
+                if showsEvidenceSidebar {
+                    Rectangle()
+                        .fill(RatsColor.separator)
+                        .frame(width: 1)
+                        .padding(.vertical, 14)
+
+                    QuestionEvidenceSidebar(turn: turns.last, model: model)
+                        .frame(width: 376)
+                }
+            }
+            .frame(maxWidth: showsEvidenceSidebar ? 1_121 : .infinity)
+            .frame(maxWidth: .infinity)
+        }
+        .background(RatsColor.stage)
+        .navigationTitle("Frag den Rat")
+        .toolbarTitleDisplayMode(.inline)
+        .onAppear {
+            if !model.questionPrefill.isEmpty {
+                input = model.questionPrefill
+                model.questionPrefill = ""
+            }
+#if DEBUG
+            if turns.isEmpty,
+               ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_FIXTURE"] == "1",
+               let fixture = debugQuestionFixture() {
+                turns = [fixture]
+            }
+            researchMode = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_RESEARCH_MODE"] == "1"
+            showConversations = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_SHEET"] == "conversations"
+#endif
+        }
+        .task { await restoreCurrentResearch() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { reconnectRunningResearchIfNeeded() }
+            else { researchStreamTask?.cancel(); researchStreamTask = nil }
+        }
+        .onDisappear {
+            streamTask?.cancel()
+            streamTask = nil
+            researchStreamTask?.cancel()
+            researchStreamTask = nil
+        }
+        .sheet(isPresented: $showConversations) {
+            ConversationsView(model: model)
+                .ratsLargeSheet()
+        }
+    }
+
+    private func chatColumn(showsEvidenceInline: Bool) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -55,18 +155,6 @@ struct QuestionsView: View {
                         .clipShape(Circle())
                 }
                 .accessibilityLabel("Gespräche")
-                Button { showDeepResearch = true } label: {
-                    RatsGlyphView(
-                        glyph: .research,
-                        color: model.hasRecoverableResearch ? RatsColor.signal : RatsColor.bodyText
-                    )
-                        .frame(width: 20, height: 20)
-                        .frame(width: 40, height: 40)
-                        .background(RatsColor.card)
-                        .overlay(Circle().stroke(RatsColor.border))
-                        .clipShape(Circle())
-                }
-                .accessibilityLabel("Gründlich recherchieren")
             }
             .foregroundStyle(RatsColor.text)
             .padding(.horizontal, 18)
@@ -76,9 +164,17 @@ struct QuestionsView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 26) {
-                        if turns.isEmpty { EmptyQuestionsView(select: ask) }
+                        if turns.isEmpty { EmptyQuestionsView(select: askUsingSelectedMode) }
                         ForEach(turns) { turn in
-                            QuestionTurnView(turn: turn, model: model, ask: ask)
+                            QuestionTurnView(
+                                turn: turn,
+                                model: model,
+                                ask: askUsingSelectedMode,
+                                stopResearch: stopResearch,
+                                requestPartialResearch: requestPartialResearch,
+                                reconnectResearch: reconnectResearch,
+                                showsEvidenceInline: showsEvidenceInline
+                            )
                                 .id(turn.id)
                         }
                     }
@@ -92,8 +188,9 @@ struct QuestionsView: View {
                 }
             }
 
-            VStack(spacing: 0) {
-                Divider().overlay(RatsColor.border)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 7) {
                 if let rateLimitUntil, rateLimitUntil > .now {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let seconds = max(1, Int(rateLimitUntil.timeIntervalSince(context.date).rounded(.up)))
@@ -101,56 +198,40 @@ struct QuestionsView: View {
                             .font(RatsFont.body(11, weight: .semibold))
                             .foregroundStyle(RatsColor.warning)
                     }
-                    .padding(.top, 7)
                 }
-                QuestionComposer(text: $input, isSending: isSending, action: submitOrStop)
-                    .frame(maxWidth: 780)
-                    .padding(.horizontal, 14)
-                    .padding(.top, 10)
-                    .padding(.bottom, 8)
-                    .background(.ultraThinMaterial)
+                RatsQuestionComposer(
+                    text: $input,
+                    researchMode: $researchMode,
+                    researchRemaining: researchRemaining,
+                    isSending: isSending,
+                    action: submitOrStop
+                )
             }
-        }
-        .background(RatsColor.stage)
-        .navigationTitle("Frag den Rat")
-        .toolbarTitleDisplayMode(.inline)
-        .onAppear {
-            if !model.questionPrefill.isEmpty {
-                input = model.questionPrefill
-                model.questionPrefill = ""
-            }
-#if DEBUG
-            if turns.isEmpty,
-               ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_FIXTURE"] == "1",
-               let fixture = debugQuestionFixture() {
-                turns = [fixture]
-            }
-            switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_SHEET"] {
-            case "research": showDeepResearch = true
-            case "conversations": showConversations = true
-            default: break
-            }
-#endif
-        }
-        .onDisappear { streamTask?.cancel(); streamTask = nil }
-        .sheet(isPresented: $showDeepResearch) {
-            DeepResearchView(model: model, initialQuestion: input)
-                .ratsLargeSheet()
-        }
-        .sheet(isPresented: $showConversations) {
-            ConversationsView(model: model)
-                .ratsLargeSheet()
+            .frame(maxWidth: 780)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 18)
+            .frame(maxWidth: .infinity)
         }
     }
 
     private func submitOrStop() {
-        if isSending {
+        if streamTask != nil {
             streamTask?.cancel()
             streamTask = nil
             if let last = turns.indices.last { turns[last].status = "Abgebrochen – deine Frage bleibt erhalten." }
             return
         }
-        ask(input)
+        if let running = turns.last(where: { $0.research?.status == "laeuft" }) {
+            stopResearch(running.id)
+            return
+        }
+        askUsingSelectedMode(input)
+    }
+
+    private func askUsingSelectedMode(_ raw: String) {
+        if researchMode { askResearch(raw) }
+        else { ask(raw) }
     }
 
     private func ask(_ raw: String) {
@@ -207,6 +288,259 @@ struct QuestionsView: View {
                 input = question
             }
         }
+    }
+
+    private func askResearch(_ raw: String) {
+        let question = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard question.count >= 4, researchRemaining != 0 else { return }
+        input = ""
+        researchMode = false
+        let turn = QuestionTurn(
+            question: question,
+            status: nil,
+            research: ResearchState()
+        )
+        turns.append(turn)
+        startResearch(turn.id)
+    }
+
+    private func startResearch(_ turnID: UUID) {
+        researchStreamTask?.cancel()
+        researchStreamTask = Task {
+            defer { researchStreamTask = nil }
+            struct Body: Codable, Sendable { let frage: String }
+            guard let index = turns.firstIndex(where: { $0.id == turnID }) else { return }
+            let question = turns[index].question
+            do {
+                let response: ResearchStartResponse = try await model.api.send(
+                    "/api/council/deep-research",
+                    body: Body(frage: question)
+                )
+                guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
+                turns[current].research?.jobID = response.jobID
+                researchRemaining = response.frei
+                model.hasRecoverableResearch = true
+                await streamResearch(turnID: turnID, jobID: response.jobID)
+            } catch is CancellationError {
+                return
+            } catch let apiError as APIError where apiError.statusCode == 429 {
+                researchRemaining = 0
+                researchMode = false
+                if let current = turns.firstIndex(where: { $0.id == turnID }) {
+                    turns[current].research?.status = "fehler"
+                    turns[current].error = "Deine Recherchen für heute sind aufgebraucht. Ab Mitternacht kannst du wieder gründlich recherchieren; schnelle Fragen bleiben verfügbar."
+                }
+            } catch {
+                if let current = turns.firstIndex(where: { $0.id == turnID }) {
+                    turns[current].research?.status = "fehler"
+                    turns[current].error = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func streamResearch(turnID: UUID, jobID: String) async {
+        var retryDelay = 1.0
+        while !Task.isCancelled {
+            guard
+                let index = turns.firstIndex(where: { $0.id == turnID }),
+                turns[index].research?.status == "laeuft"
+            else { return }
+            let eventsSeen = turns[index].research?.eventsSeen ?? 0
+            do {
+                let request = try await model.api.makeStreamingRequest(
+                    "/api/council/deep-research/\(jobID)/events",
+                    query: [.init(name: "ab", value: String(eventsSeen))]
+                )
+                for try await event in model.sse.events(for: request) {
+                    guard !Task.isCancelled else { return }
+                    guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
+                    turns[current].research?.eventsSeen += 1
+                    applyResearch(event: event, to: turnID)
+                    if turns[current].research?.status != "laeuft" { return }
+                    retryDelay = 1
+                }
+                try await Task.sleep(for: .seconds(1))
+            } catch let apiError as APIError where apiError.statusCode == 410 {
+                await loadResearchSnapshot(turnID: turnID, jobID: jobID)
+                return
+            } catch is CancellationError {
+                return
+            } catch {
+                if let current = turns.firstIndex(where: { $0.id == turnID }) {
+                    turns[current].error = "Verbindung unterbrochen – Ratslotse verbindet sich erneut."
+                }
+                try? await Task.sleep(for: .seconds(retryDelay))
+                retryDelay = min(8, retryDelay * 2)
+            }
+        }
+    }
+
+    private func applyResearch(event: SSEEvent, to turnID: UUID) {
+        guard let index = turns.firstIndex(where: { $0.id == turnID }) else { return }
+        switch event.type {
+        case "phase":
+            turns[index].research?.phase = event.fields["phase"]?.string ?? turns[index].research?.phase ?? "zerlegen"
+        case "facetten":
+            turns[index].research?.facets = event.fields["facetten"]?.array?.compactMap(\.string).map {
+                ResearchFacet(name: $0)
+            } ?? []
+            turns[index].research?.phase = "suchen"
+        case "facette":
+            let name = event.fields["name"]?.string
+            if let facetIndex = turns[index].research?.facets.firstIndex(where: { $0.name == name }) {
+                turns[index].research?.facets[facetIndex].hits = event.fields["treffer"]?.int
+            }
+        case "sources":
+            turns[index].evidence = event.fields
+            turns[index].sources = event.fields["sources"]?.array?.compactMap {
+                try? $0.decoded(DecisionSummary.self)
+            } ?? []
+            turns[index].error = nil
+        case "token":
+            turns[index].answer += event.text ?? ""
+            turns[index].error = nil
+        case "replace":
+            turns[index].answer = event.text ?? turns[index].answer
+            turns[index].error = nil
+        case "gestoppt":
+            turns[index].research?.status = "gestoppt"
+            turns[index].research?.partialPossible = event.fields["teilbericht_moeglich"]?.bool ?? false
+        case "fehler":
+            turns[index].research?.status = "fehler"
+            turns[index].error = "Die Recherche ist abgebrochen. Der Versuch zählt nicht gegen dein Kontingent."
+        case "done":
+            let jobID = turns[index].research?.jobID
+            turns[index].research?.status = "fertig"
+            turns[index].error = nil
+            model.hasRecoverableResearch = false
+            if let jobID {
+                Task { try? await model.api.sendVoid("/api/council/deep-research/\(jobID)/gesehen") }
+            }
+        default:
+            break
+        }
+    }
+
+    private func stopResearch(_ turnID: UUID) {
+        Task {
+            guard
+                let index = turns.firstIndex(where: { $0.id == turnID }),
+                let jobID = turns[index].research?.jobID
+            else { return }
+            do {
+                let response: JSONValue = try await model.api.sendWithoutBody(
+                    "/api/council/deep-research/\(jobID)/stop"
+                )
+                guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
+                turns[current].research?.status = "gestoppt"
+                turns[current].research?.partialPossible = response.object?["teilbericht_moeglich"]?.bool ?? false
+                researchStreamTask?.cancel()
+                researchStreamTask = nil
+            } catch {
+                if let current = turns.firstIndex(where: { $0.id == turnID }) {
+                    turns[current].error = "Die Recherche konnte nicht abgebrochen werden und läuft weiter."
+                }
+            }
+        }
+    }
+
+    private func requestPartialResearch(_ turnID: UUID) {
+        Task {
+            guard
+                let index = turns.firstIndex(where: { $0.id == turnID }),
+                let jobID = turns[index].research?.jobID
+            else { return }
+            do {
+                let _: JSONValue = try await model.api.sendWithoutBody(
+                    "/api/council/deep-research/\(jobID)/teilbericht"
+                )
+                guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
+                turns[current].research?.status = "laeuft"
+                turns[current].research?.phase = "schreiben"
+                turns[current].error = nil
+                reconnectResearch(turnID)
+            } catch {
+                if let current = turns.firstIndex(where: { $0.id == turnID }) {
+                    turns[current].error = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func reconnectResearch(_ turnID: UUID) {
+        guard let index = turns.firstIndex(where: { $0.id == turnID }) else { return }
+        guard let jobID = turns[index].research?.jobID else {
+            guard researchRemaining != 0 else { return }
+            startResearch(turnID)
+            return
+        }
+        turns[index].research?.status = "laeuft"
+        turns[index].error = nil
+        researchStreamTask?.cancel()
+        researchStreamTask = Task {
+            defer { researchStreamTask = nil }
+            await streamResearch(turnID: turnID, jobID: jobID)
+        }
+    }
+
+    private func restoreCurrentResearch() async {
+        do {
+            let current: ResearchCurrentResponse = try await model.api.get("/api/council/deep-research/aktuell")
+            researchRemaining = current.frei
+            guard let snapshot = current.job else { return }
+
+            let turnID: UUID
+            if let existing = turns.first(where: { $0.research?.jobID == snapshot.id }) {
+                turnID = existing.id
+            } else {
+                let turn = QuestionTurn(
+                    question: snapshot.frage,
+                    status: nil,
+                    research: ResearchState(jobID: snapshot.id, status: snapshot.status)
+                )
+                turns.append(turn)
+                turnID = turn.id
+            }
+            applyResearch(snapshot: snapshot, to: turnID)
+            if snapshot.status == "laeuft" { reconnectResearch(turnID) }
+            else if snapshot.bericht == nil { await loadResearchSnapshot(turnID: turnID, jobID: snapshot.id) }
+        } catch {
+            // The questions screen remains fully usable if restoring a server job fails.
+        }
+    }
+
+    private func loadResearchSnapshot(turnID: UUID, jobID: String) async {
+        do {
+            let snapshot: ResearchSnapshot = try await model.api.get("/api/council/deep-research/\(jobID)")
+            applyResearch(snapshot: snapshot, to: turnID)
+        } catch {
+            if let index = turns.firstIndex(where: { $0.id == turnID }) {
+                turns[index].research?.status = "fehler"
+                turns[index].error = error.localizedDescription
+            }
+        }
+    }
+
+    private func applyResearch(snapshot: ResearchSnapshot, to turnID: UUID) {
+        guard let index = turns.firstIndex(where: { $0.id == turnID }) else { return }
+        turns[index].research?.jobID = snapshot.id
+        turns[index].research?.status = snapshot.status == "teilbericht" ? "fertig" : snapshot.status
+        turns[index].answer = snapshot.bericht ?? turns[index].answer
+        if let root = snapshot.quellen?.object {
+            turns[index].evidence = root
+            turns[index].sources = root["sources"]?.array?.compactMap {
+                try? $0.decoded(DecisionSummary.self)
+            } ?? []
+        }
+        model.hasRecoverableResearch = snapshot.status == "laeuft" || snapshot.bericht != nil
+    }
+
+    private func reconnectRunningResearchIfNeeded() {
+        guard researchStreamTask == nil,
+              let running = turns.last(where: { $0.research?.status == "laeuft" })
+        else { return }
+        reconnectResearch(running.id)
     }
 
     private func progressText(_ step: String?) -> String {
@@ -347,21 +681,287 @@ private struct EmptyQuestionsView: View {
     }
 }
 
+private struct RatsQuestionComposer: View {
+    @Binding var text: String
+    @Binding var researchMode: Bool
+    let researchRemaining: Int?
+    let isSending: Bool
+    let action: () -> Void
+
+    private var trimmedText: String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var researchUnavailable: Bool {
+        researchRemaining == 0 && !researchMode
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 9) {
+                TextField(
+                    researchMode ? "Was soll gründlich untersucht werden?" : "Was möchtest du über den Rat wissen?",
+                    text: $text,
+                    axis: .vertical
+                )
+                .font(RatsFont.body())
+                .lineLimit(1...4)
+                .submitLabel(.send)
+                .onSubmit(action)
+
+                Button(action: action) {
+                    Image(systemName: isSending ? "stop.fill" : "arrow.up")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(RatsColor.primaryText)
+                        .frame(width: 40, height: 40)
+                        .background(
+                            RatsColor.primary.opacity(trimmedText.count < 4 && !isSending ? 0.35 : 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .shadow(color: RatsColor.primary.opacity(isSending ? 0 : 0.2), radius: 8, y: 3)
+                }
+                .buttonStyle(.plain)
+                .disabled(trimmedText.count < 4 && !isSending)
+                .accessibilityLabel(isSending ? "Vorgang abbrechen" : "Frage senden")
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 9)
+            .padding(.bottom, 5)
+
+            HStack(spacing: 8) {
+                Toggle(isOn: $researchMode) {
+                    HStack(spacing: 7) {
+                        RatsGlyphView(
+                            glyph: .research,
+                            color: researchMode ? RatsColor.primary : RatsColor.secondary,
+                            lineWidth: 1.7
+                        )
+                        .frame(width: 16, height: 16)
+                        Text(researchUnavailable ? "Heute ausgeschöpft" : "Gründlich recherchieren")
+                            .font(RatsFont.body(12, weight: .semibold))
+                    }
+                }
+                .toggleStyle(ResearchPillToggleStyle())
+                .disabled(researchUnavailable || isSending)
+
+                if researchMode {
+                    Text(researchRemaining.map { "~30 Sek. · noch \($0) heute" } ?? "dauert etwa 30 Sek.")
+                        .font(RatsFont.body(10))
+                        .foregroundStyle(RatsColor.muted)
+                        .lineLimit(1)
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 9)
+            .padding(.bottom, 8)
+        }
+        .floatingComposerSurface(isActive: researchMode)
+        .animation(.snappy(duration: 0.24), value: researchMode)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func floatingComposerSurface(isActive: Bool) -> some View {
+        if #available(iOS 26.0, *) {
+            self
+                .glassEffect(
+                    .regular.tint(RatsColor.card.opacity(0.18)),
+                    in: .rect(cornerRadius: 18)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(
+                            isActive ? RatsColor.primary.opacity(0.42) : .white.opacity(0.34),
+                            lineWidth: 0.8
+                        )
+                }
+                .shadow(color: RatsColor.primary.opacity(0.14), radius: 20, y: 9)
+        } else {
+            self
+                .background {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(RatsColor.card.opacity(0.70))
+                    }
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(
+                            isActive ? RatsColor.primary.opacity(0.42) : .white.opacity(0.50),
+                            lineWidth: 0.9
+                        )
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: RatsColor.primary.opacity(0.12), radius: 18, y: 8)
+        }
+    }
+}
+
+private struct ResearchPillToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            withAnimation(.snappy(duration: 0.24)) { configuration.isOn.toggle() }
+        } label: {
+            HStack(spacing: 7) {
+                configuration.label
+                Image(systemName: configuration.isOn ? "xmark" : "plus")
+                    .font(.system(size: 9, weight: .bold))
+            }
+            .foregroundStyle(configuration.isOn ? RatsColor.primary : RatsColor.secondary)
+            .padding(.horizontal, 11)
+            .frame(minHeight: 34)
+            .background(configuration.isOn ? RatsColor.primary.opacity(0.10) : RatsColor.stage)
+            .overlay(
+                Capsule().stroke(
+                    configuration.isOn ? RatsColor.primary.opacity(0.5) : RatsColor.border,
+                    lineWidth: 1
+                )
+            )
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(configuration.isOn ? "Ein" : "Aus")
+    }
+}
+
+private struct ResearchProgressCard: View {
+    let state: ResearchState
+    let stop: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            HStack(spacing: 12) {
+                Lotti3DView(scene: .reading)
+                    .frame(width: 54, height: 54)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(phaseLabel)
+                        .font(RatsFont.body(14, weight: .semibold))
+                    Text("Du kannst die App zwischendurch schließen.")
+                        .font(RatsFont.body(11))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+
+            ProgressView(value: progress)
+                .tint(RatsColor.primary)
+
+            if !state.facets.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(state.facets) { facet in
+                        HStack(spacing: 8) {
+                            Image(systemName: facet.hits == nil ? "circle.dotted" : "checkmark.circle.fill")
+                                .foregroundStyle(facet.hits == nil ? RatsColor.muted : RatsColor.success)
+                            Text(facet.name)
+                                .font(RatsFont.body(12, weight: .medium))
+                            Spacer(minLength: 0)
+                            if let hits = facet.hits {
+                                Text("\(hits) Treffer")
+                                    .font(RatsFont.mono(9))
+                                    .foregroundStyle(RatsColor.muted)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Button("Recherche abbrechen", role: .destructive, action: stop)
+                .font(RatsFont.body(12, weight: .semibold))
+        }
+        .ratsCard()
+    }
+
+    private var phaseLabel: String {
+        switch state.phase {
+        case "zerlegen": "Frage in Facetten zerlegen …"
+        case "suchen": "Passende Beschlüsse durchsuchen …"
+        case "lesen": "Ratsunterlagen lesen …"
+        default: "Bericht schreiben …"
+        }
+    }
+
+    private var progress: Double {
+        switch state.phase {
+        case "zerlegen": 0.08
+        case "suchen":
+            state.facets.isEmpty
+                ? 0.2
+                : 0.1 + Double(state.facets.filter { $0.hits != nil }.count) / Double(state.facets.count) * 0.45
+        case "lesen": 0.62
+        default: 0.82
+        }
+    }
+}
+
+private struct ResearchStoppedCard: View {
+    let state: ResearchState
+    let requestPartial: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text("Recherche abgebrochen")
+                .font(RatsFont.body(14, weight: .semibold))
+            Text(
+                state.partialPossible
+                    ? "Aus den bereits gelesenen Facetten kann Ratslotse noch einen Teilbericht schreiben."
+                    : "Für einen belastbaren Teilbericht war noch nicht genug Material vorhanden."
+            )
+            .font(RatsFont.body(12))
+            .foregroundStyle(RatsColor.secondary)
+            if state.partialPossible {
+                Button("Teilbericht schreiben", action: requestPartial)
+                    .buttonStyle(PrimaryButtonStyle())
+            }
+        }
+        .ratsCard()
+    }
+}
+
 private struct QuestionTurnView: View {
     let turn: QuestionTurn
     let model: AppModel
     let ask: (String) -> Void
+    let stopResearch: (UUID) -> Void
+    let requestPartialResearch: (UUID) -> Void
+    let reconnectResearch: (UUID) -> Void
+    let showsEvidenceInline: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(turn.question)
-                .font(RatsFont.body(15, weight: .medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(RatsColor.primary.opacity(0.08))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(RatsColor.primary.opacity(0.18)))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            VStack(alignment: .trailing, spacing: 5) {
+                Text(turn.question)
+                    .font(RatsFont.body(15, weight: .medium))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(RatsColor.primary.opacity(0.08))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(RatsColor.primary.opacity(0.18)))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                if turn.research != nil {
+                    HStack(spacing: 5) {
+                        RatsGlyphView(glyph: .research, color: RatsColor.primary, lineWidth: 1.65)
+                            .frame(width: 13, height: 13)
+                        Text("Gründliche Recherche")
+                    }
+                    .font(RatsFont.body(10, weight: .medium))
+                    .foregroundStyle(RatsColor.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+
+            if let research = turn.research, research.status == "laeuft" {
+                ResearchProgressCard(state: research) { stopResearch(turn.id) }
+            }
+            if let research = turn.research, research.status == "gestoppt" {
+                ResearchStoppedCard(state: research) {
+                    requestPartialResearch(turn.id)
+                }
+            }
 
             if let status = turn.status {
                 HStack(spacing: 9) {
@@ -376,47 +976,41 @@ private struct QuestionTurnView: View {
                     .lineSpacing(6)
             }
             if let error = turn.error {
-                ErrorCard(message: error) { ask(turn.question) }
+                ErrorCard(message: error) {
+                    if turn.research != nil { reconnectResearch(turn.id) }
+                    else { ask(turn.question) }
+                }
             }
-            if !turn.sources.isEmpty {
-                DisclosureGroup {
-                    VStack(spacing: 12) {
-                        ForEach(Array(turn.sources.enumerated()), id: \.element.id) { index, source in
-                            Button { model.navigation.append(.decision(id: source.id)) } label: {
-                                SourceRow(
-                                    number: source.id,
-                                    title: source.title,
-                                    meta: [source.committee, source.sessionDate].compactMap { $0 }.joined(separator: " · ")
-                                )
+            if showsEvidenceInline {
+                if !turn.sources.isEmpty {
+                    DisclosureGroup {
+                        VStack(spacing: 12) {
+                            ForEach(Array(turn.sources.enumerated()), id: \.element.id) { index, source in
+                                Button { model.navigation.append(.decision(id: source.id)) } label: {
+                                    SourceRow(
+                                        number: source.id,
+                                        title: source.title,
+                                        meta: [source.committee, source.sessionDate].compactMap { $0 }.joined(separator: " · ")
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                if index < turn.sources.count - 1 { Divider().overlay(RatsColor.separator) }
                             }
-                            .buttonStyle(.plain)
-                            if index < turn.sources.count - 1 { Divider().overlay(RatsColor.separator) }
                         }
+                        .padding(.top, 10)
+                    } label: {
+                        MonoKicker("Quellen", trailing: "\(turn.sources.count) gefunden")
                     }
-                    .padding(.top, 10)
-                } label: {
-                    MonoKicker("Quellen", trailing: "\(turn.sources.count) gefunden")
+                    .padding(14)
+                    .background(RatsColor.card)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    PartyOpinionsView(turn: turn, model: model)
                 }
-                .padding(14)
-                .background(RatsColor.card)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                PartyOpinionsView(turn: turn, model: model)
-            }
-            CouncilEvidenceBlocks(fields: turn.evidence, model: model)
-            if !mapPins.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    MonoKicker("Orte in der Antwort", trailing: "\(mapPins.count)")
-                    Map(initialPosition: .region(mapRegion)) {
-                        ForEach(mapPins) { pin in
-                            Marker(pin.name, coordinate: pin.coordinate).tint(RatsColor.signal)
-                        }
-                    }
-                    .frame(height: 190)
-                    .clipShape(RoundedRectangle(cornerRadius: 11))
-                    .accessibilityLabel("Karte der in der Antwort genannten Orte")
+                CouncilEvidenceBlocks(fields: turn.evidence, model: model)
+                if !mapPins.isEmpty {
+                    QuestionEvidenceMap(pins: mapPins)
                 }
-                .ratsCard()
             }
             if !turn.suggestions.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -435,29 +1029,7 @@ private struct QuestionTurnView: View {
     }
 
     private var mapPins: [QuestionMapPin] {
-        turn.sources.compactMap { source in
-            guard let latitude = source.latitude, let longitude = source.longitude else { return nil }
-            return QuestionMapPin(
-                id: source.id,
-                name: source.placeName ?? source.title,
-                coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-            )
-        }
-    }
-
-    private var mapRegion: MKCoordinateRegion {
-        let latitudes = mapPins.map(\.coordinate.latitude)
-        let longitudes = mapPins.map(\.coordinate.longitude)
-        let center = CLLocationCoordinate2D(
-            latitude: latitudes.reduce(0, +) / Double(max(1, latitudes.count)),
-            longitude: longitudes.reduce(0, +) / Double(max(1, longitudes.count))
-        )
-        let latitudeDelta = max(0.018, (latitudes.max() ?? center.latitude) - (latitudes.min() ?? center.latitude) + 0.012)
-        let longitudeDelta = max(0.018, (longitudes.max() ?? center.longitude) - (longitudes.min() ?? center.longitude) + 0.012)
-        return MKCoordinateRegion(
-            center: center,
-            span: MKCoordinateSpan(latitudeDelta: latitudeDelta, longitudeDelta: longitudeDelta)
-        )
+        questionMapPins(for: turn.sources)
     }
 }
 
@@ -465,6 +1037,179 @@ private struct QuestionMapPin: Identifiable {
     let id: Int
     let name: String
     let coordinate: CLLocationCoordinate2D
+}
+
+private struct QuestionEvidenceMap: View {
+    let pins: [QuestionMapPin]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            MonoKicker("Orte in der Antwort", trailing: "\(pins.count)")
+            Map(initialPosition: .region(questionMapRegion(for: pins))) {
+                ForEach(pins) { pin in
+                    Marker(pin.name, coordinate: pin.coordinate).tint(RatsColor.signal)
+                }
+            }
+            .frame(height: 190)
+            .clipShape(RoundedRectangle(cornerRadius: 11))
+            .accessibilityLabel("Karte der in der Antwort genannten Orte")
+        }
+        .ratsCard()
+    }
+}
+
+private func questionMapPins(for sources: [DecisionSummary]) -> [QuestionMapPin] {
+    sources.compactMap { source in
+        guard let latitude = source.latitude, let longitude = source.longitude else { return nil }
+        return QuestionMapPin(
+            id: source.id,
+            name: source.placeName ?? source.title,
+            coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        )
+    }
+}
+
+private func questionMapRegion(for pins: [QuestionMapPin]) -> MKCoordinateRegion {
+    let latitudes = pins.map(\.coordinate.latitude)
+    let longitudes = pins.map(\.coordinate.longitude)
+    let center = CLLocationCoordinate2D(
+        latitude: latitudes.reduce(0, +) / Double(max(1, latitudes.count)),
+        longitude: longitudes.reduce(0, +) / Double(max(1, longitudes.count))
+    )
+    let latitudeDelta = max(0.018, (latitudes.max() ?? center.latitude) - (latitudes.min() ?? center.latitude) + 0.012)
+    let longitudeDelta = max(0.018, (longitudes.max() ?? center.longitude) - (longitudes.min() ?? center.longitude) + 0.012)
+    return MKCoordinateRegion(
+        center: center,
+        span: MKCoordinateSpan(latitudeDelta: latitudeDelta, longitudeDelta: longitudeDelta)
+    )
+}
+
+private struct QuestionEvidenceSidebar: View {
+    let turn: QuestionTurn?
+    let model: AppModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 11) {
+                    RatsGlyphView(glyph: .analysis, color: RatsColor.primary, lineWidth: 1.65)
+                        .frame(width: 19, height: 19)
+                        .frame(width: 38, height: 38)
+                        .background(RatsColor.primary.opacity(0.09))
+                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Quellen & Belege")
+                            .font(RatsFont.title(19))
+                            .foregroundStyle(RatsColor.text)
+                        Text("Direkt neben deiner Antwort")
+                            .font(RatsFont.body(11.5))
+                            .foregroundStyle(RatsColor.secondary)
+                    }
+                }
+
+                if let turn {
+                    evidence(for: turn)
+                } else {
+                    emptyState
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 18)
+            .padding(.bottom, 28)
+        }
+        .scrollIndicators(.hidden)
+        .background(RatsColor.card.opacity(0.42))
+    }
+
+    @ViewBuilder
+    private func evidence(for turn: QuestionTurn) -> some View {
+        Text(turn.question)
+            .font(RatsFont.body(13, weight: .semibold))
+            .foregroundStyle(RatsColor.bodyText)
+            .lineLimit(3)
+            .padding(.bottom, 2)
+
+        if turn.status != nil || turn.research?.status == "laeuft" {
+            RatsLoadingState(message: "Belege werden zusammengestellt …")
+        }
+
+        if !turn.sources.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                MonoKicker("Amtliche Quellen", trailing: "\(turn.sources.count)")
+                ForEach(Array(turn.sources.enumerated()), id: \.element.id) { index, source in
+                    Button { model.navigation.append(.decision(id: source.id)) } label: {
+                        SourceRow(
+                            number: source.id,
+                            title: source.title,
+                            meta: [source.committee, source.sessionDate].compactMap { $0 }.joined(separator: " · ")
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    if index < turn.sources.count - 1 {
+                        Divider().overlay(RatsColor.separator)
+                    }
+                }
+            }
+            .padding(14)
+            .background(RatsColor.card)
+            .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(RatsColor.border))
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+
+            PartyOpinionsView(turn: turn, model: model)
+        }
+
+        CouncilEvidenceBlocks(fields: turn.evidence, model: model)
+
+        let pins = questionMapPins(for: turn.sources)
+        if !pins.isEmpty {
+            QuestionEvidenceMap(pins: pins)
+        }
+
+        if turn.status == nil,
+           turn.research?.status != "laeuft",
+           turn.sources.isEmpty,
+           !hasCouncilEvidence(turn.evidence) {
+            VStack(alignment: .leading, spacing: 8) {
+                MonoKicker("Beleglage")
+                Text(turn.answer.isEmpty ? "Stell links eine Frage – passende Ratsunterlagen erscheinen dann hier." : "Zu dieser Antwort wurden keine zusätzlichen Ratsunterlagen gefunden.")
+                    .font(RatsFont.body(12.5))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineSpacing(2)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RatsColor.card)
+            .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(RatsColor.border))
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 9) {
+            Lotti3DView(scene: .reading, animated: false)
+                .frame(width: 116, height: 100)
+            Text("Lotti legt die Unterlagen bereit")
+                .font(RatsFont.body(14, weight: .semibold))
+                .foregroundStyle(RatsColor.text)
+            Text("Sobald du links eine Frage stellst, bleiben Quellen, Sitzungen und weitere Belege hier beim Lesen sichtbar.")
+                .font(RatsFont.body(12))
+                .foregroundStyle(RatsColor.secondary)
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 28)
+    }
+
+    private func hasCouncilEvidence(_ fields: [String: JSONValue]) -> Bool {
+        if fields["beleglage"]?.string == "duenn" || EvidenceChartData(fields["grafik"]) != nil {
+            return true
+        }
+        return ["anlagen", "presse", "debatten", "sitzungen", "planungen", "steckbriefe"]
+            .contains { !(fields[$0]?.array ?? []).isEmpty }
+    }
 }
 
 private struct PartyOpinion: Codable, Sendable, Identifiable {
