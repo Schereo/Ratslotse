@@ -72,7 +72,9 @@ struct TodayView: View {
 
     @ViewBuilder
     private var primaryColumn: some View {
-        if let today { TodayStatusCard(today: today, openSessions: openSessions) }
+        if let today, today.state != "naechste" || preview?.found != true {
+            TodayStatusCard(today: today, openSessions: openSessions)
+        }
         if let preview, preview.found {
             WeekPreviewCard(preview: preview) { sessionID, itemNumber in
                 model.navigation.append(.sessions(ksinr: sessionID, tops: [itemNumber]))
