@@ -71,8 +71,12 @@ public struct NativeRootView: View {
         .task {
             await model.bootstrap()
 #if DEBUG
-            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_AUTH"] == "login" {
-                model.authPresentation = .login
+            switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_AUTH"] {
+            case "login": model.authPresentation = .login
+            case "register": model.authPresentation = .register
+            case "forgot": model.authPresentation = .forgotPassword
+            case "reset": model.authPresentation = .resetPassword(token: "visual-qa")
+            default: break
             }
             if let rawStep = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ONBOARDING"],
                let step = Int(rawStep), (0...3).contains(step) {
@@ -156,8 +160,8 @@ private struct UpdateRequiredView: View {
         ZStack {
             RatsColor.page.ignoresSafeArea()
             VStack(spacing: 0) {
-                LottiMascot(pose: .point)
-                    .frame(width: 112, height: 112)
+                Lotti3DView(scene: .questions)
+                    .frame(width: 174, height: 128)
                     .padding(.bottom, -14)
                     .zIndex(1)
                     .accessibilityHidden(true)

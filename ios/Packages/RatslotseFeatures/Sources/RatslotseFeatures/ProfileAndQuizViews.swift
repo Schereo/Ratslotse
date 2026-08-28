@@ -460,7 +460,15 @@ struct QuizView: View {
         .background(RatsColor.page)
         .navigationTitle("Oldenburg-Quiz")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await loadAreas() }
+        .task {
+#if DEBUG
+            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUIZ_RESULT"] == "1" {
+                installDebugResult()
+                return
+            }
+#endif
+            await loadAreas()
+        }
         .sheet(isPresented: $showOwnEditor) {
             OwnQuizEditor(model: model) { await loadDashboard() }
                 .ratsLargeSheet()
@@ -616,8 +624,9 @@ struct QuizView: View {
 
     private var resultView: some View {
         VStack(spacing: 16) {
-            Image(systemName: correct * 2 >= round.count ? "trophy.fill" : "flag.checkered")
-                .font(.system(size: 44)).foregroundStyle(RatsColor.signal)
+            Lotti3DView(scene: .celebrate)
+                .frame(width: 220, height: 176)
+                .accessibilityHidden(true)
             Text("\(correct) von \(round.count) richtig").font(RatsFont.title(28))
             Text("\(points) Punkte").foregroundStyle(RatsColor.secondary)
             Text(mode.title).font(RatsFont.body(12)).foregroundStyle(RatsColor.muted)
@@ -630,6 +639,30 @@ struct QuizView: View {
         .frame(maxWidth: .infinity)
         .ratsCard()
     }
+
+#if DEBUG
+    private func installDebugResult() {
+        round = (0..<4).map { number in
+            QuizQuestion(
+                id: number,
+                areaType: "stadtteil",
+                areaKey: "Osternburg",
+                category: "Oldenburg",
+                difficulty: "mittel",
+                question: "Vorschaufrage",
+                options: ["Antwort A", "Antwort B"],
+                qtype: nil,
+                unit: nil,
+                rangeMin: nil,
+                rangeMax: nil,
+                hint: nil
+            )
+        }
+        index = round.count
+        correct = 3
+        points = 240
+    }
+#endif
 
     private func loadAreas() async {
         guard areas == nil else { return }

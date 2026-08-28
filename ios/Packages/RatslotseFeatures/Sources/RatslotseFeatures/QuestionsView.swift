@@ -318,12 +318,12 @@ private struct EmptyQuestionsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .bottom, spacing: 12) {
-                LottiMascot(pose: .point)
-                    .frame(width: 72, height: 72)
-                Text("Frag, wie du sprechen würdest.")
-                    .font(RatsFont.title(26))
-            }
+            Lotti3DView(scene: .questions)
+                .frame(maxWidth: .infinity)
+                .frame(height: 164)
+                .accessibilityHidden(true)
+            Text("Frag, wie du sprechen würdest.")
+                .font(RatsFont.title(26))
             Text("Ratslotse sucht in Beschlüssen, Vorlagen und Debatten. Die Quellen stehen direkt an der Antwort.")
                 .foregroundStyle(RatsColor.secondary)
                 .lineSpacing(3)

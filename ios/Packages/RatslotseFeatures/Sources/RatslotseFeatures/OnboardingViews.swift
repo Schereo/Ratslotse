@@ -25,8 +25,8 @@ struct NativeOnboardingWelcomeView: View {
                             .frame(width: 154, height: 154)
                             .scaleEffect(ringsExpanded ? 0.94 : 1.13)
                             .opacity(ringsExpanded ? 0.8 : 0.2)
-                        LottiMascot(pose: .wave)
-                            .frame(width: 138, height: 138)
+                        Lotti3DView(scene: .wave)
+                            .frame(width: 158, height: 144)
                     }
                     .accessibilityHidden(true)
 
@@ -234,7 +234,7 @@ private struct OnboardingProgressHeader: View {
 private struct OnboardingStepPage<Content: View, Footer: View>: View {
     let title: String
     let lead: String
-    let pose: LottiPose
+    let scene: Lotti3DScene
     @ViewBuilder let content: Content
     @ViewBuilder let footer: Footer
 
@@ -242,8 +242,8 @@ private struct OnboardingStepPage<Content: View, Footer: View>: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 12) {
-                    LottiMascot(pose: pose)
-                        .frame(width: 54, height: 54)
+                    Lotti3DView(scene: scene)
+                        .frame(width: 92, height: 70)
                         .accessibilityHidden(true)
                     Text(title)
                         .font(RatsFont.title(22, weight: .heavy))
@@ -288,7 +288,7 @@ private struct CommitteeOnboardingStep: View {
         OnboardingStepPage(
             title: "Welche Gremien interessieren dich?",
             lead: "Du bekommst eine Mitteilung, sobald eine Tagesordnung erscheint. Jederzeit änderbar.",
-            pose: .point,
+            scene: .children,
             content: { Group {
                 if loading { ProgressView("Gremien werden geladen …").tint(RatsColor.primary) }
                 if let error { ErrorCard(message: error) { Task { await load() } } }
@@ -434,7 +434,7 @@ private struct TopicOnboardingStep: View {
         OnboardingStepPage(
             title: "Worüber willst du Bescheid wissen?",
             lead: "Lege Themen an — Lotti meldet sich, sobald der Rat dazu entscheidet.",
-            pose: .search,
+            scene: .questions,
             content: { VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 8) {
                     TextField("z. B. Cäcilienbrücke", text: $name)
@@ -630,11 +630,11 @@ private struct PushOnboardingStep: View {
         OnboardingStepPage(
             title: "Soll Lotti sich melden?",
             lead: "Nur wenn der Rat zu deinen Themen entscheidet oder eine Tagesordnung erscheint. Kein Spam — versprochen.",
-            pose: .wave,
+            scene: .wave,
             content: { VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 12) {
-                    LottiMascot(pose: .point)
-                        .frame(width: 45, height: 45)
+                    Lotti3DView(scene: .reading, animated: false)
+                        .frame(width: 46, height: 50)
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("NEU ZU DEINEN THEMEN")

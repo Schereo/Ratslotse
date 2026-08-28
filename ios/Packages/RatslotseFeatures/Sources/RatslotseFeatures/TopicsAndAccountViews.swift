@@ -34,8 +34,8 @@ struct TopicsView: View {
 
                 if topics.isEmpty && error == nil {
                     VStack(spacing: 13) {
-                        LottiMascot(pose: .wave)
-                            .frame(width: 92, height: 92)
+                        Lotti3DView(scene: .questions)
+                            .frame(width: 154, height: 112)
                             .accessibilityHidden(true)
                         Text("Noch keine Themen").font(RatsFont.title(22))
                         Text("Lege ein Thema an. Ratslotse meldet dir neue passende Beschlüsse.")
@@ -100,7 +100,12 @@ struct TopicsView: View {
         .navigationTitle("Meine Themen")
         .toolbarTitleDisplayMode(.inline)
         .refreshable { await load() }
-        .task { if topics.isEmpty { await load() } }
+        .task {
+#if DEBUG
+            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_TOPICS_EMPTY"] == "1" { return }
+#endif
+            if topics.isEmpty { await load() }
+        }
         .onAppear {
 #if DEBUG
             if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_TOPIC_EDITOR"] == "1" {

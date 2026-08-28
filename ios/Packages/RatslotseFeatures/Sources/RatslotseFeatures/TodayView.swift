@@ -15,8 +15,8 @@ struct TodayView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: RatsSpacing.xl) {
                 HStack(alignment: .center, spacing: 14) {
-                    LottiMascot(pose: .wave)
-                        .frame(width: 78, height: 78)
+                    Lotti3DView(scene: .wave)
+                        .frame(width: 92, height: 84)
                     VStack(alignment: .leading, spacing: 7) {
                         MonoKicker(dayLabel)
                         Text(greeting)

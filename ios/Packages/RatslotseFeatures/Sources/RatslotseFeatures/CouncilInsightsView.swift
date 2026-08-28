@@ -406,8 +406,8 @@ struct CouncilInsightsView: View {
 
     private func analysisIntro(title: String, detail: String) -> some View {
         HStack(alignment: .top, spacing: 13) {
-            LottiMascot(pose: .point)
-                .frame(width: 64, height: 64)
+            Lotti3DView(scene: .explain, animated: false)
+                .frame(width: 140, height: 86)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(RatsFont.title(18))
                 Text(detail).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.secondary).lineSpacing(2)
@@ -422,7 +422,8 @@ struct CouncilInsightsView: View {
 
     private func empty(_ title: String, _ message: String) -> some View {
         VStack(spacing: 8) {
-            LottiMascot(pose: .search, animated: false).frame(width: 84, height: 84)
+            Lotti3DView(scene: .reading, animated: false)
+                .frame(width: 124, height: 132)
             Text(title).font(RatsFont.title(20))
             Text(message).font(RatsFont.body(12.5)).foregroundStyle(RatsColor.secondary).multilineTextAlignment(.center)
         }
@@ -443,6 +444,19 @@ struct CouncilInsightsView: View {
     private func load() async {
         isLoading = true
         defer { isLoading = false }
+#if DEBUG
+        if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ANALYSIS_FIXTURE"] == "1" {
+            trends = TrendResponse(
+                quarters: ["2026-Q1", "2026-Q2", "2026-Q3"],
+                fields: ["verkehr", "soziales"],
+                byField: ["verkehr": [4, 7, 9], "soziales": [3, 5, 4]],
+                money: [1_200_000, 2_800_000, 4_100_000],
+                emerging: [EmergingTopic(tag: "Velorouten", n: 5)],
+                fieldLabels: ["verkehr": "Verkehr", "soziales": "Soziales"]
+            )
+            return
+        }
+#endif
         do {
             async let trendRequest: TrendResponse = model.api.get("/api/council/trends")
             async let partyRequest: PartyAnalysisResponse = model.api.get("/api/council/analysis")

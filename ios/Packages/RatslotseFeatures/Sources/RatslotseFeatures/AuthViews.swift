@@ -121,7 +121,7 @@ private struct CredentialsView: View {
 
     var body: some View {
         AuthScaffold(
-            mascot: .wave,
+            scene: .wave,
             title: mode == .login ? "Moin!" : "Leinen los!",
             subtitle: mode == .login
                 ? "Willkommen zurück – melde dich an, um fortzufahren."
@@ -264,7 +264,7 @@ private struct ForgotPasswordView: View {
 
     var body: some View {
         AuthScaffold(
-            mascot: .search,
+            scene: .questions,
             title: "Passwort über Bord?",
             subtitle: "Gib deine E-Mail-Adresse ein – wir schicken dir einen Link zum Zurücksetzen."
         ) {
@@ -312,7 +312,7 @@ private struct ResetPasswordView: View {
 
     var body: some View {
         AuthScaffold(
-            mascot: .point,
+            scene: .reading,
             title: "Neues Passwort",
             subtitle: "Wähle mindestens acht Zeichen und bestätige die Eingabe einmal."
         ) {
@@ -361,7 +361,7 @@ struct VerificationPendingView: View {
 
     var body: some View {
         AuthScaffold(
-            mascot: .point,
+            scene: .wave,
             title: "Fast an Bord!",
             subtitle: "Bestätige deine E-Mail-Adresse. Sobald der Link geöffnet ist, geht es hier automatisch weiter."
         ) {
@@ -400,18 +400,18 @@ struct VerificationPendingView: View {
 }
 
 private struct AuthScaffold<Content: View>: View {
-    let mascot: LottiPose
+    let scene: Lotti3DScene
     let title: String
     let subtitle: String
     @ViewBuilder let content: Content
 
     init(
-        mascot: LottiPose,
+        scene: Lotti3DScene,
         title: String,
         subtitle: String,
         @ViewBuilder content: () -> Content
     ) {
-        self.mascot = mascot
+        self.scene = scene
         self.title = title
         self.subtitle = subtitle
         self.content = content()
@@ -426,8 +426,8 @@ private struct AuthScaffold<Content: View>: View {
                 .accessibilityHidden(true)
             ScrollView {
                 VStack(spacing: 0) {
-                    LottiMascot(pose: mascot)
-                        .frame(width: 104, height: 104)
+                    Lotti3DView(scene: scene)
+                        .frame(width: 138, height: 122)
                         .padding(.bottom, -13)
                         .zIndex(1)
                         .accessibilityHidden(true)
