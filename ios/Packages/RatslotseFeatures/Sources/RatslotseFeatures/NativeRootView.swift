@@ -239,40 +239,18 @@ private struct RatsRouteButtonStyle: ButtonStyle {
 }
 
 private struct LaunchLoadingView: View {
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
     var body: some View {
-        VStack(spacing: 0) {
-            Lotti3DView(scene: .celebrate)
-                .frame(
-                    width: horizontalSizeClass == .regular ? 360 : 300,
-                    height: horizontalSizeClass == .regular ? 300 : 250
-                )
+        ZStack {
+            RatsColor.page.ignoresSafeArea()
+
+            // Das identische Asset wie im systemeigenen UILaunchScreen hält
+            // Größe und Position während des Bootstrap stabil. Ein zweites,
+            // kleineres Motiv oder ein Spinner würde wie ein Layoutsprung
+            // wirken, obwohl lediglich der Sitzungszustand geladen wird.
+            Image("Splash")
+                .renderingMode(.original)
                 .accessibilityHidden(true)
-
-            Text("Ratslotse")
-                .font(RatsFont.title(horizontalSizeClass == .regular ? 42 : 36, weight: .heavy))
-                .foregroundStyle(RatsColor.text)
-                .padding(.top, 4)
-
-            Text("OLDENBURGS RAT VERSTEHEN")
-                .font(RatsFont.mono(10.5, weight: .semibold))
-                .tracking(1.7)
-                .foregroundStyle(RatsColor.signal)
-                .padding(.top, 7)
-
-            HStack(spacing: 9) {
-                ProgressView()
-                    .controlSize(.small)
-                    .tint(RatsColor.primary)
-                Text("Ratslotse wird vorbereitet …")
-                    .font(RatsFont.body(13, weight: .medium))
-                    .foregroundStyle(RatsColor.secondary)
-            }
-            .padding(.top, 22)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(RatsColor.page)
     }
 }
 
