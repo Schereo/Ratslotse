@@ -822,6 +822,140 @@ def test_topic_decision_matching(client):
     assert round(decisions[0]["score"], 2) == 0.81
 
 
+# ---- Sofort-Abgleich beim Anlegen (Tim, 28.08.2026) ------------------------
+
+def _seed_schulbegleitung(n: int = 3) -> list[int]:
+    """Ein paar Beschlüsse, auf die ein Thema treffen kann."""
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(78, "Sozialausschuss", "2025-06-24", "18:00", "Rathaus",
+                                   agenda_items=[AgendaItem("Ö 8", "AG Schulbegleitung")]))
+    for i in range(n):
+        cs._insert_decision(78, i, "decision", None, str(i + 1),
+                            f"Pauschalierte Schulbegleitung {i + 1}",
+                            "Beschluss", "angenommen", None, None, None, [], None, None, None)
+    cs._conn.commit()
+    ids = [r[0] for r in cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 78")]
+    cs.close()
+    return ids
+
+
+def _abgleich_liefert(monkeypatch, hits, gedeckelt=False):
+    """Den Cross-Encoder ersetzen — die Testumgebung hat keinen."""
+    from council import topic_intel
+    monkeypatch.setattr(CouncilStore, "embeddings_version", lambda self: (5, 5, 1))
+    monkeypatch.setattr(topic_intel, "treffer",
+                        lambda store, name, text: (hits, gedeckelt, 93))
+
+
+def test_neues_thema_zaehlt_sofort(client, monkeypatch):
+    """Tims Befund 28.08.2026: Ein frisch angelegtes Thema stand bis zum
+    Wochenlauf (sonntags 3 Uhr) auf 0 — und die Karte machte daraus „Noch keine
+    Treffer, wir melden uns, sobald der Rat dazu entscheidet". Bei
+    „Schulbegleitung" (34 Beschlüsse seit 2018) war das keine fehlende Zahl,
+    sondern eine falsche Aussage über den Rat: als sei das Thema erst mit dem
+    Anlegen aufgekommen."""
+    _register(client)
+    ids = _seed_schulbegleitung()
+    _abgleich_liefert(monkeypatch, [(d, 0.7) for d in ids])
+
+    r = client.post("/api/topics", json={"name": "Schulbegleitung",
+                                         "description": "Konzeptionierung Schulbegleitung"})
+    assert r.status_code == 201
+    assert r.json()["decision_count"] == len(ids)
+    assert r.json()["matched"] is True
+
+    # Die Zahl ist keine Behauptung der Antwort: Sie liegt als Trefferliste in
+    # der Datenbank, und „alle ansehen" liefert dieselbe Menge. Genau daran
+    # scheiterte die Idee, bloß eine Zahl mitzuschicken.
+    topic = client.get("/api/topics").json()[0]
+    assert topic["decision_count"] == len(ids)
+    assert topic["matched"] is True
+    liste = client.get(f"/api/topics/{topic['id']}/decisions").json()["decisions"]
+    assert len(liste) == len(ids)
+
+
+def test_erstabgleich_ist_keine_neuigkeit(client, monkeypatch):
+    """Der Bestand ist kein Ereignis. Mit dem Zeitstempel von jetzt zöge ihn der
+    Wochenüberblick (N6) in „Diese Woche: n Beschlüsse zu deinen Themen" und
+    meldete sonntags Beschlüsse von 2019 als Nachricht der Woche — der Fehler
+    vom 17.08.2026. Und ein „n neu"-Abzeichen hat nicht verdient, wer die Zahl
+    gerade entstehen sieht."""
+    owner_id = _register(client).json()["id"]
+    ids = _seed_schulbegleitung()
+    _abgleich_liefert(monkeypatch, [(d, 0.7) for d in ids])
+
+    client.post("/api/topics", json={"name": "Schulbegleitung",
+                                     "description": "Konzeptionierung Schulbegleitung"})
+
+    assert client.get("/api/topics").json()[0]["unread_count"] == 0
+    assert client.get("/api/topics/unread-count").json()["total"] == 0
+    st = Store(NWZ_DB)
+    try:
+        seit = (date.today() - timedelta(days=7)).isoformat()
+        assert st.topic_match_decision_ids_since(owner_id, seit) == []
+    finally:
+        st.close()
+
+
+def test_thema_entsteht_auch_ohne_abgleich(client, monkeypatch):
+    """Kein Cross-Encoder, kein Embedding-Bestand, Modell-Download klemmt: Dann
+    fehlt die Zahl — nie das Thema. ``matched: false`` sagt der Karte, dass sie
+    „wird noch gezählt" schreiben soll statt der 0, die wie ein Befund aussieht."""
+    _register(client)
+    from council import topic_intel
+    monkeypatch.setattr(CouncilStore, "embeddings_version", lambda self: (5, 5, 1))
+
+    def kein_reranker(*a, **k):
+        raise RuntimeError("Cross-Encoder nicht verfügbar")
+
+    monkeypatch.setattr(topic_intel, "treffer", kein_reranker)
+    r = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau in Oldenburg"})
+    assert r.status_code == 201
+    assert r.json()["decision_count"] == 0
+    assert r.json()["matched"] is False
+    assert client.get("/api/topics").json()[0]["matched"] is False
+
+
+def test_geaenderte_beschreibung_rechnet_sofort_neu(client, monkeypatch):
+    """Wer die Beschreibung ändert, ändert die Trefferliste. Sonst zeigte das
+    Bearbeiten-Blatt beim Tippen eine Vorschau, und die Karte trug bis Sonntag
+    weiter die Zahl zum alten Text."""
+    _register(client)
+    ids = _seed_schulbegleitung()
+    _abgleich_liefert(monkeypatch, [(ids[0], 0.7)])
+    tid = client.post("/api/topics", json={"name": "Schulbegleitung",
+                                           "description": "Eng gefasst."}).json()["id"]
+
+    _abgleich_liefert(monkeypatch, [(d, 0.7) for d in ids], gedeckelt=True)
+    r = client.put(f"/api/topics/{tid}", json={"name": "Schulbegleitung",
+                                               "description": "Weiter gefasst, mit Inklusion."})
+    assert r.status_code == 200
+    assert r.json()["decision_count"] == len(ids)
+    assert r.json()["decision_count_capped"] is True
+    assert client.get("/api/topics").json()[0]["decision_count"] == len(ids)
+
+
+def test_gescheiterter_abgleich_laesst_den_bestand_stehen(client, monkeypatch):
+    """Fällt die Rechnung beim Speichern aus, darf die Karte nicht auf 0
+    fallen: Die gespeicherten Treffer sind unberührt und bleiben die Antwort."""
+    _register(client)
+    ids = _seed_schulbegleitung()
+    _abgleich_liefert(monkeypatch, [(d, 0.7) for d in ids])
+    tid = client.post("/api/topics", json={"name": "Schulbegleitung",
+                                           "description": "Konzeptionierung."}).json()["id"]
+
+    from council import topic_intel
+    monkeypatch.setattr(topic_intel, "treffer",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("weg")))
+    r = client.put(f"/api/topics/{tid}", json={"name": "Schulbegleitung",
+                                               "description": "Anderer Text."})
+    assert r.status_code == 200
+    assert r.json()["decision_count"] == len(ids)
+    # Abgeglichen wurde dieses Thema ja schon einmal — die Karte darf weiter
+    # die Zahl zeigen statt „wird noch gezählt".
+    assert r.json()["matched"] is True
+
+
 def test_topic_decisions_replace_on_rerun(client):
     """Re-running the matcher replaces a topic's matches (no stale duplicates)."""
     owner_id = _register(client).json()["id"]

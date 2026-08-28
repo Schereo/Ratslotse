@@ -477,6 +477,11 @@ export interface Topic {
    *  — die Karte schreibt dann „40+" statt einer Endzahl, die keine ist. Gilt
    *  genauso für die Trefferliste dahinter (view.tsx: `topicCapped`). */
   decision_count_capped?: boolean;
+  /** Wurde für dieses Thema schon einmal abgeglichen? Trennt die zwei Nullen,
+   *  die auf der Karte gleich aussahen: „gerechnet, der Rat hat dazu wirklich
+   *  nichts entschieden" und „die Zahl steht noch aus". Fehlt das Feld (alte
+   *  Antwort aus dem Cache), gilt die vorsichtigere erste Lesart. */
+  matched?: boolean;
   last_hit_id?: number | null;
   last_hit_title?: string | null;
   last_hit_date?: string | null;
