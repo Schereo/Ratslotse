@@ -581,7 +581,7 @@ private struct TopicSuggestionChoice: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(alignment: .top, spacing: 9) {
                 ZStack {
                     Circle()
                         .fill(exists ? RatsColor.primary : RatsColor.primary.opacity(0.1))
@@ -589,23 +589,34 @@ private struct TopicSuggestionChoice: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(exists ? RatsColor.primaryText : RatsColor.primary)
                 }
-                .frame(width: 24, height: 24)
+                .frame(width: 25, height: 25)
                 .accessibilityHidden(true)
-                Text(suggestion.name)
-                    .font(RatsFont.body(13, weight: .medium))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(suggestion.name)
+                        .font(RatsFont.body(12.5, weight: .semibold))
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                    Text(suggestion.n == 1 ? "1 Erwähnung" : "\(suggestion.n) Erwähnungen")
+                        .font(RatsFont.mono(8.5))
+                        .foregroundStyle(exists ? RatsColor.primary.opacity(0.72) : RatsColor.muted)
+                }
+
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, minHeight: 52, alignment: .center)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 3)
+            .frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
+            .padding(11)
             .background(exists ? RatsColor.primary.opacity(0.06) : RatsColor.card)
-            .overlay(Capsule().stroke(exists ? RatsColor.primary.opacity(0.35) : RatsColor.border))
-            .clipShape(Capsule())
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(exists ? RatsColor.primary.opacity(0.35) : RatsColor.border)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
         .foregroundStyle(exists ? RatsColor.primary : RatsColor.text)
         .disabled(disabled)
+        .accessibilityLabel("\(suggestion.name), \(suggestion.n) Erwähnungen im letzten Jahr")
     }
 }
 
@@ -671,7 +682,7 @@ private struct TopicOnboardingStep: View {
 
                 if !suggestions.isEmpty {
                     VStack(alignment: .leading, spacing: 9) {
-                        MonoKicker("Gerade aktuell im Rat")
+                        MonoKicker("Gerade aktuell im Rat", trailing: "letzte 12 Monate")
                         LazyVGrid(columns: suggestionColumns, spacing: 10) {
                             ForEach(suggestions) { suggestion in
                                 let exists = topics.contains { $0.name == suggestion.name }
@@ -766,11 +777,24 @@ private struct TopicOnboardingStep: View {
         if horizontalSizeClass == .regular {
             [GridItem(.adaptive(minimum: 230), spacing: 10)]
         } else {
-            [GridItem(.flexible())]
+            [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
         }
     }
 
     private func load() async {
+#if DEBUG
+        if ratsDebugValue("RATSLOTSE_DEBUG_TOPIC_SUGGESTIONS") == "1" {
+            suggestions = [
+                TopicSuggestion(name: "Untere Nadorster Straße", description: "", n: 12),
+                TopicSuggestion(name: "Stadion Maastrichter Straße", description: "", n: 9),
+                TopicSuggestion(name: "Alte Fleiwa", description: "", n: 7),
+                TopicSuggestion(name: "Bebauungsplan 851", description: "", n: 5),
+                TopicSuggestion(name: "Quartier am Krusenbusch", description: "", n: 4),
+                TopicSuggestion(name: "Weser-Ems-Hallen", description: "", n: 3),
+            ]
+            return
+        }
+#endif
         do {
             async let topicRequest: [Topic] = model.api.get("/api/topics")
             async let suggestionRequest: TopicSuggestionResponse = model.api.get("/api/topics/suggestions")
