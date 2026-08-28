@@ -178,6 +178,37 @@ import Testing
     #expect(roundTrip.importance == 82)
 }
 
+@Test func decisionDetailKeepsTheWebParityFields() throws {
+    let data = Data(#"""
+    {
+      "decision": {
+        "id": 17,
+        "title": "Haushaltsplan 2026",
+        "simple_summary": "Lotti erklärt den Beschluss.",
+        "beschluss": "Der amtliche Wortlaut.",
+        "parties": ["SPD"],
+        "policy_tags": ["Haushalt"],
+        "raw_result": "mehrheitlich",
+        "protocol_url": "https://example.test/protokoll.pdf"
+      },
+      "attendance": [{"name":"Erika Beispiel","party":"SPD","role":"mitglied"}],
+      "entities": [{"slug":"haushalt-2026","name":"Haushalt 2026"}],
+      "present_parties": [],
+      "similar": [],
+      "plan_bild": 44
+    }
+    """#.utf8)
+    let detail = try JSONDecoder().decode(DecisionDetail.self, from: data)
+
+    #expect(detail.decision.simpleSummary == "Lotti erklärt den Beschluss.")
+    #expect(detail.decision.officialText == "Der amtliche Wortlaut.")
+    #expect(detail.decision.parties == ["SPD"])
+    #expect(detail.decision.policyTags == ["Haushalt"])
+    #expect(detail.attendance.first?.party == "SPD")
+    #expect(detail.entities.first?.slug == "haushalt-2026")
+    #expect(detail.planImageID == 44)
+}
+
 @Test func personAffiliationChipsFollowDesktopDisambiguationRules() {
     let ulf = QuestionPerson(
         slug: "ulf-prange",

@@ -332,6 +332,9 @@ private struct MainTabsView: View {
             if horizontalSizeClass == .regular { showsMore = false }
 #if DEBUG
             switch ratsDebugValue("RATSLOTSE_DEBUG_MAIN") {
+            case "decision-detail":
+                model.selectedTab = .council
+                model.navigation = [.decision(id: 1)]
             case "decisions":
                 model.navigation.removeAll()
                 model.councilSection = .decisions

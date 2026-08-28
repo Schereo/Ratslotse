@@ -702,119 +702,14 @@ struct DecisionDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 if let detail {
                     let decision = detail.decision
-                    VStack(alignment: .leading, spacing: 10) {
-                        MonoKicker(
-                            [decision.committee, RatsDate.short(decision.sessionDate)].compactMap { $0 }.joined(separator: " · ")
-                        )
-                        Text(decision.title).font(RatsFont.title(28))
-                        if let outcome = decision.outcome { OutcomeBadge(outcome) }
-                    }
-
-                    if let summary = decision.summary, !summary.isEmpty {
-                        VStack(alignment: .leading, spacing: 9) {
-                            MonoKicker("Kurz erklärt")
-                            Text(summary).font(RatsFont.body(16)).foregroundStyle(RatsColor.bodyText).lineSpacing(5)
-                        }
-                        .ratsCard()
-                    }
-
-                    if let importance = detail.importance,
-                       let reason = importance.impactReason, !reason.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            MonoKicker("Warum das wichtig ist", trailing: importance.score.map { "\($0) / 100" })
-                            Text(reason).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText)
-                        }
-                        .ratsCard()
-                    }
-
-                    if decision.vote != nil || decision.noVotes != nil || decision.abstentions != nil || !decision.factions.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            MonoKicker("Abstimmung")
-                            if let vote = decision.vote { Text(vote).font(RatsFont.body(15, weight: .semibold)) }
-                            HStack(spacing: 8) {
-                                if let noVotes = decision.noVotes { Pill("\(noVotes) Gegenstimmen", symbol: "hand.thumbsdown") }
-                                if let abstentions = decision.abstentions { Pill("\(abstentions) Enthaltungen", symbol: "minus") }
-                            }
-                            if !decision.factions.isEmpty {
-                                Text("Eingebracht von").font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
-                                FlexibleChips(items: decision.factions)
-                            }
-                        }
-                        .ratsCard()
-                    }
-
-                    if !detail.subVotes.isEmpty {
-                        VStack(alignment: .leading, spacing: 13) {
-                            MonoKicker("Änderungsanträge & Teilabstimmungen", trailing: "\(detail.subVotes.count)")
-                            ForEach(detail.subVotes) { subVote in
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text(subVote.title).font(RatsFont.body(14, weight: .semibold))
-                                    if let outcome = subVote.outcome { OutcomeBadge(outcome) }
-                                    if !subVote.factions.isEmpty {
-                                        Text(subVote.factions.joined(separator: " · "))
-                                            .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
-                                    }
-                                }
-                                if subVote.id != detail.subVotes.last?.id { Divider() }
-                            }
-                        }
-                        .ratsCard()
-                    }
+                    DecisionDetailHeader(detail: detail)
 
                     if let participation = detail.participation,
                        let url = URL(string: participation.url) {
-                        VStack(alignment: .leading, spacing: 9) {
-                            MonoKicker("Du kannst dich beteiligen", trailing: participation.status)
-                            Text(participation.title).font(RatsFont.body(16, weight: .semibold))
-                            if let until = participation.until { Text("Frist: \(until)").font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary) }
-                            Link(destination: url) { Label("Beteiligung öffnen", systemImage: "arrow.up.right.square") }
-                                .font(RatsFont.body(13, weight: .semibold))
-                        }
-                        .ratsCard()
+                        DecisionParticipationBanner(participation: participation, url: url)
                     }
 
-                    if let template = detail.template {
-                        VStack(alignment: .leading, spacing: 10) {
-                            MonoKicker(template.kind ?? "Beschlussvorlage", trailing: template.number)
-                            if let title = template.title, title != decision.title {
-                                Text(title).font(RatsFont.body(16, weight: .semibold))
-                            }
-                            if let excerpt = template.excerpt, !excerpt.isEmpty {
-                                Text(excerpt).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText).lineSpacing(4)
-                            }
-                            if let department = template.department { Label(department, systemImage: "building.2").font(RatsFont.body(12)) }
-                            if let raw = template.documentURL, let url = URL(string: raw) {
-                                Link(destination: url) { Label("Vorlage öffnen", systemImage: "doc.text") }
-                            }
-                        }
-                        .ratsCard()
-                    }
-
-                    if !detail.attachments.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            MonoKicker("Anlagen & Anträge", trailing: "\(detail.attachments.count)")
-                            ForEach(detail.attachments) { attachment in
-                                Button { previewAttachment = attachment } label: {
-                                    HStack(alignment: .top, spacing: 10) {
-                                        Image(systemName: attachment.isMotion == 1 ? "doc.badge.plus" : "doc.richtext")
-                                            .foregroundStyle(RatsColor.primary)
-                                        VStack(alignment: .leading, spacing: 3) {
-                                            Text(attachment.label).font(RatsFont.body(13, weight: .semibold)).multilineTextAlignment(.leading)
-                                            if !attachment.applicants.isEmpty {
-                                                Text(attachment.applicants.joined(separator: " · "))
-                                                    .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
-                                            }
-                                        }
-                                        Spacer()
-                                        Image(systemName: "eye")
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                                if attachment.id != detail.attachments.last?.id { Divider() }
-                            }
-                        }
-                        .ratsCard()
-                    }
+                    DecisionDetailPrimaryLayout(detail: detail) { previewAttachment = $0 }
 
                     let stops = detail.consultations.isEmpty
                         ? detail.templateJourney.map(CouncilConsultationStop.init(journey:))
@@ -839,11 +734,11 @@ struct DecisionDetailView: View {
                     }
 
                     if !detail.presentParties.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            MonoKicker("Anwesende Fraktionen", trailing: "\(detail.presentParties.count)")
-                            FlexibleChips(items: detail.presentParties)
-                        }
-                        .ratsCard()
+                        DecisionPartyCard(title: "Anwesende Fraktionen", parties: detail.presentParties)
+                    }
+
+                    if !detail.attendance.isEmpty {
+                        DecisionAttendanceCard(attendance: detail.attendance)
                     }
 
                     if !detail.similar.isEmpty {
@@ -887,13 +782,21 @@ struct DecisionDetailView: View {
                         }
                         .font(RatsFont.body(13, weight: .medium))
                     }
+
+                    if let pressURL = Self.pressURL(for: decision.title) {
+                        Link(destination: pressURL) {
+                            Label("Bei NWZonline nach Berichten suchen", systemImage: "newspaper")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .font(RatsFont.body(13, weight: .medium))
+                    }
                 } else if let error {
                     ErrorCard(message: error) { Task { await load() } }
                 } else {
                     ProgressView("Beschluss laden …").frame(maxWidth: .infinity, minHeight: 260)
                 }
             }
-            .frame(maxWidth: 760, alignment: .leading)
+            .frame(maxWidth: 1040, alignment: .leading)
             .padding(18)
         }
         .background(RatsColor.page)
@@ -906,6 +809,14 @@ struct DecisionDetailView: View {
     }
 
     private func load() async {
+#if DEBUG
+        if ratsDebugValue("RATSLOTSE_DEBUG_DECISION_DETAIL") == "1",
+           let fixture = Self.debugDetail() {
+            detail = fixture
+            error = nil
+            return
+        }
+#endif
         do {
             async let detailRequest: DecisionDetail = model.api.get("/api/council/decision/\(decisionID)")
             if model.user != nil {
@@ -919,6 +830,80 @@ struct DecisionDetailView: View {
             error = nil
         } catch { self.error = error.localizedDescription }
     }
+
+    private static func pressURL(for title: String) -> URL? {
+        var components = URLComponents(string: "https://www.nwzonline.de/suche/")
+        components?.queryItems = [URLQueryItem(name: "q", value: title)]
+        return components?.url
+    }
+
+#if DEBUG
+    private static func debugDetail() -> DecisionDetail? {
+        let raw = #"""
+        {
+          "decision": {
+            "id": 1,
+            "ksinr": 88,
+            "kind": "decision",
+            "item_number": "6.5",
+            "title": "Haushaltssatzung und Haushaltsplan 2026 mit der mittelfristigen Ergebnis- und Finanzplanung",
+            "summary": "Der Rat hat den Haushalt für 2026 beschlossen und damit festgelegt, wofür Oldenburg im kommenden Jahr Geld ausgeben darf.",
+            "simple_summary": "Der Rat hat den Haushalt für 2026 beschlossen. Darin steht, welche Projekte Oldenburg bezahlen kann und wo die Stadt im kommenden Jahr Schwerpunkte setzt.",
+            "beschluss": "Die Haushaltssatzung und der Haushaltsplan 2026 werden einschließlich der mittelfristigen Ergebnis- und Finanzplanung sowie des Investitionsprogramms beschlossen.",
+            "committee": "Rat der Stadt",
+            "session_date": "2026-02-09",
+            "outcome": "angenommen",
+            "vote": "mehrheitlich",
+            "gegenstimmen": 20,
+            "enthaltungen": 2,
+            "factions": ["SPD", "Grüne"],
+            "parties": ["SPD", "Grüne"],
+            "vorlage_nr": "26/0456",
+            "raw_result": "mehrheitlich bei 20 Gegenstimmen und 2 Enthaltungen",
+            "protocol_url": "https://ratslotse.de",
+            "policy_field": "finanzen",
+            "policy_tags": ["Haushalt", "Investitionen"],
+            "amount_eur": 12400000,
+            "importance": 82,
+            "abweichung": "stark"
+          },
+          "attendance": [
+            {"name":"A","party":"SPD","role":"mitglied"},
+            {"name":"B","party":"SPD","role":"mitglied"},
+            {"name":"C","party":"CDU","role":"mitglied"},
+            {"name":"D","party":"Grüne","role":"mitglied"}
+          ],
+          "entities": [{"slug":"haushalt-2026","name":"Haushalt 2026"}],
+          "present_parties": ["SPD", "CDU", "Grüne", "FDP"],
+          "ratsinfo_url": "https://ratslotse.de",
+          "vorlage_url": "https://ratslotse.de",
+          "vorlage": {
+            "vorlage_nr":"26/0456",
+            "title":"Haushaltssatzung und Haushaltsplan 2026",
+            "art":"Beschlussvorlage",
+            "document_url":"https://ratslotse.de",
+            "excerpt":"Die Verwaltung legt den Entwurf des Haushaltsplans vor. Er bündelt laufende Aufgaben und geplante Investitionen der Stadt.",
+            "amt":"Amt für Finanzen",
+            "klima_check":"Mehrere Investitionen betreffen energetische Sanierungen und klimafreundliche Mobilität.",
+            "finanz_check":"Die vorgesehenen Investitionen sind in der mittelfristigen Finanzplanung berücksichtigt."
+          },
+          "anlagen": [
+            {"document_id":77,"label":"Haushaltsplan 2026 – Gesamtfassung","url":"https://ratslotse.de","is_antrag":0,"antragsteller":[],"status":"ok"},
+            {"document_id":78,"label":"Änderungsantrag zum Investitionsprogramm","url":"https://ratslotse.de","is_antrag":1,"antragsteller":["SPD","Grüne"],"status":"ok"}
+          ],
+          "importance_breakdown": {"score":82,"impact_reason":"Der Beschluss betrifft nahezu alle Aufgaben der Stadt und legt den finanziellen Rahmen für das ganze Jahr fest."},
+          "beratungsfolge": [
+            {"datum":"2026-01-21","gremium":"Finanzen und Beteiligungen","top":"4","ergebnis":"empfohlen","ksinr":87,"future":false},
+            {"datum":"2026-02-09","gremium":"Rat der Stadt","top":"6.5","ergebnis":"angenommen","ksinr":88,"future":false}
+          ],
+          "follow":{"kvonr":901,"following":false},
+          "similar": [],
+          "sub_votes": []
+        }
+        """#
+        return try? JSONDecoder().decode(DecisionDetail.self, from: Data(raw.utf8))
+    }
+#endif
 
     private func toggleBookmark() {
         guard model.user != nil else { model.authPresentation = .login; return }
@@ -957,6 +942,661 @@ struct DecisionDetailView: View {
     }
 }
 
+private struct DecisionDetailPrimaryLayout: View {
+    let detail: DecisionDetail
+    let preview: (CouncilAttachment) -> Void
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 18) {
+                DecisionNarrativeColumn(detail: detail)
+                    .frame(minWidth: 440, maxWidth: .infinity, alignment: .topLeading)
+                DecisionFactsColumn(detail: detail, preview: preview)
+                    .frame(width: 310, alignment: .topLeading)
+            }
+            VStack(alignment: .leading, spacing: 20) {
+                DecisionNarrativeColumn(detail: detail)
+                DecisionFactsColumn(detail: detail, preview: preview)
+            }
+        }
+    }
+}
+
+private struct DecisionNarrativeColumn: View {
+    let detail: DecisionDetail
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if let summary = detail.decision.simpleSummary ?? detail.decision.summary,
+               !summary.isEmpty {
+                LottiDecisionSummary(text: summary)
+            }
+            if let officialText = detail.decision.officialText, !officialText.isEmpty {
+                DecisionOfficialText(text: officialText)
+            }
+            if let imageID = detail.planImageID {
+                DecisionPlanImage(documentID: imageID)
+            }
+            if !detail.subVotes.isEmpty {
+                DecisionSubvotesCard(subVotes: detail.subVotes)
+            }
+            if let template = detail.template {
+                DecisionTemplateStory(template: template, decisionTitle: detail.decision.title)
+            }
+        }
+    }
+}
+
+private struct DecisionFactsColumn: View {
+    let detail: DecisionDetail
+    let preview: (CouncilAttachment) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            DecisionGlanceCard(detail: detail)
+            DecisionDocumentsCard(detail: detail, preview: preview)
+        }
+    }
+}
+
+private struct DecisionSubvotesCard: View {
+    let subVotes: [DecisionSummary]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            MonoKicker("Änderungsanträge & Teilabstimmungen", trailing: "\(subVotes.count)")
+            ForEach(subVotes) { subVote in
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(subVote.title).font(RatsFont.body(14, weight: .semibold))
+                    if let outcome = subVote.outcome { OutcomeBadge(outcome) }
+                    if !subVote.factions.isEmpty {
+                        Text(subVote.factions.joined(separator: " · "))
+                            .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                    }
+                }
+                if subVote.id != subVotes.last?.id { Divider() }
+            }
+        }
+        .ratsCard()
+    }
+}
+
+private struct DecisionTemplateStory: View {
+    let template: CouncilTemplate
+    let decisionTitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Verlauf & Begründung", systemImage: "text.book.closed")
+                .font(RatsFont.body(15, weight: .bold))
+                .foregroundStyle(RatsColor.text)
+            MonoKicker(template.kind ?? "Beschlussvorlage", trailing: template.number)
+            if let title = template.title, title != decisionTitle {
+                Text(title).font(RatsFont.body(16, weight: .semibold))
+            }
+            if let excerpt = template.excerpt, !excerpt.isEmpty {
+                Text(excerpt).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText).lineSpacing(4)
+            }
+            if let department = template.department {
+                Label(department, systemImage: "building.2")
+                    .font(RatsFont.body(12))
+                    .foregroundStyle(RatsColor.secondary)
+            }
+            if let climate = template.climateCheck, !climate.isEmpty {
+                DecisionDisclosureLine(symbol: "leaf", title: "Klima-Check", text: climate)
+            }
+            if let finances = template.financialCheck, !finances.isEmpty {
+                DecisionDisclosureLine(symbol: "eurosign", title: "Was kostet das?", text: finances)
+            }
+        }
+        .ratsCard()
+    }
+}
+
+private struct DecisionDetailHeader: View {
+    let detail: DecisionDetail
+
+    var body: some View {
+        let decision = detail.decision
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                if let outcome = decision.outcome {
+                    DecisionDetailOutcome(outcome: outcome)
+                }
+                Text(metadata)
+                    .font(RatsFont.mono(9.5))
+                    .foregroundStyle(RatsColor.muted)
+                    .lineLimit(2)
+                Spacer(minLength: 0)
+                if let score = detail.importance?.score, score >= 55 {
+                    Label("\(score)", systemImage: "flame.fill")
+                        .font(RatsFont.body(10, weight: .bold))
+                        .foregroundStyle(RatsColor.warning)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(RatsColor.warning.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .accessibilityLabel("Wichtigkeit \(score) von 100")
+                }
+            }
+
+            Text(decision.title)
+                .font(RatsFont.title(24))
+                .foregroundStyle(RatsColor.text)
+                .lineSpacing(1)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !tags.isEmpty {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 145), spacing: 7)],
+                    alignment: .leading,
+                    spacing: 7
+                ) {
+                    ForEach(tags, id: \.self) { tag in
+                        Label(tag, systemImage: "tag")
+                            .font(RatsFont.body(10.5, weight: .semibold))
+                            .foregroundStyle(RatsColor.primary)
+                            .lineLimit(1)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 6)
+                            .background(RatsColor.primary.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+                }
+            }
+        }
+        .padding(17)
+        .background {
+            LinearGradient(
+                colors: [RatsColor.primary.opacity(0.10), RatsColor.card.opacity(0.94)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(RatsColor.primary.opacity(0.18), lineWidth: 1)
+        }
+    }
+
+    private var metadata: String {
+        let decision = detail.decision
+        let item = decision.itemNumber.map { "TOP \($0)" }
+        let template = decision.templateNumber
+        return [decision.committee.map(shortCouncilCommittee), RatsDate.short(decision.sessionDate), item, template]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+    }
+
+    private var tags: [String] {
+        let decision = detail.decision
+        let field = decision.policyField.map {
+            $0.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+        return Array(([field].compactMap { $0 } + decision.policyTags + detail.entities.map(\.name)).prefix(7))
+    }
+}
+
+private struct DecisionDetailOutcome: View {
+    let outcome: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 7, height: 7)
+            Text(label)
+                .font(RatsFont.body(10.5, weight: .semibold))
+                .foregroundStyle(RatsColor.bodyText)
+        }
+        .fixedSize()
+    }
+
+    private var label: String {
+        switch outcome {
+        case "angenommen": "Angenommen"
+        case "abgelehnt": "Abgelehnt"
+        case "vertagt": "Vertagt"
+        case "zur_kenntnis": "Zur Kenntnis"
+        default: outcome.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    private var color: Color {
+        switch outcome {
+        case "angenommen": RatsColor.success
+        case "abgelehnt": RatsColor.danger
+        case "vertagt": RatsColor.warning
+        default: RatsColor.primary
+        }
+    }
+}
+
+private struct LottiDecisionSummary: View {
+    let text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 11) {
+                Lotti3DView(scene: .explain, animated: false)
+                    .frame(width: 72, height: 64)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("LOTTI ERKLÄRT'S EINFACH")
+                        .font(RatsFont.mono(9.5))
+                        .tracking(1.1)
+                        .foregroundStyle(RatsColor.signal)
+                    Text("Das Wichtigste in Kürze")
+                        .font(RatsFont.body(16, weight: .bold))
+                        .foregroundStyle(RatsColor.text)
+                }
+            }
+            Text(text)
+                .font(RatsFont.body(15))
+                .foregroundStyle(RatsColor.bodyText)
+                .lineSpacing(5)
+            Label("Automatische Kurzfassung – verbindlich ist der amtliche Wortlaut.", systemImage: "sparkles")
+                .font(RatsFont.body(10.5))
+                .foregroundStyle(RatsColor.muted)
+        }
+        .padding(17)
+        .background(RatsColor.signal.opacity(0.065))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(RatsColor.signal.opacity(0.23), lineWidth: 1)
+        }
+    }
+}
+
+private struct DecisionOfficialText: View {
+    let text: String
+    @State private var isExpanded = true
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            Text(text)
+                .font(RatsFont.body(13.5))
+                .foregroundStyle(RatsColor.secondary)
+                .lineSpacing(4)
+                .padding(.top, 10)
+        } label: {
+            Label {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Amtlicher Wortlaut")
+                        .font(RatsFont.body(13.5, weight: .semibold))
+                        .foregroundStyle(RatsColor.text)
+                    Text("Aus dem Sitzungsprotokoll")
+                        .font(RatsFont.body(10.5))
+                        .foregroundStyle(RatsColor.muted)
+                }
+            } icon: {
+                Image(systemName: "doc.text")
+                    .foregroundStyle(RatsColor.primary)
+            }
+        }
+        .tint(RatsColor.primary)
+        .ratsCard()
+    }
+}
+
+private struct DecisionGlanceCard: View {
+    let detail: DecisionDetail
+
+    var body: some View {
+        let decision = detail.decision
+        VStack(alignment: .leading, spacing: 0) {
+            Label("Auf einen Blick", systemImage: "scope")
+                .font(RatsFont.body(15, weight: .bold))
+                .foregroundStyle(RatsColor.text)
+
+            if let amount = decision.amountEUR {
+                DecisionGlanceDivider()
+                Text("BETRAG").font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
+                Text(formatDecisionAmount(amount))
+                    .font(RatsFont.title(25))
+                    .foregroundStyle(RatsColor.signal)
+                Text("Im Beschlusstext genannt – automatisch erkannt")
+                    .font(RatsFont.body(10)).foregroundStyle(RatsColor.muted)
+            }
+
+            if hasVote {
+                DecisionGlanceDivider()
+                Text("ABSTIMMUNG").font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
+                if let vote = decision.vote {
+                    Text(vote.capitalized)
+                        .font(RatsFont.body(16, weight: .bold))
+                        .foregroundStyle(RatsColor.text)
+                        .padding(.top, 3)
+                }
+                HStack(spacing: 7) {
+                    if let noVotes = decision.noVotes { Pill("\(noVotes) dagegen", symbol: "hand.thumbsdown") }
+                    if let abstentions = decision.abstentions { Pill("\(abstentions) enthalten", symbol: "minus") }
+                }
+                if let result = decision.rawResult, !result.isEmpty {
+                    Text("„\(result.trimmingCharacters(in: .whitespacesAndNewlines))“")
+                        .font(RatsFont.body(11))
+                        .italic()
+                        .foregroundStyle(RatsColor.secondary)
+                        .padding(.top, 5)
+                }
+            }
+
+            if !decision.parties.isEmpty {
+                DecisionGlanceDivider()
+                Text("ANTRAG VON").font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
+                DecisionPartyGrid(parties: decision.parties)
+                    .padding(.top, 5)
+            }
+
+            if decision.deviation == "stark" {
+                DecisionGlanceDivider()
+                Label("Vom Vorschlag deutlich abgewichen", systemImage: "arrow.triangle.branch")
+                    .font(RatsFont.body(12, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+            }
+
+            if let importance = detail.importance, let score = importance.score {
+                DecisionGlanceDivider()
+                HStack {
+                    Text("WICHTIGKEIT").font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
+                    Spacer()
+                    Text("\(score) / 100").font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                }
+                ProgressView(value: Double(score), total: 100)
+                    .tint(score >= 70 ? RatsColor.warning : RatsColor.primary)
+                    .padding(.vertical, 7)
+                if let reason = importance.impactReason, !reason.isEmpty {
+                    Text(reason)
+                        .font(RatsFont.body(12.5))
+                        .foregroundStyle(RatsColor.bodyText)
+                        .lineSpacing(3)
+                }
+            }
+        }
+        .ratsCard()
+    }
+
+    private var hasVote: Bool {
+        let decision = detail.decision
+        return decision.vote != nil || decision.noVotes != nil || decision.abstentions != nil
+    }
+}
+
+private struct DecisionGlanceDivider: View {
+    var body: some View { Divider().padding(.vertical, 13) }
+}
+
+private struct DecisionParticipationBanner: View {
+    let participation: CouncilParticipation
+    let url: URL
+
+    var body: some View {
+        Link(destination: url) {
+            HStack(alignment: .top, spacing: 11) {
+                Image(systemName: "person.2.wave.2")
+                    .font(.title3)
+                    .foregroundStyle(RatsColor.primary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Hier kannst du dich beteiligen")
+                        .font(RatsFont.body(14, weight: .bold))
+                    Text(participation.title)
+                        .font(RatsFont.body(13, weight: .medium))
+                    Text([participation.step, participation.until.map { "bis \($0)" }].compactMap { $0 }.joined(separator: " · "))
+                        .font(RatsFont.body(10.5))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "arrow.up.right")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(RatsColor.primary.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct DecisionDisclosureLine: View {
+    let symbol: String
+    let title: String
+    let text: String
+    @State private var isExpanded = false
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            Text(text)
+                .font(RatsFont.body(12))
+                .foregroundStyle(RatsColor.secondary)
+                .lineSpacing(3)
+                .padding(.top, 6)
+        } label: {
+            Label(title, systemImage: symbol)
+                .font(RatsFont.body(12.5, weight: .semibold))
+                .foregroundStyle(RatsColor.text)
+        }
+        .tint(RatsColor.primary)
+        .padding(.top, 5)
+    }
+}
+
+private struct DecisionDocumentsCard: View {
+    let detail: DecisionDetail
+    let preview: (CouncilAttachment) -> Void
+
+    var body: some View {
+        if hasDocuments {
+            VStack(alignment: .leading, spacing: 11) {
+                Label("Dokumente & Anlagen", systemImage: "doc.on.doc")
+                    .font(RatsFont.body(15, weight: .bold))
+                    .foregroundStyle(RatsColor.text)
+
+                if let raw = detail.templateURL, let url = URL(string: raw) {
+                    DecisionDocumentLink(title: "Vorlage im Ratsinfosystem", symbol: "doc.text", url: url)
+                }
+                if let raw = detail.template?.documentURL, let url = URL(string: raw) {
+                    DecisionDocumentLink(title: "Vorlage als PDF", symbol: "arrow.down.doc", url: url)
+                }
+                if let raw = detail.decision.protocolURL, let url = URL(string: raw) {
+                    DecisionDocumentLink(title: "Sitzungsprotokoll", symbol: "text.document", url: url)
+                }
+                if let raw = detail.ratsinfoURL, let url = URL(string: raw) {
+                    DecisionDocumentLink(title: "Amtliche Quelle", symbol: "building.columns", url: url)
+                }
+
+                if !detail.attachments.isEmpty {
+                    Divider()
+                    MonoKicker("Anlagen zum Beschluss", trailing: "\(detail.attachments.count)")
+                    ForEach(detail.attachments) { attachment in
+                        Button { preview(attachment) } label: {
+                            HStack(spacing: 9) {
+                                Image(systemName: attachment.isMotion == 1 ? "doc.badge.plus" : "doc.richtext")
+                                    .foregroundStyle(RatsColor.primary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(attachment.label)
+                                        .font(RatsFont.body(12.5, weight: .medium))
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
+                                    if !attachment.applicants.isEmpty {
+                                        Text(attachment.applicants.joined(separator: " · "))
+                                            .font(RatsFont.mono(9.5))
+                                            .foregroundStyle(RatsColor.muted)
+                                    }
+                                }
+                                Spacer(minLength: 5)
+                                Image(systemName: "eye").foregroundStyle(RatsColor.muted)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .ratsCard()
+        }
+    }
+
+    private var hasDocuments: Bool {
+        detail.templateURL != nil || detail.template?.documentURL != nil
+            || detail.decision.protocolURL != nil || detail.ratsinfoURL != nil
+            || !detail.attachments.isEmpty
+    }
+}
+
+private struct DecisionDocumentLink: View {
+    let title: String
+    let symbol: String
+    let url: URL
+
+    var body: some View {
+        Link(destination: url) {
+            HStack(spacing: 9) {
+                Image(systemName: symbol).foregroundStyle(RatsColor.primary)
+                Text(title).font(RatsFont.body(12.5, weight: .medium))
+                Spacer()
+                Image(systemName: "arrow.up.right").font(.caption)
+            }
+            .foregroundStyle(RatsColor.bodyText)
+        }
+    }
+}
+
+private struct DecisionAttendanceCard: View {
+    let attendance: [CouncilAttendee]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            MonoKicker("Anwesenheit", trailing: "\(attendance.count)")
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 7)], alignment: .leading, spacing: 7) {
+                ForEach(Array(partyCounts.enumerated()), id: \.offset) { _, entry in
+                    DecisionPartyChip(party: entry.party, suffix: "\(entry.count)")
+                }
+            }
+        }
+        .ratsCard()
+    }
+
+    private var partyCounts: [(party: String, count: Int)] {
+        let excluded = Set(["verwaltung", "protokoll", "gast"])
+        let counts = attendance.reduce(into: [String: Int]()) { result, attendee in
+            guard !excluded.contains(attendee.role?.lowercased() ?? ""),
+                  let party = attendee.party, !party.isEmpty else { return }
+            result[party, default: 0] += 1
+        }
+        return counts.sorted { lhs, rhs in
+            lhs.value == rhs.value ? lhs.key < rhs.key : lhs.value > rhs.value
+        }.map { (party: $0.key, count: $0.value) }
+    }
+}
+
+private struct DecisionPartyCard: View {
+    let title: String
+    let parties: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            MonoKicker(title, trailing: "\(parties.count)")
+            DecisionPartyGrid(parties: parties)
+        }
+        .ratsCard()
+    }
+}
+
+private struct DecisionPartyGrid: View {
+    let parties: [String]
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 82), spacing: 7)], alignment: .leading, spacing: 7) {
+            ForEach(parties, id: \.self) { DecisionPartyChip(party: $0) }
+        }
+    }
+}
+
+private struct DecisionPartyChip: View {
+    let party: String
+    var suffix: String? = nil
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(suffix.map { "\(party) · \($0)" } ?? party)
+                .font(RatsFont.body(10.5, weight: .semibold))
+                .foregroundStyle(RatsColor.bodyText)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.11))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var color: Color {
+        let normalized = party.lowercased()
+        if normalized.contains("spd") { return Color(red: 0.82, green: 0.10, blue: 0.15) }
+        if normalized.contains("cdu") { return RatsColor.bodyText }
+        if normalized.contains("grün") { return Color(red: 0.18, green: 0.55, blue: 0.25) }
+        if normalized.contains("fdp") { return Color(red: 0.93, green: 0.71, blue: 0.08) }
+        if normalized.contains("link") { return Color(red: 0.72, green: 0.10, blue: 0.43) }
+        if normalized.contains("volt") { return Color(red: 0.42, green: 0.17, blue: 0.62) }
+        return RatsColor.primary
+    }
+}
+
+private struct DecisionPlanImage: View {
+    let documentID: Int
+
+    var body: some View {
+        if let url = URL(string: "https://ratslotse.de/api/council/plan-bild/\(documentID)") {
+            Link(destination: url) {
+                VStack(alignment: .leading, spacing: 0) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFit()
+                        case .failure:
+                            RatsEmptyState(
+                                title: "Planzeichnung nicht verfügbar",
+                                message: "Das Bild kann gerade nicht geladen werden.",
+                                symbol: "map"
+                            )
+                            .padding(14)
+                        default:
+                            RatsLoadingState(message: "Planzeichnung wird geladen …")
+                                .frame(minHeight: 180)
+                        }
+                    }
+                    Text("Planzeichnung aus der Vorlage – antippen für das vollständige Dokument.")
+                        .font(RatsFont.body(10.5))
+                        .foregroundStyle(RatsColor.muted)
+                        .padding(12)
+                }
+            }
+            .buttonStyle(.plain)
+            .background(RatsColor.card)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(RatsColor.border, lineWidth: 1)
+            }
+        }
+    }
+}
+
+private func formatDecisionAmount(_ value: Double) -> String {
+    if value >= 1_000_000 {
+        let number = String(format: "%.1f", value / 1_000_000)
+            .replacingOccurrences(of: ".", with: ",")
+        return "\(number) Mio. €"
+    }
+    if value >= 1_000 { return "\(Int(value / 1_000)) Tsd. €" }
+    return "\(Int(value)) €"
+}
+
+private func shortCouncilCommittee(_ name: String) -> String {
+    name
+        .replacingOccurrences(of: "Ausschuss für ", with: "")
+        .replacingOccurrences(of: "Rat der Stadt", with: "Rat")
+}
+
 private extension CouncilConsultationStop {
     init(journey: CouncilJourneyStop) {
         self.init(
@@ -970,11 +1610,12 @@ private extension CouncilConsultationStop {
 private extension DecisionDetail {
     func replacing(follow: FollowStatus) -> DecisionDetail {
         DecisionDetail(
-            decision: decision, presentParties: presentParties, ratsinfoURL: ratsinfoURL,
+            decision: decision, attendance: attendance, entities: entities,
+            presentParties: presentParties, ratsinfoURL: ratsinfoURL,
             similar: similar, subVotes: subVotes, templateJourney: templateJourney,
             consultations: consultations, templateURL: templateURL, template: template,
             attachments: attachments, participation: participation, importance: importance,
-            follow: follow
+            follow: follow, planImageID: planImageID
         )
     }
 }

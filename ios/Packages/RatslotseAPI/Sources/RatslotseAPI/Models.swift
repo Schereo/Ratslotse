@@ -115,6 +115,8 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
     public let id: Int
     public let title: String
     public let summary: String?
+    public let simpleSummary: String?
+    public let officialText: String?
     public let committee: String?
     public let sessionDate: String?
     public let outcome: String?
@@ -127,6 +129,11 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
     public let noVotes: Int?
     public let abstentions: Int?
     public let factions: [String]
+    public let parties: [String]
+    public let policyTags: [String]
+    public let rawResult: String?
+    public let protocolURL: String?
+    public let deviation: String?
     public let placeName: String?
     public let latitude: Double?
     public let longitude: Double?
@@ -138,8 +145,13 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
     public let impactReason: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, summary, committee, outcome, kind, vote, factions, importance, interest, impact
+        case id, title, summary, committee, outcome, kind, vote, factions, parties, importance, interest, impact
         case simpleSummary = "simple_summary"
+        case officialText = "beschluss"
+        case policyTags = "policy_tags"
+        case rawResult = "raw_result"
+        case protocolURL = "protocol_url"
+        case deviation = "abweichung"
         case amountEUR = "amount_eur"
         case interestReason = "interest_reason"
         case impactReason = "impact_reason"
@@ -159,8 +171,9 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(Int.self, forKey: .id)
         title = try values.decodeIfPresent(String.self, forKey: .title) ?? "Beschluss"
-        summary = try values.decodeIfPresent(String.self, forKey: .summary)
-            ?? values.decodeIfPresent(String.self, forKey: .simpleSummary)
+        simpleSummary = try values.decodeIfPresent(String.self, forKey: .simpleSummary)
+        summary = try values.decodeIfPresent(String.self, forKey: .summary) ?? simpleSummary
+        officialText = try values.decodeIfPresent(String.self, forKey: .officialText)
         committee = try values.decodeIfPresent(String.self, forKey: .committee)
         sessionDate = try values.decodeIfPresent(String.self, forKey: .sessionDate)
         outcome = try values.decodeIfPresent(String.self, forKey: .outcome)
@@ -173,6 +186,11 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         noVotes = try values.decodeIfPresent(Int.self, forKey: .noVotes)
         abstentions = try values.decodeIfPresent(Int.self, forKey: .abstentions)
         factions = try values.decodeIfPresent([String].self, forKey: .factions) ?? []
+        parties = try values.decodeIfPresent([String].self, forKey: .parties) ?? factions
+        policyTags = try values.decodeIfPresent([String].self, forKey: .policyTags) ?? []
+        rawResult = try values.decodeIfPresent(String.self, forKey: .rawResult)
+        protocolURL = try values.decodeIfPresent(String.self, forKey: .protocolURL)
+        deviation = try values.decodeIfPresent(String.self, forKey: .deviation)
         placeName = try values.decodeIfPresent(String.self, forKey: .placeName)
         latitude = try values.decodeIfPresent(Double.self, forKey: .latitude)
         longitude = try values.decodeIfPresent(Double.self, forKey: .longitude)
@@ -189,6 +207,8 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         try values.encode(id, forKey: .id)
         try values.encode(title, forKey: .title)
         try values.encodeIfPresent(summary, forKey: .summary)
+        try values.encodeIfPresent(simpleSummary, forKey: .simpleSummary)
+        try values.encodeIfPresent(officialText, forKey: .officialText)
         try values.encodeIfPresent(committee, forKey: .committee)
         try values.encodeIfPresent(sessionDate, forKey: .sessionDate)
         try values.encodeIfPresent(outcome, forKey: .outcome)
@@ -201,6 +221,11 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         try values.encodeIfPresent(noVotes, forKey: .noVotes)
         try values.encodeIfPresent(abstentions, forKey: .abstentions)
         try values.encode(factions, forKey: .factions)
+        try values.encode(parties, forKey: .parties)
+        try values.encode(policyTags, forKey: .policyTags)
+        try values.encodeIfPresent(rawResult, forKey: .rawResult)
+        try values.encodeIfPresent(protocolURL, forKey: .protocolURL)
+        try values.encodeIfPresent(deviation, forKey: .deviation)
         try values.encodeIfPresent(placeName, forKey: .placeName)
         try values.encodeIfPresent(latitude, forKey: .latitude)
         try values.encodeIfPresent(longitude, forKey: .longitude)
@@ -220,6 +245,8 @@ public struct DecisionPage: Codable, Sendable {
 
 public struct DecisionDetail: Codable, Sendable {
     public let decision: DecisionSummary
+    public let attendance: [CouncilAttendee]
+    public let entities: [CouncilEntity]
     public let presentParties: [String]
     public let ratsinfoURL: String?
     public let similar: [DecisionSummary]
@@ -232,9 +259,10 @@ public struct DecisionDetail: Codable, Sendable {
     public let participation: CouncilParticipation?
     public let importance: ImportanceBreakdown?
     public let follow: FollowStatus?
+    public let planImageID: Int?
 
     enum CodingKeys: String, CodingKey {
-        case decision, similar, participation = "beteiligung", follow
+        case decision, attendance, entities, similar, participation = "beteiligung", follow
         case subVotes = "sub_votes"
         case templateJourney = "vorlage_journey"
         case consultations = "beratungsfolge"
@@ -244,10 +272,13 @@ public struct DecisionDetail: Codable, Sendable {
         case importance = "importance_breakdown"
         case presentParties = "present_parties"
         case ratsinfoURL = "ratsinfo_url"
+        case planImageID = "plan_bild"
     }
 
     public init(
         decision: DecisionSummary,
+        attendance: [CouncilAttendee] = [],
+        entities: [CouncilEntity] = [],
         presentParties: [String],
         ratsinfoURL: String?,
         similar: [DecisionSummary],
@@ -259,9 +290,12 @@ public struct DecisionDetail: Codable, Sendable {
         attachments: [CouncilAttachment],
         participation: CouncilParticipation?,
         importance: ImportanceBreakdown?,
-        follow: FollowStatus?
+        follow: FollowStatus?,
+        planImageID: Int? = nil
     ) {
         self.decision = decision
+        self.attendance = attendance
+        self.entities = entities
         self.presentParties = presentParties
         self.ratsinfoURL = ratsinfoURL
         self.similar = similar
@@ -274,11 +308,14 @@ public struct DecisionDetail: Codable, Sendable {
         self.participation = participation
         self.importance = importance
         self.follow = follow
+        self.planImageID = planImageID
     }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         decision = try values.decode(DecisionSummary.self, forKey: .decision)
+        attendance = try values.decodeIfPresent([CouncilAttendee].self, forKey: .attendance) ?? []
+        entities = try values.decodeIfPresent([CouncilEntity].self, forKey: .entities) ?? []
         presentParties = try values.decodeIfPresent([String].self, forKey: .presentParties) ?? []
         ratsinfoURL = try values.decodeIfPresent(String.self, forKey: .ratsinfoURL)
         similar = try values.decodeIfPresent([DecisionSummary].self, forKey: .similar) ?? []
@@ -291,7 +328,21 @@ public struct DecisionDetail: Codable, Sendable {
         participation = try values.decodeIfPresent(CouncilParticipation.self, forKey: .participation)
         importance = try values.decodeIfPresent(ImportanceBreakdown.self, forKey: .importance)
         follow = try values.decodeIfPresent(FollowStatus.self, forKey: .follow)
+        planImageID = try values.decodeIfPresent(Int.self, forKey: .planImageID)
     }
+}
+
+public struct CouncilAttendee: Codable, Sendable, Hashable {
+    public let name: String?
+    public let party: String?
+    public let role: String?
+    public let note: String?
+}
+
+public struct CouncilEntity: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { slug }
+    public let slug: String
+    public let name: String
 }
 
 public struct CouncilJourneyStop: Codable, Sendable, Hashable, Identifiable {
