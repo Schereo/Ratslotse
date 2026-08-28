@@ -573,6 +573,42 @@ private struct TopicSuggestion: Decodable, Sendable, Identifiable {
     let n: Int
 }
 
+private struct TopicSuggestionChoice: View {
+    let suggestion: TopicSuggestion
+    let exists: Bool
+    let disabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(exists ? RatsColor.primary : RatsColor.primary.opacity(0.1))
+                    Image(systemName: exists ? "checkmark" : "plus")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(exists ? RatsColor.primaryText : RatsColor.primary)
+                }
+                .frame(width: 24, height: 24)
+                .accessibilityHidden(true)
+                Text(suggestion.name)
+                    .font(RatsFont.body(13, weight: .medium))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .center)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 3)
+            .background(exists ? RatsColor.primary.opacity(0.06) : RatsColor.card)
+            .overlay(Capsule().stroke(exists ? RatsColor.primary.opacity(0.35) : RatsColor.border))
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(exists ? RatsColor.primary : RatsColor.text)
+        .disabled(disabled)
+    }
+}
+
 private struct TopicDescriptionResult: Decodable, Sendable {
     let name: String
     let description: String
@@ -583,6 +619,7 @@ private struct TopicDescriptionResult: Decodable, Sendable {
 
 private struct TopicOnboardingStep: View {
     let model: AppModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var name = ""
     @State private var topics: [Topic] = []
     @State private var suggestions: [TopicSuggestion] = []
@@ -596,25 +633,18 @@ private struct TopicOnboardingStep: View {
             lead: "Lege Themen an — Lotti meldet sich, sobald der Rat dazu entscheidet.",
             scene: .questions,
             content: { VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 8) {
-                    TextField("z. B. Cäcilienbrücke", text: $name)
-                        .textInputAutocapitalization(.sentences)
-                        .submitLabel(.done)
-                        .onSubmit { addCustomTopic() }
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 44)
-                        .background(RatsColor.card)
-                        .overlay(RoundedRectangle(cornerRadius: 11).stroke(RatsColor.border))
-                    Button(action: addCustomTopic) {
-                        Group {
-                            if isWorking { ProgressView().tint(RatsColor.primaryText) }
-                            else { Image(systemName: "sparkles") }
+                Group {
+                    if horizontalSizeClass == .regular {
+                        HStack(spacing: 10) {
+                            topicNameField
+                            addTopicButton
                         }
-                        .frame(width: 44, height: 44)
+                    } else {
+                        VStack(spacing: 10) {
+                            topicNameField
+                            addTopicButton
+                        }
                     }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 || isWorking)
-                    .accessibilityLabel("Thema anlegen")
                 }
                 Text("Beschreibung nicht nötig — Lotti formuliert sie automatisch aus passenden Beschlüssen.")
                     .font(RatsFont.body(11.5))
@@ -642,28 +672,14 @@ private struct TopicOnboardingStep: View {
                 if !suggestions.isEmpty {
                     VStack(alignment: .leading, spacing: 9) {
                         MonoKicker("Gerade aktuell im Rat")
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 8)], spacing: 8) {
+                        LazyVGrid(columns: suggestionColumns, spacing: 10) {
                             ForEach(suggestions) { suggestion in
                                 let exists = topics.contains { $0.name == suggestion.name }
-                                Button {
-                                    addSuggestion(suggestion)
-                                } label: {
-                                    Label(
-                                        suggestion.name,
-                                        systemImage: exists ? "checkmark" : "plus"
-                                    )
-                                    .font(RatsFont.body(12.5, weight: .medium))
-                                    .lineLimit(2)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 8)
-                                    .background(exists ? RatsColor.primary.opacity(0.06) : RatsColor.card)
-                                    .overlay(Capsule().stroke(exists ? RatsColor.primary.opacity(0.35) : RatsColor.border))
-                                    .clipShape(Capsule())
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(exists ? RatsColor.primary : RatsColor.text)
-                                .disabled(exists || isWorking)
+                                TopicSuggestionChoice(
+                                    suggestion: suggestion,
+                                    exists: exists,
+                                    disabled: exists || isWorking
+                                ) { addSuggestion(suggestion) }
                             }
                         }
                     }
@@ -708,6 +724,50 @@ private struct TopicOnboardingStep: View {
             }
         )
         .task { await load() }
+    }
+
+    private var topicNameField: some View {
+        TextField("z. B. Cäcilienbrücke", text: $name)
+            .textInputAutocapitalization(.sentences)
+            .submitLabel(.done)
+            .onSubmit { addCustomTopic() }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 48)
+            .background(RatsColor.card)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var addTopicButton: some View {
+        Button(action: addCustomTopic) {
+            HStack(spacing: 9) {
+                if isWorking {
+                    ProgressView().tint(RatsColor.primaryText)
+                    Text("Lotti formuliert …")
+                } else {
+                    Image(systemName: "sparkles")
+                        .accessibilityHidden(true)
+                    Text("Mit Lotti anlegen")
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(PrimaryButtonStyle())
+        .disabled(!canAddTopic)
+        .opacity(name.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 ? 0.7 : 1)
+        .accessibilityLabel("Thema mit Lotti anlegen")
+    }
+
+    private var canAddTopic: Bool {
+        name.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2 && !isWorking
+    }
+
+    private var suggestionColumns: [GridItem] {
+        if horizontalSizeClass == .regular {
+            [GridItem(.adaptive(minimum: 230), spacing: 10)]
+        } else {
+            [GridItem(.flexible())]
+        }
     }
 
     private func load() async {
