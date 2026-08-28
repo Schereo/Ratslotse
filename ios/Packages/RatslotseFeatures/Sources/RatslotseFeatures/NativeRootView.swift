@@ -2,6 +2,7 @@ import Foundation
 import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
+import UIKit
 
 #if DEBUG
 func ratsDebugValue(_ key: String) -> String? {
@@ -350,6 +351,12 @@ private struct MainTabsView: View {
             case "person-detail":
                 model.selectedTab = .council
                 model.navigation = [.person(slug: "anne-beispiel")]
+            case "topic-detail":
+                model.selectedTab = .council
+                model.navigation = [.topic(slug: "sichere-schulwege")]
+            case "place-detail":
+                model.selectedTab = .council
+                model.navigation = [.place(id: "pferdemarkt")]
             case "decisions":
                 model.navigation.removeAll()
                 model.councilSection = .decisions
@@ -390,6 +397,14 @@ private struct MainTabsView: View {
                 model.selectedTab = .account
             default: break
             }
+            if let orientation = ratsDebugValue("RATSLOTSE_DEBUG_ORIENTATION"),
+               let windowScene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
+                let mask: UIInterfaceOrientationMask = orientation == "landscape" ? .landscape : .portrait
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(600))
+                    windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: mask))
+                }
+            }
 #endif
         }
         .onChange(of: horizontalSizeClass) { _, sizeClass in
@@ -399,7 +414,10 @@ private struct MainTabsView: View {
 
     @ViewBuilder
     private var tabContent: some View {
-        if horizontalSizeClass == .regular, let tabletPage = model.tabletPage {
+        if usesDebugSavedLayout {
+            SavedCouncilView(model: model)
+                .toolbar(.hidden, for: .navigationBar)
+        } else if horizontalSizeClass == .regular, let tabletPage = model.tabletPage {
             tabletContent(tabletPage)
                 .toolbar(.hidden, for: .navigationBar)
         } else {
@@ -422,6 +440,14 @@ private struct MainTabsView: View {
             }
             .toolbar(.hidden, for: .tabBar)
         }
+    }
+
+    private var usesDebugSavedLayout: Bool {
+#if DEBUG
+        horizontalSizeClass == .compact && ratsDebugValue("RATSLOTSE_DEBUG_MAIN") == "saved"
+#else
+        false
+#endif
     }
 
     @ViewBuilder

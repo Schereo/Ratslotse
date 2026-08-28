@@ -20,6 +20,8 @@ struct PublicProfileView: View {
     @State private var decisions: [DecisionSummary] = []
     @State private var coordinate: CLLocationCoordinate2D?
     @State private var person: PublicPersonProfile?
+    @State private var topicDetail: TopicProfileDetail?
+    @State private var placeDetail: PlaceProfileDetail?
     @State private var error: String?
 
     var body: some View {
@@ -27,6 +29,14 @@ struct PublicProfileView: View {
             VStack(alignment: .leading, spacing: 20) {
                 if let preview {
                     profileOverview(preview)
+
+                    if let topicDetail {
+                        TopicProfileMetadata(model: model, detail: topicDetail)
+                    }
+
+                    if let placeDetail {
+                        PlaceProfileMetadata(model: model, detail: placeDetail)
+                    }
 
                     if !decisions.isEmpty {
                         VStack(alignment: .leading, spacing: 13) {
@@ -93,13 +103,28 @@ struct PublicProfileView: View {
                 MonoKicker(kicker)
                 Text(preview.title)
                     .font(RatsFont.title(usesTabletOverview ? 34 : 28))
-                Text(profileDescription ?? preview.description)
-                    .font(RatsFont.body(16))
-                    .foregroundStyle(RatsColor.bodyText)
-                    .lineSpacing(4)
+                if kind == .topic && !usesTabletOverview {
+                    HStack(alignment: .center, spacing: 12) {
+                        Lotti3DView(scene: .reading, animated: false)
+                            .frame(width: 78, height: 72)
+                            .accessibilityHidden(true)
+                        profileDescriptionText(preview)
+                    }
                     .ratsCard()
+                } else {
+                    profileDescriptionText(preview)
+                        .ratsCard()
+                }
             }
         }
+    }
+
+    private func profileDescriptionText(_ preview: LinkPreview) -> some View {
+        Text(profileDescription ?? preview.description)
+            .font(RatsFont.body(16))
+            .foregroundStyle(RatsColor.bodyText)
+            .lineSpacing(4)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -218,12 +243,49 @@ struct PublicProfileView: View {
                     title: "Sichere Schulwege",
                     description: "Beschlüsse, Projekte und Debatten rund um sichere Wege zu Oldenburgs Schulen."
                 )
+                topicDetail = try? JSONDecoder().decode(TopicProfileDetail.self, from: Data(#"""
+                {
+                  "money": 1850000,
+                  "parties": ["SPD", "GRÜNE", "CDU", "Volt"],
+                  "fields": [
+                    {"field": "verkehr", "n": 17},
+                    {"field": "bildung", "n": 9},
+                    {"field": "stadtplanung", "n": 6}
+                  ],
+                  "field_labels": {
+                    "verkehr": "Verkehr & Mobilität",
+                    "bildung": "Schule & Bildung",
+                    "stadtplanung": "Stadtplanung"
+                  },
+                  "related": [
+                    {"slug": "radverkehr", "name": "Radverkehr", "kind": "thema", "rel_type": "belegt", "evidence": 12},
+                    {"slug": "grundschulen", "name": "Grundschulen", "kind": "thema", "rel_type": "belegt", "evidence": 7},
+                    {"slug": "verkehrssicherheit", "name": "Verkehrssicherheit", "kind": "thema", "rel_type": "aehnlich", "evidence": 0}
+                  ]
+                }
+                """#.utf8))
             case .place:
                 preview = LinkPreview(
                     title: "Pferdemarkt",
                     description: "Was der Rat für den Pferdemarkt und sein direktes Umfeld plant und entscheidet."
                 )
                 coordinate = CLLocationCoordinate2D(latitude: 53.1466, longitude: 8.2147)
+                placeDetail = try? JSONDecoder().decode(PlaceProfileDetail.self, from: Data(#"""
+                {
+                  "place": {
+                    "id": "pferdemarkt",
+                    "name": "Pferdemarkt",
+                    "kind_label": "Platz",
+                    "parents": [{"id": "innenstadt", "name": "Innenstadt", "kind": "Stadtteil"}],
+                    "sources": [{"id": "stadtplan", "title": "Stadtplan Oldenburg", "url": "https://www.oldenburg.de/"}]
+                  },
+                  "children": [
+                    {"id": "pferdemarkt-haltestelle", "name": "ZOB Pferdemarkt", "kind": "Haltestelle"},
+                    {"id": "pferdemarkt-parkplatz", "name": "Parkplatz Pferdemarkt", "kind": "Verkehrsfläche"}
+                  ],
+                  "decision_count": 14
+                }
+                """#.utf8))
             }
             return
         }
@@ -237,6 +299,8 @@ struct PublicProfileView: View {
             decisions = extractDecisions(from: newPayload)
             coordinate = extractCoordinate(from: newPayload)
             person = kind == .person ? try? newPayload.decoded(PublicPersonProfile.self) : nil
+            topicDetail = kind == .topic ? try? newPayload.decoded(TopicProfileDetail.self) : nil
+            placeDetail = kind == .place ? try? newPayload.decoded(PlaceProfileDetail.self) : nil
         } catch { self.error = error.localizedDescription }
     }
 
@@ -275,6 +339,350 @@ struct PublicProfileView: View {
         guard case .number(let lat)? = geo["lat"], case .number(let lon)? = geo["lon"] else { return nil }
         return CLLocationCoordinate2D(latitude: lat, longitude: lon)
     }
+}
+
+private struct TopicProfileDetail: Decodable, Sendable {
+    struct Field: Decodable, Sendable, Identifiable {
+        var id: String { field }
+        let field: String
+        let n: Int
+    }
+
+    struct Related: Decodable, Sendable, Identifiable {
+        var id: String { slug }
+        let slug: String
+        let name: String
+        let kind: String
+        let relType: String
+        let evidence: Int
+
+        enum CodingKeys: String, CodingKey {
+            case slug, name, kind, evidence
+            case relType = "rel_type"
+        }
+    }
+
+    let money: Double
+    let parties: [String]
+    let fields: [Field]
+    let fieldLabels: [String: String]
+    let related: [Related]
+
+    enum CodingKeys: String, CodingKey {
+        case money, parties, fields, related
+        case fieldLabels = "field_labels"
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        money = try values.decodeIfPresent(Double.self, forKey: .money) ?? 0
+        parties = try values.decodeIfPresent([String].self, forKey: .parties) ?? []
+        fields = try values.decodeIfPresent([Field].self, forKey: .fields) ?? []
+        fieldLabels = try values.decodeIfPresent([String: String].self, forKey: .fieldLabels) ?? [:]
+        related = try values.decodeIfPresent([Related].self, forKey: .related) ?? []
+    }
+}
+
+private struct PlaceProfileDetail: Decodable, Sendable {
+    struct Place: Decodable, Sendable {
+        struct Relative: Decodable, Sendable, Identifiable {
+            let id: String
+            let name: String
+            let kind: String
+        }
+
+        struct Source: Decodable, Sendable, Identifiable {
+            let id: String
+            let title: String
+            let url: String
+        }
+
+        let id: String
+        let name: String
+        let kindLabel: String
+        let parents: [Relative]
+        let sources: [Source]
+
+        enum CodingKeys: String, CodingKey {
+            case id, name, parents, sources
+            case kindLabel = "kind_label"
+        }
+    }
+
+    let place: Place
+    let children: [Place.Relative]
+    let decisionCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case place, children
+        case decisionCount = "decision_count"
+    }
+}
+
+private struct TopicProfileMetadata: View {
+    let model: AppModel
+    let detail: TopicProfileDetail
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if detail.money > 0 || !detail.fields.isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 12) { facts }
+                    VStack(alignment: .leading, spacing: 12) { facts }
+                }
+            }
+
+            if !detail.parties.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    MonoKicker("Beteiligte Fraktionen", trailing: "\(detail.parties.count)")
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 86), spacing: 7)],
+                        alignment: .leading,
+                        spacing: 7
+                    ) {
+                        ForEach(detail.parties, id: \.self) { ProfilePartyChip(party: $0) }
+                    }
+                }
+                .ratsCard()
+            }
+
+            let proven = detail.related.filter { $0.relType == "belegt" }
+            let similar = detail.related.filter { $0.relType != "belegt" }
+            if !proven.isEmpty || !similar.isEmpty {
+                VStack(alignment: .leading, spacing: 13) {
+                    relatedRow("Hängt zusammen mit", detail: "gemeinsam behandelt", entries: proven, showsEvidence: true)
+                    relatedRow("Thematisch ähnlich", detail: "inhaltlich verwandt", entries: similar, showsEvidence: false)
+                }
+                .ratsCard()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var facts: some View {
+        if detail.money > 0 {
+            VStack(alignment: .leading, spacing: 5) {
+                MonoKicker("Erkanntes Finanzvolumen")
+                Text(formatProfileAmount(detail.money))
+                    .font(RatsFont.title(24))
+                    .foregroundStyle(RatsColor.success)
+                Text("Automatisch aus den Beschlusstexten erkannt.")
+                    .font(RatsFont.body(10.5))
+                    .foregroundStyle(RatsColor.muted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .ratsCard()
+        }
+        if !detail.fields.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                MonoKicker("Themenfelder")
+                ForEach(detail.fields.prefix(6)) { field in
+                    HStack(spacing: 8) {
+                        Circle().fill(RatsColor.primary).frame(width: 6, height: 6)
+                        Text(detail.fieldLabels[field.field] ?? field.field)
+                            .font(RatsFont.body(12.5, weight: .medium))
+                        Spacer()
+                        Text("\(field.n)").font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .ratsCard()
+        }
+    }
+
+    @ViewBuilder
+    private func relatedRow(
+        _ title: String,
+        detail: String,
+        entries: [TopicProfileDetail.Related],
+        showsEvidence: Bool
+    ) -> some View {
+        if !entries.isEmpty {
+            VStack(alignment: .leading, spacing: 7) {
+                Text("\(title) · \(detail)")
+                    .font(RatsFont.body(12, weight: .semibold))
+                    .foregroundStyle(RatsColor.secondary)
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 145), spacing: 7)],
+                    alignment: .leading,
+                    spacing: 7
+                ) {
+                    ForEach(entries) { entry in
+                        Button { model.navigation.append(.topic(slug: entry.slug)) } label: {
+                            HStack(spacing: 7) {
+                                Image(systemName: "point.3.filled.connected.trianglepath.dotted")
+                                    .font(.caption)
+                                Text(entry.name).lineLimit(2)
+                                Spacer(minLength: 0)
+                                if showsEvidence {
+                                    Text("\(entry.evidence)")
+                                        .font(RatsFont.mono(9))
+                                        .foregroundStyle(RatsColor.muted)
+                                }
+                            }
+                            .font(RatsFont.body(11.5, weight: .medium))
+                            .foregroundStyle(RatsColor.bodyText)
+                            .padding(.horizontal, 10)
+                            .frame(maxWidth: .infinity, minHeight: 38, alignment: .leading)
+                            .background(RatsColor.stage)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(RatsColor.border))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct PlaceProfileMetadata: View {
+    let model: AppModel
+    let detail: PlaceProfileDetail
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: "mappin.and.ellipse")
+                    .foregroundStyle(RatsColor.primary)
+                VStack(alignment: .leading, spacing: 2) {
+                    MonoKicker(detail.place.kindLabel)
+                    Text("\(detail.decisionCount) \(detail.decisionCount == 1 ? "Beschluss" : "Beschlüsse") mit belegtem Ortsbezug")
+                        .font(RatsFont.body(12.5, weight: .medium))
+                }
+            }
+            .ratsCard()
+
+            if !detail.place.parents.isEmpty || !detail.children.isEmpty {
+                VStack(alignment: .leading, spacing: 13) {
+                    placeLinks("Gehört zu", entries: detail.place.parents)
+                    placeLinks("Orte in diesem Bereich", entries: detail.children)
+                }
+                .ratsCard()
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 9) { actions }
+                VStack(spacing: 9) { actions }
+            }
+
+            if !detail.place.sources.isEmpty {
+                VStack(alignment: .leading, spacing: 9) {
+                    MonoKicker("Stammdaten-Quellen")
+                    ForEach(detail.place.sources) { source in
+                        if let url = URL(string: source.url) {
+                            Link(destination: url) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "doc.text")
+                                    Text(source.title)
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right")
+                                        .font(.caption)
+                                }
+                                .font(RatsFont.body(12, weight: .medium))
+                                .foregroundStyle(RatsColor.primary)
+                            }
+                        }
+                    }
+                }
+                .ratsCard()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        Button {
+            model.questionPrefill = "Was wurde zu \(detail.place.name) beschlossen?"
+            model.navigation.removeAll()
+            model.selectedTab = .questions
+        } label: {
+            Label("Lotti dazu fragen", systemImage: "sparkles")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(PrimaryButtonStyle())
+
+        Button {
+            model.navigation.removeAll()
+            model.councilSection = .map
+            model.selectedTab = .council
+        } label: {
+            Label("Auf der Stadtkarte", systemImage: "map")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(SecondaryButtonStyle())
+    }
+
+    @ViewBuilder
+    private func placeLinks(_ title: String, entries: [PlaceProfileDetail.Place.Relative]) -> some View {
+        if !entries.isEmpty {
+            VStack(alignment: .leading, spacing: 7) {
+                MonoKicker(title)
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 145), spacing: 7)],
+                    alignment: .leading,
+                    spacing: 7
+                ) {
+                    ForEach(entries) { entry in
+                        Button { model.navigation.append(.place(id: entry.id)) } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entry.name)
+                                    .font(RatsFont.body(12, weight: .semibold))
+                                    .foregroundStyle(RatsColor.text)
+                                Text(entry.kind)
+                                    .font(RatsFont.body(9.5))
+                                    .foregroundStyle(RatsColor.muted)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+                            .padding(.horizontal, 10)
+                            .background(RatsColor.stage)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(RatsColor.border))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct ProfilePartyChip: View {
+    let party: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(party)
+                .font(RatsFont.body(10.5, weight: .semibold))
+                .lineLimit(1)
+        }
+        .foregroundStyle(RatsColor.bodyText)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.11))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var color: Color {
+        let value = party.lowercased()
+        if value.contains("spd") { return Color(red: 0.82, green: 0.10, blue: 0.15) }
+        if value.contains("cdu") { return RatsColor.bodyText }
+        if value.contains("grün") { return Color(red: 0.18, green: 0.55, blue: 0.25) }
+        if value.contains("fdp") { return Color(red: 0.93, green: 0.71, blue: 0.08) }
+        if value.contains("link") { return Color(red: 0.72, green: 0.10, blue: 0.43) }
+        if value.contains("volt") { return Color(red: 0.42, green: 0.17, blue: 0.62) }
+        return RatsColor.primary
+    }
+}
+
+private func formatProfileAmount(_ value: Double) -> String {
+    if value >= 1_000_000 {
+        return "\((value / 1_000_000).formatted(.number.precision(.fractionLength(0...1)))) Mio. €"
+    }
+    if value >= 1_000 { return "\((value / 1_000).formatted(.number.precision(.fractionLength(0)))) Tsd. €" }
+    return value.formatted(.currency(code: "EUR").precision(.fractionLength(0)))
 }
 
 private struct LinkPreview: Codable, Sendable {
