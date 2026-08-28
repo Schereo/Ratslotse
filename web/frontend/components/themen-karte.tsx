@@ -48,7 +48,7 @@ export function ThemenKarte({
   const bilanz = !topic.matched && gesamt === 0
     ? "Wird noch gezählt"
     : gesamt > 0
-      ? `${gesamt}${gedeckelt ? "+" : ""} gesamt · ${topic.hits_30d ?? 0} in 30 Tagen`
+      ? `${gesamt}${gedeckelt ? "+" : ""} gesamt · ${topic.hits_6m ?? 0} in 6 Monaten`
       : `Beobachtet seit ${formatDate(topic.created_at)}`;
 
   return (

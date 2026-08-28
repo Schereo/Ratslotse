@@ -35,7 +35,8 @@ from __future__ import annotations
 
 import re
 import logging
-from datetime import date, timedelta
+import calendar
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
@@ -49,6 +50,29 @@ from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, Top
 logger = logging.getLogger("nwz.web.topics")
 
 router = APIRouter(prefix="/api/topics", tags=["topics"])
+
+
+def _vor_sechs_monaten(heute: date | None = None) -> date:
+    """Der Stichtag hinter „n in 6 Monaten" auf der Themen-Karte.
+
+    Ursprünglich waren es 30 Tage — dabei stand bei fast jedem Thema eine 0,
+    auch bei sehr lebendigen: Die Gremien tagen monatlich, im Sommer gar nicht,
+    und Protokolle kommen mit ein bis zwei Monaten Verzug. „0 in 30 Tagen" las
+    sich damit wie ein totes Thema, obwohl der Rat gerade erst entschieden
+    hatte (Tims Befund 28.08.2026 an „Schulbegleitung": „40+ gesamt · 0 in 30
+    Tagen"). Ein halbes Jahr umfasst mehrere Sitzungsrunden und trennt
+    dadurch wirklich Laufendes von Ruhendem.
+
+    Kalendarisch gerechnet statt „minus 183 Tage": Der Wert steht als „6
+    Monate" auf der Karte, also soll er auch ein halbes Jahr meinen. Am 31.
+    August wird daraus der 28./29. Februar — der letzte Tag, den es im
+    Zielmonat gibt.
+    """
+    heute = heute or date.today()
+    monat = heute.month - 6
+    jahr = heute.year + (monat - 1) // 12
+    monat = (monat - 1) % 12 + 1
+    return date(jahr, monat, min(heute.day, calendar.monthrange(jahr, monat)[1]))
 
 
 def _own_topic(store: Store, owner_id: int, topic_id: int):
@@ -144,7 +168,7 @@ def list_topics(
     # dem Umbau vom 28.08.2026 einen Punkt vor jede neue Zeile. Beides stammt
     # aus derselben Abfrage, damit Abzeichen und Punkte nie auseinandergehen.
     unseen_ids = store.unseen_hit_ids(owner_id)
-    stichtag = (date.today() - timedelta(days=30)).isoformat()
+    stichtag = _vor_sechs_monaten().isoformat()
     out = []
     for t in topics:
         hits = sorted((by_id[d] for d in cand.get(t.id, []) if d in by_id),
@@ -178,7 +202,7 @@ def list_topics(
                     )
                     for d in hits[:5]
                 ],
-                hits_30d=sum(1 for d in hits if (d.get("session_date") or "") >= stichtag),
+                hits_6m=sum(1 for d in hits if (d.get("session_date") or "") >= stichtag),
             )
         )
     return out
