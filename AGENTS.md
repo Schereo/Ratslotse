@@ -10,3 +10,9 @@
   mergen, sondern den konkreten Blocker melden.
 - Bereits vorhandene, nicht zum Auftrag gehörende Änderungen nicht in den
   Commit oder Pull Request aufnehmen.
+
+# Bürgerportal
+
+- Bei Arbeiten am kommunalen Problemtracker oder an späteren Bürgeranliegen
+  zuerst `BUERGERPORTAL-BACKLOG.md` lesen und bestätigte Entscheidungen dort
+  als einzige Quelle der Wahrheit pflegen.
