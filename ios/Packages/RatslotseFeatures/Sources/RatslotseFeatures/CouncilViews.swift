@@ -1302,21 +1302,7 @@ private struct SessionDetailView: View {
                             }
                             .buttonStyle(SecondaryButtonStyle())
                         }
-                        VStack(alignment: .leading, spacing: 12) {
-                            MonoKicker("Tagesordnung", trailing: "\(detail.agendaItems.filter { $0.isPublic != 0 }.count) öffentlich")
-                            ForEach(detail.agendaItems.filter { $0.isPublic != 0 }) { item in
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text(item.itemNumber).font(RatsFont.mono(10)).foregroundStyle(RatsColor.primary)
-                                    Text(item.title).font(RatsFont.body(15, weight: .semibold))
-                                    if let summary = item.summary { Text(summary).font(RatsFont.body(13)).foregroundStyle(RatsColor.secondary) }
-                                }
-                                .padding(12)
-                                .background(highlightedTops.contains(item.itemNumber) ? RatsColor.primary.opacity(0.09) : Color.clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                                .id(item.itemNumber)
-                            }
-                        }
-                        .ratsCard()
+                        agenda(detail)
                         if let raw = detail.url, let url = URL(string: raw) {
                             Link("Sitzung im Ratsinfosystem öffnen", destination: url)
                         }
@@ -1348,6 +1334,26 @@ private struct SessionDetailView: View {
         catch { self.error = error.localizedDescription }
     }
 
+    private func agenda(_ detail: SessionDetail) -> some View {
+        let publicItems = detail.agendaItems.filter { $0.isPublic != 0 }
+        return VStack(alignment: .leading, spacing: 0) {
+            MonoKicker("Tagesordnung", trailing: "\(publicItems.count) öffentlich")
+                .padding(.bottom, 7)
+
+            ForEach(Array(publicItems.enumerated()), id: \.element.id) { index, item in
+                SessionAgendaRow(item: item, isHighlighted: highlightedTops.contains(item.itemNumber))
+                    .id(item.itemNumber)
+
+                if index < publicItems.count - 1 {
+                    Divider()
+                        .overlay(RatsColor.separator)
+                        .padding(.leading, 52)
+                }
+            }
+        }
+        .ratsCard()
+    }
+
     private func prepareCalendar(_ detail: SessionDetail) {
         Task {
             let store = EKEventStore()
@@ -1377,6 +1383,45 @@ private struct FlexibleChips: View {
             HStack { ForEach(items, id: \.self) { Pill($0) } }
             VStack(alignment: .leading) { ForEach(items, id: \.self) { Pill($0) } }
         }
+    }
+}
+
+private struct SessionAgendaRow: View {
+    let item: AgendaItem
+    let isHighlighted: Bool
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(item.itemNumber)
+                .font(RatsFont.mono(9, weight: .semibold))
+                .tracking(0.4)
+                .foregroundStyle(isHighlighted ? RatsColor.primaryText : RatsColor.primary)
+                .frame(minWidth: 31)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 5)
+                .background(isHighlighted ? RatsColor.primary : RatsColor.primary.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .fixedSize()
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(item.title)
+                    .font(RatsFont.body(15, weight: .semibold))
+                    .foregroundStyle(RatsColor.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let summary = item.summary, !summary.isEmpty {
+                    Text(summary)
+                        .font(RatsFont.body(13))
+                        .foregroundStyle(RatsColor.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, isHighlighted ? 10 : 0)
+        .padding(.vertical, 14)
+        .background(isHighlighted ? RatsColor.primary.opacity(0.07) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 
