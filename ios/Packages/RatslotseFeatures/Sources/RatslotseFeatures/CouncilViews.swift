@@ -59,30 +59,6 @@ struct CouncilBrowserView: View {
                         .clipShape(Circle())
                 }
                 .accessibilityLabel("Merkliste")
-                if model.councilSection != .map {
-                    Button { showsFilters = true } label: {
-                        ZStack(alignment: .topTrailing) {
-                            RatsGlyphView(
-                                glyph: .filter,
-                                color: activeFilterCount > 0 ? RatsColor.primary : RatsColor.bodyText
-                            )
-                                .frame(width: 19, height: 19)
-                                .frame(width: 40, height: 40)
-                                .background(RatsColor.card)
-                                .overlay(Circle().stroke(RatsColor.border))
-                                .clipShape(Circle())
-                            if activeFilterCount > 0 {
-                                Text("\(activeFilterCount)")
-                                    .font(RatsFont.body(9, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 17, height: 17)
-                                    .background(RatsColor.signal)
-                                    .clipShape(Circle())
-                            }
-                        }
-                    }
-                    .accessibilityLabel("Filter und Sortierung")
-                }
             }
             .foregroundStyle(RatsColor.text)
             .padding(.horizontal, 18)
@@ -159,6 +135,80 @@ struct CouncilBrowserView: View {
                     .padding(.horizontal, 18)
                     .padding(.bottom, 9)
                 }
+            }
+
+            if model.councilSection != .map {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 7) {
+                        if model.councilSection == .decisions {
+                            CouncilQuickFilterMenu(
+                                title: "Thema",
+                                symbol: "tag",
+                                selection: policyField,
+                                options: [CouncilFilterOption(value: "", label: "Alle Themen")]
+                                    + fields.map {
+                                        CouncilFilterOption(value: $0.key, label: "\($0.label) (\($0.count))")
+                                    },
+                                onSelect: { value in
+                                    policyField = value
+                                    reloadFromFirstPage()
+                                }
+                            )
+                        }
+
+                        CouncilQuickFilterMenu(
+                            title: "Ausschuss",
+                            symbol: "building.columns",
+                            selection: committee,
+                            options: [CouncilFilterOption(value: "", label: "Alle Ausschüsse")]
+                                + committees.map { CouncilFilterOption(value: $0, label: $0) },
+                            onSelect: { value in
+                                committee = value
+                                reloadFromFirstPage()
+                            }
+                        )
+
+                        if model.councilSection == .decisions {
+                            CouncilQuickFilterMenu(
+                                title: "Ort",
+                                symbol: "mappin.and.ellipse",
+                                selection: district,
+                                options: [CouncilFilterOption(value: "", label: "Alle Orte")]
+                                    + districts.map {
+                                        CouncilFilterOption(value: $0.placeID, label: "\($0.name) (\($0.count))")
+                                    },
+                                onSelect: { value in
+                                    district = value
+                                    reloadFromFirstPage()
+                                }
+                            )
+                            CouncilQuickFilterMenu(
+                                title: "Partei",
+                                symbol: "person.2",
+                                selection: party,
+                                options: [CouncilFilterOption(value: "", label: "Alle Parteien")]
+                                    + parties.map {
+                                        CouncilFilterOption(value: $0.key, label: "\($0.label) (\($0.count))")
+                                    },
+                                onSelect: { value in
+                                    party = value
+                                    reloadFromFirstPage()
+                                }
+                            )
+                        }
+
+                        if model.councilSection == .decisions {
+                            FilterChip(
+                                label: advancedFilterCount > 0 ? "Weitere · \(advancedFilterCount)" : "Weitere Filter",
+                                selected: advancedFilterCount > 0,
+                                action: { showsFilters = true }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 10)
+                }
+                .accessibilityLabel("Schnellfilter")
             }
 
             ScrollView {
@@ -258,10 +308,12 @@ struct CouncilBrowserView: View {
         }
     }
 
-    private var activeFilterCount: Int {
-        [committee, policyField, party, district].filter { !$0.isEmpty }.count
-            + (location.isEmpty ? 0 : 1)
-            + (hasDateFrom ? 1 : 0) + (hasDateTo ? 1 : 0) + (includeSubvotes ? 1 : 0)
+    private var advancedFilterCount: Int {
+        (location.isEmpty ? 0 : 1)
+            + (hasDateFrom ? 1 : 0)
+            + (hasDateTo ? 1 : 0)
+            + (includeSubvotes ? 1 : 0)
+            + (sort == "date_desc" ? 0 : 1)
     }
 
     private var searchPrompt: String {
@@ -294,6 +346,11 @@ struct CouncilBrowserView: View {
         includeSubvotes = false
         hasDateFrom = false
         hasDateTo = false
+    }
+
+    private func reloadFromFirstPage() {
+        page = 0
+        Task { await load() }
     }
 
     private func load() async {
@@ -724,6 +781,57 @@ private struct CouncilFilterMenu: View {
         }
         .accessibilityLabel(title)
         .accessibilityValue(selectedLabel)
+    }
+}
+
+private struct CouncilQuickFilterMenu: View {
+    let title: String
+    let symbol: String
+    let selection: String
+    let options: [CouncilFilterOption]
+    let onSelect: (String) -> Void
+
+    private var selected: Bool { !selection.isEmpty }
+
+    private var selectedLabel: String {
+        guard selected else { return title }
+        return options.first(where: { $0.value == selection })?.label ?? selection
+    }
+
+    var body: some View {
+        Menu {
+            ForEach(options) { option in
+                Button {
+                    onSelect(option.value)
+                } label: {
+                    if option.value == selection {
+                        Label(option.label, systemImage: "checkmark")
+                    } else {
+                        Text(option.label)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .semibold))
+                Text(selectedLabel)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            .font(RatsFont.body(12, weight: .semibold))
+            .foregroundStyle(selected ? RatsColor.primary : RatsColor.secondary)
+            .padding(.horizontal, 11)
+            .frame(maxWidth: 190, minHeight: 34)
+            .background(selected ? RatsColor.primary.opacity(0.10) : RatsColor.card)
+            .overlay(Capsule().stroke(selected ? RatsColor.primary.opacity(0.32) : RatsColor.border))
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+        }
+        .accessibilityLabel(title)
+        .accessibilityValue(selected ? selectedLabel : "Alle")
     }
 }
 
