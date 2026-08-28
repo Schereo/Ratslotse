@@ -37,6 +37,17 @@ import Testing
     #expect(completed.onboardingStep == nil)
 }
 
+@MainActor
+@Test func incomingRouteLeavesAnAuxiliaryTabletPage() {
+    let model = AppModel()
+    model.tabletPage = .saved
+
+    model.handle(route: .tab(.questions))
+
+    #expect(model.tabletPage == nil)
+    #expect(model.selectedTab == .questions)
+}
+
 @Test func productionPersonProfileDecodesStructuredAffiliation() throws {
     let data = try #require(
         """

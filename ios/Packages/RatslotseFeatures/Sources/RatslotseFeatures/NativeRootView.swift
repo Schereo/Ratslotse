@@ -91,7 +91,6 @@ private struct RatsRouteScaffold<Content: View>: View {
     @Bindable var model: AppModel
     @ViewBuilder let content: Content
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var showsMore = false
 
     init(model: AppModel, @ViewBuilder content: () -> Content) {
         self.model = model
@@ -104,9 +103,8 @@ private struct RatsRouteScaffold<Content: View>: View {
                 HStack(spacing: 0) {
                     RatsSidebarNavigation(
                         model: model,
-                        active: showsMore ? .more : activeDestination,
-                        select: select,
-                        openMore: { showsMore = true }
+                        active: activeDestination,
+                        select: select
                     )
                     .frame(width: 224)
                     Divider().overlay(RatsColor.border)
@@ -115,14 +113,6 @@ private struct RatsRouteScaffold<Content: View>: View {
             } else {
                 routeContent
             }
-        }
-        .sheet(isPresented: $showsMore) {
-            MoreHubView(model: model) { section in
-                model.navigation.removeAll()
-                model.councilSection = section
-                model.selectedTab = .council
-            }
-            .ratsLargeSheet()
         }
     }
 
@@ -159,7 +149,10 @@ private struct RatsRouteScaffold<Content: View>: View {
     }
 
     private var activeDestination: MainNavigationDestination {
-        switch model.selectedTab {
+        if let tabletPage = model.tabletPage {
+            return MainNavigationDestination(tabletPage)
+        }
+        return switch model.selectedTab {
         case .today: .today
         case .questions: .questions
         case .council:
@@ -174,23 +167,7 @@ private struct RatsRouteScaffold<Content: View>: View {
     }
 
     private func select(_ destination: MainNavigationDestination) {
-        model.navigation.removeAll()
-        switch destination {
-        case .today: model.selectedTab = .today
-        case .questions: model.selectedTab = .questions
-        case .decisions:
-            model.councilSection = .decisions
-            model.selectedTab = .council
-        case .sessions:
-            model.councilSection = .sessions
-            model.selectedTab = .council
-        case .map:
-            model.councilSection = .map
-            model.selectedTab = .council
-        case .topics: model.selectedTab = .topics
-        case .account: model.selectedTab = .account
-        case .more: showsMore = true
-        }
+        navigate(to: destination, model: model)
     }
 }
 
@@ -288,9 +265,8 @@ private struct MainTabsView: View {
                 HStack(spacing: 0) {
                     RatsSidebarNavigation(
                         model: model,
-                        active: showsMore ? .more : activeDestination,
-                        select: select,
-                        openMore: { showsMore = true }
+                        active: activeDestination,
+                        select: select
                     )
                     .frame(width: 224)
                     Divider().overlay(RatsColor.border)
@@ -310,12 +286,14 @@ private struct MainTabsView: View {
         .sheet(isPresented: $showsMore) {
             MoreHubView(model: model) { section in
                 model.navigation.removeAll()
+                model.tabletPage = nil
                 model.councilSection = section
                 model.selectedTab = .council
             }
             .ratsLargeSheet()
         }
         .onAppear {
+            if horizontalSizeClass == .regular { showsMore = false }
 #if DEBUG
             switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MAIN"] {
             case "decisions":
@@ -336,6 +314,18 @@ private struct MainTabsView: View {
             case "topics":
                 model.navigation.removeAll()
                 model.selectedTab = .topics
+            case "analysis":
+                model.navigation.removeAll()
+                model.tabletPage = .analysis
+            case "subscriptions":
+                model.navigation.removeAll()
+                model.tabletPage = .subscriptions
+            case "saved":
+                model.navigation.removeAll()
+                model.tabletPage = .saved
+            case "quiz":
+                model.navigation.removeAll()
+                model.tabletPage = .quiz
             case "account":
                 model.navigation.removeAll()
                 model.selectedTab = .account
@@ -343,26 +333,48 @@ private struct MainTabsView: View {
             }
 #endif
         }
+        .onChange(of: horizontalSizeClass) { _, sizeClass in
+            if sizeClass == .regular { showsMore = false }
+        }
     }
 
+    @ViewBuilder
     private var tabContent: some View {
-        TabView(selection: $model.selectedTab) {
-            TodayView(model: model)
-                .tag(AppTab.today)
-            QuestionsView(model: model)
-                .tag(AppTab.questions)
-            CouncilBrowserView(model: model)
-                .tag(AppTab.council)
-            TopicsView(model: model)
-                .tag(AppTab.topics)
-            AccountView(model: model)
-                .tag(AppTab.account)
+        if horizontalSizeClass == .regular, let tabletPage = model.tabletPage {
+            tabletContent(tabletPage)
+                .toolbar(.hidden, for: .navigationBar)
+        } else {
+            TabView(selection: $model.selectedTab) {
+                TodayView(model: model)
+                    .tag(AppTab.today)
+                QuestionsView(model: model)
+                    .tag(AppTab.questions)
+                CouncilBrowserView(model: model)
+                    .tag(AppTab.council)
+                TopicsView(model: model)
+                    .tag(AppTab.topics)
+                AccountView(model: model)
+                    .tag(AppTab.account)
+            }
+            .toolbar(.hidden, for: .tabBar)
         }
-        .toolbar(.hidden, for: .tabBar)
+    }
+
+    @ViewBuilder
+    private func tabletContent(_ page: TabletPage) -> some View {
+        switch page {
+        case .analysis: CouncilInsightsView(model: model)
+        case .subscriptions: CommitteeSubscriptionsView(model: model)
+        case .saved: SavedCouncilView(model: model)
+        case .quiz: QuizView(model: model, area: nil)
+        }
     }
 
     private var activeDestination: MainNavigationDestination {
-        switch model.selectedTab {
+        if horizontalSizeClass == .regular, let tabletPage = model.tabletPage {
+            return MainNavigationDestination(tabletPage)
+        }
+        return switch model.selectedTab {
         case .today: .today
         case .questions: .questions
         case .council:
@@ -377,23 +389,7 @@ private struct MainTabsView: View {
     }
 
     private func select(_ destination: MainNavigationDestination) {
-        model.navigation.removeAll()
-        switch destination {
-        case .today: model.selectedTab = .today
-        case .questions: model.selectedTab = .questions
-        case .decisions:
-            model.councilSection = .decisions
-            model.selectedTab = .council
-        case .sessions:
-            model.councilSection = .sessions
-            model.selectedTab = .council
-        case .map:
-            model.councilSection = .map
-            model.selectedTab = .council
-        case .topics: model.selectedTab = .topics
-        case .account: model.selectedTab = .account
-        case .more: showsMore = true
-        }
+        navigate(to: destination, model: model) { showsMore = true }
     }
 }
 
@@ -404,11 +400,25 @@ private enum MainNavigationDestination: Identifiable {
     case sessions
     case map
     case topics
+    case analysis
+    case subscriptions
+    case saved
+    case quiz
     case account
     case more
 
     static let phoneCases: [Self] = [.today, .questions, .sessions, .topics, .more]
-    static let tabletCases: [Self] = [.today, .questions, .decisions, .sessions, .map, .topics, .more]
+    static let tabletCouncilCases: [Self] = [.today, .questions, .decisions, .sessions, .map, .analysis]
+    static let tabletPersonalCases: [Self] = [.topics, .subscriptions, .saved, .quiz]
+
+    init(_ page: TabletPage) {
+        switch page {
+        case .analysis: self = .analysis
+        case .subscriptions: self = .subscriptions
+        case .saved: self = .saved
+        case .quiz: self = .quiz
+        }
+    }
 
     var id: String { label }
 
@@ -420,6 +430,10 @@ private enum MainNavigationDestination: Identifiable {
         case .sessions: "Sitzungen"
         case .map: "Stadtkarte"
         case .topics: "Themen"
+        case .analysis: "Analyse"
+        case .subscriptions: "Abos"
+        case .saved: "Merkliste"
+        case .quiz: "Quiz"
         case .account: "Konto"
         case .more: "Mehr"
         }
@@ -433,9 +447,53 @@ private enum MainNavigationDestination: Identifiable {
         case .sessions: .calendar
         case .map: .map
         case .topics: .topics
+        case .analysis: .analysis
+        case .subscriptions: .subscriptions
+        case .saved: .saved
+        case .quiz: .quiz
         case .account: .profile
         case .more: .more
         }
+    }
+}
+
+@MainActor
+private func navigate(
+    to destination: MainNavigationDestination,
+    model: AppModel,
+    openMore: () -> Void = {}
+) {
+    model.navigation.removeAll()
+    switch destination {
+    case .today:
+        model.tabletPage = nil
+        model.selectedTab = .today
+    case .questions:
+        model.tabletPage = nil
+        model.selectedTab = .questions
+    case .decisions:
+        model.tabletPage = nil
+        model.councilSection = .decisions
+        model.selectedTab = .council
+    case .sessions:
+        model.tabletPage = nil
+        model.councilSection = .sessions
+        model.selectedTab = .council
+    case .map:
+        model.tabletPage = nil
+        model.councilSection = .map
+        model.selectedTab = .council
+    case .topics:
+        model.tabletPage = nil
+        model.selectedTab = .topics
+    case .analysis: model.tabletPage = .analysis
+    case .subscriptions: model.tabletPage = .subscriptions
+    case .saved: model.tabletPage = .saved
+    case .quiz: model.tabletPage = .quiz
+    case .account:
+        model.tabletPage = nil
+        model.selectedTab = .account
+    case .more: openMore()
     }
 }
 
@@ -443,7 +501,6 @@ private struct RatsSidebarNavigation: View {
     let model: AppModel
     let active: MainNavigationDestination
     let select: (MainNavigationDestination) -> Void
-    let openMore: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -470,7 +527,19 @@ private struct RatsSidebarNavigation: View {
                 .padding(.bottom, 7)
 
             VStack(spacing: 4) {
-                ForEach(MainNavigationDestination.tabletCases) { destination in
+                ForEach(MainNavigationDestination.tabletCouncilCases) { destination in
+                    sidebarButton(destination)
+                }
+            }
+            .padding(.horizontal, 10)
+
+            MonoKicker("Für dich")
+                .padding(.horizontal, 17)
+                .padding(.top, 13)
+                .padding(.bottom, 7)
+
+            VStack(spacing: 4) {
+                ForEach(MainNavigationDestination.tabletPersonalCases) { destination in
                     sidebarButton(destination)
                 }
             }
@@ -516,10 +585,7 @@ private struct RatsSidebarNavigation: View {
     }
 
     private func sidebarButton(_ destination: MainNavigationDestination) -> some View {
-        Button {
-            if destination == .more { openMore() }
-            else { select(destination) }
-        } label: {
+        Button { select(destination) } label: {
             HStack(spacing: 11) {
                 RatsGlyphView(
                     glyph: destination.glyph,

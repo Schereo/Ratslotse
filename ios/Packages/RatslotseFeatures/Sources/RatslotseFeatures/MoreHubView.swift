@@ -138,6 +138,7 @@ struct MoreHubView: View {
 
     private var profileCard: some View {
         Button {
+            model.tabletPage = nil
             model.selectedTab = .account
             dismiss()
         } label: {
@@ -278,6 +279,7 @@ struct MoreHubView: View {
     private func open(_ section: CouncilSection) {
         dismiss()
         model.navigation.removeAll()
+        model.tabletPage = nil
         model.councilSection = section
         model.selectedTab = .council
     }

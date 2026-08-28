@@ -36,6 +36,13 @@ enum CouncilSection: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
+enum TabletPage: String, Sendable, Equatable {
+    case analysis
+    case subscriptions
+    case saved
+    case quiz
+}
+
 @MainActor
 @Observable
 public final class AppModel {
@@ -46,6 +53,7 @@ public final class AppModel {
     public var session: SessionState = .loading
     public var selectedTab: AppTab = .today
     var councilSection: CouncilSection = .decisions
+    var tabletPage: TabletPage?
     public var navigation: [AppRoute] = []
     public var authPresentation: AuthPresentation?
     public var questionPrefill = ""
@@ -223,6 +231,7 @@ public final class AppModel {
         try? await api.sendVoid("/api/auth/logout")
         try? await api.setAccessToken(nil)
         pendingPushToken = nil
+        tabletPage = nil
         navigation.removeAll()
         session = .loggedOut
     }
@@ -238,6 +247,7 @@ public final class AppModel {
     }
 
     public func handle(route: AppRoute) {
+        tabletPage = nil
         switch route {
         case .tab(let tab):
             selectedTab = tab
