@@ -168,11 +168,17 @@ private struct CredentialsView: View {
                 }
 
                 AuthLabeledField(label: "E-Mail") {
-                    TextField("du@example.org", text: $email)
+                    TextField(
+                        "",
+                        text: $email,
+                        prompt: Text("E-Mail-Adresse").foregroundStyle(RatsColor.muted)
+                    )
+                        .foregroundStyle(RatsColor.text)
                         .textContentType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.emailAddress)
                         .textFieldStyle(.plain)
+                        .accessibilityLabel("E-Mail")
                 }
 
                 AuthLabeledField(label: "Passwort", hint: mode == .register ? "mindestens 8 Zeichen" : nil) {
@@ -290,11 +296,17 @@ private struct ForgotPasswordView: View {
         ) {
             VStack(spacing: 16) {
                 AuthLabeledField(label: "E-Mail") {
-                    TextField("du@example.org", text: $email)
+                    TextField(
+                        "",
+                        text: $email,
+                        prompt: Text("E-Mail-Adresse").foregroundStyle(RatsColor.muted)
+                    )
+                        .foregroundStyle(RatsColor.text)
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .textFieldStyle(.plain)
+                        .accessibilityLabel("E-Mail")
                 }
                 Button {
                     Task {
