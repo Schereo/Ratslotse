@@ -117,6 +117,17 @@ ROLLEN: tuple[tuple[str, str, int, str], ...] = (
     ("aktive_rap", AKTIVA, 1, r"^Aktive Rechnungsabgrenzung$"),
     # --- Passiva: wem es zusteht ---
     ("nettoposition", PASSIVA, 1, r"^Nettoposition$"),
+    # Die Rücklage, aus der ein geplanter Fehlbetrag ausgeglichen werden kann,
+    # ist NICHT der Hauptposten „Rücklagen" insgesamt. Maßgeblich ist die
+    # Unterzeile 1.2.1; zweckgebundene Rücklagen und Rücklagen aus
+    # Investitionszuwendungen stehen nicht frei für den Haushaltsausgleich.
+    ("ruecklagen_gesamt", PASSIVA, 2, r"^R[üu]cklagen$"),
+    ("ueberschussruecklage_ordentlich", PASSIVA, 3,
+     r"^R[üu]cklagen aus [Üü]bersch[üu]ssen des ordentlichen Ergebnisses$"),
+    # Das Jahresergebnis steht am Bilanzstichtag noch neben der Rücklage und
+    # wird erst danach zugeführt. Für den verfügbaren Stand „unter
+    # Berücksichtigung des Ergebnisses" gehören beide deshalb zusammen.
+    ("jahresergebnis_bilanz", PASSIVA, 2, r"^Jahresergebnis$"),
     ("sonderposten", PASSIVA, 2, r"^Sonderposten$"),
     ("schulden", PASSIVA, 1, r"^Schulden$"),
     ("geldschulden", PASSIVA, 2, r"^Geldschulden$"),

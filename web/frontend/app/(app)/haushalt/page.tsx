@@ -54,7 +54,7 @@ import {
 const FELDER = ["jahre", "ausgabenreihe", "ergebnisrechnung", "einwohner",
   // Die Ertragsarten der Planjahre — für Jahre ohne Jahresabschluss die
   // einzige Seite, die das Flussbild zeigen kann (Posten 01–11, `ansatz`).
-  "ergebnishaushalt"] as const;
+  "ergebnishaushalt", "ruecklage"] as const;
 
 export default function HaushaltPage() {
   // Nur den Aufwands-Posten je Teilhaushalt: Das Flussbild zeichnet rechts

@@ -24,17 +24,17 @@
 //     sie kann eine gestiegene Entsorgungspauschale sein oder eine
 //     Unterdeckung aus dem Vorjahr. Die Seite zeigt den Verlauf und seine
 //     Bestandteile, nicht ihr Urteil (dieselbe Regel wie im ganzen Bereich).
-//  3. **Die Abfallsammlung bekommt keine erfundene Gebühr.** Sie erhebt eine
-//     Grundgebühr UND eine Gebühr je Liter Behältervolumen; eine einzelne
-//     Division gibt es dort nicht. Ihre Karte zeigt die Kaskade und sagt
-//     ausdrücklich, warum darunter keine Zahl steht.
+//  3. **Die Abfallsammlung bekommt keine erfundene Durchschnittsgebühr.** Sie
+//     erhebt eine Grundgebühr UND eine Gebühr je Liter Behältervolumen. Statt
+//     einer einzelnen Division zeigt ihre Karte deshalb die ausdrücklich
+//     benannten Tarife aus Anlage 4.
 
 import { useMemo } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  GebuehrenZeile, HaushaltAuswahl, deMio, haushaltUrl, herkunftVon,
+  GebuehrenZeile, GebuehrensatzZeile, HaushaltAuswahl, deMio, haushaltUrl, herkunftVon,
 } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import type { Herkunft } from "@/lib/herkunft";
@@ -52,7 +52,9 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 /** Was dieser Abschnitt braucht. Die SEITE holt es zusammen mit den
  *  Wirtschaftsplänen in EINEM Aufruf — beide Abschnitte brauchen `herkunft`,
  *  und `useFetch` hat keinen Zwischenspeicher. */
-export type GebuehrenDaten = HaushaltAuswahl<"gebuehren" | "herkunft">;
+export type GebuehrenDaten = HaushaltAuswahl<
+  "gebuehren" | "gebuehrensaetze" | "herkunft"
+>;
 
 /** Was der Bereich macht — eine Zeile, damit die Zahl einen Gegenstand hat. */
 const WAS_ES_IST: Record<string, string> = {
@@ -97,8 +99,50 @@ function Zeile({ label, wert, summe = false }: {
   );
 }
 
-function BereichsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
-  zeilen: GebuehrenZeile[]; juengstesJahr: number;
+function Tarifliste({ tarife }: { tarife: GebuehrensatzZeile[] }) {
+  if (!tarife.length) return null;
+  const jahr = tarife[0].jahr;
+  return (
+    <div className="mt-3 rounded-xl border border-border bg-muted/25 px-3 py-2.5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-[12.5px] font-semibold">Konkrete Tarifvorschläge {jahr}</p>
+        <span className="font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
+          Anlage 4
+        </span>
+      </div>
+      <dl className="mt-2 grid gap-x-5 gap-y-1.5 sm:grid-cols-2">
+        {tarife.map((t) => (
+          <div key={t.schluessel}
+            className="flex items-baseline justify-between gap-3 border-t border-border/70 pt-1.5">
+            <dt className="min-w-0 text-[11.5px] leading-snug text-muted-foreground">
+              {t.bezeichnung}
+            </dt>
+            <dd className="max-w-[48%] flex-none text-right tabular-nums">
+              <span className="block text-[12px] font-semibold">
+                <Euro wert={t.betrag} stellen={2} />
+              </span>
+              <span className="block text-[10.5px] leading-snug text-muted-foreground">
+                {t.einheit}
+                {t.veraenderung_prozent != null && t.veraenderung_prozent !== 0 && (
+                  <> · {t.veraenderung_prozent > 0 ? "+" : ""}
+                    {deZahl(t.veraenderung_prozent, 2)}&#8239;%</>
+                )}
+              </span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+        Das sind die ausdrücklich benannten Vorschläge der Verwaltung, keine
+        aus den Gesamtkosten errechnete Durchschnittsgebühr.<Beleg q="gebuehren" />
+      </p>
+    </div>
+  );
+}
+
+function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
+  zeilen: GebuehrenZeile[];
+  tarife: GebuehrensatzZeile[];
   /** Die Suche, nicht das Ergebnis — welche Zeile die jüngste ist,
    *  entscheidet diese Karte selbst. */
   herkunftFuer: (id: number | null) => Herkunft | null;
@@ -158,7 +202,7 @@ function BereichsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
             )}
           </p>
         </div>
-      ) : (
+      ) : tarife.length === 0 ? (
         // KEINE ERFUNDENE ZAHL. Die Abfallsammlung erhebt eine Grundgebühr und
         // eine Gebühr je Liter — eine einzelne Division gibt es dort nicht.
         <p className="mt-3 rounded-xl border border-border px-3 py-2.5
@@ -168,7 +212,12 @@ function BereichsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
           Liter Behältervolumen abgerechnet. Eine Zahl „je Einheit" ließe sich
           daraus nur erfinden.
         </p>
-      )}
+      ) : null}
+
+      {/* Bei Behandlung und Straßenreinigung steht der konkrete Vorschlag
+          bereits direkt an der Division. Nur die mehrteilige Abfallsammlung
+          braucht die vollständige Tarifliste statt einer Einzelzahl. */}
+      <Tarifliste tarife={letzte.gebuehr == null ? tarife : []} />
 
       <div className="mt-2.5">
         <p className="text-[12px] leading-relaxed text-muted-foreground">
@@ -239,6 +288,7 @@ export function GebuehrenAbschnitt({ data, loading }: {
   const jahre = nachBereich.flat().map((z) => z.jahr);
   const juengstes = Math.max(...jahre);
   const aeltestes = Math.min(...jahre);
+  const tarifJahr = Math.max(0, ...(data?.gebuehrensaetze ?? []).map((z) => z.jahr));
 
   return (
       <div className="flex flex-col gap-4">
@@ -270,7 +320,8 @@ export function GebuehrenAbschnitt({ data, loading }: {
         <div className="grid gap-4 lg:grid-cols-2">
           {nachBereich.map((zeilen) => (
             <BereichsKarte key={zeilen[0].bereich} zeilen={zeilen}
-              juengstesJahr={juengstes}
+              tarife={(data?.gebuehrensaetze ?? [])
+                .filter((z) => z.jahr === tarifJahr && z.bereich === zeilen[0].bereich)}
               herkunftFuer={(id) => herkunftVon(data, id)} />
           ))}
         </div>

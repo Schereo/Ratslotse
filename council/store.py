@@ -5661,6 +5661,43 @@ class CouncilStore:
         except sqlite3.OperationalError:
             return []
 
+    def get_ruecklagen(self) -> list[dict]:
+        """Verfügbare Überschussrücklage nach abgeschlossenem Jahr.
+
+        Die Bilanz zeigt den bereits umgebuchten Stand in Position 1.2.1 und
+        das Ergebnis des gerade abgeschlossenen Jahres noch separat in 1.3.
+        Der Vorbericht des Folgehaushalts nennt deshalb beide zusammen („unter
+        Berücksichtigung des Ergebnisses"). Genau diese nachvollziehbare
+        Addition liefert die Reihe; andere, zweckgebundene Rücklagen bleiben
+        ausdrücklich draußen.
+        """
+        try:
+            rows = self._conn.execute(
+                "SELECT jahr, rolle, wert, herkunft_id FROM council_bilanz "
+                "WHERE rolle IN ('ueberschussruecklage_ordentlich', "
+                "'jahresergebnis_bilanz') ORDER BY jahr, rolle").fetchall()
+        except sqlite3.OperationalError:
+            return []
+        jahre: dict[int, dict] = {}
+        for row in rows:
+            z = jahre.setdefault(row["jahr"], {
+                "jahr": row["jahr"], "ruecklage": None,
+                "jahresergebnis": None, "stand_nach_ergebnis": None,
+                "herkunft_id": row["herkunft_id"],
+            })
+            if row["rolle"] == "ueberschussruecklage_ordentlich":
+                z["ruecklage"] = row["wert"]
+            else:
+                z["jahresergebnis"] = row["wert"]
+        aus = []
+        for jahr in sorted(jahre):
+            z = jahre[jahr]
+            if z["ruecklage"] is None or z["jahresergebnis"] is None:
+                continue
+            z["stand_nach_ergebnis"] = z["ruecklage"] + z["jahresergebnis"]
+            aus.append(z)
+        return aus
+
     def save_bilanz_erlaeuterungen(self, jahr: int, abschnitte: list[dict],
                                    herkunft) -> int:
         """Die Erläuterungen des Anhangs zu einem Jahrgang ersetzen."""

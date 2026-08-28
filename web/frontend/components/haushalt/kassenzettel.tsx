@@ -60,19 +60,21 @@ import {
 import { BEREICH_NACH_SCHLUESSEL, bereichKanon } from "@/lib/haushalt-bereiche";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import {
-  HaushaltAuswahl, RUECKLAGE_MIO, RUECKLAGE_STAND,
-  bereiche, deMio, mio, quellenLabel, summe,
+  HaushaltAuswahl, bereiche, deMio, juengsteRuecklage, mio, quellenLabel, summe,
 } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
+import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
 
 const de = (n: number) => n.toLocaleString("de-DE");
 
 /** Ab welchem Jahr das Ersparte zu Jahresbeginn aufgebraucht wäre, bliebe das
  *  geplante Minus so. Eine Division, keine Prognose der Stadt — und `null`,
  *  wenn sie über 40 Jahre nicht aufgeht: Dann trägt der Satz nichts mehr. */
-function ruecklageLeerAb(defizitEuro: number, abJahr: number): number | null {
+function ruecklageLeerAb(
+  defizitEuro: number, ruecklageEuro: number, abJahr: number,
+): number | null {
   if (defizitEuro <= 0) return null;
-  let rest = RUECKLAGE_MIO * 1e6;
+  let rest = ruecklageEuro;
   let jahr = abJahr;
   while (rest > 0 && jahr < abJahr + 40) {
     rest -= defizitEuro;
@@ -175,7 +177,7 @@ const NICHT_AUSSAGEN: NichtAussage[] = [
 ];
 
 export function Kassenzettel({ daten, jahr, einwohner, className }: {
-  daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre">;
+  daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre" | "ruecklage">;
   /** Das jüngste Planjahr — der Zettel läuft bewusst nur dafür (s. o.). */
   jahr: number;
   /** Amtliche Bezugsgröße samt ihrem Haushaltsjahr. */
@@ -206,9 +208,13 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
   const fehltEuro = saldoEuro != null && saldoEuro < 0 ? -saldoEuro : null;
   const ueberEuro = saldoEuro != null && saldoEuro > 0 ? saldoEuro : null;
 
-  const ruecklageJeKopf = jeKopf(RUECKLAGE_MIO * 1e6);
-  const restJeKopf = fehltEuro != null ? jeKopf(RUECKLAGE_MIO * 1e6 - fehltEuro) : null;
-  const leerAb = fehltEuro != null ? ruecklageLeerAb(fehltEuro, jahr) : null;
+  const ruecklage = juengsteRuecklage(daten);
+  const ruecklageEuro = ruecklage?.stand_nach_ergebnis ?? null;
+  const ruecklageJeKopf = ruecklageEuro != null ? jeKopf(ruecklageEuro) : null;
+  const restJeKopf = fehltEuro != null && ruecklageEuro != null
+    ? jeKopf(ruecklageEuro - fehltEuro) : null;
+  const leerAb = fehltEuro != null && ruecklageEuro != null
+    ? ruecklageLeerAb(fehltEuro, ruecklageEuro, jahr) : null;
 
   const quelle = quellenLabel(zeilen, jahr);
   const finanzen = BEREICH_NACH_SCHLUESSEL.finanzen;
@@ -249,7 +255,7 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
           quelle: <>amtliche Zahl der Stadt<Beleg q="einwohner" /></>,
         }}
         nichtAussagen={NICHT_AUSSAGEN}
-        fuss={restJeKopf != null ? (
+        fuss={restJeKopf != null && ruecklageJeKopf != null ? (
           <div className="mt-3 space-y-1.5 border-t border-dashed border-border pt-3 text-[11px] text-muted-foreground">
             {/* „Erspartes noch vorhanden 1.114 €" stand so im Entwurf und
                 war ein Rechenfehler: Das ist der Stand VOR dem Zugriff
@@ -311,11 +317,12 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                 </p>
               </Karte>
 
-              {fehltEuro != null && (
+              {fehltEuro != null && ruecklage != null && ruecklageEuro != null
+                && ruecklageJeKopf != null && (
                 <Karte kicker="Geplante Entnahme aus der Rücklage">
                   <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/90">
                     Im Haushaltsplan soll das Minus durch die Rücklage von rund
-                    {" "}{RUECKLAGE_MIO}&#8239;Mio.&nbsp;€ ausgeglichen werden
+                    {" "}{deMio(ruecklageEuro / 1e6)}&#8239;Mio.&nbsp;€ ausgeglichen werden
                     <Beleg q="ruecklage" />. Das entspricht {de(ruecklageJeKopf)}&nbsp;€ je
                     Einwohner*in; für dieses Planjahr würden rechnerisch
                     {" "}{de(jeKopf(fehltEuro))}&nbsp;€ davon benötigt.
@@ -325,8 +332,21 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                   <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
                     Diese Rechnung veranschaulicht nur die Größenordnung. Sie ist keine
                     Prognose, denn die tatsächlichen Jahresergebnisse können deutlich vom
-                    Plan abweichen. {RUECKLAGE_STAND}.
+                    Plan abweichen. Stand: Jahresabschluss {ruecklage.jahr}, nach
+                    Berücksichtigung des dort ausgewiesenen Jahresergebnisses.
                   </p>
+                  {(daten.ruecklage?.length ?? 0) >= 2 && (
+                    <div className="mt-3">
+                      <ZeitreiheMini
+                        reihe={(daten.ruecklage ?? []).map((z) => ({
+                          jahr: z.jahr, wert: z.stand_nach_ergebnis / 1e6,
+                        }))}
+                        format={(v) => `${deMio(v)} Mio.`}
+                        ariaLabel={`Überschussrücklage nach Jahresergebnis, `
+                          + `${daten.ruecklage?.[0]?.jahr} bis ${ruecklage.jahr}`}
+                      />
+                    </div>
+                  )}
                 </Karte>
               )}
             </div>

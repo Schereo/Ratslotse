@@ -16,7 +16,10 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
-import { HaushaltAuswahl, haushaltUrl, deMio, spendenGremien, spendenJahre, spendenLaufend } from "@/lib/haushalt";
+import {
+  HaushaltAuswahl, haushaltUrl, deMio, einnahmearten,
+  spendenGremien, spendenJahre, spendenLaufend,
+} from "@/lib/haushalt";
 import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
 import { LueckenFeld } from "@/components/grafik/luecken-feld";
 import { SPIELRAUM_LABEL, STEUERARTEN, Spielraum } from "@/lib/haushalt-steuern";
@@ -29,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
+import { Herkunftskacheln } from "@/components/haushalt/flussbild";
 
 /** Drei Striche als Spielraum-Marke — gefüllt, halb, gestrichelt.
  *
@@ -80,8 +84,8 @@ const GRUPPEN: { stufe: Spielraum; titel: string; text: string }[] = [
 // hätte holen können. Zwei Seiten dürfen zur selben Zahl nicht
 // Verschiedenes sagen — die Regel stand schon im Steckbrief, nur
 // andersherum.
-const FELDER = ["steuern", "steuerkraft", "finanzausgleich", "spenden",
-  "ergebnisrechnung"] as const;
+const FELDER = ["jahre", "steuern", "steuerkraft", "finanzausgleich", "spenden",
+  "ergebnisrechnung", "ergebnishaushalt"] as const;
 
 export default function EinnahmenPage() {
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
@@ -132,6 +136,14 @@ export default function EinnahmenPage() {
     .filter((g) => g.karten.length > 0);
   const frei = karten.filter((k) => k.art.spielraum === "frei").length;
 
+  // Der jüngste aufgestellte Ansatz, nicht eines der drei späteren
+  // Finanzplanungsjahre. Die Seite zeigt damit neben den jüngsten Ist-Werten
+  // erstmals auch vollständig, woher das Geld im geltenden Plan kommen soll.
+  const planJahr = Math.max(0, ...(data.ergebnishaushalt ?? [])
+    .filter((z) => z.art === "ansatz")
+    .map((z) => z.jahr));
+  const planErtraege = planJahr ? einnahmearten(data, planJahr) : null;
+
   const spendenReihe = spendenJahre(data);
   const spendenLauf = spendenLaufend(data);
   const spendenGrem = spendenGremien(data);
@@ -140,6 +152,7 @@ export default function EinnahmenPage() {
   const spendenGeld = spendenGrem.Rat.betrag + spendenGrem.Verwaltungsausschuss.betrag;
 
   const quellen: QuellenSchluessel[] = ["steuern", "steuerkraft", "hebesaetze",
+    ...(planErtraege ? (["ergebnishaushalt"] as const) : []),
     ...(karten.some((k) => k.art.ergebnisPosten && k.betrag != null)
       ? (["jahresabschluss"] as const) : []),
     ...(spendenReihe.length ? (["spenden"] as const) : [])];
@@ -238,6 +251,33 @@ export default function EinnahmenPage() {
           </p>
         </div>
       </div>
+
+      {planErtraege && (
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+                Haushaltsplan {planErtraege.jahr}
+              </p>
+              <h2 className="mt-1 font-display text-[17px] font-bold tracking-tight">
+                Woher das Geld laut Plan kommen soll
+              </h2>
+            </div>
+            <p className="font-display text-[20px] font-bold tabular-nums">
+              {deMio(planErtraege.gesamt / 1e6)}&#8239;Mio.&nbsp;€
+              <Beleg q="ergebnishaushalt" />
+            </p>
+          </div>
+          <p className="mt-2 max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
+            Diese Aufteilung umfasst alle geplanten ordentlichen Erträge. Sie stammt aus
+            dem von der Verwaltung eingebrachten Gesamtergebnishaushalt und ist deshalb
+            getrennt von den abgerechneten Beträgen in den Karten darunter.
+          </p>
+          <div className="mt-3">
+            <Herkunftskacheln arten={planErtraege} />
+          </div>
+        </section>
+      )}
 
       <div id="spielraum" className="scroll-mt-20 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
         <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
@@ -339,9 +379,10 @@ export default function EinnahmenPage() {
                 ? `. Dazu kommen die Schlüsselzuweisungen des Landes: für das Ausgleichsjahr `
                   + `${zuweisungJahr.jahr} rund ${deMio(zuweisungJahr.zuweisungen / 1e6)} Millionen Euro`
                 : "")
-            + ". Das ist noch nicht alles, was die Stadt einnimmt: Gebühren, Kostenerstattungen"
-            + " und zweckgebundene Zuschüsse kommen hinzu, und die stehen nicht in diesen"
-            + " Datensätzen. Die Gesamtsumme aller Einnahmen steht auf der Übersicht."}
+            + ". Die Karten sind eine Auswahl wiederkehrender Einnahmequellen mit klarer"
+            + " Zuständigkeit. Gebühren, Kostenerstattungen und zweckgebundene Zuschüsse"
+            + " stehen vollständig in der geplanten Aufteilung weiter oben. Die Beträge"
+            + " hier dürfen wegen ihrer unterschiedlichen Jahre nicht dazuaddiert werden."}
         />
       )}
 
@@ -555,11 +596,11 @@ export default function EinnahmenPage() {
         </h2>
         <dl className="mt-2.5 flex flex-col gap-2.5">
           <div>
-            <dt className="text-[12.5px] font-semibold">Die Beträge sind Ist-Werte</dt>
+            <dt className="text-[12.5px] font-semibold">Plan und Ist stehen getrennt</dt>
             <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
-              Also abgerechnete Einnahmen, nicht die Planzahlen des Haushalts. Die Aufteilung der
-              geplanten Erträge nach Arten lesen wir noch ein; bis dahin zeigen wir hier lieber,
-              was wirklich geflossen ist.
+              Die Flächenaufteilung oben zeigt die geplanten Erträge des Haushalts
+              {" "}{planErtraege?.jahr}. Die Karten nach Entscheidungsspielraum zeigen dagegen
+              die jüngsten abgerechneten Beträge und nennen deshalb jeweils ihr eigenes Jahr.
             </dd>
           </div>
           <div>

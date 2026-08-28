@@ -12,10 +12,7 @@
 //  3. Vergleichsgrößen (Städte, Historie) ordnen ein — gerechnet wird nur
 //     mit dem Planjahr.
 
-import {
-  RUECKLAGE_MIO,
-  type ErgebnishaushaltZeile, type HebesatzZeile,
-} from "@/lib/haushalt";
+import { type ErgebnishaushaltZeile, type HebesatzZeile } from "@/lib/haushalt";
 import type { VergleichDaten } from "@/lib/haushalt-vergleich";
 
 /** Der geltende Hebesatz einer Art — und seit wann er gilt.
@@ -159,6 +156,8 @@ export function planjahrErgebnisse(
 export type PfadPunkt = { jahr: number; stand: number };
 
 export type RuecklagenPfad = {
+  /** Geprüfter Bestand vor dem ersten Planjahr, in Mio. €. */
+  start: number;
   /** Der Stand am ENDE jedes Planjahres, in Mio. € — Startpunkt ist die
    *  Rücklage vor dem ersten Jahr. Nie unter 0 gezeichnet. */
   punkte: PfadPunkt[];
@@ -179,8 +178,9 @@ export type RuecklagenPfad = {
 export function ruecklagenPfad(
   ergebnisse: { jahr: number; ergebnisMio: number }[],
   wirkungMio: number,
+  startMio: number,
 ): RuecklagenPfad {
-  let stand = RUECKLAGE_MIO;
+  let stand = startMio;
   let kippjahr: number | null = null;
   const punkte: PfadPunkt[] = [];
   for (const e of ergebnisse) {
@@ -189,7 +189,7 @@ export function ruecklagenPfad(
     if (stand < 0 && kippjahr == null) kippjahr = e.jahr;
     punkte.push({ jahr: e.jahr, stand: Math.max(0, stand) });
   }
-  return { punkte, kippjahr, letztesPlanjahr: ergebnisse.at(-1)?.jahr ?? 0 };
+  return { start: startMio, punkte, kippjahr, letztesPlanjahr: ergebnisse.at(-1)?.jahr ?? 0 };
 }
 
 /** Die Zinssätze, die die Stadt zuletzt WIRKLICH gezahlt hat — Zinsaufwand

@@ -36,13 +36,13 @@ import { Labor } from "@/components/haushalt/labor";
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-// `hebesaetze` seit 21.08.2026 (der geltende Satz kommt aus der Reihe statt
-// aus einer Konstante); `ergebnishaushalt`, `gebuehren` und
-// `haushaltssatzung` seit dem Werkbank-Umbau (Labor 2.0): Rücklagen-Pfad,
+// `hebesaetze` und `ruecklage` kommen aus echten Reihen statt Konstanten;
+// `ergebnishaushalt`, `gebuehren` und `haushaltssatzung` seit dem
+// Werkbank-Umbau (Labor 2.0): Rücklagen-Pfad,
 // gesperrte Gebühren-Schraube und der Kredit-Kasten der dritten Werkbank.
 const FELDER = ["jahre", "produkt_jahre", "steuern", "steuerkraft", "einwohner",
                 "ergebnisrechnung", "hebesaetze", "ergebnishaushalt",
-                "gebuehren", "haushaltssatzung"] as const;
+                "gebuehren", "haushaltssatzung", "ruecklage"] as const;
 
 /** Reihenfolge = Nummerierung der Beleg-Chips, deshalb nach Leserichtung:
  *  Plan (die Zahl, gegen die gerechnet wird), die Regler der ersten Werkbank
