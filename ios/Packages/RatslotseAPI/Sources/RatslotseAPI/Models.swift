@@ -426,6 +426,29 @@ public struct FollowStatus: Codable, Sendable, Equatable {
 
 public struct CommitteeOptions: Codable, Sendable {
     public let committees: [String]
+    public let details: [CommitteeDetail]?
+}
+
+public struct CommitteeDetail: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { name }
+    public let name: String
+    public let nextDate: String?
+    public let nextTime: String?
+    public let decisionsYear: Int
+
+    public init(name: String, nextDate: String?, nextTime: String?, decisionsYear: Int) {
+        self.name = name
+        self.nextDate = nextDate
+        self.nextTime = nextTime
+        self.decisionsYear = decisionsYear
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case nextDate = "next_date"
+        case nextTime = "next_time"
+        case decisionsYear = "decisions_year"
+    }
 }
 
 public struct PolicyFieldOption: Codable, Sendable, Hashable, Identifiable {

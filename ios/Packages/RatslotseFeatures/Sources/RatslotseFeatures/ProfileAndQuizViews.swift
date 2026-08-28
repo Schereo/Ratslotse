@@ -208,9 +208,11 @@ private struct PersonProfileOverview: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 14) {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 50))
-                    .foregroundStyle(RatsColor.primary)
+                RatsGlyphView(glyph: .profile, color: RatsColor.primaryText, lineWidth: 1.55)
+                    .frame(width: 34, height: 34)
+                    .frame(width: 58, height: 58)
+                    .background(RatsColor.primary)
+                    .clipShape(Circle())
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 5) {
                     Text(person.roleLabel)
@@ -503,16 +505,37 @@ struct QuizView: View {
             Divider().overlay(RatsColor.separator)
             MonoKicker("Neues Spiel")
             if let areas {
-                Picker("Gebiet", selection: $selectedArea) {
-                    Text("Gebiet wählen").tag(Optional<String>.none)
-                    ForEach(areas.wahlbereiche) { entry in
-                        Text(entry.label ?? "Wahlbereich \(entry.key)").tag(Optional("wahlbereich:\(entry.key)"))
+                Menu {
+                    Button("Gebiet wählen") { selectedArea = nil }
+                    Section("Wahlbereiche") {
+                        ForEach(areas.wahlbereiche) { entry in
+                            Button(entry.label ?? "Wahlbereich \(entry.key)") {
+                                selectedArea = "wahlbereich:\(entry.key)"
+                            }
+                        }
                     }
-                    ForEach(areas.stadtteile.prefix(30)) { entry in
-                        Text(entry.label ?? entry.key).tag(Optional("stadtteil:\(entry.key)"))
+                    Section("Stadtteile") {
+                        ForEach(areas.stadtteile.prefix(30)) { entry in
+                            Button(entry.label ?? entry.key) { selectedArea = "stadtteil:\(entry.key)" }
+                        }
                     }
+                } label: {
+                    HStack {
+                        RatsGlyphView(glyph: .map)
+                            .frame(width: 18, height: 18)
+                        Text(selectedAreaLabel(areas))
+                            .lineLimit(1)
+                        Spacer()
+                        Text("⌄").font(RatsFont.body(14, weight: .bold))
+                    }
+                    .font(RatsFont.body(13, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, minHeight: 42)
+                    .background(RatsColor.primary.opacity(0.08))
+                    .overlay(RoundedRectangle(cornerRadius: 11).stroke(RatsColor.primary.opacity(0.18)))
+                    .clipShape(RoundedRectangle(cornerRadius: 11))
                 }
-                .pickerStyle(.menu)
                 Button("Quiz starten") { Task { await start() } }
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(selectedArea == nil)
@@ -628,6 +651,16 @@ struct QuizView: View {
             index = 0
             mode = .normal
         } catch { self.error = error.localizedDescription }
+    }
+
+    private func selectedAreaLabel(_ areas: QuizAreas) -> String {
+        guard let selectedArea else { return "Gebiet wählen" }
+        if selectedArea.hasPrefix("wahlbereich:") {
+            let key = String(selectedArea.dropFirst("wahlbereich:".count))
+            return areas.wahlbereiche.first(where: { $0.key == key })?.label ?? "Wahlbereich \(key)"
+        }
+        let key = String(selectedArea.dropFirst("stadtteil:".count))
+        return areas.stadtteile.first(where: { $0.key == key })?.label ?? key
     }
 
     private func submitAnswer(question: QuizQuestion, selected: Int) async {
@@ -765,8 +798,10 @@ private struct OwnQuizEditor: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+            VStack(spacing: 0) {
+                RatsSheetHeader("Eigene Fragen", trailingTitle: "Fertig", trailingAction: { dismiss() })
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
                     RatsModalIntro(
                         kicker: "Dein Lernbereich",
                         title: "Eigene Fragen",
@@ -843,17 +878,14 @@ private struct OwnQuizEditor: View {
                         .ratsCard()
                     }
                     if let error { ErrorCard(message: error) { Task { await load() } } }
+                    }
+                    .frame(maxWidth: 680, alignment: .leading)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 22)
                 }
-                .frame(maxWidth: 680, alignment: .leading)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 22)
+                .background(RatsColor.page)
             }
-            .background(RatsColor.page)
-            .navigationTitle("Eigene Fragen")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Fertig") { dismiss() } }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .task { await load() }
         }
     }

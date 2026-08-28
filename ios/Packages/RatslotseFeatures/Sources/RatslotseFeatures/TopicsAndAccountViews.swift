@@ -101,6 +101,14 @@ struct TopicsView: View {
         .toolbarTitleDisplayMode(.inline)
         .refreshable { await load() }
         .task { if topics.isEmpty { await load() } }
+        .onAppear {
+#if DEBUG
+            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_TOPIC_EDITOR"] == "1" {
+                editing = nil
+                isPresentingEditor = true
+            }
+#endif
+        }
         .sheet(isPresented: $isPresentingEditor) {
             TopicEditorView(model: model, topic: editing) {
                 isPresentingEditor = false
@@ -249,8 +257,10 @@ private struct TopicEditorView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+            VStack(spacing: 0) {
+                RatsSheetHeader("Thema", leadingTitle: "Abbrechen", leadingAction: { dismiss() })
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
                     RatsModalIntro(
                         kicker: "Themenradar",
                         title: topic == nil ? "Neues Thema" : "Thema bearbeiten",
@@ -296,17 +306,14 @@ private struct TopicEditorView: View {
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(name.isEmpty || description.isEmpty || isWorking)
                     .opacity(name.isEmpty || description.isEmpty || isWorking ? 0.5 : 1)
+                    }
+                    .frame(maxWidth: 620, alignment: .leading)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 22)
                 }
-                .frame(maxWidth: 620, alignment: .leading)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 22)
+                .background(RatsColor.page)
             }
-            .background(RatsColor.page)
-            .navigationTitle("Thema")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-            }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
@@ -361,9 +368,8 @@ struct AccountView: View {
                             Circle()
                                 .fill(RatsColor.primary)
                                 .frame(width: 58, height: 58)
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 25, weight: .semibold))
-                                .foregroundStyle(RatsColor.primaryText)
+                            RatsGlyphView(glyph: .profile, color: RatsColor.primaryText, lineWidth: 1.75)
+                                .frame(width: 28, height: 28)
                                 .frame(width: 58, height: 58)
                             Circle()
                                 .fill(RatsColor.signal)
@@ -401,18 +407,24 @@ struct AccountView: View {
                         symbol: "bell.badge"
                     ) {
                         RatsSettingsRow("Zustellweg", detail: "E-Mail, Push oder beides", symbol: "paperplane") {
-                            Picker("Zustellweg", selection: deliveryBinding(user: user)) {
-                                Text("E-Mail").tag("email")
-                                Text("Push").tag("push")
-                                Text("Beides").tag("both")
-                                Text("Aus").tag("off")
+                            Menu {
+                                Button("E-Mail") { deliveryBinding(user: user).wrappedValue = "email" }
+                                Button("Push") { deliveryBinding(user: user).wrappedValue = "push" }
+                                Button("Beides") { deliveryBinding(user: user).wrappedValue = "both" }
+                                Button("Aus") { deliveryBinding(user: user).wrappedValue = "off" }
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Text(deliveryLabel(model.user?.deliveryChannel ?? user.deliveryChannel))
+                                    Text("⌄").font(RatsFont.body(13, weight: .bold))
+                                }
+                                .font(RatsFont.body(12, weight: .semibold))
+                                .foregroundStyle(RatsColor.primary)
+                                .padding(.horizontal, 10)
+                                .frame(minHeight: 32)
+                                .background(RatsColor.primary.opacity(0.08))
+                                .overlay(Capsule().stroke(RatsColor.primary.opacity(0.18)))
+                                .clipShape(Capsule())
                             }
-                            .labelsHidden()
-                            .pickerStyle(.menu)
-                            .tint(RatsColor.primary)
-                            .font(RatsFont.body(13, weight: .semibold))
-                            .lineLimit(1)
-                            .frame(maxWidth: 150, alignment: .trailing)
                         }
 
                         if notifications != nil { Divider().overlay(RatsColor.separator) }
@@ -519,6 +531,15 @@ struct AccountView: View {
         .navigationTitle("Konto")
         .toolbarTitleDisplayMode(.inline)
         .task { await load() }
+        .onAppear {
+#if DEBUG
+            switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ACCOUNT_SHEET"] {
+            case "password": isChangingPassword = true
+            case "delete": isDeletingAccount = true
+            default: break
+            }
+#endif
+        }
         .sheet(isPresented: $isChangingPassword) {
             ChangePasswordView(model: model)
                 .ratsLargeSheet()
@@ -552,6 +573,15 @@ struct AccountView: View {
                 } catch { self.error = error.localizedDescription }
             }
         })
+    }
+
+    private func deliveryLabel(_ channel: String) -> String {
+        switch channel {
+        case "push": "Push"
+        case "both": "Beides"
+        case "off": "Aus"
+        default: "E-Mail"
+        }
     }
 
     private func saveDisplayName() {
@@ -621,8 +651,10 @@ private struct ChangePasswordView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+            VStack(spacing: 0) {
+                RatsSheetHeader("Passwort", leadingTitle: "Abbrechen", leadingAction: { dismiss() })
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
                     RatsModalIntro(
                         kicker: "Sicherheit",
                         title: "Passwort ändern",
@@ -653,16 +685,13 @@ private struct ChangePasswordView: View {
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(new.count < 8 || new != repeated || current.isEmpty)
                     .opacity(new.count < 8 || new != repeated || current.isEmpty ? 0.5 : 1)
+                    }
+                    .frame(maxWidth: 560, alignment: .leading)
+                    .padding(18)
                 }
-                .frame(maxWidth: 560, alignment: .leading)
-                .padding(18)
+                .background(RatsColor.page)
             }
-            .background(RatsColor.page)
-            .navigationTitle("Passwort")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-            }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
@@ -691,8 +720,10 @@ private struct DeleteAccountView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+            VStack(spacing: 0) {
+                RatsSheetHeader("Konto löschen", leadingTitle: "Abbrechen", leadingAction: { dismiss() })
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
                     RatsModalIntro(
                         kicker: "Achtung",
                         title: "Konto löschen",
@@ -736,16 +767,13 @@ private struct DeleteAccountView: View {
                     }
                     .disabled(confirmation != "LÖSCHEN" || (password.isEmpty && appleToken.isEmpty))
                     .opacity(confirmation != "LÖSCHEN" || (password.isEmpty && appleToken.isEmpty) ? 0.5 : 1)
+                    }
+                    .frame(maxWidth: 560, alignment: .leading)
+                    .padding(18)
                 }
-                .frame(maxWidth: 560, alignment: .leading)
-                .padding(18)
+                .background(RatsColor.page)
             }
-            .background(RatsColor.page)
-            .navigationTitle("Konto löschen")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-            }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 

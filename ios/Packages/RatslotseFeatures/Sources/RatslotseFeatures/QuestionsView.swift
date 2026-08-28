@@ -47,7 +47,8 @@ struct QuestionsView: View {
                 }
                 Spacer(minLength: 0)
                 Button { showConversations = true } label: {
-                    Image(systemName: "clock.arrow.circlepath")
+                    RatsGlyphView(glyph: .history, color: RatsColor.bodyText)
+                        .frame(width: 20, height: 20)
                         .frame(width: 40, height: 40)
                         .background(RatsColor.card)
                         .overlay(Circle().stroke(RatsColor.border))
@@ -55,7 +56,11 @@ struct QuestionsView: View {
                 }
                 .accessibilityLabel("Gespräche")
                 Button { showDeepResearch = true } label: {
-                    Image(systemName: model.hasRecoverableResearch ? "flask.fill" : "flask")
+                    RatsGlyphView(
+                        glyph: .research,
+                        color: model.hasRecoverableResearch ? RatsColor.signal : RatsColor.bodyText
+                    )
+                        .frame(width: 20, height: 20)
                         .frame(width: 40, height: 40)
                         .background(RatsColor.card)
                         .overlay(Circle().stroke(RatsColor.border))
@@ -119,6 +124,11 @@ struct QuestionsView: View {
                ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_FIXTURE"] == "1",
                let fixture = debugQuestionFixture() {
                 turns = [fixture]
+            }
+            switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_SHEET"] {
+            case "research": showDeepResearch = true
+            case "conversations": showConversations = true
+            default: break
             }
 #endif
         }
@@ -308,11 +318,12 @@ private struct EmptyQuestionsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 30))
-                .foregroundStyle(RatsColor.signal)
-            Text("Frag, wie du sprechen würdest.")
-                .font(RatsFont.title(26))
+            HStack(alignment: .bottom, spacing: 12) {
+                LottiMascot(pose: .point)
+                    .frame(width: 72, height: 72)
+                Text("Frag, wie du sprechen würdest.")
+                    .font(RatsFont.title(26))
+            }
             Text("Ratslotse sucht in Beschlüssen, Vorlagen und Debatten. Die Quellen stehen direkt an der Antwort.")
                 .foregroundStyle(RatsColor.secondary)
                 .lineSpacing(3)

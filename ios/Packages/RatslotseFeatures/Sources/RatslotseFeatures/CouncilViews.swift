@@ -5,16 +5,8 @@ import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
 
-private enum CouncilSection: String, CaseIterable, Identifiable {
-    case decisions = "Beschlüsse"
-    case sessions = "Sitzungen"
-    case map = "Stadtkarte"
-    var id: String { rawValue }
-}
-
 struct CouncilBrowserView: View {
-    let model: AppModel
-    @State private var section: CouncilSection = .decisions
+    @Bindable var model: AppModel
     @State private var query = ""
     @State private var outcome = ""
     @State private var committee = ""
@@ -57,19 +49,22 @@ struct CouncilBrowserView: View {
                 NavigationLink {
                     SavedCouncilView(model: model)
                 } label: {
-                    Image(systemName: "bookmark")
-                        .font(.system(size: 16, weight: .semibold))
+                    RatsGlyphView(glyph: .saved, color: RatsColor.bodyText)
+                        .frame(width: 19, height: 19)
                         .frame(width: 40, height: 40)
                         .background(RatsColor.card)
                         .overlay(Circle().stroke(RatsColor.border))
                         .clipShape(Circle())
                 }
                 .accessibilityLabel("Merkliste")
-                if section != .map {
+                if model.councilSection != .map {
                     Button { showsFilters = true } label: {
                         ZStack(alignment: .topTrailing) {
-                            Image(systemName: activeFilterCount > 0 ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease")
-                                .font(.system(size: 16, weight: .semibold))
+                            RatsGlyphView(
+                                glyph: .filter,
+                                color: activeFilterCount > 0 ? RatsColor.primary : RatsColor.bodyText
+                            )
+                                .frame(width: 19, height: 19)
                                 .frame(width: 40, height: 40)
                                 .background(RatsColor.card)
                                 .overlay(Circle().stroke(RatsColor.border))
@@ -92,25 +87,41 @@ struct CouncilBrowserView: View {
             .padding(.top, 16)
             .padding(.bottom, 4)
 
-            Picker("Ansicht", selection: $section) {
-                ForEach(CouncilSection.allCases) { Text($0.rawValue).tag($0) }
+            HStack(spacing: 4) {
+                ForEach(CouncilSection.allCases) { item in
+                    Button {
+                        withAnimation(.easeOut(duration: 0.16)) { model.councilSection = item }
+                    } label: {
+                        Text(item.rawValue)
+                            .font(RatsFont.body(12.5, weight: .semibold))
+                            .foregroundStyle(model.councilSection == item ? RatsColor.primaryText : RatsColor.bodyText)
+                            .frame(maxWidth: .infinity, minHeight: 34)
+                            .background(model.councilSection == item ? RatsColor.primary : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .pickerStyle(.segmented)
+            .padding(4)
+            .background(RatsColor.separator)
+            .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(RatsColor.border))
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
 
             HStack(spacing: 9) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(RatsColor.secondary)
+                RatsGlyphView(glyph: .search, color: RatsColor.secondary)
+                    .frame(width: 18, height: 18)
                 TextField(searchPrompt, text: $query)
                     .font(RatsFont.body(14))
                     .submitLabel(.search)
                     .onSubmit {
-                        if section != .map { page = 0; Task { await load() } }
+                        if model.councilSection != .map { page = 0; Task { await load() } }
                     }
                 if !query.isEmpty {
-                    Button { query = ""; if section != .map { Task { await load() } } } label: {
-                        Image(systemName: "xmark.circle.fill")
+                    Button { query = ""; if model.councilSection != .map { Task { await load() } } } label: {
+                        Text("×")
+                            .font(RatsFont.body(20, weight: .medium))
                             .foregroundStyle(RatsColor.muted)
                     }
                     .accessibilityLabel("Suche leeren")
@@ -124,7 +135,7 @@ struct CouncilBrowserView: View {
             .padding(.horizontal, 18)
             .padding(.bottom, 10)
 
-            if section == .decisions {
+            if model.councilSection == .decisions {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 7) {
                         FilterChip(label: "Alle", selected: outcome.isEmpty) { outcome = "" }
@@ -148,18 +159,18 @@ struct CouncilBrowserView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        MonoKicker(section.rawValue, trailing: total > 0 ? "\(total) gefunden" : nil)
+                        MonoKicker(model.councilSection.rawValue, trailing: total > 0 ? "\(total) gefunden" : nil)
                         if isLoading { ProgressView().controlSize(.small) }
                     }
                     if let error { ErrorCard(message: error) { Task { await load() } } }
-                    if section == .decisions {
+                    if model.councilSection == .decisions {
                         ForEach(decisions) { decision in
                             Button { model.navigation.append(.decision(id: decision.id)) } label: {
                                 DecisionRow(decision: decision).ratsCard()
                             }
                             .buttonStyle(.plain)
                         }
-                    } else if section == .sessions {
+                    } else if model.councilSection == .sessions {
                         ForEach(sessions) { session in
                             Button {
                                 if let id = session.ksinr { model.navigation.append(.sessions(ksinr: id, tops: [])) }
@@ -179,7 +190,7 @@ struct CouncilBrowserView: View {
                         Text("Nahe Punkte werden gebündelt. Tippe eine Zahl zum Heranzoomen oder einen Punkt für Details.")
                             .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
                     }
-                    if total > pageSize && section != .map {
+                    if total > pageSize && model.councilSection != .map {
                         HStack {
                             Button("Zurück") { page -= 1; Task { await load() } }
                                 .disabled(page == 0 || isLoading)
@@ -202,7 +213,7 @@ struct CouncilBrowserView: View {
         .background(RatsColor.page)
         .navigationTitle("Im Rat stöbern")
         .toolbarTitleDisplayMode(.inline)
-        .onChange(of: section) { _, _ in page = 0; Task { await load() } }
+        .onChange(of: model.councilSection) { _, _ in page = 0; Task { await load() } }
         .onChange(of: outcome) { _, _ in page = 0; Task { await load() } }
         .task {
             if committees.isEmpty { await loadFilterOptions() }
@@ -210,7 +221,7 @@ struct CouncilBrowserView: View {
         }
         .sheet(isPresented: $showsFilters) {
             CouncilFilterSheet(
-                section: section,
+                section: model.councilSection,
                 committee: $committee,
                 policyField: $policyField,
                 party: $party,
@@ -244,7 +255,7 @@ struct CouncilBrowserView: View {
     }
 
     private var searchPrompt: String {
-        switch section {
+        switch model.councilSection {
         case .decisions: "Beschlüsse durchsuchen"
         case .sessions: "Sitzungen durchsuchen"
         case .map: "Orte und Themen auf der Karte"
@@ -275,7 +286,7 @@ struct CouncilBrowserView: View {
         error = nil
         defer { isLoading = false }
         do {
-            if section == .decisions {
+            if model.councilSection == .decisions {
                 let page: DecisionPage = try await model.api.get(
                     "/api/council/decisions",
                     query: [
@@ -296,7 +307,7 @@ struct CouncilBrowserView: View {
                 )
                 decisions = page.decisions
                 total = page.total
-            } else if section == .sessions {
+            } else if model.councilSection == .sessions {
                 let page: SessionPage = try await model.api.get(
                     "/api/council/sessions",
                     query: [
@@ -324,7 +335,7 @@ struct CouncilBrowserView: View {
             location = point.locationSlug ?? point.slug
             locationName = point.name
             query = ""
-            section = .decisions
+            model.councilSection = .decisions
             page = 0
         default:
             model.navigation.append(.topic(slug: point.slug))
@@ -370,8 +381,16 @@ private struct CouncilFilterSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+            VStack(spacing: 0) {
+                RatsSheetHeader(
+                    "Filter",
+                    leadingTitle: "Zurücksetzen",
+                    leadingAction: clear,
+                    trailingTitle: "Fertig",
+                    trailingAction: apply
+                )
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
                     RatsModalIntro(
                         kicker: "Rat durchsuchen",
                         title: "Filter & Sortierung",
@@ -506,18 +525,14 @@ private struct CouncilFilterSheet: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PrimaryButtonStyle())
+                    }
+                    .frame(maxWidth: 620, alignment: .leading)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 22)
                 }
-                .frame(maxWidth: 620, alignment: .leading)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 22)
+                .background(RatsColor.page)
             }
-            .background(RatsColor.page)
-            .navigationTitle("Filter")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Zurücksetzen", action: clear) }
-                ToolbarItem(placement: .confirmationAction) { Button("Fertig", action: apply) }
-            }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 }
@@ -909,37 +924,42 @@ private struct CouncilAttachmentPreview: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let localURL {
-                    QuickLookPreview(url: localURL)
-                } else if let error {
-                    VStack(spacing: 14) {
-                        RatsEmptyState(
-                            title: "Dokument nicht verfügbar",
-                            message: error,
-                            symbol: "doc.badge.ellipsis"
-                        )
-                        if let url = URL(string: attachment.url) {
-                            Link(destination: url) {
-                                Label("Im Browser öffnen", systemImage: "arrow.up.right")
-                                    .frame(maxWidth: .infinity)
+            VStack(spacing: 0) {
+                RatsSheetHeader(
+                    attachment.label,
+                    trailingTitle: "Fertig",
+                    trailingAction: { dismiss() }
+                )
+                Group {
+                    if let localURL {
+                        QuickLookPreview(url: localURL)
+                    } else if let error {
+                        VStack(spacing: 14) {
+                            RatsEmptyState(
+                                title: "Dokument nicht verfügbar",
+                                message: error,
+                                symbol: "doc.badge.ellipsis"
+                            )
+                            if let url = URL(string: attachment.url) {
+                                Link(destination: url) {
+                                    Label("Im Browser öffnen", systemImage: "arrow.up.right")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(SecondaryButtonStyle())
                             }
-                            .buttonStyle(SecondaryButtonStyle())
                         }
-                    }
-                    .frame(maxWidth: 520)
-                    .padding(18)
-                } else {
-                    RatsLoadingState(message: "Dokument wird geladen …")
                         .frame(maxWidth: 520)
                         .padding(18)
+                    } else {
+                        RatsLoadingState(message: "Dokument wird geladen …")
+                            .frame(maxWidth: 520)
+                            .padding(18)
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(RatsColor.page)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(RatsColor.page)
-            .navigationTitle(attachment.label)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Fertig") { dismiss() } } }
+            .toolbar(.hidden, for: .navigationBar)
         }
         .task { await download() }
     }
@@ -988,7 +1008,7 @@ private struct QuickLookPreview: UIViewControllerRepresentable {
     }
 }
 
-private struct SavedCouncilView: View {
+struct SavedCouncilView: View {
     let model: AppModel
     @State private var bookmarks: [BookmarkEntry] = []
     @State private var follows: [FollowEntry] = []
@@ -1008,9 +1028,8 @@ private struct SavedCouncilView: View {
                             .foregroundStyle(RatsColor.secondary)
                     }
                     Spacer()
-                    Image(systemName: "bookmark.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(RatsColor.primaryText)
+                    RatsGlyphView(glyph: .saved, color: RatsColor.primaryText, lineWidth: 1.8)
+                        .frame(width: 20, height: 20)
                         .frame(width: 44, height: 44)
                         .background(RatsColor.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
@@ -1201,8 +1220,8 @@ private struct SessionListView: View {
                             .foregroundStyle(RatsColor.secondary)
                     }
                     Spacer()
-                    Image(systemName: "calendar")
-                        .foregroundStyle(RatsColor.primaryText)
+                    RatsGlyphView(glyph: .calendar, color: RatsColor.primaryText, lineWidth: 1.8)
+                        .frame(width: 20, height: 20)
                         .frame(width: 44, height: 44)
                         .background(RatsColor.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))

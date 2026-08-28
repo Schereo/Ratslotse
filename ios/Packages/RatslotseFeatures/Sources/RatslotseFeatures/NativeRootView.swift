@@ -36,7 +36,9 @@ public struct NativeRootView: View {
                 }
             }
             .navigationDestination(for: AppRoute.self) { route in
-                RouteDestinationView(model: model, route: route)
+                RatsRouteScaffold(model: model) {
+                    RouteDestinationView(model: model, route: route)
+                }
             }
         }
         .font(RatsFont.body())
@@ -66,7 +68,69 @@ public struct NativeRootView: View {
         } message: {
             Text(model.alertMessage ?? "")
         }
-        .task { await model.bootstrap() }
+        .task {
+            await model.bootstrap()
+#if DEBUG
+            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_AUTH"] == "login" {
+                model.authPresentation = .login
+            }
+            if let rawStep = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ONBOARDING"],
+               let step = Int(rawStep), (0...3).contains(step) {
+                model.onboardingStep = step
+            }
+#endif
+        }
+    }
+}
+
+private struct RatsRouteScaffold<Content: View>: View {
+    @Bindable var model: AppModel
+    @ViewBuilder let content: Content
+
+    init(model: AppModel, @ViewBuilder content: () -> Content) {
+        self.model = model
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button {
+                    if !model.navigation.isEmpty { model.navigation.removeLast() }
+                } label: {
+                    RatsGlyphView(glyph: .back, color: RatsColor.bodyText, lineWidth: 2)
+                        .frame(width: 20, height: 20)
+                        .frame(width: 38, height: 38)
+                        .background(RatsColor.card)
+                        .overlay(Circle().stroke(RatsColor.border))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(RatsRouteButtonStyle())
+                .accessibilityLabel("Zurück")
+                Spacer()
+                Text("Ratslotse")
+                    .font(RatsFont.title(17))
+                    .foregroundStyle(RatsColor.text)
+                Spacer()
+                Color.clear.frame(width: 38, height: 38)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .background(RatsColor.page)
+            Divider().overlay(RatsColor.separator)
+            content
+        }
+        .background(RatsColor.page)
+        .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+private struct RatsRouteButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
@@ -123,30 +187,185 @@ private struct UpdateRequiredView: View {
 
 private struct MainTabsView: View {
     @Bindable var model: AppModel
+    @State private var showsMore = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MORE"] == "1"
 
     var body: some View {
         TabView(selection: $model.selectedTab) {
             TodayView(model: model)
-                .tabItem { Label("Heute", systemImage: "sun.max") }
                 .tag(AppTab.today)
             QuestionsView(model: model)
-                .tabItem { Label("Fragen", systemImage: "sparkles") }
                 .tag(AppTab.questions)
             CouncilBrowserView(model: model)
-                .tabItem { Label("Rat", systemImage: "building.columns") }
                 .tag(AppTab.council)
             TopicsView(model: model)
-                .tabItem { Label("Themen", systemImage: "bell") }
                 .tag(AppTab.topics)
             AccountView(model: model)
-                .tabItem { Label("Konto", systemImage: "person.crop.circle") }
                 .tag(AppTab.account)
         }
-        .tint(RatsColor.primary)
+        .toolbar(.hidden, for: .tabBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            RatsBottomNavigation(
+                active: activeDestination,
+                select: select,
+                openMore: { showsMore = true }
+            )
+        }
+        .sheet(isPresented: $showsMore) {
+            MoreHubView(model: model) { section in
+                model.navigation.removeAll()
+                model.councilSection = section
+                model.selectedTab = .council
+            }
+            .ratsLargeSheet()
+        }
+        .onAppear {
+#if DEBUG
+            switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MAIN"] {
+            case "questions":
+                model.navigation.removeAll()
+                model.selectedTab = .questions
+            case "sessions":
+                model.navigation.removeAll()
+                model.councilSection = .sessions
+                model.selectedTab = .council
+            case "map":
+                model.navigation.removeAll()
+                model.councilSection = .map
+                model.selectedTab = .council
+            case "topics":
+                model.navigation.removeAll()
+                model.selectedTab = .topics
+            case "account":
+                model.navigation.removeAll()
+                model.selectedTab = .account
+            default: break
+            }
+#endif
+        }
+    }
+
+    private var activeDestination: MainNavigationDestination {
+        switch model.selectedTab {
+        case .today: .today
+        case .questions: .questions
+        case .council: model.councilSection == .sessions ? .sessions : .more
+        case .topics: .topics
+        case .account: .more
+        }
+    }
+
+    private func select(_ destination: MainNavigationDestination) {
+        model.navigation.removeAll()
+        switch destination {
+        case .today: model.selectedTab = .today
+        case .questions: model.selectedTab = .questions
+        case .sessions:
+            model.councilSection = .sessions
+            model.selectedTab = .council
+        case .topics: model.selectedTab = .topics
+        case .more: showsMore = true
+        }
     }
 }
 
-private struct RouteDestinationView: View {
+private enum MainNavigationDestination: CaseIterable, Identifiable {
+    case today
+    case questions
+    case sessions
+    case topics
+    case more
+
+    var id: String { label }
+
+    var label: String {
+        switch self {
+        case .today: "Start"
+        case .questions: "Fragen"
+        case .sessions: "Sitzungen"
+        case .topics: "Themen"
+        case .more: "Mehr"
+        }
+    }
+
+    var glyph: RatsGlyph {
+        switch self {
+        case .today: .home
+        case .questions: .ask
+        case .sessions: .calendar
+        case .topics: .topics
+        case .more: .more
+        }
+    }
+}
+
+private struct RatsBottomNavigation: View {
+    let active: MainNavigationDestination
+    let select: (MainNavigationDestination) -> Void
+    let openMore: () -> Void
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(MainNavigationDestination.allCases) { destination in
+                Button {
+                    if destination == .more { openMore() }
+                    else { select(destination) }
+                } label: {
+                    VStack(spacing: 3) {
+                        ZStack {
+                            if active == destination {
+                                Capsule()
+                                    .fill(RatsColor.primary.opacity(0.10))
+                                    .frame(width: 43, height: 27)
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(RatsColor.primary.opacity(0.12), lineWidth: 0.75)
+                                    )
+                            }
+                            RatsGlyphView(
+                                glyph: destination.glyph,
+                                color: active == destination ? RatsColor.primary : RatsColor.secondary,
+                                lineWidth: active == destination ? 1.95 : 1.7
+                            )
+                            .frame(width: 20, height: 20)
+                        }
+                        .frame(height: 27)
+
+                        Text(destination.label)
+                            .font(RatsFont.body(9.5, weight: active == destination ? .semibold : .medium))
+                            .foregroundStyle(active == destination ? RatsColor.primary : RatsColor.secondary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 51)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(RatsNavigationButtonStyle())
+                .accessibilityLabel(destination.label)
+                .accessibilityAddTraits(active == destination ? .isSelected : [])
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 5)
+        .padding(.bottom, 2)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(RatsColor.border.opacity(0.72))
+                .frame(height: 0.75)
+        }
+        .shadow(color: .black.opacity(0.06), radius: 12, y: -4)
+    }
+}
+
+private struct RatsNavigationButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+struct RouteDestinationView: View {
     let model: AppModel
     let route: AppRoute
 

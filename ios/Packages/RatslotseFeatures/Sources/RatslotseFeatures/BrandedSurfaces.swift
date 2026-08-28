@@ -214,6 +214,80 @@ struct RatsModalIntro: View {
     }
 }
 
+struct RatsSheetHeader: View {
+    let title: String
+    let leadingTitle: String?
+    let leadingAction: (() -> Void)?
+    let trailingTitle: String?
+    let trailingAction: (() -> Void)?
+
+    init(
+        _ title: String,
+        leadingTitle: String? = nil,
+        leadingAction: (() -> Void)? = nil,
+        trailingTitle: String? = nil,
+        trailingAction: (() -> Void)? = nil
+    ) {
+        self.title = title
+        self.leadingTitle = leadingTitle
+        self.leadingAction = leadingAction
+        self.trailingTitle = trailingTitle
+        self.trailingAction = trailingAction
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            action(title: leadingTitle, action: leadingAction)
+            Spacer(minLength: 4)
+            Text(title)
+                .font(RatsFont.title(17))
+                .foregroundStyle(RatsColor.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.76)
+                .allowsTightening(true)
+            Spacer(minLength: 4)
+            action(title: trailingTitle, action: trailingAction)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(RatsColor.page)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(RatsColor.separator).frame(height: 1)
+        }
+    }
+
+    @ViewBuilder
+    private func action(
+        title: String?,
+        action: (() -> Void)?
+    ) -> some View {
+        if let title, let action {
+            Button(action: action) {
+                Text(title)
+                    .font(RatsFont.body(11.5, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+                    .padding(.horizontal, 11)
+                    .frame(width: 88, height: 34)
+                    .background(RatsColor.primary.opacity(0.08))
+                    .overlay(Capsule().stroke(RatsColor.primary.opacity(0.16)))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(RatsSheetHeaderButtonStyle())
+        } else {
+            Color.clear.frame(width: 88, height: 34)
+        }
+    }
+}
+
+private struct RatsSheetHeaderButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
 extension View {
     @ViewBuilder
     func ratsLargeSheet() -> some View {

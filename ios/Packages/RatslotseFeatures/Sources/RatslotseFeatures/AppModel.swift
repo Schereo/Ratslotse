@@ -28,6 +28,14 @@ public enum AuthPresentation: Sendable, Equatable, Identifiable {
     }
 }
 
+enum CouncilSection: String, CaseIterable, Identifiable, Sendable {
+    case decisions = "Beschlüsse"
+    case sessions = "Sitzungen"
+    case map = "Stadtkarte"
+
+    var id: String { rawValue }
+}
+
 @MainActor
 @Observable
 public final class AppModel {
@@ -37,6 +45,7 @@ public final class AppModel {
 
     public var session: SessionState = .loading
     public var selectedTab: AppTab = .today
+    var councilSection: CouncilSection = .decisions
     public var navigation: [AppRoute] = []
     public var authPresentation: AuthPresentation?
     public var questionPrefill = ""
@@ -230,7 +239,10 @@ public final class AppModel {
 
     public func handle(route: AppRoute) {
         switch route {
-        case .tab(let tab): selectedTab = tab; navigation.removeAll()
+        case .tab(let tab):
+            selectedTab = tab
+            if tab == .council { councilSection = .decisions }
+            navigation.removeAll()
         case .question(let prefill, _):
             selectedTab = .questions
             questionPrefill = prefill ?? ""
@@ -239,6 +251,10 @@ public final class AppModel {
             Task { await verifyEmail(token: token) }
         case .resetPassword(let token): authPresentation = .resetPassword(token: token)
         case .web(let url): UIApplication.shared.open(url)
+        case .sessions:
+            selectedTab = .council
+            councilSection = .sessions
+            navigation = [route]
         default:
             selectedTab = tab(for: route)
             navigation = [route]

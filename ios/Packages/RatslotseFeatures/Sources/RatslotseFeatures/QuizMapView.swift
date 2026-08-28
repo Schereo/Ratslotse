@@ -23,6 +23,11 @@ struct QuizMapView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            RatsSheetHeader(
+                "Oldenburg verorten",
+                leadingTitle: "Schließen",
+                leadingAction: { dismiss() }
+            )
             if targets.indices.contains(index) {
                 VStack(alignment: .leading, spacing: 7) {
                     MonoKicker("Karten-Quiz", trailing: "\(index + 1) von \(targets.count)")
@@ -91,9 +96,7 @@ struct QuizMapView: View {
             }
         }
         .background(RatsColor.page)
-        .navigationTitle("Oldenburg verorten")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Schließen") { dismiss() } } }
+        .toolbar(.hidden, for: .navigationBar)
         .task { await load() }
     }
 

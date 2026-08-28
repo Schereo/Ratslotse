@@ -53,23 +53,26 @@ struct DeepResearchView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    if jobID == nil {
-                        intro
-                    } else {
-                        researchContent
+            VStack(spacing: 0) {
+                RatsSheetHeader(
+                    "Gründliche Recherche",
+                    leadingTitle: "Schließen",
+                    leadingAction: { dismiss() }
+                )
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        if jobID == nil {
+                            intro
+                        } else {
+                            researchContent
+                        }
                     }
+                    .frame(maxWidth: 720, alignment: .leading)
+                    .padding(18)
                 }
-                .frame(maxWidth: 720, alignment: .leading)
-                .padding(18)
+                .background(RatsColor.stage)
             }
-            .background(RatsColor.stage)
-            .navigationTitle("Gründliche Recherche")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Schließen") { dismiss() } }
-            }
+            .toolbar(.hidden, for: .navigationBar)
         }
         .task { await restoreCurrent() }
         .onDisappear { streamTask?.cancel() }
@@ -316,8 +319,16 @@ struct ConversationsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
+            VStack(spacing: 0) {
+                RatsSheetHeader(
+                    "Meine Gespräche",
+                    leadingTitle: selected == nil ? "Schließen" : "Zurück",
+                    leadingAction: {
+                        if selected == nil { dismiss() } else { selected = nil }
+                    }
+                )
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 14) {
                     if selected == nil {
                         RatsModalIntro(
                             kicker: "Frag den Rat",
@@ -383,21 +394,14 @@ struct ConversationsView: View {
                         }
                     }
                     if let error { ErrorCard(message: error) { Task { await load() } } }
-                }
-                .frame(maxWidth: 720, alignment: .leading)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 22)
-            }
-            .background(RatsColor.page)
-            .navigationTitle("Meine Gespräche")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(selected == nil ? "Schließen" : "Zurück") {
-                        if selected == nil { dismiss() } else { selected = nil }
                     }
+                    .frame(maxWidth: 720, alignment: .leading)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 22)
                 }
+                .background(RatsColor.page)
             }
+            .toolbar(.hidden, for: .navigationBar)
         }
         .task { await load() }
     }

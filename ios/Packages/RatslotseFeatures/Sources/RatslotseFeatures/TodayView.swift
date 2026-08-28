@@ -14,14 +14,31 @@ struct TodayView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: RatsSpacing.xl) {
-                VStack(alignment: .leading, spacing: 7) {
-                    MonoKicker(dayLabel)
-                    Text(greeting)
-                        .font(RatsFont.title(31))
-                    Text("Das Wichtigste aus Oldenburgs Rat – kurz eingeordnet und mit Quellen.")
-                        .font(RatsFont.body())
-                        .foregroundStyle(RatsColor.secondary)
+                HStack(alignment: .center, spacing: 14) {
+                    LottiMascot(pose: .wave)
+                        .frame(width: 78, height: 78)
+                    VStack(alignment: .leading, spacing: 7) {
+                        MonoKicker(dayLabel)
+                        Text(greeting)
+                            .font(RatsFont.title(31))
+                        Text("Das Wichtigste aus Oldenburgs Rat – kurz eingeordnet und mit Quellen.")
+                            .font(RatsFont.body())
+                            .foregroundStyle(RatsColor.secondary)
+                    }
                 }
+
+                Button {
+                    model.navigation.removeAll()
+                    model.selectedTab = .questions
+                } label: {
+                    HStack(spacing: 9) {
+                        RatsGlyphView(glyph: .ask, color: .white, lineWidth: 1.7)
+                            .frame(width: 19, height: 19)
+                        Text("Frag den Rat")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SignalButtonStyle())
 
                 if let today { TodayStatusCard(today: today, openSessions: openSessions) }
                 if let preview, preview.found {
@@ -104,6 +121,7 @@ struct TodayView: View {
         let hour = Calendar.current.component(.hour, from: .now)
         let prefix = hour < 11 ? "Moin" : hour < 18 ? "Guten Tag" : "Guten Abend"
         guard let name = model.user?.displayName?.split(separator: " ").first else { return prefix }
+        if name.localizedCaseInsensitiveCompare("Moin") == .orderedSame { return prefix }
         return "\(prefix), \(name)"
     }
 

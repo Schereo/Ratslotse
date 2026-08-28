@@ -60,20 +60,49 @@ struct AuthFlowView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                switch mode {
-                case .login: CredentialsView(model: model, mode: .login, switchMode: { mode = $0 })
-                case .register: CredentialsView(model: model, mode: .register, switchMode: { mode = $0 })
-                case .forgotPassword: ForgotPasswordView(model: model, switchMode: { mode = $0 })
-                case .resetPassword(let token): ResetPasswordView(model: model, token: token)
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Ratslotse")
+                        .font(RatsFont.title(20))
+                        .foregroundStyle(RatsColor.text)
+                    Spacer()
+                    Button { model.authPresentation = nil } label: {
+                        Text("×")
+                            .font(RatsFont.body(23, weight: .medium))
+                            .foregroundStyle(RatsColor.bodyText)
+                            .frame(width: 38, height: 38)
+                            .background(RatsColor.card)
+                            .overlay(Circle().stroke(RatsColor.border))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(AuthCloseButtonStyle())
+                    .accessibilityLabel("Anmeldung schließen")
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 11)
+                .background(RatsColor.page)
+                Divider().overlay(RatsColor.separator)
+
+                Group {
+                    switch mode {
+                    case .login: CredentialsView(model: model, mode: .login, switchMode: { mode = $0 })
+                    case .register: CredentialsView(model: model, mode: .register, switchMode: { mode = $0 })
+                    case .forgotPassword: ForgotPasswordView(model: model, switchMode: { mode = $0 })
+                    case .resetPassword(let token): ResetPasswordView(model: model, token: token)
+                    }
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Schließen") { model.authPresentation = nil }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
         }
+    }
+}
+
+private struct AuthCloseButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

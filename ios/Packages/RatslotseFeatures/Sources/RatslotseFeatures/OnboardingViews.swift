@@ -361,9 +361,19 @@ private struct CommitteeChoiceRow: View {
     var body: some View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: selected ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(selected ? RatsColor.primary : RatsColor.muted)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(selected ? RatsColor.primary : RatsColor.card)
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .stroke(selected ? RatsColor.primary : RatsColor.muted, lineWidth: 1.6)
+                    if selected {
+                        Text("✓")
+                            .font(RatsFont.body(13, weight: .bold))
+                            .foregroundStyle(RatsColor.primaryText)
+                    }
+                }
+                .frame(width: 22, height: 22)
+                .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(CommitteeCopy.short(committee))
                         .font(RatsFont.body(14, weight: .semibold))
