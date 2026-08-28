@@ -124,7 +124,7 @@ function alsPosten(b: FlussBand): FlussPosten {
  *  deren Grund, weißer Text stünde dort auf fast Weiß. Die Messung und die
  *  Grenze wohnen in `components/grafik/kachelflaeche.ts`, damit die
  *  Investitionen-Kachelfläche dieselbe Regel fährt. */
-function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
+export function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
   // Ein Schlüssel für Fläche und Legende: `gruppe` ist hier die Ertragsart
   // selbst — jede Kachel ist ihre eigene Gruppe, die Legende wird damit zum
   // Verzeichnis aller Posten (auch der, die für eine Beschriftung zu klein

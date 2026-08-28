@@ -322,6 +322,20 @@ jobs:
                     print(f"  {tabelle:32} {anzahl}")
             else:
                 print("\nKeine Zeile ohne Herkunft.")
+
+            # Die Rücklagenzahl ist keine eigene Tabellenzeile, sondern die
+            # belegbare Summe aus Überschussrücklage und noch nicht
+            # umgebuchtem Jahresergebnis. Deshalb würde sie in der reinen
+            # Tabelleninventur oben nicht auffallen, wenn eine der beiden
+            # Rollen beim Parsen fehlt.
+            ruecklagen = s.get_ruecklagen()
+            print("\nVerfügbare Überschussrücklage nach Jahresergebnis:")
+            if ruecklagen:
+                for zeile in ruecklagen:
+                    print(f"  {zeile['jahr']}: "
+                          f"{zeile['stand_nach_ergebnis'] / 1_000_000:.1f} Mio. Euro")
+            else:
+                print("  LEER — Bilanzrollen oder Jahresergebnis fehlen")
             s.close()
             PY
 

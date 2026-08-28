@@ -22,7 +22,8 @@ export type { Herkunft };
 export type BilanzRolle =
   | "immaterielles_vermoegen" | "sachvermoegen" | "infrastrukturvermoegen"
   | "finanzvermoegen" | "liquide_mittel" | "aktive_rap"
-  | "nettoposition" | "sonderposten" | "schulden" | "geldschulden"
+  | "nettoposition" | "ruecklagen_gesamt" | "ueberschussruecklage_ordentlich"
+  | "jahresergebnis_bilanz" | "sonderposten" | "schulden" | "geldschulden"
   | "rueckstellungen" | "pensionen_gesamt" | "pensionsrueckstellungen"
   | "beihilferueckstellungen" | "passive_rap";
 

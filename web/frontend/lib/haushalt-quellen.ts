@@ -29,7 +29,8 @@
 //
 // `stand` bleibt für die vier Fälle, die sich NICHT ableiten lassen, und als
 // Rückfall, solange die Antwort nicht da ist:
-//   * `hebesaetze` und `ruecklage` — ein Beschlussdatum, keine Datenspanne;
+//   * `hebesaetze` — ein Beschlussdatum, keine Datenspanne;
+//   * `ruecklage` — Bilanzreihe plus Bestätigung im späteren Vorbericht;
 //   * `vergleich_2018` — eine einzelne Ratsvorlage, die nie einen zweiten
 //     Jahrgang bekommt;
 //   * `ratsbeschluss` — „seit Januar 2018", nach oben offen und deshalb
@@ -430,13 +431,16 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     url: "https://buergerinfo.oldenburg.de",
   },
   ruecklage: {
-    titel: "Rücklage und Genehmigung des Haushalts 2026",
+    titel: "Überschussrücklage aus den Jahresabschlüssen",
     fundstelle:
-      "Rund 195 Mio. € Rücklage, aus der das geplante Defizit gedeckt wird; " +
-      "Genehmigung durch das Nds. Ministerium für Inneres und Sport.",
-    herausgeber: "Stadt Oldenburg",
-    stand: "April 2026",
-    art: "web",
+      "Bilanzposition 1.2.1 „Rücklagen aus Überschüssen des ordentlichen " +
+      "Ergebnisses“ plus das am Stichtag noch separat ausgewiesene " +
+      "Jahresergebnis. Der genehmigte Vorbericht 2026 bestätigt diese Lesart " +
+      "für 2024 als rund 195,1 Mio. € „unter Berücksichtigung des Ergebnisses“.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    standWort: "Jahresabschlüsse",
+    stand: "Jahresabschlüsse 2017–2024; bestätigt im genehmigten Haushalt 2026",
+    art: "pdf",
     url: "https://www.oldenburg.de/startseite/politik/verwaltung-finanzen/finanzen/haushalt-2026.html",
   },
   // Ab hier auf Vorrat angelegt (A1, 08/2026), damit die Folgearbeiten am

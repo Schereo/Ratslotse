@@ -13,7 +13,6 @@
 // Gezeichnet wird NUR über die Planjahre; dahinter wird nicht verlängert
 // („für später liegen keine Planzahlen vor“ ist Teil der Aussage).
 
-import { RUECKLAGE_MIO } from "@/lib/haushalt";
 import type { RuecklagenPfad as Pfad } from "@/lib/haushalt-labor";
 
 const B = 300, H = 74, OBEN = 6, UNTEN = 16;
@@ -25,10 +24,10 @@ export function RuecklagenPfadGrafik({ ohne, mit }: { ohne: Pfad; mit: Pfad }) {
   const x = (jahr: number) =>
     ((jahr - startJahr) / (jahre[jahre.length - 1] - startJahr)) * B;
   const y = (stand: number) =>
-    OBEN + (1 - stand / RUECKLAGE_MIO) * (H - OBEN - UNTEN);
+    OBEN + (1 - stand / ohne.start) * (H - OBEN - UNTEN);
 
   const linie = (p: Pfad) =>
-    [`${x(startJahr)},${y(RUECKLAGE_MIO)}`,
+    [`${x(startJahr)},${y(p.start)}`,
       ...p.punkte.map((pt) => `${x(pt.jahr)},${y(pt.stand)}`)].join(" ");
   const verschieden = mit.punkte.some(
     (pt, i) => Math.abs(pt.stand - ohne.punkte[i].stand) > 0.05);

@@ -45,7 +45,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { RotateCcw } from "lucide-react";
 import { TABLEISTE_HOEHE } from "@/components/nav";
 import {
-  HaushaltAuswahl, PLAN_ART_LABEL, Produkt, RUECKLAGE_MIO, bereiche, deMio,
+  HaushaltAuswahl, PLAN_ART_LABEL, Produkt, bereiche, deMio, juengsteRuecklage,
   jahreSortiert, mio, planGegenIst, summe,
 } from "@/lib/haushalt";
 import { PFLICHT_ZUORDNUNG } from "@/lib/haushalt-pflicht";
@@ -170,7 +170,7 @@ const WERKBAENKE: { id: Werkbank; nr: number; titel: string; zielgroesse: string
 export function Labor({ daten, produkte, produktJahr, vergleich, programm, schulden }: {
   daten: HaushaltAuswahl<"jahre" | "steuern" | "steuerkraft" | "einwohner"
     | "ergebnisrechnung" | "hebesaetze" | "ergebnishaushalt" | "gebuehren"
-    | "haushaltssatzung">;
+    | "haushaltssatzung" | "ruecklage">;
   produkte: Produkt[];
   produktJahr: number | null;
   vergleich: VergleichDaten | null;
@@ -250,11 +250,17 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   // Reichweiten-Division stehen.
   const planjahre = useMemo(
     () => planjahrErgebnisse(daten.ergebnishaushalt), [daten.ergebnishaushalt]);
-  const pfadOhne = planjahre ? ruecklagenPfad(planjahre.reihe, 0) : null;
-  const pfadMit = planjahre ? ruecklagenPfad(planjahre.reihe, wirkung) : null;
+  const ruecklage = juengsteRuecklage(daten);
+  const ruecklageMio = (ruecklage?.stand_nach_ergebnis ?? 0) / 1e6;
+  const pfadOhne = planjahre && ruecklageMio > 0
+    ? ruecklagenPfad(planjahre.reihe, 0, ruecklageMio) : null;
+  const pfadMit = planjahre && ruecklageMio > 0
+    ? ruecklagenPfad(planjahre.reihe, wirkung, ruecklageMio) : null;
   const daempfer = useMemo(() => daempferSpanne(daten.steuerkraft), [daten.steuerkraft]);
-  const reichweiteVorher = basis.defizit > 0 ? RUECKLAGE_MIO / basis.defizit : Infinity;
-  const reichweiteNachher = neuesDefizit > 0 ? RUECKLAGE_MIO / neuesDefizit : Infinity;
+  const reichweiteVorher = basis.defizit > 0 && ruecklageMio > 0
+    ? ruecklageMio / basis.defizit : Infinity;
+  const reichweiteNachher = neuesDefizit > 0 && ruecklageMio > 0
+    ? ruecklageMio / neuesDefizit : Infinity;
 
   const lueckeGeaendert = punkte !== 0 || grundstPunkte !== 0 || hundePct !== 0
     || Object.values(aenderung).some((v) => v !== 0);
@@ -472,7 +478,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
                   )}
                 </p>
                 <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                  {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> gegen die
+                  {deMio(ruecklageMio)}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> gegen die
                   Jahresergebnisse der Planjahre <Beleg q="ergebnishaushalt" /> — Entwurf der
                   Verwaltung, Finanzplanung nach §&nbsp;8 NKomVG, deine Wirkung konstant
                   fortgeschrieben. Hinter {pfadMit.letztesPlanjahr} liegen keine Planzahlen.
@@ -481,7 +487,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               </>
             )}
           </>
-        ) : (
+        ) : ruecklageMio > 0 ? (
           <>
             <p className="text-[11.5px] text-muted-foreground">Rücklage reicht rechnerisch</p>
             <p className="font-display text-[20px] font-bold tabular-nums">
@@ -495,7 +501,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               )}
             </p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              {RUECKLAGE_MIO}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> geteilt durch das Minus —
+              {deMio(ruecklageMio)}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> geteilt durch das Minus —
               unsere Rechnung, keine Prognose der Stadt.
               {/* Der Schlüssel `ergebnishaushalt` gehört zum Pfad oben; im
                   Rückfall ohne die Reihe bliebe er stumm — deshalb hängt er
@@ -504,6 +510,10 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               Gesamtergebnishaushalts <Beleg q="ergebnishaushalt" />.
             </p>
           </>
+        ) : (
+          <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+            Für die Rücklagen-Rechnung liegt noch kein geprüfter Bilanzstand vor.
+          </p>
         )}
       </div>
       {maxWirkung < basis.defizit && (

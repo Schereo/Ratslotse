@@ -76,6 +76,18 @@ export type ErgebnishaushaltZeile = {
   herkunft_id: number | null;
 };
 
+/** Überschussrücklage nach einem abgeschlossenen Jahr. Die Bilanz weist den
+ * schon umgebuchten Bestand und das jüngste Jahresergebnis getrennt aus;
+ * `stand_nach_ergebnis` ist deren Addition und entspricht der Formulierung
+ * des Vorberichts „unter Berücksichtigung des Ergebnisses“. */
+export type RuecklageJahr = {
+  jahr: number;
+  ruecklage: number;
+  jahresergebnis: number;
+  stand_nach_ergebnis: number;
+  herkunft_id: number | null;
+};
+
 /** Die Zeilen der Finanzrechnung, auf die es ankommt. **An der Rolle hängen,
  *  nicht an der Nummer:** Die Tabelle hat 2017–2020 eine Zeile mehr als ab
  *  2021 (eine Einzahlungsart fiel weg), wodurch sich jede Nummer ab 08 um eins
@@ -301,6 +313,8 @@ export type HaushaltDaten = {
   /** Die Postengliederung für Jahre **ohne** Jahresabschluss, aus dem
    *  Gesamtergebnishaushalt der Haushaltspläne (Anlage 005). */
   ergebnishaushalt?: ErgebnishaushaltZeile[];
+  /** Verfügbare Überschussrücklage aus den Jahresabschlüssen. */
+  ruecklage?: RuecklageJahr[];
   /** Die Wirtschaftspläne der Eigenbetriebe — der Haushalt neben dem Haushalt. */
   wirtschaftsplaene?: WirtschaftsplanZeile[];
   /** Die Herkunft je `herkunft_id` — nur die Einträge, auf die eine gelieferte
@@ -321,6 +335,8 @@ export type HaushaltDaten = {
   haushaltssatzung?: HaushaltssatzungZeile[];
   /** Woraus die Abfall- und Straßenreinigungsgebühren entstehen. */
   gebuehren?: GebuehrenZeile[];
+  /** Die konkreten Tarifvorschläge derselben Unterlagen. */
+  gebuehrensaetze?: GebuehrensatzZeile[];
   /** Jahre mit einem beschlossenen **Haushaltsansatz** — das jüngste ist das
    *  Jahr, für das gerade ein Haushalt gilt.
    *
@@ -1005,6 +1021,25 @@ export type GebuehrenZeile = {
   herkunft_id: number | null;
 };
 
+/** Ein ausdrücklich benannter Tarif aus Anlage 4 der
+ * Gebührenbedarfsberechnung. Anders als `GebuehrenZeile.gebuehr` ist das
+ * keine aus einer Gesamtkalkulation abgeleitete Durchschnittsgröße, sondern
+ * der konkrete Verwaltungsvorschlag für Grundgebühr, Litergebühr, Karte oder
+ * Anlieferung. */
+export type GebuehrensatzZeile = {
+  jahr: number;
+  schluessel: string;
+  bereich: string;
+  bezeichnung: string;
+  betrag: number;
+  einheit: string;
+  vorjahr: number | null;
+  veraenderung_prozent: number | null;
+  vorlage_nr: string | null;
+  proben: string;
+  herkunft_id: number | null;
+};
+
 /** Ein Jahrgang der Haushaltssatzung (§§ 1–5).
  *
  *  ACHTUNG BEI DER ANZEIGE: `fassung` ist in jeder Zeile des Bestands
@@ -1209,11 +1244,15 @@ export function naechstesProdukt(
       < Math.abs(-(best.ergebnis as number) / 1e6 - mioBetrag) ? p : best);
 }
 
-/** Redaktionell gepflegte Konstanten — NICHT aus der DB. Quelle: Genehmigung
- *  des Haushalts 2026 durch das Nds. Innenministerium (04/2026), oldenburg.de.
- *  Beim nächsten Haushaltsjahr prüfen und nachziehen. */
-export const RUECKLAGE_MIO = 195;
-export const RUECKLAGE_STAND = "Stand: Genehmigung Haushalt 2026 (04/2026)";
+/** Jüngster geprüfter Stand der verfügbaren Überschussrücklage. */
+export function juengsteRuecklage(
+  daten: HaushaltAuswahl<"ruecklage">,
+): RuecklageJahr | null {
+  return [...(daten.ruecklage ?? [])]
+    .filter((z) => Number.isFinite(z.stand_nach_ergebnis))
+    .sort((a, b) => a.jahr - b.jahr)
+    .at(-1) ?? null;
+}
 
 export function mio(euro: number | null | undefined): number | null {
   if (euro == null) return null;

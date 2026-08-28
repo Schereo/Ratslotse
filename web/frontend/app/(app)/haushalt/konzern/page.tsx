@@ -18,7 +18,8 @@
 // EIN DATENAUFRUF FÜR ZWEI ABSCHNITTE. Betriebe und Gebühren brauchen beide
 // `herkunft`, und `useFetch` hat keinen Zwischenspeicher — zwei Abschnitte mit
 // eigenem Aufruf wären zwei Requests auf fast dieselbe Adresse. Die Seite holt
-// deshalb `wirtschaftsplaene`, `gebuehren` und `herkunft` zusammen und reicht
+// deshalb `wirtschaftsplaene`, `gebuehren`, `gebuehrensaetze` und `herkunft`
+// zusammen und reicht
 // sie durch. Sie braucht die Wirtschaftsplan-Zeilen ohnehin selbst: Aus ihnen
 // entsteht `jeDokument`, die Nummerierung der einzelnen Pläne.
 
@@ -38,7 +39,7 @@ import { GesellschaftenAbschnitt } from "@/components/haushalt/abschnitt-gesells
 import { BetriebeAbschnitt } from "@/components/haushalt/abschnitt-betriebe";
 import { GebuehrenAbschnitt } from "@/components/haushalt/abschnitt-gebuehren";
 
-const FELDER = ["wirtschaftsplaene", "gebuehren", "herkunft"] as const;
+const FELDER = ["wirtschaftsplaene", "gebuehren", "gebuehrensaetze", "herkunft"] as const;
 
 /** Ausgeschrieben, nicht zusammengesetzt: `tests/test_quellen_dokumente.py`
  *  liest die Literale dieser Liste. Reihenfolge = Nummerierung der Chips, also

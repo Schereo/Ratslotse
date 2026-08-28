@@ -1017,6 +1017,9 @@ def haushalt_uebersicht(
         # mittelfristigen Finanzplanung — ohne diese Angabe darf keine Zahl
         # aus dieser Liste angezeigt werden.
         "ergebnishaushalt": store.get_ergebnishaushalt,
+        # Überschussrücklage aus der Bilanz: Position 1.2.1 plus das am
+        # Stichtag noch separat ausgewiesene Jahresergebnis. Keine Konstante.
+        "ruecklage": store.get_ruecklagen,
         "ansatz_jahre": store.ansatz_jahre,
         # Die Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften
         # — der Haushalt NEBEN dem Haushalt. Klein genug für die Übersicht (29

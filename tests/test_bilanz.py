@@ -114,6 +114,9 @@ zuschüsse
 73.863.334,00 80.456.214,00
 
 1.2     Rücklagen 187.515.505,50 210.654.550,36
+1.2.1  Rücklagen aus Überschüssen
+des ordentlichen Ergebnisses
+164.774.867,43 188.946.996,63
 1.2.3  Rücklagen aus Investitions-
 zuwendungen für nicht abnutzbare
 Vermögensgegenstände
@@ -204,6 +207,16 @@ def test_verschraenktes_layout_verliert_keinen_hauptposten():
     assert werte["finanzvermoegen"] == 645_348_451.45
     assert werte["liquide_mittel"] == 118_001_891.26
     assert werte["aktive_rap"] == 19_671_338.55
+
+
+def test_verfuegbare_ruecklage_bleibt_von_zweckbindungen_getrennt():
+    """Für den Haushaltsausgleich zählt 1.2.1 plus das noch nicht umgebuchte
+    Jahresergebnis — nicht der größere Sammelposten 1.2 mit zweckgebundenen
+    Rücklagen."""
+    werte = _werte(_lies(B_2024, 2024))
+    assert werte["ruecklagen_gesamt"] == 210_654_550.36
+    assert werte["ueberschussruecklage_ordentlich"] == 188_946_996.63
+    assert werte["jahresergebnis_bilanz"] == 6_136_250.91
 
 
 def test_roemische_und_arabische_nummern_stehen_daneben():
@@ -628,6 +641,13 @@ def test_store_bilanz_roundtrip(tmp_path, quelle):
         rows = store.get_bilanz(2024)
         werte = {r["rolle"]: r["wert"] for r in rows}
         assert werte["pensionen_gesamt"] == 311_789_660.00
+        assert store.get_ruecklagen() == [{
+            "jahr": 2024,
+            "ruecklage": 188_946_996.63,
+            "jahresergebnis": 6_136_250.91,
+            "stand_nach_ergebnis": pytest.approx(195_083_247.54, abs=0.01),
+            "herkunft_id": rows[0]["herkunft_id"],
+        }]
         assert sum(r["wert"] for r in rows if r["ebene"] == 1
                    and r["seite"] == "aktiva") == pytest.approx(SUMME[2024], abs=0.01)
         # Aktiva vor Passiva — die Bilanz druckt es so.
