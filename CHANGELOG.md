@@ -7,6 +7,8 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [1.14.0] – 2026-08-28
+
 ### Hinzugefügt
 - **Der Haushalts-Wegweiser hat jetzt ein Gedächtnis — und Etappen.** Die
   Liste der sechzehn Schritte auf der Haushalts-Übersicht war zur Wand
@@ -419,6 +421,484 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   angestellt und im selben Dokument festgestellt, dass er nichts aussagt; die
   Seite zitiert sie wörtlich und verlinkt den Vorgang im Ratsinformationssystem.
   (#516)
+- **Der abgelehnte Hebesatz-Vorschlag hat jetzt ein Bild.** Auf dem
+  Steuer-Steckbrief der Gewerbesteuer stand bisher nur der Satz „Die Verwaltung
+  schlug vor, die Hebesätze zu erhöhen. Der Rat lehnte ab." Daneben steht jetzt
+  der geltende Hebesatz als Balken, und das Stück, das der Rat nicht beschlossen
+  hat, hängt schraffiert hinten dran — mit der vorgeschlagenen Höhe aus § 5 der
+  Haushaltssatzung und dem Überschlag, was es im Jahr gebracht hätte. Nennt die
+  Satzung keinen abweichenden Satz, zeigt die Grafik keine Höhe und sagt das.
+  (#710)
+- **Gescannte Ratsunterlagen werden jetzt gelesen.** Rund 235 Anlagen im
+  Ratsinformationssystem sind reine Scans — Bilder ohne Textebene, aus denen
+  bisher nichts zu holen war. Darunter die Wirtschaftspläne des
+  Abfallwirtschaftsbetriebs von 2019 bis 2021. Ein neuer Lauf schickt jede Seite
+  an ein Sehmodell und legt den Text ab. Beim ersten Durchgang gingen 62 von 66
+  Rechenproben auf den Cent auf; die vier übrigen wichen um genau einen Euro ab
+  — ein zweites, unabhängiges Modell las dieselben Zahlen, der Rundungsfehler
+  steht also im Dokument der Stadt. Der Text ist dabei bewusst **nicht** in die
+  Suche aufgenommen: Ein Teil dieser Scans sind Förderanträge von Vereinen mit
+  Namen, Anschriften und Unterschriften darauf. Sie liegen im Bürgerinfo zwar
+  öffentlich, sollen durch uns aber nicht nebenbei durchsuchbar werden. (#669)
+- **Was aus den Investitionen wird — und dass der Bestand trotzdem schrumpft.**
+  Auf „Was gebaut wurde" steht jetzt neben dem, was die Stadt im Jahr zubaut,
+  was im selben Jahr an Wert verloren geht. Beim Infrastrukturvermögen —
+  Straßen, Brücken, Kanäle — kommen 2024 auf jeden zugebauten Euro 3,1 Euro
+  Abschreibung. Allein die Straßen, Wege und Plätze sanken von 151,9 auf 133,3
+  Millionen Euro; der Jahresabschluss nennt das selbst einen Substanzverlust.
+  (#626)
+- **Beschlüsse zeigen jetzt, wo sie im Haushalt wieder auftauchen.** Wer eine
+  Nachbewilligung oder eine Bürgschaft aufschlägt, findet dort einen Weg zu der
+  Stelle im Haushalts-Bereich, an der genau diese Entscheidung mitzählt. Der
+  Verweis erscheint nur, wo eine echte Verknüpfung ihn deckt — nicht als Satz,
+  der an jedem Beschluss gleich stünde. (#632)
+- **Wer die städtischen Betriebe beaufsichtigt, steht jetzt mit seiner Funktion
+  im Personenverzeichnis.** Die Aufsichtsorgane der städtischen Gesellschaften
+  sind nicht nur Ratsmitglieder: In den Gemeinschaftsgesellschaften mit dem
+  Landkreis sitzen Landrätin, Kreisrätin und Kreistagsmitglieder, in den
+  Betrieben Beschäftigtenvertretungen, Betriebsräte und Vertretungen der
+  Mitgesellschafter, Universität und Hochschule. 41 dieser Personen kamen in
+  keiner Anwesenheitsliste des Stadtrats vor und standen deshalb namenlos da;
+  sie tragen nun ihr Amt aus dem Beteiligungsbericht und die Berichtsjahrgänge,
+  in denen sie vorkommen — mehr sagt die Quelle nicht, und mehr behaupten wir
+  auch nicht. Keine Partei, kein Stimmverhalten, keine Gehälter. Zwei
+  Ratsmitglieder finden dabei ihre Personen-Seite zurück: Der Bericht schreibt
+  „Claudia Oeljeschleger" und „Jens Lükerman", das Verzeichnis kennt sie mit „ä"
+  und mit zwei „n". Solche Druckfehler werden geheilt, wo der Bericht selbst
+  „Ratsmitglied" sagt, der Vorname exakt stimmt und der Nachname um höchstens
+  einen Buchstaben abweicht — und wo mehr als eine Person infrage kommt,
+  ausdrücklich nicht. Umgekehrt führen sechs Namen im Beteiligungs-Steckbrief
+  nicht mehr ins Leere: Verwaltungsleute haben keine Personen-Seite — auch der
+  Oberbürgermeister nicht, der qua Amt in fast jedem Aufsichtsrat sitzt —, und
+  ihre Namen wurden bis jetzt trotzdem verlinkt. (#588)
+- **Was die Abfallgebühren tragen soll, steht jetzt im Bestand.** Neben dem
+  Eigenbetrieb Gebäudewirtschaft liest der Haushalts-Bereich jetzt auch den
+  Erfolgsplan des Abfallwirtschaftsbetriebs — den Plan also, aus dem die Stadt
+  ihre Abfallgebühren kalkuliert: für 2026 rund 26,7 Millionen Euro Erträge und
+  26,0 Millionen Euro Aufwendungen. Vier Jahrgänge (2023 bis 2026) sind gelesen
+  und dreifach geprüft, unter anderem gegen einen Satz, den das Dokument unter
+  seine eigene Tabelle setzt. Drei ältere Jahrgänge bleiben außen vor: Ihre
+  Anlagen sind eingescannt und tragen keinen lesbaren Text — sie sind als solche
+  vermerkt, falls sich das später ändern lässt. (#666)
+- **Der Bäderbetrieb erklärt jetzt seine Null — und zeigt, was wirklich im Plan
+  steht.** Auf „Der Haushalt neben dem Haushalt" stand bei ihm in jedem Jahrgang
+  ein Jahresergebnis von 0,0 Mio. €, daneben zwei Striche und sonst nichts. Die
+  Null stimmt: Alle sieben Beschlusstexte schreiben wörtlich „schließt mit einem
+  geplanten Jahresfehlbetrag in Höhe von 0,00 EUR ab" — der Betrieb hat seit
+  2005 kein operatives Geschäft mehr, sondern verpachtet sein Vermögen an die
+  Bäderbetriebsgesellschaft, und die Pacht ist so angesetzt, dass sie die Kosten
+  genau deckt. Nur sah man der Karte nicht an, dass das Absicht ist und keine
+  fehlende Zahl. Jetzt steht der Satz dabei — und darunter die Summe, um die es
+  in diesem Plan tatsächlich geht: 10,8 Mio. € Investitionen im Vermögensplan
+  2026. Übernommen wird sie nur, wenn der Beschlusstext seine eigene Rechnung
+  erfüllt (Kreditaufnahme plus eigene Mittel ergeben die Summe) — und
+  ausdrücklich nicht aus Anpassungs-Vorlagen, die den *ursprünglichen* Plan
+  zitieren, bevor sie ihn ändern. (#692)
+- **Beschlüsse lassen sich nach ihrem Ortsbezug filtern.** Die Beschluss-Suche
+  lässt sich nach dem geokodierten Oldenburger Ortsbereich eines Ortsbezugs
+  filtern. Gefilterte Treffer zeigen den konkreten Ort und die zugrunde liegende
+  Fundstelle, damit die Zuordnung direkt prüfbar ist. (#769)
+- **Wer die städtischen Gesellschaften beaufsichtigt — und wem sie gehören.**
+  Die Steckbriefe unter „Beteiligungen" kippten bisher fünf Rohtext-Abschnitte
+  am Stück aus; zwei davon waren in Wahrheit Tabellen. Aufsichtsräte und
+  Betriebsausschüsse stehen jetzt Person für Person da, mit Gremium, Vorsitz,
+  Amtszeit und — wo das Personenverzeichnis die Person eindeutig kennt — einem
+  Link auf ihre Seite. Daneben die Eigentümer mit Anteil in Euro und Prozent.
+  Ein Amt steht nur dort, wo der Bericht es nachweislich der richtigen Person
+  zuordnet: Führt er mehr Namen als Ämter, bleiben die Ämter dieser Gesellschaft
+  leer, statt einer echten Person das falsche anzuhängen. (#587)
+- **Beteiligungen als Konzernkarte, Prüfung als Wiederholungs-Matrix.** Die
+  Konzernkarte zeigt, wer zur Stadt gehört und in welcher Rechtsform; die
+  Gesellschafts-Karten tragen Kennzahl-Zeitreihen 2017–2024. Die Prüfungs-Seite
+  zeigt, welche Feststellungen des Rechnungsprüfungsamts sich über Jahre
+  wiederholen — 37 von 257, als Ketten sichtbar. (#581)
+- **Wie viel einer Gesellschaft der Stadt gehört, steht jetzt dabei.** Auf der
+  Konzernkarte und an jeder Gesellschafts-Karte erscheint der Anteil der Stadt
+  Oldenburg — 100 % beim Klinikum, 74 % bei der VWG, 34,5 % bei der GSG. Wo die
+  Stadt weniger als die Hälfte hält, trägt das Formzeichen einen offenen Ring.
+  Nennt der Bericht für eine Einheit keine Anteilseigner, steht dort auch keine
+  Zahl. (#595)
+- **Die größte Verpflichtung der Stadt ist kein Kredit.** Die Schuldenseite
+  zeigte bisher nur, was Oldenburg an Krediten aufgenommen hat — 43,7 Mio. € zum
+  Jahresende 2024, wenig für eine Stadt dieser Größe. Die naheliegende
+  Anschlussfrage („dann hat sie ja keine Schulden?") beantwortet erst die
+  Bilanz, und die Antwort steht jetzt unter der Kurve: 311,8 Mio. € hat die
+  Stadt für Pensionen und Beihilfe ihrer Beamt*innen zurückgestellt, das
+  Siebenfache der Kredite. Das ist kein Missstand — genau dafür bildet man
+  Rückstellungen —, es ist nur der größere Posten. Dazu die Bilanz als Ganzes:
+  1.480,0 Mio. € zum 31.12.2024, aufgeteilt in „worin das Vermögen steckt" und
+  „wem es zusteht". Neun Stichtage, 2016 bis 2024. Wo zwei Zahlen kursieren, die
+  beide „die Pensionsrückstellungen" heißen, steht jetzt dabei, welche welche
+  ist: 266,3 Mio. € sind die Pensionen allein, 45,5 Mio. € die Beihilfe,
+  zusammen die 311,8. Und wo die Bilanz 2024 plötzlich 207,1 statt 84,4 Mio. €
+  Schulden ausweist, steht der Grund im Wortlaut der Verwaltung daneben — eine
+  Buchungsumstellung beim Cash-Pooling, keine neuen Schulden. (#602)
+- **Wofür die Stadt geradesteht — neben dem, was sie schuldet.** Auf der
+  Schulden-Seite steht jetzt der Bürgschaftsbestand aus den Jahresabschlüssen:
+  Ende 2024 waren es 220,3 Millionen Euro, das Fünffache der eigenen Schulden
+  von 43,7 Millionen. Eine Bürgschaft ist keine Schuld — die Stadt zahlt nur,
+  wenn die verbürgte Gesellschaft es nicht kann; für diesen Fall stehen 1,3
+  Millionen in der Bilanz. Der Sprung 2022 steht mit der Begründung der Stadt
+  dabei: die Übernahme von Bürgschaften für das Klinikum über 135,9 Millionen
+  Euro. Sechs Jahrgänge, jeder mit der Angabe, wie genau die Quelle ihn belegt.
+  (#619)
+- **Was der Rat zu den Bürgschaften beschlossen hat, jetzt als Liste.** Unter
+  den Schulden steht die Chronologie der 21 Vorlagen — mit einem Vermerk an
+  denen, die eine bestehende Bürgschaft nur verlängern oder anpassen. Bewusst
+  ohne Beträge und ohne Summe: Diese Beschlüsse schreiben einander fort, statt
+  sich zu addieren. (#632)
+- **Warum man über Oldenburgs Schulden drei Zahlen hört — und alle drei
+  stimmen.** 43,7 Millionen sind die Investitionskredite der Verwaltung selbst,
+  294,9 Millionen die Stadt mit ihren Eigenbetrieben, 740,3 Millionen der ganze
+  „Konzern Stadt" samt Beteiligungen. Die Schulden-Seite stellt sie jetzt
+  nebeneinander und sagt zu jeder, was sie mitzählt. Bei der größten steht
+  dabei, dass 59 Prozent davon aus Unternehmen stammen, an denen die Stadt
+  weniger als die Hälfte hält — für deren Schulden haftet sie nicht. Und dass
+  daraus keine Zeitreihe werden darf, weil sich der Kreis der mitgerechneten
+  Unternehmen von Ausgabe zu Ausgabe ändert. (#619)
+- **Woher das Geld im laufenden Haushaltsjahr kommen soll.** Für Jahre ohne
+  Jahresabschluss ließ sich der Geldfluss bisher nicht zeigen — dort stand nur
+  der Hinweis, dass ein vollständiges Bild fehlt. Jetzt steht dort die eine
+  Seite, die es gibt: die Ertragsarten des Haushaltsplans als Rangliste, von den
+  Steuern bis zu den Eigenleistungen. Sie gibt sich ausdrücklich als halbes Bild
+  zu erkennen — die Ausgabenseite steht im Plan in einer anderen Rechnung, und
+  ein Bild aus beiden würde zwei Stände vermischen. Dazu nennt der Block den
+  Abstand zur Kernzahl oben auf derselben Seite und wo er herkommt: Die
+  Rangliste zeigt den Entwurf der Verwaltung, die Anzeigetafel den beschlossenen
+  Plan. (#662)
+- **Neben dem Jahresergebnis steht jetzt, was wirklich geflossen ist.** Für 2024
+  wies der Jahresabschluss einen Überschuss aus — und im selben Heft, dreißig
+  Seiten weiter, 22,4 Mio. € weniger Geld in der Kasse als am Jahresanfang.
+  Beides stimmt: Abschreibungen mindern das Ergebnis, ohne dass jemand etwas
+  überweist, und ein Neubau kostet sofort Geld, im Ergebnis aber erst über die
+  Jahre. Bisher zeigte „Geplant und geworden" nur die erste Zahl. Jetzt steht
+  die Finanzrechnung der Kernverwaltung daneben, mit der Rechnung, die das
+  Dokument selbst führt: was aus laufender Arbeit übrig blieb, was für
+  Investitionen abfloss, was am Ende in der Kasse lag. Dazu die Ermächtigungen
+  aus Vorjahren — 2024 waren das 58,8 Mio. € bewilligtes Geld für Vorhaben, die
+  noch nicht fertig sind, und damit die Antwort auf die Frage, warum das
+  Geplante nicht gebaut wird. Acht Jahrgänge, 2017 bis 2024; jede Zahl hängt an
+  der Rechenkaskade, die die Tabelle selbst vorrechnet. (#600)
+- **Neue Seite: Was Sie dafür zahlen.** Sie zeigt, wie die Abfall- und
+  Straßenreinigungsgebühren zustande kommen — nicht nur das Ergebnis, sondern
+  die ganze Rechnung: was der Bereich kostet, was davon Dritte tragen oder aus
+  Vorjahren ausgeglichen wird, und was übrig bleibt, geteilt durch die
+  Abfallmenge beziehungsweise die gebührenpflichtige Fläche. Dazu der Verlauf
+  der letzten Jahre. Bei der Abfallsammlung steht ausdrücklich, dass es dort
+  keine einzelne Gebühr gibt — sie wird über eine Grundgebühr und eine Gebühr je
+  Liter abgerechnet. (#683)
+- **Der Steckbrief „Gebühren und Beiträge" zeigt jetzt Zahlen.** Er sagte
+  bisher, keiner der offenen Datensätze führe diese Einnahme — und das stimmte
+  auch, für die Steuerreihen. Der Jahresabschluss führt sie sehr wohl: 25,9 Mio.
+  € waren es 2024, gut 3 % aller ordentlichen Erträge. Dazu die Reihe seit 2017,
+  in der man die Corona-Jahre sieht (2021 blieben fast 3 Mio. € hinter dem
+  Ansatz), der Vergleich von Ansatz und Ergebnis je Jahr — und die
+  Aufschlüsselung nach Bereichen, die die eigentliche Frage beantwortet: Wofür
+  zahlen die Leute? Das meiste kommt aus Sicherheit und Ordnung (7,5 Mio. €),
+  aus Verkehr und Straßenbau (6,0 Mio. €) und aus Jugend und Familie (5,9 Mio.
+  €, dort stecken die Kita-Beiträge). Die Müllgebühr steht ausdrücklich
+  **nicht** darin: Sie läuft über den Abfallwirtschaftsbetrieb, und den zählt
+  der Abschluss der Kernverwaltung nicht mit — wo ihre Rechnung steht, sagt die
+  Seite jetzt auch. Auf der Übersicht „Woher das Geld kommt" trug dieselbe Karte
+  bis dahin „Betrag noch nicht eingelesen"; sie zeigt die Zahl nun ebenfalls.
+  (#712)
+- **Warum die Müllabfuhr kostet, was sie kostet.** Jedes Jahr legt der
+  Abfallwirtschaftsbetrieb dem Rat vor, wie die Abfall- und
+  Straßenreinigungsgebühren zustande kommen: was der Bereich insgesamt kostet,
+  was davon Dritte tragen, was aus Vorjahren ausgeglichen wird — und was übrig
+  bleibt, geteilt durch die Abfallmenge beziehungsweise die gebührenpflichtige
+  Fläche. Vier Jahrgänge stehen jetzt im Bestand, jede Zahl doppelt
+  nachgerechnet. Man sieht darin zum Beispiel, dass die Gebühr je Tonne Abfall
+  von 123 € (2023) auf 151 € (2026) gestiegen ist — und woraus dieser Anstieg
+  besteht. (#683)
+- **Wo ein Gesetz genannt wird, führt jetzt ein Weg hin.** Auf den
+  Steuer-Steckbriefen steht neben jeder Rechtsgrundlage ein kleines
+  Waage-Zeichen. Ein Klick erklärt in zwei Sätzen, was dort geregelt ist — beim
+  Hebesatz etwa, dass die Stadt ihn beschließen darf, aber für alle Betriebe
+  gleich —, und führt von dort zum amtlichen Volltext: Bundesrecht beim
+  Bundesamt für Justiz, Landesrecht im niedersächsischen
+  Vorschrifteninformationssystem. Dabei steht auch, welche Ebene das Gesetz
+  gemacht hat, denn davon hängt ab, wer es ändern könnte. (#736)
+- **Wie viele Betriebe die Gewerbesteuer aufbringen, steht jetzt da.** Der Block
+  „Wer zahlt das eigentlich" auf dem Steuer-Steckbrief erklärte bisher nur,
+  warum niemand Namen nennen darf. Die Anschlussfrage beantwortet er jetzt mit
+  Zahlen des Landesamts für Statistik: 8.421 Betriebe und Betriebsstätten sind
+  in Oldenburg erfasst, 3.642 von ihnen zahlen überhaupt Gewerbesteuer — und 53
+  % der Bemessungsgrundlage kommen von 879 Betriebsstätten größerer Firmen, die
+  ihre Steuer nach Arbeitslöhnen auf mehrere Gemeinden aufteilen. Dass diese
+  Statistik die Veranlagung zeigt und nicht das Geld in der Kasse, und dass sie
+  rund fünf Jahre nachhinkt, steht ausdrücklich daneben. (#732)
+- **Siebzehn neue Erklärungen im Glossar.** Bilanzsumme, Nettoposition,
+  Sonderposten, Abschreibung, Buchwert, Bürgschaft, Rückstellung,
+  Eigenkapitalquote und weitere Begriffe aus den Jahresabschlüssen erklären sich
+  jetzt dort, wo sie stehen — mit Oldenburger Zahlen statt Lehrbuchsätzen.
+  (#628)
+- **Die KI-Antwort zeigt jetzt Diagramme.** Wer nach den Schulden oder einer
+  Steuer fragt, bekommt unter der Antwort die Zeitreihe dazu — dieselbe Grafik
+  wie im Haushalts-Bereich, mit Ableseleiste und aufklappbarer Werte-Tabelle.
+  Die Reihe kommt aus unserer Datenbank, nicht aus der KI-Antwort: Das Modell
+  kann sie weder erfinden noch verfälschen. (#635)
+- **Fünf Wirtschaftspläne mehr, drei davon aus Scans.** Die Pläne des
+  Abfallwirtschaftsbetriebs für 2019, 2020 und 2021 lagen im
+  Ratsinformationssystem nur als Bild vor und fehlten deshalb. Sie sind jetzt
+  gelesen und geprüft — in jedem der drei Jahrgänge geht die Rechnung in allen
+  sechs Spalten auf den Cent auf. Dazu kommt der **Eigenbetrieb Hafen** mit
+  seinen beiden einzigen Jahrgängen 2019 und 2020; mehr gibt es nicht, weil der
+  Betrieb danach aufgelöst wurde. Beide Zahlen stehen im Beschlusstext *und* in
+  der beigefügten Anlage. (#671)
+- **Der Haushalt neben dem Haushalt.** Der Rat beschließt nicht nur den
+  Stadthaushalt — daneben stehen die Wirtschaftspläne der Eigenbetriebe und
+  städtischen Gesellschaften, in denselben Sitzungen entschieden. Die neue Seite
+  *Stadtfinanzen → Der Haushalt neben dem Haushalt* zeigt sie erstmals: sechs
+  Betriebe, 29 Jahrgänge von 2019 bis 2026, jede Zahl mit der Vorlage belegt,
+  aus der sie stammt. Wo eine Quelle nur das Ergebnis nennt und keine Erträge,
+  steht ein Strich mit dem Grund — keine Null, die es nicht gibt. Und bewusst
+  keine Gesamtsumme: Der Eigenbetrieb Gebäudewirtschaft vermietet der Stadt ihre
+  eigenen Gebäude, wer beides addiert, zählt dasselbe Geld zweimal. (#668)
+- **Jede Haushalts-Schrittseite hat jetzt eine Bühne.** Elf der zwölf Schritte
+  beginnen mit einer hellen Kopf-Fläche, auf der die eine gemessene Zahl der
+  Seite groß steht — „Bei N von M Einnahmequellen kann der Rat wirklich drehen",
+  „geplant 727,9 — geworden 764,4", „257 Feststellungen aus sieben Jahren" —
+  daneben die verkleinerte Hauptform der Seite (Waffel, Treppe, Städte-Leiter
+  …), die per Klick dorthin springt. Die Zahl zählt beim ersten Sichtkontakt
+  hoch; wer Bewegung reduziert hat, sieht sofort den Endwert. Fehlt eine
+  Datengrundlage, entfällt die Bühne, statt etwas zu behaupten. Das Labor bleibt
+  bewusst ohne: Es ist Werkzeug, sein Kopf ist der eigene Regler-Stand. Auch der
+  Steuer-Steckbrief trägt die Bühne — mit dem Hebesatz und seiner Treppe, wo
+  eine Reihe vorliegt. Die Einstiegstexte stehen jetzt unter der Bühne, eine
+  Stufe kleiner. **Die Zeichen-Kachel im Seitenkopf ist dem Schritt-Pfad
+  gewichen.** Oben rechts stehen statt des großen Icons zwölf Punkte in den vier
+  Etappen-Gruppen des Wegweisers: besuchte Schritte gefüllt, der aktuelle als
+  Ring — derselbe lokale Lesestand, den der Wegweiser führt, und ein Klick führt
+  zu ihm. (#749)
+- **Der Rahmen um den Haushalt wird jetzt gelesen.** Die Haushaltssatzung legt
+  jedes Jahr fest, wie viel die Stadt sich für Investitionen leihen darf, wie
+  hoch ihr Dispo sein darf und welche Verpflichtungen sie für kommende Jahre
+  eingehen darf. Drei Seiten je Jahrgang, die bisher niemand ausgewertet hat.
+  Sieben Jahrgänge von 2019 bis 2026 stehen jetzt im Bestand, jeder an der
+  eigenen Summenzeile der Satzung nachgerechnet. Zwei Befunde daraus: Die Stadt
+  veranschlagt in keinem einzigen Jahr Investitionskredite — und ihr
+  Dispo-Höchstbetrag ist von 60 auf 100 Millionen Euro gewachsen. Wichtig dabei:
+  Im Ratsinformationssystem liegen ausschließlich Entwürfe der Verwaltung; die
+  beschlossene Fassung erscheint im Amtsblatt. Jede Zahl ist entsprechend
+  gekennzeichnet. (#674)
+- **Die dreizehn Zahlen, auf die die Stadt ihren Abschluss selbst eindampft —
+  und sieben stille Korrekturen.** Am Ende jedes Rechenschaftsberichts steht
+  eine Anlage mit dreizehn Kennzahlen und, darunter, den Rechenwegen im
+  Wortlaut. Die neue Seite zeigt beides für 2015 bis 2024. Weil jeder Bericht
+  fünf Jahre druckt, stehen dieselben Jahrgänge mehrfach da — meistens mit
+  derselben Zahl, an sieben Stellen aber nicht: Die Steuerquote 2021 war erst
+  45,90 %, dann 49,05 %, dann wieder 45,92 %. Angesagt wurde das nirgends.
+  (#627)
+- **Die KI-Frage kennt jetzt auch Bilanz, Kassensicht, Nachbewilligungen und
+  Kennzahlen.** Fragen nach dem Vermögen der Stadt, nach dem, was tatsächlich
+  geflossen ist, nach nachträglich bewilligtem Geld oder nach der
+  Eigenkapitalquote wurden bisher aus dem Haushaltsplan beantwortet — dort kommt
+  nichts davon vor. Bei den Kennzahlen zitiert die Antwort den Rechenweg, den
+  die Stadt danebendruckt, statt selbst eine Quote zu bilden. (#630)
+- **Das Haushalts-Labor hat jetzt drei Werkbänke.** Aus zwei Reglern werden drei
+  Arbeitsflächen mit je eigener Zielgröße: Bei den **Einnahmen** laufen beim
+  Drehen am Gewerbesteuer-Hebesatz die kreisfreien Städte als Leiter mit, dazu
+  kommen die eigene Hebesatz-Treppe seit 1980, der lange fehlende
+  Grundsteuer-B-Regler (mit belegter Aufteilung aus dem Realsteuervergleich des
+  Landes), die Hundesteuer als Größenordnungs-Probe und die Gebühren als
+  absichtlich gesperrte Schraube. Die **Ausgaben**-Werkbank führt die
+  freiwilligen Teilhaushalte weiter. Neu ist **Investitionen & Finanzierung**:
+  einzelne Vorhaben aus dem Investitionsprogramm abwählen und sehen, warum das
+  die Ergebnis-Lücke kaum bewegt — plus ein Kredit-Schalter, der mit den
+  tatsächlich gezahlten Zinssätzen rechnet statt mit einer Annahme. Im Ergebnis
+  zeigt eine Kurve über die Finanzplanungsjahre, in welchem Jahr die Rücklage
+  rechnerisch kippt und wie das eigene Szenario den Punkt verschiebt; der
+  Finanzausgleich steht als Spanne aus den echten Ausgleichsjahren daneben.
+  (#721)
+- **So viel gibt die Stadt aus — seit 1972.** Die Übersicht des
+  Haushalts-Bereichs zeigt jetzt 54 Jahrgänge in einem Bild: bis 2009 die
+  Ausgaben des Verwaltungshaushalts, ab 2010 die ordentlichen Aufwendungen des
+  Ergebnishaushalts. Der Wechsel des Rechnungswesens zum 1. Januar 2010 steht
+  als sichtbare Naht zwischen zwei Farbwelten im Bild — über sie hinweg wird
+  keine Linie gezogen und nichts verrechnet, weil links und rechts etwas anderes
+  gezählt wird. Die Beträge stehen in Euro des jeweiligen Jahres, die Teuerung
+  ist nicht herausgerechnet; einen Betrag je Einwohner*in zeigt die Reihe
+  bewusst nicht, weil die Einwohnerzahl zweimal durch einen Zensus springt.
+  Nebenbei beantwortet die Reihe die Frage nach dem gerade abgelaufenen Jahr:
+  Seine Gesamtsumme steht dort Monate, bevor der Jahresabschluss vorliegt. Für
+  2021 nennen die beiden Veröffentlichungen der Stadt verschiedene Beträge —
+  statt das still zu glätten, nennt die Seite beide Zahlen und sagt, welche der
+  Jahresabschluss bestätigt. (#604)
+- **Sitzungen, Tagesordnungspunkte und Beschlüsse lassen sich jetzt persönlich
+  merken.** Die neue Merkliste bündelt offene und bereits entschiedene Punkte.
+  Für einen noch offenen öffentlichen TOP kann zusätzlich eine Benachrichtigung
+  eingeschaltet werden: Sobald ein Protokoll vorliegt, verknüpft Ratslotse den
+  gemerkten TOP mit dem erkannten Beschluss und meldet das Ergebnis. Die
+  Zuordnung bleibt auch erhalten, wenn sich die TOP-Nummer vor der Sitzung noch
+  verschiebt. (#762)
+- **Was beschlossen wurde, nachdem der Haushalt beschlossen war.** Ein Haushalt
+  ist ein Plan — und wenn das Geld nicht reicht, braucht jede zusätzliche
+  Ausgabe eine eigene Bewilligung (§ 117 NKomVG). Seit 2018 sind das 161
+  Vorlagen, und auf *Geplant und geworden* stehen sie jetzt: mit Betrag, mit
+  Jahr und mit einem Link auf ihre Beschluss-Seite. „Außerplanmäßig" heißt dabei
+  nicht ungedeckt, sondern umgewidmet — jede dieser Vorlagen nennt, aus welchem
+  anderen Posten das Geld kommt. Wichtiger als die Liste ist aber, was daneben
+  steht. Der Rat ist nämlich nicht der einzige Weg: Der Rechenschaftsbericht der
+  Stadt zählt vier — Ratsbeschluss, Entscheidung des Oberbürgermeisters,
+  Haushaltsvermerk des Fachdienstes 200 und Eilentscheidung. Zusammen waren das
+  2022 rund 26,7 Millionen Euro, 2024 schon 57,5. Der Anteil, über den der Rat
+  selbst abgestimmt hat, ist im selben Zeitraum von 89 auf 73 Prozent gefallen.
+  Wer nur die Ratsbeschlüsse zeigte, zeigte eine schrumpfende Teilmenge, als
+  wäre sie das Ganze — deshalb steht die Gesamtsumme oben und die Liste
+  darunter. Zwei der drei Berichte widersprechen sich dabei selbst: 2022 nennt
+  der Fließtext 288.000 Euro mehr als seine eigene Tabelle, 2023 steht in einer
+  Zeile eine Anzahl von null und trotzdem ein Betrag. Beides zeigen wir an,
+  statt es glattzurechnen. Und wo unsere Zahl von der des Berichts abweicht,
+  sagen wir warum: Wir nennen den Betrag, den die Vorlage beantragt hat, der
+  Bericht den, der am Ende gebucht wurde. (#609)
+- **Eine Übersicht, welche Zahlen es über Oldenburgs Finanzen noch gibt.** Die
+  Technik-Doku hält jetzt fest, welche amtlichen Quellen wir auswerten, welche
+  wir kennen und noch nicht nutzen — und welche wir geprüft und verworfen haben,
+  mit Begründung. Für Leser*innen ändert sich nichts; für alle, die mitbauen
+  wollen, steht dort, wo die Zahlen herkommen. (#598)
+- **Drei neue Quizfragen aus dem Jahresabschluss.** Wie hoch die Schulden der
+  Stadt sind (Antwort: alle drei genannten Zahlen, je nachdem was mitgezählt
+  wird), für wie viele Millionen Euro sie bei Krediten ihrer Gesellschaften
+  geradesteht, und wie viel Wert sich ihr Sachvermögen im Jahr abnutzt,
+  verglichen mit dem, was neu dazukommt. (#631)
+- **Auf der Schulden-Seite steht jetzt auch, was die Stadt aufnehmen dürfte.**
+  Bisher zeigte sie nur, was die Stadt schuldet. Der neue Block darunter nennt
+  die drei Grenzen aus der Haushaltssatzung: wie viel für Investitionen geliehen
+  werden darf, wie hoch der Dispo sein darf und was in diesem Jahr bestellt
+  werden darf, obwohl die Rechnung später kommt. Für das kommende Jahr steht bei
+  den Investitionskrediten „nicht veranschlagt" — und zwar so und nicht als „0
+  €", weil die Satzung genau diesen Satz schreibt. Der Block sagt außerdem dazu,
+  dass es sich um den Entwurf der Verwaltung handelt und nicht um den
+  Ratsbeschluss. (#676)
+- - „Frag den Rat“ lässt das bestehende Frage-Analysemodell nun zusätzlich einen
+  strukturierten Rechercheplan für Beschlüsse, Debatten, Haushalt, Presse,
+  Sitzungen, kommende Beratungen, Orte und Dokumente entwerfen. Der Plan läuft
+  zunächst im Shadow-Mode: Er verändert keine Antwort, wird aber zusammen mit
+  anonymisierten Trefferzahlen protokolliert. Explizite Personen-, Orts-, Geld-
+  und Sitzungsbezüge bleiben dabei verpflichtende deterministische Kanäle.
+  (#793)
+- **Gescannte Ratsunterlagen sind jetzt auch durchsuchbar.** Rund 230 Anlagen
+  liegen im Ratsinformationssystem nur als Bild vor. Ihr per Texterkennung
+  gelesener Inhalt steht nicht mehr nur in der Datenbank, sondern wird wie jeder
+  andere Anlagentext gefunden — vom Wirtschaftsplan des
+  Abfallwirtschaftsbetriebs bis zum Prüfbericht des Rechnungsprüfungsamts.
+  (#679)
+- **Änderungs-Meldungen einzeln abschaltbar.** Wer die Tagesordnung seiner
+  Gremien bekommen, aber nicht über jede spätere Änderung informiert werden
+  will, schaltet unter „Mein Konto" nur noch die neuen Änderungs-Meldungen ab.
+  Der Schalter hängt an „Tagesordnung in meinen Gremien" und ist ohne ihn
+  wirkungslos. (#747)
+- **Von jedem Schritt direkt zum nächsten.** Am Fuß jeder der sechzehn
+  Haushalts-Seiten steht jetzt, wo man im Weg ist („Schritt 5 von 16") und wohin
+  es weitergeht — vorher führte der einzige Weg zum nächsten Schritt zurück über
+  die Übersicht. Der letzte Schritt verabschiedet mit „Geschafft". Die
+  Reihenfolge kommt aus derselben Quelle wie der Wegweiser selbst; die beiden
+  Steckbriefe ohne eigenen Schritt bleiben bewusst ohne die Zeile. (#583)
+- - Interne Schnittstelle für den Social-Media-Bot: liefert die Wochenvorschau
+  neutral (ohne Konto-Bezug) und nimmt die gerenderten Karten entgegen, damit
+  Instagram sie abholen kann. Ohne `SOCIAL_API_TOKEN` ist sie abgeschaltet.
+  (#645)
+- **Was Menschen und Firmen der Stadt schenken, steht jetzt unter den
+  Einnahmen.** Acht- bis zwölfmal im Jahr beschließen Rat oder
+  Verwaltungsausschuss, welche angebotenen Zuwendungen die Stadt annimmt —
+  lückenlos seit Februar 2018, zuletzt 788.669 Euro im Jahr 2025. Diese Reihe
+  weist sonst niemand aus: Weder die Ergebnisrechnung noch der Haushaltsplan
+  führen Spenden getrennt. Aufgenommen ist nur, was in der Vorlage ein zweites
+  Mal steht, im Abschnitt zu den finanziellen Auswirkungen — entweder als
+  dieselbe Zahl oder zerlegt in Geld- und Sachzuwendungen, die sich auf den Cent
+  aufaddieren müssen. 148 Vorlagen tragen diese Probe; sechs Beschlusszeilen
+  tragen sie nicht und stehen mit dem Satz dabei, warum, statt ungeprüft
+  mitgezählt zu werden. Bei einer davon hat der Rat die vorgeschlagene Liste
+  geändert — er nahm 2.500 statt 22.500 Euro an, „ohne lfd. Nr. 2". Nebenbei
+  erklärt der Block, wie Zuständigkeit funktioniert: Über eine einzelne
+  Zuwendung bis 100 Euro entscheidet die Verwaltungsspitze allein, bis 2.000
+  Euro der Verwaltungsausschuss, darüber der Rat. Beide Gremien behandeln
+  ungefähr gleich viele Vorlagen — 80 der Rat, 68 der Verwaltungsausschuss —,
+  aber 95 Prozent des Geldes laufen über den Rat. **Wer gespendet hat, zeigen
+  wir nicht.** Die Namen stehen ausschließlich in der Anlage „Zuwendungsliste"
+  zur jeweiligen Vorlage, und die lesen wir nicht ein. Der Ratsbeschluss macht
+  die Summe öffentlich; die Liste dahinter bleibt es nicht, und dabei bleibt es
+  auch hier. (#610)
+- **Die Statistik der Stadt wird täglich gesichert, bevor sie verschwindet.**
+  Die Stadt führt kein Archiv ihres Statistischen Jahrbuchs: Online steht immer
+  nur die neueste Ausgabe jeder Tabelle, die vorherige Adresse ist danach ein
+  Fehler 404, und das Internet Archive hat davon keinen einzigen Schnappschuss.
+  Bei Tabellen mit nur drei Jahrgängen — etwa der über Steuern und Zuweisungen —
+  war damit jedes Jahr ein Jahrgang endgültig weg. Ein neuer täglicher Lauf
+  sichert jetzt alle Jahrbuch-Tabellen, alle Dateien des Open-Data-Portals und
+  die Finanzausgleichs-Tabellen des Landes versioniert; verändert sich eine
+  Datei, kommt die neue Fassung dazu, die alte bleibt. Wir laden dabei nur, was
+  sich wirklich geändert hat. (#603)
+- **Bei jeder Steuer steht jetzt, was geplant war — und was daraus wurde.** Der
+  Steckbrief einer Steuerart (etwa der Gewerbesteuer) zeigt neben dem, was
+  hereinkam, den Ansatz aus dem beschlossenen Haushalt. Bei der Gewerbesteuer
+  liegen die beiden weit auseinander: 2023 kamen 42 Prozent mehr herein als
+  geplant, 2024 sogar 52 Prozent. Das ist ein Befund und keine Note — wer eine
+  Steuer vorsichtig ansetzt, die zwischen 43 und 222 Millionen Euro schwankt,
+  vermeidet eine Lücke, die sich mitten im Jahr nicht mehr schließen lässt. Dazu
+  kommt die Geschichte des Hebesatzes: 45 Jahre, neun Entscheidungen des Rats,
+  als Treppe — denn ein Hebesatz gilt, bis er wieder geändert wird. Daneben
+  steht jedes Mal, was im selben Jahr tatsächlich hereinkam. 2025 zeigt, warum
+  das zusammengehört: Der Hebesatz der Grundsteuer B stieg um 21 Prozent, das
+  Aufkommen sank trotzdem um 4,6 Prozent, weil die Grundsteuerreform
+  gleichzeitig alle Messbeträge neu festsetzte. (#608)
+- **Der Streit ums Geld zeigt jetzt, was in den Änderungslisten stand.** Bisher
+  sagte die Seite „Mitreden" nur, wer eine Änderungsliste einbrachte und ob sie
+  durchkam — der Inhalt lag als PDF ohne Volltext im Ratsinformationssystem.
+  Jetzt liest Ratslotse die Listen selbst: je Dokument (Änderungslisten der
+  Verwaltung I–III und die beschlossenen Änderungen des Finanzausschusses) alle
+  Positionen mit Teilhaushalt, Bezeichnung und Betrag, dazu der Saldo und bis zu
+  welchem Planjahr die Liste wirkt. Jede Liste ging beim Einlesen gegen ihre
+  eigene Schlusssumme auf — was nicht aufgeht, wird nicht angezeigt. Von den
+  Änderungslisten der Fraktionen, die als Tischvorlagen verteilt wurden und in
+  keinem Dokument liegen, zeigt die Seite die einzige digitale Spur: ihre
+  Summenzeile aus der Beschluss-Datei, mit dem Urheber daneben. (#739)
+- **Die KI-Frage zeigt Tagesordnungen als eigene Karte.** Wer nach einer
+  konkreten Sitzung fragt, zu der es noch keine Beschlüsse gibt — weil sie erst
+  bevorsteht oder das Protokoll noch nicht veröffentlicht ist —, bekommt unter
+  der Antwort jetzt eine Tagesordnungs-Karte: Gremium, Termin, die ersten Punkte
+  der Tagesordnung und der Sprung zur Sitzungsseite. Die Karte kommt direkt aus
+  dem Sitzungskalender, nicht vom Sprachmodell, und bleibt auch in gespeicherten
+  Gesprächen erhalten. (#735)
+- **Oberbürgermeister und Dezernent:innen bekommen jetzt einen eigenen
+  Steckbrief.** Im Personenverzeichnis stehen unter „Stadtverwaltung" jetzt auch
+  Amtsträger:innen mit erkanntem Amt (Oberbürgermeister/-in, Stadtkämmerer/-in,
+  Stadtbaurat/-rätin, Stadtrat/-rätin) — mit Amt, Erwähnungszeitraum aus den
+  Protokollen und ihren Wortbeiträgen. Ihr Badge im Antworttext der KI-Frage
+  verlinkt jetzt ebenfalls dorthin. Ohne erkanntes Amt bleibt es beim bisherigen
+  Badge ohne Link — die Datenbasis wäre für ein vertrauenswürdiges Profil zu
+  dünn. (#654)
+- **„Und welche Firmen zahlen das?" — der Steckbrief der Gewerbesteuer
+  beantwortet jetzt die häufigste Rückfrage.** Nämlich damit, dass sie niemand
+  beantworten darf: Was ein einzelnes Unternehmen zahlt, fällt unter das
+  Steuergeheimnis, auch gegenüber dem Rat. Was die Zahlen trotzdem hergeben,
+  steht daneben — die Gewerbesteuer schwankt von Jahr zu Jahr um ein Vielfaches
+  dessen, was die Grundsteuer tut, und in keinem dieser Sprungjahre hatte der
+  Rat den Hebesatz angefasst. Dazu der Weg, auf dem man sich der Frage nähern
+  kann (die Gewerbesteuer folgt der Lohnsumme am Standort, nicht dem Sitz der
+  Zentrale) und die drei Stellen, an denen dieser Weg bricht. Namen nennt die
+  Seite keine. (#714)
+- **Was die Bäder kosten sollen, steht jetzt im Bestand.** Der Haushalts-Bereich
+  zeigt neben Gebäudewirtschaft und Abfallwirtschaft jetzt auch die
+  Wirtschaftspläne der Bäderbetriebsgesellschaft, des Bäderbetriebs und der
+  beiden Stadion-Gesellschaften — insgesamt 22 Jahrgänge. Für die
+  Bäderbetriebsgesellschaft, die OLantis und die übrigen Bäder betreibt, ist für
+  2026 ein Fehlbetrag von 10,1 Millionen Euro geplant; 2020 waren es 2,7
+  Millionen. Belegt ist jede dieser Zahlen doppelt: Sie steht im Beschlusstext
+  der Ratsvorlage und noch einmal in der beigefügten Anlage. Wo das nicht geht —
+  weil ein Plan ausgeglichen ist oder die Anlage nur als Scan vorliegt — sagt
+  der Beleg das ausdrücklich, statt Sicherheit vorzutäuschen. (#667)
+- **Der Haushalt neben dem Haushalt.** Der Rat beschließt jedes Jahr nicht nur
+  den Stadthaushalt, sondern auch die Wirtschaftspläne der Eigenbetriebe — und
+  die waren im Haushalts-Bereich bisher unsichtbar. Der größte davon, der
+  Eigenbetrieb Gebäudewirtschaft und Hochbau, plant für 2026 mit 82,8 Millionen
+  Euro Erträgen und einem Vermögensplan über 51,1 Millionen; er baut und saniert
+  die städtischen Gebäude, also auch die Schulen. Seine Eckwerte stehen jetzt
+  für acht Jahrgänge (2019–2026) im Bestand, gelesen aus dem Beschlusstext der
+  Ratsvorlage und geprüft an der Rechnung, die dort danebensteht. Die übrigen
+  Betriebe nennen ihre Zahlen nur in einer Anlage — was fehlt, weist der Bereich
+  als fehlend aus, statt eine ungeprüfte Zahl danebenzustellen. (#663)
 
 ### Geändert
 - **Der Datenstand im Quellenverzeichnis rechnet sich selbst.** Am Fuß jeder
@@ -484,6 +964,597 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Niedersachsen. Bleibt ein Jahrgang aus, meldet das der zweiwöchentliche
   Prüflauf; geholt werden die Tabellen weiter von Hand, weil sie nur einmal im
   Jahr erscheinen. (#530)
+- **Admin-Panel: Speicher-Einwilligung sichtbar, Tabs mobil scrollbar.** Das
+  Nutzer-Detail zeigt jetzt, ob ein Konto „Gespräche speichern" für die KI-Frage
+  angeschaltet hat (an, bewusst aus oder nie gefragt). Außerdem liefen die
+  sieben Admin-Tabs auf schmalen Bildschirmen über den rechten Rand hinaus — die
+  Leiste scrollt jetzt seitlich. (#733)
+- **Man bleibt angemeldet.** Die Sitzung im Browser hielt einen Tag und wurde
+  nie erneuert — wer Ratslotse gestern benutzt hat, stand heute wieder vor dem
+  Login. Jetzt läuft sie 90 Tage und verlängert sich still, sobald man die Seite
+  benutzt: Wer regelmäßig vorbeischaut, meldet sich nicht wieder an. Das gilt
+  auch für reines Lesen öffentlicher Beschluss-Seiten. Die App macht dasselbe
+  mit ihrem Token, das sich bei jedem Start erneuert. Abmelden, Passwortwechsel
+  und Passwort-Reset beenden die Sitzung unverändert sofort — auf allen Geräten.
+  (#706)
+- **Die Bereichsseiten des Haushalts rechnen sichtbarer.** Die drei Kennzahlen
+  standen klein in einer Eckkarte, und der Wasserfall darunter verlangte, dass
+  man seine Leserichtung kennt. Jetzt trägt der Seitenkopf die Zahlen groß auf
+  der Anzeigetafel, und darunter zeigen zwei Balken auf einer Skala, was
+  rausgeht, was reinkommt — die Lücke dazwischen heißt sichtbar „trägt die
+  Stadt". Dieselbe Darstellung wie auf der Haushalts-Übersicht. (#726)
+- **Teilhaushalte und Aufgaben stehen jetzt auf einer Seite.** „Was steckt
+  hinter den Namen?" und „Was kostet eigentlich …?" waren zwei Schritte, gehen
+  aber denselben Baum hinunter: erst die zehn Teilhaushalte im Klartext, dann
+  die einzelnen Aufgaben darin. Wer den zweiten ohne den ersten las, suchte
+  Aufgaben in Bereichen, deren Namen ihm nichts sagen. Beides steht jetzt unter
+  *ratslotse.de/haushalt/produkte*. Der Steckbrief eines einzelnen Teilhaushalts
+  bleibt als dritte Ebene eine eigene Seite. (#702)
+- **Beschlüsse bekommen nachvollziehbare Ortszuordnungen.** Einmalige Straßen
+  bleiben erhalten, mehrere Orte je Beschluss sind möglich und jede Zuordnung
+  speichert ihre Fundstelle und Qualität. Neue oder später vervollständigte
+  Beschlüsse werden täglich nachgezogen. Eine reproduzierbare
+  Qualitätsstichprobe und konservative Nachfilterung halten Organisationen,
+  auswärtige Vergleichsorte und generische Platzbegriffe aus den Ortsbezügen
+  heraus. (#765)
+- **Der Steckbrief einer städtischen Gesellschaft zeigt jetzt Zahlen, Anteile
+  und Personen statt fünf Textblöcken.** Jahresergebnis, Bilanzsumme und
+  Eigenkapitalquote stehen mit ihrem jeweiligen Jahr oben, daneben der Verlauf.
+  Wem die Gesellschaft gehört, ist ein Anteilsstreifen mit Betrag und Quote, wie
+  sie im Bericht stehen; wer sie beaufsichtigt, sind Personen mit Partei und
+  Link ins Personenverzeichnis, gebündelt nach dem Amt, das der Bericht ihnen
+  gibt. Wo der Bericht Namen und Funktionen nicht sicher paaren lässt, stehen
+  die Namen ohne Amt und die Seite sagt, warum. Der Unternehmensgegenstand steht
+  mit seinem ersten Absatz da, der volle Wortlaut hinter einem Auslöser — und
+  jede Angabe behält ihre Fundstelle mit Seitenzahl. (#586)
+- **Der Eigenbetrieb Hafen steht jetzt mit auf der Seite.** Er ist der siebte
+  Betrieb im „Haushalt neben dem Haushalt". Seine Reihe endet 2020, und das ist
+  keine Datenlücke: Der Rat hat den Betrieb damals aufgelöst. Genau das steht
+  jetzt auch an der Karte — sonst sähe ein Ende wie ein Loch aus. (#673)
+- **Die Bürgschaften zeigen jetzt die Bewegung, nicht nur den Stichtag.** Was
+  die Stadt selbst schuldet und wofür sie geradesteht, stehen im selben Bild und
+  im selben Maßstab — und laufen sichtbar auseinander: Die eigenen Schulden sind
+  seit 2019 um 27 Prozent gesunken, das verbürgte Volumen ist auf das 2,9-Fache
+  gestiegen. Warum es 2022 sprang, steht an der Stelle, an der die Frage
+  entsteht. (#620)
+- **Changelog-Einträge entstehen jetzt als eigene Datei je Änderung.** Bisher
+  schrieb jede Änderung ihren Eintrag in dieselben Zeilen unter „Unreleased" —
+  liefen zwei parallel, kollidierten sie dort verlässlich. Jede Änderung legt
+  stattdessen eine eigene kleine Datei unter `changelog.d/` an; erst beim
+  Versionsschnitt wandern sie gesammelt in den Changelog, samt der Nummer, unter
+  der die Änderung eingereicht wurde. Auf ratslotse.de/changelog ändert sich
+  nichts: Was noch als Fragment vorliegt, steht dort weiterhin unter
+  „Unreleased", nach Kategorie einsortiert. (#581)
+- **Die Haushaltsdebatte liest sich jetzt wie ein Weg durch die Sitzung.** Die
+  Wortbeiträge unter „Der Streit ums Geld" waren ein grauer Stapel: Name,
+  kursiver Absatz, Knopf — einundzwanzigmal untereinander, die halbe Karte leer.
+  Jetzt führt eine geschlungene Linie von Redner*in zu Redner*in, jede zweite
+  Wortmeldung rückt ans andere Ufer, und der Punkt an der Linie trägt die
+  Fraktionsfarbe — dieselbe Marke wie die Zähl-Chips am Kopf der Karte. Beim
+  Scrollen zeichnet sich der Weg mit und die Beiträge treten nacheinander auf;
+  die Pfeilspitze am Ende zeigt dorthin, wo die Debatte hinführt: zur
+  Abstimmung. Der Wortlaut selbst steht nicht mehr kursiv — einundzwanzig Reden
+  in Schrägschrift waren schlicht anstrengend zu lesen. Wer Animationen im
+  System abgeschaltet hat, bekommt alles fertig gezeichnet und ohne Bewegung.
+  (#709)
+- **Im Haushalts-Bereich trägt jede Zahl ihre Einheit.** Auf der Anzeigetafel
+  stand über den drei Summen nur „nimmt ein / gibt aus / fehlt" und darunter die
+  nackte Zahl — wie groß 812,9 ist, musste man sich aus der Überschrift
+  zusammenreimen. Jetzt steht hinter jedem Betrag „Mio. €": auf der Tafel, in
+  der Legende des Gegenbalkens, in der Bereichstabelle, auf den Seiten „geplant
+  gegen tatsächlich", „Woher kommt das Geld?", „Pflicht oder Kür" und im Labor.
+  Wo bisher „Mio." ohne Währung stand, steht sie jetzt dabei; wo die Spalte zu
+  schmal ist, trägt der Spaltenkopf die Einheit. (#708)
+- **Die Haushalts-Übersicht lädt noch einmal deutlich weniger.** Der größte
+  Datenblock — die Ergebnisrechnung mit ihren dreizehn Teilhaushalten — kommt
+  jetzt nur noch in der Tiefe, die die jeweilige Seite zeichnet. Die Übersicht
+  holt 178 statt 795 Kilobyte, das Haushalts-Labor 131. Zu sehen ist dasselbe:
+  Das Flussbild zeigt unverändert alle Bereiche. (#625)
+- **„Frag den Rat“ kann Ortsbezüge jetzt mit Geld-, Partei-, Verlaufs-,
+  Personen- und Sitzungsfragen kombinieren.** Die Quellen zeigen außerdem den
+  erkannten Ort und die konkrete Fundstelle der Zuordnung. (#789)
+- **Ein Redebeitrag zeigt die Fraktion, unter der er gehalten wurde.** Vally
+  Finke saß 2022 für die SPD und sitzt heute für „Für Oldenburg" — ihre Beiträge
+  von damals trugen bisher entweder gar kein Abzeichen oder das von heute. Jetzt
+  steht in der Quellenzeile „Finke ·SPD (heute Für Oldenburg)": das Abzeichen
+  nennt die Zugehörigkeit zum Zeitpunkt der Aussage, der Halbsatz dahinter sagt,
+  dass sie eine andere geworden ist. Der Wechsel zwischen Gruppen-Label und
+  Einzelpartei („FDP/Volt" ↔ „FDP") gilt dabei nicht als Wechsel. Nebeneffekt:
+  Beiträge, die wegen des scheinbaren Widerspruchs kein Abzeichen bekamen, haben
+  jetzt eins — die Zuordnung bleibt belegt, denn gewertet wird nur, was in den
+  Anwesenheitslisten steht. (#697)
+- **Die ganze Stadt steht jetzt auf einer Seite — und der Bereich hat elf
+  Schritte statt neunzehn.** Vier Seiten beantworteten dieselbe Frage: die Summe
+  aus dem Gesamtabschluss, die städtischen Gesellschaften einzeln, ihre
+  Wirtschaftspläne und die Gebühren, die daraus folgen. Das ist eine Kette — wer
+  bei den Gebühren anfängt, liest eine Zahl ohne Herkunft; wer bei der Summe
+  aufhört, weiß nicht, wer dahintersteckt. Alle vier stehen jetzt unter
+  *ratslotse.de/haushalt/konzern* als Abschnitte mit einer Navigation am Kopf.
+  Damit ist die Neuordnung des Haushalts-Bereichs abgeschlossen: Aus neunzehn
+  Schritten sind elf geworden, ohne dass ein einziger Inhalt weggefallen ist.
+  Alle alten Adressen leiten auf ihren Abschnitt weiter. (#703)
+- **Halb leere Kästen im Haushalts-Bereich füllen jetzt ihre Fläche.** Auf
+  breiten Bildschirmen endete der Text in manchen Karten nach knapp der Hälfte,
+  und rechts blieben bis zu 870 Pixel leer. Der Grund war gut gemeint: Fließtext
+  braucht eine begrenzte Zeilenlänge, sonst läuft er auf 120 Zeichen je Zeile.
+  Nur saß die Begrenzung am Text statt am Kasten. Jetzt deckelt sich der
+  Einschub „Lotti erklärt's einfach" selbst — er steht schmaler als der Fluss,
+  und das ist bei einem Einschub genau richtig. Die Grenzen-Blöcke („Was diese
+  Zahlen nicht hergeben") laufen auf breiten Karten in zwei Spalten: Fläche
+  gefüllt, Zeile lesbar. Betroffen waren zwanzig Seiten, weil Lotti auf allen
+  steht. (#694)
+- **Die Bühnen-Grafiken erklären sich jetzt selbst.** Auf „Woher kommt das
+  Geld?" stehen die drei Spielraum-Gruppen im Kopfbild als beschriftete Reihen —
+  Name links, ein Quadrat je Quelle rechts daneben, alle an derselben Kante
+  beginnend; die Erklärzeile darunter braucht es nicht mehr. Und auf „Mitreden"
+  zeigt das Kopfbild statt vier stummer Punkte den Weg des laufenden Haushalts:
+  Einbringung, Beratung in den Ausschüssen, Beschluss im Rat, laufendes
+  Haushaltsjahr — jede Station mit Datum, und markiert ist die, in der wir
+  gerade stecken. Die Überschrift dort spricht außerdem von den Ratsdebatten zum
+  Haushalt statt vom „Streit ums Geld". (#760)
+- **Lottis Erklärkarten lesen sich wieder wie Text, nicht wie eine Zeile.** Auf
+  breiten Bildschirmen liefen sie über die volle Kartenbreite — deutlich länger
+  als jeder andere Absatz derselben Seite. Jetzt enden sie dort, wo der Rest des
+  Haushalts-Bereichs auch endet. Betrifft achtzehn Seiten. (#593)
+- **Die Lücke von 2019 sagt jetzt, wie groß sie ist.** Auf „Was wurde davon
+  wirklich gebaut?" fehlt der Jahrgang, weil die Auszahlungsarten im
+  Statistischen Jahrbuch nicht die Summe daneben ergeben. Wie weit die beiden
+  Zahlen auseinanderliegen, stand bisher nur im Protokoll des Einlese-Laufs —
+  jetzt steht es an der Lücke: „verworfen: 1,3 Mio. € Differenz im Dokument".
+  Der Betrag wird bei jedem Lauf neu gemessen und nirgends fest eingetragen;
+  ohne Messung nennt die Seite die Lücke wie bisher ohne Zahl. Die Schuldenkurve
+  wiederum zeichnet jetzt dieselbe Grafik wie der Rest des Bereichs — mit
+  Zinslinie, 2010-Marke und den beiden größten Bewegungen wie gehabt, dazu allen
+  Werten als Tabelle zum Abschreiben. Und die Zinslast über der Kurve nennt
+  wieder die Kernverwaltung: Sie zeigte zuletzt die Zinsen eines einzelnen
+  Teilhaushalts. (#597)
+- **Die Haushalts-Seiten laden deutlich weniger Daten.** Bisher holte jede von
+  ihnen denselben großen Datensatz — auch die, die daraus zwei Zahlen zeigt.
+  Jetzt fordert jede Seite nur noch an, was sie tatsächlich darstellt: über neun
+  Seiten zusammen 3,6 statt 13,7 Megabyte. Am deutlichsten auf dem Handy und in
+  der App, wo diese Daten über Mobilfunk kommen. Zu sehen ist dieselbe Seite mit
+  denselben Zahlen — sie ist nur schneller da. (#618)
+- **Geteilte Links in den Haushalt führen wieder ans Ziel, und die Seiten
+  dahinter sind aufgeräumter.** Ein Steckbrief-Link mit dem Klartextnamen — etwa
+  `/haushalt/bereich?name=Finanzmanagement und Recht` — lief bisher auf „Diesen
+  Bereich kennen wir nicht", obwohl der Bereich genau so heißt; jetzt findet ihn
+  die Seite auch unter älteren Schreibweisen desselben Teilhaushalts, und
+  dasselbe gilt für die Steckbriefe der Einnahmearten. Auf *Muss oder kann?*
+  steht die Angabe der Stadt jetzt auf einer eigenen Fläche statt als zweiter
+  Balken direkt unter dem ersten, „weicht ab" rückt neben den Bereichsnamen, und
+  dieselbe Auskunft wird nicht mehr dreimal je Karte wiederholt. Der
+  Schlusshinweis auf *Woher das Geld kommt* zerfällt in seine drei Aussagen,
+  statt als ein Absatz von 550 Zeichen dazustehen. Und wo eine Zahl fehlt — bei
+  „Gebühren und Beiträge" — sagt der Steckbrief das jetzt, statt die Kennzahl
+  stillschweigend wegzulassen. (#590)
+- **Drei Haushalts-Seiten sind lesbarer geworden — dort, wo bisher der Wortlaut
+  der Quelle als Wand herunterlief.** Betroffen sind die Prüfungs-Seite,
+  „Geplant und geworden" und die Produkt-Steckbriefe. Gekürzt wird an keiner
+  Stelle etwas: Alle Wortlaute, Fundstellen und Deeplinks bleiben vollständig,
+  sie stehen nur anders auf der Seite. Auf **„Was das Rechnungsprüfungsamt
+  beanstandet"** war der Jahresbericht die textlastigste Fläche des ganzen
+  Bereichs — für 2018 eine einzige Karte mit 49 Feststellungen am Stück. Jetzt
+  trägt jeder Abschnitt des Schlussberichts ein eigenes Feld mit seiner
+  Textziffer und der Zahl seiner Feststellungen, die Jahreswahl steht im
+  Kartenkopf statt darüber, und ein Umschalter führt von der Zahl in der
+  Überschrift zu den Einträgen: „Alle (49)" oder „Nur Beanstandungen (15)". Was
+  der Umschalter gerade ausblendet, sagt eine Zeile darunter — und dass ein
+  Hinweis etwas anderes ist als eine Beanstandung, steht weiterhin oben, nicht
+  im Kleingedruckten. Auf **„Geplant und geworden"** stand in fünf von acht
+  Jahrgängen ein ganzer Abschnitt des Jahresabschlusses mitten im Bild: bis zu
+  7.176 Zeichen Einzelbeträge zwischen zwei Zeilen der Plan-Ist-Grafik. Solche
+  Abschnitte stehen jetzt vollständig unter „Warum es anders kam", wo alle
+  Erläuterungen der Verwaltung liegen; in der Grafik bleibt der Hinweis, dass es
+  sie gibt. Und eine Erläuterung, die zwei Bereiche in einem Satz nennt, wird
+  nicht mehr zweimal abgedruckt — der zweite Bereich verweist auf den ersten.
+  Die **Produkt-Steckbriefe** geben endlich wieder, was der Haushaltsplan
+  eigentlich aufzählt. „Was dahintersteckt" ist bei 60 von 507 Produkten eine
+  Liste von Leistungen, die beim Auslesen zu einem Absatz verschmolzen war; sie
+  steht wieder als Liste. Dasselbe gilt für „Für wen" und für „Worauf die
+  Aufgabe beruht" — die Gesetze und Satzungen stehen einzeln statt in einer
+  Zeile mit 442 Zeichen. Wo sich ein Text nicht verlustfrei zerlegen lässt,
+  bleibt er unverändert ein Absatz; sehr lange Beschreibungen zeigen ihren
+  ersten Absatz und den Rest auf Klick. (#591)
+- **Der Streit ums Geld, das Haushaltsjahr und das Labor lesen sich jetzt wie
+  der Rest des Haushalts.** Die Wortbeiträge aus den Haushaltsdebatten liefen
+  über die ganze Kartenbreite — bei einem aufgeklappten Beitrag von 8.735
+  Zeichen waren das rund 130 Zeichen je Zeile, kursiv, ohne einen einzigen
+  Absatz. Sie stehen jetzt in derselben Lesespalte wie der übrige Fließtext des
+  Bereichs; am Wortlaut, an der Reihenfolge und an der Vorschau ändert sich
+  nichts. Wer wie oft zu Wort kam, steht als Chip-Reihe mit den gewohnten
+  Fraktionspunkten statt als aneinandergereihte Wortkette. Im Haushalts-Labor
+  sind „Wie verlässlich ist der Plan?" und „Was dagegen rechnet" aus der
+  schmalen Seitenspalte unter die Regler gewandert — dort quetschten sie sich in
+  330 Pixel, während daneben eine halbe Bildschirmbreite leer blieb. Auf der
+  Jahres-Seite stehen die zehn Fachausschüsse als einzelne Marken statt als eine
+  lange Zeile, und die Herkunftsangabe am Seitenende trägt endlich dieselbe
+  Karte wie alle anderen Quellenhinweise. Beim Städtevergleich versprach die
+  Überschrift „Grundsteuer B — der Sprung zur Reform" ein Vorher-Nachher, das
+  die Seite gar nicht zeigen konnte: Die Hebesätze liegen uns bisher nur für ein
+  Jahr vor. Jetzt sagt sie das, statt einen Vergleich anzukündigen, der nicht
+  kommt. (#592)
+- **Die Haushaltsübersicht erklärt Planwerte, Pro-Kopf-Zahlen und Diagramme
+  jetzt verständlicher.** Fachbegriffe und wichtige Einschränkungen bleiben
+  erhalten, während missverständliche Bilder und unnötig technische
+  Formulierungen entfallen.
+- **Die Unterseiten zum Oldenburger Haushalt erklären Fachbegriffe und Zahlen
+  jetzt verständlicher.** Plan- und Istwerte, Ergebnis- und Finanzhaushalt sowie
+  die Grenzen einzelner Vergleiche werden klarer voneinander unterschieden;
+  unnötig bildhafte und selbstreferenzielle Formulierungen entfallen.
+- **Der Weg durch den Haushalt ist jetzt eine große, animierte Route statt einer
+  kleinen Linkliste.** Vier Etappen hängen an einem SVG-Pfad, der sich beim
+  ersten Sichtkontakt zeichnet. Alle zwölf Fragen bleiben direkt anwählbar,
+  besuchte Schritte werden weiterhin nur im eigenen Browser gemerkt und ein
+  sichtbarer Knopf startet den Weg auch beim allerersten Besuch. Die Route steht
+  nun direkt nach der kurzen Haushaltserklärung, bevor die Übersicht in ihre
+  Detailgrafiken einsteigt. Auf kleinen Bildschirmen wird der geschlungene Pfad
+  zu einer senkrechten Leselinie, ohne Etappen zu verstecken. (#791)
+- **„Woher das Geld kommen soll" zeigt jetzt Flächen statt Balken.** Auf der
+  Haushalts-Übersicht standen die zehn Ertragsarten des Planjahres als Balken
+  auf einer Schiene von null bis zum größten Posten. Die beantwortete, wer
+  größer ist als wer — nicht die Frage, die darüber steht: Steuern nahmen die
+  volle Breite ein, weil sie der größte Posten sind, nicht weil sie fast die
+  Hälfte der Erträge sind. Jetzt zerlegt eine Kachelfläche die Summe, jeder
+  Posten in seiner eigenen Farbe: Fläche heißt Anteil, und wer eine Kachel
+  überfährt, antippt oder mit Tab ansteuert, liest darunter Name, Langfassung,
+  Betrag und Prozentwert. Die kleinsten Posten — 2026 sind das Auflösung von
+  Sonderposten, Transfererträge und Eigenleistungen — stehen als ein
+  schraffierter Sammelposten in der Fläche, damit kein Posten zum unlesbaren
+  Farbfleck wird; ihre Namen und Beträge stehen in der Legende und erscheinen
+  beim Überfahren des Sammelpostens. Auf dem Telefon bleibt es bei der Liste.
+  Nebenbei sind zwei Anzeigefehler derselben Grafik weg: Auf den blassesten
+  Kacheln des Investitionen-Explorers stand weißer Text auf fast weißem Grund,
+  und lange Namen wie „Transfererträge" brachen mitten im Wort ab. (#711)
+- **Bankverbindungen und Anschriften stehen gar nicht mehr in der Datenbank.**
+  Bisher wurden sie nur aus der Suche herausgehalten. Jetzt werden sie schon
+  beim Einlesen entfernt, und der vorhandene Bestand ist einmal durchgegangen
+  worden: 81 Bankverbindungen und rund 1.450 Anschriften sind weg.
+  Telefonnummern und E-Mail-Adressen bleiben gespeichert — sie helfen dabei,
+  eine Fundstelle im Originaldokument wiederzufinden — und werden weiterhin aus
+  der Suche herausgehalten. Straßennamen bleiben unangetastet, sonst verschwände
+  die halbe Investitionsplanung. (#681)
+- **Was gebaut wird und was daraus wurde, steht jetzt auf einer Seite.** Plan
+  und Ist derselben Sache lagen bisher auf zwei Seiten in zwei verschiedenen
+  Etappen — wer wissen wollte, was aus einem Vorhaben geworden ist, musste die
+  Seite wechseln. Unter *ratslotse.de/haushalt/investitionen* stehen beide als
+  Abschnitte untereinander. Wichtig dabei: Die beiden Summen zählen **nicht**
+  dasselbe und lassen sich nicht voneinander abziehen — der Plan ist nach
+  Teilhaushalten gegliedert, das Ist nach Auszahlungsarten. Dieser Einwand stand
+  bisher am Seitenende; jetzt steht er **vor** den Ist-Zahlen, weil die
+  Subtraktion dort naheliegt, wo beide Zahlen untereinander stehen. (#701)
+- **Die Investitionsgrafik ist leichter zu lesen:** Eine einheitliche
+  Balkenfarbe zeigt jetzt nur noch die geplanten Auszahlungen. Zuschüsse,
+  Verkäufe und Beiträge stehen separat als Betrag und Anteil darunter.
+- - Zeigt „Frag den Rat" mehrere „Worum geht es?"-Steckbriefe, stehen am Desktop
+  jetzt Blätter-Pfeile neben den Indikator-Punkten — die Punkte allein waren mit
+  der Maus schwer zu treffen. Ihre Klickfläche ist außerdem größer; auf dem
+  Telefon bleibt Wischen der Weg. - Die Vorschlags-Pillen unter einer Antwort
+  laufen am Desktop nicht mehr hart abgeschnitten in die Blätter-Pfeile: Die
+  Pfeile schweben über den Zeilen-Enden, und die Pillen blenden dort weich aus.
+  (#651)
+- **Keine Mail, wenn sich nur die Nummern verschieben.** Fällt in einer
+  Tagesordnung oben ein Punkt weg oder kommt einer dazu, rückt der ganze Rest
+  geschlossen nach — gleiche Punkte, gleiche Reihenfolge, neue Nummern. Dafür
+  geht jetzt keine Benachrichtigung mehr raus; auf der Sitzungsseite steht die
+  Verschiebung weiterhin unter „Zuletzt geändert". Wandert ein Punkt dagegen
+  wirklich an eine andere Stelle, oder kommt neben dem Versatz eine Vorlage,
+  eine Anlage oder ein neuer Punkt dazu, wird wie bisher gemeldet. (#761)
+- **Kleinigkeiten auf der Kennzahlen-Seite.** Der Hinweis „Eine Zahl antippen
+  zeigt ihren Verlauf" stand dreimal untereinander und steht jetzt einmal; aus
+  „aus 6 Berichten" wurde „aus sechs Berichten". (#633)
+- **„Wie hoch sind die Schulden?" hat drei richtige Antworten — die KI-Frage
+  nennt jetzt alle.** 43,7 Millionen Euro sind es im Kernhaushalt, 294,9
+  Millionen für die Stadt samt Eigenbetrieben, 740,3 Millionen für den ganzen
+  Konzern mit allen Beteiligungen. Bisher kam eine davon, und welche, entschied
+  der Zufall. Dazu die 220,3 Millionen Euro, für die die Stadt zusätzlich bürgt
+  — ausdrücklich als eigene Größe, denn eine Bürgschaft ist keine Schuld. (#630)
+- **Kontonummern und Kontaktdaten kommen nicht mehr in die Suche.** In den
+  Ratsunterlagen stehen Bankverbindungen, Telefonnummern, E-Mail-Adressen und
+  Anschriften — bisher landeten sie mit dem übrigen Text im Suchindex und
+  konnten in Antworten auftauchen. Sie werden jetzt herausgenommen, bevor der
+  Text indiziert wird; gespeichert bleibt er unverändert, damit Belege weiter
+  auf die richtige Stelle im Dokument zeigen. Namen bleiben stehen:
+  Ratsmitglieder, Amtsleitungen und Antragstellende gehören zur Sache. Und
+  Straßennamen bleiben selbstverständlich auch — sonst verschwände die halbe
+  Investitionsplanung. (#679)
+- **„Was dieser Vergleich nicht kann" nutzt die Breite.** Der Block auf der
+  Konzern-Seite hielt seinen Text in einer schmalen Spalte, während daneben die
+  halbe Karte leer blieb. Auf breiten Karten stehen die vier Punkte jetzt in
+  zwei Spalten — die Fläche ist gefüllt, die Zeile bleibt lesbar. Über die volle
+  Breite in einer Spalte wäre der falsche Tausch gewesen: Bei 1.400 Pixeln
+  stünden dort 180 Zeichen je Zeile. (#693)
+- **Die Labor-Regler laufen in beide Richtungen.** Freiwillige Leistungen lassen
+  sich jetzt auch aufstocken statt nur kürzen, die Hundesteuer reicht von
+  „abschaffen" bis „verdoppeln" — „heute" steht überall in der Mitte, wie bei
+  den Hebesätzen. Wer mehr ausgibt oder auf Einnahmen verzichtet, sieht ehrlich
+  „Das Minus wächst um …" statt eines leeren Balkens. (#728)
+- **Das Haushalts-Labor ist wieder eine eigene Seite.** Es stand seit dem
+  Zusammenlegen der Etappen als dritter Abschnitt auf „Mitreden" — jetzt hat es
+  als Schritt 12 wieder eine eigene Adresse (`/haushalt/labor`), denn es soll
+  deutlich mehr Stellschrauben bekommen. Anders als vor dem Umbau führen nun
+  auch die Mitreden-Seite, der Steuer-Steckbrief und die Weiter-Navigation
+  dorthin. (#707)
+- **Das Haushalts-Labor bekommt mehr Spielraum — und seine Vorhaben erklären
+  sich.** Die Hebesatz-Regler laufen jetzt ±100 statt ±50 Punkte: Damit ist auch
+  Wolfsburgs Gewerbesteuer-Niveau (360 %) erreichbar, das vorher unterhalb des
+  Reglers lag. Der Lücken-Balken läuft in beide Richtungen — wer den Hebesatz
+  senkt oder aufstockt, sieht das gewachsene Minus als orangen Balken statt
+  einer leeren Anzeige. Bei den Vorhaben aus dem Investitionsprogramm hat jeder
+  Schalter einen Namen (die 14,8-Mio.-Zeile heißt „SG Kreyenbrück Nord" — der
+  Name stand im Dokument nur an der Sachkonto-Zeile), generische Namen zeigen
+  ihre Detailzeilen (der „Eigenkapitalzuschuss" geht an die Stadion-GmbH), jede
+  Zeile führt per Lupe in die Beschluss-Suche, und ein Satz erklärt, warum das
+  Programm so viel Fliegerhorst und keine Schulen einzeln nennt. Wer Vorhaben
+  streicht, bekommt in der Ergebnis-Karte gesagt, warum sich das Minus dabei
+  kaum bewegt: Investitionen wirken auf Kasse und Schuldenpfad, im
+  Jahresergebnis stehen nur die Abschreibungen. (#757)
+- **Lange Texte im Haushalts-Bereich füllen die Karte, statt rechts ein Loch zu
+  lassen.** Wo ein Text der eigentliche Inhalt einer Karte ist — die „Was hier
+  fehlt"-Listen, die Leistungen eines Produkts, die Herkunft der
+  Beratungsstationen —, läuft er auf breiten Schirmen jetzt in zwei bis drei
+  Spalten. Die Fläche ist damit gefüllt und die Zeile zugleich kürzer als vorher
+  (rund 70 statt 95 Zeichen). Auf schmalen Karten und am Telefon ändert sich
+  nichts. Vier Textblöcke liefen außerdem deutlich breiter, als sie sollten —
+  bis zu 122 Zeichen je Zeile gegenüber 95 in ihrer Nachbarschaft. Ursache war
+  eine verrechnete Einheit, kein Gestaltungswille; sie stehen jetzt so breit wie
+  der Rest des Bereichs. (#746)
+- **Die Änderungslisten erklären sich jetzt selbst.** Bisher stand unter „Was in
+  den Listen stand" zehnmal „Beteiligungen" mit zehn Beträgen — was sich
+  dahinter verbirgt, blieb im PDF. Jetzt liest Ratslotse auch die
+  Erläuterungs-Spalte der Dokumente: An jeder Position steht der Text der
+  Verwaltung, was diese Änderung ist („VWG: Der Entwurf des Wirtschaftsplans
+  2026 weist einen Zuschussbedarf von 16.493.040 Euro aus …"). Die Zuordnung der
+  oft mehrzeilig umbrochenen Texte folgt den gedruckten Tabellenlinien des
+  Dokuments — Geometrie statt Schätzung; wo das nicht eindeutig ist, bleibt das
+  Feld lieber leer. Über 99 % der Positionen aller Jahrgänge 2019–2026 tragen so
+  ihre Erklärung. (#744)
+- **Lotti auf der Startseite trägt jetzt die Jahreszeit.** Die 3D-Szene nutzt
+  das überarbeitete Lotti-Modell (spitzer Schnabel, Augen mit Pupille,
+  Kopf-Gelenk) und zeigt das Wetter der Saison: Schnee im Winter, Blüten im
+  Frühjahr, Sonne im Sommer, treibende Blätter im Herbst — und Lotti ist passend
+  angezogen, vom kühlen Winterschal mit Ohrenschützern bis zur Sonnenbrille.
+  Dieselben Outfits und Farben wie beim gezeichneten Fallback. (#724)
+- **Die Lücken-Hinweise bei den Zuwendungen wiederholen sich nicht mehr.** Vier
+  der sechs Felder auf „Woher das Geld kommt" endeten wortgleich mit derselben
+  Deutung — „entweder hat der Rat die Liste geändert oder eines der beiden
+  Dokumente trägt einen Zahlendreher". Der Satz gilt für alle Fälle dieser Art
+  und steht jetzt einmal über der Liste; in jedem Feld stehen nur noch die
+  Zahlen, um die es dort geht. Vorgelesen wird dadurch weniger, gesagt wird
+  dasselbe. (#725)
+- **E-Mails sagen, warum sie kommen — und wo man das ändert.** Tagesordnungs-
+  Mails nennen jetzt den Grund („weil du das Gremium … abonniert hast") und
+  verlinken direkt auf die Stelle, an der sich das Abo oder der Schalter ändern
+  lässt; die Ziel-Seite hebt den gemeinten Schalter kurz hervor, und der Link
+  überlebt einen nötigen Login-Umweg. Auch die Fußzeile jeder E-Mail führt mit
+  „Mein Konto" jetzt direkt zu den Zustellungs-Einstellungen. (#747)
+- - Die interne Bild-Ablage des Social-Bots nimmt jetzt auch andere Kennungen
+  als ein Datum entgegen — Fundstücke, Beschluss-Karten und Sitzungstag-Stories
+  brauchen jeweils eigene. (#652)
+- **Auch große Merklisten bleiben jetzt übersichtlich.** Gemerkte TOPs und
+  Beschlüsse werden nach Sitzung gebündelt und zunächst kompakt dargestellt.
+  Eine Suche und die Filter „Offen“, „Entschieden“ und „Sitzungen“ führen direkt
+  zum gesuchten Eintrag. Unterschiedlich lange Karten richten ihren
+  Benachrichtigungsbereich außerdem sauber am unteren Rand aus. (#767)
+- **Gemerkte TOPs benennen die Wartephase nach einer Sitzung jetzt eindeutig.**
+  Solange das öffentliche Protokoll noch nicht vorliegt, steht in der Merkliste
+  „Sitzung vorbei · Protokoll ausstehend“ statt des ungenauen „Ergebnis folgt“.
+  (#764)
+- **„Mitreden" ist jetzt eine Seite statt dreier.** Der Haushalts-Bereich war
+  auf neunzehn Schritte gewachsen, und mehrere davon waren entlang unserer
+  Einlese-Geschichte geschnitten statt entlang der Frage, die jemand hat. Wann
+  über den Haushalt entschieden wird, worüber die Fraktionen gestritten haben
+  und was passiert, wenn man selbst an den Stellschrauben dreht — das ist eine
+  Frage und steht jetzt unter *ratslotse.de/haushalt/mitreden* als drei
+  Abschnitte mit einer Navigation am Kopf. Nichts ist weggefallen, alte Links
+  leiten weiter. Nebenbei repariert: Der Gewerbesteuer-Hebesatz im
+  Haushalts-Labor stand als feste Zahl im Code, obwohl die Seite die
+  Hebesatz-Reihe als Quelle nannte — er kommt jetzt wirklich von dort und wird
+  nicht mehr still veralten. (#698)
+- **Beschlussorte werden auf der Stadtkarte sichtbar und prüfbar.** Ein Klick
+  öffnet das Ortsprofil oder eine exakt auf Straße, Gebäude, Platz oder Gewässer
+  gefilterte Beschlussliste. Im Admin-Bereich lassen sich häufige Ortskandidaten
+  anhand von Beschluss-Stichproben als Katalogort freigeben, einem bestehenden
+  Ort als Alias zuordnen, verwerfen oder erneut öffnen. Die offene Liste beginnt
+  ab drei verschiedenen Beschlüssen; geprüfte Einträge bleiben immer sichtbar.
+  Freigegebene Kandidaten und ihre Aliase verwenden Beschlusssuche, KI-Frage,
+  Ortsprofile, Quiz und künftige Beschlussimporte über denselben
+  Laufzeitkatalog. (#778)
+- **Der Fraktions-Filter im Personen-Verzeichnis führt Fraktionen, keine
+  Zusammenschlüsse.** „Mitglied der Gruppe FDP/Volt" ist niemand — man gehört
+  der FDP an oder Volt. Wer ausschied, während es die Gruppe noch gab, blieb im
+  Verzeichnis trotzdem für immer „FDP/Volt", und der Filter zeigte unter diesem
+  Eintrag nur ihn statt aller FDP-Leute. Jetzt löst das Verzeichnis solche
+  Gruppen-Label auf — belegt über die Ratsinfo-Stammdaten oder die eigene
+  Anwesenheits-Historie, nicht geraten: Dr. Christiane Ratjen-Damerau und Benno
+  Schulz stehen als FDP, Jens Lükermann als Volt. Wo sich nichts belegen lässt,
+  bleibt das Gruppen-Label auf der Karte stehen, die Person erscheint im Filter
+  aber unter beiden Parteien. Eigenständige Gruppen — „Für Oldenburg",
+  „IBO/LiVe", „WFO-LKR" — bleiben, was sie sind. **Ein Verein ist keine
+  Ratsgruppe.** „Gemeinsam für Oldenburg e.V." wurde als Ratsgruppe „Für
+  Oldenburg" gelesen und machte einen Verbandsvertreter zum Gruppenmitglied.
+  (#699)
+- **Die Balken auf „Muss oder kann?" sind jetzt ablesbar.** Der Größen-Balken
+  jedes Bereichs maß bisher den Anteil am größten Bereich — ein Maßstab, der
+  nirgends auf der Seite stand. Jetzt zeigt er den Anteil an allen geplanten
+  Ausgaben, und genau diese Zahl steht als Text an seinem Ende („32 % aller
+  Ausgaben"). Der zweite Streifen, die Spielraum-Angabe der Stadt, war in 9 von
+  10 Bereichen einfarbig und ohne Legende nicht zu entschlüsseln; er entfällt
+  dort, wo der Satz dieselbe Auskunft trägt, und wird zur richtigen Grafik mit
+  Legende und Beträgen, wo die Angaben sich wirklich über mehrere Stufen
+  verteilen. (#722)
+- **Die Produktkarte öffnet sich, statt eine zweite darunter zu setzen.** Beim
+  Antippen klappte der Steckbrief bisher als eigene Karte unter der angetippten
+  auf — zwei Kästen für eine Sache. Jetzt sind es einer: derselbe Rahmen um Kopf
+  und Inhalt, eine Haarlinie dazwischen. (#629)
+- **Prüfung und Kennzahlen stehen jetzt nebeneinander.** „Die Prüfung" und „Die
+  dreizehn Zahlen" waren zwei Schritte, beantworten aber dieselbe Frage aus zwei
+  Richtungen: Wie ist es gelaufen — von außen geprüft, von innen
+  zusammengefasst. Unter *ratslotse.de/haushalt/pruefung* stehen beide als
+  Abschnitte einer Seite. Nebeneinander sind sie mehr wert als hintereinander:
+  Die Kennzahlen sagen, wie die Stadt dasteht, die Feststellungen, wie
+  verlässlich diese Auskunft ist. (#700)
+- **Die Beispielfragen in „Frag den Rat“ zeigen jetzt auch Stadtteil- und
+  Projektrecherchen.** Im leeren Chat wechseln allgemeine Fragen zu Eversten,
+  Osternburg und zum Innovationsquartier Alte Fleiwa sowie zum jüngsten
+  Beschluss in Kreyenbrück durch den bestehenden Vorschlagspool. (#805)
+- **Das Quellenverzeichnis zählt jetzt Papiere, nicht Kategorien.** Über sieben
+  Wirtschaftsplänen aus sieben Eigenbetrieben stand „1 Quelle" — nach der alten
+  Regel richtig gerechnet, denn nummeriert wurden Quellen*arten*. Trotzdem war
+  es die falsche Auskunft: Wer die Zeile liest, soll sehen, worauf eine Seite
+  ruht. Jetzt trägt jeder Betrieb seine eigene Ziffer, das Verzeichnis nennt
+  sieben Quellen, und die Beschreibung der Quellenart steht weiterhin genau
+  einmal darüber. Wo eine Aussage dagegen auf mehreren Papieren zusammen ruht —
+  die Produktebene verteilt sich auf zehn Teilhaushalts-Anlagen —, bleibt es bei
+  einer Nummer; eine davon herauszugreifen wäre weniger genau, nicht mehr.
+  Außerdem behoben: Drei Belege auf zwei Seiten zeigten auf Quellen, die ihre
+  Seite nie angemeldet hatte, und rendeten deshalb gar nichts — die Sätze
+  endeten mit einer Fußnote, die es nicht gab. Umgekehrt führte die Prüfungs-
+  Seite eine Quelle im Verzeichnis, von der keine einzige Zahl der Seite stammt.
+  (#690)
+- **Die Haushalts-Frage nach der Kostendeckung fragt jetzt nach Millionen.**
+  Bisher war zu raten, welcher Bereich den größten Teil seiner Ausgaben durch
+  eigene Einnahmen deckt — eine Quote, die ein Ziel behauptet, das es nicht
+  gibt: Straßen, Kultur und Grünflächen sollen sich nicht selbst finanzieren.
+  Gefragt wird stattdessen, welcher Bereich selbst am meisten einnimmt, in
+  Millionen Euro; die Auflösung sagt dazu, was die Haushaltsübersicht offenlässt
+  — nämlich wie viel davon von Bund und Land kommt und wie viel aus Gebühren.
+  Die Diagramme der Quiz-Auflösung zeichnet außerdem derselbe Grafik-Baukasten
+  wie den Haushalts-Bereich: Balken mit sichtbarer Skala statt schwebender
+  Streifen, eine Zeitreihe mit Achse und Ablesehilfe statt einer nackten Linie,
+  und der Anteil als Leiste statt als Kreis. (#584)
+- - Der Rechercheplan verknüpft Informationsbedarfe mit den dafür notwendigen
+  Ratslotse-Kanälen. Debatten, Presse und kommende Beratungen werden nur noch
+  gesucht, wenn der gültige Plan sie braucht; bei einem ungültigen Plan bleibt
+  das bisherige Verhalten als sicherer Fallback erhalten. „Aktuelle
+  Informationen“ werden feiner in offizielle Veröffentlichungen und zukünftige
+  Termine getrennt; eine reine Zukunftsfrage zieht dadurch keine Pressekarte
+  mehr hinzu. (#796)
+- **Die Sammel-Mail zeigt jetzt alles.** „n Neuigkeiten aus dem Rat" war bisher
+  eine nackte Linkliste. Jetzt erklärt die Mail, warum gebündelt wird — damit
+  das Postfach ruhig bleibt, statt vieler Einzel-Mails —, und jede Neuigkeit
+  steht mit dem vollen Inhalt ihrer Einzel-Mail darin: Sitzungstermin und Ort,
+  die Zusammenfassung der Tagesordnungspunkte und die Wege in die App. (#747)
+- **Die Punkte im Kopf der Haushalts-Seiten führen jetzt irgendwohin.** Der
+  Schritt-Pfad oben rechts zeigte bisher nur, wo im Weg man steht — angeklickt
+  landete man immer beim Wegweiser, egal auf welchem Punkt. Jetzt ist jeder
+  Punkt der Link auf seinen Schritt: Wer darauf zeigt, liest den Titel der Seite
+  dahinter, und ein Klick geht direkt hin. Die Zeile darunter („Schritt 5 von 12
+  · Die Zahlen") bleibt und führt weiter zur ganzen Liste. (#754)
+- **Jeder Schritt des Haushalts-Wegs trägt jetzt ein eigenes Zeichen.** Es steht
+  als Kachel oben auf der Seite, klein in den Zeilen des Wegweisers und im
+  „Weiter"-Link am Seitenfuß — dieselbe Form an allen drei Stellen, damit man
+  eine Seite wiedererkennt, statt zwölf Titel zu vergleichen. Nebenbei füllt die
+  Kachel die leere Ecke rechts neben dem Einleitungstext, die auf breiten
+  Schirmen bisher einfach frei blieb. (#723)
+- **Die Schwankungs-Grafik sagt jetzt, was sie misst.** Über zwei Balken mit
+  13,2 % und 2,8 % stand „Veränderung zum Vorjahr, im Mittel 1998–2025" — das
+  ließ sich als „die Gewerbesteuer ist um 13,2 % gestiegen" lesen oder als „über
+  den ganzen Zeitraum um 13,2 % gewachsen". Gemeint ist keins von beidem: Der
+  Balken zeigt, wie weit das Aufkommen in einem durchschnittlichen Jahr
+  ausschlägt, nach oben wie nach unten. Der Lesesatz steht jetzt über den Balken
+  statt als Fußnote darunter, und was die Zahl nicht ist, steht ausdrücklich
+  dabei. (#740)
+- **Die KI-Frage kennt jetzt Sitzungen.** „Was hat der Jugendhilfeausschuss am
+  17.06.2026 beschlossen?" beantwortete die Ähnlichkeitssuche bisher mit ihren
+  besten Treffern — bei einer echten Nutzerfrage fehlte so die halbe
+  Tagesordnung, darunter ein echter Beschluss. Nennt die Frage jetzt ein
+  Sitzungsdatum oder die letzte/nächste Sitzung eines Gremiums, wird die Sitzung
+  im Sitzungskalender aufgelöst und ihre Beschlüsse gehen vollständig und in
+  Tagesordnungs-Reihenfolge in die Antwort ein. Steht die Sitzung noch bevor
+  oder ist ihr Protokoll noch nicht ausgewertet, sagt die Antwort das ehrlich —
+  samt Termin und Tagesordnung, statt Beschlüsse anderer Sitzungen
+  unterzuschieben. Bei vergangenen Sitzungen erklärt sie dabei auch, dass die
+  Stadt Protokolle in der Regel erst einige Wochen nach dem Termin
+  veröffentlicht — das Fehlen ist der normale Ablauf, kein Fehler. (#730)
+- **Der Sortier-Umschalter der Bereichslisten sagt, dass er sortiert.** „Nach
+  Ausgaben" und „nach Kosten für die Stadt" klangen wie zwei Wörter für
+  dasselbe, und der Schalter sah aus, als würde er die Ansicht wechseln — dabei
+  ordnet er nur die Zeilen um. Jetzt steht „Reihenfolge" davor, und die Optionen
+  sind ein Verb-Paar, das den Unterschied trägt: „was ein Bereich ausgibt" gegen
+  „was die Stadt zuschießt". Die Balken-Legende spricht dieselbe Sprache — der
+  dunkle Teil heißt „schießt die Stadt zu (allgemeiner Topf)", der helle „nimmt
+  der Bereich selbst ein" — statt wie bisher denselben Wert dreimal anders zu
+  benennen. (#718)
+- **Das Ende des Steuer-Steckbriefs liest sich nicht mehr wie eine Textwüste.**
+  Wo bisher zwei gleich aussehende gestrichelte Kästen untereinanderstanden —
+  „Was brächte ein Punkt mehr?" und „Dazu hat der Rat entschieden" —, steht
+  jetzt ein Block „Was hier (noch) nicht steht" mit zwei Einträgen, jeder mit
+  eigenem Zeichen und Überschrift. Beide sagen dasselbe: was wir an dieser
+  Stelle nicht belegen können. Das gehört zusammen und nicht zweimal
+  hintereinander. (#713)
+- **Die Tabellen im Streit-Abschnitt sind jetzt als Tabellen lesbar.** Bei „Was
+  in den Listen stand" wanderte die Grenze zwischen Ertrag und Aufwand je nach
+  Füllung der Zeile — jetzt ist es eine echte Tabelle mit einem Spaltenraster,
+  Spaltenlinien und einem Kopf, der beim Scrollen langer Listen sichtbar bleibt;
+  die Summe der Liste ankert die Spalten am Fuß. Pluswerte sind grün, Minuswerte
+  orange — die Farbe zeigt die Richtung der Änderung, kein Urteil. Und die
+  Verhandlungsbilanz erklärt ihre Zahlen selbst: Aus der kryptischen
+  Doppelspalte „Ein · durch" wurden zwei beschriftete Spalten „Eingebracht" und
+  „Mit Mehrheit", mit Linien dazwischen. (#745)
+- **„Meine Themen" und die Ausschuss-Abos sind jetzt zwei Seiten.** Die Abos
+  hingen als Block unter den Themen: Wer sie ändern wollte, musste an allen
+  Themen vorbeiscrollen, und die Themen bekamen nur so viel Platz, wie darüber
+  übrig blieb. Jetzt hat jede der beiden Arten, dem Rat zu folgen — ein Anliegen
+  oder ein ganzes Gremium — ihre eigene Seite und ihren eigenen Weg in der
+  Navigation. **Die Themen zeigen, was drinsteht.** Eine Themen-Karte trug
+  bisher eine Zahl und einen einzigen Titel; wer wissen wollte, was sich getan
+  hat, musste jedes Thema einzeln öffnen. Jetzt stehen die fünf jüngsten
+  Beschlüsse direkt auf der Karte — mit Datum, Gremium und Ergebnis, die noch
+  ungelesenen mit einem Punkt davor. Dazu eine Zeile, die sagt, ob ein Thema
+  gerade läuft oder ruht („12 gesamt · 3 in 30 Tagen"), und ein Thema ohne
+  Treffer nennt offen den Tag, seit dem es beobachtet wird. **Die Abo-Seite
+  sagt, worauf man sich einlässt.** Neben jedem Gremium stehen die nächste
+  Sitzung und die Zahl seiner Beschlüsse in diesem Jahr; abonniert und offen
+  sind zwei getrennte Listen. Gremien ohne angekündigten Termin zeigen keinen —
+  statt einen zu erfinden. (#821)
+- **Ein neues Thema kennt seine Beschlüsse sofort.** Bisher zählte nur ein
+  wöchentlicher Lauf, welche Beschlüsse zu einem Thema gehören — wer am Montag
+  „Schulbegleitung" anlegte, sah bis Sonntag eine 0 und darunter den Satz „Noch
+  keine Treffer, wir melden uns, sobald der Rat dazu entscheidet". Dabei hatte
+  der Rat seit 2018 vierunddreißigmal dazu entschieden; es las sich, als sei das
+  Thema erst mit dem Anlegen aufgekommen. Jetzt wird beim Anlegen und nach jeder
+  Änderung der Beschreibung sofort gerechnet, mit demselben Maß wie bisher — die
+  Zahl auf der Karte und die Liste hinter „alle ansehen" stimmen vom ersten
+  Moment an überein. Der so gefundene Bestand gilt dabei ausdrücklich nicht als
+  Neuigkeit: Er taucht weder als „n neu" auf dem Thema auf noch sonntags im
+  Wochenüberblick. Und wenn die Rechnung einmal ausfällt, sagt die Karte
+  „Treffer werden noch gezählt", statt eine 0 zu zeigen, die wie ein Befund
+  aussieht. (#818)
+- - Die Wochen-Vorschau wählt ihre Tagesordnungspunkte besser aus: Sie
+  berücksichtigt jetzt, ob die Verwaltung etwas zur Entscheidung vorlegt oder
+  nur berichtet. Bisher fielen echte Beschlüsse wie die Fahrpreis-Anpassung im
+  Nahverkehr durch, während ein Bericht zum Umsatzsteuerrecht auf der Karte
+  stand. - Mehrere Stationen desselben Vorhabens („Bauleitplanung Meerweg" mit
+  Aufstellungsbeschluss und Grundzügen der Planung) belegen nur noch einen Platz
+  statt drei. Sammel-Rubriken wie „Anträge der Fraktionen" bleiben getrennt —
+  dort ist jeder Punkt ein eigenes Thema. - Die Vorschau nennt jetzt, wie viele
+  Themen eine Sitzung insgesamt hat, nicht nur wie viele davon als besonders
+  relevant gelten. (#647)
+- **Nummern-Verschiebungen stehen nur noch einmal da.** Fällt in einer
+  Tagesordnung oben ein Punkt weg oder kommt einer dazu, rutscht der ganze Rest
+  um eine Nummer — „Zuletzt geändert" und die Änderungs-Mail trugen dafür bisher
+  ein Dutzend gleichlautender Zeilen, zwischen denen die eigentliche Änderung
+  unterging. Solche Kaskaden werden jetzt zu einer Zeile zusammengefasst („14
+  Punkte rücken eine Nummer nach vorn — jetzt TOP Ö 21 bis Ö 33"). Punkte, die
+  wirklich an eine andere Stelle wandern, behalten ihre eigene Zeile. (#756)
+- **Ein Tipp aufs ⓘ zeigt, was dort passiert ist.** In den Zeitreihen des
+  Haushalts-Bereichs erscheint die Erklärung zu einem markierten Jahr jetzt in
+  der Wertzeile unter der Grafik, sobald man das Jahr antippt, überfährt oder
+  mit den Pfeiltasten ansteuert — auf dem Handy bleibt sie beim Wischen
+  sichtbar. Die doppelte Textliste unter jeder Grafik entfällt dafür. (#621)
+- **Die Anmerkungen der Zeitreihen stehen jetzt als Chips über der Grafik.**
+  Jede markierte Stelle trägt einen antippbaren Chip mit Jahr und Kurzfassung —
+  auf jeder Bildschirmgröße lesbar, weil die Zeile umbricht statt im Bild zu
+  kollidieren. Chip und ⓘ-Marke wählen beide das Jahr; der ganze Erklärsatz
+  erscheint dann in der Wertzeile. (#622)
+- **Der Zuwendungs-Block auf „Woher das Geld kommt" sagt jetzt zuerst, worum es
+  überhaupt geht.** Neben der Summe steht, was eine Zuwendung ist — Spenden und
+  Schenkungen an die Stadt, Geld ebenso wie Sachen, und warum jede einzelne
+  davon ein Gremium beschließen muss. Dazu ein Absatz darüber, dass diese Summe
+  sonst nirgends getrennt ausgewiesen wird. Die Erklärstücke stehen auf breiten
+  Schirmen zweispaltig statt als schmale Textspalte in einer halb leeren Karte;
+  die Jahreskurve steht unter ihrer Kennzahl statt über die halbe Seite gezogen.
+  (#719)
 
 ### Verbessert
 - **Das Flussbild zeigt wieder eine Grafik — und sagt dazu, von wann sie ist.**
@@ -644,6 +1715,428 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   nicht: Der Bereich nimmt mehr ein, als er ausgibt. Der Satz sagt das jetzt,
   samt Hinweis, dass darin keine besondere Sparsamkeit steckt, sondern die
   Zuordnung der Einnahmen. (#503)
+- **Die Wertzeile unter den Grafiken ist auf dem Handy wieder lesbar.** Bei
+  Reihen mit vielen langen Namen — etwa den sechs Investitionsarten — rutschten
+  Name und Betrag auseinander, und das Euro-Zeichen landete allein auf der
+  nächsten Zeile. Jetzt steht auf schmalen Schirmen jeder Eintrag auf einer
+  eigenen Zeile, die Beträge untereinander und damit vergleichbar. (#626)
+- **Die Abschnitts-Leiste der Haushalts-Seiten bleibt auf dem Handy sichtbar.**
+  Auf Seiten mit mehreren Abschnitten (etwa „Mitreden" oder „Der Konzern Stadt")
+  schob sich die klebende Abschnitts-Leiste beim Scrollen komplett hinter die
+  App-Kopfzeile — am Rechner war sie da, auf dem Handy verschwand sie. Jetzt
+  dockt sie unter der Kopfzeile an; die klebenden Tabellenköpfe und die
+  Sprungziele der Abschnitte rücken entsprechend mit. (#755)
+- **Die Begründungen zu den Haushaltsabweichungen hören da auf, wo sie
+  aufhören.** Bei der jeweils letzten erläuterten Position lief der Text im
+  Jahresabschluss weiter und nahm ganze Folgekapitel mit — bis zu 7.176 statt
+  rund 600 Zeichen, mit Inhalten, die mit der Position nichts zu tun hatten.
+  Betroffen war jeder der acht Jahrgänge. (#594)
+- **Der Beleg-Hinweis passt jetzt auf den Bildschirm.** Wer einen Beleg
+  antippte, bekam ein Fähnchen mit dem ganzen redaktionellen Absatz zur Quelle —
+  auf dem Handy reichte es über den Bildschirmrand hinaus und ließ sich nicht zu
+  Ende lesen. Jetzt steht dort nur noch, was die Frage beantwortet, wofür man
+  angetippt hat: an welcher Stelle des Dokuments die Zahl steht, wann der Rat
+  darüber entschieden hat, und der Link dorthin. Alles Weitere steht im
+  Quellenverzeichnis, und ein Knopf führt hin. Außerdem richtet sich das
+  Fähnchen am Fenster aus statt am Absatz: Es klappt nach unten, wenn oben kein
+  Platz ist, und ragt nie mehr seitlich hinaus. (#693)
+- **Beratende Ausschuss-Mitglieder werden nicht mehr als Ratsmitglieder
+  geführt.** In den Ausschüssen sitzen neben den Ratsleuten Verbände, Beiräte
+  und Fachleute mit Rederecht — Fridays for Future, Behindertenbeirat, NABU,
+  Jägerschaft, Stadtsportbund, Jugendhilfe-Vertretung. Sie standen bisher im
+  Personen-Verzeichnis und in den Badges als Ratsmitglieder, in Ermangelung
+  einer Fraktion als „parteilos". Beides ist die falsche Kategorie: Sie gehören
+  dem Rat nicht an und stimmen nicht mit ab. Das Verzeichnis führt sie jetzt in
+  einem eigenen Abschnitt mit ihrer entsendenden Organisation, ihr Profil sagt
+  „Beratendes Mitglied · Fridays for Future Oldenburg" statt „parteilos", und
+  ihr Badge in Antworten heißt „beratend" statt „Rat". Unterschieden wird an den
+  Anwesenheitslisten: Wer je in einer Ratssitzung als Mitglied geführt wurde,
+  hat ein Mandat (87 Personen) — wer nur in Ausschüssen sitzt, berät (237).
+  **Die Ratsgruppe WFO-LKR wird als solche erkannt.** Franz Norrenbrock und Dr.
+  Hans Hermann Schreier sitzen im Rat, standen aber mangels bekanntem Label als
+  „parteilos" im Verzeichnis. (#696)
+- **Ein Tagesticket für einen Euro ist kein Beschluss über einen Euro.** Die
+  automatische Betragserkennung nahm bisher jede Zahl neben einem Eurozeichen
+  als das finanzielle Gewicht eines Beschlusses — auch dann, wenn die Zahl ein
+  Preis war („Jahreskarte 324,00 €", „Spontanessen 3,90 €", „1
+  Euro-Tagesticket") oder eine Meldeschwelle („Auszahlungen und Aufwendungen bis
+  zu 50.000 Euro"). Bei einem Sammelbericht über hundert Kleinbeträge stand
+  deshalb die Grenze da, ab der berichtet wird, und nicht das, worüber berichtet
+  wird. Das war nie nur eine falsche Zahl auf einer Seite: Der Betrag speist
+  auch den Wichtig-Wert und die Ranglisten der größten Finanzbeschlüsse. Die
+  Muster unterscheiden jetzt am Fundort, ob eine Zahl je Einheit rechnet, und am
+  Titel, ob der ganze Beschluss über Preise geht oder unterhalb einer
+  Meldeschwelle berichtet. Gemessen am Bestand: 30 Fehlgriffe entfernt, **kein
+  einziger echter Betrag verloren** und keiner verändert. Dass ein Zuschuss
+  „jährlich 80.000 Euro" beträgt, macht ihn nicht zum Stückpreis, und ein
+  Kaufpreis von 390.585 Euro ist sehr wohl das Volumen eines Beschlusses —
+  beides hält jetzt je ein Test fest. Drei Fehlgriffe bleiben stehen, alle unter
+  1.001 Euro und alle von derselben Sorte: Fördersätze aus Richtlinien, die wie
+  ein Volumen formuliert sind. Sie zu jagen hätte auf „Förderung" oder „bis zu"
+  filtern müssen — und das kostete gemessen zwölf echte Beträge, darunter eine
+  Ausfallbürgschaft über bis zu 116,5 Millionen Euro. Sie bleiben deshalb da und
+  stehen benannt im Code. (#610)
+- **Kontaktdaten steckten noch in einer zweiten Kopie.** Der Suchindex hält den
+  Text nicht nur als Verweis, sondern als eigene Textstücke — und die stammten
+  teilweise noch aus der Zeit vor der Maskierung. Sie werden jetzt beim
+  Bereinigen gelöscht und aus dem maskierten Text neu aufgebaut, statt bis zur
+  nächsten zufälligen Neuberechnung stehen zu bleiben. (#685)
+- **Die Beleg- und Gesetzes-Fähnchen gehen wieder zu, wenn man daneben tippt.**
+  Bisher schloss sich das aufgeklappte Fähnchen nur, wenn man dasselbe Zeichen
+  noch einmal traf — ein Tipp daneben, was die meisten zuerst versuchen, tat
+  nichts. Jetzt schließt jeder Klick außerhalb, und die Escape-Taste tut es
+  auch; ein Klick ins Fähnchen selbst lässt es offen, damit sich der Text darin
+  markieren und der Link treffen lässt. (#740)
+- **Was Oldenburg vom Land bekommt, war um 13 Prozent zu niedrig angegeben.**
+  Der kommunale Finanzausgleich hat drei Teile: Zuweisungen für
+  Gemeindeaufgaben, für Kreisaufgaben und für staatliche Aufgaben, die die Stadt
+  miterledigt (Standesamt, Meldewesen, Bauaufsicht). Der Datensatz der Stadt
+  führt nur die ersten beiden — der dritte steht ausschließlich beim Land, und
+  uns fehlte er deshalb. Auf „Woher kommt das Geld?“ stehen die drei Teile jetzt
+  einzeln nebeneinander, mit der vollständigen Summe darunter: für das
+  Ausgleichsjahr 2026 sind das 93,4 statt 82,3 Millionen Euro. Die bisherige
+  Zahl bleibt daneben stehen — sie ist nicht falsch, sie zählt nur weniger mit.
+  Beide gehen gegen die Bücher der Stadt auf: Für 2023 und 2024 nennt das
+  Statistische Jahrbuch auf das Tausend genau denselben Betrag. (#603)
+- - Bei Fragen nach dem zuletzt gefassten Beschluss steht die jüngste
+  tatsächliche Abstimmungsentscheidung jetzt als fester Antwortanker vor
+  Berichten und Kenntnisnahmen. Das verhindert, dass ein älterer Titel mit
+  wörtlichem Ortsnamen eine neuere, über Straße oder Einrichtung zugeordnete
+  Entscheidung verdrängt. (#792)
+- - „Frag den Rat“ verbindet Fragen nach einer Person und einem Ortsbereich nun
+  über Sitzung und Tagesordnungspunkt. Belegte Wortbeiträge gehen dadurch beim
+  Ortsfilter nicht mehr verloren. - Ausdrückliche Fragen nach den neuesten
+  Beschlüssen eines Ortsbereichs zeigen die Quellen jetzt strikt chronologisch
+  und unterscheiden echte Entscheidungen von Berichten und Kenntnisnahmen.
+  (#790)
+- - Unter der Gesprächs-Bühne auf „Fragen" stand am Desktop ein Streifen totes
+  Weiß (gemessen 23 px): Die Bühne rechnete ihre Höhe mit einer festen Zahl, die
+  den Seitenkopf noch mit seinem inzwischen gestrichenen Untertitel enthielt.
+  Kopf und Bühne teilen sich die Seitenhöhe jetzt selbst auf, sodass die Bühne
+  immer bis zum Seitenrand reicht. (#657)
+- **Die Grundsteuer-Erklärung beschrieb das falsche Rechenmodell.** „Die
+  Finanzämter berechnen für jedes Grundstück einen neuen Wert", stand dort, und
+  die Messzahl komme „nach bundesweit gleichen Regeln" — beides gilt in
+  Niedersachsen nicht. Das Land hat bei der Grundsteuerreform ein eigenes Gesetz
+  beschlossen: Gerechnet wird mit der Fläche von Grundstück und Gebäude und
+  einem Lage-Faktor, und die Messzahlen stehen im Landesgesetz. Der Steckbrief
+  sagt das jetzt so. (#736)
+- **Der Steuer-Steckbrief rechnet mit dem Hebesatz, der wirklich galt.** „Was
+  brächte ein Punkt mehr?" teilte das Aufkommen bisher durch eine Zahl, die im
+  Quelltext stand (439 für die Gewerbesteuer). Sie stimmte nur, weil der Rat den
+  Satz seit 2015 nicht angefasst hat — der nächste Beschluss hätte den
+  Überschlag still falsch gemacht, während die richtige Reihe seit dem Einlesen
+  von Tabelle 1105 direkt daneben stand. Jetzt kommt der Satz aus den Daten, und
+  zwar der, der im Jahr des Aufkommens galt; der ausgeschriebene Rechenweg nennt
+  dieses Jahr jetzt mit. Ebenfalls behoben: Der Hinweis, dass der Rat die
+  Erhöhung für 2026 abgelehnt hat, verschwindet künftig von selbst, sobald ein
+  neueres Haushaltsjahr im Bestand steht — bisher hätte er auch 2027 noch
+  „Haushalt 2026" behauptet. (#659)
+- **Eine Zahl ohne Beleg meldet sich jetzt selbst.** Der Cron, der die
+  Haushaltsdaten nachzieht, zählte schon immer die Zeilen mit, die in der
+  Datenbank stehen, ohne zu sagen, woher sie kommen — geschrieben hat er den
+  Befund aber nur ins Log, nie in die Hinweis-Mail. Damit blieb ausgerechnet die
+  stillste Lücke stumm: Ein fehlender Jahrgang fällt in jeder Jahresliste auf,
+  eine Zahl ohne Herkunft nicht. Sie steht auf der Seite wie jede andere, nur
+  ohne Beleg hinter dem Chip. (#660)
+- **„Tatsächliches Jahresergebnis" zeigte die falsche Zahl.** Auf der Seite
+  „Geplant und geworden" stand dort das *ordentliche* Ergebnis — für 2024 also
+  +34,6 statt +6,1 Millionen Euro. Die 28,5 Millionen dazwischen sind das
+  außerordentliche Ergebnis, das die Kachel unterschlug. Jetzt steht dort die
+  Zahl, die auch im Jahresabschluss unter „Jahresergebnis" steht. (#601)
+- **Die Kacheln der Haushalts-Flächen zeigen keine Zeigerhand mehr, wo nichts zu
+  klicken ist.** Über „Woher das Geld kommen soll" und über der Kachelfläche des
+  Investitionen-Explorers wurde der Mauszeiger zur Hand — dem Zeichen, hinter
+  dem eine andere Seite liegt. Dort lag keine: Was eine Kachel zu sagen hat,
+  steht in der Zeile unter dem Bild, und die füllt sich schon beim Überfahren.
+  Der Zeiger versprach damit ein Ziel, das es nicht gibt. Jetzt trägt die Hand
+  nur noch die Kachel „+ n weitere Vorhaben", die tatsächlich irgendwohin führt:
+  in die Suche. Am Ablesen selbst ändert sich nichts — Überfahren, Antippen und
+  Tab zeigen Namen und Summe weiter wie bisher. (#720)
+- - Die Wochen-Vorschau liefert die Kurzfassung und den Tragweite-Grund jetzt
+  auch für die aufklappbaren Punkte mit. Bisher fehlten sie dort, sodass
+  Instagram-Karten aus dieser Liste grundsätzlich ohne Erklärung standen. -
+  Läuft eine Sitzung länger als eine Stunde, zeigt das Live-Banner Stunden statt
+  Minuten. „seit 134 Minuten" brach die Zeile um und schob den Sitzungsort aus
+  der Flucht. (#649)
+- **Die Karten zeigen wieder einen sauberen Stadtplan.** Der Kachel-Anbieter
+  CARTO verlangt seit Kurzem einen Zugangsschlüssel und legte sonst quer über
+  jede Kachel den Schriftzug „API KEY REQUIRED" — auf der Stadtkarte, der
+  Ortskarte unter Beschlüssen, der Karte unter KI-Antworten und in beiden
+  Quiz-Karten. (#785)
+- **Keine alten Debatten unter Zukunfts-Fragen.** Wer nach einer kommenden
+  Sitzung fragte, bekam neben der Antwort den Block „Aus den Ratsdebatten" mit
+  Wortbeiträgen aus früheren Jahren — zu einer Sitzung, die noch gar nicht
+  stattgefunden hat, kann es aber keine Debatte geben. Bei Fragen zu Sitzungen
+  ohne ausgewertetes Protokoll bleiben Debatten- und Parteien-Baustein jetzt
+  weg; Fragen zu vergangenen Sitzungen behalten beides. (#742)
+- **Die nächste Ratssitzung wird nicht mehr als mögliche Haushaltssitzung
+  angekündigt.** Unter „Wann der Haushalt entschieden wird" stand bisher der
+  nächste Termin von Rat oder Finanzausschuss aus dem Ratskalender — mit
+  ehrlichem Kleingedruckten, aber die Schlagzeile versprach im
+  Haushalts-Zusammenhang trotzdem eine Haushaltssitzung, die sie meistens nicht
+  ist: Der Ratskalender kennt keine Tagesordnungen. An ihrer Stelle steht jetzt
+  die Auskunft, die sich belegen lässt — in 7 von 8 Jahrgängen kam der nächste
+  Entwurf im Oktober, und welche Sitzung ihn aufruft, steht erst mit deren
+  Tagesordnung fest. Auch der Kalender-Pin auf dem Zeitstrahl ist weg; er hängte
+  dieselbe beliebige Sitzung an den Haushalts-Weg. (#715)
+- - Bei „Konto löschen" auf der Konto-Seite stand das Passwortfeld auf breiten
+  Bildschirmen seltsam zum Erklärtext: Auf Ultrawide-Monitoren riss zwischen
+  Text und Feld ein großer Leerraum auf, und weil sich beide an der Unterkante
+  des Texts ausrichteten, sprang das Feld je nach Zeilenzahl an eine andere
+  Stelle. Beides liegt jetzt fest nebeneinander auf Höhe der Überschrift. (#655)
+- **E-Mail-Schrift repariert.** Ein Anführungszeichen mitten im Schriftarten-
+  Stapel schnitt die Stil-Angaben der Mails ab — je nach Mail-Programm fielen
+  damit auch Text- und Hintergrundfarbe weg. (#747)
+- **Über Zeilen umbrochene Kontaktdaten rutschten durch.** Steht eine
+  E-Mail-Adresse im Dokument über einen Trennstrich umbrochen, sah die
+  Maskierung nur ihre erste Hälfte und ließ sie stehen — beim Aufbereiten für
+  die Suche wurden die Zeilen dann wieder zusammengezogen, und die vollständige
+  Adresse stand im Index. Dasselbe galt für Bankverbindungen, die mitten in der
+  Ziffernfolge umbrechen. Beides wird jetzt vorher zusammengezogen und dann erst
+  geprüft. (#686)
+- - Die vom Social-Bot hochgeladenen Bilder werden jetzt auch ausgeliefert. Sie
+  lagen im `public/`-Verzeichnis des Frontends, das Next.js aber nur beim Build
+  einliest — der Upload lief, die Adresse gab trotzdem 404, und ein Beitrag wäre
+  erst beim Veröffentlichen gescheitert. (#653)
+- **Die Merkliste bietet nur noch konkrete Tagesordnungspunkte an.** Reine
+  Gliederungs-Oberpunkte wie „Anträge der Fraktionen, Gruppen, Rats- und
+  Ausschussmitglieder“ haben kein eigenes Abstimmungsergebnis und können deshalb
+  nicht mehr neu gemerkt werden. Bereits vorhandene Merker bleiben sichtbar,
+  werden als Sammelpunkt erklärt und lösen keine Ergebnis-Benachrichtigung aus.
+  (#763)
+- **Wer in den Protokollen unter zwei Namensformen steht, hat wieder ein
+  Profil.** Bei drei Personen führen die Anwesenheitslisten zwei Schreibweisen —
+  im Verzeichnis standen sie deshalb doppelt, jedes der beiden Profile mit einem
+  Teil der Sitzungen, und in den KI-Antworten fiel ihr Badge aus, weil zwei
+  gleichnamige Einträge nicht auseinanderzuhalten waren. Jetzt zählen Sitzungen,
+  Gremien und Wortbeiträge wieder zusammen: Angezeigt wird die Schreibweise der
+  jüngsten Sitzung, die Suche im Verzeichnis findet beide, und ältere Links
+  führen weiterhin auf dasselbe Profil. (#589)
+- - „Was wurde an diesem Ort zuletzt beschlossen?“ wird jetzt direkt aus Datum
+  und Abstimmung beantwortet. Neuere Kenntnisnahmen werden klar als Berichte
+  statt als Beschlüsse gekennzeichnet; ein älterer, ähnlich betitelter Vorgang
+  kann die Antwort nicht mehr verdrängen. (#795)
+- **Zwei gescannte Anlagen ließen sich nicht laden.** Beim ersten Lauf auf dem
+  Server wies das Ratsinformationssystem zwei von acht Downloads ab — darunter
+  den Wirtschaftsplan des Abfallwirtschaftsbetriebs für 2020, also einen ganzen
+  Jahrgang, der dadurch still fehlte. Ursache war eine fehlende Kennung beim
+  Abruf; außerdem wird ein abgewiesener Download jetzt bis zu viermal
+  wiederholt, statt sofort aufzugeben. (#674)
+- **Eine Anlage war zu groß zum Lesen.** Ein Scan von über 30 Megabyte wurde von
+  der Texterkennung abgewiesen und blieb als einziger von 227 ungelesen. Solche
+  Seiten werden jetzt vorher verkleinert — ohne dass ein Buchstabe verloren
+  geht, denn die Vorlage hat ohnehin mehr Auflösung, als für die Erkennung nötig
+  ist. (#685)
+- **Ein Plan im Großformat brachte die Texterkennung zum Abbruch.** Die Anlage
+  zur Verkehrsregelung am Johann-Justus-Weg ist über einen Meter breit; als Bild
+  war sie zu groß für die Erkennung, und der Lauf endete jedes Mal mit einem
+  Fehler. Solche Seiten werden jetzt schrittweise verkleinert, bis sie passen.
+  Bei diesem Plan bleibt am Ende trotzdem kein lesbarer Text übrig — dafür sind
+  die Straßenbeschriftungen zu klein —, aber aus einem Abbruch ist eine benannte
+  Lücke geworden. (#687)
+- **Bei manchen Dokumenten wurde das Briefkopf-Logo gelesen statt der Seite.**
+  Wenn eine Seite genau ein Bild enthielt, galt dieses Bild als der Scan — bei
+  einem Deckblatt mit Stadtwappen war das aber nur das Wappen. Zurück kamen ein
+  paar Zeichen, die aussahen wie ein Ergebnis. Jetzt entscheidet die Auflösung:
+  Ein Logo ist um ein Vielfaches kleiner als eine gescannte Seite. Betroffen war
+  unter anderem der Schlussbericht des Rechnungsprüfungsamts zum Jahresabschluss
+  2024 — das Dokument, für das die Texterkennung überhaupt gebaut wurde. Auch
+  seine zweite Hürde ist weg: Sein Titel steht nach dem Briefkopf und nicht ganz
+  am Anfang, woran die Erkennung bisher scheiterte. (#675)
+- **Drei Dokumente galten als gelesen, ohne gelesen worden zu sein.** Konnte
+  keine einzige Seite in ein Bild verwandelt werden, speicherte die
+  Texterkennung trotzdem — und zwar den Platzhaltertext, der eigentlich nur
+  markieren sollte, dass eine Seite fehlt. Für jeden späteren Lauf sahen diese
+  Anlagen damit erledigt aus. Sie stehen jetzt wieder auf der Arbeitsliste und
+  werden beim nächsten Durchgang richtig gelesen. (#677)
+- **Der Ops-Lauf kennt die neuen Finanzdaten.** Die lange Ausgabenreihe und das
+  Statistik-Archiv liefen bisher nur von Hand oder per Cron mit; jetzt zieht ein
+  Ops-Lauf sie mit. Der Bestandsbericht am Ende zählt außerdem Finanzrechnung,
+  Bilanz und Ausgabenreihe mit — eine Tabelle, die dort fehlt, fällt sonst erst
+  auf, wenn jemand eine leere Seite meldet. (#605)
+- **Der Ops-Lauf zieht die Wirtschaftspläne der Eigenbetriebe mit ein.** Seit
+  sie gebaut wurde, ließ sich die Schicht nur von Hand über SSH füllen; ein Cron
+  kommt für sie vorerst nicht in Frage, weil sie als einzige aus einer
+  Ratsvorlage liest statt aus einer Anlage. Der Bestandsbericht am Ende zählt
+  sie jetzt mit — eine Tabelle, die dort fehlt, fällt sonst erst auf, wenn
+  jemand eine leere Seite meldet. Reißt eine der Rechenproben, endet der Lauf
+  weiterhin mit einem Fehler, aber erst, nachdem Bericht und Archiv-Sicherung
+  durchgelaufen sind. (#664)
+- **Der Baustein „Aus den Ratsdebatten" bleibt beim Zurückwechseln stehen.** Wer
+  von den Fragen weg und wieder zurück navigierte, sah die verdichteten
+  Fraktions-Positionen von vorn laden — allerdings nur nach einer
+  Anschlussfrage. Der Grund: Beim Antworten wird aus „Und was kostet das?" eine
+  eigenständige Suchfrage verdichtet, und der Baustein merkt sich sein Ergebnis
+  unter genau dieser Fassung. Gespeichert wurde bisher nur die Frage, wie sie
+  gestellt wurde — das wiederhergestellte Gespräch suchte also unter einem
+  anderen Schlüssel, lud neu und fragte dabei obendrein ohne den
+  Gesprächskontext. Jetzt wandert die Suchfassung mit in den Gesprächs-Snapshot.
+  Außerdem gehört die Zeile „Keine passenden Wortbeiträge gefunden von …" jetzt
+  mit zum gemerkten Ergebnis. Sie lag vorher nur im Zustand der Komponente und
+  fehlte deshalb selbst dann, wenn die Positionen aus dem Zwischenspeicher
+  kamen. (#705)
+- **„Das sagen die Parteien" steht jetzt auf allen Redebeiträgen, nicht auf
+  einem.** Der Baustein suchte seine Beiträge allein nach Ähnlichkeit zur Frage
+  und schnitt das Feld vorher global zusammen — bei der Baumschutzsatzung blieb
+  davon je Fraktion ein einzelner Beitrag von 2019 oder 2021 übrig, während CDU,
+  BSW und FDP als „keine passenden Wortbeiträge" ausgewiesen wurden, obwohl alle
+  drei in der Satzungs-Debatte geredet hatten. Jetzt kommt die Aussprache zu den
+  belegten Beschlüssen dazu, und die Auswahl je Fraktion läuft über das ganze
+  Kandidatenfeld: aus 7 Fraktionen mit 1–2 Beiträgen wurden 13 mit bis zu 11.
+  Schreibvarianten derselben Fraktion („SPD" / „SPD-Fraktion") zählen dabei
+  zusammen statt doppelt zu erscheinen. **Personen-Badges in der Quellenspalte
+  sitzen zuverlässiger — und doppeln die Fraktion nicht mehr.** Führt das
+  Protokoll nur den Nachnamen und gibt es mehrere Personen dieses Namens,
+  entscheidet jetzt die Fraktion der Zeile: „Behrens (SPD)" ist damit eindeutig
+  Paul Behrens, „Schilling" je nach Fraktion Rita oder Michael. 1.505
+  Wortbeiträge bekommen so ihr Badge. Steht die Partei schon auf dem Badge,
+  fällt die Wiederholung in Klammern dahinter weg („Woltmann ·CDU (CDU)" →
+  „Woltmann ·CDU"); trägt das Badge etwas anderes („ehem.", „Stadt"), bleibt die
+  Fraktion sichtbar. (#691)
+- **Zwei Ungenauigkeiten in „Frag den Rat" behoben.** Verwaltungsleute, die in
+  Anwesenheitslisten mal mit, mal ohne Amtstitel im Namen stehen (z. B.
+  „Stadtkämmerin Dr. Julia Figura" statt „Dr. Julia Figura"), bekamen ihr
+  „Stadt"-Badge nur inkonsistent — je nachdem, ob im Text zufällig der volle
+  Vorname stand. Außerdem hängte der „Wie es weitergeht"-Block bei Adress-Fragen
+  manchmal themenfremde Termine an, weil das generische Wort „Straße" allein
+  schon als Treffer zählte (z. B. Straßenwidmungen bei einer Stadion-Frage).
+  (#650)
+- **Dieselbe Person stand zweimal im Personen-Verzeichnis.** Wer in einer
+  Anwesenheitsliste einmal anders geschrieben steht — „Klein" statt „Thomas
+  Klein", „Georg Hess" statt „Hans-Georg Heß", „Christine Berta Wolff" statt
+  „Christine Wolff", seit einer Namensänderung „Tim Ebbeke Harms" statt „Tim
+  Harms" —, bekam bisher einen zweiten Eintrag mit eigener Personen-Seite, auf
+  die sich die Redebeiträge aufteilten. Diese Schreibweisen zählen jetzt als ein
+  Mensch (acht Fälle im Bestand); alte Links auf die weichende Schreibweise
+  führen weiter zur selben Seite. Zusammengelegt wird nur bei gleichem
+  Nachnamen, gleicher Fraktion und ineinander passenden Vornamen — echte
+  Namensvettern wie Meike, Sarah und Thorsten Bruns bleiben getrennt.
+  **Personen-Badges sitzen jetzt bei neun von zehn Wortbeiträgen.** Nennt eine
+  Protokollzeile nur den Nachnamen, entscheidet neben der Fraktion nun auch das
+  Sitzungsjahr, wer gemeint ist: Tanja Behrens saß 2018 eine Sitzung lang im
+  Rat, ein „Behrens" von 2025 ist damit zwangsläufig Paul Behrens. Gruppen-Label
+  und Einzelpartei gelten dabei als dieselbe Zugehörigkeit („FDP/Volt" trifft
+  Daniela Pfeiffer/FDP). Widerspricht die Fraktion der Zeile allen Kandidaten,
+  gibt es weiterhin bewusst kein Badge — geraten wird nicht. (#695)
+- **Die Personen-Seite lädt wieder schnell.** Um für eine Person zu bestimmen,
+  ob sie ein Ratsmandat hat oder beratend in Ausschüssen sitzt, hat die Seite
+  seit dem letzten Update das komplette Personen-Verzeichnis mitberechnet — ein
+  Scan über alle Anwesenheitszeilen für eine einzige Person. Jetzt zählt nur
+  noch, was zu dieser Person gehört: gemessen 14 ms statt 102 ms je Aufruf an
+  einem Bestand in Produktionsgröße. **Der Kopf der Personen-Seite nennt
+  dieselbe Zugehörigkeit wie das Verzeichnis.** Wo ein Zusammenschluss-Label
+  belegt aufgelöst werden kann, steht dort jetzt die Partei („FDP/Volt" → FDP)
+  statt der Gruppe. Die Zeitleiste darunter bleibt unverändert quellentreu — sie
+  zeigt weiterhin, was in den Protokollen der jeweiligen Zeit stand. (#704)
+- **Ein Produkt zu öffnen wirft einen nicht mehr an den Seitenanfang.** Wer in
+  der Produktliste weit unten etwas gesucht hatte, landete beim Antippen wieder
+  ganz oben und musste seine Stelle neu suchen. Der Steckbrief klappt jetzt
+  direkt unter der angetippten Karte auf — es wird gar nicht mehr gescrollt.
+  (#628)
+- **Ein unlesbares PDF gilt nicht mehr als gelesen.** Der Schlussbericht des
+  Rechnungsprüfungsamts zum Jahresabschluss 2024 liefert beim Auslesen 460.000
+  Zeichen und keinen einzigen Buchstaben — seiner Schrift fehlt die
+  Zeichenzuordnung, herauskommen Glyph-Nummern. Solcher Text landete bisher in
+  der Datenbank und damit in der Volltextsuche. Jetzt wird er als „kein Text"
+  geführt, und die Prüfungs-Seite sagt weiterhin, dass für 2024 ein Bericht
+  existiert, den niemand lesen kann. (#627)
+- **Jede Zahl führt jetzt zu ihrem Papier, nicht zur Startseite.** Auf „Der
+  Haushalt neben dem Haushalt" standen 33 Wirtschaftspläne aus sieben
+  Eigenbetrieben unter einer einzigen Quellenangabe, und deren Link führte auf
+  die Startseite des Ratsinformationssystems — zu keinem Dokument, zu keiner
+  Suche. Jetzt trägt jeder Betrieb den Link auf seinen eigenen Plan, mit der
+  Stelle darin, und das Quellenverzeichnis listet alle benutzten Papiere einzeln
+  statt eines Sammelverweises. Dasselbe gilt für die Gebührenbedarfsberechnung,
+  wo jeder Bereich seinen eigenen Abschnitt der Anlage nennt, und für den Block
+  „Was der Rahmen erlaubt" auf der Schulden-Seite, der seine Zahlen bis dahin
+  ganz ohne Beleg zeigte. Die Dokumente selbst heißen im Verzeichnis jetzt nach
+  dem, was sie sind („Eigenbetrieb Gebäudewirtschaft: Wirtschaftsplan 2026")
+  statt nach ihrem Aktenzeichen. Dazu ein Jahrgang mehr bei den Abfallgebühren:
+  2020 liegt nur als Scan vor und schrieb „Gebührenbedarfsrechnung" statt
+  „-berechnung" — zwei Silben, an denen das Einlesen scheiterte. (#689)
+- **Die Quizfrage nach den Schulden nennt jetzt das Jahr an jeder Zahl.** Die
+  drei Stände kommen aus drei Quellen, und die erscheinen zu verschiedenen
+  Zeiten — nebeneinandergestellt ohne Jahresangabe war das angreifbar. (#634)
+- - Auf „Fragen" sprang am Desktop die Breite von Antwort- und Quellen-Spalte,
+  sobald die Antwort eintraf — das Raster richtete sich nach seinem Inhalt statt
+  nach der Seite. Beide Spalten stehen jetzt unabhängig vom Inhalt immer an
+  derselben Stelle. (#658)
+- **Warum die Schulden je Einwohner*in 2023 sanken, obwohl sie stiegen.** In der
+  Pro-Kopf-Ansicht der Schuldenkurve steckt ein Sprung, der nichts mit Schulden
+  zu tun hat: Die Volkszählung 2022 zählte 4.079 Menschen mehr als bis dahin
+  angenommen, und die Statistik rechnet ab da mit der neuen Zahl. Das Jahr sah
+  nach Entspannung aus — die Gesamtsumme wuchs im selben Zeitraum. Steht jetzt
+  dabei. (#599)
+- **Zwei Stellen behaupten nicht mehr, was längst da ist.** Der Kassenzettel auf
+  der Haushalts-Übersicht sagte, Neubauten und Fahrzeuge stünden „in einem
+  eigenen Haushalt, den wir noch nicht eingelesen haben" — den zeigt „Was wird
+  gebaut?" inzwischen samt der einzelnen Vorhaben; geblieben ist der Grund,
+  warum sich beide nicht zusammenzählen lassen. Und wo für ein Planjahr kein
+  Geldfluss-Bild steht, hieß es, uns lägen die Einnahmearten nicht vor. Sie
+  liegen vor; was fehlt, ist die Ausgabenseite im selben Stand — und genau das
+  steht dort jetzt. (#659)
+- **„Morgen" ist jetzt ein Datum.** „Um was geht es im Bauausschuss morgen?"
+  verstand die KI-Frage nicht als Sitzungsfrage — sie riet stattdessen aus alten
+  Beschlüssen verschiedener Jahre, was „voraussichtlich" anstehen könnte. Jetzt
+  werden „heute", „morgen", „übermorgen", „gestern" und „vorgestern" auf den
+  Kalendertag aufgelöst, die Sitzung wird im Sitzungskalender gefunden und die
+  Antwort kommt aus deren echter Tagesordnung. Zeitspannen („bis heute", „seit
+  gestern") und der Gruß („Guten Morgen") lösen wie bisher nichts aus. (#738)
+- **Eine Tabelle in Tausend Euro wird jetzt erkannt statt falsch gelesen.** Die
+  Rechenprobe, mit der jede Zahl des Haushalts-Bereichs belegt wird, prüft
+  *Erträge minus Aufwendungen gleich Ergebnis*. Läge eine ganze Spalte um den
+  Faktor 1.000 daneben, weil über der Tabelle „in TEUR" steht, ginge die Probe
+  trotzdem auf — der Faktor kürzt sich weg. Solche Tabellen werden jetzt gar
+  nicht erst eingelesen. Lieber eine Lücke als eine Zahl, die tausendmal zu
+  klein ist. (#671)
+- **Zwei Quellenlinks im Haushalts-Bereich zeigten ins Leere.** Die Stadt hat
+  ihre Finanzen-Seite eine Ebene höher gelegt, das Landesstatistikamt seinen
+  Realsteuervergleich eine Ebene tiefer. Beide Adressen sind nachgezogen. (#632)
+- - Die Tragweite-Bewertung neuer Tagesordnungspunkte lief seit dem 16.08. gar
+  nicht mehr: Der tägliche Lauf schloss die Datenbank, bevor er sie dafür
+  benutzte, verschluckte den Fehler und meldete sich trotzdem als erfolgreich.
+  Die Wochen-Vorschau hob dadurch nach Stichwort-Regeln hervor statt nach
+  Tragweite. Ein Lauf, der keinen einzigen offenen Punkt bewerten konnte,
+  schlägt jetzt Alarm, statt still „0" zu melden. (#646)
+- - Die Tragweite-Bewertung liest die Vorlage jetzt ab dem Sachverhalt statt ab
+  dem Briefkopf. Bisher füllten Ausdruckdatum, Amt und Beratungsfolge die Hälfte
+  des Auszugs — bei einem Bericht, der in der Sitzung gar nicht gehalten werden
+  kann, stand der entscheidende Satz außerhalb und der Punkt galt als Bericht
+  mit Ergebnissen. - Tagesordnungspunkte stehen auf der Wochen-Karte wieder in
+  der Reihenfolge der Tagesordnung: „Ö 5" kam bisher hinter „Ö 16.4". (#648)
+- **Bilanzsummen machen einen Beschluss nicht mehr wichtig.** Wenn der Rat einen
+  Jahresabschluss feststellt, stand dort eine sehr große Zahl — bei einem
+  Eigenbetrieb über 580 Millionen Euro. Der Wichtig-Wert las sie als Ausgabe und
+  schob solche Formalbeschlüsse nach oben. Betroffen waren 259 Beschlüsse, 122
+  davon über zehn Millionen. Was der Rat tatsächlich ausgibt, zählt weiter.
+  (#596)
+- **Die Wirtschaftspläne melden sich künftig selbst.** Die neue Schicht steht
+  jetzt im Datenstand des Haushalts-Bereichs: Bleibt der Plan für ein
+  Haushaltsjahr aus, sagt der Bereich das — samt dem Monat, in dem er
+  üblicherweise eingebracht wird. Nebenbei findet der Volltext-Nachlauf damit
+  auch die Anlagen der übrigen Eigenbetriebe, deren Zahlen bisher unerreichbar
+  in ungelesenen PDFs lagen; wo ein Dokument nur ein Scan ist, wird es als
+  solcher markiert statt stillschweigend übersprungen. (#665)
+- **Die Wirtschaftsplan-Erkennung traf nie ein Dokument.** Sie führte drei
+  Schreibweisen desselben Worts, verknüpfte sie aber mit UND statt mit ODER —
+  ein Dokument hätte alle drei gleichzeitig tragen müssen. Sichtbar wurde das
+  nie, weil bisher nur der Anlagen-Nachlader diese Muster las und sich seine
+  Oder-Verknüpfung selbst baut. Ein Test geht jetzt für jede Datenart den
+  normalen Weg und meldet, wenn eine ihre eigenen Dokumente nicht findet. (#669)
+- **Wochenüberblick: Links funktionieren wieder.** Die sonntägliche
+  Wochenüberblick-Mail verlinkte ihre Beschlüsse relativ — solche Links kann ein
+  Mail-Programm nirgends auflösen, sie taten schlicht nichts. Jetzt führen sie
+  als volle Adresse zur Beschluss-Seite; Beschluss-Titel mit Sonderzeichen
+  werden dabei sauber dargestellt. (#748)
+- **Kurven im Minus liefen aus dem Bild.** Eine Zeitreihe, deren Werte alle
+  unter null liegen, zeichnete ihre Achse von 0 bis −3, während die Kurve bis
+  −10 ging — sichtbar war nur ein Fragment am linken Rand. Dasselbe traf jede
+  Reihe, die sowohl positive als auch negative Werte hat. Beides fiel bisher
+  niemandem auf, weil alle Kurven des Haushalts-Bereichs im Plus lagen. Außerdem
+  beschriftete die Achse ihre Linien immer ohne Nachkommastellen: Bei Beträgen
+  unter einer Million standen dort dreimal „0" und zweimal „1" übereinander.
+  (#668)
 
 ### Verbessert
 - **Der Haushalts-Bereich einmal am Stück gelesen — mit den Augen von jemandem,
@@ -3636,7 +5129,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.13.2...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.14.0...main
+[1.14.0]: https://github.com/Schereo/Ratslotse/compare/v1.13.2...v1.14.0
 [1.13.2]: https://github.com/Schereo/Ratslotse/compare/v1.13.1...v1.13.2
 [1.13.1]: https://github.com/Schereo/Ratslotse/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/Schereo/Ratslotse/compare/v1.12.0...v1.13.0
