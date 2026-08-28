@@ -1,10 +1,12 @@
+import RatslotseAPI
 import RatslotseFeatures
 import SwiftUI
 
 @main
 struct RatslotseApp: App {
     @UIApplicationDelegateAdaptor(RatslotseAppDelegate.self) private var appDelegate
-    @State private var model = AppModel()
+    @State private var model = Self.makeModel()
+    @State private var didHandleDebugRoute = false
 
     var body: some Scene {
         WindowGroup {
@@ -21,6 +23,25 @@ struct RatslotseApp: App {
                     guard let path = note.object as? String else { return }
                     model.handle(pushPath: path)
                 }
+                .onAppear {
+#if DEBUG
+                    guard !didHandleDebugRoute,
+                          let path = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ROUTE"],
+                          path.hasPrefix("/") else { return }
+                    didHandleDebugRoute = true
+                    model.handle(pushPath: path)
+#endif
+                }
         }
+    }
+
+    private static func makeModel() -> AppModel {
+#if DEBUG
+        if let rawURL = ProcessInfo.processInfo.environment["RATSLOTSE_API_BASE_URL"],
+           let baseURL = URL(string: rawURL) {
+            return AppModel(api: APIClient(baseURL: baseURL))
+        }
+#endif
+        return AppModel()
     }
 }

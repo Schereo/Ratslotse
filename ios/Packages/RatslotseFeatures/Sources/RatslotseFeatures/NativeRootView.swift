@@ -89,13 +89,34 @@ private struct UpdateRequiredView: View {
     let notice: String?
 
     var body: some View {
-        ContentUnavailableView {
-            Label("Update erforderlich", systemImage: "arrow.down.app")
-        } description: {
-            Text(notice ?? "Diese Version ist zu alt, um verlässlich mit Ratslotse zu arbeiten.")
-        } actions: {
-            Link("Im App Store aktualisieren", destination: URL(string: "https://apps.apple.com/app/id6786553049")!)
-                .buttonStyle(PrimaryButtonStyle())
+        ZStack {
+            RatsColor.page.ignoresSafeArea()
+            VStack(spacing: 0) {
+                LottiMascot(pose: .point)
+                    .frame(width: 112, height: 112)
+                    .padding(.bottom, -14)
+                    .zIndex(1)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 14) {
+                    MonoKicker("Neue Version verfügbar")
+                    Text("Update erforderlich")
+                        .font(RatsFont.title(30))
+                    Text(notice ?? "Diese Version ist zu alt, um verlässlich mit Ratslotse zu arbeiten.")
+                        .font(RatsFont.body(15))
+                        .foregroundStyle(RatsColor.bodyText)
+                        .lineSpacing(4)
+                    Link(destination: URL(string: "https://apps.apple.com/app/id6786553049")!) {
+                        Label("Im App Store aktualisieren", systemImage: "arrow.down.app")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .frame(maxWidth: .infinity)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .ratsCard()
+            }
+            .frame(maxWidth: 480)
+            .padding(22)
         }
     }
 }

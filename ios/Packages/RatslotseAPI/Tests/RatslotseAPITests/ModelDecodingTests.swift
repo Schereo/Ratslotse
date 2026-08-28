@@ -93,3 +93,50 @@ import Testing
     #expect(bookmarks.bookmarks.first?.decision?.id == 42)
     #expect(follows.follows.first?.next?.committee == "Rat")
 }
+
+@Test func enrichedListModelsDecodeVisualMetadataAndSafeDefaults() throws {
+    let decisionJSON = #"""
+    {
+      "id": 42,
+      "title": "Neue Busspuren",
+      "simple_summary": "Zwei Busspuren verbessern den Nahverkehr.",
+      "session_date": "2026-08-26",
+      "amount_eur": 8900000,
+      "interest": 82,
+      "interest_reason": "Viele Menschen sind täglich betroffen.",
+      "impact": 76,
+      "impact_reason": "Fahrzeiten werden verlässlicher."
+    }
+    """#
+    let topicJSON = #"""
+    {
+      "id": 7,
+      "name": "Verkehrswende",
+      "description": "Bus und Radverkehr",
+      "matched": true,
+      "decision_count": 12,
+      "recent_hits": [{
+        "id": 42,
+        "title": "Neue Busspuren",
+        "committee": "Rat der Stadt",
+        "session_date": "2026-08-26",
+        "outcome": "angenommen",
+        "is_new": true
+      }],
+      "hits_30d": 3
+    }
+    """#
+
+    let decision = try JSONDecoder().decode(DecisionSummary.self, from: Data(decisionJSON.utf8))
+    let topic = try JSONDecoder().decode(Topic.self, from: Data(topicJSON.utf8))
+
+    #expect(decision.summary == "Zwei Busspuren verbessern den Nahverkehr.")
+    #expect(decision.amountEUR == 8_900_000)
+    #expect(decision.interest == 82)
+    #expect(decision.impactReason == "Fahrzeiten werden verlässlicher.")
+    #expect(decision.factions.isEmpty)
+    #expect(topic.recentHits.first?.id == 42)
+    #expect(topic.recentHits.first?.isNew == true)
+    #expect(topic.hits30Days == 3)
+    #expect(topic.unreadCount == 0)
+}

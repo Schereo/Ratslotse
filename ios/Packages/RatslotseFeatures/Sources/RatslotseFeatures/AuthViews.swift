@@ -27,10 +27,14 @@ struct WelcomeView: View {
                         .lineSpacing(4)
                 }
                 VStack(spacing: 12) {
-                    Button("Anmelden") { model.authPresentation = .login }
+                    Button { model.authPresentation = .login } label: {
+                        Text("Anmelden").frame(maxWidth: .infinity)
+                    }
                         .buttonStyle(PrimaryButtonStyle())
                         .frame(maxWidth: .infinity)
-                    Button("Konto anlegen") { model.authPresentation = .register }
+                    Button { model.authPresentation = .register } label: {
+                        Text("Konto anlegen").frame(maxWidth: .infinity)
+                    }
                         .buttonStyle(SecondaryButtonStyle())
                         .frame(maxWidth: .infinity)
                 }
@@ -82,56 +86,109 @@ private struct CredentialsView: View {
     @State private var name = ""
     @State private var email = ""
     @State private var password = ""
+    @State private var showsPassword = false
     @State private var error: String?
     @State private var isWorking = false
 
     var body: some View {
-        Form {
-            Section {
-                if mode == .register {
-                    TextField("Anzeigename (optional)", text: $name)
-                        .textContentType(.name)
-                }
-                TextField("E-Mail-Adresse", text: $email)
-                    .textContentType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.emailAddress)
-                SecureField("Passwort", text: $password)
-                    .textContentType(mode == .login ? .password : .newPassword)
-            }
-
-            if let error {
-                Section { Text(error).foregroundStyle(RatsColor.danger) }
-            }
-
-            Section {
-                Button(isWorking ? "Einen Moment …" : mode == .login ? "Anmelden" : "Konto anlegen") {
-                    submit()
-                }
-                .disabled(isWorking || email.isEmpty || password.count < 8)
-            }
-
-            Section {
-                SignInWithAppleButton(.continue) { request in
+        AuthScaffold(
+            mascot: .wave,
+            title: mode == .login ? "Moin!" : "Leinen los!",
+            subtitle: mode == .login
+                ? "Willkommen zurück – melde dich an, um fortzufahren."
+                : "Erstelle dein kostenloses Konto. Danach lotst Lotti dich durch die ersten Schritte."
+        ) {
+            VStack(spacing: 16) {
+                SignInWithAppleButton(mode == .login ? .signIn : .signUp) { request in
                     request.requestedScopes = [.fullName, .email]
                 } onCompletion: { result in
                     completeApple(result)
                 }
                 .signInWithAppleButtonStyle(.black)
-                .frame(height: 46)
+                .frame(height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button))
-            }
 
-            Section {
-                if mode == .login {
-                    Button("Passwort vergessen?") { switchMode(.forgotPassword) }
-                    Button("Noch kein Konto? Konto anlegen") { switchMode(.register) }
-                } else {
-                    Button("Schon dabei? Anmelden") { switchMode(.login) }
+                AuthDivider()
+
+                if mode == .register {
+                    AuthLabeledField(label: "Anzeigename", hint: "optional") {
+                        TextField("Dein Vorname genügt", text: $name)
+                            .textContentType(.name)
+                            .textFieldStyle(.plain)
+                    }
                 }
+
+                AuthLabeledField(label: "E-Mail") {
+                    TextField("du@example.org", text: $email)
+                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        .textFieldStyle(.plain)
+                }
+
+                AuthLabeledField(label: "Passwort", hint: mode == .register ? "mindestens 8 Zeichen" : nil) {
+                    HStack {
+                        Group {
+                            if showsPassword {
+                                TextField("Passwort", text: $password)
+                            } else {
+                                SecureField("Passwort", text: $password)
+                            }
+                        }
+                        .textContentType(mode == .login ? .password : .newPassword)
+                        .textFieldStyle(.plain)
+                        Button { showsPassword.toggle() } label: {
+                            Image(systemName: showsPassword ? "eye.slash" : "eye")
+                                .foregroundStyle(RatsColor.secondary)
+                        }
+                        .accessibilityLabel(showsPassword ? "Passwort ausblenden" : "Passwort anzeigen")
+                    }
+                }
+
+                if let error {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.danger)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Group {
+                    if mode == .login {
+                        Button(action: submit) {
+                            Text(isWorking ? "Einen Moment …" : "Anmelden").frame(maxWidth: .infinity)
+                        }
+                            .buttonStyle(PrimaryButtonStyle())
+                    } else {
+                        Button(action: submit) {
+                            Text(isWorking ? "Einen Moment …" : "Konto erstellen").frame(maxWidth: .infinity)
+                        }
+                            .buttonStyle(SignalButtonStyle())
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .disabled(isWorking || email.isEmpty || password.count < 8)
+                .opacity(isWorking || email.isEmpty || password.count < 8 ? 0.5 : 1)
+
+                if mode == .register {
+                    Text("Mit der Registrierung akzeptierst du die Datenschutzerklärung. Danach bestätigst du kurz deine E-Mail-Adresse.")
+                        .font(RatsFont.body(11))
+                        .foregroundStyle(RatsColor.muted)
+                        .multilineTextAlignment(.center)
+                }
+
+                VStack(spacing: 11) {
+                    if mode == .login {
+                        Button("Passwort vergessen?") { switchMode(.forgotPassword) }
+                        Button("Noch kein Konto? Konto anlegen") { switchMode(.register) }
+                    } else {
+                        Button("Schon registriert? Anmelden") { switchMode(.login) }
+                    }
+                }
+                .font(RatsFont.body(13, weight: .medium))
+                .foregroundStyle(RatsColor.primary)
             }
         }
-        .navigationTitle(mode == .login ? "Anmelden" : "Konto anlegen")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func submit() {
@@ -177,28 +234,42 @@ private struct ForgotPasswordView: View {
     @State private var message: String?
 
     var body: some View {
-        Form {
-            Section("E-Mail-Adresse") {
-                TextField("du@example.org", text: $email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-            }
-            Section {
-                Button("Link anfordern") {
+        AuthScaffold(
+            mascot: .search,
+            title: "Passwort über Bord?",
+            subtitle: "Gib deine E-Mail-Adresse ein – wir schicken dir einen Link zum Zurücksetzen."
+        ) {
+            VStack(spacing: 16) {
+                AuthLabeledField(label: "E-Mail") {
+                    TextField("du@example.org", text: $email)
+                        .textContentType(.emailAddress)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .textFieldStyle(.plain)
+                }
+                Button {
                     Task {
                         do {
                             try await model.forgotPassword(email: email)
                             message = "Wenn es dieses Konto gibt, ist der Link unterwegs."
                         } catch { message = error.localizedDescription }
                     }
+                } label: {
+                    Text("Link anfordern").frame(maxWidth: .infinity)
                 }
+                .buttonStyle(PrimaryButtonStyle())
+                .frame(maxWidth: .infinity)
                 .disabled(email.isEmpty)
+                .opacity(email.isEmpty ? 0.5 : 1)
+                if let message {
+                    Text(message)
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+                Button("Zurück zur Anmeldung") { switchMode(.login) }
+                    .font(RatsFont.body(13, weight: .medium))
             }
-            if let message { Section { Text(message) } }
-            Section { Button("Zurück zur Anmeldung") { switchMode(.login) } }
         }
-        .navigationTitle("Passwort vergessen")
     }
 }
 
@@ -207,29 +278,50 @@ private struct ResetPasswordView: View {
     let token: String
     @State private var password = ""
     @State private var repeated = ""
+    @State private var showsPassword = false
     @State private var error: String?
 
     var body: some View {
-        Form {
-            Section("Neues Passwort") {
-                SecureField("Mindestens 8 Zeichen", text: $password)
-                    .textContentType(.newPassword)
-                SecureField("Noch einmal", text: $repeated)
-                    .textContentType(.newPassword)
-            }
-            if let error { Section { Text(error).foregroundStyle(RatsColor.danger) } }
-            Section {
-                Button("Passwort speichern") {
+        AuthScaffold(
+            mascot: .point,
+            title: "Neues Passwort",
+            subtitle: "Wähle mindestens acht Zeichen und bestätige die Eingabe einmal."
+        ) {
+            VStack(spacing: 16) {
+                AuthLabeledField(label: "Neues Passwort", hint: "mindestens 8 Zeichen") {
+                    HStack {
+                        Group {
+                            if showsPassword { TextField("Passwort", text: $password) }
+                            else { SecureField("Passwort", text: $password) }
+                        }
+                        .textContentType(.newPassword)
+                        .textFieldStyle(.plain)
+                        Button { showsPassword.toggle() } label: {
+                            Image(systemName: showsPassword ? "eye.slash" : "eye")
+                        }
+                    }
+                }
+                AuthLabeledField(label: "Passwort wiederholen") {
+                    SecureField("Noch einmal", text: $repeated)
+                        .textContentType(.newPassword)
+                        .textFieldStyle(.plain)
+                }
+                if let error { Text(error).font(RatsFont.body(12)).foregroundStyle(RatsColor.danger) }
+                Button {
                     guard password == repeated else { error = "Die Passwörter stimmen nicht überein."; return }
                     Task {
                         do { try await model.resetPassword(token: token, password: password) }
                         catch { self.error = error.localizedDescription }
                     }
+                } label: {
+                    Text("Passwort speichern").frame(maxWidth: .infinity)
                 }
+                .buttonStyle(PrimaryButtonStyle())
+                .frame(maxWidth: .infinity)
                 .disabled(password.count < 8 || password != repeated)
+                .opacity(password.count < 8 || password != repeated ? 0.5 : 1)
             }
         }
-        .navigationTitle("Passwort zurücksetzen")
     }
 }
 
@@ -239,29 +331,34 @@ struct VerificationPendingView: View {
     @State private var feedback: String?
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "envelope.badge")
-                .font(.system(size: 46))
-                .foregroundStyle(RatsColor.primary)
-            Text("Bestätige deine E-Mail")
-                .font(RatsFont.title())
-            Text("Wir haben den Link an \(user.email) geschickt. Sobald du ihn öffnest, geht es hier weiter.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(RatsColor.secondary)
-            Button("Erneut senden") {
-                Task {
-                    do { try await model.resendVerification(); feedback = "Der Link ist unterwegs." }
-                    catch { feedback = error.localizedDescription }
+        AuthScaffold(
+            mascot: .point,
+            title: "Fast an Bord!",
+            subtitle: "Bestätige deine E-Mail-Adresse. Sobald der Link geöffnet ist, geht es hier automatisch weiter."
+        ) {
+            VStack(spacing: 16) {
+                Label(user.email, systemImage: "envelope.badge")
+                    .font(RatsFont.body(14, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+                Button {
+                    Task {
+                        do { try await model.resendVerification(); feedback = "Der Link ist unterwegs." }
+                        catch { feedback = error.localizedDescription }
+                    }
+                } label: {
+                    Text("Erneut senden").frame(maxWidth: .infinity)
                 }
+                .buttonStyle(PrimaryButtonStyle())
+                .frame(maxWidth: .infinity)
+                Button { Task { await model.refreshAccount() } } label: {
+                    Text("Ich habe bestätigt").frame(maxWidth: .infinity)
+                }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .frame(maxWidth: .infinity)
+                if let feedback { Text(feedback).font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary) }
+                Button("Abmelden", role: .destructive) { Task { await model.logout() } }
             }
-            .buttonStyle(PrimaryButtonStyle())
-            Button("Ich habe bestätigt") { Task { await model.refreshAccount() } }
-                .buttonStyle(SecondaryButtonStyle())
-            if let feedback { Text(feedback).font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary) }
-            Button("Abmelden", role: .destructive) { Task { await model.logout() } }
         }
-        .padding(28)
-        .frame(maxWidth: 520, maxHeight: .infinity)
         .task(id: user.id) {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(8))
@@ -270,5 +367,124 @@ struct VerificationPendingView: View {
                 if case .active = model.session { return }
             }
         }
+    }
+}
+
+private struct AuthScaffold<Content: View>: View {
+    let mascot: LottiPose
+    let title: String
+    let subtitle: String
+    @ViewBuilder let content: Content
+
+    init(
+        mascot: LottiPose,
+        title: String,
+        subtitle: String,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.mascot = mascot
+        self.title = title
+        self.subtitle = subtitle
+        self.content = content()
+    }
+
+    var body: some View {
+        ZStack {
+            RatsColor.page.ignoresSafeArea()
+            AuthWaves()
+                .stroke(RatsColor.primary.opacity(0.07), lineWidth: 1.2)
+                .ignoresSafeArea()
+                .accessibilityHidden(true)
+            ScrollView {
+                VStack(spacing: 0) {
+                    LottiMascot(pose: mascot)
+                        .frame(width: 104, height: 104)
+                        .padding(.bottom, -13)
+                        .zIndex(1)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 17) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(title).font(RatsFont.title(30))
+                            Text(subtitle)
+                                .font(RatsFont.body(14))
+                                .foregroundStyle(RatsColor.secondary)
+                                .lineSpacing(3)
+                        }
+                        content
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .ratsCard()
+                }
+                .frame(maxWidth: 460)
+                .padding(.horizontal, 18)
+                .padding(.top, 12)
+                .padding(.bottom, 32)
+            }
+        }
+    }
+}
+
+private struct AuthLabeledField<Content: View>: View {
+    let label: String
+    let hint: String?
+    @ViewBuilder let content: Content
+
+    init(label: String, hint: String? = nil, @ViewBuilder content: () -> Content) {
+        self.label = label
+        self.hint = hint
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(label)
+                Spacer()
+                if let hint { Text(hint).foregroundStyle(RatsColor.muted) }
+            }
+            .font(RatsFont.body(12, weight: .semibold))
+            content
+                .font(RatsFont.body(15))
+                .padding(.horizontal, 12)
+                .frame(minHeight: 46)
+                .background(RatsColor.card)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(RatsColor.border))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+}
+
+private struct AuthDivider: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Rectangle().fill(RatsColor.border).frame(height: 1)
+            Text("oder mit E-Mail")
+                .font(RatsFont.body(11))
+                .foregroundStyle(RatsColor.muted)
+            Rectangle().fill(RatsColor.border).frame(height: 1)
+        }
+    }
+}
+
+private struct AuthWaves: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let rowHeight: CGFloat = 46
+        let amplitude: CGFloat = 5
+        var y: CGFloat = 14
+        while y < rect.maxY + rowHeight {
+            path.move(to: CGPoint(x: rect.minX - 20, y: y))
+            var x = rect.minX - 20
+            while x < rect.maxX + 40 {
+                path.addCurve(
+                    to: CGPoint(x: x + 42, y: y),
+                    control1: CGPoint(x: x + 12, y: y - amplitude),
+                    control2: CGPoint(x: x + 29, y: y + amplitude)
+                )
+                x += 42
+            }
+            y += rowHeight
+        }
+        return path
     }
 }

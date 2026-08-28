@@ -58,6 +58,13 @@ public actor APIClient {
 
     @discardableResult
     public func restoreAccessToken() -> String? {
+#if DEBUG
+        if let token = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ACCESS_TOKEN"],
+           !token.isEmpty {
+            accessToken = token
+            return token
+        }
+#endif
         do {
             let token = try keychain.migrateCapacitorToken()
             accessToken = token
@@ -70,6 +77,11 @@ public actor APIClient {
 
     public func setAccessToken(_ token: String?) throws {
         accessToken = token
+#if DEBUG
+        if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ACCESS_TOKEN"] != nil {
+            return
+        }
+#endif
         if let token, !token.isEmpty { try keychain.write(token) }
         else { try keychain.delete() }
     }

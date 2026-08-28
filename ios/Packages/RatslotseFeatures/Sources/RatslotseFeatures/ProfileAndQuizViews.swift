@@ -18,6 +18,7 @@ struct PublicProfileView: View {
     @State private var payload: JSONValue?
     @State private var decisions: [DecisionSummary] = []
     @State private var coordinate: CLLocationCoordinate2D?
+    @State private var person: PublicPersonProfile?
     @State private var error: String?
 
     var body: some View {
@@ -25,12 +26,16 @@ struct PublicProfileView: View {
             VStack(alignment: .leading, spacing: 20) {
                 if let preview {
                     MonoKicker(kicker)
-                    Text(preview.title).font(RatsFont.title(28))
-                    Text(preview.description)
-                        .font(RatsFont.body(16))
-                        .foregroundStyle(RatsColor.bodyText)
-                        .lineSpacing(4)
-                        .ratsCard()
+                    Text(person?.name ?? preview.title).font(RatsFont.title(28))
+                    if let person {
+                        PersonProfileOverview(model: model, person: person)
+                    } else {
+                        Text(profileDescription ?? preview.description)
+                            .font(RatsFont.body(16))
+                            .foregroundStyle(RatsColor.bodyText)
+                            .lineSpacing(4)
+                            .ratsCard()
+                    }
 
                     if let coordinate {
                         Map(initialPosition: .region(MKCoordinateRegion(
@@ -95,7 +100,13 @@ struct PublicProfileView: View {
             payload = newPayload
             decisions = extractDecisions(from: newPayload)
             coordinate = extractCoordinate(from: newPayload)
+            person = kind == .person ? try? newPayload.decoded(PublicPersonProfile.self) : nil
         } catch { self.error = error.localizedDescription }
+    }
+
+    private var profileDescription: String? {
+        guard kind == .topic else { return nil }
+        return payload?.object?["description"]?.string
     }
 
     private var detailPath: String {
@@ -133,6 +144,164 @@ struct PublicProfileView: View {
 private struct LinkPreview: Codable, Sendable {
     let title: String
     let description: String
+}
+
+private struct PublicPersonProfile: Codable, Sendable {
+    struct Committee: Codable, Sendable, Identifiable {
+        var id: String { committee }
+        let committee: String
+        let n: Int
+        let chair: Bool
+    }
+
+    struct RecentSession: Codable, Sendable, Identifiable {
+        var id: Int { ksinr }
+        let ksinr: Int
+        let committee: String
+        let sessionDate: String
+
+        enum CodingKeys: String, CodingKey {
+            case ksinr, committee
+            case sessionDate = "session_date"
+        }
+    }
+
+    let name: String
+    let party: String?
+    let currentAffiliation: String?
+    let art: String?
+    let organisation: String?
+    let nSessions: Int
+    let activeFrom: String?
+    let activeTo: String?
+    let committees: [Committee]
+    let recent: [RecentSession]
+
+    enum CodingKeys: String, CodingKey {
+        case name, party, art, organisation, committees, recent
+        case currentAffiliation = "current_affiliation"
+        case nSessions = "n_sessions"
+        case activeFrom = "active_from"
+        case activeTo = "active_to"
+    }
+
+    var roleLabel: String {
+        switch art {
+        case "rat": "Ratsmitglied"
+        case "beratend": "Beratendes Mitglied"
+        case "verwaltung": "Stadtverwaltung"
+        default: "Person im Oldenburger Rat"
+        }
+    }
+
+    var affiliation: String? {
+        [party, currentAffiliation, organisation]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty }
+    }
+}
+
+private struct PersonProfileOverview: View {
+    let model: AppModel
+    let person: PublicPersonProfile
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 14) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 50))
+                    .foregroundStyle(RatsColor.primary)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(person.roleLabel)
+                        .font(RatsFont.body(16, weight: .semibold))
+                    if let affiliation = person.affiliation {
+                        Pill(affiliation, symbol: "person.3")
+                    }
+                    if let period {
+                        Text(period)
+                            .font(RatsFont.mono(10))
+                            .foregroundStyle(RatsColor.muted)
+                    }
+                }
+            }
+
+            HStack(spacing: 24) {
+                metric(value: person.nSessions, label: "Sitzungen")
+                metric(value: person.committees.count, label: "Gremien")
+                let chaired = person.committees.filter(\.chair).count
+                if chaired > 0 { metric(value: chaired, label: "Vorsitze") }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ratsCard()
+
+        if !person.committees.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                MonoKicker("Gremien", trailing: "\(person.committees.count)")
+                ForEach(person.committees) { committee in
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(committee.committee)
+                                .font(RatsFont.body(14, weight: .semibold))
+                            Text("\(committee.n) \(committee.n == 1 ? "Sitzung" : "Sitzungen")")
+                                .font(RatsFont.mono(10))
+                                .foregroundStyle(RatsColor.muted)
+                        }
+                        Spacer()
+                        if committee.chair { Pill("Vorsitz", symbol: "star") }
+                    }
+                    if committee.id != person.committees.last?.id { Divider().overlay(RatsColor.separator) }
+                }
+            }
+            .ratsCard()
+        }
+
+        if !person.recent.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                MonoKicker("Letzte Sitzungen")
+                ForEach(person.recent.prefix(5)) { session in
+                    Button {
+                        model.navigation.append(.sessions(ksinr: session.ksinr, tops: []))
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(session.committee)
+                                    .font(RatsFont.body(14, weight: .semibold))
+                                Text(RatsDate.short(session.sessionDate) ?? session.sessionDate)
+                                    .font(RatsFont.mono(10))
+                                    .foregroundStyle(RatsColor.muted)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(RatsColor.muted)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    if session.id != person.recent.prefix(5).last?.id { Divider().overlay(RatsColor.separator) }
+                }
+            }
+            .ratsCard()
+        }
+    }
+
+    private var period: String? {
+        let start = person.activeFrom.flatMap(RatsDate.short)
+        let end = person.activeTo.flatMap(RatsDate.short)
+        return switch (start, end) {
+        case let (start?, end?): "Aktiv: \(start) – \(end)"
+        case let (start?, nil): "Aktiv seit \(start)"
+        default: nil
+        }
+    }
+
+    private func metric(value: Int, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(value)").font(RatsFont.title(22))
+            Text(label).font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted)
+        }
+    }
 }
 
 struct ExternalWebView: View {

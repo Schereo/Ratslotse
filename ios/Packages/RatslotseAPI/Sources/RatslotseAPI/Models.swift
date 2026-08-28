@@ -62,6 +62,8 @@ public struct Topic: Codable, Sendable, Equatable, Identifiable {
     public let lastHitTitle: String?
     public let lastHitDate: String?
     public let unreadCount: Int
+    public let recentHits: [TopicHit]
+    public let hits30Days: Int
 
     enum CodingKeys: String, CodingKey {
         case id, name, description, matched
@@ -72,6 +74,40 @@ public struct Topic: Codable, Sendable, Equatable, Identifiable {
         case lastHitTitle = "last_hit_title"
         case lastHitDate = "last_hit_date"
         case unreadCount = "unread_count"
+        case recentHits = "recent_hits"
+        case hits30Days = "hits_30d"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(Int.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        description = try values.decode(String.self, forKey: .description)
+        createdAt = try values.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+        decisionCount = try values.decodeIfPresent(Int.self, forKey: .decisionCount) ?? 0
+        decisionCountCapped = try values.decodeIfPresent(Bool.self, forKey: .decisionCountCapped) ?? false
+        matched = try values.decodeIfPresent(Bool.self, forKey: .matched) ?? false
+        lastHitID = try values.decodeIfPresent(Int.self, forKey: .lastHitID)
+        lastHitTitle = try values.decodeIfPresent(String.self, forKey: .lastHitTitle)
+        lastHitDate = try values.decodeIfPresent(String.self, forKey: .lastHitDate)
+        unreadCount = try values.decodeIfPresent(Int.self, forKey: .unreadCount) ?? 0
+        recentHits = try values.decodeIfPresent([TopicHit].self, forKey: .recentHits) ?? []
+        hits30Days = try values.decodeIfPresent(Int.self, forKey: .hits30Days) ?? 0
+    }
+}
+
+public struct TopicHit: Codable, Sendable, Equatable, Identifiable {
+    public let id: Int
+    public let title: String
+    public let committee: String?
+    public let sessionDate: String?
+    public let outcome: String?
+    public let isNew: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, committee, outcome
+        case sessionDate = "session_date"
+        case isNew = "is_new"
     }
 }
 
@@ -94,9 +130,18 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
     public let placeName: String?
     public let latitude: Double?
     public let longitude: Double?
+    public let amountEUR: Double?
+    public let interest: Int?
+    public let interestReason: String?
+    public let impact: Int?
+    public let impactReason: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, summary, committee, outcome, kind, vote, factions
+        case id, title, summary, committee, outcome, kind, vote, factions, interest, impact
+        case simpleSummary = "simple_summary"
+        case amountEUR = "amount_eur"
+        case interestReason = "interest_reason"
+        case impactReason = "impact_reason"
         case placeName = "ort_name"
         case latitude = "lat"
         case longitude = "lon"
@@ -114,6 +159,7 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         id = try values.decode(Int.self, forKey: .id)
         title = try values.decodeIfPresent(String.self, forKey: .title) ?? "Beschluss"
         summary = try values.decodeIfPresent(String.self, forKey: .summary)
+            ?? values.decodeIfPresent(String.self, forKey: .simpleSummary)
         committee = try values.decodeIfPresent(String.self, forKey: .committee)
         sessionDate = try values.decodeIfPresent(String.self, forKey: .sessionDate)
         outcome = try values.decodeIfPresent(String.self, forKey: .outcome)
@@ -129,6 +175,38 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         placeName = try values.decodeIfPresent(String.self, forKey: .placeName)
         latitude = try values.decodeIfPresent(Double.self, forKey: .latitude)
         longitude = try values.decodeIfPresent(Double.self, forKey: .longitude)
+        amountEUR = try values.decodeIfPresent(Double.self, forKey: .amountEUR)
+        interest = try values.decodeIfPresent(Int.self, forKey: .interest)
+        interestReason = try values.decodeIfPresent(String.self, forKey: .interestReason)
+        impact = try values.decodeIfPresent(Int.self, forKey: .impact)
+        impactReason = try values.decodeIfPresent(String.self, forKey: .impactReason)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id, forKey: .id)
+        try values.encode(title, forKey: .title)
+        try values.encodeIfPresent(summary, forKey: .summary)
+        try values.encodeIfPresent(committee, forKey: .committee)
+        try values.encodeIfPresent(sessionDate, forKey: .sessionDate)
+        try values.encodeIfPresent(outcome, forKey: .outcome)
+        try values.encodeIfPresent(policyField, forKey: .policyField)
+        try values.encodeIfPresent(itemNumber, forKey: .itemNumber)
+        try values.encodeIfPresent(kind, forKey: .kind)
+        try values.encodeIfPresent(sessionID, forKey: .sessionID)
+        try values.encodeIfPresent(templateNumber, forKey: .templateNumber)
+        try values.encodeIfPresent(vote, forKey: .vote)
+        try values.encodeIfPresent(noVotes, forKey: .noVotes)
+        try values.encodeIfPresent(abstentions, forKey: .abstentions)
+        try values.encode(factions, forKey: .factions)
+        try values.encodeIfPresent(placeName, forKey: .placeName)
+        try values.encodeIfPresent(latitude, forKey: .latitude)
+        try values.encodeIfPresent(longitude, forKey: .longitude)
+        try values.encodeIfPresent(amountEUR, forKey: .amountEUR)
+        try values.encodeIfPresent(interest, forKey: .interest)
+        try values.encodeIfPresent(interestReason, forKey: .interestReason)
+        try values.encodeIfPresent(impact, forKey: .impact)
+        try values.encodeIfPresent(impactReason, forKey: .impactReason)
     }
 }
 

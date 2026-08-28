@@ -45,12 +45,84 @@ struct CouncilBrowserView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Im Rat stöbern")
+                        .font(RatsFont.title(24))
+                    Text("Beschlüsse, Sitzungen und Orte")
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+                Spacer(minLength: 0)
+                NavigationLink {
+                    SavedCouncilView(model: model)
+                } label: {
+                    Image(systemName: "bookmark")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                        .background(RatsColor.card)
+                        .overlay(Circle().stroke(RatsColor.border))
+                        .clipShape(Circle())
+                }
+                .accessibilityLabel("Merkliste")
+                if section != .map {
+                    Button { showsFilters = true } label: {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: activeFilterCount > 0 ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease")
+                                .font(.system(size: 16, weight: .semibold))
+                                .frame(width: 40, height: 40)
+                                .background(RatsColor.card)
+                                .overlay(Circle().stroke(RatsColor.border))
+                                .clipShape(Circle())
+                            if activeFilterCount > 0 {
+                                Text("\(activeFilterCount)")
+                                    .font(RatsFont.body(9, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 17, height: 17)
+                                    .background(RatsColor.signal)
+                                    .clipShape(Circle())
+                            }
+                        }
+                    }
+                    .accessibilityLabel("Filter und Sortierung")
+                }
+            }
+            .foregroundStyle(RatsColor.text)
+            .padding(.horizontal, 18)
+            .padding(.top, 16)
+            .padding(.bottom, 4)
+
             Picker("Ansicht", selection: $section) {
                 ForEach(CouncilSection.allCases) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
+
+            HStack(spacing: 9) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(RatsColor.secondary)
+                TextField(searchPrompt, text: $query)
+                    .font(RatsFont.body(14))
+                    .submitLabel(.search)
+                    .onSubmit {
+                        if section != .map { page = 0; Task { await load() } }
+                    }
+                if !query.isEmpty {
+                    Button { query = ""; if section != .map { Task { await load() } } } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(RatsColor.muted)
+                    }
+                    .accessibilityLabel("Suche leeren")
+                }
+            }
+            .padding(.horizontal, 13)
+            .frame(height: 44)
+            .background(RatsColor.card)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 18)
+            .padding(.bottom, 10)
 
             if section == .decisions {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -130,22 +202,6 @@ struct CouncilBrowserView: View {
         .background(RatsColor.page)
         .navigationTitle("Im Rat stöbern")
         .toolbarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                NavigationLink {
-                    SavedCouncilView(model: model)
-                } label: {
-                    Label("Merkliste", systemImage: "bookmark")
-                }
-                if section != .map {
-                    Button { showsFilters = true } label: {
-                        Label("Filter", systemImage: activeFilterCount > 0 ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                    }
-                }
-            }
-        }
-        .searchable(text: $query, prompt: searchPrompt)
-        .onSubmit(of: .search) { if section != .map { page = 0; Task { await load() } } }
         .onChange(of: section) { _, _ in page = 0; Task { await load() } }
         .onChange(of: outcome) { _, _ in page = 0; Task { await load() } }
         .task {
@@ -392,7 +448,7 @@ private struct SessionRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            MonoKicker(session.sessionDate, trailing: session.sessionTime)
+            MonoKicker(RatsDate.weekday(session.sessionDate) ?? session.sessionDate, trailing: session.sessionTime)
             Text(session.committee)
                 .font(RatsFont.body(16, weight: .semibold))
             if let location = session.location, !location.isEmpty {
@@ -424,7 +480,7 @@ struct DecisionDetailView: View {
                     let decision = detail.decision
                     VStack(alignment: .leading, spacing: 10) {
                         MonoKicker(
-                            [decision.committee, decision.sessionDate].compactMap { $0 }.joined(separator: " · ")
+                            [decision.committee, RatsDate.short(decision.sessionDate)].compactMap { $0 }.joined(separator: " · ")
                         )
                         Text(decision.title).font(RatsFont.title(28))
                         if let outcome = decision.outcome { OutcomeBadge(outcome) }
@@ -808,7 +864,7 @@ private struct SavedCouncilView: View {
                             Text("\(follow.templateNumber) · \(follow.stationCount) Stationen")
                                 .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
                             if let next = follow.next {
-                                Text("Als Nächstes: \([next.committee, next.date].compactMap { $0 }.joined(separator: " · "))")
+                                Text("Als Nächstes: \([next.committee, RatsDate.short(next.date)].compactMap { $0 }.joined(separator: " · "))")
                                     .font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
                             }
                             if let url = URL(string: follow.url) {
@@ -848,10 +904,24 @@ private struct SavedCouncilView: View {
     private func savedLabel(_ bookmark: BookmarkEntry) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(bookmark.title).font(RatsFont.body(15, weight: .semibold))
-            Text(bookmark.subtitle).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary)
+            Text(savedSubtitle(bookmark)).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary)
             Pill(bookmark.decision?.outcome ?? bookmark.state, symbol: bookmark.decision == nil ? "clock" : "checkmark")
         }
         .padding(.vertical, 3)
+    }
+
+    private func savedSubtitle(_ bookmark: BookmarkEntry) -> String {
+        if let decision = bookmark.decision {
+            return [decision.committee, RatsDate.short(decision.sessionDate), decision.itemNumber]
+                .compactMap { $0 }
+                .joined(separator: " · ")
+        }
+        if let session = bookmark.session {
+            return [session.committee, RatsDate.short(session.sessionDate), bookmark.itemNumber]
+                .compactMap { $0 }
+                .joined(separator: " · ")
+        }
+        return bookmark.subtitle
     }
 
     private func load() async {
@@ -942,7 +1012,7 @@ private struct SessionDetailView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     if let detail {
                         VStack(alignment: .leading, spacing: 9) {
-                            MonoKicker([detail.sessionDate, detail.sessionTime].compactMap { $0 }.joined(separator: " · "))
+                            MonoKicker([RatsDate.weekday(detail.sessionDate), detail.sessionTime].compactMap { $0 }.joined(separator: " · "))
                             Text(detail.committee).font(RatsFont.title(28))
                             if let location = detail.location { Label(location, systemImage: "mappin.and.ellipse") }
                             Button { prepareCalendar(detail) } label: {

@@ -31,6 +31,39 @@ public enum RatsFont {
     }
 }
 
+public enum RatsDate {
+    public static func short(_ raw: String?) -> String? {
+        guard let date = date(raw) else { return raw }
+        return date.formatted(
+            .dateTime
+                .locale(Locale(identifier: "de_DE"))
+                .day()
+                .month(.abbreviated)
+                .year()
+        )
+    }
+
+    public static func weekday(_ raw: String?) -> String? {
+        guard let date = date(raw) else { return raw }
+        return date.formatted(
+            .dateTime
+                .locale(Locale(identifier: "de_DE"))
+                .weekday(.abbreviated)
+                .day()
+                .month(.abbreviated)
+        )
+    }
+
+    private static func date(_ raw: String?) -> Date? {
+        guard let raw, raw.count >= 10 else { return nil }
+        let parts = raw.prefix(10).split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        return Calendar(identifier: .gregorian).date(
+            from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12)
+        )
+    }
+}
+
 public enum RatsColor {
     public static let page = Color.adaptive(light: 0xF6FAFC, dark: 0x09111B)
     public static let stage = Color.adaptive(light: 0xF1F7FA, dark: 0x0E1B29)
@@ -99,6 +132,20 @@ public struct SecondaryButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous)
                     .stroke(RatsColor.border)
             )
+            .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous))
+    }
+}
+
+public struct SignalButtonStyle: ButtonStyle {
+    public init() {}
+
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(RatsFont.body(15, weight: .semibold))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, RatsSpacing.lg)
+            .frame(minHeight: 42)
+            .background(RatsColor.signal.opacity(configuration.isPressed ? 0.76 : 1))
             .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous))
     }
 }

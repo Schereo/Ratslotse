@@ -412,6 +412,31 @@ Beschlüsse.
    *Empfehlung: Build-Smoke in Actions, Release weiter lokal* (Signing +
    Upload bleiben auf dem eingerichteten Mac).
 
+## 10. Implementierungs- und visuelle Abnahme (28.08.2026)
+
+Die native SwiftUI-Portierung ist auf dem Arbeits-Branch umgesetzt. Als
+visuelle Referenz dienten die produktive WebView-App und deren lokale
+authentifizierte Zustände bei identischer iPhone-Breite. Geprüft wurde in der
+hellen Darstellung auf **iPhone 17** und **iPad Pro 11″ (M5)**; die
+kontrastkritischen, datenreichen Ansichten wurden zusätzlich im Dark Mode
+abgenommen.
+
+| Bereich | Geprüfte Zustände | Ergebnis |
+|---|---|---|
+| Start, Auth und Onboarding | Willkommen, alle drei Tour-Schritte, Anmeldung, Registrierung, Passwort vergessen/zurücksetzen, ausstehende Verifizierung | Native Lotti-Inszenierung, Welle, Typografie und Handlungsführung entsprechen mindestens der WebView-Qualität |
+| Heute | personalisierte Übersicht, Termine, Beschlüsse, leere und gefüllte Zustände | Bestanden; deutsche Datumsdarstellung und informationsreichere Beschlusskarten |
+| Frag den Rat | leer, vollständige Antwort, Quellen, Fraktionen, Tagesordnungen, Anlagen, Presse, Debatten, Planung, Diagramm, Anschlussfragen, Fehlerzustand | Bestanden; lange Inhalte, Scrollposition, Eingabeleiste und Quellen-Hierarchie geprüft |
+| Gründliche Recherche | Start, Fortschritt, Unterhaltungsliste und Transkript | Bestanden; Metadaten und Gesprächsverlauf bleiben auch auf schmalen Geräten lesbar |
+| Rat | Beschlüsse, Sitzungen, Stadtkarte, Suche/Filter, Detail, Anlage, gefüllte Merkliste | Bestanden; MapKit startet in Oldenburg, alle Datumswerte sind lokalisiert |
+| Themen und Profile | Themenliste/-editor, Themen-, Orts- und Personenprofil | Bestanden; Personenprofile zeigen Rolle, Aktivität, Kennzahlen, Gremien und letzte Sitzungen |
+| Quiz | Start, Frage, Auflösung, Kartenfrage und eigene Fragen | Bestanden; Zustände und Karteninteraktion ohne Layoutsprünge |
+| Konto und Systemzustände | Konto, Einstellungen, Passwort, Löschen, Update-Pflicht | Bestanden; Update-Pflicht nutzt die gleiche Markenwelt statt einer generischen Sperrseite |
+| Systemübergaben | Safari-Ziele, Quick Look, Share Sheet und Berechtigungsdialoge | Bestanden als native iOS-Systemoberflächen |
+
+Die Prüfung deckt Simulatoren und lokale API-Fixtures ab; ein Release-Build auf
+physischer Hardware und der abschließende TestFlight-/Store-Check bleiben Teil
+des Cutovers.
+
 ---
 
 *Erhoben aus: `web/frontend` (Routen, Capacitor-Brücken, `build-mobile.mjs`),

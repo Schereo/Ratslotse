@@ -12,6 +12,13 @@ struct NativeCouncilMap: UIViewRepresentable {
         let map = MKMapView()
         map.delegate = context.coordinator
         map.pointOfInterestFilter = .excludingAll
+        map.setRegion(
+            MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 53.1435, longitude: 8.2146),
+                span: MKCoordinateSpan(latitudeDelta: 0.14, longitudeDelta: 0.20)
+            ),
+            animated: false
+        )
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "council-point")
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "council-cluster")
         if let url = Bundle.main.url(forResource: "stadtteile-oldenburg", withExtension: "json"),

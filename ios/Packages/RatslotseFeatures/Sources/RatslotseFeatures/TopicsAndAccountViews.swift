@@ -11,54 +11,94 @@ struct TopicsView: View {
     @State private var error: String?
 
     var body: some View {
-        List {
-            Section {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Meine Themen")
+                            .font(RatsFont.title(29))
+                        Text("Deine Suchaufträge an den Rat – neue Treffer landen direkt hier.")
+                            .font(RatsFont.body(14))
+                            .foregroundStyle(RatsColor.secondary)
+                    }
+                    Spacer(minLength: 4)
+                    Button {
+                        editing = nil
+                        isPresentingEditor = true
+                    } label: {
+                        Label("Neu", systemImage: "plus")
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .tint(RatsColor.signal)
+                }
+
                 if topics.isEmpty && error == nil {
-                    ContentUnavailableView(
-                        "Noch keine Themen",
-                        systemImage: "bell",
-                        description: Text("Lege ein Thema an. Ratslotse meldet dir neue passende Beschlüsse.")
+                    VStack(spacing: 13) {
+                        LottiMascot(pose: .wave)
+                            .frame(width: 92, height: 92)
+                            .accessibilityHidden(true)
+                        Text("Noch keine Themen").font(RatsFont.title(22))
+                        Text("Lege ein Thema an. Ratslotse meldet dir neue passende Beschlüsse.")
+                            .font(RatsFont.body(14))
+                            .foregroundStyle(RatsColor.secondary)
+                            .multilineTextAlignment(.center)
+                        Button("Erstes Thema anlegen") {
+                            editing = nil
+                            isPresentingEditor = true
+                        }
+                        .buttonStyle(PrimaryButtonStyle())
+                    }
+                    .frame(maxWidth: .infinity)
+                    .ratsCard()
+                }
+
+                ForEach(topics) { topic in
+                    TopicCard(
+                        topic: topic,
+                        open: { hit in open(hit, in: topic) },
+                        edit: { editing = topic; isPresentingEditor = true },
+                        remove: { remove(topic) }
                     )
                 }
-                ForEach(topics) { topic in
-                    Button {
-                        if let id = topic.lastHitID { model.navigation.append(.decision(id: id)) }
-                        else { editing = topic; isPresentingEditor = true }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 7) {
-                            HStack {
-                                Text(topic.name).font(RatsFont.body(16, weight: .semibold))
-                                Spacer()
-                                Text(topic.matched ? "\(topic.decisionCount)\(topic.decisionCountCapped ? "+" : "")" : "…")
-                                    .font(RatsFont.mono(11)).foregroundStyle(RatsColor.primary)
-                            }
-                            Text(topic.description)
-                                .font(RatsFont.body(13)).foregroundStyle(RatsColor.secondary).lineLimit(2)
-                            if topic.unreadCount > 0 { Pill("\(topic.unreadCount) neu", symbol: "bell.badge") }
-                            else if let title = topic.lastHitTitle { Text("Zuletzt: \(title)").font(RatsFont.body(11)).foregroundStyle(RatsColor.muted).lineLimit(1) }
-                        }
-                        .padding(.vertical, 5)
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions(edge: .trailing) {
-                        Button("Löschen", role: .destructive) { remove(topic) }
-                        Button("Bearbeiten") { editing = topic; isPresentingEditor = true }.tint(RatsColor.primary)
-                    }
+
+                Button {
+                    editing = nil
+                    isPresentingEditor = true
+                } label: {
+                    Label("Neues Thema anlegen", systemImage: "plus")
+                        .font(RatsFont.body(14, weight: .semibold))
+                        .foregroundStyle(RatsColor.primary)
+                        .frame(maxWidth: .infinity, minHeight: 96)
+                        .background(RatsColor.card.opacity(0.65))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: RatsRadius.card)
+                                .stroke(RatsColor.primary.opacity(0.32), style: StrokeStyle(lineWidth: 1.5, dash: [7]))
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card))
                 }
-            } header: {
-                MonoKicker("Meine Themen", trailing: topics.isEmpty ? nil : "\(topics.count)")
+                .buttonStyle(.plain)
+
+                if let error { ErrorCard(message: error) { Task { await load() } } }
+
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "building.columns")
+                        .foregroundStyle(RatsColor.primary)
+                    Text("Ganze Gremien behältst du im Onboarding oder über die Benachrichtigungseinstellungen im Blick.")
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RatsColor.primary.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card))
             }
-            if let error { Section { ErrorCard(message: error) { Task { await load() } } } }
+            .frame(maxWidth: 760, alignment: .leading)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 24)
         }
-        .scrollContentBackground(.hidden)
         .background(RatsColor.page)
         .navigationTitle("Meine Themen")
         .toolbarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { editing = nil; isPresentingEditor = true } label: { Label("Thema anlegen", systemImage: "plus") }
-            }
-        }
         .refreshable { await load() }
         .task { if topics.isEmpty { await load() } }
         .sheet(isPresented: $isPresentingEditor) {
@@ -84,6 +124,102 @@ struct TopicsView: View {
                 topics.removeAll { $0.id == topic.id }
             } catch { self.error = error.localizedDescription }
         }
+    }
+
+    private func open(_ hit: TopicHit, in topic: Topic) {
+        model.navigation.append(.decision(id: hit.id))
+        guard hit.isNew else { return }
+        struct Body: Codable, Sendable { let decision_id: Int }
+        Task {
+            try? await model.api.sendVoid(
+                "/api/topics/\(topic.id)/seen",
+                body: Body(decision_id: hit.id)
+            )
+        }
+    }
+}
+
+private struct TopicCard: View {
+    let topic: Topic
+    let open: (TopicHit) -> Void
+    let edit: () -> Void
+    let remove: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(topic.name).font(RatsFont.title(20))
+                if topic.unreadCount > 0 {
+                    Text(topic.unreadCount == 1 ? "1 neuer" : "\(topic.unreadCount) neue")
+                        .font(RatsFont.body(11, weight: .semibold))
+                        .foregroundStyle(RatsColor.signal)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(RatsColor.signal.opacity(0.08))
+                        .clipShape(Capsule())
+                }
+                Spacer(minLength: 0)
+                Menu {
+                    Button("Bearbeiten", systemImage: "pencil", action: edit)
+                    Button("Löschen", systemImage: "trash", role: .destructive, action: remove)
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(RatsColor.secondary)
+                        .frame(width: 32, height: 32)
+                }
+                .accessibilityLabel("\(topic.name) bearbeiten oder löschen")
+            }
+
+            Text(topic.description)
+                .font(RatsFont.body(13))
+                .foregroundStyle(RatsColor.secondary)
+
+            if !topic.recentHits.isEmpty {
+                MonoKicker(
+                    "Zuletzt gefunden",
+                    trailing: "\(countLabel) · \(topic.hits30Days) in 30 Tagen"
+                )
+                VStack(spacing: 0) {
+                    ForEach(Array(topic.recentHits.prefix(3).enumerated()), id: \.element.id) { index, hit in
+                        Button { open(hit) } label: {
+                            HStack(alignment: .top, spacing: 9) {
+                                Circle()
+                                    .fill(hit.isNew ? RatsColor.signal : RatsColor.muted.opacity(0.45))
+                                    .frame(width: 7, height: 7)
+                                    .padding(.top, 6)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(hit.title)
+                                        .font(RatsFont.body(14, weight: .semibold))
+                                        .foregroundStyle(RatsColor.text)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
+                                    Text([RatsDate.short(hit.sessionDate), hit.committee].compactMap { $0 }.joined(separator: " · "))
+                                        .font(RatsFont.mono(9))
+                                        .foregroundStyle(RatsColor.muted)
+                                }
+                                Spacer(minLength: 4)
+                                if let outcome = hit.outcome { OutcomeBadge(outcome) }
+                            }
+                            .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.plain)
+                        if index < min(topic.recentHits.count, 3) - 1 {
+                            Divider().overlay(RatsColor.separator)
+                        }
+                    }
+                }
+            } else {
+                Text(topic.matched ? "Noch kein passender Beschluss." : "Die passenden Beschlüsse werden gerade gezählt …")
+                    .font(RatsFont.body(12))
+                    .foregroundStyle(RatsColor.muted)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ratsCard()
+    }
+
+    private var countLabel: String {
+        topic.matched ? "\(topic.decisionCount)\(topic.decisionCountCapped ? "+" : "") gesamt" : "wird gezählt"
     }
 }
 
@@ -180,8 +316,25 @@ struct AccountView: View {
     @State private var error: String?
 
     var body: some View {
-        Form {
-            if let user = model.user {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Mein Konto")
+                        .font(RatsFont.title(28))
+                    if let email = model.user?.email {
+                        Text(email)
+                            .font(RatsFont.body(12))
+                            .foregroundStyle(RatsColor.secondary)
+                    }
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 18)
+            .padding(.bottom, 7)
+
+            Form {
+                if let user = model.user {
                 Section {
                     HStack(spacing: 12) {
                         Image(systemName: "person.crop.circle.fill")
@@ -252,10 +405,11 @@ struct AccountView: View {
                     Button("Abmelden", role: .destructive) { Task { await model.logout() } }
                     Button("Konto löschen", role: .destructive) { isDeletingAccount = true }
                 }
+                }
+                if let error { Section { Text(error).foregroundStyle(RatsColor.danger) } }
             }
-            if let error { Section { Text(error).foregroundStyle(RatsColor.danger) } }
+            .scrollContentBackground(.hidden)
         }
-        .scrollContentBackground(.hidden)
         .background(RatsColor.page)
         .navigationTitle("Konto")
         .toolbarTitleDisplayMode(.inline)

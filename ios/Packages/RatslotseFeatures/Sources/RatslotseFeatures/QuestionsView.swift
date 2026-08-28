@@ -27,9 +27,47 @@ struct QuestionsView: View {
     @State private var showConversations = false
 
     private var isSending: Bool { streamTask != nil }
+    private var shouldAutoScroll: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_FIXTURE"] != "1"
+#else
+        true
+#endif
+    }
 
     var body: some View {
         VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Frag den Rat")
+                        .font(RatsFont.title(24))
+                    Text("Antworten mit amtlichen Quellen")
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+                Spacer(minLength: 0)
+                Button { showConversations = true } label: {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .frame(width: 40, height: 40)
+                        .background(RatsColor.card)
+                        .overlay(Circle().stroke(RatsColor.border))
+                        .clipShape(Circle())
+                }
+                .accessibilityLabel("Gespräche")
+                Button { showDeepResearch = true } label: {
+                    Image(systemName: model.hasRecoverableResearch ? "flask.fill" : "flask")
+                        .frame(width: 40, height: 40)
+                        .background(RatsColor.card)
+                        .overlay(Circle().stroke(RatsColor.border))
+                        .clipShape(Circle())
+                }
+                .accessibilityLabel("Gründlich recherchieren")
+            }
+            .foregroundStyle(RatsColor.text)
+            .padding(.horizontal, 18)
+            .padding(.top, 16)
+            .padding(.bottom, 5)
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 26) {
@@ -44,6 +82,7 @@ struct QuestionsView: View {
                     .padding(.vertical, 24)
                 }
                 .onChange(of: turns.count) { _, _ in
+                    guard shouldAutoScroll else { return }
                     if let id = turns.last?.id { withAnimation { proxy.scrollTo(id, anchor: .bottom) } }
                 }
             }
@@ -70,21 +109,18 @@ struct QuestionsView: View {
         .background(RatsColor.stage)
         .navigationTitle("Frag den Rat")
         .toolbarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button { showConversations = true } label: {
-                    Label("Gespräche", systemImage: "clock.arrow.circlepath")
-                }
-                Button { showDeepResearch = true } label: {
-                    Label("Gründlich recherchieren", systemImage: model.hasRecoverableResearch ? "flask.fill" : "flask")
-                }
-            }
-        }
         .onAppear {
             if !model.questionPrefill.isEmpty {
                 input = model.questionPrefill
                 model.questionPrefill = ""
             }
+#if DEBUG
+            if turns.isEmpty,
+               ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_FIXTURE"] == "1",
+               let fixture = debugQuestionFixture() {
+                turns = [fixture]
+            }
+#endif
         }
         .onDisappear { streamTask?.cancel(); streamTask = nil }
         .sheet(isPresented: $showDeepResearch) {
@@ -169,6 +205,95 @@ struct QuestionsView: View {
         default: "Im Rat nachsehen …"
         }
     }
+
+#if DEBUG
+    private func debugQuestionFixture() -> QuestionTurn? {
+        let raw = #"""
+        {
+          "source": {
+            "id": 1,
+            "title": "Neue Busspuren für Oldenburg",
+            "committee": "Rat der Stadt",
+            "session_date": "2026-08-26",
+            "item_number": "Ö 10",
+            "outcome": "angenommen",
+            "summary": "Zwei Busspuren sollen den Nahverkehr schneller und verlässlicher machen.",
+            "amount_eur": 8900000,
+            "vote": "mehrheitlich",
+            "no_votes": 4,
+            "abstentions": 2,
+            "factions": ["SPD", "GRÜNE"]
+          },
+          "evidence": {
+            "sources": [],
+            "steckbriefe": [{
+              "name": "Verkehrswende Oldenburg",
+              "slug": "verkehrswende",
+              "beschreibung": "Beschlüsse zu Bus, Radverkehr und klimafreundlicher Mobilität."
+            }],
+            "sitzungen": [{
+              "ksinr": 8001,
+              "committee": "Rat der Stadt",
+              "session_date": "2026-08-26",
+              "session_time": "18:00",
+              "agenda": [{"item_number": "Ö 10", "title": "Neue Busspuren für Oldenburg"}]
+            }],
+            "anlagen": [{
+              "nr": 1,
+              "label": "Übersichtskarte der Busspuren",
+              "vorlage_nr": "26/0801",
+              "auszug": "Geplante Abschnitte am Innenstadtring.",
+              "url": "https://example.org/karte.pdf"
+            }],
+            "presse": [{
+              "titel": "Stadt stellt Maßnahmen für einen schnelleren Busverkehr vor",
+              "datum": "2026-08-27",
+              "url": "https://example.org/presse"
+            }],
+            "debatten": [{
+              "sprecher": "Mara Beispiel",
+              "partei": "GRÜNE",
+              "art": "Wortbeitrag",
+              "datum": "2026-08-26",
+              "auszug": "Die Busspuren sollen Anschlüsse stabilisieren und den Umweltverbund stärken."
+            }],
+            "planungen": [{
+              "vorlage_titel": "Umsetzung der Busspuren",
+              "gremium": "Verkehrsausschuss",
+              "datum": "2026-11-12"
+            }],
+            "grafik": {
+              "titel": "Vorgesehene Investitionen",
+              "einheit": "Mio. €",
+              "hinweis": "Planwerte aus der Beschlussvorlage.",
+              "reihe": [
+                {"jahr": 2026, "wert": 2.1},
+                {"jahr": 2027, "wert": 4.3},
+                {"jahr": 2028, "wert": 2.5}
+              ]
+            }
+          }
+        }
+        """#
+        guard
+            let data = raw.data(using: .utf8),
+            let root = try? JSONDecoder().decode(JSONValue.self, from: data),
+            let object = root.object,
+            let sourceValue = object["source"],
+            let source = try? sourceValue.decoded(DecisionSummary.self),
+            let evidence = object["evidence"]?.object
+        else { return nil }
+        return QuestionTurn(
+            question: "Was bringen die neuen Busspuren?",
+            answer: "Der Rat hat **zwei neue Busspuren** und bessere Ampelvorrangschaltungen beschlossen. Dafür sind 8,9 Millionen Euro vorgesehen. Ziel sind kürzere und verlässlichere Fahrzeiten. [1]",
+            sources: [source],
+            evidence: evidence,
+            suggestions: ["Wann beginnt der Bau?", "Welche Linien profitieren?"],
+            status: nil,
+            error: nil
+        )
+    }
+#endif
 }
 
 private struct EmptyQuestionsView: View {

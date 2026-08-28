@@ -157,7 +157,8 @@ private struct WeekPreviewCard: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(session.committee).font(RatsFont.body(14, weight: .semibold))
-                                Text(session.sessionDate).font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
+                                Text(RatsDate.weekday(session.sessionDate) ?? session.sessionDate)
+                                    .font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
                             }
                             Spacer()
                             Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
@@ -177,7 +178,7 @@ private struct WeekPreviewCard: View {
                                 Text(item.shortTitle ?? item.title)
                                     .font(RatsFont.body(14, weight: .semibold))
                                     .multilineTextAlignment(.leading)
-                                Text("\(item.sessionDate) · \(item.committee)")
+                                Text("\(RatsDate.weekday(item.sessionDate) ?? item.sessionDate) · \(item.committee)")
                                     .font(RatsFont.body(11))
                                     .foregroundStyle(RatsColor.secondary)
                                 if let reason = item.impactReason, item.featured == true {
@@ -247,7 +248,7 @@ private struct TodayStatusCard: View {
                 .compactMap { $0 }.joined(separator: " · ")
         }
         if today.state == "naechste" {
-            return [today.sessionDate, today.sessionTime].compactMap { $0 }.joined(separator: " · ")
+            return [RatsDate.weekday(today.sessionDate), today.sessionTime].compactMap { $0 }.joined(separator: " · ")
         }
         return today.until.map { "Bis \($0)" }
     }
@@ -257,18 +258,69 @@ struct DecisionRow: View {
     let decision: DecisionSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            if let outcome = decision.outcome { OutcomeBadge(outcome) }
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 7) {
+                if let outcome = decision.outcome { OutcomeBadge(outcome) }
+                if max(decision.interest ?? 0, decision.impact ?? 0) >= 75 {
+                    Label("Wichtig", systemImage: "flame.fill")
+                        .font(RatsFont.body(11, weight: .semibold))
+                        .foregroundStyle(RatsColor.warning)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(RatsColor.warningTint)
+                        .clipShape(Capsule())
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(RatsColor.muted)
+            }
             Text(decision.title)
-                .font(RatsFont.body(15, weight: .semibold))
+                .font(RatsFont.body(16, weight: .semibold))
                 .foregroundStyle(RatsColor.text)
                 .multilineTextAlignment(.leading)
-            Text([decision.committee, decision.sessionDate].compactMap { $0 }.joined(separator: " · "))
-                .font(RatsFont.mono(10))
-                .foregroundStyle(RatsColor.muted)
+            if let summary = decision.summary, !summary.isEmpty {
+                Text(summary)
+                    .font(RatsFont.body(13))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text([decision.committee, RatsDate.short(decision.sessionDate), decision.itemNumber]
+                    .compactMap { $0 }.joined(separator: " · "))
+                    .font(RatsFont.mono(10))
+                    .foregroundStyle(RatsColor.muted)
+                Spacer(minLength: 4)
+                if let amount = decision.amountEUR, amount >= 100_000 {
+                    Text(Self.amount(amount))
+                        .font(RatsFont.body(14, weight: .bold))
+                        .foregroundStyle(RatsColor.text)
+                }
+            }
+            if decision.vote != nil || decision.noVotes != nil || decision.abstentions != nil {
+                Text(voteLine)
+                    .font(RatsFont.body(11))
+                    .foregroundStyle(RatsColor.secondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+    }
+
+    private var voteLine: String {
+        var parts = [String]()
+        if let vote = decision.vote, !vote.isEmpty { parts.append(vote) }
+        if let no = decision.noVotes, no > 0 { parts.append("\(no) dagegen") }
+        if let abstentions = decision.abstentions, abstentions > 0 { parts.append("\(abstentions) Enth.") }
+        return parts.joined(separator: " · ")
+    }
+
+    private static func amount(_ value: Double) -> String {
+        if value >= 1_000_000 {
+            return String(format: "%.1f Mio. €", value / 1_000_000).replacingOccurrences(of: ".", with: ",")
+        }
+        return "\(Int(value / 1_000)) Tsd. €"
     }
 }
 
