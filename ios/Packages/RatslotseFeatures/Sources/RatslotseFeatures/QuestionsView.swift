@@ -841,21 +841,31 @@ private struct EvidenceChartData {
     init?(_ value: JSONValue?) {
         guard let root = value?.object else { return nil }
         let rows = root["reihe"]?.array ?? []
-        points = rows.enumerated().compactMap { index, row in
-            guard let fields = row.object else { return nil }
-            let number: Double? = {
-                for key in ["wert", "value", "betrag"] {
-                    if case .number(let found)? = fields[key] { return found }
+        var parsed: [Point] = []
+        parsed.reserveCapacity(rows.count)
+        for (index, row) in rows.enumerated() {
+            guard let fields = row.object else { continue }
+            var number: Double?
+            for key in ["wert", "value", "betrag"] {
+                if case .number(let found)? = fields[key] {
+                    number = found
+                    break
                 }
-                return nil
-            }()
-            guard let number else { return nil }
-            let label = fields["label"]?.string
-                ?? fields["jahr"]?.int.map(String.init)
-                ?? fields["datum"]?.string
-                ?? "\(index + 1)"
-            return Point(id: index, label: label, value: number)
+            }
+            guard let number else { continue }
+            let label: String
+            if let explicit = fields["label"]?.string {
+                label = explicit
+            } else if let year = fields["jahr"]?.int {
+                label = String(year)
+            } else if let date = fields["datum"]?.string {
+                label = date
+            } else {
+                label = "\(index + 1)"
+            }
+            parsed.append(Point(id: index, label: label, value: number))
         }
+        points = parsed
         guard points.count >= 2 else { return nil }
         title = root["titel"]?.string ?? "Entwicklung"
         unit = root["einheit"]?.string ?? "Wert"
