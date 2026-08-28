@@ -11,6 +11,8 @@ import { NativeRedirect } from "@/components/native-redirect";
 import { LiveStats } from "@/components/live-stats";
 import { HeuteLeiste } from "@/components/heute-leiste";
 import { LottiHero } from "@/components/lotti-hero";
+import { KommunalwahlBanner } from "@/components/kommunalwahl-banner";
+import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { Reveal } from "@/components/reveal";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +43,7 @@ export default function LandingPage() {
         <NativeRedirect />
       </Suspense>
       <PeekingChick />
-      {/* Tastatur-Nutzer:innen springen direkt zum Inhalt (visuell versteckt bis fokussiert). */}
+      {/* Tastatur-Nutzer*innen springen direkt zum Inhalt (visuell versteckt bis fokussiert). */}
       <a
         href="#inhalt"
         className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"
@@ -53,7 +55,12 @@ export default function LandingPage() {
           <Link href="/">
             <Brand />
           </Link>
-          <HeaderCTA />
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Gäste haben kein Konto → „Erscheinungsbild" — der Schalter ist
+                hier der einzige Weg, das Farbschema zu wählen. */}
+            <WebThemeSwitch />
+            <HeaderCTA />
+          </div>
         </div>
       </header>
 
@@ -104,6 +111,10 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* Befristet bis zur Ratswahl am 13.09.: der Weg zum Wahl-Check —
+            nimmt sich nach dem Wahltag selbst aus der Seite. */}
+        <KommunalwahlBanner />
 
         {/* Live-Demo als Beweis (RL-302): Was der Hero verspricht, steht hier
             zum Anfassen. Lotti zeigt darauf, Badge „LIVE AUSPROBIEREN";

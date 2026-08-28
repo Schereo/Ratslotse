@@ -1,0 +1,184 @@
+// Die Bilanz der Stadt (/haushalt/schulden, unterer Teil) — Typen und Rechenwege.
+//
+// ZWEI ZAHLEN HEISSEN „DIE PENSIONSRÜCKSTELLUNGEN", und sie unterscheiden
+// sich um 45 Mio. €. Die Bilanz führt untereinander:
+//
+//   3.1    Pensionsrückstellungen und ähnliche Verpflichtungen  311.789.660,00
+//   3.1.1  Pensionsrückstellungen                               266.259.316,00
+//   3.1.2  Beihilferückstellungen                                45.530.344,00
+//
+// Beide stimmen, sie messen nur Verschiedenes: 3.1 schließt die Beihilfe ein,
+// 3.1.1 nicht. Deshalb heißen die Rollen hier `pensionen_gesamt` und
+// `pensionsrueckstellungen` und nicht etwa beide „pension" — wer sie
+// verwechselt, schreibt eine falsche Schlagzeile.
+
+import type { Herkunft } from "@/lib/herkunft";
+
+export type { Herkunft };
+
+/** Die Rollen, die `council/bilanz.py` vergibt. Stabil über alle drei
+ *  Layouts der Bilanz hinweg — anders als die Gliederungsnummer, die bis
+ *  2020 römisch ist und ab 2021 auf beiden Seiten dieselbe. */
+export type BilanzRolle =
+  | "immaterielles_vermoegen" | "sachvermoegen" | "infrastrukturvermoegen"
+  | "finanzvermoegen" | "liquide_mittel" | "aktive_rap"
+  | "nettoposition" | "ruecklagen_gesamt" | "ueberschussruecklage_ordentlich"
+  | "jahresergebnis_bilanz" | "sonderposten" | "schulden" | "geldschulden"
+  | "rueckstellungen" | "pensionen_gesamt" | "pensionsrueckstellungen"
+  | "beihilferueckstellungen" | "passive_rap";
+
+export type BilanzPosten = {
+  jahr: number;
+  rolle: BilanzRolle;
+  seite: "aktiva" | "passiva";
+  /** 1 = Hauptposten; nur diese ergeben zusammen die Bilanzsumme. */
+  ebene: number;
+  /** Gliederungsnummer des Dokuments — für die Anzeige, nicht als Schlüssel. */
+  nr: string | null;
+  /** Wortlaut des Dokuments. */
+  bezeichnung: string;
+  wert: number;
+  herkunft_id: number | null;
+};
+
+/** Was die Verwaltung zu einem Hauptposten schreibt (Anhang 6.2.1–6.2.9).
+ *
+ *  Für `schulden` ist das keine Zugabe, sondern die Bedingung, unter der die
+ *  Zahl überhaupt gezeigt werden darf — s. `cashPoolingHinweis`. */
+export type BilanzErlaeuterung = {
+  jahr: number;
+  rolle: BilanzRolle;
+  nr: number;
+  ueberschrift: string;
+  text: string;
+  herkunft_id: number | null;
+};
+
+export type BilanzDaten = {
+  jahre: number[];
+  posten: BilanzPosten[];
+  erlaeuterungen: BilanzErlaeuterung[];
+  herkunft: Record<string, Herkunft>;
+};
+
+/** Ein Bilanzstichtag, nach Rolle nachschlagbar. */
+export type Stichtag = {
+  jahr: number;
+  posten: Partial<Record<BilanzRolle, BilanzPosten>>;
+  /** Summe der Hauptposten — beide Seiten ergeben sie, das ist die Probe. */
+  bilanzsumme: number;
+  herkunft_id: number | null;
+};
+
+/** Die neun Hauptposten in Bilanzreihenfolge: erst was die Stadt hat, dann
+ *  wem es zusteht. Dieselbe Reihenfolge wie `bilanz.PFLICHT_ROLLEN` im
+ *  Backend — und dieselbe, in der der Anhang sie erläutert. */
+export const AKTIVA_HAUPT: BilanzRolle[] = [
+  "immaterielles_vermoegen", "sachvermoegen", "finanzvermoegen",
+  "liquide_mittel", "aktive_rap",
+];
+export const PASSIVA_HAUPT: BilanzRolle[] = [
+  "nettoposition", "schulden", "rueckstellungen", "passive_rap",
+];
+
+/** Kurznamen für die Legende. Der Wortlaut des Dokuments („Aktive
+ *  Rechnungsabgrenzung") ist korrekt, aber in einer Balkenlegende unlesbar;
+ *  er steht deshalb weiter in `bezeichnung` und wird in der Tabelle
+ *  darunter gezeigt. */
+export const KURZ: Partial<Record<BilanzRolle, string>> = {
+  immaterielles_vermoegen: "Immaterielles",
+  sachvermoegen: "Gebäude, Straßen, Grundstücke",
+  finanzvermoegen: "Beteiligungen und Forderungen",
+  liquide_mittel: "Kasse",
+  aktive_rap: "Abgrenzung",
+  nettoposition: "Eigenkapital",
+  schulden: "Schulden",
+  rueckstellungen: "Rückstellungen",
+  passive_rap: "Abgrenzung",
+};
+
+/** Den jüngsten Stichtag herausziehen — oder `null`, wenn keiner vollständig
+ *  ist. Unvollständig heißt hier: Ein Hauptposten fehlt, dann geht die
+ *  Bilanzsumme nicht auf und es gibt nichts zu zeigen. */
+export function juengsterStichtag(daten: BilanzDaten | null): Stichtag | null {
+  if (!daten?.jahre?.length) return null;
+  const jahr = daten.jahre[daten.jahre.length - 1];
+  return stichtag(daten, jahr);
+}
+
+export function stichtag(daten: BilanzDaten | null, jahr: number): Stichtag | null {
+  if (!daten) return null;
+  const posten: Partial<Record<BilanzRolle, BilanzPosten>> = {};
+  for (const p of daten.posten) {
+    if (p.jahr === jahr) posten[p.rolle] = p;
+  }
+  const haupt = [...AKTIVA_HAUPT, ...PASSIVA_HAUPT];
+  if (haupt.some((r) => posten[r] === undefined)) return null;
+  const bilanzsumme = AKTIVA_HAUPT.reduce((n, r) => n + (posten[r]?.wert ?? 0), 0);
+  return {
+    jahr, posten, bilanzsumme,
+    herkunft_id: posten.sachvermoegen?.herkunft_id ?? null,
+  };
+}
+
+/** Die Segmente einer Bilanzseite, absteigend nach Betrag — in Mio. €.
+ *
+ *  Absteigend und nicht in Dokumentreihenfolge: Der <Gegenbalken> verteilt
+ *  seine Rampe dunkel nach hell in der übergebenen Reihenfolge, und ein
+ *  0,6-%-Posten als dunkelstes Segment ganz links wäre eine Betonung, die
+ *  der Betrag nicht trägt. */
+export function segmente(s: Stichtag, seite: "aktiva" | "passiva") {
+  const rollen = seite === "aktiva" ? AKTIVA_HAUPT : PASSIVA_HAUPT;
+  return rollen
+    .map((r) => ({
+      label: KURZ[r] ?? s.posten[r]?.bezeichnung ?? r,
+      kurz: KURZ[r],
+      wert: (s.posten[r]?.wert ?? 0) / 1e6,
+      rolle: r,
+    }))
+    .filter((x) => x.wert > 0)
+    .sort((a, b) => b.wert - a.wert);
+}
+
+/** Wie oft die Pensionsrückstellungen in die Kreditschulden passen.
+ *
+ *  Gerechnet und nicht geschrieben: „das Siebenfache" wird mit dem nächsten
+ *  Jahrgang still falsch. Gibt `null`, wenn eine der beiden Zahlen fehlt
+ *  oder die Geldschulden null sind. */
+export function vielfaches(s: Stichtag): number | null {
+  const pension = s.posten.pensionen_gesamt?.wert;
+  const kredite = s.posten.geldschulden?.wert;
+  if (!pension || !kredite) return null;
+  return pension / kredite;
+}
+
+/** Die Erläuterung des Anhangs zu einem Hauptposten. */
+export function erlaeuterung(
+  daten: BilanzDaten | null, jahr: number, rolle: BilanzRolle,
+): BilanzErlaeuterung | null {
+  if (!daten) return null;
+  return daten.erlaeuterungen.find((e) => e.jahr === jahr && e.rolle === rolle) ?? null;
+}
+
+/** Ist der Schuldensprung dieses Jahrgangs ein Buchungsartefakt?
+ *
+ *  DIE WICHTIGSTE FUNKTION IN DIESER DATEI. Die Bilanz 2024 weist Schulden
+ *  von 207,1 Mio. € aus nach 84,4 Mio. € im Vorjahr. Wer das als Zahl
+ *  hinschreibt, behauptet eine Verdreifachung der Schulden — und die hat es
+ *  nicht gegeben: Die Stadt muss dieselben Cash-Pooling-Mittel seit 2024 auf
+ *  **beiden** Bilanzseiten ausweisen, mit einem Gegenposten im
+ *  Finanzvermögen. Der Anhang erklärt es selbst (6.2.7).
+ *
+ *  Deshalb sucht diese Funktion nicht nach dem Wort „Cash-Pooling", sondern
+ *  liefert den Erläuterungstext — und die Seite zeigt den Schuldenwert nur,
+ *  wenn sie ihn hat. Kein Text, keine Zahl. */
+export function cashPoolingHinweis(
+  daten: BilanzDaten | null, jahr: number,
+): BilanzErlaeuterung | null {
+  return erlaeuterung(daten, jahr, "schulden");
+}
+
+export function herkunftVon(daten: BilanzDaten | null, id: number | null): Herkunft | null {
+  if (!daten || id == null) return null;
+  return daten.herkunft[String(id)] ?? null;
+}

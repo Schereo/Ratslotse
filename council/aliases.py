@@ -37,7 +37,7 @@ import json
 import logging
 import os
 import re
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 from kern import llm, prompts
 

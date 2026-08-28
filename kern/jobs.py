@@ -59,6 +59,43 @@ JOBS: list[dict] = [
         "max_age_h": 8 * 24,
     },
     {
+        "key": "check_finanzdaten",
+        "label": "Haushaltsdaten",
+        "description": "Neue Jahresabschlüsse, Teilhaushalts-Pläne und Prüfberichte aus dem Anlagenbestand — plus Hinweis, wenn ein Jahrgang ausbleibt.",
+        # Bestandsgesteuert, nicht kalendergesteuert: Der Takt bestimmt nur,
+        # wie schnell ein neuer Jahrgang auf der Seite steht (s. Skript-Kopf).
+        #
+        # Läuft vorerst NUR auf der Dev-VM: Der Haushalts-Bereich steht hinterm
+        # Umgebungs-Gate (web/frontend/lib/haushalt-frei.ts), auf Prod bleiben
+        # seine Tabellen leer. In der Cron-Übersicht erscheint der Job dort
+        # deshalb als „unknown" (nie gelaufen) — nicht als überfällig; die
+        # Ampel kennt „stale" nur für Jobs mit mindestens einem Lauf.
+        "schedule": "alle zwei Wochen, sonntags 4:30 Uhr",
+        "max_age_h": 16 * 24,
+    },
+    {
+        "key": "check_beteiligungsbericht",
+        "label": "Beteiligungsbericht",
+        "description": "Lädt die Beteiligungsberichte von oldenburg.de und liest Gesellschaften, Aufsichtsorgane und Kennzahlen daraus.",
+        # Der zweite Cron des Haushalts-Bereichs, und der einzige, der selbst
+        # herunterlädt. Bestandsgesteuert wie check_finanzdaten — der Takt
+        # bestimmt nur, wie schnell ein neuer Bericht auf der Seite steht, und
+        # die Quelle erscheint einmal im Jahr.
+        "schedule": "alle vier Wochen, sonntags 4:45 Uhr",
+        "max_age_h": 30 * 24,
+    },
+    {
+        "key": "archive_statistik",
+        "label": "Statistik-Archiv",
+        "description": "Sichert Jahrbuch-Tabellen, Open-Data-Dateien und die KFA-Tabellen des Landes versioniert unter data/archiv/ — bevor die nächste Ausgabe sie überschreibt.",
+        # Täglich, obwohl sich täglich nichts ändert: Die Quellen aktualisieren
+        # in Schüben (29 Open-Data-Datensätze am 19.06.2026, 20 am 14.07.2026),
+        # und weil es kein Archiv gibt, ist Vorlauf der einzige Puffer. Ein Lauf
+        # ohne Änderung kostet bedingte Abrufe und praktisch keine Bytes.
+        "schedule": "täglich 4 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "weekly_enrich",
         "label": "Wöchentliche Anreicherung",
         "description": "Entitäten, Geocoding, Embeddings, Rückblicke, Interessantheit und Tragweite in Tranchen.",

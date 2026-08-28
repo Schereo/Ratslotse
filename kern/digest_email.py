@@ -32,7 +32,10 @@ def absolut(pfad_oder_url: str) -> str:
 # öffentlichen Verzeichnis des Frontends.
 LOGO_URL = f"{APP_BASE_URL}/logo-mark.png"
 
-_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+# Innen DOPPELTE Anführungszeichen: Die style-Attribute dieser Datei sind
+# einfach gequotet — mit 'Segoe UI' endete das Attribut mitten im Font-Stack,
+# und alles dahinter (Farbe, Hintergrund!) fiel je nach Client weg.
+_FONT = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif'
 _BLAU = "#0764a6"      # Hafenblau, --primary
 _TEXT = "#0f172a"
 _GRAU = "#64748b"
@@ -95,6 +98,32 @@ def nebenlink(url: str, beschriftung: str) -> str:
     )
 
 
+def gremium_abo_begruendung(gremium: str, mit_aenderungs_schalter: bool = False) -> str:
+    """„Warum bekommst du das?" unter einer Gremien-Meldung (N1).
+
+    Die Zeile gehört in den **Meldungskörper**, nicht in die Mail-Hülle: Nur so
+    klebt sie im Bündel an ihrem Abschnitt. Die ``?zeig=``-Parameter heben auf
+    der Zielseite genau den Schalter hervor, um den es geht, und überleben als
+    Query (anders als ein ``#``-Anker) den Login-Umweg über ``?weiter=``.
+    """
+    def link(pfad: str, text: str) -> str:
+        return (f"<a href=\"{absolut(pfad)}\" style='color:{_GRAU};"
+                f"text-decoration:underline'>{_esc(text)}</a>")
+
+    # Seit dem 28.08.2026 haben die Abos eine eigene Seite; vorher waren sie
+    # ein Block unter „Meine Themen", den `?zeig=abos` hervorhob. Ältere Mails
+    # tragen den alten Link noch — `/topics` leitet ihn deshalb weiter.
+    wege = link("/abos", "Gremien-Abos verwalten")
+    if mit_aenderungs_schalter:
+        wege += " &middot; " + link("/account?zeig=n1_aenderung",
+                                    "Nur Änderungs-Meldungen abschalten")
+    return (
+        f"<div style='margin-top:18px;color:{_GRAU};font-size:12px;line-height:1.6'>"
+        f"Du bekommst diese Meldung, weil du das Gremium „{_esc(gremium)}“ abonniert hast."
+        f"<br>{wege}</div>"
+    )
+
+
 def liste(zeilen: list[str]) -> str:
     """Aufzählung statt Fließtext. Vorher standen die Tagesordnungspunkte als
     eine einzige, mit Semikolons verkettete Wand — auf dem Telefon zehn Zeilen
@@ -105,6 +134,39 @@ def liste(zeilen: list[str]) -> str:
         f"<li style='margin:0 0 8px;padding:0'>{z}</li>" for z in zeilen
     )
     return f"<ul style='margin:14px 0 0;padding-left:20px;font-size:15px;line-height:1.5'>{posten}</ul>"
+
+
+def buendel(posten: list[dict]) -> str:
+    """Mehrere fällige Meldungen als EINE Mail — mit vollem Inhalt je Abschnitt.
+
+    Vorher war das Bündel eine nackte Linkliste aus den Titeln, obwohl jede
+    Meldung ihren fertig gebauten Inhalt (Sitzungskopf, Zusammenfassung, Knopf)
+    schon in der Warteschlange liegen hatte — der wurde weggeworfen. Jetzt sagt
+    die Mail, warum sie bündelt, und jeder Posten steht mit allem da, was seine
+    Einzel-Mail auch gehabt hätte.
+
+    ``posten``: Warteschlangen-Zeilen mit ``title``, ``body_html``, ``url``.
+    Die Überschrift jedes Abschnitts verlinkt auf das Ziel der Meldung — sie
+    ist der Rückweg für Sorten, deren Körper selbst keinen Knopf trägt (N5).
+    """
+    n = len(posten)
+    teile = [
+        "<p style='margin:0'>Heute gibt es gleich mehrere Neuigkeiten für dich. "
+        "Damit dein Postfach ruhig bleibt, schickt Ratslotse sie nicht einzeln, "
+        f"sondern gesammelt — hier sind alle {n} in einer E-Mail:</p>"
+    ]
+    for p in posten:
+        teile.append(
+            f"<div style='margin-top:24px;border-top:1px solid {_LINIE};padding-top:18px'>"
+            f"<a href=\"{absolut(p['url'])}\" style='color:{_BLAU};font-size:16px;"
+            f"font-weight:700;text-decoration:none;line-height:1.3'>{_esc(p['title'])}</a>"
+            f"<div style='margin-top:10px'>{p['body_html']}</div>"
+            "</div>"
+        )
+    # Ohne Zeilenumbrüche zusammensetzen: Die Mail-Hülle rendert mit
+    # ``white-space:pre-wrap`` — jedes ``\n`` zwischen den Blöcken würde dort
+    # zu einer sichtbaren Leerzeile.
+    return "".join(teile)
 
 
 def render_html_email(
@@ -133,10 +195,20 @@ def render_html_email(
         f"<hr style='margin:28px 0 16px;border:none;border-top:1px solid {_LINIE}'>"
         f"<a href='{APP_BASE_URL}' style='color:{_BLAU};text-decoration:none;font-size:14px'>"
         "Zu Ratslotse &rarr;</a>"
+        f"{_abmelde_hinweis()}"
+        "</div>"
+    )
+
+
+def _abmelde_hinweis() -> str:
+    """Kleingedruckte Fußzeile mit dem Weg zum Abschalten — „Mein Konto" ist ein
+    echter Link auf die Zustellungs-Schalter, kein bloßer Seitenname zum
+    Selbst-Suchen (Tims Wunsch 26.08.2026)."""
+    return (
         f"<div style='margin-top:14px;color:{_LEISE};font-size:12px;line-height:1.5'>"
         "Du bekommst diese E-Mail, weil du bei Ratslotse die E-Mail-Zustellung aktiviert hast. "
-        "Den Kanal änderst du jederzeit unter „Mein Konto“.</div>"
-        "</div>"
+        f"Den Kanal änderst du jederzeit unter <a href='{APP_BASE_URL}/account?zeig=zustellung' "
+        f"style='color:{_LEISE};text-decoration:underline'>„Mein Konto“</a>.</div>"
     )
 
 
@@ -150,8 +222,6 @@ def _wrap(display_date: str, inner_html: str, topics_url: str) -> str:
         f"<hr style='margin:28px 0 16px;border:none;border-top:1px solid {_LINIE}'>"
         f"<a href='{topics_url}' style='color:{_BLAU};text-decoration:none;font-size:14px'>"
         "Themen &amp; Treffer im Web verwalten &rarr;</a>"
-        f"<div style='margin-top:14px;color:{_LEISE};font-size:12px;line-height:1.5'>"
-        "Du bekommst diese E-Mail, weil du bei Ratslotse die E-Mail-Zustellung aktiviert hast. "
-        "Den Kanal änderst du jederzeit unter „Mein Konto“.</div>"
+        f"{_abmelde_hinweis()}"
         "</div>"
     )

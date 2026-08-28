@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag, Euro } from "lucide-react";
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
@@ -21,6 +21,7 @@ import { Mascot } from "@/components/mascot";
 import { useMascotTheme } from "@/components/seasonal-mascot";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
+import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 
 function MetaCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -40,7 +41,7 @@ function vorlageArt(art: string | null | undefined): string {
 
 /** `subtitle` trägt den Fachbegriff, während die Überschrift in Alltagssprache
  *  sagt, was man hier liest — Ratsmitglieder finden den amtlichen Namen also
- *  weiterhin, ohne dass Erstbesucher:innen über ihn stolpern. */
+ *  weiterhin, ohne dass Erstbesucher*innen über ihn stolpern. */
 function Section({
   title,
   subtitle,
@@ -221,6 +222,69 @@ function GlanceCard({
         >
           {data.vorlage.klima_check}
         </GlanceDisclosure>
+      )}
+      {/* „Was kostet das?" (Design H-21): Die Verwaltung schreibt in jede
+          Vorlage, welche finanziellen Folgen sie sieht. Amtlicher Wortlaut,
+          deshalb unverändert und ausdrücklich als Verwaltungsangabe
+          gekennzeichnet — nicht unsere Einschätzung. */}
+      {data.vorlage?.finanz_check && (
+        <GlanceDisclosure
+          icon={<Euro className="h-3.5 w-3.5 text-primary" />}
+          label="Was kostet das?"
+          badge="Angabe der Verwaltung"
+        >
+          {/* Wörtliches Zitat: Zitatkante links, Anführungszeichen, kein
+              Fettdruck — es ist der amtliche Wortlaut, nicht unsere Zahl. */}
+          <span className="block border-l-2 border-border pl-2.5 text-foreground/85">
+            „{data.vorlage.finanz_check.trim()}“
+          </span>
+          {/* Die Quellenangabe steht immer, der Weiterverweis nur dort, wo es
+              den Haushalts-Bereich gibt — auf Prod ist /haushalt ein 404
+              (lib/haushalt-frei.ts). Ohne das Gate bliebe ein Satz stehen,
+              der auf nichts zeigt. */}
+          <span className="mt-1.5 block text-[11px] text-muted-foreground">
+            Aus der Vorlage, Feld „Finanzielle Auswirkungen“
+            {HAUSHALT_FREI && (
+              <>
+                {" "}· wie sich das im Gesamthaushalt ausnimmt, zeigt der{" "}
+                <Link href="/haushalt" className="font-medium text-primary">Haushalt</Link>.
+              </>
+            )}
+          </span>
+        </GlanceDisclosure>
+      )}
+
+      {/* Die Anschlussstelle, die etwas SAGT. Der Satz oben steht an jedem
+          Beschluss mit Finanz-Feld und ist deshalb für keinen eine Auskunft;
+          diese Karte gibt es nur, wo eine echte Verknüpfung sie deckt —
+          entweder zeigt `council_nachbewilligungen.beschluss_id` auf genau
+          diesen Beschluss, oder seine Vorlage steht im Bürgschafts-Zeitstrahl.
+          Sonst kommt sie gar nicht (`haushalts_anschluss === null`). */}
+      {HAUSHALT_FREI && data.haushalts_anschluss && (
+        <GlanceRow>
+          <Link href={data.haushalts_anschluss.href}
+            className="group flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-border bg-card px-3 py-2.5 transition-colors hover:border-primary/40">
+            <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-primary">
+              Im Haushalt
+            </span>
+            <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-foreground/90">
+              {data.haushalts_anschluss.art === "nachbewilligung" ? (
+                <>
+                  Diese Entscheidung zählt zu den Nachbewilligungen
+                  {data.haushalts_anschluss.jahr ? ` ${data.haushalts_anschluss.jahr}` : ""} —
+                  Geld, das außerhalb des beschlossenen Haushalts bewilligt wurde.
+                </>
+              ) : (
+                <>
+                  Diese Bürgschaft steht im Zeitstrahl der Ratsbeschlüsse zum
+                  Bürgschaftsbestand der Stadt.
+                </>
+              )}
+            </span>
+            <ArrowRight size={14} strokeWidth={2}
+              className="flex-none text-primary transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </GlanceRow>
       )}
 
       {d.kind !== "subvote" && data.importance_breakdown && (
@@ -557,7 +621,7 @@ function DecisionDetailInner() {
       </div>
 
       {/* Stufe 3b: Läuft zu diesem Bauleitplan GERADE eine Beteiligung, ist die
-          Stellungnahme-Frist die eine Sache, die Bürger:innen JETZT tun können —
+          Stellungnahme-Frist die eine Sache, die Bürger*innen JETZT tun können —
           deshalb prominent über allem anderen. */}
       {data.beteiligung && (
         <a href={data.beteiligung.url} target="_blank" rel="noreferrer"

@@ -141,7 +141,7 @@ def main() -> dict:
     targets = nwz_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
 
     # Daten werden auch OHNE Abonnements aktualisiert — die Web-App zeigt
-    # Sitzungen und Terminplan für alle Nutzer:innen, nicht nur Abonnenten.
+    # Sitzungen und Terminplan für alle Nutzer*innen, nicht nur Abonnenten.
     council_store = CouncilStore(COUNCIL_DB)
     scraper = CouncilScraper()
 
@@ -271,6 +271,12 @@ def main() -> dict:
         # geklappt hat: Knopf auf die Sitzung, Ratsinfo als leiser Nebenlink.
         wege = (digest_email.knopf(sitzung_href(ksinr), "Tagesordnung ansehen")
                 + digest_email.nebenlink(session.url, "Im Ratsinformationssystem öffnen"))
+        # „Warum bekommst du das?" — mit Direktlink auf den Schalter, um den es
+        # geht. Die Änderungs-Meldung nennt zusätzlich ihren eigenen
+        # Abschalt-Weg: Abo behalten, nur die Änderungs-Meldungen loswerden.
+        grund = digest_email.gremium_abo_begruendung(session.committee)
+        grund_update = digest_email.gremium_abo_begruendung(
+            session.committee, mit_aenderungs_schalter=True)
         # Ein Kopf für alle drei Fälle, aus frischen Sitzungsdaten — vorher gab
         # es zwei: einen aus der Zusammenfassung (mit deutschem Datum) und
         # einen hier (mit ISO-Datum), je nachdem, ob das LLM geliefert hatte.
@@ -295,7 +301,7 @@ def main() -> dict:
                 continue
             print(f"  {session.session_date} {session.committee} → owner {owner_id} (neu)")
             notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
-                             subject, base_message, sitzung_href(ksinr),
+                             subject, base_message + grund, sitzung_href(ksinr),
                              push_text=push_neu)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
@@ -339,7 +345,7 @@ def main() -> dict:
                 council_store.mark_notified(ksinr, owner_id, agenda_hash)
                 continue
             if d is not None:
-                nachricht = update_prefix + kopf + diff_html(d) + wege
+                nachricht = update_prefix + kopf + diff_html(d) + wege + grund_update
                 # Die Push-Vorschau nennt die Änderungsart statt Datum und
                 # Ort; die Einzelheiten zeigt die Sitzungsseite hinterm Tap
                 # (Tims Wunsch 18.08.).
@@ -352,11 +358,14 @@ def main() -> dict:
                 ohne_basis = ("<p>Was genau sich geändert hat, lässt sich für diese "
                               "Sitzung nicht mehr nachvollziehen — hier ist der "
                               "aktuelle Stand der Tagesordnung.</p>\n")
-                nachricht = update_prefix + ohne_basis + base_message
+                nachricht = update_prefix + ohne_basis + base_message + grund_update
                 push_kurz = "Tippe für den aktuellen Stand der Tagesordnung."
             print(f"  {session.session_date} {session.committee} → owner {owner_id} "
                   f"(Änderung{', Diff' if d is not None else ''})")
-            notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
+            # Eigener Anlass seit Tims Wunsch 26.08.2026: „Ich möchte zwar die
+            # Tagesordnung bekommen, aber nicht über jede Änderung informiert
+            # werden." Hängt in `gewuenscht` am N1-Elternteil.
+            notify.einreihen(nwz_store, owner_id, notify.N1_AENDERUNG,
                              update_subject, nachricht, sitzung_href(ksinr),
                              push_text=push_kurz)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)

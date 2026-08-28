@@ -21,10 +21,11 @@ Beschluss-Treffern zu den eigenen Themen.
 """
 from __future__ import annotations
 
+import html
 import logging
 from datetime import date, timedelta
 
-from kern import notify
+from kern import digest_email, notify
 
 logger = logging.getLogger("council.abendmeldungen")
 
@@ -116,9 +117,12 @@ def _n6_text(beschluesse: list[dict]) -> tuple[str, str]:
     n = len(beschluesse)
     titel = f"Diese Woche: {n} {'Beschluss' if n == 1 else 'Beschlüsse'} zu deinen Themen"
     bilanz = ", ".join(f"{k} {w}" for w, k in sorted(zaehler.items(), key=lambda x: -x[1]))
+    # Absolute Links: In einer E-Mail gibt es keine Basis, gegen die
+    # ``/council/…`` aufgelöst werden könnte — relativ wären sie dort tot.
     zeilen = "".join(
         f"<li style='margin-bottom:6px'>"
-        f"<a href=\"/council/decision?id={d['id']}\">{(d.get('title') or 'Beschluss').strip()}</a>"
+        f"<a href=\"{digest_email.absolut(f'/council/decision?id={d["id"]}')}\">"
+        f"{html.escape((d.get('title') or 'Beschluss').strip())}</a>"
         f" — {ERGEBNIS_WORT.get(d.get('outcome') or '', 'entschieden')}</li>"
         for d in beschluesse[:10])
     rest = "" if n <= 10 else f"<p>… und {n - 10} weitere.</p>"

@@ -20,6 +20,11 @@ zugänglicher oder korrekter machen, sind willkommen.
   Fehler durchlaufen (Python 3.12).
 - **Frontend baut:** `cd web/frontend && npm run build`.
 - **Doku baut** (falls `docs-site/` betroffen): `cd docs-site && npm run build`.
+- **Changelog-Fragment** (falls die Änderung Nutzer\*innen betrifft): eine Datei
+  `changelog.d/<slug>.md` mit `kategorie: hinzugefuegt | geaendert | behoben` im
+  Frontmatter und dem Eintrag darunter — ohne PR-Nummer, die trägt der
+  Versionsschnitt nach. Nicht in `CHANGELOG.md` schreiben: Dort kollidiert jeder
+  parallele PR. Prüfen: `python scripts/changelog_schnitt.py --pruefen`.
 - **Keine Secrets/Infra** im Diff (Keys, echte Server-IPs/Hosts, personenbezogene
   Daten). Konfiguration gehört in `.env` / GitHub-Secrets, nicht ins Repo.
 

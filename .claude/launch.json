@@ -23,6 +23,21 @@
         "docs-site"
       ],
       "port": 4321
+    },
+    {
+      "name": "frontend-schere",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "web/frontend"
+      ],
+      "env": {
+        "BACKEND_URL": "http://127.0.0.1:8899",
+        "NEXT_PUBLIC_RATSLOTSE_ENV": "dev"
+      },
+      "port": 3012
     }
   ]
 }

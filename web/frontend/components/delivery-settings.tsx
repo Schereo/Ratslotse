@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellRing, Moon } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
@@ -10,8 +10,13 @@ import { enablePush } from "@/lib/push";
 import { Button, Card, Switch, toast } from "@/components/ui";
 import type { DeliveryChannel, User } from "@/lib/types";
 
-/** Ein Anlass aus 30a/B — was das Backend über sich selbst erzählt. */
-type NotifyKind = { key: string; label: string; hint: string; default: boolean; enabled: boolean };
+/** Ein Anlass aus 30a/B — was das Backend über sich selbst erzählt.
+ *  `parent`: Unter-Option, die nur wirkt, solange der Eltern-Anlass an ist —
+ *  sie wird eingerückt und ist ohne Elternteil nicht bedienbar. */
+type NotifyKind = {
+  key: string; label: string; hint: string; default: boolean; enabled: boolean;
+  parent?: string | null;
+};
 type NotifyPrefs = {
   kinds: NotifyKind[];
   limits: { per_day: number; quiet_from: number; quiet_to: number };
@@ -78,6 +83,32 @@ export function DeliverySettings() {
     kindMutation.mutate(alle);
   };
 
+  // ?zeig= aus der URL — Deep-Link aus den E-Mails („Mein Konto"-Fußzeile,
+  // „Nur Änderungs-Meldungen abschalten"): zum gemeinten Schalter springen und
+  // ihn kurz hervorheben. `zustellung` meint den Kanal-Block, alles andere den
+  // Anlass mit diesem Schlüssel. Bewusst window.location statt useSearchParams
+  // (der statische MOBILE-Export bricht an der Suspense-Grenze, wie in
+  // lib/public-routes.ts) — und als Query statt #-Anker, weil nur Pfad + Query
+  // den Login-Umweg über ?weiter= überleben.
+  const [flashZiel, setFlashZiel] = useState<string | null>(null);
+  const jumped = useRef(false);
+  const prefsData = prefsQuery.data;
+  useEffect(() => {
+    if (jumped.current) return;
+    const zeig = new URLSearchParams(window.location.search).get("zeig");
+    if (!zeig) return;
+    // Anlass-Zeilen existieren erst, wenn die Liste vom Server da ist.
+    if (zeig !== "zustellung" && !prefsData) return;
+    jumped.current = true;
+    // Nach dem Rendern springen, nicht währenddessen (Muster aus badges.tsx).
+    setTimeout(() => {
+      const id = zeig === "zustellung" ? "zustellung" : `anlass-${zeig}`;
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setFlashZiel(zeig);
+      setTimeout(() => setFlashZiel(null), 2200);
+    }, 50);
+  }, [prefsData]);
+
   const current = user?.delivery_channel ?? "email";
   const emailOn = current === "email" || current === "both";
   const pushOn = current === "push" || current === "both";
@@ -118,7 +149,12 @@ export function DeliverySettings() {
             ? `Höchstens ${prefsQuery.data.limits.per_day} am Tag. Nachts nie.`
             : "Für neue Beschlüsse zu deinen Themen und abonnierte Tagesordnungen."}
       </p>
-      <div className="mt-4 space-y-3">
+      <div
+        id="zustellung"
+        className={`mt-4 space-y-3 scroll-mt-24 rounded-xl transition-shadow ${
+          flashZiel === "zustellung" ? "ring-2 ring-primary bg-primary/[0.07]" : ""
+        }`}
+      >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">E-Mail</p>
@@ -160,20 +196,35 @@ export function DeliverySettings() {
             Wofür {alleAus && <span className="font-medium normal-case tracking-normal">— erst wieder, wenn ein Kanal an ist</span>}
           </p>
           <div className="mt-3 space-y-3">
-            {prefsQuery.data.kinds.map((k) => (
-              <div key={k.key} className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">{k.label}</p>
-                  <p className="text-xs leading-relaxed text-muted-foreground">{k.hint}</p>
+            {prefsQuery.data.kinds.map((k) => {
+              // Unter-Option (z. B. „Änderungen an Tagesordnungen" unter N1):
+              // eingerückt, und ohne den Eltern-Anlass sichtbar wirkungslos —
+              // das Backend würde sie ohnehin nicht zustellen.
+              const elternAn = !k.parent
+                || (prefsQuery.data?.kinds.find((p) => p.key === k.parent)?.enabled ?? true);
+              return (
+                <div
+                  key={k.key}
+                  id={`anlass-${k.key}`}
+                  className={`flex items-center justify-between gap-3 scroll-mt-24 rounded-lg transition-shadow ${
+                    k.parent ? "ml-3 border-l-2 border-border pl-3" : ""
+                  } ${!elternAn ? "opacity-45" : ""} ${
+                    flashZiel === k.key ? "ring-2 ring-primary bg-primary/[0.07]" : ""
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">{k.label}</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{k.hint}</p>
+                  </div>
+                  <Switch
+                    checked={k.enabled}
+                    aria-label={k.label}
+                    disabled={alleAus || !elternAn || kindMutation.isPending}
+                    onCheckedChange={(v) => toggleKind(k.key, v)}
+                  />
                 </div>
-                <Switch
-                  checked={k.enabled}
-                  aria-label={k.label}
-                  disabled={alleAus || kindMutation.isPending}
-                  onCheckedChange={(v) => toggleKind(k.key, v)}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
           {/* Nachtruhe: eine Zusicherung, kein Schalter — sie gilt immer. */}
           <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-muted/60 px-3.5 py-3">

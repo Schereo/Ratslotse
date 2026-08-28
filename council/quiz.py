@@ -396,7 +396,7 @@ def enrich_row(row: dict, subject: str, *, area_type: str | None = None,
 
 _SYSTEM = (
     "Du erstellst ein allgemeinverständliches Quiz über Oldenburg für interessierte "
-    "Bürger:innen. Fragen sollen Spaß machen, FAIR sein und etwas über die Stadt "
+    "Bürger*innen. Fragen sollen Spaß machen, FAIR sein und etwas über die Stadt "
     "beibringen — NICHT technisch-bürokratisch (keine Aktenzeichen, Bebauungsplan-"
     "Nummern, Paragraphen oder Sitzungs-Formalien) und NICHT bloßes Detail-Trivia zu "
     "obskuren Randfiguren oder Jahreszahlen, die niemand kennt. Eine Frage ist gut, "
@@ -491,7 +491,7 @@ Antworte mit NUR JSON (Multiple Choice ODER, für schaetzen, qtype=estimate):
     "subject": "Schloss Oldenburg", "topic": "Schloss Oldenburg",
     "source": "kurze Herkunft, z. B. 'Wikipedia' oder 'Ratsbeschluss 2025'"}},
   {{"category": "schaetzen", "difficulty": "mittel", "qtype": "estimate",
-    "question": "Wie viele Einwohner hat der Beispiel-Stadtteil etwa?",
+    "question": "Wie viele Einwohner*innen hat der Beispiel-Stadtteil etwa?",
     "answer_value": 12000, "unit": "Einwohner", "range_min": 2000, "range_max": 30000,
     "explanation": "Damit ist der Stadtteil für sich so groß wie eine Kleinstadt — bis zur Eingemeindung war er eine eigene Gemeinde.",
     "source": "Wikipedia"}}

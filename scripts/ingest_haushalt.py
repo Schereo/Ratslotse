@@ -11,8 +11,10 @@ jede Zahl 1:1 aus dem PDF, jede Frage mit PDF-Quelle:
 - **Trend-Fragen** über alle eingelesenen Jahre (Wachstums-Schätzfrage +
   stärkster Wachstumsbereich, mit Trendlinien-Diagramm).
 
-Default lädt ALLE bekannten Jahre (2020–2026, ohne 2024 — dessen PDF hat eine
-defekte Text-Kodierung). Läuft einmal je neuem Haushaltsjahr::
+Default lädt ALLE bekannten Jahre (2020–2026). 2024 kommt aus dem Open-Data-
+CSV der Stadt (opendata.oldenburg.de, Lizenz dl-de/by-2-0) — das Plan-PDF
+dieses Jahrgangs hat eine defekte Text-Kodierung. Läuft einmal je neuem
+Haushaltsjahr::
 
     python scripts/ingest_haushalt.py                 # alle bekannten Jahre
     python scripts/ingest_haushalt.py --year 2026     # nur ein Jahr nachladen
@@ -33,7 +35,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council import haushalt  # noqa: E402
+from council import haushalt, herkunft  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -55,9 +57,36 @@ def _ingest_year(store: CouncilStore, year: int, url: str | None, pdf: str | Non
     if not rows:
         print(f"  {year}: Übersicht nicht gefunden/validiert — übersprungen.", file=sys.stderr)
         return False
-    store.save_haushalt(year, rows, url or f"file:{pdf}")
+    # `extract_from_pdf` gibt nur zurück, was gegen die Summenzeile aufgeht —
+    # die Probe ist also bestanden, sobald wir hier stehen.
+    store.save_haushalt(year, rows, herkunft.Herkunft(
+        art="stadt", probe="summenzeile", url=url or f"file:{pdf}",
+        label=f"Beschlossener Haushaltsplan {year}",
+        fundstelle="Übersicht „Ergebnishaushalt“ — Teilhaushalte mit "
+                   "ordentlichen Erträgen und Aufwendungen",
+        stand=f"Haushaltsjahr {year}"))
     summe = next((r for r in rows if r["is_summe"]), {})
     print(f"  {year}: {len(rows)} Zeilen (Aufwendungen {round((summe.get('aufwendungen') or 0) / 1e6)} Mio. €)")
+    return True
+
+
+def _ingest_year_csv(store: CouncilStore, year: int, url: str) -> bool:
+    """Ein Jahr aus dem Open-Data-CSV laden (Jahre ohne lesbares PDF, z. B. 2024)."""
+    r = requests.get(url, headers=_UA, timeout=120)
+    r.raise_for_status()
+    rows = haushalt.parse_opendata_ergebnishaushalt(r.text)
+    if not rows:
+        print(f"  {year}: Open-Data-CSV nicht validiert — übersprungen.", file=sys.stderr)
+        return False
+    store.save_haushalt(year, rows, herkunft.Herkunft(
+        art="opendata", probe="summenzeile", url=url,
+        label=f"Ergebnishaushalt {year} (Open-Data-Portal)",
+        fundstelle="Ergebnishaushalt-CSV, eine Zeile je Teilhaushalt plus "
+                   "Zeile „Gesamtergebnishaushalt“",
+        stand=f"Haushaltsjahr {year}"))
+    summe = next((r_ for r_ in rows if r_["is_summe"]), {})
+    print(f"  {year}: {len(rows)} Zeilen aus Open-Data-CSV "
+          f"(Aufwendungen {round((summe.get('aufwendungen') or 0) / 1e6)} Mio. €)")
     return True
 
 
@@ -74,14 +103,23 @@ def main() -> int:
         print("Einlesen:", flush=True)
         if args.year:
             url = args.url or haushalt.HAUSHALT_URLS.get(args.year)
-            if not url and not args.pdf:
-                print(f"Keine bekannte PDF-URL für {args.year} — bitte --url/--pdf angeben.", file=sys.stderr)
+            if not url and not args.pdf and args.year in haushalt.OPENDATA_CSV_URLS:
+                _ingest_year_csv(store, args.year, haushalt.OPENDATA_CSV_URLS[args.year])
+            elif not url and not args.pdf:
+                print(f"Keine bekannte Quelle für {args.year} — bitte --url/--pdf angeben.", file=sys.stderr)
                 return 2
-            _ingest_year(store, args.year, url, args.pdf)
+            else:
+                _ingest_year(store, args.year, url, args.pdf)
         else:
-            for year, url in sorted(haushalt.HAUSHALT_URLS.items()):
+            quellen = {y: ("pdf", u) for y, u in haushalt.HAUSHALT_URLS.items()}
+            for y, u in haushalt.OPENDATA_CSV_URLS.items():
+                quellen.setdefault(y, ("csv", u))  # CSV nur, wo kein PDF lesbar ist
+            for year, (art, url) in sorted(quellen.items()):
                 try:
-                    _ingest_year(store, year, url, None)
+                    if art == "csv":
+                        _ingest_year_csv(store, year, url)
+                    else:
+                        _ingest_year(store, year, url, None)
                 except requests.RequestException as exc:
                     print(f"  {year}: Download fehlgeschlagen ({exc}) — übersprungen.", file=sys.stderr)
 
@@ -95,6 +133,10 @@ def main() -> int:
         src = haushalt.HAUSHALT_URLS.get(newest) or (by_year[newest][0].get("source_url") if by_year[newest] else "")
         questions = haushalt.build_questions(by_year[newest], newest, src)
         questions += haushalt.build_trend_questions(by_year, src)
+        # Aus dem ABSCHLUSS statt dem Plan: die drei Schuldenzahlen, die
+        # Bürgschaften und der Substanzverlust. Sie liefern nur, was in der
+        # Datenbank belegt ist — fehlt eine Quelle, fehlt ihre Frage.
+        questions += haushalt.build_abschluss_questions(store)
         n_new = store.save_quiz_questions(questions)
         # Bestehende Fragen auffrischen (z. B. Trendlinie um neue Jahre verlängern).
         n_upd = store.refresh_quiz_payloads(questions)

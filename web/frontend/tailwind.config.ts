@@ -58,6 +58,25 @@ const config: Config = {
            hier nicht: Es verlangt zusätzlich min-width:1024px, ein schmales
            Desktop-Fenster verlöre die Pfeile also grundlos mit. */
         maus: { raw: "(pointer: fine)" },
+        /* Die Mobil-Schwelle der H4-Boards: unter 744 px stapeln Karten,
+           Konzernkarte und Matrix kippen in ihre Mobil-Form — bewusst NICHT
+           Tailwinds `md` (768), sondern die 744 der Boards (dieselbe Zahl wie
+           `.gb-ablese-leiste` in globals.css). Als BENANNTE Screens, weil die
+           arbiträren `min-[744px]:`-Varianten hier nicht funktionieren:
+           Sobald `screens` raw-Einträge trägt (breit/desk/tab oben), kann
+           Tailwind arbiträre Breiten nicht mehr einsortieren und lässt sie
+           stumm weg — gemessen am 17.08.: die Klasse stand im DOM, CSS gab
+           es keins. */
+        mobil: { raw: "(max-width: 743.98px)" },
+        "ab-tablet": { raw: "(min-width: 744px)" },
+        /* Eigene Schwelle für die Ableseleiste (GB-00), NICHT `ab-tablet`:
+           Ob Name und Betrag nebeneinander passen, hängt an der Länge der
+           Namen, nicht am Gerät. Eine Reihe mit sechs Einträgen wie „Erwerb
+           von Grundstücken und Gebäuden" braucht die Zeilenform schon deutlich
+           unterhalb der Tablet-Grenze; eine mit „2025 · 60,8 Mio. €" käme
+           auch auf 400 px nebeneinander aus. 480 px ist gemessen an der
+           längsten Reihe des Bereichs (Investitionsarten). */
+        "ab-lesezeile": { raw: "(min-width: 480px)" },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

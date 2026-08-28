@@ -107,6 +107,25 @@ jobs:
             .venv/bin/python scripts/backfill_anlagen_ocr.py \
               $LIMIT --max-seiten "$OCR_MAX_SEITEN"
 
+            # Kontonummern und Anschriften aus dem Bestand nehmen. Die
+            # Backfills tun das seit dem 20.08. beim Speichern; dieser Aufruf
+            # fängt, was aus früheren Läufen noch dasteht — und er ist
+            # idempotent, ein zweiter Lauf findet nichts mehr.
+            .venv/bin/python scripts/bereinige_kontaktdaten.py
+
+            # Die gelöschten Chunks maskiert neu rechnen. Ohne diesen Schritt
+            # sind die betroffenen Anlagen nach der Bereinigung nicht mehr
+            # auffindbar — die Sperre wäre dann eine Löschung.
+            #
+            # `fastembed` steht bewusst nicht in requirements.txt; fehlt es,
+            # bleiben die Chunks weg statt falsch, und die Meldung sagt es.
+            if .venv/bin/python -c "import fastembed" 2>/dev/null; then
+              .venv/bin/python scripts/embed_anlagen.py
+            else
+              echo "fastembed fehlt — Chunks bleiben leer bis zum naechsten"
+              echo "weekly_enrich-Lauf. Kein Datenverlust, nur eine Luecke."
+            fi
+
             .venv/bin/python - <<'PY'
             from council.store import CouncilStore
             s = CouncilStore("data/council.sqlite")

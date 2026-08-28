@@ -1,0 +1,199 @@
+[
+  {
+    "id": "fee-waste-why",
+    "question": "Warum steigen die Abfallgebühren?",
+    "allowed_types": ["geld", "thema"],
+    "expected_facets": ["gebuehren"],
+    "required_channels": ["decisions", "budget"],
+    "forbidden_channels": ["debates", "documents"]
+  },
+  {
+    "id": "fee-street-amount",
+    "question": "Wie hoch ist die Straßenreinigungsgebühr?",
+    "allowed_types": ["geld", "thema"],
+    "expected_facets": ["gebuehren"],
+    "required_channels": ["decisions", "budget"],
+    "forbidden_channels": ["debates", "documents"]
+  },
+  {
+    "id": "fee-waste-method",
+    "question": "Wie werden die Müllgebühren berechnet?",
+    "allowed_types": ["geld", "thema"],
+    "expected_facets": ["gebuehren"],
+    "required_channels": ["decisions", "budget"],
+    "forbidden_channels": ["debates"]
+  },
+  {
+    "id": "debt-current",
+    "question": "Wie viel Schulden hat Oldenburg?",
+    "allowed_types": ["geld"],
+    "expected_facets": ["schulden"],
+    "required_channels": ["decisions", "budget"],
+    "forbidden_channels": ["debates", "documents"]
+  },
+  {
+    "id": "audit-findings",
+    "question": "Was hat das Rechnungsprüfungsamt beanstandet?",
+    "allowed_types": ["thema", "geld"],
+    "expected_facets": ["pruefung"],
+    "required_channels": ["decisions", "budget"],
+    "forbidden_channels": ["debates"]
+  },
+  {
+    "id": "mandatory-theatre",
+    "question": "Muss die Stadt das Theater betreiben?",
+    "allowed_types": ["thema", "geld"],
+    "expected_facets": ["produkte"],
+    "required_channels": ["decisions", "budget"],
+    "forbidden_channels": ["debates"]
+  },
+  {
+    "id": "investments-total",
+    "question": "Wie viel investiert die Stadt?",
+    "allowed_types": ["geld"],
+    "expected_facets": ["investitionen", "gebaut"],
+    "required_channels": ["decisions", "budget"],
+    "forbidden_channels": ["debates", "documents"]
+  },
+  {
+    "id": "plan-vs-actual",
+    "question": "Hat die Stadt 2024 mehr ausgegeben als geplant?",
+    "allowed_types": ["geld"],
+    "expected_facets": ["plan", "ist", "kassensicht"],
+    "required_channels": ["decisions", "budget"],
+    "forbidden_channels": ["debates"]
+  },
+  {
+    "id": "tax-income",
+    "question": "Wie hoch waren die Steuereinnahmen?",
+    "allowed_types": ["geld"],
+    "expected_facets": ["plan", "ansatz", "steuern", "ausgleich"],
+    "required_channels": ["decisions", "budget"],
+    "forbidden_channels": ["debates", "documents"]
+  },
+  {
+    "id": "whole-city-cost",
+    "question": "Was kostet die Stadt insgesamt?",
+    "allowed_types": ["geld"],
+    "expected_facets": ["plan", "produkte", "konzern"],
+    "required_channels": ["decisions", "budget"],
+    "forbidden_channels": ["debates"]
+  },
+  {
+    "id": "budget-amendments",
+    "question": "Welche Änderungslisten gab es zum Haushalt 2026?",
+    "allowed_types": ["thema", "geld"],
+    "expected_facets": ["plan", "ansatz", "antraege"],
+    "required_channels": ["decisions", "budget"],
+    "forbidden_channels": ["documents"]
+  },
+  {
+    "id": "latest-kreyenbrueck",
+    "question": "Was wurde zuletzt in Kreyenbrück beschlossen?",
+    "allowed_types": ["thema", "verlauf"],
+    "expected_facets": [],
+    "signals": {"place": true, "latest_decision": true},
+    "required_channels": ["decisions", "places"],
+    "forbidden_channels": ["debates", "documents", "budget"]
+  },
+  {
+    "id": "place-topic",
+    "question": "Welche Beschlüsse betreffen den Fliegerhorst?",
+    "allowed_types": ["thema", "verlauf"],
+    "expected_facets": [],
+    "signals": {"place": true},
+    "required_channels": ["decisions", "places"],
+    "forbidden_channels": ["budget"]
+  },
+  {
+    "id": "explicit-study",
+    "question": "Was steht im Gutachten zum Verkehrslärm?",
+    "allowed_types": ["thema"],
+    "expected_facets": [],
+    "required_channels": ["decisions", "documents"],
+    "forbidden_channels": ["budget"]
+  },
+  {
+    "id": "party-position",
+    "question": "Was sagte die SPD zum Stadionneubau?",
+    "allowed_types": ["partei"],
+    "expected_facets": [],
+    "required_channels": ["decisions", "debates"],
+    "forbidden_channels": ["budget", "documents"]
+  },
+  {
+    "id": "person-position",
+    "question": "Was sagte Sebastian Beer zum Fliegerhorst?",
+    "allowed_types": ["person", "thema"],
+    "expected_facets": [],
+    "signals": {"person": true},
+    "required_channels": ["decisions", "debates"],
+    "forbidden_channels": ["budget"]
+  },
+  {
+    "id": "future-council",
+    "question": "Wann tagt der Rat das nächste Mal?",
+    "allowed_types": ["thema", "sitzung"],
+    "expected_facets": [],
+    "signals": {"sessions": true},
+    "required_channels": ["decisions", "sessions", "future_agenda"],
+    "forbidden_channels": ["press", "debates", "documents", "budget"]
+  },
+  {
+    "id": "past-session",
+    "question": "Was hat der Verkehrsausschuss am 17. Juni 2026 beschlossen?",
+    "allowed_types": ["thema", "sitzung"],
+    "expected_facets": [],
+    "signals": {"sessions": true},
+    "required_channels": ["decisions", "sessions"],
+    "forbidden_channels": ["debates", "documents", "budget"]
+  },
+  {
+    "id": "official-update",
+    "question": "Was hat die Stadt zuletzt zum Radverkehr mitgeteilt?",
+    "allowed_types": ["thema", "verlauf"],
+    "expected_facets": [],
+    "required_channels": ["decisions", "press"],
+    "forbidden_channels": ["budget"]
+  },
+  {
+    "id": "committee-metadata",
+    "question": "Welcher Ausschuss hat über die Flötenteichschule beraten?",
+    "allowed_types": ["thema", "sitzung"],
+    "expected_facets": [],
+    "required_channels": ["decisions"],
+    "forbidden_channels": ["debates", "documents", "budget"]
+  },
+  {
+    "id": "vote-metadata",
+    "question": "Wie lautete das Abstimmungsergebnis zum Stadion?",
+    "allowed_types": ["thema"],
+    "expected_facets": [],
+    "required_channels": ["decisions"],
+    "forbidden_channels": ["debates", "documents", "budget"]
+  },
+  {
+    "id": "project-timeline",
+    "question": "Wie hat sich die Diskussion um den Stadionneubau entwickelt?",
+    "allowed_types": ["verlauf"],
+    "expected_facets": [],
+    "required_channels": ["decisions", "debates"],
+    "forbidden_channels": ["budget"]
+  },
+  {
+    "id": "plain-decision",
+    "question": "Was wurde zum Radweg an der Donnerschweer Straße beschlossen?",
+    "allowed_types": ["thema"],
+    "expected_facets": [],
+    "required_channels": ["decisions"],
+    "forbidden_channels": ["budget", "documents"]
+  },
+  {
+    "id": "definition",
+    "question": "Was ist der Verwaltungsausschuss?",
+    "allowed_types": ["thema"],
+    "expected_facets": [],
+    "required_channels": ["decisions"],
+    "forbidden_channels": ["budget", "debates", "documents"]
+  }
+]

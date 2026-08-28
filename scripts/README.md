@@ -18,6 +18,7 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 | `remind_setup.py` | `0 11 * * *` | Eine Erinnerungsmail je Konto mit offener Einrichtung (≥ 48 h) |
 | `abendmeldungen.py` | `0 18 * * *` | Vorabend-Erinnerung (täglich) + Wochenüberblick (sonntags), Design 30a |
 | `weekly_enrich.py` | `0 3 * * 0` | LLM-/Embedding-Backfills → ruft die Sub-Steps (s.u.) |
+| `check_finanzdaten.py` | 14-tägig `30 4 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand nachziehen; meldet ausbleibende Jahrgänge |
 
 ## Sub-Steps (von einem Cron-Skript aufgerufen, nicht selbst geplant)
 
@@ -43,6 +44,9 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 | `geocode_decision_locations.py` | Neue Beschluss-Orte geokodieren sowie stabile Katalog- und Ortsbereichs-IDs ableiten |
 | `revalidate_decision_locations.py [--apply]` | Gespeicherte Ortslinks mit aktuellen Präzisionsregeln prüfen/reparieren (Dry-Run-Default) |
 | `purge_nwz_data.py` | Gescrapte NWZ-Artikeldaten aus den DBs entfernen (Dry-Run-Default) |
+| `ingest_finanzberichte.py`, `ingest_pruefberichte.py` | **Alle** Haushalts-Jahrgänge neu einlesen — der Weg, einen verbesserten Parser über den Bestand zu ziehen. Neue Jahrgänge holt `check_finanzdaten.py` von allein; diese Skripte fassen auch Vorhandenes an |
+| `ingest_haushalt.py` | Haushaltsplan eines Jahres von oldenburg.de laden (der Cron lädt bewusst nichts herunter) |
+| `check_namensformen.py` | Bericht: Welche Namensformen könnten zu **einer** Person gehören? Schreibt nichts — geprüfte Paare trägt ein Mensch in `council/namensformen.py` ein |
 
 > **Ersten Admin einrichten:** Die Registrierung vergibt keine Rollen. Die Adresse
 > aus `WEB_ADMIN_EMAIL` wird zum Admin, sobald sie ihre E-Mail bestätigt hat (und
@@ -56,3 +60,4 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 | Skript | Zweck |
 |--------|-------|
 | `eval_ai.py` | Regressions-Guard gegen das Gold-Set (siehe [../eval/README.md](../eval/README.md)) |
+| `changelog_schnitt.py` | Versionsschnitt: die Fragmente aus `../changelog.d/` in `../CHANGELOG.md` gießen (`<x.y.z>`, `--trocken`, `--pruefen`). Läuft im Release-PR, nicht per Cron |

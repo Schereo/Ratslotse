@@ -11,7 +11,13 @@ sollen messbar besser/schlechter werden, statt „gefühlt".
 | `watcher` | Tagesordnung → Thema | `council.watcher._classify_agenda` | Label-Sets | `cases_watcher.json` |
 | `committee` | Routine-Filter (Inhalt ja/nein) | `council.committee_summary.summarize_agenda` | binär | `cases_committee.json` |
 | `qa` | KI-Frage: Retrieval + Antwort-Zitate (A/B mit/ohne Tragweite) | `council.qa` + `council.embeddings` | Trefferquote/MRR + Zitat-Metriken | `cases_qa.json` |
+| `qa_routing` | KI-Frage: Fragetyp, Recherchekanäle und Haushaltsquellen | `council.qa.analyse_query` + Konsistenzschicht | Typ-/Kanal-/Facetten-Passraten | `cases_qa_routing.json` |
 | `locations` | Beschluss → konkrete physische Orte | `council.locations` | Precision/Recall/F1 | `cases_locations.json` |
+
+Die `qa_routing`-Suite braucht nur den API-Key, keine Datenbank. Sie ist Teil
+von `run_all.py` und prüft auch, dass Debatten, Dokumente oder Haushaltsdaten
+nicht vorsorglich in unpassende Fragen geraten. Ihre Auswertungslogik und die
+24 Goldfälle laufen offline in `tests/test_qa_routing_eval.py`.
 
 Die `qa`-Suite (`run_qa.py`) braucht die **echte** `council.sqlite` (Embeddings,
 FTS, Reranker-Modell) und läuft deshalb praktisch nur auf dem Server:
@@ -35,7 +41,8 @@ python eval/run_committee.py  # nur committee
 python eval/run_locations.py  # kostenlose Regex-/Stadtteillisten-Baseline
 python eval/run_locations.py --llm  # vollständige Orts-Pipeline
 python eval/audit_location_sample.py --db data/council.sqlite --method llm --limit 50 --current-rules
-python eval/run_all.py        # alle Suiten + Scoreboard
+python eval/run_qa_routing.py # nur Routing/Konsistenz der KI-Frage
+python eval/run_all.py        # DB-freie LLM-Suiten + Scoreboard
 
 # Baseline-Workflow:
 python eval/run_all.py --save            # Ergebnis nach eval/results/<suite>/ schreiben
@@ -55,16 +62,15 @@ Verpassern (False Negatives) aus dem Produktivbetrieb.
   (nicht-öffentliche TOPs werden nie klassifiziert → dürfen nicht in `expected_matches` stehen)
 - **committee** (`cases_committee.json`): `{id, note, committee, session_date, session_time, location, agenda_items:[…], expected:bool}`
 
-Für den Harness gibt es derzeit **keinen** eigenen Test; die frühere Zusage, dass jede `expected_matches`-
-Referenz auf ein real existierendes Thema/Artikel/öffentlichen TOP zeigt — ein
-Tippfehler im Case fällt damit sofort auf.
+- **qa_routing** (`cases_qa_routing.json`): Frage, erlaubte Fragetypen, exakte
+  Haushaltsfacetten sowie erforderliche/verbotene Recherchekanäle. Neue Fälle
+  sollten vorzugsweise aus echtem Nutzerfeedback oder einem beobachteten
+  Fehlrouting stammen.
 
 ## Offline-testbar
 
-Die Harness-Logik (Metriken, Runner, Save/Compare) und die `build_predict()`-
-Verdrahtung jeder Suite sind **nicht** automatisiert abgesichert (`tests/test_eval_harness.py` existierte nie bzw. nicht mehr) —
-getestet — über injizierte Mock-Prädiktoren und einen Fake-OpenAI-Client.
-Nur das Erzeugen einer echten Baseline braucht den Key.
+Die QA-Auswertungen sind über injizierte Prädiktoren offline testbar. Nur das
+Erzeugen einer echten Modell-Baseline braucht den Key.
 ```bash
-python -m pytest tests/test_qa_eval.py -v   # deckt nur die QA-Seite ab
+python -m pytest tests/test_qa_eval.py tests/test_qa_routing_eval.py -v
 ```

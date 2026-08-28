@@ -12,7 +12,7 @@ laufen über **OpenRouter** (siehe [ADR 0001](/docs/adr/0001-openrouter/)).
 
 Die Pipeline-Qualität entscheidet über den Produktwert: Sie bestimmt, wie
 zuverlässig relevante Tagesordnungspunkte und Beschlüsse zu den Themen der
-Nutzer gefunden werden — bei hoher **Precision** (keine Fehltreffer) *und*
+Nutzer*innen gefunden werden — bei hoher **Precision** (keine Fehltreffer) *und*
 brauchbarem **Recall**.
 
 Wichtig vorab: **Das Scraping selbst nutzt kein LLM.** Tagesordnungen und
@@ -61,7 +61,7 @@ flowchart TD
 | **Fundstück des Tages** (kuratierte Archivfunde) | bewertete Beschlüsse | wöchentlich, 21 Tage Vorlauf |
 | **Anreicherung** (Entitäten, Embeddings, Rückblicke) | Beschlüsse | wöchentlich |
 | **Quiz-Fragen** (Generierung + Verify-Pass) | Wikipedia · Stadt-Website · Ratsdaten | Backfill (manuell + wöchentlich) |
-| **KI-Frage „Frag den Rat"** (Ratsgespräch) | Beschlüsse + Vorlagen-Chunks + Stadt-Pressemitteilungen + laufende Bauleitplan-Beteiligungen; Anschlussfragen mit Gesprächskontext | auf Zuruf (Streaming) |
+| **KI-Frage „Frag den Rat"** (Ratsgespräch) | Beschlüsse + Vorlagen-Chunks + Stadt-Pressemitteilungen + laufende Bauleitplan-Beteiligungen + bei Geldfragen der [Haushalts-Bestand](#frag-den-rat-welche-quelle-eine-geldfrage-zieht); Anschlussfragen mit Gesprächskontext | auf Zuruf (Streaming) |
 
 Tragweite, Gesprächswert und der daraus gemischte Wichtigkeits-Wert haben eine
 eigene Seite: [Bewertungs-Scores](/docs/bewertungen/).
@@ -79,11 +79,11 @@ eigene Seite: [Bewertungs-Scores](/docs/bewertungen/).
 
 ## Watcher / Themen-Matching
 
-- Pro Nutzer werden nur **zukünftige** Sitzungen mit Tagesordnung
-  klassifiziert, die dieser Nutzer noch nicht gesehen hat — ändert sich eine
+- Pro Konto werden nur **zukünftige** Sitzungen mit Tagesordnung
+  klassifiziert, die dieses Konto noch nicht gesehen hat — ändert sich eine
   Tagesordnung, wird erneut geprüft und benachrichtigt.
 - Das LLM bekommt die öffentlichen TOPs und die nummerierte Themenliste des
-  Nutzers und liefert die Treffer-Paare als JSON. Alerts werden dedupliziert.
+  Kontos und liefert die Treffer-Paare als JSON. Alerts werden dedupliziert.
 - Der Prompt liegt zentral in der Prompt-Verwaltung und ist über das Admin-UI
   editierbar.
 
@@ -196,7 +196,7 @@ Erklärung, Kategorie und **Quellenangabe**; es erfindet nichts frei.
 Ein zweiter, günstiger **Verify-Pass** (kleines Modell) verwirft Fragen, die
 nicht eindeutig aus der Quelle belegbar sind. Antwortoptionen werden gemischt
 (die richtige Antwort liegt sonst gern auf Position A), Dubletten fängt ein
-`content_hash`. Zusätzlich bewerten **Nutzer:innen** jede Frage nach dem
+`content_hash`. Zusätzlich bewerten **Nutzer*innen** jede Frage nach dem
 Beantworten (👍/👎) — schlecht bewertete erscheinen in einer Admin-Liste und
 werden ausgemustert; da der Backfill nur Gebiete **unter** der Ziel-Fragenzahl
 auffüllt, erzeugt der nächste Lauf automatisch Ersatz.
@@ -251,6 +251,105 @@ Wikipedia-Artikel statt auf die Gebiets-Seite. Zu kniffligen Fragen kann es eine
 optionalen **Tipp** geben (vor dem Auflösen einblendbar), und Fachbegriffe in der
 Erklärung (z. B. „Vergnügungsstätte", „Bebauungsplan") unterlegt das Frontend mit
 einem Hover-Glossar.
+
+## Frag den Rat: welche Quelle eine Geldfrage zieht
+
+Die KI-Frage antwortet nicht nur aus Beschlüssen. Zu Geldfragen liegen
+vierzehn weitere Quellen bereit — der ganze
+[Haushalts-Bestand](/docs/haushalt/). Alle anzuhängen wäre die bequeme und die
+falsche Lösung: Jeder Baustein kostet Platz im Antwort-Prompt, in dem schon 20
+Beschlüsse, Debatten-Auszüge, Pressemitteilungen und Steckbriefe stehen.
+
+**Welche Quelle gefragt wird, entscheidet `qa.geld_facetten` am
+Frage-Wortlaut** — deterministisch, ohne LLM-Call:
+
+| Facette | Quelle | Beantwortet | Bestand endet |
+|---------|--------|-------------|---------------|
+| `schulden` | `council_schulden` | „Wie viel Schulden hat Oldenburg?" (Bestand am Stichtag) | 2025 |
+| `stellenplan` | `council_stellenplan` | „Wie viele Stellen sind unbesetzt?" | Planjahr |
+| `investitionen` | `council_investitionen` | „Was wird gebaut?" (Finanzhaushalt) | Planjahr |
+| `antraege` | `council_decisions` (`subvote`) | „Wer wollte den Haushalt ändern?" | letzter Jahrgang |
+| `plan` | `council_haushalt` | „Was kostet die Feuerwehr?" (Teilhaushalt) | Planjahr |
+| `ansatz` | `council_ergebnishaushalt` | „Was nimmt die Stadt ein?" (Ertrags-/Aufwandsarten) | Planjahr |
+| `ist` | `council_ergebnisrechnung` | „Hat die Stadt mehr ausgegeben als geplant?" | 2024 |
+| `gruende` | `council_abweichungsgruende` | „Warum kam mehr Gewerbesteuer rein?" | 2024 |
+| `produkte` | `council_produkte` | „Muss die Stadt das Theater betreiben?" (Rechtsgrundlage) | 2023 |
+| `pruefung` | `council_pruefberichte` | „Was hat das Rechnungsprüfungsamt beanstandet?" | 2023 |
+| `konzern` | `council_konzern_*` | „Was kostet die Stadt insgesamt?" (1.242 statt 799 Mio.) | 2024 |
+| `vergleich` | `council_staedtevergleich` | „Wie steht Oldenburg da?" | LSN-Jahrgang |
+| `steuern` | `council_steuern` | „Wie hoch waren die Steuereinnahmen?" (Ist) | Open-Data-Jahrgang |
+| `ausgleich` | `council_steuerkraft` | „Was bringt eine Hebesatz-Erhöhung wirklich?" | Ausgleichsjahr |
+
+Die vier oberen kamen am 17.08. dazu, und drei von ihnen mussten dafür einer
+Quelle **weggenommen** werden: „Schulden" und „Investitionen" standen im
+Muster für `plan` und zogen damit den Ergebnishaushalt — in dem der
+Schuldenstand nicht vorkommt und keine einzige Investition steht. Gemessen an
+20 typischen Fragen zu diesen vier Schichten: vorher 0 Treffer, nachher 20.
+
+Jeder der vier Bausteine trägt außerdem eine Grenze, die in die Antwort
+gehört und ohne die er schadet:
+
+- **Schulden** sind ein *Bestand* am Stichtag, kein Jahresbetrag — und sie
+  zählen die Stadt als Rechtsträger (Kernhaushalt **und** Eigenbetriebe, ohne
+  die rechtlich selbstständigen Beteiligungen). Der Wortlaut dieser Abgrenzung
+  steht einmal in `council.schulden.ABGRENZUNG` und wird von dort zitiert, nie
+  nachformuliert.
+- **Investitionen** stehen im Finanzhaushalt, die Aufwendungen im
+  Ergebnishaushalt: zwei Haushalte, deren Beträge nicht verrechenbar sind.
+- Der **Stellenplan** bindet „besetzt" und „nicht besetzt" an die
+  *Vorjahresspalte*. `Stellen − besetzt` mischt zwei Stichtage und steht in
+  keinem Dokument.
+- Die **Änderungslisten** sagen, *wer* etwas ändern wollte und ob es durchkam
+  — nicht *was genau*. Der Inhalt liegt in Anlagen ohne Volltext; ohne diesen
+  Satz füllt das Modell die Lücke mit Plausiblem.
+
+Drei Entscheidungen dahinter, die sich beim Weiterbauen leicht umdrehen
+lassen — und dann Schaden anrichten:
+
+1. **Nicht am LLM-Fragetyp.** Der Typ `geld` ist ein Modell-Urteil und lautet
+   für „Was hat das Rechnungsprüfungsamt beanstandet?" mit gutem Grund
+   `thema` — es ist keine Betragsfrage. Hinge der Haushalts-Kontext am Typ,
+   bekämen genau diese Fragen nichts. `geld` bleibt trotzdem als Auffangnetz:
+   Sagt das Modell `geld` und trifft kein Muster, kommen die Plan-Zahlen.
+2. **Nicht an den expandierten Suchbegriffen.** Der Analyse-Prompt verlangt
+   ausdrücklich eine Umformulierung „aus anderem Blickwinkel — z. B. die
+   Sachstands-Frage zusätzlich als Finanzierungs-Frage". Wer die Facetten
+   daran festmacht, zieht den halben Haushalt in jede Stadion-Frage. Der
+   **Wortlaut** entscheidet, ob gefragt wird; die **Expansion** entscheidet,
+   was die Quelle liefert.
+3. **Feuern heißt nicht anhängen.** Eine Facette kostet zunächst nur eine
+   Datenbank-Abfrage. „Was kostete der Stadionumbau?" befragt die Produkt- und
+   die Plan-Ebene, findet dort nichts (ein Stadionumbau ist weder Produkt noch
+   Teilhaushalt) und schreibt kein Zeichen in den Prompt.
+
+Der Prompt-Abschnitt ist auf **4.500 Zeichen** gedeckelt
+(`qa.GELD_MAX_CHARS`); reißt das Budget, fallen die **hinteren** Facetten ganz
+weg statt alle in der Mitte abzubrechen. Echte Fragen kosten gemessen
+**616–1.755 Zeichen** — der Deckel ist für den Normalfall keine Fessel. Er
+greift erst, wenn eine Frage ein halbes Dutzend Quellen auf einmal zieht;
+ungedeckelt wären es dann rund 8.300 Zeichen.
+
+Genau daran hängt auch die **Reihenfolge** in `qa.GELD_FACETTEN`: Die drei
+neuen Bestands-Quellen stehen vorn, weil sie nur bei ihren eigenen,
+eindeutigen Wörtern feuern — wer nach Schulden fragt, darf den Schuldenstand
+nicht als Erstes verlieren. `antraege` steht bewusst **nicht** vorn, obwohl es
+genauso eng auslöst: Der Baustein ist mit 1.379 Zeichen der dickste, und vorn
+gestellt fraß er zusammen mit den anderen dreien das ganze Budget — eine
+Frage, die alles zog, behielt danach von den zehn älteren Quellen keine
+einzige. Seine eigene Frage zieht sonst nur `plan` und `ansatz`, und die
+stehen beide dahinter; hinter `produkte` kostet er also nichts.
+
+Jede Zeile trägt ihren **Beleg** aus `council_herkunft` (Dokument, Fundstelle,
+Seite, Stichtag) und ihr **Jahr** — die Quellen enden zu verschiedenen
+Zeitpunkten, und eine Antwort, die das verschweigt, behauptet eine Aktualität,
+die die Daten nicht haben. Haushaltszahlen sind keine Beschlüsse und bekommen
+deshalb nie eine `[id]`.
+
+Gemessen wird das Ganze in `tests/test_qa_geldquellen.py`: ein Korpus echter
+Fragen mit erwarteten Quellen, dazu Negativfälle (Fragen, die *nichts* laden
+dürfen) und Formulierungs-Varianten derselben Frage. Ein manuell startbarer
+Lauf am Dateiende prüft zusätzlich die LLM-Klassifikation gegen denselben
+Korpus.
 
 ## LLM-Integration
 

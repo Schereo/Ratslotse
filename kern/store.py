@@ -7,7 +7,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable
+from typing import Iterable
 
 
 logger = logging.getLogger("kern.store")
@@ -240,7 +240,7 @@ CREATE TABLE IF NOT EXISTS council_agenda_matches (
 );
 CREATE INDEX IF NOT EXISTS idx_cam_owner ON council_agenda_matches(owner_id, ksinr);
 
--- Merkt je Nutzer:in + Sitzung, welcher Tagesordnungs-Stand (Hash) schon
+-- Merkt je Nutzer*in + Sitzung, welcher Tagesordnungs-Stand (Hash) schon
 -- klassifiziert wurde — die LLM-Klassifikation läuft nur bei Änderungen.
 CREATE TABLE IF NOT EXISTS council_agenda_classified (
   owner_id      INTEGER NOT NULL,
@@ -1590,7 +1590,10 @@ class Store:
                 "debatten": extras.get("debatten") or [],
                 "presse": extras.get("presse") or [],
                 "anlagen": extras.get("anlagen") or [],
-                "parteien": extras.get("parteien") or []}
+                "parteien": extras.get("parteien") or [],
+                # Die Grafik zur Antwort — vor diesem Nachtrag geteilte
+                # Antworten haben keine; die Seite zeigt dann keine.
+                "grafik": extras.get("grafik")}
 
     # ---- „Gründliche Recherche" (RG-10, Task 34) ---------------------------
 
@@ -1948,6 +1951,8 @@ class Store:
                 "SELECT MAX(day) FROM user_activity WHERE owner_id = ?", (uid,)).fetchone()[0],
             "apple_linked": bool(u.get("apple_sub")), "has_password": bool(u.get("password_set", 1)),
             "delivery_channel": u.get("delivery_channel", "email"),
+            # Einwilligung „Gespräche speichern": None = nie gefragt, 1 = an, 0 = aus.
+            "qa_speichern": u.get("qa_speichern"),
             # Admin-steuerbare Frage-Limits (10.08.26) — fürs Formular im Detail.
             "deep_limit": u.get("deep_limit"), "limits_frei": bool(u.get("limits_frei")),
             "features": {"ki_frage": feats.get("ki_frage", 0), "suche": feats.get("suche", 0),
@@ -2067,6 +2072,31 @@ class Store:
         ).fetchall()
         return {r["topic_id"]: r["n"] for r in rows}
 
+    def unseen_hit_ids(self, owner_id: int) -> dict[int, set[int]]:
+        """{topic_id: {decision_id, …}} der noch nicht gesehenen Treffer.
+
+        Dieselbe Menge, die ``unseen_hit_counts`` zählt — nur eben aufgelöst.
+        Die Themen-Karte zeigt seit dem Umbau vom 28.08.2026 ihre jüngsten
+        Treffer einzeln und setzt vor die neuen einen Punkt; dafür reicht eine
+        Zahl nicht mehr. Bewusst dieselbe Abfrage inklusive ``JOIN topics``:
+        Ohne ihn zählten Treffer eines gelöschten Themas mit, und die beiden
+        Ansichten (Abzeichen „2 neue" und die Punkte davor) gingen auseinander.
+        """
+        rows = self._conn.execute(
+            """SELECT m.topic_id, m.decision_id
+               FROM council_topic_matches m
+               JOIN topics t ON t.id = m.topic_id AND t.owner_id = m.owner_id
+               LEFT JOIN topic_hits_seen s
+                 ON s.owner_id = m.owner_id AND s.topic_id = m.topic_id
+                    AND s.decision_id = m.decision_id
+               WHERE m.owner_id = ? AND s.decision_id IS NULL""",
+            (owner_id,),
+        ).fetchall()
+        out: dict[int, set[int]] = {}
+        for r in rows:
+            out.setdefault(r["topic_id"], set()).add(r["decision_id"])
+        return out
+
     def neue_treffer_seit_uebersicht(self, owner_id: int) -> int:
         """Zahl der Treffer, die seit dem letzten Besuch der Themen-Übersicht
         dazugekommen sind — der Zähler an „Meine Themen" (Seitenleiste und
@@ -2121,8 +2151,33 @@ class Store:
             )
         return cur.rowcount
 
+    def mark_topic_hit_seen(self, owner_id: int, topic_id: int, decision_id: int) -> bool:
+        """EINEN Treffer als gesehen markieren — Rückgabe: war er es noch nicht?
+
+        Seit dem 28.08.2026 stehen die Treffer direkt auf der Karte, man klickt
+        also einzelne an. Aus „2 neue" soll dann „1 neuer" werden, nicht
+        „gelesen" für alles (Tims Wunsch). Idempotent wie
+        ``mark_topic_hits_seen`` — nur eben punktuell.
+
+        Das ``SELECT`` aus ``council_topic_matches`` ist die Zugangsprüfung:
+        Nur was wirklich ein Treffer DIESES Themas DIESER Nutzer:in ist, darf
+        eine Zeile bekommen. Ohne den Umweg ließe sich die Tabelle über einen
+        direkten API-Aufruf mit beliebigen decision_ids füllen.
+        """
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                """INSERT OR IGNORE INTO topic_hits_seen (owner_id, topic_id, decision_id, seen_at)
+                   SELECT ?, m.topic_id, m.decision_id, ?
+                   FROM council_topic_matches m
+                   WHERE m.topic_id = ? AND m.owner_id = ? AND m.decision_id = ?""",
+                (owner_id, now, topic_id, owner_id, decision_id),
+            )
+        return cur.rowcount > 0
+
     def agenda_classified_hash(self, owner_id: int, ksinr: int) -> str | None:
-        """Hash des zuletzt für diese Nutzer:in klassifizierten
+        """Hash des zuletzt für diese Nutzer*in klassifizierten
         Tagesordnungs-Stands — None, wenn noch nie klassifiziert (RL-902)."""
         row = self._conn.execute(
             "SELECT agenda_hash FROM council_agenda_classified WHERE owner_id = ? AND ksinr = ?",
@@ -2133,7 +2188,7 @@ class Store:
     def replace_agenda_matches(
         self, owner_id: int, ksinr: int, agenda_hash: str, matches: dict[int, list[str]]
     ) -> None:
-        """Treffer einer Sitzung für eine Nutzer:in komplett ersetzen und den
+        """Treffer einer Sitzung für eine Nutzer*in komplett ersetzen und den
         klassifizierten Stand festhalten. matches: {topic_id: [item_numbers]}.
         Voller Austausch, damit bei geänderter Tagesordnung keine veralteten
         Treffer stehen bleiben (RL-902)."""
@@ -2161,7 +2216,7 @@ class Store:
             )
 
     def has_agenda_match(self, owner_id: int, ksinr: int) -> bool:
-        """Hat diese Nutzer:in für diese Sitzung schon einen Themen-Treffer?
+        """Hat diese Nutzer*in für diese Sitzung schon einen Themen-Treffer?
 
         Design 30a: „Themen-Treffer gewinnt" — wer bereits gehört hat, WELCHER
         Tagesordnungspunkt ihn betrifft, braucht daneben nicht die Meldung, dass

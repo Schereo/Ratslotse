@@ -27,6 +27,7 @@ export default defineConfig({
 					items: [
 						{ slug: 'architektur' },
 						{ slug: 'betrieb' },
+						{ slug: 'release-dossier' },
 					],
 				},
 				{
@@ -41,6 +42,8 @@ export default defineConfig({
 					label: 'Produkt',
 					items: [
 						{ slug: 'beschluesse' },
+						{ slug: 'haushalt' },
+						{ slug: 'haushalt-quellen-recherche' },
 						{ slug: 'app-und-konten' },
 					],
 				},

@@ -89,7 +89,10 @@ def test_analyse_faellt_bei_muell_auf_thema(monkeypatch):
 
 
 def test_analyse_kondensiert_mit_verlauf(monkeypatch):
-    calls = _llm_antwort(monkeypatch, json.dumps(
+    # Ohne Zähler-Bindung, anders als oben: Der zweite `_llm_antwort`-Aufruf
+    # weiter unten ersetzt den Stub, dieser Zähler wäre danach bedeutungslos.
+    # Was dieser Test belegt, steht in `b` — nicht in der Zahl der Aufrufe.
+    _llm_antwort(monkeypatch, json.dumps(
         {"frage": "Was kostet der Neubau der Cäcilienbrücke?",
          "begriffe": "Kosten Neubau Cäcilienbrücke", "typ": "geld", "partei": None}))
     verlauf = [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
@@ -171,6 +174,22 @@ def test_rechercheplan_konsistenz_verknuepft_bedarf_und_kanal():
     assert resolved["consistency_added"] == [
         "budget", "debates", "documents", "press", "future_agenda",
     ]
+
+
+@pytest.mark.parametrize("question", [
+    "Was hat das Rechnungsprüfungsamt beanstandet?",
+    "Muss die Stadt das Theater betreiben?",
+    "Warum steigen die Abfallgebühren?",
+])
+def test_deterministische_finanzquelle_macht_budget_zum_pflichtkanal(question):
+    """Auch bei Modelltyp ``thema`` muss der Plan den realen Datenzugriff zeigen."""
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "fact", "channels": ["decisions"], "needs": [],
+    }})
+    resolved = qa.research_plan_with_mandatory(
+        plan, typ="thema", question=question)
+    assert "budget" in resolved["channels"]
+    assert "budget" in resolved["mandatory_channels"]
 
 
 def test_current_info_koppelt_presse_und_zukunft_nicht_mehr_pauschal():
@@ -283,6 +302,47 @@ def test_rechercheplan_entfernt_debatten_bei_neuester_ortsentscheidung():
         plan, typ="ort", place=True, latest_decision=True)
     assert resolved["channels"] == ["decisions", "places"]
     assert resolved["suppressed_channels"] == ["debates"]
+
+
+@pytest.mark.parametrize("question,typ", [
+    ("Warum steigen die Abfallgebühren?", "geld"),
+    ("Was hat das Rechnungsprüfungsamt beanstandet?", "thema"),
+    ("Was ist der Verwaltungsausschuss?", "thema"),
+])
+def test_strukturierte_antworten_entfernen_vorsorgliche_debatten(question, typ):
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "fact", "channels": ["decisions", "debates"],
+        "needs": ["statements"],
+    }})
+    resolved = qa.research_plan_with_mandatory(plan, typ=typ, question=question)
+    assert "debates" not in resolved["channels"]
+    assert "debates" in resolved["suppressed_channels"]
+
+
+def test_ausdrueckliche_haushaltsdebatte_behaelt_debattenkanal():
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "timeline", "channels": ["decisions", "debates"],
+        "needs": ["statements"],
+    }})
+    resolved = qa.research_plan_with_mandatory(
+        plan, typ="verlauf", question="Wie lief die Haushaltsdebatte 2026?")
+    assert "debates" in resolved["channels"]
+    assert "debates" not in resolved["suppressed_channels"]
+
+
+@pytest.mark.parametrize("question,typ", [
+    ("Welche Änderungslisten gab es zum Haushalt 2026?", "geld"),
+    ("Was wurde zum Radweg an der Donnerschweer Straße beschlossen?", "thema"),
+    ("Was ist der Verwaltungsausschuss?", "thema"),
+])
+def test_strukturierte_antworten_entfernen_vorsorgliche_dokumente(question, typ):
+    plan = qa._research_plan({"rechercheplan": {
+        "intent": "fact", "channels": ["decisions", "documents"],
+        "needs": ["documents"],
+    }})
+    resolved = qa.research_plan_with_mandatory(plan, typ=typ, question=question)
+    assert "documents" not in resolved["channels"]
+    assert "documents" in resolved["suppressed_channels"]
 
 
 def test_recherchekanal_nur_bei_validem_plan_gesteuert():
@@ -504,3 +564,101 @@ def test_beschluss_kontext_traegt_deutsches_datum():
     prompt = messages[0]["content"]
     assert "01.06.2026" in prompt
     assert "2026-06-01" not in prompt
+
+
+# --- Geld-Kontext: Plan, Ist und Finanzausgleich getrennt (Tim, 16.08.) -------
+# Der Geld-Baustein kannte bis dahin nur die Plan-Zahlen des neuesten Jahres.
+# Jetzt kommen Ist-Steuereinnahmen und die NFAG-Mechanik dazu — die Trennung
+# ist der springende Punkt: Plan ≠ Ist, sonst behauptet die Antwort Einnahmen,
+# die noch niemand abgerechnet hat.
+
+def test_steuern_block_trennt_ist_von_plan():
+    ctx = qa._steuern_block([{"art": "Gewerbesteuer (-umlage)", "jahr": 2025,
+                              "betrag": 222117000.0, "jahr_davor": 2015,
+                              "betrag_davor": 120000000.0}])
+    assert "IST-Zahlen" in ctx and "NICHT der Haushaltsplan" in ctx
+    assert "222.117.000" in ctx and "120.000.000" in ctx
+    assert "2015" in ctx  # Entwicklung wird mitgegeben
+    assert qa._steuern_block([]) == ""
+    # „insgesamt" bekommt einen sprechenden Namen statt des CSV-Schlüssels.
+    assert "Steuereinnahmen insgesamt" in qa._steuern_block(
+        [{"art": "insgesamt", "jahr": 2025, "betrag": 387208000.0}])
+
+
+def test_steuerkraft_block_nennt_die_daempfer_regel():
+    ctx = qa._steuerkraft_block({"jahr": 2024, "messzahl": 325716249.0,
+                                 "zuweisungen": 69209992.0, "jahr_davor": 2023,
+                                 "messzahl_davor": 279815776.0,
+                                 "zuweisungen_davor": 99569120.0})
+    assert "FINANZAUSGLEICH" in ctx
+    assert "325.716.249" in ctx and "69.209.992" in ctx
+    # Die Regel selbst muss drinstehen — ohne sie klingt jede Mehreinnahme
+    # nach vollem Plus für die Stadt.
+    assert "sinken die Schlüsselzuweisungen" in ctx
+    assert qa._steuerkraft_block(None) == ""
+
+
+def test_steuern_fuer_begriffe_matcht_kuratierte_synonyme(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        for jahr, art, betrag in [
+            (2025, "Gewerbesteuer (-umlage)", 222117000.0),
+            (2015, "Gewerbesteuer (-umlage)", 120000000.0),
+            (2025, "Grundsteuer A+B", 32585000.0),
+            (2025, "insgesamt", 387208000.0),
+        ]:
+            store._conn.execute(
+                "INSERT INTO council_steuern (jahr, art, betrag, fetched_at) VALUES (?,?,?,'')",
+                (jahr, art, betrag))
+
+    treffer = store.steuern_fuer_begriffe(["Wie", "hoch", "ist", "die", "Gewerbesteuer"])
+    assert [t["art"] for t in treffer] == ["Gewerbesteuer (-umlage)"]
+    assert treffer[0]["betrag"] == 222117000.0
+    assert treffer[0]["jahr_davor"] == 2015 and treffer[0]["betrag_davor"] == 120000000.0
+
+    # Allgemeine Geldfrage → Gesamtsumme; unpassende Frage → nichts.
+    assert [t["art"] for t in store.steuern_fuer_begriffe(["Steuereinnahmen"])] == ["insgesamt"]
+    assert store.steuern_fuer_begriffe(["Radweg", "Bauantrag"]) == []
+    # Satzzeichen dürfen nicht am Match hindern.
+    assert store.steuern_fuer_begriffe(["Grundsteuer?"])[0]["art"] == "Grundsteuer A+B"
+    store.close()
+
+
+def test_steuerkraft_kontext_braucht_zwei_jahre(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_steuerkraft (jahr, messzahl, zuweisungen, fetched_at) "
+            "VALUES (2023, 279815776, 99569120, '')")
+    assert store.steuerkraft_kontext() is None  # ein Jahr reicht nicht
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_steuerkraft (jahr, messzahl, zuweisungen, fetched_at) "
+            "VALUES (2024, 325716249, 69209992, '')")
+    k = store.steuerkraft_kontext()
+    assert k["jahr"] == 2024 and k["jahr_davor"] == 2023
+    assert k["zuweisungen"] == 69209992.0 and k["zuweisungen_davor"] == 99569120.0
+    store.close()
+
+
+def test_haushalt_fuer_begriffe_traegt_entwicklung(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        for jahr, aufw in [(2020, 30000000.0), (2026, 46194645.0)]:
+            store._conn.execute(
+                "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, "
+                "is_summe, fetched_at) VALUES (?, 'Verkehr und Straßenbau', 1, ?, -1, 0, '')",
+                (jahr, aufw))
+        # Bereich mit geändertem Zuschnitt: NUR im neuesten Jahr vorhanden.
+        store._conn.execute(
+            "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, "
+            "is_summe, fetched_at) VALUES (2026, 'Klima/Umwelt/Mobilität', 1, 2, -1, 0, '')")
+
+    r = store.haushalt_fuer_begriffe(["Verkehr"])[0]
+    assert r["jahr_davor"] == 2020 and r["aufwendungen_davor"] == 30000000.0
+    assert "30.000.000" in qa._haushalt_block([r])
+
+    # Umbenannter Bereich bekommt KEINEN erfundenen Vorjahreswert.
+    k = store.haushalt_fuer_begriffe(["Klima"])[0]
+    assert "jahr_davor" not in k
+    store.close()

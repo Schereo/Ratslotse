@@ -1,0 +1,363 @@
+"use client";
+
+// Nachbewilligungen nach § 117 NKomVG — der Block unter „Warum es anders kam"
+// auf /haushalt/plan-ist.
+//
+// DIE FRAGE. „Wo ist der Haushalt aus dem Ruder gelaufen, um wie viel — und
+// wer hat zugestimmt?" Nach § 117 NKomVG braucht jede Ausgabe, die im
+// beschlossenen Haushalt nicht (oder nicht in dieser Höhe) steht, eine eigene
+// Bewilligung. Seit 2018 sind das 161 Vorlagen.
+//
+// DIE EINE REGEL, DIE DIESEN BLOCK BAUT. Der Rat ist nicht der einzige Weg.
+// Der Rechenschaftsbericht zählt VIER: Rat, Oberbürgermeister, Fachdienst 200
+// per Haushaltsvermerk, Eilentscheidungen. Und der Ratsanteil sinkt — 89 %
+// (2022), 84 % (2023), 73 % (2024), während die Gesamtsumme sich mehr als
+// verdoppelt hat. Wer nur die Ratsbeschlüsse zeigt, zeigt eine schrumpfende
+// Teilmenge, als wäre sie das Ganze.
+//
+// Deshalb steht hier die Gesamtsumme oben und die Rats-Liste darunter, nie
+// umgekehrt — und die Liste sagt in ihrer Kopfzeile, welcher Anteil sie ist.
+// Für Jahre ohne Rechenschaftsbericht (2018–2021, 2025 f.) gibt es diesen
+// Nenner nicht; dann sagt der Block das, statt die Rats-Summe stillschweigend
+// als Gesamtsumme auszugeben.
+//
+// KEINE BEWERTUNGSFARBEN. Eine Nachbewilligung ist kein Skandal:
+// Tarifabschlüsse und Baukostensteigerungen sind der Normalfall, und
+// „außerplanmäßig" heißt gedeckt-aber-umgewidmet, nicht ungedeckt — jede
+// Vorlage nennt ihre Deckung. Der Satz „In acht Jahren wurde keine
+// Nachbewilligung abgelehnt" steht nüchtern da, ohne Kommentar. Signal-Orange
+// erscheint nur dort, wo es laut DESIGNSPRACHE.md hingehört: an Differenzen.
+//
+// WIDERSPRÜCHE WERDEN ANGEZEIGT, NICHT REPARIERT. Zwei der drei Berichte
+// widersprechen sich selbst (2022: 288.000 € zwischen Fließtext und eigener
+// Tabelle; 2023: eine Zelle mit Anzahl 0 und trotzdem einem Betrag). Was die
+// Tabellenprobe gefunden hat, steht als Satz am Jahr — `probe_text` kommt
+// fertig formuliert aus `council/nachbewilligungen.py`, damit Seite und Test
+// dieselbe Aussage tragen.
+
+import { useState, type ReactNode } from "react";
+import Link from "next/link";
+import { ChevronDown } from "lucide-react";
+import {
+  HaushaltAuswahl, Nachbewilligung, NachbewilligungsJahr, NachbewilligungsKanal,
+  kanalAnzahl, kanalBetrag, nachbewilligungGesamt, nachbewilligungenFuerJahr,
+  nachbewilligungsJahre, ratsAnteil,
+} from "@/lib/haushalt";
+import {
+  RanglisteSchiene, type RanglisteZeile,
+} from "@/components/grafik/rangliste-schiene";
+import { Beleg } from "@/components/haushalt/quelle";
+import { decisionHref } from "@/lib/routes";
+import { cn } from "@/lib/utils";
+
+/** Ein Euro-Betrag in Millionen, deutsch. */
+function mio(wert: number): string {
+  return (wert / 1e6).toLocaleString("de-DE", {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
+}
+
+/** Volle Euro, deutsch — für die Einzelposten, wo Millionen zu grob wären. */
+function euro(wert: number): string {
+  return wert.toLocaleString("de-DE", { maximumFractionDigits: 0 });
+}
+
+/** Die vier Entscheidungswege als Rangliste — `<RanglisteSchiene>` (GB-03).
+ *
+ *  Warum diese Form und keine eigene: Die Seite **komponiert** Grafiken aus
+ *  `components/grafik/`, sie zeichnet nicht selbst (grafik/README.md). Die
+ *  Schiene bringt genau das mit, was hier gebraucht wird — sichtbare
+ *  Null-Basis (ohne sie schwebten die Balken), `hervorgehoben` zum Finden
+ *  statt zum Bewerten, und unter 480 px wandert das Label von selbst über den
+ *  Balken. Das ist hier keine Kleinigkeit: „Gemäß Haushaltsvermerk durch den
+ *  Fachdienst 200" braucht 312 px, und abgeschnitten wäre ausgerechnet die
+ *  Auskunft weg, um die es in diesem Block geht — **wer** entschieden hat.
+ *
+ *  Und bewusst **kein** gestapelter 100-%-Balken: Die vier Wege sind sehr
+ *  ungleich groß (2024 trägt der Rat 73 %, die Eilentscheidungen 0 %), in
+ *  einem Stapel wären zwei der vier Segmente unbeschriftbar dünn.
+ *
+ *  Die Reihenfolge ist die des Rechenschaftsberichts, nicht die nach Größe:
+ *  Der Bericht führt Rat, Oberbürgermeister, Fachdienst 200, Eilentscheidung
+ *  — und `<RanglisteSchiene>` sortiert nicht selbst, sie zeigt, was sie
+ *  bekommt. Die Reihenfolge ist eine Angabe der Quelle wie die Zahlen. */
+function KanalRangliste({ kanaele, beleg }: {
+  kanaele: NachbewilligungsKanal[]; beleg: ReactNode;
+}) {
+  const zeilen: RanglisteZeile[] = kanaele.map((k) => {
+    const anzahl = kanalAnzahl(k);
+    return {
+      label: k.label,
+      wert: kanalBetrag(k) / 1e6,
+      // Der Rat ist die Zeile, um die es geht — hervorgehoben heißt „hier
+      // schauen", nicht „das ist die gute".
+      hervorgehoben: k.kanal === "rat",
+      zusatz: anzahl === 1 ? "1 Fall" : `${anzahl} Fälle`,
+    };
+  });
+  return (
+    <RanglisteSchiene zeilen={zeilen} einheit="Mio.&nbsp;€" nachkomma={2}
+      beleg={beleg} />
+  );
+}
+
+/** Die Liste der Rats-Bewilligungen eines Jahres, größte zuerst.
+ *
+ *  Ab acht Zeilen hinter einen Auslöser (H4-A: nie ersatzlos) — die fünf
+ *  größten stehen immer. Jede Zeile verlinkt über ihre Vorlagen-Nummer auf
+ *  die vorhandene Beschluss-Seite; wo wir keine Beschlusszeile haben, bleibt
+ *  der Titel unverlinkt statt auf eine erfundene Seite zu zeigen. */
+function RatsListe({ posten }: { posten: Nachbewilligung[] }) {
+  const [alle, setAlle] = useState(false);
+  const sichtbar = alle ? posten : posten.slice(0, 5);
+  return (
+    <div className="mt-3 flex flex-col gap-1.5">
+      {sichtbar.map((n) => {
+        const titel = (
+          <span className="text-[12.5px] leading-snug">{n.titel}</span>
+        );
+        return (
+          <div key={n.vorlage_nr}
+            className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-border/60 pt-1.5 first:border-t-0 first:pt-0">
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              {n.beschluss_id != null ? (
+                <Link href={decisionHref(n.beschluss_id)}
+                  className="text-[12.5px] leading-snug text-primary hover:underline">
+                  {n.titel}
+                </Link>
+              ) : titel}
+              <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
+                {n.vorlage_nr}
+                {n.kategorie === "ausserplanmaessig" && " · außerplanmäßig"}
+                {n.im_rat === 0 && " · im Fachausschuss beschlossen"}
+              </span>
+            </span>
+            <span className="whitespace-nowrap text-right text-[12px] font-semibold tabular-nums">
+              {euro(n.betrag ?? 0)}&nbsp;€
+            </span>
+          </div>
+        );
+      })}
+      {posten.length > 5 && (
+        <button type="button" onClick={() => setAlle((a) => !a)}
+          aria-expanded={alle}
+          className="mt-1 inline-flex min-h-[36px] items-center gap-1 self-start text-[12.5px] font-semibold text-primary">
+          {alle ? "Weniger zeigen" : `Alle ${posten.length} zeigen`}
+          <ChevronDown size={14} strokeWidth={2}
+            className={cn("transition-transform", alle && "rotate-180")} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function NachbewilligungsBlock({ daten, jahr }: {
+  daten: HaushaltAuswahl<"nachbewilligungen">; jahr: number;
+}) {
+  const alleJahre = nachbewilligungsJahre(daten);
+  const unseres = alleJahre.find((j) => j.jahr === jahr);
+  const bericht: NachbewilligungsJahr | undefined =
+    (daten.nachbewilligungen?.jahre ?? []).find((j) => j.jahr === jahr);
+  const posten = nachbewilligungenFuerJahr(daten, jahr);
+  // Ohne jede Zahl gar nichts zeigen — eine Überschrift über einer leeren
+  // Fläche behauptet, es habe nichts gegeben.
+  if (!unseres && !bericht) return null;
+
+  const gesamt = bericht ? nachbewilligungGesamt(bericht) : null;
+  const anteil = bericht ? ratsAnteil(bericht) : null;
+  const ratsKanal = bericht?.kanaele.find((k) => k.kanal === "rat");
+  const ratsZeile = ratsKanal ? kanalBetrag(ratsKanal) : null;
+  // Der Vergleichswert für den Satz über die Entwicklung: das früheste Jahr,
+  // für das ein Bericht vorliegt.
+  const berichte = (daten.nachbewilligungen?.jahre ?? [])
+    .slice().sort((a, b) => a.jahr - b.jahr);
+  const erstes = berichte[0];
+  const zeigtEntwicklung = erstes && bericht && erstes.jahr !== bericht.jahr;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          Nachträglich bewilligte Ausgaben · {jahr}
+        </p>
+        <span className="font-mono text-[10px] uppercase text-muted-foreground">
+          {berichte.length
+            ? `${berichte[0].jahr}–${berichte[berichte.length - 1].jahr} mit Gesamtsicht`
+            : "Ratsbeschlüsse seit 2018"}
+        </span>
+      </div>
+
+      <p className="max-w-[74ch] text-[13px] leading-relaxed text-foreground/90">
+        Reicht ein Haushaltsansatz nicht aus oder fehlt er vollständig, kann eine
+        über- oder außerplanmäßige Ausgabe nach § 117 NKomVG bewilligt werden.{" "}
+        <strong className="font-semibold">Außerplanmäßig bedeutet nicht automatisch
+        ungedeckt:</strong> Die Vorlagen nennen jeweils eine Deckung. „Überplanmäßig“
+        heißt, dass ein vorhandener Ansatz nicht ausreicht; „außerplanmäßig“, dass
+        für diesen Zweck kein Ansatz bestand.
+      </p>
+
+      {gesamt != null && (
+        <div className="mt-4">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
+            Insgesamt nachbewilligt {jahr}
+          </p>
+          <p className="mt-0.5 font-[var(--font-bricolage),system-ui] text-[26px] font-bold leading-none tabular-nums">
+            {mio(gesamt)}&#8239;Mio.&nbsp;€
+            <Beleg q="jahresabschluss" />
+          </p>
+          {zeigtEntwicklung && (
+            <p className="mt-2 max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
+              {erstes.jahr} waren es {mio(nachbewilligungGesamt(erstes))}&#8239;Mio.&nbsp;€.
+              {anteil != null && ratsAnteil(erstes) != null && (
+                <>
+                  {" "}Der Anteil, über den der Rat selbst abgestimmt hat, lag
+                  damals bei{" "}
+                  {ratsAnteil(erstes)!.toLocaleString("de-DE", { maximumFractionDigits: 0 })}
+                  &nbsp;% und liegt {jahr} bei{" "}
+                  <span className="font-semibold text-signal">
+                    {anteil.toLocaleString("de-DE", { maximumFractionDigits: 0 })}&nbsp;%
+                  </span>.
+                </>
+              )}
+            </p>
+          )}
+        </div>
+      )}
+
+      {bericht && (
+        <div className="mt-4">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Wer über die Bewilligung entscheidet
+          </p>
+          <div className="mt-2.5">
+            <KanalRangliste kanaele={bericht.kanaele}
+              beleg={<Beleg q="jahresabschluss" />} />
+          </div>
+          <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
+            Der Rechenschaftsbericht unterscheidet vier Entscheidungswege. Nur einer
+            führt über eine Abstimmung im Rat; in den übrigen Fällen entscheidet die
+            Verwaltung oder es handelt sich um eine Eilentscheidung. Der Rat wird
+            darüber unterrichtet.
+          </p>
+          {bericht.verpflichtungen_betrag != null
+            && bericht.verpflichtungen_betrag > 0 && (
+            <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
+              Nicht enthalten: {mio(bericht.verpflichtungen_betrag)}&#8239;Mio.&nbsp;€
+              an Verpflichtungsermächtigungen. Sie erlauben, künftige Jahre zu
+              binden, und fließen in diesem Jahr nicht — der Bericht zählt sie
+              deshalb getrennt, und wir addieren sie nirgends dazu.
+            </p>
+          )}
+          {bericht.probe_ok === 0 && bericht.probe_text && (
+            <p className="mt-2 max-w-[74ch] rounded-lg border border-border bg-muted/40 p-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
+              <span className="font-semibold text-foreground/90">
+                Der Bericht widerspricht sich an dieser Stelle selbst.
+              </span>{" "}
+              {bericht.probe_text} Wir geben beide Zahlen so wieder, wie sie im
+              Dokument stehen, und rechnen nichts glatt.
+            </p>
+          )}
+        </div>
+      )}
+
+      {posten.length > 0 && (
+        <div className="mt-4 border-t border-border/60 pt-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Die einzelnen Beschlüsse
+            </p>
+            <span className="font-mono text-[10px] uppercase text-muted-foreground">
+              {posten.length} {posten.length === 1 ? "Vorlage" : "Vorlagen"}
+              {unseres && ` · ${mio(unseres.summe)} Mio. €`}
+            </span>
+          </div>
+          <RatsListe posten={posten} />
+          <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
+            Die Vorlagen, über die Rat oder Finanzausschuss entschieden haben
+            <Beleg q="ratsbeschluss" />; jede führt auf ihre Beschluss-Seite.
+            {gesamt != null && anteil != null && (
+              <>
+                {" "}Sie sind der Teil, über den öffentlich abgestimmt wurde —{" "}
+                {anteil.toLocaleString("de-DE", { maximumFractionDigits: 0 })}
+                &nbsp;% der Gesamtsumme oben, nicht die Gesamtsumme selbst.
+              </>
+            )}
+            {unseres && unseres.sammelberichte > 0 && (
+              <>
+                {" "}Die Fälle unter 50.000&nbsp;€ entscheidet der Rat gar
+                nicht; über sie berichtet die Verwaltung einmal jährlich
+                gesammelt.
+              </>
+            )}
+          </p>
+          {/* Die Definitionsdifferenz gehört als Satz auf die Seite, nicht in
+              eine Fußnote: Sie erklärt, warum die Summe dieser Liste nicht
+              exakt der Rats-Zeile oben entspricht — 2024 sind es 924.453,71 €,
+              verteilt auf drei Vorlagen, die niedriger gebucht als beantragt
+              wurden. Kein Fehler, sondern zwei verschiedene Fragen. */}
+          {unseres && bericht && ratsZeile != null
+            && Math.abs(unseres.summe - ratsZeile) > 1 && (
+            <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
+              Diese Liste ergibt {mio(unseres.summe)}&#8239;Mio.&nbsp;€, die
+              Zeile „{bericht.kanaele.find((k) => k.kanal === "rat")?.label}"
+              oben {mio(ratsZeile)}&#8239;Mio.&nbsp;€. Der Unterschied ist
+              keine Unsicherheit, sondern eine andere Frage:{" "}
+              <strong className="font-semibold">Wir nennen den Betrag, den die
+              Vorlage beantragt hat — der Rechenschaftsbericht den, der am Ende
+              gebucht wurde.</strong> Wo weniger gebraucht wurde als bewilligt,
+              schreibt er den kleineren Betrag; bei einer der Vorlagen nennt er
+              den Grund gleich dazu.
+            </p>
+          )}
+        </div>
+      )}
+
+      {!bericht && (
+        <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
+          Für {jahr} liegt noch kein Rechenschaftsbericht vor. Wie viel
+          insgesamt nachbewilligt wurde — also auch das, was die Verwaltung
+          ohne den Rat entschieden hat —, steht erst dort. Was hier zu sehen
+          ist, sind ausschließlich die Beschlüsse aus Rat und Fachausschuss.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Der nüchterne Nebenbefund über die ganze Reihe — ein Satz, keine Wertung.
+ *
+ *  Er steht getrennt vom Jahresblock, weil er nicht zu einem Jahr gehört,
+ *  sondern zu allen: In acht Jahren ist keine Nachbewilligung abgelehnt
+ *  worden. Das ist ein Befund über den Bestand, kein Vorwurf — die Vorlagen
+ *  sind vorher im Fachausschuss beraten, und was dort keine Mehrheit findet,
+ *  erreicht den Rat meist gar nicht erst. */
+export function NachbewilligungsBefund({ daten }: { daten: HaushaltAuswahl<"nachbewilligungen"> }) {
+  const serie = (daten.nachbewilligungen?.serie ?? [])
+    .filter((n) => n.art !== "schwelle");
+  if (serie.length < 20) return null;
+  const jahre = serie.map((n) => n.jahr).filter((j): j is number => j != null);
+  const beschlossen = serie.filter((n) => n.beschlossen === 1).length;
+  // Die Differenz wird ausgeschrieben statt verschwiegen — sonst fragt sich
+  // jede*r, was mit dem Rest passiert ist, und die naheliegende Vermutung
+  // („abgelehnt") wäre genau die falsche. Es sind zwei Gruppen: Vorlagen, mit
+  // denen der Rat nur unterrichtet wurde (entschieden hat der
+  // Oberbürgermeister oder eine Eilentscheidung), und solche, zu denen im
+  // Bestand kein Ergebnis steht.
+  const unterrichtet = serie.filter(
+    (n) => n.beschlossen === 0 && n.gremien.length > 0).length;
+  const ohneErgebnis = serie.length - beschlossen - unterrichtet;
+  return (
+    <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
+      Seit {Math.min(...jahre)} sind {serie.length} solcher Vorlagen in Rat und
+      Fachausschuss aufgerufen worden. {beschlossen} wurden beschlossen, keine
+      abgelehnt.
+      {unterrichtet > 0 && (
+        <> Bei {unterrichtet} wurde der Rat nur unterrichtet — entschieden
+        hatte sie der Oberbürgermeister oder eine Eilentscheidung.</>
+      )}
+      {ohneErgebnis > 0 && (
+        <> Zu {ohneErgebnis} liegt uns kein Ergebnis vor.</>
+      )}
+    </p>
+  );
+}

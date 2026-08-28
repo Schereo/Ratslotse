@@ -3,7 +3,6 @@ Mitgliedschaften). Die HTML-Fixtures spiegeln die echten SessionNet-Strukturen
 (an Live-Seiten verifiziert, Stand 2026-07)."""
 from __future__ import annotations
 
-from unittest.mock import patch
 
 from bs4 import BeautifulSoup
 

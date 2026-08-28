@@ -106,7 +106,8 @@ def test_push_kurztext_reist_bis_zur_zustellung(store, monkeypatch):
 
 def test_buendel_traegt_keinen_einzel_kurztext(store, monkeypatch):
     """Drei Meldungen mit Kurztext → die dritte geht im Bündel auf, und das
-    Bündel darf nicht den Kurztext EINER Meldung als Push-Text tragen."""
+    Bündel darf nicht den Kurztext EINER Meldung als Push-Text tragen — es
+    nennt stattdessen die Titel aller gebündelten Posten."""
     owner = _konto(store)
     gesehen: list[str | None] = []
     monkeypatch.setattr(
@@ -119,7 +120,31 @@ def test_buendel_traegt_keinen_einzel_kurztext(store, monkeypatch):
                          f"<p>{i}</p>", f"/council?ksinr={i}", jetzt=jetzt,
                          push_text=f"Kurz {i}")
     assert notify.zustellen(store, jetzt=jetzt) == 2  # 1 einzeln + 1 Bündel
-    assert gesehen[0] == "Kurz 0" and gesehen[1] is None
+    assert gesehen[0] == "Kurz 0"
+    assert gesehen[1] == "M 1 · M 2"
+
+
+def test_buendel_traegt_volle_inhalte(store, monkeypatch):
+    """Die Bündel-Mail ist keine Linkliste: Sie erklärt, warum gebündelt wird,
+    und jeder Posten steht mit dem vollen Inhalt seiner Einzel-Mail darin."""
+    owner = _konto(store)
+    raus: list[str] = []
+    monkeypatch.setattr(
+        "kern.delivery.deliver_message",
+        lambda o, html, email_subject, push_url="/", push_text=None:
+            (raus.append(html), ["email"])[1])
+    jetzt = _zeit("2026-08-18", 9)
+    for i in range(3):
+        notify.einreihen(store, owner, notify.N1_TAGESORDNUNG, f"M {i}",
+                         f"<p>Inhalt der Meldung {i}</p>", f"/council?ksinr={i}",
+                         jetzt=jetzt)
+    notify.zustellen(store, jetzt=jetzt)
+
+    buendel = raus[-1]
+    assert "Damit dein Postfach ruhig bleibt" in buendel
+    for i in (1, 2):
+        assert f"M {i}" in buendel                        # Titel als Überschrift …
+        assert f"<p>Inhalt der Meldung {i}</p>" in buendel  # … samt vollem Körper
 
 
 # ---- Tagesgrenze ------------------------------------------------------------
@@ -361,13 +386,17 @@ def test_abgeschalteter_anlass_wird_gar_nicht_erst_eingereiht(store, monkeypatch
 
 
 def test_vorgaben_aus_dem_artboard():
-    """Drei an, drei aus — N5/N6 bewusst aus."""
+    """Vier an (samt der N1-Unter-Option „Änderungen"), N5/N6 bewusst aus."""
     an = {k for k, v in notify.NOTIFY_DEFAULTS.items() if v}
     aus = {k for k, v in notify.NOTIFY_DEFAULTS.items() if not v}
-    assert an == {notify.N1_TAGESORDNUNG, notify.N2_THEMA, notify.N3_ERGEBNIS, notify.N4_VORGANG}
+    assert an == {notify.N1_TAGESORDNUNG, notify.N1_AENDERUNG, notify.N2_THEMA,
+                  notify.N3_ERGEBNIS, notify.N4_VORGANG}
     assert aus == {notify.N5_VORABEND, notify.N6_WOCHE}
     # Jede Art hat eine Beschriftung — sonst fehlte sie stumm in den Einstellungen.
     assert set(notify.NOTIFY_LABELS) == set(notify.NOTIFY_DEFAULTS)
+    # Und jede Unter-Option zeigt auf einen Anlass, den es gibt.
+    for kind, eltern in notify.NOTIFY_PARENT.items():
+        assert kind in notify.NOTIFY_DEFAULTS and eltern in notify.NOTIFY_DEFAULTS
 
 
 def test_unbekannte_schalter_landen_nicht_in_der_datenbank(store):
@@ -503,6 +532,10 @@ def test_wochenueberblick_fasst_die_woche_zusammen(store, tmp_path):
     assert p["kind"] == "n6_woche"
     assert p["title"] == "Diese Woche: 2 Beschlüsse zu deinen Themen"
     assert "angenommen" in p["body_html"] and "abgelehnt" in p["body_html"]
+    # Die Links müssen absolut sein: In einer E-Mail gibt es keine Basis,
+    # gegen die ein relativer Pfad aufgelöst werden könnte.
+    assert 'href="https://' in p["body_html"]
+    assert 'href="/council' not in p["body_html"]
     council.close()
 
 
@@ -799,6 +832,28 @@ def test_abgeschaltet_gilt_auch_gegen_die_vorgaben(store):
     assert notify.gewuenscht(store, owner, notify.N1_TAGESORDNUNG) is False
     store.set_delivery_channel(owner, "email")
     assert notify.gewuenscht(store, owner, notify.N1_TAGESORDNUNG) is True
+
+
+def test_unteroption_haengt_am_elternteil(store):
+    """„Änderungen an Tagesordnungen" ist eine Unter-Option von N1 (Tims Wunsch
+    26.08.2026): Abo behalten, nur die Änderungs-Meldungen loswerden — und wer
+    N1 ganz abschaltet, bekommt auch keine Änderungs-Meldungen, egal wie der
+    Unter-Schalter steht."""
+    owner = _konto(store)
+    # Ab Werk: beides an.
+    assert notify.gewuenscht(store, owner, notify.N1_AENDERUNG) is True
+
+    # Nur die Änderungs-Meldungen abschalten — die Tagesordnung kommt weiter.
+    store.set_notify_prefs(owner, {notify.N1_AENDERUNG: False})
+    assert notify.gewuenscht(store, owner, notify.N1_TAGESORDNUNG) is True
+    assert notify.gewuenscht(store, owner, notify.N1_AENDERUNG) is False
+
+    # N1 aus schlägt durch, auch wenn die Unter-Option selbst an ist.
+    store.set_notify_prefs(owner, {notify.N1_TAGESORDNUNG: False,
+                                   notify.N1_AENDERUNG: True})
+    assert notify.gewuenscht(store, owner, notify.N1_AENDERUNG) is False
+    assert notify.einreihen(store, owner, notify.N1_AENDERUNG,
+                            "x", "<p>x</p>", "/council") == 0
 
 
 def test_abschalten_verwirft_was_noch_wartet(store, monkeypatch):

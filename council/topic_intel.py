@@ -23,10 +23,13 @@ Ein Themen-Anlegen darf nie daran scheitern, dass ein LLM gerade hakt.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 
 from kern import llm, prompts
+
+logger = logging.getLogger("council.topic_intel")
 
 MODEL = os.environ.get("TOPIC_INTEL_MODEL", "deepseek/deepseek-v4-pro")
 
@@ -239,7 +242,16 @@ def _parse(raw: str) -> dict | None:
 def _call_model(name: str, matches: list[dict]) -> dict | None:
     """Der eine LLM-Aufruf — als eigene Funktion, damit Tests ihn ersetzen können
     (die Suite darf nie ein echtes Modell rufen). ``None`` bei jedem Fehler:
-    Ein hakendes Modell darf ein Thema weder anlegen noch verhindern."""
+    Ein hakendes Modell darf ein Thema weder anlegen noch verhindern.
+
+    Beide Fehlerwege loggen, weil ``None`` hier stumm in
+    ``_fallback_description`` mündet: Die Nutzer:in bekommt dann die Schablone
+    „Beschlüsse, Planungen und Maßnahmen … rund um X" statt eines echten Satzes,
+    und von außen war nicht zu sehen, wie oft das passiert — man konnte es nur
+    hinterher an den gespeicherten Beschreibungen ablesen (Tims Frage
+    28.08.2026: „wird immer dasselbe Template verwendet?"). Der Themen-Name
+    steht mit im Satz, damit ein wiederkehrender Ausreißer auffällt.
+    """
     try:
         prompt = prompts.render("topic_auto_beschreibung", name=name[:120], context=_context(matches))
         extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in MODEL else {}
@@ -247,8 +259,14 @@ def _call_model(name: str, matches: list[dict]) -> dict | None:
             model=MODEL, _feature="topic_auto_beschreibung", temperature=0.2, max_tokens=300,
             messages=[{"role": "user", "content": prompt}], **extra,
         )
-        return _parse(resp.choices[0].message.content or "")
+        obj = _parse(resp.choices[0].message.content or "")
+        if obj is None:
+            logger.warning("Themen-Beschreibung für %r: Modellantwort nicht lesbar — Schablone greift",
+                           name[:80])
+        return obj
     except Exception:  # noqa: BLE001 — LLM aus/Timeout
+        logger.warning("Themen-Beschreibung für %r: Modell nicht erreichbar — Schablone greift",
+                       name[:80], exc_info=True)
         return None
 
 

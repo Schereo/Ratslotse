@@ -56,7 +56,12 @@ def _bewerten(store, titel_zu_werten):
 
 def test_pick_prefers_anniversary_then_archive(tmp_path):
     store = _store(tmp_path)
-    ids = _bewerten(store, {
+    # Rückgabewert bewusst verworfen: Dieser Test greift die Beschlüsse über
+    # `pick_candidate` ab, nicht über ihre IDs. Der ungenutzte Name kam mit
+    # #670 herein und über den Rückmerge nach `dev` — dem einzigen Zweig, auf
+    # dem ruff läuft (#613, `ruff.toml` gibt es auf `main` nicht). Seither
+    # stand die CI dort rot, für jeden PR gegen dev.
+    _bewerten(store, {
         "Grüne Wellen fürs Rad": (75, 75),      # Jahrestag, ordentlich
         "Museumskonzept": (80, 70),             # Archiv, nicht deutlich besser
         "Geschäftsordnung": (10, 10),           # Formalie

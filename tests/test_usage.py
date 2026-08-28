@@ -103,3 +103,41 @@ def test_llm_session_cost_zaehler(monkeypatch):
     sc = llm.session_cost()
     assert sc["usd"] == pytest.approx(0.0012)
     assert sc["calls_mit"] == 1 and sc["calls_ohne"] == 1
+
+
+def test_zeitstempel_werden_als_lokale_tage_gezaehlt(usage_db):
+    """Ein UTC-Zeitstempel, der lokal auf einen anderen Tag fällt, wird dem
+    LOKALEN Tag zugeordnet.
+
+    ``llm_usage.ts`` kommt aus SQLites ``datetime('now')`` und ist UTC;
+    ``cost_timeseries`` vergleicht gegen ``date.today()``, also den lokalen
+    Tag. Ohne Umrechnung fiel die Kostenübersicht in Deutschland jede Nacht
+    zwischen 0 und 2 Uhr auf null zurück — sie suchte einen Tag, den es in den
+    Daten noch nicht gab.
+
+    Der bestehende Test dazu deckt es nur auf, wenn er zufällig in diesem
+    Zeitfenster läuft (so am 17.08.2026 um 00:45). Dieser hier prüft es zu
+    jeder Tageszeit, indem er den Grenzfall selbst herstellt: ein Eintrag um
+    23:30 UTC, der in jeder Zeitzone östlich von Greenwich schon zum Folgetag
+    gehört.
+    """
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+
+    usage.record("qa_antwort", "openai/gpt-4o", 1000, 0, cost_usd=0.5)
+
+    # Den eben geschriebenen Eintrag auf 23:30 UTC von vorgestern setzen.
+    utc_ts = (datetime.now(timezone.utc) - timedelta(days=2)).replace(
+        hour=23, minute=30, second=0, microsecond=0)
+    conn = sqlite3.connect(usage_db)
+    conn.execute("UPDATE llm_usage SET ts = ?", (utc_ts.strftime("%Y-%m-%d %H:%M:%S"),))
+    conn.commit()
+    conn.close()
+
+    # Derselbe Zeitpunkt, in lokaler Zeit gelesen — das ist der Tag, unter dem
+    # er erscheinen muss.
+    erwartet = utc_ts.astimezone().date().isoformat()
+    reihe = {d["date"]: d["cost"] for d in usage.cost_timeseries(days=5)}
+    assert reihe.get(erwartet) == pytest.approx(0.5), (
+        f"Eintrag von {utc_ts:%Y-%m-%d %H:%M} UTC gehört zum lokalen Tag "
+        f"{erwartet}, steht aber nicht dort: {reihe}")

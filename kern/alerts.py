@@ -18,16 +18,32 @@ import os
 import re
 import sys
 import traceback
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:  # nur für Typprüfer — zur Laufzeit importiert
+    # `_record_run` nimmt einen `datetime` entgegen, holt ihn aber selbst nie:
+    # Das Modul importiert `datetime` bewusst erst IN den Funktionen, damit ein
+    # Import-Fehler nie einen Cronjob mitreißt. Ohne diesen Block zeigt die
+    # Annotation auf einen Namen, den es auf Modulebene nicht gibt — harmlos,
+    # solange `from __future__ import annotations` gilt (Annotationen bleiben
+    # Zeichenketten), aber irreführend für jeden, der sie auflösen will.
+    from datetime import datetime
 
 logger = logging.getLogger("kern.alerts")
 
 
-def notify_admin(text: str) -> None:
+def notify_admin(text: str, betreff: str = "Ratslotse – Cron-Alarm",
+                 fusszeile: str = "Automatischer Alarm eines Cron-Jobs — "
+                                  "Details im Server-Log.") -> None:
     """Record an admin-facing failure notice: always logs; additionally sends a
     best-effort email to ALERT_EMAIL / WEB_ADMIN_EMAIL. Never raises.
 
     ``text`` may contain simple HTML (<b>/<code>); the plain-text part strips it.
+
+    ``betreff``/``fusszeile`` sind überschreibbar, weil nicht jede Nachricht an
+    diese Adresse ein Absturz ist: ``check_finanzdaten`` meldet damit einen
+    **Hinweis** („der Jahresabschluss 2025 bleibt aus"). Als „Cron-Alarm"
+    betitelt läse ihn niemand mehr als das, was er ist.
     """
     logger.error("admin alert: %s", text)
     recipient = os.environ.get("ALERT_EMAIL") or os.environ.get("WEB_ADMIN_EMAIL")
@@ -40,13 +56,13 @@ def notify_admin(text: str) -> None:
             return
         send_email(
             recipient,
-            "Ratslotse – Cron-Alarm",
+            betreff,
             "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
             "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
             "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
             f"<p style='margin:20px 0 8px;white-space:pre-wrap'>{text}</p>"
             "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
-            "Automatischer Alarm eines Cron-Jobs — Details im Server-Log.</p>"
+            f"{fusszeile}</p>"
             "</div>",
             text=re.sub(r"<[^>]+>", "", text),
         )
@@ -54,7 +70,7 @@ def notify_admin(text: str) -> None:
         logger.exception("admin alert email failed")
 
 
-def _record_run(name: str, started: "datetime", status: str,
+def _record_run(name: str, started: datetime, status: str,
                 stats: dict | None, error: str | None) -> None:
     """Den Lauf in ``job_runs`` schreiben — best effort, nie den Job stören.
 

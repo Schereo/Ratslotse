@@ -1,0 +1,225 @@
+{
+ "slug": "afd",
+ "positionen": {
+  "W1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "W2": {
+   "pos": -1,
+   "beleg": "Die bestehende Sozialquote wird als gescheitert bezeichnet; das Programm setzt statt fester Quoten auf steuerliche Anreize für private Investoren ('Sozialer Wohnungsbau durch Marktanreize statt Quoten').",
+   "seite": 36
+  },
+  "W3": {
+   "pos": -1,
+   "beleg": "Das Programm fordert erleichtertes Bauen 'anstatt enteignen' und erwähnt weder Zweckentfremdungssatzung noch Leerstandsabgabe.",
+   "seite": 37
+  },
+  "W4": {
+   "pos": -1,
+   "beleg": "Das Programm setzt auf Innenentwicklung durch Aktivierung von Brachflächen und Baulücken und will unbegrenzte Verdichtung vermeiden, indem Siedlungsdruck mit den Umlandgemeinden verteilt wird, statt neue Stadtrandflächen zu bevorzugen.",
+   "seite": 36
+  },
+  "M1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "M2": {
+   "pos": -1,
+   "beleg": "Das Programm lehnt die flächendeckende Ausweitung von Tempo-30-Zonen auf Hauptverkehrsadern als ideologisch motiviert ab und fordert Tempo 50 als Regelgeschwindigkeit.",
+   "seite": 27
+  },
+  "M3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "M4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "M5": {
+   "pos": -1,
+   "beleg": "Das Programm lehnt die 'Verbotskultur gegen den Individualverkehr' ab, will keine weiteren Rad-Schnellwege und stellt klar: 'Das Auto gehört zur Stadt.'",
+   "seite": 27
+  },
+  "K1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "K2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "K3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "K4": {
+   "pos": 1,
+   "beleg": "Das Programm fordert die Lockerung 'übertriebener kommunaler Klimaschutzauflagen' und lehnt verpflichtende Heizungsvorgaben wie den erzwungenen Wärmepumpen-Einbau ab.",
+   "seite": 35
+  },
+  "V1": {
+   "pos": 1,
+   "beleg": "Das Programm fordert den 'Bau-Turbo' mit digitalen Bauanträgen und einer Genehmigungsfiktion (automatische Genehmigung nach Fristablauf), dazu einen 'Genehmigungsturbo' für Bau- und Wirtschaftsanträge (S. 12).",
+   "seite": 36
+  },
+  "V2": {
+   "pos": -1,
+   "beleg": "Das Programm lehnt eine 'autofeindliche Politik' ab, will Innenstadt-Parkplätze erhalten und erklärt: 'Das Auto gehört zur Stadt.'",
+   "seite": 27
+  },
+  "V3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "B4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "S1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "S2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "S3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "C1": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "C2": {
+   "pos": 1,
+   "beleg": "Das Programm fordert 'eine spürbare finanzielle Entlastung und Unterstützung für Vereine' sowie unbürokratische Aufwandsentschädigung für Trainer.",
+   "seite": 25
+  },
+  "C3": {
+   "pos": 0,
+   "beleg": "Die Finanzierung von Staatstheater, Museen und Denkmalpflege soll nur gesichert bleiben (keine Erhöhung); steuerfinanzierte Formate zu 'ideologischen Nischenthemen (wie etwa queere Aktivismus-Workshops)' werden explizit abgelehnt.",
+   "seite": 24
+  },
+  "C4": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O1": {
+   "pos": -1,
+   "beleg": "Das Programm lehnt 'den weiteren Ausbau der Kameraüberwachung an öffentlichen Plätzen entschieden ab' und fordert stattdessen mehr Personal statt Technik.",
+   "seite": 32
+  },
+  "O2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "O3": {
+   "pos": 1,
+   "beleg": "Das Programm fordert 'eine deutlich erhöhte Präsenz von Ordnungskräften und Polizei in der Innenstadt und im Umfeld des Bahnhofs'.",
+   "seite": 31
+  },
+  "O4": {
+   "pos": -1,
+   "beleg": "Das Programm setzt auf mehr Polizei- und Ordnungskräftepräsenz und konsequente Ahndung von Ordnungswidrigkeiten; 'Personal vor Technik' meint zusätzliche Polizeistellen, nicht Sozialarbeit.",
+   "seite": 31
+  },
+  "D1": {
+   "pos": 1,
+   "beleg": "Das Programm will den 'Aufwuchs des Verwaltungsapparates stoppen und zurückführen' und strebt eine 'langfristige Einsparung von Personalstellen' an.",
+   "seite": 46
+  },
+  "D2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "D3": {
+   "pos": 1,
+   "beleg": "Das Programm fordert, Verwaltungsprozesse 'vollumfänglich' zu digitalisieren, unter anderem durch KI-gestützte Verwaltung.",
+   "seite": 46
+  },
+  "F1": {
+   "pos": -1,
+   "beleg": "Das Programm fordert bei der Gewerbesteuer explizit 'eine Senkung der Hebesätze', um Betriebe zu entlasten.",
+   "seite": 11
+  },
+  "F2": {
+   "pos": 0,
+   "beleg": "Gegen 'Millionengräber' bei Großprojekten fordert das Programm ein verbindliches Kontroll- und Reportingsystem (Kostenmonitoring, Controlling), aber keine explizite Kostenobergrenze mit Abbruchklausel.",
+   "seite": 44
+  },
+  "F3": {
+   "pos": 1,
+   "beleg": "Das Programm stellt klar: 'Ein Haushalt saniert sich nicht durch neue Steuern, sondern durch Disziplin bei den Ausgaben.'",
+   "seite": 11
+  },
+  "P1": {
+   "pos": 0,
+   "beleg": "Das Programm fordert 'verbindliche Bürgerbefragungen' bei weitreichenden Entscheidungen wie kostspieligen Großprojekten — ausdrücklich als freiwilliger Weg, weil die formalen Hürden für Bürgerbegehren als zu hoch gelten; ein förmlicher Bürgerentscheid wird nicht gefordert.",
+   "seite": 41
+  },
+  "P2": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "P3": {
+   "pos": 1,
+   "beleg": "Das Programm fordert, dass 'Entscheidungsprozesse im Rathaus für jeden Bürger per Mausklick nachvollziehbar' sein müssen.",
+   "seite": 41
+  },
+  "I1": {
+   "pos": -1,
+   "beleg": "Das Programm lehnt die Förderung 'ideologischer Nischenthemen (wie etwa queere Aktivismus-Workshops)' durch die städtische Kulturförderung entschieden ab.",
+   "seite": 24
+  },
+  "I2": {
+   "pos": 1,
+   "beleg": "Das Programm bezeichnet Integration als 'Bringschuld', fordert verpflichtende Sprachkurse und die Vermittlung 'gesellschaftlicher Werte und des Grundgesetzes'.",
+   "seite": 18
+  },
+  "I3": {
+   "pos": null,
+   "beleg": null,
+   "seite": null
+  },
+  "I4": {
+   "pos": -1,
+   "beleg": "Das Programm lehnt 'freiwillige Aufnahme' zusätzlicher Migranten ab und fordert, dass Oldenburg kein 'Sicherer Hafen' für illegale Migration sein dürfe.",
+   "seite": 18
+  }
+ }
+}

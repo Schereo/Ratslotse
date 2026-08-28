@@ -561,6 +561,42 @@
   isolation: isolate;
 }
 
+/* ── Kommunalwahl-Bereich ─────────────────────────────────────────────────
+   Parteifarben aus parteien-meta.json sind reine Datenmarken (Bauplan E5):
+   Punkte, Balken, Blockmarken — nie Flächen oder Buttons. Jede Marke trägt
+   beide Werte als Custom Properties; der Dark-Mode-Wert ist auf dunklem
+   Grund kontrastgeprüft (CDU-Schwarz wäre sonst unsichtbar). */
+.kw-farbe {
+  background: var(--kw-f);
+}
+.dark .kw-farbe {
+  background: var(--kw-fd, var(--kw-f));
+}
+
+/* Aufklapper: der Chevron dreht mit dem <details>-Zustand — native Semantik,
+   kein Client-JS. Das Standard-Dreieck der Summary wird ersetzt. */
+.kw-details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.kw-details > summary::-webkit-details-marker {
+  display: none;
+}
+.kw-details > summary .kw-chevron {
+  transition: transform 180ms var(--ease-out-strong);
+}
+.kw-details[open] > summary .kw-chevron {
+  transform: rotate(180deg);
+}
+
+/* Parteifarbe als SVG-Füllung (Landkarte) — gleiche Hell/Dunkel-Logik wie .kw-farbe. */
+.kw-fill {
+  fill: var(--kw-f);
+}
+.dark .kw-fill {
+  fill: var(--kw-fd, var(--kw-f));
+}
+
 /* Chip-Zeilen im Ratsgespräch (Design 4a): Die native horizontale Scrollbar
    unter den Weiterfragen-Chips war ein grauer Fremdkörper — die Zeile läuft
    stattdessen in einem Fade aus (Scroll-Hinweis), gescrollt wird weiter per
@@ -572,3 +608,351 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Haushalt: Farbrampen der Gegenbalken (Design H-01/H-06) ─────────────────
+   Einnahmen = Hafenblau-Rampe, Ausgaben = Schiefer-Rampe; im Dunkelmodus
+   drehen die Rampen um (hellster Ton = größter Posten), damit der größte
+   Posten auf dunklem Grund weiter der auffälligste ist. Segment-Text steht
+   hell auf dunklen Segmenten (hell) bzw. dunkel auf hellen (dunkel).
+
+   Die Rampen hängen am THEME, solange die Grafik auf einer KARTE steht. Auf
+   der Anzeigetafel (`.hh-tafel`, s. u.) hängen sie an der FLÄCHE: Die Tafel
+   ist in jedem Theme eine Stufe von der Seite abgesetzt, ihre Rampen müssen
+   also gegen ihren eigenen Grund gerechnet werden (siehe Kommentar dort).
+   `--hh-raster` ist die Fuge zwischen den Feldern der 100-Euro-Ansicht: die
+   Farbe der Fläche, auf der die Grafik liegt, nicht die der Karte allgemein. */
+:root {
+  --hh-ein-0: hsl(205 85% 27%); --hh-ein-1: hsl(204 62% 44%);
+  --hh-ein-2: hsl(203 48% 56%); --hh-ein-3: hsl(202 38% 68%);
+  --hh-ein-4: hsl(203 30% 79%); --hh-ein-5: hsl(204 26% 85%);
+  --hh-ein-6: hsl(205 22% 90%);
+  --hh-aus-0: hsl(211 34% 26%); --hh-aus-1: hsl(210 26% 36%);
+  --hh-aus-2: hsl(209 20% 46%); --hh-aus-3: hsl(208 17% 57%);
+  --hh-aus-4: hsl(207 16% 67%); --hh-aus-5: hsl(206 18% 75%);
+  --hh-aus-6: hsl(206 20% 81%); --hh-aus-7: hsl(205 22% 86%);
+  --hh-aus-8: hsl(205 24% 90%); --hh-aus-9: hsl(205 26% 93%);
+  --hh-seg-text: #fff;
+  --hh-raster: 0 0% 100%;
+  --hh-schraffur: 19 92% 55%;
+}
+.dark {
+  --hh-ein-0: hsl(202 90% 60%); --hh-ein-1: hsl(203 62% 48%);
+  --hh-ein-2: hsl(204 45% 40%); --hh-ein-3: hsl(205 36% 33%);
+  --hh-ein-4: hsl(207 28% 27%); --hh-ein-5: hsl(208 24% 22%);
+  --hh-ein-6: hsl(209 22% 18%);
+  --hh-aus-0: hsl(206 20% 82%); --hh-aus-1: hsl(207 18% 68%);
+  --hh-aus-2: hsl(208 16% 56%); --hh-aus-3: hsl(209 16% 46%);
+  --hh-aus-4: hsl(210 18% 38%); --hh-aus-5: hsl(211 22% 29%);
+  --hh-aus-6: hsl(211 24% 25%); --hh-aus-7: hsl(212 26% 21%);
+  --hh-aus-8: hsl(212 28% 18%); --hh-aus-9: hsl(213 30% 15%);
+  --hh-seg-text: hsl(213 50% 7%);
+  --hh-raster: 212 42% 11%;
+  /* `--hh-schraffur` bleibt im Dunkelmodus bewusst der Wert aus `:root`: Die
+     Schraffur sieht in Zeitreihe, Flussbild und Konzern-Lücke aus wie bisher.
+     Verschoben wird sie nur auf der Anzeigetafel (`.hh-tafel`) — dort heller
+     im Dunkelmodus, tiefer im Hellmodus, je nach deren Grund. */
+}
+
+/* ── Anzeigetafel: die abgesetzte Fläche ───────────────────────────────────
+   Die Kernzahl des Haushalts steht auf einer eigenen Fläche, damit die Seite
+   einen Blickfang hat (Entwurf H2-01). Sie heißt bewusst NICHT „Bühne": das
+   Wort ist in DESIGNSPRACHE.md schon für die helle Tonfläche
+   hsl(205 42% 96,5%) vergeben, und zwei Flächen mit einem Namen sind eine
+   Verwechslung, die niemand mehr auflöst.
+
+   Bis 16.08. war diese Fläche in BEIDEN Themes dunkel. Das war im Hellmodus
+   zu viel: Ein schwarzblaues Feld über die halbe Startseite des Bereichs,
+   während alles darunter hell ist („sieht sehr dunkel aus", Tim 16.08.).
+   Jetzt folgt die Tafel dem Theme — sie bleibt aber in beiden eine Stufe von
+   der Seite abgesetzt. Drei Regeln, sonst wird sie falsch:
+
+   1. **Nie die Farbe der Seite.** Hell hsl(205 52% 92%) auf einer Seite von
+      97,5 %, dunkel hsl(212 44% 12%) auf 7 % — dazu je ein Rand. Gleich wie
+      die Seite hieße: Die Kernzahl steht im Nichts.
+   2. **Datengrafiken binden ihre Rampe an die FLÄCHE, nicht ans Theme.** Die
+      Rampen `--hh-ein-*`/`--hh-aus-*` gelten für Grafiken auf einer KARTE
+      (weiß bzw. hsl(212 42% 11%)). Die Tafel ist weder das eine noch das
+      andere: Im Hellmodus endet die Karten-Rampe bei 90–93 % Helligkeit und
+      läge damit ein bis zwei Punkte neben diesem Grund — der kleinste Posten
+      wäre da, aber nicht zu sehen. Die Tafel setzt deshalb beide Rampen neu,
+      gestaucht auf ihren eigenen Grund.
+   3. **Das ferne Rampenende hält mindestens vierzehn Helligkeitspunkte
+      Abstand zum Grund.** Das ist die Zahl, an der die dunkle Fassung schon
+      einmal gescheitert ist (Rampenende 18 % auf einem Grund von 15 % = drei
+      Punkte). Dunkel: Ende 26 % auf 12 % = 14 Punkte. Hell: Ende 69 % auf
+      92 % = 23 Punkte — mehr, weil Helligkeitspunkte am hellen Ende weniger
+      Kontrast bedeuten als am dunklen. Die zweite Zahl ist deshalb das
+      WCAG-Verhältnis, am gerenderten Element gemessen: 1,81 : 1 hell gegen
+      1,65 : 1 dunkel. Wer die Rampe ändert, prüft beide.
+
+   Weil `--card`, `--border`, `--muted-foreground`, `--primary` und `--signal`
+   hier mitwandern, stimmen Detail-Box, Beleg-Chips und Schraffur ohne
+   Sonderfälle in der Komponente. */
+.hh-tafel {
+  color-scheme: light;
+  /* Ein Hafenblau-Feld, 5,5 Punkte unter der Seite — hell genug, um zum Rest
+     der Seite zu gehören, abgesetzt genug, um der Blickfang zu sein. */
+  --background: 205 52% 92%;
+  --foreground: 212 55% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 212 55% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 212 55% 11%;
+  --muted: 205 48% 96%;
+  --muted-foreground: 209 20% 38%;
+  --accent: 205 45% 87%;
+  --accent-foreground: 212 55% 14%;
+  --border: 206 38% 82%;
+  --primary: 205 92% 34%;
+  --primary-foreground: 204 45% 98%;
+  --ring: 205 92% 34%;
+  /* Signal eine Stufe tiefer als im Rest des Hellmodus (44 statt 50 %): Die
+     Marke „71,1 AUS DER RÜCKLAGE" ist 9,5 px Mono und läge auf diesem Grund
+     sonst bei 2,8 : 1. So sind es 3,6 : 1 — dieselbe Farbe, nur sitzend. */
+  --signal: 19 90% 44%;
+  --signal-foreground: 0 0% 100%;
+  --hh-raster: 205 52% 92%;
+  --hh-schraffur: 19 90% 44%;
+  /* Einnahmen: dunkelster Ton = größter Posten (wie auf jeder hellen Karte),
+     aber gestaucht — das Rampenende liegt bei 69 statt 90 % Helligkeit. */
+  --hh-ein-0: hsl(205 85% 26%); --hh-ein-1: hsl(204 72% 34%);
+  --hh-ein-2: hsl(203 58% 42%); --hh-ein-3: hsl(203 46% 49%);
+  --hh-ein-4: hsl(204 39% 56%); --hh-ein-5: hsl(205 35% 63%);
+  --hh-ein-6: hsl(206 32% 69%);
+  /* Ausgaben: dieselbe Richtung, vorne flacher — hier tragen bis zu sechs
+     Segmente eine Beschriftung, die sechs dunkelsten Stufen bleiben deshalb
+     unter 48 % Helligkeit (weißer Text, `--hh-seg-text`, ab 4,5 : 1). */
+  --hh-aus-0: hsl(211 34% 23%); --hh-aus-1: hsl(210 31% 28%);
+  --hh-aus-2: hsl(209 28% 33%); --hh-aus-3: hsl(209 25% 38%);
+  --hh-aus-4: hsl(208 22% 43%); --hh-aus-5: hsl(208 21% 47%);
+  --hh-aus-6: hsl(207 21% 54%); --hh-aus-7: hsl(207 22% 59%);
+  --hh-aus-8: hsl(206 24% 64%); --hh-aus-9: hsl(206 27% 69%);
+  --hh-seg-text: #fff;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+}
+.dark .hh-tafel {
+  color-scheme: dark;
+  --background: 212 44% 12%;
+  --foreground: 204 40% 97%;
+  --card: 212 34% 18%;
+  --card-foreground: 204 40% 97%;
+  --popover: 212 34% 18%;
+  --popover-foreground: 204 40% 97%;
+  --muted: 211 30% 19%;
+  --muted-foreground: 206 22% 68%;
+  --accent: 211 30% 19%;
+  --accent-foreground: 204 40% 97%;
+  --border: 211 36% 19%;
+  --primary: 202 88% 66%;
+  --primary-foreground: 213 48% 9%;
+  --ring: 202 88% 66%;
+  --signal: 19 95% 70%;
+  --signal-foreground: 213 48% 9%;
+  --hh-raster: 212 44% 12%;
+  --hh-schraffur: 19 95% 64%;
+  /* Umgekehrte Richtung: hellster Ton = größter Posten. Rampenende 26 % =
+     vierzehn Punkte über dem Grund (12 %). */
+  --hh-ein-0: hsl(202 90% 66%); --hh-ein-1: hsl(203 66% 56%);
+  --hh-ein-2: hsl(204 50% 48%); --hh-ein-3: hsl(205 40% 41%);
+  --hh-ein-4: hsl(206 32% 35%); --hh-ein-5: hsl(207 27% 30%);
+  --hh-ein-6: hsl(208 24% 26%);
+  /* Hier tragen bis zu vier Segmente eine Beschriftung, die vier hellsten
+     Stufen bleiben deshalb über 55 % Helligkeit (dunkler Text). */
+  --hh-aus-0: hsl(206 24% 89%); --hh-aus-1: hsl(207 20% 76%);
+  --hh-aus-2: hsl(208 17% 65%); --hh-aus-3: hsl(209 16% 56%);
+  --hh-aus-4: hsl(210 18% 48%); --hh-aus-5: hsl(211 20% 42%);
+  --hh-aus-6: hsl(211 22% 37%); --hh-aus-7: hsl(212 24% 33%);
+  --hh-aus-8: hsl(212 26% 29%); --hh-aus-9: hsl(213 28% 26%);
+  --hh-seg-text: hsl(213 48% 9%);
+}
+
+/* ── Seitenbühne: der Kopf-Blickfang der Schritt-Seiten (Design H5-02/H5-09) ─
+   Die dritte benannte Fläche des Haushalts, zwischen Tonfläche und
+   Anzeigetafel: Auf ihr steht die EINE gemessene Zahl jeder Schritt-Seite,
+   daneben die verkleinerte Hauptform der Seite (das Minibild). Sie ist
+   bewusst eine Stufe LEISER als die Tafel — die Tafel bleibt exklusiv der
+   Übersicht, sonst wäre die Hierarchie Bereich → Seite nicht mehr lesbar
+   (H5-02). Hell liegt sie 4 Punkte unter der Seite (93,5 auf 97,5 %),
+   dunkel als hafenblau getönte Fläche 4 Punkte über der Karte (15 auf 11 %).
+
+   Wie bei der Tafel wandern die Token mit, damit Standard-Klassen auf der
+   Fläche stimmen. Dazu kommen drei Minibild-Töne (voll/mittel/blass) und
+   eine Strichfarbe für Lücken-Umrisse — je Theme gegen den eigenen Grund
+   gestellt, nicht gegen die Karte. Gemessen (WCAG, am gerenderten Element):
+   Kicker/Sublines hell 5,0 : 1, dunkel 7,4 : 1; Signal-Sublines hell
+   4,6 : 1 (19 92% 38% auf 93,5 %), dunkel 6,7 : 1. Der blasse Minibild-Ton
+   hält 14+ Helligkeitspunkte Abstand zum Grund (hell 81 auf 93,5, dunkel
+   30 auf 15). */
+.hh-seitenbuehne {
+  color-scheme: light;
+  --background: 205 60% 93.5%;
+  --foreground: 212 55% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 212 55% 11%;
+  --muted: 205 50% 96%;
+  --muted-foreground: 209 28% 38%;
+  --border: 205 50% 86%;
+  --primary: 205 92% 34%;
+  --primary-foreground: 204 45% 98%;
+  --ring: 205 92% 34%;
+  --signal: 19 92% 38%;
+  --signal-foreground: 0 0% 100%;
+  --sb-voll: hsl(205 92% 34%);
+  --sb-mittel: hsl(205 55% 58%);
+  --sb-blass: hsl(206 32% 81%);
+  --sb-strich: hsl(209 25% 55%);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+}
+.dark .hh-seitenbuehne {
+  color-scheme: dark;
+  --background: 208 42% 15%;
+  --foreground: 204 40% 97%;
+  --card: 209 36% 20%;
+  --card-foreground: 204 40% 97%;
+  --muted: 209 36% 19%;
+  --muted-foreground: 206 26% 74%;
+  --border: 207 36% 24%;
+  --primary: 202 88% 64%;
+  --primary-foreground: 213 48% 9%;
+  --ring: 202 88% 64%;
+  --signal: 19 95% 68%;
+  --signal-foreground: 213 48% 9%;
+  --sb-voll: hsl(202 88% 64%);
+  --sb-mittel: hsl(204 48% 46%);
+  --sb-blass: hsl(208 30% 30%);
+  --sb-strich: hsl(207 20% 52%);
+}
+
+/* Minibild der Seitenbühne: Die Skizzen-Zeilen blenden beim Seitenaufbau
+   gestaffelt ein (Tim, 26.08.: „kann man die Grafik im Header auch
+   animieren?") — EINMAL, wie der Zähl-Tween daneben (H5-07: Sichtkontakt
+   zählt einmal pro Seitenaufruf, keine Schleifen: eine Endlos-Animation
+   neben einer Lese-Zahl wäre Dauer-Unruhe). `sb-schritt` ist dieselbe
+   Staffel für Einzel-Elemente INNERHALB einer Skizze (Hebesatz-Treppe:
+   die Stufen steigen nacheinander, Versatz per animation-delay inline). */
+@keyframes sb-einblenden {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.sb-minibild > * {
+  opacity: 0;
+  animation: sb-einblenden 0.3s ease-out forwards;
+}
+.sb-minibild > *:nth-child(1) { animation-delay: 0.10s; }
+.sb-minibild > *:nth-child(2) { animation-delay: 0.22s; }
+.sb-minibild > *:nth-child(3) { animation-delay: 0.34s; }
+.sb-minibild > *:nth-child(4) { animation-delay: 0.46s; }
+.sb-minibild > *:nth-child(n+5) { animation-delay: 0.58s; }
+.sb-schritt {
+  opacity: 0;
+  animation: sb-einblenden 0.3s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sb-minibild > *, .sb-schritt {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+/* Schraffur für Rücklage/Fehlbetrag (H-01/H-03/H-07): Signal nur als Kante
+   und Muster, nie als Fläche — die Lücken-Konvention aller Haushalts-Grafiken.
+   Die Farbe kommt aus `--hh-schraffur`, damit das Muster auf der Anzeigetafel
+   deren Grund folgt statt dem Theme. */
+.hh-schraffur {
+  background: repeating-linear-gradient(135deg, hsl(var(--hh-schraffur) / 0.22) 0 3px, transparent 3px 6px);
+}
+
+/* Ableseleiste des Grafik-Baukastens (GB-00, Regel „Zeitreihe + Ableseleiste"
+   aus H4-A): Unter 744 px — der Mobil-Schwelle der H4-Boards, bewusst NICHT
+   Tailwinds `md` (768) — wird die Wertzeile sticky: Sie bleibt am unteren
+   Rand sichtbar, solange ihre Grafik im Bild ist, damit Tippen und Wischen
+   auf einer hohen Karte den Wert nicht aus dem Bild schieben. Der Abstand
+   (`--gb-ablese-bottom`) kommt aus der Komponente und rechnet mit
+   `TABLEISTE_HOEHE` — die Andockkante der Tab-Leiste ist EIN Ausdruck, keine
+   geratene Zahl (DESIGNSPRACHE § 5). Der Hintergrund wird hier gedeckt
+   (Karte + Muted-Schleier statt nur `bg-muted/40`): Im angehefteten Zustand
+   scrollt Karteninhalt unter der Leiste durch, und durch eine durchsichtige
+   Fläche schimmerte er hindurch. z-index unter `--ebene-huelle` (40): Die
+   Leiste schwebt über ihrer Karte, nie über Kopf- oder Tab-Leiste. */
+@media (max-width: 743.98px) {
+  .gb-ablese-leiste {
+    position: sticky;
+    bottom: var(--gb-ablese-bottom, 0.5rem);
+    z-index: 30;
+    background:
+      linear-gradient(hsl(var(--muted) / 0.4), hsl(var(--muted) / 0.4)),
+      hsl(var(--card));
+  }
+}
+
+/* Waffel des Grafik-Baukastens (GB-06, Regel „Waffel (Personal)" aus H4-A):
+   Desktop und Tablet zeigen `--gb-waffel-desk` Quadrate je Reihe (14), unter
+   744 px — dieselbe Mobil-Schwelle wie bei der Ableseleiste — sind es
+   `--gb-waffel-mobil` (10) bei 13 px Kantenlänge. Die Spaltenzahlen kommen
+   als Props aus der Komponente; die Schwelle steht nur hier, damit sie EINE
+   Zahl bleibt. Die Zählweise (1 Quadrat = 10 Stellen) ändert sich nicht. */
+.gb-waffel {
+  display: grid;
+  grid-template-columns: repeat(var(--gb-waffel-desk, 14), var(--gb-waffel-q, 18px));
+  gap: 5px;
+  width: fit-content;
+}
+.gb-waffel .gb-waffel-q {
+  width: var(--gb-waffel-q, 18px);
+  height: var(--gb-waffel-q, 18px);
+}
+@media (max-width: 743.98px) {
+  .gb-waffel {
+    --gb-waffel-q: 13px;
+    grid-template-columns: repeat(var(--gb-waffel-mobil, 10), var(--gb-waffel-q));
+    gap: 4px;
+  }
+}
+
+/* Die Mobil-Schwelle der H4-Boards (unter 744 px) als Sichtbarkeits-Utility.
+   Tailwinds `sm`/`md` (640/768) treffen sie beide nicht; statt je Seite eine
+   eigene Media-Query zu raten, hängt „mobil weglassen heißt: hinter einen
+   Auslöser" (H4-A) an diesen zwei Klassen. `gb-nur-mobil` zeigt den Auslöser
+   nur mobil, `gb-ab-tablet` versteckt den Inhalt darunter. */
+.gb-nur-mobil { display: none; }
+@media (max-width: 743.98px) {
+  .gb-nur-mobil { display: block; }
+  .gb-ab-tablet { display: none; }
+}
+
+/* Regler im Haushalts-Labor (H-19): Der Browser bringt Tastatur- und
+   Touch-Verhalten mit, die Bahn zeichnen wir selbst — nur so lassen sich
+   Ist-Marke und Füllung ab dieser Marke zeigen. Deshalb ist der Input
+   durchsichtig und trägt nur den Griff. */
+.hh-regler {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.hh-regler::-webkit-slider-runnable-track { background: transparent; height: 24px; }
+.hh-regler::-moz-range-track { background: transparent; height: 24px; }
+.hh-regler::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 22px;
+  width: 22px;
+  border-radius: 9999px;
+  background: hsl(var(--card));
+  border: 2.5px solid hsl(var(--primary));
+  box-shadow: 0 1px 3px rgba(2, 32, 71, 0.22);
+}
+.hh-regler::-moz-range-thumb {
+  height: 17px;
+  width: 17px;
+  border-radius: 9999px;
+  background: hsl(var(--card));
+  border: 2.5px solid hsl(var(--primary));
+  box-shadow: 0 1px 3px rgba(2, 32, 71, 0.22);
+}
+.hh-regler:focus-visible { outline: none; }
+.hh-regler:focus-visible::-webkit-slider-thumb { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
+.hh-regler:focus-visible::-moz-range-thumb { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }

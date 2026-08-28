@@ -54,7 +54,7 @@ export function isOnboardingVisible(): boolean {
 export const ONBOARDING_DONE_EVENT = "ratslotse:onboarding-done";
 /** Der Auftakt tritt beiseite und gibt den Login frei. Die Login-Seite liegt
  *  darunter längst gemountet — ohne dieses Signal begrüßte sie eine:n
- *  Erstnutzer:in mit „Willkommen zurück". */
+ *  Erstnutzer*in mit „Willkommen zurück". */
 export const ONBOARDING_NEEDS_LOGIN_EVENT = "ratslotse:onboarding-needs-login";
 
 /** Den erreichten Schritt auch am Konto festhalten (fire-and-forget).

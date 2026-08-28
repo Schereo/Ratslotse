@@ -337,9 +337,16 @@ export interface Member {
    *  Piraten") zählt für beide Parteien, damit niemand aus dem Filter fällt. */
   filter_parteien: string[];
   n: number; committees: number; first: string | null; last: string | null;
+  /** Die belegten Schreibweisen dieser Person aus den Anwesenheitslisten —
+   *  meist nur eine, gelegentlich zwei Namensformen. Nicht zur Anzeige
+   *  gedacht: Die Suche im Verzeichnis findet damit auch, wer die ältere Form
+   *  eintippt, ohne dass die Seite eine Behauptung über den Menschen aufstellt. */
+  formen?: string[];
 }
 
 export interface MemberDetail {
+  /** Fehlt bei älteren gecachten Antworten — dann als "rat" behandeln. */
+  typ?: "rat";
   name: string; slug: string; party: string | null;
   /** Zugehörigkeit für den Seitenkopf — wie im Verzeichnis aufgelöst
    *  („FDP/Volt" → FDP, wo es belegt ist). Die Zeitreihe darunter bleibt
@@ -379,6 +386,21 @@ export interface MemberDetail {
   /** Gremien mit Beitrags-Anzahl, Futter für den Filter. */
   wortbeitraege_gremien?: { committee: string; n: number }[];
 }
+
+/** Schmaler Steckbrief für Verwaltungsleute mit erkanntem Amt (Tims Wunsch
+ *  19.08.) — bewusst kein Nachbau von MemberDetail: kein Mandat, also keine
+ *  Fraktions-Zeitleiste, kein Vorsitz-Zähler, keine Gremien-Präsenz. `von`/
+ *  `bis` sind Jahre der Protokoll-Erwähnung, keine amtliche Amtszeit. */
+export interface VerwaltungDetail {
+  typ: "verwaltung";
+  name: string; slug: string; rolle: string | null;
+  aktiv: boolean; von: string | null; bis: string | null;
+  wortbeitraege?: MemberDetail["wortbeitraege"];
+  wortbeitraege_gesamt?: number;
+  wortbeitraege_gremien?: { committee: string; n: number }[];
+}
+
+export type PersonProfil = MemberDetail | VerwaltungDetail;
 
 /** Eine Station der offiziellen Beratungsfolge einer Vorlage. */
 export interface Beratung {
@@ -446,6 +468,23 @@ export interface DecisionDetail {
     /** Regex-Ernte: Klima-Check der Verwaltung („Auswirkungen: b) Klima"). */
     klima_check?: string | null;
     klima_relevant?: boolean | null;
+    /** „Finanzielle Auswirkungen" aus der Vorlage (amtlicher Wortlaut). */
+    finanz_check?: string | null;
+  } | null;
+  /** Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt über
+   *  eine echte Verknüpfung, nicht über eine Textsuche.
+   *
+   *  `null` heißt „nirgends nachweisbar", und die Seite lässt die Karte dann
+   *  weg. Der pauschale Verweis auf `/haushalt` steht für jeden Beschluss
+   *  gleich da und ist deshalb für keinen eine Auskunft; diese Karte gibt es
+   *  nur, wo sie etwas sagt. */
+  haushalts_anschluss?: {
+    art: "nachbewilligung" | "buergschaft";
+    href: string;
+    titel: string;
+    vorlage_nr: string;
+    jahr?: number | null;
+    betrag?: number | null;
   } | null;
   /** P1: document_id der gerenderten Planzeichnung — B-Plan-Beschlüsse
    *  zeigen sie als Bild statt nur als Anlagen-Download. */
@@ -486,6 +525,33 @@ export interface Topic {
   last_hit_title?: string | null;
   last_hit_date?: string | null;
   unread_count?: number;
+  /** Die jüngsten Treffer selbst (neueste zuerst, höchstens fünf). Die Karte
+   *  zeigt sie direkt — vorher stand dort eine Zahl und ein einziger Titel,
+   *  man musste also jedes Thema öffnen, um zu sehen, was drinsteht. */
+  recent_hits?: TopicHit[];
+  /** Treffer der letzten 30 Tage — sagt, ob ein Thema gerade läuft oder ruht.
+   *  Die Gesamtzahl allein kann beides bedeuten. */
+  hits_30d?: number;
+}
+
+export interface TopicHit {
+  id: number;
+  title: string;
+  committee: string;
+  session_date: string;
+  outcome: DecisionOutcome | null;
+  /** Noch nicht gesehen — dieselbe Menge, die das „n neue"-Abzeichen zählt. */
+  is_new: boolean;
+}
+
+/** Ein Gremium samt dem, was die Abo-Seite darüber zeigt. `next_date` fehlt,
+ *  solange das Ratsinfo keinen Termin führt — dann bleibt die Zeile leer,
+ *  statt einen zu erfinden. */
+export interface CommitteeDetail {
+  name: string;
+  next_date: string | null;
+  next_time: string | null;
+  decisions_year: number;
 }
 
 export interface TopicDecision {
@@ -576,6 +642,8 @@ export interface AdminUserDetail {
   apple_linked: boolean;
   has_password: boolean;
   delivery_channel: string;
+  /** Einwilligung „Gespräche speichern": null = nie gefragt, 1 = an, 0 = bewusst aus. */
+  qa_speichern: number | null;
   features: { ki_frage: number; suche: number; quiz: number; analyse: number; karte: number };
   topics: string[];
   abos: string[];

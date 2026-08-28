@@ -7,7 +7,7 @@ Auswertung der öffentlichen Dokumente des Oldenburger Ratsinformationssystems:
 **Sitzungsprotokolle** (→ Beschlüsse, Abstimmungen, Anwesenheit), **Vorlagen**
 (→ Sachverhalt & Begründung) und **Anlagen** (→ Original-Anträge der Fraktionen
 mit Antragsteller-Erkennung) — durchsuchbar im Web, verknüpft mit den Themen
-der Nutzer:innen.
+der Nutzer*innen.
 
 ![Diagramm: Welche Dokumente Ratslotse auswertet — Sitzungskalender, Protokolle, Vorlagen und Anlagen — und welche Features daraus entstehen](../../assets/dokumente-pipeline.svg)
 
@@ -15,7 +15,7 @@ der Nutzer:innen.
 
 - Vergangene Sitzungen tragen ein **„Protokoll (öffentlich)"-PDF** (`getfile.php?id=…`),
   erkennbar am Label. Veröffentlicht mit Verzögerung (Tage–Wochen).
-- Inhalt pro Protokoll: Metadaten (Protokoll-Nr., Datum, Beginn/Ende), **Teilnehmer
+- Inhalt pro Protokoll: Metadaten (Protokoll-Nr., Datum, Beginn/Ende), **Teilnehmer*innen
   mit Fraktion**, und pro TOP **Beschlusstext + Abstimmungsergebnis** (einstimmig /
   mehrheitlich bei N Gegenstimmen, welche Fraktion, angenommen/abgelehnt/vertagt).
 - **Bestand:** lückenlos **seit Januar 2018** (~100 Sitzungen/Jahr, ~820 Protokolle,
@@ -124,9 +124,30 @@ council_memberships        -- Gremien-Mitgliedschaften je Person
 - Kontaktdaten der Personenseiten (Adresse, Telefon, Beruf) werden bewusst
   **nicht** übernommen.
 
+### Eine Person, zwei Namensformen (`council/namensformen.py`)
+
+Manche Menschen stehen in den Anwesenheitslisten unter zwei Namensformen —
+„Tim Harms" und „Tim Ebbeke Harms". Ohne Zuordnung zerfällt so eine Person in
+zwei Profile mit je einem Teil ihrer Sitzungen, und die Personen-Badges der
+KI-Antworten fallen aus (bei zwei gleich benannten Kandidaten gibt der Matcher
+absichtlich auf).
+
+- **Welche Formen zusammengehören, ist gepflegt** (`GRUPPEN`, heute drei
+  Einträge). Automatisch erkennbar wäre es — die Bedingung findet am Bestand
+  aber auch zwei verschiedene Menschen, und eine falsche Gruppe behauptete,
+  zwei reale Personen seien eine. `scripts/check_namensformen.py` liefert
+  deshalb nur den **Bericht** der Verdachtspaare; entschieden wird von Hand.
+- **Welche Form angezeigt wird, ist es nicht:** Es gewinnt die Form mit der
+  **jüngsten Fundstelle** in den Anwesenheitslisten — nie die längere, nie die
+  häufigere. Wechselt eine Quelle die Form, zieht die Anzeige beim nächsten
+  Protokoll von selbst mit.
+- Gruppiert wird über `CouncilStore.person_slug` (statt `_person_slug`); der
+  kanonische Slug ist die Adresse der Personen-Seite, die übrigen Formen
+  liefern dasselbe Profil, damit geteilte Links nicht brechen.
+
 ### Anbindung an Nutzer-Themen
 
-Beschlüsse werden gegen die Themen der Nutzer:innen klassifiziert (mit strengem
+Beschlüsse werden gegen die Themen der Nutzer*innen klassifiziert (mit strengem
 Verify-Pass) und speisen „Beschlüsse zu deinen Themen" samt Benachrichtigung.
 Die Treffer liegen in **`council_topic_matches`** — und zwar in der **Konten-DB**
 (`nwz.sqlite`), nicht in `council.sqlite`: Sie hängen an einem Konto, die

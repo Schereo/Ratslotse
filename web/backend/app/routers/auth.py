@@ -215,7 +215,7 @@ def register(
         # statt das Deployment stillschweigend ohne Admin zu lassen.
         logger.warning(
             "WEB_ADMIN_EMAIL %s hat sich registriert, aber ohne RESEND_API_KEY gibt es "
-            "keinen Bestätigungslink — das Konto bleibt normale:r Nutzer:in. "
+            "keinen Bestätigungslink — das Konto bleibt ein normales Nutzerkonto. "
             "Adminrechte von Hand vergeben: " + _GRANT_ADMIN_CMD,
             email, email,
         )

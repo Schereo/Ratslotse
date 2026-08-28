@@ -105,13 +105,17 @@ def get_notifications(
     keine zweite Liste pflegen muss — eine vergessene Art fällt sonst erst auf,
     wenn sich jemand über eine unabschaltbare Meldung ärgert.
     """
-    from kern.notify import NACHTRUHE_AB, NACHTRUHE_BIS, NOTIFY_DEFAULTS, NOTIFY_LABELS, TAGESGRENZE
+    from kern.notify import (NACHTRUHE_AB, NACHTRUHE_BIS, NOTIFY_DEFAULTS,
+                             NOTIFY_LABELS, NOTIFY_PARENT, TAGESGRENZE)
 
     gesetzt = store.get_notify_prefs(user["id"])
     return {
         "kinds": [
             {"key": k, "label": NOTIFY_LABELS[k][0], "hint": NOTIFY_LABELS[k][1],
-             "default": NOTIFY_DEFAULTS[k], "enabled": bool(gesetzt.get(k, NOTIFY_DEFAULTS[k]))}
+             "default": NOTIFY_DEFAULTS[k], "enabled": bool(gesetzt.get(k, NOTIFY_DEFAULTS[k])),
+             # Unter-Option: wirkt nur, solange der Eltern-Anlass an ist — die
+             # Oberfläche rückt sie ein und graut sie entsprechend aus.
+             "parent": NOTIFY_PARENT.get(k)}
             for k in NOTIFY_DEFAULTS
         ],
         "limits": {"per_day": TAGESGRENZE, "quiet_from": NACHTRUHE_AB, "quiet_to": NACHTRUHE_BIS},

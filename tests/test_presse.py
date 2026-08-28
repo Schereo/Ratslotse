@@ -2,9 +2,7 @@
 
 Parser laufen gegen eingebettete Fixture-Schnipsel — kein Netz.
 """
-import json
 
-import pytest
 
 from council import presse, qa
 from council.store import CouncilStore
