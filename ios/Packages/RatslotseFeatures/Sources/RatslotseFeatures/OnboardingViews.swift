@@ -523,9 +523,13 @@ private struct CommitteeChoiceRow: View {
                         .fill(selected ? RatsColor.primary : RatsColor.card)
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
                         .stroke(selected ? RatsColor.primary : RatsColor.muted, lineWidth: 1.6)
-                    if selected {
-                        Text("✓")
-                            .font(RatsFont.body(13, weight: .bold))
+                    if disabled {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .tint(selected ? RatsColor.primaryText : RatsColor.primary)
+                    } else if selected {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(RatsColor.primaryText)
                     }
                 }
@@ -543,7 +547,6 @@ private struct CommitteeChoiceRow: View {
                     }
                 }
                 Spacer(minLength: 0)
-                if disabled { ProgressView().controlSize(.small) }
             }
             .padding(12)
             .background(selected ? RatsColor.primary.opacity(0.05) : RatsColor.card)
