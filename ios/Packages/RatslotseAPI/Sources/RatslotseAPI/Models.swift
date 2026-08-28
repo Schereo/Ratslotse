@@ -795,11 +795,56 @@ public struct ConversationSummary: Codable, Sendable, Identifiable {
     public let updatedAt: String?
     public let turnCount: Int
 
+    public init(id: Int, title: String, updatedAt: String?, turnCount: Int) {
+        self.id = id
+        self.title = title
+        self.updatedAt = updatedAt
+        self.turnCount = turnCount
+    }
+
     enum CodingKeys: String, CodingKey {
         case id
         case title = "titel"
         case updatedAt = "updated"
         case turnCount = "n_turns"
+    }
+}
+
+public struct BadgeProgress: Codable, Sendable, Equatable {
+    public let current: Int
+    public let target: Int
+}
+
+public struct BadgeItem: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    public let title: String
+    public let hint: String
+    public let earned: Bool
+    public let progress: BadgeProgress?
+}
+
+public struct EarnedBadge: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    public let title: String
+}
+
+public struct NextBadge: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    public let title: String
+    public let hint: String
+}
+
+public struct BadgeSnapshot: Codable, Sendable, Equatable {
+    public let badges: [BadgeItem]
+    public let earnedCount: Int
+    public let total: Int
+    public let next: NextBadge?
+    public let newlyEarned: [EarnedBadge]
+
+    enum CodingKeys: String, CodingKey {
+        case badges, total, next
+        case earnedCount = "earned_count"
+        case newlyEarned = "newly_earned"
     }
 }
 

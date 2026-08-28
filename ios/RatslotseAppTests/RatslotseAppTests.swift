@@ -50,6 +50,20 @@ import Testing
 }
 
 @MainActor
+@Test func appearanceSelectionSurvivesARelaunch() throws {
+    let suiteName = "de.ratslotse.tests.appearance.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let model = AppModel(defaults: defaults)
+    #expect(model.appearance == .system)
+    model.setAppearance(.dark)
+
+    let relaunched = AppModel(defaults: defaults)
+    #expect(relaunched.appearance == .dark)
+}
+
+@MainActor
 @Test func conversationSavingPreferenceComesFromTheAccount() throws {
     let data = try #require(
         """

@@ -9,6 +9,10 @@ struct TodayView: View {
     @State private var preview: WeekPreview?
     @State private var foundPiece: FoundPiece?
     @State private var recent: [DecisionSummary] = []
+    @State private var upcomingSessions: [CouncilSession] = []
+    @State private var latestTopicHits: [DashboardTopicHit] = []
+    @State private var weekNumber: DashboardWeekNumber?
+    @State private var now = Date.now
     @State private var error: String?
 
     var body: some View {
@@ -67,12 +71,32 @@ struct TodayView: View {
         .navigationTitle("Heute")
         .toolbarTitleDisplayMode(.inline)
         .refreshable { await load() }
-        .task { if today == nil { await load() } }
+        .task {
+#if DEBUG
+            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_TODAY_LIVE"] == "1" {
+                installDebugDashboard()
+                return
+            }
+#endif
+            if today == nil { await load() }
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                now = .now
+            }
+        }
     }
 
     @ViewBuilder
     private var primaryColumn: some View {
-        if let today, today.state != "naechste" || preview?.found != true {
+        if let liveSession {
+            LiveCouncilCard(session: liveSession, now: now) {
+                if let id = liveSession.ksinr { model.navigation.append(.sessions(ksinr: id, tops: [])) }
+                else { openSessions() }
+            }
+        }
+        if let today, liveSession == nil, today.state != "naechste" || preview?.found != true {
             TodayStatusCard(today: today, openSessions: openSessions)
         }
         if let preview, preview.found {
@@ -84,6 +108,21 @@ struct TodayView: View {
 
     @ViewBuilder
     private var secondaryColumn: some View {
+        if !latestTopicHits.isEmpty {
+            LatestTopicHitsCard(hits: latestTopicHits) { model.navigation.append(.decision(id: $0)) }
+        }
+
+        if let weekNumber {
+            DashboardWeekNumberCard(number: weekNumber) { decisionID in
+                if let decisionID { model.navigation.append(.decision(id: decisionID)) }
+                else {
+                    model.navigation.removeAll()
+                    model.selectedTab = .council
+                    model.councilSection = .decisions
+                }
+            }
+        }
+
         if let week, week.found, let id = week.decisionID {
             Button { model.navigation.append(.decision(id: id)) } label: {
                 VStack(alignment: .leading, spacing: 9) {
@@ -159,6 +198,17 @@ struct TodayView: View {
 
     private func openSessions() { model.navigation.append(.sessions(ksinr: nil, tops: [])) }
 
+    private var liveSession: CouncilSession? {
+        upcomingSessions.first { session in
+            guard session.sessionDate.prefix(10) == localISODate(now),
+                  let time = session.sessionTime,
+                  let start = sessionStart(time, on: now)
+            else { return false }
+            let age = now.timeIntervalSince(start)
+            return age >= 0 && age <= 4 * 60 * 60
+        }
+    }
+
     private func load() async {
         error = nil
         do {
@@ -169,6 +219,14 @@ struct TodayView: View {
             async let decisionsRequest: DecisionPage = model.api.get(
                 "/api/council/decisions", query: [.init(name: "limit", value: "5")]
             )
+            async let sessionsRequest: SessionPage? = try? await model.api.get(
+                "/api/council/sessions",
+                query: [.init(name: "scope", value: "upcoming"), .init(name: "limit", value: "3")]
+            )
+            async let hitsRequest: DashboardTopicHits? = try? await model.api.get(
+                "/api/topics/latest-hits", query: [.init(name: "limit", value: "2")]
+            )
+            async let numberRequest: DashboardWeekNumber? = try? await model.api.get("/api/council/zahl-der-woche")
             let (newToday, newWeek, newPreview, newFound, page) = try await (
                 todayRequest, weekRequest, previewRequest, foundRequest, decisionsRequest
             )
@@ -177,10 +235,309 @@ struct TodayView: View {
             preview = newPreview
             foundPiece = newFound
             recent = page.decisions
+            if let sessions = await sessionsRequest { upcomingSessions = sessions.sessions }
+            if let hits = await hitsRequest { latestTopicHits = hits.hits }
+            if let number = await numberRequest { weekNumber = number }
         } catch {
             self.error = error.localizedDescription
         }
     }
+
+#if DEBUG
+    private func installDebugDashboard() {
+        let calendar = Calendar.current
+        let started = calendar.date(byAdding: .minute, value: -42, to: now) ?? now
+        let time = started.formatted(.dateTime.locale(Locale(identifier: "de_DE")).hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+        let json = """
+        {
+          "ksinr": 99101,
+          "committee": "Rat",
+          "session_date": "\(localISODate(now))",
+          "session_time": "\(time)",
+          "location": "Altes Rathaus",
+          "title": "Sitzung des Rates",
+          "n_items": 18,
+          "my_topic_items": [{"item_number":"Ö 7"}, {"item_number":"Ö 12"}]
+        }
+        """
+        if let session = try? JSONDecoder().decode(CouncilSession.self, from: Data(json.utf8)) {
+            upcomingSessions = [session]
+        }
+        latestTopicHits = [
+            .init(
+                topicName: "Sichere Schulwege",
+                id: 99111,
+                title: "Neue Querung an der Cloppenburger Straße",
+                committee: "Verkehrsausschuss",
+                sessionDate: localISODate(now)
+            ),
+            .init(
+                topicName: "Wohnen in Oldenburg",
+                id: 99112,
+                title: "Nördlich Eßkamp: nächster Planungsschritt",
+                committee: "Stadtplanung & Bauen",
+                sessionDate: localISODate(now)
+            ),
+        ]
+        weekNumber = .init(
+            kind: "betrag",
+            amountEUR: 9_512_500,
+            decisionID: 99113,
+            title: "Mehrbedarf für den Teilhaushalt 10",
+            sessionDate: localISODate(now),
+            count: nil,
+            windowDays: 7
+        )
+    }
+#endif
+}
+
+private struct DashboardTopicHits: Codable, Sendable {
+    let hits: [DashboardTopicHit]
+}
+
+private struct DashboardTopicHit: Codable, Sendable, Identifiable {
+    let topicName: String
+    let id: Int
+    let title: String
+    let committee: String
+    let sessionDate: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, committee
+        case topicName = "topic_name"
+        case sessionDate = "session_date"
+    }
+}
+
+private struct DashboardWeekNumber: Codable, Sendable {
+    let kind: String
+    let amountEUR: Double?
+    let decisionID: Int?
+    let title: String?
+    let sessionDate: String?
+    let count: Int?
+    let windowDays: Int
+
+    enum CodingKeys: String, CodingKey {
+        case kind, title, count
+        case amountEUR = "amount_eur"
+        case decisionID = "decision_id"
+        case sessionDate = "session_date"
+        case windowDays = "window_days"
+    }
+}
+
+private struct LiveCouncilCard: View {
+    let session: CouncilSession
+    let now: Date
+    let openAgenda: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            HStack(spacing: 8) {
+                ZStack {
+                    Circle().fill(RatsColor.danger.opacity(0.15)).frame(width: 16, height: 16)
+                    Circle().fill(RatsColor.danger).frame(width: 8, height: 8)
+                }
+                .accessibilityHidden(true)
+                Text("LIVE · SEIT \(runningTime.uppercased())")
+                    .font(RatsFont.mono(9, weight: .semibold))
+                    .tracking(0.8)
+                    .foregroundStyle(RatsColor.danger)
+                Spacer(minLength: 6)
+                if let location = session.location, !location.isEmpty {
+                    Text(location)
+                        .font(RatsFont.body(10))
+                        .foregroundStyle(RatsColor.muted)
+                        .lineLimit(1)
+                }
+            }
+
+            Text(isCouncil ? "Der Stadtrat tagt gerade" : "\(session.committee) tagt gerade")
+                .font(RatsFont.title(22))
+                .foregroundStyle(RatsColor.text)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(liveMeta)
+                    .font(RatsFont.body(13, weight: .medium))
+                    .foregroundStyle(RatsColor.bodyText)
+                Text("Welcher TOP gerade dran ist, veröffentlicht das Ratsinfo nicht. Ergebnisse folgen mit dem Protokoll.")
+                    .font(RatsFont.body(10))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineSpacing(2)
+            }
+            .padding(11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RatsColor.stage)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 9) { actions }
+                VStack(alignment: .leading, spacing: 9) { actions }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(RatsColor.card)
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(RatsColor.danger.opacity(0.24))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        Button(action: openAgenda) {
+            Label("Tagesordnung", systemImage: "list.bullet.rectangle")
+        }
+        .buttonStyle(PrimaryButtonStyle())
+        if isCouncil, let stream = URL(string: "https://oeins.de/tv-stream/") {
+            Link(destination: stream) {
+                Label("O1-Livestream", systemImage: "play.rectangle")
+            }
+            .buttonStyle(SecondaryButtonStyle())
+        }
+    }
+
+    private var isCouncil: Bool {
+        ["rat", "stadtrat"].contains(session.committee.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+    }
+
+    private var topicItemCount: Int {
+        Set((session.myTopicItems ?? []).compactMap { $0.object?["item_number"]?.string }).count
+    }
+
+    private var liveMeta: String {
+        var parts = ["Begonnen um \(session.sessionTime ?? "–") Uhr"]
+        if session.itemCount > 0 { parts.append("\(session.itemCount) \(session.itemCount == 1 ? "TOP" : "TOPs")") }
+        if topicItemCount > 0 { parts.append("\(topicItemCount) zu deinen Themen") }
+        return parts.joined(separator: " · ")
+    }
+
+    private var runningTime: String {
+        guard let time = session.sessionTime, let start = sessionStart(time, on: now) else { return "kurzem" }
+        let minutes = max(0, Int(now.timeIntervalSince(start) / 60))
+        if minutes < 60 { return "\(minutes) \(minutes == 1 ? "Minute" : "Minuten")" }
+        let halfHours = Double(Int((Double(minutes) / 30).rounded())) / 2
+        if halfHours == 1 { return "1 Stunde" }
+        return "\(halfHours.formatted(.number.precision(.fractionLength(0...1)))) Stunden"
+    }
+}
+
+private struct LatestTopicHitsCard: View {
+    let hits: [DashboardTopicHit]
+    let open: (Int) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            MonoKicker("Neu zu deinen Themen", trailing: "\(hits.count)")
+            ForEach(Array(hits.enumerated()), id: \.element.id) { index, hit in
+                Button { open(hit.id) } label: {
+                    HStack(alignment: .top, spacing: 11) {
+                        Image(systemName: "tag.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(RatsColor.signal)
+                            .frame(width: 30, height: 30)
+                            .background(RatsColor.signal.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(hit.topicName)
+                                .font(RatsFont.mono(9, weight: .semibold))
+                                .foregroundStyle(RatsColor.signal)
+                            Text(hit.title)
+                                .font(RatsFont.body(14, weight: .semibold))
+                                .foregroundStyle(RatsColor.text)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(3)
+                            Text([shortCommittee(hit.committee), RatsDate.short(hit.sessionDate)].compactMap { $0 }.joined(separator: " · "))
+                                .font(RatsFont.body(10))
+                                .foregroundStyle(RatsColor.secondary)
+                        }
+                        Spacer(minLength: 2)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(RatsColor.muted)
+                            .padding(.top, 8)
+                    }
+                }
+                .buttonStyle(.plain)
+                if index < hits.count - 1 { Divider().overlay(RatsColor.separator) }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ratsCard()
+    }
+}
+
+private struct DashboardWeekNumberCard: View {
+    let number: DashboardWeekNumber
+    let open: (Int?) -> Void
+
+    var body: some View {
+        Button { open(number.decisionID) } label: {
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 7) {
+                    MonoKicker("Zahl der Woche")
+                    Text(displayValue)
+                        .font(RatsFont.title(34))
+                        .foregroundStyle(RatsColor.signal)
+                        .contentTransition(.numericText())
+                    Text(description)
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.secondary)
+                        .lineLimit(3)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 6)
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .ratsCard()
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var displayValue: String {
+        guard number.kind == "betrag", let amount = number.amountEUR else { return "\(number.count ?? 0)" }
+        if amount >= 1_000_000 {
+            return "\((amount / 1_000_000).formatted(.number.precision(.fractionLength(0...1)))) Mio. €"
+        }
+        if amount >= 1_000 { return "\((amount / 1_000).formatted(.number.precision(.fractionLength(0)))) Tsd. €" }
+        return amount.formatted(.currency(code: "EUR").precision(.fractionLength(0)))
+    }
+
+    private var description: String {
+        if number.kind == "betrag" { return "beschlossen für: \(number.title ?? "einen aktuellen Ratsbeschluss")" }
+        let count = number.count ?? 0
+        return "\(count == 1 ? "Beschluss" : "Beschlüsse") in den letzten \(number.windowDays) Tagen"
+    }
+}
+
+private func localISODate(_ date: Date) -> String {
+    let calendar = Calendar.current
+    let components = calendar.dateComponents([.year, .month, .day], from: date)
+    return String(format: "%04d-%02d-%02d", components.year ?? 0, components.month ?? 0, components.day ?? 0)
+}
+
+private func sessionStart(_ time: String, on date: Date) -> Date? {
+    let parts = time.split(separator: ":").compactMap { Int($0) }
+    guard let hour = parts.first else { return nil }
+    var components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+    components.hour = hour
+    components.minute = parts.count > 1 ? parts[1] : 0
+    components.second = 0
+    return Calendar.current.date(from: components)
+}
+
+private func shortCommittee(_ name: String) -> String {
+    name
+        .replacingOccurrences(of: "Ausschuss für ", with: "")
+        .replacingOccurrences(of: "Rat der Stadt", with: "Rat")
 }
 
 private struct WeekPreviewCard: View {

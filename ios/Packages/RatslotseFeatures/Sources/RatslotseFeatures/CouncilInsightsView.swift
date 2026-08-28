@@ -179,7 +179,10 @@ struct CouncilInsightsView: View {
         .navigationTitle("Analyse")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await load() }
-        .task { await load() }
+        .task {
+            await load()
+            await model.markExplorationStep("analyse")
+        }
     }
 
     private var sectionPicker: some View {

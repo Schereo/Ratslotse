@@ -45,6 +45,7 @@ public struct NativeRootView: View {
         .font(RatsFont.body())
         .foregroundStyle(RatsColor.text)
         .background(RatsColor.page.ignoresSafeArea())
+        .preferredColorScheme(preferredColorScheme)
         .overlay(alignment: .top) {
             if model.isOffline {
                 Label("Offline", systemImage: "wifi.slash")
@@ -57,6 +58,12 @@ public struct NativeRootView: View {
                     .accessibilityLabel("Keine Internetverbindung")
             }
         }
+        .overlay {
+            if let badge = model.badgeCelebration {
+                BadgeCelebrationOverlay(model: model, badge: badge)
+            }
+        }
+        .animation(.snappy, value: model.badgeCelebration?.id)
         .sheet(item: $model.authPresentation) { presentation in
             AuthFlowView(model: model, initial: presentation)
                 .ratsLargeSheet()
@@ -77,6 +84,10 @@ public struct NativeRootView: View {
                 model.session = .active(user)
                 model.onboardingStep = nil
             }
+            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_BADGES"] == "1",
+               let snapshot = debugBadgeSnapshot() {
+                model.badgeSnapshot = snapshot
+            }
             switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_AUTH"] {
             case "login": model.authPresentation = .login
             case "register": model.authPresentation = .register
@@ -92,10 +103,23 @@ public struct NativeRootView: View {
         }
     }
 
+    private var preferredColorScheme: ColorScheme? {
+        switch model.appearance {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+
 #if DEBUG
     private func debugActiveUser() -> User? {
         let json = #"{"id":1,"email":"visual-qa@ratslotse.de","role":"user","status":"active","delivery_channel":"push","email_verified":true,"apple_linked":false,"has_password":false,"access_token":null,"display_name":"Visual QA","qa_speichern":0}"#
         return try? JSONDecoder().decode(User.self, from: Data(json.utf8))
+    }
+
+    private func debugBadgeSnapshot() -> BadgeSnapshot? {
+        let json = #"{"badges":[{"id":"erste-frage","title":"Erste Frage","hint":"Stell dem Rat deine erste KI-Frage.","earned":true},{"id":"themen-lotse","title":"Themen-Lotse","hint":"Lege dein erstes Thema an.","earned":true},{"id":"quiz-serie","title":"Quiz-Serie ×5","hint":"Spiele das Quiz an 5 Tagen in Folge.","earned":false,"progress":{"current":4,"target":5}},{"id":"kartograf","title":"Kartograf","hint":"Öffne 3 Orte auf der Stadtkarte.","earned":true},{"id":"analyst","title":"Analyst","hint":"Erkunde die Analyse-Seite.","earned":true},{"id":"sitzungsgast","title":"Sitzungsgast","hint":"Klapp eine Tagesordnung auf.","earned":true},{"id":"fruehwarner","title":"Frühwarner","hint":"Aktiviere Push-Mitteilungen.","earned":true},{"id":"kompass","title":"Kompass","hint":"Mach die Lotti-Tour einmal ganz durch.","earned":false}],"earned_count":6,"total":8,"next":{"id":"quiz-serie","title":"Quiz-Serie ×5","hint":"Spiele das Quiz an 5 Tagen in Folge."},"newly_earned":[]}"#
+        return try? JSONDecoder().decode(BadgeSnapshot.self, from: Data(json.utf8))
     }
 #endif
 }
@@ -338,7 +362,12 @@ private struct MainTabsView: View {
                 model.tabletPage = .saved
             case "quiz":
                 model.navigation.removeAll()
-                model.tabletPage = .quiz
+                if horizontalSizeClass == .regular {
+                    model.tabletPage = .quiz
+                } else {
+                    model.selectedTab = .questions
+                    model.navigation.append(.quiz(area: nil))
+                }
             case "account":
                 model.navigation.removeAll()
                 model.selectedTab = .account

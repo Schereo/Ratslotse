@@ -72,6 +72,27 @@ import Testing
     #expect(detail.follow == nil)
 }
 
+@Test func badgeSnapshotDecodesCollectionProgressAndCelebrations() throws {
+    let json = #"""
+    {
+      "badges": [
+        {"id":"erste-frage","title":"Erste Frage","hint":"Stell eine Frage.","earned":true,"progress":null},
+        {"id":"quiz-serie","title":"Quiz-Serie ×5","hint":"Spiele an fünf Tagen.","earned":false,"progress":{"current":3,"target":5}}
+      ],
+      "earned_count": 1,
+      "total": 2,
+      "next": {"id":"quiz-serie","title":"Quiz-Serie ×5","hint":"Spiele an fünf Tagen."},
+      "newly_earned": [{"id":"erste-frage","title":"Erste Frage"}]
+    }
+    """#
+
+    let snapshot = try JSONDecoder().decode(BadgeSnapshot.self, from: Data(json.utf8))
+    #expect(snapshot.earnedCount == 1)
+    #expect(snapshot.badges.last?.progress == BadgeProgress(current: 3, target: 5))
+    #expect(snapshot.next?.id == "quiz-serie")
+    #expect(snapshot.newlyEarned == [EarnedBadge(id: "erste-frage", title: "Erste Frage")])
+}
+
 @Test func savedCouncilResponsesDecodeCurrentServerShape() throws {
     let bookmarksJSON = #"""
     {"bookmarks":[{

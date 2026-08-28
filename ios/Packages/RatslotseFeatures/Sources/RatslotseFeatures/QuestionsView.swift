@@ -279,6 +279,7 @@ struct QuestionsView: View {
         guard question.count >= 4 else { return }
         if let rateLimitUntil, rateLimitUntil > .now { return }
         input = ""
+        Task { await model.reportBadgeEvent("frage") }
         let history = turns.suffix(4).map {
             AskRound(frage: $0.question, antwort: String($0.answer.prefix(600)))
         }

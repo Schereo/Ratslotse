@@ -351,6 +351,7 @@ private struct TopicEditorView: View {
                 } else {
                     try await model.api.send("/api/topics", body: body)
                 }
+                await model.refreshBadges()
                 completed()
             } catch { self.error = error.localizedDescription }
         }
@@ -367,8 +368,9 @@ struct AccountView: View {
     @State private var error: String?
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 16) {
                 if let user = model.user {
                     HStack(alignment: .center, spacing: 14) {
                         LottiProfileAvatar(accountID: user.id, size: 58)
@@ -396,6 +398,8 @@ struct AccountView: View {
                         }
                         .buttonStyle(SecondaryButtonStyle())
                     }
+
+                    BadgeCollectionCard(model: model)
 
                     RatsSectionPanel(
                         "Benachrichtigungen",
@@ -474,6 +478,11 @@ struct AccountView: View {
                         .buttonStyle(.plain)
                     }
 
+                    ConversationSettingsCard(model: model)
+                        .id("conversation-settings")
+
+                    AppearanceSettingsCard(model: model)
+
                     RatsSectionPanel("Sicherheit", symbol: "lock.shield") {
                         if user.hasPassword {
                             Button { isChangingPassword = true } label: {
@@ -488,6 +497,28 @@ struct AccountView: View {
                             RatsSettingsRow("Mit Apple verknüpft", detail: "Schnelle und sichere Anmeldung", symbol: "apple.logo") {
                                 Image(systemName: "checkmark.circle.fill").foregroundStyle(RatsColor.success)
                             }
+                        }
+                        if !user.hasPassword {
+                            if user.appleLinked { Divider().overlay(RatsColor.separator) }
+                            Button {
+                                Task {
+                                    do {
+                                        try await model.forgotPassword(email: user.email)
+                                        model.alertMessage = "Der Link zum Einrichten eines Passworts ist unterwegs."
+                                    } catch {
+                                        self.error = error.localizedDescription
+                                    }
+                                }
+                            } label: {
+                                RatsSettingsRow(
+                                    "Passwort per E-Mail einrichten",
+                                    detail: "Ergänzt die Apple-Anmeldung um ein eigenes Passwort",
+                                    symbol: "envelope.badge"
+                                ) {
+                                    Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
+                                }
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
 
@@ -519,30 +550,39 @@ struct AccountView: View {
                 }
                 if let error { ErrorCard(message: error) { Task { await load() } } }
             }
-            .frame(maxWidth: 760, alignment: .leading)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 22)
-        }
-        .background(RatsColor.page)
-        .navigationTitle("Konto")
-        .toolbarTitleDisplayMode(.inline)
-        .task { await load() }
-        .onAppear {
-#if DEBUG
-            switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ACCOUNT_SHEET"] {
-            case "password": isChangingPassword = true
-            case "delete": isDeletingAccount = true
-            default: break
+                .frame(maxWidth: 920, alignment: .leading)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 22)
             }
+            .background(RatsColor.page)
+            .navigationTitle("Konto")
+            .toolbarTitleDisplayMode(.inline)
+            .task {
+                await load()
+#if DEBUG
+                if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ACCOUNT_ANCHOR"] == "preferences" {
+                    try? await Task.sleep(for: .milliseconds(250))
+                    proxy.scrollTo("conversation-settings", anchor: .top)
+                }
 #endif
-        }
-        .sheet(isPresented: $isChangingPassword) {
-            ChangePasswordView(model: model)
-                .ratsLargeSheet()
-        }
-        .sheet(isPresented: $isDeletingAccount) {
-            DeleteAccountView(model: model)
-                .ratsLargeSheet()
+            }
+            .onAppear {
+#if DEBUG
+                switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ACCOUNT_SHEET"] {
+                case "password": isChangingPassword = true
+                case "delete": isDeletingAccount = true
+                default: break
+                }
+#endif
+            }
+            .sheet(isPresented: $isChangingPassword) {
+                ChangePasswordView(model: model)
+                    .ratsLargeSheet()
+            }
+            .sheet(isPresented: $isDeletingAccount) {
+                DeleteAccountView(model: model)
+                    .ratsLargeSheet()
+            }
         }
     }
 

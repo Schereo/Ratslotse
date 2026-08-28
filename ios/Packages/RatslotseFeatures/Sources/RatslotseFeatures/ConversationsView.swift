@@ -9,6 +9,9 @@ struct ConversationsView: View {
     @State private var selected: JSONValue?
     @State private var error: String?
     @State private var isLoading = true
+    @State private var search = ""
+    @State private var renameTarget: ConversationSummary?
+    @State private var renameTitle = ""
 
     var body: some View {
         NavigationStack {
@@ -44,8 +47,30 @@ struct ConversationsView: View {
                             symbol: "bubble.left.and.bubble.right"
                         )
                     } else {
+                        if conversations.count >= 8 {
+                            HStack(spacing: 9) {
+                                Image(systemName: "magnifyingglass")
+                                    .foregroundStyle(RatsColor.muted)
+                                TextField("In Gesprächen suchen …", text: $search)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                            }
+                            .font(RatsFont.body(14))
+                            .padding(.horizontal, 13)
+                            .frame(minHeight: 46)
+                            .background(RatsColor.card)
+                            .overlay(RoundedRectangle(cornerRadius: 13).stroke(RatsColor.border))
+                            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                        }
                         MonoKicker("Verlauf", trailing: "\(conversations.count)")
-                        ForEach(conversations) { conversation in
+                        if filteredConversations.isEmpty {
+                            RatsEmptyState(
+                                title: "Kein Treffer",
+                                message: "Kein Gespräch passt zu „\(search.trimmingCharacters(in: .whitespacesAndNewlines))“.",
+                                symbol: "text.magnifyingglass"
+                            )
+                        }
+                        ForEach(filteredConversations) { conversation in
                             HStack(spacing: 10) {
                                 Button { Task { await open(conversation.id) } } label: {
                                     HStack(spacing: 12) {
@@ -73,6 +98,10 @@ struct ConversationsView: View {
                                 }
                                 .buttonStyle(.plain)
                                 Menu {
+                                    Button("Umbenennen", systemImage: "pencil") {
+                                        renameTitle = conversation.title
+                                        renameTarget = conversation
+                                    }
                                     Button("Gespräch löschen", systemImage: "trash", role: .destructive) {
                                         remove(conversation.id)
                                     }
@@ -97,6 +126,27 @@ struct ConversationsView: View {
             .toolbar(.hidden, for: .navigationBar)
         }
         .task { await load() }
+        .alert("Gespräch umbenennen", isPresented: Binding(
+            get: { renameTarget != nil },
+            set: { if !$0 { renameTarget = nil } }
+        )) {
+            TextField("Titel", text: $renameTitle)
+            Button("Abbrechen", role: .cancel) { renameTarget = nil }
+            Button("Speichern") {
+                guard let target = renameTarget else { return }
+                renameTarget = nil
+                Task { await rename(target) }
+            }
+            .disabled(renameTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        } message: {
+            Text("Ein kurzer, eindeutiger Titel macht den Verlauf später leichter auffindbar.")
+        }
+    }
+
+    private var filteredConversations: [ConversationSummary] {
+        let term = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !term.isEmpty else { return conversations }
+        return conversations.filter { $0.title.localizedCaseInsensitiveContains(term) }
     }
 
     private func conversationMeta(_ conversation: ConversationSummary) -> String {
@@ -128,6 +178,30 @@ struct ConversationsView: View {
                 try await model.api.sendVoid("/api/council/gespraeche/\(id)", method: .delete)
                 conversations.removeAll { $0.id == id }
             } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    private func rename(_ conversation: ConversationSummary) async {
+        struct Body: Codable, Sendable { let titel: String }
+        let clean = renameTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        do {
+            try await model.api.sendVoid(
+                "/api/council/gespraeche/\(conversation.id)",
+                method: .patch,
+                body: Body(titel: clean)
+            )
+            if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
+                conversations[index] = ConversationSummary(
+                    id: conversation.id,
+                    title: clean,
+                    updatedAt: conversation.updatedAt,
+                    turnCount: conversation.turnCount
+                )
+            }
+            error = nil
+        } catch {
+            self.error = error.localizedDescription
         }
     }
 }

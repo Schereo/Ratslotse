@@ -830,6 +830,7 @@ private struct TopicOnboardingStep: View {
         )
         topics.append(topic)
         suggestions.removeAll { $0.name == topic.name }
+        await model.refreshBadges()
     }
 
     private func remove(_ topic: Topic) {

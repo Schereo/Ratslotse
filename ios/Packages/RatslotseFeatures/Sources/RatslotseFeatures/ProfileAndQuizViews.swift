@@ -58,7 +58,10 @@ struct PublicProfileView: View {
         .background(RatsColor.page)
         .navigationTitle(kicker.capitalized)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
+        .task {
+            await load()
+            if kind == .place { await model.reportBadgeEvent("map_place", key: key) }
+        }
     }
 
     @ViewBuilder
@@ -577,9 +580,41 @@ private enum QuizMode: String {
 
 private struct QuizStats: Codable, Sendable {
     struct Total: Codable, Sendable { let points: Int; let answered: Int; let correct: Int }
+    struct Area: Codable, Sendable, Identifiable {
+        var id: String { "\(areaType):\(areaKey)" }
+        let areaType: String
+        let areaKey: String
+        let points: Int
+        let answered: Int
+        let correct: Int
+        let lastAt: String?
+
+        enum CodingKeys: String, CodingKey {
+            case points, answered, correct
+            case areaType = "area_type"
+            case areaKey = "area_key"
+            case lastAt = "last_at"
+        }
+    }
+    struct Badge: Codable, Sendable, Identifiable {
+        var id: String { key }
+        let key: String
+        let label: String
+        let tier: String
+    }
+
+    let byArea: [Area]
     let total: Total
     let wrong: Int
     let streak: Int
+    let badges: [Badge]
+    let dailyDone: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case total, wrong, streak, badges
+        case byArea = "by_area"
+        case dailyDone = "daily_done"
+    }
 }
 
 private struct QuizDaily: Codable, Sendable {
@@ -640,11 +675,19 @@ struct QuizView: View {
     @State private var own: [OwnQuizQuestion] = []
     @State private var showOwnEditor = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUIZ_OWN"] != nil
     @State private var showMapQuiz = false
+    @State private var showStats = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                if round.isEmpty {
+                if showStats, let stats {
+                    QuizStatsScreen(
+                        stats: stats,
+                        labels: quizAreaLabels,
+                        back: { withAnimation(.snappy) { showStats = false } },
+                        practice: { area in Task { await practice(area) } }
+                    )
+                } else if round.isEmpty {
                     setup
                 } else if index < round.count {
                     questionView(round[index])
@@ -688,15 +731,10 @@ struct QuizView: View {
             Text("Die Antworten stammen aus Ratsunterlagen und verlässlichen Stadtquellen.")
                 .foregroundStyle(RatsColor.secondary)
             if let stats, stats.total.answered > 0 {
-                HStack(spacing: 18) {
-                    QuizMetric(value: "\(stats.total.points)", label: "Punkte")
-                    QuizMetric(value: "\(Int((Double(stats.total.correct) / Double(stats.total.answered)) * 100)) %", label: "richtig")
-                    QuizMetric(value: "\(stats.streak)", label: "Tage-Serie")
+                Button { withAnimation(.snappy) { showStats = true } } label: {
+                    QuizStatsSummary(stats: stats)
                 }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RatsColor.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .buttonStyle(.plain)
             }
             LazyVGrid(columns: quizModeColumns, spacing: 10) {
                 QuizModeButton(title: "Täglich", detail: daily?.done == nil ? "Heute offen" : "Heute erledigt", symbol: "bolt.fill") {
@@ -892,6 +930,14 @@ struct QuizView: View {
         return "\(selectedAreas.count) \(selectedAreas.count == 1 ? "Gebiet" : "Gebiete") ausgewählt"
     }
 
+    private var quizAreaLabels: [String: String] {
+        guard let areas else { return [:] }
+        let rows = areas.wahlbereiche.map { ("wahlbereich:\($0.key)", $0.label ?? $0.key) }
+            + areas.stadtteile.map { ("stadtteil:\($0.key)", $0.label ?? $0.key) }
+            + areas.themen.map { ("thema:\($0.key)", $0.label ?? $0.key) }
+        return Dictionary(uniqueKeysWithValues: rows)
+    }
+
     private var usesWideLayout: Bool {
         UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass != .compact
     }
@@ -908,6 +954,13 @@ struct QuizView: View {
     private func toggleCategory(_ key: String) {
         if selectedCategories.contains(key) { selectedCategories.remove(key) }
         else { selectedCategories.insert(key) }
+    }
+
+    private func practice(_ area: QuizStats.Area) async {
+        showStats = false
+        selectedAreas = ["\(area.areaType):\(area.areaKey)"]
+        selectedCategories.removeAll()
+        await start()
     }
 
     @ViewBuilder
@@ -1053,7 +1106,21 @@ struct QuizView: View {
         )
         selectedAreas = ["wahlbereich:3", "thema:schulwege"]
         selectedCategories = ["ratspolitik", "orte"]
-        stats = QuizStats(total: .init(points: 148, answered: 63, correct: 47), wrong: 6, streak: 4)
+        stats = QuizStats(
+            byArea: [
+                .init(areaType: "stadtteil", areaKey: "Osternburg", points: 18, answered: 14, correct: 7, lastAt: "2026-08-28"),
+                .init(areaType: "thema", areaKey: "schulwege", points: 22, answered: 12, correct: 10, lastAt: "2026-08-27"),
+                .init(areaType: "stadtteil", areaKey: "Nadorst", points: 31, answered: 18, correct: 14, lastAt: "2026-08-26"),
+            ],
+            total: .init(points: 148, answered: 63, correct: 47),
+            wrong: 6,
+            streak: 4,
+            badges: [
+                .init(key: "punkte", label: "100 Punkte", tier: "silber"),
+                .init(key: "serie", label: "3-Tage-Serie", tier: "silber"),
+            ],
+            dailyDone: false
+        )
         daily = QuizDaily(day: "2026-08-28", done: nil, questions: [])
         own = []
     }
@@ -1147,6 +1214,7 @@ struct QuizView: View {
             stats = newStats
             daily = newDaily
             own = newOwn.questions
+            await model.refreshBadges()
         } catch {
             // Die Modi sind Zusatzinformationen; die normale Runde bleibt nutzbar.
         }
@@ -1179,6 +1247,222 @@ struct QuizView: View {
         index = 0
         points = 0
         correct = 0
+    }
+}
+
+private struct QuizStatsSummary: View {
+    let stats: QuizStats
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "chart.line.uptrend.xyaxis")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(RatsColor.primaryText)
+                .frame(width: 44, height: 44)
+                .background(RatsColor.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Meine Quiz-Statistik")
+                    .font(RatsFont.body(15, weight: .semibold))
+                    .foregroundStyle(RatsColor.text)
+                Text("\(stats.total.points) Punkte · \(rate)% richtig · \(stats.streak)-Tage-Serie")
+                    .font(RatsFont.body(11))
+                    .foregroundStyle(RatsColor.secondary)
+            }
+            Spacer(minLength: 4)
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(RatsColor.muted)
+        }
+        .padding(13)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RatsColor.primary.opacity(0.055))
+        .overlay(RoundedRectangle(cornerRadius: 15).stroke(RatsColor.primary.opacity(0.18)))
+        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+    }
+
+    private var rate: Int {
+        guard stats.total.answered > 0 else { return 0 }
+        return Int((Double(stats.total.correct) / Double(stats.total.answered) * 100).rounded())
+    }
+}
+
+private struct QuizStatsScreen: View {
+    let stats: QuizStats
+    let labels: [String: String]
+    let back: () -> Void
+    let practice: (QuizStats.Area) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Button(action: back) {
+                Label("Zurück zum Quiz", systemImage: "chevron.left")
+                    .font(RatsFont.body(12, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+            }
+            .buttonStyle(.plain)
+            VStack(alignment: .leading, spacing: 5) {
+                MonoKicker("Dein Wissen über Oldenburg")
+                Text("Meine Quiz-Statistik")
+                    .font(RatsFont.title(28))
+                Text("Fortschritt je Gebiet, schwächste zuerst – plus Serie und Abzeichen.")
+                    .font(RatsFont.body(13))
+                    .foregroundStyle(RatsColor.secondary)
+            }
+            QuizProgressPanel(stats: stats, labels: labels, practice: practice)
+        }
+    }
+}
+
+private struct QuizProgressPanel: View {
+    let stats: QuizStats
+    let labels: [String: String]
+    let practice: (QuizStats.Area) -> Void
+
+    private let metricColumns = [GridItem(.adaptive(minimum: 106), spacing: 12)]
+    private let areaColumns = [GridItem(.adaptive(minimum: 250), spacing: 10)]
+
+    var body: some View {
+        RatsSectionPanel(
+            "Mein Fortschritt",
+            detail: "Schwächere Gebiete stehen zuerst – von dort kannst du direkt weiterüben.",
+            symbol: "chart.line.uptrend.xyaxis"
+        ) {
+            LazyVGrid(columns: metricColumns, alignment: .leading, spacing: 12) {
+                QuizMetric(value: "\(stats.total.points)", label: "Punkte")
+                QuizMetric(value: "\(hitRate(stats.total.correct, stats.total.answered)) %", label: "Trefferquote")
+                QuizMetric(value: "\(stats.total.answered)", label: "gespielt")
+                QuizMetric(value: "\(stats.streak)", label: "Tage-Serie")
+            }
+            .padding(13)
+            .background(RatsColor.primary.opacity(0.055))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            if !stats.badges.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    MonoKicker("Quiz-Abzeichen", trailing: "\(stats.badges.count)")
+                    QuizFlowLayout(spacing: 7) {
+                        ForEach(stats.badges) { badge in
+                            Label(badge.label, systemImage: badge.tier == "gold" ? "trophy.fill" : "medal.fill")
+                                .font(RatsFont.body(11, weight: .semibold))
+                                .foregroundStyle(badgeColor(badge.tier))
+                                .padding(.horizontal, 10)
+                                .frame(minHeight: 30)
+                                .background(badgeColor(badge.tier).opacity(0.10))
+                                .overlay(Capsule().stroke(badgeColor(badge.tier).opacity(0.22)))
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+            }
+
+            if stats.wrong > 0 {
+                HStack(spacing: 10) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .foregroundStyle(RatsColor.warning)
+                    Text("\(stats.wrong) \(stats.wrong == 1 ? "Frage wartet" : "Fragen warten") auf einen zweiten Versuch.")
+                        .font(RatsFont.body(12, weight: .medium))
+                        .foregroundStyle(RatsColor.bodyText)
+                }
+                .padding(11)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RatsColor.warningTint)
+                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+            }
+
+            if !stats.byArea.isEmpty {
+                VStack(alignment: .leading, spacing: 9) {
+                    MonoKicker("Nach Gebiet", trailing: "schwächste zuerst")
+                    LazyVGrid(columns: areaColumns, alignment: .leading, spacing: 10) {
+                        ForEach(sortedAreas) { area in
+                            QuizAreaProgressTile(
+                                area: area,
+                                label: labels[area.id] ?? area.areaKey,
+                                practice: { practice(area) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var sortedAreas: [QuizStats.Area] {
+        stats.byArea.sorted {
+            let lhs = Double($0.correct) / Double(max(1, $0.answered))
+            let rhs = Double($1.correct) / Double(max(1, $1.answered))
+            return lhs == rhs ? $0.answered > $1.answered : lhs < rhs
+        }
+    }
+
+    private func hitRate(_ correct: Int, _ answered: Int) -> Int {
+        guard answered > 0 else { return 0 }
+        return Int((Double(correct) / Double(answered) * 100).rounded())
+    }
+
+    private func badgeColor(_ tier: String) -> Color {
+        switch tier {
+        case "gold": RatsColor.warning
+        case "silber": RatsColor.secondary
+        default: RatsColor.signal
+        }
+    }
+}
+
+private struct QuizAreaProgressTile: View {
+    let area: QuizStats.Area
+    let label: String
+    let practice: () -> Void
+
+    private var rate: Double {
+        guard area.answered > 0 else { return 0 }
+        return Double(area.correct) / Double(area.answered)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: area.areaType == "thema" ? "sparkles" : "mappin.and.ellipse")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+                    .frame(width: 28, height: 28)
+                    .background(RatsColor.primary.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(label)
+                        .font(RatsFont.body(12, weight: .semibold))
+                        .foregroundStyle(RatsColor.text)
+                        .lineLimit(1)
+                    Text("\(area.correct) von \(area.answered) richtig")
+                        .font(RatsFont.mono(9))
+                        .foregroundStyle(RatsColor.muted)
+                }
+                Spacer(minLength: 4)
+                Button("Üben", action: practice)
+                    .font(RatsFont.body(10, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+                    .buttonStyle(.plain)
+            }
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(RatsColor.separator)
+                    Capsule()
+                        .fill(progressColor)
+                        .frame(width: max(4, proxy.size.width * rate))
+                }
+            }
+            .frame(height: 6)
+        }
+        .padding(11)
+        .background(RatsColor.stage)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var progressColor: Color {
+        if rate >= 0.67 { return RatsColor.success }
+        if rate >= 0.34 { return RatsColor.warning }
+        return RatsColor.danger
     }
 }
 

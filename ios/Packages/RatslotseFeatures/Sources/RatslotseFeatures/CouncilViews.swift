@@ -1342,7 +1342,10 @@ private struct SessionDetailView: View {
         .background(RatsColor.page)
         .navigationTitle("Sitzung")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
+        .task {
+            await load()
+            await model.reportBadgeEvent("sitzung")
+        }
         .sheet(item: $calendarDraft) { draft in CalendarEditSheet(draft: draft, isPresented: Binding(
             get: { calendarDraft != nil }, set: { if !$0 { calendarDraft = nil } }
         )) }

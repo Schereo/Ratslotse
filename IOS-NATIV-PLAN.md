@@ -18,7 +18,10 @@
   Ratssuche mit Filtern und Seiten, reiches Beschlussdetail, Quick-Look-
   Anlagen, Merkliste/Vorlagen-Follows, Sitzungen/EventKit, öffentliche Profile,
   MapKit-Stadtkarte mit Clustering und Ortsbereich-Umrissen, Orts-Minikarten,
-  alle vier Quizmodi und das dreistufige Lotti-Onboarding.
+  alle vier Quizmodi mit vollständiger Statistik, Abzeichen und das dreistufige
+  Lotti-Onboarding. Das Dashboard enthält zusätzlich Live-Sitzungen, neue
+  Treffer zu eigenen Themen und die Zahl der Woche; Konto und Ratsgespräche
+  besitzen native Datenschutz-, Speicher- und Erscheinungsbild-Einstellungen.
 - **Bewusste Web-Ziele:** Admin, Landing/Doku und der öffentliche `/g`-
   Antwort-Snapshot bleiben im Web. Hilfe, Kontakt und Rechtstexte öffnen bis
   zu einem späteren nativen Ausbau ebenfalls ihre vorhandenen Web-Seiten.
@@ -26,6 +29,9 @@
   Direktpfad für `POST /api/council/ask`, Push auf einem echten Gerät, Sign in
   with Apple sowie Archive/Export mit Distribution-Signing geprüft werden.
   Die Capacitor-App wird bis zu diesem Cutover nicht entfernt.
+- **Bewusst nicht Teil der App:** Der Haushalt folgt in einem späteren Paket.
+  Die Kommunalwahl war ein reines Entwicklungs-Fun-Feature und wird nicht
+  nativ portiert.
 - **Phase 4 nicht enthalten:** Widgets, Live Activity, App Intents, Spotlight
   und Handoff sind keine Voraussetzung dieses Umbaus und bleiben offen.
 
@@ -327,7 +333,8 @@ Push-Kategorien für Aktions-Buttons. Der Payload-Deep-Link (`url`) bleibt.
 - **Admin-Panel** (acht Tabs) — bei Bedarf Link im Konto-Tab für Admins.
 - **Landing `/`, Changelog, `/g`-Share-Snapshots** (OG-Metadaten brauchen
   Server-Rendering), Doku.
-- **3D-Lotti** — Landing-Schmuck, kein App-Feature.
+- **Interaktiver WebGL-Lotti-Viewer** — bleibt Landing-Schmuck; die App nutzt
+  stattdessen optimierte Lotti-Posen in Onboarding, Konto und Inhaltsflächen.
 
 ## 6. Übergang & Release
 
@@ -424,13 +431,13 @@ abgenommen.
 | Bereich | Geprüfte Zustände | Ergebnis |
 |---|---|---|
 | Start, Auth und Onboarding | Willkommen, alle drei Tour-Schritte, Anmeldung, Registrierung, Passwort vergessen/zurücksetzen, ausstehende Verifizierung | Native Lotti-Inszenierung, Welle, Typografie und Handlungsführung entsprechen mindestens der WebView-Qualität |
-| Heute | personalisierte Übersicht, Termine, Beschlüsse, leere und gefüllte Zustände | Bestanden; deutsche Datumsdarstellung und informationsreichere Beschlusskarten |
+| Heute | personalisierte Übersicht, Termine, Beschlüsse, Live-Sitzung, neue Thementreffer, Zahl der Woche, leere und gefüllte Zustände | Bestanden; deutsche Datumsdarstellung, informationsreichere Beschlusskarten und echte Mehrspaltenstruktur auf dem iPad |
 | Frag den Rat | leer, vollständige Antwort, Quellen, Fraktionen, Tagesordnungen, Anlagen, Presse, Debatten, Planung, Diagramm, Anschlussfragen, Fehlerzustand | Bestanden; lange Inhalte, Scrollposition, Eingabeleiste und Quellen-Hierarchie geprüft |
 | Gründliche Recherche | Start, Fortschritt, Unterhaltungsliste und Transkript | Bestanden; Metadaten und Gesprächsverlauf bleiben auch auf schmalen Geräten lesbar |
 | Rat | Beschlüsse, Sitzungen, Stadtkarte, Suche/Filter, Detail, Anlage, gefüllte Merkliste | Bestanden; MapKit startet in Oldenburg, alle Datumswerte sind lokalisiert |
 | Themen und Profile | Themenliste/-editor, Themen-, Orts- und Personenprofil | Bestanden; Personenprofile zeigen Rolle, Aktivität, Kennzahlen, Gremien und letzte Sitzungen |
-| Quiz | Start, Frage, Auflösung, Kartenfrage und eigene Fragen | Bestanden; Zustände und Karteninteraktion ohne Layoutsprünge |
-| Konto und Systemzustände | Konto, Einstellungen, Passwort, Löschen, Update-Pflicht | Bestanden; Update-Pflicht nutzt die gleiche Markenwelt statt einer generischen Sperrseite |
+| Quiz | Start, vollständige Statistik, Frage, Auflösung, Kartenfrage und eigene Fragen | Bestanden; Zustände, Fortschrittsraster und Karteninteraktion ohne Layoutsprünge |
+| Konto und Systemzustände | Konto, farbige Lotsen-Abzeichen, Gesprächs-/Darstellungseinstellungen, Passwort, Löschen, Update-Pflicht | Bestanden; eigene iPhone-/iPad-Raster und Sicherheitsabfrage vor dem dauerhaften Löschen von Gesprächen |
 | Systemübergaben | Safari-Ziele, Quick Look, Share Sheet und Berechtigungsdialoge | Bestanden als native iOS-Systemoberflächen |
 
 In einer zusätzlichen Oberflächenprüfung wurden sämtliche verbliebenen
@@ -445,9 +452,11 @@ Formular-Sheet abgeschnitten werden. Bewusst systemeigen bleiben nur
 Übergaben, bei denen die vertraute iOS-Oberfläche funktional dazugehört:
 Sign in with Apple, Teilen, Quick Look, Safari und Berechtigungsdialoge.
 
-Die Prüfung deckt Simulatoren und lokale API-Fixtures ab; ein Release-Build auf
-physischer Hardware und der abschließende TestFlight-/Store-Check bleiben Teil
-des Cutovers.
+Die Prüfung deckt Simulatoren, lokale API-Fixtures und authentifizierte,
+schreibgeschützte Produktionsdaten auf dem iPhone ab. Dauerhaft löschende
+Aktionen wurden bewusst nicht gegen Produktion ausgelöst. Ein Release-Build
+auf physischer Hardware und der abschließende TestFlight-/Store-Check bleiben
+Teil des Cutovers.
 
 ---
 

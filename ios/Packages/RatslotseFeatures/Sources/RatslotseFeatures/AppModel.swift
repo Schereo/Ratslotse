@@ -28,6 +28,14 @@ public enum AuthPresentation: Sendable, Equatable, Identifiable {
     }
 }
 
+public enum AppAppearance: String, CaseIterable, Sendable, Identifiable {
+    case system
+    case light
+    case dark
+
+    public var id: String { rawValue }
+}
+
 enum CouncilSection: String, CaseIterable, Identifiable, Sendable {
     case decisions = "Beschlüsse"
     case sessions = "Sitzungen"
@@ -63,16 +71,21 @@ public final class AppModel {
     public var alertMessage: String?
     public var hasRecoverableResearch = false
     public var onboardingStep: Int?
+    public var badgeSnapshot: BadgeSnapshot?
+    public var badgeCelebration: EarnedBadge?
+    public var appearance: AppAppearance
 
     private let network = NetworkMonitor()
     private let defaults: UserDefaults
     private var pendingPushToken: String?
     private var conversationSavingPreferenceOverride: Int?
+    private var badgeCelebrationQueue: [EarnedBadge] = []
 
     private static let onboardingDoneKey = "ratslotse.onboarding.done"
     private static let onboardingStepKey = "ratslotse.onboarding.step"
     private static let legacyIntroKey = "ratslotse.intro.done"
     private static let pushPrimerSnoozeKey = "ratslotse.push-primer.snoozed-until"
+    private static let appearanceKey = "ratslotse.appearance"
 
     public init(
         api: APIClient = APIClient(),
@@ -84,6 +97,7 @@ public final class AppModel {
         self.sse = sse
         self.router = router
         self.defaults = defaults
+        appearance = AppAppearance(rawValue: defaults.string(forKey: Self.appearanceKey) ?? "") ?? .system
         if defaults.object(forKey: Self.onboardingDoneKey) != nil
             || defaults.object(forKey: Self.legacyIntroKey) != nil {
             onboardingStep = nil
@@ -101,6 +115,11 @@ public final class AppModel {
         case .pending(let user), .active(let user): user
         default: nil
         }
+    }
+
+    public func setAppearance(_ appearance: AppAppearance) {
+        self.appearance = appearance
+        defaults.set(appearance.rawValue, forKey: Self.appearanceKey)
     }
 
     var conversationSavingPreference: Int? {
@@ -241,6 +260,56 @@ public final class AppModel {
         conversationSavingPreferenceOverride = response.setting
     }
 
+    public func refreshBadges(celebrate: Bool = true) async {
+        guard user?.isActive == true else { return }
+        do {
+            let snapshot: BadgeSnapshot = try await api.get("/api/badges")
+            badgeSnapshot = snapshot
+            guard celebrate else { return }
+            let queued = Set(badgeCelebrationQueue.map(\.id) + [badgeCelebration?.id].compactMap { $0 })
+            badgeCelebrationQueue.append(contentsOf: snapshot.newlyEarned.filter { !queued.contains($0.id) })
+            showNextBadgeCelebrationIfNeeded()
+        } catch {
+            // Abzeichen sind eine motivierende Zusatzfunktion. Ein Fehler darf
+            // Anmeldung, Navigation oder die eigentliche Aktion nie blockieren.
+        }
+    }
+
+    public func reportBadgeEvent(_ type: String, key: String? = nil) async {
+        struct Body: Codable, Sendable { let type: String; let key: String? }
+        do {
+            try await api.sendVoid("/api/badges/event", body: Body(type: type, key: key))
+            await refreshBadges()
+        } catch {
+            // Fire-and-forget wie im Web: Die Nutzerhandlung bleibt maßgeblich.
+        }
+    }
+
+    public func markExplorationStep(_ step: String) async {
+        struct Body: Codable, Sendable { let steps: [String]; let celebrated: Bool? }
+        guard let current: JSONValue = try? await api.get("/api/onboarding") else { return }
+        var steps = current.object?["steps"]?.array?.compactMap(\.string) ?? []
+        guard !steps.contains(step) else {
+            await refreshBadges()
+            return
+        }
+        steps.append(step)
+        let _: JSONValue? = try? await api.send(
+            "/api/onboarding", body: Body(steps: steps, celebrated: nil)
+        )
+        await refreshBadges()
+    }
+
+    public func dismissBadgeCelebration() {
+        badgeCelebration = nil
+        showNextBadgeCelebrationIfNeeded()
+    }
+
+    private func showNextBadgeCelebrationIfNeeded() {
+        guard badgeCelebration == nil, !badgeCelebrationQueue.isEmpty else { return }
+        badgeCelebration = badgeCelebrationQueue.removeFirst()
+    }
+
     public func adopt(user: User) async throws {
         try await accept(user: user)
     }
@@ -254,6 +323,9 @@ public final class AppModel {
         try? await api.setAccessToken(nil)
         pendingPushToken = nil
         conversationSavingPreferenceOverride = nil
+        badgeSnapshot = nil
+        badgeCelebration = nil
+        badgeCelebrationQueue.removeAll()
         tabletPage = nil
         navigation.removeAll()
         session = .loggedOut
@@ -299,6 +371,7 @@ public final class AppModel {
         guard case .active = session else { return }
         struct Body: Codable, Sendable { let token: String; let platform: String }
         try? await api.sendVoid("/api/push/register", body: Body(token: token, platform: "ios"))
+        await refreshBadges()
     }
 
     public func requestPushPermission() async -> Bool {
@@ -335,6 +408,7 @@ public final class AppModel {
         )
         onboardingStep = nil
         await reportOnboarding(step: 3, done: true)
+        await reportBadgeEvent("tour")
     }
 
     public func restartOnboarding() {
@@ -371,6 +445,7 @@ public final class AppModel {
             if let current: JSONValue = try? await api.get("/api/council/deep-research/aktuell") {
                 hasRecoverableResearch = current.object?["job"] != .null && current.object?["job"] != nil
             }
+            await refreshBadges()
         }
     }
 
