@@ -14,6 +14,7 @@ struct MoreHubView: View {
     let openCouncil: (CouncilSection) -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var showsFeedback = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_FEEDBACK"] == "1"
     @State private var path: NavigationPath = {
         var path = NavigationPath()
         switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MORE_DESTINATION"] {
@@ -111,6 +112,10 @@ struct MoreHubView: View {
             }
         }
         .presentationDragIndicator(.hidden)
+        .sheet(isPresented: $showsFeedback) {
+            NativeFeedbackView(model: model)
+                .ratsLargeSheet()
+        }
     }
 
     private var councilGroup: some View {
@@ -207,7 +212,7 @@ struct MoreHubView: View {
         VStack(alignment: .leading, spacing: 10) {
             MonoKicker("Ratslotse")
             VStack(spacing: 0) {
-                Link(destination: URL(string: "mailto:post@ratslotse.de?subject=Feedback%20zur%20iOS-App")!) {
+                Button { showsFeedback = true } label: {
                     MoreRowLabel(row: .action("Feedback geben", "Was können wir besser machen?", .feedback) {})
                 }
                 .buttonStyle(RatsPressButtonStyle())
@@ -272,6 +277,193 @@ struct MoreHubView: View {
     private func goBack() {
         guard !path.isEmpty else { return }
         path.removeLast()
+    }
+}
+
+struct NativeFeedbackPayload: Codable, Sendable, Equatable {
+    let kind: String
+    let message: String
+}
+
+private enum NativeFeedbackKind: String, CaseIterable, Identifiable {
+    case feature
+    case bug
+    case other
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .feature: "Idee"
+        case .bug: "Fehler"
+        case .other: "Sonstiges"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .feature: "sparkles"
+        case .bug: "ladybug"
+        case .other: "bubble.left.and.bubble.right"
+        }
+    }
+}
+
+private struct NativeFeedbackView: View {
+    let model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var kind: NativeFeedbackKind = .feature
+    @State private var message = ""
+    @State private var isSending = false
+    @State private var didSend = false
+    @State private var error: String?
+
+    private var trimmedMessage: String {
+        message.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                RatsSheetHeader("Feedback", leadingTitle: "Schließen", leadingAction: { dismiss() })
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        if didSend {
+                            successView
+                        } else {
+                            form
+                        }
+                    }
+                    .frame(maxWidth: 680, alignment: .leading)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 22)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .background(RatsColor.page)
+            }
+            .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    private var form: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            RatsModalIntro(
+                kicker: "Direkt an Ratslotse",
+                title: "Was können wir besser machen?",
+                message: "Ideen, Fehler und Dinge, die dich stören – deine Nachricht landet direkt bei uns.",
+                symbol: "message.badge"
+            )
+
+            RatsSectionPanel("Worum geht es?", detail: "Wähle die passendste Kategorie.", symbol: "tag") {
+                HStack(spacing: 8) {
+                    ForEach(NativeFeedbackKind.allCases) { entry in
+                        Button { kind = entry } label: {
+                            VStack(spacing: 6) {
+                                Image(systemName: entry.symbol)
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text(entry.label)
+                                    .font(RatsFont.body(11, weight: .semibold))
+                                    .lineLimit(1)
+                            }
+                            .foregroundStyle(kind == entry ? RatsColor.primaryText : RatsColor.text)
+                            .frame(maxWidth: .infinity, minHeight: 62)
+                            .background(kind == entry ? RatsColor.primary : RatsColor.stage)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(kind == entry ? RatsColor.primary : RatsColor.border)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                        .buttonStyle(RatsPressButtonStyle())
+                        .accessibilityAddTraits(kind == entry ? .isSelected : [])
+                    }
+                }
+            }
+
+            RatsSectionPanel("Deine Nachricht", detail: "Je konkreter, desto leichter können wir es verbessern.", symbol: "text.alignleft") {
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField(
+                        "Was fehlt, was funktioniert nicht oder was wäre hilfreich?",
+                        text: $message,
+                        axis: .vertical
+                    )
+                    .font(RatsFont.body(15))
+                    .lineLimit(5...10)
+                    .textFieldStyle(.plain)
+                    .padding(12)
+                    .frame(minHeight: 138, alignment: .topLeading)
+                    .background(RatsColor.stage)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(RatsColor.border)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .onChange(of: message) { _, value in
+                        if value.count > 4_000 { message = String(value.prefix(4_000)) }
+                    }
+
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Antworten können wir an deine Konto-Adresse schicken.")
+                            .font(RatsFont.body(10.5))
+                            .foregroundStyle(RatsColor.secondary)
+                        Spacer(minLength: 8)
+                        Text("\(message.count) / 4000")
+                            .font(RatsFont.mono(9))
+                            .foregroundStyle(RatsColor.muted)
+                    }
+                }
+            }
+
+            if let error {
+                ErrorCard(message: error) { Task { await send() } }
+            }
+
+            Button { Task { await send() } } label: {
+                HStack(spacing: 8) {
+                    if isSending { ProgressView().tint(RatsColor.primaryText) }
+                    else { Image(systemName: "paperplane.fill") }
+                    Text(isSending ? "Wird gesendet …" : "Feedback senden")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(isSending || trimmedMessage.count < 3)
+            .opacity(isSending || trimmedMessage.count < 3 ? 0.5 : 1)
+        }
+    }
+
+    private var successView: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Lotti3DView(scene: .celebrate)
+                .frame(maxWidth: .infinity)
+                .frame(height: 188)
+                .accessibilityHidden(true)
+            RatsModalIntro(
+                kicker: "Danke dir",
+                title: "Ist angekommen!",
+                message: "Dein Feedback wurde gespeichert. Wir schauen es uns an und melden uns bei Rückfragen über deine Konto-Adresse.",
+                symbol: "checkmark"
+            )
+            Button("Fertig") { dismiss() }
+                .buttonStyle(PrimaryButtonStyle())
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func send() async {
+        guard trimmedMessage.count >= 3, !isSending else { return }
+        isSending = true
+        error = nil
+        defer { isSending = false }
+        do {
+            try await model.api.sendVoid(
+                "/api/feedback",
+                body: NativeFeedbackPayload(kind: kind.rawValue, message: trimmedMessage)
+            )
+            withAnimation(.easeInOut(duration: 0.22)) { didSend = true }
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 }
 

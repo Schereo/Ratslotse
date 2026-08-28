@@ -138,6 +138,67 @@ private final class ConversationSettingURLProtocol: URLProtocol {
     }
 }
 
+@MainActor
+@Test func nativeFeedbackUsesTheFeedbackEndpoint() async throws {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [FeedbackURLProtocol.self]
+    let api = APIClient(
+        baseURL: try #require(URL(string: "https://native-test.ratslotse.invalid")),
+        session: URLSession(configuration: configuration)
+    )
+    FeedbackURLProtocol.lastRequest = nil
+    FeedbackURLProtocol.lastRequestBody = nil
+
+    try await api.sendVoid(
+        "/api/feedback",
+        body: NativeFeedbackPayload(kind: "bug", message: "Der Knopf reagiert nicht.")
+    )
+
+    #expect(FeedbackURLProtocol.lastRequest?.url?.path == "/api/feedback")
+    #expect(FeedbackURLProtocol.lastRequest?.httpMethod == "POST")
+    let body = try #require(FeedbackURLProtocol.lastRequestBody)
+    let payload = try JSONDecoder().decode(NativeFeedbackPayload.self, from: body)
+    #expect(payload == NativeFeedbackPayload(kind: "bug", message: "Der Knopf reagiert nicht."))
+}
+
+private final class FeedbackURLProtocol: URLProtocol {
+    static var lastRequest: URLRequest?
+    static var lastRequestBody: Data?
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        Self.lastRequest = request
+        Self.lastRequestBody = request.httpBody ?? request.httpBodyStream.flatMap(readAll)
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(#"{"ok":true}"#.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    private func readAll(_ stream: InputStream) -> Data? {
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 1_024)
+        while true {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            if count < 0 { return nil }
+            if count == 0 { return data }
+            data.append(contentsOf: buffer[..<count])
+        }
+    }
+}
+
 @Test func productionPersonProfileDecodesStructuredAffiliation() throws {
     let data = try #require(
         """
