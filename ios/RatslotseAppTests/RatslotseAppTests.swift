@@ -319,3 +319,34 @@ private final class FeedbackURLProtocol: URLProtocol {
     #expect(card.rangeMax == 350_000)
     #expect(card.category == "schaetzen")
 }
+
+@Test func nativeAgendaItemsDecodeTopAttachmentsAndLegacyPayloads() throws {
+    let data = try #require(
+        """
+        [{
+          "item_number": "Ö 7",
+          "title": "Sichere Querung an der Cloppenburger Straße",
+          "vorlage_nr": "26/0412",
+          "is_public": 1,
+          "summary": "Der Ausschuss berät zwei Varianten.",
+          "anlagen": [
+            {"label": "Lageplan Querungsstelle", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=310001"},
+            {"label": "Verkehrsgutachten", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=310002"}
+          ]
+        }, {
+          "item_number": "Ö 8",
+          "title": "Mitteilungen",
+          "vorlage_nr": null,
+          "is_public": 1,
+          "summary": null
+        }]
+        """.data(using: .utf8)
+    )
+
+    let items = try JSONDecoder().decode([AgendaItem].self, from: data)
+
+    #expect(items.first?.attachments.count == 2)
+    #expect(items.first?.attachments.first?.label == "Lageplan Querungsstelle")
+    #expect(items.first?.attachments.first?.url.contains("id=310001") == true)
+    #expect(items.last?.attachments.isEmpty == true)
+}

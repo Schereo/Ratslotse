@@ -921,16 +921,27 @@ private extension DecisionDetail {
 }
 
 private struct CouncilAttachmentPreview: View {
-    let attachment: CouncilAttachment
+    let label: String
+    let remoteURLString: String
     @Environment(\.dismiss) private var dismiss
     @State private var localURL: URL?
     @State private var error: String?
+
+    init(attachment: CouncilAttachment) {
+        label = attachment.label
+        remoteURLString = attachment.url
+    }
+
+    init(agendaAttachment: AgendaAttachment) {
+        label = agendaAttachment.label
+        remoteURLString = agendaAttachment.url
+    }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 RatsSheetHeader(
-                    attachment.label,
+                    label,
                     trailingTitle: "Fertig",
                     trailingAction: { dismiss() }
                 )
@@ -944,7 +955,7 @@ private struct CouncilAttachmentPreview: View {
                                 message: error,
                                 symbol: "doc.badge.ellipsis"
                             )
-                            if let url = URL(string: attachment.url) {
+                            if let url = URL(string: remoteURLString) {
                                 Link(destination: url) {
                                     Label("Im Browser öffnen", systemImage: "arrow.up.right")
                                         .frame(maxWidth: .infinity)
@@ -969,7 +980,7 @@ private struct CouncilAttachmentPreview: View {
     }
 
     private func download() async {
-        guard localURL == nil, let remoteURL = URL(string: attachment.url) else {
+        guard localURL == nil, let remoteURL = URL(string: remoteURLString) else {
             error = "Die Dokumentadresse ist ungültig."
             return
         }
@@ -978,9 +989,16 @@ private struct CouncilAttachmentPreview: View {
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 throw URLError(.badServerResponse)
             }
-            let suffix = remoteURL.pathExtension.isEmpty ? "pdf" : remoteURL.pathExtension
+            let suggestedSuffix = response.suggestedFilename
+                .map { URL(fileURLWithPath: $0).pathExtension }
+                .flatMap { $0.isEmpty ? nil : $0 }
+            let remoteSuffix = remoteURL.pathExtension.lowercased()
+            let suffix = suggestedSuffix
+                ?? (response.mimeType == "application/pdf" || remoteSuffix == "php" || remoteSuffix.isEmpty
+                    ? "pdf"
+                    : remoteSuffix)
             let destination = FileManager.default.temporaryDirectory
-                .appending(path: "ratslotse-\(attachment.documentID)-\(UUID().uuidString).\(suffix)")
+                .appending(path: "ratslotse-\(UUID().uuidString).\(suffix)")
             try FileManager.default.moveItem(at: temporaryURL, to: destination)
             localURL = destination
         } catch {
@@ -1287,6 +1305,7 @@ private struct SessionDetailView: View {
     @State private var detail: SessionDetail?
     @State private var error: String?
     @State private var calendarDraft: CalendarDraft?
+    @State private var previewAttachment: AgendaAttachment?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -1327,6 +1346,9 @@ private struct SessionDetailView: View {
         .sheet(item: $calendarDraft) { draft in CalendarEditSheet(draft: draft, isPresented: Binding(
             get: { calendarDraft != nil }, set: { if !$0 { calendarDraft = nil } }
         )) }
+        .sheet(item: $previewAttachment) { attachment in
+            CouncilAttachmentPreview(agendaAttachment: attachment)
+        }
     }
 
     private func load() async {
@@ -1341,7 +1363,11 @@ private struct SessionDetailView: View {
                 .padding(.bottom, 7)
 
             ForEach(Array(publicItems.enumerated()), id: \.element.id) { index, item in
-                SessionAgendaRow(item: item, isHighlighted: highlightedTops.contains(item.itemNumber))
+                SessionAgendaRow(
+                    item: item,
+                    isHighlighted: highlightedTops.contains(item.itemNumber),
+                    openAttachment: { previewAttachment = $0 }
+                )
                     .id(item.itemNumber)
 
                 if index < publicItems.count - 1 {
@@ -1389,6 +1415,7 @@ private struct FlexibleChips: View {
 private struct SessionAgendaRow: View {
     let item: AgendaItem
     let isHighlighted: Bool
+    let openAttachment: (AgendaAttachment) -> Void
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -1413,6 +1440,30 @@ private struct SessionAgendaRow: View {
                         .font(RatsFont.body(13))
                         .foregroundStyle(RatsColor.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+                if !item.attachments.isEmpty {
+                    VStack(alignment: .leading, spacing: 5) {
+                        ForEach(item.attachments) { attachment in
+                            Button { openAttachment(attachment) } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "paperclip")
+                                        .font(.system(size: 10, weight: .semibold))
+                                    Text(attachment.label)
+                                        .font(RatsFont.body(11, weight: .semibold))
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                    Image(systemName: "arrow.up.right")
+                                        .font(.system(size: 8, weight: .bold))
+                                }
+                                .foregroundStyle(RatsColor.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Anlage öffnen: \(attachment.label)")
+                        }
+                    }
+                    .padding(.top, 3)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

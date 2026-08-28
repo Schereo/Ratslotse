@@ -596,6 +596,18 @@ public struct SessionPage: Codable, Sendable {
     public let sessions: [CouncilSession]
 }
 
+public struct AgendaAttachment: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { "\(label)|\(url)" }
+    public let label: String
+    public let url: String
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        label = try values.decodeIfPresent(String.self, forKey: .label) ?? "Anlage"
+        url = try values.decodeIfPresent(String.self, forKey: .url) ?? ""
+    }
+}
+
 public struct AgendaItem: Codable, Sendable, Hashable, Identifiable {
     public var id: String { itemNumber }
     public let itemNumber: String
@@ -603,12 +615,24 @@ public struct AgendaItem: Codable, Sendable, Hashable, Identifiable {
     public let templateNumber: String?
     public let isPublic: Int
     public let summary: String?
+    public let attachments: [AgendaAttachment]
 
     enum CodingKeys: String, CodingKey {
         case title, summary
         case itemNumber = "item_number"
         case templateNumber = "vorlage_nr"
         case isPublic = "is_public"
+        case attachments = "anlagen"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        itemNumber = try values.decodeIfPresent(String.self, forKey: .itemNumber) ?? "TOP"
+        title = try values.decodeIfPresent(String.self, forKey: .title) ?? "Tagesordnungspunkt"
+        templateNumber = try values.decodeIfPresent(String.self, forKey: .templateNumber)
+        isPublic = try values.decodeIfPresent(Int.self, forKey: .isPublic) ?? 1
+        summary = try values.decodeIfPresent(String.self, forKey: .summary)
+        attachments = try values.decodeIfPresent([AgendaAttachment].self, forKey: .attachments) ?? []
     }
 }
 
