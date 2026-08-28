@@ -564,6 +564,7 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     public let sessionTime: String?
     public let location: String?
     public let title: String
+    public let itemCount: Int
     public let myTopicItems: [JSONValue]?
 
     enum CodingKeys: String, CodingKey {
@@ -571,6 +572,7 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
         case calendarID = "calendar_id"
         case sessionDate = "session_date"
         case sessionTime = "session_time"
+        case itemCount = "n_items"
         case myTopicItems = "my_topic_items"
     }
 
@@ -583,6 +585,7 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
         sessionTime = try values.decodeIfPresent(String.self, forKey: .sessionTime)
         location = try values.decodeIfPresent(String.self, forKey: .location)
         title = try values.decodeIfPresent(String.self, forKey: .title) ?? committee
+        itemCount = try values.decodeIfPresent(Int.self, forKey: .itemCount) ?? 0
         myTopicItems = try values.decodeIfPresent([JSONValue].self, forKey: .myTopicItems)
     }
 }
@@ -669,7 +672,12 @@ public struct WeekPreview: Codable, Sendable {
     public let through: String
     public let sessions: [CouncilSession]
     public let items: [WeekPreviewItem]
+    public let relevantItemsPerSession: [String: Int]?
+    public let additionalItemsPerSession: [String: [WeekPreviewItem]]?
+    public let personalMatchesPerSession: [String: Int]?
     public let personalMatches: Int?
+    public let contentItemCount: Int?
+    public let contentItemsPerSession: [String: Int]?
 
     enum CodingKeys: String, CodingKey {
         case found
@@ -677,7 +685,12 @@ public struct WeekPreview: Codable, Sendable {
         case through = "bis"
         case sessions = "sitzungen"
         case items = "punkte"
+        case relevantItemsPerSession = "relevant_je_sitzung"
+        case additionalItemsPerSession = "weitere_je_sitzung"
+        case personalMatchesPerSession = "treffer_je_sitzung"
         case personalMatches = "treffer_gesamt"
+        case contentItemCount = "inhaltlich_gesamt"
+        case contentItemsPerSession = "inhaltlich_je_sitzung"
     }
 }
 
@@ -690,6 +703,7 @@ public struct WeekPreviewItem: Codable, Sendable, Identifiable {
     public let summary: String?
     public let committee: String
     public let sessionDate: String
+    public let applicant: String?
     public let topicName: String?
     public let impactReason: String?
     public let featured: Bool?
@@ -700,6 +714,7 @@ public struct WeekPreviewItem: Codable, Sendable, Identifiable {
         case itemNumber = "item_number"
         case shortTitle = "titel_kurz"
         case sessionDate = "session_date"
+        case applicant = "antragsteller"
         case topicName = "topic_name"
         case impactReason = "wichtig_grund"
         case featured = "top"

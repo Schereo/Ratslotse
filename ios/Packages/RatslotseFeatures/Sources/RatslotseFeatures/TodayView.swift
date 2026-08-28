@@ -185,55 +185,20 @@ private struct WeekPreviewCard: View {
     let preview: WeekPreview
     let open: (Int, String) -> Void
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var expandedSessions: Set<Int> = []
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            MonoKicker(
-                "Die Woche im Rat",
-                trailing: preview.personalMatches.map { $0 == 1 ? "1 für dich" : "\($0) für dich" }
-            )
-            Text("\(date(preview.from)) – \(date(preview.through))")
-                .font(RatsFont.title(20))
-            if preview.items.isEmpty {
-                ForEach(preview.sessions.prefix(4)) { session in
-                    Button {
-                        if let id = session.ksinr { open(id, "") }
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(session.committee).font(RatsFont.body(14, weight: .semibold))
-                                Text(RatsDate.weekday(session.sessionDate) ?? session.sessionDate)
-                                    .font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
-                        }
+        VStack(alignment: .leading, spacing: 18) {
+            header
+
+            VStack(alignment: .leading, spacing: wideLayout ? 14 : 16) {
+                ForEach(Array(preview.sessions.enumerated()), id: \.element.id) { index, session in
+                    if wideLayout {
+                        wideSession(session, at: index)
+                    } else {
+                        compactSession(session, at: index)
                     }
-                    .buttonStyle(.plain)
-                }
-            } else {
-                ForEach(preview.items.prefix(5)) { item in
-                    Button { open(item.sessionID, item.itemNumber) } label: {
-                        HStack(alignment: .top, spacing: 10) {
-                            Circle()
-                                .fill(item.topicName == nil ? RatsColor.muted.opacity(0.5) : RatsColor.signal)
-                                .frame(width: 8, height: 8)
-                                .padding(.top, 5)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.shortTitle ?? item.title)
-                                    .font(RatsFont.body(14, weight: .semibold))
-                                    .multilineTextAlignment(.leading)
-                                Text("\(RatsDate.weekday(item.sessionDate) ?? item.sessionDate) · \(item.committee)")
-                                    .font(RatsFont.body(11))
-                                    .foregroundStyle(RatsColor.secondary)
-                                if let reason = item.impactReason, item.featured == true {
-                                    Text(reason).font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
-                                }
-                            }
-                            Spacer(minLength: 0)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    if item.id != preview.items.prefix(5).last?.id { Divider().overlay(RatsColor.separator) }
                 }
             }
         }
@@ -241,11 +206,357 @@ private struct WeekPreviewCard: View {
         .ratsCard()
     }
 
+    private var wideLayout: Bool { horizontalSizeClass == .regular }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("DEINE RATSWOCHE")
+                    .font(RatsFont.mono(9, weight: .semibold))
+                    .tracking(1.3)
+                    .foregroundStyle(RatsColor.primary)
+                Text("Die Woche im Rat")
+                    .font(RatsFont.title(wideLayout ? 23 : 21))
+                Text(headerMetadata)
+                    .font(RatsFont.mono(10))
+                    .foregroundStyle(RatsColor.secondary)
+
+                if importantCount > 0 {
+                    WeekCountBadge(text: importantCount == 1 ? "1 wichtiger Punkt" : "\(importantCount) wichtige Punkte")
+                        .padding(.top, 3)
+                }
+            }
+            Spacer(minLength: 4)
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(RatsColor.primary.opacity(0.07))
+                    .frame(width: wideLayout ? 76 : 68, height: wideLayout ? 70 : 62)
+                Lotti3DView(scene: .reading, animated: false)
+                    .frame(width: wideLayout ? 72 : 64, height: wideLayout ? 66 : 58)
+            }
+            .accessibilityHidden(true)
+        }
+        .padding(.bottom, 2)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(RatsColor.separator)
+                .frame(height: 1)
+                .offset(y: 10)
+        }
+    }
+
+    private var headerMetadata: String {
+        let count = preview.sessions.count
+        return "\(date(preview.from)) – \(date(preview.through))  ·  \(count) \(count == 1 ? "SITZUNG" : "SITZUNGEN")"
+    }
+
+    private var importantCount: Int {
+        if let counts = preview.relevantItemsPerSession, !counts.isEmpty {
+            return counts.values.reduce(0, +)
+        }
+        return preview.items.count
+    }
+
+    @ViewBuilder
+    private func wideSession(_ session: CouncilSession, at index: Int) -> some View {
+        HStack(alignment: .top, spacing: 13) {
+            VStack(alignment: .leading, spacing: 7) {
+                if startsNewDay(at: index) {
+                    Text(dayLabel(session.sessionDate))
+                        .font(RatsFont.mono(9, weight: .semibold))
+                        .tracking(0.6)
+                        .foregroundStyle(isToday(session.sessionDate) ? RatsColor.signal : RatsColor.muted)
+                }
+                Rectangle()
+                    .fill(RatsColor.border)
+                    .frame(width: 1)
+                    .frame(maxHeight: .infinity)
+                    .padding(.leading, 10)
+            }
+            .frame(width: 70, alignment: .leading)
+
+            sessionContent(session, compact: false)
+        }
+    }
+
+    private func compactSession(_ session: CouncilSession, at index: Int) -> some View {
+        VStack(alignment: .leading, spacing: 11) {
+            if startsNewDay(at: index) {
+                HStack(spacing: 10) {
+                    Text(daySectionLabel(session.sessionDate))
+                        .font(RatsFont.mono(9, weight: .semibold))
+                        .tracking(0.75)
+                        .foregroundStyle(isToday(session.sessionDate) ? RatsColor.signal : RatsColor.muted)
+                    Rectangle()
+                        .fill(RatsColor.separator)
+                        .frame(height: 1)
+                }
+            }
+
+            sessionHeader(session, compact: true)
+
+            let shown = shownItems(for: session, limit: 2)
+            if !shown.isEmpty {
+                HStack(alignment: .top, spacing: 10) {
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(RatsColor.border)
+                        .frame(width: 2)
+                    VStack(alignment: .leading, spacing: 7) {
+                        agendaItems(shown, compact: true)
+                        expansionControl(for: session, shown: shown.count)
+                    }
+                }
+                .padding(.leading, 4)
+            }
+        }
+        .padding(.bottom, 2)
+        .overlay(alignment: .bottom) {
+            if session.id != preview.sessions.last?.id {
+                Rectangle().fill(RatsColor.separator).frame(height: 1).offset(y: 9)
+            }
+        }
+    }
+
+    private func sessionContent(_ session: CouncilSession, compact: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sessionHeader(session, compact: compact)
+            let shown = shownItems(for: session, limit: 3)
+            if !shown.isEmpty {
+                VStack(alignment: .leading, spacing: 7) {
+                    agendaItems(shown, compact: compact)
+                    expansionControl(for: session, shown: shown.count)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func sessionHeader(_ session: CouncilSession, compact: Bool) -> some View {
+        Button {
+            if let id = session.ksinr { open(id, "") }
+        } label: {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(shortCommittee(session.committee))
+                        .font(RatsFont.body(compact ? 14 : 14.5, weight: .bold))
+                        .foregroundStyle(RatsColor.text)
+                        .multilineTextAlignment(.leading)
+                    Text(sessionMetadata(session))
+                        .font(RatsFont.body(11))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+                Spacer(minLength: 0)
+                Text("Öffnen")
+                    .font(RatsFont.body(10.5, weight: .semibold))
+                    .foregroundStyle(RatsColor.muted)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Öffnet die Tagesordnung")
+    }
+
+    @ViewBuilder
+    private func agendaItems(_ items: [WeekPreviewItem], compact: Bool) -> some View {
+        ForEach(items) { item in
+            Button { open(item.sessionID, item.itemNumber) } label: {
+                WeekAgendaItemRow(item: item, compact: compact)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private func expansionControl(for session: CouncilSession, shown: Int) -> some View {
+        let remaining = max(relevantCount(for: session) - shown, knownItems(for: session).count - shown)
+        if let id = session.ksinr, remaining > 0, !expandedSessions.contains(id) {
+            Button {
+                withAnimation(.snappy(duration: 0.25)) { _ = expandedSessions.insert(id) }
+            } label: {
+                Text(remaining == 1 ? "+ 1 weiteres Highlight" : "+ \(remaining) weitere Highlights")
+                    .font(RatsFont.body(11.5, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+                    .padding(.vertical, 2)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func shownItems(for session: CouncilSession, limit: Int) -> [WeekPreviewItem] {
+        let items = knownItems(for: session)
+        guard let id = session.ksinr, expandedSessions.contains(id) else {
+            return Array(items.prefix(limit))
+        }
+        return items
+    }
+
+    private func knownItems(for session: CouncilSession) -> [WeekPreviewItem] {
+        guard let id = session.ksinr else { return [] }
+        var result = preview.items.filter { $0.sessionID == id }
+        var seen = Set(result.map(\.id))
+        for item in preview.additionalItemsPerSession?[String(id)] ?? [] where seen.insert(item.id).inserted {
+            result.append(item)
+        }
+        return result
+    }
+
+    private func relevantCount(for session: CouncilSession) -> Int {
+        guard let id = session.ksinr else { return 0 }
+        return preview.relevantItemsPerSession?[String(id)] ?? knownItems(for: session).count
+    }
+
+    private func sessionBadge(_ session: CouncilSession) -> String {
+        let relevant = relevantCount(for: session)
+        return relevant == 1 ? "1 wichtig" : "\(relevant) wichtig"
+    }
+
+    private func sessionMetadata(_ session: CouncilSession) -> String {
+        var parts = [String]()
+        if let time = session.sessionTime, !time.isEmpty { parts.append(String(time.prefix(5))) }
+        let id = session.ksinr.map(String.init) ?? ""
+        let topics = preview.contentItemsPerSession?[id] ?? session.itemCount
+        if topics > 0 { parts.append("\(topics) \(topics == 1 ? "Thema" : "Themen")") }
+        if relevantCount(for: session) > 0 { parts.append(sessionBadge(session)) }
+        return parts.joined(separator: " · ")
+    }
+
+    private func startsNewDay(at index: Int) -> Bool {
+        index == 0 || preview.sessions[index - 1].sessionDate != preview.sessions[index].sessionDate
+    }
+
+    private func isToday(_ iso: String) -> Bool {
+        iso == Self.isoFormatter.string(from: .now)
+    }
+
+    private func dayLabel(_ iso: String) -> String {
+        (RatsDate.weekday(iso) ?? iso).uppercased()
+    }
+
+    private func daySectionLabel(_ iso: String) -> String {
+        guard let value = Self.isoFormatter.date(from: iso) else { return iso.uppercased() }
+        return value.formatted(
+            .dateTime
+                .locale(Locale(identifier: "de_DE"))
+                .weekday(.wide)
+                .day()
+                .month(.wide)
+        ).uppercased()
+    }
+
+    private func shortCommittee(_ raw: String) -> String {
+        var value = raw
+        for prefix in ["Ausschuss für die ", "Ausschuss für den ", "Ausschuss für das ", "Ausschuss für ", "Betriebsausschuss Eigenbetrieb ", "Betriebsausschuss "] where value.hasPrefix(prefix) {
+            value.removeFirst(prefix.count)
+            break
+        }
+        if value == "Rat der Stadt Oldenburg" || value == "Rat der Stadt Oldenburg (Oldb)" { return "Rat" }
+        return value.replacingOccurrences(of: " und ", with: " & ")
+    }
+
     private func date(_ iso: String) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         guard let value = formatter.date(from: iso) else { return iso }
         return value.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day().month(.abbreviated))
+    }
+
+    private static let isoFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+}
+
+private struct WeekCountBadge: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(RatsFont.body(9.5, weight: .bold))
+            .foregroundStyle(RatsColor.primary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(RatsColor.primary.opacity(0.08))
+            .clipShape(Capsule())
+            .fixedSize()
+    }
+}
+
+private struct WeekAgendaItemRow: View {
+    let item: WeekPreviewItem
+    let compact: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 9) {
+            Circle()
+                .fill(markerColor)
+                .frame(width: item.featured == true ? 8 : 6, height: item.featured == true ? 8 : 6)
+                .padding(.top, 5)
+            VStack(alignment: .leading, spacing: 4) {
+                if let kicker {
+                    Text(kicker)
+                        .font(RatsFont.mono(8.5, weight: .semibold))
+                        .tracking(0.8)
+                        .foregroundStyle(item.topicName == nil ? RatsColor.primary : RatsColor.signal)
+                }
+                Text(item.shortTitle ?? item.title)
+                    .font(RatsFont.body(compact ? 13 : 13.5, weight: item.featured == true ? .bold : .medium))
+                    .foregroundStyle(RatsColor.text)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(compact && item.featured != true ? 2 : 3)
+                if item.featured == true, let reason = explanation {
+                    Text(reason)
+                        .font(RatsFont.body(compact ? 11.5 : 12))
+                        .foregroundStyle(RatsColor.secondary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                }
+                if !compact, let applicant = item.applicant, !applicant.isEmpty {
+                    Text("Antrag \(shortApplicant(applicant))")
+                        .font(RatsFont.body(10.5, weight: .medium))
+                        .foregroundStyle(RatsColor.muted)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, item.featured == true ? 10 : 2)
+        .padding(.vertical, item.featured == true ? 9 : 4)
+        .background(item.featured == true ? RatsColor.primary.opacity(0.055) : Color.clear)
+        .overlay {
+            if item.featured == true {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .stroke(RatsColor.primary.opacity(0.14), lineWidth: 1)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .contentShape(Rectangle())
+        .accessibilityHint("Öffnet diesen Tagesordnungspunkt")
+    }
+
+    private var markerColor: Color {
+        if item.topicName != nil { return RatsColor.signal }
+        if item.featured == true { return RatsColor.primary }
+        return RatsColor.muted.opacity(0.55)
+    }
+
+    private var kicker: String? {
+        if let topic = item.topicName, !topic.isEmpty { return "WICHTIGES THEMA · \(topic.uppercased())" }
+        if item.featured == true { return "HIGHLIGHT DER WOCHE" }
+        return nil
+    }
+
+    private var explanation: String? {
+        if let reason = item.impactReason, !reason.isEmpty { return reason }
+        if let summary = item.summary, !summary.isEmpty { return summary }
+        return nil
+    }
+
+    private func shortApplicant(_ raw: String) -> String {
+        raw.replacingOccurrences(of: "-Fraktion", with: "")
+            .replacingOccurrences(of: "Fraktion ", with: "")
     }
 }
 

@@ -140,3 +140,60 @@ import Testing
     #expect(topic.hits30Days == 3)
     #expect(topic.unreadCount == 0)
 }
+
+@Test func weekPreviewDecodesTheFullEditorialHierarchy() throws {
+    let json = #"""
+    {
+      "found": true,
+      "von": "2026-08-28",
+      "bis": "2026-09-04",
+      "sitzungen": [{
+        "ksinr": 88,
+        "committee": "Ausschuss für Stadtplanung und Bauen",
+        "session_date": "2026-08-31",
+        "session_time": "17:00:00",
+        "location": "Altes Rathaus",
+        "n_items": 14
+      }],
+      "punkte": [{
+        "ksinr": 88,
+        "item_number": "Ö 6",
+        "title": "Bebauungsplan 851 – Satzungsbeschluss",
+        "titel_kurz": "Bebauungsplan 851",
+        "summary": "Neue Wohnungen am Krusenbusch.",
+        "committee": "Ausschuss für Stadtplanung und Bauen",
+        "session_date": "2026-08-31",
+        "antragsteller": "SPD-Fraktion",
+        "topic_name": "Wohnen",
+        "wichtig_grund": "Legt langfristig fest, was gebaut werden darf.",
+        "top": true
+      }],
+      "relevant_je_sitzung": {"88": 3},
+      "weitere_je_sitzung": {"88": [{
+        "ksinr": 88,
+        "item_number": "Ö 7",
+        "title": "Quartier am Krusenbusch",
+        "titel_kurz": "Quartier am Krusenbusch",
+        "summary": null,
+        "committee": "Ausschuss für Stadtplanung und Bauen",
+        "session_date": "2026-08-31",
+        "antragsteller": null,
+        "topic_name": null,
+        "wichtig_grund": null
+      }]},
+      "treffer_je_sitzung": {"88": 1},
+      "treffer_gesamt": 1,
+      "inhaltlich_gesamt": 11,
+      "inhaltlich_je_sitzung": {"88": 8}
+    }
+    """#
+
+    let preview = try JSONDecoder().decode(WeekPreview.self, from: Data(json.utf8))
+    #expect(preview.sessions.first?.itemCount == 14)
+    #expect(preview.items.first?.applicant == "SPD-Fraktion")
+    #expect(preview.relevantItemsPerSession?["88"] == 3)
+    #expect(preview.additionalItemsPerSession?["88"]?.first?.itemNumber == "Ö 7")
+    #expect(preview.personalMatchesPerSession?["88"] == 1)
+    #expect(preview.contentItemCount == 11)
+    #expect(preview.contentItemsPerSession?["88"] == 8)
+}
