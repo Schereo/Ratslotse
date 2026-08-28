@@ -365,27 +365,6 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
               )}
             </div>
 
-            {/* Die Zeitreihe braucht Breite. In der Rücklagen-Erklärung zog
-                sie die kurze Nachbarkarte auf dieselbe Höhe und hinterließ
-                dort eine große leere Fläche. Als eigene Zeile bleibt der
-                Text kompakt und die Grafik lässt sich besser ablesen. */}
-            {fehltEuro != null && ruecklage != null && ruecklagenVerlauf.length >= 2 && (
-              <Karte kicker="Rücklage im Zeitverlauf">
-                <Zeitreihe
-                  className="mt-3"
-                  reihe={ruecklagenVerlauf}
-                  titel="Verfügbar nach Jahresergebnis"
-                  einheit="Mio. €"
-                  nachkomma={1}
-                  ariaTitel={`Verfügbare Überschussrücklage nach Jahresergebnis, `
-                    + `${ruecklagenVerlauf[0].jahr} bis ${ruecklage.jahr}`}
-                  vorjahresdifferenz
-                  tabelle
-                  leisteHaftet={false}
-                />
-              </Karte>
-            )}
-
             {/* Eine Zeile des Bons liest sich anders, als sie gemeint ist. */}
             {finanzenZeile && (
               <p className="text-[11.5px] leading-relaxed text-muted-foreground">
@@ -399,6 +378,27 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
             )}
           </>
         }
+        // Der allgemeine Bon-Baustein setzt `darunter` unter BEIDE Spalten.
+        // Auf breiten Screens nutzt die Kurve damit auch den freien Raum
+        // unter dem Papierbon; auf schmalen bleibt sie schlicht die letzte
+        // volle Zeile.
+        darunter={fehltEuro != null && ruecklage != null
+          && ruecklagenVerlauf.length >= 2 ? (
+          <Karte kicker="Rücklage im Zeitverlauf">
+            <Zeitreihe
+              className="mt-3"
+              reihe={ruecklagenVerlauf}
+              titel="Verfügbar nach Jahresergebnis"
+              einheit="Mio. €"
+              nachkomma={1}
+              ariaTitel={`Verfügbare Überschussrücklage nach Jahresergebnis, `
+                + `${ruecklagenVerlauf[0].jahr} bis ${ruecklage.jahr}`}
+              vorjahresdifferenz
+              tabelle
+              leisteHaftet={false}
+            />
+          </Karte>
+        ) : undefined}
       />
     </section>
   );

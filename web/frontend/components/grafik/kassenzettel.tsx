@@ -77,7 +77,7 @@ function Bonzeile({ z }: { z: BonZeile }) {
 export function Kassenzettel({
   titel, untertitel, stempel, posten, summe, summeLabel = "Summe",
   bezahltMit, bezahltMitTitel = "Bezahlt mit", teiler, nichtAussagen,
-  fuss, quelle, daneben, danach, className,
+  fuss, quelle, daneben, danach, darunter, className,
 }: {
   /** Kopf des Bons: „Stadt Oldenburg" / „Haushaltsplan 2026". */
   titel: string;
@@ -105,6 +105,9 @@ export function Kassenzettel({
   daneben?: ReactNode;
   /** Inhalt der Spalte neben dem Bon, UNTER dem Kasten (Rechen-Karten). */
   danach?: ReactNode;
+  /** Inhalt unter Bon UND Begleitspalte. Für breite Grafiken, die auf großen
+   *  Screens auch den sonst freien Raum unter dem Bon nutzen sollen. */
+  darunter?: ReactNode;
   className?: string;
 }) {
   const teileSumme = posten.reduce((s, p) => s + p.wert, 0);
@@ -211,6 +214,8 @@ export function Kassenzettel({
           {danach}
         </div>
       </div>
+
+      {darunter && <div className="mt-3.5">{darunter}</div>}
     </div>
   );
 }
