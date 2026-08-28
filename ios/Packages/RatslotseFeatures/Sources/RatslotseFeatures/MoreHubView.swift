@@ -47,7 +47,8 @@ struct MoreHubView: View {
                     .accessibilityLabel("Mehr schließen")
                 }
                 .padding(.horizontal, 18)
-                .padding(.vertical, 12)
+                .padding(.top, 20)
+                .padding(.bottom, 14)
                 .background(RatsColor.page)
                 Divider().overlay(RatsColor.separator)
 
