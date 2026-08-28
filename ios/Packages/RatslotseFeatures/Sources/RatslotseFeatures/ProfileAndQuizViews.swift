@@ -52,7 +52,7 @@ struct PublicProfileView: View {
                     ProgressView("Profil laden …").frame(maxWidth: .infinity, minHeight: 260)
                 }
             }
-            .frame(maxWidth: usesTabletOverview ? 1040 : 760, alignment: .leading)
+            .frame(maxWidth: usesWidePersonLayout ? 1120 : usesTabletOverview ? 1040 : 760, alignment: .leading)
             .padding(18)
         }
         .background(RatsColor.page)
@@ -84,7 +84,11 @@ struct PublicProfileView: View {
             Text(person?.name ?? preview.title)
                 .font(RatsFont.title(usesTabletOverview ? 34 : 28))
             if let person {
-                PersonProfileOverview(model: model, person: person)
+                PersonProfileOverview(
+                    model: model,
+                    person: person,
+                    usesWideLayout: usesWidePersonLayout
+                )
             } else {
                 Text(profileDescription ?? preview.description)
                     .font(RatsFont.body(16))
@@ -140,6 +144,10 @@ struct PublicProfileView: View {
         }
     }
 
+    private var usesWidePersonLayout: Bool {
+        kind == .person && UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass != .compact
+    }
+
     private var kicker: String {
         switch kind { case .person: "Person"; case .topic: "Thema im Rat"; case .place: "Ort in Oldenburg" }
     }
@@ -160,7 +168,11 @@ struct PublicProfileView: View {
                 person = PublicPersonProfile(
                     name: "Anne Beispiel",
                     party: "SPD",
-                    currentAffiliation: "SPD-Fraktion",
+                    currentAffiliation: .init(
+                        label: "SPD-Fraktion",
+                        kind: "fraktion",
+                        parties: ["SPD"]
+                    ),
                     art: "rat",
                     organisation: nil,
                     nSessions: 18,
@@ -244,7 +256,38 @@ private struct LinkPreview: Codable, Sendable {
     let description: String
 }
 
-private struct PublicPersonProfile: Codable, Sendable {
+struct PublicPersonProfile: Codable, Sendable {
+    struct Affiliation: Codable, Sendable {
+        let label: String
+        let kind: String?
+        let parties: [String]
+
+        init(label: String, kind: String? = nil, parties: [String] = []) {
+            self.label = label
+            self.kind = kind
+            self.parties = parties
+        }
+
+        init(from decoder: Decoder) throws {
+            let singleValue = try decoder.singleValueContainer()
+            if let label = try? singleValue.decode(String.self) {
+                self.init(label: label)
+                return
+            }
+
+            let object = try decoder.container(keyedBy: CodingKeys.self)
+            self.init(
+                label: try object.decode(String.self, forKey: .label),
+                kind: try object.decodeIfPresent(String.self, forKey: .kind),
+                parties: try object.decodeIfPresent([String].self, forKey: .parties) ?? []
+            )
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case label, kind, parties
+        }
+    }
+
     struct Committee: Codable, Sendable, Identifiable {
         var id: String { committee }
         let committee: String
@@ -266,7 +309,7 @@ private struct PublicPersonProfile: Codable, Sendable {
 
     let name: String
     let party: String?
-    let currentAffiliation: String?
+    let currentAffiliation: Affiliation?
     let art: String?
     let organisation: String?
     let nSessions: Int
@@ -293,7 +336,7 @@ private struct PublicPersonProfile: Codable, Sendable {
     }
 
     var affiliation: String? {
-        [party, currentAffiliation, organisation]
+        [party, currentAffiliation?.label, organisation]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
     }
@@ -302,8 +345,31 @@ private struct PublicPersonProfile: Codable, Sendable {
 private struct PersonProfileOverview: View {
     let model: AppModel
     let person: PublicPersonProfile
+    let usesWideLayout: Bool
 
+    @ViewBuilder
     var body: some View {
+        if usesWideLayout {
+            HStack(alignment: .top, spacing: 20) {
+                VStack(alignment: .leading, spacing: 16) {
+                    identityCard
+                    recentSessionsCard
+                }
+                .frame(maxWidth: 390, alignment: .topLeading)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    committeesCard
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+        } else {
+            identityCard
+            committeesCard
+            recentSessionsCard
+        }
+    }
+
+    private var identityCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 14) {
                 RatsGlyphView(glyph: .profile, color: RatsColor.primaryText, lineWidth: 1.55)
@@ -335,7 +401,10 @@ private struct PersonProfileOverview: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .ratsCard()
+    }
 
+    @ViewBuilder
+    private var committeesCard: some View {
         if !person.committees.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 MonoKicker("Gremien", trailing: "\(person.committees.count)")
@@ -356,7 +425,10 @@ private struct PersonProfileOverview: View {
             }
             .ratsCard()
         }
+    }
 
+    @ViewBuilder
+    private var recentSessionsCard: some View {
         if !person.recent.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 MonoKicker("Letzte Sitzungen")

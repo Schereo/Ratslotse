@@ -1,8 +1,8 @@
 import Foundation
 import MapKit
-import RatslotseFeatures
 import Testing
 @testable import Ratslotse
+@testable import RatslotseFeatures
 
 @MainActor
 @Test func appTargetCanBeConstructed() {
@@ -35,4 +35,56 @@ import Testing
     defaults.set(true, forKey: "ratslotse.onboarding.done")
     let completed = AppModel(defaults: defaults)
     #expect(completed.onboardingStep == nil)
+}
+
+@Test func productionPersonProfileDecodesStructuredAffiliation() throws {
+    let data = try #require(
+        """
+        {
+          "name": "Tim Ebbeke Harms",
+          "party": "Grüne",
+          "current_affiliation": {
+            "label": "Grüne",
+            "kind": "partei",
+            "parties": ["Grüne"]
+          },
+          "art": "rat",
+          "organisation": null,
+          "n_sessions": 136,
+          "active_from": "2021-11-22",
+          "active_to": "2026-06-16",
+          "committees": [{"committee": "Rat", "n": 39, "chair": true}],
+          "recent": [{"ksinr": 4599, "committee": "Kulturausschuss", "session_date": "2026-06-16"}]
+        }
+        """.data(using: .utf8)
+    )
+
+    let profile = try JSONDecoder().decode(PublicPersonProfile.self, from: data)
+    #expect(profile.currentAffiliation?.label == "Grüne")
+    #expect(profile.currentAffiliation?.kind == "partei")
+    #expect(profile.nSessions == 136)
+    #expect(profile.committees.count == 1)
+    #expect(profile.recent.count == 1)
+}
+
+@Test func personProfileStillDecodesLegacyStringAffiliation() throws {
+    let data = try #require(
+        """
+        {
+          "name": "Anne Beispiel",
+          "party": null,
+          "current_affiliation": "SPD-Fraktion",
+          "art": "rat",
+          "organisation": null,
+          "n_sessions": 1,
+          "active_from": null,
+          "active_to": null,
+          "committees": [],
+          "recent": []
+        }
+        """.data(using: .utf8)
+    )
+
+    let profile = try JSONDecoder().decode(PublicPersonProfile.self, from: data)
+    #expect(profile.currentAffiliation?.label == "SPD-Fraktion")
 }
