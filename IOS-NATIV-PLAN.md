@@ -424,15 +424,15 @@ Beschlüsse.
 Die native SwiftUI-Portierung ist auf dem Arbeits-Branch umgesetzt. Als
 visuelle Referenz dienten die produktive WebView-App und deren lokale
 authentifizierte Zustände bei identischer iPhone-Breite. Geprüft wurde in der
-hellen Darstellung auf **iPhone 17** und **iPad Pro 11″ (M5)**; die
-kontrastkritischen, datenreichen Ansichten wurden zusätzlich im Dark Mode
-abgenommen.
+hellen Darstellung auf **iPhone 17** und **iPad Pro 13″ (M5) in Hoch- und
+Querformat**; die kontrastkritischen, datenreichen Ansichten wurden zusätzlich
+im Dark Mode abgenommen.
 
 | Bereich | Geprüfte Zustände | Ergebnis |
 |---|---|---|
 | Start, Auth und Onboarding | Willkommen, alle drei Tour-Schritte, Anmeldung, Registrierung, Passwort vergessen/zurücksetzen, ausstehende Verifizierung | Native Lotti-Inszenierung, Welle, Typografie und Handlungsführung entsprechen mindestens der WebView-Qualität |
 | Heute | personalisierte Übersicht, Termine, Beschlüsse, Live-Sitzung, neue Thementreffer, Zahl der Woche, leere und gefüllte Zustände | Bestanden; deutsche Datumsdarstellung, informationsreichere Beschlusskarten und echte Mehrspaltenstruktur auf dem iPad |
-| Frag den Rat | leer, vollständige Antwort, Quellen, Fraktionen, Tagesordnungen, Anlagen, Presse, Debatten, Planung, Diagramm, Anschlussfragen, Fehlerzustand | Bestanden; lange Inhalte, Scrollposition, Eingabeleiste und Quellen-Hierarchie geprüft |
+| Frag den Rat | leer, vollständige Antwort, Quellen, Fraktionen, Tagesordnungen, Anlagen, Presse, Debatten, Planung, Diagramm, Anschlussfragen, Fehlerzustand | Bestanden; Backend-Rechercheplan steuert dieselben Zusatzkanäle wie im Web, Debattenauswertung lädt automatisch, Inline-Zitate tragen eine Quellenmarke und im breiten iPad-Layout stehen inhaltliche Bausteine im Chat neben der reinen Belegspalte |
 | Gründliche Recherche | Start, Fortschritt, Unterhaltungsliste und Transkript | Bestanden; Metadaten und Gesprächsverlauf bleiben auch auf schmalen Geräten lesbar |
 | Rat | Beschlüsse, Sitzungen, Stadtkarte, Suche/Filter, Detail, Anlage, gefüllte Merkliste | Bestanden; MapKit startet in Oldenburg, alle Datumswerte sind lokalisiert |
 | Themen und Profile | Themenliste/-editor, Themen-, Orts- und Personenprofil | Bestanden; Personenprofile zeigen Rolle, Aktivität, Kennzahlen, Gremien und letzte Sitzungen |
@@ -457,6 +457,18 @@ schreibgeschützte Produktionsdaten auf dem iPhone ab. Dauerhaft löschende
 Aktionen wurden bewusst nicht gegen Produktion ausgelöst. Ein Release-Build
 auf physischer Hardware und der abschließende TestFlight-/Store-Check bleiben
 Teil des Cutovers.
+
+## 11. Aktuelle Feature-Unterschiede: native App und Website
+
+| Bereich | Native iOS-App | Website |
+|---|---|---|
+| Alltagsfunktionen | Heute-/Live-Dashboard, Ratsgespräch, Beschlüsse, Sitzungen, Themen, Abos, Merkliste, Karte, Quiz, Statistiken, Abzeichen und Konto sind nativ vorhanden. | Dieselben Kernfunktionen bleiben parallel verfügbar. |
+| Ratsgespräch | Native SSE-Verbindung, Gespräche, automatische Debatten-/Fraktionsauswertung, gründliche Recherche als Composer-Schalter, TTS, Teilen und Feedback; auf breiten iPads stehen Belege neben dem Chat. | Gleiche Backend-Recherchekanäle und Antwortbausteine; öffentliche geteilte `/g`-Ansichten werden weiterhin serverseitig gerendert. |
+| Karten und Systemübergaben | MapKit, EventKit, Quick Look, Share Sheet, Sign in with Apple und APNs verwenden native Systemoberflächen. | Leaflet/CARTO, ICS-Download und Browser-/Web-Push-Mechanismen. |
+| Lotti und Onboarding | Fortsetzbares natives Onboarding und optimierte 3D-Lotti-Posen in Splash, Fragen und Konto. | Die interaktive WebGL-Lotti-Inszenierung bleibt Web-/Landing-Schmuck. |
+| Nur im Web | Öffnet bei Bedarf die vorhandenen Seiten. | Admin, Landingpage, Changelog, Doku, Hilfe-/Kontaktinhalte, Rechtstexte und öffentliche Share-Snapshots. |
+| Bewusst später | Haushalt; außerdem Widgets (einschließlich Wochenkarte), Live Activity, App Intents/Siri, Spotlight, Push-Aktionsknöpfe und Handoff. | Haushalt ist bereits eine Web-Fläche; die übrigen Punkte sind native Ausbauoptionen. |
+| Bewusst nicht portiert | Kommunalwahl bleibt außerhalb der App. | Das frühere Kommunalwahl-Fun-Feature bleibt ein Entwicklungsartefakt. |
 
 ---
 

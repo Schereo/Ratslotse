@@ -160,16 +160,52 @@ import Testing
         sources: sources
     )
     #expect(markdown.contains("**Fahrradstraße**"))
-    #expect(markdown.contains("[1](ratslotse://decision/42). Für"))
+    #expect(markdown.contains("[ 1 ](ratslotse://decision/42). Für"))
     #expect(!markdown.contains("20947"))
     #expect(!markdown.contains("999"))
 }
 
-@Test func agendasOnlyAppearForExplicitSessionQuestions() {
-    #expect(!questionRequestsSessionContext("Was wurde zur Fahrradstraße Haareneschstraße beschlossen?"))
-    #expect(!questionRequestsSessionContext("Welche Radverkehrsprojekte sind aktuell?"))
-    #expect(questionRequestsSessionContext("Was steht auf der nächsten Tagesordnung?"))
-    #expect(questionRequestsSessionContext("Wann tagt der Verkehrsausschuss?"))
+@Test func extraEvidenceFollowsBackendSelectedChannels() {
+    let generic = QuestionEvidenceAvailability(fields: ["qtype": .string("thema")])
+    #expect(!generic.showsPartyOpinions)
+    #expect(!generic.showsDebates)
+    #expect(!generic.showsPress)
+    #expect(!generic.showsAttachments)
+    #expect(!generic.showsPlanning)
+    #expect(!generic.showsBriefs)
+    #expect(!generic.showsChart)
+    #expect(!generic.showsSessions)
+
+    let party = QuestionEvidenceAvailability(fields: [
+        "qtype": .string("partei"),
+        "debatten": .array([.object(["sprecher": .string("Muster")])]),
+    ])
+    #expect(party.showsPartyOpinions)
+    #expect(party.showsDebates)
+    #expect(!party.showsPress)
+
+    let documents = QuestionEvidenceAvailability(fields: [
+        "anlagen": .array([.object(["nr": .number(1)])]),
+    ])
+    #expect(documents.showsAttachments)
+
+    let status = QuestionEvidenceAvailability(fields: [
+        "planungen": .array([.object(["datum": .string("2026-09-01")])]),
+    ])
+    #expect(status.showsPlanning)
+
+    let budget = QuestionEvidenceAvailability(fields: ["grafik": .object([:])])
+    #expect(budget.showsChart)
+
+    let current = QuestionEvidenceAvailability(fields: [
+        "presse": .array([.object(["titel": .string("Mitteilung")])]),
+    ])
+    #expect(current.showsPress)
+
+    let session = QuestionEvidenceAvailability(fields: [
+        "sitzungen": .array([.object(["committee": .string("Rat")])]),
+    ])
+    #expect(session.showsSessions)
 }
 
 @Test func conversationDatesUseTodayAndYesterday() throws {

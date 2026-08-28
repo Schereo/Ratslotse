@@ -1227,17 +1227,19 @@ private struct QuestionTurnView: View {
                     else { ask(turn.question) }
                 }
             }
-            if showsEvidenceInline {
-                if !turn.sources.isEmpty {
-                    QuestionSourcesCard(turn: turn, model: model)
-                }
-                if !citationIndex.citedSources.isEmpty {
-                    PartyOpinionsView(turn: turn, model: model)
-                }
-                CouncilEvidenceBlocks(fields: turn.evidence, model: model, question: turn.question)
-                if !mapPins.isEmpty {
-                    QuestionEvidenceMap(pins: mapPins)
-                }
+            if showsEvidenceInline, !turn.sources.isEmpty {
+                QuestionSourcesCard(turn: turn, model: model)
+            }
+            if evidenceVisibility.showsPartyOpinions {
+                PartyOpinionsView(turn: turn, model: model)
+            }
+            CouncilEvidenceBlocks(
+                fields: turn.evidence,
+                model: model,
+                placement: showsEvidenceInline ? .all : .answer
+            )
+            if !mapPins.isEmpty {
+                QuestionEvidenceMap(pins: mapPins)
             }
             if !turn.suggestions.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -1262,6 +1264,10 @@ private struct QuestionTurnView: View {
     private var citationIndex: QuestionCitationIndex {
         QuestionCitationIndex(text: turn.answer, sources: turn.sources)
     }
+
+    private var evidenceVisibility: QuestionEvidenceAvailability {
+        QuestionEvidenceAvailability(fields: turn.evidence)
+    }
 }
 
 struct QuestionCitationIndex {
@@ -1283,6 +1289,35 @@ struct QuestionCitationIndex {
         let sourcesByID = Dictionary(uniqueKeysWithValues: uniqueSources.map { ($0.id, $0) })
         citedSources = orderedIDs.compactMap { sourcesByID[$0] }
         uncitedSources = uniqueSources.filter { numbers[$0.id] == nil }
+    }
+}
+
+struct QuestionEvidenceAvailability {
+    let showsPartyOpinions: Bool
+    let showsDebates: Bool
+    let showsPress: Bool
+    let showsAttachments: Bool
+    let showsPlanning: Bool
+    let showsBriefs: Bool
+    let showsChart: Bool
+    let showsSessions: Bool
+
+    init(fields: [String: JSONValue] = [:]) {
+        let type = fields["qtype"]?.string?.lowercased() ?? ""
+        let debates = fields["debatten"]?.array ?? []
+
+        // Dieselbe Zuständigkeit wie im Web: Der validierte Rechercheplan im
+        // Backend schaltet diese Kanäle einzeln frei. Die Oberfläche zeigt nur
+        // die tatsächlich gelieferten Ergebnisse und erfindet keine zweite,
+        // abweichende Stichwort-Heuristik.
+        showsDebates = !debates.isEmpty
+        showsPartyOpinions = type != "person" && showsDebates
+        showsPress = !(fields["presse"]?.array ?? []).isEmpty
+        showsAttachments = !(fields["anlagen"]?.array ?? []).isEmpty
+        showsPlanning = !(fields["planungen"]?.array ?? []).isEmpty
+        showsBriefs = !(fields["steckbriefe"]?.array ?? []).isEmpty
+        showsChart = fields["grafik"] != nil
+        showsSessions = !(fields["sitzungen"]?.array ?? []).isEmpty
     }
 }
 
@@ -1337,7 +1372,7 @@ func questionCitationMarkdown(
         } else {
             let links = questionCitationIDs(in: marker).compactMap { id -> String? in
                 guard let number = citationIndex.numberByID[id] else { return nil }
-                return "[\(number)](ratslotse://decision/\(id))"
+                return "[ \(number) ](ratslotse://decision/\(id))"
             }
             result += links.joined(separator: " ")
         }
@@ -1560,25 +1595,15 @@ private struct QuestionEvidenceSidebar: View {
             RatsLoadingState(message: "Belege werden zusammengestellt …")
         }
 
-        let index = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
         if !turn.sources.isEmpty {
             QuestionSourcesCard(turn: turn, model: model)
         }
-        if !index.citedSources.isEmpty {
-            PartyOpinionsView(turn: turn, model: model)
-        }
-
-        CouncilEvidenceBlocks(fields: turn.evidence, model: model, question: turn.question)
-
-        let pins = questionMapPins(for: index.citedSources)
-        if !pins.isEmpty {
-            QuestionEvidenceMap(pins: pins)
-        }
+        CouncilEvidenceBlocks(fields: turn.evidence, model: model, placement: .sources)
 
         if turn.status == nil,
            turn.research?.status != "laeuft",
            turn.sources.isEmpty,
-           !hasCouncilEvidence(turn.evidence, question: turn.question) {
+           !hasSourceEvidence(turn.evidence) {
             VStack(alignment: .leading, spacing: 8) {
                 MonoKicker("Beleglage")
                 Text(turn.answer.isEmpty ? "Stell links eine Frage – passende Ratsunterlagen erscheinen dann hier." : "Zu dieser Antwort wurden keine zusätzlichen Ratsunterlagen gefunden.")
@@ -1612,14 +1637,10 @@ private struct QuestionEvidenceSidebar: View {
         .padding(.vertical, 28)
     }
 
-    private func hasCouncilEvidence(_ fields: [String: JSONValue], question: String) -> Bool {
-        if fields["beleglage"]?.string == "duenn" || EvidenceChartData(fields["grafik"]) != nil {
-            return true
+    private func hasSourceEvidence(_ fields: [String: JSONValue]) -> Bool {
+        ["anlagen", "presse", "debatten"].contains {
+            !(fields[$0]?.array ?? []).isEmpty
         }
-        let keys = ["anlagen", "presse", "debatten", "planungen", "steckbriefe"]
-        if keys.contains(where: { !(fields[$0]?.array ?? []).isEmpty }) { return true }
-        return questionRequestsSessionContext(question)
-            && !(fields["sitzungen"]?.array ?? []).isEmpty
     }
 }
 
@@ -1655,48 +1676,54 @@ private struct PartyOpinionsView: View {
     @State private var isLoading = false
     @State private var error: String?
 
+    @ViewBuilder
     var body: some View {
-        DisclosureGroup {
-            VStack(alignment: .leading, spacing: 12) {
-                if let response {
-                    if response.parties.isEmpty {
-                        Text("In den ausgewerteten Wortbeiträgen wurden keine klaren Fraktionspositionen gefunden.")
-                            .foregroundStyle(RatsColor.secondary)
-                    }
-                    ForEach(response.parties) { opinion in
-                        VStack(alignment: .leading, spacing: 5) {
-                            HStack {
-                                Text(opinion.party).font(RatsFont.body(14, weight: .semibold))
-                                if let stance = opinion.stance { Pill(stance.capitalized) }
+        Group {
+            if error != nil {
+                EmptyView()
+            } else if let response, response.parties.count < 2 {
+                EmptyView()
+            } else {
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if let response {
+                            ForEach(response.parties) { opinion in
+                                VStack(alignment: .leading, spacing: 5) {
+                                    HStack {
+                                        Text(opinion.party).font(RatsFont.body(14, weight: .semibold))
+                                        if let stance = opinion.stance { Pill(stance.capitalized) }
+                                    }
+                                    Text(opinion.position).font(RatsFont.body(13)).foregroundStyle(RatsColor.secondary)
+                                    if opinion.united == false {
+                                        Text("Innerhalb der Fraktion gab es unterschiedliche Beiträge.")
+                                            .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
+                                    }
+                                }
+                                if opinion.id != response.parties.last?.id {
+                                    Divider().overlay(RatsColor.separator)
+                                }
                             }
-                            Text(opinion.position).font(RatsFont.body(13)).foregroundStyle(RatsColor.secondary)
-                            if opinion.united == false {
-                                Text("Innerhalb der Fraktion gab es unterschiedliche Beiträge.")
+                            if !response.withoutContributions.isEmpty {
+                                Text("Ohne zuordenbaren Beitrag: \(response.withoutContributions.joined(separator: ", "))")
                                     .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
                             }
+                        } else {
+                            ProgressView("Debatten werden automatisch ausgewertet …")
                         }
-                        if opinion.id != response.parties.last?.id { Divider().overlay(RatsColor.separator) }
                     }
-                    if !response.withoutContributions.isEmpty {
-                        Text("Ohne zuordenbaren Beitrag: \(response.withoutContributions.joined(separator: ", "))")
-                            .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
-                    }
-                } else if isLoading {
-                    ProgressView("Debatten auswerten …")
-                } else {
-                    Button("Positionen aus den Debatten laden") { Task { await load() } }
-                        .buttonStyle(SecondaryButtonStyle())
+                    .padding(.top, 10)
+                } label: {
+                    MonoKicker("Fraktionen")
                 }
-                if let error { Text(error).font(RatsFont.body(12)).foregroundStyle(RatsColor.danger) }
+                .padding(14)
+                .background(RatsColor.card)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .padding(.top, 10)
-        } label: {
-            MonoKicker("Fraktionen")
         }
-        .padding(14)
-        .background(RatsColor.card)
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .task(id: turn.id) {
+            await load()
+        }
     }
 
     private func load() async {
@@ -1704,13 +1731,17 @@ private struct PartyOpinionsView: View {
         let citedIDs = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
             .citedSources
             .map(\.id)
-        guard !citedIDs.isEmpty else { return }
+        let decisionIDs = citedIDs.isEmpty
+            ? Array(turn.sources.prefix(20).map(\.id))
+            : citedIDs
+        guard response == nil, !isLoading else { return }
+        error = nil
         isLoading = true
         defer { isLoading = false }
         do {
             response = try await model.api.send(
                 "/api/council/partei-meinungen",
-                body: Body(frage: String(turn.question.prefix(300)), beschluss_ids: citedIDs)
+                body: Body(frage: String(turn.question.prefix(300)), beschluss_ids: decisionIDs)
             )
         } catch { self.error = error.localizedDescription }
     }
@@ -1877,27 +1908,45 @@ private struct ActivityView: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
+enum CouncilEvidencePlacement {
+    case all
+    case answer
+    case sources
+}
+
 struct CouncilEvidenceBlocks: View {
     let fields: [String: JSONValue]
     let model: AppModel
-    var question: String? = nil
+    var placement: CouncilEvidencePlacement = .all
 
-    private var attachments: [[String: JSONValue]] { objects("anlagen") }
-    private var press: [[String: JSONValue]] { objects("presse") }
-    private var debates: [[String: JSONValue]] { objects("debatten") }
+    private var visibility: QuestionEvidenceAvailability {
+        QuestionEvidenceAvailability(fields: fields)
+    }
+    private var attachments: [[String: JSONValue]] {
+        visibility.showsAttachments ? objects("anlagen") : []
+    }
+    private var press: [[String: JSONValue]] {
+        visibility.showsPress ? objects("presse") : []
+    }
+    private var debates: [[String: JSONValue]] {
+        visibility.showsDebates ? objects("debatten") : []
+    }
     private var sessions: [[String: JSONValue]] {
         let rows = objects("sitzungen")
-        guard !rows.isEmpty else { return [] }
-        if let type = fields["qtype"]?.string, type != "sitzung" { return [] }
-        guard questionRequestsSessionContext(question ?? "") else { return [] }
-        return rows
+        return visibility.showsSessions ? rows : []
     }
-    private var planning: [[String: JSONValue]] { objects("planungen") }
-    private var briefs: [[String: JSONValue]] { objects("steckbriefe") }
+    private var planning: [[String: JSONValue]] {
+        visibility.showsPlanning ? objects("planungen") : []
+    }
+    private var briefs: [[String: JSONValue]] {
+        visibility.showsBriefs ? objects("steckbriefe") : []
+    }
+    private var includesAnswerInsights: Bool { placement != .sources }
+    private var includesSourceEvidence: Bool { placement != .answer }
 
     @ViewBuilder
     var body: some View {
-        if fields["beleglage"]?.string == "duenn" {
+        if includesAnswerInsights, fields["beleglage"]?.string == "duenn" {
             Label(
                 "Dünne Beschlusslage – die Antwort stützt sich nur auf wenige passende Ratsunterlagen.",
                 systemImage: "exclamationmark.magnifyingglass"
@@ -1910,7 +1959,7 @@ struct CouncilEvidenceBlocks: View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
         }
 
-        if !briefs.isEmpty {
+        if includesAnswerInsights, !briefs.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 MonoKicker("Worum es geht")
                 ForEach(Array(briefs.enumerated()), id: \.offset) { _, item in
@@ -1938,7 +1987,7 @@ struct CouncilEvidenceBlocks: View {
             .ratsCard()
         }
 
-        if !sessions.isEmpty {
+        if includesAnswerInsights, !sessions.isEmpty {
             DisclosureGroup {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(Array(sessions.enumerated()), id: \.offset) { _, item in
@@ -1978,7 +2027,7 @@ struct CouncilEvidenceBlocks: View {
             .ratsCard()
         }
 
-        if !attachments.isEmpty {
+        if includesSourceEvidence, !attachments.isEmpty {
             DisclosureGroup {
                 VStack(alignment: .leading, spacing: 11) {
                     ForEach(Array(attachments.enumerated()), id: \.offset) { index, item in
@@ -2002,7 +2051,7 @@ struct CouncilEvidenceBlocks: View {
             .ratsCard()
         }
 
-        if !press.isEmpty {
+        if includesSourceEvidence, !press.isEmpty {
             DisclosureGroup {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(press.enumerated()), id: \.offset) { _, item in
@@ -2024,7 +2073,7 @@ struct CouncilEvidenceBlocks: View {
             .ratsCard()
         }
 
-        if !debates.isEmpty {
+        if includesSourceEvidence, !debates.isEmpty {
             DisclosureGroup {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(Array(debates.enumerated()), id: \.offset) { _, item in
@@ -2050,7 +2099,7 @@ struct CouncilEvidenceBlocks: View {
             .ratsCard()
         }
 
-        if !planning.isEmpty {
+        if includesAnswerInsights, !planning.isEmpty {
             DisclosureGroup {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(planning.enumerated()), id: \.offset) { _, item in
@@ -2069,7 +2118,9 @@ struct CouncilEvidenceBlocks: View {
             .ratsCard()
         }
 
-        if let chart = EvidenceChartData(fields["grafik"]) {
+        if includesAnswerInsights,
+           visibility.showsChart,
+           let chart = EvidenceChartData(fields["grafik"]) {
             VStack(alignment: .leading, spacing: 12) {
                 MonoKicker("Zahlen aus der Stadt")
                 Text(chart.title).font(RatsFont.body(14, weight: .semibold))
@@ -2104,13 +2155,6 @@ struct CouncilEvidenceBlocks: View {
         }
         return URL(string: raw)
     }
-}
-
-func questionRequestsSessionContext(_ question: String) -> Bool {
-    question.range(
-        of: #"\b(sitzung|ratssitzung|tagesordnung|tagt|tagung|sitzungstermin|wann|heute|morgen)\b|\bam\s+\d{1,2}[.]?\s*(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember|\d{1,2}[.])"#,
-        options: [.regularExpression, .caseInsensitive]
-    ) != nil
 }
 
 private struct EvidenceTextRow: View {
@@ -2215,6 +2259,9 @@ struct CitedAnswerText: View {
             guard let link = run.link, link.scheme == "ratslotse" else { continue }
             output[run.range].foregroundColor = RatsColor.primary
             output[run.range].font = RatsFont.body(10, weight: .bold)
+            if link.host == "decision" {
+                output[run.range].backgroundColor = RatsColor.primary.opacity(0.11)
+            }
         }
         return output
     }
