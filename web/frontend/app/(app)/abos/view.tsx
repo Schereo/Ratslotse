@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import type { CommitteeDetail } from "@/lib/types";
 import { CardListSkeleton, ErrorState, PageHeader, formatDate, toast } from "@/components/ui";
 import { wochentagKurz } from "@/lib/utils";
-import { committeeRank, shortCommittee } from "@/lib/committees";
+import { committeeExplains, committeeRank, shortCommittee } from "@/lib/committees";
 
 /** Der Termin in zwei Längen — oder gar nicht.
  *
@@ -34,20 +34,28 @@ function Zeile({ d, abonniert, onToggle, busy }: {
   d: CommitteeDetail; abonniert: boolean; onToggle: () => void; busy: boolean;
 }) {
   const termin = terminText(d);
+  const erklaerung = committeeExplains(d.name);
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
+    <div className="flex items-start gap-3 px-4 py-3">
       <div className="min-w-0 flex-1">
         {/* Der amtliche Name bleibt im title erreichbar — angezeigt wird der
             Kurzname, wie im Einrichtungs-Assistenten (Design 28a/R3). */}
         <p className="text-sm font-medium leading-snug text-foreground" title={d.name}>
           {shortCommittee(d.name)}
         </p>
+        {/* Der Erklärsatz kam mit Design 28a/R3 dazu, weil ein Gremienname
+            allein nicht sagt, worüber dort entschieden wird — und genau das
+            ist die Frage vor einem Abo. Ein unbekanntes Gremium bekommt
+            keinen erfundenen Satz, dann bleibt es beim Namen. */}
+        {erklaerung && (
+          <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">{erklaerung}</p>
+        )}
         {/* Mobil ohne das Wort „Nächste Sitzung": Es kostete so viel Zeile,
             dass die Uhrzeit dahinter abgeschnitten wurde — also genau die
             Angabe, für die die Zeile da ist. Neben einem Datum in der Zukunft
             sagt der Zusatz ohnehin wenig; auf dem Desktop ist Platz für ihn. */}
         {termin && (
-          <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
             <span className="hidden sm:inline">Nächste Sitzung · {termin.lang}</span>
             <span className="sm:hidden">{termin.kurz}</span>
           </p>

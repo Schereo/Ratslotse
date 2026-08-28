@@ -287,7 +287,14 @@ Dot hsl(209 18% 65%), kombiniertes Label.
 - **Quellen-Pill/-Zeile** (RG-02): n-Badge 16 ⌀ + Titel ellipsiert (+ Jahr mobil /
   GREMIUM · DATUM Desktop); Rest hinter „Alle N Quellen".
 - **Ergebnis-Badges** (RG-03): Angenommen / Abgelehnt / Vertagt / Zur Kenntnis
-  in Semantik-Tints, Radius 9999, 10,5/600.
+  in Semantik-Tints, Radius 9999, 10,5/600. **Badge oder Punkt hängt an der
+  Länge der Liste, nicht am Seitentyp** (Tim, 28.08.2026): Die lange, zum
+  Überfliegen gedachte Trefferliste der Suche bleibt bei Punkt + Wort
+  (`OutcomeDot`) — dort wären zwanzig gefüllte Flächen untereinander Lärm. Wo
+  eine Liste kurz und gedeckelt ist und das Ergebnis zur Aussage gehört,
+  steht das gefüllte Badge (`OutcomeBadge`): so auf der Themen-Karte, die
+  höchstens fünf Beschlüsse zeigt. Beide kommen aus `components/decision-ui.tsx`
+  und teilen sich `OUTCOME_META` — die Farben gehen nie auseinander.
 - **Zeitstrahl** (RG-03): 16-px-Rail, Punkte 10 ⌀, letzte Station = gefüllter
   Punkt mit Halo + primary/6-Box „AKTUELLER STAND".
 - **Geld** (RG-04): Bricolage-Großbetrag + Vergleichszeilen (Label · Balken h 6 ·
