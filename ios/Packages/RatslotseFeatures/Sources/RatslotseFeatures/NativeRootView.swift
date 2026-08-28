@@ -347,14 +347,19 @@ private struct MainTabsView: View {
             TabView(selection: $model.selectedTab) {
                 TodayView(model: model)
                     .tag(AppTab.today)
+                    .toolbar(.hidden, for: .tabBar)
                 QuestionsView(model: model)
                     .tag(AppTab.questions)
+                    .toolbar(.hidden, for: .tabBar)
                 CouncilBrowserView(model: model)
                     .tag(AppTab.council)
+                    .toolbar(.hidden, for: .tabBar)
                 TopicsView(model: model)
                     .tag(AppTab.topics)
+                    .toolbar(.hidden, for: .tabBar)
                 AccountView(model: model)
                     .tag(AppTab.account)
+                    .toolbar(.hidden, for: .tabBar)
             }
             .toolbar(.hidden, for: .tabBar)
         }
