@@ -5,6 +5,7 @@ import SwiftUI
 struct NativeOnboardingWelcomeView: View {
     let model: AppModel
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
     @State private var ringsExpanded = false
@@ -12,73 +13,38 @@ struct NativeOnboardingWelcomeView: View {
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
-                VStack(spacing: 0) {
-                    Spacer(minLength: 26)
-                    ZStack {
-                        Circle()
-                            .stroke(Color(red: 0.96, green: 0.35, blue: 0.13).opacity(0.75), lineWidth: 2)
-                            .frame(width: 154, height: 154)
-                            .scaleEffect(ringsExpanded ? 1.13 : 0.94)
-                            .opacity(ringsExpanded ? 0.15 : 0.85)
-                        Circle()
-                            .stroke(Color(red: 0.20, green: 0.68, blue: 0.90).opacity(0.7), lineWidth: 2)
-                            .frame(width: 154, height: 154)
-                            .scaleEffect(ringsExpanded ? 0.94 : 1.13)
-                            .opacity(ringsExpanded ? 0.8 : 0.2)
-                        Lotti3DView(scene: .wave)
-                            .frame(width: 158, height: 144)
-                    }
-                    .accessibilityHidden(true)
+                Group {
+                    if horizontalSizeClass == .regular {
+                        HStack(spacing: 62) {
+                            VStack(spacing: 0) {
+                                mascot
+                                    .scaleEffect(1.28)
+                                    .padding(.bottom, 26)
+                                welcomeTitle
+                            }
+                            .frame(maxWidth: 370)
 
-                    Text("MOIN & WILLKOMMEN")
-                        .font(RatsFont.mono(11, weight: .semibold))
-                        .tracking(2)
-                        .foregroundStyle(Color(red: 0.98, green: 0.42, blue: 0.20))
-                        .padding(.top, 20)
-                    Text("Willkommen bei\nRatslotse")
-                        .font(RatsFont.title(32, weight: .heavy))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.white)
-                        .lineSpacing(-2)
-                        .padding(.top, 8)
-
-                    VStack(spacing: 10) {
-                        WelcomePromise(
-                            symbol: "sparkles",
-                            color: Color(red: 0.98, green: 0.42, blue: 0.20),
-                            title: "Frag den Rat",
-                            detail: "Antworten mit Quellen"
-                        )
-                        WelcomePromise(
-                            symbol: "bell.fill",
-                            color: Color(red: 0.35, green: 0.76, blue: 0.95),
-                            title: "Bleib informiert",
-                            detail: "Mitteilung bei neuen Beschlüssen"
-                        )
-                        WelcomePromise(
-                            symbol: "building.columns.fill",
-                            color: .white.opacity(0.82),
-                            title: "Aus der amtlichen Quelle",
-                            detail: "Rat Oldenburg"
-                        )
-                    }
-                    .padding(.top, 22)
-
-                    VStack(spacing: 9) {
-                        Button("Los geht’s") { model.beginOnboarding() }
-                            .buttonStyle(WelcomePrimaryButtonStyle())
-                        Button("Schon registriert? Anmelden") {
-                            model.beginOnboarding(with: .login)
+                            VStack(spacing: 0) {
+                                promises
+                                actions
+                            }
+                            .frame(maxWidth: 440)
                         }
-                        .font(RatsFont.body(13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.72))
-                        .padding(.vertical, 5)
+                        .padding(.horizontal, 44)
+                        .padding(.vertical, 38)
+                    } else {
+                        VStack(spacing: 0) {
+                            Spacer(minLength: 26)
+                            mascot
+                            welcomeTitle
+                            promises
+                            actions
+                            Spacer(minLength: 18)
+                        }
+                        .padding(.horizontal, 26)
+                        .frame(maxWidth: 560)
                     }
-                    .padding(.top, 24)
-                    Spacer(minLength: 18)
                 }
-                .padding(.horizontal, 26)
-                .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: proxy.size.height)
                 .opacity(appeared ? 1 : 0)
@@ -118,6 +84,78 @@ struct NativeOnboardingWelcomeView: View {
                 }
             }
         }
+    }
+
+    private var mascot: some View {
+        ZStack {
+            Circle()
+                .stroke(Color(red: 0.96, green: 0.35, blue: 0.13).opacity(0.75), lineWidth: 2)
+                .frame(width: 154, height: 154)
+                .scaleEffect(ringsExpanded ? 1.13 : 0.94)
+                .opacity(ringsExpanded ? 0.15 : 0.85)
+            Circle()
+                .stroke(Color(red: 0.20, green: 0.68, blue: 0.90).opacity(0.7), lineWidth: 2)
+                .frame(width: 154, height: 154)
+                .scaleEffect(ringsExpanded ? 0.94 : 1.13)
+                .opacity(ringsExpanded ? 0.8 : 0.2)
+            Lotti3DView(scene: .wave)
+                .frame(width: 158, height: 144)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var welcomeTitle: some View {
+        VStack(spacing: 0) {
+            Text("MOIN & WILLKOMMEN")
+                .font(RatsFont.mono(11, weight: .semibold))
+                .tracking(2)
+                .foregroundStyle(Color(red: 0.98, green: 0.42, blue: 0.20))
+                .padding(.top, 20)
+            Text("Willkommen bei\nRatslotse")
+                .font(RatsFont.title(horizontalSizeClass == .regular ? 38 : 32, weight: .heavy))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.white)
+                .lineSpacing(-2)
+                .padding(.top, 8)
+        }
+    }
+
+    private var promises: some View {
+        VStack(spacing: 10) {
+            WelcomePromise(
+                symbol: "sparkles",
+                color: Color(red: 0.98, green: 0.42, blue: 0.20),
+                title: "Frag den Rat",
+                detail: "Antworten mit Quellen"
+            )
+            WelcomePromise(
+                symbol: "bell.fill",
+                color: Color(red: 0.35, green: 0.76, blue: 0.95),
+                title: "Bleib informiert",
+                detail: "Mitteilung bei neuen Beschlüssen"
+            )
+            WelcomePromise(
+                symbol: "building.columns.fill",
+                color: .white.opacity(0.82),
+                title: "Aus der amtlichen Quelle",
+                detail: "Rat Oldenburg"
+            )
+        }
+        .padding(.top, 22)
+    }
+
+    private var actions: some View {
+        VStack(spacing: 9) {
+            Button("Los geht’s") { model.beginOnboarding() }
+                .buttonStyle(WelcomePrimaryButtonStyle())
+            Button("Schon registriert? Anmelden") {
+                model.beginOnboarding(with: .login)
+            }
+            .font(RatsFont.body(13, weight: .medium))
+            .foregroundStyle(.white.opacity(0.72))
+            .padding(.vertical, 5)
+        }
+        .padding(.top, 24)
     }
 }
 
@@ -237,35 +275,74 @@ private struct OnboardingStepPage<Content: View, Footer: View>: View {
     let scene: Lotti3DScene
     @ViewBuilder let content: Content
     @ViewBuilder let footer: Footer
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 12) {
-                    Lotti3DView(scene: scene)
-                        .frame(width: 92, height: 70)
-                        .accessibilityHidden(true)
-                    Text(title)
-                        .font(RatsFont.title(22, weight: .heavy))
-                        .foregroundStyle(RatsColor.text)
-                        .fixedSize(horizontal: false, vertical: true)
+        GeometryReader { proxy in
+            ScrollView {
+                Group {
+                    if horizontalSizeClass == .regular {
+                        HStack(alignment: .top, spacing: 34) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Lotti3DView(scene: scene)
+                                    .frame(width: 240, height: 190)
+                                    .accessibilityHidden(true)
+                                Text(title)
+                                    .font(RatsFont.title(30, weight: .heavy))
+                                    .foregroundStyle(RatsColor.text)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text(lead)
+                                    .font(RatsFont.body(15))
+                                    .foregroundStyle(RatsColor.secondary)
+                                    .lineSpacing(4)
+                            }
+                            .frame(width: 284, alignment: .leading)
+
+                            content
+                                .frame(maxWidth: 620, alignment: .leading)
+                                .padding(.top, 10)
+                        }
+                        .frame(maxWidth: 980, alignment: .topLeading)
+                    } else {
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack(spacing: 12) {
+                                Lotti3DView(scene: scene)
+                                    .frame(width: 92, height: 70)
+                                    .accessibilityHidden(true)
+                                Text(title)
+                                    .font(RatsFont.title(22, weight: .heavy))
+                                    .foregroundStyle(RatsColor.text)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Text(lead)
+                                .font(RatsFont.body(13.5))
+                                .foregroundStyle(RatsColor.secondary)
+                                .lineSpacing(3)
+                                .padding(.top, 9)
+                            content.padding(.top, 16)
+                        }
+                        .frame(maxWidth: 620, alignment: .leading)
+                    }
                 }
-                Text(lead)
-                    .font(RatsFont.body(13.5))
-                    .foregroundStyle(RatsColor.secondary)
-                    .lineSpacing(3)
-                    .padding(.top, 9)
-                content.padding(.top, 16)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: max(0, proxy.size.height - 28), alignment: .center)
+                .padding(.horizontal, horizontalSizeClass == .regular ? 28 : 18)
+                .padding(.vertical, 14)
             }
-            .frame(maxWidth: 620, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 18)
-            .padding(.bottom, 16)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            footer
-                .frame(maxWidth: 620)
-                .frame(maxWidth: .infinity)
+            Group {
+                if horizontalSizeClass == .regular {
+                    HStack(alignment: .center, spacing: 34) {
+                        Color.clear.frame(width: 284, height: 1)
+                        footer.frame(maxWidth: 620)
+                    }
+                    .frame(maxWidth: 980)
+                } else {
+                    footer.frame(maxWidth: 620)
+                }
+            }
+            .frame(maxWidth: .infinity)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
                 .background(.ultraThinMaterial)
@@ -303,11 +380,13 @@ private struct CommitteeOnboardingStep: View {
                 }
             } },
             footer: {
-                Button(subscriptions.isEmpty ? "Weiter" : "\(subscriptions.count) abonniert · Weiter") {
+                Button {
                     Task { await model.advanceOnboarding(to: 2) }
+                } label: {
+                    Text(subscriptions.isEmpty ? "Weiter" : "\(subscriptions.count) abonniert · Weiter")
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(PrimaryButtonStyle())
-                .frame(maxWidth: .infinity)
             }
         )
         .task { await load() }
@@ -541,9 +620,10 @@ private struct TopicOnboardingStep: View {
                 }
             } },
             footer: {
-                Button("Weiter") { Task { await model.advanceOnboarding(to: 3) } }
+                Button { Task { await model.advanceOnboarding(to: 3) } } label: {
+                    Text("Weiter").frame(maxWidth: .infinity)
+                }
                     .buttonStyle(PrimaryButtonStyle())
-                    .frame(maxWidth: .infinity)
             }
         )
         .task { await load() }
@@ -653,8 +733,11 @@ private struct PushOnboardingStep: View {
                 Button {
                     allowNotifications()
                 } label: {
-                    if isWorking { ProgressView().tint(RatsColor.primaryText) }
-                    else { Text("Mitteilungen erlauben") }
+                    Group {
+                        if isWorking { ProgressView().tint(RatsColor.primaryText) }
+                        else { Text("Mitteilungen erlauben") }
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(isWorking)

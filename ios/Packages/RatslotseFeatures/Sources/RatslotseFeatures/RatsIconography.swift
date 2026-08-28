@@ -5,6 +5,7 @@ enum RatsGlyph: Sendable {
     case home
     case ask
     case calendar
+    case decisions
     case topics
     case more
     case search
@@ -76,6 +77,11 @@ struct RatsGlyphView: View {
                 path.move(to: point(3, 10)); path.addLine(to: point(21, 10))
                 path.move(to: point(8, 3)); path.addLine(to: point(8, 7)); path.move(to: point(16, 3)); path.addLine(to: point(16, 7))
                 fillCircle(7, 13.5, 2); fillCircle(11, 13.5, 2); fillCircle(15, 13.5, 2); fillCircle(7, 17.5, 2); fillCircle(11, 17.5, 2)
+            case .decisions:
+                path.addRoundedRect(in: CGRect(x: point(5, 3).x, y: point(5, 3).y, width: 14 * scale, height: 18 * scale), cornerSize: CGSize(width: 2.5 * scale, height: 2.5 * scale))
+                path.move(to: point(8.5, 8)); path.addLine(to: point(15.5, 8))
+                path.move(to: point(8.5, 12)); path.addLine(to: point(15.5, 12))
+                path.move(to: point(8.5, 16)); path.addLine(to: point(11, 18.2)); path.addLine(to: point(16, 14.2))
             case .topics:
                 path.move(to: point(3, 11)); path.addLine(to: point(11, 3)); path.addLine(to: point(21, 13)); path.addLine(to: point(13, 21)); path.addLine(to: point(3, 11));
                 path.addEllipse(in: CGRect(x: point(9, 7).x, y: point(9, 7).y, width: 3 * scale, height: 3 * scale))

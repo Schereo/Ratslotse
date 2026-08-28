@@ -14,6 +14,7 @@ struct PublicProfileView: View {
     let model: AppModel
     let kind: PublicProfileKind
     let key: String
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var preview: LinkPreview?
     @State private var payload: JSONValue?
     @State private var decisions: [DecisionSummary] = []
@@ -25,30 +26,7 @@ struct PublicProfileView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 if let preview {
-                    MonoKicker(kicker)
-                    Text(person?.name ?? preview.title).font(RatsFont.title(28))
-                    if let person {
-                        PersonProfileOverview(model: model, person: person)
-                    } else {
-                        Text(profileDescription ?? preview.description)
-                            .font(RatsFont.body(16))
-                            .foregroundStyle(RatsColor.bodyText)
-                            .lineSpacing(4)
-                            .ratsCard()
-                    }
-
-                    if let coordinate {
-                        Map(initialPosition: .region(MKCoordinateRegion(
-                            center: coordinate,
-                            span: MKCoordinateSpan(latitudeDelta: 0.025, longitudeDelta: 0.025)
-                        ))) {
-                            Marker(preview.title, coordinate: coordinate)
-                                .tint(RatsColor.signal)
-                        }
-                        .frame(height: 250)
-                        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card))
-                        .overlay(RoundedRectangle(cornerRadius: RatsRadius.card).stroke(RatsColor.border))
-                    }
+                    profileOverview(preview)
 
                     if !decisions.isEmpty {
                         VStack(alignment: .leading, spacing: 13) {
@@ -74,13 +52,92 @@ struct PublicProfileView: View {
                     ProgressView("Profil laden …").frame(maxWidth: .infinity, minHeight: 260)
                 }
             }
-            .frame(maxWidth: 760, alignment: .leading)
+            .frame(maxWidth: usesTabletOverview ? 1040 : 760, alignment: .leading)
             .padding(18)
         }
         .background(RatsColor.page)
         .navigationTitle(kicker.capitalized)
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+    }
+
+    @ViewBuilder
+    private func profileOverview(_ preview: LinkPreview) -> some View {
+        if usesTabletOverview {
+            HStack(alignment: .top, spacing: 20) {
+                profileIntro(preview)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                tabletVisual(preview)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+        } else {
+            profileIntro(preview)
+            if let coordinate {
+                profileMap(title: preview.title, coordinate: coordinate, height: 250)
+            }
+        }
+    }
+
+    private func profileIntro(_ preview: LinkPreview) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            MonoKicker(kicker)
+            Text(person?.name ?? preview.title)
+                .font(RatsFont.title(usesTabletOverview ? 34 : 28))
+            if let person {
+                PersonProfileOverview(model: model, person: person)
+            } else {
+                Text(profileDescription ?? preview.description)
+                    .font(RatsFont.body(16))
+                    .foregroundStyle(RatsColor.bodyText)
+                    .lineSpacing(4)
+                    .ratsCard()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func tabletVisual(_ preview: LinkPreview) -> some View {
+        if let coordinate {
+            profileMap(title: preview.title, coordinate: coordinate, height: 300)
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Lotti3DView(scene: .explain, animated: false)
+                    .frame(maxWidth: .infinity, minHeight: 180, maxHeight: 230)
+                    .accessibilityHidden(true)
+                MonoKicker("Lotti erklärt")
+                Text("Hier bündelt Ratslotse Beschlüsse, Projekte und Debatten, die zu diesem Thema gehören.")
+                    .font(RatsFont.body(14))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineSpacing(3)
+            }
+            .ratsCard()
+        }
+    }
+
+    private func profileMap(
+        title: String,
+        coordinate: CLLocationCoordinate2D,
+        height: CGFloat
+    ) -> some View {
+        Map(initialPosition: .region(MKCoordinateRegion(
+            center: coordinate,
+            span: MKCoordinateSpan(latitudeDelta: 0.025, longitudeDelta: 0.025)
+        ))) {
+            Marker(title, coordinate: coordinate)
+                .tint(RatsColor.signal)
+        }
+        .frame(height: height)
+        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card))
+        .overlay(RoundedRectangle(cornerRadius: RatsRadius.card).stroke(RatsColor.border))
+    }
+
+    private var usesTabletOverview: Bool {
+        guard UIDevice.current.userInterfaceIdiom == .pad,
+              horizontalSizeClass != .compact else { return false }
+        switch kind {
+        case .person: return false
+        case .topic, .place: return true
+        }
     }
 
     private var kicker: String {
@@ -92,6 +149,47 @@ struct PublicProfileView: View {
     }
 
     private func load() async {
+#if DEBUG
+        if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_PROFILE_FIXTURE"] == "1" {
+            switch kind {
+            case .person:
+                preview = LinkPreview(
+                    title: "Anne Beispiel",
+                    description: "Ratsmitglied mit Schwerpunkten in Verkehr, Bildung und sozialer Teilhabe."
+                )
+                person = PublicPersonProfile(
+                    name: "Anne Beispiel",
+                    party: "SPD",
+                    currentAffiliation: "SPD-Fraktion",
+                    art: "rat",
+                    organisation: nil,
+                    nSessions: 18,
+                    activeFrom: "2021-11-01",
+                    activeTo: nil,
+                    committees: [
+                        .init(committee: "Verkehrsausschuss", n: 9, chair: true),
+                        .init(committee: "Sozialausschuss", n: 7, chair: false),
+                    ],
+                    recent: [
+                        .init(ksinr: 8101, committee: "Verkehrsausschuss", sessionDate: "2026-08-28"),
+                        .init(ksinr: 8102, committee: "Sozialausschuss", sessionDate: "2026-08-21"),
+                    ]
+                )
+            case .topic:
+                preview = LinkPreview(
+                    title: "Sichere Schulwege",
+                    description: "Beschlüsse, Projekte und Debatten rund um sichere Wege zu Oldenburgs Schulen."
+                )
+            case .place:
+                preview = LinkPreview(
+                    title: "Pferdemarkt",
+                    description: "Was der Rat für den Pferdemarkt und sein direktes Umfeld plant und entscheidet."
+                )
+                coordinate = CLLocationCoordinate2D(latitude: 53.1466, longitude: 8.2147)
+            }
+            return
+        }
+#endif
         do {
             async let previewRequest: LinkPreview = model.api.get("/api/council/preview/\(kind.rawValue)/\(key)")
             async let payloadRequest: JSONValue = model.api.get(detailPath)

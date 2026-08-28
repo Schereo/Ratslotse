@@ -13,6 +13,7 @@ struct MoreHubView: View {
     let model: AppModel
     let openCouncil: (CouncilSection) -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var path: NavigationPath = {
         var path = NavigationPath()
         switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MORE_DESTINATION"] {
@@ -51,31 +52,30 @@ struct MoreHubView: View {
                 Divider().overlay(RatsColor.separator)
 
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 20) {
                         profileCard
-                        destinationGroup(
-                            title: "Im Rat",
-                            subtitle: "Suchen, einordnen und vor Ort entdecken",
-                            rows: [
-                                .action("Suche", "Beschlüsse und Vorlagen finden", .search) { open(.decisions) },
-                                .action("Stadtkarte", "Was der Rat an welchen Orten bewegt", .map) { open(.map) },
-                                .link("Analyse", "Trends, Parteien, Personen, Finanzen und Ziele", .analysis, .analysis),
-                            ]
-                        )
-                        destinationGroup(
-                            title: "Für dich",
-                            subtitle: "Beobachten, merken und spielerisch entdecken",
-                            rows: [
-                                .link("Ausschuss-Abos", "Neue und geänderte Tagesordnungen", .subscriptions, .subscriptions),
-                                .link("Merkliste", "Beschlüsse und Vorgänge wiederfinden", .saved, .saved),
-                                .link("Oldenburg-Quiz", "Dein Wissen über Stadt und Rat", .quiz, .quiz),
-                            ]
-                        )
-                        ratslotseGroup
-                        logoutButton
-                        legalFooter
+                        if horizontalSizeClass == .regular {
+                            HStack(alignment: .top, spacing: 18) {
+                                councilGroup.frame(maxWidth: .infinity, alignment: .top)
+                                personalGroup.frame(maxWidth: .infinity, alignment: .top)
+                            }
+                            HStack(alignment: .top, spacing: 18) {
+                                ratslotseGroup.frame(maxWidth: .infinity, alignment: .top)
+                                VStack(spacing: 14) {
+                                    logoutButton
+                                    legalFooter
+                                }
+                                .frame(maxWidth: .infinity, alignment: .top)
+                            }
+                        } else {
+                            councilGroup
+                            personalGroup
+                            ratslotseGroup
+                            logoutButton
+                            legalFooter
+                        }
                     }
-                    .frame(maxWidth: 680, alignment: .leading)
+                    .frame(maxWidth: horizontalSizeClass == .regular ? 980 : 680, alignment: .leading)
                     .padding(.horizontal, 18)
                     .padding(.top, 16)
                     .padding(.bottom, 30)
@@ -110,6 +110,30 @@ struct MoreHubView: View {
             }
         }
         .presentationDragIndicator(.hidden)
+    }
+
+    private var councilGroup: some View {
+        destinationGroup(
+            title: "Im Rat",
+            subtitle: "Suchen, einordnen und vor Ort entdecken",
+            rows: [
+                .action("Suche", "Beschlüsse und Vorlagen finden", .search) { open(.decisions) },
+                .action("Stadtkarte", "Was der Rat an welchen Orten bewegt", .map) { open(.map) },
+                .link("Analyse", "Trends, Parteien, Personen, Finanzen und Ziele", .analysis, .analysis),
+            ]
+        )
+    }
+
+    private var personalGroup: some View {
+        destinationGroup(
+            title: "Für dich",
+            subtitle: "Beobachten, merken und spielerisch entdecken",
+            rows: [
+                .link("Ausschuss-Abos", "Neue und geänderte Tagesordnungen", .subscriptions, .subscriptions),
+                .link("Merkliste", "Beschlüsse und Vorgänge wiederfinden", .saved, .saved),
+                .link("Oldenburg-Quiz", "Dein Wissen über Stadt und Rat", .quiz, .quiz),
+            ]
+        )
     }
 
     private var profileCard: some View {

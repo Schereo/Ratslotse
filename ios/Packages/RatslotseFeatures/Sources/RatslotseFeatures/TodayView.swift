@@ -40,73 +40,26 @@ struct TodayView: View {
                 }
                 .buttonStyle(SignalButtonStyle())
 
-                if let today { TodayStatusCard(today: today, openSessions: openSessions) }
-                if let preview, preview.found {
-                    WeekPreviewCard(preview: preview) { sessionID, itemNumber in
-                        model.navigation.append(.sessions(ksinr: sessionID, tops: [itemNumber]))
-                    }
-                }
-                if let week, week.found, let id = week.decisionID {
-                    Button { model.navigation.append(.decision(id: id)) } label: {
-                        VStack(alignment: .leading, spacing: 9) {
-                            MonoKicker("Diese Woche im Rat")
-                            Text(week.title ?? "Aktueller Beschluss")
-                                .font(RatsFont.title(20))
-                                .multilineTextAlignment(.leading)
-                            if let outcome = week.outcome { OutcomeBadge(outcome) }
-                            if let reason = week.interestReason, !reason.isEmpty {
-                                Text(reason).font(RatsFont.body(14)).foregroundStyle(RatsColor.secondary)
-                            }
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 16) {
+                        VStack(alignment: .leading, spacing: RatsSpacing.xl) {
+                            primaryColumn
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .ratsCard()
-                    }
-                    .buttonStyle(.plain)
-                }
+                        .frame(minWidth: 350, maxWidth: .infinity, alignment: .topLeading)
 
-                if let foundPiece, foundPiece.found, let id = foundPiece.decisionID {
-                    Button { model.navigation.append(.decision(id: id)) } label: {
-                        VStack(alignment: .leading, spacing: 10) {
-                            MonoKicker(foundPiece.kicker ?? "Fundstück")
-                            Text(foundPiece.title ?? "Aus dem Archiv")
-                                .font(RatsFont.title(20))
-                            if let story = foundPiece.story {
-                                Text(story).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText)
-                            }
+                        VStack(alignment: .leading, spacing: RatsSpacing.xl) {
+                            secondaryColumn
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .ratsCard()
+                        .frame(minWidth: 350, maxWidth: .infinity, alignment: .topLeading)
                     }
-                    .buttonStyle(.plain)
-                }
 
-                if !recent.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        MonoKicker("Letzte Beschlüsse", trailing: "\(recent.count) gezeigt")
-                        ForEach(recent) { decision in
-                            Button { model.navigation.append(.decision(id: decision.id)) } label: {
-                                DecisionRow(decision: decision)
-                            }
-                            .buttonStyle(.plain)
-                            if decision.id != recent.last?.id { Divider().overlay(RatsColor.separator) }
-                        }
+                    VStack(alignment: .leading, spacing: RatsSpacing.xl) {
+                        primaryColumn
+                        secondaryColumn
                     }
-                    .ratsCard()
-                }
-
-                Button {
-                    model.navigation.append(.quiz(area: nil))
-                } label: {
-                    Label("Oldenburg-Quiz spielen", systemImage: "checkmark.circle")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(SecondaryButtonStyle())
-
-                if let error {
-                    ErrorCard(message: error) { Task { await load() } }
                 }
             }
-            .frame(maxWidth: 760, alignment: .leading)
+            .frame(maxWidth: 980, alignment: .leading)
             .padding(.horizontal, 18)
             .padding(.vertical, 24)
         }
@@ -115,6 +68,79 @@ struct TodayView: View {
         .toolbarTitleDisplayMode(.inline)
         .refreshable { await load() }
         .task { if today == nil { await load() } }
+    }
+
+    @ViewBuilder
+    private var primaryColumn: some View {
+        if let today { TodayStatusCard(today: today, openSessions: openSessions) }
+        if let preview, preview.found {
+            WeekPreviewCard(preview: preview) { sessionID, itemNumber in
+                model.navigation.append(.sessions(ksinr: sessionID, tops: [itemNumber]))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var secondaryColumn: some View {
+        if let week, week.found, let id = week.decisionID {
+            Button { model.navigation.append(.decision(id: id)) } label: {
+                VStack(alignment: .leading, spacing: 9) {
+                    MonoKicker("Diese Woche im Rat")
+                    Text(week.title ?? "Aktueller Beschluss")
+                        .font(RatsFont.title(20))
+                        .multilineTextAlignment(.leading)
+                    if let outcome = week.outcome { OutcomeBadge(outcome) }
+                    if let reason = week.interestReason, !reason.isEmpty {
+                        Text(reason).font(RatsFont.body(14)).foregroundStyle(RatsColor.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .ratsCard()
+            }
+            .buttonStyle(.plain)
+        }
+
+        if let foundPiece, foundPiece.found, let id = foundPiece.decisionID {
+            Button { model.navigation.append(.decision(id: id)) } label: {
+                VStack(alignment: .leading, spacing: 10) {
+                    MonoKicker(foundPiece.kicker ?? "Fundstück")
+                    Text(foundPiece.title ?? "Aus dem Archiv")
+                        .font(RatsFont.title(20))
+                    if let story = foundPiece.story {
+                        Text(story).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .ratsCard()
+            }
+            .buttonStyle(.plain)
+        }
+
+        if !recent.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                MonoKicker("Letzte Beschlüsse", trailing: "\(recent.count) gezeigt")
+                ForEach(recent) { decision in
+                    Button { model.navigation.append(.decision(id: decision.id)) } label: {
+                        DecisionRow(decision: decision)
+                    }
+                    .buttonStyle(.plain)
+                    if decision.id != recent.last?.id { Divider().overlay(RatsColor.separator) }
+                }
+            }
+            .ratsCard()
+        }
+
+        Button {
+            model.navigation.append(.quiz(area: nil))
+        } label: {
+            Label("Oldenburg-Quiz spielen", systemImage: "checkmark.circle")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(SecondaryButtonStyle())
+
+        if let error {
+            ErrorCard(message: error) { Task { await load() } }
+        }
     }
 
     private var greeting: String {

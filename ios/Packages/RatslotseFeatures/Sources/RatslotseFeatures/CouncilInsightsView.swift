@@ -125,7 +125,15 @@ private struct CouncilGoal: Decodable, Sendable, Identifiable {
 
 struct CouncilInsightsView: View {
     let model: AppModel
-    @State private var section: InsightSection = .trends
+    @State private var section: InsightSection = {
+        switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ANALYSIS_SECTION"] {
+        case "parties": .parties
+        case "people": .people
+        case "finance": .finance
+        case "goals": .goals
+        default: .trends
+        }
+    }()
     @State private var trends: TrendResponse?
     @State private var parties: PartyAnalysisResponse?
     @State private var members: [CouncilMember] = []
@@ -454,6 +462,38 @@ struct CouncilInsightsView: View {
                 emerging: [EmergingTopic(tag: "Velorouten", n: 5)],
                 fieldLabels: ["verkehr": "Verkehr", "soziales": "Soziales"]
             )
+            parties = PartyAnalysisResponse(
+                coverage: Coverage(withFactions: 38, total: 44),
+                successRates: [
+                    PartySuccess(party: "SPD", motions: 14, angenommen: 9, abgelehnt: 3, vertagt: 2, rate: 0.64),
+                    PartySuccess(party: "CDU", motions: 11, angenommen: 6, abgelehnt: 4, vertagt: 1, rate: 0.55),
+                    PartySuccess(party: "GRÜNE", motions: 9, angenommen: 6, abgelehnt: 2, vertagt: 1, rate: 0.67),
+                ],
+                contention: [
+                    Contention(field: "verkehr", total: 17, contested: 8, contestedRate: 0.47),
+                    Contention(field: "soziales", total: 13, contested: 4, contestedRate: 0.31),
+                ],
+                alliances: [Alliance(a: "SPD", b: "GRÜNE", count: 5), Alliance(a: "CDU", b: "FDP", count: 3)],
+                fieldLabels: ["verkehr": "Verkehr", "soziales": "Soziales"]
+            )
+            members = [
+                CouncilMember(slug: "anne-beispiel", name: "Anne Beispiel", party: "SPD", art: "rat", organisation: nil, n: 18, committees: 3),
+                CouncilMember(slug: "bernd-muster", name: "Bernd Muster", party: "CDU", art: "rat", organisation: nil, n: 16, committees: 2),
+                CouncilMember(slug: "cem-kaya", name: "Cem Kaya", party: "GRÜNE", art: "rat", organisation: nil, n: 15, committees: 4),
+            ]
+            finance = FinanceResponse(
+                decisions: [],
+                byField: [
+                    FinanceField(field: "verkehr", total: 4_800_000, n: 8),
+                    FinanceField(field: "soziales", total: 2_400_000, n: 6),
+                    FinanceField(field: "kultur", total: 1_100_000, n: 4),
+                ],
+                fieldLabels: ["verkehr": "Verkehr", "soziales": "Soziales", "kultur": "Kultur"]
+            )
+            goals = [
+                CouncilGoal(key: "klima", label: "Klimaneutrale Stadt", description: "Emissionen senken und Oldenburg an den Klimawandel anpassen.", voran: 18, bremst: 3, neutral: 7, total: 28),
+                CouncilGoal(key: "teilhabe", label: "Soziale Teilhabe", description: "Gute Zugänge zu Wohnen, Bildung und öffentlichem Leben schaffen.", voran: 14, bremst: 2, neutral: 5, total: 21),
+            ]
             return
         }
 #endif

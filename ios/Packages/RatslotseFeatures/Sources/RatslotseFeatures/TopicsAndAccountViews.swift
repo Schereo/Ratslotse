@@ -52,31 +52,33 @@ struct TopicsView: View {
                     .ratsCard()
                 }
 
-                ForEach(topics) { topic in
-                    TopicCard(
-                        topic: topic,
-                        open: { hit in open(hit, in: topic) },
-                        edit: { editing = topic; isPresentingEditor = true },
-                        remove: { remove(topic) }
-                    )
-                }
-
-                Button {
-                    editing = nil
-                    isPresentingEditor = true
-                } label: {
-                    Label("Neues Thema anlegen", systemImage: "plus")
-                        .font(RatsFont.body(14, weight: .semibold))
-                        .foregroundStyle(RatsColor.primary)
-                        .frame(maxWidth: .infinity, minHeight: 96)
-                        .background(RatsColor.card.opacity(0.65))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: RatsRadius.card)
-                                .stroke(RatsColor.primary.opacity(0.32), style: StrokeStyle(lineWidth: 1.5, dash: [7]))
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 16)], alignment: .leading, spacing: 16) {
+                    ForEach(topics) { topic in
+                        TopicCard(
+                            topic: topic,
+                            open: { hit in open(hit, in: topic) },
+                            edit: { editing = topic; isPresentingEditor = true },
+                            remove: { remove(topic) }
                         )
-                        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card))
+                    }
+
+                    Button {
+                        editing = nil
+                        isPresentingEditor = true
+                    } label: {
+                        Label("Neues Thema anlegen", systemImage: "plus")
+                            .font(RatsFont.body(14, weight: .semibold))
+                            .foregroundStyle(RatsColor.primary)
+                            .frame(maxWidth: .infinity, minHeight: 124)
+                            .background(RatsColor.card.opacity(0.65))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: RatsRadius.card)
+                                    .stroke(RatsColor.primary.opacity(0.32), style: StrokeStyle(lineWidth: 1.5, dash: [7]))
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
 
                 if let error { ErrorCard(message: error) { Task { await load() } } }
 
@@ -92,7 +94,7 @@ struct TopicsView: View {
                 .background(RatsColor.primary.opacity(0.05))
                 .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card))
             }
-            .frame(maxWidth: 760, alignment: .leading)
+            .frame(maxWidth: 980, alignment: .leading)
             .padding(.horizontal, 18)
             .padding(.vertical, 24)
         }

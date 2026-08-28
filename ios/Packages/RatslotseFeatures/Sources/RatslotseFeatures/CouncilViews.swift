@@ -31,7 +31,7 @@ struct CouncilBrowserView: View {
     @State private var total = 0
     @State private var isLoading = false
     @State private var error: String?
-    @State private var showsFilters = false
+    @State private var showsFilters = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_COUNCIL_FILTER"] == "1"
 
     private let pageSize = 50
 

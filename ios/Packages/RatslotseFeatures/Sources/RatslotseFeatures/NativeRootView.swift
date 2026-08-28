@@ -90,6 +90,8 @@ public struct NativeRootView: View {
 private struct RatsRouteScaffold<Content: View>: View {
     @Bindable var model: AppModel
     @ViewBuilder let content: Content
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var showsMore = false
 
     init(model: AppModel, @ViewBuilder content: () -> Content) {
         self.model = model
@@ -97,6 +99,34 @@ private struct RatsRouteScaffold<Content: View>: View {
     }
 
     var body: some View {
+        Group {
+            if horizontalSizeClass == .regular {
+                HStack(spacing: 0) {
+                    RatsSidebarNavigation(
+                        model: model,
+                        active: showsMore ? .more : activeDestination,
+                        select: select,
+                        openMore: { showsMore = true }
+                    )
+                    .frame(width: 224)
+                    Divider().overlay(RatsColor.border)
+                    routeContent
+                }
+            } else {
+                routeContent
+            }
+        }
+        .sheet(isPresented: $showsMore) {
+            MoreHubView(model: model) { section in
+                model.navigation.removeAll()
+                model.councilSection = section
+                model.selectedTab = .council
+            }
+            .ratsLargeSheet()
+        }
+    }
+
+    private var routeContent: some View {
         VStack(spacing: 0) {
             HStack {
                 Button {
@@ -126,6 +156,41 @@ private struct RatsRouteScaffold<Content: View>: View {
         }
         .background(RatsColor.page)
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var activeDestination: MainNavigationDestination {
+        switch model.selectedTab {
+        case .today: .today
+        case .questions: .questions
+        case .council:
+            switch model.councilSection {
+            case .decisions: .decisions
+            case .sessions: .sessions
+            case .map: .map
+            }
+        case .topics: .topics
+        case .account: .account
+        }
+    }
+
+    private func select(_ destination: MainNavigationDestination) {
+        model.navigation.removeAll()
+        switch destination {
+        case .today: model.selectedTab = .today
+        case .questions: model.selectedTab = .questions
+        case .decisions:
+            model.councilSection = .decisions
+            model.selectedTab = .council
+        case .sessions:
+            model.councilSection = .sessions
+            model.selectedTab = .council
+        case .map:
+            model.councilSection = .map
+            model.selectedTab = .council
+        case .topics: model.selectedTab = .topics
+        case .account: model.selectedTab = .account
+        case .more: showsMore = true
+        }
     }
 }
 
@@ -191,28 +256,33 @@ private struct UpdateRequiredView: View {
 
 private struct MainTabsView: View {
     @Bindable var model: AppModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showsMore = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MORE"] == "1"
 
     var body: some View {
-        TabView(selection: $model.selectedTab) {
-            TodayView(model: model)
-                .tag(AppTab.today)
-            QuestionsView(model: model)
-                .tag(AppTab.questions)
-            CouncilBrowserView(model: model)
-                .tag(AppTab.council)
-            TopicsView(model: model)
-                .tag(AppTab.topics)
-            AccountView(model: model)
-                .tag(AppTab.account)
-        }
-        .toolbar(.hidden, for: .tabBar)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            RatsBottomNavigation(
-                active: activeDestination,
-                select: select,
-                openMore: { showsMore = true }
-            )
+        Group {
+            if horizontalSizeClass == .regular {
+                HStack(spacing: 0) {
+                    RatsSidebarNavigation(
+                        model: model,
+                        active: showsMore ? .more : activeDestination,
+                        select: select,
+                        openMore: { showsMore = true }
+                    )
+                    .frame(width: 224)
+                    Divider().overlay(RatsColor.border)
+                    tabContent
+                }
+            } else {
+                tabContent
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        RatsBottomNavigation(
+                            active: activeDestination,
+                            select: select,
+                            openMore: { showsMore = true }
+                        )
+                    }
+            }
         }
         .sheet(isPresented: $showsMore) {
             MoreHubView(model: model) { section in
@@ -225,6 +295,10 @@ private struct MainTabsView: View {
         .onAppear {
 #if DEBUG
             switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MAIN"] {
+            case "decisions":
+                model.navigation.removeAll()
+                model.councilSection = .decisions
+                model.selectedTab = .council
             case "questions":
                 model.navigation.removeAll()
                 model.selectedTab = .questions
@@ -248,13 +322,34 @@ private struct MainTabsView: View {
         }
     }
 
+    private var tabContent: some View {
+        TabView(selection: $model.selectedTab) {
+            TodayView(model: model)
+                .tag(AppTab.today)
+            QuestionsView(model: model)
+                .tag(AppTab.questions)
+            CouncilBrowserView(model: model)
+                .tag(AppTab.council)
+            TopicsView(model: model)
+                .tag(AppTab.topics)
+            AccountView(model: model)
+                .tag(AppTab.account)
+        }
+        .toolbar(.hidden, for: .tabBar)
+    }
+
     private var activeDestination: MainNavigationDestination {
         switch model.selectedTab {
         case .today: .today
         case .questions: .questions
-        case .council: model.councilSection == .sessions ? .sessions : .more
+        case .council:
+            switch model.councilSection {
+            case .decisions: .decisions
+            case .sessions: .sessions
+            case .map: .map
+            }
         case .topics: .topics
-        case .account: .more
+        case .account: .account
         }
     }
 
@@ -263,21 +358,34 @@ private struct MainTabsView: View {
         switch destination {
         case .today: model.selectedTab = .today
         case .questions: model.selectedTab = .questions
+        case .decisions:
+            model.councilSection = .decisions
+            model.selectedTab = .council
         case .sessions:
             model.councilSection = .sessions
             model.selectedTab = .council
+        case .map:
+            model.councilSection = .map
+            model.selectedTab = .council
         case .topics: model.selectedTab = .topics
+        case .account: model.selectedTab = .account
         case .more: showsMore = true
         }
     }
 }
 
-private enum MainNavigationDestination: CaseIterable, Identifiable {
+private enum MainNavigationDestination: Identifiable {
     case today
     case questions
+    case decisions
     case sessions
+    case map
     case topics
+    case account
     case more
+
+    static let phoneCases: [Self] = [.today, .questions, .sessions, .topics, .more]
+    static let tabletCases: [Self] = [.today, .questions, .decisions, .sessions, .map, .topics, .more]
 
     var id: String { label }
 
@@ -285,8 +393,11 @@ private enum MainNavigationDestination: CaseIterable, Identifiable {
         switch self {
         case .today: "Start"
         case .questions: "Fragen"
+        case .decisions: "Beschlüsse"
         case .sessions: "Sitzungen"
+        case .map: "Stadtkarte"
         case .topics: "Themen"
+        case .account: "Konto"
         case .more: "Mehr"
         }
     }
@@ -295,10 +406,124 @@ private enum MainNavigationDestination: CaseIterable, Identifiable {
         switch self {
         case .today: .home
         case .questions: .ask
+        case .decisions: .decisions
         case .sessions: .calendar
+        case .map: .map
         case .topics: .topics
+        case .account: .profile
         case .more: .more
         }
+    }
+}
+
+private struct RatsSidebarNavigation: View {
+    let model: AppModel
+    let active: MainNavigationDestination
+    let select: (MainNavigationDestination) -> Void
+    let openMore: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 9) {
+                Lotti3DView(scene: .wave, animated: false)
+                    .frame(width: 64, height: 56)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ratslotse")
+                        .font(RatsFont.title(21, weight: .heavy))
+                        .foregroundStyle(RatsColor.text)
+                    Text("OLDENBURGS RAT")
+                        .font(RatsFont.mono(8.5, weight: .semibold))
+                        .tracking(1.1)
+                        .foregroundStyle(RatsColor.secondary)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 15)
+
+            MonoKicker("Bereiche")
+                .padding(.horizontal, 17)
+                .padding(.bottom, 7)
+
+            VStack(spacing: 4) {
+                ForEach(MainNavigationDestination.tabletCases) { destination in
+                    sidebarButton(destination)
+                }
+            }
+            .padding(.horizontal, 10)
+
+            Spacer(minLength: 14)
+
+            Button { select(.account) } label: {
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(active == .account ? RatsColor.primary : RatsColor.primary.opacity(0.10))
+                        .frame(width: 38, height: 38)
+                        .overlay(
+                            RatsGlyphView(
+                                glyph: .profile,
+                                color: active == .account ? RatsColor.primaryText : RatsColor.primary,
+                                lineWidth: 1.7
+                            )
+                            .frame(width: 19, height: 19)
+                        )
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(model.user?.displayName ?? "Mein Konto")
+                            .font(RatsFont.body(12.5, weight: .semibold))
+                            .foregroundStyle(RatsColor.text)
+                            .lineLimit(1)
+                        Text(model.user?.email ?? "Einstellungen")
+                            .font(RatsFont.body(9.5))
+                            .foregroundStyle(RatsColor.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(10)
+                .background(active == .account ? RatsColor.primary.opacity(0.08) : RatsColor.stage)
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(active == .account ? RatsColor.primary.opacity(0.22) : RatsColor.border))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(RatsNavigationButtonStyle())
+            .padding(.horizontal, 10)
+            .padding(.bottom, 12)
+        }
+        .background(RatsColor.card.ignoresSafeArea())
+    }
+
+    private func sidebarButton(_ destination: MainNavigationDestination) -> some View {
+        Button {
+            if destination == .more { openMore() }
+            else { select(destination) }
+        } label: {
+            HStack(spacing: 11) {
+                RatsGlyphView(
+                    glyph: destination.glyph,
+                    color: active == destination ? RatsColor.primaryText : RatsColor.secondary,
+                    lineWidth: active == destination ? 1.95 : 1.7
+                )
+                .frame(width: 20, height: 20)
+                .frame(width: 34, height: 34)
+                .background(active == destination ? RatsColor.primary : RatsColor.stage)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                Text(destination.label)
+                    .font(RatsFont.body(13.5, weight: active == destination ? .semibold : .medium))
+                    .foregroundStyle(active == destination ? RatsColor.text : RatsColor.bodyText)
+                Spacer(minLength: 0)
+                if active == destination {
+                    Circle().fill(RatsColor.signal).frame(width: 6, height: 6)
+                }
+            }
+            .padding(.horizontal, 8)
+            .frame(minHeight: 45)
+            .background(active == destination ? RatsColor.primary.opacity(0.08) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(RatsNavigationButtonStyle())
+        .accessibilityLabel(destination.label)
+        .accessibilityAddTraits(active == destination ? .isSelected : [])
     }
 }
 
@@ -309,7 +534,7 @@ private struct RatsBottomNavigation: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            ForEach(MainNavigationDestination.allCases) { destination in
+            ForEach(MainNavigationDestination.phoneCases) { destination in
                 Button {
                     if destination == .more { openMore() }
                     else { select(destination) }

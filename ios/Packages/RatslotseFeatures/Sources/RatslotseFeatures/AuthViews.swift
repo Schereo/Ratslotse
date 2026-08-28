@@ -5,47 +5,67 @@ import SwiftUI
 
 struct WelcomeView: View {
     let model: AppModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                Spacer(minLength: 50)
-                Image("AppIconPreview")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 74, height: 74)
-                    .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 12) {
-                    MonoKicker("Oldenburgs Rat verstehen")
-                    Text("Was entscheidet die Stadt?")
-                        .font(RatsFont.title(36))
-                        .foregroundStyle(RatsColor.text)
-                    Text("Ratslotse macht Beschlüsse, Sitzungen und deine Themen verständlich – mit den amtlichen Quellen direkt dabei.")
-                        .font(RatsFont.body(17))
-                        .foregroundStyle(RatsColor.secondary)
-                        .lineSpacing(4)
-                }
-                VStack(spacing: 12) {
-                    Button { model.authPresentation = .login } label: {
-                        Text("Anmelden").frame(maxWidth: .infinity)
+            Group {
+                if horizontalSizeClass == .regular {
+                    HStack(alignment: .center, spacing: 54) {
+                        Lotti3DView(scene: .wave)
+                            .frame(width: 300, height: 260)
+                            .accessibilityHidden(true)
+                        welcomeContent
+                            .frame(maxWidth: 480, alignment: .leading)
                     }
-                        .buttonStyle(PrimaryButtonStyle())
-                        .frame(maxWidth: .infinity)
-                    Button { model.authPresentation = .register } label: {
-                        Text("Konto anlegen").frame(maxWidth: .infinity)
-                    }
-                        .buttonStyle(SecondaryButtonStyle())
-                        .frame(maxWidth: .infinity)
+                    .frame(maxWidth: 960)
+                    .padding(.horizontal, 42)
+                    .padding(.vertical, 60)
+                } else {
+                    welcomeContent
+                        .frame(maxWidth: 560, alignment: .leading)
+                        .padding(28)
                 }
-                Text("Geteilte Beschlüsse und Personenprofile kannst du auch ohne Konto lesen.")
-                    .font(RatsFont.body(12))
-                    .foregroundStyle(RatsColor.muted)
             }
-            .frame(maxWidth: 560, alignment: .leading)
-            .padding(28)
+            .frame(maxWidth: .infinity)
         }
         .background(RatsColor.page)
+    }
+
+    private var welcomeContent: some View {
+        VStack(alignment: .leading, spacing: 28) {
+            Image("AppIconPreview")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 74, height: 74)
+                .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 12) {
+                MonoKicker("Oldenburgs Rat verstehen")
+                Text("Was entscheidet die Stadt?")
+                    .font(RatsFont.title(36))
+                    .foregroundStyle(RatsColor.text)
+                Text("Ratslotse macht Beschlüsse, Sitzungen und deine Themen verständlich – mit den amtlichen Quellen direkt dabei.")
+                    .font(RatsFont.body(17))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineSpacing(4)
+            }
+            VStack(spacing: 12) {
+                Button { model.authPresentation = .login } label: {
+                    Text("Anmelden").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .frame(maxWidth: .infinity)
+                Button { model.authPresentation = .register } label: {
+                    Text("Konto anlegen").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .frame(maxWidth: .infinity)
+            }
+            Text("Geteilte Beschlüsse und Personenprofile kannst du auch ohne Konto lesen.")
+                .font(RatsFont.body(12))
+                .foregroundStyle(RatsColor.muted)
+        }
     }
 }
 
@@ -404,6 +424,7 @@ private struct AuthScaffold<Content: View>: View {
     let title: String
     let subtitle: String
     @ViewBuilder let content: Content
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     init(
         scene: Lotti3DScene,
@@ -425,29 +446,61 @@ private struct AuthScaffold<Content: View>: View {
                 .ignoresSafeArea()
                 .accessibilityHidden(true)
             ScrollView {
-                VStack(spacing: 0) {
-                    Lotti3DView(scene: scene)
-                        .frame(width: 138, height: 122)
-                        .padding(.bottom, -13)
-                        .zIndex(1)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 17) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(title).font(RatsFont.title(30))
-                            Text(subtitle)
-                                .font(RatsFont.body(14))
-                                .foregroundStyle(RatsColor.secondary)
-                                .lineSpacing(3)
+                Group {
+                    if horizontalSizeClass == .regular {
+                        HStack(alignment: .center, spacing: 28) {
+                            VStack(alignment: .leading, spacing: 13) {
+                                Lotti3DView(scene: scene)
+                                    .frame(width: 260, height: 210)
+                                    .accessibilityHidden(true)
+                                MonoKicker("Sicher an Bord")
+                                Text(title).font(RatsFont.title(36, weight: .heavy))
+                                Text(subtitle)
+                                    .font(RatsFont.body(15))
+                                    .foregroundStyle(RatsColor.secondary)
+                                    .lineSpacing(4)
+                            }
+                            .frame(width: 310, alignment: .leading)
+                            .padding(24)
+                            .background(RatsColor.primary.opacity(0.07))
+                            .overlay(RoundedRectangle(cornerRadius: 22).stroke(RatsColor.primary.opacity(0.17)))
+                            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+
+                            content
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .ratsCard()
+                                .frame(width: 420)
                         }
-                        content
+                        .frame(maxWidth: 900)
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 30)
+                    } else {
+                        VStack(spacing: 0) {
+                            Lotti3DView(scene: scene)
+                                .frame(width: 138, height: 122)
+                                .padding(.bottom, -13)
+                                .zIndex(1)
+                                .accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: 17) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(title).font(RatsFont.title(30))
+                                    Text(subtitle)
+                                        .font(RatsFont.body(14))
+                                        .foregroundStyle(RatsColor.secondary)
+                                        .lineSpacing(3)
+                                }
+                                content
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .ratsCard()
+                        }
+                        .frame(maxWidth: 460)
+                        .padding(.horizontal, 18)
+                        .padding(.top, 12)
+                        .padding(.bottom, 32)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .ratsCard()
                 }
-                .frame(maxWidth: 460)
-                .padding(.horizontal, 18)
-                .padding(.top, 12)
-                .padding(.bottom, 32)
+                .frame(maxWidth: .infinity)
             }
         }
     }
