@@ -80,6 +80,14 @@ class TopicOut(BaseModel):
     # eine glatte Endzahl, die in Wahrheit der Deckel war (Tim, 15.08.2026:
     # „warum sind hier überall 25?").
     decision_count_capped: bool = False
+    # Wurde für dieses Thema überhaupt schon einmal abgeglichen? Trennt die
+    # zwei Nullen, die auf der Karte gleich aussahen: „gerechnet, der Rat hat
+    # dazu wirklich nichts entschieden" und „noch nicht gerechnet". Für beides
+    # stand dort „Noch keine Treffer — wir melden uns, sobald der Rat dazu
+    # entscheidet", und bei einem frisch angelegten Thema war das eine
+    # Falschaussage über den Rat (Tim, 28.08.2026: „fühlt sich so an, als wären
+    # die Themen erst dann aufgekommen").
+    matched: bool = False
     # Jüngster Beschluss-Treffer (RL-701: „letzter Treffer"-Zeile der Themen-Karte)
     last_hit_id: int | None = None
     last_hit_title: str | None = None

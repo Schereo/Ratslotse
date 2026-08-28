@@ -339,8 +339,19 @@ function TopicsInner() {
                     {t.decision_count}{t.decision_count_capped ? "+" : ""}{" "}
                     {t.decision_count === 1 && !t.decision_count_capped ? "Beschluss" : "Beschlüsse"} · alle ansehen
                   </Link>
+                ) : t.matched === false ? (
+                  /* Zwei Nullen, die gleich aussahen — und von denen eine log:
+                     Bis zum 28.08.2026 schrieb nur der Wochenlauf Treffer, ein
+                     neues Thema stand also tagelang auf 0. Darunter stand
+                     „Noch keine Treffer — wir melden uns, sobald der Rat dazu
+                     entscheidet", und bei „Schulbegleitung" (34 Beschlüsse seit
+                     2018) war das keine fehlende Zahl, sondern eine falsche
+                     Aussage über den Rat: als sei das Thema mit dem Anlegen
+                     entstanden. Jetzt wird beim Anlegen gerechnet; bleibt die
+                     Rechnung doch einmal aus, sagt die Karte genau das. */
+                  <p className="text-xs text-muted-foreground">Treffer werden noch gezählt.</p>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Noch keine Treffer — wir melden uns, sobald der Rat dazu entscheidet.</p>
+                  <p className="text-xs text-muted-foreground">Der Rat hat dazu bisher nichts entschieden — Lotti meldet sich, sobald das passiert.</p>
                 )}
               </div>
             </Card>

@@ -54,6 +54,12 @@ class RateLimiter:
 # genug fürs Ausprobieren beim Anlegen („neu generieren"), eng genug, dass
 # niemand damit Kosten treiben kann.
 topic_describe_limiter = RateLimiter(max_calls=20, window_seconds=300)
+# Themen anlegen und ändern rechnen den Beschluss-Abgleich sofort mit — das
+# sind rund 3 s Cross-Encoder auf der CPU je Aufruf, auf derselben Maschine,
+# die die Website ausliefert. Ohne Bremse wären das die einzigen teuren
+# Endpunkte ganz ohne eine; eine Anlege-Schleife legte damit die ganze Seite
+# lahm. Zwölf in fünf Minuten ist weit mehr, als ein Mensch je braucht.
+topic_match_limiter = RateLimiter(max_calls=12, window_seconds=300)
 login_limiter = RateLimiter(max_calls=10, window_seconds=60)
 register_limiter = RateLimiter(max_calls=5, window_seconds=300)
 forgot_password_limiter = RateLimiter(max_calls=5, window_seconds=900)

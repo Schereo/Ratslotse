@@ -344,7 +344,10 @@ function CommitteeStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTh
 
 /* ----------------------------------------------------- Schritt 2: Themen --- */
 
-type TopicRow = { id: number; name: string; description: string; decision_count?: number };
+type TopicRow = {
+  id: number; name: string; description: string;
+  decision_count?: number; decision_count_capped?: boolean; matched?: boolean;
+};
 
 function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>; onNext: () => void }) {
   const qc = useQueryClient();
@@ -517,6 +520,15 @@ function TopicCard({ topic, matches, onEdit, onRemove }: {
   onEdit: () => void;
   onRemove: () => void;
 }) {
+  // Seit dem Sofort-Abgleich (28.08.2026) trägt das angelegte Thema selbst die
+  // verbindliche Zahl — dieselbe, die gleich auf der Themen-Karte steht. Die
+  // hat Vorrang vor der lokalen Vorschau: Die stammt aus `/topics/describe` auf
+  // den bloßen Namen, das Thema wurde aber mit „Name. Beschreibung" abgeglichen.
+  // Zwei Wege, dieselbe Definition, minimal andere Zahl — genau die Sorte
+  // Abweichung, die hier schon einmal Verwirrung gestiftet hat.
+  const zahl = topic.matched && typeof topic.decision_count === "number"
+    ? { n: topic.decision_count, quelle: "treffer" as const, gedeckelt: !!topic.decision_count_capped }
+    : matches && { ...matches, gedeckelt: false };
   return (
     <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5">
       <div className="flex items-center gap-2">
@@ -532,15 +544,16 @@ function TopicCard({ topic, matches, onEdit, onRemove }: {
       </p>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{topic.description}</p>
       <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        {matches && matches.n > 0 && (
+        {zahl && zahl.n > 0 && (
           <>
             <span className="rounded bg-primary/10 px-1.5 font-semibold tabular-nums text-primary">
-              {matches.n} {matches.n === 1 ? "Beschluss" : "Beschlüsse"}
+              {zahl.n}{zahl.gedeckelt ? "+" : ""}{" "}
+              {zahl.n === 1 && !zahl.gedeckelt ? "Beschluss" : "Beschlüsse"}
             </span>
             <span>
-              {matches.quelle === "jahr"
+              {zahl.quelle === "jahr"
                 ? "im letzten Jahr"
-                : matches.n === 1 ? "passt dazu" : "passen dazu"}
+                : zahl.n === 1 && !zahl.gedeckelt ? "passt dazu" : "passen dazu"}
             </span>
           </>
         )}
