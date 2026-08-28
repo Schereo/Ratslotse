@@ -484,6 +484,7 @@ private struct TopicEditorView: View {
 
 struct AccountView: View {
     let model: AppModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var notifications: NotificationSettings?
     @State private var prefs: [String: Bool] = [:]
     @State private var displayName = ""
@@ -671,12 +672,15 @@ struct AccountView: View {
                                 .frame(maxWidth: .infinity, minHeight: 40)
                         }
                     }
+                    .padding(.bottom, horizontalSizeClass == .compact ? 148 : 0)
+                    .id("session-end")
                 }
                 if let error { ErrorCard(message: error) { Task { await load() } } }
             }
                 .frame(maxWidth: 920, alignment: .leading)
                 .padding(.horizontal, 18)
-                .padding(.vertical, 22)
+                .padding(.top, 22)
+                .padding(.bottom, 22)
             }
             .background(RatsColor.page)
             .navigationTitle("Konto")
@@ -687,6 +691,9 @@ struct AccountView: View {
                 if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ACCOUNT_ANCHOR"] == "preferences" {
                     try? await Task.sleep(for: .milliseconds(250))
                     proxy.scrollTo("conversation-settings", anchor: .top)
+                } else if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ACCOUNT_ANCHOR"] == "session-end" {
+                    try? await Task.sleep(for: .milliseconds(250))
+                    proxy.scrollTo("session-end", anchor: .bottom)
                 }
 #endif
             }
