@@ -129,6 +129,41 @@ def test_trefferliste_kennt_den_deckel():
     assert "topicCapped ? \"+\" : \"\"" in view
 
 
+# ---- die Zahl gibt es sofort, nicht erst am Sonntag ------------------------
+
+def test_anlegen_rechnet_mit_derselben_definition():
+    """Der Sofort-Abgleich beim Anlegen darf keine eigene Suche sein — sonst
+    steht die vierte Zahl im Raum. Er nimmt ``topic_intel.treffer`` und legt
+    das Ergebnis ab, damit „alle ansehen" dieselbe Menge zeigt.
+
+    Die beiden Schlüsselwörter sind kein Stil, sondern die zwei Fallen:
+    ``als_neu=False`` hält den Bestand aus dem Wochenüberblick heraus,
+    ``mark_topic_hits_seen`` verhindert ein „n neu" für Beschlüsse, die die
+    Nutzer:in gerade erst als Zahl entstehen sieht.
+    """
+    quelle = (ROOT / "web" / "backend" / "app" / "routers" / "topics.py").read_text(encoding="utf-8")
+    assert "topic_intel.treffer(" in quelle
+    assert "save_topic_decision_matches" in quelle
+    assert "als_neu=False" in quelle
+    assert "mark_topic_hits_seen" in quelle
+
+
+def test_karte_trennt_die_beiden_nullen():
+    """Zwei Nullen sahen auf der Karte gleich aus, und eine davon log: „Noch
+    keine Treffer — wir melden uns, sobald der Rat dazu entscheidet" stand auch
+    unter einem Thema, das schlicht noch nicht gerechnet worden war
+    („Schulbegleitung", 34 Beschlüsse seit 2018 — Tim, 28.08.2026)."""
+    karte = _lies("app/(app)/topics/page.tsx")
+    assert "t.matched === false" in karte
+    assert "Treffer werden noch gezählt" in karte
+    # Über den Rat spricht die Karte nur noch dort, wo wirklich gerechnet wurde.
+    assert ">Der Rat hat dazu bisher nichts entschieden" in karte
+    # Der alte Satz behauptete das auch ohne Rechnung. Gemeint ist der
+    # gerenderte Text, nicht die Erinnerung daran im Kommentar daneben —
+    # deshalb am „>" des JSX-Endtags festgemacht.
+    assert ">Noch keine Treffer" not in karte
+
+
 @pytest.mark.parametrize("datei", [
     "app/(app)/topics/page.tsx",
     "app/(app)/council/view.tsx",

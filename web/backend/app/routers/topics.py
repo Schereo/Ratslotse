@@ -17,9 +17,15 @@ ausliefert, bezieht sich darauf:
   ``get_topic_decision_matches``.
 * ``POST /topics/describe`` → ``matches`` (+ ``matches_capped``): dieselbe
   Rechnung, aber live auf den Text im Bearbeiten-Blatt statt auf den
-  gespeicherten Stand. Die beiden Zahlen dürfen auseinandergehen (der Lauf ist
-  wöchentlich, der Text noch ungespeichert) — deshalb beschriftet das Blatt
-  seine Zahl als Vorschau und nicht als Bestand.
+  gespeicherten Stand. Die beiden Zahlen dürfen auseinandergehen (der Text ist
+  noch ungespeichert) — deshalb beschriftet das Blatt seine Zahl als Vorschau
+  und nicht als Bestand.
+* ``POST /topics`` und ``PUT /topics/{id}`` → dieselbe Rechnung, sofort und
+  gespeichert (``_erstabgleich``). Bis zum 28.08.2026 schrieb nur der
+  Wochenlauf Treffer, ein neues Thema stand also bis zu sieben Tage auf 0 —
+  und die Karte machte daraus „Noch keine Treffer, wir melden uns, sobald der
+  Rat dazu entscheidet". Bei „Schulbegleitung" (34 Beschlüsse seit 2018) war
+  das keine fehlende Zahl, sondern eine falsche Aussage über den Rat.
 
 Bis zum 16.08.2026 waren es drei verschiedene Rechnungen mit drei
 verschiedenen Ergebnissen (Tim, Build 12: „40+" / „12 Beschlüsse" / 25 Treffer
@@ -36,7 +42,7 @@ from kern.store import Store
 from council.store import CouncilStore
 
 from ..deps import get_council_store, get_store, require_active
-from ..ratelimit import topic_describe_limiter
+from ..ratelimit import topic_describe_limiter, topic_match_limiter
 from ..schemas import SubscriptionIn, TopicDescribeIn, TopicIn, TopicOut
 
 logger = logging.getLogger("nwz.web.topics")
@@ -49,6 +55,60 @@ def _own_topic(store: Store, owner_id: int, topic_id: int):
     if topic is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Thema nicht gefunden.")
     return topic
+
+
+def _erstabgleich(store: Store, council: CouncilStore, topic, owner_id: int) -> tuple[int, bool, bool]:
+    """Ein frisch angelegtes oder neu beschriebenes Thema sofort abgleichen —
+    ``(anzahl, gedeckelt, abgeglichen)``.
+
+    Gerechnet wird mit ``topic_intel.treffer``, derselben Funktion wie im
+    Wochenlauf: eine Definition, eine Zahl (s. Modul-Kopf). Gespeichert wird
+    sie auch, denn eine Zahl ohne die zugehörigen Zeilen wäre die vierte
+    Wahrheit — „alle ansehen" führte dann in eine leere Liste.
+
+    Zwei Feinheiten sind nicht Geschmack, sondern Bedingung:
+
+    ``als_neu=False`` — der Bestand ist keine Neuigkeit. Mit dem Zeitstempel
+    von jetzt zöge ihn der Wochenüberblick (``council.abendmeldungen``, N6) in
+    „Diese Woche: n Beschlüsse zu deinen Themen" und meldete sonntags
+    Beschlüsse von 2019 als Nachricht der Woche. Genau das ist am 17.08.2026
+    schon einmal passiert (s. ``Store.save_topic_decision_matches``).
+
+    ``mark_topic_hits_seen`` — der ungelesen-Zähler hängt an ``topic_hits_seen``,
+    nicht am Zeitstempel. Ohne den Aufruf trüge das neue Thema sofort ein
+    „40 neu"-Abzeichen für Beschlüsse, die die Nutzer:in nie als neu erlebt
+    hat: Sie sieht die Zahl ja gerade entstehen.
+
+    Eine Meldung löst das nicht aus, und zwar aus demselben Grund wie im Cron:
+    Der Erst-Abgleich eines Themas hat keinen Vorgänger, gegen den er sich als
+    „neu" abheben könnte (``match_topics_decisions`` prüft dafür ``old_ids``).
+
+    ``abgeglichen=False`` heißt „ließ sich hier gerade nicht rechnen" — dann
+    bleibt es beim Wochenlauf, und die Karte sagt „wird noch gezählt" statt
+    eine 0 zu behaupten.
+    """
+    from council import topic_intel
+
+    name = (topic.name or "").strip()
+    text = f"{name}. {(topic.description or '').strip()}".strip()
+    try:
+        # Dieselbe Vorprüfung wie in ``zaehle_treffer``: Ohne Embedding-Bestand
+        # hätte auch der Wochenlauf nie etwas gespeichert, und der Aufruf würde
+        # in Tests und frischen Umgebungen nur das ~1 GB große Reranker-Modell
+        # nachladen — für ein Ergebnis, das feststeht.
+        if not council.embeddings_version()[0]:
+            return 0, False, False
+        hits, gedeckelt, kandidaten = topic_intel.treffer(council, name, text)
+    except Exception:  # noqa: BLE001
+        # Kein Cross-Encoder, kein Embedding-Bestand, Modell-Download klemmt:
+        # Daran darf das Anlegen nie scheitern. Fehlt hier etwas, ist es die
+        # Zahl — nicht das Thema.
+        logger.warning("Erstabgleich für Thema %s fehlgeschlagen", topic.id, exc_info=True)
+        return 0, False, False
+    store.save_topic_decision_matches(topic.id, owner_id, hits, gedeckelt=gedeckelt,
+                                      kandidaten=kandidaten, als_neu=False)
+    store.mark_topic_hits_seen(owner_id, topic.id)
+    return len(hits), gedeckelt, True
 
 
 @router.get("", response_model=list[TopicOut])
@@ -74,6 +134,10 @@ def list_topics(
     # Ob der Matching-Lauf gedeckelt hat, weiß nur er selbst — die Zahl der
     # gespeicherten Zeilen sieht bei „genau 40 gefunden" und „bei 40 abgeschnitten"
     # gleich aus. Fehlt die Zeile (Bestand vor dem 15.08.2026), gilt: nicht gedeckelt.
+    # Die Meta-Zeile entsteht bei JEDEM Abgleich, auch bei einem mit null
+    # Treffern. Ihre bloße Anwesenheit beantwortet deshalb die Frage, an der
+    # die Karte bisher scheiterte: „schon gerechnet?" — und trennt damit
+    # „der Rat hat dazu nichts entschieden" von „die Zahl steht noch aus".
     capped = store.topic_match_caps(owner_id)
     out = []
     for t in topics:
@@ -88,6 +152,7 @@ def list_topics(
                 created_at=t.created_at,
                 decision_count=dec_counts.get(t.id, 0),
                 decision_count_capped=capped.get(t.id, False),
+                matched=t.id in capped,
                 last_hit_id=last["id"] if last else None,
                 last_hit_title=last["title"] if last else None,
                 last_hit_date=last.get("session_date") if last else None,
@@ -231,7 +296,13 @@ def describe_topic(
 
 
 @router.post("", response_model=TopicOut, status_code=status.HTTP_201_CREATED)
-def add_topic(body: TopicIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> TopicOut:
+def add_topic(
+    body: TopicIn,
+    request: Request,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
+) -> TopicOut:
     # Struktur-Prüfung auch hier, nicht nur im Formular: Die Themen-Beschreibung
     # wandert später in den Wächter-Prompt, ein als „Thema" getarnter Befehl wäre
     # also eine Prompt-Injection mit Umweg. Die Prüfung ist deterministisch und
@@ -244,8 +315,13 @@ def add_topic(body: TopicIn, user: dict = Depends(require_active), store: Store 
             "Ein Thema ist eine Sache, kein ganzer Satz — etwa „Cäcilienbrücke“ "
             "oder „Grundschule Krusenbusch“.",
         )
+    # Erst die billige Struktur-Prüfung, dann die Bremse: Ein abgelehnter Satz
+    # hat keine Rechnung ausgelöst und soll auch kein Kontingent kosten.
+    topic_match_limiter.check(request)
     t = store.add_topic(user["id"], body.name, body.description)
-    return TopicOut(id=t.id, name=t.name, description=t.description, created_at=t.created_at, decision_count=0)
+    anzahl, gedeckelt, abgeglichen = _erstabgleich(store, council, t, user["id"])
+    return TopicOut(id=t.id, name=t.name, description=t.description, created_at=t.created_at,
+                    decision_count=anzahl, decision_count_capped=gedeckelt, matched=abgeglichen)
 
 
 @router.delete("/{topic_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -258,27 +334,36 @@ def delete_topic(topic_id: int, user: dict = Depends(require_active), store: Sto
 def update_topic(
     topic_id: int,
     body: TopicIn,
+    request: Request,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
 ) -> TopicOut:
     owner_id = user["id"]
     _own_topic(store, owner_id, topic_id)
+    topic_match_limiter.check(request)
     store.update_topic(topic_id, body.name, body.description)
     t = store.get_topic_for_owner(owner_id, topic_id)
-    # Dieselbe Zählung wie in list_topics — inklusive Existenzprüfung und
-    # Deckel-Kennzeichen. Vorher zählte hier nur die Zeilen der Match-Tabelle,
-    # sodass die Karte direkt nach dem Speichern kurz eine andere Zahl trug als
-    # nach dem nächsten Neuladen.
-    ids = [m["decision_id"] for m in store.get_topic_decision_matches(topic_id)]
-    lebende = len(council.get_decisions_by_ids(ids)) if ids else 0
+    # Wer die Beschreibung ändert, ändert die Trefferliste — deshalb wird auch
+    # hier sofort neu abgeglichen. Sonst zeigte das Blatt beim Tippen eine
+    # Vorschau, und die Karte behielt bis Sonntag die Zahl zum alten Text.
+    anzahl, gedeckelt, abgeglichen = _erstabgleich(store, council, t, owner_id)
+    caps = store.topic_match_caps(owner_id)
+    if not abgeglichen:
+        # Rechnung ausgefallen: Der gespeicherte Stand steht unberührt weiter
+        # und wird gezählt wie in list_topics — inklusive Existenzprüfung, damit
+        # die Karte keine Treffer verspricht, die „alle ansehen" nicht liefert.
+        ids = [m["decision_id"] for m in store.get_topic_decision_matches(topic_id)]
+        anzahl = len(council.get_decisions_by_ids(ids)) if ids else 0
+        gedeckelt = caps.get(topic_id, False)
     return TopicOut(
         id=t.id,
         name=t.name,
         description=t.description,
         created_at=t.created_at,
-        decision_count=lebende,
-        decision_count_capped=store.topic_match_caps(owner_id).get(topic_id, False),
+        decision_count=anzahl,
+        decision_count_capped=gedeckelt,
+        matched=abgeglichen or topic_id in caps,
     )
 
 
