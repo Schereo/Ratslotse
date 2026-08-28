@@ -335,17 +335,88 @@ private struct OnboardingStepPage<Content: View, Footer: View>: View {
                 if horizontalSizeClass == .regular {
                     HStack(alignment: .center, spacing: 34) {
                         Color.clear.frame(width: 284, height: 1)
-                        footer.frame(maxWidth: 620)
+                        footer.frame(maxWidth: 620, alignment: .trailing)
                     }
                     .frame(maxWidth: 980)
                 } else {
-                    footer.frame(maxWidth: 620)
+                    footer.frame(maxWidth: 620, alignment: .trailing)
                 }
             }
             .frame(maxWidth: .infinity)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-                .background(.ultraThinMaterial)
+            .padding(.horizontal, 18)
+            .padding(.top, 7)
+            .padding(.bottom, 10)
+        }
+    }
+}
+
+private struct OnboardingActionLabel: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Text(title)
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .bold))
+                .accessibilityHidden(true)
+        }
+        .font(RatsFont.body(15, weight: .semibold))
+        .padding(.horizontal, 5)
+        .frame(minHeight: 34)
+    }
+}
+
+private struct OnboardingGlassFallbackButtonStyle: ButtonStyle {
+    let prominent: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(prominent ? RatsColor.primaryText : RatsColor.primary)
+            .padding(.horizontal, prominent ? 14 : 10)
+            .frame(minHeight: prominent ? 48 : 42)
+            .background {
+                ZStack {
+                    Capsule().fill(.regularMaterial)
+                    Capsule().fill(
+                        prominent
+                            ? RatsColor.primary.opacity(configuration.isPressed ? 0.72 : 0.9)
+                            : RatsColor.card.opacity(configuration.isPressed ? 0.55 : 0.72)
+                    )
+                }
+            }
+            .overlay {
+                Capsule()
+                    .stroke(.white.opacity(prominent ? 0.28 : 0.42), lineWidth: 1)
+            }
+            .shadow(
+                color: RatsColor.primary.opacity(prominent ? 0.18 : 0.08),
+                radius: configuration.isPressed ? 3 : 9,
+                y: configuration.isPressed ? 1 : 4
+            )
+            .scaleEffect(configuration.isPressed ? 0.975 : 1)
+            .animation(.snappy(duration: 0.18), value: configuration.isPressed)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func onboardingGlassButton(prominent: Bool = true) -> some View {
+        if #available(iOS 26.0, *) {
+            if prominent {
+                self
+                    .buttonStyle(.glassProminent)
+                    .buttonBorderShape(.capsule)
+                    .tint(RatsColor.primary)
+                    .foregroundStyle(Color.white)
+            } else {
+                self
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.capsule)
+                    .tint(RatsColor.primary)
+            }
+        } else {
+            self.buttonStyle(OnboardingGlassFallbackButtonStyle(prominent: prominent))
         }
     }
 }
@@ -383,10 +454,17 @@ private struct CommitteeOnboardingStep: View {
                 Button {
                     Task { await model.advanceOnboarding(to: 2) }
                 } label: {
-                    Text(subscriptions.isEmpty ? "Weiter" : "\(subscriptions.count) abonniert · Weiter")
-                        .frame(maxWidth: .infinity)
+                    OnboardingActionLabel(
+                        title: subscriptions.isEmpty ? "Weiter" : "\(subscriptions.count) abonniert",
+                        systemImage: "arrow.right"
+                    )
                 }
-                .buttonStyle(PrimaryButtonStyle())
+                .onboardingGlassButton()
+                .accessibilityLabel(
+                    subscriptions.isEmpty
+                        ? "Weiter"
+                        : "\(subscriptions.count) abonniert, weiter"
+                )
             }
         )
         .task { await load() }
@@ -621,9 +699,9 @@ private struct TopicOnboardingStep: View {
             } },
             footer: {
                 Button { Task { await model.advanceOnboarding(to: 3) } } label: {
-                    Text("Weiter").frame(maxWidth: .infinity)
+                    OnboardingActionLabel(title: "Weiter", systemImage: "arrow.right")
                 }
-                    .buttonStyle(PrimaryButtonStyle())
+                .onboardingGlassButton()
             }
         )
         .task { await load() }
@@ -734,14 +812,26 @@ private struct PushOnboardingStep: View {
                     allowNotifications()
                 } label: {
                     Group {
-                        if isWorking { ProgressView().tint(RatsColor.primaryText) }
-                        else { Text("Mitteilungen erlauben") }
+                        if isWorking {
+                            HStack(spacing: 9) {
+                                ProgressView().tint(RatsColor.primaryText)
+                                Text("Wird aktiviert …")
+                            }
+                            .font(RatsFont.body(15, weight: .semibold))
+                            .frame(minHeight: 34)
+                        } else {
+                            OnboardingActionLabel(
+                                title: "Mitteilungen erlauben",
+                                systemImage: "bell.badge.fill"
+                            )
+                        }
                     }
-                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(PrimaryButtonStyle())
+                .onboardingGlassButton()
                 .disabled(isWorking)
-                Button("Vielleicht später") { Task { await model.completeOnboarding() } }
+                Button { Task { await model.completeOnboarding() } } label: {
+                    Label("Vielleicht später", systemImage: "clock")
+                }
                     .font(RatsFont.body(14))
                     .foregroundStyle(RatsColor.secondary)
                     .padding(.vertical, 7)
