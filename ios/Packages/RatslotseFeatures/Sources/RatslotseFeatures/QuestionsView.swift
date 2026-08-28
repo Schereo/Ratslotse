@@ -74,6 +74,9 @@ struct QuestionsView: View {
     private var isSending: Bool {
         streamTask != nil || turns.contains { $0.research?.status == "laeuft" }
     }
+    private var composerBottomPadding: CGFloat {
+        horizontalSizeClass == .compact ? 96 : 18
+    }
     private var shouldAutoScroll: Bool {
 #if DEBUG
         ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUESTION_FIXTURE"] != "1"
@@ -233,7 +236,7 @@ struct QuestionsView: View {
             .frame(maxWidth: 780)
             .padding(.horizontal, 16)
             .padding(.top, 8)
-            .padding(.bottom, horizontalSizeClass == .compact ? 86 : 18)
+            .padding(.bottom, composerBottomPadding)
             .frame(maxWidth: .infinity)
         }
     }
