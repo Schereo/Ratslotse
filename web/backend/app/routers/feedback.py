@@ -6,6 +6,7 @@ import logging
 
 from fastapi import APIRouter, Depends, Request, status
 
+from kern.digest_email import render_html_email
 from kern.email import send_email
 from kern.store import Store
 
@@ -36,14 +37,19 @@ _KEIN_KONTO = 0
 def _mail_bauen(titel: str, kind_label: str, absender: str, message: str) -> tuple[str, str]:
     """Baut (html, text) für eine Benachrichtigungs-Mail an den Betreiber."""
     msg_html = _html.escape(message).replace("\n", "<br>")
-    html_body = (
-        "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
-        "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
-        f"<div style='font-size:18px;font-weight:700;color:#2563eb'>{_html.escape(titel)}</div>"
-        f"<p style='margin:16px 0 4px'><b>Art:</b> {_html.escape(kind_label)}</p>"
-        f"<p style='margin:0 0 12px'><b>Von:</b> {_html.escape(absender)}</p>"
+    html_body = render_html_email(
+        titel,
+        f"<p style='margin:0 0 2px'><b>Art:</b> {_html.escape(kind_label)}</p>"
+        f"<p style='margin:0 0 14px'><b>Von:</b> {_html.escape(absender)}</p>"
         "<div style='white-space:pre-wrap;border-left:3px solid #e2e8f0;padding-left:12px;"
-        f"color:#334155;line-height:1.6'>{msg_html}</div></div>"
+        f"color:#334155;line-height:1.6'>{msg_html}</div>",
+        held="feedback",
+        kicker="Posteingang",
+        titel=titel,
+        # Nur versprechen, was die Mail hält: reply_to setzen die Aufrufer nur,
+        # wenn eine echte Absenderadresse bekannt ist.
+        fusszeile=("Antworten geht direkt: Die Antwortadresse dieser E-Mail "
+                   "ist die der absendenden Person.") if "@" in absender else "",
     )
     text_body = f"{titel} ({kind_label}) von {absender}:\n\n{message}\n"
     return html_body, text_body

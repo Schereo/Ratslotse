@@ -1,0 +1,18 @@
+{
+  "px": [1400, 1400],
+  "kamera": { "dir": [0.45, 0.05, 1], "faktor": 1.12 },
+  "figuren": [
+    {
+      "typ": "lotti",
+      "neigung": 2,
+      "pose": { "blick": [0, 4], "fluegel": { "links": { "z": 52, "y": 30 } } }
+    }
+  ],
+  "requisiten": [
+    {
+      "typ": "herz",
+      "an": { "figur": 0, "anker": "scheitel", "offset": [0.095, 0.055, 0.02] },
+      "groesse": 0.9
+    }
+  ]
+}
