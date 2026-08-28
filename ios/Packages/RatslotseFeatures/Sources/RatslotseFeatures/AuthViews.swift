@@ -262,5 +262,13 @@ struct VerificationPendingView: View {
         }
         .padding(28)
         .frame(maxWidth: 520, maxHeight: .infinity)
+        .task(id: user.id) {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(8))
+                guard !Task.isCancelled else { return }
+                await model.refreshAccount()
+                if case .active = model.session { return }
+            }
+        }
     }
 }

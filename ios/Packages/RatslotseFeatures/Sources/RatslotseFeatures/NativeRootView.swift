@@ -17,11 +17,21 @@ public struct NativeRootView: View {
                     case .loading:
                         LaunchLoadingView()
                     case .loggedOut:
-                        WelcomeView(model: model)
+                        if model.onboardingStep == 0 {
+                            NativeOnboardingWelcomeView(model: model)
+                        } else {
+                            WelcomeView(model: model)
+                        }
                     case .pending(let user):
                         VerificationPendingView(model: model, user: user)
                     case .active:
-                        MainTabsView(model: model)
+                        if model.onboardingStep == 0 {
+                            NativeOnboardingWelcomeView(model: model)
+                        } else if model.onboardingStep != nil {
+                            NativeOnboardingFlow(model: model)
+                        } else {
+                            MainTabsView(model: model)
+                        }
                     }
                 }
             }
@@ -128,6 +138,8 @@ private struct RouteDestinationView: View {
         case .topic(let slug): PublicProfileView(model: model, kind: .topic, key: slug)
         case .place(let id): PublicProfileView(model: model, kind: .place, key: id)
         case .quiz(let area): QuizView(model: model, area: area)
+        case .sharedAnswer:
+            if let url = model.router.universalLink(for: route) { ExternalWebView(url: url) }
         case .web(let url): ExternalWebView(url: url)
         default: EmptyView()
         }

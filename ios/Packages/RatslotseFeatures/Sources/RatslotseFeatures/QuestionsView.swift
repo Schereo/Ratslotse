@@ -1,4 +1,6 @@
 import AVFoundation
+import Charts
+import MapKit
 import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
@@ -9,6 +11,7 @@ private struct QuestionTurn: Identifiable {
     let question: String
     var answer = ""
     var sources: [DecisionSummary] = []
+    var evidence: [String: JSONValue] = [:]
     var suggestions: [String] = []
     var status: String?
     var error: String?
@@ -47,6 +50,15 @@ struct QuestionsView: View {
 
             VStack(spacing: 0) {
                 Divider().overlay(RatsColor.border)
+                if let rateLimitUntil, rateLimitUntil > .now {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        let seconds = max(1, Int(rateLimitUntil.timeIntervalSince(context.date).rounded(.up)))
+                        Label("Neue Frage in \(seconds) s", systemImage: "hourglass")
+                            .font(RatsFont.body(11, weight: .semibold))
+                            .foregroundStyle(RatsColor.warning)
+                    }
+                    .padding(.top, 7)
+                }
                 QuestionComposer(text: $input, isSending: isSending, action: submitOrStop)
                     .frame(maxWidth: 780)
                     .padding(.horizontal, 14)
@@ -114,6 +126,7 @@ struct QuestionsView: View {
                     switch event.type {
                     case "step": turns[index].status = progressText(event.step)
                     case "sources":
+                        turns[index].evidence = event.fields
                         turns[index].sources = event.fields["sources"]?.array?.compactMap {
                             try? $0.decoded(DecisionSummary.self)
                         } ?? []
@@ -125,7 +138,9 @@ struct QuestionsView: View {
                         turns[index].status = nil
                         turns[index].answer = event.text ?? turns[index].answer
                     case "suggestions": turns[index].suggestions = event.suggestions
-                    case "abbruch": turns[index].status = "Die Verbindung brach ab. Die bisherige Antwort bleibt sichtbar."
+                    case "abbruch":
+                        turns[index].status = "Die Verbindung brach ab. Die bisherige Antwort bleibt sichtbar."
+                        input = question
                     case "error": throw APIError(statusCode: 0, message: event.text ?? "Die Antwort ist abgebrochen.", retryAfter: nil)
                     case "done": turns[index].status = nil
                     default: break
@@ -217,7 +232,7 @@ private struct QuestionTurnView: View {
                 }
             }
             if !turn.answer.isEmpty {
-                CitedAnswerText(text: turn.answer, model: model)
+                CitedAnswerText(text: turn.answer, model: model, evidence: turn.evidence)
                     .font(RatsFont.body(15))
                     .foregroundStyle(RatsColor.bodyText)
                     .lineSpacing(6)
@@ -250,6 +265,21 @@ private struct QuestionTurnView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 PartyOpinionsView(turn: turn, model: model)
             }
+            CouncilEvidenceBlocks(fields: turn.evidence, model: model)
+            if !mapPins.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    MonoKicker("Orte in der Antwort", trailing: "\(mapPins.count)")
+                    Map(initialPosition: .region(mapRegion)) {
+                        ForEach(mapPins) { pin in
+                            Marker(pin.name, coordinate: pin.coordinate).tint(RatsColor.signal)
+                        }
+                    }
+                    .frame(height: 190)
+                    .clipShape(RoundedRectangle(cornerRadius: 11))
+                    .accessibilityLabel("Karte der in der Antwort genannten Orte")
+                }
+                .ratsCard()
+            }
             if !turn.suggestions.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -265,6 +295,38 @@ private struct QuestionTurnView: View {
             }
         }
     }
+
+    private var mapPins: [QuestionMapPin] {
+        turn.sources.compactMap { source in
+            guard let latitude = source.latitude, let longitude = source.longitude else { return nil }
+            return QuestionMapPin(
+                id: source.id,
+                name: source.placeName ?? source.title,
+                coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+            )
+        }
+    }
+
+    private var mapRegion: MKCoordinateRegion {
+        let latitudes = mapPins.map(\.coordinate.latitude)
+        let longitudes = mapPins.map(\.coordinate.longitude)
+        let center = CLLocationCoordinate2D(
+            latitude: latitudes.reduce(0, +) / Double(max(1, latitudes.count)),
+            longitude: longitudes.reduce(0, +) / Double(max(1, longitudes.count))
+        )
+        let latitudeDelta = max(0.018, (latitudes.max() ?? center.latitude) - (latitudes.min() ?? center.latitude) + 0.012)
+        let longitudeDelta = max(0.018, (longitudes.max() ?? center.longitude) - (longitudes.min() ?? center.longitude) + 0.012)
+        return MKCoordinateRegion(
+            center: center,
+            span: MKCoordinateSpan(latitudeDelta: latitudeDelta, longitudeDelta: longitudeDelta)
+        )
+    }
+}
+
+private struct QuestionMapPin: Identifiable {
+    let id: Int
+    let name: String
+    let coordinate: CLLocationCoordinate2D
 }
 
 private struct PartyOpinion: Codable, Sendable, Identifiable {
@@ -517,24 +579,321 @@ private struct ActivityView: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
-private struct CitedAnswerText: View {
+struct CouncilEvidenceBlocks: View {
+    let fields: [String: JSONValue]
+    let model: AppModel
+
+    private var attachments: [[String: JSONValue]] { objects("anlagen") }
+    private var press: [[String: JSONValue]] { objects("presse") }
+    private var debates: [[String: JSONValue]] { objects("debatten") }
+    private var sessions: [[String: JSONValue]] { objects("sitzungen") }
+    private var planning: [[String: JSONValue]] { objects("planungen") }
+    private var briefs: [[String: JSONValue]] { objects("steckbriefe") }
+
+    @ViewBuilder
+    var body: some View {
+        if fields["beleglage"]?.string == "duenn" {
+            Label(
+                "Dünne Beschlusslage – die Antwort stützt sich nur auf wenige passende Ratsunterlagen.",
+                systemImage: "exclamationmark.magnifyingglass"
+            )
+            .font(RatsFont.body(12))
+            .foregroundStyle(RatsColor.warning)
+            .padding(11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RatsColor.warningTint)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+
+        if !briefs.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                MonoKicker("Worum es geht")
+                ForEach(Array(briefs.enumerated()), id: \.offset) { _, item in
+                    let name = item["name"]?.string ?? "Steckbrief"
+                    if let slug = item["slug"]?.string {
+                        Button { model.navigation.append(.topic(slug: slug)) } label: {
+                            EvidenceTextRow(
+                                title: name,
+                                detail: item["beschreibung"]?.string,
+                                meta: "Steckbrief",
+                                symbol: "info.circle"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        EvidenceTextRow(
+                            title: name,
+                            detail: item["beschreibung"]?.string,
+                            meta: "Steckbrief",
+                            symbol: "info.circle"
+                        )
+                    }
+                }
+            }
+            .ratsCard()
+        }
+
+        if !sessions.isEmpty {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(Array(sessions.enumerated()), id: \.offset) { _, item in
+                        let title = item["committee"]?.string ?? "Sitzung"
+                        let date = [item["session_date"]?.string, item["session_time"]?.string]
+                            .compactMap { $0 }.joined(separator: " · ")
+                        VStack(alignment: .leading, spacing: 7) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(title).font(RatsFont.body(13, weight: .semibold))
+                                    Text(date).font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted)
+                                }
+                                Spacer()
+                                if let id = item["ksinr"]?.int {
+                                    Button("Öffnen") {
+                                        model.navigation.append(.sessions(ksinr: id, tops: []))
+                                    }
+                                    .font(RatsFont.body(11, weight: .semibold))
+                                }
+                            }
+                            ForEach(Array((item["agenda"]?.array ?? []).prefix(6).enumerated()), id: \.offset) { _, row in
+                                if let agenda = row.object {
+                                    Text("\(agenda["item_number"]?.string ?? "·")  \(agenda["title"]?.string ?? "Tagesordnungspunkt")")
+                                        .font(RatsFont.body(11.5))
+                                        .foregroundStyle(RatsColor.secondary)
+                                        .lineLimit(2)
+                                }
+                            }
+                        }
+                        if item != sessions.last { Divider().overlay(RatsColor.separator) }
+                    }
+                }
+                .padding(.top, 10)
+            } label: {
+                MonoKicker("Tagesordnungen", trailing: "\(sessions.count)")
+            }
+            .ratsCard()
+        }
+
+        if !attachments.isEmpty {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 11) {
+                    ForEach(Array(attachments.enumerated()), id: \.offset) { index, item in
+                        let number = item["nr"]?.int ?? index + 1
+                        let title = item["label"]?.string ?? "Anlage"
+                        let row = EvidenceTextRow(
+                            title: "[A\(number)] \(title)",
+                            detail: item["auszug"]?.string,
+                            meta: item["vorlage_nr"]?.string,
+                            symbol: "doc.text"
+                        )
+                        if let raw = item["url"]?.string, let url = URL(string: raw) {
+                            Link(destination: url) { row }.buttonStyle(.plain)
+                        } else { row }
+                    }
+                }
+                .padding(.top, 10)
+            } label: {
+                MonoKicker("Anlagen & Gutachten", trailing: "\(attachments.count)")
+            }
+            .ratsCard()
+        }
+
+        if !press.isEmpty {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(press.enumerated()), id: \.offset) { _, item in
+                        let row = EvidenceTextRow(
+                            title: item["titel"]?.string ?? "Mitteilung der Stadt",
+                            detail: nil,
+                            meta: item["datum"]?.string,
+                            symbol: "newspaper"
+                        )
+                        if let raw = item["url"]?.string, let url = URL(string: raw) {
+                            Link(destination: url) { row }.buttonStyle(.plain)
+                        } else { row }
+                    }
+                }
+                .padding(.top, 10)
+            } label: {
+                MonoKicker("Aktuelles von der Stadt", trailing: "extern")
+            }
+            .ratsCard()
+        }
+
+        if !debates.isEmpty {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(Array(debates.enumerated()), id: \.offset) { _, item in
+                        let speaker = item["sprecher"]?.string ?? "Ohne Namen"
+                        let party = item["partei"]?.string
+                        let kind = item["art"]?.string?.capitalized
+                        let row = EvidenceTextRow(
+                            title: [speaker, party].compactMap { $0 }.joined(separator: " · "),
+                            detail: item["auszug"]?.string,
+                            meta: [kind, item["datum"]?.string].compactMap { $0 }.joined(separator: " · "),
+                            symbol: "quote.bubble"
+                        )
+                        if let url = debateURL(item) { Link(destination: url) { row }.buttonStyle(.plain) }
+                        else { row }
+                    }
+                    Text("Ratsprotokolle fassen Beiträge sinngemäß zusammen; sie sind keine Wortprotokolle.")
+                        .font(RatsFont.body(10.5)).foregroundStyle(RatsColor.muted)
+                }
+                .padding(.top, 10)
+            } label: {
+                MonoKicker("Aus den Ratsdebatten", trailing: "\(debates.count)")
+            }
+            .ratsCard()
+        }
+
+        if !planning.isEmpty {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(planning.enumerated()), id: \.offset) { _, item in
+                        EvidenceTextRow(
+                            title: item["vorlage_titel"]?.string ?? item["vorlage_nr"]?.string ?? "Vorlage",
+                            detail: item["gremium"]?.string,
+                            meta: item["datum"]?.string,
+                            symbol: "arrow.triangle.branch"
+                        )
+                    }
+                }
+                .padding(.top, 10)
+            } label: {
+                MonoKicker("Wie es weitergeht", trailing: "\(planning.count) Stationen")
+            }
+            .ratsCard()
+        }
+
+        if let chart = EvidenceChartData(fields["grafik"]) {
+            VStack(alignment: .leading, spacing: 12) {
+                MonoKicker("Zahlen aus der Stadt")
+                Text(chart.title).font(RatsFont.body(14, weight: .semibold))
+                Chart(chart.points) { point in
+                    LineMark(
+                        x: .value("Zeit", point.label),
+                        y: .value(chart.unit, point.value)
+                    )
+                    .foregroundStyle(RatsColor.primary)
+                    PointMark(
+                        x: .value("Zeit", point.label),
+                        y: .value(chart.unit, point.value)
+                    )
+                    .foregroundStyle(RatsColor.signal)
+                }
+                .frame(height: 150)
+                .chartYAxisLabel(chart.unit)
+                if let note = chart.note { Text(note).font(RatsFont.body(10.5)).foregroundStyle(RatsColor.muted) }
+            }
+            .ratsCard()
+        }
+    }
+
+    private func objects(_ key: String) -> [[String: JSONValue]] {
+        fields[key]?.array?.compactMap(\.object) ?? []
+    }
+
+    private func debateURL(_ item: [String: JSONValue]) -> URL? {
+        guard let raw = item["protokoll_url"]?.string else { return nil }
+        if let page = item["protokoll_seite"]?.int {
+            return URL(string: "\(raw)#page=\(page)")
+        }
+        return URL(string: raw)
+    }
+}
+
+private struct EvidenceTextRow: View {
+    let title: String
+    let detail: String?
+    let meta: String?
+    let symbol: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 9) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(RatsColor.primary)
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(RatsFont.body(12.5, weight: .semibold)).foregroundStyle(RatsColor.text)
+                if let detail, !detail.isEmpty {
+                    Text(detail).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.secondary).lineLimit(5)
+                }
+                if let meta, !meta.isEmpty { Text(meta).font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted) }
+            }
+            Spacer(minLength: 0)
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+private struct EvidenceChartData {
+    struct Point: Identifiable {
+        let id: Int
+        let label: String
+        let value: Double
+    }
+
+    let title: String
+    let unit: String
+    let note: String?
+    let points: [Point]
+
+    init?(_ value: JSONValue?) {
+        guard let root = value?.object else { return nil }
+        let rows = root["reihe"]?.array ?? []
+        points = rows.enumerated().compactMap { index, row in
+            guard let fields = row.object else { return nil }
+            let number: Double? = {
+                for key in ["wert", "value", "betrag"] {
+                    if case .number(let found)? = fields[key] { return found }
+                }
+                return nil
+            }()
+            guard let number else { return nil }
+            let label = fields["label"]?.string
+                ?? fields["jahr"]?.int.map(String.init)
+                ?? fields["datum"]?.string
+                ?? "\(index + 1)"
+            return Point(id: index, label: label, value: number)
+        }
+        guard points.count >= 2 else { return nil }
+        title = root["titel"]?.string ?? "Entwicklung"
+        unit = root["einheit"]?.string ?? "Wert"
+        note = root["hinweis"]?.string
+    }
+}
+
+struct CitedAnswerText: View {
     let text: String
     let model: AppModel
+    var evidence: [String: JSONValue] = [:]
 
     var body: some View {
         Text(attributed)
             .environment(\.openURL, OpenURLAction { url in
-                guard url.scheme == "ratslotse", url.host == "decision", let id = Int(url.lastPathComponent) else {
-                    return .systemAction
+                guard url.scheme == "ratslotse" else { return .systemAction }
+                if url.host == "decision", let id = Int(url.lastPathComponent) {
+                    model.navigation.append(.decision(id: id))
+                    return .handled
                 }
-                model.navigation.append(.decision(id: id))
-                return .handled
+                if url.host == "attachment", let number = Int(url.lastPathComponent),
+                   let target = attachmentURL(number: number) {
+                    UIApplication.shared.open(target)
+                    return .handled
+                }
+                return .discarded
             })
     }
 
     private var attributed: AttributedString {
         var output = (try? AttributedString(markdown: text)) ?? AttributedString(text)
-        guard let regex = try? NSRegularExpression(pattern: #"\[(\d+)\]"#) else { return output }
+        applyLinks(pattern: #"\[(\d+)\]"#, host: "decision", in: &output)
+        applyLinks(pattern: #"\[A(\d+)\]"#, host: "attachment", in: &output)
+        return output
+    }
+
+    private func applyLinks(pattern: String, host: String, in output: inout AttributedString) {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return }
         let ns = text as NSString
         for match in regex.matches(in: text, range: NSRange(location: 0, length: ns.length)).reversed() {
             guard
@@ -542,12 +901,17 @@ private struct CitedAnswerText: View {
                 let idRange = Range(match.range(at: 1), in: text),
                 let lower = AttributedString.Index(range.lowerBound, within: output),
                 let upper = AttributedString.Index(range.upperBound, within: output),
-                let url = URL(string: "ratslotse://decision/\(text[idRange])")
+                let url = URL(string: "ratslotse://\(host)/\(text[idRange])")
             else { continue }
             output[lower..<upper].link = url
             output[lower..<upper].foregroundColor = RatsColor.primary
             output[lower..<upper].font = RatsFont.body(11, weight: .bold)
         }
-        return output
+    }
+
+    private func attachmentURL(number: Int) -> URL? {
+        let rows = evidence["anlagen"]?.array?.compactMap(\.object) ?? []
+        guard let raw = rows.first(where: { $0["nr"]?.int == number })?["url"]?.string else { return nil }
+        return URL(string: raw)
     }
 }

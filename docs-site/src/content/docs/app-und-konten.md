@@ -25,6 +25,13 @@ das Share-Sheet. Der Ratsdialog spricht als POST-SSE direkt mit FastAPI;
 gründliche Recherchen werden nach einem Verbindungsabriss ab dem letzten Event
 fortgesetzt.
 
+Auch der Erststart ist nativ: Lotti begrüßt vor der Anmeldung und führt danach
+durch Gremien-Abos, automatisch beschriebene Themen und Push. Alle drei Schritte
+sind überspringbar. `UserDefaults` merkt den lokalen Schritt;
+`GET/POST /api/onboarding/setup` hält ihn zusätzlich am Konto, sodass die
+Einrichtung nach Gerätewechsel oder Neuinstallation fortgesetzt wird. Im Konto
+kann der Ablauf absichtlich erneut geöffnet werden.
+
 Der Release-Build behält `de.ratslotse.app`. Debug verwendet
 `de.ratslotse.dev`, damit die alte und die neue App während des TestFlight-
 Vergleichs nebeneinander installiert sein können. Vorhandene TestFlight-
@@ -494,6 +501,9 @@ denselben Stand hat und nach Abschluss überall verschwindet.
   `karten` — alles andere wird verworfen, damit die Spalte nicht
   zuwuchert. Schritte gelten schon beim **Besuch** der jeweiligen Seite als
   erledigt (`components/onboarding.tsx`).
+- Davon getrennt speichert `GET/POST /api/onboarding/setup` den Schritt 0–3 des
+  nativen Ersteinrichtungsflows sowie Start und Abschluss. Dieser Stand dient
+  der Wiederaufnahme nach Neuinstallation und dem Einrichtungs-Reminder.
 
 ### Anzeigename und Konto löschen
 

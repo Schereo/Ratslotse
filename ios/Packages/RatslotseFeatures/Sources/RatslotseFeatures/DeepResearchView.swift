@@ -38,6 +38,7 @@ struct DeepResearchView: View {
     @State private var facets: [DeepFacet] = []
     @State private var report = ""
     @State private var sources: [DecisionSummary] = []
+    @State private var evidence: [String: JSONValue] = [:]
     @State private var eventsSeen = 0
     @State private var isRunning = false
     @State private var stopped = false
@@ -141,13 +142,14 @@ struct DeepResearchView: View {
         if !report.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
                 MonoKicker("Bericht")
-                Text((try? AttributedString(markdown: report)) ?? AttributedString(report))
+                CitedAnswerText(text: report, model: model, evidence: evidence)
                     .font(RatsFont.body(15)).foregroundStyle(RatsColor.bodyText).lineSpacing(6)
                 ShareLink(item: report) { Label("Bericht teilen", systemImage: "square.and.arrow.up") }
                     .buttonStyle(SecondaryButtonStyle())
             }
             .ratsCard()
         }
+        CouncilEvidenceBlocks(fields: evidence, model: model)
         if !sources.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 MonoKicker("Quellen", trailing: "\(sources.count)")
@@ -205,22 +207,32 @@ struct DeepResearchView: View {
     private func connect(jobID: String) {
         streamTask?.cancel()
         streamTask = Task {
-            do {
-                let request = try await model.api.makeStreamingRequest(
-                    "/api/council/deep-research/\(jobID)/events",
-                    query: [.init(name: "ab", value: String(eventsSeen))]
-                )
-                for try await event in model.sse.events(for: request) {
-                    eventsSeen += 1
-                    apply(event: event)
+            var retryDelay = 1.0
+            while isRunning, !Task.isCancelled {
+                do {
+                    let request = try await model.api.makeStreamingRequest(
+                        "/api/council/deep-research/\(jobID)/events",
+                        query: [.init(name: "ab", value: String(eventsSeen))]
+                    )
+                    for try await event in model.sse.events(for: request) {
+                        eventsSeen += 1
+                        apply(event: event)
+                        retryDelay = 1
+                    }
+                    if isRunning { await loadSnapshot(jobID: jobID) }
+                    return
+                } catch let apiError as APIError where apiError.statusCode == 410 {
+                    await loadSnapshot(jobID: jobID)
+                    return
+                } catch is CancellationError {
+                    // Backgrounding is expected. scenePhase reconnects with `ab`.
+                    return
+                } catch {
+                    self.error = "Verbindung unterbrochen – Ratslotse verbindet sich erneut."
+                    guard isRunning else { return }
+                    try? await Task.sleep(for: .seconds(retryDelay))
+                    retryDelay = min(8, retryDelay * 2)
                 }
-                if isRunning { await loadSnapshot(jobID: jobID) }
-            } catch let apiError as APIError where apiError.statusCode == 410 {
-                await loadSnapshot(jobID: jobID)
-            } catch is CancellationError {
-                // Backgrounding is expected. scenePhase reconnects with `ab`.
-            } catch {
-                self.error = error.localizedDescription
             }
         }
     }
@@ -235,6 +247,7 @@ struct DeepResearchView: View {
             let name = event.fields["name"]?.string
             if let index = facets.firstIndex(where: { $0.name == name }) { facets[index].hits = event.fields["treffer"]?.int }
         case "sources":
+            evidence = event.fields
             sources = event.fields["sources"]?.array?.compactMap { try? $0.decoded(DecisionSummary.self) } ?? []
         case "token": report += event.text ?? ""
         case "replace": report = event.text ?? report
@@ -262,6 +275,7 @@ struct DeepResearchView: View {
         isRunning = snapshot.status == "laeuft"
         stopped = snapshot.status == "gestoppt"
         if let root = snapshot.quellen?.object {
+            evidence = root
             sources = root["sources"]?.array?.compactMap { try? $0.decoded(DecisionSummary.self) } ?? []
         }
         model.hasRecoverableResearch = isRunning || (snapshot.bericht != nil)

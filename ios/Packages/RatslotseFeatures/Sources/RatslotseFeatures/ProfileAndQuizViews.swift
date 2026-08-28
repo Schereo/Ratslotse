@@ -118,9 +118,14 @@ struct PublicProfileView: View {
     }
 
     private func extractCoordinate(from payload: JSONValue) -> CLLocationCoordinate2D? {
-        guard kind == .place, let root = payload.object else { return nil }
-        let place = root["place"]?.object ?? root
-        guard case .number(let lat)? = place["lat"], case .number(let lon)? = place["lon"] else { return nil }
+        guard let root = payload.object else { return nil }
+        let geo: [String: JSONValue]
+        switch kind {
+        case .place: geo = root["place"]?.object ?? root
+        case .topic: geo = root["geo"]?.object ?? [:]
+        case .person: return nil
+        }
+        guard case .number(let lat)? = geo["lat"], case .number(let lon)? = geo["lon"] else { return nil }
         return CLLocationCoordinate2D(latitude: lat, longitude: lon)
     }
 }

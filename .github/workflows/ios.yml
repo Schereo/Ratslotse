@@ -33,3 +33,11 @@ jobs:
           xcodebuild -project Ratslotse.xcodeproj -scheme Ratslotse
           -configuration Debug -destination 'generic/platform=iOS Simulator'
           CODE_SIGNING_ALLOWED=NO build
+      - name: Test native app
+        working-directory: ios
+        run: |
+          DEVICE_ID="$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.isAvailable == true and (.name | startswith("iPhone")))] | first | .udid // empty')"
+          test -n "$DEVICE_ID"
+          xcodebuild -project Ratslotse.xcodeproj -scheme Ratslotse \
+            -configuration Debug -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            CODE_SIGNING_ALLOWED=NO test

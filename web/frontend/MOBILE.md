@@ -6,6 +6,10 @@ Build-, Test- und Release-Anleitung stehen in
 Sign in with Apple, APNs, Universal Links, Keychain, MapKit und EventKit und
 spricht direkt mit der FastAPI.
 
+Der Lotti-Erststart ist ebenfalls nativ umgesetzt: Begrüßung vor der
+Anmeldung, anschließend Gremien, Themen und Push. Der Fortschritt wird lokal
+und über `/api/onboarding/setup` am Konto fortgesetzt.
+
 ## Übergangsstand
 
 Die bisherige Capacitor-8-Ausgabe bleibt bis zum abgeschlossenen

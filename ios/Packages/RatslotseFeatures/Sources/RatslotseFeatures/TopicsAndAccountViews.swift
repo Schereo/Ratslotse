@@ -241,6 +241,7 @@ struct AccountView: View {
                 }
 
                 Section("Hilfe & Rechtliches") {
+                    Button("Einrichtung mit Lotti erneut ansehen") { model.restartOnboarding() }
                     Link("Hilfe und Kontakt", destination: URL(string: "https://ratslotse.de/hilfe")!)
                     Link("Datenschutz", destination: URL(string: "https://ratslotse.de/datenschutz")!)
                     Link("Impressum", destination: URL(string: "https://ratslotse.de/impressum")!)

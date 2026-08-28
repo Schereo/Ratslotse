@@ -10,8 +10,8 @@ FastAPI unter `https://ratslotse.de`.
   Keychain, Capacitor-Tokenmigration, SSE und Universal-Link-Router.
 - `RatslotseDesign`: Farben, Typografie und wiederverwendbare SwiftUI-
   Komponenten aus der Web-Designsprache.
-- `RatslotseFeatures`: Auth, Heute, Ratsgespräch, Deep Research, Ratssuche,
-  öffentliche Detailseiten, Themen, Quiz und Konto.
+- `RatslotseFeatures`: Lotti-Onboarding, Auth, Heute, Ratsgespräch, Deep
+  Research, Ratssuche, öffentliche Detailseiten, Themen, Quiz und Konto.
 - `RatslotseApp`: App-Lebenszyklus, APNs, Universal Links und Root-View.
 
 Der Release-Build verwendet weiterhin die bestehende Bundle-ID
@@ -38,8 +38,8 @@ xcodebuild -project ios/Ratslotse.xcodeproj -scheme Ratslotse \
 
 Ein anderer installierter Simulator lässt sich mit
 `xcrun simctl list devices available` ermitteln. Der CI-Workflow
-`.github/workflows/ios.yml` erzeugt das Projekt neu, führt die Pakettests aus
-und baut gegen ein generisches iOS-Simulatorziel.
+`.github/workflows/ios.yml` erzeugt das Projekt neu, führt die Paket- und
+App-Tests aus und baut zusätzlich gegen ein generisches iOS-Simulatorziel.
 
 ## Authentifizierung und Migration
 
@@ -54,6 +54,17 @@ Passwort-Reset und Passwortwechsel liefern dem nativen Client ebenfalls ein
 neues Token. Der öffentliche Endpoint `/api/app-config` kann über
 `APP_MIN_BUILD` alte Store-Builds sperren und mit `APP_UPDATE_NOTICE` einen
 Hinweis anzeigen.
+
+## Erststart mit Lotti
+
+Der native Erststart übernimmt den Einrichtungsablauf der bisherigen App:
+dunkler Lotti-Auftakt vor der Anmeldung, danach drei jederzeit überspringbare
+Schritte für Gremien-Abos, automatisch beschriebene Themen und Push. Der
+erreichte Schritt liegt in `UserDefaults` und zusätzlich unter
+`/api/onboarding/setup` am Konto. Dadurch wird eine unterbrochene Einrichtung
+nach App-Neustart, Gerätewechsel oder Neuinstallation fortgesetzt; ein bereits
+abgeschlossener WebView-Erststart wird über den Kontostand nicht wiederholt.
+Unter „Konto“ lässt sich der Ablauf bewusst erneut öffnen.
 
 ## Streaming und produktiver Proxy
 

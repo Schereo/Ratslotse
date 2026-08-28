@@ -64,9 +64,14 @@ public struct SSEClient: Sendable {
                         throw APIError(statusCode: 0, message: "Der Stream antwortet nicht.", retryAfter: nil)
                     }
                     guard (200..<300).contains(http.statusCode) else {
+                        var body = Data()
+                        for try await byte in bytes {
+                            body.append(byte)
+                            if body.count >= 64 * 1024 { break }
+                        }
                         throw APIError(
                             statusCode: http.statusCode,
-                            message: HTTPURLResponse.localizedString(forStatusCode: http.statusCode),
+                            message: Self.errorMessage(from: body, statusCode: http.statusCode),
                             retryAfter: http.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init)
                         )
                     }
@@ -97,5 +102,18 @@ public struct SSEClient: Sendable {
     ) throws {
         guard let data = payload.data(using: .utf8) else { return }
         continuation.yield(try decoder.decode(SSEEvent.self, from: data))
+    }
+
+    private static func errorMessage(from data: Data, statusCode: Int) -> String {
+        guard let root = try? JSONDecoder().decode(JSONValue.self, from: data),
+              let detail = root.object?["detail"]
+        else { return HTTPURLResponse.localizedString(forStatusCode: statusCode) }
+        switch detail {
+        case .string(let message): return message
+        case .array(let rows):
+            let messages = rows.compactMap { $0.object?["msg"]?.string }
+            return messages.isEmpty ? "Bitte prüfe deine Eingaben." : messages.joined(separator: "\n")
+        default: return "Die Anfrage konnte nicht verarbeitet werden."
+        }
     }
 }

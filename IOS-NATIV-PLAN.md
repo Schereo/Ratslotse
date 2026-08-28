@@ -1,11 +1,33 @@
 # Ratslotse nativ — Umbauplan Capacitor → SwiftUI
 
-> **Status:** Implementiert als native 2.0-Grundlage am 28.08.2026. Phase 0,
-> Kern-MVP und die zentralen Rats-Browser-/Paritätsbausteine sind im neuen
-> Top-Level-Verzeichnis `ios/` umgesetzt. Die Empfehlungen aus Abschnitt 9
-> wurden als Arbeitsannahmen übernommen: iOS 17, iPhone + iPad, MapKit,
+> **Status:** Als native 2.0-Ausgabe am 28.08.2026 implementiert und lokal
+> durchgeprüft. Phase 0, Kern-MVP und die Alltagsfunktionen aus Phase 2/3
+> liegen im neuen Top-Level-Verzeichnis `ios/`; Phase 4 bleibt ausdrücklich
+> ein späterer Ausbau. Die Empfehlungen aus Abschnitt 9 wurden als
+> Arbeitsannahmen übernommen: iOS 17, iPhone + iPad, MapKit,
 > GitHub-Actions-Build und TestFlight-Cutover vor dem späteren
-> Capacitor-Aufräumen. Details und Buildbefehle: `ios/README.md`.
+> Capacitor-Aufräumen. Der bisherige Lotti-Erststart ist als nativer,
+> fortsetzbarer Einrichtungsflow für Gremien, Themen und Push umgesetzt.
+> Details und Buildbefehle: `ios/README.md`.
+
+### Prüfstand der Implementierung
+
+- **Nativ vorhanden:** Auth inklusive Apple/Tokenmigration, fünf Tabs,
+  Push/Deep Links, Heute, Ratsgespräch samt vollständigem Quellen-Event,
+  TTS/Teilen/Feedback/Fraktionspositionen, replay-fähige gründliche Recherche,
+  Ratssuche mit Filtern und Seiten, reiches Beschlussdetail, Quick-Look-
+  Anlagen, Merkliste/Vorlagen-Follows, Sitzungen/EventKit, öffentliche Profile,
+  MapKit-Stadtkarte mit Clustering und Ortsbereich-Umrissen, Orts-Minikarten,
+  alle vier Quizmodi und das dreistufige Lotti-Onboarding.
+- **Bewusste Web-Ziele:** Admin, Landing/Doku und der öffentliche `/g`-
+  Antwort-Snapshot bleiben im Web. Hilfe, Kontakt und Rechtstexte öffnen bis
+  zu einem späteren nativen Ausbau ebenfalls ihre vorhandenen Web-Seiten.
+- **Noch kein Release-Freibrief:** Vor TestFlight müssen der produktive
+  Direktpfad für `POST /api/council/ask`, Push auf einem echten Gerät, Sign in
+  with Apple sowie Archive/Export mit Distribution-Signing geprüft werden.
+  Die Capacitor-App wird bis zu diesem Cutover nicht entfernt.
+- **Phase 4 nicht enthalten:** Widgets, Live Activity, App Intents, Spotlight
+  und Handoff sind keine Voraussetzung dieses Umbaus und bleiben offen.
 
 Ziel: Aus der heutigen Capacitor-Shell (statischer Next-Export in einer WebView)
 eine **wirklich native iOS-App** in Swift/SwiftUI machen, die direkt gegen die

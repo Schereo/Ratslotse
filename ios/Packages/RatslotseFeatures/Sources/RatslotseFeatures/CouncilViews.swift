@@ -1,5 +1,6 @@
 import EventKit
 import EventKitUI
+import QuickLook
 import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
@@ -7,6 +8,7 @@ import SwiftUI
 private enum CouncilSection: String, CaseIterable, Identifiable {
     case decisions = "Beschlüsse"
     case sessions = "Sitzungen"
+    case map = "Stadtkarte"
     var id: String { rawValue }
 }
 
@@ -15,11 +17,31 @@ struct CouncilBrowserView: View {
     @State private var section: CouncilSection = .decisions
     @State private var query = ""
     @State private var outcome = ""
+    @State private var committee = ""
+    @State private var policyField = ""
+    @State private var party = ""
+    @State private var district = ""
+    @State private var location = ""
+    @State private var locationName = ""
+    @State private var sort = "date_desc"
+    @State private var includeSubvotes = false
+    @State private var hasDateFrom = false
+    @State private var hasDateTo = false
+    @State private var dateFrom = Date()
+    @State private var dateTo = Date()
+    @State private var page = 0
+    @State private var committees: [String] = []
+    @State private var fields: [PolicyFieldOption] = []
+    @State private var districts: [DistrictOption] = []
     @State private var decisions: [DecisionSummary] = []
     @State private var sessions: [CouncilSession] = []
+    @State private var mapPoints: [CouncilMapPoint] = []
     @State private var total = 0
     @State private var isLoading = false
     @State private var error: String?
+    @State private var showsFilters = false
+
+    private let pageSize = 50
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +59,14 @@ struct CouncilBrowserView: View {
                         FilterChip(label: "Angenommen", selected: outcome == "angenommen") { outcome = "angenommen" }
                         FilterChip(label: "Abgelehnt", selected: outcome == "abgelehnt") { outcome = "abgelehnt" }
                         FilterChip(label: "Vertagt", selected: outcome == "vertagt") { outcome = "vertagt" }
+                        if !location.isEmpty {
+                            FilterChip(label: "Ort: \(locationName.isEmpty ? location : locationName)", selected: true) {
+                                location = ""
+                                locationName = ""
+                                page = 0
+                                Task { await load() }
+                            }
+                        }
                     }
                     .padding(.horizontal, 18)
                     .padding(.bottom, 9)
@@ -57,7 +87,7 @@ struct CouncilBrowserView: View {
                             }
                             .buttonStyle(.plain)
                         }
-                    } else {
+                    } else if section == .sessions {
                         ForEach(sessions) { session in
                             Button {
                                 if let id = session.ksinr { model.navigation.append(.sessions(ksinr: id, tops: [])) }
@@ -67,6 +97,29 @@ struct CouncilBrowserView: View {
                             .buttonStyle(.plain)
                             .disabled(session.ksinr == nil)
                         }
+                    } else {
+                        NativeCouncilMap(points: filteredMapPoints) { point in
+                            openMapPoint(point)
+                        }
+                        .frame(minHeight: 440, idealHeight: 560)
+                        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card))
+                        .overlay(RoundedRectangle(cornerRadius: RatsRadius.card).stroke(RatsColor.border))
+                        Text("Nahe Punkte werden gebündelt. Tippe eine Zahl zum Heranzoomen oder einen Punkt für Details.")
+                            .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
+                    }
+                    if total > pageSize && section != .map {
+                        HStack {
+                            Button("Zurück") { page -= 1; Task { await load() } }
+                                .disabled(page == 0 || isLoading)
+                            Spacer()
+                            Text("Seite \(page + 1) von \(max(1, Int(ceil(Double(total) / Double(pageSize)))))")
+                                .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                            Spacer()
+                            Button("Weiter") { page += 1; Task { await load() } }
+                                .disabled((page + 1) * pageSize >= total || isLoading)
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .padding(.top, 5)
                     }
                 }
                 .frame(maxWidth: 860, alignment: .leading)
@@ -77,11 +130,88 @@ struct CouncilBrowserView: View {
         .background(RatsColor.page)
         .navigationTitle("Im Rat stöbern")
         .toolbarTitleDisplayMode(.inline)
-        .searchable(text: $query, prompt: section == .decisions ? "Beschlüsse durchsuchen" : "Sitzungen durchsuchen")
-        .onSubmit(of: .search) { Task { await load() } }
-        .onChange(of: section) { _, _ in Task { await load() } }
-        .onChange(of: outcome) { _, _ in Task { await load() } }
-        .task { if decisions.isEmpty && sessions.isEmpty { await load() } }
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                NavigationLink {
+                    SavedCouncilView(model: model)
+                } label: {
+                    Label("Merkliste", systemImage: "bookmark")
+                }
+                if section != .map {
+                    Button { showsFilters = true } label: {
+                        Label("Filter", systemImage: activeFilterCount > 0 ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                    }
+                }
+            }
+        }
+        .searchable(text: $query, prompt: searchPrompt)
+        .onSubmit(of: .search) { if section != .map { page = 0; Task { await load() } } }
+        .onChange(of: section) { _, _ in page = 0; Task { await load() } }
+        .onChange(of: outcome) { _, _ in page = 0; Task { await load() } }
+        .task {
+            if committees.isEmpty { await loadFilterOptions() }
+            if decisions.isEmpty && sessions.isEmpty { await load() }
+        }
+        .sheet(isPresented: $showsFilters) {
+            CouncilFilterSheet(
+                section: section,
+                committee: $committee,
+                policyField: $policyField,
+                party: $party,
+                district: $district,
+                location: $location,
+                locationName: $locationName,
+                sort: $sort,
+                includeSubvotes: $includeSubvotes,
+                hasDateFrom: $hasDateFrom,
+                hasDateTo: $hasDateTo,
+                dateFrom: $dateFrom,
+                dateTo: $dateTo,
+                committees: committees,
+                fields: fields,
+                districts: districts,
+                clear: clearFilters,
+                apply: {
+                    showsFilters = false
+                    page = 0
+                    Task { await load() }
+                }
+            )
+            .presentationDetents([.large])
+        }
+    }
+
+    private var activeFilterCount: Int {
+        [committee, policyField, party, district].filter { !$0.isEmpty }.count
+            + (location.isEmpty ? 0 : 1)
+            + (hasDateFrom ? 1 : 0) + (hasDateTo ? 1 : 0) + (includeSubvotes ? 1 : 0)
+    }
+
+    private var searchPrompt: String {
+        switch section {
+        case .decisions: "Beschlüsse durchsuchen"
+        case .sessions: "Sitzungen durchsuchen"
+        case .map: "Orte und Themen auf der Karte"
+        }
+    }
+
+    private var filteredMapPoints: [CouncilMapPoint] {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !needle.isEmpty else { return mapPoints }
+        return mapPoints.filter { $0.name.localizedCaseInsensitiveContains(needle) }
+    }
+
+    private func clearFilters() {
+        committee = ""
+        policyField = ""
+        party = ""
+        district = ""
+        location = ""
+        locationName = ""
+        sort = "date_desc"
+        includeSubvotes = false
+        hasDateFrom = false
+        hasDateTo = false
     }
 
     private func load() async {
@@ -95,20 +225,145 @@ struct CouncilBrowserView: View {
                     query: [
                         .init(name: "q", value: query),
                         .init(name: "outcome", value: outcome),
-                        .init(name: "limit", value: "100"),
+                        .init(name: "committee", value: committee),
+                        .init(name: "field", value: policyField),
+                        .init(name: "party", value: party),
+                        .init(name: "district", value: district),
+                        .init(name: "location", value: location),
+                        .init(name: "sort", value: sort),
+                        .init(name: "date_from", value: hasDateFrom ? Self.apiDate.string(from: dateFrom) : ""),
+                        .init(name: "date_to", value: hasDateTo ? Self.apiDate.string(from: dateTo) : ""),
+                        .init(name: "include_subvotes", value: includeSubvotes ? "true" : "false"),
+                        .init(name: "limit", value: String(pageSize)),
+                        .init(name: "offset", value: String(page * pageSize)),
                     ]
                 )
                 decisions = page.decisions
                 total = page.total
-            } else {
+            } else if section == .sessions {
                 let page: SessionPage = try await model.api.get(
                     "/api/council/sessions",
-                    query: [.init(name: "q", value: query), .init(name: "limit", value: "100")]
+                    query: [
+                        .init(name: "q", value: query),
+                        .init(name: "committee", value: committee),
+                        .init(name: "limit", value: String(pageSize)),
+                        .init(name: "offset", value: String(page * pageSize)),
+                    ]
                 )
                 sessions = page.sessions
                 total = page.total
+            } else {
+                let response: CouncilMapPoints = try await model.api.get("/api/council/entities-map")
+                mapPoints = response.entities
+                total = response.entities.count
             }
         } catch { self.error = error.localizedDescription }
+    }
+
+    private func openMapPoint(_ point: CouncilMapPoint) {
+        switch point.target {
+        case "ort":
+            if let placeID = point.placeID { model.navigation.append(.place(id: placeID)) }
+        case "location":
+            location = point.locationSlug ?? point.slug
+            locationName = point.name
+            query = ""
+            section = .decisions
+            page = 0
+        default:
+            model.navigation.append(.topic(slug: point.slug))
+        }
+    }
+
+    private func loadFilterOptions() async {
+        async let committeeRequest: CommitteeOptions = model.api.get("/api/council/committees")
+        async let fieldRequest: PolicyFieldOptions = model.api.get("/api/council/fields")
+        async let districtRequest: DistrictOptions = model.api.get("/api/council/districts")
+        if let response = try? await committeeRequest { committees = response.committees }
+        if let response = try? await fieldRequest { fields = response.fields }
+        if let response = try? await districtRequest { districts = response.districts }
+    }
+
+    private static let apiDate: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+}
+
+private struct CouncilFilterSheet: View {
+    let section: CouncilSection
+    @Binding var committee: String
+    @Binding var policyField: String
+    @Binding var party: String
+    @Binding var district: String
+    @Binding var location: String
+    @Binding var locationName: String
+    @Binding var sort: String
+    @Binding var includeSubvotes: Bool
+    @Binding var hasDateFrom: Bool
+    @Binding var hasDateTo: Bool
+    @Binding var dateFrom: Date
+    @Binding var dateTo: Date
+    let committees: [String]
+    let fields: [PolicyFieldOption]
+    let districts: [DistrictOption]
+    let clear: () -> Void
+    let apply: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Gremium") {
+                    Picker("Ausschuss", selection: $committee) {
+                        Text("Alle Ausschüsse").tag("")
+                        ForEach(committees, id: \.self) { Text($0).tag($0) }
+                    }
+                }
+                if section == .decisions {
+                    Section("Inhalt") {
+                        if !location.isEmpty {
+                            LabeledContent("Exakter Beschlussort", value: locationName.isEmpty ? location : locationName)
+                            Button("Beschlussort-Filter entfernen", role: .destructive) {
+                                location = ""
+                                locationName = ""
+                            }
+                        }
+                        Picker("Themenfeld", selection: $policyField) {
+                            Text("Alle Themenfelder").tag("")
+                            ForEach(fields) { Text("\($0.label) (\($0.count))").tag($0.key) }
+                        }
+                        Picker("Ortsbezug", selection: $district) {
+                            Text("Alle Orte").tag("")
+                            ForEach(districts) { Text("\($0.name) (\($0.count))").tag($0.placeID) }
+                        }
+                        TextField("Antragsteller-Partei, z. B. SPD", text: $party)
+                            .textInputAutocapitalization(.characters)
+                        Toggle("Änderungsanträge einzeln zeigen", isOn: $includeSubvotes)
+                    }
+                    Section("Zeitraum") {
+                        Toggle("Von", isOn: $hasDateFrom)
+                        if hasDateFrom { DatePicker("Startdatum", selection: $dateFrom, displayedComponents: .date) }
+                        Toggle("Bis", isOn: $hasDateTo)
+                        if hasDateTo { DatePicker("Enddatum", selection: $dateTo, displayedComponents: .date) }
+                    }
+                    Section("Sortierung") {
+                        Picker("Reihenfolge", selection: $sort) {
+                            Text("Neueste zuerst").tag("date_desc")
+                            Text("Älteste zuerst").tag("date_asc")
+                            Text("Wichtigkeit").tag("importance")
+                            Text("Persönliche Relevanz").tag("interest")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Filter & Sortierung")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Zurücksetzen", action: clear) }
+                ToolbarItem(placement: .confirmationAction) { Button("Anzeigen", action: apply) }
+            }
+        }
     }
 }
 
@@ -158,7 +413,9 @@ struct DecisionDetailView: View {
     let decisionID: Int
     @State private var detail: DecisionDetail?
     @State private var error: String?
-    @State private var bookmarked = false
+    @State private var bookmarkID: Int?
+    @State private var isWorking = false
+    @State private var previewAttachment: CouncilAttachment?
 
     var body: some View {
         ScrollView {
@@ -177,6 +434,126 @@ struct DecisionDetailView: View {
                         VStack(alignment: .leading, spacing: 9) {
                             MonoKicker("Kurz erklärt")
                             Text(summary).font(RatsFont.body(16)).foregroundStyle(RatsColor.bodyText).lineSpacing(5)
+                        }
+                        .ratsCard()
+                    }
+
+                    if let importance = detail.importance,
+                       let reason = importance.impactReason, !reason.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            MonoKicker("Warum das wichtig ist", trailing: importance.score.map { "\($0) / 100" })
+                            Text(reason).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText)
+                        }
+                        .ratsCard()
+                    }
+
+                    if decision.vote != nil || decision.noVotes != nil || decision.abstentions != nil || !decision.factions.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            MonoKicker("Abstimmung")
+                            if let vote = decision.vote { Text(vote).font(RatsFont.body(15, weight: .semibold)) }
+                            HStack(spacing: 8) {
+                                if let noVotes = decision.noVotes { Pill("\(noVotes) Gegenstimmen", symbol: "hand.thumbsdown") }
+                                if let abstentions = decision.abstentions { Pill("\(abstentions) Enthaltungen", symbol: "minus") }
+                            }
+                            if !decision.factions.isEmpty {
+                                Text("Eingebracht von").font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                                FlexibleChips(items: decision.factions)
+                            }
+                        }
+                        .ratsCard()
+                    }
+
+                    if !detail.subVotes.isEmpty {
+                        VStack(alignment: .leading, spacing: 13) {
+                            MonoKicker("Änderungsanträge & Teilabstimmungen", trailing: "\(detail.subVotes.count)")
+                            ForEach(detail.subVotes) { subVote in
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(subVote.title).font(RatsFont.body(14, weight: .semibold))
+                                    if let outcome = subVote.outcome { OutcomeBadge(outcome) }
+                                    if !subVote.factions.isEmpty {
+                                        Text(subVote.factions.joined(separator: " · "))
+                                            .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                                    }
+                                }
+                                if subVote.id != detail.subVotes.last?.id { Divider() }
+                            }
+                        }
+                        .ratsCard()
+                    }
+
+                    if let participation = detail.participation,
+                       let url = URL(string: participation.url) {
+                        VStack(alignment: .leading, spacing: 9) {
+                            MonoKicker("Du kannst dich beteiligen", trailing: participation.status)
+                            Text(participation.title).font(RatsFont.body(16, weight: .semibold))
+                            if let until = participation.until { Text("Frist: \(until)").font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary) }
+                            Link(destination: url) { Label("Beteiligung öffnen", systemImage: "arrow.up.right.square") }
+                                .font(RatsFont.body(13, weight: .semibold))
+                        }
+                        .ratsCard()
+                    }
+
+                    if let template = detail.template {
+                        VStack(alignment: .leading, spacing: 10) {
+                            MonoKicker(template.kind ?? "Beschlussvorlage", trailing: template.number)
+                            if let title = template.title, title != decision.title {
+                                Text(title).font(RatsFont.body(16, weight: .semibold))
+                            }
+                            if let excerpt = template.excerpt, !excerpt.isEmpty {
+                                Text(excerpt).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText).lineSpacing(4)
+                            }
+                            if let department = template.department { Label(department, systemImage: "building.2").font(RatsFont.body(12)) }
+                            if let raw = template.documentURL, let url = URL(string: raw) {
+                                Link(destination: url) { Label("Vorlage öffnen", systemImage: "doc.text") }
+                            }
+                        }
+                        .ratsCard()
+                    }
+
+                    if !detail.attachments.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            MonoKicker("Anlagen & Anträge", trailing: "\(detail.attachments.count)")
+                            ForEach(detail.attachments) { attachment in
+                                Button { previewAttachment = attachment } label: {
+                                    HStack(alignment: .top, spacing: 10) {
+                                        Image(systemName: attachment.isMotion == 1 ? "doc.badge.plus" : "doc.richtext")
+                                            .foregroundStyle(RatsColor.primary)
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text(attachment.label).font(RatsFont.body(13, weight: .semibold)).multilineTextAlignment(.leading)
+                                            if !attachment.applicants.isEmpty {
+                                                Text(attachment.applicants.joined(separator: " · "))
+                                                    .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                                            }
+                                        }
+                                        Spacer()
+                                        Image(systemName: "eye")
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                if attachment.id != detail.attachments.last?.id { Divider() }
+                            }
+                        }
+                        .ratsCard()
+                    }
+
+                    let stops = detail.consultations.isEmpty
+                        ? detail.templateJourney.map(CouncilConsultationStop.init(journey:))
+                        : detail.consultations
+                    if !stops.isEmpty {
+                        VStack(alignment: .leading, spacing: 13) {
+                            MonoKicker("Weg durch die Gremien", trailing: "\(stops.count) Stationen")
+                            ForEach(Array(stops.enumerated()), id: \.element.id) { index, stop in
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: stop.future == true ? "clock" : "checkmark.circle.fill")
+                                        .foregroundStyle(stop.future == true ? RatsColor.warning : RatsColor.primary)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(stop.committee).font(RatsFont.body(14, weight: .semibold))
+                                        Text([stop.date, stop.itemNumber, stop.result].compactMap { $0 }.joined(separator: " · "))
+                                            .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                                    }
+                                }
+                                if index < stops.count - 1 { Divider().padding(.leading, 30) }
+                            }
                         }
                         .ratsCard()
                     }
@@ -206,9 +583,17 @@ struct DecisionDetailView: View {
                         Button {
                             toggleBookmark()
                         } label: {
-                            Label(bookmarked ? "Gemerkt" : "Merken", systemImage: bookmarked ? "bookmark.fill" : "bookmark")
+                            Label(bookmarkID == nil ? "Merken" : "Gemerkt", systemImage: bookmarkID == nil ? "bookmark" : "bookmark.fill")
                         }
                         .buttonStyle(SecondaryButtonStyle())
+                        .disabled(isWorking)
+                        if let follow = detail.follow {
+                            Button { toggleFollow(follow) } label: {
+                                Label(follow.following ? "Wird verfolgt" : "Vorgang folgen", systemImage: follow.following ? "bell.fill" : "bell")
+                            }
+                            .buttonStyle(SecondaryButtonStyle())
+                            .disabled(isWorking)
+                        }
                         if let link = model.router.universalLink(for: .decision(id: decisionID)) {
                             ShareLink(item: link) { Label("Teilen", systemImage: "square.and.arrow.up") }
                                 .buttonStyle(SecondaryButtonStyle())
@@ -235,11 +620,23 @@ struct DecisionDetailView: View {
         .navigationTitle("Beschluss")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        .sheet(item: $previewAttachment) { attachment in
+            CouncilAttachmentPreview(attachment: attachment)
+        }
     }
 
     private func load() async {
         do {
-            detail = try await model.api.get("/api/council/decision/\(decisionID)")
+            async let detailRequest: DecisionDetail = model.api.get("/api/council/decision/\(decisionID)")
+            if model.user != nil {
+                async let bookmarksRequest: BookmarkPage = model.api.get("/api/bookmarks")
+                let (loadedDetail, bookmarks) = try await (detailRequest, bookmarksRequest)
+                detail = loadedDetail
+                bookmarkID = bookmarks.bookmarks.first { $0.decision?.id == decisionID }?.id
+            } else {
+                detail = try await detailRequest
+            }
+            error = nil
         } catch { self.error = error.localizedDescription }
     }
 
@@ -247,11 +644,250 @@ struct DecisionDetailView: View {
         guard model.user != nil else { model.authPresentation = .login; return }
         struct Body: Codable, Sendable { let kind: String; let decision_id: Int }
         Task {
+            isWorking = true
+            defer { isWorking = false }
             do {
-                let _: JSONValue = try await model.api.send(
-                    "/api/bookmarks", body: Body(kind: "decision", decision_id: decisionID)
+                if let bookmarkID {
+                    try await model.api.sendVoid("/api/bookmarks/\(bookmarkID)", method: .delete)
+                    self.bookmarkID = nil
+                } else {
+                    let bookmark: BookmarkEntry = try await model.api.send(
+                        "/api/bookmarks", body: Body(kind: "decision", decision_id: decisionID)
+                    )
+                    bookmarkID = bookmark.id
+                }
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    private func toggleFollow(_ follow: FollowStatus) {
+        guard model.user != nil else { model.authPresentation = .login; return }
+        Task {
+            isWorking = true
+            defer { isWorking = false }
+            do {
+                let updated: FollowStatus = try await model.api.sendWithoutBody(
+                    "/api/council/vorlage/\(follow.templateID)/follow",
+                    method: follow.following ? .delete : .post
                 )
-                bookmarked = true
+                guard let current = detail else { return }
+                detail = current.replacing(follow: updated)
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+}
+
+private extension CouncilConsultationStop {
+    init(journey: CouncilJourneyStop) {
+        self.init(
+            date: journey.sessionDate, committee: journey.committee,
+            itemNumber: journey.itemNumber, result: nil,
+            sessionID: journey.sessionID, future: nil
+        )
+    }
+}
+
+private extension DecisionDetail {
+    func replacing(follow: FollowStatus) -> DecisionDetail {
+        DecisionDetail(
+            decision: decision, presentParties: presentParties, ratsinfoURL: ratsinfoURL,
+            similar: similar, subVotes: subVotes, templateJourney: templateJourney,
+            consultations: consultations, templateURL: templateURL, template: template,
+            attachments: attachments, participation: participation, importance: importance,
+            follow: follow
+        )
+    }
+}
+
+private struct CouncilAttachmentPreview: View {
+    let attachment: CouncilAttachment
+    @Environment(\.dismiss) private var dismiss
+    @State private var localURL: URL?
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let localURL {
+                    QuickLookPreview(url: localURL)
+                } else if let error {
+                    ContentUnavailableView {
+                        Label("Dokument nicht verfügbar", systemImage: "doc.badge.ellipsis")
+                    } description: {
+                        Text(error)
+                    } actions: {
+                        if let url = URL(string: attachment.url) { Link("Im Browser öffnen", destination: url) }
+                    }
+                } else {
+                    ProgressView("Dokument wird geladen …")
+                }
+            }
+            .navigationTitle(attachment.label)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Fertig") { dismiss() } } }
+        }
+        .task { await download() }
+    }
+
+    private func download() async {
+        guard localURL == nil, let remoteURL = URL(string: attachment.url) else {
+            error = "Die Dokumentadresse ist ungültig."
+            return
+        }
+        do {
+            let (temporaryURL, response) = try await URLSession.shared.download(from: remoteURL)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+            let suffix = remoteURL.pathExtension.isEmpty ? "pdf" : remoteURL.pathExtension
+            let destination = FileManager.default.temporaryDirectory
+                .appending(path: "ratslotse-\(attachment.documentID)-\(UUID().uuidString).\(suffix)")
+            try FileManager.default.moveItem(at: temporaryURL, to: destination)
+            localURL = destination
+        } catch {
+            self.error = "Die Anlage konnte nicht geladen werden. \(error.localizedDescription)"
+        }
+    }
+}
+
+private struct QuickLookPreview: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeCoordinator() -> Coordinator { Coordinator(url: url) }
+
+    func makeUIViewController(context: Context) -> QLPreviewController {
+        let controller = QLPreviewController()
+        controller.dataSource = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: QLPreviewController, context: Context) {}
+
+    final class Coordinator: NSObject, QLPreviewControllerDataSource {
+        let url: URL
+        init(url: URL) { self.url = url }
+        func numberOfPreviewItems(in controller: QLPreviewController) -> Int { 1 }
+        func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
+            url as NSURL
+        }
+    }
+}
+
+private struct SavedCouncilView: View {
+    let model: AppModel
+    @State private var bookmarks: [BookmarkEntry] = []
+    @State private var follows: [FollowEntry] = []
+    @State private var isLoading = true
+    @State private var error: String?
+
+    var body: some View {
+        List {
+            if bookmarks.isEmpty && follows.isEmpty && !isLoading && error == nil {
+                ContentUnavailableView(
+                    "Noch nichts gespeichert",
+                    systemImage: "bookmark",
+                    description: Text("Gemerkte Beschlüsse und verfolgte Vorlagen erscheinen hier.")
+                )
+            }
+            if !bookmarks.isEmpty {
+                Section("Merkliste") {
+                    ForEach(bookmarks) { bookmark in
+                        savedDestination(bookmark)
+                            .swipeActions {
+                                Button("Entfernen", role: .destructive) { removeBookmark(bookmark) }
+                            }
+                    }
+                }
+            }
+            if !follows.isEmpty {
+                Section("Verfolgte Vorgänge") {
+                    ForEach(follows) { follow in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(follow.title.isEmpty ? follow.templateNumber : follow.title)
+                                .font(RatsFont.body(15, weight: .semibold))
+                            Text("\(follow.templateNumber) · \(follow.stationCount) Stationen")
+                                .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                            if let next = follow.next {
+                                Text("Als Nächstes: \([next.committee, next.date].compactMap { $0 }.joined(separator: " · "))")
+                                    .font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
+                            }
+                            if let url = URL(string: follow.url) {
+                                Link("Vorlage im Ratsinfosystem", destination: url)
+                                    .font(RatsFont.body(12, weight: .semibold))
+                            }
+                        }
+                        .swipeActions {
+                            Button("Nicht mehr folgen", role: .destructive) { removeFollow(follow) }
+                        }
+                    }
+                }
+            }
+            if let error { Section { ErrorCard(message: error) { Task { await load() } } } }
+        }
+        .overlay { if isLoading { ProgressView("Merkliste laden …") } }
+        .navigationTitle("Gespeichert")
+        .refreshable { await load() }
+        .task { await load() }
+    }
+
+    @ViewBuilder
+    private func savedDestination(_ bookmark: BookmarkEntry) -> some View {
+        if let decision = bookmark.decision {
+            NavigationLink(value: AppRoute.decision(id: decision.id)) { savedLabel(bookmark) }
+        } else if let sessionID = bookmark.sessionID {
+            NavigationLink(value: AppRoute.sessions(ksinr: sessionID, tops: bookmark.itemNumber.map { [$0] } ?? [])) {
+                savedLabel(bookmark)
+            }
+        } else if let url = URL(string: bookmark.url) {
+            Link(destination: url) { savedLabel(bookmark) }
+        } else {
+            savedLabel(bookmark)
+        }
+    }
+
+    private func savedLabel(_ bookmark: BookmarkEntry) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(bookmark.title).font(RatsFont.body(15, weight: .semibold))
+            Text(bookmark.subtitle).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary)
+            Pill(bookmark.decision?.outcome ?? bookmark.state, symbol: bookmark.decision == nil ? "clock" : "checkmark")
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func load() async {
+        guard model.user != nil else {
+            isLoading = false
+            error = "Melde dich an, um deine Merkliste zu sehen."
+            return
+        }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            async let bookmarkRequest: BookmarkPage = model.api.get("/api/bookmarks")
+            async let followRequest: FollowPage = model.api.get("/api/council/follows")
+            let responses = try await (bookmarkRequest, followRequest)
+            bookmarks = responses.0.bookmarks
+            follows = responses.1.follows
+            error = nil
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func removeBookmark(_ bookmark: BookmarkEntry) {
+        Task {
+            do {
+                try await model.api.sendVoid("/api/bookmarks/\(bookmark.id)", method: .delete)
+                bookmarks.removeAll { $0.id == bookmark.id }
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    private func removeFollow(_ follow: FollowEntry) {
+        Task {
+            do {
+                let _: FollowStatus = try await model.api.sendWithoutBody(
+                    "/api/council/vorlage/\(follow.templateID)/follow", method: .delete
+                )
+                follows.removeAll { $0.id == follow.id }
             } catch { self.error = error.localizedDescription }
         }
     }

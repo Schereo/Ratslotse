@@ -45,18 +45,33 @@ public final class AppModel {
     public var updateNotice: String?
     public var alertMessage: String?
     public var hasRecoverableResearch = false
+    public var onboardingStep: Int?
 
     private let network = NetworkMonitor()
+    private let defaults: UserDefaults
     private var pendingPushToken: String?
+
+    private static let onboardingDoneKey = "ratslotse.onboarding.done"
+    private static let onboardingStepKey = "ratslotse.onboarding.step"
+    private static let legacyIntroKey = "ratslotse.intro.done"
+    private static let pushPrimerSnoozeKey = "ratslotse.push-primer.snoozed-until"
 
     public init(
         api: APIClient = APIClient(),
         sse: SSEClient = SSEClient(),
-        router: AppRouter = AppRouter()
+        router: AppRouter = AppRouter(),
+        defaults: UserDefaults = .standard
     ) {
         self.api = api
         self.sse = sse
         self.router = router
+        self.defaults = defaults
+        if defaults.object(forKey: Self.onboardingDoneKey) != nil
+            || defaults.object(forKey: Self.legacyIntroKey) != nil {
+            onboardingStep = nil
+        } else {
+            onboardingStep = min(3, max(0, defaults.integer(forKey: Self.onboardingStepKey)))
+        }
         network.onStatusChange = { [weak self] available in
             Task { @MainActor in self?.isOffline = !available }
         }
@@ -247,10 +262,43 @@ public final class AppModel {
         } catch { return false }
     }
 
+    public func beginOnboarding(with presentation: AuthPresentation = .register) {
+        persistOnboarding(step: 1)
+        guard user?.isActive != true else { return }
+        authPresentation = presentation
+    }
+
+    public func advanceOnboarding(to step: Int) async {
+        let next = min(3, max(1, step))
+        persistOnboarding(step: next)
+        await reportOnboarding(step: next)
+    }
+
+    public func completeOnboarding() async {
+        defaults.set(true, forKey: Self.onboardingDoneKey)
+        defaults.set(true, forKey: Self.legacyIntroKey)
+        defaults.removeObject(forKey: Self.onboardingStepKey)
+        // The regular reminder on "Heute" should not ask again immediately
+        // after this flow has already offered the system permission dialog.
+        defaults.set(
+            Date().addingTimeInterval(7 * 24 * 60 * 60).timeIntervalSince1970 * 1000,
+            forKey: Self.pushPrimerSnoozeKey
+        )
+        onboardingStep = nil
+        await reportOnboarding(step: 3, done: true)
+    }
+
+    public func restartOnboarding() {
+        defaults.removeObject(forKey: Self.onboardingDoneKey)
+        defaults.removeObject(forKey: Self.legacyIntroKey)
+        persistOnboarding(step: 0)
+    }
+
     private func accept(user: User) async throws {
         if let token = user.accessToken { try await api.setAccessToken(token) }
+        if user.isActive { await synchronizeOnboarding() }
         session = user.isActive ? .active(user) : .pending(user)
-        if case .active = session {
+        if user.isActive {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             if settings.authorizationStatus == .authorized {
                 UIApplication.shared.registerForRemoteNotifications()
@@ -259,6 +307,34 @@ public final class AppModel {
             if let current: JSONValue = try? await api.get("/api/council/deep-research/aktuell") {
                 hasRecoverableResearch = current.object?["job"] != .null && current.object?["job"] != nil
             }
+        }
+    }
+
+    private func persistOnboarding(step: Int) {
+        onboardingStep = step
+        defaults.set(step, forKey: Self.onboardingStepKey)
+    }
+
+    private func reportOnboarding(step: Int, done: Bool = false) async {
+        struct Body: Codable, Sendable { let step: Int; let done: Bool }
+        let _: SetupProgress? = try? await api.send(
+            "/api/onboarding/setup", body: Body(step: step, done: done)
+        )
+    }
+
+    private func synchronizeOnboarding() async {
+        guard let localStep = onboardingStep,
+              let remote: SetupProgress = try? await api.get("/api/onboarding/setup")
+        else { return }
+        if remote.doneAt != nil {
+            defaults.set(true, forKey: Self.onboardingDoneKey)
+            defaults.set(true, forKey: Self.legacyIntroKey)
+            defaults.removeObject(forKey: Self.onboardingStepKey)
+            onboardingStep = nil
+        } else if remote.step > localStep {
+            persistOnboarding(step: min(3, remote.step))
+        } else if localStep > remote.step {
+            await reportOnboarding(step: localStep)
         }
     }
 
