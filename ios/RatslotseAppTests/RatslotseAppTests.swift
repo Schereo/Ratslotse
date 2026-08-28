@@ -189,3 +189,72 @@ private final class ConversationSettingURLProtocol: URLProtocol {
     let profile = try JSONDecoder().decode(PublicPersonProfile.self, from: data)
     #expect(profile.currentAffiliation?.label == "SPD-Fraktion")
 }
+
+@Test func nativeQuizCatalogDecodesAllDesktopFilters() throws {
+    let data = try #require(
+        """
+        {
+          "wahlbereiche": [{
+            "key": "3",
+            "label": "Wahlbereich 3",
+            "stadtteile": ["Eversten", "Bloherfelde"],
+            "questions": 27,
+            "points": 12
+          }],
+          "stadtteile": [{
+            "key": "Eversten",
+            "label": "Eversten",
+            "questions": 14,
+            "points": 5
+          }],
+          "themen": [{
+            "key": "schulwege",
+            "label": "Sichere Schulwege",
+            "stadtteil": "Kreyenbrück",
+            "questions": 9,
+            "points": 2
+          }],
+          "categories": ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
+        }
+        """.data(using: .utf8)
+    )
+
+    let catalog = try JSONDecoder().decode(QuizAreas.self, from: data)
+
+    #expect(catalog.wahlbereiche.first?.stadtteile == ["Eversten", "Bloherfelde"])
+    #expect(catalog.stadtteile.first?.points == 5)
+    #expect(catalog.themen.first?.stadtteil == "Kreyenbrück")
+    #expect(catalog.categories.count == 5)
+}
+
+@Test func nativeOwnQuizCardsDecodeChoiceAndEstimateFields() throws {
+    let data = try #require(
+        """
+        [{
+          "id": 41,
+          "question": "Wie viele Einwohner hat Oldenburg ungefähr?",
+          "options": [],
+          "correct_index": 0,
+          "stadtteil": null,
+          "category": "schaetzen",
+          "explanation": "Die Zahl verändert sich laufend.",
+          "qtype": "estimate",
+          "answer_value": 176000,
+          "unit": "Einwohner",
+          "range_min": 0,
+          "range_max": 350000,
+          "practiced": 4,
+          "correct_count": 3,
+          "created_at": "2026-08-28T12:00:00Z"
+        }]
+        """.data(using: .utf8)
+    )
+
+    let cards = try JSONDecoder().decode([OwnQuizQuestion].self, from: data)
+    let card = try #require(cards.first)
+
+    #expect(card.qtype == "estimate")
+    #expect(card.answerValue == 176_000)
+    #expect(card.rangeMax == 350_000)
+    #expect(card.category == "schaetzen")
+}

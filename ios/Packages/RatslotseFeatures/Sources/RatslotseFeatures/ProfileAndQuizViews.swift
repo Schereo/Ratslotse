@@ -487,18 +487,32 @@ private struct SafariController: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }
 
-private struct QuizArea: Codable, Sendable, Identifiable {
+struct QuizArea: Codable, Sendable, Identifiable {
     var id: String { key }
     let key: String
     let label: String?
     let questions: Int
+    let points: Int?
+    let stadtteile: [String]?
+    let stadtteil: String?
 }
 
-private struct QuizAreas: Codable, Sendable {
+struct QuizAreas: Codable, Sendable {
     let wahlbereiche: [QuizArea]
     let stadtteile: [QuizArea]
     let themen: [QuizArea]
     let categories: [String]
+}
+
+private func quizCategoryLabel(_ category: String) -> String {
+    switch category {
+    case "geschichte": "Geschichte"
+    case "orte": "Orte"
+    case "menschen": "Menschen"
+    case "ratspolitik": "Ratspolitik"
+    case "schaetzen": "Schätzfrage"
+    default: category.capitalized
+    }
 }
 
 private struct QuizQuestion: Codable, Sendable, Identifiable {
@@ -556,7 +570,7 @@ private enum QuizMode: String {
         case .normal: "Neues Spiel"
         case .review: "Meine Fehler"
         case .daily: "Tägliche Challenge"
-        case .own: "Eigene Fragen"
+        case .own: "Eigene Karten"
         }
     }
 }
@@ -574,18 +588,28 @@ private struct QuizDaily: Codable, Sendable {
     let questions: [QuizQuestion]
 }
 
-private struct OwnQuizQuestion: Codable, Sendable, Identifiable {
+struct OwnQuizQuestion: Codable, Sendable, Identifiable {
     let id: Int
     let question: String
     let options: [String]
     let correctIndex: Int
+    let stadtteil: String?
+    let category: String
     let explanation: String?
+    let qtype: String?
+    let answerValue: Double?
+    let unit: String?
+    let rangeMin: Double?
+    let rangeMax: Double?
     let practiced: Int
     let correctCount: Int
 
     enum CodingKeys: String, CodingKey {
-        case id, question, options, explanation, practiced
+        case id, question, options, stadtteil, category, explanation, qtype, unit, practiced
         case correctIndex = "correct_index"
+        case answerValue = "answer_value"
+        case rangeMin = "range_min"
+        case rangeMax = "range_max"
         case correctCount = "correct_count"
     }
 }
@@ -595,8 +619,13 @@ private struct OwnQuizQuestions: Codable, Sendable { let questions: [OwnQuizQues
 struct QuizView: View {
     let model: AppModel
     let area: String?
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var areas: QuizAreas?
-    @State private var selectedArea: String?
+    @State private var selectedAreas: Set<String> = []
+    @State private var selectedCategories: Set<String> = []
+    @State private var placeSearch = ""
+    @State private var showAllPlaces = false
+    @State private var isStarting = false
     @State private var round: [QuizQuestion] = []
     @State private var index = 0
     @State private var result: QuizResult?
@@ -609,7 +638,7 @@ struct QuizView: View {
     @State private var stats: QuizStats?
     @State private var daily: QuizDaily?
     @State private var own: [OwnQuizQuestion] = []
-    @State private var showOwnEditor = false
+    @State private var showOwnEditor = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUIZ_OWN"] != nil
     @State private var showMapQuiz = false
 
     var body: some View {
@@ -624,7 +653,7 @@ struct QuizView: View {
                 }
                 if let error { ErrorCard(message: error) { Task { await loadAreas() } } }
             }
-            .frame(maxWidth: 620, alignment: .leading)
+            .frame(maxWidth: usesWideLayout ? 1040 : 680, alignment: .leading)
             .padding(18)
         }
         .background(RatsColor.page)
@@ -634,6 +663,10 @@ struct QuizView: View {
 #if DEBUG
             if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUIZ_RESULT"] == "1" {
                 installDebugResult()
+                return
+            }
+            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUIZ_SETUP"] == "1" {
+                installDebugSetup()
                 return
             }
 #endif
@@ -660,8 +693,12 @@ struct QuizView: View {
                     QuizMetric(value: "\(Int((Double(stats.total.correct) / Double(stats.total.answered)) * 100)) %", label: "richtig")
                     QuizMetric(value: "\(stats.streak)", label: "Tage-Serie")
                 }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RatsColor.primary.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
-            LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 10) {
+            LazyVGrid(columns: quizModeColumns, spacing: 10) {
                 QuizModeButton(title: "Täglich", detail: daily?.done == nil ? "Heute offen" : "Heute erledigt", symbol: "bolt.fill") {
                     Task { await startDaily() }
                 }
@@ -671,55 +708,206 @@ struct QuizView: View {
                 QuizModeButton(title: "Karten-Quiz", detail: "Stadtteile finden", symbol: "map") {
                     showMapQuiz = true
                 }
-                QuizModeButton(title: "Eigene Fragen", detail: "\(own.count) gespeichert", symbol: "pencil") {
+                QuizModeButton(title: "Eigene Karten", detail: "\(own.count) gespeichert", symbol: "pencil") {
                     if own.isEmpty { showOwnEditor = true }
                     else { Task { await startSpecial(path: "/api/quiz/own/round", mode: .own) } }
                 }
             }
-            if !own.isEmpty {
-                Button("Eigene Fragen verwalten") { showOwnEditor = true }
-                    .font(RatsFont.body(13, weight: .semibold))
+            Button { showOwnEditor = true } label: {
+                Label(own.isEmpty ? "Erste eigene Karte erstellen" : "Eigene Karten verwalten", systemImage: "rectangle.stack.badge.plus")
             }
+            .buttonStyle(SecondaryButtonStyle())
             Divider().overlay(RatsColor.separator)
-            MonoKicker("Neues Spiel")
             if let areas {
-                Menu {
-                    Button("Gebiet wählen") { selectedArea = nil }
-                    Section("Wahlbereiche") {
-                        ForEach(areas.wahlbereiche) { entry in
-                            Button(entry.label ?? "Wahlbereich \(entry.key)") {
-                                selectedArea = "wahlbereich:\(entry.key)"
+                quizConfiguration(areas)
+            } else { ProgressView("Gebiete laden …") }
+        }
+    }
+
+    private func quizConfiguration(_ catalog: QuizAreas) -> some View {
+        RatsSectionPanel(
+            "Deine Runde",
+            detail: "Kombiniere mehrere Wahlbereiche, Orte und Themen. Kategorien sind optional.",
+            symbol: "slider.horizontal.3"
+        ) {
+            VStack(alignment: .leading, spacing: 17) {
+                if !catalog.wahlbereiche.isEmpty {
+                    quizChoiceSection(
+                        title: "Wahlbereiche",
+                        detail: "Große Auswahl mit einem Tipp",
+                        entries: catalog.wahlbereiche,
+                        prefix: "wahlbereich:"
+                    )
+                }
+
+                quizPlaces(catalog.stadtteile)
+
+                if !catalog.themen.isEmpty {
+                    quizChoiceSection(
+                        title: "Themen",
+                        detail: "Projekte und Debatten gezielt üben",
+                        entries: catalog.themen,
+                        prefix: "thema:"
+                    )
+                }
+
+                if !catalog.categories.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        quizSectionHeader("Kategorien", detail: "optional – ohne Auswahl ist alles dabei")
+                        QuizFlowLayout(spacing: 7) {
+                            ForEach(catalog.categories, id: \.self) { category in
+                                QuizChoiceChip(
+                                    title: quizCategoryLabel(category),
+                                    detail: nil,
+                                    selected: selectedCategories.contains(category)
+                                ) { toggleCategory(category) }
                             }
                         }
                     }
-                    Section("Stadtteile") {
-                        ForEach(areas.stadtteile.prefix(30)) { entry in
-                            Button(entry.label ?? entry.key) { selectedArea = "stadtteil:\(entry.key)" }
+                }
+
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(selectionSummary)
+                            .font(RatsFont.body(14, weight: .semibold))
+                            .foregroundStyle(RatsColor.text)
+                        Text(selectedCategories.isEmpty ? "Alle Fragearten" : selectedCategories.sorted().map(quizCategoryLabel).joined(separator: ", "))
+                            .font(RatsFont.body(11))
+                            .foregroundStyle(RatsColor.secondary)
+                            .lineLimit(2)
+                    }
+                    Spacer(minLength: 8)
+                    Button { Task { await start() } } label: {
+                        if isStarting {
+                            HStack(spacing: 7) {
+                                ProgressView().tint(.white)
+                                Text("Lädt …")
+                            }
+                        } else {
+                            Label("Quiz starten", systemImage: "play.fill")
                         }
                     }
-                } label: {
-                    HStack {
-                        RatsGlyphView(glyph: .map)
-                            .frame(width: 18, height: 18)
-                        Text(selectedAreaLabel(areas))
-                            .lineLimit(1)
-                        Spacer()
-                        Text("⌄").font(RatsFont.body(14, weight: .bold))
-                    }
-                    .font(RatsFont.body(13, weight: .semibold))
-                    .foregroundStyle(RatsColor.primary)
-                    .padding(.horizontal, 12)
-                    .frame(maxWidth: .infinity, minHeight: 42)
-                    .background(RatsColor.primary.opacity(0.08))
-                    .overlay(RoundedRectangle(cornerRadius: 11).stroke(RatsColor.primary.opacity(0.18)))
-                    .clipShape(RoundedRectangle(cornerRadius: 11))
-                }
-                Button("Quiz starten") { Task { await start() } }
                     .buttonStyle(PrimaryButtonStyle())
-                    .disabled(selectedArea == nil)
-            } else { ProgressView("Gebiete laden …") }
+                    .disabled(selectedAreas.isEmpty || isStarting)
+                }
+                .padding(13)
+                .background(RatsColor.stage)
+                .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(RatsColor.border))
+                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+            }
         }
-        .ratsCard()
+    }
+
+    private func quizChoiceSection(
+        title: String,
+        detail: String,
+        entries: [QuizArea],
+        prefix: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            quizSectionHeader(title, detail: detail)
+            QuizFlowLayout(spacing: 7) {
+                ForEach(entries) { entry in
+                    let key = prefix + entry.key
+                    QuizChoiceChip(
+                        title: entry.label ?? entry.key,
+                        detail: "\(entry.questions)",
+                        selected: selectedAreas.contains(key)
+                    ) { toggleArea(key) }
+                }
+            }
+        }
+    }
+
+    private func quizPlaces(_ entries: [QuizArea]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            quizSectionHeader("Orte", detail: "einzelne Stadtteile frei kombinieren")
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(RatsColor.muted)
+                TextField("Ort suchen", text: $placeSearch)
+                    .textFieldStyle(.plain)
+                    .textInputAutocapitalization(.never)
+                if !placeSearch.isEmpty {
+                    Button { placeSearch = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(RatsColor.muted)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Suche leeren")
+                }
+            }
+            .font(RatsFont.body(14))
+            .padding(.horizontal, 12)
+            .frame(minHeight: 42)
+            .background(RatsColor.stage)
+            .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(RatsColor.border))
+            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+
+            QuizFlowLayout(spacing: 7) {
+                ForEach(visiblePlaces(entries)) { entry in
+                    let key = "stadtteil:" + entry.key
+                    QuizChoiceChip(
+                        title: entry.label ?? entry.key,
+                        detail: "\(entry.questions)",
+                        selected: selectedAreas.contains(key)
+                    ) { toggleArea(key) }
+                }
+            }
+            if placeSearch.isEmpty && entries.count > 12 {
+                Button(showAllPlaces ? "Weniger Orte zeigen" : "Alle \(entries.count) Orte zeigen") {
+                    withAnimation(.easeInOut(duration: 0.2)) { showAllPlaces.toggle() }
+                }
+                .font(RatsFont.body(12, weight: .semibold))
+                .foregroundStyle(RatsColor.primary)
+            }
+        }
+    }
+
+    private func quizSectionHeader(_ title: String, detail: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 7) {
+            Text(title)
+                .font(RatsFont.body(13, weight: .semibold))
+                .foregroundStyle(RatsColor.text)
+            Text(detail)
+                .font(RatsFont.body(11))
+                .foregroundStyle(RatsColor.muted)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func visiblePlaces(_ entries: [QuizArea]) -> [QuizArea] {
+        let needle = placeSearch.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !needle.isEmpty {
+            return entries.filter { ($0.label ?? $0.key).localizedCaseInsensitiveContains(needle) }
+        }
+        if showAllPlaces { return entries }
+        let selected = entries.filter { selectedAreas.contains("stadtteil:" + $0.key) }
+        let unselected = entries.filter { !selectedAreas.contains("stadtteil:" + $0.key) }
+        return Array((selected + unselected).prefix(max(12, selected.count)))
+    }
+
+    private var selectionSummary: String {
+        if selectedAreas.isEmpty { return "Wähle mindestens ein Gebiet" }
+        return "\(selectedAreas.count) \(selectedAreas.count == 1 ? "Gebiet" : "Gebiete") ausgewählt"
+    }
+
+    private var usesWideLayout: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass != .compact
+    }
+
+    private var quizModeColumns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 10), count: usesWideLayout ? 4 : 2)
+    }
+
+    private func toggleArea(_ key: String) {
+        if selectedAreas.contains(key) { selectedAreas.remove(key) }
+        else { selectedAreas.insert(key) }
+    }
+
+    private func toggleCategory(_ key: String) {
+        if selectedCategories.contains(key) { selectedCategories.remove(key) }
+        else { selectedCategories.insert(key) }
     }
 
     @ViewBuilder
@@ -832,38 +1020,78 @@ struct QuizView: View {
         correct = 3
         points = 240
     }
+
+    private func installDebugSetup() {
+        areas = QuizAreas(
+            wahlbereiche: (1...6).map {
+                QuizArea(
+                    key: "\($0)",
+                    label: "Wahlbereich \($0)",
+                    questions: 18 + $0 * 3,
+                    points: $0 * 4,
+                    stadtteile: nil,
+                    stadtteil: nil
+                )
+            },
+            stadtteile: ["Bloherfelde", "Bürgerfelde", "Donnerschwee", "Eversten", "Kreyenbrück", "Nadorst", "Ofenerdiek", "Osternburg", "Tweelbäke", "Wechloy", "Zentrum", "Etzhorn", "Ohmstede", "Alexandersfeld"].enumerated().map { offset, name in
+                QuizArea(
+                    key: name,
+                    label: name,
+                    questions: 7 + offset,
+                    points: offset,
+                    stadtteile: nil,
+                    stadtteil: nil
+                )
+            },
+            themen: [
+                QuizArea(key: "schulwege", label: "Sichere Schulwege", questions: 12, points: 8, stadtteile: nil, stadtteil: "Kreyenbrück"),
+                QuizArea(key: "wohnen", label: "Wohnen & Bauen", questions: 16, points: 5, stadtteile: nil, stadtteil: nil),
+                QuizArea(key: "klima", label: "Klima & Energie", questions: 14, points: 3, stadtteile: nil, stadtteil: nil),
+                QuizArea(key: "innenstadt", label: "Lebendige Innenstadt", questions: 9, points: 2, stadtteile: nil, stadtteil: "Zentrum"),
+            ],
+            categories: ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
+        )
+        selectedAreas = ["wahlbereich:3", "thema:schulwege"]
+        selectedCategories = ["ratspolitik", "orte"]
+        stats = QuizStats(total: .init(points: 148, answered: 63, correct: 47), wrong: 6, streak: 4)
+        daily = QuizDaily(day: "2026-08-28", done: nil, questions: [])
+        own = []
+    }
+
 #endif
 
     private func loadAreas() async {
         guard areas == nil else { return }
         do {
             areas = try await model.api.get("/api/quiz/areas")
-            selectedArea = area ?? areas?.wahlbereiche.first.map { "wahlbereich:\($0.key)" }
+            if let area { selectedAreas = [area] }
+            else if let first = areas?.wahlbereiche.first { selectedAreas = ["wahlbereich:\(first.key)"] }
             await loadDashboard()
         } catch { self.error = error.localizedDescription }
     }
 
     private func start() async {
-        guard let selectedArea else { return }
+        guard !selectedAreas.isEmpty, !isStarting else { return }
+        isStarting = true
+        defer { isStarting = false }
         do {
             let response: QuizRound = try await model.api.get(
                 "/api/quiz/round",
-                query: [.init(name: "areas", value: selectedArea), .init(name: "n", value: "10")]
+                query: [
+                    .init(name: "areas", value: selectedAreas.sorted().joined(separator: ",")),
+                    .init(name: "categories", value: selectedCategories.sorted().joined(separator: ",")),
+                    .init(name: "n", value: "10"),
+                ]
             )
+            guard !response.questions.isEmpty else {
+                error = "Für diese Auswahl gibt es gerade keine offenen Fragen. Probiere ein weiteres Gebiet oder eine andere Kategorie."
+                return
+            }
+            error = nil
             round = response.questions
             index = 0
             mode = .normal
         } catch { self.error = error.localizedDescription }
-    }
-
-    private func selectedAreaLabel(_ areas: QuizAreas) -> String {
-        guard let selectedArea else { return "Gebiet wählen" }
-        if selectedArea.hasPrefix("wahlbereich:") {
-            let key = String(selectedArea.dropFirst("wahlbereich:".count))
-            return areas.wahlbereiche.first(where: { $0.key == key })?.label ?? "Wahlbereich \(key)"
-        }
-        let key = String(selectedArea.dropFirst("stadtteil:".count))
-        return areas.stadtteile.first(where: { $0.key == key })?.label ?? key
     }
 
     private func submitAnswer(question: QuizQuestion, selected: Int) async {
@@ -987,102 +1215,146 @@ private struct QuizModeButton: View {
     }
 }
 
+private struct QuizChoiceChip: View {
+    let title: String
+    let detail: String?
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: selected ? "checkmark" : "plus")
+                    .font(.system(size: 10, weight: .bold))
+                Text(title)
+                    .lineLimit(1)
+                if let detail {
+                    Text(detail)
+                        .font(RatsFont.mono(9))
+                        .opacity(0.72)
+                }
+            }
+            .font(RatsFont.body(12, weight: .semibold))
+            .foregroundStyle(selected ? Color.white : RatsColor.text)
+            .padding(.horizontal, 11)
+            .frame(minHeight: 34)
+            .background(selected ? RatsColor.primary : RatsColor.stage)
+            .overlay(Capsule().stroke(selected ? RatsColor.primary : RatsColor.border))
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+private struct QuizFlowLayout: Layout {
+    let spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 0
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > width {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return CGSize(width: width, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            view.place(at: CGPoint(x: x, y: y), anchor: .topLeading, proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+    }
+}
+
 private struct OwnQuizEditor: View {
     let model: AppModel
     let onChange: () async -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var questions: [OwnQuizQuestion] = []
+    @State private var areas: QuizAreas?
+    @State private var showForm = false
+    @State private var editingID: Int?
     @State private var question = ""
-    @State private var answers = ["", "", "", ""]
+    @State private var answers = ["", ""]
     @State private var correctIndex = 0
+    @State private var category = "geschichte"
+    @State private var stadtteil = ""
     @State private var explanation = ""
+    @State private var answerValue = ""
+    @State private var unit = ""
+    @State private var rangeManual = false
+    @State private var rangeMin = ""
+    @State private var rangeMax = ""
     @State private var isSaving = false
     @State private var error: String?
+    @State private var pendingDelete: OwnQuizQuestion?
+
+    private let categories = ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                RatsSheetHeader("Eigene Fragen", trailingTitle: "Fertig", trailingAction: { dismiss() })
+                RatsSheetHeader("Eigene Karten", trailingTitle: "Fertig", trailingAction: { dismiss() })
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                     RatsModalIntro(
                         kicker: "Dein Lernbereich",
-                        title: "Eigene Fragen",
-                        message: "Baue dir ein persönliches Quiz. Markiere direkt die richtige Antwort.",
-                        symbol: "brain.head.profile"
+                        title: "Eigene Karten",
+                        message: "Baue dein persönliches Oldenburg-Quiz – mit Auswahlfragen oder Zahlen zum Schätzen.",
+                        symbol: "rectangle.stack.badge.plus"
                     )
 
-                    RatsSectionPanel("Neue Frage", detail: "Mindestens zwei Antworten ausfüllen und eine davon als richtig markieren.", symbol: "plus.bubble") {
-                        RatsLabeledField(label: "Frage") {
-                            TextField("Was möchtest du üben?", text: $question, axis: .vertical)
-                                .lineLimit(2...5)
-                                .textFieldStyle(.plain)
-                                .padding(.vertical, 9)
-                        }
-                        ForEach(answers.indices, id: \.self) { index in
-                            RatsLabeledField(
-                                label: "Antwort \(index + 1)",
-                                hint: correctIndex == index ? "richtig" : "antippen zum Markieren"
-                            ) {
-                                HStack(spacing: 10) {
-                                    Button {
-                                        correctIndex = index
-                                    } label: {
-                                        Image(systemName: correctIndex == index ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 20))
-                                            .foregroundStyle(correctIndex == index ? RatsColor.success : RatsColor.muted)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .accessibilityLabel("Antwort \(index + 1) als richtig markieren")
-                                    TextField("Antwort eingeben", text: $answers[index])
-                                        .textFieldStyle(.plain)
-                                }
-                            }
-                        }
-                        RatsLabeledField(label: "Erklärung", hint: "optional") {
-                            TextField("Warum ist diese Antwort richtig?", text: $explanation, axis: .vertical)
-                                .lineLimit(2...5)
-                                .textFieldStyle(.plain)
-                                .padding(.vertical, 9)
-                        }
-                        Button { Task { await save() } } label: {
-                            Label(isSaving ? "Speichert …" : "Frage speichern", systemImage: "tray.and.arrow.down")
-                                .frame(maxWidth: .infinity)
+                    HStack(spacing: 10) {
+                        Button { beginNew() } label: {
+                            Label("Neue Karte", systemImage: "plus")
                         }
                         .buttonStyle(PrimaryButtonStyle())
-                        .disabled(isSaving || question.trimmingCharacters(in: .whitespacesAndNewlines).count < 5 || validAnswers.count < 2)
-                        .opacity(isSaving || question.trimmingCharacters(in: .whitespacesAndNewlines).count < 5 || validAnswers.count < 2 ? 0.5 : 1)
+                        if !questions.isEmpty {
+                            Text("\(questions.count) gespeichert")
+                                .font(RatsFont.mono(10))
+                                .foregroundStyle(RatsColor.muted)
+                        }
                     }
 
-                    MonoKicker("Gespeichert", trailing: "\(questions.count)")
+                    if showForm {
+                        editorPanel
+                    }
+
+                    MonoKicker("Deine Karten", trailing: "\(questions.count)")
                     if questions.isEmpty {
                         RatsEmptyState(
-                            title: "Noch keine eigenen Fragen",
-                            message: "Deine erste selbst erstellte Frage erscheint nach dem Speichern hier.",
-                            symbol: "questionmark.bubble"
+                            title: "Noch keine eigenen Karten",
+                            message: "Lege eine Auswahl- oder Schätzfrage an. Deine Karten sind nur in deinem Konto sichtbar.",
+                            symbol: "rectangle.stack.badge.plus"
                         )
                     }
-                    ForEach(Array(questions.enumerated()), id: \.element.id) { index, entry in
-                        HStack(alignment: .top, spacing: 10) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(entry.question).font(RatsFont.body(14, weight: .semibold))
-                                Text("\(entry.practiced)× geübt · \(entry.correctCount)× richtig")
-                                    .font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            Button(role: .destructive) {
-                                Task { await delete(IndexSet(integer: index)) }
-                            } label: {
-                                Image(systemName: "trash")
-                                    .frame(width: 32, height: 32)
-                            }
-                            .accessibilityLabel("Frage löschen")
-                        }
-                        .ratsCard()
+                    ForEach(questions) { entry in
+                        ownQuestionCard(entry)
                     }
                     if let error { ErrorCard(message: error) { Task { await load() } } }
                     }
-                    .frame(maxWidth: 680, alignment: .leading)
+                    .frame(maxWidth: 760, alignment: .leading)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 22)
                 }
@@ -1090,17 +1362,371 @@ private struct OwnQuizEditor: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .task { await load() }
+            .confirmationDialog(
+                "Karte löschen?",
+                isPresented: Binding(
+                    get: { pendingDelete != nil },
+                    set: { if !$0 { pendingDelete = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Karte löschen", role: .destructive) {
+                    if let pendingDelete { Task { await delete(pendingDelete) } }
+                }
+                Button("Abbrechen", role: .cancel) { pendingDelete = nil }
+            } message: {
+                Text("Die Karte wird dauerhaft aus deinem persönlichen Quiz entfernt.")
+            }
         }
+    }
+
+    private var editorPanel: some View {
+        RatsSectionPanel(
+            editingID == nil ? "Neue Karte" : "Karte bearbeiten",
+            detail: category == "schaetzen"
+                ? "Lege eine Zahl und einen sinnvollen Ratebereich fest."
+                : "Fülle zwei bis vier Antworten aus und markiere die richtige.",
+            symbol: editingID == nil ? "plus.bubble" : "pencil.line"
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                RatsLabeledField(label: "Frage", hint: "mindestens 5 Zeichen") {
+                    TextField("Wie hieß der Hafenkran …?", text: $question, axis: .vertical)
+                        .lineLimit(2...5)
+                        .textFieldStyle(.plain)
+                        .padding(.vertical, 9)
+                }
+
+                RatsLabeledField(label: "Kategorie") {
+                    Picker("Kategorie", selection: $category) {
+                        ForEach(categories, id: \.self) { value in
+                            Text(quizCategoryLabel(value)).tag(value)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(RatsColor.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if category == "schaetzen" {
+                    estimateFields
+                } else {
+                    answerFields
+                }
+
+                RatsLabeledField(label: "Ort", hint: "optional") {
+                    Picker("Ort", selection: $stadtteil) {
+                        Text("Stadtweit").tag("")
+                        ForEach(areas?.stadtteile ?? []) { place in
+                            Text(place.label ?? place.key).tag(place.key)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(RatsColor.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                RatsLabeledField(label: "Erklärung", hint: "erscheint nach der Antwort") {
+                    TextField("Warum ist diese Antwort richtig?", text: $explanation, axis: .vertical)
+                        .lineLimit(2...5)
+                        .textFieldStyle(.plain)
+                        .padding(.vertical, 9)
+                }
+
+                HStack(spacing: 10) {
+                    Button("Abbrechen") { cancelEditing() }
+                        .buttonStyle(SecondaryButtonStyle())
+                    Button { Task { await save() } } label: {
+                        Label(isSaving ? "Speichert …" : editingID == nil ? "Karte speichern" : "Änderungen speichern", systemImage: "tray.and.arrow.down")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(isSaving || !isValid)
+                    .opacity(isSaving || !isValid ? 0.5 : 1)
+                }
+            }
+        }
+    }
+
+    private var answerFields: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Antworten")
+                    .font(RatsFont.body(12, weight: .semibold))
+                Spacer()
+                Text("richtige Antwort markieren")
+                    .font(RatsFont.body(10))
+                    .foregroundStyle(RatsColor.muted)
+            }
+            ForEach(answers.indices, id: \.self) { index in
+                HStack(spacing: 8) {
+                    Button { correctIndex = index } label: {
+                        Image(systemName: correctIndex == index ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 20))
+                            .foregroundStyle(correctIndex == index ? RatsColor.success : RatsColor.muted)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Antwort \(index + 1) als richtig markieren")
+                    TextField("Antwort \(index + 1)", text: answerBinding(index))
+                        .textFieldStyle(.plain)
+                    if answers.count > 2 {
+                        Button { removeAnswer(at: index) } label: {
+                            Image(systemName: "minus.circle")
+                                .foregroundStyle(RatsColor.muted)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Antwort \(index + 1) entfernen")
+                    }
+                }
+                .font(RatsFont.body(15))
+                .padding(.horizontal, 12)
+                .frame(minHeight: 46)
+                .background(correctIndex == index ? RatsColor.successTint : RatsColor.stage)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(correctIndex == index ? RatsColor.success.opacity(0.45) : RatsColor.border)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            if answers.count < 4 {
+                Button { answers.append("") } label: {
+                    Label("Antwort hinzufügen", systemImage: "plus")
+                }
+                .font(RatsFont.body(12, weight: .semibold))
+                .foregroundStyle(RatsColor.primary)
+            }
+        }
+    }
+
+    private var estimateFields: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                RatsLabeledField(label: "Richtige Zahl") {
+                    TextField("172000", text: $answerValue)
+                        .keyboardType(.decimalPad)
+                        .textFieldStyle(.plain)
+                }
+                RatsLabeledField(label: "Einheit", hint: "optional") {
+                    TextField("Einwohner", text: $unit)
+                        .textFieldStyle(.plain)
+                }
+            }
+            Toggle(isOn: $rangeManual.animation(.easeInOut(duration: 0.2))) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ratebereich selbst festlegen")
+                        .font(RatsFont.body(13, weight: .semibold))
+                    Text(rangeManual ? "Die richtige Zahl muss zwischen beiden Grenzen liegen." : autoRangeDescription)
+                        .font(RatsFont.body(10))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+            }
+            .tint(RatsColor.primary)
+            if rangeManual {
+                HStack(alignment: .top, spacing: 10) {
+                    RatsLabeledField(label: "Von") {
+                        TextField("0", text: $rangeMin)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(.plain)
+                    }
+                    RatsLabeledField(label: "Bis") {
+                        TextField("350000", text: $rangeMax)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(13)
+        .background(RatsColor.primary.opacity(0.045))
+        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(RatsColor.primary.opacity(0.16)))
+        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+    }
+
+    private func ownQuestionCard(_ entry: OwnQuizQuestion) -> some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(entry.question)
+                        .font(RatsFont.body(15, weight: .semibold))
+                    QuizFlowLayout(spacing: 6) {
+                        Pill(quizCategoryLabel(entry.category), symbol: entry.qtype == "estimate" ? "slider.horizontal.3" : "checkmark.circle")
+                        if let place = entry.stadtteil { Pill(place, symbol: "mappin") }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 2) {
+                    Button { beginEdit(entry) } label: {
+                        Image(systemName: "pencil")
+                            .frame(width: 34, height: 34)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(RatsColor.primary)
+                    .accessibilityLabel("Karte bearbeiten")
+                    Button { pendingDelete = entry } label: {
+                        Image(systemName: "trash")
+                            .frame(width: 34, height: 34)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(RatsColor.danger)
+                    .accessibilityLabel("Karte löschen")
+                }
+            }
+            HStack(spacing: 7) {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                Text(practiceLabel(entry))
+            }
+            .font(RatsFont.body(11))
+            .foregroundStyle(RatsColor.secondary)
+        }
+        .ratsCard()
+    }
+
+    private func practiceLabel(_ entry: OwnQuizQuestion) -> String {
+        guard entry.practiced > 0 else { return "Noch nie geübt" }
+        let percentage = Int((Double(entry.correctCount) / Double(entry.practiced) * 100).rounded())
+        return "\(entry.practiced)× geübt · \(percentage) % richtig"
     }
 
     private var validAnswers: [String] {
         answers.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
     }
 
+    private var parsedAnswerValue: Double? { parseNumber(answerValue) }
+    private var parsedRangeMin: Double? { parseNumber(rangeMin) }
+    private var parsedRangeMax: Double? { parseNumber(rangeMax) }
+
+    private var isValid: Bool {
+        guard question.trimmingCharacters(in: .whitespacesAndNewlines).count >= 5 else { return false }
+        if category == "schaetzen" {
+            guard let value = parsedAnswerValue else { return false }
+            if rangeManual {
+                guard let lower = parsedRangeMin, let upper = parsedRangeMax else { return false }
+                return upper > lower && lower <= value && value <= upper
+            }
+            return true
+        }
+        return validAnswers.count >= 2 && answers.indices.contains(correctIndex)
+            && !answers[correctIndex].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var autoRangeDescription: String {
+        guard let value = parsedAnswerValue else { return "Ratslotse berechnet passende Grenzen aus der Zahl." }
+        let range = automaticRange(for: value, unit: unit)
+        return "Automatisch: \(range.lower.formatted()) bis \(range.upper.formatted()) \(unit)"
+    }
+
+    private func answerBinding(_ index: Int) -> Binding<String> {
+        Binding(
+            get: { answers.indices.contains(index) ? answers[index] : "" },
+            set: { if answers.indices.contains(index) { answers[index] = $0 } }
+        )
+    }
+
+    private func removeAnswer(at index: Int) {
+        guard answers.count > 2, answers.indices.contains(index) else { return }
+        answers.remove(at: index)
+        if correctIndex == index { correctIndex = 0 }
+        else if correctIndex > index { correctIndex -= 1 }
+    }
+
+    private func beginNew() {
+        editingID = nil
+        question = ""
+        answers = ["", ""]
+        correctIndex = 0
+        category = "geschichte"
+        stadtteil = ""
+        explanation = ""
+        answerValue = ""
+        unit = ""
+        rangeManual = false
+        rangeMin = ""
+        rangeMax = ""
+        error = nil
+        withAnimation(.easeInOut(duration: 0.2)) { showForm = true }
+    }
+
+    private func beginEdit(_ entry: OwnQuizQuestion) {
+        editingID = entry.id
+        question = entry.question
+        answers = entry.options.isEmpty ? ["", ""] : entry.options
+        while answers.count < 2 { answers.append("") }
+        correctIndex = min(entry.correctIndex, answers.count - 1)
+        category = entry.category
+        stadtteil = entry.stadtteil ?? ""
+        explanation = entry.explanation ?? ""
+        answerValue = entry.answerValue.map { String($0) } ?? ""
+        unit = entry.unit ?? ""
+        rangeManual = entry.qtype == "estimate" && entry.rangeMin != nil && entry.rangeMax != nil
+        rangeMin = entry.rangeMin.map { String($0) } ?? ""
+        rangeMax = entry.rangeMax.map { String($0) } ?? ""
+        error = nil
+        withAnimation(.easeInOut(duration: 0.2)) { showForm = true }
+    }
+
+    private func cancelEditing() {
+        withAnimation(.easeInOut(duration: 0.2)) { showForm = false }
+        editingID = nil
+        error = nil
+    }
+
     private func load() async {
+#if DEBUG
+        if let debugMode = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUIZ_OWN"] {
+            areas = QuizAreas(
+                wahlbereiche: [],
+                stadtteile: ["Bloherfelde", "Eversten", "Kreyenbrück", "Nadorst", "Osternburg", "Zentrum"].enumerated().map { offset, name in
+                    QuizArea(key: name, label: name, questions: 8 + offset, points: offset, stadtteile: nil, stadtteil: nil)
+                },
+                themen: [],
+                categories: categories
+            )
+            questions = [
+                OwnQuizQuestion(
+                    id: 1,
+                    question: "Welcher Platz liegt direkt vor dem Oldenburger Rathaus?",
+                    options: ["Schlossplatz", "Marktplatz", "Pferdemarkt"],
+                    correctIndex: 1,
+                    stadtteil: "Zentrum",
+                    category: "orte",
+                    explanation: "Der Marktplatz bildet gemeinsam mit Rathaus und Lambertikirche das historische Zentrum.",
+                    qtype: "mc",
+                    answerValue: nil,
+                    unit: nil,
+                    rangeMin: nil,
+                    rangeMax: nil,
+                    practiced: 7,
+                    correctCount: 5
+                ),
+                OwnQuizQuestion(
+                    id: 2,
+                    question: "Wie viele Einwohnerinnen und Einwohner hat Oldenburg ungefähr?",
+                    options: [],
+                    correctIndex: 0,
+                    stadtteil: nil,
+                    category: "schaetzen",
+                    explanation: nil,
+                    qtype: "estimate",
+                    answerValue: 176_000,
+                    unit: "Einwohner",
+                    rangeMin: 0,
+                    rangeMax: 350_000,
+                    practiced: 3,
+                    correctCount: 2
+                ),
+            ]
+            if debugMode == "new" { beginNew() }
+            if debugMode == "edit", let first = questions.first { beginEdit(first) }
+            if debugMode == "estimate", let estimate = questions.last { beginEdit(estimate) }
+            return
+        }
+#endif
         do {
-            let response: OwnQuizQuestions = try await model.api.get("/api/quiz/own")
-            questions = response.questions
+            async let ownRequest: OwnQuizQuestions = model.api.get("/api/quiz/own")
+            async let areaRequest: QuizAreas = model.api.get("/api/quiz/areas")
+            let (ownResponse, areaResponse) = try await (ownRequest, areaRequest)
+            questions = ownResponse.questions
+            areas = areaResponse
+            if questions.isEmpty && editingID == nil { showForm = true }
         } catch { self.error = error.localizedDescription }
     }
 
@@ -1112,43 +1738,74 @@ private struct OwnQuizEditor: View {
             let stadtteil: String?
             let category: String
             let explanation: String?
+            let answer_value: Double?
+            let unit: String?
+            let range_min: Double?
+            let range_max: Double?
         }
-        let options = validAnswers
-        let chosen = answers[correctIndex].trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !chosen.isEmpty else {
-            error = "Bitte markiere eine ausgefüllte Antwort als richtig."
-            return
+
+        guard isValid else { return }
+        let isEstimate = category == "schaetzen"
+        let options = isEstimate ? [] : validAnswers
+        let mappedCorrectIndex: Int
+        if isEstimate {
+            mappedCorrectIndex = 0
+        } else {
+            mappedCorrectIndex = answers[..<correctIndex]
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
         }
-        let mappedCorrectIndex = answers[..<correctIndex]
-            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
+        let autoRange = parsedAnswerValue.map { automaticRange(for: $0, unit: unit) }
+        let body = Body(
+            question: question.trimmingCharacters(in: .whitespacesAndNewlines),
+            options: options,
+            correct_index: mappedCorrectIndex,
+            stadtteil: stadtteil.isEmpty ? nil : stadtteil,
+            category: category,
+            explanation: explanation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : explanation.trimmingCharacters(in: .whitespacesAndNewlines),
+            answer_value: isEstimate ? parsedAnswerValue : nil,
+            unit: isEstimate && !unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? unit.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
+            range_min: isEstimate ? (rangeManual ? parsedRangeMin : autoRange?.lower) : nil,
+            range_max: isEstimate ? (rangeManual ? parsedRangeMax : autoRange?.upper) : nil
+        )
+
         isSaving = true
         defer { isSaving = false }
         do {
-            try await model.api.sendVoid(
-                "/api/quiz/own",
-                body: Body(
-                    question: question.trimmingCharacters(in: .whitespacesAndNewlines),
-                    options: options,
-                    correct_index: mappedCorrectIndex,
-                    stadtteil: nil,
-                    category: "ratspolitik",
-                    explanation: explanation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : explanation
-                )
-            )
-            question = ""
-            answers = ["", "", "", ""]
-            correctIndex = 0
-            explanation = ""
+            if let editingID {
+                try await model.api.sendVoid("/api/quiz/own/\(editingID)", method: .put, body: body)
+            } else {
+                try await model.api.sendVoid("/api/quiz/own", body: body)
+            }
+            cancelEditing()
             await load()
             await onChange()
         } catch { self.error = error.localizedDescription }
     }
 
-    private func delete(_ offsets: IndexSet) async {
-        for index in offsets {
-            try? await model.api.sendVoid("/api/quiz/own/\(questions[index].id)", method: .delete)
+    private func delete(_ entry: OwnQuizQuestion) async {
+        pendingDelete = nil
+        do {
+            try await model.api.sendVoid("/api/quiz/own/\(entry.id)", method: .delete)
+            if editingID == entry.id { cancelEditing() }
+            await load()
+            await onChange()
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func parseNumber(_ value: String) -> Double? {
+        Double(value.replacingOccurrences(of: ",", with: "."))
+    }
+
+    private func automaticRange(for value: Double, unit: String) -> (lower: Double, upper: Double) {
+        let normalizedUnit = unit.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if ["jahr", "jahre"].contains(normalizedUnit), abs(value) >= 100 {
+            let rounded = value.rounded()
+            return (max(0, rounded - 50), rounded + 50)
         }
-        await load()
-        await onChange()
+        let rawUpper = max(abs(value) * 2, 1)
+        let exponent = max(0, floor(log10(rawUpper)) - 1)
+        let step = pow(10, exponent)
+        let upper = max((rawUpper / step).rounded() * step, abs(value) + step)
+        return (0, upper)
     }
 }
