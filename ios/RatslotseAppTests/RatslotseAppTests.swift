@@ -168,6 +168,16 @@ import Testing
     #expect(!markdown.contains("999"))
 }
 
+@Test func decisionSummaryUsesTheSharedBackendImportanceScore() throws {
+    let data = Data(#"{"id":17,"title":"Haushaltsplan 2026","importance":82}"#.utf8)
+    let decision = try JSONDecoder().decode(DecisionSummary.self, from: data)
+    #expect(decision.importance == 82)
+
+    let encoded = try JSONEncoder().encode(decision)
+    let roundTrip = try JSONDecoder().decode(DecisionSummary.self, from: encoded)
+    #expect(roundTrip.importance == 82)
+}
+
 @Test func personAffiliationChipsFollowDesktopDisambiguationRules() {
     let ulf = QuestionPerson(
         slug: "ulf-prange",

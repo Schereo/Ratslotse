@@ -289,6 +289,15 @@ struct CouncilBrowserView: View {
         isLoading = true
         error = nil
         defer { isLoading = false }
+#if DEBUG
+        if model.councilSection == .decisions,
+           ratsDebugValue("RATSLOTSE_DEBUG_COUNCIL_CARDS") == "1",
+           let fixture = Self.debugDecisionPage() {
+            decisions = fixture.decisions
+            total = fixture.total
+            return
+        }
+#endif
         do {
             if model.councilSection == .decisions {
                 let page: DecisionPage = try await model.api.get(
@@ -361,6 +370,56 @@ struct CouncilBrowserView: View {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
+
+#if DEBUG
+    private static func debugDecisionPage() -> DecisionPage? {
+        let raw = #"""
+        {
+          "total": 3,
+          "decisions": [
+            {
+              "id": 1,
+              "title": "Haushaltssatzung und Haushaltsplan 2026 (Kernhaushalt) mit der mittelfristigen Ergebnis- und Finanzplanung und dem Investitionsprogramm 2027–2029",
+              "summary": "Haushaltssatzung und Haushaltsplan 2026 mit mittelfristiger Planung und Investitionsprogramm beschlossen.",
+              "committee": "Rat der Stadt",
+              "session_date": "2026-02-09",
+              "item_number": "6.5",
+              "outcome": "angenommen",
+              "vote": "mehrheitlich",
+              "gegenstimmen": 20,
+              "amount_eur": 12400000,
+              "importance": 82,
+              "factions": []
+            },
+            {
+              "id": 2,
+              "title": "Neue sichere Querung an der Cloppenburger Straße",
+              "summary": "Die Planung für eine sicherere Querung wird weitergeführt und mit dem Radverkehr abgestimmt.",
+              "committee": "Verkehrsausschuss",
+              "session_date": "2026-09-03",
+              "item_number": "7",
+              "outcome": "angenommen",
+              "vote": "einstimmig",
+              "importance": 58,
+              "factions": ["Grüne", "SPD"]
+            },
+            {
+              "id": 3,
+              "title": "Bebauungsplan 851 – Prüfung der Abwägungsvorschläge",
+              "summary": "Der Satzungsbeschluss wird bis zur nächsten Beratung zurückgestellt.",
+              "committee": "Ausschuss für Stadtplanung und Bauen",
+              "session_date": "2026-08-31",
+              "item_number": "4",
+              "outcome": "vertagt",
+              "importance": 41,
+              "factions": []
+            }
+          ]
+        }
+        """#
+        return try? JSONDecoder().decode(DecisionPage.self, from: Data(raw.utf8))
+    }
+#endif
 }
 
 private struct CouncilFilterSheet: View {

@@ -972,54 +972,101 @@ struct DecisionRow: View {
     let decision: DecisionSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 7) {
-                if let outcome = decision.outcome { OutcomeBadge(outcome) }
-                if max(decision.interest ?? 0, decision.impact ?? 0) >= 75 {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 8) {
+                if let outcome = decision.outcome {
+                    DecisionOutcomeSignal(outcome: outcome)
+                }
+                if importanceScore >= 55, decision.kind != "subvote" {
                     Label("Wichtig", systemImage: "flame.fill")
-                        .font(RatsFont.body(11, weight: .semibold))
+                        .font(RatsFont.body(10.5, weight: .semibold))
                         .foregroundStyle(RatsColor.warning)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(RatsColor.warningTint)
-                        .clipShape(Capsule())
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(RatsColor.warning.opacity(importanceScore >= 70 ? 0.14 : 0.09))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(RatsColor.muted)
+                    .foregroundStyle(RatsColor.muted.opacity(0.7))
             }
+
+            if !metadata.isEmpty {
+                Text(metadata)
+                    .font(RatsFont.body(10.5, weight: .medium))
+                    .foregroundStyle(RatsColor.muted)
+                    .padding(.top, 5)
+            }
+
             Text(decision.title)
-                .font(RatsFont.body(16, weight: .semibold))
+                .font(RatsFont.body(15.5, weight: .semibold))
                 .foregroundStyle(RatsColor.text)
                 .multilineTextAlignment(.leading)
+                .lineSpacing(1)
+                .padding(.top, 9)
+
             if let summary = decision.summary, !summary.isEmpty {
                 Text(summary)
                     .font(RatsFont.body(13))
                     .foregroundStyle(RatsColor.secondary)
-                    .lineLimit(3)
+                    .lineLimit(2)
+                    .lineSpacing(2)
                     .multilineTextAlignment(.leading)
+                    .padding(.top, 5)
             }
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text([decision.committee, RatsDate.short(decision.sessionDate), decision.itemNumber]
-                    .compactMap { $0 }.joined(separator: " · "))
-                    .font(RatsFont.mono(10))
-                    .foregroundStyle(RatsColor.muted)
-                Spacer(minLength: 4)
-                if let amount = decision.amountEUR, amount >= 100_000 {
-                    Text(Self.amount(amount))
-                        .font(RatsFont.body(14, weight: .bold))
-                        .foregroundStyle(RatsColor.text)
+
+            if showsFooter {
+                HStack(alignment: .bottom, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        if !voteLine.isEmpty {
+                            Label(voteLine, systemImage: "checkmark.circle")
+                                .font(RatsFont.body(11))
+                                .foregroundStyle(RatsColor.secondary)
+                        }
+                        if !decision.factions.isEmpty {
+                            Text("Antrag: \(decision.factions.prefix(2).joined(separator: ", "))")
+                                .font(RatsFont.body(10.5, weight: .medium))
+                                .foregroundStyle(RatsColor.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+                    Spacer(minLength: 4)
+                    if let amount = decision.amountEUR,
+                       amount >= 100_000,
+                       decision.kind != "subvote" {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(Self.amount(amount))
+                                .font(RatsFont.body(14, weight: .bold))
+                                .foregroundStyle(RatsColor.text)
+                            Text("im Beschluss")
+                                .font(RatsFont.body(9, weight: .medium))
+                                .foregroundStyle(RatsColor.muted)
+                        }
+                    }
                 }
-            }
-            if decision.vote != nil || decision.noVotes != nil || decision.abstentions != nil {
-                Text(voteLine)
-                    .font(RatsFont.body(11))
-                    .foregroundStyle(RatsColor.secondary)
+                .padding(.top, 10)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+    }
+
+    private var importanceScore: Int {
+        decision.importance ?? max(decision.interest ?? 0, decision.impact ?? 0)
+    }
+
+    private var metadata: String {
+        let committee = decision.committee.map(shortDecisionCommittee)
+        let item = decision.itemNumber.map { "TOP \($0)" }
+        return [committee, RatsDate.short(decision.sessionDate), item]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+    }
+
+    private var showsFooter: Bool {
+        !voteLine.isEmpty || !decision.factions.isEmpty
+            || ((decision.amountEUR ?? 0) >= 100_000 && decision.kind != "subvote")
     }
 
     private var voteLine: String {
@@ -1032,10 +1079,55 @@ struct DecisionRow: View {
 
     private static func amount(_ value: Double) -> String {
         if value >= 1_000_000 {
-            return String(format: "%.1f Mio. €", value / 1_000_000).replacingOccurrences(of: ".", with: ",")
+            let number = String(format: "%.1f", value / 1_000_000)
+                .replacingOccurrences(of: ".", with: ",")
+            return "\(number) Mio. €"
         }
         return "\(Int(value / 1_000)) Tsd. €"
     }
+}
+
+private struct DecisionOutcomeSignal: View {
+    let outcome: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+                .accessibilityHidden(true)
+            Text(label)
+                .font(RatsFont.body(11, weight: .semibold))
+                .foregroundStyle(RatsColor.bodyText)
+        }
+    }
+
+    private var label: String {
+        switch outcome {
+        case "angenommen": "Angenommen"
+        case "abgelehnt": "Abgelehnt"
+        case "vertagt": "Vertagt"
+        case "zur_kenntnis": "Zur Kenntnis"
+        case "kein_beschluss": "Kein Beschluss"
+        default: outcome.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    private var color: Color {
+        switch outcome {
+        case "angenommen": RatsColor.success
+        case "abgelehnt": RatsColor.danger
+        case "vertagt": RatsColor.warning
+        case "zur_kenntnis": RatsColor.primary
+        default: RatsColor.muted
+        }
+    }
+}
+
+private func shortDecisionCommittee(_ name: String) -> String {
+    name
+        .replacingOccurrences(of: "Ausschuss für ", with: "")
+        .replacingOccurrences(of: "Rat der Stadt", with: "Rat")
 }
 
 struct ErrorCard: View {

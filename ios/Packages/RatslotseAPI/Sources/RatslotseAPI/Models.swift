@@ -131,13 +131,14 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
     public let latitude: Double?
     public let longitude: Double?
     public let amountEUR: Double?
+    public let importance: Int?
     public let interest: Int?
     public let interestReason: String?
     public let impact: Int?
     public let impactReason: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, summary, committee, outcome, kind, vote, factions, interest, impact
+        case id, title, summary, committee, outcome, kind, vote, factions, importance, interest, impact
         case simpleSummary = "simple_summary"
         case amountEUR = "amount_eur"
         case interestReason = "interest_reason"
@@ -176,6 +177,7 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         latitude = try values.decodeIfPresent(Double.self, forKey: .latitude)
         longitude = try values.decodeIfPresent(Double.self, forKey: .longitude)
         amountEUR = try values.decodeIfPresent(Double.self, forKey: .amountEUR)
+        importance = try values.decodeIfPresent(Int.self, forKey: .importance)
         interest = try values.decodeIfPresent(Int.self, forKey: .interest)
         interestReason = try values.decodeIfPresent(String.self, forKey: .interestReason)
         impact = try values.decodeIfPresent(Int.self, forKey: .impact)
@@ -203,6 +205,7 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         try values.encodeIfPresent(latitude, forKey: .latitude)
         try values.encodeIfPresent(longitude, forKey: .longitude)
         try values.encodeIfPresent(amountEUR, forKey: .amountEUR)
+        try values.encodeIfPresent(importance, forKey: .importance)
         try values.encodeIfPresent(interest, forKey: .interest)
         try values.encodeIfPresent(interestReason, forKey: .interestReason)
         try values.encodeIfPresent(impact, forKey: .impact)
