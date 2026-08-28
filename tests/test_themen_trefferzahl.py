@@ -62,6 +62,30 @@ def test_blatt_zaehlt_wie_die_karte(monkeypatch):
     assert r["matches_capped"] is True
 
 
+def test_schablone_meldet_sich_im_log(monkeypatch, caplog):
+    """Fällt die Beschreibung auf die Schablone zurück, muss das im Log stehen.
+
+    Vorher war der Weg stumm: ``_call_model`` fing jeden Fehler ab und gab
+    ``None`` zurück, die Nutzer:in bekam „Beschlüsse, Planungen und Maßnahmen …
+    rund um X" und von außen war nicht zu sehen, wie oft das passiert — man
+    konnte es nur hinterher an den gespeicherten Beschreibungen abzählen
+    (Tims Frage 28.08.2026).
+    """
+    import logging
+
+    def modell_weg(*a, **k):
+        raise RuntimeError("Zeitüberschreitung")
+
+    monkeypatch.setattr(topic_intel.prompts, "render", lambda *a, **k: "prompt")
+    monkeypatch.setattr(topic_intel.llm, "chat_complete", modell_weg)
+    with caplog.at_level(logging.WARNING, logger="council.topic_intel"):
+        assert topic_intel._call_model("Cäcilienbrücke", []) is None
+    meldungen = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    # Der Themen-Name gehört mit hinein, sonst lässt sich ein wiederkehrender
+    # Ausreißer im Log nicht von einem einmaligen Aussetzer unterscheiden.
+    assert any("Cäcilienbrücke" in m and "Schablone" in m for m in meldungen), meldungen
+
+
 def test_ohne_reranker_wird_keine_fremde_zahl_erfunden(monkeypatch):
     """Fällt der Cross-Encoder aus, zählen ersatzweise die Belege — aber nie
     eine Zahl aus einer zweiten, dauerhaft danebenliegenden Quelle: Der Deckel
