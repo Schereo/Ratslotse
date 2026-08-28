@@ -6,6 +6,8 @@ import SwiftUI
 struct TopicsView: View {
     let model: AppModel
     @State private var topics: [Topic] = []
+    @State private var suggestions: [TopicSuggestion] = []
+    @State private var addingSuggestions: Set<String> = []
     @State private var isPresentingEditor = false
     @State private var editing: Topic?
     @State private var error: String?
@@ -30,6 +32,38 @@ struct TopicsView: View {
                     }
                     .buttonStyle(PrimaryButtonStyle())
                     .tint(RatsColor.signal)
+                }
+
+                if !suggestions.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        MonoKicker("Gerade aktuell im Rat")
+                        Text("Mit einem Tipp übernehmen")
+                            .font(RatsFont.body(11))
+                            .foregroundStyle(RatsColor.secondary)
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: 150, maximum: 300), spacing: 8)],
+                            alignment: .leading,
+                            spacing: 8
+                        ) {
+                            ForEach(suggestions) { suggestion in
+                                TopicSuggestionButton(
+                                    suggestion: suggestion,
+                                    isWorking: addingSuggestions.contains(suggestion.name),
+                                    action: { add(suggestion) }
+                                )
+                            }
+                        }
+                        Text("Die Zahl zeigt, wie oft das Thema in den letzten zwölf Monaten erkannt wurde.")
+                            .font(RatsFont.body(10.5))
+                            .foregroundStyle(RatsColor.muted)
+                    }
+                    .padding(14)
+                    .background(RatsColor.primary.opacity(0.045))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 17, style: .continuous)
+                            .stroke(RatsColor.primary.opacity(0.12))
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
                 }
 
                 if topics.isEmpty && error == nil {
@@ -104,6 +138,15 @@ struct TopicsView: View {
         .refreshable { await load() }
         .task {
 #if DEBUG
+            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_TOPIC_SUGGESTIONS"] == "1" {
+                suggestions = [
+                    .init(name: "Untere Nadorster Straße", description: "Umbau und Verkehr an der Unteren Nadorster Straße", n: 14),
+                    .init(name: "Stadion Maastrichter Straße", description: "Planung und Finanzierung des Stadionneubaus", n: 9),
+                    .init(name: "Alte Fleiwa", description: "Entwicklung des früheren Fleiwa-Geländes", n: 7),
+                    .init(name: "Quartier am Krusenbusch", description: "Bauleitplanung am Krusenbusch", n: 5),
+                ]
+                return
+            }
             if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_TOPICS_EMPTY"] == "1" { return }
 #endif
             if topics.isEmpty { await load() }
@@ -127,10 +170,30 @@ struct TopicsView: View {
 
     private func load() async {
         do {
-            topics = try await model.api.get("/api/topics")
+            async let topicsRequest: [Topic] = model.api.get("/api/topics")
+            async let suggestionsRequest: TopicSuggestionsResponse? = try? await model.api.get("/api/topics/suggestions")
+            topics = try await topicsRequest
+            suggestions = await suggestionsRequest?.suggestions ?? []
             error = nil
             try? await model.api.sendVoid("/api/topics/uebersicht-gesehen")
         } catch { self.error = error.localizedDescription }
+    }
+
+    private func add(_ suggestion: TopicSuggestion) {
+        guard addingSuggestions.insert(suggestion.name).inserted else { return }
+        struct Body: Codable, Sendable { let name: String; let description: String }
+        Task {
+            defer { addingSuggestions.remove(suggestion.name) }
+            do {
+                let topic: Topic = try await model.api.send(
+                    "/api/topics",
+                    body: Body(name: suggestion.name, description: suggestion.description)
+                )
+                topics.append(topic)
+                suggestions.removeAll { $0.name == suggestion.name }
+                await model.refreshBadges()
+            } catch { self.error = error.localizedDescription }
+        }
     }
 
     private func remove(_ topic: Topic) {
@@ -152,6 +215,67 @@ struct TopicsView: View {
                 body: Body(decision_id: hit.id)
             )
         }
+    }
+}
+
+private struct TopicSuggestionsResponse: Decodable, Sendable {
+    let suggestions: [TopicSuggestion]
+}
+
+private struct TopicSuggestion: Decodable, Sendable, Identifiable {
+    var id: String { name }
+    let name: String
+    let description: String
+    let n: Int
+}
+
+private struct TopicSuggestionButton: View {
+    let suggestion: TopicSuggestion
+    let isWorking: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .top, spacing: 8) {
+                if isWorking {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(RatsColor.primary)
+                } else {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .bold))
+                        .frame(width: 22, height: 22)
+                        .background(RatsColor.primary.opacity(0.09))
+                        .clipShape(Circle())
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(suggestion.name)
+                        .font(RatsFont.body(12, weight: .semibold))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("\(suggestion.n)× im letzten Jahr")
+                        .font(RatsFont.mono(8.5, weight: .semibold))
+                        .foregroundStyle(RatsColor.muted)
+                }
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(RatsColor.primary)
+            .padding(10)
+            .frame(maxWidth: .infinity, minHeight: 68, alignment: .topLeading)
+            .background(RatsColor.card)
+            .overlay {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .stroke(RatsColor.primary.opacity(0.22))
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(isWorking)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var accessibilityText: String {
+        "\(suggestion.name) als Thema anlegen, \(suggestion.n) Erwähnungen im letzten Jahr"
     }
 }
 

@@ -70,6 +70,22 @@ private struct QuestionPeopleEnvelope: Decodable, Sendable {
     let personen: [QuestionPerson]
 }
 
+private struct QuestionExamplesEnvelope: Decodable, Sendable {
+    let sitzungen: [QuestionExampleSession]
+}
+
+private struct QuestionExampleSession: Decodable, Sendable {
+    let committee: String
+    let sessionDate: String
+    let topTitle: String?
+
+    enum CodingKeys: String, CodingKey {
+        case committee
+        case sessionDate = "session_date"
+        case topTitle = "top_titel"
+    }
+}
+
 struct QuestionsView: View {
     let model: AppModel
     @Environment(\.scenePhase) private var scenePhase
@@ -85,6 +101,7 @@ struct QuestionsView: View {
     @State private var isSavingConversationPreference = false
     @State private var conversationPreferenceError: String?
     @State private var personLexicon: [QuestionPerson] = []
+    @State private var questionExamples: [String] = Self.fallbackQuestionExamples
 
     private var isSending: Bool {
         streamTask != nil || turns.contains { $0.research?.status == "laeuft" }
@@ -145,6 +162,7 @@ struct QuestionsView: View {
         .task { await restoreCurrentResearch() }
         .task { await restoreActiveConversationIfNeeded() }
         .task { await loadPersonLexicon() }
+        .task { await loadQuestionExamples() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { reconnectRunningResearchIfNeeded() }
             else { researchStreamTask?.cancel(); researchStreamTask = nil }
@@ -224,6 +242,7 @@ struct QuestionsView: View {
                             } else {
                                 EmptyQuestionsView(
                                     usesCompactLayout: usesCompactWelcome,
+                                    examples: questionExamples,
                                     select: askUsingSelectedMode
                                 )
                             }
@@ -286,6 +305,45 @@ struct QuestionsView: View {
         }
         personLexicon = response.personen
     }
+
+    private func loadQuestionExamples() async {
+        guard let response: QuestionExamplesEnvelope = try? await model.api.get("/api/council/qa-beispiele"),
+              let latest = response.sitzungen.first
+        else { return }
+
+        var fresh = ["Was hat \(questionCommittee(latest.committee)) am \(questionDate(latest.sessionDate)) beschlossen?"]
+        if let title = latest.topTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
+            fresh.append("Was wurde zu „\(shortQuestionTopic(title))“ entschieden?")
+        }
+        let combined = fresh + Self.fallbackQuestionExamples.filter { !fresh.contains($0) }
+        questionExamples = Array(combined.prefix(4))
+    }
+
+    private func questionCommittee(_ raw: String) -> String {
+        let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.lowercased().contains("rat der stadt") || name.lowercased() == "rat" { return "der Rat" }
+        if name.hasPrefix("Ausschuss") { return "der \(name)" }
+        return "das Gremium \(name)"
+    }
+
+    private func questionDate(_ iso: String) -> String {
+        RatsDate.short(iso) ?? iso
+    }
+
+    private func shortQuestionTopic(_ title: String) -> String {
+        let cleaned = title
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard cleaned.count > 72 else { return cleaned }
+        return String(cleaned.prefix(69)).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
+    }
+
+    private static let fallbackQuestionExamples = [
+        "Was hat der Rat zuletzt zum Radverkehr beschlossen?",
+        "Welche Bauvorhaben sind gerade umstritten?",
+        "Wofür gibt Oldenburg dieses Jahr besonders viel Geld aus?",
+        "Welche Entscheidungen betreffen Familien in Oldenburg?",
+    ]
 
     private func submitOrStop() {
         if streamTask != nil {
@@ -815,12 +873,8 @@ struct QuestionsView: View {
 
 private struct EmptyQuestionsView: View {
     let usesCompactLayout: Bool
+    let examples: [String]
     let select: (String) -> Void
-    private let examples = [
-        "Was hat der Rat zuletzt zum Radverkehr beschlossen?",
-        "Welche Bauvorhaben sind gerade umstritten?",
-        "Wofür gibt Oldenburg dieses Jahr besonders viel Geld aus?",
-    ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: usesCompactLayout ? 12 : 18) {
