@@ -62,6 +62,30 @@ def test_blatt_zaehlt_wie_die_karte(monkeypatch):
     assert r["matches_capped"] is True
 
 
+def test_schablone_meldet_sich_im_log(monkeypatch, caplog):
+    """Fällt die Beschreibung auf die Schablone zurück, muss das im Log stehen.
+
+    Vorher war der Weg stumm: ``_call_model`` fing jeden Fehler ab und gab
+    ``None`` zurück, die Nutzer:in bekam „Beschlüsse, Planungen und Maßnahmen …
+    rund um X" und von außen war nicht zu sehen, wie oft das passiert — man
+    konnte es nur hinterher an den gespeicherten Beschreibungen abzählen
+    (Tims Frage 28.08.2026).
+    """
+    import logging
+
+    def modell_weg(*a, **k):
+        raise RuntimeError("Zeitüberschreitung")
+
+    monkeypatch.setattr(topic_intel.prompts, "render", lambda *a, **k: "prompt")
+    monkeypatch.setattr(topic_intel.llm, "chat_complete", modell_weg)
+    with caplog.at_level(logging.WARNING, logger="council.topic_intel"):
+        assert topic_intel._call_model("Cäcilienbrücke", []) is None
+    meldungen = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    # Der Themen-Name gehört mit hinein, sonst lässt sich ein wiederkehrender
+    # Ausreißer im Log nicht von einem einmaligen Aussetzer unterscheiden.
+    assert any("Cäcilienbrücke" in m and "Schablone" in m for m in meldungen), meldungen
+
+
 def test_ohne_reranker_wird_keine_fremde_zahl_erfunden(monkeypatch):
     """Fällt der Cross-Encoder aus, zählen ersatzweise die Belege — aber nie
     eine Zahl aus einer zweiten, dauerhaft danebenliegenden Quelle: Der Deckel
@@ -111,7 +135,7 @@ def test_alle_ansehen_schaltet_die_kategorie_auf_alle():
     Quer über zwei Sprachen geprüft, weil genau hier die Zusage der Karte
     eingelöst wird und ein pytest-Lauf billiger ist als ein iPad-Befund.
     """
-    karte = _lies("app/(app)/topics/page.tsx")
+    karte = _lies("components/themen-karte.tsx")
     assert "/council?tab=decisions&cat=all&topic=" in karte
 
 
@@ -153,19 +177,19 @@ def test_karte_trennt_die_beiden_nullen():
     keine Treffer — wir melden uns, sobald der Rat dazu entscheidet" stand auch
     unter einem Thema, das schlicht noch nicht gerechnet worden war
     („Schulbegleitung", 34 Beschlüsse seit 2018 — Tim, 28.08.2026)."""
-    karte = _lies("app/(app)/topics/page.tsx")
-    assert "t.matched === false" in karte
+    karte = _lies("components/themen-karte.tsx")
+    # Beide Zustände hängen an `matched` — die Karte behauptet also nur dort
+    # etwas über den Rat, wo wirklich gerechnet wurde.
+    assert "topic.matched" in karte
     assert "Treffer werden noch gezählt" in karte
-    # Über den Rat spricht die Karte nur noch dort, wo wirklich gerechnet wurde.
-    assert ">Der Rat hat dazu bisher nichts entschieden" in karte
-    # Der alte Satz behauptete das auch ohne Rechnung. Gemeint ist der
-    # gerenderte Text, nicht die Erinnerung daran im Kommentar daneben —
-    # deshalb am „>" des JSX-Endtags festgemacht.
-    assert ">Noch keine Treffer" not in karte
+    assert "Noch nichts gefunden" in karte
+    # Der alte Satz behauptete beides zugleich und war bei einem frisch
+    # angelegten Thema schlicht falsch.
+    assert "Noch keine Treffer" not in karte
 
 
 @pytest.mark.parametrize("datei", [
-    "app/(app)/topics/page.tsx",
+    "components/themen-karte.tsx",
     "app/(app)/council/view.tsx",
 ])
 def test_keine_glatte_endzahl_ohne_deckel_pruefung(datei):

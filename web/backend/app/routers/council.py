@@ -54,7 +54,30 @@ def _vorlage_url(kvonr: int) -> str:
 
 @router.get("/committees")
 def committees(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
-    return {"committees": store.get_all_committee_names()}
+    """Gremienliste — plus ``details`` für die Ausschuss-Abos.
+
+    ``committees`` bleibt die reine Namensliste: Themen-Seite und
+    Einrichtungs-Assistent lesen sie als String-Liste, ein Umbau auf Objekte
+    bräche beide. Die Zusatzangaben stehen deshalb daneben in ``details``, in
+    derselben Reihenfolge.
+
+    Genau zwei zusätzliche Abfragen für die ganze Liste (nicht eine je
+    Gremium) — die Seite lädt das bei jedem Aufruf.
+    """
+    names = store.get_all_committee_names()
+    naechste = store.naechste_sitzung_je_gremium()
+    seit_jahresbeginn = date(date.today().year, 1, 1).isoformat()
+    beschluesse = store.beschlusszahl_je_gremium(seit_jahresbeginn)
+    details = [
+        {
+            "name": name,
+            "next_date": naechste.get(name, {}).get("session_date"),
+            "next_time": naechste.get(name, {}).get("session_time"),
+            "decisions_year": beschluesse.get(name, 0),
+        }
+        for name in names
+    ]
+    return {"committees": names, "details": details}
 
 
 @router.get("/fields")

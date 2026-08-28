@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import re
 import logging
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
@@ -43,7 +44,7 @@ from council.store import CouncilStore
 
 from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
-from ..schemas import SubscriptionIn, TopicDescribeIn, TopicIn, TopicOut
+from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, TopicOut, TopicSeenIn
 
 logger = logging.getLogger("nwz.web.topics")
 
@@ -139,11 +140,17 @@ def list_topics(
     # die Karte bisher scheiterte: „schon gerechnet?" — und trennt damit
     # „der Rat hat dazu nichts entschieden" von „die Zahl steht noch aus".
     capped = store.topic_match_caps(owner_id)
+    # Welche Treffer ungelesen sind, nicht nur wie viele: Die Karte setzt seit
+    # dem Umbau vom 28.08.2026 einen Punkt vor jede neue Zeile. Beides stammt
+    # aus derselben Abfrage, damit Abzeichen und Punkte nie auseinandergehen.
+    unseen_ids = store.unseen_hit_ids(owner_id)
+    stichtag = (date.today() - timedelta(days=30)).isoformat()
     out = []
     for t in topics:
         hits = sorted((by_id[d] for d in cand.get(t.id, []) if d in by_id),
                       key=lambda d: d.get("session_date") or "", reverse=True)
         last = hits[0] if hits else None
+        neu = unseen_ids.get(t.id, set())
         out.append(
             TopicOut(
                 id=t.id,
@@ -157,6 +164,21 @@ def list_topics(
                 last_hit_title=last["title"] if last else None,
                 last_hit_date=last.get("session_date") if last else None,
                 unread_count=unseen.get(t.id, 0),
+                # Fünf reichen: Die Karte ist eine Vorschau, die ganze Menge
+                # steht hinter „alle ansehen" — und zwar dieselbe, weil beide
+                # aus `cand` stammen.
+                recent_hits=[
+                    TopicHitOut(
+                        id=d["id"],
+                        title=(d.get("title") or "").strip(),
+                        committee=d.get("committee") or "",
+                        session_date=d.get("session_date") or "",
+                        outcome=d.get("outcome"),
+                        is_new=d["id"] in neu,
+                    )
+                    for d in hits[:5]
+                ],
+                hits_30d=sum(1 for d in hits if (d.get("session_date") or "") >= stichtag),
             )
         )
     return out
@@ -388,10 +410,26 @@ def uebersicht_gesehen(user: dict = Depends(require_active),
 
 
 @router.post("/{topic_id}/seen")
-def mark_seen(topic_id: int, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
-    """RL-903: alle aktuellen Treffer eines Themas als gesehen markieren —
-    das Frontend ruft das beim Öffnen der Beschlussliste des Themas."""
+def mark_seen(
+    topic_id: int,
+    body: TopicSeenIn | None = None,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> dict:
+    """RL-903: Treffer eines Themas als gesehen markieren.
+
+    Ohne ``decision_id`` alle — das ist der Weg über „alle ansehen" und über
+    das „n neue"-Abzeichen, das sich selbst wegräumt. MIT ``decision_id`` nur
+    dieser eine: Seit dem 28.08.2026 stehen die Treffer direkt auf der Karte,
+    wer einen anklickt, hat genau den gelesen und keinen anderen — aus „2
+    neue" wird dann „1 neuer" (Tims Wunsch).
+
+    Der Body ist optional, damit ältere App-Versionen, die nur ``{}`` senden,
+    unverändert alles markieren.
+    """
     _own_topic(store, user["id"], topic_id)
+    if body is not None and body.decision_id is not None:
+        return {"marked": int(store.mark_topic_hit_seen(user["id"], topic_id, body.decision_id))}
     return {"marked": store.mark_topic_hits_seen(user["id"], topic_id)}
 
 

@@ -2696,6 +2696,35 @@ class CouncilStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def naechste_sitzung_je_gremium(self) -> dict[str, dict]:
+        """Je Gremium der nächste anstehende Termin — für die Ausschuss-Abos,
+        die zu jedem Gremium „nächste Sitzung: …" zeigen.
+
+        Nimmt dieselbe Menge wie ``upcoming_sessions`` (``_UPCOMING_FROM``:
+        echte Sitzungen plus terminierte aus dem Kalender, Dubletten am selben
+        Tag verdeckt) — sonst nennt die Abo-Seite einen anderen Termin als die
+        Sitzungsliste. Gremien ohne künftigen Termin fehlen im dict; der
+        Aufrufer entscheidet, was er statt eines Datums schreibt.
+        """
+        from datetime import date
+        today = date.today().isoformat()
+        rows = self._conn.execute(
+            f"""SELECT committee, session_date, session_time {self._UPCOMING_FROM}
+                ORDER BY session_date ASC, COALESCE(NULLIF(session_time, ''), '99:99') ASC""",
+            (today, today),
+        ).fetchall()
+        naechste: dict[str, dict] = {}
+        for r in rows:
+            # Erste Zeile je Gremium gewinnt — die Sortierung oben hat den
+            # frühesten Termin nach vorne gelegt. Termine ohne Uhrzeit
+            # (``session_time`` ist NOT NULL, aber oft leer) landen am Ende
+            # des Tages, sonst verdeckt der Eintrag ohne Zeit den mit.
+            naechste.setdefault(r["committee"], {
+                "session_date": r["session_date"],
+                "session_time": r["session_time"] or None,
+            })
+        return naechste
+
     #: Tagesordnungspunkte, die in jeder Sitzung stehen und niemanden
     #: interessieren. Am Bestand gemessen: 20 von 53 kommenden TOPs.
     #: „- Bericht der Verwaltung" ist ein ZUSATZ, kein Punkt: Er hängt an den
@@ -3948,6 +3977,31 @@ class CouncilStore:
             params,
         ).fetchone()
         return row[0] if row else 0
+
+    def beschlusszahl_je_gremium(self, date_from: str) -> dict[str, int]:
+        """Beschlüsse je Gremium ab ``date_from`` (ISO-Datum) — für die
+        Ausschuss-Abos, die je Gremium „x Beschlüsse in diesem Jahr" zeigen.
+
+        Gezählt wird nur ``kind = 'decision'``: Änderungsanträge
+        (``kind = 'subvote'``) sind keine eigenen Beschlüsse, sondern hängen
+        als Kontext am Ursprungsbeschluss (Design 23a) — genau so zählt auch
+        ``count_decisions`` in seiner Standardform (``include_subvotes=False``).
+        Zählte man sie mit, stünde neben dem Gremium eine höhere Zahl, als die
+        verlinkte Beschlussliste hergibt.
+
+        Bewusst EINE Abfrage mit ``GROUP BY`` statt eines ``count_decisions``
+        je Gremium: Die Seite lädt die Liste bei jedem Aufruf, und es sind rund
+        15 Gremien. Gremien ohne Beschluss fehlen im dict (der Aufrufer setzt 0).
+        """
+        rows = self._conn.execute(
+            """SELECT cs.committee AS committee, COUNT(*) AS n
+               FROM council_decisions d
+               JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               WHERE d.kind = 'decision' AND cs.session_date >= ?
+               GROUP BY cs.committee""",
+            (date_from,),
+        ).fetchall()
+        return {r["committee"]: r["n"] for r in rows}
 
     def decisions_needing_simple_summary(self, limit: int | None = None) -> list[dict]:
         """Beschlüsse ohne „einfach erklärt"-Kurzfassung (RL-904): nur echte

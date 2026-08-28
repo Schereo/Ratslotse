@@ -525,6 +525,33 @@ export interface Topic {
   last_hit_title?: string | null;
   last_hit_date?: string | null;
   unread_count?: number;
+  /** Die jüngsten Treffer selbst (neueste zuerst, höchstens fünf). Die Karte
+   *  zeigt sie direkt — vorher stand dort eine Zahl und ein einziger Titel,
+   *  man musste also jedes Thema öffnen, um zu sehen, was drinsteht. */
+  recent_hits?: TopicHit[];
+  /** Treffer der letzten 30 Tage — sagt, ob ein Thema gerade läuft oder ruht.
+   *  Die Gesamtzahl allein kann beides bedeuten. */
+  hits_30d?: number;
+}
+
+export interface TopicHit {
+  id: number;
+  title: string;
+  committee: string;
+  session_date: string;
+  outcome: DecisionOutcome | null;
+  /** Noch nicht gesehen — dieselbe Menge, die das „n neue"-Abzeichen zählt. */
+  is_new: boolean;
+}
+
+/** Ein Gremium samt dem, was die Abo-Seite darüber zeigt. `next_date` fehlt,
+ *  solange das Ratsinfo keinen Termin führt — dann bleibt die Zeile leer,
+ *  statt einen zu erfinden. */
+export interface CommitteeDetail {
+  name: string;
+  next_date: string | null;
+  next_time: string | null;
+  decisions_year: number;
 }
 
 export interface TopicDecision {
