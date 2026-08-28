@@ -233,7 +233,7 @@ struct CouncilBrowserView: View {
                     Task { await load() }
                 }
             )
-            .presentationDetents([.large])
+            .ratsLargeSheet()
         }
     }
 
@@ -370,56 +370,202 @@ private struct CouncilFilterSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Gremium") {
-                    Picker("Ausschuss", selection: $committee) {
-                        Text("Alle Ausschüsse").tag("")
-                        ForEach(committees, id: \.self) { Text($0).tag($0) }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    RatsModalIntro(
+                        kicker: "Rat durchsuchen",
+                        title: "Filter & Sortierung",
+                        message: "Grenze die Ratsdaten ein, ohne dabei den Überblick zu verlieren.",
+                        symbol: "line.3.horizontal.decrease"
+                    )
+
+                    RatsSectionPanel("Gremium", detail: "Wähle einen Ausschuss oder sieh alle gemeinsam.", symbol: "building.columns") {
+                        RatsSettingsRow("Ausschuss", symbol: "person.3") {
+                            CouncilFilterMenu(
+                                title: "Ausschuss",
+                                selection: $committee,
+                                options: [CouncilFilterOption(value: "", label: "Alle Ausschüsse")]
+                                    + committees.map { CouncilFilterOption(value: $0, label: $0) }
+                            )
+                        }
                     }
-                }
-                if section == .decisions {
-                    Section("Inhalt") {
+
+                    if section == .decisions {
+                        RatsSectionPanel("Inhalt", detail: "Themen, Orte und Antragsteller kombinieren.", symbol: "doc.text.magnifyingglass") {
                         if !location.isEmpty {
-                            LabeledContent("Exakter Beschlussort", value: locationName.isEmpty ? location : locationName)
-                            Button("Beschlussort-Filter entfernen", role: .destructive) {
-                                location = ""
-                                locationName = ""
+                                HStack(alignment: .center, spacing: 10) {
+                                    Image(systemName: "mappin.circle.fill")
+                                        .foregroundStyle(RatsColor.signal)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Exakter Beschlussort")
+                                            .font(RatsFont.body(11, weight: .semibold))
+                                            .foregroundStyle(RatsColor.secondary)
+                                        Text(locationName.isEmpty ? location : locationName)
+                                            .font(RatsFont.body(14, weight: .semibold))
+                                    }
+                                    Spacer()
+                                    Button {
+                                        location = ""
+                                        locationName = ""
+                                    } label: {
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .frame(width: 28, height: 28)
+                                            .background(RatsColor.dangerTint)
+                                            .clipShape(Circle())
+                                    }
+                                    .foregroundStyle(RatsColor.danger)
+                                    .accessibilityLabel("Beschlussort-Filter entfernen")
+                                }
+                                .padding(12)
+                                .background(RatsColor.stage)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            }
+
+                            RatsSettingsRow("Themenfeld", symbol: "tag") {
+                                CouncilFilterMenu(
+                                    title: "Themenfeld",
+                                    selection: $policyField,
+                                    options: [CouncilFilterOption(value: "", label: "Alle Themenfelder")]
+                                        + fields.map {
+                                            CouncilFilterOption(value: $0.key, label: "\($0.label) (\($0.count))")
+                                        }
+                                )
+                            }
+                            Divider().overlay(RatsColor.separator)
+                            RatsSettingsRow("Ortsbezug", symbol: "mappin.and.ellipse") {
+                                CouncilFilterMenu(
+                                    title: "Ortsbezug",
+                                    selection: $district,
+                                    options: [CouncilFilterOption(value: "", label: "Alle Orte")]
+                                        + districts.map {
+                                            CouncilFilterOption(value: $0.placeID, label: "\($0.name) (\($0.count))")
+                                        }
+                                )
+                            }
+                            RatsLabeledField(label: "Antragsteller-Partei", hint: "optional") {
+                                TextField("z. B. SPD", text: $party)
+                                    .textInputAutocapitalization(.characters)
+                                    .textFieldStyle(.plain)
+                            }
+                            RatsSettingsRow("Änderungsanträge einzeln", detail: "Zusätzliche Einzelbeschlüsse anzeigen", symbol: "doc.on.doc") {
+                                Toggle("", isOn: $includeSubvotes)
+                                    .labelsHidden()
+                                    .tint(RatsColor.primary)
                             }
                         }
-                        Picker("Themenfeld", selection: $policyField) {
-                            Text("Alle Themenfelder").tag("")
-                            ForEach(fields) { Text("\($0.label) (\($0.count))").tag($0.key) }
+
+                        RatsSectionPanel("Zeitraum", detail: "Aktiviere nur die Grenzen, die du wirklich brauchst.", symbol: "calendar") {
+                            RatsSettingsRow("Startdatum", symbol: "calendar.badge.plus") {
+                                Toggle("", isOn: $hasDateFrom)
+                                    .labelsHidden()
+                                    .tint(RatsColor.primary)
+                            }
+                            if hasDateFrom {
+                                DatePicker("Von", selection: $dateFrom, displayedComponents: .date)
+                                    .font(RatsFont.body(13))
+                                    .tint(RatsColor.primary)
+                                    .padding(12)
+                                    .background(RatsColor.stage)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            }
+                            Divider().overlay(RatsColor.separator)
+                            RatsSettingsRow("Enddatum", symbol: "calendar.badge.checkmark") {
+                                Toggle("", isOn: $hasDateTo)
+                                    .labelsHidden()
+                                    .tint(RatsColor.primary)
+                            }
+                            if hasDateTo {
+                                DatePicker("Bis", selection: $dateTo, displayedComponents: .date)
+                                    .font(RatsFont.body(13))
+                                    .tint(RatsColor.primary)
+                                    .padding(12)
+                                    .background(RatsColor.stage)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            }
                         }
-                        Picker("Ortsbezug", selection: $district) {
-                            Text("Alle Orte").tag("")
-                            ForEach(districts) { Text("\($0.name) (\($0.count))").tag($0.placeID) }
+
+                        RatsSectionPanel("Sortierung", symbol: "arrow.up.arrow.down") {
+                            RatsSettingsRow("Reihenfolge", symbol: "list.number") {
+                                CouncilFilterMenu(
+                                    title: "Reihenfolge",
+                                    selection: $sort,
+                                    options: [
+                                        CouncilFilterOption(value: "date_desc", label: "Neueste zuerst"),
+                                        CouncilFilterOption(value: "date_asc", label: "Älteste zuerst"),
+                                        CouncilFilterOption(value: "importance", label: "Wichtigkeit"),
+                                        CouncilFilterOption(value: "interest", label: "Persönliche Relevanz"),
+                                    ]
+                                )
+                            }
                         }
-                        TextField("Antragsteller-Partei, z. B. SPD", text: $party)
-                            .textInputAutocapitalization(.characters)
-                        Toggle("Änderungsanträge einzeln zeigen", isOn: $includeSubvotes)
                     }
-                    Section("Zeitraum") {
-                        Toggle("Von", isOn: $hasDateFrom)
-                        if hasDateFrom { DatePicker("Startdatum", selection: $dateFrom, displayedComponents: .date) }
-                        Toggle("Bis", isOn: $hasDateTo)
-                        if hasDateTo { DatePicker("Enddatum", selection: $dateTo, displayedComponents: .date) }
+
+                    Button(action: apply) {
+                        Label("Ergebnisse anzeigen", systemImage: "checkmark")
+                            .frame(maxWidth: .infinity)
                     }
-                    Section("Sortierung") {
-                        Picker("Reihenfolge", selection: $sort) {
-                            Text("Neueste zuerst").tag("date_desc")
-                            Text("Älteste zuerst").tag("date_asc")
-                            Text("Wichtigkeit").tag("importance")
-                            Text("Persönliche Relevanz").tag("interest")
-                        }
+                    .buttonStyle(PrimaryButtonStyle())
+                }
+                .frame(maxWidth: 620, alignment: .leading)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 22)
+            }
+            .background(RatsColor.page)
+            .navigationTitle("Filter")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Zurücksetzen", action: clear) }
+                ToolbarItem(placement: .confirmationAction) { Button("Fertig", action: apply) }
+            }
+        }
+    }
+}
+
+private struct CouncilFilterOption: Identifiable {
+    let value: String
+    let label: String
+    var id: String { value }
+}
+
+private struct CouncilFilterMenu: View {
+    let title: String
+    @Binding var selection: String
+    let options: [CouncilFilterOption]
+
+    private var selectedLabel: String {
+        options.first(where: { $0.value == selection })?.label ?? options.first?.label ?? "Auswählen"
+    }
+
+    var body: some View {
+        Menu {
+            ForEach(options) { option in
+                Button {
+                    selection = option.value
+                } label: {
+                    if option.value == selection {
+                        Label(option.label, systemImage: "checkmark")
+                    } else {
+                        Text(option.label)
                     }
                 }
             }
-            .navigationTitle("Filter & Sortierung")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Zurücksetzen", action: clear) }
-                ToolbarItem(placement: .confirmationAction) { Button("Anzeigen", action: apply) }
+        } label: {
+            HStack(spacing: 5) {
+                Text(selectedLabel)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .minimumScaleFactor(0.78)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 9, weight: .bold))
             }
+            .font(RatsFont.body(13, weight: .semibold))
+            .foregroundStyle(RatsColor.primary)
+            .frame(width: 170, alignment: .trailing)
+            .contentShape(Rectangle())
         }
+        .accessibilityLabel(title)
+        .accessibilityValue(selectedLabel)
     }
 }
 
@@ -767,17 +913,30 @@ private struct CouncilAttachmentPreview: View {
                 if let localURL {
                     QuickLookPreview(url: localURL)
                 } else if let error {
-                    ContentUnavailableView {
-                        Label("Dokument nicht verfügbar", systemImage: "doc.badge.ellipsis")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        if let url = URL(string: attachment.url) { Link("Im Browser öffnen", destination: url) }
+                    VStack(spacing: 14) {
+                        RatsEmptyState(
+                            title: "Dokument nicht verfügbar",
+                            message: error,
+                            symbol: "doc.badge.ellipsis"
+                        )
+                        if let url = URL(string: attachment.url) {
+                            Link(destination: url) {
+                                Label("Im Browser öffnen", systemImage: "arrow.up.right")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(SecondaryButtonStyle())
+                        }
                     }
+                    .frame(maxWidth: 520)
+                    .padding(18)
                 } else {
-                    ProgressView("Dokument wird geladen …")
+                    RatsLoadingState(message: "Dokument wird geladen …")
+                        .frame(maxWidth: 520)
+                        .padding(18)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(RatsColor.page)
             .navigationTitle(attachment.label)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Fertig") { dismiss() } } }
@@ -837,51 +996,99 @@ private struct SavedCouncilView: View {
     @State private var error: String?
 
     var body: some View {
-        List {
-            if bookmarks.isEmpty && follows.isEmpty && !isLoading && error == nil {
-                ContentUnavailableView(
-                    "Noch nichts gespeichert",
-                    systemImage: "bookmark",
-                    description: Text("Gemerkte Beschlüsse und verfolgte Vorlagen erscheinen hier.")
-                )
-            }
-            if !bookmarks.isEmpty {
-                Section("Merkliste") {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        MonoKicker("Deine Ratsakte")
+                        Text("Gespeichert")
+                            .font(RatsFont.title(28))
+                        Text("Beschlüsse und Vorlagen, die du später wiederfinden möchtest.")
+                            .font(RatsFont.body(13))
+                            .foregroundStyle(RatsColor.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(RatsColor.primaryText)
+                        .frame(width: 44, height: 44)
+                        .background(RatsColor.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                }
+
+                if isLoading {
+                    RatsLoadingState(message: "Merkliste wird geladen …")
+                } else if bookmarks.isEmpty && follows.isEmpty && error == nil {
+                    RatsEmptyState(
+                        title: "Noch nichts gespeichert",
+                        message: "Gemerkte Beschlüsse und verfolgte Vorlagen erscheinen hier.",
+                        symbol: "bookmark"
+                    )
+                }
+
+                if !bookmarks.isEmpty {
+                    MonoKicker("Merkliste", trailing: "\(bookmarks.count)")
                     ForEach(bookmarks) { bookmark in
-                        savedDestination(bookmark)
-                            .swipeActions {
-                                Button("Entfernen", role: .destructive) { removeBookmark(bookmark) }
+                        HStack(alignment: .top, spacing: 10) {
+                            savedDestination(bookmark)
+                            Menu {
+                                Button("Aus Merkliste entfernen", systemImage: "trash", role: .destructive) {
+                                    removeBookmark(bookmark)
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .foregroundStyle(RatsColor.secondary)
+                                    .frame(width: 32, height: 32)
                             }
+                            .accessibilityLabel("Eintrag verwalten")
+                        }
+                        .ratsCard()
                     }
                 }
-            }
-            if !follows.isEmpty {
-                Section("Verfolgte Vorgänge") {
+
+                if !follows.isEmpty {
+                    MonoKicker("Verfolgte Vorgänge", trailing: "\(follows.count)")
                     ForEach(follows) { follow in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(follow.title.isEmpty ? follow.templateNumber : follow.title)
-                                .font(RatsFont.body(15, weight: .semibold))
-                            Text("\(follow.templateNumber) · \(follow.stationCount) Stationen")
-                                .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
-                            if let next = follow.next {
-                                Text("Als Nächstes: \([next.committee, RatsDate.short(next.date)].compactMap { $0 }.joined(separator: " · "))")
-                                    .font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 7) {
+                                Text(follow.title.isEmpty ? follow.templateNumber : follow.title)
+                                    .font(RatsFont.body(15, weight: .semibold))
+                                Text("\(follow.templateNumber) · \(follow.stationCount) Stationen")
+                                    .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                                if let next = follow.next {
+                                    Text("Als Nächstes: \([next.committee, RatsDate.short(next.date)].compactMap { $0 }.joined(separator: " · "))")
+                                        .font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
+                                }
+                                if let url = URL(string: follow.url) {
+                                    Link(destination: url) {
+                                        Label("Vorlage im Ratsinfosystem", systemImage: "arrow.up.right")
+                                            .font(RatsFont.body(12, weight: .semibold))
+                                    }
+                                }
                             }
-                            if let url = URL(string: follow.url) {
-                                Link("Vorlage im Ratsinfosystem", destination: url)
-                                    .font(RatsFont.body(12, weight: .semibold))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Menu {
+                                Button("Nicht mehr folgen", systemImage: "bell.slash", role: .destructive) {
+                                    removeFollow(follow)
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .foregroundStyle(RatsColor.secondary)
+                                    .frame(width: 32, height: 32)
                             }
+                            .accessibilityLabel("Vorgang verwalten")
                         }
-                        .swipeActions {
-                            Button("Nicht mehr folgen", role: .destructive) { removeFollow(follow) }
-                        }
+                        .ratsCard()
                     }
                 }
+                if let error { ErrorCard(message: error) { Task { await load() } } }
             }
-            if let error { Section { ErrorCard(message: error) { Task { await load() } } } }
+            .frame(maxWidth: 760, alignment: .leading)
+            .padding(18)
         }
-        .overlay { if isLoading { ProgressView("Merkliste laden …") } }
+        .background(RatsColor.page)
         .navigationTitle("Gespeichert")
+        .navigationBarTitleDisplayMode(.inline)
         .refreshable { await load() }
         .task { await load() }
     }
@@ -907,7 +1114,8 @@ private struct SavedCouncilView: View {
             Text(savedSubtitle(bookmark)).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary)
             Pill(bookmark.decision?.outcome ?? bookmark.state, symbol: bookmark.decision == nil ? "clock" : "checkmark")
         }
-        .padding(.vertical, 3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     private func savedSubtitle(_ bookmark: BookmarkEntry) -> String {
@@ -978,23 +1186,74 @@ private struct SessionListView: View {
     let model: AppModel
     @State private var sessions: [CouncilSession] = []
     @State private var error: String?
+    @State private var isLoading = true
 
     var body: some View {
-        List(sessions) { session in
-            if let ksinr = session.ksinr {
-                NavigationLink(value: AppRoute.sessions(ksinr: ksinr, tops: [])) { SessionRow(session: session) }
-            } else { SessionRow(session: session) }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        MonoKicker("Termine im Rathaus")
+                        Text("Sitzungen")
+                            .font(RatsFont.title(28))
+                        Text("Tagesordnungen, Orte und Zeiten auf einen Blick.")
+                            .font(RatsFont.body(13))
+                            .foregroundStyle(RatsColor.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "calendar")
+                        .foregroundStyle(RatsColor.primaryText)
+                        .frame(width: 44, height: 44)
+                        .background(RatsColor.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                }
+                if isLoading {
+                    RatsLoadingState(message: "Sitzungen werden geladen …")
+                } else if sessions.isEmpty && error == nil {
+                    RatsEmptyState(
+                        title: "Keine Sitzungen gefunden",
+                        message: "Sobald neue Termine vorliegen, erscheinen sie an dieser Stelle.",
+                        symbol: "calendar.badge.clock"
+                    )
+                } else {
+                    ForEach(sessions) { session in
+                        if let ksinr = session.ksinr {
+                            NavigationLink(value: AppRoute.sessions(ksinr: ksinr, tops: [])) {
+                                HStack(alignment: .center, spacing: 10) {
+                                    SessionRow(session: session)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(RatsColor.muted)
+                                }
+                                .ratsCard()
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            SessionRow(session: session).ratsCard()
+                        }
+                    }
+                }
+                if let error { ErrorCard(message: error) { Task { await loadSessions() } } }
+            }
+            .frame(maxWidth: 760, alignment: .leading)
+            .padding(18)
         }
+        .background(RatsColor.page)
         .navigationTitle("Sitzungen")
-        .task {
-            do {
-                let page: SessionPage = try await model.api.get(
-                    "/api/council/sessions", query: [.init(name: "limit", value: "100")]
-                )
-                sessions = page.sessions
-            } catch { self.error = error.localizedDescription }
-        }
-        .overlay { if let error { ErrorCard(message: error) {}.padding() } }
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await loadSessions() }
+    }
+
+    private func loadSessions() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let page: SessionPage = try await model.api.get(
+                "/api/council/sessions", query: [.init(name: "limit", value: "100")]
+            )
+            sessions = page.sessions
+            error = nil
+        } catch { self.error = error.localizedDescription }
     }
 }
 

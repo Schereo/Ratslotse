@@ -106,6 +106,7 @@ struct TopicsView: View {
                 isPresentingEditor = false
                 Task { await load() }
             }
+            .ratsLargeSheet()
         }
     }
 
@@ -248,27 +249,63 @@ private struct TopicEditorView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Worum geht es?") {
-                    TextField("z. B. Cäcilienbrücke", text: $name)
-                    TextField("Was daran möchtest du verfolgen?", text: $description, axis: .vertical)
-                        .lineLimit(3...8)
-                }
-                Section {
-                    Button("Beschreibung aus Ratsdaten vorschlagen") { suggest() }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    RatsModalIntro(
+                        kicker: "Themenradar",
+                        title: topic == nil ? "Neues Thema" : "Thema bearbeiten",
+                        message: "Beschreibe, was dich interessiert. Ratslotse hält danach passende Ratsentscheidungen für dich im Blick.",
+                        symbol: "scope"
+                    )
+
+                    RatsSectionPanel("Worum geht es?", symbol: "text.magnifyingglass") {
+                        RatsLabeledField(label: "Thema", hint: "kurz & eindeutig") {
+                            TextField("z. B. Cäcilienbrücke", text: $name)
+                                .textFieldStyle(.plain)
+                        }
+                        RatsLabeledField(label: "Was möchtest du verfolgen?") {
+                            TextField("Beschreibe deinen Suchauftrag", text: $description, axis: .vertical)
+                                .lineLimit(3...8)
+                                .textFieldStyle(.plain)
+                                .padding(.vertical, 10)
+                        }
+                    }
+
+                    RatsSectionPanel(
+                        "Lotti hilft beim Formulieren",
+                        detail: "Der Vorschlag entsteht aus vorhandenen Beschlüssen und bleibt vor dem Speichern vollständig editierbar.",
+                        symbol: "sparkles"
+                    ) {
+                        Button { suggest() } label: {
+                            Label(isWorking ? "Lotti schaut nach …" : "Beschreibung vorschlagen", systemImage: "wand.and.stars")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isWorking)
-                } footer: {
-                    Text("Der Vorschlag wird aus vorhandenen Beschlüssen formuliert. Du kannst ihn vor dem Speichern ändern.")
+                        .opacity(name.trimmingCharacters(in: .whitespaces).isEmpty || isWorking ? 0.5 : 1)
+                    }
+
+                    if let error {
+                        ErrorCard(message: error) { suggest() }
+                    }
+
+                    Button { save() } label: {
+                        Text(isWorking ? "Wird gespeichert …" : "Thema speichern")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(name.isEmpty || description.isEmpty || isWorking)
+                    .opacity(name.isEmpty || description.isEmpty || isWorking ? 0.5 : 1)
                 }
-                if let error { Section { Text(error).foregroundStyle(RatsColor.danger) } }
+                .frame(maxWidth: 620, alignment: .leading)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 22)
             }
-            .navigationTitle(topic == nil ? "Neues Thema" : "Thema bearbeiten")
+            .background(RatsColor.page)
+            .navigationTitle("Thema")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { save() }
-                        .disabled(name.isEmpty || description.isEmpty || isWorking)
-                }
             }
         }
     }
@@ -316,106 +353,180 @@ struct AccountView: View {
     @State private var error: String?
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Mein Konto")
-                        .font(RatsFont.title(28))
-                    if let email = model.user?.email {
-                        Text(email)
-                            .font(RatsFont.body(12))
-                            .foregroundStyle(RatsColor.secondary)
-                    }
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 18)
-            .padding(.top, 18)
-            .padding(.bottom, 7)
-
-            Form {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 if let user = model.user {
-                Section {
-                    HStack(spacing: 12) {
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 42)).foregroundStyle(RatsColor.primary)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(user.displayName ?? "Dein Konto").font(RatsFont.body(17, weight: .semibold))
-                            Text(user.email).font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
+                    HStack(alignment: .center, spacing: 14) {
+                        ZStack(alignment: .bottomTrailing) {
+                            Circle()
+                                .fill(RatsColor.primary)
+                                .frame(width: 58, height: 58)
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 25, weight: .semibold))
+                                .foregroundStyle(RatsColor.primaryText)
+                                .frame(width: 58, height: 58)
+                            Circle()
+                                .fill(RatsColor.signal)
+                                .frame(width: 14, height: 14)
+                                .overlay(Circle().stroke(RatsColor.page, lineWidth: 2))
                         }
+                        VStack(alignment: .leading, spacing: 4) {
+                            MonoKicker("Dein Ratslotse")
+                            Text(user.displayName ?? "Moin!")
+                                .font(RatsFont.title(28))
+                            Text(user.email)
+                                .font(RatsFont.body(12))
+                                .foregroundStyle(RatsColor.secondary)
+                        }
+                        Spacer(minLength: 0)
                     }
-                    TextField("Anzeigename", text: $displayName)
-                    Button("Anzeigename speichern") { saveDisplayName() }
-                }
+                    .padding(.vertical, 4)
 
-                Section("Zustellweg") {
-                    Picker("Benachrichtigungen", selection: deliveryBinding(user: user)) {
-                        Text("E-Mail").tag("email")
-                        Text("Push").tag("push")
-                        Text("E-Mail und Push").tag("both")
-                        Text("Aus").tag("off")
+                    RatsSectionPanel("Profil", detail: "So spricht Ratslotse dich an.", symbol: "person.text.rectangle") {
+                        RatsLabeledField(label: "Anzeigename") {
+                            TextField("Dein Name", text: $displayName)
+                                .textContentType(.name)
+                                .textFieldStyle(.plain)
+                        }
+                        Button { saveDisplayName() } label: {
+                            Label("Anzeigename speichern", systemImage: "checkmark")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
                     }
-                }
 
-                if let notifications {
-                    Section {
+                    RatsSectionPanel(
+                        "Benachrichtigungen",
+                        detail: "Du bestimmst, wo und zu welchen Themen Ratslotse sich meldet.",
+                        symbol: "bell.badge"
+                    ) {
+                        RatsSettingsRow("Zustellweg", detail: "E-Mail, Push oder beides", symbol: "paperplane") {
+                            Picker("Zustellweg", selection: deliveryBinding(user: user)) {
+                                Text("E-Mail").tag("email")
+                                Text("Push").tag("push")
+                                Text("Beides").tag("both")
+                                Text("Aus").tag("off")
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .tint(RatsColor.primary)
+                            .font(RatsFont.body(13, weight: .semibold))
+                            .lineLimit(1)
+                            .frame(maxWidth: 150, alignment: .trailing)
+                        }
+
+                        if notifications != nil { Divider().overlay(RatsColor.separator) }
+                        if let notifications {
                         ForEach(notifications.kinds) { kind in
-                            Toggle(isOn: Binding(
-                                get: { prefs[kind.key, default: kind.enabled] },
-                                set: { prefs[kind.key] = $0; saveNotifications() }
-                            )) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(kind.label)
-                                    Text(kind.hint).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary)
+                                RatsSettingsRow(kind.label, detail: kind.hint, symbol: notificationSymbol(kind.key)) {
+                                    Toggle("", isOn: Binding(
+                                        get: { prefs[kind.key, default: kind.enabled] },
+                                        set: { prefs[kind.key] = $0; saveNotifications() }
+                                    ))
+                                    .labelsHidden()
+                                    .tint(RatsColor.primary)
+                                    .accessibilityLabel(kind.label)
+                                }
+                                .disabled(kind.parent.map { prefs[$0] == false } ?? false)
+                                if kind.id != notifications.kinds.last?.id {
+                                    Divider().overlay(RatsColor.separator)
                                 }
                             }
-                            .disabled(kind.parent.map { prefs[$0] == false } ?? false)
-                        }
-                    } header: {
-                        Text("Wozu du Hinweise bekommst")
-                    } footer: {
-                        Text("Höchstens \(notifications.limits.perDay) Hinweise pro Tag; nachts bleibt Ratslotse still.")
-                    }
-                }
-
-                Section("Push testen") {
-                    Button("Push-Mitteilungen erlauben") { requestPush() }
-                    Button("Test-Benachrichtigung senden") {
-                        Task {
-                            do { let _: JSONValue = try await model.api.sendWithoutBody("/api/account/test-notification") }
-                            catch { self.error = error.localizedDescription }
+                            Text("Höchstens \(notifications.limits.perDay) Hinweise pro Tag; nachts bleibt Ratslotse still.")
+                                .font(RatsFont.body(11))
+                                .foregroundStyle(RatsColor.muted)
+                        } else if error == nil {
+                            HStack(spacing: 10) {
+                                ProgressView().tint(RatsColor.primary)
+                                Text("Einstellungen werden geladen …")
+                                    .font(RatsFont.body(12))
+                                    .foregroundStyle(RatsColor.secondary)
+                            }
                         }
                     }
-                }
 
-                Section("Sicherheit") {
-                    if user.hasPassword { Button("Passwort ändern") { isChangingPassword = true } }
-                    if user.appleLinked { Label("Mit Apple verknüpft", systemImage: "apple.logo") }
-                }
+                    RatsSectionPanel("Push ausprobieren", detail: "Prüfe direkt, ob Hinweise auf diesem Gerät ankommen.", symbol: "iphone.radiowaves.left.and.right") {
+                        Button { requestPush() } label: {
+                            RatsSettingsRow("Push-Mitteilungen erlauben", symbol: "bell.badge") {
+                                Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        Divider().overlay(RatsColor.separator)
+                        Button {
+                            Task {
+                                do { let _: JSONValue = try await model.api.sendWithoutBody("/api/account/test-notification") }
+                                catch { self.error = error.localizedDescription }
+                            }
+                        } label: {
+                            RatsSettingsRow("Test-Benachrichtigung senden", symbol: "paperplane.fill") {
+                                Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
 
-                Section("Hilfe & Rechtliches") {
-                    Button("Einrichtung mit Lotti erneut ansehen") { model.restartOnboarding() }
-                    Link("Hilfe und Kontakt", destination: URL(string: "https://ratslotse.de/hilfe")!)
-                    Link("Datenschutz", destination: URL(string: "https://ratslotse.de/datenschutz")!)
-                    Link("Impressum", destination: URL(string: "https://ratslotse.de/impressum")!)
-                    if user.isAdmin { Link("Admin-Bereich im Web", destination: URL(string: "https://ratslotse.de/admin")!) }
-                }
+                    RatsSectionPanel("Sicherheit", symbol: "lock.shield") {
+                        if user.hasPassword {
+                            Button { isChangingPassword = true } label: {
+                                RatsSettingsRow("Passwort ändern", symbol: "key") {
+                                    Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        if user.hasPassword && user.appleLinked { Divider().overlay(RatsColor.separator) }
+                        if user.appleLinked {
+                            RatsSettingsRow("Mit Apple verknüpft", detail: "Schnelle und sichere Anmeldung", symbol: "apple.logo") {
+                                Image(systemName: "checkmark.circle.fill").foregroundStyle(RatsColor.success)
+                            }
+                        }
+                    }
 
-                Section {
-                    Button("Abmelden", role: .destructive) { Task { await model.logout() } }
-                    Button("Konto löschen", role: .destructive) { isDeletingAccount = true }
+                    RatsSectionPanel("Hilfe & Rechtliches", symbol: "lifepreserver") {
+                        accountButton("Einrichtung mit Lotti erneut ansehen", symbol: "sparkles") { model.restartOnboarding() }
+                        Divider().overlay(RatsColor.separator)
+                        accountLink("Hilfe und Kontakt", symbol: "questionmark.circle", url: "https://ratslotse.de/hilfe")
+                        Divider().overlay(RatsColor.separator)
+                        accountLink("Datenschutz", symbol: "hand.raised", url: "https://ratslotse.de/datenschutz")
+                        Divider().overlay(RatsColor.separator)
+                        accountLink("Impressum", symbol: "doc.text", url: "https://ratslotse.de/impressum")
+                        if user.isAdmin {
+                            Divider().overlay(RatsColor.separator)
+                            accountLink("Admin-Bereich im Web", symbol: "wrench.and.screwdriver", url: "https://ratslotse.de/admin")
+                        }
+                    }
+
+                    RatsSectionPanel("Sitzung beenden", detail: "Deine gespeicherten Inhalte bleiben erhalten.", symbol: "door.left.hand.open") {
+                        Button { Task { await model.logout() } } label: {
+                            Text("Abmelden").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        Button(role: .destructive) { isDeletingAccount = true } label: {
+                            Label("Konto löschen", systemImage: "trash")
+                                .font(RatsFont.body(13, weight: .semibold))
+                                .frame(maxWidth: .infinity, minHeight: 40)
+                        }
+                    }
                 }
-                }
-                if let error { Section { Text(error).foregroundStyle(RatsColor.danger) } }
+                if let error { ErrorCard(message: error) { Task { await load() } } }
             }
-            .scrollContentBackground(.hidden)
+            .frame(maxWidth: 760, alignment: .leading)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 22)
         }
         .background(RatsColor.page)
         .navigationTitle("Konto")
         .toolbarTitleDisplayMode(.inline)
         .task { await load() }
-        .sheet(isPresented: $isChangingPassword) { ChangePasswordView(model: model) }
-        .sheet(isPresented: $isDeletingAccount) { DeleteAccountView(model: model) }
+        .sheet(isPresented: $isChangingPassword) {
+            ChangePasswordView(model: model)
+                .ratsLargeSheet()
+        }
+        .sheet(isPresented: $isDeletingAccount) {
+            DeleteAccountView(model: model)
+                .ratsLargeSheet()
+        }
     }
 
     private func load() async {
@@ -473,6 +584,31 @@ struct AccountView: View {
             if !granted { error = "Push-Mitteilungen sind nicht erlaubt. Öffne die Systemeinstellungen, um sie einzuschalten." }
         }
     }
+
+    private func notificationSymbol(_ key: String) -> String {
+        if key.contains("topic") || key.contains("thema") { return "scope" }
+        if key.contains("session") || key.contains("sitzung") { return "calendar" }
+        if key.contains("follow") || key.contains("vorlage") { return "arrow.triangle.branch" }
+        return "bell"
+    }
+
+    private func accountButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            RatsSettingsRow(title, symbol: symbol) {
+                Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func accountLink(_ title: String, symbol: String, url: String) -> some View {
+        Link(destination: URL(string: url)!) {
+            RatsSettingsRow(title, symbol: symbol) {
+                Image(systemName: "arrow.up.right").foregroundStyle(RatsColor.muted)
+            }
+        }
+        .buttonStyle(.plain)
+    }
 }
 
 private struct ChangePasswordView: View {
@@ -485,18 +621,47 @@ private struct ChangePasswordView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                SecureField("Aktuelles Passwort", text: $current).textContentType(.password)
-                SecureField("Neues Passwort", text: $new).textContentType(.newPassword)
-                SecureField("Neues Passwort wiederholen", text: $repeated).textContentType(.newPassword)
-                if let error { Text(error).foregroundStyle(RatsColor.danger) }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    RatsModalIntro(
+                        kicker: "Sicherheit",
+                        title: "Passwort ändern",
+                        message: "Ein gutes Passwort ist einzigartig und mindestens acht Zeichen lang.",
+                        symbol: "key.fill"
+                    )
+                    RatsSectionPanel("Deine Zugangsdaten", symbol: "lock") {
+                        RatsLabeledField(label: "Aktuelles Passwort") {
+                            SecureField("Bisheriges Passwort", text: $current)
+                                .textContentType(.password)
+                                .textFieldStyle(.plain)
+                        }
+                        RatsLabeledField(label: "Neues Passwort", hint: "mindestens 8 Zeichen") {
+                            SecureField("Neues Passwort", text: $new)
+                                .textContentType(.newPassword)
+                                .textFieldStyle(.plain)
+                        }
+                        RatsLabeledField(label: "Wiederholen") {
+                            SecureField("Noch einmal eingeben", text: $repeated)
+                                .textContentType(.newPassword)
+                                .textFieldStyle(.plain)
+                        }
+                    }
+                    if let error { ErrorCard(message: error) { change() } }
+                    Button { change() } label: {
+                        Text("Neues Passwort speichern").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(new.count < 8 || new != repeated || current.isEmpty)
+                    .opacity(new.count < 8 || new != repeated || current.isEmpty ? 0.5 : 1)
+                }
+                .frame(maxWidth: 560, alignment: .leading)
+                .padding(18)
             }
-            .navigationTitle("Passwort ändern")
+            .background(RatsColor.page)
+            .navigationTitle("Passwort")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { change() }.disabled(new.count < 8 || new != repeated)
-                }
             }
         }
     }
@@ -526,36 +691,60 @@ private struct DeleteAccountView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Text("Dabei werden Themen, Merkliste, Gespräche und Geräte endgültig gelöscht.")
-                }
-                if model.user?.hasPassword == true {
-                    Section("Bestätigung") { SecureField("Aktuelles Passwort", text: $password) }
-                } else {
-                    Section("Bestätigung") {
-                        SignInWithAppleButton(.continue) { request in request.requestedScopes = [] } onCompletion: { result in
-                            if case .success(let auth) = result,
-                               let credential = auth.credential as? ASAuthorizationAppleIDCredential,
-                               let data = credential.identityToken,
-                               let token = String(data: data, encoding: .utf8) { appleToken = token }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    RatsModalIntro(
+                        kicker: "Achtung",
+                        title: "Konto löschen",
+                        message: "Themen, Merkliste, Gespräche und Geräte werden endgültig gelöscht. Dieser Schritt lässt sich nicht rückgängig machen.",
+                        symbol: "exclamationmark.triangle.fill"
+                    )
+                    RatsSectionPanel("Identität bestätigen", symbol: "person.badge.key") {
+                        if model.user?.hasPassword == true {
+                            RatsLabeledField(label: "Aktuelles Passwort") {
+                                SecureField("Passwort", text: $password)
+                                    .textContentType(.password)
+                                    .textFieldStyle(.plain)
+                            }
+                        } else {
+                            SignInWithAppleButton(.continue) { request in request.requestedScopes = [] } onCompletion: { result in
+                                if case .success(let auth) = result,
+                                   let credential = auth.credential as? ASAuthorizationAppleIDCredential,
+                                   let data = credential.identityToken,
+                                   let token = String(data: data, encoding: .utf8) { appleToken = token }
+                            }
+                            .frame(height: 46)
+                            .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button))
                         }
-                        .frame(height: 46)
                     }
+
+                    RatsSectionPanel("Letzte Bestätigung", detail: "Tippe LÖSCHEN in das Feld.", symbol: "trash") {
+                        RatsLabeledField(label: "Bestätigungswort") {
+                            TextField("LÖSCHEN", text: $confirmation)
+                                .textInputAutocapitalization(.characters)
+                                .textFieldStyle(.plain)
+                        }
+                    }
+                    if let error { ErrorCard(message: error) { remove() } }
+                    Button(role: .destructive) { remove() } label: {
+                        Label("Konto endgültig löschen", systemImage: "trash.fill")
+                            .font(RatsFont.body(15, weight: .semibold))
+                            .foregroundStyle(Color.white)
+                            .frame(maxWidth: .infinity, minHeight: 46)
+                            .background(RatsColor.danger)
+                            .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous))
+                    }
+                    .disabled(confirmation != "LÖSCHEN" || (password.isEmpty && appleToken.isEmpty))
+                    .opacity(confirmation != "LÖSCHEN" || (password.isEmpty && appleToken.isEmpty) ? 0.5 : 1)
                 }
-                Section {
-                    TextField("LÖSCHEN eingeben", text: $confirmation)
-                        .textInputAutocapitalization(.characters)
-                    if let error { Text(error).foregroundStyle(RatsColor.danger) }
-                }
+                .frame(maxWidth: 560, alignment: .leading)
+                .padding(18)
             }
+            .background(RatsColor.page)
             .navigationTitle("Konto löschen")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Endgültig löschen", role: .destructive) { remove() }
-                        .disabled(confirmation != "LÖSCHEN" || (password.isEmpty && appleToken.isEmpty))
-                }
             }
         }
     }

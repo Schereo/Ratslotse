@@ -125,9 +125,11 @@ struct QuestionsView: View {
         .onDisappear { streamTask?.cancel(); streamTask = nil }
         .sheet(isPresented: $showDeepResearch) {
             DeepResearchView(model: model, initialQuestion: input)
+                .ratsLargeSheet()
         }
         .sheet(isPresented: $showConversations) {
             ConversationsView(model: model)
+                .ratsLargeSheet()
         }
     }
 

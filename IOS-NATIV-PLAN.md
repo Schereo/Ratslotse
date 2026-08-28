@@ -433,6 +433,18 @@ abgenommen.
 | Konto und Systemzustände | Konto, Einstellungen, Passwort, Löschen, Update-Pflicht | Bestanden; Update-Pflicht nutzt die gleiche Markenwelt statt einer generischen Sperrseite |
 | Systemübergaben | Safari-Ziele, Quick Look, Share Sheet und Berechtigungsdialoge | Bestanden als native iOS-Systemoberflächen |
 
+In einer zusätzlichen Oberflächenprüfung wurden sämtliche verbliebenen
+generischen SwiftUI-Container entfernt: Im Feature-Paket kommen keine
+`Form`-, `List`- oder `ContentUnavailableView`-Ansichten mehr vor. Konto,
+Passwortänderung, Kontolöschung, Ratsfilter, Merkliste, Sitzungen,
+Themeneditor, eigene Quizfragen und Rechercheverläufe verwenden nun dieselben
+Ratslotse-Flächen, Abstände, Farben, Eingabefelder und Leerzustände wie Login,
+Onboarding und Hauptnavigation. Große Bearbeitungsansichten öffnen auf dem
+iPad seitenfüllend, damit Inhalte und primäre Aktionen nicht in einem kleinen
+Formular-Sheet abgeschnitten werden. Bewusst systemeigen bleiben nur
+Übergaben, bei denen die vertraute iOS-Oberfläche funktional dazugehört:
+Sign in with Apple, Teilen, Quick Look, Safari und Berechtigungsdialoge.
+
 Die Prüfung deckt Simulatoren und lokale API-Fixtures ab; ein Release-Build auf
 physischer Hardware und der abschließende TestFlight-/Store-Check bleiben Teil
 des Cutovers.

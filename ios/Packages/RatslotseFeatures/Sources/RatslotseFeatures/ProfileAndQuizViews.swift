@@ -461,6 +461,7 @@ struct QuizView: View {
         .task { await loadAreas() }
         .sheet(isPresented: $showOwnEditor) {
             OwnQuizEditor(model: model) { await loadDashboard() }
+                .ratsLargeSheet()
         }
         .sheet(isPresented: $showMapQuiz) {
             NavigationStack { QuizMapView(model: model) }
@@ -764,42 +765,92 @@ private struct OwnQuizEditor: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Neue Frage") {
-                    TextField("Frage", text: $question, axis: .vertical)
-                        .lineLimit(2...5)
-                    ForEach(answers.indices, id: \.self) { index in
-                        HStack {
-                            Button {
-                                correctIndex = index
-                            } label: {
-                                Image(systemName: correctIndex == index ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(correctIndex == index ? RatsColor.success : RatsColor.muted)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    RatsModalIntro(
+                        kicker: "Dein Lernbereich",
+                        title: "Eigene Fragen",
+                        message: "Baue dir ein persönliches Quiz. Markiere direkt die richtige Antwort.",
+                        symbol: "brain.head.profile"
+                    )
+
+                    RatsSectionPanel("Neue Frage", detail: "Mindestens zwei Antworten ausfüllen und eine davon als richtig markieren.", symbol: "plus.bubble") {
+                        RatsLabeledField(label: "Frage") {
+                            TextField("Was möchtest du üben?", text: $question, axis: .vertical)
+                                .lineLimit(2...5)
+                                .textFieldStyle(.plain)
+                                .padding(.vertical, 9)
+                        }
+                        ForEach(answers.indices, id: \.self) { index in
+                            RatsLabeledField(
+                                label: "Antwort \(index + 1)",
+                                hint: correctIndex == index ? "richtig" : "antippen zum Markieren"
+                            ) {
+                                HStack(spacing: 10) {
+                                    Button {
+                                        correctIndex = index
+                                    } label: {
+                                        Image(systemName: correctIndex == index ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 20))
+                                            .foregroundStyle(correctIndex == index ? RatsColor.success : RatsColor.muted)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Antwort \(index + 1) als richtig markieren")
+                                    TextField("Antwort eingeben", text: $answers[index])
+                                        .textFieldStyle(.plain)
+                                }
                             }
-                            .buttonStyle(.plain)
-                            TextField("Antwort \(index + 1)", text: $answers[index])
                         }
-                    }
-                    TextField("Erklärung (optional)", text: $explanation, axis: .vertical)
-                    Button(isSaving ? "Speichert …" : "Frage speichern") { Task { await save() } }
+                        RatsLabeledField(label: "Erklärung", hint: "optional") {
+                            TextField("Warum ist diese Antwort richtig?", text: $explanation, axis: .vertical)
+                                .lineLimit(2...5)
+                                .textFieldStyle(.plain)
+                                .padding(.vertical, 9)
+                        }
+                        Button { Task { await save() } } label: {
+                            Label(isSaving ? "Speichert …" : "Frage speichern", systemImage: "tray.and.arrow.down")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(PrimaryButtonStyle())
                         .disabled(isSaving || question.trimmingCharacters(in: .whitespacesAndNewlines).count < 5 || validAnswers.count < 2)
-                }
-                Section("Gespeichert") {
+                        .opacity(isSaving || question.trimmingCharacters(in: .whitespacesAndNewlines).count < 5 || validAnswers.count < 2 ? 0.5 : 1)
+                    }
+
+                    MonoKicker("Gespeichert", trailing: "\(questions.count)")
                     if questions.isEmpty {
-                        Text("Noch keine eigenen Fragen.").foregroundStyle(RatsColor.secondary)
+                        RatsEmptyState(
+                            title: "Noch keine eigenen Fragen",
+                            message: "Deine erste selbst erstellte Frage erscheint nach dem Speichern hier.",
+                            symbol: "questionmark.bubble"
+                        )
                     }
-                    ForEach(questions) { entry in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(entry.question).font(RatsFont.body(14, weight: .semibold))
-                            Text("\(entry.practiced)× geübt · \(entry.correctCount)× richtig")
-                                .font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary)
+                    ForEach(Array(questions.enumerated()), id: \.element.id) { index, entry in
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(entry.question).font(RatsFont.body(14, weight: .semibold))
+                                Text("\(entry.practiced)× geübt · \(entry.correctCount)× richtig")
+                                    .font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Button(role: .destructive) {
+                                Task { await delete(IndexSet(integer: index)) }
+                            } label: {
+                                Image(systemName: "trash")
+                                    .frame(width: 32, height: 32)
+                            }
+                            .accessibilityLabel("Frage löschen")
                         }
+                        .ratsCard()
                     }
-                    .onDelete { offsets in Task { await delete(offsets) } }
+                    if let error { ErrorCard(message: error) { Task { await load() } } }
                 }
-                if let error { Section { Text(error).foregroundStyle(RatsColor.danger) } }
+                .frame(maxWidth: 680, alignment: .leading)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 22)
             }
+            .background(RatsColor.page)
             .navigationTitle("Eigene Fragen")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Fertig") { dismiss() } }
             }

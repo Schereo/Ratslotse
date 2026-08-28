@@ -312,46 +312,85 @@ struct ConversationsView: View {
     @State private var conversations: [ConversationSummary] = []
     @State private var selected: JSONValue?
     @State private var error: String?
+    @State private var isLoading = true
 
     var body: some View {
         NavigationStack {
-            List {
-                if let selected {
-                    Section("Gespräch") { ConversationTranscript(payload: selected) }
-                } else if conversations.isEmpty && error == nil {
-                    ContentUnavailableView("Noch keine Gespräche", systemImage: "bubble.left.and.bubble.right")
-                } else {
-                    ForEach(conversations) { conversation in
-                        Button { Task { await open(conversation.id) } } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "bubble.left.and.text.bubble.right")
-                                    .foregroundStyle(RatsColor.primary)
-                                    .accessibilityHidden(true)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(conversation.title)
-                                        .font(RatsFont.body(15, weight: .semibold))
-                                        .foregroundStyle(RatsColor.text)
-                                        .multilineTextAlignment(.leading)
-                                    Text(conversationMeta(conversation))
-                                        .font(RatsFont.mono(10))
-                                        .foregroundStyle(RatsColor.muted)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .foregroundStyle(RatsColor.muted)
-                            }
-                            .padding(.vertical, 4)
-                        }
-                            .swipeActions {
-                                Button("Löschen", role: .destructive) { remove(conversation.id) }
-                            }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    if selected == nil {
+                        RatsModalIntro(
+                            kicker: "Frag den Rat",
+                            title: "Meine Gespräche",
+                            message: "Hier findest du deine bisherigen Fragen samt Antworten und amtlichen Quellen wieder.",
+                            symbol: "bubble.left.and.bubble.right.fill"
+                        )
                     }
+
+                    if let selected {
+                        RatsSectionPanel("Gespräch", symbol: "text.bubble") {
+                            ConversationTranscript(payload: selected)
+                        }
+                    } else if isLoading {
+                        RatsLoadingState(message: "Gespräche werden geladen …")
+                    } else if conversations.isEmpty && error == nil {
+                        RatsEmptyState(
+                            title: "Noch keine Gespräche",
+                            message: "Sobald du dem Rat eine Frage stellst, kannst du die Unterhaltung hier erneut öffnen.",
+                            symbol: "bubble.left.and.bubble.right"
+                        )
+                    } else {
+                        MonoKicker("Verlauf", trailing: "\(conversations.count)")
+                        ForEach(conversations) { conversation in
+                            HStack(spacing: 10) {
+                                Button { Task { await open(conversation.id) } } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundStyle(RatsColor.primary)
+                                            .frame(width: 38, height: 38)
+                                            .background(RatsColor.primary.opacity(0.08))
+                                            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                                            .accessibilityHidden(true)
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(conversation.title)
+                                                .font(RatsFont.body(15, weight: .semibold))
+                                                .foregroundStyle(RatsColor.text)
+                                                .multilineTextAlignment(.leading)
+                                            Text(conversationMeta(conversation))
+                                                .font(RatsFont.mono(10))
+                                                .foregroundStyle(RatsColor.muted)
+                                        }
+                                        Spacer(minLength: 4)
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption)
+                                            .foregroundStyle(RatsColor.muted)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                Menu {
+                                    Button("Gespräch löschen", systemImage: "trash", role: .destructive) {
+                                        remove(conversation.id)
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis")
+                                        .foregroundStyle(RatsColor.secondary)
+                                        .frame(width: 30, height: 34)
+                                }
+                                .accessibilityLabel("Gespräch verwalten")
+                            }
+                            .ratsCard()
+                        }
+                    }
+                    if let error { ErrorCard(message: error) { Task { await load() } } }
                 }
-                if let error { Text(error).foregroundStyle(RatsColor.danger) }
+                .frame(maxWidth: 720, alignment: .leading)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 22)
             }
+            .background(RatsColor.page)
             .navigationTitle("Meine Gespräche")
-            .navigationBarTitleDisplayMode(selected == nil ? .large : .inline)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(selected == nil ? "Schließen" : "Zurück") {
@@ -370,11 +409,14 @@ struct ConversationsView: View {
     }
 
     private func load() async {
+        isLoading = true
+        defer { isLoading = false }
         do {
             let response: JSONValue = try await model.api.get("/api/council/gespraeche")
             conversations = response.object?["gespraeche"]?.array?.compactMap {
                 try? $0.decoded(ConversationSummary.self)
             } ?? []
+            error = nil
         } catch { self.error = error.localizedDescription }
     }
 

@@ -56,7 +56,7 @@ public struct NativeRootView: View {
         }
         .sheet(item: $model.authPresentation) { presentation in
             AuthFlowView(model: model, initial: presentation)
-                .presentationDetents([.large])
+                .ratsLargeSheet()
         }
         .alert("Ratslotse", isPresented: Binding(
             get: { model.alertMessage != nil },
