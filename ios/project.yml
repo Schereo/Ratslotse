@@ -53,6 +53,7 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UILaunchScreen:
           UIImageName: Splash
+          UIColorName: SplashBackground
         UIRequiredDeviceCapabilities:
           - arm64
         UISupportedInterfaceOrientations:
