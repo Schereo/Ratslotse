@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil, Trash2 } from "lucide-react";
+import { Check, Pencil, Trash2 } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { OutcomeBadge } from "@/components/decision-ui";
 import { formatDate } from "@/components/ui";
@@ -22,7 +22,7 @@ import type { Topic } from "@/lib/types";
  *  unterscheidet, ist nur die Spaltenzahl außen herum.
  */
 export function ThemenKarte({
-  topic, onEdit, onDelete, loeschFrage, onLoeschFrage,
+  topic, onEdit, onDelete, loeschFrage, onLoeschFrage, onAlleGelesen,
 }: {
   topic: Topic;
   onEdit: () => void;
@@ -31,6 +31,8 @@ export function ThemenKarte({
    *  EINE Karte fragt. */
   loeschFrage: boolean;
   onLoeschFrage: (offen: boolean) => void;
+  /** Alle Treffer dieses Themas als gelesen markieren. */
+  onAlleGelesen: () => void;
 }) {
   const treffer = topic.recent_hits ?? [];
   const gesamt = topic.decision_count;
@@ -52,11 +54,24 @@ export function ThemenKarte({
       <div className="flex items-start justify-between gap-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <h3 className="truncate font-display text-base font-semibold text-foreground">{topic.name}</h3>
+          {/* Das Abzeichen IST der Knopf, der es wegräumt. Vorher ging es nur
+              weg, wenn man „alle ansehen" antippte — wer die Treffer direkt auf
+              der Karte gelesen hatte, trug es weiter vor sich her (Tims Frage
+              28.08.2026). Einzelne Zeilen abzuhaken wäre die feinere, aber
+              mühsamere Lösung; gemeint ist ja „ich habe das hier gesehen". */}
           {neu > 0 && (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-signal/[0.12] px-2 py-0.5 text-[11px] font-semibold text-signal">
-              <span className="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden />
+            <button
+              type="button" onClick={onAlleGelesen}
+              title="Alle als gelesen markieren"
+              aria-label={neu === 1
+                ? `1 neuen Treffer bei ${topic.name} als gelesen markieren`
+                : `${neu} neue Treffer bei ${topic.name} als gelesen markieren`}
+              className="group inline-flex shrink-0 items-center gap-1.5 rounded-full bg-signal/[0.12] px-2 py-0.5 text-[11px] font-semibold text-signal transition-colors hover:bg-signal/20"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-signal group-hover:hidden" aria-hidden />
+              <Check className="hidden h-3 w-3 group-hover:block" aria-hidden />
               {neu} {neu === 1 ? "neuer" : "neue"}
-            </span>
+            </button>
           )}
         </div>
         <div className="flex shrink-0 gap-0.5">
@@ -157,8 +172,11 @@ export function ThemenKarte({
           {/* `cat=all` ist Pflicht, nicht Geschmack: Die Suchseite steht sonst
               auf „nur Beschlüsse" und wirft alle Berichte aus der Liste, die
               diese Zahl mitzählt (Tims Befund, Build 12: Karte „40+", Liste 25). */}
+          {/* Die Trefferliste zu öffnen gilt weiter als gesehen (RL-903) —
+              fire-and-forget, der Seitenwechsel wartet nicht auf den Server. */}
           <Link
             href={`/council?tab=decisions&cat=all&topic=${topic.id}`}
+            onClick={onAlleGelesen}
             className="text-[13px] font-medium text-primary hover:underline"
           >
             Alle {gesamt}{gedeckelt ? "+" : ""} Beschlüsse →

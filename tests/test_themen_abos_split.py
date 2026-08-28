@@ -50,6 +50,23 @@ def test_navigation_fuehrt_zu_den_abos():
     assert '"/abos", "/bookmarks"' in nav               # MEHR_AKTIV
 
 
+def test_das_neu_abzeichen_laesst_sich_wegraeumen():
+    """Tims Frage 28.08.: „geht der 2-neue-Chip weg, wenn alle angeklickt
+    sind?" — nein, das tat er nie: Er hing am Öffnen der Trefferliste, und
+    beim Umbau ging selbst das verloren. Jetzt ist das Abzeichen selbst der
+    Knopf, der es wegräumt, und der Link markiert weiter mit."""
+    karte = _lies("components/themen-karte.tsx")
+    view = _lies("app/(app)/topics/view.tsx")
+    # Das Abzeichen ist ein Knopf, kein reiner Text mehr.
+    assert "onClick={onAlleGelesen}" in karte
+    assert "Alle als gelesen markieren" in karte
+    # Und der Weg in die Trefferliste markiert weiterhin mit (RL-903).
+    assert "onClick={onAlleGelesen}" in karte.split("Alle {gesamt}")[0]
+    # Die Seite ruft den Endpunkt, der ALLE Treffer eines Themas abräumt.
+    assert "/seen" in view
+    assert '"topics-unread"' in view
+
+
 def test_beide_seiten_verweisen_aufeinander():
     """Wer Themen sucht und Abos findet (oder umgekehrt), soll nicht über die
     Navigation zurück müssen — der Split darf die beiden nicht auseinander-

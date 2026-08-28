@@ -106,6 +106,19 @@ export function TopicsView() {
     onError: () => setKiText("Der Vorschlag kam gerade nicht durch. Schreib die Beschreibung selbst."),
   });
 
+  /* RL-903: Alle Treffer eines Themas als gelesen markieren. Hängt am
+     „n neue"-Abzeichen (ein Klick räumt es weg) und am Öffnen der
+     Trefferliste. Fire-and-forget — ein Fehler darf weder den Seitenwechsel
+     aufhalten noch die Seite stören; beim nächsten Laden steht der Zähler
+     dann eben noch. */
+  const alleGelesen = (t: Topic) => {
+    if ((t.unread_count ?? 0) <= 0) return;
+    api.post(`/topics/${t.id}/seen`, {}).then(() => {
+      qc.invalidateQueries({ queryKey: ["topics"] });
+      qc.invalidateQueries({ queryKey: ["topics-unread"] });
+    }).catch(() => {});
+  };
+
   const anlegen = () => {
     const n = name.trim();
     if (!n || !description.trim()) return;
@@ -247,6 +260,7 @@ export function TopicsView() {
                 onDelete={() => deleteMutation.mutate(t.id)}
                 loeschFrage={loeschFrage === t.id}
                 onLoeschFrage={(offen) => setLoeschFrage(offen ? t.id : null)}
+                onAlleGelesen={() => alleGelesen(t)}
               />
             ))}
             <button
