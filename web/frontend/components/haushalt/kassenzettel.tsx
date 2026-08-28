@@ -62,8 +62,10 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import {
   HaushaltAuswahl, bereiche, deMio, juengsteRuecklage, mio, quellenLabel, summe,
 } from "@/lib/haushalt";
+import type { RuecklageJahr } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
-import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
+import { Zeitreihe } from "@/components/grafik/zeitreihe";
+import type { JahrPunkt } from "@/components/grafik/daten";
 
 const de = (n: number) => n.toLocaleString("de-DE");
 
@@ -81,6 +83,29 @@ function ruecklageLeerAb(
     jahr += 1;
   }
   return rest > 0 ? null : jahr;
+}
+
+/** Die API liefert nur belastbare Bilanzwerte. Fehlende Jahre werden hier
+ *  ausdrücklich ergänzt, damit die Grafik ihre Linie dort unterbricht und
+ *  den Grund anschreibt, statt die beiden Nachbarjahre zu verbinden. */
+function ruecklagenReihe(zeilen: RuecklageJahr[]): JahrPunkt[] {
+  const sortiert = [...zeilen]
+    .filter((z) => Number.isFinite(z.stand_nach_ergebnis))
+    .sort((a, b) => a.jahr - b.jahr);
+  if (!sortiert.length) return [];
+  const nachJahr = new Map(sortiert.map((z) => [z.jahr, z]));
+  const aus: JahrPunkt[] = [];
+  for (let jahr = sortiert[0].jahr; jahr <= sortiert[sortiert.length - 1].jahr; jahr += 1) {
+    const zeile = nachJahr.get(jahr);
+    aus.push(zeile
+      ? { jahr, wert: zeile.stand_nach_ergebnis / 1e6 }
+      : {
+          jahr,
+          fehlt: "Für dieses Jahr liegt in den eingelesenen Jahresabschlüssen "
+            + "kein belastbarer Rücklagenwert vor.",
+        });
+  }
+  return aus;
 }
 
 /** Anteil der Transferaufwendungen an den Aufwendungen eines Teilhaushalts —
@@ -209,6 +234,7 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
   const ueberEuro = saldoEuro != null && saldoEuro > 0 ? saldoEuro : null;
 
   const ruecklage = juengsteRuecklage(daten);
+  const ruecklagenVerlauf = ruecklagenReihe(daten.ruecklage ?? []);
   const ruecklageEuro = ruecklage?.stand_nach_ergebnis ?? null;
   const ruecklageJeKopf = ruecklageEuro != null ? jeKopf(ruecklageEuro) : null;
   const restJeKopf = fehltEuro != null && ruecklageEuro != null
@@ -335,17 +361,19 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                     Plan abweichen. Stand: Jahresabschluss {ruecklage.jahr}, nach
                     Berücksichtigung des dort ausgewiesenen Jahresergebnisses.
                   </p>
-                  {(daten.ruecklage?.length ?? 0) >= 2 && (
-                    <div className="mt-3">
-                      <ZeitreiheMini
-                        reihe={(daten.ruecklage ?? []).map((z) => ({
-                          jahr: z.jahr, wert: z.stand_nach_ergebnis / 1e6,
-                        }))}
-                        format={(v) => `${deMio(v)} Mio.`}
-                        ariaLabel={`Überschussrücklage nach Jahresergebnis, `
-                          + `${daten.ruecklage?.[0]?.jahr} bis ${ruecklage.jahr}`}
-                      />
-                    </div>
+                  {ruecklagenVerlauf.length >= 2 && (
+                    <Zeitreihe
+                      className="mt-4 border-t border-border pt-4"
+                      reihe={ruecklagenVerlauf}
+                      titel="Entwicklung der verfügbaren Rücklage"
+                      einheit="Mio. €"
+                      nachkomma={1}
+                      ariaTitel={`Verfügbare Überschussrücklage nach Jahresergebnis, `
+                        + `${ruecklagenVerlauf[0].jahr} bis ${ruecklage.jahr}`}
+                      vorjahresdifferenz
+                      tabelle
+                      leisteHaftet={false}
+                    />
                   )}
                 </Karte>
               )}
