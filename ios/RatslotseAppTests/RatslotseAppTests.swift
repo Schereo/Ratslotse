@@ -490,6 +490,28 @@ private final class FeedbackURLProtocol: URLProtocol {
     #expect(profile.committees.isEmpty)
 }
 
+@Test func councilSessionKeepsAgendaCountForNativeCards() throws {
+    let data = try #require(
+        """
+        {
+          "ksinr": 8101,
+          "committee": "Ausschuss für Allgemeine Angelegenheiten",
+          "session_date": "2026-08-31",
+          "session_time": "16:00",
+          "location": "Kulturzentrum PFL",
+          "title": "Ausschuss für Allgemeine Angelegenheiten",
+          "n_items": 9,
+          "my_topic_items": []
+        }
+        """.data(using: .utf8)
+    )
+
+    let session = try JSONDecoder().decode(CouncilSession.self, from: data)
+    #expect(session.itemCount == 9)
+    #expect(session.sessionTime == "16:00")
+    #expect(session.location == "Kulturzentrum PFL")
+}
+
 @Test func personProfileStillDecodesLegacyStringAffiliation() throws {
     let data = try #require(
         """

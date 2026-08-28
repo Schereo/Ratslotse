@@ -175,14 +175,18 @@ struct CouncilBrowserView: View {
                             .buttonStyle(.plain)
                         }
                     } else if model.councilSection == .sessions {
-                        ForEach(sessions) { session in
-                            Button {
-                                if let id = session.ksinr { model.navigation.append(.sessions(ksinr: id, tops: [])) }
-                            } label: {
+                        ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
+                            if isFirstSessionInYear(at: index) {
+                                SessionYearDivider(year: sessionYear(session.sessionDate))
+                            }
+                            if let id = session.ksinr {
+                                Button { model.navigation.append(.sessions(ksinr: id, tops: [])) } label: {
+                                    SessionRow(session: session).ratsCard()
+                                }
+                                .buttonStyle(.plain)
+                            } else {
                                 SessionRow(session: session).ratsCard()
                             }
-                            .buttonStyle(.plain)
-                            .disabled(session.ksinr == nil)
                         }
                     } else {
                         NativeCouncilMap(points: filteredMapPoints) { point in
@@ -272,6 +276,11 @@ struct CouncilBrowserView: View {
         return mapPoints.filter { $0.name.localizedCaseInsensitiveContains(needle) }
     }
 
+    private func isFirstSessionInYear(at index: Int) -> Bool {
+        guard sessions.indices.contains(index) else { return false }
+        return index == 0 || sessionYear(sessions[index - 1].sessionDate) != sessionYear(sessions[index].sessionDate)
+    }
+
     private func clearFilters() {
         committee = ""
         policyField = ""
@@ -294,6 +303,13 @@ struct CouncilBrowserView: View {
            ratsDebugValue("RATSLOTSE_DEBUG_COUNCIL_CARDS") == "1",
            let fixture = Self.debugDecisionPage() {
             decisions = fixture.decisions
+            total = fixture.total
+            return
+        }
+        if model.councilSection == .sessions,
+           ratsDebugValue("RATSLOTSE_DEBUG_COUNCIL_SESSIONS") == "1",
+           let fixture = Self.debugSessionPage() {
+            sessions = fixture.sessions
             total = fixture.total
             return
         }
@@ -418,6 +434,58 @@ struct CouncilBrowserView: View {
         }
         """#
         return try? JSONDecoder().decode(DecisionPage.self, from: Data(raw.utf8))
+    }
+
+    private static func debugSessionPage() -> SessionPage? {
+        let raw = #"""
+        {
+          "count": 4,
+          "total": 4,
+          "sessions": [
+            {
+              "ksinr": 8101,
+              "committee": "Ausschuss für Allgemeine Angelegenheiten",
+              "session_date": "2026-08-31",
+              "session_time": "16:00",
+              "location": "Kulturzentrum PFL",
+              "title": "Ausschuss für Allgemeine Angelegenheiten",
+              "n_items": 9,
+              "my_topic_items": []
+            },
+            {
+              "ksinr": 8102,
+              "committee": "Rat der Stadt",
+              "session_date": "2026-08-31",
+              "session_time": "17:00",
+              "location": "Alte Fleiwa, Sitzungssaal 1/2",
+              "title": "Rat der Stadt",
+              "n_items": 13,
+              "my_topic_items": [{"item_number":"7","topic_name":"Sichere Schulwege"}]
+            },
+            {
+              "ksinr": 8103,
+              "committee": "Ausschuss für Stadtplanung und Bauen",
+              "session_date": "2026-09-03",
+              "session_time": "18:00",
+              "location": "Technisches Rathaus",
+              "title": "Ausschuss für Stadtplanung und Bauen",
+              "n_items": 7,
+              "my_topic_items": []
+            },
+            {
+              "calendar_id": 99,
+              "committee": "Verkehrsausschuss",
+              "session_date": "2027-01-14",
+              "session_time": "17:00",
+              "location": "Alte Fleiwa",
+              "title": "Verkehrsausschuss",
+              "n_items": 0,
+              "my_topic_items": []
+            }
+          ]
+        }
+        """#
+        return try? JSONDecoder().decode(SessionPage.self, from: Data(raw.utf8))
     }
 #endif
 }
@@ -671,20 +739,134 @@ private struct SessionRow: View {
     let session: CouncilSession
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            MonoKicker(RatsDate.weekday(session.sessionDate) ?? session.sessionDate, trailing: session.sessionTime)
-            Text(session.committee)
-                .font(RatsFont.body(16, weight: .semibold))
-            if let location = session.location, !location.isEmpty {
-                Label(location, systemImage: "mappin.and.ellipse")
-                    .font(RatsFont.body(12))
+        HStack(alignment: .center, spacing: 13) {
+            SessionDateTile(date: session.sessionDate)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(shortCommittee)
+                    .font(RatsFont.body(16, weight: .bold))
+                    .foregroundStyle(RatsColor.text)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                if shortCommittee != session.committee {
+                    Text(session.committee)
+                        .font(RatsFont.body(12.5))
+                        .foregroundStyle(RatsColor.secondary)
+                        .lineLimit(2)
+                }
+
+                Text(metadata)
+                    .font(RatsFont.body(12.5))
                     .foregroundStyle(RatsColor.secondary)
+                    .lineLimit(1)
+
+                if let matches = session.myTopicItems, !matches.isEmpty {
+                    Label("\(matches.count) für dich", systemImage: "bell.fill")
+                        .font(RatsFont.body(10.5, weight: .semibold))
+                        .foregroundStyle(RatsColor.signal)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(RatsColor.signal.opacity(0.09))
+                        .clipShape(Capsule())
+                }
             }
-            if let matches = session.myTopicItems, !matches.isEmpty {
-                Pill("\(matches.count) zu deinen Themen", symbol: "bell")
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 8) {
+                Text(agendaLabel)
+                    .font(RatsFont.body(11.5, weight: .semibold))
+                    .foregroundStyle(session.ksinr == nil ? RatsColor.secondary : RatsColor.primary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(session.ksinr == nil ? RatsColor.stage : RatsColor.primary.opacity(0.10))
+                    .clipShape(Capsule())
+                    .fixedSize()
+
+                Image(systemName: session.ksinr == nil ? "calendar.badge.clock" : "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(RatsColor.muted)
+                    .frame(width: 18, height: 18)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var shortCommittee: String {
+        session.committee
+            .replacingOccurrences(of: "Ausschuss für ", with: "")
+            .replacingOccurrences(of: "Rat der Stadt", with: "Rat")
+    }
+
+    private var metadata: String {
+        let weekday = (RatsDate.weekday(session.sessionDate) ?? "")
+            .split(separator: ",").first.map(String.init)
+        let time = session.sessionTime.map { "\($0) Uhr" }
+        let location = session.location?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return [weekday, time, location].compactMap { value in
+            guard let value, !value.isEmpty else { return nil }
+            return value
+        }.joined(separator: " · ")
+    }
+
+    private var agendaLabel: String {
+        guard session.ksinr != nil else { return "folgt" }
+        return "\(session.itemCount) \(session.itemCount == 1 ? "TOP" : "TOPs")"
+    }
+
+    private var accessibilityLabel: String {
+        [
+            session.committee,
+            RatsDate.short(session.sessionDate),
+            metadata,
+            session.ksinr == nil ? "Tagesordnung folgt" : agendaLabel,
+        ].compactMap { $0 }.joined(separator: ", ")
+    }
+}
+
+private struct SessionDateTile: View {
+    let date: String
+
+    var body: some View {
+        VStack(spacing: 1) {
+            Text(month)
+                .font(RatsFont.mono(9.5, weight: .semibold))
+                .foregroundStyle(RatsColor.secondary)
+                .textCase(.uppercase)
+            Text(day)
+                .font(RatsFont.title(21))
+                .foregroundStyle(RatsColor.text)
+        }
+        .frame(width: 52, height: 58)
+        .background(RatsColor.stage)
+        .overlay(RoundedRectangle(cornerRadius: 13).stroke(RatsColor.border))
+        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .accessibilityHidden(true)
+    }
+
+    private var components: [Substring] { date.prefix(10).split(separator: "-") }
+    private var day: String { components.count == 3 ? String(Int(components[2]) ?? 0) : "–" }
+    private var month: String {
+        guard components.count == 3, let number = Int(components[1]), (1...12).contains(number) else { return "" }
+        return ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"][number - 1]
+    }
+}
+
+private struct SessionYearDivider: View {
+    let year: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(year)
+                .font(RatsFont.mono(11, weight: .semibold))
+                .foregroundStyle(RatsColor.secondary)
+                .tracking(1.5)
+            Rectangle().fill(RatsColor.border).frame(height: 1)
+        }
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -1957,16 +2139,13 @@ private struct SessionListView: View {
                         symbol: "calendar.badge.clock"
                     )
                 } else {
-                    ForEach(sessions) { session in
+                    ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
+                        if isFirstSessionInYear(at: index) {
+                            SessionYearDivider(year: sessionYear(session.sessionDate))
+                        }
                         if let ksinr = session.ksinr {
                             NavigationLink(value: AppRoute.sessions(ksinr: ksinr, tops: [])) {
-                                HStack(alignment: .center, spacing: 10) {
-                                    SessionRow(session: session)
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundStyle(RatsColor.muted)
-                                }
-                                .ratsCard()
+                                SessionRow(session: session).ratsCard()
                             }
                             .buttonStyle(.plain)
                         } else {
@@ -1996,6 +2175,16 @@ private struct SessionListView: View {
             error = nil
         } catch { self.error = error.localizedDescription }
     }
+
+    private func isFirstSessionInYear(at index: Int) -> Bool {
+        guard sessions.indices.contains(index) else { return false }
+        return index == 0 || sessionYear(sessions[index - 1].sessionDate) != sessionYear(sessions[index].sessionDate)
+    }
+}
+
+private func sessionYear(_ raw: String) -> String {
+    guard raw.count >= 4 else { return "–" }
+    return String(raw.prefix(4))
 }
 
 private struct SessionDetailView: View {
