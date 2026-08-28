@@ -1,3 +1,4 @@
+import Foundation
 import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
@@ -71,6 +72,11 @@ public struct NativeRootView: View {
         .task {
             await model.bootstrap()
 #if DEBUG
+            if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ACTIVE_SESSION"] == "1",
+               let user = debugActiveUser() {
+                model.session = .active(user)
+                model.onboardingStep = nil
+            }
             switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_AUTH"] {
             case "login": model.authPresentation = .login
             case "register": model.authPresentation = .register
@@ -85,6 +91,13 @@ public struct NativeRootView: View {
 #endif
         }
     }
+
+#if DEBUG
+    private func debugActiveUser() -> User? {
+        let json = #"{"id":1,"email":"visual-qa@ratslotse.de","role":"user","status":"active","delivery_channel":"push","email_verified":true,"apple_linked":false,"has_password":false,"access_token":null,"display_name":"Visual QA","qa_speichern":0}"#
+        return try? JSONDecoder().decode(User.self, from: Data(json.utf8))
+    }
+#endif
 }
 
 private struct RatsRouteScaffold<Content: View>: View {

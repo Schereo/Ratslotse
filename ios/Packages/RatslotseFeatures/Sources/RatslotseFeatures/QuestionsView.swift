@@ -59,6 +59,7 @@ private struct QuestionTurn: Identifiable {
 struct QuestionsView: View {
     let model: AppModel
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var input = ""
     @State private var turns: [QuestionTurn] = []
     @State private var streamTask: Task<Void, Never>?
@@ -84,9 +85,13 @@ struct QuestionsView: View {
     var body: some View {
         GeometryReader { geometry in
             let showsEvidenceSidebar = geometry.size.width >= 1_040
+            let usesCompactWelcome = geometry.size.width < 600 && geometry.size.height < 950
 
             HStack(spacing: 0) {
-                chatColumn(showsEvidenceInline: !showsEvidenceSidebar)
+                chatColumn(
+                    showsEvidenceInline: !showsEvidenceSidebar,
+                    usesCompactWelcome: usesCompactWelcome
+                )
                     .frame(maxWidth: showsEvidenceSidebar ? 744 : .infinity)
 
                 if showsEvidenceSidebar {
@@ -137,7 +142,7 @@ struct QuestionsView: View {
         }
     }
 
-    private func chatColumn(showsEvidenceInline: Bool) -> some View {
+    private func chatColumn(showsEvidenceInline: Bool, usesCompactWelcome: Bool) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -177,7 +182,10 @@ struct QuestionsView: View {
                                 )
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                             } else {
-                                EmptyQuestionsView(select: askUsingSelectedMode)
+                                EmptyQuestionsView(
+                                    usesCompactLayout: usesCompactWelcome,
+                                    select: askUsingSelectedMode
+                                )
                             }
                         }
                         ForEach(turns) { turn in
@@ -225,7 +233,7 @@ struct QuestionsView: View {
             .frame(maxWidth: 780)
             .padding(.horizontal, 16)
             .padding(.top, 8)
-            .padding(.bottom, 18)
+            .padding(.bottom, horizontalSizeClass == .compact ? 86 : 18)
             .frame(maxWidth: .infinity)
         }
     }
@@ -672,6 +680,7 @@ struct QuestionsView: View {
 }
 
 private struct EmptyQuestionsView: View {
+    let usesCompactLayout: Bool
     let select: (String) -> Void
     private let examples = [
         "Was hat der Rat zuletzt zum Radverkehr beschlossen?",
@@ -680,13 +689,24 @@ private struct EmptyQuestionsView: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Lotti3DView(scene: .questions)
-                .frame(maxWidth: .infinity)
-                .frame(height: 164)
-                .accessibilityHidden(true)
-            Text("Frag, wie du sprechen würdest.")
-                .font(RatsFont.title(26))
+        VStack(alignment: .leading, spacing: usesCompactLayout ? 12 : 18) {
+            if usesCompactLayout {
+                HStack(spacing: 14) {
+                    Lotti3DView(scene: .questions)
+                        .frame(width: 124, height: 104)
+                        .accessibilityHidden(true)
+
+                    welcomeTitle
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                Lotti3DView(scene: .questions)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 164)
+                    .accessibilityHidden(true)
+                welcomeTitle
+            }
+
             Text("Ratslotse sucht in Beschlüssen, Vorlagen und Debatten. Die Quellen stehen direkt an der Antwort.")
                 .foregroundStyle(RatsColor.secondary)
                 .lineSpacing(3)
@@ -698,7 +718,8 @@ private struct EmptyQuestionsView: View {
                         Image(systemName: "arrow.right")
                     }
                     .font(RatsFont.body(14, weight: .medium))
-                    .padding(13)
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, usesCompactLayout ? 10 : 13)
                     .background(RatsColor.card)
                     .overlay(RoundedRectangle(cornerRadius: 11).stroke(RatsColor.primary.opacity(0.24)))
                     .clipShape(RoundedRectangle(cornerRadius: 11))
@@ -706,7 +727,13 @@ private struct EmptyQuestionsView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.top, 30)
+        .padding(.top, usesCompactLayout ? 4 : 30)
+    }
+
+    private var welcomeTitle: some View {
+        Text("Frag, wie du sprechen würdest.")
+            .font(RatsFont.title(usesCompactLayout ? 24 : 26))
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
