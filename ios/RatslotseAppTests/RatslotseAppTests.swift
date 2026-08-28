@@ -160,7 +160,10 @@ import Testing
         sources: sources
     )
     #expect(markdown.contains("**Fahrradstraße**"))
-    #expect(markdown.contains("[ 1 ](ratslotse://decision/42). Für"))
+    #expect(markdown.contains("[①](ratslotse://decision/42). Für"))
+    #expect(questionCitationLabel(10) == "⑩")
+    #expect(questionCitationLabel(18) == "⑱")
+    #expect(questionCitationLabel(21) == "[21]")
     #expect(!markdown.contains("20947"))
     #expect(!markdown.contains("999"))
 }

@@ -1371,7 +1371,7 @@ func questionCitationMarkdown(
         } else {
             let links = questionCitationIDs(in: marker).compactMap { id -> String? in
                 guard let number = citationIndex.numberByID[id] else { return nil }
-                return "[ \(number) ](ratslotse://decision/\(id))"
+                return "[\(questionCitationLabel(number))](ratslotse://decision/\(id))"
             }
             result += links.joined(separator: " ")
         }
@@ -1381,6 +1381,15 @@ func questionCitationMarkdown(
         result += ns.substring(from: cursor)
     }
     return result
+}
+
+func questionCitationLabel(_ number: Int) -> String {
+    let circled = [
+        "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩",
+        "⑪", "⑫", "⑬", "⑭", "⑮", "⑯", "⑰", "⑱", "⑲", "⑳",
+    ]
+    guard circled.indices.contains(number - 1) else { return "[\(number)]" }
+    return circled[number - 1]
 }
 
 private struct QuestionSourcesCard: View {
@@ -2257,9 +2266,11 @@ struct CitedAnswerText: View {
         for run in output.runs {
             guard let link = run.link, link.scheme == "ratslotse" else { continue }
             output[run.range].foregroundColor = RatsColor.primary
-            output[run.range].font = RatsFont.body(10, weight: .bold)
             if link.host == "decision" {
-                output[run.range].backgroundColor = RatsColor.primary.opacity(0.11)
+                output[run.range].font = .system(size: 12, weight: .semibold, design: .rounded)
+                output[run.range].baselineOffset = 1
+            } else {
+                output[run.range].font = RatsFont.body(10, weight: .bold)
             }
         }
         return output
