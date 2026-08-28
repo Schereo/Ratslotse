@@ -147,34 +147,28 @@ public struct QuestionComposer: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 9) {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(RatsColor.signal)
-                TextField("Was möchtest du über den Rat wissen?", text: $text, axis: .vertical)
-                    .font(RatsFont.body())
-                    .lineLimit(1...4)
-                    .submitLabel(.send)
-                    .onSubmit(action)
-                Button(action: action) {
-                    Image(systemName: isSending ? "stop.fill" : "arrow.up")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(RatsColor.primaryText)
-                        .frame(width: 38, height: 38)
-                        .background(RatsColor.primary.opacity(text.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1))
-                        .clipShape(Circle())
-                }
-                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).count < 4 && !isSending)
+        HStack(spacing: 9) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(RatsColor.signal)
+            TextField("Was möchtest du über den Rat wissen?", text: $text, axis: .vertical)
+                .font(RatsFont.body())
+                .lineLimit(1...4)
+                .submitLabel(.send)
+                .onSubmit(action)
+            Button(action: action) {
+                Image(systemName: isSending ? "stop.fill" : "arrow.up")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(RatsColor.primaryText)
+                    .frame(width: 38, height: 38)
+                    .background(RatsColor.primary.opacity(text.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1))
+                    .clipShape(Circle())
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(RatsColor.card)
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(RatsColor.border))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-
-            Text("Antworten können Fehler enthalten. Prüfe wichtige Angaben an den verlinkten Quellen.")
-                .font(RatsFont.body(10))
-                .foregroundStyle(RatsColor.muted)
+            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).count < 4 && !isSending)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(RatsColor.card)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(RatsColor.border))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }

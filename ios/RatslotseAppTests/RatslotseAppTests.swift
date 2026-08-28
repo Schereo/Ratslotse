@@ -1,5 +1,6 @@
 import Foundation
 import MapKit
+import RatslotseAPI
 import Testing
 @testable import Ratslotse
 @testable import RatslotseFeatures
@@ -46,6 +47,95 @@ import Testing
 
     #expect(model.tabletPage == nil)
     #expect(model.selectedTab == .questions)
+}
+
+@MainActor
+@Test func conversationSavingPreferenceComesFromTheAccount() throws {
+    let data = try #require(
+        """
+        {
+          "id": 17,
+          "email": "test@example.org",
+          "role": "user",
+          "status": "active",
+          "delivery_channel": "email",
+          "email_verified": true,
+          "apple_linked": false,
+          "has_password": true,
+          "access_token": null,
+          "display_name": "Test",
+          "qa_speichern": 0
+        }
+        """.data(using: .utf8)
+    )
+    let user = try JSONDecoder().decode(User.self, from: data)
+    let model = AppModel()
+    model.session = .active(user)
+
+    #expect(model.conversationSavingPreference == 0)
+}
+
+@MainActor
+@Test func conversationSavingChoiceUsesTheAccountEndpoint() async throws {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [ConversationSettingURLProtocol.self]
+    let api = APIClient(
+        baseURL: try #require(URL(string: "https://native-test.ratslotse.invalid")),
+        session: URLSession(configuration: configuration)
+    )
+    let model = AppModel(api: api)
+    ConversationSettingURLProtocol.lastRequest = nil
+    ConversationSettingURLProtocol.lastRequestBody = nil
+
+    try await model.setConversationSaving(true)
+
+    #expect(model.conversationSavingPreference == 1)
+    #expect(ConversationSettingURLProtocol.lastRequest?.url?.path == "/api/council/gespraeche/einstellung")
+    #expect(ConversationSettingURLProtocol.lastRequest?.httpMethod == "POST")
+    let body = try #require(ConversationSettingURLProtocol.lastRequestBody)
+    #expect(try JSONDecoder().decode(ConversationSettingRequest.self, from: body).an)
+}
+
+private struct ConversationSettingRequest: Decodable {
+    let an: Bool
+}
+
+private final class ConversationSettingURLProtocol: URLProtocol {
+    static var lastRequest: URLRequest?
+    static var lastRequestBody: Data?
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        Self.lastRequest = request
+        Self.lastRequestBody = request.httpBody ?? request.httpBodyStream.flatMap(readAll)
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(#"{"einstellung":1}"#.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    private func readAll(_ stream: InputStream) -> Data? {
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 1_024)
+        while true {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            if count < 0 { return nil }
+            if count == 0 { return data }
+            data.append(contentsOf: buffer[..<count])
+        }
+    }
 }
 
 @Test func productionPersonProfileDecodesStructuredAffiliation() throws {

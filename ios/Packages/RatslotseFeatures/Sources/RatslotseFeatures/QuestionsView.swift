@@ -67,6 +67,8 @@ struct QuestionsView: View {
     @State private var researchMode = false
     @State private var researchRemaining: Int?
     @State private var showConversations = false
+    @State private var isSavingConversationPreference = false
+    @State private var conversationPreferenceError: String?
 
     private var isSending: Bool {
         streamTask != nil || turns.contains { $0.research?.status == "laeuft" }
@@ -146,15 +148,17 @@ struct QuestionsView: View {
                         .foregroundStyle(RatsColor.secondary)
                 }
                 Spacer(minLength: 0)
-                Button { showConversations = true } label: {
-                    RatsGlyphView(glyph: .history, color: RatsColor.bodyText)
-                        .frame(width: 20, height: 20)
-                        .frame(width: 40, height: 40)
-                        .background(RatsColor.card)
-                        .overlay(Circle().stroke(RatsColor.border))
-                        .clipShape(Circle())
+                if model.conversationSavingPreference == 1 {
+                    Button { showConversations = true } label: {
+                        RatsGlyphView(glyph: .history, color: RatsColor.bodyText)
+                            .frame(width: 20, height: 20)
+                            .frame(width: 40, height: 40)
+                            .background(RatsColor.card)
+                            .overlay(Circle().stroke(RatsColor.border))
+                            .clipShape(Circle())
+                    }
+                    .accessibilityLabel("Gespräche")
                 }
-                .accessibilityLabel("Gespräche")
             }
             .foregroundStyle(RatsColor.text)
             .padding(.horizontal, 18)
@@ -164,7 +168,18 @@ struct QuestionsView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 26) {
-                        if turns.isEmpty { EmptyQuestionsView(select: askUsingSelectedMode) }
+                        if turns.isEmpty {
+                            if model.conversationSavingPreference == nil {
+                                ConversationMemoryConsentCard(
+                                    isSaving: isSavingConversationPreference,
+                                    error: conversationPreferenceError,
+                                    choose: saveConversationPreference
+                                )
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                            } else {
+                                EmptyQuestionsView(select: askUsingSelectedMode)
+                            }
+                        }
                         ForEach(turns) { turn in
                             QuestionTurnView(
                                 turn: turn,
@@ -232,6 +247,20 @@ struct QuestionsView: View {
     private func askUsingSelectedMode(_ raw: String) {
         if researchMode { askResearch(raw) }
         else { ask(raw) }
+    }
+
+    private func saveConversationPreference(_ enabled: Bool) {
+        guard !isSavingConversationPreference else { return }
+        isSavingConversationPreference = true
+        conversationPreferenceError = nil
+        Task {
+            defer { isSavingConversationPreference = false }
+            do {
+                try await model.setConversationSaving(enabled)
+            } catch {
+                conversationPreferenceError = "Deine Wahl konnte nicht gespeichert werden. Bitte versuche es noch einmal."
+            }
+        }
     }
 
     private func ask(_ raw: String) {
@@ -678,6 +707,81 @@ private struct EmptyQuestionsView: View {
             }
         }
         .padding(.top, 30)
+    }
+}
+
+private struct ConversationMemoryConsentCard: View {
+    let isSaving: Bool
+    let error: String?
+    let choose: (Bool) -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Lotti3DView(scene: .wave, animated: false)
+                .frame(width: 62, height: 62)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 10) {
+                MonoKicker("Einmal kurz")
+                Text("Soll Lotti sich deine Gespräche merken?")
+                    .font(RatsFont.title(19))
+                    .foregroundStyle(RatsColor.text)
+                Text("Wenn du möchtest, speichert Ratslotse deine Verläufe im Konto. Dann findest du sie auf all deinen Geräten unter „Gespräche“. Ohne Speicherung bleibt ein Gespräch nur geöffnet, bis du es schließt.")
+                    .font(RatsFont.body(13))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineSpacing(2)
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { choiceButtons }
+                    VStack(spacing: 8) { choiceButtons }
+                }
+
+                Divider().overlay(RatsColor.separator)
+
+                Label {
+                    Text("KI-Hinweis: Antworten können Fehler enthalten. Prüfe wichtige Angaben an den verlinkten Quellen und gib keine personenbezogenen Daten ein.")
+                } icon: {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(RatsColor.signal)
+                }
+                .font(RatsFont.body(10))
+                .foregroundStyle(RatsColor.muted)
+                .lineSpacing(2)
+
+                if let error {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(RatsFont.body(11, weight: .medium))
+                        .foregroundStyle(RatsColor.danger)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(16)
+        .background(RatsColor.card)
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(RatsColor.primary.opacity(0.24), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: RatsColor.primary.opacity(0.07), radius: 14, y: 6)
+        .animation(.snappy(duration: 0.22), value: isSaving)
+    }
+
+    @ViewBuilder
+    private var choiceButtons: some View {
+        Button { choose(true) } label: {
+            Label(isSaving ? "Wird gespeichert …" : "Ja, merken", systemImage: "checkmark")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(PrimaryButtonStyle())
+        .disabled(isSaving)
+
+        Button { choose(false) } label: {
+            Label("Nein, nicht merken", systemImage: "xmark")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(SecondaryButtonStyle())
+        .disabled(isSaving)
     }
 }
 

@@ -67,6 +67,7 @@ public final class AppModel {
     private let network = NetworkMonitor()
     private let defaults: UserDefaults
     private var pendingPushToken: String?
+    private var conversationSavingPreferenceOverride: Int?
 
     private static let onboardingDoneKey = "ratslotse.onboarding.done"
     private static let onboardingStepKey = "ratslotse.onboarding.step"
@@ -100,6 +101,10 @@ public final class AppModel {
         case .pending(let user), .active(let user): user
         default: nil
         }
+    }
+
+    var conversationSavingPreference: Int? {
+        conversationSavingPreferenceOverride ?? user?.savesConversations
     }
 
     public func bootstrap() async {
@@ -219,6 +224,23 @@ public final class AppModel {
         }
     }
 
+    func setConversationSaving(_ enabled: Bool) async throws {
+        struct Body: Codable, Sendable { let an: Bool }
+        struct Response: Codable, Sendable {
+            let setting: Int
+
+            enum CodingKeys: String, CodingKey {
+                case setting = "einstellung"
+            }
+        }
+
+        let response: Response = try await api.send(
+            "/api/council/gespraeche/einstellung",
+            body: Body(an: enabled)
+        )
+        conversationSavingPreferenceOverride = response.setting
+    }
+
     public func adopt(user: User) async throws {
         try await accept(user: user)
     }
@@ -231,6 +253,7 @@ public final class AppModel {
         try? await api.sendVoid("/api/auth/logout")
         try? await api.setAccessToken(nil)
         pendingPushToken = nil
+        conversationSavingPreferenceOverride = nil
         tabletPage = nil
         navigation.removeAll()
         session = .loggedOut
@@ -334,6 +357,7 @@ public final class AppModel {
             }
         }
         if user.isActive { await synchronizeOnboarding() }
+        conversationSavingPreferenceOverride = nil
         session = user.isActive ? .active(user) : .pending(user)
         if tokenPersistenceFailed {
             alertMessage = "Du bist angemeldet. Die Sitzung konnte auf diesem Gerät jedoch nicht dauerhaft gespeichert werden."
