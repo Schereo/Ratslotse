@@ -861,9 +861,12 @@ private struct PushOnboardingStep: View {
                         Text("NEU ZU DEINEN THEMEN")
                             .font(RatsFont.mono(9, weight: .semibold))
                             .foregroundStyle(RatsColor.muted)
-                        Text("Veloroute 4 beschlossen — 1,1 Mio. €")
+                        Text("Cäcilienbrücke: Rat fordert schnelleren Neubau")
                             .font(RatsFont.body(14, weight: .medium))
                             .foregroundStyle(RatsColor.text)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .layoutPriority(1)
                     }
                     Spacer(minLength: 0)
                 }
