@@ -1,6 +1,6 @@
 # Ratslotse nativ — Umbauplan Capacitor → SwiftUI
 
-> **Status:** Als native 2.0-Ausgabe am 28.08.2026 implementiert und lokal
+> **Status:** Als native 2.0-Ausgabe am 29.08.2026 implementiert und lokal
 > durchgeprüft. Phase 0, Kern-MVP und die Alltagsfunktionen aus Phase 2/3
 > liegen im neuen Top-Level-Verzeichnis `ios/`; Phase 4 bleibt ausdrücklich
 > ein späterer Ausbau. Die Empfehlungen aus Abschnitt 9 wurden als
@@ -460,12 +460,24 @@ Teil des Cutovers.
 
 ## 11. Aktuelle Feature-Unterschiede: native App und Website
 
-| Bereich | Native iOS-App | Website |
+Der erneute Abgleich am 29.08.2026 wurde nicht aus den früheren Häkchen
+abgeleitet, sondern aus den aktuellen Web-Routen, ihren API-Aufrufen und den
+zugehörigen SwiftUI-Ansichten. Authentifizierte Produktionsseiten konnten im
+separaten Browserprofil ohne Benutzeranmeldung nicht erneut live geöffnet
+werden; dafür wurden vorhandene Referenzbilder, Quellcode und lokale
+realistische Darstellungs-Fixtures verwendet. Schreibende Produktionsaktionen
+waren ausdrücklich nicht Teil der Prüfung.
+
+| Bereich | Native iOS-App nach dem Abgleich | Website / verbleibender Unterschied |
 |---|---|---|
-| Alltagsfunktionen | Heute-/Live-Dashboard, Ratsgespräch, Beschlüsse, Sitzungen, Themen, Abos, Merkliste, Karte, Quiz, Statistiken, Abzeichen und Konto sind nativ vorhanden. | Dieselben Kernfunktionen bleiben parallel verfügbar. |
-| Ratsgespräch | Native SSE-Verbindung, Gespräche, automatische Debatten-/Fraktionsauswertung, gründliche Recherche als Composer-Schalter, TTS, Teilen und Feedback; auf breiten iPads stehen Belege neben dem Chat. | Gleiche Backend-Recherchekanäle und Antwortbausteine; öffentliche geteilte `/g`-Ansichten werden weiterhin serverseitig gerendert. |
+| Start | Heute-/Live-Dashboard, Wochenkarte, Thementreffer, Zahl der Woche, Fundstück, aktive Sitzungspause und lokal zuletzt angesehene Beschlüsse. | Die Web-First-Steps- und Push-Primer-Karten werden nicht dupliziert: iOS führt diese Schritte im Onboarding und in den nativen Push-Einstellungen. |
+| Ratsgespräch | Native SSE-Verbindung, Gespräche, vom Backend ausgewählte Debatten-/Fraktionsauswertung, gründliche Recherche als Composer-Schalter, dynamische aktuelle Beispielfragen, TTS, Teilen und Feedback; auf breiten iPads stehen Belege neben dem Chat. | Öffentliche geteilte `/g`-Ansichten werden weiterhin serverseitig gerendert. Die Desktop-Command-Palette hat kein direktes iOS-Pendant. |
+| Rat und Merkliste | Beschlüsse, Sitzungen, Karte, direkte Filter, Detaildaten und Anlagen sind vorhanden. Die Merkliste besitzt nun Suche, Offen/Entschieden/Sitzungen-Filter, Vorschautexte und Ergebnisbenachrichtigungen. | Inhaltlich gleich; iOS nutzt NavigationStack, MapKit, Quick Look und EventKit statt Browser-Overlays, Leaflet und ICS-Dateien. |
+| Themen | Serverbasierte aktuelle Vorschläge mit Erwähnungshäufigkeit, zweispaltige Mobilkarten und direktes Anlegen; Themenprofile zeigen Finanzvolumen, Themenfelder, Fraktionschips sowie belegte und ähnliche Beziehungen. | Inhaltlich gleich; die konkrete Rasterdichte passt sich nativ der Gerätegröße an. |
+| Orte und Personen | Ortsprofile zeigen Karte, Ortsart, belegte Beschlusszahl, Eltern-/Kindorte, Datenquellen sowie direkte Frage-/Kartenaktionen. Personenprofile enthalten Rollen, Fraktionsfarben, Aktivität, Gremien, Reden und Diagramme. | Inhaltlich gleich; Karten werden mit Apple MapKit gerendert. |
+| Quiz, Konto und Einstellungen | Vier Quizmodi, eigene Karten, Statistik, farbige Abzeichen, Konto-, Gesprächs-, Push- und Darstellungseinstellungen sind nativ vorhanden. | Inhaltlich gleich; Web-spezifische Browserdarstellung und iOS-Systemdialoge unterscheiden sich bewusst. |
 | Karten und Systemübergaben | MapKit, EventKit, Quick Look, Share Sheet, Sign in with Apple und APNs verwenden native Systemoberflächen. | Leaflet/CARTO, ICS-Download und Browser-/Web-Push-Mechanismen. |
-| Lotti und Onboarding | Fortsetzbares natives Onboarding und optimierte 3D-Lotti-Posen in Splash, Fragen und Konto. | Die interaktive WebGL-Lotti-Inszenierung bleibt Web-/Landing-Schmuck. |
+| Lotti und Onboarding | Fortsetzbares natives Onboarding und optimierte 3D-Lotti-Posen in Splash, Fragen, Konto und Profilflächen. | Die interaktive WebGL-Lotti-Inszenierung bleibt Web-/Landing-Schmuck. |
 | Nur im Web | Öffnet bei Bedarf die vorhandenen Seiten. | Admin, Landingpage, Changelog, Doku, Hilfe-/Kontaktinhalte, Rechtstexte und öffentliche Share-Snapshots. |
 | Bewusst später | Haushalt; außerdem Widgets (einschließlich Wochenkarte), Live Activity, App Intents/Siri, Spotlight, Push-Aktionsknöpfe und Handoff. | Haushalt ist bereits eine Web-Fläche; die übrigen Punkte sind native Ausbauoptionen. |
 | Bewusst nicht portiert | Kommunalwahl bleibt außerhalb der App. | Das frühere Kommunalwahl-Fun-Feature bleibt ein Entwicklungsartefakt. |
