@@ -140,7 +140,7 @@ und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 - [x] Orts-/Bereichswahl und frühe Suche nach bestehenden Problemen umsetzen.
 - [x] Kontrollierte Oberkategorien plus `Sonstiges kommunales Thema` bereitstellen.
 - [x] Kategorienabhängige Mindestangaben und deterministische Validierung definieren.
-- [ ] Adaptiven Assistenten für knappe, ausreichende Angaben und einen neutralen deutschen Entwurf umsetzen.
+- [x] Optionalen adaptiven KI-Assistenten für knappe, ausreichende Angaben und einen bearbeitbaren neutralen deutschen Entwurf umsetzen.
 - [x] Finalen Bestätigungsschritt mit verständlichem Datenschutzhinweis einbauen.
 - [x] Keine Foto-Uploads oder Anhänge anbieten.
 
@@ -152,7 +152,7 @@ und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 - [ ] Ungeeignete Fälle strukturiert erkennen und passende Hinweise für Notfälle, Straftaten, persönliche Vorwürfe und private Streitigkeiten zeigen.
 - [ ] Datenminimierte KI-Payloads, eigenständiges Eignungsurteil, Fehlerverhalten und Auditierbarkeit dokumentieren und testen.
 - [ ] Aufbewahrungs-, Konto-Lösch- und Rückzugsregeln rechtlich und technisch festlegen.
-- [ ] Rate Limits und Missbrauchsschutz für Assistent und Einreichung ergänzen.
+- [x] Rate Limits und Missbrauchsschutz für Assistent und Einreichung ergänzen.
 
 **Fertig, wenn:** Tests belegen, dass typische personenbezogene Inhalte den externen Anbieter nicht erreichen, jedes KI-Urteil privat auditiert wird, ungeeignete Anliegen sicher umgeleitet werden und ein fehlendes oder ausgefallenes Urteil weder Daten veröffentlicht noch Meldungen verliert.
 

@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, CheckCircle2, ChevronLeft, ChevronRight, MapPin, ShieldCheck } from "lucide-react";
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, Loader2, MapPin, Send, ShieldCheck, Sparkles } from "lucide-react";
 import { ApiError, api } from "@/lib/api";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import {
@@ -45,6 +45,14 @@ const CATEGORY_QUESTIONS: Record<string, string> = {
 
 type Position = { latitude: number; longitude: number } | null;
 
+type AssistantAnswer = { question: string; answer: string };
+type AssistantResponse = {
+  kind: "question" | "ready";
+  question: string | null;
+  draft_text: string | null;
+  redacted: boolean;
+};
+
 type SavedReportForm = {
   ownerId: number;
   savedAt: number;
@@ -60,6 +68,10 @@ type SavedReportForm = {
   noMatchingProblem: boolean;
   draftId: number | null;
   clientToken: string;
+  assistantActive: boolean;
+  assistantConsent: boolean;
+  assistantQuestion: string;
+  assistantAnswers: AssistantAnswer[];
 };
 
 type PrivateReport = {
@@ -154,6 +166,12 @@ export function ProblemReportFlow() {
   const [clientToken, setClientToken] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const [submitted, setSubmitted] = useState<PrivateReport | null>(null);
+  const [assistantActive, setAssistantActive] = useState(false);
+  const [assistantConsent, setAssistantConsent] = useState(false);
+  const [assistantQuestion, setAssistantQuestion] = useState("");
+  const [assistantInput, setAssistantInput] = useState("");
+  const [assistantAnswers, setAssistantAnswers] = useState<AssistantAnswer[]>([]);
+  const [assistantRedacted, setAssistantRedacted] = useState(false);
   const textRef = useRef(text);
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
   const previousStepRef = useRef(step);
@@ -187,6 +205,13 @@ export function ProblemReportFlow() {
         }
         setNoMatchingProblem(saved.noMatchingProblem === true);
         if (typeof saved.draftId === "number") setDraftId(saved.draftId);
+        setAssistantActive(saved.assistantActive === true);
+        setAssistantConsent(saved.assistantConsent === true);
+        if (typeof saved.assistantQuestion === "string") setAssistantQuestion(saved.assistantQuestion);
+        if (Array.isArray(saved.assistantAnswers)) {
+          setAssistantAnswers(saved.assistantAnswers.filter((answer): answer is AssistantAnswer =>
+            typeof answer?.question === "string" && typeof answer?.answer === "string"));
+        }
         setClientToken(typeof saved.clientToken === "string" && saved.clientToken
           ? saved.clientToken
           : crypto.randomUUID());
@@ -221,6 +246,10 @@ export function ProblemReportFlow() {
       noMatchingProblem,
       draftId,
       clientToken,
+      assistantActive,
+      assistantConsent,
+      assistantQuestion,
+      assistantAnswers,
     };
     try {
       sessionStorage.setItem(PROBLEM_REPORT_DRAFT_STORAGE, JSON.stringify(snapshot));
@@ -229,7 +258,8 @@ export function ProblemReportFlow() {
   }, [
     hydrated, submitted, step, scope, locationLabel, position, category,
     categoryDetail, text, observedOn, suggestedProblem, noMatchingProblem,
-    draftId, clientToken, user,
+    draftId, clientToken, user, assistantActive, assistantConsent,
+    assistantQuestion, assistantAnswers,
   ]);
 
   useEffect(() => {
@@ -252,9 +282,10 @@ export function ProblemReportFlow() {
 
   const locationComplete = scope === "citywide"
     || (locationLabel.trim().length >= 2 && position !== null);
-  const locationReady = locationComplete
-    && publicProblems.isSuccess
-    && (suggestedProblem !== null || noMatchingProblem);
+  const locationReady = locationComplete && (
+    publicProblems.isError
+    || (publicProblems.isSuccess && (suggestedProblem !== null || noMatchingProblem))
+  );
   const detailsComplete = category in PROBLEM_KATEGORIEN
     && categoryDetail.trim().length >= 10
     && text.trim().length >= 20
@@ -271,6 +302,27 @@ export function ProblemReportFlow() {
     suggestedProblemId: suggestedProblem?.id ?? null,
   });
   const confirmed = confirmedText === confirmationSnapshot;
+
+  const assistant = useMutation({
+    mutationFn: (answers: AssistantAnswer[]) => api.post<AssistantResponse>("/meldungen/assistenz", {
+      category,
+      scope_kind: scope,
+      answers,
+    }),
+    onSuccess: (result, answers) => {
+      setAssistantAnswers(answers);
+      setAssistantInput("");
+      setAssistantRedacted((value) => value || result.redacted);
+      setCategoryDetail(answers.map((answer) => answer.answer.trim()).join(" ").slice(0, 500));
+      if (result.kind === "question" && result.question) {
+        setAssistantQuestion(result.question);
+      } else if (result.kind === "ready" && result.draft_text) {
+        setText(result.draft_text);
+        setAssistantActive(false);
+        setAssistantQuestion("");
+      }
+    },
+  });
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -300,6 +352,16 @@ export function ProblemReportFlow() {
       setSubmitted(report);
     },
   });
+
+  const resetAssistant = () => {
+    setAssistantActive(false);
+    setAssistantConsent(false);
+    setAssistantQuestion("");
+    setAssistantInput("");
+    setAssistantAnswers([]);
+    setAssistantRedacted(false);
+    assistant.reset();
+  };
 
   const chooseScope = (next: ProblemScope) => {
     setScope(next);
@@ -417,8 +479,8 @@ export function ProblemReportFlow() {
                 {publicProblems.isLoading ? (
                   <p className="mt-2 text-sm text-muted-foreground">Öffentliche Probleme werden verglichen…</p>
                 ) : publicProblems.isError ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-destructive" role="alert">
-                    Der Vergleich ist fehlgeschlagen.
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground" role="status">
+                    <span>Der öffentliche Vergleich ist gerade nicht erreichbar. Deine private Meldung ist davon nicht betroffen.</span>
                     <Button type="button" size="sm" variant="secondary" onClick={() => void publicProblems.refetch()}>
                       Erneut versuchen
                     </Button>
@@ -487,6 +549,7 @@ export function ProblemReportFlow() {
                 onChange={(event) => {
                   setCategory(event.target.value);
                   setCategoryDetail("");
+                  resetAssistant();
                 }}
                 className="flex h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring maus:text-sm"
               >
@@ -495,8 +558,102 @@ export function ProblemReportFlow() {
               </select>
             </div>
             {category && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Sparkles className="h-4 w-4" aria-hidden />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-foreground">Interaktive KI-Schreibhilfe</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      Sie fragt gezielt nach fehlenden Fakten und erstellt daraus einen bearbeitbaren Entwurf. Konto, Kartenpunkt und Ortsname werden nicht an den KI-Dienst gesendet.
+                    </p>
+                  </div>
+                </div>
+
+                {!assistantActive && assistantAnswers.length === 0 && (
+                  <div className="mt-4 space-y-3">
+                    <label className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={assistantConsent}
+                        onChange={(event) => setAssistantConsent(event.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+                      />
+                      <span>Ich möchte die optionale externe KI-Schreibhilfe nutzen. Meine Antworten werden vorher lokal um E-Mail-Adressen, Telefonnummern, genaue Adressen und mit Anrede genannte Namen bereinigt. Ich trage trotzdem keine personenbezogenen Daten ein.</span>
+                    </label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!assistantConsent}
+                      onClick={() => {
+                        setAssistantActive(true);
+                        setAssistantQuestion(CATEGORY_QUESTIONS[category]);
+                      }}
+                    >
+                      <Sparkles className="h-4 w-4" aria-hidden /> Geführt starten
+                    </Button>
+                  </div>
+                )}
+
+                {assistantActive && (
+                  <div className="mt-4 space-y-3" aria-live="polite">
+                    {assistantAnswers.map((answer, index) => (
+                      <div key={`${answer.question}-${index}`} className="rounded-lg border border-border bg-card p-3 text-sm">
+                        <p className="font-medium text-foreground">{answer.question}</p>
+                        <p className="mt-1 text-muted-foreground">{answer.answer}</p>
+                      </div>
+                    ))}
+                    <div className="rounded-lg border border-primary/30 bg-card p-3">
+                      <Label htmlFor="report-assistant-answer">{assistantQuestion}</Label>
+                      <Textarea
+                        id="report-assistant-answer"
+                        value={assistantInput}
+                        onChange={(event) => setAssistantInput(event.target.value)}
+                        maxLength={1_000}
+                        rows={3}
+                        placeholder="Nur selbst beobachtete Fakten – keine Namen oder Kontaktdaten"
+                        className="mt-2"
+                      />
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground" onClick={resetAssistant}>
+                          Ohne KI weiterschreiben
+                        </button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={assistantInput.trim().length < 2 || assistant.isPending}
+                          onClick={() => assistant.mutate([
+                            ...assistantAnswers,
+                            { question: assistantQuestion, answer: assistantInput.trim() },
+                          ])}
+                        >
+                          {assistant.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
+                          {assistant.isPending ? "Denkt nach…" : "Antwort senden"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!assistantActive && assistantAnswers.length > 0 && text && (
+                  <p className="mt-4 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200" role="status">
+                    Der Entwurf ist übernommen. Lies ihn unten und ändere alles, was nicht genau deiner Beobachtung entspricht.
+                  </p>
+                )}
+                {assistantRedacted && (
+                  <p className="mt-3 text-xs text-muted-foreground">Direkte personenbezogene Angaben wurden vor dem KI-Aufruf lokal entfernt.</p>
+                )}
+                {assistant.isError && (
+                  <p className="mt-3 text-sm text-destructive" role="alert">
+                    {assistant.error instanceof ApiError ? assistant.error.message : "Die KI-Schreibhilfe ist gerade nicht erreichbar."}
+                  </p>
+                )}
+              </div>
+            )}
+            {category && (
               <div className="space-y-2">
-                <Label htmlFor="report-category-detail">{CATEGORY_QUESTIONS[category]}</Label>
+                <Label htmlFor="report-category-detail">Wichtigste konkrete Angabe</Label>
                 <Textarea
                   id="report-category-detail"
                   value={categoryDetail}
@@ -504,7 +661,7 @@ export function ProblemReportFlow() {
                   minLength={10}
                   maxLength={500}
                   rows={3}
-                  placeholder="Kurze konkrete Ergänzung"
+                  placeholder={CATEGORY_QUESTIONS[category]}
                 />
               </div>
             )}

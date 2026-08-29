@@ -7,6 +7,7 @@ import sys
 import tempfile
 from datetime import date, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -5701,6 +5702,66 @@ def test_private_problem_report_flow_is_owner_scoped_and_exactly_once(client):
     public = ProblemStore(NWZ_DB)
     assert public.list_public_problems() == []
     public.close()
+
+
+def test_problem_report_assistant_is_private_redacted_and_owner_limited(client):
+    payload = {
+        "category": "accessibility",
+        "scope_kind": "point",
+        # Selbst zusätzliche Client-Felder dürfen nicht in den Provider-Payload gelangen.
+        "location_label": "Theaterwall 23",
+        "latitude": 53.141,
+        "longitude": 8.207,
+        "observed_on": date.today().isoformat(),
+        "answers": [{
+            "question": "Welche Barriere besteht?",
+            "answer": (
+                "Mein Name ist Anna Beispiel. Frau Beispiel erreicht mich unter person@example.org oder 0441 123456. "
+                "An der Musterstraße 17 blockiert eine hohe Kante den Zugang."
+            ),
+        }],
+    }
+    assert client.post("/api/meldungen/assistenz", json=payload).status_code == 401
+
+    reporter = TestClient(app)
+    assert _register(reporter, email="hilfe@test.de").json()["status"] == "active"
+    captured: dict = {}
+
+    def complete(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({
+                "kind": "question",
+                "question": "Wie häufig verhindert die Kante den Zugang?",
+                "draft_text": None,
+            })))],
+            usage=None,
+        )
+
+    with patch("kern.llm.chat_complete", side_effect=complete):
+        response = reporter.post("/api/meldungen/assistenz", json=payload)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "kind": "question",
+        "question": "Wie häufig verhindert die Kante den Zugang?",
+        "draft_text": None,
+        "redacted": True,
+    }
+    provider_payload = json.dumps(captured["messages"], ensure_ascii=False)
+    assert "person@example.org" not in provider_payload
+    assert "0441 123456" not in provider_payload
+    assert "Musterstraße 17" not in provider_payload
+    assert "Frau Beispiel" not in provider_payload
+    assert "Anna Beispiel" not in provider_payload
+    assert "latitude" not in provider_payload
+    assert "longitude" not in provider_payload
+    assert "location_label" not in provider_payload
+    assert "Theaterwall" not in provider_payload
+    assert date.today().isoformat() not in provider_payload
+    assert "[E-MAIL ENTFERNT]" in provider_payload
+    assert "[ADRESSE ENTFERNT] blockiert" in provider_payload
+    assert captured["_feature"] == "problem_meldeassistenz"
 
 
 def test_problem_report_api_validates_location_date_and_public_suggestion(client):

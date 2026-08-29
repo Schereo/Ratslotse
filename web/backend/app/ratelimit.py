@@ -67,6 +67,9 @@ verify_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
 # Private Entwürfe belegen dauerhaft Speicher und landen später in der
 # Moderation. Zehn pro Stunde reichen für Korrekturen, bremsen aber Schleifen.
 report_draft_limiter = RateLimiter(max_calls=10, window_seconds=3_600)
+# Die optionale Schreibhilfe erzeugt je Antwort einen externen LLM-Aufruf.
+# Kontobindung verhindert IP-NAT-Nachteile und begrenzt zugleich Kosten.
+report_assistant_limiter = RateLimiter(max_calls=12, window_seconds=600)
 # „Frag den Rat" ist der einzige Endpoint, der pro Aufruf LLM-Kosten erzeugt —
 # großzügig genug für echtes Nachfragen, aber kein offener Geldhahn.
 qa_limiter = RateLimiter(max_calls=10, window_seconds=600)
