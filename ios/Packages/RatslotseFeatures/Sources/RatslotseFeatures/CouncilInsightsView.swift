@@ -250,6 +250,7 @@ private struct CouncilGoal: Decodable, Sendable, Identifiable {
 
 struct CouncilInsightsView: View {
     let model: AppModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var section: InsightSection = {
         switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ANALYSIS_SECTION"] {
         case "parties": .parties
@@ -324,23 +325,42 @@ struct CouncilInsightsView: View {
     }
 
     private var sectionPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 7) {
-                ForEach(InsightSection.allCases) { item in
-                    Button { withAnimation(.easeOut(duration: 0.18)) { section = item } } label: {
-                        Text(item.rawValue)
-                            .font(RatsFont.body(12, weight: .semibold))
-                            .foregroundStyle(section == item ? RatsColor.primaryText : RatsColor.bodyText)
-                            .padding(.horizontal, 13)
-                            .frame(height: 34)
-                            .background(section == item ? RatsColor.primary : RatsColor.card)
-                            .overlay(Capsule().stroke(section == item ? Color.clear : RatsColor.border))
-                            .clipShape(Capsule())
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 135), spacing: 7)], spacing: 7) {
+                    ForEach(InsightSection.allCases) { sectionButton($0) }
+                }
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 7) {
+                        ForEach(InsightSection.allCases) { sectionButton($0) }
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    private func sectionButton(_ item: InsightSection) -> some View {
+        Button { withAnimation(.easeOut(duration: 0.18)) { section = item } } label: {
+            Text(item.rawValue)
+                .font(RatsFont.body(12, weight: .semibold))
+                .foregroundStyle(section == item ? RatsColor.primaryText : RatsColor.bodyText)
+                .padding(.horizontal, 13)
+                .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
+                .frame(minHeight: 34)
+                .background(section == item ? RatsColor.primary : RatsColor.card)
+                .overlay(Capsule().stroke(section == item ? Color.clear : RatsColor.border))
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var analysisGridMinimum: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 520 : 250
+    }
+
+    private var peopleGridMinimum: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 520 : 260
     }
 
     @ViewBuilder
@@ -401,7 +421,7 @@ struct CouncilInsightsView: View {
                     }
                 }
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 10)], spacing: 10) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: analysisGridMinimum), spacing: 10)], spacing: 10) {
                 ForEach(filteredRecaps) { recap in
                     Button {
                         withAnimation(.snappy) {
@@ -564,7 +584,7 @@ struct CouncilInsightsView: View {
             let administration = filteredAdministration
             if partyFilter.isEmpty, !administration.isEmpty {
                 MonoKicker("Stadtverwaltung", trailing: "\(administration.count)")
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 10)], spacing: 10) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: peopleGridMinimum), spacing: 10)], spacing: 10) {
                     ForEach(administration) { person in
                         NavigationLink(value: AppRoute.person(slug: person.slug)) {
                             HStack {
@@ -765,7 +785,7 @@ struct CouncilInsightsView: View {
     }
 
     private func peopleGrid(_ entries: [CouncilMember]) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 10)], spacing: 10) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: peopleGridMinimum), spacing: 10)], spacing: 10) {
             ForEach(entries) { member in
                 NavigationLink(value: AppRoute.person(slug: member.slug)) {
                     HStack(spacing: 12) {

@@ -119,7 +119,10 @@ struct QuestionsView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let showsEvidenceSidebar = geometry.size.width >= 1_040
+            // Die Breite liegt hier bereits rechts neben der iPad-Navigation.
+            // 900 pt lassen auf 11"-iPads im Querformat genug Raum für Chat
+            // und die feste Belegspalte, ohne die Portraitansicht zu zerquetschen.
+            let showsEvidenceSidebar = geometry.size.width >= 900
             let usesCompactWelcome = geometry.size.width < 600 && geometry.size.height < 950
 
             HStack(spacing: 0) {

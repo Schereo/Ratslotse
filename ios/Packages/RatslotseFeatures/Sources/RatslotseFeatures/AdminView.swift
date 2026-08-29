@@ -61,7 +61,16 @@ struct AdminView: View {
                 }
                 .background(RatsColor.page)
             } else {
-                ContentUnavailableView("Kein Zugriff", systemImage: "lock.shield", description: Text("Dieser Bereich ist ausschließlich für Admin-Konten freigeschaltet."))
+                VStack(spacing: 14) {
+                    Lotti3DView(scene: .reading, animated: false).frame(width: 150, height: 120)
+                    MonoKicker("Geschützter Bereich")
+                    Text("Kein Zugriff").font(RatsFont.title(26))
+                    Text("Dieser Bereich ist ausschließlich für Admin-Konten freigeschaltet.")
+                        .font(RatsFont.body(14)).foregroundStyle(RatsColor.secondary).multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: 440)
+                .ratsCard()
+                .padding(24)
             }
         }
         .toolbar(.hidden, for: .navigationBar)

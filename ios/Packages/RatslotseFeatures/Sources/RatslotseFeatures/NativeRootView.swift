@@ -162,6 +162,7 @@ private struct RatsRouteScaffold<Content: View>: View {
     @Bindable var model: AppModel
     @ViewBuilder let content: Content
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(model: AppModel, @ViewBuilder content: () -> Content) {
         self.model = model
@@ -177,7 +178,7 @@ private struct RatsRouteScaffold<Content: View>: View {
                         active: activeDestination,
                         select: select
                     )
-                    .frame(width: 224)
+                    .frame(width: dynamicTypeSize.isAccessibilitySize ? 280 : 224)
                     Divider().overlay(RatsColor.border)
                     routeContent
                 }
@@ -306,6 +307,7 @@ private struct UpdateRequiredView: View {
 private struct MainTabsView: View {
     @Bindable var model: AppModel
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var showsMore = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MORE"] == "1"
     @State private var showsTour = ratsDebugValue("RATSLOTSE_DEBUG_TOUR") == "1"
     @State private var accountReturnTab: AppTab = .today
@@ -319,7 +321,7 @@ private struct MainTabsView: View {
                         active: activeDestination,
                         select: select
                     )
-                    .frame(width: 224)
+                    .frame(width: dynamicTypeSize.isAccessibilitySize ? 280 : 224)
                     Divider().overlay(RatsColor.border)
                     tabContent
                 }
@@ -633,6 +635,8 @@ private struct RatsSidebarNavigation: View {
                     Text("Ratslotse")
                         .font(RatsFont.title(21, weight: .heavy))
                         .foregroundStyle(RatsColor.text)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     Text("OLDENBURGS RAT")
                         .font(RatsFont.mono(8.5, weight: .semibold))
                         .tracking(1.1)
@@ -714,6 +718,8 @@ private struct RatsSidebarNavigation: View {
                 Text(destination.label)
                     .font(RatsFont.body(13.5, weight: active == destination ? .semibold : .medium))
                     .foregroundStyle(active == destination ? RatsColor.text : RatsColor.bodyText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Spacer(minLength: 0)
                 if active == destination {
                     Circle().fill(RatsColor.signal).frame(width: 6, height: 6)

@@ -19,6 +19,14 @@ import Testing
     #expect(features.allSatisfy { !$0.geometry.isEmpty })
 }
 
+@Test func webAnalysisLinksStayInsideTheNativeApp() throws {
+    let router = AppRouter()
+
+    #expect(router.route(forPath: "/council?tab=analysis") == .analysis)
+    let link = try #require(router.universalLink(for: .analysis))
+    #expect(link.absoluteString == "https://ratslotse.de/council?tab=analysis")
+}
+
 @MainActor
 @Test func onboardingProgressSurvivesARelaunch() throws {
     let suiteName = "de.ratslotse.tests.onboarding.\(UUID().uuidString)"
