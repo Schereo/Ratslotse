@@ -8,7 +8,7 @@ let done = false;
 
 /** Map web-only dynamic routes to their static-app query equivalents. */
 export function appRoute(pathname: string, search: string): string {
-  const problem = pathname.match(/^\/probleme\/([1-9]\d*)$/);
+  const problem = pathname.match(/^\/probleme\/([1-9]\d*)\/?$/);
   if (problem) return `/probleme?problem=${problem[1]}`;
   return pathname + search;
 }

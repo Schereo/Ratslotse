@@ -1,6 +1,8 @@
 """Problemtracker: öffentliche Projektion und API-Grenze."""
 from __future__ import annotations
 
+import sqlite3
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -116,6 +118,14 @@ def test_external_public_event_requires_role_and_http_source(tmp_path):
             title="Rückmeldung",
             source_kind="Stadtverwaltung",
         )
+    with pytest.raises(ValueError, match="HTTP-Adresse"):
+        store.add_public_event(
+            problem_id,
+            kind="check",
+            title="Prüfung",
+            source_kind="Ratslotse-Prüfung",
+            source_url="javascript:alert(1)",
+        )
     event_id = store.add_public_event(
         problem_id,
         kind="reply",
@@ -126,6 +136,37 @@ def test_external_public_event_requires_role_and_http_source(tmp_path):
 
     assert event_id > 0
     store.close()
+
+
+def test_migration_hides_legacy_public_event_without_source(tmp_path):
+    database = tmp_path / "problems.sqlite"
+    store = ProblemStore(database)
+    problem_id = store.create_problem(
+        title="Fehlende Absenkung",
+        summary="Die Querung ist nicht stufenlos nutzbar.",
+        category="accessibility",
+        scope_kind="point",
+        latitude=53.141,
+        longitude=8.207,
+        published=True,
+    )
+    store.close()
+
+    connection = sqlite3.connect(database)
+    connection.execute("DROP TRIGGER trg_civic_problem_events_public_source_insert")
+    connection.execute("DROP TRIGGER trg_civic_problem_events_public_source_update")
+    connection.execute(
+        """INSERT INTO civic_problem_events (
+               problem_id, kind, title, event_at, published_at
+           ) VALUES (?, 'legacy', 'Altes Ereignis', ?, ?)""",
+        (problem_id, "2026-08-29T08:00:00+00:00", "2026-08-29T08:00:00+00:00"),
+    )
+    connection.commit()
+    connection.close()
+
+    migrated = ProblemStore(database)
+    assert migrated.get_public_problem(problem_id)["events"] == []
+    migrated.close()
 
 
 def test_problem_store_rejects_uncontrolled_category(tmp_path):

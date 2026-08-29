@@ -12,6 +12,20 @@ from .domain import PROBLEM_CATEGORIES, PROBLEM_STATUSES, PUBLIC_SOURCE_KINDS, S
 from .schema import sql_enum
 
 
+def _invalid_public_source(prefix: str = "") -> str:
+    source_kind = f"{prefix}source_kind"
+    source_url = f"{prefix}source_url"
+    return f"""(
+        {source_kind} IS NULL
+        OR {source_kind} NOT IN ({sql_enum(PUBLIC_SOURCE_KINDS)})
+        OR ({source_kind} != 'Ratslotse-Prüfung' AND {source_url} IS NULL)
+        OR ({source_url} IS NOT NULL AND NOT (
+            lower({source_url}) LIKE 'http://_%'
+            OR lower({source_url}) LIKE 'https://_%'
+        ))
+    )"""
+
+
 SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS civic_problems (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +77,19 @@ CREATE TABLE IF NOT EXISTS civic_problem_events (
 );
 CREATE INDEX IF NOT EXISTS idx_civic_problem_events_public
     ON civic_problem_events(problem_id, published_at, event_at DESC);
+
+CREATE TRIGGER IF NOT EXISTS trg_civic_problem_events_public_source_insert
+BEFORE INSERT ON civic_problem_events
+WHEN NEW.published_at IS NOT NULL AND {_invalid_public_source("NEW.")}
+BEGIN
+    SELECT RAISE(ABORT, 'invalid public event source');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_civic_problem_events_public_source_update
+BEFORE UPDATE OF source_kind, source_url, published_at ON civic_problem_events
+WHEN NEW.published_at IS NOT NULL AND {_invalid_public_source("NEW.")}
+BEGIN
+    SELECT RAISE(ABORT, 'invalid public event source');
+END;
 """
 
 
@@ -104,6 +131,13 @@ class ProblemStore:
         self._conn.execute("PRAGMA busy_timeout=5000")
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.executescript(SCHEMA)
+        # Alte, vor der Rollen-/Quellenpflicht veröffentlichte Ereignisse
+        # bleiben gespeichert, werden aber nicht weiter öffentlich projiziert.
+        self._conn.execute(
+            f"""UPDATE civic_problem_events
+                SET published_at = NULL
+                WHERE published_at IS NOT NULL AND {_invalid_public_source()}"""
+        )
         self._conn.commit()
 
     def close(self) -> None:

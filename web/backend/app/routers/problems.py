@@ -18,7 +18,7 @@ class PublicProblemEvent(BaseModel):
     detail: str
     source_kind: Literal[
         "Stadtverwaltung", "Ratsmitglied", "Fraktion", "Ratslotse-Prüfung"
-    ] | None = None
+    ]
     source_url: str | None = None
     event_at: str
 

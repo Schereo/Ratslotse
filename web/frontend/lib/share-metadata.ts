@@ -49,12 +49,13 @@ async function holeVorschau(art: VorschauArt, schluessel: string) {
 export async function problemVorschauMetadata(
   problemId: number | null,
   pfad: string,
+  preview?: { title: string; summary: string } | null,
 ): Promise<Metadata> {
   const fallbackTitle = "Problem in Oldenburg — Ratslotse";
   const fallbackDescription = "Moderierte Informationen und die öffentliche Zeitleiste eines kommunalen Problems in Oldenburg.";
-  let title = fallbackTitle;
-  let description = fallbackDescription;
-  if (!istExport() && problemId !== null) {
+  let title = preview ? `${preview.title} — Ratslotse` : fallbackTitle;
+  let description = preview?.summary ?? fallbackDescription;
+  if (!preview && !istExport() && problemId !== null) {
     try {
       const res = await fetch(`${BACKEND}/api/probleme/${problemId}`, {
         next: { revalidate: 900 },

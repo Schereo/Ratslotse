@@ -11,6 +11,7 @@ import { MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_ANGEBOT, PROBLEM_KATEGORIE
 import { Badge, Card, ErrorState, PageHeader, Segmented, Select, Spinner, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
+import { PublicProblemDetail } from "@/components/public-problem-detail";
 
 const ProblemMap = dynamic(
   () => import("@/components/problem-map").then((module) => module.ProblemMap),
@@ -284,6 +285,7 @@ function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose
   useEffect(() => {
     setNative(isNativeApp());
   }, []);
+  if (native) return <PublicProblemDetail problem={problem} onClose={onClose} headingLevel={2} />;
   return (
     <Card className="relative p-5" aria-live="polite">
       <button
@@ -314,14 +316,12 @@ function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose
           </div>
         </div>
       )}
-      {!native && (
-        <Link
-          href={`/probleme/${problem.id}`}
-          className="mt-5 inline-flex rounded-md text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          Problemseite öffnen
-        </Link>
-      )}
+      <Link
+        href={`/probleme/${problem.id}`}
+        className="mt-5 inline-flex rounded-md text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Problemseite öffnen
+      </Link>
     </Card>
   );
 }
