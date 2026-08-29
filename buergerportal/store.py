@@ -7,27 +7,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-PROBLEM_CATEGORIES = (
-    "mobility",
-    "public_space",
-    "education",
-    "childcare",
-    "housing",
-    "environment",
-    "accessibility",
-    "administration",
-    "other",
-)
-SCOPE_KINDS = ("point", "facility", "route", "area", "citywide")
-PROBLEM_STATUSES = (
-    "new",
-    "multiple_reports",
-    "verified",
-    "persists",
-    "apparently_resolved",
-)
+from .domain import PROBLEM_CATEGORIES, PROBLEM_STATUSES, SCOPE_KINDS
 
-SCHEMA = """
+
+def _sql_enum(values: tuple[str, ...]) -> str:
+    return ", ".join(f"'{value}'" for value in values)
+
+
+SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS civic_problems (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     title               TEXT NOT NULL,
@@ -48,12 +35,9 @@ CREATE TABLE IF NOT EXISTS civic_problems (
     last_observed_at     TEXT NOT NULL,
     published_at         TEXT,
     updated_at           TEXT NOT NULL,
-    CHECK (category IN (
-        'mobility', 'public_space', 'education', 'childcare', 'housing',
-        'environment', 'accessibility', 'administration', 'other'
-    )),
-    CHECK (scope_kind IN ('point', 'facility', 'route', 'area', 'citywide')),
-    CHECK (status IN ('new', 'multiple_reports', 'verified', 'persists', 'apparently_resolved')),
+    CHECK (category IN ({_sql_enum(PROBLEM_CATEGORIES)})),
+    CHECK (scope_kind IN ({_sql_enum(SCOPE_KINDS)})),
+    CHECK (status IN ({_sql_enum(PROBLEM_STATUSES)})),
     CHECK (confidence IN ('unconfirmed', 'supported', 'verified')),
     CHECK (unique_reporters >= 0),
     CHECK (published_at IS NULL OR unique_reporters >= 1),

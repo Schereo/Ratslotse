@@ -25,7 +25,7 @@ Die durch Moderation bestätigte Verbindung einer Meldung mit genau einem Proble
 _Avoid_: automatische Zusammenführung
 
 **Moderationsentscheidung**:
-Eine private, nachvollziehbare Entscheidung über eine Meldung mit Ergebnis, Begründungscode und optionaler Notiz.
+Eine private, nachvollziehbare Entscheidung über eine Meldung mit Ergebnis, Begründungscode, interner Notiz und einer davon getrennten Mitteilung an die Reporter*in.
 _Avoid_: amtlicher Bescheid
 
 **Statusereignis**:

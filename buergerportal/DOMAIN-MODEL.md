@@ -10,9 +10,11 @@ Dieses Dokument konkretisiert die bestätigten Regeln aus `BUERGERPORTAL-BACKLOG
 - Eine Meldung kann durch Moderation höchstens einem öffentlichen Problem zugeordnet werden.
 - Ein Konto kann einem Problem höchstens eine Meldung beitragen. Spätere Beobachtungen werden an dieser Meldung ergänzt.
 - Viele Meldungen verschiedener Konten können demselben Problem zugeordnet sein.
-- Eine Moderationsentscheidung ist ein unveränderlicher Audit-Eintrag mit Admin-Konto, Ergebnis, Begründungscode, Notiz und Zeitpunkt.
+- Eine Moderationsentscheidung ist ein unveränderlicher Audit-Eintrag mit Admin-Konto, Ergebnis, Begründungscode, privater Notiz, getrennter Mitteilung an die Reporter*in und Zeitpunkt.
+- Eine Meldung kann höchstens eine erneute Prüfung einer Moderationsentscheidung anfordern; Anfrage und Ergebnis bleiben privat nachvollziehbar.
 - Ein Problemstatus beschreibt nur belegbare Tatsachen. Externe Aussagen benötigen Quelle und Rollenlabel.
 - Ein geografischer Bezug ist ein Punkt, eine Einrichtung, eine Route, ein Gebiet oder das gesamte Stadtgebiet. Punkte und Einrichtungen benötigen Koordinaten.
+- Die konkrete Geometrie für Routen und Gebiete bleibt eine offene Produktentscheidung. Der private P0-Schnitt speichert dafür noch keine frei gewählte Geometriestruktur.
 
 ## Lebensläufe
 

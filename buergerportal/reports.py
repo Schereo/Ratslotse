@@ -5,18 +5,27 @@ werden ausschließlich über :mod:`buergerportal.store` gelesen.
 """
 from __future__ import annotations
 
-import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .store import PROBLEM_CATEGORIES, SCOPE_KINDS
+from .domain import (
+    MODERATION_OUTCOMES,
+    PROBLEM_CATEGORIES,
+    REPORT_STATUSES,
+    SCOPE_KINDS,
+)
+
+
+def _sql_enum(values: tuple[str, ...]) -> str:
+    return ", ".join(f"'{value}'" for value in values)
+
 
 _PRIVATE_MIGRATIONS = (
     (
         1,
-        """
+        f"""
         CREATE TABLE civic_reports (
             id                INTEGER PRIMARY KEY AUTOINCREMENT,
             reporter_id       INTEGER NOT NULL,
@@ -28,7 +37,6 @@ _PRIVATE_MIGRATIONS = (
             location_label    TEXT NOT NULL DEFAULT '',
             latitude          REAL,
             longitude         REAL,
-            geometry_json     TEXT,
             observed_at       TEXT NOT NULL,
             status            TEXT NOT NULL DEFAULT 'draft',
             submitted_at      TEXT,
@@ -37,15 +45,9 @@ _PRIVATE_MIGRATIONS = (
             updated_at        TEXT NOT NULL,
             CHECK (reporter_id > 0),
             CHECK (length(trim(draft_text)) > 0),
-            CHECK (category IN (
-                'mobility', 'public_space', 'education', 'childcare', 'housing',
-                'environment', 'accessibility', 'administration', 'other'
-            )),
-            CHECK (scope_kind IN ('point', 'facility', 'route', 'area', 'citywide')),
-            CHECK (status IN (
-                'draft', 'submitted', 'in_review', 'needs_information',
-                'accepted', 'rejected', 'withdrawn'
-            )),
+            CHECK (category IN ({_sql_enum(PROBLEM_CATEGORIES)})),
+            CHECK (scope_kind IN ({_sql_enum(SCOPE_KINDS)})),
+            CHECK (status IN ({_sql_enum(REPORT_STATUSES)})),
             CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90),
             CHECK (longitude IS NULL OR longitude BETWEEN -180 AND 180),
             CHECK (
@@ -79,26 +81,42 @@ _PRIVATE_MIGRATIONS = (
     ),
     (
         3,
-        """
+        f"""
         CREATE TABLE civic_moderation_decisions (
             id             INTEGER PRIMARY KEY AUTOINCREMENT,
             report_id      INTEGER NOT NULL,
             moderator_id   INTEGER NOT NULL,
             outcome        TEXT NOT NULL,
             reason_code    TEXT NOT NULL,
-            note           TEXT NOT NULL DEFAULT '',
+            reporter_message TEXT NOT NULL DEFAULT '',
+            private_note   TEXT NOT NULL DEFAULT '',
             problem_id     INTEGER,
             created_at     TEXT NOT NULL,
             CHECK (moderator_id > 0),
             CHECK (length(trim(reason_code)) > 0),
-            CHECK (outcome IN (
-                'assigned_existing_problem', 'published_as_new_problem',
-                'needs_information', 'rejected'
-            )),
+            CHECK (outcome IN ({_sql_enum(MODERATION_OUTCOMES)})),
             FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE
         );
         CREATE INDEX idx_civic_moderation_decisions_report
             ON civic_moderation_decisions(report_id, created_at, id);
+        """,
+    ),
+    (
+        4,
+        """
+        CREATE TABLE civic_moderation_review_requests (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_id       INTEGER NOT NULL UNIQUE,
+            decision_id     INTEGER NOT NULL,
+            reporter_reason TEXT NOT NULL,
+            status          TEXT NOT NULL DEFAULT 'pending',
+            created_at      TEXT NOT NULL,
+            resolved_at     TEXT,
+            CHECK (length(trim(reporter_reason)) > 0),
+            CHECK (status IN ('pending', 'accepted', 'rejected')),
+            FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE,
+            FOREIGN KEY (decision_id) REFERENCES civic_moderation_decisions(id)
+        );
         """,
     ),
 )
@@ -167,7 +185,6 @@ class ReportStore:
         location_label: str = "",
         latitude: float | None = None,
         longitude: float | None = None,
-        geometry: dict[str, Any] | None = None,
     ) -> int:
         if reporter_id < 1:
             raise ValueError("Eine Meldung benötigt ein gültiges Konto.")
@@ -184,9 +201,9 @@ class ReportStore:
             cursor = self._conn.execute(
                 """INSERT INTO civic_reports (
                        reporter_id, draft_text, category, scope_kind,
-                       location_label, latitude, longitude, geometry_json,
-                       observed_at, created_at, updated_at
-                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       location_label, latitude, longitude, observed_at,
+                       created_at, updated_at
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     reporter_id,
                     text.strip(),
@@ -195,7 +212,6 @@ class ReportStore:
                     location_label.strip(),
                     latitude,
                     longitude,
-                    json.dumps(geometry, ensure_ascii=False) if geometry else None,
                     observed_at,
                     now,
                     now,
@@ -207,7 +223,7 @@ class ReportStore:
         row = self._conn.execute(
             """SELECT id, problem_id, draft_text AS text, confirmed_text,
                       category, scope_kind, location_label, latitude, longitude,
-                      geometry_json, observed_at, status, submitted_at, withdrawn_at,
+                      observed_at, status, submitted_at, withdrawn_at,
                       created_at, updated_at
                FROM civic_reports
                WHERE id = ? AND reporter_id = ?""",
@@ -216,8 +232,6 @@ class ReportStore:
         if not row:
             return None
         report = dict(row)
-        raw_geometry = report.pop("geometry_json")
-        report["geometry"] = json.loads(raw_geometry) if raw_geometry else None
         observations = self._conn.execute(
             """SELECT text, observed_at, withdrawn_at
                FROM civic_report_observations
@@ -241,23 +255,25 @@ class ReportStore:
             raise ValueError("Vor dem Absenden muss der deutsche Meldetext bestätigt werden.")
         now = _now()
         with self._conn:
-            row = self._conn.execute(
-                """SELECT status, observed_at
-                   FROM civic_reports
-                   WHERE id = ? AND reporter_id = ?""",
-                (report_id, reporter_id),
-            ).fetchone()
-            if not row:
-                raise ValueError("Meldung nicht gefunden.")
-            if row["status"] != "draft":
-                raise ValueError("Diese Meldung wurde bereits abgesendet.")
-            self._conn.execute(
+            updated = self._conn.execute(
                 """UPDATE civic_reports
                    SET confirmed_text = ?, status = 'submitted',
                        submitted_at = ?, updated_at = ?
                    WHERE id = ? AND reporter_id = ? AND status = 'draft'""",
                 (text, now, now, report_id, reporter_id),
             )
+            if updated.rowcount != 1:
+                owned = self._conn.execute(
+                    "SELECT 1 FROM civic_reports WHERE id = ? AND reporter_id = ?",
+                    (report_id, reporter_id),
+                ).fetchone()
+                if not owned:
+                    raise ValueError("Meldung nicht gefunden.")
+                raise ValueError("Diese Meldung wurde bereits abgesendet.")
+            row = self._conn.execute(
+                "SELECT observed_at FROM civic_reports WHERE id = ?",
+                (report_id,),
+            ).fetchone()
             self._conn.execute(
                 """INSERT INTO civic_report_observations (
                        report_id, text, observed_at, created_at
@@ -269,84 +285,45 @@ class ReportStore:
             raise RuntimeError("Abgesendete Meldung konnte nicht geladen werden.")
         return submitted
 
-    def record_moderation_decision(
+    def add_owned_observation(
         self,
         report_id: int,
         *,
-        moderator_id: int,
-        outcome: str,
-        reason_code: str,
-        note: str = "",
-        problem_id: int | None = None,
-    ) -> int:
-        """Record an admin decision and apply its report-state transition."""
-        allowed_outcomes = {
-            "assigned_existing_problem",
-            "published_as_new_problem",
-            "needs_information",
-            "rejected",
-        }
-        if moderator_id < 1:
-            raise ValueError("Eine Moderationsentscheidung benötigt ein Admin-Konto.")
-        if outcome not in allowed_outcomes:
-            raise ValueError("Unbekanntes Moderationsergebnis.")
-        if not reason_code.strip():
-            raise ValueError("Eine Moderationsentscheidung benötigt einen Begründungscode.")
-        if outcome in {"assigned_existing_problem", "published_as_new_problem"}:
-            if problem_id is None:
-                raise ValueError("Eine Annahme benötigt ein öffentliches Problem.")
-            try:
-                problem_exists = self._conn.execute(
-                    "SELECT 1 FROM civic_problems WHERE id = ?",
-                    (problem_id,),
-                ).fetchone()
-            except sqlite3.OperationalError:
-                problem_exists = None
-            if not problem_exists:
-                raise ValueError("Öffentliches Problem nicht gefunden.")
-
-        status_by_outcome = {
-            "assigned_existing_problem": "accepted",
-            "published_as_new_problem": "accepted",
-            "needs_information": "needs_information",
-            "rejected": "rejected",
-        }
+        reporter_id: int,
+        text: str,
+        observed_at: str,
+    ) -> dict[str, Any]:
+        """Append an observation to an owned, active report."""
+        observation = text.strip()
+        if not observation:
+            raise ValueError("Eine Beobachtung benötigt eine Beschreibung.")
         now = _now()
-        try:
-            with self._conn:
-                report = self._conn.execute(
-                    "SELECT status FROM civic_reports WHERE id = ?",
-                    (report_id,),
-                ).fetchone()
-                if not report:
-                    raise ValueError("Meldung nicht gefunden.")
-                if report["status"] not in {"submitted", "in_review", "needs_information"}:
-                    raise ValueError("Die Meldung kann in diesem Zustand nicht moderiert werden.")
-                self._conn.execute(
-                    """UPDATE civic_reports
-                       SET problem_id = ?, status = ?, updated_at = ?
-                       WHERE id = ?""",
-                    (problem_id, status_by_outcome[outcome], now, report_id),
-                )
-                cursor = self._conn.execute(
-                    """INSERT INTO civic_moderation_decisions (
-                           report_id, moderator_id, outcome, reason_code,
-                           note, problem_id, created_at
-                       ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                    (
-                        report_id,
-                        moderator_id,
-                        outcome,
-                        reason_code.strip(),
-                        note.strip(),
-                        problem_id,
-                        now,
-                    ),
-                )
-        except sqlite3.IntegrityError as error:
-            if "civic_reports.reporter_id, civic_reports.problem_id" in str(error):
-                raise ValueError(
-                    "Die Person hat diesem Problem bereits eine Meldung zugeordnet."
-                ) from None
-            raise
-        return int(cursor.lastrowid)
+        with self._conn:
+            report = self._conn.execute(
+                """SELECT status FROM civic_reports
+                   WHERE id = ? AND reporter_id = ?""",
+                (report_id, reporter_id),
+            ).fetchone()
+            if not report:
+                raise ValueError("Meldung nicht gefunden.")
+            if report["status"] not in {
+                "submitted",
+                "in_review",
+                "needs_information",
+                "accepted",
+            }:
+                raise ValueError("Diese Meldung kann nicht aktualisiert werden.")
+            self._conn.execute(
+                """INSERT INTO civic_report_observations (
+                       report_id, text, observed_at, created_at
+                   ) VALUES (?, ?, ?, ?)""",
+                (report_id, observation, observed_at, now),
+            )
+            self._conn.execute(
+                "UPDATE civic_reports SET updated_at = ? WHERE id = ?",
+                (now, report_id),
+            )
+        updated = self.get_owned_report(report_id, reporter_id=reporter_id)
+        if updated is None:  # Protected by the transaction above.
+            raise RuntimeError("Aktualisierte Meldung konnte nicht geladen werden.")
+        return updated
