@@ -291,6 +291,7 @@ struct QuestionsView: View {
                     researchMode: $researchMode,
                     researchRemaining: researchRemaining,
                     isSending: isSending,
+                    isEnabled: model.conversationSavingPreference != nil,
                     action: submitOrStop
                 )
             }
@@ -364,6 +365,10 @@ struct QuestionsView: View {
     }
 
     private func askUsingSelectedMode(_ raw: String) {
+        guard model.conversationSavingPreference != nil else {
+            conversationPreferenceError = "Bitte wähle zuerst, ob Gespräche gespeichert werden sollen."
+            return
+        }
         if researchMode { askResearch(raw) }
         else { ask(raw) }
     }
@@ -991,7 +996,7 @@ private struct ConversationMemoryConsentCard: View {
                     .font(RatsFont.body(10, weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
 
-                Text("Mit deiner Auswahl bestätigst du, dass du diesen Hinweis gelesen hast. Die Auswahl ändert nur die Speicherung im Ratslotse-Konto, nicht die externe Verarbeitung einer gestellten Frage.")
+                Text("Mit einer Auswahl erlaubst du die beschriebene Übermittlung an OpenRouter. Ohne diese Verarbeitung kann „Frag den Rat“ keine Antwort erzeugen. Ob Lotti den Verlauf zusätzlich in deinem Konto speichert, entscheidest du mit den beiden Optionen getrennt davon.")
                     .font(RatsFont.body(9.5))
                     .foregroundStyle(RatsColor.muted)
                     .lineSpacing(2)
@@ -1018,14 +1023,14 @@ private struct ConversationMemoryConsentCard: View {
     @ViewBuilder
     private var choiceButtons: some View {
         Button { choose(true) } label: {
-            Label(isSaving ? "Wird gespeichert …" : "Ja, merken", systemImage: "checkmark")
+            Label(isSaving ? "Wird gespeichert …" : "KI nutzen & merken", systemImage: "checkmark")
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(PrimaryButtonStyle())
         .disabled(isSaving)
 
         Button { choose(false) } label: {
-            Label("Nein, nicht merken", systemImage: "xmark")
+            Label("KI nutzen, nicht merken", systemImage: "xmark")
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(SecondaryButtonStyle())
@@ -1038,6 +1043,7 @@ private struct RatsQuestionComposer: View {
     @Binding var researchMode: Bool
     let researchRemaining: Int?
     let isSending: Bool
+    let isEnabled: Bool
     let action: () -> Void
 
     private var trimmedText: String {
@@ -1060,6 +1066,7 @@ private struct RatsQuestionComposer: View {
                 .lineLimit(1...4)
                 .submitLabel(.send)
                 .onSubmit(action)
+                .disabled(!isEnabled)
 
                 Button(action: action) {
                     Image(systemName: isSending ? "stop.fill" : "arrow.up")
@@ -1067,13 +1074,13 @@ private struct RatsQuestionComposer: View {
                         .foregroundStyle(RatsColor.primaryText)
                         .frame(width: 40, height: 40)
                         .background(
-                            RatsColor.primary.opacity(trimmedText.count < 4 && !isSending ? 0.35 : 1)
+                            RatsColor.primary.opacity((trimmedText.count < 4 && !isSending) || !isEnabled ? 0.35 : 1)
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .shadow(color: RatsColor.primary.opacity(isSending ? 0 : 0.2), radius: 8, y: 3)
                 }
                 .buttonStyle(.plain)
-                .disabled(trimmedText.count < 4 && !isSending)
+                .disabled((trimmedText.count < 4 && !isSending) || !isEnabled)
                 .accessibilityLabel(isSending ? "Vorgang abbrechen" : "Frage senden")
             }
             .padding(.horizontal, 12)
@@ -1094,7 +1101,7 @@ private struct RatsQuestionComposer: View {
                     }
                 }
                 .toggleStyle(ResearchPillToggleStyle())
-                .disabled(researchUnavailable || isSending)
+                .disabled(researchUnavailable || isSending || !isEnabled)
 
                 if researchMode {
                     Text(researchRemaining.map { "~30 Sek. · noch \($0) heute" } ?? "dauert etwa 30 Sek.")
@@ -1975,6 +1982,10 @@ struct SharedAnswerSnapshot: Decodable, Sendable {
     }
 }
 
+struct SharedAnswerReportPayload: Codable, Sendable, Equatable {
+    let reason: String
+}
+
 private struct PartyOpinionsView: View {
     let turn: QuestionTurn
     let model: AppModel
@@ -2062,6 +2073,8 @@ struct SharedAnswerView: View {
     @State private var people: [QuestionPerson] = []
     @State private var isLoading = true
     @State private var error: String?
+    @State private var showsReportOptions = false
+    @State private var isReporting = false
 
     var body: some View {
         ScrollView {
@@ -2101,6 +2114,19 @@ struct SharedAnswerView: View {
         .navigationTitle("Geteilte Antwort")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: token) { await load() }
+        .confirmationDialog(
+            "Warum möchtest du diesen Inhalt melden?",
+            isPresented: $showsReportOptions,
+            titleVisibility: .visible
+        ) {
+            reportButton("Unangemessener Inhalt", reason: "inappropriate")
+            reportButton("Irreführende oder falsche Antwort", reason: "misleading")
+            reportButton("Privatsphäre / persönliche Daten", reason: "privacy")
+            reportButton("Anderer Grund", reason: "other")
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Die Meldung geht an das Ratslotse-Team und kann zur Entfernung des öffentlichen Links führen.")
+        }
     }
 
     @ViewBuilder
@@ -2155,6 +2181,16 @@ struct SharedAnswerView: View {
             .font(RatsFont.body(10.5))
             .foregroundStyle(RatsColor.muted)
             .lineSpacing(2)
+
+        Button {
+            showsReportOptions = true
+        } label: {
+            Label(isReporting ? "Meldung wird gesendet …" : "Inhalt melden", systemImage: "exclamationmark.bubble")
+                .font(RatsFont.body(11.5, weight: .semibold))
+                .foregroundStyle(RatsColor.secondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(isReporting)
     }
 
     private var ownQuestionButton: some View {
@@ -2194,6 +2230,25 @@ struct SharedAnswerView: View {
     private var shareURL: URL? {
         guard let token, !token.isEmpty else { return nil }
         return model.router.universalLink(for: .sharedAnswer(token: token))
+    }
+
+    private func reportButton(_ title: String, reason: String) -> some View {
+        Button(title) { Task { await report(reason: reason) } }
+    }
+
+    private func report(reason: String) async {
+        guard let token, !token.isEmpty, !isReporting else { return }
+        isReporting = true
+        defer { isReporting = false }
+        do {
+            try await model.api.sendVoid(
+                "/api/council/qa-share/\(token)/report",
+                body: SharedAnswerReportPayload(reason: reason)
+            )
+            model.alertMessage = "Danke. Wir prüfen den geteilten Inhalt zeitnah."
+        } catch {
+            model.alertMessage = "Die Meldung konnte nicht gesendet werden. Bitte versuche es später erneut oder nutze Hilfe & Kontakt."
+        }
     }
 
     private func turn(from snapshot: SharedAnswerSnapshot) -> QuestionTurn {

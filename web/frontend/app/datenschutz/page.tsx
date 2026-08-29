@@ -53,6 +53,7 @@ export default function DatenschutzPage() {
               <li><strong>Push (optional):</strong> ein Geräte-Token, wenn du App-Push-Benachrichtigungen aktivierst.</li>
               <li><strong>Themen &amp; Watchlists:</strong> die von dir angelegten Suchthemen und Benachrichtigungseinstellungen.</li>
               <li><strong>„Frag den Rat"-Anfragen:</strong> die von dir eingegebenen Fragen, um eine KI-Antwort zu erzeugen.</li>
+              <li><strong>Geteilte Antworten:</strong> Wenn du ausdrücklich „Teilen" auswählst, speichern wir Frage, Antwort und die dazugehörigen Belege unter einem nicht erratbaren öffentlichen Link. Jede Person mit dem Link kann den Inhalt lesen und melden. Der Link wird mit deinem Konto gelöscht; gemeldete Links können wir vorher entfernen.</li>
               <li><strong>Server-Logs:</strong> beim Aufruf technische Daten wie IP-Adresse, Zeitpunkt und User-Agent — zur Sicherheit und Fehleranalyse.</li>
             </ul>
           </Section>

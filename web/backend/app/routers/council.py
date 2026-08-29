@@ -4,7 +4,9 @@ from __future__ import annotations
 import json
 import logging
 import math
+import re
 import time
+import unicodedata
 from collections import Counter, defaultdict
 from datetime import date
 from typing import Callable
@@ -35,7 +37,13 @@ from kern.store import Store
 from .. import deepresearch
 from ..config import get_settings
 from ..deps import get_council_store, get_store, optional_user, require_active
-from ..ratelimit import partei_meinungen_limiter, qa_feedback_limiter, qa_limiter, qa_share_limiter
+from ..ratelimit import (
+    partei_meinungen_limiter,
+    qa_feedback_limiter,
+    qa_limiter,
+    qa_share_limiter,
+    qa_share_report_limiter,
+)
 
 router = APIRouter(prefix="/api/council", tags=["council"])
 
@@ -1989,6 +1997,32 @@ class QaShareBody(BaseModel):
     grafik: dict | None = None
 
 
+_SHARE_BLOCKED_PHRASES = (
+    "heil hitler",
+    "sieg heil",
+    "kinderporno",
+    "child porn",
+    "kill yourself",
+    "bring dich um",
+)
+
+
+def _share_text_is_objectionable(text: str) -> bool:
+    """Enges Vorab-Filter für absichtlich öffentlich gemachte Snapshots.
+
+    Das Ratsgespräch selbst darf schwierige politische Themen behandeln. Für
+    den öffentlichen Link blocken wir deshalb nur sehr eindeutige
+    Missbrauchsphrasen sowie eingebettete Web-/Script-Ziele. Amtliche Links
+    kommen strukturiert aus den validierten Quellenfeldern, nie aus diesem
+    freien Text. Meldung und menschliche Moderation bleiben das zweite Netz.
+    """
+    folded = unicodedata.normalize("NFKC", text).casefold()
+    folded = re.sub(r"\s+", " ", folded)
+    if any(phrase in folded for phrase in _SHARE_BLOCKED_PHRASES):
+        return True
+    return bool(re.search(r"(?:https?://|javascript:|data:text/|<\s*script\b)", folded))
+
+
 def _grafik_pruefen(g: dict | None) -> dict | None:
     """Nur durchlassen, was eine Grafik aus `geld_grafik` sein kann.
 
@@ -2035,6 +2069,11 @@ def qa_share_anlegen(
     """Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
     Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
     eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick."""
+    if _share_text_is_objectionable(body.frage) or _share_text_is_objectionable(body.antwort):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Dieser Inhalt kann nicht als öffentlicher Link geteilt werden.",
+        )
     if not user.get("limits_frei"):
         qa_share_limiter.check(request)
     extras = {
@@ -2060,6 +2099,48 @@ def qa_share_lesen(token: str, nwz: Store = Depends(get_store)) -> dict:
     if not share:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     return share
+
+
+class QaShareReportBody(BaseModel):
+    reason: str = Field(
+        default="other",
+        pattern="^(inappropriate|misleading|privacy|other)$",
+    )
+
+
+@router.post("/qa-share/{token}/report", status_code=status.HTTP_202_ACCEPTED)
+def qa_share_melden(
+    token: str,
+    body: QaShareReportBody,
+    request: Request,
+    nwz: Store = Depends(get_store),
+) -> dict:
+    """Öffentlicher Meldeweg für geteilte Inhalte (App Review 1.2).
+
+    Eine Meldung darf kein Konto verlangen: Empfänger*innen eines Links sind
+    gerade häufig nicht angemeldet. Der interne Eigentümerbezug ermöglicht
+    Moderation und bei Missbrauch eine Kontosperre, wird aber niemals an den
+    meldenden Client zurückgegeben.
+    """
+    if len(token) > 64:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    owner_id = nwz.qa_share_owner_id(token)
+    if owner_id is None:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    qa_share_report_limiter.check(request)
+    labels = {
+        "inappropriate": "Unangemessener Inhalt",
+        "misleading": "Irreführende oder falsche Antwort",
+        "privacy": "Privatsphäre / personenbezogene Daten",
+        "other": "Anderer Grund",
+    }
+    nwz.add_feedback(
+        0,
+        None,
+        "qa_share",
+        f"{labels[body.reason]}\nShare-Token: {token}\nInhaber-ID: {owner_id}",
+    )
+    return {"ok": True}
 
 
 # ---- „Gründliche Recherche" (RG-10, Task 34) -------------------------------

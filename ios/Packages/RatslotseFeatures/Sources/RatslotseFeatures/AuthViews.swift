@@ -62,9 +62,13 @@ struct WelcomeView: View {
                 .buttonStyle(SecondaryButtonStyle())
                 .frame(maxWidth: .infinity)
             }
-            Text("Geteilte Beschlüsse und Personenprofile kannst du auch ohne Konto lesen.")
-                .font(RatsFont.body(12))
-                .foregroundStyle(RatsColor.muted)
+            VStack(alignment: .leading, spacing: 7) {
+                Text("Geteilte Beschlüsse und Personenprofile kannst du auch ohne Konto lesen.")
+                Text("Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.")
+                    .fontWeight(.semibold)
+            }
+            .font(RatsFont.body(12))
+            .foregroundStyle(RatsColor.muted)
         }
     }
 }
@@ -225,11 +229,20 @@ private struct CredentialsView: View {
                 .opacity(isWorking || email.isEmpty || password.count < 8 ? 0.5 : 1)
 
                 if mode == .register {
-                    Text("Mit der Registrierung akzeptierst du die Datenschutzerklärung. Danach bestätigst du kurz deine E-Mail-Adresse.")
-                        .font(RatsFont.body(11))
-                        .foregroundStyle(RatsColor.muted)
-                        .multilineTextAlignment(.center)
+                    VStack(spacing: 6) {
+                        Text("Mit der Registrierung akzeptierst du die Datenschutzerklärung. Danach bestätigst du kurz deine E-Mail-Adresse.")
+                        Link("Datenschutz öffnen", destination: URL(string: "https://ratslotse.de/datenschutz")!)
+                            .foregroundStyle(RatsColor.primary)
+                    }
+                    .font(RatsFont.body(11))
+                    .foregroundStyle(RatsColor.muted)
+                    .multilineTextAlignment(.center)
                 }
+
+                Text("Privates Bürgerprojekt · kein Angebot der Stadt Oldenburg")
+                    .font(RatsFont.body(10.5, weight: .semibold))
+                    .foregroundStyle(RatsColor.muted)
+                    .multilineTextAlignment(.center)
 
                 VStack(spacing: 11) {
                     if mode == .login {

@@ -727,7 +727,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
   const ask = async (question: string) => {
     const text = question.trim();
-    if (text.length < 4) return;
+    if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
     reportBadgeEvent("frage"); // RL-U12: Erste Frage
     const unterbrochen = loading;
@@ -1051,7 +1051,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
   const askDeep = async (question: string) => {
     const text = question.trim();
-    if (text.length < 4) return;
+    if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch { /* egal */ }
     setQ("");
     setRechercheModus(false); // gilt je Frage, rastet nicht ein (8d)
@@ -1591,11 +1591,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                     <div className="mt-2.5 flex gap-2">
                       <button type="button" onClick={() => void einwilligen(true)}
                         className="rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-                        Ja, merken
+                        KI nutzen & merken
                       </button>
                       <button type="button" onClick={() => void einwilligen(false)}
                         className="rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                        Nein, nicht merken
+                        KI nutzen, nicht merken
                       </button>
                     </div>
                     {/* V-01: Der Datenschutz-Hinweis zog aus dem Composer in die
@@ -1603,9 +1603,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         damit nie vor seiner ersten Frage. Diese Karte unterbricht
                         ohnehin genau einmal; hier gehört der Satz hin. */}
                     <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
-                      Übrigens: Deine Fragen gehen an einen externen KI-Dienst — bitte keine
-                      personenbezogenen Daten eingeben. Deine Wahl hier änderst du jederzeit
-                      in den Einstellungen.
+                      Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet;
+                      eine Drittlandverarbeitung ist möglich. Mit einer Auswahl erlaubst du
+                      diese Übermittlung. Ohne sie kann „Frag den Rat“ keine Antwort erzeugen.
+                      Bitte keine personenbezogenen oder sensiblen Daten eingeben. Ob der Verlauf
+                      zusätzlich im Konto gespeichert wird, entscheidest du mit den beiden Optionen.
                     </p>
                   </div>
                 </div>
@@ -1912,7 +1914,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                     <Square className="fill-current" /> Stopp
                   </Button>
                 ) : (
-                  <button type="submit" disabled={q.trim().length < 4} aria-label="Fragen"
+                  <button type="submit" disabled={q.trim().length < 4 || einstellung === null || einstellung === undefined} aria-label="Fragen"
                     className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_4px_12px_-4px_hsl(var(--primary)/0.55)] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-primary/90 active:scale-95 disabled:bg-primary/35 disabled:shadow-none">
                     <ArrowUp className="h-[17px] w-[17px]" strokeWidth={2.2} aria-hidden />
                   </button>

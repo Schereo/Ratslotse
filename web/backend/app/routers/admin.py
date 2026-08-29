@@ -214,6 +214,17 @@ def mark_feedback_read(
     return {"ok": True, "unread": store.count_unread_feedback()}
 
 
+@router.delete("/qa-shares/{token}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_reported_qa_share(
+    token: str,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> None:
+    """Gemeldeten Share entfernen; das öffentliche GET liefert danach 404."""
+    if len(token) > 64 or not store.qa_share_delete(token):
+        raise HTTPException(status_code=404, detail="Geteilte Antwort nicht gefunden.")
+
+
 # ---- web users ----
 @router.get("/users")
 def list_users(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> list[dict]:

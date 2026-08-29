@@ -159,15 +159,29 @@ private struct AdminFeedbackView: View {
     var body: some View { adminList(title: "Feedback", subtitle: envelope.map { "\($0.unread) offen" }) {
         ForEach(envelope?.items ?? []) { item in
             VStack(alignment: .leading, spacing: 9) {
-                HStack { Text(item.kind == "bug" ? "Fehler" : item.kind == "feature" ? "Idee" : "Sonstiges").font(RatsFont.body(11, weight: .bold)).foregroundStyle(item.kind == "bug" ? RatsColor.danger : RatsColor.primary); Spacer(); Text(item.createdAt.prefix(10)).font(RatsFont.mono(10)).foregroundStyle(RatsColor.secondary) }
+                HStack { Text(item.kind == "bug" ? "Fehler" : item.kind == "feature" ? "Idee" : item.kind == "qa_share" ? "Geteilter Inhalt" : "Sonstiges").font(RatsFont.body(11, weight: .bold)).foregroundStyle(item.kind == "bug" || item.kind == "qa_share" ? RatsColor.danger : RatsColor.primary); Spacer(); Text(item.createdAt.prefix(10)).font(RatsFont.mono(10)).foregroundStyle(RatsColor.secondary) }
                 Text(item.message).font(RatsFont.body(14)).lineSpacing(3)
-                HStack { Text(item.email ?? "Anonym").font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary); Spacer(); Button(item.readAt == nil ? "Erledigt" : "Wieder öffnen") { Task { await toggle(item) } }.buttonStyle(.bordered) }
+                HStack { Text(item.email ?? "Anonym").font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary); Spacer(); if let token = shareToken(item) { Button("Link entfernen", role: .destructive) { Task { await removeShare(token, item: item) } }.buttonStyle(.bordered) }; Button(item.readAt == nil ? "Erledigt" : "Wieder öffnen") { Task { await toggle(item) } }.buttonStyle(.bordered) }
             }.ratsCard()
         }
         if let error { ErrorCard(message: error) { Task { await load() } } }
     }.task { await load() } }
     private func load() async { do { envelope = try await model.api.get("/api/admin/feedback"); error = nil } catch { self.error = error.localizedDescription } }
     private func toggle(_ item: AdminFeedback) async { do { try await model.api.sendVoid("/api/admin/feedback/\(item.id)/read?read=\(item.readAt == nil)"); await load() } catch { self.error = error.localizedDescription } }
+    private func shareToken(_ item: AdminFeedback) -> String? {
+        guard item.kind == "qa_share" else { return nil }
+        return item.message.split(separator: "\n")
+            .first(where: { $0.hasPrefix("Share-Token: ") })?
+            .dropFirst("Share-Token: ".count)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    private func removeShare(_ token: String, item: AdminFeedback) async {
+        do {
+            try await model.api.sendVoid("/api/admin/qa-shares/\(token)", method: .delete)
+            if item.readAt == nil { try? await model.api.sendVoid("/api/admin/feedback/\(item.id)/read?read=true") }
+            await load()
+        } catch { self.error = error.localizedDescription }
+    }
 }
 
 private struct LLMUsage: Decodable, Sendable {

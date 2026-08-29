@@ -2939,6 +2939,59 @@ def test_qa_share_traegt_bausteine(client):
     assert "user_id" not in body
 
 
+def test_qa_share_public_report_and_admin_removal(client):
+    _register(client)
+    made = client.post("/api/council/qa-share", json={
+        "frage": "Was wurde beschlossen?",
+        "antwort": "Eine automatisch erzeugte Antwort [1].",
+        "quellen": [],
+    })
+    assert made.status_code == 201
+    token = made.json()["token"]
+
+    # Empfänger*innen des Links brauchen für eine Meldung ausdrücklich kein
+    # Konto. Ungültige Gründe und erfundene Links werden nicht angenommen.
+    public = TestClient(app)
+    reported = public.post(
+        f"/api/council/qa-share/{token}/report",
+        json={"reason": "privacy"},
+    )
+    assert reported.status_code == 202
+    assert public.post(
+        f"/api/council/qa-share/{token}/report",
+        json={"reason": "not-a-reason"},
+    ).status_code == 422
+    assert public.post(
+        "/api/council/qa-share/gibtsnicht/report",
+        json={"reason": "other"},
+    ).status_code == 404
+
+    feedback = client.get("/api/admin/feedback").json()["items"]
+    report = next(item for item in feedback if item["kind"] == "qa_share")
+    assert f"Share-Token: {token}" in report["message"]
+    assert "Inhaber-ID:" in report["message"]
+
+    removed = client.delete(f"/api/admin/qa-shares/{token}")
+    assert removed.status_code == 204
+    assert public.get(f"/api/council/qa-share/{token}").status_code == 404
+
+
+def test_qa_share_filters_objectionable_or_embedded_web_content(client):
+    _register(client)
+    for frage, antwort in (
+        ("Sieg Heil", "Antwort."),
+        ("Normale Frage", "Hier klicken: https://phishing.invalid"),
+        ("Normale Frage", "<script>alert(1)</script>"),
+    ):
+        response = client.post("/api/council/qa-share", json={
+            "frage": frage,
+            "antwort": antwort,
+            "quellen": [],
+        })
+        assert response.status_code == 422
+        assert "öffentlicher Link" in response.json()["detail"]
+
+
 def test_partei_meinungen_endpoint(client, monkeypatch):
     """Baustein-Endpoint (Task 30): liefert die LLM-Verdichtung; bei dünner
     Lage oder Fehlern IMMER {parteien: []} statt 500 (Zusatzbaustein)."""

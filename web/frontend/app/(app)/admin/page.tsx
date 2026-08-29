@@ -324,6 +324,7 @@ const FEEDBACK_KIND: Record<string, { label: string; cls: string }> = {
   // jemandem, der gerade nicht in sein Konto kommt. Deshalb Amber: dringlicher
   // als ein Vorschlag, aber kein Fehlerrot.
   konto: { label: "Konto & Anmeldung", cls: "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300" },
+  qa_share: { label: "Geteilter Inhalt", cls: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
 };
 
 /** Eingegangenes Nutzer-Feedback. Offene Einträge stehen optisch vorn und
@@ -350,6 +351,15 @@ function FeedbackTab() {
     onError: () => toast.error("Konnte nicht gespeichert werden."),
   });
 
+  const removeShare = useMutation({
+    mutationFn: (token: string) => api.del(`/admin/qa-shares/${encodeURIComponent(token)}`),
+    onSuccess: () => {
+      toast.success("Öffentlichen Link entfernt.");
+      qc.invalidateQueries({ queryKey: ["admin-feedback"] });
+    },
+    onError: () => toast.error("Der geteilte Inhalt konnte nicht entfernt werden."),
+  });
+
   if (isLoading) return <Spinner />;
   const items = data?.items ?? [];
 
@@ -374,6 +384,9 @@ function FeedbackTab() {
           {items.map((f) => {
             const kind = FEEDBACK_KIND[f.kind] ?? { label: f.kind, cls: "bg-muted text-muted-foreground" };
             const open = !f.read_at;
+            const shareToken = f.kind === "qa_share"
+              ? f.message.match(/^Share-Token:\s*(\S+)$/m)?.[1]
+              : undefined;
             return (
               <Card key={f.id} className={cn("p-4", open && "border-l-4 border-l-signal")}>
                 <div className="flex flex-wrap items-center gap-2">
@@ -395,6 +408,12 @@ function FeedbackTab() {
                   >
                     {open ? "Erledigt" : "Wieder öffnen"}
                   </Button>
+                  {shareToken && (
+                    <Button variant="danger" disabled={removeShare.isPending}
+                      onClick={() => removeShare.mutate(shareToken)}>
+                      Öffentlichen Link entfernen
+                    </Button>
+                  )}
                 </div>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
                   {f.message}

@@ -467,6 +467,29 @@ private final class ConversationSettingURLProtocol: URLProtocol {
     #expect(payload == NativeFeedbackPayload(kind: "bug", message: "Der Knopf reagiert nicht."))
 }
 
+@MainActor
+@Test func sharedAnswerReportUsesThePublicModerationEndpoint() async throws {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [FeedbackURLProtocol.self]
+    let api = APIClient(
+        baseURL: try #require(URL(string: "https://native-test.ratslotse.invalid")),
+        session: URLSession(configuration: configuration)
+    )
+    FeedbackURLProtocol.lastRequest = nil
+    FeedbackURLProtocol.lastRequestBody = nil
+
+    try await api.sendVoid(
+        "/api/council/qa-share/share-token/report",
+        body: SharedAnswerReportPayload(reason: "privacy")
+    )
+
+    #expect(FeedbackURLProtocol.lastRequest?.url?.path == "/api/council/qa-share/share-token/report")
+    #expect(FeedbackURLProtocol.lastRequest?.httpMethod == "POST")
+    let body = try #require(FeedbackURLProtocol.lastRequestBody)
+    #expect(try JSONDecoder().decode(SharedAnswerReportPayload.self, from: body) ==
+        SharedAnswerReportPayload(reason: "privacy"))
+}
+
 private final class FeedbackURLProtocol: URLProtocol {
     static var lastRequest: URLRequest?
     static var lastRequestBody: Data?
