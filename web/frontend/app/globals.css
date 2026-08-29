@@ -587,17 +587,37 @@
   transition: transform 160ms var(--ease-out-strong), box-shadow 160ms ease;
   width: var(--problem-pin-size);
 }
+.problem-map-facility {
+  border-radius: 0.7rem;
+}
+.problem-map-facility-symbol {
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+}
 .problem-map-pin.is-selected {
   box-shadow: 0 0 0 4px hsl(var(--foreground) / 0.24), 0 4px 14px rgb(0 0 0 / 0.32);
   transform: scale(1.12);
 }
+.problem-map-route,
+.problem-map-area {
+  cursor: pointer;
+  transition: filter 160ms ease, stroke-width 160ms var(--ease-out-strong), fill-opacity 160ms ease;
+}
+.problem-map-route:focus-visible,
+.problem-map-area:focus-visible {
+  filter: drop-shadow(0 0 4px hsl(var(--ring)));
+  outline: none;
+}
 .problem-map-icon:focus-visible .problem-map-pin {
   box-shadow: 0 0 0 4px hsl(var(--ring) / 0.35), 0 4px 14px rgb(0 0 0 / 0.32);
 }
-.frequency-once { --problem-frequency: hsl(var(--muted-foreground)); }
-.frequency-several { --problem-frequency: color-mix(in srgb, hsl(var(--primary)) 58%, hsl(var(--card))); }
-.frequency-many { --problem-frequency: hsl(var(--primary)); }
-.frequency-very_many { --problem-frequency: hsl(var(--signal)); }
+.frequency-once { --problem-frequency: #64748b; }
+.frequency-several { --problem-frequency: #0284c7; }
+.frequency-many { --problem-frequency: #ea8a00; }
+.frequency-very_many { --problem-frequency: #dc2626; }
 .problem-frequency-dot {
   background: var(--problem-frequency, hsl(var(--primary)));
   border-radius: 9999px;

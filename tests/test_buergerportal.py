@@ -269,6 +269,64 @@ def test_published_problem_requires_ai_review_and_human_approval(tmp_path):
     store.close()
 
 
+def test_route_and_area_require_matching_geojson_and_are_public(tmp_path):
+    database = tmp_path / "problems.sqlite"
+    store = ProblemStore(database)
+    route_geometry = {
+        "type": "LineString",
+        "coordinates": [[8.198, 53.142], [8.205, 53.143], [8.212, 53.141]],
+    }
+    area_geometry = {
+        "type": "Polygon",
+        "coordinates": [[
+            [8.204, 53.135],
+            [8.214, 53.135],
+            [8.214, 53.141],
+            [8.204, 53.135],
+        ]],
+    }
+    route = store.create_problem(
+        title="Lücke im Radweg",
+        summary="Der Radweg ist nicht durchgängig.",
+        category="mobility",
+        scope_kind="route",
+        geometry=route_geometry,
+    )
+    area = store.create_problem(
+        title="Hitze im Quartier",
+        summary="Mehrere Straßen sind im Sommer stark aufgeheizt.",
+        category="environment",
+        scope_kind="area",
+        geometry=area_geometry,
+    )
+    _approve_and_publish(store, database, route)
+    _approve_and_publish(store, database, area)
+
+    projected = {problem["id"]: problem for problem in store.list_public_problems()}
+    assert projected[route]["geometry"] == route_geometry
+    assert projected[area]["geometry"] == area_geometry
+    with pytest.raises(ValueError, match="LineString"):
+        store.create_problem(
+            title="Falsche Route",
+            summary="Eine Fläche ist keine Route.",
+            category="mobility",
+            scope_kind="route",
+            geometry=area_geometry,
+        )
+    with pytest.raises(ValueError, match="geschlossen"):
+        store.create_problem(
+            title="Offene Fläche",
+            summary="Der Ring ist nicht geschlossen.",
+            category="environment",
+            scope_kind="area",
+            geometry={
+                "type": "Polygon",
+                "coordinates": [[[8.2, 53.1], [8.3, 53.1], [8.3, 53.2], [8.2, 53.2]]],
+            },
+        )
+    store.close()
+
+
 def test_point_problem_requires_coordinates(tmp_path):
     store = ProblemStore(tmp_path / "problems.sqlite")
     try:

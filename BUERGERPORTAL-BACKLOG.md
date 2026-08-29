@@ -126,7 +126,7 @@ privates Meldungs-Domänenmodell, dauerhafte Migrationen, Autorisierungsmatrix
 und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 
 - [x] Öffentliche API für freigegebene Probleme mit Karte, Filtern und Listenansicht bereitstellen.
-- [ ] Punkt, Einrichtung, Route, Gebiet/Stadtteil und stadtweite Probleme darstellbar machen.
+- [x] Punkt, Einrichtung, Route, Gebiet/Stadtteil und stadtweite Probleme darstellbar machen.
 - [x] Problem-Detailseite mit erlaubten Aggregaten und öffentlicher Zeitleiste bauen.
 - [x] Öffentliche Minimalansicht mit Karte als Standard und Status-Kanban als zweiter Ansicht bereitstellen.
 - [x] Kennzeichnung als unabhängiges Ratslotse-Angebot und Erklärung der Statusaussage sichtbar platzieren.
@@ -240,7 +240,7 @@ und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 Diese Punkte sind bewusst nicht geraten und blockieren nur den betroffenen Backlog-Block:
 
 - Erste Oberkategorien, Mindestangaben und Alterungsintervalle je Kategorie.
-- Geodaten-Repräsentation für Route und Fläche sowie Umgang mit sensiblen Orten.
+- Konkrete Vergröberungsregeln für sensible Orte je Kategorie.
 - Konkrete lokale PII-Prüfung, freigegebener KI-Anbieter, Löschfristen und rechtliche Prüfung.
 - Moderations-SLA, Ablehnungsgründe und Beta-Kapazitätsgrenze.
 - Schwellen und Auswahlverfahren für spätere Vor-Ort-Verifikation.

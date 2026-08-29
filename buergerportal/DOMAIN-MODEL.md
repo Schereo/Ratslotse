@@ -17,7 +17,8 @@ Dieses Dokument konkretisiert die bestätigten Regeln aus `BUERGERPORTAL-BACKLOG
 - Korrekturen an Kategorie oder geografischem Bezug halten vorherige und neue Werte strukturiert in der Moderationsentscheidung fest.
 - Ein Problemstatus beschreibt nur belegbare Tatsachen. Externe Aussagen benötigen Quelle und Rollenlabel.
 - Ein geografischer Bezug ist ein Punkt, eine Einrichtung, eine Route, ein Gebiet oder das gesamte Stadtgebiet. Punkte und Einrichtungen benötigen Koordinaten.
-- Die konkrete Geometrie für Routen und Gebiete bleibt eine offene Produktentscheidung. Der private P0-Schnitt speichert dafür noch keine frei gewählte Geometriestruktur.
+- Öffentliche Routen verwenden GeoJSON `LineString`; öffentliche Gebiete verwenden `Polygon` oder `MultiPolygon`. Positionen folgen GeoJSON als `[Längengrad, Breitengrad]`, Linien benötigen mindestens zwei Positionen und Polygonringe sind geschlossen.
+- Stadtweite Probleme tragen keine künstliche Geometrie. Sensible Orte werden vor der Freigabe vergröbert oder nicht veröffentlicht.
 
 ## Lebensläufe
 
