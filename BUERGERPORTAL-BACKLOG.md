@@ -105,9 +105,12 @@ Die Reihenfolge beschreibt Produktpriorität. Jeder Block soll als testbarer ver
 
 - [ ] Produktname und sichtbare Begriffe festlegen; amtlich klingende Ticket-Versprechen vermeiden.
 - [ ] URL-Routen und Navigation innerhalb der bestehenden Web-App festlegen.
-- [ ] Domänenmodell für Meldung, Problem, Zuordnung, Aktualisierung, Moderationsentscheidung, Statusereignis und geografischen Bezug dokumentieren.
-- [ ] Migrationen in der bestehenden Datenhaltung entwerfen; private Meldedaten und öffentliche Projektionen klar trennen.
-- [ ] Autorisierungsmatrix für Öffentlichkeit, Reporter*in und Administrator*in definieren.
+- [x] Domänenmodell für Meldung, Problem, Zuordnung, Aktualisierung, Moderationsentscheidung, Statusereignis und geografischen Bezug dokumentieren.
+- [x] Migrationen in der bestehenden Datenhaltung entwerfen; private Meldedaten und öffentliche Projektionen klar trennen.
+- [x] Autorisierungsmatrix für Öffentlichkeit, Reporter*in und Administrator*in definieren.
+
+Dokumentiert in [`buergerportal/CONTEXT.md`](buergerportal/CONTEXT.md) und
+[`buergerportal/DOMAIN-MODEL.md`](buergerportal/DOMAIN-MODEL.md).
 
 **Fertig, wenn:** Das Modell alle in diesem Dokument bestätigten Regeln ausdrücken kann, Daten anderer Nutzer*innen nicht über öffentliche oder fremde Konto-Endpunkte erreichbar sind und Migrationstests vorliegen.
 

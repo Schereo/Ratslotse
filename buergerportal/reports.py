@@ -1,0 +1,352 @@
+"""Private Meldungen des Bürgerportals.
+
+Dieses Modul besitzt die private Schreibseite. Öffentliche Problemprojektionen
+werden ausschließlich über :mod:`buergerportal.store` gelesen.
+"""
+from __future__ import annotations
+
+import json
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from .store import PROBLEM_CATEGORIES, SCOPE_KINDS
+
+_PRIVATE_MIGRATIONS = (
+    (
+        1,
+        """
+        CREATE TABLE civic_reports (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            reporter_id       INTEGER NOT NULL,
+            problem_id        INTEGER,
+            draft_text        TEXT NOT NULL,
+            confirmed_text    TEXT,
+            category          TEXT NOT NULL,
+            scope_kind        TEXT NOT NULL,
+            location_label    TEXT NOT NULL DEFAULT '',
+            latitude          REAL,
+            longitude         REAL,
+            geometry_json     TEXT,
+            observed_at       TEXT NOT NULL,
+            status            TEXT NOT NULL DEFAULT 'draft',
+            submitted_at      TEXT,
+            withdrawn_at      TEXT,
+            created_at        TEXT NOT NULL,
+            updated_at        TEXT NOT NULL,
+            CHECK (reporter_id > 0),
+            CHECK (length(trim(draft_text)) > 0),
+            CHECK (category IN (
+                'mobility', 'public_space', 'education', 'childcare', 'housing',
+                'environment', 'accessibility', 'administration', 'other'
+            )),
+            CHECK (scope_kind IN ('point', 'facility', 'route', 'area', 'citywide')),
+            CHECK (status IN (
+                'draft', 'submitted', 'in_review', 'needs_information',
+                'accepted', 'rejected', 'withdrawn'
+            )),
+            CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90),
+            CHECK (longitude IS NULL OR longitude BETWEEN -180 AND 180),
+            CHECK (
+                scope_kind NOT IN ('point', 'facility')
+                OR (latitude IS NOT NULL AND longitude IS NOT NULL)
+            ),
+            UNIQUE (reporter_id, problem_id)
+        );
+        CREATE INDEX idx_civic_reports_owner
+            ON civic_reports(reporter_id, updated_at DESC);
+        CREATE INDEX idx_civic_reports_moderation
+            ON civic_reports(status, submitted_at);
+        """,
+    ),
+    (
+        2,
+        """
+        CREATE TABLE civic_report_observations (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_id      INTEGER NOT NULL,
+            text           TEXT NOT NULL,
+            observed_at    TEXT NOT NULL,
+            withdrawn_at   TEXT,
+            created_at     TEXT NOT NULL,
+            CHECK (length(trim(text)) > 0),
+            FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_civic_report_observations_report
+            ON civic_report_observations(report_id, observed_at, id);
+        """,
+    ),
+    (
+        3,
+        """
+        CREATE TABLE civic_moderation_decisions (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_id      INTEGER NOT NULL,
+            moderator_id   INTEGER NOT NULL,
+            outcome        TEXT NOT NULL,
+            reason_code    TEXT NOT NULL,
+            note           TEXT NOT NULL DEFAULT '',
+            problem_id     INTEGER,
+            created_at     TEXT NOT NULL,
+            CHECK (moderator_id > 0),
+            CHECK (length(trim(reason_code)) > 0),
+            CHECK (outcome IN (
+                'assigned_existing_problem', 'published_as_new_problem',
+                'needs_information', 'rejected'
+            )),
+            FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_civic_moderation_decisions_report
+            ON civic_moderation_decisions(report_id, created_at, id);
+        """,
+    ),
+)
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+class ReportStore:
+    """Owns private report persistence behind owner-scoped read methods."""
+
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._conn = sqlite3.connect(self.path, timeout=15, check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=5000")
+        self._conn.execute("PRAGMA foreign_keys=ON")
+        self._migrate()
+
+    def close(self) -> None:
+        self._conn.close()
+
+    def _migrate(self) -> None:
+        self._conn.execute(
+            """CREATE TABLE IF NOT EXISTS civic_report_schema_migrations (
+                   version INTEGER PRIMARY KEY,
+                   applied_at TEXT NOT NULL
+               )"""
+        )
+        self._conn.commit()
+        for version, sql in _PRIVATE_MIGRATIONS:
+            try:
+                self._conn.execute("BEGIN IMMEDIATE")
+                applied = self._conn.execute(
+                    "SELECT 1 FROM civic_report_schema_migrations WHERE version = ?",
+                    (version,),
+                ).fetchone()
+                if applied:
+                    self._conn.commit()
+                    continue
+                for statement in sql.split(";"):
+                    if statement.strip():
+                        self._conn.execute(statement)
+                self._conn.execute(
+                    """INSERT INTO civic_report_schema_migrations(version, applied_at)
+                       VALUES (?, ?)""",
+                    (version, _now()),
+                )
+                self._conn.commit()
+            except Exception:
+                if self._conn.in_transaction:
+                    self._conn.rollback()
+                raise
+
+    def create_draft(
+        self,
+        *,
+        reporter_id: int,
+        text: str,
+        category: str,
+        scope_kind: str,
+        observed_at: str,
+        location_label: str = "",
+        latitude: float | None = None,
+        longitude: float | None = None,
+        geometry: dict[str, Any] | None = None,
+    ) -> int:
+        if reporter_id < 1:
+            raise ValueError("Eine Meldung benötigt ein gültiges Konto.")
+        if not text.strip():
+            raise ValueError("Eine Meldung benötigt eine Beschreibung.")
+        if category not in PROBLEM_CATEGORIES:
+            raise ValueError("Unbekannte Problemkategorie.")
+        if scope_kind not in SCOPE_KINDS:
+            raise ValueError("Unbekannter geografischer Bezug.")
+        if scope_kind in {"point", "facility"} and (latitude is None or longitude is None):
+            raise ValueError("Punkt und Einrichtung benötigen Koordinaten.")
+        now = _now()
+        with self._conn:
+            cursor = self._conn.execute(
+                """INSERT INTO civic_reports (
+                       reporter_id, draft_text, category, scope_kind,
+                       location_label, latitude, longitude, geometry_json,
+                       observed_at, created_at, updated_at
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    reporter_id,
+                    text.strip(),
+                    category,
+                    scope_kind,
+                    location_label.strip(),
+                    latitude,
+                    longitude,
+                    json.dumps(geometry, ensure_ascii=False) if geometry else None,
+                    observed_at,
+                    now,
+                    now,
+                ),
+            )
+        return int(cursor.lastrowid)
+
+    def get_owned_report(self, report_id: int, *, reporter_id: int) -> dict[str, Any] | None:
+        row = self._conn.execute(
+            """SELECT id, problem_id, draft_text AS text, confirmed_text,
+                      category, scope_kind, location_label, latitude, longitude,
+                      geometry_json, observed_at, status, submitted_at, withdrawn_at,
+                      created_at, updated_at
+               FROM civic_reports
+               WHERE id = ? AND reporter_id = ?""",
+            (report_id, reporter_id),
+        ).fetchone()
+        if not row:
+            return None
+        report = dict(row)
+        raw_geometry = report.pop("geometry_json")
+        report["geometry"] = json.loads(raw_geometry) if raw_geometry else None
+        observations = self._conn.execute(
+            """SELECT text, observed_at, withdrawn_at
+               FROM civic_report_observations
+               WHERE report_id = ?
+               ORDER BY observed_at, id""",
+            (report_id,),
+        ).fetchall()
+        report["observations"] = [dict(observation) for observation in observations]
+        return report
+
+    def submit_owned_report(
+        self,
+        report_id: int,
+        *,
+        reporter_id: int,
+        confirmed_text: str,
+    ) -> dict[str, Any]:
+        """Submit an owned draft and record its first observation atomically."""
+        text = confirmed_text.strip()
+        if not text:
+            raise ValueError("Vor dem Absenden muss der deutsche Meldetext bestätigt werden.")
+        now = _now()
+        with self._conn:
+            row = self._conn.execute(
+                """SELECT status, observed_at
+                   FROM civic_reports
+                   WHERE id = ? AND reporter_id = ?""",
+                (report_id, reporter_id),
+            ).fetchone()
+            if not row:
+                raise ValueError("Meldung nicht gefunden.")
+            if row["status"] != "draft":
+                raise ValueError("Diese Meldung wurde bereits abgesendet.")
+            self._conn.execute(
+                """UPDATE civic_reports
+                   SET confirmed_text = ?, status = 'submitted',
+                       submitted_at = ?, updated_at = ?
+                   WHERE id = ? AND reporter_id = ? AND status = 'draft'""",
+                (text, now, now, report_id, reporter_id),
+            )
+            self._conn.execute(
+                """INSERT INTO civic_report_observations (
+                       report_id, text, observed_at, created_at
+                   ) VALUES (?, ?, ?, ?)""",
+                (report_id, text, row["observed_at"], now),
+            )
+        submitted = self.get_owned_report(report_id, reporter_id=reporter_id)
+        if submitted is None:  # Protected by the transaction above.
+            raise RuntimeError("Abgesendete Meldung konnte nicht geladen werden.")
+        return submitted
+
+    def record_moderation_decision(
+        self,
+        report_id: int,
+        *,
+        moderator_id: int,
+        outcome: str,
+        reason_code: str,
+        note: str = "",
+        problem_id: int | None = None,
+    ) -> int:
+        """Record an admin decision and apply its report-state transition."""
+        allowed_outcomes = {
+            "assigned_existing_problem",
+            "published_as_new_problem",
+            "needs_information",
+            "rejected",
+        }
+        if moderator_id < 1:
+            raise ValueError("Eine Moderationsentscheidung benötigt ein Admin-Konto.")
+        if outcome not in allowed_outcomes:
+            raise ValueError("Unbekanntes Moderationsergebnis.")
+        if not reason_code.strip():
+            raise ValueError("Eine Moderationsentscheidung benötigt einen Begründungscode.")
+        if outcome in {"assigned_existing_problem", "published_as_new_problem"}:
+            if problem_id is None:
+                raise ValueError("Eine Annahme benötigt ein öffentliches Problem.")
+            try:
+                problem_exists = self._conn.execute(
+                    "SELECT 1 FROM civic_problems WHERE id = ?",
+                    (problem_id,),
+                ).fetchone()
+            except sqlite3.OperationalError:
+                problem_exists = None
+            if not problem_exists:
+                raise ValueError("Öffentliches Problem nicht gefunden.")
+
+        status_by_outcome = {
+            "assigned_existing_problem": "accepted",
+            "published_as_new_problem": "accepted",
+            "needs_information": "needs_information",
+            "rejected": "rejected",
+        }
+        now = _now()
+        try:
+            with self._conn:
+                report = self._conn.execute(
+                    "SELECT status FROM civic_reports WHERE id = ?",
+                    (report_id,),
+                ).fetchone()
+                if not report:
+                    raise ValueError("Meldung nicht gefunden.")
+                if report["status"] not in {"submitted", "in_review", "needs_information"}:
+                    raise ValueError("Die Meldung kann in diesem Zustand nicht moderiert werden.")
+                self._conn.execute(
+                    """UPDATE civic_reports
+                       SET problem_id = ?, status = ?, updated_at = ?
+                       WHERE id = ?""",
+                    (problem_id, status_by_outcome[outcome], now, report_id),
+                )
+                cursor = self._conn.execute(
+                    """INSERT INTO civic_moderation_decisions (
+                           report_id, moderator_id, outcome, reason_code,
+                           note, problem_id, created_at
+                       ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        report_id,
+                        moderator_id,
+                        outcome,
+                        reason_code.strip(),
+                        note.strip(),
+                        problem_id,
+                        now,
+                    ),
+                )
+        except sqlite3.IntegrityError as error:
+            if "civic_reports.reporter_id, civic_reports.problem_id" in str(error):
+                raise ValueError(
+                    "Die Person hat diesem Problem bereits eine Meldung zugeordnet."
+                ) from None
+            raise
+        return int(cursor.lastrowid)
