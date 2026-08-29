@@ -39,7 +39,8 @@ export const MELDE_HAEUFIGKEIT: Record<ProblemFrequency, string> = {
 
 /** Grobe Häufigkeit für lokale Vorschau-Daten. Die API liefert sie bereits. */
 export function meldeHaeufigkeit(uniqueReporters: number): ProblemFrequency {
-  if (uniqueReporters <= 1) return "once";
+  if (uniqueReporters < 1) throw new Error("Veröffentlichte Probleme benötigen mindestens eine Meldung.");
+  if (uniqueReporters === 1) return "once";
   if (uniqueReporters <= 4) return "several";
   if (uniqueReporters <= 9) return "many";
   return "very_many";

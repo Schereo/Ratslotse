@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { AlertTriangle, Maximize2, Minimize2, RefreshCw } from "lucide-react";
 import type { Map as LeafletMap, Marker, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { basemapUrl } from "@/lib/basemap";
@@ -28,6 +28,8 @@ export function ProblemMap({
   const selectRef = useRef(onSelect);
   const selectedRef = useRef(selectedId);
   const [full, setFull] = useState(false);
+  const [mapError, setMapError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   selectRef.current = onSelect;
   selectedRef.current = selectedId;
   const withoutPoint = problems.filter((problem) =>
@@ -38,6 +40,7 @@ export function ProblemMap({
 
   useEffect(() => {
     let cancelled = false;
+    setMapError(false);
     let observer: MutationObserver | null = null;
     void (async () => {
       try {
@@ -89,6 +92,7 @@ export function ProblemMap({
         else if (positions.length === 1) map.setView(positions[0], 14);
       } catch (error) {
         console.error("[ProblemMap] Initialisierung fehlgeschlagen:", error);
+        if (!cancelled) setMapError(true);
       }
     })();
     return () => {
@@ -99,7 +103,7 @@ export function ProblemMap({
       markersRef.current.clear();
       try { map?.remove(); } catch { /* verworfener StrictMode-Container */ }
     };
-  }, [problems]);
+  }, [problems, retryKey]);
 
   // Auswahl ändert nur den Marker, nicht die Karte. Ein vollständiger Leaflet-
   // Neubau würde den von der Nutzerin gewählten Ausschnitt bei jedem Klick
@@ -129,8 +133,23 @@ export function ProblemMap({
         : cn("relative isolate overflow-hidden rounded-xl border border-border bg-card", className),
     )}>
       <div ref={ref} className="h-full w-full" aria-label="Problemkarte von Oldenburg" />
-      {withoutPoint.length > 0 && (
-        <div className="absolute bottom-7 left-3 z-[var(--ebene-kartenbedienung)] max-w-[min(20rem,calc(100%-1.5rem))] rounded-lg border border-border bg-background/95 p-2 shadow-sm backdrop-blur">
+      {mapError && (
+        <div className="absolute inset-3 z-[var(--ebene-kartenbedienung)] flex items-center justify-center rounded-lg bg-background/95 p-6 text-center backdrop-blur" role="alert">
+          <div>
+            <AlertTriangle className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden />
+            <p className="mt-2 text-sm font-medium text-foreground">Karte konnte nicht geladen werden</p>
+            <button
+              type="button"
+              onClick={() => setRetryKey((value) => value + 1)}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden /> Nochmal versuchen
+            </button>
+          </div>
+        </div>
+      )}
+      {withoutPoint.length > 0 && !mapError && (
+        <div className="absolute bottom-7 left-3 z-[var(--ebene-kartenbedienung)] max-h-[min(45%,18rem)] max-w-[min(20rem,calc(100%-1.5rem))] overflow-y-auto overscroll-contain rounded-lg border border-border bg-background/95 p-2 shadow-sm backdrop-blur">
           <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ohne einzelnen Kartenpunkt</p>
           <div className="space-y-0.5">
             {withoutPoint.map((problem) => {

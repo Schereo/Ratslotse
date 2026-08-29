@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS civic_problems (
     CHECK (status IN ('new', 'multiple_reports', 'verified', 'persists', 'apparently_resolved')),
     CHECK (confidence IN ('unconfirmed', 'supported', 'verified')),
     CHECK (unique_reporters >= 0),
+    CHECK (published_at IS NULL OR unique_reporters >= 1),
     CHECK (current_observations >= 0),
     CHECK (total_observations >= current_observations),
     CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90),
@@ -88,7 +89,9 @@ def _now() -> str:
 
 
 def report_frequency(unique_reporters: int) -> str:
-    if unique_reporters <= 1:
+    if unique_reporters < 1:
+        raise ValueError("Veröffentlichte Probleme benötigen mindestens eine Meldung.")
+    if unique_reporters == 1:
         return "once"
     if unique_reporters <= 4:
         return "several"
@@ -158,6 +161,8 @@ class ProblemStore:
             raise ValueError("Unbekannter Problemstatus.")
         if scope_kind in {"point", "facility"} and (latitude is None or longitude is None):
             raise ValueError("Punkt und Einrichtung benötigen Koordinaten.")
+        if published and unique_reporters < 1:
+            raise ValueError("Veröffentlichte Probleme benötigen mindestens eine Meldung.")
         now = _now()
         first = first_observed_at or now
         last = last_observed_at or first
@@ -209,7 +214,7 @@ class ProblemStore:
         category: str | None = None,
         status: str | None = None,
     ) -> list[dict[str, Any]]:
-        clauses = ["published_at IS NOT NULL"]
+        clauses = ["published_at IS NOT NULL", "unique_reporters >= 1"]
         params: list[Any] = []
         if category:
             clauses.append("category = ?")
@@ -226,7 +231,8 @@ class ProblemStore:
 
     def get_public_problem(self, problem_id: int) -> dict[str, Any] | None:
         row = self._conn.execute(
-            "SELECT * FROM civic_problems WHERE id = ? AND published_at IS NOT NULL",
+            "SELECT * FROM civic_problems WHERE id = ? AND published_at IS NOT NULL "
+            "AND unique_reporters >= 1",
             (problem_id,),
         ).fetchone()
         return self._public_problem(row, include_details=True) if row else None

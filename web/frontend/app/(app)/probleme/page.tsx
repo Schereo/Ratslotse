@@ -16,6 +16,7 @@ export default function Page() {
   // nicht zwangsläufig gemeinsam mit dem Frontend. Frei erfundene, klar
   // markierte Daten machen die UI trotzdem prüfbar; Produktion nutzt immer API.
   const vorschau = process.env.VERCEL_ENV === "preview"
-    || process.env.NEXT_PUBLIC_BUERGERPORTAL_VORSCHAU === "1";
+    || (process.env.NODE_ENV !== "production"
+      && process.env.NEXT_PUBLIC_BUERGERPORTAL_VORSCHAU === "1");
   return <View vorschau={vorschau} />;
 }

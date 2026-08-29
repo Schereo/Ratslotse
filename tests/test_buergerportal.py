@@ -103,6 +103,27 @@ def test_problem_store_rejects_uncontrolled_category(tmp_path):
         store.close()
 
 
+def test_published_problem_requires_a_reporter(tmp_path):
+    store = ProblemStore(tmp_path / "problems.sqlite")
+    try:
+        store.create_problem(
+            title="Ohne Meldung",
+            summary="Darf nicht öffentlich werden.",
+            category="other",
+            scope_kind="citywide",
+            unique_reporters=0,
+            current_observations=0,
+            total_observations=0,
+            published=True,
+        )
+    except ValueError as error:
+        assert "mindestens eine Meldung" in str(error)
+    else:
+        raise AssertionError("Problem ohne Meldung wurde veröffentlicht")
+    finally:
+        store.close()
+
+
 def test_point_problem_requires_coordinates(tmp_path):
     store = ProblemStore(tmp_path / "problems.sqlite")
     try:
