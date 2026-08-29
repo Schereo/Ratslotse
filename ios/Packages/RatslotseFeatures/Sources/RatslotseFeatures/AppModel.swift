@@ -504,6 +504,7 @@ public final class AppModel {
         switch route {
         case .decision, .sessions, .person, .topic, .place: .council
         case .quiz: .today
+        case .analysis: .council
         default: selectedTab
         }
     }

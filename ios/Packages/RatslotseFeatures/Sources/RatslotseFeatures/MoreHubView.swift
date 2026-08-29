@@ -13,6 +13,7 @@ struct MoreHubView: View {
     let model: AppModel
     let openCouncil: (CouncilSection) -> Void
     let openAccount: () -> Void
+    let openTour: () -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showsFeedback = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_FEEDBACK"] == "1"
@@ -212,6 +213,11 @@ struct MoreHubView: View {
         VStack(alignment: .leading, spacing: 10) {
             MonoKicker("Ratslotse")
             VStack(spacing: 0) {
+                Button { openTour() } label: {
+                    MoreRowLabel(row: .action("Lotti-Tour", "Alle wichtigen Bereiche in einer Minute", .quiz) {})
+                }
+                .buttonStyle(RatsPressButtonStyle())
+                Divider().overlay(RatsColor.separator).padding(.leading, 58)
                 Button { showsFeedback = true } label: {
                     MoreRowLabel(row: .action("Feedback geben", "Was können wir besser machen?", .feedback) {})
                 }

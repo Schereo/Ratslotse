@@ -306,6 +306,7 @@ private struct MainTabsView: View {
     @Bindable var model: AppModel
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showsMore = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MORE"] == "1"
+    @State private var showsTour = ratsDebugValue("RATSLOTSE_DEBUG_TOUR") == "1"
     @State private var accountReturnTab: AppTab = .today
 
     var body: some View {
@@ -348,9 +349,16 @@ private struct MainTabsView: View {
                     model.navigation.removeAll()
                     model.tabletPage = nil
                     model.selectedTab = .account
+                },
+                openTour: {
+                    showsMore = false
+                    DispatchQueue.main.async { showsTour = true }
                 }
             )
             .ratsLargeSheet()
+        }
+        .fullScreenCover(isPresented: $showsTour) {
+            GuidedTourView(model: model, open: openTourTarget)
         }
         .onAppear {
             if horizontalSizeClass == .regular { showsMore = false }
@@ -486,6 +494,20 @@ private struct MainTabsView: View {
 
     private func select(_ destination: MainNavigationDestination) {
         navigate(to: destination, model: model) { showsMore = true }
+    }
+
+    private func openTourTarget(_ target: GuidedTourTarget) {
+        switch target {
+        case .questions: select(.questions)
+        case .decisions: select(.decisions)
+        case .analysis:
+            if horizontalSizeClass == .regular { select(.analysis) }
+            else {
+                model.navigation.append(.analysis)
+            }
+        case .map: select(.map)
+        case .topics: select(.topics)
+        }
     }
 }
 
@@ -823,6 +845,7 @@ struct RouteDestinationView: View {
         case .topic(let slug): PublicProfileView(model: model, kind: .topic, key: slug)
         case .place(let id): PublicProfileView(model: model, kind: .place, key: id)
         case .quiz(let area): QuizView(model: model, area: area)
+        case .analysis: CouncilInsightsView(model: model)
         case .sharedAnswer:
             if let url = model.router.universalLink(for: route) { ExternalWebView(url: url) }
         case .web(let url): ExternalWebView(url: url)

@@ -20,6 +20,7 @@ public enum AppRoute: Sendable, Hashable {
     case topic(slug: String)
     case place(id: String)
     case quiz(area: String?)
+    case analysis
     case web(URL)
 }
 
@@ -74,6 +75,7 @@ public struct AppRouter: Sendable {
                 let tops = value("top")?.split(separator: ",").map(String.init) ?? []
                 return .sessions(ksinr: ksinr, tops: tops)
             }
+            if value("tab") == "analysis" { return .analysis }
             return .tab(.council)
         default: return .web(url)
         }
@@ -121,6 +123,8 @@ public struct AppRouter: Sendable {
             components.path = "/council/ort"; components.queryItems = [.init(name: "id", value: id)]
         case .quiz(let area):
             components.path = "/quiz"; components.queryItems = [.init(name: "area", value: area)]
+        case .analysis:
+            components.path = "/council"; components.queryItems = [.init(name: "tab", value: "analysis")]
         case .web(let url): return url
         }
         return components.url
