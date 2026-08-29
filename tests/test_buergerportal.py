@@ -118,7 +118,7 @@ def test_external_public_event_requires_role_and_http_source(tmp_path):
             title="Rückmeldung",
             source_kind="Stadtverwaltung",
         )
-    for invalid_url in ("javascript:alert(1)", "https:// x"):
+    for invalid_url in ("javascript:alert(1)", "https:// x", "https://%zz"):
         with pytest.raises(ValueError, match="HTTP-Adresse"):
             store.add_public_event(
                 problem_id,

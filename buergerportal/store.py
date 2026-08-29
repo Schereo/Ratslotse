@@ -1,7 +1,9 @@
 """Persistente öffentliche Projektion des kommunalen Problemtrackers."""
 from __future__ import annotations
 
+import ipaddress
 import json
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,19 +15,38 @@ from .schema import sql_enum
 
 
 def _is_public_http_url(value: object) -> bool:
-    if not isinstance(value, str) or not value or any(char.isspace() for char in value):
+    if (
+        not isinstance(value, str)
+        or not value
+        or any(char.isspace() for char in value)
+        or "\\" in value
+    ):
         return False
     try:
         parsed = urlparse(value)
         _ = parsed.port  # Invalid port syntax raises ValueError.
-    except ValueError:
+        host = parsed.hostname
+        if host is None or parsed.username is not None or parsed.password is not None:
+            return False
+        try:
+            address = ipaddress.ip_address(host)
+        except ValueError:
+            ascii_host = host.encode("idna").decode("ascii")
+            labels = ascii_host.rstrip(".").split(".")
+            valid_host = (
+                len(labels) >= 2
+                and len(ascii_host) <= 253
+                and all(
+                    0 < len(label) <= 63
+                    and re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?", label)
+                    for label in labels
+                )
+            )
+        else:
+            valid_host = address.is_global
+    except (UnicodeError, ValueError):
         return False
-    return (
-        parsed.scheme.lower() in {"http", "https"}
-        and parsed.hostname is not None
-        and parsed.username is None
-        and parsed.password is None
-    )
+    return parsed.scheme.lower() in {"http", "https"} and valid_host
 
 
 def _invalid_public_source(prefix: str = "") -> str:

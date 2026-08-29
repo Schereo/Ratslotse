@@ -7,7 +7,7 @@
 //  2. A Content-Security-Policy must sit in <head> to take effect, and the app
 //     talks cross-origin to the backend + tile hosts — so we inject an app CSP
 //     into every exported .html once the build is done.
-import { rename, rm } from "node:fs/promises";
+import { rename } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, statSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -53,11 +53,6 @@ function injectCsp(dir) {
     writeFileSync(p, html);
   }
 }
-
-// Der Dev-Server erzeugt Typimporte für dynamische Seiten in `.next-dev`.
-// Gleich wird die web-only Detailroute verschoben; stale Typen würden dann
-// auf eine absichtlich fehlende Datei zeigen und den Export brechen.
-await rm(".next-dev/types", { recursive: true, force: true });
 
 const hasApi = existsSync(API_DIR);
 if (hasApi) await rename(API_DIR, API_STASH);
