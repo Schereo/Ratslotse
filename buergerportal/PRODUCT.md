@@ -21,6 +21,10 @@ Nicht verwendet werden **Reporter*in** oder amtlich klingende Begriffe wie **Mä
 
 Karte, Farbe, Symbole und kurze Zahlenhinweise tragen die Oberfläche. Text bleibt so knapp wie möglich. Exakte Meldezahlen erscheinen erst am ausgewählten Problem als zum Beispiel **6 unabhängige Meldungen**; Beobachtungs-Unterzahlen werden nicht zusätzlich gezeigt.
 
+## Kartenzeichen
+
+Die Karte unterscheidet räumliche Bezüge ohne Erklärungstext: Punkte sind Kreise, Einrichtungen abgerundete Gebäudemarker, Routen kräftige Linien und Gebiete transparente Flächen. Stadtweite oder nicht verortbare Probleme erscheinen nur im Status-Board, nicht als künstliches Zeichen auf der Karte. Direkt erreichbare Themenchips filtern die Karte. Die öffentliche Problemseite wiederholt den räumlichen Bezug als Karte, wenn das Problem ehrlich verortbar ist. Grau, Blau, Orange und Rot zeigen ausschließlich die grobe Meldehäufigkeit – nie Dringlichkeit.
+
 ## Freigabefolge
 
 Eine abgesendete Meldung bleibt privat. Zuerst hält eine eigenständige KI-Vorprüfung ihr Urteil privat fest. Danach entscheidet ein Mensch abschließend. Nur Meldungen mit geeignetem KI-Urteil **und** menschlicher Freigabe dürfen in die öffentliche Ratslotse-Projektion einfließen. Ein Ausfall oder fehlendes Urteil veröffentlicht nichts. Diese Projektion ist keine offizielle Datenbank der Stadt Oldenburg.

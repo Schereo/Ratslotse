@@ -1,3 +1,5 @@
+import type { LineString, MultiPolygon, Polygon } from "geojson";
+
 /** Wohin Benachrichtigungen gehen — „off" heißt: gar nicht. */
 export type DeliveryChannel = "email" | "both" | "push" | "off";
 
@@ -22,6 +24,7 @@ export interface User {
 
 export type ProblemScope = "point" | "facility" | "route" | "area" | "citywide";
 export type ProblemStatus = "new" | "multiple_reports" | "verified" | "persists" | "apparently_resolved";
+export type ProblemGeometry = LineString | Polygon | MultiPolygon;
 export type ProblemConfidence = "unconfirmed" | "supported" | "verified";
 export type ProblemFrequency = "once" | "several" | "many" | "very_many";
 
@@ -43,7 +46,7 @@ export interface PublicProblemSummary {
   location_label: string;
   latitude: number | null;
   longitude: number | null;
-  geometry: Record<string, unknown> | null;
+  geometry: ProblemGeometry | null;
   status: ProblemStatus;
   frequency: ProblemFrequency;
 }

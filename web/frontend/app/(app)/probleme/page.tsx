@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import View from "./view";
 import { PROBLEM_ANGEBOT } from "@/lib/probleme";
 import { buergerportalVorschauAktiv } from "@/lib/probleme-server";
@@ -17,5 +18,9 @@ export default function Page() {
   // funktionieren die neue FastAPI-Route und ihre leere Preview-Datenbank noch
   // nicht zwangsläufig gemeinsam mit dem Frontend. Frei erfundene, klar
   // markierte Daten machen die UI trotzdem prüfbar; Produktion nutzt immer API.
-  return <View vorschau={buergerportalVorschauAktiv()} />;
+  return (
+    <Suspense fallback={null}>
+      <View vorschau={buergerportalVorschauAktiv()} />
+    </Suspense>
+  );
 }

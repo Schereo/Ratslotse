@@ -1,6 +1,7 @@
 """Problemtracker: öffentliche Projektion und API-Grenze."""
 from __future__ import annotations
 
+import json
 import sqlite3
 
 import pytest
@@ -269,18 +270,94 @@ def test_published_problem_requires_ai_review_and_human_approval(tmp_path):
     store.close()
 
 
-def test_point_problem_requires_coordinates(tmp_path):
-    store = ProblemStore(tmp_path / "problems.sqlite")
-    try:
+def test_route_and_area_require_matching_geojson_and_are_public(tmp_path):
+    database = tmp_path / "problems.sqlite"
+    store = ProblemStore(database)
+    route_geometry = {
+        "type": "LineString",
+        "coordinates": [[8.198, 53.142], [8.205, 53.143], [8.212, 53.141]],
+    }
+    area_geometry = {
+        "type": "Polygon",
+        "coordinates": [[
+            [8.204, 53.135],
+            [8.214, 53.135],
+            [8.214, 53.141],
+            [8.204, 53.135],
+        ]],
+    }
+    route = store.create_problem(
+        title="Lücke im Radweg",
+        summary="Der Radweg ist nicht durchgängig.",
+        category="mobility",
+        scope_kind="route",
+        geometry={**route_geometry, "private_note": "Darf nicht öffentlich werden."},
+    )
+    area = store.create_problem(
+        title="Hitze im Quartier",
+        summary="Mehrere Straßen sind im Sommer stark aufgeheizt.",
+        category="environment",
+        scope_kind="area",
+        geometry=area_geometry,
+    )
+    _approve_and_publish(store, database, route)
+    _approve_and_publish(store, database, area)
+    store._conn.execute(
+        "UPDATE civic_problems SET geometry_json = ? WHERE id = ?",
+        (json.dumps({**route_geometry, "private_note": "Alte interne Notiz"}), route),
+    )
+    store._conn.commit()
+
+    projected = {problem["id"]: problem for problem in store.list_public_problems()}
+    assert projected[route]["geometry"] == route_geometry
+    assert projected[area]["geometry"] == area_geometry
+    with pytest.raises(ValueError, match="LineString"):
         store.create_problem(
-            title="Ohne Ort",
-            summary="Ein Punkt ohne Koordinaten ist nicht kartierbar.",
-            category="other",
-            scope_kind="point",
+            title="Falsche Route",
+            summary="Eine Fläche ist keine Route.",
+            category="mobility",
+            scope_kind="route",
+            geometry=area_geometry,
         )
-    except ValueError as error:
-        assert "Koordinaten" in str(error)
-    else:
-        raise AssertionError("Punktproblem ohne Koordinaten wurde gespeichert")
-    finally:
-        store.close()
+    with pytest.raises(ValueError, match="geschlossen"):
+        store.create_problem(
+            title="Offene Fläche",
+            summary="Der Ring ist nicht geschlossen.",
+            category="environment",
+            scope_kind="area",
+            geometry={
+                "type": "Polygon",
+                "coordinates": [[[8.2, 53.1], [8.3, 53.1], [8.3, 53.2], [8.2, 53.2]]],
+            },
+        )
+    with pytest.raises(ValueError, match="keine Punktkoordinaten"):
+        store.create_problem(
+            title="Stadtweiter Punkt",
+            summary="Stadtweit hat keinen künstlichen Mittelpunkt.",
+            category="other",
+            scope_kind="citywide",
+            latitude=53.14,
+            longitude=8.21,
+        )
+    store._conn.execute(
+        "UPDATE civic_problems SET geometry_json = ? WHERE id = ?",
+        (json.dumps({"type": "Polygon", "private_note": "Nicht öffentlich"}), area),
+    )
+    store._conn.commit()
+    assert store.get_public_problem(area)["geometry"] is None
+    store.close()
+
+
+def test_point_problem_requires_valid_coordinates(tmp_path):
+    store = ProblemStore(tmp_path / "problems.sqlite")
+    for latitude, longitude in ((None, None), (float("nan"), 8.2), (91, 8.2)):
+        with pytest.raises(ValueError, match="Koordinaten"):
+            store.create_problem(
+                title="Ohne Ort",
+                summary="Ein Punkt ohne gültige Koordinaten ist nicht kartierbar.",
+                category="other",
+                scope_kind="point",
+                latitude=latitude,
+                longitude=longitude,
+            )
+    store.close()

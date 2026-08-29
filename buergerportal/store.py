@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import math
 import re
 import sqlite3
 from datetime import datetime, timezone
@@ -172,6 +173,79 @@ def report_frequency(independent_reports: int) -> str:
     return "very_many"
 
 
+def _is_finite_number(value: object) -> bool:
+    return (
+        not isinstance(value, bool)
+        and isinstance(value, (int, float))
+        and math.isfinite(value)
+    )
+
+
+def _is_coordinate(value: object, minimum: float, maximum: float) -> bool:
+    return _is_finite_number(value) and minimum <= value <= maximum
+
+
+def _is_geo_position(value: object) -> bool:
+    return (
+        isinstance(value, (list, tuple))
+        and len(value) >= 2
+        and all(_is_finite_number(coordinate) for coordinate in value)
+        and _is_coordinate(value[0], -180, 180)
+        and _is_coordinate(value[1], -90, 90)
+    )
+
+
+def _is_linear_ring(value: object) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) >= 4
+        and all(_is_geo_position(position) for position in value)
+        and value[0][:2] == value[-1][:2]
+    )
+
+
+def _is_polygon_coordinates(value: object) -> bool:
+    return isinstance(value, list) and bool(value) and all(_is_linear_ring(ring) for ring in value)
+
+
+def _canonical_problem_geometry(
+    scope_kind: str,
+    geometry: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if scope_kind == "route":
+        if not (
+            isinstance(geometry, dict)
+            and geometry.get("type") == "LineString"
+            and isinstance(geometry.get("coordinates"), list)
+            and len(geometry["coordinates"]) >= 2
+            and all(_is_geo_position(position) for position in geometry["coordinates"])
+        ):
+            raise ValueError("Eine Route benötigt eine gültige GeoJSON-LineString.")
+        return {"type": "LineString", "coordinates": geometry["coordinates"]}
+    if scope_kind == "area":
+        valid = isinstance(geometry, dict) and (
+            (
+                geometry.get("type") == "Polygon"
+                and _is_polygon_coordinates(geometry.get("coordinates"))
+            )
+            or (
+                geometry.get("type") == "MultiPolygon"
+                and isinstance(geometry.get("coordinates"), list)
+                and bool(geometry["coordinates"])
+                and all(
+                    _is_polygon_coordinates(polygon)
+                    for polygon in geometry["coordinates"]
+                )
+            )
+        )
+        if not valid:
+            raise ValueError("Ein Gebiet benötigt geschlossene GeoJSON-Polygonringe.")
+        return {"type": geometry["type"], "coordinates": geometry["coordinates"]}
+    if geometry is not None:
+        raise ValueError("Nur Routen und Gebiete verwenden eine GeoJSON-Geometrie.")
+    return None
+
+
 def _json_object(raw: str | None) -> dict[str, Any] | None:
     if not raw:
         return None
@@ -180,6 +254,27 @@ def _json_object(raw: str | None) -> dict[str, Any] | None:
     except (TypeError, json.JSONDecodeError):
         return None
     return value if isinstance(value, dict) else None
+
+
+def _public_geometry(scope_kind: str, raw: str | None) -> dict[str, Any] | None:
+    try:
+        return _canonical_problem_geometry(scope_kind, _json_object(raw))
+    except ValueError:
+        return None
+
+
+def _public_coordinates(
+    scope_kind: str,
+    latitude: object,
+    longitude: object,
+) -> tuple[float | int | None, float | int | None]:
+    if (
+        scope_kind in {"point", "facility"}
+        and _is_coordinate(latitude, -90, 90)
+        and _is_coordinate(longitude, -180, 180)
+    ):
+        return latitude, longitude
+    return None, None
 
 
 class ProblemStore:
@@ -240,8 +335,15 @@ class ProblemStore:
             raise ValueError("Unbekannter geografischer Bezug.")
         if status not in PROBLEM_STATUSES:
             raise ValueError("Unbekannter Problemstatus.")
-        if scope_kind in {"point", "facility"} and (latitude is None or longitude is None):
-            raise ValueError("Punkt und Einrichtung benötigen Koordinaten.")
+        if scope_kind in {"point", "facility"}:
+            if not (
+                _is_coordinate(latitude, -90, 90)
+                and _is_coordinate(longitude, -180, 180)
+            ):
+                raise ValueError("Punkt und Einrichtung benötigen gültige Koordinaten.")
+        elif latitude is not None or longitude is not None:
+            raise ValueError("Routen, Gebiete und stadtweite Probleme verwenden keine Punktkoordinaten.")
+        canonical_geometry = _canonical_problem_geometry(scope_kind, geometry)
         now = _now()
         first = first_observed_at or now
         last = last_observed_at or first
@@ -257,7 +359,7 @@ class ProblemStore:
                     title.strip(), summary.strip(), category.strip(),
                     json.dumps(list(tags), ensure_ascii=False), scope_kind,
                     location_label.strip(), latitude, longitude,
-                    json.dumps(geometry, ensure_ascii=False) if geometry else None,
+                    json.dumps(canonical_geometry, ensure_ascii=False) if canonical_geometry else None,
                     status, confidence, 0, 0, 0, first, last, None, now,
                 ),
             )
@@ -385,15 +487,18 @@ class ProblemStore:
         return self._public_problem(row, include_details=True) if row else None
 
     def _public_problem(self, row: sqlite3.Row, *, include_details: bool) -> dict[str, Any]:
+        latitude, longitude = _public_coordinates(
+            row["scope_kind"], row["latitude"], row["longitude"]
+        )
         problem = {
             "id": row["id"],
             "title": row["title"],
             "category": row["category"],
             "scope_kind": row["scope_kind"],
             "location_label": row["location_label"],
-            "latitude": row["latitude"],
-            "longitude": row["longitude"],
-            "geometry": _json_object(row["geometry_json"]),
+            "latitude": latitude,
+            "longitude": longitude,
+            "geometry": _public_geometry(row["scope_kind"], row["geometry_json"]),
             "status": row["status"],
             "frequency": report_frequency(row["unique_reporters"]),
         }
