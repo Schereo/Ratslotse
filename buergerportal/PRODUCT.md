@@ -23,7 +23,7 @@ Karte, Farbe, Symbole und kurze Zahlenhinweise tragen die Oberfläche. Text blei
 
 ## Kartenzeichen
 
-Die Karte unterscheidet räumliche Bezüge ohne Erklärungstext: Punkte sind Kreise, Einrichtungen abgerundete Gebäudemarker, Routen kräftige Linien, Gebiete transparente Flächen und stadtweite Probleme schwebende Kartenchips. Grau, Blau, Orange und Rot zeigen ausschließlich die grobe Meldehäufigkeit – nie Dringlichkeit.
+Die Karte unterscheidet räumliche Bezüge ohne Erklärungstext: Punkte sind Kreise, Einrichtungen abgerundete Gebäudemarker, Routen kräftige Linien und Gebiete transparente Flächen. Stadtweite oder nicht verortbare Probleme erscheinen nur im Status-Board, nicht als künstliches Zeichen auf der Karte. Direkt erreichbare Themenchips filtern die Karte. Die öffentliche Problemseite wiederholt den räumlichen Bezug als Karte, wenn das Problem ehrlich verortbar ist. Grau, Blau, Orange und Rot zeigen ausschließlich die grobe Meldehäufigkeit – nie Dringlichkeit.
 
 ## Freigabefolge
 

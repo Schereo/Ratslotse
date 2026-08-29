@@ -1,4 +1,4 @@
-import type { ProblemFrequency, PublicProblem } from "@/lib/types";
+import type { ProblemFrequency, PublicProblem, PublicProblemSummary } from "@/lib/types";
 
 /** Sichtbare Produktbezeichnung; interne Domänenbegriffe und URLs bleiben stabil. */
 export const PROBLEM_ANGEBOT = {
@@ -60,6 +60,66 @@ export function meldeHaeufigkeit(uniqueReporters: number): ProblemFrequency {
   if (uniqueReporters <= 4) return "several";
   if (uniqueReporters <= 9) return "many";
   return "very_many";
+}
+
+function isPosition(value: unknown): value is [number, number] {
+  return (
+    Array.isArray(value)
+    && value.length >= 2
+    && value.every((coordinate) => typeof coordinate === "number" && Number.isFinite(coordinate))
+    && typeof value[0] === "number"
+    && value[0] >= -180
+    && value[0] <= 180
+    && typeof value[1] === "number"
+    && value[1] >= -90
+    && value[1] <= 90
+  );
+}
+
+function isRing(value: unknown): boolean {
+  return (
+    Array.isArray(value)
+    && value.length >= 4
+    && value.every(isPosition)
+    && value[0][0] === value.at(-1)![0]
+    && value[0][1] === value.at(-1)![1]
+  );
+}
+
+function isPolygon(value: unknown): boolean {
+  return Array.isArray(value) && value.length > 0 && value.every(isRing);
+}
+
+/** Nur Probleme mit einem ehrlichen räumlichen Bezug gehören auf die Karte. */
+export function isProblemMappable(problem: PublicProblemSummary): boolean {
+  if (problem.scope_kind === "point" || problem.scope_kind === "facility") {
+    return (
+      typeof problem.latitude === "number"
+      && Number.isFinite(problem.latitude)
+      && problem.latitude >= -90
+      && problem.latitude <= 90
+      && typeof problem.longitude === "number"
+      && Number.isFinite(problem.longitude)
+      && problem.longitude >= -180
+      && problem.longitude <= 180
+    );
+  }
+  if (problem.scope_kind === "route") {
+    return (
+      problem.geometry?.type === "LineString"
+      && Array.isArray(problem.geometry.coordinates)
+      && problem.geometry.coordinates.length >= 2
+      && problem.geometry.coordinates.every(isPosition)
+    );
+  }
+  if (problem.scope_kind !== "area") return false;
+  if (problem.geometry?.type === "Polygon") return isPolygon(problem.geometry.coordinates);
+  return (
+    problem.geometry?.type === "MultiPolygon"
+    && Array.isArray(problem.geometry.coordinates)
+    && problem.geometry.coordinates.length > 0
+    && problem.geometry.coordinates.every(isPolygon)
+  );
 }
 
 /**

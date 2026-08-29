@@ -2,13 +2,14 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Columns3, Info, Map as MapIcon, MapPin, MessageCircle, X } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ProblemListResponse, PublicProblem, PublicProblemSummary, ProblemStatus } from "@/lib/types";
-import { MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_ANGEBOT, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, unabhaengigeMeldungen, VORSCHAU_PROBLEME } from "@/lib/probleme";
-import { Badge, Card, ErrorState, PageHeader, Segmented, Select, Spinner, formatDate } from "@/components/ui";
+import { isProblemMappable, MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_ANGEBOT, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, unabhaengigeMeldungen, VORSCHAU_PROBLEME } from "@/lib/probleme";
+import { Badge, Card, ErrorState, PageHeader, Segmented, Spinner, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { PublicProblemDetail } from "@/components/public-problem-detail";
@@ -22,6 +23,8 @@ type Ansicht = "karte" | "status";
 const STATUS_OPTIONS = Object.entries(PROBLEM_STATUS) as [ProblemStatus, (typeof PROBLEM_STATUS)[ProblemStatus]][];
 
 export default function View({ vorschau }: { vorschau: boolean }) {
+  const searchParams = useSearchParams();
+  const linkedProblem = searchParams.get("problem");
   const query = useQuery({
     queryKey: ["public-problems"],
     queryFn: () => api.get<ProblemListResponse>("/probleme"),
@@ -32,12 +35,14 @@ export default function View({ vorschau }: { vorschau: boolean }) {
   const [ansicht, setAnsicht] = useState<Ansicht>("karte");
   const [category, setCategory] = useState("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [native, setNative] = useState(false);
 
+  const mappableProblems = useMemo(() => all.filter(isProblemMappable), [all]);
   const mapProblems = useMemo(
-    () => all.filter((problem) => category === "all" || problem.category === category),
-    [all, category],
+    () => mappableProblems.filter((problem) => category === "all" || problem.category === category),
+    [mappableProblems, category],
   );
-  // Das Status-Board ist bewusst vollständig; Themenfilter gehört allein zur Karte.
+  // Das Status-Board bleibt vollständig; die Karte zeigt nur ehrlich verortbare Probleme.
   const visibleProblems = ansicht === "status" ? all : mapProblems;
   const detailQuery = useQuery({
     queryKey: ["public-problem", selectedId],
@@ -49,28 +54,53 @@ export default function View({ vorschau }: { vorschau: boolean }) {
     ? VORSCHAU_PROBLEME.find((problem) => problem.id === selectedId) ?? null
     : detailQuery.data ?? null;
   const categories = useMemo(() => {
-    const present = new Set(all.map((problem) => problem.category));
+    const present = new Set(mappableProblems.map((problem) => problem.category));
     return Object.entries(PROBLEM_KATEGORIEN).filter(([key]) => present.has(key));
-  }, [all]);
+  }, [mappableProblems]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("view") === "status") setAnsicht("status");
+    setNative(isNativeApp());
   }, []);
 
   useEffect(() => {
-    if (selectedId !== null || all.length === 0) return;
-    const initial = Number(new URLSearchParams(window.location.search).get("problem"));
-    if (Number.isSafeInteger(initial) && all.some((problem) => problem.id === initial)) setSelectedId(initial);
-  }, [all, selectedId]);
+    setAnsicht(searchParams.get("view") === "status" ? "status" : "karte");
+  }, [searchParams]);
 
   useEffect(() => {
-    if (selectedId === null || visibleProblems.some((problem) => problem.id === selectedId)) return;
+    if (all.length === 0) return;
+    const linkedId = Number(linkedProblem);
+    const linked = Number.isSafeInteger(linkedId)
+      ? all.find((problem) => problem.id === linkedId)
+      : null;
+    if (!linked) {
+      if (selectedId !== null) setSelectedId(null);
+      return;
+    }
+    if (selectedId !== linkedId) {
+      setSelectedId(linkedId);
+      if (isProblemMappable(linked) && category !== "all" && category !== linked.category) {
+        setCategory("all");
+      }
+    }
+    if (isProblemMappable(linked)) return;
+    setAnsicht("status");
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("view") === "status") return;
+    url.searchParams.set("view", "status");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [all, linkedProblem, selectedId, category]);
+
+  useEffect(() => {
+    if (
+      selectedId === null
+      || Number(linkedProblem) !== selectedId
+      || visibleProblems.some((problem) => problem.id === selectedId)
+    ) return;
     setSelectedId(null);
     const url = new URL(window.location.href);
     url.searchParams.delete("problem");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [visibleProblems, selectedId]);
+  }, [visibleProblems, selectedId, linkedProblem]);
 
   const select = useCallback((id: number) => {
     setSelectedId(id);
@@ -89,13 +119,21 @@ export default function View({ vorschau }: { vorschau: boolean }) {
   const changeView = useCallback((next: Ansicht) => {
     setAnsicht(next);
     const url = new URL(window.location.href);
-    if (next === "status") url.searchParams.set("view", "status");
-    else url.searchParams.delete("view");
+    if (next === "status") {
+      url.searchParams.set("view", "status");
+    } else {
+      url.searchParams.delete("view");
+      const selectedProblem = all.find((problem) => problem.id === selectedId);
+      if (selectedProblem && !isProblemMappable(selectedProblem)) {
+        setSelectedId(null);
+        url.searchParams.delete("problem");
+      }
+    }
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, []);
+  }, [all, selectedId]);
 
   const detailPanel = selectedId === null ? null : selected ? (
-    <SelectedProblem problem={selected} onClose={closeDetail} />
+    <SelectedProblem problem={selected} onClose={closeDetail} native={native} />
   ) : !vorschau && detailQuery.isError ? (
     <ErrorState
       title="Details konnten nicht geladen werden"
@@ -129,21 +167,20 @@ export default function View({ vorschau }: { vorschau: boolean }) {
           ]}
           className="w-full sm:w-64"
         />
-        {ansicht === "karte" && (
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="shrink-0">Thema</span>
-            <Select
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              aria-label="Nach Thema filtern"
-              className="min-w-0 sm:w-64"
-            >
-              <option value="all">Alle Themen</option>
-              {categories.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-            </Select>
-          </label>
-        )}
       </div>
+
+      {ansicht === "karte" && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Kartenthemen">
+          <ThemeFilter active={category === "all"} onClick={() => setCategory("all")}>
+            Alle
+          </ThemeFilter>
+          {categories.map(([key, label]) => (
+            <ThemeFilter key={key} active={category === key} onClick={() => setCategory(key)}>
+              {label}
+            </ThemeFilter>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-col gap-2 text-xs leading-relaxed text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <p className="flex items-start gap-1.5">
@@ -157,6 +194,8 @@ export default function View({ vorschau }: { vorschau: boolean }) {
         <Spinner className="min-h-[420px]" />
       ) : !vorschau && query.isError ? (
         <ErrorState onRetry={() => void query.refetch()} busy={query.isFetching} hint="Die öffentliche Problemkarte konnte nicht geladen werden." />
+      ) : native && selectedId !== null ? (
+        detailPanel
       ) : visibleProblems.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card px-6 py-16 text-center">
           <p className="font-medium text-foreground">
@@ -185,6 +224,32 @@ export default function View({ vorschau }: { vorschau: boolean }) {
         </div>
       )}
     </div>
+  );
+}
+
+function ThemeFilter({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "min-h-10 shrink-0 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -279,12 +344,16 @@ function KanbanCard({
   );
 }
 
-function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose: () => void }) {
+function SelectedProblem({
+  problem,
+  onClose,
+  native,
+}: {
+  problem: PublicProblem;
+  onClose: () => void;
+  native: boolean;
+}) {
   const status = PROBLEM_STATUS[problem.status];
-  const [native, setNative] = useState(false);
-  useEffect(() => {
-    setNative(isNativeApp());
-  }, []);
   if (native) return <PublicProblemDetail problem={problem} onClose={onClose} headingLevel={2} />;
   return (
     <Card className="relative p-5" aria-live="polite">

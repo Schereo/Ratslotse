@@ -624,9 +624,6 @@
   filter: drop-shadow(0 0 4px hsl(var(--ring)));
   outline: none;
 }
-.problem-map-citywide-icon {
-  color: var(--problem-frequency);
-}
 .problem-map-icon:focus-visible .problem-map-pin {
   box-shadow: 0 0 0 4px hsl(var(--ring) / 0.35), 0 4px 14px rgb(0 0 0 / 0.32);
 }
