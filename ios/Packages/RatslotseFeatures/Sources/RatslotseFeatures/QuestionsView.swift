@@ -203,28 +203,33 @@ struct QuestionsView: View {
                 }
                 Spacer(minLength: 0)
                 if model.conversationSavingPreference == 1 {
-                    if !turns.isEmpty || model.activeConversationID != nil {
-                        Button(action: startNewConversation) {
-                            Label("Neu", systemImage: "square.and.pencil")
-                                .font(RatsFont.body(12, weight: .semibold))
-                                .padding(.horizontal, 12)
-                                .frame(height: 40)
-                                .background(RatsColor.card)
-                                .overlay(Capsule().stroke(RatsColor.border))
-                                .clipShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Neues Gespräch")
-                    }
                     Button { showConversations = true } label: {
-                        RatsGlyphView(glyph: .history, color: RatsColor.bodyText)
-                            .frame(width: 20, height: 20)
-                            .frame(width: 40, height: 40)
-                            .background(RatsColor.card)
-                            .overlay(Circle().stroke(RatsColor.border))
-                            .clipShape(Circle())
+                        Label {
+                            Text("Gespräche")
+                        } icon: {
+                            RatsGlyphView(glyph: .history, color: RatsColor.bodyText)
+                                .frame(width: 16, height: 16)
+                        }
+                        .font(RatsFont.body(12, weight: .semibold))
+                        .foregroundStyle(RatsColor.bodyText)
+                        .padding(.horizontal, 11)
+                        .frame(height: 40)
+                        .questionHeaderActionSurface()
                     }
-                    .accessibilityLabel("Gespräche")
+                    .buttonStyle(QuestionHeaderActionButtonStyle())
+                    .accessibilityLabel("Chatverlauf öffnen")
+                }
+                if !turns.isEmpty || model.activeConversationID != nil {
+                    Button(action: startNewConversation) {
+                        Label("Neu", systemImage: "square.and.pencil")
+                            .font(RatsFont.body(12, weight: .semibold))
+                            .foregroundStyle(RatsColor.bodyText)
+                            .padding(.horizontal, 11)
+                            .frame(height: 40)
+                            .questionHeaderActionSurface()
+                    }
+                    .buttonStyle(QuestionHeaderActionButtonStyle())
+                    .accessibilityLabel("Neuen Chat beginnen")
                 }
             }
             .foregroundStyle(RatsColor.text)
@@ -1122,6 +1127,34 @@ private struct RatsQuestionComposer: View {
 
 private extension View {
     @ViewBuilder
+    func questionHeaderActionSurface() -> some View {
+        if #available(iOS 26.0, *) {
+            self
+                .glassEffect(
+                    .regular.tint(RatsColor.card.opacity(0.14)),
+                    in: .capsule
+                )
+                .overlay {
+                    Capsule()
+                        .stroke(.white.opacity(0.32), lineWidth: 0.8)
+                }
+        } else {
+            self
+                .background {
+                    ZStack {
+                        Capsule().fill(.ultraThinMaterial)
+                        Capsule().fill(RatsColor.card.opacity(0.72))
+                    }
+                }
+                .overlay {
+                    Capsule()
+                        .stroke(RatsColor.border.opacity(0.86), lineWidth: 0.9)
+                }
+                .clipShape(Capsule())
+        }
+    }
+
+    @ViewBuilder
     func floatingComposerSurface(isActive: Bool) -> some View {
         if #available(iOS 26.0, *) {
             self
@@ -1157,6 +1190,15 @@ private extension View {
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .shadow(color: RatsColor.primary.opacity(0.12), radius: 18, y: 8)
         }
+    }
+}
+
+private struct QuestionHeaderActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
