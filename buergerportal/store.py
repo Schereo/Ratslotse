@@ -6,8 +6,9 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import urlparse
 
-from .domain import PROBLEM_CATEGORIES, PROBLEM_STATUSES, SCOPE_KINDS
+from .domain import PROBLEM_CATEGORIES, PROBLEM_STATUSES, PUBLIC_SOURCE_KINDS, SCOPE_KINDS
 from .schema import sql_enum
 
 
@@ -173,10 +174,18 @@ class ProblemStore:
         kind: str,
         title: str,
         detail: str = "",
-        source_kind: str | None = None,
+        source_kind: str,
         source_url: str | None = None,
         event_at: str | None = None,
     ) -> int:
+        if source_kind not in PUBLIC_SOURCE_KINDS:
+            raise ValueError("Öffentliche Ereignisse benötigen ein gültiges Rollenlabel.")
+        if source_url:
+            parsed = urlparse(source_url)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError("Quellen benötigen eine öffentliche HTTP-Adresse.")
+        if source_kind != "Ratslotse-Prüfung" and not source_url:
+            raise ValueError("Externe Reaktionen benötigen eine überprüfbare Quelle.")
         now = _now()
         with self._conn:
             cur = self._conn.execute(

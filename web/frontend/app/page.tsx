@@ -15,6 +15,7 @@ import { KommunalwahlBanner } from "@/components/kommunalwahl-banner";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { Reveal } from "@/components/reveal";
 import { cn } from "@/lib/utils";
+import { PROBLEM_ANGEBOT } from "@/lib/probleme";
 
 export const metadata: Metadata = {
   title: "Ratslotse — Oldenburger Ratsinformationen verständlich",
@@ -30,7 +31,7 @@ const FEATURES = [
   { icon: Sparkles, title: "Frag den Rat", desc: "Stell eine Frage in normaler Sprache; Ratslotse findet die passenden Beschlüsse und antwortet mit Quellen und Fußnoten.", href: "/fragen", wide: true, hero: true },
   { icon: Search, title: "Beschlüsse durchsuchen", desc: "Volltextsuche mit Filtern nach Fraktion, Themenfeld und Geldbeträgen — statt PDF-Wälzen.", href: "/council" },
   { icon: MapPin, title: "Themen & Karte", desc: "Orte, Straßen und Projekte verständlich beschrieben — und auf einer Stadtkarte, wo der Rat aktiv ist.", href: "/council?tab=themen" },
-  { icon: CircleAlert, title: "Problemkarte", desc: "Kommunale Probleme in Oldenburg entdecken — private Beobachtungen, geprüft und öffentlich gebündelt.", href: "/probleme", wide: true },
+  { icon: CircleAlert, title: PROBLEM_ANGEBOT.name, desc: "Kommunale Probleme in Oldenburg entdecken — private Beobachtungen, geprüft und öffentlich gebündelt.", href: "/probleme", wide: true },
   { icon: BarChart3, title: "Analyse", desc: "Wer ist im Rat präsent, wo fließt das Geld, welche Themen bewegen — Parteien, Personen, Finanzen, Trends.", href: "/council?tab=analysis", wide: true },
   { icon: Landmark, title: "Amtliche Quelle", desc: "Direkt aus dem Ratsinformationssystem der Stadt Oldenburg, verlinkt zu den Originaldokumenten.", href: "/docs" },
   { icon: Bell, title: "Benachrichtigungen", desc: "Lege Themen an und werde bei neuen Beschlüssen informiert — per Push oder E-Mail, sobald der Rat entscheidet.", href: "/topics", wide: true },

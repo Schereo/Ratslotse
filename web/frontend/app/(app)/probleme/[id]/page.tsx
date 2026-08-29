@@ -1,26 +1,22 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import DetailView from "./view";
-import { PROBLEM_ANGEBOT } from "@/lib/probleme";
+import { buergerportalVorschauAktiv } from "@/lib/probleme-server";
+import { problemVorschauMetadata } from "@/lib/share-metadata";
 
-export const metadata: Metadata = {
-  title: `Problem in Oldenburg — ${PROBLEM_ANGEBOT.name}`,
-  description: "Moderierte Informationen und die öffentliche Zeitleiste eines kommunalen Problems in Oldenburg.",
-};
+function parseProblemId(raw: string): number | null {
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value > 0 ? value : null;
+}
 
-// Ein Parameter erzeugt im statischen App-Export die dynamische Routen-Shell;
-// konkrete IDs kommen erst zur Laufzeit aus Karte oder Deep Link. Der Web-Build
-// rendert alle weiteren IDs bei Bedarf, ohne Problemdaten einzubetten.
-export function generateStaticParams() {
-  return [{ id: "1" }];
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  return problemVorschauMetadata(parseProblemId(params.id), `/probleme/${params.id}`);
 }
 
 export default function Page({ params }: { params: { id: string } }) {
-  const problemId = Number(params.id);
-  if (!Number.isSafeInteger(problemId) || problemId < 1) notFound();
-
-  const vorschau = process.env.VERCEL_ENV === "preview"
-    || (process.env.NODE_ENV !== "production"
-      && process.env.NEXT_PUBLIC_BUERGERPORTAL_VORSCHAU === "1");
-  return <DetailView problemId={problemId} vorschau={vorschau} />;
+  return (
+    <DetailView
+      problemId={parseProblemId(params.id)}
+      vorschau={buergerportalVorschauAktiv()}
+    />
+  );
 }

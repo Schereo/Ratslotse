@@ -46,6 +46,41 @@ async function holeVorschau(art: VorschauArt, schluessel: string) {
 
 /** Fertige `Metadata` für eine geteilte Detailseite. Ohne Treffer bleibt es bei
  *  den Vorgaben aus dem Wurzel-Layout. */
+export async function problemVorschauMetadata(
+  problemId: number | null,
+  pfad: string,
+): Promise<Metadata> {
+  const fallbackTitle = "Problem in Oldenburg — Ratslotse";
+  const fallbackDescription = "Moderierte Informationen und die öffentliche Zeitleiste eines kommunalen Problems in Oldenburg.";
+  let title = fallbackTitle;
+  let description = fallbackDescription;
+  if (!istExport() && problemId !== null) {
+    try {
+      const res = await fetch(`${BACKEND}/api/probleme/${problemId}`, {
+        next: { revalidate: 900 },
+      });
+      if (res.ok) {
+        const problem = (await res.json()) as { title?: unknown; summary?: unknown };
+        if (typeof problem.title === "string" && problem.title.trim()) {
+          title = `${problem.title.trim()} — Ratslotse`;
+        }
+        if (typeof problem.summary === "string" && problem.summary.trim()) {
+          description = problem.summary.trim();
+        }
+      }
+    } catch {
+      // Sharing metadata must never make the public page unavailable.
+    }
+  }
+  return {
+    title,
+    description,
+    alternates: { canonical: pfad },
+    openGraph: { title, description, url: pfad, type: "article" },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
+
 export async function vorschauMetadata(
   art: VorschauArt,
   schluessel: string | undefined,

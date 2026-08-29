@@ -29,7 +29,7 @@ export interface PublicProblemEvent {
   kind: string;
   title: string;
   detail: string;
-  source_kind: string | null;
+  source_kind: "Stadtverwaltung" | "Ratsmitglied" | "Fraktion" | "Ratslotse-Prüfung" | null;
   source_url: string | null;
   event_at: string;
 }

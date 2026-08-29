@@ -15,24 +15,25 @@ import {
 } from "@/lib/probleme";
 import { Badge, Button, Card, EmptyState, ErrorState, Spinner, formatDate } from "@/components/ui";
 
-export default function DetailView({ problemId, vorschau }: { problemId: number; vorschau: boolean }) {
+export default function DetailView({ problemId, vorschau }: { problemId: number | null; vorschau: boolean }) {
   const query = useQuery({
     queryKey: ["public-problem", problemId],
     queryFn: () => api.get<PublicProblem>(`/probleme/${problemId}`),
-    enabled: !vorschau,
+    enabled: !vorschau && problemId !== null,
     staleTime: 60_000,
   });
   const problem = vorschau
     ? VORSCHAU_PROBLEME.find((entry) => entry.id === problemId) ?? null
     : query.data ?? null;
-  const notFound = vorschau
+  const notFound = problemId === null || (vorschau
     ? problem === null
-    : query.error instanceof ApiError && query.error.status === 404;
+    : query.error instanceof ApiError && query.error.status === 404);
 
   if (notFound) {
     return (
       <EmptyState
         title="Problem nicht gefunden"
+        headingLevel={1}
         hint="Es wurde nicht veröffentlicht, archiviert oder der Link ist nicht mehr gültig."
         mascot="search"
         action={<Button asChild variant="secondary"><Link href="/probleme">Zur Problemkarte</Link></Button>}

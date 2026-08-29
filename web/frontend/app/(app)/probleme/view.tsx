@@ -10,6 +10,7 @@ import type { ProblemListResponse, PublicProblem, PublicProblemSummary, ProblemS
 import { MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_ANGEBOT, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, VORSCHAU_PROBLEME } from "@/lib/probleme";
 import { Badge, Card, ErrorState, PageHeader, Segmented, Select, Spinner, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { isNativeApp } from "@/lib/platform";
 
 const ProblemMap = dynamic(
   () => import("@/components/problem-map").then((module) => module.ProblemMap),
@@ -279,6 +280,10 @@ function KanbanCard({
 
 function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose: () => void }) {
   const status = PROBLEM_STATUS[problem.status];
+  const [native, setNative] = useState(false);
+  useEffect(() => {
+    setNative(isNativeApp());
+  }, []);
   return (
     <Card className="relative p-5" aria-live="polite">
       <button
@@ -309,12 +314,14 @@ function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose
           </div>
         </div>
       )}
-      <Link
-        href={`/probleme/${problem.id}`}
-        className="mt-5 inline-flex rounded-md text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        Problemseite öffnen
-      </Link>
+      {!native && (
+        <Link
+          href={`/probleme/${problem.id}`}
+          className="mt-5 inline-flex rounded-md text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Problemseite öffnen
+        </Link>
+      )}
     </Card>
   );
 }

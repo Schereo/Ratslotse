@@ -19,6 +19,11 @@ const API_STASH = "app/_api.disabled";
 // App braucht die Route nicht: geteilte Links öffnen immer im Browser.
 const SHARE_DIR = "app/g";
 const SHARE_STASH = "app/_g.disabled";
+// Öffentliche Problem-Details haben beliebige IDs und werden serverseitig
+// gerendert. In der statischen App bleibt die vorhandene Query-Ansicht
+// `/probleme?problem=<id>` der Detailweg (siehe MOBILE.md).
+const PROBLEM_DETAIL_DIR = "app/(app)/probleme/[id]";
+const PROBLEM_DETAIL_STASH = "app/(app)/probleme/_id.disabled";
 
 // Must match the backend origin the app talks to (lib/platform.ts apiBase()).
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://ratslotse.de";
@@ -53,6 +58,8 @@ const hasApi = existsSync(API_DIR);
 if (hasApi) await rename(API_DIR, API_STASH);
 const hasShare = existsSync(SHARE_DIR);
 if (hasShare) await rename(SHARE_DIR, SHARE_STASH);
+const hasProblemDetail = existsSync(PROBLEM_DETAIL_DIR);
+if (hasProblemDetail) await rename(PROBLEM_DETAIL_DIR, PROBLEM_DETAIL_STASH);
 let status = 1;
 try {
   status = spawnSync("next", ["build"], {
@@ -62,6 +69,9 @@ try {
 } finally {
   if (hasApi && existsSync(API_STASH)) await rename(API_STASH, API_DIR);
   if (hasShare && existsSync(SHARE_STASH)) await rename(SHARE_STASH, SHARE_DIR);
+  if (hasProblemDetail && existsSync(PROBLEM_DETAIL_STASH)) {
+    await rename(PROBLEM_DETAIL_STASH, PROBLEM_DETAIL_DIR);
+  }
 }
 
 if (status === 0 && existsSync("out")) {

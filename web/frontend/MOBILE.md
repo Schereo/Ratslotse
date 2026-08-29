@@ -18,7 +18,9 @@ channel alongside email.
 - **Static export:** `MOBILE=1 next build` → `./out` (via `npm run build:mobile`,
   which also removes the web-only SSE route handler and injects the app CSP).
 - **Routing:** council detail views use query-param routes so the export needs no
-  dynamic-route enumeration; in the app, `/` redirects straight to the dashboard.
+  dynamic-route enumeration. The web-only public route `/probleme/[id]` maps to
+  `/probleme?problem=[id]` inside the static app and is omitted during export. In
+  the app, `/` redirects straight to the dashboard.
 - **Push:** `lib/push.ts` (permission + token registration + tap-to-navigate);
   `POST /api/push/register` / `/unregister`; backend sends via APNs/FCM
   (`kern/push.py`) and prunes device tokens the gateways report as gone.

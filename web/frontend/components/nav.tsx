@@ -533,7 +533,7 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
               zuoberst im Sheet, vor Stadtkarte und Analyse. */}
           <MehrZeile href="/council" icon={Search} label="Suche" onClose={onClose} />
           <MehrZeile href="/council?tab=themen" icon={MapIcon} label="Stadtkarte" onClose={onClose} />
-          <MehrZeile href="/probleme" icon={CircleAlert} label="Problemkarte" onClose={onClose} />
+          <MehrZeile href="/probleme" icon={CircleAlert} label={PROBLEM_ANGEBOT.navigation} onClose={onClose} />
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
           {HAUSHALT_FREI && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
           {/* Direkt hinter „Themen" in der Tab-Leiste gedacht: Die Abos sind

@@ -68,11 +68,14 @@ test.describe("Öffentliche Problemkarte", () => {
     await expect(page.getByText("Reporter*innen")).toBeVisible();
     await expect(page.getByText("6", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Öffentliche Zeitleiste" })).toBeVisible();
-    await expect(page.getByText("Erneut bestätigt")).toBeVisible();
+    await expect(page.getByText("Beispielhafte öffentliche Rückmeldung")).toBeVisible();
     await expect(page.getByText("Problem veröffentlicht")).toBeVisible();
-    await expect(page.getByText("Ratslotse-Prüfung")).toHaveCount(2);
+    await expect(page.getByText("Stadtverwaltung")).toBeVisible();
+    await expect(page.getByText("Ratslotse-Prüfung")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Quelle öffnen" })).toHaveAttribute("href", "https://example.invalid/fiktive-quelle");
     await expect(page.getByRole("link", { name: "Zur Problemkarte" })).toBeVisible();
     await expect(page.getByText(/keine amtlichen Bearbeitungsstände/i)).toBeVisible();
+    await expect(page.getByText("Du willst später selbst etwas melden?")).toBeVisible();
   });
 
   test("erklärt ein nicht gefundenes Problem ohne Anmeldeschranke", async ({ page }) => {
@@ -81,5 +84,9 @@ test.describe("Öffentliche Problemkarte", () => {
     await expect(page.getByRole("heading", { name: "Problem nicht gefunden" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Zur Problemkarte" })).toBeVisible();
     await expect(page).toHaveURL(/\/probleme\/9999$/);
+
+    await page.goto("/probleme/ungueltig");
+    await expect(page.getByRole("heading", { name: "Problem nicht gefunden" })).toBeVisible();
+    await expect(page).toHaveURL(/\/probleme\/ungueltig$/);
   });
 });

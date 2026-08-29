@@ -27,4 +27,4 @@ Nicht verwendet werden amtlich klingende Begriffe wie **Mängelmelder**, **Ticke
 | `/meine-meldungen` | verifiziertes Konto | eigene Meldungen und private Zeitleiste | für P6 reserviert |
 | `/admin/meldungen` | Admin | Moderationswarteschlange | für P4 reserviert |
 
-Geteilte Links auf `/probleme/[id]` bleiben ohne Anmeldung lesbar. Die Hauptnavigation führt unter **Probleme** zur Übersicht; Detailseiten bieten einen Rückweg zur Problemkarte. Spätere Umbenennungen der sichtbaren Bezeichnung ändern diese URLs nicht.
+Geteilte Links auf `/probleme/[id]` bleiben ohne Anmeldung lesbar. Die statisch exportierte Mobil-App bildet diesen Web-Pfad intern auf die bestehende Query-Ansicht `/probleme?problem=[id]` ab. Die Hauptnavigation führt unter **Probleme** zur Übersicht; Detailseiten bieten einen Rückweg zur Problemkarte. Spätere Umbenennungen der sichtbaren Bezeichnung ändern die öffentlichen URLs nicht.

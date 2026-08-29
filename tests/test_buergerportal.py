@@ -1,6 +1,7 @@
 """Problemtracker: öffentliche Projektion und API-Grenze."""
 from __future__ import annotations
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -61,6 +62,13 @@ def test_public_api_hides_unpublished_problem_and_exposes_detail(tmp_path):
         longitude=8.223,
         published=True,
     )
+    store.add_public_event(
+        visible,
+        kind="response",
+        title="Öffentliche Rückmeldung",
+        source_kind="Stadtverwaltung",
+        source_url="https://www.oldenburg.de/quelle",
+    )
     hidden = store.create_problem(
         title="Private Moderationsfassung",
         summary="Nicht freigegeben.",
@@ -80,9 +88,43 @@ def test_public_api_hides_unpublished_problem_and_exposes_detail(tmp_path):
     detail = client.get(f"/api/probleme/{visible}")
     assert detail.status_code == 200
     assert detail.json()["unique_reporters"] == 1
+    assert detail.json()["events"][0]["source_kind"] == "Stadtverwaltung"
+    assert detail.json()["events"][0]["source_url"] == "https://www.oldenburg.de/quelle"
     assert client.get(f"/api/probleme/{hidden}").status_code == 404
     assert client.get("/api/probleme?status=amtlich_in_bearbeitung").status_code == 422
     assert client.get("/api/probleme?category=personenkritik").status_code == 422
+    store.close()
+
+
+def test_external_public_event_requires_role_and_http_source(tmp_path):
+    store = ProblemStore(tmp_path / "problems.sqlite")
+    problem_id = store.create_problem(
+        title="Fehlende Absenkung",
+        summary="Die Querung ist nicht stufenlos nutzbar.",
+        category="accessibility",
+        scope_kind="point",
+        latitude=53.141,
+        longitude=8.207,
+    )
+
+    with pytest.raises(ValueError, match="Rollenlabel"):
+        store.add_public_event(problem_id, kind="reply", title="Rückmeldung", source_kind="Behörde")
+    with pytest.raises(ValueError, match="überprüfbare Quelle"):
+        store.add_public_event(
+            problem_id,
+            kind="reply",
+            title="Rückmeldung",
+            source_kind="Stadtverwaltung",
+        )
+    event_id = store.add_public_event(
+        problem_id,
+        kind="reply",
+        title="Rückmeldung",
+        source_kind="Stadtverwaltung",
+        source_url="https://www.oldenburg.de/quelle",
+    )
+
+    assert event_id > 0
     store.close()
 
 
