@@ -938,17 +938,21 @@ private struct SessionRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 13) {
-            SessionDateTile(
-                date: session.sessionDate,
-                symbol: committeeSymbol
-            )
+            SessionDateTile(date: session.sessionDate)
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(shortCommittee)
-                    .font(RatsFont.body(16, weight: .bold))
-                    .foregroundStyle(RatsColor.text)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Image(systemName: committeeSymbol)
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(RatsColor.primary)
+                        .frame(width: 15)
+
+                    Text(shortCommittee)
+                        .font(RatsFont.body(16, weight: .bold))
+                        .foregroundStyle(RatsColor.text)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
 
                 if shortCommittee != session.committee {
                     Text(session.committee)
@@ -1077,7 +1081,6 @@ private struct SessionRow: View {
 
 private struct SessionDateTile: View {
     let date: String
-    let symbol: String
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1088,13 +1091,8 @@ private struct SessionDateTile: View {
             Text(day)
                 .font(RatsFont.title(21))
                 .foregroundStyle(RatsColor.text)
-            Image(systemName: symbol)
-                .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(RatsColor.primary)
-                .frame(height: 15)
-                .padding(.top, 2)
         }
-        .frame(width: 54, height: 72)
+        .frame(width: 54, height: 62)
         .background {
             LinearGradient(
                 colors: [RatsColor.primary.opacity(0.10), RatsColor.stage],
