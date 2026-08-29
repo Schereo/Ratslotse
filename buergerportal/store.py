@@ -120,7 +120,7 @@ WHEN OLD.published_at IS NULL
            AND report.status = 'accepted'
            AND assessment.verdict = 'suitable'
            AND assessment.report_revision = report.content_revision
-           AND decision.outcome IN ('assigned_existing_problem', 'published_as_new_problem')
+           AND decision.outcome IN ('assigned_existing_problem', 'approved_for_new_problem')
      )
 BEGIN
     SELECT RAISE(ABORT, 'publication requires AI assessment and human approval');
@@ -290,7 +290,7 @@ class ProblemStore:
                      AND assessment.verdict = 'suitable'
                      AND assessment.report_revision = report.content_revision
                      AND decision.outcome IN (
-                         'assigned_existing_problem', 'published_as_new_problem'
+                         'assigned_existing_problem', 'approved_for_new_problem'
                      )""",
                 (problem_id, problem_id),
             ).fetchone()

@@ -113,7 +113,7 @@ _PRIVATE_MIGRATIONS = (
             CHECK (new_longitude IS NULL OR new_longitude BETWEEN -180 AND 180),
             CHECK (outcome != 'corrected_category' OR (previous_category IS NOT NULL AND new_category IS NOT NULL)),
             CHECK (outcome != 'corrected_geography' OR (previous_scope_kind IS NOT NULL AND new_scope_kind IS NOT NULL)),
-            CHECK (outcome NOT IN ('assigned_existing_problem', 'published_as_new_problem') OR problem_id IS NOT NULL),
+            CHECK (outcome NOT IN ('assigned_existing_problem', 'approved_for_new_problem') OR problem_id IS NOT NULL),
             UNIQUE (id, report_id),
             FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE
         );
@@ -165,14 +165,6 @@ _PRIVATE_MIGRATIONS = (
     (
         6,
         """
-        ALTER TABLE civic_reports
-            ADD COLUMN content_revision INTEGER NOT NULL DEFAULT 0
-            CHECK (content_revision >= 0);
-        ALTER TABLE civic_ai_assessments
-            ADD COLUMN report_revision INTEGER NOT NULL DEFAULT 0
-            CHECK (report_revision >= 0);
-        ALTER TABLE civic_ai_assessments
-            RENAME COLUMN model TO model_identifier;
         DROP INDEX idx_civic_ai_assessments_report;
         CREATE INDEX idx_civic_ai_assessments_report
             ON civic_ai_assessments(report_id, report_revision, created_at, id);
@@ -227,7 +219,208 @@ _PRIVATE_MIGRATIONS = (
         END;
         """,
     ),
+    (
+        7,
+        f"""
+        DROP TRIGGER trg_civic_moderation_ai_publication_gate;
+        DROP TRIGGER IF EXISTS trg_civic_problems_human_publication_gate;
+        DROP TRIGGER trg_civic_moderation_decisions_no_update;
+        DROP TRIGGER trg_civic_moderation_decisions_no_delete;
+        DROP INDEX idx_civic_moderation_decisions_report;
+        ALTER TABLE civic_moderation_review_requests
+            RENAME TO civic_moderation_review_requests_v6;
+        ALTER TABLE civic_moderation_decisions
+            RENAME TO civic_moderation_decisions_v6;
+        CREATE TABLE civic_moderation_decisions (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_id      INTEGER NOT NULL,
+            moderator_id   INTEGER NOT NULL,
+            outcome        TEXT NOT NULL,
+            reason_code    TEXT NOT NULL,
+            reporter_message TEXT NOT NULL DEFAULT '',
+            private_note      TEXT NOT NULL DEFAULT '',
+            problem_id        INTEGER,
+            previous_category TEXT,
+            new_category      TEXT,
+            previous_scope_kind TEXT,
+            new_scope_kind    TEXT,
+            previous_location_label TEXT,
+            new_location_label TEXT,
+            previous_latitude REAL,
+            new_latitude      REAL,
+            previous_longitude REAL,
+            new_longitude     REAL,
+            created_at        TEXT NOT NULL,
+            ai_assessment_id  INTEGER REFERENCES civic_ai_assessments(id),
+            CHECK (moderator_id > 0),
+            CHECK (length(trim(reason_code)) > 0),
+            CHECK (outcome IN ({sql_enum(MODERATION_OUTCOMES)})),
+            CHECK (previous_category IS NULL OR previous_category IN ({sql_enum(PROBLEM_CATEGORIES)})),
+            CHECK (new_category IS NULL OR new_category IN ({sql_enum(PROBLEM_CATEGORIES)})),
+            CHECK (previous_scope_kind IS NULL OR previous_scope_kind IN ({sql_enum(SCOPE_KINDS)})),
+            CHECK (new_scope_kind IS NULL OR new_scope_kind IN ({sql_enum(SCOPE_KINDS)})),
+            CHECK (previous_latitude IS NULL OR previous_latitude BETWEEN -90 AND 90),
+            CHECK (new_latitude IS NULL OR new_latitude BETWEEN -90 AND 90),
+            CHECK (previous_longitude IS NULL OR previous_longitude BETWEEN -180 AND 180),
+            CHECK (new_longitude IS NULL OR new_longitude BETWEEN -180 AND 180),
+            CHECK (outcome != 'corrected_category' OR (previous_category IS NOT NULL AND new_category IS NOT NULL)),
+            CHECK (outcome != 'corrected_geography' OR (previous_scope_kind IS NOT NULL AND new_scope_kind IS NOT NULL)),
+            CHECK (outcome NOT IN ('assigned_existing_problem', 'approved_for_new_problem') OR problem_id IS NOT NULL),
+            UNIQUE (id, report_id),
+            FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE
+        );
+        INSERT INTO civic_moderation_decisions (
+            id, report_id, moderator_id, outcome, reason_code,
+            reporter_message, private_note, problem_id,
+            previous_category, new_category,
+            previous_scope_kind, new_scope_kind,
+            previous_location_label, new_location_label,
+            previous_latitude, new_latitude,
+            previous_longitude, new_longitude,
+            created_at, ai_assessment_id
+        )
+        SELECT id, report_id, moderator_id,
+               CASE WHEN outcome = 'published_as_new_problem'
+                    THEN 'approved_for_new_problem' ELSE outcome END,
+               reason_code, reporter_message, private_note, problem_id,
+               previous_category, new_category,
+               previous_scope_kind, new_scope_kind,
+               previous_location_label, new_location_label,
+               previous_latitude, new_latitude,
+               previous_longitude, new_longitude,
+               created_at, ai_assessment_id
+        FROM civic_moderation_decisions_v6;
+        CREATE INDEX idx_civic_moderation_decisions_report
+            ON civic_moderation_decisions(report_id, created_at, id);
+        CREATE TABLE civic_moderation_review_requests (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_id       INTEGER NOT NULL,
+            decision_id     INTEGER NOT NULL UNIQUE,
+            reporter_reason TEXT NOT NULL,
+            status          TEXT NOT NULL DEFAULT 'pending',
+            created_at      TEXT NOT NULL,
+            resolved_at     TEXT,
+            CHECK (length(trim(reporter_reason)) > 0),
+            CHECK (status IN ('pending', 'accepted', 'rejected')),
+            FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE,
+            FOREIGN KEY (decision_id, report_id)
+                REFERENCES civic_moderation_decisions(id, report_id)
+        );
+        INSERT INTO civic_moderation_review_requests (
+            id, report_id, decision_id, reporter_reason,
+            status, created_at, resolved_at
+        )
+        SELECT id, report_id, decision_id, reporter_reason,
+               status, created_at, resolved_at
+        FROM civic_moderation_review_requests_v6;
+        DROP TABLE civic_moderation_review_requests_v6;
+        DROP TABLE civic_moderation_decisions_v6;
+        CREATE TRIGGER trg_civic_moderation_ai_publication_gate
+        BEFORE INSERT ON civic_moderation_decisions
+        WHEN NEW.outcome IN ('assigned_existing_problem', 'approved_for_new_problem')
+             AND (
+                 length(trim(NEW.reporter_message)) = 0
+                 OR length(trim(NEW.private_note)) = 0
+                 OR NOT EXISTS (
+                     SELECT 1
+                     FROM civic_ai_assessments AS assessment
+                     JOIN civic_reports AS report ON report.id = assessment.report_id
+                     WHERE assessment.id = NEW.ai_assessment_id
+                       AND assessment.report_id = NEW.report_id
+                       AND assessment.verdict = 'suitable'
+                       AND assessment.report_revision = report.content_revision
+                 )
+             )
+        BEGIN
+            SELECT RAISE(ABORT, 'publication requires current suitable AI assessment and human audit');
+        END;
+        CREATE TRIGGER trg_civic_moderation_decisions_no_update
+        BEFORE UPDATE ON civic_moderation_decisions
+        BEGIN
+            SELECT RAISE(ABORT, 'moderation decisions are immutable');
+        END;
+        CREATE TRIGGER trg_civic_moderation_decisions_no_delete
+        BEFORE DELETE ON civic_moderation_decisions
+        BEGIN
+            SELECT RAISE(ABORT, 'moderation decisions are immutable');
+        END;
+        """,
+    ),
 )
+
+
+def _migration_upgrade_statements(
+    connection: sqlite3.Connection,
+    version: int,
+) -> list[str]:
+    if version != 6:
+        return []
+    report_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(civic_reports)")
+    }
+    assessment_columns = {
+        row["name"]
+        for row in connection.execute("PRAGMA table_info(civic_ai_assessments)")
+    }
+    statements: list[str] = []
+    if "content_revision" not in report_columns:
+        statements.append(
+            """ALTER TABLE civic_reports
+               ADD COLUMN content_revision INTEGER NOT NULL DEFAULT 0
+               CHECK (content_revision >= 0)"""
+        )
+    if "report_revision" not in assessment_columns:
+        statements.append(
+            """ALTER TABLE civic_ai_assessments
+               ADD COLUMN report_revision INTEGER NOT NULL DEFAULT 0
+               CHECK (report_revision >= 0)"""
+        )
+    if "model" in assessment_columns and "model_identifier" not in assessment_columns:
+        statements.append(
+            "ALTER TABLE civic_ai_assessments RENAME COLUMN model TO model_identifier"
+        )
+    elif "model_identifier" not in assessment_columns:
+        raise ValueError("KI-Vorprüfung ohne Modellkennung kann nicht migriert werden.")
+    return statements
+
+
+def _migration_completion_statements(
+    connection: sqlite3.Connection,
+    version: int,
+) -> list[str]:
+    if version != 7:
+        return []
+    has_public_projection = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'civic_problems'"
+    ).fetchone()
+    if not has_public_projection:
+        return []
+    return [
+        """CREATE TRIGGER trg_civic_problems_human_publication_gate
+           BEFORE UPDATE OF published_at ON civic_problems
+           WHEN OLD.published_at IS NULL
+                AND NEW.published_at IS NOT NULL
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM civic_reports AS report
+                    JOIN civic_moderation_decisions AS decision
+                      ON decision.report_id = report.id
+                     AND decision.problem_id = NEW.id
+                    JOIN civic_ai_assessments AS assessment
+                      ON assessment.id = decision.ai_assessment_id
+                     AND assessment.report_id = report.id
+                    WHERE report.problem_id = NEW.id
+                      AND report.status = 'accepted'
+                      AND assessment.verdict = 'suitable'
+                      AND assessment.report_revision = report.content_revision
+                      AND decision.outcome IN (
+                          'assigned_existing_problem', 'approved_for_new_problem'
+                      )
+                )
+           BEGIN
+               SELECT RAISE(ABORT, 'publication requires AI assessment and human approval');
+           END;"""
+    ]
 
 
 def _migration_statements(script: str) -> list[str]:
@@ -281,7 +474,11 @@ class ReportStore:
                 if applied:
                     self._conn.commit()
                     continue
+                for statement in _migration_upgrade_statements(self._conn, version):
+                    self._conn.execute(statement)
                 for statement in _migration_statements(sql):
+                    self._conn.execute(statement)
+                for statement in _migration_completion_statements(self._conn, version):
                     self._conn.execute(statement)
                 self._conn.execute(
                     """INSERT INTO civic_report_schema_migrations(version, applied_at)
@@ -499,7 +696,7 @@ class ReportStore:
             reason_code=reason_code,
             reporter_message=reporter_message,
             private_note=private_note,
-            outcome="published_as_new_problem",
+            outcome="approved_for_new_problem",
         )
 
     def _approve_report(
