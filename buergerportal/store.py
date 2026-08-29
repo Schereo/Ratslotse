@@ -7,6 +7,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+PROBLEM_CATEGORIES = (
+    "mobility",
+    "public_space",
+    "education",
+    "childcare",
+    "housing",
+    "environment",
+    "accessibility",
+    "administration",
+    "other",
+)
 SCOPE_KINDS = ("point", "facility", "route", "area", "citywide")
 PROBLEM_STATUSES = (
     "new",
@@ -37,6 +48,10 @@ CREATE TABLE IF NOT EXISTS civic_problems (
     last_observed_at     TEXT NOT NULL,
     published_at         TEXT,
     updated_at           TEXT NOT NULL,
+    CHECK (category IN (
+        'mobility', 'public_space', 'education', 'childcare', 'housing',
+        'environment', 'accessibility', 'administration', 'other'
+    )),
     CHECK (scope_kind IN ('point', 'facility', 'route', 'area', 'citywide')),
     CHECK (status IN ('new', 'multiple_reports', 'verified', 'persists', 'apparently_resolved')),
     CHECK (confidence IN ('unconfirmed', 'supported', 'verified')),
@@ -125,6 +140,8 @@ class ProblemStore:
         This is deliberately an internal store operation, not a public write API.
         Publication remains an explicit moderator action in later slices.
         """
+        if category not in PROBLEM_CATEGORIES:
+            raise ValueError("Unbekannte Problemkategorie.")
         if scope_kind not in SCOPE_KINDS:
             raise ValueError("Unbekannter geografischer Bezug.")
         if status not in PROBLEM_STATUSES:

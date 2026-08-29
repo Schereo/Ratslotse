@@ -24,11 +24,9 @@ test.describe("Öffentliche Problemkarte", () => {
     await expect(page).toHaveURL(/view=status/);
     await expect(page.getByRole("heading", { name: "Neu" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Geprüft" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Beispiel: Fahrradständer/ })).toBeVisible();
-
-    await page.getByLabel("Nach Thema filtern").selectOption("accessibility");
-    await expect(page.getByRole("button", { name: /Beispiel: Barrierefreier Zugang/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Beispiel: Fahrradständer/ })).toBeHidden();
+    await expect(page.getByRole("button", { name: /Beispiel:/ })).toHaveCount(4);
+    await expect(page.getByLabel("Nach Thema filtern")).toHaveCount(0);
+    await expect(page.locator(".problem-frequency-dot.frequency-very_many")).toBeVisible();
   });
 
   test("Auswahl im Status-Board ist verlinkbar", async ({ page }) => {
@@ -36,5 +34,6 @@ test.describe("Öffentliche Problemkarte", () => {
     await page.getByRole("button", { name: /Beispiel: Barrierefreier Zugang/ }).click();
     await expect(page).toHaveURL(/problem=9003/);
     await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Barrierefreier Zugang zur Haltestelle fehlt" })).toBeVisible();
+    await expect(page.getByText("Reporter*innen")).toBeVisible();
   });
 });

@@ -76,7 +76,25 @@ def test_public_api_hides_unpublished_problem_and_exposes_detail(tmp_path):
     assert client.get(f"/api/probleme/{visible}").status_code == 200
     assert client.get(f"/api/probleme/{hidden}").status_code == 404
     assert client.get("/api/probleme?status=amtlich_in_bearbeitung").status_code == 422
+    assert client.get("/api/probleme?category=personenkritik").status_code == 422
     store.close()
+
+
+def test_problem_store_rejects_uncontrolled_category(tmp_path):
+    store = ProblemStore(tmp_path / "problems.sqlite")
+    try:
+        store.create_problem(
+            title="Ungeeignet",
+            summary="Personenbezogene Kategorie.",
+            category="personenkritik",
+            scope_kind="citywide",
+        )
+    except ValueError as error:
+        assert "Problemkategorie" in str(error)
+    else:
+        raise AssertionError("Unkontrollierte Kategorie wurde gespeichert")
+    finally:
+        store.close()
 
 
 def test_point_problem_requires_coordinates(tmp_path):

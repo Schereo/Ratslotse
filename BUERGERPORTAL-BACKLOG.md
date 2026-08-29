@@ -50,7 +50,8 @@ Die öffentliche Produktbezeichnung und die endgültigen UI-Begriffe sind noch f
 - Die öffentliche Ansicht bleibt bewusst minimalistisch und zeigt keine überladene Kennzahlen-Übersicht.
 - Die Karte ist der Standard und der dominante interaktive Einstieg für alle Besucher*innen.
 - Eine zweite öffentliche Ansicht ordnet alle Probleme als Kanban-Board nach ihrem belegbaren Status.
-- Details und Kennzahlen erscheinen erst nach Auswahl eines Problems (progressive Offenlegung).
+- Details und exakte Kennzahlen erscheinen erst nach Auswahl eines Problems (progressive Offenlegung).
+- Vor der Auswahl zeigt eine vierstufige Farbe nur die Meldehäufigkeit: einmal, mehrfach (2–4), häufig (5–9), sehr häufig (ab 10). Sie ist ein Aufmerksamkeitssignal, aber keine amtliche Dringlichkeitsbewertung.
 - Ein Problem kann einen Punkt, eine Einrichtung, eine Route, ein Gebiet/Stadtteil oder das gesamte Stadtgebiet betreffen.
 - Eine öffentliche Problemseite zeigt höchstens:
   - moderierten Titel und neutrale Zusammenfassung,
@@ -115,7 +116,10 @@ Die Reihenfolge beschreibt Produktpriorität. Jeder Block soll als testbarer ver
 Erster Review-Schnitt: `/probleme` zeigt in Vercel-Preview-Deployments deutlich
 markierte, frei erfundene Beispieldaten; Produktion liest ausschließlich die
 öffentliche FastAPI-Projektion. Die Beispieldaten werden entfernt, sobald das
-Preview-Backend freigegebene Testprobleme bereitstellt.
+Preview-Backend freigegebene Testprobleme bereitstellt. Dieser Schnitt ist eine
+prüfbare öffentliche Projektion und Oberfläche, nicht der Abschluss von P0/P1:
+privates Meldungs-Domänenmodell, dauerhafte Migrationen, Autorisierungsmatrix
+und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 
 - [x] Öffentliche API für freigegebene Probleme mit Karte, Filtern und Listenansicht bereitstellen.
 - [ ] Punkt, Einrichtung, Route, Gebiet/Stadtteil und stadtweite Probleme darstellbar machen.

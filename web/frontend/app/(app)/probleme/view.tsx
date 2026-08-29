@@ -3,10 +3,10 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, CheckCircle2, Columns3, Info, Map as MapIcon, MapPin, Users, X } from "lucide-react";
+import { CheckCircle2, Columns3, Info, Map as MapIcon, MapPin, X } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ProblemListResponse, PublicProblem, ProblemStatus } from "@/lib/types";
-import { PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, VORSCHAU_PROBLEME } from "@/lib/probleme";
+import { meldeHaeufigkeit, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, VORSCHAU_PROBLEME } from "@/lib/probleme";
 import { Badge, Card, ErrorState, PageHeader, Segmented, Select, Spinner, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -30,11 +30,13 @@ export default function View({ vorschau }: { vorschau: boolean }) {
   const [category, setCategory] = useState("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const problems = useMemo(
+  const mapProblems = useMemo(
     () => all.filter((problem) => category === "all" || problem.category === category),
     [all, category],
   );
-  const selected = problems.find((problem) => problem.id === selectedId) ?? null;
+  // Das Status-Board ist bewusst vollständig; Themenfilter gehört allein zur Karte.
+  const visibleProblems = ansicht === "status" ? all : mapProblems;
+  const selected = visibleProblems.find((problem) => problem.id === selectedId) ?? null;
   const categories = useMemo(() => {
     const present = new Set(all.map((problem) => problem.category));
     return Object.entries(PROBLEM_KATEGORIEN).filter(([key]) => present.has(key));
@@ -52,12 +54,12 @@ export default function View({ vorschau }: { vorschau: boolean }) {
   }, [all, selectedId]);
 
   useEffect(() => {
-    if (selectedId === null || problems.some((problem) => problem.id === selectedId)) return;
+    if (selectedId === null || visibleProblems.some((problem) => problem.id === selectedId)) return;
     setSelectedId(null);
     const url = new URL(window.location.href);
     url.searchParams.delete("problem");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [problems, selectedId]);
+  }, [visibleProblems, selectedId]);
 
   const select = useCallback((id: number) => {
     setSelectedId(id);
@@ -104,30 +106,35 @@ export default function View({ vorschau }: { vorschau: boolean }) {
           ]}
           className="w-full sm:w-64"
         />
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="shrink-0">Thema</span>
-          <Select
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-            aria-label="Nach Thema filtern"
-            className="min-w-0 sm:w-64"
-          >
-            <option value="all">Alle Themen</option>
-            {categories.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </Select>
-        </label>
+        {ansicht === "karte" && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="shrink-0">Thema</span>
+            <Select
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+              aria-label="Nach Thema filtern"
+              className="min-w-0 sm:w-64"
+            >
+              <option value="all">Alle Themen</option>
+              {categories.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </Select>
+          </label>
+        )}
       </div>
 
-      <p className="flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-        Die Zahl am Problem meint unabhängige Reporter*innen. Angezeigte Status sind Ratslotse-Einordnungen, keine amtlichen Bearbeitungsstände.
-      </p>
+      <div className="flex flex-col gap-2 text-xs leading-relaxed text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex items-start gap-1.5">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          Farben zeigen nur die Meldehäufigkeit, nicht die amtliche Dringlichkeit. Exakte Zahlen erscheinen nach Auswahl.
+        </p>
+        <FrequencyLegend />
+      </div>
 
       {!vorschau && query.isLoading ? (
         <Spinner className="min-h-[420px]" />
       ) : !vorschau && query.isError ? (
         <ErrorState onRetry={() => void query.refetch()} busy={query.isFetching} hint="Die öffentliche Problemkarte konnte nicht geladen werden." />
-      ) : problems.length === 0 ? (
+      ) : visibleProblems.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card px-6 py-16 text-center">
           <p className="font-medium text-foreground">Keine Probleme für dieses Thema</p>
           <button type="button" onClick={() => setCategory("all")} className="mt-2 text-sm font-medium text-primary hover:underline">
@@ -137,7 +144,7 @@ export default function View({ vorschau }: { vorschau: boolean }) {
       ) : ansicht === "karte" ? (
         <div className="space-y-4">
           <ProblemMap
-            problems={problems}
+            problems={mapProblems}
             selectedId={selectedId}
             onSelect={select}
             className="h-[62dvh] min-h-[420px] max-h-[720px]"
@@ -146,10 +153,26 @@ export default function View({ vorschau }: { vorschau: boolean }) {
         </div>
       ) : (
         <div className="space-y-4">
-          <KanbanBoard problems={problems} selectedId={selectedId} onSelect={select} />
+          <KanbanBoard problems={all} selectedId={selectedId} onSelect={select} />
           {selected && <SelectedProblem problem={selected} onClose={closeDetail} />}
         </div>
       )}
+    </div>
+  );
+}
+
+function FrequencyLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="Legende der Meldehäufigkeit">
+      {[1, 2, 5, 10].map((count) => {
+        const frequency = meldeHaeufigkeit(count);
+        return (
+          <span key={frequency.key} className="inline-flex items-center gap-1">
+            <span className={`problem-frequency-dot frequency-${frequency.key}`} aria-hidden />
+            {frequency.label}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -204,6 +227,7 @@ function KanbanCard({
   selected: boolean;
   onSelect: (id: number) => void;
 }) {
+  const frequency = meldeHaeufigkeit(problem.unique_reporters);
   return (
     <button
       type="button"
@@ -214,15 +238,14 @@ function KanbanCard({
         selected ? "border-primary shadow-lifted" : "border-border hover:border-primary/35",
       )}
     >
-      <h3 className="text-sm font-semibold leading-snug text-foreground">{problem.title}</h3>
+      <div className="flex items-start gap-2">
+        <span className={`problem-frequency-dot frequency-${frequency.key} mt-1 shrink-0`} aria-hidden />
+        <h3 className="text-sm font-semibold leading-snug text-foreground">{problem.title}</h3>
+      </div>
       <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
         <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
         <span className="truncate">{problem.location_label || PROBLEM_SCOPE[problem.scope_kind]}</span>
       </p>
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-2 text-[11px] text-muted-foreground">
-        <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" aria-hidden />{problem.unique_reporters}</span>
-        <span>{formatDate(problem.last_observed_at)}</span>
-      </div>
     </button>
   );
 }
@@ -244,14 +267,14 @@ function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose
         <span className="text-xs text-muted-foreground">{PROBLEM_SCOPE[problem.scope_kind]} · zuletzt {formatDate(problem.last_observed_at)}</span>
       </div>
       <h2 className="mt-3 text-xl font-bold text-foreground">{problem.title}</h2>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{problem.summary}</p>
-      <dl className="mt-4 grid max-w-xl grid-cols-3 gap-2 border-t border-border pt-4 text-center">
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{problem.summary}</p>
+      <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center">
         <div><dt className="text-[11px] text-muted-foreground">Reporter*innen</dt><dd className="mt-1 font-bold tabular-nums text-foreground">{problem.unique_reporters}</dd></div>
         <div><dt className="text-[11px] text-muted-foreground">Aktuell</dt><dd className="mt-1 font-bold tabular-nums text-foreground">{problem.current_observations}</dd></div>
         <div><dt className="text-[11px] text-muted-foreground">Insgesamt</dt><dd className="mt-1 font-bold tabular-nums text-foreground">{problem.total_observations}</dd></div>
       </dl>
       {problem.events && problem.events.length > 0 && (
-        <div className="mt-5 max-w-3xl border-t border-border pt-4">
+        <div className="mt-5 border-t border-border pt-4">
           <h3 className="text-sm font-semibold text-foreground">Letzte öffentliche Änderung</h3>
           <div className="mt-2 flex gap-2 text-sm text-muted-foreground">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />

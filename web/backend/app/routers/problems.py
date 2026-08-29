@@ -6,7 +6,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from buergerportal.store import PROBLEM_STATUSES, ProblemStore
+from buergerportal.store import PROBLEM_CATEGORIES, PROBLEM_STATUSES, ProblemStore
 from ..deps import get_problem_store
 
 router = APIRouter(prefix="/api/probleme", tags=["probleme"])
@@ -57,6 +57,8 @@ def public_problems(
     problem_status: str | None = Query(default=None, alias="status"),
     store: ProblemStore = Depends(get_problem_store),
 ) -> dict:
+    if category and category not in PROBLEM_CATEGORIES:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unbekannte Problemkategorie.")
     if problem_status and problem_status not in PROBLEM_STATUSES:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unbekannter Problemstatus.")
     problems = store.list_public_problems(category=category, status=problem_status)

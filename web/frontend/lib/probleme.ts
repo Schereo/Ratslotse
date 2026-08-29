@@ -28,6 +28,19 @@ export const PROBLEM_SCOPE = {
   citywide: "Stadtweit",
 } as const;
 
+export type MeldeHaeufigkeit = "once" | "several" | "many" | "very_many";
+
+/** Grobe Häufigkeit statt exakter Zahl: Orientierung vor der Detailauswahl. */
+export function meldeHaeufigkeit(uniqueReporters: number): {
+  key: MeldeHaeufigkeit;
+  label: string;
+} {
+  if (uniqueReporters <= 1) return { key: "once", label: "einmal gemeldet" };
+  if (uniqueReporters <= 4) return { key: "several", label: "mehrfach gemeldet" };
+  if (uniqueReporters <= 9) return { key: "many", label: "häufig gemeldet" };
+  return { key: "very_many", label: "sehr häufig gemeldet" };
+}
+
 /**
  * Ausschließlich für Vercel-Preview-Deployments: frei erfundene Datensätze,
  * damit die erste Kartenoberfläche ohne passenden Preview-Backend-Branch

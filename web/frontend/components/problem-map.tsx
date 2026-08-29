@@ -5,6 +5,7 @@ import { Maximize2, Minimize2 } from "lucide-react";
 import type { Map as LeafletMap, Marker, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { basemapUrl } from "@/lib/basemap";
+import { meldeHaeufigkeit, PROBLEM_SCOPE } from "@/lib/probleme";
 import type { PublicProblem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ export function ProblemMap({
   const [full, setFull] = useState(false);
   selectRef.current = onSelect;
   selectedRef.current = selectedId;
+  const withoutPoint = problems.filter((problem) => problem.latitude == null || problem.longitude == null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,16 +58,16 @@ export function ProblemMap({
         for (const problem of problems) {
           if (problem.latitude == null || problem.longitude == null) continue;
           const selected = problem.id === selectedRef.current;
-          const count = Math.max(1, problem.unique_reporters);
-          const size = Math.min(48, 28 + Math.sqrt(count) * 3);
-          const label = `${problem.title} · ${count} ${count === 1 ? "Meldung" : "Meldungen"}`;
+          const frequency = meldeHaeufigkeit(problem.unique_reporters);
+          const size = 36;
+          const label = `${problem.title} · ${frequency.label}`;
           const marker = L.marker([problem.latitude, problem.longitude], {
             title: label,
             alt: label,
             keyboard: true,
             icon: L.divIcon({
               className: "problem-map-icon",
-              html: `<span class="problem-map-pin${selected ? " is-selected" : ""}" style="--problem-pin-size:${size}px"><b>${count}</b></span>`,
+              html: `<span class="problem-map-pin frequency-${frequency.key}${selected ? " is-selected" : ""}" style="--problem-pin-size:${size}px"></span>`,
               iconSize: [size, size],
               iconAnchor: [size / 2, size / 2],
             }),
@@ -120,6 +122,28 @@ export function ProblemMap({
         : cn("relative isolate overflow-hidden rounded-xl border border-border bg-card", className),
     )}>
       <div ref={ref} className="h-full w-full" aria-label="Problemkarte von Oldenburg" />
+      {withoutPoint.length > 0 && (
+        <div className="absolute bottom-7 left-3 z-[1000] max-w-[min(20rem,calc(100%-1.5rem))] rounded-lg border border-border bg-background/95 p-2 shadow-sm backdrop-blur">
+          <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ohne einzelnen Kartenpunkt</p>
+          <div className="space-y-0.5">
+            {withoutPoint.map((problem) => {
+              const frequency = meldeHaeufigkeit(problem.unique_reporters);
+              return (
+                <button
+                  key={problem.id}
+                  type="button"
+                  onClick={() => onSelect(problem.id)}
+                  className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs text-foreground hover:bg-muted"
+                >
+                  <span className={`problem-frequency-dot frequency-${frequency.key}`} aria-hidden />
+                  <span className="truncate">{problem.title}</span>
+                  <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{PROBLEM_SCOPE[problem.scope_kind]}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <button
         type="button"
         onClick={() => setFull((value) => !value)}
