@@ -5,13 +5,14 @@ import type { AppleCredential } from "./apple";
 import { api, ApiError, setUnauthorizedHandler } from "./api";
 import { loadToken, setToken } from "./token";
 import { unregisterPush } from "./push";
+import { clearProblemReportDraft, scheduleProblemReportDraftExpiry } from "./problem-report-draft";
 import { User } from "./types";
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName?: string) => Promise<void>;
+  register: (email: string, password: string, displayName?: string, continuePath?: string) => Promise<void>;
   loginWithApple: (cred: AppleCredential) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    scheduleProblemReportDraftExpiry();
     (async () => {
       await loadToken(); // hydrate the stored bearer token (native app) before the first /me
       await refresh();
@@ -57,8 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   };
 
-  const register = async (email: string, password: string, displayName?: string) => {
-    const u = await api.post<User>("/auth/register", { email, password, display_name: displayName || null });
+  const register = async (email: string, password: string, displayName?: string, continuePath?: string) => {
+    const u = await api.post<User>("/auth/register", {
+      email,
+      password,
+      display_name: displayName || null,
+      continue_path: continuePath || null,
+    });
     await setToken(u.access_token ?? null);
     setUser(u);
   };
@@ -76,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    clearProblemReportDraft();
     await unregisterPush(); // while still authenticated — stops pushes for this account
     await api.post("/auth/logout");
     await setToken(null);

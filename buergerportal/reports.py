@@ -5,6 +5,7 @@ werden ausschließlich über :mod:`buergerportal.store` gelesen.
 """
 from __future__ import annotations
 
+import math
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,7 @@ from typing import Any
 from .domain import (
     AI_ASSESSMENT_VERDICTS,
     MODERATION_OUTCOMES,
+    OLDENBURG_BOUNDS,
     PROBLEM_CATEGORIES,
     REPORT_STATUSES,
     SCOPE_KINDS,
@@ -346,6 +348,36 @@ _PRIVATE_MIGRATIONS = (
         END;
         """,
     ),
+    (
+        8,
+        """
+        ALTER TABLE civic_reports
+            ADD COLUMN suggested_problem_id INTEGER
+            CHECK (suggested_problem_id IS NULL OR suggested_problem_id > 0);
+        """,
+    ),
+    (
+        9,
+        """
+        ALTER TABLE civic_reports
+            ADD COLUMN category_detail TEXT NOT NULL DEFAULT ''
+            CHECK (length(category_detail) <= 500);
+        """,
+    ),
+    (
+        10,
+        """
+        ALTER TABLE civic_reports
+            ADD COLUMN client_token TEXT;
+        CREATE UNIQUE INDEX idx_civic_reports_owner_client_token
+            ON civic_reports(reporter_id, client_token)
+            WHERE client_token IS NOT NULL;
+        CREATE TABLE civic_projection_refresh_queue (
+            problem_id INTEGER PRIMARY KEY,
+            queued_at  TEXT NOT NULL
+        );
+        """,
+    ),
 )
 
 
@@ -499,9 +531,12 @@ class ReportStore:
         category: str,
         scope_kind: str,
         observed_at: str,
+        category_detail: str,
         location_label: str = "",
         latitude: float | None = None,
         longitude: float | None = None,
+        suggested_problem_id: int | None = None,
+        client_token: str | None = None,
     ) -> int:
         if reporter_id < 1:
             raise ValueError("Eine Meldung benötigt ein gültiges Konto.")
@@ -511,16 +546,37 @@ class ReportStore:
             raise ValueError("Unbekannte Problemkategorie.")
         if scope_kind not in SCOPE_KINDS:
             raise ValueError("Unbekannter geografischer Bezug.")
-        if scope_kind in {"point", "facility"} and (latitude is None or longitude is None):
-            raise ValueError("Punkt und Einrichtung benötigen Koordinaten.")
+        if scope_kind != "citywide" and not location_label.strip():
+            raise ValueError("Nicht stadtweite Meldungen benötigen eine Ortsangabe.")
+        if scope_kind != "citywide" and (latitude is None or longitude is None):
+            raise ValueError("Nicht stadtweite Meldungen benötigen Koordinaten.")
+        if (
+            (latitude is not None and not (math.isfinite(latitude) and -90 <= latitude <= 90))
+            or (longitude is not None and not (math.isfinite(longitude) and -180 <= longitude <= 180))
+        ):
+            raise ValueError("Ungültige Koordinaten.")
+        if scope_kind == "citywide" and (latitude is not None or longitude is not None):
+            raise ValueError("Stadtweite Meldungen verwenden keine Punktkoordinaten.")
+        if latitude is not None and longitude is not None and not (
+            OLDENBURG_BOUNDS["south"] <= latitude <= OLDENBURG_BOUNDS["north"]
+            and OLDENBURG_BOUNDS["west"] <= longitude <= OLDENBURG_BOUNDS["east"]
+        ):
+            raise ValueError("Die markierte Lage liegt außerhalb von Oldenburg.")
+        if suggested_problem_id is not None and suggested_problem_id < 1:
+            raise ValueError("Der Problemvorschlag ist ungültig.")
+        if not 10 <= len(category_detail.strip()) <= 500:
+            raise ValueError("Die kategorienabhängige Mindestangabe ist unvollständig.")
+        if client_token is not None and not client_token.strip():
+            raise ValueError("Der Entwurfsschlüssel ist ungültig.")
         now = _now()
         with self._conn:
             cursor = self._conn.execute(
                 """INSERT INTO civic_reports (
                        reporter_id, draft_text, category, scope_kind,
                        location_label, latitude, longitude, observed_at,
+                       suggested_problem_id, category_detail, client_token,
                        created_at, updated_at
-                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     reporter_id,
                     text.strip(),
@@ -530,17 +586,107 @@ class ReportStore:
                     latitude,
                     longitude,
                     observed_at,
+                    suggested_problem_id,
+                    category_detail.strip(),
+                    client_token.strip() if client_token else None,
                     now,
                     now,
                 ),
             )
         return int(cursor.lastrowid)
 
+    def erase_reporter_data(self, *, reporter_id: int) -> None:
+        """Withdraw and irreversibly redact reports when their account is deleted.
+
+        Immutable AI and moderation audit rows may have to remain, so cascading
+        deletion is deliberately avoided. The retained report shell no longer
+        contains an account ID, raw text, detailed category answer or location.
+        """
+        if reporter_id < 1:
+            raise ValueError("Ein gültiges Konto ist erforderlich.")
+        now = _now()
+        with self._conn:
+            self._conn.execute(
+                """INSERT OR REPLACE INTO civic_projection_refresh_queue(problem_id, queued_at)
+                   SELECT DISTINCT problem_id, ?
+                   FROM civic_reports
+                   WHERE reporter_id = ? AND problem_id IS NOT NULL""",
+                (now, reporter_id),
+            )
+            # Human decisions are immutable during normal operation. Account
+            # erasure is the sole controlled exception for private free text
+            # and precise geography; structural outcome/reason fields remain.
+            self._conn.execute("DROP TRIGGER trg_civic_moderation_decisions_no_update")
+            self._conn.execute(
+                """UPDATE civic_moderation_decisions
+                   SET reporter_message = '[gelöscht]', private_note = '[gelöscht]',
+                       previous_location_label = NULL, new_location_label = NULL,
+                       previous_latitude = NULL, new_latitude = NULL,
+                       previous_longitude = NULL, new_longitude = NULL
+                   WHERE report_id IN (
+                       SELECT id FROM civic_reports WHERE reporter_id = ?
+                   )""",
+                (reporter_id,),
+            )
+            self._conn.execute(
+                """UPDATE civic_moderation_review_requests
+                   SET reporter_reason = '[gelöscht]'
+                   WHERE report_id IN (
+                       SELECT id FROM civic_reports WHERE reporter_id = ?
+                   )""",
+                (reporter_id,),
+            )
+            self._conn.execute(
+                """CREATE TRIGGER trg_civic_moderation_decisions_no_update
+                   BEFORE UPDATE ON civic_moderation_decisions
+                   BEGIN
+                       SELECT RAISE(ABORT, 'moderation decisions are immutable');
+                   END"""
+            )
+            self._conn.execute(
+                """UPDATE civic_report_observations
+                   SET text = '[gelöscht]', withdrawn_at = COALESCE(withdrawn_at, ?)
+                   WHERE report_id IN (
+                       SELECT id FROM civic_reports WHERE reporter_id = ?
+                   )""",
+                (now, reporter_id),
+            )
+            self._conn.execute(
+                """UPDATE civic_reports
+                   SET reporter_id = 9000000000000000000 + id,
+                       problem_id = NULL,
+                       draft_text = '[gelöscht]', confirmed_text = NULL,
+                       category = 'other', category_detail = '',
+                       scope_kind = 'citywide', location_label = '',
+                       latitude = NULL, longitude = NULL,
+                       observed_at = ?, status = 'withdrawn',
+                       suggested_problem_id = NULL, client_token = NULL,
+                       withdrawn_at = COALESCE(withdrawn_at, ?),
+                       updated_at = ?, content_revision = content_revision + 1
+                   WHERE reporter_id = ?""",
+                (now, now, now, reporter_id),
+            )
+
+    def get_owned_report_by_client_token(
+        self,
+        client_token: str,
+        *,
+        reporter_id: int,
+    ) -> dict[str, Any] | None:
+        row = self._conn.execute(
+            "SELECT id FROM civic_reports WHERE reporter_id = ? AND client_token = ?",
+            (reporter_id, client_token),
+        ).fetchone()
+        if not row:
+            return None
+        return self.get_owned_report(int(row["id"]), reporter_id=reporter_id)
+
     def get_owned_report(self, report_id: int, *, reporter_id: int) -> dict[str, Any] | None:
         row = self._conn.execute(
             """SELECT id, problem_id, draft_text AS text, confirmed_text,
                       category, scope_kind, location_label, latitude, longitude,
-                      observed_at, status, submitted_at, withdrawn_at,
+                      observed_at, suggested_problem_id, category_detail, client_token,
+                      status, submitted_at, withdrawn_at,
                       created_at, updated_at
                FROM civic_reports
                WHERE id = ? AND reporter_id = ?""",

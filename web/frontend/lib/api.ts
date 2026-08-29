@@ -17,6 +17,13 @@ const FIELD_LABELS: Record<string, string> = {
   description: "Beschreibung",
   message: "Nachricht",
   question: "Frage",
+  text: "Beobachtung",
+  confirmed_text: "Meldetext",
+  category: "Thema",
+  category_detail: "ergänzende Themenangabe",
+  scope_kind: "räumlicher Bezug",
+  location_label: "Ort",
+  observed_on: "Beobachtungsdatum",
 };
 
 /** Der erste Pydantic-Fehler als deutscher Satz. Bewusst grob: Die genaue

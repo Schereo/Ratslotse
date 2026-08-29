@@ -9,9 +9,10 @@ import { CheckCircle2, Columns3, Info, Map as MapIcon, MapPin, MessageCircle, X 
 import { api } from "@/lib/api";
 import type { ProblemListResponse, PublicProblem, PublicProblemSummary, ProblemStatus } from "@/lib/types";
 import { isProblemMappable, MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_ANGEBOT, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, unabhaengigeMeldungen, VORSCHAU_PROBLEME } from "@/lib/probleme";
-import { Badge, Card, ErrorState, PageHeader, Segmented, Spinner, formatDate } from "@/components/ui";
+import { Badge, Button, Card, ErrorState, PageHeader, Segmented, Spinner, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
+import { useAuth } from "@/lib/auth";
 import { PublicProblemDetail } from "@/components/public-problem-detail";
 
 const ProblemMap = dynamic(
@@ -23,6 +24,7 @@ type Ansicht = "karte" | "status";
 const STATUS_OPTIONS = Object.entries(PROBLEM_STATUS) as [ProblemStatus, (typeof PROBLEM_STATUS)[ProblemStatus]][];
 
 export default function View({ vorschau }: { vorschau: boolean }) {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const linkedProblem = searchParams.get("problem");
   const query = useQuery({
@@ -151,9 +153,28 @@ export default function View({ vorschau }: { vorschau: boolean }) {
         description="Beobachtungen aus der Stadt, geprüft und ohne persönliche Angaben gebündelt."
       />
 
+      <div className={cn("grid items-start gap-5", user?.role !== "admin" && "xl:grid-cols-[minmax(0,1fr)_13rem]")}>
+        <div className="min-w-0 space-y-4">
+          {user?.role !== "admin" && (
+            <Card className="flex items-center justify-between gap-4 border-primary/25 bg-primary/5 p-4 xl:hidden">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <MessageCircle className="h-5 w-5" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-foreground">Etwas beobachtet?</p>
+                  <p className="hidden text-xs text-muted-foreground sm:block">Im KI-Chat zur geprüften privaten Meldung.</p>
+                </div>
+              </div>
+              <Button asChild variant="signal" className="min-h-11 shrink-0 px-5 text-base">
+                <Link href="/probleme/melden">Problem melden</Link>
+              </Button>
+            </Card>
+          )}
+
       {vorschau && (
         <p className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/35 dark:text-amber-100" role="status">
-          <strong>Vorschau:</strong> Alle gezeigten Probleme und Zahlen sind frei erfunden. Noch kann niemand etwas melden.
+          <strong>Vorschau:</strong> Alle öffentlich gezeigten Probleme und Zahlen sind frei erfunden. Private Meldungen werden nie zu Vorschaudaten.
         </p>
       )}
 
@@ -223,6 +244,22 @@ export default function View({ vorschau }: { vorschau: boolean }) {
           {detailPanel}
         </div>
       )}
+        </div>
+        {user?.role !== "admin" && (
+          <aside className="sticky top-6 hidden xl:block" aria-label="Problem melden">
+            <Card className="border-primary/30 bg-card p-4 shadow-lg">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <MessageCircle className="h-5 w-5" aria-hidden />
+              </span>
+              <p className="mt-3 font-display text-lg font-bold text-foreground">Etwas beobachtet?</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Die KI-Meldehilfe fragt nach und erstellt deinen prüfbaren Entwurf.</p>
+              <Button asChild variant="signal" className="mt-4 min-h-11 w-full text-base">
+                <Link href="/probleme/melden">Problem melden</Link>
+              </Button>
+            </Card>
+          </aside>
+        )}
+      </div>
     </div>
   );
 }

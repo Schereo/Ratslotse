@@ -53,15 +53,17 @@ export default function DatenschutzPage() {
               <li><strong>Push (optional):</strong> ein Geräte-Token, wenn du App-Push-Benachrichtigungen aktivierst.</li>
               <li><strong>Themen &amp; Watchlists:</strong> die von dir angelegten Suchthemen und Benachrichtigungseinstellungen.</li>
               <li><strong>„Frag den Rat"-Anfragen:</strong> die von dir eingegebenen Fragen, um eine KI-Antwort zu erzeugen.</li>
+              <li><strong>Private Problemmeldungen:</strong> Kontozuordnung, bestätigter Meldetext, Kategorie, ergänzende Mindestangabe, Beobachtungsdatum und der von dir markierte genaue geografische Bezug. Diese Rohdaten erscheinen nicht auf der öffentlichen Problemkarte; nach Prüfung kann ein moderierter, geeigneter geografischer Bezug Teil der öffentlichen Problemzusammenfassung werden.</li>
+              <li><strong>KI-Melde-Chat:</strong> Erst wenn du den KI-Teil des Melde-Chats ausdrücklich startest, werden deine Antworten nach lokaler Entfernung von E-Mail-Adressen, Telefonnummern, genauen Adressen und mit Anrede genannten Namen an den KI-Dienst gesendet. Kontokennung, Kartenkoordinaten, eingegebener Ortsname und Beobachtungsdatum werden nicht übertragen. Der vollständige, von dir korrigierte und bestätigte Meldetext bleibt davon getrennt.</li>
               <li><strong>Server-Logs:</strong> beim Aufruf technische Daten wie IP-Adresse, Zeitpunkt und User-Agent — zur Sicherheit und Fehleranalyse.</li>
             </ul>
           </Section>
 
           <Section title="Zwecke und Rechtsgrundlagen">
             <p>
-              Bereitstellung von Konto, Themen und Benachrichtigungen zur Erfüllung des Nutzungsverhältnisses
+              Bereitstellung von Konto, Themen, privaten Problemmeldungen und Benachrichtigungen zur Erfüllung des Nutzungsverhältnisses
               (Art. 6 Abs. 1 lit. b DSGVO). Server-Logs und Sicherheit auf Grundlage des berechtigten Interesses am
-              sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO).
+              sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO). Der externe KI-Teil des Melde-Chats wird erst nach deiner ausdrücklichen Einwilligung verwendet (Art. 6 Abs. 1 lit. a DSGVO). Vor der Aktivierung kannst du den Vorgang ohne Übermittlung deiner Antworten abbrechen.
             </p>
           </Section>
 
@@ -69,7 +71,7 @@ export default function DatenschutzPage() {
             <p>Zur Erbringung des Dienstes setze ich folgende Dienstleister ein:</p>
             <ul className="list-disc space-y-1 pl-5">
               <li><strong>Hosting:</strong> Hetzner Online GmbH (Serverstandort EU). Betrieb der Server und Verarbeitung von Server-Logs.</li>
-              <li><strong>KI-Verarbeitung (OpenRouter):</strong> „Frag den Rat"-Anfragen werden zur Beantwortung an einen externen KI-Dienst übermittelt; dabei kann eine Übermittlung in ein Drittland erfolgen. <strong>Bitte gib keine personenbezogenen oder sensiblen Daten in die Fragen ein.</strong></li>
+              <li><strong>KI-Verarbeitung (OpenRouter):</strong> „Frag den Rat"-Anfragen und – nur nach ausdrücklicher Aktivierung – lokal bereinigte Antworten des KI-Melde-Chats werden an einen externen KI-Dienst übermittelt; dabei kann eine Übermittlung in ein Drittland erfolgen. Für den Melde-Chat werden Anbieter ohne Training mit den Eingaben und mit Zero-Data-Retention bevorzugt. <strong>Bitte gib trotzdem keine personenbezogenen oder sensiblen Daten ein.</strong> Kontodaten, genauer Kartenbezug und die vollständige korrigierte private Meldung werden nicht für den Chat übertragen.</li>
               <li><strong>Resend:</strong> Versand von Benachrichtigungs-E-Mails (nur, wenn du E-Mail als Kanal wählst).</li>
               <li><strong>CARTO:</strong> Die Kartendarstellung lädt Kartenkacheln von CARTO; dabei wird deine IP-Adresse an CARTO übermittelt.</li>
               <li><strong>Apple / Google (Push):</strong> App-Benachrichtigungen werden über den Push-Dienst des Betriebssystems (APNs bzw. FCM) zugestellt — nur, wenn du Push als Kanal aktivierst.</li>
@@ -88,8 +90,8 @@ export default function DatenschutzPage() {
           <Section title="Cookies und lokale Speicherung">
             <p>
               Ratslotse setzt nur ein technisch notwendiges Cookie zur Anmeldung (Session). Im Browser und in der
-              App werden außerdem einige technisch notwendige Daten lokal auf deinem Gerät gespeichert (localStorage):
-              deine Design-Einstellung (hell/dunkel), in der App das Anmelde-Token sowie ein Zwischenspeicher der
+              App werden außerdem einige technisch notwendige Daten lokal auf deinem Gerät gespeichert (localStorage beziehungsweise sessionStorage):
+              deine Design-Einstellung (hell/dunkel), ein höchstens 30 Minuten alter privater Meldeentwurf im aktuellen Tab, in der App das Anmelde-Token sowie ein Zwischenspeicher der
               zuletzt geladenen Inhalte (bis zu 24 Stunden), damit die App auch offline etwas anzeigen kann. Es
               findet kein Tracking und keine Analyse-Software statt; daher ist keine Einwilligung (Cookie-Banner)
               erforderlich (§ 25 Abs. 2 TDDDG).
@@ -98,7 +100,7 @@ export default function DatenschutzPage() {
 
           <Section title="Speicherdauer">
             <p>
-              Kontodaten werden gespeichert, solange dein Konto besteht. Server-Logs werden nur kurzzeitig zur
+              Kontodaten und private Problemmeldungen werden gespeichert, solange dein Konto besteht oder sie für Prüfung und Betrieb des Bürgerportals benötigt werden. Server-Logs werden nur kurzzeitig zur
               Sicherheit vorgehalten. Du kannst die Löschung deines Kontos jederzeit verlangen.
             </p>
           </Section>

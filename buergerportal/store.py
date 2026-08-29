@@ -457,12 +457,83 @@ class ProblemStore:
             )
         return int(cur.lastrowid)
 
+    def refresh_queued_problem_metrics(self) -> None:
+        """Apply private withdrawal changes without crossing the read interface."""
+        try:
+            queued = self._conn.execute(
+                "SELECT problem_id FROM civic_projection_refresh_queue ORDER BY problem_id"
+            ).fetchall()
+        except sqlite3.OperationalError as error:
+            if "no such table" in str(error):
+                return
+            raise
+        with self._conn:
+            for queued_problem in queued:
+                problem_id = int(queued_problem["problem_id"])
+                counts = self._conn.execute(
+                    """SELECT COUNT(DISTINCT report.reporter_id) AS independent_reports,
+                              COUNT(DISTINCT CASE WHEN observation.withdrawn_at IS NULL
+                                                 THEN observation.id END) AS current_observations,
+                              COUNT(DISTINCT observation.id) AS total_observations,
+                              MIN(CASE WHEN observation.withdrawn_at IS NULL
+                                       THEN observation.observed_at END) AS first_observed_at,
+                              MAX(CASE WHEN observation.withdrawn_at IS NULL
+                                       THEN observation.observed_at END) AS last_observed_at
+                       FROM civic_reports AS report
+                       JOIN civic_moderation_decisions AS decision
+                         ON decision.report_id = report.id
+                        AND decision.problem_id = ?
+                       JOIN civic_ai_assessments AS assessment
+                         ON assessment.id = decision.ai_assessment_id
+                        AND assessment.report_id = report.id
+                       LEFT JOIN civic_report_observations AS observation
+                         ON observation.report_id = report.id
+                       WHERE report.problem_id = ?
+                         AND report.status = 'accepted'
+                         AND assessment.verdict = 'suitable'
+                         AND assessment.report_revision = report.content_revision
+                         AND decision.outcome IN (
+                             'assigned_existing_problem', 'approved_for_new_problem'
+                         )""",
+                    (problem_id, problem_id),
+                ).fetchone()
+                if not counts or counts["independent_reports"] < 1:
+                    self._conn.execute(
+                        """UPDATE civic_problems
+                           SET unique_reporters = 0, current_observations = 0,
+                               total_observations = 0, published_at = NULL, updated_at = ?
+                           WHERE id = ?""",
+                        (_now(), problem_id),
+                    )
+                else:
+                    self._conn.execute(
+                        """UPDATE civic_problems
+                           SET unique_reporters = ?, current_observations = ?,
+                               total_observations = ?, first_observed_at = ?,
+                               last_observed_at = ?, updated_at = ?
+                           WHERE id = ?""",
+                        (
+                            counts["independent_reports"],
+                            counts["current_observations"],
+                            counts["total_observations"],
+                            counts["first_observed_at"],
+                            counts["last_observed_at"],
+                            _now(),
+                            problem_id,
+                        ),
+                    )
+                self._conn.execute(
+                    "DELETE FROM civic_projection_refresh_queue WHERE problem_id = ?",
+                    (problem_id,),
+                )
+
     def list_public_problems(
         self,
         *,
         category: str | None = None,
         status: str | None = None,
     ) -> list[dict[str, Any]]:
+        self.refresh_queued_problem_metrics()
         clauses = ["published_at IS NOT NULL", "unique_reporters >= 1"]
         params: list[Any] = []
         if category:
@@ -479,6 +550,7 @@ class ProblemStore:
         return [self._public_problem(row, include_details=False) for row in rows]
 
     def get_public_problem(self, problem_id: int) -> dict[str, Any] | None:
+        self.refresh_queued_problem_metrics()
         row = self._conn.execute(
             "SELECT * FROM civic_problems WHERE id = ? AND published_at IS NOT NULL "
             "AND unique_reporters >= 1",

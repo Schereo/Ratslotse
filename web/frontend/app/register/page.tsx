@@ -28,9 +28,10 @@ export default function RegisterPage() {
     }
     setBusy(true);
     try {
-      await register(email, password, displayName.trim());
+      const continuePath = zielNachAnmeldung();
+      await register(email, password, displayName.trim(), continuePath);
       // Von einem geteilten Beschluss aus registriert? Dann dorthin zurück.
-      router.replace(zielNachAnmeldung());
+      router.replace(continuePath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registrierung fehlgeschlagen.");
     } finally {

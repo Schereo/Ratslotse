@@ -93,13 +93,14 @@ export function PublicShell({
  */
 function Einladung({ zurueck, variante }: { zurueck: string; variante: "rat" | "probleme" }) {
   const problemkarte = variante === "probleme";
+  const ziel = problemkarte ? "/probleme/melden" : zurueck;
   return (
     <Card className="mt-8 overflow-hidden">
       <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:gap-6 sm:p-8">
         <Mascot pose="wave" bob decorative className="mx-auto h-24 w-24 shrink-0 sm:mx-0" />
         <div className="min-w-0 flex-1 text-center sm:text-left">
           <h2 className="font-display text-xl font-bold text-foreground">
-            {problemkarte ? "Du willst später selbst etwas melden?" : "Willst du früher davon erfahren?"}
+            {problemkarte ? "Du willst selbst etwas melden?" : "Willst du früher davon erfahren?"}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             {problemkarte ? (
@@ -114,10 +115,10 @@ function Einladung({ zurueck, variante }: { zurueck: string; variante: "rat" | "
           </p>
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
             <Button asChild variant="signal">
-              <Link href={mitRuecksprung("/register", zurueck)}>Kostenlos registrieren</Link>
+              <Link href={mitRuecksprung("/register", ziel)}>{problemkarte ? "Konto erstellen und melden" : "Kostenlos registrieren"}</Link>
             </Button>
             <Button asChild variant="ghost">
-              <Link href={mitRuecksprung("/login", zurueck)}>Ich habe schon ein Konto</Link>
+              <Link href={mitRuecksprung("/login", ziel)}>{problemkarte ? "Anmelden und melden" : "Ich habe schon ein Konto"}</Link>
             </Button>
           </div>
         </div>

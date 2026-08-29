@@ -10,11 +10,14 @@ import type { User } from "@/lib/types";
 import { Button, Spinner } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
 import { useAuth } from "@/lib/auth";
+import { sicheresZiel } from "@/lib/public-routes";
 
 type State = "missing" | "verifying" | "ok" | "error";
 
 function VerifyInner() {
-  const token = useSearchParams().get("token") ?? "";
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") ?? "";
+  const continuePath = sicheresZiel(searchParams.get("weiter")) ?? "/dashboard";
   const { refresh } = useAuth();
   const router = useRouter();
   const [state, setState] = useState<State>(token ? "verifying" : "missing");
@@ -45,9 +48,9 @@ function VerifyInner() {
   // Einrichten und ohne erkennbaren Grund. Kurz bestätigen, dann weiter.
   useEffect(() => {
     if (state !== "ok") return;
-    const t = setTimeout(() => router.replace("/dashboard"), 1400);
+    const t = setTimeout(() => router.replace(continuePath), 1400);
     return () => clearTimeout(t);
-  }, [state, router]);
+  }, [state, router, continuePath]);
 
   if (state === "missing") {
     return (
@@ -73,7 +76,7 @@ function VerifyInner() {
         <p className="text-sm text-muted-foreground">
           Danke! Dein Konto ist jetzt aktiv — es geht gleich weiter.
         </p>
-        <Link href="/dashboard"><Button className="w-full">Weiter zum Dashboard</Button></Link>
+        <Link href={continuePath}><Button className="w-full">Weiter</Button></Link>
       </div>
     );
   }

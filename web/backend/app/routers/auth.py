@@ -6,6 +6,7 @@ import html as _html
 import logging
 import secrets
 from datetime import datetime, timedelta
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
@@ -28,6 +29,14 @@ from ..session import clear_session_cookie, set_session_cookie
 
 # Email-verification links stay valid for 24h (more forgiving than the 1h reset link).
 _VERIFY_TTL_HOURS = 24
+
+
+def _safe_continue_path(value: str | None) -> str | None:
+    if not value or not value.startswith("/"):
+        return None
+    if value.startswith("//") or value.startswith("/\\"):
+        return None
+    return value
 
 logger = logging.getLogger("nwz.web.auth")
 
@@ -208,7 +217,12 @@ def register(
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
         store.create_email_verification(user_id, token_hash, expires)
-        background.add_task(_send_verification_email, email, raw)
+        background.add_task(
+            _send_verification_email,
+            email,
+            raw,
+            _safe_continue_path(body.continue_path),
+        )
     elif email == _configured_admin_email(settings) and not _has_admin(store):
         # Ohne E-Mail-Versand gibt es keinen Link zum Bestätigen — der Weg über
         # verify_email() kann dieses Konto also nicht zum Admin machen. Laut sagen,
@@ -326,12 +340,18 @@ def reset_password(body: ResetPasswordRequest, store: Store = Depends(get_store)
     return {"ok": True}
 
 
-def _send_verification_email(email: str, raw_token: str) -> None:
+def _send_verification_email(
+    email: str,
+    raw_token: str,
+    continue_path: str | None = None,
+) -> None:
     """Background task: email a verification link (valid 24h, best-effort)."""
     settings = get_settings()
     if not settings.resend_api_key:
         return
     link = f"{settings.app_base_url.rstrip('/')}/verify-email?token={raw_token}"
+    if continue_path:
+        link += f"&weiter={quote(continue_path, safe='')}"
     subject = "Ratslotse – E-Mail bestätigen"
     body = (
         "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"

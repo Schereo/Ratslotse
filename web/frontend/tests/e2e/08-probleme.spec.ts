@@ -49,6 +49,7 @@ test.describe("Öffentliche Problemkarte", () => {
     await page.goto("/probleme");
 
     await expect(page.getByRole("heading", { name: "Probleme in Oldenburg" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Problem melden" })).toBeVisible();
     await expect(page.locator(".problem-map-point")).toHaveCount(2);
     await expect(page.locator(".problem-map-facility")).toHaveCount(1);
     await expect(page.locator(".problem-map-route")).toHaveCount(1);
@@ -67,7 +68,7 @@ test.describe("Öffentliche Problemkarte", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Dunkler Fußweg am Kanal" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Alle" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("button", { name: "Karte" })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByText("Du willst später selbst etwas melden?")).toBeVisible();
+    await expect(page.getByText("Du willst selbst etwas melden?")).toBeVisible();
 
     await page.getByRole("button", { name: "Status" }).click();
     await expect(page).toHaveURL(/view=status/);
@@ -138,7 +139,7 @@ test.describe("Öffentliche Problemkarte", () => {
     await expect(page.getByRole("link", { name: "Quelle öffnen" })).toHaveAttribute("href", "https://example.invalid/fiktive-quelle");
     await expect(page.getByRole("link", { name: "Zur Problemkarte" })).toBeVisible();
     await expect(page.getByText(/kein amtlicher Bearbeitungsstand/i)).toBeVisible();
-    await expect(page.getByText("Du willst später selbst etwas melden?")).toBeVisible();
+    await expect(page.getByText("Du willst selbst etwas melden?")).toBeVisible();
   });
 
   test("erklärt ein nicht gefundenes Problem ohne Anmeldeschranke", async ({ page }) => {

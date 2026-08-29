@@ -136,15 +136,15 @@ und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 
 ### P2 — Privater geführter Meldeablauf
 
-- [ ] Zugang auf verifizierte Konten begrenzen.
-- [ ] Orts-/Bereichswahl und frühe Suche nach bestehenden Problemen umsetzen.
-- [ ] Kontrollierte Oberkategorien plus `Sonstiges kommunales Thema` bereitstellen.
-- [ ] Kategorienabhängige Mindestangaben und deterministische Validierung definieren.
-- [ ] Adaptiven Assistenten für knappe, ausreichende Angaben und einen neutralen deutschen Entwurf umsetzen.
-- [ ] Finalen Bestätigungsschritt mit verständlichem Datenschutzhinweis einbauen.
-- [ ] Keine Foto-Uploads oder Anhänge anbieten.
+- [x] Zugang auf verifizierte Konten begrenzen.
+- [x] Orts-/Bereichswahl und frühe Suche nach bestehenden Problemen umsetzen.
+- [x] Kontrollierte Oberkategorien plus `Sonstiges kommunales Thema` bereitstellen.
+- [x] Kategorienabhängige Mindestangaben und deterministische Validierung definieren.
+- [x] Durchgängigen adaptiven KI-Melde-Chat für knappe, ausreichende Angaben, kontrollierte Kategorie und einen bearbeitbaren neutralen deutschen Entwurf umsetzen.
+- [x] Finalen Bestätigungsschritt mit verständlichem Datenschutzhinweis einbauen.
+- [x] Keine Foto-Uploads oder Anhänge anbieten.
 
-**Fertig, wenn:** Eine verifizierte Person eine verwertbare Meldung mit wenigen Schritten als privaten Entwurf erstellen, prüfen und genau einmal absenden kann; fehlende Fakten werden erfragt und nicht erfunden.
+**Fertig, wenn:** Eine verifizierte Person bis zum vollständigen Entwurf nur mit dem Melde-Chat interagiert, fehlende Fakten erfragt statt erfunden werden und erst danach ein korrigierbares Schlussformular zur ausdrücklichen Prüfung und genau einmaligen privaten Absendung erscheint.
 
 ### P3 — Datenschutz- und Eignungsprüfung
 
@@ -152,7 +152,7 @@ und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 - [ ] Ungeeignete Fälle strukturiert erkennen und passende Hinweise für Notfälle, Straftaten, persönliche Vorwürfe und private Streitigkeiten zeigen.
 - [ ] Datenminimierte KI-Payloads, eigenständiges Eignungsurteil, Fehlerverhalten und Auditierbarkeit dokumentieren und testen.
 - [ ] Aufbewahrungs-, Konto-Lösch- und Rückzugsregeln rechtlich und technisch festlegen.
-- [ ] Rate Limits und Missbrauchsschutz für Assistent und Einreichung ergänzen.
+- [x] Rate Limits und Missbrauchsschutz für Assistent und Einreichung ergänzen.
 
 **Fertig, wenn:** Tests belegen, dass typische personenbezogene Inhalte den externen Anbieter nicht erreichen, jedes KI-Urteil privat auditiert wird, ungeeignete Anliegen sicher umgeleitet werden und ein fehlendes oder ausgefallenes Urteil weder Daten veröffentlicht noch Meldungen verliert.
 

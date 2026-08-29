@@ -7,6 +7,7 @@ import sys
 import tempfile
 from datetime import date, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -258,13 +259,20 @@ def test_configured_admin_gets_role_only_after_email_confirmation(client):
 
     with patch("app.routers.auth.send_email", side_effect=fake_send), \
          patch("app.routers.auth.get_settings", return_value=fake_settings):
-        r = client.post("/api/auth/register",
-                        json={"email": "admin@test.de", "password": "password123"})
+        r = client.post(
+            "/api/auth/register",
+            json={
+                "email": "admin@test.de",
+                "password": "password123",
+                "continue_path": "/probleme/melden",
+            },
+        )
     assert r.status_code == 201
     assert r.json()["role"] == "user" and r.json()["status"] == "pending"
     assert r.json()["email_verified"] is False
     # Unbestätigt: kein Admin-Zugriff.
     assert client.get("/api/admin/users").status_code == 403
+    assert "weiter=%2Fprobleme%2Fmelden" in sent["text"]
 
     token = re.search(r"token=([\w~.-]+)", sent["text"]).group(1)
     with patch("app.routers.auth.send_email", side_effect=fake_send), \
@@ -606,6 +614,21 @@ def test_reset_token_single_use(client):
 def test_delete_account_requires_password(client):
     _register(client)  # admin@test.de
     client.post("/api/topics", json={"name": "X", "description": "Testthema zum Mitlöschen."})
+    from buergerportal.reports import ReportStore
+
+    account = Store(NWZ_DB)
+    owner_id = int(account.get_web_user_by_email("admin@test.de")["id"])
+    account.close()
+    reports = ReportStore(NWZ_DB)
+    report_id = reports.create_draft(
+        reporter_id=owner_id,
+        text="Dieser private Entwurf muss mit dem Konto verschwinden.",
+        category="other",
+        category_detail="Kommunales Problem mit konkreter Auswirkung.",
+        scope_kind="citywide",
+        observed_at="2026-08-29T12:00:00+00:00",
+    )
+    reports.close()
     # Ohne bzw. mit falschem Passwort bleibt das Konto bestehen.
     assert client.request("DELETE", "/api/account").status_code == 422
     r = client.request("DELETE", "/api/account", json={"current_password": "falsches-passwort"})
@@ -618,6 +641,20 @@ def test_delete_account_requires_password(client):
     # Account + data are gone — a fresh login fails.
     fresh = TestClient(app)
     assert fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"}).status_code == 401
+    reports = ReportStore(NWZ_DB)
+    assert reports.get_owned_report(report_id, reporter_id=owner_id) is None
+    redacted = reports._conn.execute(
+        "SELECT reporter_id, draft_text, location_label, status FROM civic_reports WHERE id = ?",
+        (report_id,),
+    ).fetchone()
+    assert redacted["reporter_id"] != owner_id
+    assert dict(redacted) == {
+        "reporter_id": 9_000_000_000_000_000_000 + report_id,
+        "draft_text": "[gelöscht]",
+        "location_label": "",
+        "status": "withdrawn",
+    }
+    reports.close()
 
 
 # ---- council ----
@@ -5581,3 +5618,226 @@ def test_committees_bleibt_eine_reine_namensliste(client):
     kultur = body["details"][0]
     assert kultur["next_date"] is None and kultur["next_time"] is None
     assert kultur["decisions_year"] == 0
+
+
+def test_private_problem_report_flow_is_owner_scoped_and_exactly_once(client):
+    payload = {
+        "text": "In mehreren Stadtteilen fehlen ausreichend Betreuungsplätze.",
+        "category": "childcare",
+        "scope_kind": "citywide",
+        "location_label": "",
+        "latitude": None,
+        "longitude": None,
+        "observed_on": date.today().isoformat(),
+        "category_detail": "Betreuungsplätze fehlen regelmäßig über längere Zeit.",
+        "suggested_problem_id": None,
+        "client_token": "11111111-1111-4111-8111-111111111111",
+    }
+    assert client.post("/api/meldungen/entwuerfe", json=payload).status_code == 401
+
+    admin = TestClient(app)
+    _register(admin)
+    assert admin.post("/api/meldungen/entwuerfe", json=payload).status_code == 403
+
+    unverified = TestClient(app)
+    _register(unverified, email="unverified@test.de")
+    accounts = Store(NWZ_DB)
+    unverified_id = int(accounts.get_web_user_by_email("unverified@test.de")["id"])
+    accounts.set_email_verified(unverified_id, False)
+    accounts.close()
+    assert unverified.post("/api/meldungen/entwuerfe", json=payload).status_code == 403
+
+    bob = TestClient(app)
+    assert _register(bob, email="bob@test.de").json()["status"] == "active"
+    created = bob.post("/api/meldungen/entwuerfe", json=payload)
+    assert created.status_code == 201
+    report_id = created.json()["id"]
+    assert created.json()["status"] == "draft"
+    same_create = bob.post("/api/meldungen/entwuerfe", json=payload)
+    assert same_create.status_code == 201
+    assert same_create.json()["id"] == report_id
+    changed_create = bob.post(
+        "/api/meldungen/entwuerfe",
+        json={**payload, "text": "Andere Angaben mit demselben Entwurfsschlüssel sind gesperrt."},
+    )
+    assert changed_create.status_code == 409
+    assert "reporter_id" not in created.json()
+
+    other = TestClient(app)
+    assert _register(other, email="other@test.de").json()["status"] == "active"
+    assert other.get(f"/api/meldungen/{report_id}").status_code == 404
+    assert other.post(
+        f"/api/meldungen/{report_id}/absenden",
+        json={"confirmed_text": payload["text"]},
+    ).status_code == 404
+
+    submitted = bob.post(
+        f"/api/meldungen/{report_id}/absenden",
+        json={"confirmed_text": payload["text"]},
+    )
+    assert submitted.status_code == 200
+    assert submitted.json()["status"] == "submitted"
+    assert submitted.json()["confirmed_text"] == payload["text"]
+    repeated = bob.post(
+        f"/api/meldungen/{report_id}/absenden",
+        json={"confirmed_text": payload["text"]},
+    )
+    assert repeated.status_code == 200
+    changed_retry = bob.post(
+        f"/api/meldungen/{report_id}/absenden",
+        json={"confirmed_text": "Ein nachträglich veränderter Meldetext darf nicht durchgehen."},
+    )
+    assert changed_retry.status_code == 409
+
+    from buergerportal.reports import ReportStore
+    from buergerportal.store import ProblemStore
+
+    account_store = Store(NWZ_DB)
+    bob_id = int(account_store.get_web_user_by_email("bob@test.de")["id"])
+    account_store.close()
+    private = ReportStore(NWZ_DB)
+    assert len(private.get_owned_report(report_id, reporter_id=bob_id)["observations"]) == 1
+    private.close()
+
+    public = ProblemStore(NWZ_DB)
+    assert public.list_public_problems() == []
+    public.close()
+
+
+def test_problem_report_assistant_is_private_redacted_and_owner_limited(client):
+    payload = {
+        "category": "accessibility",
+        "scope_kind": "point",
+        # Selbst zusätzliche Client-Felder dürfen nicht in den Provider-Payload gelangen.
+        "location_label": "Theaterwall 23",
+        "latitude": 53.141,
+        "longitude": 8.207,
+        "observed_on": date.today().isoformat(),
+        "answers": [{
+            "question": "Welche Barriere besteht?",
+            "answer": (
+                "Mein Name ist Anna Beispiel. Frau Beispiel erreicht mich unter person@example.org oder 0441 123456. "
+                "An der Musterstraße 17 blockiert eine hohe Kante den Zugang."
+            ),
+        }],
+    }
+    assert client.post("/api/meldungen/assistenz", json=payload).status_code == 401
+
+    reporter = TestClient(app)
+    assert _register(reporter, email="hilfe@test.de").json()["status"] == "active"
+    captured: dict = {}
+
+    def complete(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({
+                "kind": "question",
+                "question": "Wie häufig verhindert die Kante den Zugang?",
+                "draft_text": None,
+            })))],
+            usage=None,
+        )
+
+    with patch("kern.llm.chat_complete", side_effect=complete):
+        response = reporter.post("/api/meldungen/assistenz", json=payload)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "kind": "question",
+        "question": "Wie häufig verhindert die Kante den Zugang?",
+        "draft_text": None,
+        "category": None,
+        "category_detail": None,
+        "redacted": True,
+    }
+    provider_payload = json.dumps(captured["messages"], ensure_ascii=False)
+    assert "person@example.org" not in provider_payload
+    assert "0441 123456" not in provider_payload
+    assert "Musterstraße 17" not in provider_payload
+    assert "Frau Beispiel" not in provider_payload
+    assert "Anna Beispiel" not in provider_payload
+    assert "latitude" not in provider_payload
+    assert "longitude" not in provider_payload
+    assert "location_label" not in provider_payload
+    assert "Theaterwall" not in provider_payload
+    assert date.today().isoformat() not in provider_payload
+    assert "[E-MAIL ENTFERNT]" in provider_payload
+    assert "[ADRESSE ENTFERNT] blockiert" in provider_payload
+    assert captured["_feature"] == "problem_meldeassistenz"
+
+
+def test_problem_report_assistant_drafts_and_classifies_after_follow_up(client):
+    reporter = TestClient(app)
+    assert _register(reporter, email="chat@test.de").json()["status"] == "active"
+    model_result = {
+        "kind": "ready",
+        "question": None,
+        "draft_text": (
+            "Der stufenlose Zugang ist durch eine dauerhaft hohe Kante blockiert. "
+            "Menschen mit Rollstuhl können den Eingang dadurch nicht selbstständig nutzen."
+        ),
+        "category": "accessibility",
+        "category_detail": "Eine hohe Kante verhindert täglich den stufenlosen Zugang.",
+    }
+    completion = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(model_result)))],
+        usage=None,
+    )
+
+    with patch("kern.llm.chat_complete", return_value=completion):
+        response = reporter.post("/api/meldungen/assistenz", json={
+            "category": None,
+            "scope_kind": "facility",
+            "answers": [
+                {"question": "Was hast du beobachtet?", "answer": "Am Eingang ist eine hohe Kante."},
+                {"question": "Welche Auswirkung hat das?", "answer": "Mit Rollstuhl kommt man nicht selbstständig hinein."},
+            ],
+        })
+
+    assert response.status_code == 200
+    assert response.json()["kind"] == "ready"
+    assert response.json()["category"] == "accessibility"
+    assert response.json()["category_detail"].startswith("Eine hohe Kante")
+
+
+def test_problem_report_api_validates_location_date_and_public_suggestion(client):
+    _register(client, email="bob@test.de")
+    base = {
+        "text": "Der Zugang ist an dieser Stelle nicht stufenlos nutzbar.",
+        "category": "accessibility",
+        "scope_kind": "point",
+        "location_label": "Theaterwall",
+        "latitude": 53.141,
+        "longitude": 8.207,
+        "observed_on": date.today().isoformat(),
+        "category_detail": "Die hohe Kante verhindert die stufenlose Nutzung.",
+        "suggested_problem_id": None,
+        "client_token": "22222222-2222-4222-8222-222222222222",
+    }
+    assert client.post("/api/meldungen/entwuerfe", json=base).status_code == 201
+    assert client.post(
+        "/api/meldungen/entwuerfe",
+        json={**base, "category_detail": "zu kurz"},
+    ).status_code == 422
+    assert client.post(
+        "/api/meldungen/entwuerfe",
+        json={**base, "latitude": None},
+    ).status_code == 422
+    assert client.post(
+        "/api/meldungen/entwuerfe",
+        json={**base, "observed_on": (date.today() + timedelta(days=1)).isoformat()},
+    ).status_code == 422
+    assert client.post(
+        "/api/meldungen/entwuerfe",
+        json={**base, "latitude": 52.52, "longitude": 13.405},
+    ).status_code == 422
+    missing_suggestion = client.post(
+        "/api/meldungen/entwuerfe",
+        json={
+            **base,
+            "suggested_problem_id": 999_999,
+            "client_token": "33333333-3333-4333-8333-333333333333",
+        },
+    )
+    assert missing_suggestion.status_code == 422
+    assert missing_suggestion.json()["detail"] == "Das vorgeschlagene Problem ist nicht öffentlich verfügbar."
