@@ -1,9 +1,11 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, CheckCircle2, ExternalLink, MapPin, MessageCircle, X } from "lucide-react";
 import type { PublicProblem, PublicProblemEvent } from "@/lib/types";
 import {
+  isProblemMappable,
   PROBLEM_ANGEBOT,
   PROBLEM_CONFIDENCE,
   PROBLEM_KATEGORIEN,
@@ -12,6 +14,11 @@ import {
   unabhaengigeMeldungen,
 } from "@/lib/probleme";
 import { Badge, Card, formatDate } from "@/components/ui";
+
+const ProblemMap = dynamic(
+  () => import("@/components/problem-map").then((module) => module.ProblemMap),
+  { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-xl border border-border bg-muted sm:h-80" /> },
+);
 
 export function PublicProblemDetail({
   problem,
@@ -76,6 +83,21 @@ export function PublicProblemDetail({
           </span>
         </div>
       </header>
+
+      {isProblemMappable(problem) && (
+        <section aria-labelledby={`problem-location-${problem.id}`}>
+          <SectionHeading id={`problem-location-${problem.id}`} className="mb-2 text-lg font-semibold text-foreground">
+            Ort
+          </SectionHeading>
+          <ProblemMap
+            problems={[problem]}
+            selectedId={problem.id}
+            onSelect={() => undefined}
+            interactive={false}
+            className="h-72 sm:h-80"
+          />
+        </section>
+      )}
 
       <Card className="p-4 sm:p-5">
         <div className="flex items-center gap-3">

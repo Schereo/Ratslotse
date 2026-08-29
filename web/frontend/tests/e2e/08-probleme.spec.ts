@@ -13,7 +13,19 @@ const summaries = VORSCHAU_PROBLEME.map((problem) => ({
   status: problem.status,
   frequency: problem.frequency,
 }));
-const response = { problems: summaries, total: summaries.length };
+const malformedLegacySummary = {
+  ...summaries[0],
+  id: 9099,
+  title: "Alte Route ohne Geometrie",
+  scope_kind: "route",
+  latitude: null,
+  longitude: null,
+  geometry: { type: "LineString" },
+};
+const response = {
+  problems: [...summaries, malformedLegacySummary],
+  total: summaries.length + 1,
+};
 
 test.describe("Öffentliche Problemkarte", () => {
   test.beforeEach(async ({ page }) => {
@@ -37,7 +49,23 @@ test.describe("Öffentliche Problemkarte", () => {
     await page.goto("/probleme");
 
     await expect(page.getByRole("heading", { name: "Probleme in Oldenburg" })).toBeVisible();
-    await expect(page.locator(".problem-map-pin")).toHaveCount(3);
+    await expect(page.locator(".problem-map-point")).toHaveCount(2);
+    await expect(page.locator(".problem-map-facility")).toHaveCount(1);
+    await expect(page.locator(".problem-map-route")).toHaveCount(1);
+    await expect(page.locator(".problem-map-area")).toHaveCount(1);
+    await expect(page.locator(".problem-map-citywide")).toHaveCount(0);
+    await expect(page.getByText("Ohne Geometrie")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Alte Route ohne Geometrie/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Alle" })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Mobilität & Verkehr" }).click();
+    await expect(page.getByRole("button", { name: "Mobilität & Verkehr" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".problem-map-facility")).toHaveCount(1);
+    await expect(page.locator(".problem-map-route")).toHaveCount(1);
+    await expect(page.locator(".problem-map-point")).toHaveCount(0);
+    await expect(page.locator(".problem-map-area")).toHaveCount(0);
+    await page.evaluate(() => window.history.pushState(null, "", "/probleme?problem=9001"));
+    await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Dunkler Fußweg am Kanal" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Alle" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("button", { name: "Karte" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByText("Du willst selbst etwas melden?")).toBeVisible();
 
@@ -45,9 +73,39 @@ test.describe("Öffentliche Problemkarte", () => {
     await expect(page).toHaveURL(/view=status/);
     await expect(page.getByRole("heading", { name: "Neu" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Geprüft" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Beispiel:/ })).toHaveCount(4);
-    await expect(page.getByLabel("Nach Thema filtern")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Beispiel:/ })).toHaveCount(6);
+    await expect(page.getByRole("button", { name: /Alte Route ohne Geometrie/ })).toBeVisible();
+    await expect(page.getByLabel("Kartenthemen")).toHaveCount(0);
     await expect(page.locator(".problem-frequency-dot.frequency-very_many")).toBeVisible();
+  });
+
+  test("wählt Routen auf der Karte und stadtweite Probleme nur im Board", async ({ page }) => {
+    await page.goto("/probleme");
+
+    await expect(page.locator(".problem-map-route-hit")).toHaveAttribute("stroke-width", "28");
+    await page.locator(".problem-map-route-hit").press("Enter");
+    await expect(page).toHaveURL(/problem=9005/);
+    await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Lücke im Radweg" })).toBeVisible();
+
+    await expect(page.getByRole("button", { name: /Zu wenig Betreuungsplätze/ })).toHaveCount(0);
+    await page.getByRole("button", { name: "Status" }).click();
+    await page.getByRole("button", { name: /Zu wenig Betreuungsplätze/ }).click();
+    await expect(page).toHaveURL(/problem=9004/);
+    await page.getByRole("link", { name: "Problemseite öffnen" }).click();
+    await expect(page).toHaveURL(/\/probleme\/9004$/);
+    await expect(page.getByLabel("Problemkarte von Oldenburg")).toHaveCount(0);
+
+    await page.goto("/probleme?problem=9004");
+    await expect(page).toHaveURL(/problem=9004.*view=status|view=status.*problem=9004/);
+    await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Zu wenig Betreuungsplätze" })).toBeVisible();
+    await page.getByRole("button", { name: "Karte" }).click();
+    await expect(page).not.toHaveURL(/problem=9004/);
+    await expect(page.getByLabel("Problemkarte von Oldenburg")).toBeVisible();
+
+    await page.goto("/probleme?problem=9004");
+    await page.evaluate(() => window.history.pushState(null, "", "/probleme?problem=9003"));
+    await expect(page).toHaveURL(/problem=9003/);
+    await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Barrierefreier Zugang zur Haltestelle fehlt" })).toBeVisible();
   });
 
   test("Auswahl im Status-Board ist verlinkbar", async ({ page }) => {
@@ -65,6 +123,9 @@ test.describe("Öffentliche Problemkarte", () => {
     await page.goto("/probleme/9001");
 
     await expect(page.getByRole("heading", { level: 1, name: "Beispiel: Dunkler Fußweg am Kanal" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ort" })).toBeVisible();
+    await expect(page.locator(".problem-map-point")).toHaveCount(1);
+    await expect(page.locator(".problem-map-icon")).not.toHaveAttribute("tabindex", "0");
     await expect(page.getByText("6 unabhängige Meldungen")).toBeVisible();
     await expect(page.getByText("Reporter*innen")).toHaveCount(0);
     await expect(page.getByText("Aktuelle Beobachtungen")).toHaveCount(0);

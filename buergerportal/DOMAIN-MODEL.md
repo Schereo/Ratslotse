@@ -17,9 +17,11 @@ Dieses Dokument konkretisiert die bestätigten Regeln aus `BUERGERPORTAL-BACKLOG
 - Zu jeder Moderationsentscheidung kann höchstens eine erneute Prüfung angefordert werden; Anfrage und Ergebnis bleiben privat nachvollziehbar.
 - Korrekturen an Kategorie oder geografischem Bezug halten vorherige und neue Werte strukturiert in der Moderationsentscheidung fest.
 - Ein Problemstatus beschreibt nur belegbare Tatsachen. Externe Aussagen benötigen Quelle und Rollenlabel.
-- Ein geografischer Bezug ist ein Punkt, eine Einrichtung, eine Route, ein Gebiet oder das gesamte Stadtgebiet. Nicht stadtweite Eingaben benötigen einen ungefähren Kartenpunkt innerhalb der konservativen Oldenburger Begrenzung; Punkte und Einrichtungen behalten diese Koordinaten als ihren privaten Ortsbezug.
+- Ein geografischer Bezug ist ein Punkt, eine Einrichtung, eine Route, ein Gebiet oder das gesamte Stadtgebiet. Nicht stadtweite private Eingaben benötigen einen ungefähren Kartenpunkt innerhalb der konservativen Oldenburger Begrenzung; der genaue Eingabeort bleibt privat.
 - Jeder neue Entwurf beantwortet zusätzlich eine kontrollierte, von der Oberkategorie abhängige Mindestfrage. Diese strukturierte Ergänzung bleibt privat.
-- Die konkrete Geometrie für Routen und Gebiete bleibt eine offene Produktentscheidung. Der private P0-Schnitt speichert dafür noch keine frei gewählte Geometriestruktur.
+- Öffentliche Routen verwenden GeoJSON `LineString`; öffentliche Gebiete verwenden `Polygon` oder `MultiPolygon`. Positionen folgen GeoJSON als `[Längengrad, Breitengrad]`, Linien benötigen mindestens zwei Positionen und Polygonringe sind geschlossen.
+- Der private Meldeschnitt speichert für Routen und Gebiete zunächst nur Kartenanker und Ortsbezeichnung, keine frei gezeichnete Geometrie. Die Moderation bestimmt die veröffentlichbare Form.
+- Stadtweite Probleme tragen keine künstliche Geometrie. Sensible Orte werden vor der Freigabe vergröbert oder nicht veröffentlicht.
 
 ## Lebensläufe
 
@@ -53,7 +55,7 @@ Konto-IDs werden bewusst nur referenziert und nicht durch einen datenbankweiten 
 | Moderieren, zuordnen, freigeben oder ablehnen | nein | nein | nein | ja |
 | Moderationsnotizen lesen | nein | nein | nur freigegebene Mitteilung | ja |
 
-Die HTTP-Schreibseite verwendet `require_active` für meldende Personen; die spätere Moderations-API muss `require_admin` verwenden. Eigentumsgebundene Ressourcenzugriffe gehen zusätzlich immer über eine eigentumsgebundene Store-Operation; eine erratene Meldungs-ID allein gewährt keinen Zugriff.
+Die HTTP-Schreibseite verwendet `require_verified_reporter` für aktive, verifizierte Nicht-Admin-Konten; die spätere Moderations-API muss `require_admin` verwenden. Eigentumsgebundene Ressourcenzugriffe gehen zusätzlich immer über eine eigentumsgebundene Store-Operation; eine erratene Meldungs-ID allein gewährt keinen Zugriff.
 
 ## Migrationen
 
