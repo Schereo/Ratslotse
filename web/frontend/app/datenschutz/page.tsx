@@ -54,7 +54,7 @@ export default function DatenschutzPage() {
               <li><strong>Themen &amp; Watchlists:</strong> die von dir angelegten Suchthemen und Benachrichtigungseinstellungen.</li>
               <li><strong>„Frag den Rat"-Anfragen:</strong> die von dir eingegebenen Fragen, um eine KI-Antwort zu erzeugen.</li>
               <li><strong>Private Problemmeldungen:</strong> Kontozuordnung, bestätigter Meldetext, Kategorie, ergänzende Mindestangabe, Beobachtungsdatum und der von dir markierte genaue geografische Bezug. Diese Rohdaten erscheinen nicht auf der öffentlichen Problemkarte; nach Prüfung kann ein moderierter, geeigneter geografischer Bezug Teil der öffentlichen Problemzusammenfassung werden.</li>
-              <li><strong>Optionale KI-Schreibhilfe:</strong> Nur wenn du sie ausdrücklich einschaltest, werden deine Antworten nach lokaler Entfernung von E-Mail-Adressen, Telefonnummern, genauen Adressen und mit Anrede genannten Namen an den KI-Dienst gesendet. Kontokennung, Kartenkoordinaten, eingegebener Ortsname und Beobachtungsdatum werden nicht übertragen. Der vollständige, von dir bestätigte Meldetext bleibt davon getrennt.</li>
+              <li><strong>KI-Melde-Chat:</strong> Erst wenn du den KI-Teil des Melde-Chats ausdrücklich startest, werden deine Antworten nach lokaler Entfernung von E-Mail-Adressen, Telefonnummern, genauen Adressen und mit Anrede genannten Namen an den KI-Dienst gesendet. Kontokennung, Kartenkoordinaten, eingegebener Ortsname und Beobachtungsdatum werden nicht übertragen. Der vollständige, von dir korrigierte und bestätigte Meldetext bleibt davon getrennt.</li>
               <li><strong>Server-Logs:</strong> beim Aufruf technische Daten wie IP-Adresse, Zeitpunkt und User-Agent — zur Sicherheit und Fehleranalyse.</li>
             </ul>
           </Section>
@@ -63,7 +63,7 @@ export default function DatenschutzPage() {
             <p>
               Bereitstellung von Konto, Themen, privaten Problemmeldungen und Benachrichtigungen zur Erfüllung des Nutzungsverhältnisses
               (Art. 6 Abs. 1 lit. b DSGVO). Server-Logs und Sicherheit auf Grundlage des berechtigten Interesses am
-              sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO). Die optionale externe KI-Schreibhilfe wird nur nach deiner ausdrücklichen Einwilligung verwendet (Art. 6 Abs. 1 lit. a DSGVO); du kannst stattdessen jederzeit ohne KI weiterschreiben.
+              sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO). Der externe KI-Teil des Melde-Chats wird erst nach deiner ausdrücklichen Einwilligung verwendet (Art. 6 Abs. 1 lit. a DSGVO). Vor der Aktivierung kannst du den Vorgang ohne Übermittlung deiner Antworten abbrechen.
             </p>
           </Section>
 
@@ -71,7 +71,7 @@ export default function DatenschutzPage() {
             <p>Zur Erbringung des Dienstes setze ich folgende Dienstleister ein:</p>
             <ul className="list-disc space-y-1 pl-5">
               <li><strong>Hosting:</strong> Hetzner Online GmbH (Serverstandort EU). Betrieb der Server und Verarbeitung von Server-Logs.</li>
-              <li><strong>KI-Verarbeitung (OpenRouter):</strong> „Frag den Rat"-Anfragen und – nur nach ausdrücklicher Aktivierung – lokal bereinigte Antworten der Problemmeldungs-Schreibhilfe werden an einen externen KI-Dienst übermittelt; dabei kann eine Übermittlung in ein Drittland erfolgen. Für die Schreibhilfe werden Anbieter ohne Training mit den Eingaben und mit Zero-Data-Retention bevorzugt. <strong>Bitte gib trotzdem keine personenbezogenen oder sensiblen Daten ein.</strong> Kontodaten, genauer Kartenbezug und die vollständige private Meldung werden nicht für die Schreibhilfe übertragen.</li>
+              <li><strong>KI-Verarbeitung (OpenRouter):</strong> „Frag den Rat"-Anfragen und – nur nach ausdrücklicher Aktivierung – lokal bereinigte Antworten des KI-Melde-Chats werden an einen externen KI-Dienst übermittelt; dabei kann eine Übermittlung in ein Drittland erfolgen. Für den Melde-Chat werden Anbieter ohne Training mit den Eingaben und mit Zero-Data-Retention bevorzugt. <strong>Bitte gib trotzdem keine personenbezogenen oder sensiblen Daten ein.</strong> Kontodaten, genauer Kartenbezug und die vollständige korrigierte private Meldung werden nicht für den Chat übertragen.</li>
               <li><strong>Resend:</strong> Versand von Benachrichtigungs-E-Mails (nur, wenn du E-Mail als Kanal wählst).</li>
               <li><strong>CARTO:</strong> Die Kartendarstellung lädt Kartenkacheln von CARTO; dabei wird deine IP-Adresse an CARTO übermittelt.</li>
               <li><strong>Apple / Google (Push):</strong> App-Benachrichtigungen werden über den Push-Dienst des Betriebssystems (APNs bzw. FCM) zugestellt — nur, wenn du Push als Kanal aktivierst.</li>

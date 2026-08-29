@@ -140,11 +140,11 @@ und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 - [x] Orts-/Bereichswahl und frühe Suche nach bestehenden Problemen umsetzen.
 - [x] Kontrollierte Oberkategorien plus `Sonstiges kommunales Thema` bereitstellen.
 - [x] Kategorienabhängige Mindestangaben und deterministische Validierung definieren.
-- [x] Optionalen adaptiven KI-Assistenten für knappe, ausreichende Angaben und einen bearbeitbaren neutralen deutschen Entwurf umsetzen.
+- [x] Durchgängigen adaptiven KI-Melde-Chat für knappe, ausreichende Angaben, kontrollierte Kategorie und einen bearbeitbaren neutralen deutschen Entwurf umsetzen.
 - [x] Finalen Bestätigungsschritt mit verständlichem Datenschutzhinweis einbauen.
 - [x] Keine Foto-Uploads oder Anhänge anbieten.
 
-**Fertig, wenn:** Eine verifizierte Person eine verwertbare Meldung mit wenigen Schritten als privaten Entwurf erstellen, prüfen und genau einmal absenden kann; fehlende Fakten werden erfragt und nicht erfunden.
+**Fertig, wenn:** Eine verifizierte Person bis zum vollständigen Entwurf nur mit dem Melde-Chat interagiert, fehlende Fakten erfragt statt erfunden werden und erst danach ein korrigierbares Schlussformular zur ausdrücklichen Prüfung und genau einmaligen privaten Absendung erscheint.
 
 ### P3 — Datenschutz- und Eignungsprüfung
 

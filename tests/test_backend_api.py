@@ -5746,6 +5746,8 @@ def test_problem_report_assistant_is_private_redacted_and_owner_limited(client):
         "kind": "question",
         "question": "Wie häufig verhindert die Kante den Zugang?",
         "draft_text": None,
+        "category": None,
+        "category_detail": None,
         "redacted": True,
     }
     provider_payload = json.dumps(captured["messages"], ensure_ascii=False)
@@ -5762,6 +5764,40 @@ def test_problem_report_assistant_is_private_redacted_and_owner_limited(client):
     assert "[E-MAIL ENTFERNT]" in provider_payload
     assert "[ADRESSE ENTFERNT] blockiert" in provider_payload
     assert captured["_feature"] == "problem_meldeassistenz"
+
+
+def test_problem_report_assistant_drafts_and_classifies_after_follow_up(client):
+    reporter = TestClient(app)
+    assert _register(reporter, email="chat@test.de").json()["status"] == "active"
+    model_result = {
+        "kind": "ready",
+        "question": None,
+        "draft_text": (
+            "Der stufenlose Zugang ist durch eine dauerhaft hohe Kante blockiert. "
+            "Menschen mit Rollstuhl können den Eingang dadurch nicht selbstständig nutzen."
+        ),
+        "category": "accessibility",
+        "category_detail": "Eine hohe Kante verhindert täglich den stufenlosen Zugang.",
+    }
+    completion = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(model_result)))],
+        usage=None,
+    )
+
+    with patch("kern.llm.chat_complete", return_value=completion):
+        response = reporter.post("/api/meldungen/assistenz", json={
+            "category": None,
+            "scope_kind": "facility",
+            "answers": [
+                {"question": "Was hast du beobachtet?", "answer": "Am Eingang ist eine hohe Kante."},
+                {"question": "Welche Auswirkung hat das?", "answer": "Mit Rollstuhl kommt man nicht selbstständig hinein."},
+            ],
+        })
+
+    assert response.status_code == 200
+    assert response.json()["kind"] == "ready"
+    assert response.json()["category"] == "accessibility"
+    assert response.json()["category_detail"].startswith("Eine hohe Kante")
 
 
 def test_problem_report_api_validates_location_date_and_public_suggestion(client):

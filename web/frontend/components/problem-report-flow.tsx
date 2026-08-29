@@ -2,9 +2,10 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, CheckCircle2, ChevronLeft, ChevronRight, Loader2, MapPin, Send, ShieldCheck, Sparkles } from "lucide-react";
+import { Bot, CheckCircle2, Loader2, MapPin, Send, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import { ApiError, api } from "@/lib/api";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import {
@@ -24,40 +25,34 @@ const LocationPicker = dynamic(
 );
 
 const SCOPES: { value: ProblemScope; label: string; hint: string }[] = [
-  { value: "point", label: "Ein Ort", hint: "zum Beispiel eine Querung oder Kreuzung" },
-  { value: "facility", label: "Einrichtung", hint: "zum Beispiel Schule, Kita oder Haltestelle" },
-  { value: "route", label: "Straße oder Strecke", hint: "ein Abschnitt oder eine Verbindung" },
+  { value: "point", label: "Ein Ort", hint: "Querung, Kreuzung oder einzelner Platz" },
+  { value: "facility", label: "Einrichtung", hint: "Schule, Kita, Haltestelle oder Gebäude" },
+  { value: "route", label: "Straße oder Strecke", hint: "Abschnitt oder Verbindung" },
   { value: "area", label: "Gebiet", hint: "Quartier, Stadtteil oder größerer Bereich" },
   { value: "citywide", label: "Ganz Oldenburg", hint: "kein einzelner Ort wäre ehrlich" },
 ];
 
-const CATEGORY_QUESTIONS: Record<string, string> = {
-  mobility: "Was genau erschwert die Fortbewegung – und für wen?",
-  public_space: "Was fehlt oder funktioniert im öffentlichen Raum nicht?",
-  education: "Welche konkrete Auswirkung hat das Problem im Schulalltag?",
-  childcare: "Welche Betreuung fehlt, wann und in welchem Umfang?",
-  housing: "Welche kommunal beeinflussbare Wohnsituation beobachtest du?",
-  environment: "Was ist vor Ort sichtbar und seit wann?",
-  accessibility: "Welche Barriere besteht und wer kann den Ort dadurch nicht gut nutzen?",
-  administration: "Welcher kommunale Ablauf funktioniert konkret nicht?",
-  other: "Was sollte die Stadt beeinflussen können und was beobachtest du konkret?",
-};
-
+const STAGES = ["scope", "location", "match", "date", "consent", "chat", "review"] as const;
+type ChatStage = (typeof STAGES)[number];
 type Position = { latitude: number; longitude: number } | null;
-
 type AssistantAnswer = { question: string; answer: string };
+type ReportCategory = keyof typeof PROBLEM_KATEGORIEN;
+
 type AssistantResponse = {
   kind: "question" | "ready";
   question: string | null;
   draft_text: string | null;
+  category: ReportCategory | null;
+  category_detail: string | null;
   redacted: boolean;
 };
 
 type SavedReportForm = {
   ownerId: number;
   savedAt: number;
-  step: number;
-  scope: ProblemScope;
+  stage: ChatStage;
+  step?: number;
+  scope: ProblemScope | null;
   locationLabel: string;
   position: Position;
   category: string;
@@ -68,10 +63,11 @@ type SavedReportForm = {
   noMatchingProblem: boolean;
   draftId: number | null;
   clientToken: string;
-  assistantActive: boolean;
   assistantConsent: boolean;
   assistantQuestion: string;
+  assistantInput: string;
   assistantAnswers: AssistantAnswer[];
+  assistantRedacted: boolean;
 };
 
 type PrivateReport = {
@@ -83,6 +79,11 @@ type PrivateReport = {
 function todayISO(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function displayDate(value: string): string {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("de-DE", { dateStyle: "long" }).format(new Date(`${value}T12:00:00`));
 }
 
 function segmentNear(
@@ -149,13 +150,39 @@ function nearby(problem: PublicProblemSummary, scope: ProblemScope, position: Po
   return Boolean(labelMatch || coordinateMatch);
 }
 
+function BotBubble({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        <Bot className="h-4 w-4" aria-hidden />
+      </span>
+      <div className="max-w-[88%] rounded-2xl rounded-tl-sm border border-border bg-card px-4 py-3 text-sm leading-relaxed text-foreground shadow-sm">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function UserBubble({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-start justify-end gap-2.5">
+      <div className="max-w-[88%] rounded-2xl rounded-tr-sm bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground">
+        {children}
+      </div>
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <UserRound className="h-4 w-4" aria-hidden />
+      </span>
+    </div>
+  );
+}
+
 export function ProblemReportFlow() {
   const { user } = useAuth();
-  const [step, setStep] = useState(0);
-  const [scope, setScope] = useState<ProblemScope>("point");
+  const [stage, setStage] = useState<ChatStage>("scope");
+  const [scope, setScope] = useState<ProblemScope | null>(null);
   const [locationLabel, setLocationLabel] = useState("");
   const [position, setPosition] = useState<Position>(null);
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState<string>("");
   const [categoryDetail, setCategoryDetail] = useState("");
   const [text, setText] = useState("");
   const [observedOn, setObservedOn] = useState(todayISO());
@@ -166,16 +193,17 @@ export function ProblemReportFlow() {
   const [clientToken, setClientToken] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const [submitted, setSubmitted] = useState<PrivateReport | null>(null);
-  const [assistantActive, setAssistantActive] = useState(false);
   const [assistantConsent, setAssistantConsent] = useState(false);
-  const [assistantQuestion, setAssistantQuestion] = useState("");
+  const [assistantQuestion, setAssistantQuestion] = useState("Erzähl mir kurz: Was hast du selbst beobachtet?");
   const [assistantInput, setAssistantInput] = useState("");
   const [assistantAnswers, setAssistantAnswers] = useState<AssistantAnswer[]>([]);
   const [assistantRedacted, setAssistantRedacted] = useState(false);
   const textRef = useRef(text);
-  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
-  const previousStepRef = useRef(step);
+  const stageHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousStageRef = useRef(stage);
   textRef.current = text;
+
+  const stageAtLeast = (candidate: ChatStage) => STAGES.indexOf(stage) >= STAGES.indexOf(candidate);
 
   useEffect(() => {
     try {
@@ -186,35 +214,35 @@ export function ProblemReportFlow() {
           typeof saved.savedAt !== "number"
           || Date.now() - saved.savedAt > 30 * 60 * 1_000
           || saved.ownerId !== user?.id
-        ) {
-          throw new Error("Gespeicherter Meldeentwurf ist abgelaufen oder gehört zu einem anderen Konto.");
+        ) throw new Error("Ungültiger Meldeentwurf");
+        if (saved.stage && STAGES.includes(saved.stage)) {
+          setStage(saved.stage);
+        } else if (saved.step === 2) {
+          setStage("review");
+        } else if (saved.step === 1) {
+          setStage("chat");
         }
-        if (saved.step === 0 || saved.step === 1 || saved.step === 2) setStep(saved.step);
-        if (SCOPES.some((item) => item.value === saved.scope)) setScope(saved.scope!);
+        if (saved.scope === null || SCOPES.some((item) => item.value === saved.scope)) setScope(saved.scope ?? null);
         if (typeof saved.locationLabel === "string") setLocationLabel(saved.locationLabel);
         if (saved.position === null || (
-          typeof saved.position?.latitude === "number"
-          && typeof saved.position?.longitude === "number"
+          typeof saved.position?.latitude === "number" && typeof saved.position?.longitude === "number"
         )) setPosition(saved.position ?? null);
         if (typeof saved.category === "string") setCategory(saved.category);
         if (typeof saved.categoryDetail === "string") setCategoryDetail(saved.categoryDetail);
         if (typeof saved.text === "string") setText(saved.text);
         if (typeof saved.observedOn === "string") setObservedOn(saved.observedOn);
-        if (saved.suggestedProblem && typeof saved.suggestedProblem.id === "number") {
-          setSuggestedProblem(saved.suggestedProblem);
-        }
+        if (saved.suggestedProblem && typeof saved.suggestedProblem.id === "number") setSuggestedProblem(saved.suggestedProblem);
         setNoMatchingProblem(saved.noMatchingProblem === true);
         if (typeof saved.draftId === "number") setDraftId(saved.draftId);
-        setAssistantActive(saved.assistantActive === true);
         setAssistantConsent(saved.assistantConsent === true);
-        if (typeof saved.assistantQuestion === "string") setAssistantQuestion(saved.assistantQuestion);
+        if (typeof saved.assistantQuestion === "string" && saved.assistantQuestion) setAssistantQuestion(saved.assistantQuestion);
+        if (typeof saved.assistantInput === "string") setAssistantInput(saved.assistantInput);
         if (Array.isArray(saved.assistantAnswers)) {
           setAssistantAnswers(saved.assistantAnswers.filter((answer): answer is AssistantAnswer =>
             typeof answer?.question === "string" && typeof answer?.answer === "string"));
         }
-        setClientToken(typeof saved.clientToken === "string" && saved.clientToken
-          ? saved.clientToken
-          : crypto.randomUUID());
+        setAssistantRedacted(saved.assistantRedacted === true);
+        setClientToken(typeof saved.clientToken === "string" && saved.clientToken ? saved.clientToken : crypto.randomUUID());
       } else {
         const recovered = entwurfAbholen("private-problemmeldung");
         if (recovered) setText(recovered);
@@ -229,12 +257,11 @@ export function ProblemReportFlow() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!hydrated || submitted) return;
-    if (!user) return;
+    if (!hydrated || submitted || !user) return;
     const snapshot: SavedReportForm = {
       ownerId: user.id,
       savedAt: Date.now(),
-      step,
+      stage,
       scope,
       locationLabel,
       position,
@@ -246,51 +273,79 @@ export function ProblemReportFlow() {
       noMatchingProblem,
       draftId,
       clientToken,
-      assistantActive,
       assistantConsent,
       assistantQuestion,
+      assistantInput,
       assistantAnswers,
+      assistantRedacted,
     };
     try {
       sessionStorage.setItem(PROBLEM_REPORT_DRAFT_STORAGE, JSON.stringify(snapshot));
       scheduleProblemReportDraftExpiry();
-    } catch { /* optional */ }
+    } catch { /* session recovery is optional */ }
   }, [
-    hydrated, submitted, step, scope, locationLabel, position, category,
+    hydrated, submitted, user, stage, scope, locationLabel, position, category,
     categoryDetail, text, observedOn, suggestedProblem, noMatchingProblem,
-    draftId, clientToken, user, assistantActive, assistantConsent,
-    assistantQuestion, assistantAnswers,
+    draftId, clientToken, assistantConsent, assistantQuestion, assistantInput,
+    assistantAnswers, assistantRedacted,
   ]);
 
   useEffect(() => {
-    if (previousStepRef.current === step) return;
-    previousStepRef.current = step;
-    stepHeadingRef.current?.focus();
-  }, [step]);
+    if (!hydrated) return;
+    if (scope === null && stage !== "scope") {
+      setStage("scope");
+    } else if (
+      scope !== null
+      && scope !== "citywide"
+      && STAGES.indexOf(stage) >= STAGES.indexOf("match")
+      && (locationLabel.trim().length < 2 || position === null)
+    ) {
+      setStage("location");
+    }
+  }, [hydrated, scope, stage, locationLabel, position]);
+
+  useEffect(() => {
+    if (previousStageRef.current === stage) return;
+    previousStageRef.current = stage;
+    stageHeadingRef.current?.focus();
+  }, [stage]);
 
   const publicProblems = useQuery({
     queryKey: ["public-problems-for-report"],
     queryFn: () => api.get<ProblemListResponse>("/probleme"),
     staleTime: 60_000,
+    retry: 1,
   });
-  const suggestions = useMemo(
-    () => (publicProblems.data?.problems ?? [])
+  const suggestions = useMemo(() => {
+    if (!scope) return [];
+    return (publicProblems.data?.problems ?? [])
       .filter((problem) => nearby(problem, scope, position, locationLabel))
-      .slice(0, 3),
-    [publicProblems.data, scope, position, locationLabel],
-  );
+      .slice(0, 3);
+  }, [publicProblems.data, scope, position, locationLabel]);
 
-  const locationComplete = scope === "citywide"
-    || (locationLabel.trim().length >= 2 && position !== null);
-  const locationReady = locationComplete && (
-    publicProblems.isError
-    || (publicProblems.isSuccess && (suggestedProblem !== null || noMatchingProblem))
-  );
-  const detailsComplete = category in PROBLEM_KATEGORIEN
-    && categoryDetail.trim().length >= 10
-    && text.trim().length >= 20
-    && observedOn.length > 0
-    && observedOn <= todayISO();
+  const assistant = useMutation({
+    mutationFn: (answers: AssistantAnswer[]) => api.post<AssistantResponse>("/meldungen/assistenz", {
+      category: category in PROBLEM_KATEGORIEN ? category : null,
+      scope_kind: scope,
+      answers,
+    }),
+    onSuccess: (result, answers) => {
+      setAssistantAnswers(answers);
+      setAssistantInput("");
+      setAssistantRedacted((value) => value || result.redacted);
+      if (result.kind === "question" && result.question) {
+        setAssistantQuestion(result.question);
+        return;
+      }
+      if (result.kind === "ready" && result.draft_text && result.category && result.category_detail) {
+        setCategory(result.category);
+        setCategoryDetail(result.category_detail);
+        setText(result.draft_text);
+        setStage("review");
+      }
+    },
+  });
+
   const confirmationSnapshot = JSON.stringify({
     scope,
     locationLabel: locationLabel.trim(),
@@ -302,30 +357,17 @@ export function ProblemReportFlow() {
     suggestedProblemId: suggestedProblem?.id ?? null,
   });
   const confirmed = confirmedText === confirmationSnapshot;
-
-  const assistant = useMutation({
-    mutationFn: (answers: AssistantAnswer[]) => api.post<AssistantResponse>("/meldungen/assistenz", {
-      category,
-      scope_kind: scope,
-      answers,
-    }),
-    onSuccess: (result, answers) => {
-      setAssistantAnswers(answers);
-      setAssistantInput("");
-      setAssistantRedacted((value) => value || result.redacted);
-      setCategoryDetail(answers.map((answer) => answer.answer.trim()).join(" ").slice(0, 500));
-      if (result.kind === "question" && result.question) {
-        setAssistantQuestion(result.question);
-      } else if (result.kind === "ready" && result.draft_text) {
-        setText(result.draft_text);
-        setAssistantActive(false);
-        setAssistantQuestion("");
-      }
-    },
-  });
+  const reviewComplete = scope !== null
+    && (scope === "citywide" || (locationLabel.trim().length >= 2 && position !== null))
+    && category in PROBLEM_KATEGORIEN
+    && categoryDetail.trim().length >= 10
+    && text.trim().length >= 20
+    && observedOn.length > 0
+    && observedOn <= todayISO();
 
   const submit = useMutation({
     mutationFn: async () => {
+      if (!scope) throw new ApiError(422, "Der räumliche Bezug fehlt.");
       let id = draftId;
       if (id === null) {
         const draft = await api.post<PrivateReport>("/meldungen/entwuerfe", {
@@ -343,9 +385,7 @@ export function ProblemReportFlow() {
         id = draft.id;
         setDraftId(id);
       }
-      return api.post<PrivateReport>(`/meldungen/${id}/absenden`, {
-        confirmed_text: text.trim(),
-      });
+      return api.post<PrivateReport>(`/meldungen/${id}/absenden`, { confirmed_text: text.trim() });
     },
     onSuccess: (report) => {
       clearProblemReportDraft();
@@ -353,24 +393,23 @@ export function ProblemReportFlow() {
     },
   });
 
-  const resetAssistant = () => {
-    setAssistantActive(false);
-    setAssistantConsent(false);
-    setAssistantQuestion("");
-    setAssistantInput("");
-    setAssistantAnswers([]);
-    setAssistantRedacted(false);
-    assistant.reset();
-  };
-
   const chooseScope = (next: ProblemScope) => {
     setScope(next);
     setSuggestedProblem(null);
     setNoMatchingProblem(false);
     if (next === "citywide") {
-      setPosition(null);
       setLocationLabel("");
+      setPosition(null);
+      setStage("match");
+    } else {
+      setStage("location");
     }
+  };
+
+  const finishMatch = (problem: PublicProblemSummary | null) => {
+    setSuggestedProblem(problem);
+    setNoMatchingProblem(problem === null);
+    setStage("date");
   };
 
   if (user?.role === "admin") {
@@ -384,7 +423,7 @@ export function ProblemReportFlow() {
   }
 
   if (!hydrated) {
-    return <Card className="mx-auto h-48 max-w-3xl animate-pulse bg-muted" aria-label="Meldeentwurf wird vorbereitet" />;
+    return <Card className="mx-auto h-48 max-w-3xl animate-pulse bg-muted" aria-label="Melde-Chat wird vorbereitet" />;
   }
 
   if (submitted) {
@@ -405,374 +444,347 @@ export function ProblemReportFlow() {
     );
   }
 
+  if (stage === "review") {
+    return (
+      <div className="mx-auto max-w-3xl space-y-5">
+        <header>
+          <p className="flex items-center gap-1.5 text-sm font-medium text-primary"><Sparkles className="h-4 w-4" aria-hidden /> Entwurf aus dem Melde-Chat</p>
+          <h1 ref={stageHeadingRef} tabIndex={-1} className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground outline-none sm:text-[30px]">Prüfen, korrigieren, freigeben</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Die KI schlägt nur vor. Du entscheidest über jedes Wort und sendest erst nach deiner Bestätigung.</p>
+        </header>
+
+        <Card className="space-y-5 p-4 sm:p-6">
+          <div className="flex flex-wrap gap-2">
+            <Badge>{scope ? PROBLEM_SCOPE[scope] : "Ort fehlt"}</Badge>
+            {scope !== "citywide" && locationLabel && <Badge>{locationLabel.trim()}</Badge>}
+            {suggestedProblem && <Badge>passt möglicherweise zu „{suggestedProblem.title}“</Badge>}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="report-category">Thema</Label>
+              <select
+                id="report-category"
+                value={category}
+                disabled={draftId !== null}
+                onChange={(event) => setCategory(event.target.value)}
+                className="flex h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm"
+              >
+                <option value="">Bitte wählen</option>
+                {Object.entries(PROBLEM_KATEGORIEN).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="report-observed-on">Zuletzt selbst beobachtet</Label>
+              <Input id="report-observed-on" type="date" value={observedOn} max={todayISO()} disabled={draftId !== null} onChange={(event) => setObservedOn(event.target.value)} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="report-location-label">Ort</Label>
+              <button
+                type="button"
+                disabled={draftId !== null}
+                className="text-xs font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => {
+                  setSuggestedProblem(null);
+                  setNoMatchingProblem(false);
+                  setStage("scope");
+                }}
+              >
+                Ort ändern
+              </button>
+            </div>
+            <Input
+              id="report-location-label"
+              value={scope === "citywide" ? "Ganz Oldenburg" : locationLabel}
+              disabled={scope === "citywide"}
+              readOnly
+              maxLength={160}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="report-category-detail">Wichtigste konkrete Beobachtung</Label>
+            <Textarea id="report-category-detail" value={categoryDetail} disabled={draftId !== null} onChange={(event) => setCategoryDetail(event.target.value)} minLength={10} maxLength={500} rows={3} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="report-confirmed-text">Finaler Meldetext</Label>
+            <Textarea
+              id="report-confirmed-text"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              minLength={20}
+              maxLength={2_000}
+              rows={8}
+              disabled={draftId !== null}
+            />
+            <p className="text-right text-xs tabular-nums text-muted-foreground">{text.trim().length}/2000</p>
+          </div>
+
+          <label className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm leading-relaxed text-foreground">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              disabled={!reviewComplete}
+              onChange={(event) => setConfirmedText(event.target.checked ? confirmationSnapshot : null)}
+              className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+            />
+            <span>
+              Ich habe Ort, Einordnung und Meldetext selbst geprüft. Der genaue Eingabeort und die private Meldung bleiben nichtöffentlich. Nur eine später menschlich freigegebene Zusammenfassung kann öffentlich erscheinen. <Link href="/datenschutz" className="font-medium text-primary hover:underline">Datenschutz</Link>
+            </span>
+          </label>
+          <div className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            Keine Fotos oder Anhänge. Bitte entferne Namen, Kontaktdaten, Notfälle, Straftaten und persönliche Vorwürfe.
+          </div>
+          {submit.isError && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
+              {submit.error instanceof ApiError ? submit.error.message : "Die Meldung konnte nicht abgesendet werden."}
+              {draftId !== null && " Der private Entwurf ist gesichert; du kannst erneut absenden."}
+            </p>
+          )}
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="signal"
+              className="min-h-11 px-5 text-base"
+              disabled={!confirmed || !reviewComplete || submit.isPending}
+              onClick={() => submit.mutate()}
+            >
+              {submit.isPending ? "Wird privat gesendet…" : draftId !== null ? "Erneut absenden" : "Geprüfte Meldung privat absenden"}
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  const selectedScope = scope ? SCOPES.find((item) => item.value === scope) : null;
+  const locationComplete = scope === "citywide" || (locationLabel.trim().length >= 2 && position !== null);
+
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <header>
-        <p className="text-sm font-medium text-primary">Private Meldung</p>
-        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground sm:text-[30px]">Problem melden</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Drei kurze Schritte. Keine Fotos, keine öffentliche Rohmeldung.</p>
+        <p className="flex items-center gap-1.5 text-sm font-medium text-primary"><Sparkles className="h-4 w-4" aria-hidden /> KI-gestützter Melde-Chat</p>
+        <h1 ref={stageHeadingRef} tabIndex={-1} className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground outline-none sm:text-[30px]">Problem melden</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Antworte im Chat. Sobald die Angaben reichen, erscheint dein korrigierbarer Entwurf.</p>
       </header>
 
-      <ol className="grid grid-cols-3 gap-2" aria-label="Fortschritt">
-        {["Ort", "Beobachtung", "Prüfen"].map((label, index) => (
-          <li key={label} className={cn(
-            "rounded-lg border px-2 py-2 text-center text-xs font-medium",
-            index === step ? "border-primary bg-primary/5 text-primary" : index < step ? "border-emerald-300 text-emerald-700 dark:text-emerald-300" : "border-border text-muted-foreground",
-          )} aria-current={index === step ? "step" : undefined}>
-            {index < step && <Check className="mr-1 inline h-3.5 w-3.5" aria-hidden />}{label}
-          </li>
-        ))}
-      </ol>
-
-      <Card className="p-4 sm:p-6">
-        {step === 0 && (
-          <section aria-labelledby="report-location-heading" className="space-y-5">
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border bg-muted/35 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground"><Bot className="h-4 w-4" aria-hidden /></span>
             <div>
-              <h2 ref={stepHeadingRef} tabIndex={-1} id="report-location-heading" className="text-lg font-semibold text-foreground outline-none">Wo besteht das Problem?</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Wähle den räumlichen Bezug so genau wie nötig.</p>
+              <p className="text-sm font-semibold text-foreground">Ratslotse Meldehilfe</p>
+              <p className="text-xs text-muted-foreground">fragt nach, erfindet nichts</p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2" role="group" aria-label="Räumlicher Bezug">
+          </div>
+          <Badge>{stage === "chat" ? "im Gespräch" : "Angaben sammeln"}</Badge>
+        </div>
+
+        <div className="space-y-4 bg-muted/15 p-4 sm:p-6" aria-live="polite">
+          <BotBubble>
+            Hallo! Ich helfe dir, aus deiner Beobachtung eine klare private Meldung zu machen. Zuerst: <strong>Welchen räumlichen Bezug hat das Problem?</strong>
+          </BotBubble>
+
+          {stage === "scope" && (
+            <div className="ml-10 grid gap-2 sm:grid-cols-2" role="group" aria-label="Räumlicher Bezug">
               {SCOPES.map((item) => (
                 <button
                   key={item.value}
                   type="button"
-                  aria-pressed={scope === item.value}
                   onClick={() => chooseScope(item.value)}
-                  className={cn(
-                    "rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    scope === item.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
-                  )}
+                  className="rounded-xl border border-border bg-card p-3 text-left transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="block text-sm font-semibold text-foreground">{item.label}</span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">{item.hint}</span>
                 </button>
               ))}
             </div>
-            {scope !== "citywide" && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="report-location-label">Ort kurz benennen</Label>
-                  <Input
-                    id="report-location-label"
-                    value={locationLabel}
-                    maxLength={160}
-                    onChange={(event) => {
-                      setLocationLabel(event.target.value);
-                      setSuggestedProblem(null);
-                      setNoMatchingProblem(false);
-                    }}
-                    placeholder="z. B. Theaterwall an der Querung"
-                    autoComplete="street-address"
-                  />
-                </div>
-                <LocationPicker value={position} onChange={(next) => {
-                  setPosition(next);
-                  setSuggestedProblem(null);
-                  setNoMatchingProblem(false);
-                }} />
-              </>
-            )}
+          )}
 
-            {locationComplete && (
-              <div className="rounded-xl border border-border bg-muted/35 p-3" aria-live="polite">
-                <h3 className="text-sm font-semibold text-foreground">Schon öffentlich sichtbar?</h3>
-                {publicProblems.isLoading ? (
-                  <p className="mt-2 text-sm text-muted-foreground">Öffentliche Probleme werden verglichen…</p>
-                ) : publicProblems.isError ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground" role="status">
-                    <span>Der öffentliche Vergleich ist gerade nicht erreichbar. Deine private Meldung ist davon nicht betroffen.</span>
-                    <Button type="button" size="sm" variant="secondary" onClick={() => void publicProblems.refetch()}>
-                      Erneut versuchen
+          {scope && scope !== "citywide" && stageAtLeast("location") && <UserBubble>{selectedScope?.label}</UserBubble>}
+
+          {scope && scope !== "citywide" && stageAtLeast("location") && (
+            <>
+              <BotBubble>Wie heißt der Ort? Benenne ihn kurz und markiere die ungefähre Lage auf der Karte.</BotBubble>
+              {stage === "location" ? (
+                <div className="ml-10 space-y-3 rounded-2xl border border-border bg-card p-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="report-location-label">Ort kurz benennen</Label>
+                    <Input
+                      id="report-location-label"
+                      value={locationLabel}
+                      maxLength={160}
+                      onChange={(event) => setLocationLabel(event.target.value)}
+                      placeholder="z. B. Theaterwall an der Querung"
+                      autoComplete="street-address"
+                    />
+                  </div>
+                  <LocationPicker value={position} onChange={setPosition} />
+                  <div className="flex justify-end">
+                    <Button type="button" disabled={!locationComplete} onClick={() => setStage("match")}>
+                      Ort übernehmen <Send className="h-4 w-4" aria-hidden />
                     </Button>
                   </div>
-                ) : (
-                  <>
-                    <p className="mt-1 text-xs text-muted-foreground">Wenn eines passt, schlagen wir diese Zuordnung vor. Ein Mensch prüft sie später.</p>
-                    {suggestions.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {suggestions.map((problem) => (
-                          <button
-                            key={problem.id}
-                            type="button"
-                            aria-pressed={suggestedProblem?.id === problem.id}
-                            onClick={() => {
-                              const selected = suggestedProblem?.id === problem.id ? null : problem;
-                              setSuggestedProblem(selected);
-                              setNoMatchingProblem(false);
-                            }}
-                            className={cn(
-                              "flex w-full items-start gap-2 rounded-lg border bg-card p-3 text-left",
-                              suggestedProblem?.id === problem.id ? "border-primary ring-2 ring-primary/15" : "border-border",
-                            )}
-                          >
-                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-                            <span className="min-w-0">
-                              <span className="block text-sm font-medium text-foreground">{problem.title}</span>
-                              <span className="block truncate text-xs text-muted-foreground">{problem.location_label || PROBLEM_SCOPE[problem.scope_kind]}</span>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      aria-pressed={noMatchingProblem}
-                      onClick={() => {
-                        setNoMatchingProblem(true);
-                        setSuggestedProblem(null);
-                      }}
-                      className={cn(
-                        "mt-3 w-full rounded-lg border px-3 py-2 text-left text-sm font-medium",
-                        noMatchingProblem ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-foreground",
-                      )}
-                    >
-                      Kein passendes Problem dabei
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </section>
-        )}
-
-        {step === 1 && (
-          <section aria-labelledby="report-details-heading" className="space-y-5">
-            <div>
-              <h2 ref={stepHeadingRef} tabIndex={-1} id="report-details-heading" className="text-lg font-semibold text-foreground outline-none">Was hast du beobachtet?</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Beschreibe Tatsachen, keine Vermutungen über Personen.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="report-category">Thema</Label>
-              <select
-                id="report-category"
-                value={category}
-                onChange={(event) => {
-                  setCategory(event.target.value);
-                  setCategoryDetail("");
-                  resetAssistant();
-                }}
-                className="flex h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring maus:text-sm"
-              >
-                <option value="">Bitte wählen</option>
-                {Object.entries(PROBLEM_KATEGORIEN).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </div>
-            {category && (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Sparkles className="h-4 w-4" aria-hidden />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-foreground">Interaktive KI-Schreibhilfe</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      Sie fragt gezielt nach fehlenden Fakten und erstellt daraus einen bearbeitbaren Entwurf. Konto, Kartenpunkt und Ortsname werden nicht an den KI-Dienst gesendet.
-                    </p>
-                  </div>
                 </div>
+              ) : (
+                <UserBubble><MapPin className="mr-1 inline h-4 w-4" aria-hidden />{locationLabel}</UserBubble>
+              )}
+            </>
+          )}
 
-                {!assistantActive && assistantAnswers.length === 0 && (
-                  <div className="mt-4 space-y-3">
-                    <label className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        checked={assistantConsent}
-                        onChange={(event) => setAssistantConsent(event.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
-                      />
-                      <span>Ich möchte die optionale externe KI-Schreibhilfe nutzen. Meine Antworten werden vorher lokal um E-Mail-Adressen, Telefonnummern, genaue Adressen und mit Anrede genannte Namen bereinigt. Ich trage trotzdem keine personenbezogenen Daten ein.</span>
-                    </label>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={!assistantConsent}
-                      onClick={() => {
-                        setAssistantActive(true);
-                        setAssistantQuestion(CATEGORY_QUESTIONS[category]);
-                      }}
-                    >
-                      <Sparkles className="h-4 w-4" aria-hidden /> Geführt starten
-                    </Button>
-                  </div>
-                )}
+          {scope === "citywide" && stageAtLeast("match") && <UserBubble>Das Problem betrifft ganz Oldenburg.</UserBubble>}
 
-                {assistantActive && (
-                  <div className="mt-4 space-y-3" aria-live="polite">
-                    {assistantAnswers.map((answer, index) => (
-                      <div key={`${answer.question}-${index}`} className="rounded-lg border border-border bg-card p-3 text-sm">
-                        <p className="font-medium text-foreground">{answer.question}</p>
-                        <p className="mt-1 text-muted-foreground">{answer.answer}</p>
-                      </div>
-                    ))}
-                    <div className="rounded-lg border border-primary/30 bg-card p-3">
-                      <Label htmlFor="report-assistant-answer">{assistantQuestion}</Label>
-                      <Textarea
-                        id="report-assistant-answer"
-                        value={assistantInput}
-                        onChange={(event) => setAssistantInput(event.target.value)}
-                        maxLength={1_000}
-                        rows={3}
-                        placeholder="Nur selbst beobachtete Fakten – keine Namen oder Kontaktdaten"
-                        className="mt-2"
-                      />
-                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                        <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground" onClick={resetAssistant}>
-                          Ohne KI weiterschreiben
-                        </button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={assistantInput.trim().length < 2 || assistant.isPending}
-                          onClick={() => assistant.mutate([
-                            ...assistantAnswers,
-                            { question: assistantQuestion, answer: assistantInput.trim() },
-                          ])}
-                        >
-                          {assistant.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
-                          {assistant.isPending ? "Denkt nach…" : "Antwort senden"}
-                        </Button>
+          {scope && stageAtLeast("match") && (
+            <>
+              <BotBubble>Ich prüfe kurz, ob bereits ein passendes öffentliches Problem existiert. Die Zuordnung entscheidet später trotzdem ein Mensch.</BotBubble>
+              {stage === "match" && (
+                <div className="ml-10 rounded-2xl border border-border bg-card p-4">
+                  {publicProblems.isLoading ? (
+                    <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Öffentliche Probleme werden verglichen…</p>
+                  ) : publicProblems.isError ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">Der Vergleich ist gerade nicht erreichbar. Das blockiert deine private Meldung nicht.</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" variant="secondary" onClick={() => void publicProblems.refetch()}>Erneut versuchen</Button>
+                        <Button type="button" size="sm" onClick={() => finishMatch(null)}>Trotzdem weiter</Button>
                       </div>
                     </div>
+                  ) : suggestions.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="mb-3 text-sm font-medium text-foreground">Passt eines davon?</p>
+                      {suggestions.map((problem) => (
+                        <button
+                          key={problem.id}
+                          type="button"
+                          onClick={() => finishMatch(problem)}
+                          className="flex w-full items-start gap-2 rounded-lg border border-border p-3 text-left hover:border-primary/50"
+                        >
+                          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span><span className="block text-sm font-medium text-foreground">{problem.title}</span><span className="block text-xs text-muted-foreground">{problem.location_label || PROBLEM_SCOPE[problem.scope_kind]}</span></span>
+                        </button>
+                      ))}
+                      <button type="button" onClick={() => finishMatch(null)} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-left text-sm font-medium text-foreground hover:border-primary/50">
+                        Nein, etwas anderes melden
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">Ich finde hier noch kein passendes öffentliches Problem.</p>
+                      <Button type="button" size="sm" onClick={() => finishMatch(null)}>Neue Meldung fortsetzen</Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {stageAtLeast("date") && (
+            <>
+              {stage !== "date" && <UserBubble>{suggestedProblem ? `Das passt möglicherweise zu „${suggestedProblem.title}“.` : "Das ist eine neue Beobachtung."}</UserBubble>}
+              <BotBubble>Wann hast du das Problem zuletzt selbst beobachtet?</BotBubble>
+              {stage === "date" ? (
+                <div className="ml-10 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-end">
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="report-observed-on">Beobachtungsdatum</Label>
+                    <Input id="report-observed-on" type="date" value={observedOn} max={todayISO()} onChange={(event) => setObservedOn(event.target.value)} />
                   </div>
-                )}
+                  <Button
+                    type="button"
+                    disabled={!observedOn || observedOn > todayISO()}
+                    onClick={() => setStage(text && categoryDetail ? "review" : "consent")}
+                  >
+                    Datum übernehmen
+                  </Button>
+                </div>
+              ) : (
+                <UserBubble>{displayDate(observedOn)}</UserBubble>
+              )}
+            </>
+          )}
 
-                {!assistantActive && assistantAnswers.length > 0 && text && (
-                  <p className="mt-4 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200" role="status">
-                    Der Entwurf ist übernommen. Lies ihn unten und ändere alles, was nicht genau deiner Beobachtung entspricht.
-                  </p>
-                )}
-                {assistantRedacted && (
-                  <p className="mt-3 text-xs text-muted-foreground">Direkte personenbezogene Angaben wurden vor dem KI-Aufruf lokal entfernt.</p>
-                )}
-                {assistant.isError && (
-                  <p className="mt-3 text-sm text-destructive" role="alert">
-                    {assistant.error instanceof ApiError ? assistant.error.message : "Die KI-Schreibhilfe ist gerade nicht erreichbar."}
-                  </p>
-                )}
-              </div>
-            )}
-            {category && (
-              <div className="space-y-2">
-                <Label htmlFor="report-category-detail">Wichtigste konkrete Angabe</Label>
+          {stageAtLeast("consent") && (
+            <>
+              <BotBubble>
+                Jetzt frage ich nur noch nach den Tatsachen, die für eine gute Meldung fehlen. Konto, Ortsname, Kartenpunkt und Datum gehen nicht an den KI-Dienst. Direkte Kontaktdaten und genaue Adressen werden vorher lokal entfernt.
+              </BotBubble>
+              {stage === "consent" && (
+                <div className="ml-10 space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                  <label className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={assistantConsent}
+                      onChange={(event) => setAssistantConsent(event.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+                    />
+                    <span>Ich möchte den externen KI-Melde-Chat nutzen und trage keine Namen, Kontaktdaten oder sensiblen persönlichen Angaben ein.</span>
+                  </label>
+                  <Button type="button" disabled={!assistantConsent} onClick={() => setStage("chat")}>
+                    <Sparkles className="h-4 w-4" aria-hidden /> Gespräch starten
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+
+          {stage === "chat" && (
+            <>
+              {assistantAnswers.map((answer, index) => (
+                <div key={`${answer.question}-${index}`} className="contents">
+                  <BotBubble>{answer.question}</BotBubble>
+                  <UserBubble>{answer.answer}</UserBubble>
+                </div>
+              ))}
+              <BotBubble>{assistantQuestion}</BotBubble>
+              <div className="ml-10 rounded-2xl border border-primary/30 bg-card p-3">
+                <Label htmlFor="report-assistant-answer" className="sr-only">Antwort an die Meldehilfe</Label>
                 <Textarea
-                  id="report-category-detail"
-                  value={categoryDetail}
-                  onChange={(event) => setCategoryDetail(event.target.value)}
-                  minLength={10}
-                  maxLength={500}
-                  rows={3}
-                  placeholder={CATEGORY_QUESTIONS[category]}
+                  id="report-assistant-answer"
+                  value={assistantInput}
+                  onChange={(event) => setAssistantInput(event.target.value)}
+                  maxLength={1_000}
+                  rows={4}
+                  placeholder="Schreibe in deinen Worten – nur selbst beobachtete Fakten"
+                  autoFocus
                 />
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">{assistantAnswers.length + 1}/6 mögliche Antworten</span>
+                  <Button
+                    type="button"
+                    disabled={assistantInput.trim().length < 2 || assistant.isPending || assistantAnswers.length >= 6}
+                    onClick={() => assistant.mutate([
+                      ...assistantAnswers,
+                      { question: assistantQuestion, answer: assistantInput.trim() },
+                    ])}
+                  >
+                    {assistant.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
+                    {assistant.isPending ? "Entwurf wird geprüft…" : "Antwort senden"}
+                  </Button>
+                </div>
               </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="report-text">Beobachtung auf Deutsch</Label>
-              <Textarea
-                id="report-text"
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                minLength={20}
-                maxLength={2_000}
-                rows={7}
-                placeholder="Was ist konkret passiert oder fehlt? Seit wann besteht es?"
-              />
-              <p className="text-right text-xs tabular-nums text-muted-foreground">{text.trim().length}/2000</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="report-observed-on">Zuletzt selbst beobachtet</Label>
-              <Input
-                id="report-observed-on"
-                type="date"
-                value={observedOn}
-                max={todayISO()}
-                onChange={(event) => setObservedOn(event.target.value)}
-              />
-            </div>
-          </section>
-        )}
-
-        {step === 2 && (
-          <section aria-labelledby="report-review-heading" className="space-y-5">
-            <div>
-              <h2 ref={stepHeadingRef} tabIndex={-1} id="report-review-heading" className="text-lg font-semibold text-foreground outline-none">Kurz prüfen und absenden</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Dieser bestätigte Text wird privat geprüft.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge>{PROBLEM_KATEGORIEN[category as keyof typeof PROBLEM_KATEGORIEN]}</Badge>
-              <Badge>{PROBLEM_SCOPE[scope]}</Badge>
-              {scope !== "citywide" && <Badge>{locationLabel.trim()}</Badge>}
-            </div>
-            {suggestedProblem && (
-              <p className="rounded-lg border border-border bg-muted/35 p-3 text-sm text-muted-foreground">
-                Vorgeschlagene Zuordnung: <strong className="text-foreground">{suggestedProblem.title}</strong>
-              </p>
-            )}
-            <div className="rounded-lg border border-border bg-muted/35 p-3 text-sm">
-              <p className="font-medium text-foreground">{CATEGORY_QUESTIONS[category]}</p>
-              <p className="mt-1 text-muted-foreground">{categoryDetail.trim()}</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="report-confirmed-text">Dein bestätigter Meldetext</Label>
-              <Textarea
-                id="report-confirmed-text"
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                minLength={20}
-                maxLength={2_000}
-                rows={7}
-                disabled={draftId !== null}
-              />
-            </div>
-            <label className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm leading-relaxed text-foreground">
-              <input
-                type="checkbox"
-                checked={confirmed}
-                onChange={(event) => setConfirmedText(event.target.checked ? confirmationSnapshot : null)}
-                className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
-              />
-              <span>
-                Ich habe Text und Angaben geprüft. Kontokennung, Rohtext und der genaue Eingabeort bleiben privat. Nach eigenständiger Vorprüfung und menschlicher Freigabe können nur eine moderierte Zusammenfassung und ein geeigneter geografischer Bezug öffentlich erscheinen. <Link href="/datenschutz" className="font-medium text-primary hover:underline">Datenschutz</Link>
-              </span>
-            </label>
-            <div className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              Keine Fotos oder Anhänge. Bitte keine Namen, Kontaktdaten, Notfälle, Straftaten oder Vorwürfe gegen einzelne Personen eintragen.
-            </div>
-            {submit.isError && (
-              <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
-                {submit.error instanceof ApiError ? submit.error.message : "Die Meldung konnte nicht abgesendet werden."}
-                {draftId !== null && " Der private Entwurf ist gesichert; du kannst erneut absenden."}
-              </p>
-            )}
-          </section>
-        )}
-
-        <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4">
-          {step > 0 && draftId === null ? (
-            <Button type="button" variant="ghost" onClick={() => setStep((value) => value - 1)}>
-              <ChevronLeft className="h-4 w-4" aria-hidden /> Zurück
-            </Button>
-          ) : <span />}
-          {step < 2 ? (
-            <Button
-              type="button"
-              onClick={() => setStep((value) => value + 1)}
-              disabled={step === 0 ? !locationReady : !detailsComplete}
-            >
-              Weiter <ChevronRight className="h-4 w-4" aria-hidden />
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="signal"
-              disabled={!confirmed || text.trim().length < 20 || submit.isPending}
-              onClick={() => submit.mutate()}
-            >
-              {submit.isPending ? "Wird privat gesendet…" : draftId !== null ? "Erneut absenden" : "Privat absenden"}
-            </Button>
+              {assistantRedacted && <p className="ml-10 text-xs text-muted-foreground">Direkte personenbezogene Angaben wurden vor dem KI-Aufruf lokal entfernt.</p>}
+              {assistant.isError && (
+                <div className="ml-10 space-y-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3" role="alert">
+                  <p className="text-sm text-destructive">{assistant.error instanceof ApiError ? assistant.error.message : "Die KI-Meldehilfe ist gerade nicht erreichbar."}</p>
+                  <Button type="button" size="sm" variant="secondary" disabled={assistantInput.trim().length < 2} onClick={() => assistant.mutate([
+                    ...assistantAnswers,
+                    { question: assistantQuestion, answer: assistantInput.trim() },
+                  ])}>Noch einmal versuchen</Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </Card>
+
+      <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        Die Unterhaltung und der Entwurf bleiben privat. Absenden kannst nur du – nach einer eigenen Schlussprüfung.
+      </p>
     </div>
   );
 }

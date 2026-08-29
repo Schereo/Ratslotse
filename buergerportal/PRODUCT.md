@@ -19,7 +19,7 @@ Nicht verwendet werden **Reporter*in** oder amtlich klingende Begriffe wie **Mä
 
 ## Darstellungsprinzip
 
-Karte, Farbe, Symbole und kurze Zahlenhinweise tragen die Oberfläche. Text bleibt so knapp wie möglich. Exakte Meldezahlen erscheinen erst am ausgewählten Problem als zum Beispiel **6 unabhängige Meldungen**; Beobachtungs-Unterzahlen werden nicht zusätzlich gezeigt.
+Karte, Farbe, Symbole und kurze Zahlenhinweise tragen die Oberfläche. Text bleibt so knapp wie möglich. Exakte Meldezahlen erscheinen erst am ausgewählten Problem als zum Beispiel **6 unabhängige Meldungen**; Beobachtungs-Unterzahlen werden nicht zusätzlich gezeigt. Der Einstieg **Problem melden** bleibt als auffällige Seitenaktion neben der Karte sichtbar und wird auf schmalen Ansichten als breite Aktionsfläche gezeigt.
 
 ## Kartenzeichen
 
@@ -35,10 +35,10 @@ Eine abgesendete Meldung bleibt privat. Zuerst hält eine eigenständige KI-Vorp
 |---|---|---|---|
 | `/probleme` | öffentlich | Karte und Status-Board | umgesetzt |
 | `/probleme/[id]` | öffentlich | freigegebene Details und öffentliche Zeitleiste | umgesetzt |
-| `/probleme/melden` | verifiziertes Konto | geführter Meldeablauf | erster P2-Schnitt umgesetzt |
+| `/probleme/melden` | verifiziertes Konto | KI-geführter Melde-Chat mit Schlussprüfung | umgesetzt |
 | `/meine-meldungen` | verifiziertes Konto | eigene Meldungen und private Zeitleiste | für P6 reserviert |
 | `/admin/meldungen` | Admin | Moderationswarteschlange | für P4 reserviert |
 
-Der P2-Meldeablauf erfasst Ort innerhalb Oldenburgs, Oberkategorie, eine kategorienabhängige Mindestangabe, Beobachtungsdatum und den selbst bestätigten deutschen Text deterministisch. Öffentliche Probleme in der Nähe können als unverbindliche Zuordnung vorgeschlagen werden; fällt dieser Vergleich aus, bleibt die private Meldung möglich. Optional fragt eine adaptive KI-Schreibhilfe nach fehlenden Fakten und erstellt einen bearbeitbaren deutschen Entwurf. Vor jedem Aufruf entfernt Ratslotse lokal typische direkte Identifikatoren; Konto, genauer Kartenbezug, Ortsname, Datum und vollständige private Meldung werden nicht an die Schreibhilfe übertragen. Die eigenständige P3-Eignungsprüfung bleibt davon getrennt und weiterhin fail-closed.
+Der P2-Meldeablauf ist bis zur Schlussprüfung ein Gespräch: Die Meldehilfe fragt im Chat nach ehrlichem räumlichem Bezug, Beobachtungsdatum und fehlenden Tatsachen. Kartenwahl, öffentlicher Problemvergleich und Datenschutzhinweis erscheinen als Teile dieses Gesprächs, nicht als separates Formular. Sobald genug Angaben vorliegen, ordnet die KI das Anliegen einer kontrollierten Oberkategorie zu und erstellt einen bearbeitbaren deutschen Entwurf. Erst dann erscheint das Schlussformular; die meldende Person kann Ort, Datum, Kategorie, Kernaussage und Text korrigieren und muss alles ausdrücklich bestätigen. Fällt der öffentliche Vergleich aus, bleibt die Meldung möglich. Vor jedem KI-Aufruf entfernt Ratslotse lokal typische direkte Identifikatoren; Konto, genauer Kartenbezug, Ortsname, Datum und vollständige private Meldung werden nicht an die Schreibhilfe übertragen. Die eigenständige P3-Eignungsprüfung bleibt davon getrennt und weiterhin fail-closed.
 
 Geteilte Links auf `/probleme/[id]` bleiben ohne Anmeldung lesbar. Die statisch exportierte Mobil-App bildet diesen Web-Pfad intern auf die bestehende Query-Ansicht `/probleme?problem=[id]` ab. Die Hauptnavigation führt unter **Probleme** zur Übersicht; Detailseiten bieten einen Rückweg zur Problemkarte. Spätere Umbenennungen der sichtbaren Bezeichnung ändern die öffentlichen URLs nicht.

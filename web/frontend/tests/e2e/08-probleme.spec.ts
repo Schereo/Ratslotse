@@ -49,6 +49,7 @@ test.describe("Öffentliche Problemkarte", () => {
     await page.goto("/probleme");
 
     await expect(page.getByRole("heading", { name: "Probleme in Oldenburg" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Problem melden" })).toBeVisible();
     await expect(page.locator(".problem-map-point")).toHaveCount(2);
     await expect(page.locator(".problem-map-facility")).toHaveCount(1);
     await expect(page.locator(".problem-map-route")).toHaveCount(1);
