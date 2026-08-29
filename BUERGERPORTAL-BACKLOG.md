@@ -136,13 +136,13 @@ und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 
 ### P2 — Privater geführter Meldeablauf
 
-- [ ] Zugang auf verifizierte Konten begrenzen.
-- [ ] Orts-/Bereichswahl und frühe Suche nach bestehenden Problemen umsetzen.
-- [ ] Kontrollierte Oberkategorien plus `Sonstiges kommunales Thema` bereitstellen.
-- [ ] Kategorienabhängige Mindestangaben und deterministische Validierung definieren.
+- [x] Zugang auf verifizierte Konten begrenzen.
+- [x] Orts-/Bereichswahl und frühe Suche nach bestehenden Problemen umsetzen.
+- [x] Kontrollierte Oberkategorien plus `Sonstiges kommunales Thema` bereitstellen.
+- [x] Kategorienabhängige Mindestangaben und deterministische Validierung definieren.
 - [ ] Adaptiven Assistenten für knappe, ausreichende Angaben und einen neutralen deutschen Entwurf umsetzen.
-- [ ] Finalen Bestätigungsschritt mit verständlichem Datenschutzhinweis einbauen.
-- [ ] Keine Foto-Uploads oder Anhänge anbieten.
+- [x] Finalen Bestätigungsschritt mit verständlichem Datenschutzhinweis einbauen.
+- [x] Keine Foto-Uploads oder Anhänge anbieten.
 
 **Fertig, wenn:** Eine verifizierte Person eine verwertbare Meldung mit wenigen Schritten als privaten Entwurf erstellen, prüfen und genau einmal absenden kann; fehlende Fakten werden erfragt und nicht erfunden.
 

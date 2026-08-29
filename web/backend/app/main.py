@@ -28,6 +28,7 @@ from .routers import (
     onboarding,
     problems,
     push,
+    reports,
     quiz,
     social,
     topics,
@@ -200,6 +201,7 @@ app.include_router(badges.router)
 app.include_router(kommunalwahl.router)
 app.include_router(social.router)
 app.include_router(problems.router)
+app.include_router(reports.router)
 
 # Die abgelegten Social-Bilder öffentlich ausliefern — Instagram holt sie
 # selbst, also darf hier kein Token davor.
@@ -247,6 +249,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         loc = e.get("loc", ())
         if any(str(part) in _SENSITIVE for part in loc):
             e = {**e, "input": "***"}
+        if isinstance(e.get("ctx"), dict):
+            e = {
+                **e,
+                "ctx": {
+                    key: str(value) if isinstance(value, BaseException) else value
+                    for key, value in e["ctx"].items()
+                },
+            }
         errors.append(e)
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

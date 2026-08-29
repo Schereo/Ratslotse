@@ -11,6 +11,7 @@ class RegisterRequest(BaseModel):
     # Anzeigename für die persönliche Ansprache — serverseitig optional
     # (Apple-Konten und Alt-Bestand haben keinen).
     display_name: str | None = Field(default=None, max_length=60)
+    continue_path: str | None = Field(default=None, max_length=500)
 
 
 class LoginRequest(BaseModel):

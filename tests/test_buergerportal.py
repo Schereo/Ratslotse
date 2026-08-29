@@ -27,6 +27,7 @@ def _approve_and_publish(
             reporter_id=owner_id,
             text="Die Beobachtung wurde unabhängig gemeldet.",
             category="other",
+            category_detail="Das kommunale Problem betrifft das gesamte Stadtgebiet.",
             scope_kind="citywide",
             observed_at=f"2026-08-{20 + index:02d}T08:00:00+00:00",
         )

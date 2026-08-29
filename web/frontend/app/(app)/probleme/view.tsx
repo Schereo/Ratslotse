@@ -8,7 +8,7 @@ import { CheckCircle2, Columns3, Info, Map as MapIcon, MapPin, MessageCircle, X 
 import { api } from "@/lib/api";
 import type { ProblemListResponse, PublicProblem, PublicProblemSummary, ProblemStatus } from "@/lib/types";
 import { MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_ANGEBOT, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, unabhaengigeMeldungen, VORSCHAU_PROBLEME } from "@/lib/probleme";
-import { Badge, Card, ErrorState, PageHeader, Segmented, Select, Spinner, formatDate } from "@/components/ui";
+import { Badge, Button, Card, ErrorState, PageHeader, Segmented, Select, Spinner, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { PublicProblemDetail } from "@/components/public-problem-detail";
@@ -111,11 +111,12 @@ export default function View({ vorschau }: { vorschau: boolean }) {
       <PageHeader
         title={PROBLEM_ANGEBOT.name}
         description="Beobachtungen aus der Stadt, geprüft und ohne persönliche Angaben gebündelt."
+        action={<Button asChild variant="signal" size="sm"><Link href="/probleme/melden">Melden</Link></Button>}
       />
 
       {vorschau && (
         <p className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/35 dark:text-amber-100" role="status">
-          <strong>Vorschau:</strong> Alle gezeigten Probleme und Zahlen sind frei erfunden. Noch kann niemand etwas melden.
+          <strong>Vorschau:</strong> Alle öffentlich gezeigten Probleme und Zahlen sind frei erfunden. Private Meldungen werden nie zu Vorschaudaten.
         </p>
       )}
 

@@ -31,10 +31,10 @@ class RateLimiter:
             del self._calls[k]
         self._last_cleanup = now
 
-    def check(self, request: Request) -> None:
+    def check(self, request: Request, *, key: str | None = None) -> None:
         if os.environ.get("DISABLE_RATE_LIMIT") == "1":
             return
-        key = self._key(request)
+        key = key or self._key(request)
         now = time.monotonic()
         with self._lock:
             if now - self._last_cleanup > _CLEANUP_INTERVAL:
@@ -64,6 +64,9 @@ login_limiter = RateLimiter(max_calls=10, window_seconds=60)
 register_limiter = RateLimiter(max_calls=5, window_seconds=300)
 forgot_password_limiter = RateLimiter(max_calls=5, window_seconds=900)
 verify_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
+# Private Entwürfe belegen dauerhaft Speicher und landen später in der
+# Moderation. Zehn pro Stunde reichen für Korrekturen, bremsen aber Schleifen.
+report_draft_limiter = RateLimiter(max_calls=10, window_seconds=3_600)
 # „Frag den Rat" ist der einzige Endpoint, der pro Aufruf LLM-Kosten erzeugt —
 # großzügig genug für echtes Nachfragen, aber kein offener Geldhahn.
 qa_limiter = RateLimiter(max_calls=10, window_seconds=600)

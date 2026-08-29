@@ -9,9 +9,17 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from kern.email import send_email
 from kern.store import Store
 from council.store import CouncilStore
+from buergerportal.reports import ReportStore
+from buergerportal.store import ProblemStore
 
 from ..config import get_settings
-from ..deps import get_council_store, get_store, require_active
+from ..deps import (
+    get_council_store,
+    get_problem_store,
+    get_report_store,
+    get_store,
+    require_active,
+)
 from ..schemas import (ChangePasswordRequest, DeleteAccountRequest, DeliveryUpdate,
                        NotifyPrefsIn, UserOut)
 from ..security import hash_password, verify_password
@@ -179,6 +187,8 @@ def delete_account(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
+    reports: ReportStore = Depends(get_report_store),
+    problems: ProblemStore = Depends(get_problem_store),
 ) -> None:
     """Permanently delete the account and all data keyed to it (DSGVO right to
     erasure). Verlangt eine frische Bestätigung — eine Session allein (offener
@@ -186,8 +196,8 @@ def delete_account(
     Passwort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem
     frischen Apple-Identity-Token (Re-Auth in der App, RL-1002).
 
-    Geräumt werden **beide** Datenbanken. Zwischen ihnen gibt es keine
-    Fremdschlüssel, und in ``council.sqlite`` steht mit
+    Geräumt werden **beide** Datenbanken einschließlich der getrennt migrierten
+    privaten Meldedaten. Zwischen ihnen gibt es keine Fremdschlüssel, und in ``council.sqlite`` steht mit
     ``committee_notifications``/``session_followups_sent``, welche Sitzungen
     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss."""
     if body.apple_identity_token and user.get("apple_sub"):
@@ -202,6 +212,8 @@ def delete_account(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
     email = str(user.get("email", ""))
     council.delete_owner_data(user["id"])
+    reports.erase_reporter_data(reporter_id=user["id"])
+    problems.refresh_queued_problem_metrics()
     store.delete_web_user(user["id"])
     background.add_task(_send_goodbye_email, email)
     settings = get_settings()

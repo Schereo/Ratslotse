@@ -10,6 +10,7 @@ from .security import decode_access_token
 
 from kern.store import Store
 from council.store import CouncilStore
+from buergerportal.reports import ReportStore
 from buergerportal.store import ProblemStore
 
 
@@ -25,6 +26,16 @@ def get_store() -> Iterator[Store]:
 def get_council_store() -> Iterator[CouncilStore]:
     settings = get_settings()
     store = CouncilStore(settings.council_db)
+    try:
+        yield store
+    finally:
+        store.close()
+
+
+def get_report_store() -> Iterator[ReportStore]:
+    """Private Meldungen in derselben SQLite-Datei, aber hinter eigener API."""
+    settings = get_settings()
+    store = ReportStore(settings.nwz_db)
     try:
         yield store
     finally:
@@ -100,6 +111,23 @@ def require_active(user: dict = Depends(get_current_user)) -> dict:
             if not user.get("email_verified")
             else "Dein Konto ist derzeit deaktiviert.",
         )
+    return user
+
+
+def require_verified_reporter(user: dict = Depends(get_current_user)) -> dict:
+    """Only verified, active non-admin accounts may create private reports."""
+    if user.get("role") == "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Admin-Konten können keine eigenen Meldungen einreichen.",
+        )
+    if not user.get("email_verified"):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Bitte bestätige zuerst deine E-Mail-Adresse.",
+        )
+    if user.get("status") != "active":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Dein Konto ist derzeit deaktiviert.")
     return user
 
 

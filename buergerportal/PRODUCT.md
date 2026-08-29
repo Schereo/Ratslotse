@@ -31,8 +31,10 @@ Eine abgesendete Meldung bleibt privat. Zuerst hält eine eigenständige KI-Vorp
 |---|---|---|---|
 | `/probleme` | öffentlich | Karte und Status-Board | umgesetzt |
 | `/probleme/[id]` | öffentlich | freigegebene Details und öffentliche Zeitleiste | umgesetzt |
-| `/probleme/melden` | verifiziertes Konto | geführter Meldeablauf | für P2 reserviert |
+| `/probleme/melden` | verifiziertes Konto | geführter Meldeablauf | erster P2-Schnitt umgesetzt |
 | `/meine-meldungen` | verifiziertes Konto | eigene Meldungen und private Zeitleiste | für P6 reserviert |
 | `/admin/meldungen` | Admin | Moderationswarteschlange | für P4 reserviert |
+
+Der erste P2-Schnitt erfasst Ort innerhalb Oldenburgs, Oberkategorie, eine kategorienabhängige Mindestangabe, Beobachtungsdatum und den selbst bestätigten deutschen Text deterministisch. Öffentliche Probleme in der Nähe können als unverbindliche Zuordnung vorgeschlagen werden. Der adaptive Entwurf bleibt ein Folgeschritt; bis zur datenschutzsicheren P3-Vorverarbeitung wird kein Meldetext an einen externen KI-Anbieter gesendet.
 
 Geteilte Links auf `/probleme/[id]` bleiben ohne Anmeldung lesbar. Die statisch exportierte Mobil-App bildet diesen Web-Pfad intern auf die bestehende Query-Ansicht `/probleme?problem=[id]` ab. Die Hauptnavigation führt unter **Probleme** zur Übersicht; Detailseiten bieten einen Rückweg zur Problemkarte. Spätere Umbenennungen der sichtbaren Bezeichnung ändern die öffentlichen URLs nicht.

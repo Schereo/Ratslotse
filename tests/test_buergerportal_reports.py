@@ -18,17 +18,21 @@ def test_private_draft_is_visible_only_to_its_reporter(tmp_path):
         reporter_id=101,
         text="An der Querung ist die Bordsteinkante zu hoch.",
         category="accessibility",
+        category_detail="Die Querung ist für Rollstühle nicht nutzbar.",
         scope_kind="point",
         location_label="Theaterwall",
         latitude=53.141,
         longitude=8.207,
         observed_at="2026-08-28T08:00:00+00:00",
+        suggested_problem_id=77,
     )
 
     own_report = reports.get_owned_report(report_id, reporter_id=101)
 
     assert own_report is not None
     assert own_report["text"] == "An der Querung ist die Bordsteinkante zu hoch."
+    assert own_report["suggested_problem_id"] == 77
+    assert own_report["problem_id"] is None
     assert reports.get_owned_report(report_id, reporter_id=202) is None
     reports.close()
 
@@ -81,6 +85,7 @@ def test_private_schema_migration_preserves_existing_public_projection(tmp_path)
         reporter_id=101,
         text="Die Bordsteinkante ist weiterhin zu hoch.",
         category="accessibility",
+        category_detail="Die Querung ist für Rollstühle nicht nutzbar.",
         scope_kind="point",
         location_label="Theaterwall",
         latitude=53.141,
@@ -99,12 +104,36 @@ def test_private_schema_migration_preserves_existing_public_projection(tmp_path)
     migrated_public.close()
 
 
+def test_private_draft_store_enforces_minimum_location_and_category_detail(tmp_path):
+    reports = ReportStore(tmp_path / "problems.sqlite")
+    base = {
+        "reporter_id": 101,
+        "text": "Die Querung ist an dieser Stelle nicht stufenlos nutzbar.",
+        "category": "accessibility",
+        "category_detail": "Menschen mit Rollstuhl können sie nicht nutzen.",
+        "scope_kind": "point",
+        "location_label": "Theaterwall",
+        "latitude": 53.141,
+        "longitude": 8.207,
+        "observed_at": "2026-08-29T12:00:00+00:00",
+    }
+
+    with pytest.raises(ValueError, match="Mindestangabe"):
+        reports.create_draft(**{**base, "category_detail": "zu kurz"})
+    with pytest.raises(ValueError, match="außerhalb"):
+        reports.create_draft(**{**base, "latitude": 52.52, "longitude": 13.405})
+    with pytest.raises(ValueError, match="Koordinaten"):
+        reports.create_draft(**{**base, "scope_kind": "route", "latitude": None, "longitude": None})
+    reports.close()
+
+
 def test_draft_can_be_submitted_exactly_once(tmp_path):
     reports = ReportStore(tmp_path / "problems.sqlite")
     report_id = reports.create_draft(
         reporter_id=101,
         text="The curb is too high.",
         category="accessibility",
+        category_detail="The crossing cannot be used with a wheelchair.",
         scope_kind="point",
         location_label="Theaterwall",
         latitude=53.141,
@@ -143,7 +172,9 @@ def test_concurrent_submission_creates_only_one_first_observation(tmp_path):
         reporter_id=101,
         text="Die Bordsteinkante ist zu hoch.",
         category="accessibility",
+        category_detail="Die Querung ist für Rollstühle nicht nutzbar.",
         scope_kind="point",
+        location_label="Theaterwall",
         latitude=53.141,
         longitude=8.207,
         observed_at="2026-08-28T08:00:00+00:00",
@@ -180,7 +211,9 @@ def test_report_needs_current_ai_assessment_and_human_approval_before_projection
         reporter_id=101,
         text="Die Bordsteinkante ist zu hoch.",
         category="accessibility",
+        category_detail="Die Querung ist für Rollstühle nicht nutzbar.",
         scope_kind="point",
+        location_label="Theaterwall",
         latitude=53.141,
         longitude=8.207,
         observed_at="2026-08-28T08:00:00+00:00",
@@ -317,7 +350,9 @@ def test_human_approval_is_recorded_exactly_once_under_concurrency(tmp_path):
         reporter_id=101,
         text="Die Bordsteinkante ist zu hoch.",
         category="accessibility",
+        category_detail="Die Querung ist für Rollstühle nicht nutzbar.",
         scope_kind="point",
+        location_label="Theaterwall",
         latitude=53.141,
         longitude=8.207,
         observed_at="2026-08-28T08:00:00+00:00",
@@ -378,7 +413,9 @@ def test_owner_can_add_an_observation_without_creating_another_report(tmp_path):
         reporter_id=101,
         text="Die Bordsteinkante ist zu hoch.",
         category="accessibility",
+        category_detail="Die Querung ist für Rollstühle nicht nutzbar.",
         scope_kind="point",
+        location_label="Theaterwall",
         latitude=53.141,
         longitude=8.207,
         observed_at="2026-08-28T08:00:00+00:00",
@@ -409,3 +446,97 @@ def test_owner_can_add_an_observation_without_creating_another_report(tmp_path):
     ]
     assert updated["id"] == report_id
     reports.close()
+
+
+def test_account_erasure_redacts_assessed_report_without_deleting_audit(tmp_path):
+    database = tmp_path / "problems.sqlite"
+    reports = ReportStore(database)
+    report_id = reports.create_draft(
+        reporter_id=101,
+        text="Die Bordsteinkante ist an der Querung weiterhin zu hoch.",
+        category="accessibility",
+        category_detail="Menschen mit Rollstuhl können die Querung nicht nutzen.",
+        scope_kind="point",
+        location_label="Theaterwall",
+        latitude=53.141,
+        longitude=8.207,
+        observed_at="2026-08-29T12:00:00+00:00",
+    )
+    reports.submit_owned_report(
+        report_id,
+        reporter_id=101,
+        confirmed_text="Die Bordsteinkante ist an der Querung weiterhin zu hoch.",
+    )
+    assessment = reports.record_ai_assessment(
+        report_id,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model_identifier="test-review-v1",
+    )
+    public = ProblemStore(database)
+    problem_id = public.create_problem(
+        title="Fehlende Absenkung",
+        summary="Die Querung ist nicht stufenlos nutzbar.",
+        category="accessibility",
+        scope_kind="point",
+        latitude=53.141,
+        longitude=8.207,
+    )
+    approval = reports.approve_report_for_new_problem(
+        report_id,
+        moderator_id=7,
+        assessment_id=assessment["id"],
+        problem_id=problem_id,
+        reason_code="suitable",
+        reporter_message="Private Mitteilung mit möglichem Personenbezug.",
+        private_note="Private Moderationsnotiz mit genauer Ortsangabe.",
+    )
+    reports._conn.execute(
+        """INSERT INTO civic_moderation_review_requests (
+               report_id, decision_id, reporter_reason, created_at
+           ) VALUES (?, ?, ?, ?)""",
+        (report_id, approval["id"], "Privater Grund für erneute Prüfung.", "2026-08-30T12:00:00+00:00"),
+    )
+    reports._conn.commit()
+    public.publish_problem(problem_id)
+    assert public.get_public_problem(problem_id)["independent_reports"] == 1
+
+    reports.erase_reporter_data(reporter_id=101)
+
+    assert reports.get_owned_report(report_id, reporter_id=101) is None
+    redacted = reports._conn.execute(
+        """SELECT draft_text, confirmed_text, category_detail, location_label,
+                  latitude, longitude, status
+           FROM civic_reports WHERE id = ?""",
+        (report_id,),
+    ).fetchone()
+    assert dict(redacted) == {
+        "draft_text": "[gelöscht]",
+        "confirmed_text": None,
+        "category_detail": "",
+        "location_label": "",
+        "latitude": None,
+        "longitude": None,
+        "status": "withdrawn",
+    }
+    assert reports._conn.execute(
+        "SELECT COUNT(*) FROM civic_ai_assessments WHERE id = ?",
+        (assessment["id"],),
+    ).fetchone()[0] == 1
+    decision = reports._conn.execute(
+        "SELECT reporter_message, private_note FROM civic_moderation_decisions WHERE id = ?",
+        (approval["id"],),
+    ).fetchone()
+    assert tuple(decision) == ("[gelöscht]", "[gelöscht]")
+    review = reports._conn.execute(
+        "SELECT reporter_reason FROM civic_moderation_review_requests WHERE decision_id = ?",
+        (approval["id"],),
+    ).fetchone()
+    assert review["reporter_reason"] == "[gelöscht]"
+    reports.close()
+
+    assert public.get_public_problem(problem_id) is None
+    assert public._conn.execute(
+        "SELECT COUNT(*) FROM civic_projection_refresh_queue"
+    ).fetchone()[0] == 0
+    public.close()
