@@ -38,6 +38,7 @@ func mapsHistoricalUniversalLinks(input: String, expected: AppRoute) throws {
         .question(prefill: "Was kostet das?", share: nil),
         .decision(id: 91), .sessions(ksinr: 8, tops: ["Ö 2"]),
         .person(slug: "max-muster"), .topic(slug: "wohnen"), .place(id: "ort:1"),
+        .sharedAnswer(token: "share-token"),
     ]
     for route in routes {
         let link = router.universalLink(for: route)

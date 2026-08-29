@@ -164,6 +164,7 @@ struct QuestionsView: View {
         }
         .task { await restoreCurrentResearch() }
         .task { await restoreActiveConversationIfNeeded() }
+        .task(id: model.questionShareToken) { await loadPendingSharedAnswer() }
         .task { await loadPersonLexicon() }
         .task { await loadQuestionExamples() }
         .onChange(of: scenePhase) { _, phase in
@@ -423,6 +424,7 @@ struct QuestionsView: View {
 
     private func restoreActiveConversationIfNeeded() async {
         guard model.conversationSavingPreference == 1,
+              model.questionShareToken == nil,
               turns.isEmpty,
               let id = model.activeConversationID
         else { return }
@@ -435,6 +437,25 @@ struct QuestionsView: View {
         } catch {
             // Offline bleibt die Referenz erhalten; beim nächsten Öffnen kann
             // das Gespräch wiederhergestellt werden.
+        }
+    }
+
+    private func loadPendingSharedAnswer() async {
+        guard let token = model.questionShareToken?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !token.isEmpty, token.count <= 64 else { return }
+        do {
+            let snapshot: SharedAnswerSnapshot = try await model.api.get("/api/council/qa-share/\(token)")
+            startNewConversation()
+            turns = [QuestionTurn(
+                question: snapshot.question,
+                answer: snapshot.answer,
+                sources: snapshot.sources,
+                evidence: snapshot.evidenceFields
+            )]
+            model.questionShareToken = nil
+        } catch {
+            model.questionShareToken = nil
+            model.alertMessage = "Die geteilte Antwort konnte nicht geladen werden. Der Link ist möglicherweise abgelaufen oder gelöscht."
         }
     }
 
@@ -1400,13 +1421,14 @@ struct QuestionEvidenceAvailability {
     init(fields: [String: JSONValue] = [:]) {
         let type = fields["qtype"]?.string?.lowercased() ?? ""
         let debates = fields["debatten"]?.array ?? []
+        let parties = fields["parteien"]?.array ?? []
 
         // Dieselbe Zuständigkeit wie im Web: Der validierte Rechercheplan im
         // Backend schaltet diese Kanäle einzeln frei. Die Oberfläche zeigt nur
         // die tatsächlich gelieferten Ergebnisse und erfindet keine zweite,
         // abweichende Stichwort-Heuristik.
         showsDebates = !debates.isEmpty
-        showsPartyOpinions = type != "person" && showsDebates
+        showsPartyOpinions = type != "person" && (parties.count >= 2 || showsDebates)
         showsPress = !(fields["presse"]?.array ?? []).isEmpty
         showsAttachments = !(fields["anlagen"]?.array ?? []).isEmpty
         showsPlanning = !(fields["planungen"]?.array ?? []).isEmpty
@@ -1843,18 +1865,56 @@ private struct QuestionEvidenceSidebar: View {
     }
 }
 
-private struct PartyOpinion: Codable, Sendable, Identifiable {
+struct PartyCoreStatement: Codable, Sendable {
+    let text: String
+    let speaker: String?
+    let date: String?
+
+    enum CodingKeys: String, CodingKey {
+        case text
+        case speaker = "sprecher"
+        case date = "datum"
+    }
+
+    var jsonValue: JSONValue {
+        var fields: [String: JSONValue] = ["text": .string(text)]
+        if let speaker { fields["sprecher"] = .string(speaker) }
+        if let date { fields["datum"] = .string(date) }
+        return .object(fields)
+    }
+}
+
+struct PartyOpinion: Codable, Sendable, Identifiable {
     var id: String { party }
     let party: String
     let stance: String?
     let position: String
     let united: Bool?
+    let hint: String?
+    let coreStatement: PartyCoreStatement?
+    let contributions: Int?
 
     enum CodingKeys: String, CodingKey {
         case position
         case party = "partei"
         case stance = "haltung"
         case united = "einig"
+        case hint = "hinweis"
+        case coreStatement = "kernaussage"
+        case contributions = "beitraege"
+    }
+
+    var jsonValue: JSONValue {
+        var fields: [String: JSONValue] = [
+            "partei": .string(party),
+            "position": .string(position),
+        ]
+        if let stance { fields["haltung"] = .string(stance) }
+        if let united { fields["einig"] = .bool(united) }
+        if let hint { fields["hinweis"] = .string(hint) }
+        if let coreStatement { fields["kernaussage"] = coreStatement.jsonValue }
+        if let contributions { fields["beitraege"] = .number(Double(contributions)) }
+        return .object(fields)
     }
 }
 
@@ -1865,6 +1925,53 @@ private struct PartyOpinionsResponse: Codable, Sendable {
     enum CodingKeys: String, CodingKey {
         case parties = "parteien"
         case withoutContributions = "ohne_beitraege"
+    }
+}
+
+struct SharedAnswerSnapshot: Decodable, Sendable {
+    let question: String
+    let answer: String
+    let sources: [DecisionSummary]
+    let created: String?
+    let debates: [JSONValue]
+    let press: [JSONValue]
+    let attachments: [JSONValue]
+    let parties: [PartyOpinion]
+    let chart: JSONValue?
+
+    enum CodingKeys: String, CodingKey {
+        case question = "frage"
+        case answer = "antwort"
+        case sources = "quellen"
+        case created
+        case debates = "debatten"
+        case press = "presse"
+        case attachments = "anlagen"
+        case parties = "parteien"
+        case chart = "grafik"
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        question = try values.decode(String.self, forKey: .question)
+        answer = try values.decode(String.self, forKey: .answer)
+        sources = try values.decodeIfPresent([DecisionSummary].self, forKey: .sources) ?? []
+        created = try values.decodeIfPresent(String.self, forKey: .created)
+        debates = try values.decodeIfPresent([JSONValue].self, forKey: .debates) ?? []
+        press = try values.decodeIfPresent([JSONValue].self, forKey: .press) ?? []
+        attachments = try values.decodeIfPresent([JSONValue].self, forKey: .attachments) ?? []
+        parties = try values.decodeIfPresent([PartyOpinion].self, forKey: .parties) ?? []
+        chart = try values.decodeIfPresent(JSONValue.self, forKey: .chart)
+    }
+
+    var evidenceFields: [String: JSONValue] {
+        var fields: [String: JSONValue] = [:]
+        if !debates.isEmpty { fields["debatten"] = .array(debates) }
+        if !press.isEmpty { fields["presse"] = .array(press) }
+        if !attachments.isEmpty { fields["anlagen"] = .array(attachments) }
+        if !parties.isEmpty { fields["parteien"] = .array(parties.map(\.jsonValue)) }
+        if let chart { fields["grafik"] = chart }
+        return fields
     }
 }
 
@@ -1880,24 +1987,14 @@ private struct PartyOpinionsView: View {
         Group {
             if error != nil {
                 EmptyView()
-            } else if let response, response.parties.count < 2 {
+            } else if let renderedResponse, renderedResponse.parties.count < 2 {
                 EmptyView()
             } else {
                 DisclosureGroup {
                     VStack(alignment: .leading, spacing: 12) {
-                        if let response {
+                        if let response = renderedResponse {
                             ForEach(response.parties) { opinion in
-                                VStack(alignment: .leading, spacing: 5) {
-                                    HStack {
-                                        Text(opinion.party).font(RatsFont.body(14, weight: .semibold))
-                                        if let stance = opinion.stance { Pill(stance.capitalized) }
-                                    }
-                                    Text(opinion.position).font(RatsFont.body(13)).foregroundStyle(RatsColor.secondary)
-                                    if opinion.united == false {
-                                        Text("Innerhalb der Fraktion gab es unterschiedliche Beiträge.")
-                                            .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
-                                    }
-                                }
+                                PartyOpinionDetails(opinion: opinion)
                                 if opinion.id != response.parties.last?.id {
                                     Divider().overlay(RatsColor.separator)
                                 }
@@ -1933,7 +2030,7 @@ private struct PartyOpinionsView: View {
         let decisionIDs = citedIDs.isEmpty
             ? Array(turn.sources.prefix(20).map(\.id))
             : citedIDs
-        guard response == nil, !isLoading else { return }
+        guard snapshotParties.count < 2, response == nil, !isLoading else { return }
         error = nil
         isLoading = true
         defer { isLoading = false }
@@ -1943,6 +2040,262 @@ private struct PartyOpinionsView: View {
                 body: Body(frage: String(turn.question.prefix(300)), beschluss_ids: decisionIDs)
             )
         } catch { self.error = error.localizedDescription }
+    }
+
+    private var snapshotParties: [PartyOpinion] {
+        (turn.evidence["parteien"]?.array ?? []).compactMap { try? $0.decoded(PartyOpinion.self) }
+    }
+
+    private var renderedResponse: PartyOpinionsResponse? {
+        if snapshotParties.count >= 2 {
+            return PartyOpinionsResponse(parties: snapshotParties, withoutContributions: [])
+        }
+        return response
+    }
+}
+
+struct SharedAnswerView: View {
+    let model: AppModel
+    let token: String?
+
+    @State private var snapshot: SharedAnswerSnapshot?
+    @State private var people: [QuestionPerson] = []
+    @State private var isLoading = true
+    @State private var error: String?
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .center, spacing: 13) {
+                    Lotti3DView(scene: .reading, animated: false)
+                        .frame(width: 92, height: 78)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        MonoKicker("Geteiltes Ratsgespräch")
+                        Text("Antwort von Lotti")
+                            .font(RatsFont.title(27))
+                        Text("Der gespeicherte Stand wird unverändert aus dem öffentlichen Share geladen.")
+                            .font(RatsFont.body(12))
+                            .foregroundStyle(RatsColor.secondary)
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RatsColor.primary.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                if isLoading {
+                    RatsLoadingState(message: "Geteilte Antwort wird geladen …")
+                } else if let error {
+                    ErrorCard(message: error) { Task { await load() } }
+                    ownQuestionButton
+                } else if let snapshot {
+                    sharedContent(snapshot)
+                }
+            }
+            .frame(maxWidth: 760, alignment: .leading)
+            .padding(18)
+            .frame(maxWidth: .infinity)
+        }
+        .background(RatsColor.stage)
+        .navigationTitle("Geteilte Antwort")
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: token) { await load() }
+    }
+
+    @ViewBuilder
+    private func sharedContent(_ snapshot: SharedAnswerSnapshot) -> some View {
+        Text(snapshot.question)
+            .font(RatsFont.body(15, weight: .medium))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .background(RatsColor.primary.opacity(0.08))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(RatsColor.primary.opacity(0.18)))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+
+        CitedAnswerText(
+            text: snapshot.answer,
+            model: model,
+            sources: snapshot.sources,
+            evidence: snapshot.evidenceFields,
+            people: people
+        )
+        .font(RatsFont.body(15))
+        .foregroundStyle(RatsColor.bodyText)
+        .lineSpacing(6)
+
+        if snapshot.parties.count >= 2 {
+            SharedPartyOpinionsCard(parties: snapshot.parties)
+        }
+
+        if !snapshot.sources.isEmpty {
+            QuestionSourcesCard(turn: turn(from: snapshot), model: model)
+        }
+
+        CouncilEvidenceBlocks(fields: snapshot.evidenceFields, model: model)
+
+        HStack(spacing: 10) {
+            ownQuestionButton
+            if let url = shareURL {
+                ShareLink(item: url) {
+                    Label("Weitergeben", systemImage: "square.and.arrow.up")
+                        .font(RatsFont.body(12.5, weight: .semibold))
+                        .frame(minHeight: 44)
+                        .padding(.horizontal, 14)
+                        .background(RatsColor.card)
+                        .overlay(Capsule().stroke(RatsColor.border))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+
+        Text(footer(snapshot))
+            .font(RatsFont.body(10.5))
+            .foregroundStyle(RatsColor.muted)
+            .lineSpacing(2)
+    }
+
+    private var ownQuestionButton: some View {
+        Button {
+            guard let token, !token.isEmpty else {
+                model.authPresentation = .login
+                return
+            }
+            if case .active = model.session {
+                model.questionShareToken = snapshot == nil ? nil : token
+                model.selectedTab = .questions
+                model.navigation.removeAll()
+            } else {
+                model.authPresentation = .login
+            }
+        } label: {
+            Label(questionButtonLabel, systemImage: "sparkles")
+                .font(RatsFont.body(12.5, weight: .semibold))
+                .foregroundStyle(RatsColor.primaryText)
+                .frame(minHeight: 44)
+                .padding(.horizontal, 14)
+                .background(RatsColor.primary)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var isActive: Bool {
+        if case .active = model.session { true } else { false }
+    }
+
+    private var questionButtonLabel: String {
+        if !isActive { return "Ratslotse ausprobieren" }
+        return snapshot == nil ? "Eigene Frage stellen" : "Im Chat weiterfragen"
+    }
+
+    private var shareURL: URL? {
+        guard let token, !token.isEmpty else { return nil }
+        return model.router.universalLink(for: .sharedAnswer(token: token))
+    }
+
+    private func turn(from snapshot: SharedAnswerSnapshot) -> QuestionTurn {
+        QuestionTurn(
+            question: snapshot.question,
+            answer: snapshot.answer,
+            sources: snapshot.sources,
+            evidence: snapshot.evidenceFields
+        )
+    }
+
+    private func footer(_ snapshot: SharedAnswerSnapshot) -> String {
+        let date = RatsDate.short(snapshot.created) ?? snapshot.created ?? "dem geteilten Stand"
+        return "Automatische Antwort von „Frag den Rat“, geteilt am \(date). Maßgeblich bleiben die verlinkten amtlichen Quellen."
+    }
+
+    private func load() async {
+        guard let token = token?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !token.isEmpty, token.count <= 64 else {
+            isLoading = false
+            snapshot = nil
+            error = "Diese geteilte Antwort gibt es nicht mehr. Der Link ist unvollständig, abgelaufen oder wurde gelöscht."
+            return
+        }
+        isLoading = true
+        error = nil
+        defer { isLoading = false }
+        do {
+            async let snapshotRequest: SharedAnswerSnapshot = model.api.get("/api/council/qa-share/\(token)")
+            async let peopleRequest: QuestionPeopleEnvelope? = try? model.api.get("/api/council/personen-lexikon")
+            let loaded = try await snapshotRequest
+            snapshot = loaded
+            people = await peopleRequest?.personen ?? []
+        } catch let apiError as APIError where apiError.statusCode == 404 {
+            snapshot = nil
+            error = "Diese geteilte Antwort gibt es nicht mehr. Der Link ist abgelaufen oder wurde gelöscht."
+        } catch {
+            snapshot = nil
+            self.error = "Die geteilte Antwort konnte nicht vollständig geladen werden. Prüfe deine Verbindung und versuche es erneut."
+        }
+    }
+}
+
+private struct SharedPartyOpinionsCard: View {
+    let parties: [PartyOpinion]
+
+    var body: some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(parties) { opinion in
+                    PartyOpinionDetails(opinion: opinion)
+                    if opinion.id != parties.last?.id { Divider().overlay(RatsColor.separator) }
+                }
+            }
+            .padding(.top, 10)
+        } label: {
+            MonoKicker("Fraktionen", trailing: "\(parties.count)")
+        }
+        .ratsCard()
+    }
+}
+
+private struct PartyOpinionDetails: View {
+    let opinion: PartyOpinion
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(opinion.party).font(RatsFont.body(14, weight: .semibold))
+                if let stance = opinion.stance { Pill(stance.capitalized) }
+                Spacer(minLength: 4)
+                if let count = opinion.contributions, count > 0 {
+                    Text("\(count) Beiträge")
+                        .font(RatsFont.mono(9))
+                        .foregroundStyle(RatsColor.muted)
+                }
+            }
+            Text(opinion.position)
+                .font(RatsFont.body(13))
+                .foregroundStyle(RatsColor.secondary)
+            if let statement = opinion.coreStatement, !statement.text.isEmpty {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("„\(statement.text)“")
+                        .font(RatsFont.body(12, weight: .medium))
+                        .foregroundStyle(RatsColor.bodyText)
+                    Text([statement.speaker, RatsDate.short(statement.date)].compactMap { $0 }.joined(separator: " · "))
+                        .font(RatsFont.mono(9))
+                        .foregroundStyle(RatsColor.muted)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RatsColor.stage)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            }
+            if let hint = opinion.hint, !hint.isEmpty {
+                Text(hint).font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
+            } else if opinion.united == false {
+                Text("Innerhalb der Fraktion gab es unterschiedliche Beiträge.")
+                    .font(RatsFont.body(11))
+                    .foregroundStyle(RatsColor.muted)
+            }
+        }
     }
 }
 
@@ -2024,12 +2377,18 @@ private struct QuestionAnswerActions: View {
             let frage: String
             let antwort: String
             let quellen: [Source]
+            let debatten: [JSONValue]
+            let presse: [JSONValue]
+            let anlagen: [JSONValue]
+            let parteien: [PartyOpinion]
+            let grafik: JSONValue?
         }
         struct Response: Codable, Sendable { let token: String }
 
         isSharing = true
         defer { isSharing = false }
         do {
+            let parties = await partyOpinionsForShare()
             let response: Response = try await model.api.send(
                 "/api/council/qa-share",
                 body: Body(
@@ -2043,7 +2402,12 @@ private struct QuestionAnswerActions: View {
                             committee: $0.committee,
                             outcome: $0.outcome
                         )
-                    }
+                    },
+                    debatten: turn.evidence["debatten"]?.array ?? [],
+                    presse: turn.evidence["presse"]?.array ?? [],
+                    anlagen: turn.evidence["anlagen"]?.array ?? [],
+                    parteien: parties,
+                    grafik: turn.evidence["grafik"]
                 )
             )
             guard let url = URL(string: "https://ratslotse.de/g?t=\(response.token)") else { return }
@@ -2051,6 +2415,25 @@ private struct QuestionAnswerActions: View {
         } catch {
             model.alertMessage = error.localizedDescription
         }
+    }
+
+    private func partyOpinionsForShare() async -> [PartyOpinion] {
+        let embedded = (turn.evidence["parteien"]?.array ?? []).compactMap {
+            try? $0.decoded(PartyOpinion.self)
+        }
+        if embedded.count >= 2 { return embedded }
+        guard !(turn.evidence["debatten"]?.array ?? []).isEmpty else { return [] }
+
+        struct Body: Codable, Sendable { let frage: String; let beschluss_ids: [Int] }
+        let citationIndex = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
+        let IDs = citationIndex.citedSources.isEmpty
+            ? Array(turn.sources.prefix(20).map(\.id))
+            : citationIndex.citedSources.map(\.id)
+        guard let response: PartyOpinionsResponse = try? await model.api.send(
+            "/api/council/partei-meinungen",
+            body: Body(frage: String(turn.question.prefix(300)), beschluss_ids: IDs)
+        ) else { return [] }
+        return response.parties.count >= 2 ? response.parties : []
     }
 }
 

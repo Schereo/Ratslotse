@@ -856,8 +856,7 @@ struct RouteDestinationView: View {
         case .quiz(let area): QuizView(model: model, area: area)
         case .analysis: CouncilInsightsView(model: model)
         case .admin: AdminView(model: model)
-        case .sharedAnswer:
-            if let url = model.router.universalLink(for: route) { ExternalWebView(url: url) }
+        case .sharedAnswer(let token): SharedAnswerView(model: model, token: token)
         case .web(let url): ExternalWebView(url: url)
         default: EmptyView()
         }

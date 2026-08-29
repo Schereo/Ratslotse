@@ -65,6 +65,7 @@ public final class AppModel {
     public var navigation: [AppRoute] = []
     public var authPresentation: AuthPresentation?
     public var questionPrefill = ""
+    public var questionShareToken: String?
     public var isOffline = false
     public var updateRequired = false
     public var updateNotice: String?
@@ -361,9 +362,10 @@ public final class AppModel {
             selectedTab = tab
             if tab == .council { councilSection = .decisions }
             navigation.removeAll()
-        case .question(let prefill, _):
+        case .question(let prefill, let share):
             selectedTab = .questions
             questionPrefill = prefill ?? ""
+            questionShareToken = share
             navigation.removeAll()
         case .verifyEmail(let token):
             Task { await verifyEmail(token: token) }

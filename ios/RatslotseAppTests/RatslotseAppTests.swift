@@ -58,6 +58,61 @@ import Testing
 }
 
 @MainActor
+@Test func sharedQuestionRouteIsHandedToTheNativeChat() {
+    let model = AppModel()
+
+    model.handle(route: .question(prefill: nil, share: "snapshot-token"))
+
+    #expect(model.selectedTab == .questions)
+    #expect(model.questionShareToken == "snapshot-token")
+    #expect(model.navigation.isEmpty)
+}
+
+@MainActor
+@Test func publicShareRouteUsesANativeDestination() {
+    let model = AppModel()
+
+    model.handle(route: .sharedAnswer(token: "snapshot-token"))
+
+    #expect(model.navigation == [.sharedAnswer(token: "snapshot-token")])
+}
+
+@Test func sharedAnswerSnapshotKeepsEveryPublishedContentBlock() throws {
+    let data = Data(#"""
+    {
+      "frage": "Was wurde beschlossen?",
+      "antwort": "Der Rat hat zugestimmt [42].",
+      "created": "2026-08-29T08:15:00",
+      "quellen": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"angenommen"}],
+      "debatten": [{"sprecher":"Anna Beispiel","partei":"SPD","auszug":"Wir stimmen zu."}],
+      "presse": [{"titel":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
+      "anlagen": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],
+      "parteien": [
+        {"partei":"SPD","haltung":"dafür","position":"Zustimmung","einig":true},
+        {"partei":"CDU","haltung":"dagegen","position":"Ablehnung","einig":false}
+      ],
+      "grafik": {"art":"linie","titel":"Kosten","einheit":"Mio. €","reihe":[{"jahr":2026,"wert":2.5}]}
+    }
+    """#.utf8)
+
+    let snapshot = try JSONDecoder().decode(SharedAnswerSnapshot.self, from: data)
+
+    #expect(snapshot.sources.map(\.id) == [42])
+    #expect(snapshot.debates.count == 1)
+    #expect(snapshot.press.count == 1)
+    #expect(snapshot.attachments.count == 1)
+    #expect(snapshot.parties.count == 2)
+    #expect(snapshot.evidenceFields["grafik"] != nil)
+    #expect(snapshot.evidenceFields["parteien"]?.array?.count == 2)
+
+    let legacy = try JSONDecoder().decode(
+        SharedAnswerSnapshot.self,
+        from: Data(#"{"frage":"Alt","antwort":"Antwort","quellen":[]}"#.utf8)
+    )
+    #expect(legacy.evidenceFields.isEmpty)
+}
+
+@MainActor
 @Test func appearanceSelectionSurvivesARelaunch() throws {
     let suiteName = "de.ratslotse.tests.appearance.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
