@@ -47,7 +47,10 @@ Die öffentliche Produktbezeichnung und die endgültigen UI-Begriffe sind noch f
 
 ### Karte und öffentliche Darstellung
 
-- Die Karte ist der primäre Zugang; eine Listenansicht ergänzt sie.
+- Die öffentliche Ansicht bleibt bewusst minimalistisch und zeigt keine überladene Kennzahlen-Übersicht.
+- Die Karte ist der Standard und der dominante interaktive Einstieg für alle Besucher*innen.
+- Eine zweite öffentliche Ansicht ordnet alle Probleme als Kanban-Board nach ihrem belegbaren Status.
+- Details und Kennzahlen erscheinen erst nach Auswahl eines Problems (progressive Offenlegung).
 - Ein Problem kann einen Punkt, eine Einrichtung, eine Route, ein Gebiet/Stadtteil oder das gesamte Stadtgebiet betreffen.
 - Eine öffentliche Problemseite zeigt höchstens:
   - moderierten Titel und neutrale Zusammenfassung,
@@ -117,6 +120,7 @@ Preview-Backend freigegebene Testprobleme bereitstellt.
 - [x] Öffentliche API für freigegebene Probleme mit Karte, Filtern und Listenansicht bereitstellen.
 - [ ] Punkt, Einrichtung, Route, Gebiet/Stadtteil und stadtweite Probleme darstellbar machen.
 - [ ] Problem-Detailseite mit erlaubten Aggregaten und öffentlicher Zeitleiste bauen.
+- [x] Öffentliche Minimalansicht mit Karte als Standard und Status-Kanban als zweiter Ansicht bereitstellen.
 - [x] Kennzeichnung als unabhängiges Ratslotse-Angebot und Erklärung der Statusaussage sichtbar platzieren.
 - [x] Leere, Lade-, Fehler- und mobile Zustände sowie Tastaturbedienung und Screenreader-Texte abdecken.
 
