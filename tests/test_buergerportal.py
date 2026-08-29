@@ -118,14 +118,25 @@ def test_external_public_event_requires_role_and_http_source(tmp_path):
             title="Rückmeldung",
             source_kind="Stadtverwaltung",
         )
-    with pytest.raises(ValueError, match="HTTP-Adresse"):
-        store.add_public_event(
-            problem_id,
-            kind="check",
-            title="Prüfung",
-            source_kind="Ratslotse-Prüfung",
-            source_url="javascript:alert(1)",
+    for invalid_url in ("javascript:alert(1)", "https:// x"):
+        with pytest.raises(ValueError, match="HTTP-Adresse"):
+            store.add_public_event(
+                problem_id,
+                kind="check",
+                title="Prüfung",
+                source_kind="Ratslotse-Prüfung",
+                source_url=invalid_url,
+            )
+    with pytest.raises(sqlite3.IntegrityError, match="invalid public event source"):
+        store._conn.execute(
+            """INSERT INTO civic_problem_events (
+                   problem_id, kind, title, source_kind, source_url,
+                   event_at, published_at
+               ) VALUES (?, 'reply', 'Direkter Eintrag', 'Stadtverwaltung',
+                         'http:///kein-host', ?, ?)""",
+            (problem_id, "2026-08-29T08:00:00+00:00", "2026-08-29T08:00:00+00:00"),
         )
+    store._conn.rollback()
     event_id = store.add_public_event(
         problem_id,
         kind="reply",

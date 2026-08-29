@@ -12,6 +12,22 @@ from .domain import PROBLEM_CATEGORIES, PROBLEM_STATUSES, PUBLIC_SOURCE_KINDS, S
 from .schema import sql_enum
 
 
+def _is_public_http_url(value: object) -> bool:
+    if not isinstance(value, str) or not value or any(char.isspace() for char in value):
+        return False
+    try:
+        parsed = urlparse(value)
+        _ = parsed.port  # Invalid port syntax raises ValueError.
+    except ValueError:
+        return False
+    return (
+        parsed.scheme.lower() in {"http", "https"}
+        and parsed.hostname is not None
+        and parsed.username is None
+        and parsed.password is None
+    )
+
+
 def _invalid_public_source(prefix: str = "") -> str:
     source_kind = f"{prefix}source_kind"
     source_url = f"{prefix}source_url"
@@ -19,10 +35,7 @@ def _invalid_public_source(prefix: str = "") -> str:
         {source_kind} IS NULL
         OR {source_kind} NOT IN ({sql_enum(PUBLIC_SOURCE_KINDS)})
         OR ({source_kind} != 'Ratslotse-Prüfung' AND {source_url} IS NULL)
-        OR ({source_url} IS NOT NULL AND NOT (
-            lower({source_url}) LIKE 'http://_%'
-            OR lower({source_url}) LIKE 'https://_%'
-        ))
+        OR ({source_url} IS NOT NULL AND valid_public_http_url({source_url}) = 0)
     )"""
 
 
@@ -130,6 +143,12 @@ class ProblemStore:
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
         self._conn.execute("PRAGMA foreign_keys=ON")
+        self._conn.create_function(
+            "valid_public_http_url",
+            1,
+            lambda value: int(_is_public_http_url(value)),
+            deterministic=True,
+        )
         self._conn.executescript(SCHEMA)
         # Alte, vor der Rollen-/Quellenpflicht veröffentlichte Ereignisse
         # bleiben gespeichert, werden aber nicht weiter öffentlich projiziert.
@@ -214,10 +233,8 @@ class ProblemStore:
     ) -> int:
         if source_kind not in PUBLIC_SOURCE_KINDS:
             raise ValueError("Öffentliche Ereignisse benötigen ein gültiges Rollenlabel.")
-        if source_url:
-            parsed = urlparse(source_url)
-            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-                raise ValueError("Quellen benötigen eine öffentliche HTTP-Adresse.")
+        if source_url and not _is_public_http_url(source_url):
+            raise ValueError("Quellen benötigen eine öffentliche HTTP-Adresse.")
         if source_kind != "Ratslotse-Prüfung" and not source_url:
             raise ValueError("Externe Reaktionen benötigen eine überprüfbare Quelle.")
         now = _now()

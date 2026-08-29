@@ -27,6 +27,8 @@ export function PublicProblemDetail({
 }) {
   const status = PROBLEM_STATUS[problem.status];
   const Heading = headingLevel === 1 ? "h1" : "h2";
+  const SectionHeading = headingLevel === 1 ? "h2" : "h3";
+  const eventHeadingLevel = headingLevel === 1 ? 3 : 4;
   return (
     <article className="mx-auto max-w-4xl space-y-5">
       {(backHref || onClose) && (
@@ -75,7 +77,7 @@ export function PublicProblemDetail({
       </header>
 
       <Card className="p-5 sm:p-6">
-        <h2 className="text-sm font-semibold text-foreground">Bestätigungsstand</h2>
+        <SectionHeading className="text-sm font-semibold text-foreground">Bestätigungsstand</SectionHeading>
         <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
           <Metric label="Reporter*innen" value={problem.unique_reporters} />
           <Metric label="Aktuelle Beobachtungen" value={problem.current_observations} />
@@ -93,14 +95,14 @@ export function PublicProblemDetail({
       </Card>
 
       <Card className="p-5 sm:p-6">
-        <h2 className="text-lg font-semibold text-foreground">Öffentliche Zeitleiste</h2>
+        <SectionHeading className="text-lg font-semibold text-foreground">Öffentliche Zeitleiste</SectionHeading>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
           Nur moderierte, belegbare Ereignisse. Ratslotse zeigt keine amtlichen Bearbeitungsstände ohne überprüfbare Quelle.
         </p>
         {problem.events && problem.events.length > 0 ? (
           <ol className="mt-5 space-y-5">
             {problem.events.map((event, index) => (
-              <TimelineEvent key={`${event.event_at}-${event.kind}-${index}`} event={event} />
+              <TimelineEvent key={`${event.event_at}-${event.kind}-${index}`} event={event} headingLevel={eventHeadingLevel} />
             ))}
           </ol>
         ) : (
@@ -135,13 +137,14 @@ function DateValue({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TimelineEvent({ event }: { event: PublicProblemEvent }) {
+function TimelineEvent({ event, headingLevel }: { event: PublicProblemEvent; headingLevel: 3 | 4 }) {
   const sourceUrl = safeHttpUrl(event.source_url);
+  const Heading = headingLevel === 3 ? "h3" : "h4";
   return (
     <li className="relative pl-7">
       <CheckCircle2 className="absolute left-0 top-0.5 h-4 w-4 text-primary" aria-hidden />
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-        <h3 className="font-medium text-foreground">{event.title}</h3>
+        <Heading className="font-medium text-foreground">{event.title}</Heading>
         <time dateTime={event.event_at} className="shrink-0 text-xs text-muted-foreground">{formatDate(event.event_at)}</time>
       </div>
       {event.detail && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{event.detail}</p>}
