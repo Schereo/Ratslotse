@@ -1,5 +1,6 @@
 import RatslotseAPI
 import RatslotseDesign
+import Charts
 import SwiftUI
 
 private enum InsightSection: String, CaseIterable, Identifiable {
@@ -17,14 +18,22 @@ private struct TrendResponse: Decodable, Sendable {
     let fields: [String]
     let byField: [String: [Int]]
     let money: [Double]
+    let moneyDrivers: [MoneyDriver?]
     let emerging: [EmergingTopic]
     let fieldLabels: [String: String]
 
     enum CodingKeys: String, CodingKey {
         case quarters, fields, money, emerging
+        case moneyDrivers = "money_drivers"
         case byField = "by_field"
         case fieldLabels = "field_labels"
     }
+}
+
+private struct MoneyDriver: Decodable, Sendable {
+    let id: Int
+    let title: String
+    let eur: Double
 }
 
 private struct EmergingTopic: Decodable, Sendable, Identifiable {
@@ -35,16 +44,46 @@ private struct EmergingTopic: Decodable, Sendable, Identifiable {
 
 private struct PartyAnalysisResponse: Decodable, Sendable {
     let coverage: Coverage
+    let topicMatrix: TopicMatrix
     let successRates: [PartySuccess]
+    let applicationStats: ApplicationStats?
     let contention: [Contention]
     let alliances: [Alliance]
     let fieldLabels: [String: String]
 
     enum CodingKeys: String, CodingKey {
         case coverage, contention, alliances
+        case topicMatrix = "topic_matrix"
         case successRates = "success_rates"
+        case applicationStats = "antrag_stats"
         case fieldLabels = "field_labels"
     }
+}
+
+private struct TopicMatrix: Decodable, Sendable {
+    let parties: [String]
+    let fields: [String]
+    let matrix: [String: [String: Int]]
+}
+
+private struct ApplicationStats: Decodable, Sendable {
+    let parties: [ApplicationParty]
+    let applicationCount: Int
+    let decidedCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case parties
+        case applicationCount = "n_antraege"
+        case decidedCount = "n_mit_beschluss"
+    }
+}
+
+private struct ApplicationParty: Decodable, Sendable, Identifiable {
+    var id: String { party }
+    let party: String
+    let n: Int
+    let angenommen: Int
+    let abgelehnt: Int
 }
 
 private struct Coverage: Decodable, Sendable {
@@ -88,8 +127,45 @@ private struct CouncilMember: Decodable, Sendable, Identifiable {
     let party: String?
     let art: String
     let organisation: String?
+    let filterParties: [String]
+    let forms: [String]
     let n: Int
     let committees: Int
+
+    enum CodingKeys: String, CodingKey {
+        case slug, name, party, art, organisation, n, committees
+        case filterParties = "filter_parteien"
+        case forms = "formen"
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        slug = try values.decode(String.self, forKey: .slug)
+        name = try values.decode(String.self, forKey: .name)
+        party = try values.decodeIfPresent(String.self, forKey: .party)
+        art = try values.decodeIfPresent(String.self, forKey: .art) ?? "rat"
+        organisation = try values.decodeIfPresent(String.self, forKey: .organisation)
+        filterParties = try values.decodeIfPresent([String].self, forKey: .filterParties) ?? party.map { [$0] } ?? []
+        forms = try values.decodeIfPresent([String].self, forKey: .forms) ?? []
+        n = try values.decodeIfPresent(Int.self, forKey: .n) ?? 0
+        committees = try values.decodeIfPresent(Int.self, forKey: .committees) ?? 0
+    }
+
+    init(slug: String, name: String, party: String?, art: String, organisation: String?, filterParties: [String] = [], forms: [String] = [], n: Int, committees: Int) {
+        self.slug = slug; self.name = name; self.party = party; self.art = art
+        self.organisation = organisation; self.filterParties = filterParties
+        self.forms = forms; self.n = n; self.committees = committees
+    }
+}
+
+private struct PeopleLexiconResponse: Decodable, Sendable { let personen: [AdministrationPerson] }
+
+private struct AdministrationPerson: Decodable, Sendable, Identifiable {
+    var id: String { slug }
+    let slug: String
+    let name: String?
+    let art: String
+    let role: String?
 }
 
 private struct FinanceResponse: Decodable, Sendable {
@@ -111,6 +187,55 @@ private struct FinanceField: Decodable, Sendable, Identifiable {
 }
 
 private struct GoalsResponse: Decodable, Sendable { let goals: [CouncilGoal] }
+
+private struct GoalDetailResponse: Decodable, Sendable {
+    let decisions: [GoalDecision]
+}
+
+private struct GoalDecision: Decodable, Sendable, Identifiable {
+    let id: Int
+    let title: String?
+    let summary: String?
+    let policyField: String?
+    let outcome: String?
+    let sessionDate: String?
+    let committee: String?
+    let stance: String
+    let rationale: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, summary, outcome, committee, stance, rationale
+        case policyField = "policy_field"
+        case sessionDate = "session_date"
+    }
+}
+
+private struct FieldRecapsResponse: Decodable, Sendable { let recaps: [FieldRecap] }
+
+private struct FieldRecap: Decodable, Sendable, Identifiable {
+    var id: String { policyField }
+    let policyField: String
+    let fieldLabel: String
+    let summary: String
+    let decisionCount: Int
+    let periodFrom: String
+    let periodTo: String
+
+    enum CodingKeys: String, CodingKey {
+        case summary
+        case policyField = "policy_field"
+        case fieldLabel = "field_label"
+        case decisionCount = "n_decisions"
+        case periodFrom = "period_from"
+        case periodTo = "period_to"
+    }
+}
+
+private struct AnalysisDrilldown: Identifiable {
+    let id = UUID()
+    let title: String
+    let query: [URLQueryItem]
+}
 
 private struct CouncilGoal: Decodable, Sendable, Identifiable {
     var id: String { key }
@@ -139,6 +264,15 @@ struct CouncilInsightsView: View {
     @State private var members: [CouncilMember] = []
     @State private var finance: FinanceResponse?
     @State private var goals: [CouncilGoal] = []
+    @State private var fieldRecaps: [FieldRecap] = []
+    @State private var administrationPeople: [AdministrationPerson] = []
+    @State private var partyFilter = ""
+    @State private var expandedRecaps: Set<String> = []
+    @State private var recapFilter: String?
+    @State private var expandedGoals: Set<String> = []
+    @State private var goalDetails: [String: [GoalDecision]] = [:]
+    @State private var goalLoading: Set<String> = []
+    @State private var drilldown: AnalysisDrilldown?
     @State private var isLoading = true
     @State private var error: String?
     @State private var personQuery = ""
@@ -183,6 +317,10 @@ struct CouncilInsightsView: View {
             await load()
             await model.markExplorationStep("analyse")
         }
+        .sheet(item: $drilldown) { item in
+            AnalysisDecisionSheet(model: model, drilldown: item)
+                .ratsLargeSheet()
+        }
     }
 
     private var sectionPicker: some View {
@@ -212,32 +350,104 @@ struct CouncilInsightsView: View {
                 title: "Was bewegt den Rat?",
                 detail: "Die letzten Quartale zeigen Aktivität und erkanntes Finanzvolumen – ohne daraus automatisch Wirkung abzuleiten."
             )
-            RatsSectionPanel("Beschlüsse je Quartal", detail: "Tippe in der Web-Version auf einen Balken für die Beschlüsse des Zeitraums.", symbol: nil) {
-                let totals = trends.quarters.indices.map { index in
-                    trends.fields.reduce(0) { $0 + (trends.byField[$1]?[safe: index] ?? 0) }
+            if !fieldRecaps.isEmpty { fieldRecapsView }
+            RatsSectionPanel("Beschlüsse je Quartal", detail: "Farben zeigen die Themenfelder. Tippe auf ein Quartal für die Beschlüsse dahinter.", symbol: nil) {
+                InteractiveStackedTrendChart(trends: trends) { quarter in
+                    drilldown = quarterDrilldown(quarter)
                 }
-                MiniBarChart(labels: trends.quarters.map(shortQuarter), values: totals.map(Double.init), color: RatsColor.primary)
             }
-            RatsSectionPanel("Erkanntes Finanzvolumen", detail: "Grobe Größenordnung aus den Beschlusstexten; kein offizieller Haushalt.", symbol: nil) {
-                MiniBarChart(labels: trends.quarters.map(shortQuarter), values: trends.money, color: RatsColor.success)
+            RatsSectionPanel("Erkanntes Finanzvolumen", detail: "Grobe Größenordnung aus Beschlusstexten. Tippe auf einen Balken für Zeitraum und größten Einzelposten.", symbol: nil) {
+                InteractiveMoneyTrendChart(trends: trends) { quarter in
+                    drilldown = quarterDrilldown(quarter)
+                }
             }
             if !trends.emerging.isEmpty {
                 RatsSectionPanel("Neue Themen", detail: "Begriffe, die zuletzt häufiger auftauchen.", symbol: nil) {
                     FlowLayout(spacing: 7) {
                         ForEach(trends.emerging) { topic in
-                            Text("\(topic.tag) · \(topic.n)")
+                            Button {
+                                drilldown = AnalysisDrilldown(
+                                    title: topic.tag,
+                                    query: [.init(name: "q", value: topic.tag)]
+                                )
+                            } label: {
+                                Label("\(topic.tag) · \(topic.n)", systemImage: "arrow.up.right")
                                 .font(RatsFont.body(11, weight: .semibold))
                                 .foregroundStyle(RatsColor.primary)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
                                 .background(RatsColor.primary.opacity(0.08))
                                 .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
             }
         } else {
             empty("Noch keine Trends", "Es sind noch nicht genug datierte, klassifizierte Beschlüsse vorhanden.")
+        }
+    }
+
+    private var fieldRecapsView: some View {
+        RatsSectionPanel("Rückblick je Themenfeld", detail: "Automatische Kurzfassungen der neuesten Beschlüsse.", symbol: nil) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 7) {
+                    recapChip("Alle", selected: recapFilter == nil) { recapFilter = nil }
+                    ForEach(fieldRecaps) { recap in
+                        recapChip(recap.fieldLabel, selected: recapFilter == recap.policyField) {
+                            recapFilter = recapFilter == recap.policyField ? nil : recap.policyField
+                        }
+                    }
+                }
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 10)], spacing: 10) {
+                ForEach(filteredRecaps) { recap in
+                    Button {
+                        withAnimation(.snappy) {
+                            if expandedRecaps.contains(recap.id) { expandedRecaps.remove(recap.id) }
+                            else { expandedRecaps.insert(recap.id) }
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(recap.fieldLabel).font(RatsFont.body(13, weight: .semibold))
+                                Spacer()
+                                Text("\(recap.decisionCount)")
+                                    .font(RatsFont.mono(10, weight: .semibold))
+                                    .foregroundStyle(RatsColor.primary)
+                                    .padding(.horizontal, 7).padding(.vertical, 3)
+                                    .background(RatsColor.primary.opacity(0.08)).clipShape(Capsule())
+                                Image(systemName: "chevron.down")
+                                    .rotationEffect(.degrees(expandedRecaps.contains(recap.id) ? 180 : 0))
+                                    .foregroundStyle(RatsColor.muted)
+                            }
+                            Text(recap.summary)
+                                .font(RatsFont.body(11.5))
+                                .foregroundStyle(RatsColor.bodyText)
+                                .lineSpacing(2)
+                                .lineLimit(expandedRecaps.contains(recap.id) ? nil : 3)
+                            if expandedRecaps.contains(recap.id) {
+                                HStack {
+                                    Text("\(RatsDate.short(recap.periodFrom) ?? recap.periodFrom) – \(RatsDate.short(recap.periodTo) ?? recap.periodTo)")
+                                        .font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted)
+                                    Spacer()
+                                    Button("Beschlüsse") {
+                                        drilldown = AnalysisDrilldown(title: recap.fieldLabel, query: [.init(name: "field", value: recap.policyField)])
+                                    }
+                                    .font(RatsFont.body(10.5, weight: .semibold))
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RatsColor.stage)
+                        .overlay(RoundedRectangle(cornerRadius: 13).stroke(RatsColor.border))
+                        .clipShape(RoundedRectangle(cornerRadius: 13))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
     }
 
@@ -248,10 +458,22 @@ struct CouncilInsightsView: View {
                 title: "Wer bringt welche Anträge ein?",
                 detail: "Grundlage sind \(parties.coverage.withFactions) von \(parties.coverage.total) klassifizierten Beschlüssen – nicht das individuelle Abstimmungsverhalten."
             )
+            RatsSectionPanel("Wer bringt welche Themen ein?", detail: "Anträge je Partei und Themenfeld – dunkler bedeutet häufiger.", symbol: nil) {
+                PartyTopicHeatmap(data: parties)
+            }
             RatsSectionPanel("Erfolgsquote der Anträge", detail: "Grün angenommen, rot abgelehnt, orange vertagt.", symbol: nil) {
                 VStack(spacing: 13) {
-                    ForEach(parties.successRates) { row in
-                        PartyOutcomeRow(row: row)
+                    if let stats = parties.applicationStats,
+                       stats.parties.contains(where: { $0.n >= 5 }) {
+                        ForEach(stats.parties.filter { $0.n >= 5 }) { row in
+                            ApplicationOutcomeRow(row: row)
+                        }
+                        Text("Original-Antragsdokumente · \(stats.decidedCount) von \(stats.applicationCount) mit Beschluss")
+                            .font(RatsFont.body(9.5)).foregroundStyle(RatsColor.muted)
+                    } else {
+                        ForEach(parties.successRates) { row in
+                            PartyOutcomeRow(row: row)
+                        }
                     }
                 }
             }
@@ -308,35 +530,56 @@ struct CouncilInsightsView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
             .clipShape(RoundedRectangle(cornerRadius: 12))
 
-            let shown = filteredMembers
-            MonoKicker("Personen", trailing: "\(shown.count)")
-            ForEach(shown) { member in
-                NavigationLink(value: AppRoute.person(slug: member.slug)) {
-                    HStack(spacing: 12) {
-                        Circle()
-                            .fill(RatsColor.primary.opacity(0.10))
-                            .frame(width: 38, height: 38)
-                            .overlay(
-                                Text(initials(member.name))
-                                    .font(RatsFont.body(11, weight: .bold))
-                                    .foregroundStyle(RatsColor.primary)
-                            )
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(member.name).font(RatsFont.body(14, weight: .semibold))
-                            Text("\(member.n) Sitzungen · \(member.committees) Gremien")
-                                .font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary)
-                        }
-                        Spacer()
-                        Text(member.party ?? member.organisation ?? (member.art == "beratend" ? "beratend" : "parteilos"))
-                            .font(RatsFont.body(9.5, weight: .semibold))
-                            .foregroundStyle(RatsColor.primary)
-                            .padding(.horizontal, 7).padding(.vertical, 4)
-                            .background(RatsColor.primary.opacity(0.08)).clipShape(Capsule())
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .ratsCard()
+            Menu {
+                Button("Alle Fraktionen") { partyFilter = "" }
+                ForEach(memberParties, id: \.self) { party in
+                    Button(party) { partyFilter = party }
                 }
-                .buttonStyle(.plain)
+            } label: {
+                HStack {
+                    RatsGlyphView(glyph: .profile, color: RatsColor.primary).frame(width: 17, height: 17)
+                    Text(partyFilter.isEmpty ? "Alle Fraktionen" : partyFilter)
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down")
+                }
+                .font(RatsFont.body(12, weight: .semibold))
+                .foregroundStyle(RatsColor.bodyText)
+                .padding(.horizontal, 12)
+                .frame(height: 42)
+                .background(RatsColor.card)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+
+            let councilMembers = filteredMembers.filter { $0.art != "beratend" }
+            let advisors = filteredMembers.filter { $0.art == "beratend" }
+            MonoKicker("Ratsmitglieder", trailing: "\(councilMembers.count)")
+            peopleGrid(councilMembers)
+            if !advisors.isEmpty {
+                MonoKicker("Beratende Mitglieder", trailing: "\(advisors.count)")
+                Text("Sie beraten Ausschüsse, besitzen aber kein Ratsmandat.")
+                    .font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary)
+                peopleGrid(advisors)
+            }
+            let administration = filteredAdministration
+            if partyFilter.isEmpty, !administration.isEmpty {
+                MonoKicker("Stadtverwaltung", trailing: "\(administration.count)")
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 10)], spacing: 10) {
+                    ForEach(administration) { person in
+                        NavigationLink(value: AppRoute.person(slug: person.slug)) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(person.name ?? "Amtsträger*in").font(RatsFont.body(13.5, weight: .semibold))
+                                    Text(person.role ?? "Stadtverwaltung").font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary)
+                                }
+                                Spacer()
+                                Text("Stadt").font(RatsFont.body(9.5, weight: .semibold)).foregroundStyle(RatsColor.primary)
+                                    .padding(.horizontal, 7).padding(.vertical, 4).background(RatsColor.primary.opacity(0.08)).clipShape(Capsule())
+                            }
+                            .ratsCard()
+                        }.buttonStyle(.plain)
+                    }
+                }
             }
         }
     }
@@ -354,12 +597,16 @@ struct CouncilInsightsView: View {
                     let maximum = max(1, finance.byField.map(\.total).max() ?? 1)
                     VStack(spacing: 12) {
                         ForEach(finance.byField) { row in
-                            MetricBar(
-                                label: finance.fieldLabels[row.field] ?? row.field,
-                                value: row.total / maximum,
-                                valueLabel: formatEuro(row.total),
-                                color: RatsColor.success
-                            )
+                            Button {
+                                drilldown = AnalysisDrilldown(title: finance.fieldLabels[row.field] ?? row.field, query: [.init(name: "field", value: row.field)])
+                            } label: {
+                                MetricBar(
+                                    label: finance.fieldLabels[row.field] ?? row.field,
+                                    value: row.total / maximum,
+                                    valueLabel: "\(formatEuro(row.total)) · \(row.n)",
+                                    color: RatsColor.success
+                                )
+                            }.buttonStyle(.plain)
                         }
                     }
                 }
@@ -387,6 +634,7 @@ struct CouncilInsightsView: View {
             )
             ForEach(goals) { goal in
                 VStack(alignment: .leading, spacing: 10) {
+                    Button { toggleGoal(goal) } label: {
                     HStack(alignment: .top, spacing: 10) {
                         RatsGlyphView(glyph: .analysis)
                             .frame(width: 18, height: 18)
@@ -397,7 +645,12 @@ struct CouncilInsightsView: View {
                             Text(goal.label).font(RatsFont.body(14, weight: .semibold))
                             Text(goal.description).font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary).lineLimit(3)
                         }
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .rotationEffect(.degrees(expandedGoals.contains(goal.key) ? 180 : 0))
+                            .foregroundStyle(RatsColor.muted)
                     }
+                    }.buttonStyle(.plain)
                     GoalBalanceBar(goal: goal)
                     HStack {
                         Text("\(goal.bremst) bremsen").foregroundStyle(RatsColor.danger)
@@ -407,6 +660,32 @@ struct CouncilInsightsView: View {
                         Text("\(goal.voran) voran").foregroundStyle(RatsColor.success)
                     }
                     .font(RatsFont.body(9.5, weight: .semibold))
+                    if expandedGoals.contains(goal.key) {
+                        Divider().overlay(RatsColor.separator)
+                        if goalLoading.contains(goal.key) {
+                            RatsLoadingState(message: "Beschlüsse werden geladen …")
+                        } else if let decisions = goalDetails[goal.key] {
+                            ForEach(decisions) { decision in
+                                Button { model.navigation.append(.decision(id: decision.id)) } label: {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        HStack {
+                                            Text(stanceLabel(decision.stance))
+                                                .font(RatsFont.mono(9, weight: .semibold))
+                                                .foregroundStyle(stanceColor(decision.stance))
+                                            Spacer()
+                                            Text(RatsDate.short(decision.sessionDate) ?? "")
+                                                .font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted)
+                                        }
+                                        Text(decision.title ?? "Beschluss").font(RatsFont.body(12.5, weight: .semibold))
+                                        if let rationale = decision.rationale {
+                                            Text(rationale).font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary).lineLimit(3)
+                                        }
+                                    }
+                                    .padding(.vertical, 4)
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
                 }
                 .ratsCard()
             }
@@ -444,12 +723,130 @@ struct CouncilInsightsView: View {
 
     private var filteredMembers: [CouncilMember] {
         let needle = personQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !needle.isEmpty else { return Array(members.prefix(80)) }
-        return members.filter {
-            $0.name.localizedCaseInsensitiveContains(needle)
-                || $0.party?.localizedCaseInsensitiveContains(needle) == true
-                || $0.organisation?.localizedCaseInsensitiveContains(needle) == true
+        return members.filter { member in
+            let matchesParty = partyFilter.isEmpty || member.filterParties.contains(partyFilter)
+            let matchesText = needle.isEmpty
+                || member.name.localizedCaseInsensitiveContains(needle)
+                || member.forms.contains(where: { $0.localizedCaseInsensitiveContains(needle) })
+                || member.party?.localizedCaseInsensitiveContains(needle) == true
+                || member.organisation?.localizedCaseInsensitiveContains(needle) == true
+            return matchesParty && matchesText
         }
+    }
+
+    private var filteredAdministration: [AdministrationPerson] {
+        let needle = personQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        return administrationPeople.filter {
+            needle.isEmpty
+                || $0.name?.localizedCaseInsensitiveContains(needle) == true
+                || $0.role?.localizedCaseInsensitiveContains(needle) == true
+        }
+    }
+
+    private var memberParties: [String] {
+        Array(Set(members.flatMap(\.filterParties))).sorted()
+    }
+
+    private var filteredRecaps: [FieldRecap] {
+        guard let recapFilter else { return fieldRecaps }
+        return fieldRecaps.filter { $0.policyField == recapFilter }
+    }
+
+    private func recapChip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(RatsFont.body(10.5, weight: .semibold))
+                .foregroundStyle(selected ? RatsColor.primaryText : RatsColor.bodyText)
+                .padding(.horizontal, 10).frame(height: 30)
+                .background(selected ? RatsColor.primary : RatsColor.stage)
+                .overlay(Capsule().stroke(selected ? Color.clear : RatsColor.border))
+                .clipShape(Capsule())
+        }.buttonStyle(.plain)
+    }
+
+    private func peopleGrid(_ entries: [CouncilMember]) -> some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 10)], spacing: 10) {
+            ForEach(entries) { member in
+                NavigationLink(value: AppRoute.person(slug: member.slug)) {
+                    HStack(spacing: 12) {
+                        RoundedRectangle(cornerRadius: 11)
+                            .fill(partyColor(member.party ?? member.organisation ?? "Stadt").opacity(0.12))
+                            .frame(width: 40, height: 40)
+                            .overlay(Text(initials(member.name)).font(RatsFont.body(11, weight: .bold)).foregroundStyle(partyColor(member.party ?? "Stadt")))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(member.name).font(RatsFont.body(13.5, weight: .semibold)).lineLimit(1)
+                            Text(member.art == "beratend"
+                                 ? [member.organisation, "\(member.n) Sitzungen"].compactMap { $0 }.joined(separator: " · ")
+                                 : "\(member.n) Sitzungen · \(member.committees) Gremien")
+                                .font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary).lineLimit(2)
+                        }
+                        Spacer(minLength: 4)
+                        if let party = member.party {
+                            Text(party).font(RatsFont.body(9, weight: .semibold)).foregroundStyle(partyColor(party))
+                                .padding(.horizontal, 7).padding(.vertical, 4).background(partyColor(party).opacity(0.10)).clipShape(Capsule())
+                        }
+                    }
+                    .ratsCard()
+                }.buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func quarterDrilldown(_ quarter: String) -> AnalysisDrilldown {
+        let parts = quarter.split(separator: "-")
+        guard parts.count == 2,
+              let year = Int(parts[0]),
+              let quarterNumber = Int(parts[1].dropFirst()),
+              (1...4).contains(quarterNumber) else {
+            return AnalysisDrilldown(title: quarter, query: [])
+        }
+        let startMonth = (quarterNumber - 1) * 3 + 1
+        let endMonth = startMonth + 2
+        let calendar = Calendar(identifier: .gregorian)
+        let start = calendar.date(from: DateComponents(year: year, month: startMonth, day: 1))!
+        let nextMonth = calendar.date(from: DateComponents(year: year, month: endMonth + 1, day: 1))!
+        let end = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
+        let formatter = DateFormatter(); formatter.calendar = calendar; formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.dateFormat = "yyyy-MM-dd"
+        return AnalysisDrilldown(
+            title: "\(shortQuarter(quarter)) · Beschlüsse",
+            query: [.init(name: "date_from", value: formatter.string(from: start)), .init(name: "date_to", value: formatter.string(from: end))]
+        )
+    }
+
+    private func toggleGoal(_ goal: CouncilGoal) {
+        withAnimation(.snappy) {
+            if expandedGoals.contains(goal.key) { expandedGoals.remove(goal.key); return }
+            expandedGoals.insert(goal.key)
+        }
+        guard goalDetails[goal.key] == nil, !goalLoading.contains(goal.key) else { return }
+        goalLoading.insert(goal.key)
+        Task {
+            defer { goalLoading.remove(goal.key) }
+            do {
+                let detail: GoalDetailResponse = try await model.api.get("/api/council/goal/\(goal.key)")
+                goalDetails[goal.key] = detail.decisions
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    private func stanceLabel(_ stance: String) -> String {
+        switch stance { case "voran": "BRINGT VORAN"; case "bremst": "BREMST"; default: "BERÜHRT DAS ZIEL" }
+    }
+
+    private func stanceColor(_ stance: String) -> Color {
+        switch stance { case "voran": RatsColor.success; case "bremst": RatsColor.danger; default: RatsColor.muted }
+    }
+
+    private func partyColor(_ party: String) -> Color {
+        let value = party.lowercased()
+        if value.contains("spd") { return Color(red: 0.86, green: 0.12, blue: 0.16) }
+        if value.contains("cdu") { return Color(red: 0.18, green: 0.20, blue: 0.22) }
+        if value.contains("grün") { return Color(red: 0.16, green: 0.55, blue: 0.22) }
+        if value.contains("fdp") { return Color(red: 0.95, green: 0.73, blue: 0.10) }
+        if value.contains("link") { return Color(red: 0.70, green: 0.12, blue: 0.40) }
+        if value.contains("afd") { return Color(red: 0.14, green: 0.45, blue: 0.76) }
+        if value.contains("volt") { return Color(red: 0.38, green: 0.16, blue: 0.66) }
+        return RatsColor.primary
     }
 
     private func load() async {
@@ -462,16 +859,34 @@ struct CouncilInsightsView: View {
                 fields: ["verkehr", "soziales"],
                 byField: ["verkehr": [4, 7, 9], "soziales": [3, 5, 4]],
                 money: [1_200_000, 2_800_000, 4_100_000],
+                moneyDrivers: [
+                    MoneyDriver(id: 1, title: "Neue Busspuren für Oldenburg", eur: 1_200_000),
+                    MoneyDriver(id: 2, title: "Umbau der Alten Fleiwa", eur: 2_800_000),
+                    MoneyDriver(id: 3, title: "Schulbauprogramm", eur: 4_100_000),
+                ],
                 emerging: [EmergingTopic(tag: "Velorouten", n: 5)],
                 fieldLabels: ["verkehr": "Verkehr", "soziales": "Soziales"]
             )
             parties = PartyAnalysisResponse(
                 coverage: Coverage(withFactions: 38, total: 44),
+                topicMatrix: TopicMatrix(
+                    parties: ["SPD", "CDU", "GRÜNE"],
+                    fields: ["verkehr", "soziales"],
+                    matrix: ["SPD": ["verkehr": 6, "soziales": 8], "CDU": ["verkehr": 7, "soziales": 3], "GRÜNE": ["verkehr": 9, "soziales": 5]]
+                ),
                 successRates: [
                     PartySuccess(party: "SPD", motions: 14, angenommen: 9, abgelehnt: 3, vertagt: 2, rate: 0.64),
                     PartySuccess(party: "CDU", motions: 11, angenommen: 6, abgelehnt: 4, vertagt: 1, rate: 0.55),
                     PartySuccess(party: "GRÜNE", motions: 9, angenommen: 6, abgelehnt: 2, vertagt: 1, rate: 0.67),
                 ],
+                applicationStats: ApplicationStats(
+                    parties: [
+                        ApplicationParty(party: "SPD", n: 12, angenommen: 8, abgelehnt: 4),
+                        ApplicationParty(party: "CDU", n: 10, angenommen: 6, abgelehnt: 4),
+                    ],
+                    applicationCount: 28,
+                    decidedCount: 22
+                ),
                 contention: [
                     Contention(field: "verkehr", total: 17, contested: 8, contestedRate: 0.47),
                     Contention(field: "soziales", total: 13, contested: 4, contestedRate: 0.31),
@@ -480,9 +895,14 @@ struct CouncilInsightsView: View {
                 fieldLabels: ["verkehr": "Verkehr", "soziales": "Soziales"]
             )
             members = [
-                CouncilMember(slug: "anne-beispiel", name: "Anne Beispiel", party: "SPD", art: "rat", organisation: nil, n: 18, committees: 3),
-                CouncilMember(slug: "bernd-muster", name: "Bernd Muster", party: "CDU", art: "rat", organisation: nil, n: 16, committees: 2),
-                CouncilMember(slug: "cem-kaya", name: "Cem Kaya", party: "GRÜNE", art: "rat", organisation: nil, n: 15, committees: 4),
+                CouncilMember(slug: "anne-beispiel", name: "Anne Beispiel", party: "SPD", art: "rat", organisation: nil, filterParties: ["SPD"], n: 18, committees: 3),
+                CouncilMember(slug: "bernd-muster", name: "Bernd Muster", party: "CDU", art: "rat", organisation: nil, filterParties: ["CDU"], n: 16, committees: 2),
+                CouncilMember(slug: "cem-kaya", name: "Cem Kaya", party: "GRÜNE", art: "rat", organisation: nil, filterParties: ["GRÜNE"], n: 15, committees: 4),
+            ]
+            administrationPeople = [AdministrationPerson(slug: "stadtbaurat-beispiel", name: "Dr. Lena Beispiel", art: "stadt", role: "Stadtbaurätin")]
+            fieldRecaps = [
+                FieldRecap(policyField: "verkehr", fieldLabel: "Verkehr", summary: "Der Rat hat sichere Querungen und den Ausbau des Busverkehrs beraten. Mehrere Vorhaben gehen nun in die konkrete Planung.", decisionCount: 11, periodFrom: "2026-05-01", periodTo: "2026-08-28"),
+                FieldRecap(policyField: "soziales", fieldLabel: "Soziales", summary: "Im Mittelpunkt standen zusätzliche Betreuungsplätze und barrierefreie Angebote in den Stadtteilen.", decisionCount: 8, periodFrom: "2026-05-01", periodTo: "2026-08-28"),
             ]
             finance = FinanceResponse(
                 decisions: [],
@@ -497,6 +917,7 @@ struct CouncilInsightsView: View {
                 CouncilGoal(key: "klima", label: "Klimaneutrale Stadt", description: "Emissionen senken und Oldenburg an den Klimawandel anpassen.", voran: 18, bremst: 3, neutral: 7, total: 28),
                 CouncilGoal(key: "teilhabe", label: "Soziale Teilhabe", description: "Gute Zugänge zu Wohnen, Bildung und öffentlichem Leben schaffen.", voran: 14, bremst: 2, neutral: 5, total: 21),
             ]
+            goalDetails["klima"] = [GoalDecision(id: 1, title: "Neue Busspuren für Oldenburg", summary: "Busverkehr beschleunigen.", policyField: "verkehr", outcome: "angenommen", sessionDate: "2026-08-26", committee: "Rat", stance: "voran", rationale: "Stärkt den öffentlichen Verkehr.")]
             return
         }
 #endif
@@ -506,12 +927,16 @@ struct CouncilInsightsView: View {
             async let memberRequest: MembersResponse = model.api.get("/api/council/members")
             async let financeRequest: FinanceResponse = model.api.get("/api/council/finance")
             async let goalRequest: GoalsResponse = model.api.get("/api/council/goals")
-            let responses = try await (trendRequest, partyRequest, memberRequest, financeRequest, goalRequest)
+            async let recapRequest: FieldRecapsResponse = model.api.get("/api/council/field-recaps")
+            async let peopleRequest: PeopleLexiconResponse = model.api.get("/api/council/personen-lexikon")
+            let responses = try await (trendRequest, partyRequest, memberRequest, financeRequest, goalRequest, recapRequest, peopleRequest)
             trends = responses.0
             parties = responses.1
             members = responses.2.members
             finance = responses.3
             goals = responses.4.goals
+            fieldRecaps = responses.5.recaps
+            administrationPeople = responses.6.personen.filter { $0.art == "stadt" && $0.role != nil }
             error = nil
         } catch { self.error = error.localizedDescription }
     }
@@ -558,6 +983,233 @@ private struct MiniBarChart: View {
             }
         }
         .frame(height: 145)
+    }
+}
+
+private struct InteractiveStackedTrendChart: View {
+    let trends: TrendResponse
+    let select: (String) -> Void
+    @State private var selectedQuarter: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Chart {
+                ForEach(trends.quarters, id: \.self) { quarter in
+                    let index = trends.quarters.firstIndex(of: quarter) ?? 0
+                    ForEach(Array(trends.fields.enumerated()), id: \.element) { fieldIndex, field in
+                        BarMark(
+                            x: .value("Quartal", quarter),
+                            y: .value("Beschlüsse", trends.byField[field]?[safe: index] ?? 0)
+                        )
+                        .foregroundStyle(chartColor(fieldIndex))
+                        .cornerRadius(2)
+                    }
+                }
+                if let selectedQuarter {
+                    RuleMark(x: .value("Auswahl", selectedQuarter))
+                        .foregroundStyle(RatsColor.text.opacity(0.22))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                }
+            }
+            .chartXAxis {
+                AxisMarks { value in AxisValueLabel { Text(short(value.as(String.self) ?? "")) } }
+            }
+            .chartYAxis { AxisMarks(position: .leading) }
+            .chartXSelection(value: $selectedQuarter)
+            .frame(height: 220)
+            .onChange(of: selectedQuarter) { _, value in if let value { select(value) } }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(Array(trends.fields.enumerated()), id: \.element) { index, field in
+                        HStack(spacing: 5) {
+                            RoundedRectangle(cornerRadius: 2).fill(chartColor(index)).frame(width: 9, height: 9)
+                            Text(trends.fieldLabels[field] ?? field).font(RatsFont.body(9.5)).foregroundStyle(RatsColor.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .accessibilityHint("Ein Quartal auswählen, um die zugehörigen Beschlüsse zu öffnen")
+    }
+
+    private func chartColor(_ index: Int) -> Color {
+        [RatsColor.primary, RatsColor.signal, RatsColor.success, Color.purple, Color.pink, Color.indigo, Color.teal, Color.orange][index % 8]
+    }
+
+    private func short(_ raw: String) -> String {
+        let parts = raw.split(separator: "-")
+        guard parts.count == 2 else { return raw }
+        return "\(parts[1]) ’\(parts[0].suffix(2))"
+    }
+}
+
+private struct InteractiveMoneyTrendChart: View {
+    let trends: TrendResponse
+    let select: (String) -> Void
+    @State private var selectedQuarter: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Chart {
+                ForEach(Array(trends.quarters.enumerated()), id: \.element) { index, quarter in
+                    BarMark(x: .value("Quartal", quarter), y: .value("Euro", trends.money[safe: index] ?? 0))
+                        .foregroundStyle(RatsColor.success.gradient)
+                        .cornerRadius(5)
+                }
+            }
+            .chartXAxis {
+                AxisMarks { value in AxisValueLabel { Text(short(value.as(String.self) ?? "")) } }
+            }
+            .chartYAxis {
+                AxisMarks(position: .leading) { value in
+                    AxisGridLine(); AxisValueLabel { Text(compactEuro(value.as(Double.self) ?? 0)) }
+                }
+            }
+            .chartXSelection(value: $selectedQuarter)
+            .frame(height: 210)
+            .onChange(of: selectedQuarter) { _, value in if let value { select(value) } }
+
+            if let selectedQuarter,
+               let index = trends.quarters.firstIndex(of: selectedQuarter) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(short(selectedQuarter)) · \(compactEuro(trends.money[safe: index] ?? 0))")
+                        .font(RatsFont.body(12, weight: .semibold))
+                    if let driver = trends.moneyDrivers[safe: index] ?? nil {
+                        Text("Größter Einzelposten: \(driver.title) · \(compactEuro(driver.eur))")
+                            .font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary)
+                    }
+                }
+                .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                .background(RatsColor.success.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+        }
+    }
+
+    private func short(_ raw: String) -> String {
+        let parts = raw.split(separator: "-")
+        guard parts.count == 2 else { return raw }
+        return "\(parts[1]) ’\(parts[0].suffix(2))"
+    }
+
+    private func compactEuro(_ value: Double) -> String {
+        if value >= 1_000_000 { return String(format: "%.1f Mio. €", value / 1_000_000) }
+        if value >= 1_000 { return String(format: "%.0f Tsd. €", value / 1_000) }
+        return String(format: "%.0f €", value)
+    }
+}
+
+private struct PartyTopicHeatmap: View {
+    let data: PartyAnalysisResponse
+    @State private var selected: (party: String, field: String, count: Int)?
+
+    var body: some View {
+        let matrix = data.topicMatrix
+        let maximum = max(1, matrix.parties.flatMap { party in matrix.fields.map { matrix.matrix[party]?[$0] ?? 0 } }.max() ?? 1)
+        VStack(alignment: .leading, spacing: 10) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                Grid(horizontalSpacing: 5, verticalSpacing: 5) {
+                    GridRow {
+                        Color.clear.frame(width: 88, height: 1)
+                        ForEach(matrix.fields, id: \.self) { field in
+                            Text(data.fieldLabels[field] ?? field)
+                                .font(RatsFont.mono(8.5)).foregroundStyle(RatsColor.muted)
+                                .frame(width: 72).lineLimit(2)
+                        }
+                    }
+                    ForEach(matrix.parties, id: \.self) { party in
+                        GridRow {
+                            Text(party).font(RatsFont.body(10.5, weight: .semibold)).frame(width: 88, alignment: .leading).lineLimit(1)
+                            ForEach(matrix.fields, id: \.self) { field in
+                                let count = matrix.matrix[party]?[field] ?? 0
+                                Button { selected = (party, field, count) } label: {
+                                    Text(count == 0 ? "" : "\(count)")
+                                        .font(RatsFont.mono(10, weight: .semibold))
+                                        .foregroundStyle(Double(count) / Double(maximum) > 0.55 ? RatsColor.primaryText : RatsColor.text)
+                                        .frame(width: 72, height: 34)
+                                        .background(RatsColor.primary.opacity(count == 0 ? 0.025 : 0.10 + 0.78 * Double(count) / Double(maximum)))
+                                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+            }
+            if let selected {
+                Text("\(selected.party): \(selected.count) \(selected.count == 1 ? "Antrag" : "Anträge") im Feld \(data.fieldLabels[selected.field] ?? selected.field)")
+                    .font(RatsFont.body(10.5, weight: .semibold)).foregroundStyle(RatsColor.primary)
+                    .padding(9).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RatsColor.primary.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 9))
+            }
+        }
+    }
+}
+
+private struct ApplicationOutcomeRow: View {
+    let row: ApplicationParty
+
+    var body: some View {
+        let total = max(1, row.n)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(row.party).font(RatsFont.body(12, weight: .semibold))
+                Spacer()
+                Text("\(Int((Double(row.angenommen) / Double(total) * 100).rounded())) % angenommen · \(row.n)")
+                    .font(RatsFont.body(10)).foregroundStyle(RatsColor.secondary)
+            }
+            GeometryReader { proxy in
+                HStack(spacing: 1) {
+                    Rectangle().fill(RatsColor.success).frame(width: proxy.size.width * Double(row.angenommen) / Double(total))
+                    Rectangle().fill(RatsColor.danger).frame(width: proxy.size.width * Double(row.abgelehnt) / Double(total))
+                }.clipShape(Capsule())
+            }.frame(height: 10)
+        }
+    }
+}
+
+private struct AnalysisDecisionSheet: View {
+    let model: AppModel
+    let drilldown: AnalysisDrilldown
+    @Environment(\.dismiss) private var dismiss
+    @State private var decisions: [DecisionSummary] = []
+    @State private var total = 0
+    @State private var isLoading = true
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                RatsSheetHeader(drilldown.title, leadingTitle: "Schließen", leadingAction: { dismiss() })
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 11) {
+                        MonoKicker("Beschlüsse", trailing: total > 0 ? "\(total) gefunden" : nil)
+                        if isLoading { RatsLoadingState(message: "Beschlüsse werden geladen …") }
+                        if let error { ErrorCard(message: error) { Task { await load() } } }
+                        ForEach(decisions) { decision in
+                            NavigationLink(value: AppRoute.decision(id: decision.id)) {
+                                DecisionRow(decision: decision).ratsCard()
+                            }.buttonStyle(.plain)
+                        }
+                    }.padding(18)
+                }.background(RatsColor.page)
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: AppRoute.self) { route in
+                RouteDestinationView(model: model, route: route)
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        isLoading = true; error = nil; defer { isLoading = false }
+        do {
+            let page: DecisionPage = try await model.api.get(
+                "/api/council/decisions",
+                query: drilldown.query + [.init(name: "sort", value: "date_desc"), .init(name: "limit", value: "100")]
+            )
+            decisions = page.decisions; total = page.total
+        } catch { self.error = error.localizedDescription }
     }
 }
 
