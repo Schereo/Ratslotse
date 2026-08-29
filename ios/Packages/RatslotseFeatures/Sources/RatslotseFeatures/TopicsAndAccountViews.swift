@@ -662,7 +662,9 @@ struct AccountView: View {
                         accountLink("Impressum", symbol: "doc.text", url: "https://ratslotse.de/impressum")
                         if user.isAdmin {
                             Divider().overlay(RatsColor.separator)
-                            accountLink("Admin-Bereich im Web", symbol: "wrench.and.screwdriver", url: "https://ratslotse.de/admin")
+                            accountButton("Admin-Bereich", symbol: "wrench.and.screwdriver") {
+                                model.navigation.append(.admin)
+                            }
                         }
                     }
 

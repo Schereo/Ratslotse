@@ -144,7 +144,8 @@ public struct NativeRootView: View {
 #if DEBUG
     private func debugActiveUser() -> User? {
         let savesConversations = ratsDebugValue("RATSLOTSE_DEBUG_CONVERSATIONS") == "1" ? 1 : 0
-        let json = #"{"id":1,"email":"visual-qa@ratslotse.de","role":"user","status":"active","delivery_channel":"push","email_verified":true,"apple_linked":false,"has_password":false,"access_token":null,"display_name":"Visual QA","qa_speichern":"#
+        let role = ratsDebugValue("RATSLOTSE_DEBUG_MAIN") == "admin" ? "admin" : "user"
+        let json = #"{"id":1,"email":"visual-qa@ratslotse.de","role":""# + role + #"","status":"active","delivery_channel":"push","email_verified":true,"apple_linked":false,"has_password":false,"access_token":null,"display_name":"Visual QA","qa_speichern":"#
             + String(savesConversations)
             + "}"
         return try? JSONDecoder().decode(User.self, from: Data(json.utf8))
@@ -400,6 +401,8 @@ private struct MainTabsView: View {
             case "analysis":
                 model.navigation.removeAll()
                 model.tabletPage = .analysis
+            case "admin":
+                model.navigation = [.admin]
             case "subscriptions":
                 model.navigation.removeAll()
                 model.tabletPage = .subscriptions
@@ -846,6 +849,7 @@ struct RouteDestinationView: View {
         case .place(let id): PublicProfileView(model: model, kind: .place, key: id)
         case .quiz(let area): QuizView(model: model, area: area)
         case .analysis: CouncilInsightsView(model: model)
+        case .admin: AdminView(model: model)
         case .sharedAnswer:
             if let url = model.router.universalLink(for: route) { ExternalWebView(url: url) }
         case .web(let url): ExternalWebView(url: url)

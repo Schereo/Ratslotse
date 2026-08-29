@@ -505,6 +505,7 @@ public final class AppModel {
         case .decision, .sessions, .person, .topic, .place: .council
         case .quiz: .today
         case .analysis: .council
+        case .admin: .account
         default: selectedTab
         }
     }

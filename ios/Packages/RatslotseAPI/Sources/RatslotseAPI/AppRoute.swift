@@ -21,6 +21,7 @@ public enum AppRoute: Sendable, Hashable {
     case place(id: String)
     case quiz(area: String?)
     case analysis
+    case admin
     case web(URL)
 }
 
@@ -125,6 +126,7 @@ public struct AppRouter: Sendable {
             components.path = "/quiz"; components.queryItems = [.init(name: "area", value: area)]
         case .analysis:
             components.path = "/council"; components.queryItems = [.init(name: "tab", value: "analysis")]
+        case .admin: return nil
         case .web(let url): return url
         }
         return components.url
