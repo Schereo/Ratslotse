@@ -143,31 +143,41 @@ _PRIVATE_MIGRATIONS = (
     (
         5,
         f"""
-        ALTER TABLE civic_reports
-            ADD COLUMN content_revision INTEGER NOT NULL DEFAULT 0
-            CHECK (content_revision >= 0);
         CREATE TABLE civic_ai_assessments (
-            id               INTEGER PRIMARY KEY AUTOINCREMENT,
-            report_id        INTEGER NOT NULL,
-            report_revision  INTEGER NOT NULL,
-            verdict          TEXT NOT NULL,
-            reason_code      TEXT NOT NULL,
-            model_identifier TEXT NOT NULL,
-            created_at       TEXT NOT NULL,
-            CHECK (report_revision >= 0),
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_id   INTEGER NOT NULL,
+            verdict     TEXT NOT NULL,
+            reason_code TEXT NOT NULL,
+            model       TEXT NOT NULL,
+            created_at  TEXT NOT NULL,
             CHECK (verdict IN ({sql_enum(AI_ASSESSMENT_VERDICTS)})),
             CHECK (length(trim(reason_code)) > 0),
-            CHECK (length(trim(model_identifier)) > 0),
+            CHECK (length(trim(model)) > 0),
             FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE
         );
         CREATE INDEX idx_civic_ai_assessments_report
-            ON civic_ai_assessments(report_id, report_revision, created_at, id);
+            ON civic_ai_assessments(report_id, created_at, id);
         ALTER TABLE civic_moderation_decisions
             ADD COLUMN ai_assessment_id INTEGER
             REFERENCES civic_ai_assessments(id);
-        CREATE UNIQUE INDEX idx_civic_moderation_one_public_approval
-            ON civic_moderation_decisions(report_id)
-            WHERE outcome IN ('assigned_existing_problem', 'published_as_new_problem');
+        """,
+    ),
+    (
+        6,
+        """
+        ALTER TABLE civic_reports
+            ADD COLUMN content_revision INTEGER NOT NULL DEFAULT 0
+            CHECK (content_revision >= 0);
+        ALTER TABLE civic_ai_assessments
+            ADD COLUMN report_revision INTEGER NOT NULL DEFAULT 0
+            CHECK (report_revision >= 0);
+        ALTER TABLE civic_ai_assessments
+            RENAME COLUMN model TO model_identifier;
+        DROP INDEX idx_civic_ai_assessments_report;
+        CREATE INDEX idx_civic_ai_assessments_report
+            ON civic_ai_assessments(report_id, report_revision, created_at, id);
+        DROP TRIGGER IF EXISTS trg_civic_moderation_ai_publication_gate;
+        DROP INDEX IF EXISTS idx_civic_moderation_one_public_approval;
         UPDATE civic_reports
             SET status = 'in_review', problem_id = NULL
             WHERE status = 'accepted'
@@ -194,6 +204,26 @@ _PRIVATE_MIGRATIONS = (
              )
         BEGIN
             SELECT RAISE(ABORT, 'publication requires current suitable AI assessment and human audit');
+        END;
+        CREATE TRIGGER trg_civic_ai_assessments_no_update
+        BEFORE UPDATE ON civic_ai_assessments
+        BEGIN
+            SELECT RAISE(ABORT, 'AI assessments are immutable');
+        END;
+        CREATE TRIGGER trg_civic_ai_assessments_no_delete
+        BEFORE DELETE ON civic_ai_assessments
+        BEGIN
+            SELECT RAISE(ABORT, 'AI assessments are immutable');
+        END;
+        CREATE TRIGGER trg_civic_moderation_decisions_no_update
+        BEFORE UPDATE ON civic_moderation_decisions
+        BEGIN
+            SELECT RAISE(ABORT, 'moderation decisions are immutable');
+        END;
+        CREATE TRIGGER trg_civic_moderation_decisions_no_delete
+        BEFORE DELETE ON civic_moderation_decisions
+        BEGIN
+            SELECT RAISE(ABORT, 'moderation decisions are immutable');
         END;
         """,
     ),
@@ -581,7 +611,8 @@ class ReportStore:
             )
             self._conn.execute(
                 """UPDATE civic_reports
-                   SET updated_at = ?, content_revision = content_revision + 1
+                   SET updated_at = ?, content_revision = content_revision + 1,
+                       status = CASE WHEN status = 'accepted' THEN 'in_review' ELSE status END
                    WHERE id = ?""",
                 (now, report_id),
             )

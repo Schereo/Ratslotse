@@ -272,6 +272,18 @@ def test_report_needs_current_ai_assessment_and_human_approval_before_projection
 
     assert approval["outcome"] == "assigned_existing_problem"
     assert reports.get_owned_report(report_id, reporter_id=101)["status"] == "accepted"
+    with pytest.raises(sqlite3.IntegrityError, match="AI assessments are immutable"):
+        reports._conn.execute(
+            "UPDATE civic_ai_assessments SET verdict = 'unsuitable' WHERE id = ?",
+            (suitable["id"],),
+        )
+    reports._conn.rollback()
+    with pytest.raises(sqlite3.IntegrityError, match="moderation decisions are immutable"):
+        reports._conn.execute(
+            "UPDATE civic_moderation_decisions SET private_note = 'Geändert' WHERE id = ?",
+            (approval["id"],),
+        )
+    reports._conn.rollback()
     reports.close()
 
     public = ProblemStore(database)
@@ -279,6 +291,23 @@ def test_report_needs_current_ai_assessment_and_human_approval_before_projection
     public.publish_problem(problem_id)
     assert public.get_public_problem(problem_id)["independent_reports"] == 1
     public.close()
+
+    reports = ReportStore(database)
+    updated = reports.add_owned_observation(
+        report_id,
+        reporter_id=101,
+        text="Nach der Veröffentlichung erneut beobachtet.",
+        observed_at="2026-08-30T08:00:00+00:00",
+    )
+    assert updated["status"] == "in_review"
+    reassessment = reports.record_ai_assessment(
+        report_id,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model_identifier="independent-review-v1",
+    )
+    assert reassessment["report_revision"] == suitable["report_revision"] + 1
+    reports.close()
 
 
 def test_human_approval_is_recorded_exactly_once_under_concurrency(tmp_path):

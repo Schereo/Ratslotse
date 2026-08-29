@@ -266,6 +266,7 @@ class ProblemStore:
     def publish_problem(self, problem_id: int) -> None:
         """Publish an approved aggregate; fail closed without both review stages."""
         try:
+            self._conn.execute("BEGIN IMMEDIATE")
             counts = self._conn.execute(
                 """SELECT COUNT(DISTINCT report.reporter_id) AS independent_reports,
                           COUNT(DISTINCT CASE WHEN observation.withdrawn_at IS NULL
@@ -293,12 +294,9 @@ class ProblemStore:
                      )""",
                 (problem_id, problem_id),
             ).fetchone()
-        except sqlite3.OperationalError as error:
-            raise ValueError("Vor der Veröffentlichung ist eine KI-Vorprüfung erforderlich.") from error
-        if not counts or counts["independent_reports"] < 1:
-            raise ValueError("Vor der Veröffentlichung ist eine KI-Vorprüfung erforderlich.")
-        now = _now()
-        with self._conn:
+            if not counts or counts["independent_reports"] < 1:
+                raise ValueError("Vor der Veröffentlichung ist eine KI-Vorprüfung erforderlich.")
+            now = _now()
             updated = self._conn.execute(
                 """UPDATE civic_problems
                    SET unique_reporters = ?, current_observations = ?,
@@ -318,6 +316,15 @@ class ProblemStore:
             )
             if updated.rowcount != 1:
                 raise ValueError("Problem nicht gefunden oder bereits veröffentlicht.")
+            self._conn.commit()
+        except sqlite3.OperationalError as error:
+            self._conn.rollback()
+            if "no such table" not in str(error):
+                raise
+            raise ValueError("Vor der Veröffentlichung ist eine KI-Vorprüfung erforderlich.") from error
+        except Exception:
+            self._conn.rollback()
+            raise
 
     def add_public_event(
         self,
