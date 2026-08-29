@@ -52,11 +52,11 @@ test.describe("Öffentliche Problemkarte", () => {
 
   test("Auswahl im Status-Board ist verlinkbar", async ({ page }) => {
     await page.goto("/probleme?view=status");
-    await expect(page.getByText("Reporter*innen")).toHaveCount(0);
+    await expect(page.getByText(/unabhängige Meldung/)).toHaveCount(0);
     await page.getByRole("button", { name: /Beispiel: Barrierefreier Zugang/ }).click();
     await expect(page).toHaveURL(/problem=9003/);
     await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Barrierefreier Zugang zur Haltestelle fehlt" })).toBeVisible();
-    await expect(page.getByText("Reporter*innen")).toBeVisible();
+    await expect(page.getByText("4 unabhängige Meldungen")).toBeVisible();
     await page.getByRole("link", { name: "Problemseite öffnen" }).click();
     await expect(page).toHaveURL(/\/probleme\/9003$/);
   });
@@ -65,8 +65,10 @@ test.describe("Öffentliche Problemkarte", () => {
     await page.goto("/probleme/9001");
 
     await expect(page.getByRole("heading", { level: 1, name: "Beispiel: Dunkler Fußweg am Kanal" })).toBeVisible();
-    await expect(page.getByText("Reporter*innen")).toBeVisible();
-    await expect(page.getByText("6", { exact: true })).toBeVisible();
+    await expect(page.getByText("6 unabhängige Meldungen")).toBeVisible();
+    await expect(page.getByText("Reporter*innen")).toHaveCount(0);
+    await expect(page.getByText("Aktuelle Beobachtungen")).toHaveCount(0);
+    await expect(page.getByText("Beobachtungen insgesamt")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Öffentliche Zeitleiste" })).toBeVisible();
     await expect(page.getByText("Beispielhafte öffentliche Rückmeldung")).toBeVisible();
     await expect(page.getByText("Problem veröffentlicht")).toBeVisible();
@@ -74,7 +76,7 @@ test.describe("Öffentliche Problemkarte", () => {
     await expect(page.getByText("Ratslotse-Prüfung")).toBeVisible();
     await expect(page.getByRole("link", { name: "Quelle öffnen" })).toHaveAttribute("href", "https://example.invalid/fiktive-quelle");
     await expect(page.getByRole("link", { name: "Zur Problemkarte" })).toBeVisible();
-    await expect(page.getByText(/keine amtlichen Bearbeitungsstände/i)).toBeVisible();
+    await expect(page.getByText(/kein amtlicher Bearbeitungsstand/i)).toBeVisible();
     await expect(page.getByText("Du willst später selbst etwas melden?")).toBeVisible();
   });
 

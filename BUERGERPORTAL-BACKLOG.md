@@ -16,7 +16,7 @@ Das Portal ist kein Angebot der Stadt Oldenburg und zeigt ohne belegte Quelle ke
 - **Beobachtung:** Erstmeldung oder spätere Aktualisierung derselben Person zum selben Problem.
 - **Bürgeranliegen:** spätere Funktion; ein Vorschlag, den eine Fraktion oder ein Ratsmitglied übernehmen und zu einem formellen Antrag weiterentwickeln kann. Das Bürgeranliegen selbst ist kein Ratsantrag.
 
-Die öffentliche Produktbezeichnung und die endgültigen UI-Begriffe sind noch festzulegen.
+Die öffentliche Produktbezeichnung lautet **Probleme in Oldenburg**. Sichtbar gezählt werden ausschließlich **unabhängige Meldungen**.
 
 ## Bestätigte Leitplanken
 
@@ -38,16 +38,17 @@ Die öffentliche Produktbezeichnung und die endgültigen UI-Begriffe sind noch f
 
 ### Veröffentlichung und Moderation
 
-- Eine Meldung wird zuerst automatisch auf Eignung und mögliche personenbezogene Inhalte geprüft.
-- Das erste öffentliche Problem entsteht erst nach manueller Freigabe durch Ratslotse-Administrator*innen.
-- KI darf Kategorie und Cluster vorschlagen. Menschen entscheiden über Veröffentlichung, Zusammenführung und sensible Änderungen.
-- Reporter*innen erhalten Begründungscodes und eine kurze Moderationsnotiz und können einmal eine erneute Prüfung verlangen.
+- Eine Meldung wird zuerst lokal bereinigt und dann eigenständig durch eine KI auf Eignung geprüft; Urteil und Begründung bleiben privat.
+- Nur ein geeignetes KI-Urteil kann in die menschliche Schlussprüfung gelangen. Fehlende oder ausgefallene KI-Prüfung veröffentlicht nichts.
+- Das erste öffentliche Problem entsteht erst nach abschließender manueller Freigabe durch Ratslotse-Administrator*innen.
+- KI darf Kategorie und Cluster vorschlagen, aber nie selbst veröffentlichen. Menschen entscheiden abschließend über Veröffentlichung, Zusammenführung und sensible Änderungen.
+- Meldende Personen erhalten Begründungscodes und eine kurze Moderationsnotiz und können einmal eine erneute Prüfung verlangen.
 - Die private Moderationshistorie bleibt nachvollziehbar.
 - Im MVP gibt es keine öffentlichen Kommentare.
 
 ### Karte und öffentliche Darstellung
 
-- Die öffentliche Ansicht bleibt bewusst minimalistisch und zeigt keine überladene Kennzahlen-Übersicht.
+- Die öffentliche Ansicht bleibt bewusst minimalistisch, visuell und spielerisch; Karte, Farbe, Symbole und Bewegung tragen mehr als Text.
 - Die Karte ist der Standard und der dominante interaktive Einstieg für alle Besucher*innen.
 - Eine zweite öffentliche Ansicht ordnet alle Probleme als Kanban-Board nach ihrem belegbaren Status.
 - Details und exakte Kennzahlen erscheinen erst nach Auswahl eines Problems (progressive Offenlegung).
@@ -57,8 +58,7 @@ Die öffentliche Produktbezeichnung und die endgültigen UI-Begriffe sind noch f
   - moderierten Titel und neutrale Zusammenfassung,
   - geografischen Bezug,
   - Kategorie und freigegebene Tags,
-  - Anzahl eindeutiger Reporter*innen,
-  - aktuelle und historische Beobachtungszahlen,
+  - eine einzige knappe Zahl unabhängiger Meldungen,
   - erste und letzte Beobachtung,
   - Vertrauen beziehungsweise Bestätigungsgrad,
   - belegbaren Status und öffentliche Zeitleiste.
@@ -67,8 +67,8 @@ Die öffentliche Produktbezeichnung und die endgültigen UI-Begriffe sind noch f
 ### Datenqualität und Status
 
 - Ein Konto hat pro Problem genau einen privaten Beitrag und kann diesen aktualisieren, aber keine neue Meldung zum selben Problem erzeugen.
-- Wiederholte Aktualisierungen erhöhen nicht die Zahl eindeutiger Reporter*innen.
-- `Reporter*innen`, `aktuelle Beobachtungen` und `Beobachtungen insgesamt` bleiben getrennte Kennzahlen.
+- Wiederholte Aktualisierungen erhöhen nicht die Zahl unabhängiger Meldungen.
+- Interne Beobachtungszahlen bleiben von der Zahl unabhängiger Meldungen getrennt, werden öffentlich aber nicht als zusätzliche Kennzahlen gezeigt.
 - Eine Meldung kann zurückgezogen werden. Sie verlässt aktive Zählungen und KI-Eingaben; höchstens ein minimaler, nicht personenbezogener Audit-Eintrag bleibt bestehen, soweit erforderlich.
 - Meldungen altern abhängig von der Kategorie. Probleme können veralten, erneut bestätigt, archiviert oder durch neue Beobachtungen wieder geöffnet werden.
 - Statuswerte beschreiben nur belegbare Tatsachen, zum Beispiel `neu`, `mehrfach gemeldet`, `geprüft`, `weiterhin vorhanden` oder `offenbar behoben`.
@@ -107,7 +107,7 @@ Die Reihenfolge beschreibt Produktpriorität. Jeder Block soll als testbarer ver
 - [x] URL-Routen und Navigation innerhalb der bestehenden Web-App festlegen.
 - [x] Domänenmodell für Meldung, Problem, Zuordnung, Aktualisierung, Moderationsentscheidung, Statusereignis und geografischen Bezug dokumentieren.
 - [x] Migrationen in der bestehenden Datenhaltung entwerfen; private Meldedaten und öffentliche Projektionen klar trennen.
-- [x] Autorisierungsmatrix für Öffentlichkeit, Reporter*in und Administrator*in definieren.
+- [x] Autorisierungsmatrix für Öffentlichkeit, meldende Person und Administrator*in definieren.
 
 Dokumentiert in [`buergerportal/CONTEXT.md`](buergerportal/CONTEXT.md),
 [`buergerportal/DOMAIN-MODEL.md`](buergerportal/DOMAIN-MODEL.md) und
@@ -150,27 +150,27 @@ und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 
 - [ ] Lokale Erkennung/Redaktion personenbezogener oder sensibler Inhalte vor jedem externen KI-Aufruf implementieren.
 - [ ] Ungeeignete Fälle strukturiert erkennen und passende Hinweise für Notfälle, Straftaten, persönliche Vorwürfe und private Streitigkeiten zeigen.
-- [ ] Datenminimierte KI-Payloads, Fehlerverhalten und Auditierbarkeit dokumentieren und testen.
+- [ ] Datenminimierte KI-Payloads, eigenständiges Eignungsurteil, Fehlerverhalten und Auditierbarkeit dokumentieren und testen.
 - [ ] Aufbewahrungs-, Konto-Lösch- und Rückzugsregeln rechtlich und technisch festlegen.
 - [ ] Rate Limits und Missbrauchsschutz für Assistent und Einreichung ergänzen.
 
-**Fertig, wenn:** Tests belegen, dass typische personenbezogene Inhalte den externen Anbieter nicht erreichen, ungeeignete Anliegen sicher umgeleitet werden und ein Ausfall der KI weder Daten veröffentlicht noch Meldungen verliert.
+**Fertig, wenn:** Tests belegen, dass typische personenbezogene Inhalte den externen Anbieter nicht erreichen, jedes KI-Urteil privat auditiert wird, ungeeignete Anliegen sicher umgeleitet werden und ein fehlendes oder ausgefallenes Urteil weder Daten veröffentlicht noch Meldungen verliert.
 
 ### P4 — Moderationswarteschlange und Veröffentlichung
 
-- [ ] Admin-Warteschlange mit Rohmeldung, bereinigtem Entwurf, KI-Hinweisen und Cluster-Vorschlägen bauen.
+- [ ] Admin-Warteschlange mit Rohmeldung, bereinigtem Entwurf, eigenständigem KI-Urteil und Cluster-Vorschlägen bauen.
 - [ ] Freigeben, ablehnen, Rückfragen, Kategorie/Geografie korrigieren und mit einem Problem zusammenführen ermöglichen.
 - [ ] Begründungscodes, kurze Notiz und eine erneute Prüfung abbilden.
 - [ ] Jede relevante Entscheidung privat auditieren.
 - [ ] Erwartete Prüfzeit und einen sichtbaren Annahmestopp bei nicht betreubarer Warteschlange unterstützen.
 
-**Fertig, wenn:** Keine neue Meldung ohne Admin-Entscheidung öffentlich wird, jede Entscheidung nachvollziehbar ist und Reporter*innen Ergebnis sowie zulässige nächste Schritte sehen.
+**Fertig, wenn:** Keine Meldung ohne geeignetes KI-Urteil und abschließende Admin-Entscheidung in die öffentliche Projektion einfließt, beide Schritte nachvollziehbar sind und meldende Personen Ergebnis sowie zulässige nächste Schritte sehen.
 
 ### P5 — Clustering, Kennzahlen und Alterung
 
 - [ ] Geografische und semantische Cluster-Vorschläge implementieren; finale Zusammenführung bleibt manuell.
-- [ ] Eindeutige Reporter*innen, aktuelle Beobachtungen und Beobachtungen insgesamt separat berechnen.
-- [ ] Aktualisierung desselben Beitrags ohne Erhöhung der Reporter*innenzahl erlauben.
+- [ ] Unabhängige Meldungen, aktuelle Beobachtungen und Beobachtungen insgesamt intern separat berechnen.
+- [ ] Aktualisierung desselben Beitrags ohne Erhöhung der Zahl unabhängiger Meldungen erlauben.
 - [ ] Kategorieabhängige Alterungsregeln, erneute Bestätigung, Archivierung und Wiederöffnung umsetzen.
 - [ ] Rückzug aus aktiven Kennzahlen und Clustering-Eingaben umsetzen.
 - [ ] Moderierte öffentliche Zusammenfassungen bei neuen Meldungen sicher aktualisieren.
@@ -239,7 +239,6 @@ und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 
 Diese Punkte sind bewusst nicht geraten und blockieren nur den betroffenen Backlog-Block:
 
-- Produktname, UI-Begriffe und Routen.
 - Erste Oberkategorien, Mindestangaben und Alterungsintervalle je Kategorie.
 - Geodaten-Repräsentation für Route und Fläche sowie Umgang mit sensiblen Orten.
 - Konkrete lokale PII-Prüfung, freigegebener KI-Anbieter, Löschfristen und rechtliche Prüfung.

@@ -53,10 +53,7 @@ export interface PublicProblem extends PublicProblemSummary {
   summary: string;
   tags: string[];
   confidence: ProblemConfidence;
-  unique_reporters: number;
-  current_observations: number;
-  total_observations: number;
-  first_observed_at: string;
+  independent_reports: number;
   last_observed_at: string;
   published_at: string;
   updated_at: string;

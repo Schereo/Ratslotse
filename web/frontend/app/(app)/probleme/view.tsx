@@ -4,10 +4,10 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Columns3, Info, Map as MapIcon, MapPin, X } from "lucide-react";
+import { CheckCircle2, Columns3, Info, Map as MapIcon, MapPin, MessageCircle, X } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ProblemListResponse, PublicProblem, PublicProblemSummary, ProblemStatus } from "@/lib/types";
-import { MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_ANGEBOT, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, VORSCHAU_PROBLEME } from "@/lib/probleme";
+import { MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_ANGEBOT, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, unabhaengigeMeldungen, VORSCHAU_PROBLEME } from "@/lib/probleme";
 import { Badge, Card, ErrorState, PageHeader, Segmented, Select, Spinner, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
@@ -302,11 +302,10 @@ function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose
       </div>
       <h2 className="mt-3 text-xl font-bold text-foreground">{problem.title}</h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{problem.summary}</p>
-      <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center">
-        <div><dt className="text-[11px] text-muted-foreground">Reporter*innen</dt><dd className="mt-1 font-bold tabular-nums text-foreground">{problem.unique_reporters}</dd></div>
-        <div><dt className="text-[11px] text-muted-foreground">Aktuell</dt><dd className="mt-1 font-bold tabular-nums text-foreground">{problem.current_observations}</dd></div>
-        <div><dt className="text-[11px] text-muted-foreground">Insgesamt</dt><dd className="mt-1 font-bold tabular-nums text-foreground">{problem.total_observations}</dd></div>
-      </dl>
+      <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-foreground">
+        <MessageCircle className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+        <span className="tabular-nums">{unabhaengigeMeldungen(problem.independent_reports)}</span>
+      </div>
       {problem.events && problem.events.length > 0 && (
         <div className="mt-5 border-t border-border pt-4">
           <h3 className="text-sm font-semibold text-foreground">Letzte öffentliche Änderung</h3>

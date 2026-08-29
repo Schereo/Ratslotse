@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, CheckCircle2, ExternalLink, MapPin, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, ExternalLink, MapPin, MessageCircle, X } from "lucide-react";
 import type { PublicProblem, PublicProblemEvent } from "@/lib/types";
 import {
   PROBLEM_ANGEBOT,
@@ -9,6 +9,7 @@ import {
   PROBLEM_KATEGORIEN,
   PROBLEM_SCOPE,
   PROBLEM_STATUS,
+  unabhaengigeMeldungen,
 } from "@/lib/probleme";
 import { Badge, Card, formatDate } from "@/components/ui";
 
@@ -76,19 +77,17 @@ export function PublicProblemDetail({
         </div>
       </header>
 
-      <Card className="p-5 sm:p-6">
-        <SectionHeading className="text-sm font-semibold text-foreground">Bestätigungsstand</SectionHeading>
-        <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <Metric label="Reporter*innen" value={problem.unique_reporters} />
-          <Metric label="Aktuelle Beobachtungen" value={problem.current_observations} />
-          <Metric label="Beobachtungen insgesamt" value={problem.total_observations} />
-        </dl>
-        <dl className="mt-5 grid gap-3 border-t border-border pt-4 text-sm sm:grid-cols-2">
-          <DateValue label="Erste Beobachtung" value={problem.first_observed_at} />
-          <DateValue label="Letzte Beobachtung" value={problem.last_observed_at} />
-        </dl>
+      <Card className="p-4 sm:p-5">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <MessageCircle className="h-5 w-5" aria-hidden />
+          </span>
+          <p className="font-semibold tabular-nums text-foreground">
+            {unabhaengigeMeldungen(problem.independent_reports)}
+          </p>
+        </div>
         {problem.tags.length > 0 && (
-          <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4" aria-label="Schlagwörter">
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4" aria-label="Schlagwörter">
             {problem.tags.map((tag) => <Badge key={tag}>{tag}</Badge>)}
           </div>
         )}
@@ -97,7 +96,7 @@ export function PublicProblemDetail({
       <Card className="p-5 sm:p-6">
         <SectionHeading className="text-lg font-semibold text-foreground">Öffentliche Zeitleiste</SectionHeading>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-          Nur moderierte, belegbare Ereignisse. Ratslotse zeigt keine amtlichen Bearbeitungsstände ohne überprüfbare Quelle.
+          Belegt und moderiert – kein amtlicher Bearbeitungsstand.
         </p>
         {problem.events && problem.events.length > 0 ? (
           <ol className="mt-5 space-y-5">
@@ -116,24 +115,6 @@ export function PublicProblemDetail({
         {PROBLEM_ANGEBOT.name} ist ein unabhängiges Ratslotse-Angebot. Einzelne Meldungen, Identitäten und Moderationsnotizen bleiben privat.
       </p>
     </article>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <dt className="text-[11px] leading-snug text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-xl font-bold tabular-nums text-foreground">{value}</dd>
-    </div>
-  );
-}
-
-function DateValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 sm:block">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium text-foreground sm:mt-1">{formatDate(value)}</dd>
-    </div>
   );
 }
 

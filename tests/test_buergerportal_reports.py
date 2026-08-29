@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+import sqlite3
 from threading import Barrier
 
 import pytest
@@ -47,7 +48,6 @@ def test_private_schema_migration_preserves_existing_public_projection(tmp_path)
         location_label="Theaterwall",
         latitude=53.141,
         longitude=8.207,
-        published=True,
     )
     public.add_public_event(
         problem_id,
@@ -63,6 +63,18 @@ def test_private_schema_migration_preserves_existing_public_projection(tmp_path)
         scope_kind="citywide",
     )
     public.close()
+
+    legacy = sqlite3.connect(database)
+    legacy.execute("DROP TRIGGER trg_civic_problems_human_publication_gate")
+    legacy.execute(
+        """UPDATE civic_problems
+           SET unique_reporters = 1, current_observations = 1,
+               total_observations = 1, published_at = ?
+           WHERE id = ?""",
+        ("2026-08-28T09:00:00+00:00", problem_id),
+    )
+    legacy.commit()
+    legacy.close()
 
     reports = ReportStore(database)
     reports.create_draft(
@@ -158,6 +170,205 @@ def test_concurrent_submission_creates_only_one_first_observation(tmp_path):
 
     assert sorted(results) == ["rejected", "submitted"]
     assert len(reports.get_owned_report(report_id, reporter_id=101)["observations"]) == 1
+    reports.close()
+
+
+def test_report_needs_current_ai_assessment_and_human_approval_before_projection(tmp_path):
+    database = tmp_path / "problems.sqlite"
+    reports = ReportStore(database)
+    report_id = reports.create_draft(
+        reporter_id=101,
+        text="Die Bordsteinkante ist zu hoch.",
+        category="accessibility",
+        scope_kind="point",
+        latitude=53.141,
+        longitude=8.207,
+        observed_at="2026-08-28T08:00:00+00:00",
+    )
+    reports.submit_owned_report(
+        report_id,
+        reporter_id=101,
+        confirmed_text="Die Bordsteinkante ist zu hoch.",
+    )
+    public = ProblemStore(database)
+    problem_id = public.create_problem(
+        title="Fehlende Absenkung",
+        summary="Die Querung ist nicht stufenlos nutzbar.",
+        category="accessibility",
+        scope_kind="point",
+        latitude=53.141,
+        longitude=8.207,
+    )
+    with pytest.raises(ValueError, match="KI-Vorprüfung"):
+        public.publish_problem(problem_id)
+    public.close()
+
+    with pytest.raises(ValueError, match="KI-Vorprüfung"):
+        reports.approve_report_for_existing_problem(
+            report_id,
+            moderator_id=7,
+            assessment_id=999,
+            problem_id=problem_id,
+            reason_code="suitable",
+            reporter_message="Die Meldung wird veröffentlicht.",
+            private_note="Geprüft.",
+        )
+
+    unsuitable = reports.record_ai_assessment(
+        report_id,
+        verdict="unsuitable",
+        reason_code="personal_claim",
+        model_identifier="independent-review-v1",
+    )
+    with pytest.raises(ValueError, match="geeignet"):
+        reports.approve_report_for_existing_problem(
+            report_id,
+            moderator_id=7,
+            assessment_id=unsuitable["id"],
+            problem_id=problem_id,
+            reason_code="suitable",
+            reporter_message="Die Meldung wird veröffentlicht.",
+            private_note="Geprüft.",
+        )
+
+    stale = reports.record_ai_assessment(
+        report_id,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model_identifier="independent-review-v1",
+    )
+    reports.add_owned_observation(
+        report_id,
+        reporter_id=101,
+        text="Die Bordsteinkante ist weiterhin zu hoch.",
+        observed_at="2026-08-29T08:00:00+00:00",
+    )
+    with pytest.raises(ValueError, match="erneute KI-Vorprüfung"):
+        reports.approve_report_for_existing_problem(
+            report_id,
+            moderator_id=7,
+            assessment_id=stale["id"],
+            problem_id=problem_id,
+            reason_code="suitable",
+            reporter_message="Die Meldung wird veröffentlicht.",
+            private_note="Geprüft.",
+        )
+
+    suitable = reports.record_ai_assessment(
+        report_id,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model_identifier="independent-review-v1",
+    )
+    approval = reports.approve_report_for_existing_problem(
+        report_id,
+        moderator_id=7,
+        assessment_id=suitable["id"],
+        problem_id=problem_id,
+        reason_code="suitable",
+        reporter_message="Die Meldung wird veröffentlicht.",
+        private_note="Geprüft.",
+    )
+
+    assert approval["outcome"] == "assigned_existing_problem"
+    assert reports.get_owned_report(report_id, reporter_id=101)["status"] == "accepted"
+    with pytest.raises(sqlite3.IntegrityError, match="AI assessments are immutable"):
+        reports._conn.execute(
+            "UPDATE civic_ai_assessments SET verdict = 'unsuitable' WHERE id = ?",
+            (suitable["id"],),
+        )
+    reports._conn.rollback()
+    with pytest.raises(sqlite3.IntegrityError, match="moderation decisions are immutable"):
+        reports._conn.execute(
+            "UPDATE civic_moderation_decisions SET private_note = 'Geändert' WHERE id = ?",
+            (approval["id"],),
+        )
+    reports._conn.rollback()
+    reports.close()
+
+    public = ProblemStore(database)
+    assert public.list_public_problems() == []
+    public.publish_problem(problem_id)
+    assert public.get_public_problem(problem_id)["independent_reports"] == 1
+    public.close()
+
+    reports = ReportStore(database)
+    updated = reports.add_owned_observation(
+        report_id,
+        reporter_id=101,
+        text="Nach der Veröffentlichung erneut beobachtet.",
+        observed_at="2026-08-30T08:00:00+00:00",
+    )
+    assert updated["status"] == "in_review"
+    reassessment = reports.record_ai_assessment(
+        report_id,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model_identifier="independent-review-v1",
+    )
+    assert reassessment["report_revision"] == suitable["report_revision"] + 1
+    reports.close()
+
+
+def test_human_approval_is_recorded_exactly_once_under_concurrency(tmp_path):
+    database = tmp_path / "problems.sqlite"
+    reports = ReportStore(database)
+    report_id = reports.create_draft(
+        reporter_id=101,
+        text="Die Bordsteinkante ist zu hoch.",
+        category="accessibility",
+        scope_kind="point",
+        latitude=53.141,
+        longitude=8.207,
+        observed_at="2026-08-28T08:00:00+00:00",
+    )
+    reports.submit_owned_report(
+        report_id,
+        reporter_id=101,
+        confirmed_text="Die Bordsteinkante ist zu hoch.",
+    )
+    assessment = reports.record_ai_assessment(
+        report_id,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model_identifier="independent-review-v1",
+    )
+    public = ProblemStore(database)
+    problem_id = public.create_problem(
+        title="Fehlende Absenkung",
+        summary="Die Querung ist nicht stufenlos nutzbar.",
+        category="accessibility",
+        scope_kind="point",
+        latitude=53.141,
+        longitude=8.207,
+    )
+    public.close()
+    barrier = Barrier(2)
+
+    def approve() -> str:
+        connection = ReportStore(database)
+        barrier.wait()
+        try:
+            connection.approve_report_for_existing_problem(
+                report_id,
+                moderator_id=7,
+                assessment_id=assessment["id"],
+                problem_id=problem_id,
+                reason_code="suitable",
+                reporter_message="Die Meldung wird veröffentlicht.",
+                private_note="Geprüft.",
+            )
+        except ValueError:
+            return "rejected"
+        finally:
+            connection.close()
+        return "approved"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: approve(), range(2)))
+
+    assert sorted(results) == ["approved", "rejected"]
+    assert reports.get_owned_report(report_id, reporter_id=101)["status"] == "accepted"
     reports.close()
 
 

@@ -44,10 +44,7 @@ class PublicProblem(PublicProblemSummary):
     summary: str
     tags: list[str]
     confidence: Literal["unconfirmed", "supported", "verified"]
-    unique_reporters: int = Field(ge=0)
-    current_observations: int = Field(ge=0)
-    total_observations: int = Field(ge=0)
-    first_observed_at: str
+    independent_reports: int = Field(ge=1)
     last_observed_at: str
     published_at: str
     updated_at: str

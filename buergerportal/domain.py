@@ -25,6 +25,11 @@ PROBLEM_STATUSES = (
     "persists",
     "apparently_resolved",
 )
+AI_ASSESSMENT_VERDICTS = (
+    "suitable",
+    "needs_human_review",
+    "unsuitable",
+)
 REPORT_STATUSES = (
     "draft",
     "submitted",
@@ -36,7 +41,7 @@ REPORT_STATUSES = (
 )
 MODERATION_OUTCOMES = (
     "assigned_existing_problem",
-    "published_as_new_problem",
+    "approved_for_new_problem",
     "needs_information",
     "rejected",
     "corrected_category",

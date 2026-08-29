@@ -50,6 +50,10 @@ export const MELDE_HAEUFIGKEIT: Record<ProblemFrequency, string> = {
 };
 
 /** Grobe Häufigkeit für lokale Vorschau-Daten. Die API liefert sie bereits. */
+export function unabhaengigeMeldungen(anzahl: number): string {
+  return `${anzahl} unabhängige ${anzahl === 1 ? "Meldung" : "Meldungen"}`;
+}
+
 export function meldeHaeufigkeit(uniqueReporters: number): ProblemFrequency {
   if (uniqueReporters < 1) throw new Error("Veröffentlichte Probleme benötigen mindestens eine Meldung.");
   if (uniqueReporters === 1) return "once";
@@ -78,10 +82,7 @@ export const VORSCHAU_PROBLEME: PublicProblem[] = [
     status: "multiple_reports",
     frequency: "many",
     confidence: "supported",
-    unique_reporters: 6,
-    current_observations: 5,
-    total_observations: 8,
-    first_observed_at: "2026-06-04T10:00:00+00:00",
+    independent_reports: 6,
     last_observed_at: "2026-08-26T18:20:00+00:00",
     published_at: "2026-06-05T12:00:00+00:00",
     updated_at: "2026-08-27T08:00:00+00:00",
@@ -104,10 +105,7 @@ export const VORSCHAU_PROBLEME: PublicProblem[] = [
     status: "verified",
     frequency: "very_many",
     confidence: "verified",
-    unique_reporters: 11,
-    current_observations: 9,
-    total_observations: 16,
-    first_observed_at: "2026-05-12T07:10:00+00:00",
+    independent_reports: 11,
     last_observed_at: "2026-08-29T07:45:00+00:00",
     published_at: "2026-05-14T09:30:00+00:00",
     updated_at: "2026-08-29T09:00:00+00:00",
@@ -129,10 +127,7 @@ export const VORSCHAU_PROBLEME: PublicProblem[] = [
     status: "persists",
     frequency: "several",
     confidence: "supported",
-    unique_reporters: 4,
-    current_observations: 4,
-    total_observations: 6,
-    first_observed_at: "2026-04-18T11:00:00+00:00",
+    independent_reports: 4,
     last_observed_at: "2026-08-22T15:10:00+00:00",
     published_at: "2026-04-20T08:15:00+00:00",
     updated_at: "2026-08-23T07:50:00+00:00",
@@ -152,10 +147,7 @@ export const VORSCHAU_PROBLEME: PublicProblem[] = [
     status: "multiple_reports",
     frequency: "very_many",
     confidence: "supported",
-    unique_reporters: 18,
-    current_observations: 14,
-    total_observations: 23,
-    first_observed_at: "2026-03-02T08:00:00+00:00",
+    independent_reports: 18,
     last_observed_at: "2026-08-28T13:00:00+00:00",
     published_at: "2026-03-05T10:00:00+00:00",
     updated_at: "2026-08-28T14:00:00+00:00",

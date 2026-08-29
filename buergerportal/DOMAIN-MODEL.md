@@ -10,7 +10,9 @@ Dieses Dokument konkretisiert die bestätigten Regeln aus `BUERGERPORTAL-BACKLOG
 - Eine Meldung kann durch Moderation höchstens einem öffentlichen Problem zugeordnet werden.
 - Ein Konto kann einem Problem höchstens eine Meldung beitragen. Spätere Beobachtungen werden an dieser Meldung ergänzt.
 - Viele Meldungen verschiedener Konten können demselben Problem zugeordnet sein.
-- Eine Moderationsentscheidung ist ein unveränderlicher Audit-Eintrag mit Admin-Konto, Ergebnis, Begründungscode, privater Notiz, getrennter Mitteilung an die Reporter*in und Zeitpunkt.
+- Eine KI-Vorprüfung ist ein unveränderliches privates Eignungsurteil mit Modellkennung, Begründungscode, Inhaltsrevision und Zeitpunkt. Jede neue Beobachtung macht das alte Urteil für eine Freigabe ungültig.
+- Eine Moderationsentscheidung ist ein unveränderlicher menschlicher Audit-Eintrag mit Admin-Konto, Ergebnis, Begründungscode, privater Notiz, getrennter Mitteilung an die meldende Person und Zeitpunkt.
+- Eine Meldung darf erst nach einem geeigneten KI-Urteil zur aktuellen Inhaltsrevision und der abschließenden menschlichen Freigabe einer öffentlichen Projektion zugeordnet werden. Keiner der beiden Schritte veröffentlicht selbstständig Daten; die öffentliche Projektion prüft beide Nachweise erneut.
 - Zu jeder Moderationsentscheidung kann höchstens eine erneute Prüfung angefordert werden; Anfrage und Ergebnis bleiben privat nachvollziehbar.
 - Korrekturen an Kategorie oder geografischem Bezug halten vorherige und neue Werte strukturiert in der Moderationsentscheidung fest.
 - Ein Problemstatus beschreibt nur belegbare Tatsachen. Externe Aussagen benötigen Quelle und Rollenlabel.
@@ -19,7 +21,7 @@ Dieses Dokument konkretisiert die bestätigten Regeln aus `BUERGERPORTAL-BACKLOG
 
 ## Lebensläufe
 
-Ein Meldeentwurf beginnt als `draft`. Bewusstes Absenden führt zu `submitted`; Moderation kann `in_review`, `needs_information`, `accepted` oder `rejected` ergeben. Ein zulässiger Rückzug führt zu `withdrawn`. Der bestätigte deutsche Text wird beim ersten Absenden als erste Beobachtung festgehalten.
+Ein Meldeentwurf beginnt als `draft`. Bewusstes Absenden führt zu `submitted`; die KI-Vorprüfung führt zu `in_review`, veröffentlicht aber nichts. Nur ein geeignetes KI-Urteil kann anschließend menschlich als `accepted` freigegeben werden. Weitere menschliche Ergebnisse sind `needs_information` oder `rejected`. Ein zulässiger Rückzug führt zu `withdrawn`. Der bestätigte deutsche Text wird beim ersten Absenden als erste Beobachtung festgehalten.
 
 Ein Problem verwendet ausschließlich belegbare Zustände: `new`, `multiple_reports`, `verified`, `persists` und `apparently_resolved`. Amtliche Bearbeitung ist kein eigener Zustand ohne überprüfbare städtische Quelle.
 
@@ -28,9 +30,9 @@ Ein Problem verwendet ausschließlich belegbare Zustände: `new`, `multiple_repo
 | Private Schreibseite | Öffentliche Projektion |
 |---|---|
 | Meldeentwurf und bestätigter Meldetext | Moderierter Titel und Zusammenfassung |
-| Konto-ID der Reporter*in | Aggregierte Meldehäufigkeit |
+| Konto-ID der meldenden Person | Zahl unabhängiger Meldungen |
 | Einzelne Beobachtungen | Freigegebene aggregierte Kennzahlen |
-| Moderationsnotiz und Begründung | Ausdrücklich veröffentlichte Statusereignisse |
+| KI-Urteil, Moderationsnotiz und Begründung | Ausdrücklich veröffentlichte Statusereignisse |
 | Nicht veröffentlichte Geografie | Freigegebener geografischer Bezug |
 
 `ReportStore` besitzt die private Schreibseite und bietet eigentumsgebundene Leseoperationen. `ProblemStore` besitzt ausschließlich die öffentliche Projektion. Beide verwenden getrennte Tabellen und Interfaces, auch wenn sie in derselben SQLite-Datei liegen. Die öffentliche Projektion wird niemals aus Rohmeldungen serialisiert.
@@ -49,7 +51,7 @@ Konto-IDs werden bewusst nur referenziert und nicht durch einen datenbankweiten 
 | Moderieren, zuordnen, freigeben oder ablehnen | nein | nein | nein | ja |
 | Moderationsnotizen lesen | nein | nein | nur freigegebene Mitteilung | ja |
 
-Die spätere HTTP-Schreibseite muss `require_active` für Reporter*innen und `require_admin` für Moderation verwenden. Ressourcenzugriffe von Reporter*innen gehen zusätzlich immer über eine eigentumsgebundene Store-Operation; eine erratene Meldungs-ID allein gewährt keinen Zugriff.
+Die spätere HTTP-Schreibseite muss `require_active` für meldende Personen und `require_admin` für Moderation verwenden. Eigentumsgebundene Ressourcenzugriffe gehen zusätzlich immer über eine eigentumsgebundene Store-Operation; eine erratene Meldungs-ID allein gewährt keinen Zugriff.
 
 ## Migrationen
 
