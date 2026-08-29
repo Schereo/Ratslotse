@@ -136,6 +136,9 @@ ALERT_EMAIL=...                      # Cron-Fehler-Alarme (Fallback: WEB_ADMIN_E
 FASTEMBED_CACHE_PATH=~/.cache/fastembed  # persistenter Modell-Cache (sonst /tmp → weg beim Reboot)
 APPLE_BUNDLE_ID=de.ratslotse.app     # Sign in with Apple: aud der nativen App (Default passt)
 APPLE_SERVICE_ID=de.ratslotse.web    # Sign in with Apple im Browser (Services ID; leer = Web-Flow aus)
+APPLE_TEAM_ID=…                       # Pflicht für Apple-Token-Widerruf bei Kontolöschung
+APPLE_KEY_ID=…                        # Key-ID des Sign-in-with-Apple-Schlüssels
+APPLE_PRIVATE_KEY='-----BEGIN PRIVATE KEY-----\\n…'  # .p8-Inhalt, nie einchecken
 BACKUP_RSYNC_TARGET=user@host:pfad/  # optional: Off-Site-Mirror der DB-Backups
 BACKUP_RSYNC_SSH_PORT=22             # SSH-Port des Backup-Ziels
 # Stadtrat-LLM (optional, Defaults greifen)

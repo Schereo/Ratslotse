@@ -87,7 +87,7 @@ struct ConversationSettingsCard: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(RatsColor.signal)
                         .padding(.top, 2)
-                    Text("Fragen an den Rat gehen an einen externen KI-Dienst – bitte keine personenbezogenen Daten eingeben.")
+                    Text("Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet; eine Drittlandverarbeitung ist möglich. Bitte keine personenbezogenen oder sensiblen Daten eingeben.")
                         .font(RatsFont.body(10))
                         .foregroundStyle(RatsColor.muted)
                         .lineSpacing(2)

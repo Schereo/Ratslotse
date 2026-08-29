@@ -269,6 +269,7 @@ einmal Zwangs-Refresh): Signatur, `exp`, `iss` und `aud`.
 |---|---|
 | `APPLE_BUNDLE_ID` | erlaubte `aud` der nativen App (Default `de.ratslotse.app`) |
 | `APPLE_SERVICE_ID` | erlaubte `aud` des Web-Flows (Services ID, z. B. `de.ratslotse.web`); **leer = Web-Flow aus**, weil dann keine passende `aud` akzeptiert wird |
+| `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | signieren das kurzlebige Client-Secret, mit dem das Backend bei einer Kontolöschung Apples Token-Widerrufs-API aufruft |
 
 Danach entscheidet die Kontozuordnung:
 

@@ -477,6 +477,9 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `APP_CORS_ORIGINS` | Feste Origins der Capacitor-Apps, immer zusätzlich erlaubt | nein | `capacitor://localhost,https://localhost` |
 | `APPLE_BUNDLE_ID` | Erlaubter `aud`-Wert von „Sign in with Apple" in der nativen App | nein | `de.ratslotse.app` |
 | `APPLE_SERVICE_ID` | Services-ID für den Apple-Web-Flow (`aud` des Browser-Tokens). **Leeren schaltet den Web-Login ab** — genau das war der Fehler, den #328 behoben hat. | nein | `de.ratslotse.web` |
+| `APPLE_TEAM_ID` | Apple Developer Team-ID; für den Token-Widerruf bei Kontolöschung erforderlich | für App Store | – |
+| `APPLE_KEY_ID` | Key-ID des „Sign in with Apple“-Schlüssels | für App Store | – |
+| `APPLE_PRIVATE_KEY` | Inhalt des privaten `.p8`-Schlüssels als PEM; escaped `\\n` werden akzeptiert | für App Store | – |
 | `LLM_BUDGET_MONTHLY` | Monatsbudget für die Budget-Ampel (reine Anzeige) | nein | `40.0` |
 | `DISABLE_RATE_LIMIT` | `1` schaltet das Rate-Limiting ab (nur für Tests) | nein | nicht gesetzt |
 

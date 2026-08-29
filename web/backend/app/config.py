@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     # ein 401. Überschreibbar bleibt beides.
     apple_bundle_id: str = "de.ratslotse.app"
     apple_service_id: str = "de.ratslotse.web"
+    apple_team_id: str = ""
+    apple_key_id: str = ""
+    apple_private_key: str = ""
 
     # Admin-LLM-Kosten (Design 21a): Monatsbudget für die Budget-Ampel
     # (Warnung ab 80 %). Reine Anzeige-Schwelle, drosselt nichts.

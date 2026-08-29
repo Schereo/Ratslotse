@@ -195,10 +195,16 @@ def delete_account(
     ``committee_notifications``/``session_followups_sent``, welche Sitzungen
     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss."""
     if body.apple_identity_token and user.get("apple_sub"):
-        from .auth_apple import verify_apple_identity_token
+        from .auth_apple import revoke_apple_authorization_code, verify_apple_identity_token
         claims = verify_apple_identity_token(body.apple_identity_token)
         if str(claims.get("sub")) != str(user["apple_sub"]):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Apple-Bestätigung gehört zu einem anderen Konto.")
+        if body.apple_authorization_code:
+            background.add_task(
+                revoke_apple_authorization_code,
+                body.apple_authorization_code,
+                get_settings().apple_bundle_id,
+            )
     elif not verify_password(body.current_password, user["password_hash"]):
         msg = ("Aktuelles Passwort ist falsch." if user.get("password_set", 1)
                else "Dieses Konto nutzt Apple — bitte in der App per Apple bestätigen "

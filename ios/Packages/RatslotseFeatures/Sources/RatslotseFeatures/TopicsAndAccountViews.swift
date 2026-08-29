@@ -917,6 +917,7 @@ private struct DeleteAccountView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var password = ""
     @State private var appleToken = ""
+    @State private var appleAuthorizationCode = ""
     @State private var confirmation = ""
     @State private var error: String?
 
@@ -933,7 +934,7 @@ private struct DeleteAccountView: View {
                         symbol: "exclamationmark.triangle.fill"
                     )
                     RatsSectionPanel("Identität bestätigen", symbol: "person.badge.key") {
-                        if model.user?.hasPassword == true {
+                        if model.user?.appleLinked != true {
                             RatsLabeledField(label: "Aktuelles Passwort") {
                                 SecureField("Passwort", text: $password)
                                     .textContentType(.password)
@@ -944,7 +945,13 @@ private struct DeleteAccountView: View {
                                 if case .success(let auth) = result,
                                    let credential = auth.credential as? ASAuthorizationAppleIDCredential,
                                    let data = credential.identityToken,
-                                   let token = String(data: data, encoding: .utf8) { appleToken = token }
+                                   let token = String(data: data, encoding: .utf8) {
+                                    appleToken = token
+                                    if let codeData = credential.authorizationCode,
+                                       let code = String(data: codeData, encoding: .utf8) {
+                                        appleAuthorizationCode = code
+                                    }
+                                }
                             }
                             .frame(height: 46)
                             .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button))
@@ -967,8 +974,8 @@ private struct DeleteAccountView: View {
                             .background(RatsColor.danger)
                             .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous))
                     }
-                    .disabled(confirmation != "LÖSCHEN" || (password.isEmpty && appleToken.isEmpty))
-                    .opacity(confirmation != "LÖSCHEN" || (password.isEmpty && appleToken.isEmpty) ? 0.5 : 1)
+                    .disabled(!canDelete)
+                    .opacity(canDelete ? 1 : 0.5)
                     }
                     .frame(maxWidth: 560, alignment: .leading)
                     .padding(18)
@@ -979,13 +986,29 @@ private struct DeleteAccountView: View {
         }
     }
 
+    private var canDelete: Bool {
+        guard confirmation == "LÖSCHEN" else { return false }
+        if model.user?.appleLinked == true {
+            return !appleToken.isEmpty && !appleAuthorizationCode.isEmpty
+        }
+        return !password.isEmpty
+    }
+
     private func remove() {
-        struct Body: Codable, Sendable { let current_password: String; let apple_identity_token: String }
+        struct Body: Codable, Sendable {
+            let current_password: String
+            let apple_identity_token: String
+            let apple_authorization_code: String
+        }
         Task {
             do {
                 try await model.api.sendVoid(
                     "/api/account", method: .delete,
-                    body: Body(current_password: password, apple_identity_token: appleToken)
+                    body: Body(
+                        current_password: password,
+                        apple_identity_token: appleToken,
+                        apple_authorization_code: appleAuthorizationCode
+                    )
                 )
                 await model.logout()
                 dismiss()

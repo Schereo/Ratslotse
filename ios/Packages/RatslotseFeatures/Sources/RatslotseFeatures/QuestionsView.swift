@@ -954,7 +954,7 @@ private struct ConversationMemoryConsentCard: View {
                 Divider().overlay(RatsColor.separator)
 
                 Label {
-                    Text("KI-Hinweis: Antworten können Fehler enthalten. Prüfe wichtige Angaben an den verlinkten Quellen und gib keine personenbezogenen Daten ein.")
+                    Text("KI-Hinweis: Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet; eine Drittlandverarbeitung ist möglich. Antworten können Fehler enthalten – prüfe wichtige Angaben an den Quellen und gib keine personenbezogenen oder sensiblen Daten ein.")
                 } icon: {
                     Image(systemName: "sparkles")
                         .foregroundStyle(RatsColor.signal)
@@ -962,6 +962,15 @@ private struct ConversationMemoryConsentCard: View {
                 .font(RatsFont.body(10))
                 .foregroundStyle(RatsColor.muted)
                 .lineSpacing(2)
+
+                Link("Datenschutz zur KI-Verarbeitung", destination: URL(string: "https://ratslotse.de/datenschutz")!)
+                    .font(RatsFont.body(10, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+
+                Text("Mit deiner Auswahl bestätigst du, dass du diesen Hinweis gelesen hast. Die Auswahl ändert nur die Speicherung im Ratslotse-Konto, nicht die externe Verarbeitung einer gestellten Frage.")
+                    .font(RatsFont.body(9.5))
+                    .foregroundStyle(RatsColor.muted)
+                    .lineSpacing(2)
 
                 if let error {
                     Label(error, systemImage: "exclamationmark.triangle")

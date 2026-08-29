@@ -231,6 +231,7 @@ class DeleteAccountRequest(BaseModel):
     Apple-Identity-Token (Re-Auth in der App, RL-1002)."""
     current_password: str = Field(default="", max_length=128)
     apple_identity_token: str = Field(default="", max_length=4096)
+    apple_authorization_code: str = Field(default="", max_length=2048)
 
 
 # ---- delivery channel ----
