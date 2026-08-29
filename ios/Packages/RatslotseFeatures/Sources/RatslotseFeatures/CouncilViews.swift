@@ -90,32 +90,17 @@ struct CouncilBrowserView: View {
                 .padding(.vertical, 12)
             }
 
-            HStack(spacing: 9) {
-                RatsGlyphView(glyph: .search, color: RatsColor.secondary)
-                    .frame(width: 18, height: 18)
-                TextField(searchPrompt, text: $query)
-                    .font(RatsFont.body(14))
-                    .submitLabel(.search)
-                    .onSubmit {
-                        if model.councilSection != .map { page = 0; Task { await load() } }
-                    }
-                if !query.isEmpty {
-                    Button { query = ""; if model.councilSection != .map { Task { await load() } } } label: {
-                        Text("×")
-                            .font(RatsFont.body(20, weight: .medium))
-                            .foregroundStyle(RatsColor.muted)
-                    }
-                    .accessibilityLabel("Suche leeren")
-                }
+            if model.councilSection != .map {
+                councilSearchControls
+                    .padding(.horizontal, 13)
+                    .frame(height: 44)
+                    .background(RatsColor.card)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, 18)
+                    .padding(.top, horizontalSizeClass == .regular ? 12 : 0)
+                    .padding(.bottom, 10)
             }
-            .padding(.horizontal, 13)
-            .frame(height: 44)
-            .background(RatsColor.card)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .padding(.horizontal, 18)
-            .padding(.top, horizontalSizeClass == .regular ? 12 : 0)
-            .padding(.bottom, 10)
 
             if model.councilSection == .decisions {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -224,63 +209,58 @@ struct CouncilBrowserView: View {
                 .accessibilityLabel("Schnellfilter")
             }
 
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        MonoKicker(model.councilSection.rawValue, trailing: total > 0 ? "\(total) gefunden" : nil)
-                        if isLoading { ProgressView().controlSize(.small) }
-                    }
-                    if let error { ErrorCard(message: error) { Task { await load() } } }
-                    if model.councilSection == .decisions {
+            if model.councilSection == .map {
+                councilMapStage
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            MonoKicker(model.councilSection.rawValue, trailing: total > 0 ? "\(total) gefunden" : nil)
+                            if isLoading { ProgressView().controlSize(.small) }
+                        }
+                        if let error { ErrorCard(message: error) { Task { await load() } } }
+                        if model.councilSection == .decisions {
                         ForEach(decisions) { decision in
                             Button { model.navigation.append(.decision(id: decision.id)) } label: {
                                 DecisionRow(decision: decision).ratsCard()
                             }
                             .buttonStyle(.plain)
                         }
-                    } else if model.councilSection == .sessions {
-                        ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
-                            if isFirstSessionInYear(at: index) {
-                                SessionYearDivider(year: sessionYear(session.sessionDate))
-                            }
-                            if let id = session.ksinr {
-                                Button { model.navigation.append(.sessions(ksinr: id, tops: [])) } label: {
+                        } else {
+                            ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
+                                if isFirstSessionInYear(at: index) {
+                                    SessionYearDivider(year: sessionYear(session.sessionDate))
+                                }
+                                if let id = session.ksinr {
+                                    Button { model.navigation.append(.sessions(ksinr: id, tops: [])) } label: {
+                                        SessionRow(session: session).ratsCard()
+                                    }
+                                    .buttonStyle(.plain)
+                                } else {
                                     SessionRow(session: session).ratsCard()
                                 }
-                                .buttonStyle(.plain)
-                            } else {
-                                SessionRow(session: session).ratsCard()
                             }
                         }
-                    } else {
-                        NativeCouncilMap(points: filteredMapPoints) { point in
-                            openMapPoint(point)
+                        if total > pageSize {
+                            HStack {
+                                Button("Zurück") { page -= 1; Task { await load() } }
+                                    .disabled(page == 0 || isLoading)
+                                Spacer()
+                                Text("Seite \(page + 1) von \(max(1, Int(ceil(Double(total) / Double(pageSize)))))")
+                                    .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                                Spacer()
+                                Button("Weiter") { page += 1; Task { await load() } }
+                                    .disabled((page + 1) * pageSize >= total || isLoading)
+                            }
+                            .buttonStyle(SecondaryButtonStyle())
+                            .padding(.top, 5)
                         }
-                        .frame(minHeight: 440, idealHeight: 560)
-                        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card))
-                        .overlay(RoundedRectangle(cornerRadius: RatsRadius.card).stroke(RatsColor.border))
-                        Text("Nahe Punkte werden gebündelt. Tippe eine Zahl zum Heranzoomen oder einen Punkt für Details.")
-                            .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
                     }
-                    if total > pageSize && model.councilSection != .map {
-                        HStack {
-                            Button("Zurück") { page -= 1; Task { await load() } }
-                                .disabled(page == 0 || isLoading)
-                            Spacer()
-                            Text("Seite \(page + 1) von \(max(1, Int(ceil(Double(total) / Double(pageSize)))))")
-                                .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
-                            Spacer()
-                            Button("Weiter") { page += 1; Task { await load() } }
-                                .disabled((page + 1) * pageSize >= total || isLoading)
-                        }
-                        .buttonStyle(SecondaryButtonStyle())
-                        .padding(.top, 5)
-                    }
+                    .frame(maxWidth: 860, alignment: .leading)
+                    .padding(18)
                 }
-                .frame(maxWidth: 860, alignment: .leading)
-                .padding(18)
+                .refreshable { await load() }
             }
-            .refreshable { await load() }
         }
         .background(RatsColor.page)
         .navigationTitle("Im Rat stöbern")
@@ -335,6 +315,78 @@ struct CouncilBrowserView: View {
         case .sessions: "Sitzungen durchsuchen"
         case .map: "Orte und Themen auf der Karte"
         }
+    }
+
+    private var councilSearchControls: some View {
+        HStack(spacing: 9) {
+            RatsGlyphView(glyph: .search, color: RatsColor.secondary)
+                .frame(width: 18, height: 18)
+            TextField(
+                "",
+                text: $query,
+                prompt: Text(searchPrompt).foregroundStyle(RatsColor.secondary.opacity(0.82))
+            )
+                .font(RatsFont.body(14))
+                .submitLabel(.search)
+                .onSubmit {
+                    if model.councilSection != .map { page = 0; Task { await load() } }
+                }
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                    if model.councilSection != .map { Task { await load() } }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(RatsColor.muted)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Suche leeren")
+            }
+        }
+    }
+
+    private var councilMapStage: some View {
+        ZStack(alignment: .top) {
+            NativeCouncilMap(points: filteredMapPoints) { point in
+                openMapPoint(point)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            VStack(spacing: 8) {
+                councilSearchControls
+                    .padding(.horizontal, 13)
+                    .frame(height: 46)
+                    .councilMapGlassSurface(cornerRadius: 16)
+
+                HStack(spacing: 8) {
+                    if isLoading { ProgressView().controlSize(.small) }
+                    Spacer(minLength: 0)
+                    Text("\(filteredMapPoints.count) Treffer")
+                        .font(RatsFont.mono(9.5, weight: .semibold))
+                        .foregroundStyle(RatsColor.secondary)
+                        .padding(.horizontal, 10)
+                        .frame(height: 28)
+                        .councilMapGlassSurface(cornerRadius: 11)
+                }
+
+                if let error {
+                    ErrorCard(message: error) { Task { await load() } }
+                }
+            }
+            .padding(12)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous)
+                .stroke(RatsColor.border, lineWidth: 1)
+        }
+        .padding(.horizontal, 18)
+        // MKMapView zeichnet als UIKit-View auch unter das transparente
+        // safeAreaInset der schwebenden Phone-Navigation. Der eigene Abstand
+        // hält die komplette Karte sichtbar; auf iPad übernimmt die Sidebar.
+        .padding(.bottom, horizontalSizeClass == .regular ? 10 : 72)
+        .accessibilityHint("Nahe Punkte werden gebündelt. Tippe eine Zahl zum Heranzoomen oder einen Punkt für Details.")
     }
 
     private var filteredMapPoints: [CouncilMapPoint] {
@@ -1344,6 +1396,38 @@ private struct DecisionActionPressStyle: ButtonStyle {
 }
 
 private extension View {
+    @ViewBuilder
+    func councilMapGlassSurface(cornerRadius: CGFloat) -> some View {
+        if #available(iOS 26.0, *) {
+            self
+                .glassEffect(
+                    .regular.tint(RatsColor.card.opacity(0.16)),
+                    in: .rect(cornerRadius: cornerRadius)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(.white.opacity(0.38), lineWidth: 0.8)
+                }
+                .shadow(color: RatsColor.primary.opacity(0.12), radius: 14, y: 5)
+        } else {
+            self
+                .background {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(RatsColor.card.opacity(0.68))
+                    }
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(.white.opacity(0.48), lineWidth: 1)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .shadow(color: RatsColor.primary.opacity(0.10), radius: 12, y: 4)
+        }
+    }
+
     @ViewBuilder
     func decisionUtilitySurface(active: Bool) -> some View {
         if #available(iOS 26.0, *) {
