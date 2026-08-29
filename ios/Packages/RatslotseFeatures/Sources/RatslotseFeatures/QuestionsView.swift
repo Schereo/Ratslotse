@@ -1301,6 +1301,9 @@ private struct QuestionTurnView: View {
                     .foregroundStyle(RatsColor.bodyText)
                     .lineSpacing(6)
             }
+            if !turn.answer.isEmpty {
+                QuestionTypeInsight(turn: turn, model: model)
+            }
             if let error = turn.error {
                 ErrorCard(message: error) {
                     if turn.research != nil { reconnectResearch(turn.id) }
@@ -1471,6 +1474,101 @@ func questionCitationLabel(_ number: Int) -> String {
     ]
     guard circled.indices.contains(number - 1) else { return "[\(number)]" }
     return circled[number - 1]
+}
+
+private struct QuestionTypeInsight: View {
+    let turn: QuestionTurn
+    let model: AppModel
+
+    private var type: String { turn.evidence["qtype"]?.string?.lowercased() ?? "" }
+    private var cited: [DecisionSummary] {
+        QuestionCitationIndex(text: turn.answer, sources: turn.sources).citedSources
+    }
+
+    @ViewBuilder var body: some View {
+        switch type {
+        case "verlauf": timeline
+        case "geld": money
+        case "partei": party
+        default: EmptyView()
+        }
+    }
+
+    @ViewBuilder private var timeline: some View {
+        let rows = cited.filter { $0.sessionDate != nil }.sorted { ($0.sessionDate ?? "") < ($1.sessionDate ?? "") }
+        if rows.count >= 2, Set(rows.compactMap(\.sessionDate)).count >= 2 {
+            VStack(alignment: .leading, spacing: 0) {
+                MonoKicker("Wie es sich entwickelt hat").padding(.bottom, 12)
+                ForEach(Array(rows.enumerated()), id: \.element.id) { offset, source in
+                    Button { model.navigation.append(.decision(id: source.id)) } label: {
+                        HStack(alignment: .top, spacing: 12) {
+                            VStack(spacing: 0) {
+                                Circle().fill(offset == rows.count - 1 ? RatsColor.primary : RatsColor.card)
+                                    .overlay(Circle().stroke(RatsColor.primary, lineWidth: 2)).frame(width: 12, height: 12)
+                                if offset < rows.count - 1 { Rectangle().fill(RatsColor.primary.opacity(0.24)).frame(width: 2, height: 54) }
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                if offset == rows.count - 1 { MonoKicker("Aktueller Stand") }
+                                Text([RatsDate.short(source.sessionDate), source.committee].compactMap { $0 }.joined(separator: " · "))
+                                    .font(RatsFont.mono(9)).foregroundStyle(RatsColor.secondary)
+                                Text(source.title).font(RatsFont.body(12.5, weight: .semibold)).foregroundStyle(RatsColor.text).lineLimit(3)
+                            }
+                            Spacer(minLength: 4)
+                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(RatsColor.muted)
+                        }.contentShape(Rectangle())
+                    }.buttonStyle(.plain)
+                }
+            }.ratsCard()
+        }
+    }
+
+    @ViewBuilder private var money: some View {
+        let rows = cited.filter { ($0.amountEUR ?? 0) > 0 }
+        if let largest = rows.max(by: { ($0.amountEUR ?? 0) < ($1.amountEUR ?? 0) }) {
+            let maxValue = max(largest.amountEUR ?? 1, 1)
+            VStack(alignment: .leading, spacing: 12) {
+                MonoKicker("Aus den zitierten Beschlüssen")
+                Button { model.navigation.append(.decision(id: largest.id)) } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(euro(largest.amountEUR ?? 0)).font(RatsFont.title(27)).foregroundStyle(RatsColor.text)
+                        Text(largest.title).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.secondary).lineLimit(2)
+                    }
+                }.buttonStyle(.plain)
+                if rows.count > 1 {
+                    ForEach(rows.sorted { ($0.sessionDate ?? "") < ($1.sessionDate ?? "") }.suffix(5)) { source in
+                        Button { model.navigation.append(.decision(id: source.id)) } label: {
+                            HStack(spacing: 9) {
+                                Text(RatsDate.short(source.sessionDate) ?? "–").font(RatsFont.mono(9)).foregroundStyle(RatsColor.secondary).frame(width: 58, alignment: .leading)
+                                GeometryReader { proxy in
+                                    Capsule().fill(RatsColor.primary.opacity(0.10)).overlay(alignment: .leading) {
+                                        Capsule().fill(RatsColor.primary).frame(width: max(8, proxy.size.width * CGFloat((source.amountEUR ?? 0) / maxValue)))
+                                    }
+                                }.frame(height: 7)
+                                Text(euro(source.amountEUR ?? 0)).font(RatsFont.body(10.5, weight: .semibold)).frame(minWidth: 74, alignment: .trailing)
+                            }
+                        }.buttonStyle(.plain)
+                    }
+                }
+            }.ratsCard()
+        }
+    }
+
+    @ViewBuilder private var party: some View {
+        let counts = Dictionary(grouping: turn.sources.flatMap(\.factions), by: { $0 }).mapValues(\.count)
+        if let dominant = counts.max(by: { $0.value < $1.value }) {
+            HStack(spacing: 10) {
+                Circle().fill(RatsColor.signal).frame(width: 9, height: 9)
+                Text("Anträge der \(dominant.key)-Fraktion zu diesem Thema: **\(dominant.value)**").font(RatsFont.body(12.5))
+                Spacer(minLength: 0)
+            }.ratsCard()
+        }
+    }
+
+    private func euro(_ value: Double) -> String {
+        if value >= 1_000_000 { return String(format: "%.1f Mio. €", value / 1_000_000).replacingOccurrences(of: ".", with: ",") }
+        if value >= 1_000 { return "\(Int(value / 1_000).formatted(.number.locale(Locale(identifier: "de_DE")))) Tsd. €" }
+        return "\(Int(value).formatted(.number.locale(Locale(identifier: "de_DE")))) €"
+    }
 }
 
 private struct QuestionSourcesCard: View {
@@ -2210,26 +2308,7 @@ struct CouncilEvidenceBlocks: View {
         if includesAnswerInsights,
            visibility.showsChart,
            let chart = EvidenceChartData(fields["grafik"]) {
-            VStack(alignment: .leading, spacing: 12) {
-                MonoKicker("Zahlen aus der Stadt")
-                Text(chart.title).font(RatsFont.body(14, weight: .semibold))
-                Chart(chart.points) { point in
-                    LineMark(
-                        x: .value("Zeit", point.label),
-                        y: .value(chart.unit, point.value)
-                    )
-                    .foregroundStyle(RatsColor.primary)
-                    PointMark(
-                        x: .value("Zeit", point.label),
-                        y: .value(chart.unit, point.value)
-                    )
-                    .foregroundStyle(RatsColor.signal)
-                }
-                .frame(height: 150)
-                .chartYAxisLabel(chart.unit)
-                if let note = chart.note { Text(note).font(RatsFont.body(10.5)).foregroundStyle(RatsColor.muted) }
-            }
-            .ratsCard()
+            EvidenceInteractiveChart(chart: chart)
         }
     }
 
@@ -2281,6 +2360,8 @@ private struct EvidenceChartData {
     let title: String
     let unit: String
     let note: String?
+    let source: String?
+    let decimals: Int
     let points: [Point]
 
     init?(_ value: JSONValue?) {
@@ -2315,6 +2396,116 @@ private struct EvidenceChartData {
         title = root["titel"]?.string ?? "Entwicklung"
         unit = root["einheit"]?.string ?? "Wert"
         note = root["hinweis"]?.string
+        source = root["quelle"]?.string
+        decimals = max(0, min(3, root["nachkomma"]?.int ?? 0))
+    }
+
+    func formatted(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.minimumFractionDigits = decimals
+        formatter.maximumFractionDigits = decimals
+        return "\(formatter.string(from: NSNumber(value: value)) ?? String(value)) \(unit)"
+    }
+}
+
+private struct EvidenceInteractiveChart: View {
+    let chart: EvidenceChartData
+    @State private var selectedLabel: String?
+    @State private var showsTable = false
+
+    private var selected: EvidenceChartData.Point? {
+        selectedLabel.flatMap { label in chart.points.first(where: { $0.label == label }) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    MonoKicker("Zahlen aus der Stadt")
+                    Text(chart.title).font(RatsFont.body(15, weight: .semibold))
+                }
+                Spacer()
+                if let selected {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(selected.label).font(RatsFont.mono(9)).foregroundStyle(RatsColor.secondary)
+                        Text(chart.formatted(selected.value)).font(RatsFont.body(12, weight: .bold)).foregroundStyle(RatsColor.primary)
+                    }
+                    .transition(.opacity)
+                }
+            }
+
+            Chart(chart.points) { point in
+                AreaMark(
+                    x: .value("Zeit", point.label),
+                    y: .value(chart.unit, point.value)
+                )
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [RatsColor.primary.opacity(0.22), RatsColor.primary.opacity(0.02)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                LineMark(
+                    x: .value("Zeit", point.label),
+                    y: .value(chart.unit, point.value)
+                )
+                .foregroundStyle(RatsColor.primary)
+                .lineStyle(.init(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                PointMark(
+                    x: .value("Zeit", point.label),
+                    y: .value(chart.unit, point.value)
+                )
+                .symbolSize(selectedLabel == point.label ? 80 : 34)
+                .foregroundStyle(selectedLabel == point.label ? RatsColor.signal : RatsColor.primary)
+                if selectedLabel == point.label {
+                    RuleMark(x: .value("Auswahl", point.label))
+                        .foregroundStyle(RatsColor.signal.opacity(0.55))
+                        .lineStyle(.init(lineWidth: 1, dash: [4, 4]))
+                }
+            }
+            .frame(height: 190)
+            .chartYAxisLabel(chart.unit)
+            .chartXSelection(value: $selectedLabel)
+            .accessibilityLabel("Interaktive Zeitreihe: \(chart.title)")
+            .accessibilityHint("Wische über das Diagramm, um einzelne Werte abzulesen.")
+
+            Text("Tippe oder wische über die Grafik, um Werte abzulesen.")
+                .font(RatsFont.body(10.5))
+                .foregroundStyle(RatsColor.muted)
+
+            if let note = chart.note { Text(note).font(RatsFont.body(10.5)).foregroundStyle(RatsColor.muted) }
+
+            DisclosureGroup(isExpanded: $showsTable) {
+                VStack(spacing: 0) {
+                    ForEach(Array(chart.points.enumerated()), id: \.element.id) { offset, point in
+                        HStack {
+                            Text(point.label).font(RatsFont.mono(10)).foregroundStyle(RatsColor.secondary)
+                            Spacer()
+                            Text(chart.formatted(point.value)).font(RatsFont.body(11.5, weight: .semibold))
+                        }
+                        .padding(.vertical, 7)
+                        if offset < chart.points.count - 1 { Divider().overlay(RatsColor.separator) }
+                    }
+                }
+                .padding(.top, 7)
+            } label: {
+                Text("Wertetabelle")
+                    .font(RatsFont.body(11.5, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+            }
+
+            if let source = chart.source, !source.isEmpty {
+                Text("\(source) – die Reihe kommt aus der Ratslotse-Datenbank, nicht aus der KI-Antwort.")
+                    .font(RatsFont.body(10))
+                    .foregroundStyle(RatsColor.muted)
+                    .padding(.top, 8)
+                    .overlay(alignment: .top) { Divider().overlay(RatsColor.separator) }
+            }
+        }
+        .ratsCard()
+        .onAppear { selectedLabel = chart.points.last?.label }
     }
 }
 
