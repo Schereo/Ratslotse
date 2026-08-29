@@ -173,18 +173,25 @@ def report_frequency(independent_reports: int) -> str:
     return "very_many"
 
 
+def _is_finite_number(value: object) -> bool:
+    return (
+        not isinstance(value, bool)
+        and isinstance(value, (int, float))
+        and math.isfinite(value)
+    )
+
+
+def _is_coordinate(value: object, minimum: float, maximum: float) -> bool:
+    return _is_finite_number(value) and minimum <= value <= maximum
+
+
 def _is_geo_position(value: object) -> bool:
     return (
         isinstance(value, (list, tuple))
         and len(value) >= 2
-        and all(
-            not isinstance(coordinate, bool)
-            and isinstance(coordinate, (int, float))
-            and math.isfinite(coordinate)
-            for coordinate in value
-        )
-        and -180 <= value[0] <= 180
-        and -90 <= value[1] <= 90
+        and all(_is_finite_number(coordinate) for coordinate in value)
+        and _is_coordinate(value[0], -180, 180)
+        and _is_coordinate(value[1], -90, 90)
     )
 
 
@@ -201,7 +208,10 @@ def _is_polygon_coordinates(value: object) -> bool:
     return isinstance(value, list) and bool(value) and all(_is_linear_ring(ring) for ring in value)
 
 
-def _validate_problem_geometry(scope_kind: str, geometry: dict[str, Any] | None) -> None:
+def _canonical_problem_geometry(
+    scope_kind: str,
+    geometry: dict[str, Any] | None,
+) -> dict[str, Any] | None:
     if scope_kind == "route":
         if not (
             isinstance(geometry, dict)
@@ -211,7 +221,7 @@ def _validate_problem_geometry(scope_kind: str, geometry: dict[str, Any] | None)
             and all(_is_geo_position(position) for position in geometry["coordinates"])
         ):
             raise ValueError("Eine Route benötigt eine gültige GeoJSON-LineString.")
-        return
+        return {"type": "LineString", "coordinates": geometry["coordinates"]}
     if scope_kind == "area":
         valid = isinstance(geometry, dict) and (
             (
@@ -230,9 +240,10 @@ def _validate_problem_geometry(scope_kind: str, geometry: dict[str, Any] | None)
         )
         if not valid:
             raise ValueError("Ein Gebiet benötigt geschlossene GeoJSON-Polygonringe.")
-        return
+        return {"type": geometry["type"], "coordinates": geometry["coordinates"]}
     if geometry is not None:
         raise ValueError("Nur Routen und Gebiete verwenden eine GeoJSON-Geometrie.")
+    return None
 
 
 def _json_object(raw: str | None) -> dict[str, Any] | None:
@@ -303,9 +314,16 @@ class ProblemStore:
             raise ValueError("Unbekannter geografischer Bezug.")
         if status not in PROBLEM_STATUSES:
             raise ValueError("Unbekannter Problemstatus.")
-        if scope_kind in {"point", "facility"} and (latitude is None or longitude is None):
-            raise ValueError("Punkt und Einrichtung benötigen Koordinaten.")
-        _validate_problem_geometry(scope_kind, geometry)
+        if (
+            (latitude is not None and not _is_coordinate(latitude, -90, 90))
+            or (longitude is not None and not _is_coordinate(longitude, -180, 180))
+            or (
+                scope_kind in {"point", "facility"}
+                and (latitude is None or longitude is None)
+            )
+        ):
+            raise ValueError("Punkt und Einrichtung benötigen gültige Koordinaten.")
+        canonical_geometry = _canonical_problem_geometry(scope_kind, geometry)
         now = _now()
         first = first_observed_at or now
         last = last_observed_at or first
@@ -321,7 +339,7 @@ class ProblemStore:
                     title.strip(), summary.strip(), category.strip(),
                     json.dumps(list(tags), ensure_ascii=False), scope_kind,
                     location_label.strip(), latitude, longitude,
-                    json.dumps(geometry, ensure_ascii=False) if geometry else None,
+                    json.dumps(canonical_geometry, ensure_ascii=False) if canonical_geometry else None,
                     status, confidence, 0, 0, 0, first, last, None, now,
                 ),
             )

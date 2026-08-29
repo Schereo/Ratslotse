@@ -290,7 +290,7 @@ def test_route_and_area_require_matching_geojson_and_are_public(tmp_path):
         summary="Der Radweg ist nicht durchgängig.",
         category="mobility",
         scope_kind="route",
-        geometry=route_geometry,
+        geometry={**route_geometry, "private_note": "Darf nicht öffentlich werden."},
     )
     area = store.create_problem(
         title="Hitze im Quartier",
@@ -327,18 +327,16 @@ def test_route_and_area_require_matching_geojson_and_are_public(tmp_path):
     store.close()
 
 
-def test_point_problem_requires_coordinates(tmp_path):
+def test_point_problem_requires_valid_coordinates(tmp_path):
     store = ProblemStore(tmp_path / "problems.sqlite")
-    try:
-        store.create_problem(
-            title="Ohne Ort",
-            summary="Ein Punkt ohne Koordinaten ist nicht kartierbar.",
-            category="other",
-            scope_kind="point",
-        )
-    except ValueError as error:
-        assert "Koordinaten" in str(error)
-    else:
-        raise AssertionError("Punktproblem ohne Koordinaten wurde gespeichert")
-    finally:
-        store.close()
+    for latitude, longitude in ((None, None), (float("nan"), 8.2), (91, 8.2)):
+        with pytest.raises(ValueError, match="Koordinaten"):
+            store.create_problem(
+                title="Ohne Ort",
+                summary="Ein Punkt ohne gültige Koordinaten ist nicht kartierbar.",
+                category="other",
+                scope_kind="point",
+                latitude=latitude,
+                longitude=longitude,
+            )
+    store.close()

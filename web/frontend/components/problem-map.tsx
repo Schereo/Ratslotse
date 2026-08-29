@@ -17,15 +17,10 @@ import type { ProblemFrequency, PublicProblemSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const TILES = basemapUrl("voyager");
-const FREQUENCY_COLORS: Record<ProblemFrequency, string> = {
-  once: "#64748b",
-  several: "#0284c7",
-  many: "#ea8a00",
-  very_many: "#dc2626",
-};
 
 type ShapeEntry = {
   paths: Path[];
+  controls: Path[];
   frequency: ProblemFrequency;
   scope: "route" | "area";
 };
@@ -35,11 +30,9 @@ function shapeStyle(
   scope: "route" | "area",
   selected: boolean,
 ): PathOptions {
-  const color = FREQUENCY_COLORS[frequency];
   if (scope === "route") {
     return {
-      className: "problem-map-route",
-      color,
+      className: `problem-map-route frequency-${frequency}`,
       weight: selected ? 8 : 5,
       opacity: 0.92,
       lineCap: "round",
@@ -47,12 +40,21 @@ function shapeStyle(
     };
   }
   return {
-    className: "problem-map-area",
-    color,
-    fillColor: color,
+    className: `problem-map-area frequency-${frequency}`,
     fillOpacity: selected ? 0.3 : 0.16,
     opacity: 0.9,
     weight: selected ? 4 : 2,
+  };
+}
+
+function routeHitStyle(frequency: ProblemFrequency): PathOptions {
+  return {
+    className: `problem-map-route-hit frequency-${frequency}`,
+    color: "#000",
+    opacity: 0.001,
+    weight: 28,
+    lineCap: "round",
+    lineJoin: "round",
   };
 }
 
@@ -93,6 +95,7 @@ function hasMatchingGeometry(problem: PublicProblemSummary): boolean {
   if (problem.scope_kind === "route") {
     return (
       problem.geometry?.type === "LineString"
+      && Array.isArray(problem.geometry.coordinates)
       && problem.geometry.coordinates.length >= 2
       && problem.geometry.coordinates.every(isPosition)
     );
@@ -101,6 +104,7 @@ function hasMatchingGeometry(problem: PublicProblemSummary): boolean {
   if (problem.geometry?.type === "Polygon") return isPolygon(problem.geometry.coordinates);
   return (
     problem.geometry?.type === "MultiPolygon"
+    && Array.isArray(problem.geometry.coordinates)
     && problem.geometry.coordinates.length > 0
     && problem.geometry.coordinates.every(isPolygon)
   );
@@ -199,13 +203,20 @@ export function ProblemMap({
           if ((problem.scope_kind === "route" || problem.scope_kind === "area")
               && hasMatchingGeometry(problem)) {
             const scope = problem.scope_kind;
+            const hitShape = scope === "route"
+              ? L.geoJSON(problem.geometry!, { style: routeHitStyle(frequency) }).addTo(map)
+              : null;
             const shape = L.geoJSON(problem.geometry!, {
+              interactive: scope === "area",
               style: shapeStyle(frequency, scope, selected),
             }).addTo(map);
             const paths: Path[] = [];
-            shape.eachLayer((layer) => {
+            shape.eachLayer((layer) => paths.push(layer as Path));
+            const controls: Path[] = [];
+            const controlsShape = hitShape ?? shape;
+            controlsShape.eachLayer((layer) => {
               const path = layer as Path;
-              paths.push(path);
+              controls.push(path);
               path.on("click", () => selectRef.current(problem.id));
               const tooltip = document.createElement("span");
               tooltip.textContent = problem.title;
@@ -216,13 +227,14 @@ export function ProblemMap({
               interactiveElement.setAttribute("role", "button");
               interactiveElement.setAttribute("tabindex", "0");
               interactiveElement.setAttribute("aria-label", label);
+              interactiveElement.setAttribute("aria-pressed", String(selected));
               interactiveElement.addEventListener("keydown", (event) => {
                 if (event.key !== "Enter" && event.key !== " ") return;
                 event.preventDefault();
                 selectRef.current(problem.id);
               });
             });
-            shapesRef.current.set(problem.id, { paths, frequency, scope });
+            shapesRef.current.set(problem.id, { paths, controls, frequency, scope });
             const shapeBounds = (shape as LeafletGeoJSON).getBounds();
             if (shapeBounds.isValid()) {
               bounds.extend(shapeBounds);
@@ -254,8 +266,12 @@ export function ProblemMap({
       marker.getElement()?.querySelector(".problem-map-pin")?.classList.toggle("is-selected", id === selectedId);
     }
     for (const [id, shape] of shapesRef.current) {
+      const selected = id === selectedId;
       for (const path of shape.paths) {
-        path.setStyle(shapeStyle(shape.frequency, shape.scope, id === selectedId));
+        path.setStyle(shapeStyle(shape.frequency, shape.scope, selected));
+      }
+      for (const control of shape.controls) {
+        control.getElement()?.setAttribute("aria-pressed", String(selected));
       }
     }
   }, [selectedId]);
@@ -295,22 +311,21 @@ export function ProblemMap({
         </div>
       )}
       {citywide.length > 0 && !mapError && (
-        <div className="absolute left-3 top-3 z-[var(--ebene-kartenbedienung)] max-w-[min(20rem,calc(100%-4.5rem))] space-y-1">
+        <div className="scrollbar-none absolute left-3 top-3 z-[var(--ebene-kartenbedienung)] flex max-w-[calc(100%-4.5rem)] gap-1.5 overflow-x-auto overscroll-x-contain pb-1">
           {citywide.map((problem) => (
             <button
               key={problem.id}
               type="button"
               onClick={() => onSelect(problem.id)}
+              aria-label={`${problem.title} · Stadtweit · ${MELDE_HAEUFIGKEIT[problem.frequency]}`}
               aria-pressed={problem.id === selectedId}
               className={cn(
-                "problem-map-citywide flex w-full items-center gap-2 rounded-full border bg-background/95 px-3 py-2 text-left text-xs font-medium text-foreground shadow-sm backdrop-blur hover:bg-muted",
+                "problem-map-citywide flex min-h-10 shrink-0 items-center gap-2 rounded-full border bg-background/95 px-3 py-2 text-left text-xs font-medium text-foreground shadow-sm backdrop-blur hover:bg-muted",
                 problem.id === selectedId ? "border-primary ring-2 ring-primary/20" : "border-border",
               )}
             >
-              <Globe2 className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-              <span className="truncate">{problem.title}</span>
-              <span className={`problem-frequency-dot frequency-${problem.frequency} shrink-0`} aria-hidden />
-              <span className="sr-only"> · Stadtweit · {MELDE_HAEUFIGKEIT[problem.frequency]}</span>
+              <Globe2 className={`problem-map-citywide-icon frequency-${problem.frequency} h-4 w-4 shrink-0`} aria-hidden />
+              <span>Stadtweit</span>
             </button>
           ))}
         </div>

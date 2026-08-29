@@ -601,15 +601,31 @@
   box-shadow: 0 0 0 4px hsl(var(--foreground) / 0.24), 0 4px 14px rgb(0 0 0 / 0.32);
   transform: scale(1.12);
 }
-.problem-map-route,
+.problem-map-route {
+  fill: none !important;
+  stroke: var(--problem-frequency) !important;
+  transition: stroke-width 160ms var(--ease-out-strong);
+}
 .problem-map-area {
   cursor: pointer;
+  fill: var(--problem-frequency) !important;
+  stroke: var(--problem-frequency) !important;
   transition: filter 160ms ease, stroke-width 160ms var(--ease-out-strong), fill-opacity 160ms ease;
 }
-.problem-map-route:focus-visible,
+.problem-map-route-hit {
+  cursor: pointer;
+}
+.problem-map-route-hit:focus-visible {
+  opacity: 0.22 !important;
+  outline: none;
+  stroke: hsl(var(--ring)) !important;
+}
 .problem-map-area:focus-visible {
   filter: drop-shadow(0 0 4px hsl(var(--ring)));
   outline: none;
+}
+.problem-map-citywide-icon {
+  color: var(--problem-frequency);
 }
 .problem-map-icon:focus-visible .problem-map-pin {
   box-shadow: 0 0 0 4px hsl(var(--ring) / 0.35), 0 4px 14px rgb(0 0 0 / 0.32);

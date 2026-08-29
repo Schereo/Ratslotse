@@ -13,7 +13,19 @@ const summaries = VORSCHAU_PROBLEME.map((problem) => ({
   status: problem.status,
   frequency: problem.frequency,
 }));
-const response = { problems: summaries, total: summaries.length };
+const malformedLegacySummary = {
+  ...summaries[0],
+  id: 9099,
+  title: "Alte Route ohne Geometrie",
+  scope_kind: "route",
+  latitude: null,
+  longitude: null,
+  geometry: { type: "LineString" },
+};
+const response = {
+  problems: [...summaries, malformedLegacySummary],
+  total: summaries.length + 1,
+};
 
 test.describe("Öffentliche Problemkarte", () => {
   test.beforeEach(async ({ page }) => {
@@ -42,6 +54,8 @@ test.describe("Öffentliche Problemkarte", () => {
     await expect(page.locator(".problem-map-route")).toHaveCount(1);
     await expect(page.locator(".problem-map-area")).toHaveCount(1);
     await expect(page.locator(".problem-map-citywide")).toHaveCount(1);
+    await expect(page.getByText("Ohne Geometrie")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Alte Route ohne Geometrie/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Karte" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByText("Du willst später selbst etwas melden?")).toBeVisible();
 
@@ -50,6 +64,7 @@ test.describe("Öffentliche Problemkarte", () => {
     await expect(page.getByRole("heading", { name: "Neu" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Geprüft" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Beispiel:/ })).toHaveCount(6);
+    await expect(page.getByRole("button", { name: /Alte Route ohne Geometrie/ })).toBeVisible();
     await expect(page.getByLabel("Nach Thema filtern")).toHaveCount(0);
     await expect(page.locator(".problem-frequency-dot.frequency-very_many")).toBeVisible();
   });
@@ -57,7 +72,8 @@ test.describe("Öffentliche Problemkarte", () => {
   test("wählt auch Route und stadtweites Problem direkt auf der Karte", async ({ page }) => {
     await page.goto("/probleme");
 
-    await page.locator(".problem-map-route").press("Enter");
+    await expect(page.locator(".problem-map-route-hit")).toHaveAttribute("stroke-width", "28");
+    await page.locator(".problem-map-route-hit").press("Enter");
     await expect(page).toHaveURL(/problem=9005/);
     await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Lücke im Radweg" })).toBeVisible();
 
