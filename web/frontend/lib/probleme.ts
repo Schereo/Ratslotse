@@ -1,5 +1,11 @@
 import type { ProblemFrequency, PublicProblem } from "@/lib/types";
 
+/** Sichtbare Produktbezeichnung; interne Domänenbegriffe und URLs bleiben stabil. */
+export const PROBLEM_ANGEBOT = {
+  name: "Probleme in Oldenburg",
+  navigation: "Probleme",
+} as const;
+
 export const PROBLEM_KATEGORIEN = {
   mobility: "Mobilität & Verkehr",
   public_space: "Öffentlicher Raum",
@@ -18,6 +24,12 @@ export const PROBLEM_STATUS = {
   verified: { label: "Geprüft", color: "blue" as const },
   persists: { label: "Weiterhin vorhanden", color: "slate" as const },
   apparently_resolved: { label: "Offenbar behoben", color: "slate" as const },
+} as const;
+
+export const PROBLEM_CONFIDENCE = {
+  unconfirmed: "Noch unbestätigt",
+  supported: "Durch mehrere Beobachtungen gestützt",
+  verified: "Von Ratslotse geprüft",
 } as const;
 
 export const PROBLEM_SCOPE = {
@@ -74,7 +86,7 @@ export const VORSCHAU_PROBLEME: PublicProblem[] = [
     published_at: "2026-06-05T12:00:00+00:00",
     updated_at: "2026-08-27T08:00:00+00:00",
     events: [
-      { kind: "observation", title: "Erneut bestätigt", detail: "Eine weitere unabhängige Beobachtung wurde moderiert.", source_kind: "Ratslotse-Prüfung", source_url: null, event_at: "2026-08-26T18:20:00+00:00" },
+      { kind: "response", title: "Beispielhafte öffentliche Rückmeldung", detail: "Eine frei erfundene externe Reaktion mit klar gekennzeichneter Rolle und Quelle.", source_kind: "Stadtverwaltung", source_url: "https://example.invalid/fiktive-quelle", event_at: "2026-08-26T18:20:00+00:00" },
       { kind: "published", title: "Problem veröffentlicht", detail: "Aus mehreren privaten Meldungen zusammengefasst.", source_kind: "Ratslotse-Prüfung", source_url: null, event_at: "2026-06-05T12:00:00+00:00" },
     ],
   },

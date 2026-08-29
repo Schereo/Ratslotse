@@ -54,6 +54,7 @@ def test_private_schema_migration_preserves_existing_public_projection(tmp_path)
         kind="published",
         title="Problem veröffentlicht",
         detail="Von Ratslotse geprüft.",
+        source_kind="Ratslotse-Prüfung",
     )
     public.create_problem(
         title="Noch in Moderation",

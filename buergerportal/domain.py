@@ -12,6 +12,12 @@ PROBLEM_CATEGORIES = (
     "other",
 )
 SCOPE_KINDS = ("point", "facility", "route", "area", "citywide")
+PUBLIC_SOURCE_KINDS = (
+    "Stadtverwaltung",
+    "Ratsmitglied",
+    "Fraktion",
+    "Ratslotse-Prüfung",
+)
 PROBLEM_STATUSES = (
     "new",
     "multiple_reports",

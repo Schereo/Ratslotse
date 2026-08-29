@@ -157,6 +157,10 @@ const nextConfig = {
         // Each route exports as <route>/index.html — friendliest for the
         // Capacitor local file server.
         trailingSlash: true,
+        // Der laufende Dev-Server hält seine Routentypen getrennt in
+        // `.next-dev`; der Export ignoriert sie über eine eigene tsconfig,
+        // statt fremde Build-Ausgaben zu löschen.
+        typescript: { tsconfigPath: "./tsconfig.mobile.json" },
         // The static export can't run the Next image optimizer.
         images: { unoptimized: true },
       }

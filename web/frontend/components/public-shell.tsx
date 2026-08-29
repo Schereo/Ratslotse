@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Mascot } from "@/components/mascot";
 import { Button, Card } from "@/components/ui";
 import { mitRuecksprung } from "@/lib/public-routes";
+import { PROBLEM_ANGEBOT } from "@/lib/probleme";
 
 /** Die Hülle für alle, die ohne Konto hier gelandet sind — praktisch immer über
  *  einen geteilten Link.
@@ -103,7 +104,7 @@ function Einladung({ zurueck, variante }: { zurueck: string; variante: "rat" | "
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             {problemkarte ? (
-              <>Die Problemkarte ist gerade im Aufbau. Meldungen werden nur mit einem bestätigten Ratslotse-Konto möglich sein, bleiben einzeln privat und erscheinen erst nach Prüfung als öffentliche Zusammenfassung.</>
+              <>{PROBLEM_ANGEBOT.name} ist gerade im Aufbau. Meldungen werden nur mit einem bestätigten Ratslotse-Konto möglich sein, bleiben einzeln privat und erscheinen erst nach Prüfung als öffentliche Zusammenfassung.</>
             ) : (
               <>Du liest gerade eine einzelne Seite aus dem Oldenburger Stadtrat. Mit
                 einem kostenlosen Konto legst du eigene Themen an — Radverkehr, deine

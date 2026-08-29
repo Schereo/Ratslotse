@@ -77,7 +77,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Anmeldung zu schicken. Die App-Hülle passt hier nicht — ihre Navigation
   // führt ausschließlich zu Seiten, die ein Konto verlangen.
   if (!loading && !user && oeffentlich) {
-    return <PublicShell variante={pathname === "/probleme" ? "probleme" : "rat"}>{children}</PublicShell>;
+    const problemseite = pathname === "/probleme" || pathname.startsWith("/probleme/");
+    return <PublicShell variante={problemseite ? "probleme" : "rat"}>{children}</PublicShell>;
   }
 
   // Design 29a (P3): Der erste Eindruck war ein Spinner auf weißem Grund — die
