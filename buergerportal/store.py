@@ -256,6 +256,27 @@ def _json_object(raw: str | None) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
+def _public_geometry(scope_kind: str, raw: str | None) -> dict[str, Any] | None:
+    try:
+        return _canonical_problem_geometry(scope_kind, _json_object(raw))
+    except ValueError:
+        return None
+
+
+def _public_coordinates(
+    scope_kind: str,
+    latitude: object,
+    longitude: object,
+) -> tuple[float | int | None, float | int | None]:
+    if (
+        scope_kind in {"point", "facility"}
+        and _is_coordinate(latitude, -90, 90)
+        and _is_coordinate(longitude, -180, 180)
+    ):
+        return latitude, longitude
+    return None, None
+
+
 class ProblemStore:
     """Owns problemtracker persistence and exposes only explicit public views."""
 
@@ -314,15 +335,14 @@ class ProblemStore:
             raise ValueError("Unbekannter geografischer Bezug.")
         if status not in PROBLEM_STATUSES:
             raise ValueError("Unbekannter Problemstatus.")
-        if (
-            (latitude is not None and not _is_coordinate(latitude, -90, 90))
-            or (longitude is not None and not _is_coordinate(longitude, -180, 180))
-            or (
-                scope_kind in {"point", "facility"}
-                and (latitude is None or longitude is None)
-            )
-        ):
-            raise ValueError("Punkt und Einrichtung benötigen gültige Koordinaten.")
+        if scope_kind in {"point", "facility"}:
+            if not (
+                _is_coordinate(latitude, -90, 90)
+                and _is_coordinate(longitude, -180, 180)
+            ):
+                raise ValueError("Punkt und Einrichtung benötigen gültige Koordinaten.")
+        elif latitude is not None or longitude is not None:
+            raise ValueError("Routen, Gebiete und stadtweite Probleme verwenden keine Punktkoordinaten.")
         canonical_geometry = _canonical_problem_geometry(scope_kind, geometry)
         now = _now()
         first = first_observed_at or now
@@ -467,15 +487,18 @@ class ProblemStore:
         return self._public_problem(row, include_details=True) if row else None
 
     def _public_problem(self, row: sqlite3.Row, *, include_details: bool) -> dict[str, Any]:
+        latitude, longitude = _public_coordinates(
+            row["scope_kind"], row["latitude"], row["longitude"]
+        )
         problem = {
             "id": row["id"],
             "title": row["title"],
             "category": row["category"],
             "scope_kind": row["scope_kind"],
             "location_label": row["location_label"],
-            "latitude": row["latitude"],
-            "longitude": row["longitude"],
-            "geometry": _json_object(row["geometry_json"]),
+            "latitude": latitude,
+            "longitude": longitude,
+            "geometry": _public_geometry(row["scope_kind"], row["geometry_json"]),
             "status": row["status"],
             "frequency": report_frequency(row["unique_reporters"]),
         }

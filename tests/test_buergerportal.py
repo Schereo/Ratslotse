@@ -1,6 +1,7 @@
 """Problemtracker: öffentliche Projektion und API-Grenze."""
 from __future__ import annotations
 
+import json
 import sqlite3
 
 import pytest
@@ -301,6 +302,11 @@ def test_route_and_area_require_matching_geojson_and_are_public(tmp_path):
     )
     _approve_and_publish(store, database, route)
     _approve_and_publish(store, database, area)
+    store._conn.execute(
+        "UPDATE civic_problems SET geometry_json = ? WHERE id = ?",
+        (json.dumps({**route_geometry, "private_note": "Alte interne Notiz"}), route),
+    )
+    store._conn.commit()
 
     projected = {problem["id"]: problem for problem in store.list_public_problems()}
     assert projected[route]["geometry"] == route_geometry
@@ -324,6 +330,21 @@ def test_route_and_area_require_matching_geojson_and_are_public(tmp_path):
                 "coordinates": [[[8.2, 53.1], [8.3, 53.1], [8.3, 53.2], [8.2, 53.2]]],
             },
         )
+    with pytest.raises(ValueError, match="keine Punktkoordinaten"):
+        store.create_problem(
+            title="Stadtweiter Punkt",
+            summary="Stadtweit hat keinen künstlichen Mittelpunkt.",
+            category="other",
+            scope_kind="citywide",
+            latitude=53.14,
+            longitude=8.21,
+        )
+    store._conn.execute(
+        "UPDATE civic_problems SET geometry_json = ? WHERE id = ?",
+        (json.dumps({"type": "Polygon", "private_note": "Nicht öffentlich"}), area),
+    )
+    store._conn.commit()
+    assert store.get_public_problem(area)["geometry"] is None
     store.close()
 
 
