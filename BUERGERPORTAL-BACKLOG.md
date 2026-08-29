@@ -103,14 +103,15 @@ Die Reihenfolge beschreibt Produktpriorität. Jeder Block soll als testbarer ver
 
 ### P0 — Begriff, Route und Datenmodell festlegen
 
-- [ ] Produktname und sichtbare Begriffe festlegen; amtlich klingende Ticket-Versprechen vermeiden.
-- [ ] URL-Routen und Navigation innerhalb der bestehenden Web-App festlegen.
+- [x] Produktname und sichtbare Begriffe festlegen; amtlich klingende Ticket-Versprechen vermeiden.
+- [x] URL-Routen und Navigation innerhalb der bestehenden Web-App festlegen.
 - [x] Domänenmodell für Meldung, Problem, Zuordnung, Aktualisierung, Moderationsentscheidung, Statusereignis und geografischen Bezug dokumentieren.
 - [x] Migrationen in der bestehenden Datenhaltung entwerfen; private Meldedaten und öffentliche Projektionen klar trennen.
 - [x] Autorisierungsmatrix für Öffentlichkeit, Reporter*in und Administrator*in definieren.
 
-Dokumentiert in [`buergerportal/CONTEXT.md`](buergerportal/CONTEXT.md) und
-[`buergerportal/DOMAIN-MODEL.md`](buergerportal/DOMAIN-MODEL.md).
+Dokumentiert in [`buergerportal/CONTEXT.md`](buergerportal/CONTEXT.md),
+[`buergerportal/DOMAIN-MODEL.md`](buergerportal/DOMAIN-MODEL.md) und
+[`buergerportal/PRODUCT.md`](buergerportal/PRODUCT.md).
 
 **Fertig, wenn:** Das Modell alle in diesem Dokument bestätigten Regeln ausdrücken kann, Daten anderer Nutzer*innen nicht über öffentliche oder fremde Konto-Endpunkte erreichbar sind und Migrationstests vorliegen.
 
@@ -126,7 +127,7 @@ und eigenständige Detailroute bleiben ausdrücklich Folgearbeiten.
 
 - [x] Öffentliche API für freigegebene Probleme mit Karte, Filtern und Listenansicht bereitstellen.
 - [ ] Punkt, Einrichtung, Route, Gebiet/Stadtteil und stadtweite Probleme darstellbar machen.
-- [ ] Problem-Detailseite mit erlaubten Aggregaten und öffentlicher Zeitleiste bauen.
+- [x] Problem-Detailseite mit erlaubten Aggregaten und öffentlicher Zeitleiste bauen.
 - [x] Öffentliche Minimalansicht mit Karte als Standard und Status-Kanban als zweiter Ansicht bereitstellen.
 - [x] Kennzeichnung als unabhängiges Ratslotse-Angebot und Erklärung der Statusaussage sichtbar platzieren.
 - [x] Leere, Lade-, Fehler- und mobile Zustände sowie Tastaturbedienung und Screenreader-Texte abdecken.

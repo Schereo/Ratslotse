@@ -27,7 +27,8 @@ export function istOeffentlich(pfad: string | null | undefined): boolean {
   // Der statische Export legt die Seiten als Verzeichnis ab, der Browser hängt
   // dann einen Schrägstrich an — beide Schreibweisen müssen treffen.
   const p = pfad.length > 1 && pfad.endsWith("/") ? pfad.slice(0, -1) : pfad;
-  return (OEFFENTLICHE_PFADE as readonly string[]).includes(p);
+  return (OEFFENTLICHE_PFADE as readonly string[]).includes(p)
+    || /^\/probleme\/[1-9]\d*$/.test(p);
 }
 
 /** Ein Rücksprungziel, dem man folgen darf.

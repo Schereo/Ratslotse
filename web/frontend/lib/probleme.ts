@@ -1,5 +1,11 @@
 import type { ProblemFrequency, PublicProblem } from "@/lib/types";
 
+/** Sichtbare Produktbezeichnung; interne Domänenbegriffe und URLs bleiben stabil. */
+export const PROBLEM_ANGEBOT = {
+  name: "Probleme in Oldenburg",
+  navigation: "Probleme",
+} as const;
+
 export const PROBLEM_KATEGORIEN = {
   mobility: "Mobilität & Verkehr",
   public_space: "Öffentlicher Raum",
@@ -18,6 +24,12 @@ export const PROBLEM_STATUS = {
   verified: { label: "Geprüft", color: "blue" as const },
   persists: { label: "Weiterhin vorhanden", color: "slate" as const },
   apparently_resolved: { label: "Offenbar behoben", color: "slate" as const },
+} as const;
+
+export const PROBLEM_CONFIDENCE = {
+  unconfirmed: "Noch unbestätigt",
+  supported: "Durch mehrere Beobachtungen gestützt",
+  verified: "Von Ratslotse geprüft",
 } as const;
 
 export const PROBLEM_SCOPE = {

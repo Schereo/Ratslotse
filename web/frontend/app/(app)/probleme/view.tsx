@@ -1,12 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Columns3, Info, Map as MapIcon, MapPin, X } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ProblemListResponse, PublicProblem, PublicProblemSummary, ProblemStatus } from "@/lib/types";
-import { MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, VORSCHAU_PROBLEME } from "@/lib/probleme";
+import { MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_ANGEBOT, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, VORSCHAU_PROBLEME } from "@/lib/probleme";
 import { Badge, Card, ErrorState, PageHeader, Segmented, Select, Spinner, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -106,7 +107,7 @@ export default function View({ vorschau }: { vorschau: boolean }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Oldenburgs Problemkarte"
+        title={PROBLEM_ANGEBOT.name}
         description="Beobachtungen aus der Stadt, geprüft und ohne persönliche Angaben gebündelt."
       />
 
@@ -308,6 +309,12 @@ function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose
           </div>
         </div>
       )}
+      <Link
+        href={`/probleme/${problem.id}`}
+        className="mt-5 inline-flex rounded-md text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Problemseite öffnen
+      </Link>
     </Card>
   );
 }

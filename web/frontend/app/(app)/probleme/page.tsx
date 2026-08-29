@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import View from "./view";
+import { PROBLEM_ANGEBOT } from "@/lib/probleme";
 
 export const metadata: Metadata = {
-  title: "Problemkarte Oldenburg",
+  title: PROBLEM_ANGEBOT.name,
   description: "Kommunale Probleme in Oldenburg auf einer unabhängigen, von Ratslotse moderierten Karte entdecken.",
   openGraph: {
-    title: "Problemkarte Oldenburg — Ratslotse",
+    title: `${PROBLEM_ANGEBOT.name} — Ratslotse`,
     description: "Private Beobachtungen, öffentlich gebündelt: kommunale Probleme in Oldenburg auf einer Karte.",
   },
 };

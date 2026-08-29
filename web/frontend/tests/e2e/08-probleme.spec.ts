@@ -36,7 +36,7 @@ test.describe("Öffentliche Problemkarte", () => {
   test("startet minimal mit der Karte und wechselt ins Status-Board", async ({ page }) => {
     await page.goto("/probleme");
 
-    await expect(page.getByRole("heading", { name: "Oldenburgs Problemkarte" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Probleme in Oldenburg" })).toBeVisible();
     await expect(page.locator(".problem-map-pin")).toHaveCount(3);
     await expect(page.getByRole("button", { name: "Karte" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByText("Du willst später selbst etwas melden?")).toBeVisible();
@@ -57,5 +57,29 @@ test.describe("Öffentliche Problemkarte", () => {
     await expect(page).toHaveURL(/problem=9003/);
     await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Barrierefreier Zugang zur Haltestelle fehlt" })).toBeVisible();
     await expect(page.getByText("Reporter*innen")).toBeVisible();
+    await page.getByRole("link", { name: "Problemseite öffnen" }).click();
+    await expect(page).toHaveURL(/\/probleme\/9003$/);
+  });
+
+  test("zeigt alle freigegebenen Details und die öffentliche Zeitleiste", async ({ page }) => {
+    await page.goto("/probleme/9001");
+
+    await expect(page.getByRole("heading", { level: 1, name: "Beispiel: Dunkler Fußweg am Kanal" })).toBeVisible();
+    await expect(page.getByText("Reporter*innen")).toBeVisible();
+    await expect(page.getByText("6", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Öffentliche Zeitleiste" })).toBeVisible();
+    await expect(page.getByText("Erneut bestätigt")).toBeVisible();
+    await expect(page.getByText("Problem veröffentlicht")).toBeVisible();
+    await expect(page.getByText("Ratslotse-Prüfung")).toHaveCount(2);
+    await expect(page.getByRole("link", { name: "Zur Problemkarte" })).toBeVisible();
+    await expect(page.getByText(/keine amtlichen Bearbeitungsstände/i)).toBeVisible();
+  });
+
+  test("erklärt ein nicht gefundenes Problem ohne Anmeldeschranke", async ({ page }) => {
+    await page.goto("/probleme/9999");
+
+    await expect(page.getByRole("heading", { name: "Problem nicht gefunden" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Zur Problemkarte" })).toBeVisible();
+    await expect(page).toHaveURL(/\/probleme\/9999$/);
   });
 });

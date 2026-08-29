@@ -19,6 +19,7 @@ import { FeedbackButton, openFeedback } from "@/components/feedback";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { cn, pfad } from "@/lib/utils";
 import { openCommandPalette } from "@/components/command-palette";
+import { PROBLEM_ANGEBOT } from "@/lib/probleme";
 
 // `tour` markiert Elemente als Anker für die Lotti-Tour (components/tour.tsx);
 // Sidebar und Bottom-Nav tragen denselben Wert — die Tour nimmt das sichtbare.
@@ -99,7 +100,7 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
   { href: "/council", label: "Suche", icon: Search, tab: "decisions" },
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
   { href: "/council?tab=themen", label: "Stadtkarte", icon: MapIcon, tab: "themen" },
-  { href: "/probleme", label: "Problemkarte", icon: CircleAlert },
+  { href: "/probleme", label: PROBLEM_ANGEBOT.navigation, icon: CircleAlert },
   { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
   // Design-Serie „Haushalt" (H-01): eigener Bereich in der Sidebar; mobil
   // hängt er im „Mehr"-Sheet — die Tab-Bar bleibt fünfteilig (H-05).
