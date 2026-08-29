@@ -73,15 +73,67 @@ function todayISO(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
+function segmentNear(
+  point: { latitude: number; longitude: number },
+  start: number[],
+  end: number[],
+): boolean {
+  const px = point.longitude / 0.03;
+  const py = point.latitude / 0.018;
+  const ax = start[0] / 0.03;
+  const ay = start[1] / 0.018;
+  const bx = end[0] / 0.03;
+  const by = end[1] / 0.018;
+  const lengthSquared = (bx - ax) ** 2 + (by - ay) ** 2;
+  const ratio = lengthSquared === 0
+    ? 0
+    : Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / lengthSquared));
+  return (px - (ax + ratio * (bx - ax))) ** 2 + (py - (ay + ratio * (by - ay))) ** 2 < 1;
+}
+
+function pointInRing(point: { latitude: number; longitude: number }, ring: number[][]): boolean {
+  let inside = false;
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
+    const [x, y] = ring[index];
+    const [previousX, previousY] = ring[previous];
+    if (
+      (y > point.latitude) !== (previousY > point.latitude)
+      && point.longitude < ((previousX - x) * (point.latitude - y)) / (previousY - y) + x
+    ) inside = !inside;
+  }
+  return inside;
+}
+
+function geometryNear(problem: PublicProblemSummary, position: NonNullable<Position>): boolean {
+  const geometry = problem.geometry;
+  if (geometry?.type === "LineString") {
+    return geometry.coordinates.slice(1).some((end, index) =>
+      segmentNear(position, geometry.coordinates[index] as number[], end as number[]));
+  }
+  const polygons = geometry?.type === "Polygon"
+    ? [geometry.coordinates]
+    : geometry?.type === "MultiPolygon" ? geometry.coordinates : [];
+  return polygons.some((polygon) => {
+    const outer = polygon[0] as number[][] | undefined;
+    if (!outer) return false;
+    return pointInRing(position, outer)
+      || outer.slice(1).some((end, index) => segmentNear(position, outer[index], end));
+  });
+}
+
 function nearby(problem: PublicProblemSummary, scope: ProblemScope, position: Position, label: string): boolean {
   if (scope === "citywide") return problem.scope_kind === "citywide";
   const normalized = label.trim().toLocaleLowerCase("de-DE");
   const labelMatch = normalized.length >= 3 && problem.location_label.toLocaleLowerCase("de-DE").includes(normalized);
-  const coordinateMatch = position
-    && problem.latitude !== null
-    && problem.longitude !== null
-    && Math.abs(problem.latitude - position.latitude) < 0.018
-    && Math.abs(problem.longitude - position.longitude) < 0.03;
+  const coordinateMatch = position && (
+    (
+      problem.latitude !== null
+      && problem.longitude !== null
+      && Math.abs(problem.latitude - position.latitude) < 0.018
+      && Math.abs(problem.longitude - position.longitude) < 0.03
+    )
+    || geometryNear(problem, position)
+  );
   return Boolean(labelMatch || coordinateMatch);
 }
 
@@ -258,6 +310,16 @@ export function ProblemReportFlow() {
       setLocationLabel("");
     }
   };
+
+  if (user?.role === "admin") {
+    return (
+      <Card className="mx-auto max-w-2xl p-6 text-center sm:p-8">
+        <h1 className="font-display text-2xl font-bold text-foreground">Meldungen gehören zu persönlichen Konten</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Admin-Konten moderieren und können deshalb keine eigene Meldung einreichen.</p>
+        <Button asChild variant="secondary" className="mt-5"><Link href="/probleme">Zur Problemkarte</Link></Button>
+      </Card>
+    );
+  }
 
   if (!hydrated) {
     return <Card className="mx-auto h-48 max-w-3xl animate-pulse bg-muted" aria-label="Meldeentwurf wird vorbereitet" />;

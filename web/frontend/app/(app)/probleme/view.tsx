@@ -12,6 +12,7 @@ import { isProblemMappable, MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_ANGEBOT
 import { Badge, Button, Card, ErrorState, PageHeader, Segmented, Spinner, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
+import { useAuth } from "@/lib/auth";
 import { PublicProblemDetail } from "@/components/public-problem-detail";
 
 const ProblemMap = dynamic(
@@ -23,6 +24,7 @@ type Ansicht = "karte" | "status";
 const STATUS_OPTIONS = Object.entries(PROBLEM_STATUS) as [ProblemStatus, (typeof PROBLEM_STATUS)[ProblemStatus]][];
 
 export default function View({ vorschau }: { vorschau: boolean }) {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const linkedProblem = searchParams.get("problem");
   const query = useQuery({
@@ -149,7 +151,7 @@ export default function View({ vorschau }: { vorschau: boolean }) {
       <PageHeader
         title={PROBLEM_ANGEBOT.name}
         description="Beobachtungen aus der Stadt, geprüft und ohne persönliche Angaben gebündelt."
-        action={<Button asChild variant="signal" size="sm"><Link href="/probleme/melden">Melden</Link></Button>}
+        action={user?.role === "admin" ? undefined : <Button asChild variant="signal" size="sm"><Link href="/probleme/melden">Melden</Link></Button>}
       />
 
       {vorschau && (
