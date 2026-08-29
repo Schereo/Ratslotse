@@ -50,6 +50,10 @@
     --ebene-flaeche: 100;
     --ebene-dialog: 110;
     --ebene-meldung: 120;
+    /* Lokale Leaflet-Ebene innerhalb eines isolierten Kartencontainers. Die
+       Bibliothek belegt dort 200–700; Bedienelemente müssen darüber liegen,
+       ohne eine sechste globale Seitenebene zu eröffnen. */
+    --ebene-kartenbedienung: 1000;
     /* Signal-Orange (Lotsenboot): Maskottchen, Highlights, sparsame Akzente.
        Token-Spec 6a: hell 19 92% 50 (Button-Fill), dunkel 19 95% 60. */
     --signal: 19 92% 50%;
@@ -560,6 +564,46 @@
 .ratslotse-map-cluster:focus-visible {
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
+}
+
+/* Problemkarte: Vor der Auswahl zeigt nur die Farbe eine grobe Meldehäufigkeit.
+   Exakte Zahlen stehen erst im Detail; HTML-Kreise halten CSP und Retina einfach. */
+.problem-map-icon {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  display: flex;
+  justify-content: center;
+}
+.problem-map-pin {
+  align-items: center;
+  background: var(--problem-frequency, hsl(var(--primary)));
+  border: 3px solid hsl(var(--card));
+  border-radius: 9999px;
+  box-shadow: 0 3px 12px rgb(0 0 0 / 0.28);
+  display: flex;
+  height: var(--problem-pin-size);
+  justify-content: center;
+  transition: transform 160ms var(--ease-out-strong), box-shadow 160ms ease;
+  width: var(--problem-pin-size);
+}
+.problem-map-pin.is-selected {
+  box-shadow: 0 0 0 4px hsl(var(--foreground) / 0.24), 0 4px 14px rgb(0 0 0 / 0.32);
+  transform: scale(1.12);
+}
+.problem-map-icon:focus-visible .problem-map-pin {
+  box-shadow: 0 0 0 4px hsl(var(--ring) / 0.35), 0 4px 14px rgb(0 0 0 / 0.32);
+}
+.frequency-once { --problem-frequency: hsl(var(--muted-foreground)); }
+.frequency-several { --problem-frequency: color-mix(in srgb, hsl(var(--primary)) 58%, hsl(var(--card))); }
+.frequency-many { --problem-frequency: hsl(var(--primary)); }
+.frequency-very_many { --problem-frequency: hsl(var(--signal)); }
+.problem-frequency-dot {
+  background: var(--problem-frequency, hsl(var(--primary)));
+  border-radius: 9999px;
+  display: inline-block;
+  height: 0.625rem;
+  width: 0.625rem;
 }
 
 /* Dark-Mode-Karte: die helle Voyager-Basemap per Filter zu einem grauen

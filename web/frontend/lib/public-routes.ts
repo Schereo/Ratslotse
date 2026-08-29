@@ -4,12 +4,12 @@
 // öffnete, sah zuerst das Registrierungsformular, bevor er überhaupt wusste,
 // worum es geht. Das schreckt genau die Leute ab, die man gewinnen will.
 //
-// Öffentlich sind deshalb die drei Detailseiten, für die es Teilen-Knöpfe und
-// Link-Vorschauen gibt. Stöbern, Suche, Dashboard, eigene Themen und alles
-// Persönliche bleiben hinter der Anmeldung — die Liste hier ist die
-// Frontend-Hälfte einer Grenze, die das Backend eigenständig durchsetzt
-// (`optional_user` in web/backend/app/deps.py). Ein Eintrag hier allein macht
-// nichts sichtbar; ohne offenen Endpunkt bliebe die Seite leer.
+// Öffentlich sind die drei Rats-Detailseiten mit Teilen-Funktion sowie die
+// bewusst öffentliche Problemkarte. Rats-Suche, Dashboard, eigene Themen und
+// alles Persönliche bleiben hinter der Anmeldung — die Liste hier ist nur die
+// Frontend-Hälfte einer Grenze, die das Backend eigenständig durchsetzt. Ein
+// Eintrag hier allein macht nichts sichtbar; ohne offenen Endpunkt bliebe die
+// Seite leer.
 
 import { useEffect, useState } from "react";
 
@@ -18,6 +18,7 @@ export const OEFFENTLICHE_PFADE = [
   "/council/decision",
   "/council/thema",
   "/council/person",
+  "/probleme",
 ] as const;
 
 /** Ist dieser Pfad ohne Konto lesbar? */

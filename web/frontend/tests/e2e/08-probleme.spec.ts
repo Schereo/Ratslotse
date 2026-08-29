@@ -1,0 +1,61 @@
+import { expect, test } from "@playwright/test";
+import { VORSCHAU_PROBLEME } from "../../lib/probleme";
+
+const summaries = VORSCHAU_PROBLEME.map((problem) => ({
+  id: problem.id,
+  title: problem.title,
+  category: problem.category,
+  scope_kind: problem.scope_kind,
+  location_label: problem.location_label,
+  latitude: problem.latitude,
+  longitude: problem.longitude,
+  geometry: problem.geometry,
+  status: problem.status,
+  frequency: problem.frequency,
+}));
+const response = { problems: summaries, total: summaries.length };
+
+test.describe("Öffentliche Problemkarte", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route(/\/api\/probleme\/\d+$/, (route) => {
+      const id = Number(new URL(route.request().url()).pathname.split("/").pop());
+      const problem = VORSCHAU_PROBLEME.find((entry) => entry.id === id);
+      return route.fulfill({
+        status: problem ? 200 : 404,
+        contentType: "application/json",
+        body: JSON.stringify(problem ?? { detail: "Problem nicht gefunden." }),
+      });
+    });
+    await page.route("**/api/probleme", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(response),
+    }));
+  });
+
+  test("startet minimal mit der Karte und wechselt ins Status-Board", async ({ page }) => {
+    await page.goto("/probleme");
+
+    await expect(page.getByRole("heading", { name: "Oldenburgs Problemkarte" })).toBeVisible();
+    await expect(page.locator(".problem-map-pin")).toHaveCount(3);
+    await expect(page.getByRole("button", { name: "Karte" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("Du willst später selbst etwas melden?")).toBeVisible();
+
+    await page.getByRole("button", { name: "Status" }).click();
+    await expect(page).toHaveURL(/view=status/);
+    await expect(page.getByRole("heading", { name: "Neu" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Geprüft" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Beispiel:/ })).toHaveCount(4);
+    await expect(page.getByLabel("Nach Thema filtern")).toHaveCount(0);
+    await expect(page.locator(".problem-frequency-dot.frequency-very_many")).toBeVisible();
+  });
+
+  test("Auswahl im Status-Board ist verlinkbar", async ({ page }) => {
+    await page.goto("/probleme?view=status");
+    await expect(page.getByText("Reporter*innen")).toHaveCount(0);
+    await page.getByRole("button", { name: /Beispiel: Barrierefreier Zugang/ }).click();
+    await expect(page).toHaveURL(/problem=9003/);
+    await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Barrierefreier Zugang zur Haltestelle fehlt" })).toBeVisible();
+    await expect(page.getByText("Reporter*innen")).toBeVisible();
+  });
+});

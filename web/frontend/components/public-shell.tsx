@@ -16,7 +16,13 @@ import { mitRuecksprung } from "@/lib/public-routes";
  *  ein Weg hinein und am Ende eine Einladung — in dieser Reihenfolge, denn wer
  *  gerade erst liest, weiß noch gar nicht, wofür sich ein Konto lohnen würde.
  */
-export function PublicShell({ children }: { children: React.ReactNode }) {
+export function PublicShell({
+  children,
+  variante = "rat",
+}: {
+  children: React.ReactNode;
+  variante?: "rat" | "probleme";
+}) {
   // Erst nach dem Mounten lesbar; `useSearchParams` würde die Seite in eine
   // Suspense-Grenze zwingen und den statischen Export (MOBILE=1) brechen.
   const [zurueck, setZurueck] = useState("/dashboard");
@@ -55,7 +61,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       <main id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none">
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           {children}
-          <Einladung zurueck={zurueck} />
+          <Einladung zurueck={zurueck} variante={variante} />
         </div>
 
         <footer className="border-t border-border bg-background/85 py-4 text-center text-xs text-muted-foreground">
@@ -85,21 +91,26 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
  *  Ergebnis) statt allgemein für „alle Vorteile" zu werben, und die Grenzen
  *  gleich mit: Niemand soll sich anmelden und dann Post im Minutentakt fürchten.
  */
-function Einladung({ zurueck }: { zurueck: string }) {
+function Einladung({ zurueck, variante }: { zurueck: string; variante: "rat" | "probleme" }) {
+  const problemkarte = variante === "probleme";
   return (
     <Card className="mt-8 overflow-hidden">
       <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:gap-6 sm:p-8">
         <Mascot pose="wave" bob decorative className="mx-auto h-24 w-24 shrink-0 sm:mx-0" />
         <div className="min-w-0 flex-1 text-center sm:text-left">
           <h2 className="font-display text-xl font-bold text-foreground">
-            Willst du früher davon erfahren?
+            {problemkarte ? "Du willst später selbst etwas melden?" : "Willst du früher davon erfahren?"}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Du liest gerade eine einzelne Seite aus dem Oldenburger Stadtrat. Mit
-            einem kostenlosen Konto legst du eigene Themen an — Radverkehr, deine
-            Schule, dein Stadtteil — und Ratslotse meldet sich, sobald sie auf
-            einer Tagesordnung stehen oder entschieden sind. Höchstens zwei
-            Nachrichten am Tag, zwischen 21 und 7 Uhr keine.
+            {problemkarte ? (
+              <>Die Problemkarte ist gerade im Aufbau. Meldungen werden nur mit einem bestätigten Ratslotse-Konto möglich sein, bleiben einzeln privat und erscheinen erst nach Prüfung als öffentliche Zusammenfassung.</>
+            ) : (
+              <>Du liest gerade eine einzelne Seite aus dem Oldenburger Stadtrat. Mit
+                einem kostenlosen Konto legst du eigene Themen an — Radverkehr, deine
+                Schule, dein Stadtteil — und Ratslotse meldet sich, sobald sie auf
+                einer Tagesordnung stehen oder entschieden sind. Höchstens zwei
+                Nachrichten am Tag, zwischen 21 und 7 Uhr keine.</>
+            )}
           </p>
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
             <Button asChild variant="signal">
