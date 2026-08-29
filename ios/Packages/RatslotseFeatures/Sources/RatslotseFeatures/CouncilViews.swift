@@ -17,6 +17,7 @@ struct CouncilBrowserView: View {
     @State private var location = ""
     @State private var locationName = ""
     @State private var sort = "date_desc"
+    @State private var sessionScope = "upcoming"
     @State private var includeSubvotes = false
     @State private var hasDateFrom = false
     @State private var hasDateTo = false
@@ -154,6 +155,18 @@ struct CouncilBrowserView: View {
                                     reloadFromFirstPage()
                                 }
                             )
+                        }
+
+                        if model.councilSection == .sessions {
+                            FilterChip(label: "Anstehend", selected: sessionScope == "upcoming" && query.isEmpty && committee.isEmpty) {
+                                selectSessionScope("upcoming")
+                            }
+                            FilterChip(label: "Vergangen", selected: sessionScope == "recent" && query.isEmpty && committee.isEmpty) {
+                                selectSessionScope("recent")
+                            }
+                            FilterChip(label: "Alle", selected: sessionScope == "all" && query.isEmpty && committee.isEmpty) {
+                                selectSessionScope("all")
+                            }
                         }
 
                         CouncilQuickFilterMenu(
@@ -353,6 +366,13 @@ struct CouncilBrowserView: View {
         Task { await load() }
     }
 
+    private func selectSessionScope(_ scope: String) {
+        sessionScope = scope
+        query = ""
+        committee = ""
+        reloadFromFirstPage()
+    }
+
     private func load() async {
         isLoading = true
         error = nil
@@ -396,11 +416,17 @@ struct CouncilBrowserView: View {
                 decisions = page.decisions
                 total = page.total
             } else if model.councilSection == .sessions {
+                // Wie im Web: ohne Suche beginnt die Liste bei den nächsten
+                // Terminen (aufsteigend). Suche/Ausschussfilter wechseln in
+                // den Gesamtbestand, dessen Treffer das Backend neueste zuerst
+                // liefert. So stimmen Reihenfolge und Pagination miteinander.
+                let effectiveScope = query.isEmpty && committee.isEmpty ? sessionScope : "all"
                 let page: SessionPage = try await model.api.get(
                     "/api/council/sessions",
                     query: [
                         .init(name: "q", value: query),
                         .init(name: "committee", value: committee),
+                        .init(name: "scope", value: effectiveScope),
                         .init(name: "limit", value: String(pageSize)),
                         .init(name: "offset", value: String(page * pageSize)),
                     ]
@@ -2634,7 +2660,11 @@ private struct SessionListView: View {
         defer { isLoading = false }
         do {
             let page: SessionPage = try await model.api.get(
-                "/api/council/sessions", query: [.init(name: "limit", value: "100")]
+                "/api/council/sessions",
+                query: [
+                    .init(name: "scope", value: "upcoming"),
+                    .init(name: "limit", value: "100"),
+                ]
             )
             sessions = page.sessions
             error = nil
