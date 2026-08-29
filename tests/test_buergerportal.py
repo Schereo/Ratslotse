@@ -7,13 +7,61 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from buergerportal.reports import ReportStore
 from buergerportal.store import ProblemStore
 from web.backend.app.deps import get_problem_store
 from web.backend.app.routers.problems import router
 
 
+def _approve_and_publish(
+    store: ProblemStore,
+    database,
+    problem_id: int,
+    *,
+    independent_reports: int = 1,
+) -> None:
+    reports = ReportStore(database)
+    for index in range(independent_reports):
+        owner_id = 10_000 + problem_id * 10 + index
+        report_id = reports.create_draft(
+            reporter_id=owner_id,
+            text="Die Beobachtung wurde unabhängig gemeldet.",
+            category="other",
+            scope_kind="citywide",
+            observed_at=f"2026-08-{20 + index:02d}T08:00:00+00:00",
+        )
+        reports.submit_owned_report(
+            report_id,
+            reporter_id=owner_id,
+            confirmed_text="Die Beobachtung wurde unabhängig gemeldet.",
+        )
+        assessment = reports.record_ai_assessment(
+            report_id,
+            verdict="suitable",
+            reason_code="municipal_problem",
+            model_identifier="test-review-v1",
+        )
+        approve = (
+            reports.approve_report_for_new_problem
+            if index == 0
+            else reports.approve_report_for_existing_problem
+        )
+        approve(
+            report_id,
+            moderator_id=7,
+            assessment_id=assessment["id"],
+            problem_id=problem_id,
+            reason_code="suitable",
+            reporter_message="Die Meldung wurde freigegeben.",
+            private_note="Testfreigabe.",
+        )
+    reports.close()
+    store.publish_problem(problem_id)
+
+
 def test_problem_store_exposes_only_published_problems(tmp_path):
-    store = ProblemStore(tmp_path / "problems.sqlite")
+    database = tmp_path / "problems.sqlite"
+    store = ProblemStore(database)
     visible = store.create_problem(
         title="Dunkler Weg",
         summary="Der Weg ist abends nicht durchgängig beleuchtet.",
@@ -22,10 +70,6 @@ def test_problem_store_exposes_only_published_problems(tmp_path):
         location_label="Innenstadt",
         latitude=53.14,
         longitude=8.21,
-        unique_reporters=3,
-        current_observations=2,
-        total_observations=4,
-        published=True,
     )
     store.create_problem(
         title="Noch in Moderation",
@@ -40,6 +84,7 @@ def test_problem_store_exposes_only_published_problems(tmp_path):
         detail="Von Ratslotse geprüft.",
         source_kind="Ratslotse-Prüfung",
     )
+    _approve_and_publish(store, database, visible, independent_reports=3)
 
     listed = store.list_public_problems()
     assert [problem["id"] for problem in listed] == [visible]
@@ -48,12 +93,13 @@ def test_problem_store_exposes_only_published_problems(tmp_path):
     assert "unique_reporters" not in listed[0]
     assert "current_observations" not in listed[0]
     assert store.get_public_problem(visible)["events"][0]["title"] == "Problem veröffentlicht"
-    assert store.get_public_problem(visible)["unique_reporters"] == 3
+    assert store.get_public_problem(visible)["independent_reports"] == 3
     store.close()
 
 
 def test_public_api_hides_unpublished_problem_and_exposes_detail(tmp_path):
-    store = ProblemStore(tmp_path / "problems.sqlite")
+    database = tmp_path / "problems.sqlite"
+    store = ProblemStore(database)
     visible = store.create_problem(
         title="Überfüllte Fahrradständer",
         summary="Zu Pendelzeiten reichen die Plätze nicht aus.",
@@ -62,7 +108,6 @@ def test_public_api_hides_unpublished_problem_and_exposes_detail(tmp_path):
         location_label="Bahnhof",
         latitude=53.143,
         longitude=8.223,
-        published=True,
     )
     store.add_public_event(
         visible,
@@ -71,6 +116,7 @@ def test_public_api_hides_unpublished_problem_and_exposes_detail(tmp_path):
         source_kind="Stadtverwaltung",
         source_url="https://www.oldenburg.de/quelle",
     )
+    _approve_and_publish(store, database, visible)
     hidden = store.create_problem(
         title="Private Moderationsfassung",
         summary="Nicht freigegeben.",
@@ -89,7 +135,10 @@ def test_public_api_hides_unpublished_problem_and_exposes_detail(tmp_path):
     assert "unique_reporters" not in response.json()["problems"][0]
     detail = client.get(f"/api/probleme/{visible}")
     assert detail.status_code == 200
-    assert detail.json()["unique_reporters"] == 1
+    assert detail.json()["independent_reports"] == 1
+    assert "unique_reporters" not in detail.json()
+    assert "current_observations" not in detail.json()
+    assert "total_observations" not in detail.json()
     assert detail.json()["events"][0]["source_kind"] == "Stadtverwaltung"
     assert detail.json()["events"][0]["source_url"] == "https://www.oldenburg.de/quelle"
     assert client.get(f"/api/probleme/{hidden}").status_code == 404
@@ -159,8 +208,8 @@ def test_migration_hides_legacy_public_event_without_source(tmp_path):
         scope_kind="point",
         latitude=53.141,
         longitude=8.207,
-        published=True,
     )
+    _approve_and_publish(store, database, problem_id)
     store.close()
 
     connection = sqlite3.connect(database)
@@ -197,25 +246,27 @@ def test_problem_store_rejects_uncontrolled_category(tmp_path):
         store.close()
 
 
-def test_published_problem_requires_a_reporter(tmp_path):
-    store = ProblemStore(tmp_path / "problems.sqlite")
-    try:
-        store.create_problem(
-            title="Ohne Meldung",
-            summary="Darf nicht öffentlich werden.",
-            category="other",
-            scope_kind="citywide",
-            unique_reporters=0,
-            current_observations=0,
-            total_observations=0,
-            published=True,
+def test_published_problem_requires_ai_review_and_human_approval(tmp_path):
+    database = tmp_path / "problems.sqlite"
+    store = ProblemStore(database)
+    ReportStore(database).close()
+    problem_id = store.create_problem(
+        title="Ohne Meldung",
+        summary="Darf nicht öffentlich werden.",
+        category="other",
+        scope_kind="citywide",
+    )
+
+    with pytest.raises(sqlite3.IntegrityError, match="AI assessment and human approval"):
+        store._conn.execute(
+            "UPDATE civic_problems SET published_at = ? WHERE id = ?",
+            ("2026-08-29T10:00:00+00:00", problem_id),
         )
-    except ValueError as error:
-        assert "mindestens eine Meldung" in str(error)
-    else:
-        raise AssertionError("Problem ohne Meldung wurde veröffentlicht")
-    finally:
-        store.close()
+    store._conn.rollback()
+    with pytest.raises(ValueError, match="KI-Vorprüfung"):
+        store.publish_problem(problem_id)
+    assert store.get_public_problem(problem_id) is None
+    store.close()
 
 
 def test_point_problem_requires_coordinates(tmp_path):

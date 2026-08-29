@@ -143,42 +143,74 @@ _PRIVATE_MIGRATIONS = (
     (
         5,
         f"""
+        ALTER TABLE civic_reports
+            ADD COLUMN content_revision INTEGER NOT NULL DEFAULT 0
+            CHECK (content_revision >= 0);
         CREATE TABLE civic_ai_assessments (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            report_id   INTEGER NOT NULL,
-            verdict     TEXT NOT NULL,
-            reason_code TEXT NOT NULL,
-            model       TEXT NOT NULL,
-            created_at  TEXT NOT NULL,
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_id        INTEGER NOT NULL,
+            report_revision  INTEGER NOT NULL,
+            verdict          TEXT NOT NULL,
+            reason_code      TEXT NOT NULL,
+            model_identifier TEXT NOT NULL,
+            created_at       TEXT NOT NULL,
+            CHECK (report_revision >= 0),
             CHECK (verdict IN ({sql_enum(AI_ASSESSMENT_VERDICTS)})),
             CHECK (length(trim(reason_code)) > 0),
-            CHECK (length(trim(model)) > 0),
+            CHECK (length(trim(model_identifier)) > 0),
             FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE
         );
         CREATE INDEX idx_civic_ai_assessments_report
-            ON civic_ai_assessments(report_id, created_at, id);
+            ON civic_ai_assessments(report_id, report_revision, created_at, id);
         ALTER TABLE civic_moderation_decisions
             ADD COLUMN ai_assessment_id INTEGER
             REFERENCES civic_ai_assessments(id);
+        CREATE UNIQUE INDEX idx_civic_moderation_one_public_approval
+            ON civic_moderation_decisions(report_id)
+            WHERE outcome IN ('assigned_existing_problem', 'published_as_new_problem');
+        UPDATE civic_reports
+            SET status = 'in_review', problem_id = NULL
+            WHERE status = 'accepted'
+              AND EXISTS (
+                  SELECT 1 FROM civic_moderation_decisions
+                  WHERE report_id = civic_reports.id
+                    AND outcome IN ('assigned_existing_problem', 'published_as_new_problem')
+              );
+        CREATE TRIGGER trg_civic_moderation_ai_publication_gate
+        BEFORE INSERT ON civic_moderation_decisions
+        WHEN NEW.outcome IN ('assigned_existing_problem', 'published_as_new_problem')
+             AND (
+                 length(trim(NEW.reporter_message)) = 0
+                 OR length(trim(NEW.private_note)) = 0
+                 OR NOT EXISTS (
+                     SELECT 1
+                     FROM civic_ai_assessments AS assessment
+                     JOIN civic_reports AS report ON report.id = assessment.report_id
+                     WHERE assessment.id = NEW.ai_assessment_id
+                       AND assessment.report_id = NEW.report_id
+                       AND assessment.verdict = 'suitable'
+                       AND assessment.report_revision = report.content_revision
+                 )
+             )
+        BEGIN
+            SELECT RAISE(ABORT, 'publication requires current suitable AI assessment and human audit');
+        END;
         """,
     ),
 )
 
-_AI_PUBLICATION_GATE = """
-CREATE TRIGGER IF NOT EXISTS trg_civic_moderation_ai_publication_gate
-BEFORE INSERT ON civic_moderation_decisions
-WHEN NEW.outcome IN ('assigned_existing_problem', 'published_as_new_problem')
-     AND NOT EXISTS (
-         SELECT 1
-         FROM civic_ai_assessments
-         WHERE id = NEW.ai_assessment_id
-           AND report_id = NEW.report_id
-           AND verdict = 'suitable'
-     )
-BEGIN
-    SELECT RAISE(ABORT, 'publication requires suitable AI assessment');
-END;
-"""
+
+def _migration_statements(script: str) -> list[str]:
+    statements: list[str] = []
+    buffer = ""
+    for line in script.splitlines(keepends=True):
+        buffer += line
+        if sqlite3.complete_statement(buffer):
+            statements.append(buffer)
+            buffer = ""
+    if buffer.strip():
+        raise ValueError("Unvollständige private Datenbankmigration.")
+    return statements
 
 
 def _now() -> str:
@@ -219,9 +251,8 @@ class ReportStore:
                 if applied:
                     self._conn.commit()
                     continue
-                for statement in sql.split(";"):
-                    if statement.strip():
-                        self._conn.execute(statement)
+                for statement in _migration_statements(sql):
+                    self._conn.execute(statement)
                 self._conn.execute(
                     """INSERT INTO civic_report_schema_migrations(version, applied_at)
                        VALUES (?, ?)""",
@@ -232,7 +263,6 @@ class ReportStore:
                 if self._conn.in_transaction:
                     self._conn.rollback()
                 raise
-        self._conn.executescript(_AI_PUBLICATION_GATE)
 
     def create_draft(
         self,
@@ -318,7 +348,8 @@ class ReportStore:
             updated = self._conn.execute(
                 """UPDATE civic_reports
                    SET confirmed_text = ?, status = 'submitted',
-                       submitted_at = ?, updated_at = ?
+                       submitted_at = ?, updated_at = ?,
+                       content_revision = content_revision + 1
                    WHERE id = ? AND reporter_id = ? AND status = 'draft'""",
                 (text, now, now, report_id, reporter_id),
             )
@@ -351,43 +382,53 @@ class ReportStore:
         *,
         verdict: str,
         reason_code: str,
-        model: str,
+        model_identifier: str,
     ) -> dict[str, Any]:
         """Record an immutable private AI judgement without publishing anything."""
         if verdict not in AI_ASSESSMENT_VERDICTS:
             raise ValueError("Unbekanntes Ergebnis der KI-Vorprüfung.")
-        if not reason_code.strip() or not model.strip():
+        if not reason_code.strip() or not model_identifier.strip():
             raise ValueError("Die KI-Vorprüfung benötigt Grund und Modell.")
         now = _now()
         with self._conn:
+            updated = self._conn.execute(
+                """UPDATE civic_reports
+                   SET status = 'in_review', updated_at = ?
+                   WHERE id = ?
+                     AND status IN ('submitted', 'in_review', 'needs_information')""",
+                (now, report_id),
+            )
+            if updated.rowcount != 1:
+                raise ValueError("Diese Meldung kann nicht durch die KI vorgeprüft werden.")
             report = self._conn.execute(
-                "SELECT status FROM civic_reports WHERE id = ?",
+                "SELECT content_revision FROM civic_reports WHERE id = ?",
                 (report_id,),
             ).fetchone()
-            if not report:
-                raise ValueError("Meldung nicht gefunden.")
-            if report["status"] not in {"submitted", "in_review", "needs_information"}:
-                raise ValueError("Diese Meldung kann nicht durch die KI vorgeprüft werden.")
             cursor = self._conn.execute(
                 """INSERT INTO civic_ai_assessments (
-                       report_id, verdict, reason_code, model, created_at
-                   ) VALUES (?, ?, ?, ?, ?)""",
-                (report_id, verdict, reason_code.strip(), model.strip(), now),
-            )
-            self._conn.execute(
-                "UPDATE civic_reports SET status = 'in_review', updated_at = ? WHERE id = ?",
-                (now, report_id),
+                       report_id, report_revision, verdict, reason_code,
+                       model_identifier, created_at
+                   ) VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    report_id,
+                    report["content_revision"],
+                    verdict,
+                    reason_code.strip(),
+                    model_identifier.strip(),
+                    now,
+                ),
             )
         return {
             "id": int(cursor.lastrowid),
             "report_id": report_id,
+            "report_revision": report["content_revision"],
             "verdict": verdict,
             "reason_code": reason_code.strip(),
-            "model": model.strip(),
+            "model_identifier": model_identifier.strip(),
             "created_at": now,
         }
 
-    def approve_report_for_projection(
+    def approve_report_for_existing_problem(
         self,
         report_id: int,
         *,
@@ -395,56 +436,105 @@ class ReportStore:
         assessment_id: int,
         problem_id: int,
         reason_code: str,
-        publish_as_new_problem: bool = False,
+        reporter_message: str,
+        private_note: str,
     ) -> dict[str, Any]:
-        """Record final human approval after a suitable AI assessment.
+        return self._approve_report(
+            report_id,
+            moderator_id=moderator_id,
+            assessment_id=assessment_id,
+            problem_id=problem_id,
+            reason_code=reason_code,
+            reporter_message=reporter_message,
+            private_note=private_note,
+            outcome="assigned_existing_problem",
+        )
 
-        Approval only marks the private report as eligible. It never writes to
-        the public problem projection by itself.
-        """
+    def approve_report_for_new_problem(
+        self,
+        report_id: int,
+        *,
+        moderator_id: int,
+        assessment_id: int,
+        problem_id: int,
+        reason_code: str,
+        reporter_message: str,
+        private_note: str,
+    ) -> dict[str, Any]:
+        return self._approve_report(
+            report_id,
+            moderator_id=moderator_id,
+            assessment_id=assessment_id,
+            problem_id=problem_id,
+            reason_code=reason_code,
+            reporter_message=reporter_message,
+            private_note=private_note,
+            outcome="published_as_new_problem",
+        )
+
+    def _approve_report(
+        self,
+        report_id: int,
+        *,
+        moderator_id: int,
+        assessment_id: int,
+        problem_id: int,
+        reason_code: str,
+        reporter_message: str,
+        private_note: str,
+        outcome: str,
+    ) -> dict[str, Any]:
+        """Record final human approval without writing to the public projection."""
         if moderator_id < 1 or problem_id < 1:
             raise ValueError("Freigabe benötigt gültige Moderation und Problemzuordnung.")
-        if not reason_code.strip():
-            raise ValueError("Freigabe benötigt einen Begründungscode.")
+        if not reason_code.strip() or not reporter_message.strip() or not private_note.strip():
+            raise ValueError("Freigabe benötigt Begründung, Mitteilung und private Notiz.")
+        assessment = self._conn.execute(
+            """SELECT assessment.verdict,
+                      assessment.report_revision = report.content_revision AS current_revision
+               FROM civic_ai_assessments AS assessment
+               JOIN civic_reports AS report ON report.id = assessment.report_id
+               WHERE assessment.id = ? AND assessment.report_id = ?""",
+            (assessment_id, report_id),
+        ).fetchone()
+        if not assessment:
+            raise ValueError("Vor der Freigabe ist eine KI-Vorprüfung erforderlich.")
+        if assessment["verdict"] != "suitable":
+            raise ValueError("Nur eine als geeignet beurteilte Meldung kann freigegeben werden.")
+        if not assessment["current_revision"]:
+            raise ValueError("Nach einer Änderung ist eine erneute KI-Vorprüfung erforderlich.")
         now = _now()
-        outcome = "published_as_new_problem" if publish_as_new_problem else "assigned_existing_problem"
         with self._conn:
-            assessment = self._conn.execute(
-                """SELECT verdict
-                   FROM civic_ai_assessments
-                   WHERE id = ? AND report_id = ?""",
-                (assessment_id, report_id),
-            ).fetchone()
-            if not assessment:
-                raise ValueError("Vor der Freigabe ist eine KI-Vorprüfung erforderlich.")
-            if assessment["verdict"] != "suitable":
-                raise ValueError("Nur eine als geeignet beurteilte Meldung kann freigegeben werden.")
-            report = self._conn.execute(
-                "SELECT status FROM civic_reports WHERE id = ?",
-                (report_id,),
-            ).fetchone()
-            if not report or report["status"] not in {"submitted", "in_review", "needs_information"}:
+            updated = self._conn.execute(
+                """UPDATE civic_reports
+                   SET problem_id = ?, status = 'accepted', updated_at = ?
+                   WHERE id = ?
+                     AND status IN ('submitted', 'in_review', 'needs_information')
+                     AND content_revision = (
+                         SELECT report_revision FROM civic_ai_assessments
+                         WHERE id = ? AND report_id = ? AND verdict = 'suitable'
+                     )""",
+                (problem_id, now, report_id, assessment_id, report_id),
+            )
+            if updated.rowcount != 1:
                 raise ValueError("Diese Meldung kann nicht freigegeben werden.")
             cursor = self._conn.execute(
                 """INSERT INTO civic_moderation_decisions (
                        report_id, moderator_id, outcome, reason_code,
-                       problem_id, created_at, ai_assessment_id
-                   ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                       reporter_message, private_note, problem_id,
+                       created_at, ai_assessment_id
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     report_id,
                     moderator_id,
                     outcome,
                     reason_code.strip(),
+                    reporter_message.strip(),
+                    private_note.strip(),
                     problem_id,
                     now,
                     assessment_id,
                 ),
-            )
-            self._conn.execute(
-                """UPDATE civic_reports
-                   SET problem_id = ?, status = 'accepted', updated_at = ?
-                   WHERE id = ?""",
-                (problem_id, now, report_id),
             )
         return {
             "id": int(cursor.lastrowid),
@@ -490,7 +580,9 @@ class ReportStore:
                 (report_id, observation, observed_at, now),
             )
             self._conn.execute(
-                "UPDATE civic_reports SET updated_at = ? WHERE id = ?",
+                """UPDATE civic_reports
+                   SET updated_at = ?, content_revision = content_revision + 1
+                   WHERE id = ?""",
                 (now, report_id),
             )
         updated = self.get_owned_report(report_id, reporter_id=reporter_id)

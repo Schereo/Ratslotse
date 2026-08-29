@@ -10,9 +10,9 @@ Dieses Dokument konkretisiert die bestätigten Regeln aus `BUERGERPORTAL-BACKLOG
 - Eine Meldung kann durch Moderation höchstens einem öffentlichen Problem zugeordnet werden.
 - Ein Konto kann einem Problem höchstens eine Meldung beitragen. Spätere Beobachtungen werden an dieser Meldung ergänzt.
 - Viele Meldungen verschiedener Konten können demselben Problem zugeordnet sein.
-- Eine KI-Vorprüfung ist ein unveränderliches privates Eignungsurteil mit Modellkennung, Begründungscode und Zeitpunkt.
+- Eine KI-Vorprüfung ist ein unveränderliches privates Eignungsurteil mit Modellkennung, Begründungscode, Inhaltsrevision und Zeitpunkt. Jede neue Beobachtung macht das alte Urteil für eine Freigabe ungültig.
 - Eine Moderationsentscheidung ist ein unveränderlicher menschlicher Audit-Eintrag mit Admin-Konto, Ergebnis, Begründungscode, privater Notiz, getrennter Mitteilung an die meldende Person und Zeitpunkt.
-- Eine Meldung darf erst nach einem geeigneten KI-Urteil und der abschließenden menschlichen Freigabe einer öffentlichen Projektion zugeordnet werden. Keiner der beiden Schritte veröffentlicht selbstständig Daten.
+- Eine Meldung darf erst nach einem geeigneten KI-Urteil zur aktuellen Inhaltsrevision und der abschließenden menschlichen Freigabe einer öffentlichen Projektion zugeordnet werden. Keiner der beiden Schritte veröffentlicht selbstständig Daten; die öffentliche Projektion prüft beide Nachweise erneut.
 - Zu jeder Moderationsentscheidung kann höchstens eine erneute Prüfung angefordert werden; Anfrage und Ergebnis bleiben privat nachvollziehbar.
 - Korrekturen an Kategorie oder geografischem Bezug halten vorherige und neue Werte strukturiert in der Moderationsentscheidung fest.
 - Ein Problemstatus beschreibt nur belegbare Tatsachen. Externe Aussagen benötigen Quelle und Rollenlabel.

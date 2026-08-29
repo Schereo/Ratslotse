@@ -16,7 +16,7 @@ Das Portal ist kein Angebot der Stadt Oldenburg und zeigt ohne belegte Quelle ke
 - **Beobachtung:** Erstmeldung oder spätere Aktualisierung derselben Person zum selben Problem.
 - **Bürgeranliegen:** spätere Funktion; ein Vorschlag, den eine Fraktion oder ein Ratsmitglied übernehmen und zu einem formellen Antrag weiterentwickeln kann. Das Bürgeranliegen selbst ist kein Ratsantrag.
 
-Die öffentliche Produktbezeichnung und die endgültigen UI-Begriffe sind noch festzulegen.
+Die öffentliche Produktbezeichnung lautet **Probleme in Oldenburg**. Sichtbar gezählt werden ausschließlich **unabhängige Meldungen**.
 
 ## Bestätigte Leitplanken
 

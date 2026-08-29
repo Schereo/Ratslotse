@@ -304,7 +304,7 @@ function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{problem.summary}</p>
       <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-foreground">
         <MessageCircle className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-        <span className="tabular-nums">{unabhaengigeMeldungen(problem.unique_reporters)}</span>
+        <span className="tabular-nums">{unabhaengigeMeldungen(problem.independent_reports)}</span>
       </div>
       {problem.events && problem.events.length > 0 && (
         <div className="mt-5 border-t border-border pt-4">

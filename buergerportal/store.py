@@ -74,9 +74,9 @@ CREATE TABLE IF NOT EXISTS civic_problems (
     geometry_json        TEXT,
     status               TEXT NOT NULL DEFAULT 'new',
     confidence           TEXT NOT NULL DEFAULT 'unconfirmed',
-    unique_reporters     INTEGER NOT NULL DEFAULT 1,
-    current_observations INTEGER NOT NULL DEFAULT 1,
-    total_observations   INTEGER NOT NULL DEFAULT 1,
+    unique_reporters     INTEGER NOT NULL DEFAULT 0,
+    current_observations INTEGER NOT NULL DEFAULT 0,
+    total_observations   INTEGER NOT NULL DEFAULT 0,
     first_observed_at    TEXT NOT NULL,
     last_observed_at     TEXT NOT NULL,
     published_at         TEXT,
@@ -96,6 +96,35 @@ CREATE INDEX IF NOT EXISTS idx_civic_problems_public
     ON civic_problems(published_at, last_observed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_civic_problems_category
     ON civic_problems(category, published_at);
+
+CREATE TRIGGER IF NOT EXISTS trg_civic_problems_create_private
+BEFORE INSERT ON civic_problems
+WHEN NEW.published_at IS NOT NULL
+BEGIN
+    SELECT RAISE(ABORT, 'problems must be created unpublished');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_civic_problems_human_publication_gate
+BEFORE UPDATE OF published_at ON civic_problems
+WHEN OLD.published_at IS NULL
+     AND NEW.published_at IS NOT NULL
+     AND NOT EXISTS (
+         SELECT 1
+         FROM civic_reports AS report
+         JOIN civic_moderation_decisions AS decision
+           ON decision.report_id = report.id
+          AND decision.problem_id = NEW.id
+         JOIN civic_ai_assessments AS assessment
+           ON assessment.id = decision.ai_assessment_id
+          AND assessment.report_id = report.id
+         WHERE report.problem_id = NEW.id
+           AND report.status = 'accepted'
+           AND assessment.verdict = 'suitable'
+           AND assessment.report_revision = report.content_revision
+           AND decision.outcome IN ('assigned_existing_problem', 'published_as_new_problem')
+     )
+BEGIN
+    SELECT RAISE(ABORT, 'publication requires AI assessment and human approval');
+END;
 
 CREATE TABLE IF NOT EXISTS civic_problem_events (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,14 +160,14 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def report_frequency(unique_reporters: int) -> str:
-    if unique_reporters < 1:
+def report_frequency(independent_reports: int) -> str:
+    if independent_reports < 1:
         raise ValueError("Veröffentlichte Probleme benötigen mindestens eine Meldung.")
-    if unique_reporters == 1:
+    if independent_reports == 1:
         return "once"
-    if unique_reporters <= 4:
+    if independent_reports <= 4:
         return "several"
-    if unique_reporters <= 9:
+    if independent_reports <= 9:
         return "many"
     return "very_many"
 
@@ -196,18 +225,14 @@ class ProblemStore:
         geometry: dict[str, Any] | None = None,
         status: str = "new",
         confidence: str = "unconfirmed",
-        unique_reporters: int = 1,
-        current_observations: int = 1,
-        total_observations: int = 1,
         tags: Iterable[str] = (),
         first_observed_at: str | None = None,
         last_observed_at: str | None = None,
-        published: bool = False,
     ) -> int:
         """Create a problem projection.
 
         This is deliberately an internal store operation, not a public write API.
-        Publication remains an explicit moderator action in later slices.
+        Publication is a separate operation guarded by both review stages.
         """
         if category not in PROBLEM_CATEGORIES:
             raise ValueError("Unbekannte Problemkategorie.")
@@ -217,8 +242,6 @@ class ProblemStore:
             raise ValueError("Unbekannter Problemstatus.")
         if scope_kind in {"point", "facility"} and (latitude is None or longitude is None):
             raise ValueError("Punkt und Einrichtung benötigen Koordinaten.")
-        if published and unique_reporters < 1:
-            raise ValueError("Veröffentlichte Probleme benötigen mindestens eine Meldung.")
         now = _now()
         first = first_observed_at or now
         last = last_observed_at or first
@@ -235,11 +258,66 @@ class ProblemStore:
                     json.dumps(list(tags), ensure_ascii=False), scope_kind,
                     location_label.strip(), latitude, longitude,
                     json.dumps(geometry, ensure_ascii=False) if geometry else None,
-                    status, confidence, unique_reporters, current_observations,
-                    total_observations, first, last, now if published else None, now,
+                    status, confidence, 0, 0, 0, first, last, None, now,
                 ),
             )
         return int(cur.lastrowid)
+
+    def publish_problem(self, problem_id: int) -> None:
+        """Publish an approved aggregate; fail closed without both review stages."""
+        try:
+            counts = self._conn.execute(
+                """SELECT COUNT(DISTINCT report.reporter_id) AS independent_reports,
+                          COUNT(DISTINCT CASE WHEN observation.withdrawn_at IS NULL
+                                             THEN observation.id END) AS current_observations,
+                          COUNT(DISTINCT observation.id) AS total_observations,
+                          MIN(CASE WHEN observation.withdrawn_at IS NULL
+                                   THEN observation.observed_at END) AS first_observed_at,
+                          MAX(CASE WHEN observation.withdrawn_at IS NULL
+                                   THEN observation.observed_at END) AS last_observed_at
+                   FROM civic_reports AS report
+                   JOIN civic_moderation_decisions AS decision
+                     ON decision.report_id = report.id
+                    AND decision.problem_id = ?
+                   JOIN civic_ai_assessments AS assessment
+                     ON assessment.id = decision.ai_assessment_id
+                    AND assessment.report_id = report.id
+                   LEFT JOIN civic_report_observations AS observation
+                     ON observation.report_id = report.id
+                   WHERE report.problem_id = ?
+                     AND report.status = 'accepted'
+                     AND assessment.verdict = 'suitable'
+                     AND assessment.report_revision = report.content_revision
+                     AND decision.outcome IN (
+                         'assigned_existing_problem', 'published_as_new_problem'
+                     )""",
+                (problem_id, problem_id),
+            ).fetchone()
+        except sqlite3.OperationalError as error:
+            raise ValueError("Vor der Veröffentlichung ist eine KI-Vorprüfung erforderlich.") from error
+        if not counts or counts["independent_reports"] < 1:
+            raise ValueError("Vor der Veröffentlichung ist eine KI-Vorprüfung erforderlich.")
+        now = _now()
+        with self._conn:
+            updated = self._conn.execute(
+                """UPDATE civic_problems
+                   SET unique_reporters = ?, current_observations = ?,
+                       total_observations = ?, first_observed_at = ?,
+                       last_observed_at = ?, published_at = ?, updated_at = ?
+                   WHERE id = ? AND published_at IS NULL""",
+                (
+                    counts["independent_reports"],
+                    counts["current_observations"],
+                    counts["total_observations"],
+                    counts["first_observed_at"] or now,
+                    counts["last_observed_at"] or now,
+                    now,
+                    now,
+                    problem_id,
+                ),
+            )
+            if updated.rowcount != 1:
+                raise ValueError("Problem nicht gefunden oder bereits veröffentlicht.")
 
     def add_public_event(
         self,
@@ -317,10 +395,7 @@ class ProblemStore:
                 "summary": row["summary"],
                 "tags": json.loads(row["tags_json"] or "[]"),
                 "confidence": row["confidence"],
-                "unique_reporters": row["unique_reporters"],
-                "current_observations": row["current_observations"],
-                "total_observations": row["total_observations"],
-                "first_observed_at": row["first_observed_at"],
+                "independent_reports": row["unique_reporters"],
                 "last_observed_at": row["last_observed_at"],
                 "published_at": row["published_at"],
                 "updated_at": row["updated_at"],

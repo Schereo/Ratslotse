@@ -83,7 +83,7 @@ export function PublicProblemDetail({
             <MessageCircle className="h-5 w-5" aria-hidden />
           </span>
           <p className="font-semibold tabular-nums text-foreground">
-            {unabhaengigeMeldungen(problem.unique_reporters)}
+            {unabhaengigeMeldungen(problem.independent_reports)}
           </p>
         </div>
         {problem.tags.length > 0 && (
