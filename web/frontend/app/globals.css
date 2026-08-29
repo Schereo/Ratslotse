@@ -50,6 +50,10 @@
     --ebene-flaeche: 100;
     --ebene-dialog: 110;
     --ebene-meldung: 120;
+    /* Lokale Leaflet-Ebene innerhalb eines isolierten Kartencontainers. Die
+       Bibliothek belegt dort 200–700; Bedienelemente müssen darüber liegen,
+       ohne eine sechste globale Seitenebene zu eröffnen. */
+    --ebene-kartenbedienung: 1000;
     /* Signal-Orange (Lotsenboot): Maskottchen, Highlights, sparsame Akzente.
        Token-Spec 6a: hell 19 92% 50 (Button-Fill), dunkel 19 95% 60. */
     --signal: 19 92% 50%;

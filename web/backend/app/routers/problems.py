@@ -21,12 +21,12 @@ class PublicProblemEvent(BaseModel):
     event_at: str
 
 
-class PublicProblem(BaseModel):
+class PublicProblemSummary(BaseModel):
+    """Map/board projection: exact metrics stay behind the detail endpoint."""
+
     id: int
     title: str
-    summary: str
     category: str
-    tags: list[str]
     scope_kind: Literal["point", "facility", "route", "area", "citywide"]
     location_label: str
     latitude: float | None = Field(default=None, ge=-90, le=90)
@@ -35,6 +35,12 @@ class PublicProblem(BaseModel):
     status: Literal[
         "new", "multiple_reports", "verified", "persists", "apparently_resolved"
     ]
+    frequency: Literal["once", "several", "many", "very_many"]
+
+
+class PublicProblem(PublicProblemSummary):
+    summary: str
+    tags: list[str]
     confidence: Literal["unconfirmed", "supported", "verified"]
     unique_reporters: int = Field(ge=0)
     current_observations: int = Field(ge=0)
@@ -47,7 +53,7 @@ class PublicProblem(BaseModel):
 
 
 class PublicProblemList(BaseModel):
-    problems: list[PublicProblem]
+    problems: list[PublicProblemSummary]
     total: int
 
 

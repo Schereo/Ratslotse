@@ -5,8 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Columns3, Info, Map as MapIcon, MapPin, X } from "lucide-react";
 import { api } from "@/lib/api";
-import type { ProblemListResponse, PublicProblem, ProblemStatus } from "@/lib/types";
-import { meldeHaeufigkeit, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, VORSCHAU_PROBLEME } from "@/lib/probleme";
+import type { ProblemListResponse, PublicProblem, PublicProblemSummary, ProblemStatus } from "@/lib/types";
+import { MELDE_HAEUFIGKEIT, meldeHaeufigkeit, PROBLEM_KATEGORIEN, PROBLEM_SCOPE, PROBLEM_STATUS, VORSCHAU_PROBLEME } from "@/lib/probleme";
 import { Badge, Card, ErrorState, PageHeader, Segmented, Select, Spinner, formatDate } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +36,15 @@ export default function View({ vorschau }: { vorschau: boolean }) {
   );
   // Das Status-Board ist bewusst vollständig; Themenfilter gehört allein zur Karte.
   const visibleProblems = ansicht === "status" ? all : mapProblems;
-  const selected = visibleProblems.find((problem) => problem.id === selectedId) ?? null;
+  const detailQuery = useQuery({
+    queryKey: ["public-problem", selectedId],
+    queryFn: () => api.get<PublicProblem>(`/probleme/${selectedId}`),
+    enabled: !vorschau && selectedId !== null,
+    staleTime: 60_000,
+  });
+  const selected = vorschau
+    ? VORSCHAU_PROBLEME.find((problem) => problem.id === selectedId) ?? null
+    : detailQuery.data ?? null;
   const categories = useMemo(() => {
     const present = new Set(all.map((problem) => problem.category));
     return Object.entries(PROBLEM_KATEGORIEN).filter(([key]) => present.has(key));
@@ -83,6 +91,18 @@ export default function View({ vorschau }: { vorschau: boolean }) {
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }, []);
 
+  const detailPanel = selectedId === null ? null : selected ? (
+    <SelectedProblem problem={selected} onClose={closeDetail} />
+  ) : !vorschau && detailQuery.isError ? (
+    <ErrorState
+      title="Details konnten nicht geladen werden"
+      onRetry={() => void detailQuery.refetch()}
+      busy={detailQuery.isFetching}
+    />
+  ) : (
+    <Spinner className="rounded-xl border border-border bg-card py-8" />
+  );
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -125,7 +145,7 @@ export default function View({ vorschau }: { vorschau: boolean }) {
       <div className="flex flex-col gap-2 text-xs leading-relaxed text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <p className="flex items-start gap-1.5">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          Farben zeigen nur die Meldehäufigkeit, nicht die amtliche Dringlichkeit. Exakte Zahlen erscheinen nach Auswahl.
+          Farben zeigen nur die Meldehäufigkeit, nicht die amtliche Dringlichkeit. Status sind Ratslotse-Einordnungen, keine amtlichen Bearbeitungsstände. Exakte Zahlen erscheinen nach Auswahl.
         </p>
         <FrequencyLegend />
       </div>
@@ -136,10 +156,14 @@ export default function View({ vorschau }: { vorschau: boolean }) {
         <ErrorState onRetry={() => void query.refetch()} busy={query.isFetching} hint="Die öffentliche Problemkarte konnte nicht geladen werden." />
       ) : visibleProblems.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card px-6 py-16 text-center">
-          <p className="font-medium text-foreground">Keine Probleme für dieses Thema</p>
-          <button type="button" onClick={() => setCategory("all")} className="mt-2 text-sm font-medium text-primary hover:underline">
-            Alle Themen zeigen
-          </button>
+          <p className="font-medium text-foreground">
+            {category === "all" ? "Noch keine veröffentlichten Probleme" : "Keine Probleme für dieses Thema"}
+          </p>
+          {category !== "all" && (
+            <button type="button" onClick={() => setCategory("all")} className="mt-2 text-sm font-medium text-primary hover:underline">
+              Alle Themen zeigen
+            </button>
+          )}
         </div>
       ) : ansicht === "karte" ? (
         <div className="space-y-4">
@@ -149,12 +173,12 @@ export default function View({ vorschau }: { vorschau: boolean }) {
             onSelect={select}
             className="h-[62dvh] min-h-[420px] max-h-[720px]"
           />
-          {selected && <SelectedProblem problem={selected} onClose={closeDetail} />}
+          {detailPanel}
         </div>
       ) : (
         <div className="space-y-4">
           <KanbanBoard problems={all} selectedId={selectedId} onSelect={select} />
-          {selected && <SelectedProblem problem={selected} onClose={closeDetail} />}
+          {detailPanel}
         </div>
       )}
     </div>
@@ -167,9 +191,9 @@ function FrequencyLegend() {
       {[1, 2, 5, 10].map((count) => {
         const frequency = meldeHaeufigkeit(count);
         return (
-          <span key={frequency.key} className="inline-flex items-center gap-1">
-            <span className={`problem-frequency-dot frequency-${frequency.key}`} aria-hidden />
-            {frequency.label}
+          <span key={frequency} className="inline-flex items-center gap-1">
+            <span className={`problem-frequency-dot frequency-${frequency}`} aria-hidden />
+            {MELDE_HAEUFIGKEIT[frequency]}
           </span>
         );
       })}
@@ -182,7 +206,7 @@ function KanbanBoard({
   selectedId,
   onSelect,
 }: {
-  problems: PublicProblem[];
+  problems: PublicProblemSummary[];
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
@@ -223,11 +247,11 @@ function KanbanCard({
   selected,
   onSelect,
 }: {
-  problem: PublicProblem;
+  problem: PublicProblemSummary;
   selected: boolean;
   onSelect: (id: number) => void;
 }) {
-  const frequency = meldeHaeufigkeit(problem.unique_reporters);
+  const frequency = problem.frequency;
   return (
     <button
       type="button"
@@ -239,8 +263,10 @@ function KanbanCard({
       )}
     >
       <div className="flex items-start gap-2">
-        <span className={`problem-frequency-dot frequency-${frequency.key} mt-1 shrink-0`} aria-hidden />
-        <h3 className="text-sm font-semibold leading-snug text-foreground">{problem.title}</h3>
+        <span className={`problem-frequency-dot frequency-${frequency} mt-1 shrink-0`} aria-hidden />
+        <h3 className="text-sm font-semibold leading-snug text-foreground">
+          {problem.title}<span className="sr-only"> · {MELDE_HAEUFIGKEIT[frequency]}</span>
+        </h3>
       </div>
       <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
         <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />

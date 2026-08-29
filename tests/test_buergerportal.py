@@ -40,7 +40,10 @@ def test_problem_store_exposes_only_published_problems(tmp_path):
 
     listed = store.list_public_problems()
     assert [problem["id"] for problem in listed] == [visible]
+    assert listed[0]["frequency"] == "several"
     assert "events" not in listed[0]
+    assert "unique_reporters" not in listed[0]
+    assert "current_observations" not in listed[0]
     assert store.get_public_problem(visible)["events"][0]["title"] == "Problem veröffentlicht"
     assert store.get_public_problem(visible)["unique_reporters"] == 3
     store.close()
@@ -73,7 +76,10 @@ def test_public_api_hides_unpublished_problem_and_exposes_detail(tmp_path):
     assert response.status_code == 200
     assert response.json()["total"] == 1
     assert response.json()["problems"][0]["id"] == visible
-    assert client.get(f"/api/probleme/{visible}").status_code == 200
+    assert "unique_reporters" not in response.json()["problems"][0]
+    detail = client.get(f"/api/probleme/{visible}")
+    assert detail.status_code == 200
+    assert detail.json()["unique_reporters"] == 1
     assert client.get(f"/api/probleme/{hidden}").status_code == 404
     assert client.get("/api/probleme?status=amtlich_in_bearbeitung").status_code == 422
     assert client.get("/api/probleme?category=personenkritik").status_code == 422

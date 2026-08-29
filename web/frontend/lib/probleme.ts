@@ -1,4 +1,4 @@
-import type { PublicProblem } from "@/lib/types";
+import type { ProblemFrequency, PublicProblem } from "@/lib/types";
 
 export const PROBLEM_KATEGORIEN = {
   mobility: "Mobilität & Verkehr",
@@ -13,11 +13,11 @@ export const PROBLEM_KATEGORIEN = {
 } as const;
 
 export const PROBLEM_STATUS = {
-  new: { label: "Neu", color: "blue" as const },
-  multiple_reports: { label: "Mehrfach gemeldet", color: "amber" as const },
-  verified: { label: "Geprüft", color: "green" as const },
-  persists: { label: "Weiterhin vorhanden", color: "red" as const },
-  apparently_resolved: { label: "Offenbar behoben", color: "green" as const },
+  new: { label: "Neu", color: "slate" as const },
+  multiple_reports: { label: "Mehrfach gemeldet", color: "blue" as const },
+  verified: { label: "Geprüft", color: "blue" as const },
+  persists: { label: "Weiterhin vorhanden", color: "slate" as const },
+  apparently_resolved: { label: "Offenbar behoben", color: "slate" as const },
 } as const;
 
 export const PROBLEM_SCOPE = {
@@ -28,17 +28,21 @@ export const PROBLEM_SCOPE = {
   citywide: "Stadtweit",
 } as const;
 
-export type MeldeHaeufigkeit = "once" | "several" | "many" | "very_many";
+export type MeldeHaeufigkeit = ProblemFrequency;
 
-/** Grobe Häufigkeit statt exakter Zahl: Orientierung vor der Detailauswahl. */
-export function meldeHaeufigkeit(uniqueReporters: number): {
-  key: MeldeHaeufigkeit;
-  label: string;
-} {
-  if (uniqueReporters <= 1) return { key: "once", label: "einmal gemeldet" };
-  if (uniqueReporters <= 4) return { key: "several", label: "mehrfach gemeldet" };
-  if (uniqueReporters <= 9) return { key: "many", label: "häufig gemeldet" };
-  return { key: "very_many", label: "sehr häufig gemeldet" };
+export const MELDE_HAEUFIGKEIT: Record<ProblemFrequency, string> = {
+  once: "einmal gemeldet",
+  several: "mehrfach gemeldet",
+  many: "häufig gemeldet",
+  very_many: "sehr häufig gemeldet",
+};
+
+/** Grobe Häufigkeit für lokale Vorschau-Daten. Die API liefert sie bereits. */
+export function meldeHaeufigkeit(uniqueReporters: number): ProblemFrequency {
+  if (uniqueReporters <= 1) return "once";
+  if (uniqueReporters <= 4) return "several";
+  if (uniqueReporters <= 9) return "many";
+  return "very_many";
 }
 
 /**
@@ -59,6 +63,7 @@ export const VORSCHAU_PROBLEME: PublicProblem[] = [
     longitude: 8.2148,
     geometry: null,
     status: "multiple_reports",
+    frequency: "many",
     confidence: "supported",
     unique_reporters: 6,
     current_observations: 5,
@@ -84,6 +89,7 @@ export const VORSCHAU_PROBLEME: PublicProblem[] = [
     longitude: 8.2227,
     geometry: null,
     status: "verified",
+    frequency: "very_many",
     confidence: "verified",
     unique_reporters: 11,
     current_observations: 9,
@@ -108,6 +114,7 @@ export const VORSCHAU_PROBLEME: PublicProblem[] = [
     longitude: 8.187,
     geometry: null,
     status: "persists",
+    frequency: "several",
     confidence: "supported",
     unique_reporters: 4,
     current_observations: 4,
@@ -130,6 +137,7 @@ export const VORSCHAU_PROBLEME: PublicProblem[] = [
     longitude: null,
     geometry: null,
     status: "multiple_reports",
+    frequency: "very_many",
     confidence: "supported",
     unique_reporters: 18,
     current_observations: 14,

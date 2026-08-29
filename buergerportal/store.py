@@ -87,6 +87,16 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def report_frequency(unique_reporters: int) -> str:
+    if unique_reporters <= 1:
+        return "once"
+    if unique_reporters <= 4:
+        return "several"
+    if unique_reporters <= 9:
+        return "many"
+    return "very_many"
+
+
 def _json_object(raw: str | None) -> dict[str, Any] | None:
     if not raw:
         return None
@@ -212,38 +222,41 @@ class ProblemStore:
             "ORDER BY last_observed_at DESC, id DESC",
             params,
         ).fetchall()
-        return [self._public_problem(row, include_events=False) for row in rows]
+        return [self._public_problem(row, include_details=False) for row in rows]
 
     def get_public_problem(self, problem_id: int) -> dict[str, Any] | None:
         row = self._conn.execute(
             "SELECT * FROM civic_problems WHERE id = ? AND published_at IS NOT NULL",
             (problem_id,),
         ).fetchone()
-        return self._public_problem(row, include_events=True) if row else None
+        return self._public_problem(row, include_details=True) if row else None
 
-    def _public_problem(self, row: sqlite3.Row, *, include_events: bool) -> dict[str, Any]:
+    def _public_problem(self, row: sqlite3.Row, *, include_details: bool) -> dict[str, Any]:
         problem = {
             "id": row["id"],
             "title": row["title"],
-            "summary": row["summary"],
             "category": row["category"],
-            "tags": json.loads(row["tags_json"] or "[]"),
             "scope_kind": row["scope_kind"],
             "location_label": row["location_label"],
             "latitude": row["latitude"],
             "longitude": row["longitude"],
             "geometry": _json_object(row["geometry_json"]),
             "status": row["status"],
-            "confidence": row["confidence"],
-            "unique_reporters": row["unique_reporters"],
-            "current_observations": row["current_observations"],
-            "total_observations": row["total_observations"],
-            "first_observed_at": row["first_observed_at"],
-            "last_observed_at": row["last_observed_at"],
-            "published_at": row["published_at"],
-            "updated_at": row["updated_at"],
+            "frequency": report_frequency(row["unique_reporters"]),
         }
-        if include_events:
+        if include_details:
+            problem.update({
+                "summary": row["summary"],
+                "tags": json.loads(row["tags_json"] or "[]"),
+                "confidence": row["confidence"],
+                "unique_reporters": row["unique_reporters"],
+                "current_observations": row["current_observations"],
+                "total_observations": row["total_observations"],
+                "first_observed_at": row["first_observed_at"],
+                "last_observed_at": row["last_observed_at"],
+                "published_at": row["published_at"],
+                "updated_at": row["updated_at"],
+            })
             events = self._conn.execute(
                 """SELECT kind, title, detail, source_kind, source_url, event_at
                    FROM civic_problem_events

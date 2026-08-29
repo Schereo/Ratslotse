@@ -23,6 +23,7 @@ export interface User {
 export type ProblemScope = "point" | "facility" | "route" | "area" | "citywide";
 export type ProblemStatus = "new" | "multiple_reports" | "verified" | "persists" | "apparently_resolved";
 export type ProblemConfidence = "unconfirmed" | "supported" | "verified";
+export type ProblemFrequency = "once" | "several" | "many" | "very_many";
 
 export interface PublicProblemEvent {
   kind: string;
@@ -33,19 +34,24 @@ export interface PublicProblemEvent {
   event_at: string;
 }
 
-/** Ausschließlich die freigegebene öffentliche Projektion eines Problems. */
-export interface PublicProblem {
+/** Karten-/Board-Projektion ohne exakte Kennzahlen. */
+export interface PublicProblemSummary {
   id: number;
   title: string;
-  summary: string;
   category: string;
-  tags: string[];
   scope_kind: ProblemScope;
   location_label: string;
   latitude: number | null;
   longitude: number | null;
   geometry: Record<string, unknown> | null;
   status: ProblemStatus;
+  frequency: ProblemFrequency;
+}
+
+/** Öffentliche Detailprojektion, erst nach bewusster Auswahl geladen. */
+export interface PublicProblem extends PublicProblemSummary {
+  summary: string;
+  tags: string[];
   confidence: ProblemConfidence;
   unique_reporters: number;
   current_observations: number;
@@ -58,7 +64,7 @@ export interface PublicProblem {
 }
 
 export interface ProblemListResponse {
-  problems: PublicProblem[];
+  problems: PublicProblemSummary[];
   total: number;
 }
 
