@@ -15,7 +15,15 @@ Verwendete Begriffe:
 - **Beobachtung** für die Erstmeldung oder eine spätere Aktualisierung,
 - **Ratslotse-Prüfung** für eine klar als unabhängig gekennzeichnete Einordnung.
 
-Nicht verwendet werden amtlich klingende Begriffe wie **Mängelmelder**, **Ticket**, **Fallnummer** oder ein unbelegter **Bearbeitungsstand**.
+Nicht verwendet werden **Reporter*in** oder amtlich klingende Begriffe wie **Mängelmelder**, **Ticket**, **Fallnummer** und ein unbelegter **Bearbeitungsstand**. Öffentlich steht nur die knappe Zahl **unabhängige Meldungen**.
+
+## Darstellungsprinzip
+
+Karte, Farbe, Symbole und kurze Zahlenhinweise tragen die Oberfläche. Text bleibt so knapp wie möglich. Exakte Meldezahlen erscheinen erst am ausgewählten Problem als zum Beispiel **6 unabhängige Meldungen**; Beobachtungs-Unterzahlen werden nicht zusätzlich gezeigt.
+
+## Freigabefolge
+
+Eine abgesendete Meldung bleibt privat. Zuerst hält eine eigenständige KI-Vorprüfung ihr Urteil privat fest. Danach entscheidet ein Mensch abschließend. Nur Meldungen mit geeignetem KI-Urteil **und** menschlicher Freigabe dürfen in die öffentliche Ratslotse-Projektion einfließen. Ein Ausfall oder fehlendes Urteil veröffentlicht nichts. Diese Projektion ist keine offizielle Datenbank der Stadt Oldenburg.
 
 ## Stabiler Routenvertrag
 

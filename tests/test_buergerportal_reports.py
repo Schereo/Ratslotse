@@ -161,6 +161,71 @@ def test_concurrent_submission_creates_only_one_first_observation(tmp_path):
     reports.close()
 
 
+def test_report_needs_suitable_ai_assessment_and_human_approval_before_projection(tmp_path):
+    database = tmp_path / "problems.sqlite"
+    reports = ReportStore(database)
+    report_id = reports.create_draft(
+        reporter_id=101,
+        text="Die Bordsteinkante ist zu hoch.",
+        category="accessibility",
+        scope_kind="point",
+        latitude=53.141,
+        longitude=8.207,
+        observed_at="2026-08-28T08:00:00+00:00",
+    )
+    reports.submit_owned_report(
+        report_id,
+        reporter_id=101,
+        confirmed_text="Die Bordsteinkante ist zu hoch.",
+    )
+
+    with pytest.raises(ValueError, match="KI-Vorprüfung"):
+        reports.approve_report_for_projection(
+            report_id,
+            moderator_id=7,
+            assessment_id=999,
+            problem_id=12,
+            reason_code="suitable",
+        )
+
+    unsuitable = reports.record_ai_assessment(
+        report_id,
+        verdict="unsuitable",
+        reason_code="personal_claim",
+        model="independent-review-v1",
+    )
+    with pytest.raises(ValueError, match="geeignet"):
+        reports.approve_report_for_projection(
+            report_id,
+            moderator_id=7,
+            assessment_id=unsuitable["id"],
+            problem_id=12,
+            reason_code="suitable",
+        )
+
+    suitable = reports.record_ai_assessment(
+        report_id,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model="independent-review-v1",
+    )
+    approval = reports.approve_report_for_projection(
+        report_id,
+        moderator_id=7,
+        assessment_id=suitable["id"],
+        problem_id=12,
+        reason_code="suitable",
+    )
+
+    assert approval["outcome"] == "assigned_existing_problem"
+    assert reports.get_owned_report(report_id, reporter_id=101)["status"] == "accepted"
+    reports.close()
+
+    public = ProblemStore(database)
+    assert public.list_public_problems() == []
+    public.close()
+
+
 def test_owner_can_add_an_observation_without_creating_another_report(tmp_path):
     reports = ReportStore(tmp_path / "problems.sqlite")
     report_id = reports.create_draft(

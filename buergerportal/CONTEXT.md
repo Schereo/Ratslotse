@@ -13,7 +13,7 @@ Privater, bewusst abgesendeter Beitrag eines verifizierten Ratslotse-Kontos mit 
 _Avoid_: Ticket, Fall, öffentliche Meldung
 
 **Beobachtung**:
-Die Erstmeldung oder eine spätere Aktualisierung derselben Person zu derselben Meldung. Weitere Beobachtungen erhöhen nicht die Zahl der Reporter*innen.
+Die Erstmeldung oder eine spätere Aktualisierung derselben Person zu derselben Meldung. Weitere Beobachtungen erhöhen nicht die Zahl unabhängiger Meldungen.
 _Avoid_: neue Meldung, Kommentar
 
 **Problem**:
@@ -24,8 +24,12 @@ _Avoid_: Meldung, Ticket, städtischer Vorgang
 Die durch Moderation bestätigte Verbindung einer Meldung mit genau einem Problem.
 _Avoid_: automatische Zusammenführung
 
+**KI-Vorprüfung**:
+Ein privates, unveränderliches Eignungsurteil zu einer Meldung. Es wird eigenständig vor der menschlichen Entscheidung erstellt und hat allein keine Veröffentlichungsbefugnis.
+_Avoid_: automatische Freigabe, amtliche Prüfung
+
 **Moderationsentscheidung**:
-Eine private, nachvollziehbare Entscheidung über eine Meldung mit Ergebnis, Begründungscode, interner Notiz und einer davon getrennten Mitteilung an die Reporter*in.
+Eine private, nachvollziehbare menschliche Entscheidung über eine Meldung mit Ergebnis, Begründungscode, interner Notiz und einer davon getrennten Mitteilung an die meldende Person.
 _Avoid_: amtlicher Bescheid
 
 **Statusereignis**:
@@ -40,9 +44,9 @@ _Avoid_: Adresse, wenn kein einzelner Ort gemeint ist
 Die freigegebene, datenarme Sicht auf Probleme und veröffentlichte Statusereignisse. Sie enthält keine Meldungstexte, Identitäten oder Moderationsnotizen.
 _Avoid_: anonymisierte Meldung
 
-**Reporter*in**:
-Das verifizierte Ratslotse-Konto, dem eine Meldung gehört.
-_Avoid_: öffentliche Autor*in
+**Meldende Person**:
+Die Person hinter dem verifizierten Ratslotse-Konto, dem eine Meldung gehört. Dieser Begriff wird öffentlich nicht als Kennzahl verwendet.
+_Avoid_: Reporter*in, öffentliche Autor*in
 
 **Moderator*in**:
 Ein Ratslotse-Admin, der Meldungen prüft und Zuordnungen oder Veröffentlichungen entscheidet.

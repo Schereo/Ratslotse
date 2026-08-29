@@ -25,6 +25,11 @@ PROBLEM_STATUSES = (
     "persists",
     "apparently_resolved",
 )
+AI_ASSESSMENT_VERDICTS = (
+    "suitable",
+    "needs_human_review",
+    "unsuitable",
+)
 REPORT_STATUSES = (
     "draft",
     "submitted",

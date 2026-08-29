@@ -50,6 +50,10 @@ export const MELDE_HAEUFIGKEIT: Record<ProblemFrequency, string> = {
 };
 
 /** Grobe Häufigkeit für lokale Vorschau-Daten. Die API liefert sie bereits. */
+export function unabhaengigeMeldungen(anzahl: number): string {
+  return `${anzahl} unabhängige ${anzahl === 1 ? "Meldung" : "Meldungen"}`;
+}
+
 export function meldeHaeufigkeit(uniqueReporters: number): ProblemFrequency {
   if (uniqueReporters < 1) throw new Error("Veröffentlichte Probleme benötigen mindestens eine Meldung.");
   if (uniqueReporters === 1) return "once";

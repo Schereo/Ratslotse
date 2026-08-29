@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .domain import (
+    AI_ASSESSMENT_VERDICTS,
     MODERATION_OUTCOMES,
     PROBLEM_CATEGORIES,
     REPORT_STATUSES,
@@ -139,7 +140,45 @@ _PRIVATE_MIGRATIONS = (
         );
         """,
     ),
+    (
+        5,
+        f"""
+        CREATE TABLE civic_ai_assessments (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_id   INTEGER NOT NULL,
+            verdict     TEXT NOT NULL,
+            reason_code TEXT NOT NULL,
+            model       TEXT NOT NULL,
+            created_at  TEXT NOT NULL,
+            CHECK (verdict IN ({sql_enum(AI_ASSESSMENT_VERDICTS)})),
+            CHECK (length(trim(reason_code)) > 0),
+            CHECK (length(trim(model)) > 0),
+            FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_civic_ai_assessments_report
+            ON civic_ai_assessments(report_id, created_at, id);
+        ALTER TABLE civic_moderation_decisions
+            ADD COLUMN ai_assessment_id INTEGER
+            REFERENCES civic_ai_assessments(id);
+        """,
+    ),
 )
+
+_AI_PUBLICATION_GATE = """
+CREATE TRIGGER IF NOT EXISTS trg_civic_moderation_ai_publication_gate
+BEFORE INSERT ON civic_moderation_decisions
+WHEN NEW.outcome IN ('assigned_existing_problem', 'published_as_new_problem')
+     AND NOT EXISTS (
+         SELECT 1
+         FROM civic_ai_assessments
+         WHERE id = NEW.ai_assessment_id
+           AND report_id = NEW.report_id
+           AND verdict = 'suitable'
+     )
+BEGIN
+    SELECT RAISE(ABORT, 'publication requires suitable AI assessment');
+END;
+"""
 
 
 def _now() -> str:
@@ -193,6 +232,7 @@ class ReportStore:
                 if self._conn.in_transaction:
                     self._conn.rollback()
                 raise
+        self._conn.executescript(_AI_PUBLICATION_GATE)
 
     def create_draft(
         self,
@@ -304,6 +344,116 @@ class ReportStore:
         if submitted is None:  # Protected by the transaction above.
             raise RuntimeError("Abgesendete Meldung konnte nicht geladen werden.")
         return submitted
+
+    def record_ai_assessment(
+        self,
+        report_id: int,
+        *,
+        verdict: str,
+        reason_code: str,
+        model: str,
+    ) -> dict[str, Any]:
+        """Record an immutable private AI judgement without publishing anything."""
+        if verdict not in AI_ASSESSMENT_VERDICTS:
+            raise ValueError("Unbekanntes Ergebnis der KI-Vorprüfung.")
+        if not reason_code.strip() or not model.strip():
+            raise ValueError("Die KI-Vorprüfung benötigt Grund und Modell.")
+        now = _now()
+        with self._conn:
+            report = self._conn.execute(
+                "SELECT status FROM civic_reports WHERE id = ?",
+                (report_id,),
+            ).fetchone()
+            if not report:
+                raise ValueError("Meldung nicht gefunden.")
+            if report["status"] not in {"submitted", "in_review", "needs_information"}:
+                raise ValueError("Diese Meldung kann nicht durch die KI vorgeprüft werden.")
+            cursor = self._conn.execute(
+                """INSERT INTO civic_ai_assessments (
+                       report_id, verdict, reason_code, model, created_at
+                   ) VALUES (?, ?, ?, ?, ?)""",
+                (report_id, verdict, reason_code.strip(), model.strip(), now),
+            )
+            self._conn.execute(
+                "UPDATE civic_reports SET status = 'in_review', updated_at = ? WHERE id = ?",
+                (now, report_id),
+            )
+        return {
+            "id": int(cursor.lastrowid),
+            "report_id": report_id,
+            "verdict": verdict,
+            "reason_code": reason_code.strip(),
+            "model": model.strip(),
+            "created_at": now,
+        }
+
+    def approve_report_for_projection(
+        self,
+        report_id: int,
+        *,
+        moderator_id: int,
+        assessment_id: int,
+        problem_id: int,
+        reason_code: str,
+        publish_as_new_problem: bool = False,
+    ) -> dict[str, Any]:
+        """Record final human approval after a suitable AI assessment.
+
+        Approval only marks the private report as eligible. It never writes to
+        the public problem projection by itself.
+        """
+        if moderator_id < 1 or problem_id < 1:
+            raise ValueError("Freigabe benötigt gültige Moderation und Problemzuordnung.")
+        if not reason_code.strip():
+            raise ValueError("Freigabe benötigt einen Begründungscode.")
+        now = _now()
+        outcome = "published_as_new_problem" if publish_as_new_problem else "assigned_existing_problem"
+        with self._conn:
+            assessment = self._conn.execute(
+                """SELECT verdict
+                   FROM civic_ai_assessments
+                   WHERE id = ? AND report_id = ?""",
+                (assessment_id, report_id),
+            ).fetchone()
+            if not assessment:
+                raise ValueError("Vor der Freigabe ist eine KI-Vorprüfung erforderlich.")
+            if assessment["verdict"] != "suitable":
+                raise ValueError("Nur eine als geeignet beurteilte Meldung kann freigegeben werden.")
+            report = self._conn.execute(
+                "SELECT status FROM civic_reports WHERE id = ?",
+                (report_id,),
+            ).fetchone()
+            if not report or report["status"] not in {"submitted", "in_review", "needs_information"}:
+                raise ValueError("Diese Meldung kann nicht freigegeben werden.")
+            cursor = self._conn.execute(
+                """INSERT INTO civic_moderation_decisions (
+                       report_id, moderator_id, outcome, reason_code,
+                       problem_id, created_at, ai_assessment_id
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    report_id,
+                    moderator_id,
+                    outcome,
+                    reason_code.strip(),
+                    problem_id,
+                    now,
+                    assessment_id,
+                ),
+            )
+            self._conn.execute(
+                """UPDATE civic_reports
+                   SET problem_id = ?, status = 'accepted', updated_at = ?
+                   WHERE id = ?""",
+                (problem_id, now, report_id),
+            )
+        return {
+            "id": int(cursor.lastrowid),
+            "report_id": report_id,
+            "outcome": outcome,
+            "problem_id": problem_id,
+            "ai_assessment_id": assessment_id,
+            "created_at": now,
+        }
 
     def add_owned_observation(
         self,
