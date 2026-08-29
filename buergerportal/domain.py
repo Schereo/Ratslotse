@@ -33,4 +33,6 @@ MODERATION_OUTCOMES = (
     "published_as_new_problem",
     "needs_information",
     "rejected",
+    "corrected_category",
+    "corrected_geography",
 )

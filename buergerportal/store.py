@@ -8,10 +8,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .domain import PROBLEM_CATEGORIES, PROBLEM_STATUSES, SCOPE_KINDS
-
-
-def _sql_enum(values: tuple[str, ...]) -> str:
-    return ", ".join(f"'{value}'" for value in values)
+from .schema import sql_enum
 
 
 SCHEMA = f"""
@@ -35,9 +32,9 @@ CREATE TABLE IF NOT EXISTS civic_problems (
     last_observed_at     TEXT NOT NULL,
     published_at         TEXT,
     updated_at           TEXT NOT NULL,
-    CHECK (category IN ({_sql_enum(PROBLEM_CATEGORIES)})),
-    CHECK (scope_kind IN ({_sql_enum(SCOPE_KINDS)})),
-    CHECK (status IN ({_sql_enum(PROBLEM_STATUSES)})),
+    CHECK (category IN ({sql_enum(PROBLEM_CATEGORIES)})),
+    CHECK (scope_kind IN ({sql_enum(SCOPE_KINDS)})),
+    CHECK (status IN ({sql_enum(PROBLEM_STATUSES)})),
     CHECK (confidence IN ('unconfirmed', 'supported', 'verified')),
     CHECK (unique_reporters >= 0),
     CHECK (published_at IS NULL OR unique_reporters >= 1),

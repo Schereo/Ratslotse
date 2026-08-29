@@ -16,10 +16,7 @@ from .domain import (
     REPORT_STATUSES,
     SCOPE_KINDS,
 )
-
-
-def _sql_enum(values: tuple[str, ...]) -> str:
-    return ", ".join(f"'{value}'" for value in values)
+from .schema import sql_enum
 
 
 _PRIVATE_MIGRATIONS = (
@@ -45,9 +42,9 @@ _PRIVATE_MIGRATIONS = (
             updated_at        TEXT NOT NULL,
             CHECK (reporter_id > 0),
             CHECK (length(trim(draft_text)) > 0),
-            CHECK (category IN ({_sql_enum(PROBLEM_CATEGORIES)})),
-            CHECK (scope_kind IN ({_sql_enum(SCOPE_KINDS)})),
-            CHECK (status IN ({_sql_enum(REPORT_STATUSES)})),
+            CHECK (category IN ({sql_enum(PROBLEM_CATEGORIES)})),
+            CHECK (scope_kind IN ({sql_enum(SCOPE_KINDS)})),
+            CHECK (status IN ({sql_enum(REPORT_STATUSES)})),
             CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90),
             CHECK (longitude IS NULL OR longitude BETWEEN -180 AND 180),
             CHECK (
@@ -89,12 +86,34 @@ _PRIVATE_MIGRATIONS = (
             outcome        TEXT NOT NULL,
             reason_code    TEXT NOT NULL,
             reporter_message TEXT NOT NULL DEFAULT '',
-            private_note   TEXT NOT NULL DEFAULT '',
-            problem_id     INTEGER,
-            created_at     TEXT NOT NULL,
+            private_note      TEXT NOT NULL DEFAULT '',
+            problem_id        INTEGER,
+            previous_category TEXT,
+            new_category      TEXT,
+            previous_scope_kind TEXT,
+            new_scope_kind    TEXT,
+            previous_location_label TEXT,
+            new_location_label TEXT,
+            previous_latitude REAL,
+            new_latitude      REAL,
+            previous_longitude REAL,
+            new_longitude     REAL,
+            created_at        TEXT NOT NULL,
             CHECK (moderator_id > 0),
             CHECK (length(trim(reason_code)) > 0),
-            CHECK (outcome IN ({_sql_enum(MODERATION_OUTCOMES)})),
+            CHECK (outcome IN ({sql_enum(MODERATION_OUTCOMES)})),
+            CHECK (previous_category IS NULL OR previous_category IN ({sql_enum(PROBLEM_CATEGORIES)})),
+            CHECK (new_category IS NULL OR new_category IN ({sql_enum(PROBLEM_CATEGORIES)})),
+            CHECK (previous_scope_kind IS NULL OR previous_scope_kind IN ({sql_enum(SCOPE_KINDS)})),
+            CHECK (new_scope_kind IS NULL OR new_scope_kind IN ({sql_enum(SCOPE_KINDS)})),
+            CHECK (previous_latitude IS NULL OR previous_latitude BETWEEN -90 AND 90),
+            CHECK (new_latitude IS NULL OR new_latitude BETWEEN -90 AND 90),
+            CHECK (previous_longitude IS NULL OR previous_longitude BETWEEN -180 AND 180),
+            CHECK (new_longitude IS NULL OR new_longitude BETWEEN -180 AND 180),
+            CHECK (outcome != 'corrected_category' OR (previous_category IS NOT NULL AND new_category IS NOT NULL)),
+            CHECK (outcome != 'corrected_geography' OR (previous_scope_kind IS NOT NULL AND new_scope_kind IS NOT NULL)),
+            CHECK (outcome NOT IN ('assigned_existing_problem', 'published_as_new_problem') OR problem_id IS NOT NULL),
+            UNIQUE (id, report_id),
             FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE
         );
         CREATE INDEX idx_civic_moderation_decisions_report
@@ -106,8 +125,8 @@ _PRIVATE_MIGRATIONS = (
         """
         CREATE TABLE civic_moderation_review_requests (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            report_id       INTEGER NOT NULL UNIQUE,
-            decision_id     INTEGER NOT NULL,
+            report_id       INTEGER NOT NULL,
+            decision_id     INTEGER NOT NULL UNIQUE,
             reporter_reason TEXT NOT NULL,
             status          TEXT NOT NULL DEFAULT 'pending',
             created_at      TEXT NOT NULL,
@@ -115,7 +134,8 @@ _PRIVATE_MIGRATIONS = (
             CHECK (length(trim(reporter_reason)) > 0),
             CHECK (status IN ('pending', 'accepted', 'rejected')),
             FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE,
-            FOREIGN KEY (decision_id) REFERENCES civic_moderation_decisions(id)
+            FOREIGN KEY (decision_id, report_id)
+                REFERENCES civic_moderation_decisions(id, report_id)
         );
         """,
     ),
