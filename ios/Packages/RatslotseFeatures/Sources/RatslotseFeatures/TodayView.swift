@@ -1096,14 +1096,18 @@ private struct DecisionOutcomeSignal: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Circle()
-                .fill(color)
-                .frame(width: 7, height: 7)
+            Image(systemName: symbol)
+                .font(.system(size: 10.5, weight: .bold))
+                .foregroundStyle(color)
                 .accessibilityHidden(true)
             Text(label)
                 .font(RatsFont.body(11, weight: .semibold))
                 .foregroundStyle(RatsColor.bodyText)
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(color.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 
     private var label: String {
@@ -1124,6 +1128,17 @@ private struct DecisionOutcomeSignal: View {
         case "vertagt": RatsColor.warning
         case "zur_kenntnis": RatsColor.primary
         default: RatsColor.muted
+        }
+    }
+
+    private var symbol: String {
+        switch outcome {
+        case "angenommen": "checkmark"
+        case "abgelehnt": "xmark"
+        case "vertagt": "clock.arrow.circlepath"
+        case "zur_kenntnis": "eye.fill"
+        case "kein_beschluss": "minus"
+        default: "circle.fill"
         }
     }
 }

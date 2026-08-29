@@ -938,9 +938,12 @@ private struct SessionRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 13) {
-            SessionDateTile(date: session.sessionDate)
+            SessionDateTile(
+                date: session.sessionDate,
+                symbol: committeeSymbol
+            )
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(shortCommittee)
                     .font(RatsFont.body(16, weight: .bold))
                     .foregroundStyle(RatsColor.text)
@@ -954,10 +957,25 @@ private struct SessionRow: View {
                         .lineLimit(2)
                 }
 
-                Text(metadata)
-                    .font(RatsFont.body(12.5))
+                Label {
+                    Text(scheduleMetadata)
+                } icon: {
+                    Image(systemName: "clock")
+                }
+                .font(RatsFont.body(11.5, weight: .medium))
+                .foregroundStyle(RatsColor.secondary)
+                .lineLimit(1)
+
+                if let location = cleanLocation {
+                    Label {
+                        Text(location)
+                    } icon: {
+                        Image(systemName: "mappin.and.ellipse")
+                    }
+                    .font(RatsFont.body(11.5))
                     .foregroundStyle(RatsColor.secondary)
                     .lineLimit(1)
+                }
 
                 if let matches = session.myTopicItems, !matches.isEmpty {
                     Label("\(matches.count) für dich", systemImage: "bell.fill")
@@ -999,15 +1017,46 @@ private struct SessionRow: View {
             .replacingOccurrences(of: "Rat der Stadt", with: "Rat")
     }
 
-    private var metadata: String {
+    private var scheduleMetadata: String {
         let weekday = (RatsDate.weekday(session.sessionDate) ?? "")
             .split(separator: ",").first.map(String.init)
         let time = session.sessionTime.map { "\($0) Uhr" }
-        let location = session.location?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return [weekday, time, location].compactMap { value in
+        return [weekday, time].compactMap { value in
             guard let value, !value.isEmpty else { return nil }
             return value
         }.joined(separator: " · ")
+    }
+
+    private var cleanLocation: String? {
+        guard let location = session.location?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !location.isEmpty else { return nil }
+        return location
+    }
+
+    private var committeeSymbol: String {
+        let value = session.committee.lowercased()
+        if value.contains("schule") || value.contains("bildung") || value.contains("jugend") {
+            return "graduationcap.fill"
+        }
+        if value.contains("verkehr") || value.contains("mobil") {
+            return "bicycle"
+        }
+        if value.contains("finanz") || value.contains("wirtschaft") {
+            return "eurosign.circle.fill"
+        }
+        if value.contains("planung") || value.contains("bauen") || value.contains("hochbau") {
+            return "building.2.fill"
+        }
+        if value.contains("umwelt") || value.contains("klima") {
+            return "leaf.fill"
+        }
+        if value.contains("kultur") || value.contains("sport") {
+            return "theatermasks.fill"
+        }
+        if value.contains("sozial") || value.contains("gesund") || value.contains("integration") {
+            return "person.2.fill"
+        }
+        return "building.columns.fill"
     }
 
     private var agendaLabel: String {
@@ -1019,7 +1068,8 @@ private struct SessionRow: View {
         [
             session.committee,
             RatsDate.short(session.sessionDate),
-            metadata,
+            scheduleMetadata,
+            cleanLocation,
             session.ksinr == nil ? "Tagesordnung folgt" : agendaLabel,
         ].compactMap { $0 }.joined(separator: ", ")
     }
@@ -1027,9 +1077,10 @@ private struct SessionRow: View {
 
 private struct SessionDateTile: View {
     let date: String
+    let symbol: String
 
     var body: some View {
-        VStack(spacing: 1) {
+        VStack(spacing: 0) {
             Text(month)
                 .font(RatsFont.mono(9.5, weight: .semibold))
                 .foregroundStyle(RatsColor.secondary)
@@ -1037,11 +1088,22 @@ private struct SessionDateTile: View {
             Text(day)
                 .font(RatsFont.title(21))
                 .foregroundStyle(RatsColor.text)
+            Image(systemName: symbol)
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(RatsColor.primary)
+                .frame(height: 15)
+                .padding(.top, 2)
         }
-        .frame(width: 52, height: 58)
-        .background(RatsColor.stage)
-        .overlay(RoundedRectangle(cornerRadius: 13).stroke(RatsColor.border))
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .frame(width: 54, height: 72)
+        .background {
+            LinearGradient(
+                colors: [RatsColor.primary.opacity(0.10), RatsColor.stage],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(RatsColor.primary.opacity(0.18)))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityHidden(true)
     }
 
