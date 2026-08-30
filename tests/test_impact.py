@@ -154,6 +154,13 @@ def test_notify_new_matches_leads_with_highest_impact(tmp_path):
     body = meldung["body_html"]
     assert body.index("Haushaltssatzung 2026") < body.index("und 1 weitere")
     assert f"/council/decision?id={ids['Haushaltssatzung 2026']}" in body
+    # Gremium und Sitzungsdatum stehen unter dem Titel (Tim, 30.08.2026) — das
+    # Jahr gehört dazu, weil das Meldefenster über den Jahreswechsel reicht.
+    assert "Rat · 1. Juni 2026" in body
+    # Und die Push-Vorschau klebt beides nicht aneinander.
+    from kern.delivery import _plain
+
+    assert "Haushaltssatzung 2026 Rat · 1. Juni 2026" in _plain(body)
     nwz.close()
     council.close()
 

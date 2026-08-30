@@ -129,6 +129,20 @@ def nebenlink(url: str, beschriftung: str) -> str:
     )
 
 
+def meta(text: str) -> str:
+    """Die leise Zeile unter einem Titel: Gremium, Datum — Einordnung, kein Link.
+
+    Sie stand lange nirgends, und genau das führte am 30.08.2026 zur Rückfrage
+    „warum bekomme ich diese Mail mit diesem alten Beschluss?": Die Meldung
+    trug nur den Titel, und in dem stand zufällig ein fremdes Datum (das der
+    Anfrage), nicht das der Sitzung.
+    """
+    return (
+        f"<div style='margin-top:3px;color:{_GRAU};font-size:13px;line-height:1.4'>"
+        f"{_esc(text)}</div>"
+    )
+
+
 def gremium_abo_begruendung(gremium: str, mit_aenderungs_schalter: bool = False) -> str:
     """„Warum bekommst du das?" unter einer Gremien-Meldung (N1).
 
