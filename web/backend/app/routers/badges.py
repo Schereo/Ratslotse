@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from kern.store import Store
 
+from ..antworten import Abzeichen, AbzeichenStand, Ok
 from ..deps import get_store, require_active
 
 router = APIRouter(prefix="/api/badges", tags=["badges"])
@@ -40,7 +41,7 @@ class BadgeEvent(BaseModel):
     key: str | None = None
 
 
-def _compute(store: Store, user_id: int, state: dict) -> list[dict]:
+def _compute(store: Store, user_id: int, state: dict) -> list[Abzeichen]:
     """Ist-Zustand aller Abzeichen (earned + Fortschritt), Reihenfolge wie BADGES."""
     flags = set(state["flags"])
     places = len(set(state["map_places"]))
@@ -77,7 +78,8 @@ def _compute(store: Store, user_id: int, state: dict) -> list[dict]:
 
 
 @router.get("")
-def get_badges(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+def get_badges(user: dict = Depends(require_active),
+               store: Store = Depends(get_store)) -> AbzeichenStand:
     state = store.get_badge_state(user["id"])
     badges = _compute(store, user["id"], state)
     newly = [
@@ -106,7 +108,7 @@ def badge_event(
     payload: BadgeEvent,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> dict:
+) -> Ok:
     """Ereignis idempotent verbuchen; das Verdienen (inkl. newly_earned)
     passiert im nächsten GET — Unbekanntes wird still verworfen."""
     state = store.get_badge_state(user["id"])

@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends
 
 from kern.store import Store
 
+from ..antworten import OnboardingStand, SetupStand
 from ..deps import get_store, require_active
 from ..schemas import OnboardingUpdate, SetupUpdate
 
@@ -25,7 +26,8 @@ KNOWN_STEPS = {"frag", "beschluesse", "analyse", "karten"}
 
 
 @router.get("")
-def get_onboarding(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+def get_onboarding(user: dict = Depends(require_active),
+                   store: Store = Depends(get_store)) -> OnboardingStand:
     return store.get_onboarding(user["id"])
 
 
@@ -34,7 +36,7 @@ def update_onboarding(
     payload: OnboardingUpdate,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> dict:
+) -> OnboardingStand:
     steps = [s for s in payload.steps if s in KNOWN_STEPS]
     return store.update_onboarding(user["id"], steps=steps, celebrated=payload.celebrated)
 
@@ -44,7 +46,7 @@ def set_setup(
     payload: SetupUpdate,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> dict:
+) -> SetupStand:
     """Erreichten Schritt festhalten.
 
     Am Konto statt nur im Gerät: Der Stand überlebt eine Neuinstallation, gilt

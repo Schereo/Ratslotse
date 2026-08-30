@@ -34,6 +34,24 @@ from kern.store import Store
 
 from .. import deepresearch
 from ..config import get_settings
+from ..antworten import (AnalyseDaten, BeschlussDetail, BeschlussListe, DieseWoche,
+                        EntitaetenKarte, Entitaeten, EntitaetsDetail, Finanzen,
+                        FundstueckDesTages, GespraechDetail, GespraecheGeloescht,
+                        GespraechEinstellung, GespraecheListe, Gremien,
+                        HaushaltAenderungslisten, HaushaltBeteiligungen, HaushaltBilanz,
+                        HaushaltDatenstand, HaushaltDokumente, HaushaltGebaut,
+                        HaushaltInvestitionen, HaushaltInvestitionsprogramm,
+                        HaushaltKonzern, HaushaltProdukte, HaushaltPruefberichte,
+                        HaushaltSchulden, HaushaltStellenplan, HaushaltStreit,
+                        HaushaltUebersicht, HaushaltVergleich, HaushaltWeg, HeuteBriefing,
+                        Ok, OeffentlicheZahlen, OrtsDetail, OrtsKatalog, ParteiMeinungen,
+                        PersonenDetail, PersonenLexikon, QaBeispiele, QaShare,
+                        QaShareToken, Ratsmitglieder, RechercheAktuell, RechercheGestartet,
+                        RechercheGestoppt, RechercheSnapshot, SitzungsDetail,
+                        SitzungsListe, Sitzungspause, Stadtteile, Themenfelder,
+                        ThemenfeldRueckblicke, TrendDaten, VorlageEntfolgt, VorlageGefolgt,
+                        VorlagenFolgen, Vorschau, WochenvorschauIntern, Wortbeitraege,
+                        ZahlDerWoche, ZielDetail, Ziele)
 from ..deps import get_council_store, get_store, optional_user, require_active
 from ..ratelimit import partei_meinungen_limiter, qa_feedback_limiter, qa_limiter, qa_share_limiter
 
@@ -53,7 +71,7 @@ def _vorlage_url(kvonr: int) -> str:
 
 
 @router.get("/committees")
-def committees(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+def committees(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Gremien:
     """Gremienliste — plus ``details`` für die Ausschuss-Abos.
 
     ``committees`` bleibt die reine Namensliste: Themen-Seite und
@@ -81,7 +99,7 @@ def committees(_user: dict = Depends(require_active), store: CouncilStore = Depe
 
 
 @router.get("/fields")
-def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Themenfelder:
     """Policy fields that have at least one classified decision, with label + count."""
     counts = {r["field"]: r["count"] for r in store.policy_field_stats()}
     out = [
@@ -96,7 +114,7 @@ def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(
 def districts(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> Stadtteile:
     """Belegte Ratslotse-Ortsbereiche für den Beschlussfilter."""
     rows = []
     for row in store.decision_location_place_stats():
@@ -125,7 +143,7 @@ def districts(
 
 @router.get("/places")
 def place_catalog(_user: dict = Depends(require_active),
-                  store: CouncilStore = Depends(get_council_store)) -> dict:
+                  store: CouncilStore = Depends(get_council_store)) -> OrtsKatalog:
     """Gemeinsamer Ortskatalog für Suche, Karten, Quiz und KI-Funktionen."""
     return store.public_place_catalog()
 
@@ -134,7 +152,7 @@ def place_catalog(_user: dict = Depends(require_active),
 def place_detail(
     place_id: str,
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> OrtsDetail:
     """Öffentliches Ortsprofil aus Katalogstammdaten und belegten Beschlüssen."""
     place = store.resolve_place(place_id)
     if not place:
@@ -167,7 +185,7 @@ def sessions(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     nwz: Store = Depends(get_store),
-) -> dict:
+) -> SitzungsListe:
     # `total` ist die GESAMTZAHL der passenden Sitzungen, `count` nur die dieser
     # Seite. Vorher gab es nur count — die Liste endete deshalb still bei der
     # Obergrenze, ohne dass irgendwo stand, dass es weitergeht (der Bestand
@@ -198,7 +216,7 @@ def sessions(
 def sitzungspause(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> Sitzungspause:
     """Läuft gerade eine Sitzungspause (Schulferien / Wahl-Übergang)?
 
     Der Rat pausiert laut Stadt in den Schulferien; die Übersicht zeigt dann
@@ -221,7 +239,7 @@ _HEUTE_CACHE: dict = {"at": 0.0, "data": None}
 
 
 @router.get("/heute")
-def heute(store: CouncilStore = Depends(get_council_store)) -> dict:
+def heute(store: CouncilStore = Depends(get_council_store)) -> HeuteBriefing:
     """RL-901: „Heute im Rat" für die Landing — public (wie public-stats).
     Drei Zustände: Sitzung heute (mit 2 Top-TOPs + Restzähler) · nächste
     Sitzung · Sitzungspause. Cache 15 min."""
@@ -265,7 +283,7 @@ def heute(store: CouncilStore = Depends(get_council_store)) -> dict:
 def diese_woche(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> DieseWoche:
     """RL-U15 (13a-A): interessantester Beschluss der letzten 7 Tage — die
     „Diese Woche im Rat"-Karte, wenn es keine persönlichen Treffer gibt.
     Der interest_reason-Satz ist die „Warum spannend"-Zeile."""
@@ -288,7 +306,7 @@ def wochenvorschau(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     nwz: Store = Depends(get_store),
-) -> dict:
+) -> WochenvorschauIntern:
     """„Die Woche im Rat" (Design 14, davor 11d/12) — als VORSCHAU auf die
     kommenden Sitzungen, nicht als Rückblick auf Beschlüsse.
 
@@ -311,7 +329,7 @@ def wochenvorschau(
 def fundstueck(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> FundstueckDesTages:
     """RL-U11: Fundstück des Tages — kuratierter Archiv-Fund für die Übersicht
     (Pipeline: scripts/rate_interest.py + scripts/generate_fundstuecke.py).
     {"found": false} statt 404: ohne Karte des Tages lässt das Frontend die
@@ -336,7 +354,7 @@ def fundstueck(
 def zahl_der_woche(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> ZahlDerWoche:
     """RL-905: größter Beschluss-Betrag der letzten 7 Tage (Fallback 30);
     ganz ohne Treffer zählt die Karte die Beschlüsse der Woche. Die Satz-
     Formulierung übernimmt das Frontend — hier nur Rohdaten."""
@@ -363,7 +381,7 @@ def haushalt_produkte(
     nr: str | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltProdukte:
     """Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten,
     samt Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,
     Wirkungskreis, Zielgruppe) aus den Teilhaushalts-Plänen.
@@ -412,7 +430,7 @@ def haushalt_stellenplan(
     jahrgang: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltStellenplan:
     """Der Stellenplan: wie viele Stellen die Stadt vorhält und wie viele
     davon nicht besetzt sind.
 
@@ -477,7 +495,7 @@ def haushalt_pruefberichte(
     marke: str | None = Query(None, pattern="^(B|WB|H|K)$"),
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltPruefberichte:
     """Prüfungsfeststellungen des Rechnungsprüfungsamts, alle Jahrgänge.
 
     Bewusst alles auf einmal statt je Jahr: Die Aussage dieses Bestands liegt
@@ -517,7 +535,7 @@ def haushalt_pruefberichte(
 def haushalt_konzern(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltKonzern:
     """Der Konzern Stadt Oldenburg — was der Kernhaushalt **nicht** zeigt.
 
     Alles auf einmal, weil die Aussage dieser Seite eine Differenz ist: Eine
@@ -673,7 +691,7 @@ def _lexikon_zuordnung(store: CouncilStore,
 def haushalt_beteiligungen(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltBeteiligungen:
     """Die städtischen Gesellschaften — was sie tun, wer sie beaufsichtigt.
 
     Die Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie
@@ -756,7 +774,7 @@ def haushalt_beteiligungen(
 def haushalt_investitionen(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltInvestitionen:
     """Was die Stadt bauen und kaufen will — die Investitionen des
     Finanzhaushalts, je Teilhaushalt.
 
@@ -797,7 +815,7 @@ def haushalt_investitionen(
 def haushalt_investitionsprogramm(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltInvestitionsprogramm:
     """Die einzelnen Vorhaben — die Ebene unter ``/haushalt/investitionen``.
 
     Aus Anlage 004 des Haushaltsplans: nicht „Schule und Bildung: 8,3 Mio. €",
@@ -839,7 +857,7 @@ def haushalt_investitionsprogramm(
 def haushalt_datenstand(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltDatenstand:
     """Bis wann die Zahlen reichen — je Datenschicht ein Jahrgangs-Stand.
 
     Beantwortet die Frage, die sonst auf jeder Unterseite von ``/haushalt``
@@ -871,7 +889,7 @@ def haushalt_datenstand(
 def haushalt_dokumente(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltDokumente:
     """Je Quelle des Haushalts-Bereichs das **Dokument** — Jahrgang für Jahrgang.
 
     Das Quellenverzeichnis am Fuß jeder Haushalts-Seite beschreibt eine Quelle
@@ -909,7 +927,7 @@ def haushalt_uebersicht(
     thh_posten: str | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltUebersicht:
     """Datenfundament des Haushalts-Bereichs, in einem Aufruf:
 
     - ``jahre``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
@@ -1370,7 +1388,7 @@ def haushalt_weg(
     jahr: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltWeg:
     """Der Weg eines Haushalts durch den Rat — wann welche Station war.
 
     Anders als der Rest des Haushalts-Bereichs kommt hier nichts aus einem
@@ -1400,7 +1418,7 @@ def haushalt_streit(
     jahr: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltStreit:
     """Der Streit ums Geld — die Auseinandersetzung um jeden Haushaltsjahrgang.
 
     Je Haushaltsjahr eine ``runde`` mit ihren Stationen (Finanzausschuss und
@@ -1425,7 +1443,7 @@ def haushalt_streit(
 def haushalt_aenderungslisten(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltAenderungslisten:
     """Der Inhalt der Änderungslisten — die Ebene unter ``/haushalt/streit``.
 
     Dort steht, WER eine Liste einbrachte und ob sie durchkam; hier steht,
@@ -1461,7 +1479,7 @@ def haushalt_aenderungslisten(
 def session_detail(
     ksinr: int,
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> SitzungsDetail:
     session = store.get_session(ksinr)
     if not session:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sitzung nicht gefunden.")
@@ -1520,7 +1538,7 @@ def decisions(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     nwz: Store = Depends(get_store),
-) -> dict:
+) -> BeschlussListe:
     if district:
         place = store.resolve_place(district)
         if not place:
@@ -1568,7 +1586,7 @@ def decision_detail(
     user: dict | None = Depends(optional_user),
     store: CouncilStore = Depends(get_council_store),
     nwz: Store = Depends(get_store),
-) -> dict:
+) -> BeschlussDetail:
     """Ein Beschluss mit allem Drum und Dran — **ohne Anmeldung lesbar**.
 
     Teilen ist die Kernhandlung der App, aber wer einen weitergereichten Link
@@ -1711,7 +1729,7 @@ def gespraeche_liste(limit: int = Query(30, ge=0, le=100),
                      offset: int = Query(0, ge=0),
                      q: str | None = Query(None, max_length=120),
                      user: dict = Depends(require_active),
-                     nwz: Store = Depends(get_store)) -> dict:
+                     nwz: Store = Depends(get_store)) -> GespraecheListe:
     """Einwilligungs-Stand + eine Seite der gespeicherten Gespräche.
     `einstellung` ist null, solange die Erstnutzungs-Frage (6a①) nie
     beantwortet wurde.
@@ -1735,7 +1753,7 @@ def gespraeche_liste(limit: int = Query(30, ge=0, le=100),
 @router.post("/gespraeche/einstellung")
 def gespraeche_einstellung(body: GespraechEinstellungBody,
                            user: dict = Depends(require_active),
-                           nwz: Store = Depends(get_store)) -> dict:
+                           nwz: Store = Depends(get_store)) -> GespraechEinstellung:
     """6a②: Schalter setzen. Löscht nichts — das entscheidet der Dialog
     über DELETE /gespraeche getrennt."""
     nwz.set_qa_speichern(user["id"], body.an)
@@ -1744,7 +1762,7 @@ def gespraeche_einstellung(body: GespraechEinstellungBody,
 
 @router.get("/gespraeche/{gespraech_id}")
 def gespraech_detail(gespraech_id: int, user: dict = Depends(require_active),
-                     nwz: Store = Depends(get_store)) -> dict:
+                     nwz: Store = Depends(get_store)) -> GespraechDetail:
     g = nwz.qa_gespraech(gespraech_id, user["id"])
     if not g:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
@@ -1763,7 +1781,7 @@ class GespraechUmbenennenBody(BaseModel):
 @router.patch("/gespraeche/{gespraech_id}")
 def gespraech_umbenennen(gespraech_id: int, body: GespraechUmbenennenBody,
                          user: dict = Depends(require_active),
-                         nwz: Store = Depends(get_store)) -> dict:
+                         nwz: Store = Depends(get_store)) -> Ok:
     """Design 9a②: Umbenennen aus dem Gespräche-Sheet (Wisch nach links)."""
     if not nwz.qa_gespraech_umbenennen(gespraech_id, user["id"], body.titel):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
@@ -1772,7 +1790,7 @@ def gespraech_umbenennen(gespraech_id: int, body: GespraechUmbenennenBody,
 
 @router.delete("/gespraeche/{gespraech_id}")
 def gespraech_loeschen(gespraech_id: int, user: dict = Depends(require_active),
-                       nwz: Store = Depends(get_store)) -> dict:
+                       nwz: Store = Depends(get_store)) -> Ok:
     if not nwz.qa_gespraech_loeschen(gespraech_id, user["id"]):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
     return {"ok": True}
@@ -1780,7 +1798,7 @@ def gespraech_loeschen(gespraech_id: int, user: dict = Depends(require_active),
 
 @router.delete("/gespraeche")
 def gespraeche_alle_loeschen(user: dict = Depends(require_active),
-                             nwz: Store = Depends(get_store)) -> dict:
+                             nwz: Store = Depends(get_store)) -> GespraecheGeloescht:
     return {"geloescht": nwz.qa_gespraeche_loeschen(user["id"])}
 
 
@@ -1797,7 +1815,7 @@ def qa_feedback(
     request: Request,
     user: dict | None = Depends(optional_user),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> Ok:
     """Daumen hoch/runter zu einer KI-Antwort (5a/I-03) — der einzige
     Qualitätsmesser außerhalb der Eval-Gold-Fälle. Anonym erlaubt (die
     KI-Frage selbst ist es auch); die Feldlängen begrenzt das Schema, das
@@ -1822,7 +1840,7 @@ def partei_meinungen_endpoint(
     request: Request,
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> ParteiMeinungen:
     """Baustein „Das sagen die Parteien" (Task 30): Wird vom Frontend NACH der
     gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Sammelt
     aus ZWEI Kanälen — fraktions-bewusste Ähnlichkeitssuche (Cross-Encoder-
@@ -2033,7 +2051,7 @@ def qa_share_anlegen(
     request: Request,
     user: dict = Depends(require_active),
     nwz: Store = Depends(get_store),
-) -> dict:
+) -> QaShareToken:
     """Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
     Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
     eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick."""
@@ -2053,7 +2071,7 @@ def qa_share_anlegen(
 
 
 @router.get("/qa-share/{token}")
-def qa_share_lesen(token: str, nwz: Store = Depends(get_store)) -> dict:
+def qa_share_lesen(token: str, nwz: Store = Depends(get_store)) -> QaShare:
     """Öffentliche Snapshot-Ansicht — bewusst OHNE Login (der Link soll auch
     Menschen ohne Konto erreichen); enthält nie Konto-Daten."""
     if len(token) > 64:
@@ -2106,7 +2124,7 @@ def _deep_frei(nwz: Store, user: dict) -> int | None:
 
 @router.post("/deep-research", status_code=status.HTTP_201_CREATED)
 def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_active),
-                        nwz: Store = Depends(get_store)) -> dict:
+                        nwz: Store = Depends(get_store)) -> RechercheGestartet:
     """Recherche-Job starten. Kontingent: 5/Tag je KONTO aus der DB (nicht
     IP — übersteht Neustarts, und Abbruch/Fehler kosten laut Design nichts,
     was ein Fenster-Zähler nicht abbilden kann). Admins können das Limit je
@@ -2134,7 +2152,7 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
 
 @router.get("/deep-research/aktuell")
 def deep_research_aktuell(user: dict = Depends(require_active),
-                          nwz: Store = Depends(get_store)) -> dict:
+                          nwz: Store = Depends(get_store)) -> RechercheAktuell:
     """Der jüngste Job des Kontos + Rest-Kontingent — damit der Client nach
     Navigation/App-Neustart einen laufenden Job oder ungesehenen Bericht
     wiederfindet, ohne sich die ID gemerkt zu haben."""
@@ -2144,7 +2162,7 @@ def deep_research_aktuell(user: dict = Depends(require_active),
 
 @router.get("/deep-research/{job_id}")
 def deep_research_snapshot(job_id: str, user: dict = Depends(require_active),
-                           nwz: Store = Depends(get_store)) -> dict:
+                           nwz: Store = Depends(get_store)) -> RechercheSnapshot:
     """Persistierter Stand des Jobs (Bericht + Quellen bei fertig/teilbericht)."""
     if len(job_id) > 64:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
@@ -2186,7 +2204,7 @@ def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
 
 @router.post("/deep-research/{job_id}/stop")
 def deep_research_stop(job_id: str, user: dict = Depends(require_active),
-                       nwz: Store = Depends(get_store)) -> dict:
+                       nwz: Store = Depends(get_store)) -> RechercheGestoppt:
     """Abbrechen (Design 8c⑥): stoppt vor dem nächsten Such-/LLM-Schritt.
     Fertige Facetten bleiben als Material — die Antwort sagt, ob sich ein
     Teilbericht lohnt. Kostet kein Kontingent."""
@@ -2205,7 +2223,7 @@ def deep_research_stop(job_id: str, user: dict = Depends(require_active),
 
 @router.post("/deep-research/{job_id}/teilbericht")
 def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
-                              nwz: Store = Depends(get_store)) -> dict:
+                              nwz: Store = Depends(get_store)) -> Ok:
     """Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht
     schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent."""
     row = nwz.deep_job_get(job_id, user["id"])
@@ -2228,14 +2246,14 @@ def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
 
 @router.post("/deep-research/{job_id}/gesehen")
 def deep_research_gesehen(job_id: str, user: dict = Depends(require_active),
-                          nwz: Store = Depends(get_store)) -> dict:
+                          nwz: Store = Depends(get_store)) -> Ok:
     """Client hat den fertigen Bericht gerendert — nicht erneut einblenden."""
     nwz.deep_job_gesehen(job_id, user["id"])
     return {"ok": True}
 
 
 @router.get("/qa-beispiele")
-def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> dict:
+def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaBeispiele:
     """Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
     die jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus
     „Was hat der <Ausschuss> am <Datum> beschlossen?"."""
@@ -2280,7 +2298,7 @@ def list_follows(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     nwz: Store = Depends(get_store),
-) -> dict:
+) -> VorlagenFolgen:
     """Verfolgte Vorgänge mit ihrem aktuellen Stand — die Beratungsfolge liegt
     in der anderen Datenbank, deshalb hier je Follow eine Abfrage (die Zahl
     ist nutzergemacht und klein)."""
@@ -2306,7 +2324,7 @@ def follow_vorlage(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     nwz: Store = Depends(get_store),
-) -> dict:
+) -> VorlageGefolgt:
     v = store.get_vorlage(kvonr)
     if not v:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Vorlage nicht gefunden.")
@@ -2324,13 +2342,13 @@ def unfollow_vorlage(
     kvonr: int,
     user: dict = Depends(require_active),
     nwz: Store = Depends(get_store),
-) -> dict:
+) -> VorlageEntfolgt:
     nwz.unfollow_vorlage(user["id"], kvonr)
     return {"kvonr": kvonr, "following": False}
 
 
 @router.get("/analysis")
-def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> AnalyseDaten:
     """Party behaviour: topic heatmap, success rates, contention, alliances —
     plus Erfolgsquoten der eingereichten Fraktions-Anträge (aus den Anlagen)."""
     data = store.party_analysis()
@@ -2340,7 +2358,7 @@ def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depend
 
 
 @router.get("/finance")
-def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Finanzen:
     """Largest € decisions + recognised volume per policy field (excl. accounting reports)."""
     by_field = store.money_by_field()
     return {
@@ -2351,7 +2369,7 @@ def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends
 
 
 @router.get("/trends")
-def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> TrendDaten:
     """Council activity over time: decisions + € volume per quarter by field, emerging tags."""
     data = store.activity_trends()
     data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["fields"]}
@@ -2359,7 +2377,7 @@ def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(
 
 
 @router.get("/field-recaps")
-def field_recaps(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+def field_recaps(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> ThemenfeldRueckblicke:
     """Auto-generated plain-language recaps per policy field ("Was bewegte den Rat im Bereich X?")."""
     recaps = store.get_field_recaps()
     for r in recaps:
@@ -2369,20 +2387,20 @@ def field_recaps(_user: dict = Depends(require_active), store: CouncilStore = De
 
 @router.get("/entities")
 def entities_list(kind: str = "", _user: dict = Depends(require_active),
-                  store: CouncilStore = Depends(get_council_store)) -> dict:
+                  store: CouncilStore = Depends(get_council_store)) -> Entitaeten:
     """Directory of named entities (projects/places/organizations), most-referenced first."""
     return {"entities": store.list_entities(limit=400, kind=kind)}
 
 
 @router.get("/entities-map")
 def entities_map(_user: dict = Depends(require_active),
-                 store: CouncilStore = Depends(get_council_store)) -> dict:
+                 store: CouncilStore = Depends(get_council_store)) -> EntitaetenKarte:
     """Geocodierte Themen und belastbare Beschlussorte für die Stadtkarte."""
     return {"entities": store.city_map_points()}
 
 
 @router.get("/public-stats")
-def public_stats(store: CouncilStore = Depends(get_council_store)) -> dict:
+def public_stats(store: CouncilStore = Depends(get_council_store)) -> OeffentlicheZahlen:
     """Aggregate headline counts for the public landing page — no auth, no content."""
     return store.public_stats()
 
@@ -2396,7 +2414,7 @@ _PERSONEN_LEXIKON_CACHE: dict = {"stand": 0.0, "daten": None}
 
 @router.get("/personen-lexikon")
 def personen_lexikon(response: Response,
-                     store: CouncilStore = Depends(get_council_store)) -> dict:
+                     store: CouncilStore = Depends(get_council_store)) -> PersonenLexikon:
     import time as _time
     if _PERSONEN_LEXIKON_CACHE["daten"] is None or \
             _time.time() - _PERSONEN_LEXIKON_CACHE["stand"] > 6 * 3600:
@@ -2439,7 +2457,7 @@ def _kuerzen(text: str, grenze: int) -> str:
 
 
 @router.get("/preview/{kind}/{key:path}")
-def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store)) -> dict:
+def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store)) -> Vorschau:
     """Titel + Kurzfassung für die Link-Vorschau — **ohne Anmeldung**.
 
     Teilen ist die Kernhandlung der App, aber bislang zeigte jeder geteilte Link
@@ -2533,7 +2551,7 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
 
 
 @router.get("/entity/{slug}")
-def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> dict:
+def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> EntitaetsDetail:
     """An entity ('Themen-') page: all its decisions plus money/parties/field aggregates.
 
     Ohne Anmeldung lesbar — es ist eine der geteilten Detailseiten, und alles
@@ -2552,13 +2570,13 @@ def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> dict:
 
 @router.get("/members")
 def members(_user: dict = Depends(require_active),
-            store: CouncilStore = Depends(get_council_store)) -> dict:
+            store: CouncilStore = Depends(get_council_store)) -> Ratsmitglieder:
     """Directory of council members (from attendance): party, sessions, committees."""
     return {"members": store.list_members()}
 
 
 @router.get("/person/{slug}")
-def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> dict:
+def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> PersonenDetail:
     """Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem
     Amt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem
     Mandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.
@@ -2585,7 +2603,7 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> dict:
 def person_wortbeitraege(slug: str, gremium: str | None = None,
                          offset: int = Query(default=0, ge=0),
                          limit: int = Query(default=20, ge=1, le=100),
-                         store: CouncilStore = Depends(get_council_store)) -> dict:
+                         store: CouncilStore = Depends(get_council_store)) -> Wortbeitraege:
     """Wortbeiträge einer Person, seitenweise und nach Gremium filterbar.
 
     Öffentlich wie die Personen-Seite selbst — es ist derselbe Bestand, nur
@@ -2602,7 +2620,7 @@ _EMPTY_GOAL = {"voran": 0, "bremst": 0, "neutral": 0, "total": 0}
 
 
 @router.get("/goals")
-def goals(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> dict:
+def goals(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Ziele:
     """City goals with how many decisions advance / hinder / are neutral toward them."""
     summary = store.goal_summary()
     out = [{"key": key, "label": g["label"], "description": g["description"],
@@ -2612,7 +2630,7 @@ def goals(_user: dict = Depends(require_active), store: CouncilStore = Depends(g
 
 @router.get("/goal/{key}")
 def goal_detail(key: str, _user: dict = Depends(require_active),
-                store: CouncilStore = Depends(get_council_store)) -> dict:
+                store: CouncilStore = Depends(get_council_store)) -> ZielDetail:
     g = GOALS.get(key)
     if not g:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ziel nicht gefunden.")
@@ -3498,7 +3516,7 @@ VERGLEICH_BELEG_KVONR = 17170
 def haushalt_vergleich(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltVergleich:
     """Was sich zwischen Städten vergleichen lässt — und der Beleg, warum das
     meiste sich **nicht** vergleichen lässt.
 
@@ -3581,7 +3599,7 @@ def haushalt_vergleich(
 def haushalt_gebaut(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltGebaut:
     """Was die Stadt wirklich investiert hat — Tabellen 1107/1107-1 des
     Statistischen Jahrbuchs.
 
@@ -3677,7 +3695,7 @@ def haushalt_gebaut(
 def haushalt_bilanz(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltBilanz:
     """Die Bilanz der Stadt — Abschnitt 2.1 der Jahresabschlüsse.
 
     Die Gegenseite zu ``/haushalt/schulden``: nicht was die Stadt schuldet,
@@ -3728,7 +3746,7 @@ def haushalt_bilanz(
 def haushalt_schulden(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> HaushaltSchulden:
     """Der Schuldenstand der Stadt seit 1995 — Tabelle 1108 des Statistischen
     Jahrbuchs.
 
