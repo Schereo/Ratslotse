@@ -30,16 +30,12 @@ os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 # `antworten.py` einen sprechenden Namen, aber (noch) keine Felder.
 OFFEN = {
     ("get", "/api/council/places"),
-    ("get", "/api/council/sitzungspause"),
-    ("get", "/api/council/heute"),
     ("get", "/api/council/wochenvorschau"),
     ("get", "/api/council/haushalt"),
     ("get", "/api/council/session/{ksinr}"),
     ("get", "/api/council/decision/{decision_id}"),
     ("get", "/api/council/qa-share/{token}"),
     ("get", "/api/council/deep-research/{job_id}"),
-    ("get", "/api/council/analysis"),
-    ("get", "/api/council/trends"),
     ("get", "/api/council/public-stats"),
     ("get", "/api/council/entity/{slug}"),
     ("get", "/api/council/person/{slug}"),

@@ -66,6 +66,9 @@ class Sitzungszeile(TypedDict):
     session_time: NotRequired[str | None]
     location: NotRequired[str | None]
     fetched_at: NotRequired[str | None]
+    # Vom Sitzungs-Endpunkt angereichert: die TOPs dieser Sitzung, die zu
+    # einem Thema des Kontos passen.
+    my_topic_items: NotRequired[list[dict[str, Any]]]
 
 
 class Beschlusszeile(TypedDict):
@@ -736,29 +739,100 @@ class AdminOrtsKandidaten(TypedDict):
 # Nutzlasten, die der Handler nicht selbst zusammensetzt, sondern aus dem
 # Store durchreicht: benannt, damit im Schema steht, worum es geht, aber offen.
 OrtsKatalog = dict[str, Any]
-Sitzungspause = dict[str, Any]
-HeuteBriefing = dict[str, Any]
+class Sitzungspause(TypedDict):
+    """Ob gerade Ratspause ist — immer dieselben fünf Felder
+    (``council/sitzungspause.py``)."""
+    active: bool
+    label: str | None
+    until: str | None
+    note: str | None
+    next_session_date: str | None
+
+
+class HeuteSitzung(TypedDict):
+    state: Literal["heute"]
+    committee: str
+    session_time: str
+    tops: list[str]
+    rest: int
+    n_sessions_today: int
+
+
+class HeuteNaechste(TypedDict):
+    state: Literal["naechste"]
+    committee: str
+    session_date: str
+    session_time: str
+
+
+class HeutePause(TypedDict):
+    state: Literal["pause"]
+    label: str | None
+    until: str | None
+
+
+# Drei Zustände, unterscheidbar an `state` — als echte Union statt einer Form
+# mit lauter NotRequired, damit beide Clients erst nach der Prüfung auf die
+# jeweiligen Felder kommen.
+HeuteBriefing = HeuteSitzung | HeuteNaechste | HeutePause
 WochenvorschauIntern = dict[str, Any]
 HaushaltUebersicht = dict[str, Any]
 SitzungsDetail = dict[str, Any]
 BeschlussDetail = dict[str, Any]
 QaShare = dict[str, Any]
 RechercheSnapshot = dict[str, Any]
-AnalyseDaten = dict[str, Any]
-TrendDaten = dict[str, Any]
+class AnalyseAbdeckung(TypedDict):
+    with_factions: int
+    total: int
+
+
+class AnalyseDaten(TypedDict):
+    """``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind
+    verschachtelte Auswertungen und bleiben offen."""
+    coverage: AnalyseAbdeckung
+    topic_matrix: dict[str, Any]
+    success_rates: Any
+    contention: Any
+    alliances: Any
+    # legt der Router dazu
+    field_labels: dict[str, str]
+    antrag_stats: Any
+
+
+class TrendDaten(TypedDict):
+    """``CouncilStore.activity_trends`` — Hülle beschrieben, Reihen offen."""
+    quarters: list[str]
+    fields: list[str]
+    by_field: dict[str, Any]
+    money: list[float]
+    money_drivers: list[Any]
+    emerging: Any
 OeffentlicheZahlen = dict[str, Any]
 EntitaetsDetail = dict[str, Any]
 PersonenDetail = dict[str, Any]
 Wortbeitraege = dict[str, Any]
 
 
+class GremiumDetail(TypedDict):
+    name: str
+    next_date: str | None
+    next_time: str | None
+    decisions_year: int
+
+
 class Gremien(TypedDict):
-    committees: Any
-    details: Any
+    committees: list[str]
+    details: list[GremiumDetail]
+
+
+class Themenfeld(TypedDict):
+    key: str
+    label: str
+    count: int
 
 
 class Themenfelder(TypedDict):
-    fields: Any
+    fields: list[Themenfeld]
 
 
 class ParteienFilter(TypedDict):
@@ -779,8 +853,8 @@ class OrtsDetail(TypedDict):
 
 class SitzungsListe(TypedDict):
     count: int
-    sessions: Any
-    total: Any
+    sessions: list[Sitzungszeile]
+    total: int
 
 
 class DieseWocheOhne(TypedDict):
@@ -900,8 +974,8 @@ class HaushaltInvestitionsprogramm(TypedDict):
 
 
 class HaushaltDatenstand(TypedDict):
-    heute: Any
-    schichten: Any
+    heute: str
+    schichten: list[dict[str, Any]]
 
 
 class HaushaltDokumente(TypedDict):
@@ -934,22 +1008,23 @@ class ParteiMeinungen(TypedDict):
 
 
 class QaShareToken(TypedDict):
-    token: Any
+    token: str
 
 
 class RechercheGestartet(TypedDict):
-    frei: Any
-    job_id: Any
+    # None heißt: unbegrenzt, der Client zeigt dann keinen Zähler.
+    frei: int | None
+    job_id: str
 
 
 class RechercheAktuell(TypedDict):
-    frei: Any
-    job: Any
+    frei: int | None
+    job: dict[str, Any] | None
 
 
 class RechercheGestoppt(TypedDict):
-    facetten_fertig: Any
-    facetten_gesamt: Any
+    facetten_fertig: int
+    facetten_gesamt: int
     teilbericht_moeglich: bool
 
 
@@ -963,12 +1038,12 @@ class VorlagenFolgen(TypedDict):
 
 class VorlageGefolgt(TypedDict):
     following: bool
-    kvonr: Any
+    kvonr: int
 
 
 class VorlageEntfolgt(TypedDict):
     following: bool
-    kvonr: Any
+    kvonr: int
 
 
 class Finanzen(TypedDict):
@@ -994,25 +1069,41 @@ class PersonenLexikon(TypedDict):
 
 
 class Vorschau(TypedDict):
-    """5 Rückgabe-Zweige — was nicht in jedem steht, ist NotRequired."""
-    description: Any
-    title: Any
+    """Titel und Beschreibung für die Vorschau-Karte beim Teilen — fünf
+    Zweige (Beschluss, Person, Ort, Entität, Sitzung), alle mit denselben
+    zwei Feldern."""
+    description: str
+    title: str
 
 
 class Ratsmitglieder(TypedDict):
     members: Any
 
 
+class ZielKennzahlen(TypedDict):
+    """Wie viele Beschlüsse das Ziel voranbringen, bremsen oder nicht berühren."""
+    voran: int
+    bremst: int
+    neutral: int
+    total: int
+
+
+class Ziel(ZielKennzahlen):
+    key: str
+    label: str
+    description: str
+
+
 class Ziele(TypedDict):
-    goals: Any
+    goals: list[Ziel]
 
 
 class ZielDetail(TypedDict):
-    decisions: Any
-    description: Any
-    key: Any
-    label: Any
-    summary: Any
+    key: str
+    label: str
+    description: str
+    summary: ZielKennzahlen
+    decisions: list[dict[str, Any]]
 
 
 class HaushaltVergleich(TypedDict):
