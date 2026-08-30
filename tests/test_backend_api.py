@@ -3217,26 +3217,26 @@ def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
     store = Store(NWZ_DB)
     try:
         # Nie gefragt (NULL) → kein Save, obwohl der Client das Feld kennt.
-        done = frag({"question": "Was ist mit Radwegen?", "gespraech_id": None})
-        assert done["gespraech_id"] is None
+        done = frag({"question": "Was ist mit Radwegen?", "conversation_id": None})
+        assert done["conversation_id"] is None
         assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
 
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         store.set_qa_speichern(uid, True)
         # Alte App: Feld fehlt im Body → weiterhin kein Save (Befund B5).
         done = frag({"question": "Was ist mit Radwegen?"})
-        assert done.get("gespraech_id") is None
+        assert done.get("conversation_id") is None
         assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
 
         # Einwilligung + Feld → Gespräch samt Turn, id im done-Event.
-        done = frag({"question": "Was ist mit Radwegen?", "gespraech_id": None})
-        gid = done["gespraech_id"]
+        done = frag({"question": "Was ist mit Radwegen?", "conversation_id": None})
+        gid = done["conversation_id"]
         assert gid is not None
         turns = store.qa_gespraech(gid, uid)["turns"]
         assert len(turns) == 1 and turns[0]["answer"].startswith("Wird ausgebaut")
         # Fremde/erfundene id → still kein Save, tote id wird nicht bestätigt.
-        done = frag({"question": "Und weiter?", "gespraech_id": 999999})
-        assert done["gespraech_id"] is None
+        done = frag({"question": "Und weiter?", "conversation_id": 999999})
+        assert done["conversation_id"] is None
     finally:
         store.close()
 
@@ -3902,7 +3902,7 @@ def test_ask_einfacher_erklaeren_nimmt_den_eigenen_prompt(client, monkeypatch):
               "beauftragte den ZVBN mit der Teilfortschreibung [6].")
     with client.stream("POST", "/api/council/ask", json={
             "question": "Erkläre das bitte einfacher, ohne Fachbegriffe.",
-            "verlauf": [{"frage": "Was wurde am 1. Juni beschlossen?", "antwort": "…"}],
+            "history": [{"question": "Was wurde am 1. Juni beschlossen?", "answer": "…"}],
             "vorherige_antwort": vorher}) as r:
         body = "".join(r.iter_text())
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
@@ -4942,13 +4942,13 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
 
     with client.stream("POST", "/api/council/ask", json={
         "question": "Und was kostet das?",
-        "verlauf": [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
-                     "antwort": "Resolution ans WSA."}],
+        "history": [{"question": "Wie ist der Stand bei der Cäcilienbrücke?",
+                     "answer": "Resolution ans WSA."}],
     }) as r:
         assert r.status_code == 200
         "".join(r.iter_text())
-    assert gesehen["verlauf"] == [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
-                                   "antwort": "Resolution ans WSA."}]
+    assert gesehen["verlauf"] == [{"question": "Wie ist der Stand bei der Cäcilienbrücke?",
+                                   "answer": "Resolution ans WSA."}]
 
 
 # ---- „Gründliche Recherche" (RG-10, Task 34) ----
@@ -5013,7 +5013,7 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     _register(client)
     _deep_mocks(monkeypatch)
 
-    r = client.post("/api/council/deep-research", json={"frage": "Wie ist der Stand beim Stadionneubau?"})
+    r = client.post("/api/council/deep-research", json={"question": "Wie ist der Stand beim Stadionneubau?"})
     assert r.status_code == 201
     job_id = r.json()["job_id"]
     assert r.json()["frei"] == 4  # 1 von 5 läuft
@@ -5095,10 +5095,10 @@ def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
     monkeypatch.setattr(qa_mod, "deep_zerlege", _zerlege)
     monkeypatch.setattr(qa_mod, "deep_bericht_stream", _bericht)
 
-    verlauf = [{"frage": "Was sind in den letzten Jahren die wichtigsten Themen in Krusenbusch gewesen?",
-                "antwort": "Wohnquartier, Bahnquerung, Naturschutzgebiet."}]
+    verlauf = [{"question": "Was sind in den letzten Jahren die wichtigsten Themen in Krusenbusch gewesen?",
+                "answer": "Wohnquartier, Bahnquerung, Naturschutzgebiet."}]
     r = client.post("/api/council/deep-research",
-                    json={"frage": "Nochmal bitte ausführlich", "verlauf": verlauf})
+                    json={"question": "Nochmal bitte ausführlich", "history": verlauf})
     assert r.status_code == 201
     job_id = r.json()["job_id"]
     events = _deep_events(client, job_id)  # blockiert bis der Job fertig ist
@@ -5120,7 +5120,7 @@ def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
     # Erste Frage eines Gesprächs (kein Verlauf): keine Auflösung, kein Call.
     gesehen.clear()
     zerlegt.clear()
-    r2 = client.post("/api/council/deep-research", json={"frage": "Wie ist der Stand beim Stadionneubau?"})
+    r2 = client.post("/api/council/deep-research", json={"question": "Wie ist der Stand beim Stadionneubau?"})
     _deep_events(client, r2.json()["job_id"])
     assert gesehen == {}
     assert zerlegt == ["Wie ist der Stand beim Stadionneubau?"]
@@ -5138,7 +5138,7 @@ def test_deep_research_meldet_sich_am_ende(client, monkeypatch):
                         lambda job, nwz_db, status: gemeldet.append(status))
 
     job_id = client.post("/api/council/deep-research",
-                         json={"frage": "Wie ist der Stand beim Stadionneubau?"}).json()["job_id"]
+                         json={"question": "Wie ist der Stand beim Stadionneubau?"}).json()["job_id"]
     _deep_events(client, job_id)  # blockiert bis der Job fertig ist
     assert gemeldet == ["fertig"]
 
@@ -5160,11 +5160,11 @@ def test_deep_research_kontingent_und_ein_job_regel(client, monkeypatch):
                         lambda job, a, b: deepresearch._registry.__setitem__(job.id, job))
     deepresearch._registry.clear()
 
-    r = client.post("/api/council/deep-research", json={"frage": "Stand beim Stadionneubau?"})
+    r = client.post("/api/council/deep-research", json={"question": "Stand beim Stadionneubau?"})
     assert r.status_code == 201
     # Zweiter Start, während einer läuft → 409.
     assert client.post("/api/council/deep-research",
-                       json={"frage": "Noch eine Frage dazu"}).status_code == 409
+                       json={"question": "Noch eine Frage dazu"}).status_code == 409
 
     store = Store(NWZ_DB)
     try:
@@ -5177,12 +5177,12 @@ def test_deep_research_kontingent_und_ein_job_regel(client, monkeypatch):
             store.deep_job_update(store.deep_job_anlegen(uid, f"Frage {i}"), "fertig")
         assert store.deep_jobs_heute(uid) == 4
         assert client.post("/api/council/deep-research",
-                           json={"frage": "Die fünfte heute"}).status_code == 201
+                           json={"question": "Die fünfte heute"}).status_code == 201
         # Jetzt 5/5 → 429; ein Fehler-Job ändert daran nichts (zählt nicht).
         store.deep_job_update(store.deep_job_anlegen(uid, "kaputt"), "fehler")
         deepresearch._registry.clear()
         assert client.post("/api/council/deep-research",
-                           json={"frage": "Die sechste heute"}).status_code == 429
+                           json={"question": "Die sechste heute"}).status_code == 429
     finally:
         store.close()
         deepresearch._registry.clear()
@@ -5273,11 +5273,11 @@ def test_admin_limits_steuern_recherche_kontingent(client, monkeypatch):
         for i in range(2):
             store.deep_job_update(store.deep_job_anlegen(uid, f"F{i}"), "fertig")
         assert client.post("/api/council/deep-research",
-                           json={"frage": "Noch eine Recherche?"}).status_code == 429
+                           json={"question": "Noch eine Recherche?"}).status_code == 429
         # Unbegrenzt (0): derselbe Stand startet wieder, frei wird null.
         client.put(f"/api/admin/users/{uid}/limits",
                    json={"deep_limit": 0, "limits_frei": False})
-        r = client.post("/api/council/deep-research", json={"frage": "Und jetzt unbegrenzt?"})
+        r = client.post("/api/council/deep-research", json={"question": "Und jetzt unbegrenzt?"})
         assert r.status_code == 201 and r.json()["frei"] is None
         deepresearch._registry.clear()
         akt = client.get("/api/council/deep-research/aktuell").json()
@@ -5354,10 +5354,10 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         store.set_qa_speichern(uid, True)
         with client.stream("POST", "/api/council/ask",
-                           json={"question": "Was ist mit dem Stadion?", "gespraech_id": None}) as r:
+                           json={"question": "Was ist mit dem Stadion?", "conversation_id": None}) as r:
             events = [json.loads(line[6:]) for line in "".join(r.iter_text()).splitlines()
                       if line.startswith("data: ")]
-        gid = next(e for e in events if e["type"] == "done")["gespraech_id"]
+        gid = next(e for e in events if e["type"] == "done")["conversation_id"]
         turns = store.qa_gespraech(gid, uid)["turns"]
         quellen = json.loads(turns[0]["sources"]) if isinstance(turns[0]["sources"], str) else turns[0]["sources"]
         assert quellen["presse"][0]["titel"] == "Stadt informiert zum Stadion"

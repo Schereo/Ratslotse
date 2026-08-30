@@ -458,7 +458,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
                     "Versuche es mit einer konkreteren Frage — oder als schnelle Frage.")
             _emit(job, {"type": "token", "text": text})
             _emit(job, {"type": "done", "cited": [], "gelesen": gelesen,
-                        "zeitraum": zeitraum, "gespraech_id": None})
+                        "zeitraum": zeitraum, "conversation_id": None})
             _db_update(nwz_db, job.id, "fertig", bericht=text,
                        quellen_json=json.dumps(_quellen_payload(m, []), ensure_ascii=False))
             _finish(job)
@@ -565,7 +565,7 @@ def _schreiben_und_abschliessen(job: DeepJob, nwz_db: str, council_db: str,
         finally:
             nwz.close()
         _emit(job, {"type": "done", "cited": cited, "gelesen": m.get("gelesen", 0),
-                    "zeitraum": m.get("zeitraum", ""), "gespraech_id": gespraech_id,
+                    "zeitraum": m.get("zeitraum", ""), "conversation_id": gespraech_id,
                     "teilbericht": teilbericht})
         _finish(job)
         melden(job, nwz_db, status)

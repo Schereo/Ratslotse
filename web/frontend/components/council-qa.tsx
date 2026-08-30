@@ -734,7 +734,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const baueVerlauf = () => turns
     .filter((t) => t.antwort && !t.fehler)
     .slice(-4)
-    .map((t) => ({ frage: t.frage.slice(0, 300), antwort: t.antwort.slice(0, 600) }));
+    .map((t) => ({ question: t.frage.slice(0, 300), answer: t.antwort.slice(0, 600) }));
 
   const ask = async (question: string) => {
     const text = question.trim();
@@ -775,7 +775,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ question: text, verlauf, gespraech_id: gespraechId,
+        body: JSON.stringify({ question: text, history: verlauf, conversation_id: gespraechId,
                                vorherige_antwort: vorherigeAntwort }),
         signal: ctrl.signal,
       });
@@ -831,8 +831,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             // null heißt: Server konnte/durfte nicht (mehr) in dieses Gespräch
             // speichern (z. B. auf anderem Gerät gelöscht) — die tote id nicht
             // weiter mitschicken, die nächste Frage eröffnet frisch (F3).
-            if (msg.gespraech_id != null) setGespraechId(msg.gespraech_id as number);
-            else if ("gespraech_id" in msg) setGespraechId(null);
+            if (msg.conversation_id != null) setGespraechId(msg.conversation_id as number);
+            else if ("conversation_id" in msg) setGespraechId(null);
           }
           else if (msg.type === "error") throw new Error((msg.message as string) ?? "Frage fehlgeschlagen.");
         }
@@ -998,7 +998,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         patchTurn(turnKey, { deepStatus: "fertig", cited: (msg.cited as number[]) ?? [],
           gelesen: (msg.gelesen as number) ?? undefined,
           zeitraum: (msg.zeitraum as string) ?? undefined });
-        if (msg.gespraech_id != null) setGespraechId(msg.gespraech_id as number);
+        if (msg.conversation_id != null) setGespraechId(msg.conversation_id as number);
         deepGesehenMelden(jobId);
         return true;
       } else if (msg.type === "gestoppt") {
@@ -1077,8 +1077,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       const res = await fetch(apiUrl("/council/deep-research"), {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ frage: text, gespraech_id: gespraechId,
-                               verlauf: baueVerlauf() }),
+        body: JSON.stringify({ question: text, conversation_id: gespraechId,
+                               history: baueVerlauf() }),
       });
       if (res.status === 429) {
         setTurns((ts) => ts.filter((t) => t.key !== key));

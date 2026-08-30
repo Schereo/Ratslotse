@@ -974,57 +974,57 @@ public struct AskRound: Codable, Sendable {
 
 public struct AskRequest: Codable, Sendable {
     public let question: String
-    public let verlauf: [AskRound]
-    public let gespraechID: Int?
+    public let history: [AskRound]
+    public let conversationID: Int?
 
     enum CodingKeys: String, CodingKey {
-        case question, verlauf
-        case gespraechID = "gespraech_id"
+        case question, history
+        case conversationID = "conversation_id"
     }
 
-    public init(question: String, verlauf: [AskRound] = [], gespraechID: Int? = nil) {
+    public init(question: String, history: [AskRound] = [], conversationID: Int? = nil) {
         self.question = question
-        self.verlauf = verlauf
-        self.gespraechID = gespraechID
+        self.history = history
+        self.conversationID = conversationID
     }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         question = try values.decode(String.self, forKey: .question)
-        verlauf = try values.decodeIfPresent([AskRound].self, forKey: .verlauf) ?? []
-        gespraechID = try values.decodeIfPresent(Int.self, forKey: .gespraechID)
+        history = try values.decodeIfPresent([AskRound].self, forKey: .history) ?? []
+        conversationID = try values.decodeIfPresent(Int.self, forKey: .conversationID)
     }
 
     public func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(question, forKey: .question)
-        try values.encode(verlauf, forKey: .verlauf)
+        try values.encode(history, forKey: .history)
         // Das Backend unterscheidet bewusst zwischen einem alten Client, der
-        // `gespraech_id` gar nicht kennt, und einem neuen Gespräch (`null`).
+        // `conversation_id` gar nicht kennt, und einem neuen Gespräch (`null`).
         // `encodeIfPresent` würde nil unterschlagen und damit das Speichern
         // des allerersten Turns unbemerkt deaktivieren.
-        try values.encode(gespraechID, forKey: .gespraechID)
+        try values.encode(conversationID, forKey: .conversationID)
     }
 }
 
 public struct DeepResearchRequest: Encodable, Sendable {
-    public let frage: String
-    public let gespraechID: Int?
+    public let question: String
+    public let conversationID: Int?
 
     enum CodingKeys: String, CodingKey {
-        case frage
-        case gespraechID = "gespraech_id"
+        case question
+        case conversationID = "conversation_id"
     }
 
-    public init(frage: String, gespraechID: Int?) {
-        self.frage = frage
-        self.gespraechID = gespraechID
+    public init(question: String, conversationID: Int?) {
+        self.question = question
+        self.conversationID = conversationID
     }
 
     public func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
-        try values.encode(frage, forKey: .frage)
+        try values.encode(question, forKey: .question)
         // `null` bedeutet auch bei der Recherche: ein neues Gespräch beginnen.
-        try values.encode(gespraechID, forKey: .gespraechID)
+        try values.encode(conversationID, forKey: .conversationID)
     }
 }

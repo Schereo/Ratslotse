@@ -490,8 +490,8 @@ struct QuestionsView: View {
                     "/api/council/ask",
                     body: AskRequest(
                         question: question,
-                        verlauf: history,
-                        gespraechID: model.activeConversationID
+                        history: history,
+                        conversationID: model.activeConversationID
                     )
                 )
                 for try await event in model.sse.events(for: request) {
@@ -562,8 +562,8 @@ struct QuestionsView: View {
                 let response: ResearchStartResponse = try await model.api.send(
                     "/api/council/deep-research",
                     body: DeepResearchRequest(
-                        frage: question,
-                        gespraechID: model.activeConversationID
+                        question: question,
+                        conversationID: model.activeConversationID
                     )
                 )
                 guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }

@@ -236,15 +236,15 @@ import Testing
     let data = try JSONEncoder().encode(AskRequest(question: "Was wurde beschlossen?"))
     let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
-    #expect(object.keys.contains("gespraech_id"))
-    #expect(object["gespraech_id"] is NSNull)
+    #expect(object.keys.contains("conversation_id"))
+    #expect(object["conversation_id"] is NSNull)
 }
 
 @Test func newDeepResearchRequestEncodesAnExplicitNullConversationID() throws {
     let data = try JSONEncoder().encode(
-        DeepResearchRequest(frage: "Wie entwickelt sich der Radverkehr?", gespraechID: nil)
+        DeepResearchRequest(question: "Wie entwickelt sich der Radverkehr?", conversationID: nil)
     )
     let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
-    #expect(object["gespraech_id"] is NSNull)
+    #expect(object["conversation_id"] is NSNull)
 }

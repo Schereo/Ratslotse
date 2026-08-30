@@ -3997,12 +3997,12 @@ export interface components {
         };
         /** AskBody */
         AskBody: {
-            /** Gespraech Id */
-            gespraech_id?: number | null;
+            /** Conversation Id */
+            conversation_id?: number | null;
+            /** History */
+            history?: components["schemas"]["AskRunde"][];
             /** Question */
             question: string;
-            /** Verlauf */
-            verlauf?: components["schemas"]["AskRunde"][];
             /**
              * Vorherige Antwort
              * @default
@@ -4015,12 +4015,12 @@ export interface components {
          */
         AskRunde: {
             /**
-             * Antwort
+             * Answer
              * @default
              */
-            antwort: string;
-            /** Frage */
-            frage: string;
+            answer: string;
+            /** Question */
+            question: string;
         };
         /** BadgeEvent */
         BadgeEvent: {
@@ -4152,12 +4152,12 @@ export interface components {
         };
         /** DeepResearchBody */
         DeepResearchBody: {
-            /** Frage */
-            frage: string;
-            /** Gespraech Id */
-            gespraech_id?: number | null;
-            /** Verlauf */
-            verlauf?: components["schemas"]["AskRunde"][];
+            /** Conversation Id */
+            conversation_id?: number | null;
+            /** History */
+            history?: components["schemas"]["AskRunde"][];
+            /** Question */
+            question: string;
         };
         /**
          * DeleteAccountRequest
@@ -10898,4 +10898,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 9ad3e837a9c7b16f7cba167b31579f6c9448e4821ff94a160a9df2dd61cd9626
+// vertrag-sha256: 739b33dc64065e53cdfc4f2c38fedc341c3e08ecae2248edf5dd6315dacb1639
