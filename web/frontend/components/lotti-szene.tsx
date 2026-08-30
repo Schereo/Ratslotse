@@ -162,37 +162,32 @@ export default function LottiSzene({ className }: { className?: string }) {
     lottiAnziehen(THREE, lotti, jahreszeit);
     scene.add(lotti);
 
+    /* Seit dem Studio-Stand vom 28.08. sind die Gelenke echte Knochen
+       (THREE.Bone) mit unveränderten Namen; Rumpf und Flügel sind gehäutet
+       (SkinnedMesh) und folgen den Knochen von selbst. */
     const schulterR = lotti.getObjectByName("schulter-rechts")!;
     const schulterL = lotti.getObjectByName("schulter-links")!;
-    /* Der Drehpunkt liegt in Ruhe innerhalb der Mützenkrone. Beim Heben wandert er
-       nach außen, vorn und oben mit — wie eine echte Schulter. Das löst
-       Durchdringung und „nach vorn" zugleich. */
-    const SCHULTER0 = schulterR.position.clone();
-    const SCHULTERWINK = new THREE.Vector3(-0.080, 0.128, 0.050);
-    /* Statt Winkel zu raten: Zielpunkt der Hand festlegen — vor dem Gesicht, vor
-       Mützenschirm und Schnabel — und die Schulterdrehung daraus ableiten.
-       Gewinkt wird auf Brusthöhe, nicht neben dem Kopf: Der Mützenschirm reicht
-       bis Radius 0.107, der Körper nur bis 0.077. */
-    const HANDZIEL = new THREE.Vector3(-0.092, 0.148, 0.150);
-    /* Ruhelage des rechten Flügels: Spitze minus Schulter, aus dem MODELL
-       abgelesen — die Schultern sitzen seit dem Studio-Stand vom 20.08.
-       1,2 cm tiefer, die alte Achse (-0.0142, -0.0907, 0) zeigte am neuen
-       Arm vorbei und die Wink-Hand hätte danebengegriffen. */
-    const FLUEGELACHSE = new THREE.Vector3(-0.0118, -0.0941, -0.0155).normalize();
-    const Q_RUHE = new THREE.Quaternion();
-    const ZACHSE = new THREE.Vector3(0, 0, 1);
-    const ARMACHSE = HANDZIEL.clone().sub(SCHULTERWINK).normalize();
-    const Q_ZEIGEN = new THREE.Quaternion().setFromUnitVectors(FLUEGELACHSE, ARMACHSE);
-    const N_IST = new THREE.Vector3(1, 0, 0).applyQuaternion(Q_ZEIGEN);
-    const N_SOLL = ZACHSE.clone().addScaledVector(ARMACHSE, -ZACHSE.dot(ARMACHSE)).normalize();
-    const ROLLE = Math.atan2(N_IST.clone().cross(N_SOLL).dot(ARMACHSE), N_IST.dot(N_SOLL));
-    const Q_WINK = new THREE.Quaternion().setFromAxisAngle(ARMACHSE, ROLLE).multiply(Q_ZEIGEN);
-    const Q_HEBEN = new THREE.Quaternion(), Q_SCHWUNG = new THREE.Quaternion();
+    const ellbogenR = lotti.getObjectByName("ellbogen-rechts")!;
+    const handgelenkR = lotti.getObjectByName("handgelenk-rechts")!;
+    /* Gewinkt wird, wie das Studio es für DIESE Figur eingemessen hat
+       (studio/regungen.mjs, Regung „winkt", Tims Abnahme 29.08.): Der Oberarm
+       geht auf 112° und BLEIBT dort — 150° läge quer überm Gesicht, und was
+       nicht verdeckt wäre, verschwände hinter der Mützenkrempe. Der Ellbogen
+       stellt den Unterarm ein (46°), und DAS WINKEN KOMMT AUS DEM HANDGELENK:
+       Vorher pendelte der ganze Unterarm, das sah aus, als rühre sie in einem
+       Topf. Werte der linken Seite; für die rechte kippen z und y das
+       Vorzeichen (Spiegelung wie in GRENZEN des Modells). */
+    const GRAD = Math.PI / 180;
+    const WINK = { schulter: 112 * GRAD, y: 6 * GRAD, ellbogen: 46 * GRAD, hand: 35 * GRAD };
 
 
     const muetze = lotti.getObjectByName("muetze")!;
     const schwanz = lotti.getObjectByName("schwanz-gelenk")!;
-    const koerper = lotti.getObjectByName("koerper")!;
+    /* Fürs Atmen: Der Rumpf ist jetzt ein SkinnedMesh, und dessen eigene
+       `scale` ist wirkungslos — die Haut hört nur auf Knochen. Skaliert
+       wird deshalb der Bauch-Knochen; alles darüber (Brust, Hals, Kopf)
+       weitet sich die 1,4 % mit, genau wie vorher das ganze Ei. */
+    const bauch = lotti.getObjectByName("bauch")!;
     const augen = ["links", "rechts"].map((s) => lotti.getObjectByName("auge-gelenk-" + s)!);
     const MUETZE0 = { x: muetze.rotation.x, z: muetze.rotation.z };
     const AUGE0 = augen.map((a) => a.position.clone());
@@ -250,12 +245,15 @@ export default function LottiSzene({ className }: { className?: string }) {
     const CAMZIEL = new THREE.Vector3();
     const ECKEN: THREE.Vector3[] = [];
     {
-      const merkQ = schulterR.quaternion.clone(), merkP = schulterR.position.clone();
-      schulterR.quaternion.copy(Q_WINK);
-      schulterR.position.copy(SCHULTERWINK);
+      const merkZ = schulterR.rotation.z;
+      schulterR.rotation.z = -WINK.schulter;
       scene.updateMatrixWorld(true);
-      const box = new THREE.Box3().setFromObject(lotti).union(new THREE.Box3().setFromObject(kuekenGruppe));
-      schulterR.quaternion.copy(merkQ); schulterR.position.copy(merkP);
+      /* `precise`, sonst misst Box3 bei SkinnedMesh die RUHELAGE statt der
+         Pose — der gehobene Wink-Flügel bliebe unberücksichtigt und würde
+         oben aus dem Bild ragen (Falle aus studio/skelett.js). */
+      const box = new THREE.Box3().setFromObject(lotti, true)
+        .union(new THREE.Box3().setFromObject(kuekenGruppe, true));
+      schulterR.rotation.z = merkZ;
       box.getCenter(CAMZIEL);
       for (const x of [box.min.x, box.max.x])
         for (const y of [box.min.y, box.max.y])
@@ -386,7 +384,7 @@ export default function LottiSzene({ className }: { className?: string }) {
       lotti.rotation.set(nickIst - winkAus * 0.030, gierIst + winkAus * 0.055, neigeIst - winkAus * 0.050);
       lotti.position.y = (ruhe ? 0 : atem * 0.0042 + Math.sin(uhr * 0.9) * 0.0016) + winkAus * 0.0045;
       /* 05 Atmen: der Rumpf weitet sich, statt bloß zu schweben */
-      koerper.scale.set(1 + atem * 0.014, 1 - atem * 0.007, 1 + atem * 0.014);
+      bauch.scale.set(1 + atem * 0.014, 1 - atem * 0.007, 1 + atem * 0.014);
 
       muetzeGier = daempf(muetzeGier, gierIst, FOLGERATE.muetze, dt);
       muetzeNeige = daempf(muetzeNeige, neigeIst, FOLGERATE.muetzeNeige, dt);
@@ -412,10 +410,10 @@ export default function LottiSzene({ className }: { className?: string }) {
         a.scale.y = 1 - Math.max(0, lid) * 0.92;
       });
 
-      schulterR.position.lerpVectors(SCHULTER0, SCHULTERWINK, winkAus);
-      Q_HEBEN.slerpQuaternions(Q_RUHE, Q_WINK, heben);                 // <0 holt aus, >1 schwingt über
-      Q_SCHWUNG.setFromAxisAngle(ZACHSE, schwung * winkAus * 0.30);    // Hand pendelt vor dem Gesicht
-      schulterR.quaternion.copy(Q_SCHWUNG).multiply(Q_HEBEN);
+      schulterR.rotation.z = -WINK.schulter * heben;   // heben <0 holt aus, >1 schwingt über
+      schulterR.rotation.y = -WINK.y * winkAus;
+      ellbogenR.rotation.z = WINK.ellbogen * winkAus;  // Unterarm einstellen …
+      handgelenkR.rotation.z = -schwung * WINK.hand * winkAus; // … die Hand wippt
       schulterL.rotation.z = ruhe ? 0 : Math.sin(uhr * 1.9) * 0.045 + atem * 0.02;
 
       /* 07 Küken: hüpfen mit Stauchung, schauen versetzt mit, flattern gelegentlich */
@@ -484,8 +482,9 @@ export default function LottiSzene({ className }: { className?: string }) {
     const aufRuhe = (ev: MediaQueryListEvent) => {
       ruhe = ev.matches;
       if (ruhe) {
-        schulterR.quaternion.identity();
-        schulterR.position.copy(SCHULTER0);
+        schulterR.rotation.set(0, 0, 0);
+        ellbogenR.rotation.set(0, 0, 0);
+        handgelenkR.rotation.set(0, 0, 0);
         kueken.forEach((k) => { k.obj.position.y = 0; k.obj.scale.setScalar(k.s); });
       }
     };
@@ -522,6 +521,8 @@ export default function LottiSzene({ className }: { className?: string }) {
         const mat = m.material;
         if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
         else if (mat) mat.dispose();
+        // Die Skelette der gehäuteten Teile halten eine Bone-Textur auf der GPU.
+        if ((o as THREE.SkinnedMesh).isSkinnedMesh) (o as THREE.SkinnedMesh).skeleton.dispose();
       });
       seitenTexturen.forEach((t) => t.dispose());
       renderer.dispose();

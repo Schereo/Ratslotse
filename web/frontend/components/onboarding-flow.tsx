@@ -9,7 +9,6 @@ import { isNativeApp } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 import { Button, Input } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
-import { useMascotTheme } from "@/components/seasonal-mascot";
 import { committeeExplains, committeeRank, shortCommittee } from "@/lib/committees";
 import { useAuth } from "@/lib/auth";
 import { TopicSheet, type Described } from "@/components/topic-sheet";
@@ -78,7 +77,6 @@ function isUsable(user: { status?: string; email_verified?: boolean; role?: stri
 export function OnboardingFlow() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const theme = useMascotTheme();
   const [step, setStep] = useState<Step | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -200,10 +198,10 @@ export function OnboardingFlow() {
         </div>
       )}
 
-      {step === 0 && <Welcome theme={theme} onNext={() => go(1)} />}
-      {step === 1 && <CommitteeStep theme={theme} onNext={() => go(2)} />}
-      {step === 2 && <TopicStep theme={theme} onNext={() => go(3)} />}
-      {step === 3 && <PushStep theme={theme} onDone={() => go("done")} />}
+      {step === 0 && <Welcome onNext={() => go(1)} />}
+      {step === 1 && <CommitteeStep onNext={() => go(2)} />}
+      {step === 2 && <TopicStep onNext={() => go(3)} />}
+      {step === 3 && <PushStep onDone={() => go("done")} />}
     </div>
   );
 }
@@ -215,7 +213,7 @@ export function OnboardingFlow() {
  *  ein paar Sternen, Lotti winkt aus zwei auslaufenden Ringen heraus, dann
  *  staffeln sich die drei Versprechen ein. Er bleibt dunkel, egal welches Theme
  *  eingestellt ist — er ist ein Moment, keine Seite. */
-function Welcome({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>; onNext: () => void }) {
+function Welcome({ onNext }: { onNext: () => void }) {
   const points: { icon: typeof Sparkles; tint: string; title: string; sub: string }[] = [
     { icon: Sparkles, tint: "bg-[hsla(19,92%,55%,0.2)] text-[hsl(19_92%_62%)]",
       title: "Frag den Rat", sub: "Antworten mit Quellen" },
@@ -242,7 +240,7 @@ function Welcome({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>; 
       <div className="wl-lotti relative flex items-center justify-center">
         <span aria-hidden className="wl-ring absolute h-[150px] w-[150px] rounded-full border-2 border-[hsl(19_92%_55%)]" />
         <span aria-hidden className="wl-ring wl-ring-2 absolute h-[150px] w-[150px] rounded-full border-2 border-[hsl(202_90%_60%)]" />
-        <Mascot pose="wave" theme={theme} bob decorative className="h-32 w-32" />
+        <Mascot pose="wave" decorative className="h-32 w-32" />
       </div>
 
       <p className="wl-title mt-6 font-mono text-[11px] uppercase tracking-[0.18em] text-[hsl(19_92%_58%)]">
@@ -276,7 +274,7 @@ function Welcome({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>; 
 
 /* ------------------------------------------------- Schritt 1: Ausschüsse --- */
 
-function CommitteeStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>; onNext: () => void }) {
+function CommitteeStep({ onNext }: { onNext: () => void }) {
   const qc = useQueryClient();
   const committees = useQuery({
     queryKey: ["committees"],
@@ -304,7 +302,7 @@ function CommitteeStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTh
     <StepShell
       title="Welche Gremien interessieren dich?"
       lead="Du bekommst eine Mitteilung, sobald eine Tagesordnung erscheint. Jederzeit änderbar."
-      pose="point" theme={theme}
+      pose="point"
       footer={
         <Button className="w-full" onClick={onNext}>
           {active.length > 0 ? `${active.length} abonniert · Weiter` : "Weiter"}
@@ -349,7 +347,7 @@ type TopicRow = {
   decision_count?: number; decision_count_capped?: boolean; matched?: boolean;
 };
 
-function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>; onNext: () => void }) {
+function TopicStep({ onNext }: { onNext: () => void }) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -436,7 +434,7 @@ function TopicStep({ theme, onNext }: { theme: ReturnType<typeof useMascotTheme>
     <StepShell
       title="Worüber willst du Bescheid wissen?"
       lead="Lege Themen an — Lotti meldet sich, sobald der Rat dazu entscheidet."
-      pose="search" theme={theme}
+      pose="search"
       footer={<Button className="w-full" onClick={onNext}>Weiter</Button>}
     >
       <form onSubmit={(e) => { e.preventDefault(); void add(name); }} className="flex gap-2">
@@ -568,7 +566,7 @@ function TopicCard({ topic, matches, onEdit, onRemove }: {
 
 /* ------------------------------------------------------- Schritt 3: Push --- */
 
-function PushStep({ theme, onDone }: { theme: ReturnType<typeof useMascotTheme>; onDone: () => void }) {
+function PushStep({ onDone }: { onDone: () => void }) {
   const { user, refresh } = useAuth();
   const [busy, setBusy] = useState(false);
   const allow = async () => {
@@ -595,7 +593,7 @@ function PushStep({ theme, onDone }: { theme: ReturnType<typeof useMascotTheme>;
     <StepShell
       title="Soll Lotti sich melden?"
       lead="Nur wenn der Rat zu deinen Themen entscheidet oder eine Tagesordnung erscheint. Kein Spam — versprochen."
-      pose="wave" theme={theme}
+      pose="wave"
       footer={
         <div className="flex flex-col gap-2">
           <Button className="w-full" onClick={allow} disabled={busy}>
@@ -608,7 +606,7 @@ function PushStep({ theme, onDone }: { theme: ReturnType<typeof useMascotTheme>;
       }
     >
       <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-3">
-        <Mascot pose="point" theme={theme} decorative className="h-10 w-10 shrink-0" />
+        <Mascot pose="point" decorative className="h-10 w-10 shrink-0" />
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Neu zu deinen Themen</p>
           <p className="mt-0.5 text-sm text-foreground">Cäcilienbrücke: Rat fordert schnelleren Neubau</p>
@@ -620,11 +618,10 @@ function PushStep({ theme, onDone }: { theme: ReturnType<typeof useMascotTheme>;
 
 /* ------------------------------------------------------------- Gerüst ---- */
 
-function StepShell({ title, lead, pose, theme, children, footer }: {
+function StepShell({ title, lead, pose, children, footer }: {
   title: string;
   lead: string;
   pose: MascotPose;
-  theme: ReturnType<typeof useMascotTheme>;
   children: React.ReactNode;
   footer: React.ReactNode;
 }) {
@@ -634,7 +631,7 @@ function StepShell({ title, lead, pose, theme, children, footer }: {
         {/* Lotti steht neben der Frage, nicht darüber: Sie fragt, man antwortet
             — das trägt den Ton des ganzen Flows. */}
         <div className="flex items-center gap-3">
-          <Mascot pose={pose} theme={theme} decorative className="h-11 w-11 shrink-0" />
+          <Mascot pose={pose} decorative className="h-11 w-11 shrink-0" />
           <h1 className="font-display text-xl font-extrabold leading-tight tracking-tight text-foreground">{title}</h1>
         </div>
         <p className="mt-2.5 text-[13.5px] leading-relaxed text-muted-foreground">{lead}</p>

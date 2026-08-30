@@ -143,3 +143,27 @@ def test_eingecheckter_vertrag_passt_zum_code():
     r = subprocess.run([sys.executable, "scripts/openapi_schnitt.py", "--pruefen"],
                        cwd=wurzel, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_generierte_frontend_typen_passen_zum_vertrag():
+    """``web/frontend/lib/api-schema.ts`` wird aus ``api/openapi.json``
+    erzeugt — veraltet also, sobald sich das BACKEND ändert.
+
+    Warum der Test hier und nicht im Frontend-Workflow: Der läuft nur bei
+    Frontend-Änderungen und sähe genau diese Drift nie. Geprüft wird die
+    SHA-256-Zeile, die der Generator ans Dateiende schreibt; damit braucht
+    diese Prüfung kein Node.
+    """
+    import hashlib
+
+    wurzel = Path(__file__).resolve().parents[1]
+    vertrag = wurzel / "api" / "openapi.json"
+    typen = wurzel / "web" / "frontend" / "lib" / "api-schema.ts"
+    assert typen.exists(), "lib/api-schema.ts fehlt — `npm run api:typen` im Frontend laufen lassen."
+
+    summe = hashlib.sha256(vertrag.read_bytes()).hexdigest()
+    letzte = typen.read_text().rstrip().splitlines()[-1]
+    assert letzte == f"// vertrag-sha256: {summe}", (
+        "Die generierten Frontend-Typen passen nicht zu api/openapi.json.\n"
+        "  cd web/frontend && npm run api:typen   # neu erzeugen und mitcommitten"
+    )

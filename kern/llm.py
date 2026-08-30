@@ -46,11 +46,23 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 # free unless the reasoning really grows.
 DEEPSEEK_MIN_MAX_TOKENS = int(os.environ.get("NWZ_DEEPSEEK_MIN_MAX_TOKENS", "24000"))
 
+# Die GPT-5.6-Familie sind ebenfalls Reasoning-Modelle: Auch hier zählen die
+# Denk-Tokens gegen max_tokens. Gemessen an den Tragweite-Batches (27.08.26)
+# waren es nur 180–430 Tokens, aber der Wert ist nicht garantiert — derselbe
+# großzügige Floor wie bei DeepSeek kostet nichts und verhindert die stille
+# finish_reason='length'-Leere.
+GPT56_MIN_MAX_TOKENS = int(os.environ.get("NWZ_GPT56_MIN_MAX_TOKENS", "16000"))
+
 MODEL_PARAMS: dict[str, dict[str, Any]] = {
     "openai/gpt-4o": {},
     "openai/gpt-4o-mini": {},
     "deepseek/deepseek-v4-pro": {"min_max_tokens": DEEPSEEK_MIN_MAX_TOKENS},
     "deepseek/deepseek-v4-flash": {"min_max_tokens": DEEPSEEK_MIN_MAX_TOKENS},
+    **{m: {"min_max_tokens": GPT56_MIN_MAX_TOKENS} for m in (
+        "openai/gpt-5.6-luna", "openai/gpt-5.6-luna-pro",
+        "openai/gpt-5.6-sol", "openai/gpt-5.6-sol-pro",
+        "openai/gpt-5.6-terra", "openai/gpt-5.6-terra-pro",
+    )},
 }
 
 

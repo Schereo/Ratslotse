@@ -11,7 +11,8 @@
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
     "test:e2e": "playwright test",
-    "test:e2e:report": "playwright show-report playwright-report"
+    "test:e2e:report": "playwright show-report playwright-report",
+    "api:typen": "node scripts/api-typen.mjs"
   },
   "dependencies": {
     "@capacitor-community/apple-sign-in": "7.1.0",
@@ -60,6 +61,7 @@
     "@types/react-dom": "18.3.0",
     "@types/three": "^0.185.1",
     "autoprefixer": "10.4.19",
+    "openapi-typescript": "^7.13.0",
     "postcss": "8.4.38",
     "tailwindcss": "3.4.19",
     "typescript": "5.4.5"

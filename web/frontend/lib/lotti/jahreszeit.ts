@@ -152,10 +152,17 @@ export function lottiAnziehen(THREE: TH, lotti: THREE_NS.Group, theme: MascotThe
       glas.rotateX(Math.PI / 2);
       glas.translate(v * 0.0332, 0.1478 - KD, 0.0790);
       teil(THREE, kopf, "brille-glas-" + (v === 1 ? "links" : "rechts"), glas, glasM);
-      const buegel = new THREE.CylinderGeometry(0.0024, 0.0024, 0.052, 10);
-      buegel.rotateX(Math.PI / 2);
-      buegel.rotateY(v * 0.18);
-      buegel.translate(v * 0.0560, 0.1490 - KD, 0.0520);
+      /* Der Bügel VERBINDET Glasrand und Schläfe — als Strecke zwischen den
+         beiden Punkten gebaut, nicht als frei gedrehter Stab: Das alte
+         `rotateY(±0.18)` kippte die Vorderkante nach AUSSEN, und der Stab
+         hing sichtbar neben dem Glas in der Luft (Tims Befund 30.08.). */
+      const vorn = new THREE.Vector3(v * 0.0508, 0.1482 - KD, 0.0782);
+      const hinten = new THREE.Vector3(v * 0.0618, 0.1500 - KD, 0.0090);
+      const buegel = new THREE.CylinderGeometry(0.0024, 0.0024, vorn.distanceTo(hinten), 10);
+      buegel.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0), hinten.clone().sub(vorn).normalize()));
+      const mitte = vorn.clone().add(hinten).multiplyScalar(0.5);
+      buegel.translate(mitte.x, mitte.y, mitte.z);
       teil(THREE, kopf, "brille-buegel-" + (v === 1 ? "links" : "rechts"), buegel, glasM);
     });
     const steg = new THREE.CylinderGeometry(0.0026, 0.0026, 0.0270, 10);

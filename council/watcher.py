@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
@@ -10,7 +11,10 @@ from .scraper import CouncilScraper, CouncilSession
 from .store import CouncilStore
 
 BASE_URL = "https://buergerinfo.oldenburg.de"
-MODEL = "openai/gpt-4o-mini"
+# Themen-Zuordnung ist Klassifikation mit kleinem JSON — hier zählt Präzision
+# bei Alltagssprache. Per Env tauschbar, seit 28.08.26 Standard: gpt-5.6-luna
+# (Nachfolger des zwei Jahre alten 4o-mini; Vergleich siehe council/impact.py).
+MODEL = os.environ.get("COUNCIL_WATCHER_MODEL", "openai/gpt-5.6-luna")
 
 
 # So viel Vorlagentext bekommt das Modell je TOP zu sehen. Der Anfang trägt

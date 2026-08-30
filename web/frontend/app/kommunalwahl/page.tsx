@@ -73,7 +73,7 @@ export default function KommunalwahlSeite() {
 
       {/* Hero */}
       <section className="flex flex-col items-center px-4 pt-7 text-center sm:px-6">
-        <Mascot pose="wave" bob className="h-20 w-20 sm:h-[108px] sm:w-[108px]" />
+        <Mascot pose="wave" className="h-20 w-20 sm:h-[108px] sm:w-[108px]" />
         <div className="mt-2.5">
           <CountdownBadge />
         </div>
@@ -186,7 +186,7 @@ export default function KommunalwahlSeite() {
                     ✕
                   </span>
                 </div>
-                <Mascot pose="celebrate" bob decorative className="hidden h-24 w-24 sm:block" />
+                <Mascot pose="celebrate" decorative className="hidden h-24 w-24 sm:block" />
               </div>
             </div>
           </section>
@@ -432,7 +432,7 @@ export default function KommunalwahlSeite() {
           {/* Register-Block */}
           <section className="mt-8">
             <div className="flex flex-col items-center gap-5 rounded-[20px] border border-border bg-card p-6 text-center sm:flex-row sm:p-7 sm:text-left">
-              <Mascot pose="celebrate" bob decorative className="h-[72px] w-[72px] flex-none sm:h-[92px] sm:w-[92px]" />
+              <Mascot pose="celebrate" decorative className="h-[72px] w-[72px] flex-none sm:h-[92px] sm:w-[92px]" />
               <div>
                 <h2 className="font-display text-[17px] font-bold tracking-tight sm:text-[21px]">
                   Das war der Wahl-Check. Ratslotse kann mehr.

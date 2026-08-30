@@ -1723,7 +1723,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 Mit Verlauf tritt Lotti zurück (56 px) — der Platz gehört dem
                 „Zuletzt gefragt"-Block; ohne Verlauf darf sie groß sein. */}
             <div className="flex flex-col items-center text-center">
-              <Mascot pose="wave" bob className={hatVerlauf ? "h-14 w-14" : "h-[88px] w-[88px]"} />
+              <Mascot pose="wave" className={hatVerlauf ? "h-14 w-14" : "h-[88px] w-[88px]"} />
               <h2 className={cn("font-bold tracking-tight", hatVerlauf ? "mt-2 text-xl" : "mt-3 text-[22px]")}>Frag den Rat</h2>
               <p className="mt-1 max-w-[36ch] text-[13px] leading-relaxed text-muted-foreground">
                 In normaler Sprache — die Antwort entsteht aus den echten
@@ -2248,7 +2248,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
       {/* Laufender Schritt, solange noch kein Text streamt (RG ②). */}
       {loading && !hatAntwort && !turn.fehler && (
         <div role="status" className="flex items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-          <Mascot pose="search" bob className="h-12 w-12 shrink-0" />
+          {/* `denkt` ist die gebackene Ladeanzeige — läuft, bis Text streamt. */}
+          <Mascot regung="denkt" className="h-12 w-12 shrink-0" />
           <div className="min-w-0">
             <span className="flex items-center gap-2 font-medium text-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />

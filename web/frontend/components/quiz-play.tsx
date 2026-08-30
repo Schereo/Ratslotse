@@ -64,11 +64,13 @@ export function LottiReaction({ outcome, seed, children }: {
   seed: number;
   children: React.ReactNode;
 }) {
-  const pose = outcome === "right" ? "celebrate" : outcome === "close" ? "wave" : "confused";
+  // Aus dem Regungs-Katalog: Beifall bei richtig, anerkennendes Nicken bei
+  // knapp, Kopfschütteln (nie Enttäuschung) bei daneben.
+  const regung = outcome === "right" ? "klatscht" : outcome === "close" ? "nickt" : "schuettelt-kopf";
   const pool = outcome === "right" ? LOTTI_RIGHT : outcome === "close" ? LOTTI_CLOSE : LOTTI_WRONG;
   return (
     <div className="flex items-center gap-2.5">
-      <Mascot decorative pose={pose} className="h-14 w-14 shrink-0" />
+      <Mascot decorative regung={regung} className="h-14 w-14 shrink-0" />
       <div className="min-w-0">
         <p className="text-sm font-medium text-foreground">{children}</p>
         <p className="text-xs text-muted-foreground">{lottiSays(pool, seed)}</p>
@@ -180,7 +182,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
     return (
       <Card className="relative mx-auto max-w-xl overflow-hidden p-8 text-center">
         {correct > 0 && <ConfettiBurst />}
-        <Mascot pose={pose} bob dance={quote >= 90} className="mx-auto h-24 w-24" />
+        <Mascot pose={pose} regung={quote >= 90 ? "klatscht" : undefined} regie="lebhaft" className={cn("mx-auto h-24 w-24", quote >= 90 && "lotti-dance")} />
         <h2 className="mt-3 text-2xl font-bold text-foreground">
           {correct} von {questions.length} richtig
         </h2>

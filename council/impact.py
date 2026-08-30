@@ -18,7 +18,16 @@ import re
 
 from kern import llm, prompts
 
-MODEL = os.environ.get("COUNCIL_IMPACT_MODEL", "deepseek/deepseek-v4-pro")
+# gpt-5.6-luna nach dem Vergleich vom 28.08.26 (55 echte Tagesordnungspunkte,
+# gegen deepseek-v4-pro, gpt-5.1 und gpt-5-mini): behält als einziges Modell
+# durchgängig Beträge, Hektar und Ortsnamen, trifft Rechtsinstrumente genauer
+# (Veränderungssperre ≠ „Bauverbot") — und kostet ein Viertel.
+MODEL = os.environ.get("COUNCIL_IMPACT_MODEL", "openai/gpt-5.6-luna")
+
+#: Für die Bewertung reicht kurzes Nachdenken: Mit dem Standard-Aufwand
+#: verbrannte Luna das Doppelte an Denk-Tokens für identische Ergebnisse.
+#: Aufrufer-Angabe schlägt diesen Default (siehe kern.llm MODEL_PARAMS).
+REASONING_KURZ = {"reasoning": {"effort": "low"}}
 BATCH_SIZE = 20
 MAX_EXCERPT_CHARS = 900
 
@@ -162,7 +171,36 @@ def _agenda_batch_text(items: list[dict]) -> str:
     return "\n\n".join(lines)
 
 
-def rate_agenda_batch(items: list[dict]) -> list[tuple[int, int, str]]:
+def _nachgefasst(rest_von, ausgefallen: list[dict], tiefe: int,
+                feature: str) -> list[tuple[int, int, str]]:
+    """Zweiter Anlauf für ausgefallene oder ausgelassene Punkte.
+
+    Zwei Fehlerarten, die vorher STILL Punkte kosteten (Luna-Test 28.08.26:
+    zweimal 55 Punkte angefragt, 20 bzw. 40 zurück — kein Log, nichts):
+
+    ① Der ganze Aufruf scheitert (Provider-Fehler jenseits der Retries in
+      ``kern.llm``). Vorher: ganze Tranche weg. Jetzt: halbieren und je
+      Hälfte neu — ein vergifteter Einzelpunkt kostet so höchstens sich
+      selbst, ein transienter Fehler meist gar nichts.
+    ② Der Aufruf gelingt, aber das Modell lässt Einträge aus. Vorher fiel
+      das niemandem auf. Jetzt werden die fehlenden IDs einzeln nachgefragt.
+
+    ``tiefe`` begrenzt die Rekursion; ab 2 wird aufgegeben UND GESAGT.
+    """
+    if not ausgefallen:
+        return []
+    if tiefe >= 2:
+        print(f"  ⚠️ {feature}: {len(ausgefallen)} Punkte auch im Nachfassen "
+              f"ohne Bewertung — nächster Lauf versucht es erneut")
+        return []
+    if len(ausgefallen) == 1:
+        return rest_von(ausgefallen, _tiefe=tiefe + 1)
+    mitte = len(ausgefallen) // 2
+    return (rest_von(ausgefallen[:mitte], _tiefe=tiefe + 1)
+            + rest_von(ausgefallen[mitte:], _tiefe=tiefe + 1))
+
+
+def rate_agenda_batch(items: list[dict], _tiefe: int = 0) -> list[tuple[int, int, str]]:
     """Bewertet Tagesordnungspunkte VOR der Sitzung → (id, score, warum).
 
     Eigener Prompt statt des Beschluss-Prompts (``top_wichtigkeit_*``): Vor der
@@ -188,11 +226,14 @@ def rate_agenda_batch(items: list[dict]) -> list[tuple[int, int, str]]:
             ],
             max_tokens=2600,
             temperature=0.1,
+            extra_body=dict(REASONING_KURZ),
             _feature="impact_rating_agenda",
         )
         data = json.loads(resp.choices[0].message.content or "{}")
-    except Exception:  # noqa: BLE001 — nächster Lauf versucht es erneut
-        return []
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ⚠️ Tragweite-Batch ({len(items)} Punkte) fehlgeschlagen: "
+              f"{exc!r} — fasse in Hälften nach")
+        return _nachgefasst(rate_agenda_batch, items, _tiefe, "Tragweite (Tagesordnung)")
     out: list[tuple[int, int, str]] = []
     for r in data.get("ratings") or []:
         try:
@@ -208,10 +249,15 @@ def rate_agenda_batch(items: list[dict]) -> list[tuple[int, int, str]]:
                 warum = ("Formsache: Die Straße wird nur amtlich gewidmet oder "
                          "eingezogen — für den Alltag ändert sich nichts.")
             out.append((iid, score, warum[:300]))
+    fehlend = valid_ids - {iid for iid, _s, _w in out}
+    if fehlend:
+        out += _nachgefasst(rate_agenda_batch,
+                            [it for it in items if it["id"] in fehlend],
+                            _tiefe, "Tragweite (Tagesordnung)")
     return out
 
 
-def rate_batch(decisions: list[dict]) -> list[tuple[int, int, str]]:
+def rate_batch(decisions: list[dict], _tiefe: int = 0) -> list[tuple[int, int, str]]:
     """Bewertet einen Batch → Liste (decision_id, impact 0–100, grund).
     Halluzinierte IDs und Out-of-range-Scores werden verworfen."""
     if not decisions:
@@ -230,11 +276,14 @@ def rate_batch(decisions: list[dict]) -> list[tuple[int, int, str]]:
             ],
             max_tokens=2200,
             temperature=0.1,
+            extra_body=dict(REASONING_KURZ),
             _feature="impact_rating",
         )
         data = json.loads(resp.choices[0].message.content or "{}")
-    except Exception:  # noqa: BLE001 — nächster Lauf versucht es erneut
-        return []
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ⚠️ Tragweite-Batch ({len(decisions)} Beschlüsse) fehlgeschlagen: "
+              f"{exc!r} — fasse in Hälften nach")
+        return _nachgefasst(rate_batch, decisions, _tiefe, "Tragweite (Beschlüsse)")
     out: list[tuple[int, int, str]] = []
     for r in data.get("ratings") or []:
         try:
@@ -250,4 +299,9 @@ def rate_batch(decisions: list[dict]) -> list[tuple[int, int, str]]:
                 grund = ("Formsache: Die Straße wird nur amtlich gewidmet oder "
                          "eingezogen — für den Alltag ändert sich nichts.")
             out.append((did, score, grund[:300]))
+    fehlend = valid_ids - {did for did, _s, _g in out}
+    if fehlend:
+        out += _nachgefasst(rate_batch,
+                            [d for d in decisions if d["id"] in fehlend],
+                            _tiefe, "Tragweite (Beschlüsse)")
     return out
