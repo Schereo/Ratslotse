@@ -47,7 +47,6 @@ OFFEN = {
     ("get", "/api/admin/llm-usage"),
     ("get", "/api/admin/users/{user_id}"),
     ("put", "/api/admin/place-candidates/{location_slug}"),
-    ("get", "/api/social/sitzungen/{tag}"),
 }
 
 # Kein JSON-Body: zwei SSE-Ströme und eine Bilddatei.
@@ -178,19 +177,15 @@ def test_nullable_felder_sind_swift_lesbar():
     ``GespraecheListe.einstellung``). ``scripts/openapi_schnitt.py`` zieht sie
     deshalb zusammen; dieser Test hält fest, dass das auch weiter passiert.
 
-    Ausgenommen bleibt, was sich nicht zusammenziehen LÄSST: ein ``$ref``
-    neben ``null``. Diese vier sind bekannt und in der App von Hand zu
-    ergänzen — wächst die Liste, ist das eine bewusste Entscheidung, kein
-    Versehen.
+    Auch ``$ref`` neben ``null`` fällt darunter — der Schnitt schreibt solche
+    Objekte aus, statt sie zu verweisen, weil der Generator sie sonst ebenfalls
+    weglässt (``Merkeintrag.session`` war genau dieser Fall).
     """
     import json
 
-    bekannt = {
-        "Abzeichen.progress",
-        "AbzeichenStand.next",
-        "QaSharePartei.kernaussage",
-        "QuizTagesrunde.done",
-    }
+    # Leer, seit der Schnitt auch `anyOf: [{$ref}, null]` ausschreibt. Wächst
+    # die Menge wieder, ist das eine bewusste Entscheidung — kein Versehen.
+    bekannt: set[str] = set()
     spec = json.loads((Path(__file__).resolve().parents[1] / "api" / "openapi.json").read_text())
     offen = set()
     for name, s in spec["components"]["schemas"].items():
@@ -211,3 +206,42 @@ def test_nullable_felder_sind_swift_lesbar():
         "Diese Einträge stehen in `bekannt`, sind aber nicht mehr offen — bitte "
         "streichen:\n  " + "\n  ".join(sorted(verschwunden))
     )
+
+
+def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
+    """``Beschlusszeile``/``Sitzungszeile`` zählen Spalten auf — das ist nur
+    sicher, solange die Aufzählung vollständig bleibt.
+
+    Ein TypedDict ENTFERNT, was es nicht kennt. Bekäme ``council_decisions``
+    eine neue Spalte, verschwände sie stillschweigend aus der API — kein
+    Fehler, nur fehlende Daten in Web und App. Dieser Test macht daraus einen
+    roten Lauf.
+    """
+    import tempfile
+    from typing import get_type_hints
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from app.antworten import Beschlusszeile, Sitzungszeile
+    from council.store import CouncilStore
+
+    with tempfile.TemporaryDirectory() as d:
+        store = CouncilStore(Path(d) / "council.sqlite")
+        try:
+            spalten = {
+                "council_decisions": {r[1] for r in store._conn.execute(
+                    "PRAGMA table_info(council_decisions)")},
+                "council_sessions": {r[1] for r in store._conn.execute(
+                    "PRAGMA table_info(council_sessions)")},
+            }
+        finally:
+            store.close()
+
+    for typ, tabelle in ((Beschlusszeile, "council_decisions"),
+                         (Sitzungszeile, "council_sessions")):
+        deklariert = set(get_type_hints(typ, include_extras=True))
+        fehlend = spalten[tabelle] - deklariert
+        assert not fehlend, (
+            f"{typ.__name__} kennt diese Spalten von {tabelle} nicht — sie fallen "
+            f"damit still aus der API:\n  " + "\n  ".join(sorted(fehlend)) +
+            "\nIn web/backend/app/antworten.py ergänzen (als NotRequired)."
+        )

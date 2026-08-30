@@ -3692,7 +3692,13 @@ export interface components {
             hint: string;
             /** Id */
             id: string;
-            progress: components["schemas"]["AbzeichenFortschritt"] | null;
+            /** AbzeichenFortschritt */
+            progress: {
+                /** Current */
+                current: number;
+                /** Target */
+                target: number;
+            } | null;
             /** Title */
             title: string;
         };
@@ -3730,7 +3736,15 @@ export interface components {
             earned_count: number;
             /** Newly Earned */
             newly_earned: components["schemas"]["AbzeichenKurz"][];
-            next: components["schemas"]["AbzeichenNaechstes"] | null;
+            /** AbzeichenNaechstes */
+            next: {
+                /** Hint */
+                hint: string;
+                /** Id */
+                id: string;
+                /** Title */
+                title: string;
+            } | null;
             /** Total */
             total: number;
         };
@@ -3980,9 +3994,92 @@ export interface components {
         /** BeschlussListe */
         BeschlussListe: {
             /** Decisions */
-            decisions: unknown;
+            decisions: components["schemas"]["Beschlusszeile"][];
             /** Total */
-            total: unknown;
+            total: number;
+        };
+        /**
+         * Beschlusszeile
+         * @description Ein Beschluss aus ``CouncilStore._decision_row``.
+         *
+         *     Die Felder sind die 27 Spalten von ``council_decisions`` plus das, was die
+         *     Abfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und
+         *     was der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche
+         *     Spalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre
+         *     hier ein 500, sobald ein Aufrufer schmaler selektiert.
+         *
+         *     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
+         *     ``parties`` rechnet der Store aus den Fraktionen aus.
+         */
+        Beschlusszeile: {
+            /** Abweichung */
+            abweichung?: string | null;
+            /** Amount Eur */
+            amount_eur?: number | null;
+            /** Beschluss */
+            beschluss?: string | null;
+            /** Committee */
+            committee?: string | null;
+            /** Enthaltungen */
+            enthaltungen?: number | null;
+            /** Factions */
+            factions?: string[];
+            /** Gegenstimmen */
+            gegenstimmen?: number | null;
+            /** Id */
+            id: number;
+            /** Impact */
+            impact?: number | null;
+            /** Impact Reason */
+            impact_reason?: string | null;
+            /** Importance */
+            importance?: number | null;
+            /** Interest */
+            interest?: number | null;
+            /** Interest Reason */
+            interest_reason?: string | null;
+            /** Item Number */
+            item_number?: string | null;
+            /** Kind */
+            kind?: string | null;
+            /** Ksinr */
+            ksinr?: number | null;
+            /** Kvonr */
+            kvonr?: number | null;
+            /** Location Matches */
+            location_matches?: unknown[];
+            /** N Beratungen */
+            n_beratungen?: number | null;
+            /** Outcome */
+            outcome?: string | null;
+            /** Parent Item */
+            parent_item?: string | null;
+            /** Parties */
+            parties?: string[];
+            /** Policy Field */
+            policy_field?: string | null;
+            /** Policy Tags */
+            policy_tags?: string[];
+            /** Position */
+            position?: number | null;
+            /** Protocol Url */
+            protocol_url?: string | null;
+            /** Raw Result */
+            raw_result?: string | null;
+            /** Session Date */
+            session_date?: string | null;
+            /** Simple Summary */
+            simple_summary?: string | null;
+            /** Subvote Summary */
+            subvote_summary?: unknown;
+            /** Summary */
+            summary?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Vorlage Nr */
+            vorlage_nr?: string | null;
+            /** Vote */
+            vote?: string | null;
         };
         /** Body_medien_ablegen_api_social_medien__tag__post */
         Body_medien_ablegen_api_social_medien__tag__post: {
@@ -4606,9 +4703,88 @@ export interface components {
             } | null;
             /** Created At */
             created_at: string;
-            /** Decision */
+            /**
+             * Beschlusszeile
+             * @description Ein Beschluss aus ``CouncilStore._decision_row``.
+             *
+             *     Die Felder sind die 27 Spalten von ``council_decisions`` plus das, was die
+             *     Abfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und
+             *     was der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche
+             *     Spalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre
+             *     hier ein 500, sobald ein Aufrufer schmaler selektiert.
+             *
+             *     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
+             *     ``parties`` rechnet der Store aus den Fraktionen aus.
+             */
             decision: {
-                [key: string]: unknown;
+                /** Abweichung */
+                abweichung?: string | null;
+                /** Amount Eur */
+                amount_eur?: number | null;
+                /** Beschluss */
+                beschluss?: string | null;
+                /** Committee */
+                committee?: string | null;
+                /** Enthaltungen */
+                enthaltungen?: number | null;
+                /** Factions */
+                factions?: string[];
+                /** Gegenstimmen */
+                gegenstimmen?: number | null;
+                /** Id */
+                id: number;
+                /** Impact */
+                impact?: number | null;
+                /** Impact Reason */
+                impact_reason?: string | null;
+                /** Importance */
+                importance?: number | null;
+                /** Interest */
+                interest?: number | null;
+                /** Interest Reason */
+                interest_reason?: string | null;
+                /** Item Number */
+                item_number?: string | null;
+                /** Kind */
+                kind?: string | null;
+                /** Ksinr */
+                ksinr?: number | null;
+                /** Kvonr */
+                kvonr?: number | null;
+                /** Location Matches */
+                location_matches?: unknown[];
+                /** N Beratungen */
+                n_beratungen?: number | null;
+                /** Outcome */
+                outcome?: string | null;
+                /** Parent Item */
+                parent_item?: string | null;
+                /** Parties */
+                parties?: string[];
+                /** Policy Field */
+                policy_field?: string | null;
+                /** Policy Tags */
+                policy_tags?: string[];
+                /** Position */
+                position?: number | null;
+                /** Protocol Url */
+                protocol_url?: string | null;
+                /** Raw Result */
+                raw_result?: string | null;
+                /** Session Date */
+                session_date?: string | null;
+                /** Simple Summary */
+                simple_summary?: string | null;
+                /** Subvote Summary */
+                subvote_summary?: unknown;
+                /** Summary */
+                summary?: string | null;
+                /** Title */
+                title?: string | null;
+                /** Vorlage Nr */
+                vorlage_nr?: string | null;
+                /** Vote */
+                vote?: string | null;
             } | null;
             /** Id */
             id: number;
@@ -4627,9 +4803,26 @@ export interface components {
             notify_result: boolean;
             /** Result Notified At */
             result_notified_at: string | null;
-            /** Session */
+            /**
+             * Sitzungszeile
+             * @description Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs
+             *     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
+             *     (``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier
+             *     nichts still abgeschnitten wird.
+             */
             session: {
-                [key: string]: unknown;
+                /** Committee */
+                committee: string;
+                /** Fetched At */
+                fetched_at?: string | null;
+                /** Ksinr */
+                ksinr: number;
+                /** Location */
+                location?: string | null;
+                /** Session Date */
+                session_date: string;
+                /** Session Time */
+                session_time?: string | null;
             } | null;
             /**
              * State
@@ -4907,7 +5100,18 @@ export interface components {
             haltung?: string | null;
             /** Hinweis */
             hinweis?: string | null;
-            kernaussage?: components["schemas"]["QaShareKernaussage"] | null;
+            /** QaShareKernaussage */
+            kernaussage?: {
+                /** Datum */
+                datum?: string | null;
+                /** Sprecher */
+                sprecher?: string | null;
+                /**
+                 * Text
+                 * @default
+                 */
+                text: string;
+            } | null;
             /** Partei */
             partei: string;
             /**
@@ -5247,7 +5451,19 @@ export interface components {
         QuizTagesrunde: {
             /** Day */
             day: string;
-            done: components["schemas"]["QuizTagesergebnis"] | null;
+            /** QuizTagesergebnis */
+            done: {
+                /** Completed At */
+                completed_at: string | null;
+                /** Correct */
+                correct: number;
+                /** Day */
+                day: string;
+                /** Points */
+                points: number;
+                /** Total */
+                total: number;
+            } | null;
             /** Questions */
             questions: components["schemas"]["QuizFrage"][];
         };
@@ -5333,6 +5549,27 @@ export interface components {
             sessions: unknown;
             /** Total */
             total: unknown;
+        };
+        /**
+         * Sitzungszeile
+         * @description Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs
+         *     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
+         *     (``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier
+         *     nichts still abgeschnitten wird.
+         */
+        Sitzungszeile: {
+            /** Committee */
+            committee: string;
+            /** Fetched At */
+            fetched_at?: string | null;
+            /** Ksinr */
+            ksinr: number;
+            /** Location */
+            location?: string | null;
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time?: string | null;
         };
         /**
          * SocialBeschluss
@@ -5777,9 +6014,7 @@ export interface components {
             /** Inhaltlich Je Sitzung */
             inhaltlich_je_sitzung?: unknown;
             /** Kommende */
-            kommende: {
-                [key: string]: unknown;
-            }[];
+            kommende: components["schemas"]["Sitzungszeile"][];
             /** Punkte */
             punkte: {
                 [key: string]: unknown;
@@ -5787,9 +6022,7 @@ export interface components {
             /** Relevant Je Sitzung */
             relevant_je_sitzung?: unknown;
             /** Sitzungen */
-            sitzungen: {
-                [key: string]: unknown;
-            }[];
+            sitzungen: components["schemas"]["Sitzungszeile"][];
             /** Treffer Gesamt */
             treffer_gesamt?: unknown;
             /** Treffer Je Sitzung */
@@ -9903,7 +10136,26 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Fundstueck"] | null;
+                    "application/json": {
+                        /** Committee */
+                        committee: string | null;
+                        /** Day */
+                        day: string;
+                        /** Decision Id */
+                        decision_id: number;
+                        /** Kicker */
+                        kicker: string;
+                        /** Outcome */
+                        outcome: string | null;
+                        /** Session Date */
+                        session_date: string | null;
+                        /** Story */
+                        story: string;
+                        /** Title */
+                        title: string | null;
+                        /** Vote */
+                        vote: string | null;
+                    } | null;
                 };
             };
             /** @description Validation Error */
@@ -10022,9 +10274,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["Sitzungszeile"][];
                 };
             };
             /** @description Validation Error */
@@ -10438,7 +10688,10 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["TopicSeenIn"] | null;
+                "application/json": {
+                    /** Decision Id */
+                    decision_id?: number | null;
+                } | null;
             };
         };
         responses: {
@@ -10464,4 +10717,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: cc000f29ad9cecaefdb4a5a251a1eb9c40cff8ccda53387512d3f51b65a795fb
+// vertrag-sha256: ba1b96cea55f533a1d60d8a443f90ef475df0313b4dfdd192b6e4dc20ed3fecf

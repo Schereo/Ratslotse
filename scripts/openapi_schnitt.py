@@ -22,6 +22,7 @@ beim Import verlangt; ein Wert aus der Umgebung hätte hier keine Wirkung.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import sys
@@ -71,6 +72,43 @@ def _nullbar_zusammenziehen(knoten):
     return knoten
 
 
+def _nullbare_refs_inlinen(spec: dict) -> dict:
+    """``anyOf: [{$ref: X}, {type: null}]`` → X ausgeschrieben mit
+    ``type: [..., "null"]``.
+
+    Der Swift-Generator lässt auch diese Form weg — und hier wiegt das
+    schwerer als bei einem Skalar: Es sind ganze Objekte (etwa
+    ``Merkeintrag.session``). Solange der Nachbar ein offener ``dict`` war,
+    kam wenigstens ein Container an; sobald er einen NAMEN bekam, verschwand
+    das Feld ganz. Ausschreiben löst beides: Das Feld ist da und trägt seine
+    Felder. Preis ist eine Kopie im Schema statt eines Verweises.
+    """
+    schemas = spec.get("components", {}).get("schemas", {})
+
+    def gehe(knoten, kette: tuple[str, ...] = ()):
+        if isinstance(knoten, dict):
+            zweige = knoten.get("anyOf")
+            if isinstance(zweige, list) and len(zweige) == 2 and {"type": "null"} in zweige:
+                rest = next(z for z in zweige if z != {"type": "null"})
+                if isinstance(rest, dict) and set(rest) == {"$ref"}:
+                    name = rest["$ref"].split("/")[-1]
+                    # Zyklusschutz: Ein Schema, das sich selbst (mittelbar)
+                    # enthält, würde sonst endlos ausgeschrieben.
+                    if name in schemas and name not in kette:
+                        ziel = copy.deepcopy(schemas[name])
+                        ziel["type"] = [ziel.get("type", "object"), "null"]
+                        for feld in ("title", "description"):
+                            if feld in knoten:
+                                ziel.setdefault(feld, knoten[feld])
+                        return gehe(ziel, kette + (name,))
+            return {k: gehe(v, kette) for k, v in knoten.items()}
+        if isinstance(knoten, list):
+            return [gehe(x, kette) for x in knoten]
+        return knoten
+
+    return gehe(spec)
+
+
 def offene_nullable(spec: dict) -> list[str]:
     """Nullable Felder, die sich NICHT zusammenziehen ließen — der Swift-
     Generator lässt sie weg. Wer eins davon in der App braucht, schreibt es
@@ -89,7 +127,7 @@ def schema() -> dict:
     os.environ.setdefault("WEB_JWT_SECRET", "schema-export")
     from app.main import app
 
-    return _nullbar_zusammenziehen(app.openapi())
+    return _nullbare_refs_inlinen(_nullbar_zusammenziehen(app.openapi()))
 
 
 def main() -> int:

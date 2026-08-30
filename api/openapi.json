@@ -68,13 +68,24 @@
             "type": "string"
           },
           "progress": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AbzeichenFortschritt"
+            "properties": {
+              "current": {
+                "title": "Current",
+                "type": "integer"
               },
-              {
-                "type": "null"
+              "target": {
+                "title": "Target",
+                "type": "integer"
               }
+            },
+            "required": [
+              "current",
+              "target"
+            ],
+            "title": "AbzeichenFortschritt",
+            "type": [
+              "object",
+              "null"
             ]
           },
           "title": {
@@ -173,13 +184,29 @@
             "type": "array"
           },
           "next": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AbzeichenNaechstes"
+            "properties": {
+              "hint": {
+                "title": "Hint",
+                "type": "string"
               },
-              {
-                "type": "null"
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
               }
+            },
+            "required": [
+              "id",
+              "title",
+              "hint"
+            ],
+            "title": "AbzeichenNaechstes",
+            "type": [
+              "object",
+              "null"
             ]
           },
           "total": {
@@ -814,10 +841,15 @@
       "BeschlussListe": {
         "properties": {
           "decisions": {
-            "title": "Decisions"
+            "items": {
+              "$ref": "#/components/schemas/Beschlusszeile"
+            },
+            "title": "Decisions",
+            "type": "array"
           },
           "total": {
-            "title": "Total"
+            "title": "Total",
+            "type": "integer"
           }
         },
         "required": [
@@ -825,6 +857,245 @@
           "total"
         ],
         "title": "BeschlussListe",
+        "type": "object"
+      },
+      "Beschlusszeile": {
+        "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus.",
+        "properties": {
+          "abweichung": {
+            "title": "Abweichung",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amount_eur": {
+            "title": "Amount Eur",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "beschluss": {
+            "title": "Beschluss",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enthaltungen": {
+            "title": "Enthaltungen",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "factions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Factions",
+            "type": "array"
+          },
+          "gegenstimmen": {
+            "title": "Gegenstimmen",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "impact": {
+            "title": "Impact",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "impact_reason": {
+            "title": "Impact Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "importance": {
+            "title": "Importance",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "interest": {
+            "title": "Interest",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "interest_reason": {
+            "title": "Interest Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "location_matches": {
+            "items": {},
+            "title": "Location Matches",
+            "type": "array"
+          },
+          "n_beratungen": {
+            "title": "N Beratungen",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_item": {
+            "title": "Parent Item",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "policy_field": {
+            "title": "Policy Field",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Policy Tags",
+            "type": "array"
+          },
+          "position": {
+            "title": "Position",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "protocol_url": {
+            "title": "Protocol Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "raw_result": {
+            "title": "Raw Result",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "simple_summary": {
+            "title": "Simple Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subvote_summary": {
+            "title": "Subvote Summary"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vorlage_nr": {
+            "title": "Vorlage Nr",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote": {
+            "title": "Vote",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "Beschlusszeile",
         "type": "object"
       },
       "Body_medien_ablegen_api_social_medien__tag__post": {
@@ -2247,8 +2518,242 @@
             "type": "string"
           },
           "decision": {
-            "additionalProperties": true,
-            "title": "Decision",
+            "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus.",
+            "properties": {
+              "abweichung": {
+                "title": "Abweichung",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "amount_eur": {
+                "title": "Amount Eur",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "beschluss": {
+                "title": "Beschluss",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "committee": {
+                "title": "Committee",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "enthaltungen": {
+                "title": "Enthaltungen",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "factions": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Factions",
+                "type": "array"
+              },
+              "gegenstimmen": {
+                "title": "Gegenstimmen",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "id": {
+                "title": "Id",
+                "type": "integer"
+              },
+              "impact": {
+                "title": "Impact",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "impact_reason": {
+                "title": "Impact Reason",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "importance": {
+                "title": "Importance",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "interest": {
+                "title": "Interest",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "interest_reason": {
+                "title": "Interest Reason",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "item_number": {
+                "title": "Item Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kind": {
+                "title": "Kind",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ksinr": {
+                "title": "Ksinr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "location_matches": {
+                "items": {},
+                "title": "Location Matches",
+                "type": "array"
+              },
+              "n_beratungen": {
+                "title": "N Beratungen",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "outcome": {
+                "title": "Outcome",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parent_item": {
+                "title": "Parent Item",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parties": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Parties",
+                "type": "array"
+              },
+              "policy_field": {
+                "title": "Policy Field",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "policy_tags": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Policy Tags",
+                "type": "array"
+              },
+              "position": {
+                "title": "Position",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "protocol_url": {
+                "title": "Protocol Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "raw_result": {
+                "title": "Raw Result",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "session_date": {
+                "title": "Session Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "simple_summary": {
+                "title": "Simple Summary",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "subvote_summary": {
+                "title": "Subvote Summary"
+              },
+              "summary": {
+                "title": "Summary",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "vorlage_nr": {
+                "title": "Vorlage Nr",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "vote": {
+                "title": "Vote",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "title": "Beschlusszeile",
             "type": [
               "object",
               "null"
@@ -2297,8 +2802,48 @@
             ]
           },
           "session": {
-            "additionalProperties": true,
-            "title": "Session",
+            "description": "Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs\nFelder sind die Spalten von ``council_sessions`` — ein Wächter-Test\n(``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier\nnichts still abgeschnitten wird.",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": "string"
+              },
+              "fetched_at": {
+                "title": "Fetched At",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ksinr": {
+                "title": "Ksinr",
+                "type": "integer"
+              },
+              "location": {
+                "title": "Location",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "session_date": {
+                "title": "Session Date",
+                "type": "string"
+              },
+              "session_time": {
+                "title": "Session Time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "ksinr",
+              "committee",
+              "session_date"
+            ],
+            "title": "Sitzungszeile",
             "type": [
               "object",
               "null"
@@ -3038,13 +3583,34 @@
             ]
           },
           "kernaussage": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/QaShareKernaussage"
+            "properties": {
+              "datum": {
+                "maxLength": 10,
+                "title": "Datum",
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
-              {
-                "type": "null"
+              "sprecher": {
+                "maxLength": 120,
+                "title": "Sprecher",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "text": {
+                "default": "",
+                "maxLength": 600,
+                "title": "Text",
+                "type": "string"
               }
+            },
+            "title": "QaShareKernaussage",
+            "type": [
+              "object",
+              "null"
             ]
           },
           "partei": {
@@ -3929,13 +4495,42 @@
             "type": "string"
           },
           "done": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/QuizTagesergebnis"
+            "properties": {
+              "completed_at": {
+                "title": "Completed At",
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
-              {
-                "type": "null"
+              "correct": {
+                "title": "Correct",
+                "type": "integer"
+              },
+              "day": {
+                "title": "Day",
+                "type": "string"
+              },
+              "points": {
+                "title": "Points",
+                "type": "integer"
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
               }
+            },
+            "required": [
+              "day",
+              "correct",
+              "total",
+              "points",
+              "completed_at"
+            ],
+            "title": "QuizTagesergebnis",
+            "type": [
+              "object",
+              "null"
             ]
           },
           "questions": {
@@ -4151,6 +4746,51 @@
           "total"
         ],
         "title": "SitzungsListe",
+        "type": "object"
+      },
+      "Sitzungszeile": {
+        "description": "Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs\nFelder sind die Spalten von ``council_sessions`` — ein Wächter-Test\n(``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier\nnichts still abgeschnitten wird.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "location": {
+            "title": "Location",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "session_time": {
+            "title": "Session Time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "ksinr",
+          "committee",
+          "session_date"
+        ],
+        "title": "Sitzungszeile",
         "type": "object"
       },
       "SocialBeschluss": {
@@ -5137,8 +5777,7 @@
           },
           "kommende": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/Sitzungszeile"
             },
             "title": "Kommende",
             "type": "array"
@@ -5156,8 +5795,7 @@
           },
           "sitzungen": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/Sitzungszeile"
             },
             "title": "Sitzungen",
             "type": "array"
@@ -10857,15 +11495,75 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/Fundstueck"
+                  "properties": {
+                    "committee": {
+                      "title": "Committee",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
-                    {
-                      "type": "null"
+                    "day": {
+                      "title": "Day",
+                      "type": "string"
+                    },
+                    "decision_id": {
+                      "title": "Decision Id",
+                      "type": "integer"
+                    },
+                    "kicker": {
+                      "title": "Kicker",
+                      "type": "string"
+                    },
+                    "outcome": {
+                      "title": "Outcome",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "session_date": {
+                      "title": "Session Date",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "story": {
+                      "title": "Story",
+                      "type": "string"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "vote": {
+                      "title": "Vote",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
+                  },
+                  "required": [
+                    "day",
+                    "kicker",
+                    "story",
+                    "decision_id",
+                    "title",
+                    "outcome",
+                    "vote",
+                    "committee",
+                    "session_date"
                   ],
-                  "title": "Response Fundstueck Api Social Fundstueck  Tag  Get"
+                  "title": "Fundstueck",
+                  "type": [
+                    "object",
+                    "null"
+                  ]
                 }
               }
             },
@@ -11051,8 +11749,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/Sitzungszeile"
                   },
                   "title": "Response Sitzungen Api Social Sitzungen  Tag  Get",
                   "type": "array"
@@ -11586,15 +12283,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/TopicSeenIn"
-                  },
-                  {
-                    "type": "null"
+                "description": "Was als gesehen gilt: ohne ``decision_id`` alle Treffer des Themas, mit\nihr genau dieser eine. Optional, damit ältere App-Versionen, die nur\n``{}`` senden, weiterhin alles markieren.",
+                "properties": {
+                  "decision_id": {
+                    "title": "Decision Id",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
                   }
-                ],
-                "title": "Body"
+                },
+                "title": "TopicSeenIn",
+                "type": [
+                  "object",
+                  "null"
+                ]
               }
             }
           }

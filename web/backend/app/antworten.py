@@ -52,9 +52,69 @@ class OkMitId(TypedDict):
 # und wachsen mit ihren Tabellen — hier absichtlich durchgereicht statt
 # aufgezählt (siehe Regel 2 im Modul-Docstring). Die Aliase sind trotzdem
 # sprechend, damit im Schema steht, WAS für ein Objekt gemeint ist.
-Sitzungszeile = dict[str, Any]
-Beschlusszeile = dict[str, Any]
 Tagesordnungszeile = dict[str, Any]
+
+
+class Sitzungszeile(TypedDict):
+    """Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs
+    Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
+    (``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier
+    nichts still abgeschnitten wird."""
+    ksinr: int
+    committee: str
+    session_date: str
+    session_time: NotRequired[str | None]
+    location: NotRequired[str | None]
+    fetched_at: NotRequired[str | None]
+
+
+class Beschlusszeile(TypedDict):
+    """Ein Beschluss aus ``CouncilStore._decision_row``.
+
+    Die Felder sind die 27 Spalten von ``council_decisions`` plus das, was die
+    Abfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und
+    was der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche
+    Spalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre
+    hier ein 500, sobald ein Aufrufer schmaler selektiert.
+
+    ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
+    ``parties`` rechnet der Store aus den Fraktionen aus.
+    """
+    id: int
+    ksinr: NotRequired[int | None]
+    position: NotRequired[int | None]
+    kind: NotRequired[str | None]
+    parent_item: NotRequired[str | None]
+    item_number: NotRequired[str | None]
+    title: NotRequired[str | None]
+    beschluss: NotRequired[str | None]
+    outcome: NotRequired[str | None]
+    vote: NotRequired[str | None]
+    gegenstimmen: NotRequired[int | None]
+    enthaltungen: NotRequired[int | None]
+    factions: NotRequired[list[str]]
+    vorlage_nr: NotRequired[str | None]
+    kvonr: NotRequired[int | None]
+    raw_result: NotRequired[str | None]
+    policy_field: NotRequired[str | None]
+    policy_tags: NotRequired[list[str]]
+    summary: NotRequired[str | None]
+    amount_eur: NotRequired[float | None]
+    importance: NotRequired[int | None]
+    simple_summary: NotRequired[str | None]
+    interest: NotRequired[int | None]
+    interest_reason: NotRequired[str | None]
+    impact: NotRequired[int | None]
+    impact_reason: NotRequired[str | None]
+    abweichung: NotRequired[str | None]
+    # aus den Joins bzw. vom Router angereichert
+    parties: NotRequired[list[str]]
+    committee: NotRequired[str | None]
+    session_date: NotRequired[str | None]
+    protocol_url: NotRequired[str | None]
+    n_beratungen: NotRequired[int | None]
+    location_matches: NotRequired[list[Any]]
+    subvote_summary: NotRequired[Any]
 
 
 # --------------------------------------------------------------------------
@@ -864,8 +924,8 @@ class HaushaltAenderungslisten(TypedDict):
 
 
 class BeschlussListe(TypedDict):
-    decisions: Any
-    total: Any
+    decisions: list[Beschlusszeile]
+    total: int
 
 
 class ParteiMeinungen(TypedDict):
