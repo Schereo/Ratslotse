@@ -298,6 +298,7 @@
         "type": "object"
       },
       "AdminJob": {
+        "description": "``state`` ist eine geschlossene Menge — der Router rechnet sie aus, sie\nkommt nicht aus der Datenbank, deshalb ist die Verengung hier sicher.\n``last`` dagegen ist eine ``SELECT *``-Zeile aus ``job_runs`` und bleibt\noffen; das Frontend darf sie enger sehen als der Vertrag.",
         "properties": {
           "age_h": {
             "anyOf": [
@@ -346,6 +347,12 @@
             "type": "string"
           },
           "state": {
+            "enum": [
+              "ok",
+              "stale",
+              "error",
+              "unknown"
+            ],
             "title": "State",
             "type": "string"
           }
@@ -492,6 +499,29 @@
         "title": "AdminOrtsKandidaten",
         "type": "object"
       },
+      "AdminQuizGebiet": {
+        "properties": {
+          "area_key": {
+            "title": "Area Key",
+            "type": "string"
+          },
+          "area_type": {
+            "title": "Area Type",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "area_type",
+          "area_key",
+          "n"
+        ],
+        "title": "AdminQuizGebiet",
+        "type": "object"
+      },
       "AdminQuizStatistik": {
         "properties": {
           "avg_accuracy": {
@@ -511,8 +541,7 @@
           },
           "gebiete_niedrig": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/AdminQuizGebiet"
             },
             "title": "Gebiete Niedrig",
             "type": "array"
@@ -1000,36 +1029,83 @@
         "title": "DeliveryUpdate",
         "type": "object"
       },
-      "DieseWoche": {
-        "description": "2 Rückgabe-Zweige — was nicht in jedem steht, ist NotRequired.",
+      "DieseWocheMit": {
         "properties": {
           "committee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Committee"
           },
           "decision_id": {
-            "title": "Decision Id"
+            "title": "Decision Id",
+            "type": "integer"
           },
           "found": {
+            "const": true,
             "title": "Found",
             "type": "boolean"
           },
           "interest_reason": {
-            "title": "Interest Reason"
+            "title": "Interest Reason",
+            "type": "string"
           },
           "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Outcome"
           },
           "session_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Session Date"
           },
           "title": {
-            "title": "Title"
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "found",
+          "decision_id",
+          "title",
+          "outcome",
+          "committee",
+          "session_date",
+          "interest_reason"
+        ],
+        "title": "DieseWocheMit",
+        "type": "object"
+      },
+      "DieseWocheOhne": {
+        "properties": {
+          "found": {
+            "const": false,
+            "title": "Found",
+            "type": "boolean"
           }
         },
         "required": [
           "found"
         ],
-        "title": "DieseWoche",
+        "title": "DieseWocheOhne",
         "type": "object"
       },
       "DisplayNameIn": {
@@ -5573,27 +5649,16 @@
         "title": "Wochenvorschau",
         "type": "object"
       },
-      "ZahlDerWoche": {
-        "description": "2 Rückgabe-Zweige — was nicht in jedem steht, ist NotRequired.",
+      "ZahlDerWocheAnzahl": {
         "properties": {
-          "amount_eur": {
-            "title": "Amount Eur"
-          },
           "count": {
-            "title": "Count"
-          },
-          "decision_id": {
-            "title": "Decision Id"
+            "title": "Count",
+            "type": "integer"
           },
           "kind": {
+            "const": "anzahl",
             "title": "Kind",
             "type": "string"
-          },
-          "session_date": {
-            "title": "Session Date"
-          },
-          "title": {
-            "title": "Title"
           },
           "window_days": {
             "title": "Window Days",
@@ -5602,9 +5667,56 @@
         },
         "required": [
           "kind",
+          "count",
           "window_days"
         ],
-        "title": "ZahlDerWoche",
+        "title": "ZahlDerWocheAnzahl",
+        "type": "object"
+      },
+      "ZahlDerWocheBetrag": {
+        "properties": {
+          "amount_eur": {
+            "title": "Amount Eur",
+            "type": "number"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "betrag",
+            "title": "Kind",
+            "type": "string"
+          },
+          "session_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Date"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "amount_eur",
+          "decision_id",
+          "title",
+          "session_date",
+          "window_days"
+        ],
+        "title": "ZahlDerWocheBetrag",
         "type": "object"
       },
       "ZielDetail": {
@@ -7999,7 +8111,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DieseWoche"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DieseWocheMit"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DieseWocheOhne"
+                    }
+                  ],
+                  "title": "Response Diese Woche Api Council Diese Woche Get"
                 }
               }
             },
@@ -10118,7 +10238,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ZahlDerWoche"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ZahlDerWocheBetrag"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ZahlDerWocheAnzahl"
+                    }
+                  ],
+                  "title": "Response Zahl Der Woche Api Council Zahl Der Woche Get"
                 }
               }
             },

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles, ArrowRight, Check, Play } from "lucide-react";
 import { api } from "@/lib/api";
+import { vertrag, type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { DecisionOutcome, Topic } from "@/lib/types";
 import { shortCommittee } from "@/lib/committees";
@@ -28,13 +29,18 @@ import { useCountUp } from "@/lib/use-countup";
 const FRAGEN_HREF = fragenHref();
 
 type TopicHit = { topic_name: string; id: number; title: string; committee: string; session_date: string };
+// Aus dem API-Vertrag statt von Hand — beide sind dort echte Unions, `found`
+// bzw. `kind` unterscheiden die Fälle.
+//
+// Einzige Abweichung: `outcome` steht im Vertrag als `string`, nicht als Union.
+// Die Spalte wird vom LLM befüllt; eine Verengung im Backend hieße, dass ein
+// unerwarteter Wert die Antwort mit 500 abbricht statt nur ein Etikett
+// unbeschriftet zu lassen. Die Oberfläche darf enger sehen als der Vertrag.
+type DieseWocheRoh = ApiAntwort<"/council/diese-woche">;
 type DieseWoche =
-  | { found: false }
-  | { found: true; decision_id: number; title: string; outcome: DecisionOutcome;
-      committee: string; session_date: string; interest_reason: string };
-type ZahlDerWoche =
-  | { kind: "betrag"; amount_eur: number; decision_id: number; title: string; session_date: string; window_days: number }
-  | { kind: "anzahl"; count: number; window_days: number };
+  | Extract<DieseWocheRoh, { found: false }>
+  | (Omit<Extract<DieseWocheRoh, { found: true }>, "outcome"> & { outcome: DecisionOutcome | null });
+type ZahlDerWoche = ApiAntwort<"/council/zahl-der-woche">;
 
 /** ISO-Datum von vor n Tagen — Ziel des „Diese N ansehen"-Links (Design 28a/S5).
  *  Dasselbe Fenster, das der Endpoint gezählt hat, damit die Suche wirklich
@@ -77,7 +83,7 @@ export default function DashboardPage() {
   });
   const zahlQuery = useQuery({
     queryKey: ["zahl-der-woche"],
-    queryFn: () => api.get<ZahlDerWoche>("/council/zahl-der-woche"),
+    queryFn: () => vertrag.get("/council/zahl-der-woche"),
   });
   // RL-U15 (13a-A): Ersatz für den Treffer-Leerzustand — nur laden, wenn er
   // gebraucht würde (Themen vorhanden, aber keine Treffer).
