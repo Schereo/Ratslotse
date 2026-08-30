@@ -3929,6 +3929,37 @@ export interface components {
             /** Wau Days */
             wau_days: string[];
         };
+        /** AnalyseAbdeckung */
+        AnalyseAbdeckung: {
+            /** Total */
+            total: number;
+            /** With Factions */
+            with_factions: number;
+        };
+        /**
+         * AnalyseDaten
+         * @description ``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind
+         *     verschachtelte Auswertungen und bleiben offen.
+         */
+        AnalyseDaten: {
+            /** Alliances */
+            alliances: unknown;
+            /** Antrag Stats */
+            antrag_stats: unknown;
+            /** Contention */
+            contention: unknown;
+            coverage: components["schemas"]["AnalyseAbdeckung"];
+            /** Field Labels */
+            field_labels: {
+                [key: string]: string;
+            };
+            /** Success Rates */
+            success_rates: unknown;
+            /** Topic Matrix */
+            topic_matrix: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * AppConfigOut
          * @description Compatibility contract consumed before a native app starts loading data.
@@ -4377,9 +4408,20 @@ export interface components {
         /** Gremien */
         Gremien: {
             /** Committees */
-            committees: unknown;
+            committees: string[];
             /** Details */
-            details: unknown;
+            details: components["schemas"]["GremiumDetail"][];
+        };
+        /** GremiumDetail */
+        GremiumDetail: {
+            /** Decisions Year */
+            decisions_year: number;
+            /** Name */
+            name: string;
+            /** Next Date */
+            next_date: string | null;
+            /** Next Time */
+            next_time: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -4436,9 +4478,11 @@ export interface components {
         /** HaushaltDatenstand */
         HaushaltDatenstand: {
             /** Heute */
-            heute: unknown;
+            heute: string;
             /** Schichten */
-            schichten: unknown;
+            schichten: {
+                [key: string]: unknown;
+            }[];
         };
         /** HaushaltDokumente */
         HaushaltDokumente: {
@@ -4611,6 +4655,50 @@ export interface components {
         HaushaltWeg: {
             /** Runden */
             runden: unknown;
+        };
+        /** HeuteNaechste */
+        HeuteNaechste: {
+            /** Committee */
+            committee: string;
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "naechste";
+        };
+        /** HeutePause */
+        HeutePause: {
+            /** Label */
+            label: string | null;
+            /**
+             * State
+             * @constant
+             */
+            state: "pause";
+            /** Until */
+            until: string | null;
+        };
+        /** HeuteSitzung */
+        HeuteSitzung: {
+            /** Committee */
+            committee: string;
+            /** N Sessions Today */
+            n_sessions_today: number;
+            /** Rest */
+            rest: number;
+            /** Session Time */
+            session_time: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "heute";
+            /** Tops */
+            tops: string[];
         };
         /** HoechsteBeschlussId */
         HoechsteBeschlussId: {
@@ -4819,6 +4907,10 @@ export interface components {
                 ksinr: number;
                 /** Location */
                 location?: string | null;
+                /** My Topic Items */
+                my_topic_items?: {
+                    [key: string]: unknown;
+                }[];
                 /** Session Date */
                 session_date: string;
                 /** Session Time */
@@ -5153,7 +5245,7 @@ export interface components {
         /** QaShareToken */
         QaShareToken: {
             /** Token */
-            token: unknown;
+            token: string;
         };
         /** QuellenPruefung */
         QuellenPruefung: {
@@ -5475,23 +5567,25 @@ export interface components {
         /** RechercheAktuell */
         RechercheAktuell: {
             /** Frei */
-            frei: unknown;
+            frei: number | null;
             /** Job */
-            job: unknown;
+            job: {
+                [key: string]: unknown;
+            } | null;
         };
         /** RechercheGestartet */
         RechercheGestartet: {
             /** Frei */
-            frei: unknown;
+            frei: number | null;
             /** Job Id */
-            job_id: unknown;
+            job_id: string;
         };
         /** RechercheGestoppt */
         RechercheGestoppt: {
             /** Facetten Fertig */
-            facetten_fertig: unknown;
+            facetten_fertig: number;
             /** Facetten Gesamt */
-            facetten_gesamt: unknown;
+            facetten_gesamt: number;
             /** Teilbericht Moeglich */
             teilbericht_moeglich: boolean;
         };
@@ -5546,9 +5640,26 @@ export interface components {
             /** Count */
             count: number;
             /** Sessions */
-            sessions: unknown;
+            sessions: components["schemas"]["Sitzungszeile"][];
             /** Total */
-            total: unknown;
+            total: number;
+        };
+        /**
+         * Sitzungspause
+         * @description Ob gerade Ratspause ist — immer dieselben fünf Felder
+         *     (``council/sitzungspause.py``).
+         */
+        Sitzungspause: {
+            /** Active */
+            active: boolean;
+            /** Label */
+            label: string | null;
+            /** Next Session Date */
+            next_session_date: string | null;
+            /** Note */
+            note: string | null;
+            /** Until */
+            until: string | null;
         };
         /**
          * Sitzungszeile
@@ -5566,6 +5677,10 @@ export interface components {
             ksinr: number;
             /** Location */
             location?: string | null;
+            /** My Topic Items */
+            my_topic_items?: {
+                [key: string]: unknown;
+            }[];
             /** Session Date */
             session_date: string;
             /** Session Time */
@@ -5734,6 +5849,15 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** Themenfeld */
+        Themenfeld: {
+            /** Count */
+            count: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
         /** ThemenfeldRueckblicke */
         ThemenfeldRueckblicke: {
             /** Recaps */
@@ -5742,7 +5866,7 @@ export interface components {
         /** Themenfelder */
         Themenfelder: {
             /** Fields */
-            fields: unknown;
+            fields: components["schemas"]["Themenfeld"][];
         };
         /**
          * TopicDescribeIn
@@ -5849,6 +5973,26 @@ export interface components {
             /** Decision Id */
             decision_id?: number | null;
         };
+        /**
+         * TrendDaten
+         * @description ``CouncilStore.activity_trends`` — Hülle beschrieben, Reihen offen.
+         */
+        TrendDaten: {
+            /** By Field */
+            by_field: {
+                [key: string]: unknown;
+            };
+            /** Emerging */
+            emerging: unknown;
+            /** Fields */
+            fields: string[];
+            /** Money */
+            money: number[];
+            /** Money Drivers */
+            money_drivers: unknown[];
+            /** Quarters */
+            quarters: string[];
+        };
         /** UngeleseneThemenTreffer */
         UngeleseneThemenTreffer: {
             /** Total */
@@ -5952,14 +6096,14 @@ export interface components {
             /** Following */
             following: boolean;
             /** Kvonr */
-            kvonr: unknown;
+            kvonr: number;
         };
         /** VorlageGefolgt */
         VorlageGefolgt: {
             /** Following */
             following: boolean;
             /** Kvonr */
-            kvonr: unknown;
+            kvonr: number;
         };
         /** VorlagenFolgen */
         VorlagenFolgen: {
@@ -5968,13 +6112,15 @@ export interface components {
         };
         /**
          * Vorschau
-         * @description 5 Rückgabe-Zweige — was nicht in jedem steht, ist NotRequired.
+         * @description Titel und Beschreibung für die Vorschau-Karte beim Teilen — fünf
+         *     Zweige (Beschluss, Person, Ort, Entität, Sitzung), alle mit denselben
+         *     zwei Feldern.
          */
         Vorschau: {
             /** Description */
-            description: unknown;
+            description: string;
             /** Title */
-            title: unknown;
+            title: string;
         };
         /** WebUserOut */
         WebUserOut: {
@@ -6062,23 +6208,55 @@ export interface components {
             /** Window Days */
             window_days: number;
         };
+        /** Ziel */
+        Ziel: {
+            /** Bremst */
+            bremst: number;
+            /** Description */
+            description: string;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Neutral */
+            neutral: number;
+            /** Total */
+            total: number;
+            /** Voran */
+            voran: number;
+        };
         /** ZielDetail */
         ZielDetail: {
             /** Decisions */
-            decisions: unknown;
+            decisions: {
+                [key: string]: unknown;
+            }[];
             /** Description */
-            description: unknown;
+            description: string;
             /** Key */
-            key: unknown;
+            key: string;
             /** Label */
-            label: unknown;
-            /** Summary */
-            summary: unknown;
+            label: string;
+            summary: components["schemas"]["ZielKennzahlen"];
+        };
+        /**
+         * ZielKennzahlen
+         * @description Wie viele Beschlüsse das Ziel voranbringen, bremsen oder nicht berühren.
+         */
+        ZielKennzahlen: {
+            /** Bremst */
+            bremst: number;
+            /** Neutral */
+            neutral: number;
+            /** Total */
+            total: number;
+            /** Voran */
+            voran: number;
         };
         /** Ziele */
         Ziele: {
             /** Goals */
-            goals: unknown;
+            goals: components["schemas"]["Ziel"][];
         };
     };
     responses: never;
@@ -7442,9 +7620,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AnalyseDaten"];
                 };
             };
         };
@@ -8681,9 +8857,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["HeuteSitzung"] | components["schemas"]["HeuteNaechste"] | components["schemas"]["HeutePause"];
                 };
             };
         };
@@ -9230,9 +9404,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["Sitzungspause"];
                 };
             };
         };
@@ -9252,9 +9424,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TrendDaten"];
                 };
             };
         };
@@ -10717,4 +10887,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: ba1b96cea55f533a1d60d8a443f90ef475df0313b4dfdd192b6e4dc20ed3fecf
+// vertrag-sha256: 9cfeb3bb9ba3eff532493d69a8e675833acc1454a9c16421e5885f86a1d8ec13

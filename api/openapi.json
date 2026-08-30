@@ -717,6 +717,67 @@
         "title": "AdminWachstum",
         "type": "object"
       },
+      "AnalyseAbdeckung": {
+        "properties": {
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "with_factions": {
+            "title": "With Factions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "with_factions",
+          "total"
+        ],
+        "title": "AnalyseAbdeckung",
+        "type": "object"
+      },
+      "AnalyseDaten": {
+        "description": "``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind\nverschachtelte Auswertungen und bleiben offen.",
+        "properties": {
+          "alliances": {
+            "title": "Alliances"
+          },
+          "antrag_stats": {
+            "title": "Antrag Stats"
+          },
+          "contention": {
+            "title": "Contention"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/AnalyseAbdeckung"
+          },
+          "field_labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Field Labels",
+            "type": "object"
+          },
+          "success_rates": {
+            "title": "Success Rates"
+          },
+          "topic_matrix": {
+            "additionalProperties": true,
+            "title": "Topic Matrix",
+            "type": "object"
+          }
+        },
+        "required": [
+          "coverage",
+          "topic_matrix",
+          "success_rates",
+          "contention",
+          "alliances",
+          "field_labels",
+          "antrag_stats"
+        ],
+        "title": "AnalyseDaten",
+        "type": "object"
+      },
       "AppConfigOut": {
         "description": "Compatibility contract consumed before a native app starts loading data.",
         "properties": {
@@ -1804,10 +1865,18 @@
       "Gremien": {
         "properties": {
           "committees": {
-            "title": "Committees"
+            "items": {
+              "type": "string"
+            },
+            "title": "Committees",
+            "type": "array"
           },
           "details": {
-            "title": "Details"
+            "items": {
+              "$ref": "#/components/schemas/GremiumDetail"
+            },
+            "title": "Details",
+            "type": "array"
           }
         },
         "required": [
@@ -1815,6 +1884,40 @@
           "details"
         ],
         "title": "Gremien",
+        "type": "object"
+      },
+      "GremiumDetail": {
+        "properties": {
+          "decisions_year": {
+            "title": "Decisions Year",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "next_date": {
+            "title": "Next Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next_time": {
+            "title": "Next Time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "next_date",
+          "next_time",
+          "decisions_year"
+        ],
+        "title": "GremiumDetail",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1933,10 +2036,16 @@
       "HaushaltDatenstand": {
         "properties": {
           "heute": {
-            "title": "Heute"
+            "title": "Heute",
+            "type": "string"
           },
           "schichten": {
-            "title": "Schichten"
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Schichten",
+            "type": "array"
           }
         },
         "required": [
@@ -2323,6 +2432,107 @@
           "runden"
         ],
         "title": "HaushaltWeg",
+        "type": "object"
+      },
+      "HeuteNaechste": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "session_time": {
+            "title": "Session Time",
+            "type": "string"
+          },
+          "state": {
+            "const": "naechste",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "committee",
+          "session_date",
+          "session_time"
+        ],
+        "title": "HeuteNaechste",
+        "type": "object"
+      },
+      "HeutePause": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "const": "pause",
+            "title": "State",
+            "type": "string"
+          },
+          "until": {
+            "title": "Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "state",
+          "label",
+          "until"
+        ],
+        "title": "HeutePause",
+        "type": "object"
+      },
+      "HeuteSitzung": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "n_sessions_today": {
+            "title": "N Sessions Today",
+            "type": "integer"
+          },
+          "rest": {
+            "title": "Rest",
+            "type": "integer"
+          },
+          "session_time": {
+            "title": "Session Time",
+            "type": "string"
+          },
+          "state": {
+            "const": "heute",
+            "title": "State",
+            "type": "string"
+          },
+          "tops": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tops",
+            "type": "array"
+          }
+        },
+        "required": [
+          "state",
+          "committee",
+          "session_time",
+          "tops",
+          "rest",
+          "n_sessions_today"
+        ],
+        "title": "HeuteSitzung",
         "type": "object"
       },
       "HoechsteBeschlussId": {
@@ -2825,6 +3035,14 @@
                   "string",
                   "null"
                 ]
+              },
+              "my_topic_items": {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "title": "My Topic Items",
+                "type": "array"
               },
               "session_date": {
                 "title": "Session Date",
@@ -3717,7 +3935,8 @@
       "QaShareToken": {
         "properties": {
           "token": {
-            "title": "Token"
+            "title": "Token",
+            "type": "string"
           }
         },
         "required": [
@@ -4564,10 +4783,19 @@
       "RechercheAktuell": {
         "properties": {
           "frei": {
-            "title": "Frei"
+            "title": "Frei",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "job": {
-            "title": "Job"
+            "additionalProperties": true,
+            "title": "Job",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "required": [
@@ -4580,10 +4808,15 @@
       "RechercheGestartet": {
         "properties": {
           "frei": {
-            "title": "Frei"
+            "title": "Frei",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "job_id": {
-            "title": "Job Id"
+            "title": "Job Id",
+            "type": "string"
           }
         },
         "required": [
@@ -4596,10 +4829,12 @@
       "RechercheGestoppt": {
         "properties": {
           "facetten_fertig": {
-            "title": "Facetten Fertig"
+            "title": "Facetten Fertig",
+            "type": "integer"
           },
           "facetten_gesamt": {
-            "title": "Facetten Gesamt"
+            "title": "Facetten Gesamt",
+            "type": "integer"
           },
           "teilbericht_moeglich": {
             "title": "Teilbericht Moeglich",
@@ -4734,10 +4969,15 @@
             "type": "integer"
           },
           "sessions": {
-            "title": "Sessions"
+            "items": {
+              "$ref": "#/components/schemas/Sitzungszeile"
+            },
+            "title": "Sessions",
+            "type": "array"
           },
           "total": {
-            "title": "Total"
+            "title": "Total",
+            "type": "integer"
           }
         },
         "required": [
@@ -4746,6 +4986,52 @@
           "total"
         ],
         "title": "SitzungsListe",
+        "type": "object"
+      },
+      "Sitzungspause": {
+        "description": "Ob gerade Ratspause ist — immer dieselben fünf Felder\n(``council/sitzungspause.py``).",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next_session_date": {
+            "title": "Next Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "until": {
+            "title": "Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "active",
+          "label",
+          "until",
+          "note",
+          "next_session_date"
+        ],
+        "title": "Sitzungspause",
         "type": "object"
       },
       "Sitzungszeile": {
@@ -4772,6 +5058,14 @@
               "string",
               "null"
             ]
+          },
+          "my_topic_items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "My Topic Items",
+            "type": "array"
           },
           "session_date": {
             "title": "Session Date",
@@ -5206,6 +5500,29 @@
         "title": "ThemenVorschlag",
         "type": "object"
       },
+      "Themenfeld": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "count"
+        ],
+        "title": "Themenfeld",
+        "type": "object"
+      },
       "ThemenfeldRueckblicke": {
         "properties": {
           "recaps": {
@@ -5221,7 +5538,11 @@
       "Themenfelder": {
         "properties": {
           "fields": {
-            "title": "Fields"
+            "items": {
+              "$ref": "#/components/schemas/Themenfeld"
+            },
+            "title": "Fields",
+            "type": "array"
           }
         },
         "required": [
@@ -5409,6 +5730,55 @@
           }
         },
         "title": "TopicSeenIn",
+        "type": "object"
+      },
+      "TrendDaten": {
+        "description": "``CouncilStore.activity_trends`` — Hülle beschrieben, Reihen offen.",
+        "properties": {
+          "by_field": {
+            "additionalProperties": true,
+            "title": "By Field",
+            "type": "object"
+          },
+          "emerging": {
+            "title": "Emerging"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "money": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Money",
+            "type": "array"
+          },
+          "money_drivers": {
+            "items": {},
+            "title": "Money Drivers",
+            "type": "array"
+          },
+          "quarters": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Quarters",
+            "type": "array"
+          }
+        },
+        "required": [
+          "quarters",
+          "fields",
+          "by_field",
+          "money",
+          "money_drivers",
+          "emerging"
+        ],
+        "title": "TrendDaten",
         "type": "object"
       },
       "UngeleseneThemenTreffer": {
@@ -5664,7 +6034,8 @@
             "type": "boolean"
           },
           "kvonr": {
-            "title": "Kvonr"
+            "title": "Kvonr",
+            "type": "integer"
           }
         },
         "required": [
@@ -5681,7 +6052,8 @@
             "type": "boolean"
           },
           "kvonr": {
-            "title": "Kvonr"
+            "title": "Kvonr",
+            "type": "integer"
           }
         },
         "required": [
@@ -5704,13 +6076,15 @@
         "type": "object"
       },
       "Vorschau": {
-        "description": "5 Rückgabe-Zweige — was nicht in jedem steht, ist NotRequired.",
+        "description": "Titel und Beschreibung für die Vorschau-Karte beim Teilen — fünf\nZweige (Beschluss, Person, Ort, Entität, Sitzung), alle mit denselben\nzwei Feldern.",
         "properties": {
           "description": {
-            "title": "Description"
+            "title": "Description",
+            "type": "string"
           },
           "title": {
-            "title": "Title"
+            "title": "Title",
+            "type": "string"
           }
         },
         "required": [
@@ -5891,38 +6265,122 @@
         "title": "ZahlDerWocheBetrag",
         "type": "object"
       },
-      "ZielDetail": {
+      "Ziel": {
         "properties": {
-          "decisions": {
-            "title": "Decisions"
+          "bremst": {
+            "title": "Bremst",
+            "type": "integer"
           },
           "description": {
-            "title": "Description"
+            "title": "Description",
+            "type": "string"
           },
           "key": {
-            "title": "Key"
+            "title": "Key",
+            "type": "string"
           },
           "label": {
-            "title": "Label"
+            "title": "Label",
+            "type": "string"
           },
-          "summary": {
-            "title": "Summary"
+          "neutral": {
+            "title": "Neutral",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "voran": {
+            "title": "Voran",
+            "type": "integer"
           }
         },
         "required": [
-          "decisions",
-          "description",
+          "voran",
+          "bremst",
+          "neutral",
+          "total",
           "key",
           "label",
-          "summary"
+          "description"
+        ],
+        "title": "Ziel",
+        "type": "object"
+      },
+      "ZielDetail": {
+        "properties": {
+          "decisions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ZielKennzahlen"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "description",
+          "summary",
+          "decisions"
         ],
         "title": "ZielDetail",
+        "type": "object"
+      },
+      "ZielKennzahlen": {
+        "description": "Wie viele Beschlüsse das Ziel voranbringen, bremsen oder nicht berühren.",
+        "properties": {
+          "bremst": {
+            "title": "Bremst",
+            "type": "integer"
+          },
+          "neutral": {
+            "title": "Neutral",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "voran": {
+            "title": "Voran",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "voran",
+          "bremst",
+          "neutral",
+          "total"
+        ],
+        "title": "ZielKennzahlen",
         "type": "object"
       },
       "Ziele": {
         "properties": {
           "goals": {
-            "title": "Goals"
+            "items": {
+              "$ref": "#/components/schemas/Ziel"
+            },
+            "title": "Goals",
+            "type": "array"
           }
         },
         "required": [
@@ -7698,9 +8156,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Analysis Api Council Analysis Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AnalyseDaten"
                 }
               }
             },
@@ -9525,9 +9981,18 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Heute Api Council Heute Get",
-                  "type": "object"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HeuteSitzung"
+                    },
+                    {
+                      "$ref": "#/components/schemas/HeuteNaechste"
+                    },
+                    {
+                      "$ref": "#/components/schemas/HeutePause"
+                    }
+                  ],
+                  "title": "Response Heute Api Council Heute Get"
                 }
               }
             },
@@ -10330,9 +10795,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Sitzungspause Api Council Sitzungspause Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/Sitzungspause"
                 }
               }
             },
@@ -10354,9 +10817,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Trends Api Council Trends Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/TrendDaten"
                 }
               }
             },
