@@ -232,7 +232,16 @@
   animation: badge-spark 2s ease-in forwards;
 }
 
-/* ── Lotti-Animationen ──────────────────────────────────────────────────────
+/* ── Sprite-Lotti (<lotti-figur>, components/lotti.tsx) ────────────────────
+   Bevor der Abspieler geladen und das Element aufgerüstet ist, ist
+   <lotti-figur> ein unbekanntes Inline-Element — ohne diese Regel wären
+   h-*- und w--Klassen wirkungslos und das Layout spränge beim Aufrüsten. */
+lotti-figur {
+  display: inline-block;
+  line-height: 0;
+}
+
+/* ── Lotti-Animationen (gezeichnetes SVG: Familie & Küken) ─────────────────
    SVG-Teil-Transforms brauchen `transform-box: fill-box`, damit der Ursprung
    relativ zum jeweiligen Element liegt. Alle Keyframes werden vom globalen
    prefers-reduced-motion-Block weiter unten automatisch stillgelegt. */

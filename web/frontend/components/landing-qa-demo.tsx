@@ -58,7 +58,7 @@ function DemoContent({
       {/* Lotti sucht */}
       {phase === "thinking" && (
         <div className="mt-4 flex items-center gap-3 text-sm">
-          <Mascot pose="search" bob className="h-14 w-14 shrink-0" />
+          <Mascot regung="denkt" className="h-14 w-14 shrink-0" />
           <span className="font-medium text-foreground">Beschlüsse werden durchsucht und sortiert…</span>
         </div>
       )}

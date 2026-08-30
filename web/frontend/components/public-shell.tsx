@@ -89,7 +89,7 @@ function Einladung({ zurueck }: { zurueck: string }) {
   return (
     <Card className="mt-8 overflow-hidden">
       <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:gap-6 sm:p-8">
-        <Mascot pose="wave" bob decorative className="mx-auto h-24 w-24 shrink-0 sm:mx-0" />
+        <Mascot pose="wave" decorative className="mx-auto h-24 w-24 shrink-0 sm:mx-0" />
         <div className="min-w-0 flex-1 text-center sm:text-left">
           <h2 className="font-display text-xl font-bold text-foreground">
             Willst du früher davon erfahren?
