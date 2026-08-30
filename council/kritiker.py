@@ -53,9 +53,16 @@ from kern import llm, prompts
 #: Der Kritiker liest 40.000 bis 60.000 Zeichen Vorlage und soll darin eine
 #: einzelne Angabe wiederfinden. Das kleine Modell scheiterte daran: Es
 #: verwarf „110 Wohnungen" und „5.000 Euro", die beide wörtlich in der
-#: Quelle stehen (8 Fehlalarme auf 22 Texte, gemessen 30.08.26). Deshalb
-#: dasselbe Modell, das auch die Tragweite bewertet.
-MODEL = os.environ.get("COUNCIL_KRITIKER_MODEL", "deepseek/deepseek-v4-pro")
+#: Quelle stehen (8 Fehlalarme auf 22 Texte, gemessen 30.08.26).
+#:
+#: Seit 30.08.26 dasselbe Modell wie die Erzeugung (Tims Vorgabe). Das ist
+#: eine bewusste Abwägung: Ein Modell, das seinen eigenen Text prüft, ist
+#: milder mit sich als ein fremdes. Dagegen steht, dass die Fehler dieser
+#: Bauart Streuung sind, kein Vorsatz — derselbe Prompt ergab an einem
+#: Nachmittag „91,84 Hektar", „69/89 Hektar" und „94 Hektar". Ein zweiter
+#: Lauf desselben Modells sieht deshalb sehr wohl, was der erste erfand.
+#: Wer es getrennt haben will, setzt COUNCIL_KRITIKER_MODEL.
+MODEL = os.environ.get("COUNCIL_KRITIKER_MODEL", "openai/gpt-5.6-luna")
 
 #: Wertende Wörter. Dieselbe Liste, die der Prompt verbietet — hier noch
 #: einmal als Netz: Ein Prompt ist eine Bitte, das hier ist eine Prüfung.

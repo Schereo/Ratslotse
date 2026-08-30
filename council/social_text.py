@@ -22,6 +22,7 @@ keinem Titel und in keinen 900 Zeichen.
 from __future__ import annotations
 
 import json
+import os
 
 from kern import llm, prompts
 
@@ -29,7 +30,11 @@ from . import kritiker
 
 from .impact import vorlagen_kern
 
-MODEL = "openai/gpt-4o-mini"
+#: Tims Vorgabe 30.08.26. Der Kontext ist der Grund: Eine Vorlage samt
+#: Anlagen bringt 40.000 bis 60.000 Zeichen mit, und gpt-4o-mini fand darin
+#: Angaben nicht wieder, die wörtlich dastanden — beim Kritiker gemessen,
+#: 8 Fehlalarme auf 22 Texte. Luna hat 1,05 Mio Zeichen Kontext.
+MODEL = os.environ.get("COUNCIL_SOCIAL_MODEL", "openai/gpt-5.6-luna")
 
 #: Zeichenbudgets. Großzügig, aber nicht grenzenlos (Tims Vorgabe 30.08.26:
 #: „so viel Kontext wie möglich").
