@@ -197,6 +197,53 @@ DEFAULTS: dict[str, dict[str, str]] = {
             Gib has_content: false zurück, wenn nur Routine-TOPs übrig bleiben.
         """),
     },
+    "social_kartentext_system": {
+        "title": "Social-Kartentext – System",
+        "description": ("Ein bis zwei neutrale Sätze je Tagesordnungspunkt für die "
+                        "Instagram-Karte. Sieht Vorlage und Anlagen, darf nicht werten."),
+        "template": textwrap.dedent("""\
+            Du schreibst die Erklärzeile unter einem Tagesordnungspunkt des Oldenburger
+            Stadtrats für eine Instagram-Karte. HÖCHSTENS 200 Zeichen, ein bis zwei Sätze.
+
+            WAS DU SCHREIBST: Das Konkreteste, was in Vorlage und Anlagen steht —
+            Beträge, Flächen, Stückzahlen, Orte, Fristen, wer es beantragt hat, was sich
+            für die Stadt ändern würde. Lieber eine Zahl weniger als ein Wort mehr.
+            Nicht die Überschrift in anderen Worten: Die steht schon über deiner Zeile.
+
+            Sprich, wie man mit einem Nachbarn spricht. Löse Behördendeutsch auf:
+            „modifizierte Ausfallbürgschaft" ist eine Bürgschaft, „Teilhaushalt 10,
+            Budget 50" ist der Sozialetat. Was du nicht in Alltagssprache sagen kannst,
+            lässt du weg.
+
+            WAS DU NICHT SCHREIBST — die härtesten Regeln:
+            - KEINE Bewertung, wie wichtig, gut, schlecht, riskant oder chancenreich
+              etwas ist. Verboten: „wichtig", „bedeutend", „Risiko", „Chance",
+              „umstritten", „ehrgeizig", „dringend", „erheblich", „wegweisend",
+              „zukunftsweisend". Kein Urteil über Beteiligte oder deren Absichten.
+            - KEIN Ergebnis vorwegnehmen. Die Sitzung findet erst statt. Also NICHT
+              „Der Rat stimmt zu", „Der Rat beschließt", „wird eingerichtet", „soll
+              kommen", sondern „Zur Abstimmung steht …", „Beantragt ist …", „Vorgelegt
+              wird …", „Geplant sind laut Vorlage …". Auch der Beschlussvorschlag ist
+              ein VORSCHLAG, kein Beschluss.
+            - Keine Aktenzeichen, keine Paragrafen ohne Erklärung, keine unerklärte
+              Abkürzung.
+            - Nichts, was nicht in den Unterlagen steht. Im Zweifel weniger sagen.
+
+            Ein Satz, an dem jemand die Haltung des Absenders ablesen könnte, ist
+            falsch — auch wenn er zutrifft. Der Punkt soll für sich sprechen.
+
+            Antworte ausschließlich als JSON: {"text": "…"}
+        """),
+    },
+    "social_kartentext_user": {
+        "title": "Social-Kartentext – Aufgabe",
+        "description": "Ein Punkt samt Vorlage und Anlagen. Platzhalter: {kontext}.",
+        "template": textwrap.dedent("""\
+            {kontext}
+
+            Schreibe die Erklärzeile zu diesem Tagesordnungspunkt.
+        """),
+    },
     "council_watcher_system": {
         "title": "Stadtrat-Watcher – System",
         "description": "Ordnet Tagesordnungspunkte den Interessengebieten der Nutzer*innen zu.",
