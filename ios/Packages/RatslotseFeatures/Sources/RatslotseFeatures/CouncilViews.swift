@@ -2958,6 +2958,10 @@ private struct SessionDetailView: View {
                             }
                             .buttonStyle(SecondaryButtonStyle())
                         }
+                        if shouldShowAgendaChanges(detail), let changes = detail.agendaChanges {
+                            AgendaChangesPanel(changes: changes)
+                                .ratsCard()
+                        }
                         agenda(detail)
                         if let raw = detail.url, let url = URL(string: raw) {
                             Link("Sitzung im Ratsinfosystem öffnen", destination: url)
@@ -2992,9 +2996,53 @@ private struct SessionDetailView: View {
     }
 
     private func load() async {
+#if DEBUG
+        if ratsDebugValue("RATSLOTSE_DEBUG_SESSION_CHANGES") == "1",
+           let fixture = Self.debugSessionWithChanges() {
+            detail = fixture
+            error = nil
+            return
+        }
+#endif
         do { detail = try await model.api.get("/api/council/session/\(ksinr)") }
         catch { self.error = error.localizedDescription }
     }
+
+#if DEBUG
+    private static func debugSessionWithChanges() -> SessionDetail? {
+        let raw = #"""
+        {
+          "ksinr": 42,
+          "committee": "Verkehrsausschuss",
+          "session_date": "2099-09-03",
+          "session_time": "17:00",
+          "location": "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2",
+          "agenda_items": [
+            {"item_number":"Ö 4","title":"Radverkehrskonzept für Oldenburg","is_public":1,"summary":"Der Ausschuss berät die nächsten Schritte für sichere Radverbindungen.","anlagen":[]},
+            {"item_number":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","is_public":1,"summary":null,"anlagen":[]}
+          ],
+          "decisions": [],
+          "has_protocol": false,
+          "url": "https://ratslotse.de",
+          "aenderungen": [{
+            "changed_at": "2026-08-30T12:15:00+02:00",
+            "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
+            "zeilen": [
+              {"art":"neu","label":"Ö 7","titel":"Sichere Querung an der Cloppenburger Straße","nichtoeffentlich":false,"detail":"Neu auf die Tagesordnung gesetzt"},
+              {"art":"anlagen","label":"Ö 4","titel":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
+            ]
+          }, {
+            "changed_at": "2026-08-28T09:30:00+02:00",
+            "satz": "Ein Punkt wurde entfernt.",
+            "zeilen": [
+              {"art":"entfernt","label":"Ö 3","titel":"Bericht der Verwaltung","nichtoeffentlich":false,"detail":null}
+            ]
+          }]
+        }
+        """#
+        return try? JSONDecoder().decode(SessionDetail.self, from: Data(raw.utf8))
+    }
+#endif
 
     private func agenda(_ detail: SessionDetail) -> some View {
         let publicItems = detail.agendaItems.filter { $0.isPublic != 0 }
@@ -3020,6 +3068,19 @@ private struct SessionDetailView: View {
         .ratsCard()
     }
 
+    private func shouldShowAgendaChanges(_ detail: SessionDetail) -> Bool {
+        guard detail.agendaChanges?.isEmpty == false else { return false }
+        return detail.sessionDate >= Self.apiDayFormatter.string(from: .now)
+    }
+
+    private static let apiDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
     private func prepareCalendar(_ detail: SessionDetail) {
         Task {
             let store = EKEventStore()
@@ -3040,6 +3101,102 @@ private struct SessionDetailView: View {
             )
         }
     }
+}
+
+private struct AgendaChangesPanel: View {
+    let changes: [AgendaChange]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 10) {
+                RatsGlyphView(glyph: .history, color: RatsColor.warning)
+                    .frame(width: 18, height: 18)
+                    .frame(width: 34, height: 34)
+                    .background(RatsColor.warningTint)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Änderungen an der Tagesordnung")
+                        .font(RatsFont.body(14, weight: .semibold))
+                        .foregroundStyle(RatsColor.text)
+                    Text("Neu hinzugefügte, geänderte oder entfernte Punkte")
+                        .font(RatsFont.body(11))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+            }
+
+            ForEach(Array(changes.enumerated()), id: \.offset) { index, change in
+                if index > 0 { Divider().overlay(RatsColor.separator) }
+                VStack(alignment: .leading, spacing: 8) {
+                    MonoKicker(
+                        index == 0 ? "Zuletzt geändert" : "Davor",
+                        trailing: agendaChangeDateLabel(change.changedAt)
+                    )
+                    ForEach(Array(change.lines.enumerated()), id: \.offset) { _, line in
+                        AgendaChangeLineRow(line: line)
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
+private struct AgendaChangeLineRow: View {
+    let line: AgendaChangeLine
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 9) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(accent)
+                .frame(width: 3)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(line.label)
+                        .font(RatsFont.body(12.5, weight: .semibold))
+                        .foregroundStyle(RatsColor.text)
+                        .strikethrough(isRemoved, color: RatsColor.muted)
+                    if line.isNonPublic {
+                        Text("nichtöffentlich")
+                            .font(RatsFont.mono(8.5, weight: .medium))
+                            .foregroundStyle(RatsColor.muted)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(RatsColor.stage)
+                            .clipShape(Capsule())
+                    }
+                }
+                Text(line.title)
+                    .font(RatsFont.body(12.5))
+                    .foregroundStyle(isRemoved ? RatsColor.muted : RatsColor.secondary)
+                    .strikethrough(isRemoved, color: RatsColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let detail = line.detail, !detail.isEmpty {
+                    Text(detail)
+                        .font(RatsFont.body(10.5))
+                        .foregroundStyle(RatsColor.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var isRemoved: Bool { line.kind == "entfernt" }
+
+    private var accent: Color {
+        switch line.kind {
+        case "neu": RatsColor.success
+        case "entfernt": RatsColor.danger
+        case "geaendert", "verschoben", "vorlage", "anlagen": RatsColor.warning
+        default: RatsColor.border
+        }
+    }
+}
+
+private func agendaChangeDateLabel(_ raw: String) -> String {
+    let date = raw.count >= 10 ? String(raw.prefix(10)) : raw
+    return RatsDate.short(date) ?? date
 }
 
 private struct FlexibleChips: View {

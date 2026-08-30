@@ -390,6 +390,10 @@ private struct MainTabsView: View {
                 model.navigation.removeAll()
                 model.councilSection = .sessions
                 model.selectedTab = .council
+            case "session-detail":
+                model.councilSection = .sessions
+                model.selectedTab = .council
+                model.navigation = [.sessions(ksinr: 42, tops: [])]
             case "map":
                 model.navigation.removeAll()
                 model.councilSection = .map

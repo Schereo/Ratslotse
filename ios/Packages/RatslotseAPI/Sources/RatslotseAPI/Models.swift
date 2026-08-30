@@ -702,6 +702,53 @@ public struct AgendaItem: Codable, Sendable, Hashable, Identifiable {
     }
 }
 
+public struct AgendaChangeLine: Codable, Sendable, Hashable {
+    public let kind: String
+    public let label: String
+    public let title: String
+    public let isNonPublic: Bool
+    public let detail: String?
+
+    enum CodingKeys: String, CodingKey {
+        case label, detail
+        case title = "titel"
+        case kind = "art"
+        case isNonPublic = "nichtoeffentlich"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try values.decodeIfPresent(String.self, forKey: .kind) ?? "geaendert"
+        label = try values.decodeIfPresent(String.self, forKey: .label) ?? "TOP"
+        title = try values.decodeIfPresent(String.self, forKey: .title) ?? "Tagesordnung geändert"
+        detail = try values.decodeIfPresent(String.self, forKey: .detail)
+        if let value = try? values.decode(Bool.self, forKey: .isNonPublic) {
+            isNonPublic = value
+        } else {
+            isNonPublic = (try? values.decode(Int.self, forKey: .isNonPublic)) == 1
+        }
+    }
+}
+
+public struct AgendaChange: Codable, Sendable, Hashable {
+    public let changedAt: String
+    public let summary: String
+    public let lines: [AgendaChangeLine]
+
+    enum CodingKeys: String, CodingKey {
+        case summary = "satz"
+        case lines = "zeilen"
+        case changedAt = "changed_at"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        changedAt = try values.decodeIfPresent(String.self, forKey: .changedAt) ?? ""
+        summary = try values.decodeIfPresent(String.self, forKey: .summary) ?? "Tagesordnung geändert"
+        lines = try values.decodeIfPresent([AgendaChangeLine].self, forKey: .lines) ?? []
+    }
+}
+
 public struct SessionDetail: Codable, Sendable {
     public let ksinr: Int
     public let committee: String
@@ -712,6 +759,7 @@ public struct SessionDetail: Codable, Sendable {
     public let decisions: [DecisionSummary]
     public let hasProtocol: Bool
     public let url: String?
+    public let agendaChanges: [AgendaChange]?
 
     enum CodingKeys: String, CodingKey {
         case ksinr, committee, location, decisions, url
@@ -719,6 +767,7 @@ public struct SessionDetail: Codable, Sendable {
         case sessionTime = "session_time"
         case agendaItems = "agenda_items"
         case hasProtocol = "has_protocol"
+        case agendaChanges = "aenderungen"
     }
 }
 

@@ -823,3 +823,60 @@ private final class FeedbackURLProtocol: URLProtocol {
     #expect(items.first?.attachments.first?.url.contains("id=310001") == true)
     #expect(items.last?.attachments.isEmpty == true)
 }
+
+@Test func nativeSessionDetailDecodesAgendaChangeHistoryAndLegacyResponses() throws {
+    let currentData = try #require(
+        """
+        {
+          "ksinr": 42,
+          "committee": "Verkehrsausschuss",
+          "session_date": "2026-09-03",
+          "session_time": "17:00",
+          "location": "Alte Fleiwa",
+          "agenda_items": [],
+          "decisions": [],
+          "has_protocol": false,
+          "url": "https://buergerinfo.oldenburg.de/si0057.php?__ksinr=42",
+          "aenderungen": [{
+            "changed_at": "2026-08-30T12:15:00+02:00",
+            "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
+            "zeilen": [{
+              "art": "neu",
+              "label": "Ö 7",
+              "titel": "Sichere Querung an der Cloppenburger Straße",
+              "nichtoeffentlich": false,
+              "detail": "Neu auf die Tagesordnung gesetzt"
+            }, {
+              "art": "anlagen",
+              "label": "Ö 4",
+              "titel": "Radverkehrskonzept",
+              "nichtoeffentlich": 1,
+              "detail": "Eine Anlage hinzugefügt"
+            }]
+          }]
+        }
+        """.data(using: .utf8)
+    )
+    let legacyData = try #require(
+        """
+        {
+          "ksinr": 43,
+          "committee": "Rat",
+          "session_date": "2026-09-07",
+          "agenda_items": [],
+          "decisions": [],
+          "has_protocol": false
+        }
+        """.data(using: .utf8)
+    )
+
+    let current = try JSONDecoder().decode(SessionDetail.self, from: currentData)
+    let legacy = try JSONDecoder().decode(SessionDetail.self, from: legacyData)
+
+    #expect(current.agendaChanges?.count == 1)
+    #expect(current.agendaChanges?.first?.lines.count == 2)
+    #expect(current.agendaChanges?.first?.lines.first?.kind == "neu")
+    #expect(current.agendaChanges?.first?.lines.first?.title == "Sichere Querung an der Cloppenburger Straße")
+    #expect(current.agendaChanges?.first?.lines.last?.isNonPublic == true)
+    #expect(legacy.agendaChanges == nil)
+}
