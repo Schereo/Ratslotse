@@ -3479,12 +3479,51 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   (Silbentrennung wird nur am gemessenen Umbruch zusammengezogen). Ohne
   eindeutiges Band bleibt das Feld leer; über 99 % der Positionen tragen
   ihren Text, die restlichen Zellen sind im Original leer. Von den
-  Fraktionslisten existiert dort genau eine digitale Spur: ihre
-  **Summenzeile** in der Beschluss-Datei, mit dem Urheber daneben
+  Fraktionslisten existiert dort in aller Regel genau eine digitale Spur:
+  ihre **Summenzeile** in der Beschluss-Datei, mit dem Urheber daneben
   („SPD/ CDU/ FDP …"). Genau so — Summe mit Urheber, nicht mehr — zeigt die
-  Seite sie an. Die frühen Beschluss-Dateien (2020/2021) nennen den Urheber
-  je Position („Vorschlag von"); diese Spalte ist der dokumentierte nächste
-  Ausbauschritt.
+  Seite sie an.
+
+  **Ein Jahrgang macht die Ausnahme, und nur einer.** Die Beschluss-Datei
+  zum Haushalt 2021 (Dokument 230011, dazu ihre inhaltsgleiche Zweitablage
+  230030) führt auf 20 ihrer 21 Seiten eine neunte Spalte: „Vorschlag von",
+  je Position. Für diesen Jahrgang steht deshalb seit dem 30.08.2026 nicht
+  nur die Summe der Koalitionsliste da, sondern jede einzelne ihrer
+  Positionen — 114 von 187, gegen 71 der Verwaltungsliste I und 2 der
+  Liste II. Eine frühere Notiz nannte auch die 2020er-Datei (212801) als
+  Trägerin dieser Spalte; **gemessen an allen 18 EHH-Dokumenten stimmt das
+  nicht**: Dort steht „Vorschlag von" allein über der Zusammenstellung, also
+  über den Summen, die ohnehin schon gelesen werden. Genauso wenig taugt das
+  bloße Wort als Erkennungsmerkmal — in 271304 steht „Der eingebrachte
+  **Vorschlag** zur Erhöhung der Bewohnerparkgebühren der Politik …" mitten
+  in einer Erläuterung. Erkannt wird deshalb der zweizeilig gesetzte KOPF
+  („Vorschlag" mit „von" direkt darunter) in der letzten Spalte des
+  gezeichneten Rasters, rechts der Beträge.
+
+  Bewiesen wird die Zuschreibung, nicht gelesen: **Die Summe der Positionen
+  jedes Urhebers muss seine eigene Zeile in der Zusammenstellung treffen**
+  (Probe `aenderungsliste_urheber`, 9 von 9 Gruppen über vier Planjahre auf
+  den Cent). Diese Probe ist hart wie die anderen — geht auch nur eine
+  Gruppe nicht auf, gilt das Dokument als ungelesen und es wird gar nichts
+  gespeichert. Der Grund ist der Gegenstand: Wem die Stadt eine Streichung
+  zuschreibt, ist die folgenreichste Angabe dieses Moduls und darf nicht an
+  einer geschätzten Spaltenkante hängen. Eine stille Lücke wäre hier auch
+  deshalb schlecht, weil sie aussähe wie ein Dokument ohne die Spalte — und
+  genau diese Unterscheidung ist die Auskunft.
+
+  Zwei Fehler fielen beim Bau dieser Spalte auf, beide waren live:
+  Die Erläuterungs-Spalte hatte **keine rechte Grenze** und zog das
+  Urheber-Label mit hinein — weil die Labels auf eigenen Grundlinien
+  wickeln, landete es mitten im Satz („… gegen Gewalt an SPD/ Frauen u.
+  häusl. Gewalt …"), und zwar in allen 187 Positionen des Jahrgangs. Und
+  die Wickel-Nachlese der **Bezeichnungen** schätzte ihre Spalte aus dem
+  zentrierten Kopfwort, statt die gezeichneten Linien zu nehmen; wie weit
+  der Kopf neben seiner Spalte steht, schwankt je Jahrgang. Gemessen fielen
+  aus der geschätzten Zone 12–72 % der Wörter zwischen den gedruckten
+  Linien, im fertigen Feld **175 von 1.799 Positionen (9,7 %)** mit
+  angeschnittenem Namen — „für SGB II" statt „Grundsicherung für
+  Arbeitssuchende SGB II", „von und Frauen" statt „Chancengleichstellung
+  von Männern und Frauen". Beide Spalten kommen jetzt aus dem Raster.
 
 - **Der Schlussbericht 2024** — sein PDF bringt keine Zeichenzuordnung mit,
   der Volltext besteht aus Glyphen-Nummern (`/12 /8 /6 □ /13 …`), sein
