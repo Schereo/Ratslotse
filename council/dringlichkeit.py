@@ -52,6 +52,48 @@ _VORSPANN_RE = re.compile(
 _NACHSPANN_RE = re.compile(r"[\s\-_.]*\d{1,2}\.\d{1,2}\.\d{2,4}\s*$")
 
 
+#: Schreibfehler der Stadt, die im Dateinamen stehen und damit im Titel
+#: landen würden. Korrigiert wird NUR, was zweifelsfrei ein Verschreiber ist
+#: (Tims Vorgabe 30.08.26: „auch die von der Stadt") — ein amtlicher Titel
+#: wird hier nicht umformuliert, nur entstolpert. Wer den Antrag im
+#: Ratsinformationssystem sucht, findet ihn über den Link der Anlage, nicht
+#: über diese Zeile.
+#:
+#: Erhoben an den zwölf Fundstellen, nicht geraten. Neue Fälle kommen dazu,
+#: wenn sie auftreten — eine Rechtschreibprüfung wäre hier falsch: Sie würde
+#: auch Eigennamen und Fachwörter „korrigieren", die stimmen.
+_TIPPFEHLER = {
+    "festegestellte": "festgestellte",
+    "festgestelte": "festgestellte",
+    "Belastungen ": "Belastungen ",
+}
+
+#: Abkürzungen, die im Dateinamen ohne Bindestrich an ihr Grundwort stoßen:
+#: „PAK Belastung" ist „PAK-Belastung". Nur für Abkürzungen in Großbuchstaben
+#: — bei gewöhnlichen Wörtern wäre die Regel falsch.
+_ABK_KOMPOSITUM_RE = re.compile(r"\b([A-ZÄÖÜ]{2,6})\s+([A-ZÄÖÜ][a-zäöüß]{3,})")
+
+#: … außer bei Parteien und Gruppen: „CDU Anwohnerparken" heißt, WER den
+#: Antrag stellt, nicht WORUM es geht. Ein Bindestrich machte daraus ein
+#: Kompositum, das es nicht gibt (aufgefallen beim Antrag vom 26.06.2023).
+_KEIN_KOMPOSITUM = frozenset(
+    {"CDU", "SPD", "FDP", "AFD", "BSW", "MDL", "MDB", "OB"}
+)
+
+
+def _entstolpern(text: str) -> str:
+    """Offensichtliche Verschreiber im Dateinamen glätten."""
+    for falsch, richtig in _TIPPFEHLER.items():
+        text = re.sub(re.escape(falsch), richtig, text, flags=re.IGNORECASE)
+
+    def _binden(m: re.Match) -> str:
+        if m.group(1).upper() in _KEIN_KOMPOSITUM:
+            return m.group(0)
+        return f"{m.group(1)}-{m.group(2)}"
+
+    return _ABK_KOMPOSITUM_RE.sub(_binden, text)
+
+
 def titel_aus_label(label: str) -> str:
     """Aus dem Dateinamen einen Titel machen, der auf einer Karte steht.
 
@@ -66,7 +108,7 @@ def titel_aus_label(label: str) -> str:
     # drumherum („Antrag Dringlichkeit …", „Dringlichkeitsantrag …").
     thema = re.sub(r"\b(antrag\s+)?dringlichkeits?(antrag)?\b[\s:–-]*", "", text,
                    flags=re.IGNORECASE).strip(" -–:_.")
-    thema = re.sub(r"\s{2,}", " ", thema)
+    thema = _entstolpern(re.sub(r"\s{2,}", " ", thema))
     return f"Dringlichkeitsantrag: {thema}" if thema else "Dringlichkeitsantrag"
 
 

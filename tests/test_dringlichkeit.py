@@ -30,7 +30,7 @@ def test_titel_aus_den_echten_labels():
     """Die Labels sind uneinheitlich — Datumsstempel vorn, Sitzungsdatum
     hinten, mal „Antrag Dringlichkeit", mal „Dringlichkeitsantrag"."""
     assert titel_aus_label("Dringlichkeitsantrag festegestellte PAK Belastung 31.08.2026") \
-        == "Dringlichkeitsantrag: festegestellte PAK Belastung"
+        == "Dringlichkeitsantrag: festgestellte PAK-Belastung"
     assert titel_aus_label("250523 Antrag Dringlichkeit Fliegerhorst-Fraktionen") \
         == "Dringlichkeitsantrag: Fliegerhorst-Fraktionen"
     assert titel_aus_label("TV Dringlichkeitsantrag  Resolution Iran") \
@@ -243,3 +243,28 @@ def test_der_boden_wirkt_in_der_wochenvorschau(tmp_path):
         assert nach_nr["DZT 1"]["wichtig_grund"] == "Ein Grund"
     finally:
         store.close()
+
+
+def test_tippfehler_der_stadt_werden_geglaettet():
+    """Der Titel kommt aus einem Dateinamen, und der ist getippt wie jeder
+    andere auch: „festegestellte" (Antrag vom 31.08.2026). Tims Vorgabe
+    30.08.26: auch die Fehler der Stadt korrigieren.
+
+    Korrigiert wird nur, was zweifelsfrei ein Verschreiber ist — der Titel
+    wird nicht umformuliert. Wer den Antrag im Ratsinformationssystem sucht,
+    findet ihn über den Link der Anlage, nicht über diese Zeile.
+    """
+    assert titel_aus_label("Dringlichkeitsantrag festegestellte PAK Belastung") \
+        == "Dringlichkeitsantrag: festgestellte PAK-Belastung"
+    # Abkürzung + Grundwort wird zum Kompositum: „PAK Belastung" ist eines.
+    assert titel_aus_label("Dringlichkeitsantrag PFAS Werte") \
+        == "Dringlichkeitsantrag: PFAS-Werte"
+
+
+def test_parteikuerzel_bleiben_ein_eigenes_wort():
+    """„CDU Anwohnerparken" sagt, WER den Antrag stellt, nicht worum es geht.
+    Ein Bindestrich machte daraus ein Kompositum, das es nicht gibt."""
+    assert titel_aus_label("Dringlichkeitsantrag CDU Anwohnerparken") \
+        == "Dringlichkeitsantrag: CDU Anwohnerparken"
+    assert titel_aus_label("Dringlichkeitsantrag SPD Radwege") \
+        == "Dringlichkeitsantrag: SPD Radwege"
