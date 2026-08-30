@@ -6,9 +6,13 @@ die **ganze Vorlage samt Anlagen** sieht. Warum das nötig ist, steht in
 ``council/social_text.py``; kurz: Die Kurzfassung kennt nur den Titel, der
 Tragweite-Grund wertet (er begründet eine Rangfolge).
 
-Läuft täglich HINTER ``rate_agenda_impact.py``: Geschrieben wird nur für
-Punkte, die schon eine Tragweite haben und damit überhaupt auf eine Karte
-kommen können — rund 20 der 87 öffentlichen Punkte einer Woche::
+Läuft täglich HINTER ``rate_agenda_impact.py``. Geschrieben wird für **jeden
+inhaltlichen Punkt** der nächsten drei Wochen, nicht mehr nur für die rund 20
+von 97, die auf eine Instagram-Karte kommen: Im Web wird die Tagesordnung
+ganz gelesen, und unter den übrigen stand bis dahin die titelbasierte
+Kurzfassung oder gar nichts (Tims Entscheidung 30.08.26). Die Tragweite
+entscheidet seitdem nur noch die Reihenfolge — wer hoch steht, kommt zuerst
+dran. Formalien bleiben draußen::
 
     python scripts/social_kartentexte.py --limit 40
     python scripts/social_kartentexte.py --probe 5      # nur zeigen, nichts speichern
@@ -118,8 +122,9 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--tage", type=int, default=21, help="Vorlauf in Tagen (Default 21)")
     ap.add_argument("--workers", type=int, default=4)
-    ap.add_argument("--mindest-wichtig", type=int, default=40,
-                    help="Nur Punkte ab dieser Tragweite (Default 40)")
+    ap.add_argument("--mindest-wichtig", type=int, default=0,
+                    help="Nur Punkte ab dieser Tragweite (Default 0 = alle "
+                         "inhaltlichen; Formalien bleiben immer draußen)")
     ap.add_argument("--probe", type=int, metavar="N",
                     help="N Punkte zeigen, NICHTS speichern")
     ap.add_argument("--db", default=str(COUNCIL_DB))

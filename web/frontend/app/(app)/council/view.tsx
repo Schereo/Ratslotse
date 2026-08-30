@@ -984,6 +984,17 @@ function YearDivider({ jahr }: { jahr: string }) {
    toter Text — man musste zurück in die Suche, um den Beschluss zu finden, der
    direkt dahinter liegt. TOPs ohne Beschluss (Berichte, künftige Sitzungen)
    bleiben bewusst ruhiger Text, damit der Zeiger nichts verspricht, was fehlt. */
+/** Der eine Satz unter dem Titel — der bessere zuerst.
+ *
+ *  `social_text` entsteht aus der ganzen Vorlage samt Anlagen, `summary`
+ *  allein aus dem Titel („Du kennst nur den Titel des Punktes" steht wörtlich
+ *  in deren Prompt) und kann deshalb nicht mehr als die Überschrift
+ *  umformulieren. Beide kommen vom Server; die Reihenfolge steht auch dort
+ *  (`store.agenda_items`) — hier nur noch die Auswahl fürs Auge. */
+function kurzfassung(it: AgendaItem): string | null {
+  return it.social_text || it.summary || null;
+}
+
 function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true }: {
   it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
@@ -1002,16 +1013,23 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksin
           ganze Zeile auseinander. */}
       <span className="w-10 shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">{it.item_number}</span>
       <div className="min-w-0 flex-1">
+        {/* In der Trefferliste der Suche steht der Antrag ohne den Block über
+            der Tagesordnung — die Marke muss deshalb an der Zeile selbst
+            hängen, sonst liest er sich wie ein gewöhnlicher Punkt. */}
+        {it.dringlich && (
+          <span className="mb-0.5 flex items-center gap-1 font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em] text-signal">
+            <Flame className="h-3 w-3" aria-hidden /> Dringlichkeitsantrag
+          </span>
+        )}
         <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
-        {/* Ein Satz, worum es geht (Tims Wunsch 12.08.) — dieselbe
-            KI-Zusammenfassung wie in der Tagesordnungs-Mail. Der Hinweis
+        {/* Ein Satz, worum es geht (Tims Wunsch 12.08.) — der Hinweis
             „Kurzfassung" sagt, dass hier eine Maschine zusammengefasst hat. */}
-        {it.summary && (
+        {kurzfassung(it) && (
           <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">
             <span className="mr-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground/70">
               Kurzfassung
             </span>
-            {it.summary}
+            {kurzfassung(it)}
           </p>
         )}
         {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.vorlage_nr} query={query} /></p>}
@@ -1110,6 +1128,83 @@ function AenderungenSection({ aenderungen }: { aenderungen: AgendaAenderung[] })
               </li>
             ))}
           </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** „Dringlichkeitsantrag: festgestellte PAK-Belastung" → „Festgestellte
+ *  PAK-Belastung". Die Marke steht schon im Kicker darüber; bleibt nichts
+ *  übrig, steht der ganze Titel da. */
+function ohneMarke(titel: string): string {
+  const rest = titel.replace(/^\s*Dringlichkeitsantrag\s*[:–-]\s*/i, "").trim();
+  if (!rest) return titel;
+  return rest[0].toUpperCase() + rest.slice(1);
+}
+
+/**
+ * Dringlichkeitsanträge — der Teil der Sitzung, der nirgends steht.
+ *
+ * Ein Dringlichkeitsantrag wird kurzfristig auf die Tagesordnung gehoben und
+ * hat im Ratsinformationssystem deshalb **keinen eigenen Punkt**: Er hängt
+ * als Dokument an „Ö 2 Genehmigung der Tagesordnung", weil dort über seine
+ * Aufnahme abgestimmt wird. `council/dringlichkeit.py` macht daraus eine
+ * eigene Zeile mit der Kennung `DZT n`.
+ *
+ * Sie steht hier über der Tagesordnung statt in ihr, und das ist keine
+ * Bequemlichkeit: Der Punkt ist abgeleitet, nicht amtlich — er hat keine
+ * Ö-Nummer und in der gedruckten Tagesordnung keine Zeile. Zwischen den
+ * amtlichen Punkten stünde er wie einer von ihnen; hier sieht man ihm an,
+ * dass er dazugekommen ist.
+ *
+ * Am Bestand gemessen (40 Ratssitzungen, Juli 2022 – August 2026): zwölfmal,
+ * also in 30 % der Sitzungen — Resolution Iran, Anwohnerparken, Lachgas,
+ * Fliegerhorst, Platanen am Stadtmuseum. Keine Randthemen.
+ */
+function DringlichkeitsBlock({ items, ksinr }: { items: AgendaItem[]; ksinr?: number }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mb-3 space-y-2">
+      {items.map((it) => (
+        <div key={it.item_number}
+          className="rounded-lg border border-signal/25 bg-signal/[0.05] px-3 py-2.5">
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em] text-signal">
+                <Flame className="h-3 w-3" aria-hidden /> Dringlichkeitsantrag
+              </span>
+              <p className="mt-1 text-sm font-semibold leading-snug text-foreground">
+                {ohneMarke(it.title)}
+              </p>
+              {kurzfassung(it) && (
+                <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+                  {kurzfassung(it)}
+                </p>
+              )}
+              {/* Warum der Punkt anders ist als die anderen — ohne diesen Satz
+                  sieht die Hervorhebung nach Laune aus. */}
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground/85">
+                Kurzfristig eingebracht: Er steht in keiner Tagesordnung. Zu Beginn
+                der Sitzung wird erst darüber abgestimmt, ob er überhaupt behandelt wird.
+              </p>
+              {(it.anlagen?.length ?? 0) > 0 && (
+                <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                  {it.anlagen!.map((a) => (
+                    <a key={a.url} href={a.url} target="_blank" rel="noreferrer"
+                      className="inline-flex max-w-full items-center gap-1 text-xs text-primary hover:underline">
+                      <Paperclip className="h-3 w-3 shrink-0" aria-hidden />
+                      <span className="truncate">Antrag im Ratsinfo</span>
+                    </a>
+                  ))}
+                </p>
+              )}
+            </div>
+            {ksinr != null && (
+              <BookmarkButton target={{ kind: "agenda_item", ksinr, item_number: it.item_number }}
+                compact className="mt-0.5 shrink-0" />
+            )}
+          </div>
         </div>
       ))}
     </div>
@@ -1584,8 +1679,15 @@ function SessionsTab({ committees }: { committees: string[] }) {
                               && (d?.aenderungen?.length ?? 0) > 0 && (
                               <AenderungenSection aenderungen={d!.aenderungen!} />
                             )}
+                            {/* Der Dringlichkeitsantrag zuerst, und außerhalb
+                                der Liste: Er hat keine Ö-Nummer und steht in
+                                der amtlichen Tagesordnung nicht (s.
+                                DringlichkeitsBlock). */}
+                            <DringlichkeitsBlock
+                              items={(d?.agenda_items ?? []).filter((it) => it.dringlich)}
+                              ksinr={s.ksinr ?? undefined} />
                             <ul className="space-y-0.5">
-                              {(d?.agenda_items ?? []).map((it, i) => (
+                              {(d?.agenda_items ?? []).filter((it) => !it.dringlich).map((it, i) => (
                                 <AgendaRow key={i} it={it} query={query}
                                   ksinr={s.ksinr ?? undefined}
                                   bookmarkable={!hasAgendaChildren(it, d?.agenda_items ?? [])}

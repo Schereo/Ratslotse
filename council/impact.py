@@ -80,15 +80,17 @@ def formalakt_deckel(title: str | None) -> int | None:
 #: bleibt richtig, sie wog nur die Kurzfristigkeit nicht mit.
 DRINGLICHKEIT_MIN = 65
 
-#: Woran ein Dringlichkeitsantrag zu erkennen ist: an der Kennung, die
-#: council/dringlichkeit.py vergibt. Am Titel zu prüfen wäre unschärfer —
-#: „Dringlichkeit" kann auch im Titel einer gewöhnlichen Vorlage stehen.
-_DZT_RE = re.compile(r"^\s*DZT\b")
-
-
 def dringlichkeits_boden(item_number: str | None) -> int | None:
-    """Score-Untergrenze für Dringlichkeitsanträge — sonst None."""
-    return DRINGLICHKEIT_MIN if _DZT_RE.match(item_number or "") else None
+    """Score-Untergrenze für Dringlichkeitsanträge — sonst None.
+
+    Woran einer zu erkennen ist, weiß ``council.dringlichkeit``: an der
+    Kennung, die es selbst vergibt. Am Titel zu prüfen wäre unschärfer —
+    „Dringlichkeit" steht auch im Titel gewöhnlicher Vorlagen
+    („Dringlichkeitsliste – Fortschreibung 2021").
+    """
+    from .dringlichkeit import ist_dringlichkeitsantrag  # noqa: PLC0415 — Ringschluss
+
+    return DRINGLICHKEIT_MIN if ist_dringlichkeitsantrag(item_number) else None
 
 
 def _batch_text(decisions: list[dict]) -> str:

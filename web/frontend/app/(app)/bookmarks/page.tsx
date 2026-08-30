@@ -36,7 +36,9 @@ function status(entry: BookmarkEntry): { label: string; color: "slate" | "blue" 
 
 function preview(entry: BookmarkEntry): string | null {
   const d = entry.decision;
-  if (!d) return entry.agenda_item?.summary ?? null;
+  // Der Kartentext kennt Vorlage und Anlagen, die Kurzfassung nur den Titel —
+  // dieselbe Reihenfolge wie in der Tagesordnung (`kurzfassung` in council/view).
+  if (!d) return entry.agenda_item?.social_text || entry.agenda_item?.summary || null;
   return d.simple_summary || d.summary || d.beschluss || null;
 }
 

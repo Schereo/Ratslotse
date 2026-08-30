@@ -951,8 +951,13 @@ def _finde_sitzungen(store, frage: str) -> list[dict]:
                               if s["ksinr"] else [])
         if not s["beschluss_ids"]:
             agenda = store.agenda_items(s["ksinr"]) if s["ksinr"] else []
+            # Der Kartentext zuerst: Er entsteht aus Vorlage UND Anlagen und
+            # sagt deshalb, WAS beantragt ist („110 Wohneinheiten auf 8,6
+            # Hektar"). Die Kurzfassung kennt nur den Titel und formuliert ihn
+            # um — als Antwortgrundlage ist das der schwächere Satz.
             s["agenda"] = [{"item_number": a.get("item_number"),
-                            "title": a.get("title"), "summary": a.get("summary")}
+                            "title": a.get("title"),
+                            "summary": a.get("social_text") or a.get("summary")}
                            for a in agenda]
         out.append(s)
     return out
