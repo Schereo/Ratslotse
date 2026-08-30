@@ -3470,7 +3470,16 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   ihre eigene „Zusammenstellung der Veränderungen" bewiesen (Tabellen
   `council_haushalt_aenderungen`/`…_summen`, Ingest
   `scripts/ingest_aenderungslisten.py`, Anzeige auf
-  `/haushalt/mitreden#streit` als „Was in den Listen stand"). Auch die
+  `/haushalt/mitreden#streit` als „Was in den Listen stand").
+
+  Der Ingest läuft seit 08/2026 im Ops-Workflow *„Finanzdaten einlesen
+  (dev)"* mit; `pymupdf` zieht der Workflow bei Bedarf nach, wie den
+  PDF-Renderer der OCR. Davor musste er nach jedem Parser-Merge von Hand über
+  SSH laufen — und wer ihn vergaß, sah dev neuen Code auf altem Bestand
+  zeigen. Das ist der unangenehmere Fall als eine leere Tabelle: Die Seite
+  bleibt nicht leer, sie wird falsch.
+
+  Auch die
   **Erläuterungs-Spalte** wird gelesen: der Text der Verwaltung, was jede
   Änderung ist. Text hat keine Schlusssumme, gegen die man ihn beweisen
   könnte — an die Stelle der Rechenprobe tritt Geometrie: Alle Dokumente
