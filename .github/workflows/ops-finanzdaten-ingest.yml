@@ -171,6 +171,33 @@ jobs:
             # lesbar.
             .venv/bin/python scripts/ingest_gebuehren.py
 
+            # Die Änderungslisten zum Haushalt — was der Entwurf im Verfahren
+            # noch geändert wurde, Position für Position, und seit #838 mit
+            # dem Urheber je Position, wo das Dokument ihn nennt.
+            #
+            # ER FEHLTE HIER BIS 08/2026, und das war die eigentliche Falle:
+            # Der Lauf musste nach jedem Parser-Merge von Hand auf der Dev-VM
+            # angestoßen werden — vergaß man ihn, zeigte dev neuen Code auf
+            # altem Bestand, was von außen wie ein kaputter Parser aussieht.
+            # Genau der Fall, vor dem der Kommentar ganz oben warnt („ein
+            # Parser ohne Ingest fällt sonst nur dadurch auf, dass die Seite
+            # leer bleibt") — hier blieb sie nicht einmal leer, sie war falsch.
+            #
+            # Er hängt an KEINEM der Läufe darüber: Er liest aus
+            # `council_anlagen` nur Label und URL und lädt die PDFs selbst aus
+            # dem Ratsinformationssystem, braucht also weder den Volltext- noch
+            # den OCR-Lauf. Wiederholen ist gefahrlos — gespeichert wird je
+            # (Jahrgang, Liste) mit vorherigem Löschen, und was seine Proben
+            # nicht besteht, wird gar nicht erst geschrieben.
+            #
+            # `pymupdf` liefert die Wortkoordinaten, ohne die sich Ertrag,
+            # Aufwand und Erläuterung nicht sicher trennen lassen. Es steht
+            # bewusst nicht in requirements.txt (dieselbe Zurückhaltung wie bei
+            # pypdfium2 oben) und wird hier bei Bedarf nachgezogen.
+            .venv/bin/python -c "import pymupdf" 2>/dev/null \
+              || .venv/bin/pip install --quiet pymupdf
+            .venv/bin/python scripts/ingest_aenderungslisten.py
+
             # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
             # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
             # ingest_finanzen_opendata.py, und das ist keine Sortierlaune:
@@ -270,6 +297,13 @@ jobs:
                 "council_gebuehren", "council_gebuehrensaetze",
                 "council_haushaltssatzung",
                 "council_wirtschaftsplaene",
+                # Die Änderungslisten (#734/#838). Die Summen-Tabelle steht mit
+                # dabei, weil sie der Beweis der anderen ist: Positionen ohne
+                # ihre Zusammenstellung hätte der Ingest gar nicht gespeichert
+                # — bliebe sie leer, während Positionen dastehen, wäre etwas
+                # an dieser Ordnung vorbeigelaufen.
+                "council_haushalt_aenderungen",
+                "council_haushalt_aenderungen_summen",
             ]
             # Die Jahresspalte heißt nicht überall „jahr": council_haushalt
             # führt „year", der Stellenplan „jahrgang". Der erste Lauf meldete
@@ -336,6 +370,26 @@ jobs:
                           f"{zeile['stand_nach_ergebnis'] / 1_000_000:.1f} Mio. Euro")
             else:
                 print("  LEER — Bilanzrollen oder Jahresergebnis fehlen")
+
+            # Wer welche Änderung wollte. Auch das sieht die Tabelleninventur
+            # nicht: Der Urheber steht in einer SPALTE, nicht in einer eigenen
+            # Tabelle — fiele er weg, bliebe die Zeilenzahl gleich. Zu erwarten
+            # ist genau ein Jahrgang (2021, 187 Positionen), weil nur dessen
+            # Beschluss-Datei eine Spalte „Vorschlag von“ führt. Meldet der
+            # Lauf plötzlich mehr, hat entweder das Ratsinformationssystem ein
+            # neues Dokument bekommen — oder die Kopferkennung greift zu weit.
+            try:
+                mit = s._conn.execute(
+                    "SELECT jahrgang, COUNT(*) FROM council_haushalt_aenderungen "
+                    "WHERE urheber IS NOT NULL GROUP BY jahrgang "
+                    "ORDER BY jahrgang").fetchall()
+                print("\nÄnderungslisten mit Urheber je Position:")
+                for jahrgang, anzahl in mit:
+                    print(f"  {jahrgang}: {anzahl} Positionen")
+                if not mit:
+                    print("  KEINE — erwartet wäre der Jahrgang 2021")
+            except Exception as e:                          # noqa: BLE001
+                print(f"\nUrheber-Stand nicht lesbar: {e}")
             s.close()
             PY
 
