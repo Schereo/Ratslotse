@@ -1,25 +1,75 @@
 import * as React from "react";
-import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MascotTheme } from "@/lib/mascot-theme";
 import { mascotThemeLabel } from "@/lib/mascot-theme";
+import { Lotti, type LottiRegung } from "@/components/lotti";
 
 /**
  * „Lotti" — die Lotsenmöwe von Ratslotse (und ihre Familie).
  *
- * Handgezeichnetes Flat-SVG in der Markenpalette (Marine + Signal-Orange). Lotti
- * lotst durch die App: begrüßt im Onboarding, zeigt auf Neues, guckt bei leeren
- * Ergebnissen durchs Fernrohr und hält auf der 404 Ausschau.
+ * `Mascot` ist seit 08/2026 die ANIMIERTE Sprite-Lotti aus dem Lotti-Studio
+ * (<Lotti/> in components/lotti.tsx): Sie blinzelt, nickt, winkt, sucht und
+ * schläft in gebackenen Einzelbildern der 3D-Figur. Die alte `pose`-Sprache
+ * (wave/point/…) bleibt als grobe Stimmung erhalten und wird auf Regungen
+ * übersetzt; wer feiner wählen will, setzt `regung` direkt aus dem Katalog
+ * (/lotti/katalog.html).
  *
- * Neu: Lotti blinzelt und atmet (`animated`, Default an), kleidet sich je nach
- * Jahreszeit und trägt zu besonderen Tagen (Halloween, Weihnachten, Ostern,
- * Pride) ein passendes Outfit (`theme`, meist über <SeasonalMascot/> gesetzt).
- * Dazu gibt es Küken (<Chick/>) und die ganze Familie (<MascotFamily/>).
- *
- * Farben sind bewusst fix (Sticker-Prinzip) und funktionieren auf hellem wie
- * dunklem Grund. Animationen respektieren `prefers-reduced-motion` global.
+ * Das handgezeichnete Flat-SVG lebt nur noch dort weiter, wofür es keine
+ * Sprites gibt: die Küken (<Chick/>) und die Familien-Gruppe (<MascotFamily/>)
+ * samt Jahreszeiten-/Feiertags-Outfits. Farben sind bewusst fix
+ * (Sticker-Prinzip); Animationen respektieren `prefers-reduced-motion`.
  */
 export type MascotPose = "wave" | "point" | "celebrate" | "search" | "confused" | "sleep";
+
+/* Übersetzung der alten Posen in Regungen des Sprite-Katalogs. `search` und
+ * `sleep` sind Schleifen (laufen, solange der Zustand dauert), der Rest spielt
+ * einmal — danach hält die Regie des Abspielers die Figur lebendig. */
+const POSE_REGUNG: Record<MascotPose, LottiRegung> = {
+  wave: "winkt",
+  point: "zeigt-rechts",
+  celebrate: "freut-sich",
+  search: "sucht",
+  confused: "fragt",
+  sleep: "schlaeft",
+};
+
+/** Die animierte Lotti — Größe wie bisher über `className` (h-24/w-24 usw.). */
+export function Mascot({
+  pose = "wave",
+  regung,
+  regie,
+  spiegel,
+  className,
+  decorative = false,
+  label,
+}: {
+  pose?: MascotPose;
+  /** Feinere Wahl direkt aus dem Regungs-Katalog; gewinnt über `pose`. */
+  regung?: LottiRegung;
+  /** Was Lotti von selbst tut: "ruhig" (Default), "lebhaft" oder "aus". */
+  regie?: "ruhig" | "lebhaft" | "aus";
+  /** Gespiegelt — für Figuren, die nach links schauen sollen. */
+  spiegel?: boolean;
+  className?: string;
+  /** Rein dekorativ: fürs Screenreader unsichtbar. */
+  decorative?: boolean;
+  label?: string;
+}) {
+  return (
+    <Lotti
+      regung={regung ?? POSE_REGUNG[pose]}
+      regie={regie}
+      spiegel={spiegel}
+      decorative={decorative}
+      label={label ?? "Lotti, die Lotsenmöwe"}
+      className={cn("h-28 w-28", className)}
+    />
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Ab hier: das gezeichnete SVG — nur noch für Küken und Familie.
+   ══════════════════════════════════════════════════════════════════════════ */
 
 const C = {
   body: "#FFFFFF",
@@ -445,9 +495,9 @@ function Outfit({ theme }: { theme: MascotTheme | null }) {
   return <>{bits}</>;
 }
 
-/* ── Lotti ────────────────────────────────────────────────────────────────── */
+/* ── Die gezeichnete Lotti (nur noch in der Familien-Gruppe) ─────────────── */
 
-export function Mascot({
+function MascotZeichnung({
   pose = "wave",
   className,
   bob = false,
@@ -462,11 +512,11 @@ export function Mascot({
   className?: string;
   /** Sanft schaukeln lassen (wie ein Boot in der Dünung). */
   bob?: boolean;
-  /** Freudentanz (wippen + hüpfen) — für besonders gute Quiz-Runden. */
+  /** Freudentanz (wippen + hüpfen). */
   dance?: boolean;
   /** Blinzeln, Atmen, Winken. Default an; global via prefers-reduced-motion aus. */
   animated?: boolean;
-  /** Jahreszeit-/Feiertags-Outfit. Meist über <SeasonalMascot/> gesetzt. */
+  /** Jahreszeit-/Feiertags-Outfit. Meist über <SeasonalFamily/> gesetzt. */
   theme?: MascotTheme | null;
   /** Kopfbedeckung ohne Feiertag: Lotsenmütze (Lotti) oder Südwester (Partner). */
   hat?: MascotHat;
@@ -640,7 +690,7 @@ export function MascotFamily({
     : "Lotti, die Lotsenmöwe, mit ihrer Familie";
   return (
     <div role="img" aria-label={aria} className={cn("flex items-end justify-center gap-1", className)}>
-      <Mascot pose="wave" theme={theme} bob decorative className="h-32 w-32 sm:h-40 sm:w-40" />
+      <MascotZeichnung pose="wave" theme={theme} bob decorative className="h-32 w-32 sm:h-40 sm:w-40" />
       <div className="flex items-end gap-0.5">
         {Array.from({ length: Math.max(0, Math.min(4, chicks)) }).map((_, i) => (
           <span key={i} style={{ animationDelay: delays[i % delays.length] }} className="lotti-hop inline-block">
@@ -650,49 +700,8 @@ export function MascotFamily({
       </div>
       {/* Partner-Möwe: gespiegelt, damit sie zu den Küken schaut. */}
       <span className="inline-block -scale-x-100">
-        <Mascot pose="point" hat="souwester" theme={theme} decorative className="h-28 w-28 sm:h-36 sm:w-36" />
+        <MascotZeichnung pose="point" hat="souwester" theme={theme} decorative className="h-28 w-28 sm:h-36 sm:w-36" />
       </span>
-    </div>
-  );
-}
-
-/* ── Sprechblase mit Lotti ────────────────────────────────────────────────── */
-
-/**
- * Sprechblase mit Lotti daneben — für Tipps und kleine Hinweise.
- * `side` bestimmt, wo Lotti steht (mobil bleibt sie oben links im Fluss).
- */
-export function MascotTip({
-  pose = "point",
-  title,
-  children,
-  className,
-  onDismiss,
-}: {
-  pose?: MascotPose;
-  title?: string;
-  children: React.ReactNode;
-  className?: string;
-  /** Zeigt ein kleines X in der Sprechblase (z. B. „Tipp ausblenden"). */
-  onDismiss?: () => void;
-}) {
-  return (
-    <div className={cn("flex items-end gap-3", className)}>
-      <Mascot pose={pose} className="h-16 w-16 shrink-0" />
-      <div className={cn("relative flex-1 rounded-2xl rounded-bl-sm border border-border bg-card p-3.5 shadow-sm", onDismiss && "pr-9")}>
-        {onDismiss && (
-          <button
-            type="button"
-            onClick={onDismiss}
-            aria-label="Tipp ausblenden"
-            className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-        {title && <p className="text-sm font-semibold text-foreground">{title}</p>}
-        <div className={cn("text-sm leading-relaxed text-muted-foreground", title && "mt-0.5")}>{children}</div>
-      </div>
     </div>
   );
 }

@@ -188,7 +188,7 @@ function Einstieg({
 }) {
   return (
     <div className="mx-auto flex w-full max-w-[760px] flex-col items-center px-4 pb-16 pt-10 text-center sm:pt-12">
-      <Mascot pose="point" bob className="h-20 w-20 sm:h-[100px] sm:w-[100px]" />
+      <Mascot pose="point" className="h-20 w-20 sm:h-[100px] sm:w-[100px]" />
       <p className="mt-3.5 text-xs font-semibold uppercase tracking-[0.12em] text-primary">Der Thesen-Check</p>
       <h1 className="mt-2.5 font-display text-[28px] font-bold leading-[1.08] tracking-tight [text-wrap:balance] sm:text-[40px]">
         Wo stehst du — verglichen mit den Programmen?
@@ -482,7 +482,7 @@ function Ergebnis({
             Abgleich, <strong className="font-semibold text-foreground">kein Wahltipp</strong>.
           </p>
         </div>
-        <Mascot pose="celebrate" bob decorative className="hidden h-[84px] w-[84px] flex-none sm:block" />
+        <Mascot pose="celebrate" decorative className="hidden h-[84px] w-[84px] flex-none sm:block" />
       </div>
 
       <div className="mt-6 overflow-hidden rounded-[18px] border border-border bg-card">

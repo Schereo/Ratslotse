@@ -5,7 +5,6 @@ import { ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Mascot } from "@/components/mascot";
-import { useMascotTheme } from "@/components/seasonal-mascot";
 import { cn } from "@/lib/utils";
 
 type Pause = {
@@ -27,7 +26,6 @@ const fmtShort = (iso: string) =>
  *  füllte sonst wochenlang jeden Morgen den halben Bildschirm). Erscheint
  *  nur bei aktiver Pause; API und Felder unverändert (/council/sitzungspause). */
 export function SitzungspauseBanner({ className, compact = false }: { className?: string; compact?: boolean }) {
-  const theme = useMascotTheme();
   const [open, setOpen] = useState(false);
   const { data } = useQuery({
     queryKey: ["sitzungspause"],
@@ -54,7 +52,7 @@ export function SitzungspauseBanner({ className, compact = false }: { className?
           className,
         )}
       >
-        <Mascot pose="sleep" theme={theme} decorative className="h-10 w-10 shrink-0" />
+        <Mascot pose="sleep" decorative className="h-10 w-10 shrink-0" />
         <p className="min-w-0 flex-1 text-sm text-foreground">
           <span className="font-display font-bold">{data.label}</span>
           {kachel && (
@@ -81,7 +79,7 @@ export function SitzungspauseBanner({ className, compact = false }: { className?
         aria-expanded={open}
         className="flex w-full items-center gap-3 p-3 text-left sm:px-4"
       >
-        <Mascot pose="sleep" theme={theme} decorative className="h-10 w-10 shrink-0 sm:h-12 sm:w-12" />
+        <Mascot pose="sleep" decorative className="h-10 w-10 shrink-0 sm:h-12 sm:w-12" />
         <p className="min-w-0 flex-1 text-sm text-foreground">
           <span className="font-display text-base font-bold">{data.label}</span>
           {kachel && (

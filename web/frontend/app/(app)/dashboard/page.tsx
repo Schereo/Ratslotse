@@ -11,7 +11,6 @@ import { shortCommittee } from "@/lib/committees";
 import { useHeute } from "@/lib/use-heute";
 import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
-import { useMascotTheme } from "@/components/seasonal-mascot";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
@@ -60,7 +59,6 @@ function relTime(iso: string): string {
  *  Neu zu deinen Themen · Zahl der Woche. Jeder Bereich hat einen definierten
  *  Leerzustand. */
 export default function DashboardPage() {
-  const theme = useMascotTheme();
   const { user } = useAuth();
   const heute = useHeute();
 
@@ -116,7 +114,7 @@ export default function DashboardPage() {
       {/* Kopf: Begrüßung + DIE Signal-Handlung des Screens („Frag den Rat"). */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
-          <Mascot pose="wave" theme={theme} bob className="h-[72px] w-[72px] shrink-0 sm:h-[88px] sm:w-[88px]" />
+          <Mascot pose="wave" className="h-[72px] w-[72px] shrink-0 sm:h-[88px] sm:w-[88px]" />
           <div className="min-w-0">
             <h1 className="truncate font-display text-2xl font-bold tracking-tight text-foreground sm:text-[30px] sm:leading-9">
               {/* Persönliche Ansprache, sobald ein Anzeigename da ist. */}
@@ -240,7 +238,7 @@ export default function DashboardPage() {
               {!topicsQuery.isLoading && topicCount === 0 && (
                 /* Leerzustand 4a: gestrichelte Lotti-Karte „Erstes Thema anlegen". */
                 <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 py-5 text-center">
-                  <Mascot pose="point" theme={theme} decorative className="h-12 w-12" />
+                  <Mascot pose="point" decorative className="h-12 w-12" />
                   <p className="text-sm text-muted-foreground">
                     Lege dein erstes Thema an und werde benachrichtigt, sobald der Rat dazu entscheidet.
                   </p>

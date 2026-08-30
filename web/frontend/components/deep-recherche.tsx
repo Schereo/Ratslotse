@@ -145,7 +145,7 @@ export function RechercheFortschritt({ phase, facetten, facettenFertig, dokument
   return (
     <div role="status" className="rounded-[14px] border-2 border-dashed border-border bg-card/60 p-3.5">
       <div className="flex gap-3">
-        <Mascot pose="search" bob className="h-[52px] w-[52px] shrink-0" />
+        <Mascot pose="search" className="h-[52px] w-[52px] shrink-0" />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
           {schritt(zustand(0), stufe > 0 && facetten.length > 0
             ? `Frage in ${facetten.length} Facetten zerlegt` : "Frage zerlegen …")}

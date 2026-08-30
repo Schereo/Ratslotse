@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Search, Sparkles, MapPin, BarChart3, Bell, Landmark, ArrowRight } from "lucide-react";
 import { Brand } from "@/components/brand";
-import { SeasonalMascot } from "@/components/seasonal-mascot";
+import { Mascot } from "@/components/mascot";
 import { PeekingChick } from "@/components/peeking-chick";
 import { LandingQaDemo } from "@/components/landing-qa-demo";
 import { HeaderCTA } from "@/components/landing-cta";
@@ -125,7 +125,7 @@ export default function LandingPage() {
               {/* Höher gesetzt als im Hero: Die Demo-Karte ist hier breiter, und
                   auf ihrer Höhe lägen sonst „Fragen"-Knopf und DEMO-Marke unter
                   der Möwe. Sie schaut jetzt über die Kante statt auf die Knöpfe. */}
-              <SeasonalMascot pose="point" bob className="pointer-events-none absolute -top-[74px] right-2 z-10 h-[104px] w-[104px] sm:-top-[86px] sm:right-6 sm:h-[116px] sm:w-[116px]" />
+              <Mascot regung="zeigt-runter" className="pointer-events-none absolute -top-[74px] right-2 z-10 h-[104px] w-[104px] sm:-top-[86px] sm:right-6 sm:h-[116px] sm:w-[116px]" />
               <span className="absolute -top-3 left-5 z-10 rounded-full bg-signal px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-signal-foreground shadow-sm">
                 Live ausprobieren
               </span>
@@ -179,7 +179,7 @@ export default function LandingPage() {
         {/* Closing CTA */}
         <section className="mx-auto max-w-3xl px-5 py-16">
           <div className="flex flex-col items-center gap-5 rounded-3xl border border-border bg-card p-8 text-center shadow-lifted sm:p-10">
-            <SeasonalMascot pose="celebrate" className="h-24 w-24" />
+            <Mascot pose="celebrate" className="h-24 w-24" />
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-foreground">Bereit, reinzuschauen?</h2>
               <p className="mt-2 text-muted-foreground">Konto erstellen und den Rat durchsuchen — kostenlos.</p>
