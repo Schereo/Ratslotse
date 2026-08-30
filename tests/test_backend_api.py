@@ -94,7 +94,7 @@ def test_native_api_top_level_contracts(client):
         ("/api/app-config", {"min_build", "hinweis"}),
         ("/api/account/notifications", {"kinds", "limits"}),
         ("/api/bookmarks", {"bookmarks"}),
-        ("/api/council/gespraeche", {"einstellung", "gespraeche"}),
+        ("/api/council/gespraeche", {"saves_conversations", "conversations"}),
         ("/api/council/deep-research/aktuell", {"job", "frei"}),
         ("/api/council/decisions?limit=5", {"total", "decisions"}),
         ("/api/council/parties", {"parties"}),
@@ -3233,7 +3233,7 @@ def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
         gid = done["gespraech_id"]
         assert gid is not None
         turns = store.qa_gespraech(gid, uid)["turns"]
-        assert len(turns) == 1 and turns[0]["antwort"].startswith("Wird ausgebaut")
+        assert len(turns) == 1 and turns[0]["answer"].startswith("Wird ausgebaut")
         # Fremde/erfundene id → still kein Save, tote id wird nicht bestätigt.
         done = frag({"question": "Und weiter?", "gespraech_id": 999999})
         assert done["gespraech_id"] is None
@@ -5359,24 +5359,24 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
                       if line.startswith("data: ")]
         gid = next(e for e in events if e["type"] == "done")["gespraech_id"]
         turns = store.qa_gespraech(gid, uid)["turns"]
-        quellen = json.loads(turns[0]["quellen"]) if isinstance(turns[0]["quellen"], str) else turns[0]["quellen"]
+        quellen = json.loads(turns[0]["sources"]) if isinstance(turns[0]["sources"], str) else turns[0]["sources"]
         assert quellen["presse"][0]["titel"] == "Stadt informiert zum Stadion"
         assert quellen["debatten"][0]["sprecher"] == "Höpken"
         assert quellen["debatten"][0]["auszug"].startswith("Endlich")
         # Der Lese-Endpoint reicht den Snapshot durch (Frontend stellt daraus her).
         g = client.get(f"/api/council/gespraeche/{gid}").json()
-        q0 = g["turns"][0]["quellen"]
+        q0 = g["turns"][0]["sources"]
         assert q0["presse"] and q0["debatten"]
         # … samt der Suchfassung der Frage: Nachladende Bausteine schlüsseln
         # darauf, und ohne sie baute die Wiederherstellung einen anderen
         # Schlüssel als der Live-Lauf (Tims Fragen-Tab-Befund 21.08.2026).
         assert q0["kontext"] == "Was ist mit dem Stadion?"
         # Design 9a②: Umbenennen über die API — fremde ids bleiben 404.
-        r = client.patch(f"/api/council/gespraeche/{gid}", json={"titel": "Stadion"})
+        r = client.patch(f"/api/council/gespraeche/{gid}", json={"title": "Stadion"})
         assert r.status_code == 200
-        assert store.qa_gespraech(gid, uid)["titel"] == "Stadion"
+        assert store.qa_gespraech(gid, uid)["title"] == "Stadion"
         assert client.patch("/api/council/gespraeche/999999",
-                            json={"titel": "x"}).status_code == 404
+                            json={"title": "x"}).status_code == 404
     finally:
         store.close()
 
@@ -5397,21 +5397,21 @@ def test_gespraeche_liste_blaettert_und_sucht(client):
             store.qa_gespraech_start(uid, f"Cäcilienbrücke {i}" if i == 3 else f"Thema {i}")
 
         b = client.get("/api/council/gespraeche").json()
-        assert len(b["gespraeche"]) == 30 and b["gesamt"] == 70 and b["weitere"] is True
+        assert len(b["conversations"]) == 30 and b["total"] == 70 and b["has_more"] is True
 
         # Blättern erreicht auch die Zeilen jenseits der alten 50er-Grenze.
         letzte = client.get("/api/council/gespraeche?offset=60").json()
-        assert len(letzte["gespraeche"]) == 10 and letzte["weitere"] is False
-        assert letzte["gespraeche"][-1]["titel"] == "Thema 0"
+        assert len(letzte["conversations"]) == 10 and letzte["has_more"] is False
+        assert letzte["conversations"][-1]["title"] == "Thema 0"
 
         # Gesucht wird in der DB: Der Treffer liegt außerhalb der ersten Seite.
         t = client.get("/api/council/gespraeche?q=cäcilien").json()
-        assert [g["titel"] for g in t["gespraeche"]] == ["Cäcilienbrücke 3"]
-        assert t["treffer"] == 1 and t["gesamt"] == 70   # Bestand bleibt Bestand
+        assert [g["title"] for g in t["conversations"]] == ["Cäcilienbrücke 3"]
+        assert t["matches"] == 1 and t["total"] == 70   # Bestand bleibt Bestand
 
         # Die Konto-Karte holt nur die Zahl.
         nur_zahl = client.get("/api/council/gespraeche?limit=0").json()
-        assert nur_zahl["gespraeche"] == [] and nur_zahl["gesamt"] == 70
+        assert nur_zahl["conversations"] == [] and nur_zahl["total"] == 70
     finally:
         store.close()
 

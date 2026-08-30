@@ -167,7 +167,7 @@ const OUTCOME_LABEL: Record<string, string> = {
 };
 
 /** Gesprächs-Zeile der „Meine Gespräche"-Liste (5a/I-04). */
-type GespraechEintrag = { id: number; titel: string; updated: string; n_turns: number };
+type GespraechEintrag = { id: number; title: string; updated: string; n_turns: number };
 /** Wie viele Gesprächszeilen eine Seite bringt — der Rest kommt über
  *  „Ältere anzeigen" nach. */
 const GESPRAECHE_SEITE = 30;
@@ -1258,12 +1258,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const ladeGespraeche = () =>
     holeGespraeche("", 0)
       .then((b) => {
-        setEinstellung(b.einstellung);
-        setGespraeche(b.gespraeche ?? []);
-        setGesamt(b.gesamt ?? 0);
-        setWeitere(Boolean(b.weitere));
+        setEinstellung(b.saves_conversations);
+        setGespraeche(b.conversations ?? []);
+        setGesamt(b.total ?? 0);
+        setWeitere(Boolean(b.has_more));
         setGespraecheGeladen(true);
-        merkeHatGespraeche((b.gesamt ?? 0) > 0);
+        merkeHatGespraeche((b.total ?? 0) > 0);
       })
       .catch(() => {});
   // Beim Tippen sind mehrere Antworten unterwegs; ohne diese Marke könnte
@@ -1274,10 +1274,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     return holeGespraeche(q, 0)
       .then((b) => {
         if (sucheLauf.current !== q) return;
-        setSucheListe(b.gespraeche ?? []);
-        setSucheTreffer(b.treffer ?? 0);
-        setSucheWeitere(Boolean(b.weitere));
-        setGesamt(b.gesamt ?? 0);
+        setSucheListe(b.conversations ?? []);
+        setSucheTreffer(b.matches ?? 0);
+        setSucheWeitere(Boolean(b.has_more));
+        setGesamt(b.total ?? 0);
       })
       .catch(() => {
         if (sucheLauf.current !== q) return;
@@ -1297,18 +1297,18 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       // um eine Zeile — ohne diesen Abgleich stünde sie doppelt in der Liste.
       const anhaengen = (gs: GespraechEintrag[]) => [
         ...gs,
-        ...((b.gespraeche ?? []) as GespraechEintrag[]).filter(
+        ...((b.conversations ?? []) as GespraechEintrag[]).filter(
           (n) => !gs.some((g) => g.id === n.id)),
       ];
       if (q) {
         setSucheListe((gs) => anhaengen(gs ?? []));
-        setSucheTreffer(b.treffer ?? 0);
-        setSucheWeitere(Boolean(b.weitere));
+        setSucheTreffer(b.matches ?? 0);
+        setSucheWeitere(Boolean(b.has_more));
       } else {
         setGespraeche(anhaengen);
-        setWeitere(Boolean(b.weitere));
+        setWeitere(Boolean(b.has_more));
       }
-      setGesamt(b.gesamt ?? 0);
+      setGesamt(b.total ?? 0);
     } catch {
       toast.error("Ältere Gespräche konnten nicht geladen werden.");
     } finally {
@@ -1356,7 +1356,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       // Snapshot — ohne sie verlor ein geladenes Gespräch den Stadt-Block
       // und (übers Debatten-Gate) den Parteien-Baustein (Tims Befund).
       // Ältere Turns ohne diese Felder bleiben schlicht ohne.
-      type DbTurn = { frage: string; antwort: string; quellen: {
+      type DbTurn = { question: string; answer: string; sources: {
         sources?: QaSource[]; cited?: number[]; presse?: PresseHinweis[];
         debatten?: DebattenHinweis[]; anlagen?: AnlagenHinweis[];
         planungen?: Planung[]; sitzungen?: SitzungsInfo[];
@@ -1365,24 +1365,24 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         grafik?: QaGrafik | null } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
-        frage: t.frage, antwort: t.antwort, qtype: null, mode: null,
-        sources: t.quellen?.sources ?? [],
-        presse: t.quellen?.presse ?? [],
-        debatten: t.quellen?.debatten ?? [],
-        anlagen: t.quellen?.anlagen ?? [],
-        planungen: t.quellen?.planungen ?? [],
-        sitzungen: t.quellen?.sitzungen ?? [],
-        grafik: t.quellen?.grafik ?? null,
-        cited: t.quellen?.cited ?? [],
+        frage: t.question, antwort: t.answer, qtype: null, mode: null,
+        sources: t.sources?.sources ?? [],
+        presse: t.sources?.presse ?? [],
+        debatten: t.sources?.debatten ?? [],
+        anlagen: t.sources?.anlagen ?? [],
+        planungen: t.sources?.planungen ?? [],
+        sitzungen: t.sources?.sitzungen ?? [],
+        grafik: t.sources?.grafik ?? null,
+        cited: t.sources?.cited ?? [],
         // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
         // Sie ist der Schlüssel, unter dem nachladende Bausteine ihr Ergebnis
-        // ablegen — mit `t.frage` statt ihrer lud der Parteien-Baustein nach
+        // ablegen — mit `t.question` statt ihrer lud der Parteien-Baustein nach
         // jedem Tab-Wechsel neu (Tims Befund 21.08.2026). Turns von vor
         // diesem Fix tragen sie nicht; für die bleibt es wie bisher.
-        followups: [], kontext: t.quellen?.kontext ?? t.frage,
-        ...(t.quellen?.recherche ? {
+        followups: [], kontext: t.sources?.kontext ?? t.question,
+        ...(t.sources?.recherche ? {
           recherche: true, deepStatus: "fertig" as const,
-          gelesen: t.quellen?.gelesen, zeitraum: t.quellen?.zeitraum,
+          gelesen: t.sources?.gelesen, zeitraum: t.sources?.zeitraum,
         } : {}),
       })));
       setGespraechId(id);
@@ -1429,12 +1429,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const gespraechUmbenennen = async (id: number, titel: string) => {
     const sauber = titel.replace(/\s+/g, " ").trim().slice(0, 120);
     if (!sauber) return;
-    setGespraeche((gs) => gs.map((g) => (g.id === id ? { ...g, titel: sauber } : g)));
+    setGespraeche((gs) => gs.map((g) => (g.id === id ? { ...g, title: sauber } : g)));
     try {
       const r = await fetch(apiUrl(`/council/gespraeche/${id}`), {
         method: "PATCH", credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ titel: sauber }),
+        body: JSON.stringify({ title: sauber }),
       });
       if (!r.ok) throw new Error();
     } catch {
@@ -1482,7 +1482,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     window.dispatchEvent(new CustomEvent("rl:gespraeche-status", {
       detail: {
         sichtbar: zeigeGespraecheKnopf,
-        titel: aktiv?.titel ?? null,
+        titel: aktiv?.title ?? null,   // Ereignis-Schlüssel ist intern, der Wert kommt vom Server
         // Design 15: Der Kopf-Knopf zählt mit („Gespräche · 4").
         anzahl: gesamt,
       },
@@ -1758,7 +1758,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         i === 0 ? "flex" : "hidden md:flex",
                       )}>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-foreground">{g.titel}</span>
+                        <span className="block truncate text-sm font-semibold text-foreground">{g.title}</span>
                         <span className="mt-px block text-[11.5px] text-muted-foreground">
                           {relativTag(g.updated)} · {g.n_turns} {g.n_turns === 1 ? "Frage" : "Fragen"}
                         </span>
@@ -2476,14 +2476,14 @@ function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen
   const [zieht, setZieht] = useState(false);
   const [umbenennen, setUmbenennen] = useState(false);
   const [menue, setMenue] = useState(false);
-  const [entwurf, setEntwurf] = useState(g.titel);
+  const [entwurf, setEntwurf] = useState(g.title);
   const basis = offen ? -AKTIONEN_BREITE : 0;
   const verschiebung = zieht ? Math.max(-AKTIONEN_BREITE, Math.min(0, basis + dx)) : basis;
 
   const speichern = () => {
     setUmbenennen(false);
     aufklappen(null);
-    if (entwurf.trim() && entwurf.trim() !== g.titel) onUmbenennen(entwurf);
+    if (entwurf.trim() && entwurf.trim() !== g.title) onUmbenennen(entwurf);
   };
 
   if (umbenennen) {
@@ -2512,7 +2512,7 @@ function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen
       <div className={cn("absolute inset-y-0 right-0 flex", !offen && !zieht && "invisible")}
         aria-hidden={!offen}>
         <button type="button" tabIndex={offen ? 0 : -1}
-          onClick={() => { setEntwurf(g.titel); setUmbenennen(true); }}
+          onClick={() => { setEntwurf(g.title); setUmbenennen(true); }}
           className="flex w-[80px] flex-col items-center justify-center gap-0.5 bg-muted text-[10px] font-medium text-foreground">
           <Pencil className="h-4 w-4" aria-hidden /> Umbenennen
         </button>
@@ -2546,7 +2546,7 @@ function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen
         <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left"
           onClick={() => { if (offen) aufklappen(null); else onLaden(); }}>
           <span className="min-w-0 flex-1">
-            <span className={cn("block truncate text-[14.5px] text-foreground", aktiv && "font-semibold")}>{g.titel}</span>
+            <span className={cn("block truncate text-[14.5px] text-foreground", aktiv && "font-semibold")}>{g.title}</span>
             <span className="mt-px block text-[11.5px] text-muted-foreground">
               {aktiv ? `${fragen} · gerade offen`
                 : inAelter ? `${relativTag(g.updated)} · ${fragen}` : fragen}
@@ -2564,13 +2564,13 @@ function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen
         {menue ? (
           <span className="flex shrink-0 items-center gap-0.5">
             <button type="button"
-              onClick={() => { setMenue(false); setEntwurf(g.titel); setUmbenennen(true); }}
-              aria-label={`„${g.titel}" umbenennen`} title="Umbenennen"
+              onClick={() => { setMenue(false); setEntwurf(g.title); setUmbenennen(true); }}
+              aria-label={`„${g.title}" umbenennen`} title="Umbenennen"
               className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-muted text-foreground">
               <Pencil className="h-4 w-4" aria-hidden />
             </button>
             <button type="button" onClick={() => { setMenue(false); onLoeschen(); }}
-              aria-label={`„${g.titel}" löschen`} title="Löschen"
+              aria-label={`„${g.title}" löschen`} title="Löschen"
               className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-signal/10 text-signal">
               <Trash2 className="h-4 w-4" aria-hidden />
             </button>
@@ -2582,7 +2582,7 @@ function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen
           </span>
         ) : (
           <button type="button" onClick={() => { aufklappen(null); setMenue(true); }}
-            aria-label={`Aktionen für „${g.titel}"`} aria-expanded={menue}
+            aria-label={`Aktionen für „${g.title}"`} aria-expanded={menue}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
             <MoreHorizontal className="h-4 w-4" aria-hidden />
           </button>

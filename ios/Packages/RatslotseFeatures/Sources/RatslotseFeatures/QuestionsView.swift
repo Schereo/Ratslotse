@@ -1992,9 +1992,7 @@ struct SharedAnswerSnapshot: Decodable, Sendable {
     let chart: JSONValue?
 
     enum CodingKeys: String, CodingKey {
-        case question = "frage"
-        case answer = "antwort"
-        case sources = "quellen"
+        case question, answer, sources
         case created
         case debates = "debatten"
         case press = "presse"

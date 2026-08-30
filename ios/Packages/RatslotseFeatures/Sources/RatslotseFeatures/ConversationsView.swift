@@ -232,7 +232,7 @@ struct ConversationsView: View {
         defer { isLoading = false }
         do {
             let response: JSONValue = try await model.api.get("/api/council/gespraeche")
-            conversations = response.object?["gespraeche"]?.array?.compactMap {
+            conversations = response.object?["conversations"]?.array?.compactMap {
                 try? $0.decoded(ConversationSummary.self)
             } ?? []
             error = nil

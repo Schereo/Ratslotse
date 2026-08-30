@@ -22,8 +22,8 @@ export function GespraecheCard() {
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
         if (!b) return;
-        setEinstellung(b.einstellung);
-        setAnzahl(b.gesamt ?? 0);
+        setEinstellung(b.saves_conversations);
+        setAnzahl(b.total ?? 0);
       })
       .catch(() => {});
   }, []);

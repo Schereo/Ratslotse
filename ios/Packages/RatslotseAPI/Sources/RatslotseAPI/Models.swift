@@ -918,8 +918,7 @@ public struct ConversationSummary: Codable, Sendable, Identifiable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id
-        case title = "titel"
+        case id, title
         case updatedAt = "updated"
         case turnCount = "n_turns"
     }
