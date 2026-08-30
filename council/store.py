@@ -3052,6 +3052,7 @@ class CouncilStore:
         auf, alle anderen bleiben eine ruhige Zeile.
         """
         from datetime import date, timedelta
+        from .dringlichkeit import ist_dringlichkeitsantrag
 
         heute = date.today()
         bis = (heute + timedelta(days=tage)).isoformat()
@@ -3136,6 +3137,10 @@ class CouncilStore:
                 # Vorlage und Anlagen und wertet nicht. Fehlt er, bleibt es bei
                 # der Kurzfassung; der Bot behandelt beides gleich.
                 "social_text": (r["social_text"] or "").strip() or None,
+                # Ein kurzfristig eingebrachter Antrag (council/dringlichkeit.py).
+                # Die Karte sagt das dazu, statt ihn wie einen Punkt der
+                # amtlichen Tagesordnung zu zeigen — er steht in keiner.
+                "dringlich": ist_dringlichkeitsantrag(r["item_number"]),
                 "vorlage_nr": r["vorlage_nr"], "kvonr": r["kvonr"], "art": r["art"],
                 "committee": sitz["committee"], "session_date": sitz["session_date"],
                 "gruppe_nr": gruppe_nr,
@@ -3321,6 +3326,7 @@ class CouncilStore:
                 # stand deshalb auf der Karte — und darunter nichts. Wer hier
                 # ein Feld ergänzt, muss es an BEIDEN Stellen tun.
                 "summary": k["summary"], "social_text": k.get("social_text"),
+                "dringlich": k.get("dringlich", False),
                 "wichtig": k["wichtig"], "wichtig_grund": k.get("wichtig_grund"),
                 "vorlage_nr": k["vorlage_nr"], "kvonr": k["kvonr"],
                 "committee": k["committee"], "session_date": k["session_date"],
@@ -3422,19 +3428,25 @@ class CouncilStore:
 
     def agenda_items_needing_social_text(self, limit: int | None = None,
                                          tage_voraus: int = 21,
-                                         mindest_wichtig: int = 40) -> list[dict]:
+                                         mindest_wichtig: int = 0) -> list[dict]:
         """Kommende TOPs ohne Kartentext — samt allem, was das Modell sehen soll.
-
-        Zwei Einschränkungen, beide bewusst:
 
         Nur nach VORN. Der Text steht in einer Vorschau; für vergangene
         Sitzungen gibt es später den Beschluss.
 
-        Nur, was auch auf eine Karte kommt (mindest_wichtig). Eine Woche
-        hat rund 87 öffentliche TOPs, auf die Karten schaffen es etwa 20 —
-        für die anderen wäre der Aufruf bezahlt und nie gelesen. Punkte ohne
-        Tragweite-Bewertung bleiben deshalb draußen: Sie kommen im nächsten
-        Lauf wieder, sobald sie eine haben.
+        Und sonst: **jeder inhaltliche Punkt**. Die Deckelung auf Tragweite
+        ≥ 40 stammte aus dem Bild-Kanal — dort kommen von 97 öffentlichen
+        TOPs einer Woche rund 20 auf eine Karte, der Rest wäre bezahlt und
+        nie gelesen. Im Web wird jede Tagesordnung ganz gelesen, und dort
+        stand unter den anderen 75 die titelbasierte Kurzfassung oder nichts
+        (Tims Entscheidung 30.08.26). Ein Aufruf kostet Bruchteile eines
+        Cents; die Deckelung war fürs Bild gedacht, nicht fürs Budget.
+
+        Die Routine bleibt trotzdem draußen — „Feststellung der
+        Beschlussfähigkeit" braucht keinen Text; dafür sorgt derselbe
+        ``_FORMALIE_RE`` wie im Tragweite-Lauf. Und eine Bewertung ist keine
+        Bedingung mehr, sondern nur noch die Reihenfolge: Was hoch bewertet
+        ist, kommt zuerst dran, Unbewertetes danach.
 
         Der Vorlagentext kommt UNGEKÜRZT (die Auswahl trifft
         social_text.kontext, die kennt die Budgets); die Anlagen holt der
@@ -3460,21 +3472,32 @@ class CouncilStore:
                             AND an.raw_text IS NOT NULL LIMIT 1) AS anlage_text
                  FROM council_agenda_items a
                  JOIN council_sessions cs ON cs.ksinr = a.ksinr
-                 JOIN agenda_item_impact i
+                 LEFT JOIN agenda_item_impact i
                       ON i.ksinr = a.ksinr AND i.item_number = a.item_number
                  LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr
                  LEFT JOIN agenda_item_social so
                         ON so.ksinr = a.ksinr AND so.item_number = a.item_number
                  WHERE a.is_public = 1 AND so.text IS NULL
-                   AND i.impact >= ?
+                   AND COALESCE(i.impact, 0) >= ?
                    AND cs.session_date >= ? AND cs.session_date <= ?
                    AND a.title IS NOT NULL AND length(a.title) >= 8
-                 ORDER BY i.impact DESC, cs.session_date"""
+                   -- Nur Punkte, zu denen es überhaupt etwas zu lesen gibt.
+                   -- Ohne Vorlage und ohne Anlage sähe das Modell nur den
+                   -- Titel — und einen Satz aus dem Titel allein gibt es
+                   -- schon: die Kurzfassung. Ein zweiter wäre bezahlt und
+                   -- nicht besser. Sie kommen im nächsten Lauf wieder,
+                   -- sobald der Vorlagentext nachgeladen ist.
+                   AND (v.raw_text IS NOT NULL OR v.beschlussvorschlag IS NOT NULL
+                        OR anlage_text IS NOT NULL)
+                 ORDER BY COALESCE(i.impact, -1) DESC, cs.session_date"""
         args: tuple = (mindest_wichtig, heute, bis)
-        if limit is not None:
-            sql += " LIMIT ?"
-            args += (limit,)
-        return [dict(r) for r in self._conn.execute(sql, args)]
+        roh = [dict(r) for r in self._conn.execute(sql, args)]
+        # Formalien in Python heraus, nicht in SQL — dasselbe Muster wie in
+        # `agenda_items_needing_impact`: Ein LIMIT vor dem Filter lieferte
+        # sonst eine halb leere Liste, weil gut die Hälfte der Zeilen
+        # „Genehmigung der Tagesordnung" heißt.
+        echte = [r for r in roh if not self._FORMALIE_RE.search(r["title"] or "")]
+        return echte[:limit] if limit is not None else echte
 
     def anlagen_fuer(self, kvonr: int) -> list[dict]:
         """Anlagen einer Vorlage mit Text — Anträge zuerst, dann die kürzeste.
@@ -3608,9 +3631,23 @@ class CouncilStore:
             anl.setdefault(r["item_number"], []).append({"label": r["label"], "url": r["url"]})
         zus = {r["item_number"]: r["summary"] for r in self._conn.execute(
             "SELECT item_number, summary FROM agenda_item_summaries WHERE ksinr = ?", (ksinr,))}
+        # Der bessere der beiden Texte, wo es ihn gibt (agenda_item_social):
+        # Er kennt Vorlage UND Anlagen, während `summary` allein aus dem Titel
+        # entsteht („Du kennst nur den Titel des Punktes" steht wörtlich in
+        # deren Prompt). Beide fahren mit — der Aufrufer entscheidet, aber die
+        # Reihenfolge steht hier fest, damit Web und iOS dieselbe wählen.
+        kartentext = {r["item_number"]: r["text"] for r in self._conn.execute(
+            "SELECT item_number, text FROM agenda_item_social WHERE ksinr = ?", (ksinr,))}
+        from .dringlichkeit import ist_dringlichkeitsantrag  # noqa: PLC0415 — Ringschluss
+
         for item in out:
             item["anlagen"] = anl.get(item["item_number"], [])
             item["summary"] = zus.get(item["item_number"])
+            item["social_text"] = kartentext.get(item["item_number"])
+            # Ein abgeleiteter Punkt, kein amtlicher (council/dringlichkeit.py).
+            # Das Flag entscheidet hier und nicht im Frontend, damit Web und
+            # App denselben Punkt hervorheben.
+            item["dringlich"] = ist_dringlichkeitsantrag(item["item_number"])
         return out
 
     def sitzungen_am_monatstag(self, monat_tag: str, limit: int = 8) -> list[dict]:

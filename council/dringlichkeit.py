@@ -28,6 +28,24 @@ from __future__ import annotations
 
 import re
 
+#: Die Kennung, die dieses Modul vergibt (``DZT 1``, ``DZT 2``, …). Wer
+#: wissen will, ob ein Punkt ein Dringlichkeitsantrag ist, fragt
+#: ``ist_dringlichkeitsantrag`` — nicht den Titel: „Dringlichkeit" kann auch
+#: im Titel einer gewöhnlichen Vorlage stehen („Dringlichkeitsliste –
+#: Fortschreibung 2021", Vorlage 21/0193).
+KENNUNG_RE = re.compile(r"^\s*DZT\b")
+
+
+def ist_dringlichkeitsantrag(item_number: str | None) -> bool:
+    """Ist dieser Punkt einer der hier erzeugten Zusatzpunkte?
+
+    Die eine Quelle für diese Frage — die Tragweite braucht sie für ihren
+    Boden (``impact.dringlichkeits_boden``), die Sitzungsansicht für die
+    Hervorhebung im Web.
+    """
+    return bool(KENNUNG_RE.match(item_number or ""))
+
+
 #: Was ein Dringlichkeitsantrag heißt. Teilstring statt Präfix, weil die
 #: Labels uneinheitlich sind — am Bestand gemessen kommen vor:
 #: „Dringlichkeitsantrag CDU Quellenweg", „250523 Antrag Dringlichkeit
