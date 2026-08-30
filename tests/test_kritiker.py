@@ -7,8 +7,6 @@ wieder durchrutschen.
 """
 from __future__ import annotations
 
-import pytest
-
 from council import kritiker
 
 
