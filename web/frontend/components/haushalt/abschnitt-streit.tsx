@@ -77,6 +77,7 @@ import {
 } from "@/lib/haushalt-streit";
 import { Beleg } from "@/components/haushalt/quelle";
 import { StreitListenInhalt } from "@/components/haushalt/streit-listeninhalt";
+import { StreitFinanzhaushalt } from "@/components/haushalt/streit-finanzhaushalt";
 import type { AenderungslistenDaten } from "@/lib/haushalt-aenderungslisten";
 import { PunkteBilanz, PunkteZeile } from "@/components/grafik/punkte-bilanz";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -542,6 +543,12 @@ export function StreitAbschnitt({ onBestand }: {
         {/* Was in den Listen stand — die Inhalts-Ebene (Positionen und
             Fraktions-Summen), seit die Änderungslisten gelesen werden. */}
         <StreitListenInhalt daten={listen ?? null} jahr={jahr} />
+
+        {/* Der zweite Teil desselben Haushalts. Er steht DANACH, weil
+            der Ergebnishaushalt die größere Geschichte ist — dort geht
+            es um den laufenden Betrieb der Stadt; hier um einzelne
+            Bauvorhaben. Fehlt sein Ingest, verschwindet die Karte. */}
+        <StreitFinanzhaushalt daten={listen ?? null} jahr={jahr} />
 
         {/* Was gesagt wurde. */}
         {debatte && debatte.debatte.length > 0 && (

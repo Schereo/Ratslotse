@@ -1609,7 +1609,14 @@ export interface paths {
          *       Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit
          *       Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige
          *       digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.
-         *     - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt.
+         *     - ``fhh_zeilen``/``fhh_summen``: dasselbe für den FINANZhaushalt
+         *       (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich
+         *       fließt und vor allem investiert wird. Getrennte Schlüssel statt einer
+         *       gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf
+         *       Betragsspalten statt zwei, dazu ``produkt`` mit dem Investitionscode),
+         *       und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.
+         *     - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —
+         *       für beide Haushalte gemeinsam.
          */
         get: operations["haushalt_aenderungslisten_api_council_haushalt_aenderungslisten_get"];
         put?: never;
@@ -4430,6 +4437,10 @@ export interface components {
         };
         /** HaushaltAenderungslisten */
         HaushaltAenderungslisten: {
+            /** Fhh Summen */
+            fhh_summen: unknown;
+            /** Fhh Zeilen */
+            fhh_zeilen: unknown;
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
@@ -10887,4 +10898,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4aac8656462bb7b0f1d7439fc6bbc1dda909a07a05fd2d4b0abf013211aebb8f
+// vertrag-sha256: 9ad3e837a9c7b16f7cba167b31579f6c9448e4821ff94a160a9df2dd61cd9626

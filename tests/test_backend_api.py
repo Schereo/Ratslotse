@@ -870,6 +870,45 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     # Jede Zeile findet ihr Papier: Die Herkunft-Karte deckt alle Verweise.
     assert str(b["zeilen"][0]["herkunft_id"]) in b["herkunft"]
 
+    # Der FINANZhaushalt reist in eigenen Schlüsseln mit. Sie stehen hier auch
+    # dann in der Antwort, wenn sein Ingest noch nicht lief — leer, aber
+    # vorhanden: Die Antwortform ist zugleich das Response-Model, und was
+    # dort fehlt, schneidet FastAPI lautlos weg (genau so verschwanden die
+    # beiden beim ersten Anlauf aus einer sonst korrekten Antwort).
+    assert b["fhh_zeilen"] == [] and b["fhh_summen"] == []
+
+    from council.aenderungslisten_fhh import (
+        FhhErgebnis, FhhSumme, FhhZeile, herkunft_fuer as fhh_herkunft)
+    fhh = FhhErgebnis(
+        zeilen=[FhhZeile(2026, 1, 7, "neu", "I10.180224.525",
+                         "Förderprogramm Dachbegrünung", 0, None, 100_000,
+                         None, 100_000,
+                         erlaeuterung="Wird ab Januar im Amt 40 bearbeitet.")],
+        summen=[FhhSumme(2026, "entwurf", "Verwaltungsentwurf", 0, 0, 0, 0),
+                FhhSumme(2026, "liste", "Änderungsliste Verw. I",
+                         0, 100_000, -100_000, 0),
+                FhhSumme(2026, "endsumme", "Endsumme", 0, 100_000, -100_000, 0)],
+        eigene_zeile={2026: "Änderungsliste Verw. I"},
+    )
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        cs.save_haushalt_aenderungen_fhh(
+            4712, "verwaltung_1", fhh,
+            fhh_herkunft("2026 FHH Änderungsliste Verwaltung I", None, 4712))
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/haushalt/aenderungslisten").json()
+    assert len(b["fhh_zeilen"]) == 1
+    z = b["fhh_zeilen"][0]
+    # Der Investitionscode ist der Anschluss an council_investitionsmassnahmen —
+    # ohne ihn bliebe die Zeile ein Name ohne Vorhaben.
+    assert z["produkt"] == "I10.180224.525"
+    assert (z["soll_entwurf"], z["auszahlung"], z["soll_neu"]) == (0, 100_000, 100_000)
+    # „neu" heißt: Die Position stand im Entwurf noch gar nicht.
+    assert z["seite_entwurf"] == "neu"
+    assert str(z["herkunft_id"]) in b["herkunft"]
+
 
 def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
     """/haushalt/investitionen liefert die Investitionen je Teilhaushalt — und
