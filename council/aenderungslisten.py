@@ -1003,3 +1003,17 @@ def herkunft_fuer(label: str, url: str | None, dokument_id: int) -> Herkunft:
         url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={dokument_id}&type=do",
         dokument_id=dokument_id,
     )
+
+
+# ------------------------------------------------- Geteilt mit dem FHH-Parser
+
+#: Der Finanzhaushalt hat eine eigene Bauform (fünf Betragsspalten statt zwei)
+#: und deshalb ein eigenes Modul — ``council/aenderungslisten_fhh.py``. Die
+#: GEOMETRIE ist aber dieselbe: Wortzeilen aus Grundlinien, Zeilenbänder aus
+#: den gezeichneten Linien, Silbentrennung am gemessenen Umbruch. Statt sie
+#: dort noch einmal zu schreiben, stehen die drei Funktionen hier unter einem
+#: öffentlichen Namen. Der EHH-Parser bleibt dabei unangetastet: Er ruft
+#: weiter seine privaten Namen auf, und diese Zeilen sind reine Aliase.
+zeilen_bilden = _zeilen_bilden
+band = _band
+zeilen_falten = _zeilen_falten
