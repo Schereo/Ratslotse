@@ -4827,6 +4827,73 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     assert client.get("/api/council/deep-research/aktuell").json()["job"] is None
 
 
+def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
+    """Anschlussfrage im Recherche-Modus: „Nochmal bitte ausführlich" trägt ihr
+    Thema nicht im Text. Mit Gesprächsverlauf löst der Job sie — wie /ask — zu
+    einer eigenständigen Frage auf und zerlegt, sucht und berichtet damit.
+    Ohne Verlauf bleibt alles wie zuvor (kein zusätzlicher Analyse-Call).
+
+    Angezeigt und gespeichert bleibt in beiden Fällen die getippte Frage; die
+    aufgelöste Fassung reist als ``kontext`` mit, damit ein aus der DB
+    geladener Bericht denselben Schlüssel trägt wie der live gezeigte.
+    """
+    from council import qa as qa_mod
+
+    _register(client)
+    _deep_mocks(monkeypatch)
+    gesehen: dict = {}
+    zerlegt: list[str] = []
+    berichtet: list[str] = []
+
+    def _analyse(frage, **k):
+        gesehen["frage"] = frage
+        gesehen["verlauf"] = k.get("verlauf")
+        return {"frage": "Wichtigste Themen in Krusenbusch in den letzten Jahren",
+                "begriffe": "krusenbusch wohnquartier", "typ": "thema", "partei": None}
+
+    def _zerlege(frage, **k):
+        zerlegt.append(frage)
+        return [{"name": "Beschlusslage", "frage": frage, "begriffe": "krusenbusch"}]
+
+    def _bericht(frage, cands, **k):
+        berichtet.append(frage)
+        return iter(["## Beschlusslage\nWohnquartier am Krusenbusch [5]."])
+
+    monkeypatch.setattr(qa_mod, "analyse_query", _analyse)
+    monkeypatch.setattr(qa_mod, "deep_zerlege", _zerlege)
+    monkeypatch.setattr(qa_mod, "deep_bericht_stream", _bericht)
+
+    verlauf = [{"frage": "Was sind in den letzten Jahren die wichtigsten Themen in Krusenbusch gewesen?",
+                "antwort": "Wohnquartier, Bahnquerung, Naturschutzgebiet."}]
+    r = client.post("/api/council/deep-research",
+                    json={"frage": "Nochmal bitte ausführlich", "verlauf": verlauf})
+    assert r.status_code == 201
+    job_id = r.json()["job_id"]
+    events = _deep_events(client, job_id)  # blockiert bis der Job fertig ist
+
+    # Die Analyse bekam die getippte Frage MIT Verlauf …
+    assert gesehen["frage"] == "Nochmal bitte ausführlich"
+    assert gesehen["verlauf"] == verlauf
+    # … und ihre eigenständige Fassung ist es, die recherchiert und berichtet wird.
+    assert zerlegt == ["Wichtigste Themen in Krusenbusch in den letzten Jahren"]
+    assert berichtet == ["Wichtigste Themen in Krusenbusch in den letzten Jahren"]
+    src = next(e for e in events if e["type"] == "sources")
+    assert src["frage"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
+
+    # Anzeige und DB behalten die getippte Frage, der Kontext die aufgelöste.
+    snap = client.get(f"/api/council/deep-research/{job_id}").json()
+    assert snap["frage"] == "Nochmal bitte ausführlich"
+    assert snap["quellen"]["kontext"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
+
+    # Erste Frage eines Gesprächs (kein Verlauf): keine Auflösung, kein Call.
+    gesehen.clear()
+    zerlegt.clear()
+    r2 = client.post("/api/council/deep-research", json={"frage": "Wie ist der Stand beim Stadionneubau?"})
+    _deep_events(client, r2.json()["job_id"])
+    assert gesehen == {}
+    assert zerlegt == ["Wie ist der Stand beim Stadionneubau?"]
+
+
 def test_deep_research_meldet_sich_am_ende(client, monkeypatch):
     """Am Ende eines echten Job-Laufs steht die Fertig-Meldung — und der Stopp
     löst keine aus (die war eine bewusste Handlung, kein Ergebnis)."""
