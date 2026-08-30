@@ -941,18 +941,11 @@ private struct SessionRow: View {
             SessionDateTile(date: session.sessionDate)
 
             VStack(alignment: .leading, spacing: 5) {
-                HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Image(systemName: committeeSymbol)
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundStyle(RatsColor.primary)
-                        .frame(width: 15)
-
-                    Text(shortCommittee)
-                        .font(RatsFont.body(16, weight: .bold))
-                        .foregroundStyle(RatsColor.text)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
+                Text(shortCommittee)
+                    .font(RatsFont.body(16, weight: .bold))
+                    .foregroundStyle(RatsColor.text)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
 
                 if shortCommittee != session.committee {
                     Text(session.committee)
@@ -1035,32 +1028,6 @@ private struct SessionRow: View {
         guard let location = session.location?.trimmingCharacters(in: .whitespacesAndNewlines),
               !location.isEmpty else { return nil }
         return location
-    }
-
-    private var committeeSymbol: String {
-        let value = session.committee.lowercased()
-        if value.contains("schule") || value.contains("bildung") || value.contains("jugend") {
-            return "graduationcap.fill"
-        }
-        if value.contains("verkehr") || value.contains("mobil") {
-            return "bicycle"
-        }
-        if value.contains("finanz") || value.contains("wirtschaft") {
-            return "eurosign.circle.fill"
-        }
-        if value.contains("planung") || value.contains("bauen") || value.contains("hochbau") {
-            return "building.2.fill"
-        }
-        if value.contains("umwelt") || value.contains("klima") {
-            return "leaf.fill"
-        }
-        if value.contains("kultur") || value.contains("sport") {
-            return "theatermasks.fill"
-        }
-        if value.contains("sozial") || value.contains("gesund") || value.contains("integration") {
-            return "person.2.fill"
-        }
-        return "building.columns.fill"
     }
 
     private var agendaLabel: String {
