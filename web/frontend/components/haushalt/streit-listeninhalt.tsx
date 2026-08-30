@@ -117,9 +117,9 @@ function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
                 <Beleg q="aenderungsliste" h={liste.herkunft} />
               </TextZelle>
               <BetragZelle euro={liste.saldo.ertraege} text={deltaBetrag(liste.saldo.ertraege)}
-                className="border-t-border/60 py-2 font-medium" />
+                label="Ertrag" className="border-t-border/60 py-2 font-medium" />
               <BetragZelle euro={liste.saldo.aufwendungen} text={deltaBetrag(liste.saldo.aufwendungen)}
-                className="border-t-border/60 py-2 font-medium" />
+                label="Aufwand" className="border-t-border/60 py-2 font-medium" />
             </tr>
           )}
         >
@@ -148,8 +148,8 @@ function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
                   </span>
                 )}
               </TextZelle>
-              <BetragZelle euro={z.ertrag} text={deltaBetrag(z.ertrag)} />
-              <BetragZelle euro={z.aufwand} text={deltaBetrag(z.aufwand)} />
+              <BetragZelle euro={z.ertrag} text={deltaBetrag(z.ertrag)} label="Ertrag" />
+              <BetragZelle euro={z.aufwand} text={deltaBetrag(z.aufwand)} label="Aufwand" />
             </tr>
           ))}
         </ZahlenTabelle>
