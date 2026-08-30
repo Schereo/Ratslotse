@@ -32,6 +32,8 @@ import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weit
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Labor } from "@/components/haushalt/labor";
+import { VerfahrensWegKarte } from "@/components/haushalt/verfahrens-weg";
+import type { AenderungslistenDaten } from "@/lib/haushalt-aenderungslisten";
 
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
@@ -54,6 +56,9 @@ const QUELLEN: QuellenSchluessel[] = [
   "plan", "steuern", "hebesaetze", "lsn_realsteuern", "gebuehren",
   "teilhaushalt", "investitionsprogramm", "haushaltssatzung", "schulden",
   "steuerkraft", "ruecklage", "ergebnishaushalt", "jahresabschluss",
+  // Zuletzt, weil zuunterst: die Änderungslisten unter dem Labor — der
+  // Maßstab aus dem echten Verfahren (VerfahrensWegKarte).
+  "aenderungsliste",
 ];
 
 export default function LaborPage() {
@@ -70,6 +75,9 @@ export default function LaborPage() {
   const { data: vergleich } = useFetch<VergleichDaten>("/council/haushalt/vergleich");
   const { data: programm } = useFetch<ProgrammDaten>("/council/haushalt/investitionsprogramm");
   const { data: schulden } = useFetch<SchuldenDaten>("/council/haushalt/schulden");
+  // Der Maßstab unter dem Labor: was das echte Verfahren bewegt hat.
+  // Vierte Zugabe — fehlt sie, entfällt die Karte, das Labor rechnet weiter.
+  const { data: listen } = useFetch<AenderungslistenDaten>("/council/haushalt/aenderungslisten");
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Labor wird geladen …</div>;
@@ -110,6 +118,12 @@ export default function LaborPage() {
         programm={programm ?? null}
         schulden={schulden ?? null}
       />
+
+      {/* Der Maßstab steht VOR dem Lotti-Kasten: erst die Größenordnung aus
+          dem echten Verfahren, dann der Hinweis, dass das Labor keine
+          Beschlüsse fasst. Zusammen beantworten sie „wie ernst ist das
+          hier?" von beiden Seiten. */}
+      <VerfahrensWegKarte daten={listen ?? null} jahrgang={jahreSortiert(data).at(-1) ?? null} />
 
       <LottiErklaert
         titel="Warum das kein Sparvorschlag ist"
