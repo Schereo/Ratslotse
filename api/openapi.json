@@ -275,15 +275,11 @@
       "AdminGrenzen": {
         "properties": {
           "deep_limit": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deep Limit"
+            "title": "Deep Limit",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "limits_frei": {
             "title": "Limits Frei",
@@ -301,15 +297,11 @@
         "description": "``state`` ist eine geschlossene Menge — der Router rechnet sie aus, sie\nkommt nicht aus der Datenbank, deshalb ist die Verengung hier sicher.\n``last`` dagegen ist eine ``SELECT *``-Zeile aus ``job_runs`` und bleibt\noffen; das Frontend darf sie enger sehen als der Vertrag.",
         "properties": {
           "age_h": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Age H"
+            "title": "Age H",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "description": {
             "title": "Description",
@@ -331,16 +323,12 @@
             "type": "string"
           },
           "last": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last"
+            "additionalProperties": true,
+            "title": "Last",
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "schedule": {
             "title": "Schedule",
@@ -373,15 +361,11 @@
       "AdminJobLauf": {
         "properties": {
           "duration_s": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Duration S"
+            "title": "Duration S",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "started_at": {
             "title": "Started At",
@@ -407,15 +391,11 @@
             "type": "boolean"
           },
           "created_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Created At"
+            "title": "Created At",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "email": {
             "title": "Email",
@@ -426,15 +406,11 @@
             "type": "integer"
           },
           "last_seen": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Seen"
+            "title": "Last Seen",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "n_abos": {
             "title": "N Abos",
@@ -525,15 +501,11 @@
       "AdminQuizStatistik": {
         "properties": {
           "avg_accuracy": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avg Accuracy"
+            "title": "Avg Accuracy",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "fragen_aktiv": {
             "title": "Fragen Aktiv",
@@ -583,48 +555,32 @@
             "type": "integer"
           },
           "hours_since_fetch": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hours Since Fetch"
+            "title": "Hours Since Fetch",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "last_fetch": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Fetch"
+            "title": "Last Fetch",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "last_session_import": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Session Import"
+            "title": "Last Session Import",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "next_session": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Session"
+            "title": "Next Session",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "sessions": {
             "title": "Sessions",
@@ -738,15 +694,11 @@
         "description": "Compatibility contract consumed before a native app starts loading data.",
         "properties": {
           "hinweis": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hinweis"
+            "title": "Hinweis",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "min_build": {
             "default": 0,
@@ -786,16 +738,12 @@
       "AskBody": {
         "properties": {
           "gespraech_id": {
-            "anyOf": [
-              {
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gespraech Id"
+            "minimum": 1.0,
+            "title": "Gespraech Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "question": {
             "title": "Question",
@@ -846,15 +794,11 @@
       "BadgeEvent": {
         "properties": {
           "key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Key"
+            "title": "Key",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "type": {
             "title": "Type",
@@ -903,26 +847,18 @@
       "BookmarkIn": {
         "properties": {
           "decision_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Decision Id"
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "item_number": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Item Number"
+            "title": "Item Number",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "kind": {
             "enum": [
@@ -934,15 +870,11 @@
             "type": "string"
           },
           "ksinr": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ksinr"
+            "title": "Ksinr",
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
         "required": [
@@ -993,16 +925,12 @@
             "type": "string"
           },
           "gespraech_id": {
-            "anyOf": [
-              {
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gespraech Id"
+            "minimum": 1.0,
+            "title": "Gespraech Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "verlauf": {
             "items": {
@@ -1061,15 +989,11 @@
       "DieseWocheMit": {
         "properties": {
           "committee": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Committee"
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "decision_id": {
             "title": "Decision Id",
@@ -1085,26 +1009,18 @@
             "type": "string"
           },
           "outcome": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Outcome"
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "session_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Session Date"
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "title": {
             "title": "Title",
@@ -1140,16 +1056,12 @@
       "DisplayNameIn": {
         "properties": {
           "display_name": {
-            "anyOf": [
-              {
-                "maxLength": 60,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Name"
+            "maxLength": 60,
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "title": "DisplayNameIn",
@@ -1187,15 +1099,11 @@
             "type": "string"
           },
           "reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reason"
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "slug": {
             "title": "Slug",
@@ -1213,37 +1121,25 @@
         "description": "Eine Zusammenführung. ``alias_name`` stammt aus den Roh-Beobachtungen —\ndas Thema selbst existiert nach dem Zusammenführen nicht mehr eigenständig.",
         "properties": {
           "alias_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Alias Name"
+            "title": "Alias Name",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "canonical_n": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Canonical N"
+            "title": "Canonical N",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "canonical_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Canonical Name"
+            "title": "Canonical Name",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "canonical_slug": {
             "title": "Canonical Slug",
@@ -1254,15 +1150,11 @@
             "type": "string"
           },
           "reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reason"
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "slug": {
             "title": "Slug",
@@ -1342,15 +1234,11 @@
       "Fundstueck": {
         "properties": {
           "committee": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Committee"
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "day": {
             "title": "Day",
@@ -1365,52 +1253,36 @@
             "type": "string"
           },
           "outcome": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Outcome"
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "session_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Session Date"
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "story": {
             "title": "Story",
             "type": "string"
           },
           "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "vote": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Vote"
+            "title": "Vote",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1533,16 +1405,12 @@
             "type": "string"
           },
           "quellen": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Quellen"
+            "additionalProperties": true,
+            "title": "Quellen",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1613,15 +1481,11 @@
         "description": "`gesamt` ist der Bestand des Kontos, `treffer` gilt zur Suche, `weitere`\nsagt, ob „Ältere anzeigen\" noch etwas nachliefert.",
         "properties": {
           "einstellung": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Einstellung"
+            "title": "Einstellung",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "gesamt": {
             "title": "Gesamt",
@@ -2207,17 +2071,13 @@
         "description": "Admin-steuerbare Frage-Limits je Konto: Recherchen/Tag (None = Standard,\n0 = unbegrenzt, sonst eigenes Tageslimit) + Rate-Limit-Befreiung.",
         "properties": {
           "deep_limit": {
-            "anyOf": [
-              {
-                "maximum": 999.0,
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deep Limit"
+            "maximum": 999.0,
+            "minimum": 0.0,
+            "title": "Deep Limit",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "limits_frei": {
             "default": false,
@@ -2310,15 +2170,11 @@
             "type": "string"
           },
           "parent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent"
+            "title": "Parent",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -2379,32 +2235,24 @@
         "description": "Gebaut in ``council.bookmarks.serialize_bookmark`` — festes Literal,\ndeshalb hier vollständig aufgeschrieben. Die drei eingebetteten Objekte\nsind Roh-Zeilen und bleiben offen.",
         "properties": {
           "agenda_item": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agenda Item"
+            "additionalProperties": true,
+            "title": "Agenda Item",
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "created_at": {
             "title": "Created At",
             "type": "string"
           },
           "decision": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Decision"
+            "additionalProperties": true,
+            "title": "Decision",
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "id": {
             "title": "Id",
@@ -2415,59 +2263,57 @@
             "type": "boolean"
           },
           "item_number": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Item Number"
+            "title": "Item Number",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "kind": {
+            "enum": [
+              "session",
+              "agenda_item",
+              "decision"
+            ],
             "title": "Kind",
             "type": "string"
           },
           "ksinr": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ksinr"
+            "title": "Ksinr",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "notify_result": {
             "title": "Notify Result",
             "type": "boolean"
           },
           "result_notified_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Result Notified At"
+            "title": "Result Notified At",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "session": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Session"
+            "additionalProperties": true,
+            "title": "Session",
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "state": {
+            "enum": [
+              "upcoming",
+              "waiting",
+              "protocol",
+              "decided",
+              "saved",
+              "unavailable",
+              "group"
+            ],
             "title": "State",
             "type": "string"
           },
@@ -2599,15 +2445,11 @@
         "description": "Fortschritts-Patch: erledigte Schritte (Whitelist im Router) und/oder\ndas „Kurs abgeschlossen\"-Flag.",
         "properties": {
           "celebrated": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celebrated"
+            "title": "Celebrated",
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "steps": {
             "items": {
@@ -2719,81 +2561,53 @@
             "type": "array"
           },
           "canonical_place_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Canonical Place Id"
+            "title": "Canonical Place Id",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
+            "title": "Description",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "kind": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kind"
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
+            "title": "Name",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "note": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "parent_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Id"
+            "title": "Parent Id",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "place_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Place Id"
+            "title": "Place Id",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "quiz_enabled": {
             "default": false,
@@ -2801,15 +2615,11 @@
             "type": "boolean"
           },
           "source_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Url"
+            "title": "Source Url",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "title": "Status",
@@ -2849,26 +2659,18 @@
             "type": "string"
           },
           "updated_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updated At"
+            "title": "Updated At",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "updated_by": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updated By"
+            "title": "Updated By",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -2946,16 +2748,12 @@
       "QaFeedbackBody": {
         "properties": {
           "antwort_auszug": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Antwort Auszug"
+            "maxLength": 500,
+            "title": "Antwort Auszug",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "bewertung": {
             "pattern": "^(up|down)$",
@@ -2969,16 +2767,12 @@
             "type": "string"
           },
           "grund": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Grund"
+            "maxLength": 500,
+            "title": "Grund",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -2997,65 +2791,45 @@
             "type": "string"
           },
           "label": {
-            "anyOf": [
-              {
-                "maxLength": 300,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Label"
+            "maxLength": 300,
+            "title": "Label",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "nr": {
-            "anyOf": [
-              {
-                "maximum": 99.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nr"
+            "maximum": 99.0,
+            "minimum": 1.0,
+            "title": "Nr",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "url": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Url"
+            "maxLength": 500,
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "vorlage_nr": {
-            "anyOf": [
-              {
-                "maxLength": 60,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Vorlage Nr"
+            "maxLength": 60,
+            "title": "Vorlage Nr",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "vorlage_titel": {
-            "anyOf": [
-              {
-                "maxLength": 300,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Vorlage Titel"
+            "maxLength": 300,
+            "title": "Vorlage Titel",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "title": "QaShareAnlage",
@@ -3092,16 +2866,12 @@
             "type": "string"
           },
           "grafik": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Grafik"
+            "additionalProperties": true,
+            "title": "Grafik",
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "parteien": {
             "items": {
@@ -3150,89 +2920,61 @@
             "type": "string"
           },
           "committee": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Committee"
+            "maxLength": 120,
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "datum": {
-            "anyOf": [
-              {
-                "maxLength": 10,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Datum"
+            "maxLength": 10,
+            "title": "Datum",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "partei": {
-            "anyOf": [
-              {
-                "maxLength": 60,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Partei"
+            "maxLength": 60,
+            "title": "Partei",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "protokoll_seite": {
-            "anyOf": [
-              {
-                "maximum": 9999.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Protokoll Seite"
+            "maximum": 9999.0,
+            "minimum": 1.0,
+            "title": "Protokoll Seite",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "protokoll_url": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Protokoll Url"
+            "maxLength": 500,
+            "title": "Protokoll Url",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "sprecher": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sprecher"
+            "maxLength": 120,
+            "title": "Sprecher",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "top": {
-            "anyOf": [
-              {
-                "maxLength": 300,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Top"
+            "maxLength": 300,
+            "title": "Top",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "title": "QaShareDebatte",
@@ -3241,28 +2983,20 @@
       "QaShareKernaussage": {
         "properties": {
           "datum": {
-            "anyOf": [
-              {
-                "maxLength": 10,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Datum"
+            "maxLength": 10,
+            "title": "Datum",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "sprecher": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sprecher"
+            "maxLength": 120,
+            "title": "Sprecher",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "text": {
             "default": "",
@@ -3288,28 +3022,20 @@
             "type": "boolean"
           },
           "haltung": {
-            "anyOf": [
-              {
-                "maxLength": 20,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Haltung"
+            "maxLength": 20,
+            "title": "Haltung",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "hinweis": {
-            "anyOf": [
-              {
-                "maxLength": 300,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hinweis"
+            "maxLength": 300,
+            "title": "Hinweis",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "kernaussage": {
             "anyOf": [
@@ -3342,16 +3068,12 @@
       "QaSharePresse": {
         "properties": {
           "datum": {
-            "anyOf": [
-              {
-                "maxLength": 10,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Datum"
+            "maxLength": 10,
+            "title": "Datum",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "titel": {
             "maxLength": 300,
@@ -3374,44 +3096,32 @@
       "QaShareQuelle": {
         "properties": {
           "committee": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Committee"
+            "maxLength": 120,
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "id": {
             "title": "Id",
             "type": "integer"
           },
           "outcome": {
-            "anyOf": [
-              {
-                "maxLength": 40,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Outcome"
+            "maxLength": 40,
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "session_date": {
-            "anyOf": [
-              {
-                "maxLength": 10,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Session Date"
+            "maxLength": 10,
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "title": {
             "maxLength": 300,
@@ -3475,40 +3185,28 @@
             "type": "integer"
           },
           "selected_index": {
-            "anyOf": [
-              {
-                "maximum": 3.0,
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Selected Index"
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Selected Index",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "time_ms": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Time Ms"
+            "minimum": 0.0,
+            "title": "Time Ms",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Value"
+            "title": "Value",
+            "type": [
+              "number",
+              "null"
+            ]
           }
         },
         "required": [
@@ -3521,15 +3219,11 @@
         "description": "Antwort auf ``/answer`` und ``/own/answer``. Was nur ein Zweig setzt,\nist ``NotRequired``: Schätzfragen liefern ``answer_value``/``unit``, die\nÜbungsrunde kennt weder Detail noch Diagramm.",
         "properties": {
           "answer_value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Answer Value"
+            "title": "Answer Value",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "chart": {
             "title": "Chart"
@@ -3546,15 +3240,11 @@
             "title": "Detail"
           },
           "explanation": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Explanation"
+            "title": "Explanation",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "image": {
             "title": "Image"
@@ -3567,40 +3257,28 @@
             "type": "integer"
           },
           "source_ref": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Ref"
+            "title": "Source Ref",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "source_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Type"
+            "title": "Source Type",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "topic": {
             "title": "Topic"
           },
           "unit": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Unit"
+            "title": "Unit",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -3672,37 +3350,19 @@
             "type": "string"
           },
           "category": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category"
+            "title": "Category",
+            "type": "string"
           },
           "difficulty": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Difficulty"
+            "title": "Difficulty",
+            "type": "string"
           },
           "hint": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hint"
+            "title": "Hint",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "id": {
             "title": "Id",
@@ -3716,6 +3376,10 @@
             "type": "array"
           },
           "qtype": {
+            "enum": [
+              "mc",
+              "estimate"
+            ],
             "title": "Qtype",
             "type": "string"
           },
@@ -3724,59 +3388,39 @@
             "type": "string"
           },
           "range_max": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Range Max"
+            "title": "Range Max",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "range_min": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Range Min"
+            "title": "Range Min",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "source_ref": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Ref"
+            "title": "Source Ref",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "source_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Type"
+            "title": "Source Type",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "unit": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Unit"
+            "title": "Unit",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -3807,26 +3451,18 @@
             "type": "string"
           },
           "kind": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kind"
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "kind_label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kind Label"
+            "title": "Kind Label",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "label": {
             "title": "Label",
@@ -3852,15 +3488,11 @@
             "type": "integer"
           },
           "stadtteil": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Stadtteil"
+            "title": "Stadtteil",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "stadtteile": {
             "items": {
@@ -3945,15 +3577,11 @@
             "type": "integer"
           },
           "last_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last At"
+            "title": "Last At",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "points": {
             "title": "Points",
@@ -4003,15 +3631,11 @@
             "type": "integer"
           },
           "comments": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Comments"
+            "title": "Comments",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "correct_index": {
             "title": "Correct Index",
@@ -4156,16 +3780,12 @@
       "QuizRateIn": {
         "properties": {
           "comment": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Comment"
+            "maxLength": 500,
+            "title": "Comment",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "question_id": {
             "title": "Question Id",
@@ -4268,15 +3888,11 @@
       "QuizTagesergebnis": {
         "properties": {
           "completed_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
+            "title": "Completed At",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "correct": {
             "title": "Correct",
@@ -4406,16 +4022,12 @@
       "RegisterRequest": {
         "properties": {
           "display_name": {
-            "anyOf": [
-              {
-                "maxLength": 60,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Name"
+            "maxLength": 60,
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "email": {
             "format": "email",
@@ -4473,26 +4085,18 @@
       "SetupStand": {
         "properties": {
           "done_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Done At"
+            "title": "Done At",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "started_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
+            "title": "Started At",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "step": {
             "title": "Step",
@@ -4553,107 +4157,71 @@
         "description": "Fester SELECT im Router plus ``votes`` — deshalb hier vollständig.",
         "properties": {
           "beschluss": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Beschluss"
+            "title": "Beschluss",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "committee": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Committee"
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "id": {
             "title": "Id",
             "type": "integer"
           },
           "importance": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Importance"
+            "title": "Importance",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "item_number": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Item Number"
+            "title": "Item Number",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "outcome": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Outcome"
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "session_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Session Date"
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "simple_summary": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Simple Summary"
+            "title": "Simple Summary",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "vote": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Vote"
+            "title": "Vote",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "votes": {
             "items": {
@@ -4802,41 +4370,29 @@
             "type": "integer"
           },
           "outcome": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Outcome"
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "policy_field": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Policy Field"
+            "title": "Policy Field",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "score": {
             "title": "Score",
             "type": "number"
           },
           "session_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Session Date"
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "title": {
             "title": "Title",
@@ -4933,15 +4489,8 @@
             "type": "integer"
           },
           "session_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Session Date"
+            "title": "Session Date",
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -5080,15 +4629,11 @@
             "type": "boolean"
           },
           "outcome": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Outcome"
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "session_date": {
             "title": "Session Date",
@@ -5160,37 +4705,25 @@
             "type": "integer"
           },
           "last_hit_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Hit Date"
+            "title": "Last Hit Date",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "last_hit_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Hit Id"
+            "title": "Last Hit Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "last_hit_title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Hit Title"
+            "title": "Last Hit Title",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "matched": {
             "default": false,
@@ -5228,15 +4761,11 @@
         "description": "Was als gesehen gilt: ohne ``decision_id`` alle Treffer des Themas, mit\nihr genau dieser eine. Optional, damit ältere App-Versionen, die nur\n``{}`` senden, weiterhin alles markieren.",
         "properties": {
           "decision_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Decision Id"
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
         "title": "TopicSeenIn",
@@ -5258,15 +4787,11 @@
       "UserOut": {
         "properties": {
           "access_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Access Token"
+            "title": "Access Token",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "apple_linked": {
             "default": false,
@@ -5279,15 +4804,11 @@
             "type": "string"
           },
           "display_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Name"
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "email": {
             "title": "Email",
@@ -5308,15 +4829,11 @@
             "type": "integer"
           },
           "qa_speichern": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Qa Speichern"
+            "title": "Qa Speichern",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "role": {
             "title": "Role",
@@ -5343,28 +4860,20 @@
             "type": "integer"
           },
           "selected_index": {
-            "anyOf": [
-              {
-                "maximum": 3.0,
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Selected Index"
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Selected Index",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Value"
+            "title": "Value",
+            "type": [
+              "number",
+              "null"
+            ]
           }
         },
         "required": [
@@ -5376,15 +4885,11 @@
       "UserQuizQuestionIn": {
         "properties": {
           "answer_value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Answer Value"
+            "title": "Answer Value",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "category": {
             "maxLength": 30,
@@ -5399,16 +4904,12 @@
             "type": "integer"
           },
           "explanation": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Explanation"
+            "maxLength": 500,
+            "title": "Explanation",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "options": {
             "items": {
@@ -5425,50 +4926,34 @@
             "type": "string"
           },
           "range_max": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Range Max"
+            "title": "Range Max",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "range_min": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Range Min"
+            "title": "Range Min",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "stadtteil": {
-            "anyOf": [
-              {
-                "maxLength": 60,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Stadtteil"
+            "maxLength": 60,
+            "title": "Stadtteil",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "unit": {
-            "anyOf": [
-              {
-                "maxLength": 40,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Unit"
+            "maxLength": 40,
+            "title": "Unit",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -5742,15 +5227,11 @@
             "type": "string"
           },
           "session_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Session Date"
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "title": {
             "title": "Title",
@@ -7856,16 +7337,12 @@
             "name": "topic",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Topic"
+              "minimum": 1,
+              "title": "Topic",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           {
@@ -8535,16 +8012,12 @@
             "name": "q",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "maxLength": 120,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Q"
+              "maxLength": 120,
+              "title": "Q",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         ],
@@ -8825,15 +8298,11 @@
             "name": "felder",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Felder"
+              "title": "Felder",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           {
@@ -8841,15 +8310,11 @@
             "name": "thh_posten",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Thh Posten"
+              "title": "Thh Posten",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         ],
@@ -9100,15 +8565,11 @@
             "name": "thh",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Thh"
+              "title": "Thh",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           {
@@ -9116,15 +8577,11 @@
             "name": "q",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Q"
+              "title": "Q",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           {
@@ -9132,15 +8589,11 @@
             "name": "amt",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Amt"
+              "title": "Amt",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           {
@@ -9148,15 +8601,11 @@
             "name": "spielraum",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Spielraum"
+              "title": "Spielraum",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           {
@@ -9164,15 +8613,11 @@
             "name": "nr",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Nr"
+              "title": "Nr",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         ],
@@ -9214,16 +8659,12 @@
             "name": "marke",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "pattern": "^(B|WB|H|K)$",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Marke"
+              "pattern": "^(B|WB|H|K)$",
+              "title": "Marke",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         ],
@@ -9287,15 +8728,11 @@
             "name": "jahrgang",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Jahrgang"
+              "title": "Jahrgang",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           }
         ],
@@ -9337,15 +8774,11 @@
             "name": "jahr",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Jahr"
+              "title": "Jahr",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           }
         ],
@@ -9409,15 +8842,11 @@
             "name": "jahr",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Jahr"
+              "title": "Jahr",
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           }
         ],
@@ -9623,15 +9052,11 @@
             "name": "gremium",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Gremium"
+              "title": "Gremium",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           {

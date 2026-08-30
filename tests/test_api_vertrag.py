@@ -167,3 +167,47 @@ def test_generierte_frontend_typen_passen_zum_vertrag():
         "Die generierten Frontend-Typen passen nicht zu api/openapi.json.\n"
         "  cd web/frontend && npm run api:typen   # neu erzeugen und mitcommitten"
     )
+
+
+def test_nullable_felder_sind_swift_lesbar():
+    """Optionale Felder müssen als ``type: [T, "null"]`` im Vertrag stehen.
+
+    Pydantic schreibt sie als ``anyOf`` mit einem ``null``-Zweig — gültiges
+    OpenAPI 3.1, aber ``swift-openapi-generator`` lässt solche Eigenschaften
+    STILL weg (gemessen 30.08.2026: 139 Felder in 55 Schemata, u. a.
+    ``GespraecheListe.einstellung``). ``scripts/openapi_schnitt.py`` zieht sie
+    deshalb zusammen; dieser Test hält fest, dass das auch weiter passiert.
+
+    Ausgenommen bleibt, was sich nicht zusammenziehen LÄSST: ein ``$ref``
+    neben ``null``. Diese vier sind bekannt und in der App von Hand zu
+    ergänzen — wächst die Liste, ist das eine bewusste Entscheidung, kein
+    Versehen.
+    """
+    import json
+
+    bekannt = {
+        "Abzeichen.progress",
+        "AbzeichenStand.next",
+        "QaSharePartei.kernaussage",
+        "QuizTagesrunde.done",
+    }
+    spec = json.loads((Path(__file__).resolve().parents[1] / "api" / "openapi.json").read_text())
+    offen = set()
+    for name, s in spec["components"]["schemas"].items():
+        for feld, p in (s.get("properties") or {}).items():
+            zweige = p.get("anyOf")
+            if isinstance(zweige, list) and {"type": "null"} in zweige:
+                offen.add(f"{name}.{feld}")
+
+    neu = offen - bekannt
+    assert not neu, (
+        "Diese nullable Felder stehen als `anyOf` im Vertrag und fehlen damit im "
+        "Swift-Generat:\n  " + "\n  ".join(sorted(neu)) +
+        "\nEntweder zusammenziehbar machen (scripts/openapi_schnitt.py) oder "
+        "bewusst in `bekannt` aufnehmen."
+    )
+    verschwunden = bekannt - offen
+    assert not verschwunden, (
+        "Diese Einträge stehen in `bekannt`, sind aber nicht mehr offen — bitte "
+        "streichen:\n  " + "\n  ".join(sorted(verschwunden))
+    )

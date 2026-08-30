@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Sparkles, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
+import { vertrag } from "@/lib/vertrag";
 import { Topic } from "@/lib/types";
 import {
   Button, CardListSkeleton, EmptyState, ErrorState, Input, PageHeader, Textarea, toast,
@@ -66,7 +67,7 @@ export function TopicsView() {
   const suggestionsQuery = useQuery({
     queryKey: ["topic-suggestions"],
     queryFn: () =>
-      api.get<{ suggestions: { name: string; description: string; n: number }[] }>("/topics/suggestions")
+      vertrag.get("/topics/suggestions")
         .then((d) => d.suggestions),
   });
 

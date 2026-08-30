@@ -52,21 +52,29 @@ export type ApiAntwort<P extends string, M extends Methode = "get"> =
     ? paths[MitApi<P>] extends Record<M, infer O> ? Erfolg<O> : never
     : never;
 
+/** Der Pfad ohne Query-String — viele Aufrufe hängen `?limit=2` an, der
+ *  Vertrag kennt aber nur den nackten Pfad. */
+type OhneQuery<S extends string> = S extends `${infer P}?${string}` ? P : S;
+
+/** Erlaubt den Aufruf nur, wenn der (query-freie) Pfad im Vertrag steht. */
+type Erlaubt<S extends string, M extends Methode> =
+  OhneQuery<S> extends Pfad<M> ? S : never;
+
 /**
  * Wie `api`, nur dass der Antworttyp aus dem Vertrag kommt statt aus dem
- * Kopf der Person, die den Aufruf schreibt.
+ * Kopf der Person, die den Aufruf schreibt. Ein Query-String darf dranhängen.
  *
- * Funktioniert für Pfade ohne Parameter — nur die sind als Literal typisierbar.
+ * Funktioniert für Pfade ohne PARAMETER — nur die sind als Literal typisierbar.
  * Für `/council/decision/${id}` bleibt `api.get<ApiAntwort<…>>(…)` der Weg;
  * der Typ stammt auch dann aus dem Vertrag, nur die Zuordnung ist von Hand.
  */
 export const vertrag = {
-  get: <P extends Pfad<"get"> & string>(pfad: P) =>
-    api.get<ApiAntwort<P, "get">>(pfad),
-  post: <P extends Pfad<"post"> & string>(pfad: P, body?: unknown) =>
-    api.post<ApiAntwort<P, "post">>(pfad, body),
-  put: <P extends Pfad<"put"> & string>(pfad: P, body?: unknown) =>
-    api.put<ApiAntwort<P, "put">>(pfad, body),
-  del: <P extends Pfad<"delete"> & string>(pfad: P, body?: unknown) =>
-    api.del<ApiAntwort<P, "delete">>(pfad, body),
+  get: <S extends string>(pfad: Erlaubt<S, "get">) =>
+    api.get<ApiAntwort<OhneQuery<S>, "get">>(pfad),
+  post: <S extends string>(pfad: Erlaubt<S, "post">, body?: unknown) =>
+    api.post<ApiAntwort<OhneQuery<S>, "post">>(pfad, body),
+  put: <S extends string>(pfad: Erlaubt<S, "put">, body?: unknown) =>
+    api.put<ApiAntwort<OhneQuery<S>, "put">>(pfad, body),
+  del: <S extends string>(pfad: Erlaubt<S, "delete">, body?: unknown) =>
+    api.del<ApiAntwort<OhneQuery<S>, "delete">>(pfad, body),
 };

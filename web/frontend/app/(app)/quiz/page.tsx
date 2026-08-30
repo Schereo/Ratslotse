@@ -9,6 +9,7 @@ import { Button, Input, Spinner, EmptyState, toast } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { useFetch } from "@/lib/use-fetch";
 import { api, qs } from "@/lib/api";
+import { vertrag } from "@/lib/vertrag";
 import { cn } from "@/lib/utils";
 import { QuizPlay, CATEGORY_LABEL } from "@/components/quiz-play";
 import { QuizMapPlay } from "@/components/quiz-map-play";
@@ -421,7 +422,7 @@ function QuizInner() {
   const startReview = useCallback(async () => {
     setStarting(true);
     try {
-      const res = await api.get<{ questions: QuizQuestion[] }>("/quiz/review?n=10");
+      const res = await vertrag.get("/quiz/review?n=10");
       if (!res.questions.length) { toast.info("Keine offenen Fehler — stark!"); return; }
       setKind("review");
       setRound(res.questions);
@@ -435,7 +436,7 @@ function QuizInner() {
   const startOwnPractice = useCallback(async () => {
     setStarting(true);
     try {
-      const res = await api.get<{ questions: QuizQuestion[] }>("/quiz/own/round?n=10");
+      const res = await vertrag.get("/quiz/own/round?n=10");
       if (!res.questions.length) { toast.info("Noch keine eigenen Fragen zum Üben."); return; }
       setKind("own");
       setRound(res.questions);
@@ -449,7 +450,7 @@ function QuizInner() {
   const startMap = useCallback(async () => {
     setStarting(true);
     try {
-      const res = await api.get<{ questions: { target: string }[] }>("/quiz/map-round?n=5");
+      const res = await vertrag.get("/quiz/map-round?n=5");
       if (!res.questions.length) return;
       setMapTargets(res.questions.map((qq) => qq.target));
     } catch {
