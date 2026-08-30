@@ -59,7 +59,7 @@ from council.store import CouncilStore  # noqa: E402
 from council.topic_intel import DECKEL, SCHWELLE, treffer, vor_sechs_monaten  # noqa: E402,F401
 from kern.store import Store  # noqa: E402
 from kern import digest_email  # noqa: E402
-from council.ergebnisse import decision_href  # noqa: E402
+from council.ergebnisse import datum_lang, decision_href  # noqa: E402
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -124,10 +124,19 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
         lead_line += f" ({int(lead['amount_eur']):,} \u20ac)".replace(",", ".")
     # Der Text nannte „Meine Themen“ nur — jetzt führt ein Knopf auch dorthin,
     # und der führende Beschluss ist direkt anklickbar.
+    #
+    # Unter dem Titel stehen Gremium und Sitzungsdatum (Tims Wunsch vom
+    # 30.08.2026). Ohne sie beantwortet die Mail ihre naheliegendste Rückfrage
+    # nicht — „wann war das?" —, und amtliche Titel führen dabei sogar in die
+    # Irre: Der Krusenbusch-Titel trug ein „vom 15.02.2023", das Datum der
+    # Elternanfrage, während die Sitzung am 07.03.2023 stattfand.
+    wann = " · ".join(t for t in ((lead.get("committee") or "").strip(),
+                                  datum_lang(lead.get("session_date") or "")) if t)
     msg = (
         f"<p style='margin:0'>Neu zu deinem Thema <b>{html.escape(kurz)}</b>:</p>"
         + digest_email.liste(
-            [f"<a href=\"{digest_email.absolut(decision_href(lead["id"]))}\">{lead_line}</a>"]
+            [f"<a href=\"{digest_email.absolut(decision_href(lead["id"]))}\">{lead_line}</a>"
+             + (digest_email.meta(wann) if wann else "")]
             + ([f"und {n - 1} weitere"] if n > 1 else [])
         )
         + digest_email.knopf("/topics", "Alle Treffer ansehen" if n > 1 else "Beschluss ansehen")
