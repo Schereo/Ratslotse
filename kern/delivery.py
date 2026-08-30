@@ -30,9 +30,22 @@ def is_synthetic_email(email: str | None) -> bool:
     return bool(email) and email.startswith("tg-") and email.endswith("@local")
 
 
+#: Tags, an deren Kante im Fließtext eine Lücke gehört. Inline-Auszeichnung
+#: (``<b>``, ``<a>``) steht bewusst NICHT drin: „Thema <b>X</b>:" soll nicht zu
+#: „Thema X :" werden.
+_BLOCK_TAGS = r"(?:p|div|li|ul|ol|br|h[1-6]|table|tr|td|blockquote)"
+
+
 def _plain(text_html: str, limit: int = 180) -> str:
-    """Collapse HTML to a short plain-text push body."""
-    t = re.sub(r"<[^>]+>", "", text_html or "")
+    """Collapse HTML to a short plain-text push body.
+
+    Block-Kanten werden zu Leerzeichen, nicht ersatzlos gestrichen: Seit die
+    N3-Meldung unter dem Titel eine Zeile „Gremium · Datum" trägt, klebte die
+    Push-Vorschau sonst beides aneinander („… der GSSchulausschuss · 7. März
+    2026").
+    """
+    t = re.sub(rf"(?i)</?{_BLOCK_TAGS}\b[^>]*>", " ", text_html or "")
+    t = re.sub(r"<[^>]+>", "", t)
     t = re.sub(r"\s+", " ", t).strip()
     return (t[: limit - 1] + "…") if len(t) > limit else t
 

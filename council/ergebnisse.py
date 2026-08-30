@@ -54,6 +54,21 @@ def _datum(iso: str) -> str:
         return str(iso or "")
 
 
+def datum_lang(iso: str) -> str:
+    """„7. März 2026" — mit Jahr, im Gegensatz zu ``_datum``.
+
+    Die Protokoll-Meldung darf das Jahr weglassen: Sie kommt Wochen nach der
+    Sitzung, das Jahr ist dasselbe. Der Wochenabgleich meldet dagegen alles aus
+    einem halben Jahr, und ein halbes Jahr reicht über den Jahreswechsel —
+    „7. März" wäre dort im Januar schlicht mehrdeutig.
+    """
+    teile = str(iso or "")[:10].split("-")
+    try:
+        return f"{int(teile[2])}. {MONATE[int(teile[1]) - 1]} {int(teile[0])}"
+    except (ValueError, IndexError):
+        return str(iso or "")
+
+
 def _stimmen(d: dict) -> str:
     """„einstimmig" bzw. „mehrheitlich, 11 dagegen" — nur, wenn belegt."""
     teile = []
