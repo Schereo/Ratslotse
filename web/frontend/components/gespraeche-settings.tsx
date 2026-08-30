@@ -15,12 +15,15 @@ export function GespraecheCard() {
   const [frageLoeschen, setFrageLoeschen] = useState(false);
 
   useEffect(() => {
-    fetch(apiUrl("/council/gespraeche"), { credentials: "include", headers: authHeaders() })
+    // `limit=0` holt nur die Zahlen: Hier zählt der Bestand, die Zeilen selbst
+    // zeigt diese Karte nie. Vorher zählte sie die gelieferte Liste — und die
+    // war auf 50 gedeckelt, „Alle löschen (50)" log also bei größeren Konten.
+    fetch(apiUrl("/council/gespraeche?limit=0"), { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
         if (!b) return;
         setEinstellung(b.einstellung);
-        setAnzahl((b.gespraeche ?? []).length);
+        setAnzahl(b.gesamt ?? 0);
       })
       .catch(() => {});
   }, []);

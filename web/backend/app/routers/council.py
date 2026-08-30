@@ -1705,12 +1705,29 @@ class GespraechEinstellungBody(BaseModel):
 
 
 @router.get("/gespraeche")
-def gespraeche_liste(user: dict = Depends(require_active),
+def gespraeche_liste(limit: int = Query(30, ge=0, le=100),
+                     offset: int = Query(0, ge=0),
+                     q: str | None = Query(None, max_length=120),
+                     user: dict = Depends(require_active),
                      nwz: Store = Depends(get_store)) -> dict:
-    """Einwilligungs-Stand + gespeicherte Gespräche des Kontos. `einstellung`
-    ist null, solange die Erstnutzungs-Frage (6a①) nie beantwortet wurde."""
+    """Einwilligungs-Stand + eine Seite der gespeicherten Gespräche.
+    `einstellung` ist null, solange die Erstnutzungs-Frage (6a①) nie
+    beantwortet wurde.
+
+    Drei Zahlen, weil sie drei Dinge bedeuten: `gesamt` ist der Bestand des
+    Kontos (die Anzeige „n gespeichert" und der Zähler am Kopf-Knopf hängen
+    daran, nicht an der Seitenlänge), `treffer` gilt zur aktuellen Suche, und
+    `weitere` sagt, ob „Ältere anzeigen" noch etwas nachliefert. `limit=0`
+    holt nur die Zahlen — so fragt die Konto-Einstellung.
+    """
+    seite = nwz.qa_gespraeche(user["id"], limit=limit, offset=offset, suche=q)
+    treffer = nwz.qa_gespraeche_anzahl(user["id"], suche=q)
+    gesamt = nwz.qa_gespraeche_anzahl(user["id"]) if q else treffer
     return {"einstellung": nwz.get_qa_speichern(user["id"]),
-            "gespraeche": nwz.qa_gespraeche(user["id"])}
+            "gespraeche": seite,
+            "gesamt": gesamt,
+            "treffer": treffer,
+            "weitere": offset + len(seite) < treffer}
 
 
 @router.post("/gespraeche/einstellung")

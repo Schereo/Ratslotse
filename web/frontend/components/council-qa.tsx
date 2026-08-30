@@ -168,6 +168,9 @@ const OUTCOME_LABEL: Record<string, string> = {
 
 /** Gesprächs-Zeile der „Meine Gespräche"-Liste (5a/I-04). */
 type GespraechEintrag = { id: number; titel: string; updated: string; n_turns: number };
+/** Wie viele Gesprächszeilen eine Seite bringt — der Rest kommt über
+ *  „Ältere anzeigen" nach. */
+const GESPRAECHE_SEITE = 30;
 
 type Turn = {
   /** Eindeutiger React-Key (monotone Nummer) — nie der Array-Index. */
@@ -1224,29 +1227,101 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   );
   const [gespraechId, setGespraechId] = useState<number | null>(null);
   const [gespraeche, setGespraeche] = useState<GespraechEintrag[]>([]);
+  // Der Bestand des Kontos — bewusst NICHT `gespraeche.length`: die Liste ist
+  // seit 30.08. eine Seite (SEITE Zeilen) und schrumpft während einer Suche
+  // zusätzlich. Bis dahin zeigten Kopf-Zähler und Sheet die Seitenlänge und
+  // blieben deshalb bei 50 stehen (Tims Befund 30.08.).
+  const [gesamt, setGesamt] = useState(0);
+  /** Liegt hinter der geladenen Seite noch etwas? */
+  const [weitere, setWeitere] = useState(false);
+  // Die Suche hält ihr Ergebnis GETRENNT von der Liste oben. Am Desktop ist
+  // das Sheet ein zentrierter Dialog — der „Zuletzt gefragt"-Block dahinter
+  // bleibt sichtbar und dürfte nicht mitfiltern.
+  const [suche, setSuche] = useState("");
+  const [sucheListe, setSucheListe] = useState<GespraechEintrag[] | null>(null);
+  const [sucheTreffer, setSucheTreffer] = useState(0);
+  const [sucheWeitere, setSucheWeitere] = useState(false);
+  const [laedtMehr, setLaedtMehr] = useState(false);
   // Bis die Liste da ist, gilt der Stand vom letzten Besuch: sonst erscheint
   // der Gespräche-Knopf erst nach einer halben Sekunde im Seitenkopf (Tims
   // zweiter Befund 15.08.: „genauso wie oben der Verlauf-Button").
   const [gespraecheGeladen, setGespraecheGeladen] = useState(false);
   const [hatteGespraeche] = useState(leseHatGespraeche);
+  const holeGespraeche = async (q: string, offset: number) => {
+    const p = new URLSearchParams({ limit: String(GESPRAECHE_SEITE), offset: String(offset) });
+    if (q.trim()) p.set("q", q.trim());
+    const r = await fetch(apiUrl(`/council/gespraeche?${p.toString()}`),
+      { credentials: "include", headers: authHeaders() });
+    if (!r.ok) throw new Error("gespraeche");
+    return r.json();
+  };
   const ladeGespraeche = () =>
-    fetch(apiUrl("/council/gespraeche"), { credentials: "include", headers: authHeaders() })
-      .then((r) => (r.ok ? r.json() : null))
+    holeGespraeche("", 0)
       .then((b) => {
-        if (!b) return;
         setEinstellung(b.einstellung);
         setGespraeche(b.gespraeche ?? []);
+        setGesamt(b.gesamt ?? 0);
+        setWeitere(Boolean(b.weitere));
         setGespraecheGeladen(true);
-        merkeHatGespraeche((b.gespraeche ?? []).length > 0);
+        merkeHatGespraeche((b.gesamt ?? 0) > 0);
       })
       .catch(() => {});
+  // Beim Tippen sind mehrere Antworten unterwegs; ohne diese Marke könnte
+  // eine langsamere ältere die frischere überschreiben.
+  const sucheLauf = useRef("");
+  const ladeSuche = (q: string) => {
+    sucheLauf.current = q;
+    return holeGespraeche(q, 0)
+      .then((b) => {
+        if (sucheLauf.current !== q) return;
+        setSucheListe(b.gespraeche ?? []);
+        setSucheTreffer(b.treffer ?? 0);
+        setSucheWeitere(Boolean(b.weitere));
+        setGesamt(b.gesamt ?? 0);
+      })
+      .catch(() => {
+        if (sucheLauf.current !== q) return;
+        setSucheListe([]); setSucheTreffer(0); setSucheWeitere(false);
+      });
+  };
+  /** „Ältere anzeigen": hängt die nächste Seite an, statt sie zu ersetzen —
+   *  je nachdem, ob gerade gesucht wird, an die Treffer oder an die Liste. */
+  const mehrGespraeche = async () => {
+    if (laedtMehr) return;
+    const q = suche.trim();
+    const bisher = q ? sucheListe ?? [] : gespraeche;
+    setLaedtMehr(true);
+    try {
+      const b = await holeGespraeche(q, bisher.length);
+      // Kommt zwischen zwei Seiten eine Antwort dazu, rutscht die Sortierung
+      // um eine Zeile — ohne diesen Abgleich stünde sie doppelt in der Liste.
+      const anhaengen = (gs: GespraechEintrag[]) => [
+        ...gs,
+        ...((b.gespraeche ?? []) as GespraechEintrag[]).filter(
+          (n) => !gs.some((g) => g.id === n.id)),
+      ];
+      if (q) {
+        setSucheListe((gs) => anhaengen(gs ?? []));
+        setSucheTreffer(b.treffer ?? 0);
+        setSucheWeitere(Boolean(b.weitere));
+      } else {
+        setGespraeche(anhaengen);
+        setWeitere(Boolean(b.weitere));
+      }
+      setGesamt(b.gesamt ?? 0);
+    } catch {
+      toast.error("Ältere Gespräche konnten nicht geladen werden.");
+    } finally {
+      setLaedtMehr(false);
+    }
+  };
   /** Gibt es Gespräche zu zeigen? Vor dem Laden zählt die Erinnerung. */
   const zeigeGespraecheKnopf =
     einstellung === 1 &&
-    (turns.length > 0 || gespraeche.length > 0 || (!gespraecheGeladen && hatteGespraeche));
+    (turns.length > 0 || gesamt > 0 || (!gespraecheGeladen && hatteGespraeche));
   /** Design 15a: Mit Verlauf trägt der leere Screen den „Zuletzt gefragt"-
    *  Block — und nur noch zwei Beispiele; die dritte Zeile wich dem Block. */
-  const hatVerlauf = einstellung === 1 && gespraeche.length > 0;
+  const hatVerlauf = einstellung === 1 && gesamt > 0;
   const beispielAnzahl = hatVerlauf ? 2 : 3;
   useEffect(() => { void ladeGespraeche(); }, []);
   const einwilligen = async (an: boolean) => {
@@ -1340,6 +1415,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
   const gespraechLoeschen = async (id: number) => {
     setGespraeche((gs) => gs.filter((g) => g.id !== id));
+    // Die Zähler hängen am Bestand, nicht an der geladenen Seite — sie müssen
+    // hier mit, sonst zählt der Kopf-Knopf ein gelöschtes Gespräch weiter.
+    setSucheListe((gs) => (gs ? gs.filter((g) => g.id !== id) : gs));
+    setGesamt((n) => Math.max(0, n - 1));
+    setSucheTreffer((n) => Math.max(0, n - 1));
     if (gespraechId === id) setGespraechId(null);
     try { sessionStorage.removeItem("ratslotse:qa-gespraech"); } catch { /* egal */ }
     try {
@@ -1364,6 +1444,17 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   };
   // 9a①/②: das mobile Gespräche-Sheet (Desktop behält das Dropdown aus 5a).
   const [sheetOffen, setSheetOffen] = useState(false);
+  // Gesucht wird SERVERSEITIG (seit 30.08.): Das Sheet hält nur eine Seite,
+  // ein Filter über die geladenen Zeilen fände die älteren Gespräche also
+  // gar nicht. Beim Öffnen (suche = "") lädt derselbe Effekt die erste Seite
+  // frisch — inklusive der Gespräche, die seit dem letzten Blick dazukamen.
+  useEffect(() => {
+    if (!sheetOffen) return;
+    const q = suche.trim();
+    const t = setTimeout(() => { void (q ? ladeSuche(q) : ladeGespraeche()); }, q ? 250 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetOffen, suche]);
 
   // Fixed-Composer (Tims TestFlight-Feedback 11.08.): Der Spacer im Fluss
   // trägt die live gemessene Composer-Höhe — sie ändert sich mit Chips,
@@ -1393,12 +1484,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         sichtbar: zeigeGespraecheKnopf,
         titel: aktiv?.titel ?? null,
         // Design 15: Der Kopf-Knopf zählt mit („Gespräche · 4").
-        anzahl: gespraeche.length,
+        anzahl: gesamt,
       },
     }));
-  }, [zeigeGespraecheKnopf, gespraeche, gespraechId]);
+  }, [zeigeGespraecheKnopf, gespraeche, gesamt, gespraechId]);
   useEffect(() => {
-    const auf = () => { setSheetOffen(true); void ladeGespraeche(); };
+    const auf = () => setSheetOffen(true);
     window.addEventListener("rl:gespraeche-oeffnen", auf);
     return () => window.removeEventListener("rl:gespraeche-oeffnen", auf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1528,14 +1619,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               {(zeigeGespraecheKnopf || (einstellung === 1 && gespraechId != null)) && (
                 <button
                   type="button"
-                  onClick={() => { setSheetOffen(true); void ladeGespraeche(); }}
+                  onClick={() => setSheetOffen(true)}
                   className="inline-flex items-center gap-1.5 rounded-[10px] border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <History className="h-3.5 w-3.5" aria-hidden />
                   <span>Gespräche</span>
-                  {gespraeche.length > 0 && (
+                  {gesamt > 0 && (
                     <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary/10 px-1 text-[10.5px] font-bold text-primary">
-                      {gespraeche.length}
+                      {gesamt}
                     </span>
                   )}
                 </button>
@@ -1562,13 +1653,21 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             hoch, OB es etwas zu zeigen gibt, der Kopf meldet Taps herunter. */}
         {sheetOffen && (
           <GespraecheSheet
-            gespraeche={gespraeche}
+            gespraeche={suche.trim() ? sucheListe ?? [] : gespraeche}
+            gesamt={gesamt}
+            treffer={sucheTreffer}
+            weitere={suche.trim() ? sucheWeitere : weitere}
+            laedtMehr={laedtMehr}
+            sucht={suche.trim() !== "" && sucheListe === null}
+            suche={suche}
+            onSuche={setSuche}
+            onMehr={() => void mehrGespraeche()}
             aktivId={gespraechId}
             onNeu={() => { setSheetOffen(false); neuesGespraech(); }}
             onLaden={(id) => void gespraechLaden(id)}
             onLoeschen={(id) => void gespraechLoeschen(id)}
             onUmbenennen={(id, titel) => void gespraechUmbenennen(id, titel)}
-            onClose={() => setSheetOffen(false)}
+            onClose={() => { setSheetOffen(false); setSuche(""); setSucheListe(null); }}
           />
         )}
 
@@ -1639,9 +1738,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                     Zuletzt gefragt
                   </p>
                   <button type="button"
-                    onClick={() => { setSheetOffen(true); void ladeGespraeche(); }}
+                    onClick={() => setSheetOffen(true)}
                     className="text-xs font-semibold text-primary transition-colors hover:text-primary/80">
-                    Alle {gespraeche.length} →
+                    Alle {gesamt} →
                   </button>
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -2494,13 +2593,19 @@ function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen
  *  Liste in Zeitgruppen. Mobil ein Bottom-Sheet, am Desktop ein zentrierter
  *  Dialog — EIN Bauteil statt Sheet + ärmerem Dropdown (das Dropdown konnte
  *  nicht einmal umbenennen). */
-function GespraecheSheet({ gespraeche, aktivId, onNeu, onLaden, onLoeschen, onUmbenennen, onClose }: {
-  gespraeche: GespraechEintrag[]; aktivId: number | null;
+function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, sucht, suche,
+  onSuche, onMehr, aktivId, onNeu, onLaden, onLoeschen, onUmbenennen, onClose }: {
+  /** Die geladene Seite — nicht der Bestand (der steht in `gesamt`). */
+  gespraeche: GespraechEintrag[];
+  gesamt: number; treffer: number; weitere: boolean; laedtMehr: boolean;
+  /** Suchwort getippt, Antwort noch unterwegs — nicht dasselbe wie „nichts gefunden". */
+  sucht: boolean;
+  suche: string; onSuche: (q: string) => void; onMehr: () => void;
+  aktivId: number | null;
   onNeu: () => void; onLaden: (id: number) => void; onLoeschen: (id: number) => void;
   onUmbenennen: (id: number, titel: string) => void; onClose: () => void;
 }) {
   const [offenId, setOffenId] = useState<number | null>(null);
-  const [suche, setSuche] = useState("");
   const startY = useRef<number | null>(null);
   useEffect(() => {
     const alt = document.body.style.overflow;
@@ -2515,14 +2620,15 @@ function GespraecheSheet({ gespraeche, aktivId, onNeu, onLaden, onLoeschen, onUm
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // 15b: Ab 8 Gesprächen ein schlankes Suchfeld — nicht früher, kein
-  // Element ohne Not. Gefiltert wird nur die Anzeige.
-  const mitSuche = gespraeche.length >= 8;
-  const begriff = suche.trim().toLowerCase();
-  const sichtbar = begriff
-    ? gespraeche.filter((g) => g.titel.toLowerCase().includes(begriff))
-    : gespraeche;
+  // Element ohne Not. Die Schwelle zählt den BESTAND: Die geladene Seite kann
+  // während einer Suche auf zwei Zeilen schrumpfen, und das Feld darf einem
+  // dabei nicht unter den Fingern verschwinden.
+  const mitSuche = gesamt >= 8;
+  const begriff = suche.trim();
+  /** Wogegen die Liste zählt: mit Suchwort die Treffer, sonst der Bestand. */
+  const bestand = begriff ? treffer : gesamt;
   const gruppen = (["Heute", "Gestern", "Älter"] as const)
-    .map((name) => ({ name, eintraege: sichtbar.filter((g) => sheetGruppe(g.updated) === name) }))
+    .map((name) => ({ name, eintraege: gespraeche.filter((g) => sheetGruppe(g.updated) === name) }))
     .filter((gr) => gr.eintraege.length > 0);
   return createPortal(
     <div className="fixed inset-0 z-50 desk:flex desk:items-center desk:justify-center desk:p-6"
@@ -2544,7 +2650,7 @@ function GespraecheSheet({ gespraeche, aktivId, onNeu, onLaden, onLoeschen, onUm
         <div className="flex shrink-0 items-center gap-2 px-0.5 pb-2.5 pt-2.5">
           <span className="font-display text-[17px] font-bold tracking-tight text-foreground">Gespräche</span>
           <span className="text-[12.5px] text-muted-foreground">
-            {gespraeche.length} gespeichert
+            {!begriff ? `${gesamt} gespeichert` : sucht ? "sucht …" : `${treffer} Treffer`}
           </span>
           <span className="flex-1" />
           {/* 15b: expliziter Ausgang zusätzlich zu Wisch + Scrim — der
@@ -2559,7 +2665,7 @@ function GespraecheSheet({ gespraeche, aktivId, onNeu, onLaden, onLoeschen, onUm
           <Plus className="h-4 w-4" aria-hidden /> Neues Gespräch
         </button>
         {mitSuche && (
-          <Input value={suche} onChange={(e) => setSuche(e.target.value)}
+          <Input value={suche} onChange={(e) => onSuche(e.target.value)}
             placeholder="In Gesprächen suchen …" aria-label="Gespräche durchsuchen"
             className="mt-2 h-9 shrink-0 rounded-[11px] maus:text-[13px]" />
         )}
@@ -2583,10 +2689,18 @@ function GespraecheSheet({ gespraeche, aktivId, onNeu, onLaden, onLoeschen, onUm
               </div>
             </div>
           ))}
-          {sichtbar.length === 0 && (
+          {gespraeche.length === 0 && !sucht && (
             <p className="px-0.5 py-4 text-[12.5px] text-muted-foreground">
-              {begriff ? `Kein Gespräch passt zu „${suche.trim()}".` : "Noch keine gespeicherten Gespräche."}
+              {begriff ? `Kein Gespräch passt zu „${begriff}".` : "Noch keine gespeicherten Gespräche."}
             </p>
+          )}
+          {/* Der Rest des Bestands — vor dem 30.08. endete die Liste hier
+              stumm bei 50 Zeilen, ältere Gespräche waren unerreichbar. */}
+          {weitere && !sucht && (
+            <button type="button" onClick={onMehr} disabled={laedtMehr}
+              className="mt-2 flex h-10 w-full items-center justify-center rounded-[11px] border border-border bg-card text-[12.5px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60">
+              {laedtMehr ? "Lädt …" : `Ältere anzeigen (noch ${bestand - gespraeche.length})`}
+            </button>
           )}
         </div>
         <p className="shrink-0 border-t border-border/60 pt-2.5 text-[10.5px] leading-relaxed text-muted-foreground/70">

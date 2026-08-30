@@ -5147,6 +5147,41 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
         store.close()
 
 
+def test_gespraeche_liste_blaettert_und_sucht(client):
+    """Tims Befund 30.08.2026: „Frag den Rat" zeigte dauerhaft 50 Gespräche.
+
+    Der Endpunkt liefert jetzt eine Seite plus drei Zahlen — `gesamt` ist der
+    Bestand (daran hängen Kopf-Zähler und Konto-Karte), `treffer` gilt zur
+    Suche, `weitere` sagt, ob „Ältere anzeigen" noch etwas nachliefert.
+    """
+    _register(client)
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        store.set_qa_speichern(uid, True)
+        for i in range(70):
+            store.qa_gespraech_start(uid, f"Cäcilienbrücke {i}" if i == 3 else f"Thema {i}")
+
+        b = client.get("/api/council/gespraeche").json()
+        assert len(b["gespraeche"]) == 30 and b["gesamt"] == 70 and b["weitere"] is True
+
+        # Blättern erreicht auch die Zeilen jenseits der alten 50er-Grenze.
+        letzte = client.get("/api/council/gespraeche?offset=60").json()
+        assert len(letzte["gespraeche"]) == 10 and letzte["weitere"] is False
+        assert letzte["gespraeche"][-1]["titel"] == "Thema 0"
+
+        # Gesucht wird in der DB: Der Treffer liegt außerhalb der ersten Seite.
+        t = client.get("/api/council/gespraeche?q=cäcilien").json()
+        assert [g["titel"] for g in t["gespraeche"]] == ["Cäcilienbrücke 3"]
+        assert t["treffer"] == 1 and t["gesamt"] == 70   # Bestand bleibt Bestand
+
+        # Die Konto-Karte holt nur die Zahl.
+        nur_zahl = client.get("/api/council/gespraeche?limit=0").json()
+        assert nur_zahl["gespraeche"] == [] and nur_zahl["gesamt"] == 70
+    finally:
+        store.close()
+
+
 def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
     """Der Bestand kommt aus dem Jahrbuch, seine Kosten aus dem Abschluss.
 
