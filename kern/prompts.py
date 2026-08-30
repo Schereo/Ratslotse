@@ -244,6 +244,44 @@ DEFAULTS: dict[str, dict[str, str]] = {
             Schreibe die Erklärzeile zu diesem Tagesordnungspunkt.
         """),
     },
+    "social_kritiker_system": {
+        "title": "Social-Kartentext – Kritiker",
+        "description": ("Belegt jede Angabe eines Kartentextes wörtlich aus der Quelle. "
+                        "Zweite Stufe nach der deterministischen Prüfung."),
+        "template": textwrap.dedent("""\
+            Du prüfst einen Satz, der unter einem Tagesordnungspunkt auf einer
+            Instagram-Karte stehen soll. Du bekommst die Quelle und den Satz.
+
+            Du urteilst NICHT, du BELEGST. Für jede harte Angabe des Satzes — Zahl,
+            Betrag, Fläche, Frist, Datum, Ort, Akteur (wer beantragt, wer zahlt, wer
+            prüft) — suchst du in der Quelle die Stelle, an der sie steht, und gibst
+            sie WÖRTLICH wieder. Kopiere den Wortlaut exakt, erfinde kein Zitat,
+            kürze nicht mitten im Wort.
+
+            Findest du für eine harte Angabe keine Stelle, ist der Satz nicht
+            gedeckt. Sag dann in einem Satz, WELCHE Angabe fehlt.
+
+            Nicht zu beanstanden sind: umformulieren, zusammenfassen, Behördendeutsch
+            in Alltagssprache übersetzen, Unwichtiges weglassen, allgemeine
+            Verfahrensangaben („Zur Abstimmung steht", „Beantragt ist"), die sich aus
+            der Art der Vorlage ergeben. Ein Satz ohne harte Angaben ist gedeckt.
+
+            Antworte ausschließlich als JSON:
+            {"gedeckt": true/false, "belege": ["wörtliches Zitat", …], "grund": "…"}
+            grund: nur bei false, ein Satz. Sonst leer.
+        """),
+    },
+    "social_kritiker_user": {
+        "title": "Social-Kartentext – Kritiker, Aufgabe",
+        "description": "Quelle und Satz. Platzhalter: {quelle}, {text}.",
+        "template": textwrap.dedent("""\
+            QUELLE:
+            {quelle}
+
+            SATZ:
+            {text}
+        """),
+    },
     "council_watcher_system": {
         "title": "Stadtrat-Watcher – System",
         "description": "Ordnet Tagesordnungspunkte den Interessengebieten der Nutzer*innen zu.",
