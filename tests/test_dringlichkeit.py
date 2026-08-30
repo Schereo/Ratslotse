@@ -268,3 +268,42 @@ def test_parteikuerzel_bleiben_ein_eigenes_wort():
         == "Dringlichkeitsantrag: CDU Anwohnerparken"
     assert titel_aus_label("Dringlichkeitsantrag SPD Radwege") \
         == "Dringlichkeitsantrag: SPD Radwege"
+
+
+def test_die_sitzungsansicht_erkennt_den_antrag_und_traegt_den_kartentext(tmp_path):
+    """Was die Tagesordnung im Web zeigt, entscheidet der Server.
+
+    Zwei Felder je Punkt: ``dringlich`` (damit Web UND App denselben Punkt
+    hervorheben, statt jede Oberfläche die Kennung selbst zu deuten) und
+    ``social_text`` (der Satz aus Vorlage und Anlagen — die Anzeige zieht ihn
+    der titelbasierten Kurzfassung vor).
+    """
+    from council.store import CouncilStore
+
+    store = CouncilStore(tmp_path / "council.sqlite")
+    try:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+            "location, fetched_at) VALUES (1, 'Rat', '2026-08-31', '18:00', 'PFL', 'x')")
+        store._conn.executemany(
+            "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
+            "VALUES (1, ?, ?, 1)",
+            [("Ö 2", "Genehmigung der Tagesordnung"),
+             ("DZT 1", "Dringlichkeitsantrag: festgestellte PAK-Belastung")])
+        store._conn.execute(
+            "INSERT INTO agenda_item_summaries (ksinr, item_number, summary, agenda_hash, "
+            "created_at) VALUES (1, 'DZT 1', 'Der Rat berät über einen Antrag.', 'h', 'x')")
+        store._conn.commit()
+        store.save_social_text(1, "DZT 1", "Beantragt ist, die PAK-Belastung der "
+                                           "Flugplatzbäke untersuchen zu lassen.", "anlage")
+
+        nach_nr = {i["item_number"]: i for i in store.agenda_items(1)}
+        assert nach_nr["DZT 1"]["dringlich"] is True
+        assert nach_nr["Ö 2"]["dringlich"] is False
+        assert nach_nr["DZT 1"]["social_text"].startswith("Beantragt ist")
+        # Die Kurzfassung bleibt daneben stehen — sie ist der Rückfall, nicht
+        # ersetzt: Für Punkte ohne Kartentext ist sie alles, was es gibt.
+        assert nach_nr["DZT 1"]["summary"] == "Der Rat berät über einen Antrag."
+        assert nach_nr["Ö 2"]["social_text"] is None
+    finally:
+        store.close()

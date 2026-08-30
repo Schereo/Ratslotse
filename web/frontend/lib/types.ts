@@ -47,6 +47,16 @@ export interface AgendaItem {
   /** Ein Satz, worum es geht — dieselbe KI-Zusammenfassung wie in der
    *  Tagesordnungs-Mail. Fehlt bei Routine-Punkten und alten Sitzungen. */
   summary?: string | null;
+  /** Der bessere der beiden Sätze: aus Vorlage UND Anlagen geschrieben, nicht
+   *  nur aus dem Titel (`agenda_item_social`). Deshalb stehen hier Angaben,
+   *  die in keiner Überschrift vorkommen — „110 Wohneinheiten auf 8,6 Hektar".
+   *  Gibt es nur für kommende Sitzungen; sonst bleibt `summary`. */
+  social_text?: string | null;
+  /** Ein Dringlichkeitsantrag — im Ratsinformationssystem hat er keinen
+   *  eigenen Punkt, sondern hängt als Dokument an „Genehmigung der
+   *  Tagesordnung". Der Ratslotse macht daraus eine eigene Zeile mit der
+   *  Kennung `DZT n`; das Flag entscheidet der Server, nicht die Anzeige. */
+  dringlich?: boolean;
 }
 
 export type DecisionOutcome =

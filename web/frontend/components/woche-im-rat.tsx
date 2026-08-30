@@ -15,6 +15,13 @@ export type WochenSitzung = {
 export type WochenPunkt = {
   ksinr: number; item_number: string; title: string; titel_kurz?: string;
   antragsteller?: string | null; summary: string | null;
+  /** Der aus Vorlage UND Anlagen geschriebene Satz (`agenda_item_social`) —
+   *  besser als `summary`, die allein aus dem Titel entsteht. */
+  social_text?: string | null;
+  /** Ein kurzfristig eingebrachter Antrag ohne eigenen Tagesordnungspunkt
+   *  (`council/dringlichkeit.py`). Er steht auf der Karte, weil die Bewertung
+   *  für ihn einen Boden hat — der Kicker sagt, warum. */
+  dringlich?: boolean;
   vorlage_nr: string | null; kvonr: number | null;
   committee: string; session_date: string; topic_name?: string | null;
   /** Warum der Punkt zählt — in Alltagssprache, kommt aus der Bewertung. */
@@ -459,6 +466,10 @@ function RailPunkt({ punkt, top, mehrere, dichte }: {
           <span className="mb-0.5 block font-mono text-[9px] font-semibold uppercase tracking-[0.11em] text-primary/80">
             {punkt.topic_name
               ? "Dein Thema"
+              /* Beim Dringlichkeitsantrag ist die Kurzfristigkeit selbst der
+                 Grund, warum er oben steht (Boden in `impact.py`) — „Wichtigster
+                 Punkt der Woche" verschwiege genau das. */
+              : punkt.dringlich ? "Dringlichkeitsantrag"
               : mehrere ? "Schwerpunkt der Woche" : "Wichtigster Punkt der Woche"}
           </span>
         )}
@@ -471,11 +482,13 @@ function RailPunkt({ punkt, top, mehrere, dichte }: {
           {punkt.titel_kurz || punkt.title}
         </span>
         {/* Am obersten Punkt steht, WARUM er oben steht — in einfacher
-            Sprache aus der Bewertung. Die amtliche Kurzfassung ist die
-            Rückfallebene, solange noch keine Bewertung vorliegt. */}
-        {desktop && top && (punkt.wichtig_grund || punkt.summary) && (
+            Sprache aus der Bewertung. Diese Karte ist der eine Ort, an dem der
+            Grund hingehört: Sie sortiert, und er begründet die Sortierung.
+            Fehlt er, tritt der Kartentext an seine Stelle (aus Vorlage und
+            Anlagen), erst danach die titelbasierte Kurzfassung. */}
+        {desktop && top && (punkt.wichtig_grund || punkt.social_text || punkt.summary) && (
           <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted-foreground">
-            {punkt.wichtig_grund || punkt.summary}
+            {punkt.wichtig_grund || punkt.social_text || punkt.summary}
             {punkt.topic_name && (
               <> — passt zu deinem Thema{" "}
                 <span className="font-medium text-foreground/90">{punkt.topic_name}</span>.</>

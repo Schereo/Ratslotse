@@ -33,10 +33,22 @@ def _sitzung(store, ksinr=1, tage=3, committee="Ausschuss für Finanzen und Bete
 
 
 def _punkt(store, ksinr=1, nummer="Ö 10", titel="Ausfallbürgschaft für das Klinikum",
-           kvonr=None, impact=None):
+           kvonr=None, impact=None, vorlage=True):
+    """Ein Tagesordnungspunkt — standardmäßig MIT Vorlagentext.
+
+    Ohne Material gäbe es nichts zu lesen, was die Kurzfassung nicht schon
+    aus dem Titel hätte; solche Punkte lässt die Auswahl bewusst liegen.
+    """
+    if vorlage and kvonr is None:
+        kvonr = 9000 + len(nummer) * 10 + ord(nummer[-1])
     store._conn.execute(
         "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public, kvonr) "
         "VALUES (?, ?, ?, 1, ?)", (ksinr, nummer, titel, kvonr))
+    if vorlage:
+        store._conn.execute(
+            "INSERT OR REPLACE INTO council_vorlagen (kvonr, vorlage_nr, title, raw_text, "
+            "fetched_at) VALUES (?, ?, ?, ?, '2026-08-30')",
+            (kvonr, "26/0001", titel, "Sachverhalt: Die Stadt bürgt für ein Darlehen."))
     if impact is not None:
         store._conn.execute(
             "INSERT OR REPLACE INTO agenda_item_impact "
@@ -96,20 +108,55 @@ def test_grosse_anlagen_verdraengen_die_argumente_nicht():
     assert len(ktx) <= social_text.VORLAGE_ZEICHEN + social_text.ANLAGEN_ZEICHEN + 2000
 
 
-def test_nur_punkte_mit_tragweite_kosten_einen_aufruf(store):
-    """Eine Woche hat rund 87 öffentliche Punkte, auf die Karten schaffen es
-    etwa 20. Für die anderen wäre der Aufruf bezahlt und nie gelesen."""
+def test_jeder_inhaltliche_punkt_bekommt_einen_text(store):
+    """Seit 30.08.26 gilt nicht mehr die Karten-Auswahl, sondern die
+    Tagesordnung: Im Web wird sie ganz gelesen, und unter den Punkten jenseits
+    der Top 20 stand die titelbasierte Kurzfassung oder gar nichts (Tims
+    Entscheidung). Die Tragweite sortiert nur noch."""
     _sitzung(store)
     _punkt(store, nummer="Ö 10", impact=75)
-    _punkt(store, nummer="Ö 11", titel="Ein unwichtiger Punkt", impact=10)
+    _punkt(store, nummer="Ö 11", titel="Ein Punkt mit wenig Tragweite", impact=10)
     _punkt(store, nummer="Ö 12", titel="Noch ohne Bewertung", impact=None)
 
-    offen = store.agenda_items_needing_social_text(mindest_wichtig=40)
-    assert [p["item_number"] for p in offen] == ["Ö 10"]
+    offen = store.agenda_items_needing_social_text()
+    assert [p["item_number"] for p in offen] == ["Ö 10", "Ö 11", "Ö 12"], \
+        "hoch bewertet zuerst, Unbewertetes zuletzt — aber alle drei"
 
     # Geschriebenes wird nie erneut bezahlt.
     store.save_social_text(1, "Ö 10", "Zur Abstimmung steht …", "vorlage")
-    assert store.agenda_items_needing_social_text(mindest_wichtig=40) == []
+    assert [p["item_number"] for p in store.agenda_items_needing_social_text()] \
+        == ["Ö 11", "Ö 12"]
+
+
+def test_formalien_und_materiallose_punkte_kosten_nichts(store):
+    """Zwei Grenzen bleiben. „Genehmigung der Tagesordnung" braucht keinen
+    Satz — und ein Punkt ohne Vorlage und ohne Anlage hat nichts, was die
+    Kurzfassung nicht schon aus dem Titel hätte."""
+    _sitzung(store)
+    _punkt(store, nummer="Ö 1", titel="Genehmigung der Tagesordnung", impact=5)
+    _punkt(store, nummer="Ö 2", titel="Einwohnerfragestunde", impact=5)
+    _punkt(store, nummer="Ö 3", titel="Bericht ohne jede Vorlage dazu",
+           impact=50, vorlage=False)
+    _punkt(store, nummer="Ö 4", titel="Ausfallbürgschaft für das Klinikum", impact=50)
+
+    assert [p["item_number"] for p in store.agenda_items_needing_social_text()] == ["Ö 4"]
+
+
+def test_dringlichkeitsantrag_kommt_ueber_seine_anlage_hinein(store):
+    """Er hat keine Vorlage — sein ganzer Inhalt steht im PDF an der Zeile.
+    Ohne diesen Weg fiele er durch die Material-Prüfung."""
+    _sitzung(store)
+    _punkt(store, nummer="DZT 1", titel="Dringlichkeitsantrag: PAK-Belastung",
+           impact=65, vorlage=False)
+    store._conn.execute(
+        "INSERT INTO council_agenda_anlagen (ksinr, item_number, label, url, raw_text) "
+        "VALUES (1, 'DZT 1', 'Dringlichkeitsantrag PAK', 'https://example.org/a.pdf', ?)",
+        ("Die Gruppe beantragt eine sofortige Prüfung der Flugplatzbäke.",))
+    store._conn.commit()
+
+    offen = store.agenda_items_needing_social_text()
+    assert [p["item_number"] for p in offen] == ["DZT 1"]
+    assert offen[0]["anlage_text"].startswith("Die Gruppe beantragt")
 
 
 def test_vergangene_sitzungen_bleiben_draussen(store):
