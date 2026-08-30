@@ -3428,11 +3428,17 @@ class CouncilStore:
 
     def agenda_items_needing_social_text(self, limit: int | None = None,
                                          tage_voraus: int = 21,
-                                         mindest_wichtig: int = 0) -> list[dict]:
+                                         mindest_wichtig: int = 0,
+                                         ksinr: int | None = None) -> list[dict]:
         """Kommende TOPs ohne Kartentext — samt allem, was das Modell sehen soll.
 
         Nur nach VORN. Der Text steht in einer Vorschau; für vergangene
         Sitzungen gibt es später den Beschluss.
+
+        Mit ``ksinr`` genau EINE Sitzung, dann ohne Zeitfenster: Der Aufrufer
+        hat sie schon in der Hand (die Tagesordnungs-Mail, sobald eine neue
+        Tagesordnung erscheint), und ihr Termin kann weiter als drei Wochen
+        entfernt liegen.
 
         Und sonst: **jeder inhaltliche Punkt**. Die Deckelung auf Tragweite
         ≥ 40 stammte aus dem Bild-Kanal — dort kommen von 97 öffentlichen
@@ -3456,6 +3462,8 @@ class CouncilStore:
 
         heute = date.today().isoformat()
         bis = (date.today() + timedelta(days=tage_voraus)).isoformat()
+        if ksinr is not None:
+            heute, bis = "0000-00-00", "9999-99-99"
         sql = """SELECT a.ksinr, a.item_number, a.title, a.kvonr, a.vorlage_nr,
                         cs.committee, cs.session_date,
                         v.art, v.amt, v.beschlussvorschlag, v.finanz_check,
@@ -3488,9 +3496,12 @@ class CouncilStore:
                    -- nicht besser. Sie kommen im nächsten Lauf wieder,
                    -- sobald der Vorlagentext nachgeladen ist.
                    AND (v.raw_text IS NOT NULL OR v.beschlussvorschlag IS NOT NULL
-                        OR anlage_text IS NOT NULL)
-                 ORDER BY COALESCE(i.impact, -1) DESC, cs.session_date"""
+                        OR anlage_text IS NOT NULL)"""
         args: tuple = (mindest_wichtig, heute, bis)
+        if ksinr is not None:
+            sql += " AND a.ksinr = ?"
+            args += (ksinr,)
+        sql += " ORDER BY COALESCE(i.impact, -1) DESC, cs.session_date"
         roh = [dict(r) for r in self._conn.execute(sql, args)]
         # Formalien in Python heraus, nicht in SQL — dasselbe Muster wie in
         # `agenda_items_needing_impact`: Ein LIMIT vor dem Filter lieferte
@@ -3614,6 +3625,17 @@ class CouncilStore:
         return {r["item_number"]: r["summary"] for r in self._conn.execute(
             "SELECT item_number, summary FROM agenda_item_summaries WHERE ksinr = ?",
             (ksinr,)) if r["summary"]}
+
+    def agenda_social_texts(self, ksinr: int) -> dict[str, str]:
+        """{item_number: Kartentext} einer Sitzung (``agenda_item_social``).
+
+        Der bessere der beiden Sätze: aus Vorlage UND Anlagen geschrieben,
+        während die Kurzfassung nur den Titel kennt. Wer beides braucht, nimmt
+        ``agenda_items`` — das legt sie nebeneinander an jeden Punkt.
+        """
+        return {r["item_number"]: r["text"] for r in self._conn.execute(
+            "SELECT item_number, text FROM agenda_item_social WHERE ksinr = ?",
+            (ksinr,)) if r["text"]}
 
     def agenda_items(self, ksinr: int) -> list[dict]:
         rows = self._conn.execute(

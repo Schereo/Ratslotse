@@ -23,7 +23,9 @@ from council.scraper import CouncilScraper
 from council.agenda_diff import (anlagen_schluessel, diff_html, diff_satz,
                                  diff_tagesordnung, hat_aenderungen,
                                  nur_nummern_versatz)
+from council import social_text
 from council.committee_summary import sitzungskopf, summarize_agenda_items
+from council.dringlichkeit import ist_dringlichkeitsantrag
 from council.ergebnisse import sitzung_href
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
@@ -70,6 +72,64 @@ def _stunden_bis(session_date: str, session_time: str) -> float:
 
 _ALT_LINK = re.compile(r"\s*<a href=\"[^\"]*si0057[^\"]*\">[^<]*</a>\s*$")
 _ALT_KOPF = re.compile(r"\A<b>[^<]*</b>\n📅[^\n]*\n(?:📍[^\n]*\n)?\n")
+
+
+def _kartentexte(council_store: CouncilStore, ksinr: int) -> dict[str, str]:
+    """Kartentexte dieser Sitzung — fehlende sofort schreiben.
+
+    Warum hier und nicht erst im Nachtlauf (Tims Auftrag 30.08.26): Diese Mail
+    geht raus, sobald eine Tagesordnung erscheint. ``social_kartentexte.py``
+    läuft am nächsten Morgen um 7:45 — die Mail trüge bis dahin die
+    titelbasierte Kurzfassung („Der Ausschuss berät über den Bebauungsplan
+    837") statt des Satzes aus Vorlage und Anlagen („Geplant ist ein
+    Wohngebiet auf 8,6 Hektar nördlich Eßkamp mit 110 Wohneinheiten"). Und
+    weil der Block der Mail gecacht wird (``save_summary``), stünde die
+    schwächere Fassung dort dauerhaft fest.
+
+    Teurer wird es dadurch nicht: Die Texte würden ohnehin geschrieben, nur
+    später — ``agenda_item_social`` ist der Zwischenspeicher für beide Wege.
+
+    Best effort, wie die Kurzfassungen selbst: Schlägt der Lauf fehl, nimmt
+    die Mail, was schon da ist. Eine Sitzung mit außergewöhnlich langer
+    Tagesordnung wird gedeckelt (``social_text.MAIL_MAX``); was übrig bleibt,
+    holt der Nachtlauf — und es steht im Log, statt still zu fehlen.
+    """
+    try:
+        gesucht, geschrieben = social_text.schreibe_fehlende(
+            council_store, ksinr=ksinr, limit=social_text.MAIL_MAX)
+        if gesucht:
+            print(f"  Kartentexte: {geschrieben}/{gesucht} geschrieben")
+        if gesucht >= social_text.MAIL_MAX:
+            print(f"  ⚠️ Deckel bei {social_text.MAIL_MAX} Punkten erreicht — "
+                  f"der Rest bekommt seinen Kartentext im Nachtlauf")
+    except Exception as exc:  # noqa: BLE001 — Anreicherung ist Kür, nie Blocker
+        print(f"  ⚠️ Kartentexte für {ksinr} fehlgeschlagen: {exc!r} — "
+              f"die Mail nimmt die Kurzfassungen")
+    try:
+        return council_store.agenda_social_texts(ksinr)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _aufzaehlung(council_store: CouncilStore, ksinr: int, punkte: list[dict]) -> str:
+    """Die Aufzählung der Mail — je Punkt der bessere der beiden Sätze.
+
+    Der Kartentext schlägt die Kurzfassung, weil er Vorlage UND Anlagen
+    gesehen hat; die Kurzfassung entsteht allein aus dem Titel und bleibt der
+    Rückfall (dieselbe Reihenfolge wie in der App, ``store.agenda_items``).
+
+    Und die Kennung eines Dringlichkeitsantrags heißt in der Mail, was sie
+    ist: „DZT 1" ist eine Nummer, die wir selbst vergeben haben — im
+    Ratsinformationssystem sucht man sie vergeblich.
+    """
+    kartentexte = _kartentexte(council_store, ksinr)
+    zeilen = []
+    for p in punkte:
+        nummer = p["number"]
+        text = kartentexte.get(nummer) or p["summary"]
+        marke = "Dringlichkeitsantrag" if ist_dringlichkeitsantrag(nummer) else nummer
+        zeilen.append(f"• <b>{marke}</b>: {text}")
+    return "\n".join(zeilen)
 
 
 def _ohne_altlink(summary: str | None) -> str | None:
@@ -250,8 +310,7 @@ def main() -> dict:
                     summary = None
                 else:
                     council_store.save_item_summaries(ksinr, agenda_hash, punkte)
-                    summary = "\n".join(
-                        f"• <b>{p['number']}</b>: {p['summary']}" for p in punkte)
+                    summary = _aufzaehlung(council_store, ksinr, punkte)
             except Exception as exc:  # noqa: BLE001
                 # Ein LLM-Fehler bei EINER Sitzung (Provider-Content-Filter, ein
                 # unretrybarer API-Fehler, kaputte Antwort) darf nicht den ganzen

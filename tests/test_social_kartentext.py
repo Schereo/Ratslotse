@@ -240,3 +240,37 @@ def test_auch_die_restliste_traegt_den_kartentext(store):
     rest = daten["weitere_je_sitzung"][1]
     assert rest, "kein Punkt in der Restliste — Test prüft nichts"
     assert all(p["social_text"] for p in rest)
+
+
+def test_gekuerzt_wird_am_satz_nicht_im_wort():
+    """``text[:240]`` endete mitten im Wort: „… als nach der Baumschutzsatzun"
+    (Kompensations-Punkt des Rats vom 31.08.26). Auf einer Karte fiel das nicht
+    auf — in der Tagesordnung und in der Mail steht es so da."""
+    from council.social_text import MAX_ZEICHEN, kuerzen
+
+    lang = ("Zur Abstimmung steht, bei städtischen Bau- und Infrastrukturprojekten "
+            "das verlorene Kronenvolumen binnen zehn Jahren nach dem "
+            "Kronenvolumen-Modell auszugleichen. Die Kosten können drei- bis "
+            "viermal höher liegen als nach der Baumschutzsatzung.")
+    gekuerzt = kuerzen(lang)
+    assert len(gekuerzt) <= MAX_ZEICHEN
+    assert gekuerzt.endswith("auszugleichen.")
+
+    # Was passt, bleibt unangetastet.
+    assert kuerzen("Ein kurzer Satz.") == "Ein kurzer Satz."
+
+
+def test_abkuerzungen_beenden_keinen_satz():
+    """„ca." ist kein Satzende — sonst bliebe von einem 240-Zeichen-Text der
+    Anfang „Beantragt sind ca." übrig (dieselbe Falle wie im Bild-Kanal)."""
+    from council.social_text import kuerzen
+
+    text = ("Beantragt sind ca. 13,5 Millionen Euro für ein Darlehen der Stadt an das "
+            "Klinikum Oldenburg, das damit den Neubau finanziert und die Liquidität "
+            "sichert, weil die Bank ohne Bürgschaft nicht zeichnet und der Betrieb "
+            "des Krankenhauses sonst gefährdet wäre.")
+    gekuerzt = kuerzen(text)
+    assert gekuerzt.startswith("Beantragt sind ca. 13,5 Millionen Euro für ein Darlehen")
+    assert gekuerzt.endswith(" …")
+    # Kein zerschnittenes Wort am Ende.
+    assert not gekuerzt.removesuffix(" …").endswith(("zeichne", "Betrie"))
