@@ -79,7 +79,7 @@ struct CouncilBrowserView: View {
                                 .background(model.councilSection == item ? RatsColor.primary : Color.clear)
                                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(RatsPlainButtonStyle())
                     }
                 }
                 .padding(4)
@@ -224,7 +224,7 @@ struct CouncilBrowserView: View {
                             Button { model.navigation.append(.decision(id: decision.id)) } label: {
                                 DecisionRow(decision: decision).ratsCard()
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(RatsPlainButtonStyle())
                         }
                         } else {
                             ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
@@ -235,7 +235,7 @@ struct CouncilBrowserView: View {
                                     Button { model.navigation.append(.sessions(ksinr: id, tops: [])) } label: {
                                         SessionRow(session: session).ratsCard()
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(RatsPlainButtonStyle())
                                 } else {
                                     SessionRow(session: session).ratsCard()
                                 }
@@ -340,7 +340,7 @@ struct CouncilBrowserView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(RatsColor.muted)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(RatsPlainButtonStyle())
                 .accessibilityLabel("Suche leeren")
             }
         }
@@ -929,7 +929,7 @@ private struct FilterChip: View {
                 .overlay(Capsule().stroke(selected ? RatsColor.primary : RatsColor.border))
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
     }
 }
 
@@ -1164,7 +1164,7 @@ struct DecisionDetailView: View {
                                 Button { model.navigation.append(.decision(id: similar.id)) } label: {
                                     DecisionRow(decision: similar)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(RatsPlainButtonStyle())
                             }
                         }
                         .ratsCard()
@@ -1889,7 +1889,7 @@ private struct DecisionParticipationBanner: View {
             .background(RatsColor.primary.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
     }
 }
 
@@ -1964,7 +1964,7 @@ private struct DecisionDocumentsCard: View {
                             }
                             .padding(.vertical, 2)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(RatsPlainButtonStyle())
                     }
                 }
             }
@@ -2107,7 +2107,7 @@ private struct DecisionPlanImage: View {
                         .padding(12)
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RatsPlainButtonStyle())
             .background(RatsColor.card)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
@@ -2393,7 +2393,7 @@ struct SavedCouncilView: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(RatsColor.muted)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                     .accessibilityLabel("Suche leeren")
                 }
             }
@@ -2416,7 +2416,7 @@ struct SavedCouncilView: View {
                                 .overlay(Capsule().stroke(filter == item ? Color.clear : RatsColor.border))
                                 .clipShape(Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(RatsPlainButtonStyle())
                     }
                 }
             }
@@ -2749,7 +2749,7 @@ private struct SessionListView: View {
                             NavigationLink(value: AppRoute.sessions(ksinr: ksinr, tops: [])) {
                                 SessionRow(session: session).ratsCard()
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(RatsPlainButtonStyle())
                         } else {
                             SessionRow(session: session).ratsCard()
                         }
@@ -2957,7 +2957,7 @@ private struct SessionAgendaRow: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(RatsPlainButtonStyle())
                             .accessibilityLabel("Anlage öffnen: \(attachment.label)")
                         }
                     }

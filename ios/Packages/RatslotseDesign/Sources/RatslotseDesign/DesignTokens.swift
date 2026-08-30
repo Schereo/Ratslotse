@@ -115,6 +115,8 @@ public struct PrimaryButtonStyle: ButtonStyle {
             .frame(minHeight: 42)
             .background(RatsColor.primary.opacity(configuration.isPressed ? 0.75 : 1))
             .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous))
+            .scaleEffect(configuration.isPressed ? 0.975 : 1)
+            .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
     }
 }
 
@@ -133,6 +135,8 @@ public struct SecondaryButtonStyle: ButtonStyle {
                     .stroke(RatsColor.border)
             )
             .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous))
+            .scaleEffect(configuration.isPressed ? 0.975 : 1)
+            .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
     }
 }
 
@@ -147,6 +151,22 @@ public struct SignalButtonStyle: ButtonStyle {
             .frame(minHeight: 42)
             .background(RatsColor.signal.opacity(configuration.isPressed ? 0.76 : 1))
             .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous))
+            .scaleEffect(configuration.isPressed ? 0.975 : 1)
+            .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
+    }
+}
+
+/// Keeps custom Ratslotse controls visually unchanged at rest while making
+/// every tap immediately visible. Use this instead of SwiftUI's `.plain`
+/// style, which otherwise suppresses pressed feedback entirely.
+public struct RatsPlainButtonStyle: ButtonStyle {
+    public init() {}
+
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.68 : 1)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }
 

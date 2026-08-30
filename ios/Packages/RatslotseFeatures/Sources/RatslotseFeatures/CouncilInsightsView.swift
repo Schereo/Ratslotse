@@ -352,7 +352,7 @@ struct CouncilInsightsView: View {
                 .overlay(Capsule().stroke(section == item ? Color.clear : RatsColor.border))
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
     }
 
     private var analysisGridMinimum: CGFloat {
@@ -399,7 +399,7 @@ struct CouncilInsightsView: View {
                                 .background(RatsColor.primary.opacity(0.08))
                                 .clipShape(Capsule())
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(RatsPlainButtonStyle())
                         }
                     }
                 }
@@ -465,7 +465,7 @@ struct CouncilInsightsView: View {
                         .overlay(RoundedRectangle(cornerRadius: 13).stroke(RatsColor.border))
                         .clipShape(RoundedRectangle(cornerRadius: 13))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                 }
             }
         }
@@ -597,7 +597,7 @@ struct CouncilInsightsView: View {
                                     .padding(.horizontal, 7).padding(.vertical, 4).background(RatsColor.primary.opacity(0.08)).clipShape(Capsule())
                             }
                             .ratsCard()
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(RatsPlainButtonStyle())
                     }
                 }
             }
@@ -626,7 +626,7 @@ struct CouncilInsightsView: View {
                                     valueLabel: "\(formatEuro(row.total)) · \(row.n)",
                                     color: RatsColor.success
                                 )
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(RatsPlainButtonStyle())
                         }
                     }
                 }
@@ -637,7 +637,7 @@ struct CouncilInsightsView: View {
                     NavigationLink(value: AppRoute.decision(id: decision.id)) {
                         DecisionRow(decision: decision).ratsCard()
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                 }
             }
         } else {
@@ -670,7 +670,7 @@ struct CouncilInsightsView: View {
                             .rotationEffect(.degrees(expandedGoals.contains(goal.key) ? 180 : 0))
                             .foregroundStyle(RatsColor.muted)
                     }
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(RatsPlainButtonStyle())
                     GoalBalanceBar(goal: goal)
                     HStack {
                         Text("\(goal.bremst) bremsen").foregroundStyle(RatsColor.danger)
@@ -702,7 +702,7 @@ struct CouncilInsightsView: View {
                                         }
                                     }
                                     .padding(.vertical, 4)
-                                }.buttonStyle(.plain)
+                                }.buttonStyle(RatsPlainButtonStyle())
                             }
                         }
                     }
@@ -781,7 +781,7 @@ struct CouncilInsightsView: View {
                 .background(selected ? RatsColor.primary : RatsColor.stage)
                 .overlay(Capsule().stroke(selected ? Color.clear : RatsColor.border))
                 .clipShape(Capsule())
-        }.buttonStyle(.plain)
+        }.buttonStyle(RatsPlainButtonStyle())
     }
 
     private func peopleGrid(_ entries: [CouncilMember]) -> some View {
@@ -807,7 +807,7 @@ struct CouncilInsightsView: View {
                         }
                     }
                     .ratsCard()
-                }.buttonStyle(.plain)
+                }.buttonStyle(RatsPlainButtonStyle())
             }
         }
     }
@@ -1149,7 +1149,7 @@ private struct PartyTopicHeatmap: View {
                                         .frame(width: 72, height: 34)
                                         .background(RatsColor.primary.opacity(count == 0 ? 0.025 : 0.10 + 0.78 * Double(count) / Double(maximum)))
                                         .clipShape(RoundedRectangle(cornerRadius: 7))
-                                }.buttonStyle(.plain)
+                                }.buttonStyle(RatsPlainButtonStyle())
                             }
                         }
                     }
@@ -1208,7 +1208,7 @@ private struct AnalysisDecisionSheet: View {
                         ForEach(decisions) { decision in
                             NavigationLink(value: AppRoute.decision(id: decision.id)) {
                                 DecisionRow(decision: decision).ratsCard()
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(RatsPlainButtonStyle())
                         }
                     }.padding(18)
                 }.background(RatsColor.page)

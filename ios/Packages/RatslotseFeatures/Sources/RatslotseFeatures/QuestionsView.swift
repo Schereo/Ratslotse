@@ -946,7 +946,7 @@ private struct EmptyQuestionsView: View {
                     .overlay(RoundedRectangle(cornerRadius: 11).stroke(RatsColor.primary.opacity(0.24)))
                     .clipShape(RoundedRectangle(cornerRadius: 11))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(RatsPlainButtonStyle())
             }
         }
         .padding(.top, usesCompactLayout ? 4 : 30)
@@ -1084,7 +1084,7 @@ private struct RatsQuestionComposer: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .shadow(color: RatsColor.primary.opacity(isSending ? 0 : 0.2), radius: 8, y: 3)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(RatsPlainButtonStyle())
                 .disabled((trimmedText.count < 4 && !isSending) || !isEnabled)
                 .accessibilityLabel(isSending ? "Vorgang abbrechen" : "Frage senden")
             }
@@ -1224,7 +1224,7 @@ private struct ResearchPillToggleStyle: ToggleStyle {
             .clipShape(Capsule())
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
         .accessibilityValue(configuration.isOn ? "Ein" : "Aus")
     }
 }
@@ -1410,7 +1410,7 @@ private struct QuestionTurnView: View {
                     HStack(spacing: 8) {
                         ForEach(turn.suggestions, id: \.self) { suggestion in
                             Button { ask(suggestion) } label: { Pill(suggestion, symbol: "arrow.turn.down.right") }
-                                .buttonStyle(.plain)
+                                .buttonStyle(RatsPlainButtonStyle())
                         }
                     }
                 }
@@ -1598,7 +1598,7 @@ private struct QuestionTypeInsight: View {
                             Spacer(minLength: 4)
                             Image(systemName: "chevron.right").font(.caption).foregroundStyle(RatsColor.muted)
                         }.contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(RatsPlainButtonStyle())
                 }
             }.ratsCard()
         }
@@ -1615,7 +1615,7 @@ private struct QuestionTypeInsight: View {
                         Text(euro(largest.amountEUR ?? 0)).font(RatsFont.title(27)).foregroundStyle(RatsColor.text)
                         Text(largest.title).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.secondary).lineLimit(2)
                     }
-                }.buttonStyle(.plain)
+                }.buttonStyle(RatsPlainButtonStyle())
                 if rows.count > 1 {
                     ForEach(rows.sorted { ($0.sessionDate ?? "") < ($1.sessionDate ?? "") }.suffix(5)) { source in
                         Button { model.navigation.append(.decision(id: source.id)) } label: {
@@ -1628,7 +1628,7 @@ private struct QuestionTypeInsight: View {
                                 }.frame(height: 7)
                                 Text(euro(source.amountEUR ?? 0)).font(RatsFont.body(10.5, weight: .semibold)).frame(minWidth: 74, alignment: .trailing)
                             }
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(RatsPlainButtonStyle())
                     }
                 }
             }.ratsCard()
@@ -1683,7 +1683,7 @@ private struct QuestionSourcesCard: View {
                             meta: questionSourceMeta(source)
                         )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                     if position < index.citedSources.count - 1 {
                         Divider().overlay(RatsColor.separator)
                     }
@@ -1701,7 +1701,7 @@ private struct QuestionSourcesCard: View {
                             Button { model.navigation.append(.decision(id: source.id)) } label: {
                                 UncitedQuestionSourceRow(source: source)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(RatsPlainButtonStyle())
                             if position < index.uncitedSources.count - 1 {
                                 Divider().overlay(RatsColor.separator)
                             }
@@ -2214,7 +2214,7 @@ struct SharedAnswerView: View {
                         .overlay(Capsule().stroke(RatsColor.border))
                         .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(RatsPlainButtonStyle())
             }
         }
 
@@ -2230,7 +2230,7 @@ struct SharedAnswerView: View {
                 .font(RatsFont.body(11.5, weight: .semibold))
                 .foregroundStyle(RatsColor.secondary)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
         .disabled(isReporting)
     }
 
@@ -2256,7 +2256,7 @@ struct SharedAnswerView: View {
                 .background(RatsColor.primary)
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
     }
 
     private var isActive: Bool {
@@ -2651,7 +2651,7 @@ struct CouncilEvidenceBlocks: View {
                                 symbol: "info.circle"
                             )
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(RatsPlainButtonStyle())
                     } else {
                         EvidenceTextRow(
                             title: name,
@@ -2718,7 +2718,7 @@ struct CouncilEvidenceBlocks: View {
                             symbol: "doc.text"
                         )
                         if let raw = item["url"]?.string, let url = URL(string: raw) {
-                            Link(destination: url) { row }.buttonStyle(.plain)
+                            Link(destination: url) { row }.buttonStyle(RatsPlainButtonStyle())
                         } else { row }
                     }
                 }
@@ -2740,7 +2740,7 @@ struct CouncilEvidenceBlocks: View {
                             symbol: "newspaper"
                         )
                         if let raw = item["url"]?.string, let url = URL(string: raw) {
-                            Link(destination: url) { row }.buttonStyle(.plain)
+                            Link(destination: url) { row }.buttonStyle(RatsPlainButtonStyle())
                         } else { row }
                     }
                 }
@@ -2764,7 +2764,7 @@ struct CouncilEvidenceBlocks: View {
                             meta: [kind, item["datum"]?.string].compactMap { $0 }.joined(separator: " · "),
                             symbol: "quote.bubble"
                         )
-                        if let url = debateURL(item) { Link(destination: url) { row }.buttonStyle(.plain) }
+                        if let url = debateURL(item) { Link(destination: url) { row }.buttonStyle(RatsPlainButtonStyle()) }
                         else { row }
                     }
                     Text("Ratsprotokolle fassen Beiträge sinngemäß zusammen; sie sind keine Wortprotokolle.")

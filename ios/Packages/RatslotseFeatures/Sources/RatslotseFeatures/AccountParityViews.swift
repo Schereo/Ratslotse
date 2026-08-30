@@ -127,7 +127,7 @@ struct ConversationSettingsCard: View {
                 .background(setting == value ? RatsColor.primary : Color.clear)
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
         .disabled(isSaving)
         .accessibilityAddTraits(setting == value ? .isSelected : [])
     }
@@ -208,7 +208,7 @@ struct AppearanceSettingsCard: View {
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                     .accessibilityLabel("Erscheinungsbild \(label(appearance))")
                     .accessibilityAddTraits(model.appearance == appearance ? .isSelected : [])
                 }

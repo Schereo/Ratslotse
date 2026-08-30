@@ -74,7 +74,7 @@ struct ConversationsView: View {
                                     }
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(RatsPlainButtonStyle())
                             .padding(14)
                             .background(RatsColor.primary.opacity(0.06))
                             .overlay(RoundedRectangle(cornerRadius: 14).stroke(RatsColor.primary.opacity(0.28)))
@@ -146,7 +146,7 @@ struct ConversationsView: View {
                                         }
                                     }
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(RatsPlainButtonStyle())
                                 Menu {
                                     Button("Umbenennen", systemImage: "pencil") {
                                         renameTitle = conversation.title

@@ -556,7 +556,7 @@ private struct CommitteeChoiceRow: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
         .disabled(disabled)
         .accessibilityValue(selected ? "Abonniert" : "Nicht abonniert")
     }
@@ -621,7 +621,7 @@ private struct TopicSuggestionChoice: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
         .foregroundStyle(exists ? RatsColor.primary : RatsColor.text)
         .disabled(disabled)
         .accessibilityLabel("\(suggestion.name), \(suggestion.n) Erwähnungen im letzten Jahr")

@@ -143,7 +143,7 @@ struct TodayView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .ratsCard()
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RatsPlainButtonStyle())
         }
 
         if let foundPiece, foundPiece.found, let id = foundPiece.decisionID {
@@ -159,7 +159,7 @@ struct TodayView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .ratsCard()
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RatsPlainButtonStyle())
         }
 
         if !recent.isEmpty {
@@ -169,7 +169,7 @@ struct TodayView: View {
                     Button { model.navigation.append(.decision(id: decision.id)) } label: {
                         DecisionRow(decision: decision)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                     if decision.id != recent.last?.id { Divider().overlay(RatsColor.separator) }
                 }
             }
@@ -467,7 +467,7 @@ private struct LatestTopicHitsCard: View {
                             .padding(.top, 8)
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(RatsPlainButtonStyle())
                 if index < hits.count - 1 { Divider().overlay(RatsColor.separator) }
             }
         }
@@ -503,7 +503,7 @@ private struct DashboardWeekNumberCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .ratsCard()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
     }
 
     private var displayValue: String {
@@ -716,7 +716,7 @@ private struct WeekPreviewCard: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
         .accessibilityHint("Öffnet die Tagesordnung")
     }
 
@@ -726,7 +726,7 @@ private struct WeekPreviewCard: View {
             Button { open(item.sessionID, item.itemNumber) } label: {
                 WeekAgendaItemRow(item: item, compact: compact)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RatsPlainButtonStyle())
         }
     }
 
@@ -742,7 +742,7 @@ private struct WeekPreviewCard: View {
                     .foregroundStyle(RatsColor.primary)
                     .padding(.vertical, 2)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RatsPlainButtonStyle())
         }
     }
 
@@ -947,7 +947,7 @@ private struct TodayStatusCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .ratsCard()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
     }
 
     private var kicker: String {
@@ -1192,7 +1192,7 @@ private struct CouncilPauseCard: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RatsPlainButtonStyle())
 
             if isExpanded, !pause.note.isEmpty {
                 Divider().overlay(RatsColor.separator).padding(.vertical, 12)

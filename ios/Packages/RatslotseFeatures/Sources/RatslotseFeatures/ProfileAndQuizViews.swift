@@ -45,7 +45,7 @@ struct PublicProfileView: View {
                                 Button { model.navigation.append(.decision(id: decision.id)) } label: {
                                     DecisionRow(decision: decision)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(RatsPlainButtonStyle())
                                 if decision.id != decisions.last?.id { Divider().overlay(RatsColor.separator) }
                             }
                         }
@@ -529,7 +529,7 @@ private struct TopicProfileMetadata: View {
                             .overlay(RoundedRectangle(cornerRadius: 10).stroke(RatsColor.border))
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(RatsPlainButtonStyle())
                     }
                 }
             }
@@ -640,7 +640,7 @@ private struct PlaceProfileMetadata: View {
                             .overlay(RoundedRectangle(cornerRadius: 10).stroke(RatsColor.border))
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(RatsPlainButtonStyle())
                     }
                 }
             }
@@ -1012,7 +1012,7 @@ private struct PersonProfileOverview: View {
                         .clipShape(Circle())
                         .overlay(Circle().stroke(partyColor.opacity(0.22)))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(RatsPlainButtonStyle())
                 .accessibilityLabel("Wie wird dieses Profil erfasst?")
                 .popover(isPresented: $showsMethodology) {
                     methodologyPopover
@@ -1221,7 +1221,7 @@ private struct PersonProfileOverview: View {
                                 .foregroundStyle(RatsColor.muted)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                     if session.id != person.recent.prefix(5).last?.id { Divider().overlay(RatsColor.separator) }
                 }
             }
@@ -1700,7 +1700,7 @@ struct QuizView: View {
                 Button { withAnimation(.snappy) { showStats = true } } label: {
                     QuizStatsSummary(stats: stats)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(RatsPlainButtonStyle())
             }
             LazyVGrid(columns: quizModeColumns, spacing: 10) {
                 QuizModeButton(title: "Täglich", detail: daily?.done == nil ? "Heute offen" : "Heute erledigt", symbol: "bolt.fill") {
@@ -1837,7 +1837,7 @@ struct QuizView: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(RatsColor.muted)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                     .accessibilityLabel("Suche leeren")
                 }
             }
@@ -1979,7 +1979,7 @@ struct QuizView: View {
                         .overlay(RoundedRectangle(cornerRadius: 11).stroke(RatsColor.border))
                         .clipShape(RoundedRectangle(cornerRadius: 11))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                     .disabled(result != nil)
                 }
             }
@@ -2266,7 +2266,7 @@ private struct QuizStatsScreen: View {
                     .font(RatsFont.body(12, weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RatsPlainButtonStyle())
             VStack(alignment: .leading, spacing: 5) {
                 MonoKicker("Dein Wissen über Oldenburg")
                 Text("Meine Quiz-Statistik")
@@ -2407,7 +2407,7 @@ private struct QuizAreaProgressTile: View {
                 Button("Üben", action: practice)
                     .font(RatsFont.body(10, weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
             }
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
@@ -2461,7 +2461,7 @@ private struct QuizModeButton: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(RatsColor.border))
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
     }
 }
 
@@ -2493,7 +2493,7 @@ private struct QuizChoiceChip: View {
             .clipShape(Capsule())
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
@@ -2714,7 +2714,7 @@ private struct OwnQuizEditor: View {
                             .font(.system(size: 20))
                             .foregroundStyle(correctIndex == index ? RatsColor.success : RatsColor.muted)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                     .accessibilityLabel("Antwort \(index + 1) als richtig markieren")
                     TextField("Antwort \(index + 1)", text: answerBinding(index))
                         .textFieldStyle(.plain)
@@ -2723,7 +2723,7 @@ private struct OwnQuizEditor: View {
                             Image(systemName: "minus.circle")
                                 .foregroundStyle(RatsColor.muted)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(RatsPlainButtonStyle())
                         .accessibilityLabel("Antwort \(index + 1) entfernen")
                     }
                 }
@@ -2808,14 +2808,14 @@ private struct OwnQuizEditor: View {
                         Image(systemName: "pencil")
                             .frame(width: 34, height: 34)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                     .foregroundStyle(RatsColor.primary)
                     .accessibilityLabel("Karte bearbeiten")
                     Button { pendingDelete = entry } label: {
                         Image(systemName: "trash")
                             .frame(width: 34, height: 34)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                     .foregroundStyle(RatsColor.danger)
                     .accessibilityLabel("Karte löschen")
                 }

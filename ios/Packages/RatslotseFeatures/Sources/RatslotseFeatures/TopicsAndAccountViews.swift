@@ -111,7 +111,7 @@ struct TopicsView: View {
                             )
                             .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RatsPlainButtonStyle())
                 }
 
                 if let error { ErrorCard(message: error) { Task { await load() } } }
@@ -269,7 +269,7 @@ private struct TopicSuggestionButton: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
         .disabled(isWorking)
         .accessibilityLabel(accessibilityText)
     }
@@ -342,7 +342,7 @@ private struct TopicCard: View {
                             }
                             .padding(.vertical, 10)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(RatsPlainButtonStyle())
                         if index < min(topic.recentHits.count, 3) - 1 {
                             Divider().overlay(RatsColor.separator)
                         }
@@ -489,6 +489,10 @@ struct AccountView: View {
     @State private var notifications: NotificationSettings?
     @State private var prefs: [String: Bool] = [:]
     @State private var displayName = ""
+    @State private var isSavingDisplayName = false
+    @State private var displayNameSaved = false
+    @State private var displayNameSuccessPulse = 0
+    @State private var displayNameErrorPulse = 0
     @State private var isChangingPassword = false
     @State private var isDeletingAccount = false
     @State private var error: String?
@@ -523,10 +527,36 @@ struct AccountView: View {
                                 .textFieldStyle(.plain)
                         }
                         Button { saveDisplayName() } label: {
-                            Label("Anzeigename speichern", systemImage: "checkmark")
-                                .frame(maxWidth: .infinity)
+                            HStack(spacing: 9) {
+                                if isSavingDisplayName {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .tint(RatsColor.primary)
+                                    Text("Wird gespeichert …")
+                                } else if displayNameSaved {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .symbolEffect(.bounce, value: displayNameSuccessPulse)
+                                    Text("Name gespeichert")
+                                } else {
+                                    Image(systemName: "checkmark")
+                                    Text("Anzeigename speichern")
+                                }
+                            }
+                            .font(RatsFont.body(15, weight: .semibold))
+                            .foregroundStyle(displayNameSaved ? RatsColor.success : RatsColor.primary)
+                            .frame(maxWidth: .infinity, minHeight: 42)
+                            .background(displayNameSaved ? RatsColor.successTint : RatsColor.card)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous)
+                                    .stroke(displayNameSaved ? RatsColor.success.opacity(0.36) : RatsColor.border)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button, style: .continuous))
+                            .contentTransition(.opacity)
                         }
-                        .buttonStyle(SecondaryButtonStyle())
+                        .buttonStyle(RatsPlainButtonStyle())
+                        .disabled(isSavingDisplayName)
+                        .accessibilityLabel(displayNameSaved ? "Anzeigename wurde gespeichert" : "Anzeigename speichern")
+                        .animation(.spring(response: 0.36, dampingFraction: 0.76), value: displayNameSaved)
                     }
 
                     BadgeCollectionCard(model: model)
@@ -593,7 +623,7 @@ struct AccountView: View {
                                 Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(RatsPlainButtonStyle())
                         Divider().overlay(RatsColor.separator)
                         Button {
                             Task {
@@ -605,7 +635,7 @@ struct AccountView: View {
                                 Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(RatsPlainButtonStyle())
                     }
 
                     ConversationSettingsCard(model: model)
@@ -620,7 +650,7 @@ struct AccountView: View {
                                     Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(RatsPlainButtonStyle())
                         }
                         if user.hasPassword && user.appleLinked { Divider().overlay(RatsColor.separator) }
                         if user.appleLinked {
@@ -648,7 +678,7 @@ struct AccountView: View {
                                     Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(RatsPlainButtonStyle())
                         }
                     }
 
@@ -721,6 +751,8 @@ struct AccountView: View {
                 DeleteAccountView(model: model)
                     .ratsLargeSheet()
             }
+            .sensoryFeedback(.success, trigger: displayNameSuccessPulse)
+            .sensoryFeedback(.error, trigger: displayNameErrorPulse)
         }
     }
 
@@ -734,7 +766,7 @@ struct AccountView: View {
                     .overlay(Circle().stroke(RatsColor.border))
                     .clipShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RatsPlainButtonStyle())
             .accessibilityLabel("Zurück zu Mehr")
 
             Spacer()
@@ -788,6 +820,9 @@ struct AccountView: View {
 
     private func saveDisplayName() {
         struct Body: Codable, Sendable { let display_name: String? }
+        guard !isSavingDisplayName else { return }
+        isSavingDisplayName = true
+        withAnimation(.easeOut(duration: 0.16)) { displayNameSaved = false }
         Task {
             do {
                 let _: JSONValue = try await model.api.send(
@@ -795,7 +830,18 @@ struct AccountView: View {
                     body: Body(display_name: displayName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : displayName)
                 )
                 await model.refreshAccount()
-            } catch { self.error = error.localizedDescription }
+                isSavingDisplayName = false
+                withAnimation(.spring(response: 0.36, dampingFraction: 0.74)) {
+                    displayNameSaved = true
+                    displayNameSuccessPulse += 1
+                }
+                try? await Task.sleep(for: .seconds(2.4))
+                withAnimation(.easeOut(duration: 0.22)) { displayNameSaved = false }
+            } catch {
+                isSavingDisplayName = false
+                displayNameErrorPulse += 1
+                self.error = error.localizedDescription
+            }
         }
     }
 
@@ -830,7 +876,7 @@ struct AccountView: View {
                 Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
     }
 
     private func accountLink(_ title: String, symbol: String, url: String) -> some View {
@@ -839,7 +885,7 @@ struct AccountView: View {
                 Image(systemName: "arrow.up.right").foregroundStyle(RatsColor.muted)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RatsPlainButtonStyle())
     }
 }
 
