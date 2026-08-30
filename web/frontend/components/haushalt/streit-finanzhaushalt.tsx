@@ -31,13 +31,32 @@
 //    behaupteten sie eine Änderung, die es nicht gibt (`fhhListenFuerJahr`
 //    sortiert sie aus).
 
-import { ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, Search } from "lucide-react";
 import {
   AenderungslistenDaten, FhhListeImJahr, deltaBetrag, fhhListenFuerJahr,
 } from "@/lib/haushalt-aenderungslisten";
 import { Beleg, Dokumentbeleg } from "@/components/haushalt/quelle";
 import { BetragZelle, TextZelle, ZahlenTabelle } from "@/components/haushalt/zahlen-tabelle";
 import { cn } from "@/lib/utils";
+
+/** Die Vorhaben-Nummer ohne ihr letztes Segment.
+ *
+ *  Die Änderungslisten führen eine Nummer je BUCHUNGSZEILE:
+ *  „I10.180800.500" ist das Vorhaben I10.180800 („SG Käthe-Kollwitz-Straße")
+ *  in der Sachkonto-Gruppe 500 (Hoch- und Tiefbau); .550 wäre die Zuweisung
+ *  des Landes zu demselben Vorhaben, .525 ein Zuschuss. Das
+ *  Investitionsprogramm (Anlage 004) führt dagegen das Vorhaben als Ganzes.
+ *
+ *  Gemessen am Bestand: Mit dem Sachkonto trifft die Nummer 7 von 56
+ *  Positionen, ohne es 32 von 56. Die übrigen haben im Programm kein
+ *  Gegenstück — nicht jede Zeile des Finanzhaushalts gehört zu einem dort
+ *  benannten Vorhaben. Deshalb führt der Link auf eine Suche und nicht auf
+ *  ein Vorhaben. */
+function vorhabenNummer(code: string): string {
+  return code.replace(/\.\d+\.?$/, "");
+}
+
 
 function ListenKarte({ liste, jahr }: { liste: FhhListeImJahr; jahr: number }) {
   const mitCode = liste.zeilen.filter((z) => z.produkt).length;
@@ -96,14 +115,20 @@ function ListenKarte({ liste, jahr }: { liste: FhhListeImJahr; jahr: number }) {
                   </span>
                 )}
                 {z.produkt && (
-                  // Die Nummer des Vorhabens aus dem Investitionsprogramm.
-                  // Sie steht hier als Kennung, nicht als Link: Die Suche auf
-                  // „Was wird gebaut?" hält ihr Suchwort im Zustand, nicht in
-                  // der Adresse — ein Sprung dorthin käme auf einer leeren
-                  // Suche an. Wer die Nummer braucht, kann sie kopieren.
-                  <span className="ml-2 font-mono text-[10px] text-muted-foreground">
+                  <Link
+                    href={`/haushalt/investitionen?vorhaben=${encodeURIComponent(vorhabenNummer(z.produkt))}&jahr=${z.jahr}#vorhaben`}
+                    // Bewusst „suchen" und nicht „zum Vorhaben": Der Link
+                    // führt auf eine SUCHE, und die findet ihr Vorhaben in gut
+                    // der Hälfte der Fälle (gemessen 32 von 56). Ein Link, der
+                    // „zum Vorhaben" verspricht und dann leer ankommt, wäre
+                    // eine Zusage, die die Daten nicht decken; eine Suche ohne
+                    // Treffer ist dagegen ein normales Ergebnis.
+                    title={`Nummer ${vorhabenNummer(z.produkt)} im Investitionsprogramm suchen`}
+                    className="ml-2 inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-primary hover:underline"
+                  >
+                    <Search className="h-2.5 w-2.5" aria-hidden />
                     {z.produkt}
-                  </span>
+                  </Link>
                 )}
                 <span className="ml-2 font-mono text-[10px] text-muted-foreground">
                   {z.thh != null ? `THH ${String(z.thh).padStart(2, "0")}` : "alle THH"}
