@@ -36,9 +36,9 @@ def test_gespraech_lebenslauf(tmp_path):
     assert store.qa_turn_speichern(gid, uid, "Und was kostet das?", "Viel.", None)
     liste = store.qa_gespraeche(uid)
     assert len(liste) == 1 and liste[0]["n_turns"] == 2
-    assert liste[0]["titel"].startswith("Wie ist der Stand")
+    assert liste[0]["title"].startswith("Wie ist der Stand")
     g = store.qa_gespraech(gid, uid)
-    assert [t["frage"] for t in g["turns"]] == ["Wie ist der Stand?", "Und was kostet das?"]
+    assert [t["question"] for t in g["turns"]] == ["Wie ist der Stand?", "Und was kostet das?"]
     store.close()
 
 
@@ -86,11 +86,11 @@ def test_umbenennen_nur_am_eigenen_gespraech(tmp_path):
     vorher = store.qa_gespraech(gid, a)["updated"]
     assert store.qa_gespraech_umbenennen(gid, a, "  Fliegerhorst\n Quartier ")
     g = store.qa_gespraech(gid, a)
-    assert g["titel"] == "Fliegerhorst Quartier"     # Whitespace kollabiert
+    assert g["title"] == "Fliegerhorst Quartier"     # Whitespace kollabiert
     assert g["updated"] == vorher                    # Pflege sortiert die Liste nicht um
     assert not store.qa_gespraech_umbenennen(gid, b, "Gekapert")   # fremdes Konto
     assert not store.qa_gespraech_umbenennen(gid, a, "   ")        # leer nach Trim
-    assert store.qa_gespraech(gid, a)["titel"] == "Fliegerhorst Quartier"
+    assert store.qa_gespraech(gid, a)["title"] == "Fliegerhorst Quartier"
     store.close()
 
 
@@ -170,10 +170,10 @@ def test_snapshot_traegt_die_kondensierte_frage(tmp_path):
         turn = store.qa_gespraech(gid, uid)["turns"][0]
         # Die Frage bleibt, wie sie gestellt wurde — im Verlauf soll stehen,
         # was der Mensch getippt hat.
-        assert turn["frage"] == "Und was kostet das?"
+        assert turn["question"] == "Und was kostet das?"
         # … die Suchfassung liegt daneben, damit der wiederhergestellte Turn
         # denselben Schlüssel trägt wie der live erzeugte.
-        assert json.loads(turn["quellen"])["kontext"] == \
+        assert json.loads(turn["sources"])["kontext"] == \
             "Was kostet die Sanierung der Cäcilienbrücke?"
     finally:
         store.close()
@@ -194,7 +194,7 @@ def test_liste_blaettert_statt_bei_50_zu_enden(tmp_path):
     assert store.qa_gespraeche_anzahl(uid) == 120
     erste = store.qa_gespraeche(uid, limit=30)
     assert len(erste) == 30
-    assert erste[0]["titel"] == "Gespräch 119"      # neueste zuerst
+    assert erste[0]["title"] == "Gespräch 119"      # neueste zuerst
 
     gesammelt, offset = [], 0
     while True:
@@ -233,7 +233,7 @@ def test_suche_findet_auch_ausserhalb_der_ersten_seite(tmp_path):
         store.qa_gespraech_start(uid, f"Anderes Thema {i}")
 
     treffer = store.qa_gespraeche(uid, suche="cäcilien")
-    assert [g["titel"] for g in treffer] == ["Cäcilienbrücke: Stand der Sanierung"]
+    assert [g["title"] for g in treffer] == ["Cäcilienbrücke: Stand der Sanierung"]
     assert store.qa_gespraeche_anzahl(uid, suche="cäcilien") == 1
     # Groß/klein egal — auch am Umlaut, den SQLites lower() nicht kennt.
     assert store.qa_gespraeche_anzahl(uid, suche="CÄCILIEN") == 1

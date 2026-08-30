@@ -213,40 +213,40 @@ class Merkliste(TypedDict):
 
 class GespraechZeile(TypedDict):
     id: int
-    titel: str
+    title: str
     updated: str
     n_turns: int
 
 
 class GespraecheListe(TypedDict):
-    """`gesamt` ist der Bestand des Kontos, `treffer` gilt zur Suche, `weitere`
+    """`total` ist der Bestand des Kontos, `matches` gilt zur Suche, `has_more`
     sagt, ob „Ältere anzeigen" noch etwas nachliefert."""
-    einstellung: int | None
-    gespraeche: list[GespraechZeile]
-    gesamt: int
-    treffer: int
-    weitere: bool
+    saves_conversations: int | None
+    conversations: list[GespraechZeile]
+    total: int
+    matches: int
+    has_more: bool
 
 
 class GespraechEinstellung(TypedDict):
-    einstellung: int
+    saves_conversations: int
 
 
 class GespraechTurn(TypedDict):
-    frage: str
-    antwort: str
-    quellen: dict[str, Any] | None
+    question: str
+    answer: str
+    sources: dict[str, Any] | None
 
 
 class GespraechDetail(TypedDict):
     id: int
-    titel: str
+    title: str
     updated: str
     turns: list[GespraechTurn]
 
 
 class GespraecheGeloescht(TypedDict):
-    geloescht: int
+    deleted: int
 
 
 # --------------------------------------------------------------------------

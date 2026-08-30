@@ -1675,8 +1675,8 @@
             "title": "Id",
             "type": "integer"
           },
-          "titel": {
-            "title": "Titel",
+          "title": {
+            "title": "Title",
             "type": "string"
           },
           "turns": {
@@ -1693,7 +1693,7 @@
         },
         "required": [
           "id",
-          "titel",
+          "title",
           "updated",
           "turns"
         ],
@@ -1702,13 +1702,13 @@
       },
       "GespraechEinstellung": {
         "properties": {
-          "einstellung": {
-            "title": "Einstellung",
+          "saves_conversations": {
+            "title": "Saves Conversations",
             "type": "integer"
           }
         },
         "required": [
-          "einstellung"
+          "saves_conversations"
         ],
         "title": "GespraechEinstellung",
         "type": "object"
@@ -1728,17 +1728,17 @@
       },
       "GespraechTurn": {
         "properties": {
-          "antwort": {
-            "title": "Antwort",
+          "answer": {
+            "title": "Answer",
             "type": "string"
           },
-          "frage": {
-            "title": "Frage",
+          "question": {
+            "title": "Question",
             "type": "string"
           },
-          "quellen": {
+          "sources": {
             "additionalProperties": true,
-            "title": "Quellen",
+            "title": "Sources",
             "type": [
               "object",
               "null"
@@ -1746,24 +1746,24 @@
           }
         },
         "required": [
-          "frage",
-          "antwort",
-          "quellen"
+          "question",
+          "answer",
+          "sources"
         ],
         "title": "GespraechTurn",
         "type": "object"
       },
       "GespraechUmbenennenBody": {
         "properties": {
-          "titel": {
+          "title": {
             "maxLength": 120,
             "minLength": 1,
-            "title": "Titel",
+            "title": "Title",
             "type": "string"
           }
         },
         "required": [
-          "titel"
+          "title"
         ],
         "title": "GespraechUmbenennenBody",
         "type": "object"
@@ -1778,8 +1778,8 @@
             "title": "N Turns",
             "type": "integer"
           },
-          "titel": {
-            "title": "Titel",
+          "title": {
+            "title": "Title",
             "type": "string"
           },
           "updated": {
@@ -1789,7 +1789,7 @@
         },
         "required": [
           "id",
-          "titel",
+          "title",
           "updated",
           "n_turns"
         ],
@@ -1798,53 +1798,53 @@
       },
       "GespraecheGeloescht": {
         "properties": {
-          "geloescht": {
-            "title": "Geloescht",
+          "deleted": {
+            "title": "Deleted",
             "type": "integer"
           }
         },
         "required": [
-          "geloescht"
+          "deleted"
         ],
         "title": "GespraecheGeloescht",
         "type": "object"
       },
       "GespraecheListe": {
-        "description": "`gesamt` ist der Bestand des Kontos, `treffer` gilt zur Suche, `weitere`\nsagt, ob „Ältere anzeigen\" noch etwas nachliefert.",
+        "description": "`total` ist der Bestand des Kontos, `matches` gilt zur Suche, `has_more`\nsagt, ob „Ältere anzeigen\" noch etwas nachliefert.",
         "properties": {
-          "einstellung": {
-            "title": "Einstellung",
+          "conversations": {
+            "items": {
+              "$ref": "#/components/schemas/GespraechZeile"
+            },
+            "title": "Conversations",
+            "type": "array"
+          },
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "matches": {
+            "title": "Matches",
+            "type": "integer"
+          },
+          "saves_conversations": {
+            "title": "Saves Conversations",
             "type": [
               "integer",
               "null"
             ]
           },
-          "gesamt": {
-            "title": "Gesamt",
+          "total": {
+            "title": "Total",
             "type": "integer"
-          },
-          "gespraeche": {
-            "items": {
-              "$ref": "#/components/schemas/GespraechZeile"
-            },
-            "title": "Gespraeche",
-            "type": "array"
-          },
-          "treffer": {
-            "title": "Treffer",
-            "type": "integer"
-          },
-          "weitere": {
-            "title": "Weitere",
-            "type": "boolean"
           }
         },
         "required": [
-          "einstellung",
-          "gespraeche",
-          "gesamt",
-          "treffer",
-          "weitere"
+          "saves_conversations",
+          "conversations",
+          "total",
+          "matches",
+          "has_more"
         ],
         "title": "GespraecheListe",
         "type": "object"

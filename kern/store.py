@@ -1750,7 +1750,7 @@ class Store:
         filt = " AND unicode_lower(g.titel) LIKE ? ESCAPE '\\'" if muster else ""
         werte: list = [user_id] + ([muster] if muster else []) + [max(0, limit), max(0, offset)]
         rows = self._conn.execute(
-            f"""SELECT g.id, g.titel, g.updated,
+            f"""SELECT g.id, g.titel AS title, g.updated,
                       (SELECT COUNT(*) FROM qa_gespraech_turns t WHERE t.gespraech_id = g.id) AS n_turns
                FROM qa_gespraeche g WHERE g.user_id = ?{filt}
                ORDER BY g.updated DESC, g.id DESC LIMIT ? OFFSET ?""", werte).fetchall()
@@ -1767,13 +1767,14 @@ class Store:
 
     def qa_gespraech(self, gespraech_id: int, user_id: int) -> dict | None:
         g = self._conn.execute(
-            "SELECT id, titel, updated FROM qa_gespraeche WHERE id = ? AND user_id = ?",
+            "SELECT id, titel AS title, updated FROM qa_gespraeche WHERE id = ? AND user_id = ?",
             (gespraech_id, user_id)).fetchone()
         if not g:
             return None
         turns = self._conn.execute(
-            "SELECT frage, antwort, quellen FROM qa_gespraech_turns "
-            "WHERE gespraech_id = ? ORDER BY id", (gespraech_id,)).fetchall()
+            "SELECT frage AS question, antwort AS answer, quellen AS sources "
+            "FROM qa_gespraech_turns WHERE gespraech_id = ? ORDER BY id",
+            (gespraech_id,)).fetchall()
         return {**dict(g), "turns": [dict(t) for t in turns]}
 
     def qa_gespraech_umbenennen(self, gespraech_id: int, user_id: int, titel: str) -> bool:

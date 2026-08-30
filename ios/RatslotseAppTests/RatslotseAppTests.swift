@@ -146,10 +146,10 @@ import Testing
 @Test func sharedAnswerSnapshotKeepsEveryPublishedContentBlock() throws {
     let data = Data(#"""
     {
-      "frage": "Was wurde beschlossen?",
-      "antwort": "Der Rat hat zugestimmt [42].",
+      "question": "Was wurde beschlossen?",
+      "answer": "Der Rat hat zugestimmt [42].",
       "created": "2026-08-29T08:15:00",
-      "quellen": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"angenommen"}],
+      "sources": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"angenommen"}],
       "debatten": [{"sprecher":"Anna Beispiel","partei":"SPD","auszug":"Wir stimmen zu."}],
       "presse": [{"titel":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
       "anlagen": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],
@@ -173,7 +173,7 @@ import Testing
 
     let legacy = try JSONDecoder().decode(
         SharedAnswerSnapshot.self,
-        from: Data(#"{"frage":"Alt","antwort":"Antwort","quellen":[]}"#.utf8)
+        from: Data(#"{"question":"Alt","answer":"Antwort","sources":[]}"#.utf8)
     )
     #expect(legacy.evidenceFields.isEmpty)
 }
@@ -523,7 +523,7 @@ private final class ConversationSettingURLProtocol: URLProtocol {
             headerFields: ["Content-Type": "application/json"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Data(#"{"einstellung":1}"#.utf8))
+        client?.urlProtocol(self, didLoad: Data(#"{"saves_conversations":1}"#.utf8))
         client?.urlProtocolDidFinishLoading(self)
     }
 

@@ -131,8 +131,8 @@ struct ConversationSettingsCard: View {
         defer { isLoading = false }
         do {
             let response: JSONValue = try await model.api.get("/api/council/gespraeche")
-            setting = response.object?["einstellung"]?.int ?? model.conversationSavingPreference
-            conversationCount = response.object?["gespraeche"]?.array?.count ?? 0
+            setting = response.object?["saves_conversations"]?.int ?? model.conversationSavingPreference
+            conversationCount = response.object?["conversations"]?.array?.count ?? 0
             error = nil
         } catch {
             self.error = error.localizedDescription

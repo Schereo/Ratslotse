@@ -1772,11 +1772,11 @@ def gespraeche_liste(limit: int = Query(30, ge=0, le=100),
     seite = nwz.qa_gespraeche(user["id"], limit=limit, offset=offset, suche=q)
     treffer = nwz.qa_gespraeche_anzahl(user["id"], suche=q)
     gesamt = nwz.qa_gespraeche_anzahl(user["id"]) if q else treffer
-    return {"einstellung": nwz.get_qa_speichern(user["id"]),
-            "gespraeche": seite,
-            "gesamt": gesamt,
-            "treffer": treffer,
-            "weitere": offset + len(seite) < treffer}
+    return {"saves_conversations": nwz.get_qa_speichern(user["id"]),
+            "conversations": seite,
+            "total": gesamt,
+            "matches": treffer,
+            "has_more": offset + len(seite) < treffer}
 
 
 @router.post("/gespraeche/einstellung")
@@ -1786,7 +1786,7 @@ def gespraeche_einstellung(body: GespraechEinstellungBody,
     """6a②: Schalter setzen. Löscht nichts — das entscheidet der Dialog
     über DELETE /gespraeche getrennt."""
     nwz.set_qa_speichern(user["id"], body.an)
-    return {"einstellung": 1 if body.an else 0}
+    return {"saves_conversations": 1 if body.an else 0}
 
 
 @router.get("/gespraeche/{gespraech_id}")
@@ -1797,14 +1797,14 @@ def gespraech_detail(gespraech_id: int, user: dict = Depends(require_active),
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
     for t in g["turns"]:
         try:
-            t["quellen"] = json.loads(t["quellen"]) if t["quellen"] else None
+            t["sources"] = json.loads(t["sources"]) if t["sources"] else None
         except ValueError:
-            t["quellen"] = None
+            t["sources"] = None
     return g
 
 
 class GespraechUmbenennenBody(BaseModel):
-    titel: str = Field(min_length=1, max_length=120)
+    title: str = Field(min_length=1, max_length=120)
 
 
 @router.patch("/gespraeche/{gespraech_id}")
@@ -1812,7 +1812,7 @@ def gespraech_umbenennen(gespraech_id: int, body: GespraechUmbenennenBody,
                          user: dict = Depends(require_active),
                          nwz: Store = Depends(get_store)) -> Ok:
     """Design 9a②: Umbenennen aus dem Gespräche-Sheet (Wisch nach links)."""
-    if not nwz.qa_gespraech_umbenennen(gespraech_id, user["id"], body.titel):
+    if not nwz.qa_gespraech_umbenennen(gespraech_id, user["id"], body.title):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
     return {"ok": True}
 
@@ -1828,7 +1828,7 @@ def gespraech_loeschen(gespraech_id: int, user: dict = Depends(require_active),
 @router.delete("/gespraeche")
 def gespraeche_alle_loeschen(user: dict = Depends(require_active),
                              nwz: Store = Depends(get_store)) -> GespraecheGeloescht:
-    return {"geloescht": nwz.qa_gespraeche_loeschen(user["id"])}
+    return {"deleted": nwz.qa_gespraeche_loeschen(user["id"])}
 
 
 class QaFeedbackBody(BaseModel):
