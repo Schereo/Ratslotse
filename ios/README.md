@@ -15,9 +15,9 @@ FastAPI unter `https://ratslotse.de`.
 - `RatslotseApp`: App-Lebenszyklus, APNs, Universal Links und Root-View.
 
 Der Release-Build verwendet weiterhin die bestehende Bundle-ID
-`de.ratslotse.app`. Debug verwendet `de.ratslotse.dev`, sodass native und
-Capacitor-Ausgabe parallel auf einem Gerät installiert werden können. Die
-Entitlements enthalten Push, Sign in with Apple und
+`de.ratslotse.app`. Debug verwendet `de.ratslotse.dev`, damit Entwicklungs-
+und Release-Build getrennt installiert werden können. Die Entitlements
+enthalten Push, Sign in with Apple und
 `applinks:ratslotse.de`; Build 18 beginnt die native 2.0-Linie.
 
 ## Projekt erzeugen und testen
@@ -107,10 +107,10 @@ xcodebuild -exportArchive \
 `manageAppVersionAndBuildNumber = false`. Das IPA anschließend zuerst mit
 `xcrun altool --validate-app` prüfen und danach mit `--upload-app` hochladen.
 
-## Übergang
+## Plattformstand
 
-Die bisherige Capacitor-Ausgabe unter `web/frontend/ios` und das Android-
-Gerüst bleiben während des TestFlight-Vergleichs baubar. Sie werden erst nach
-bestätigter Feature-Parität in einem eigenen, leicht rückrollbaren Auftrag
-entfernt. Admin, Landingpage, Changelog, Doku und geteilte `/g`-Snapshots
-bleiben bewusst im Web.
+Die frühere Capacitor/WebView-Ausgabe für iOS wurde nach dem Paritätsabgleich
+entfernt. Unter iOS wird ausschließlich dieses SwiftUI-Projekt gebaut. Das
+unveröffentlichte Android-Gerüst bleibt separat unter `web/frontend/android`.
+Landingpage, Changelog, Doku und geteilte `/g`-Snapshots bleiben bewusst im
+Web.

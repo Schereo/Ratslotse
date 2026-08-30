@@ -5,8 +5,9 @@
 > liegen im neuen Top-Level-Verzeichnis `ios/`; Phase 4 bleibt ausdrücklich
 > ein späterer Ausbau. Die Empfehlungen aus Abschnitt 9 wurden als
 > Arbeitsannahmen übernommen: iOS 17, iPhone + iPad, MapKit,
-> GitHub-Actions-Build und TestFlight-Cutover vor dem späteren
-> Capacitor-Aufräumen. Der bisherige Lotti-Erststart ist als nativer,
+> GitHub-Actions-Build und der native iOS-Cutover wurden umgesetzt; das
+> frühere Capacitor-Xcode-Projekt ist entfernt. Der bisherige Lotti-Erststart
+> ist als nativer,
 > fortsetzbarer Einrichtungsflow für Gremien, Themen und Push umgesetzt.
 > Details und Buildbefehle: `ios/README.md`.
 
@@ -22,13 +23,14 @@
   Lotti-Onboarding. Das Dashboard enthält zusätzlich Live-Sitzungen, neue
   Treffer zu eigenen Themen und die Zahl der Woche; Konto und Ratsgespräche
   besitzen native Datenschutz-, Speicher- und Erscheinungsbild-Einstellungen.
-- **Bewusste Web-Ziele:** Admin, Landing/Doku und der öffentliche `/g`-
-  Antwort-Snapshot bleiben im Web. Hilfe, Kontakt und Rechtstexte öffnen bis
-  zu einem späteren nativen Ausbau ebenfalls ihre vorhandenen Web-Seiten.
+- **Bewusste Web-Ziele:** Landing/Doku und der öffentliche `/g`-
+  Antwort-Snapshot bleiben im Web. Hilfe, Kontakt und Rechtstexte öffnen
+  ebenfalls ihre vorhandenen Web-Seiten.
 - **Noch kein Release-Freibrief:** Vor TestFlight müssen der produktive
   Direktpfad für `POST /api/council/ask`, Push auf einem echten Gerät, Sign in
   with Apple sowie Archive/Export mit Distribution-Signing geprüft werden.
-  Die Capacitor-App wird bis zu diesem Cutover nicht entfernt.
+  Der entfernte Capacitor-Build ist weiterhin über die Git-Historie
+  wiederherstellbar, aber kein aktiver iOS-Buildpfad mehr.
 - **Bewusst nicht Teil der App:** Der Haushalt folgt in einem späteren Paket.
   Die Kommunalwahl war ein reines Entwicklungs-Fun-Feature und wird nicht
   nativ portiert.
@@ -41,7 +43,8 @@ bestehende FastAPI-REST-API spricht.
 
 ## 1. Ausgangslage
 
-Heute ist die iOS-App eine **Capacitor-8-Shell um einen statischen Next-Export**
+Zu Beginn des Umbaus war die iOS-App eine **Capacitor-8-Shell um einen
+statischen Next-Export**
 (`web/frontend/capacitor.config.ts`: `webDir: "out"`, keine Remote-URL). Die
 Web-Assets liegen im Bundle, die App spricht mit `https://ratslotse.de` per
 Bearer-Token. Drei Befunde bestimmen den Plan:
@@ -49,7 +52,8 @@ Bearer-Token. Drei Befunde bestimmen den Plan:
 ### 1.1 Der native Bestand ist winzig
 
 Der gesamte iOS-spezifische Code ist **eine Swift-Datei**
-(`web/frontend/ios/App/App/AppDelegate.swift`: APNs-Token-Weiterleitung an das
+(`web/frontend/ios/App/App/AppDelegate.swift` in der Git-Historie:
+APNs-Token-Weiterleitung an das
 Push-Plugin, Edge-Swipe-Zurück via `MainViewController`) plus fünf
 JS-Brückendateien mit zusammen ~317 Zeilen: `web/frontend/lib/platform.ts`,
 `lib/push.ts`, `lib/apple.ts`, `lib/token.ts`, `lib/app-links.ts`. Nur diese
@@ -141,13 +145,14 @@ Eckdaten:
 - **Externe Dependencies ≈ 0**: URLSession statt Alamofire, eigener SSE-Parser
   (~100 Zeilen), `AttributedString(markdown:)` + eigener Fußnoten-Renderer.
   Jede Dependency ist ein Update-Risiko im Ein-Personen-Projekt.
-- **Die Web-App bleibt das Vollsortiment** — die native App ist die kuratierte
-  Alltagsoberfläche (→ 5.6 „Bleibt Web").
+- **Web und App teilen dieselbe Backend-Logik**; nur die explizite Positivliste
+  in 5.6 bleibt bewusst Web-only.
 
 ## 3. Architektur der App
 
-Neues Top-Level-Verzeichnis `ios/` im Repo; das Capacitor-Projekt bleibt bis
-zum Cutover unangetastet unter `web/frontend/ios/`.
+Das native Projekt liegt im Top-Level-Verzeichnis `ios/`. Das frühere
+Capacitor-Xcode-Projekt unter `web/frontend/ios/` wurde nach dem
+Paritätsabgleich entfernt.
 
 ```
 ios/
@@ -330,7 +335,6 @@ Push-Kategorien für Aktions-Buttons. Der Payload-Deep-Link (`url`) bleibt.
 
 ### 5.6 Bleibt bewusst Web (Positivliste, keine Restmenge)
 
-- **Admin-Panel** (acht Tabs) — bei Bedarf Link im Konto-Tab für Admins.
 - **Landing `/`, Changelog, `/g`-Share-Snapshots** (OG-Metadaten brauchen
   Server-Rendering), Doku.
 - **Interaktiver WebGL-Lotti-Viewer** — bleibt Landing-Schmuck; die App nutzt
@@ -338,15 +342,13 @@ Push-Kategorien für Aktions-Buttons. Der Payload-Deep-Link (`url`) bleibt.
 
 ## 6. Übergang & Release
 
-- **Parallelbetrieb:** Capacitor bleibt voll baubar — Hotfixes an der heutigen
-  App jederzeit möglich. Für Side-by-side-Tests bekommt die Debug-Konfiguration
-  des neuen Projekts temporär eine zweite Bundle-ID (z. B. `de.ratslotse.dev`);
-  Release behält `de.ratslotse.app`.
-- **TestFlight-Cutover** (nach Phase 1 oder 2 → Entscheidung 4): Der native
-  Build ersetzt den Capacitor-Build unter derselben ASC-App — Build-Nummern
-  zählen weiter (> 17), `MARKETING_VERSION` springt auf **2.0.0**. TestFlight
-  verteilt automatisch an die interne Gruppe; die Token-Migration hält alle
-  angemeldet. „Rollback" = neuer Capacitor-Build mit höherer Nummer.
+- **Nativer iOS-Buildpfad:** Debug verwendet `de.ratslotse.dev`; Release
+  behält `de.ratslotse.app`. Das frühere Capacitor-Xcode-Projekt ist entfernt,
+  sodass kein zweiter iOS-Releasepfad versehentlich gebaut werden kann.
+- **TestFlight-Cutover:** Der native Build ersetzt den Capacitor-Build unter
+  derselben ASC-App — Build-Nummern zählen weiter (> 17),
+  `MARKETING_VERSION` ist **2.0.0**. Die Token-Migration hält vorhandene
+  TestFlight-Anmeldungen beim ersten nativen Start angemeldet.
 - **Release-Prozess bleibt der CLI-Weg** aus `MOBILE.md`
   (`xcodebuild archive` / `-exportArchive` + `altool` + ASC-API-Polling) —
   nur ohne `npm run build:mobile`/`cap sync` davor. Versionspflege in ein
@@ -358,11 +360,11 @@ Push-Kategorien für Aktions-Buttons. Der Payload-Deep-Link (`url`) bleibt.
   Umbau ist der natürliche Moment, mit 2.0.0 einzureichen — neue Screenshots
   nötig, Privacy-Labels bleiben inhaltlich gleich. Das in `MOBILE.md`
   notierte **Review-Risiko 4.2 („Wrapper-App") verschwindet**.
-- **Aufräumen nach Cutover** (eigener PR-Block): `scripts/build-mobile.mjs`
-  samt CSP-Injektion, die fünf `lib/`-Brücken, Capacitor-Dependencies +
-  patch-package (`patches/`), Next-SSE-Proxy-CORS, `app_cors_origins` im
-  Backend, `web/frontend/ios/` und ggf. `android/`. Das Web-Frontend wird
-  messbar einfacher (kein `MOBILE=1`-Sonderbuild mehr).
+- **iOS-Aufräumen:** `web/frontend/ios/`, `@capacitor/ios`, der iOS-Öffnen-
+  Befehl und der ausschließlich dafür nötige Swift-Patch sind entfernt. Der
+  Capacitor-Sonderbuild und die JS-Brücken bleiben nur noch für das
+  unveröffentlichte Android-Gerüst; dessen möglicher Rückbau ist ein eigener
+  Auftrag.
 - **Android** ist reines Gerüst (nie released, `google-services.json` fehlt,
   App-Links-Platzhalter in `assetlinks.json`). Empfehlung: mit dem Cutover
   einfrieren/streichen; falls Android je kommt, ist Kotlin/Compose gegen
@@ -486,7 +488,7 @@ waren ausdrücklich nicht Teil der Prüfung.
 
 ---
 
-*Erhoben aus: `web/frontend` (Routen, Capacitor-Brücken, `build-mobile.mjs`),
+*Erhoben aus: `web/frontend` (Routen, damalige Capacitor-Brücken, `build-mobile.mjs`),
 `web/backend/app` (Router, Auth, Push, SSE, Rate-Limits),
-`web/frontend/ios/App` (pbxproj, Entitlements, Info.plist), `MOBILE.md`,
+dem früheren `web/frontend/ios/App` aus der Git-Historie, `MOBILE.md`,
 `STORE.md`, `DESIGNSPRACHE.md`.*

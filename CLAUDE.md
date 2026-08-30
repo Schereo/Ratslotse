@@ -17,7 +17,8 @@ per LLM aufbereitet.
 | `kern/` | Geteilte Infrastruktur: LLM-Client (`llm.py`), SQLite-Store (`store.py`), E-Mail, Push, Prompts |
 | `scripts/` | Cron-Jobs & Ops-Tools (`check_*.py`, `weekly_enrich.py`, `backup_db.py`, …) |
 | `web/backend/` | FastAPI-Backend (uvicorn) |
-| `web/frontend/` | Next.js-Frontend (+ Capacitor für iOS/Android); **Designsprache: `web/frontend/DESIGNSPRACHE.md`** |
+| `web/frontend/` | Next.js-Frontend (+ unveröffentlichtes Capacitor-Android-Gerüst); **Designsprache: `web/frontend/DESIGNSPRACHE.md`** |
+| `ios/` | Native SwiftUI-App für iPhone und iPad |
 | `docs-site/` | Astro-Starlight-Technik-Doku |
 | `changelog.d/` | Changelog-Fragmente: je PR eine Datei, beim Versionsschnitt eingesammelt (s. u. „Changelog-Pflicht") |
 | `eval/` | Eval-Harness für die LLM-Qualität |

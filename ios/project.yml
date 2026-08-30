@@ -33,6 +33,7 @@ targets:
         buildPhase: resources
         excludes:
           - "Preview Content"
+          - "LOTTI-SPRITES-SOURCE.md"
     dependencies:
       - package: RatslotseAPI
       - package: RatslotseDesign

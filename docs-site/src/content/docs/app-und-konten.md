@@ -33,10 +33,9 @@ Einrichtung nach Gerätewechsel oder Neuinstallation fortgesetzt wird. Im Konto
 kann der Ablauf absichtlich erneut geöffnet werden.
 
 Der Release-Build behält `de.ratslotse.app`. Debug verwendet
-`de.ratslotse.dev`, damit die alte und die neue App während des TestFlight-
-Vergleichs nebeneinander installiert sein können. Vorhandene TestFlight-
-Anmeldungen werden einmalig aus `CapacitorStorage.access_token` in den Keychain
-übernommen.
+`de.ratslotse.dev`, damit Entwicklungs- und Release-Build getrennt installiert
+sein können. Vorhandene TestFlight-Anmeldungen werden einmalig aus
+`CapacitorStorage.access_token` in den Keychain übernommen.
 
 ```bash
 xcodegen generate --spec ios/project.yml
@@ -46,20 +45,21 @@ xcodebuild -project ios/Ratslotse.xcodeproj -scheme Ratslotse \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-## Alte Capacitor-App während des Übergangs
+## Mobiler Plattformstand
 
-Die bisherigen Projekte liegen weiterhin unter `web/frontend/ios/` und
-`web/frontend/android/`. Sie bleiben bis zum bestätigten Cutover als Rollback
-baubar. Bau-Anleitung und Einreichungs-Checkliste stehen in
-`web/frontend/MOBILE.md`; neue iOS-Funktionen entstehen nur noch in SwiftUI.
+Die frühere Capacitor/WebView-App für iOS wurde nach dem Paritätsabgleich
+entfernt. iOS-Builds entstehen ausschließlich aus dem SwiftUI-Projekt unter
+`ios/`. Das unveröffentlichte Android-Gerüst unter `web/frontend/android/`
+bleibt vorerst separat baubar; seine Anleitung steht in
+`web/frontend/MOBILE.md`.
 
 ### Vom Next-Build zur App
 
 ```bash
 cd web/frontend
 npm run build:mobile   # = node scripts/build-mobile.mjs
-npm run cap:sync       # kopiert ./out in ios/ und android/
-npm run cap:ios        # bzw. cap:android — öffnet Xcode / Android Studio
+npm run cap:sync       # kopiert ./out in das Android-Projekt
+npm run cap:android    # öffnet Android Studio
 ```
 
 `scripts/build-mobile.mjs` erledigt dabei drei Dinge, die ein nacktes
@@ -88,7 +88,7 @@ Backend die festen App-WebView-Origins immer an die CORS-Liste an
 | `web/frontend/capacitor.config.ts` | `appId` `de.ratslotse.app`, `appName` „Ratslotse", `webDir: "out"`, `androidScheme: "https"`, Push-Präsentationsoptionen |
 | `web/frontend/scripts/build-mobile.mjs` | Export-Build + CSP-Injektion |
 | `web/frontend/lib/platform.ts` | `isNativeApp()`, `nativePlatform()`, `apiBase()` |
-| `web/frontend/MOBILE.md` | Setup, Xcode-Capabilities, Push-Credentials, Deep-Links, App-Store-Checkliste |
+| `web/frontend/MOBILE.md` | Android-Sonderbuild und gemeinsame produktive Voraussetzungen |
 
 ### Was die App vom Web unterscheidet
 
@@ -125,20 +125,11 @@ Gecacht werden damit genau die **API-Antworten der besuchten Seiten**, die über
 React Query laufen — keine PDFs, keine Kartenkacheln. Beim Start im Funkloch
 zeigt die App den letzten Stand statt Skeletons oder Fehlern.
 
-### Icons und Erststart
+### Android-Erststart
 
-- **App-Icons** in drei Erscheinungsbildern (iOS): `AppIcon-1024.png`,
-  `AppIcon-1024-dark.png`, `AppIcon-1024-tinted.png` in
-  `ios/App/App/Assets.xcassets/AppIcon.appiconset/` (dazu `Splash.imageset`).
-  Erzeugt mit `@capacitor/assets` aus `web/frontend/assets/logo.png`
-  (Hintergrund `#0764a6` hell, `#09111b` dunkel).
-- **Willkommens-Auftakt und Einrichtung** (`components/onboarding-flow.tsx`):
-  begrüßt beim allerersten Start vor dem Login und führt danach durch Gremien,
-  Themen und Mitteilungen. „Überspringen" ist jederzeit möglich, der erreichte
-  Schritt wird gemerkt. (Die früher hier beschriebene `components/app-intro.tsx`
-  existiert nicht mehr.)
-  Nur nativ, danach nie wieder (`localStorage`-Schlüssel
-  `ratslotse.intro.done`).
+Das verbleibende Android-Gerüst verwendet weiterhin den Web-Erststart aus
+`components/onboarding-flow.tsx`. Die native iOS-Variante und ihre Lotti-
+Animationen liegen vollständig im SwiftUI-Projekt unter `ios/`.
 
 ## Anmeldung
 

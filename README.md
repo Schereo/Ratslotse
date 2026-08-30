@@ -83,7 +83,8 @@ Technik-Doku unter **[ratslotse.de/docs](https://ratslotse.de/docs)** (Quelle in
 `docs-site/`): Architektur, KI-Pipeline und ADRs.
 
 **Stack:** Python 3.12 · SQLite (FTS5) · OpenRouter (LLM-Routing, DSGVO-konform) ·
-FastAPI + Next.js · Capacitor (iOS/Android) · systemd · Caddy · GitHub Actions
+FastAPI + Next.js · SwiftUI (iOS) · Capacitor (Android) · systemd · Caddy ·
+GitHub Actions
 
 ---
 

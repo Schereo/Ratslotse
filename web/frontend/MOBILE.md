@@ -10,26 +10,22 @@ Der Lotti-Erststart ist ebenfalls nativ umgesetzt: Begrüßung vor der
 Anmeldung, anschließend Gremien, Themen und Push. Der Fortschritt wird lokal
 und über `/api/onboarding/setup` am Konto fortgesetzt.
 
-## Übergangsstand
+## Plattformstand
 
-Die bisherige Capacitor-8-Ausgabe bleibt bis zum abgeschlossenen
-TestFlight-Vergleich unter `web/frontend/ios/` baubar. Sie ist ein statischer
-Next-Export in einer WebView, nutzt `X-Client: app` und speichert das
-Bearer-Token in Capacitor Preferences. Die neue SwiftUI-App übernimmt dieses
-Token beim ersten Start in den Keychain.
+Für iOS existiert ausschließlich die native SwiftUI-App unter `../../ios/`.
+Das frühere Capacitor/Xcode-Projekt wurde nach dem Paritätsabgleich entfernt.
+Das unveröffentlichte Android-Gerüst bleibt vorerst als statischer Next-Export
+in einer WebView erhalten.
 
 ```bash
 cd web/frontend
 npm install
 npm run build:mobile
 npm run cap:sync
-npm run cap:ios       # Legacy-iOS in Xcode öffnen
 npm run cap:android   # unveröffentlichtes Android-Gerüst öffnen
 ```
 
-Der Legacy-Build wird nicht mehr als Ausgangspunkt für neue iOS-Funktionen
-verwendet. Er bleibt als Rollback-Möglichkeit erhalten, bis der native Build
-unter derselben App-Store-ID `6786553049` freigegeben ist.
+Neue iOS-Funktionen und iOS-Releases werden nur noch aus `ios/` gebaut.
 
 ## Gemeinsame produktive Voraussetzungen
 
@@ -67,6 +63,7 @@ der Einreichung insbesondere prüfen:
 5. Altersfreigabe, Support-URL und Datenschutz-URL sind bestätigt.
 6. `/api/council/ask` wird für native Requests direkt zu FastAPI geroutet.
 
-Nach der Freigabe werden Capacitor, die JS-Brücken und das Android-Gerüst in
-einem separaten Aufräum-PR entfernt. Web-only bleiben Admin, Landingpage,
-Changelog, Dokumentation und `/g`-Share-Snapshots.
+Wenn das unveröffentlichte Android-Gerüst später ebenfalls entfällt, können
+der verbleibende Capacitor-Sonderbuild und die JS-Brücken separat entfernt
+werden. Web-only bleiben Landingpage, Changelog, Dokumentation und
+`/g`-Share-Snapshots.
