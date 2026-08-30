@@ -103,7 +103,7 @@ def test_native_api_top_level_contracts(client):
         ("/api/council/diese-woche", {"found"}),
         ("/api/council/wochenvorschau", {"found", "von", "bis", "sitzungen", "punkte"}),
         ("/api/council/fundstueck", {"found"}),
-        ("/api/quiz/areas", {"wahlbereiche", "stadtteile", "themen", "categories"}),
+        ("/api/quiz/areas", {"electoral_districts", "districts", "topics", "categories"}),
         ("/api/quiz/stats", {"total", "by_area", "wrong", "streak", "badges", "daily_done"}),
         ("/api/quiz/daily", {"day", "done", "questions"}),
         ("/api/quiz/own", {"questions"}),
@@ -2082,7 +2082,7 @@ def test_native_setup_progress_can_resume_after_reinstall(client):
 
 
 # ---- quiz ----
-def _seed_quiz(area_key="Osternburg", area_type="stadtteil", n=3, category="geschichte",
+def _seed_quiz(area_key="Osternburg", area_type="district", n=3, category="geschichte",
                difficulty="mittel"):
     """Seed n Quizfragen für ein Gebiet in die (throwaway) council.sqlite."""
     from council import quiz as quizmod
@@ -2108,12 +2108,12 @@ def _seed_estimate(area_key="Osternburg", value=12000.0, unit="Einwohner",
     store = CouncilStore(COUNCIL_DB)
     text = f"Schätzfrage {area_key} {value}?"
     store.save_quiz_questions([{
-        "area_type": "stadtteil", "area_key": area_key, "category": "schaetzen",
+        "area_type": "district", "area_key": area_key, "category": "schaetzen",
         "difficulty": difficulty, "question": text, "qtype": "estimate",
         "options": [], "correct_index": 0,
         "answer_value": value, "answer_unit": unit, "range_min": lo, "range_max": hi,
         "explanation": "…", "source_type": "wikipedia", "source_ref": "http://w",
-        "content_hash": quizmod._content_hash("stadtteil", area_key, text),
+        "content_hash": quizmod._content_hash("district", area_key, text),
     }])
     store.close()
 
@@ -2126,12 +2126,12 @@ def test_quiz_areas_lists_seeded(client):
     _register(client)
     _seed_quiz("Osternburg", n=3)  # Osternburg → Wahlbereich 5
     data = client.get("/api/quiz/areas").json()
-    st = {a["key"]: a for a in data["stadtteile"]}
-    assert st["Osternburg"]["questions"] == 3 and st["Osternburg"]["wahlbereiche"] == [5, 2]
-    wb = {a["key"]: a for a in data["wahlbereiche"]}
+    st = {a["key"]: a for a in data["districts"]}
+    assert st["Osternburg"]["questions"] == 3 and st["Osternburg"]["electoral_districts"] == [5, 2]
+    wb = {a["key"]: a for a in data["electoral_districts"]}
     # Grenzstadtteil Osternburg wird in BEIDEN Wahlbereichen (5 und 2) gelistet
     for b in ("5", "2"):
-        assert wb[b]["questions"] == 3 and "Osternburg" in wb[b]["stadtteile"]
+        assert wb[b]["questions"] == 3 and "Osternburg" in wb[b]["districts"]
 
 
 def test_own_quiz_crud_round_and_practice(client):
@@ -2140,7 +2140,7 @@ def test_own_quiz_crud_round_and_practice(client):
     _register(client)
     body = {"question": "Wie viele Wahlbereiche hat Oldenburg?",
             "options": ["Vier", "Sechs", "Acht"], "correct_index": 1,
-            "stadtteil": None, "category": "ratspolitik", "explanation": "Es sind sechs."}
+            "district": None, "category": "ratspolitik", "explanation": "Es sind sechs."}
     qid = client.post("/api/quiz/own", json=body).json()["id"]
     # Runde: geformt wie normale Fragen, ohne Lösung
     r = client.get("/api/quiz/own/round?n=5").json()["questions"]
@@ -2184,7 +2184,7 @@ def test_own_quiz_is_per_account_and_validated(client):
     assert client.post("/api/quiz/own", json={**bad, "correct_index": 0,
                                               "category": "quatsch"}).status_code == 400
     assert client.post("/api/quiz/own", json={**bad, "correct_index": 0,
-                                              "stadtteil": "Atlantis"}).status_code == 400
+                                              "district": "Atlantis"}).status_code == 400
 
 
 def test_own_quiz_estimate(client):
@@ -2238,15 +2238,15 @@ def test_quiz_theme_stadtteil_binding(client):
     store.save_entities([("fliegerhorst", "Fliegerhorst", "projekt", 5)], [])
     store.set_entity_geo("fliegerhorst", 53.1720, 8.1850, None)  # liegt im Stadtteil Fliegerhorst
     store.close()
-    themen = {t["key"]: t for t in client.get("/api/quiz/areas").json()["themen"]}
-    assert themen["fliegerhorst"]["stadtteil"] == "Fliegerhorst"
-    assert themen["haushalt"]["stadtteil"] is None
+    themen = {t["key"]: t for t in client.get("/api/quiz/areas").json()["topics"]}
+    assert themen["fliegerhorst"]["district"] == "Fliegerhorst"
+    assert themen["haushalt"]["district"] is None
 
 
 def test_quiz_round_hides_answer(client):
     _register(client)
     _seed_quiz("Osternburg", n=3)
-    q = client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=2").json()["questions"]
+    q = client.get("/api/quiz/round?areas=district:Osternburg&n=2").json()["questions"]
     assert len(q) == 2
     for item in q:
         assert "correct_index" not in item and "explanation" not in item
@@ -2256,20 +2256,20 @@ def test_quiz_round_hides_answer(client):
 def test_quiz_wahlbereich_expands(client):
     _register(client)
     _seed_quiz("Osternburg", n=2)
-    q = client.get("/api/quiz/round?areas=wahlbereich:5&n=10").json()["questions"]
+    q = client.get("/api/quiz/round?areas=electoral_district:5&n=10").json()["questions"]
     assert len(q) == 2  # Osternburg ist in Wahlbereich 5
 
 
 def test_quiz_answer_scores_and_reveals(client):
     _register(client)
     _seed_quiz("Osternburg", n=1, difficulty="schwer")
-    qid = client.get("/api/quiz/round?areas=stadtteil:Osternburg").json()["questions"][0]["id"]
+    qid = client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"][0]["id"]
     r = client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1}).json()
     assert r["correct"] is True and r["points"] == 3 and r["correct_index"] == 1
     assert r["explanation"] == "weil B" and r["source_ref"] == "http://w"
     # zweite Frage falsch → 0 Punkte
     _seed_quiz("Osternburg", n=1, category="orte")
-    qid2 = [x["id"] for x in client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]
+    qid2 = [x["id"] for x in client.get("/api/quiz/round?areas=district:Osternburg&n=10").json()["questions"]
             if x["id"] != qid][0]
     r2 = client.post("/api/quiz/answer", json={"question_id": qid2, "selected_index": 0}).json()
     assert r2["correct"] is False and r2["points"] == 0
@@ -2278,7 +2278,7 @@ def test_quiz_answer_scores_and_reveals(client):
 def test_quiz_stats_aggregate_per_area(client):
     _register(client)
     _seed_quiz("Osternburg", n=2)
-    for item in client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]:
+    for item in client.get("/api/quiz/round?areas=district:Osternburg&n=10").json()["questions"]:
         client.post("/api/quiz/answer", json={"question_id": item["id"], "selected_index": 1})
     stats = client.get("/api/quiz/stats").json()
     assert stats["total"]["answered"] == 2 and stats["total"]["correct"] == 2
@@ -2289,7 +2289,7 @@ def test_quiz_stats_aggregate_per_area(client):
 def test_quiz_rating_and_admin_flag(client):
     _register(client)  # Helper hebt admin@test.de per grant_admin auf Admin
     _seed_quiz("Osternburg", n=1)
-    qid = client.get("/api/quiz/round?areas=stadtteil:Osternburg").json()["questions"][0]["id"]
+    qid = client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"][0]["id"]
     assert client.post("/api/quiz/rate", json={"question_id": qid, "verdict": "schlecht",
                                                "comment": "unklar"}).json()["ok"] is True
     flagged = client.get("/api/admin/quiz/flagged").json()["flagged"]
@@ -2297,7 +2297,7 @@ def test_quiz_rating_and_admin_flag(client):
     assert entry["bad"] == 1 and entry["comments"] == "unklar"  # optionaler Grund kommt durch
     # ausmustern → fliegt aus den Runden UND aus der Bewertungs-Liste
     client.post(f"/api/admin/quiz/{qid}/retire")
-    assert client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"] == []
+    assert client.get("/api/quiz/round?areas=district:Osternburg&n=10").json()["questions"] == []
     flagged_after = client.get("/api/admin/quiz/flagged").json()["flagged"]
     assert all(f["question_id"] != qid for f in flagged_after)
 
@@ -2305,7 +2305,7 @@ def test_quiz_rating_and_admin_flag(client):
 def test_quiz_scores_per_account(client):
     _register(client)
     _seed_quiz("Osternburg", n=1)
-    qid = client.get("/api/quiz/round?areas=stadtteil:Osternburg").json()["questions"][0]["id"]
+    qid = client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"][0]["id"]
     client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1})
     bob = TestClient(app)
     _register(bob, email="bob@test.de")
@@ -2315,7 +2315,7 @@ def test_quiz_scores_per_account(client):
 def test_quiz_review_collects_wrong_and_clears_on_correct(client):
     _register(client)
     _seed_quiz("Osternburg", n=2)
-    qs = client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]
+    qs = client.get("/api/quiz/round?areas=district:Osternburg&n=10").json()["questions"]
     client.post("/api/quiz/answer", json={"question_id": qs[0]["id"], "selected_index": 0})  # falsch
     client.post("/api/quiz/answer", json={"question_id": qs[1]["id"], "selected_index": 1})  # richtig
     review = client.get("/api/quiz/review").json()["questions"]
@@ -2346,7 +2346,7 @@ def test_quiz_daily_deterministic_and_completable(client):
 def test_quiz_stats_streak_wrong_and_badges(client):
     _register(client)
     _seed_quiz("Osternburg", n=6)
-    for q in client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]:
+    for q in client.get("/api/quiz/round?areas=district:Osternburg&n=10").json()["questions"]:
         client.post("/api/quiz/answer", json={"question_id": q["id"], "selected_index": 1})
     s = client.get("/api/quiz/stats").json()
     assert s["streak"] == 1 and s["wrong"] == 0 and s["daily_done"] is False
@@ -2356,7 +2356,7 @@ def test_quiz_stats_streak_wrong_and_badges(client):
 def test_quiz_estimate_slider_scores_by_proximity(client):
     _register(client)
     _seed_estimate("Osternburg", value=12000.0, difficulty="schwer")  # schwer = 3 Punkte
-    q = client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=5").json()["questions"][0]
+    q = client.get("/api/quiz/round?areas=district:Osternburg&n=5").json()["questions"][0]
     assert q["qtype"] == "estimate" and q["unit"] == "Einwohner"
     assert "answer_value" not in q and q["range_min"] == 2000 and q["range_max"] == 30000
     # exakt → volle Punkte
@@ -3293,7 +3293,7 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
             ],
         )
     cs.save_decision_locations(1, [{
-        "name": "Kreyenbrück", "kind": "stadtteil", "source": "title",
+        "name": "Kreyenbrück", "kind": "district", "source": "title",
         "evidence": "Sporthalle Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
     }], "local")
     cs.save_decision_locations(2, [{
@@ -3364,7 +3364,7 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
             "VALUES (5,88,1,'7','Sporthalle Kreyenbrück - Beschluss','Sanierung',"
             "'angenommen','decision')")
     cs.save_decision_locations(5, [{
-        "name": "Kreyenbrück", "kind": "stadtteil", "source": "title",
+        "name": "Kreyenbrück", "kind": "district", "source": "title",
         "evidence": "Sporthalle Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
     }], "local")
     cs.save_person(42, "Bernhard Ellberg", "SPD")
@@ -3435,7 +3435,7 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
                 "VALUES (?,?,1,'7',?,? ,?,'decision')",
                 (decision_id, ksinr, title, "Kreyenbrück", outcome))
         cs.save_decision_locations(decision_id, [{
-            "name": "Kreyenbrück", "kind": "stadtteil", "source": "summary",
+            "name": "Kreyenbrück", "kind": "district", "source": "summary",
             "evidence": "Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
         }], f"local-{decision_id}")
     cs.close()
@@ -4325,17 +4325,17 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
          "evidence": "Sanierung Rathaus", "method": "llm", "confidence": 0.9},
     ], "hash-3")
     council.save_decision_locations(4, [
-        {"name": "Kreyenbrück", "kind": "stadtteil", "source": "title",
+        {"name": "Kreyenbrück", "kind": "district", "source": "title",
          "evidence": "Bericht aus Kreyenbrück", "method": "stadtteilliste", "confidence": 0.99},
     ], "hash-4")
     with council._conn:
         council._conn.execute(
-            "UPDATE council_locations SET stadtteil='Kreyenbrück' "
+            "UPDATE council_locations SET district='Kreyenbrück' "
             "WHERE slug IN "
             "('klingenbergplatz','cloppenburger-strasse','sportpark-kreyenbrueck','kreyenbrueck')"
         )
         council._conn.execute(
-            "UPDATE council_locations SET stadtteil='Innenstadt' WHERE slug='rathaus'"
+            "UPDATE council_locations SET district='Innenstadt' WHERE slug='rathaus'"
         )
     council.close()
 
@@ -4398,13 +4398,13 @@ def test_curated_place_alias_filters_by_stable_id_and_has_profile(client):
         "confidence": 0.99,
     }], "hash-1")
     row = council._conn.execute(
-        "SELECT name, place_id, ortsbereich_id, stadtteil FROM council_locations"
+        "SELECT name, place_id, ortsbereich_id, district FROM council_locations"
     ).fetchone()
     assert dict(row) == {
         "name": "Neu-Donnerschwee",
         "place_id": "neu-donnerschwee",
         "ortsbereich_id": "donnerschwee",
-        "stadtteil": "Donnerschwee",
+        "district": "Donnerschwee",
     }
     council.close()
 
@@ -4444,7 +4444,7 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
         }], f"hash-{decision_id}")
     with council._conn:
         council._conn.execute(
-            "UPDATE council_locations SET lat=53.16,lon=8.22,stadtteil='Nadorst',"
+            "UPDATE council_locations SET lat=53.16,lon=8.22,district='Nadorst',"
             "ortsbereich_id='nadorst',geo_tried=1 WHERE slug='testanger'"
         )
     council.close()

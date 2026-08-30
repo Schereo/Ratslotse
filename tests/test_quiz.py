@@ -93,10 +93,10 @@ def test_valid_rejects_bad_questions():
 
 
 def test_content_hash_stable_and_distinct():
-    a = quiz._content_hash("stadtteil", "Osternburg", "Frage A?")
-    assert a == quiz._content_hash("stadtteil", "Osternburg", "  frage a? ")  # normalisiert
-    assert a != quiz._content_hash("stadtteil", "Osternburg", "Frage B?")
-    assert a != quiz._content_hash("stadtteil", "Eversten", "Frage A?")
+    a = quiz._content_hash("district", "Osternburg", "Frage A?")
+    assert a == quiz._content_hash("district", "Osternburg", "  frage a? ")  # normalisiert
+    assert a != quiz._content_hash("district", "Osternburg", "Frage B?")
+    assert a != quiz._content_hash("district", "Eversten", "Frage A?")
 
 
 def _fake_llm(questions: list[dict]):
@@ -116,12 +116,12 @@ def test_generate_for_area_parses_and_tags(monkeypatch):
         {"category": "quatsch", "question": "ungültig", "options": ["a", "b", "c", "d"], "correct_index": 0},
     ]
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
-    rows = quiz.generate_for_area("stadtteil", "Osternburg", "Stadtteil Osternburg",
+    rows = quiz.generate_for_area("district", "Osternburg", "Stadtteil Osternburg",
                                   "x" * 500, n=3, source_type="wikipedia", source_ref="http://w",
                                   verify=False)
     assert len(rows) == 2  # die ungültige Kategorie fliegt raus
     r = rows[0]
-    assert r["area_type"] == "stadtteil" and r["area_key"] == "Osternburg"
+    assert r["area_type"] == "district" and r["area_key"] == "Osternburg"
     assert r["source_type"] == "wikipedia" and r["content_hash"]
     assert len(r["options"]) == 4 and 0 <= r["correct_index"] < 4
 
@@ -133,7 +133,7 @@ def test_generate_does_not_cut_explanation_mid_sentence(monkeypatch):
            "options": ["1922", "1913", "1891", "1945"], "correct_index": 0,
            "explanation": explanation}]
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
-    rows = quiz.generate_for_area("stadtteil", "Osternburg", "Osternburg", "x" * 500,
+    rows = quiz.generate_for_area("district", "Osternburg", "Osternburg", "x" * 500,
                                   n=1, source_type="wikipedia", source_ref="http://w",
                                   verify=False)
     assert rows[0]["explanation"].endswith((".", "…"))
@@ -144,7 +144,7 @@ def test_quiz_backfill_requests_only_missing_count(tmp_path, monkeypatch):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_quiz_questions([_row("Testort", f"Frage {i}?") for i in range(7)])
     store.close()
-    area = {"area_type": "stadtteil", "area_key": "Testort", "label": "Testort",
+    area = {"area_type": "district", "area_key": "Testort", "label": "Testort",
             "place_name": "Testort", "place_id": None, "slug": None}
     monkeypatch.setattr(generate_quiz, "_areas", lambda _store: [area])
     monkeypatch.setattr(generate_quiz.quiz, "council_facts", lambda *args, **kwargs: "")
@@ -161,18 +161,18 @@ def test_quiz_backfill_requests_only_missing_count(tmp_path, monkeypatch):
 
 def test_generate_skips_thin_sources(monkeypatch):
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm([]))  # würde nie aufgerufen
-    assert quiz.generate_for_area("stadtteil", "X", "X", "zu kurz", n=3,
+    assert quiz.generate_for_area("district", "X", "X", "zu kurz", n=3,
                                   source_type="wikipedia", source_ref="", verify=False) == []
 
 
 # ---- Store-Roundtrip --------------------------------------------------------
 
 def _row(area_key: str, question: str, cat: str = "geschichte") -> dict:
-    return {"area_type": "stadtteil", "area_key": area_key, "category": cat,
+    return {"area_type": "district", "area_key": area_key, "category": cat,
             "difficulty": "leicht", "question": question,
             "options": ["A", "B", "C", "D"], "correct_index": 1,
             "explanation": "weil B", "source_type": "wikipedia", "source_ref": "http://w",
-            "content_hash": quiz._content_hash("stadtteil", area_key, question)}
+            "content_hash": quiz._content_hash("district", area_key, question)}
 
 
 def test_store_quiz_roundtrip(tmp_path):
@@ -180,9 +180,9 @@ def test_store_quiz_roundtrip(tmp_path):
     rows = [_row("Osternburg", f"Frage {i}?") for i in range(4)]
     assert store.save_quiz_questions(rows) == 4
     assert store.save_quiz_questions(rows) == 0  # Dedup
-    assert store.quiz_area_counts() == {("stadtteil", "Osternburg"): 4}
+    assert store.quiz_area_counts() == {("district", "Osternburg"): 4}
 
-    picked = store.pick_quiz_questions([("stadtteil", "Osternburg")], None, [], 2)
+    picked = store.pick_quiz_questions([("district", "Osternburg")], None, [], 2)
     assert len(picked) == 2
     for p in picked:  # Lösung darf nicht ausgeliefert werden
         assert "correct_index" not in p and "explanation" not in p
@@ -195,15 +195,15 @@ def test_store_quiz_roundtrip(tmp_path):
 def test_store_quiz_retire_and_exclude(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_quiz_questions([_row("Eversten", f"F{i}?") for i in range(3)])
-    all_ids = [q["id"] for q in store.pick_quiz_questions([("stadtteil", "Eversten")], None, [], 10)]
+    all_ids = [q["id"] for q in store.pick_quiz_questions([("district", "Eversten")], None, [], 10)]
     assert len(all_ids) == 3
     # ausgemusterte Frage fliegt aus den Runden
     store.retire_quiz_question(all_ids[0])
-    remaining = [q["id"] for q in store.pick_quiz_questions([("stadtteil", "Eversten")], None, [], 10)]
+    remaining = [q["id"] for q in store.pick_quiz_questions([("district", "Eversten")], None, [], 10)]
     assert all_ids[0] not in remaining and len(remaining) == 2
     assert store.get_quiz_question(all_ids[0]) is None  # retired → nicht mehr abrufbar
     # exclude_ids meidet schon beantwortete (füllt aber auf, wenn nötig)
-    picked = store.pick_quiz_questions([("stadtteil", "Eversten")], None, [remaining[0]], 1)
+    picked = store.pick_quiz_questions([("district", "Eversten")], None, [remaining[0]], 1)
     assert picked and picked[0]["id"] != remaining[0]
 
 
@@ -213,7 +213,7 @@ def test_store_pick_category_filter(tmp_path):
         _row("Nadorst", "Geschichte?", "geschichte"),
         _row("Nadorst", "Ort?", "orte"),
     ])
-    only_orte = store.pick_quiz_questions([("stadtteil", "Nadorst")], ["orte"], [], 10)
+    only_orte = store.pick_quiz_questions([("district", "Nadorst")], ["orte"], [], 10)
     assert len(only_orte) == 1 and only_orte[0]["category"] == "orte"
 
 
@@ -237,7 +237,7 @@ def test_generate_estimate_question(monkeypatch):
            "answer_value": 12000, "unit": "Einwohner", "range_min": 2000, "range_max": 30000,
            "explanation": "rund 12.000"}]
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
-    rows = quiz.generate_for_area("stadtteil", "Osternburg", "Osternburg", "x" * 500,
+    rows = quiz.generate_for_area("district", "Osternburg", "Osternburg", "x" * 500,
                                   n=1, source_type="wikipedia", source_ref="http://w", verify=False)
     assert len(rows) == 1
     r = rows[0]
@@ -247,19 +247,19 @@ def test_generate_estimate_question(monkeypatch):
 
 
 def _estimate_row(area_key: str, question: str) -> dict:
-    return {"area_type": "stadtteil", "area_key": area_key, "category": "schaetzen",
+    return {"area_type": "district", "area_key": area_key, "category": "schaetzen",
             "difficulty": "mittel", "question": question, "qtype": "estimate",
             "options": [], "correct_index": 0,
             "answer_value": 12000.0, "answer_unit": "Einwohner",
             "range_min": 2000.0, "range_max": 30000.0,
             "explanation": "rund 12.000", "source_type": "wikipedia", "source_ref": "http://w",
-            "content_hash": quiz._content_hash("stadtteil", area_key, question)}
+            "content_hash": quiz._content_hash("district", area_key, question)}
 
 
 def test_store_estimate_roundtrip(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     assert store.save_quiz_questions([_estimate_row("Osternburg", "Wie viele Einwohner?")]) == 1
-    picked = store.pick_quiz_questions([("stadtteil", "Osternburg")], None, [], 5)
+    picked = store.pick_quiz_questions([("district", "Osternburg")], None, [], 5)
     assert len(picked) == 1
     p = picked[0]
     assert p["qtype"] == "estimate" and p["unit"] == "Einwohner"
@@ -337,7 +337,7 @@ def test_generate_attaches_detail_and_media(monkeypatch):
     monkeypatch.setattr(quiz, "street_line", lambda s, **k: None)
     monkeypatch.setattr(quiz, "geocode_place", lambda s: (53.14, 8.21))
     monkeypatch.setattr(quiz, "wikipedia_page_url", lambda s: None)  # kein Netz
-    rows = quiz.generate_for_area("stadtteil", "Oldenburg", "Oldenburg", "x" * 500,
+    rows = quiz.generate_for_area("district", "Oldenburg", "Oldenburg", "x" * 500,
                                   n=1, source_type="wikipedia", source_ref="http://w", verify=False)
     r = rows[0]
     assert r["detail"] == "Das Schloss war die Residenz der Großherzöge."
@@ -362,7 +362,7 @@ def test_enrich_row_area_polygon_fallback():
     # Kein konkretes Subjekt, aber die Frage gehört zu einem Stadtteil → das
     # ganze Gebiet als Polygon (kein Netz nötig, nur die eigene GeoJSON-Datei).
     row = {}
-    quiz.enrich_row(row, "", area_type="stadtteil", area_key="Osternburg")
+    quiz.enrich_row(row, "", area_type="district", area_key="Osternburg")
     gj = json.loads(row["geojson"])
     assert gj["type"] in ("Polygon", "MultiPolygon")
     assert row["place_label"] == "Osternburg" and row["lat"] is not None
@@ -381,7 +381,7 @@ def test_enrich_row_source_link_to_subject(monkeypatch):
     monkeypatch.setattr(quiz, "wikipedia_page_url",
                         lambda s: "https://de.wikipedia.org/wiki/Hermann_Lehmkuhl")
     row = {"source_type": "wikipedia", "source_ref": "https://de.wikipedia.org/wiki/Bloherfelde"}
-    quiz.enrich_row(row, "Hermann Lehmkuhl", area_type="stadtteil", area_key="Bloherfelde")
+    quiz.enrich_row(row, "Hermann Lehmkuhl", area_type="district", area_key="Bloherfelde")
     assert row["source_ref"] == "https://de.wikipedia.org/wiki/Hermann_Lehmkuhl"
     assert json.loads(row["geojson"])["type"] in ("Polygon", "MultiPolygon")  # Bloherfelde
     # Bei Nicht-Wikipedia-Quellen (z. B. Ratsbeschluss) NICHT überschreiben:
@@ -397,12 +397,12 @@ def test_hint_roundtrip(tmp_path):
     row = _row("Eversten", "Knifflige Frage?")
     row["hint"] = "Denk an das Wahrzeichen."
     store.save_quiz_questions([row])
-    picked = store.pick_quiz_questions([("stadtteil", "Eversten")], None, [], 5)
+    picked = store.pick_quiz_questions([("district", "Eversten")], None, [], 5)
     assert picked[0]["hint"] == "Denk an das Wahrzeichen."
     # Frage ohne Tipp liefert kein hint-Feld:
     plain = _row("Eversten", "Einfache Frage?")
     store.save_quiz_questions([plain])
-    got = [p for p in store.pick_quiz_questions([("stadtteil", "Eversten")], None, [], 5)
+    got = [p for p in store.pick_quiz_questions([("district", "Eversten")], None, [], 5)
            if p["question"] == "Einfache Frage?"][0]
     assert "hint" not in got
 
@@ -413,7 +413,7 @@ def test_generate_attaches_hint(monkeypatch):
            "hint": "Ein Politiker des 19. Jahrhunderts."}]
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
     monkeypatch.setattr(quiz, "wikipedia_page_url", lambda s: None)
-    rows = quiz.generate_for_area("stadtteil", "Bloherfelde", "Bloherfelde", "x" * 500,
+    rows = quiz.generate_for_area("district", "Bloherfelde", "Bloherfelde", "x" * 500,
                                   n=1, source_type="wikipedia", source_ref="http://w",
                                   verify=False, enrich=False)
     assert rows[0]["hint"] == "Ein Politiker des 19. Jahrhunderts."
@@ -425,7 +425,7 @@ def test_topic_roundtrip(tmp_path):
     row = _row("Bloherfelde", "Was beschloss der Rat?", "ratspolitik")
     row["topic"] = "Lebensquartier"
     store.save_quiz_questions([row])
-    q = store.pick_quiz_questions([("stadtteil", "Bloherfelde")], None, [], 5)[0]
+    q = store.pick_quiz_questions([("district", "Bloherfelde")], None, [], 5)[0]
     assert "topic" not in q                       # nicht in der Runde
     assert store.get_quiz_question(q["id"])["topic"] == "Lebensquartier"
 
@@ -435,7 +435,7 @@ def test_generate_attaches_topic(monkeypatch):
            "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "kurz",
            "topic": "Fliegerhorst"}]
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
-    rows = quiz.generate_for_area("stadtteil", "Bloherfelde", "Bloherfelde", "x" * 500,
+    rows = quiz.generate_for_area("district", "Bloherfelde", "Bloherfelde", "x" * 500,
                                   n=1, source_type="wikipedia", source_ref="http://w",
                                   verify=False, enrich=False)
     assert rows[0]["topic"] == "Fliegerhorst"
@@ -462,7 +462,7 @@ def test_city_generic_map_suppressed_on_read(tmp_path):
     real.update({"lat": 53.137, "lon": 8.211, "place_label": "Schloss Oldenburg"})
     store.save_quiz_questions([generic, real])
     by_q = {p["question"]: store.get_quiz_question(p["id"])
-            for p in store.pick_quiz_questions([("stadtteil", "Bürgerfelde")], None, [], 5)}
+            for p in store.pick_quiz_questions([("district", "Bürgerfelde")], None, [], 5)}
     assert "map" not in by_q["Frage zur Bewegung?"]
     assert by_q["Frage zum Schloss?"]["map"]["label"] == "Schloss Oldenburg"
 
@@ -479,5 +479,5 @@ def test_enrich_row_skips_city_generic_subject(monkeypatch):
     # … aber der Gebiets-Fallback greift weiter, wenn die Frage zu einem
     # Stadtteil gehört (Polygon statt sinnlosem Stadt-Pin).
     row2 = {}
-    quiz.enrich_row(row2, "Stadt Oldenburg", area_type="stadtteil", area_key="Bürgerfelde")
+    quiz.enrich_row(row2, "Stadt Oldenburg", area_type="district", area_key="Bürgerfelde")
     assert json.loads(row2["geojson"])["type"] in ("Polygon", "MultiPolygon")

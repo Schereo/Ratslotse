@@ -326,7 +326,7 @@ REJECTED: dict[str, str] = {
     "cholet": "Partnerstadt außerhalb Oldenburgs.",
     "egh": "Abkürzung des Eigenbetriebs Gebäudewirtschaft und Hochbau, kein Ort.",
     "stadtgebiet": "Generischer Begriff ohne eigene räumliche Abgrenzung.",
-    "stadtteil": "Generischer Gattungsbegriff.",
+    "district": "Generischer Gattungsbegriff.",
     "oldenburger-land": "Überregionale Bezeichnung und Bestandteil von Institutionsnamen.",
     "abfallwirtschaft": "Städtischer Eigenbetrieb beziehungsweise Aufgabenbereich, kein Ort.",
     "vapiano": "Ehemaliger Gastronomiebetrieb; kein dauerhafter kommunalpolitischer Ortsbereich.",

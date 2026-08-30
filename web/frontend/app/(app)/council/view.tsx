@@ -224,7 +224,7 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
                   <span className="font-medium">Ortsbezug:</span>{" "}
                   {locationMatches.slice(0, 2).map((match) => match.name).join(", ")}
                   {locationMatches.length > 2 ? ` +${locationMatches.length - 2}` : ""}
-                  <span className="text-muted-foreground"> · {primaryLocation.stadtteil}</span>
+                  <span className="text-muted-foreground"> · {primaryLocation.district}</span>
                   {locationProfileId && (
                     <button type="button" onClick={(event) => {
                       event.preventDefault(); event.stopPropagation(); router.push(ortHref(locationProfileId));

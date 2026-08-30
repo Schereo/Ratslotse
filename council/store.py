@@ -417,7 +417,34 @@ class CouncilStore:
                 logging.getLogger("ratslotse.council.store").warning(
                     "Spalte umbenannt: %s.%s → %s", tabelle, alt, neu)
 
+    def _werte_umschreiben(self, tabelle: str, spalte: str,
+                           paare: list[tuple[str, str]]) -> None:
+        """Schreibt gespeicherte WERTE um — idempotent.
+
+        Anders als bei Spalten reicht ein Schema-Wechsel hier nicht: Die
+        deutschen Bezeichner stehen als Daten in den Zeilen (``area_type =
+        'district'``). Ein UPDATE je Wert, das beim zweiten Lauf nichts mehr
+        findet.
+        """
+        if not list(self._conn.execute(f"PRAGMA table_info({tabelle})")):
+            return
+        for alt, neu in paare:
+            cur = self._conn.execute(
+                f"UPDATE {tabelle} SET {spalte} = ? WHERE {spalte} = ?", (neu, alt))
+            if cur.rowcount:
+                self._conn.commit()
+                logging.getLogger("ratslotse.council.store").warning(
+                    "Werte umgeschrieben: %s.%s %r → %r (%d Zeilen)",
+                    tabelle, spalte, alt, neu, cur.rowcount)
+
     def _migrate(self) -> None:
+        # Ortskatalog: Spalte und die `kind`-Werte tragen denselben Begriff.
+        self._spalten_umbenennen("council_locations", [("stadtteil", "district")])
+        self._werte_umschreiben("council_locations", "kind", [("stadtteil", "district")])
+        # Gebietstypen des Quiz stehen als Daten in den Zeilen, nicht im Schema.
+        self._werte_umschreiben("council_quiz_questions", "area_type", [
+            ("wahlbereich", "electoral_district"), ("stadtteil", "district"),
+            ("thema", "topic")])
         # 08/2026: Der Code spricht Englisch, die Spalten ziehen nach. Ohne
         # das bräuchte jede Abfrage einen Alias — und genau die wollen wir
         # nicht (Tims Vorgabe „ohne Mappings").
@@ -532,7 +559,7 @@ class CouncilStore:
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_locations ("
             "slug TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, "
-            "lat REAL, lon REAL, geojson TEXT, stadtteil TEXT, "
+            "lat REAL, lon REAL, geojson TEXT, district TEXT, "
             "place_id TEXT, ortsbereich_id TEXT, "
             "geo_tried INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL)"
         )
@@ -730,7 +757,7 @@ class CouncilStore:
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_quiz_questions ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-            "area_type TEXT NOT NULL, area_key TEXT NOT NULL, "  # stadtteil|wahlbereich|thema
+            "area_type TEXT NOT NULL, area_key TEXT NOT NULL, "  # district|electoral_district|topic
             "category TEXT NOT NULL, "                            # geschichte|orte|menschen|ratspolitik|schaetzen
             "difficulty TEXT NOT NULL DEFAULT 'mittel', "         # leicht|mittel|schwer
             "question TEXT NOT NULL, options TEXT NOT NULL, "     # options = JSON-Array (4); [] bei estimate
@@ -5211,7 +5238,7 @@ class CouncilStore:
             "FROM council_quiz_questions q "
             "LEFT JOIN council_entities e ON e.slug = q.area_key "
             "LEFT JOIN council_entity_meta m ON m.slug = q.area_key "
-            "WHERE q.area_type = 'thema' AND q.status = 'active'").fetchall()
+            "WHERE q.area_type = 'topic' AND q.status = 'active'").fetchall()
         return [{"area_key": r["area_key"],
                  "label": r["name"] or self._THEMA_LABELS.get(r["area_key"], r["area_key"]),
                  "lat": r["lat"], "lon": r["lon"]}
@@ -8610,7 +8637,7 @@ class CouncilStore:
                JOIN council_decisions d ON d.id=dl.decision_id AND d.kind='decision'
                JOIN council_sessions cs ON cs.ksinr=d.ksinr
                LEFT JOIN council_place_reviews r ON r.location_slug=l.slug
-               WHERE l.kind IN ('stadtteil','gebiet','sonstiges') {review_where} {known_where}
+               WHERE l.kind IN ('district','gebiet','sonstiges') {review_where} {known_where}
                GROUP BY l.slug
                HAVING COUNT(DISTINCT dl.decision_id) >= ?
                ORDER BY decision_count DESC, last_date DESC, l.name
@@ -8768,15 +8795,15 @@ class CouncilStore:
                 primary = parents[0] if len(parents) == 1 else None
                 self._conn.execute(
                     "INSERT INTO council_locations"
-                    "(slug,name,kind,stadtteil,place_id,ortsbereich_id,updated_at) "
+                    "(slug,name,kind,district,place_id,ortsbereich_id,updated_at) "
                     "VALUES (?,?,?,?,?,?,?) "
                     "ON CONFLICT(slug) DO UPDATE SET name=excluded.name, kind=excluded.kind, "
                     "place_id=COALESCE(excluded.place_id,council_locations.place_id), "
                     "ortsbereich_id=COALESCE(excluded.ortsbereich_id,council_locations.ortsbereich_id), "
-                    "stadtteil=COALESCE(excluded.stadtteil,council_locations.stadtteil), "
+                    "district=COALESCE(excluded.district,council_locations.district), "
                     "updated_at=excluded.updated_at",
                     (slug, place.name if place else row["name"],
-                     "stadtteil" if place and place.is_primary else row.get("kind") or "sonstiges",
+                     "district" if place and place.is_primary else row.get("kind") or "sonstiges",
                      primary.name if primary else None, place.id if place else None,
                      primary.id if primary else None, now),
                 )
@@ -8818,7 +8845,7 @@ class CouncilStore:
         from council.locations import location_slug
 
         if place.is_primary:
-            return "(l.ortsbereich_id = ? OR l.stadtteil = ?)", [place.id, place.name]
+            return "(l.ortsbereich_id = ? OR l.district = ?)", [place.id, place.name]
         slugs = list(dict.fromkeys(location_slug(value)
                                    for value in (place.name, *place.aliases)))
         return (f"(l.place_id = ? OR l.slug IN ({','.join('?' * len(slugs))}))",
@@ -8883,7 +8910,7 @@ class CouncilStore:
             condition, condition_params = self._place_location_condition(place)
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
-            f"""SELECT dl.decision_id, l.name, l.stadtteil, l.place_id, l.ortsbereich_id,
+            f"""SELECT dl.decision_id, l.name, l.district, l.place_id, l.ortsbereich_id,
                        l.lat, l.lon, dl.source,
                        dl.evidence, dl.method, dl.confidence
                 FROM council_decision_locations dl
@@ -8897,7 +8924,7 @@ class CouncilStore:
             matches = out.setdefault(row["decision_id"], [])
             if len(matches) < max(1, int(per_decision)):
                 matches.append({key: row[key] for key in (
-                    "name", "stadtteil", "place_id", "ortsbereich_id", "lat", "lon",
+                    "name", "district", "place_id", "ortsbereich_id", "lat", "lon",
                     "source", "evidence", "method", "confidence"
                 )})
         return out
@@ -8942,9 +8969,9 @@ class CouncilStore:
         updates = []
         for slug, point in curated_location_geocodes().items():
             lat, lon = point["lat"], point["lon"]
-            stadtteil = geo.ortsbereich_for(lat, lon)
-            primary = self.resolve_place(stadtteil)
-            updates.append((lat, lon, stadtteil, primary.id if primary else None,
+            district = geo.ortsbereich_for(lat, lon)
+            primary = self.resolve_place(district)
+            updates.append((lat, lon, district, primary.id if primary else None,
                             now, slug, lat, lon))
         if not updates:
             return 0
@@ -8952,7 +8979,7 @@ class CouncilStore:
             before = self._conn.total_changes
             self._conn.executemany(
                 """UPDATE council_locations
-                   SET lat=?,lon=?,geojson=NULL,stadtteil=?,ortsbereich_id=?,
+                   SET lat=?,lon=?,geojson=NULL,district=?,ortsbereich_id=?,
                        geo_tried=1,updated_at=?
                    WHERE slug=? AND (
                        lat IS NULL OR lon IS NULL OR ABS(lat-?) > 0.00000001
@@ -8983,27 +9010,27 @@ class CouncilStore:
                          AND m.lat IS NOT NULL AND m.lon IS NOT NULL)""", (now,))
         return cur.rowcount
 
-    def backfill_location_stadtteile(self) -> int:
+    def backfill_location_districts(self) -> int:
         """Stadtteil für ältere oder übernommene Ortskoordinaten lokal ableiten."""
         from council import geo
 
         rows = self._conn.execute(
             "SELECT slug,lat,lon FROM council_locations "
             "WHERE lat IS NOT NULL AND lon IS NOT NULL "
-            "AND (stadtteil IS NULL OR stadtteil = '')"
+            "AND (district IS NULL OR district = '')"
         ).fetchall()
         updates = []
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         for row in rows:
-            stadtteil = geo.ortsbereich_for(row["lat"], row["lon"])
-            if stadtteil:
+            district = geo.ortsbereich_for(row["lat"], row["lon"])
+            if district:
                 from council import places
-                place = places.resolve(stadtteil)
-                updates.append((stadtteil, place.id if place else None, now, row["slug"]))
+                place = places.resolve(district)
+                updates.append((district, place.id if place else None, now, row["slug"]))
         if updates:
             with self._conn:
                 self._conn.executemany(
-                    "UPDATE council_locations SET stadtteil=?,ortsbereich_id=?,updated_at=? WHERE slug=?",
+                    "UPDATE council_locations SET district=?,ortsbereich_id=?,updated_at=? WHERE slug=?",
                     updates,
                 )
         return len(updates)
@@ -9013,13 +9040,13 @@ class CouncilStore:
         from council import geo
 
         rows = self._conn.execute(
-            "SELECT slug,name,lat,lon,stadtteil,place_id,ortsbereich_id FROM council_locations"
+            "SELECT slug,name,lat,lon,district,place_id,ortsbereich_id FROM council_locations"
         ).fetchall()
         updates = []
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         for row in rows:
             exact = self.resolve_place(row["name"])
-            primary = self.resolve_place(row["stadtteil"])
+            primary = self.resolve_place(row["district"])
             if primary and not primary.is_primary:
                 primary = None
             if not primary and exact:
@@ -9029,14 +9056,14 @@ class CouncilStore:
                 primary = self.resolve_place(geo.ortsbereich_for(row["lat"], row["lon"]))
             place_id = exact.id if exact else None
             primary_id = primary.id if primary else None
-            primary_name = primary.name if primary else row["stadtteil"]
+            primary_name = primary.name if primary else row["district"]
             if (place_id, primary_id, primary_name) != (
-                    row["place_id"], row["ortsbereich_id"], row["stadtteil"]):
+                    row["place_id"], row["ortsbereich_id"], row["district"]):
                 updates.append((place_id, primary_id, primary_name, now, row["slug"]))
         if updates:
             with self._conn:
                 self._conn.executemany(
-                    "UPDATE council_locations SET place_id=?,ortsbereich_id=?,stadtteil=?,updated_at=? "
+                    "UPDATE council_locations SET place_id=?,ortsbereich_id=?,district=?,updated_at=? "
                     "WHERE slug=?", updates)
         return len(updates)
 
@@ -9044,13 +9071,13 @@ class CouncilStore:
                          geojson: str | None) -> None:
         from council import geo, places
 
-        stadtteil = geo.ortsbereich_for(lat, lon) if lat is not None and lon is not None else None
-        primary = places.resolve(stadtteil)
+        district = geo.ortsbereich_for(lat, lon) if lat is not None and lon is not None else None
+        primary = places.resolve(district)
         with self._conn:
             self._conn.execute(
-                "UPDATE council_locations SET lat=?, lon=?, geojson=?, stadtteil=?, ortsbereich_id=?, "
+                "UPDATE council_locations SET lat=?, lon=?, geojson=?, district=?, ortsbereich_id=?, "
                 "geo_tried=1, updated_at=? WHERE slug=?",
-                (lat, lon, geojson, stadtteil, primary.id if primary else None,
+                (lat, lon, geojson, district, primary.id if primary else None,
                  datetime.now(timezone.utc).isoformat(timespec="seconds"), slug),
             )
 
@@ -12516,7 +12543,7 @@ class CouncilStore:
                 FROM council_decision_locations dl
                 JOIN council_locations l ON l.slug = dl.location_slug
                 WHERE dl.decision_id IN ({ph}) AND l.lat IS NOT NULL
-                  AND l.stadtteil IS NOT NULL AND l.stadtteil != ''
+                  AND l.district IS NOT NULL AND l.district != ''
                 ORDER BY dl.confidence DESC, l.name""", ids).fetchall()
         out: dict[int, dict] = {}
         for r in direct:

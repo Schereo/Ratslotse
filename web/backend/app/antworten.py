@@ -501,15 +501,15 @@ class QuizGebiet(TypedDict):
     kind_label: NotRequired[str | None]
     aliases: NotRequired[list[str]]
     parent_ids: NotRequired[list[str]]
-    wahlbereiche: NotRequired[list[int]]
-    stadtteil: NotRequired[str | None]
-    stadtteile: NotRequired[list[str]]
+    electoral_districts: NotRequired[list[int]]
+    district: NotRequired[str | None]
+    districts: NotRequired[list[str]]
 
 
 class QuizGebiete(TypedDict):
-    wahlbereiche: list[QuizGebiet]
-    stadtteile: list[QuizGebiet]
-    themen: list[QuizGebiet]
+    electoral_districts: list[QuizGebiet]
+    districts: list[QuizGebiet]
+    topics: list[QuizGebiet]
     categories: list[str]
 
 

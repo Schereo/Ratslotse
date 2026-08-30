@@ -5376,6 +5376,12 @@ export interface components {
         QuizGebiet: {
             /** Aliases */
             aliases?: string[];
+            /** District */
+            district?: string | null;
+            /** Districts */
+            districts?: string[];
+            /** Electoral Districts */
+            electoral_districts?: number[];
             /** Key */
             key: string;
             /** Kind */
@@ -5392,23 +5398,17 @@ export interface components {
             points: number;
             /** Questions */
             questions: number;
-            /** Stadtteil */
-            stadtteil?: string | null;
-            /** Stadtteile */
-            stadtteile?: string[];
-            /** Wahlbereiche */
-            wahlbereiche?: number[];
         };
         /** QuizGebiete */
         QuizGebiete: {
             /** Categories */
             categories: string[];
-            /** Stadtteile */
-            stadtteile: components["schemas"]["QuizGebiet"][];
-            /** Themen */
-            themen: components["schemas"]["QuizGebiet"][];
-            /** Wahlbereiche */
-            wahlbereiche: components["schemas"]["QuizGebiet"][];
+            /** Districts */
+            districts: components["schemas"]["QuizGebiet"][];
+            /** Electoral Districts */
+            electoral_districts: components["schemas"]["QuizGebiet"][];
+            /** Topics */
+            topics: components["schemas"]["QuizGebiet"][];
         };
         /** QuizGebietsstand */
         QuizGebietsstand: {
@@ -6069,6 +6069,8 @@ export interface components {
              * @default 0
              */
             correct_index: number;
+            /** District */
+            district?: string | null;
             /** Explanation */
             explanation?: string | null;
             /** Options */
@@ -6079,8 +6081,6 @@ export interface components {
             range_max?: number | null;
             /** Range Min */
             range_min?: number | null;
-            /** Stadtteil */
-            stadtteil?: string | null;
             /** Unit */
             unit?: string | null;
         };
@@ -10249,7 +10249,7 @@ export interface operations {
     round__api_quiz_round_get: {
         parameters: {
             query: {
-                /** @description komma-separiert, z. B. wahlbereich:3,stadtteil:Osternburg */
+                /** @description komma-separiert, z. B. electoral_district:3,district:Osternburg */
                 areas: string;
                 categories?: string;
                 n?: number;
@@ -10898,4 +10898,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0b0b9be5fd4818a79cc0ef369945dc7fe1ae095304f0b5dc8afe089426b6d9fa
+// vertrag-sha256: 107f623cdf20fa7d4d5001c9594c13d1ac2339e159bcaceb37565d45986a2d93

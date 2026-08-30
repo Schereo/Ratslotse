@@ -304,7 +304,7 @@ class UserQuizQuestionIn(BaseModel):
     question: str = Field(min_length=5, max_length=300)
     options: list[str] = Field(default_factory=list, max_length=4)
     correct_index: int = Field(default=0, ge=0, le=3)
-    stadtteil: str | None = Field(default=None, max_length=60)
+    district: str | None = Field(default=None, max_length=60)
     category: str = Field(max_length=30)
     explanation: str | None = Field(default=None, max_length=500)
     # Schätzfrage: richtige Zahl, Einheit und (optionale) Slider-Grenzen.

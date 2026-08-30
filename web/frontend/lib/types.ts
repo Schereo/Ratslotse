@@ -66,7 +66,7 @@ export type DecisionOutcome =
 
 export interface DecisionLocationMatch {
   name: string;
-  stadtteil: string;
+  district: string;
   place_id?: string | null;
   ortsbereich_id?: string | null;
   source: "title" | "official_text" | "vorlage";
@@ -295,7 +295,7 @@ export interface PlaceCandidateEvidence {
 
 export interface PlaceCandidate {
   slug: string; name: string; kind: string; lat: number | null; lon: number | null;
-  stadtteil: string | null; ortsbereich_id: string | null;
+  district: string | null; ortsbereich_id: string | null;
   status: "pending" | "concrete" | "approved" | "alias" | "rejected";
   decision_count: number; last_date: string; avg_confidence: number;
   review_place_id?: string | null; review_name?: string | null;
@@ -674,17 +674,17 @@ export interface QuizAreaEntry {
   kind_label?: string;
   parent_ids?: string[];
   aliases?: string[];
-  wahlbereiche?: number[];
-  stadtteile?: string[];
+  electoral_districts?: number[];
+  districts?: string[];
   /** Themen: Stadtteil des Themen-Orts (RL-U13); null/fehlend = stadtweit. */
-  stadtteil?: string | null;
+  district?: string | null;
   questions: number;
   points: number;
 }
 export interface QuizAreas {
-  wahlbereiche: QuizAreaEntry[];
-  stadtteile: QuizAreaEntry[];
-  themen: QuizAreaEntry[];
+  electoral_districts: QuizAreaEntry[];
+  districts: QuizAreaEntry[];
+  topics: QuizAreaEntry[];
   categories: string[];
 }
 /** Eigene Quizfrage (RL-U14) — privat je Konto, mit Übungs-Zählern.
@@ -695,7 +695,7 @@ export interface UserQuizQuestion {
   question: string;
   options: string[];
   correct_index: number;
-  stadtteil: string | null;
+  district: string | null;
   category: string;
   explanation: string | null;
   qtype?: "mc" | "estimate";

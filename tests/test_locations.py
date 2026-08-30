@@ -171,7 +171,7 @@ def test_llm_locations_require_a_real_fundstelle(monkeypatch):
     payload = {"results": [{"id": 7, "locations": [
         {"name": "GS Röwekamp", "kind": "gebaeude", "source": "title",
          "evidence": "GS Röwekamp, Umbau und Erweiterung", "confidence": "high"},
-        {"name": "Eversten", "kind": "stadtteil", "source": "title",
+        {"name": "Eversten", "kind": "district", "source": "title",
          "evidence": "frei erfunden", "confidence": "high"},
     ]}]}
     response = SimpleNamespace(
@@ -211,11 +211,11 @@ def test_llm_locations_reject_organizations_foreign_districts_and_unrelated_evid
     payload = {"results": [{"id": 7, "locations": [
         {"name": "Verkehr und Wasser GmbH", "kind": "sonstiges", "source": "title",
          "evidence": "Verkehr und Wasser GmbH", "confidence": "high"},
-        {"name": "Bremen", "kind": "stadtteil", "source": "vorlage",
+        {"name": "Bremen", "kind": "district", "source": "vorlage",
          "evidence": "bis Bremen", "confidence": "high"},
         {"name": "VOSS", "kind": "sonstiges", "source": "official_text",
          "evidence": "Das Jahresergebnis wird vorgetragen", "confidence": "high"},
-        {"name": "Eversten", "kind": "stadtteil", "source": "vorlage",
+        {"name": "Eversten", "kind": "district", "source": "vorlage",
          "evidence": "Stadtteil Eversten", "confidence": "high"},
     ]}]}
     response = SimpleNamespace(
@@ -305,7 +305,7 @@ def test_known_stadtteil_is_geocoded_without_network(tmp_path, monkeypatch):
     )
     store._conn.commit()
     store.save_decision_locations(7, [{
-        "name": "Kreyenbrück", "kind": "stadtteil", "source": "title",
+        "name": "Kreyenbrück", "kind": "district", "source": "title",
         "evidence": "Kreyenbrück", "method": "stadtteilliste", "confidence": 0.99,
     }], "hash")
     store.close()
@@ -317,14 +317,14 @@ def test_known_stadtteil_is_geocoded_without_network(tmp_path, monkeypatch):
     assert stats["located"] == 1 and stats["failed"] == 0
     store = CouncilStore(db)
     row = store.decision_locations(7)[0]
-    assert row["lat"] is not None and row["stadtteil"] == "Kreyenbrück"
+    assert row["lat"] is not None and row["district"] == "Kreyenbrück"
 
 
 def test_ortskatalog_alias_is_extracted_as_canonical_name():
     got = locations.extract_explicit_locations(
         "Die Verwaltung berichtet aus dem Drielaker Moor.", source="title")
     assert got == [{
-        "name": "Drielaker-Moor", "kind": "stadtteil", "source": "title",
+        "name": "Drielaker-Moor", "kind": "district", "source": "title",
         "evidence": "Drielaker Moor", "method": "ortskatalog", "confidence": 0.99,
     }]
 
@@ -351,11 +351,11 @@ def test_existing_location_coordinates_get_a_district(tmp_path):
         (lat, lon),
     )
     store._conn.commit()
-    assert store.backfill_location_stadtteile() == 1
+    assert store.backfill_location_districts() == 1
     row = store._conn.execute(
-        "SELECT stadtteil FROM council_locations WHERE slug='alt'").fetchone()
+        "SELECT district FROM council_locations WHERE slug='alt'").fetchone()
     assert row[0] == "Kreyenbrück"
-    assert store.backfill_location_stadtteile() == 0
+    assert store.backfill_location_districts() == 0
     store.close()
 
 
@@ -378,7 +378,7 @@ def test_revalidation_removes_only_invalid_llm_links(tmp_path):
         "evidence": "Das Jahresergebnis wird vorgetragen", "method": "llm",
         "confidence": 0.9,
     }, {
-        "name": "Eversten", "kind": "stadtteil", "source": "title",
+        "name": "Eversten", "kind": "district", "source": "title",
         "evidence": "Vorhaben in Eversten", "method": "llm", "confidence": 0.9,
     }], "hash")
     store.close()
@@ -492,7 +492,7 @@ def test_reviewed_place_joins_catalog_extraction_search_and_map(tmp_path):
         }], f"hash-{decision_id}")
     store._conn.execute(
         "UPDATE council_locations SET lat=53.16,lon=8.22,geo_tried=1,"
-        "stadtteil='Nadorst',ortsbereich_id='nadorst' WHERE slug='testquartier'"
+        "district='Nadorst',ortsbereich_id='nadorst' WHERE slug='testquartier'"
     )
     store._conn.commit()
 
@@ -577,3 +577,61 @@ def test_reviewed_alias_resolves_to_existing_catalog_place(tmp_path):
     # Geprüfte Einträge bleiben trotz der Drei-Beschlüsse-Schwelle sichtbar.
     assert store.location_candidates("alias")[0]["slug"] == "nadorster-gebiet"
     store.close()
+
+
+def test_migration_schreibt_deutsche_gebietstypen_und_ortsarten_um(tmp_path):
+    """Der Umbau auf Englisch betrifft hier nicht nur Spalten, sondern WERTE.
+
+    `area_type` und `council_locations.kind` tragen die Begriffe als Daten in
+    den Zeilen — ein Schema-Wechsel allein ließe sie deutsch. Der Test legt
+    eine Datenbank im alten Zustand an und prüft, dass ein Öffnen sie
+    umschreibt, ohne Zeilen zu verlieren, und dass ein zweites Öffnen nichts
+    mehr tut.
+    """
+    import sqlite3
+
+    from council.store import CouncilStore
+
+    pfad = tmp_path / "council.sqlite"
+    store = CouncilStore(pfad)          # legt das Schema an (schon englisch)
+    store.close()
+
+    conn = sqlite3.connect(pfad)
+    conn.execute("ALTER TABLE council_locations RENAME COLUMN district TO stadtteil")
+    conn.execute(
+        "INSERT INTO council_locations (slug, name, kind, stadtteil, updated_at) "
+        "VALUES ('kreyenbrueck', 'Kreyenbrück', 'stadtteil', 'Kreyenbrück', '2026-01-01')")
+    spalten = [r[1] for r in conn.execute("PRAGMA table_info(council_quiz_questions)")]
+    werte = {"area_type": "stadtteil", "area_key": "Kreyenbrück", "category": "orte",
+             "difficulty": "mittel", "question": "Wo liegt das?", "options": '["a","b"]',
+             "correct_index": 0, "status": "active", "content_hash": "h-alt",
+             "generated_at": "2026-01-01T00:00:00"}
+    nutzbar = {k: v for k, v in werte.items() if k in spalten}
+    conn.execute(
+        f"INSERT INTO council_quiz_questions ({','.join(nutzbar)}) "
+        f"VALUES ({','.join('?' * len(nutzbar))})", list(nutzbar.values()))
+    conn.commit()
+    conn.close()
+
+    store = CouncilStore(pfad)
+    try:
+        assert [r[1] for r in store._conn.execute("PRAGMA table_info(council_locations)")
+                if r[1] in ("stadtteil", "district")] == ["district"]
+        assert store._conn.execute(
+            "SELECT kind FROM council_locations WHERE slug='kreyenbrueck'").fetchone()[0] == "district"
+        assert store._conn.execute(
+            "SELECT district FROM council_locations WHERE slug='kreyenbrueck'").fetchone()[0] == "Kreyenbrück"
+        assert store._conn.execute(
+            "SELECT area_type FROM council_quiz_questions").fetchone()[0] == "district"
+        assert store._conn.execute("SELECT COUNT(*) FROM council_locations").fetchone()[0] == 1
+    finally:
+        store.close()
+
+    # Zweiter Lauf: nichts mehr zu tun, nichts kaputt.
+    store = CouncilStore(pfad)
+    try:
+        assert store._conn.execute(
+            "SELECT area_type FROM council_quiz_questions").fetchone()[0] == "district"
+        assert store._conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    finally:
+        store.close()

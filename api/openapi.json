@@ -4239,6 +4239,27 @@
             "title": "Aliases",
             "type": "array"
           },
+          "district": {
+            "title": "District",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "districts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "electoral_districts": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Electoral Districts",
+            "type": "array"
+          },
           "key": {
             "title": "Key",
             "type": "string"
@@ -4279,27 +4300,6 @@
           "questions": {
             "title": "Questions",
             "type": "integer"
-          },
-          "stadtteil": {
-            "title": "Stadtteil",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "stadtteile": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Stadtteile",
-            "type": "array"
-          },
-          "wahlbereiche": {
-            "items": {
-              "type": "integer"
-            },
-            "title": "Wahlbereiche",
-            "type": "array"
           }
         },
         "required": [
@@ -4320,32 +4320,32 @@
             "title": "Categories",
             "type": "array"
           },
-          "stadtteile": {
+          "districts": {
             "items": {
               "$ref": "#/components/schemas/QuizGebiet"
             },
-            "title": "Stadtteile",
+            "title": "Districts",
             "type": "array"
           },
-          "themen": {
+          "electoral_districts": {
             "items": {
               "$ref": "#/components/schemas/QuizGebiet"
             },
-            "title": "Themen",
+            "title": "Electoral Districts",
             "type": "array"
           },
-          "wahlbereiche": {
+          "topics": {
             "items": {
               "$ref": "#/components/schemas/QuizGebiet"
             },
-            "title": "Wahlbereiche",
+            "title": "Topics",
             "type": "array"
           }
         },
         "required": [
-          "wahlbereiche",
-          "stadtteile",
-          "themen",
+          "electoral_districts",
+          "districts",
+          "topics",
           "categories"
         ],
         "title": "QuizGebiete",
@@ -5921,6 +5921,14 @@
             "title": "Correct Index",
             "type": "integer"
           },
+          "district": {
+            "maxLength": 60,
+            "title": "District",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "explanation": {
             "maxLength": 500,
             "title": "Explanation",
@@ -5954,14 +5962,6 @@
             "title": "Range Min",
             "type": [
               "number",
-              "null"
-            ]
-          },
-          "stadtteil": {
-            "maxLength": 60,
-            "title": "Stadtteil",
-            "type": [
-              "string",
               "null"
             ]
           },
@@ -11861,12 +11861,12 @@
         "operationId": "round__api_quiz_round_get",
         "parameters": [
           {
-            "description": "komma-separiert, z. B. wahlbereich:3,stadtteil:Osternburg",
+            "description": "komma-separiert, z. B. electoral_district:3,district:Osternburg",
             "in": "query",
             "name": "areas",
             "required": true,
             "schema": {
-              "description": "komma-separiert, z. B. wahlbereich:3,stadtteil:Osternburg",
+              "description": "komma-separiert, z. B. electoral_district:3,district:Osternburg",
               "title": "Areas",
               "type": "string"
             }

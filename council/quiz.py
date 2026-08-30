@@ -350,7 +350,7 @@ def enrich_row(row: dict, subject: str, *, area_type: str | None = None,
     subject = (subject or "").strip()
     if geo.is_city_generic(subject):
         subject = ""  # ganze Stadt → kein Foto-/Karten-Subjekt (Gebiets-Fallback bleibt)
-    if not subject and area_type != "stadtteil":
+    if not subject and area_type != "district":
         return
     img = commons_image(subject) if subject else None
     if img:
@@ -372,14 +372,14 @@ def enrich_row(row: dict, subject: str, *, area_type: str | None = None,
         # Noch kein Punkt/keine Linie → das ganze GEBIET einzeichnen: den
         # Stadtteil des Subjekts, sonst den Stadtteil der Frage selbst.
         poly_name = subject if geo.is_ortsbereich(subject) else (
-            area_key if area_type == "stadtteil" else None)
+            area_key if area_type == "district" else None)
         poly = geo.ortsbereich_polygon(poly_name) if poly_name else None
         center = geo.ortsbereich_center(poly_name) if poly else None
         if poly and center:
             row["lat"], row["lon"] = center
             row["place_label"] = poly_name
             row["geojson"] = json.dumps(poly, ensure_ascii=False)
-        elif area_type == "stadtteil" and (catalog_place := places.resolve(area_key)) \
+        elif area_type == "district" and (catalog_place := places.resolve(area_key)) \
                 and catalog_place.lat is not None and catalog_place.lon is not None:
             row["lat"], row["lon"] = catalog_place.lat, catalog_place.lon
             row["place_label"] = catalog_place.name

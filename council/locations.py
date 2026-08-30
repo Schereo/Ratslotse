@@ -20,7 +20,7 @@ from . import places
 
 MODEL = os.environ.get("COUNCIL_LOCATION_MODEL", "google/gemini-2.5-flash-lite")
 
-KINDS = {"strasse", "platz", "gebaeude", "gebiet", "stadtteil", "gewaesser", "sonstiges"}
+KINDS = {"strasse", "platz", "gebaeude", "gebiet", "district", "gewaesser", "sonstiges"}
 
 _CURATED_GEOCODES = Path(__file__).with_name("oldenburg_location_geocodes.json")
 _GEOCODE_PRECISIONS = {"site", "area", "street", "route", "catalog"}
@@ -169,7 +169,7 @@ def valid_llm_location(name: str, kind: str, evidence: str) -> bool:
         return False
     if not _name_occurs_in_evidence(clean_name, clean_evidence):
         return False
-    if kind == "stadtteil":
+    if kind == "district":
         place = places.resolve(clean_name)
         if not place or not place.is_primary:
             return False
@@ -256,7 +256,7 @@ def extract_explicit_locations(text: str, *, source: str,
         slug = location_slug(place.name)
         found[slug] = {
             "name": place.name,
-            "kind": "stadtteil" if place.is_primary else "gebiet",
+            "kind": "district" if place.is_primary else "gebiet",
             "source": source,
             "evidence": match.group(0),
             "method": "ortskatalog",
