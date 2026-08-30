@@ -413,10 +413,10 @@ struct QuestionsView: View {
         researchStreamTask = nil
         let restored = (payload.object?["turns"]?.array ?? []).compactMap { value -> QuestionTurn? in
             guard let fields = value.object else { return nil }
-            let question = fields["frage"]?.string ?? fields["question"]?.string ?? ""
+            let question = fields["question"]?.string ?? ""
             guard !question.isEmpty else { return nil }
-            let answer = fields["antwort"]?.string ?? fields["answer"]?.string ?? ""
-            let evidence = fields["quellen"]?.object ?? [:]
+            let answer = fields["answer"]?.string ?? ""
+            let evidence = fields["sources"]?.object ?? [:]
             let sources = evidence["sources"]?.array?.compactMap {
                 try? $0.decoded(DecisionSummary.self)
             } ?? []

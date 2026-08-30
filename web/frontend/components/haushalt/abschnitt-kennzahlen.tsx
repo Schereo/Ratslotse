@@ -85,7 +85,7 @@ function Standtafel({
             {g.titel}
           </p>
           <p className="mt-1 max-w-[70ch] text-[13px] leading-relaxed text-muted-foreground">
-            {g.frage}
+            {g.question}
             {/* Der Hinweis steht EINMAL, an der ersten Gruppe. Dreimal
                 wiederholt las er sich wie eine Warnung. */}
             {i === 0 && (

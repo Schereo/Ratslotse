@@ -114,17 +114,18 @@ def test_share_extras_und_alte_zeilen(tmp_path):
     with store._conn:
         store._conn.execute("UPDATE qa_shares SET extras = NULL WHERE token = ?", (token,))
     alt = store.qa_share_get(token)
-    assert alt["antwort"] == "Antwort [5]." and alt["debatten"] == []
+    assert alt["answer"] == "Antwort [5]." and alt["debatten"] == []
     store.close()
 
-    # Alte Datei ohne die Spalte: Öffnen migriert, Lesen bleibt möglich.
+    # Alte Datei mit den ALTEN (deutschen) Spalten und ohne `extras`:
+    # Öffnen migriert beides — Umbenennung wie Nachtrag.
     import sqlite3
     conn = sqlite3.connect(pfad)
     conn.executescript(
         "ALTER TABLE qa_shares RENAME TO qa_shares_alt;"
         "CREATE TABLE qa_shares (token TEXT PRIMARY KEY, user_id INTEGER NOT NULL,"
         " frage TEXT NOT NULL, antwort TEXT NOT NULL, quellen TEXT, created TEXT NOT NULL);"
-        "INSERT INTO qa_shares SELECT token, user_id, frage, antwort, quellen, created"
+        "INSERT INTO qa_shares SELECT token, user_id, question, answer, sources, created"  # aus der schon migrierten Tabelle in die nachgebaute alte
         " FROM qa_shares_alt;"
         "DROP TABLE qa_shares_alt;")
     conn.commit()

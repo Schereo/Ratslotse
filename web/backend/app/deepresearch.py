@@ -236,7 +236,7 @@ def _melden_jetzt(job: DeepJob, ratslotse_db: str, status: str) -> None:
         store = Store(ratslotse_db)
         try:
             zeile = store.deep_job_get(job.id, job.user_id)
-            if not zeile or zeile.get("gesehen"):
+            if not zeile or zeile.get("seen"):
                 return
             owner = store.get_owner_delivery(job.user_id)
         finally:

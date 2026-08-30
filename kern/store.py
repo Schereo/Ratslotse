@@ -278,9 +278,9 @@ CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_gespraech_turns(conversa
 CREATE TABLE IF NOT EXISTS qa_shares (
     token    TEXT PRIMARY KEY,
     user_id  INTEGER NOT NULL,
-    frage    TEXT NOT NULL,
-    antwort  TEXT NOT NULL,
-    quellen  TEXT,                  -- JSON [{id, title, session_date, committee, outcome}]
+    question TEXT NOT NULL,
+    answer   TEXT NOT NULL,
+    sources  TEXT,                  -- JSON [{id, title, session_date, committee, outcome}]
     created  TEXT NOT NULL,
     extras   TEXT                   -- JSON {debatten, presse, anlagen, parteien}
 );
@@ -294,11 +294,11 @@ CREATE TABLE IF NOT EXISTS qa_shares (
 CREATE TABLE IF NOT EXISTS deep_research_jobs (
     id       TEXT PRIMARY KEY,      -- unerratbares Token
     user_id  INTEGER NOT NULL,
-    frage    TEXT NOT NULL,
+    question TEXT NOT NULL,
     status   TEXT NOT NULL,         -- laeuft | fertig | teilbericht | gestoppt | abgebrochen | fehler
-    bericht  TEXT,                  -- fertiger Berichtstext (Markdown mit [id]-Fußnoten)
-    quellen  TEXT,                  -- JSON {sources, presse, debatten, planungen, cited, facetten, gelesen, zeitraum}
-    gesehen  INTEGER NOT NULL DEFAULT 0,  -- Client hat den fertigen Bericht gerendert
+    report   TEXT,                  -- fertiger Berichtstext (Markdown mit [id]-Fußnoten)
+    sources  TEXT,                  -- JSON {sources, presse, debatten, planungen, cited, facetten, gelesen, zeitraum}
+    seen     INTEGER NOT NULL DEFAULT 0,  -- Client hat den fertigen Bericht gerendert
     created  TEXT NOT NULL,
     updated  TEXT NOT NULL
 );
@@ -566,6 +566,11 @@ class Store:
             "nwz_username", "nwz_verified_at", "nwz_fulltext_allowed"])
         # Die Schnittstelle spricht Englisch, die Spalten ziehen nach.
         self._spalten_umbenennen("qa_gespraeche", [("titel", "title")])
+        self._spalten_umbenennen("qa_shares", [
+            ("frage", "question"), ("antwort", "answer"), ("quellen", "sources")])
+        self._spalten_umbenennen("deep_research_jobs", [
+            ("frage", "question"), ("bericht", "report"),
+            ("quellen", "sources"), ("gesehen", "seen")])
         for tabelle in ("vorlage_follows", "bookmarks"):
             self._spalten_umbenennen(tabelle, [("vorlage_nr", "template_number")])
         self._spalten_umbenennen("qa_gespraech_turns", [
@@ -1639,7 +1644,7 @@ class Store:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "INSERT INTO qa_shares (token, user_id, frage, antwort, quellen, created, extras) "
+                "INSERT INTO qa_shares (token, user_id, question, answer, sources, created, extras) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (token, user_id, frage[:300], antwort[:8000],
                  json.dumps(quellen or [], ensure_ascii=False), now,
@@ -1649,12 +1654,12 @@ class Store:
     def qa_share_get(self, token: str) -> dict | None:
         """Öffentliche Sicht eines Snapshots — OHNE user_id."""
         row = self._conn.execute(
-            "SELECT frage, antwort, quellen, created, extras FROM qa_shares WHERE token = ?",
+            "SELECT question, answer, sources, created, extras FROM qa_shares WHERE token = ?",
             (token,)).fetchone()
         if not row:
             return None
         try:
-            quellen = json.loads(row["quellen"] or "[]")
+            quellen = json.loads(row["sources"] or "[]")
         except (ValueError, TypeError):
             quellen = []
         # Vor dem Bausteine-Nachtrag geteilte Antworten haben keine extras —
@@ -1663,8 +1668,8 @@ class Store:
             extras = json.loads(row["extras"] or "{}")
         except (ValueError, TypeError):
             extras = {}
-        return {"frage": row["frage"], "antwort": row["antwort"],
-                "quellen": quellen, "created": row["created"],
+        return {"question": row["question"], "answer": row["answer"],
+                "sources": quellen, "created": row["created"],
                 "debatten": extras.get("debatten") or [],
                 "presse": extras.get("presse") or [],
                 "anlagen": extras.get("anlagen") or [],
@@ -1696,7 +1701,7 @@ class Store:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "INSERT INTO deep_research_jobs (id, user_id, frage, status, created, updated) "
+                "INSERT INTO deep_research_jobs (id, user_id, question, status, created, updated) "
                 "VALUES (?, ?, ?, 'laeuft', ?, ?)", (job_id, user_id, frage[:300], now, now))
         return job_id
 
@@ -1707,13 +1712,13 @@ class Store:
         with self._conn:
             self._conn.execute(
                 "UPDATE deep_research_jobs SET status = ?, "
-                "bericht = COALESCE(?, bericht), quellen = COALESCE(?, quellen), "
+                "report = COALESCE(?, report), sources = COALESCE(?, sources), "
                 "updated = ? WHERE id = ?", (status, bericht, quellen_json, now, job_id))
 
     def deep_job_get(self, job_id: str, user_id: int) -> dict | None:
         """Job-Zeile — nur für den Eigentümer."""
         row = self._conn.execute(
-            "SELECT id, frage, status, bericht, quellen, gesehen, created, updated "
+            "SELECT id, question, status, report, sources, seen, created, updated "
             "FROM deep_research_jobs WHERE id = ? AND user_id = ?",
             (job_id, user_id)).fetchone()
         return dict(row) if row else None
@@ -1723,7 +1728,7 @@ class Store:
         App-Neustart einen laufenden Job (oder frisch fertigen Bericht)
         wiederfindet, ohne sich die ID gemerkt haben zu müssen."""
         row = self._conn.execute(
-            "SELECT id, frage, status, gesehen, created, updated "
+            "SELECT id, question, status, seen, created, updated "
             "FROM deep_research_jobs WHERE user_id = ? ORDER BY created DESC, id LIMIT 1",
             (user_id,)).fetchone()
         return dict(row) if row else None
@@ -1749,7 +1754,7 @@ class Store:
         """Bericht wurde gerendert — nicht erneut ungefragt einblenden."""
         with self._conn:
             self._conn.execute(
-                "UPDATE deep_research_jobs SET gesehen = 1 WHERE id = ? AND user_id = ?",
+                "UPDATE deep_research_jobs SET seen = 1 WHERE id = ? AND user_id = ?",
                 (job_id, user_id))
 
     def deep_jobs_verwaiste_beenden(self) -> int:

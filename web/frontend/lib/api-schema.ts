@@ -5131,12 +5131,10 @@ export interface components {
         QaShareBody: {
             /** Anlagen */
             anlagen?: components["schemas"]["QaShareAnlage"][];
-            /** Antwort */
-            antwort: string;
+            /** Answer */
+            answer: string;
             /** Debatten */
             debatten?: components["schemas"]["QaShareDebatte"][];
-            /** Frage */
-            frage: string;
             /** Grafik */
             grafik?: {
                 [key: string]: unknown;
@@ -5145,8 +5143,10 @@ export interface components {
             parteien?: components["schemas"]["QaSharePartei"][];
             /** Presse */
             presse?: components["schemas"]["QaSharePresse"][];
-            /** Quellen */
-            quellen?: components["schemas"]["QaShareQuelle"][];
+            /** Question */
+            question: string;
+            /** Sources */
+            sources?: components["schemas"]["QaShareQuelle"][];
         };
         /** QaShareDebatte */
         QaShareDebatte: {
@@ -10898,4 +10898,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 7ca85c86dde0127c796dfa2dd53460d40f61a0e3a881a52a27f9b0a528953458
+// vertrag-sha256: 0b0b9be5fd4818a79cc0ef369945dc7fe1ae095304f0b5dc8afe089426b6d9fa

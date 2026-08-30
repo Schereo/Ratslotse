@@ -3616,10 +3616,10 @@
             "title": "Anlagen",
             "type": "array"
           },
-          "antwort": {
+          "answer": {
             "maxLength": 8000,
             "minLength": 1,
-            "title": "Antwort",
+            "title": "Answer",
             "type": "string"
           },
           "debatten": {
@@ -3629,12 +3629,6 @@
             "maxItems": 20,
             "title": "Debatten",
             "type": "array"
-          },
-          "frage": {
-            "maxLength": 300,
-            "minLength": 1,
-            "title": "Frage",
-            "type": "string"
           },
           "grafik": {
             "additionalProperties": true,
@@ -3660,18 +3654,24 @@
             "title": "Presse",
             "type": "array"
           },
-          "quellen": {
+          "question": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "sources": {
             "items": {
               "$ref": "#/components/schemas/QaShareQuelle"
             },
             "maxItems": 40,
-            "title": "Quellen",
+            "title": "Sources",
             "type": "array"
           }
         },
         "required": [
-          "frage",
-          "antwort"
+          "question",
+          "answer"
         ],
         "title": "QaShareBody",
         "type": "object"

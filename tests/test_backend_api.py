@@ -2949,9 +2949,9 @@ def test_qa_share_roundtrip(client):
     GET liefert ihn ÖFFENTLICH (ohne Login) und ohne Konto-Daten."""
     _register(client)
     r = client.post("/api/council/qa-share", json={
-        "frage": "Was wurde zum Stadion entschieden?",
-        "antwort": "Der Rat stimmte zu [5].",
-        "quellen": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
+        "question": "Was wurde zum Stadion entschieden?",
+        "answer": "Der Rat stimmte zu [5].",
+        "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
                      "committee": "Rat", "outcome": "angenommen"}],
     })
     assert r.status_code == 201
@@ -2962,8 +2962,8 @@ def test_qa_share_roundtrip(client):
     r = client.get(f"/api/council/qa-share/{token}")
     assert r.status_code == 200
     body = r.json()
-    assert body["antwort"] == "Der Rat stimmte zu [5]."
-    assert body["quellen"][0]["title"] == "Stadionneubau"
+    assert body["answer"] == "Der Rat stimmte zu [5]."
+    assert body["sources"][0]["title"] == "Stadionneubau"
     assert "user_id" not in body
 
     # Alte Snapshots (ohne Bausteine) liefern leere Listen statt zu fehlen.
@@ -2973,7 +2973,7 @@ def test_qa_share_roundtrip(client):
     assert client.get("/api/council/qa-share/gibtsnicht").status_code == 404
     # Ohne Login kein Anlegen.
     assert client.post("/api/council/qa-share", json={
-        "frage": "x", "antwort": "y", "quellen": []}).status_code in (401, 403)
+        "question": "x", "answer": "y", "sources": []}).status_code in (401, 403)
 
 
 def test_qa_share_traegt_bausteine(client):
@@ -2982,9 +2982,9 @@ def test_qa_share_traegt_bausteine(client):
     Snapshot (vorher sah der Empfänger nur Text + Beschlüsse)."""
     _register(client)
     r = client.post("/api/council/qa-share", json={
-        "frage": "Was sagt der Rat zum Stadion?",
-        "antwort": "Der Rat stimmte zu [5].",
-        "quellen": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
+        "question": "Was sagt der Rat zum Stadion?",
+        "answer": "Der Rat stimmte zu [5].",
+        "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
                      "committee": "Rat", "outcome": "angenommen"}],
         "debatten": [{"sprecher": "Ratsherr Wenzel", "partei": "SPD", "art": "rede",
                       "top": "6.1 Stadionneubau", "auszug": "Warnte vor einem Millionengrab.",
@@ -3028,9 +3028,9 @@ def test_qa_share_traegt_bausteine(client):
 def test_qa_share_public_report_and_admin_removal(client):
     _register(client)
     made = client.post("/api/council/qa-share", json={
-        "frage": "Was wurde beschlossen?",
-        "antwort": "Eine automatisch erzeugte Antwort [1].",
-        "quellen": [],
+        "question": "Was wurde beschlossen?",
+        "answer": "Eine automatisch erzeugte Antwort [1].",
+        "sources": [],
     })
     assert made.status_code == 201
     token = made.json()["token"]
@@ -3070,9 +3070,9 @@ def test_qa_share_filters_objectionable_or_embedded_web_content(client):
         ("Normale Frage", "<script>alert(1)</script>"),
     ):
         response = client.post("/api/council/qa-share", json={
-            "frage": frage,
-            "antwort": antwort,
-            "quellen": [],
+            "question": frage,
+            "answer": antwort,
+            "sources": [],
         })
         assert response.status_code == 422
         assert "öffentlicher Link" in response.json()["detail"]
@@ -5042,15 +5042,15 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
 
     # Persistierter Endzustand + Wiederfinden über /aktuell.
     snap = client.get(f"/api/council/deep-research/{job_id}").json()
-    assert snap["status"] == "fertig" and "[5]" in snap["bericht"]
-    assert snap["quellen"]["cited"] == [5]
-    assert snap["quellen"]["planungen"][0]["vorlage_titel"].startswith("Finanzierungsbeschluss")
-    assert snap["quellen"]["anlagen"][0]["template_number"] == "26/0100"
+    assert snap["status"] == "fertig" and "[5]" in snap["report"]
+    assert snap["sources"]["cited"] == [5]
+    assert snap["sources"]["planungen"][0]["vorlage_titel"].startswith("Finanzierungsbeschluss")
+    assert snap["sources"]["anlagen"][0]["template_number"] == "26/0100"
     akt = client.get("/api/council/deep-research/aktuell").json()
-    assert akt["job"]["id"] == job_id and akt["job"]["gesehen"] == 0
+    assert akt["job"]["id"] == job_id and akt["job"]["seen"] == 0
     assert akt["frei"] == 4  # fertig zählt weiter gegen das Tageskontingent
     client.post(f"/api/council/deep-research/{job_id}/gesehen")
-    assert client.get("/api/council/deep-research/aktuell").json()["job"]["gesehen"] == 1
+    assert client.get("/api/council/deep-research/aktuell").json()["job"]["seen"] == 1
 
     # Fremder Nutzer sieht NICHTS von diesem Job.
     client.cookies.clear()
@@ -5114,8 +5114,8 @@ def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
 
     # Anzeige und DB behalten die getippte Frage, der Kontext die aufgelöste.
     snap = client.get(f"/api/council/deep-research/{job_id}").json()
-    assert snap["frage"] == "Nochmal bitte ausführlich"
-    assert snap["quellen"]["kontext"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
+    assert snap["question"] == "Nochmal bitte ausführlich"
+    assert snap["sources"]["kontext"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
 
     # Erste Frage eines Gesprächs (kein Verlauf): keine Auflösung, kein Call.
     gesehen.clear()
@@ -5231,8 +5231,8 @@ def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
         assert done["teilbericht"] is True
         snap = client.get(f"/api/council/deep-research/{job_id}").json()
         assert snap["status"] == "teilbericht"
-        assert snap["bericht"].startswith("**Teilbericht — 2 von 5 Facetten.**")
-        assert "B-Plan" in snap["bericht"]  # fehlende Facetten werden benannt
+        assert snap["report"].startswith("**Teilbericht — 2 von 5 Facetten.**")
+        assert "B-Plan" in snap["report"]  # fehlende Facetten werden benannt
         assert store.deep_jobs_heute(uid) == 0  # weder gestoppt noch teilbericht zählen
 
         # Verwaister „laeuft"-Job (Neustart): Snapshot meldet ehrlich Fehler …
