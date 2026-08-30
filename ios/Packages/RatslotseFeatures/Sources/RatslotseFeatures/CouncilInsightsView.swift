@@ -368,19 +368,9 @@ struct CouncilInsightsView: View {
         if let trends, !trends.quarters.isEmpty {
             analysisIntro(
                 title: "Was bewegt den Rat?",
-                detail: "Die letzten Quartale zeigen Aktivität und erkanntes Finanzvolumen – ohne daraus automatisch Wirkung abzuleiten."
+                detail: "Rückblicke und neue Themen zeigen, womit sich der Rat zuletzt beschäftigt hat – ohne daraus automatisch Wirkung abzuleiten."
             )
             if !fieldRecaps.isEmpty { fieldRecapsView }
-            RatsSectionPanel("Beschlüsse je Quartal", detail: "Farben zeigen die Themenfelder. Tippe auf ein Quartal für die Beschlüsse dahinter.", symbol: nil) {
-                InteractiveStackedTrendChart(trends: trends) { quarter in
-                    drilldown = quarterDrilldown(quarter)
-                }
-            }
-            RatsSectionPanel("Erkanntes Finanzvolumen", detail: "Grobe Größenordnung aus Beschlusstexten. Tippe auf einen Balken für Zeitraum und größten Einzelposten.", symbol: nil) {
-                InteractiveMoneyTrendChart(trends: trends) { quarter in
-                    drilldown = quarterDrilldown(quarter)
-                }
-            }
             if !trends.emerging.isEmpty {
                 RatsSectionPanel("Neue Themen", detail: "Begriffe, die zuletzt häufiger auftauchen.", symbol: nil) {
                     FlowLayout(spacing: 7) {
@@ -812,27 +802,6 @@ struct CouncilInsightsView: View {
         }
     }
 
-    private func quarterDrilldown(_ quarter: String) -> AnalysisDrilldown {
-        let parts = quarter.split(separator: "-")
-        guard parts.count == 2,
-              let year = Int(parts[0]),
-              let quarterNumber = Int(parts[1].dropFirst()),
-              (1...4).contains(quarterNumber) else {
-            return AnalysisDrilldown(title: quarter, query: [])
-        }
-        let startMonth = (quarterNumber - 1) * 3 + 1
-        let endMonth = startMonth + 2
-        let calendar = Calendar(identifier: .gregorian)
-        let start = calendar.date(from: DateComponents(year: year, month: startMonth, day: 1))!
-        let nextMonth = calendar.date(from: DateComponents(year: year, month: endMonth + 1, day: 1))!
-        let end = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
-        let formatter = DateFormatter(); formatter.calendar = calendar; formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.dateFormat = "yyyy-MM-dd"
-        return AnalysisDrilldown(
-            title: "\(shortQuarter(quarter)) · Beschlüsse",
-            query: [.init(name: "date_from", value: formatter.string(from: start)), .init(name: "date_to", value: formatter.string(from: end))]
-        )
-    }
-
     private func toggleGoal(_ goal: CouncilGoal) {
         withAnimation(.snappy) {
             if expandedGoals.contains(goal.key) { expandedGoals.remove(goal.key); return }
@@ -961,12 +930,6 @@ struct CouncilInsightsView: View {
         } catch { self.error = error.localizedDescription }
     }
 
-    private func shortQuarter(_ raw: String) -> String {
-        let parts = raw.split(separator: "-")
-        guard parts.count == 2 else { return raw }
-        return "\(parts[1]) ’\(parts[0].suffix(2))"
-    }
-
     private func initials(_ name: String) -> String {
         name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
     }
@@ -1003,119 +966,6 @@ private struct MiniBarChart: View {
             }
         }
         .frame(height: 145)
-    }
-}
-
-private struct InteractiveStackedTrendChart: View {
-    let trends: TrendResponse
-    let select: (String) -> Void
-    @State private var selectedQuarter: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Chart {
-                ForEach(trends.quarters, id: \.self) { quarter in
-                    let index = trends.quarters.firstIndex(of: quarter) ?? 0
-                    ForEach(Array(trends.fields.enumerated()), id: \.element) { fieldIndex, field in
-                        BarMark(
-                            x: .value("Quartal", quarter),
-                            y: .value("Beschlüsse", trends.byField[field]?[safe: index] ?? 0)
-                        )
-                        .foregroundStyle(chartColor(fieldIndex))
-                        .cornerRadius(2)
-                    }
-                }
-                if let selectedQuarter {
-                    RuleMark(x: .value("Auswahl", selectedQuarter))
-                        .foregroundStyle(RatsColor.text.opacity(0.22))
-                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                }
-            }
-            .chartXAxis {
-                AxisMarks { value in AxisValueLabel { Text(short(value.as(String.self) ?? "")) } }
-            }
-            .chartYAxis { AxisMarks(position: .leading) }
-            .chartXSelection(value: $selectedQuarter)
-            .frame(height: 220)
-            .onChange(of: selectedQuarter) { _, value in if let value { select(value) } }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(Array(trends.fields.enumerated()), id: \.element) { index, field in
-                        HStack(spacing: 5) {
-                            RoundedRectangle(cornerRadius: 2).fill(chartColor(index)).frame(width: 9, height: 9)
-                            Text(trends.fieldLabels[field] ?? field).font(RatsFont.body(9.5)).foregroundStyle(RatsColor.secondary)
-                        }
-                    }
-                }
-            }
-        }
-        .accessibilityHint("Ein Quartal auswählen, um die zugehörigen Beschlüsse zu öffnen")
-    }
-
-    private func chartColor(_ index: Int) -> Color {
-        [RatsColor.primary, RatsColor.signal, RatsColor.success, Color.purple, Color.pink, Color.indigo, Color.teal, Color.orange][index % 8]
-    }
-
-    private func short(_ raw: String) -> String {
-        let parts = raw.split(separator: "-")
-        guard parts.count == 2 else { return raw }
-        return "\(parts[1]) ’\(parts[0].suffix(2))"
-    }
-}
-
-private struct InteractiveMoneyTrendChart: View {
-    let trends: TrendResponse
-    let select: (String) -> Void
-    @State private var selectedQuarter: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Chart {
-                ForEach(Array(trends.quarters.enumerated()), id: \.element) { index, quarter in
-                    BarMark(x: .value("Quartal", quarter), y: .value("Euro", trends.money[safe: index] ?? 0))
-                        .foregroundStyle(RatsColor.success.gradient)
-                        .cornerRadius(5)
-                }
-            }
-            .chartXAxis {
-                AxisMarks { value in AxisValueLabel { Text(short(value.as(String.self) ?? "")) } }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading) { value in
-                    AxisGridLine(); AxisValueLabel { Text(compactEuro(value.as(Double.self) ?? 0)) }
-                }
-            }
-            .chartXSelection(value: $selectedQuarter)
-            .frame(height: 210)
-            .onChange(of: selectedQuarter) { _, value in if let value { select(value) } }
-
-            if let selectedQuarter,
-               let index = trends.quarters.firstIndex(of: selectedQuarter) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(short(selectedQuarter)) · \(compactEuro(trends.money[safe: index] ?? 0))")
-                        .font(RatsFont.body(12, weight: .semibold))
-                    if let driver = trends.moneyDrivers[safe: index] ?? nil {
-                        Text("Größter Einzelposten: \(driver.title) · \(compactEuro(driver.eur))")
-                            .font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary)
-                    }
-                }
-                .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                .background(RatsColor.success.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 10))
-            }
-        }
-    }
-
-    private func short(_ raw: String) -> String {
-        let parts = raw.split(separator: "-")
-        guard parts.count == 2 else { return raw }
-        return "\(parts[1]) ’\(parts[0].suffix(2))"
-    }
-
-    private func compactEuro(_ value: Double) -> String {
-        if value >= 1_000_000 { return String(format: "%.1f Mio. €", value / 1_000_000) }
-        if value >= 1_000 { return String(format: "%.0f Tsd. €", value / 1_000) }
-        return String(format: "%.0f €", value)
     }
 }
 
