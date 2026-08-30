@@ -83,7 +83,8 @@ def main() -> dict:
         print("PASST NICHT!")
         print(
             "  Am Modell wurde gedreht, ohne die Blätter neu zu backen.\n"
-            f"  Im Social-Repo:  node studio/sprites.mjs --nach assets/lotti --standbilder\n"
+            "  Im Social-Repo:  node studio/sprites.mjs --nach assets/lotti --standbilder\n"
+            "                   node studio/jahreszeiten-backen.mjs\n"
             "  Danach dieses Skript noch einmal."
         )
     print(f"Regungen: {len(verzeichnis.get('regungen', {}))}")
