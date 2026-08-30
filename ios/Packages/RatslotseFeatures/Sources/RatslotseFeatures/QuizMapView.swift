@@ -61,7 +61,9 @@ struct QuizMapView: View {
                 if let error {
                     ErrorCard(message: error) { Task { await load() } }.padding(18)
                 } else {
-                    ProgressView("Stadtkarte laden …").frame(maxWidth: .infinity, maxHeight: .infinity)
+                    RatsLoadingState(message: "Stadtkarte wird geladen …")
+                        .padding(18)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {
                 MapReader { proxy in

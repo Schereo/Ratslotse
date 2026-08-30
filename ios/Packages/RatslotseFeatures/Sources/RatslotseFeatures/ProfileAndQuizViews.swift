@@ -59,7 +59,8 @@ struct PublicProfileView: View {
                 } else if let error {
                     ErrorCard(message: error) { Task { await load() } }
                 } else {
-                    ProgressView("Profil laden …").frame(maxWidth: .infinity, minHeight: 260)
+                    RatsLoadingState(message: "Profil wird geladen …")
+                        .frame(maxWidth: .infinity, minHeight: 260)
                 }
             }
             .frame(maxWidth: usesWidePersonLayout ? 1120 : usesTabletOverview ? 1040 : 760, alignment: .leading)
@@ -1180,7 +1181,7 @@ private struct PersonProfileOverview: View {
                 }
 
                 if isLoadingSpeeches {
-                    ProgressView().frame(maxWidth: .infinity).padding(.vertical, 8)
+                    RatsInlineLoadingState(message: "Redebeiträge werden geladen …", animation: .searching)
                 } else if speeches.count < totalSpeeches {
                     Button { Task { await loadSpeeches(reset: false) } } label: {
                         Text("Mehr anzeigen · noch \(totalSpeeches - speeches.count)")
@@ -1724,7 +1725,7 @@ struct QuizView: View {
             Divider().overlay(RatsColor.separator)
             if let areas {
                 quizConfiguration(areas)
-            } else { ProgressView("Gebiete laden …") }
+            } else { RatsInlineLoadingState(message: "Gebiete werden geladen …", animation: .searching) }
         }
     }
 

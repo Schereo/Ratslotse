@@ -16,6 +16,8 @@ func ratsDebugValue(_ key: String) -> String? {
     }
     return nil
 }
+#else
+func ratsDebugValue(_: String) -> String? { nil }
 #endif
 
 public struct NativeRootView: View {
@@ -256,11 +258,9 @@ private struct LaunchLoadingView: View {
     var body: some View {
         ZStack {
             RatsColor.page.ignoresSafeArea()
-
-            // Das identische Asset wie im systemeigenen UILaunchScreen hält
-            // Größe und Position während des Bootstrap stabil. Ein zweites,
-            // kleineres Motiv oder ein Spinner würde wie ein Layoutsprung
-            // wirken, obwohl lediglich der Sitzungszustand geladen wird.
+            // The exact same full-screen artwork is used by UILaunchScreen.
+            // Keeping it here prevents Lotti from changing size while the
+            // session is restored. Real in-app loading states animate her.
             Image("Splash")
                 .renderingMode(.original)
                 .accessibilityHidden(true)

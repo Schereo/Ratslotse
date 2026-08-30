@@ -55,13 +55,7 @@ struct BadgeCollectionCard: View {
                     .padding(.top, 2)
                 }
             } else {
-                HStack(spacing: 10) {
-                    ProgressView().tint(RatsColor.primary)
-                    Text("Sammlung wird geladen …")
-                        .font(RatsFont.body(12, weight: .medium))
-                        .foregroundStyle(RatsColor.secondary)
-                }
-                .frame(minHeight: 54)
+                RatsInlineLoadingState(message: "Sammlung wird geladen …", animation: .searching)
             }
         }
         .task { await model.refreshBadges() }

@@ -125,7 +125,7 @@ private struct AdminStatsView: View {
                     }.ratsCard()
                 }
             } else if let error { ErrorCard(message: error) { Task { await load() } } }
-            else { ProgressView().frame(maxWidth: .infinity).padding(40) }
+            else { RatsLoadingState(message: "Admin-Statistik wird geladen …").padding(.vertical, 18) }
         }.task(id: range) { await load() }
     }
 
@@ -202,7 +202,8 @@ private struct AdminLLMView: View {
             }
             Chart(data.series) { point in LineMark(x: .value("Tag", point.date), y: .value("Kosten", point.cost)).foregroundStyle(RatsColor.primary); AreaMark(x: .value("Tag", point.date), y: .value("Kosten", point.cost)).foregroundStyle(RatsColor.primary.opacity(0.12)) }.frame(height: 180).ratsCard()
             ForEach(data.features) { feature in HStack { VStack(alignment: .leading) { Text(feature.feature.replacingOccurrences(of: "_", with: " ")).font(RatsFont.body(14, weight: .semibold)); Text(feature.models.joined(separator: ", ")).font(RatsFont.body(10)).foregroundStyle(RatsColor.secondary) }; Spacer(); Text("\(feature.calls) · $\(feature.cost, specifier: "%.2f")").font(RatsFont.mono(11)) }.ratsCard() }
-        } else if let error { ErrorCard(message: error) { Task { await load() } } } else { ProgressView().padding(40) }
+        } else if let error { ErrorCard(message: error) { Task { await load() } } }
+        else { RatsLoadingState(message: "Nutzungsdaten werden geladen …").padding(.vertical, 18) }
     }.task { await load() } }
     private func metric(_ title: String, _ value: String, _ detail: String) -> some View { VStack(alignment: .leading, spacing: 6) { MonoKicker(title); Text(value).font(RatsFont.title(27)); if !detail.isEmpty { Text(detail).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary) } }.frame(maxWidth: .infinity, alignment: .leading).ratsCard() }
     private func load() async { do { data = try await model.api.get("/api/admin/llm-usage"); error = nil } catch { self.error = error.localizedDescription } }

@@ -11,6 +11,23 @@ import Testing
     #expect(String(describing: type(of: app)) == "RatslotseApp")
 }
 
+@MainActor
+@Test func everyLottiAnimationHasFramesInTheAppBundle() {
+    for animation in LottiAnimation.allCases {
+        #expect(
+            lottiSpriteFramesAreAvailable(animation),
+            "Missing frames for \(animation.rawValue)"
+        )
+    }
+    #expect(LottiAnimation.juggling.sourceFrameCount == 12)
+}
+
+@Test func lottiAnimationFrameTimingLoopsPredictably() {
+    #expect(lottiSpriteFrameIndex(elapsed: 0, frameCount: 12, fps: 12) == 0)
+    #expect(lottiSpriteFrameIndex(elapsed: 0.5, frameCount: 12, fps: 12) == 6)
+    #expect(lottiSpriteFrameIndex(elapsed: 1, frameCount: 12, fps: 12) == 0)
+}
+
 @Test func bundledOldenburgMapIsValidGeoJSON() throws {
     let url = try #require(Bundle.main.url(forResource: "stadtteile-oldenburg", withExtension: "json"))
     let objects = try MKGeoJSONDecoder().decode(Data(contentsOf: url))

@@ -140,16 +140,12 @@ struct RatsEmptyState: View {
     let title: String
     let message: String
     let symbol: String
+    var animation: LottiAnimation = .searching
 
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: symbol)
-                .font(.system(size: 23, weight: .medium))
-                .foregroundStyle(RatsColor.primary)
-                .frame(width: 54, height: 54)
-                .background(RatsColor.primary.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .accessibilityHidden(true)
+            LottiSpriteView(animation: animation)
+                .frame(width: 86, height: 86)
             Text(title)
                 .font(RatsFont.title(20))
                 .foregroundStyle(RatsColor.text)
@@ -168,15 +164,39 @@ struct RatsLoadingState: View {
     let message: String
 
     var body: some View {
-        HStack(spacing: 12) {
-            ProgressView()
-                .tint(RatsColor.primary)
-            Text(message)
-                .font(RatsFont.body(13, weight: .medium))
-                .foregroundStyle(RatsColor.secondary)
+        HStack(spacing: 14) {
+            LottiSpriteView(animation: .juggling)
+                .frame(width: 72, height: 72)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Lotti ist dran")
+                    .font(RatsFont.body(13.5, weight: .semibold))
+                    .foregroundStyle(RatsColor.text)
+                Text(message)
+                    .font(RatsFont.body(12))
+                    .foregroundStyle(RatsColor.secondary)
+            }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, minHeight: 88)
+        .frame(maxWidth: .infinity, minHeight: 96)
         .ratsCard()
+    }
+}
+
+struct RatsInlineLoadingState: View {
+    let message: String
+    var animation: LottiAnimation = .juggling
+
+    var body: some View {
+        HStack(spacing: 10) {
+            LottiSpriteView(animation: animation)
+                .frame(width: 46, height: 46)
+            Text(message)
+                .font(RatsFont.body(12, weight: .medium))
+                .foregroundStyle(RatsColor.secondary)
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 54)
+        .accessibilityElement(children: .combine)
     }
 }
 

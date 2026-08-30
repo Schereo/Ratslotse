@@ -39,24 +39,35 @@ struct Lotti3DView: View {
     let scene: Lotti3DScene
     var animated = true
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isFloating = false
-
     var body: some View {
-        Image(scene.assetName)
-            .resizable()
-            .renderingMode(.original)
-            .interpolation(.high)
-            .scaledToFit()
-            .offset(y: isFloating ? -2.5 : 2.5)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(scene.accessibilityLabel)
-            .task(id: scene.assetName) {
-                guard animated, !reduceMotion else { return }
-                withAnimation(.easeInOut(duration: 1.75).repeatForever(autoreverses: true)) {
-                    isFloating = true
-                }
-            }
+        if let animation = scene.spriteAnimation {
+            LottiSpriteView(
+                animation: animation,
+                animated: animated,
+                accessibilityLabel: scene.accessibilityLabel
+            )
+        } else {
+            Image(scene.assetName)
+                .resizable()
+                .renderingMode(.original)
+                .interpolation(.high)
+                .scaledToFit()
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(scene.accessibilityLabel)
+        }
+    }
+}
+
+private extension Lotti3DScene {
+    var spriteAnimation: LottiAnimation? {
+        switch self {
+        case .wave: .wave
+        case .questions: .question
+        case .reading: .thinking
+        case .explain: .explain
+        case .celebrate: .celebrate
+        case .children: nil
+        }
     }
 }
 
@@ -68,8 +79,8 @@ struct LottiProfileAvatar: View {
     var size: CGFloat = 54
     var isSelected = false
 
-    private var scene: Lotti3DScene {
-        let scenes: [Lotti3DScene] = [.wave, .reading, .questions]
+    private var animation: LottiAnimation {
+        let scenes: [LottiAnimation] = [.wave, .thinking, .question, .idea, .like]
         let index = Int(accountID.magnitude % UInt(scenes.count))
         return scenes[index]
     }
@@ -83,11 +94,7 @@ struct LottiProfileAvatar: View {
             shape
                 .fill(RatsColor.primary.opacity(isSelected ? 0.20 : 0.11))
 
-            Image(scene.assetName)
-                .resizable()
-                .renderingMode(.original)
-                .interpolation(.high)
-                .scaledToFit()
+            LottiSpriteView(animation: animation, animated: false)
                 .padding(size * 0.055)
         }
         .frame(width: size, height: size)

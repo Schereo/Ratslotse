@@ -1369,7 +1369,8 @@ private struct QuestionTurnView: View {
 
             if let status = turn.status {
                 HStack(spacing: 9) {
-                    ProgressView().controlSize(.small).tint(RatsColor.primary)
+                    LottiSpriteView(animation: .thinking)
+                        .frame(width: 38, height: 38)
                     Text(status).font(RatsFont.body(13)).foregroundStyle(RatsColor.secondary)
                 }
             }
@@ -2059,7 +2060,10 @@ private struct PartyOpinionsView: View {
                                     .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
                             }
                         } else {
-                            ProgressView("Debatten werden automatisch ausgewertet …")
+                            RatsInlineLoadingState(
+                                message: "Debatten werden automatisch ausgewertet …",
+                                animation: .thinking
+                            )
                         }
                     }
                     .padding(.top, 10)

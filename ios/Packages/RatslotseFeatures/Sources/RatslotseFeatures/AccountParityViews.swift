@@ -19,13 +19,7 @@ struct ConversationSettingsCard: View {
             symbol: "bubble.left.and.bubble.right.fill"
         ) {
             if isLoading {
-                HStack(spacing: 10) {
-                    ProgressView().tint(RatsColor.primary)
-                    Text("Einstellung wird geladen …")
-                        .font(RatsFont.body(12))
-                        .foregroundStyle(RatsColor.secondary)
-                }
-                .frame(minHeight: 46)
+                RatsInlineLoadingState(message: "Einstellung wird geladen …", animation: .searching)
             } else {
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {

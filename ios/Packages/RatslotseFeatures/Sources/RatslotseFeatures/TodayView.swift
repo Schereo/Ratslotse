@@ -1215,8 +1215,10 @@ private struct CouncilPauseCard: View {
     }
 
     private var returnLabel: String? {
-        if let next = pause.nextSessionDate { return "Nächste veröffentlichte Sitzung: \(RatsDate.short(next))" }
-        if let until = pause.until { return "Pause bis \(RatsDate.short(until))" }
+        if let next = pause.nextSessionDate {
+            return "Nächste veröffentlichte Sitzung: \(RatsDate.short(next) ?? next)"
+        }
+        if let until = pause.until { return "Pause bis \(RatsDate.short(until) ?? until)" }
         return nil
     }
 }
@@ -1243,12 +1245,17 @@ struct ErrorCard: View {
     let retry: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Das hat nicht geklappt", systemImage: "exclamationmark.triangle")
-                .font(RatsFont.body(14, weight: .semibold))
-                .foregroundStyle(RatsColor.warning)
-            Text(message).font(RatsFont.body(13)).foregroundStyle(RatsColor.secondary)
-            Button("Noch einmal versuchen", action: retry).buttonStyle(SecondaryButtonStyle())
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Das hat nicht geklappt")
+                    .font(RatsFont.body(14, weight: .semibold))
+                    .foregroundStyle(RatsColor.warning)
+                Text(message).font(RatsFont.body(13)).foregroundStyle(RatsColor.secondary)
+                Button("Noch einmal versuchen", action: retry).buttonStyle(SecondaryButtonStyle())
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            LottiSpriteView(animation: .shakeHead)
+                .frame(width: 74, height: 74)
         }
         .ratsCard()
     }

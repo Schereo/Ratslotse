@@ -1330,7 +1330,8 @@ struct DecisionDetailView: View {
                 } else if let error {
                     ErrorCard(message: error) { Task { await load() } }
                 } else {
-                    ProgressView("Beschluss laden …").frame(maxWidth: .infinity, minHeight: 260)
+                    RatsLoadingState(message: "Beschluss wird geladen …")
+                        .frame(maxWidth: .infinity, minHeight: 260)
                 }
             }
             .frame(maxWidth: 1040, alignment: .leading)
@@ -2969,7 +2970,8 @@ private struct SessionDetailView: View {
                     } else if let error {
                         ErrorCard(message: error) { Task { await load() } }
                     } else {
-                        ProgressView("Sitzung laden …").frame(maxWidth: .infinity, minHeight: 260)
+                        RatsLoadingState(message: "Sitzung wird geladen …")
+                            .frame(maxWidth: .infinity, minHeight: 260)
                     }
                 }
                 .frame(maxWidth: 760, alignment: .leading)

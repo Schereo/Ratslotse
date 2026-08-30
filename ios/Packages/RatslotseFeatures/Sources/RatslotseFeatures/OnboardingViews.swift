@@ -438,7 +438,7 @@ private struct CommitteeOnboardingStep: View {
             lead: "Du bekommst eine Mitteilung, sobald eine Tagesordnung erscheint. Jederzeit änderbar.",
             scene: .children,
             content: { Group {
-                if loading { ProgressView("Gremien werden geladen …").tint(RatsColor.primary) }
+                if loading { RatsInlineLoadingState(message: "Gremien werden geladen …") }
                 if let error { ErrorCard(message: error) { Task { await load() } } }
                 LazyVStack(spacing: 8) {
                     ForEach(committees, id: \.self) { committee in
