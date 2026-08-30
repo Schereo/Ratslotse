@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import json
+import os
 
 from kern import llm, prompts
 from .scraper import AgendaItem
 
-MODEL = "openai/gpt-4o-mini"
+# Erzeugt die TOP-Kurzfassungen (agenda_item_summaries) — die Textsorte mit
+# dem höchsten Halluzinationsrisiko im System, denn das Modell sieht nur
+# Titel. Per Env tauschbar, seit 28.08.26 Standard: gpt-5.6-luna (nüchterner
+# und aktueller als das zwei Jahre alte 4o-mini; Vergleich in council/impact.py).
+MODEL = os.environ.get("COUNCIL_COMMITTEE_MODEL", "openai/gpt-5.6-luna")
 
 
 def _esc(text: str) -> str:
