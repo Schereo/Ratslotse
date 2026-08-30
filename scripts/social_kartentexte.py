@@ -25,7 +25,6 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -34,66 +33,23 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council.social_text import kontext, text_fuer  # noqa: E402
+from council.social_text import (  # noqa: E402
+    _dringlichkeit_nachladen, _mit_anlagen, kontext, schreibe_fehlende, text_fuer,
+)
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 
 
-def _mit_anlagen(store: CouncilStore, punkte: list[dict]) -> list[tuple[dict, list[dict]]]:
-    """Zu jedem Punkt seine Anlagen — in EINEM Rutsch, vor den Threads.
-
-    SQLite-Verbindungen gehören einem Thread; die Aufrufe danach laufen
-    parallel, die Datenbank nicht.
-    """
-    return [(p, store.anlagen_fuer(p["kvonr"]) if p.get("kvonr") else []) for p in punkte]
-
-
-def _dringlichkeit_nachladen(punkt: dict) -> None:
-    """Beim Dringlichkeitsantrag steht der Inhalt NUR im PDF.
-
-    Er hat keine Vorlage — ohne diesen Griff bliebe dem Modell der
-    Dateiname. Und der heißt manchmal einfach „Dringlichkeitsantrag".
-    Best effort: Ein kaputtes PDF kostet den Text, nicht den Lauf.
-    """
-    if punkt.get("raw_text"):
-        return
-    if not str(punkt.get("item_number", "")).startswith("DZT"):
-        return
-    # Der Scraper legt den Text beim Einlesen ab; hier steht nur der Rückfall
-    # für Sitzungen, die vor dieser Änderung eingelesen wurden.
-    if punkt.get("anlage_text"):
-        punkt["raw_text"] = punkt["anlage_text"]
-        return
-    if not punkt.get("anlage_url"):
-        return
-    try:
-        from council.vorlagen import _pdf_text  # noqa: PLC0415
-
-        text, _seiten = _pdf_text(punkt["anlage_url"])
-        punkt["raw_text"] = text
-    except Exception as fehler:  # noqa: BLE001
-        print(f"  {punkt['item_number']}: PDF nicht lesbar ({fehler})", file=sys.stderr)
-
-
 def process(db_path: Path, limit: int | None, tage: int, workers: int,
             mindest_wichtig: int) -> tuple[int, int]:
+    """Der Nachtlauf. Die Arbeit selbst steht in ``social_text``, weil die
+    Tagesordnungs-Mail dieselbe braucht — nur für eine einzelne Sitzung und
+    sofort (``schreibe_fehlende(..., ksinr=…)``)."""
     store = CouncilStore(db_path)
     try:
-        todo = _mit_anlagen(store, store.agenda_items_needing_social_text(
-            limit, tage_voraus=tage, mindest_wichtig=mindest_wichtig))
-        for punkt, _ in todo:
-            _dringlichkeit_nachladen(punkt)
-        geschrieben = 0
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            ergebnisse = pool.map(lambda pa: (pa[0], text_fuer(pa[0], pa[1])), todo)
-            for punkt, ergebnis in ergebnisse:
-                if not ergebnis:
-                    continue          # kein Text ist besser als ein erfundener
-                text, quelle = ergebnis
-                store.save_social_text(punkt["ksinr"], punkt["item_number"], text, quelle)
-                geschrieben += 1
-        return len(todo), geschrieben
+        return schreibe_fehlende(store, limit=limit, tage_voraus=tage,
+                                 mindest_wichtig=mindest_wichtig, workers=workers)
     finally:
         store.close()
 
