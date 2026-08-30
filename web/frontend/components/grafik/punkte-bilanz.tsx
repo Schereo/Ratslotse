@@ -132,12 +132,26 @@ export function PunkteBilanz({ zeilen, beleg, className }: {
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       {/* ≥ 744 px: das Bilanz-Grid (H4-15: Fraktion 170 px · FA · Rat ·
-          Zahlen 84 px; Tablet mindestens 200 px je Gremienspalte). */}
+          Zahlen 84 px; Tablet mindestens 200 px je Gremienspalte).
+
+          DIE MINDESTBREITEN SIND GESENKT (30.08.2026), und die
+          `breit:`-Variante ist weg. Gemessen lief das Raster bei genau zwei
+          Breiten aus der Karte heraus: bei 744 px (Summe der Minima 711 bei
+          662 px Platz) und bei 1024 px, wo die `breit:`-Variante ihre Minima
+          ANHEBT — ausgerechnet dort, wo die Desktop-Seitenleiste einsetzt und
+          nur noch 686 px übrig lässt (771 gebraucht). Ein Minimum, das
+          Überlauf erzeugt, dient der Lesbarkeit nicht mehr: Es greift genau
+          dann, wenn es eng ist, und da soll es klein sein.
+
+          Für die Boards ändert das nichts, wo Platz ist: Die Gremienspalten
+          wachsen über `1fr` von selbst — auf dem Tablet (834 px) auf 200 px,
+          am Desktop (1280 px) auf 285 px. Die 200 aus H4-15 sind dort also
+          weiterhin erfüllt, nur nicht mehr erzwungen, wo sie nicht passen. */}
       <div className="hidden [@media(min-width:744px)]:block">
         <div
           role="table"
           aria-label="Verhandlungsbilanz: Abstimmungen über Änderungslisten je Fraktion"
-          className="grid grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_max-content_max-content] breit:grid-cols-[170px_minmax(200px,1fr)_minmax(200px,1fr)_max-content_max-content]"
+          className="grid grid-cols-[150px_minmax(140px,1fr)_minmax(140px,1fr)_max-content_max-content]"
         >
           {/* Spaltenlinien: jede Zelle nach der Fraktion trägt border-l —
               ein Grid ohne gap, der Abstand kommt aus dem Zellen-Padding,
