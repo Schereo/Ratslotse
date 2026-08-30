@@ -4334,8 +4334,8 @@ export interface components {
         GespraechDetail: {
             /** Id */
             id: number;
-            /** Titel */
-            titel: string;
+            /** Title */
+            title: string;
             /** Turns */
             turns: components["schemas"]["GespraechTurn"][];
             /** Updated */
@@ -4343,8 +4343,8 @@ export interface components {
         };
         /** GespraechEinstellung */
         GespraechEinstellung: {
-            /** Einstellung */
-            einstellung: number;
+            /** Saves Conversations */
+            saves_conversations: number;
         };
         /** GespraechEinstellungBody */
         GespraechEinstellungBody: {
@@ -4353,19 +4353,19 @@ export interface components {
         };
         /** GespraechTurn */
         GespraechTurn: {
-            /** Antwort */
-            antwort: string;
-            /** Frage */
-            frage: string;
-            /** Quellen */
-            quellen: {
+            /** Answer */
+            answer: string;
+            /** Question */
+            question: string;
+            /** Sources */
+            sources: {
                 [key: string]: unknown;
             } | null;
         };
         /** GespraechUmbenennenBody */
         GespraechUmbenennenBody: {
-            /** Titel */
-            titel: string;
+            /** Title */
+            title: string;
         };
         /** GespraechZeile */
         GespraechZeile: {
@@ -4373,32 +4373,32 @@ export interface components {
             id: number;
             /** N Turns */
             n_turns: number;
-            /** Titel */
-            titel: string;
+            /** Title */
+            title: string;
             /** Updated */
             updated: string;
         };
         /** GespraecheGeloescht */
         GespraecheGeloescht: {
-            /** Geloescht */
-            geloescht: number;
+            /** Deleted */
+            deleted: number;
         };
         /**
          * GespraecheListe
-         * @description `gesamt` ist der Bestand des Kontos, `treffer` gilt zur Suche, `weitere`
+         * @description `total` ist der Bestand des Kontos, `matches` gilt zur Suche, `has_more`
          *     sagt, ob „Ältere anzeigen" noch etwas nachliefert.
          */
         GespraecheListe: {
-            /** Einstellung */
-            einstellung: number | null;
-            /** Gesamt */
-            gesamt: number;
-            /** Gespraeche */
-            gespraeche: components["schemas"]["GespraechZeile"][];
-            /** Treffer */
-            treffer: number;
-            /** Weitere */
-            weitere: boolean;
+            /** Conversations */
+            conversations: components["schemas"]["GespraechZeile"][];
+            /** Has More */
+            has_more: boolean;
+            /** Matches */
+            matches: number;
+            /** Saves Conversations */
+            saves_conversations: number | null;
+            /** Total */
+            total: number;
         };
         /** Gesundheit */
         Gesundheit: {
@@ -10887,4 +10887,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 9cfeb3bb9ba3eff532493d69a8e675833acc1454a9c16421e5885f86a1d8ec13
+// vertrag-sha256: 4aac8656462bb7b0f1d7439fc6bbc1dda909a07a05fd2d4b0abf013211aebb8f
