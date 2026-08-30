@@ -51,6 +51,53 @@ ANLAGE_EINZELN = 12_000
 #: Was die Karte trägt. Der Satz wird gesetzt, nicht gescrollt.
 MAX_ZEICHEN = 240
 
+#: Ab welchem Anteil der Grenze ein abgeschnittener Satz noch als Text taugt.
+#: Endet der letzte ganze Satz schon nach 40 Zeichen, ist der Rest die
+#: eigentliche Aussage — dann lieber am Wort trennen und das mit „…" zeigen.
+_SATZ_MINDEST = 0.6
+
+
+def kuerzen(text: str, grenze: int = MAX_ZEICHEN) -> str:
+    """Auf die Grenze kürzen, ohne ein Wort zu zerschneiden.
+
+    ``text[:240]`` allein endete mitten im Wort: „Die Kosten können drei- bis
+    viermal höher liegen als nach der Baumschutzsatzun" (Kompensations-Punkt
+    des Rats vom 31.08.26). Auf einer Karte fiel das nicht auf, weil der Text
+    dort ohnehin gesetzt wird — in der Tagesordnung und in der Mail steht es
+    jetzt so da.
+
+    Erst der letzte ganze Satz; taugt der nichts mehr, die letzte ganze
+    Wortgrenze mit „…". Abkürzungen beenden keinen Satz: „ca.", „z. B.",
+    „Nr." und alles, was auf einen einzelnen Buchstaben folgt.
+    """
+    text = text.strip()
+    if len(text) <= grenze:
+        return text
+    schnitt = text[:grenze]
+    ende = max(schnitt.rfind(z) for z in (". ", "! ", "? "))
+    if ende > 0 and not _ist_abkuerzung(schnitt[:ende + 1]) \
+            and ende + 1 >= grenze * _SATZ_MINDEST:
+        return schnitt[:ende + 1].strip()
+    wort = schnitt.rfind(" ")
+    return (schnitt[:wort] if wort > 0 else schnitt).rstrip(" ,;:-–") + " …"
+
+
+#: Was auf einen Punkt folgen kann, ohne dass ein Satz zu Ende ist. Erhoben an
+#: den Kartentexten, nicht geraten — „ca." stand im Weg, seit die Karten
+#: Beträge nennen.
+_ABKUERZUNGEN = ("ca.", "z. B.", "u. a.", "d. h.", "Nr.", "Abs.", "Art.",
+                 "Mio.", "Mrd.", "Tsd.", "evtl.", "inkl.", "bzw.", "ggf.")
+
+
+def _ist_abkuerzung(bis_punkt: str) -> bool:
+    """Endet ``bis_punkt`` auf einer Abkürzung statt auf einem Satzende?"""
+    if any(bis_punkt.endswith(a) for a in _ABKUERZUNGEN):
+        return True
+    # „… 3. " — eine Ziffer oder ein einzelner Buchstabe vor dem Punkt ist
+    # eine Gliederung oder Initiale, kein Satzende.
+    return len(bis_punkt) >= 2 and bis_punkt[-2].isalnum() and (
+        len(bis_punkt) == 2 or not bis_punkt[-3].isalnum())
+
 
 def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
     """(Text fürs Modell, Herkunftsmarke) — alles, was über den Punkt vorliegt.
@@ -138,7 +185,7 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
             continue
         if not text:
             continue
-        text = text[:MAX_ZEICHEN].strip()
+        text = kuerzen(text)
 
         maengel = kritiker.pruefe(text, ktx)
         if maengel:
@@ -150,3 +197,86 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
             continue
         return text, quelle
     return None
+
+
+#: Wie viele Punkte einer Sitzung höchstens auf einen Rutsch geschrieben
+#: werden, wenn die Tagesordnungs-Mail sie anfordert. Der Rest kommt im
+#: nächsten Nachtlauf und steht in der Mail so lange mit der Kurzfassung da.
+#: Eine Ratssitzung hat rund 30 inhaltliche Punkte; 40 lässt Luft, ohne dass
+#: eine außergewöhnlich lange Tagesordnung den Cron-Lauf blockiert.
+MAIL_MAX = 40
+
+
+def _dringlichkeit_nachladen(punkt: dict) -> None:
+    """Beim Dringlichkeitsantrag steht der Inhalt NUR im PDF.
+
+    Er hat keine Vorlage — ohne diesen Griff bliebe dem Modell der Dateiname.
+    Und der heißt manchmal einfach „Dringlichkeitsantrag". Best effort: Ein
+    kaputtes PDF kostet den Text, nicht den Lauf.
+    """
+    if punkt.get("raw_text"):
+        return
+    from .dringlichkeit import ist_dringlichkeitsantrag  # noqa: PLC0415 — Ringschluss
+
+    if not ist_dringlichkeitsantrag(punkt.get("item_number")):
+        return
+    # Der Scraper legt den Text beim Einlesen ab; hier steht nur der Rückfall
+    # für Sitzungen, die vor dieser Änderung eingelesen wurden.
+    if punkt.get("anlage_text"):
+        punkt["raw_text"] = punkt["anlage_text"]
+        return
+    if not punkt.get("anlage_url"):
+        return
+    try:
+        from .vorlagen import _pdf_text  # noqa: PLC0415 — sonst Ringschluss
+
+        text, _seiten = _pdf_text(punkt["anlage_url"])
+        punkt["raw_text"] = text
+    except Exception as fehler:  # noqa: BLE001 — ein kaputtes PDF kippt keinen Lauf
+        print(f"  {punkt['item_number']}: PDF nicht lesbar ({fehler})")
+
+
+def _mit_anlagen(store, punkte: list[dict]) -> list[tuple[dict, list[dict]]]:
+    """Zu jedem Punkt seine Anlagen — in EINEM Rutsch, vor den Threads.
+
+    SQLite-Verbindungen gehören einem Thread; die Aufrufe danach laufen
+    parallel, die Datenbank nicht.
+    """
+    return [(p, store.anlagen_fuer(p["kvonr"]) if p.get("kvonr") else []) for p in punkte]
+
+
+def schreibe_fehlende(store, *, limit: int | None = None, tage_voraus: int = 21,
+                      mindest_wichtig: int = 0, ksinr: int | None = None,
+                      workers: int = 4) -> tuple[int, int]:
+    """Fehlende Kartentexte schreiben. Rückgabe: (gesucht, geschrieben).
+
+    Zwei Aufrufer, ein Weg:
+
+    * ``scripts/social_kartentexte.py`` — der Nachtlauf über alle kommenden
+      Sitzungen.
+    * ``scripts/check_committees.py`` mit ``ksinr`` — die Tagesordnungs-Mail,
+      **bevor** sie ihren Text baut. Der Nachtlauf käme für sie zu spät: Die
+      Mail geht raus, sobald eine Tagesordnung erscheint, und trüge sonst bis
+      zum nächsten Morgen die titelbasierte Kurzfassung (Tims Auftrag
+      30.08.26). Zusätzliche Kosten entstehen dadurch nicht — die Texte
+      würden ohnehin geschrieben, nur später; ``agenda_item_social`` ist der
+      Zwischenspeicher für beide.
+
+    Kein Text ist ein gültiges Ergebnis (der Kritiker verwirft), dann bleibt
+    es für diesen Punkt bei der Kurzfassung.
+    """
+    from concurrent.futures import ThreadPoolExecutor  # noqa: PLC0415 — nur hier
+
+    todo = _mit_anlagen(store, store.agenda_items_needing_social_text(
+        limit, tage_voraus=tage_voraus, mindest_wichtig=mindest_wichtig, ksinr=ksinr))
+    for punkt, _ in todo:
+        _dringlichkeit_nachladen(punkt)
+    geschrieben = 0
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for punkt, ergebnis in pool.map(lambda pa: (pa[0], text_fuer(pa[0], pa[1])), todo):
+            if not ergebnis:
+                continue          # kein Text ist besser als ein erfundener
+            text, quelle = ergebnis
+            store.save_social_text(punkt["ksinr"], punkt["item_number"], text, quelle)
+            geschrieben += 1
+    return len(todo), geschrieben
