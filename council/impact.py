@@ -53,6 +53,35 @@ def formalakt_deckel(title: str | None) -> int | None:
     return None
 
 
+#: Untergrenze für Dringlichkeitsanträge (Tims Entscheidung 30.08.26).
+#:
+#: Die Rubrik misst TRAGWEITE — Betroffene, Geld, Bindungswirkung,
+#: Präzedenz. Dass ein Antrag kurzfristig auf die Tagesordnung gehoben wird,
+#: kommt darin nicht vor, ist aber selbst eine Nachricht: Eine Fraktion hält
+#: eine Sache für so dringend, dass sie die Tagesordnung dafür aufmacht.
+#:
+#: Der Wert ist gemessen, nicht geraten. Am Bestand (158 bewertete Punkte):
+#: 65 erreicht das oberste Zehntel. Der SECHSTE Punkt einer Sitzung — der
+#: letzte, der auf eine Karte kommt — wiegt im Median 25; nur im Rat, der
+#: dichtesten Tagesordnung, liegt er bei 60. 65 reicht damit in jedem
+#: Fachausschuss sicher und im Rat knapp.
+#:
+#: Ein BODEN, keine Addition: Er hebt eine zu niedrige Bewertung an, senkt
+#: aber nie eine hohe. Und er ersetzt die Begründung des Modells nicht — sie
+#: bleibt richtig, sie wog nur die Kurzfristigkeit nicht mit.
+DRINGLICHKEIT_MIN = 65
+
+#: Woran ein Dringlichkeitsantrag zu erkennen ist: an der Kennung, die
+#: council/dringlichkeit.py vergibt. Am Titel zu prüfen wäre unschärfer —
+#: „Dringlichkeit" kann auch im Titel einer gewöhnlichen Vorlage stehen.
+_DZT_RE = re.compile(r"^\s*DZT\b")
+
+
+def dringlichkeits_boden(item_number: str | None) -> int | None:
+    """Score-Untergrenze für Dringlichkeitsanträge — sonst None."""
+    return DRINGLICHKEIT_MIN if _DZT_RE.match(item_number or "") else None
+
+
 def _batch_text(decisions: list[dict]) -> str:
     lines: list[str] = []
     for d in decisions:
