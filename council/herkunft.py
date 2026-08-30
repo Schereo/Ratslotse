@@ -123,6 +123,11 @@ PROBEN: dict[str, str] = {
         "Absatz steht in dem Zeilenband, in dem auch seine Position steht — "
         "zugeordnet wird über die Geometrie des Dokuments, nicht über "
         "Abstands-Schätzung; ohne eindeutiges Band bleibt das Feld leer.",
+    "aenderungsliste_fhh_zeilen":
+        "Jede Zeile des Finanzhaushalts rechnet sich selbst vor: Soll laut "
+        "Entwurf plus Einzahlung plus Auszahlung ergibt das neue Soll. Diese "
+        "Probe läuft an JEDER Position, nicht nur an der Schlusssumme — "
+        "stünde ein Betrag eine Spalte daneben, ginge sie nicht auf.",
     "aenderungsliste_urheber":
         "Wo das Dokument je Position einen Vorschlagenden nennt, wird die "
         "Zuordnung gerechnet: Die Summe der Positionen jedes Urhebers muss "

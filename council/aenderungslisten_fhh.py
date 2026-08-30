@@ -198,30 +198,52 @@ class FhhSpalten:
 _KOPF_BETRAG = ("laut", "Ein-", "Aus-", "VE", "neues")
 
 
+#: Wie stark die fünf Betragsspalten in ihrer Breite auseinanderliegen
+#: dürfen. Gemessen über den Bestand: 51,8 bis 60,5 pt — die Spalten sind
+#: gesetzt, nicht gerechnet, und schwanken um wenige Punkte. 15 pt Spielraum
+#: liegen weit über jeder gemessenen Abweichung und weit unter dem Sprung zur
+#: Erläuterungs-Spalte (137 bis 211 pt).
+_SPALTEN_TOLERANZ = 15
+
+
 def _spalten(zeilen: list[list[Wort]], senkrecht: list[float]) -> FhhSpalten | None:
     """Die Spalten einer Tabellenseite — oder ``None``, wenn es keine ist.
 
-    Verankert an der Erläuterungs-Spalte: Ihre linke Kante ist die letzte
-    senkrechte Linie vor dem Kopfwort „Erläuterungen“, und die fünf
-    Betragsspalten sind die fünf Intervalle davor. Verlangt werden also
-    sieben Kanten — nicht zwölf: Die äußeren Tabellenränder fehlen in 286016
-    auf den meisten Seiten, die inneren Kanten stehen dort trotzdem alle.
+    Gesucht wird der letzte LAUF von sechs Kanten mit annähernd gleichem
+    Abstand: Das sind die fünf Betragsspalten, und die Kante dahinter ist der
+    Beginn der Erläuterungen. Die Kante davor öffnet die Bezeichnung.
+
+    Warum nicht am Kopfwort „Erläuterungen“ verankern, wie zuerst gebaut:
+    Weil nur die ERSTE Seite eines Blocks den Tabellenkopf wiederholt. In
+    256703 tragen zehn von fünfzehn Seiten dasselbe Zwölf-Linien-Raster, aber
+    keine Kopfzeile — sie galten damit als „keine Tabellenseite“, und mit
+    ihnen fielen alle Auszahlungen des Jahrgangs weg.
+
+    Der Lauf trägt auch dort, wo die Linienzahl schwankt: 286016 zeichnet die
+    äußeren Tabellenränder auf den meisten Seiten nicht mit (zehn statt zwölf
+    Linien). Die Breite unterscheidet die Spalten zuverlässig — die
+    Erläuterungen sind zwei- bis viermal so breit wie eine Betragsspalte, die
+    Bezeichnung gut doppelt.
     """
-    erl_kopf = None
-    for zeile in zeilen[:18]:
-        for x0, _x1, _y, text in zeile:
-            if text == "Erläuterungen" and erl_kopf is None:
-                erl_kopf = x0
-    if erl_kopf is None:
+    kanten = sorted(senkrecht)
+    if len(kanten) < 7:
         return None
-    links = sorted(x for x in senkrecht if x < erl_kopf)
-    if len(links) < 7:
+    lauf = None
+    for i in range(len(kanten) - 6, -1, -1):
+        sechs = kanten[i:i + 6]
+        breiten = [b - a for a, b in zip(sechs, sechs[1:])]
+        if max(breiten) - min(breiten) <= _SPALTEN_TOLERANZ:
+            lauf = (i, sechs)
+            break
+    if lauf is None:
         return None
-    kanten = links[-6:]
+    i, sechs = lauf
+    if i == 0:
+        return None                     # keine Bezeichnungs-Kante davor
     spalten = FhhSpalten(
-        betrag=tuple(zip(kanten[:-1], kanten[1:])),
-        bez=(links[-7], kanten[0]),
-        erl=kanten[-1],
+        betrag=tuple(zip(sechs[:-1], sechs[1:])),
+        bez=(kanten[i - 1], sechs[0]),
+        erl=sechs[-1],
     )
     return spalten if _koepfe_passen(zeilen, spalten) else None
 
@@ -229,31 +251,49 @@ def _spalten(zeilen: list[list[Wort]], senkrecht: list[float]) -> FhhSpalten | N
 def _koepfe_passen(zeilen: list[list[Wort]], spalten: FhhSpalten) -> bool:
     """Steht jedes Kopfwort über seiner Spalte?
 
-    Die Selbstkontrolle des Aufbaus. Sie ist mit Absicht mild — geprüft wird
-    nur, dass jedes gefundene Kopfwort IN seiner Spalte liegt, nicht dass
-    alle fünf vorhanden sind: „VE“ steht in manchen Jahrgängen nur auf der
-    ersten Seite eines Blocks. Ein Kopfwort in der FALSCHEN Spalte lässt die
-    Seite dagegen sofort durchfallen.
+    Die Selbstkontrolle des Aufbaus, und mit Absicht mild: Geprüft wird nur,
+    dass jedes GEFUNDENE Kopfwort in seiner Spalte liegt. Auf Kopfwörter zu
+    bestehen ginge nicht — nur die erste Seite eines Blocks trägt den Kopf,
+    die Folgeseiten wiederholen bloß das Raster. Ein Kopfwort in der
+    FALSCHEN Spalte lässt die Seite dagegen sofort durchfallen; genau das
+    fängt ein um eine Spalte verschobenes Raster.
     """
-    gefunden = 0
     for zeile in zeilen[:18]:
-        for x0, x1, _y, text in zeile:
-            if text not in _KOPF_BETRAG:
-                continue
-            i = _KOPF_BETRAG.index(text)
-            links, rechts = spalten.betrag[i]
-            mitte = (x0 + x1) / 2
-            if not (links - 2 <= mitte <= rechts + 2):
+        treffer = [(x0, x1, text) for x0, x1, _y, text in zeile
+                   if text in _KOPF_BETRAG]
+        # ZWEI Kopfwörter in einer Zeile machen sie zur Kopfzeile. Eines
+        # allein tut das nicht: „laut" ist ein gewöhnliches deutsches Wort
+        # und stand in 256703 mitten in einer Erläuterung — als Kopfwort
+        # gelesen lag es weit rechts seiner Spalte, und die Seite fiel durch.
+        # Mit ihr fielen drei Positionen weg, und dem Jahrgang 2023 fehlten
+        # 10,8 Mio. € Auszahlungen.
+        if len(treffer) < 2:
+            continue
+        for x0, x1, text in treffer:
+            links, rechts = spalten.betrag[_KOPF_BETRAG.index(text)]
+            if not (links - 2 <= (x0 + x1) / 2 <= rechts + 2):
                 return False
-            gefunden += 1
-    return gefunden >= 2
+    return True
 
 
 def _wert(text: str) -> int | None:
-    """Zellinhalt → Betrag. Der Gedankenstrich ist eine ausdrückliche Null."""
+    """Zellinhalt → Betrag.
+
+    Zwei Schreibweisen, die keine Zahl zu sein scheinen und doch eine sind:
+
+    * Der **Gedankenstrich** ist eine ausdrückliche Null.
+    * Ein Betrag in **Klammern** — „(275.900)" als neues Soll in 244466.
+      Das ist hier NICHT die kaufmännische Negativ-Notation: Die Zeile
+      rechnet 250.000 + 25.900 = 275.900, die Klammern heben den Wert also
+      hervor, sie kehren ihn nicht um. Entschieden wird das nicht von dieser
+      Funktion, sondern von der Zeilenprobe — läse man das Vorzeichen falsch,
+      ginge „Soll + Ein + Aus = neues Soll" nicht auf. Ohne Klammer-Fassung
+      fiel die einzige Position des Dokuments samt ihrer 25.900 € weg.
+    """
     if text in _STRICH:
         return 0
-    return int(text.replace(".", "")) if _ZAHL.fullmatch(text) else None
+    nackt = text[1:-1] if text.startswith("(") and text.endswith(")") else text
+    return int(nackt.replace(".", "")) if _ZAHL.fullmatch(nackt) else None
 
 
 def _zelle(zeile: list[Wort], links: float, rechts: float) -> int | None:
@@ -490,13 +530,28 @@ def parse_fhh_seiten(seiten: list[list[Wort]],
     if seiten and (m := _STAND.search(" ".join(w[3] for w in seiten[0]))):
         aus.stand = m.group(1)
 
+    # Das Planjahr gilt über Seitengrenzen hinweg: Ein Block beginnt mit
+    # seiner Überschrift („Änderungen 2023") und läuft über so viele Seiten,
+    # wie er braucht — die Folgeseiten wiederholen das Linienraster, aber
+    # nicht die Überschrift. In 256703 trug nur jede vierte Tabellenseite ein
+    # Jahr; die übrigen fielen samt ihrer Positionen weg, und dem Jahrgang
+    # 2023 fehlten am Ende alle 11,2 Mio. € Auszahlungen.
+    #
+    # Der Merker gilt AUSDRÜCKLICH NUR für Tabellenseiten. Die
+    # Zusammenstellung bekommt ihr Jahr weiter aus ihrem eigenen Block
+    # (:func:`_block_jahr`) — ein dokumentweiter Merker hat beim EHH schon
+    # einmal alle vier Blöcke auf dasselbe Planjahr fallen lassen (303358).
+    jahr_merker: int | None = None
+
     for nr, woerter in enumerate(seiten):
         zeilen = zeilen_bilden(woerter)
         senkrecht = linien[nr][1] if nr < len(linien) else []
         spalten = _spalten(zeilen, senkrecht)
         seitentext = " ".join(w[3] for w in woerter)
         marker = _JAHR_MARKER.search(seitentext)
-        jahr = int(marker.group(1)) if marker else None
+        if marker:
+            jahr_merker = int(marker.group(1))
+        jahr = jahr_merker if spalten is not None else None
         # Zusammenstellungs-Seiten setzen ihre Köpfe als GANZE Wörter
         # („Einzahlungen"); die Tabellenseiten brechen sie um („Ein-" /
         # „zahlungen"). Das unterscheidet die beiden Seitenarten von selbst.
@@ -531,18 +586,23 @@ def parse_fhh_seiten(seiten: list[list[Wort]],
             if gelesen is None:
                 continue
             zellen, erster, letzter = gelesen
+            links_text = " ".join(w[3] for w in zeile if w[1] <= erster).strip()
+            rechts_text = " ".join(w[3] for w in zeile if w[0] >= letzter).strip()
             if _ENTWURF.search(text):
                 typ = "entwurf"
             elif _LISTE.search(text):
                 typ = "liste"
-            elif " ".join(w[3] for w in zeile if w[1] <= erster).strip():
+            elif links_text or rechts_text:
                 # Eine Zeile mit eigener Beschriftung, aber ohne Stichwort:
-                # die politische Liste der Beschluss-Dateien.
+                # die politische Liste der Beschluss-Dateien. Ihr Label steht
+                # RECHTS der Beträge, in der Spalte „Vorschlag von" — nur
+                # links zu suchen machte sie zur zweiten Endsumme, und die
+                # Zusammenstellung meldete „1×Entwurf, 1×Liste, 2×Endsumme".
                 typ = "liste"
             else:
-                # Nackte Zahlenreihe ohne Beschriftung — die Summe unter dem
-                # Block. Die Beschluss-Dateien setzen sie ohne „Überschuss/
-                # Fehlbedarf" davor, anders als der EHH.
+                # Nackte Zahlenreihe ohne jede Beschriftung — die Summe unter
+                # dem Block. Die Beschluss-Dateien setzen sie ohne
+                # „Überschuss/Fehlbedarf" davor, anders als der EHH.
                 typ = "endsumme"
             aus.summen.append(_summen_zeile(
                 _block_jahr(block_jahr, aus, typ), typ, zeile, zellen, erster, letzter))
@@ -717,7 +777,17 @@ def _betraege_anbauen(positionen: list[tuple[float, FhhZeile]],
     if not positionen:
         return
     waagerecht, _senkrecht = linien
-    boden = max(waagerecht) if waagerecht else float("inf")
+    letzte = max(py for py, _pos in positionen)
+    # Die unterste waagerechte Linie ist NUR dann der Tabellenboden, wenn sie
+    # unter der letzten Position liegt. Ein Teil des Bestands zeichnet den
+    # unteren Rahmen gar nicht (244161: letzte Linie bei y = 158, die einzige
+    # Position steht bei y = 189) — dort war „der Boden" plötzlich eine
+    # Kopflinie, und ALLE Beträge lagen darunter, also draußen.
+    #
+    # Ohne Boden fällt die Fußzeile trotzdem nicht herein: „Seite 3" füllt
+    # eine einzige Spalte und kein „neues Soll", und daran scheitert sie
+    # schon in :func:`_betragszeilen`.
+    boden = max(waagerecht) if waagerecht and max(waagerecht) > letzte else float("inf")
 
     # Doppelt gedruckte Positionen (gleiche Lfd. Nr., zwei Erläuterungs-
     # blöcke) besitzen EINE Zeile, nicht zwei.
@@ -807,13 +877,27 @@ def _proben(aus: FhhErgebnis) -> None:
         entwurf = [s for s in aus.summen if s.jahr == jahr and s.typ == "entwurf"]
         listen = [s for s in aus.summen if s.jahr == jahr and s.typ == "liste"]
         ende = [s for s in aus.summen if s.jahr == jahr and s.typ == "endsumme"]
-        if len(entwurf) != 1 or len(ende) != 1 or not listen:
+        # Die Endsumme ist OPTIONAL, anders als beim EHH: Die
+        # FHH-Beschluss-Dateien führen je Block nur den Entwurf und die
+        # Listen und verzichten auf die Schlusszeile (303359, 230016/230178).
+        # Ihre Gesamtübersicht steht stattdessen auf einer eigenen Seite.
+        # Entwurf und Endsumme sind BEIDE optional, anders als beim EHH. Die
+        # Beschluss-Dateien führen je Block nur die Listen: 212802 überschreibt
+        # seine Seite ausdrücklich mit „Übersicht aller Änderungen“ und nennt
+        # weder den Entwurf noch eine Schlusszeile — es zeigt, was geändert
+        # wurde, nicht wovon aus. Nur die Listen sind Pflicht; ohne sie gibt
+        # es nichts, woran sich die Positionen messen ließen.
+        if len(entwurf) > 1 or len(ende) > 1 or not listen:
             raise ListenFehler(
-                f"Zusammenstellung {jahr}: erwartet 1×Entwurf, ≥1×Liste, "
-                f"1×Endsumme — gefunden {len(entwurf)}/{len(listen)}/{len(ende)}.")
+                f"Zusammenstellung {jahr}: erwartet höchstens 1×Entwurf, "
+                f"≥1×Liste, höchstens 1×Endsumme — gefunden "
+                f"{len(entwurf)}/{len(listen)}/{len(ende)}.")
 
         toleranz = 2 * (len(listen) + 1)
-        kette_ok = all(
+        # Die Kette lässt sich nur prüfen, wo Entwurf UND Endsumme stehen.
+        # Fehlt eines von beiden, bleiben die Listen selbst die Referenz der
+        # Positionsprobe — bei den kumulierten Dateien ihre Summe („alle“).
+        kette_ok = not (entwurf and ende) or all(
             abs(getattr(entwurf[0], feld) + sum(getattr(s, feld) for s in listen)
                 - getattr(ende[0], feld)) <= toleranz
             for feld in ("einzahlungen", "auszahlungen"))
@@ -828,7 +912,7 @@ def _proben(aus: FhhErgebnis) -> None:
         else:
             ziele = [("beschlossen",
                       ende[0].einzahlungen - entwurf[0].einzahlungen,
-                      ende[0].auszahlungen - entwurf[0].auszahlungen)]
+                      ende[0].auszahlungen - entwurf[0].auszahlungen)] if ende and entwurf else []
         treffer = [label for label, e, a in ziele
                    if abs(e - pos_e) <= toleranz and abs(a - pos_a) <= toleranz]
         if len(treffer) != 1:
