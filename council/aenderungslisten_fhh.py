@@ -269,10 +269,16 @@ def _zelle(zeile: list[Wort], links: float, rechts: float) -> int | None:
 # ------------------------------------------------------------------ Positionen
 
 def _ist_position(zeile: list[Wort], spalten: FhhSpalten | None) -> bool:
-    """Positionszeilen beginnen mit Lfd. Nr. und zweistelligem THH, links."""
+    """Positionszeilen beginnen mit Lfd. Nr. und Teilhaushalt, ganz links.
+
+    Der Teilhaushalt steht ein- ODER zweistellig: Die meisten Dokumente
+    setzen „03", 302945 setzt „8". Auf zwei Ziffern zu bestehen kostete dort
+    jede einzelne Position — das Dokument kam als „andere Bauform" zurück,
+    obwohl nur die führende Null fehlte.
+    """
     return (spalten is not None and len(zeile) >= 3
             and re.fullmatch(r"\d{1,3}", zeile[0][3]) is not None
-            and (re.fullmatch(r"\d{2}", zeile[1][3]) is not None
+            and (re.fullmatch(r"\d{1,2}", zeile[1][3]) is not None
                  or zeile[1][3] == "alle")
             and zeile[0][0] < spalten.bez[0])
 
@@ -633,49 +639,104 @@ def _fragmente_anbauen(positionen: list[tuple[float, FhhZeile]],
         position.bezeichnung = " ".join(t for _, t in alle if t)
 
 
+#: Der Index der Spalte „neues Soll" in :attr:`FhhSpalten.betrag`.
+_SOLL_NEU = 4
+
+
+def _betragszeilen(zeilen: list[list[Wort]], spalten: FhhSpalten,
+                   boden: float) -> list[tuple[float, dict[int, int]]]:
+    """Die Betragszeilen einer Seite: je Grundlinie, was in welcher Spalte steht.
+
+    „Betragszeile" heißt: eine Grundlinie mit einem Betrag in der Spalte
+    **neues Soll** und in mindestens einer weiteren. Das „neues Soll" ist der
+    entscheidende Teil der Bedingung, nicht die Anzahl:
+
+    Unter der letzten Position jedes Blocks steht dessen SUMMENZEILE, noch
+    innerhalb des Tabellenrahmens (300530, Seite 4: „−34.800 | 1.018.472"
+    bei y = 499, direkt unter Position 12). Sie füllt zwei bis drei Spalten
+    und sah damit aus wie eine Positionszeile — als solche gezählt gab es
+    eine Betragszeile mehr als Positionen, die Zuordnung über die
+    Reihenfolge fiel auf ihren Notweg zurück, und der schlug die Summe der
+    LETZTEN Position zu. Ergebnis: jeder Betrag doppelt.
+
+    Eine Summenzeile trägt kein „neues Soll" — sie summiert Änderungen, sie
+    schreibt keinen Ansatz fort. Jede echte Positionszeile des Bestands
+    trägt es dagegen. Damit trennt eine Spalte, was eine Zählung nicht
+    trennen konnte.
+    """
+    aus: list[tuple[float, dict[int, int]]] = []
+    for zeile in zeilen:
+        if zeile[0][2] >= boden:
+            continue
+        zellen: dict[int, int] = {}
+        mehrdeutig = set()
+        for w in zeile:
+            for i, (links, rechts) in enumerate(spalten.betrag):
+                if not (links < w[1] <= rechts + 1 and w[0] >= links - 1):
+                    continue
+                wert = _wert(w[3])
+                if wert is None:
+                    continue
+                if i in zellen:
+                    mehrdeutig.add(i)
+                zellen[i] = wert
+        for i in mehrdeutig:
+            zellen.pop(i, None)
+        if len(zellen) >= 2 and _SOLL_NEU in zellen:
+            aus.append((zeile[0][2], zellen))
+    return aus
+
+
 def _betraege_anbauen(positionen: list[tuple[float, FhhZeile]],
                       zeilen: list[list[Wort]], spalten: FhhSpalten,
                       linien: Linien) -> None:
-    """Die fünf Betragsspalten ihren Positionen zuschlagen — über die
-    Zeilenbänder der gezeichneten Linien.
+    """Die fünf Betragsspalten ihren Positionen zuschlagen.
 
-    Warum nicht einfach von der Grundlinie der Positionszeile: Weil ein Teil
-    des Bestands sie dort gar nicht setzt. In 210923 trägt die Positionszeile
-    nur Lfd. Nr., THH, Investitionscode und Namen; die Beträge stehen auf
-    einer eigenen Grundlinie DESSELBEN Bandes. Von der Grundlinie gelesen
-    kamen alle fünf Spalten leer zurück, und die Positionsprobe meldete
-    folgerichtig „0 / 0".
+    DAS MODELL: Eine Position besitzt ihre Grundlinie und alles darunter bis
+    zur nächsten Position — ihre Tabellenzeile eben. Die Beträge stehen
+    irgendwo darin, und wo genau, ist Sache des Dokuments: 243618 setzt sie
+    exakt auf die Grundlinie, 210923 setzt sie 44 bis 67 pt darunter (dort
+    liegt jeder Betrag NÄHER an der folgenden Position als an der eigenen).
+    Beide Lagen fallen in dieselbe Zeile, also braucht es keine Fallregel für
+    beide — und kein Abstandsfenster, das für das eine Dokument zu eng und
+    für das andere zu weit wäre.
 
-    Zwei Positionen in einem Band (gerissene Linien) bleiben leer, und zwei
-    Beträge in derselben Spalte eines Bandes ebenso — lieber eine Lücke, die
-    die Positionsprobe findet, als ein Betrag aus der Nachbarzeile.
+    Drei Dinge liegen damit von selbst draußen, und jedes davon hat vorher
+    einen Riss verursacht:
+
+    * Der **Tabellenkopf** — über der ersten Position, also in keiner Zeile.
+      Sein „+ / −“ über jeder Spalte ist ein Gedankenstrich und damit nach
+      den Regeln dieses Moduls ein Betrag (Null); er machte jede Spalte
+      mehrdeutig, in der er stand.
+    * Die **Fußzeile** — unter dem Tabellenrahmen. „Seite 3“ setzt seine
+      Ziffer in die Auszahlungs-Spalte: „452.200 + 3 + 425.300 ≠ 877.500“.
+    * Die **Summenzeile des Blocks** — sie steht zwar noch im Rahmen und in
+      der Zeile der letzten Position, trägt aber kein „neues Soll“ und wird
+      schon von :func:`_betragszeilen` aussortiert.
     """
-    waagerecht, _senkrecht = linien
-    if not positionen or len(waagerecht) < 2:
+    if not positionen:
         return
-    baender: dict[int, list[Wort]] = {}
-    for zeile in zeilen:
-        for w in zeile:
-            if not (spalten.betrag[0][0] - 1 <= w[0] and w[1] <= spalten.erl + 1):
-                continue
-            b = band(waagerecht, w[2])
-            if b is not None:
-                baender.setdefault(b, []).append(w)
+    waagerecht, _senkrecht = linien
+    boden = max(waagerecht) if waagerecht else float("inf")
 
-    for py, position in positionen:
-        b = band(waagerecht, py)
-        if b is None:
+    # Doppelt gedruckte Positionen (gleiche Lfd. Nr., zwei Erläuterungs-
+    # blöcke) besitzen EINE Zeile, nicht zwei.
+    sortiert: list[tuple[float, FhhZeile]] = []
+    for py, position in sorted(positionen, key=lambda p: p[0]):
+        if sortiert and sortiert[-1][1].lfd == position.lfd:
             continue
-        if sum(1 for qy, _ in positionen if band(waagerecht, qy) == b) > 1:
-            continue
-        werte: list[int | None] = []
-        for links, rechts in spalten.betrag:
-            treffer = [_wert(w[3]) for w in baender.get(b, [])
-                       if links < w[1] <= rechts + 1 and w[0] >= links - 1]
-            treffer = [x for x in treffer if x is not None]
-            werte.append(treffer[0] if len(treffer) == 1 else None)
-        (position.soll_entwurf, position.einzahlung, position.auszahlung,
-         position.ve, position.soll_neu) = werte
+        sortiert.append((py, position))
+
+    spannen = [(py, pos, sortiert[i + 1][0] if i + 1 < len(sortiert) else boden)
+               for i, (py, pos) in enumerate(sortiert)]
+
+    for y, zellen in _betragszeilen(zeilen, spalten, boden):
+        for oben, position, unten in spannen:
+            if oben - 2 <= y < unten:
+                (position.soll_entwurf, position.einzahlung,
+                 position.auszahlung, position.ve, position.soll_neu) = (
+                    zellen.get(i) for i in range(5))
+                break
 
 
 def _texte_anbauen(positionen: list[tuple[float, FhhZeile]],
