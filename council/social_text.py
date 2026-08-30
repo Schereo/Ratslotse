@@ -25,6 +25,8 @@ import json
 
 from kern import llm, prompts
 
+from . import kritiker
+
 from .impact import vorlagen_kern
 
 MODEL = "openai/gpt-4o-mini"
@@ -106,6 +108,12 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
     system = prompts.get("social_kartentext_system")
     user = prompts.render("social_kartentext_user", kontext=ktx)
 
+    # Zwei Versuche, und beide müssen am Kritiker vorbei. Ein zweiter Anlauf
+    # lohnt, weil dasselbe Modell denselben Punkt beim nächsten Mal oft
+    # sauber schreibt — die Fehler sind Streuung, kein Unvermögen: Beim
+    # Windenergie-Punkt kamen an einem Nachmittag „91,84 Hektar" (richtig),
+    # „69/89 Hektar" (Ziele statt Ausweisung) und „94 Hektar" (frei
+    # erfunden) heraus.
     for _versuch in range(2):
         resp = llm.chat_complete(
             model=MODEL,
@@ -123,6 +131,17 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
             text = _eine_zeile(json.loads(roh).get("text"))
         except (json.JSONDecodeError, AttributeError):
             continue
-        if text:
-            return text[:MAX_ZEICHEN].strip(), quelle
+        if not text:
+            continue
+        text = text[:MAX_ZEICHEN].strip()
+
+        maengel = kritiker.pruefe(text, ktx)
+        if maengel:
+            print(f"  verworfen ({punkt.get('item_number')}): {'; '.join(maengel)}")
+            continue
+        gedeckt, grund = kritiker.pruefe_llm(text, ktx)
+        if not gedeckt:
+            print(f"  verworfen ({punkt.get('item_number')}): nicht gedeckt — {grund}")
+            continue
+        return text, quelle
     return None
