@@ -305,7 +305,7 @@ def _runde_2026(store):
         {"item_number": "6", "title": "Haushalt 2026", "outcome": "angenommen",
          "vote": "mehrheitlich"},
         {"item_number": "6.5", "title": "Haushaltssatzung und Haushaltsplan 2026 (Kernhaushalt)",
-         "outcome": "angenommen", "vote": "mehrheitlich", "gegenstimmen": 20,
+         "outcome": "angenommen", "vote": "mehrheitlich", "no_votes": 20,
          "raw_result": "- mehrheitlich bei 20 Gegenstimmen angenommen -",
          "sub_votes": [
              {"description": "Änderungsliste der CDU-Fraktion zum Ergebnishaushalt",
@@ -340,8 +340,8 @@ def test_haushalt_streit_baut_jahrgang(store):
 
     rat = runde["stationen"][1]
     assert rat["top"] == "6", "der Sammelpunkt trägt die Debatte"
-    assert rat["beschluss"]["outcome"] == "angenommen"
-    assert rat["beschluss"]["gegenstimmen"] == 20
+    assert rat["official_text"]["outcome"] == "angenommen"
+    assert rat["official_text"]["no_votes"] == 20
     assert rat["protokoll_url"] == "https://example.org/p11.pdf"
 
 

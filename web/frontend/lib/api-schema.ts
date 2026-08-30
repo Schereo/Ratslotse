@@ -3310,7 +3310,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/social/hoechste-beschluss-id": {
+    "/api/social/hoechste-official_text-id": {
         parameters: {
             query?: never;
             header?: never;
@@ -3322,7 +3322,7 @@ export interface paths {
          * @description Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,
          *     damit sein Ereignis-Cron nicht den gesamten Bestand als „neu" meldet.
          */
-        get: operations["hoechste_beschluss_id_api_social_hoechste_beschluss_id_get"];
+        get: operations["hoechste_beschluss_id_api_social_hoechste_official_text_id_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4050,20 +4050,16 @@ export interface components {
          *     ``parties`` rechnet der Store aus den Fraktionen aus.
          */
         Beschlusszeile: {
-            /** Abweichung */
-            abweichung?: string | null;
+            /** Abstentions */
+            abstentions?: number | null;
             /** Amount Eur */
             amount_eur?: number | null;
-            /** Beschluss */
-            beschluss?: string | null;
             /** Committee */
             committee?: string | null;
-            /** Enthaltungen */
-            enthaltungen?: number | null;
+            /** Deviation */
+            deviation?: string | null;
             /** Factions */
             factions?: string[];
-            /** Gegenstimmen */
-            gegenstimmen?: number | null;
             /** Id */
             id: number;
             /** Impact */
@@ -4088,6 +4084,10 @@ export interface components {
             location_matches?: unknown[];
             /** N Beratungen */
             n_beratungen?: number | null;
+            /** No Votes */
+            no_votes?: number | null;
+            /** Official Text */
+            official_text?: string | null;
             /** Outcome */
             outcome?: string | null;
             /** Parent Item */
@@ -4112,10 +4112,10 @@ export interface components {
             subvote_summary?: unknown;
             /** Summary */
             summary?: string | null;
+            /** Template Number */
+            template_number?: string | null;
             /** Title */
             title?: string | null;
-            /** Vorlage Nr */
-            vorlage_nr?: string | null;
             /** Vote */
             vote?: string | null;
         };
@@ -4816,20 +4816,16 @@ export interface components {
              *     ``parties`` rechnet der Store aus den Fraktionen aus.
              */
             decision: {
-                /** Abweichung */
-                abweichung?: string | null;
+                /** Abstentions */
+                abstentions?: number | null;
                 /** Amount Eur */
                 amount_eur?: number | null;
-                /** Beschluss */
-                beschluss?: string | null;
                 /** Committee */
                 committee?: string | null;
-                /** Enthaltungen */
-                enthaltungen?: number | null;
+                /** Deviation */
+                deviation?: string | null;
                 /** Factions */
                 factions?: string[];
-                /** Gegenstimmen */
-                gegenstimmen?: number | null;
                 /** Id */
                 id: number;
                 /** Impact */
@@ -4854,6 +4850,10 @@ export interface components {
                 location_matches?: unknown[];
                 /** N Beratungen */
                 n_beratungen?: number | null;
+                /** No Votes */
+                no_votes?: number | null;
+                /** Official Text */
+                official_text?: string | null;
                 /** Outcome */
                 outcome?: string | null;
                 /** Parent Item */
@@ -4878,10 +4878,10 @@ export interface components {
                 subvote_summary?: unknown;
                 /** Summary */
                 summary?: string | null;
+                /** Template Number */
+                template_number?: string | null;
                 /** Title */
                 title?: string | null;
-                /** Vorlage Nr */
-                vorlage_nr?: string | null;
                 /** Vote */
                 vote?: string | null;
             } | null;
@@ -5120,10 +5120,10 @@ export interface components {
             label?: string | null;
             /** Nr */
             nr?: number | null;
+            /** Template Number */
+            template_number?: string | null;
             /** Url */
             url?: string | null;
-            /** Vorlage Nr */
-            vorlage_nr?: string | null;
             /** Vorlage Titel */
             vorlage_titel?: string | null;
         };
@@ -5702,8 +5702,6 @@ export interface components {
          * @description Fester SELECT im Router plus ``votes`` — deshalb hier vollständig.
          */
         SocialBeschluss: {
-            /** Beschluss */
-            beschluss: string | null;
             /** Committee */
             committee: string | null;
             /** Id */
@@ -5712,6 +5710,8 @@ export interface components {
             importance: number | null;
             /** Item Number */
             item_number: string | null;
+            /** Official Text */
+            official_text: string | null;
             /** Outcome */
             outcome: string | null;
             /** Session Date */
@@ -10350,7 +10350,7 @@ export interface operations {
             };
         };
     };
-    hoechste_beschluss_id_api_social_hoechste_beschluss_id_get: {
+    hoechste_beschluss_id_api_social_hoechste_official_text_id_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10898,4 +10898,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b6acb1f1d251ba71e0fc1db9b53af159fb7000cd22854ffe9603f694eeb77532
+// vertrag-sha256: 7ca85c86dde0127c796dfa2dd53460d40f61a0e3a881a52a27f9b0a528953458

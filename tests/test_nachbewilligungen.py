@@ -373,12 +373,12 @@ def test_verpflichtungsermaechtigung_zaehlt_nicht_mit():
     """Eine VE bindet künftige Jahre; sie ist keine Ausgabe dieses Jahres.
     Der Rechenschaftsbericht zählt sie getrennt, wir auch."""
     ve = nb.Bewilligung(
-        vorlage_nr="23/0359", titel="…", art=nb.ART_VERPFLICHTUNG,
+        template_number="23/0359", titel="…", art=nb.ART_VERPFLICHTUNG,
         kategorie="ausserplanmaessig", jahr=2023, betrag=840_000.0,
         betrag_quelle="titel",
         beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
     echt = nb.Bewilligung(
-        vorlage_nr="23/0617", titel="…", art=nb.ART_BEWILLIGUNG,
+        template_number="23/0617", titel="…", art=nb.ART_BEWILLIGUNG,
         kategorie="ueberplanmaessig", jahr=2023, betrag=11_716_000.0,
         betrag_quelle="titel",
         beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
@@ -407,7 +407,7 @@ def test_ohne_beschluss_keine_summe():
     """Fünf Vorlagen tragen gar keine Beschlusszeile. Beantragtes ist kein
     bewilligtes Geld — 22/0925 allein verschöbe 2022 um 1,4 Mio. €."""
     beantragt = nb.Bewilligung(
-        vorlage_nr="22/0925", titel="…", art=nb.ART_BEWILLIGUNG,
+        template_number="22/0925", titel="…", art=nb.ART_BEWILLIGUNG,
         kategorie="ueberplanmaessig", jahr=2022, betrag=1_400_000.0,
         betrag_quelle="titel", beschluesse=())
     assert not beantragt.beschlossen
@@ -420,7 +420,7 @@ def test_nur_kenntnis_ist_kein_ratsbeschluss():
     ein anderer. Der Rechenschaftsbericht bestätigt das für 22/0544 mit dem
     Vermerk „1 und BM"."""
     unterrichtung = nb.Bewilligung(
-        vorlage_nr="22/0544", titel="…", art=nb.ART_BEWILLIGUNG,
+        template_number="22/0544", titel="…", art=nb.ART_BEWILLIGUNG,
         kategorie="ueberplanmaessig", jahr=2022, betrag=180_000.0,
         betrag_quelle="titel",
         beschluesse=({"committee": "Rat", "outcome": "zur_kenntnis"},))
@@ -450,7 +450,7 @@ def test_einschlag_erkennt_umgedrehte_wortstellung():
 def test_aus_vorlagen_zaehlt_je_vorlage_einmal():
     """287 Beschlusszeilen stehen über 156 Vorlagen — Finanzausschuss und Rat
     entscheiden dieselbe Sache. Je Zeile gezählt wäre der Betrag doppelt."""
-    vorlagen = [{"vorlage_nr": "23/0617",
+    vorlagen = [{"template_number": "23/0617",
                  "title": "Überplanmäßige Bewilligung für Mehraufwendungen in "
                           "Höhe von 11.716.000 Euro für den Teilhaushalt 10"}]
     beschluesse = {"23/0617": [
@@ -465,7 +465,7 @@ def test_aus_vorlagen_zaehlt_je_vorlage_einmal():
 
 
 def test_aus_vorlagen_ignoriert_fremde_titel():
-    fremd = [{"vorlage_nr": "23/0100", "title": "Bebauungsplan 831"}]
+    fremd = [{"template_number": "23/0100", "title": "Bebauungsplan 831"}]
     assert nb.aus_vorlagen(fremd) == []
 
 
@@ -473,7 +473,7 @@ def test_aus_vorlagen_ignoriert_fremde_titel():
 
 def test_probe_volltext():
     b = nb.aus_vorlagen([{
-        "vorlage_nr": "25/0606",
+        "template_number": "25/0606",
         "title": "Außerplanmäßige Bewilligung einer Mehrauszahlung in Höhe von "
                  "105.000 Euro für die Straßenbaumaßnahme"}])[0]
     assert nb.probe_volltext(b, VORSCHLAG_STRASSENBAU)
@@ -482,7 +482,7 @@ def test_probe_volltext():
 
 def test_probe_volltext_ohne_titelbetrag_ist_nicht_bestanden():
     """„Nicht geprüft" darf nicht wie „bestanden" aussehen."""
-    b = nb.Bewilligung(vorlage_nr="24/0836", titel="…", art=nb.ART_BEWILLIGUNG,
+    b = nb.Bewilligung(template_number="24/0836", titel="…", art=nb.ART_BEWILLIGUNG,
                        kategorie="ueberplanmaessig", jahr=2024, betrag=65_000.0,
                        betrag_quelle="beschlussvorschlag")
     assert not nb.probe_volltext(b, VORSCHLAG_RECHTSAMT)
@@ -591,14 +591,14 @@ def test_probe_tabelle_wird_nicht_geglaettet():
 def test_probe_ratsabgleich_meldet_die_abweichung():
     """2023 stimmt auf 100 € — der Abgleich rechnet, statt zu behaupten."""
     serie = nb.aus_vorlagen(
-        [{"vorlage_nr": "23/0617",
+        [{"template_number": "23/0617",
           "title": "Überplanmäßige Bewilligung für Mehraufwendungen in Höhe "
                    "von 33.871.800 Euro für den Teilhaushalt 10"}],
         {"23/0617": [{"committee": "Rat", "outcome": "angenommen",
                       "session_date": "2023-11-27"}]})
     abgleich = nb.probe_ratsabgleich(serie, nb.kapitel3(RB_2023, 2023))
     assert abgleich.bericht_summe == pytest.approx(33_871_700.00)
-    assert abgleich.abweichung == pytest.approx(100.0)
+    assert abgleich.deviation == pytest.approx(100.0)
     assert abgleich.abweichung_prozent == pytest.approx(0.0003, abs=0.0001)
     assert "+100,00 €" in abgleich.als_text()
 
@@ -621,13 +621,13 @@ def test_de_betrag_schreibt_deutsch():
 GEMESSEN = {
     2022: {"unsere": 23_956_742.00, "faelle": 12,
            "bericht": 23_825_742.00, "bericht_faelle": 11,
-           "abweichung": 131_000.00},
+           "deviation": 131_000.00},
     2023: {"unsere": 33_871_800.00, "faelle": 26,
            "bericht": 33_871_700.00, "bericht_faelle": 26,
-           "abweichung": 100.00},
+           "deviation": 100.00},
     2024: {"unsere": 43_096_100.00, "faelle": 21,
            "bericht": 42_171_646.29, "bericht_faelle": 21,
-           "abweichung": 924_453.71},
+           "deviation": 924_453.71},
 }
 
 
@@ -641,7 +641,7 @@ def test_gemessene_abweichungen_sind_festgenagelt(jahr):
     assert rat.betrag == pytest.approx(soll["bericht"])
     assert rat.anzahl == soll["bericht_faelle"]
     # Und die Rechnung, die daraus die Abweichung macht.
-    assert soll["unsere"] - soll["bericht"] == pytest.approx(soll["abweichung"])
+    assert soll["unsere"] - soll["bericht"] == pytest.approx(soll["deviation"])
 
 
 def test_2024er_abweichung_ist_auf_den_cent_erklaert():
@@ -655,14 +655,14 @@ def test_2024er_abweichung_ist_auf_den_cent_erklaert():
     ]
     differenz = sum(beantragt - gebucht for _, beantragt, gebucht
                     in niedriger_gebucht)
-    assert differenz == pytest.approx(GEMESSEN[2024]["abweichung"])
+    assert differenz == pytest.approx(GEMESSEN[2024]["deviation"])
 
 
 def test_probe_ratsabgleich_nennt_die_fehlenden_nummern():
     """Der Bericht nennt dieselben Fälle mit Nummern — wer fehlt, wird
     benannt statt weggelassen."""
     serie = nb.aus_vorlagen(
-        [{"vorlage_nr": "24/0359",
+        [{"template_number": "24/0359",
           "title": "Überplanmäßige Bewilligung in Höhe von 100.000 Euro"}],
         {"24/0359": [{"committee": "Rat", "outcome": "angenommen",
                       "session_date": "2024-06-17"}]})
@@ -698,7 +698,7 @@ def test_vorlagen_im_kapitel_2024():
 
 def _bewilligung(nr, betrag, committee, outcome="angenommen"):
     return nb.Bewilligung(
-        vorlage_nr=nr, titel="…", art=nb.ART_BEWILLIGUNG,
+        template_number=nr, titel="…", art=nb.ART_BEWILLIGUNG,
         kategorie="ueberplanmaessig", jahr=2024, betrag=betrag,
         betrag_quelle="titel",
         beschluesse=({"committee": committee, "outcome": outcome},))

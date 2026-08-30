@@ -422,9 +422,9 @@ def probe_summen(eintrag: dict) -> dict:
             teilproben.append({"groesse": summe, "ok": None,
                                "grund": "gesperrt oder nicht ausgewiesen"})
             continue
-        abweichung = abs(werte[0] - (werte[1] + werte[2]))
-        ok = abweichung < 0.5
-        teilproben.append({"groesse": summe, "ok": ok, "abweichung": abweichung})
+        deviation = abs(werte[0] - (werte[1] + werte[2]))
+        ok = deviation < 0.5
+        teilproben.append({"groesse": summe, "ok": ok, "deviation": deviation})
         if not ok:
             fehler.append(f"{summe}: {werte[0]:.0f} gegen "
                           f"{werte[1]:.0f}+{werte[2]:.0f}")

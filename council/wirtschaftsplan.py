@@ -190,7 +190,7 @@ class Wirtschaftsplan:
     betrieb: str          # Kürzel aus BETRIEBE
     betrieb_name: str
     jahr: int             # Haushaltsjahr, nicht das Jahr der Vorlage
-    vorlage_nr: str
+    template_number: str
     ertraege: float
     aufwendungen: float
     steuern: float
@@ -248,7 +248,7 @@ def betrieb_aus_titel(titel: str) -> tuple[str, str] | None:
     return None
 
 
-def parse_wirtschaftsplan(vorlage_nr: str, titel: str, text: str) -> Wirtschaftsplan | None:
+def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtschaftsplan | None:
     """Die Eckwerte aus dem Beschlusstext einer Wirtschaftsplan-Vorlage.
 
     ``None``, wenn der Beschlusstext keine Eckwerte trägt — der Normalfall
@@ -276,14 +276,14 @@ def parse_wirtschaftsplan(vorlage_nr: str, titel: str, text: str) -> Wirtschafts
     rest = werte["ertraege"] - werte["aufwendungen"] - steuern - werte["ergebnis"]
     if abs(rest) > TOLERANZ_EUR:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Erfolgsplan geht nicht auf — "
+            f"{template_number}: Erfolgsplan geht nicht auf — "
             f"{werte['ertraege']:.2f} − {werte['aufwendungen']:.2f} − {steuern:.2f} "
             f"≠ {werte['ergebnis']:.2f} (Restbetrag {rest:.2f} €)")
 
     m_jahr = _JAHR_TEXT.search(flach)
     if not m_jahr:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Eckwerte ohne Haushaltsjahr im Text — ohne Jahr "
+            f"{template_number}: Eckwerte ohne Haushaltsjahr im Text — ohne Jahr "
             "gehören die Zahlen nirgendwohin")
     jahr = int(m_jahr.group(1))
 
@@ -293,19 +293,19 @@ def parse_wirtschaftsplan(vorlage_nr: str, titel: str, text: str) -> Wirtschafts
     titel_jahre = {int(j) for j in _JAHR_TITEL.findall(titel)}
     if titel_jahre and jahr not in titel_jahre:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Haushaltsjahr {jahr} steht so nicht im Titel "
+            f"{template_number}: Haushaltsjahr {jahr} steht so nicht im Titel "
             f"(dort: {sorted(titel_jahre)}) — eines von beiden ist falsch gelesen")
 
     erkannt = betrieb_aus_titel(titel)
     if not erkannt:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Eckwerte gefunden, aber der Betrieb ist unbekannt — "
+            f"{template_number}: Eckwerte gefunden, aber der Betrieb ist unbekannt — "
             f"Titel: {titel!r}. Erst in BETRIEBE eintragen.")
     key, name = erkannt
 
     m_entwurf = _ENTWURF.search(flach)
     return Wirtschaftsplan(
-        betrieb=key, betrieb_name=name, jahr=jahr, vorlage_nr=vorlage_nr,
+        betrieb=key, betrieb_name=name, jahr=jahr, template_number=template_number,
         ertraege=werte["ertraege"], aufwendungen=werte["aufwendungen"],
         steuern=steuern, ergebnis=werte["ergebnis"],
         vermoegensplan=werte.get("vermoegensplan"),
@@ -314,7 +314,7 @@ def parse_wirtschaftsplan(vorlage_nr: str, titel: str, text: str) -> Wirtschafts
     )
 
 
-def ohne_eckwerte(vorlage_nr: str, titel: str) -> dict:
+def ohne_eckwerte(template_number: str, titel: str) -> dict:
     """Eine Vorlage, die keine Eckwerte im Beschlusstext trägt — mit dem Grund.
 
     Damit die Lücke **gezählt** dasteht statt zu verschwinden: „38 von 46
@@ -322,7 +322,7 @@ def ohne_eckwerte(vorlage_nr: str, titel: str) -> dict:
     ein stilles Überspringen wäre keine."""
     erkannt = betrieb_aus_titel(titel)
     return {
-        "vorlage_nr": vorlage_nr,
+        "template_number": template_number,
         "betrieb": erkannt[0] if erkannt else None,
         "betrieb_name": erkannt[1] if erkannt else None,
         "titel": titel,
@@ -334,7 +334,7 @@ def ohne_eckwerte(vorlage_nr: str, titel: str) -> dict:
 def dokument_name(plan: Wirtschaftsplan) -> str:
     """Wie das Dokument im Quellenverzeichnis heißen soll.
 
-    Bis zum 21.08.2026 stand hier ``f"Vorlage {plan.vorlage_nr}"``, und das
+    Bis zum 21.08.2026 stand hier ``f"Vorlage {plan.template_number}"``, und das
     Verzeichnis von ``/haushalt/betriebe`` listete für den Jahrgang 2026 fünf
     Links namens „Vorlage 25/0722", „Vorlage 25/0818/1", „Vorlage 25/0819" …
     — fünf verschiedene Dokumente, aber keines sagte, WESSEN Plan es ist. Tim

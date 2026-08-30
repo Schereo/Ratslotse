@@ -9,8 +9,8 @@ import Testing
         "id": 42, "ksinr": 88, "kind": "decision", "item_number": "Ö 2",
         "title": "Radweg bauen", "summary": "Der Radweg wird gebaut.",
         "committee": "Verkehrsausschuss", "session_date": "2026-02-01",
-        "outcome": "angenommen", "vote": "mehrheitlich", "gegenstimmen": 2,
-        "enthaltungen": 1, "factions": ["SPD"], "vorlage_nr": "26/0400"
+        "outcome": "angenommen", "vote": "mehrheitlich", "no_votes": 2,
+        "abstentions": 1, "factions": ["SPD"], "template_number": "26/0400"
       },
       "present_parties": ["CDU", "SPD"],
       "ratsinfo_url": "https://buergerinfo.oldenburg.de/si0057.php?__ksinr=88",
@@ -27,7 +27,7 @@ import Testing
       }],
       "vorlage_url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=901",
       "vorlage": {
-        "vorlage_nr": "26/0400", "title": "Radweg", "art": "Beschlussvorlage",
+        "template_number": "26/0400", "title": "Radweg", "art": "Beschlussvorlage",
         "document_url": "https://example.test/vorlage.pdf", "n_pages": 3,
         "excerpt": "Sachverhalt: Die Stadt plant einen Radweg.", "amt": "Amt für Verkehr"
       },
@@ -104,7 +104,7 @@ import Testing
     """#
     let followsJSON = #"""
     {"follows":[{
-      "id":7,"kvonr":901,"vorlage_nr":"26/0400","title":"Radweg","url":"https://example.test/vorlage",
+      "id":7,"kvonr":901,"template_number":"26/0400","title":"Radweg","url":"https://example.test/vorlage",
       "n_stationen":2,"naechste":{"datum":"2026-10-01","gremium":"Rat","ergebnis":null},
       "letzte":{"datum":"2026-02-01","gremium":"Ausschuss","ergebnis":"angenommen"}
     }]}

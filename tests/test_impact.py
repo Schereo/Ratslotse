@@ -56,7 +56,7 @@ def _fake_resp(payload: dict):
 
 
 def test_rate_batch_filters_and_signals(monkeypatch):
-    decisions = [{"id": 7, "title": "Haushaltssatzung", "beschluss": TEXT, "committee": "Rat",
+    decisions = [{"id": 7, "title": "Haushaltssatzung", "official_text": TEXT, "committee": "Rat",
                   "session_date": "2026-01-01", "outcome": "angenommen", "kind": "decision",
                   "amount_eur": 1_000_000.0}]
     seen = {}

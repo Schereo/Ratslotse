@@ -90,7 +90,7 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
     anteil_e = ERTRAEGE_PLAN / ERTRAEGE_IST
     gesamt = [
         {"nr": nr, "bezeichnung": bez, "ansatz": round(wert * anteil_e, 2),
-         "ergebnis": wert, "abweichung": round(wert - wert * anteil_e, 2), "ist_summe": 0}
+         "ergebnis": wert, "deviation": round(wert - wert * anteil_e, 2), "ist_summe": 0}
         for nr, bez, wert in ERTRAGSARTEN if nr != ohne_posten
     ]
     gesamt += [

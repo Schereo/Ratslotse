@@ -46,7 +46,7 @@ def _punkt(store, ksinr=1, nummer="Ö 10", titel="Ausfallbürgschaft für das Kl
         "VALUES (?, ?, ?, 1, ?)", (ksinr, nummer, titel, kvonr))
     if vorlage:
         store._conn.execute(
-            "INSERT OR REPLACE INTO council_vorlagen (kvonr, vorlage_nr, title, raw_text, "
+            "INSERT OR REPLACE INTO council_vorlagen (kvonr, template_number, title, raw_text, "
             "fetched_at) VALUES (?, ?, ?, ?, '2026-08-30')",
             (kvonr, "26/0001", titel, "Sachverhalt: Die Stadt bürgt für ein Darlehen."))
     if impact is not None:

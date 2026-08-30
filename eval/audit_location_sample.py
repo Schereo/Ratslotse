@@ -28,8 +28,8 @@ def _vorlage_text(conn: sqlite3.Connection, row: sqlite3.Row) -> str:
     lookups = [
         ("SELECT raw_text FROM council_vorlagen WHERE kvonr=? AND status='ok' LIMIT 1",
          (row["kvonr"],)),
-        ("SELECT raw_text FROM council_vorlagen WHERE vorlage_nr=? AND status='ok' "
-         "ORDER BY kvonr DESC LIMIT 1", (row["vorlage_nr"],)),
+        ("SELECT raw_text FROM council_vorlagen WHERE template_number=? AND status='ok' "
+         "ORDER BY kvonr DESC LIMIT 1", (row["template_number"],)),
     ]
     for sql, args in lookups:
         if args[0] is None:
@@ -37,11 +37,11 @@ def _vorlage_text(conn: sqlite3.Connection, row: sqlite3.Row) -> str:
         hit = conn.execute(sql, args).fetchone()
         if hit and hit[0]:
             return str(hit[0])
-    if row["vorlage_nr"]:
+    if row["template_number"]:
         hit = conn.execute(
             "SELECT raw_text FROM council_vorlagen WHERE status='ok' "
-            "AND ? LIKE vorlage_nr || '/%' ORDER BY kvonr DESC LIMIT 1",
-            (row["vorlage_nr"],),
+            "AND ? LIKE template_number || '/%' ORDER BY kvonr DESC LIMIT 1",
+            (row["template_number"],),
         ).fetchone()
         if hit and hit[0]:
             return str(hit[0])
@@ -69,8 +69,8 @@ def sample(conn: sqlite3.Connection, *, method: str, limit: int, seed: int,
         where.append("l.stadtteil IS NOT NULL")
     rows = conn.execute(
         "SELECT dl.decision_id,dl.location_slug,dl.source,dl.evidence,dl.method,"
-        "dl.confidence,l.name,l.kind,l.lat,l.lon,l.stadtteil,d.title,d.beschluss,"
-        "d.vorlage_nr,d.kvonr FROM council_decision_locations dl "
+        "dl.confidence,l.name,l.kind,l.lat,l.lon,l.stadtteil,d.title,d.official_text,"
+        "d.template_number,d.kvonr FROM council_decision_locations dl "
         "JOIN council_locations l ON l.slug=dl.location_slug "
         "JOIN council_decisions d ON d.id=dl.decision_id WHERE " + " AND ".join(where),
         (method,),
@@ -81,7 +81,7 @@ def sample(conn: sqlite3.Connection, *, method: str, limit: int, seed: int,
     elif current_rules and method in {"regex", "stadtteilliste", "gebaeudemuster"}:
         checked = []
         for row in rows:
-            text = row["title"] if row["source"] == "title" else row["beschluss"]
+            text = row["title"] if row["source"] == "title" else row["official_text"]
             expected = {location_slug(item["name"])
                         for item in extract_explicit_locations(text or "", source=row["source"])}
             if row["location_slug"] in expected:
@@ -93,7 +93,7 @@ def sample(conn: sqlite3.Connection, *, method: str, limit: int, seed: int,
     for row in chosen:
         source_text = {
             "title": row["title"] or "",
-            "beschluss": row["beschluss"] or "",
+            "official_text": row["official_text"] or "",
             "vorlage": _vorlage_text(conn, row),
         }.get(row["source"], "")
         result.append({

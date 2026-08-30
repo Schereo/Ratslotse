@@ -61,12 +61,12 @@ def test_gross_regel_und_tokenbudget():
     assert qa._answer_tokens("thema") == 1000
     assert qa._answer_tokens("thema", gross=True) == 2200
     messages, _ = qa._answer_messages(
-        "Wie läuft es mit dem Stadion?", [{"id": 1, "title": "T", "beschluss": "B"}],
+        "Wie läuft es mit dem Stadion?", [{"id": 1, "title": "T", "official_text": "B"}],
         gross=True)
     assert "UMFANGREICHES Thema" in messages[0]["content"]
     assert "## " in messages[0]["content"]
     messages, _ = qa._answer_messages(
-        "Kurze Frage?", [{"id": 1, "title": "T", "beschluss": "B"}])
+        "Kurze Frage?", [{"id": 1, "title": "T", "official_text": "B"}])
     assert "UMFANGREICHES Thema" not in messages[0]["content"]
 
 
@@ -434,7 +434,7 @@ def test_antrag_decision_ids_findet_fraktion(tmp_path):
             "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
             "VALUES (1, 'Rat', '2026-01-01', '18:00', 'Rathaus', '')")
         store._conn.execute(
-            "INSERT INTO council_decisions (ksinr, position, kind, title, factions, vorlage_nr) "
+            "INSERT INTO council_decisions (ksinr, position, kind, title, factions, template_number) "
             "VALUES (1, 0, 'decision', 'Radweg-Antrag', '[\"SPD\"]', '26/1')")
         store._conn.execute(
             "INSERT INTO council_decisions (ksinr, position, kind, title, factions) "
@@ -559,7 +559,7 @@ def test_beschluss_kontext_traegt_deutsches_datum():
     schrieb das Modell „am 2026-06-01" in den Fließtext (Tims Befund 10.08.)."""
     messages, _ = qa._answer_messages(
         "Was wurde zum Stadion entschieden?",
-        [{"id": 7, "title": "Stadionneubau", "beschluss": "Zugestimmt.",
+        [{"id": 7, "title": "Stadionneubau", "official_text": "Zugestimmt.",
           "committee": "Rat", "session_date": "2026-06-01", "outcome": "angenommen"}])
     prompt = messages[0]["content"]
     assert "01.06.2026" in prompt

@@ -62,8 +62,8 @@ def test_qa_eval_details_have_no_impact_map():
 # --------------------------------------------------------------------------- #
 
 _FAKE_DB = {
-    ("vorlage_nr", "25/0100"): [7, 8],
-    ("vorlage_nr", "25/0200"): [8, 9],  # 8 überschneidet — Dedupe-Probe
+    ("template_number", "25/0100"): [7, 8],
+    ("template_number", "25/0200"): [8, 9],  # 8 überschneidet — Dedupe-Probe
     ("title_like", "Wechloy"): [3],
 }
 
@@ -75,7 +75,7 @@ def _find_ids(**spec):
 
 def test_resolve_expected_prefers_keys_and_dedupes():
     case = {"id": "x", "expected_ids": [999],
-            "expected_keys": [{"vorlage_nr": "25/0100"}, {"vorlage_nr": "25/0200"}]}
+            "expected_keys": [{"template_number": "25/0100"}, {"template_number": "25/0200"}]}
     # Schlüssel schlagen die prod-ids; Reihenfolge der Specs bleibt, Duplikate raus.
     assert resolve_expected(_find_ids, case) == [7, 8, 9]
 
@@ -85,7 +85,7 @@ def test_resolve_expected_falls_back_to_ids():
 
 
 def test_resolve_expected_empty_when_unresolvable():
-    case = {"id": "z", "expected_ids": [999], "expected_keys": [{"vorlage_nr": "26/9999"}]}
+    case = {"id": "z", "expected_ids": [999], "expected_keys": [{"template_number": "26/9999"}]}
     assert resolve_expected(_find_ids, case) == []
 
 

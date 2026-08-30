@@ -452,8 +452,8 @@ function Weg({ runde }: { runde: WegRunde }) {
  *  daneben Stiftungen und Eigenbetriebe — deren Voten stehen hier bewusst
  *  nicht, sonst nennte die Zeile eine Mehrheit für etwas anderes. */
 function Votum({ votum }: { votum: NonNullable<WegStation["votum"]> }) {
-  const teile = [votum.vote, votum.gegenstimmen != null ? `${votum.gegenstimmen} Gegenstimmen` : null,
-    votum.enthaltungen ? `${votum.enthaltungen} Enthaltungen` : null].filter(Boolean);
+  const teile = [votum.vote, votum.no_votes != null ? `${votum.no_votes} Gegenstimmen` : null,
+    votum.abstentions ? `${votum.abstentions} Enthaltungen` : null].filter(Boolean);
   return (
     <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
       Abstimmung über die Haushaltssatzung:{" "}

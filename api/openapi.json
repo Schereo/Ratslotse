@@ -923,10 +923,10 @@
       "Beschlusszeile": {
         "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus.",
         "properties": {
-          "abweichung": {
-            "title": "Abweichung",
+          "abstentions": {
+            "title": "Abstentions",
             "type": [
-              "string",
+              "integer",
               "null"
             ]
           },
@@ -937,13 +937,6 @@
               "null"
             ]
           },
-          "beschluss": {
-            "title": "Beschluss",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "committee": {
             "title": "Committee",
             "type": [
@@ -951,10 +944,10 @@
               "null"
             ]
           },
-          "enthaltungen": {
-            "title": "Enthaltungen",
+          "deviation": {
+            "title": "Deviation",
             "type": [
-              "integer",
+              "string",
               "null"
             ]
           },
@@ -964,13 +957,6 @@
             },
             "title": "Factions",
             "type": "array"
-          },
-          "gegenstimmen": {
-            "title": "Gegenstimmen",
-            "type": [
-              "integer",
-              "null"
-            ]
           },
           "id": {
             "title": "Id",
@@ -1048,6 +1034,20 @@
             "title": "N Beratungen",
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "no_votes": {
+            "title": "No Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "official_text": {
+            "title": "Official Text",
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -1131,15 +1131,15 @@
               "null"
             ]
           },
-          "title": {
-            "title": "Title",
+          "template_number": {
+            "title": "Template Number",
             "type": [
               "string",
               "null"
             ]
           },
-          "vorlage_nr": {
-            "title": "Vorlage Nr",
+          "title": {
+            "title": "Title",
             "type": [
               "string",
               "null"
@@ -2738,10 +2738,10 @@
           "decision": {
             "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus.",
             "properties": {
-              "abweichung": {
-                "title": "Abweichung",
+              "abstentions": {
+                "title": "Abstentions",
                 "type": [
-                  "string",
+                  "integer",
                   "null"
                 ]
               },
@@ -2752,13 +2752,6 @@
                   "null"
                 ]
               },
-              "beschluss": {
-                "title": "Beschluss",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
               "committee": {
                 "title": "Committee",
                 "type": [
@@ -2766,10 +2759,10 @@
                   "null"
                 ]
               },
-              "enthaltungen": {
-                "title": "Enthaltungen",
+              "deviation": {
+                "title": "Deviation",
                 "type": [
-                  "integer",
+                  "string",
                   "null"
                 ]
               },
@@ -2779,13 +2772,6 @@
                 },
                 "title": "Factions",
                 "type": "array"
-              },
-              "gegenstimmen": {
-                "title": "Gegenstimmen",
-                "type": [
-                  "integer",
-                  "null"
-                ]
               },
               "id": {
                 "title": "Id",
@@ -2863,6 +2849,20 @@
                 "title": "N Beratungen",
                 "type": [
                   "integer",
+                  "null"
+                ]
+              },
+              "no_votes": {
+                "title": "No Votes",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "official_text": {
+                "title": "Official Text",
+                "type": [
+                  "string",
                   "null"
                 ]
               },
@@ -2946,15 +2946,15 @@
                   "null"
                 ]
               },
-              "title": {
-                "title": "Title",
+              "template_number": {
+                "title": "Template Number",
                 "type": [
                   "string",
                   "null"
                 ]
               },
-              "vorlage_nr": {
-                "title": "Vorlage Nr",
+              "title": {
+                "title": "Title",
                 "type": [
                   "string",
                   "null"
@@ -3578,17 +3578,17 @@
               "null"
             ]
           },
-          "url": {
-            "maxLength": 500,
-            "title": "Url",
+          "template_number": {
+            "maxLength": 60,
+            "title": "Template Number",
             "type": [
               "string",
               "null"
             ]
           },
-          "vorlage_nr": {
-            "maxLength": 60,
-            "title": "Vorlage Nr",
+          "url": {
+            "maxLength": 500,
+            "title": "Url",
             "type": [
               "string",
               "null"
@@ -5098,13 +5098,6 @@
       "SocialBeschluss": {
         "description": "Fester SELECT im Router plus ``votes`` — deshalb hier vollständig.",
         "properties": {
-          "beschluss": {
-            "title": "Beschluss",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "committee": {
             "title": "Committee",
             "type": [
@@ -5125,6 +5118,13 @@
           },
           "item_number": {
             "title": "Item Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "official_text": {
+            "title": "Official Text",
             "type": [
               "string",
               "null"
@@ -5177,7 +5177,7 @@
         "required": [
           "id",
           "title",
-          "beschluss",
+          "official_text",
           "outcome",
           "vote",
           "simple_summary",
@@ -12055,10 +12055,10 @@
         ]
       }
     },
-    "/api/social/hoechste-beschluss-id": {
+    "/api/social/hoechste-official_text-id": {
       "get": {
         "description": "Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,\ndamit sein Ereignis-Cron nicht den gesamten Bestand als „neu\" meldet.",
-        "operationId": "hoechste_beschluss_id_api_social_hoechste_beschluss_id_get",
+        "operationId": "hoechste_beschluss_id_api_social_hoechste_official_text_id_get",
         "responses": {
           "200": {
             "content": {

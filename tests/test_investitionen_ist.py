@@ -151,8 +151,8 @@ def test_eine_doppische_zeile_im_kameralen_abschnitt_faellt_durch():
 def test_zeilensumme_haelt_in_jedem_uebernommenen_jahrgang(gelesen):
     """Kein Jahrgang kommt herein, dessen Arten die Summe nicht ergeben."""
     for z in gelesen["zeilen"]:
-        ok, abweichung = ii.zeilensumme(z)
-        assert ok, f"{z['jahr']}: {abweichung:+,.0f} €"
+        ok, deviation = ii.zeilensumme(z)
+        assert ok, f"{z['jahr']}: {deviation:+,.0f} €"
 
 
 def test_2019_faellt_ganz_heraus():

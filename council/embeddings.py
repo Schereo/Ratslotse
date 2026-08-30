@@ -267,7 +267,7 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
     if klassisch:
         pairs = [(d["id"], f"{d.get('title') or ''}. {d.get('summary') or ''}") for d in docs]
     else:
-        excerpts = _vorlage_excerpts(store, [d.get("vorlage_nr") or ""
+        excerpts = _vorlage_excerpts(store, [d.get("template_number") or ""
                                              for d in docs if d["id"] not in vor_chunk])
         pairs = [(d["id"], _pair_text(d, excerpts, vor_chunk, bm_snippet)) for d in docs]
     try:
@@ -322,7 +322,7 @@ def recency_boost(hits: list[tuple], dates: dict[int, str],
     return out
 
 
-_pair_excerpts: dict[str, str] = {}  # vorlage_nr → excerpt; Vorlagentexte sind stabil
+_pair_excerpts: dict[str, str] = {}  # template_number → excerpt; Vorlagentexte sind stabil
 
 
 def _vorlage_excerpts(store, vorlage_nrs: list[str]) -> dict[str, str]:
@@ -356,10 +356,10 @@ def _pair_text(d: dict, excerpts: dict[str, str],
     verlieren kann und bei Verwaltungs-Boilerplate gern gleichauf rankt
     (Märchen-Straßen-Regress der Eval). Bewusst ~500 Zeichen — mehr Text macht
     das Reranking langsamer, ohne die Relevanzentscheidung zu verbessern."""
-    base = f"{d.get('title') or ''}. {(d.get('summary') or d.get('beschluss') or '')[:280]}".strip()
+    base = f"{d.get('title') or ''}. {(d.get('summary') or d.get('official_text') or '')[:280]}".strip()
     extra = (bm_snippet.get(d["id"], "")[:300]
              or vor_chunk.get(d["id"], "")[:300]
-             or excerpts.get((d.get("vorlage_nr") or "").strip(), ""))
+             or excerpts.get((d.get("template_number") or "").strip(), ""))
     return f"{base} — {extra}" if extra else base
 
 
@@ -428,7 +428,7 @@ def _vorlage_matrix(store):
         import numpy as np
 
         rows = store.get_vorlage_embeddings()
-        nrs = [r["vorlage_nr"] for r in rows]
+        nrs = [r["template_number"] for r in rows]
         texts = [r["chunk_text"] for r in rows]
         if rows:
             buf = b"".join(bytes(r["vector"]) for r in rows)
@@ -599,8 +599,8 @@ def embed_anlagen_missing(store, limit: int | None = None) -> int:
     for a in todo:
         prefix = " | ".join(t for t in (
             a.get("label"),
-            f"Vorlage {a.get('vorlage_nr')}: {a.get('vorlage_titel')}"
-            if a.get("vorlage_nr") or a.get("vorlage_titel") else None,
+            f"Vorlage {a.get('template_number')}: {a.get('vorlage_titel')}"
+            if a.get("template_number") or a.get("vorlage_titel") else None,
         ) if t)
         chunks = anlage_chunks(a.get("raw_text") or "", prefix=prefix)
         if not chunks:
@@ -635,7 +635,7 @@ def _anlage_matrix(store):
 _ANLAGE_META_STOPP = {
     "anlage", "anlagen", "dokument", "dokumente", "welche", "welcher", "welchem",
     "steht", "sagt", "nennt", "wurde", "wurden", "fuer", "uber", "ueber",
-    "beschluss", "beschlossen", "vorlage", "stadt", "oldenburger", "oldenburg",
+    "official_text", "beschlossen", "vorlage", "stadt", "oldenburger", "oldenburg",
 }
 
 
@@ -662,7 +662,7 @@ def _anlage_lexikalisch(store, query: str, expanded: str, limit: int) -> list[in
     for row in store.anlagen_metadata_rows():
         label_tokens = _anlage_meta_tokens(row.get("label") or "")
         title_tokens = _anlage_meta_tokens(
-            f"{row.get('vorlage_nr') or ''} {row.get('vorlage_titel') or ''}")
+            f"{row.get('template_number') or ''} {row.get('vorlage_titel') or ''}")
         label_hits = q_tokens & label_tokens
         title_hits = q_tokens & title_tokens
         # Ein Dokumenttyp im Label ist besonders aussagekräftig; Titelwörter
@@ -713,8 +713,8 @@ def search_anlagen(store, query: str, expanded: str, top_k: int = 6,
         a = meta.get(did, {})
         metadata = " | ".join(t for t in (
             a.get("label"),
-            f"Vorlage {a.get('vorlage_nr')}: {a.get('vorlage_titel')}"
-            if a.get("vorlage_nr") or a.get("vorlage_titel") else None,
+            f"Vorlage {a.get('template_number')}: {a.get('vorlage_titel')}"
+            if a.get("template_number") or a.get("vorlage_titel") else None,
         ) if t)
         # v2-Chunks tragen diese Metadaten bereits. Nicht doppeln: Der
         # Zusatzkanal-Reranker deckelt bewusst bei 150 Zeichen, und ein
@@ -946,7 +946,7 @@ def embed_wortbeitraege_missing(store) -> int:
 
 
 def search_vorlagen(store, qv, top_k: int = 12, min_score: float = 0.35) -> list[tuple]:
-    """Beste Vorlagen zu einem Query-Vektor → ``[(vorlage_nr, score, chunk_text)]``,
+    """Beste Vorlagen zu einem Query-Vektor → ``[(template_number, score, chunk_text)]``,
     je Vorlage zählt ihr bester Chunk (dessen Text wandert in das Rerank-Paar).
     Leer, solange der Chunk-Index nicht gebaut ist (embed_decisions.py)."""
     nrs, texts, mat = _vorlage_matrix(store)

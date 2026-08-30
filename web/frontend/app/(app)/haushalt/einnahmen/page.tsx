@@ -569,8 +569,8 @@ export default function EinnahmenPage() {
                 <dd className="mt-1.5 grid gap-1.5 @3xl/spenden:grid-cols-2">
                   {spendenOhne.map((v) => (
                     <LueckenFeld
-                      key={v.vorlage_nr}
-                      label={v.vorlage_nr}
+                      key={v.template_number}
+                      label={v.template_number}
                       grund={v.grund}
                       datum={v.sitzung
                         ? new Date(v.sitzung).toLocaleDateString("de-DE")

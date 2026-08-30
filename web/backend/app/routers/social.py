@@ -52,7 +52,7 @@ JPEG_MAGIC = b"\xff\xd8\xff"
 _TAG_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 #: Kennung eines Beitrags-Bildersatzes. Meist ein ISO-Datum („2026-08-24"),
-#: aber der Bot legt auch „2026-08-24-fundstueck", „beschluss-4711" oder
+#: aber der Bot legt auch „2026-08-24-fundstueck", „official_text-4711" oder
 #: „stories-2026-08-24" ab. Kleinbuchstaben, Ziffern, Bindestrich — kein
 #: Punkt und kein Schrägstrich, damit hier kein Pfad hineingeschmuggelt
 #: werden kann.
@@ -130,7 +130,7 @@ def neue_beschluesse(
     Datenbank lief (``ratslotse_social.quellen.neue_beschluesse``), nur
     jetzt hinter dem Token statt hinter einem lokalen DB-Pfad."""
     zeilen = [dict(r) for r in store._conn.execute(
-        """SELECT d.id, d.title, d.beschluss, d.outcome, d.vote,
+        """SELECT d.id, d.title, d.official_text, d.outcome, d.vote,
                   d.simple_summary, d.importance, d.item_number,
                   cs.committee, cs.session_date
            FROM council_decisions d
@@ -150,7 +150,7 @@ def neue_beschluesse(
     return zeilen[:limit] if limit else zeilen
 
 
-@router.get("/hoechste-beschluss-id", dependencies=[Depends(bot_token)])
+@router.get("/hoechste-official_text-id", dependencies=[Depends(bot_token)])
 def hoechste_beschluss_id(store: CouncilStore = Depends(get_council_store)) -> HoechsteBeschlussId:
     """Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,
     damit sein Ereignis-Cron nicht den gesamten Bestand als „neu" meldet."""

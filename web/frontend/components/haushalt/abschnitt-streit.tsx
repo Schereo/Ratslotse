@@ -461,7 +461,7 @@ export function StreitAbschnitt({ onBestand }: {
         )}
 
         {/* Wie es ausging. */}
-        {schluss?.beschluss && (
+        {schluss?.official_text && (
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
@@ -472,14 +472,14 @@ export function StreitAbschnitt({ onBestand }: {
               </span>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <OutcomeBadge outcome={(schluss.beschluss.outcome ?? null) as DecisionOutcome | null} />
+              <OutcomeBadge outcome={(schluss.official_text.outcome ?? null) as DecisionOutcome | null} />
               <span className="text-[13.5px] font-semibold text-foreground">
                 Haushaltssatzung und Haushaltsplan {r.jahr}
               </span>
             </div>
-            {schluss.beschluss.wortlaut && (
+            {schluss.official_text.wortlaut && (
               <p className="mt-2 max-w-[76ch] border-l-2 border-border pl-3 text-[13px] leading-relaxed text-foreground/90">
-                {schluss.beschluss.wortlaut}
+                {schluss.official_text.wortlaut}
               </p>
             )}
             <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
@@ -489,7 +489,7 @@ export function StreitAbschnitt({ onBestand }: {
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-dashed border-border pt-2.5">
               <Link
-                href={sessionHref(schluss.ksinr, schluss.beschluss.top ? [schluss.beschluss.top] : undefined)}
+                href={sessionHref(schluss.ksinr, schluss.official_text.top ? [schluss.official_text.top] : undefined)}
                 className="text-[11.5px] font-semibold text-primary"
               >
                 Sitzung im Ratsinformationssystem

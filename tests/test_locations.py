@@ -132,7 +132,7 @@ def test_location_storage_replaces_per_decision_and_keeps_one_off_places(tmp_pat
     )
     store._conn.execute(
         "INSERT INTO council_decisions "
-        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "(id,ksinr,position,kind,item_number,title,official_text) "
         "VALUES (7,1,0,'decision','1','Bau an der Junkerstraße','Beschlossen')"
     )
     store._conn.commit()
@@ -181,9 +181,9 @@ def test_llm_locations_require_a_real_fundstelle(monkeypatch):
     monkeypatch.setattr(locations.llm, "chat_complete", lambda **_kwargs: response)
     got, _usage = locations.extract_batch([{
         "id": 7, "title": "GS Röwekamp, Umbau und Erweiterung",
-        "beschluss": "Die Baumaßnahme wird umgesetzt.", "vorlage_text": "",
+        "official_text": "Die Baumaßnahme wird umgesetzt.", "vorlage_text": "",
     }, {
-        "id": 8, "title": "Stadtweiter Bericht", "beschluss": "Zur Kenntnis genommen.",
+        "id": 8, "title": "Stadtweiter Bericht", "official_text": "Zur Kenntnis genommen.",
         "vorlage_text": "",
     }])
     assert [row["name"] for row in got[7]] == ["GS Röwekamp"]
@@ -202,7 +202,7 @@ def test_llm_locations_accept_top_level_array(monkeypatch):
     monkeypatch.setattr(locations.llm, "chat_complete", lambda **_kwargs: response)
     got, _usage = locations.extract_batch([{
         "id": 7, "title": "GS Röwekamp, Umbau und Erweiterung",
-        "beschluss": "Die Baumaßnahme wird umgesetzt.", "vorlage_text": "",
+        "official_text": "Die Baumaßnahme wird umgesetzt.", "vorlage_text": "",
     }])
     assert [row["name"] for row in got[7]] == ["GS Röwekamp"]
 
@@ -213,7 +213,7 @@ def test_llm_locations_reject_organizations_foreign_districts_and_unrelated_evid
          "evidence": "Verkehr und Wasser GmbH", "confidence": "high"},
         {"name": "Bremen", "kind": "stadtteil", "source": "vorlage",
          "evidence": "bis Bremen", "confidence": "high"},
-        {"name": "VOSS", "kind": "sonstiges", "source": "beschluss",
+        {"name": "VOSS", "kind": "sonstiges", "source": "official_text",
          "evidence": "Das Jahresergebnis wird vorgetragen", "confidence": "high"},
         {"name": "Eversten", "kind": "stadtteil", "source": "vorlage",
          "evidence": "Stadtteil Eversten", "confidence": "high"},
@@ -226,7 +226,7 @@ def test_llm_locations_reject_organizations_foreign_districts_and_unrelated_evid
     got, _usage = locations.extract_batch([{
         "id": 7,
         "title": "Verkehr und Wasser GmbH – Jahresabschluss VOSS",
-        "beschluss": "Das Jahresergebnis wird vorgetragen.",
+        "official_text": "Das Jahresergebnis wird vorgetragen.",
         "vorlage_text": "Ein Vergleich führt bis Bremen; ein Vorhaben liegt im Stadtteil Eversten.",
     }])
     assert [row["name"] for row in got[7]] == ["Eversten"]
@@ -253,12 +253,12 @@ def test_incremental_process_picks_up_only_new_decisions(tmp_path):
     )
     store._conn.executemany(
         "INSERT INTO council_decisions "
-        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "(id,ksinr,position,kind,item_number,title,official_text) "
         "VALUES (?,1,0,'decision','1',?,'Beschlossen')",
         [(7, "Bau an der Junkerstraße"), (8, "Stadtweiter Jahresbericht")],
     )
     store._conn.execute(
-        "UPDATE council_decisions SET vorlage_nr='26/0001' WHERE id=8")
+        "UPDATE council_decisions SET template_number='26/0001' WHERE id=8")
     store._conn.commit()
     store.close()
 
@@ -270,7 +270,7 @@ def test_incremental_process_picks_up_only_new_decisions(tmp_path):
     store = CouncilStore(db)
     store._conn.execute(
         "INSERT INTO council_decisions "
-        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "(id,ksinr,position,kind,item_number,title,official_text) "
         "VALUES (9,1,0,'decision','2','Bau am Hochheider Weg','Beschlossen')")
     store._conn.commit()
     store.close()
@@ -282,7 +282,7 @@ def test_incremental_process_picks_up_only_new_decisions(tmp_path):
     store = CouncilStore(db)
     store._conn.execute(
         "INSERT INTO council_vorlagen "
-        "(kvonr,vorlage_nr,title,raw_text,fetched_at,status) "
+        "(kvonr,template_number,title,raw_text,fetched_at,status) "
         "VALUES (1,'26/0001','Jahresbericht','Ort im späteren Volltext',"
         "'9999-01-01T00:00:00','ok')")
     store._conn.commit()
@@ -300,7 +300,7 @@ def test_known_stadtteil_is_geocoded_without_network(tmp_path, monkeypatch):
     )
     store._conn.execute(
         "INSERT INTO council_decisions "
-        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "(id,ksinr,position,kind,item_number,title,official_text) "
         "VALUES (7,1,0,'decision','1','Vorhaben in Kreyenbrück','Beschlossen')"
     )
     store._conn.commit()
@@ -369,12 +369,12 @@ def test_revalidation_removes_only_invalid_llm_links(tmp_path):
     )
     store._conn.execute(
         "INSERT INTO council_decisions "
-        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "(id,ksinr,position,kind,item_number,title,official_text) "
         "VALUES (7,1,0,'decision','1','Jahresabschluss VOSS','Feststellung')"
     )
     store._conn.commit()
     store.save_decision_locations(7, [{
-        "name": "VOSS", "kind": "sonstiges", "source": "beschluss",
+        "name": "VOSS", "kind": "sonstiges", "source": "official_text",
         "evidence": "Das Jahresergebnis wird vorgetragen", "method": "llm",
         "confidence": 0.9,
     }, {
@@ -400,7 +400,7 @@ def test_revalidation_repairs_changed_regex_matches(tmp_path):
     )
     store._conn.execute(
         "INSERT INTO council_decisions "
-        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "(id,ksinr,position,kind,item_number,title,official_text) "
         "VALUES (8,1,0,'decision','1','Straßenbenennung Alan-Turing-Straße','')"
     )
     store._conn.commit()
@@ -428,7 +428,7 @@ def test_revalidation_replaces_invalid_llm_link_with_regex_in_one_run(tmp_path):
     )
     store._conn.execute(
         "INSERT INTO council_decisions "
-        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "(id,ksinr,position,kind,item_number,title,official_text) "
         "VALUES (9,1,0,'decision','1','Sanierung Alan-Turing-Straße','')"
     )
     store._conn.commit()
@@ -459,7 +459,7 @@ def test_backfill_streams_across_multiple_batches(tmp_path):
     )
     store._conn.executemany(
         "INSERT INTO council_decisions "
-        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "(id,ksinr,position,kind,item_number,title,official_text) "
         "VALUES (?,1,?,'decision',?,'Stadtweiter Bericht','Beschlossen')",
         [(i, i, str(i)) for i in range(1, 26)],
     )
@@ -480,7 +480,7 @@ def test_reviewed_place_joins_catalog_extraction_search_and_map(tmp_path):
     )
     store._conn.executemany(
         "INSERT INTO council_decisions "
-        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "(id,ksinr,position,kind,item_number,title,official_text) "
         "VALUES (?,1,?,'decision',?,'Planung am Testquartier','Beschlossen')",
         [(i, i, str(i)) for i in range(1, 4)],
     )
@@ -559,7 +559,7 @@ def test_reviewed_alias_resolves_to_existing_catalog_place(tmp_path):
     )
     store._conn.execute(
         "INSERT INTO council_decisions "
-        "(id,ksinr,position,kind,item_number,title,beschluss) "
+        "(id,ksinr,position,kind,item_number,title,official_text) "
         "VALUES (1,1,1,'decision','1','Nadorster Gebiet','Beschlossen')"
     )
     store._conn.commit()

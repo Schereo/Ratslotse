@@ -46,7 +46,7 @@ THEMA_BLOCK_DAYS = 45
 #: Thema zu erkennen, und würden alles sperren.
 _ALLERWELT = {
     "oldenburg", "stadt", "staedtische", "städtische", "staedtischen", "städtischen",
-    "beschluss", "beschlusses", "antrag", "antrags", "bericht", "berichts",
+    "official_text", "beschlusses", "antrag", "antrags", "bericht", "berichts",
     "fraktion", "fraktionen", "vorlage", "satzung", "aenderung", "änderung",
     "aenderungen", "änderungen", "verwaltung", "sitzung", "gruppe", "ausschuss",
     "gemeinsamer", "gemeinsame", "weiteren", "weitere", "sachstand",
@@ -129,7 +129,7 @@ def write_story(decision: dict) -> str | None:
         outcome=decision.get("outcome") or "unbekannt",
         title=(decision.get("title") or "").strip(),
         interest_reason=decision.get("interest_reason") or "",
-        beschluss=(decision.get("beschluss") or decision.get("summary") or "")[:MAX_BESCHLUSS_CHARS],
+        official_text=(decision.get("official_text") or decision.get("summary") or "")[:MAX_BESCHLUSS_CHARS],
     )
     try:
         resp = llm.chat_complete(

@@ -55,7 +55,7 @@ def _fake_resp(payload: dict):
 
 
 def test_generate_one_parses_and_guards(monkeypatch):
-    decision = {"id": 1, "title": "Radweg", "beschluss": LANG,
+    decision = {"id": 1, "title": "Radweg", "official_text": LANG,
                 "committee": "Verkehrsausschuss", "session_date": "2026-06-01"}
 
     monkeypatch.setattr(simple_summary.llm, "chat_complete",

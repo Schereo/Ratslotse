@@ -37,7 +37,7 @@ CREATE TABLE council_ergebnisrechnung (
   jahr INTEGER NOT NULL, thh_nr INTEGER, thh_name TEXT,
   nr INTEGER NOT NULL, bezeichnung TEXT NOT NULL,
   vorjahr REAL, ansatz REAL, plan REAL, plan_art TEXT,
-  ergebnis REAL, abweichung REAL, ist_summe INTEGER NOT NULL DEFAULT 0,
+  ergebnis REAL, deviation REAL, ist_summe INTEGER NOT NULL DEFAULT 0,
   quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL,
   PRIMARY KEY (jahr, thh_nr, nr));
 CREATE TABLE council_abweichungsgruende (
@@ -77,7 +77,7 @@ def alte_db(tmp_path):
                (JA_LABEL, JA_URL))
     cn.executemany(
         "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, thh_name, nr, bezeichnung, "
-        " vorjahr, ansatz, plan, plan_art, ergebnis, abweichung, ist_summe, "
+        " vorjahr, ansatz, plan, plan_art, ergebnis, deviation, ist_summe, "
         " quelle_label, quelle_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(2023, None, None, 12, "Summe ordentliche Erträge", 696_600_000.0,
           664_574_528.42, 664_574_528.42, "ansatz", 732_987_197.61, 68_412_669.19, 1,
@@ -476,12 +476,12 @@ def test_ohne_dokument_meldet_sich_die_quelle_gar_nicht(tmp_path):
         " source_url, fetched_at) VALUES (2020, 'Summe', 1.0, 1, ?, '2026-01-01')",
         (PLAN_URL,))
     store._conn.commit()
-    # `beschluss` steht auch hier — als None. Der Altbestand hängt an keiner
+    # `official_text` steht auch hier — als None. Der Altbestand hängt an keiner
     # Anlage, also gibt es keinen Ratsvorgang zu zeigen; das Feld fehlt aber
     # nicht, sonst müsste die Oberfläche zwei Formen unterscheiden.
     assert store.haushalt_dokumente()["plan"] == [
         {"jahr": 2020, "url": PLAN_URL, "label": None, "fundstelle": None,
-         "seite": None, "beschluss": None}]
+         "seite": None, "official_text": None}]
 def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     """Der Schritt, den man vergisst: eine neue Zieltabelle nicht in
     ``HERKUNFT_TABELLEN`` eintragen.
@@ -539,7 +539,7 @@ def _vorgang(store, *, kvonr=900, document_id=7001, stationen=()):
     """Eine Vorlage mit einer Anlage und ihren Stationen durch die Gremien."""
     from council.scraper import AgendaItem, CouncilSession
 
-    store.save_vorlage({"kvonr": kvonr, "vorlage_nr": "24/0815",
+    store.save_vorlage({"kvonr": kvonr, "template_number": "24/0815",
                         "title": "Jahresabschluss 2024", "raw_text": ""})
     store.save_anlagen(kvonr, [{"document_id": document_id,
                                 "label": "Jahresabschluss 2024",
@@ -572,10 +572,10 @@ def test_beschluss_haengt_am_dokument(tmp_path):
     hid = _herkunft_mit_dokument(store)
 
     (h,) = store.get_herkunft([hid])
-    assert h["beschluss"]["datum"] == "2025-09-16"
-    assert h["beschluss"]["gremium"] == "Rat"
-    assert h["beschluss"]["outcome"] == "angenommen"
-    assert h["beschluss"]["kvonr"] == 900
+    assert h["official_text"]["datum"] == "2025-09-16"
+    assert h["official_text"]["gremium"] == "Rat"
+    assert h["official_text"]["outcome"] == "angenommen"
+    assert h["official_text"]["kvonr"] == 900
     store.close()
 
 
@@ -592,8 +592,8 @@ def test_rat_sticht_den_ausschuss(tmp_path):
     hid = _herkunft_mit_dokument(store)
 
     (h,) = store.get_herkunft([hid])
-    assert h["beschluss"]["gremium"] == "Rat"
-    assert h["beschluss"]["datum"] == "2025-09-16"
+    assert h["official_text"]["gremium"] == "Rat"
+    assert h["official_text"]["datum"] == "2025-09-16"
     store.close()
 
 
@@ -608,7 +608,7 @@ def test_vertagter_vorgang_wird_nicht_verschwiegen(tmp_path):
     hid = _herkunft_mit_dokument(store)
 
     (h,) = store.get_herkunft([hid])
-    assert h["beschluss"]["outcome"] == "vertagt"
+    assert h["official_text"]["outcome"] == "vertagt"
     store.close()
 
 
@@ -619,7 +619,7 @@ def test_anlage_ohne_vorgang_erfindet_keinen(tmp_path):
     hid = _herkunft_mit_dokument(store)
 
     (h,) = store.get_herkunft([hid])
-    assert h["beschluss"] is None
+    assert h["official_text"] is None
     store.close()
 
 
@@ -680,6 +680,6 @@ def test_herkunft_ohne_dokument_bleibt_unberuehrt(tmp_path):
             fundstelle="Gesamtergebnisplan"))
 
     (h,) = store.get_herkunft([hid])
-    assert h["beschluss"] is None
+    assert h["official_text"] is None
     assert h["dokument_id"] is None
     store.close()

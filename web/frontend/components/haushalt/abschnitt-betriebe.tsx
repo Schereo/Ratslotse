@@ -258,7 +258,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
             die Nummer des Papiers, aus dem die Zahl stammt, ohne Weg dorthin.
             Jetzt führt sie hin, und zwar je Betrieb woandershin. */}
         <Dokumentbeleg h={herkunftFuer(letzte.herkunft_id)}
-          vorlageNr={letzte.vorlage_nr} />
+          vorlageNr={letzte.template_number} />
       </div>
 
       {zeigKurve && (

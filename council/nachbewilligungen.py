@@ -279,7 +279,7 @@ def kategorie(titel: str) -> str:
     return "ueberplanmaessig" if ueber else "ausserplanmaessig"
 
 
-def haushaltsjahr(vorlage_nr: str) -> int | None:
+def haushaltsjahr(template_number: str) -> int | None:
     """Für welches Haushaltsjahr wurde bewilligt — aus der Vorlagen-Nummer.
 
     ``24/0834`` → 2024. Bewusst **nicht** aus dem Sitzungsdatum: Eine Vorlage
@@ -293,7 +293,7 @@ def haushaltsjahr(vorlage_nr: str) -> int | None:
     tragen die Nummer des **Folgejahres** ihres Berichtszeitraums (25/0002
     berichtet über 2024). Sie tragen aber ohnehin keinen Betrag
     (:data:`ART_SCHWELLE`), fallen also in keine Summe."""
-    m = re.match(r"\s*(\d{2})/", vorlage_nr or "")
+    m = re.match(r"\s*(\d{2})/", template_number or "")
     return 2000 + int(m.group(1)) if m else None
 
 
@@ -317,7 +317,7 @@ def _betrag_aus_vorschlag(vorschlag: str | None) -> float | None:
 class Bewilligung:
     """Eine Nachbewilligung, so wie das RIS sie führt — je Vorlage eine."""
 
-    vorlage_nr: str
+    template_number: str
     titel: str
     #: :data:`ART_BEWILLIGUNG` | :data:`ART_VERPFLICHTUNG` | :data:`ART_SCHWELLE`
     art: str
@@ -424,9 +424,9 @@ def aus_vorlagen(vorlagen: list[dict],
                  ) -> list[Bewilligung]:
     """Die Rats-Serie aus dem RIS — je **Vorlage** eine :class:`Bewilligung`.
 
-    ``vorlagen`` sind Zeilen aus ``council_vorlagen`` (``vorlage_nr``,
+    ``vorlagen`` sind Zeilen aus ``council_vorlagen`` (``template_number``,
     ``title``, optional ``beschlussvorschlag`` und ``raw_text``);
-    ``beschluesse`` bildet ``vorlage_nr`` auf die zugehörigen Zeilen aus
+    ``beschluesse`` bildet ``template_number`` auf die zugehörigen Zeilen aus
     ``council_decisions`` ab (mit ``committee``, ``session_date``,
     ``outcome``).
 
@@ -441,15 +441,15 @@ def aus_vorlagen(vorlagen: list[dict],
         titel = v.get("title") or ""
         if not ist_nachbewilligung(titel):
             continue
-        nr = v.get("vorlage_nr") or ""
+        nr = v.get("template_number") or ""
         wert, quelle = betrag(titel, v.get("beschlussvorschlag"),
                               v.get("raw_text"))
         out.append(Bewilligung(
-            vorlage_nr=nr, titel=titel, art=art(titel),
+            template_number=nr, titel=titel, art=art(titel),
             kategorie=kategorie(titel), jahr=haushaltsjahr(nr),
             betrag=wert, betrag_quelle=quelle,
             beschluesse=tuple(beschluesse.get(nr, ()))))
-    return sorted(out, key=lambda b: b.vorlage_nr)
+    return sorted(out, key=lambda b: b.template_number)
 
 
 def jahressummen(bewilligungen: list[Bewilligung],
@@ -793,25 +793,25 @@ class Ratsabgleich:
     nur_bei_uns: tuple[str, ...] = ()
 
     @property
-    def abweichung(self) -> float:
+    def deviation(self) -> float:
         return self.unsere_summe - self.bericht_summe
 
     @property
     def abweichung_prozent(self) -> float | None:
         if not self.bericht_summe:
             return None
-        return self.abweichung / self.bericht_summe * 100
+        return self.deviation / self.bericht_summe * 100
 
     def als_text(self) -> str:
         p = self.abweichung_prozent
-        if abs(self.abweichung) < 0.005:
+        if abs(self.deviation) < 0.005:
             return (f"{self.jahr}: identisch mit dem Rechenschaftsbericht "
                     f"({self.bericht_faelle} Fälle).")
         prozent = ""
         if p is not None:
             prozent = (" (unter 0,01 %)" if abs(p) < 0.01
                        else f" ({de_betrag(p, vorzeichen=True)} %)")
-        return (f"{self.jahr}: {de_betrag(self.abweichung, vorzeichen=True)} € "
+        return (f"{self.jahr}: {de_betrag(self.deviation, vorzeichen=True)} € "
                 f"gegenüber dem Rechenschaftsbericht{prozent}, "
                 f"{self.unsere_faelle} gegen {self.bericht_faelle} Fälle.")
 
@@ -924,7 +924,7 @@ def probe_ratsabgleich(bewilligungen: list[Bewilligung], kap: Kapitel3,
     rat = kap.kanal("rat")
     passend = [b for b in bewilligungen
                if b.jahr == kap.jahr and b.zaehlt_in_summe]
-    unsere = {b.vorlage_nr for b in passend}
+    unsere = {b.template_number for b in passend}
     nur_bericht: tuple[str, ...] = ()
     nur_uns: tuple[str, ...] = ()
     if kapitel_nummern is not None:

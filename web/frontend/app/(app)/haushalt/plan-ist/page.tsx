@@ -193,8 +193,8 @@ function PlanIstInner() {
 
     // Woran es lag: die Ertragsarten (Posten 1–11) mit der größten Abweichung.
     const arten = g
-      .filter((p) => p.nr >= 1 && p.nr <= 11 && p.abweichung != null)
-      .sort((x, y) => Math.abs(y.abweichung ?? 0) - Math.abs(x.abweichung ?? 0))
+      .filter((p) => p.nr >= 1 && p.nr <= 11 && p.deviation != null)
+      .sort((x, y) => Math.abs(y.deviation ?? 0) - Math.abs(x.deviation ?? 0))
       .slice(0, 5);
 
     // Weicht der fortgeschriebene Plan vom ursprünglichen Ansatz ab, gehört
@@ -646,8 +646,8 @@ function PlanIstInner() {
           </p>
           <div className="mt-3 flex flex-col gap-2.5">
             {arten.map((p) => {
-              const abw = mio(p.abweichung) ?? 0;
-              const groesste = mio(Math.max(...arten.map((x) => Math.abs(x.abweichung ?? 0)))) ?? 1;
+              const abw = mio(p.deviation) ?? 0;
+              const groesste = mio(Math.max(...arten.map((x) => Math.abs(x.deviation ?? 0)))) ?? 1;
               return (
                 <div key={p.nr} className="flex flex-col gap-1.5">
                   <div className="grid grid-cols-[minmax(110px,190px)_1fr_auto] items-center gap-x-3">

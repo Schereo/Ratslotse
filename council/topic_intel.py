@@ -235,7 +235,7 @@ def _context(matches: list[dict]) -> str:
     lines = []
     for m in matches:
         meta = " · ".join(p for p in (m.get("committee"), m.get("session_date")) if p)
-        body = (m.get("summary") or m.get("beschluss") or "").strip()[:220]
+        body = (m.get("summary") or m.get("official_text") or "").strip()[:220]
         lines.append(f"- {(m.get('title') or '').strip()} ({meta}): {body}")
     return "\n".join(lines)
 
@@ -425,7 +425,7 @@ _GENERIC = {
     # Gattungsbegriffe, die als Themen-Name nichts eingrenzen. Sie kommen aus
     # der Entitäten-Erkennung durch und würden als Vorschlag Beschlüsse quer
     # durch die Stadt einsammeln.
-    "bericht", "berichte", "antrag", "anträge", "beschluss", "beschlüsse",
+    "bericht", "berichte", "antrag", "anträge", "official_text", "beschlüsse",
     "haushalt", "stadt", "oldenburg", "rat", "verwaltung", "ausschuss",
     "sitzung", "vorlage", "projekt", "maßnahme", "planung", "konzept",
     "innenstadt", "klima", "wohnen", "schule", "schulen", "verkehr", "umwelt",

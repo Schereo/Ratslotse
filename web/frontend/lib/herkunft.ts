@@ -46,7 +46,7 @@ export type Ratsvorgang = {
   titel: string | null;
   outcome: string | null;
   vote: string | null;
-  vorlage_nr: string | null;
+  template_number: string | null;
   gremium: string | null;
   datum: string | null;
 };
@@ -88,5 +88,5 @@ export type Herkunft = {
   /** Der Beschluss, der das Dokument verabschiedet hat — `null`, wo keine
    *  Vorlage im Bestand steht. Ein erfundener Vorgang wäre der schlimmere
    *  Fehler. */
-  beschluss: Ratsvorgang | null;
+  official_text: Ratsvorgang | null;
 };

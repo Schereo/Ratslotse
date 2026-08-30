@@ -54,7 +54,7 @@ def _seede_punkt(db: Path) -> None:
         " location, fetched_at) VALUES (1, 'Verkehrsausschuss', ?, '17:00', 'Saal', '')",
         (tag,))
     conn.execute(
-        "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr,"
+        "INSERT INTO council_agenda_items (ksinr, item_number, title, template_number,"
         " kvonr, is_public) VALUES (1, 'Ö 5', 'VBN-Tarifanpassung 2027 - Beschluss',"
         " '26/0622', 30078, 1)")
     conn.commit()

@@ -104,13 +104,13 @@ def _money_signal(amount_eur: float | None, title: str | None = None) -> float |
     return min(1.0, math.log10(amount_eur + 1.0) / math.log10(_MONEY_CAP))
 
 
-def _contention_signal(gegenstimmen: int | None, enthaltungen: int | None,
+def _contention_signal(no_votes: int | None, abstentions: int | None,
                        vote: str | None, outcome: str | None) -> float | None:
     # Nur aussagekräftig, wenn tatsächlich abgestimmt wurde.
     if outcome in (None, "kein_beschluss", "zur_kenntnis"):
         return None
-    g = gegenstimmen or 0
-    e = enthaltungen or 0
+    g = no_votes or 0
+    e = abstentions or 0
     if g > 0 or e > 0:
         # Jede Gegenstimme hebt an, Enthaltungen halb; grob gedeckelt (die
         # Ratsgröße kennen wir nicht zuverlässig, daher heuristisch).
@@ -176,7 +176,7 @@ def importance_breakdown(decision: dict, n_beratungen: int | None = None) -> dic
         "geld": (_W_MONEY, _money_signal(decision.get("amount_eur"),
                                          decision.get("title"))),
         "umstritten": (_W_CONTENTION, _contention_signal(
-            decision.get("gegenstimmen"), decision.get("enthaltungen"),
+            decision.get("no_votes"), decision.get("abstentions"),
             decision.get("vote"), decision.get("outcome"))),
         "verbindlich": (_W_BINDING, _binding_signal(
             decision.get("title"), decision.get("committee"), decision.get("kind"))),

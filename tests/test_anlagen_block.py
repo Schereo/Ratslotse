@@ -3,7 +3,7 @@ from council.qa import ANLAGEN_ZEICHEN, _anlagen_block
 
 
 def _anlage(nr, label, fundstelle):
-    return {"nr": nr, "label": label, "vorlage_nr": "23/0211",
+    return {"nr": nr, "label": label, "template_number": "23/0211",
             "vorlage_titel": "Mobilitätsplan Oldenburg 2030",
             "fundstelle": fundstelle}
 

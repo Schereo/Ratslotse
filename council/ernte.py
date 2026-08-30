@@ -148,7 +148,7 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-zäöüß0-9 ]", "", re.sub(r"\s+", " ", (s or "").lower())).strip()
 
 
-def abweichung(vorschlag: str | None, beschluss: str | None) -> str | None:
+def deviation(vorschlag: str | None, official_text: str | None) -> str | None:
     """Wie stark weicht der gefasste Beschluss vom Verwaltungsvorschlag ab?
 
     → "unveraendert" | "leicht" | "stark" | None (eine Seite fehlt oder ist zu
@@ -157,7 +157,7 @@ def abweichung(vorschlag: str | None, beschluss: str | None) -> str | None:
     — Kürzung allein ist keine inhaltliche Änderung. Gezählt wird, welcher
     Anteil des kürzeren Texts als gemeinsame Blöcke (ab 12 Zeichen, gegen
     Zufallstreffer) im längeren wiederkehrt."""
-    v, b = _norm(vorschlag or "")[:2000], _norm(beschluss or "")[:2000]
+    v, b = _norm(vorschlag or "")[:2000], _norm(official_text or "")[:2000]
     if len(v) < 25 or len(b) < 25:
         return None
     kurz, lang = (v, b) if len(v) <= len(b) else (b, v)

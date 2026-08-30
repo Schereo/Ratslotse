@@ -147,11 +147,11 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, title, summary, committee, outcome, kind, vote, factions, parties, importance, interest, impact
         case simpleSummary = "simple_summary"
-        case officialText = "beschluss"
+        case officialText = "official_text"
         case policyTags = "policy_tags"
         case rawResult = "raw_result"
         case protocolURL = "protocol_url"
-        case deviation = "abweichung"
+        case deviation = "deviation"
         case amountEUR = "amount_eur"
         case interestReason = "interest_reason"
         case impactReason = "impact_reason"
@@ -159,9 +159,9 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         case latitude = "lat"
         case longitude = "lon"
         case sessionID = "ksinr"
-        case templateNumber = "vorlage_nr"
-        case noVotes = "gegenstimmen"
-        case abstentions = "enthaltungen"
+        case templateNumber = "template_number"
+        case noVotes = "no_votes"
+        case abstentions = "abstentions"
         case sessionDate = "session_date"
         case policyField = "policy_field"
         case itemNumber = "item_number"
@@ -404,7 +404,7 @@ public struct CouncilTemplate: Codable, Sendable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case title, excerpt
-        case number = "vorlage_nr"
+        case number = "template_number"
         case kind = "art"
         case documentURL = "document_url"
         case pageCount = "n_pages"
@@ -610,7 +610,7 @@ public struct FollowEntry: Codable, Sendable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, title, url
         case templateID = "kvonr"
-        case templateNumber = "vorlage_nr"
+        case templateNumber = "template_number"
         case stationCount = "n_stationen"
         case next = "naechste"
         case last = "letzte"
@@ -686,7 +686,7 @@ public struct AgendaItem: Codable, Sendable, Hashable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case title, summary
         case itemNumber = "item_number"
-        case templateNumber = "vorlage_nr"
+        case templateNumber = "template_number"
         case isPublic = "is_public"
         case attachments = "anlagen"
     }

@@ -148,9 +148,9 @@ def _fake_resp(payload: dict):
 
 def test_rate_batch_filters_hallucinated_ids(monkeypatch):
     decisions = [
-        {"id": 1, "title": "A", "beschluss": TEXT, "committee": "Rat",
+        {"id": 1, "title": "A", "official_text": TEXT, "committee": "Rat",
          "session_date": "2024-01-01", "outcome": "angenommen"},
-        {"id": 2, "title": "B", "beschluss": TEXT, "committee": "Rat",
+        {"id": 2, "title": "B", "official_text": TEXT, "committee": "Rat",
          "session_date": "2024-01-01", "outcome": "angenommen"},
     ]
     payload = {"ratings": [
@@ -163,7 +163,7 @@ def test_rate_batch_filters_hallucinated_ids(monkeypatch):
 
 
 def test_write_story_guards(monkeypatch):
-    decision = {"id": 1, "title": "Grüne Wellen", "beschluss": TEXT, "committee": "Rat",
+    decision = {"id": 1, "title": "Grüne Wellen", "official_text": TEXT, "committee": "Rat",
                 "session_date": "2020-07-22", "outcome": "angenommen", "interest_reason": ""}
     monkeypatch.setattr(fundstueck.llm, "chat_complete",
                         lambda **kw: _fake_resp({"story": "Der Rat beschloss 2020, grüne Wellen fürs Rad zu testen."}))

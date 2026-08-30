@@ -202,7 +202,7 @@ function GlanceCard({
       {/* Regex-Ernte, minimiert (Feedback-Runde 3): beide nur als Zeile mit
           Symbol — die Erklärung öffnet sich erst auf Klick, die Erzählspalte
           links bleibt clean. */}
-      {d.abweichung === "stark" && d.beschluss && (
+      {d.deviation === "stark" && d.official_text && (
         <GlanceDisclosure
           icon={<GitCompareArrows className="h-3.5 w-3.5 text-signal" />}
           label="Vom Vorschlag abgewichen"
@@ -305,13 +305,13 @@ function GlanceCard({
   );
 }
 
-/** Kurze Ergebnis-Zeile aus vote/gegenstimmen/enthaltungen (z. B.
+/** Kurze Ergebnis-Zeile aus vote/no_votes/abstentions (z. B.
  *  „mehrheitlich · 18 dagegen · 2 Enth."). */
 function voteSummary(d: CouncilDecision): string {
   const parts: string[] = [];
   if (d.vote) parts.push(d.vote);
-  if (d.gegenstimmen) parts.push(`${d.gegenstimmen} dagegen`);
-  if (d.enthaltungen) parts.push(`${d.enthaltungen} Enth.`);
+  if (d.no_votes) parts.push(`${d.no_votes} dagegen`);
+  if (d.abstentions) parts.push(`${d.abstentions} Enth.`);
   return parts.join(" · ");
 }
 
@@ -404,7 +404,7 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
       {subVotes.map((s, i) => {
         const factions = Array.isArray(s.factions) ? s.factions : [];
         const kind = subvoteKind(s.title);
-        const body = s.beschluss || (hasOwnContent(s.title, kind, factions) ? s.title : null);
+        const body = s.official_text || (hasOwnContent(s.title, kind, factions) ? s.title : null);
         return (
           <li
             key={s.id}
@@ -568,7 +568,7 @@ function DecisionDetailInner() {
 
   const d = data.decision;
   const unanimous = d.outcome === "angenommen"
-    && (d.vote === "einstimmig" || ((d.gegenstimmen ?? 0) === 0 && (d.enthaltungen ?? 0) === 0));
+    && (d.vote === "einstimmig" || ((d.no_votes ?? 0) === 0 && (d.abstentions ?? 0) === 0));
   const present = presentMembers(data.attendance);
   const byParty: Record<string, number> = {};
   for (const a of data.attendance) {
@@ -670,7 +670,7 @@ function DecisionDetailInner() {
             {shortCommittee(d.committee)} · {formatDate(d.session_date)}
             {d.item_number ? ` · TOP ${d.item_number}` : ""}
           </span>
-          {d.vorlage_nr && <span className="font-mono text-[11px]">{d.vorlage_nr}</span>}
+          {d.template_number && <span className="font-mono text-[11px]">{d.template_number}</span>}
           {d.kind !== "subvote" && (data.importance_breakdown?.score ?? 0) >= 55 && (
             <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
               Wichtig · {data.importance_breakdown!.score}/100
@@ -709,7 +709,7 @@ function DecisionDetailInner() {
         <div className="min-w-0 space-y-3">
           {d.simple_summary && <SimpleSummaryHero text={d.simple_summary} />}
 
-          {d.beschluss && <OfficialTextCard text={d.beschluss} />}
+          {d.official_text && <OfficialTextCard text={d.official_text} />}
 
           {/* P1: Die Planzeichnung aus der Vorlage — ein B-Plan-Beschluss lebt
               vom Bild. Thumb inline, Klick öffnet das volle Blatt. */}
@@ -778,7 +778,7 @@ function DecisionDetailInner() {
             <div className="flex flex-col gap-1">
               {data.vorlage_url && (
                 <a href={data.vorlage_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
-                  <FileText className="h-3.5 w-3.5" /> Vorlage {d.vorlage_nr}
+                  <FileText className="h-3.5 w-3.5" /> Vorlage {d.template_number}
                 </a>
               )}
               {data.vorlage?.document_url && (
@@ -833,7 +833,7 @@ function DecisionDetailInner() {
           )}
 
           {(data.beratungsfolge && data.beratungsfolge.length > 0) || data.vorlage_journey.length > 1 ? (
-            <MetaCard title={`Weg der Vorlage ${d.vorlage_nr ?? ""}`.trim()}>
+            <MetaCard title={`Weg der Vorlage ${d.template_number ?? ""}`.trim()}>
               {/* Offizielle Beratungsfolge aus dem Ratsinfo: Ergebnis je Station,
                   geplante künftige Beratungen inklusive; sonst der aus unseren
                   eigenen Sitzungen rekonstruierte Weg. */}

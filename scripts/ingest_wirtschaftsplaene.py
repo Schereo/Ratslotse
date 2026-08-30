@@ -97,16 +97,16 @@ def main() -> int:
     store = CouncilStore(Path(args.db))
     try:
         rows = [dict(r) for r in store._conn.execute(  # noqa: SLF001
-            "SELECT vorlage_nr, kvonr, title, raw_text FROM council_vorlagen "
+            "SELECT template_number, kvonr, title, raw_text FROM council_vorlagen "
             "WHERE title LIKE ? AND status = 'ok' AND raw_text IS NOT NULL "
-            "ORDER BY vorlage_nr", (TITEL_MUSTER,))]
+            "ORDER BY template_number", (TITEL_MUSTER,))]
         print(f"{len(rows)} Vorlage(n) mit „Wirtschaftsplan“ im Titel.\n")
 
         gefunden, luecken, risse = [], [], []
         for r in rows:
             try:
                 plan = parse_wirtschaftsplan(
-                    r["vorlage_nr"], r["title"], r["raw_text"])
+                    r["template_number"], r["title"], r["raw_text"])
             except WirtschaftsplanFehler as fehler:
                 # Ein Riss ist kein Grund, den Lauf abzubrechen: Die übrigen
                 # Jahrgänge sind davon unberührt. Aber er wird gezählt und
@@ -114,7 +114,7 @@ def main() -> int:
                 risse.append(str(fehler))
                 continue
             if plan is None:
-                luecken.append(ohne_eckwerte(r["vorlage_nr"], r["title"]))
+                luecken.append(ohne_eckwerte(r["template_number"], r["title"]))
                 continue
             gefunden.append((plan, r["kvonr"]))
 
@@ -126,7 +126,7 @@ def main() -> int:
                   f"Erträge {plan.ertraege / 1e6:7.1f} Mio. €  "
                   f"Ergebnis {plan.ergebnis / 1e6:8.3f} Mio. €  "
                   f"Vermögensplan {(plan.vermoegensplan or 0) / 1e6:7.1f} Mio. €  "
-                  f"({plan.vorlage_nr}, Entwurf {plan.entwurf_vom})")
+                  f"({plan.template_number}, Entwurf {plan.entwurf_vom})")
 
         if risse:
             print("\nProbe gerissen — NICHT gespeichert:")
@@ -175,15 +175,15 @@ def main() -> int:
             lesbar = [a for a in anlagen
                       if a["status"] in ANLAGE_LESBAR and (a["raw_text"] or "")]
             if not lesbar:
-                ohne_text.append((r["vorlage_nr"], jahr,
+                ohne_text.append((r["template_number"], jahr,
                                   [a["status"] for a in anlagen] or ["keine Anlage"]))
                 continue
             for a in lesbar:
                 try:
                     plan, proben = parse_erfolgsplan(
-                        r["vorlage_nr"], betrieb, jahr, a["raw_text"])
+                        r["template_number"], betrieb, jahr, a["raw_text"])
                 except WirtschaftsplanFehler as fehler:
-                    anlagen_risse.append(f"{r['vorlage_nr']} (Anlage "
+                    anlagen_risse.append(f"{r['template_number']} (Anlage "
                                          f"{a['document_id']}): {fehler}")
                     continue
                 aus_anlage.append((plan, proben, a))
@@ -225,7 +225,7 @@ def main() -> int:
                 "SELECT raw_text FROM council_anlagen WHERE kvonr = ? "
                 "AND status = 'ok'", (r["kvonr"],))]
             try:
-                res = parse_kernzahl(r["vorlage_nr"], r["title"], r["raw_text"],
+                res = parse_kernzahl(r["template_number"], r["title"], r["raw_text"],
                                      jahr, texte)
             except WirtschaftsplanFehler as fehler:
                 risse.append(str(fehler)); continue

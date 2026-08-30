@@ -45,7 +45,7 @@ export type ErgebnisPosten = {
   thh_nr: number | null; thh_name: string | null;
   vorjahr: number | null; ansatz: number | null;
   plan: number | null; plan_art: PlanArt | null;
-  ergebnis: number | null; abweichung: number | null;
+  ergebnis: number | null; deviation: number | null;
   ist_summe: 0 | 1;
   quelle_label: string | null; quelle_url: string | null;
 };
@@ -116,7 +116,7 @@ export type FinanzZeile = {
   bezeichnung: string;
   vorjahr: number | null; ansatz: number | null;
   plan: number | null; plan_art: PlanArt | null;
-  ergebnis: number | null; abweichung: number | null;
+  ergebnis: number | null; deviation: number | null;
   ermaechtigung: number | null;
   ist_summe: 0 | 1;
 };
@@ -459,7 +459,7 @@ export type NachbewilligungsKategorie =
  *  **Vorlage** eine, nicht je Beschlusszeile: Finanzausschuss und Rat
  *  entscheiden dieselbe Sache, 131 der 287 Zeilen sind Dubletten. */
 export type Nachbewilligung = {
-  vorlage_nr: string;
+  template_number: string;
   /** Haushaltsjahr aus dem Jahrgang der Vorlagen-Nummer, nicht aus dem
    *  Sitzungsdatum — Januar-Vorlagen zählen zum Vorjahr. */
   jahr: number | null;
@@ -539,7 +539,7 @@ export type Spenden = {
   jahre: SpendenJahr[];
   vorlagen: SpendenVorlage[];
   /** Beschlusszeilen ohne Zweitstelle — mit dem Satz, warum sie fehlen. */
-  ohne_beleg: { vorlage_nr: string; sitzung?: string | null; grund: string }[];
+  ohne_beleg: { template_number: string; sitzung?: string | null; grund: string }[];
   /** Wer über welche **einzelne** Zuwendung entscheidet. */
   schwellen: { gremium: string; ab: number | null; bis: number | null }[];
 };
@@ -553,7 +553,7 @@ export type SpendenJahr = {
 };
 
 export type SpendenVorlage = {
-  vorlage_nr: string;
+  template_number: string;
   jahr: number;
   sitzung: string;
   betrag: number;
@@ -1016,7 +1016,7 @@ export type GebuehrenZeile = {
   gebuehr: number | null;
   /** Der gerundete Vorschlag an den Rat — das, was erhoben wird. */
   gebuehrenvorschlag: number | null;
-  vorlage_nr: string | null;
+  template_number: string | null;
   proben: string;
   herkunft_id: number | null;
 };
@@ -1035,7 +1035,7 @@ export type GebuehrensatzZeile = {
   einheit: string;
   vorjahr: number | null;
   veraenderung_prozent: number | null;
-  vorlage_nr: string | null;
+  template_number: string | null;
   proben: string;
   herkunft_id: number | null;
 };
@@ -1086,7 +1086,7 @@ export type HaushaltssatzungZeile = {
 
   /** Das im Text genannte Sitzungsdatum, `null` bei „xx.xx.JJJJ". */
   sitzung_am: string | null;
-  vorlage_nr: string | null;
+  template_number: string | null;
   proben: string;
   herkunft_id: number | null;
 };
@@ -1096,7 +1096,7 @@ export type WirtschaftsplanZeile = {
   betrieb: string;
   betrieb_name: string;
   jahr: number;
-  vorlage_nr: string;
+  template_number: string;
   ertraege: number | null;
   aufwendungen: number | null;
   steuern: number | null;

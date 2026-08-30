@@ -582,11 +582,11 @@ def probe_hebesatz(eintrag: dict) -> dict:
         if grundbetrag is None or hebesatz is None or ist is None:
             continue
         erwartet = grundbetrag * hebesatz / 100
-        abweichung = abs(erwartet - ist)
+        deviation = abs(erwartet - ist)
         toleranz = 0.5 * hebesatz / 100 + 0.5
-        ergebnisse.append({"steuer": kopf, "abweichung": abweichung,
-                           "toleranz": toleranz, "ok": abweichung <= toleranz})
-        schlimmster = max(schlimmster, abweichung)
+        ergebnisse.append({"steuer": kopf, "deviation": deviation,
+                           "toleranz": toleranz, "ok": deviation <= toleranz})
+        schlimmster = max(schlimmster, deviation)
 
     # Zweiter Teil, nur für die Gewerbesteuer: brutto − Umlage = netto. Er
     # sichert genau den Wert ab, den die Seite zeigt — die erste Rechnung
@@ -595,11 +595,11 @@ def probe_hebesatz(eintrag: dict) -> dict:
     umlage = eintrag.get("umlage_gewerbesteuer")
     netto = eintrag.get("netto_gewerbesteuer")
     if None not in (brutto, umlage, netto):
-        abweichung = abs((brutto - umlage) - netto)
+        deviation = abs((brutto - umlage) - netto)
         ergebnisse.append({"steuer": "Gewerbesteuer netto",
-                           "abweichung": abweichung, "toleranz": 1.0,
-                           "ok": abweichung <= 1.0})
-        schlimmster = max(schlimmster, abweichung)
+                           "deviation": deviation, "toleranz": 1.0,
+                           "ok": deviation <= 1.0})
+        schlimmster = max(schlimmster, deviation)
 
     ok = bool(ergebnisse) and all(e["ok"] for e in ergebnisse)
     return {"ok": ok, "teilproben": ergebnisse,

@@ -408,7 +408,7 @@ export default function VergleichSeite() {
             {/* Der Beleg aus dem eigenen Bestand. */}
             <div className="rounded-xl border border-border bg-muted/30 p-3.5">
               <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Aus dem Ratsinformationssystem · {data.beleg.vorlage_nr} · 2018
+                Aus dem Ratsinformationssystem · {data.beleg.template_number} · 2018
               </p>
               <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
                 Die FDP-Fraktion fragte im November 2018, wie sich die Personalquote
@@ -446,7 +446,7 @@ export default function VergleichSeite() {
                   <Link href={decisionHref(data.beleg.beschluss_id)}
                     className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <FileText className="h-3.5 w-3.5 flex-none" />
-                    Der Vorgang bei uns: {data.beleg.titel ?? data.beleg.vorlage_nr}
+                    Der Vorgang bei uns: {data.beleg.titel ?? data.beleg.template_number}
                     <ArrowRight size={13} strokeWidth={2}
                       className="transition-transform group-hover:translate-x-0.5" />
                   </Link>
@@ -469,7 +469,7 @@ export default function VergleichSeite() {
                   <a href={data.beleg.vorlage_url} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <ExternalLink className="h-3.5 w-3.5 flex-none" />
-                    Vorlage {data.beleg.vorlage_nr} im Bürgerinformationssystem
+                    Vorlage {data.beleg.template_number} im Bürgerinformationssystem
                   </a>
                 )}
               </div>

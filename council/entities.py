@@ -44,8 +44,8 @@ def _render(decisions: list[dict]) -> str:
     lines = []
     for d in decisions:
         title = (d.get("title") or "").strip()
-        beschluss = " ".join((d.get("beschluss") or "").split())[:300]
-        lines.append(f'- id {d["id"]}: {title} — {beschluss}')
+        official_text = " ".join((d.get("official_text") or "").split())[:300]
+        lines.append(f'- id {d["id"]}: {title} — {official_text}')
     return "\n".join(lines)
 
 

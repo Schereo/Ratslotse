@@ -562,7 +562,7 @@ def test_debatten_block_format():
 
 def test_debatten_block_im_antwortprompt(monkeypatch):
     messages, _ = qa._answer_messages(
-        "Was ist mit dem Radweg?", [{"id": 1, "title": "T", "beschluss": "B"}],
+        "Was ist mit dem Radweg?", [{"id": 1, "title": "T", "official_text": "B"}],
         debatten=[{"art": "zusage", "sprecher": "Stadtbaurat", "partei": None,
                    "top": None, "text": "Die Verwaltung sagt die Prüfung zu.",
                    "antwort": None, "committee": None, "session_date": None}])
@@ -596,9 +596,9 @@ def test_wortbeitraege_zu_beschluessen_koppelt_ueber_die_station(store):
         {"art": "anfrage", "top": "16 Anfragen und Anregungen", "sprecher": "Oltmanns",
          "partei": None, "text": "Frage zu Baumfällungen.", "antwort": None},
     ])
-    beschluss = {"id": 20852, "ksinr": 4663, "item_number": "10",
+    official_text = {"id": 20852, "ksinr": 4663, "item_number": "10",
                  "title": "Fliegerhorst Oldenburg - 2. Grundwassermonitoring ehemalige Schießanlage - Bericht"}
-    got = store.wortbeitraege_zu_beschluessen([beschluss])
+    got = store.wortbeitraege_zu_beschluessen([official_text])
     assert [g["sprecher"] for g in got] == ["Jaekel"]
     assert got[0]["zu_beschluss"] == 20852          # Bezug fürs Prompt
     # Sammel-TOP als Beschluss koppelt gar nichts (Wundertüte, keine Sache).
@@ -617,9 +617,9 @@ def test_wortbeitraege_zu_beschluessen_filtert_optional_nach_person(store):
         {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "sprecher": "Anna Beispiel",
          "partei": "CDU", "text": "Die Finanzierung müsse geklärt werden.", "antwort": None},
     ])
-    beschluss = {"id": 77, "ksinr": 100, "item_number": "7",
+    official_text = {"id": 77, "ksinr": 100, "item_number": "7",
                  "title": "Sporthalle Kreyenbrück - Beschluss"}
-    got = store.wortbeitraege_zu_beschluessen([beschluss], sprecher="Ellberg")
+    got = store.wortbeitraege_zu_beschluessen([official_text], sprecher="Ellberg")
     assert [row["sprecher"] for row in got] == ["Bernhard Ellberg"]
     assert got[0]["zu_beschluss"] == 77
 

@@ -115,10 +115,10 @@ Eine Begründung ist in der Anlage aufgeführt.
 """
 
 
-def zeile(nr, raw, beschluss, *, titel=None, outcome="angenommen",
+def zeile(nr, raw, official_text, *, titel=None, outcome="angenommen",
           sitzung="2024-03-11", gremiensitzung="Rat", dokument_id=4711):
-    return {"vorlage_nr": nr, "titel": titel or "Annahme von Zuwendungen durch den Rat",
-            "beschluss": beschluss, "outcome": outcome, "sitzung": sitzung,
+    return {"template_number": nr, "titel": titel or "Annahme von Zuwendungen durch den Rat",
+            "official_text": official_text, "outcome": outcome, "sitzung": sitzung,
             "gremiensitzung": gremiensitzung, "raw_text": raw,
             "dokument_id": dokument_id,
             "dokument_url": f"https://buergerinfo.example.org/getfile.php?id={dokument_id}"}
@@ -286,12 +286,12 @@ def test_die_summe_einer_va_vorlage_darf_ueber_der_schwelle_liegen():
 
 def test_je_vorlage_bleibt_eine_zeile():
     """Dieselbe Liste läuft durch Fachausschuss UND Rat — einmal zählen."""
-    beschluss = ("Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe "
+    official_text = ("Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe "
                  "von insgesamt 435.941 Euro gemäß der anliegenden Liste an.")
     erg = spenden.lies([
-        zeile("26/0207", VORLAGE_NEU, beschluss, sitzung="2026-04-08",
+        zeile("26/0207", VORLAGE_NEU, official_text, sitzung="2026-04-08",
               gremiensitzung="Ausschuss für Finanzen und Beteiligungen"),
-        zeile("26/0207", VORLAGE_NEU, beschluss, sitzung="2026-04-13",
+        zeile("26/0207", VORLAGE_NEU, official_text, sitzung="2026-04-13",
               gremiensitzung="Rat"),
     ])
     assert len(erg["vorlagen"]) == 1
@@ -380,7 +380,7 @@ def test_verworfene_zeilen_kommen_mit_ihrem_grund_in_den_bestand(tmp_path):
         store.save_spenden(erg["vorlagen"], erg["verworfen"], lauf)
         ohne = store.get_spenden_verworfen()
         assert len(ohne) == 1
-        assert ohne[0]["vorlage_nr"] == "18/0587"
+        assert ohne[0]["template_number"] == "18/0587"
         assert "22.500,00" in ohne[0]["grund"]
         assert ohne[0]["herkunft_id"]
     finally:
@@ -402,7 +402,7 @@ def test_eine_teillieferung_raeumt_den_bestand_nicht_ab(tmp_path):
     try:
         store.save_spenden(a["vorlagen"], [], lauf)
         store.save_spenden(b["vorlagen"], [], lauf)
-        assert {z["vorlage_nr"] for z in store.get_spenden()} == {"24/0001", "25/0001"}
+        assert {z["template_number"] for z in store.get_spenden()} == {"24/0001", "25/0001"}
     finally:
         store.close()
 

@@ -122,7 +122,7 @@ class Haushaltssatzung:
 
     #: Das im Text genannte Sitzungsdatum, ``None`` bei „xx.xx.20xx".
     sitzung_am: str | None
-    vorlage_nr: str | None
+    template_number: str | None
 
 
 # --------------------------------------------------------------------------
@@ -183,7 +183,7 @@ def _zahl(muster: re.Pattern, text: str) -> int | None:
     return int(treffer.group(1)) if treffer else None
 
 
-def parse_satzung(text: str, vorlage_nr: str | None = None) -> Haushaltssatzung:
+def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssatzung:
     """Eine Haushaltssatzung lesen — geprüft an ihrer eigenen Summenzeile.
 
     Wirft :class:`SatzungFehler`, wenn die Summe nicht aufgeht. Eine Satzung,
@@ -249,7 +249,7 @@ def parse_satzung(text: str, vorlage_nr: str | None = None) -> Haushaltssatzung:
         hebesatz_grundsteuer_b=_zahl(_GRUNDSTEUER_B, t),
         hebesatz_gewerbesteuer=_zahl(_GEWERBESTEUER, t),
         sitzung_am=(m.group(1) if (m := _SITZUNG.search(t)) else None),
-        vorlage_nr=vorlage_nr,
+        template_number=template_number,
     )
 
 

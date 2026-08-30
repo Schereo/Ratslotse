@@ -25,7 +25,7 @@ def main(db: str | None = None) -> dict:
     conn = store._conn  # noqa: SLF001 — Ops-Skript, bewusst direkt auf der DB
 
     zaehler = {"vorlagen": 0, "amt": 0, "klima": 0, "finanzen": 0, "vorschlag": 0,
-               "orte": 0, "kvonr": 0, "abweichung": 0}
+               "orte": 0, "kvonr": 0, "deviation": 0}
 
     rows = conn.execute("SELECT kvonr, raw_text FROM council_vorlagen "
                         "WHERE status = 'ok' AND raw_text IS NOT NULL").fetchall()
@@ -64,15 +64,15 @@ def main(db: str | None = None) -> dict:
         cur = conn.execute(
             "UPDATE council_decisions SET kvonr = COALESCE("
             "(SELECT MAX(v.kvonr) FROM council_vorlagen v "
-            " WHERE v.vorlage_nr = council_decisions.vorlage_nr), "
+            " WHERE v.template_number = council_decisions.template_number), "
             "(SELECT MAX(v.kvonr) FROM council_vorlagen v "
-            " WHERE instr(council_decisions.vorlage_nr, v.vorlage_nr || '/') = 1)) "
-            "WHERE kvonr IS NULL AND vorlage_nr IS NOT NULL AND EXISTS "
-            "(SELECT 1 FROM council_vorlagen v WHERE v.vorlage_nr = council_decisions.vorlage_nr "
-            " OR instr(council_decisions.vorlage_nr, v.vorlage_nr || '/') = 1)")
+            " WHERE instr(council_decisions.template_number, v.template_number || '/') = 1)) "
+            "WHERE kvonr IS NULL AND template_number IS NOT NULL AND EXISTS "
+            "(SELECT 1 FROM council_vorlagen v WHERE v.template_number = council_decisions.template_number "
+            " OR instr(council_decisions.template_number, v.template_number || '/') = 1)")
         zaehler["kvonr"] = cur.rowcount
 
-    zaehler["abweichung"] = store.refresh_abweichung()
+    zaehler["deviation"] = store.refresh_abweichung()
     return zaehler
 
 

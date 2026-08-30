@@ -378,7 +378,7 @@ def plan_bezug(proben: list[Spaltenprobe], jahr: int) -> float:
     return next((p.ertraege for p in proben if p.jahr == jahr), 0.0)
 
 
-def parse_erfolgsplan(vorlage_nr: str, betrieb: str, haushaltsjahr: int,
+def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
                       text: str) -> tuple[Wirtschaftsplan, list[Spaltenprobe]]:
     """Den Erfolgsplan einer Anlage lesen — geprüft, oder gar nicht.
 
@@ -391,13 +391,13 @@ def parse_erfolgsplan(vorlage_nr: str, betrieb: str, haushaltsjahr: int,
     gerissen = [p for p in proben if not p.geht_auf]
     if gerissen:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: {len(gerissen)} von {len(proben)} Spalten gehen nicht "
+            f"{template_number}: {len(gerissen)} von {len(proben)} Spalten gehen nicht "
             "auf — " + "; ".join(f"{p.jahr}: Rest {p.rest:+.2f} €" for p in gerissen))
 
     plan = next((p for p in proben if p.jahr == haushaltsjahr), None)
     if plan is None:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Haushaltsjahr {haushaltsjahr} steht nicht in der "
+            f"{template_number}: Haushaltsjahr {haushaltsjahr} steht nicht in der "
             f"Kopfzeile (dort: {sorted(p.jahr for p in proben)})")
 
     # Die Bereichsprobe beantwortet: Haben wir die Gesamtzeile erwischt? Ein
@@ -413,7 +413,7 @@ def parse_erfolgsplan(vorlage_nr: str, betrieb: str, haushaltsjahr: int,
             abstand = abs(reste[i]) / max(plan_bezug(proben, haushaltsjahr), 1.0)
             if abstand > BEREICHE_SCHWELLE:
                 raise WirtschaftsplanFehler(
-                    f"{vorlage_nr}: Die {n_zweige} Betriebszweige weichen um "
+                    f"{template_number}: Die {n_zweige} Betriebszweige weichen um "
                     f"{abstand:.1%} von der gelesenen Zeile ab — das ist keine "
                     "Gesamtzeile, sondern vermutlich einer der Zweige")
 
@@ -423,7 +423,7 @@ def parse_erfolgsplan(vorlage_nr: str, betrieb: str, haushaltsjahr: int,
         if (abs(p_ertraege - plan.ertraege) > TOLERANZ_EUR
                 or abs(p_aufwendungen - plan.aufwendungen) > TOLERANZ_EUR):
             raise WirtschaftsplanFehler(
-                f"{vorlage_nr}: Der Satz unter der Tabelle nennt "
+                f"{template_number}: Der Satz unter der Tabelle nennt "
                 f"{p_ertraege:.0f} / {p_aufwendungen:.0f} €, die Planspalte "
                 f"{plan.ertraege:.0f} / {plan.aufwendungen:.0f} € — "
                 "zwei Stellen desselben Dokuments widersprechen sich")
@@ -431,7 +431,7 @@ def parse_erfolgsplan(vorlage_nr: str, betrieb: str, haushaltsjahr: int,
     name = BETRIEBE[betrieb][1]
     return Wirtschaftsplan(
         betrieb=betrieb, betrieb_name=name, jahr=haushaltsjahr,
-        vorlage_nr=vorlage_nr,
+        template_number=template_number,
         ertraege=plan.ertraege, aufwendungen=plan.aufwendungen,
         # Kein eigener Steuerposten: Was der Beschlusstext des EGH als
         # „steuerliche Aufwendungen" gesondert ausweist, steckt hier in den

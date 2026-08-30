@@ -15,7 +15,7 @@ type Station = {
 type Follow = {
   id: number;
   kvonr: number;
-  vorlage_nr: string;
+  template_number: string;
   title: string;
   created_at: string;
   notified_at: string | null;
@@ -71,10 +71,10 @@ export function FollowedVorgaenge() {
         {follows.map((f) => (
           <div key={f.id} className="flex items-start justify-between gap-3 p-4">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-foreground">{f.title || f.vorlage_nr}</p>
+              <p className="text-sm font-medium text-foreground">{f.title || f.template_number}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {f.vorlage_nr && <span className="font-mono">{f.vorlage_nr}</span>}
-                {f.vorlage_nr && " · "}
+                {f.template_number && <span className="font-mono">{f.template_number}</span>}
+                {f.template_number && " · "}
                 {f.n_stationen} {f.n_stationen === 1 ? "Station" : "Stationen"}
               </p>
               <dl className="mt-2 space-y-0.5 text-xs">
@@ -104,7 +104,7 @@ export function FollowedVorgaenge() {
               type="button"
               onClick={() => unfollow.mutate(f.kvonr)}
               disabled={unfollow.isPending}
-              aria-label={`„${f.title || f.vorlage_nr}" nicht mehr verfolgen`}
+              aria-label={`„${f.title || f.template_number}" nicht mehr verfolgen`}
               className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <X className="h-4 w-4" />

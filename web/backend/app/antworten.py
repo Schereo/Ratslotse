@@ -90,13 +90,13 @@ class Beschlusszeile(TypedDict):
     parent_item: NotRequired[str | None]
     item_number: NotRequired[str | None]
     title: NotRequired[str | None]
-    beschluss: NotRequired[str | None]
+    official_text: NotRequired[str | None]
     outcome: NotRequired[str | None]
     vote: NotRequired[str | None]
-    gegenstimmen: NotRequired[int | None]
-    enthaltungen: NotRequired[int | None]
+    no_votes: NotRequired[int | None]
+    abstentions: NotRequired[int | None]
     factions: NotRequired[list[str]]
-    vorlage_nr: NotRequired[str | None]
+    template_number: NotRequired[str | None]
     kvonr: NotRequired[int | None]
     raw_result: NotRequired[str | None]
     policy_field: NotRequired[str | None]
@@ -109,7 +109,7 @@ class Beschlusszeile(TypedDict):
     interest_reason: NotRequired[str | None]
     impact: NotRequired[int | None]
     impact_reason: NotRequired[str | None]
-    abweichung: NotRequired[str | None]
+    deviation: NotRequired[str | None]
     # aus den Joins bzw. vom Router angereichert
     parties: NotRequired[list[str]]
     committee: NotRequired[str | None]
@@ -415,7 +415,7 @@ class SocialBeschluss(TypedDict):
     """Fester SELECT im Router plus ``votes`` — deshalb hier vollständig."""
     id: int
     title: str | None
-    beschluss: str | None
+    official_text: str | None
     outcome: str | None
     vote: str | None
     simple_summary: str | None

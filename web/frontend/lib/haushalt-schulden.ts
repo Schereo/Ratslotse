@@ -24,7 +24,7 @@ export type SchuldenJahr = {
 
 /** Ein Ratsbeschluss zu einer Bürgschaft. */
 export type BuergschaftsVorlage = {
-  vorlage_nr: string;
+  template_number: string;
   title: string;
   document_url: string | null;
   /** Datum der jüngsten Beratung; `null`, solange keine Sitzung verknüpft ist. */

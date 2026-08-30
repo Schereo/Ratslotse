@@ -228,7 +228,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
             Gebühr</>}.
         </p>
         <Dokumentbeleg h={herkunftFuer(letzte.herkunft_id)}
-          vorlageNr={letzte.vorlage_nr} />
+          vorlageNr={letzte.template_number} />
       </div>
 
       {reihe.length >= 3 && (

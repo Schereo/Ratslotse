@@ -230,8 +230,8 @@ def summenprobe(zeile: dict) -> tuple[bool, float]:
     den Euro stimmig — eine Toleranz würde hier nur den einen Jahrgang
     durchwinken, für den sie gedacht wäre."""
     summe = sum(zeile.get(a) or 0.0 for a in ARTEN)
-    abweichung = summe - (zeile.get("insgesamt") or 0.0)
-    return abweichung == 0.0, abweichung
+    deviation = summe - (zeile.get("insgesamt") or 0.0)
+    return deviation == 0.0, deviation
 
 
 def prokopfprobe(zeile: dict, einwohner: int | None) -> tuple[bool | None, float | None]:
@@ -282,7 +282,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
                               "grund": f"Zeile nicht in {len(SPALTEN)} Felder "
                                        f"zerlegbar: {zeile['unlesbar']!r}"})
             continue
-        s_ok, abweichung = summenprobe(zeile)
+        s_ok, deviation = summenprobe(zeile)
         k_ok, gerechnet = prokopfprobe(zeile, einwohner.get(zeile["jahr"]))
         summe_ok += bool(s_ok)
         summe_gerissen += not s_ok
@@ -295,7 +295,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
         bestanden = [n for n, ok in (("schulden_summenzeile", s_ok),
                                      ("schulden_prokopf", k_ok)) if ok]
         if not bestanden:
-            grund = (f"Summenprobe um {abweichung:+,.0f} € gerissen"
+            grund = (f"Summenprobe um {deviation:+,.0f} € gerissen"
                      if not s_ok else "Summenprobe gerissen")
             if k_ok is False:
                 grund += (f"; Pro-Kopf-Probe ebenfalls "
@@ -312,7 +312,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
             # Die Summe trägt die Pro-Kopf-Probe, die Aufteilung trägt nichts.
             for art in ARTEN:
                 uebernommen[art] = None
-            uebernommen["aufteilung_verworfen"] = round(abweichung)
+            uebernommen["aufteilung_verworfen"] = round(deviation)
         else:
             uebernommen["aufteilung_verworfen"] = None
         uebernommen["proben"] = bestanden

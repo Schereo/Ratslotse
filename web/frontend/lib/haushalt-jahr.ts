@@ -17,8 +17,8 @@ export type WegVotum = {
   item_number: string | null;
   outcome: string | null;
   vote: string | null;
-  gegenstimmen: number | null;
-  enthaltungen: number | null;
+  no_votes: number | null;
+  abstentions: number | null;
 };
 
 export type WegStation = {
@@ -29,7 +29,7 @@ export type WegStation = {
   rolle: string | null;
   is_public: number | null;
   ksinr: number;
-  vorlage_nr: string | null;
+  template_number: string | null;
   vorlage_titel: string;
   /** TOP-Nummer mit Präfix („Ö 6") — ohne Präfix zeigt der Link daneben. */
   top: string | null;
@@ -41,7 +41,7 @@ export type WegStation = {
 
 export type WegRunde = {
   jahr: number;
-  vorlage_nr: string | null;
+  template_number: string | null;
   kvonr: number | null;
   einbringung: WegStation | null;
   fachausschuesse: { von: string; bis: string; anzahl: number; gremien: string[] } | null;
@@ -139,7 +139,7 @@ export function monateZwischen(von: string, bis: string): number {
  *  der Rat den Abschluss festgestellt hat. */
 export type AbschlussDok = {
   jahr: number | null;
-  beschluss: { datum: string | null } | null;
+  official_text: { datum: string | null } | null;
 };
 
 export type AbschlussMass = {
@@ -162,7 +162,7 @@ export function jahresabschlussMass(doks: AbschlussDok[] | undefined): Abschluss
   const monate: number[] = [];
   const versaetze = new Map<number, number>();
   for (const d of doks ?? []) {
-    const datum = d.beschluss?.datum;
+    const datum = d.official_text?.datum;
     if (d.jahr == null || !datum) continue;
     const [bj, bm] = datum.split("-").map(Number);
     if (!bj || !bm) continue;

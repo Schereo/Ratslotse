@@ -25,7 +25,7 @@ MAX_EXCERPT_CHARS = 500
 def _batch_text(decisions: list[dict]) -> str:
     lines: list[str] = []
     for d in decisions:
-        excerpt = (d.get("beschluss") or d.get("summary") or "").strip().replace("\n", " ")
+        excerpt = (d.get("official_text") or d.get("summary") or "").strip().replace("\n", " ")
         lines.append(
             f"id {d['id']}: [{d.get('session_date', '?')}, {d.get('committee', '?')}, "
             f"Ergebnis {d.get('outcome') or '?'}] {(d.get('title') or '').strip()}\n"

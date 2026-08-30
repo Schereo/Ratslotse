@@ -62,8 +62,8 @@ def _label(station: str) -> str:
 
 def _message(follow: dict, neu: list[str], app_url: str) -> str:
     zeilen = "".join(f"<li>{_label(s)}</li>" for s in neu)
-    titel = follow.get("title") or follow.get("vorlage_nr") or "Verfolgter Vorgang"
-    nr = f" ({follow['vorlage_nr']})" if follow.get("vorlage_nr") else ""
+    titel = follow.get("title") or follow.get("template_number") or "Verfolgter Vorgang"
+    nr = f" ({follow['template_number']})" if follow.get("template_number") else ""
     return (
         f"<p>Es gibt Neues zu einem Vorgang, den du verfolgst:</p>"
         f"<p><b>{titel}</b>{nr}</p>"
@@ -114,7 +114,7 @@ def main() -> dict:
             # Design 30a (N4): einreihen statt senden — sonst gälten weder
             # Nachtruhe noch Tagesgrenze, und der Schalter „Verfolgte Vorgänge"
             # in „Mein Konto" hätte keine Wirkung.
-            titel = f"{f.get('vorlage_nr') or 'Dein Vorgang'}: neue Station"
+            titel = f"{f.get('template_number') or 'Dein Vorgang'}: neue Station"
             if not notify.einreihen(ratslotse, f["owner_id"], notify.N4_VORGANG, titel,
                                     _message(f, neu, f"{APP_URL}/topics"), "/topics"):
                 # Anlass abgeschaltet — Stand trotzdem fortschreiben, sonst

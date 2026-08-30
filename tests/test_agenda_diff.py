@@ -7,7 +7,7 @@ from council.agenda_diff import diff_html, diff_satz, diff_tagesordnung, hat_aen
 
 
 def _i(nr: str, titel: str, vorlage: str = "") -> dict:
-    return {"item_number": nr, "title": titel, "vorlage_nr": vorlage}
+    return {"item_number": nr, "title": titel, "template_number": vorlage}
 
 
 def _a(*ids_labels: tuple[str, str]) -> list[dict]:
@@ -25,7 +25,7 @@ def test_nachgereichte_vorlage_ist_eine_aenderung():
     alt = [_i("Ö 5", "Beratung nichtöffentlicher TOPs - Bericht")]
     neu = [_i("Ö 5", "Beratung nichtöffentlicher TOPs - Bericht", "26/0019/9")]
     d = diff_tagesordnung(alt, neu)
-    assert [(a["vorlage_nr"], n["vorlage_nr"]) for a, n in d["vorlage"]] == [("", "26/0019/9")]
+    assert [(a["template_number"], n["template_number"]) for a, n in d["vorlage"]] == [("", "26/0019/9")]
     assert d["neu"] == [] and d["entfernt"] == [] and d["verschoben"] == []
     assert hat_aenderungen(d)
     html = diff_html(d)
@@ -50,7 +50,7 @@ def test_verschoben_schlaegt_vorlage():
 
 def test_nichtoeffentliche_punkte_sind_markiert():
     neu = [{"item_number": "N 3", "title": "Grundstücksverkauf",
-            "vorlage_nr": "", "is_public": False}]
+            "template_number": "", "is_public": False}]
     html = diff_html(diff_tagesordnung([], neu))
     assert "Neu · TOP N 3" in html and "(nichtöffentlich)" in html
 
@@ -195,12 +195,12 @@ def test_ohne_nennbare_aenderung_gibt_es_keine_meldung():
     was los ist (Tims Befund 17.08.2026). Jetzt bleibt sie aus; "" ist das
     Zeichen dafür."""
     modul = _check_committees()
-    gleich = [{"item_number": "Ö 5", "title": "Radweg", "vorlage_nr": "", "is_public": True}]
+    gleich = [{"item_number": "Ö 5", "title": "Radweg", "template_number": "", "is_public": True}]
     assert modul._aenderungs_teil(list(gleich), gleich) == ""
     # Ohne Vergleichsbasis bleibt es bei der vollständigen Tagesordnung.
     assert modul._aenderungs_teil(None, gleich) is None
     # Und die nachgereichte Vorlage ist wieder eine echte Meldung.
-    neu = [{"item_number": "Ö 5", "title": "Radweg", "vorlage_nr": "26/0100", "is_public": True}]
+    neu = [{"item_number": "Ö 5", "title": "Radweg", "template_number": "26/0100", "is_public": True}]
     assert "Vorlage nachgereicht" in modul._aenderungs_teil(list(gleich), neu)
 
 
@@ -210,13 +210,13 @@ def test_alter_snapshot_erfindet_keine_neuen_punkte():
     frisch eingefügt — die erste Änderungsmeldung nach dem Deploy wäre eine
     Liste erfundener Neuigkeiten."""
     modul = _check_committees()
-    alt = [{"item_number": "Ö 5", "title": "Radweg", "vorlage_nr": ""}]       # ohne is_public
-    jetzt = [{"item_number": "Ö 5", "title": "Radweg", "vorlage_nr": "", "is_public": True},
-             {"item_number": "N 1", "title": "Grundstück", "vorlage_nr": "", "is_public": False}]
+    alt = [{"item_number": "Ö 5", "title": "Radweg", "template_number": ""}]       # ohne is_public
+    jetzt = [{"item_number": "Ö 5", "title": "Radweg", "template_number": "", "is_public": True},
+             {"item_number": "N 1", "title": "Grundstück", "template_number": "", "is_public": False}]
     assert modul._aenderungs_teil(alt, jetzt) == ""
 
     # Mit is_public im Altstand zählt der nichtöffentliche Punkt normal mit.
-    alt_neu = [{"item_number": "Ö 5", "title": "Radweg", "vorlage_nr": "", "is_public": True}]
+    alt_neu = [{"item_number": "Ö 5", "title": "Radweg", "template_number": "", "is_public": True}]
     assert "Neu · TOP N 1" in modul._aenderungs_teil(alt_neu, jetzt)
 
 
@@ -226,8 +226,8 @@ def test_alter_snapshot_ohne_anlagen_meldet_keine_anlagen():
     erste Meldung nach dem Deploy wäre wieder eine Liste erfundener
     Neuigkeiten (dieselbe Falle wie bei is_public)."""
     modul = _check_committees()
-    alt = [{"item_number": "Ö 5", "title": "Radweg", "vorlage_nr": "", "is_public": True}]
-    jetzt = [{"item_number": "Ö 5", "title": "Radweg", "vorlage_nr": "", "is_public": True,
+    alt = [{"item_number": "Ö 5", "title": "Radweg", "template_number": "", "is_public": True}]
+    jetzt = [{"item_number": "Ö 5", "title": "Radweg", "template_number": "", "is_public": True,
               "anlagen": _a(("111", "Lageplan"))}]
     assert modul._aenderungs_teil(alt, jetzt) == ""
 
@@ -245,7 +245,7 @@ def test_agenda_hash_zaehlt_anlagen_mit():
     modul = _check_committees()
 
     def _item(anlagen):
-        return SimpleNamespace(item_number="Ö 5", title="Radweg", vorlage_nr="",
+        return SimpleNamespace(item_number="Ö 5", title="Radweg", template_number="",
                                is_public=True, anlagen=anlagen)
 
     ohne = modul._agenda_hash([_item([])])
@@ -414,7 +414,7 @@ def test_nummern_versatz_neben_echter_aenderung_meldet_weiter():
     from council.agenda_diff import nur_nummern_versatz
     alt = _kaskaden_stand(22)
     neu = _kaskaden_stand(21)
-    neu[0] = dict(neu[0], vorlage_nr="26/0100")
+    neu[0] = dict(neu[0], template_number="26/0100")
     assert not nur_nummern_versatz(diff_tagesordnung(alt, neu))
     # Ein zusätzlicher neuer Punkt ebenso.
     assert not nur_nummern_versatz(diff_tagesordnung(alt, neu + [_i("Ö 1", "Einwohnerfragestunde")]))
@@ -430,7 +430,7 @@ def test_nachgereichte_vorlage_am_mitgerutschten_punkt_bricht_die_stille():
     from council.agenda_diff import nur_nummern_versatz
     alt = _kaskaden_stand(22)
     neu = _kaskaden_stand(21)
-    neu[3] = dict(neu[3], vorlage_nr="26/0100")
+    neu[3] = dict(neu[3], template_number="26/0100")
     d = diff_tagesordnung(alt, neu)
     assert d["vorlage"] == []          # die Kette hat sie geschluckt …
     assert not nur_nummern_versatz(d)  # … die Stille-Regel sieht trotzdem nach

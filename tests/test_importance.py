@@ -6,7 +6,7 @@ from council.store import CouncilStore
 
 
 def _dec(**kw) -> dict:
-    base = {"amount_eur": None, "gegenstimmen": None, "enthaltungen": None,
+    base = {"amount_eur": None, "no_votes": None, "abstentions": None,
             "outcome": "angenommen", "title": "Sachbeschluss zu etwas",
             "committee": "Ausschuss für Stadtplanung und Bauen", "kind": "decision"}
     base.update(kw)
@@ -15,14 +15,14 @@ def _dec(**kw) -> dict:
 
 def test_score_bounds():
     for d in (_dec(), _dec(amount_eur=1e12, title="Satzung", committee="Rat der Stadt Oldenburg",
-                          gegenstimmen=40, enthaltungen=5)):
+                          no_votes=40, abstentions=5)):
         s = importance.importance_score(d, n_beratungen=8)
         assert 0 <= s <= 100
 
 
 def test_big_binding_council_decision_scores_high():
     d = _dec(amount_eur=12_000_000, title="Bebauungsplan Nr. 851 als Satzung beschlossen",
-             committee="Rat der Stadt Oldenburg", gegenstimmen=8, enthaltungen=3)
+             committee="Rat der Stadt Oldenburg", no_votes=8, abstentions=3)
     assert importance.importance_score(d, n_beratungen=5) >= 70
 
 
@@ -34,13 +34,13 @@ def test_routine_note_scores_low():
 
 
 def test_contention_raises_score():
-    quiet = _dec(amount_eur=500_000, vote="einstimmig", gegenstimmen=0, enthaltungen=0)
-    loud = _dec(amount_eur=500_000, vote="mehrheitlich", gegenstimmen=12, enthaltungen=4)
+    quiet = _dec(amount_eur=500_000, vote="einstimmig", no_votes=0, abstentions=0)
+    loud = _dec(amount_eur=500_000, vote="mehrheitlich", no_votes=12, abstentions=4)
     assert importance.importance_score(loud) > importance.importance_score(quiet)
 
 
 def test_vote_field_used_when_counts_missing():
-    # `gegenstimmen` oft NULL → auf das zuverlässigere `vote`-Feld stützen.
+    # `no_votes` oft NULL → auf das zuverlässigere `vote`-Feld stützen.
     contested = importance.importance_breakdown(_dec(vote="mehrheitlich"))
     unanimous = importance.importance_breakdown(_dec(vote="einstimmig"))
     assert contested["signals"]["umstritten"] > unanimous["signals"]["umstritten"]
@@ -124,7 +124,7 @@ def test_subvote_is_discounted():
 
 
 def test_breakdown_shape():
-    b = importance.importance_breakdown(_dec(amount_eur=1_000_000, gegenstimmen=5), n_beratungen=3)
+    b = importance.importance_breakdown(_dec(amount_eur=1_000_000, no_votes=5), n_beratungen=3)
     assert set(b["signals"]) == {"geld", "umstritten", "verbindlich", "aufwand"}
     assert set(b["contributions"]) == set(b["signals"])
     assert isinstance(b["score"], int)
@@ -135,10 +135,10 @@ def test_contributions_sum_to_score():
     Heuristik-Score exakt ergeben, sonst geht die angezeigte Rechnung nicht auf."""
     cases = [
         (_dec(), None),
-        (_dec(amount_eur=1_000_000, gegenstimmen=5), 3),
+        (_dec(amount_eur=1_000_000, no_votes=5), 3),
         (_dec(title="Kenntnisnahme der Niederschrift", outcome="zur_kenntnis"), None),
         (_dec(amount_eur=12_000_000, title="Satzung", committee="Rat der Stadt Oldenburg",
-              gegenstimmen=8, enthaltungen=3), 6),
+              no_votes=8, abstentions=3), 6),
         (_dec(vote="einstimmig", amount_eur=4_321), 2),
         (_dec(amount_eur=999_999_999, vote="mehrheitlich"), 12),
     ]
@@ -156,7 +156,7 @@ def test_contributions_show_renormalised_weight():
     ausgeschlagenes Signal liefert dann mehr als sein Rohgewicht von 24."""
     b = importance.importance_breakdown(
         _dec(title="Zukunft der Fahrradstraßen Haareneschstraße", committee="Rat",
-             vote="mehrheitlich", gegenstimmen=20))
+             vote="mehrheitlich", no_votes=20))
     assert b["signals"]["geld"] is None and b["signals"]["aufwand"] is None
     assert b["score"] == 81
     assert b["contributions"] == {"geld": None, "umstritten": 52, "verbindlich": 29, "aufwand": None}
@@ -173,7 +173,7 @@ def test_backfill_importance_store(tmp_path):
         c.execute("INSERT INTO council_sessions(ksinr,committee,session_date,session_time,location,fetched_at) "
                   "VALUES (2,'Ausschuss für Soziales','2025-03-02','17:00','Rathaus','x')")
         # wichtig: Satzung im Rat, große Summe, umstritten, mit Beratungsfolge
-        c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome,vote,gegenstimmen,amount_eur,kvonr) "
+        c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome,vote,no_votes,amount_eur,kvonr) "
                   "VALUES (1,0,'decision','Bebauungsplan Nr. 851 als Satzung','angenommen','mehrheitlich',9,8000000,555)")
         # unwichtig: bloße Kenntnisnahme im Fachausschuss, kein Geld
         c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome) "

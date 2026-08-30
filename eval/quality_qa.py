@@ -118,9 +118,9 @@ def erzeugen(label: str, db: Path) -> Path:
             if typ == "verlauf":
                 ctx = qa.sort_verlauf(ctx)
             try:
-                texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
+                texts = store.vorlage_texts_for([c.get("template_number") or "" for c in ctx])
                 for c in ctx:
-                    t = texts.get((c.get("vorlage_nr") or "").strip())
+                    t = texts.get((c.get("template_number") or "").strip())
                     if t:
                         c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
             except Exception:  # noqa: BLE001

@@ -68,7 +68,7 @@ const topDomId = (ksinr: number, itemNumber: string) =>
 function itemMatches(it: AgendaItem, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return false;
-  return it.title.toLowerCase().includes(q) || (it.vorlage_nr?.toLowerCase().includes(q) ?? false);
+  return it.title.toLowerCase().includes(q) || (it.template_number?.toLowerCase().includes(q) ?? false);
 }
 
 /* Design 28a/R1: JEDES Wort der Eingabe, an JEDER Fundstelle markieren.
@@ -119,8 +119,8 @@ function CardFooter({ d }: { d: CouncilDecision }) {
   const factions = Array.isArray(d.factions) ? d.factions : [];
   const parts: string[] = [];
   if (d.vote) parts.push(d.vote);
-  if (d.gegenstimmen) parts.push(`${d.gegenstimmen} dagegen`);
-  if (d.enthaltungen) parts.push(`${d.enthaltungen} Enth.`);
+  if (d.no_votes) parts.push(`${d.no_votes} dagegen`);
+  if (d.abstentions) parts.push(`${d.abstentions} Enth.`);
   const hasAmount = d.kind !== "subvote" && d.amount_eur != null;
   if (parts.length === 0 && factions.length === 0 && !hasAmount) return null;
   return (
@@ -211,9 +211,9 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
           <h3 className="mt-2 hyphens-auto font-medium text-foreground">
             <Highlight text={d.title ?? ""} query={query} />
           </h3>
-          {d.beschluss && (
+          {d.official_text && (
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-              <Highlight text={d.beschluss} query={query} />
+              <Highlight text={d.official_text} query={query} />
             </p>
           )}
           {primaryLocation && (
@@ -713,7 +713,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         </div>
       </FilterField>
       {/* Design 23a: Änderungsanträge hängen normal als Kontext am Ursprungs-
-          beschluss; Rechercheure können sie hier als eigene Treffer einblenden. */}
+          official_text; Rechercheure können sie hier als eigene Treffer einblenden. */}
       <FilterField label="Teilabstimmungen">
         <button
           type="button"
@@ -1032,7 +1032,7 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksin
             {kurzfassung(it)}
           </p>
         )}
-        {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.vorlage_nr} query={query} /></p>}
+        {it.template_number && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.template_number} query={query} /></p>}
         {/* Tims Befund 12.08.: Die TOP-Anhänge (RIS-PDFs) fehlten in der App
             komplett — gerade Fraktions-Anträge ohne Vorlage hängen NUR hier. */}
         {(it.anlagen?.length ?? 0) > 0 && (

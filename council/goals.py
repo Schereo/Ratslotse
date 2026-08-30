@@ -102,7 +102,7 @@ BESCHLÜSSE:
 def _render(decisions: list[dict]) -> str:
     lines = []
     for d in decisions:
-        text = d.get("summary") or d.get("beschluss") or ""
+        text = d.get("summary") or d.get("official_text") or ""
         text = " ".join(text.split())[:300]
         outcome = d.get("outcome") or "?"
         lines.append(f'- id {d["id"]} [{outcome}]: {(d.get("title") or "").strip()} — {text}')

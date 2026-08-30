@@ -1195,7 +1195,7 @@ def test_ergebnisrechnung_2018_bezug_ist_die_gesamtermaechtigung():
     assert aufwendungen["ergebnis"] == 537_517_730.88
     # Die Abweichung bezieht sich auf den Plan, nicht auf den Ansatz.
     assert abs((aufwendungen["ergebnis"] - aufwendungen["plan"])
-               - aufwendungen["abweichung"]) < 0.01
+               - aufwendungen["deviation"]) < 0.01
 
 
 def test_ergebnisrechnung_2020_bezug_ist_ansatz_plus_nachtrag():
@@ -1211,7 +1211,7 @@ def test_ergebnisrechnung_2020_bezug_ist_ansatz_plus_nachtrag():
     assert aufwendungen["ergebnis"] == 587_980_452.10
     assert round(aufwendungen["plan"] - aufwendungen["ansatz"], 2) == 27_208_150.00
     # Gegen den Plan: 21,5 Mio. weniger. Gegen den Ansatz: 5,7 Mio. mehr.
-    assert round(aufwendungen["abweichung"] / 1e6, 1) == -21.5
+    assert round(aufwendungen["deviation"] / 1e6, 1) == -21.5
     assert round((aufwendungen["ergebnis"] - aufwendungen["ansatz"]) / 1e6, 1) == 5.7
     # Zeilen ohne Nachtrag vergleichen in derselben Tabelle gegen den Ansatz.
     assert nach_nr[3]["plan_art"] == "ansatz"
@@ -1276,7 +1276,7 @@ def test_vorzeichen_reparatur_faellt_nicht_auf_nullzeilen_herein():
     """Ohne Zusatzbedingung erfüllt jedes „X | 0,00 | X" die Vorzeichenprobe.
     Im Abschluss 2018 hätte das für THH11 ein Ist von 0,00 € eingetragen,
     richtig sind 105,0 Mio. €."""
-    kopf = {"positionen": {"vorjahr": 0, "ansatz": 1, "ergebnis": 2, "abweichung": 3},
+    kopf = {"positionen": {"vorjahr": 0, "ansatz": 1, "ergebnis": 2, "deviation": 3},
             "varianten": ("ansatz",), "hat_vorjahr": True}
     # Vorjahr, dann das tückische Tripel, dann die echte Spaltenfolge.
     zahlen = [102_428_787.88, 105_442_887.67, 0.0, 105_442_887.67,
@@ -1401,18 +1401,18 @@ def test_abweichungsgruende_brauchen_die_rechenprobe():
     """Die Überschrift nennt die Abweichung doppelt — als Betrag und als
     Prozentsatz. Beides muss zur geparsten Tabellenzeile passen."""
     gruende = finanzberichte.parse_abweichungsgruende(JA_WARUM, 2024)
-    passend = [{"nr": 1, "abweichung": 75_138_954.16, "plan": 302_740_000.00},
-               {"nr": 4, "abweichung": 2_100_000.00, "plan": 7_898_000.00}]
+    passend = [{"nr": 1, "deviation": 75_138_954.16, "plan": 302_740_000.00},
+               {"nr": 4, "deviation": 2_100_000.00, "plan": 7_898_000.00}]
     angenommen, abgelehnt = finanzberichte.pruefe_abweichungsgruende(gruende, passend)
     assert len(angenommen) == 2 and abgelehnt == []
 
     # Betrag passt nicht → raus.
-    daneben = [{"nr": 1, "abweichung": 5_000_000.00, "plan": 302_740_000.00}]
+    daneben = [{"nr": 1, "deviation": 5_000_000.00, "plan": 302_740_000.00}]
     angenommen, abgelehnt = finanzberichte.pruefe_abweichungsgruende(gruende, daneben)
     assert angenommen == [] and len(abgelehnt) == 2
 
     # Betrag passt, Prozentsatz nicht → ebenfalls raus.
-    schief = [{"nr": 1, "abweichung": 75_138_954.16, "plan": 1_000_000_000.00}]
+    schief = [{"nr": 1, "deviation": 75_138_954.16, "plan": 1_000_000_000.00}]
     angenommen, abgelehnt = finanzberichte.pruefe_abweichungsgruende(gruende, schief)
     assert angenommen == [] and any("%" in a for a in abgelehnt)
 
@@ -1558,7 +1558,7 @@ def test_buergschafts_vorlagen_je_vorlage_eine_zeile(tmp_path):
             (2, "25/0826", "Verlängerung Ausfallbürgschaft der Stadt Oldenburg über "
                            "300.000 Euro für die Volkshochschule"),
             (3, "24/0999", "Neubau einer Schule")):
-        c.execute("INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+        c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
                   "VALUES (?, ?, ?, '2026-08-18')", (kvonr, nr, titel))
     for ksinr, datum in ((10, "2023-06-01"), (11, "2025-12-03"), (12, "2025-12-15")):
         c.execute("INSERT INTO council_sessions (ksinr, session_date, session_time, "
@@ -1569,13 +1569,13 @@ def test_buergschafts_vorlagen_je_vorlage_eine_zeile(tmp_path):
     for did, ksinr, nr, titel in ((100, 10, "23/0112", "VHS"),
                                   (101, 11, "25/0826", "VHS Verlängerung"),
                                   (102, 12, "25/0826", "VHS Verlängerung")):
-        c.execute("INSERT INTO council_decisions (id, ksinr, position, vorlage_nr, "
+        c.execute("INSERT INTO council_decisions (id, ksinr, position, template_number, "
                   " title, kind) VALUES (?, ?, 1, ?, ?, 'decision')",
                   (did, ksinr, nr, titel))
     c.commit()
 
     v = store.buergschafts_vorlagen()
-    assert [r["vorlage_nr"] for r in v] == ["25/0826", "23/0112"]   # neueste zuerst
+    assert [r["template_number"] for r in v] == ["25/0826", "23/0112"]   # neueste zuerst
     assert len(v) == 2, "Die Schul-Vorlage gehört nicht dazu"
     # Je Vorlage EIN Eintrag, und zwar der jüngste Beschluss.
     verlaengerung = v[0]
@@ -1596,12 +1596,12 @@ def test_haushalts_anschluss_nur_wo_er_belegt_ist(tmp_path):
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+    c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
               "VALUES (1, '25/0826', 'Verlängerung Ausfallbürgschaft der Stadt "
               "Oldenburg für die Volkshochschule', '2026-08-18')")
-    c.execute("INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+    c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
               "VALUES (2, '24/0999', 'Neubau einer Schule', '2026-08-18')")
-    c.execute("INSERT INTO council_nachbewilligungen (vorlage_nr, titel, art, kategorie, "
+    c.execute("INSERT INTO council_nachbewilligungen (template_number, titel, art, kategorie, "
               " beschlossen, im_rat, ratsentscheidung, volltextprobe, betrag, jahr, "
               " beschluss_id, gremien, fetched_at) "
               "VALUES ('18/0187', 'Außerplanmäßige Bewilligung', 'ausserplanmaessig', "

@@ -22,7 +22,7 @@ export type WochenPunkt = {
    *  (`council/dringlichkeit.py`). Er steht auf der Karte, weil die Bewertung
    *  für ihn einen Boden hat — der Kicker sagt, warum. */
   dringlich?: boolean;
-  vorlage_nr: string | null; kvonr: number | null;
+  template_number: string | null; kvonr: number | null;
   committee: string; session_date: string; topic_name?: string | null;
   /** Warum der Punkt zählt — in Alltagssprache, kommt aus der Bewertung. */
   wichtig_grund?: string | null;

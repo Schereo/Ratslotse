@@ -43,7 +43,7 @@ def _existing_agenda_bookmark(rows: list[dict], ksinr: int, item: dict) -> dict 
             continue
         if item.get("kvonr") and row.get("kvonr") == item["kvonr"]:
             return row
-        if item.get("vorlage_nr") and row.get("vorlage_nr") == item["vorlage_nr"]:
+        if item.get("template_number") and row.get("template_number") == item["template_number"]:
             return row
         if bookmark_logic.normalized_title(row.get("title")) == bookmark_logic.normalized_title(item.get("title")):
             return row
@@ -74,7 +74,7 @@ def list_bookmarks(user: dict = Depends(require_active),
                 item_number=(item or decision or {}).get("item_number"),
                 decision_id=(decision or {}).get("id"),
                 kvonr=(item or decision or {}).get("kvonr"),
-                vorlage_nr=(item or decision or {}).get("vorlage_nr") or row.get("vorlage_nr") or "",
+                template_number=(item or decision or {}).get("template_number") or row.get("template_number") or "",
                 title=(item or decision or {}).get("title") or row.get("title") or "",
                 subtitle=_subtitle(entry.get("session"), (item or decision or {}).get("item_number")),
             )
@@ -125,7 +125,7 @@ def create_bookmark(payload: BookmarkIn,
             owner_id, kind="agenda_item",
             target_key=f"agenda_item:{payload.ksinr}:{identity}",
             ksinr=payload.ksinr, item_number=item["item_number"], kvonr=item.get("kvonr"),
-            vorlage_nr=item.get("vorlage_nr") or "", title=item["title"],
+            template_number=item.get("template_number") or "", title=item["title"],
             subtitle=_subtitle(session, item["item_number"]),
         )
 
@@ -148,7 +148,7 @@ def create_bookmark(payload: BookmarkIn,
             target_key=f"decision:{decision['ksinr']}:{stable}",
             ksinr=decision["ksinr"], item_number=decision.get("item_number"),
             decision_id=decision["id"], kvonr=decision.get("kvonr"),
-            vorlage_nr=decision.get("vorlage_nr") or "",
+            template_number=decision.get("template_number") or "",
             title=decision.get("title") or "Beschluss",
             subtitle=_subtitle(session, decision.get("item_number")),
         )

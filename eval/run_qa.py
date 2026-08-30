@@ -18,7 +18,7 @@ Misst drei Dinge gegen handgelabelte Fragen (``cases_qa.json``):
 
 Gold-Cases gibt es in zwei Formen: ``expected_ids`` sind an die ids der
 Prod-Datenbank gebunden; ``expected_keys`` beschreiben die Beschluesse ueber
-natuerliche Schluessel (vorlage_nr, session_date, title_like, committee) und
+natuerliche Schluessel (template_number, session_date, title_like, committee) und
 laufen damit gegen jede DB-Kopie — Prod, dev oder eine lokal gescrapte
 Teil-DB. Faelle, die sich in der aktuellen DB nicht aufloesen lassen (Teil-DB
 ohne den Zeitraum), werden sichtbar uebersprungen statt falsch gemessen.
@@ -68,7 +68,7 @@ FORMALITY_MAX = 15  # deckungsgleich mit dem "Tragweite: gering"-Marker in counc
 # Schluessel, die ein expected_keys-Eintrag tragen darf (= Filter von
 # CouncilStore.find_decision_ids). Alles andere ist ein Tippfehler im Case und
 # soll laut scheitern statt still nichts zu finden.
-KEY_FIELDS = ("vorlage_nr", "committee", "session_date", "title_like")
+KEY_FIELDS = ("template_number", "committee", "session_date", "title_like")
 
 
 # --------------------------------------------------------------------------- #
@@ -102,7 +102,7 @@ def emit_keys(store, cases: list[dict]) -> None:
 
     Auf der Datenbank laufen lassen, zu der die ids gehoeren (Prod). Druckt je
     Fall einen ``expected_keys``-Vorschlag zum Einpflegen in cases_qa.json —
-    bevorzugt (vorlage_nr, committee), sonst (session_date, title_like)."""
+    bevorzugt (template_number, committee), sonst (session_date, title_like)."""
     for case in cases:
         if case.get("expected_keys"):
             continue
@@ -110,8 +110,8 @@ def emit_keys(store, cases: list[dict]) -> None:
         missing = set(case.get("expected_ids") or []) - {r["id"] for r in rows}
         specs = []
         for r in rows:
-            if r.get("vorlage_nr"):
-                spec: dict = {"vorlage_nr": r["vorlage_nr"]}
+            if r.get("template_number"):
+                spec: dict = {"template_number": r["template_number"]}
                 if r.get("committee"):
                     spec["committee"] = r["committee"]
             else:
@@ -445,9 +445,9 @@ def main() -> int:
             t_ctx = time.perf_counter()
             ctx = cands[:ANSWER_N]
             try:  # Vorlagen-Auszuege wie im /ask-Endpoint
-                texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
+                texts = store.vorlage_texts_for([c.get("template_number") or "" for c in ctx])
                 for c in ctx:
-                    txt = texts.get((c.get("vorlage_nr") or "").strip())
+                    txt = texts.get((c.get("template_number") or "").strip())
                     if txt:
                         c["vorlage_excerpt"] = vorlagen_mod.excerpt(txt, 350)
             except Exception:  # noqa: BLE001

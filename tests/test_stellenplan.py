@@ -368,7 +368,7 @@ def test_widerspruechliche_zeilen_werden_gekennzeichnet_nicht_verworfen():
     teil = _teil(UNSTIMMIGE_ZEILEN_2023, "B")
     assert teil["bestanden"] is True
     assert [u["lfd_nr"] for u in teil["unstimmig"]] == [34, 40]
-    assert [u["abweichung"] for u in teil["unstimmig"]] == [1.0, -1.0]
+    assert [u["deviation"] for u in teil["unstimmig"]] == [1.0, -1.0]
 
     posten = {z["lfd_nr"]: z for z in teil["zeilen"] if z["art"] == "posten"}
     assert posten[34]["stimmig"] == 0
