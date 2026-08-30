@@ -107,7 +107,10 @@ struct QuestionsView: View {
         streamTask != nil || turns.contains { $0.research?.status == "laeuft" }
     }
     private var composerBottomPadding: CGFloat {
-        horizontalSizeClass == .compact ? 96 : 18
+        // Die Bottom-Navigation reserviert bereits ihren eigenen Safe-Area-
+        // Bereich. 82 pt lassen die beiden Glasflächen optisch zusammenstehen,
+        // ohne Schatten oder Trefferflächen überlappen zu lassen.
+        horizontalSizeClass == .compact ? 82 : 18
     }
     private var shouldAutoScroll: Bool {
 #if DEBUG
