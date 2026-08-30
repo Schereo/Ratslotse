@@ -1,8 +1,9 @@
 """Native-app push device-token registration.
 
-The Capacitor app registers its APNs (iOS) / FCM (Android) device token here after
-the user grants notification permission, so the digest cron can reach it. Delivery
-itself happens in ``kern.delivery`` alongside Telegram/email.
+The native iOS app and Capacitor Android app register their APNs / FCM device
+token here after the user grants notification permission, so the digest cron
+can reach it. Delivery itself happens in ``kern.delivery`` alongside
+Telegram/email.
 """
 from __future__ import annotations
 

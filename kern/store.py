@@ -1599,6 +1599,19 @@ class Store:
                 # Antworten haben keine; die Seite zeigt dann keine.
                 "grafik": extras.get("grafik")}
 
+    def qa_share_owner_id(self, token: str) -> int | None:
+        """Interne Zuordnung für Moderation; nie Teil der öffentlichen API."""
+        row = self._conn.execute(
+            "SELECT user_id FROM qa_shares WHERE token = ?", (token,)
+        ).fetchone()
+        return int(row[0]) if row else None
+
+    def qa_share_delete(self, token: str) -> bool:
+        """Einen gemeldeten öffentlichen Snapshot sofort unzugänglich machen."""
+        with self._conn:
+            cur = self._conn.execute("DELETE FROM qa_shares WHERE token = ?", (token,))
+        return (cur.rowcount or 0) > 0
+
     # ---- „Gründliche Recherche" (RG-10, Task 34) ---------------------------
 
     def deep_job_anlegen(self, user_id: int, frage: str) -> str:

@@ -6,7 +6,7 @@ import { Check } from "lucide-react";
 import { Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { Mascot, type MascotPose } from "@/components/mascot";
-import { SeasonalFamily, useMascotTheme } from "@/components/seasonal-mascot";
+import { SeasonalFamily } from "@/components/seasonal-mascot";
 import { BrandMark } from "@/components/brand";
 
 // RL-F04 (Design 6a): drei Belege unter dem Claim der Marken-Hälfte.
@@ -69,7 +69,6 @@ export function AuthShell({
   breit?: boolean;
   children: React.ReactNode;
 }) {
-  const theme = useMascotTheme();
   // min-h-screen (100vh), nicht dvh: Die dynamische Einheit schrumpft auf iOS
   // mit der Tastatur — die Karte würde beim Antippen eines Feldes springen.
   // 100vh steht still, und im WebView der App ist es ohnehin die Fensterhöhe.
@@ -119,7 +118,7 @@ export function AuthShell({
             Tims Befund 14.08.). */}
         <div className="flex flex-1 justify-center">
           <div className={cn("relative my-auto w-full max-w-sm", breit && "lg:max-w-xl")}>
-            <Mascot pose={pose} theme={theme} className="pointer-events-none absolute -top-[5.65rem] left-1/2 h-24 w-24 -translate-x-1/2" />
+            <Mascot pose={pose} className="pointer-events-none absolute -top-[5.65rem] left-1/2 h-24 w-24 -translate-x-1/2" />
             {/* p-6 auf dem Handy: Die Registrieren-Karte ist die längste —
                 2 × 8 px weniger Polsterung sind eine ganze Textzeile weniger
                 Höhe, ohne dass es enger wirkt. */}

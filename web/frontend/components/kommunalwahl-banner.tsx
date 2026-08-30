@@ -24,7 +24,7 @@ export function KommunalwahlBanner() {
         href="/kommunalwahl"
         className="group mx-auto flex max-w-6xl flex-col items-center gap-5 px-5 py-8 text-primary-foreground sm:flex-row sm:gap-7 sm:py-7"
       >
-        <Mascot pose="point" bob decorative className="hidden h-20 w-20 flex-none sm:block lg:h-24 lg:w-24" />
+        <Mascot pose="point" decorative className="hidden h-20 w-20 flex-none sm:block lg:h-24 lg:w-24" />
         <div className="min-w-0 text-center sm:text-left">
           <p className="inline-flex items-center gap-1.5 rounded-full bg-signal px-3 py-1 text-xs font-semibold text-signal-foreground">
             <Vote className="h-3.5 w-3.5" />

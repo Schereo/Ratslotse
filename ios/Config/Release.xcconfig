@@ -1,0 +1,2 @@
+PRODUCT_BUNDLE_IDENTIFIER = de.ratslotse.app
+CODE_SIGN_ENTITLEMENTS = RatslotseApp/Ratslotse.entitlements

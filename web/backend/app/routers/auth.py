@@ -14,6 +14,7 @@ from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
 
 from ..config import get_settings
+from ..antworten import Ok
 from ..deps import get_current_user, get_store
 from ..ratelimit import forgot_password_limiter, login_limiter, register_limiter, verify_email_limiter
 from ..schemas import (
@@ -241,7 +242,7 @@ def login(
 
 
 @router.post("/logout")
-def logout(response: Response) -> dict:
+def logout(response: Response) -> Ok:
     clear_session_cookie(response)
     return {"ok": True}
 
@@ -294,7 +295,7 @@ def forgot_password(
     body: ForgotPasswordRequest,
     background: BackgroundTasks,
     store: Store = Depends(get_store),
-) -> dict:
+) -> Ok:
     """Start a password reset. Always returns 200 — never reveals whether an account
     exists (no enumeration). A one-hour, single-use token is emailed if it does."""
     forgot_password_limiter.check(request)
@@ -310,8 +311,13 @@ def forgot_password(
     return {"ok": True}
 
 
-@router.post("/reset-password")
-def reset_password(body: ResetPasswordRequest, store: Store = Depends(get_store)) -> dict:
+@router.post("/reset-password", response_model=UserOut)
+def reset_password(
+    request: Request,
+    body: ResetPasswordRequest,
+    response: Response,
+    store: Store = Depends(get_store),
+) -> UserOut:
     """Set a new password from a valid reset token, then invalidate all sessions."""
     token_hash = hashlib.sha256(body.token.encode()).hexdigest()
     now = datetime.utcnow().isoformat(timespec="seconds")
@@ -321,7 +327,12 @@ def reset_password(body: ResetPasswordRequest, store: Store = Depends(get_store)
                             "Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.")
     store.update_password_hash(user_id, hash_password(body.new_password))
     store.increment_token_version(user_id)
-    return {"ok": True}
+    user = store.get_web_user_by_id(user_id)
+    _set_auth_cookie(response, user)
+    # Reset links can open directly in the native app. Returning the refreshed
+    # account and its app token avoids an unnecessary login immediately after
+    # invalidating every previous token.
+    return _to_out(user, _app_access_token(request, user))
 
 
 def _send_verification_email(email: str, raw_token: str, display_name: str | None = None) -> None:
@@ -393,7 +404,7 @@ def resend_verification(
     background: BackgroundTasks,
     user: dict = Depends(get_current_user),
     store: Store = Depends(get_store),
-) -> dict:
+) -> Ok:
     """Re-send the verification link to the logged-in user's address."""
     verify_email_limiter.check(request)
     settings = get_settings()

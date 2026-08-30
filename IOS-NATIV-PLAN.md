@@ -1,10 +1,41 @@
 # Ratslotse nativ — Umbauplan Capacitor → SwiftUI
 
-> **Status:** Plan, noch nicht begonnen. Erhoben am 28.08.2026 aus dem Repo-Stand
-> (main @ `1fe5bed`) über drei Recherche-Läufe: Frontend-Inventar, Backend-API-
-> Kartierung, iOS-Projekt-Bestandsaufnahme. Wer hiermit startet: erst
-> [Abschnitt 9 (offene Entscheidungen)](#9-offene-entscheidungen) mit Tim klären —
-> die Empfehlungen dort sind Vorschläge, keine Beschlüsse.
+> **Status:** Als native 2.0-Ausgabe am 29.08.2026 implementiert und lokal
+> durchgeprüft. Phase 0, Kern-MVP und die Alltagsfunktionen aus Phase 2/3
+> liegen im neuen Top-Level-Verzeichnis `ios/`; Phase 4 bleibt ausdrücklich
+> ein späterer Ausbau. Die Empfehlungen aus Abschnitt 9 wurden als
+> Arbeitsannahmen übernommen: iOS 17, iPhone + iPad, MapKit,
+> GitHub-Actions-Build und der native iOS-Cutover wurden umgesetzt; das
+> frühere Capacitor-Xcode-Projekt ist entfernt. Der bisherige Lotti-Erststart
+> ist als nativer,
+> fortsetzbarer Einrichtungsflow für Gremien, Themen und Push umgesetzt.
+> Details und Buildbefehle: `ios/README.md`.
+
+### Prüfstand der Implementierung
+
+- **Nativ vorhanden:** Auth inklusive Apple/Tokenmigration, fünf Tabs,
+  Push/Deep Links, Heute, Ratsgespräch samt vollständigem Quellen-Event,
+  TTS/Teilen/Feedback/Fraktionspositionen, replay-fähige gründliche Recherche,
+  Ratssuche mit Filtern und Seiten, reiches Beschlussdetail, Quick-Look-
+  Anlagen, Merkliste/Vorlagen-Follows, Sitzungen/EventKit, öffentliche Profile,
+  MapKit-Stadtkarte mit Clustering und Ortsbereich-Umrissen, Orts-Minikarten,
+  alle vier Quizmodi mit vollständiger Statistik, Abzeichen und das dreistufige
+  Lotti-Onboarding. Das Dashboard enthält zusätzlich Live-Sitzungen, neue
+  Treffer zu eigenen Themen und die Zahl der Woche; Konto und Ratsgespräche
+  besitzen native Datenschutz-, Speicher- und Erscheinungsbild-Einstellungen.
+- **Bewusste Web-Ziele:** Landing/Doku und der öffentliche `/g`-
+  Antwort-Snapshot bleiben im Web. Hilfe, Kontakt und Rechtstexte öffnen
+  ebenfalls ihre vorhandenen Web-Seiten.
+- **Noch kein Release-Freibrief:** Vor TestFlight müssen der produktive
+  Direktpfad für `POST /api/council/ask`, Push auf einem echten Gerät, Sign in
+  with Apple sowie Archive/Export mit Distribution-Signing geprüft werden.
+  Der entfernte Capacitor-Build ist weiterhin über die Git-Historie
+  wiederherstellbar, aber kein aktiver iOS-Buildpfad mehr.
+- **Bewusst nicht Teil der App:** Der Haushalt folgt in einem späteren Paket.
+  Die Kommunalwahl war ein reines Entwicklungs-Fun-Feature und wird nicht
+  nativ portiert.
+- **Phase 4 nicht enthalten:** Widgets, Live Activity, App Intents, Spotlight
+  und Handoff sind keine Voraussetzung dieses Umbaus und bleiben offen.
 
 Ziel: Aus der heutigen Capacitor-Shell (statischer Next-Export in einer WebView)
 eine **wirklich native iOS-App** in Swift/SwiftUI machen, die direkt gegen die
@@ -12,7 +43,8 @@ bestehende FastAPI-REST-API spricht.
 
 ## 1. Ausgangslage
 
-Heute ist die iOS-App eine **Capacitor-8-Shell um einen statischen Next-Export**
+Zu Beginn des Umbaus war die iOS-App eine **Capacitor-8-Shell um einen
+statischen Next-Export**
 (`web/frontend/capacitor.config.ts`: `webDir: "out"`, keine Remote-URL). Die
 Web-Assets liegen im Bundle, die App spricht mit `https://ratslotse.de` per
 Bearer-Token. Drei Befunde bestimmen den Plan:
@@ -20,7 +52,8 @@ Bearer-Token. Drei Befunde bestimmen den Plan:
 ### 1.1 Der native Bestand ist winzig
 
 Der gesamte iOS-spezifische Code ist **eine Swift-Datei**
-(`web/frontend/ios/App/App/AppDelegate.swift`: APNs-Token-Weiterleitung an das
+(`web/frontend/ios/App/App/AppDelegate.swift` in der Git-Historie:
+APNs-Token-Weiterleitung an das
 Push-Plugin, Edge-Swipe-Zurück via `MainViewController`) plus fünf
 JS-Brückendateien mit zusammen ~317 Zeilen: `web/frontend/lib/platform.ts`,
 `lib/push.ts`, `lib/apple.ts`, `lib/token.ts`, `lib/app-links.ts`. Nur diese
@@ -112,13 +145,14 @@ Eckdaten:
 - **Externe Dependencies ≈ 0**: URLSession statt Alamofire, eigener SSE-Parser
   (~100 Zeilen), `AttributedString(markdown:)` + eigener Fußnoten-Renderer.
   Jede Dependency ist ein Update-Risiko im Ein-Personen-Projekt.
-- **Die Web-App bleibt das Vollsortiment** — die native App ist die kuratierte
-  Alltagsoberfläche (→ 5.6 „Bleibt Web").
+- **Web und App teilen dieselbe Backend-Logik**; nur die explizite Positivliste
+  in 5.6 bleibt bewusst Web-only.
 
 ## 3. Architektur der App
 
-Neues Top-Level-Verzeichnis `ios/` im Repo; das Capacitor-Projekt bleibt bis
-zum Cutover unangetastet unter `web/frontend/ios/`.
+Das native Projekt liegt im Top-Level-Verzeichnis `ios/`. Das frühere
+Capacitor-Xcode-Projekt unter `web/frontend/ios/` wurde nach dem
+Paritätsabgleich entfernt.
 
 ```
 ios/
@@ -301,22 +335,20 @@ Push-Kategorien für Aktions-Buttons. Der Payload-Deep-Link (`url`) bleibt.
 
 ### 5.6 Bleibt bewusst Web (Positivliste, keine Restmenge)
 
-- **Admin-Panel** (acht Tabs) — bei Bedarf Link im Konto-Tab für Admins.
 - **Landing `/`, Changelog, `/g`-Share-Snapshots** (OG-Metadaten brauchen
   Server-Rendering), Doku.
-- **3D-Lotti** — Landing-Schmuck, kein App-Feature.
+- **Interaktiver WebGL-Lotti-Viewer** — bleibt Landing-Schmuck; die App nutzt
+  stattdessen optimierte Lotti-Posen in Onboarding, Konto und Inhaltsflächen.
 
 ## 6. Übergang & Release
 
-- **Parallelbetrieb:** Capacitor bleibt voll baubar — Hotfixes an der heutigen
-  App jederzeit möglich. Für Side-by-side-Tests bekommt die Debug-Konfiguration
-  des neuen Projekts temporär eine zweite Bundle-ID (z. B. `de.ratslotse.dev`);
-  Release behält `de.ratslotse.app`.
-- **TestFlight-Cutover** (nach Phase 1 oder 2 → Entscheidung 4): Der native
-  Build ersetzt den Capacitor-Build unter derselben ASC-App — Build-Nummern
-  zählen weiter (> 17), `MARKETING_VERSION` springt auf **2.0.0**. TestFlight
-  verteilt automatisch an die interne Gruppe; die Token-Migration hält alle
-  angemeldet. „Rollback" = neuer Capacitor-Build mit höherer Nummer.
+- **Nativer iOS-Buildpfad:** Debug verwendet `de.ratslotse.dev`; Release
+  behält `de.ratslotse.app`. Das frühere Capacitor-Xcode-Projekt ist entfernt,
+  sodass kein zweiter iOS-Releasepfad versehentlich gebaut werden kann.
+- **TestFlight-Cutover:** Der native Build ersetzt den Capacitor-Build unter
+  derselben ASC-App — Build-Nummern zählen weiter (> 17),
+  `MARKETING_VERSION` ist **2.0.0**. Die Token-Migration hält vorhandene
+  TestFlight-Anmeldungen beim ersten nativen Start angemeldet.
 - **Release-Prozess bleibt der CLI-Weg** aus `MOBILE.md`
   (`xcodebuild archive` / `-exportArchive` + `altool` + ASC-API-Polling) —
   nur ohne `npm run build:mobile`/`cap sync` davor. Versionspflege in ein
@@ -328,11 +360,11 @@ Push-Kategorien für Aktions-Buttons. Der Payload-Deep-Link (`url`) bleibt.
   Umbau ist der natürliche Moment, mit 2.0.0 einzureichen — neue Screenshots
   nötig, Privacy-Labels bleiben inhaltlich gleich. Das in `MOBILE.md`
   notierte **Review-Risiko 4.2 („Wrapper-App") verschwindet**.
-- **Aufräumen nach Cutover** (eigener PR-Block): `scripts/build-mobile.mjs`
-  samt CSP-Injektion, die fünf `lib/`-Brücken, Capacitor-Dependencies +
-  patch-package (`patches/`), Next-SSE-Proxy-CORS, `app_cors_origins` im
-  Backend, `web/frontend/ios/` und ggf. `android/`. Das Web-Frontend wird
-  messbar einfacher (kein `MOBILE=1`-Sonderbuild mehr).
+- **iOS-Aufräumen:** `web/frontend/ios/`, `@capacitor/ios`, der iOS-Öffnen-
+  Befehl und der ausschließlich dafür nötige Swift-Patch sind entfernt. Der
+  Capacitor-Sonderbuild und die JS-Brücken bleiben nur noch für das
+  unveröffentlichte Android-Gerüst; dessen möglicher Rückbau ist ein eigener
+  Auftrag.
 - **Android** ist reines Gerüst (nie released, `google-services.json` fehlt,
   App-Links-Platzhalter in `assetlinks.json`). Empfehlung: mit dem Cutover
   einfrieren/streichen; falls Android je kommt, ist Kotlin/Compose gegen
@@ -389,9 +421,74 @@ Beschlüsse.
    *Empfehlung: Build-Smoke in Actions, Release weiter lokal* (Signing +
    Upload bleiben auf dem eingerichteten Mac).
 
+## 10. Implementierungs- und visuelle Abnahme (28.08.2026)
+
+Die native SwiftUI-Portierung ist auf dem Arbeits-Branch umgesetzt. Als
+visuelle Referenz dienten die produktive WebView-App und deren lokale
+authentifizierte Zustände bei identischer iPhone-Breite. Geprüft wurde in der
+hellen Darstellung auf **iPhone 17** und **iPad Pro 13″ (M5) in Hoch- und
+Querformat**; die kontrastkritischen, datenreichen Ansichten wurden zusätzlich
+im Dark Mode abgenommen.
+
+| Bereich | Geprüfte Zustände | Ergebnis |
+|---|---|---|
+| Start, Auth und Onboarding | Willkommen, alle drei Tour-Schritte, Anmeldung, Registrierung, Passwort vergessen/zurücksetzen, ausstehende Verifizierung | Native Lotti-Inszenierung, Welle, Typografie und Handlungsführung entsprechen mindestens der WebView-Qualität |
+| Heute | personalisierte Übersicht, Termine, Beschlüsse, Live-Sitzung, neue Thementreffer, Zahl der Woche, leere und gefüllte Zustände | Bestanden; deutsche Datumsdarstellung, informationsreichere Beschlusskarten und echte Mehrspaltenstruktur auf dem iPad |
+| Frag den Rat | leer, vollständige Antwort, Quellen, Fraktionen, Tagesordnungen, Anlagen, Presse, Debatten, Planung, Diagramm, Anschlussfragen, Fehlerzustand | Bestanden; Backend-Rechercheplan steuert dieselben Zusatzkanäle wie im Web, Debattenauswertung lädt automatisch, Inline-Zitate tragen eine Quellenmarke und im breiten iPad-Layout stehen inhaltliche Bausteine im Chat neben der reinen Belegspalte |
+| Gründliche Recherche | Start, Fortschritt, Unterhaltungsliste und Transkript | Bestanden; Metadaten und Gesprächsverlauf bleiben auch auf schmalen Geräten lesbar |
+| Rat | Beschlüsse, Sitzungen, Stadtkarte, Suche/Filter, Detail, Anlage, gefüllte Merkliste | Bestanden; MapKit startet in Oldenburg, alle Datumswerte sind lokalisiert |
+| Themen und Profile | Themenliste/-editor, Themen-, Orts- und Personenprofil | Bestanden; Personenprofile zeigen Rolle, Aktivität, Kennzahlen, Gremien und letzte Sitzungen |
+| Quiz | Start, vollständige Statistik, Frage, Auflösung, Kartenfrage und eigene Fragen | Bestanden; Zustände, Fortschrittsraster und Karteninteraktion ohne Layoutsprünge |
+| Konto und Systemzustände | Konto, farbige Lotsen-Abzeichen, Gesprächs-/Darstellungseinstellungen, Passwort, Löschen, Update-Pflicht | Bestanden; eigene iPhone-/iPad-Raster und Sicherheitsabfrage vor dem dauerhaften Löschen von Gesprächen |
+| Systemübergaben | Safari-Ziele, Quick Look, Share Sheet und Berechtigungsdialoge | Bestanden als native iOS-Systemoberflächen |
+
+In einer zusätzlichen Oberflächenprüfung wurden sämtliche verbliebenen
+generischen SwiftUI-Container entfernt: Im Feature-Paket kommen keine
+`Form`-, `List`- oder `ContentUnavailableView`-Ansichten mehr vor. Konto,
+Passwortänderung, Kontolöschung, Ratsfilter, Merkliste, Sitzungen,
+Themeneditor, eigene Quizfragen und Rechercheverläufe verwenden nun dieselben
+Ratslotse-Flächen, Abstände, Farben, Eingabefelder und Leerzustände wie Login,
+Onboarding und Hauptnavigation. Große Bearbeitungsansichten öffnen auf dem
+iPad seitenfüllend, damit Inhalte und primäre Aktionen nicht in einem kleinen
+Formular-Sheet abgeschnitten werden. Bewusst systemeigen bleiben nur
+Übergaben, bei denen die vertraute iOS-Oberfläche funktional dazugehört:
+Sign in with Apple, Teilen, Quick Look, Safari und Berechtigungsdialoge.
+
+Die Prüfung deckt Simulatoren, lokale API-Fixtures und authentifizierte,
+schreibgeschützte Produktionsdaten auf dem iPhone ab. Dauerhaft löschende
+Aktionen wurden bewusst nicht gegen Produktion ausgelöst. Ein Release-Build
+auf physischer Hardware und der abschließende TestFlight-/Store-Check bleiben
+Teil des Cutovers.
+
+## 11. Aktuelle Feature-Unterschiede: native App und Website
+
+Der erneute Abgleich am 29.08.2026 wurde nicht aus den früheren Häkchen
+abgeleitet, sondern aus den aktuellen Web-Routen, ihren API-Aufrufen und den
+zugehörigen SwiftUI-Ansichten. Authentifizierte Produktionsseiten konnten im
+separaten Browserprofil ohne Benutzeranmeldung nicht erneut live geöffnet
+werden; dafür wurden vorhandene Referenzbilder, Quellcode und lokale
+realistische Darstellungs-Fixtures verwendet. Schreibende Produktionsaktionen
+waren ausdrücklich nicht Teil der Prüfung.
+
+| Bereich | Native iOS-App nach dem Abgleich | Website / verbleibender Unterschied |
+|---|---|---|
+| Start | Heute-/Live-Dashboard, Wochenkarte, Thementreffer, Zahl der Woche, Fundstück, aktive Sitzungspause und lokal zuletzt angesehene Beschlüsse. | Die Web-First-Steps- und Push-Primer-Karten werden nicht dupliziert: iOS führt diese Schritte im Onboarding und in den nativen Push-Einstellungen. |
+| Ratsgespräch | Native SSE-Verbindung, Gespräche, vom Backend ausgewählte Debatten-/Fraktionsauswertung, gründliche Recherche als Composer-Schalter, dynamische aktuelle Beispielfragen, TTS, Teilen und Feedback; auf breiten iPads stehen Belege neben dem Chat. Zeitverläufe, Geld- und Parteienfragen haben dieselben speziellen Antwortbausteine wie das Web; Backend-Grafiken sind interaktiv und besitzen eine alternative Wertetabelle. Öffentliche `/g`-Links laden ihren vollständigen Snapshot nativ – einschließlich Quellen, Debatten, Anlagen, Presse, Fraktionspositionen und Grafik. | Die Web-Route bleibt für Messenger-Vorschauen und Menschen ohne installierte App serverseitig gerendert. Die Desktop-Command-Palette hat kein direktes iOS-Pendant. |
+| Rat und Merkliste | Beschlüsse, Sitzungen, Karte, direkte Filter, Detaildaten und Anlagen sind vorhanden. Die Merkliste besitzt nun Suche, Offen/Entschieden/Sitzungen-Filter, Vorschautexte und Ergebnisbenachrichtigungen. | Inhaltlich gleich; iOS nutzt NavigationStack, MapKit, Quick Look und EventKit statt Browser-Overlays, Leaflet und ICS-Dateien. |
+| Themen | Serverbasierte aktuelle Vorschläge mit Erwähnungshäufigkeit, zweispaltige Mobilkarten und direktes Anlegen; Themenprofile zeigen Finanzvolumen, Themenfelder, Fraktionschips sowie belegte und ähnliche Beziehungen. | Inhaltlich gleich; die konkrete Rasterdichte passt sich nativ der Gerätegröße an. |
+| Orte und Personen | Ortsprofile zeigen Karte, Ortsart, belegte Beschlusszahl, Eltern-/Kindorte, Datenquellen sowie direkte Frage-/Kartenaktionen. Personenprofile enthalten Rollen, Fraktionsfarben, Aktivität, Gremien, Reden und Diagramme. | Inhaltlich gleich; Karten werden mit Apple MapKit gerendert. |
+| Ratsanalyse | Feldrückblicke, gestapelte Quartalsentwicklung, Finanzvolumen, Themenmatrix, Antrags-Erfolg, Konflikt/Allianzen, Personenfilter, Finanzen und Stadtziele sind nativ. Diagramme und Kennzahlen führen per Auswahl zu den zugrunde liegenden Beschlüssen. | Inhaltlich gleich; Swift Charts ersetzt die Web-SVG-/CSS-Diagramme und bietet native Auswahl sowie VoiceOver-Wertetabellen. |
+| Quiz, Konto und Einstellungen | Vier Quizmodi, eigene Karten, Statistik, farbige Abzeichen, Konto-, Gesprächs-, Push- und Darstellungseinstellungen sind nativ vorhanden. | Inhaltlich gleich; Web-spezifische Browserdarstellung und iOS-Systemdialoge unterscheiden sich bewusst. |
+| Karten und Systemübergaben | MapKit, EventKit, Quick Look, Share Sheet, Sign in with Apple und APNs verwenden native Systemoberflächen. | Leaflet/CARTO, ICS-Download und Browser-/Web-Push-Mechanismen. |
+| Lotti, Onboarding und Tour | Fortsetzbares natives Onboarding, optimierte 3D-Lotti-Posen und eine jederzeit erneut aufrufbare achtstufige Lotti-Tour mit direkten Sprüngen in Fragen, Suche, Analyse, Karte und Themen. | Die interaktive WebGL-Lotti-Inszenierung bleibt Web-/Landing-Schmuck; die native Tour nutzt SwiftUI-Seiten statt DOM-Spotlights. |
+| Admin | Für Admin-Konten sind Statistik, Feedback, LLM-Kosten, Prompteditor, Nutzerverwaltung, Quizmoderation, Ortsprüfung und Themen-Dubletten nativ verfügbar und an dieselben geschützten Backend-Endpunkte gebunden. | Funktional gleich; große Tabellen werden auf iOS als adaptive Karten und auf dem iPad als Raster dargestellt. |
+| Nur im Web | Öffnet bei Bedarf die vorhandenen Seiten. | Landingpage, Changelog, Doku, ausführliche Hilfe-/Kontaktinhalte und Rechtstexte. |
+| Bewusst später | Haushalt; außerdem Widgets (einschließlich Wochenkarte), Live Activity, App Intents/Siri, Spotlight, Push-Aktionsknöpfe und Handoff. | Haushalt ist bereits eine Web-Fläche; die übrigen Punkte sind native Ausbauoptionen. |
+| Bewusst nicht portiert | Kommunalwahl bleibt außerhalb der App. | Das frühere Kommunalwahl-Fun-Feature bleibt ein Entwicklungsartefakt. |
+
 ---
 
-*Erhoben aus: `web/frontend` (Routen, Capacitor-Brücken, `build-mobile.mjs`),
+*Erhoben aus: `web/frontend` (Routen, damalige Capacitor-Brücken, `build-mobile.mjs`),
 `web/backend/app` (Router, Auth, Push, SSE, Rate-Limits),
-`web/frontend/ios/App` (pbxproj, Entitlements, Info.plist), `MOBILE.md`,
+dem früheren `web/frontend/ios/App` aus der Git-Historie, `MOBILE.md`,
 `STORE.md`, `DESIGNSPRACHE.md`.*

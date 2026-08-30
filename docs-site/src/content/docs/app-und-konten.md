@@ -1,26 +1,65 @@
 ---
 title: App & Konten
-description: Die native iOS-/Android-App (Capacitor), die Anmeldung (klassisch und mit Apple) und was alles am Nutzerkonto hängt.
+description: Die native SwiftUI-App, die Anmeldung (klassisch und mit Apple) und was alles am Nutzerkonto hängt.
 ---
 
-Dieselbe Next.js-Oberfläche läuft im Browser und — statisch exportiert und in
-eine **Capacitor**-Hülle gepackt — als native App. Beide sprechen dasselbe
-FastAPI-Backend an; unterschiedlich ist nur, wie die Sitzung transportiert wird
-(Cookie im Web, Bearer-Token in der App) und welche Bedienmuster greifen.
+Seit Version 2.0 hat Ratslotse eine eigene **SwiftUI-App** für iPhone und iPad.
+Sie spricht direkt mit demselben FastAPI-Backend wie die Website; die Sitzung
+läuft im Web über ein Cookie und in der App über ein Bearer-Token im Keychain.
+Eine WebView gehört nicht mehr zum nativen Produkt.
 
-## Native App (Capacitor)
+## Native App (SwiftUI)
 
-Die nativen Projekte liegen im Repo (`web/frontend/ios/` **und**
-`web/frontend/android/`, beide eingecheckt). Bau-Anleitung, Xcode-Capabilities
-und die Einreichungs-Checkliste stehen in `web/frontend/MOBILE.md`.
+Das Projekt liegt unter `ios/`, sein technischer Einstiegspunkt ist
+`ios/README.md`. Es besteht aus drei lokalen Swift Packages:
+
+| Paket | Verantwortung |
+|---|---|
+| `RatslotseAPI` | URLSession, Codable-Verträge, Keychain, SSE und Link-Routing |
+| `RatslotseDesign` | Farben, Schriften und SwiftUI-Bausteine der Ratslotse-Designsprache |
+| `RatslotseFeatures` | Auth, Heute, Fragen, Rat, Themen, Quiz und Konto |
+
+Die App läuft ab iOS 17 auf iPhone und iPad. Sie nutzt native Systembausteine:
+Sign in with Apple, APNs, Universal Links, `NWPathMonitor`, MapKit, EventKit und
+das Share-Sheet. Der Ratsdialog spricht als POST-SSE direkt mit FastAPI;
+gründliche Recherchen werden nach einem Verbindungsabriss ab dem letzten Event
+fortgesetzt.
+
+Auch der Erststart ist nativ: Lotti begrüßt vor der Anmeldung und führt danach
+durch Gremien-Abos, automatisch beschriebene Themen und Push. Alle drei Schritte
+sind überspringbar. `UserDefaults` merkt den lokalen Schritt;
+`GET/POST /api/onboarding/setup` hält ihn zusätzlich am Konto, sodass die
+Einrichtung nach Gerätewechsel oder Neuinstallation fortgesetzt wird. Im Konto
+kann der Ablauf absichtlich erneut geöffnet werden.
+
+Der Release-Build behält `de.ratslotse.app`. Debug verwendet
+`de.ratslotse.dev`, damit Entwicklungs- und Release-Build getrennt installiert
+sein können. Vorhandene TestFlight-Anmeldungen werden einmalig aus
+`CapacitorStorage.access_token` in den Keychain übernommen.
+
+```bash
+xcodegen generate --spec ios/project.yml
+swift test --package-path ios/Packages/RatslotseAPI
+xcodebuild -project ios/Ratslotse.xcodeproj -scheme Ratslotse \
+  -configuration Debug -destination 'platform=iOS Simulator,name=Ratslotse iPhone 17' \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+## Mobiler Plattformstand
+
+Die frühere Capacitor/WebView-App für iOS wurde nach dem Paritätsabgleich
+entfernt. iOS-Builds entstehen ausschließlich aus dem SwiftUI-Projekt unter
+`ios/`. Das unveröffentlichte Android-Gerüst unter `web/frontend/android/`
+bleibt vorerst separat baubar; seine Anleitung steht in
+`web/frontend/MOBILE.md`.
 
 ### Vom Next-Build zur App
 
 ```bash
 cd web/frontend
 npm run build:mobile   # = node scripts/build-mobile.mjs
-npm run cap:sync       # kopiert ./out in ios/ und android/
-npm run cap:ios        # bzw. cap:android — öffnet Xcode / Android Studio
+npm run cap:sync       # kopiert ./out in das Android-Projekt
+npm run cap:android    # öffnet Android Studio
 ```
 
 `scripts/build-mobile.mjs` erledigt dabei drei Dinge, die ein nacktes
@@ -49,7 +88,7 @@ Backend die festen App-WebView-Origins immer an die CORS-Liste an
 | `web/frontend/capacitor.config.ts` | `appId` `de.ratslotse.app`, `appName` „Ratslotse", `webDir: "out"`, `androidScheme: "https"`, Push-Präsentationsoptionen |
 | `web/frontend/scripts/build-mobile.mjs` | Export-Build + CSP-Injektion |
 | `web/frontend/lib/platform.ts` | `isNativeApp()`, `nativePlatform()`, `apiBase()` |
-| `web/frontend/MOBILE.md` | Setup, Xcode-Capabilities, Push-Credentials, Deep-Links, App-Store-Checkliste |
+| `web/frontend/MOBILE.md` | Android-Sonderbuild und gemeinsame produktive Voraussetzungen |
 
 ### Was die App vom Web unterscheidet
 
@@ -86,20 +125,11 @@ Gecacht werden damit genau die **API-Antworten der besuchten Seiten**, die über
 React Query laufen — keine PDFs, keine Kartenkacheln. Beim Start im Funkloch
 zeigt die App den letzten Stand statt Skeletons oder Fehlern.
 
-### Icons und Erststart
+### Android-Erststart
 
-- **App-Icons** in drei Erscheinungsbildern (iOS): `AppIcon-1024.png`,
-  `AppIcon-1024-dark.png`, `AppIcon-1024-tinted.png` in
-  `ios/App/App/Assets.xcassets/AppIcon.appiconset/` (dazu `Splash.imageset`).
-  Erzeugt mit `@capacitor/assets` aus `web/frontend/assets/logo.png`
-  (Hintergrund `#0764a6` hell, `#09111b` dunkel).
-- **Willkommens-Auftakt und Einrichtung** (`components/onboarding-flow.tsx`):
-  begrüßt beim allerersten Start vor dem Login und führt danach durch Gremien,
-  Themen und Mitteilungen. „Überspringen" ist jederzeit möglich, der erreichte
-  Schritt wird gemerkt. (Die früher hier beschriebene `components/app-intro.tsx`
-  existiert nicht mehr.)
-  Nur nativ, danach nie wieder (`localStorage`-Schlüssel
-  `ratslotse.intro.done`).
+Das verbleibende Android-Gerüst verwendet weiterhin den Web-Erststart aus
+`components/onboarding-flow.tsx`. Die native iOS-Variante und ihre Lotti-
+Animationen liegen vollständig im SwiftUI-Projekt unter `ios/`.
 
 ## Anmeldung
 
@@ -114,9 +144,11 @@ Token nie.
 
 **App:** Der Client schickt den Header `X-Client: app`. Erkennt das Backend ihn,
 liefert es zusätzlich ein **langlebiges Token im Antwort-Body**
-(`app_access_token_expire_minutes`, Default 90 Tage), das die App in
-`@capacitor/preferences` ablegt und als `Authorization: Bearer …` mitschickt.
-`deps.get_current_user` akzeptiert beides — Bearer zuerst, sonst Cookie.
+(`app_access_token_expire_minutes`, Default 90 Tage), das die SwiftUI-App im
+Keychain ablegt und als `Authorization: Bearer …` mitschickt.
+`deps.get_current_user` akzeptiert beides — Bearer zuerst, sonst Cookie. Reset
+und Passwortwechsel liefern unmittelbar ein Ersatz-Token, weil beide die
+`token_version` erhöhen.
 
 **Angemeldet bleiben:** Beide Sitzungen verlängern sich still bei Nutzung, sonst
 stünde man nach Ablauf der Laufzeit trotz täglicher Nutzung wieder vor dem
@@ -134,8 +166,8 @@ Login.
   Passwortwechsel — sonst überschriebe die Verlängerung das Abmelden), sowie
   `401`-Antworten.
 - *App:* Cookies helfen dort nicht. Stattdessen liefert `GET /api/auth/me` an
-  `X-Client: app` ein frisch datiertes Token, das `lib/auth.tsx` in den
-  Preferences ablegt — die App fragt den Endpunkt bei jedem Start.
+  `X-Client: app` ein frisch datiertes Token, das der native `APIClient` im
+  Keychain ersetzt — die App fragt den Endpunkt bei jedem Start.
 
 Der Widerruf bleibt davon unberührt: Das erneuerte Token trägt dieselbe
 `token_version` wie das alte.
@@ -214,9 +246,9 @@ unterscheidet die Fälle nicht — es zählt auch fremde Einträge.
 
 ### Sign in with Apple
 
-`web/backend/app/routers/auth_apple.py`. Die App holt über das Apple-SDK
-(`@capacitor-community/apple-sign-in`) ein **Identity-Token**, im Browser tut
-das „Sign in with Apple JS" als Popup-Flow (`lib/apple.ts`). Beide Wege schicken
+`web/backend/app/routers/auth_apple.py`. Die App holt über das native
+`AuthenticationServices`-Framework ein **Identity-Token**, im Browser tut das
+„Sign in with Apple JS" als Popup-Flow (`lib/apple.ts`). Beide Wege schicken
 dasselbe Token an `POST /api/auth/apple` — Secrets oder Schlüssel braucht keine
 Seite.
 
@@ -228,6 +260,7 @@ einmal Zwangs-Refresh): Signatur, `exp`, `iss` und `aud`.
 |---|---|
 | `APPLE_BUNDLE_ID` | erlaubte `aud` der nativen App (Default `de.ratslotse.app`) |
 | `APPLE_SERVICE_ID` | erlaubte `aud` des Web-Flows (Services ID, z. B. `de.ratslotse.web`); **leer = Web-Flow aus**, weil dann keine passende `aud` akzeptiert wird |
+| `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | signieren das kurzlebige Client-Secret, mit dem das Backend bei einer Kontolöschung Apples Token-Widerrufs-API aufruft |
 
 Danach entscheidet die Kontozuordnung:
 
@@ -460,6 +493,9 @@ denselben Stand hat und nach Abschluss überall verschwindet.
   `karten` — alles andere wird verworfen, damit die Spalte nicht
   zuwuchert. Schritte gelten schon beim **Besuch** der jeweiligen Seite als
   erledigt (`components/onboarding.tsx`).
+- Davon getrennt speichert `GET/POST /api/onboarding/setup` den Schritt 0–3 des
+  nativen Ersteinrichtungsflows sowie Start und Abschluss. Dieser Stand dient
+  der Wiederaufnahme nach Neuinstallation und dem Einrichtungs-Reminder.
 
 ### Anzeigename und Konto löschen
 

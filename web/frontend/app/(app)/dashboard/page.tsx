@@ -5,13 +5,13 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles, ArrowRight, Check, Play } from "lucide-react";
 import { api } from "@/lib/api";
+import { vertrag, type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { DecisionOutcome, Topic } from "@/lib/types";
 import { shortCommittee } from "@/lib/committees";
 import { useHeute } from "@/lib/use-heute";
 import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
-import { useMascotTheme } from "@/components/seasonal-mascot";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
@@ -29,13 +29,18 @@ import { useCountUp } from "@/lib/use-countup";
 const FRAGEN_HREF = fragenHref();
 
 type TopicHit = { topic_name: string; id: number; title: string; committee: string; session_date: string };
+// Aus dem API-Vertrag statt von Hand — beide sind dort echte Unions, `found`
+// bzw. `kind` unterscheiden die Fälle.
+//
+// Einzige Abweichung: `outcome` steht im Vertrag als `string`, nicht als Union.
+// Die Spalte wird vom LLM befüllt; eine Verengung im Backend hieße, dass ein
+// unerwarteter Wert die Antwort mit 500 abbricht statt nur ein Etikett
+// unbeschriftet zu lassen. Die Oberfläche darf enger sehen als der Vertrag.
+type DieseWocheRoh = ApiAntwort<"/council/diese-woche">;
 type DieseWoche =
-  | { found: false }
-  | { found: true; decision_id: number; title: string; outcome: DecisionOutcome;
-      committee: string; session_date: string; interest_reason: string };
-type ZahlDerWoche =
-  | { kind: "betrag"; amount_eur: number; decision_id: number; title: string; session_date: string; window_days: number }
-  | { kind: "anzahl"; count: number; window_days: number };
+  | Extract<DieseWocheRoh, { found: false }>
+  | (Omit<Extract<DieseWocheRoh, { found: true }>, "outcome"> & { outcome: DecisionOutcome | null });
+type ZahlDerWoche = ApiAntwort<"/council/zahl-der-woche">;
 
 /** ISO-Datum von vor n Tagen — Ziel des „Diese N ansehen"-Links (Design 28a/S5).
  *  Dasselbe Fenster, das der Endpoint gezählt hat, damit die Suche wirklich
@@ -60,7 +65,6 @@ function relTime(iso: string): string {
  *  Neu zu deinen Themen · Zahl der Woche. Jeder Bereich hat einen definierten
  *  Leerzustand. */
 export default function DashboardPage() {
-  const theme = useMascotTheme();
   const { user } = useAuth();
   const heute = useHeute();
 
@@ -79,7 +83,7 @@ export default function DashboardPage() {
   });
   const zahlQuery = useQuery({
     queryKey: ["zahl-der-woche"],
-    queryFn: () => api.get<ZahlDerWoche>("/council/zahl-der-woche"),
+    queryFn: () => vertrag.get("/council/zahl-der-woche"),
   });
   // RL-U15 (13a-A): Ersatz für den Treffer-Leerzustand — nur laden, wenn er
   // gebraucht würde (Themen vorhanden, aber keine Treffer).
@@ -116,7 +120,7 @@ export default function DashboardPage() {
       {/* Kopf: Begrüßung + DIE Signal-Handlung des Screens („Frag den Rat"). */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
-          <Mascot pose="wave" theme={theme} bob className="h-[72px] w-[72px] shrink-0 sm:h-[88px] sm:w-[88px]" />
+          <Mascot pose="wave" className="h-[72px] w-[72px] shrink-0 sm:h-[88px] sm:w-[88px]" />
           <div className="min-w-0">
             <h1 className="truncate font-display text-2xl font-bold tracking-tight text-foreground sm:text-[30px] sm:leading-9">
               {/* Persönliche Ansprache, sobald ein Anzeigename da ist. */}
@@ -240,7 +244,7 @@ export default function DashboardPage() {
               {!topicsQuery.isLoading && topicCount === 0 && (
                 /* Leerzustand 4a: gestrichelte Lotti-Karte „Erstes Thema anlegen". */
                 <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 py-5 text-center">
-                  <Mascot pose="point" theme={theme} decorative className="h-12 w-12" />
+                  <Mascot pose="point" decorative className="h-12 w-12" />
                   <p className="text-sm text-muted-foreground">
                     Lege dein erstes Thema an und werde benachrichtigt, sobald der Rat dazu entscheidet.
                   </p>

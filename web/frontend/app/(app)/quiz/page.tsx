@@ -84,7 +84,7 @@ function HeroCard({ title, parts, sub, buttonLabel, onStart, starting }: {
   return (
     <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.07] to-transparent p-4 shadow-sm sm:p-5">
       <div className="flex items-center gap-4">
-        <Mascot decorative pose="point" bob className="h-14 w-14 shrink-0 sm:h-16 sm:w-16" />
+        <Mascot decorative pose="point" className="h-14 w-14 shrink-0 sm:h-16 sm:w-16" />
         <div className="min-w-0 flex-1">
           <p className="font-display text-lg font-bold text-foreground">{title}</p>
           {parts ? (

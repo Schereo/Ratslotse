@@ -62,7 +62,7 @@ export function QuizMapPlay({ targets, onExit }: { targets: string[]; onExit: ()
     return (
       <Card className="relative mx-auto max-w-xl overflow-hidden p-8 text-center">
         {correct > 0 && <ConfettiBurst />}
-        <Mascot pose={pose} bob dance={quote >= 90} className="mx-auto h-24 w-24" />
+        <Mascot pose={pose} regung={quote >= 90 ? "klatscht" : undefined} regie="lebhaft" className={"mx-auto h-24 w-24" + (quote >= 90 ? " lotti-dance" : "")} />
         <h2 className="mt-3 text-2xl font-bold text-foreground">{correct} von {targets.length} gefunden</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {points} {points === 1 ? "Punkt" : "Punkte"} · Trefferquote {quote} %

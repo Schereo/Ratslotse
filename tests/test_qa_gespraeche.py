@@ -135,6 +135,18 @@ def test_share_extras_und_alte_zeilen(tmp_path):
     store.close()
 
 
+def test_geteilter_inhalt_kann_moderiert_werden(tmp_path):
+    store = Store(tmp_path / "nwz.sqlite")
+    uid = _user(store)
+    token = store.qa_share_anlegen(uid, "Frage?", "Antwort.", [])
+    assert store.qa_share_owner_id(token) == uid
+    assert store.qa_share_delete(token)
+    assert store.qa_share_get(token) is None
+    assert store.qa_share_owner_id(token) is None
+    assert not store.qa_share_delete(token)
+    store.close()
+
+
 def test_snapshot_traegt_die_kondensierte_frage(tmp_path):
     """Tims Befund 21.08.2026: Beim Zurückwechseln auf den Fragen-Tab lud der
     Parteien-Baustein komplett neu.

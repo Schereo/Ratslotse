@@ -738,7 +738,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
   const ask = async (question: string) => {
     const text = question.trim();
-    if (text.length < 4) return;
+    if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
     reportBadgeEvent("frage"); // RL-U12: Erste Frage
     const unterbrochen = loading;
@@ -1059,7 +1059,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
   const askDeep = async (question: string) => {
     const text = question.trim();
-    if (text.length < 4) return;
+    if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch { /* egal */ }
     setQ("");
     setRechercheModus(false); // gilt je Frage, rastet nicht ein (8d)
@@ -1696,11 +1696,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                     <div className="mt-2.5 flex gap-2">
                       <button type="button" onClick={() => void einwilligen(true)}
                         className="rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-                        Ja, merken
+                        KI nutzen & merken
                       </button>
                       <button type="button" onClick={() => void einwilligen(false)}
                         className="rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                        Nein, nicht merken
+                        KI nutzen, nicht merken
                       </button>
                     </div>
                     {/* V-01: Der Datenschutz-Hinweis zog aus dem Composer in die
@@ -1708,9 +1708,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         damit nie vor seiner ersten Frage. Diese Karte unterbricht
                         ohnehin genau einmal; hier gehört der Satz hin. */}
                     <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
-                      Übrigens: Deine Fragen gehen an einen externen KI-Dienst — bitte keine
-                      personenbezogenen Daten eingeben. Deine Wahl hier änderst du jederzeit
-                      in den Einstellungen.
+                      Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet;
+                      eine Drittlandverarbeitung ist möglich. Mit einer Auswahl erlaubst du
+                      diese Übermittlung. Ohne sie kann „Frag den Rat“ keine Antwort erzeugen.
+                      Bitte keine personenbezogenen oder sensiblen Daten eingeben. Ob der Verlauf
+                      zusätzlich im Konto gespeichert wird, entscheidest du mit den beiden Optionen.
                     </p>
                   </div>
                 </div>
@@ -1721,7 +1723,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 Mit Verlauf tritt Lotti zurück (56 px) — der Platz gehört dem
                 „Zuletzt gefragt"-Block; ohne Verlauf darf sie groß sein. */}
             <div className="flex flex-col items-center text-center">
-              <Mascot pose="wave" bob className={hatVerlauf ? "h-14 w-14" : "h-[88px] w-[88px]"} />
+              <Mascot pose="wave" className={hatVerlauf ? "h-14 w-14" : "h-[88px] w-[88px]"} />
               <h2 className={cn("font-bold tracking-tight", hatVerlauf ? "mt-2 text-xl" : "mt-3 text-[22px]")}>Frag den Rat</h2>
               <p className="mt-1 max-w-[36ch] text-[13px] leading-relaxed text-muted-foreground">
                 In normaler Sprache — die Antwort entsteht aus den echten
@@ -2017,7 +2019,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                     <Square className="fill-current" /> Stopp
                   </Button>
                 ) : (
-                  <button type="submit" disabled={q.trim().length < 4} aria-label="Fragen"
+                  <button type="submit" disabled={q.trim().length < 4 || einstellung === null || einstellung === undefined} aria-label="Fragen"
                     className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_4px_12px_-4px_hsl(var(--primary)/0.55)] transition-[background-color,transform] duration-150 ease-out-strong hover:bg-primary/90 active:scale-95 disabled:bg-primary/35 disabled:shadow-none">
                     <ArrowUp className="h-[17px] w-[17px]" strokeWidth={2.2} aria-hidden />
                   </button>
@@ -2246,7 +2248,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
       {/* Laufender Schritt, solange noch kein Text streamt (RG ②). */}
       {loading && !hatAntwort && !turn.fehler && (
         <div role="status" className="flex items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-          <Mascot pose="search" bob className="h-12 w-12 shrink-0" />
+          {/* `denkt` ist die gebackene Ladeanzeige — läuft, bis Text streamt. */}
+          <Mascot regung="denkt" className="h-12 w-12 shrink-0" />
           <div className="min-w-0">
             <span className="flex items-center gap-2 font-medium text-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />

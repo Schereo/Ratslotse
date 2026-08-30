@@ -10,6 +10,7 @@ from council import bookmarks as bookmark_logic
 from council.store import CouncilStore
 from kern.store import Store
 
+from ..antworten import Merkeintrag, Merkliste
 from ..deps import get_council_store, get_store, require_active
 
 router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
@@ -54,7 +55,7 @@ def _existing_agenda_bookmark(rows: list[dict], ksinr: int, item: dict) -> dict 
 @router.get("")
 def list_bookmarks(user: dict = Depends(require_active),
                    nwz: Store = Depends(get_store),
-                   council: CouncilStore = Depends(get_council_store)) -> dict:
+                   council: CouncilStore = Depends(get_council_store)) -> Merkliste:
     out = []
     for row in nwz.get_bookmarks(user["id"]):
         entry = bookmark_logic.enrich_bookmark(row, council)
@@ -84,7 +85,7 @@ def list_bookmarks(user: dict = Depends(require_active),
 def create_bookmark(payload: BookmarkIn,
                     user: dict = Depends(require_active),
                     nwz: Store = Depends(get_store),
-                    council: CouncilStore = Depends(get_council_store)) -> dict:
+                    council: CouncilStore = Depends(get_council_store)) -> Merkeintrag:
     owner_id = user["id"]
 
     if payload.kind == "session":
@@ -159,7 +160,7 @@ def create_bookmark(payload: BookmarkIn,
 def set_notification(bookmark_id: int, payload: BookmarkNotificationIn,
                      user: dict = Depends(require_active),
                      nwz: Store = Depends(get_store),
-                     council: CouncilStore = Depends(get_council_store)) -> dict:
+                     council: CouncilStore = Depends(get_council_store)) -> Merkeintrag:
     row = nwz.get_bookmark_for_owner(user["id"], bookmark_id)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Merkeintrag nicht gefunden.")

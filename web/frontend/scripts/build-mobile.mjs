@@ -1,4 +1,4 @@
-// Build the static Next export for the Capacitor apps.
+// Build the static Next export for the remaining Capacitor Android app.
 //
 // Two things the plain `next build` can't do for a static export live here:
 //  1. Route Handlers (app/api/**/route.ts) can't be statically exported — the
@@ -28,8 +28,8 @@ const CSP = [
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   // API_BASE auch für Bilder: Die Planzeichnungen (P1) sind das erste <img>
-  // mit Backend-URL — 'self' ist in der App capacitor://localhost, ohne die
-  // API-Origin blockte WKWebView den Bild-Load (Review-Befund P1).
+  // mit Backend-URL — 'self' ist in der App https://localhost, ohne die
+  // API-Origin blockt die WebView den Bild-Load.
   `img-src 'self' data: blob: ${API_BASE} https://*.basemaps.cartocdn.com https://*.openfreemap.org`,
   "font-src 'self'",
   `connect-src 'self' ${API_BASE} https://*.openfreemap.org https://*.basemaps.cartocdn.com`,

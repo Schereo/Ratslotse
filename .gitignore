@@ -26,3 +26,9 @@ skills-lock.json
 # Vorher/Nachher-Aufnahmen aus der UI-Prüfung: gehören an den Pull Request,
 # nicht in die Historie — ein paar Megabyte je Runde.
 .screenshots/
+
+# SwiftPM/Xcode-Artefakte der nativen iOS-App
+**/.build/
+DerivedData/
+*.xcresult
+xcuserdata/

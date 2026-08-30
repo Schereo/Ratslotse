@@ -5,7 +5,23 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, AdminUserRow, AdminUserDetail, AdminGrowth, AdminJob, QuizFlagged, AdminQuizStats, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
+import { Prompt, AdminUserDetail, AdminGrowth, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
+// Aus dem API-Vertrag statt von Hand: Diese drei Formen stehen im Backend
+// vollständig, ein umbenanntes Feld bricht damit hier den Build.
+import { vertrag, type ApiAntwort } from "@/lib/vertrag";
+
+// `last` ist im Vertrag bewusst offen: Es ist eine `SELECT *`-Zeile aus
+// `job_runs`, und eine Aufzählung im Backend würde beim nächsten `ALTER TABLE`
+// still Felder abschneiden. Das Frontend darf sie enger sehen als der Vertrag —
+// das ist das Muster für alle durchgereichten Nutzlasten.
+type JobLauf = {
+  started_at: string; finished_at: string | null; status: string;
+  duration_s: number | null; stats: Record<string, number | string> | null;
+  error: string | null;
+};
+type AdminJob = Omit<ApiAntwort<"/admin/jobs">[number], "last"> & { last: JobLauf | null };
+type AdminUserRow = ApiAntwort<"/admin/users">[number];
+type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
 import { Badge, Button, Card, ChartSkeleton, ConfirmDialog, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
@@ -199,7 +215,7 @@ const JOB_STATE: Record<AdminJob["state"], { dot: string; label: string }> = {
 function JobsSection() {
   const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "jobs"],
-    queryFn: () => api.get<AdminJob[]>("/admin/jobs"),
+    queryFn: () => api.get<AdminJob[]>("/admin/jobs"),   // verfeinertes `last`, s. o.
   });
 
   // Vorher: `return null` — die Cron-Übersicht verschwand bei einem Ladefehler
@@ -324,6 +340,7 @@ const FEEDBACK_KIND: Record<string, { label: string; cls: string }> = {
   // jemandem, der gerade nicht in sein Konto kommt. Deshalb Amber: dringlicher
   // als ein Vorschlag, aber kein Fehlerrot.
   konto: { label: "Konto & Anmeldung", cls: "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300" },
+  qa_share: { label: "Geteilter Inhalt", cls: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
 };
 
 /** Eingegangenes Nutzer-Feedback. Offene Einträge stehen optisch vorn und
@@ -350,6 +367,15 @@ function FeedbackTab() {
     onError: () => toast.error("Konnte nicht gespeichert werden."),
   });
 
+  const removeShare = useMutation({
+    mutationFn: (token: string) => api.del(`/admin/qa-shares/${encodeURIComponent(token)}`),
+    onSuccess: () => {
+      toast.success("Öffentlichen Link entfernt.");
+      qc.invalidateQueries({ queryKey: ["admin-feedback"] });
+    },
+    onError: () => toast.error("Der geteilte Inhalt konnte nicht entfernt werden."),
+  });
+
   if (isLoading) return <Spinner />;
   const items = data?.items ?? [];
 
@@ -374,6 +400,9 @@ function FeedbackTab() {
           {items.map((f) => {
             const kind = FEEDBACK_KIND[f.kind] ?? { label: f.kind, cls: "bg-muted text-muted-foreground" };
             const open = !f.read_at;
+            const shareToken = f.kind === "qa_share"
+              ? f.message.match(/^Share-Token:\s*(\S+)$/m)?.[1]
+              : undefined;
             return (
               <Card key={f.id} className={cn("p-4", open && "border-l-4 border-l-signal")}>
                 <div className="flex flex-wrap items-center gap-2">
@@ -395,6 +424,12 @@ function FeedbackTab() {
                   >
                     {open ? "Erledigt" : "Wieder öffnen"}
                   </Button>
+                  {shareToken && (
+                    <Button variant="danger" disabled={removeShare.isPending}
+                      onClick={() => removeShare.mutate(shareToken)}>
+                      Öffentlichen Link entfernen
+                    </Button>
+                  )}
                 </div>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
                   {f.message}
@@ -703,7 +738,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
   const [selected, setSelected] = useState<number | null>(null);
   const { data: users = [], isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "users"],
-    queryFn: () => api.get<AdminUserRow[]>("/admin/users"),
+    queryFn: () => vertrag.get("/admin/users"),
   });
 
   if (isPending) return <Spinner />;
@@ -909,7 +944,7 @@ function QuizModerationTab() {
   const qc = useQueryClient();
   const statsQuery = useQuery({
     queryKey: ["admin", "quiz", "stats"],
-    queryFn: () => api.get<AdminQuizStats>("/admin/quiz/stats"),
+    queryFn: () => vertrag.get("/admin/quiz/stats"),
   });
   const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "quiz", "flagged"],

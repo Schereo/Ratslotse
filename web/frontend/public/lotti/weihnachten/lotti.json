@@ -1,0 +1,340 @@
+{
+  "takt": 12,
+  "modell": "2026-08-28 (1ra2kqk)",
+  "gruppen": {
+    "kern": {
+      "blatt": "lotti-kern.webp",
+      "bild": [
+        192,
+        192
+      ],
+      "raster": [
+        5,
+        4
+      ],
+      "anzahl": 20,
+      "kilobyte": 76
+    },
+    "zustaende": {
+      "blatt": "lotti-zustaende.webp",
+      "bild": [
+        192,
+        192
+      ],
+      "raster": [
+        14,
+        13
+      ],
+      "anzahl": 171,
+      "kilobyte": 698
+    },
+    "gesten": {
+      "blatt": "lotti-gesten.webp",
+      "bild": [
+        192,
+        192
+      ],
+      "raster": [
+        13,
+        13
+      ],
+      "anzahl": 165,
+      "kilobyte": 637
+    },
+    "symbole": {
+      "blatt": "lotti-symbole.webp",
+      "bild": [
+        192,
+        192
+      ],
+      "raster": [
+        6,
+        5
+      ],
+      "anzahl": 30,
+      "kilobyte": 123
+    }
+  },
+  "regungen": {
+    "ruht": {
+      "gruppe": "kern",
+      "von": 0,
+      "bilder": 1,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "Ruhehaltung, ein einzelnes Bild"
+    },
+    "blinzelt": {
+      "gruppe": "kern",
+      "von": 1,
+      "bilder": 6,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "einmal blinzeln"
+    },
+    "nickt": {
+      "gruppe": "kern",
+      "von": 7,
+      "bilder": 13,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "zustimmend nicken"
+    },
+    "freut-sich": {
+      "gruppe": "gesten",
+      "von": 0,
+      "bilder": 18,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "freut sich, hüpft zweimal"
+    },
+    "staunt": {
+      "gruppe": "gesten",
+      "von": 18,
+      "bilder": 16,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "staunt, lehnt sich zurück"
+    },
+    "winkt": {
+      "gruppe": "gesten",
+      "von": 34,
+      "bilder": 24,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "winkt zur Begrüßung"
+    },
+    "denkt": {
+      "gruppe": "zustaende",
+      "von": 0,
+      "bilder": 21,
+      "takt": 8,
+      "wiederholt": true,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "denkt nach (Schleife) — für Ladezustände"
+    },
+    "schlaeft": {
+      "gruppe": "zustaende",
+      "von": 21,
+      "bilder": 20,
+      "takt": 6,
+      "wiederholt": true,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "schläft (Schleife) — für leere Zustände"
+    },
+    "schuettelt-kopf": {
+      "gruppe": "zustaende",
+      "von": 41,
+      "bilder": 17,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "verneint — für Fehler und leere Suchen"
+    },
+    "sucht": {
+      "gruppe": "zustaende",
+      "von": 58,
+      "bilder": 26,
+      "takt": 8,
+      "wiederholt": true,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "sucht (Schleife) — für 404 und leere Trefferlisten"
+    },
+    "verbeugt-sich": {
+      "gruppe": "zustaende",
+      "von": 84,
+      "bilder": 19,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "verbeugt sich — für Bestätigungen"
+    },
+    "jongliert": {
+      "gruppe": "zustaende",
+      "von": 103,
+      "bilder": 12,
+      "takt": 12,
+      "wiederholt": true,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "jongliert mit drei Bällen (Schleife) — die schöne Ladeanzeige"
+    },
+    "zeigt-rechts": {
+      "gruppe": "gesten",
+      "von": 58,
+      "bilder": 10,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 9,
+      "was": "zeigt nach rechts (aus Sicht des Betrachters)"
+    },
+    "zeigt-links": {
+      "gruppe": "gesten",
+      "von": 68,
+      "bilder": 10,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 9,
+      "was": "zeigt nach links (aus Sicht des Betrachters)"
+    },
+    "zeigt-hoch": {
+      "gruppe": "gesten",
+      "von": 78,
+      "bilder": 10,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 9,
+      "was": "zeigt nach hoch (aus Sicht des Betrachters)"
+    },
+    "zeigt-runter": {
+      "gruppe": "gesten",
+      "von": 88,
+      "bilder": 10,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 9,
+      "was": "zeigt nach runter (aus Sicht des Betrachters)"
+    },
+    "lacht": {
+      "gruppe": "gesten",
+      "von": 98,
+      "bilder": 16,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "lacht, wirft den Kopf zurück"
+    },
+    "seufzt": {
+      "gruppe": "gesten",
+      "von": 114,
+      "bilder": 12,
+      "takt": 6,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "seufzt — Schultern hoch und langsam herunter"
+    },
+    "klatscht": {
+      "gruppe": "gesten",
+      "von": 126,
+      "bilder": 18,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "klatscht dreimal Beifall"
+    },
+    "zeigt-auf-sich": {
+      "gruppe": "gesten",
+      "von": 144,
+      "bilder": 8,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 7,
+      "was": "zeigt auf sich selbst"
+    },
+    "hebt-hand": {
+      "gruppe": "zustaende",
+      "von": 115,
+      "bilder": 8,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 7,
+      "was": "hebt eine Hand und hält"
+    },
+    "erklaert": {
+      "gruppe": "zustaende",
+      "von": 123,
+      "bilder": 22,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "erklärt — öffnet beide Flügel, betont zweimal"
+    },
+    "wartet": {
+      "gruppe": "zustaende",
+      "von": 145,
+      "bilder": 18,
+      "takt": 6,
+      "wiederholt": true,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "wartet — verlagert das Gewicht und sieht sich um (Schleife)"
+    },
+    "ist-traurig": {
+      "gruppe": "zustaende",
+      "von": 163,
+      "bilder": 8,
+      "takt": 8,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 7,
+      "was": "wird traurig und bleibt es"
+    },
+    "schreckt-auf": {
+      "gruppe": "gesten",
+      "von": 152,
+      "bilder": 13,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "schreckt auf"
+    },
+    "hat-idee": {
+      "gruppe": "symbole",
+      "von": 0,
+      "bilder": 10,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 9,
+      "was": "hat eine Idee, die Glühbirne geht an"
+    },
+    "fragt": {
+      "gruppe": "symbole",
+      "von": 10,
+      "bilder": 10,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 9,
+      "was": "fragt nach, Fragezeichen über der Schulter"
+    },
+    "mag-das": {
+      "gruppe": "symbole",
+      "von": 20,
+      "bilder": 10,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 9,
+      "was": "mag das, ein Herz steigt auf"
+    }
+  }
+}

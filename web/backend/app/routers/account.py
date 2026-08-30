@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
 from kern.digest_email import render_html_email
 from kern.email import send_email
@@ -12,11 +12,12 @@ from kern.store import Store
 from council.store import CouncilStore
 
 from ..config import get_settings
+from ..antworten import MeldeEinstellungen, Ok, TestZustellung
 from ..deps import get_council_store, get_store, require_active
 from ..schemas import (ChangePasswordRequest, DeleteAccountRequest, DeliveryUpdate,
                        NotifyPrefsIn, UserOut)
 from ..security import hash_password, verify_password
-from .auth import _set_auth_cookie, _to_out
+from .auth import _app_access_token, _set_auth_cookie, _to_out
 
 logger = logging.getLogger("nwz.web.account")
 
@@ -65,7 +66,7 @@ def set_display_name(
     body: DisplayNameIn,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> dict:
+) -> Ok:
     """Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,
     die bei der Registrierung keinen angeben konnten."""
     store.set_display_name(user["id"], body.display_name)
@@ -100,7 +101,7 @@ def set_delivery(
 def get_notifications(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> dict:
+) -> MeldeEinstellungen:
     """Was diese Person wovon hören will (Design 30a/E).
 
     Liefert die Anlässe mitsamt Beschriftung und Vorgabe, damit die Oberfläche
@@ -129,13 +130,14 @@ def set_notifications(
     body: NotifyPrefsIn,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> dict:
+) -> MeldeEinstellungen:
     store.set_notify_prefs(user["id"], body.prefs)
     return get_notifications(user=user, store=store)
 
 
 @router.post("/change-password", response_model=UserOut)
 def change_password(
+    request: Request,
     body: ChangePasswordRequest,
     response: Response,
     user: dict = Depends(require_active),
@@ -147,14 +149,17 @@ def change_password(
     store.increment_token_version(user["id"])
     updated = store.get_web_user_by_id(user["id"])
     _set_auth_cookie(response, updated)
-    return _to_out(updated)
+    # Browser bekommen weiter nur das httpOnly-Cookie. Native Clients brauchen
+    # nach der token_version-Erhöhung sofort einen neuen Bearer-Token; der alte
+    # ist ab dieser Zeile absichtlich ungültig.
+    return _to_out(updated, _app_access_token(request, updated))
 
 
 @router.post("/test-notification")
 def test_notification(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> dict:
+) -> TestZustellung:
     """RL-702: Test-Benachrichtigung über die aktiven Kanäle — damit man prüfen
     kann, ob E-Mail/Push wirklich ankommen. Nutzt exakt den Cron-Versandpfad
     (deliver_message); ohne RESEND_API_KEY wird E-Mail still übersprungen."""
@@ -193,10 +198,16 @@ def delete_account(
     ``committee_notifications``/``session_followups_sent``, welche Sitzungen
     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss."""
     if body.apple_identity_token and user.get("apple_sub"):
-        from .auth_apple import verify_apple_identity_token
+        from .auth_apple import revoke_apple_authorization_code, verify_apple_identity_token
         claims = verify_apple_identity_token(body.apple_identity_token)
         if str(claims.get("sub")) != str(user["apple_sub"]):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Apple-Bestätigung gehört zu einem anderen Konto.")
+        if body.apple_authorization_code:
+            background.add_task(
+                revoke_apple_authorization_code,
+                body.apple_authorization_code,
+                get_settings().apple_bundle_id,
+            )
     elif not verify_password(body.current_password, user["password_hash"]):
         msg = ("Aktuelles Passwort ist falsch." if user.get("password_set", 1)
                else "Dieses Konto nutzt Apple — bitte in der App per Apple bestätigen "

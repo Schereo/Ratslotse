@@ -52,7 +52,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
       {mascot ? (
-        <Mascot pose={mascot} bob className="mb-3 h-24 w-24" />
+        <Mascot pose={mascot} className="mb-3 h-24 w-24" />
       ) : (
         Icon && (
           <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -94,7 +94,8 @@ export function ErrorState({
       role="alert"
       className="flex flex-col items-center rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center"
     >
-      <Mascot pose="confused" bob className="mb-3 h-24 w-24" />
+      {/* `schuettelt-kopf` ist die gebackene Fehler-Regung — „das ging schief". */}
+      <Mascot regung="schuettelt-kopf" className="mb-3 h-24 w-24" />
       <p className="font-medium text-foreground">{title}</p>
       <p className="mt-1 max-w-sm text-sm text-muted-foreground">{hint}</p>
       {onRetry && (

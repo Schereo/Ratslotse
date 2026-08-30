@@ -18,7 +18,6 @@ import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
 import { useZurueck } from "@/lib/zurueck";
 import { Mascot } from "@/components/mascot";
-import { useMascotTheme } from "@/components/seasonal-mascot";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
@@ -65,11 +64,10 @@ function Section({
  *  Der amtliche Wortlaut bleibt verbindlich (siehe OfficialTextCard), rückt
  *  aber eine Position nach unten. */
 function SimpleSummaryHero({ text }: { text: string }) {
-  const theme = useMascotTheme();
   return (
     <div className="rounded-2xl border border-signal/30 bg-gradient-to-br from-signal/[0.07] to-transparent p-4 sm:p-5">
       <div className="flex items-center gap-2.5">
-        <Mascot pose="point" theme={theme} decorative className="h-11 w-11 shrink-0" />
+        <Mascot pose="point" decorative className="h-11 w-11 shrink-0" />
         <div className="min-w-0">
           <p className="font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-signal">
             Lotti erklärt&rsquo;s einfach
