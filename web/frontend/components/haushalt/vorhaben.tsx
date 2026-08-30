@@ -48,6 +48,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowUp, Search } from "lucide-react";
 import { betrag } from "@/lib/haushalt";
 import {
@@ -130,12 +131,25 @@ export function Vorhaben({
    *  Kachel (`grafik/kachelflaeche.ts`, `rampenText`). */
   stufeVonThh: (thhNr: number) => number;
 }) {
-  const [wort, setWort] = useState("");
+  // `?vorhaben=` und `?jahr=` — der Landeplatz für Links von außen.
+  //
+  // Von den Änderungslisten zum Finanzhaushalt (/haushalt/mitreden#streit)
+  // führt seit 08/2026 ein Link auf die Nummer eines Vorhabens. Damit er
+  // ankommt, muss der Explorer sein Suchwort aus der ADRESSE nehmen können
+  // und nicht nur aus dem Eingabefeld — und das Jahr gleich mit: Die Nummer
+  // gehört zu dem Jahrgang, in dem die Änderungsliste sie geändert hat.
+  //
+  // Als STARTWERT, nicht als gebundener Zustand: Wer nach dem Ankommen etwas
+  // anderes sucht, soll nicht gegen die Adresse antippen. Die Adresse setzt
+  // den Anfang, danach gehört das Feld der Leserin.
+  const params = useSearchParams();
+  const [wort, setWort] = useState(() => params.get("vorhaben") ?? "");
   const [sortierung, setSortierung] = useState<Sortierung>("gesamtsumme");
   // Der Explorer hat seinen eigenen Jahrgang-Filter (H4-06): Die beiden
   // Quellen der Seite reichen verschieden weit (Portal 2022–2025, Plan
   // 2019–2026) — wer 2019 sehen will, darf nicht am Jahr der Seite hängen.
-  const [jahrWahl, setJahrWahl] = useState<number | null>(null);
+  const [jahrWahl, setJahrWahl] = useState<number | null>(
+    () => Number(params.get("jahr")) || null);
   const suchfeld = useRef<HTMLInputElement>(null);
 
   const jahre = useMemo(

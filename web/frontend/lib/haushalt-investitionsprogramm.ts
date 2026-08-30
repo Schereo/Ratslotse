@@ -114,11 +114,17 @@ export function teilhaushaltSumme(
     (z) => z.jahr === jahr && z.thh_nr === thhNr) ?? null;
 }
 
-/** Vorhaben eines Jahrgangs, deren Bezeichnung zur Suche passt.
+/** Vorhaben eines Jahrgangs, deren Bezeichnung ODER Nummer zur Suche passt.
  *
  *  Über alle Teilhaushalte hinweg — genau das ist der Zweck: „Kunstrasen" oder
  *  „Feuerwehr" steht nicht in einem Bereich allein. Ohne Suchwort kommt nichts
- *  zurück, damit die Liste nicht ungefragt 565 Zeilen lang wird. */
+ *  zurück, damit die Liste nicht ungefragt 565 Zeilen lang wird.
+ *
+ *  Die NUMMER (`code`, „I10.180700.500") sucht seit 08/2026 mit. Sie steht an
+ *  den Positionen der Änderungslisten zum Finanzhaushalt
+ *  (`/haushalt/mitreden#streit`), und von dort führt jetzt ein Link hierher —
+ *  ohne diese Zeile käme er auf einer leeren Trefferliste an. Wer die Nummer
+ *  von Hand eintippt, findet sie damit ebenso. */
 export function suche(
   daten: ProgrammDaten | null,
   jahr: number,
@@ -127,7 +133,9 @@ export function suche(
   const w = wort.trim().toLowerCase();
   if (!daten || w.length < 2) return [];
   return daten.massnahmen
-    .filter((z) => z.jahr === jahr && z.bezeichnung.toLowerCase().includes(w))
+    .filter((z) => z.jahr === jahr
+      && (z.bezeichnung.toLowerCase().includes(w)
+          || (z.code ?? "").toLowerCase().includes(w)))
     .sort((a, b) => b.gesamtsumme - a.gesamtsumme);
 }
 

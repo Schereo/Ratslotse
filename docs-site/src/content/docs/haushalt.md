@@ -3635,10 +3635,32 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
     Haushaltsvermerke; in einer Liste „was geändert wurde" behaupteten sie
     eine Änderung, die es nicht gibt.
 
-  Der **Investitionscode** steht als Kennung an der Zeile, nicht als Link:
-  Die Suche auf „Was wird gebaut?" hält ihr Suchwort im Zustand, nicht in der
-  Adresse — ein Sprung dorthin käme auf einer leeren Suche an. Wer die Nummer
-  braucht, kann sie kopieren; ein Deep-Link wäre ein eigener Schritt.
+  Der **Investitionscode** ist seit dem 30.08.2026 ein Link auf „Was wird
+  gebaut?" — genauer: auf eine SUCHE dort, mit Nummer und Jahrgang in der
+  Adresse (`/haushalt/investitionen?vorhaben=…&jahr=…#vorhaben`). Dafür
+  waren drei Dinge nötig, und zwei davon sind eigene Befunde:
+
+  1. **Die Suche findet jetzt auch die Nummer**, nicht nur den Namen
+     (`lib/haushalt-investitionsprogramm.ts: suche`). Vorher wäre der Link
+     auf einer leeren Trefferliste angekommen; nebenbei findet nun auch, wer
+     eine Nummer von Hand eintippt.
+  2. **Der Explorer nimmt Suchwort und Jahrgang aus der Adresse** — als
+     Startwert, nicht als gebundenen Zustand: Wer nach dem Ankommen etwas
+     anderes sucht, soll nicht gegen die Adresse antippen.
+  3. **Die Nummer muss gekürzt werden.** Die Änderungslisten führen sie je
+     BUCHUNGSZEILE: „I10.180800.500" ist das Vorhaben I10.180800 („SG
+     Käthe-Kollwitz-Straße") in der Sachkonto-Gruppe 500 (Hoch- und
+     Tiefbau); .550 wäre die Zuweisung des Landes zu demselben Vorhaben,
+     .525 ein Zuschuss. Das Investitionsprogramm führt dagegen das Vorhaben
+     als Ganzes. **Gemessen: Mit dem Sachkonto trifft die Nummer 7 von 56
+     Positionen, ohne es 32 von 56.**
+
+  Die übrigen 24 haben im Programm kein Gegenstück — nicht jede Zeile des
+  Finanzhaushalts gehört zu einem dort benannten Vorhaben. Deshalb heißt der
+  Link „suchen" und nicht „zum Vorhaben": Eine Suche ohne Treffer ist ein
+  normales Ergebnis, und die Seite sagt es auch so („Kein Vorhaben 2020
+  enthält ‚I10.089905'"). Ein Link, der ein Vorhaben verspricht und in 43 %
+  der Fälle leer ankommt, wäre eine Zusage, die die Daten nicht decken.
 
   Eine Falle beim Anschluss ans Frontend, die zweimal Zeit gekostet hat: Der
   Endpunkt `/council/haushalt/aenderungslisten` hat seit 08/2026 eine
