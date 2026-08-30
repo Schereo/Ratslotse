@@ -14,6 +14,7 @@ from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
 
 from ..config import get_settings
+from ..antworten import Ok
 from ..deps import get_current_user, get_store
 from ..ratelimit import forgot_password_limiter, login_limiter, register_limiter, verify_email_limiter
 from ..schemas import (
@@ -241,7 +242,7 @@ def login(
 
 
 @router.post("/logout")
-def logout(response: Response) -> dict:
+def logout(response: Response) -> Ok:
     clear_session_cookie(response)
     return {"ok": True}
 
@@ -294,7 +295,7 @@ def forgot_password(
     body: ForgotPasswordRequest,
     background: BackgroundTasks,
     store: Store = Depends(get_store),
-) -> dict:
+) -> Ok:
     """Start a password reset. Always returns 200 — never reveals whether an account
     exists (no enumeration). A one-hour, single-use token is emailed if it does."""
     forgot_password_limiter.check(request)
@@ -311,7 +312,7 @@ def forgot_password(
 
 
 @router.post("/reset-password")
-def reset_password(body: ResetPasswordRequest, store: Store = Depends(get_store)) -> dict:
+def reset_password(body: ResetPasswordRequest, store: Store = Depends(get_store)) -> Ok:
     """Set a new password from a valid reset token, then invalidate all sessions."""
     token_hash = hashlib.sha256(body.token.encode()).hexdigest()
     now = datetime.utcnow().isoformat(timespec="seconds")
@@ -393,7 +394,7 @@ def resend_verification(
     background: BackgroundTasks,
     user: dict = Depends(get_current_user),
     store: Store = Depends(get_store),
-) -> dict:
+) -> Ok:
     """Re-send the verification link to the logged-in user's address."""
     verify_email_limiter.check(request)
     settings = get_settings()

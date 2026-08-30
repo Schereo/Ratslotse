@@ -42,6 +42,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from kern.store import Store
 from council.store import CouncilStore
 
+from ..antworten import (AboGeloescht, AboGesetzt, Abonnements, MarkierteTreffer, Ok,
+                        ThemenBeschluesse, ThemenBeschreibung, ThemenTrefferListe,
+                        ThemenVorschlaege, UngeleseneThemenTreffer)
 from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
 from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, TopicOut, TopicSeenIn
@@ -219,7 +222,7 @@ def topic_suggestions(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> ThemenVorschlaege:
     """Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und
     Projekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten
     Schlagworte — die belohnten Verwaltungsvokabeln („Bericht", „Annahme").
@@ -286,7 +289,7 @@ def describe_topic(
     request: Request,
     user: dict = Depends(require_active),
     council: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> ThemenBeschreibung:
     """Design 26a / RL-U17: aus einem Themen-*Namen* eine Beschreibung machen.
 
     Der Nutzer tippt nur „Cäcilienbrücke". Wir suchen die Beschlüsse dazu und
@@ -407,7 +410,7 @@ def update_topic(
 
 
 @router.get("/unread-count")
-def unread_count(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+def unread_count(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> UngeleseneThemenTreffer:
     """RL-903: der Zähler an „Meine Themen" (Seitenleiste und Punkt in der
     Tab-Leiste) — Treffer, die seit dem letzten Blick auf die Übersicht
     dazugekommen sind. Die Bubble kündigt Neues an; wer nachgesehen hat, soll
@@ -418,7 +421,7 @@ def unread_count(user: dict = Depends(require_active), store: Store = Depends(ge
 
 @router.post("/uebersicht-gesehen")
 def uebersicht_gesehen(user: dict = Depends(require_active),
-                       store: Store = Depends(get_store)) -> dict:
+                       store: Store = Depends(get_store)) -> Ok:
     """Die Themen-Übersicht wurde geöffnet — ab jetzt zählt für die Bubble
     nur noch, was danach dazukommt. Ältere App-Versionen rufen das nie auf;
     für sie bleibt es beim bisherigen Verhalten."""
@@ -432,7 +435,7 @@ def mark_seen(
     body: TopicSeenIn | None = None,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> dict:
+) -> MarkierteTreffer:
     """RL-903: Treffer eines Themas als gesehen markieren.
 
     Ohne ``decision_id`` alle — das ist der Weg über „alle ansehen" und über
@@ -456,7 +459,7 @@ def latest_hits(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> ThemenTrefferListe:
     """Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die
     „Neu zu deinen Themen"-Karte im Heute-Briefing (RL-401). Vor der
     {topic_id}-Route registriert, damit „latest-hits" nicht als ID parst."""
@@ -481,7 +484,7 @@ def topic_decisions(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> ThemenBeschluesse:
     """Council decisions matched to this topic (semantic), best first.
 
     Dieselbe Menge, die die Karte zählt und ``/council/decisions?topic=…``
@@ -514,17 +517,17 @@ sub_router = APIRouter(prefix="/api/subscriptions", tags=["subscriptions"])
 
 
 @sub_router.get("")
-def list_subscriptions(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+def list_subscriptions(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> Abonnements:
     return {"subscriptions": store.get_subscriptions(user["id"])}
 
 
 @sub_router.post("", status_code=status.HTTP_201_CREATED)
-def subscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+def subscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> AboGesetzt:
     ok = store.subscribe(user["id"], body.committee_name)
     return {"subscribed": ok, "committee_name": body.committee_name}
 
 
 @sub_router.delete("")
-def unsubscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+def unsubscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> AboGeloescht:
     ok = store.unsubscribe(user["id"], body.committee_name)
     return {"unsubscribed": ok, "committee_name": body.committee_name}

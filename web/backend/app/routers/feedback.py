@@ -11,6 +11,7 @@ from kern.email import send_email
 from kern.store import Store
 
 from ..config import get_settings
+from ..antworten import Ok
 from ..deps import get_store, require_active
 from ..ratelimit import support_limiter
 from ..schemas import FeedbackIn, SupportIn
@@ -60,7 +61,7 @@ def submit_feedback(
     body: FeedbackIn,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> dict:
+) -> Ok:
     """Email the operator a piece of user feedback. Reply-to is the user's address so
     the operator can answer directly. Best-effort: never surfaces email config to the user."""
     settings = get_settings()
@@ -97,7 +98,7 @@ def submit_support(
     request: Request,
     body: SupportIn,
     store: Store = Depends(get_store),
-) -> dict:
+) -> Ok:
     """Kontaktformular der Hilfe-Seite — **ohne Anmeldung**.
 
     Bewusst öffentlich: Der Feedback-Dialog oben hängt am eingeloggten Konto und
