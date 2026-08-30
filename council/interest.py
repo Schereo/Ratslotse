@@ -5,7 +5,7 @@ Tragweite (Geld, Umstrittenheit, Ebene) als billige Heuristik — hier bewertet
 ein LLM den GESPRÄCHSWERT für normale Stadtbewohner*innen (Kuriosität,
 Alltagsnähe, Konkretheit). Der Score speist das „Fundstück des Tages"
 (``council/fundstueck.py``) und ist per Backfill über den ganzen Bestand
-berechenbar (``scripts/rate_interest.py``). Prompts in ``nwz/prompts.py``,
+berechenbar (``scripts/rate_interest.py``). Prompts in ``kern/prompts.py``,
 über das Admin-UI editierbar.
 """
 from __future__ import annotations

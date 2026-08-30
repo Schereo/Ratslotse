@@ -3,7 +3,7 @@ goes (tokens + estimated cost per feature).
 
 Best-effort by design: recording must NEVER break an LLM call, and under write
 contention (parallel backfills) a dropped row just means slightly under-counted stats.
-Rows land in ``llm_usage`` in the shared nwz.sqlite.
+Rows land in ``llm_usage`` in the shared ratslotse.sqlite.
 """
 from __future__ import annotations
 
@@ -11,11 +11,11 @@ import os
 import sqlite3
 from pathlib import Path
 
-_DEFAULT_DB = Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite"
+_DEFAULT_DB = Path(__file__).resolve().parent.parent / "data" / "ratslotse.sqlite"
 
 # $ per 1M tokens (input, output) — NUR noch der Schätz-Fallback für Zeilen
 # ohne echten Kostenwert (alte Einträge, Provider ohne usage.cost). Neue
-# Aufrufe tragen die ECHTEN OpenRouter-Kosten in cost_usd (nwz/llm.py).
+# Aufrufe tragen die ECHTEN OpenRouter-Kosten in cost_usd (kern/llm.py).
 PRICES: dict[str, tuple[float, float]] = {
     "deepseek/deepseek-v4-pro": (0.435, 0.87),
     "deepseek/deepseek-v4-flash": (0.10, 0.20),
@@ -28,7 +28,7 @@ PRICES: dict[str, tuple[float, float]] = {
 
 
 def _db() -> str:
-    return os.environ.get("NWZ_SQLITE") or str(_DEFAULT_DB)
+    return os.environ.get("RATSLOTSE_SQLITE") or str(_DEFAULT_DB)
 
 
 def _connect() -> sqlite3.Connection:

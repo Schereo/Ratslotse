@@ -25,7 +25,7 @@ def test_tagesgrenze_folgt_oldenburger_mitternacht():
 
 
 def test_kontingent_zaehlt_nur_ab_lokaler_mitternacht(tmp_path):
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     try:
         vor = (datetime.fromisoformat(_tagesbeginn_utc()) - timedelta(minutes=5)) \
             .isoformat(timespec="seconds")

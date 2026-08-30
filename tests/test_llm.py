@@ -1,4 +1,4 @@
-"""Offline tests for nwz/llm.py: singleton client and _is_transient predicate."""
+"""Offline tests for kern/llm.py: singleton client and _is_transient predicate."""
 from __future__ import annotations
 
 import pytest

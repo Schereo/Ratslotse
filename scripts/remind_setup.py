@@ -65,8 +65,8 @@ def main() -> dict:
     # Store verlangt einen Pfad — `Store()` warf hier bei JEDEM Lauf sofort einen
     # TypeError, noch vor der Mail-Prüfung. Der Job hat also nie eine Erinnerung
     # verschickt, sondern ist immer abgestürzt. Pfad wie in den übrigen
-    # Cron-Skripten: NWZ_DB, sonst data/nwz.sqlite im Repo.
-    store = Store(os.environ.get("NWZ_DB") or ROOT / "data" / "nwz.sqlite")
+    # Cron-Skripten: RATSLOTSE_DB, sonst data/ratslotse.sqlite im Repo.
+    store = Store(os.environ.get("RATSLOTSE_DB") or ROOT / "data" / "ratslotse.sqlite")
     pending = store.setups_to_remind(older_than_hours=REMIND_AFTER_HOURS)
     if not pending:
         return {"kandidaten": 0, "gesendet": 0}

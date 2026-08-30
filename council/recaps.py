@@ -5,7 +5,7 @@ recap — one lead line plus 3–4 bullet points (the frontend renders them as a
 scannable digest card; old prose recaps fall back to a paragraph). Owner-agnostic
 like ``topics.py``; the offline cron (``scripts/generate_field_recaps.py``) stores
 the result and the web service only ever reads it. The prompt template lives in
-``nwz/prompts.py`` („recap_themenfeld") and is admin-editable.
+``kern/prompts.py`` („recap_themenfeld") and is admin-editable.
 """
 from __future__ import annotations
 

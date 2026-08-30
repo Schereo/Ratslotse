@@ -717,9 +717,9 @@ def test_hinweis_meldet_liegengebliebene_einheiten(thh_bestand, tmp_path, monkey
     ungelesen daneben."""
     from kern.store import Store
 
-    nwz = tmp_path / "nwz.sqlite"
-    Store(nwz).close()
-    monkeypatch.setenv("NWZ_DB", str(nwz))
+    ratslotse = tmp_path / "ratslotse.sqlite"
+    Store(ratslotse).close()
+    monkeypatch.setenv("RATSLOTSE_DB", str(ratslotse))
     p = finanzquellen.Protokoll(still=True)
     finanzquellen.lies_teilhaushalte(thh_bestand, p, nur_fehlende=True)
     # THH03 bekommt Text, aber sein Inhalt ist unlesbar geworden.
@@ -762,9 +762,9 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
     """
     from kern.store import Store
 
-    nwz = tmp_path / "nwz.sqlite"
-    Store(nwz).close()
-    monkeypatch.setenv("NWZ_DB", str(nwz))
+    ratslotse = tmp_path / "ratslotse.sqlite"
+    Store(ratslotse).close()
+    monkeypatch.setenv("RATSLOTSE_DB", str(ratslotse))
 
     # Eine Zeile aus einer von Hand gepflegten Schicht, die ihre Herkunft
     # nicht trägt — so sieht ein Schreibweg aus, der `herkunft_id` vergisst.
@@ -853,9 +853,9 @@ def test_hinweis_wiederholt_sich_nicht(bestand, tmp_path, monkeypatch):
     Verglichen wird mit dem letzten Lauf aus ``job_runs``."""
     from kern.store import Store
 
-    nwz = tmp_path / "nwz.sqlite"
-    Store(nwz).close()
-    monkeypatch.setenv("NWZ_DB", str(nwz))
+    ratslotse = tmp_path / "ratslotse.sqlite"
+    Store(ratslotse).close()
+    monkeypatch.setenv("RATSLOTSE_DB", str(ratslotse))
     bestand.close()
 
     verschickt: list[str] = []

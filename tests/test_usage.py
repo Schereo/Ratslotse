@@ -11,8 +11,8 @@ from kern import usage
 
 @pytest.fixture
 def usage_db(tmp_path, monkeypatch):
-    db = tmp_path / "nwz.sqlite"
-    monkeypatch.setenv("NWZ_SQLITE", str(db))
+    db = tmp_path / "ratslotse.sqlite"
+    monkeypatch.setenv("RATSLOTSE_SQLITE", str(db))
     return db
 
 

@@ -18,7 +18,7 @@ def _user(store, email="a@test.de"):
 
 
 def test_einwilligung_startet_ungefragt(tmp_path):
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     uid = _user(store)
     assert store.get_qa_speichern(uid) is None      # 6a①: Erstnutzungs-Frage fällig
     store.set_qa_speichern(uid, True)
@@ -29,7 +29,7 @@ def test_einwilligung_startet_ungefragt(tmp_path):
 
 
 def test_gespraech_lebenslauf(tmp_path):
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     uid = _user(store)
     gid = store.qa_gespraech_start(uid, "Wie ist der Stand bei der Cäcilienbrücke?")
     assert store.qa_turn_speichern(gid, uid, "Wie ist der Stand?", "Gut [1].", '{"cited": [1]}')
@@ -43,7 +43,7 @@ def test_gespraech_lebenslauf(tmp_path):
 
 
 def test_gespraeche_sind_ans_konto_gebunden(tmp_path):
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     a, b = _user(store, "a@test.de"), _user(store, "b@test.de")
     gid = store.qa_gespraech_start(a, "Thema A")
     # Fremder Turn, fremde Lese- und Löschversuche laufen ins Leere.
@@ -55,7 +55,7 @@ def test_gespraeche_sind_ans_konto_gebunden(tmp_path):
 
 
 def test_loeschen_raeumt_turns_mit_ab(tmp_path):
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     uid = _user(store)
     g1 = store.qa_gespraech_start(uid, "Eins")
     g2 = store.qa_gespraech_start(uid, "Zwei")
@@ -69,7 +69,7 @@ def test_loeschen_raeumt_turns_mit_ab(tmp_path):
 
 
 def test_konto_loeschung_nimmt_gespraeche_mit(tmp_path):
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     uid = _user(store)
     gid = store.qa_gespraech_start(uid, "Bleibt nicht")
     store.qa_turn_speichern(gid, uid, "f", "a", None)
@@ -80,7 +80,7 @@ def test_konto_loeschung_nimmt_gespraeche_mit(tmp_path):
 
 
 def test_umbenennen_nur_am_eigenen_gespraech(tmp_path):
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     a, b = _user(store, "a@t.de"), _user(store, "b@t.de")
     gid = store.qa_gespraech_start(a, "Was ist beim Fliegerhorst geplant?")
     vorher = store.qa_gespraech(gid, a)["updated"]
@@ -98,7 +98,7 @@ def test_share_extras_und_alte_zeilen(tmp_path):
     """Geteilte Antworten tragen die Bausteine neben den Beschlüssen. Vor dem
     Nachtrag angelegte Zeilen haben keine extras-Spalte — die Migration ergänzt
     sie, und ihre Snapshots liefern dann leere Listen statt zu krachen."""
-    pfad = tmp_path / "nwz.sqlite"
+    pfad = tmp_path / "ratslotse.sqlite"
     store = Store(pfad)
     uid = _user(store)
     token = store.qa_share_anlegen(
@@ -136,7 +136,7 @@ def test_share_extras_und_alte_zeilen(tmp_path):
 
 
 def test_geteilter_inhalt_kann_moderiert_werden(tmp_path):
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     uid = _user(store)
     token = store.qa_share_anlegen(uid, "Frage?", "Antwort.", [])
     assert store.qa_share_owner_id(token) == uid
@@ -158,7 +158,7 @@ def test_snapshot_traegt_die_kondensierte_frage(tmp_path):
     neuer Lauf, der obendrein mit der kontextlosen Frage suchte."""
     from app.routers.council import AskBody, _turn_speichern
 
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     try:
         uid = _user(store)
         store.set_qa_speichern(uid, True)
@@ -187,7 +187,7 @@ def test_liste_blaettert_statt_bei_50_zu_enden(tmp_path):
     Geprüft wird deshalb beides: dass eine Seite kurz bleibt UND dass man
     über die Seiten am Ende jedes einzelne Gespräch einsammelt.
     """
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     uid = _user(store)
     ids = [store.qa_gespraech_start(uid, f"Gespräch {i:03d}") for i in range(120)]
 
@@ -214,7 +214,7 @@ def test_gleiche_sekunde_blaettert_ohne_dubletten(tmp_path):
     """`updated` hat Sekundenauflösung: In einem Rutsch angelegte Gespräche
     tragen dieselbe Zeit. Ohne zweites Sortierkriterium wäre ihre Reihenfolge
     beliebig — über OFFSET erschiene dann eines doppelt, ein anderes nie."""
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     uid = _user(store)
     ids = {store.qa_gespraech_start(uid, f"Gleichzeitig {i}") for i in range(20)}
     gesehen = [g["id"] for off in (0, 5, 10, 15)
@@ -226,7 +226,7 @@ def test_gleiche_sekunde_blaettert_ohne_dubletten(tmp_path):
 def test_suche_findet_auch_ausserhalb_der_ersten_seite(tmp_path):
     """Gesucht wird in der DB, nicht in der geladenen Seite — sonst fände das
     Suchfeld genau die Gespräche nicht, für die es gebaut wurde."""
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     uid = _user(store)
     store.qa_gespraech_start(uid, "Cäcilienbrücke: Stand der Sanierung")
     for i in range(60):
@@ -245,7 +245,7 @@ def test_suche_findet_auch_ausserhalb_der_ersten_seite(tmp_path):
 
 def test_suchwort_mit_platzhaltern_bleibt_text(tmp_path):
     """`%` und `_` sind LIKE-Platzhalter — ungeschützt fände „%" alles."""
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     uid = _user(store)
     store.qa_gespraech_start(uid, "Grünanteil 100 % im Quartier")
     store.qa_gespraech_start(uid, "Radweg am Hafen")

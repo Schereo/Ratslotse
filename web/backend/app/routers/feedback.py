@@ -16,7 +16,7 @@ from ..deps import get_store, require_active
 from ..ratelimit import support_limiter
 from ..schemas import FeedbackIn, SupportIn
 
-logger = logging.getLogger("nwz.web.feedback")
+logger = logging.getLogger("ratslotse.web.feedback")
 
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 

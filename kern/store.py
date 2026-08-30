@@ -88,7 +88,7 @@ CREATE INDEX IF NOT EXISTS idx_bookmarks_owner ON bookmarks(owner_id, created_at
 CREATE INDEX IF NOT EXISTS idx_bookmarks_result ON bookmarks(ksinr, notify_result, result_notified_at);
 
 -- Warteschlange für Benachrichtigungen (Design 30a). Alle Anlässe reihen hier
--- ein statt direkt zu senden; nwz/notify.py stellt zu und hält dabei die zwei
+-- ein statt direkt zu senden; kern/notify.py stellt zu und hält dabei die zwei
 -- harten Grenzen ein: höchstens zwei am Tag (gebündelt statt gestapelt) und
 -- Nachtruhe von 21 bis 7 Uhr. `deliver_after` trägt das Ergebnis der
 -- Nachtruhe-Rechnung, `bundled` merkt, dass ein Posten nur als Teil einer
@@ -168,9 +168,6 @@ CREATE TABLE IF NOT EXISTS web_users (
     status           TEXT NOT NULL DEFAULT 'pending',
     telegram_chat_id INTEGER,
     delivery_channel TEXT NOT NULL DEFAULT 'email',
-    nwz_username     TEXT,
-    nwz_verified_at  TEXT,
-    nwz_fulltext_allowed INTEGER NOT NULL DEFAULT 0,
     token_version    INTEGER NOT NULL DEFAULT 0,
     email_verified   INTEGER NOT NULL DEFAULT 0,
     apple_sub        TEXT,                       -- Sign in with Apple: stabile Apple-User-ID (RL-1002)
@@ -257,22 +254,22 @@ CREATE TABLE IF NOT EXISTS council_agenda_classified (
 CREATE TABLE IF NOT EXISTS qa_gespraeche (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id  INTEGER NOT NULL,
-    titel    TEXT NOT NULL,
+    title    TEXT NOT NULL,
     created  TEXT NOT NULL,
     updated  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_qa_gespraeche_user ON qa_gespraeche(user_id, updated DESC);
 
 CREATE TABLE IF NOT EXISTS qa_gespraech_turns (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    gespraech_id INTEGER NOT NULL,
-    user_id      INTEGER NOT NULL,
-    frage        TEXT NOT NULL,
-    antwort      TEXT NOT NULL,
-    quellen      TEXT,                  -- JSON {sources, cited}
-    created      TEXT NOT NULL
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id INTEGER NOT NULL,
+    user_id         INTEGER NOT NULL,
+    question        TEXT NOT NULL,
+    answer          TEXT NOT NULL,
+    sources         TEXT,               -- JSON {sources, cited}
+    created         TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_gespraech_turns(gespraech_id);
+CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_gespraech_turns(conversation_id);
 
 -- Geteilte „Frag den Rat"-Antworten (Task 31): bewusste Einzel-
 -- Veröffentlichung per Klick — unabhängig vom „Gespräche speichern"-Opt-in.
@@ -379,7 +376,7 @@ CREATE TABLE IF NOT EXISTS user_activity (
 CREATE INDEX IF NOT EXISTS idx_user_activity_day ON user_activity(day);
 CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id);
 
--- Ein Eintrag je Cron-Lauf, geschrieben von run_guarded (nwz/alerts.py).
+-- Ein Eintrag je Cron-Lauf, geschrieben von run_guarded (kern/alerts.py).
 -- Bis hierhin war der einzige Ops-Blick ins System die Fehler-Mail und die
 -- Logdateien auf dem Server; damit sieht das Admin-Panel, ob ein Job läuft,
 -- wie lange er braucht und was er verarbeitet hat. `stats` ist ein JSON-Objekt,
@@ -471,10 +468,47 @@ def _tagesbeginn_utc() -> str:
     return start.astimezone(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds")
 
 
+def _umzug_von_nwz(ziel: Path) -> None:
+    """Benennt eine noch vorhandene ``ratslotse.sqlite`` einmalig in den neuen Namen um.
+
+    Bis 08/2026 hieß diese Datenbank ``ratslotse.sqlite`` — ein Rest aus der Zeit des
+    Zeitungs-Scrapers. Der Name ist unsichtbar, und genau das macht ihn
+    gefährlich: Ein Umstellen ohne Umzug hieße „App startet mit leerer
+    Datenbank" (CLAUDE.md warnte davor). Deshalb zieht der Start die Datei
+    selbst um, statt sich auf eine Handreichung auf dem Server zu verlassen.
+
+    Vorher wird der WAL eingecheckt: Nur so ist die Hauptdatei vollständig und
+    die Begleitdateien (``-wal``/``-shm``) sind entbehrlich.
+    """
+    if ziel.exists() or ziel.name == "nwz.sqlite":
+        return
+    alt = ziel.with_name("nwz.sqlite")
+    if not alt.exists():
+        return
+    try:
+        conn = sqlite3.connect(alt, timeout=15)
+        try:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        finally:
+            conn.close()
+        alt.rename(ziel)
+        for endung in ("-wal", "-shm"):
+            rest = alt.with_name(alt.name + endung)
+            if rest.exists():
+                rest.unlink()
+        logging.getLogger("kern.store").warning(
+            "Datenbank umgezogen: %s → %s", alt.name, ziel.name)
+    except Exception:  # noqa: BLE001 — lieber am alten Ort weiterarbeiten als abstürzen
+        logging.getLogger("kern.store").exception(
+            "Umzug von %s nach %s fehlgeschlagen — die App nutzt weiter den alten Pfad",
+            alt, ziel)
+
+
 class Store:
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        _umzug_von_nwz(self.path)
         self._conn = sqlite3.connect(self.path, timeout=15, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         # SQLites eingebautes lower() kennt nur ASCII — „Cäcilienbrücke" bliebe
@@ -490,7 +524,51 @@ class Store:
         self._migrate()
         self._zeitungsreste_entfernen()
 
+    def _spalten_umbenennen(self, tabelle: str, paare: list[tuple[str, str]]) -> None:
+        """Benennt Spalten um, sofern sie noch alt heißen — idempotent.
+
+        SQLite zieht Indizes und Fremdschlüssel dabei selbst nach (geprüft:
+        ``idx_qa_turns_gespraech`` zeigt nach dem Lauf auf die neue Spalte).
+        Läuft bei jedem Start; nach dem ersten Mal ist es ein PRAGMA und sonst
+        nichts.
+        """
+        vorhanden = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
+        if not vorhanden:                      # Tabelle gibt es (noch) nicht
+            return
+        for alt, neu in paare:
+            if alt in vorhanden and neu not in vorhanden:
+                with self._conn:
+                    self._conn.execute(
+                        f"ALTER TABLE {tabelle} RENAME COLUMN {alt} TO {neu}")
+                logging.getLogger("kern.store").warning(
+                    "Spalte umbenannt: %s.%s → %s", tabelle, alt, neu)
+
+    def _tote_spalten_entfernen(self, tabelle: str, spalten: list[str]) -> None:
+        """Entfernt Spalten, die nirgends mehr gelesen werden — idempotent.
+
+        Braucht SQLite ≥ 3.35 (Prod und Dev: 3.45). Eine Spalte, die noch in
+        einem Index steckt, ließe sich nicht entfernen — diese drei tun das
+        nicht (geprüft).
+        """
+        vorhanden = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
+        for spalte in spalten:
+            if spalte in vorhanden:
+                with self._conn:
+                    self._conn.execute(f"ALTER TABLE {tabelle} DROP COLUMN {spalte}")
+                logging.getLogger("kern.store").warning(
+                    "Tote Spalte entfernt: %s.%s", tabelle, spalte)
+
     def _migrate(self) -> None:
+        # 08/2026: Reste der NWZ-Abo-Prüfung. Seit der Ausgliederung des
+        # Zeitungs-Scrapers liest sie kein Code mehr; auf Tims Anweisung
+        # (30.08.2026) verschwinden sie samt Inhalt. Backup lag vor.
+        self._tote_spalten_entfernen("web_users", [
+            "nwz_username", "nwz_verified_at", "nwz_fulltext_allowed"])
+        # Die Schnittstelle spricht Englisch, die Spalten ziehen nach.
+        self._spalten_umbenennen("qa_gespraeche", [("titel", "title")])
+        self._spalten_umbenennen("qa_gespraech_turns", [
+            ("gespraech_id", "conversation_id"), ("frage", "question"),
+            ("antwort", "answer"), ("quellen", "sources")])
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(topics)").fetchall()}
         if "chat_id" not in cols:
             admin = int(os.environ.get("TELEGRAM_CHAT_ID", 0))
@@ -524,12 +602,6 @@ class Store:
                 if "status" not in wu_cols:
                     # Existing accounts predate approval — treat them as active.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
-                if "nwz_username" not in wu_cols:
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_username TEXT")
-                if "nwz_verified_at" not in wu_cols:
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_verified_at TEXT")
-                if "nwz_fulltext_allowed" not in wu_cols:
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN nwz_fulltext_allowed INTEGER NOT NULL DEFAULT 0")
                 if "token_version" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0")
                 if "topics_seen_at" not in wu_cols:
@@ -1698,7 +1770,7 @@ class Store:
             if not self._conn.execute("SELECT 1 FROM web_users WHERE id = ?", (user_id,)).fetchone():
                 return None
             cur = self._conn.execute(
-                "INSERT INTO qa_gespraeche (user_id, titel, created, updated) VALUES (?, ?, ?, ?)",
+                "INSERT INTO qa_gespraeche (user_id, title, created, updated) VALUES (?, ?, ?, ?)",
                 (user_id, (titel or "Gespräch").strip()[:120], now, now))
             return int(cur.lastrowid)
 
@@ -1713,7 +1785,7 @@ class Store:
             if not ok:
                 return False
             self._conn.execute(
-                "INSERT INTO qa_gespraech_turns (gespraech_id, user_id, frage, antwort, quellen, created) "
+                "INSERT INTO qa_gespraech_turns (conversation_id, user_id, question, answer, sources, created) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (gespraech_id, user_id, frage[:600], antwort[:8000], quellen_json, now))
             self._conn.execute("UPDATE qa_gespraeche SET updated = ? WHERE id = ?",
@@ -1747,11 +1819,11 @@ class Store:
         doppelt und eines gar nicht.
         """
         muster = self._titel_muster(suche)
-        filt = " AND unicode_lower(g.titel) LIKE ? ESCAPE '\\'" if muster else ""
+        filt = " AND unicode_lower(g.title) LIKE ? ESCAPE '\\'" if muster else ""
         werte: list = [user_id] + ([muster] if muster else []) + [max(0, limit), max(0, offset)]
         rows = self._conn.execute(
-            f"""SELECT g.id, g.titel AS title, g.updated,
-                      (SELECT COUNT(*) FROM qa_gespraech_turns t WHERE t.gespraech_id = g.id) AS n_turns
+            f"""SELECT g.id, g.title, g.updated,
+                      (SELECT COUNT(*) FROM qa_gespraech_turns t WHERE t.conversation_id = g.id) AS n_turns
                FROM qa_gespraeche g WHERE g.user_id = ?{filt}
                ORDER BY g.updated DESC, g.id DESC LIMIT ? OFFSET ?""", werte).fetchall()
         return [dict(r) for r in rows]
@@ -1759,7 +1831,7 @@ class Store:
     def qa_gespraeche_anzahl(self, user_id: int, suche: str | None = None) -> int:
         """Wie viele Gespräche das Konto hat (optional: passend zur Suche)."""
         muster = self._titel_muster(suche)
-        filt = " AND unicode_lower(titel) LIKE ? ESCAPE '\\'" if muster else ""
+        filt = " AND unicode_lower(title) LIKE ? ESCAPE '\\'" if muster else ""
         werte: list = [user_id] + ([muster] if muster else [])
         return self._conn.execute(
             f"SELECT COUNT(*) FROM qa_gespraeche WHERE user_id = ?{filt}",
@@ -1767,13 +1839,13 @@ class Store:
 
     def qa_gespraech(self, gespraech_id: int, user_id: int) -> dict | None:
         g = self._conn.execute(
-            "SELECT id, titel AS title, updated FROM qa_gespraeche WHERE id = ? AND user_id = ?",
+            "SELECT id, title, updated FROM qa_gespraeche WHERE id = ? AND user_id = ?",
             (gespraech_id, user_id)).fetchone()
         if not g:
             return None
         turns = self._conn.execute(
-            "SELECT frage AS question, antwort AS answer, quellen AS sources "
-            "FROM qa_gespraech_turns WHERE gespraech_id = ? ORDER BY id",
+            "SELECT question, answer, sources FROM qa_gespraech_turns "
+            "WHERE conversation_id = ? ORDER BY id",
             (gespraech_id,)).fetchall()
         return {**dict(g), "turns": [dict(t) for t in turns]}
 
@@ -1786,14 +1858,14 @@ class Store:
             return False
         with self._conn:
             cur = self._conn.execute(
-                "UPDATE qa_gespraeche SET titel = ? WHERE id = ? AND user_id = ?",
+                "UPDATE qa_gespraeche SET title = ? WHERE id = ? AND user_id = ?",
                 (titel, gespraech_id, user_id))
             return (cur.rowcount or 0) > 0
 
     def qa_gespraech_loeschen(self, gespraech_id: int, user_id: int) -> bool:
         with self._conn:
             self._conn.execute(
-                "DELETE FROM qa_gespraech_turns WHERE gespraech_id = ? AND user_id = ?",
+                "DELETE FROM qa_gespraech_turns WHERE conversation_id = ? AND user_id = ?",
                 (gespraech_id, user_id))
             cur = self._conn.execute(
                 "DELETE FROM qa_gespraeche WHERE id = ? AND user_id = ?",
@@ -1962,7 +2034,7 @@ class Store:
     def admin_user_rows(self) -> list[dict]:
         """Nutzer-Liste mit Aktivitätssignalen (Design 20a): je Konto Themen-,
         Abo-, Quiz- und KI-Frage-Zahl + letzter Aktivitätstag. Alles in
-        nwz.sqlite, ein Query."""
+        ratslotse.sqlite, ein Query."""
         rows = self._conn.execute(
             """SELECT u.id, u.email, u.role, u.status, u.created_at, u.apple_sub,
                       (SELECT COUNT(*) FROM topics t WHERE t.owner_id = u.id) n_topics,

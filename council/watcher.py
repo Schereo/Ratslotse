@@ -354,19 +354,19 @@ def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _melden(nwz_store, owner: dict, art: str, titel: str, html: str, url: str,
+def _melden(ratslotse_store, owner: dict, art: str, titel: str, html: str, url: str,
             deliver_message) -> None:
     """Eine Meldung abgeben — über die Warteschlange, wenn es sie gibt.
 
     Design 30a: Alle Anlässe laufen durch ``kern.notify``, sonst greifen die
-    Grenzen (zwei am Tag, Nachtruhe) nicht. Ohne ``nwz_store`` — in Tests und
+    Grenzen (zwei am Tag, Nachtruhe) nicht. Ohne ``ratslotse_store`` — in Tests und
     bei Direktaufrufen — bleibt der bisherige Sofortversand, damit dieser Pfad
     weiter ohne Datenbank prüfbar ist.
     """
-    if nwz_store is None:
+    if ratslotse_store is None:
         deliver_message(owner, html, email_subject=titel, push_url=url)
         return
-    notify.einreihen(nwz_store, owner["owner_id"], art, titel, html, url)
+    notify.einreihen(ratslotse_store, owner["owner_id"], art, titel, html, url)
 
 
 def _agenda_hash(agenda_items) -> str:
@@ -385,7 +385,7 @@ def run_watcher(
     db_path: str | Path,
     owners: list[dict],
     months_ahead: int = 3,
-    nwz_store=None,
+    ratslotse_store=None,
     stats: dict | None = None,
 ) -> list[str]:
     """
@@ -394,7 +394,7 @@ def run_watcher(
 
     owners: get_all_owner_digests()-Zeilen — je {owner_id, topics: [TopicRow],
             delivery_channel, email, push_tokens}.
-    nwz_store: offener kern.store.Store für die Treffer-Persistenz; ohne ihn
+    ratslotse_store: offener kern.store.Store für die Treffer-Persistenz; ohne ihn
             (Tests) wird klassifiziert und alarmiert, aber nichts gemerkt —
             dann läuft die Klassifikation beim nächsten Mal erneut.
     stats: optionales dict, in das der Lauf seine Kennzahlen schreibt (für die
@@ -433,8 +433,8 @@ def run_watcher(
         for owner in owners:
             # Je Nutzer*in klassifizieren — aber nur, wenn sich die
             # Tagesordnung seit ihrer letzten Klassifikation geändert hat.
-            if nwz_store is not None:
-                known = nwz_store.agenda_classified_hash(owner["owner_id"], ksinr)
+            if ratslotse_store is not None:
+                known = ratslotse_store.agenda_classified_hash(owner["owner_id"], ksinr)
                 if known == agenda_hash:
                     continue
 
@@ -473,8 +473,8 @@ def run_watcher(
                     # Lauf es neu, statt die Nutzer*in dauerhaft leer auszugehen.
                     continue
 
-                if nwz_store is not None:
-                    nwz_store.replace_agenda_matches(
+                if ratslotse_store is not None:
+                    ratslotse_store.replace_agenda_matches(
                         owner["owner_id"], ksinr, agenda_hash,
                         {topics[idx]["id"]: nums for idx, nums in matches.items()},
                     )
@@ -491,7 +491,7 @@ def run_watcher(
                 # Ziel: Die App klappt die Sitzung nicht nur auf, sondern
                 # springt zu genau diesen Zeilen. Ohne das landete man am
                 # Sitzungskopf und musste die Tagesordnung selbst suchen.
-                _melden(nwz_store, owner, notify.N2_THEMA,
+                _melden(ratslotse_store, owner, notify.N2_THEMA,
                         _titel_thema(session, topics[topic_idx]["name"]), msg,
                         sitzung_href(ksinr, item_numbers), deliver_message)
                 alerts_sent.append(msg)

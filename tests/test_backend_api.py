@@ -15,7 +15,7 @@ import pytest
 _BACKEND = Path(__file__).resolve().parents[1] / "web" / "backend"
 sys.path.insert(0, str(_BACKEND))
 _TMP = tempfile.mkdtemp()
-os.environ["NWZ_DB"] = str(Path(_TMP) / "nwz.sqlite")
+os.environ["RATSLOTSE_DB"] = str(Path(_TMP) / "ratslotse.sqlite")
 os.environ["COUNCIL_DB"] = str(Path(_TMP) / "council.sqlite")
 os.environ["WEB_JWT_SECRET"] = "test-secret"
 os.environ["WEB_ADMIN_EMAIL"] = "admin@test.de"
@@ -30,13 +30,13 @@ from council.store import CouncilStore  # noqa: E402
 from council.scraper import CouncilSession, AgendaItem  # noqa: E402
 from scripts.grant_admin import grant_admin  # noqa: E402
 
-NWZ_DB = os.environ["NWZ_DB"]
+RATSLOTSE_DB = os.environ["RATSLOTSE_DB"]
 COUNCIL_DB = os.environ["COUNCIL_DB"]
 
 
 @pytest.fixture(autouse=True)
 def fresh_dbs():
-    for base in (NWZ_DB, COUNCIL_DB):
+    for base in (RATSLOTSE_DB, COUNCIL_DB):
         for suffix in ("", "-wal", "-shm"):
             Path(base + suffix).unlink(missing_ok=True)
     yield
@@ -58,7 +58,7 @@ def _register(client, email="admin@test.de", password="password123"):
     """
     r = client.post("/api/auth/register", json={"email": email, "password": password})
     if r.status_code == 201 and email == "admin@test.de":
-        grant_admin(email, NWZ_DB)
+        grant_admin(email, RATSLOTSE_DB)
     return r
 
 
@@ -179,12 +179,12 @@ def test_merkliste_top_wird_zum_beschluss_und_meldet_ergebnis(client):
           "raw_result": "einstimmig", "sub_votes": []}],
         [],
     )
-    nwz = Store(NWZ_DB)
+    ratslotse = Store(RATSLOTSE_DB)
     from council.ergebnisse import melde_ergebnisse
-    assert melde_ergebnisse(cs, nwz, [8123]) == 1
-    assert nwz._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 1
-    assert nwz.get_bookmark_for_owner(1, bookmark_id)["result_notified_at"] is not None
-    nwz.close()
+    assert melde_ergebnisse(cs, ratslotse, [8123]) == 1
+    assert ratslotse._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 1
+    assert ratslotse.get_bookmark_for_owner(1, bookmark_id)["result_notified_at"] is not None
+    ratslotse.close()
     cs.close()
 
     listed = client.get("/api/bookmarks").json()["bookmarks"]
@@ -242,19 +242,19 @@ def test_merkliste_akzeptiert_nur_konkrete_unterpunkte(client):
     # Altbestand aus der Zeit vor der Blatt-TOP-Regel: sichtbar lassen, aber
     # den nutzlosen Ergebnis-Schalter selbst ohne vorherigen Seitenaufruf
     # spätestens im Protokoll-Lauf abschalten.
-    nwz = Store(NWZ_DB)
-    owner_id = nwz.get_web_user_by_email("admin@test.de")["id"]
-    legacy = nwz.add_bookmark(
+    ratslotse = Store(RATSLOTSE_DB)
+    owner_id = ratslotse.get_web_user_by_email("admin@test.de")["id"]
+    legacy = ratslotse.add_bookmark(
         owner_id, kind="agenda_item", target_key="agenda_item:8124:Ö 4",
         ksinr=8124, item_number="Ö 4",
         title="Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
     )
-    nwz.set_bookmark_result_notification(owner_id, legacy["id"], True)
+    ratslotse.set_bookmark_result_notification(owner_id, legacy["id"], True)
     from council.ergebnisse import melde_ergebnisse
-    assert melde_ergebnisse(cs, nwz, [8124]) == 0
-    assert nwz.get_bookmark_for_owner(owner_id, legacy["id"])["notify_result"] == 0
-    assert nwz._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 0
-    nwz.close()
+    assert melde_ergebnisse(cs, ratslotse, [8124]) == 0
+    assert ratslotse.get_bookmark_for_owner(owner_id, legacy["id"])["notify_result"] == 0
+    assert ratslotse._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 0
+    ratslotse.close()
     cs.close()
 
     listed = client.get("/api/bookmarks").json()["bookmarks"]
@@ -281,7 +281,7 @@ def test_register_never_grants_admin(client):
     assert r.json()["role"] == "user"
     # Der Admin-Bereich bleibt zu (die Registrierung hat direkt eingeloggt).
     assert client.get("/api/admin/users").status_code == 403
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     assert store.get_web_user_by_email("admin@test.de")["role"] == "user"
     store.close()
 
@@ -307,7 +307,7 @@ def test_configured_admin_gets_role_only_after_email_confirmation(client):
         resend_api_key="x", app_base_url="https://ratslotse.de",
         email_from="F <f@x.de>", feedback_email="", web_admin_email="admin@test.de",
         cookie_secure=False, access_token_expire_minutes=60,
-        app_access_token_expire_minutes=60, nwz_db=str(NWZ_DB),
+        app_access_token_expire_minutes=60, ratslotse_db=str(RATSLOTSE_DB),
     )
 
     def fake_send(to, subject, html, **kw):
@@ -338,7 +338,7 @@ def test_configured_admin_not_re_promoted_when_an_admin_exists(client):
     sie nicht zurück — befördert wird nur ein Deployment ganz ohne Admin."""
     _register(client)  # admin@test.de ist Admin (per CLI, wie im Betrieb)
     _register(client, email="zweite@test.de")
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     zweite = store.get_web_user_by_email("zweite@test.de")
     store.set_web_user_role(int(zweite["id"]), "admin")  # zweiter Admin übernimmt
     admin_id = int(store.get_web_user_by_email("admin@test.de")["id"])
@@ -360,16 +360,16 @@ def test_grant_admin_cli_promotes_only_existing_accounts(client):
     client.post("/api/auth/register", json={"email": "ops@test.de", "password": "password123"})
     assert client.get("/api/admin/users").status_code == 403
 
-    ok, _ = grant_admin("OPS@test.de", NWZ_DB)  # Adresse wird normalisiert
+    ok, _ = grant_admin("OPS@test.de", RATSLOTSE_DB)  # Adresse wird normalisiert
     assert ok is True
     assert client.get("/api/admin/users").status_code == 200
 
-    ok_again, msg = grant_admin("ops@test.de", NWZ_DB)
+    ok_again, msg = grant_admin("ops@test.de", RATSLOTSE_DB)
     assert ok_again is True and "bereits Admin" in msg
 
-    fehlt, _ = grant_admin("gibtsnicht@test.de", NWZ_DB)
+    fehlt, _ = grant_admin("gibtsnicht@test.de", RATSLOTSE_DB)
     assert fehlt is False
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     assert store.get_web_user_by_email("gibtsnicht@test.de") is None  # kein Konto angelegt
     store.close()
 
@@ -524,7 +524,7 @@ def test_admin_jobs_zeigt_letzten_lauf(client):
     from datetime import datetime, timedelta
 
     _register(client)
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     frisch = datetime.utcnow() - timedelta(hours=2)
     store.record_job_run(
         "backup_db", frisch.isoformat(timespec="seconds"),
@@ -623,7 +623,7 @@ def test_activation_emails_user_on_approve(client):
     assert sent == {}
 
 
-# ---- nwz search ----
+# ---- ratslotse search ----
 
 
 
@@ -1272,7 +1272,7 @@ def test_sessions_carry_my_topic_items(client):
                                    agenda_items=[AgendaItem("Ö 1", "Museumskonzept")]))
     cs.close()
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     topic = store.add_topic(1, "Radwege", "Ausbau von Radwegen")
     store.replace_agenda_matches(1, 800, "h", {topic.id: ["Ö 2"]})
     # Treffer eines anderen Owners auf derselben Sitzung: darf nicht auftauchen.
@@ -1377,7 +1377,7 @@ def test_themen_bubble_verstummt_nach_uebersichtsbesuch(client):
     tid = client.post("/api/topics",
                       json={"name": "Radwege", "description": "Ausbau in Oldenburg"}).json()["id"]
     from kern.store import Store
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         store.save_topic_decision_matches(tid, 1, [(101, 0.9), (102, 0.8)])
     finally:
@@ -1424,7 +1424,7 @@ def test_topic_decision_matching(client):
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 77").fetchone()[0]
     cs.close()
 
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     assert st.save_topic_decision_matches(tid, owner_id, [(did, 0.81)]) == 1
     assert st.topic_decision_counts(owner_id) == {tid: 1}
     st.close()
@@ -1508,7 +1508,7 @@ def test_erstabgleich_ist_keine_neuigkeit(client, monkeypatch):
 
     assert client.get("/api/topics").json()[0]["unread_count"] == 0
     assert client.get("/api/topics/unread-count").json()["total"] == 0
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     try:
         seit = (date.today() - timedelta(days=7)).isoformat()
         assert st.topic_match_decision_ids_since(owner_id, seit) == []
@@ -1640,7 +1640,7 @@ def test_karte_traegt_ihre_juengsten_treffer(client):
     tage = [(heute - timedelta(days=n)).isoformat() for n in (1, 5, 40, 200, 300, 400)]
     ids = _seed_datierte_beschluesse(tage)
     tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(d, 0.8) for d in ids], als_neu=False)
     st.close()
 
@@ -1663,7 +1663,7 @@ def test_punkte_und_abzeichen_zaehlen_dieselbe_menge(client):
     heute = date.today()
     ids = _seed_datierte_beschluesse([(heute - timedelta(days=n)).isoformat() for n in (1, 2, 3)])
     tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(d, 0.8) for d in ids])
     # Einen als gesehen markieren, indem alle markiert und dann einer neu
     # dazugelegt wird — so entsteht derselbe Zustand wie im Betrieb.
@@ -1686,7 +1686,7 @@ def test_einzelner_treffer_laesst_sich_als_gelesen_melden(client):
     heute = date.today()
     ids = _seed_datierte_beschluesse([(heute - timedelta(days=n)).isoformat() for n in (1, 2, 3)])
     tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(d, 0.8) for d in ids])
     st.close()
     assert client.get("/api/topics").json()[0]["unread_count"] == 3
@@ -1711,7 +1711,7 @@ def test_fremder_beschluss_kommt_nicht_in_die_gelesen_liste(client):
     owner_id = _register(client).json()["id"]
     ids = _seed_datierte_beschluesse([date.today().isoformat()])
     tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(ids[0], 0.8)])
     st.close()
 
@@ -1724,7 +1724,7 @@ def test_topic_decisions_replace_on_rerun(client):
     """Re-running the matcher replaces a topic's matches (no stale duplicates)."""
     owner_id = _register(client).json()["id"]
     tid = client.post("/api/topics", json={"name": "X", "description": "y"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(1, 0.7), (2, 0.6)])
     st.save_topic_decision_matches(tid, owner_id, [(2, 0.9)])  # rerun → replaces
     assert [m["decision_id"] for m in st.get_topic_decision_matches(tid)] == [2]
@@ -1738,7 +1738,7 @@ def test_gedeckelte_trefferzahl_wird_als_solche_ausgeliefert(client):
     schreibt jetzt „2+", wenn der Lauf mehr gefunden als gespeichert hat."""
     owner_id = _register(client).json()["id"]
     tid = client.post("/api/topics", json={"name": "Fliegerhorst", "description": "Konversion"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(1, 0.9), (2, 0.8)],
                                    gedeckelt=True, kandidaten=120)
     st.close()
@@ -1769,7 +1769,7 @@ def test_themenliste_enthaelt_auch_berichte(client):
     ids = [r[0] for r in cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 78")]
     cs.close()
 
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(i, 0.9) for i in ids])
     st.close()
 
@@ -1798,7 +1798,7 @@ def test_unverified_user_blocked_until_email_confirmed(client):
     fake_settings = SimpleNamespace(
         resend_api_key="x", app_base_url="https://ratslotse.de",
         email_from="F <f@x.de>", feedback_email="", web_admin_email="admin@test.de",
-        cookie_secure=False, access_token_expire_minutes=60, nwz_db=str(NWZ_DB),
+        cookie_secure=False, access_token_expire_minutes=60, ratslotse_db=str(RATSLOTSE_DB),
     )
 
     def fake_send(to, subject, html, **kw):
@@ -1969,7 +1969,7 @@ def test_support_kontakt_wird_gespeichert(client):
             "kind": "bug", "email": "gast@example.org", "message": "Die Karte lädt nicht.",
         })
     assert r.status_code == 202          # der Absender merkt vom Mail-Fehler nichts
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         row = store.list_feedback()[0]
         assert row["owner_id"] == 0 and row["email"] == "gast@example.org"
@@ -1987,7 +1987,7 @@ def test_support_kontakt_honigtopf(client):
             "message": "Günstige Uhren kaufen", "website": "http://spam.example",
         })
     assert r.status_code == 202 and r.json()["ok"] is True
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         assert store.list_feedback() == []
     finally:
@@ -2016,7 +2016,7 @@ def test_support_kontakt_ohne_mail_konfiguration():
             "kind": "feature", "email": "gast@example.org", "message": "Bitte eine Karte für Radwege",
         })
     assert r.status_code == 202 and r.json()["ok"] is True
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         assert store.list_feedback()[0]["email"] == "gast@example.org"
     finally:
@@ -2406,7 +2406,7 @@ def test_register_marks_verified_without_email_config(client):
 def test_verify_email_endpoint(client):
     _register(client)  # admin
     _register(client, email="bob@test.de")
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     uid = store.get_web_user_by_email("bob@test.de")["id"]
     store.set_email_verified(uid, False)  # pretend the link was sent, not yet clicked
     raw = "verify-token-123"
@@ -2420,7 +2420,7 @@ def test_verify_email_endpoint(client):
     # valid token verifies the address
     r = client.post("/api/auth/verify-email", json={"token": raw})
     assert r.status_code == 200 and r.json()["email_verified"] is True
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     assert store.get_web_user_by_email("bob@test.de")["email_verified"] == 1
     store.close()
     # single-use: replaying the same token fails
@@ -2428,7 +2428,7 @@ def test_verify_email_endpoint(client):
 
 
 def test_email_verification_token_expiry():
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     uid = store.create_web_user("exp@test.de", "h", "user", "pending", email_verified=False)
     token_hash = hashlib.sha256(b"expired").hexdigest()
     past = (datetime.utcnow() - timedelta(hours=1)).isoformat(timespec="seconds")
@@ -2487,14 +2487,14 @@ def test_app_flow_bearer_registers_push_device(client):
     assert only_bearer.post("/api/push/register",
                             json={"token": "dev-tok-1", "platform": "ios"},
                             headers=bearer).status_code == 204
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     uid = store.get_web_user_by_email("admin@test.de")["id"]
     assert [t["token"] for t in store.get_push_tokens_for_owner(uid)] == ["dev-tok-1"]
     store.close()
 
     assert only_bearer.post("/api/push/unregister",
                             json={"token": "dev-tok-1"}, headers=bearer).status_code == 204
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     assert store.get_push_tokens_for_owner(uid) == []
     store.close()
 
@@ -2509,7 +2509,7 @@ def _kurzlebiges_cookie(client, minuten: int = 10) -> str:
     """
     from app.security import create_access_token
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     user = store.get_web_user_by_email("admin@test.de")
     store.close()
     token = create_access_token(
@@ -2648,7 +2648,7 @@ def test_app_verify_email_returns_bearer_token(client):
     """Verification opened via the app deep link should land logged-in: an
     `X-Client: app` verify-email gets a bearer token in the body."""
     _register(client)  # admin (active)
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     uid = store.get_web_user_by_email("admin@test.de")["id"]
     raw = "app-verify-token"
     exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
@@ -2800,7 +2800,7 @@ def test_apple_only_account_deletes_via_apple_reauth(client, apple_jwks):
     r = anna.request("DELETE", "/api/account",
                      json={"apple_identity_token": _apple_token(sub="sub-del", email=None)})
     assert r.status_code == 204
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     assert store.get_web_user_by_email("del@example.com") is None
     store.close()
 
@@ -2820,7 +2820,7 @@ def test_push_unregister_is_scoped_to_owner(client):
     bob_client.post("/api/auth/login", json={"email": "bob@test.de", "password": "password123"})
     # Bob's unregister of the admin's token is a no-op (still 204), token survives.
     assert bob_client.post("/api/push/unregister", json={"token": "adm-dev"}).status_code == 204
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     admin_uid = store.get_web_user_by_email("admin@test.de")["id"]
     assert [t["token"] for t in store.get_push_tokens_for_owner(admin_uid)] == ["adm-dev"]
     store.close()
@@ -2857,7 +2857,7 @@ def test_badges_kartograf_distinct_and_derived(client):
 
     # Server-abgeleitet (Frühwarner): Push-Gerät registriert → verdient beim
     # nächsten GET — und bleibt verdient, auch wenn das Gerät wieder geht.
-    store = Store(Path(NWZ_DB))
+    store = Store(Path(RATSLOTSE_DB))
     store.add_push_token(1, "tok-1", "ios")
     assert {b["id"]: b["earned"] for b in client.get("/api/badges").json()["badges"]}["fruehwarner"] is True
     store.remove_push_token("tok-1")
@@ -3214,7 +3214,7 @@ def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
                       if line.startswith("data: ")]
         return next(e for e in events if e["type"] == "done")
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         # Nie gefragt (NULL) → kein Save, obwohl der Client das Feld kennt.
         done = frag({"question": "Was ist mit Radwegen?", "conversation_id": None})
@@ -4252,7 +4252,7 @@ def test_decisions_topic_filter_grenzt_ein_und_kombiniert(client):
     council.close()
 
     tid = client.post("/api/topics", json={"name": "Radwege", "description": "Alles zu Radwegen"}).json()["id"]
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     store.save_topic_decision_matches(tid, 1, [(1, 0.9), (2, 0.8)])
     store.close()
 
@@ -4553,7 +4553,7 @@ def test_vorlage_follow_merkt_sich_den_stand_beim_abonnieren(client):
     ])
     client.post("/api/council/vorlage/4711/follow")
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     row = store.get_vorlage_follow_targets()[0]
     store.close()
     stations = json.loads(row["stations"])
@@ -4892,7 +4892,7 @@ def test_zustellweg_off_ist_erlaubt_und_raeumt_die_warteschlange(client):
     owner = _register(client).json()["id"]
 
     # Etwas liegt schon in der Warteschlange, als abgeschaltet wird.
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     notify.einreihen(store, owner, notify.N2_THEMA, "Radweg", "<p>x</p>", "/council")
     assert len(store.due_notifications(owner, "2999-01-01")) == 1
     store.close()
@@ -4901,7 +4901,7 @@ def test_zustellweg_off_ist_erlaubt_und_raeumt_die_warteschlange(client):
     assert r.status_code == 200, r.text
     assert r.json()["delivery_channel"] == "off"
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     # Nicht bloß stummgeschaltet: Was wartete, ist weg. Sonst käme es beim
     # Wiedereinschalten als Nachlieferung aus der Zeit, in der ausdrücklich
     # nichts gewollt war.
@@ -5135,7 +5135,7 @@ def test_deep_research_meldet_sich_am_ende(client, monkeypatch):
     _deep_mocks(monkeypatch)
     gemeldet: list[str] = []
     monkeypatch.setattr(deepresearch, "melden",
-                        lambda job, nwz_db, status: gemeldet.append(status))
+                        lambda job, ratslotse_db, status: gemeldet.append(status))
 
     job_id = client.post("/api/council/deep-research",
                          json={"question": "Wie ist der Stand beim Stadionneubau?"}).json()["job_id"]
@@ -5144,7 +5144,7 @@ def test_deep_research_meldet_sich_am_ende(client, monkeypatch):
 
     gemeldet.clear()
     job = deepresearch.DeepJob(id="x", user_id=1, frage="egal")
-    deepresearch._gestoppt(job, NWZ_DB)
+    deepresearch._gestoppt(job, RATSLOTSE_DB)
     assert gemeldet == []
 
 
@@ -5166,7 +5166,7 @@ def test_deep_research_kontingent_und_ein_job_regel(client, monkeypatch):
     assert client.post("/api/council/deep-research",
                        json={"question": "Noch eine Frage dazu"}).status_code == 409
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         job_id = r.json()["job_id"]
@@ -5197,7 +5197,7 @@ def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
     from council import qa as qa_mod
 
     _register(client)
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
 
@@ -5263,7 +5263,7 @@ def test_admin_limits_steuern_recherche_kontingent(client, monkeypatch):
     monkeypatch.setattr(deepresearch, "start_job",
                         lambda job, a, b: deepresearch._registry.__setitem__(job.id, job))
     deepresearch._registry.clear()
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         # Eigenes Limit 2: nach zwei zählenden Jobs ist Schluss.
@@ -5316,7 +5316,7 @@ def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
     frag()
     assert len(aufrufe) == 1  # normal: Limiter wird gefragt
     assert schluessel == [1]  # Mobilfunk-CGNAT teilt nicht mehr den IP-Bucket
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         client.put(f"/api/admin/users/{uid}/limits", json={"deep_limit": None, "limits_frei": True})
@@ -5349,7 +5349,7 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
         {"id": 7, "sprecher": "Höpken", "partei": "BSW", "art": "rede", "top": "Ö 10",
          "text": "Endlich kommt das Stadion.", "committee": "Rat", "session_date": "2026-06-01"}])
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         store.set_qa_speichern(uid, True)
@@ -5389,7 +5389,7 @@ def test_gespraeche_liste_blaettert_und_sucht(client):
     Suche, `weitere` sagt, ob „Ältere anzeigen" noch etwas nachliefert.
     """
     _register(client)
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         store.set_qa_speichern(uid, True)

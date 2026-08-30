@@ -14,7 +14,7 @@ import pytest
 _BACKEND = Path(__file__).resolve().parents[1] / "web" / "backend"
 sys.path.insert(0, str(_BACKEND))
 _TMP = tempfile.mkdtemp()
-os.environ["NWZ_DB"] = str(Path(_TMP) / "nwz.sqlite")
+os.environ["RATSLOTSE_DB"] = str(Path(_TMP) / "ratslotse.sqlite")
 os.environ["COUNCIL_DB"] = str(Path(_TMP) / "council.sqlite")
 os.environ["WEB_JWT_SECRET"] = "test-secret"
 os.environ["COOKIE_SECURE"] = "false"

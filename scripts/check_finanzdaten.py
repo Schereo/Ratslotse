@@ -114,7 +114,7 @@ def _schon_gemeldet(ausbleibend: list[str]) -> bool:
     try:
         from kern.store import Store
 
-        db = Path(os.environ.get("NWZ_DB") or ROOT / "data" / "nwz.sqlite")
+        db = Path(os.environ.get("RATSLOTSE_DB") or ROOT / "data" / "ratslotse.sqlite")
         if not db.exists():
             return False
         store = Store(db)

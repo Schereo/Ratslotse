@@ -34,7 +34,7 @@ from council.store import CouncilStore
 from kern import notify
 from kern.store import Store
 
-NWZ_DB = ROOT / "data" / "nwz.sqlite"
+RATSLOTSE_DB = ROOT / "data" / "ratslotse.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 APP_URL = os.environ.get("APP_BASE_URL", "https://ratslotse.de").rstrip("/")
 
@@ -73,10 +73,10 @@ def _message(follow: dict, neu: list[str], app_url: str) -> str:
 
 
 def main() -> dict:
-    nwz = Store(NWZ_DB)
-    follows = nwz.get_vorlage_follow_targets()
+    ratslotse = Store(RATSLOTSE_DB)
+    follows = ratslotse.get_vorlage_follow_targets()
     if not follows:
-        nwz.close()
+        ratslotse.close()
         print("Keine verfolgten Vorgänge.")
         return {"Verfolgte Vorgänge": 0, "Benachrichtigungen": 0}
 
@@ -115,22 +115,22 @@ def main() -> dict:
             # Nachtruhe noch Tagesgrenze, und der Schalter „Verfolgte Vorgänge"
             # in „Mein Konto" hätte keine Wirkung.
             titel = f"{f.get('vorlage_nr') or 'Dein Vorgang'}: neue Station"
-            if not notify.einreihen(nwz, f["owner_id"], notify.N4_VORGANG, titel,
+            if not notify.einreihen(ratslotse, f["owner_id"], notify.N4_VORGANG, titel,
                                     _message(f, neu, f"{APP_URL}/topics"), "/topics"):
                 # Anlass abgeschaltet — Stand trotzdem fortschreiben, sonst
                 # käme beim Einschalten die ganze Historie auf einmal.
-                nwz.mark_vorlage_follow_notified(f["id"], json.dumps(jetzt, ensure_ascii=False))
+                ratslotse.mark_vorlage_follow_notified(f["id"], json.dumps(jetzt, ensure_ascii=False))
                 continue
             gemeldet += 1
             print(f"  owner {f['owner_id']} ← kvonr={f['kvonr']}: {len(neu)} neue Station(en)")
         except Exception:  # noqa: BLE001 — Zustellfehler darf den Stand nicht einfrieren
             print(f"  owner {f['owner_id']}: Zustellung fehlgeschlagen")
             continue
-        nwz.mark_vorlage_follow_notified(f["id"], json.dumps(jetzt, ensure_ascii=False))
+        ratslotse.mark_vorlage_follow_notified(f["id"], json.dumps(jetzt, ensure_ascii=False))
 
     council.close()
-    zugestellt = notify.zustellen(nwz)
-    nwz.close()
+    zugestellt = notify.zustellen(ratslotse)
+    ratslotse.close()
     print(f"Fertig — {gemeldet} eingereiht, {zugestellt} zugestellt.")
     return {
         "Verfolgte Vorgänge": len(kvonrs),

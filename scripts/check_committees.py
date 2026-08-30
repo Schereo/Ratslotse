@@ -28,7 +28,7 @@ from council.committee_summary import sitzungskopf, summarize_agenda_items
 from council.dringlichkeit import ist_dringlichkeitsantrag
 from council.ergebnisse import sitzung_href
 
-NWZ_DB = ROOT / "data" / "nwz.sqlite"
+RATSLOTSE_DB = ROOT / "data" / "ratslotse.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
@@ -196,9 +196,9 @@ def _aenderungs_teil(alt: list[dict] | None, jetzt: list[dict]) -> str | None:
 
 def main() -> dict:
     """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
-    nwz_store = Store(NWZ_DB)
-    all_subs = nwz_store.get_all_subscriptions()       # {owner_id: [committee_name]}
-    targets = nwz_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
+    ratslotse_store = Store(RATSLOTSE_DB)
+    all_subs = ratslotse_store.get_all_subscriptions()       # {owner_id: [committee_name]}
+    targets = ratslotse_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
 
     # Daten werden auch OHNE Abonnements aktualisiert — die Web-App zeigt
     # Sitzungen und Terminplan für alle Nutzer*innen, nicht nur Abonnenten.
@@ -283,7 +283,7 @@ def main() -> dict:
             # „Themen-Treffer gewinnt": Wer für diese Sitzung schon weiß, welcher
             # TOP ihn betrifft (aus check_council), braucht die Gremien-Meldung
             # nicht zusätzlich.
-            if nwz_store.has_agenda_match(owner_id, ksinr):
+            if ratslotse_store.has_agenda_match(owner_id, ksinr):
                 continue
             last_hash = council_store.get_last_notified_hash(ksinr, owner_id)
             if last_hash is None:
@@ -359,7 +359,7 @@ def main() -> dict:
             if owner_id not in targets:
                 continue
             print(f"  {session.session_date} {session.committee} → owner {owner_id} (neu)")
-            notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
+            notify.einreihen(ratslotse_store, owner_id, notify.N1_TAGESORDNUNG,
                              subject, base_message + grund, sitzung_href(ksinr),
                              push_text=push_neu)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
@@ -424,7 +424,7 @@ def main() -> dict:
             # Eigener Anlass seit Tims Wunsch 26.08.2026: „Ich möchte zwar die
             # Tagesordnung bekommen, aber nicht über jede Änderung informiert
             # werden." Hängt in `gewuenscht` am N1-Elternteil.
-            notify.einreihen(nwz_store, owner_id, notify.N1_AENDERUNG,
+            notify.einreihen(ratslotse_store, owner_id, notify.N1_AENDERUNG,
                              update_subject, nachricht, sitzung_href(ksinr),
                              push_text=push_kurz)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
@@ -466,8 +466,8 @@ def main() -> dict:
     # Der 7-Uhr-Lauf ist zugleich der Wecker der Warteschlange: Was über Nacht
     # anfiel (Nachtruhe 21–7), geht jetzt raus.
     stats: dict = {}
-    zugestellt = notify.zustellen(nwz_store, stats=stats)
-    nwz_store.close()
+    zugestellt = notify.zustellen(ratslotse_store, stats=stats)
+    ratslotse_store.close()
 
     print(f"Done — {notifications_sent} Meldung(en) eingereiht, {zugestellt} zugestellt.")
     kennzahlen = {

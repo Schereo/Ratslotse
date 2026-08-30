@@ -138,7 +138,7 @@ def sitzung_href(ksinr: int, tops: list[str] | None = None) -> str:
     return ziel
 
 
-def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
+def melde_ergebnisse(council_store, ratslotse_store, ksinrs: list[int]) -> int:
     """Für frisch geparste Sitzungen die Ergebnis-Meldungen einreihen.
 
     Empfänger sind die Konten, denen zu **dieser** Sitzung schon ein
@@ -161,31 +161,31 @@ def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
         # Weg zum selben Ereignis. Beide Wege hier zusammenführen, damit ein
         # Konto mit Themen-Treffer UND gemerktem TOP nicht zweimal dieselbe
         # Protokoll-Veröffentlichung bekommt.
-        bookmark_rows = nwz_store.bookmark_result_targets(ksinr)
+        bookmark_rows = ratslotse_store.bookmark_result_targets(ksinr)
         konkrete_bookmarks = []
         for row in bookmark_rows:
             resolved = bookmark_logic.resolve_bookmark(row, council_store)
             if resolved.get("agenda_group"):
                 # Altbestand: Oberpunkte wurden vor der Blatt-TOP-Regel noch
                 # akzeptiert. Kein Ergebnis versprechen, das es nicht gibt.
-                nwz_store.set_bookmark_result_notification(row["owner_id"], row["id"], False)
+                ratslotse_store.set_bookmark_result_notification(row["owner_id"], row["id"], False)
                 continue
             konkrete_bookmarks.append(row)
         bookmark_rows = konkrete_bookmarks
         bookmarks_by_owner: dict[int, list[dict]] = {}
         for row in bookmark_rows:
             bookmarks_by_owner.setdefault(row["owner_id"], []).append(row)
-        owners = set(nwz_store.owners_with_agenda_match(ksinr)) | set(bookmarks_by_owner)
+        owners = set(ratslotse_store.owners_with_agenda_match(ksinr)) | set(bookmarks_by_owner)
         if not alle and not bookmarks_by_owner:
             continue
 
         for owner_id in sorted(owners):
             eigene_bookmarks = bookmarks_by_owner.get(owner_id, [])
-            if nwz_store.result_already_sent(ksinr, owner_id):
-                nwz_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
+            if ratslotse_store.result_already_sent(ksinr, owner_id):
+                ratslotse_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
                 continue
             tops = {m["item_number"] for m in
-                    nwz_store.agenda_matches_for_owner(owner_id, [ksinr]).get(ksinr, [])}
+                    ratslotse_store.agenda_matches_for_owner(owner_id, [ksinr]).get(ksinr, [])}
             treffer = [alle[t] for t in sorted(tops) if t in alle and alle[t].get("outcome")]
             # Gemerkte TOPs gegen den aktuellen Stand auflösen — nicht stumpf
             # über die gespeicherte Nummer, denn die kann sich bis zur Sitzung
@@ -205,7 +205,7 @@ def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
                     top_liste = [str(b.get("item_number") or "") for b in eigene_bookmarks]
                     ziel = sitzung_href(ksinr, top_liste)
                     queued = notify.einreihen(
-                        nwz_store, owner_id, notify.N3_ERGEBNIS,
+                        ratslotse_store, owner_id, notify.N3_ERGEBNIS,
                         f"Protokoll ist da: {titel}",
                         (f"<p>Das Protokoll des {sitzung['committee']} vom "
                          f"{_datum(sitzung['session_date'])} ist veröffentlicht.</p>"
@@ -216,17 +216,17 @@ def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
                     )
                     if queued:
                         eingereiht += 1
-                nwz_store.mark_result_sent(ksinr, owner_id)
-                nwz_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
+                ratslotse_store.mark_result_sent(ksinr, owner_id)
+                ratslotse_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
                 continue
             notify.einreihen(
-                nwz_store, owner_id, notify.N3_ERGEBNIS,
+                ratslotse_store, owner_id, notify.N3_ERGEBNIS,
                 _titel(treffer),
                 _html(treffer, sitzung["committee"], sitzung["session_date"], decision_href),
                 decision_href(treffer[0]["id"]),
             )
-            nwz_store.mark_result_sent(ksinr, owner_id)
-            nwz_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
+            ratslotse_store.mark_result_sent(ksinr, owner_id)
+            ratslotse_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
             eingereiht += 1
             logger.info("N3 für owner %s, Sitzung %s: %d Beschluss/Beschlüsse",
                         owner_id, ksinr, len(treffer))

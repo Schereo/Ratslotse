@@ -20,7 +20,7 @@ import pytest
 def _modul(tmp_path: Path):
     """`check_committees` frisch laden und auf Wegwerf-Datenbanken zeigen.
 
-    ``NWZ_DB``/``COUNCIL_DB`` sind dort feste Modul-Konstanten (aus ``ROOT``),
+    ``RATSLOTSE_DB``/``COUNCIL_DB`` sind dort feste Modul-Konstanten (aus ``ROOT``),
     KEINE Umgebungsvariablen — sie müssen nach dem Import gesetzt werden, sonst
     liefe der Test gegen die echte Datenbank des Entwicklungsrechners.
     """
@@ -29,7 +29,7 @@ def _modul(tmp_path: Path):
     modul = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = modul
     spec.loader.exec_module(modul)
-    modul.NWZ_DB = tmp_path / "nwz.sqlite"
+    modul.RATSLOTSE_DB = tmp_path / "ratslotse.sqlite"
     modul.COUNCIL_DB = tmp_path / "council.sqlite"
     return modul
 
