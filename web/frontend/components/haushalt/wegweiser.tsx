@@ -106,10 +106,10 @@ type Ziel = {
   zeichen: LucideIcon;
 };
 
-const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
+const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
   {
     kicker: "Die Zahlen",
-    frage: "Woher das Geld kommt, wofür es eingeplant ist und welcher Teil politisch gestaltbar bleibt.",
+    question: "Woher das Geld kommt, wofür es eingeplant ist und welcher Teil politisch gestaltbar bleibt.",
     ziele: [
       {
         href: "/haushalt/einnahmen",
@@ -167,7 +167,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
   },
   {
     kicker: "Die Gegenprobe",
-    frage: "Der Haushalt ist ein Plan. Der Jahresabschluss zeigt, was tatsächlich daraus geworden ist.",
+    question: "Der Haushalt ist ein Plan. Der Jahresabschluss zeigt, was tatsächlich daraus geworden ist.",
     ziele: [
       {
         href: "/haushalt/plan-ist",
@@ -191,7 +191,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
   },
   {
     kicker: "Der Rahmen",
-    frage: "Zum Gesamtbild gehören auch städtische Unternehmen, der Vergleich mit anderen Städten und die Schulden über mehrere Jahre.",
+    question: "Zum Gesamtbild gehören auch städtische Unternehmen, der Vergleich mit anderen Städten und die Schulden über mehrere Jahre.",
     ziele: [
       {
         // EIN Ziel statt vierer (21.08.2026). Summe, Gesellschaften, ihre
@@ -228,7 +228,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
   },
   {
     kicker: "Mitreden",
-    frage: "Wann der Rat entscheidet, worüber politisch gestritten wird und welche Stellschrauben es gibt.",
+    question: "Wann der Rat entscheidet, worüber politisch gestritten wird und welche Stellschrauben es gibt.",
     ziele: [
       {
         // EIN Ziel statt zweier (21.08.2026). „Wann wird das entschieden?"
@@ -481,7 +481,7 @@ export function Wegweiser() {
                           </span>
                         </div>
                         <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                          {e.frage}
+                          {e.question}
                         </p>
                       </div>
                     </div>

@@ -18,10 +18,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Frage({ frage, children }: { frage: string; children: React.ReactNode }) {
+function Frage({ question, children }: { question: string; children: React.ReactNode }) {
   return (
     <div className="border-t border-border/60 pt-4 first:border-t-0 first:pt-0">
-      <h3 className="font-semibold text-foreground">{frage}</h3>
+      <h3 className="font-semibold text-foreground">{question}</h3>
       <div className="mt-1.5 space-y-2 leading-relaxed text-muted-foreground">{children}</div>
     </div>
   );
@@ -68,7 +68,7 @@ export default function HilfePage() {
 
           <Section title="Häufige Fragen">
             <div className="mt-3 space-y-4">
-              <Frage frage="Ich komme nicht in mein Konto.">
+              <Frage question="Ich komme nicht in mein Konto.">
                 <p>
                   Über <Link href="/forgot-password" className="text-primary hover:underline">Passwort vergessen</Link>{" "}
                   bekommst du einen Link zum Zurücksetzen an deine Adresse. Kommt keine Mail an, sieh
@@ -77,7 +77,7 @@ export default function HilfePage() {
                 </p>
               </Frage>
 
-              <Frage frage="Wie lösche ich mein Konto?">
+              <Frage question="Wie lösche ich mein Konto?">
                 <p>
                   In der App und im Browser unter <b>Mein Konto → Konto löschen</b>. Das Konto und alles,
                   was daran hängt — Themen, Benachrichtigungen, gespeicherte Gespräche — werden dabei
@@ -86,7 +86,7 @@ export default function HilfePage() {
                 </p>
               </Frage>
 
-              <Frage frage="Ich bekomme zu viele (oder keine) Benachrichtigungen.">
+              <Frage question="Ich bekomme zu viele (oder keine) Benachrichtigungen.">
                 <p>
                   Unter <b>Mein Konto → Benachrichtigungen</b> stellst du ein, ob du per E-Mail, per
                   Push oder gar nicht informiert wirst, und zu welchen Anlässen. Nachts wird ohnehin
@@ -94,7 +94,7 @@ export default function HilfePage() {
                 </p>
               </Frage>
 
-              <Frage frage="Eine Angabe stimmt nicht.">
+              <Frage question="Eine Angabe stimmt nicht.">
                 <p>
                   Ratslotse liest das offizielle Ratsinformationssystem der Stadt Oldenburg aus und
                   fasst es maschinell zusammen. Dabei können Fehler entstehen — maßgeblich ist immer
@@ -104,11 +104,11 @@ export default function HilfePage() {
                 </p>
               </Frage>
 
-              <Frage frage="Was kostet Ratslotse?">
+              <Frage question="Was kostet Ratslotse?">
                 <p>Nichts. Es gibt keine Bezahlfunktionen, keine Abos und keine Werbung.</p>
               </Frage>
 
-              <Frage frage="Was passiert mit meinen Daten?">
+              <Frage question="Was passiert mit meinen Daten?">
                 <p>
                   Das steht vollständig in der{" "}
                   <Link href="/datenschutz" className="text-primary hover:underline">Datenschutzerklärung</Link>.

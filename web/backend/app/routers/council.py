@@ -2034,9 +2034,9 @@ class QaSharePartei(BaseModel):
 
 
 class QaShareBody(BaseModel):
-    frage: str = Field(min_length=1, max_length=300)
-    antwort: str = Field(min_length=1, max_length=8000)
-    quellen: list[QaShareQuelle] = Field(default_factory=list, max_length=40)
+    question: str = Field(min_length=1, max_length=300)
+    answer: str = Field(min_length=1, max_length=8000)
+    sources: list[QaShareQuelle] = Field(default_factory=list, max_length=40)
     # Bausteine neben den Beschlüssen: ohne sie zeigte die geteilte Seite
     # weniger als das Gespräch, aus dem sie stammt (Tims Befund 10.08.).
     debatten: list[QaShareDebatte] = Field(default_factory=list, max_length=20)
@@ -2122,7 +2122,7 @@ def qa_share_anlegen(
     """Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
     Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
     eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick."""
-    if _share_text_is_objectionable(body.frage) or _share_text_is_objectionable(body.antwort):
+    if _share_text_is_objectionable(body.question) or _share_text_is_objectionable(body.answer):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Dieser Inhalt kann nicht als öffentlicher Link geteilt werden.",
@@ -2136,8 +2136,8 @@ def qa_share_anlegen(
         "parteien": [p.model_dump() for p in body.parteien],
         "grafik": _grafik_pruefen(body.grafik),
     }
-    token = ratslotse.qa_share_anlegen(user["id"], body.frage, body.antwort,
-                                 [q.model_dump() for q in body.quellen],
+    token = ratslotse.qa_share_anlegen(user["id"], body.question, body.answer,
+                                 [q.model_dump() for q in body.sources],
                                  extras if any(extras.values()) else None)
     return {"token": token}
 
@@ -2289,9 +2289,9 @@ def deep_research_snapshot(job_id: str, user: dict = Depends(require_active),
         ratslotse.deep_job_update(job_id, "fehler")
         row["status"] = "fehler"
     try:
-        row["quellen"] = json.loads(row["quellen"]) if row.get("quellen") else None
+        row["sources"] = json.loads(row["sources"]) if row.get("sources") else None
     except (ValueError, TypeError):
-        row["quellen"] = None
+        row["sources"] = None
     return row
 
 
