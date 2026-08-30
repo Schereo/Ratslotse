@@ -6,6 +6,7 @@ import logging
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 
+from kern.digest_email import render_html_email
 from kern.email import send_email
 from kern.store import Store
 from council.store import CouncilStore
@@ -29,16 +30,17 @@ def _send_goodbye_email(email: str) -> None:
     settings = get_settings()
     if not settings.resend_api_key or not email or email.endswith("@local"):
         return
-    body = (
-        "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
-        "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
-        "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
-        "<p style='margin:20px 0 8px'>Dein Ratslotse-Konto und alle zugehörigen Daten "
+    body = render_html_email(
+        "Konto gelöscht",
+        "<p style='margin:0'>Dein Ratslotse-Konto und alle zugehörigen Daten "
         "(Themen, Treffer, Abos, Geräte) wurden endgültig gelöscht.</p>"
-        "<p style='margin:0 0 8px'>Danke, dass du dabei warst — du bist jederzeit wieder willkommen.</p>"
-        "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
-        "Falls du diese Löschung nicht selbst ausgelöst hast, antworte bitte umgehend auf diese E-Mail.</p>"
-        "</div>"
+        "<p style='margin:10px 0 0'>Danke, dass du dabei warst — du bist jederzeit "
+        "wieder willkommen.</p>",
+        held="abschied",
+        kicker="Dein Konto",
+        titel="Tschüss — und danke!",
+        fusszeile="Falls du diese Löschung nicht selbst ausgelöst hast, "
+                  "antworte bitte umgehend auf diese E-Mail.",
     )
     text = (
         "Dein Ratslotse-Konto und alle zugehörigen Daten wurden endgültig gelöscht.\n\n"

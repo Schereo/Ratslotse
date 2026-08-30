@@ -8,6 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 
 from council.store import CouncilStore
 from kern import prompts
+from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
 from kern.store import Store
 
@@ -27,16 +28,15 @@ def _send_activation_email(email: str) -> None:
     if not settings.resend_api_key or not email:
         return
     login = f"{settings.app_base_url.rstrip('/')}/login"
-    body = (
-        "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
-        "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
-        "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
-        "<p style='margin:20px 0 8px'>Gute Nachrichten: Dein Konto wurde freigeschaltet — du kannst dich "
-        "jetzt anmelden und loslegen.</p>"
-        f"<a href='{login}' style='display:inline-block;background:#2563eb;color:#fff;"
-        "text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px'>Jetzt anmelden &rarr;</a>"
-        "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
-        "Fragen oder Feedback? Antworte einfach auf diese E-Mail.</p></div>"
+    body = render_html_email(
+        "Konto freigeschaltet",
+        "<p style='margin:0'>Gute Nachrichten: Dein Konto wurde freigeschaltet — "
+        "du kannst dich jetzt anmelden und loslegen.</p>"
+        + knopf(login, "Jetzt anmelden"),
+        held="freigeschaltet",
+        kicker="Dein Konto",
+        titel="Du bist freigeschaltet!",
+        fusszeile="Fragen oder Feedback? Antworte einfach auf diese E-Mail.",
     )
     text = (
         "Dein Ratslotse-Konto wurde freigeschaltet.\n\n"
