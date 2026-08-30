@@ -87,6 +87,12 @@ CREATE TABLE IF NOT EXISTS council_agenda_anlagen (
     item_number  TEXT NOT NULL,
     label        TEXT NOT NULL,
     url          TEXT NOT NULL,
+    -- Nur für Dringlichkeitsanträge gefüllt (council/dringlichkeit.py): Sie
+    -- haben keine Vorlage, ihr ganzer Inhalt steht in DIESEM PDF. Alle
+    -- anderen Zeilen-Dokumente bleiben leer — sie hängen an einem Punkt, der
+    -- seine Vorlage hat, und ein Download je Anlage bei jedem Scrape wäre
+    -- teuer für nichts.
+    raw_text     TEXT,
     UNIQUE(ksinr, item_number, url)
 );
 
@@ -620,6 +626,11 @@ class CouncilStore:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_anlagen_kvonr ON council_anlagen(kvonr)")
         # Gerenderte Planzeichnung (scripts/render_plaene.py): 0 = offen,
         # 1 = Bild liegt unter data/plaene/<document_id>.jpg, -1 = fehlgeschlagen.
+        aacols = {r[1] for r in self._conn.execute(
+            "PRAGMA table_info(council_agenda_anlagen)").fetchall()}
+        if aacols and "raw_text" not in aacols:
+            self._conn.execute("ALTER TABLE council_agenda_anlagen ADD COLUMN raw_text TEXT")
+
         acols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_anlagen)").fetchall()}
         if "bild" not in acols:
             self._conn.execute(
@@ -2635,9 +2646,10 @@ class CouncilStore:
             )
             self._conn.executemany(
                 """INSERT OR IGNORE INTO council_agenda_anlagen
-                   (ksinr, item_number, label, url) VALUES (?, ?, ?, ?)""",
+                   (ksinr, item_number, label, url, raw_text) VALUES (?, ?, ?, ?, ?)""",
                 [
-                    (session.ksinr, i.item_number, a.get("label") or "Anlage", a.get("url") or "")
+                    (session.ksinr, i.item_number, a.get("label") or "Anlage",
+                     a.get("url") or "", a.get("raw_text") or None)
                     for i in session.agenda_items
                     for a in (getattr(i, "anlagen", None) or [])
                     if a.get("url")
@@ -3414,7 +3426,16 @@ class CouncilStore:
                         cs.committee, cs.session_date,
                         v.art, v.amt, v.beschlussvorschlag, v.finanz_check,
                         v.klima_check, v.raw_text,
-                        i.impact
+                        i.impact,
+                        -- Dringlichkeitsanträge haben keine Vorlage; ihr
+                        -- ganzer Inhalt steht in dem PDF, das an der Zeile
+                        -- hängt. Der Lauf holt es über diese URL nach.
+                        (SELECT an.url FROM council_agenda_anlagen an
+                          WHERE an.ksinr = a.ksinr AND an.item_number = a.item_number
+                          LIMIT 1) AS anlage_url,
+                        (SELECT an.raw_text FROM council_agenda_anlagen an
+                          WHERE an.ksinr = a.ksinr AND an.item_number = a.item_number
+                            AND an.raw_text IS NOT NULL LIMIT 1) AS anlage_text
                  FROM council_agenda_items a
                  JOIN council_sessions cs ON cs.ksinr = a.ksinr
                  JOIN agenda_item_impact i
@@ -4222,7 +4243,19 @@ class CouncilStore:
                         -- Großzügig: Die ersten ~300 Zeichen sind Briefkopf,
                         -- den `impact.vorlagen_kern` abschneidet. Bei 1200
                         -- blieb danach zu wenig Inhalt übrig.
-                        substr(v.raw_text, 1, 2500) AS sachverhalt
+                        -- Dringlichkeitsanträge haben keine Vorlage; ihr Text
+                        -- steht am Zeilen-Dokument. Ohne dieses COALESCE
+                        -- bewertete das Modell den Dateinamen — der
+                        -- PAK-Antrag vom 31.08.26 kam so auf 55 und verpasste
+                        -- die Karte, obwohl im PDF eine Schadstoffbelastung
+                        -- eines Gewässers und Sofortmaßnahmen standen.
+                        COALESCE(substr(v.raw_text, 1, 2500),
+                                 (SELECT substr(an.raw_text, 1, 2500)
+                                    FROM council_agenda_anlagen an
+                                   WHERE an.ksinr = a.ksinr
+                                     AND an.item_number = a.item_number
+                                     AND an.raw_text IS NOT NULL
+                                   LIMIT 1)) AS sachverhalt
                  FROM council_agenda_items a
                  JOIN council_sessions cs ON cs.ksinr = a.ksinr
                  LEFT JOIN agenda_item_summaries s
