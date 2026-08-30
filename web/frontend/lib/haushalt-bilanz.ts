@@ -28,7 +28,7 @@ export type BilanzRolle =
   | "beihilferueckstellungen" | "passive_rap";
 
 export type BilanzPosten = {
-  jahr: number;
+  year: number;
   rolle: BilanzRolle;
   seite: "aktiva" | "passiva";
   /** 1 = Hauptposten; nur diese ergeben zusammen die Bilanzsumme. */
@@ -46,7 +46,7 @@ export type BilanzPosten = {
  *  Für `schulden` ist das keine Zugabe, sondern die Bedingung, unter der die
  *  Zahl überhaupt gezeigt werden darf — s. `cashPoolingHinweis`. */
 export type BilanzErlaeuterung = {
-  jahr: number;
+  year: number;
   rolle: BilanzRolle;
   nr: number;
   ueberschrift: string;
@@ -63,7 +63,7 @@ export type BilanzDaten = {
 
 /** Ein Bilanzstichtag, nach Rolle nachschlagbar. */
 export type Stichtag = {
-  jahr: number;
+  year: number;
   posten: Partial<Record<BilanzRolle, BilanzPosten>>;
   /** Summe der Hauptposten — beide Seiten ergeben sie, das ist die Probe. */
   bilanzsumme: number;
@@ -102,21 +102,21 @@ export const KURZ: Partial<Record<BilanzRolle, string>> = {
  *  Bilanzsumme nicht auf und es gibt nichts zu zeigen. */
 export function juengsterStichtag(daten: BilanzDaten | null): Stichtag | null {
   if (!daten?.jahre?.length) return null;
-  const jahr = daten.jahre[daten.jahre.length - 1];
-  return stichtag(daten, jahr);
+  const year = daten.jahre[daten.jahre.length - 1];
+  return stichtag(daten, year);
 }
 
-export function stichtag(daten: BilanzDaten | null, jahr: number): Stichtag | null {
+export function stichtag(daten: BilanzDaten | null, year: number): Stichtag | null {
   if (!daten) return null;
   const posten: Partial<Record<BilanzRolle, BilanzPosten>> = {};
   for (const p of daten.posten) {
-    if (p.jahr === jahr) posten[p.rolle] = p;
+    if (p.year === year) posten[p.rolle] = p;
   }
   const haupt = [...AKTIVA_HAUPT, ...PASSIVA_HAUPT];
   if (haupt.some((r) => posten[r] === undefined)) return null;
   const bilanzsumme = AKTIVA_HAUPT.reduce((n, r) => n + (posten[r]?.wert ?? 0), 0);
   return {
-    jahr, posten, bilanzsumme,
+    year, posten, bilanzsumme,
     herkunft_id: posten.sachvermoegen?.herkunft_id ?? null,
   };
 }
@@ -154,10 +154,10 @@ export function vielfaches(s: Stichtag): number | null {
 
 /** Die Erläuterung des Anhangs zu einem Hauptposten. */
 export function erlaeuterung(
-  daten: BilanzDaten | null, jahr: number, rolle: BilanzRolle,
+  daten: BilanzDaten | null, year: number, rolle: BilanzRolle,
 ): BilanzErlaeuterung | null {
   if (!daten) return null;
-  return daten.erlaeuterungen.find((e) => e.jahr === jahr && e.rolle === rolle) ?? null;
+  return daten.erlaeuterungen.find((e) => e.year === year && e.rolle === rolle) ?? null;
 }
 
 /** Ist der Schuldensprung dieses Jahrgangs ein Buchungsartefakt?
@@ -173,9 +173,9 @@ export function erlaeuterung(
  *  liefert den Erläuterungstext — und die Seite zeigt den Schuldenwert nur,
  *  wenn sie ihn hat. Kein Text, keine Zahl. */
 export function cashPoolingHinweis(
-  daten: BilanzDaten | null, jahr: number,
+  daten: BilanzDaten | null, year: number,
 ): BilanzErlaeuterung | null {
-  return erlaeuterung(daten, jahr, "schulden");
+  return erlaeuterung(daten, year, "schulden");
 }
 
 export function herkunftVon(daten: BilanzDaten | null, id: number | null): Herkunft | null {

@@ -1,8 +1,8 @@
 // Der Daten-Vertrag des Grafik-Baukastens (GB-00).
 //
-// Alle Komponenten essen dieselben Formen: `{jahr, wert}` für Reihen,
+// Alle Komponenten essen dieselben Formen: `{year, wert}` für Reihen,
 // `{label, wert}` für Listen. Lücken sind DATEN, kein Sonderfall:
-// `{jahr: 2019, fehlt: "Arten ergeben die Summe nicht"}`. Jede Komponente
+// `{year: 2019, fehlt: "Arten ergeben die Summe nicht"}`. Jede Komponente
 // MUSS sie beschriftet rendern (über `<LueckenFeld>`), keine darf
 // interpolieren — die Union macht das zum Typsystem: Wer `wert` einer Lücke
 // lesen will, kommt am `fehlt`-Zweig nicht vorbei.
@@ -18,11 +18,11 @@
  *
  *  Der Text ist der Grund. Er gehört an die Daten und nicht in die Seite —
  *  dieselbe Regel wie bei `fehlt`. */
-export type JahrWert = { jahr: number; wert: number; bruchDavor?: string };
+export type JahrWert = { year: number; wert: number; bruchDavor?: string };
 
 /** Eine Lücke: das Jahr gibt es, den Wert nicht — und der Grund reist mit.
  *  `datum` ist der Stichtag der Feststellung, wo er bekannt ist. */
-export type JahrLuecke = { jahr: number; fehlt: string; datum?: string };
+export type JahrLuecke = { year: number; fehlt: string; datum?: string };
 
 /** Eine Reihe besteht aus Punkten UND Lücken — in einer Liste, damit die
  *  x-Achse vollständig bleibt und keine Komponente Lücken „vergessen" kann. */

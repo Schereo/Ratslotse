@@ -71,11 +71,11 @@ function spanne(jahre: number[]): string | null {
  *  Nicht generisch formuliert: „Von 2023 haben wir 6 der 9 Einheiten" wäre
  *  Buchhaltersprache. Ein fehlender Teilhaushalt lässt sich zählen, eine
  *  fehlende Auswertungsebene nicht — die sagt man besser als Sache. */
-const LUECKENTEXT: Record<string, (jahr: number, hat: number, voll: number) => string> = {
-  Teilhaushalte: (jahr, hat, voll) =>
-    `Für ${jahr} haben wir ${hat} von ${voll} Teilhaushalten.`,
-  Ebenen: (jahr) =>
-    `Für ${jahr} fehlt noch die Aufteilung auf die einzelnen Bereiche.`,
+const LUECKENTEXT: Record<string, (year: number, hat: number, voll: number) => string> = {
+  Teilhaushalte: (year, hat, voll) =>
+    `Für ${year} haben wir ${hat} von ${voll} Teilhaushalten.`,
+  Ebenen: (year) =>
+    `Für ${year} fehlt noch die Aufteilung auf die einzelnen Bereiche.`,
 };
 
 /** „a", „a und b", „a, b und c" — für Namen, die aus den Daten kommen und
@@ -114,19 +114,19 @@ function vonHandNachStelle(schichten: Datenschicht[]): { quelle: string; labels:
  *  „Fehlt" steht deshalb nirgends: Was die Stadt noch nicht veröffentlicht
  *  hat, fehlt uns nicht. */
 export function ausblick(s: Datenschicht, heute: string): { text: string; wartet: boolean } {
-  const jahr = s.naechster_jahrgang;
+  const year = s.naechster_jahrgang;
   const ab = new Date(s.naechster_ab);
   const monatJahr = `${s.monat} ${ab.getFullYear()}`;
-  if (s.ueberfaellig.includes(jahr)) {
+  if (s.ueberfaellig.includes(year)) {
     return {
-      text: `Der Jahrgang ${jahr} wäre seit ${monatJahr} zu erwarten und liegt noch nicht vor.`,
+      text: `Der Jahrgang ${year} wäre seit ${monatJahr} zu erwarten und liegt noch nicht vor.`,
       wartet: true,
     };
   }
   if (new Date(heute) < ab) {
-    return { text: `Der Jahrgang ${jahr} wird üblicherweise im ${monatJahr} vorgelegt.`, wartet: false };
+    return { text: `Der Jahrgang ${year} wird üblicherweise im ${monatJahr} vorgelegt.`, wartet: false };
   }
-  return { text: `Der Jahrgang ${jahr} wird gerade erwartet (üblich: ${monatJahr}).`, wartet: false };
+  return { text: `Der Jahrgang ${year} wird gerade erwartet (üblich: ${monatJahr}).`, wartet: false };
 }
 
 /** Was der Block verspricht — und was er ausdrücklich nicht verspricht.

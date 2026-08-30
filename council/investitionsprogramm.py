@@ -261,10 +261,10 @@ def _name_und_betrag(blob: list[str]) -> tuple[str, int | None]:
     return _namen_fuegen(teile), None
 
 
-def lies(text: str, jahr: int) -> dict:
+def lies(text: str, year: int) -> dict:
     """Ein Investitionsprogramm auswerten.
 
-    Liefert ``{jahr, kopftabelle, kopfsumme, abschnitte, bestanden, nachweis}``:
+    Liefert ``{year, kopftabelle, kopfsumme, abschnitte, bestanden, nachweis}``:
 
     * ``kopftabelle`` — ``[{bezeichnung, gesamtsumme}]`` je Teilhaushalt aus
       dem Gesamtinvestitionsprogramm.
@@ -276,7 +276,7 @@ def lies(text: str, jahr: int) -> dict:
       nicht aufgeht, gibt keine halben Maßnahmen her.
     """
     zeilen = [z.rstrip() for z in (text or "").splitlines()]
-    leer = {"jahr": jahr, "kopftabelle": [], "kopfsumme": None,
+    leer = {"year": year, "kopftabelle": [], "kopfsumme": None,
             "abschnitte": {}, "bestanden": False}
     if not any(KOPFTABELLE in z for z in zeilen):
         return {**leer, "nachweis": f"„{KOPFTABELLE}“ steht nicht im Dokument"}
@@ -288,7 +288,7 @@ def lies(text: str, jahr: int) -> dict:
     text_nachweis = nachweis(kopftabelle, kopfsumme, abschnitte, ok, warum)
     if not ok:
         return {**leer, "nachweis": text_nachweis}
-    return {"jahr": jahr, "kopftabelle": kopftabelle, "kopfsumme": kopfsumme,
+    return {"year": year, "kopftabelle": kopftabelle, "kopfsumme": kopfsumme,
             "abschnitte": abschnitte, "bestanden": True,
             "nachweis": text_nachweis}
 

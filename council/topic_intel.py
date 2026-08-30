@@ -108,9 +108,9 @@ def vor_sechs_monaten(heute: date | None = None) -> date:
     """
     heute = heute or date.today()
     monat = heute.month - AKTUELL_MONATE
-    jahr = heute.year + (monat - 1) // 12
+    year = heute.year + (monat - 1) // 12
     monat = (monat - 1) % 12 + 1
-    return date(jahr, monat, min(heute.day, calendar.monthrange(jahr, monat)[1]))
+    return date(year, monat, min(heute.day, calendar.monthrange(year, monat)[1]))
 
 
 def treffer(store, name: str, text: str, *, deckel: int = DECKEL,

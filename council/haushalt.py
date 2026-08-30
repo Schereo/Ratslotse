@@ -140,9 +140,9 @@ EINWOHNER_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
 # für ein Jahr, das es noch nicht gibt, ergäbe bei jedem Lauf einen 404. Ein
 # neuer Jahrgang ist eine Zeile hier.
 INVESTITIONEN_CSV_URLS: dict[int, str] = {
-    jahr: ("https://opendata.oldenburg.de/sites/default/files/"
-           f"1101_Haushaltsplan_StadtOL_{jahr}_Finanzhaushalt.csv")
-    for jahr in (2022, 2023, 2024, 2025)
+    year: ("https://opendata.oldenburg.de/sites/default/files/"
+           f"1101_Haushaltsplan_StadtOL_{year}_Finanzhaushalt.csv")
+    for year in (2022, 2023, 2024, 2025)
 }
 
 # Steuerarten-Spalten wie im Portal, nur Umlaute restauriert.
@@ -154,7 +154,7 @@ _STEUERART_NAMEN = {
 
 def parse_steuereinnahmen(csv_text: str) -> list[dict]:
     """Ist-Steuereinnahmen-CSV (eine Zeile je Jahr, Spalten je Steuerart) →
-    Langformat ``{jahr, art, betrag}``. Beträge sind ganze Euro ohne
+    Langformat ``{year, art, betrag}``. Beträge sind ganze Euro ohne
     Tausenderzeichen; leere Zellen fallen weg."""
     lines = [ln for ln in csv_text.splitlines() if ln.strip()]
     if not lines:
@@ -166,16 +166,16 @@ def parse_steuereinnahmen(csv_text: str) -> list[dict]:
         cells = [c.strip() for c in line.split(";")]
         if not cells[0].isdigit():
             continue  # Fußnoten-/Leerzeilen
-        jahr = int(cells[0])
+        year = int(cells[0])
         for art, cell in zip(arten, cells[1:]):
             if cell:
-                rows.append({"jahr": jahr, "art": art, "betrag": float(cell)})
+                rows.append({"year": year, "art": art, "betrag": float(cell)})
     return rows
 
 
 def parse_einwohner(csv_text: str) -> list[dict]:
     """Einwohnerzahlen je Haushaltsjahr (Stichtag 31.12. des Vorjahres) →
-    ``{jahr, einwohner}``. Basis für Pro-Kopf-Einordnungen; die
+    ``{year, einwohner}``. Basis für Pro-Kopf-Einordnungen; die
     Aufwendungs-Spalten desselben CSV liest ``council/ausgabenreihe.py``
     (s. o.)."""
     rows: list[dict] = []
@@ -183,7 +183,7 @@ def parse_einwohner(csv_text: str) -> list[dict]:
         cells = [c.strip() for c in line.split(";")]
         if len(cells) < 2 or not cells[0].isdigit() or not cells[1].isdigit():
             continue
-        rows.append({"jahr": int(cells[0]), "einwohner": int(cells[1])})
+        rows.append({"year": int(cells[0]), "einwohner": int(cells[1])})
     return rows
 
 
@@ -227,9 +227,9 @@ _STEUERKRAFT_VERSATZ = 1
 
 def parse_steuerkraft(csv_text: str) -> list[dict]:
     """Steuerkraftmesszahl/Schlüsselzuweisungen-CSV → je Jahr ein dict
-    ``{jahr, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew}``.
+    ``{year, messzahl, messzahl_je_ew, zuweisungen, zuweisungen_je_ew}``.
 
-    ``jahr`` ist das **Ausgleichsjahr** — die CSV-Jahreszahl plus
+    ``year`` ist das **Ausgleichsjahr** — die CSV-Jahreszahl plus
     :data:`_STEUERKRAFT_VERSATZ`; die Begründung steht dort.
 
     Die beiden Pro-Kopf-Spalten kommen bewusst **nicht** mit. Die Stadt
@@ -245,7 +245,7 @@ def parse_steuerkraft(csv_text: str) -> list[dict]:
         if len(cells) < 5 or not cells[0].isdigit():
             continue
         vals = [float(c) if c else None for c in cells[1:5]]
-        rows.append({"jahr": int(cells[0]) + _STEUERKRAFT_VERSATZ,
+        rows.append({"year": int(cells[0]) + _STEUERKRAFT_VERSATZ,
                      "messzahl": vals[0], "messzahl_je_ew": None,
                      "zuweisungen": vals[2], "zuweisungen_je_ew": None})
     return rows
@@ -828,11 +828,11 @@ def build_abschluss_questions(store) -> list[dict]:
         # 2025, Bilanz und Konzern-Tabellenband noch bei 2024). Ohne Jahr
         # nebeneinandergestellt wäre die Frage angreifbar — zu Recht.
         richtig = "Alle drei — je nachdem, was mitgezählt wird"
-        opts = [f"{_mio(kern['betrag'])} Mio. Euro ({kern['jahr']})",
-                f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['jahr']})",
-                f"{_mio(konzern['betrag'])} Mio. Euro ({konzern['jahr']})",
+        opts = [f"{_mio(kern['betrag'])} Mio. Euro ({kern['year']})",
+                f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['year']})",
+                f"{_mio(konzern['betrag'])} Mio. Euro ({konzern['year']})",
                 richtig]
-        jahre = {kern["jahr"], schulden["jahr"], konzern["jahr"]}
+        jahre = {kern["year"], schulden["year"], konzern["year"]}
         nachsatz = ("" if len(jahre) == 1 else
                     " Die drei Stände sind nicht aus demselben Jahr: Jede Quelle "
                     "erscheint zu ihrer eigenen Zeit, und die jüngste ist immer "
@@ -844,11 +844,11 @@ def build_abschluss_questions(store) -> list[dict]:
             "options": opts, "correct_index": opts.index(richtig),
             "explanation": (
                 f"Alle drei Zahlen stimmen — sie zählen Verschiedenes. "
-                f"{_mio(kern['betrag'])} Mio. Euro ({kern['jahr']}) sind die "
+                f"{_mio(kern['betrag'])} Mio. Euro ({kern['year']}) sind die "
                 f"Geldschulden des Kernhaushalts, "
-                f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['jahr']}) die "
+                f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['year']}) die "
                 f"der Stadt samt ihren Eigenbetrieben, und "
-                f"{_mio(konzern['betrag'])} Mio. Euro ({konzern['jahr']}) die des "
+                f"{_mio(konzern['betrag'])} Mio. Euro ({konzern['year']}) die des "
                 f"ganzen Konzerns mit allen Beteiligungen." + nachsatz),
             "detail": ("Wer eine Schuldenzahl nennt, muss die Abgrenzung dazusagen. "
                        "Addieren darf man sie nie: Die größere enthält die kleinere."),
@@ -869,7 +869,7 @@ def build_abschluss_questions(store) -> list[dict]:
             "Die Stadt Oldenburg steht für Kredite ihrer eigenen Gesellschaften "
             "gerade — für wie viele Millionen Euro?",
             betrag, lo=max(5, round(betrag * 0.15)), hi=round(betrag * 3.2, -1),
-            year=buerg["jahr"], source_url=ris, chart_json="",
+            year=buerg["year"], source_url=ris, chart_json="",
             difficulty="schwer",
             detail=("Eine Bürgschaft kostet nichts, solange sie nicht gezogen wird — "
                     "deshalb taucht sie in keiner Schuldenzahl auf. Sie steht im "
@@ -887,7 +887,7 @@ def build_abschluss_questions(store) -> list[dict]:
             zusatz = (f" Für den erwarteten Ausfall hält die Stadt {rueck} Mio. Euro "
                       f"zurück — {anteil} Prozent des Bestands.")
         qs[-1]["explanation"] = (
-            f"Zum 31.12.{buerg['jahr']} waren es {betrag} Mio. Euro." + zusatz)
+            f"Zum 31.12.{buerg['year']} waren es {betrag} Mio. Euro." + zusatz)
         qs[-1]["content_hash"] = key("buergschaften")
 
     # 3) Der Substanzverlust: Was die Stadt jährlich abschreibt, gegen das, was
@@ -895,7 +895,7 @@ def build_abschluss_questions(store) -> list[dict]:
     #    auf „Baut die Stadt schneller auf, als ihr Bestand verfällt?".
     zeilen = [z for z in store.get_anlagenspiegel() if z.get("nr") == "2"]
     if zeilen:
-        z = max(zeilen, key=lambda r: r["jahr"])
+        z = max(zeilen, key=lambda r: r["year"])
         zubau, verzehr = z.get("zugaenge") or 0, abs(z.get("abschreibung") or 0)
         if zubau > 0 and verzehr > 0:
             faktor = verzehr / zubau
@@ -907,13 +907,13 @@ def build_abschluss_questions(store) -> list[dict]:
             qs.append({
                 "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
                 "difficulty": "schwer", "qtype": "mc",
-                "question": (f"Auf jeden Euro, den die Stadt {z['jahr']} in ihr "
+                "question": (f"Auf jeden Euro, den die Stadt {z['year']} in ihr "
                              f"Sachvermögen — Gebäude, Straßen, Fahrzeuge — "
                              f"investiert hat: Wie viel Wert hat im selben Jahr "
                              f"die Abnutzung aufgezehrt?"),
                 "options": opts, "correct_index": opts.index(richtig),
                 "explanation": (
-                    f"{z['jahr']} kamen {_mio(zubau)} Mio. Euro dazu, und "
+                    f"{z['year']} kamen {_mio(zubau)} Mio. Euro dazu, und "
                     f"{_mio(verzehr)} Mio. Euro wurden abgeschrieben — auf jeden "
                     f"investierten Euro also {richtig} Wertverlust."),
                 "detail": ("Abschreibung ist der gebuchte Wertverlust einer "

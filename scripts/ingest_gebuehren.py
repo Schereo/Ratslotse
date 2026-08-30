@@ -72,12 +72,12 @@ def main() -> dict:
 
         if gelesen:
             print("\nGelesen:", flush=True)
-            for b, _ in sorted(gelesen, key=lambda x: (x[0].jahr, x[0].bereich)):
+            for b, _ in sorted(gelesen, key=lambda x: (x[0].year, x[0].bereich)):
                 division = (f"÷ {b.bezugsmenge:>9,.0f} {b.bezugseinheit:18} "
                             f"= {b.gebuehr:>8.3f} €"
                             if b.gebuehr is not None
                             else "(Grundgebühr und Gebühr je Liter, keine Division)")
-                print(f"  {b.jahr}  {b.bereich_name[:24]:26} "
+                print(f"  {b.year}  {b.bereich_name[:24]:26} "
                       f"{b.zu_deckende_kosten:>12,.0f} €  {division}", flush=True)
 
         if ohne_text:
@@ -89,12 +89,12 @@ def main() -> dict:
 
         if saetze_gelesen:
             print("\nKonkrete Tarife aus Anlage 4:", flush=True)
-            for saetze, _ in sorted(saetze_gelesen, key=lambda x: x[0][0].jahr):
+            for saetze, _ in sorted(saetze_gelesen, key=lambda x: x[0][0].year):
                 beispiele = ", ".join(
                     f"{s.bezeichnung}: {s.betrag:.2f} €"
                     for s in saetze if s.schluessel in
                     ("grundgebuehr", "litergebuehr", "strassenreinigung_qw"))
-                print(f"  {saetze[0].jahr}: {len(saetze)} Tarife — {beispiele}",
+                print(f"  {saetze[0].year}: {len(saetze)} Tarife — {beispiele}",
                       flush=True)
 
         if risse:
@@ -117,7 +117,7 @@ def main() -> dict:
                 s, url=r["url"], dokument_id=r["document_id"], label=r["label"])
                 for s in saetze])
         print(f"\n{len(gelesen)} Gebührenbereich(e) gespeichert über "
-              f"{len({b.jahr for b, _ in gelesen})} Jahrgänge; "
+              f"{len({b.year for b, _ in gelesen})} Jahrgänge; "
               f"{sum(len(s) for s, _ in saetze_gelesen)} konkrete Tarife.", flush=True)
         return {"gelesen": len(gelesen), "risse": len(risse),
                 "gebuehrensaetze": sum(len(s) for s, _ in saetze_gelesen),

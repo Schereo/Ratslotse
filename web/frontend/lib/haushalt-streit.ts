@@ -77,7 +77,7 @@ export type StreitStation = {
   protokoll_url: string | null;
 };
 
-export type StreitRunde = { jahr: number; stationen: StreitStation[] };
+export type StreitRunde = { year: number; stationen: StreitStation[] };
 export type StreitDaten = { runden: StreitRunde[] };
 
 /** So viele Zeichen jeder Rede stehen ohne Aufklappen da — für jede gleich. */
@@ -102,12 +102,12 @@ export function vorschau(text: string): { kopf: string; rest: string } {
 
 /** Die Jahrgänge, neueste zuerst — so steht der aktuelle Streit oben. */
 export function jahrgaenge(daten: StreitDaten | null): number[] {
-  return (daten?.runden ?? []).map((r) => r.jahr).sort((a, b) => b - a);
+  return (daten?.runden ?? []).map((r) => r.year).sort((a, b) => b - a);
 }
 
-export function runde(daten: StreitDaten | null, jahr: number | null): StreitRunde | null {
-  if (!daten || jahr == null) return null;
-  return daten.runden.find((r) => r.jahr === jahr) ?? null;
+export function runde(daten: StreitDaten | null, year: number | null): StreitRunde | null {
+  if (!daten || year == null) return null;
+  return daten.runden.find((r) => r.year === year) ?? null;
 }
 
 /** Die Station, an der die Debatte hängt: die mit den meisten Wortbeiträgen.
@@ -214,7 +214,7 @@ export function bestand(daten: StreitDaten | null): {
       beitraege += s.debatte.length;
     }
   }
-  const jahre = runden.map((r) => r.jahr);
+  const jahre = runden.map((r) => r.year);
   return {
     listen, beitraege, jahrgaenge: runden.length,
     von: jahre.length ? Math.min(...jahre) : 0,

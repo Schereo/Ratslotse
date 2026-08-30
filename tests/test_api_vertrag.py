@@ -241,3 +241,33 @@ def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
             f"damit still aus der API:\n  " + "\n  ".join(sorted(fehlend)) +
             "\nIn web/backend/app/antworten.py ergänzen (als NotRequired)."
         )
+
+
+def test_keine_wirkungslosen_migrationspaare():
+    """Ein Umbenennungspaar ``("x", "x")`` tut nichts — und fällt sonst nie auf.
+
+    Beim Umbau auf englische Namen ist mir das DREIMAL passiert: Ein
+    Suchen-und-Ersetzen über die Datei nimmt den ALTEN Namen in der
+    Migrationsliste mit, und aus ``("stadtteil", "district")`` wird
+    ``("district", "district")``. Frische Datenbanken legen ohnehin das neue
+    Schema an, also bleibt alles grün — nur BESTEHENDE Datenbanken werden nie
+    migriert und behalten still die deutschen Spalten. Einmal ist es so schon
+    in einen Merge gerutscht (#859, behoben).
+
+    Deshalb dieser Test: Er liest die Quelltexte und meldet jedes Paar, dessen
+    beide Seiten gleich sind.
+    """
+    import re
+
+    wurzel = Path(__file__).resolve().parents[1]
+    muster = re.compile(r'\(\s*"([a-z_]+)"\s*,\s*"\1"\s*\)')
+    treffer = []
+    for datei in (wurzel / "kern" / "store.py", wurzel / "council" / "store.py"):
+        for nr, zeile in enumerate(datei.read_text().splitlines(), 1):
+            if muster.search(zeile):
+                treffer.append(f"{datei.relative_to(wurzel)}:{nr}: {zeile.strip()}")
+
+    assert not treffer, (
+        "Diese Umbenennungspaare sind wirkungslos — vermutlich hat ein "
+        "Suchen-und-Ersetzen den alten Namen mitgenommen:\n  " + "\n  ".join(treffer)
+    )

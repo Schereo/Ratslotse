@@ -72,7 +72,7 @@ export function ZuweisungDreiteilig({ reihe }: { reihe?: FinanzausgleichJahr[] }
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Ausgleichsjahr {j.jahr}
+        Ausgleichsjahr {j.year}
       </p>
       <h3 className="mt-1 font-display text-[16px] font-bold leading-tight tracking-tight">
         Die Zuweisung hat drei Teile — die Kurve oben zeigt zwei

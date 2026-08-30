@@ -877,9 +877,9 @@ struct QuestionsView: View {
               "einheit": "Mio. €",
               "hinweis": "Planwerte aus der Beschlussvorlage.",
               "reihe": [
-                {"jahr": 2026, "wert": 2.1},
-                {"jahr": 2027, "wert": 4.3},
-                {"jahr": 2028, "wert": 2.5}
+                {"year": 2026, "wert": 2.1},
+                {"year": 2027, "wert": 4.3},
+                {"year": 2028, "wert": 2.5}
               ]
             }
           }
@@ -2878,7 +2878,7 @@ private struct EvidenceChartData {
             let label: String
             if let explicit = fields["label"]?.string {
                 label = explicit
-            } else if let year = fields["jahr"]?.int {
+            } else if let year = fields["year"]?.int {
                 label = String(year)
             } else if let date = fields["datum"]?.string {
                 label = date

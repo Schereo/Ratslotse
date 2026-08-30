@@ -154,10 +154,10 @@ def lies_gemeinde(zeilen: list[list[object]], ars: str = ARS_OLDENBURG) -> dict 
                 roh = zeile[index] if index < len(zeile) else None
                 gefunden[name] = roh if name in ("ars", "name", "verwaltungsform") \
                     else _zahl(roh)
-            jahr = stichtag(zeilen)
-            if jahr is None:
+            year = stichtag(zeilen)
+            if year is None:
                 return None
-            gefunden["jahr"] = jahr
+            gefunden["year"] = year
             gefunden["ars"] = ars
             return gefunden
     return None

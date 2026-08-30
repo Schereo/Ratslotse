@@ -794,10 +794,10 @@ def _datum_in_frage(frage: str) -> tuple[str | None, str | None]:
         if not (1 <= tag <= 31 and 1 <= monat <= 12):
             continue
         if m.group(3):
-            jahr = int(m.group(3))
-            if jahr < 100:
-                jahr += 2000
-            return f"{jahr:04d}-{monat:02d}-{tag:02d}", None
+            year = int(m.group(3))
+            if year < 100:
+                year += 2000
+            return f"{year:04d}-{monat:02d}-{tag:02d}", None
         return None, f"-{monat:02d}-{tag:02d}"
     for m in _RELATIV_RE.finditer(frage):
         if _ZEITRAUM_PREP_RE.search(frage[:m.start()]):
@@ -1622,7 +1622,7 @@ def _steuern_block(zeilen: list[dict] | None) -> str:
     teile = []
     for r in zeilen:
         name = "Steuereinnahmen insgesamt" if r["art"] == "insgesamt" else r["art"]
-        s = f"- {name} ({r['jahr']}, tatsächlich eingenommen): {_eur(r.get('betrag'))}"
+        s = f"- {name} ({r['year']}, tatsächlich eingenommen): {_eur(r.get('betrag'))}"
         if r.get("jahr_davor") and r.get("betrag_davor"):
             s += f" — {r['jahr_davor']} waren es {_eur(r['betrag_davor'])}"
         teile.append(s)
@@ -1640,9 +1640,9 @@ def _steuerkraft_block(k: dict | None) -> str:
     return (
         "\nFINANZAUSGLEICH (Hintergrund, nur nutzen, wenn nach Hebesätzen oder\n"
         "höheren Einnahmen gefragt wird; NIE mit [id]):\n"
-        f"- Steuerkraftmesszahl {k['jahr']}: {_eur(k['messzahl'])} "
+        f"- Steuerkraftmesszahl {k['year']}: {_eur(k['messzahl'])} "
         f"(davor {k['jahr_davor']}: {_eur(k['messzahl_davor'])})\n"
-        f"- Schlüsselzuweisungen des Landes {k['jahr']}: {_eur(k['zuweisungen'])} "
+        f"- Schlüsselzuweisungen des Landes {k['year']}: {_eur(k['zuweisungen'])} "
         f"(davor {k['jahr_davor']}: {_eur(k['zuweisungen_davor'])})\n"
         "- REGEL: Steigt die eigene Steuerkraft, sinken die Schlüsselzuweisungen des\n"
         "  Landes. Von einer Steuererhöhung bleibt der Stadt deshalb nur ein Teil —\n"
@@ -2087,7 +2087,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
     Antwort sieht aus wie bisher — das Gate erledigt sich über die Daten.
     """
     if geld.get("schulden"):
-        reihe = [{"jahr": r["jahr"], "wert": round(r["insgesamt"] / 1e6, 1)}
+        reihe = [{"year": r["year"], "wert": round(r["insgesamt"] / 1e6, 1)}
                  for r in store.get_schulden() if r.get("insgesamt") is not None]
         if len(reihe) >= 2:
             s = geld["schulden"]
@@ -2115,7 +2115,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
         # sie schon aufgelöst („gewinnt die erste": sie ist die, nach der
         # gefragt wurde; die weiteren sind Beifang der Synonyme).
         art = geld["steuern"][0]["art"]
-        reihe = [{"jahr": r["jahr"], "wert": round(r["betrag"] / 1e6, 1)}
+        reihe = [{"year": r["year"], "wert": round(r["betrag"] / 1e6, 1)}
                  for r in store.get_steuereinnahmen()
                  if r["art"] == art and r.get("betrag") is not None]
         if len(reihe) >= 2:
@@ -2167,7 +2167,7 @@ def _gebuehren_block(g: dict | None) -> str:
     zeilen: list[str] = []
     for gruppe in g["bereiche"]:
         for r in gruppe.get("werte") or []:
-            s = (f"- {r['bereich_name']} {r['jahr']}: Kostenkalkulation "
+            s = (f"- {r['bereich_name']} {r['year']}: Kostenkalkulation "
                  f"{_eur(r.get('kostenkalkulation'))}, Abzüge "
                  f"{_eur(r.get('abzuege'))}, durch Gebühren zu decken "
                  f"{_eur(r.get('zu_deckende_kosten'))}")
@@ -2202,7 +2202,7 @@ def _ist_block(ist: dict | None) -> str:
     if not ist or not ist.get("gesamt"):
         return ""
     g = ist["gesamt"]
-    zeilen = [f"- Gesamt {ist['jahr']}: Aufwendungen geplant {_eur(g.get('aufwendungen_plan'))}, "
+    zeilen = [f"- Gesamt {ist['year']}: Aufwendungen geplant {_eur(g.get('aufwendungen_plan'))}, "
               f"tatsächlich {_eur(g.get('aufwendungen_ist'))}; Erträge geplant "
               f"{_eur(g.get('ertraege_plan'))}, tatsächlich {_eur(g.get('ertraege_ist'))}"]
     if g.get("plan_art") and g["plan_art"] != "ansatz":
@@ -2212,11 +2212,11 @@ def _ist_block(ist: dict | None) -> str:
         zeilen.append(f"  (\"geplant\" ist in diesem Jahrgang der/die {g['plan_art']}, "
                       f"nicht der nackte Haushaltsansatz — sag das dazu)")
     for b in ist.get("bereiche") or []:
-        zeilen.append(f"- {b.get('name')} {ist['jahr']}: Aufwendungen geplant "
+        zeilen.append(f"- {b.get('name')} {ist['year']}: Aufwendungen geplant "
                       f"{_eur(b.get('aufwendungen_plan'))}, tatsächlich "
                       f"{_eur(b.get('aufwendungen_ist'))}")
     return ("\nGEPLANT UND TATSÄCHLICH (Jahresabschluss "
-            f"{ist['jahr']} — ABGERECHNETE Zahlen, nicht der Haushaltsplan; nenne\n"
+            f"{ist['year']} — ABGERECHNETE Zahlen, nicht der Haushaltsplan; nenne\n"
             "IMMER das Jahr dazu und nie mit [id] zitieren)"
             + _beleg_text(ist.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
 
@@ -2228,7 +2228,7 @@ def _gruende_block(gruende: list[dict] | None) -> str:
     zeilen = []
     for g in gruende:
         delta = f" ({g['delta_mio']:+.1f} Mio. €)" if g.get("delta_mio") is not None else ""
-        zeilen.append(f"- {g['bezeichnung']} {g['jahr']}{delta}: "
+        zeilen.append(f"- {g['bezeichnung']} {g['year']}{delta}: "
                       f"{' '.join((g.get('text') or '').split())[:400]}"
                       + _beleg_text(g.get("beleg")))
     return ("\nWARUM DER PLAN NICHT AUFGING (Erläuterungen der Verwaltung zum\n"
@@ -2249,7 +2249,7 @@ def _pruefung_block(p: dict | None) -> str:
               for f in p["feststellungen"]]
     verteilung = ", ".join(f"{n}× {name}" for name, n in sorted(
         (p.get("nach_marke") or {}).items(), key=lambda kv: -kv[1]))
-    return (f"\nRECHNUNGSPRÜFUNGSAMT, Schlussbericht zum Jahresabschluss {p['jahr']}\n"
+    return (f"\nRECHNUNGSPRÜFUNGSAMT, Schlussbericht zum Jahresabschluss {p['year']}\n"
             f"(insgesamt {p.get('gesamt')} Feststellungen"
             + (f": {verteilung}" if verteilung else "") + "). Unten eine AUSWAHL —\n"
             "sag, dass es eine Auswahl ist, nenne die Textziffer als Fundstelle und\n"
@@ -2264,7 +2264,7 @@ def _produkte_block(p: dict | None) -> str:
         return ""
     zeilen = []
     for r in p["produkte"]:
-        s = f"- {r['produkt_name']} ({p['jahr']}"
+        s = f"- {r['produkt_name']} ({p['year']}"
         if r.get("amt"):
             s += f", {r['amt']}"
         s += f"): Aufwendungen {_eur(r.get('aufwendungen'))}, Zuschussbedarf " \
@@ -2276,7 +2276,7 @@ def _produkte_block(p: dict | None) -> str:
             s += f" — Spielraum der Stadt (Selbstauskunft des Plans): {r['beeinflussbarkeit']}"
         zeilen.append(s + _beleg_text(r.get("beleg")))
     return (f"\nAUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE (Produktebene der\n"
-            f"Teilhaushalts-Pläne, Stand {p['jahr']} — PLAN-Zahlen). Die\n"
+            f"Teilhaushalts-Pläne, Stand {p['year']} — PLAN-Zahlen). Die\n"
             "„Rechtsgrundlage“ sagt, ob eine Aufgabe pflichtig oder freiwillig ist;\n"
             "sie ist die Selbstauskunft des Haushaltsplans, kein Rechtsgutachten —\n"
             "gib sie als solche wieder und NIE mit [id]:\n" + "\n".join(zeilen) + "\n")
@@ -2286,17 +2286,17 @@ def _konzern_block(k: dict | None) -> str:
     """Der Konzern Stadt — was der Kernhaushalt nicht zeigt."""
     if not k or k.get("aufwendungen") is None:
         return ""
-    zeilen = [f"- Konzern {k['jahr']}: Aufwendungen {_eur(k.get('aufwendungen'))}, "
+    zeilen = [f"- Konzern {k['year']}: Aufwendungen {_eur(k.get('aufwendungen'))}, "
               f"Erträge {_eur(k.get('ertraege'))}"]
     kern = k.get("kern") or {}
     if kern.get("aufwendungen"):
-        zeilen.append(f"- Davon Kernverwaltung (der „normale“ Haushalt) {k['jahr']}: "
+        zeilen.append(f"- Davon Kernverwaltung (der „normale“ Haushalt) {k['year']}: "
                       f"Aufwendungen {_eur(kern['aufwendungen'])} — die Differenz sind "
                       f"Eigenbetriebe und Beteiligungen")
     for t in (k.get("traeger") or [])[:4]:
         zeilen.append(f"- {t['traeger']}: {_eur((t.get('betrag_teur') or 0) * 1000)} "
                       f"Aufwendungen (auf Tausend Euro genau, mehr gibt der Bericht nicht her)")
-    return (f"\nDER KONZERN STADT OLDENBURG (konsolidierter Gesamtabschluss {k['jahr']} —\n"
+    return (f"\nDER KONZERN STADT OLDENBURG (konsolidierter Gesamtabschluss {k['year']} —\n"
             "Kernverwaltung PLUS Eigenbetriebe und Beteiligungen). Nutze das, wenn nach\n"
             "der Stadt ALS GANZES gefragt ist; die Zahlen sind mit denen des\n"
             "Kernhaushalts NICHT verrechenbar und NIE mit [id] zu zitieren"
@@ -2310,7 +2310,7 @@ def _vergleich_block(v: dict | None) -> str:
     einheit = f" {v['einheit']}" if v.get("einheit") else ""
     zeilen = [f"- {s['stadt']}: {s['wert']:,.0f}{einheit}".replace(",", ".")
               for s in v["staedte"][:8] if s.get("wert") is not None]
-    return (f"\nIM VERGLEICH ({v['kennzahl']}, {v['jahr']}, amtliche Statistik des\n"
+    return (f"\nIM VERGLEICH ({v['kennzahl']}, {v['year']}, amtliche Statistik des\n"
             "Landesamts für Statistik Niedersachsen — alle kreisfreien Städte\n"
             "Niedersachsens). Für die Einordnung „wo steht Oldenburg?“; NIE mit [id]"
             + _beleg_text(v.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
@@ -2322,7 +2322,7 @@ def _ansatz_block(a: dict | None) -> str:
     if not a or not a.get("posten"):
         return ""
     zeilen = [f"- {p['bezeichnung']}: {_eur(p.get('betrag'))}" for p in a["posten"]]
-    return (f"\nHAUSHALTSANSATZ {a['jahr']} nach Ertrags- und Aufwandsarten (GEPLANT,\n"
+    return (f"\nHAUSHALTSANSATZ {a['year']} nach Ertrags- und Aufwandsarten (GEPLANT,\n"
             "aus dem Gesamtergebnishaushalt — der Stand der Einbringung, nicht\n"
             "zwingend der Beschluss des Rates; Jahr immer nennen, NIE mit [id])"
             + _beleg_text(a.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
@@ -2355,11 +2355,11 @@ def _bilanz_block(b: dict | None) -> str:
         "pensionsrueckstellungen": "davon Pensionsrückstellungen",
         "schulden": "Schulden und ähnliche Verbindlichkeiten",
     }
-    zeilen = [f"- Bilanzsumme zum 31.12.{b['jahr']}: {_eur(b['bilanzsumme'])}"]
+    zeilen = [f"- Bilanzsumme zum 31.12.{b['year']}: {_eur(b['bilanzsumme'])}"]
     for rolle, wert in b.get("posten") or []:
         zeilen.append(f"  - {namen.get(rolle, rolle)}: {_eur(wert)}")
     return ("\nBILANZ (Jahresabschluss, Abschnitt 2.1). Das ist ein STICHTAG "
-            f"(31.12.{b['jahr']}),\nkein Haushaltsjahr: Diese Beträge NIE mit "
+            f"(31.12.{b['year']}),\nkein Haushaltsjahr: Diese Beträge NIE mit "
             "Erträgen, Aufwendungen oder dem\nDefizit eines Jahres verrechnen. Nie "
             "mit [id] zitieren"
             + _beleg_text(b.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
@@ -2371,7 +2371,7 @@ def _kassensicht_block(k: dict | None) -> str:
     if not k or not k.get("zeilen"):
         return ""
     zeilen = [f"- {name}: {_eur(wert)}" for name, wert, _rolle in k["zeilen"]]
-    return (f"\nKASSENSICHT (Finanzrechnung {k['jahr']}, Abschnitt 4.1 desselben "
+    return (f"\nKASSENSICHT (Finanzrechnung {k['year']}, Abschnitt 4.1 desselben "
             "Jahresabschlusses).\nSie bucht, wenn GELD FLIESST — die "
             "Ergebnisrechnung bucht, wenn ein Anspruch\nentsteht. Deshalb können "
             "beide für dasselbe Jahr in verschiedene Richtungen\nzeigen (2024: dort "
@@ -2388,7 +2388,7 @@ def _nachbewilligungen_block(n: dict | None) -> str:
              "oberbuergermeister": "vom Oberbürgermeister",
              "fachdienst200": "vom Fachdienst Finanzen",
              "eilentscheidung": "als Eilentscheidung"}
-    zeilen = [f"- Nachbewilligt {n['jahr']} insgesamt: {_eur(n['gesamt'])} "
+    zeilen = [f"- Nachbewilligt {n['year']} insgesamt: {_eur(n['gesamt'])} "
               f"(konsumtiv {_eur(n['konsumtiv'])}, investiv {_eur(n['investiv'])})"]
     for kanal, kons, inv in n.get("kanaele") or []:
         summe = (kons or 0) + (inv or 0)
@@ -2401,7 +2401,7 @@ def _nachbewilligungen_block(n: dict | None) -> str:
                       f"{_eur(n['verpflichtungen'])}")
     if n.get("probe_text"):
         zeilen.append(f"- Einschränkung der Quelle: {n['probe_text']}")
-    return (f"\nNACHBEWILLIGUNGEN {n['jahr']} (§ 117 NKomVG, Rechenschaftsbericht "
+    return (f"\nNACHBEWILLIGUNGEN {n['year']} (§ 117 NKomVG, Rechenschaftsbericht "
             "Kapitel 3).\nGeld, das AUSSERHALB des beschlossenen Haushalts "
             "bewilligt wurde. Nicht mit\ndem Haushaltsplan verrechnen — es kommt "
             "obendrauf. Nie mit [id] zitieren"
@@ -2438,16 +2438,16 @@ def _kennzahlen_block(k: dict | None) -> str:
             # statt 156,43 €) und daneben der Rechenweg, der sie nicht ergibt.
             gezeigt = (f"{wert:,.{stellen}f} €".replace(",", "\u0001")
                        .replace(".", ",").replace("\u0001", "."))
-        zeile = f"- {name} {k['jahr']}: {gezeigt}"
+        zeile = f"- {name} {k['year']}: {gezeigt}"
         if formel:
             zeile += f" (so rechnet die Stadt: {formel})"
         zeilen.append(zeile)
-    for name, jahr, alt, alt_b, neu, neu_b, einheit in k.get("korrekturen") or []:
-        zeilen.append(f"- ACHTUNG, später korrigiert: {name} {jahr} stand im Bericht "
+    for name, year, alt, alt_b, neu, neu_b, einheit in k.get("korrekturen") or []:
+        zeilen.append(f"- ACHTUNG, später korrigiert: {name} {year} stand im Bericht "
                       f"{alt_b} noch bei {zeig(alt, einheit)}, im Bericht {neu_b} bei "
                       f"{zeig(neu, einheit)}. Nenne den jüngeren Wert und sag, dass "
                       f"korrigiert wurde.")
-    return (f"\nKENNZAHLEN {k['jahr']} (Rechenschaftsbericht, Anlage "
+    return (f"\nKENNZAHLEN {k['year']} (Rechenschaftsbericht, Anlage "
             "„Kennzahlenübersicht und\nBerechnungsmethoden“). Die Rechenwege sind "
             "GEDRUCKT — zitiere sie, statt\neine Quote selbst zu bilden. Nie mit "
             "[id] zitieren"
@@ -2465,18 +2465,18 @@ def _schulden_block(s: dict | None) -> str:
     """
     if not s or s.get("insgesamt") is None:
         return ""
-    kopf = f"- Schuldenstand am Jahresende {s['jahr']}: {_eur(s['insgesamt'])}"
+    kopf = f"- Schuldenstand am Jahresende {s['year']}: {_eur(s['insgesamt'])}"
     if s.get("je_einwohner"):
         kopf += f" — das sind {_eur(s['je_einwohner'])} je Einwohner*in"
     if s.get("revidiert"):
         kopf += " (von der Quelle als revidierter Wert gekennzeichnet)"
     zeilen = [kopf]
     if s.get("davor"):
-        zeilen.append(f"- Ein Jahr davor ({s['davor']['jahr']}): "
+        zeilen.append(f"- Ein Jahr davor ({s['davor']['year']}): "
                       f"{_eur(s['davor']['insgesamt'])}")
     if s.get("hoch"):
         zeilen.append(f"- Höchster Stand der Reihe (sie beginnt {s['reihe_ab']}): "
-                      f"{s['hoch']['jahr']} mit {_eur(s['hoch']['insgesamt'])}")
+                      f"{s['hoch']['year']} mit {_eur(s['hoch']['insgesamt'])}")
     for titel, betrag in s.get("arten") or []:
         zeilen.append(f"  - davon {titel}: {_eur(betrag)}")
     if s.get("aufteilung_verworfen"):
@@ -2489,7 +2489,7 @@ def _schulden_block(s: dict | None) -> str:
     # der Zufall der Facette. Nebeneinander sind sie die ehrliche Antwort.
     for w in s.get("weitere") or []:
         zeilen.append(f"- Dieselbe Frage, andere Abgrenzung — {w['art']} "
-                      f"{w['jahr']}: {_eur(w['betrag'])} (Quelle: {w['quelle']})")
+                      f"{w['year']}: {_eur(w['betrag'])} (Quelle: {w['quelle']})")
     if s.get("weitere"):
         zeilen.append("  Diese Zahlen NIE addieren: Die größere enthält die "
                       "kleinere. Wer nach „den Schulden“ fragt, bekommt die "
@@ -2497,7 +2497,7 @@ def _schulden_block(s: dict | None) -> str:
     b = s.get("buergschaften")
     if b and b.get("bestand") is not None:
         zeile = (f"- Zusätzlich verbürgt (KEINE Schuld, sondern ein Einstehen für "
-                 f"fremde Kredite) {b['jahr']}: {_eur(b['bestand'])}")
+                 f"fremde Kredite) {b['year']}: {_eur(b['bestand'])}")
         if b.get("rueckstellung") is not None:
             zeile += (f"; davon hält die Stadt {_eur(b['rueckstellung'])} als "
                       f"Rückstellung für den erwarteten Ausfall vor")
@@ -2523,12 +2523,12 @@ def _investitionen_block(i: dict | None) -> str:
     if not i or not i.get("gesamt"):
         return ""
     g = i["gesamt"]
-    zeilen = [f"- {g['bezeichnung']} ({i['jahr']}): Auszahlungen "
+    zeilen = [f"- {g['bezeichnung']} ({i['year']}): Auszahlungen "
               f"{_eur(g.get('auszahlungen'))}, Einzahlungen {_eur(g.get('einzahlungen'))}"]
     for r in i.get("teilhaushalte") or []:
         zeilen.append(f"  - {r['bezeichnung']}: Auszahlungen {_eur(r.get('auszahlungen'))}, "
                       f"Einzahlungen {_eur(r.get('einzahlungen'))}")
-    return (f"\nINVESTITIONEN (Finanzhaushalt des Haushaltsplans {i['jahr']} — GEPLANT).\n"
+    return (f"\nINVESTITIONEN (Finanzhaushalt des Haushaltsplans {i['year']} — GEPLANT).\n"
             "ES SIND ZWEI HAUSHALTE, NICHT EINER: Hier steht, was die Stadt bauen und\n"
             "kaufen will. Im Ergebnishaushalt (Aufwendungen und Erträge, eigener\n"
             "Abschnitt) steht davon keine einzige Investition — ein Schulneubau taucht\n"
@@ -2553,14 +2553,14 @@ def _gebaut_block(g: dict | None) -> str:
     als geschlossen und bildet Durchschnitte über ein Loch."""
     if not g or g.get("insgesamt") is None:
         return ""
-    zeilen = [f"- Tatsächliche Investitions-Auszahlungen {g['jahr']}: "
+    zeilen = [f"- Tatsächliche Investitions-Auszahlungen {g['year']}: "
               f"{_eur(g['insgesamt'])}"]
     if g.get("davor"):
-        zeilen.append(f"- Ein Jahr davor ({g['davor']['jahr']}): "
+        zeilen.append(f"- Ein Jahr davor ({g['davor']['year']}): "
                       f"{_eur(g['davor']['insgesamt'])}")
     if g.get("hoch"):
         zeilen.append(f"- Höchster Wert der Reihe (sie beginnt {g['reihe_ab']}): "
-                      f"{g['hoch']['jahr']} mit {_eur(g['hoch']['insgesamt'])}")
+                      f"{g['hoch']['year']} mit {_eur(g['hoch']['insgesamt'])}")
     for titel, betrag in g.get("arten") or []:
         zeilen.append(f"  - davon {titel}: {_eur(betrag)}")
     if g.get("fehlend"):
@@ -2641,7 +2641,7 @@ def _antraege_block(a: dict | None) -> str:
         if b.get("outcome"):
             zeilen.append(f"  - Schlussabstimmung über die Haushaltssatzung: "
                           f"{b['outcome']}" + (f" ({b['vote']})" if b.get("vote") else ""))
-    return (f"\nDER STREIT UM DEN HAUSHALT {a['jahr']} (Änderungslisten aus den "
+    return (f"\nDER STREIT UM DEN HAUSHALT {a['year']} (Änderungslisten aus den "
             "Sitzungs-\nprotokollen; Jahreszahl = HAUSHALTSjahr, der Beschluss fällt "
             "oft im Jahr\ndavor).\nDIE GRENZE DIESER QUELLE GEHÖRT IN DIE ANTWORT: Sie "
             "sagt, WER etwas ändern\nwollte und ob es durchkam — nicht WAS genau. "

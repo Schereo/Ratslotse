@@ -118,7 +118,7 @@ def main() -> int:
             pfad_alt, _ = _holen(args.kfa_vorjahr, ablage)
             neu = sv.lies_kfa(str(pfad_neu))
             alt = sv.lies_kfa(str(pfad_alt))
-            print(f"  Ausgleichsjahr {neu.jahr} (Vorjahresspalte {neu.vorjahr}), "
+            print(f"  Ausgleichsjahr {neu.year} (Vorjahresspalte {neu.vorjahr}), "
                   f"{len(neu.staedte)} Gemeinden, Stand {neu.stand}")
 
             probe = sv.probe_ueberlappung(alt, neu)
@@ -136,9 +136,9 @@ def main() -> int:
                 "steuerkraft", zeilen,
                 h.Herkunft(
                     art="lsn", probe="lsn_zweijahresueberlappung",
-                    label=f"Kommunaler Finanzausgleich {neu.jahr}, endgültig — "
+                    label=f"Kommunaler Finanzausgleich {neu.year}, endgültig — "
                           f"Ergebnis- und Vergleichstabellen",
-                    url=url_neu or QUELLEN_STAND.get(f"kfa{neu.jahr}"),
+                    url=url_neu or QUELLEN_STAND.get(f"kfa{neu.year}"),
                     fundstelle="Blatt „ST_KR_MESS_VGL“ — Steuerkraftmesszahlen "
                                "je Gemeinde, zwei Ausgleichsjahre nebeneinander",
                     probe_ergebnis=probe["ergebnis"],
@@ -166,7 +166,7 @@ def main() -> int:
                 proben.append(probe_k["ergebnis"])
                 if args.jahrbuch_1103:
                     jahr_s, _, wert_s = args.jahrbuch_1103.partition(":")
-                    if jahr_s.strip().isdigit() and int(jahr_s) == jahrgang.jahr:
+                    if jahr_s.strip().isdigit() and int(jahr_s) == jahrgang.year:
                         probe_j = sk.probe_gegen_jahrbuch(jahrgang, float(wert_s))
                         print(f"  {probe_j['ergebnis']} "
                               f"— {'geht auf' if probe_j['ok'] else 'REISST'}")
@@ -180,9 +180,9 @@ def main() -> int:
                     h.Herkunft(
                         art="lsn",
                         probe=["kfa_komponentenprobe", "kfa_jahrbuchabgleich"],
-                        label=f"Kommunaler Finanzausgleich {neu.jahr}, endgültig — "
+                        label=f"Kommunaler Finanzausgleich {neu.year}, endgültig — "
                               f"Ergebnis- und Vergleichstabellen",
-                        url=url_neu or QUELLEN_STAND.get(f"kfa{neu.jahr}"),
+                        url=url_neu or QUELLEN_STAND.get(f"kfa{neu.year}"),
                         fundstelle="Blatt „9a“ — Schlüsselzuweisungen für "
                                    "Gemeinde- und Kreisaufgaben, Zuweisungen für "
                                    "Aufgaben des übertragenen Wirkungskreises und "
@@ -195,7 +195,7 @@ def main() -> int:
             print("Realsteuervergleich:")
             pfad_rs, url_rs = _holen(args.realsteuer, ablage)
             rs = sv.lies_realsteuervergleich(str(pfad_rs))
-            print(f"  Berichtsjahr {rs.jahr}, Stand {rs.stand or 'Erstausgabe'}")
+            print(f"  Berichtsjahr {rs.year}, Stand {rs.stand or 'Erstausgabe'}")
 
             zeilen, verworfen = sv.zeilen_realsteuern(rs)
             for v in verworfen:
@@ -207,9 +207,9 @@ def main() -> int:
                 "realsteuern", zeilen,
                 h.Herkunft(
                     art="lsn", probe=["lsn_hebesatzprobe", "lsn_dreijahresmittel"],
-                    label=f"Realsteuervergleich {rs.jahr} (Statistischer Bericht "
+                    label=f"Realsteuervergleich {rs.year} (Statistischer Bericht "
                           f"L II 7 / L II 9)",
-                    url=url_rs or QUELLEN_STAND.get(f"realsteuer{rs.jahr}"),
+                    url=url_rs or QUELLEN_STAND.get(f"realsteuer{rs.year}"),
                     fundstelle="Blatt 2.1 — Grundbeträge, Hebesätze und "
                                "Ist-Aufkommen je kreisfreier Stadt; Blatt 5.1 — "
                                "durchschnittliche Steuereinnahmekraft, drei Jahre",

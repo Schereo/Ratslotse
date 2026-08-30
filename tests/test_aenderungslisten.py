@@ -65,9 +65,9 @@ def betrag(text, x1, y):
 
 
 #: Kopfgeometrie wie auf den Tabellenseiten von 300528 gemessen.
-def kopf(jahr):
+def kopf(year):
     return [
-        w(390, 441, 30, "Änderungen"), w(444, 462, 30, str(jahr)),
+        w(390, 441, 30, "Änderungen"), w(444, 462, 30, str(year)),
         w(222.6, 271.2, 50, "Bezeichnung"),
         w(383.4, 407.0, 52, "Ertrag"), w(442.0, 475.5, 52, "Aufwand"),
         w(600.0, 655.0, 50, "Erläuterungen"),
@@ -92,13 +92,13 @@ def position(y, lfd, thh, beitraege, produkt="P10.111011.003",
     return aus
 
 
-def summenblock(jahr, zeilen, ueberschrift=None):
+def summenblock(year, zeilen, ueberschrift=None):
     """Ein Zusammenstellungs-Block als Wortzeilen (eigene Seite, kein
     Tabellenkopf). `zeilen`: (vorlabel, e, a, s, nachlabel)."""
     aus = []
     y = 30
     aus.append(w(200, 380, y, ueberschrift if ueberschrift is not None
-                else f"Ergebnishaushalt {jahr}"))
+                else f"Ergebnishaushalt {year}"))
     for vor, e, a, s, nach in zeilen:
         y += 20
         x = 40
@@ -306,8 +306,8 @@ def test_zwei_positionen_in_einem_band_bleiben_leer():
 
 #: Kopfgeometrie von 230011: dieselbe Tabelle wie oben, aber mit der
 #: zweizeilig gesetzten Urheber-Spalte ganz rechts (Linien bei 758/815).
-def kopf_mit_urheber(jahr):
-    return kopf(jahr) + [w(767, 806, 40, "Vorschlag"), w(779, 794, 52, "von")]
+def kopf_mit_urheber(year):
+    return kopf(year) + [w(767, 806, 40, "Vorschlag"), w(779, 794, 52, "von")]
 
 
 def urheber_wort(y, teile, x0=762):

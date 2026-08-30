@@ -259,8 +259,8 @@ def jahrgang(text: str | None) -> int | None:
     Stellenplan Haushalt 2025 Verwaltungsentwurf" — drei Schreibweisen, und
     die von 2024 trägt zwei Jahreszahlen an verschiedenen Stellen. Der Kopf
     sagt es einmal und eindeutig."""
-    jahr, _ = _kopfangaben((text or "")[:4000])
-    return jahr
+    year, _ = _kopfangaben((text or "")[:4000])
+    return year
 
 
 def _teile_lesen(text: str) -> dict[str, dict]:
@@ -302,9 +302,9 @@ def _teile_lesen(text: str) -> dict[str, dict]:
             # Der Kopf ist zu Ende: Was er über Jahr, Stichtag und Spaltenzahl
             # sagt, wird eingesammelt. Er steht auf jeder Seite noch einmal —
             # widerspricht er sich, fällt das hier auf und nicht später.
-            jahr, stichtag = _kopfangaben(" ".join(kopf))
-            if jahr:
-                t["jahre"].add(jahr)
+            year, stichtag = _kopfangaben(" ".join(kopf))
+            if year:
+                t["jahre"].add(year)
             if stichtag:
                 t["stichtage"].add(stichtag)
             if t["spalten"] is None:
@@ -584,14 +584,14 @@ def lies(text: str) -> dict:
         if t["spalten"] != soll or t["spaltenstreit"]:
             gesehen = sorted({t["spalten"], *t["spaltenstreit"]} - {None})
             ergebnis.append({
-                "teil": name, "stichtag": None, "jahr": None, "zeilen": [],
+                "teil": name, "stichtag": None, "year": None, "zeilen": [],
                 "proben": [], "bestanden": False, "verworfen": len(t["zeilen"]),
                 "nachweis": f"Teil {name} nennt {gesehen or 'keine'} Spalten "
                             f"statt {soll} — nicht gelesen"})
             continue
         if len(t["jahre"]) != 1 or len(t["stichtage"]) > 1:
             ergebnis.append({
-                "teil": name, "stichtag": None, "jahr": None, "zeilen": [],
+                "teil": name, "stichtag": None, "year": None, "zeilen": [],
                 "proben": [], "bestanden": False, "verworfen": len(t["zeilen"]),
                 "nachweis": f"Teil {name}: der Tabellenkopf nennt "
                             f"{sorted(t['jahre']) or 'kein'} Haushaltsjahr und "
@@ -630,11 +630,11 @@ def lies(text: str) -> dict:
 
         bestanden = all(p["ok"] for p in proben)
         unstimmig = unstimmige_zeilen(einzeln)
-        jahr = next(iter(t["jahre"]))
+        year = next(iter(t["jahre"]))
         if bestanden:
-            jahre.add(jahr)
+            jahre.add(year)
         ergebnis.append({
-            "teil": name, "jahr": jahr,
+            "teil": name, "year": year,
             "stichtag": next(iter(t["stichtage"]), None),
             "zeilen": (_zeilen_bauen(gruppen, gesamt, unstimmig)
                        if bestanden else []),

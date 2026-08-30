@@ -97,14 +97,14 @@ def main() -> int:
                          f"im Blatt {isch.BLATT}.")
 
     anteil = isch.anteil_unter_50(gefunden)
-    print(f"{gefunden['jahr']}: {gefunden['insgesamt']/1e6:.2f} Mio. € "
+    print(f"{gefunden['year']}: {gefunden['insgesamt']/1e6:.2f} Mio. € "
           f"({gefunden['je_einwohner']:,.0f} € je Einwohner*in)")
     print(f"  davon aus Beteiligungen unter 50 %: {anteil*100:.1f} %")
 
     store = CouncilStore(Path(args.db))
     try:
         posten = [p for p in store.get_bilanz_posten("geldschulden")
-                  if p["jahr"] == gefunden["jahr"]]
+                  if p["year"] == gefunden["year"]]
         ok, warum = isch.kernprobe(gefunden, posten[0]["wert"] if posten else None)
         print(f"  Kernhaushalts-Probe: {'bestanden' if ok else 'GERISSEN'} — {warum}")
         if not ok:
@@ -121,8 +121,8 @@ def main() -> int:
                 fundstelle=f"Tabelle 2, Blatt {isch.BLATT}, "
                            f"Regionalschlüssel {isch.ARS_OLDENBURG}",
                 probe_ergebnis=warum,
-                stand=f"31.12.{gefunden['jahr']}"))
-        print(f"  gespeichert: Stichtag {gefunden['jahr']}")
+                stand=f"31.12.{gefunden['year']}"))
+        print(f"  gespeichert: Stichtag {gefunden['year']}")
     finally:
         store.close()
     return 0

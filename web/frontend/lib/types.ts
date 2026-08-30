@@ -495,7 +495,7 @@ export interface DecisionDetail {
     href: string;
     titel: string;
     template_number: string;
-    jahr?: number | null;
+    year?: number | null;
     betrag?: number | null;
   } | null;
   /** P1: document_id der gerenderten Planzeichnung — B-Plan-Beschlüsse

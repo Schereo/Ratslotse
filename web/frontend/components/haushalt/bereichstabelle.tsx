@@ -148,7 +148,7 @@ function Grund({ titel, text }: { titel: string; text: string }) {
   );
 }
 
-export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: number }) {
+export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; year: number }) {
   const [sortierung, setSortierung] = useState<Sortierung>("stadt");
   const [alle, setAlle] = useState(false);
 
@@ -326,13 +326,13 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
                   <>
                     Deren Zuschussbedarf beträgt {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und ist damit
                     {" "}{deMio(luecke)}&#8239;Mio.&nbsp;€ höher. Diese Differenz entspricht dem für
-                    {" "}{jahr} geplanten Minus.
+                    {" "}{year} geplanten Minus.
                   </>
                 ) : (
                   <>
                     Deren Zuschussbedarf beträgt {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und ist damit
                     {" "}{deMio(-luecke)}&#8239;Mio.&nbsp;€ niedriger. Diese Differenz entspricht dem
-                    für {jahr} geplanten Überschuss.
+                    für {year} geplanten Überschuss.
                   </>
                 )}
               </p>

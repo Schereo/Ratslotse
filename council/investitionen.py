@@ -219,10 +219,10 @@ def nachweis(zeilen: list[dict], gesamt: dict | None, ok: bool, warum: str) -> s
             f"beiden Spalten (größter Restbetrag {_de(max(reste))} €)")
 
 
-def lies(csv_text: str, jahr: int) -> dict:
+def lies(csv_text: str, year: int) -> dict:
     """Eine Finanzhaushalts-Datei des Portals auswerten.
 
-    Liefert ``{jahr, zeilen, gesamt, finanzhaushalt, bestanden, nachweis}``:
+    Liefert ``{year, zeilen, gesamt, finanzhaushalt, bestanden, nachweis}``:
 
     * ``zeilen`` — je Teilhaushalt ein dict mit ``thh_nr``, ``bezeichnung``,
       ``einzahlungen``, ``auszahlungen``.
@@ -236,7 +236,7 @@ def lies(csv_text: str, jahr: int) -> dict:
       aufgeht, gibt keine halben Zahlen her.
     """
     roh = [ln for ln in (csv_text or "").splitlines() if ln.strip()]
-    leer = {"jahr": jahr, "zeilen": [], "gesamt": None, "finanzhaushalt": None,
+    leer = {"year": year, "zeilen": [], "gesamt": None, "finanzhaushalt": None,
             "bestanden": False}
     if not roh:
         return {**leer, "nachweis": "Datei ist leer"}
@@ -270,6 +270,6 @@ def lies(csv_text: str, jahr: int) -> dict:
         # Die Bezugsgröße fällt mit: Ohne geprüfte Investitionssumme daneben
         # wäre sie eine große Zahl ohne Aussage.
         return {**leer, "nachweis": text}
-    return {"jahr": jahr, "zeilen": sorted(zeilen, key=lambda z: z["thh_nr"]),
+    return {"year": year, "zeilen": sorted(zeilen, key=lambda z: z["thh_nr"]),
             "gesamt": gesamt, "finanzhaushalt": finanzhaushalt,
             "bestanden": True, "nachweis": text}

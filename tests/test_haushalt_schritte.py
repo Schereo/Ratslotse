@@ -38,7 +38,7 @@ UEBERSICHT = BEREICH / "page.tsx"
 
 #: Der Kicker, den die Seiten schreiben: „Stadtfinanzen Oldenburg · Schritt 9".
 #: Bewusst eng: Ein Kommentar, der beiläufig „Schritt 1" erwähnt (etwa über
-#: das Verwaltungsverfahren in ``jahr/page.tsx``), ist keine Wegweiser-Nummer
+#: das Verwaltungsverfahren in ``year/page.tsx``), ist keine Wegweiser-Nummer
 #: und darf hier nicht mitgezählt werden.
 KICKER = re.compile(r"Stadtfinanzen Oldenburg\s*·\s*Schritt (\d+)")
 
@@ -46,7 +46,7 @@ KICKER = re.compile(r"Stadtfinanzen Oldenburg\s*·\s*Schritt (\d+)")
 #:
 #:     | `/haushalt/konzern` | Schritt 11 — Kernverwaltung gegen …
 #:
-#: Der Query-Parameter-Anhang mancher Routen (``[?jahr=<jahr>]``) gehört zur
+#: Der Query-Parameter-Anhang mancher Routen (``[?year=<year>]``) gehört zur
 #: Schreibweise der Tabelle und nicht zum Seitennamen.
 DOKU_ZEILE = re.compile(
     r"^\|\s*`/haushalt/([a-z-]+)(?:\[[^\]]*\])?`\s*\|\s*Schritt (\d+)", re.MULTILINE)

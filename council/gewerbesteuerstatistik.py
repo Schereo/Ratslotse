@@ -275,13 +275,13 @@ def _wert(roh: object) -> tuple[float | None, bool]:
 class Gewerbesteuerjahrgang:
     """Ein Erhebungsjahr der Gewerbesteuerstatistik, beide Blätter.
 
-    ``jahr`` ist das **Erhebungsjahr** der Veranlagung, das die Datei selbst
+    ``year`` ist das **Erhebungsjahr** der Veranlagung, das die Datei selbst
     im Titel nennt — nicht das Jahr, in dem der Bericht erschien. Zwischen
     beiden liegen rund fünf Jahre, und genau deshalb steht das Erscheinen
     getrennt daneben (:attr:`stand`).
     """
 
-    jahr: int
+    year: int
     #: „Erschienen im März 2026", aus dem Impressum.
     erschienen: str | None = None
     #: „Korrigierte Fassung vom 11.02.2026", wo es eine gibt (Jahrgang 2020).
@@ -311,19 +311,19 @@ def _kopf(pfad: str) -> tuple[int, str | None, str | None]:
     trägt ein Sonderzeichen (U+2212, kein Bindestrich), an dem eine
     naheliegende Suche vorbeiläuft.
     """
-    jahr = jahr_nummer = None
+    year = jahr_nummer = None
     korrektur = None
     for zeile in sv.blatt_lesen(pfad, "Titel"):
         for zelle in zeile:
             text = " ".join(str(zelle or "").split())
             if (m := re.search(r"Gewerbesteuerstatistik\s+(\d{4})", text)):
-                jahr = int(m.group(1))
+                year = int(m.group(1))
             if (m := re.search(r"L\s*IV\s*13\s*.\s*j\s*/\s*(\d{4})", text)):
                 jahr_nummer = int(m.group(1))
             if (m := re.search(r"(Korrigierte Fassung vom [\d.]+)", text)):
                 korrektur = m.group(1)
-    jahr = jahr or jahr_nummer
-    if jahr is None:
+    year = year or jahr_nummer
+    if year is None:
         raise ValueError(f"{pfad}: Auf dem Titelblatt steht kein Erhebungsjahr")
 
     erschienen = None
@@ -332,7 +332,7 @@ def _kopf(pfad: str) -> tuple[int, str | None, str | None]:
             text = " ".join(str(zelle or "").split())
             if (m := re.search(r"(Erschienen im \w+ \d{4})", text)):
                 erschienen = m.group(1)
-    return jahr, erschienen, korrektur
+    return year, erschienen, korrektur
 
 
 def _blatt(pfad: str, blatt: str, erwartet: tuple[str, ...],
@@ -385,9 +385,9 @@ def _blatt(pfad: str, blatt: str, erwartet: tuple[str, ...],
 
 def lies_bericht(pfad: str) -> Gewerbesteuerjahrgang:
     """Einen Statistischen Bericht L IV 13 einlesen (Blätter 6.1 und 6.2)."""
-    jahr, erschienen, korrektur = _kopf(pfad)
+    year, erschienen, korrektur = _kopf(pfad)
     return Gewerbesteuerjahrgang(
-        jahr=jahr, erschienen=erschienen, korrektur=korrektur,
+        year=year, erschienen=erschienen, korrektur=korrektur,
         staedte=_blatt(pfad, BLATT_KREISE, ERWARTET_KREISE, mit_hebesatz=False),
         gemeinden=_blatt(pfad, BLATT_GEMEINDEN, ERWARTET_GEMEINDEN,
                          mit_hebesatz=True))
@@ -465,7 +465,7 @@ def probe_blaetter(jahrgang: Gewerbesteuerjahrgang) -> dict:
                          f"{len(abweichungen)} Abweichungen")}
 
 
-def hebesatz_im_jahr(zeilen: list[dict], jahr: int,
+def hebesatz_im_jahr(zeilen: list[dict], year: int,
                      art: str = "Gewerbesteuer") -> float | None:
     """Den Hebesatz eines Jahres aus der Treppe von Tabelle 1105 lesen.
 
@@ -477,11 +477,11 @@ def hebesatz_im_jahr(zeilen: list[dict], jahr: int,
     durchführbar.
     """
     passend = [z for z in zeilen
-               if z.get("art") == art and int(z.get("jahr", 0)) <= jahr
+               if z.get("art") == art and int(z.get("year", 0)) <= year
                and z.get("hebesatz") is not None]
     if not passend:
         return None
-    return float(max(passend, key=lambda z: int(z["jahr"]))["hebesatz"])
+    return float(max(passend, key=lambda z: int(z["year"]))["hebesatz"])
 
 
 def probe_hebesatz(jahrgang: Gewerbesteuerjahrgang, schluessel: str,
@@ -509,7 +509,7 @@ def probe_hebesatz(jahrgang: Gewerbesteuerjahrgang, schluessel: str,
     return {"ok": ok,
             "ergebnis": (f"Hebesatz {satz:.0f} % (Landesamt) gegen "
                          f"{hebesatz_1105:.0f} % (Jahrbuch 1105) für "
-                         f"{jahrgang.jahr}")}
+                         f"{jahrgang.year}")}
 
 
 # --- Was in die Datenbank geht ---------------------------------------------
@@ -551,7 +551,7 @@ def zeilen(jahrgang: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
             continue
         gemeinde = jahrgang.gemeinden.get(key) or {}
         aus.append({
-            "jahr": jahrgang.jahr,
+            "year": jahrgang.year,
             "schluessel": key,
             # Der Name aus unserer Liste, nicht der aus der Datei: Die Datei
             # schreibt ihn je Jahrgang anders („Oldenburg (Oldb)" gegen

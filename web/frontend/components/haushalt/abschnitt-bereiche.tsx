@@ -45,7 +45,7 @@ import {
  *  bedient, steht redaktionell schon in `lib/haushalt-steuern.ts` und wird von
  *  `/haushalt/einnahmen` und den Steckbriefen benutzt. Eine zweite Fassung
  *  hier wäre ein zweiter Stand derselben Aussage. */
-type Posten = { slug: string; titel: string; wer: string; mioWert: number; jahr: number };
+type Posten = { slug: string; titel: string; wer: string; mioWert: number; year: number };
 
 function zentralePosten(daten: Daten): Posten[] {
   const out: Posten[] = [];
@@ -53,12 +53,12 @@ function zentralePosten(daten: Daten): Posten[] {
     if (s.datenArt) {
       const treffer = daten.steuern
         .filter((r) => r.art === s.datenArt && r.betrag != null)
-        .sort((a, b) => a.jahr - b.jahr);
+        .sort((a, b) => a.year - b.year);
       const letzte = treffer[treffer.length - 1];
       if (letzte) {
         out.push({
           slug: s.slug, titel: s.titel, wer: s.stellschraube,
-          mioWert: mio(letzte.betrag) ?? 0, jahr: letzte.jahr,
+          mioWert: mio(letzte.betrag) ?? 0, year: letzte.year,
         });
       }
       continue;
@@ -71,12 +71,12 @@ function zentralePosten(daten: Daten): Posten[] {
     if (s.slug === "schluesselzuweisungen") {
       const treffer = daten.steuerkraft
         .filter((r) => r.zuweisungen != null)
-        .sort((a, b) => a.jahr - b.jahr);
+        .sort((a, b) => a.year - b.year);
       const letzte = treffer[treffer.length - 1];
       if (letzte) {
         out.push({
           slug: s.slug, titel: s.titel, wer: s.stellschraube,
-          mioWert: mio(letzte.zuweisungen) ?? 0, jahr: letzte.jahr,
+          mioWert: mio(letzte.zuweisungen) ?? 0, year: letzte.year,
         });
       }
     }
@@ -85,13 +85,13 @@ function zentralePosten(daten: Daten): Posten[] {
 }
 
 /** Die Sonderkachel: warum bei „Finanzmanagement und Recht" so viel steht. */
-function Finanzkachel({ z, daten, jahr }: {
-  z: HaushaltZeile; daten: Daten; jahr: number;
+function Finanzkachel({ z, daten, year }: {
+  z: HaushaltZeile; daten: Daten; year: number;
 }) {
   const ein = mio(z.ertraege) ?? 0;
   const aus = mio(z.aufwendungen) ?? 0;
   const posten = zentralePosten(daten);
-  const istJahre = [...new Set(posten.map((p) => p.jahr))].sort();
+  const istJahre = [...new Set(posten.map((p) => p.year))].sort();
 
   return (
     <div className="rounded-2xl border border-primary/20 bg-primary/[0.05] p-4 shadow-sm sm:p-5">
@@ -133,7 +133,7 @@ function Finanzkachel({ z, daten, jahr }: {
                 <p className="mt-1.5 font-display text-[17px] font-bold tabular-nums">
                   {deMio(p.mioWert)}
                   <span className="ml-1 text-[11px] font-semibold text-muted-foreground">
-                    Mio.&nbsp;€ · Ist {p.jahr}
+                    Mio.&nbsp;€ · Ist {p.year}
                   </span>
                 </p>
                 <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">{p.wer}</p>
@@ -150,7 +150,7 @@ function Finanzkachel({ z, daten, jahr }: {
               <p className="mt-1.5 font-display text-[17px] font-bold tabular-nums">
                 {deMio(aus)}
                 <span className="ml-1 text-[11px] font-semibold text-muted-foreground">
-                  Mio.&nbsp;€ · Plan {jahr}
+                  Mio.&nbsp;€ · Plan {year}
                 </span>
               </p>
               <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
@@ -167,7 +167,7 @@ function Finanzkachel({ z, daten, jahr }: {
             Die Einnahmen oben sind abgerechnete Ist-Werte
             {istJahre.length ? ` (${istJahre.join(" und ")})` : ""}
             <Beleg q="steuern" /><Beleg q="steuerkraft" />, die {deMio(ein)}&nbsp;Mio.&nbsp;€
-            daneben der Plan für {jahr}. Zwei verschiedene Stände: Sie addieren sich nicht
+            daneben der Plan für {year}. Zwei verschiedene Stände: Sie addieren sich nicht
             zur Ertragszeile, und die Liste ist auch nicht vollständig — Zinsen,
             Konzessionsabgaben und weitere allgemeine Erträge sind nicht darunter.
           </p>
@@ -198,9 +198,9 @@ export function BereicheAbschnitt() {
     return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
   }
   const jahre = jahreSortiert(data);
-  const jahr = jahre[jahre.length - 1];
-  const zeilen = jahr ? data.jahre[String(jahr)] ?? [] : [];
-  if (!jahr || !bereiche(zeilen).length) {
+  const year = jahre[jahre.length - 1];
+  const zeilen = year ? data.jahre[String(year)] ?? [] : [];
+  if (!year || !bereiche(zeilen).length) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
         Für den Haushalt liegen uns gerade keine Bereichszahlen vor.{" "}
@@ -229,10 +229,10 @@ export function BereicheAbschnitt() {
           </p>
         </div>
 
-        {finanzen && <Finanzkachel z={finanzen} daten={data} jahr={jahr} />}
+        {finanzen && <Finanzkachel z={finanzen} daten={data} year={year} />}
 
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <NamenKlartext zeilen={zeilen} jahr={jahr} />
+          <NamenKlartext zeilen={zeilen} year={year} />
           <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
             Sortiert nach Größe: entweder nach den gesamten Aufwendungen oder nach dem
             Zuschussbedarf, also Aufwendungen minus eigene Erträge des Bereichs
@@ -255,7 +255,7 @@ export function BereicheAbschnitt() {
               Ein Teilhaushalt bündelt viele einzelne Aufgaben — Stadtarchiv, Feuerwehr,
               Schwimmbad. Was jede davon kostet, steht auf der Produktebene:
               Stand {produktBis}
-              <Beleg q="teilhaushalt" />, für das Haushaltsjahr {jahr} gibt es sie noch nicht.
+              <Beleg q="teilhaushalt" />, für das Haushaltsjahr {year} gibt es sie noch nicht.
             </p>
             <Link href="/haushalt/produkte"
               className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">

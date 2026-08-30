@@ -113,7 +113,7 @@ UEBERTRAGEN_ERKLAERT = (
 class KfaZuweisungen:
     """Ein Ausgleichsjahr aus Blatt ``9a`` — die acht kreisfreien Städte."""
 
-    jahr: int
+    year: int
     stand: str | None
     #: Schlüssel (sechsstellig) → {stadt, zuweisungen_*, nettobetrag,
     #: nettobetrag_je_ew}. Alle Beträge in **Tausend Euro**, wie im Blatt.
@@ -121,7 +121,7 @@ class KfaZuweisungen:
 
 
 def _jahresspalten(spalten: dict[int, str]) -> dict[int, dict[str, int]]:
-    """Kopfzeile → ``{jahr: {kennzahl: spaltenindex}}``.
+    """Kopfzeile → ``{year: {kennzahl: spaltenindex}}``.
 
     Eine Datei führt **zwei** Ausgleichsjahre nebeneinander; welche Spalte zu
     welchem Jahr gehört, sagt der Kopftext („… im Jahr 2026 …"). Genau das ist
@@ -132,7 +132,7 @@ def _jahresspalten(spalten: dict[int, str]) -> dict[int, dict[str, int]]:
         jahr_treffer = re.search(r"im\s+Jahr\s+(\d{4})", text)
         if not jahr_treffer:
             continue
-        jahr = int(jahr_treffer.group(1))
+        year = int(jahr_treffer.group(1))
         # Der Nettobetrag ZUERST, und das ist kein Stilfrage: Sein Kopftext
         # lautet „… abzüglich der Finanzausgleichsumlage im Jahr 2025)" und
         # enthält damit den Namen einer Komponente. Andersherum geprüft würden
@@ -144,13 +144,13 @@ def _jahresspalten(spalten: dict[int, str]) -> dict[int, dict[str, int]]:
             # Reihenfolge — die Ausgabe 2023 schreibt „Einwohner/Einwohnerin",
             # die 2026 „Einwohnerin/Einwohner".
             if re.search(r"Beträge\s+in\s+1[\s.]?000\s+Euro", text, re.IGNORECASE):
-                aus.setdefault(jahr, {}).setdefault("nettobetrag", i)
+                aus.setdefault(year, {}).setdefault("nettobetrag", i)
             elif re.search(r"je\s+Einwohner", text, re.IGNORECASE):
-                aus.setdefault(jahr, {}).setdefault("nettobetrag_je_ew", i)
+                aus.setdefault(year, {}).setdefault("nettobetrag_je_ew", i)
             continue
         for muster, name in KOMPONENTEN.items():
             if re.search(muster, text, re.IGNORECASE):
-                aus.setdefault(jahr, {}).setdefault(name, i)
+                aus.setdefault(year, {}).setdefault(name, i)
                 break
     return aus
 
@@ -185,8 +185,8 @@ def lies_zuweisungen(pfad: str) -> list[KfaZuweisungen]:
                 stand = m.group(1)
 
     aus: list[KfaZuweisungen] = []
-    for jahr in sorted(vollstaendig):
-        jahrgang = KfaZuweisungen(jahr=jahr, stand=stand)
+    for year in sorted(vollstaendig):
+        jahrgang = KfaZuweisungen(year=year, stand=stand)
         for zeile in zeilen[kopf_idx + 1:]:
             if not zeile or c_key >= len(zeile):
                 continue
@@ -196,7 +196,7 @@ def lies_zuweisungen(pfad: str) -> list[KfaZuweisungen]:
                 # sind Zwischenüberschriften und Summenzeilen.
                 continue
             werte = {name: sv._zahl(zeile[i]) if i < len(zeile) else None
-                     for name, i in vollstaendig[jahr].items()}
+                     for name, i in vollstaendig[year].items()}
             if werte.get("nettobetrag") is None:
                 continue
             werte["stadt"] = " ".join(str(zeile[c_name] or "").split())
@@ -230,7 +230,7 @@ def probe_komponenten(jahrgang: KfaZuweisungen) -> dict:
             "ergebnis": (f"{n - len(abweichungen)} von {n} Städten: "
                          f"Gemeinde- plus Kreis- plus übertragene Aufgaben minus "
                          f"Umlage ergibt den ausgewiesenen Nettobetrag "
-                         f"(Ausgleichsjahr {jahrgang.jahr})")}
+                         f"(Ausgleichsjahr {jahrgang.year})")}
 
 
 def probe_gegen_jahrbuch(jahrgang: KfaZuweisungen, jahrbuch_teur: float,
@@ -251,7 +251,7 @@ def probe_gegen_jahrbuch(jahrgang: KfaZuweisungen, jahrbuch_teur: float,
         "ok": anteil <= JAHRBUCH_TOLERANZ,
         "lsn_teur": wert, "jahrbuch_teur": jahrbuch_teur,
         "abweichung_prozent": round(anteil * 100, 4),
-        "ergebnis": (f"Ausgleichsjahr {jahrgang.jahr}: {wert:,.0f} T€ (Land) "
+        "ergebnis": (f"Ausgleichsjahr {jahrgang.year}: {wert:,.0f} T€ (Land) "
                      f"gegen {jahrbuch_teur:,.0f} T€ (Jahrbuch 1103) — "
                      f"{anteil * 100:.4f} % Abstand".replace(",", ".")),
     }
@@ -278,7 +278,7 @@ def zeilen_finanzausgleich(jahrgang: KfaZuweisungen) -> list[dict]:
         for name, wert in sorted(w.items()):
             if name in ("stadt", "nettobetrag_je_ew") or wert is None:
                 continue
-            aus.append({"jahr": jahrgang.jahr, "schluessel": key,
+            aus.append({"year": jahrgang.year, "schluessel": key,
                         "stadt": sv.KREISFREIE_STAEDTE.get(key, w.get("stadt", "")),
                         "kennzahl": name, "wert": float(wert), "einheit": "teur"})
     return aus

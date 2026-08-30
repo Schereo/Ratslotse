@@ -314,7 +314,7 @@ def _absaetze(block: str) -> list[str]:
 def parse_feststellungen(text: str) -> dict:
     """Alle Prüfungsfeststellungen eines Schlussberichts.
 
-    Liefert ``{jahr, legende, feststellungen, verworfen}``. Jede Feststellung
+    Liefert ``{year, legende, feststellungen, verworfen}``. Jede Feststellung
     trägt ``{lfd, marke, marke_name, marke_erlaeuterung, kette, textziffer,
     abschnitt, seite, text, folgeabsatz}`` — also alles, was zum Nachschlagen
     im Originaldokument nötig ist.
@@ -340,12 +340,12 @@ def parse_feststellungen(text: str) -> dict:
     Dokumentformat geändert und es ist Zeit für einen Blick, nicht für eine
     gelockerte Regel.
     """
-    jahr = erkenne_jahrgang(text)
+    year = erkenne_jahrgang(text)
     legende = parse_legende(text)
     ivz = parse_inhaltsverzeichnis(text)
-    leer = {"jahr": jahr, "legende": legende, "feststellungen": [],
+    leer = {"year": year, "legende": legende, "feststellungen": [],
             "verworfen": []}
-    if jahr is None or not legende or not ivz:
+    if year is None or not legende or not ivz:
         return leer
 
     ab = _koerper_beginn(text, text.find("Randbemerkungen"))
@@ -396,7 +396,7 @@ def parse_feststellungen(text: str) -> dict:
             "text": inhalt,
             "folgeabsatz": folge,
         })
-    return {"jahr": jahr, "legende": legende,
+    return {"year": year, "legende": legende,
             "feststellungen": feststellungen, "verworfen": verworfen}
 
 

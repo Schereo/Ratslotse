@@ -45,17 +45,17 @@ function eur(v: number): string {
 function HistorieTreppe({ reihe, bisJahr }: { reihe: HebesatzZeile[]; bisJahr: number }) {
   const stufen = reihe
     .filter((z) => z.hebesatz != null)
-    .sort((a, b) => a.jahr - b.jahr);
+    .sort((a, b) => a.year - b.year);
   if (stufen.length < 2) return null;
   const saetze = stufen.map((z) => z.hebesatz as number);
   const [min, max] = [Math.min(...saetze), Math.max(...saetze)];
-  const vonJahr = stufen[0].jahr;
+  const vonJahr = stufen[0].year;
   const breite = 280, hoehe = 44;
-  const x = (jahr: number) => ((jahr - vonJahr) / Math.max(1, bisJahr - vonJahr)) * breite;
+  const x = (year: number) => ((year - vonJahr) / Math.max(1, bisJahr - vonJahr)) * breite;
   const y = (satz: number) => 6 + (1 - (satz - min) / Math.max(1, max - min)) * (hoehe - 14);
   let pfad = "";
   stufen.forEach((z, i) => {
-    const px = x(z.jahr), py = y(z.hebesatz as number);
+    const px = x(z.year), py = y(z.hebesatz as number);
     pfad += i === 0 ? `M${px},${py}` : `H${px} V${py}`;
   });
   pfad += ` H${breite}`;
@@ -64,11 +64,11 @@ function HistorieTreppe({ reihe, bisJahr }: { reihe: HebesatzZeile[]; bisJahr: n
     <div className="mt-2.5 border-t border-dashed border-border pt-2.5">
       <svg viewBox={`0 0 ${breite} ${hoehe}`} className="block h-11 w-full" aria-hidden>
         <path d={pfad} fill="none" strokeWidth="2" style={{ stroke: "var(--hh-ein-1)" }} />
-        <circle cx={x(letzte.jahr)} cy={y(letzte.hebesatz as number)} r="3"
+        <circle cx={x(letzte.year)} cy={y(letzte.hebesatz as number)} r="3"
           style={{ fill: "hsl(var(--primary))" }} />
       </svg>
       <p className="mt-1 text-[10.5px] text-muted-foreground">
-        Die eigene Reihe seit {vonJahr}: {letzte.hebesatz}&nbsp;% gelten seit {letzte.jahr}
+        Die eigene Reihe seit {vonJahr}: {letzte.hebesatz}&nbsp;% gelten seit {letzte.year}
         <Beleg q="hebesaetze" /> — wenige Entscheidungen, lange Gültigkeit.
       </p>
     </div>
@@ -94,7 +94,7 @@ export function EinnahmenWerkbank({
   /** Anteil der Grundsteuer A am gemeinsamen Aufkommen — aus dem LSN-Vergleich. */
   anteilA: number | null;
   hundePct: number; setHundePct: (v: number) => void;
-  hunde: { jahr: number; betrag: number } | null;
+  hunde: { year: number; betrag: number } | null;
   staedte: StadtHebesatz[];
   historie: HebesatzZeile[];
   gebuehren: GebuehrenZeile[] | undefined;
@@ -109,9 +109,9 @@ export function EinnahmenWerkbank({
 
   // Die gesperrte Schraube braucht eine echte Zahl, sonst wäre sie nur ein
   // Icon: die umzulegenden Kosten des jüngsten Jahrgangs, alle drei Bereiche.
-  const gebJahr = gebuehren?.length ? Math.max(...gebuehren.map((g) => g.jahr)) : null;
+  const gebJahr = gebuehren?.length ? Math.max(...gebuehren.map((g) => g.year)) : null;
   const gebSumme = gebJahr != null
-    ? (gebuehren ?? []).filter((g) => g.jahr === gebJahr)
+    ? (gebuehren ?? []).filter((g) => g.year === gebJahr)
         .reduce((s, g) => s + g.zu_deckende_kosten, 0) : null;
 
   return (
@@ -270,7 +270,7 @@ export function EinnahmenWerkbank({
             }
             wirkung={
               hundePct === 0 ? (
-                <>Aufkommen {hunde.jahr}. Der Regler zeigt die Größenordnung in beide
+                <>Aufkommen {hunde.year}. Der Regler zeigt die Größenordnung in beide
                 Richtungen: Sowohl eine Verdopplung als auch die Abschaffung verändern
                 das Ergebnis um rund{" "}
                 {anteilText(hunde.betrag / 1e6)}.</>

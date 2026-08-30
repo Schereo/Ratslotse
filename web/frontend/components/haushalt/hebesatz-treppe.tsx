@@ -38,7 +38,7 @@ import type { HebesatzZeile } from "@/lib/haushalt";
 
 /** Eine Änderung, mit dem, was sie im selben Jahr bewirkt hat. */
 type Stufe = {
-  jahr: number;
+  year: number;
   hebesatz: number;
   vorheriger: number | null;
   /** Aufkommen im Änderungsjahr und im Jahr davor, in Euro. */
@@ -57,7 +57,7 @@ export function HebesatzTreppe({
   zweitreihe?: HebesatzZeile[];
   zweitLabel?: string;
   titel: string;
-  /** Die Ist-Reihe dieser Steuer, `{jahr: euro}` — der Pflicht-Kontext. */
+  /** Die Ist-Reihe dieser Steuer, `{year: euro}` — der Pflicht-Kontext. */
   aufkommen: Record<number, number>;
   /** Wie das Aufkommen heißt. Bei der Grundsteuer NICHT dasselbe wie der
    *  Hebesatz daneben: Der offene Datensatz führt A und B in einer Spalte. */
@@ -76,17 +76,17 @@ export function HebesatzTreppe({
   aufkommenBeleg?: React.ReactNode;
 }) {
   if (reihe.length < 2) return null;
-  const sortiert = [...reihe].sort((a, b) => a.jahr - b.jahr);
+  const sortiert = [...reihe].sort((a, b) => a.year - b.year);
 
   const stufen: Stufe[] = sortiert.map((z) => {
-    const vorher = aufkommen[z.jahr - 1];
-    const nachher = aufkommen[z.jahr];
+    const vorher = aufkommen[z.year - 1];
+    const nachher = aufkommen[z.year];
     return {
-      jahr: z.jahr,
+      year: z.year,
       hebesatz: z.hebesatz,
       vorheriger: z.vorheriger,
       aufkommen: vorher != null && nachher != null ? { vorher, nachher } : null,
-      bemessung: bemessungNeu[String(z.jahr)] ?? null,
+      bemessung: bemessungNeu[String(z.year)] ?? null,
     };
   });
 
@@ -99,7 +99,7 @@ export function HebesatzTreppe({
   const erste = sortiert[0];
   const letzte = sortiert[sortiert.length - 1];
   const ohneAufkommen = echteAenderungen.filter(
-    (s) => s.vorheriger != null && !s.aufkommen).map((s) => s.jahr);
+    (s) => s.vorheriger != null && !s.aufkommen).map((s) => s.year);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -108,7 +108,7 @@ export function HebesatzTreppe({
           Der Hebesatz im Rat
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {erste.jahr}–{letzte.jahr} · {echteAenderungen.length - 1}{" "}
+          {erste.year}–{letzte.year} · {echteAenderungen.length - 1}{" "}
           {echteAenderungen.length - 1 === 1 ? "Änderung" : "Änderungen"}
         </span>
       </div>
@@ -121,19 +121,19 @@ export function HebesatzTreppe({
       <div className="mt-3">
         <Zeitreihe
           treppe
-          reihe={sortiert.map((z) => ({ jahr: z.jahr, wert: z.hebesatz }))}
+          reihe={sortiert.map((z) => ({ year: z.year, wert: z.hebesatz }))}
           zweitreihe={zweitreihe && zweitreihe.length >= 2 && zweitLabel
             ? {
               label: zweitLabel,
-              reihe: [...zweitreihe].sort((a, b) => a.jahr - b.jahr)
-                .map((z) => ({ jahr: z.jahr, wert: z.hebesatz })),
+              reihe: [...zweitreihe].sort((a, b) => a.year - b.year)
+                .map((z) => ({ year: z.year, wert: z.hebesatz })),
               format: (v) => `${deZahl(v, 0)} %`,
             }
             : undefined}
           einheit="%"
           nachkomma={0}
           format={(v) => deZahl(v, 0)}
-          ariaTitel={`Hebesatz der ${titel} von ${erste.jahr} bis ${letzte.jahr},`
+          ariaTitel={`Hebesatz der ${titel} von ${erste.year} bis ${letzte.year},`
             + ` ${echteAenderungen.length - 1} Änderungen, zuletzt`
             + ` ${deZahl(letzte.hebesatz, 0)} Prozent`}
           /* Keine `tabelle`: Die Werte stehen unten ohnehin einzeln — und dort
@@ -155,10 +155,10 @@ export function HebesatzTreppe({
             const auf = s.aufkommen;
             const aufRelativ = auf ? (auf.nachher / auf.vorher - 1) * 100 : null;
             return (
-              <li key={s.jahr} className="rounded-xl bg-muted/30 p-2.5">
+              <li key={s.year} className="rounded-xl bg-muted/30 p-2.5">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <span className="font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {s.jahr}
+                    {s.year}
                   </span>
                   <span className="text-[12.5px] font-semibold tabular-nums">
                     {deZahl(s.vorheriger, 0)} → {deZahl(s.hebesatz, 0)}&nbsp;%
@@ -203,7 +203,7 @@ export function HebesatzTreppe({
             Ergebnis, ohne dass der Rat etwas beschlossen hätte.
             {grundlage ? <> {grundlage}</> : null}</>}
           gemessen={`${echteAenderungen.length - 1} Änderungen in `
-            + `${letzte.jahr - erste.jahr} Jahren`}
+            + `${letzte.year - erste.year} Jahren`}
           nichtAussagen={[
             `Die Tabelle nennt nur Änderungsjahre. Zwischen zwei Stufen ist der Satz unverändert geblieben — wir rechnen dort nichts dazwischen.`,
             `Abgrenzung der Quelle: ${abgrenzung}`,

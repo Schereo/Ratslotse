@@ -309,7 +309,7 @@ def test_die_jahresreihe_trennt_rat_und_verwaltungsausschuss():
               "Zuwendungen in Höhe von insgesamt 1.800,00 EUR", sitzung="2024-03-04",
               titel="Annahme von Zuwendungen durch den Verwaltungsausschuss"),
     ])
-    assert erg["jahre"] == [{"jahr": 2024, "betrag": 437_741.0, "vorlagen": 2,
+    assert erg["jahre"] == [{"year": 2024, "betrag": 437_741.0, "vorlagen": 2,
                              "rat": 1, "verwaltungsausschuss": 1}]
 
 

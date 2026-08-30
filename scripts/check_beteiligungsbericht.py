@@ -189,15 +189,15 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
 
         dokumente: dict[int, dict] = {}
         sitzung = None
-        for jahr, url in links:
-            if jahr < beteiligungsbericht.ERSTER_JAHRGANG:
+        for year, url in links:
+            if year < beteiligungsbericht.ERSTER_JAHRGANG:
                 # Kein Fehler, sondern die dokumentierte Grenze: Vor 2022 ist
                 # der Bericht anders aufgebaut und nicht maschinenlesbar.
-                p.sagen(f"  {jahr}: vor dem Formatbruch "
+                p.sagen(f"  {year}: vor dem Formatbruch "
                         f"{beteiligungsbericht.ERSTER_JAHRGANG} — übersprungen")
                 continue
             if trocken:
-                p.sagen(f"  {jahr}: würde {url} laden")
+                p.sagen(f"  {year}: würde {url} laden")
                 continue
             try:
                 if sitzung is not None:
@@ -211,14 +211,14 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
                 # Ein Dokument, das gerade nicht zu holen ist, beendet den Lauf
                 # nicht: Die übrigen sind trotzdem lesbar, und der Bestand
                 # bleibt vollständig, solange die Proben aufgehen.
-                p.warnen(f"  {jahr}: {exc}")
+                p.warnen(f"  {year}: {exc}")
                 fehler.append(str(exc))
                 continue
-            dokumente[jahr] = {
+            dokumente[year] = {
                 "seiten": _seiten(dok.inhalt), "url": url,
-                "label": f"Beteiligungsbericht {jahr} (oldenburg.de)"}
-            p.sagen(f"  {jahr}: {len(dok.inhalt) / 1e6:.1f} MB, "
-                    f"{len(dokumente[jahr]['seiten'])} Seiten")
+                "label": f"Beteiligungsbericht {year} (oldenburg.de)"}
+            p.sagen(f"  {year}: {len(dok.inhalt) / 1e6:.1f} MB, "
+                    f"{len(dokumente[year]['seiten'])} Seiten")
 
         if dokumente and not trocken:
             ergebnis = beteiligungsbericht.einlesen(store, dokumente, p, schuetzen)

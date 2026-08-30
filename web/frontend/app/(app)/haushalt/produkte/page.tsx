@@ -44,10 +44,10 @@ function ProdukteSeiteInner() {
   // `undefined` = lädt (Platzhalter hält die Höhe), `null` = entschieden
   // nichts (keine Bühne), sonst die Werte.
   const [bestand, setBestand] = useState<{
-    anzahl: number; jahr: number; beispiele: { name: string; wert: number }[];
+    anzahl: number; year: number; beispiele: { name: string; wert: number }[];
   } | null | undefined>(undefined);
   return (
-    // KEIN gemeinsames `jahr`: Die Bereichs-Übersicht zeigt den jüngsten
+    // KEIN gemeinsames `year`: Die Bereichs-Übersicht zeigt den jüngsten
     // Ansatz, die Produktebene den jüngsten Jahrgang MIT Produktdaten — und
     // die liegen auseinander, weil die Produktebene erst mit dem Abschluss
     // vorliegt. Ohne den Wert nimmt jeder Beleg das jüngste Dokument seiner
@@ -76,7 +76,7 @@ function ProdukteSeiteInner() {
             Platzhalter die Höhe, damit die Seite nicht springt. */}
         {bestand ? (
           <Seitenbuehne
-            kicker={`Produktebene · Haushaltsjahr ${bestand.jahr}`}
+            kicker={`Produktebene · Haushaltsjahr ${bestand.year}`}
             zahl={<><ZaehlZahl wert={bestand.anzahl} /> einzelne Aufgaben, vom Stadtarchiv
               bis zum Schwimmbad</>}
             sub="jede mit Kosten, zuständigem Amt und Auftragsgrundlage"

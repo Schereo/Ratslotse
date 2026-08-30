@@ -47,7 +47,7 @@ def eur(x: float) -> str:
     return f"{x:,.2f}".replace(",", "#").replace(".", ",").replace("#", ".")
 
 
-def jahresabschluss(jahr: int, e_plan: float, e_ist: float,
+def jahresabschluss(year: int, e_plan: float, e_ist: float,
                     a_plan: float, a_ist: float,
                     ve: float, va: float, mit_thh: bool = True) -> str:
     """Ein Jahresabschluss-Extrakt, der alle vier Proben besteht.
@@ -59,18 +59,18 @@ def jahresabschluss(jahr: int, e_plan: float, e_ist: float,
     text = f"""3.1 Ergebnisrechnung Kernverwaltung
 Erträge und Aufwendungen Ergebnis des
 Vorjahres
-{jahr - 1}
+{year - 1}
 Ansätze des
 Haushaltsjahres
-{jahr}
+{year}
 Veränderung
 durch Nachtrag
 Ergebnis des
 Haushaltsjahres
-{jahr}
+{year}
 mehr (+) /
 weniger (-)4)
-{jahr}
+{year}
  - Euro -
 1 2 3 4 5 6 7
 ordentliche Erträge
@@ -89,18 +89,18 @@ Aufwendungen {eur(va)} {eur(a_plan)}  {eur(a_ist)} {eur(a_ist - a_plan)}
 A. Teil-Ergebnisrechnung   THH01 Verwaltungsführung
 Erträge und Aufwendungen Ergebnis des
 Vorjahres
-{jahr - 1}
+{year - 1}
 Ansätze des
 Haushaltsjahres
-{jahr}
+{year}
 Veränderung
 durch Nachtrag
 Ergebnis des
 Haushaltsjahres
-{jahr}
+{year}
 mehr (+) /
 weniger (-)4)
-{jahr}
+{year}
  - Euro -
 1 2 3 4 5 6 7
 Ordentliche Erträge
@@ -127,7 +127,7 @@ JAHRGAENGE = {
 
 
 def teilhaushalt_plan(thh_nr: int, thh_name: str, produkte: list[tuple],
-                      jahr: int) -> str:
+                      year: int) -> str:
     """Ein Teilhaushalts-Plan im Layout der echten Dokumente.
 
     Die Beträge stehen in **deutscher** Schreibweise mit Tausenderpunkt — so
@@ -140,8 +140,8 @@ def teilhaushalt_plan(thh_nr: int, thh_name: str, produkte: list[tuple],
             f"Teilergebnishaushalt THH{thh_nr:02d}: {thh_name}\n"
             f"Produkt: {name} ({produkt_nr})\n"
             f"{amt}\n"
-            f"Erträge und Aufwendungen Ergebnis {jahr - 1}\n- Euro -\n"
-            f"Ansatz {jahr}\n- Euro -\nAnsatz {jahr + 1}\n- Euro -\n"
+            f"Erträge und Aufwendungen Ergebnis {year - 1}\n- Euro -\n"
+            f"Ansatz {year}\n- Euro -\nAnsatz {year + 1}\n- Euro -\n"
             f"12. = Summe ordentliche Erträge {eur(ertraege - 100)} {eur(ertraege)}"
             f" {eur(ertraege + 50)}\n"
             f"20. = Summe ordentliche Aufwendungen {eur(aufwendungen - 100)}"
@@ -178,9 +178,9 @@ def anlage(store: CouncilStore, document_id: int, label: str,
 def bestand(tmp_path):
     """Council-DB mit drei Jahresabschlüssen als Anlage — noch nichts eingelesen."""
     store = CouncilStore(tmp_path / "council.sqlite")
-    for i, (jahr, werte) in enumerate(sorted(JAHRGAENGE.items())):
-        anlage(store, 100 + i, f"15 Jahresabschluss {jahr} Stadt Oldenburg",
-               jahresabschluss(jahr, **werte))
+    for i, (year, werte) in enumerate(sorted(JAHRGAENGE.items())):
+        anlage(store, 100 + i, f"15 Jahresabschluss {year} Stadt Oldenburg",
+               jahresabschluss(year, **werte))
     return store
 
 
@@ -206,7 +206,7 @@ def thh_bestand(tmp_path):
 def produkt_einheiten(store: CouncilStore) -> list[tuple]:
     """(Jahr, Teilhaushalt) — die Einheiten, in denen die Produkte hereinkommen."""
     return sorted(tuple(r) for r in store._conn.execute(  # noqa: SLF001
-        "SELECT DISTINCT jahr, thh_nr FROM council_produkte"))
+        "SELECT DISTINCT year, thh_nr FROM council_produkte"))
 
 
 def inhalt(store: CouncilStore) -> dict:
@@ -361,9 +361,9 @@ def test_fehlende_teilhaushalts_ebene_wird_nachgezogen(bestand, tmp_path):
     # Der Zustand nach einem Lauf, in dem nur die Teilhaushalte scheiterten.
     with bestand._conn:  # noqa: SLF001
         bestand._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_ergebnisrechnung WHERE jahr = 2024 AND thh_nr IS NOT NULL")
+            "DELETE FROM council_ergebnisrechnung WHERE year = 2024 AND thh_nr IS NOT NULL")
         bestand._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_abweichungsgruende WHERE jahr = 2024")
+            "DELETE FROM council_abweichungsgruende WHERE year = 2024")
     assert 2024 in bestand.ergebnisrechnung_jahre(), "die Gesamtrechnung steht noch"
     assert 2024 not in bestand.plan_ist_jahre()
     bestand.close()
@@ -484,7 +484,7 @@ def test_holt_den_fehlenden_jahrgang_nach(bestand, tmp_path):
 
     with bestand._conn:  # noqa: SLF001
         bestand._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_ergebnisrechnung WHERE jahr = 2024")
+            "DELETE FROM council_ergebnisrechnung WHERE year = 2024")
     assert bestand.ergebnisrechnung_jahre() == [2023, 2025]
     bestand.close()
 
@@ -634,11 +634,11 @@ def test_ein_jahrgang_landet_ganz_oder_gar_nicht(bestand, monkeypatch):
     der Datenbank — und halb sieht für den nächsten Lauf aus wie fertig."""
     echt = CouncilStore.save_ergebnisrechnung
 
-    def platzt(self, jahr, posten, *a, **kw):
+    def platzt(self, year, posten, *a, **kw):
         # Nach der Gesamtrechnung, mitten in den Teilhaushalten von 2024.
-        if jahr == 2024 and kw.get("thh_nr") is not None:
+        if year == 2024 and kw.get("thh_nr") is not None:
             raise RuntimeError("Verbindung weg")
-        return echt(self, jahr, posten, *a, **kw)
+        return echt(self, year, posten, *a, **kw)
 
     monkeypatch.setattr(CouncilStore, "save_ergebnisrechnung", platzt)
     p = finanzquellen.Protokoll(still=True)
@@ -770,7 +770,7 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
     # nicht trägt — so sieht ein Schreibweg aus, der `herkunft_id` vergisst.
     with thh_bestand._conn:  # noqa: SLF001
         thh_bestand._conn.execute(  # noqa: SLF001
-            "INSERT INTO council_steuern (jahr, art, betrag, fetched_at, herkunft_id) "
+            "INSERT INTO council_steuern (year, art, betrag, fetched_at, herkunft_id) "
             "VALUES (2025, 'Gewerbesteuer (-umlage)', 222117000.0, '2026-08-20', NULL)")
     thh_bestand.close()
 
@@ -841,7 +841,7 @@ def test_luecken_im_bestand_bleiben_sichtbar(bestand):
     finanzquellen.lies_jahresabschluesse(bestand, p)
     with bestand._conn:  # noqa: SLF001
         bestand._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_ergebnisrechnung WHERE jahr = 2024")
+            "DELETE FROM council_ergebnisrechnung WHERE year = 2024")
 
     stand = {z["key"]: z for z in finanzquellen.datenstand(bestand, date(2026, 8, 16))}
     assert stand["jahresabschluss"]["luecken"] == [2024]
@@ -900,9 +900,9 @@ def staedtevergleich(store: CouncilStore, reihe: str, jahre: list[int]) -> None:
     das Jahr."""
     from council import herkunft as h
 
-    for jahr in jahre:
+    for year in jahre:
         store.save_staedtevergleich(reihe, [
-            {"jahr": jahr, "schluessel": "403000", "stadt": "Oldenburg (Oldb), Stadt",
+            {"year": year, "schluessel": "403000", "stadt": "Oldenburg (Oldb), Stadt",
              "kennzahl": "steuerkraftmesszahl", "wert": 1.0, "einheit": "teur"},
         ], h.Herkunft(art="lsn", probe=h.UNGEPRUEFT,
                       url="https://www.statistik.niedersachsen.de/download/227086"))

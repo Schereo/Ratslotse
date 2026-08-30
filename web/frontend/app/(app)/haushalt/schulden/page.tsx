@@ -212,13 +212,13 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   const reihe = b?.reihe ?? [];
   if (!reihe.length) return null;
 
-  const geld = new Map((b?.geldschulden ?? []).map((z) => [z.jahr, z.wert]));
-  const rueck = new Map((b?.rueckstellung ?? []).map((z) => [z.jahr, z.wert]));
+  const geld = new Map((b?.geldschulden ?? []).map((z) => [z.year, z.wert]));
+  const rueck = new Map((b?.rueckstellung ?? []).map((z) => [z.year, z.wert]));
   const letzter = reihe[reihe.length - 1];
   const erster = reihe[0];
-  const gsErst = geld.get(erster.jahr) ?? null;
-  const gsLetzt = geld.get(letzter.jahr) ?? null;
-  const rsLetzt = rueck.get(letzter.jahr) ?? null;
+  const gsErst = geld.get(erster.year) ?? null;
+  const gsLetzt = geld.get(letzter.year) ?? null;
+  const rsLetzt = rueck.get(letzter.year) ?? null;
   // Der Jahrgang, der den Sprung erklärt — der mit der genannten Einzelzahl.
   const sprung = reihe.find((z) => z.einzelbetrag != null) ?? null;
   // Der Jahrgang ohne eigene Fundstelle: Seine Zahl steht nur als
@@ -229,12 +229,12 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   // Stichtag, sondern eine Bewegung: Was die Stadt selbst schuldet, sinkt —
   // wofür sie geradesteht, steigt. Nebeneinander gezeichnet sieht man das;
   // untereinander gelistet (so stand es bis 08/2026 hier) muss man es rechnen.
-  const verbuergt: JahrPunkt[] = reihe.map((z) => ({ jahr: z.jahr, wert: z.bestand / 1e6 }));
+  const verbuergt: JahrPunkt[] = reihe.map((z) => ({ year: z.year, wert: z.bestand / 1e6 }));
   const eigene: JahrPunkt[] = reihe.map((z) => {
-    const w = geld.get(z.jahr);
+    const w = geld.get(z.year);
     return w == null
-      ? { jahr: z.jahr, fehlt: "für dieses Jahr liegt keine geparste Bilanz vor" }
-      : { jahr: z.jahr, wert: w / 1e6 };
+      ? { year: z.year, fehlt: "für dieses Jahr liegt keine geparste Bilanz vor" }
+      : { year: z.year, wert: w / 1e6 };
   });
 
   // DIE SCHERE WIRD GEMESSEN, NICHT BEHAUPTET. Der Kernsatz stimmt nur,
@@ -256,26 +256,26 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   const annotationen = [
     sprung?.grund
       ? {
-          jahr: sprung.jahr,
+          year: sprung.year,
           kurz: `${deMio((sprung.einzelbetrag ?? 0) / 1e6)} Mio. €`,
-          text: `${sprung.jahr}: ${sprung.grund}`,
+          text: `${sprung.year}: ${sprung.grund}`,
         }
       : null,
     nachgetragen
       ? {
-          jahr: nachgetragen.jahr,
-          kurz: `aus dem Abschluss ${nachgetragen.jahr + 1}`,
-          text: `Für ${nachgetragen.jahr} nennt der Jahresabschluss selbst keinen `
+          year: nachgetragen.year,
+          kurz: `aus dem Abschluss ${nachgetragen.year + 1}`,
+          text: `Für ${nachgetragen.year} nennt der Jahresabschluss selbst keinen `
             + `Bestand; die Zahl steht als Anfangsbestand im Abschluss `
-            + `${nachgetragen.jahr + 1}.`,
+            + `${nachgetragen.year + 1}.`,
         }
       : null,
-  ].filter((a): a is { jahr: number; kurz: string; text: string } => a !== null);
+  ].filter((a): a is { year: number; kurz: string; text: string } => a !== null);
 
   // Wie genau die Quelle je Jahrgang ist. Das gehört an die Zahlen und nicht
   // in eine Fußnote am Seitenende — die Reihe mischt zwei Darreichungsformen.
-  const cent = reihe.filter((z) => z.genau).map((z) => z.jahr);
-  const gerundet = reihe.filter((z) => !z.genau && !z.aus_folgejahr).map((z) => z.jahr);
+  const cent = reihe.filter((z) => z.genau).map((z) => z.year);
+  const gerundet = reihe.filter((z) => !z.genau && !z.aus_folgejahr).map((z) => z.year);
 
   return (
     <section className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -290,7 +290,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         </h2>
         {schere && gsLetzt != null ? (
           <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-            Seit {erster.jahr} hat die Stadt ihre eigenen Geldschulden um{" "}
+            Seit {erster.year} hat die Stadt ihre eigenen Geldschulden um{" "}
             {deZahl(schere.rueckgang, 0)}&nbsp;% abgebaut — auf{" "}
             {deMio(gsLetzt / 1e6)}&#8239;Mio.&nbsp;€. Im selben Zeitraum ist das
             Volumen, für das sie bürgt, auf das {deZahl(schere.faktor, 1)}-Fache
@@ -313,7 +313,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         einheit="Mio. €"
         titel="Verbürgt und selbst geschuldet"
         ariaTitel={`Bürgschaftsbestand und eigene Geldschulden der Stadt Oldenburg, `
-          + `${erster.jahr} bis ${letzter.jahr}, in Millionen Euro`}
+          + `${erster.year} bis ${letzter.year}, in Millionen Euro`}
         annotationen={annotationen}
         vorjahresdifferenz
         tabelle
@@ -338,7 +338,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
           <strong className="text-foreground">Womit die Stadt rechnet:</strong>{" "}
           Für erwartete Ausfälle stehen {deEuro(rsLetzt)}&nbsp;€ in der Bilanz
-          ({letzter.jahr})<Beleg q="bilanz" /> — {((rsLetzt / letzter.bestand) * 100).toFixed(2).replace(".", ",")}&nbsp;%
+          ({letzter.year})<Beleg q="bilanz" /> — {((rsLetzt / letzter.bestand) * 100).toFixed(2).replace(".", ",")}&nbsp;%
           des verbürgten Volumens. Die {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€ sind
           also nicht das, was die Stadt zu zahlen erwartet, sondern das, wofür sie
           im äußersten Fall einsteht.
@@ -349,7 +349,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         <strong className="text-foreground">Ein Bestand, keine Summe der Beschlüsse.</strong>{" "}
         Die einzelnen Bürgschaftsbeschlüsse lassen sich nicht addieren, weil Verlängerungen
         frühere Beschlüsse ersetzen können. Gezeigt wird der von der Stadt ausgewiesene Bestand —
-        {erster.jahr === letzter.jahr ? " ein Stichtag." : ` ${reihe.length} Stichtage.`}
+        {erster.year === letzter.year ? " ein Stichtag." : ` ${reihe.length} Stichtage.`}
       </p>
 
       <BeschlussStrahl vorlagen={b?.vorlagen ?? []} />
@@ -377,7 +377,7 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
   const s = i.stichtag;
   const reihe = daten?.reihe ?? [];
   // Der Rechtsträger-Wert desselben Stichtags — die mittlere der drei Zahlen.
-  const traeger = reihe.find((z) => z.jahr === s.jahr)?.insgesamt ?? null;
+  const traeger = reihe.find((z) => z.year === s.year)?.insgesamt ?? null;
 
   const stufen = [
     { titel: "Kernhaushalt", wert: s.kernhaushalt,
@@ -403,7 +403,7 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
         </h2>
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
           Die Beträge unterscheiden sich danach, welche Einheiten einbezogen werden.
-          Stand 31.12.{s.jahr}:
+          Stand 31.12.{s.year}:
         </p>
       </div>
 
@@ -492,7 +492,7 @@ function RahmenBlock({ zeile, herkunft }: {
           Was der Rahmen erlaubt<Beleg q="haushaltssatzung" />
         </h2>
         <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-          Satzung {zeile.jahr}
+          Satzung {zeile.year}
         </span>
       </div>
       <p className="mt-1.5 max-w-[64ch] text-[13px] leading-relaxed text-foreground/85">
@@ -557,7 +557,7 @@ export default function SchuldenPage() {
     const zeilen = (satzungDaten?.haushaltssatzung ?? [])
       .filter((z) => z.nachtrag === 0);
     return zeilen.length
-      ? zeilen.reduce((a, b) => (b.jahr > a.jahr ? b : a))
+      ? zeilen.reduce((a, b) => (b.year > a.year ? b : a))
       : null;
   }, [satzungDaten]);
 
@@ -569,7 +569,7 @@ export default function SchuldenPage() {
   // Quelle weist keinen Pro-Kopf-Zins aus, und wir dividieren nicht selbst.
   const zinsreihe = useMemo(
     () => (ansicht === "insgesamt"
-      ? (data?.zinslast ?? []).map((z) => ({ jahr: z.jahr, wert: z.aufwand / 1e6 }))
+      ? (data?.zinslast ?? []).map((z) => ({ year: z.year, wert: z.aufwand / 1e6 }))
       : undefined),
     [data, ansicht]);
 
@@ -607,7 +607,7 @@ export default function SchuldenPage() {
   const jTeilung = teilung.at(-1) ?? null;
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]} jahr={letzter.jahr}>
+    <Quellenkontext schluessel={[...QUELLEN]} year={letzter.year}>
       <div className="flex flex-col gap-4">
         {/* items-start statt items-end (24.08.): Rechts steht jetzt das
             Schritt-Zeichen über dem Quelle-Knopf — die Spalte ist so hoch wie
@@ -639,7 +639,7 @@ export default function SchuldenPage() {
         {(() => {
           const st = data?.integrierte_schulden?.stichtag;
           if (!st) return null;
-          const traeger = (data?.reihe ?? []).find((z) => z.jahr === st.jahr)?.insgesamt ?? null;
+          const traeger = (data?.reihe ?? []).find((z) => z.year === st.year)?.insgesamt ?? null;
           const stufen = [
             { titel: "Kernhaushalt", wert: st.kernhaushalt },
             { titel: "Stadt als Rechtsträger", wert: traeger },
@@ -650,7 +650,7 @@ export default function SchuldenPage() {
           const toene = ["var(--sb-voll)", "var(--sb-mittel)", "var(--sb-blass)"];
           return (
             <Seitenbuehne
-              kicker={`Drei Zählweisen, eine Stadt · Stand 31.12.${st.jahr}`}
+              kicker={`Drei Zählweisen, eine Stadt · Stand 31.12.${st.year}`}
               zahl={<><ZaehlZahl wert={st.insgesamt / 1e6} nachkomma={1} />&#8239;Mio.&nbsp;€
                 im weitesten Begriff</>}
               sub={<>
@@ -685,7 +685,7 @@ export default function SchuldenPage() {
 
         {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
         <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-          Ende {letzter.jahr} waren es {deMio(letzter.insgesamt / 1e6)}&#8239;Mio.&nbsp;€.
+          Ende {letzter.year} waren es {deMio(letzter.insgesamt / 1e6)}&#8239;Mio.&nbsp;€.
           Was diese Zahl zählt und was nicht, steht direkt darunter — bei Schulden
           ist das der Unterschied zwischen zwei Antworten.
         </p>
@@ -695,7 +695,7 @@ export default function SchuldenPage() {
             in derselben Karte, nicht in einer Fußnote weiter unten. */}
         <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Stand 31.12.{letzter.jahr}
+            Stand 31.12.{letzter.year}
           </p>
           <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
             <div>
@@ -723,7 +723,7 @@ export default function SchuldenPage() {
           </p>
           {letzter.revidiert === 1 && (
             <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-              Die Stadt hat die Werte für {letzter.jahr} nachträglich korrigiert; hier steht
+              Die Stadt hat die Werte für {letzter.year} nachträglich korrigiert; hier steht
               der korrigierte Stand.
             </p>
           )}
@@ -753,7 +753,7 @@ export default function SchuldenPage() {
                 {deMio(zins.aufwand / 1e6)}&#8239;Mio.&nbsp;€
               </p>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                Zinsen im Jahr {zins.jahr} — aus dem Jahresabschluss
+                Zinsen im Jahr {zins.year} — aus dem Jahresabschluss
                 <Beleg q="jahresabschluss" />, nicht aus der Reihe oben.
               </p>
               <p className="mt-2.5 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
@@ -781,7 +781,7 @@ export default function SchuldenPage() {
         {/* Die Zeitreihe */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            {erster.jahr} bis {letzter.jahr}
+            {erster.year} bis {letzter.year}
           </p>
           <Segmented<Ansicht>
             value={ansicht}
@@ -805,7 +805,7 @@ export default function SchuldenPage() {
           <Zeitreihe
             reihe={kurve}
             titel={ansicht === "insgesamt" ? "Schulden insgesamt" : "Schulden je Einwohner*in"}
-            ariaTitel={`Schuldenstand ${erster.jahr} bis ${letzter.jahr}`}
+            ariaTitel={`Schuldenstand ${erster.year} bis ${letzter.year}`}
             einheit={ansicht === "insgesamt" ? "Mio. €" : "€ je Einwohner*in"}
             // Millionen mit einer Stelle, Pro-Kopf-Beträge ohne — sonst stünde
             // „1.908,0 €" an einer Zahl, die die Quelle ganzzahlig ausweist.
@@ -817,7 +817,7 @@ export default function SchuldenPage() {
               ? { label: "Zinslast p. a.", reihe: zinsreihe, format: (v) => deMio(v) }
               : undefined}
             annotationen={ansicht === "insgesamt" ? [{
-              jahr: 2010,
+              year: 2010,
               kurz: "108,9 Mio. € umgebucht",
               text: "2010 übertrug die Stadt 108,9 Mio. € Kredite an den neuen "
                 + "Eigenbetrieb Gebäudewirtschaft. Dadurch änderte sich die Aufteilung, "
@@ -829,10 +829,10 @@ export default function SchuldenPage() {
               Umschalter überhaupt gibt. Gerechnet, nicht geschrieben. */}
           {gegenlaeufig && (
             <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-              Über {letzter.jahr - erster.jahr} Jahre gehen die beiden Ansichten
+              Über {letzter.year - erster.year} Jahre gehen die beiden Ansichten
               auseinander: Insgesamt hat die Stadt heute{" "}
               {deMio(Math.abs(deltaAbs) / 1e6)}&#8239;Mio.&nbsp;€{" "}
-              {deltaAbs > 0 ? "mehr" : "weniger"} Schulden als {erster.jahr}, je
+              {deltaAbs > 0 ? "mehr" : "weniger"} Schulden als {erster.year}, je
               Einwohner*in aber {deEuro(Math.abs(deltaKopf!))}&nbsp;€{" "}
               {deltaKopf! > 0 ? "mehr" : "weniger"} — die Zahl der Einwohner*innen ist in
               derselben Zeit gewachsen.
@@ -908,7 +908,7 @@ export default function SchuldenPage() {
           <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Wer schuldet was ({jTeilung.jahr})
+                Wer schuldet was ({jTeilung.year})
               </p>
               <span className="font-mono text-[10px] uppercase text-muted-foreground">
                 {teilung.length} von {reihe.length} Jahren aufgeschlüsselt
@@ -964,7 +964,7 @@ export default function SchuldenPage() {
             {/* Die Lücke benennen statt sie als Null zu zeichnen. */}
             {luecken.length > 0 && (
               <p className="mt-2 max-w-[76ch] border-t border-dashed border-border pt-2 text-[12px] leading-relaxed text-muted-foreground">
-                Für {luecken.map((z) => z.jahr).join(", ")} fehlt die Aufteilung: Dort
+                Für {luecken.map((z) => z.year).join(", ")} fehlt die Aufteilung: Dort
                 {luecken.length === 1 ? " ergibt " : " ergeben "}
                 die Summe der einzelnen Schuldenarten in der Quelltabelle nicht den Betrag,
                 der daneben als Gesamtschuld ausgewiesen ist. Welche Spalte danebenliegt,

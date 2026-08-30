@@ -116,7 +116,7 @@ function Detail({ z, gepinnt, onClose, onOpen }: {
   );
 }
 
-export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: number }) {
+export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: number }) {
   const router = useRouter();
   // Zwei Zustände statt einem: `hover` ist flüchtig, `gepinnt` überlebt das
   // Verlassen des Segments. Vorher schloss das onMouseLeave des Segments die
@@ -168,7 +168,7 @@ export function Gegenbalken({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: n
           Kicker in je zwei Zeilen, die dann ineinander verzahnt standen. */}
       <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Einnahmen und Ausgaben · {jahr}
+          Einnahmen und Ausgaben · {year}
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
           {parts.length} Teilhaushalte · Mio. Euro

@@ -139,7 +139,7 @@ function Betrag({ wert, fehltWeil }: { wert: number | null; fehltWeil: string })
  *  zwei Sortierungen driften, und dann trägt ein Chip die Nummer eines
  *  fremden Papiers. */
 function juengsteZeile(zeilen: WirtschaftsplanZeile[]): WirtschaftsplanZeile {
-  return [...zeilen].sort((a, b) => a.jahr - b.jahr)[zeilen.length - 1];
+  return [...zeilen].sort((a, b) => a.year - b.year)[zeilen.length - 1];
 }
 
 function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
@@ -152,10 +152,10 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
 }) {
   // Der jüngste Jahrgang trägt die Karte; die Reihe darunter ist die
   // Entwicklung. Sortiert wird hier und nicht im Vertrauen auf die API.
-  const nach = [...zeilen].sort((a, b) => a.jahr - b.jahr);
+  const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = juengsteZeile(zeilen);
   const b = beleg(letzte.proben);
-  const reihe: JahrPunkt[] = nach.map((z) => ({ jahr: z.jahr, wert: z.ergebnis / 1e6 }));
+  const reihe: JahrPunkt[] = nach.map((z) => ({ year: z.year, wert: z.ergebnis / 1e6 }));
   const zeigKurve = nach.length >= 3;
 
   return (
@@ -165,7 +165,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
           {letzte.betrieb_name}
         </h3>
         <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-          Plan {letzte.jahr}
+          Plan {letzte.year}
         </span>
       </div>
       {WAS_SIE_TUN[letzte.betrieb] && (
@@ -176,7 +176,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
       {/* Nur zeigen, wenn die Reihe wirklich vor dem jüngsten Jahrgang des
           Bereichs endet — sonst stünde der Satz eines Tages an einer Karte,
           die längst weiterläuft. */}
-      {ENDE[letzte.betrieb] && letzte.jahr < juengstesJahr && (
+      {ENDE[letzte.betrieb] && letzte.year < juengstesJahr && (
         <p className="mt-1.5 max-w-[62ch] border-l-2 border-border pl-2.5
                       text-[12px] leading-relaxed text-muted-foreground">
           {ENDE[letzte.betrieb]}
@@ -269,14 +269,14 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
             nachkomma={2}
             titel="Jahresergebnis im Plan"
             ariaTitel={`Geplantes Jahresergebnis ${letzte.betrieb_name}, `
-              + `${nach[0].jahr} bis ${letzte.jahr}, in Millionen Euro`}
+              + `${nach[0].year} bis ${letzte.year}, in Millionen Euro`}
           />
         </div>
       )}
       {!zeigKurve && nach.length > 1 && (
         <p className="mt-2 text-[12px] text-muted-foreground">
           Frühere Jahrgänge:{" "}
-          {nach.slice(0, -1).map((z) => `${z.jahr}: ${deMio(z.ergebnis / 1e6)} Mio. €`)
+          {nach.slice(0, -1).map((z) => `${z.year}: ${deMio(z.ergebnis / 1e6)} Mio. €`)
             .join(" · ")}
         </p>
       )}
@@ -321,7 +321,7 @@ export function BetriebeAbschnitt({ data, loading }: {
     );
   }
 
-  const jahre = (data.wirtschaftsplaene ?? []).map((z) => z.jahr);
+  const jahre = (data.wirtschaftsplaene ?? []).map((z) => z.year);
   const juengstes = Math.max(...jahre);
   const aeltestes = Math.min(...jahre);
 

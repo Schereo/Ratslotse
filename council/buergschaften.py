@@ -144,7 +144,7 @@ def _glatt(text: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"(\w)-\s+(\w)", r"\1\2", text))
 
 
-def parse_bestand(text: str, jahr: int) -> dict | None:
+def parse_bestand(text: str, year: int) -> dict | None:
     """Den Bürgschaftsbestand aus einem Jahresabschluss lesen.
 
     Liefert ``None``, wenn der Jahrgang ihn nicht nennt (2017, 2018, 2021).
@@ -155,22 +155,22 @@ def parse_bestand(text: str, jahr: int) -> dict | None:
 
     # Weg 1: der Anhang (ab 2022). Er nennt beide Enden und den Grund.
     satz = _SATZ.search(t)
-    if satz and int(satz.group(1)) == jahr:
+    if satz and int(satz.group(1)) == year:
         enden = _MIO.findall(satz.group(0))
         nach_jahr = {int(j): float(b.replace(",", ".")) * 1e6 for b, j in enden}
-        if jahr in nach_jahr:
+        if year in nach_jahr:
             gefunden: dict = {
-                "jahr": jahr,
-                "bestand": nach_jahr[jahr],
+                "year": year,
+                "bestand": nach_jahr[year],
                 "genau": False,
                 "quelle": "anhang",
                 "fundstelle": ABSCHNITT,
                 "aus_folgejahr": False,
             }
-            vor = [j for j in nach_jahr if j == jahr - 1]
+            vor = [j for j in nach_jahr if j == year - 1]
             if vor:
-                gefunden["vorjahr_jahr"] = jahr - 1
-                gefunden["vorjahr_bestand"] = nach_jahr[jahr - 1]
+                gefunden["vorjahr_jahr"] = year - 1
+                gefunden["vorjahr_bestand"] = nach_jahr[year - 1]
             grund = _GRUND.search(t[satz.start():satz.start() + 900])
             if grund:
                 gefunden["grund"] = _glatt(grund.group(1)).strip()
@@ -182,7 +182,7 @@ def parse_bestand(text: str, jahr: int) -> dict | None:
         betrag = _EURO.search(t[stelle:stelle + 260])
         if betrag:
             return {
-                "jahr": jahr,
+                "year": year,
                 "bestand": _zahl(betrag.group(1)),
                 "genau": True,
                 "quelle": "tabelle",
@@ -202,11 +202,11 @@ def aus_folgejahr(gefunden: dict) -> dict | None:
     if "vorjahr_bestand" not in gefunden:
         return None
     return {
-        "jahr": gefunden["vorjahr_jahr"],
+        "year": gefunden["vorjahr_jahr"],
         "bestand": gefunden["vorjahr_bestand"],
         "genau": False,
         "quelle": "anhang",
-        "fundstelle": f"{ABSCHNITT} (Jahresabschluss {gefunden['jahr']})",
+        "fundstelle": f"{ABSCHNITT} (Jahresabschluss {gefunden['year']})",
         "aus_folgejahr": True,
     }
 
@@ -221,11 +221,11 @@ def reihe(gefundene: list[dict]) -> list[dict]:
     dieselbe Zahl, aber mit schlechterer Fundstelle und, für 2019/2020, unter
     Verlust der Cent-Genauigkeit. Ein Nachtrag zählt deshalb nur da, wo der
     Jahrgang selbst schweigt. Das ist genau 2021."""
-    nach_jahr = {g["jahr"]: g for g in gefundene}
+    nach_jahr = {g["year"]: g for g in gefundene}
     for g in gefundene:
         nachtrag = aus_folgejahr(g)
-        if nachtrag and nachtrag["jahr"] not in nach_jahr:
-            nach_jahr[nachtrag["jahr"]] = nachtrag
+        if nachtrag and nachtrag["year"] not in nach_jahr:
+            nach_jahr[nachtrag["year"]] = nachtrag
     return [nach_jahr[j] for j in sorted(nach_jahr)]
 
 
@@ -243,7 +243,7 @@ def kettenprobe(zeilen: list[dict]) -> list[str]:
 
     Geprüft wird nur, wo ein Jahrgang **beide** Enden nennt; ein fehlender
     Anfangsbestand ist kein Riss, sondern eine Quelle, die schweigt."""
-    nach_jahr = {z["jahr"]: z for z in zeilen if not z.get("aus_folgejahr")}
+    nach_jahr = {z["year"]: z for z in zeilen if not z.get("aus_folgejahr")}
     risse = []
     for z in zeilen:
         if "vorjahr_bestand" not in z:
@@ -254,7 +254,7 @@ def kettenprobe(zeilen: list[dict]) -> list[str]:
         ab = abs(vorheriger["bestand"] - z["vorjahr_bestand"])
         if ab > KETTE_TOLERANZ:
             risse.append(
-                f"{z['jahr']}: nennt {z['vorjahr_bestand']/1e6:.1f} Mio. € als Stand "
+                f"{z['year']}: nennt {z['vorjahr_bestand']/1e6:.1f} Mio. € als Stand "
                 f"31.12.{z['vorjahr_jahr']}, der Abschluss {z['vorjahr_jahr']} nennt "
                 f"{vorheriger['bestand']/1e6:.1f} Mio. € ({ab/1e6:.1f} Mio. Unterschied)")
     return risse

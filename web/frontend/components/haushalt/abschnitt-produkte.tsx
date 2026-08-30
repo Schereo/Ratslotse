@@ -412,7 +412,7 @@ function FuerWen({ text }: { text: string }) {
 /** Der Steckbrief eines Produkts — Kosten, Zuständigkeit, was drinsteckt,
  *  worauf es beruht, wie viel Spielraum. Fehlende Felder bleiben weg; eine
  *  Lücke wird nicht mit einer Vermutung gefüllt. */
-function Steckbrief({ p, jahr, alleJahre }: { p: Produkt; jahr: number; alleJahre: number[] }) {
+function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahre: number[] }) {
   const n = netto(p);
   const gross = betrag(Math.abs(n));
   const aus = betrag(p.aufwendungen ?? 0);
@@ -423,7 +423,7 @@ function Steckbrief({ p, jahr, alleJahre }: { p: Produkt; jahr: number; alleJahr
     <div className="flex flex-col gap-4">
       <div>
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          {p.produkt_nr} · Haushaltsjahr {jahr}
+          {p.produkt_nr} · Haushaltsjahr {year}
         </p>
         <h2 className="mt-1 font-display text-[22px] font-bold leading-tight tracking-tight sm:text-2xl">
           {p.produkt_name}
@@ -458,7 +458,7 @@ function Steckbrief({ p, jahr, alleJahre }: { p: Produkt; jahr: number; alleJahr
         </p>
         <p className="mt-2 max-w-[62ch] text-[12.5px] leading-relaxed text-foreground/85">
           {n > 0 ? (
-            <>Für {jahr} sind <strong>{aus.wert}&#8239;{aus.einheit}</strong> Aufwendungen
+            <>Für {year} sind <strong>{aus.wert}&#8239;{aus.einheit}</strong> Aufwendungen
               geplant. Dem stehen <strong>{ein.wert}&#8239;{ein.einheit}</strong> eigene
               Erträge gegenüber, etwa Gebühren oder Erstattungen. Den verbleibenden
               Zuschussbedarf finanziert der allgemeine Haushalt.</>
@@ -611,8 +611,8 @@ function Steckbrief({ p, jahr, alleJahre }: { p: Produkt; jahr: number; alleJahr
  *  musste jemand den Fokus dorthin schieben — und Next setzt ihn bei jedem
  *  Routenwechsel wieder zurück, auch nach einem `setTimeout(0)`. Gemessen,
  *  dann verworfen. */
-function SteckbriefTeil({ aktiv, jahr, alleJahre, aufSchliessen }: {
-  aktiv: Produkt; jahr: number; alleJahre: number[]; aufSchliessen: () => void;
+function SteckbriefTeil({ aktiv, year, alleJahre, aufSchliessen }: {
+  aktiv: Produkt; year: number; alleJahre: number[]; aufSchliessen: () => void;
 }) {
   return (
     <section
@@ -634,7 +634,7 @@ function SteckbriefTeil({ aktiv, jahr, alleJahre, aufSchliessen }: {
       {/* `key`: Der Auslöser „Ganzen Wortlaut zeigen" gehört zu DIESEM
           Produkt — ohne Neuaufbau bliebe er beim Wechsel offen und zeigte
           den halben Text des nächsten. */}
-      <Steckbrief key={aktiv.produkt_nr} p={aktiv} jahr={jahr} alleJahre={alleJahre} />
+      <Steckbrief key={aktiv.produkt_nr} p={aktiv} year={year} alleJahre={alleJahre} />
     </section>
   );
 }
@@ -647,7 +647,7 @@ export function ProdukteAbschnitt({ onBestand }: {
    *  das ganze Jahr, egal welcher Filter gerade gesetzt ist. */
   onBestand?: (b: {
     anzahl: number;
-    jahr: number;
+    year: number;
     /** Die drei größten Aufgaben nach Zuschussbedarf — fürs Minibild der
      *  Bühne, mit echten Namen statt einer abstrakten Baum-Skizze
      *  (Tim, 26.08.). `wert` ist |netto| in Euro. */
@@ -674,20 +674,20 @@ export function ProdukteAbschnitt({ onBestand }: {
   const uebersicht = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
   // Jüngstes Jahr mit Produktebene. Die Liste kommt aus der Übersicht, damit
   // die Seite kein Jahr rät, das es nicht gibt.
-  const jahr = useMemo(() => {
+  const year = useMemo(() => {
     const jahre = uebersicht.data?.produkt_jahre ?? [];
     return jahre.length ? Math.max(...jahre) : null;
   }, [uebersicht.data]);
 
   const abfrage = useMemo(() => {
-    if (!jahr) return null;
-    const p = new URLSearchParams({ jahr: String(jahr) });
+    if (!year) return null;
+    const p = new URLSearchParams({ year: String(year) });
     if (entprellt.trim()) p.set("q", entprellt.trim());
     if (amt) p.set("amt", amt);
     if (spielraum) p.set("spielraum", spielraum);
     if (nr) p.set("nr", nr);
     return `/council/haushalt/produkte?${p}`;
-  }, [jahr, entprellt, amt, spielraum, nr]);
+  }, [year, entprellt, amt, spielraum, nr]);
 
   const { data, loading } = useFetch<ProdukteAntwort>(abfrage);
 
@@ -695,8 +695,8 @@ export function ProdukteAbschnitt({ onBestand }: {
     if (!onBestand) return;
     // `null` = entschieden nichts (kein Jahr, keine Produkte) — die Bühne
     // entfällt dann, statt ewig zu laden.
-    if (!uebersicht.loading && jahr == null) { onBestand(null); return; }
-    if (loading || !data || !jahr) return;
+    if (!uebersicht.loading && year == null) { onBestand(null); return; }
+    if (loading || !data || !year) return;
     // Nur der UNGEFILTERTE Stand wird gemeldet: Die Bühne beschreibt die
     // Seite, nicht die gerade getippte Suche — beim Filtern bleibt der
     // zuletzt gemeldete Bestand stehen.
@@ -706,8 +706,8 @@ export function ProdukteAbschnitt({ onBestand }: {
       .sort((a, b) => Math.abs(netto(b)) - Math.abs(netto(a)))
       .slice(0, 3)
       .map((pr) => ({ name: pr.produkt_name, wert: Math.abs(netto(pr)) }));
-    onBestand(anzahl > 0 ? { anzahl, jahr, beispiele } : null);
-  }, [onBestand, uebersicht.loading, loading, data, jahr, entprellt, amt, spielraum]);
+    onBestand(anzahl > 0 ? { anzahl, year, beispiele } : null);
+  }, [onBestand, uebersicht.loading, loading, data, year, entprellt, amt, spielraum]);
 
   // Leerzustand mit „Ähnlich klingen" (H4-04): Erst wenn die gefilterte
   // Suche wirklich leer ist, wird einmal die ungefilterte Liste geholt und
@@ -716,7 +716,7 @@ export function ProdukteAbschnitt({ onBestand }: {
   const leer = !loading && data != null && data.produkte.length === 0
     && entprellt.trim().length >= 2 && !amt && !spielraum;
   const { data: alleDaten } = useFetch<ProdukteAntwort>(
-    leer && jahr ? `/council/haushalt/produkte?jahr=${jahr}` : null);
+    leer && year ? `/council/haushalt/produkte?year=${year}` : null);
   const vorschlaege = useMemo(() => {
     if (!leer || !alleDaten) return [];
     const q = bigramme(entprellt);
@@ -731,7 +731,7 @@ export function ProdukteAbschnitt({ onBestand }: {
   if (uebersicht.loading || (loading && !data)) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Produkte werden geladen …</div>;
   }
-  if (!jahr) {
+  if (!year) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
         Für kein Jahr liegt die Produktebene ausgelesen vor.{" "}
@@ -767,7 +767,7 @@ export function ProdukteAbschnitt({ onBestand }: {
             <p className="max-w-[68ch] text-[15px] leading-relaxed text-foreground/90">
               Der Haushalt gliedert die Arbeit der Stadt in <GlossaryText text="Produkte" />:
               einzelne Aufgaben mit eigener Nummer, Budget und zuständigem Amt. Hier stehen{" "}
-              <strong>{gesamt}</strong> Produkte aus dem Haushaltsjahr {jahr} mit ihren
+              <strong>{gesamt}</strong> Produkte aus dem Haushaltsjahr {year} mit ihren
               geplanten Aufwendungen, Beschreibungen und der Einschätzung der Stadt zum
               finanziellen Spielraum.
             </p>
@@ -775,7 +775,7 @@ export function ProdukteAbschnitt({ onBestand }: {
                 Wer von der Übersicht kommt, hat dort ein späteres Planjahr
                 gesehen und rechnet die Beträge hier sonst dagegen. */}
             <p className="max-w-[68ch] text-[12.5px] leading-relaxed text-muted-foreground">
-              {jahr} ist das jüngste Jahr, für das die Teilhaushaltspläne maschinell auslesbar
+              {year} ist das jüngste Jahr, für das die Teilhaushaltspläne maschinell auslesbar
               vorliegen — die Beträge lassen sich deshalb nicht mit denen der Übersicht
               verrechnen. Auch die Namen stehen im Wortlaut des Plans: Wir kürzen nichts ab,
               aber wir schreiben seine Abkürzungen auch nicht aus.
@@ -851,7 +851,7 @@ export function ProdukteAbschnitt({ onBestand }: {
 
         {nr && !aktiv && !loading && (
           <p className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-[12.5px] text-muted-foreground">
-            Ein Produkt mit der Nummer „{nr}“ liegt für {jahr} nicht vor.
+            Ein Produkt mit der Nummer „{nr}“ liegt für {year} nicht vor.
           </p>
         )}
 
@@ -876,7 +876,7 @@ export function ProdukteAbschnitt({ onBestand }: {
                   <div key={p.produkt_nr}
                     className="overflow-hidden rounded-xl border border-primary/50 bg-primary/[0.04] shadow-sm @3xl/treffer:col-span-full">
                     <Treffer p={p} max={maxWert} aktiv alleJahre={alleJahre} eingebettet />
-                    <SteckbriefTeil aktiv={aktiv} jahr={jahr} alleJahre={alleJahre}
+                    <SteckbriefTeil aktiv={aktiv} year={year} alleJahre={alleJahre}
                       aufSchliessen={() => router.push("/haushalt/produkte", { scroll: false })} />
                   </div>
                 );
@@ -929,7 +929,7 @@ export function ProdukteAbschnitt({ onBestand }: {
               {data?.abdeckung_prozent != null ? (
                 <>Die {gesamt} Produkte erklären{" "}
                   <strong>{data.abdeckung_prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%</strong> der
-                  für {jahr} geplanten Ausgaben.<Beleg q="plan" /> Nicht jeder Teilhaushalt liegt für
+                  für {year} geplanten Ausgaben.<Beleg q="plan" /> Nicht jeder Teilhaushalt liegt für
                   jedes Jahr als auslesbares Dokument vor — dies ist also ein Ausschnitt, kein
                   Vollbild.</>
               ) : (

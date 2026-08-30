@@ -78,7 +78,7 @@ BERICHTE: dict[int, int] = {
 }
 
 #: Wie das Dokument im Beleg heißen soll.
-BERICHT_LABEL = ("Rechenschaftsbericht zum Jahresabschluss {jahr} der "
+BERICHT_LABEL = ("Rechenschaftsbericht zum Jahresabschluss {year} der "
                  "Kernverwaltung und ihrer nicht rechtsfähigen Stiftungen")
 
 
@@ -100,7 +100,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         fuehrend = next((d for d in stationen if d.get("outcome") == "angenommen"),
                         stationen[0] if stationen else None)
         zeilen.append({
-            "template_number": b.template_number, "jahr": b.jahr, "titel": b.titel,
+            "template_number": b.template_number, "year": b.year, "titel": b.titel,
             "art": b.art, "kategorie": b.kategorie, "betrag": b.betrag,
             "betrag_quelle": b.betrag_quelle, "beschlossen": b.beschlossen,
             "im_rat": b.im_rat, "ratsentscheidung": b.ratsentscheidung,
@@ -137,8 +137,8 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         label="Vorlagen im Ratsinformationssystem der Stadt Oldenburg",
         fundstelle="Titel und Beschlussvorschlag der Vorlage",
         probe=nb.PROBE_VOLLTEXT,
-        stand=f"Haushaltsjahre {min(z['jahr'] for z in zeilen if z['jahr'])}"
-              f"–{max(z['jahr'] for z in zeilen if z['jahr'])}",
+        stand=f"Haushaltsjahre {min(z['year'] for z in zeilen if z['year'])}"
+              f"–{max(z['year'] for z in zeilen if z['year'])}",
         probe_ergebnis=nachweis))
     return {"vorlagen": len(zeilen), "mit_betrag": aus_titel + aus_text,
             "ohne_betrag": len(ohne)}
@@ -149,33 +149,33 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
     """Kapitel 3 der Rechenschaftsberichte lesen, prüfen, schreiben."""
     gelesen = 0
     widersprueche: list[str] = []
-    for jahr, dokument in sorted(BERICHTE.items()):
+    for year, dokument in sorted(BERICHTE.items()):
         text = store.anlage_text(dokument)
         if not text:
-            print(f"  {jahr}: kein Volltext zu Dokument {dokument} — "
+            print(f"  {year}: kein Volltext zu Dokument {dokument} — "
                   f"backfill_anlagen_texte.py --nur-finanz")
             continue
-        kap = nb.kapitel3(text, jahr)
+        kap = nb.kapitel3(text, year)
         if not kap:
-            print(f"  {jahr}: Kapitel 3 nicht lesbar (Dokument {dokument})")
+            print(f"  {year}: Kapitel 3 nicht lesbar (Dokument {dokument})")
             continue
         probe = nb.probe_tabelle(kap)
         abgleich = nb.probe_ratsabgleich(
             serie, kap, nb.vorlagen_im_kapitel(text))
         rat = kap.kanal("rat")
-        print(f"  {jahr}: {kap.gesamt:>15,.2f} € gesamt · Rat "
+        print(f"  {year}: {kap.gesamt:>15,.2f} € gesamt · Rat "
               f"{rat.betrag:>15,.2f} € ({kap.rats_anteil:.1f} %) · "
               f"{len(kap.kanaele)} Wege")
         print(f"        Tabellenprobe: {probe.als_text()}")
         print(f"        Ratsabgleich:  {abgleich.als_text()}")
         if not probe.bestanden:
-            widersprueche.append(f"{jahr}: {probe.als_text()}")
+            widersprueche.append(f"{year}: {probe.als_text()}")
         if trocken:
             continue
         # Beide Proben stehen an der Herkunft — auch die gerissene. Eine
         # Zeile, deren Probe nicht aufging, ist keine Zeile ohne Probe.
         store.save_nachbewilligung_jahr(
-            {"jahr": jahr,
+            {"year": year,
              "summe_konsumtiv": kap.summe_konsumtiv,
              "summe_investiv": kap.summe_investiv,
              "text_gesamt": kap.text_gesamt,
@@ -189,11 +189,11 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
               "betrag_investiv": k.betrag_investiv} for k in kap.kanaele],
             h.Herkunft(
                 art="ris", dokument_id=dokument,
-                label=BERICHT_LABEL.format(jahr=jahr),
+                label=BERICHT_LABEL.format(year=year),
                 fundstelle="Kapitel 3 — Über- und außerplanmäßige "
                            "Aufwendungen und Auszahlungen",
                 probe=[nb.PROBE_TABELLE, nb.PROBE_RAT],
-                stand=f"Haushaltsjahr {jahr}",
+                stand=f"Haushaltsjahr {year}",
                 probe_ergebnis=f"{probe.als_text()} {abgleich.als_text()}"))
         gelesen += 1
     return {"berichte": gelesen, "widersprueche": len(widersprueche)}

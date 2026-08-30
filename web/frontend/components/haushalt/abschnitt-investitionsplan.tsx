@@ -187,8 +187,8 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
     });
   }, [onBestand, programm, programmLaedt]);
   const jahre = useMemo(() => [...(data?.jahre ?? [])].sort((a, b) => a - b), [data]);
-  const [jahr, setJahr] = useState<number | null>(null);
-  const aktJahr = jahr ?? (jahre.length ? jahre[jahre.length - 1] : null);
+  const [year, setJahr] = useState<number | null>(null);
+  const aktJahr = year ?? (jahre.length ? jahre[jahre.length - 1] : null);
 
   // Welcher Bereich in den Vorhaben offen ist, steht in der URL: Ein Link auf
   // ein einzelnes Vorhaben soll teilbar sein, und der Zurück-Knopf des
@@ -430,7 +430,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
         {programmJahr != null && (
           <Vorhaben
             daten={programm}
-            jahr={programmJahr}
+            year={programmJahr}
             gewaehlt={gewaehlterBereich}
             aufWaehlen={setBereich}
             zurueckAnker={ANKER_BEREICHE}
@@ -456,19 +456,19 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
                 const groesste = Math.max(...zeitreihe.map((x) => x.auszahlungen));
                 const breite = groesste > 0 ? (z.auszahlungen / groesste) * 100 : 0;
                 return (
-                  <li key={z.jahr} className="flex items-center gap-3">
+                  <li key={z.year} className="flex items-center gap-3">
                     <span className={cn(
                       "w-10 flex-none font-mono text-[11px] tabular-nums",
-                      z.jahr === aktJahr ? "font-semibold text-foreground" : "text-muted-foreground",
+                      z.year === aktJahr ? "font-semibold text-foreground" : "text-muted-foreground",
                     )}>
-                      {z.jahr}
+                      {z.year}
                     </span>
                     <span className="h-3 flex-1 overflow-hidden rounded-sm bg-muted/60">
                       <span
                         className="block h-full rounded-sm"
                         style={{
                           width: `${breite}%`,
-                          background: z.jahr === aktJahr
+                          background: z.year === aktJahr
                             ? "var(--hh-aus-0)" : "var(--hh-aus-3)",
                         }}
                       />

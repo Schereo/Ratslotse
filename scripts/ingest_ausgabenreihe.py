@@ -73,7 +73,7 @@ def pdf_text(pfad: Path) -> str:
 
 
 def kernverwaltung(store: CouncilStore) -> dict[int, float]:
-    """``{jahr: Summe ordentliche Aufwendungen}`` aus den Jahresabschlüssen.
+    """``{year: Summe ordentliche Aufwendungen}`` aus den Jahresabschlüssen.
 
     Die Gesamtrechnung, also ``thh_nr IS NULL`` — dieselbe Ebene, die auch die
     Statistik zählt, nur **ohne** die nicht rechtsfähigen Stiftungen. Genau
@@ -83,7 +83,7 @@ def kernverwaltung(store: CouncilStore) -> dict[int, float]:
     for p in store.get_ergebnisrechnung():
         if p.get("thh_nr") is None and p.get("nr") == POSTEN_AUFWENDUNGEN \
                 and p.get("ergebnis") is not None:
-            werte[p["jahr"]] = float(p["ergebnis"])
+            werte[p["year"]] = float(p["ergebnis"])
     return werte
 
 
@@ -191,9 +191,9 @@ def main() -> int:
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
                   f"{ar.probennachweis(ergebnis)}")
             for v in ergebnis["verworfen"]:
-                print(f"    VERWORFEN {v['jahr']}: {v['grund']}", file=sys.stderr)
+                print(f"    VERWORFEN {v['year']}: {v['grund']}", file=sys.stderr)
             for k in ergebnis["konflikte"]:
-                print(f"    WIDERSPRUCH {k['jahr']}: "
+                print(f"    WIDERSPRUCH {k['year']}: "
                       f"{k['gewaehlt'].upper()} nennt "
                       f"{ar.de_zahl(k['betrag'] / 1e6, 3)} Mio. €, "
                       f"{k['verworfen'].upper()} "
@@ -210,8 +210,8 @@ def main() -> int:
                 return 1
 
             erster, letzter = zeilen[0], zeilen[-1]
-            print(f"  {erster['jahr']}: {ar.de_zahl(erster['betrag'] / 1e6, 1)} "
-                  f"Mio. € · {letzter['jahr']}: "
+            print(f"  {erster['year']}: {ar.de_zahl(erster['betrag'] / 1e6, 1)} "
+                  f"Mio. € · {letzter['year']}: "
                   f"{ar.de_zahl(letzter['betrag'] / 1e6, 1)} Mio. €")
 
             if args.trockenlauf:
@@ -252,8 +252,8 @@ def main() -> int:
 
             geschrieben = 0
             for (regelwerk, quelle, proben), teil in sorted(
-                    gruppen.items(), key=lambda kv: kv[1][0]["jahr"]):
-                spanne = _spanne([z["jahr"] for z in teil])
+                    gruppen.items(), key=lambda kv: kv[1][0]["year"]):
+                spanne = _spanne([z["year"] for z in teil])
                 anzahl = (f"{len(teil)} Jahrgänge" if len(teil) != 1
                           else "1 Jahrgang")
                 nachweis = f"{anzahl} ({spanne}), bestanden: " \
@@ -261,7 +261,7 @@ def main() -> int:
                 if any(z.get("konflikt_betrag") for z in teil):
                     k = next(z for z in teil if z.get("konflikt_betrag"))
                     nachweis += (
-                        f"; für {k['jahr']} widersprechen sich die beiden "
+                        f"; für {k['year']} widersprechen sich die beiden "
                         f"Quellen um "
                         f"{ar.de_zahl(abs(k['konflikt_betrag'] - k['betrag']) / 1e6, 3)}"
                         f" Mio. € — übernommen ist der Wert, der seine "

@@ -48,8 +48,8 @@ def hebesatz_probe(store: CouncilStore, satzung) -> str | None:
     """
     try:
         rows = store._conn.execute(  # noqa: SLF001
-            "SELECT art, hebesatz FROM council_hebesaetze WHERE jahr = ?",
-            (satzung.jahr,)).fetchall()
+            "SELECT art, hebesatz FROM council_hebesaetze WHERE year = ?",
+            (satzung.year,)).fetchall()
     except Exception:  # noqa: BLE001 — Tabelle kann fehlen
         return None
     if not rows:
@@ -67,7 +67,7 @@ def hebesatz_probe(store: CouncilStore, satzung) -> str | None:
             continue
         if int(wert) != int(eigen):
             raise SatzungFehler(
-                f"Hebesatz {art} {satzung.jahr}: Die Satzung sagt {eigen} v.H., "
+                f"Hebesatz {art} {satzung.year}: Die Satzung sagt {eigen} v.H., "
                 f"das Statistische Jahrbuch {int(wert)} v.H. — zwei Häuser "
                 "widersprechen sich.")
         geprueft.append(f"{art} {eigen} v.H.")
@@ -103,13 +103,13 @@ def main() -> dict:
 
         if gelesen:
             print("\nGelesen:", flush=True)
-            for satzung, r in sorted(gelesen, key=lambda x: x[0].jahr):
+            for satzung, r in sorted(gelesen, key=lambda x: x[0].year):
                 lk = (f"{satzung.liquiditaetskredite / 1e6:,.0f} Mio. €"
                       if satzung.liquiditaetskredite else "—")
                 kr = ("nicht veranschlagt" if satzung.kredite_investitionen == 0
                       else (f"{(satzung.kredite_investitionen or 0) / 1e6:,.1f} Mio. €"
                             if satzung.kredite_investitionen else "—"))
-                print(f"  {satzung.jahr}  [{satzung.fassung}]  "
+                print(f"  {satzung.year}  [{satzung.fassung}]  "
                       f"Dispo {lk:>14}  Investitionskredite: {kr}", flush=True)
 
         if ohne_text:

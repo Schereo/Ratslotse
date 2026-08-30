@@ -24,7 +24,7 @@ export type { Herkunft };
 
 /** Eine Zeile aus `council_investitionen`. */
 export type InvestitionsZeile = {
-  jahr: number;
+  year: number;
   ebene: "teilhaushalt" | "investitionen" | "finanzhaushalt";
   /** 0 auf den beiden Summenzeilen — sie tragen keine Teilhaushaltsnummer. */
   thh_nr: number;
@@ -57,26 +57,26 @@ export function herkunftVon(
  *  Bereich nach vorn sortieren, der viel ausgibt UND viel zurückbekommt). */
 export function teilhaushalte(
   daten: InvestitionenDaten | null,
-  jahr: number,
+  year: number,
 ): InvestitionsZeile[] {
   if (!daten) return [];
   return daten.teilhaushalte
-    .filter((z) => z.jahr === jahr)
+    .filter((z) => z.year === year)
     .sort((a, b) => b.auszahlungen - a.auszahlungen);
 }
 
 export function gesamtJahr(
   daten: InvestitionenDaten | null,
-  jahr: number,
+  year: number,
 ): InvestitionsZeile | null {
-  return daten?.gesamt.find((z) => z.jahr === jahr) ?? null;
+  return daten?.gesamt.find((z) => z.year === year) ?? null;
 }
 
 export function finanzhaushaltJahr(
   daten: InvestitionenDaten | null,
-  jahr: number,
+  year: number,
 ): InvestitionsZeile | null {
-  return daten?.finanzhaushalt.find((z) => z.jahr === jahr) ?? null;
+  return daten?.finanzhaushalt.find((z) => z.year === year) ?? null;
 }
 
 /** Wie viel Prozent aller geplanten Auszahlungen Investitionen sind.
@@ -86,10 +86,10 @@ export function finanzhaushaltJahr(
  *  erfundene Zahl. */
 export function investitionsAnteil(
   daten: InvestitionenDaten | null,
-  jahr: number,
+  year: number,
 ): number | null {
-  const g = gesamtJahr(daten, jahr);
-  const f = finanzhaushaltJahr(daten, jahr);
+  const g = gesamtJahr(daten, year);
+  const f = finanzhaushaltJahr(daten, year);
   if (!g || !f || !f.auszahlungen) return null;
   return (g.auszahlungen / f.auszahlungen) * 100;
 }
@@ -107,5 +107,5 @@ export function netto(zeile: InvestitionsZeile | null): number | null {
 /** Die Zeitreihe der Gesamtinvestitionen, aufsteigend nach Jahr. */
 export function reihe(daten: InvestitionenDaten | null): InvestitionsZeile[] {
   if (!daten) return [];
-  return [...daten.gesamt].sort((a, b) => a.jahr - b.jahr);
+  return [...daten.gesamt].sort((a, b) => a.year - b.year);
 }

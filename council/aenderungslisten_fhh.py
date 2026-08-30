@@ -128,7 +128,7 @@ _STRICH = frozenset({"-", "–", "—"})
 class FhhZeile:
     """Eine Position einer FHH-Änderungsliste — ein Planjahr, eine Zeile."""
 
-    jahr: int
+    year: int
     lfd: int
     thh: int | None
     seite_entwurf: str | None   # auch „neu“ — dann steht die Zeile nicht im Entwurf
@@ -148,7 +148,7 @@ class FhhZeile:
 class FhhSumme:
     """Eine Zeile der Zusammenstellung: Entwurf, eine Liste oder die Endsumme."""
 
-    jahr: int
+    year: int
     typ: str  # "entwurf" | "liste" | "endsumme"
     label: str
     einzahlungen: int
@@ -169,7 +169,7 @@ class FhhErgebnis:
 
     @property
     def jahrgang(self) -> int:
-        return min(z.jahr for z in self.zeilen)
+        return min(z.year for z in self.zeilen)
 
 
 # ----------------------------------------------------------- Spalten aus Linien
@@ -329,7 +329,7 @@ def _ist_position(zeile: list[Wort], spalten: FhhSpalten | None) -> bool:
 _PRODUKT = re.compile(r"[IP]\d[\d.]*")
 
 
-def _position_lesen(zeile: list[Wort], jahr: int, spalten: FhhSpalten) -> FhhZeile:
+def _position_lesen(zeile: list[Wort], year: int, spalten: FhhSpalten) -> FhhZeile:
     lfd = int(zeile[0][3])
     thh = int(zeile[1][3]) if zeile[1][3] != "alle" else None
 
@@ -353,7 +353,7 @@ def _position_lesen(zeile: list[Wort], jahr: int, spalten: FhhSpalten) -> FhhZei
     # ihrer Grundlinie leer). Sie kommen deshalb aus dem ZEILENBAND —
     # dieselbe Geometrie, die schon Erläuterung und Urheber zuordnet.
     return FhhZeile(
-        jahr=jahr, lfd=lfd, thh=thh, seite_entwurf=seite, produkt=produkt,
+        year=year, lfd=lfd, thh=thh, seite_entwurf=seite, produkt=produkt,
         bezeichnung=" ".join(bezeichnung),
         soll_entwurf=None, einzahlung=None, auszahlung=None,
         ve=None, soll_neu=None,
@@ -481,7 +481,7 @@ def _summen_zellen(zeile: list[Wort], spalten: SummenSpalten,
     return zellen, erster, letzter
 
 
-def _summen_zeile(jahr: int, typ: str, zeile: list[Wort],
+def _summen_zeile(year: int, typ: str, zeile: list[Wort],
                   zellen: dict[str, int], erster: float, letzter: float) -> FhhSumme:
     """Eine Zusammenstellungs-Zeile lesen — und sofort beweisen.
 
@@ -492,13 +492,13 @@ def _summen_zeile(jahr: int, typ: str, zeile: list[Wort],
     ein, aus, saldo = zellen["ein"], zellen["aus"], zellen["saldo"]
     if abs(ein - aus - saldo) > 2:
         raise ListenFehler(
-            f"Zeilenprobe {jahr}: {ein:,} − {aus:,} ≠ {saldo:,} "
+            f"Zeilenprobe {year}: {ein:,} − {aus:,} ≠ {saldo:,} "
             f"in „{' '.join(w[3] for w in zeile)[:70]}“")
     # Links des ersten Betrags steht die Beschriftung, rechts des letzten der
     # Urheber („Vorschlag von" — nur die Beschluss-Dateien führen ihn).
     label = " ".join(w[3] for w in zeile if w[1] <= erster).strip()
     urheber = " ".join(w[3] for w in zeile if w[0] >= letzter).strip()
-    return FhhSumme(jahr=jahr, typ=typ, label=(label or urheber or "liste"),
+    return FhhSumme(year=year, typ=typ, label=(label or urheber or "liste"),
                     einzahlungen=ein, auszahlungen=aus, saldo=saldo,
                     ve=zellen.get("ve"))
 
@@ -508,7 +508,7 @@ def _block_jahr(block_jahr: int | None, aus: FhhErgebnis, typ: str) -> int:
     Überschrift fehlt: Jeder Block beginnt mit seinem Verwaltungsentwurf."""
     if block_jahr is not None:
         return block_jahr
-    jahre = sorted({z.jahr for z in aus.zeilen})
+    jahre = sorted({z.year for z in aus.zeilen})
     entwuerfe = sum(1 for s in aus.summen if s.typ == "entwurf")
     idx = entwuerfe if typ == "entwurf" else entwuerfe - 1
     if 0 <= idx < len(jahre):
@@ -551,7 +551,7 @@ def parse_fhh_seiten(seiten: list[list[Wort]],
         marker = _JAHR_MARKER.search(seitentext)
         if marker:
             jahr_merker = int(marker.group(1))
-        jahr = jahr_merker if spalten is not None else None
+        year = jahr_merker if spalten is not None else None
         # Zusammenstellungs-Seiten setzen ihre Köpfe als GANZE Wörter
         # („Einzahlungen"); die Tabellenseiten brechen sie um („Ein-" /
         # „zahlungen"). Das unterscheidet die beiden Seitenarten von selbst.
@@ -567,9 +567,9 @@ def parse_fhh_seiten(seiten: list[list[Wort]],
             elif spalten is None and re.fullmatch(r"20\d\d", text.strip()):
                 block_jahr = int(text.strip())
 
-            if spalten is not None and jahr is not None:
+            if spalten is not None and year is not None:
                 if _ist_position(zeile, spalten):
-                    position = _position_lesen(zeile, jahr, spalten)
+                    position = _position_lesen(zeile, year, spalten)
                     aus.zeilen.append(position)
                     positionen.append((zeile[0][2], position))
                     continue
@@ -639,7 +639,7 @@ def _doppelzeilen_falten(zeilen: list[FhhZeile]) -> list[FhhZeile]:
     """
     aus: dict[tuple[int, int], FhhZeile] = {}
     for z in zeilen:
-        schluessel = (z.jahr, z.lfd)
+        schluessel = (z.year, z.lfd)
         erste = aus.get(schluessel)
         if erste is None:
             aus[schluessel] = z
@@ -650,7 +650,7 @@ def _doppelzeilen_falten(zeilen: list[FhhZeile]) -> list[FhhZeile]:
                 continue
             if alt_wert is not None and alt_wert != neu_wert:
                 raise ListenFehler(
-                    f"Position {z.jahr}/lfd {z.lfd} steht zweimal mit "
+                    f"Position {z.year}/lfd {z.lfd} steht zweimal mit "
                     f"verschiedenem {feld}: {alt_wert:,} und {neu_wert:,}.")
             setattr(erste, feld, neu_wert)
         for feld in ("erlaeuterung", "bezeichnung", "urheber"):
@@ -869,14 +869,14 @@ def _proben(aus: FhhErgebnis) -> None:
     if schief:
         z = schief[0]
         raise ListenFehler(
-            f"Zeilenprobe {z.jahr}/lfd {z.lfd}: {z.soll_entwurf:,} + "
+            f"Zeilenprobe {z.year}/lfd {z.lfd}: {z.soll_entwurf:,} + "
             f"{z.einzahlung:,} + {z.auszahlung:,} ≠ {z.soll_neu:,} "
             f"({len(schief)} von {len(voll)} Zeilen betroffen)")
 
-    for jahr in sorted({z.jahr for z in aus.zeilen}):
-        entwurf = [s for s in aus.summen if s.jahr == jahr and s.typ == "entwurf"]
-        listen = [s for s in aus.summen if s.jahr == jahr and s.typ == "liste"]
-        ende = [s for s in aus.summen if s.jahr == jahr and s.typ == "endsumme"]
+    for year in sorted({z.year for z in aus.zeilen}):
+        entwurf = [s for s in aus.summen if s.year == year and s.typ == "entwurf"]
+        listen = [s for s in aus.summen if s.year == year and s.typ == "liste"]
+        ende = [s for s in aus.summen if s.year == year and s.typ == "endsumme"]
         # Die Endsumme ist OPTIONAL, anders als beim EHH: Die
         # FHH-Beschluss-Dateien führen je Block nur den Entwurf und die
         # Listen und verzichten auf die Schlusszeile (303359, 230016/230178).
@@ -889,7 +889,7 @@ def _proben(aus: FhhErgebnis) -> None:
         # es nichts, woran sich die Positionen messen ließen.
         if len(entwurf) > 1 or len(ende) > 1 or not listen:
             raise ListenFehler(
-                f"Zusammenstellung {jahr}: erwartet höchstens 1×Entwurf, "
+                f"Zusammenstellung {year}: erwartet höchstens 1×Entwurf, "
                 f"≥1×Liste, höchstens 1×Endsumme — gefunden "
                 f"{len(entwurf)}/{len(listen)}/{len(ende)}.")
 
@@ -902,8 +902,8 @@ def _proben(aus: FhhErgebnis) -> None:
                 - getattr(ende[0], feld)) <= toleranz
             for feld in ("einzahlungen", "auszahlungen"))
 
-        pos_e = sum(z.einzahlung or 0 for z in aus.zeilen if z.jahr == jahr)
-        pos_a = sum(z.auszahlung or 0 for z in aus.zeilen if z.jahr == jahr)
+        pos_e = sum(z.einzahlung or 0 for z in aus.zeilen if z.year == year)
+        pos_a = sum(z.auszahlung or 0 for z in aus.zeilen if z.year == year)
         if kette_ok:
             ziele = [(s.label, s.einzahlungen, s.auszahlungen) for s in listen]
             if len(listen) > 1:
@@ -917,12 +917,12 @@ def _proben(aus: FhhErgebnis) -> None:
                    if abs(e - pos_e) <= toleranz and abs(a - pos_a) <= toleranz]
         if len(treffer) != 1:
             raise ListenFehler(
-                f"Positionsprobe {jahr}: Die Positionen summieren auf "
+                f"Positionsprobe {year}: Die Positionen summieren auf "
                 f"{pos_e:,} / {pos_a:,} — "
                 + ("keine Zusammenstellungs-Zeile trifft das" if not treffer
                    else "mehrere Zeilen träfen das")
                 + ": " + "; ".join(f"{lab}: {e:,}/{a:,}" for lab, e, a in ziele))
-        aus.eigene_zeile[jahr] = treffer[0]
+        aus.eigene_zeile[year] = treffer[0]
 
 
 def lies_fhh_liste(pdf_bytes: bytes) -> FhhErgebnis:

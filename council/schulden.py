@@ -209,9 +209,9 @@ def parse(text: str) -> list[dict]:
             continue
         felder = [_zelle(f) for f in m.group(2).split()]
         if len(felder) != len(SPALTEN) or any(w is None for w, _ in felder):
-            zeilen.append({"jahr": int(m.group(1)), "unlesbar": roh.strip()})
+            zeilen.append({"year": int(m.group(1)), "unlesbar": roh.strip()})
             continue
-        zeile: dict = {"jahr": int(m.group(1)), "unlesbar": None}
+        zeile: dict = {"year": int(m.group(1)), "unlesbar": None}
         for (feld, _), (wert, marke) in zip(SPALTEN, felder):
             # Der Pro-Kopf-Betrag steht schon in Euro, die Schuldenarten nicht.
             zeile[feld] = wert if feld == "je_einwohner" else wert * TAUSEND
@@ -278,12 +278,12 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
     ohne_einwohner = 0
     for zeile in roh:
         if zeile.get("unlesbar"):
-            verworfen.append({"jahr": zeile["jahr"],
+            verworfen.append({"year": zeile["year"],
                               "grund": f"Zeile nicht in {len(SPALTEN)} Felder "
                                        f"zerlegbar: {zeile['unlesbar']!r}"})
             continue
         s_ok, deviation = summenprobe(zeile)
-        k_ok, gerechnet = prokopfprobe(zeile, einwohner.get(zeile["jahr"]))
+        k_ok, gerechnet = prokopfprobe(zeile, einwohner.get(zeile["year"]))
         summe_ok += bool(s_ok)
         summe_gerissen += not s_ok
         if k_ok is None:
@@ -303,7 +303,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
                           f"{zeile['je_einwohner']:,.0f} € ausgewiesen)")
             else:
                 grund += "; keine Einwohnerzahl für die Gegenprobe"
-            verworfen.append({"jahr": zeile["jahr"], "grund": grund})
+            verworfen.append({"year": zeile["year"], "grund": grund})
             continue
 
         uebernommen = dict(zeile)
@@ -318,7 +318,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
         uebernommen["proben"] = bestanden
         zeilen.append(uebernommen)
 
-    jahre = sorted(z["jahr"] for z in zeilen)
+    jahre = sorted(z["year"] for z in zeilen)
     luecken = ([j for j in range(spanne[0], spanne[1] + 1) if j not in jahre]
                if spanne else [])
     return {

@@ -130,7 +130,7 @@ function Abschnitt({ kicker, zusatz, className, children }: {
 /** Die Zeitreihe als `JahrPunkt[]` für den Baukasten: Werte in Mio. €, ohne
  *  erfundene Zwischenjahre — was der Bericht nicht nennt, bleibt Lücke. */
 function ergebnisReihe(ergebnisse: Kennzahl[]): JahrPunkt[] {
-  return ergebnisse.map((k) => ({ jahr: k.jahr, wert: k.wert / 1_000_000 }));
+  return ergebnisse.map((k) => ({ year: k.year, wert: k.wert / 1_000_000 }));
 }
 
 /** Eine Zahl im Kopf: Kennzahl, Jahr, Betrag — und wo nichts dasteht, der
@@ -139,7 +139,7 @@ function Kopfzahl({ titel, k }: { titel: string; k: Kennzahl | null }) {
   return (
     <div className="min-w-0">
       <dt className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-        {titel} {k ? k.jahr : ""}
+        {titel} {k ? k.year : ""}
       </dt>
       {k ? (
         <dd className="font-display text-[21px] font-bold leading-tight tracking-tight tabular-nums">
@@ -164,13 +164,13 @@ function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft })
   const alleReihen = useMemo(() => reihen(daten, g.gesellschaft), [daten, g.gesellschaft]);
   const ergebnisse = alleReihen.get("jahresergebnis") ?? [];
   const reihe = ergebnisReihe(ergebnisse);
-  const von = ergebnisse[0]?.jahr, bis = ergebnisse[ergebnisse.length - 1]?.jahr;
+  const von = ergebnisse[0]?.year, bis = ergebnisse[ergebnisse.length - 1]?.year;
   const quote = alleReihen.get("eigenkapitalquote") ?? [];
   // Die Eigenkapitalquote des jüngsten Jahres trägt keine Probe und steht
   // deshalb nicht im Bestand (Begründung: council/beteiligungsbericht.py).
   // Eine stumme Lücke sähe nach Fehler aus.
   const quoteFehlt = !!ergebnisse.length && !!quote.length
-    && quote[quote.length - 1].jahr < ergebnisse[ergebnisse.length - 1].jahr;
+    && quote[quote.length - 1].year < ergebnisse[ergebnisse.length - 1].year;
   const herkunft = herkunftVon(daten, ergebnisse[ergebnisse.length - 1]?.herkunft_id
     ?? g.herkunft_id);
 
@@ -197,7 +197,7 @@ function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft })
               reihe={reihe}
               format={(v) => deZahl(v, 1)}
               ariaLabel={`Jahresergebnis ${von} bis ${bis} in Mio. Euro: ${ergebnisse
-                .map((k) => `${k.jahr} ${eur(k.wert)}`).join(", ")}.`}
+                .map((k) => `${k.year} ${eur(k.wert)}`).join(", ")}.`}
             />
             <p className="mt-0.5 text-center font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
               Jahresergebnis in Mio. €
@@ -442,9 +442,9 @@ function Reihe({ daten, zeilen }: { daten: BeteiligungsDaten; zeilen: Kennzahl[]
       </p>
       <dl className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1.5">
         {zeilen.map((k) => (
-          <div key={k.jahr} className="flex flex-col">
+          <div key={k.year} className="flex flex-col">
             <dt className="font-mono text-[10px] tabular-nums text-muted-foreground">
-              {k.jahr}
+              {k.year}
             </dt>
             <dd className="font-display text-[15px] font-semibold tabular-nums">
               {wertText(k)}
@@ -561,7 +561,7 @@ export function Steckbrief({ daten, g, zurueck }: {
           <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                Beitrag im Konzern {vergleich.jahr}
+                Beitrag im Konzern {vergleich.year}
               </dt>
               <dd className="font-display text-[17px] font-bold tabular-nums">
                 {eur(vergleich.konzern_beitrag)}
@@ -569,7 +569,7 @@ export function Steckbrief({ daten, g, zurueck }: {
             </div>
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                Jahresergebnis {vergleich.jahr}
+                Jahresergebnis {vergleich.year}
               </dt>
               <dd className="font-display text-[17px] font-bold tabular-nums">
                 {eur(vergleich.jahresergebnis)}

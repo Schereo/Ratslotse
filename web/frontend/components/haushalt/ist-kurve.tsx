@@ -16,7 +16,7 @@ import {
   AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
 } from "@/components/grafik/ablesen";
 
-type Punkt = { jahr: number; betrag: number };
+type Punkt = { year: number; betrag: number };
 
 const H = 210, Y0 = 172, YTOP = 22;
 
@@ -38,8 +38,8 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
   const beschreibungId = useId();
   const schmal = breite < 520;
   const fs = schmal
-    ? { achse: 13, jahr: 13, marke: 12.5, wert: 14 }
-    : { achse: 11, jahr: 11, marke: 11, wert: 13 };
+    ? { achse: 13, year: 13, marke: 12.5, wert: 14 }
+    : { achse: 11, year: 11, marke: 11, wert: 13 };
   const W = breite, X0 = schmal ? 38 : 42, X1 = W - 20;
   if (reihe.length < 2) return null;
 
@@ -54,8 +54,8 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
   // Die zwei größten Rückgänge gegenüber dem Vorjahr — aus den Daten, nicht
   // aus dem Geschichtsbuch.
   const rueckgaenge = reihe
-    .map((p, i) => (i === 0 ? null : { i, jahr: p.jahr, delta: (p.betrag - reihe[i - 1].betrag) / 1e6 }))
-    .filter((d): d is { i: number; jahr: number; delta: number } => !!d && d.delta < 0)
+    .map((p, i) => (i === 0 ? null : { i, year: p.year, delta: (p.betrag - reihe[i - 1].betrag) / 1e6 }))
+    .filter((d): d is { i: number; year: number; delta: number } => !!d && d.delta < 0)
     .sort((a, b) => a.delta - b.delta)
     .slice(0, 2);
 
@@ -90,7 +90,7 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
   ];
   const marken = rueckgaenge
     .map((r) => {
-      const text = `${r.jahr}: ${deMio(r.delta)}`;
+      const text = `${r.year}: ${deMio(r.delta)}`;
       const w = textBreite(text, fs.marke);
       return {
         ...r, text, w,
@@ -126,12 +126,12 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
     const vor = i > 0 ? (p.betrag - reihe[i - 1].betrag) / 1e6 : null;
     const deltaText = vor == null ? null : `${vor > 0 ? "+" : ""}${deMio(vor)}`;
     return {
-      titel: String(p.jahr),
+      titel: String(p.year),
       werte: [
         { label: einheit.startsWith("Mio") ? "Mio. €" : einheit, wert: deMio(wert), farbe: "var(--hh-ein-0)" },
         ...(deltaText ? [{ label: "ggü. Vorjahr", wert: deltaText, signal: (vor as number) < 0 }] : []),
       ],
-      vorlesen: `${p.jahr}: ${deMio(wert)} Millionen Euro`
+      vorlesen: `${p.year}: ${deMio(wert)} Millionen Euro`
         + (vor == null ? "." : `, ${deMio(Math.abs(vor))} Millionen ${vor < 0 ? "weniger" : "mehr"} als im Vorjahr.`),
     };
   });
@@ -143,15 +143,15 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
           Tatsächlich eingenommen
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {erste.jahr}–{letzte.jahr} · {reihe.length} Werte · {einheit}
+          {erste.year}–{letzte.year} · {reihe.length} Werte · {einheit}
         </span>
       </div>
       <p className="mb-3 max-w-[72ch] text-sm leading-relaxed text-foreground/90">
-        In {letzte.jahr - erste.jahr} Jahren ist der Betrag von {deMio(erste.betrag / 1e6)} auf{" "}
+        In {letzte.year - erste.year} Jahren ist der Betrag von {deMio(erste.betrag / 1e6)} auf{" "}
         <strong>{deMio(letzte.betrag / 1e6)}&#8239;Mio.&nbsp;€</strong> gestiegen
         {faktor >= 1.5 && <> — das {faktor.toLocaleString("de-DE", { maximumFractionDigits: 1 })}-Fache</>}.
         {rueckgaenge.length > 0 && (
-          <> Dazwischen ging es auch zurück: am stärksten {rueckgaenge[0].jahr} um{" "}
+          <> Dazwischen ging es auch zurück: am stärksten {rueckgaenge[0].year} um{" "}
           {deMio(-rueckgaenge[0].delta)}&#8239;Mio.&nbsp;€</>
         )}
       </p>
@@ -170,11 +170,11 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
           einem Objekt zusammen — die Jahres-Ziele darin wären für die
           Vorlesehilfe unsichtbar. Die Gesamtbeschreibung steht daneben. */}
       <AbleseBeschreibung id={beschreibungId}>
-        {`Verlauf ${erste.jahr} bis ${letzte.jahr}: ${reihe.map((p) => `${p.jahr} ${deMio(p.betrag / 1e6)}`).join(", ")} Millionen Euro`}
+        {`Verlauf ${erste.year} bis ${letzte.year}: ${reihe.map((p) => `${p.year} ${deMio(p.betrag / 1e6)}`).join(", ")} Millionen Euro`}
       </AbleseBeschreibung>
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
         aria-describedby={beschreibungId}
-        aria-label={`Tatsächlich eingenommen, ${erste.jahr} bis ${letzte.jahr}`}>
+        aria-label={`Tatsächlich eingenommen, ${erste.year} bis ${letzte.year}`}>
         {gitter.map((v) => (
           <g key={v}>
             <line x1={X0} y1={y(v)} x2={X1} y2={y(v)} className="stroke-border/60" />
@@ -190,7 +190,7 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
         {/* Erst alle Linien und Punkte, dann alle Beschriftungen: Sonst zieht der
             Führungsstrich der oberen Marke durch den Text der unteren. */}
         {marken.map((m) => (
-          <g key={m.jahr}>
+          <g key={m.year}>
             <line x1={x(m.i)} y1={m.py} x2={x(m.i)} y2={Y0}
               strokeWidth={1} strokeDasharray="3 3" className="stroke-muted-foreground" />
             {/* Steht die Beschriftung versetzt, führt ein feiner Strich zurück zum Punkt. */}
@@ -204,7 +204,7 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
           </g>
         ))}
         {marken.map((m) => (
-          <text key={m.jahr} x={m.mitte} y={m.ty} textAnchor="middle" fontSize={fs.marke}
+          <text key={m.year} x={m.mitte} y={m.ty} textAnchor="middle" fontSize={fs.marke}
             className="fill-signal stroke-card" {...halo}>{m.text}</text>
         ))}
 
@@ -219,9 +219,9 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
 
         {reihe.map((p, i) => (
           (i % schritt === 0 || i === reihe.length - 1) && (
-            <text key={p.jahr} x={x(i)} y={193} textAnchor="middle" fontSize={fs.jahr}
+            <text key={p.year} x={x(i)} y={193} textAnchor="middle" fontSize={fs.year}
               className={i === reihe.length - 1 ? "fill-foreground font-mono" : "fill-muted-foreground font-mono"}>
-              {p.jahr}
+              {p.year}
             </text>
           )
         ))}
@@ -248,8 +248,8 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
       {tabelle && (
         <div className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-x-3 gap-y-1 text-[11.5px] tabular-nums">
           {reihe.map((p) => (
-            <span key={p.jahr} className="flex justify-between border-t border-border/60 py-1">
-              <span className="font-mono text-muted-foreground">{p.jahr}</span>
+            <span key={p.year} className="flex justify-between border-t border-border/60 py-1">
+              <span className="font-mono text-muted-foreground">{p.year}</span>
               <span>{deMio(p.betrag / 1e6)}</span>
             </span>
           ))}

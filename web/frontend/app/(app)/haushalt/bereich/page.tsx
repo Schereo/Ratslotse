@@ -91,9 +91,9 @@ function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
     (p) => p.thh_name != null && bereichSchluessel(p.thh_name) === schluessel
            && p.nr >= 1 && p.nr <= 11 && (p.ergebnis ?? 0) > 0);
   if (!posten.length || !schluessel) return null;
-  const jahr = Math.max(...posten.map((p) => p.jahr));
+  const year = Math.max(...posten.map((p) => p.year));
   const arten = posten
-    .filter((p) => p.jahr === jahr)
+    .filter((p) => p.year === year)
     .map((p) => ({ nr: p.nr, label: ERTRAGSART_KURZ[p.nr] ?? p.bezeichnung, wert: p.ergebnis as number }))
     .sort((a, b) => b.wert - a.wert);
   if (arten.length < 2) return null;
@@ -104,7 +104,7 @@ function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <Kicker>Woraus die eigenen Einnahmen bestehen</Kicker>
         <span className="font-mono text-[10px] uppercase tracking-[0.09em] text-muted-foreground">
-          Ist {jahr}
+          Ist {year}
         </span>
       </div>
       <div className="mt-3 flex flex-col gap-1.5">
@@ -133,7 +133,7 @@ function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
       </div>
       <p className="mt-3 border-t border-border/60 pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
         Zusammen {betrag(gesamt).wert}&nbsp;{betrag(gesamt).einheit} — aus dem Jahresabschluss
-        {" "}{jahr}<Beleg q="ergebnisrechnung_thh" />. Der Plan für {planJahr} weist
+        {" "}{year}<Beleg q="ergebnisrechnung_thh" />. Der Plan für {planJahr} weist
         {" "}{deMio(planEin)}&nbsp;Mio.&nbsp;€ aus; die Aufteilung dazu gibt es erst,
         wenn das Jahr abgerechnet ist.
       </p>
@@ -179,8 +179,8 @@ function BereichInner() {
   const [reiter, setReiter] = useState<ReiterId>("ueberblick");
 
   const jahre = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
-  const jahr = jahre[jahre.length - 1];
-  const zeilen = data && jahr ? data.jahre[String(jahr)] ?? [] : [];
+  const year = jahre[jahre.length - 1];
+  const zeilen = data && year ? data.jahre[String(year)] ?? [] : [];
   const z = bereichAusParam(zeilen, slug);
   const kanon = z ? bereichKanon(z.bereich) : null;
 
@@ -192,13 +192,13 @@ function BereichInner() {
   }, [data]);
   const { data: produkte } = useFetch<ProdukteAntwort>(
     produktJahr != null && kanon?.thh != null
-      ? `/council/haushalt/produkte?jahr=${produktJahr}&thh=${kanon.thh}`
+      ? `/council/haushalt/produkte?year=${produktJahr}&thh=${kanon.thh}`
       : null);
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
   }
-  if (!z || !jahr || !kanon) {
+  if (!z || !year || !kanon) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
         Diesen Bereich kennen wir nicht.{" "}
@@ -218,7 +218,7 @@ function BereichInner() {
   const rangNetto = nachNetto.findIndex((x) => x.r.bereich === z.bereich) + 1;
   const bruttoTop = nachBrutto[0];
   const reihe = bereichsReihe(data, z.bereich);
-  const quelle = quellenLabel(zeilen, jahr);
+  const quelle = quellenLabel(zeilen, year);
   const info = bereichInfo(z.bereich);
   const maxWert = Math.max(...alle.map((x) => (ranking === "netto" ? x.netto : x.brutto)), 1);
   const d = deckung(z);
@@ -260,10 +260,10 @@ function BereichInner() {
   const abschluss = (data.ergebnisrechnung ?? []).filter(
     (p) => p.thh_name != null && bereichSchluessel(p.thh_name) === kanon.schluessel
            && (p.nr === 12 || p.nr === 20));
-  const planIstJahre = [...new Set(abschluss.map((p) => p.jahr))].sort((a, b) => a - b);
+  const planIstJahre = [...new Set(abschluss.map((p) => p.year))].sort((a, b) => a - b);
   const planIstZeilen = planIstJahre
     .map((j) => {
-      const a = abschluss.find((p) => p.jahr === j && p.nr === 20);
+      const a = abschluss.find((p) => p.year === j && p.nr === 20);
       // `plan` ist die Bezugsgröße des jeweiligen Jahrgangs, nicht überall der
       // nackte Ansatz — 2018 und 2020 weichen ab (Fußnote unten).
       return {
@@ -298,10 +298,10 @@ function BereichInner() {
   const aktiv = reiterListe.some((r) => r.id === reiter) ? reiter : "ueberblick";
 
   return (
-    <Quellenkontext schluessel={quellen} jahr={jahr}>
+    <Quellenkontext schluessel={quellen} year={year}>
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted-foreground">
-        <Link href="/haushalt" className="hover:text-foreground">Haushalt {jahr}</Link>
+        <Link href="/haushalt" className="hover:text-foreground">Haushalt {year}</Link>
         <ChevronRight aria-hidden className="h-3 w-3" />
         <Link href="/haushalt/produkte#bereiche" className="hover:text-foreground">Alle Bereiche</Link>
         <ChevronRight aria-hidden className="h-3 w-3" />
@@ -340,11 +340,11 @@ function BereichInner() {
             // Unter 0,05 Mio. rundet `mio()` auf 0,0 — „er nimmt 0,0 Mio. €
             // mehr ein" wäre eine Zahl, die nichts sagt (nicht rechtsfähige
             // Stiftungen).
-            <>Bei diesem Bereich halten sich Einnahmen und Ausgaben {jahr} ungefähr die Waage:
+            <>Bei diesem Bereich halten sich Einnahmen und Ausgaben {year} ungefähr die Waage:
               {" "}<strong>{deMio(ein)}&#8239;Mio.&nbsp;€</strong> stehen
               {" "}<strong>{deMio(aus)}&#8239;Mio.&nbsp;€</strong> gegenüber.</>
           ) : (
-            <>Für {jahr} sind die eigenen Erträge dieses Bereichs um{" "}
+            <>Für {year} sind die eigenen Erträge dieses Bereichs um{" "}
               <strong>{deMio(-netto)}&#8239;Mio.&nbsp;€</strong> höher als seine Aufwendungen.</>
           )}
         </p>
@@ -355,7 +355,7 @@ function BereichInner() {
           ganzen Bereichs (Gegenbalken, Bereichskarten); „kostet die Stadt"
           wäre eine zweite für dieselbe Sache. */}
       <div className="flex flex-none flex-wrap gap-x-6 gap-y-3 sm:gap-x-7 lg:pt-1">
-        <Summe label={`Aufwendungen ${jahr}`} wert={aus} beleg={<Beleg q="plan" />} />
+        <Summe label={`Aufwendungen ${year}`} wert={aus} beleg={<Beleg q="plan" />} />
         <Summe label="eigene Erträge" wert={ein} ton="ein" />
         {/* Dieselbe Schwelle wie unten im Balken (Rohwert-Vergleich), damit
             Kopf und Bild nie zwei verschiedene Richtungen behaupten. */}
@@ -412,7 +412,7 @@ function BereichInner() {
       <ReiterTafel id="ueberblick" aktiv={aktiv} className="flex flex-col gap-4">
         {/* Die Rechnung des Bereichs steht seit 24.08. oben auf der Tafel —
             der Überblick beginnt mit dem Blick HINTER ihre Einnahmen-Leiste. */}
-        <EigeneErtraege daten={data} schluessel={kanon.schluessel} planEin={ein} planJahr={jahr} />
+        <EigeneErtraege daten={data} schluessel={kanon.schluessel} planEin={ein} planJahr={year} />
 
         {/* Brutto gegen Netto — der Umschalter IST das Lehrstück. */}
         <Karte>
@@ -514,7 +514,7 @@ function BereichInner() {
                 ? <>Die teuerste Aufgabe dieses Bereichs nach Zuschussbedarf,</>
                 : <>Die {produktZeilen.length} teuersten Aufgaben dieses Bereichs nach Zuschussbedarf,</>}
               {" "}aus dem Teilhaushaltsplan {produktJahr}<Beleg q="teilhaushalt" />. Für das
-              Haushaltsjahr {jahr} gibt es die Produktebene noch nicht — die Stadt
+              Haushaltsjahr {year} gibt es die Produktebene noch nicht — die Stadt
               veröffentlicht sie mit den Teilplänen, und unser Bestand endet {produktJahr}.
             </p>
             <Link href="/haushalt/produkte"
@@ -534,7 +534,7 @@ function BereichInner() {
             <Kicker>Entwicklung des Bereichs</Kicker>
             <span className="font-mono text-[10px] uppercase text-muted-foreground">
               {reihe.length >= 2
-                ? `${reihe[0].jahr}–${reihe[reihe.length - 1].jahr} · ${reihe.length} Jahre`
+                ? `${reihe[0].year}–${reihe[reihe.length - 1].year} · ${reihe.length} Jahre`
                 : "Noch keine Reihe"}
             </span>
           </div>
@@ -569,7 +569,7 @@ function BereichInner() {
                       {kopf.delta > 0 ? "+" : kopf.delta < 0 ? "−" : ""}{deMio(Math.abs(kopf.delta))}
                     </p>
                     <p className="max-w-[54ch] text-[12.5px] leading-relaxed text-foreground/85">
-                      Mio.&nbsp;€ gegenüber {reihe[0].jahr}: Der {kopf.wort} des Bereichs
+                      Mio.&nbsp;€ gegenüber {reihe[0].year}: Der {kopf.wort} des Bereichs
                       {" "}{kopf.delta >= 0 ? "stieg" : "sank"} von {deMio(kopf.von)} auf
                       {" "}{deMio(kopf.bis)}&nbsp;Mio.&nbsp;€
                       {kopf.prozent != null && <> — {kopf.delta >= 0 ? "ein Plus" : "ein Minus"} von {kopf.prozent}&nbsp;%</>}
@@ -578,7 +578,7 @@ function BereichInner() {
                   </div>
                 )}
                 <div className="mt-3 grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 gap-y-1 text-xs tabular-nums">
-                  {reihe.map(({ jahr: j, zeile }, i) => (
+                  {reihe.map(({ year: j, zeile }, i) => (
                     <div key={j} className="contents">
                       <span className="font-mono text-muted-foreground">{j}</span>
                       <div className="h-2.5 rounded-[3px] bg-muted">
@@ -598,9 +598,9 @@ function BereichInner() {
                 </div>
                 <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
                   {reihe.length < jahre.length
-                    ? <>Vor {reihe[0].jahr} führte der Plan den Bereich unter anderem Namen — die
+                    ? <>Vor {reihe[0].year} führte der Plan den Bereich unter anderem Namen — die
                         Reihe beginnt dort, wo der Name belegt ist.</>
-                    : <>Der Bereich heißt seit {reihe[0].jahr} unverändert; nur deshalb zeigen wir
+                    : <>Der Bereich heißt seit {reihe[0].year} unverändert; nur deshalb zeigen wir
                         die Reihe durchgehend. Wo Teilhaushalte umbenannt oder neu zugeschnitten
                         wurden, zeigen wir keine Kurve.</>}
                   {" "}Planwerte, nicht Jahresabschluss<Beleg q="plan" />.
@@ -680,7 +680,7 @@ function BereichInner() {
                 <Hantel zeilen={planIstZeilen} massstab="betrag" sortierung="alpha" />
                 {abweichend.length > 0 && (
                   <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-                    * In {[...new Set(abweichend.map((p) => p.jahr))].join(" und ")} vergleicht der
+                    * In {[...new Set(abweichend.map((p) => p.year))].join(" und ")} vergleicht der
                     Abschluss nicht mit dem ursprünglichen Ansatz, sondern mit dem
                     fortgeschriebenen Plan
                     ({[...new Set(abweichend.map((p) => PLAN_ART_LABEL[p.plan_art as PlanArt]))].join(", ")}).
@@ -719,7 +719,7 @@ function BereichInner() {
           <Kicker>Diese Seite in einem Absatz</Kicker>
           <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
             Die Beträge oben sind <strong>Planwerte</strong> aus dem beschlossenen Haushaltsplan
-            {" "}{jahr}. Sie zeigen, was der Rat vorgesehen hat, nicht das spätere Ergebnis.
+            {" "}{year}. Sie zeigen, was der Rat vorgesehen hat, nicht das spätere Ergebnis.
             Tatsächliche Erträge und Aufwendungen veröffentlicht die Stadt im Jahresabschluss,
             der mit zeitlichem Abstand erscheint. Investitionen sind hier nicht enthalten;
             sie stehen im Finanzhaushalt.

@@ -358,9 +358,9 @@ JA 31
 4.2"""
 
 
-def _rollen(text: str, jahr: int) -> dict[str, dict]:
+def _rollen(text: str, year: int) -> dict[str, dict]:
     zeilen, fehler, _ = finanzberichte.finanzprobe(
-        finanzberichte.parse_finanzrechnung(text, jahr))
+        finanzberichte.parse_finanzrechnung(text, year))
     assert fehler == []
     return {z["rolle"]: z for z in zeilen if z["rolle"]}
 
@@ -396,9 +396,9 @@ def test_der_ansatz_steht_daneben():
 
 # --- Die Kaskade -------------------------------------------------------------
 
-@pytest.mark.parametrize("text,jahr", [(FR_2024, 2024), (FR_2019, 2019)])
-def test_die_kaskade_geht_in_beiden_layouts_auf(text, jahr):
-    zeilen = finanzberichte.parse_finanzrechnung(text, jahr)
+@pytest.mark.parametrize("text,year", [(FR_2024, 2024), (FR_2019, 2019)])
+def test_die_kaskade_geht_in_beiden_layouts_auf(text, year):
+    zeilen = finanzberichte.parse_finanzrechnung(text, year)
     uebernommen, fehler, _ = finanzberichte.finanzprobe(zeilen)
     assert fehler == []
     assert uebernommen == zeilen

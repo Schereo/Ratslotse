@@ -374,12 +374,12 @@ def test_verpflichtungsermaechtigung_zaehlt_nicht_mit():
     Der Rechenschaftsbericht zählt sie getrennt, wir auch."""
     ve = nb.Bewilligung(
         template_number="23/0359", titel="…", art=nb.ART_VERPFLICHTUNG,
-        kategorie="ausserplanmaessig", jahr=2023, betrag=840_000.0,
+        kategorie="ausserplanmaessig", year=2023, betrag=840_000.0,
         betrag_quelle="titel",
         beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
     echt = nb.Bewilligung(
         template_number="23/0617", titel="…", art=nb.ART_BEWILLIGUNG,
-        kategorie="ueberplanmaessig", jahr=2023, betrag=11_716_000.0,
+        kategorie="ueberplanmaessig", year=2023, betrag=11_716_000.0,
         betrag_quelle="titel",
         beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
     assert not ve.zaehlt_in_summe
@@ -408,7 +408,7 @@ def test_ohne_beschluss_keine_summe():
     bewilligtes Geld — 22/0925 allein verschöbe 2022 um 1,4 Mio. €."""
     beantragt = nb.Bewilligung(
         template_number="22/0925", titel="…", art=nb.ART_BEWILLIGUNG,
-        kategorie="ueberplanmaessig", jahr=2022, betrag=1_400_000.0,
+        kategorie="ueberplanmaessig", year=2022, betrag=1_400_000.0,
         betrag_quelle="titel", beschluesse=())
     assert not beantragt.beschlossen
     assert not beantragt.zaehlt_in_summe
@@ -421,7 +421,7 @@ def test_nur_kenntnis_ist_kein_ratsbeschluss():
     Vermerk „1 und BM"."""
     unterrichtung = nb.Bewilligung(
         template_number="22/0544", titel="…", art=nb.ART_BEWILLIGUNG,
-        kategorie="ueberplanmaessig", jahr=2022, betrag=180_000.0,
+        kategorie="ueberplanmaessig", year=2022, betrag=180_000.0,
         betrag_quelle="titel",
         beschluesse=({"committee": "Rat", "outcome": "zur_kenntnis"},))
     assert unterrichtung.nur_kenntnis
@@ -483,20 +483,20 @@ def test_probe_volltext():
 def test_probe_volltext_ohne_titelbetrag_ist_nicht_bestanden():
     """„Nicht geprüft" darf nicht wie „bestanden" aussehen."""
     b = nb.Bewilligung(template_number="24/0836", titel="…", art=nb.ART_BEWILLIGUNG,
-                       kategorie="ueberplanmaessig", jahr=2024, betrag=65_000.0,
+                       kategorie="ueberplanmaessig", year=2024, betrag=65_000.0,
                        betrag_quelle="beschlussvorschlag")
     assert not nb.probe_volltext(b, VORSCHLAG_RECHTSAMT)
 
 
 # --- Kapitel 3: die vier Kanäle --------------------------------------------
 
-@pytest.mark.parametrize("text,jahr,rat_betrag,rat_anzahl,gesamt", [
+@pytest.mark.parametrize("text,year,rat_betrag,rat_anzahl,gesamt", [
     (RB_2022, 2022, 23_825_742.00, 11, 26_681_523.30),
     (RB_2023, 2023, 33_871_700.00, 26, 40_236_162.59),
     (RB_2024, 2024, 42_171_646.29, 21, 57_492_845.28),
 ])
-def test_kapitel3_liest_die_vier_kanaele(text, jahr, rat_betrag, rat_anzahl, gesamt):
-    kap = nb.kapitel3(text, jahr)
+def test_kapitel3_liest_die_vier_kanaele(text, year, rat_betrag, rat_anzahl, gesamt):
+    kap = nb.kapitel3(text, year)
     assert kap is not None
     assert len(kap.kanaele) == 4, "alle vier Wege, auch die leeren"
     rat = kap.kanal("rat")
@@ -631,12 +631,12 @@ GEMESSEN = {
 }
 
 
-@pytest.mark.parametrize("jahr", sorted(GEMESSEN))
-def test_gemessene_abweichungen_sind_festgenagelt(jahr):
+@pytest.mark.parametrize("year", sorted(GEMESSEN))
+def test_gemessene_abweichungen_sind_festgenagelt(year):
     """Die Berichtsseite der Messung — sie hängt nur am Fixture und prüft,
     dass der Parser die Zahlen des Dokuments unverändert liest."""
-    soll = GEMESSEN[jahr]
-    kap = nb.kapitel3({2022: RB_2022, 2023: RB_2023, 2024: RB_2024}[jahr], jahr)
+    soll = GEMESSEN[year]
+    kap = nb.kapitel3({2022: RB_2022, 2023: RB_2023, 2024: RB_2024}[year], year)
     rat = kap.kanal("rat")
     assert rat.betrag == pytest.approx(soll["bericht"])
     assert rat.anzahl == soll["bericht_faelle"]
@@ -699,7 +699,7 @@ def test_vorlagen_im_kapitel_2024():
 def _bewilligung(nr, betrag, committee, outcome="angenommen"):
     return nb.Bewilligung(
         template_number=nr, titel="…", art=nb.ART_BEWILLIGUNG,
-        kategorie="ueberplanmaessig", jahr=2024, betrag=betrag,
+        kategorie="ueberplanmaessig", year=2024, betrag=betrag,
         betrag_quelle="titel",
         beschluesse=({"committee": committee, "outcome": outcome},))
 

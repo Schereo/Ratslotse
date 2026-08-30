@@ -41,11 +41,11 @@ def linien(waagerecht, senkrecht=None):
             [float(x) for x in (SENKRECHT if senkrecht is None else senkrecht)])
 
 
-def kopf(jahr):
+def kopf(year):
     """Der Tabellenkopf — samt seines „+ / −", das ein Gedankenstrich ist."""
     return [
         w(322, 339, 30, "Soll"), w(342, 358, 30, "laut"),
-        w(408, 466, 30, "Änderungen"), w(469, 491, 30, str(jahr)),
+        w(408, 466, 30, "Änderungen"), w(469, 491, 30, str(year)),
         w(323, 357, 42, "Entwurf"), w(386, 403, 42, "Ein-"), w(439, 459, 42, "Aus-"),
         w(372, 417, 54, "zahlungen"), w(427, 472, 54, "zahlungen"),
         w(498, 510, 54, "VE"),
@@ -74,12 +74,12 @@ def position(y, lfd, thh, werte, produkt="I10.089904.500",
     return aus
 
 
-def summenblock(jahr, zeilen):
+def summenblock(year, zeilen):
     """Eine Zusammenstellungs-Seite: Kopfwörter und Zeilen.
     `zeilen`: (label, ein, aus, saldo, ve, urheber)."""
     aus = [w(180, 300, 20, "Zusammenstellung"), w(303, 330, 20, "der"),
            w(333, 430, 20, "Veränderungen"),
-           w(360, 400, 32, str(jahr)),
+           w(360, 400, 32, str(year)),
            w(250, 310, 44, "Einzahlungen"), w(318, 381, 44, "Auszahlungen"),
            w(408, 434, 44, "Saldo"), w(483, 496, 44, "VE")]
     y = 60

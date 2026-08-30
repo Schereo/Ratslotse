@@ -333,7 +333,7 @@ def _runde_2026(store):
 def test_haushalt_streit_baut_jahrgang(store):
     _runde_2026(store)
     (runde,) = store.haushalt_streit()
-    assert runde["jahr"] == 2026
+    assert runde["year"] == 2026
     # Ausschuss vor Rat, auch wenn beide am selben Tag tagen.
     assert [s["gremium"] for s in runde["stationen"]] == [
         "Ausschuss für Finanzen und Beteiligungen", "Rat"]

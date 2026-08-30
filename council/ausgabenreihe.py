@@ -274,14 +274,14 @@ def de_zahl(zahl: float, nachkomma: int = 0, vorzeichen: bool = False) -> str:
     return text.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
 
 
-def regelwerk_von(jahr: int) -> str:
+def regelwerk_von(year: int) -> str:
     """Unter welchem Rechnungswesen ein Jahrgang gezählt wurde.
 
     Aus der Jahreszahl und nicht aus der Datei, in der die Zeile stand: Der
     Schnitt ist ein Datum (1. Januar 2010) und keine Dateieigenschaft. Dass
     beide Quellen ihn genauso ziehen, prüft :func:`lies` — eine Zeile, die im
     falschen Block steht, kommt nicht herein."""
-    return "doppik" if jahr >= NAHT_AB else "kameral"
+    return "doppik" if year >= NAHT_AB else "kameral"
 
 
 def _zelle(feld: str) -> tuple[float | None, str]:
@@ -318,7 +318,7 @@ def erkenne(text: str) -> dict[str, tuple[int, int]]:
 
 
 def parse_pdf(text: str) -> list[dict]:
-    """Die Datenzeilen des PDFs → ``{jahr, einwohner, betrag, je_einwohner,
+    """Die Datenzeilen des PDFs → ``{year, einwohner, betrag, je_einwohner,
     revidiert, quelle}``, Beträge in Euro.
 
     Beide Blöcke stehen auf derselben Seite untereinander; getrennt wird am
@@ -337,7 +337,7 @@ def parse_pdf(text: str) -> list[dict]:
             continue
         (ew, _), (betrag, _), (kopf, marke) = felder
         zeilen.append({
-            "jahr": int(m.group(1)), "einwohner": int(ew or 0),
+            "year": int(m.group(1)), "einwohner": int(ew or 0),
             "betrag": (betrag or 0.0) * TAUSEND, "je_einwohner": kopf,
             "revidiert": marke == "r", "quelle": "pdf",
         })
@@ -362,7 +362,7 @@ def parse_csv(csv_text: str) -> list[dict]:
         if not (c[1].isdigit() and c[2].isdigit() and c[3].isdigit()):
             continue
         zeilen.append({
-            "jahr": int(c[0]), "einwohner": int(c[1]),
+            "year": int(c[0]), "einwohner": int(c[1]),
             "betrag": float(c[2]) * TAUSEND, "je_einwohner": float(c[3]),
             "revidiert": False, "quelle": "csv",
         })
@@ -446,7 +446,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
          ergebnisrechnung: dict[int, float] | None = None) -> dict:
     """Die ganze Reihe einlesen und jeden Jahrgang durch seine Proben schicken.
 
-    ``ergebnisrechnung`` ist ``{jahr: Posten 20 der Gesamtrechnung in Euro}``
+    ``ergebnisrechnung`` ist ``{year: Posten 20 der Gesamtrechnung in Euro}``
     aus ``council_ergebnisrechnung`` — ohne diese Abbildung läuft alles
     andere, nur ohne die dritte Probe.
 
@@ -488,18 +488,18 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
                           ("doppik", parse_csv(csv_doppik)),
                           (None, parse_pdf(pdf_text or ""))):
         for z in roh:
-            if erwartet and regelwerk_von(z["jahr"]) != erwartet:
+            if erwartet and regelwerk_von(z["year"]) != erwartet:
                 verworfen.append({
-                    "jahr": z["jahr"],
+                    "year": z["year"],
                     "grund": f"steht in der Datei für das {erwartet}e "
                              f"Rechnungswesen, gehört nach dem "
                              f"Umstellungsdatum aber ins "
-                             f"{regelwerk_von(z['jahr'])}e"})
+                             f"{regelwerk_von(z['year'])}e"})
                 continue
-            je_quelle = kandidaten.setdefault(z["jahr"], {})
+            je_quelle = kandidaten.setdefault(z["year"], {})
             if z["quelle"] in je_quelle:
                 verworfen.append({
-                    "jahr": z["jahr"],
+                    "year": z["year"],
                     "grund": f"steht in derselben Quelle ({z['quelle']}) "
                              f"mehr als einmal"})
                 je_quelle[z["quelle"]] = {"doppelt": True}
@@ -513,8 +513,8 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
                "gegenprobe_bestanden": 0, "gegenprobe_gerissen": 0,
                "ohne_jahresabschluss": 0}
 
-    for jahr in sorted(kandidaten):
-        je_quelle = kandidaten[jahr]
+    for year in sorted(kandidaten):
+        je_quelle = kandidaten[year]
         if any(k.get("doppelt") for k in je_quelle.values()):
             continue  # Grund steht schon in `verworfen`.
         kand = [je_quelle[q] for q in ("pdf", "csv") if q in je_quelle]
@@ -523,7 +523,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
                     else "prokopf_gerissen"] += 1
         gewaehlt, konflikt, grund = _wähle(kand)
         if gewaehlt is None:
-            verworfen.append({"jahr": jahr, "grund": grund})
+            verworfen.append({"year": year, "grund": grund})
             continue
 
         proben = ["ausgabenreihe_prokopf"]
@@ -533,7 +533,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
             if ok:
                 proben.append("ausgabenreihe_zweitquelle")
 
-        g_ok, anteil = gegenprobe(gewaehlt["betrag"], ergebnisrechnung.get(jahr))
+        g_ok, anteil = gegenprobe(gewaehlt["betrag"], ergebnisrechnung.get(year))
         if g_ok is None:
             zaehler["ohne_jahresabschluss"] += 1
         else:
@@ -543,7 +543,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
                 # Dann gilt der Abschluss: Er ist das geprüfte Dokument, die
                 # Statistik die Nacherzählung.
                 verworfen.append({
-                    "jahr": jahr,
+                    "year": year,
                     "grund": f"weicht um {de_zahl(anteil * 100, 3, True)} % von "
                              f"der Ergebnisrechnung des Jahresabschlusses ab "
                              f"(erlaubt sind "
@@ -553,7 +553,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
             proben.append("ausgabenreihe_jahresabschluss")
 
         zeile = {
-            "jahr": jahr, "regelwerk": regelwerk_von(jahr),
+            "year": year, "regelwerk": regelwerk_von(year),
             "betrag": gewaehlt["betrag"], "quelle": gewaehlt["quelle"],
             "revidiert": bool(gewaehlt.get("revidiert")),
             "konflikt_betrag": konflikt["betrag"] if konflikt else None,
@@ -563,14 +563,14 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
         zeilen.append(zeile)
         if konflikt:
             konflikte.append({
-                "jahr": jahr, "gewaehlt": gewaehlt["quelle"],
+                "year": year, "gewaehlt": gewaehlt["quelle"],
                 "betrag": gewaehlt["betrag"],
                 "verworfen": konflikt["quelle"],
                 "konflikt_betrag": konflikt["betrag"],
                 "differenz": konflikt["betrag"] - gewaehlt["betrag"],
             })
 
-    da = {z["jahr"] for z in zeilen}
+    da = {z["year"] for z in zeilen}
     luecken: dict[str, list[int]] = {}
     for regelwerk, (von, bis) in spannen.items():
         fehlt = [j for j in range(von, bis + 1) if j not in da]
@@ -579,7 +579,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
     # Und die Löcher in der Reihe selbst — die CSV kündigt keine Spanne an,
     # ihre Vollständigkeit misst sich deshalb an ihrem eigenen Anfang und Ende.
     if zeilen:
-        innen = [j for j in range(zeilen[0]["jahr"], zeilen[-1]["jahr"] + 1)
+        innen = [j for j in range(zeilen[0]["year"], zeilen[-1]["year"] + 1)
                  if j not in da]
         for j in innen:
             luecken.setdefault(regelwerk_von(j), [])
@@ -588,7 +588,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
         for v in luecken.values():
             v.sort()
 
-    verworfen.sort(key=lambda v: v["jahr"])
+    verworfen.sort(key=lambda v: v["year"])
     return {
         "zeilen": zeilen,
         "verworfen": verworfen,

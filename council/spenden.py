@@ -212,7 +212,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
     Liefert:
 
     * ``vorlagen`` — je Vorlage **eine** Zeile, geprüft, mit ``proben``,
-      ``betrag``, ``jahr``, ``gremium``, ``layout``.
+      ``betrag``, ``year``, ``gremium``, ``layout``.
     * ``verworfen`` — je Eintrag ``{template_number, grund}``; der Grund ist ein
       vollständiger Satz und für Leser*innen geschrieben.
     * ``jahre`` — die Jahresreihe, je Jahr Summe und Zahl der Vorlagen.
@@ -265,7 +265,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
 
         kandidaten.append({
             "template_number": nr, "betrag": kopf, "sitzung": z.get("sitzung"),
-            "jahr": int(str(z.get("sitzung"))[:4]), "gremium": gremium(z.get("titel")),
+            "year": int(str(z.get("sitzung"))[:4]), "gremium": gremium(z.get("titel")),
             "layout": layout, "zweitstelle": art, "teile": len(teile),
             "proben": proben, "dokument_id": z.get("dokument_id"),
             "dokument_url": z.get("dokument_url"),
@@ -283,7 +283,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
 
     jahre: dict[int, dict] = {}
     for v in vorlagen:
-        e = jahre.setdefault(v["jahr"], {"jahr": v["jahr"], "betrag": 0.0, "vorlagen": 0,
+        e = jahre.setdefault(v["year"], {"year": v["year"], "betrag": 0.0, "vorlagen": 0,
                                          "rat": 0, "verwaltungsausschuss": 0})
         e["betrag"] += v["betrag"]
         e["vorlagen"] += 1

@@ -18,7 +18,7 @@ export type { Herkunft };
 export type Art = { feld: string; titel: string; betrag: number };
 
 export type GebautJahr = {
-  jahr: number;
+  year: number;
   /** `"kameral"` (bis 2009) oder `"doppik"` (ab 2010). */
   regelwerk: string;
   /** Die ausgewiesene Summenspalte in Euro. */
@@ -34,7 +34,7 @@ export type GebautJahr = {
  *  der den Jahrgang verworfen hat, und steht nirgends im Frontend. `null`,
  *  wo der Bestand keine Messung führt; dann nennt die Seite die Lücke ohne
  *  Betrag, statt einen zu erfinden. */
-export type GebautLuecke = { jahr: number; differenz: number | null };
+export type GebautLuecke = { year: number; differenz: number | null };
 
 export type GebautDaten = {
   reihe: GebautJahr[];
@@ -60,7 +60,7 @@ export type GebautDaten = {
  *  `abschr_ende` stehen negativ. Wer sie beim Anzeigen dreht, muss es überall
  *  tun — eine halb gedrehte Reihe ist schlimmer als eine ungedrehte. */
 export type AnlagePosten = {
-  jahr: number;
+  year: number;
   /** Gliederung wie im Dokument: „1", „1.1", „2", „2.3" … */
   nr: string;
   bezeichnung: string;
@@ -80,7 +80,7 @@ export type AnlagePosten = {
 /** Eine Untergruppe des Infrastrukturvermögens — Straßen, Brücken, Gleise.
  *  Aus einer ANDEREN Tabelle desselben Dokuments und erst ab 2022. */
 export type VermoegensGruppe = {
-  jahr: number;
+  year: number;
   gruppe: string;
   buchwert: number;
   buchwert_vorjahr: number | null;
@@ -101,13 +101,13 @@ export type Anlagen = {
  *
  *  Nummer „2" ist die Zeile, um die es geht: Sie enthält Gebäude, Straßen und
  *  Fahrzeuge. Immaterielles (1) und Finanzvermögen (3) nutzen sich nicht ab. */
-export function sachvermoegen(anlagen: Anlagen | undefined, jahr: number): AnlagePosten | null {
-  return (anlagen?.reihe ?? []).find((z) => z.jahr === jahr && z.nr === "2") ?? null;
+export function sachvermoegen(anlagen: Anlagen | undefined, year: number): AnlagePosten | null {
+  return (anlagen?.reihe ?? []).find((z) => z.year === year && z.nr === "2") ?? null;
 }
 
 /** Das Infrastrukturvermögen (2.3) eines Jahres — Straßen, Brücken, Kanäle. */
-export function infrastruktur(anlagen: Anlagen | undefined, jahr: number): AnlagePosten | null {
-  return (anlagen?.reihe ?? []).find((z) => z.jahr === jahr && z.nr === "2.3") ?? null;
+export function infrastruktur(anlagen: Anlagen | undefined, year: number): AnlagePosten | null {
+  return (anlagen?.reihe ?? []).find((z) => z.year === year && z.nr === "2.3") ?? null;
 }
 
 /** Baut die Stadt schneller auf, als ihr Bestand verfällt?
@@ -130,9 +130,9 @@ export function verzehr(posten: AnlagePosten | null): {
 }
 
 /** Die Straßen-Untergruppe eines Jahres, falls der Jahrgang sie führt. */
-export function strassen(anlagen: Anlagen | undefined, jahr: number): VermoegensGruppe | null {
+export function strassen(anlagen: Anlagen | undefined, year: number): VermoegensGruppe | null {
   return (anlagen?.gruppen ?? []).find(
-    (g) => g.jahr === jahr && /Straßen/i.test(g.gruppe)) ?? null;
+    (g) => g.year === year && /Straßen/i.test(g.gruppe)) ?? null;
 }
 
 export function herkunftVon(daten: GebautDaten | null, id: number | null): Herkunft | null {
@@ -175,7 +175,7 @@ export function juengsteReihe(daten: GebautDaten | null): Reihe | null {
   const alle = reihen(daten);
   if (!alle.length) return null;
   return alle.reduce((a, b) =>
-    (b.jahre[b.jahre.length - 1].jahr > a.jahre[a.jahre.length - 1].jahr ? b : a));
+    (b.jahre[b.jahre.length - 1].year > a.jahre[a.jahre.length - 1].year ? b : a));
 }
 
 /** Der größte Posten eines Jahrgangs — gerechnet, nicht beschriftet.

@@ -69,7 +69,7 @@ export default function LaborPage() {
   // jüngste. Fehlt sie ganz, läuft das Labor ohne Vergleichsgrößen weiter.
   const produktJahr = data?.produkt_jahre?.at(-1) ?? null;
   const { data: produkte } = useFetch<ProdukteAntwort>(
-    produktJahr ? `/council/haushalt/produkte?jahr=${produktJahr}` : null);
+    produktJahr ? `/council/haushalt/produkte?year=${produktJahr}` : null);
   // Die drei Zugaben — jede Komponente kommt mit `null` zurecht und lässt
   // ihren Baustein dann weg, statt mit halben Daten zu rechnen.
   const { data: vergleich } = useFetch<VergleichDaten>("/council/haushalt/vergleich");
@@ -84,7 +84,7 @@ export default function LaborPage() {
   }
 
   return (
-    <Quellenkontext schluessel={QUELLEN} jahr={jahreSortiert(data).at(-1) ?? null}>
+    <Quellenkontext schluessel={QUELLEN} year={jahreSortiert(data).at(-1) ?? null}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>

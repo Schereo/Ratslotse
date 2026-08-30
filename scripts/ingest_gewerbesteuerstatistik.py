@@ -111,7 +111,7 @@ def main() -> int:
             for ort in args.berichte:
                 pfad, url = _holen(ort, ablage)
                 jahrgang = gs.lies_bericht(str(pfad))
-                print(f"Erhebungsjahr {jahrgang.jahr} "
+                print(f"Erhebungsjahr {jahrgang.year} "
                       f"({jahrgang.stand or 'ohne Erscheinungsvermerk'}):")
 
                 # --- Probe 1: die Rechnung in der Zeile ---
@@ -138,7 +138,7 @@ def main() -> int:
                 proben = ["gewst_summenprobe", "gewst_blattprobe"]
                 ergebnisse = [f"{len(zeilen)} Städte nachgerechnet",
                               blatt["ergebnis"]]
-                erwartet = gs.hebesatz_im_jahr(treppe, jahrgang.jahr)
+                erwartet = gs.hebesatz_im_jahr(treppe, jahrgang.year)
                 hebe = gs.probe_hebesatz(jahrgang, gs.OLDENBURG, erwartet)
                 print(f"  Hebesatzprobe: {hebe['ergebnis']}")
                 if hebe["ok"] is False:
@@ -149,20 +149,20 @@ def main() -> int:
                     proben.append("gewst_hebesatzprobe")
                     ergebnisse.append(hebe["ergebnis"])
 
-                geschrieben[jahrgang.jahr] = store.save_gewerbesteuerstatistik(
+                geschrieben[jahrgang.year] = store.save_gewerbesteuerstatistik(
                     zeilen,
                     h.Herkunft(
                         art="lsn", probe=proben,
-                        label=f"Gewerbesteuerstatistik {jahrgang.jahr} "
+                        label=f"Gewerbesteuerstatistik {jahrgang.year} "
                               f"(Statistischer Bericht L IV 13)",
-                        url=url or QUELLEN_STAND.get(jahrgang.jahr),
+                        url=url or QUELLEN_STAND.get(jahrgang.year),
                         fundstelle="Blatt 6.1 — Festsetzung und Zerlegung nach "
                                    "Sitz des Betriebes/der Betriebsstätte, "
                                    "kreisfreie Städte; Blatt 6.2 — dieselben "
                                    "Zahlen je Gemeinde, mit dem Hebesatz",
                         probe_ergebnis=" · ".join(ergebnisse),
                         stand=jahrgang.stand))
-                print(f"  gespeichert: {geschrieben[jahrgang.jahr]} Städte")
+                print(f"  gespeichert: {geschrieben[jahrgang.year]} Städte")
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()

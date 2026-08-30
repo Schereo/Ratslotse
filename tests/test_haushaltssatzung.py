@@ -165,7 +165,7 @@ def test_EUR_statt_Euro():
     Muster, das nur „Euro" kennt, findet dort einfach nichts und meldet keinen
     Fehler, sondern eine fehlende Zeile."""
     s = parse_satzung(SATZUNG_2020_EUR)
-    assert s.jahr == 2020
+    assert s.year == 2020
     assert s.ein_gesamt == 696_646_544.0
 
 
@@ -231,7 +231,7 @@ def test_speichern_und_wiederlesen(tmp_path):
         zeilen = store.get_haushaltssatzungen()
         assert len(zeilen) == 1
         z = zeilen[0]
-        assert z["jahr"] == 2024 and z["fassung"] == "entwurf"
+        assert z["year"] == 2024 and z["fassung"] == "entwurf"
         assert z["liquiditaetskredite"] == 100_000_000.0
         assert z["kredite_investitionen"] == 0.0
         assert store.haushaltssatzung_jahre() == [2024]

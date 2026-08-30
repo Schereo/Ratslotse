@@ -35,11 +35,11 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
   // sondern ein Punkt, der so tut, als wäre er ein Vergleich.
   const sortiert = zeilen
     .filter((z) => z.plan != null && z.plan > 0 && z.ergebnis != null)
-    .sort((a, b) => a.jahr - b.jahr);
+    .sort((a, b) => a.year - b.year);
   if (sortiert.length < 2) return null;
 
   const hantelZeilen: HantelZeile[] = sortiert.map((z) => ({
-    label: String(z.jahr),
+    label: String(z.year),
     plan: (z.plan as number) / 1e6,
     ist: (z.ergebnis as number) / 1e6,
     // Die Bezugsgröße dieses Jahrgangs, im Klartext des Dokuments. Wo sie
@@ -57,7 +57,7 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
           Geplant und geworden
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {sortiert[0].jahr}–{sortiert[sortiert.length - 1].jahr}
+          {sortiert[0].year}–{sortiert[sortiert.length - 1].year}
           {" · "}{sortiert.length} Jahre
         </span>
       </div>

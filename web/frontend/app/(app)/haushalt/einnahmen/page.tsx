@@ -94,17 +94,17 @@ export default function EinnahmenPage() {
     return <div className="py-16 text-center text-sm text-muted-foreground">Einnahmen werden geladen …</div>;
   }
 
-  const jahr = Math.max(...data.steuern.map((s) => s.jahr), 0);
+  const year = Math.max(...data.steuern.map((s) => s.year), 0);
   const betragFuer = (art: string | null) => {
     if (!art) return null;
-    return data.steuern.find((s) => s.jahr === jahr && s.art === art)?.betrag ?? null;
+    return data.steuern.find((s) => s.year === year && s.art === art)?.betrag ?? null;
   };
   const zuweisungJahr = data.steuerkraft.filter((k) => k.zuweisungen != null).at(-1);
   // Der vollständige Ausgleich aus den Tabellen des Landes (Tausend Euro).
   // Optional: Ohne einen Lauf von scripts/ingest_staedtevergleich.py ist das
   // Feld leer, und die Seite zeigt weiter nur die Schlüsselzuweisungen.
   const ausgleich = (data.finanzausgleich ?? []).filter((f) => f.nettobetrag != null).at(-1);
-  const gesamt = data.steuern.find((s) => s.jahr === jahr && s.art === "insgesamt")?.betrag ?? null;
+  const gesamt = data.steuern.find((s) => s.year === year && s.art === "insgesamt")?.betrag ?? null;
 
   // Karten: Betrag aus den Daten, innerhalb der Gruppe nach Betrag sortiert
   // (Quellen ohne Zahl ans Ende).
@@ -115,7 +115,7 @@ export default function EinnahmenPage() {
   const entgeltJahr = (posten: number) =>
     (data.ergebnisrechnung ?? [])
       .filter((z) => z.nr === posten && z.thh_nr === null && z.ergebnis != null)
-      .sort((a, b) => a.jahr - b.jahr)
+      .sort((a, b) => a.year - b.year)
       .at(-1) ?? null;
 
   const karten = STEUERARTEN.map((a) => {
@@ -125,9 +125,9 @@ export default function EinnahmenPage() {
       betrag: a.slug === "schluesselzuweisungen"
         ? zuweisungJahr?.zuweisungen ?? null
         : entgelt ? entgelt.ergebnis : betragFuer(a.datenArt),
-      jahr: a.slug === "schluesselzuweisungen"
-        ? zuweisungJahr?.jahr ?? jahr
-        : entgelt ? entgelt.jahr : jahr,
+      year: a.slug === "schluesselzuweisungen"
+        ? zuweisungJahr?.year ?? year
+        : entgelt ? entgelt.year : year,
     };
   }).sort((a, b) => (b.betrag ?? -1) - (a.betrag ?? -1));
 
@@ -141,7 +141,7 @@ export default function EinnahmenPage() {
   // erstmals auch vollständig, woher das Geld im geltenden Plan kommen soll.
   const planJahr = Math.max(0, ...(data.ergebnishaushalt ?? [])
     .filter((z) => z.art === "ansatz")
-    .map((z) => z.jahr));
+    .map((z) => z.year));
   const planErtraege = planJahr ? einnahmearten(data, planJahr) : null;
 
   const spendenReihe = spendenJahre(data);
@@ -244,7 +244,7 @@ export default function EinnahmenPage() {
               stehen abgerechnete Werte eines früheren. */}
           <p className="max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
             Achtung beim Jahr: Bei den Steuern stehen hier <strong>abgerechnete Beträge
-            aus {jahr}</strong> — was wirklich geflossen ist. Die Übersicht zeigt dagegen den
+            aus {year}</strong> — was wirklich geflossen ist. Die Übersicht zeigt dagegen den
             <em>Plan</em> für ein späteres Jahr. Beide Zahlen sind richtig, sie beantworten nur
             verschiedene Fragen. Jede Karte nennt ihr Jahr selbst — die Schlüsselzuweisungen
             laufen dem Rest voraus.
@@ -257,7 +257,7 @@ export default function EinnahmenPage() {
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div>
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Haushaltsplan {planErtraege.jahr}
+                Haushaltsplan {planErtraege.year}
               </p>
               <h2 className="mt-1 font-display text-[17px] font-bold tracking-tight">
                 Woher das Geld laut Plan kommen soll
@@ -302,7 +302,7 @@ export default function EinnahmenPage() {
             <span className="hidden h-px flex-1 bg-border sm:block" />
           </div>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {g.karten.map(({ art, betrag, jahr: bJahr }) => (
+            {g.karten.map(({ art, betrag, year: bJahr }) => (
               <Link key={art.slug} href={`/haushalt/steuer?art=${art.slug}`}
                 className={cn(
                   "flex flex-col rounded-xl border bg-card p-3.5 shadow-sm transition-colors hover:border-primary/40",
@@ -369,15 +369,15 @@ export default function EinnahmenPage() {
              engere Zahl nehmen. Fehlt der Landesbestand (frische Datenbank),
              bleibt es bei der bisherigen Formulierung — samt dem Wort
              „Schlüsselzuweisungen", das dann auch genau stimmt. */
-          text={`Alle Steuern zusammen brachten ${jahr} rund ${deMio(gesamt / 1e6)} Millionen Euro`
+          text={`Alle Steuern zusammen brachten ${year} rund ${deMio(gesamt / 1e6)} Millionen Euro`
             + (ausgleich?.nettobetrag
               ? `. Dazu kommen die Zuweisungen des Landes: für das Ausgleichsjahr `
-                + `${ausgleich.jahr} rund ${deMio(ausgleich.nettobetrag / 1000)} Millionen Euro `
+                + `${ausgleich.year} rund ${deMio(ausgleich.nettobetrag / 1000)} Millionen Euro `
                 + `— Schlüsselzuweisungen für Gemeinde- und Kreisaufgaben plus die `
                 + `Zuweisungen für übertragene staatliche Aufgaben`
               : zuweisungJahr?.zuweisungen
                 ? `. Dazu kommen die Schlüsselzuweisungen des Landes: für das Ausgleichsjahr `
-                  + `${zuweisungJahr.jahr} rund ${deMio(zuweisungJahr.zuweisungen / 1e6)} Millionen Euro`
+                  + `${zuweisungJahr.year} rund ${deMio(zuweisungJahr.zuweisungen / 1e6)} Millionen Euro`
                 : "")
             + ". Die Karten sind eine Auswahl wiederkehrender Einnahmequellen mit klarer"
             + " Zuständigkeit. Gebühren, Kostenerstattungen und zweckgebundene Zuschüsse"
@@ -426,7 +426,7 @@ export default function EinnahmenPage() {
           <div className="mt-2.5 grid gap-x-8 gap-y-4 @3xl/spenden:grid-cols-2 @3xl/spenden:items-start">
             <div className="min-w-0">
               <p className="text-[12.5px] font-semibold">
-                Angenommene Zuwendungen {spendenLetztes.jahr}
+                Angenommene Zuwendungen {spendenLetztes.year}
               </p>
               {/* Auf den Euro genau, nicht gerundet: Diese Summe IST exakt —
                   sie ist die Summe von Ratsbeschlüssen, nicht eine
@@ -449,11 +449,11 @@ export default function EinnahmenPage() {
                       sie über 700 px bei 46 px Höhe und zog acht Jahrgänge zu
                       einem flachen Draht. */}
                   <ZeitreiheMini
-                    reihe={spendenReihe.map((j) => ({ jahr: j.jahr, wert: j.betrag }))}
+                    reihe={spendenReihe.map((j) => ({ year: j.year, wert: j.betrag }))}
                     format={(v) => `${Math.round(v / 1000).toLocaleString("de-DE")} Tsd.`}
                     ariaLabel={
-                      `Angenommene Zuwendungen je Jahr, ${spendenReihe[0].jahr} bis `
-                      + `${spendenLetztes.jahr}: von `
+                      `Angenommene Zuwendungen je Jahr, ${spendenReihe[0].year} bis `
+                      + `${spendenLetztes.year}: von `
                       + `${Math.round(spendenReihe[0].betrag).toLocaleString("de-DE")} auf `
                       + `${Math.round(spendenLetztes.betrag).toLocaleString("de-DE")} Euro. `
                       + `Höchststand ${Math.round(Math.max(...spendenReihe.map((j) => j.betrag)))
@@ -527,7 +527,7 @@ export default function EinnahmenPage() {
             </div>
             {spendenLauf && (
               <div>
-                <dt className="text-[12.5px] font-semibold">{spendenLauf.jahr} läuft noch</dt>
+                <dt className="text-[12.5px] font-semibold">{spendenLauf.year} läuft noch</dt>
                 <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
                   Bis jetzt {Math.round(spendenLauf.betrag).toLocaleString("de-DE")} €
                   aus {spendenLauf.vorlagen} Beschlüssen. Das Jahr steht deshalb nicht
@@ -599,7 +599,7 @@ export default function EinnahmenPage() {
             <dt className="text-[12.5px] font-semibold">Plan und Ist stehen getrennt</dt>
             <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
               Die Flächenaufteilung oben zeigt die geplanten Erträge des Haushalts
-              {" "}{planErtraege?.jahr}. Die Karten nach Entscheidungsspielraum zeigen dagegen
+              {" "}{planErtraege?.year}. Die Karten nach Entscheidungsspielraum zeigen dagegen
               die jüngsten abgerechneten Beträge und nennen deshalb jeweils ihr eigenes Jahr.
             </dd>
           </div>

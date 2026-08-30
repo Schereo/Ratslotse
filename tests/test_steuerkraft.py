@@ -30,7 +30,7 @@ from tests.test_staedtevergleich import schreibe_xlsx
 _HINWEIS = "Der Tabellenkopf für Vorlesehilfen befindet sich in Zeile 8"
 
 
-def _kopf(vorjahr: int, jahr: int, ew_schreibweise: str) -> list:
+def _kopf(vorjahr: int, year: int, ew_schreibweise: str) -> list:
     def block(j: int) -> list:
         return [
             f"Schlüsselzuweisungen für Gemeindeaufgaben im Jahr {j}, Beträge in 1000 Euro",
@@ -46,8 +46,8 @@ def _kopf(vorjahr: int, jahr: int, ew_schreibweise: str) -> list:
             f"im Jahr {j}), Beträge in {ew_schreibweise}2)",
         ]
     return (["Schlüsselnummer der Kreisfreien Stadt", "Bezeichnung der kreisfreien Stadt"]
-            + block(vorjahr) + block(jahr)
-            + [f"Abweichung des Nettobetrags1) des Jahres {jahr} vom Nettobetrag1) des "
+            + block(vorjahr) + block(year)
+            + [f"Abweichung des Nettobetrags1) des Jahres {year} vom Nettobetrag1) des "
                f"Jahres {vorjahr} in 1000 Euro"])
 
 
@@ -95,7 +95,7 @@ def kfa2023(tmp_path) -> str:
 
 def test_beide_ausgleichsjahre_werden_gelesen(kfa2026):
     jahrgaenge = sk.lies_zuweisungen(kfa2026)
-    assert [j.jahr for j in jahrgaenge] == [2025, 2026]
+    assert [j.year for j in jahrgaenge] == [2025, 2026]
     assert all(j.stand == "26.03.2026" for j in jahrgaenge)
 
 
@@ -219,7 +219,7 @@ def test_gespeichert_kommt_je_ausgleichsjahr_eine_zeile_zurueck(tmp_path, kfa202
             probe_ergebnis="3 von 3 Städten"))
 
         reihe = store.get_finanzausgleich()
-        assert [r["jahr"] for r in reihe] == [2025, 2026]
+        assert [r["year"] for r in reihe] == [2025, 2026]
         assert reihe[0]["zuweisungen_uebertragener_wirkungskreis"] == 10575
         assert reihe[1]["nettobetrag"] == 93438
         # Und die Steuerkraft-Reihe bleibt davon unberührt.

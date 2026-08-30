@@ -142,7 +142,7 @@ Wort = tuple[float, float, float, str]
 class Zeile:
     """Eine Position einer Änderungsliste — ein Planjahr, eine Zeile."""
 
-    jahr: int
+    year: int
     lfd: int
     #: ``None`` = die Position gilt pauschal „alle“ Teilhaushalte — so führt
     #: der 2019er-Jahrgang globale Minderausgaben (Zeilen 16/17, je „diverse“
@@ -170,7 +170,7 @@ class Zeile:
 class SummenZeile:
     """Eine Zeile der Zusammenstellung: Entwurf, eine Liste oder die Endsumme."""
 
-    jahr: int
+    year: int
     typ: str  # "entwurf" | "liste" | "endsumme"
     label: str
     ertraege: int
@@ -191,7 +191,7 @@ class Ergebnis:
     @property
     def jahrgang(self) -> int:
         """Der Haushaltsjahrgang = das erste Planjahr der Liste."""
-        return min(z.jahr for z in self.zeilen)
+        return min(z.year for z in self.zeilen)
 
 
 # ----------------------------------------------------------------- PDF → Wörter
@@ -388,7 +388,7 @@ def _zahl(text: str) -> int:
     return int(text.replace(".", ""))
 
 
-def _position_lesen(zeile: list[Wort], jahr: int, spalten: Spalten) -> Zeile:
+def _position_lesen(zeile: list[Wort], year: int, spalten: Spalten) -> Zeile:
     lfd = int(zeile[0][3])
     thh = int(zeile[1][3]) if zeile[1][3] != "alle" else None
 
@@ -424,7 +424,7 @@ def _position_lesen(zeile: list[Wort], jahr: int, spalten: Spalten) -> Zeile:
             continue
         bezeichnung.append(text)
 
-    return Zeile(jahr=jahr, lfd=lfd, thh=thh, seite_entwurf=seite_entwurf,
+    return Zeile(year=year, lfd=lfd, thh=thh, seite_entwurf=seite_entwurf,
                  produkt=produkt, bezeichnung=" ".join(bezeichnung),
                  ertrag=ertrag, aufwand=aufwand)
 
@@ -504,24 +504,24 @@ def _ist_summenzeile(kandidaten: list[Wort]) -> bool:
             and sum(1 for w in kandidaten if "." in w[3]) >= 2)
 
 
-def _summen_zeile(jahr: int, typ: str, zeile: list[Wort]) -> SummenZeile:
+def _summen_zeile(year: int, typ: str, zeile: list[Wort]) -> SummenZeile:
     """Eine Zusammenstellungs-Zeile: die ersten drei Beträge sind
     Erträge/Aufwendungen/Saldo, was davor und dahinter steht, gehört zum
     Label (die Beschluss-Dateien schreiben „Verw. I“ HINTER die Zahlen)."""
     betraege = _betrag_tokens(zeile)
     if len(betraege) < 3:
         raise ListenFehler(
-            f"Zusammenstellung {jahr}: Zeile mit weniger als drei Beträgen: "
+            f"Zusammenstellung {year}: Zeile mit weniger als drei Beträgen: "
             f"{_zeilentext(zeile)[:90]!r}")
     e, a, s = (_zahl(w[3]) for w in betraege[:3])
     if abs(e - a - s) > 2:
         raise ListenFehler(
-            f"Zusammenstellung {jahr}: Erträge − Aufwendungen ≠ Saldo "
+            f"Zusammenstellung {year}: Erträge − Aufwendungen ≠ Saldo "
             f"({e:,} − {a:,} ≠ {s:,}) in {_zeilentext(zeile)[:90]!r}")
     x_erster, x_dritter = betraege[0][0], betraege[2][1]
     label = " ".join(w[3] for w in zeile
                      if w[1] <= x_erster or w[0] >= x_dritter).strip()
-    return SummenZeile(jahr=jahr, typ=typ, label=label or typ,
+    return SummenZeile(year=year, typ=typ, label=label or typ,
                        ertraege=e, aufwendungen=a, saldo=s)
 
 
@@ -552,7 +552,7 @@ def parse_ehh_seiten(seiten: list[list[Wort]],
         zeilen = _zeilen_bilden(woerter)
         seitentext = " ".join(_zeilentext(z) for z in zeilen)
         marker = _JAHR_MARKER.search(seitentext)
-        jahr = int(marker.group(1)) if marker else None
+        year = int(marker.group(1)) if marker else None
         seiten_linien_ = (linien[seiten_nr]
                           if linien is not None and seiten_nr < len(linien) else None)
         senkrecht = seiten_linien_[1] if seiten_linien_ else None
@@ -570,9 +570,9 @@ def parse_ehh_seiten(seiten: list[list[Wort]],
                 # Die frühen AFB-Übersichten überschreiben ihre Blöcke mit der
                 # nackten Jahreszahl statt „Ergebnishaushalt JJJJ“.
                 block_jahr = int(text.strip())
-            if jahr is not None and spalten is not None:
+            if year is not None and spalten is not None:
                 if _ist_position(zeile, spalten):
-                    position = _position_lesen(zeile, jahr, spalten)
+                    position = _position_lesen(zeile, year, spalten)
                     aus.zeilen.append(position)
                     seiten_positionen.append((zeile[0][2], position))
                     continue
@@ -849,7 +849,7 @@ def _block_jahr(block_jahr: int | None, aus: Ergebnis, typ: str) -> int:
     """
     if block_jahr is not None:
         return block_jahr
-    jahre = sorted({z.jahr for z in aus.zeilen})
+    jahre = sorted({z.year for z in aus.zeilen})
     entwuerfe = sum(1 for s in aus.summen if s.typ == "entwurf")
     idx = entwuerfe if typ == "entwurf" else entwuerfe - 1
     if 0 <= idx < len(jahre):
@@ -860,14 +860,14 @@ def _block_jahr(block_jahr: int | None, aus: Ergebnis, typ: str) -> int:
 def _proben(aus: Ergebnis) -> None:
     """Kettenprobe und Positionsprobe je Planjahr (die Zeilenprobe lief schon
     beim Lesen jeder Summenzeile)."""
-    jahre = sorted({z.jahr for z in aus.zeilen})
-    for jahr in jahre:
-        entwurf = [s for s in aus.summen if s.jahr == jahr and s.typ == "entwurf"]
-        listen = [s for s in aus.summen if s.jahr == jahr and s.typ == "liste"]
-        ende = [s for s in aus.summen if s.jahr == jahr and s.typ == "endsumme"]
+    jahre = sorted({z.year for z in aus.zeilen})
+    for year in jahre:
+        entwurf = [s for s in aus.summen if s.year == year and s.typ == "entwurf"]
+        listen = [s for s in aus.summen if s.year == year and s.typ == "liste"]
+        ende = [s for s in aus.summen if s.year == year and s.typ == "endsumme"]
         if len(entwurf) != 1 or len(ende) != 1 or not listen:
             raise ListenFehler(
-                f"Zusammenstellung {jahr}: erwartet 1×Entwurf, ≥1×Liste, "
+                f"Zusammenstellung {year}: erwartet 1×Entwurf, ≥1×Liste, "
                 f"1×Endsumme — gefunden {len(entwurf)}/{len(listen)}/{len(ende)}.")
 
         # Kettenprobe: Entwurf + alle Listen = Endsumme, je Spalte. Toleranz
@@ -891,8 +891,8 @@ def _proben(aus: Ergebnis) -> None:
         # Kandidaten sind jede Listen-Zeile und — für die kumulierten
         # Beschluss-Dateien — die Summe aller Zeilen bzw. (wenn die Kette
         # nicht aufgeht, s. o.) allein „Endsumme − Entwurf“.
-        pos_e = sum(z.ertrag or 0 for z in aus.zeilen if z.jahr == jahr)
-        pos_a = sum(z.aufwand or 0 for z in aus.zeilen if z.jahr == jahr)
+        pos_e = sum(z.ertrag or 0 for z in aus.zeilen if z.year == year)
+        pos_a = sum(z.aufwand or 0 for z in aus.zeilen if z.year == year)
         if kette_ok:
             ziele = [(s.label, s.ertraege, s.aufwendungen) for s in listen]
             if len(listen) > 1:
@@ -906,17 +906,17 @@ def _proben(aus: Ergebnis) -> None:
                    if abs(e - pos_e) <= toleranz and abs(a - pos_a) <= toleranz]
         if len(treffer) != 1:
             raise ListenFehler(
-                f"Positionsprobe {jahr}: Die Positionen summieren auf "
+                f"Positionsprobe {year}: Die Positionen summieren auf "
                 f"{pos_e:,} / {pos_a:,} — "
                 + ("keine Zusammenstellungs-Zeile trifft das" if not treffer
                    else "mehrere Zusammenstellungs-Zeilen träfen das")
                 + ": " + "; ".join(f"{label}: {e:,}/{a:,}" for label, e, a in ziele))
-        aus.eigene_zeile[jahr] = treffer[0]
+        aus.eigene_zeile[year] = treffer[0]
 
-        _urheber_probe(aus, jahr, listen, toleranz)
+        _urheber_probe(aus, year, listen, toleranz)
 
 
-def _urheber_probe(aus: Ergebnis, jahr: int, listen: list[SummenZeile],
+def _urheber_probe(aus: Ergebnis, year: int, listen: list[SummenZeile],
                    toleranz: int) -> None:
     """Die Summe der Positionen je Urheber muss SEINE Zusammenstellungs-Zeile
     treffen — sonst gilt das Dokument als nicht gelesen.
@@ -941,13 +941,13 @@ def _urheber_probe(aus: Ergebnis, jahr: int, listen: list[SummenZeile],
     danach nur noch dazu passen (Teilzeichenkette), damit zwei betragsgleiche
     Gruppen nicht die Zeilen tauschen können.
     """
-    mit = [z for z in aus.zeilen if z.jahr == jahr and z.urheber]
+    mit = [z for z in aus.zeilen if z.year == year and z.urheber]
     if not mit:
         return
-    ohne = [z for z in aus.zeilen if z.jahr == jahr and not z.urheber]
+    ohne = [z for z in aus.zeilen if z.year == year and not z.urheber]
     if ohne:
         raise ListenFehler(
-            f"Urheberprobe {jahr}: {len(ohne)} von {len(mit) + len(ohne)} "
+            f"Urheberprobe {year}: {len(ohne)} von {len(mit) + len(ohne)} "
             f"Positionen ohne Urheber, obwohl die Seite die Spalte führt "
             f"(erste: lfd. {ohne[0].lfd}).")
 
@@ -966,7 +966,7 @@ def _urheber_probe(aus: Ergebnis, jahr: int, listen: list[SummenZeile],
                    and _label_passt(urheber, s.label)]
         if len(treffer) != 1:
             raise ListenFehler(
-                f"Urheberprobe {jahr}: „{urheber}“ summiert auf {e:,} / {a:,} — "
+                f"Urheberprobe {year}: „{urheber}“ summiert auf {e:,} / {a:,} — "
                 + ("keine Zusammenstellungs-Zeile trifft das" if not treffer
                    else "mehrere Zeilen träfen das")
                 + ": " + "; ".join(

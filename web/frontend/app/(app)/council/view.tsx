@@ -970,10 +970,10 @@ function DateTile({ iso }: { iso: string }) {
  *  weit scrollte, sah irgendwann wieder Juni und konnte nicht sagen, ob das
  *  dieses Jahr ist oder 2021. Der Trenner steht am Kopf jeder Gruppe — auch
  *  ganz oben, damit die Antwort nie erst nach dem ersten Wechsel kommt. */
-function YearDivider({ jahr }: { jahr: string }) {
+function YearDivider({ year }: { year: string }) {
   return (
     <div className="flex items-center gap-3 pt-2 first:pt-0">
-      <span className="font-mono text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{jahr}</span>
+      <span className="font-mono text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{year}</span>
       <span className="h-px flex-1 bg-border" aria-hidden />
     </div>
   );
@@ -1555,9 +1555,9 @@ function SessionsTab({ committees }: { committees: string[] }) {
               // dem ersten Eintrag, damit die Einordnung nicht erst nach dem
               // ersten Wechsel kommt (eine Seite kann komplett in einem Jahr
               // liegen).
-              const jahr = s.session_date.slice(0, 4);
-              const jahrWechsel = i === 0 || jahr !== sessions[i - 1].session_date.slice(0, 4);
-              const trenner = jahrWechsel ? <YearDivider jahr={jahr} /> : null;
+              const year = s.session_date.slice(0, 4);
+              const jahrWechsel = i === 0 || year !== sessions[i - 1].session_date.slice(0, 4);
+              const trenner = jahrWechsel ? <YearDivider year={year} /> : null;
 
               // Terminierte Sitzung aus dem RIS-Kalender: noch keine
               // Tagesordnung veröffentlicht → nichts zum Aufklappen/Verlinken.

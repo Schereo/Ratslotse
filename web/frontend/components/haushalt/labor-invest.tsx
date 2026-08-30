@@ -64,10 +64,10 @@ export function InvestWerkbank({
    *  der Betrag, um den es beim Kredit-Schalter geht. */
   neuesDefizit: number;
 }) {
-  const jahr = programm?.jahre.at(-1) ?? null;
-  const vorhaben = jahr != null
+  const year = programm?.jahre.at(-1) ?? null;
+  const vorhaben = year != null
     ? (programm?.massnahmen ?? [])
-        .filter((z) => z.jahr === jahr && z.gesamtsumme > 0)
+        .filter((z) => z.year === year && z.gesamtsumme > 0)
         .sort((a, b) => b.gesamtsumme - a.gesamtsumme)
         .slice(0, ANZAHL)
     : [];
@@ -101,7 +101,7 @@ export function InvestWerkbank({
   const ohneKredit = satzSelbst.filter((z) => z.kredite_investitionen === 0).length;
   const dispo = satzSelbst
     .filter((z) => z.liquiditaetskredite != null)
-    .sort((a, b) => a.jahr - b.jahr)
+    .sort((a, b) => a.year - b.year)
     .at(-1);
 
   const zinsProzent = (v: number) =>
@@ -122,7 +122,7 @@ export function InvestWerkbank({
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Vorhaben aus dem Investitionsprogramm {jahr}
+              Vorhaben aus dem Investitionsprogramm {year}
             </p>
             <span className="font-mono text-[10.5px] text-muted-foreground">
               die {vorhaben.length} größten<Beleg q="investitionsprogramm" />
@@ -236,7 +236,7 @@ export function InvestWerkbank({
                 <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted-foreground">
                   Zinsaufwand ÷ Schuldenstand, Abschlüsse {spanne.jahre[0]}–{spanne.jahre[1]}
                   <Beleg q="jahresabschluss" /> — zuletzt {deMio(zinsLetzte.aufwand / 1e6)}&#8239;Mio.&nbsp;€
-                  Zinsen im Jahr {zinsLetzte.jahr}. Neue Kredite bekämen heutige Sätze;
+                  Zinsen im Jahr {zinsLetzte.year}. Neue Kredite bekämen heutige Sätze;
                   mehr als die gezahlte Spanne behaupten wir nicht.
                 </p>
               </>
@@ -254,7 +254,7 @@ export function InvestWerkbank({
                   {deMio(schuldenLetzte.insgesamt / 1e6)}&#8239;Mio.&nbsp;€
                 </p>
                 <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted-foreground">
-                  Stand {schuldenLetzte.jahr}<Beleg q="schulden" />
+                  Stand {schuldenLetzte.year}<Beleg q="schulden" />
                   {spanne && neuesDefizit > 0 && (
                     <>
                       {" "}— liefe das Minus dieses Planjahres ({deMio(neuesDefizit)}&#8239;Mio.&nbsp;€)
@@ -266,7 +266,7 @@ export function InvestWerkbank({
                   {dispo?.liquiditaetskredite != null && (
                     <>
                       {" "}Für den Alltag erlaubt sich die Stadt daneben bis zu{" "}
-                      {deMio(dispo.liquiditaetskredite / 1e6)}&#8239;Mio.&nbsp;€ Kassenkredit ({dispo.jahr}).
+                      {deMio(dispo.liquiditaetskredite / 1e6)}&#8239;Mio.&nbsp;€ Kassenkredit ({dispo.year}).
                     </>
                   )}
                 </p>

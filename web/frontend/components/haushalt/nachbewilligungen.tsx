@@ -151,14 +151,14 @@ function RatsListe({ posten }: { posten: Nachbewilligung[] }) {
   );
 }
 
-export function NachbewilligungsBlock({ daten, jahr }: {
-  daten: HaushaltAuswahl<"nachbewilligungen">; jahr: number;
+export function NachbewilligungsBlock({ daten, year }: {
+  daten: HaushaltAuswahl<"nachbewilligungen">; year: number;
 }) {
   const alleJahre = nachbewilligungsJahre(daten);
-  const unseres = alleJahre.find((j) => j.jahr === jahr);
+  const unseres = alleJahre.find((j) => j.year === year);
   const bericht: NachbewilligungsJahr | undefined =
-    (daten.nachbewilligungen?.jahre ?? []).find((j) => j.jahr === jahr);
-  const posten = nachbewilligungenFuerJahr(daten, jahr);
+    (daten.nachbewilligungen?.jahre ?? []).find((j) => j.year === year);
+  const posten = nachbewilligungenFuerJahr(daten, year);
   // Ohne jede Zahl gar nichts zeigen — eine Überschrift über einer leeren
   // Fläche behauptet, es habe nichts gegeben.
   if (!unseres && !bericht) return null;
@@ -170,19 +170,19 @@ export function NachbewilligungsBlock({ daten, jahr }: {
   // Der Vergleichswert für den Satz über die Entwicklung: das früheste Jahr,
   // für das ein Bericht vorliegt.
   const berichte = (daten.nachbewilligungen?.jahre ?? [])
-    .slice().sort((a, b) => a.jahr - b.jahr);
+    .slice().sort((a, b) => a.year - b.year);
   const erstes = berichte[0];
-  const zeigtEntwicklung = erstes && bericht && erstes.jahr !== bericht.jahr;
+  const zeigtEntwicklung = erstes && bericht && erstes.year !== bericht.year;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Nachträglich bewilligte Ausgaben · {jahr}
+          Nachträglich bewilligte Ausgaben · {year}
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
           {berichte.length
-            ? `${berichte[0].jahr}–${berichte[berichte.length - 1].jahr} mit Gesamtsicht`
+            ? `${berichte[0].year}–${berichte[berichte.length - 1].year} mit Gesamtsicht`
             : "Ratsbeschlüsse seit 2018"}
         </span>
       </div>
@@ -199,7 +199,7 @@ export function NachbewilligungsBlock({ daten, jahr }: {
       {gesamt != null && (
         <div className="mt-4">
           <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
-            Insgesamt nachbewilligt {jahr}
+            Insgesamt nachbewilligt {year}
           </p>
           <p className="mt-0.5 font-[var(--font-bricolage),system-ui] text-[26px] font-bold leading-none tabular-nums">
             {mio(gesamt)}&#8239;Mio.&nbsp;€
@@ -207,13 +207,13 @@ export function NachbewilligungsBlock({ daten, jahr }: {
           </p>
           {zeigtEntwicklung && (
             <p className="mt-2 max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
-              {erstes.jahr} waren es {mio(nachbewilligungGesamt(erstes))}&#8239;Mio.&nbsp;€.
+              {erstes.year} waren es {mio(nachbewilligungGesamt(erstes))}&#8239;Mio.&nbsp;€.
               {anteil != null && ratsAnteil(erstes) != null && (
                 <>
                   {" "}Der Anteil, über den der Rat selbst abgestimmt hat, lag
                   damals bei{" "}
                   {ratsAnteil(erstes)!.toLocaleString("de-DE", { maximumFractionDigits: 0 })}
-                  &nbsp;% und liegt {jahr} bei{" "}
+                  &nbsp;% und liegt {year} bei{" "}
                   <span className="font-semibold text-signal">
                     {anteil.toLocaleString("de-DE", { maximumFractionDigits: 0 })}&nbsp;%
                   </span>.
@@ -314,7 +314,7 @@ export function NachbewilligungsBlock({ daten, jahr }: {
 
       {!bericht && (
         <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
-          Für {jahr} liegt noch kein Rechenschaftsbericht vor. Wie viel
+          Für {year} liegt noch kein Rechenschaftsbericht vor. Wie viel
           insgesamt nachbewilligt wurde — also auch das, was die Verwaltung
           ohne den Rat entschieden hat —, steht erst dort. Was hier zu sehen
           ist, sind ausschließlich die Beschlüsse aus Rat und Fachausschuss.
@@ -335,7 +335,7 @@ export function NachbewilligungsBefund({ daten }: { daten: HaushaltAuswahl<"nach
   const serie = (daten.nachbewilligungen?.serie ?? [])
     .filter((n) => n.art !== "schwelle");
   if (serie.length < 20) return null;
-  const jahre = serie.map((n) => n.jahr).filter((j): j is number => j != null);
+  const jahre = serie.map((n) => n.year).filter((j): j is number => j != null);
   const beschlossen = serie.filter((n) => n.beschlossen === 1).length;
   // Die Differenz wird ausgeschrieben statt verschwiegen — sonst fragt sich
   // jede*r, was mit dem Rest passiert ist, und die naheliegende Vermutung

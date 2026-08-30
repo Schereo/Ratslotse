@@ -63,9 +63,9 @@ function steuerartFinden(eingang: string): SteuerArt | undefined {
  *  überholte Aussage als aktuelle ausgegeben, und nichts hätte angeschlagen.
  *  Jetzt verschwindet sie von selbst, sobald der Bestand ein neueres
  *  Haushaltsjahr führt. Wer sie für das neue Jahr wiederhaben will, prüft den
- *  Beschluss und zieht `jahr` nach — sichtbar, statt still. */
+ *  Beschluss und zieht `year` nach — sichtbar, statt still. */
 const HEBESATZ_ABGELEHNT = {
-  jahr: 2026,
+  year: 2026,
   steuer: "gewerbesteuer",
   satz: "Die Verwaltung schlug vor, die Hebesätze zu erhöhen. Der Rat lehnte ab.",
 };
@@ -84,8 +84,8 @@ function SteuerInner() {
     if (!data || !art?.datenArt) return [];
     return data.steuern
       .filter((s) => s.art === art.datenArt && s.betrag != null && s.betrag > 0)
-      .map((s) => ({ jahr: s.jahr, betrag: s.betrag as number }))
-      .sort((a, b) => a.jahr - b.jahr);
+      .map((s) => ({ year: s.year, betrag: s.betrag as number }))
+      .sort((a, b) => a.year - b.year);
   }, [data, art]);
 
   // Der zweite Weg an die Zahl: die Ergebnisrechnung des Jahresabschlusses.
@@ -96,7 +96,7 @@ function SteuerInner() {
     if (!data || !art?.ergebnisPosten) return [];
     return (data.ergebnisrechnung ?? [])
       .filter((z) => z.nr === art.ergebnisPosten && z.thh_nr === null)
-      .sort((a, b) => a.jahr - b.jahr);
+      .sort((a, b) => a.year - b.year);
   }, [data, art]);
 
   if (!art) {
@@ -115,7 +115,7 @@ function SteuerInner() {
   const zuw = data.steuerkraft.filter((k) => k.zuweisungen != null);
   const istZuweisung = art.slug === "schluesselzuweisungen";
   const zuwReihe = istZuweisung
-    ? zuw.map((k) => ({ jahr: k.jahr, betrag: k.zuweisungen as number }))
+    ? zuw.map((k) => ({ year: k.year, betrag: k.zuweisungen as number }))
     : [];
   // Die dritte Herkunft: der Jahresabschluss. `ergebnis` ist nullbar — ein
   // Jahrgang, dessen Posten noch nicht gelesen ist, bekommt keinen Punkt auf
@@ -123,7 +123,7 @@ function SteuerInner() {
   const istEntgelt = !!art.ergebnisPosten;
   const entgeltReihe = entgelt
     .filter((z) => z.ergebnis != null)
-    .map((z) => ({ jahr: z.jahr, betrag: z.ergebnis as number }));
+    .map((z) => ({ year: z.year, betrag: z.ergebnis as number }));
 
   const anzeigeReihe = istZuweisung ? zuwReihe : istEntgelt ? entgeltReihe : reihe;
   const letzte = anzeigeReihe.at(-1);
@@ -137,13 +137,13 @@ function SteuerInner() {
     : istEntgelt
       ? {
           wert: (data.ergebnisrechnung ?? []).find(
-            (z) => z.nr === 12 && z.thh_nr === null && z.jahr === letzte?.jahr,
+            (z) => z.nr === 12 && z.thh_nr === null && z.year === letzte?.year,
           )?.ergebnis ?? null,
           was: "aller ordentlichen Erträge",
         }
       : {
           wert: data.steuern.find(
-            (s) => s.jahr === letzte?.jahr && s.art === "insgesamt",
+            (s) => s.year === letzte?.year && s.art === "insgesamt",
           )?.betrag ?? null,
           was: "aller Steuereinnahmen",
         };
@@ -187,7 +187,7 @@ function SteuerInner() {
   // Der Hebesatz, der im Jahr des Aufkommens GALT.
   //
   // Tabelle 1105 führt nur die Änderungsjahre — ein Satz gilt bis zur nächsten
-  // Änderung. Gesucht ist deshalb die letzte Stufe mit `jahr <= letzte.jahr`
+  // Änderung. Gesucht ist deshalb die letzte Stufe mit `year <= letzte.year`
   // und nicht etwa die jüngste Zeile der Reihe: Läge das Aufkommen ein Jahr
   // hinter einer frischen Erhöhung zurück (der Normalfall, das Ist kommt
   // später als der Beschluss), teilte man sonst durch einen Satz, der für
@@ -198,7 +198,7 @@ function SteuerInner() {
   // seit 2015 nicht angefasst hat; der nächste Beschluss hätte sie still
   // falsch gemacht, während die echte Reihe schon danebenlag.
   const hebesatzGalt = letzte
-    ? hebeHaupt.filter((z) => z.jahr <= letzte.jahr).at(-1) ?? null
+    ? hebeHaupt.filter((z) => z.year <= letzte.year).at(-1) ?? null
     : null;
   const punktSatz = hebesatzGalt?.hebesatz ?? null;
 
@@ -223,14 +223,14 @@ function SteuerInner() {
   //    Satz, zeigt die Grafik keine Höhe (die Komponente entscheidet das).
   const geltendeStufe = hebeHaupt.at(-1) ?? null;
   const vorgeschlagen = (satzungDaten?.haushaltssatzung ?? [])
-    .find((z) => z.jahr === HEBESATZ_ABGELEHNT.jahr && z.nachtrag === 0)
+    .find((z) => z.year === HEBESATZ_ABGELEHNT.year && z.nachtrag === 0)
     ?.hebesatz_gewerbesteuer ?? null;
 
-  // Das Aufkommen als `{jahr: euro}` — der Pflicht-Kontext neben jedem
+  // Das Aufkommen als `{year: euro}` — der Pflicht-Kontext neben jedem
   // Hebesatz-Sprung. Ohne ihn liest sich „+21 %" als „alle zahlen 21 % mehr",
   // und das war 2025 nachweislich falsch.
   const aufkommen: Record<number, number> = {};
-  for (const s of reihe) aufkommen[s.jahr] = s.betrag;
+  for (const s of reihe) aufkommen[s.year] = s.betrag;
 
   // Die Quellen dieser Seite in Lese-Reihenfolge — daraus zählt der Provider
   // die Fußnoten-Nummern.
@@ -239,7 +239,7 @@ function SteuerInner() {
   // Fußnoten dieser Seite sollen keine Quelle führen, aus der auf der
   // gezeigten Seite keine Zahl stammt.
   const zeigtBefund = art.slug === HEBESATZ_ABGELEHNT.steuer
-    && aktuellerHaushalt === HEBESATZ_ABGELEHNT.jahr;
+    && aktuellerHaushalt === HEBESATZ_ABGELEHNT.year;
   const quellen: QuellenSchluessel[] = istZuweisung
     ? ["steuerkraft", "plan"]
     : istEntgelt
@@ -291,7 +291,7 @@ function SteuerInner() {
         {letzte && (
           <div className="w-full flex-none rounded-2xl border border-border bg-card p-4 shadow-sm sm:w-[210px]">
             <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              {istZuweisung ? `Erhalten ${letzte.jahr}` : `Eingenommen ${letzte.jahr}`}
+              {istZuweisung ? `Erhalten ${letzte.year}` : `Eingenommen ${letzte.year}`}
             </p>
             <p className="mt-1.5 font-display text-[27px] font-bold leading-none tracking-tight tabular-nums text-[color:var(--hh-ein-0)]">
               {deMio(letzte.betrag / 1e6)}
@@ -313,7 +313,7 @@ function SteuerInner() {
           in der Kennzahl-Karte oben, mit eigenem Jahr). Nur wo eine
           Hebesatz-Reihe vorliegt (Realsteuern); erfunden wird keine. */}
       {(() => {
-        const reihe = [...hebeHaupt].sort((a, b) => a.jahr - b.jahr);
+        const reihe = [...hebeHaupt].sort((a, b) => a.year - b.year);
         const akt = reihe.at(-1);
         if (reihe.length < 2 || !akt) return null;
         const stufen = reihe.slice(-4);
@@ -323,8 +323,8 @@ function SteuerInner() {
         return (
           <Seitenbuehne
             kicker={`Steuer-Steckbrief · Hebesatz ${art.hebesatzArten?.[0] ?? art.titel}`}
-            zahl={<><ZaehlZahl wert={akt.hebesatz} />&#8239;% seit {akt.jahr}</>}
-            sub={`davor ${reihe.length - 1} ${reihe.length - 1 === 1 ? "Änderung" : "Änderungen"} seit ${reihe[0].jahr} — beschlossen jeweils vom Rat`}
+            zahl={<><ZaehlZahl wert={akt.hebesatz} />&#8239;% seit {akt.year}</>}
+            sub={`davor ${reihe.length - 1} ${reihe.length - 1 === 1 ? "Änderung" : "Änderungen"} seit ${reihe[0].year} — beschlossen jeweils vom Rat`}
             minibild={{
               href: "#hebesatz",
               label: "Hebesatz-Treppe — klickt zur ganzen Reihe seit 1980",
@@ -341,7 +341,7 @@ function SteuerInner() {
                       const breite = 100 / stufen.length;
                       const beschriftet = i === 0 || i === stufen.length - 1;
                       return (
-                        <span key={z.jahr}>
+                        <span key={z.year}>
                           {i > 0 && (
                             <span className="sb-schritt absolute" style={{
                               left: `${links}%`,
@@ -370,8 +370,8 @@ function SteuerInner() {
                     })}
                   </span>
                   <span className="flex justify-between font-mono text-[9px] leading-none tabular-nums text-muted-foreground">
-                    <span>{stufen[0].jahr}</span>
-                    <span>{stufen[stufen.length - 1].jahr}</span>
+                    <span>{stufen[0].year}</span>
+                    <span>{stufen[stufen.length - 1].year}</span>
                   </span>
                 </>
               ),
@@ -460,9 +460,9 @@ function SteuerInner() {
       {istEntgelt && letzte && (
         <EntgelteBereiche
           zeilen={(data.ergebnisrechnung ?? []).filter(
-            (z) => z.nr === art.ergebnisPosten && z.thh_nr !== null && z.jahr === letzte.jahr,
+            (z) => z.nr === art.ergebnisPosten && z.thh_nr !== null && z.year === letzte.year,
           )}
-          jahr={letzte.jahr}
+          year={letzte.year}
           beleg={<Beleg q="ergebnisrechnung_thh" />}
         />
       )}
@@ -613,7 +613,7 @@ function SteuerInner() {
             <div className="flex flex-col rounded-2xl border border-border bg-card p-4 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="font-mono text-[10px] uppercase tracking-wide text-primary">
-                  Haushalt {HEBESATZ_ABGELEHNT.jahr} · Rat
+                  Haushalt {HEBESATZ_ABGELEHNT.year} · Rat
                 </p>
                 <span className="rounded-full border border-[#fecaca] bg-[#fef2f2] px-2 py-0.5 text-[10.5px] font-semibold text-[#b91c1c]">
                   Abgelehnt
@@ -626,9 +626,9 @@ function SteuerInner() {
                   schraffiertes Stück ohne Bezugsgröße zeigt nichts. */}
               {geltendeStufe && (
                 <AbgelehnteStufe
-                  jahr={HEBESATZ_ABGELEHNT.jahr}
+                  year={HEBESATZ_ABGELEHNT.year}
                   geltend={geltendeStufe.hebesatz}
-                  geltendSeit={geltendeStufe.jahr}
+                  geltendSeit={geltendeStufe.year}
                   vorgeschlagen={vorgeschlagen}
                   proPunkt={proPunkt}
                   beleg={<Beleg q="hebesaetze" />}
@@ -641,7 +641,7 @@ function SteuerInner() {
               <p className="mt-1.5 text-[11.5px] text-muted-foreground">
                 Hier entscheidet die Kommunalpolitik über die Höhe der Einnahmen
                 {hebeHaupt.length >= 2
-                  ? ` — die Treppe darüber hätte ${HEBESATZ_ABGELEHNT.jahr} eine Stufe mehr bekommen.`
+                  ? ` — die Treppe darüber hätte ${HEBESATZ_ABGELEHNT.year} eine Stufe mehr bekommen.`
                   : "."}
               </p>
             </div>
@@ -663,7 +663,7 @@ function SteuerInner() {
                   meinen — und genau das ist die Annahme, auf der der
                   Überschlag beruht. */}
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/80">
-                Überschlagen: {deMio(letzte!.betrag / 1e6)}&#8239;Mio.&nbsp;€ (Ist {letzte!.jahr})
+                Überschlagen: {deMio(letzte!.betrag / 1e6)}&#8239;Mio.&nbsp;€ (Ist {letzte!.year})
                 bei {punktSatz} Punkten, geteilt durch {punktSatz}.
               </p>
               {/* Hier stand bis 16.08. „Brutto — was davon in der Stadtkasse

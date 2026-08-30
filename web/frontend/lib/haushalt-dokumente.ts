@@ -35,7 +35,7 @@ export type { Ratsvorgang };
  *  den Schichten von oldenburg.de und vom Landesamt — die hängen an keiner
  *  Vorlage. */
 export type HaushaltDokument = {
-  jahr: number | null;
+  year: number | null;
   url: string;
   label: string | null;
   fundstelle: string | null;
@@ -93,7 +93,7 @@ export function vorgangVerb(outcome: string | null): string {
 function neuester(liste: HaushaltDokument[]): HaushaltDokument | null {
   if (!liste.length) return null;
   return liste.reduce((best, d) =>
-    (d.jahr ?? -Infinity) > (best.jahr ?? -Infinity) ? d : best);
+    (d.year ?? -Infinity) > (best.year ?? -Infinity) ? d : best);
 }
 
 /** Das Dokument einer Quelle für das gerade gezeigte Jahr.
@@ -107,22 +107,22 @@ function neuester(liste: HaushaltDokument[]): HaushaltDokument | null {
 export function belegziel(
   dokumente: HaushaltDokumente | undefined,
   q: QuellenSchluessel,
-  jahr: number | null | undefined,
+  year: number | null | undefined,
 ): Belegziel | null {
   const liste = dokumente?.[q] ?? [];
   if (!liste.length) return null;
-  const passend = jahr == null ? [] : liste.filter((d) => d.jahr === jahr);
+  const passend = year == null ? [] : liste.filter((d) => d.year === year);
   const dokument = passend.length ? passend[0] : neuester(liste);
   if (!dokument) return null;
   // Gezählt werden DATEIEN, nicht Fundstellen: Der Satz „Alle 3 Dokumente im
   // Verzeichnis" führte sonst zu einem Verzeichnis mit einem Eintrag, weil
   // dieselbe Anlage dreimal gezählt worden war (s. `jeAdresseEinmal`).
   const gleicherJahrgang = jeAdresseEinmal(
-    liste.filter((d) => d.jahr === dokument.jahr));
+    liste.filter((d) => d.year === dokument.year));
   return {
     dokument,
-    jahrgang: dokument.jahr,
-    abweichend: jahr == null || dokument.jahr !== jahr,
+    jahrgang: dokument.year,
+    abweichend: year == null || dokument.year !== year,
     weitere: Math.max(0, gleicherJahrgang.length - 1),
   };
 }
@@ -144,12 +144,12 @@ export function belegziel(
 export function belegzieleAlle(
   dokumente: HaushaltDokumente | undefined,
   q: QuellenSchluessel,
-  jahr: number | null | undefined,
+  year: number | null | undefined,
 ): HaushaltDokument[] {
-  const ziel = belegziel(dokumente, q, jahr);
+  const ziel = belegziel(dokumente, q, year);
   if (!ziel) return [];
   return jeAdresseEinmal(
-    (dokumente?.[q] ?? []).filter((d) => d.jahr === ziel.jahrgang));
+    (dokumente?.[q] ?? []).filter((d) => d.year === ziel.jahrgang));
 }
 
 /** Aus einer Liste von Fundstellen die Liste der Dateien — Reihenfolge bleibt. */
@@ -199,7 +199,7 @@ export function nummerierung(
   schluessel: readonly QuellenSchluessel[],
   jeDokument: JeDokument,
   dokumente: HaushaltDokumente | undefined,
-  jahr: number | null | undefined,
+  year: number | null | undefined,
 ): NummerEintrag[] {
   const aus: NummerEintrag[] = [];
   for (const q of schluessel) {
@@ -225,7 +225,7 @@ export function nummerierung(
     }
     aus.push({
       nr: aus.length + 1, q, dokument: null,
-      dokumente: belegzieleAlle(dokumente, q, jahr),
+      dokumente: belegzieleAlle(dokumente, q, year),
     });
   }
   return aus;

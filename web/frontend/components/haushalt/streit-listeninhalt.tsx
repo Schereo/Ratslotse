@@ -71,7 +71,7 @@ function SummenWerte({ e, a, s }: { e: number; a: number; s: number }) {
   );
 }
 
-function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
+function ListenKarte({ liste, year }: { liste: ListeImJahr; year: number }) {
   // Der Urheber steht nur an der Zeile, wo er dort auch etwas unterscheidet:
   // Führt eine Liste durchgehend denselben, wiederholte die Marke nur den
   // Namen der Karte darüber. Genau eine Datei im Bestand führt mehrere
@@ -84,7 +84,7 @@ function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
         <ChevronDown className="h-3.5 w-3.5 translate-y-0.5 text-muted-foreground transition-transform group-open:rotate-180" />
         <span className="text-[13px] font-semibold text-foreground">{liste.name}</span>
         <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-          {liste.zeilen.length} Position{liste.zeilen.length === 1 ? "" : "en"} für {jahr}
+          {liste.zeilen.length} Position{liste.zeilen.length === 1 ? "" : "en"} für {year}
           {zeigeUrheber && ` · von ${urheber.size} Vorschlagenden`}
         </span>
         {liste.saldo && (
@@ -167,19 +167,19 @@ function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
   );
 }
 
-export function StreitListenInhalt({ daten, jahr }: {
+export function StreitListenInhalt({ daten, year }: {
   daten: AenderungslistenDaten | null;
-  jahr: number | null;
+  year: number | null;
 }) {
-  const listen = listenFuerJahr(daten, jahr);
-  const politik = politikZeilen(daten, jahr);
+  const listen = listenFuerJahr(daten, year);
+  const politik = politikZeilen(daten, year);
   // Gilt der Satz „nur die Summe ist belegt" für diesen Jahrgang noch? Für
   // 2021 nicht: Dessen Beschluss-Datei nennt zu jeder Position, wer sie
   // vorschlug. Die Frage wird an den Daten entschieden, nicht am Jahr —
   // taucht die Spalte in einem künftigen Dokument wieder auf, stimmt der
   // Text von selbst.
   const mitPositionen = politik.some((s) => positionenVon(daten, s).length > 0);
-  if (!jahr || (!listen.length && !politik.length)) return null;
+  if (!year || (!listen.length && !politik.length)) return null;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -188,7 +188,7 @@ export function StreitListenInhalt({ daten, jahr }: {
           Was in den Listen stand
         </h2>
         <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-          Haushalt {jahr}
+          Haushalt {year}
         </span>
       </div>
       <p className="mt-1 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
@@ -229,7 +229,7 @@ export function StreitListenInhalt({ daten, jahr }: {
             Beschluss-Datei des Finanzausschusses, mit dem Urheber daneben.{" "}
             {mitPositionen ? (
               <>
-                Für {jahr} geht diese Datei weiter als alle anderen: Sie führt an
+                Für {year} geht diese Datei weiter als alle anderen: Sie führt an
                 <em> jeder</em> Position eine Spalte „Vorschlag von“ — was die Fraktionen
                 wollten, steht deshalb unten in der Liste Zeile für Zeile, nicht nur als
                 Summe. Dass die Zuordnung stimmt, rechnet sich nach: Die Positionen jedes
@@ -246,7 +246,7 @@ export function StreitListenInhalt({ daten, jahr }: {
 
       {listen.length > 0 && (
         <div className="mt-3">
-          {listen.map((l) => <ListenKarte key={l.schluessel} liste={l} jahr={jahr} />)}
+          {listen.map((l) => <ListenKarte key={l.schluessel} liste={l} year={year} />)}
         </div>
       )}
     </div>

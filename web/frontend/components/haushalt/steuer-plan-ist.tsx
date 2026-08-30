@@ -39,10 +39,10 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
   beleg?: React.ReactNode;
 }) {
   if (zeilen.length < 1) return null;
-  const sortiert = [...zeilen].sort((a, b) => a.jahr - b.jahr);
+  const sortiert = [...zeilen].sort((a, b) => a.year - b.year);
 
   const hantelZeilen: HantelZeile[] = sortiert.map((z) => ({
-    label: String(z.jahr),
+    label: String(z.year),
     plan: z.plan / 1e6,
     ist: z.ist / 1e6,
     // `einordnung` ist Pflicht-FELD (GB-05). `null` heißt hier genau, was es
@@ -74,8 +74,8 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
         {/* Ehrliche Menge statt „mehrere Jahre" (Designsprache §6). */}
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
           {sortiert.length === 1
-            ? sortiert[0].jahr
-            : `${sortiert[0].jahr}–${sortiert[sortiert.length - 1].jahr}`}
+            ? sortiert[0].year
+            : `${sortiert[0].year}–${sortiert[sortiert.length - 1].year}`}
           {" · "}{sortiert.length} {sortiert.length === 1 ? "Jahr" : "Jahre"}
         </span>
       </div>

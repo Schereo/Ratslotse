@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { LueckenFeld } from "./luecken-feld";
 
 /** Ein belegtes Jahr einer Kette: die Marke, die der Bericht dort setzt. */
-export type KettenZelle = { jahr: number; marke: string };
+export type KettenZelle = { year: number; marke: string };
 
 export type MatrixKette = {
   /** Stabiler Schlüssel (Kettenschlüssel des Backends). */
@@ -64,8 +64,8 @@ function markenFarbe(marke: string): { klasse: string; stil?: React.CSSPropertie
  *  `mitJahr` nur in der Karten-Liste: Dort gibt es keine Kopfzeile, der Chip
  *  muss sein Jahr selbst tragen. In der Matrix stünde es doppelt — die
  *  Spaltenköpfe sagen es bereits. */
-function Zelle({ jahr, marke, luecke, mitJahr }: {
-  jahr: number; marke?: string; luecke?: boolean; mitJahr?: boolean;
+function Zelle({ year, marke, luecke, mitJahr }: {
+  year: number; marke?: string; luecke?: boolean; mitJahr?: boolean;
 }) {
   const farbe = marke ? markenFarbe(marke) : null;
   return (
@@ -90,7 +90,7 @@ function Zelle({ jahr, marke, luecke, mitJahr }: {
           "mt-1 font-mono text-[8.5px] leading-none",
           luecke ? "font-semibold text-signal" : "text-muted-foreground",
         )}>
-          {String(jahr).slice(-2)}
+          {String(year).slice(-2)}
         </span>
       )}
     </div>
@@ -103,7 +103,7 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
   jahre: number[];
   /** Jahrgänge OHNE Bericht — rendern in jeder Zeile als Lücken-Zelle und
    *  über der Matrix als <LueckenFeld> mit Grund. */
-  lueckenJahre: { jahr: number; grund: string; datum?: string }[];
+  lueckenJahre: { year: number; grund: string; datum?: string }[];
   /** Die Legende der Quelle: Buchstabe → Name (+ Erläuterung). Pflicht —
    *  eine Matrix, die ihre Marken selbst erklärt, würde raten. */
   marken: MatrixLegende;
@@ -120,16 +120,16 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
 
   if (!ketten.length || jahre.length + lueckenJahre.length === 0) return null;
 
-  const spalten: { jahr: number; luecke: boolean }[] = [
-    ...jahre.map((jahr) => ({ jahr, luecke: false })),
-    ...lueckenJahre.map((l) => ({ jahr: l.jahr, luecke: true })),
-  ].sort((a, b) => a.jahr - b.jahr);
+  const spalten: { year: number; luecke: boolean }[] = [
+    ...jahre.map((year) => ({ year, luecke: false })),
+    ...lueckenJahre.map((l) => ({ year: l.year, luecke: true })),
+  ].sort((a, b) => a.year - b.year);
 
   const vorlesen = (k: MatrixKette): string => {
     const teile = spalten.map((s) => {
-      if (s.luecke) return `${s.jahr}: Bericht fehlt`;
-      const marke = k.zellen.find((z) => z.jahr === s.jahr)?.marke;
-      return marke ? `${s.jahr}: ${marken[marke]?.name ?? marke}` : null;
+      if (s.luecke) return `${s.year}: Bericht fehlt`;
+      const marke = k.zellen.find((z) => z.year === s.year)?.marke;
+      return marke ? `${s.year}: ${marken[marke]?.name ?? marke}` : null;
     }).filter(Boolean);
     return `${k.titel}. ${teile.join(", ")}.`;
   };
@@ -180,7 +180,7 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
       {lueckenJahre.length > 0 && (
         <div className="mb-3 flex flex-col gap-1.5">
           {lueckenJahre.map((l) => (
-            <LueckenFeld key={l.jahr} label={String(l.jahr)} grund={l.grund} datum={l.datum} />
+            <LueckenFeld key={l.year} label={String(l.year)} grund={l.grund} datum={l.datum} />
           ))}
         </div>
       )}
@@ -196,8 +196,8 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
               </div>
               <div className="mt-2 flex flex-wrap gap-1">
                 {spalten.map((s) => (
-                  <Zelle key={s.jahr} jahr={s.jahr} luecke={s.luecke}
-                    marke={k.zellen.find((z) => z.jahr === s.jahr)?.marke} mitJahr />
+                  <Zelle key={s.year} year={s.year} luecke={s.luecke}
+                    marke={k.zellen.find((z) => z.year === s.year)?.marke} mitJahr />
                 ))}
               </div>
               {offen === k.key && detail && <div className="mt-3">{detail(k)}</div>}
@@ -217,12 +217,12 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
             Kette
           </span>
           {spalten.map((s) => (
-            <span key={s.jahr} aria-hidden="true"
+            <span key={s.year} aria-hidden="true"
               className={cn(
                 "pb-1.5 text-center font-mono text-[10px]",
                 s.luecke ? "font-semibold text-signal" : "text-muted-foreground",
               )}>
-              {String(s.jahr).slice(-2)}
+              {String(s.year).slice(-2)}
             </span>
           ))}
           <span className="pb-1.5 text-right font-mono text-[9.5px] uppercase text-muted-foreground">
@@ -233,9 +233,9 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
             <div key={k.key} className="contents">
               <div className="border-t border-border/60 py-2 pr-2">{zeilenKopf(k, i)}</div>
               {spalten.map((s) => (
-                <div key={s.jahr} className="flex justify-center border-t border-border/60 py-2">
-                  <Zelle jahr={s.jahr} luecke={s.luecke}
-                    marke={k.zellen.find((z) => z.jahr === s.jahr)?.marke} />
+                <div key={s.year} className="flex justify-center border-t border-border/60 py-2">
+                  <Zelle year={s.year} luecke={s.luecke}
+                    marke={k.zellen.find((z) => z.year === s.year)?.marke} />
                 </div>
               ))}
               <div className="border-t border-border/60 py-2 text-right">{zaehler(k)}</div>

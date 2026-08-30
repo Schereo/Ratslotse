@@ -322,7 +322,7 @@ class Bewilligung:
     #: :data:`ART_BEWILLIGUNG` | :data:`ART_VERPFLICHTUNG` | :data:`ART_SCHWELLE`
     art: str
     kategorie: str
-    jahr: int | None
+    year: int | None
     #: ``None`` bei :data:`ART_SCHWELLE` — dort ist der Titelbetrag die Grenze.
     betrag: float | None
     #: ``titel`` | ``beschlussvorschlag`` | ``None`` — welche Stufe traf.
@@ -446,7 +446,7 @@ def aus_vorlagen(vorlagen: list[dict],
                               v.get("raw_text"))
         out.append(Bewilligung(
             template_number=nr, titel=titel, art=art(titel),
-            kategorie=kategorie(titel), jahr=haushaltsjahr(nr),
+            kategorie=kategorie(titel), year=haushaltsjahr(nr),
             betrag=wert, betrag_quelle=quelle,
             beschluesse=tuple(beschluesse.get(nr, ()))))
     return sorted(out, key=lambda b: b.template_number)
@@ -465,27 +465,27 @@ def jahressummen(bewilligungen: list[Bewilligung],
     nicht enthalten — dieselbe Trennung, die der Rechenschaftsbericht zieht."""
     jahre: dict[int, dict] = {}
 
-    def eintrag(jahr: int) -> dict:
-        return jahre.setdefault(jahr, {
-            "jahr": jahr, "summe": 0.0, "faelle": 0,
+    def eintrag(year: int) -> dict:
+        return jahre.setdefault(year, {
+            "year": year, "summe": 0.0, "faelle": 0,
             "verpflichtungen": 0, "verpflichtungen_betrag": 0.0,
             "sammelberichte": 0})
 
     for b in bewilligungen:
-        if b.jahr is None or (nur_rat and not b.ratsentscheidung):
+        if b.year is None or (nur_rat and not b.ratsentscheidung):
             continue
         # Der Eintrag entsteht erst, wenn wirklich etwas hineinfällt: Eine
         # nur beantragte Vorlage darf kein Jahr mit lauter Nullen erzeugen —
         # das sähe aus wie „2022 gab es nichts" statt „hier ist nichts
         # beschlossen worden".
         if b.art == ART_SCHWELLE:
-            eintrag(b.jahr)["sammelberichte"] += 1
+            eintrag(b.year)["sammelberichte"] += 1
         elif b.art == ART_VERPFLICHTUNG and b.beschlossen:
-            e = eintrag(b.jahr)
+            e = eintrag(b.year)
             e["verpflichtungen"] += 1
             e["verpflichtungen_betrag"] += b.betrag or 0.0
         elif b.zaehlt_in_summe:
-            e = eintrag(b.jahr)
+            e = eintrag(b.year)
             e["summe"] += b.betrag
             e["faelle"] += 1
     return dict(sorted(jahre.items()))
@@ -591,7 +591,7 @@ class Kanal:
 class Kapitel3:
     """Kapitel 3 eines Rechenschaftsberichts — ein Haushaltsjahr."""
 
-    jahr: int
+    year: int
     kanaele: tuple[Kanal, ...]
     #: Was die Summenzeile der Tabelle selbst ausweist.
     summe_konsumtiv: float
@@ -671,7 +671,7 @@ def _kanal(text: str, schluessel: str, muster: str) -> Kanal | None:
                  anzahl_investiv=ai, betrag_investiv=bi)
 
 
-def kapitel3(volltext: str, jahr: int) -> Kapitel3 | None:
+def kapitel3(volltext: str, year: int) -> Kapitel3 | None:
     """Kapitel 3 eines Rechenschaftsberichts lesen.
 
     → ``None``, wenn das Kapitel oder seine Summenzeile fehlt; ein Kapitel
@@ -691,7 +691,7 @@ def kapitel3(volltext: str, jahr: int) -> Kapitel3 | None:
     auft = _AUFTEILUNG.search(text)
     ve = _VE_TEXT.search(text)
     return Kapitel3(
-        jahr=jahr, kanaele=kanaele,
+        year=year, kanaele=kanaele,
         summe_konsumtiv=_zahl(summe.group(1), None),
         summe_investiv=_zahl(summe.group(2), None),
         text_gesamt=_zahl(gesamt.group(1), None) if gesamt else None,
@@ -783,7 +783,7 @@ def probe_tabelle(kap: Kapitel3, toleranz: float = 0.005) -> Tabellenprobe:
 class Ratsabgleich:
     """Unsere Rats-Serie gegen die Zeile „Beschluss des Rates" des Berichts."""
 
-    jahr: int
+    year: int
     unsere_summe: float
     unsere_faelle: int
     bericht_summe: float
@@ -805,13 +805,13 @@ class Ratsabgleich:
     def als_text(self) -> str:
         p = self.abweichung_prozent
         if abs(self.deviation) < 0.005:
-            return (f"{self.jahr}: identisch mit dem Rechenschaftsbericht "
+            return (f"{self.year}: identisch mit dem Rechenschaftsbericht "
                     f"({self.bericht_faelle} Fälle).")
         prozent = ""
         if p is not None:
             prozent = (" (unter 0,01 %)" if abs(p) < 0.01
                        else f" ({de_betrag(p, vorzeichen=True)} %)")
-        return (f"{self.jahr}: {de_betrag(self.deviation, vorzeichen=True)} € "
+        return (f"{self.year}: {de_betrag(self.deviation, vorzeichen=True)} € "
                 f"gegenüber dem Rechenschaftsbericht{prozent}, "
                 f"{self.unsere_faelle} gegen {self.bericht_faelle} Fälle.")
 
@@ -923,7 +923,7 @@ def probe_ratsabgleich(bewilligungen: list[Bewilligung], kap: Kapitel3,
     Positionen tragen (2024: 21 Vorlagen, 21 Positionen; 2022: 12 gegen 11)."""
     rat = kap.kanal("rat")
     passend = [b for b in bewilligungen
-               if b.jahr == kap.jahr and b.zaehlt_in_summe]
+               if b.year == kap.year and b.zaehlt_in_summe]
     unsere = {b.template_number for b in passend}
     nur_bericht: tuple[str, ...] = ()
     nur_uns: tuple[str, ...] = ()
@@ -931,11 +931,11 @@ def probe_ratsabgleich(bewilligungen: list[Bewilligung], kap: Kapitel3,
         # Der Sammelbericht des Folgejahres steht immer mit im Kapitel; er ist
         # kein Fall, sondern die Meldung über die Fälle unter der Wertgrenze.
         bericht = {n for n in kapitel_nummern
-                   if haushaltsjahr(n) == kap.jahr}
+                   if haushaltsjahr(n) == kap.year}
         nur_bericht = tuple(sorted(bericht - unsere))
         nur_uns = tuple(sorted(unsere - bericht))
     return Ratsabgleich(
-        jahr=kap.jahr,
+        year=kap.year,
         unsere_summe=sum(b.betrag or 0.0 for b in passend),
         unsere_faelle=len(passend),
         bericht_summe=rat.betrag if rat else 0.0,

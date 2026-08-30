@@ -99,7 +99,7 @@ def test_liest_die_eckwerte_des_aktuellen_jahrgangs():
     p = parse_wirtschaftsplan("25/0722", TITEL_2026, TEXT_2026)
     assert isinstance(p, Wirtschaftsplan)
     assert p.betrieb == "egh"
-    assert p.jahr == 2026, "das Haushaltsjahr, nicht das Jahr der Vorlage (2025)"
+    assert p.year == 2026, "das Haushaltsjahr, nicht das Jahr der Vorlage (2025)"
     assert p.ertraege == 82_815_150.0
     assert p.aufwendungen == 82_824_771.0
     assert p.steuern == 6_000.0
@@ -132,7 +132,7 @@ def test_liest_den_alten_aufbau_ohne_steuerzeile():
     """2019/2020: „EUR", kein steuerlicher Aufwand, „+" vor dem Ergebnis —
     und ein Wort, das über den Zeilenumbruch getrennt ist."""
     p = parse_wirtschaftsplan("18/0880", TITEL_2019, TEXT_2019)
-    assert p.jahr == 2019
+    assert p.year == 2019
     assert p.steuern == 0.0, "keine Steuerzeile heißt 0, nicht None"
     assert p.ergebnis == 349_700.0
     assert abs(p.ertraege - p.aufwendungen - p.steuern - p.ergebnis) <= TOLERANZ_EUR

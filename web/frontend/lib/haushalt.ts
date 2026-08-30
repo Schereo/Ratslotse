@@ -40,7 +40,7 @@ export const PLAN_ART_LABEL: Record<PlanArt, string> = {
  *  Haushaltsansatz, `ergebnis` = was es tatsächlich wurde. In den meisten
  *  Jahrgängen sind `plan` und `ansatz` derselbe Wert. */
 export type ErgebnisPosten = {
-  jahr: number; nr: number; bezeichnung: string;
+  year: number; nr: number; bezeichnung: string;
   /** null = Kernverwaltung gesamt, sonst der Teilhaushalt (1–13). */
   thh_nr: number | null; thh_name: string | null;
   vorjahr: number | null; ansatz: number | null;
@@ -67,7 +67,7 @@ export type ErgebnishaushaltZeile = {
   /** Der Haushalt, aus dem die Zahl stammt. */
   plan_jahrgang: number;
   /** Das Jahr, für das sie gilt. */
-  jahr: number;
+  year: number;
   art: "ansatz" | "finanzplanung";
   nr: number;
   bezeichnung: string;
@@ -81,7 +81,7 @@ export type ErgebnishaushaltZeile = {
  * `stand_nach_ergebnis` ist deren Addition und entspricht der Formulierung
  * des Vorberichts „unter Berücksichtigung des Ergebnisses“. */
 export type RuecklageJahr = {
-  jahr: number;
+  year: number;
   ruecklage: number;
   jahresergebnis: number;
   stand_nach_ergebnis: number;
@@ -109,7 +109,7 @@ export type FinanzRolle =
  *  `saldo_haushaltsunwirksam`) tragen **keinen** `plan`: Ein Kassenbestand
  *  wird nicht veranschlagt, und das Dokument lässt die Spalte dort leer. */
 export type FinanzZeile = {
-  jahr: number;
+  year: number;
   /** Zeilennummer des Dokuments — nur für die Fundstelle, nie zum Suchen. */
   nr: number;
   rolle: FinanzRolle | null;
@@ -126,7 +126,7 @@ export type FinanzZeile = {
  *  besteht: Betrag UND Prozentsatz der Überschrift müssen zur Tabellenzeile
  *  passen. */
 export type Abweichungsgrund = {
-  jahr: number; nr: number; bezeichnung: string;
+  year: number; nr: number; bezeichnung: string;
   delta_mio: number | null; prozent: number | null;
   text: string;
   quelle_label: string | null; quelle_url: string | null;
@@ -135,7 +135,7 @@ export type Abweichungsgrund = {
 /** Fundstelle des Schlussberichts des Rechnungsprüfungsamts. `lesbar === 0`
  *  heißt: Das PDF liegt vor, sein Textextrakt ist aber unbrauchbar (2024). */
 export type Pruefbericht = {
-  jahr: number; label: string | null; url: string | null;
+  year: number; label: string | null; url: string | null;
   n_pages: number | null; lesbar: 0 | 1;
 };
 
@@ -149,7 +149,7 @@ export type Pruefbericht = {
 export type Spielraum = "niedrig" | "mittel" | "hoch";
 
 export type Produkt = {
-  jahr: number; produkt_nr: string; produkt_name: string;
+  year: number; produkt_nr: string; produkt_name: string;
   thh_nr: number | null; thh_name: string | null; amt: string | null;
   ertraege: number | null; aufwendungen: number | null; ergebnis: number | null;
   kurzbeschreibung?: string | null;
@@ -169,7 +169,7 @@ export type Produkt = {
 };
 
 export type ProdukteAntwort = {
-  jahr: number; produkte: Produkt[]; treffer?: number;
+  year: number; produkte: Produkt[]; treffer?: number;
   abdeckung_prozent: number | null; plan_aufwendungen: number | null;
   /** Alle Jahrgänge mit Produktebene — die Bezugsreihe der `jahre` je
    *  Produkt. */
@@ -212,7 +212,7 @@ export const SPIELRAUM_TEXT: Record<Spielraum, { kurz: string; lang: string }> =
  *  (Ausgleichsjahr) — dieselbe, auf die `steuerkraft` seit der
  *  Jahres-Korrektur am Datensatz 1106 gerückt ist. */
 export type FinanzausgleichJahr = {
-  jahr: number;
+  year: number;
   zuweisungen_gemeindeaufgaben?: number | null;
   zuweisungen_kreisaufgaben?: number | null;
   zuweisungen_uebertragener_wirkungskreis?: number | null;
@@ -232,7 +232,7 @@ export type FinanzausgleichJahr = {
  *  etwas anderes gemessen, nicht etwas anderes herausbekommen. */
 export type KennzahlPunkt = {
   kennzahl: string;
-  jahr: number;
+  year: number;
   wert: number;
   stellen: number;
   fassung: number | null;
@@ -263,7 +263,7 @@ export type KennzahlFormel = {
 export type KennzahlFund = {
   art: "revision" | "definition" | "umbenennung";
   kennzahl: string;
-  jahr: number;
+  year: number;
   alt: number;
   alt_bericht: number;
   neu: number;
@@ -283,9 +283,9 @@ export type Kennzahlen = {
 
 export type HaushaltDaten = {
   jahre: Record<string, HaushaltZeile[]>;
-  steuern: { jahr: number; art: string; betrag: number | null }[];
+  steuern: { year: number; art: string; betrag: number | null }[];
   steuerkraft: {
-    jahr: number; messzahl: number | null; messzahl_je_ew: number | null;
+    year: number; messzahl: number | null; messzahl_je_ew: number | null;
     zuweisungen: number | null; zuweisungen_je_ew: number | null;
   }[];
   /** Die drei Komponenten der Landeszuweisung je Ausgleichsjahr, in **Tausend
@@ -299,7 +299,7 @@ export type HaushaltDaten = {
    *  welche Zahl veröffentlicht. */
   finanzausgleich?: FinanzausgleichJahr[];
   /** Jüngste Einwohnerzahl — Bezugsgröße für Pro-Kopf-Einordnungen. */
-  einwohner: { jahr: number; einwohner: number } | null;
+  einwohner: { year: number; einwohner: number } | null;
   /** Ansatz, Plan und Ergebnis je Posten aus den Jahresabschlüssen. */
   ergebnisrechnung?: ErgebnisPosten[];
   /** Die Kassensicht aus denselben Jahresabschlüssen (Abschnitt 4.1). */
@@ -462,7 +462,7 @@ export type Nachbewilligung = {
   template_number: string;
   /** Haushaltsjahr aus dem Jahrgang der Vorlagen-Nummer, nicht aus dem
    *  Sitzungsdatum — Januar-Vorlagen zählen zum Vorjahr. */
-  jahr: number | null;
+  year: number | null;
   titel: string;
   art: NachbewilligungsArt;
   kategorie: NachbewilligungsKategorie;
@@ -492,7 +492,7 @@ export type Nachbewilligung = {
 
 /** Ein Entscheidungsweg aus Kapitel 3 des Rechenschaftsberichts. */
 export type NachbewilligungsKanal = {
-  jahr: number;
+  year: number;
   kanal: string;
   /** Der Wortlaut der Stadt („Gemäß Haushaltsvermerk durch den Fachdienst
    *  200"), nicht unsere Umschreibung. */
@@ -506,7 +506,7 @@ export type NachbewilligungsKanal = {
 
 /** Ein Haushaltsjahr aus Kapitel 3 — die Gesamtsicht, die das RIS nicht hat. */
 export type NachbewilligungsJahr = {
-  jahr: number;
+  year: number;
   summe_konsumtiv: number;
   summe_investiv: number;
   /** Was der Fließtext des Kapitels als Gesamtsumme nennt. Steht getrennt von
@@ -545,7 +545,7 @@ export type Spenden = {
 };
 
 export type SpendenJahr = {
-  jahr: number;
+  year: number;
   betrag: number;
   vorlagen: number;
   rat: number;
@@ -554,7 +554,7 @@ export type SpendenJahr = {
 
 export type SpendenVorlage = {
   template_number: string;
-  jahr: number;
+  year: number;
   sitzung: string;
   betrag: number;
   gremium?: string | null;
@@ -576,7 +576,7 @@ export type Steuerplan = {
 };
 
 export type SteuerplanZeile = {
-  jahr: number;
+  year: number;
   art: string;
   /** Ansatz der beschlossenen Haushaltssatzung, in Euro. */
   plan: number;
@@ -624,7 +624,7 @@ export type GewerbesteuerstatistikZeile = {
   /** Das **Erhebungsjahr** der Veranlagung. Der Bericht dazu erscheint rund
    *  fünf Jahre später — das jüngste Jahr hier ist nicht das jüngste der
    *  Aufkommenskurve. */
-  jahr: number;
+  year: number;
   stadt: string;
   /** Betriebe und Betriebsstätten, für die hier Gewerbesteuer erhoben wird. */
   faelle: number;
@@ -649,7 +649,7 @@ export type GewerbesteuerstatistikZeile = {
 };
 
 export type HebesatzZeile = {
-  jahr: number;
+  year: number;
   /** „Grundsteuer A" · „Grundsteuer B" · „Gewerbesteuer". */
   art: string;
   /** Prozentpunkte. */
@@ -692,7 +692,7 @@ export const AUSGABEN_QUELLE_LABEL: Record<Ausgabenquelle, string> = {
  *  Zensus-Brüche hat (2011 und 2022). Die Begründung steht an der Tabelle in
  *  `council/store.py`. */
 export type AusgabenreiheJahr = {
-  jahr: number;
+  year: number;
   regelwerk: Regelwerk;
   betrag: number;
   quelle: Ausgabenquelle;
@@ -729,18 +729,18 @@ export type Ausgabenreihe = {
  *  vermischt, ohne es zu sagen, wäre still falsch. */
 export function planGegenIst(
   daten: HaushaltAuswahl<"ergebnisrechnung">,
-): { jahr: number; plan: number; ist: number; delta: number; planArt: PlanArt }[] {
+): { year: number; plan: number; ist: number; delta: number; planArt: PlanArt }[] {
   const posten = daten.ergebnisrechnung ?? [];
-  const jahre = [...new Set(posten.map((p) => p.jahr))].sort((a, b) => a - b);
+  const jahre = [...new Set(posten.map((p) => p.year))].sort((a, b) => a - b);
   return jahre
-    .map((jahr) => {
+    .map((year) => {
       const teile = [21, 24].map((nr) =>
-        posten.find((p) => p.jahr === jahr && p.nr === nr && p.thh_nr == null));
+        posten.find((p) => p.year === year && p.nr === nr && p.thh_nr == null));
       if (teile.some((t) => !t || t.plan == null || t.ergebnis == null)) return null;
       const plan = teile.reduce((s, t) => s + (t!.plan as number), 0) / 1e6;
       const ist = teile.reduce((s, t) => s + (t!.ergebnis as number), 0) / 1e6;
       return {
-        jahr,
+        year,
         plan: Math.round(plan * 10) / 10,
         ist: Math.round(ist * 10) / 10,
         delta: Math.round((ist - plan) * 10) / 10,
@@ -757,9 +757,9 @@ export function planGegenIst(
  *  zu werden. Fehlende Rollen bleiben `undefined`; die optionalen
  *  Bestandszeilen erlaubt das Dokument ausdrücklich wegzulassen. */
 export function kassensicht(
-  daten: HaushaltAuswahl<"finanzrechnung">, jahr: number,
+  daten: HaushaltAuswahl<"finanzrechnung">, year: number,
 ): Partial<Record<FinanzRolle, FinanzZeile>> | null {
-  const zeilen = (daten.finanzrechnung ?? []).filter((z) => z.jahr === jahr);
+  const zeilen = (daten.finanzrechnung ?? []).filter((z) => z.year === year);
   if (!zeilen.length) return null;
   const aus: Partial<Record<FinanzRolle, FinanzZeile>> = {};
   for (const z of zeilen) if (z.rolle) aus[z.rolle] = z;
@@ -772,16 +772,16 @@ export function kassensicht(
 
 /** Die Erläuterung zu einem Posten eines Jahres — oder nichts. */
 export function grundZuPosten(
-  daten: HaushaltAuswahl<"abweichungsgruende">, jahr: number, nr: number,
+  daten: HaushaltAuswahl<"abweichungsgruende">, year: number, nr: number,
 ): Abweichungsgrund | null {
-  return (daten.abweichungsgruende ?? []).find((g) => g.jahr === jahr && g.nr === nr) ?? null;
+  return (daten.abweichungsgruende ?? []).find((g) => g.year === year && g.nr === nr) ?? null;
 }
 
 /** Der Schlussbericht des Rechnungsprüfungsamts zu einem Jahrgang. */
 export function pruefberichtZuJahr(
-  daten: HaushaltAuswahl<"pruefbericht_quellen">, jahr: number,
+  daten: HaushaltAuswahl<"pruefbericht_quellen">, year: number,
 ): Pruefbericht | null {
-  return (daten.pruefbericht_quellen ?? []).find((p) => p.jahr === jahr) ?? null;
+  return (daten.pruefbericht_quellen ?? []).find((p) => p.year === year) ?? null;
 }
 
 /** Erläuterungen, die einen bestimmten Teilhaushalt ausdrücklich nennen.
@@ -793,14 +793,14 @@ export function pruefberichtZuJahr(
  *  sie wird auf der Seite auch so angeschrieben statt als Aufteilung
  *  ausgegeben, die das Dokument nicht hergibt. */
 export function gruendeFuerBereich(
-  daten: HaushaltAuswahl<"abweichungsgruende">, jahr: number, thhNr: number,
+  daten: HaushaltAuswahl<"abweichungsgruende">, year: number, thhNr: number,
 ): Abweichungsgrund[] {
   // „Teilhaushalt 10", „THH 10", „THH10" — mit und ohne führende Null.
   const n = String(thhNr);
   const muster = new RegExp(
     `(?:Teilhaushalt|THH)\\s?0?${n}(?!\\d)`, "i");
   return (daten.abweichungsgruende ?? [])
-    .filter((g) => g.jahr === jahr && muster.test(g.text))
+    .filter((g) => g.year === year && muster.test(g.text))
     .sort((a, b) => Math.abs(b.delta_mio ?? 0) - Math.abs(a.delta_mio ?? 0));
 }
 
@@ -851,7 +851,7 @@ export type FlussSeite = {
 };
 
 export type FlussDaten = {
-  jahr: number;
+  year: number;
   stand: "plan" | "ist";
   herkunft: FlussSeite;
   verwendung: FlussSeite;
@@ -878,15 +878,15 @@ const FLUSS_TOLERANZ = 50_000;
  *  nicht, sonst stünde rechts nichts neben einer vollen linken Seite. */
 export function flussJahre(daten: HaushaltAuswahl<"ergebnisrechnung">): number[] {
   const posten = daten.ergebnisrechnung ?? [];
-  return [...new Set(posten.map((p) => p.jahr))]
+  return [...new Set(posten.map((p) => p.year))]
     .sort((a, b) => a - b)
-    .filter((jahr) => {
-      const gesamt = posten.filter((p) => p.jahr === jahr && p.thh_nr == null);
+    .filter((year) => {
+      const gesamt = posten.filter((p) => p.year === year && p.thh_nr == null);
       return (
         gesamt.some((p) => p.nr >= 1 && p.nr <= 11) &&
         gesamt.some((p) => p.nr === 12) &&
         gesamt.some((p) => p.nr === 20) &&
-        posten.some((p) => p.jahr === jahr && p.thh_nr != null && p.nr === 20)
+        posten.some((p) => p.year === year && p.thh_nr != null && p.nr === 20)
       );
     });
 }
@@ -926,11 +926,11 @@ function flussSeite(
  *  je `thh_nr`) — beide aus derselben Tabelle desselben Jahres, damit nie zwei
  *  Stände nebeneinander stehen. `null`, wenn eine Seite fehlt. */
 export function flussbild(
-  daten: HaushaltAuswahl<"ergebnisrechnung">, jahr: number, stand: "plan" | "ist",
+  daten: HaushaltAuswahl<"ergebnisrechnung">, year: number, stand: "plan" | "ist",
 ): FlussDaten | null {
   const zahl = (p: ErgebnisPosten | undefined) =>
     p ? (stand === "ist" ? p.ergebnis : p.ansatz) : null;
-  const rows = (daten.ergebnisrechnung ?? []).filter((p) => p.jahr === jahr);
+  const rows = (daten.ergebnisrechnung ?? []).filter((p) => p.year === year);
   const gesamt = rows.filter((p) => p.thh_nr == null);
 
   const ertraege = zahl(gesamt.find((p) => p.nr === 12));
@@ -975,7 +975,7 @@ export function flussbild(
   const summeRechts = verwendung.baender.reduce((s, b) => s + b.wert, 0);
   const luecke = (s: FlussSeite) => Math.abs(s.gesamt - s.teile);
   return {
-    jahr, stand, herkunft, verwendung, skala,
+    year, stand, herkunft, verwendung, skala,
     saldo: ertraege - aufwendungen,
     summeLinks, summeRechts,
     stimmt: Math.abs(summeLinks - summeRechts) <= FLUSS_TOLERANZ
@@ -1000,7 +1000,7 @@ export function flussbild(
  *  erhebt eine Grundgebühr UND eine Gebühr je Liter Behältervolumen, es gibt
  *  dort also keine einzelne Division. Eine 0 wäre eine Behauptung. */
 export type GebuehrenZeile = {
-  jahr: number;
+  year: number;
   /** `abfallbehandlung` · `abfallsammlung` · `strassenreinigung`. */
   bereich: string;
   bereich_name: string;
@@ -1027,7 +1027,7 @@ export type GebuehrenZeile = {
  * der konkrete Verwaltungsvorschlag für Grundgebühr, Litergebühr, Karte oder
  * Anlieferung. */
 export type GebuehrensatzZeile = {
-  jahr: number;
+  year: number;
   schluessel: string;
   bereich: string;
   bezeichnung: string;
@@ -1048,7 +1048,7 @@ export type GebuehrensatzZeile = {
  *  Anzeige, die das wegließe, machte aus einem Vorschlag der Verwaltung einen
  *  Ratsbeschluss. */
 export type HaushaltssatzungZeile = {
-  jahr: number;
+  year: number;
   /** 0 = die Satzung selbst. Nachträge werden (noch) nicht gelesen. */
   nachtrag: number;
   /** `entwurf` | `unbekannt` — nie `beschlossen`, s. o. */
@@ -1095,7 +1095,7 @@ export type WirtschaftsplanZeile = {
   /** Kürzel: `egh`, `awb`, `bbo`, `bbgo`, `stadion`, `stadion_planung`. */
   betrieb: string;
   betrieb_name: string;
-  jahr: number;
+  year: number;
   template_number: string;
   ertraege: number | null;
   aufwendungen: number | null;
@@ -1120,9 +1120,9 @@ export type WirtschaftsplanZeile = {
 };
 
 export type EinnahmeartenPlan = {
-  jahr: number;
+  year: number;
   /** Aus welchem Haushalt die Zahlen stammen — bei uns immer derselbe
-   *  Jahrgang wie `jahr`, aber die Angabe gehört an die Anzeige. */
+   *  Jahrgang wie `year`, aber die Angabe gehört an die Anzeige. */
   planJahrgang: number;
   /** Ertragsarten (Posten 01–11), absteigend nach Betrag, in EURO. */
   arten: { nr: number; label: string; lang: string; betrag: number }[];
@@ -1160,10 +1160,10 @@ export type EinnahmeartenPlan = {
  *  nicht treffen — dieselbe Regel wie beim Flussbild: Was sich nicht aufaddiert,
  *  wird nicht gezeichnet. */
 export function einnahmearten(
-  daten: HaushaltAuswahl<"ergebnishaushalt" | "jahre">, jahr: number,
+  daten: HaushaltAuswahl<"ergebnishaushalt" | "jahre">, year: number,
 ): EinnahmeartenPlan | null {
   const zeilen = (daten.ergebnishaushalt ?? [])
-    .filter((z) => z.jahr === jahr && z.art === "ansatz");
+    .filter((z) => z.year === year && z.art === "ansatz");
   if (!zeilen.length) return null;
 
   const arten = zeilen
@@ -1183,9 +1183,9 @@ export function einnahmearten(
   // Summe nicht trifft, ist keine Aufschlüsselung, sondern eine Auswahl.
   if (Math.abs(gesamt - teile) > FLUSS_TOLERANZ) return null;
 
-  const tafelErtraege = summe(daten.jahre?.[String(jahr)] ?? [])?.ertraege ?? null;
+  const tafelErtraege = summe(daten.jahre?.[String(year)] ?? [])?.ertraege ?? null;
   return {
-    jahr,
+    year,
     planJahrgang: zeilen[0].plan_jahrgang,
     arten,
     gesamt,
@@ -1250,7 +1250,7 @@ export function juengsteRuecklage(
 ): RuecklageJahr | null {
   return [...(daten.ruecklage ?? [])]
     .filter((z) => Number.isFinite(z.stand_nach_ergebnis))
-    .sort((a, b) => a.jahr - b.jahr)
+    .sort((a, b) => a.year - b.year)
     .at(-1) ?? null;
 }
 
@@ -1310,7 +1310,7 @@ export function summe(zeilen: HaushaltZeile[]): HaushaltZeile | undefined {
  *  auf die Reihenfolge einer fremden Antwort verlässt, still kippt. */
 export function ausgabenreihe(daten: HaushaltAuswahl<"ausgabenreihe">): AusgabenreiheJahr[] {
   const zeilen = daten.ausgabenreihe?.zeilen ?? [];
-  return [...zeilen].sort((a, b) => a.jahr - b.jahr);
+  return [...zeilen].sort((a, b) => a.year - b.year);
 }
 
 /** Die Jahrgänge, in denen sich die beiden Veröffentlichungen widersprechen.
@@ -1330,7 +1330,7 @@ export function ausgabenKonflikte(daten: HaushaltAuswahl<"ausgabenreihe">): Ausg
  *  (beantragt ist nicht bewilligt). Alle drei stehen als eigene Felder
  *  daneben, damit die Seite sie benennen kann, statt sie zu verschweigen. */
 export type NachbewilligungsSumme = {
-  jahr: number;
+  year: number;
   summe: number;
   faelle: number;
   verpflichtungen: number;
@@ -1342,41 +1342,41 @@ export function nachbewilligungsJahre(
   daten: HaushaltAuswahl<"nachbewilligungen">,
 ): NachbewilligungsSumme[] {
   const jahre = new Map<number, NachbewilligungsSumme>();
-  const hol = (jahr: number) => {
-    let e = jahre.get(jahr);
+  const hol = (year: number) => {
+    let e = jahre.get(year);
     if (!e) {
-      e = { jahr, summe: 0, faelle: 0, verpflichtungen: 0,
+      e = { year, summe: 0, faelle: 0, verpflichtungen: 0,
             verpflichtungenBetrag: 0, sammelberichte: 0 };
-      jahre.set(jahr, e);
+      jahre.set(year, e);
     }
     return e;
   };
   for (const n of daten.nachbewilligungen?.serie ?? []) {
-    if (n.jahr == null) continue;
+    if (n.year == null) continue;
     if (n.art === "schwelle") {
-      hol(n.jahr).sammelberichte += 1;
+      hol(n.year).sammelberichte += 1;
     } else if (n.art === "verpflichtungsermaechtigung") {
       if (!n.beschlossen) continue;
-      const e = hol(n.jahr);
+      const e = hol(n.year);
       e.verpflichtungen += 1;
       e.verpflichtungenBetrag += n.betrag ?? 0;
     } else if (n.beschlossen && n.betrag != null) {
-      const e = hol(n.jahr);
+      const e = hol(n.year);
       e.summe += n.betrag;
       e.faelle += 1;
     }
   }
-  return [...jahre.values()].sort((a, b) => a.jahr - b.jahr);
+  return [...jahre.values()].sort((a, b) => a.year - b.year);
 }
 
 /** Die Bewilligungen eines Jahres, größte zuerst — die Liste, die auf ihre
  *  Beschluss-Seiten verlinkt. Ohne Sammelberichte und ohne
  *  Verpflichtungsermächtigungen: Die stehen auf der Seite getrennt. */
 export function nachbewilligungenFuerJahr(
-  daten: HaushaltAuswahl<"nachbewilligungen">, jahr: number,
+  daten: HaushaltAuswahl<"nachbewilligungen">, year: number,
 ): Nachbewilligung[] {
   return (daten.nachbewilligungen?.serie ?? [])
-    .filter((n) => n.jahr === jahr && n.art === "bewilligung"
+    .filter((n) => n.year === year && n.art === "bewilligung"
       && n.beschlossen === 1 && n.betrag != null)
     .sort((a, b) => (b.betrag ?? 0) - (a.betrag ?? 0));
 }
@@ -1419,13 +1419,13 @@ export function kanalAnzahl(k: NachbewilligungsKanal): number {
 export function spendenJahre(daten: HaushaltAuswahl<"spenden">): SpendenJahr[] {
   const jahre = daten.spenden?.jahre ?? [];
   const laufend = new Date().getFullYear();
-  return jahre.filter((j) => j.jahr < laufend).sort((a, b) => a.jahr - b.jahr);
+  return jahre.filter((j) => j.year < laufend).sort((a, b) => a.year - b.year);
 }
 
 /** Das laufende Jahr, sofern es schon Beschlüsse trägt. */
 export function spendenLaufend(daten: HaushaltAuswahl<"spenden">): SpendenJahr | null {
   const laufend = new Date().getFullYear();
-  return (daten.spenden?.jahre ?? []).find((j) => j.jahr === laufend) ?? null;
+  return (daten.spenden?.jahre ?? []).find((j) => j.year === laufend) ?? null;
 }
 
 /** Rat und Verwaltungsausschuss über alle belegten Vorlagen.
@@ -1470,23 +1470,23 @@ export function bereichSlug(name: string): string {
  *  ist dann die ehrliche Antwort, keine fehlende. */
 export function bereichsReihe(
   daten: HaushaltAuswahl<"jahre">, name: string,
-): { jahr: number; zeile: HaushaltZeile }[] {
+): { year: number; zeile: HaushaltZeile }[] {
   return jahreSortiert(daten)
-    .map((jahr) => {
-      const z = daten.jahre[String(jahr)]?.find((r) => r.bereich === name);
-      return z ? { jahr, zeile: z } : null;
+    .map((year) => {
+      const z = daten.jahre[String(year)]?.find((r) => r.bereich === name);
+      return z ? { year, zeile: z } : null;
     })
-    .filter((x): x is { jahr: number; zeile: HaushaltZeile } => x !== null);
+    .filter((x): x is { year: number; zeile: HaushaltZeile } => x !== null);
 }
 
 /** Quelle einer Jahres-Scheibe menschenlesbar (PDF vs. Open-Data-CSV). */
-export function quellenLabel(zeilen: HaushaltZeile[], jahr: number): { text: string; url: string | null } {
+export function quellenLabel(zeilen: HaushaltZeile[], year: number): { text: string; url: string | null } {
   const url = zeilen[0]?.source_url ?? null;
   const csv = url?.includes("opendata.oldenburg.de");
   return {
     text: csv
-      ? `Haushaltsplan ${jahr}, Stadt Oldenburg — Open-Data-Portal (CSV, Lizenz dl-de/by-2.0)`
-      : `Beschlossener Haushaltsplan ${jahr}, Stadt Oldenburg (PDF)`,
+      ? `Haushaltsplan ${year}, Stadt Oldenburg — Open-Data-Portal (CSV, Lizenz dl-de/by-2.0)`
+      : `Beschlossener Haushaltsplan ${year}, Stadt Oldenburg (PDF)`,
     url,
   };
 }

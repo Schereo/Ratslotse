@@ -367,7 +367,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   // die Entitäts-Erkennung den Namen im letzten Jahr gesehen hat — eine andere
   // Größe als die Treffer auf die Beschreibung. Beide „12 Beschlüsse" zu nennen
   // war genau Tims Befund vom 16.08. („die zahlen passen nicht zusammen").
-  const [matchCount, setMatchCount] = useState<Record<string, { n: number; quelle: "jahr" | "treffer" }>>({});
+  const [matchCount, setMatchCount] = useState<Record<string, { n: number; quelle: "year" | "treffer" }>>({});
   const topics = useQuery({
     queryKey: ["topics"],
     queryFn: () => api.get<TopicRow[]>("/topics"),
@@ -397,7 +397,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
     setNote(null);
     try {
       let description = presetDescription ?? "";
-      if (typeof presetMatches === "number") setMatchCount((m) => ({ ...m, [clean]: { n: presetMatches, quelle: "jahr" } }));
+      if (typeof presetMatches === "number") setMatchCount((m) => ({ ...m, [clean]: { n: presetMatches, quelle: "year" } }));
       if (!description) {
         const d = await api.post<Described>("/topics/describe", { name: clean });
         if (d.verdict === "ungeeignet") {
@@ -511,10 +511,10 @@ function TopicCard({ topic, matches, onEdit, onRemove }: {
   /** Zahl samt Herkunft — undefined, solange nichts ermittelt ist. Dann bleibt
    *  die Zeile leer statt „0" zu behaupten. `treffer` sind Beschlüsse, die auf
    *  die Beschreibung passen (dieselbe Definition wie Themen-Karte und Liste);
-   *  `jahr` ist die viel gröbere Zahl aus dem Vorschlags-Chip — wie oft der
+   *  `year` ist die viel gröbere Zahl aus dem Vorschlags-Chip — wie oft der
    *  Name im letzten Jahr überhaupt vorkam. Beide „Beschlüsse" zu nennen hat
    *  genau die Verwirrung erzeugt, die Tim am 16.08. gemeldet hat. */
-  matches?: { n: number; quelle: "jahr" | "treffer" };
+  matches?: { n: number; quelle: "year" | "treffer" };
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -549,7 +549,7 @@ function TopicCard({ topic, matches, onEdit, onRemove }: {
               {zahl.n === 1 && !zahl.gedeckelt ? "Beschluss" : "Beschlüsse"}
             </span>
             <span>
-              {zahl.quelle === "jahr"
+              {zahl.quelle === "year"
                 ? "im letzten Jahr"
                 : zahl.n === 1 && !zahl.gedeckelt ? "passt dazu" : "passen dazu"}
             </span>

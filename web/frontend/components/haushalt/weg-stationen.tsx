@@ -1,4 +1,4 @@
-// Die Stations-Bausteine des Haushalts-Wegs (/haushalt/jahr).
+// Die Stations-Bausteine des Haushalts-Wegs (/haushalt/year).
 //
 // Bis H3-06 hieß diese Datei `jahreskreis.tsx` und trug zusätzlich den
 // Jahreskreis — eine Haushaltsrunde auf einem Kalenderjahr. Der Kreis ist

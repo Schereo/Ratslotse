@@ -765,7 +765,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Bürger-App: EIN Satz über einen echten Ratsbeschluss.\n"
             "Regeln:\n"
             "- Genau ein Satz, höchstens 200 Zeichen, aktiv, konkret, kein Ausrufezeichen.\n"
-            "- Beginne mit „Der Rat beschloss {jahr}, …“ oder einer ähnlich konkreten Formulierung "
+            "- Beginne mit „Der Rat beschloss {year}, …“ oder einer ähnlich konkreten Formulierung "
             "(beim zuständigen Ausschuss entsprechend).\n"
             "- Nur Fakten aus den vorgelegten Daten — nichts dazuerfinden, keine Folgen behaupten, "
             "die nicht im Text stehen.\n"

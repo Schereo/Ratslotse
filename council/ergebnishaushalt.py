@@ -297,7 +297,7 @@ def lies(text: str) -> dict:
     Liefert ``{jahrgang, jahre, zeilen, ist, ist_jahr, proben, bestanden,
     nachweis}``:
 
-    * ``zeilen`` — je Posten und Planjahr ein dict mit ``jahr``, ``art``
+    * ``zeilen`` — je Posten und Planjahr ein dict mit ``year``, ``art``
       (``ansatz``/``finanzplanung``), ``nr``, ``bezeichnung``, ``betrag``,
       ``ist_summe``. Nur, was gespeichert werden darf.
     * ``ist`` — die Ist-Spalte des Vorvorjahres, ``{nr: betrag}``. Sie wird
@@ -327,7 +327,7 @@ def lies(text: str) -> dict:
                 continue
             for nr, werte in sorted(gelesen.items()):
                 zeilen.append({
-                    "jahr": jahre[sp], "art": art, "nr": nr,
+                    "year": jahre[sp], "art": art, "nr": nr,
                     "bezeichnung": ERGEBNIS_POSTEN[nr],
                     "betrag": werte[sp],
                     "ist_summe": 1 if nr in SUMMEN_POSTEN else 0,

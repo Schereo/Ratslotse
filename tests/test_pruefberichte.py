@@ -94,7 +94,7 @@ def test_inhaltsverzeichnis_liefert_textziffern():
 
 def test_feststellungen_mit_marke_textziffer_und_seite():
     ergebnis = pruefberichte.parse_feststellungen(BERICHT)
-    assert ergebnis["jahr"] == 2023
+    assert ergebnis["year"] == 2023
     assert ergebnis["verworfen"] == []
     gefunden = ergebnis["feststellungen"]
     assert [f["marke"] for f in gefunden] == ["H", "WB"]
@@ -172,7 +172,7 @@ def test_marke_ohne_textziffer_wird_verworfen():
     keine Feststellung, auch wenn die Marken im Text stehen."""
     ohne_ivz = BERICHT.replace(INHALT, "Inhaltsverzeichnis \n \n")
     ergebnis = pruefberichte.parse_feststellungen(ohne_ivz)
-    assert ergebnis["jahr"] == 2023
+    assert ergebnis["year"] == 2023
     assert ergebnis["feststellungen"] == []
 
 

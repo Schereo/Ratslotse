@@ -72,9 +72,9 @@ function einheitKurz(unit: string): string {
 function jahresreihe(items: QuizChartData["items"]): JahrPunkt[] | null {
   const reihe: JahrPunkt[] = [];
   for (const it of items) {
-    const jahr = Number(it.label);
-    if (!Number.isInteger(jahr) || jahr < 1900 || jahr > 2200) return null;
-    reihe.push({ jahr, wert: it.value });
+    const year = Number(it.label);
+    if (!Number.isInteger(year) || year < 1900 || year > 2200) return null;
+    reihe.push({ year, wert: it.value });
   }
   return reihe.length >= 2 ? reihe : null;
 }

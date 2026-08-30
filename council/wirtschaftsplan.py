@@ -189,7 +189,7 @@ class Wirtschaftsplan:
 
     betrieb: str          # Kürzel aus BETRIEBE
     betrieb_name: str
-    jahr: int             # Haushaltsjahr, nicht das Jahr der Vorlage
+    year: int             # Haushaltsjahr, nicht das Jahr der Vorlage
     template_number: str
     ertraege: float
     aufwendungen: float
@@ -285,15 +285,15 @@ def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtsc
         raise WirtschaftsplanFehler(
             f"{template_number}: Eckwerte ohne Haushaltsjahr im Text — ohne Jahr "
             "gehören die Zahlen nirgendwohin")
-    jahr = int(m_jahr.group(1))
+    year = int(m_jahr.group(1))
 
     # Zweite Probe: Steht dasselbe Jahr im Titel? Der Titel führt oft auch die
     # Vorlagen-Jahreszahl („25/0722"), deshalb wird auf ENTHALTENSEIN geprüft
     # und nicht auf Gleichheit mit dem ersten Fund.
     titel_jahre = {int(j) for j in _JAHR_TITEL.findall(titel)}
-    if titel_jahre and jahr not in titel_jahre:
+    if titel_jahre and year not in titel_jahre:
         raise WirtschaftsplanFehler(
-            f"{template_number}: Haushaltsjahr {jahr} steht so nicht im Titel "
+            f"{template_number}: Haushaltsjahr {year} steht so nicht im Titel "
             f"(dort: {sorted(titel_jahre)}) — eines von beiden ist falsch gelesen")
 
     erkannt = betrieb_aus_titel(titel)
@@ -305,7 +305,7 @@ def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtsc
 
     m_entwurf = _ENTWURF.search(flach)
     return Wirtschaftsplan(
-        betrieb=key, betrieb_name=name, jahr=jahr, template_number=template_number,
+        betrieb=key, betrieb_name=name, year=year, template_number=template_number,
         ertraege=werte["ertraege"], aufwendungen=werte["aufwendungen"],
         steuern=steuern, ergebnis=werte["ergebnis"],
         vermoegensplan=werte.get("vermoegensplan"),
@@ -350,7 +350,7 @@ def dokument_name(plan: Wirtschaftsplan) -> str:
     schließt ``label`` ein): Der nächste Einlesevorgang legt neue Zeilen in
     ``council_herkunft`` an und hängt die Daten dort ein. Die alten bleiben
     unreferenziert liegen — sichtbar wird davon nichts."""
-    return f"{plan.betrieb_name}: Wirtschaftsplan {plan.jahr}"
+    return f"{plan.betrieb_name}: Wirtschaftsplan {plan.year}"
 
 
 def herkunft_fuer(plan: Wirtschaftsplan, url: str | None,

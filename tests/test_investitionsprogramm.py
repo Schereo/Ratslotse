@@ -425,9 +425,9 @@ def test_speichern_legt_drei_ebenen_an(tmp_path):
             probe_ergebnis=g["nachweis"]))
 
         assert store.investitionsprogramm_jahre() == [2026]
-        massnahmen = store.get_investitionsmassnahmen(jahr=2026, ebene="massnahme")
+        massnahmen = store.get_investitionsmassnahmen(year=2026, ebene="massnahme")
         assert len(massnahmen) == 16
-        gesamt = store.get_investitionsmassnahmen(jahr=2026, ebene="gesamt")
+        gesamt = store.get_investitionsmassnahmen(year=2026, ebene="gesamt")
         assert gesamt[0]["gesamtsumme"] == GESAMT_2026
         # Keine Zeile ohne Herkunft — sonst meldet sie `herkunft_luecken`.
         assert all(m["herkunft_id"] for m in massnahmen)
@@ -445,7 +445,7 @@ def test_zweiter_lauf_ersetzt_statt_zu_verdoppeln(tmp_path):
                               dokument_id=297440)
         store.save_investitionsprogramm(2026, g, h)
         store.save_investitionsprogramm(2026, g, h)
-        assert len(store.get_investitionsmassnahmen(jahr=2026,
+        assert len(store.get_investitionsmassnahmen(year=2026,
                                                     ebene="massnahme")) == 16
     finally:
         store.close()

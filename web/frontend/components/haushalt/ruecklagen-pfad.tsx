@@ -18,17 +18,17 @@ import type { RuecklagenPfad as Pfad } from "@/lib/haushalt-labor";
 const B = 300, H = 74, OBEN = 6, UNTEN = 16;
 
 export function RuecklagenPfadGrafik({ ohne, mit }: { ohne: Pfad; mit: Pfad }) {
-  const jahre = ohne.punkte.map((p) => p.jahr);
+  const jahre = ohne.punkte.map((p) => p.year);
   if (jahre.length < 2) return null;
   const startJahr = jahre[0] - 1;
-  const x = (jahr: number) =>
-    ((jahr - startJahr) / (jahre[jahre.length - 1] - startJahr)) * B;
+  const x = (year: number) =>
+    ((year - startJahr) / (jahre[jahre.length - 1] - startJahr)) * B;
   const y = (stand: number) =>
     OBEN + (1 - stand / ohne.start) * (H - OBEN - UNTEN);
 
   const linie = (p: Pfad) =>
     [`${x(startJahr)},${y(p.start)}`,
-      ...p.punkte.map((pt) => `${x(pt.jahr)},${y(pt.stand)}`)].join(" ");
+      ...p.punkte.map((pt) => `${x(pt.year)},${y(pt.stand)}`)].join(" ");
   const verschieden = mit.punkte.some(
     (pt, i) => Math.abs(pt.stand - ohne.punkte[i].stand) > 0.05);
 

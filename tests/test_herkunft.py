@@ -34,19 +34,19 @@ CREATE TABLE council_anlagen (
   raw_text TEXT, n_pages INTEGER, fetched_at TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'listed');
 CREATE TABLE council_ergebnisrechnung (
-  jahr INTEGER NOT NULL, thh_nr INTEGER, thh_name TEXT,
+  year INTEGER NOT NULL, thh_nr INTEGER, thh_name TEXT,
   nr INTEGER NOT NULL, bezeichnung TEXT NOT NULL,
   vorjahr REAL, ansatz REAL, plan REAL, plan_art TEXT,
   ergebnis REAL, deviation REAL, ist_summe INTEGER NOT NULL DEFAULT 0,
   quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL,
-  PRIMARY KEY (jahr, thh_nr, nr));
+  PRIMARY KEY (year, thh_nr, nr));
 CREATE TABLE council_abweichungsgruende (
-  jahr INTEGER NOT NULL, nr INTEGER NOT NULL, bezeichnung TEXT NOT NULL,
+  year INTEGER NOT NULL, nr INTEGER NOT NULL, bezeichnung TEXT NOT NULL,
   delta_mio REAL, prozent REAL, text TEXT NOT NULL,
   quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL,
-  PRIMARY KEY (jahr, nr));
+  PRIMARY KEY (year, nr));
 CREATE TABLE council_pruefbericht_quellen (
-  jahr INTEGER PRIMARY KEY, label TEXT, url TEXT, n_pages INTEGER,
+  year INTEGER PRIMARY KEY, label TEXT, url TEXT, n_pages INTEGER,
   lesbar INTEGER NOT NULL DEFAULT 1, fetched_at TEXT NOT NULL);
 CREATE TABLE council_haushalt (
   id INTEGER PRIMARY KEY AUTOINCREMENT, year INTEGER NOT NULL,
@@ -54,8 +54,8 @@ CREATE TABLE council_haushalt (
   is_summe INTEGER NOT NULL DEFAULT 0,
   source_url TEXT, fetched_at TEXT NOT NULL, UNIQUE(year, bereich));
 CREATE TABLE council_steuern (
-  jahr INTEGER NOT NULL, art TEXT NOT NULL, betrag REAL,
-  source_url TEXT, fetched_at TEXT NOT NULL, PRIMARY KEY (jahr, art));
+  year INTEGER NOT NULL, art TEXT NOT NULL, betrag REAL,
+  source_url TEXT, fetched_at TEXT NOT NULL, PRIMARY KEY (year, art));
 """
 
 #: Ein Jahresabschluss aus dem Ratsinformationssystem — Label und URL so, wie
@@ -76,7 +76,7 @@ def alte_db(tmp_path):
                "n_pages, fetched_at) VALUES (280861, 4711, ?, ?, 312, '2026-08-10T09:00:00')",
                (JA_LABEL, JA_URL))
     cn.executemany(
-        "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, thh_name, nr, bezeichnung, "
+        "INSERT INTO council_ergebnisrechnung (year, thh_nr, thh_name, nr, bezeichnung, "
         " vorjahr, ansatz, plan, plan_art, ergebnis, deviation, ist_summe, "
         " quelle_label, quelle_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(2023, None, None, 12, "Summe ordentliche Erträge", 696_600_000.0,
@@ -89,13 +89,13 @@ def alte_db(tmp_path):
           21_000_000.0, 21_000_000.0, "ansatz", 20_400_000.0, -600_000.0, 1,
           JA_LABEL, JA_URL, "2026-08-14T07:12:01")])
     cn.execute(
-        "INSERT INTO council_abweichungsgruende (jahr, nr, bezeichnung, delta_mio, "
+        "INSERT INTO council_abweichungsgruende (year, nr, bezeichnung, delta_mio, "
         " prozent, text, quelle_label, quelle_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
         (2023, 1, "Steuern und ähnliche Abgaben", 75.1, 24.82,
          "Die Mehrerträge entfallen nahezu auf den Bereich der Gewerbesteuer.",
          JA_LABEL, JA_URL, "2026-08-14T07:12:00"))
     cn.execute(
-        "INSERT INTO council_pruefbericht_quellen (jahr, label, url, n_pages, lesbar, "
+        "INSERT INTO council_pruefbericht_quellen (year, label, url, n_pages, lesbar, "
         " fetched_at) VALUES (2023, 'Schlussbericht 2023', ?, 61, 1, '2026-08-14T07:13:00')",
         (JA_URL,))
     cn.executemany(
@@ -103,7 +103,7 @@ def alte_db(tmp_path):
         " is_summe, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
         [(2026, "Jugend und Familie", 40e6, 210e6, -170e6, 0, PLAN_URL, "2026-08-01T06:00:00"),
          (2026, "Summe", 52e6, 271e6, -219e6, 1, PLAN_URL, "2026-08-01T06:00:00")])
-    cn.execute("INSERT INTO council_steuern (jahr, art, betrag, source_url, fetched_at) "
+    cn.execute("INSERT INTO council_steuern (year, art, betrag, source_url, fetched_at) "
                "VALUES (2025, 'Gewerbesteuer (-umlage)', 214000000.0, ?, '2026-08-02T06:00:00')",
                (CSV_URL,))
     cn.commit()
@@ -169,7 +169,7 @@ def test_altbestand_erbt_label_und_url_und_gewinnt_den_anker(alte_db):
     zeile = store._conn.execute(
         "SELECT h.* FROM council_ergebnisrechnung e "
         "JOIN council_herkunft h ON h.id = e.herkunft_id "
-        "WHERE e.jahr = 2023 AND e.thh_nr IS NULL AND e.nr = 12").fetchone()
+        "WHERE e.year = 2023 AND e.thh_nr IS NULL AND e.nr = 12").fetchone()
     store.close()
     assert zeile["label"] == JA_LABEL
     assert zeile["url"] == JA_URL
@@ -364,7 +364,7 @@ def test_luecken_melden_zeilen_ohne_herkunft(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     assert store.herkunft_luecken() == {}
     store._conn.execute(
-        "INSERT INTO council_steuern (jahr, art, betrag, source_url, fetched_at) "
+        "INSERT INTO council_steuern (year, art, betrag, source_url, fetched_at) "
         "VALUES (2025, 'Hundesteuer', 1.0, 'https://example.org/x.csv', '2026-01-01')")
     store._conn.commit()
     assert store.herkunft_luecken() == {"council_steuern": 1}
@@ -406,14 +406,14 @@ def test_dokumente_je_quelle_und_jahrgang(tmp_path):
     dieselbe Startseite wie einer von 2017."""
     store = CouncilStore(tmp_path / "c.sqlite")
     posten = [{"nr": 12, "bezeichnung": "Summe", "ansatz": 1.0, "ergebnis": 2.0}]
-    for jahr, doc in ((2023, 280861), (2024, 295294)):
-        store.save_ergebnisrechnung(jahr, posten, Herkunft(
+    for year, doc in ((2023, 280861), (2024, 295294)):
+        store.save_ergebnisrechnung(year, posten, Herkunft(
             art="ris", probe="strukturprobe", dokument_id=doc,
-            label=f"Jahresabschluss {jahr}",
+            label=f"Jahresabschluss {year}",
             url=f"https://buergerinfo.oldenburg.de/getfile.php?id={doc}&type=do",
             fundstelle="Ergebnisrechnung der Kernverwaltung", seite=161))
 
-    nach_jahr = {d["jahr"]: d for d in store.haushalt_dokumente()["jahresabschluss"]}
+    nach_jahr = {d["year"]: d for d in store.haushalt_dokumente()["jahresabschluss"]}
     assert nach_jahr[2023]["url"].endswith("id=280861&type=do")
     assert nach_jahr[2024]["url"].endswith("id=295294&type=do")
     # Die Fundstelle fährt mit: Ohne sie ist die URL bei 300 Seiten zu wenig.
@@ -456,7 +456,7 @@ def test_ein_jahrgang_darf_mehrere_dokumente_tragen(tmp_path):
                      url=f"https://buergerinfo.oldenburg.de/getfile.php?id={thh}&type=do"))
 
     teil = store.haushalt_dokumente()["teilhaushalt"]
-    assert {d["jahr"] for d in teil} == {2023}
+    assert {d["year"] for d in teil} == {2023}
     assert {d["label"] for d in teil} == {"007 THH01", "007 THH04"}
     store.close()
 
@@ -480,7 +480,7 @@ def test_ohne_dokument_meldet_sich_die_quelle_gar_nicht(tmp_path):
     # Anlage, also gibt es keinen Ratsvorgang zu zeigen; das Feld fehlt aber
     # nicht, sonst müsste die Oberfläche zwei Formen unterscheiden.
     assert store.haushalt_dokumente()["plan"] == [
-        {"jahr": 2020, "url": PLAN_URL, "label": None, "fundstelle": None,
+        {"year": 2020, "url": PLAN_URL, "label": None, "fundstelle": None,
          "seite": None, "official_text": None}]
 def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     """Der Schritt, den man vergisst: eine neue Zieltabelle nicht in
@@ -503,7 +503,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     with store._conn:
         store._conn.execute(
             "CREATE TABLE council_beteiligungen_kennzahlen ("
-            "jahr INTEGER, wert REAL, herkunft_id INTEGER)")
+            "year INTEGER, wert REAL, herkunft_id INTEGER)")
         hid = store.merke_herkunft(Herkunft(
             art="ris", probe="summenzeile", url=JA_URL,
             fundstelle="Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern"))
@@ -648,7 +648,7 @@ def test_jahrgaenge_kommen_aus_dem_bestand(tmp_path):
     assert store.haushalt_jahrgaenge()["plan"] == [2019, 2020]
     # Der Dokumentlink kennt nur den Jahrgang mit Adresse — genau der
     # Unterschied, wegen dem das zwei Abfragen sind.
-    assert [d["jahr"] for d in store.haushalt_dokumente()["plan"]] == [2020]
+    assert [d["year"] for d in store.haushalt_dokumente()["plan"]] == [2020]
     store.close()
 
 
@@ -658,10 +658,10 @@ def test_jahrgaenge_trennen_die_zwei_ebenen_des_abschlusses(tmp_path):
     ihrer Summenprobe scheitern, während die Gesamtrechnung steht."""
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
-        for jahr, thh in ((2022, None), (2023, None), (2022, 7)):
+        for year, thh in ((2022, None), (2023, None), (2022, 7)):
             store._conn.execute(
-                "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, nr, bezeichnung, "
-                " fetched_at) VALUES (?, ?, 12, 'Erträge', '2026-01-01')", (jahr, thh))
+                "INSERT INTO council_ergebnisrechnung (year, thh_nr, nr, bezeichnung, "
+                " fetched_at) VALUES (?, ?, 12, 'Erträge', '2026-01-01')", (year, thh))
 
     jahre = store.haushalt_jahrgaenge()
     assert jahre["jahresabschluss"] == [2022, 2023]

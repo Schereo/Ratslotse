@@ -76,11 +76,11 @@ AUFWENDUNGEN_PLAN = 776_500_000.0
 JAHR = 2024
 
 
-def _quelle(jahr: int, probe: str = "strukturprobe") -> Herkunft:
+def _quelle(year: int, probe: str = "strukturprobe") -> Herkunft:
     """Die Herkunft, die `save_ergebnisrechnung` verlangt — hier nur Beiwerk:
     Das Flussbild liest Zahlen, nicht Belege."""
-    return Herkunft(art="ris", probe=probe, label=f"Jahresabschluss {jahr}",
-                    url=f"https://example.org/ja-{jahr}.pdf",
+    return Herkunft(art="ris", probe=probe, label=f"Jahresabschluss {year}",
+                    url=f"https://example.org/ja-{year}.pdf",
                     fundstelle="Ergebnisrechnung der Kernverwaltung")
 
 
@@ -124,8 +124,8 @@ def _daten(store: CouncilStore) -> dict:
 SKRIPT = r"""
 import { flussbild, flussJahre, fasseKleineZusammen } from "%(lib)s";
 const eingabe = JSON.parse(process.argv[2]);
-const { daten, jahr, stand } = eingabe;
-const bild = flussbild(daten, jahr, stand);
+const { daten, year, stand } = eingabe;
+const bild = flussbild(daten, year, stand);
 if (!bild) { console.log(JSON.stringify({ bild: null })); process.exit(0); }
 const seite = (s) => ({
   gesamt: s.gesamt,
@@ -173,13 +173,13 @@ def _lib_fuer_node(tmp_path: Path) -> Path:
     return ziel / "haushalt.ts"
 
 
-def _fluss(tmp_path: Path, daten: dict, jahr: int = JAHR, stand: str = "ist") -> dict:
+def _fluss(tmp_path: Path, daten: dict, year: int = JAHR, stand: str = "ist") -> dict:
     skript = tmp_path / "fluss.mjs"
     skript.write_text(SKRIPT % {"lib": _lib_fuer_node(tmp_path).as_posix()},
                       encoding="utf-8")
     fertig = subprocess.run(
         [_NODE, "--no-warnings", str(skript),
-         json.dumps({"daten": daten, "jahr": jahr, "stand": stand})],
+         json.dumps({"daten": daten, "year": year, "stand": stand})],
         capture_output=True, text=True, timeout=90)
     if fertig.returncode != 0:
         pytest.skip(f"Node kann das TypeScript-Modul nicht laden: {fertig.stderr[:400]}")
@@ -318,7 +318,7 @@ def test_store_liefert_genau_die_felder_die_das_bild_liest(tmp_path):
     zeilen = store.get_ergebnisrechnung(JAHR)
     store.close()
 
-    for feld in ("jahr", "nr", "bezeichnung", "thh_nr", "thh_name", "ansatz", "ergebnis"):
+    for feld in ("year", "nr", "bezeichnung", "thh_nr", "thh_name", "ansatz", "ergebnis"):
         assert all(feld in z for z in zeilen), feld
     arten = [z for z in zeilen if z["thh_nr"] is None and 1 <= z["nr"] <= 11]
     bereiche = [z for z in zeilen if z["thh_nr"] is not None and z["nr"] == 20]

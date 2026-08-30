@@ -51,7 +51,7 @@ import {
 } from "@/components/grafik/ablesen";
 
 type Kraft = {
-  jahr: number;
+  year: number;
   messzahl: number | null;
   zuweisungen: number | null;
 };
@@ -70,7 +70,7 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   const reihe = steuerkraft
     .filter((k): k is Kraft & { messzahl: number; zuweisungen: number } =>
       k.messzahl != null && k.zuweisungen != null)
-    .sort((a, b) => a.jahr - b.jahr);
+    .sort((a, b) => a.year - b.year);
 
   // Vor dem Ausstieg: Ein Hook hinter einem `return` ist kein Hook mehr.
   const ablesen = useAblesen(reihe.length, Math.max(reihe.length - 1, 0));
@@ -87,7 +87,7 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   const gegenlaeufig = steigend.filter((p) => p.dZuw < 0).length;
 
   const schmal = breite < 520;
-  const fs = schmal ? { achse: 12, jahr: 12, wert: 12.5 } : { achse: 10.5, jahr: 10.5, wert: 12 };
+  const fs = schmal ? { achse: 12, year: 12, wert: 12.5 } : { achse: 10.5, year: 10.5, wert: 12 };
   const W = breite, X0 = schmal ? 34 : 40, X1 = W - (schmal ? 8 : 12);
 
   // EINE gemeinsame Achse in Mio. € für beide Reihen. Zwei Achsen mit eigener
@@ -112,12 +112,12 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   // hatte dieser Block nie; die vollständige Reihe steht als sr-only-Absatz
   // daneben und wird von der Grafik referenziert.
   const stellen: AbleseStelle[] = reihe.map((k) => ({
-    titel: String(k.jahr),
+    titel: String(k.year),
     werte: [
       { label: "Steuerkraft", wert: deMio(k.messzahl / 1e6), farbe: "var(--hh-ein-0)" },
       { label: "Zuweisungen", wert: deMio(k.zuweisungen / 1e6), farbe: "var(--hh-aus-2)" },
     ],
-    vorlesen: `Ausgleichsjahr ${k.jahr}: Steuerkraftmesszahl ${deMio(k.messzahl / 1e6)} Millionen Euro, `
+    vorlesen: `Ausgleichsjahr ${k.year}: Steuerkraftmesszahl ${deMio(k.messzahl / 1e6)} Millionen Euro, `
       + `Schlüsselzuweisungen ${deMio(k.zuweisungen / 1e6)} Millionen Euro.`,
   }));
 
@@ -128,7 +128,7 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
           Was das Land gegenrechnet
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          Ausgleichsjahre {reihe[0].jahr}–{letzte.jahr}
+          Ausgleichsjahre {reihe[0].year}–{letzte.year}
         </span>
       </div>
 
@@ -141,13 +141,13 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
 
       <div ref={box} className="mt-3">
         <AbleseBeschreibung id={beschreibungId}>
-          {`Zwei Reihen über die Ausgleichsjahre ${reihe[0].jahr} bis ${letzte.jahr}, in Millionen Euro. `
-            + `Steuerkraftmesszahl: ${reihe.map((k) => `${k.jahr} ${deMio(k.messzahl / 1e6)}`).join(", ")}. `
-            + `Schlüsselzuweisungen: ${reihe.map((k) => `${k.jahr} ${deMio(k.zuweisungen / 1e6)}`).join(", ")}.`}
+          {`Zwei Reihen über die Ausgleichsjahre ${reihe[0].year} bis ${letzte.year}, in Millionen Euro. `
+            + `Steuerkraftmesszahl: ${reihe.map((k) => `${k.year} ${deMio(k.messzahl / 1e6)}`).join(", ")}. `
+            + `Schlüsselzuweisungen: ${reihe.map((k) => `${k.year} ${deMio(k.zuweisungen / 1e6)}`).join(", ")}.`}
         </AbleseBeschreibung>
         <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
           aria-describedby={beschreibungId}
-          aria-label={`Steuerkraft und Zuweisungen, Ausgleichsjahre ${reihe[0].jahr} bis ${letzte.jahr}`}>
+          aria-label={`Steuerkraft und Zuweisungen, Ausgleichsjahre ${reihe[0].year} bis ${letzte.year}`}>
           {gitter.map((v) => (
             <g key={v}>
               <line x1={X0} y1={y(v)} x2={X1} y2={y(v)} className="stroke-border/60" />
@@ -176,11 +176,11 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
             const letzterTick = i === reihe.length - 1;
             if (!(i % schritt === 0 || letzterTick)) return null;
             return (
-              <text key={k.jahr} x={x(i)} y={172} fontSize={fs.jahr}
+              <text key={k.year} x={x(i)} y={172} fontSize={fs.year}
                 textAnchor={letzterTick ? "end" : i === 0 ? "start" : "middle"}
                 className={letzterTick
                   ? "fill-foreground font-mono" : "fill-muted-foreground font-mono"}>
-                {k.jahr}
+                {k.year}
               </text>
             );
           })}

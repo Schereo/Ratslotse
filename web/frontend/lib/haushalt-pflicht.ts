@@ -23,7 +23,7 @@
 //
 // ZWEI JAHRE, NICHT EINS. Der Plan reicht bis ins Kopfjahr der Seite, die
 // Produktebene endet 2023. Jede Aussage aus ihr trägt deshalb ihren eigenen
-// Jahresstempel — `SpielraumBefund.jahr`. Vermischen wäre die stillste Art,
+// Jahresstempel — `SpielraumBefund.year`. Vermischen wäre die stillste Art,
 // hier falsch zu liegen.
 
 import {
@@ -167,7 +167,7 @@ export const SPIELRAUM_STUFEN: Spielraum[] = ["niedrig", "mittel", "hoch"];
  *  („viel Spielraum") schwerer wiegen als 54 Mio. € Rechtsanspruch. */
 export type SpielraumBefund = {
   /** Jahr der Produktebene — nicht das Planjahr der Seite. */
-  jahr: number;
+  year: number;
   schluessel: BereichSchluessel;
   produkte: number;
   /** Summe der Aufwendungen aller Produkte dieses Teilhaushalts, in Euro. */
@@ -193,17 +193,17 @@ function leerZaehler(): Record<Spielraum | "ohne", number> {
  *  ohne auflösbaren Namen fallen heraus — sie einem Bereich zuzuschlagen wäre
  *  geraten. */
 export function spielraumBefunde(
-  produkte: Produkt[], jahr: number,
+  produkte: Produkt[], year: number,
 ): Map<BereichSchluessel, SpielraumBefund> {
   const aus = new Map<BereichSchluessel, SpielraumBefund>();
   for (const p of produkte) {
-    if (p.jahr !== jahr) continue;
+    if (p.year !== year) continue;
     const s = p.thh_name ? bereichKanon(p.thh_name).schluessel : null;
     if (!s) continue;
     let b = aus.get(s);
     if (!b) {
       b = {
-        jahr, schluessel: s, produkte: 0, aufwand: 0,
+        year, schluessel: s, produkte: 0, aufwand: 0,
         anteil: leerZaehler(), dominant: null, groesste: null,
       };
       aus.set(s, b);

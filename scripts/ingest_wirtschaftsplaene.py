@@ -121,8 +121,8 @@ def main() -> int:
         print(f"Mit Eckwerten: {len(gefunden)} · ohne: {len(luecken)} · "
               f"Probe gerissen: {len(risse)}\n")
 
-        for plan, _ in sorted(gefunden, key=lambda x: (x[0].betrieb, x[0].jahr)):
-            print(f"  {plan.jahr}  {plan.betrieb:8s} "
+        for plan, _ in sorted(gefunden, key=lambda x: (x[0].betrieb, x[0].year)):
+            print(f"  {plan.year}  {plan.betrieb:8s} "
                   f"Erträge {plan.ertraege / 1e6:7.1f} Mio. €  "
                   f"Ergebnis {plan.ergebnis / 1e6:8.3f} Mio. €  "
                   f"Vermögensplan {(plan.vermoegensplan or 0) / 1e6:7.1f} Mio. €  "
@@ -157,8 +157,8 @@ def main() -> int:
             if not erkannt or erkannt[0] not in VOKABULAR:
                 continue
             betrieb = erkannt[0]
-            jahr = jahr_aus_titel(r["title"])
-            if jahr is None:
+            year = jahr_aus_titel(r["title"])
+            if year is None:
                 continue
             anlagen = [dict(a) for a in store._conn.execute(  # noqa: SLF001
                 "SELECT document_id, label, url, status, raw_text, ocr_modell "
@@ -175,13 +175,13 @@ def main() -> int:
             lesbar = [a for a in anlagen
                       if a["status"] in ANLAGE_LESBAR and (a["raw_text"] or "")]
             if not lesbar:
-                ohne_text.append((r["template_number"], jahr,
+                ohne_text.append((r["template_number"], year,
                                   [a["status"] for a in anlagen] or ["keine Anlage"]))
                 continue
             for a in lesbar:
                 try:
                     plan, proben = parse_erfolgsplan(
-                        r["template_number"], betrieb, jahr, a["raw_text"])
+                        r["template_number"], betrieb, year, a["raw_text"])
                 except WirtschaftsplanFehler as fehler:
                     anlagen_risse.append(f"{r['template_number']} (Anlage "
                                          f"{a['document_id']}): {fehler}")
@@ -191,15 +191,15 @@ def main() -> int:
 
         if aus_anlage:
             print("\nAus dem Erfolgsplan der Anlage:")
-            for plan, proben, a in sorted(aus_anlage, key=lambda x: (x[0].betrieb, x[0].jahr)):
-                print(f"  {plan.jahr}  {plan.betrieb:8s} "
+            for plan, proben, a in sorted(aus_anlage, key=lambda x: (x[0].betrieb, x[0].year)):
+                print(f"  {plan.year}  {plan.betrieb:8s} "
                       f"Erträge {plan.ertraege / 1e6:7.3f} Mio. €  "
                       f"Ergebnis {plan.ergebnis / 1e6:+7.3f} Mio. €  "
                       f"({len(proben)} Spalten geprüft, Anlage {a['document_id']})")
         if ohne_text:
             print("\nAnlage ohne Volltext — nichts zu lesen:")
-            for vnr, jahr, stati in ohne_text:
-                print(f"  {jahr}  {vnr}: {', '.join(sorted(set(stati)))}"
+            for vnr, year, stati in ohne_text:
+                print(f"  {year}  {vnr}: {', '.join(sorted(set(stati)))}"
                       + ("  (Scan — für eine spätere OCR vorgemerkt)"
                          if "empty" in stati else ""))
         if anlagen_risse:
@@ -213,20 +213,20 @@ def main() -> int:
         # Für die Betriebe, deren Tabelle sich nicht selbst vorrechnet. Greift
         # nur, wo die beiden anderen Wege nichts geliefert haben — sonst stünde
         # eine Zeile mit bloßem Ergebnis gegen eine mit vollem Tripel.
-        schon = {(plan.betrieb, plan.jahr) for plan, _ in gefunden} | {
-            (plan.betrieb, plan.jahr) for plan, _, _ in aus_anlage}
+        schon = {(plan.betrieb, plan.year) for plan, _ in gefunden} | {
+            (plan.betrieb, plan.year) for plan, _, _ in aus_anlage}
         kernzahlen = []
         for r in rows:
             erkannt = betrieb_aus_titel(r["title"])
-            jahr = jahr_aus_titel(r["title"])
-            if not erkannt or jahr is None or (erkannt[0], jahr) in schon:
+            year = jahr_aus_titel(r["title"])
+            if not erkannt or year is None or (erkannt[0], year) in schon:
                 continue
             texte = [a[0] for a in store._conn.execute(  # noqa: SLF001
                 "SELECT raw_text FROM council_anlagen WHERE kvonr = ? "
                 "AND status = 'ok'", (r["kvonr"],))]
             try:
                 res = parse_kernzahl(r["template_number"], r["title"], r["raw_text"],
-                                     jahr, texte)
+                                     year, texte)
             except WirtschaftsplanFehler as fehler:
                 risse.append(str(fehler)); continue
             if res is None:
@@ -236,8 +236,8 @@ def main() -> int:
         if kernzahlen:
             print("\nKernzahl aus dem Beschlusstext:")
             for plan, wort, lage, _ in sorted(kernzahlen,
-                                              key=lambda x: (x[0].betrieb, x[0].jahr)):
-                print(f"  {plan.jahr}  {plan.betrieb:16s} "
+                                              key=lambda x: (x[0].betrieb, x[0].year)):
+                print(f"  {plan.year}  {plan.betrieb:16s} "
                       f"Ergebnis {plan.ergebnis / 1e6:+8.3f} Mio. €   "
                       f"[{lage}] {BELEGLAGE[lage]}")
 
