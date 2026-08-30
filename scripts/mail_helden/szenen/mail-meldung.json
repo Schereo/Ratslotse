@@ -1,0 +1,78 @@
+{
+  "px": [
+    1500,
+    1400
+  ],
+  "kamera": {
+    "dir": [
+      0.26,
+      0.3,
+      1
+    ],
+    "faktor": 1.0
+  },
+  "figuren": [
+    {
+      "typ": "lotti",
+      "pos": [
+        0,
+        0,
+        -0.03
+      ],
+      "drehung": -4,
+      "nick": 8,
+      "blick_auf": {
+        "requisit": 0
+      },
+      "pose": {
+        "fluegel": {
+          "links": {
+            "y": -30,
+            "z": 10
+          },
+          "rechts": {
+            "y": 30,
+            "z": -10
+          }
+        }
+      },
+      "emotion": {
+        "glanz": 0.85,
+        "schnabel": 0,
+        "neigung": 8,
+        "nick": -6,
+        "blick": [
+          -10,
+          15
+        ],
+        "fluegel": {
+          "links": {
+            "z": 10,
+            "y": 24
+          },
+          "rechts": {
+            "z": -8,
+            "y": 0
+          }
+        }
+      }
+    }
+  ],
+  "requisiten": [
+    {
+      "typ": "papierstapel",
+      "pos": [
+        0.005,
+        0,
+        0.082
+      ],
+      "rot": [
+        0,
+        -6,
+        0
+      ],
+      "lagen": 16,
+      "markiert": 2
+    }
+  ]
+}

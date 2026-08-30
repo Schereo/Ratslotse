@@ -7,6 +7,28 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [1.15.0] – 2026-08-30
+
+### Geändert
+- **Die Abo-Seite ist jetzt eine Liste statt zweier.** Abonnierte und offene
+  Gremien standen getrennt untereinander — wer etwas abonnierte, sah es nach
+  oben springen, und alles darunter verrutschte. Jetzt stehen alle Gremien in
+  einer Liste, sortiert nach Alltagsbezug; dass etwas abonniert ist, sagt der
+  Knopf, und die Reihenfolge ändert sich durch einen Klick nie. Beim Abonnieren
+  läutet kurz eine Glocke — sie zeigt, was das Abo zusagt. Wer weniger Bewegung
+  eingestellt hat, sieht sie nicht. **Die Themen-Karte zählt jetzt ein halbes
+  Jahr statt 30 Tagen.** „0 in 30 Tagen" stand bei fast jedem Thema, auch bei
+  sehr lebendigen: Die Gremien tagen monatlich, im Sommer gar nicht, und
+  Protokolle kommen mit Verzug. Sechs Monate umfassen mehrere Sitzungsrunden und
+  trennen wirklich Laufendes von Ruhendem. (#826)
+- **Die E-Mails von Ratslotse sehen jetzt nach Ratslotse aus.** Alle Mails — von
+  der Bestätigung nach der Registrierung über Passwort-Reset und
+  Einrichtungs-Erinnerung bis zu den Benachrichtigungen — teilen sich eine neue
+  Hülle: weiße Karte auf hellem Grund, Hafenblau statt Fremdblau, und oben eine
+  zum Anlass passende 3D-Lotti-Szene (winkende Lotti mit Küken zur Begrüßung,
+  grübelnde Lotti unterm Fragezeichen beim Passwort, jubelnde Lotti mit Konfetti
+  zur Freischaltung, lesende Lotti bei Neuigkeiten aus dem Rat …). (#827)
+
 ## [1.14.0] – 2026-08-28
 
 ### Hinzugefügt
@@ -5129,7 +5151,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.14.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.15.0...main
+[1.15.0]: https://github.com/Schereo/Ratslotse/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/Schereo/Ratslotse/compare/v1.13.2...v1.14.0
 [1.13.2]: https://github.com/Schereo/Ratslotse/compare/v1.13.1...v1.13.2
 [1.13.1]: https://github.com/Schereo/Ratslotse/compare/v1.13.0...v1.13.1

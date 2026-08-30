@@ -1,0 +1,14 @@
+{
+  "px": [1400, 1400],
+  "kamera": { "dir": [0.3, 0.1, 1], "faktor": 1.14 },
+  "figuren": [
+    { "typ": "lotti", "drehung": -6, "emotion": "denkt" }
+  ],
+  "requisiten": [
+    {
+      "typ": "fragezeichen",
+      "an": { "figur": 0, "anker": "scheitel", "offset": [0.05, 0.075, 0] },
+      "groesse": 1.1
+    }
+  ]
+}

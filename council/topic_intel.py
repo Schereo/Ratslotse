@@ -22,10 +22,12 @@ Ein Themen-Anlegen darf nie daran scheitern, dass ein LLM gerade hakt.
 """
 from __future__ import annotations
 
+import calendar
 import json
 import logging
 import os
 import re
+from datetime import date
 
 from kern import llm, prompts
 
@@ -78,6 +80,37 @@ SCHWELLE = -1.0
 DECKEL = 40
 #: So viele Kandidaten je Quelle (Vektor und BM25) gehen in die Bewertung.
 POOL = 45
+#: Ab wann ein Treffer „aktuell" heißt — die Zahl hinter „n in 6 Monaten" auf
+#: der Themen-Karte UND die Grenze, ab der eine N3-Mail verschickt wird.
+AKTUELL_MONATE = 6
+
+
+def vor_sechs_monaten(heute: date | None = None) -> date:
+    """Der Stichtag hinter „n in 6 Monaten" — und hinter der Ergebnis-Mail.
+
+    Ursprünglich waren es 30 Tage — dabei stand bei fast jedem Thema eine 0,
+    auch bei sehr lebendigen: Die Gremien tagen monatlich, im Sommer gar nicht,
+    und Protokolle kommen mit ein bis zwei Monaten Verzug. „0 in 30 Tagen" las
+    sich damit wie ein totes Thema, obwohl der Rat gerade erst entschieden
+    hatte (Tims Befund 28.08.2026 an „Schulbegleitung": „40+ gesamt · 0 in 30
+    Tagen"). Ein halbes Jahr umfasst mehrere Sitzungsrunden und trennt
+    dadurch wirklich Laufendes von Ruhendem.
+
+    Seit dem 30.08.2026 hängt auch der Mail-Versand daran (Tim: „über die Mail
+    würde ich immer nur über aktuelle Beschlüsse informieren"), deshalb steht
+    die Rechnung hier statt im Web-Router: Karte und Meldung sollen dieselbe
+    Grenze meinen, nicht zwei zufällig gleich große.
+
+    Kalendarisch gerechnet statt „minus 183 Tage": Der Wert steht als „6
+    Monate" auf der Karte, also soll er auch ein halbes Jahr meinen. Am 31.
+    August wird daraus der 28./29. Februar — der letzte Tag, den es im
+    Zielmonat gibt.
+    """
+    heute = heute or date.today()
+    monat = heute.month - AKTUELL_MONATE
+    jahr = heute.year + (monat - 1) // 12
+    monat = (monat - 1) % 12 + 1
+    return date(jahr, monat, min(heute.day, calendar.monthrange(jahr, monat)[1]))
 
 
 def treffer(store, name: str, text: str, *, deckel: int = DECKEL,

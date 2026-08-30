@@ -87,6 +87,12 @@ CREATE TABLE IF NOT EXISTS council_agenda_anlagen (
     item_number  TEXT NOT NULL,
     label        TEXT NOT NULL,
     url          TEXT NOT NULL,
+    -- Nur für Dringlichkeitsanträge gefüllt (council/dringlichkeit.py): Sie
+    -- haben keine Vorlage, ihr ganzer Inhalt steht in DIESEM PDF. Alle
+    -- anderen Zeilen-Dokumente bleiben leer — sie hängen an einem Punkt, der
+    -- seine Vorlage hat, und ein Download je Anlage bei jedem Scrape wäre
+    -- teuer für nichts.
+    raw_text     TEXT,
     UNIQUE(ksinr, item_number, url)
 );
 
@@ -165,6 +171,30 @@ CREATE TABLE IF NOT EXISTS agenda_item_impact (
     item_number TEXT NOT NULL,
     impact      INTEGER NOT NULL,
     reason      TEXT,           -- Grund in einfacher Sprache, steht auf der Karte
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY(ksinr, item_number)
+);
+
+-- Kartentext für Social Media je TOP. Eigene Tabelle aus zwei Gründen:
+-- save_session ERSETZT die Items einer Sitzung (eine Spalte wäre bei jeder
+-- Tagesordnungs-Änderung weg und müsste neu bezahlt werden, genau wie bei
+-- agenda_item_impact), und der Text hat einen anderen Auftrag als die
+-- beiden vorhandenen Felder.
+--
+-- Warum überhaupt ein dritter Text (Tims Vorgabe 30.08.26):
+--   agenda_item_summaries.summary entsteht ALLEIN AUS DEM TITEL („Du kennst
+--     nur den Titel des Punktes" steht wörtlich in seinem Prompt) — er kann
+--     die Überschrift nur umformulieren.
+--   agenda_item_impact.reason kennt die Vorlage, begründet aber eine
+--     RANGFOLGE und wertet deshalb („Trägt ein hohes finanzielles Risiko").
+--     Zum Sortieren richtig; unter einem eigenen Absender auf Instagram wird
+--     daraus eine Meinung des Absenders zur Sache.
+-- Dieser Text bekommt Vorlage UND Anlagen und darf nicht werten.
+CREATE TABLE IF NOT EXISTS agenda_item_social (
+    ksinr       INTEGER NOT NULL,
+    item_number TEXT NOT NULL,
+    text        TEXT NOT NULL,
+    quelle      TEXT NOT NULL,  -- was das Modell sah: "vorlage+anlagen", "vorlage", "titel"
     created_at  TEXT NOT NULL,
     PRIMARY KEY(ksinr, item_number)
 );
@@ -596,6 +626,11 @@ class CouncilStore:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_anlagen_kvonr ON council_anlagen(kvonr)")
         # Gerenderte Planzeichnung (scripts/render_plaene.py): 0 = offen,
         # 1 = Bild liegt unter data/plaene/<document_id>.jpg, -1 = fehlgeschlagen.
+        aacols = {r[1] for r in self._conn.execute(
+            "PRAGMA table_info(council_agenda_anlagen)").fetchall()}
+        if aacols and "raw_text" not in aacols:
+            self._conn.execute("ALTER TABLE council_agenda_anlagen ADD COLUMN raw_text TEXT")
+
         acols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_anlagen)").fetchall()}
         if "bild" not in acols:
             self._conn.execute(
@@ -1653,18 +1688,24 @@ class CouncilStore:
             "ertrag REAL, "                    # Euro; NULL = kein Betrag in
             "aufwand REAL, "                   # dieser Spalte (Vermerke: beide)
             "erlaeuterung TEXT, "              # die Erläuterungs-Spalte des PDFs
+            # WER die Position vorgeschlagen hat — „Verw. I“, „SPD/ BÜNDNIS
+            # 90/DIE GRÜNEN“. NULL, wo das Dokument die Spalte „Vorschlag
+            # von“ nicht führt; das sind 17 der 18 EHH-Dokumente.
+            "urheber TEXT, "
             "dokument_id INTEGER NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahrgang, liste, jahr, lfd))"
         )
-        # Die Erläuterungs-Spalte kam nach dem ersten Ingest dazu (26.08.2026)
-        # — additiv, gefüllt wird sie vom nächsten Ingest-Lauf (der je
-        # (jahrgang, liste) ohnehin löscht und neu schreibt).
+        # Erläuterungs- (26.08.2026) und Urheber-Spalte (30.08.2026) kamen
+        # nach dem ersten Ingest dazu — additiv, gefüllt werden sie vom
+        # nächsten Ingest-Lauf (der je (jahrgang, liste) ohnehin löscht und
+        # neu schreibt).
         aend_cols = {r[1] for r in self._conn.execute(
             "PRAGMA table_info(council_haushalt_aenderungen)").fetchall()}
-        if aend_cols and "erlaeuterung" not in aend_cols:
-            self._conn.execute(
-                "ALTER TABLE council_haushalt_aenderungen ADD COLUMN erlaeuterung TEXT")
+        for spalte in ("erlaeuterung", "urheber"):
+            if aend_cols and spalte not in aend_cols:
+                self._conn.execute(
+                    f"ALTER TABLE council_haushalt_aenderungen ADD COLUMN {spalte} TEXT")
         # Die „Zusammenstellung der Veränderungen" derselben Dokumente — der
         # Rahmen, an dem jede Positionsliste bewiesen wurde. Sie trägt auch,
         # was NUR hier steht: die politisch beschlossene Änderung mit ihrem
@@ -2611,9 +2652,10 @@ class CouncilStore:
             )
             self._conn.executemany(
                 """INSERT OR IGNORE INTO council_agenda_anlagen
-                   (ksinr, item_number, label, url) VALUES (?, ?, ?, ?)""",
+                   (ksinr, item_number, label, url, raw_text) VALUES (?, ?, ?, ?, ?)""",
                 [
-                    (session.ksinr, i.item_number, a.get("label") or "Anlage", a.get("url") or "")
+                    (session.ksinr, i.item_number, a.get("label") or "Anlage",
+                     a.get("url") or "", a.get("raw_text") or None)
                     for i in session.agenda_items
                     for a in (getattr(i, "anlagen", None) or [])
                     if a.get("url")
@@ -3024,9 +3066,10 @@ class CouncilStore:
         # Es lag bis 19.08.26 ungenutzt in der Datenbank.
         rohe = self._conn.execute(
             f"SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr, s.summary, "
-            f"       v.art "
+            f"       v.art, so.text AS social_text "
             f"FROM council_agenda_items a "
             f"LEFT JOIN agenda_item_summaries s ON s.ksinr = a.ksinr AND s.item_number = a.item_number "
+            f"LEFT JOIN agenda_item_social so ON so.ksinr = a.ksinr AND so.item_number = a.item_number "
             f"LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
             f"WHERE a.ksinr IN ({ph}) AND a.is_public = 1 ORDER BY a.id",
             [s["ksinr"] for s in sitzungen]).fetchall()
@@ -3089,6 +3132,10 @@ class CouncilStore:
             kandidaten.append({
                 "ksinr": r["ksinr"], "item_number": r["item_number"], "title": titel,
                 "summary": (r["summary"] or "").strip() or None,
+                # Der Kartentext für Social Media (agenda_item_social) — kennt
+                # Vorlage und Anlagen und wertet nicht. Fehlt er, bleibt es bei
+                # der Kurzfassung; der Bot behandelt beides gleich.
+                "social_text": (r["social_text"] or "").strip() or None,
                 "vorlage_nr": r["vorlage_nr"], "kvonr": r["kvonr"], "art": r["art"],
                 "committee": sitz["committee"], "session_date": sitz["session_date"],
                 "gruppe_nr": gruppe_nr,
@@ -3137,7 +3184,7 @@ class CouncilStore:
                     for r in self._conn.execute(
                         f"SELECT ksinr, item_number, impact, reason FROM agenda_item_impact "
                         f"WHERE ksinr IN ({ph})", [s["ksinr"] for s in sitzungen])}
-        from council.impact import formalakt_deckel
+        from council.impact import dringlichkeits_boden, formalakt_deckel
 
         for k in kandidaten:
             eintrag = bewertet.get((k["ksinr"], k["item_number"]))
@@ -3153,6 +3200,16 @@ class CouncilStore:
             if deckel is not None and k["wichtig"] > deckel:
                 k["wichtig"] = deckel
                 k["wichtig_grund"] = None
+            # Und der Gegenpol: Dringlichkeitsanträge bekommen einen Boden.
+            # Die Rubrik misst Tragweite, nicht Aktualität — dass eine
+            # Fraktion die Tagesordnung für eine Sache aufmacht, wiegt sie
+            # nicht mit (Tims Entscheidung 30.08.26). Der Grund des Modells
+            # bleibt stehen: Er ist richtig, er wog nur die Kurzfristigkeit
+            # nicht mit. Lesezeitig wie der Deckel, damit er auch für schon
+            # bewertete Punkte sofort gilt.
+            boden = dringlichkeits_boden(k["item_number"])
+            if boden is not None and k["wichtig"] < boden:
+                k["wichtig"] = boden
         # Treffer zuerst, danach nach Rang: Ein Punkt zu einem eigenen Thema ist
         # relevanter als jeder gut bewertete Fremdpunkt.
         kandidaten.sort(key=lambda p: (0 if p["topic_name"] else 1, -p["wichtig"], p["session_date"]))
@@ -3257,7 +3314,13 @@ class CouncilStore:
                 # baut aus dieser Liste aber ganze Karten, und die standen
                 # dadurch grundsätzlich ohne Erklärung da (Tims Befund
                 # 19.08.26: „die zweite Seite hat keine Zusammenfassung").
-                "summary": k["summary"],
+                #
+                # Und derselbe Fehler noch einmal, 30.08.26: Der neue
+                # Kartentext fehlte hier, weil diese Liste Feld für Feld
+                # gebaut wird. Der Dringlichkeitsantrag zur PAK-Belastung
+                # stand deshalb auf der Karte — und darunter nichts. Wer hier
+                # ein Feld ergänzt, muss es an BEIDEN Stellen tun.
+                "summary": k["summary"], "social_text": k.get("social_text"),
                 "wichtig": k["wichtig"], "wichtig_grund": k.get("wichtig_grund"),
                 "vorlage_nr": k["vorlage_nr"], "kvonr": k["kvonr"],
                 "committee": k["committee"], "session_date": k["session_date"],
@@ -3346,6 +3409,86 @@ class CouncilStore:
                 "(ksinr, item_number, summary, agenda_hash, created_at) VALUES (?, ?, ?, ?, ?)",
                 [(ksinr, p["number"], p["summary"], agenda_hash, now)
                  for p in punkte if p.get("number") and p.get("summary")])
+
+    def save_social_text(self, ksinr: int, item_number: str, text: str,
+                         quelle: str) -> None:
+        """Kartentext eines TOP festhalten (siehe agenda_item_social)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO agenda_item_social "
+                "(ksinr, item_number, text, quelle, created_at) VALUES (?, ?, ?, ?, ?)",
+                (ksinr, item_number, text, quelle, now))
+
+    def agenda_items_needing_social_text(self, limit: int | None = None,
+                                         tage_voraus: int = 21,
+                                         mindest_wichtig: int = 40) -> list[dict]:
+        """Kommende TOPs ohne Kartentext — samt allem, was das Modell sehen soll.
+
+        Zwei Einschränkungen, beide bewusst:
+
+        Nur nach VORN. Der Text steht in einer Vorschau; für vergangene
+        Sitzungen gibt es später den Beschluss.
+
+        Nur, was auch auf eine Karte kommt (mindest_wichtig). Eine Woche
+        hat rund 87 öffentliche TOPs, auf die Karten schaffen es etwa 20 —
+        für die anderen wäre der Aufruf bezahlt und nie gelesen. Punkte ohne
+        Tragweite-Bewertung bleiben deshalb draußen: Sie kommen im nächsten
+        Lauf wieder, sobald sie eine haben.
+
+        Der Vorlagentext kommt UNGEKÜRZT (die Auswahl trifft
+        social_text.kontext, die kennt die Budgets); die Anlagen holt der
+        Aufrufer über anlagen_fuer.
+        """
+        from datetime import date, timedelta
+
+        heute = date.today().isoformat()
+        bis = (date.today() + timedelta(days=tage_voraus)).isoformat()
+        sql = """SELECT a.ksinr, a.item_number, a.title, a.kvonr, a.vorlage_nr,
+                        cs.committee, cs.session_date,
+                        v.art, v.amt, v.beschlussvorschlag, v.finanz_check,
+                        v.klima_check, v.raw_text,
+                        i.impact,
+                        -- Dringlichkeitsanträge haben keine Vorlage; ihr
+                        -- ganzer Inhalt steht in dem PDF, das an der Zeile
+                        -- hängt. Der Lauf holt es über diese URL nach.
+                        (SELECT an.url FROM council_agenda_anlagen an
+                          WHERE an.ksinr = a.ksinr AND an.item_number = a.item_number
+                          LIMIT 1) AS anlage_url,
+                        (SELECT an.raw_text FROM council_agenda_anlagen an
+                          WHERE an.ksinr = a.ksinr AND an.item_number = a.item_number
+                            AND an.raw_text IS NOT NULL LIMIT 1) AS anlage_text
+                 FROM council_agenda_items a
+                 JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                 JOIN agenda_item_impact i
+                      ON i.ksinr = a.ksinr AND i.item_number = a.item_number
+                 LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr
+                 LEFT JOIN agenda_item_social so
+                        ON so.ksinr = a.ksinr AND so.item_number = a.item_number
+                 WHERE a.is_public = 1 AND so.text IS NULL
+                   AND i.impact >= ?
+                   AND cs.session_date >= ? AND cs.session_date <= ?
+                   AND a.title IS NOT NULL AND length(a.title) >= 8
+                 ORDER BY i.impact DESC, cs.session_date"""
+        args: tuple = (mindest_wichtig, heute, bis)
+        if limit is not None:
+            sql += " LIMIT ?"
+            args += (limit,)
+        return [dict(r) for r in self._conn.execute(sql, args)]
+
+    def anlagen_fuer(self, kvonr: int) -> list[dict]:
+        """Anlagen einer Vorlage mit Text — Anträge zuerst, dann die kürzeste.
+
+        Die Reihenfolge ist die halbe Miete: Der Antrag einer Fraktion hat
+        3.000 Zeichen und sagt, was jemand WILL. Der „Materialband
+        Lupenpläne" derselben Vorlage hat 400.000 und ist als OCR-Text eine
+        Kartensammlung. Wer nach Länge sortiert, bekommt zuerst das Argument
+        und läuft nicht Gefahr, sein Budget mit Planwerk zu füllen.
+        """
+        return [dict(r) for r in self._conn.execute(
+            "SELECT label, is_antrag, antragsteller, raw_text FROM council_anlagen "
+            "WHERE kvonr = ? AND raw_text IS NOT NULL AND length(raw_text) > 0 "
+            "ORDER BY is_antrag DESC, length(raw_text) ASC", (kvonr,))]
 
     def save_agenda_snapshot(self, ksinr: int, agenda_hash: str, items: list[dict]) -> None:
         """Öffentliche Tagesordnungspunkte zu diesem Hash einfrieren — die
@@ -4122,7 +4265,19 @@ class CouncilStore:
                         -- Großzügig: Die ersten ~300 Zeichen sind Briefkopf,
                         -- den `impact.vorlagen_kern` abschneidet. Bei 1200
                         -- blieb danach zu wenig Inhalt übrig.
-                        substr(v.raw_text, 1, 2500) AS sachverhalt
+                        -- Dringlichkeitsanträge haben keine Vorlage; ihr Text
+                        -- steht am Zeilen-Dokument. Ohne dieses COALESCE
+                        -- bewertete das Modell den Dateinamen — der
+                        -- PAK-Antrag vom 31.08.26 kam so auf 55 und verpasste
+                        -- die Karte, obwohl im PDF eine Schadstoffbelastung
+                        -- eines Gewässers und Sofortmaßnahmen standen.
+                        COALESCE(substr(v.raw_text, 1, 2500),
+                                 (SELECT substr(an.raw_text, 1, 2500)
+                                    FROM council_agenda_anlagen an
+                                   WHERE an.ksinr = a.ksinr
+                                     AND an.item_number = a.item_number
+                                     AND an.raw_text IS NOT NULL
+                                   LIMIT 1)) AS sachverhalt
                  FROM council_agenda_items a
                  JOIN council_sessions cs ON cs.ksinr = a.ksinr
                  LEFT JOIN agenda_item_summaries s
@@ -6592,11 +6747,11 @@ class CouncilStore:
             self._conn.executemany(
                 "INSERT INTO council_haushalt_aenderungen (jahrgang, liste, "
                 " jahr, lfd, thh, seite_entwurf, produkt, bezeichnung, "
-                " ertrag, aufwand, erlaeuterung, dokument_id, herkunft_id, "
-                " fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " ertrag, aufwand, erlaeuterung, urheber, dokument_id, "
+                " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(jahrgang, liste, z.jahr, z.lfd, z.thh, z.seite_entwurf,
                   z.produkt, z.bezeichnung, z.ertrag, z.aufwand,
-                  z.erlaeuterung, dokument_id, hid, now)
+                  z.erlaeuterung, z.urheber, dokument_id, hid, now)
                  for z in ergebnis.zeilen])
             self._conn.executemany(
                 "INSERT INTO council_haushalt_aenderungen_summen (jahrgang, "
@@ -6620,7 +6775,7 @@ class CouncilStore:
             zeilen = [dict(r) for r in self._conn.execute(
                 "SELECT jahrgang, liste, jahr, lfd, thh, seite_entwurf, "
                 " produkt, bezeichnung, ertrag, aufwand, erlaeuterung, "
-                " dokument_id, herkunft_id FROM council_haushalt_aenderungen "
+                " urheber, dokument_id, herkunft_id FROM council_haushalt_aenderungen "
                 f"{wo} ORDER BY jahrgang, liste, jahr, lfd", args)]
             summen = [dict(r) for r in self._conn.execute(
                 "SELECT jahrgang, liste, jahr, typ, label, ertraege, "

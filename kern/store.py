@@ -477,6 +477,10 @@ class Store:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self.path, timeout=15, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        # SQLites eingebautes lower() kennt nur ASCII — „Cäcilienbrücke" bliebe
+        # damit groß-A-Ä-blind. Für Titel-Suchen (qa_gespraeche) rechnet Python.
+        self._conn.create_function("unicode_lower", 1,
+                                   lambda t: t.lower() if isinstance(t, str) else t)
         # WAL allows concurrent readers/writer (bot + cron + web API share this
         # file); busy_timeout lets writers wait instead of failing immediately.
         self._conn.execute("PRAGMA journal_mode=WAL")
@@ -1716,13 +1720,50 @@ class Store:
                                (now, gespraech_id))
             return True
 
-    def qa_gespraeche(self, user_id: int) -> list[dict]:
+    @staticmethod
+    def _titel_muster(suche: str | None) -> str | None:
+        """LIKE-Muster für die Titel-Suche — oder None, wenn nicht gesucht wird.
+        `%` und `_` im Suchwort sind Text, keine Platzhalter (ESCAPE-Zeichen
+        ist der Backslash, s. Aufrufer)."""
+        begriff = (suche or "").strip().lower()
+        if not begriff:
+            return None
+        for zeichen in ("\\", "%", "_"):
+            begriff = begriff.replace(zeichen, "\\" + zeichen)
+        return f"%{begriff}%"
+
+    def qa_gespraeche(self, user_id: int, limit: int = 30, offset: int = 0,
+                      suche: str | None = None) -> list[dict]:
+        """Eine Seite der Gesprächsliste, neueste zuerst.
+
+        Bis 08/2026 lieferte diese Abfrage hart die letzten 50 Zeilen — wer
+        mehr Gespräche hatte, kam an die älteren gar nicht mehr heran (Tims
+        Befund 30.08.). Jetzt blättert der Aufrufer; die Gesamtzahl steht in
+        `qa_gespraeche_anzahl`, damit die Anzeige nicht die Seitenlänge zählt.
+
+        Sortiert wird nach `updated` UND `id`: `updated` hat nur
+        Sekundenauflösung, zwei Gespräche derselben Sekunde stünden sonst in
+        beliebiger Reihenfolge — beim Blättern über OFFSET erschiene eines
+        doppelt und eines gar nicht.
+        """
+        muster = self._titel_muster(suche)
+        filt = " AND unicode_lower(g.titel) LIKE ? ESCAPE '\\'" if muster else ""
+        werte: list = [user_id] + ([muster] if muster else []) + [max(0, limit), max(0, offset)]
         rows = self._conn.execute(
-            """SELECT g.id, g.titel, g.updated,
+            f"""SELECT g.id, g.titel, g.updated,
                       (SELECT COUNT(*) FROM qa_gespraech_turns t WHERE t.gespraech_id = g.id) AS n_turns
-               FROM qa_gespraeche g WHERE g.user_id = ?
-               ORDER BY g.updated DESC LIMIT 50""", (user_id,)).fetchall()
+               FROM qa_gespraeche g WHERE g.user_id = ?{filt}
+               ORDER BY g.updated DESC, g.id DESC LIMIT ? OFFSET ?""", werte).fetchall()
         return [dict(r) for r in rows]
+
+    def qa_gespraeche_anzahl(self, user_id: int, suche: str | None = None) -> int:
+        """Wie viele Gespräche das Konto hat (optional: passend zur Suche)."""
+        muster = self._titel_muster(suche)
+        filt = " AND unicode_lower(titel) LIKE ? ESCAPE '\\'" if muster else ""
+        werte: list = [user_id] + ([muster] if muster else [])
+        return self._conn.execute(
+            f"SELECT COUNT(*) FROM qa_gespraeche WHERE user_id = ?{filt}",
+            werte).fetchone()[0]
 
     def qa_gespraech(self, gespraech_id: int, user_id: int) -> dict | None:
         g = self._conn.execute(

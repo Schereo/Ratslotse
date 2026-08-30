@@ -835,7 +835,8 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     erg = Ergebnis(
         zeilen=[
             Zeile(2026, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000,
-                  erlaeuterung="Mehrbedarf laut Schulentwicklungsplan."),
+                  erlaeuterung="Mehrbedarf laut Schulentwicklungsplan.",
+                  urheber="Verw. I"),
             Zeile(2027, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000),
         ],
         summen=[
@@ -859,6 +860,9 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     b = client.get("/api/council/haushalt/aenderungslisten").json()
     assert [z["jahr"] for z in b["zeilen"]] == [2026]
     assert b["zeilen"][0]["erlaeuterung"] == "Mehrbedarf laut Schulentwicklungsplan."
+    # Wer die Position vorschlug, reist mit — die Streit-Seite setzt daran
+    # ihre Urheber-Marke und ihren „nur die Summe"-Satz.
+    assert b["zeilen"][0]["urheber"] == "Verw. I"
     assert {s["jahr"] for s in b["summen"]} == {2026, 2027}
     eigene = {s["label"]: s["eigene"] for s in b["summen"] if s["jahr"] == 2026}
     assert eigene["Änderungsliste Verw. I"] == 1
@@ -1559,6 +1563,34 @@ def _seed_datierte_beschluesse(tage: list[str]) -> list[int]:
     return ids
 
 
+def test_sechs_monats_fenster_rechnet_kalendarisch():
+    """Das Fenster hinter „n in 6 Monaten" ist ein halbes Jahr, keine 183
+    Tage — der Wert steht als Monatsangabe auf der Karte. Am Monatsende, das
+    es im Zielmonat nicht gibt, rutscht der Stichtag auf dessen letzten Tag.
+
+    30 Tage waren es bis zum 28.08.2026, und damit stand bei fast jedem Thema
+    eine 0: Die Gremien tagen monatlich, im Sommer gar nicht.
+    """
+    from council import topic_intel
+
+    from app.routers.topics import _vor_sechs_monaten
+
+    # Seit dem 30.08.2026 hängt auch der Mail-Versand des Wochenlaufs an dieser
+    # Grenze — deshalb rechnet der Router sie nicht selbst, sondern reicht an
+    # `topic_intel` durch (verzögert importiert, damit das openai-SDK nicht am
+    # API-Start hängt).
+    assert _vor_sechs_monaten(date(2026, 8, 28)) == topic_intel.vor_sechs_monaten(date(2026, 8, 28))
+
+    assert _vor_sechs_monaten(date(2026, 8, 28)) == date(2026, 2, 28)
+    assert _vor_sechs_monaten(date(2026, 3, 15)) == date(2025, 9, 15)
+    # 31. August → im Februar gibt es keinen 31.
+    assert _vor_sechs_monaten(date(2026, 8, 31)) == date(2026, 2, 28)
+    # Schaltjahr: derselbe Fall, ein Tag mehr.
+    assert _vor_sechs_monaten(date(2028, 8, 31)) == date(2028, 2, 29)
+    # Jahreswechsel rückwärts.
+    assert _vor_sechs_monaten(date(2026, 1, 10)) == date(2025, 7, 10)
+
+
 def test_karte_traegt_ihre_juengsten_treffer(client):
     """Der Kern des Umbaus: Die Karte trug bisher eine Zahl und einen einzigen
     Titel — wer wissen wollte, was in seinen Themen steckt, musste jedes
@@ -1578,9 +1610,10 @@ def test_karte_traegt_ihre_juengsten_treffer(client):
     assert t["recent_hits"][0]["committee"] == "Sozialausschuss"
     assert t["recent_hits"][0]["outcome"] == "angenommen"
     assert t["decision_count"] == len(ids)
-    # „3 in 30 Tagen" ist die zweite Hälfte der Kicker-Zeile: Sie sagt, ob ein
+    # „3 in 6 Monaten" ist die zweite Hälfte der Kicker-Zeile: Sie sagt, ob ein
     # Thema gerade läuft oder ruht — die Gesamtzahl kann beides bedeuten.
-    assert t["hits_30d"] == 2
+    # Von den sechs Beschlüssen liegen die aus 1, 5 und 40 Tagen im Fenster.
+    assert t["hits_6m"] == 3
 
 
 def test_punkte_und_abzeichen_zaehlen_dieselbe_menge(client):
@@ -4987,6 +5020,73 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     assert client.get("/api/council/deep-research/aktuell").json()["job"] is None
 
 
+def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
+    """Anschlussfrage im Recherche-Modus: „Nochmal bitte ausführlich" trägt ihr
+    Thema nicht im Text. Mit Gesprächsverlauf löst der Job sie — wie /ask — zu
+    einer eigenständigen Frage auf und zerlegt, sucht und berichtet damit.
+    Ohne Verlauf bleibt alles wie zuvor (kein zusätzlicher Analyse-Call).
+
+    Angezeigt und gespeichert bleibt in beiden Fällen die getippte Frage; die
+    aufgelöste Fassung reist als ``kontext`` mit, damit ein aus der DB
+    geladener Bericht denselben Schlüssel trägt wie der live gezeigte.
+    """
+    from council import qa as qa_mod
+
+    _register(client)
+    _deep_mocks(monkeypatch)
+    gesehen: dict = {}
+    zerlegt: list[str] = []
+    berichtet: list[str] = []
+
+    def _analyse(frage, **k):
+        gesehen["frage"] = frage
+        gesehen["verlauf"] = k.get("verlauf")
+        return {"frage": "Wichtigste Themen in Krusenbusch in den letzten Jahren",
+                "begriffe": "krusenbusch wohnquartier", "typ": "thema", "partei": None}
+
+    def _zerlege(frage, **k):
+        zerlegt.append(frage)
+        return [{"name": "Beschlusslage", "frage": frage, "begriffe": "krusenbusch"}]
+
+    def _bericht(frage, cands, **k):
+        berichtet.append(frage)
+        return iter(["## Beschlusslage\nWohnquartier am Krusenbusch [5]."])
+
+    monkeypatch.setattr(qa_mod, "analyse_query", _analyse)
+    monkeypatch.setattr(qa_mod, "deep_zerlege", _zerlege)
+    monkeypatch.setattr(qa_mod, "deep_bericht_stream", _bericht)
+
+    verlauf = [{"frage": "Was sind in den letzten Jahren die wichtigsten Themen in Krusenbusch gewesen?",
+                "antwort": "Wohnquartier, Bahnquerung, Naturschutzgebiet."}]
+    r = client.post("/api/council/deep-research",
+                    json={"frage": "Nochmal bitte ausführlich", "verlauf": verlauf})
+    assert r.status_code == 201
+    job_id = r.json()["job_id"]
+    events = _deep_events(client, job_id)  # blockiert bis der Job fertig ist
+
+    # Die Analyse bekam die getippte Frage MIT Verlauf …
+    assert gesehen["frage"] == "Nochmal bitte ausführlich"
+    assert gesehen["verlauf"] == verlauf
+    # … und ihre eigenständige Fassung ist es, die recherchiert und berichtet wird.
+    assert zerlegt == ["Wichtigste Themen in Krusenbusch in den letzten Jahren"]
+    assert berichtet == ["Wichtigste Themen in Krusenbusch in den letzten Jahren"]
+    src = next(e for e in events if e["type"] == "sources")
+    assert src["frage"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
+
+    # Anzeige und DB behalten die getippte Frage, der Kontext die aufgelöste.
+    snap = client.get(f"/api/council/deep-research/{job_id}").json()
+    assert snap["frage"] == "Nochmal bitte ausführlich"
+    assert snap["quellen"]["kontext"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
+
+    # Erste Frage eines Gesprächs (kein Verlauf): keine Auflösung, kein Call.
+    gesehen.clear()
+    zerlegt.clear()
+    r2 = client.post("/api/council/deep-research", json={"frage": "Wie ist der Stand beim Stadionneubau?"})
+    _deep_events(client, r2.json()["job_id"])
+    assert gesehen == {}
+    assert zerlegt == ["Wie ist der Stand beim Stadionneubau?"]
+
+
 def test_deep_research_meldet_sich_am_ende(client, monkeypatch):
     """Am Ende eines echten Job-Laufs steht die Fertig-Meldung — und der Stopp
     löst keine aus (die war eine bewusste Handlung, kein Ergebnis)."""
@@ -5238,6 +5338,41 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
         assert store.qa_gespraech(gid, uid)["titel"] == "Stadion"
         assert client.patch("/api/council/gespraeche/999999",
                             json={"titel": "x"}).status_code == 404
+    finally:
+        store.close()
+
+
+def test_gespraeche_liste_blaettert_und_sucht(client):
+    """Tims Befund 30.08.2026: „Frag den Rat" zeigte dauerhaft 50 Gespräche.
+
+    Der Endpunkt liefert jetzt eine Seite plus drei Zahlen — `gesamt` ist der
+    Bestand (daran hängen Kopf-Zähler und Konto-Karte), `treffer` gilt zur
+    Suche, `weitere` sagt, ob „Ältere anzeigen" noch etwas nachliefert.
+    """
+    _register(client)
+    store = Store(NWZ_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        store.set_qa_speichern(uid, True)
+        for i in range(70):
+            store.qa_gespraech_start(uid, f"Cäcilienbrücke {i}" if i == 3 else f"Thema {i}")
+
+        b = client.get("/api/council/gespraeche").json()
+        assert len(b["gespraeche"]) == 30 and b["gesamt"] == 70 and b["weitere"] is True
+
+        # Blättern erreicht auch die Zeilen jenseits der alten 50er-Grenze.
+        letzte = client.get("/api/council/gespraeche?offset=60").json()
+        assert len(letzte["gespraeche"]) == 10 and letzte["weitere"] is False
+        assert letzte["gespraeche"][-1]["titel"] == "Thema 0"
+
+        # Gesucht wird in der DB: Der Treffer liegt außerhalb der ersten Seite.
+        t = client.get("/api/council/gespraeche?q=cäcilien").json()
+        assert [g["titel"] for g in t["gespraeche"]] == ["Cäcilienbrücke 3"]
+        assert t["treffer"] == 1 and t["gesamt"] == 70   # Bestand bleibt Bestand
+
+        # Die Konto-Karte holt nur die Zahl.
+        nur_zahl = client.get("/api/council/gespraeche?limit=0").json()
+        assert nur_zahl["gespraeche"] == [] and nur_zahl["gesamt"] == 70
     finally:
         store.close()
 

@@ -11,8 +11,17 @@
 //
 // DIE GRENZE BLEIBT SICHTBAR: Die Fraktionslisten selbst sind Tischvorlagen
 // und liegen in keinem Ratsinformationssystem-Dokument — was von ihnen
-// digital existiert, ist ihre Summenzeile in der Beschluss-Datei, mit dem
-// Urheber daneben. Genau so steht es an der Karte; mehr wird nicht behauptet.
+// digital existiert, ist in aller Regel ihre Summenzeile in der
+// Beschluss-Datei, mit dem Urheber daneben. Genau so steht es an der Karte;
+// mehr wird nicht behauptet.
+//
+// EINE AUSNAHME, und sie ist der Grund für die Urheber-Marke an der Zeile:
+// Die Beschluss-Datei zum Haushalt 2021 führt eine Spalte „Vorschlag von"
+// je POSITION. Für diesen einen Jahrgang steht deshalb Zeile für Zeile da,
+// was die Koalition ändern wollte — und der Kasten oben sagt das statt des
+// „nur die Summe"-Satzes. Entschieden wird das an den Daten (`urheber` ist
+// gefüllt), nicht an der Jahreszahl: Führt ein künftiges Dokument die Spalte
+// wieder, stimmt der Text von selbst.
 //
 // AUSGEWOGENHEIT wie im ganzen Abschnitt: Reihenfolge ist das Verfahren
 // (Verw. I → II → III → Beschluss), Parteifarben bleiben 8-px-Punkte,
@@ -22,7 +31,7 @@
 import { ChevronDown } from "lucide-react";
 import {
   AenderungslistenDaten, ListeImJahr, deltaBetrag, listenFuerJahr,
-  politikZeilen,
+  politikZeilen, positionenVon,
 } from "@/lib/haushalt-aenderungslisten";
 import { Beleg, Dokumentbeleg } from "@/components/haushalt/quelle";
 import { BetragZelle, TextZelle, ZahlenTabelle } from "@/components/haushalt/zahlen-tabelle";
@@ -31,11 +40,12 @@ import { cn } from "@/lib/utils";
 
 const NEUTRAL = { bg: "hsl(209 18% 65%)", ring: false };
 
-function UrheberMarke({ label }: { label: string }) {
+function UrheberMarke({ label, klein }: { label: string; klein?: boolean }) {
   const dot = label.includes("/") ? NEUTRAL : parteiDot(label);
   return (
-    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
-      <span aria-hidden className="h-2 w-2 flex-none rounded-full"
+    <span className={cn("inline-flex items-center gap-1.5 font-semibold",
+      klein ? "text-[10px] text-muted-foreground" : "text-[12.5px] text-foreground")}>
+      <span aria-hidden className={cn("flex-none rounded-full", klein ? "h-1.5 w-1.5" : "h-2 w-2")}
         style={{
           background: dot.bg,
           boxShadow: dot.ring ? "inset 0 0 0 1px rgba(0,0,0,.15)" : undefined,
@@ -62,6 +72,12 @@ function SummenWerte({ e, a, s }: { e: number; a: number; s: number }) {
 }
 
 function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
+  // Der Urheber steht nur an der Zeile, wo er dort auch etwas unterscheidet:
+  // Führt eine Liste durchgehend denselben, wiederholte die Marke nur den
+  // Namen der Karte darüber. Genau eine Datei im Bestand führt mehrere
+  // (der Beschluss 2021 mit Verw. I, Verw. II und der Koalitionsliste).
+  const urheber = new Set(liste.zeilen.map((z) => z.urheber).filter(Boolean));
+  const zeigeUrheber = urheber.size > 1;
   return (
     <details className="group border-t border-border/60 py-2.5 first:border-t-0 first:pt-0">
       <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -69,6 +85,7 @@ function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
         <span className="text-[13px] font-semibold text-foreground">{liste.name}</span>
         <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
           {liste.zeilen.length} Position{liste.zeilen.length === 1 ? "" : "en"} für {jahr}
+          {zeigeUrheber && ` · von ${urheber.size} Vorschlagenden`}
         </span>
         {liste.saldo && (
           <span className={cn("ml-auto whitespace-nowrap font-mono text-[11.5px] font-medium tabular-nums",
@@ -120,6 +137,11 @@ function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
                 <span className="ml-2 font-mono text-[10px] text-muted-foreground">
                   {z.thh != null ? `THH ${String(z.thh).padStart(2, "0")}` : "alle THH"}
                 </span>
+                {zeigeUrheber && z.urheber && (
+                  <span className="ml-2 align-baseline">
+                    <UrheberMarke label={z.urheber} klein />
+                  </span>
+                )}
                 {z.erlaeuterung && (
                   <span className="mt-0.5 block max-w-[75ch] text-[11px] leading-relaxed text-muted-foreground">
                     {z.erlaeuterung}
@@ -151,6 +173,12 @@ export function StreitListenInhalt({ daten, jahr }: {
 }) {
   const listen = listenFuerJahr(daten, jahr);
   const politik = politikZeilen(daten, jahr);
+  // Gilt der Satz „nur die Summe ist belegt" für diesen Jahrgang noch? Für
+  // 2021 nicht: Dessen Beschluss-Datei nennt zu jeder Position, wer sie
+  // vorschlug. Die Frage wird an den Daten entschieden, nicht am Jahr —
+  // taucht die Spalte in einem künftigen Dokument wieder auf, stimmt der
+  // Text von selbst.
+  const mitPositionen = politik.some((s) => positionenVon(daten, s).length > 0);
   if (!jahr || (!listen.length && !politik.length)) return null;
 
   return (
@@ -174,22 +202,44 @@ export function StreitListenInhalt({ daten, jahr }: {
       {politik.length > 0 && (
         <div className="mt-3 rounded-xl bg-muted/40 p-3">
           <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Die Fraktionslisten — nur die Summe ist belegt
+            {mitPositionen
+              ? "Die Fraktionslisten — dieser Jahrgang nennt jede Position"
+              : "Die Fraktionslisten — nur die Summe ist belegt"}
           </p>
           <div className="mt-1.5 flex flex-col gap-1.5">
-            {politik.map((s) => (
-              <p key={s.label} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                <UrheberMarke label={s.label} />
-                <SummenWerte e={s.ertraege} a={s.aufwendungen} s={s.saldo} />
-                <Beleg q="aenderungsliste" h={daten ? daten.herkunft[String(s.herkunft_id)] ?? null : null} />
-              </p>
-            ))}
+            {politik.map((s) => {
+              const eigene = positionenVon(daten, s);
+              return (
+                <p key={s.label} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <UrheberMarke label={s.label} />
+                  <SummenWerte e={s.ertraege} a={s.aufwendungen} s={s.saldo} />
+                  {eigene.length > 0 && (
+                    <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                      aus {eigene.length} Position{eigene.length === 1 ? "" : "en"}
+                    </span>
+                  )}
+                  <Beleg q="aenderungsliste" h={daten ? daten.herkunft[String(s.herkunft_id)] ?? null : null} />
+                </p>
+              );
+            })}
           </div>
           <p className="mt-2 max-w-[68ch] text-[11px] leading-relaxed text-muted-foreground">
             Die Listen der Fraktionen selbst wurden als Tischvorlagen verteilt und liegen
             nicht im Ratsinformationssystem — digital belegt ist ihre Summenzeile in der
-            Beschluss-Datei des Finanzausschusses, mit dem Urheber daneben. Minus beim
-            Saldo heißt: Das geplante Jahresergebnis sinkt dadurch.
+            Beschluss-Datei des Finanzausschusses, mit dem Urheber daneben.{" "}
+            {mitPositionen ? (
+              <>
+                Für {jahr} geht diese Datei weiter als alle anderen: Sie führt an
+                <em> jeder</em> Position eine Spalte „Vorschlag von“ — was die Fraktionen
+                wollten, steht deshalb unten in der Liste Zeile für Zeile, nicht nur als
+                Summe. Dass die Zuordnung stimmt, rechnet sich nach: Die Positionen jedes
+                Urhebers ergeben genau seine Summe hier oben.
+              </>
+            ) : (
+              <>Was in den Fraktionslisten im Einzelnen stand, sagt für diesen Jahrgang
+                kein Dokument.</>
+            )}{" "}
+            Minus beim Saldo heißt: Das geplante Jahresergebnis sinkt dadurch.
           </p>
         </div>
       )}

@@ -30,6 +30,13 @@ Cosinus-Schwelle kann es also gar nicht geben. Der Cross-Encoder trennt mit
 Treffer, die der Vektor allein verfehlte („Vorstellung IQON" stand in keiner
 der 60 besten Vektor-Kandidaten des Themas IQON, per BM25 steht es auf Platz 1).
 
+Gemeldet wird nur, was **aktuell** ist: Ein Treffer wandert immer in die Liste
+und in den Zähler, eine Mail löst er aber nur aus, wenn seine Sitzung innerhalb
+der letzten sechs Monate lag (``topic_intel.vor_sechs_monaten``, dieselbe Grenze
+wie „n in 6 Monaten" auf der Themen-Karte). Sonst verschickt der Lauf Post über
+Beschlüsse von 2023, sobald sie erstmals über die Relevanzschwelle rutschen —
+siehe ``_notify_new_matches``.
+
 Nach einer Neu-Extraktion der Beschlüsse einmal mit ``--ohne-meldungen``
 laufen lassen: Die gespeicherten Verweise zeigen dann auf gelöschte IDs, der
 Lauf legt sie neu an — und ohne den Schalter hielte er das für lauter neue
@@ -49,16 +56,17 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council.store import CouncilStore  # noqa: E402
-from council.topic_intel import DECKEL, SCHWELLE, treffer  # noqa: E402,F401
+from council.topic_intel import DECKEL, SCHWELLE, treffer, vor_sechs_monaten  # noqa: E402,F401
 from kern.store import Store  # noqa: E402
 from kern import digest_email  # noqa: E402
-from council.ergebnisse import decision_href  # noqa: E402
+from council.ergebnisse import datum_lang, decision_href  # noqa: E402
 
 NWZ_DB = ROOT / "data" / "nwz.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
-def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: list[int]) -> int:
+def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: list[int],
+                        *, stichtag: str) -> int:
     """13a-D: EIN Push/Mail je Thema — der Titel mit der größten Tragweite
     führt (COALESCE impact, importance — nicht der erste oder kurioseste),
     Rest als „— und n weitere". Tap öffnet die Themen-Trefferliste.
@@ -75,6 +83,22 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
     einer abonnierten Sitzung, ist eine Frage der Herkunft, nicht der Bedeutung
     — für die Person ist es dieselbe Nachricht und gehört unter denselben
     Schalter.
+
+    ``stichtag`` (ISO-Datum) ist der Alters-Riegel: Gemeldet wird nur, was seit
+    diesem Tag getagt hat. „Neu" heißt hier nämlich bloß „stand letzte Woche
+    noch nicht in der Trefferliste" — und das trifft auch uralte Beschlüsse, die
+    erst jetzt über die Relevanzschwelle rutschen. Am 30.08.2026 ging so eine
+    Mail zum Thema „Grundschule Krusenbusch" raus, deren Beschluss vom
+    **07.03.2023** stammte: Er stand im BM25-Fenster auf Rang 44 von 45 und kam
+    mit −0,985 gegen die Schwelle −1,0 durch, weil die Vorlage Krusenbusch in
+    einer Aufzählung aller Grundschulen nennt. Als Treffer ist das in Ordnung —
+    er bleibt in der Liste und im Zähler stehen. Als Post ist es das nicht
+    (Tim: „über die Mail würde ich immer nur über aktuelle Beschlüsse
+    informieren").
+
+    Der Riegel ist Pflichtargument, kein Vorgabewert: Wer diese Funktion neu
+    aufruft, soll die Grenze bewusst setzen — ein vergessener Wert wäre genau
+    die Mail, die es hier abzustellen galt.
     """
     from kern import notify
 
@@ -83,6 +107,10 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
     # get_decision liefert d.* (impact/importance/amount_eur) — die schlanke
     # Batch-Query der QA-Zitate kennt diese Spalten nicht.
     decisions = [d for d in (council.get_decision(i) for i in new_ids) if d]
+    # Ohne Sitzungsdatum lieber schweigen: `get_decision` verbindet mit
+    # `council_sessions`, ein leeres Feld wäre also ein kaputter Datensatz —
+    # kein Grund, jemanden zu wecken.
+    decisions = [d for d in decisions if (d.get("session_date") or "") >= stichtag]
     if not decisions:
         return 0
     decisions.sort(key=lambda d: (d.get("impact") if d.get("impact") is not None
@@ -96,10 +124,19 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
         lead_line += f" ({int(lead['amount_eur']):,} \u20ac)".replace(",", ".")
     # Der Text nannte „Meine Themen“ nur — jetzt führt ein Knopf auch dorthin,
     # und der führende Beschluss ist direkt anklickbar.
+    #
+    # Unter dem Titel stehen Gremium und Sitzungsdatum (Tims Wunsch vom
+    # 30.08.2026). Ohne sie beantwortet die Mail ihre naheliegendste Rückfrage
+    # nicht — „wann war das?" —, und amtliche Titel führen dabei sogar in die
+    # Irre: Der Krusenbusch-Titel trug ein „vom 15.02.2023", das Datum der
+    # Elternanfrage, während die Sitzung am 07.03.2023 stattfand.
+    wann = " · ".join(t for t in ((lead.get("committee") or "").strip(),
+                                  datum_lang(lead.get("session_date") or "")) if t)
     msg = (
         f"<p style='margin:0'>Neu zu deinem Thema <b>{html.escape(kurz)}</b>:</p>"
         + digest_email.liste(
-            [f"<a href=\"{digest_email.absolut(decision_href(lead["id"]))}\">{lead_line}</a>"]
+            [f"<a href=\"{digest_email.absolut(decision_href(lead["id"]))}\">{lead_line}</a>"
+             + (digest_email.meta(wann) if wann else "")]
             + ([f"und {n - 1} weitere"] if n > 1 else [])
         )
         + digest_email.knopf("/topics", "Alle Treffer ansehen" if n > 1 else "Beschluss ansehen")
@@ -125,6 +162,11 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
         if verwaist:
             print(f"  {verwaist} tote Beschluss-Verweise entfernt "
                   f"(Treffer und Gelesen-Marken)")
+
+        # Einmal je Lauf gerechnet, damit ein Lauf über Mitternacht nicht in der
+        # Mitte die Grenze verschiebt — und mit derselben Funktion wie die
+        # „n in 6 Monaten" der Themen-Karte.
+        stichtag = vor_sechs_monaten().isoformat()
 
         by_owner = nwz.get_all_owner_topics()  # {owner_id: [TopicRow]}
         n_topics = sum(len(v) for v in by_owner.values())
@@ -163,7 +205,8 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
                     nwz.mark_topic_hits_seen(owner_id, t.id)
                 new_ids = [int(did) for did, _ in hits if int(did) not in old_ids]
                 if new_ids and old_ids and not ohne_meldungen:
-                    notified += _notify_new_matches(nwz, council, owner_id, t.name, new_ids)
+                    notified += _notify_new_matches(nwz, council, owner_id, t.name, new_ids,
+                                                    stichtag=stichtag)
         # Eingereiht ist nicht zugestellt: Ohne diesen Aufruf läge alles bis zum
         # nächsten Cron-Job (7 Uhr) still. Die Nachtruhe verschiebt ohnehin, was
         # jetzt nicht raus darf — dieser Lauf startet sonntags um 3 Uhr.

@@ -15,6 +15,9 @@ from council import geo, places
 from council.store import CouncilStore
 from kern.store import Store
 
+from ..antworten import (Ok, OkMitId, QuizAuswertung, QuizEigeneFragen, QuizGebiete,
+                        QuizGemeldet, QuizKartenAuswertung, QuizKartenrunde, QuizRunde,
+                        QuizStand, QuizTagAbgeschlossen, QuizTagesrunde)
 from ..deps import get_council_store, get_store, require_active, require_admin
 from ..schemas import (QuizAnswerIn, QuizDailyIn, QuizMapIn, QuizRateIn,
                        UserQuizAnswerIn, UserQuizQuestionIn)
@@ -73,7 +76,7 @@ def _expand(areas: list[str], council: CouncilStore) -> list[tuple[str, str]]:
 @router.get("/areas")
 def areas(user: dict = Depends(require_active),
           store: Store = Depends(get_store),
-          council: CouncilStore = Depends(get_council_store)) -> dict:
+          council: CouncilStore = Depends(get_council_store)) -> QuizGebiete:
     """Katalog: Wahlbereiche, Ortsbereiche, Themen — je mit Fragenzahl und meinen
     Punkten. Leere Gebiete (noch keine Fragen) werden weggelassen."""
     counts = council.quiz_area_counts()          # {(type, key): n}
@@ -122,7 +125,7 @@ def round_(areas: str = Query(..., description="komma-separiert, z. B. wahlberei
            categories: str = "", n: int = Query(10, ge=1, le=30),
            user: dict = Depends(require_active),
            store: Store = Depends(get_store),
-           council: CouncilStore = Depends(get_council_store)) -> dict:
+           council: CouncilStore = Depends(get_council_store)) -> QuizRunde:
     """Eine Runde Fragen — bevorzugt noch nicht beantwortete, OHNE Lösung."""
     pairs = _expand([a for a in areas.split(",") if a.strip()], council)
     if not pairs:
@@ -147,7 +150,7 @@ def _estimate_score(guess: float, actual: float | None, diff_points: int) -> tup
 def answer(payload: QuizAnswerIn,
            user: dict = Depends(require_active),
            store: Store = Depends(get_store),
-           council: CouncilStore = Depends(get_council_store)) -> dict:
+           council: CouncilStore = Depends(get_council_store)) -> QuizAuswertung:
     """Antwort auswerten, Punkte buchen, Lösung + Erklärung + Quelle zurückgeben.
     Multiple Choice über selected_index, Schätzfrage über value (Slider)."""
     q = council.get_quiz_question(payload.question_id)
@@ -178,7 +181,7 @@ def answer(payload: QuizAnswerIn,
 def rate(payload: QuizRateIn,
          user: dict = Depends(require_active),
          store: Store = Depends(get_store),
-         council: CouncilStore = Depends(get_council_store)) -> dict:
+         council: CouncilStore = Depends(get_council_store)) -> Ok:
     """Frage bewerten (Qualitäts-Feedback). Idempotent (eine Wertung je Nutzer)."""
     if not council.get_quiz_question(payload.question_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
@@ -190,7 +193,7 @@ def rate(payload: QuizRateIn,
 def review(n: int = Query(10, ge=1, le=30),
            user: dict = Depends(require_active),
            store: Store = Depends(get_store),
-           council: CouncilStore = Depends(get_council_store)) -> dict:
+           council: CouncilStore = Depends(get_council_store)) -> QuizRunde:
     """„Meine Fehler" — zuletzt falsch beantwortete Fragen zum Wiederholen
     (spaced repetition). Richtig beantwortet fliegt eine Frage aus dem Stapel."""
     ids = store.quiz_wrong_question_ids(user["id"])
@@ -200,7 +203,7 @@ def review(n: int = Query(10, ge=1, le=30),
 @router.get("/daily")
 def daily(user: dict = Depends(require_active),
           store: Store = Depends(get_store),
-          council: CouncilStore = Depends(get_council_store)) -> dict:
+          council: CouncilStore = Depends(get_council_store)) -> QuizTagesrunde:
     """Die heutige Tages-Challenge (5 Fragen, für alle gleich) + mein Ergebnis,
     falls ich sie heute schon gespielt habe."""
     day = _today()
@@ -212,7 +215,7 @@ def daily(user: dict = Depends(require_active),
 @router.post("/daily/complete")
 def daily_complete(payload: QuizDailyIn,
                    user: dict = Depends(require_active),
-                   store: Store = Depends(get_store)) -> dict:
+                   store: Store = Depends(get_store)) -> QuizTagAbgeschlossen:
     """Tages-Challenge abschließen (Einzelantworten liefen bereits über /answer;
     hier nur Abschluss festhalten für „heute erledigt" + Serie)."""
     day = _today()
@@ -221,7 +224,7 @@ def daily_complete(payload: QuizDailyIn,
 
 
 @router.get("/map-round")
-def map_round(n: int = Query(5, ge=1, le=15), _user: dict = Depends(require_active)) -> dict:
+def map_round(n: int = Query(5, ge=1, le=15), _user: dict = Depends(require_active)) -> QuizKartenrunde:
     """Karten-Quiz: n zufällige Stadtteile zum Verorten. Deterministisch aus der
     Geografie (kein LLM, keine DB) — die Karte selbst ist die Antwortfläche."""
     names = geo.ortsbereiche()
@@ -232,7 +235,7 @@ def map_round(n: int = Query(5, ge=1, le=15), _user: dict = Depends(require_acti
 @router.post("/map-answer")
 def map_answer(payload: QuizMapIn,
                user: dict = Depends(require_active),
-               store: Store = Depends(get_store)) -> dict:
+               store: Store = Depends(get_store)) -> QuizKartenAuswertung:
     """Karten-Antwort auswerten: richtig, wenn der angeklickte Stadtteil der
     gefragte ist. Zählt (wie andere Antworten) auf den Stadtteil-Fortschritt."""
     target = places.resolve(payload.target)
@@ -312,7 +315,7 @@ def _validate_own(payload: UserQuizQuestionIn, council: CouncilStore) -> dict:
 
 @router.get("/own")
 def own_list(user: dict = Depends(require_active),
-             store: Store = Depends(get_store)) -> dict:
+             store: Store = Depends(get_store)) -> QuizEigeneFragen:
     return {"questions": store.list_user_quiz_questions(user["id"])}
 
 
@@ -320,7 +323,7 @@ def own_list(user: dict = Depends(require_active),
 def own_create(payload: UserQuizQuestionIn,
                user: dict = Depends(require_active),
                store: Store = Depends(get_store),
-               council: CouncilStore = Depends(get_council_store)) -> dict:
+               council: CouncilStore = Depends(get_council_store)) -> OkMitId:
     if len(store.list_user_quiz_questions(user["id"])) >= MAX_OWN_QUESTIONS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             f"Maximal {MAX_OWN_QUESTIONS} eigene Fragen möglich.")
@@ -332,7 +335,7 @@ def own_create(payload: UserQuizQuestionIn,
 def own_update(question_id: int, payload: UserQuizQuestionIn,
                user: dict = Depends(require_active),
                store: Store = Depends(get_store),
-               council: CouncilStore = Depends(get_council_store)) -> dict:
+               council: CouncilStore = Depends(get_council_store)) -> OkMitId:
     if store.save_user_quiz_question(user["id"], _validate_own(payload, council), question_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
     return {"ok": True, "id": question_id}
@@ -341,7 +344,7 @@ def own_update(question_id: int, payload: UserQuizQuestionIn,
 @router.delete("/own/{question_id}")
 def own_delete(question_id: int,
                user: dict = Depends(require_active),
-               store: Store = Depends(get_store)) -> dict:
+               store: Store = Depends(get_store)) -> Ok:
     if not store.delete_user_quiz_question(user["id"], question_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Frage nicht gefunden.")
     return {"ok": True}
@@ -350,7 +353,7 @@ def own_delete(question_id: int,
 @router.get("/own/round")
 def own_round(n: int = Query(10, ge=1, le=30),
               user: dict = Depends(require_active),
-              store: Store = Depends(get_store)) -> dict:
+              store: Store = Depends(get_store)) -> QuizRunde:
     """Übungsrunde aus den eigenen Fragen — OHNE Lösung im Payload, geformt wie
     normale Quizfragen, damit die Spiel-Ansicht sie unverändert rendert."""
     out = []
@@ -370,7 +373,7 @@ def own_round(n: int = Query(10, ge=1, le=30),
 @router.post("/own/answer")
 def own_answer(payload: UserQuizAnswerIn,
                user: dict = Depends(require_active),
-               store: Store = Depends(get_store)) -> dict:
+               store: Store = Depends(get_store)) -> QuizAuswertung:
     """Übungs-Antwort auswerten: Lösung + Erklärung zurück, Übungs-Zähler
     fortschreiben — bewusst KEINE Punkte, keine Statistik, keine Abzeichen
     (sonst könnte man sich Punkte selbst schreiben)."""
@@ -397,7 +400,7 @@ def own_answer(payload: UserQuizAnswerIn,
 @router.get("/stats")
 def stats(user: dict = Depends(require_active),
           store: Store = Depends(get_store),
-          council: CouncilStore = Depends(get_council_store)) -> dict:
+          council: CouncilStore = Depends(get_council_store)) -> QuizStand:
     """Fortschritt je Gebiet + Gesamt, plus Serie, Abzeichen, „Meine Fehler"-Zahl
     und ob die heutige Challenge erledigt ist — Grundlage des Dashboards."""
     s = store.quiz_stats(user["id"])
@@ -417,7 +420,7 @@ admin_router = APIRouter(prefix="/api/admin/quiz", tags=["admin"])
 @admin_router.get("/flagged")
 def flagged(_user: dict = Depends(require_admin),
             store: Store = Depends(get_store),
-            council: CouncilStore = Depends(get_council_store)) -> dict:
+            council: CouncilStore = Depends(get_council_store)) -> QuizGemeldet:
     """Fragen mit Schlecht-Bewertungen (schlechteste zuerst), mit Fragentext."""
     flags = store.quiz_flagged_questions(min_bad=1)
     by_id = {q["id"]: q for q in council.quiz_questions_by_ids([f["question_id"] for f in flags])}
@@ -433,6 +436,6 @@ def flagged(_user: dict = Depends(require_admin),
 
 @admin_router.post("/{question_id}/retire")
 def retire(question_id: int, _user: dict = Depends(require_admin),
-           council: CouncilStore = Depends(get_council_store)) -> dict:
+           council: CouncilStore = Depends(get_council_store)) -> Ok:
     council.retire_quiz_question(question_id)
     return {"ok": True}

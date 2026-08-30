@@ -133,7 +133,11 @@ def test_notify_new_matches_leads_with_highest_impact(tmp_path):
     mod = _match_modul()
     # Reihenfolge der new_ids: Berufung zuerst — die Tragweite muss umsortieren.
     n = mod._notify_new_matches(nwz, council, owner_id=owner, topic_name="Finanzen",
-                                new_ids=[ids["Berufung Mitglied"], ids["Haushaltssatzung 2026"]])
+                                new_ids=[ids["Berufung Mitglied"], ids["Haushaltssatzung 2026"]],
+                                # Fest statt `heute`: Die Sitzung der Vorrichtung
+                                # ist auf 2026-06-01 genagelt, ein wandernder
+                                # Stichtag machte den Test irgendwann leer.
+                                stichtag="2026-01-01")
     assert n == 1
 
     offen = nwz.due_notifications(owner, "2999-01-01")
@@ -150,6 +154,13 @@ def test_notify_new_matches_leads_with_highest_impact(tmp_path):
     body = meldung["body_html"]
     assert body.index("Haushaltssatzung 2026") < body.index("und 1 weitere")
     assert f"/council/decision?id={ids['Haushaltssatzung 2026']}" in body
+    # Gremium und Sitzungsdatum stehen unter dem Titel (Tim, 30.08.2026) — das
+    # Jahr gehört dazu, weil das Meldefenster über den Jahreswechsel reicht.
+    assert "Rat · 1. Juni 2026" in body
+    # Und die Push-Vorschau klebt beides nicht aneinander.
+    from kern.delivery import _plain
+
+    assert "Haushaltssatzung 2026 Rat · 1. Juni 2026" in _plain(body)
     nwz.close()
     council.close()
 
@@ -167,7 +178,8 @@ def test_notify_new_matches_schweigt_wenn_abgeschaltet(tmp_path):
 
     mod = _match_modul()
     assert mod._notify_new_matches(nwz, council, owner_id=owner, topic_name="Finanzen",
-                                   new_ids=[ids["Haushaltssatzung 2026"]]) == 0
+                                   new_ids=[ids["Haushaltssatzung 2026"]],
+                                   stichtag="2026-01-01") == 0
     assert nwz.due_notifications(owner, "2999-01-01") == []
     nwz.close()
     council.close()
@@ -176,3 +188,47 @@ def test_notify_new_matches_schweigt_wenn_abgeschaltet(tmp_path):
 def pathlib_root():
     from pathlib import Path
     return Path(__file__).resolve().parent.parent
+
+
+def test_notify_new_matches_schweigt_ueber_alte_beschluesse(tmp_path):
+    """Der Krusenbusch-Fall (30.08.2026): Ein Beschluss vom 07.03.2023 rutschte
+    im Wochenlauf erstmals über die Relevanzschwelle — „neu" heißt hier nur
+    „stand letzte Woche nicht in der Liste" — und wurde prompt per Mail
+    gemeldet. Treffer bleibt Treffer, aber Post gibt es nur über Aktuelles.
+    """
+    from kern.store import Store
+
+    council = _store(tmp_path)                      # Sitzung: 2026-06-01
+    council.save_session(CouncilSession(2, "Schulausschuss", "2023-03-07",
+                                        "17:00", "Ratssaal"))
+    with council._conn:                             # zweiter Beschluss, lange her
+        council._insert_decision(2, 0, "decision", None, "Ö 10.1",
+                                 "Zusätzliche Spätbetreuung", TEXT,
+                                 "zur_kenntnis", None, None, None, [], None, None, None)
+    ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}
+
+    nwz = Store(tmp_path / "nwz.sqlite")
+    owner = nwz.create_web_user(email="a@b.de", password_hash="x", role="user",
+                                status="active", display_name="Tim")
+    mod = _match_modul()
+
+    # Nur der alte Beschluss: gar keine Meldung.
+    assert mod._notify_new_matches(nwz, council, owner_id=owner,
+                                   topic_name="Grundschule Krusenbusch",
+                                   new_ids=[ids["Zusätzliche Spätbetreuung"]],
+                                   stichtag="2026-01-01") == 0
+    assert nwz.due_notifications(owner, "2999-01-01") == []
+
+    # Gemischt: Die Mail kommt, zählt aber nur den aktuellen Beschluss — sonst
+    # verspräche das „— n Beschlüsse" im Betreff etwas, das die Liste nicht hält.
+    assert mod._notify_new_matches(nwz, council, owner_id=owner,
+                                   topic_name="Grundschule Krusenbusch",
+                                   new_ids=[ids["Zusätzliche Spätbetreuung"],
+                                            ids["Haushaltssatzung 2026"]],
+                                   stichtag="2026-01-01") == 1
+    offen = nwz.due_notifications(owner, "2999-01-01")
+    assert len(offen) == 1
+    assert offen[0]["title"] == "Neu zu „Grundschule Krusenbusch“"   # kein „— 2 Beschlüsse"
+    assert "Spätbetreuung" not in offen[0]["body_html"]
+    nwz.close()
+    council.close()

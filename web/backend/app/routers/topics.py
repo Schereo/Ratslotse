@@ -35,13 +35,16 @@ from __future__ import annotations
 
 import re
 import logging
-from datetime import date, timedelta
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from kern.store import Store
 from council.store import CouncilStore
 
+from ..antworten import (AboGeloescht, AboGesetzt, Abonnements, MarkierteTreffer, Ok,
+                        ThemenBeschluesse, ThemenBeschreibung, ThemenTrefferListe,
+                        ThemenVorschlaege, UngeleseneThemenTreffer)
 from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
 from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, TopicOut, TopicSeenIn
@@ -49,6 +52,23 @@ from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, Top
 logger = logging.getLogger("nwz.web.topics")
 
 router = APIRouter(prefix="/api/topics", tags=["topics"])
+
+
+def _vor_sechs_monaten(heute: date | None = None) -> date:
+    """Der Stichtag hinter „n in 6 Monaten" — gerechnet wird er in
+    ``council.topic_intel``, weil seit dem 30.08.2026 auch der Wochenlauf
+    daran misst, ob ein neuer Treffer eine Mail wert ist. Zwei Kopien wären
+    zwei Grenzen, sobald eine davon jemand anfasst.
+
+    Absichtlich erst im Aufruf importiert, wie jede andere Berührung mit
+    ``topic_intel`` in dieser Datei: Das Modul zieht ``kern.llm`` und damit das
+    openai-SDK nach, und das steht in ``requirements.txt``, nicht in
+    ``web/backend/requirements.txt`` — ein Import auf Modulebene machte den
+    API-Start davon abhängig.
+    """
+    from council.topic_intel import vor_sechs_monaten
+
+    return vor_sechs_monaten(heute)
 
 
 def _own_topic(store: Store, owner_id: int, topic_id: int):
@@ -144,7 +164,7 @@ def list_topics(
     # dem Umbau vom 28.08.2026 einen Punkt vor jede neue Zeile. Beides stammt
     # aus derselben Abfrage, damit Abzeichen und Punkte nie auseinandergehen.
     unseen_ids = store.unseen_hit_ids(owner_id)
-    stichtag = (date.today() - timedelta(days=30)).isoformat()
+    stichtag = _vor_sechs_monaten().isoformat()
     out = []
     for t in topics:
         hits = sorted((by_id[d] for d in cand.get(t.id, []) if d in by_id),
@@ -178,7 +198,7 @@ def list_topics(
                     )
                     for d in hits[:5]
                 ],
-                hits_30d=sum(1 for d in hits if (d.get("session_date") or "") >= stichtag),
+                hits_6m=sum(1 for d in hits if (d.get("session_date") or "") >= stichtag),
             )
         )
     return out
@@ -229,7 +249,7 @@ def topic_suggestions(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> ThemenVorschlaege:
     """Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und
     Projekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten
     Schlagworte — die belohnten Verwaltungsvokabeln („Bericht", „Annahme").
@@ -301,7 +321,7 @@ def describe_topic(
     request: Request,
     user: dict = Depends(require_active),
     council: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> ThemenBeschreibung:
     """Design 26a / RL-U17: aus einem Themen-*Namen* eine Beschreibung machen.
 
     Der Nutzer tippt nur „Cäcilienbrücke". Wir suchen die Beschlüsse dazu und
@@ -422,7 +442,7 @@ def update_topic(
 
 
 @router.get("/unread-count")
-def unread_count(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+def unread_count(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> UngeleseneThemenTreffer:
     """RL-903: der Zähler an „Meine Themen" (Seitenleiste und Punkt in der
     Tab-Leiste) — Treffer, die seit dem letzten Blick auf die Übersicht
     dazugekommen sind. Die Bubble kündigt Neues an; wer nachgesehen hat, soll
@@ -433,7 +453,7 @@ def unread_count(user: dict = Depends(require_active), store: Store = Depends(ge
 
 @router.post("/uebersicht-gesehen")
 def uebersicht_gesehen(user: dict = Depends(require_active),
-                       store: Store = Depends(get_store)) -> dict:
+                       store: Store = Depends(get_store)) -> Ok:
     """Die Themen-Übersicht wurde geöffnet — ab jetzt zählt für die Bubble
     nur noch, was danach dazukommt. Ältere App-Versionen rufen das nie auf;
     für sie bleibt es beim bisherigen Verhalten."""
@@ -447,7 +467,7 @@ def mark_seen(
     body: TopicSeenIn | None = None,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> dict:
+) -> MarkierteTreffer:
     """RL-903: Treffer eines Themas als gesehen markieren.
 
     Ohne ``decision_id`` alle — das ist der Weg über „alle ansehen" und über
@@ -471,7 +491,7 @@ def latest_hits(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> ThemenTrefferListe:
     """Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die
     „Neu zu deinen Themen"-Karte im Heute-Briefing (RL-401). Vor der
     {topic_id}-Route registriert, damit „latest-hits" nicht als ID parst."""
@@ -496,7 +516,7 @@ def topic_decisions(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
-) -> dict:
+) -> ThemenBeschluesse:
     """Council decisions matched to this topic (semantic), best first.
 
     Dieselbe Menge, die die Karte zählt und ``/council/decisions?topic=…``
@@ -529,17 +549,17 @@ sub_router = APIRouter(prefix="/api/subscriptions", tags=["subscriptions"])
 
 
 @sub_router.get("")
-def list_subscriptions(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+def list_subscriptions(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> Abonnements:
     return {"subscriptions": store.get_subscriptions(user["id"])}
 
 
 @sub_router.post("", status_code=status.HTTP_201_CREATED)
-def subscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+def subscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> AboGesetzt:
     ok = store.subscribe(user["id"], body.committee_name)
     return {"subscribed": ok, "committee_name": body.committee_name}
 
 
 @sub_router.delete("")
-def unsubscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> dict:
+def unsubscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> AboGeloescht:
     ok = store.unsubscribe(user["id"], body.committee_name)
     return {"unsubscribed": ok, "committee_name": body.committee_name}

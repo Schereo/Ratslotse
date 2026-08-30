@@ -13,6 +13,11 @@ web/frontend/.next/
 web/frontend/.next-dev/
 web/frontend/node_modules/
 
+# Vom Browser-Pane geschriebene Dev-Server-Konfig: jede Session trägt hier ihre
+# eigenen Ports/Backends ein, das ist Arbeitsstand und kein Repo-Inhalt. Vorlage
+# mit den gemeinsamen Einträgen: .claude/launch.example.json (einmal kopieren).
+.claude/launch.json
+
 # Lokal installierte Agent-Skills (npx skills add …) — Fremdinhalte, nicht committen
 .agents/
 .claude/skills/

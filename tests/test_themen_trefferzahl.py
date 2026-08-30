@@ -39,6 +39,19 @@ def test_matching_lauf_und_web_rechnen_mit_derselben_funktion():
     assert lauf.process.__defaults__[0] == topic_intel.DECKEL
 
 
+def test_stichtag_ist_ueberall_derselbe():
+    """„Aktuell" darf nicht zweimal gerechnet werden: Die Karte zählt „n in 6
+    Monaten", der Wochenlauf entscheidet damit, ob ein neuer Treffer eine Mail
+    wert ist (30.08.2026). Zwei Kopien wären zwei Grenzen, sobald jemand eine
+    davon anfasst — genau die Sorte Drift, die dieser Datei ihren Namen gab.
+    """
+    from scripts import match_topics_decisions as lauf
+
+    assert lauf.vor_sechs_monaten is topic_intel.vor_sechs_monaten
+    # Die Web-Seite derselben Grenze prüft `test_backend_api`, wo der
+    # Backend-Pfad schon im sys.path liegt.
+
+
 class _Store:
     """Gerade genug Store, damit ``zaehle_treffer`` nicht vorzeitig abbricht."""
 

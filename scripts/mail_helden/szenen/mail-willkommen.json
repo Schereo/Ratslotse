@@ -1,0 +1,23 @@
+{
+  "px": [1500, 1300],
+  "kamera": { "dir": [0.4, 0.06, 1], "faktor": 1.12 },
+  "figuren": [
+    {
+      "typ": "lotti",
+      "pos": [-0.04, 0, 0],
+      "neigung": 3,
+      "pose": { "blick": [0, 3], "fluegel": { "links": { "z": 58, "y": 35 } } },
+      "emotion": "freut-sich"
+    },
+    {
+      "typ": "kueken",
+      "ton": "gold",
+      "pos": [0.11, 0, 0.07],
+      "drehung": 18,
+      "nick": -8,
+      "blick_auf": { "figur": 0 },
+      "pose": { "fluegel": { "links": { "z": 62 }, "rechts": { "z": -62 } } },
+      "emotion": "freut-sich"
+    }
+  ]
+}

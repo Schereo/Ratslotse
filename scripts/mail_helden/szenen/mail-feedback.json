@@ -1,0 +1,7 @@
+{
+  "px": [1400, 1300],
+  "kamera": { "dir": [0.35, 0.08, 1], "faktor": 1.14 },
+  "figuren": [
+    { "typ": "lotti", "drehung": 8, "emotion": "hoert_zu" }
+  ]
+}

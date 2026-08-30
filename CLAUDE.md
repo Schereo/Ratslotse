@@ -62,6 +62,13 @@ Zwei SQLite-DBs unter `data/` (gitignored): `nwz.sqlite` (Konten, Themen, Prompt
 und `council.sqlite` (Sitzungen, Beschlüsse). Beide werden lokal beim ersten Lauf
 angelegt.
 
+**Dev-Server-Konfig für Coding-Agents:** `.claude/launch.json` ist **nicht**
+eingecheckt — Agent-Werkzeuge schreiben dort ihre eigenen Ports und Backends
+hinein, das ist Arbeitsstand. Im neuen Checkout einmal
+`cp .claude/launch.example.json .claude/launch.json`; die Vorlage trägt die
+gemeinsamen Einträge (`frontend`, `docs`). Bis 08/2026 war die Datei getrackt,
+weshalb sich session-eigene Konfigs in fremde PRs geschmuggelt haben.
+
 ## Deployment & Branch-Modell
 
 Gehostet auf einem eigenen VPS (privat). Seit 08/2026 gilt: **`main` ist der

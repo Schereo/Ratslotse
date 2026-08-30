@@ -8,6 +8,8 @@ from datetime import date, timedelta
 import requests
 from bs4 import BeautifulSoup
 
+from .dringlichkeit import zusatz_punkte
+
 BASE = "https://buergerinfo.oldenburg.de"
 _DATE_RE = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})")
 _TIME_RE = re.compile(r"(\d{2}:\d{2})")
@@ -315,6 +317,14 @@ class CouncilScraper:
                 is_public=is_public,
                 anlagen=anlagen if is_public else [],
             ))
+
+        # Dringlichkeitsanträge haben keinen eigenen Punkt — sie hängen als
+        # Dokument an „Ö 2 Genehmigung der Tagesordnung", weil dort über ihre
+        # Aufnahme abgestimmt wird. Ohne diesen Schritt fallen sie durch jedes
+        # Raster: Die Formalie fliegt überall heraus, und die Labels der
+        # Zeilen-Dokumente liest für die Vorschau niemand (Tims Befund
+        # 30.08.26, gemessen: 12 von 40 Ratssitzungen hatten einen).
+        items.extend(zusatz_punkte(items))
         return items
 
     def fetch_committee_list(self) -> list[tuple[str, int | None]]:

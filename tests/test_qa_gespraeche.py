@@ -177,3 +177,79 @@ def test_snapshot_traegt_die_kondensierte_frage(tmp_path):
             "Was kostet die Sanierung der Cäcilienbrücke?"
     finally:
         store.close()
+
+
+def test_liste_blaettert_statt_bei_50_zu_enden(tmp_path):
+    """Tims Befund 30.08.2026: Die Liste zeigte dauerhaft 50 Gespräche.
+
+    Ursache war ein hartes `LIMIT 50` ohne Blättern — die älteren Gespräche
+    lagen weiter in der DB, waren über die Liste aber nicht mehr erreichbar.
+    Geprüft wird deshalb beides: dass eine Seite kurz bleibt UND dass man
+    über die Seiten am Ende jedes einzelne Gespräch einsammelt.
+    """
+    store = Store(tmp_path / "nwz.sqlite")
+    uid = _user(store)
+    ids = [store.qa_gespraech_start(uid, f"Gespräch {i:03d}") for i in range(120)]
+
+    assert store.qa_gespraeche_anzahl(uid) == 120
+    erste = store.qa_gespraeche(uid, limit=30)
+    assert len(erste) == 30
+    assert erste[0]["titel"] == "Gespräch 119"      # neueste zuerst
+
+    gesammelt, offset = [], 0
+    while True:
+        seite = store.qa_gespraeche(uid, limit=30, offset=offset)
+        if not seite:
+            break
+        gesammelt += seite
+        offset += len(seite)
+    assert [g["id"] for g in gesammelt] == list(reversed(ids))   # lückenlos
+
+    # Die Konto-Karte will nur die Zahl — limit=0 liefert keine Zeilen.
+    assert store.qa_gespraeche(uid, limit=0) == []
+    store.close()
+
+
+def test_gleiche_sekunde_blaettert_ohne_dubletten(tmp_path):
+    """`updated` hat Sekundenauflösung: In einem Rutsch angelegte Gespräche
+    tragen dieselbe Zeit. Ohne zweites Sortierkriterium wäre ihre Reihenfolge
+    beliebig — über OFFSET erschiene dann eines doppelt, ein anderes nie."""
+    store = Store(tmp_path / "nwz.sqlite")
+    uid = _user(store)
+    ids = {store.qa_gespraech_start(uid, f"Gleichzeitig {i}") for i in range(20)}
+    gesehen = [g["id"] for off in (0, 5, 10, 15)
+               for g in store.qa_gespraeche(uid, limit=5, offset=off)]
+    assert len(gesehen) == len(set(gesehen)) == 20 and set(gesehen) == ids
+    store.close()
+
+
+def test_suche_findet_auch_ausserhalb_der_ersten_seite(tmp_path):
+    """Gesucht wird in der DB, nicht in der geladenen Seite — sonst fände das
+    Suchfeld genau die Gespräche nicht, für die es gebaut wurde."""
+    store = Store(tmp_path / "nwz.sqlite")
+    uid = _user(store)
+    store.qa_gespraech_start(uid, "Cäcilienbrücke: Stand der Sanierung")
+    for i in range(60):
+        store.qa_gespraech_start(uid, f"Anderes Thema {i}")
+
+    treffer = store.qa_gespraeche(uid, suche="cäcilien")
+    assert [g["titel"] for g in treffer] == ["Cäcilienbrücke: Stand der Sanierung"]
+    assert store.qa_gespraeche_anzahl(uid, suche="cäcilien") == 1
+    # Groß/klein egal — auch am Umlaut, den SQLites lower() nicht kennt.
+    assert store.qa_gespraeche_anzahl(uid, suche="CÄCILIEN") == 1
+    assert store.qa_gespraeche_anzahl(uid, suche="Anderes") == 60
+    # Leeres Suchwort ist keine Suche.
+    assert store.qa_gespraeche_anzahl(uid, suche="   ") == 61
+    store.close()
+
+
+def test_suchwort_mit_platzhaltern_bleibt_text(tmp_path):
+    """`%` und `_` sind LIKE-Platzhalter — ungeschützt fände „%" alles."""
+    store = Store(tmp_path / "nwz.sqlite")
+    uid = _user(store)
+    store.qa_gespraech_start(uid, "Grünanteil 100 % im Quartier")
+    store.qa_gespraech_start(uid, "Radweg am Hafen")
+    assert store.qa_gespraeche_anzahl(uid, suche="%") == 1
+    assert store.qa_gespraeche_anzahl(uid, suche="100 %") == 1
+    assert store.qa_gespraeche_anzahl(uid, suche="_") == 0
+    store.close()

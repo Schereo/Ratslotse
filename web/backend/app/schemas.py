@@ -131,10 +131,12 @@ class TopicOut(BaseModel):
     # einzigen Titel, man musste also jedes Thema öffnen, um zu sehen, was
     # drinsteht.
     recent_hits: list[TopicHitOut] = []
-    # Treffer der letzten 30 Tage — die zweite Hälfte der Zeile „12 gesamt ·
-    # 3 in 30 Tagen". Sie sagt, ob ein Thema gerade läuft oder ruht; die
-    # Gesamtzahl allein kann beides bedeuten.
-    hits_30d: int = 0
+    # Treffer des letzten halben Jahres — die zweite Hälfte der Zeile
+    # „12 gesamt · 3 in 6 Monaten". Sie sagt, ob ein Thema gerade läuft oder
+    # ruht; die Gesamtzahl allein kann beides bedeuten. Bis zum 28.08.2026
+    # waren es 30 Tage, was bei fast jedem Thema eine 0 ergab: Die Gremien
+    # tagen monatlich, im Sommer gar nicht, und Protokolle kommen mit Verzug.
+    hits_6m: int = 0
 
 
 # ---- subscriptions ----
