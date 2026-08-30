@@ -14,9 +14,11 @@ import { Lotti, type LottiRegung } from "@/components/lotti";
  * übersetzt; wer feiner wählen will, setzt `regung` direkt aus dem Katalog
  * (/lotti/katalog.html).
  *
- * Das handgezeichnete Flat-SVG lebt nur noch dort weiter, wofür es keine
- * Sprites gibt: die Küken (<Chick/>) und die Familien-Gruppe (<MascotFamily/>)
- * samt Jahreszeiten-/Feiertags-Outfits. Farben sind bewusst fix
+ * Jahreszeiten trägt sie von selbst: <Lotti/> wählt den Bündel-Ordner nach
+ * Datum (Blume, Sonnenbrille, Schal, Ohrenschützer — im Studio als eigene
+ * Blätter gebacken). Das handgezeichnete Flat-SVG lebt nur noch dort weiter,
+ * wofür es keine Sprites gibt: die Küken (<Chick/>) und die Familien-Gruppe
+ * (<MascotFamily/>) samt Feiertags-Kostümen. Farben sind bewusst fix
  * (Sticker-Prinzip); Animationen respektieren `prefers-reduced-motion`.
  */
 export type MascotPose = "wave" | "point" | "celebrate" | "search" | "confused" | "sleep";

@@ -10,10 +10,10 @@ import { getMascotTheme, type MascotTheme } from "@/lib/mascot-theme";
  * damit das statisch exportierte HTML (Build-Datum) keine falsche Jahreszeit
  * einbrennt und keine Hydration-Warnung entsteht. Vor dem Mount: neutral.
  *
- * Seit der Sprite-Umstellung trägt nur noch die GEZEICHNETE Familie (und die
- * 3D-Szene der Startseite) Jahreszeiten-Outfits — die Sprite-Lotti (<Mascot/>)
- * ist aus gebackenen Blättern und kennt keine Kostüme. Ein früheres
- * `SeasonalMascot` gibt es deshalb nicht mehr.
+ * Die Sprite-Lotti (<Mascot/>) kleidet sich selbst: Sie wählt ihren
+ * Bündel-Ordner nach Jahreszeit (components/lotti.tsx) — ein früheres
+ * `SeasonalMascot` braucht es deshalb nicht mehr. Dieser Hook versorgt nur
+ * noch die gezeichnete Familie und die Küken.
  */
 export function useMascotTheme(): MascotTheme | null {
   const [theme, setTheme] = useState<MascotTheme | null>(null);

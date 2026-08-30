@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { getMascotTheme, type MascotTheme } from "@/lib/mascot-theme";
 
 /**
  * Die animierte Sprite-Lotti — React-Hülle um das Web-Component
@@ -55,6 +56,33 @@ export type LottiRegung =
  * definiert beim Import das Custom Element. `webpackIgnore`, weil die Datei
  * bewusst NICHT durchs Bundling läuft — sie gehört zum kopierten Bündel und
  * muss zu dessen Blättern und Verzeichnis passen, nicht zum App-Build. */
+/* ── Jahreszeit: welcher Bündel-Ordner? ──────────────────────────────────
+ * Das Studio backt je Jahreszeit ein komplettes Bündel (fruehling: Blume,
+ * sommer: Sonnenbrille, herbst/winter: Schal, weihnachten: roter Schal) —
+ * gewählt wird nur der ORDNER, der Abspieler bleibt derselbe. Bestimmt wird
+ * das Datum erst nach dem Mount (wie useMascotTheme, gegen eingebrannte
+ * Build-Jahreszeiten im statischen Export); bis dahin steht die neutrale
+ * Lotti da. Die übrigen Feiertage (Pride, Halloween, Ostern) tragen wie in
+ * der 3D-Szene ihr Jahreszeiten-Outfit weiter — dafür gibt es keine Blätter.
+ * Der Hook lebt hier statt in seasonal-mascot.tsx, weil der Weg dorthin ein
+ * Import-Kreis wäre (seasonal-mascot → mascot → lotti). */
+function varianteFuer(theme: MascotTheme): string {
+  if (theme.holiday === "christmas") return "weihnachten";
+  return { spring: "fruehling", summer: "sommer", autumn: "herbst", winter: "winter" }[theme.season];
+}
+
+function useJahreszeitQuelle(): string {
+  const [quelle, setQuelle] = useState("/lotti/");
+  useEffect(() => {
+    const setzen = () => setQuelle(`/lotti/${varianteFuer(getMascotTheme())}/`);
+    setzen();
+    // Über Mitternacht hinweg aktuell halten (lange Sessions/Kiosk-Displays).
+    const id = setInterval(setzen, 60 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+  return quelle;
+}
+
 let geladen = false;
 function elementLaden() {
   if (geladen || typeof window === "undefined") return;
@@ -89,9 +117,13 @@ export function Lotti({
   className?: string;
 }) {
   useEffect(elementLaden, []);
+  const quelle = useJahreszeitQuelle();
   return (
+    /* `quelle` liest der Abspieler nur beim Andocken — der `key` baut das
+       Element beim Jahreszeitenwechsel neu auf, statt ins Leere zu schreiben. */
     <lotti-figur
-      quelle="/lotti/"
+      key={quelle}
+      quelle={quelle}
       regung={regung}
       regie={regie}
       spiegel={spiegel ? "" : undefined}

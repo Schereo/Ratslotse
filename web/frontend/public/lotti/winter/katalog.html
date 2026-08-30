@@ -1,0 +1,199 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Lotti — Katalog</title>
+<!--
+  ALLE REGUNGEN AUF EINER SEITE, aus dem Verzeichnis gebaut.
+
+  `probe.html` daneben ist eine ausgewählte Musterseite: die Zustände, die
+  eine Informationsseite wirklich hat. Diese hier ist das Gegenteil — sie
+  zeigt ALLES und zeigt es nicht ausgewählt, sondern vollständig, weil sie
+  `lotti.json` liest statt eine Liste zu führen. Eine getippte Liste wäre
+  am zweiten Tag unvollständig; seit heute gibt es 26 Regungen und
+  gestern waren es 16.
+
+  Wozu: „Ich würde die gerne vielfältig in die App und Desktop einbinden"
+  (Tim). Dafür muss man erst sehen können, was es gibt — und daneben
+  gleich mitnehmen können, wie man es einbaut. Ein Klick auf eine Karte
+  legt das fertige Element in die Zwischenablage.
+-->
+<style>
+  :root {
+    --grund: #eef3f8; --karte: #fff; --strich: #d6e2ec;
+    --text: #123; --leise: #5a7085; --akzent: #1d6fa5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --grund: #0d1720; --karte: #14212c; --strich: #24384a;
+      --text: #e6eef5; --leise: #8fa6b8; --akzent: #4db1f0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 20px 60px; background: var(--grund); color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header { max-width: 900px; margin: 0 auto 22px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  header p { margin: 0; color: var(--leise); font-size: 14px; max-width: 62ch; }
+  .steuer { max-width: 900px; margin: 14px auto 0; display: flex; gap: 8px; flex-wrap: wrap; }
+  button, select {
+    font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 7px;
+    border: 1px solid var(--strich); background: var(--karte); color: var(--text);
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--akzent); }
+  h2 {
+    max-width: 900px; margin: 30px auto 10px; font-size: 13px; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--leise); font-weight: 600;
+  }
+  h2 span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .gitter {
+    max-width: 900px; margin: 0 auto;
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  }
+  .karte {
+    background: var(--karte); border: 1px solid var(--strich); border-radius: 12px;
+    padding: 10px 10px 12px; text-align: center; cursor: pointer;
+    transition: border-color .15s, transform .15s;
+  }
+  .karte:hover { border-color: var(--akzent); transform: translateY(-2px); }
+  .karte .name { font-weight: 600; font-size: 13px; margin-top: 4px; }
+  .karte .was { color: var(--leise); font-size: 11.5px; line-height: 1.4; min-height: 2.8em; }
+  .karte .zahlen { color: var(--leise); font-size: 10.5px; margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .karte.kopiert { border-color: #2fa36b; }
+  .karte.kopiert .zahlen::after { content: ' · in der Zwischenablage'; color: #2fa36b; }
+  footer { max-width: 900px; margin: 34px auto 0; color: var(--leise); font-size: 12.5px; }
+  code { font: 12px ui-monospace, monospace; background: color-mix(in srgb, var(--leise) 14%, transparent);
+         padding: 1px 5px; border-radius: 4px; }
+</style>
+
+<header>
+  <h1>Lotti — alle Regungen</h1>
+  <p>Gebaut aus <code>lotti.json</code>, nicht aus einer Liste: Was gebacken
+     ist, steht hier. Ein Klick auf eine Karte legt das fertige Element in
+     die Zwischenablage.</p>
+</header>
+
+<div class="steuer">
+  <button id="alle">Alle einmal abspielen</button>
+  <select id="wann">
+    <option value="hover">beim Überfahren</option>
+    <option value="dauer">dauernd</option>
+    <option value="nie">nur auf Klick</option>
+  </select>
+  <button id="spiegel">Spiegeln</button>
+</div>
+
+<div id="inhalt"></div>
+
+<footer id="fuss"></footer>
+
+<script type="module">
+  import './lotti-figur.js';
+
+  const inhalt = document.getElementById('inhalt');
+  const verzeichnis = await (await fetch('./lotti.json')).json();
+
+  /* Nach Gruppen, und die Gruppen in der Reihenfolge des Verzeichnisses —
+     die ist nicht alphabetisch, sondern nach Gewicht: `kern` lädt überall,
+     `symbole` nur dort, wo jemand ein Symbol will. */
+  const nachGruppe = new Map();
+  for (const [name, eintrag] of Object.entries(verzeichnis.regungen)) {
+    if (!nachGruppe.has(eintrag.gruppe)) nachGruppe.set(eintrag.gruppe, []);
+    nachGruppe.get(eintrag.gruppe).push([name, eintrag]);
+  }
+
+  const karten = [];
+  for (const [gruppe, liste] of nachGruppe) {
+    const blatt = verzeichnis.gruppen[gruppe];
+    const kopf = document.createElement('h2');
+    const bilder = liste.reduce((n, [, e]) => n + e.bilder, 0);
+    kopf.innerHTML = `${gruppe} <span>· ${liste.length} Regungen, `
+      + `${bilder} Bilder, Blatt ${blatt.raster.join('×')}</span>`;
+    inhalt.append(kopf);
+
+    const gitter = document.createElement('div');
+    gitter.className = 'gitter';
+    for (const [name, e] of liste) {
+      const karte = document.createElement('div');
+      karte.className = 'karte';
+      const figur = document.createElement('lotti-figur');
+      figur.setAttribute('groesse', '110');
+      figur.setAttribute('beschriftung', e.was ?? name);
+      karte.append(figur);
+
+      const merkmale = [
+        e.wiederholt ? 'Schleife' : null,
+        e.halt != null ? 'hält' : null,
+        e.rueckwaerts ? 'Rückweg gerechnet' : null,
+      ].filter(Boolean);
+
+      karte.insertAdjacentHTML('beforeend',
+        `<div class="name">${name}</div>`
+        + `<div class="was">${e.was ?? ''}</div>`
+        + `<div class="zahlen">${e.bilder} Bilder · ${e.takt}/s`
+        + (merkmale.length ? ' · ' + merkmale.join(' · ') : '') + '</div>');
+
+      /* Der Schnipsel ist das, was man wirklich braucht — mit `halten` bei
+         den Gesten, die gehalten werden, denn ohne das fällt die Figur
+         sofort in die Ruhe zurück und man hält den Namen für kaputt. */
+      const schnipsel = e.halt != null
+        ? `<lotti-figur groesse="120" beschriftung="${e.was ?? name}"></lotti-figur>\n`
+          + `<script>figur.spiele('${name}', { halten: true })<\/script>`
+        : `<lotti-figur groesse="120" regung="${name}" beschriftung="${e.was ?? name}"></lotti-figur>`;
+
+      karte.addEventListener('click', async () => {
+        figur.spiele(name, { halten: e.halt != null });
+        try {
+          await navigator.clipboard.writeText(schnipsel);
+          karte.classList.add('kopiert');
+          setTimeout(() => karte.classList.remove('kopiert'), 1400);
+        } catch { /* ohne Zwischenablage bleibt das Abspielen */ }
+      });
+      karte.addEventListener('mouseenter', () => {
+        if (wann.value === 'hover') figur.spiele(name, { halten: e.halt != null });
+      });
+      karte.addEventListener('mouseleave', () => {
+        if (wann.value === 'hover') figur.ruhe();
+      });
+
+      gitter.append(karte);
+      karten.push({ name, e, figur });
+    }
+    inhalt.append(gitter);
+  }
+
+  const wann = document.getElementById('wann');
+  const fuss = document.getElementById('fuss');
+  const gesamt = karten.reduce((n, k) => n + k.e.bilder, 0);
+  fuss.innerHTML = `${karten.length} Regungen, ${gesamt} Bilder in `
+    + `${Object.keys(verzeichnis.gruppen).length} Blättern. Modell `
+    + `<code>${verzeichnis.modell ?? '?'}</code>.`;
+
+  /* „Dauernd" ist ein Dauerlauf, kein Aufruf: Jede Regung startet sich
+     nach ihrem `fertig` neu. Nur die Schleifen laufen ohnehin weiter, und
+     gehaltene Gesten würden stehen bleiben — die bekommen einen Anstoß. */
+  const dauerlauf = () => {
+    for (const { name, e, figur } of karten) {
+      if (wann.value !== 'dauer') continue;
+      figur.spiele(name, { halten: false });
+      if (!e.wiederholt) {
+        figur.addEventListener('fertig', () => {
+          if (wann.value === 'dauer') setTimeout(() => figur.spiele(name), 400);
+        }, { once: true });
+      }
+    }
+  };
+  wann.addEventListener('change', () => {
+    if (wann.value === 'dauer') dauerlauf();
+    else for (const { figur } of karten) figur.ruhe();
+  });
+
+  document.getElementById('alle').addEventListener('click', () => {
+    for (const { name, e, figur } of karten) figur.spiele(name, { halten: e.halt != null });
+  });
+  document.getElementById('spiegel').addEventListener('click', () => {
+    for (const { figur } of karten) figur.toggleAttribute('spiegel');
+  });
+</script>
