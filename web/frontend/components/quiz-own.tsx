@@ -6,7 +6,7 @@ import { UserQuizQuestion } from "@/lib/types";
 import { Card, Button, Input, toast } from "@/components/ui";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CATEGORY_LABEL } from "@/components/quiz-play";
-import { loadOrtsbereichCatalog } from "@/lib/stadtteile";
+import { loadOrtsbereichCatalog } from "@/lib/districts";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +49,7 @@ type Draft = {
   question: string;
   options: string[];
   correct_index: number;
-  stadtteil: string;   // "" = stadtweit
+  district: string;   // "" = stadtweit
   category: string;
   explanation: string;
   // Schätzfrage (category === "schaetzen"): Zahl statt Optionen.
@@ -61,14 +61,14 @@ type Draft = {
 };
 
 const EMPTY_DRAFT: Draft = {
-  question: "", options: ["", ""], correct_index: 0, stadtteil: "", category: "geschichte",
+  question: "", options: ["", ""], correct_index: 0, district: "", category: "geschichte",
   explanation: "", answerValue: "", unit: "", rangeManual: false, rangeMin: "", rangeMax: "",
 };
 
 function draftOf(q: UserQuizQuestion): Draft {
   const estimate = q.qtype === "estimate";
   return { question: q.question, options: q.options.length ? [...q.options] : ["", ""],
-           correct_index: q.correct_index, stadtteil: q.stadtteil ?? "", category: q.category,
+           correct_index: q.correct_index, district: q.district ?? "", category: q.category,
            explanation: q.explanation ?? "",
            answerValue: estimate && q.answer_value != null ? String(q.answer_value) : "",
            unit: q.unit ?? "", rangeManual: false,
@@ -130,7 +130,7 @@ function QuestionEditor({ open, initial, editId, onClose, onSaved }: {
     try {
       const common = {
         question: draft.question.trim(),
-        stadtteil: draft.stadtteil || null,
+        district: draft.district || null,
         category: draft.category,
         explanation: draft.explanation.trim() || null,
       };
@@ -271,7 +271,7 @@ function QuestionEditor({ open, initial, editId, onClose, onSaved }: {
 
         <label className="block text-sm font-medium text-foreground">
           Ort <span className="font-normal text-muted-foreground">(optional)</span>
-          <select value={draft.stadtteil} onChange={(e) => setDraft({ ...draft, stadtteil: e.target.value })}
+          <select value={draft.district} onChange={(e) => setDraft({ ...draft, district: e.target.value })}
             className="mt-1.5 h-10 w-full rounded-lg border border-input bg-card px-3 text-base text-foreground sm:text-sm">
             <option value="">Stadtweit</option>
             {allOrtsbereiche.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -365,7 +365,7 @@ export function OwnQuestionsView({ questions, autoNew, starting, onPractice, onB
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium leading-snug text-foreground">{q.question}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {q.stadtteil ?? "Stadtweit"} · {CATEGORY_LABEL[q.category] ?? q.category} · {practiceLabel(q)}
+                  {q.district ?? "Stadtweit"} · {CATEGORY_LABEL[q.category] ?? q.category} · {practiceLabel(q)}
                 </p>
               </div>
               <button type="button" aria-label="Bearbeiten"

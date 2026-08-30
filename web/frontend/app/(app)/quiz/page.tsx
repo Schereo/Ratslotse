@@ -34,12 +34,12 @@ function saveLast(s: LastSettings) {
  *  zerlegen (Hero-Karte „Weiterspielen"). Kennt auch „wahlbereich:"-Einträge
  *  aus alten gespeicherten Ständen. */
 function selectionParts(s: LastSettings, catalog: QuizAreas): { areas: string[]; cat: string } {
-  const wb = new Map(catalog.wahlbereiche.map((w) => [`wahlbereich:${w.key}`, w.label ?? `Wahlbereich ${w.key}`] as [string, string]));
-  const th = new Map(catalog.themen.map((t) => [`thema:${t.key}`, t.label ?? t.key] as [string, string]));
+  const wb = new Map(catalog.electoral_districts.map((w) => [`electoral_district:${w.key}`, w.label ?? `Wahlbereich ${w.key}`] as [string, string]));
+  const th = new Map(catalog.topics.map((t) => [`topic:${t.key}`, t.label ?? t.key] as [string, string]));
   const areas = s.areas.map((a) =>
-    a.startsWith("wahlbereich:") ? (wb.get(a) ?? a)
-      : a.startsWith("thema:") ? (th.get(a) ?? a.slice(6))
-        : a.startsWith("stadtteil:") ? a.slice(10) : a);
+    a.startsWith("electoral_district:") ? (wb.get(a) ?? a)
+      : a.startsWith("topic:") ? (th.get(a) ?? a.slice(6))
+        : a.startsWith("district:") ? a.slice(10) : a);
   return { areas, cat: s.cats.length ? s.cats.map((c) => CATEGORY_LABEL[c] ?? c).join(", ") : "Alle Kategorien" };
 }
 
@@ -157,7 +157,7 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
   const [showOutside, setShowOutside] = useState(false);
 
   const stByName = useMemo(
-    () => new Map(catalog.stadtteile.map((s) => [s.key, s] as [string, QuizAreaEntry])),
+    () => new Map(catalog.districts.map((s) => [s.key, s] as [string, QuizAreaEntry])),
     [catalog],
   );
 
@@ -165,11 +165,11 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
   // Stadtteile entfernen, die kein anderer noch aktiver Bereich hält.
   const toggleWb = (w: QuizAreaEntry) => {
     const key = w.key;
-    const members = (w.stadtteile ?? []).filter((n) => stByName.has(n));
+    const members = (w.districts ?? []).filter((n) => stByName.has(n));
     if (wbSel.has(key)) {
       const nextWb = new Set(wbSel); nextWb.delete(key);
       const held = new Set(
-        catalog.wahlbereiche.filter((o) => nextWb.has(o.key)).flatMap((o) => o.stadtteile ?? []));
+        catalog.electoral_districts.filter((o) => nextWb.has(o.key)).flatMap((o) => o.districts ?? []));
       const nextSt = new Set(stSel);
       for (const n of members) if (!held.has(n)) nextSt.delete(n);
       setWbSel(nextWb); setStSel(nextSt);
@@ -189,8 +189,8 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
 
   // Stadtteil-Chips: gewählte zuerst (gefüllt, ✕), dann die stärksten übrigen;
   // der Rest steckt hinter dem Such-Chip.
-  const selectedSt = catalog.stadtteile.filter((s) => stSel.has(s.key));
-  const unselectedSt = catalog.stadtteile
+  const selectedSt = catalog.districts.filter((s) => stSel.has(s.key));
+  const unselectedSt = catalog.districts
     .filter((s) => !stSel.has(s.key))
     .sort((a, b) => b.questions - a.questions);
   const needle = q.trim().toLowerCase();
@@ -202,23 +202,23 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
   // Themen nach Ortsbezug gruppieren (RL-U13): in der Auswahl / stadtweit /
   // außerhalb. Gewählte Themen bleiben immer sichtbar — fällt ihr Ort aus der
   // Auswahl, wandern sie mit Orts-Hinweis in die obere Zeile.
-  const themen = catalog.themen;
-  const inSelection = themen.filter((t) => t.stadtteil && stSel.has(t.stadtteil));
-  const cityWide = themen.filter((t) => !t.stadtteil);
-  const outside = themen.filter((t) => t.stadtteil && !stSel.has(t.stadtteil));
-  const outsideUnselected = outside.filter((t) => !thSel.has(`thema:${t.key}`));
-  const selectedOutside = outside.filter((t) => thSel.has(`thema:${t.key}`));
+  const themen = catalog.topics;
+  const inSelection = themen.filter((t) => t.district && stSel.has(t.district));
+  const cityWide = themen.filter((t) => !t.district);
+  const outside = themen.filter((t) => t.district && !stSel.has(t.district));
+  const outsideUnselected = outside.filter((t) => !thSel.has(`topic:${t.key}`));
+  const selectedOutside = outside.filter((t) => thSel.has(`topic:${t.key}`));
 
   const themeChip = (t: QuizAreaEntry, ortHint = false) => {
-    const key = `thema:${t.key}`;
+    const key = `topic:${t.key}`;
     const active = thSel.has(key);
     return (
       <button key={key} type="button" onClick={() => toggleIn(thSel, key, setThSel)}
         className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
           active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
-        {t.stadtteil && <MapPin className="h-3 w-3 shrink-0" />}
+        {t.district && <MapPin className="h-3 w-3 shrink-0" />}
         {t.label ?? t.key} · {t.questions}
-        {ortHint && t.stadtteil && <span className="text-[10px] opacity-70">({t.stadtteil})</span>}
+        {ortHint && t.district && <span className="text-[10px] opacity-70">({t.district})</span>}
         <Points n={t.points} />
       </button>
     );
@@ -226,7 +226,7 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
 
   const totalQuestions =
     selectedSt.reduce((sum, s) => sum + s.questions, 0) +
-    themen.filter((t) => thSel.has(`thema:${t.key}`)).reduce((sum, t) => sum + t.questions, 0);
+    themen.filter((t) => thSel.has(`topic:${t.key}`)).reduce((sum, t) => sum + t.questions, 0);
   const areaCount = stSel.size + thSel.size;
   const catStr = cats.size ? [...cats].map((c) => CATEGORY_LABEL[c] ?? c).join(", ") : null;
   const summary = areaCount
@@ -234,7 +234,7 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
     : "Noch kein Gebiet gewählt — Schnellwahl oder Orte antippen.";
 
   const start = () => onStart(
-    [...stSel].map((s) => `stadtteil:${s}`).concat([...thSel]),
+    [...stSel].map((s) => `district:${s}`).concat([...thSel]),
     [...cats],
   );
 
@@ -255,11 +255,11 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
         <Button variant="ghost" size="sm" onClick={onCancel}>Abbrechen</Button>
       </div>
 
-      {catalog.wahlbereiche.length > 0 && (
+      {catalog.electoral_districts.length > 0 && (
         <>
           <SetupLabel hint="— wählt seine Ortsbereiche vor">Schnellwahl · Wahlbereich</SetupLabel>
           <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {catalog.wahlbereiche.map((w) => {
+            {catalog.electoral_districts.map((w) => {
               const active = wbSel.has(w.key);
               return (
                 <button key={w.key} type="button" onClick={() => toggleWb(w)}
@@ -491,8 +491,8 @@ function QuizInner() {
     );
   }
 
-  const catalog = data ?? { wahlbereiche: [], stadtteile: [], themen: [], categories: [] };
-  const empty = !catalog.wahlbereiche.length && !catalog.stadtteile.length && !catalog.themen.length;
+  const catalog = data ?? { electoral_districts: [], districts: [], topics: [], categories: [] };
+  const empty = !catalog.electoral_districts.length && !catalog.districts.length && !catalog.topics.length;
   const startDaily = () => { if (daily && !daily.done && daily.questions.length) { setKind("daily"); setRound(daily.questions); } };
 
   // ---- Setup: alles auf einer Seite (RL-U13) --------------------------------

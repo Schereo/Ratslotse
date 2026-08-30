@@ -347,7 +347,7 @@ CREATE TABLE IF NOT EXISTS user_quiz_questions (
     question      TEXT NOT NULL,
     options       TEXT NOT NULL,         -- JSON-Array, 2–4 Einträge (leer bei estimate)
     correct_index INTEGER NOT NULL,
-    stadtteil     TEXT,                  -- NULL = stadtweit
+    district      TEXT,                  -- NULL = stadtweit
     category      TEXT NOT NULL,
     explanation   TEXT,
     qtype         TEXT NOT NULL DEFAULT 'mc',  -- mc | estimate (Schätzfrage-Slider)
@@ -566,6 +566,7 @@ class Store:
             "nwz_username", "nwz_verified_at", "nwz_fulltext_allowed"])
         # Die Schnittstelle spricht Englisch, die Spalten ziehen nach.
         self._spalten_umbenennen("qa_gespraeche", [("titel", "title")])
+        self._spalten_umbenennen("user_quiz_questions", [("district", "district")])
         self._spalten_umbenennen("qa_shares", [
             ("frage", "question"), ("antwort", "answer"), ("quellen", "sources")])
         self._spalten_umbenennen("deep_research_jobs", [
@@ -1169,7 +1170,7 @@ class Store:
         keys = r.keys()
         return {"id": r["id"], "question": r["question"],
                 "options": json.loads(r["options"]), "correct_index": r["correct_index"],
-                "stadtteil": r["stadtteil"], "category": r["category"],
+                "district": r["district"], "category": r["category"],
                 "explanation": r["explanation"], "practiced": r["practiced"],
                 "correct_count": r["correct_count"], "created_at": r["created_at"],
                 "qtype": (r["qtype"] if "qtype" in keys else None) or "mc",
@@ -1206,19 +1207,19 @@ class Store:
             if question_id is None:
                 cur = self._conn.execute(
                     "INSERT INTO user_quiz_questions (owner_id, question, options, "
-                    "correct_index, stadtteil, category, explanation, qtype, answer_value, "
+                    "correct_index, district, category, explanation, qtype, answer_value, "
                     "answer_unit, range_min, range_max, created_at) "
                     "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (owner_id, data["question"], opts, data["correct_index"],
-                     data.get("stadtteil"), data["category"], data.get("explanation"),
+                     data.get("district"), data["category"], data.get("explanation"),
                      *est, now))
                 return int(cur.lastrowid)
             cur = self._conn.execute(
                 "UPDATE user_quiz_questions SET question=?, options=?, correct_index=?, "
-                "stadtteil=?, category=?, explanation=?, qtype=?, answer_value=?, "
+                "district=?, category=?, explanation=?, qtype=?, answer_value=?, "
                 "answer_unit=?, range_min=?, range_max=?, practiced=0, correct_count=0 "
                 "WHERE owner_id = ? AND id = ?",
-                (data["question"], opts, data["correct_index"], data.get("stadtteil"),
+                (data["question"], opts, data["correct_index"], data.get("district"),
                  data["category"], data.get("explanation"), *est, owner_id, question_id))
             return question_id if cur.rowcount else None
 

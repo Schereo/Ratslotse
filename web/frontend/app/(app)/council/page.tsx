@@ -16,7 +16,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   // Seit dem Split heißt die Seite „Suche" — außer der Link zeigt auf einen
   // der Geschwister-Tabs, die weiter hier wohnen.
   const TAB_TITEL: Record<string, string> = {
-    sessions: "Sitzungen", themen: "Stadtkarte", analysis: "Analyse" };
+    sessions: "Sitzungen", topics: "Stadtkarte", analysis: "Analyse" };
   const tabTitel = TAB_TITEL[searchParams?.tab ?? ""];
   if (tabTitel) return { title: tabTitel };
   const q = searchParams?.q?.trim();

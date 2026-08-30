@@ -361,7 +361,7 @@ def _estimate(question: str, answer_mio: int, lo: int, hi: int, *, year: int,
     from council import quiz  # content_hash — zirkular-import-frei zur Laufzeit
     assert lo < answer_mio < hi
     return {
-        "area_type": "thema", "area_key": "haushalt", "category": "schaetzen",
+        "area_type": "topic", "area_key": "haushalt", "category": "schaetzen",
         "difficulty": difficulty, "question": question,
         "options": [], "correct_index": 0, "qtype": "estimate",
         "answer_value": float(answer_mio), "answer_unit": unit,
@@ -370,7 +370,7 @@ def _estimate(question: str, answer_mio: int, lo: int, hi: int, *, year: int,
         "detail": detail, "hint": hint, "topic": "Haushalt",
         "source_type": "stadt", "source_ref": source_url,
         "chart": chart_json,
-        "content_hash": quiz._content_hash("thema", "haushalt", question),
+        "content_hash": quiz._content_hash("topic", "haushalt", question),
     }
 
 
@@ -521,7 +521,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     chart_all = _chart(parts, year)
 
     def key(name: str) -> str:
-        return quiz._content_hash("thema", "haushalt", f"{name}-{year}")
+        return quiz._content_hash("topic", "haushalt", f"{name}-{year}")
 
     gesamt = _mio(summe["aufwendungen"])
     ertraege = _mio(summe["ertraege"])
@@ -596,7 +596,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     rng.shuffle(opts)
     top_info = bereich_info(top["bereich"]) or "zentrale Aufgaben der Stadt"
     qs.append({
-        "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+        "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
         "difficulty": "leicht", "qtype": "mc",
         "question": f"Wofür gibt die Stadt Oldenburg {year} am meisten Geld aus?",
         "options": opts, "correct_index": opts.index(top["bereich"]),
@@ -616,7 +616,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     e_opts = [e_top["bereich"], *[r["bereich"] for r in by_ertrag[1:4]]]
     rng.shuffle(e_opts)
     qs.append({
-        "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+        "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
         "difficulty": "mittel", "qtype": "mc",
         "question": f"In welchem Bereich des städtischen Haushalts landen {year} die höchsten Einnahmen?",
         "options": e_opts, "correct_index": e_opts.index(e_top["bereich"]),
@@ -676,7 +676,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         k_opts = [r["bereich"] for r in pick]
         rng.shuffle(k_opts)
         qs.append({
-            "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+            "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
             "difficulty": "schwer", "qtype": "mc",
             "question": f"Welcher dieser Bereiche kostet die Stadt Oldenburg {year} am wenigsten?",
             "options": k_opts, "correct_index": k_opts.index(kleinster["bereich"]),
@@ -700,7 +700,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         if len(n_opts) == 4:
             rng.shuffle(n_opts)
             qs.append({
-                "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+                "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
                 "difficulty": "mittel", "qtype": "mc",
                 "question": (f"Welcher Bereich kostet die Stadt Oldenburg {year} unterm Strich "
                              "am meisten — nach Abzug eigener Einnahmen?"),
@@ -753,7 +753,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         f_opts = [r["bereich"] for r in fach[:4]]
         rng.shuffle(f_opts)
         qs.append({
-            "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+            "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
             "difficulty": "schwer", "qtype": "mc",
             "question": (f"Welcher dieser Bereiche nimmt {year} selbst am meisten ein — "
                          "durch Erstattungen und Zuweisungen von Bund und Land, "
@@ -809,7 +809,7 @@ def build_abschluss_questions(store) -> list[dict]:
     from council import quiz
 
     def key(name: str) -> str:
-        return quiz._content_hash("thema", "haushalt", f"abschluss-{name}")
+        return quiz._content_hash("topic", "haushalt", f"abschluss-{name}")
 
     ris = "https://buergerinfo.oldenburg.de"
     qs: list[dict] = []
@@ -838,7 +838,7 @@ def build_abschluss_questions(store) -> list[dict]:
                     "erscheint zu ihrer eigenen Zeit, und die jüngste ist immer "
                     "die, die vorliegt.")
         qs.append({
-            "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+            "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
             "difficulty": "schwer", "qtype": "mc",
             "question": "Wie hoch sind die Schulden der Stadt Oldenburg?",
             "options": opts, "correct_index": opts.index(richtig),
@@ -905,7 +905,7 @@ def build_abschluss_questions(store) -> list[dict]:
                            _komma(faktor / 1.8) + " Euro",
                            _komma(faktor * 2) + " Euro"})
             qs.append({
-                "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+                "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
                 "difficulty": "schwer", "qtype": "mc",
                 "question": (f"Auf jeden Euro, den die Stadt {z['jahr']} in ihr "
                              f"Sachvermögen — Gebäude, Straßen, Fahrzeuge — "
@@ -954,7 +954,7 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
     # 1) Wachstum als Schätzfrage (Prozent) mit Trendlinie.
     if 5 <= wachstum <= 300:
         qs.append({
-            "area_type": "thema", "area_key": "haushalt", "category": "schaetzen",
+            "area_type": "topic", "area_key": "haushalt", "category": "schaetzen",
             "difficulty": "schwer", "qtype": "estimate",
             "question": (f"Um wie viel Prozent sind Oldenburgs geplante Gesamtausgaben "
                          f"von {y0} bis {y1} gewachsen?"),
@@ -971,7 +971,7 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
             "hint": "Die Ausgaben sind kräftig gestiegen — mehr als ein Viertel.",
             "topic": "Haushalt", "source_type": "stadt", "source_ref": source_url,
             "chart": trend_json,
-            "content_hash": quiz._content_hash("thema", "haushalt", f"trend-{y0}-{y1}"),
+            "content_hash": quiz._content_hash("topic", "haushalt", f"trend-{y0}-{y1}"),
         })
 
     # 2) Bereich mit dem stärksten Wachstum (nur namensgleiche Bereiche).
@@ -988,7 +988,7 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
             rng = random.Random(y1)
             rng.shuffle(opts)
             qs.append({
-                "area_type": "thema", "area_key": "haushalt", "category": "ratspolitik",
+                "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
                 "difficulty": "schwer", "qtype": "mc",
                 "question": (f"Welcher Bereich ist in Oldenburgs Haushaltsplanung von {y0} bis {y1} "
                              "am stärksten gewachsen (in Euro)?"),
@@ -999,7 +999,7 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
                            "Bildungsbereichen zu Buche — das Diagramm zeigt den Verlauf der Gesamtausgaben."),
                 "topic": "Haushalt", "source_type": "stadt", "source_ref": source_url,
                 "chart": trend_json,
-                "content_hash": quiz._content_hash("thema", "haushalt", f"trend-bereich-{y0}-{y1}"),
+                "content_hash": quiz._content_hash("topic", "haushalt", f"trend-bereich-{y0}-{y1}"),
             })
 
     return qs

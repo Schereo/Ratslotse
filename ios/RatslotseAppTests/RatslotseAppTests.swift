@@ -745,23 +745,23 @@ private final class FeedbackURLProtocol: URLProtocol {
     let data = try #require(
         """
         {
-          "wahlbereiche": [{
+          "electoral_districts": [{
             "key": "3",
             "label": "Wahlbereich 3",
-            "stadtteile": ["Eversten", "Bloherfelde"],
+            "districts": ["Eversten", "Bloherfelde"],
             "questions": 27,
             "points": 12
           }],
-          "stadtteile": [{
+          "districts": [{
             "key": "Eversten",
             "label": "Eversten",
             "questions": 14,
             "points": 5
           }],
-          "themen": [{
+          "topics": [{
             "key": "schulwege",
             "label": "Sichere Schulwege",
-            "stadtteil": "Kreyenbrück",
+            "district": "Kreyenbrück",
             "questions": 9,
             "points": 2
           }],
@@ -772,9 +772,9 @@ private final class FeedbackURLProtocol: URLProtocol {
 
     let catalog = try JSONDecoder().decode(QuizAreas.self, from: data)
 
-    #expect(catalog.wahlbereiche.first?.stadtteile == ["Eversten", "Bloherfelde"])
-    #expect(catalog.stadtteile.first?.points == 5)
-    #expect(catalog.themen.first?.stadtteil == "Kreyenbrück")
+    #expect(catalog.electoralDistricts.first?.districts == ["Eversten", "Bloherfelde"])
+    #expect(catalog.districts.first?.points == 5)
+    #expect(catalog.topics.first?.district == "Kreyenbrück")
     #expect(catalog.categories.count == 5)
 }
 
@@ -786,7 +786,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "question": "Wie viele Einwohner hat Oldenburg ungefähr?",
           "options": [],
           "correct_index": 0,
-          "stadtteil": null,
+          "district": null,
           "category": "schaetzen",
           "explanation": "Die Zahl verändert sich laufend.",
           "qtype": "estimate",

@@ -121,7 +121,7 @@ def test_store_haushalt_roundtrip_and_quiz(tmp_path, quelle):
     themes = {t["area_key"]: t["label"] for t in store.quiz_themes()}
     assert themes.get("haushalt") == "Stadt-Haushalt"
     # Chart NICHT in der Runde, aber in der Auflösung:
-    picked = store.pick_quiz_questions([("thema", "haushalt")], None, [], 20)
+    picked = store.pick_quiz_questions([("topic", "haushalt")], None, [], 20)
     assert picked and all("chart" not in p for p in picked)
     full = store.get_quiz_question(picked[0]["id"])
     assert isinstance(full.get("chart"), dict) and full["chart"]["items"]
@@ -186,7 +186,7 @@ def test_eigene_einnahmen_absolut_und_ohne_zentralen_finanzhaushalt():
     rows = haushalt.parse_ergebnishaushalt(PAGE_2026)
     qs = haushalt.build_questions(rows, 2026, "http://pdf")
     q = next(x for x in qs
-             if x["content_hash"] == quiz._content_hash("thema", "haushalt", "deckung-2026"))
+             if x["content_hash"] == quiz._content_hash("topic", "haushalt", "deckung-2026"))
     assert q["qtype"] == "mc" and q["difficulty"] == "schwer"
     assert "Prozent" not in q["question"] and "deckt" not in q["question"]
     assert q["options"][q["correct_index"]] == "Soziales und Gesundheit"
@@ -238,7 +238,7 @@ def test_refresh_quiz_payloads_extends_trend(tmp_path):
     rows = haushalt.parse_ergebnishaushalt(PAGE_2026)
     early = haushalt.build_trend_questions({2020: _shift(rows, 0.66), 2026: rows}, "http://pdf")
     store.save_quiz_questions(early)
-    q_id = store.pick_quiz_questions([("thema", "haushalt")], None, [], 10)[0]["id"]
+    q_id = store.pick_quiz_questions([("topic", "haushalt")], None, [], 10)[0]["id"]
     assert len(store.get_quiz_question(q_id)["chart"]["items"]) == 2
     later = haushalt.build_trend_questions(
         {2020: _shift(rows, 0.66), 2023: _shift(rows, 0.8), 2026: rows}, "http://pdf")

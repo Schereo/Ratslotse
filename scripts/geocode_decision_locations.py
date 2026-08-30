@@ -30,7 +30,7 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1) -
     store = CouncilStore(council_db)
     curated = store.apply_curated_location_geocodes()
     reused = store.hydrate_location_geo_from_entities()
-    districts = store.backfill_location_stadtteile()
+    districts = store.backfill_location_districts()
     catalog_links = store.backfill_location_place_ids()
     rows = store.locations_to_geocode(limit=limit)
     print(f"Orts-Geocoding: reused={reused}, pending={len(rows)}", flush=True)
@@ -42,7 +42,7 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1) -
             if catalog_place and catalog_place.lat is not None and catalog_place.lon is not None:
                 result = (catalog_place.lat, catalog_place.lon, None)
                 local = True
-            elif row["kind"] == "stadtteil" and geo.ortsbereich_center(row["name"]):
+            elif row["kind"] == "district" and geo.ortsbereich_center(row["name"]):
                 lat, lon = geo.ortsbereich_center(row["name"])
                 shape = geo.ortsbereich_polygon(row["name"])
                 result = (lat, lon, json.dumps(shape, separators=(",", ":")))

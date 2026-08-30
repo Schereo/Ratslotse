@@ -7,7 +7,7 @@ import type { Map as LeafletMap, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import { EntityMapPoint } from "@/lib/types";
-import type { StadtteilFeature } from "@/lib/stadtteile";
+import type { StadtteilFeature } from "@/lib/districts";
 import { ortHref, themaHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { basemapUrl } from "@/lib/basemap";

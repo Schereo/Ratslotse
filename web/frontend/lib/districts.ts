@@ -28,7 +28,7 @@ export interface OrtsbereichEntry {
   kind: string;
   kind_label: string;
   aliases: string[];
-  wahlbereiche: number[];
+  electoral_districts: number[];
   parent_ids: string[];
   parents: { id: string; name: string; kind: string }[];
   description: string | null;
@@ -77,7 +77,7 @@ export function loadOrtsbereichCatalog(): Promise<OrtsbereichCatalog> {
 /** Ortsbereich-Namen je Wahlbereich [1..6] — inkl. Grenzgebiete, die auch zu
  *  anderen Bereichen gehören. */
 export function ortsbereicheImWahlbereich(wb: number, places: OrtsbereichEntry[]): string[] {
-  return places.filter((place) => place.wahlbereiche.includes(wb)).map((place) => place.name);
+  return places.filter((place) => place.electoral_districts.includes(wb)).map((place) => place.name);
 }
 
 /** Ray-Casting: liegt (lon, lat) im Ring? */

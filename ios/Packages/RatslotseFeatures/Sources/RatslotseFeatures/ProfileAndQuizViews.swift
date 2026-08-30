@@ -1463,15 +1463,20 @@ struct QuizArea: Codable, Sendable, Identifiable {
     let label: String?
     let questions: Int
     let points: Int?
-    let stadtteile: [String]?
-    let stadtteil: String?
+    let districts: [String]?
+    let district: String?
 }
 
 struct QuizAreas: Codable, Sendable {
-    let wahlbereiche: [QuizArea]
-    let stadtteile: [QuizArea]
-    let themen: [QuizArea]
+    let electoralDistricts: [QuizArea]
+    let districts: [QuizArea]
+    let topics: [QuizArea]
     let categories: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case electoralDistricts = "electoral_districts"
+        case districts, topics, categories
+    }
 }
 
 private func quizCategoryLabel(_ category: String) -> String {
@@ -1595,7 +1600,7 @@ struct OwnQuizQuestion: Codable, Sendable, Identifiable {
     let question: String
     let options: [String]
     let correctIndex: Int
-    let stadtteil: String?
+    let district: String?
     let category: String
     let explanation: String?
     let qtype: String?
@@ -1607,7 +1612,7 @@ struct OwnQuizQuestion: Codable, Sendable, Identifiable {
     let correctCount: Int
 
     enum CodingKeys: String, CodingKey {
-        case id, question, options, stadtteil, category, explanation, qtype, unit, practiced
+        case id, question, options, district, category, explanation, qtype, unit, practiced
         case correctIndex = "correct_index"
         case answerValue = "answer_value"
         case rangeMin = "range_min"
@@ -1736,23 +1741,23 @@ struct QuizView: View {
             symbol: "slider.horizontal.3"
         ) {
             VStack(alignment: .leading, spacing: 17) {
-                if !catalog.wahlbereiche.isEmpty {
+                if !catalog.electoralDistricts.isEmpty {
                     quizChoiceSection(
                         title: "Wahlbereiche",
                         detail: "Große Auswahl mit einem Tipp",
-                        entries: catalog.wahlbereiche,
-                        prefix: "wahlbereich:"
+                        entries: catalog.electoralDistricts,
+                        prefix: "electoral_district:"
                     )
                 }
 
-                quizPlaces(catalog.stadtteile)
+                quizPlaces(catalog.districts)
 
-                if !catalog.themen.isEmpty {
+                if !catalog.topics.isEmpty {
                     quizChoiceSection(
                         title: "Themen",
                         detail: "Projekte und Debatten gezielt üben",
-                        entries: catalog.themen,
-                        prefix: "thema:"
+                        entries: catalog.topics,
+                        prefix: "topic:"
                     )
                 }
 
@@ -1851,7 +1856,7 @@ struct QuizView: View {
 
             QuizFlowLayout(spacing: 7) {
                 ForEach(visiblePlaces(entries)) { entry in
-                    let key = "stadtteil:" + entry.key
+                    let key = "district:" + entry.key
                     QuizChoiceChip(
                         title: entry.label ?? entry.key,
                         detail: "\(entry.questions)",
@@ -1887,8 +1892,8 @@ struct QuizView: View {
             return entries.filter { ($0.label ?? $0.key).localizedCaseInsensitiveContains(needle) }
         }
         if showAllPlaces { return entries }
-        let selected = entries.filter { selectedAreas.contains("stadtteil:" + $0.key) }
-        let unselected = entries.filter { !selectedAreas.contains("stadtteil:" + $0.key) }
+        let selected = entries.filter { selectedAreas.contains("district:" + $0.key) }
+        let unselected = entries.filter { !selectedAreas.contains("district:" + $0.key) }
         return Array((selected + unselected).prefix(max(12, selected.count)))
     }
 
@@ -1899,9 +1904,9 @@ struct QuizView: View {
 
     private var quizAreaLabels: [String: String] {
         guard let areas else { return [:] }
-        let rows = areas.wahlbereiche.map { ("wahlbereich:\($0.key)", $0.label ?? $0.key) }
-            + areas.stadtteile.map { ("stadtteil:\($0.key)", $0.label ?? $0.key) }
-            + areas.themen.map { ("thema:\($0.key)", $0.label ?? $0.key) }
+        let rows = areas.electoralDistricts.map { ("electoral_district:\($0.key)", $0.label ?? $0.key) }
+            + areas.districts.map { ("district:\($0.key)", $0.label ?? $0.key) }
+            + areas.topics.map { ("topic:\($0.key)", $0.label ?? $0.key) }
         return Dictionary(uniqueKeysWithValues: rows)
     }
 
@@ -2043,35 +2048,35 @@ struct QuizView: View {
 
     private func installDebugSetup() {
         areas = QuizAreas(
-            wahlbereiche: (1...6).map {
+            electoralDistricts: (1...6).map {
                 QuizArea(
                     key: "\($0)",
                     label: "Wahlbereich \($0)",
                     questions: 18 + $0 * 3,
                     points: $0 * 4,
-                    stadtteile: nil,
-                    stadtteil: nil
+                    districts: nil,
+                    district: nil
                 )
             },
-            stadtteile: ["Bloherfelde", "Bürgerfelde", "Donnerschwee", "Eversten", "Kreyenbrück", "Nadorst", "Ofenerdiek", "Osternburg", "Tweelbäke", "Wechloy", "Zentrum", "Etzhorn", "Ohmstede", "Alexandersfeld"].enumerated().map { offset, name in
+            districts: ["Bloherfelde", "Bürgerfelde", "Donnerschwee", "Eversten", "Kreyenbrück", "Nadorst", "Ofenerdiek", "Osternburg", "Tweelbäke", "Wechloy", "Zentrum", "Etzhorn", "Ohmstede", "Alexandersfeld"].enumerated().map { offset, name in
                 QuizArea(
                     key: name,
                     label: name,
                     questions: 7 + offset,
                     points: offset,
-                    stadtteile: nil,
-                    stadtteil: nil
+                    districts: nil,
+                    district: nil
                 )
             },
-            themen: [
-                QuizArea(key: "schulwege", label: "Sichere Schulwege", questions: 12, points: 8, stadtteile: nil, stadtteil: "Kreyenbrück"),
-                QuizArea(key: "wohnen", label: "Wohnen & Bauen", questions: 16, points: 5, stadtteile: nil, stadtteil: nil),
-                QuizArea(key: "klima", label: "Klima & Energie", questions: 14, points: 3, stadtteile: nil, stadtteil: nil),
-                QuizArea(key: "innenstadt", label: "Lebendige Innenstadt", questions: 9, points: 2, stadtteile: nil, stadtteil: "Zentrum"),
+            topics: [
+                QuizArea(key: "schulwege", label: "Sichere Schulwege", questions: 12, points: 8, districts: nil, district: "Kreyenbrück"),
+                QuizArea(key: "wohnen", label: "Wohnen & Bauen", questions: 16, points: 5, districts: nil, district: nil),
+                QuizArea(key: "klima", label: "Klima & Energie", questions: 14, points: 3, districts: nil, district: nil),
+                QuizArea(key: "innenstadt", label: "Lebendige Innenstadt", questions: 9, points: 2, districts: nil, district: "Zentrum"),
             ],
             categories: ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
         )
-        selectedAreas = ["wahlbereich:3", "thema:schulwege"]
+        selectedAreas = ["electoral_district:3", "topic:schulwege"]
         selectedCategories = ["ratspolitik", "orte"]
         stats = QuizStats(
             byArea: [
@@ -2099,7 +2104,7 @@ struct QuizView: View {
         do {
             areas = try await model.api.get("/api/quiz/areas")
             if let area { selectedAreas = [area] }
-            else if let first = areas?.wahlbereiche.first { selectedAreas = ["wahlbereich:\(first.key)"] }
+            else if let first = areas?.electoralDistricts.first { selectedAreas = ["electoral_district:\(first.key)"] }
             await loadDashboard()
         } catch { self.error = error.localizedDescription }
     }
@@ -2667,7 +2672,7 @@ private struct OwnQuizEditor: View {
                 RatsLabeledField(label: "Ort", hint: "optional") {
                     Picker("Ort", selection: $stadtteil) {
                         Text("Stadtweit").tag("")
-                        ForEach(areas?.stadtteile ?? []) { place in
+                        ForEach(areas?.districts ?? []) { place in
                             Text(place.label ?? place.key).tag(place.key)
                         }
                     }
@@ -2800,7 +2805,7 @@ private struct OwnQuizEditor: View {
                         .font(RatsFont.body(15, weight: .semibold))
                     QuizFlowLayout(spacing: 6) {
                         Pill(quizCategoryLabel(entry.category), symbol: entry.qtype == "estimate" ? "slider.horizontal.3" : "checkmark.circle")
-                        if let place = entry.stadtteil { Pill(place, symbol: "mappin") }
+                        if let place = entry.district { Pill(place, symbol: "mappin") }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -2903,7 +2908,7 @@ private struct OwnQuizEditor: View {
         while answers.count < 2 { answers.append("") }
         correctIndex = min(entry.correctIndex, answers.count - 1)
         category = entry.category
-        stadtteil = entry.stadtteil ?? ""
+        stadtteil = entry.district ?? ""
         explanation = entry.explanation ?? ""
         answerValue = entry.answerValue.map { String($0) } ?? ""
         unit = entry.unit ?? ""
@@ -2924,11 +2929,11 @@ private struct OwnQuizEditor: View {
 #if DEBUG
         if let debugMode = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUIZ_OWN"] {
             areas = QuizAreas(
-                wahlbereiche: [],
-                stadtteile: ["Bloherfelde", "Eversten", "Kreyenbrück", "Nadorst", "Osternburg", "Zentrum"].enumerated().map { offset, name in
-                    QuizArea(key: name, label: name, questions: 8 + offset, points: offset, stadtteile: nil, stadtteil: nil)
+                electoralDistricts: [],
+                districts: ["Bloherfelde", "Eversten", "Kreyenbrück", "Nadorst", "Osternburg", "Zentrum"].enumerated().map { offset, name in
+                    QuizArea(key: name, label: name, questions: 8 + offset, points: offset, districts: nil, district: nil)
                 },
-                themen: [],
+                topics: [],
                 categories: categories
             )
             questions = [
@@ -2937,7 +2942,7 @@ private struct OwnQuizEditor: View {
                     question: "Welcher Platz liegt direkt vor dem Oldenburger Rathaus?",
                     options: ["Schlossplatz", "Marktplatz", "Pferdemarkt"],
                     correctIndex: 1,
-                    stadtteil: "Zentrum",
+                    district: "Zentrum",
                     category: "orte",
                     explanation: "Der Marktplatz bildet gemeinsam mit Rathaus und Lambertikirche das historische Zentrum.",
                     qtype: "mc",
@@ -2953,7 +2958,7 @@ private struct OwnQuizEditor: View {
                     question: "Wie viele Einwohnerinnen und Einwohner hat Oldenburg ungefähr?",
                     options: [],
                     correctIndex: 0,
-                    stadtteil: nil,
+                    district: nil,
                     category: "schaetzen",
                     explanation: nil,
                     qtype: "estimate",
@@ -2986,7 +2991,7 @@ private struct OwnQuizEditor: View {
             let question: String
             let options: [String]
             let correct_index: Int
-            let stadtteil: String?
+            let district: String?
             let category: String
             let explanation: String?
             let answer_value: Double?
@@ -3010,7 +3015,7 @@ private struct OwnQuizEditor: View {
             question: question.trimmingCharacters(in: .whitespacesAndNewlines),
             options: options,
             correct_index: mappedCorrectIndex,
-            stadtteil: stadtteil.isEmpty ? nil : stadtteil,
+            district: stadtteil.isEmpty ? nil : stadtteil,
             category: category,
             explanation: explanation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : explanation.trimmingCharacters(in: .whitespacesAndNewlines),
             answer_value: isEstimate ? parsedAnswerValue : nil,

@@ -25,7 +25,7 @@ type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
 import { Badge, Button, Card, ChartSkeleton, ConfirmDialog, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
-import type { OrtsbereichCatalog } from "@/lib/stadtteile";
+import type { OrtsbereichCatalog } from "@/lib/districts";
 
 type Tab = "stats" | "feedback" | "llm" | "prompts" | "users" | "quiz" | "orte" | "themen";
 
@@ -938,7 +938,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 /** Schlecht bewertete Quizfragen (👎) sichten und ausmustern. Ausgemusterte
  *  Fragen fliegen aus künftigen Runden; der nächste Generierungslauf füllt das
  *  Gebiet wieder auf. Datenquelle: GET /admin/quiz/flagged. */
-const AREA_TYPE_LABEL: Record<string, string> = { stadtteil: "", wahlbereich: "Wahlbereich ", thema: "" };
+const AREA_TYPE_LABEL: Record<string, string> = { district: "", wahlbereich: "Wahlbereich ", thema: "" };
 
 function QuizModerationTab() {
   const qc = useQueryClient();
@@ -1080,7 +1080,7 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
             <p className="font-semibold">{candidate.name}</p>
             <Badge color="slate">{candidate.kind}</Badge>
             <Badge color={candidate.lat != null ? "green" : "amber"}>
-              {candidate.lat != null ? `verortet · ${candidate.stadtteil ?? "Oldenburg"}` : "ohne Koordinate"}
+              {candidate.lat != null ? `verortet · ${candidate.district ?? "Oldenburg"}` : "ohne Koordinate"}
             </Badge>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">

@@ -51,7 +51,7 @@ def _badges(stats: dict, streak: int, theme_labels: dict[str, str]) -> list[dict
         out.append({"key": "serie", "label": "3-Tage-Serie", "tier": "silber"})
     for a in stats["by_area"]:
         if a["answered"] >= 5 and a["correct"] / a["answered"] >= 0.8:
-            name = theme_labels.get(a["area_key"], a["area_key"]) if a["area_type"] == "thema" else a["area_key"]
+            name = theme_labels.get(a["area_key"], a["area_key"]) if a["area_type"] == "topic" else a["area_key"]
             out.append({"key": f"kenner:{a['area_type']}:{a['area_key']}",
                         "label": f"{name}-Kenner", "tier": "bronze"})
     return out
@@ -63,11 +63,11 @@ def _expand(areas: list[str], council: CouncilStore) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     for a in areas:
         typ, _, key = a.partition(":")
-        if typ == "wahlbereich" and key.isdigit():
-            out += [("stadtteil", n) for n in geo.ortsbereiche_im_wahlbereich(int(key))]
-        elif typ == "stadtteil" and (place := council.resolve_place(key)):
+        if typ == "electoral_district" and key.isdigit():
+            out += [("district", n) for n in geo.ortsbereiche_im_wahlbereich(int(key))]
+        elif typ == "district" and (place := council.resolve_place(key)):
             out.append((typ, place.name))
-        elif typ == "thema" and key:
+        elif typ == "topic" and key:
             out.append((typ, key))
     # dedup, Reihenfolge egal
     return list(dict.fromkeys(out))
@@ -82,11 +82,11 @@ def areas(user: dict = Depends(require_active),
     counts = council.quiz_area_counts()          # {(type, key): n}
     points = store.quiz_points_by_area(user["id"])  # {(type, key): points}
 
-    stadtteile = []
+    districts = []
     for place in council.all_places():
-        n = counts.get(("stadtteil", place.name), 0)
+        n = counts.get(("district", place.name), 0)
         if n:
-            stadtteile.append({
+            districts.append({
                 "key": place.name,
                 "place_id": place.id,
                 "label": place.name,
@@ -94,18 +94,18 @@ def areas(user: dict = Depends(require_active),
                 "kind_label": places.kind_label(place.kind),
                 "aliases": list(place.aliases),
                 "parent_ids": list(place.parent_ids),
-                "wahlbereiche": list(place.wahlbereiche),
+                "electoral_districts": list(place.wahlbereiche),
                 "questions": n,
-                "points": points.get(("stadtteil", place.name), 0),
+                "points": points.get(("district", place.name), 0),
             })
     wahlbereiche = []
     for wb in geo.WAHLBEREICHE:
         members = geo.ortsbereiche_im_wahlbereich(wb)
-        n = sum(counts.get(("stadtteil", m), 0) for m in members)
+        n = sum(counts.get(("district", m), 0) for m in members)
         if n:
-            wahlbereiche.append({"key": str(wb), "label": f"Wahlbereich {wb}", "stadtteile": members,
+            wahlbereiche.append({"key": str(wb), "label": f"Wahlbereich {wb}", "districts": members,
                                  "questions": n,
-                                 "points": sum(points.get(("stadtteil", m), 0) for m in members)})
+                                 "points": sum(points.get(("district", m), 0) for m in members)})
     themen = []
     for t in council.quiz_themes():
         # RL-U13: Themen mit Entity-Geo ihrem Stadtteil zuordnen (Punkt-in-
@@ -113,15 +113,15 @@ def areas(user: dict = Depends(require_active),
         # „Stadtweit" / „Außerhalb". Ohne Geo (oder außerhalb) = stadtweit.
         st = (geo.ortsbereich_for(t["lat"], t["lon"])
               if t.get("lat") is not None and t.get("lon") is not None else None)
-        themen.append({"key": t["area_key"], "label": t["label"], "stadtteil": st,
-                       "questions": counts.get(("thema", t["area_key"]), 0),
-                       "points": points.get(("thema", t["area_key"]), 0)})
-    return {"wahlbereiche": wahlbereiche, "stadtteile": stadtteile, "themen": themen,
+        themen.append({"key": t["area_key"], "label": t["label"], "district": st,
+                       "questions": counts.get(("topic", t["area_key"]), 0),
+                       "points": points.get(("topic", t["area_key"]), 0)})
+    return {"electoral_districts": wahlbereiche, "districts": districts, "topics": themen,
             "categories": CATEGORIES}
 
 
 @router.get("/round")
-def round_(areas: str = Query(..., description="komma-separiert, z. B. wahlbereich:3,stadtteil:Osternburg"),
+def round_(areas: str = Query(..., description="komma-separiert, z. B. electoral_district:3,district:Osternburg"),
            categories: str = "", n: int = Query(10, ge=1, le=30),
            user: dict = Depends(require_active),
            store: Store = Depends(get_store),
@@ -246,7 +246,7 @@ def map_answer(payload: QuizMapIn,
     pts = MAP_POINTS if correct else 0
     # question_id=0 = Karten-Frage (keine DB-Frage); fliegt aus dem „Meine
     # Fehler"-Stapel (quiz_wrong_question_ids filtert question_id > 0).
-    store.record_quiz_answer(user["id"], 0, "stadtteil", target.name, "orte", correct, pts)
+    store.record_quiz_answer(user["id"], 0, "district", target.name, "orte", correct, pts)
     return {"correct": correct, "target": target.name, "points": pts}
 
 
@@ -284,12 +284,12 @@ def _auto_range(value: float, unit: str | None = None) -> tuple[float, float]:
 def _validate_own(payload: UserQuizQuestionIn, council: CouncilStore) -> dict:
     if payload.category not in CATEGORIES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannte Kategorie.")
-    raw_place = (payload.stadtteil or "").strip() or None
+    raw_place = (payload.district or "").strip() or None
     place = council.resolve_place(raw_place)
     if raw_place is not None and not place:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Ortsbereich.")
     st = place.name if place else None
-    base = {"question": payload.question.strip(), "stadtteil": st,
+    base = {"question": payload.question.strip(), "district": st,
             "category": payload.category,
             "explanation": (payload.explanation or "").strip() or None}
     if payload.category == "schaetzen":
@@ -359,7 +359,7 @@ def own_round(n: int = Query(10, ge=1, le=30),
     out = []
     for q in store.user_quiz_round(user["id"], n):
         item = {"id": q["id"], "area_type": "eigene",
-                "area_key": q["stadtteil"] or "Stadtweit",
+                "area_key": q["district"] or "Stadtweit",
                 "category": q["category"], "difficulty": "mittel",
                 "question": q["question"], "options": q["options"], "qtype": q["qtype"]}
         if q["qtype"] == "estimate":  # ohne answer_value — die Lösung kommt erst beim Auswerten

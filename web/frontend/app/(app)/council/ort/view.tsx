@@ -10,7 +10,7 @@ import { Button, DetailSkeleton } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { fragenHref, ortHref } from "@/lib/routes";
 import type { CouncilDecision } from "@/lib/types";
-import type { OrtsbereichEntry } from "@/lib/stadtteile";
+import type { OrtsbereichEntry } from "@/lib/districts";
 import { useZurueck } from "@/lib/zurueck";
 
 interface PlaceDetail {
