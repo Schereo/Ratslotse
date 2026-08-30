@@ -471,10 +471,15 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Laufzeit des Web-Cookie-Tokens | nein | `129600` (90 Tage) |
 | `SESSION_RENEW_WITHIN_MINUTES` | Ab welcher Restlaufzeit die Sitzung sich still verlängert; `0` schaltet die Verlängerung ab | nein | `64800` (45 Tage) |
 | `APP_ACCESS_TOKEN_EXPIRE_MINUTES` | Laufzeit des Tokens nativer Apps | nein | `129600` (90 Tage) |
+| `APP_MIN_BUILD` | Kleinste noch zugelassene iOS-Buildnummer; `GET /api/app-config` liefert sie beim App-Start aus | nein | `0` (keine Sperre) |
+| `APP_UPDATE_NOTICE` | Optionaler Hinweistext für native Builds, z. B. zu einem empfohlenen Update | nein | leer |
 | `CORS_ORIGINS` | Kommaliste erlaubter Web-Origins (in Prod läuft das Frontend same-origin) | nein | `http://localhost:3000` |
 | `APP_CORS_ORIGINS` | Feste Origins der Capacitor-Apps, immer zusätzlich erlaubt | nein | `capacitor://localhost,https://localhost` |
 | `APPLE_BUNDLE_ID` | Erlaubter `aud`-Wert von „Sign in with Apple" in der nativen App | nein | `de.ratslotse.app` |
 | `APPLE_SERVICE_ID` | Services-ID für den Apple-Web-Flow (`aud` des Browser-Tokens). **Leeren schaltet den Web-Login ab** — genau das war der Fehler, den #328 behoben hat. | nein | `de.ratslotse.web` |
+| `APPLE_TEAM_ID` | Apple Developer Team-ID; für den Token-Widerruf bei Kontolöschung erforderlich | für App Store | – |
+| `APPLE_KEY_ID` | Key-ID des „Sign in with Apple“-Schlüssels | für App Store | – |
+| `APPLE_PRIVATE_KEY` | Inhalt des privaten `.p8`-Schlüssels als PEM; escaped `\\n` werden akzeptiert | für App Store | – |
 | `LLM_BUDGET_MONTHLY` | Monatsbudget für die Budget-Ampel (reine Anzeige) | nein | `40.0` |
 | `DISABLE_RATE_LIMIT` | `1` schaltet das Rate-Limiting ab (nur für Tests) | nein | nicht gesetzt |
 

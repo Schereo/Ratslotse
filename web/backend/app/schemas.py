@@ -55,6 +55,13 @@ class UserOut(BaseModel):
     qa_speichern: int | None = None
 
 
+class AppConfigOut(BaseModel):
+    """Compatibility contract consumed before a native app starts loading data."""
+
+    min_build: int = 0
+    hinweis: str | None = None
+
+
 class TopicIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = Field(min_length=1, max_length=2000)
@@ -226,6 +233,7 @@ class DeleteAccountRequest(BaseModel):
     Apple-Identity-Token (Re-Auth in der App, RL-1002)."""
     current_password: str = Field(default="", max_length=128)
     apple_identity_token: str = Field(default="", max_length=4096)
+    apple_authorization_code: str = Field(default="", max_length=2048)
 
 
 # ---- delivery channel ----

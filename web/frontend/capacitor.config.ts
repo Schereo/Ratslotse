@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-// Ratslotse native shell. The web assets are the static Next export in ./out
-// (produced by `npm run build:mobile`); the app calls the backend at an absolute
-// origin (lib/platform.ts) with a bearer token, so no cookies/proxy are needed.
+// Remaining Ratslotse Android shell. iOS is built exclusively from /ios.
+// The web assets are the static Next export in ./out (produced by
+// `npm run build:mobile`); the app calls the backend at an absolute origin.
 const config: CapacitorConfig = {
   appId: "de.ratslotse.app",
   appName: "Ratslotse",

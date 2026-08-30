@@ -31,10 +31,17 @@ class RateLimiter:
             del self._calls[k]
         self._last_cleanup = now
 
-    def check(self, request: Request) -> None:
+    def check(self, request: Request, *, subject: str | int | None = None) -> None:
+        """Count a request in a fixed-window bucket.
+
+        Authenticated, expensive endpoints can pass a stable account id as
+        ``subject``. Anonymous endpoints deliberately keep using the network
+        address. Prefixes prevent an account id from ever sharing a bucket
+        with an equal-looking IP address.
+        """
         if os.environ.get("DISABLE_RATE_LIMIT") == "1":
             return
-        key = self._key(request)
+        key = f"account:{subject}" if subject is not None else f"ip:{self._key(request)}"
         now = time.monotonic()
         with self._lock:
             if now - self._last_cleanup > _CLEANUP_INTERVAL:
@@ -73,6 +80,11 @@ qa_limiter = RateLimiter(max_calls=10, window_seconds=600)
 qa_feedback_limiter = RateLimiter(max_calls=20, window_seconds=600)
 partei_meinungen_limiter = RateLimiter(max_calls=15, window_seconds=600)
 qa_share_limiter = RateLimiter(max_calls=10, window_seconds=600)
+# Öffentliche Share-Links brauchen nach App-Store-Richtlinie 1.2 einen
+# Meldeweg ohne Konto. Drei Meldungen in zehn Minuten reichen für einen
+# Menschen; das enge Limit verhindert, dass Bots das Moderations-Postfach
+# fluten oder fremde Shares automatisiert markieren.
+qa_share_report_limiter = RateLimiter(max_calls=3, window_seconds=600)
 # Das Kontaktformular auf /hilfe ist der einzige Schreib-Endpoint ganz ohne
 # Konto — also der einzige, den ein Bot ohne Vorleistung findet. Eng wie
 # „Passwort vergessen": Wer ehrlich schreibt, braucht keinen zweiten Versuch

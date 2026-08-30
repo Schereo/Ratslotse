@@ -609,7 +609,7 @@ function PushStep({ onDone }: { onDone: () => void }) {
         <Mascot pose="point" decorative className="h-10 w-10 shrink-0" />
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Neu zu deinen Themen</p>
-          <p className="mt-0.5 text-sm text-foreground">Veloroute 4 beschlossen — 1,1 Mio. €</p>
+          <p className="mt-0.5 text-sm text-foreground">Cäcilienbrücke: Rat fordert schnelleren Neubau</p>
         </div>
       </div>
     </StepShell>

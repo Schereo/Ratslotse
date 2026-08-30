@@ -734,6 +734,29 @@
         "title": "AdminWachstum",
         "type": "object"
       },
+      "AppConfigOut": {
+        "description": "Compatibility contract consumed before a native app starts loading data.",
+        "properties": {
+          "hinweis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hinweis"
+          },
+          "min_build": {
+            "default": 0,
+            "title": "Min Build",
+            "type": "integer"
+          }
+        },
+        "title": "AppConfigOut",
+        "type": "object"
+      },
       "AppleLoginRequest": {
         "properties": {
           "family_name": {
@@ -999,6 +1022,12 @@
       "DeleteAccountRequest": {
         "description": "Konto-Löschung verlangt eine frische Bestätigung — eine (evtl. offen\nliegende) Session allein darf das Konto nicht zerstören können. Konten mit\nPasswort bestätigen mit dem Passwort; Apple-only-Konten mit einem frischen\nApple-Identity-Token (Re-Auth in der App, RL-1002).",
         "properties": {
+          "apple_authorization_code": {
+            "default": "",
+            "maxLength": 2048,
+            "title": "Apple Authorization Code",
+            "type": "string"
+          },
           "apple_identity_token": {
             "default": "",
             "maxLength": 4096,
@@ -2655,6 +2684,18 @@
         "title": "ParteiMeinungenBody",
         "type": "object"
       },
+      "ParteienFilter": {
+        "properties": {
+          "parties": {
+            "title": "Parties"
+          }
+        },
+        "required": [
+          "parties"
+        ],
+        "title": "ParteienFilter",
+        "type": "object"
+      },
       "PersonenLexikon": {
         "properties": {
           "personen": {
@@ -3383,6 +3424,18 @@
           "title"
         ],
         "title": "QaShareQuelle",
+        "type": "object"
+      },
+      "QaShareReportBody": {
+        "properties": {
+          "reason": {
+            "default": "other",
+            "pattern": "^(inappropriate|misleading|privacy|other)$",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "QaShareReportBody",
         "type": "object"
       },
       "QaShareToken": {
@@ -6579,6 +6632,42 @@
         ]
       }
     },
+    "/api/admin/qa-shares/{token}": {
+      "delete": {
+        "description": "Gemeldeten Share entfernen; das öffentliche GET liefert danach 404.",
+        "operationId": "delete_reported_qa_share_api_admin_qa_shares__token__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Reported Qa Share",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/quiz/flagged": {
       "get": {
         "description": "Fragen mit Schlecht-Bewertungen (schlechteste zuerst), mit Fragentext.",
@@ -6938,6 +7027,25 @@
         ]
       }
     },
+    "/api/app-config": {
+      "get": {
+        "description": "Small public compatibility contract for installed native builds.",
+        "operationId": "app_config_api_app_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "App Config"
+      }
+    },
     "/api/auth/apple": {
       "post": {
         "operationId": "apple_login_api_auth_apple_post",
@@ -7187,7 +7295,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Ok"
+                  "$ref": "#/components/schemas/UserOut"
                 }
               }
             },
@@ -9429,6 +9537,28 @@
         ]
       }
     },
+    "/api/council/parties": {
+      "get": {
+        "description": "Kanonische Antragsteller-Parteien für den Beschlussfilter.\n\nDie Werte kommen aus derselben normalisierten Auswertung wie der\nParteienvergleich. So filtern Web und native App mit exakt den Labels, die\n``decision_ids_for_party`` versteht, statt Schreibvarianten zu erfinden.",
+        "operationId": "parties_api_council_parties_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParteienFilter"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Parties",
+        "tags": [
+          "council"
+        ]
+      }
+    },
     "/api/council/person/{slug}": {
       "get": {
         "description": "Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem\nAmt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem\nMandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.\n`typ` im Ergebnis unterscheidet (\"rat\" | \"verwaltung\") — das Frontend\nrendert danach zwei verschiedene Ansichten.\n\nOhne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um\nMandatsträger:innen bzw. Amtsträger:innen in ihrer öffentlichen Funktion,\nund die Angaben stammen aus den Anwesenheitslisten der amtlichen\nProtokolle — keine Privatperson wird hier auffindbar, die es nicht\nohnehin schon ist.",
@@ -9919,6 +10049,59 @@
           }
         },
         "summary": "Qa Share Lesen",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/qa-share/{token}/report": {
+      "post": {
+        "description": "Öffentlicher Meldeweg für geteilte Inhalte (App Review 1.2).\n\nEine Meldung darf kein Konto verlangen: Empfänger*innen eines Links sind\ngerade häufig nicht angemeldet. Der interne Eigentümerbezug ermöglicht\nModeration und bei Missbrauch eine Kontosperre, wird aber niemals an den\nmeldenden Client zurückgegeben.",
+        "operationId": "qa_share_melden_api_council_qa_share__token__report_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QaShareReportBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Qa Share Melden",
         "tags": [
           "council"
         ]
@@ -10465,6 +10648,26 @@
       }
     },
     "/api/onboarding/setup": {
+      "get": {
+        "description": "Resume the first-run setup on another device or after reinstalling.",
+        "operationId": "get_setup_api_onboarding_setup_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Setup",
+        "tags": [
+          "onboarding"
+        ]
+      },
       "post": {
         "description": "Erreichten Schritt festhalten.\n\nAm Konto statt nur im Gerät: Der Stand überlebt eine Neuinstallation, gilt\nauf jedem Gerät — und erst dadurch kann der Erinnerungs-Cron überhaupt\nerkennen, wer angefangen und nicht zu Ende gebracht hat.",
         "operationId": "set_setup_api_onboarding_setup_post",

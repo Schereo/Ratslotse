@@ -4,7 +4,9 @@ from __future__ import annotations
 import json
 import logging
 import math
+import re
 import time
+import unicodedata
 from collections import Counter, defaultdict
 from datetime import date
 from typing import Callable
@@ -44,7 +46,8 @@ from ..antworten import (AnalyseDaten, BeschlussDetail, BeschlussListe, DieseWoc
                         HaushaltKonzern, HaushaltProdukte, HaushaltPruefberichte,
                         HaushaltSchulden, HaushaltStellenplan, HaushaltStreit,
                         HaushaltUebersicht, HaushaltVergleich, HaushaltWeg, HeuteBriefing,
-                        Ok, OeffentlicheZahlen, OrtsDetail, OrtsKatalog, ParteiMeinungen,
+                        Ok, OeffentlicheZahlen, OrtsDetail, OrtsKatalog, ParteienFilter,
+                        ParteiMeinungen,
                         PersonenDetail, PersonenLexikon, QaBeispiele, QaShare,
                         QaShareToken, Ratsmitglieder, RechercheAktuell, RechercheGestartet,
                         RechercheGestoppt, RechercheSnapshot, SitzungsDetail,
@@ -53,7 +56,13 @@ from ..antworten import (AnalyseDaten, BeschlussDetail, BeschlussListe, DieseWoc
                         VorlagenFolgen, Vorschau, WochenvorschauIntern, Wortbeitraege,
                         ZahlDerWoche, ZielDetail, Ziele)
 from ..deps import get_council_store, get_store, optional_user, require_active
-from ..ratelimit import partei_meinungen_limiter, qa_feedback_limiter, qa_limiter, qa_share_limiter
+from ..ratelimit import (
+    partei_meinungen_limiter,
+    qa_feedback_limiter,
+    qa_limiter,
+    qa_share_limiter,
+    qa_share_report_limiter,
+)
 
 router = APIRouter(prefix="/api/council", tags=["council"])
 
@@ -108,6 +117,26 @@ def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(
     ]
     out.sort(key=lambda f: f["count"], reverse=True)
     return {"fields": out}
+
+
+@router.get("/parties")
+def parties(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> ParteienFilter:
+    """Kanonische Antragsteller-Parteien für den Beschlussfilter.
+
+    Die Werte kommen aus derselben normalisierten Auswertung wie der
+    Parteienvergleich. So filtern Web und native App mit exakt den Labels, die
+    ``decision_ids_for_party`` versteht, statt Schreibvarianten zu erfinden.
+    """
+    stats = store.party_analysis()["success_rates"]
+    return {
+        "parties": [
+            {"key": row["party"], "label": row["party"], "count": row["motions"]}
+            for row in sorted(stats, key=lambda row: order_key(row["party"]))
+        ]
+    }
 
 
 @router.get("/districts")
@@ -2009,6 +2038,32 @@ class QaShareBody(BaseModel):
     grafik: dict | None = None
 
 
+_SHARE_BLOCKED_PHRASES = (
+    "heil hitler",
+    "sieg heil",
+    "kinderporno",
+    "child porn",
+    "kill yourself",
+    "bring dich um",
+)
+
+
+def _share_text_is_objectionable(text: str) -> bool:
+    """Enges Vorab-Filter für absichtlich öffentlich gemachte Snapshots.
+
+    Das Ratsgespräch selbst darf schwierige politische Themen behandeln. Für
+    den öffentlichen Link blocken wir deshalb nur sehr eindeutige
+    Missbrauchsphrasen sowie eingebettete Web-/Script-Ziele. Amtliche Links
+    kommen strukturiert aus den validierten Quellenfeldern, nie aus diesem
+    freien Text. Meldung und menschliche Moderation bleiben das zweite Netz.
+    """
+    folded = unicodedata.normalize("NFKC", text).casefold()
+    folded = re.sub(r"\s+", " ", folded)
+    if any(phrase in folded for phrase in _SHARE_BLOCKED_PHRASES):
+        return True
+    return bool(re.search(r"(?:https?://|javascript:|data:text/|<\s*script\b)", folded))
+
+
 def _grafik_pruefen(g: dict | None) -> dict | None:
     """Nur durchlassen, was eine Grafik aus `geld_grafik` sein kann.
 
@@ -2055,6 +2110,11 @@ def qa_share_anlegen(
     """Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
     Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
     eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick."""
+    if _share_text_is_objectionable(body.frage) or _share_text_is_objectionable(body.antwort):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Dieser Inhalt kann nicht als öffentlicher Link geteilt werden.",
+        )
     if not user.get("limits_frei"):
         qa_share_limiter.check(request)
     extras = {
@@ -2080,6 +2140,48 @@ def qa_share_lesen(token: str, nwz: Store = Depends(get_store)) -> QaShare:
     if not share:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     return share
+
+
+class QaShareReportBody(BaseModel):
+    reason: str = Field(
+        default="other",
+        pattern="^(inappropriate|misleading|privacy|other)$",
+    )
+
+
+@router.post("/qa-share/{token}/report", status_code=status.HTTP_202_ACCEPTED)
+def qa_share_melden(
+    token: str,
+    body: QaShareReportBody,
+    request: Request,
+    nwz: Store = Depends(get_store),
+) -> Ok:
+    """Öffentlicher Meldeweg für geteilte Inhalte (App Review 1.2).
+
+    Eine Meldung darf kein Konto verlangen: Empfänger*innen eines Links sind
+    gerade häufig nicht angemeldet. Der interne Eigentümerbezug ermöglicht
+    Moderation und bei Missbrauch eine Kontosperre, wird aber niemals an den
+    meldenden Client zurückgegeben.
+    """
+    if len(token) > 64:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    owner_id = nwz.qa_share_owner_id(token)
+    if owner_id is None:
+        raise HTTPException(status_code=404, detail="Nicht gefunden.")
+    qa_share_report_limiter.check(request)
+    labels = {
+        "inappropriate": "Unangemessener Inhalt",
+        "misleading": "Irreführende oder falsche Antwort",
+        "privacy": "Privatsphäre / personenbezogene Daten",
+        "other": "Anderer Grund",
+    }
+    nwz.add_feedback(
+        0,
+        None,
+        "qa_share",
+        f"{labels[body.reason]}\nShare-Token: {token}\nInhaber-ID: {owner_id}",
+    )
+    return {"ok": True}
 
 
 class AskRunde(BaseModel):
@@ -2879,7 +2981,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
     the wait feel far shorter (sources show in ~2 s) and degrades gracefully if a
     proxy buffers it (the client then renders the same final state at once)."""
     if not user.get("limits_frei"):  # Admin kann Konten befreien (web_users.limits_frei)
-        qa_limiter.check(request)  # LLM-Kosten pro Aufruf — nicht unbegrenzt feuern lassen
+        # Mobilfunkanbieter bündeln viele Geräte hinter derselben öffentlichen
+        # Adresse. Das Konto ist hier bereits sicher authentifiziert und damit
+        # der faire, stabile Schlüssel für das Kosten-Limit.
+        qa_limiter.check(request, subject=user["id"])
     nwz.record_activity(user["id"], "ki_frage")  # Admin-Statistik (20a)
     q = body.question.strip()
     if len(q) < 4:

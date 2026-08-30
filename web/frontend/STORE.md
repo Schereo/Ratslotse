@@ -97,7 +97,7 @@ beim Ausfüllen nichts verwechselt wird.
 |---|---|---|
 | `unrestrictedWebAccess` | nein | Kein eingebauter Browser; externe Links (Originaldokumente) öffnen im System-Browser. |
 | `messagingAndChat` | nein | „Frag den Rat" ist keine Kommunikation zwischen Personen, sondern eine Auskunft aus den importierten Ratsdokumenten. Kein offener Chat, keine Websuche, keine Bildgenerierung. |
-| `userGeneratedContent` | nein | Nutzer legen nur eigene Themen an (privat). Eine geteilte Antwort ist ein Link, den der Nutzer selbst weitergibt — sie erscheint niemandem in der App. |
+| `userGeneratedContent` | **ja** | Eine Person kann eine KI-Antwort bewusst als öffentlichen, nicht gelisteten Link veröffentlichen. Es gibt keinen Feed und keine Suche danach, aber Empfänger*innen können den Inhalt auch ohne Konto lesen und melden. Deshalb ehrlich als UGC deklarieren. |
 | `socialMedia`, `socialMediaAgeRestricted` | nein | Keine Profile, keine Feeds, keine Kontakte. |
 | `contests`, `gambling`, `gamblingSimulated`, `lootBox` | nein | Das Quiz hat keine Preise und keinen Einsatz. |
 | `advertising` | nein | Keine Werbung, keine Werbe-SDKs. |
@@ -106,8 +106,10 @@ beim Ausfüllen nichts verwechselt wird.
 | `kidsAgeBand` | leer | Keine Kids-Kategorie. |
 | `ageAssurance`, `parentalControls` | keine | Keine Altersprüfung nötig. |
 
-Ein versehentliches „ja" bei freiem Web- oder KI-Zugang hebt die Freigabe auf
-17+ und schließt Schulen aus.
+UGC ist im aktuellen Fragebogen eine Capability und kann bei ansonsten
+unbedenklichen Inhalten weiterhin zu 4+ führen; entscheidend ist die ehrliche
+Angabe. Freier, unmoderierter Web-/KI-Zugang oder tatsächlich problematische
+Inhalte wären anders zu bewerten — Ratslotse bietet beides nicht.
 
 ## App-Datenschutz (App Privacy)
 
@@ -117,8 +119,10 @@ Datenschutzerklärung passen — Widersprüche sind ein häufiger Ablehnungsgrun
 | Datentyp | Verknüpft | Tracking | Zweck |
 |---|---|---|---|
 | Kontaktdaten → E-Mail-Adresse | ja | nein | App-Funktionalität (Konto, Login; bei Apple-Login ggf. Relay-Adresse) |
-| Nutzerinhalte → angelegte Themen, Einstellungen | ja | nein | App-Funktionalität (Benachrichtigungen) |
-| Kennungen → Push-Token | ja | nein | App-Funktionalität (nur bei erteilter Erlaubnis) |
+| Kontaktdaten → Name | ja | nein | App-Funktionalität (optionaler Anzeigename) |
+| Nutzerinhalte → Themen, Fragen, gespeicherte und bewusst geteilte Antworten, Einstellungen | ja | nein | App-Funktionalität |
+| Kennungen → Nutzer-ID | ja | nein | App-Funktionalität (Kontozuordnung) |
+| Kennungen → Geräte-ID / Push-Token | ja | nein | App-Funktionalität (nur bei erteilter Push-Erlaubnis) |
 
 Kein Tracking über Apps/Websites Dritter, kein Werbe-SDK, kein Analytics.
 KI-Anfragen gehen an einen Auftragsverarbeiter (OpenRouter) — in der
@@ -150,7 +154,11 @@ Native Funktionen: Push-Benachrichtigungen zu abonnierten Themen und Gremien (AP
 
 Administrationsbereich: Konten mit der Rolle „admin" sehen zusätzlich einen Verwaltungsbereich (Statistik, Prompts, Moderation). Der Demo-Zugang hat diese Rolle nicht — der Bereich ist kein verstecktes Feature, sondern die Betriebsoberfläche des Betreibers.
 
-Keine Käufe, keine Werbung, keine öffentlichen nutzergenerierten Inhalte.
+Keine Käufe und keine Werbung. Bewusst geteilte KI-Antworten sind öffentliche,
+nicht gelistete Links: Jeder Link hat einen Meldeweg ohne Anmeldung; Admins
+können den Link entfernen und das zugehörige Konto sperren. Es gibt keinen
+öffentlichen Feed, keine Suche nach Shares und keine Kommunikation zwischen
+Nutzer*innen.
 Konto löschen: Konto → Konto löschen (löscht Konto, Themen und Push-Token).
 ```
 

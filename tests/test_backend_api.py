@@ -67,6 +67,64 @@ def test_health(client):
     assert client.get("/api/health").json() == {"status": "ok"}
 
 
+def test_native_app_config_contract(client):
+    response = client.get("/api/app-config")
+    assert response.status_code == 200
+    assert response.json() == {"min_build": 0, "hinweis": None}
+
+
+def test_native_api_top_level_contracts(client):
+    """The hand-written Swift models depend on these stable response envelopes.
+
+    Detailed business assertions live with each endpoint below; this compact
+    table is the native-app gate that catches renamed or removed top-level
+    fields before an API change reaches an installed Store build.
+    """
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(
+        77, "Ausschuss für Verkehr", "2026-09-02", "17:00", "Rathaus",
+        agenda_items=[AgendaItem("Ö 3", "Sichere Schulwege")],
+    ))
+    cs.close()
+
+    object_contracts = [
+        ("/api/auth/me", {"id", "email", "role", "status", "delivery_channel",
+                          "email_verified", "access_token"}),
+        ("/api/app-config", {"min_build", "hinweis"}),
+        ("/api/account/notifications", {"kinds", "limits"}),
+        ("/api/bookmarks", {"bookmarks"}),
+        ("/api/council/gespraeche", {"einstellung", "gespraeche"}),
+        ("/api/council/deep-research/aktuell", {"job", "frei"}),
+        ("/api/council/decisions?limit=5", {"total", "decisions"}),
+        ("/api/council/parties", {"parties"}),
+        ("/api/council/sessions?limit=5", {"count", "total", "sessions"}),
+        ("/api/council/heute", {"state"}),
+        ("/api/council/diese-woche", {"found"}),
+        ("/api/council/wochenvorschau", {"found", "von", "bis", "sitzungen", "punkte"}),
+        ("/api/council/fundstueck", {"found"}),
+        ("/api/quiz/areas", {"wahlbereiche", "stadtteile", "themen", "categories"}),
+        ("/api/quiz/stats", {"total", "by_area", "wrong", "streak", "badges", "daily_done"}),
+        ("/api/quiz/daily", {"day", "done", "questions"}),
+        ("/api/quiz/own", {"questions"}),
+        ("/api/onboarding/setup", {"step", "started_at", "done_at"}),
+    ]
+    for path, required in object_contracts:
+        response = client.get(path, headers={"X-Client": "app"})
+        assert response.status_code == 200, path
+        payload = response.json()
+        assert isinstance(payload, dict), path
+        assert required <= payload.keys(), path
+
+    session = client.get("/api/council/session/77").json()
+    assert {"ksinr", "committee", "session_date", "session_time", "agenda_items",
+            "decisions", "has_protocol", "url"} <= session.keys()
+    assert {"item_number", "title", "is_public"} <= session["agenda_items"][0].keys()
+
+    topics = client.get("/api/topics").json()
+    assert isinstance(topics, list)
+
+
 def test_merkliste_top_wird_zum_beschluss_und_meldet_ergebnis(client):
     """Der Kernpfad der Merkliste: TOP merken, Hinweis einschalten, Protokoll
     importieren. Derselbe Eintrag zeigt danach den Beschluss und erzeugt genau
@@ -585,6 +643,22 @@ def test_password_reset_flow(client):
     fresh = TestClient(app)
     assert fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "newpass12345"}).status_code == 200
     assert fresh.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"}).status_code == 401
+
+
+def test_app_password_reset_returns_replacement_bearer(client):
+    _register(client)
+    with patch("app.routers.auth.secrets.token_urlsafe", return_value="native-reset-token"):
+        client.post("/api/auth/forgot-password", json={"email": "admin@test.de"})
+    response = TestClient(app).post(
+        "/api/auth/reset-password",
+        json={"token": "native-reset-token", "new_password": "newpass12345"},
+        headers={"X-Client": "app"},
+    )
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    assert isinstance(token, str) and token
+    me = TestClient(app).get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200 and me.json()["email"] == "admin@test.de"
 
 
 def test_reset_password_invalid_token(client):
@@ -1752,6 +1826,29 @@ def test_change_password_wrong_current(client):
     assert r.status_code == 400
 
 
+def test_app_change_password_returns_replacement_bearer(client):
+    registered = client.post(
+        "/api/auth/register",
+        json={"email": "native-password@test.de", "password": "password123"},
+        headers={"X-Client": "app"},
+    )
+    old_token = registered.json()["access_token"]
+    response = TestClient(app).post(
+        "/api/account/change-password",
+        json={"current_password": "password123", "new_password": "newpassword456"},
+        headers={"X-Client": "app", "Authorization": f"Bearer {old_token}"},
+    )
+    assert response.status_code == 200
+    new_token = response.json()["access_token"]
+    assert isinstance(new_token, str) and new_token != old_token
+    assert TestClient(app).get(
+        "/api/auth/me", headers={"Authorization": f"Bearer {old_token}"}
+    ).status_code == 401
+    assert TestClient(app).get(
+        "/api/auth/me", headers={"Authorization": f"Bearer {new_token}"}
+    ).status_code == 200
+
+
 # ---- link endpoints ----
 
 
@@ -1926,6 +2023,23 @@ def test_onboarding_is_per_account(client):
     other = TestClient(app)
     _register(other, email="bob@test.de")
     assert other.get("/api/onboarding").json() == {"steps": [], "celebrated": False}
+
+
+def test_native_setup_progress_can_resume_after_reinstall(client):
+    _register(client)
+    assert client.get("/api/onboarding/setup").json() == {
+        "step": 0, "started_at": None, "done_at": None,
+    }
+    started = client.post("/api/onboarding/setup", json={"step": 2, "done": False})
+    assert started.status_code == 200
+    assert started.json()["step"] == 2
+    resumed = client.get("/api/onboarding/setup").json()
+    assert resumed["step"] == 2
+    assert resumed["started_at"] is not None
+    assert resumed["done_at"] is None
+    completed = client.post("/api/onboarding/setup", json={"step": 3, "done": True}).json()
+    assert completed["step"] == 3
+    assert completed["done_at"] is not None
 
 
 # ---- quiz ----
@@ -2776,6 +2890,20 @@ def test_topic_suggestions_dedupe_similar(client):
     assert names == ["Stadtmuseum"]
 
 
+def test_topic_suggestion_gives_numbered_plan_a_place_context():
+    """Eine Plan-Nummer allein hilft niemandem; die API liefert den Ortsbezug
+    aus dem amtlichen Titel als eigene, kurze zweite Zeile."""
+    from web.backend.app.routers.topics import _suggestion_context
+
+    assert _suggestion_context("Bebauungsplan 851", {
+        "latest_title": (
+            "Bebauungsplan 851 (östlich Schützenweg/nördlich Hamelmannstraße) "
+            "– Satzungsbeschluss"
+        ),
+        "description": "",
+    }) == "östlich Schützenweg / nördlich Hamelmannstraße"
+
+
 # ---- KI-Frage: Folgefragen im Stream (Design 24a) ----
 def test_qa_share_roundtrip(client):
     """Teilen mit Substanz (Task 31): POST speichert den Antwort-Snapshot,
@@ -2856,6 +2984,59 @@ def test_qa_share_traegt_bausteine(client):
     assert body["anlagen"][0]["vorlage_nr"] == "26/0123"
     assert body["parteien"][0]["haltung"] == "dagegen"
     assert "user_id" not in body
+
+
+def test_qa_share_public_report_and_admin_removal(client):
+    _register(client)
+    made = client.post("/api/council/qa-share", json={
+        "frage": "Was wurde beschlossen?",
+        "antwort": "Eine automatisch erzeugte Antwort [1].",
+        "quellen": [],
+    })
+    assert made.status_code == 201
+    token = made.json()["token"]
+
+    # Empfänger*innen des Links brauchen für eine Meldung ausdrücklich kein
+    # Konto. Ungültige Gründe und erfundene Links werden nicht angenommen.
+    public = TestClient(app)
+    reported = public.post(
+        f"/api/council/qa-share/{token}/report",
+        json={"reason": "privacy"},
+    )
+    assert reported.status_code == 202
+    assert public.post(
+        f"/api/council/qa-share/{token}/report",
+        json={"reason": "not-a-reason"},
+    ).status_code == 422
+    assert public.post(
+        "/api/council/qa-share/gibtsnicht/report",
+        json={"reason": "other"},
+    ).status_code == 404
+
+    feedback = client.get("/api/admin/feedback").json()["items"]
+    report = next(item for item in feedback if item["kind"] == "qa_share")
+    assert f"Share-Token: {token}" in report["message"]
+    assert "Inhaber-ID:" in report["message"]
+
+    removed = client.delete(f"/api/admin/qa-shares/{token}")
+    assert removed.status_code == 204
+    assert public.get(f"/api/council/qa-share/{token}").status_code == 404
+
+
+def test_qa_share_filters_objectionable_or_embedded_web_content(client):
+    _register(client)
+    for frage, antwort in (
+        ("Sieg Heil", "Antwort."),
+        ("Normale Frage", "Hier klicken: https://phishing.invalid"),
+        ("Normale Frage", "<script>alert(1)</script>"),
+    ):
+        response = client.post("/api/council/qa-share", json={
+            "frage": frage,
+            "antwort": antwort,
+            "quellen": [],
+        })
+        assert response.status_code == 422
+        assert "öffentlicher Link" in response.json()["detail"]
 
 
 def test_partei_meinungen_endpoint(client, monkeypatch):
@@ -5079,8 +5260,9 @@ def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
 
     _register(client)
     aufrufe = []
+    schluessel = []
     monkeypatch.setattr(council_router.qa_limiter, "check",
-                        lambda request: aufrufe.append(1))
+                        lambda request, *, subject=None: (aufrufe.append(1), schluessel.append(subject)))
     cand = [{"id": 5, "title": "Radweg", "summary": "Ausbau", "policy_field": "verkehr",
              "outcome": "angenommen", "session_date": "2026-07-02",
              "committee": "Verkehrsausschuss", "score": 1.0}]
@@ -5094,6 +5276,7 @@ def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
 
     frag()
     assert len(aufrufe) == 1  # normal: Limiter wird gefragt
+    assert schluessel == [1]  # Mobilfunk-CGNAT teilt nicht mehr den IP-Bucket
     store = Store(NWZ_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
@@ -5695,3 +5878,25 @@ def test_committees_bleibt_eine_reine_namensliste(client):
     kultur = body["details"][0]
     assert kultur["next_date"] is None and kultur["next_time"] is None
     assert kultur["decisions_year"] == 0
+
+
+def test_council_parties_liefert_kanonische_filterwerte(client):
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(7201, "Rat der Stadt", "2026-08-28", "17:00", "Rathaus"))
+    cs._insert_decision(7201, 0, "decision", None, "Ö 2", "Gemeinsamer Antrag", "Beschlossen.",
+                        "angenommen", None, None, None, ["Gruppe FDP/Volt", "SPD-Fraktion"],
+                        None, None, None)
+    cs._conn.commit()
+    cs.close()
+
+    response = client.get("/api/council/parties")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "parties": [
+            {"key": "SPD", "label": "SPD", "count": 1},
+            {"key": "FDP", "label": "FDP", "count": 1},
+            {"key": "Volt", "label": "Volt", "count": 1},
+        ]
+    }

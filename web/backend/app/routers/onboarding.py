@@ -41,6 +41,15 @@ def update_onboarding(
     return store.update_onboarding(user["id"], steps=steps, celebrated=payload.celebrated)
 
 
+@router.get("/setup")
+def get_setup(
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> SetupStand:
+    """Resume the first-run setup on another device or after reinstalling."""
+    return store.get_setup(user["id"])
+
+
 @router.post("/setup")
 def set_setup(
     payload: SetupUpdate,

@@ -217,6 +217,33 @@ def _similar_names(a: frozenset[str], b: frozenset[str]) -> bool:
     return bool(a) and bool(b) and (a <= b or b <= a)
 
 
+def _suggestion_context(name: str, candidate: dict) -> str | None:
+    """Kurze menschliche Einordnung für Vorschlagskarten.
+
+    Eine reine Plan-Nummer ist kein verständliches Interesse. Bei nummerierten
+    Bebauungsplänen steht der konkrete Ortsbezug fast immer in Klammern im
+    jüngsten Beschlusstitel; genau dieser Teil ist die hilfreichste zweite
+    Zeile. Für andere Entitäten reicht die redaktionelle Kurzbeschreibung.
+    """
+    description = (candidate.get("description") or "").strip()
+    latest_title = (candidate.get("latest_title") or "").strip()
+    if re.search(r"\b(?:vorhabenbezogener\s+)?bebauungsplan\s+\d", name, re.I):
+        parenthetical = re.search(r"\(([^()]{4,160})\)", latest_title)
+        if parenthetical:
+            return re.sub(r"\s*/\s*", " / ", parenthetical.group(1)).strip()
+        remainder = re.sub(re.escape(name), "", latest_title, count=1, flags=re.I)
+        remainder = re.sub(
+            r"^[\s:–—-]+|\s+[–—-]\s+(?:Aufstellungs|Auslegungs|Satzungs|Feststellungs).*$",
+            "", remainder, flags=re.I,
+        ).strip()
+        if remainder:
+            return remainder[:160].rstrip(" ,;:–—-")
+    if description:
+        sentence = re.split(r"(?<=[.!?])\s+", description, maxsplit=1)[0].strip()
+        return sentence[:160].rstrip()
+    return None
+
+
 @router.get("/suggestions")
 def topic_suggestions(
     user: dict = Depends(require_active),
@@ -277,7 +304,12 @@ def topic_suggestions(
         if verdict.get("vague"):
             continue
         chosen_tokens.append(tokens)
-        out.append({"name": name, "description": description, "n": e["n_recent"]})
+        out.append({
+            "name": name,
+            "description": description,
+            "context": _suggestion_context(name, e),
+            "n": e["n_recent"],
+        })
         if len(out) >= 6:
             break
     return {"suggestions": out}

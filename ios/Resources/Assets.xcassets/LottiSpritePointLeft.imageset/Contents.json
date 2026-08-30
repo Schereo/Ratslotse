@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "LottiSpritePointLeft.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

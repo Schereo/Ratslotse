@@ -698,6 +698,10 @@ class Themenfelder(TypedDict):
     fields: Any
 
 
+class ParteienFilter(TypedDict):
+    parties: Any
+
+
 class Stadtteile(TypedDict):
     catalog: dict[str, Any]
     districts: Any

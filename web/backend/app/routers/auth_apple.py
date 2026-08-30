@@ -16,7 +16,13 @@ import json
 import logging
 import secrets
 import time
+import base64
+import urllib.parse
 import urllib.request
+
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
@@ -36,6 +42,8 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 APPLE_ISSUER = "https://appleid.apple.com"
 APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
+APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token"
+APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke"
 
 # Apples Schlüssel rotieren selten — 24 h Cache erspart jedem Login den
 # JWKS-Roundtrip; bei unbekannter kid wird einmal zwangs-erneuert.
@@ -106,6 +114,78 @@ def verify_apple_identity_token(identity_token: str) -> dict:
         logger.warning("Apple-Login abgelehnt: Token ohne sub")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Apple-Anmeldung ungültig oder abgelaufen.")
     return payload
+
+
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _apple_client_secret(client_id: str) -> str | None:
+    """Kurzlebiges ES256-Client-Secret für Token-Austausch und Widerruf."""
+    settings = get_settings()
+    if not (settings.apple_team_id and settings.apple_key_id and settings.apple_private_key):
+        logger.error("Apple-Token-Widerruf nicht konfiguriert: TEAM_ID/KEY_ID/PRIVATE_KEY fehlen")
+        return None
+    now = int(time.time())
+    header = _b64url(json.dumps({"alg": "ES256", "kid": settings.apple_key_id}, separators=(",", ":")).encode())
+    claims = _b64url(json.dumps({
+        "iss": settings.apple_team_id,
+        "iat": now,
+        "exp": now + 300,
+        "aud": APPLE_ISSUER,
+        "sub": client_id,
+    }, separators=(",", ":")).encode())
+    key_text = settings.apple_private_key.replace("\\n", "\n").encode()
+    key = serialization.load_pem_private_key(key_text, password=None)
+    if not isinstance(key, ec.EllipticCurvePrivateKey):
+        raise ValueError("Apple Private Key ist kein EC-Schlüssel")
+    der = key.sign(f"{header}.{claims}".encode("ascii"), ec.ECDSA(hashes.SHA256()))
+    r, s = decode_dss_signature(der)
+    signature = _b64url(r.to_bytes(32, "big") + s.to_bytes(32, "big"))
+    return f"{header}.{claims}.{signature}"
+
+
+def revoke_apple_authorization_code(authorization_code: str, client_id: str) -> bool:
+    """Tauscht den frischen Apple-Code und widerruft das erhaltene Token.
+
+    Wird bei der Kontolöschung ausgeführt. Fehler werden protokolliert, dürfen
+    das DSGVO-Löschrecht aber nicht blockieren.
+    """
+    try:
+        secret = _apple_client_secret(client_id)
+        if not secret or not authorization_code:
+            return False
+        exchange = urllib.parse.urlencode({
+            "client_id": client_id,
+            "client_secret": secret,
+            "code": authorization_code,
+            "grant_type": "authorization_code",
+        }).encode()
+        request = urllib.request.Request(
+            APPLE_TOKEN_URL, data=exchange,
+            headers={"Content-Type": "application/x-www-form-urlencoded", "User-Agent": "ratslotse-backend"},
+        )
+        with urllib.request.urlopen(request, timeout=12) as response:  # noqa: S310 — feste Apple-URL
+            tokens = json.loads(response.read())
+        token = tokens.get("refresh_token") or tokens.get("access_token")
+        if not token:
+            logger.error("Apple-Code ausgetauscht, aber kein widerrufbares Token erhalten")
+            return False
+        revoke = urllib.parse.urlencode({
+            "client_id": client_id,
+            "client_secret": secret,
+            "token": token,
+            "token_type_hint": "refresh_token" if tokens.get("refresh_token") else "access_token",
+        }).encode()
+        request = urllib.request.Request(
+            APPLE_REVOKE_URL, data=revoke,
+            headers={"Content-Type": "application/x-www-form-urlencoded", "User-Agent": "ratslotse-backend"},
+        )
+        with urllib.request.urlopen(request, timeout=12) as response:  # noqa: S310 — feste Apple-URL
+            return response.status == 200
+    except Exception:  # noqa: BLE001 — Kontolöschung darf bei Apple-Ausfall weitergehen
+        logger.exception("Apple-Autorisierung konnte bei Kontolöschung nicht widerrufen werden")
+        return False
 
 
 @router.post("/apple", response_model=UserOut)

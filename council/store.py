@@ -8913,7 +8913,14 @@ class CouncilStore:
         rows = self._conn.execute(
             """SELECT e.slug, e.name, e.kind, m.description,
                       COUNT(DISTINCT el.decision_id) AS n_recent,
-                      AVG(COALESCE(d.interest, 50)) AS avg_interest
+                      AVG(COALESCE(d.interest, 50)) AS avg_interest,
+                      (SELECT d2.title
+                         FROM council_entity_links el2
+                         JOIN council_decisions d2 ON d2.id = el2.decision_id
+                         JOIN council_sessions cs2 ON cs2.ksinr = d2.ksinr
+                        WHERE el2.entity_id = e.id AND cs2.session_date >= ?
+                        ORDER BY cs2.session_date DESC, d2.id DESC
+                        LIMIT 1) AS latest_title
                FROM council_entities e
                JOIN council_entity_links el ON el.entity_id = e.id
                JOIN council_decisions d ON d.id = el.decision_id
@@ -8924,7 +8931,7 @@ class CouncilStore:
                HAVING n_recent >= 2
                ORDER BY n_recent DESC, avg_interest DESC, e.name
                LIMIT ?""",
-            (cutoff, limit),
+            (cutoff, cutoff, limit),
         ).fetchall()
         return [dict(r) for r in rows]
 

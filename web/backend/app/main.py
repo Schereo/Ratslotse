@@ -16,6 +16,7 @@ from pathlib import Path
 
 from .antworten import Gesundheit
 from .config import get_settings
+from .schemas import AppConfigOut
 from .routers import account, admin, auth, auth_apple, bookmarks, council, feedback, kommunalwahl, onboarding, push, quiz, social, topics, badges
 from .session import SitzungsVerlaengerung
 
@@ -256,3 +257,12 @@ def health() -> Gesundheit:
     except Exception:
         return JSONResponse({"status": "error", "db": "council"}, status_code=503)
     return {"status": "ok"}
+
+
+@app.get("/api/app-config", response_model=AppConfigOut)
+def app_config() -> AppConfigOut:
+    """Small public compatibility contract for installed native builds."""
+    return AppConfigOut(
+        min_build=max(0, settings.app_min_build),
+        hinweis=settings.app_update_notice.strip() or None,
+    )

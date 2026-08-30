@@ -388,6 +388,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/qa-shares/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Reported Qa Share
+         * @description Gemeldeten Share entfernen; das öffentliche GET liefert danach 404.
+         */
+        delete: operations["delete_reported_qa_share_api_admin_qa_shares__token__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/quiz/flagged": {
         parameters: {
             query?: never;
@@ -560,6 +580,26 @@ export interface paths {
          * @description Approve ('active') or suspend ('pending') a web account. Emails the user on first approval.
          */
         put: operations["set_status_api_admin_users__user_id__status_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * App Config
+         * @description Small public compatibility contract for installed native builds.
+         */
+        get: operations["app_config_api_app_config_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2314,6 +2354,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/parties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Parties
+         * @description Kanonische Antragsteller-Parteien für den Beschlussfilter.
+         *
+         *     Die Werte kommen aus derselben normalisierten Auswertung wie der
+         *     Parteienvergleich. So filtern Web und native App mit exakt den Labels, die
+         *     ``decision_ids_for_party`` versteht, statt Schreibvarianten zu erfinden.
+         */
+        get: operations["parties_api_council_parties_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/person/{slug}": {
         parameters: {
             query?: never;
@@ -2586,6 +2650,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/qa-share/{token}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Qa Share Melden
+         * @description Öffentlicher Meldeweg für geteilte Inhalte (App Review 1.2).
+         *
+         *     Eine Meldung darf kein Konto verlangen: Empfänger*innen eines Links sind
+         *     gerade häufig nicht angemeldet. Der interne Eigentümerbezug ermöglicht
+         *     Moderation und bei Missbrauch eine Kontosperre, wird aber niemals an den
+         *     meldenden Client zurückgegeben.
+         */
+        post: operations["qa_share_melden_api_council_qa_share__token__report_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/session/{ksinr}": {
         parameters: {
             query?: never;
@@ -2844,7 +2933,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Get Setup
+         * @description Resume the first-run setup on another device or after reinstalling.
+         */
+        get: operations["get_setup_api_onboarding_setup_get"];
         put?: never;
         /**
          * Set Setup
@@ -3822,6 +3915,19 @@ export interface components {
             /** Wau Days */
             wau_days: string[];
         };
+        /**
+         * AppConfigOut
+         * @description Compatibility contract consumed before a native app starts loading data.
+         */
+        AppConfigOut: {
+            /** Hinweis */
+            hinweis?: string | null;
+            /**
+             * Min Build
+             * @default 0
+             */
+            min_build: number;
+        };
         /** AppleLoginRequest */
         AppleLoginRequest: {
             /**
@@ -3926,6 +4032,11 @@ export interface components {
          *     Apple-Identity-Token (Re-Auth in der App, RL-1002).
          */
         DeleteAccountRequest: {
+            /**
+             * Apple Authorization Code
+             * @default
+             */
+            apple_authorization_code: string;
             /**
              * Apple Identity Token
              * @default
@@ -4603,6 +4714,11 @@ export interface components {
             /** Frage */
             frage: string;
         };
+        /** ParteienFilter */
+        ParteienFilter: {
+            /** Parties */
+            parties: unknown;
+        };
         /** PersonenLexikon */
         PersonenLexikon: {
             /** Personen */
@@ -4815,6 +4931,14 @@ export interface components {
             session_date?: string | null;
             /** Title */
             title: string;
+        };
+        /** QaShareReportBody */
+        QaShareReportBody: {
+            /**
+             * Reason
+             * @default other
+             */
+            reason: string;
         };
         /** QaShareToken */
         QaShareToken: {
@@ -6324,6 +6448,35 @@ export interface operations {
             };
         };
     };
+    delete_reported_qa_share_api_admin_qa_shares__token__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     flagged_api_admin_quiz_flagged_get: {
         parameters: {
             query?: never;
@@ -6584,6 +6737,26 @@ export interface operations {
             };
         };
     };
+    app_config_api_app_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppConfigOut"];
+                };
+            };
+        };
+    };
     apple_login_api_auth_apple_post: {
         parameters: {
             query?: never;
@@ -6795,7 +6968,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Ok"];
+                    "application/json": components["schemas"]["UserOut"];
                 };
             };
             /** @description Validation Error */
@@ -8326,6 +8499,26 @@ export interface operations {
             };
         };
     };
+    parties_api_council_parties_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParteienFilter"];
+                };
+            };
+        };
+    };
     person_api_council_person__slug__get: {
         parameters: {
             query?: never;
@@ -8662,6 +8855,41 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    qa_share_melden_api_council_qa_share__token__report_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QaShareReportBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
                 };
             };
             /** @description Validation Error */
@@ -9059,6 +9287,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_setup_api_onboarding_setup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupStand"];
                 };
             };
         };
@@ -10207,4 +10455,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: db3c54c383d04ea20116fbbd74ab47683e3986622799e5a102819a848e025561
+// vertrag-sha256: b04f531914a3bfeec68d193f5f43aa65c9aeb531038ec1e9a560a5d857dea175
