@@ -1,0 +1,79 @@
+{
+  "px": [
+    1600,
+    1400
+  ],
+  "kamera": {
+    "dir": [
+      0.12,
+      0.12,
+      1
+    ],
+    "faktor": 1.05
+  },
+  "figuren": [
+    {
+      "typ": "lotti",
+      "pos": [
+        -0.04,
+        0,
+        0
+      ],
+      "hoehe": 0.05,
+      "neigung": -5,
+      "pose": {
+        "blick": [
+          -8,
+          0
+        ],
+        "fluegel": {
+          "links": {
+            "z": 70
+          },
+          "rechts": {
+            "z": -70
+          }
+        }
+      }
+    },
+    {
+      "typ": "kueken",
+      "pos": [
+        0.11,
+        0,
+        0.06
+      ],
+      "hoehe": 0.03,
+      "neigung": 8,
+      "pose": {
+        "fluegel": {
+          "links": {
+            "z": 60
+          },
+          "rechts": {
+            "z": -60
+          }
+        }
+      }
+    },
+    {
+      "typ": "krabbe",
+      "pos": [
+        -0.17,
+        0,
+        0.09
+      ],
+      "drehung": 20
+    }
+  ],
+  "requisiten": [
+    {
+      "typ": "konfetti",
+      "pos": [
+        0,
+        0.02,
+        0
+      ]
+    }
+  ]
+}

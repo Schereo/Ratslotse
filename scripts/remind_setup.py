@@ -34,7 +34,7 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(ROOT / ".env")
 
-from kern.digest_email import render_html_email  # noqa: E402
+from kern.digest_email import knopf, render_html_email  # noqa: E402
 from kern.email import email_ready, send_email  # noqa: E402
 from kern.store import Store  # noqa: E402
 
@@ -53,12 +53,11 @@ OPEN_AT_STEP = {
 def _body(name: str | None, step: int) -> str:
     offen = OPEN_AT_STEP.get(step, "Ein paar Handgriffe fehlen noch.")
     return (
-        f"<p>{offen}</p>"
-        "<p>Die Einrichtung dauert keine Minute — danach meldet sich Ratslotse, "
-        "sobald der Oldenburger Rat zu deinen Themen entscheidet.</p>"
-        f'<p><a href="{APP_URL}">Einrichtung fortsetzen</a></p>'
-        "<p style=\"color:#6b7c8d;font-size:13px\">Diese Erinnerung schicken wir "
-        "genau einmal — du bekommst sie nicht noch einmal.</p>"
+        f"<p style='margin:0'>{offen}</p>"
+        "<p style='margin:10px 0 0'>Die Einrichtung dauert keine Minute — danach "
+        "meldet sich Ratslotse, sobald der Oldenburger Rat zu deinen Themen "
+        "entscheidet.</p>"
+        + knopf(APP_URL, "Einrichtung fortsetzen")
     )
 
 
@@ -88,6 +87,11 @@ def main() -> dict:
                     "Fast fertig eingerichtet",
                     _body(u.get("display_name"), step),
                     greeting_name=u.get("display_name"),
+                    held="erinnerung",
+                    kicker="Deine Einrichtung",
+                    titel="Fast fertig eingerichtet",
+                    fusszeile="Diese Erinnerung schicken wir genau einmal — "
+                              "du bekommst sie nicht noch einmal.",
                 ),
             )
         except Exception as exc:  # noqa: BLE001 — ein Fehlschlag stoppt nicht den Rest

@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
 from kern.store import Store
+from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
 
 from ..config import get_settings
@@ -100,20 +101,17 @@ def _notify_admins_registration(new_email: str) -> None:
     admin_url = f"{settings.app_base_url.rstrip('/')}/admin"
     safe_email = _html.escape(new_email)
     subject = "Ratslotse – neue Registrierung"
-    body = (
-        "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
-        "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
-        "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
-        "<p style='margin:20px 0 8px'>Eine neue Person hat sich registriert, die E-Mail-Adresse "
+    body = render_html_email(
+        subject,
+        "<p style='margin:0'>Eine neue Person hat sich registriert, die E-Mail-Adresse "
         "bestätigt und ist jetzt aktiv:</p>"
-        f"<p style='margin:0 0 20px;font-weight:600'>{safe_email}</p>"
-        f"<a href='{admin_url}' style='display:inline-block;background:#2563eb;color:#fff;"
-        "text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px'>"
-        "Im Admin-Bereich ansehen →</a>"
-        "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
-        "Nur zur Info — es ist nichts zu tun. Du bekommst diese E-Mail, weil dein "
-        "Ratslotse-Konto Admin-Rechte hat.</p>"
-        "</div>"
+        f"<p style='margin:10px 0 0;font-weight:600'>{safe_email}</p>"
+        + knopf(admin_url, "Im Admin-Bereich ansehen"),
+        held=None,
+        kicker="Für dich als Admin",
+        titel="Neue Registrierung",
+        fusszeile="Nur zur Info — es ist nichts zu tun. Du bekommst diese E-Mail, "
+                  "weil dein Ratslotse-Konto Admin-Rechte hat.",
     )
     text = (
         f"Neue Registrierung (bestätigt & aktiv): {new_email}\n\n"
@@ -208,7 +206,7 @@ def register(
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
         store.create_email_verification(user_id, token_hash, expires)
-        background.add_task(_send_verification_email, email, raw)
+        background.add_task(_send_verification_email, email, raw, body.display_name)
     elif email == _configured_admin_email(settings) and not _has_admin(store):
         # Ohne E-Mail-Versand gibt es keinen Link zum Bestätigen — der Weg über
         # verify_email() kann dieses Konto also nicht zum Admin machen. Laut sagen,
@@ -260,24 +258,24 @@ def me(request: Request, user: dict = Depends(get_current_user)) -> UserOut:
     return _to_out(user, _app_access_token(request, user))
 
 
-def _send_reset_email(email: str, raw_token: str) -> None:
+def _send_reset_email(email: str, raw_token: str, display_name: str | None = None) -> None:
     """Background task: email a one-hour password-reset link (best-effort)."""
     settings = get_settings()
     if not settings.resend_api_key:
         return
     link = f"{settings.app_base_url.rstrip('/')}/reset-password?token={raw_token}"
     subject = "Ratslotse – Passwort zurücksetzen"
-    body = (
-        "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
-        "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
-        "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
-        "<p style='margin:20px 0 8px'>Du hast angefordert, dein Passwort zurückzusetzen. Über den "
-        "folgenden Link kannst du ein neues Passwort vergeben — er ist <b>1 Stunde</b> gültig:</p>"
-        f"<a href='{link}' style='display:inline-block;background:#2563eb;color:#fff;"
-        "text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px'>Neues Passwort setzen →</a>"
-        "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
-        "Wenn du das nicht warst, ignoriere diese E-Mail — dein Passwort bleibt unverändert.</p>"
-        "</div>"
+    body = render_html_email(
+        subject,
+        "<p style='margin:0'>Du hast angefordert, dein Passwort zurückzusetzen. "
+        "Über den Knopf vergibst du ein neues — der Link ist <b>1 Stunde</b> gültig:</p>"
+        + knopf(link, "Neues Passwort setzen"),
+        greeting_name=display_name,
+        held="passwort",
+        kicker="Dein Konto",
+        titel="Passwort zurücksetzen",
+        fusszeile="Wenn du das nicht warst, ignoriere diese E-Mail — "
+                  "dein Passwort bleibt unverändert.",
     )
     text = (
         "Passwort zurücksetzen bei Ratslotse.\n\n"
@@ -308,7 +306,7 @@ def forgot_password(
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         expires = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
         store.create_password_reset(int(user["id"]), token_hash, expires)
-        background.add_task(_send_reset_email, email, raw)
+        background.add_task(_send_reset_email, email, raw, user.get("display_name"))
     return {"ok": True}
 
 
@@ -326,24 +324,24 @@ def reset_password(body: ResetPasswordRequest, store: Store = Depends(get_store)
     return {"ok": True}
 
 
-def _send_verification_email(email: str, raw_token: str) -> None:
+def _send_verification_email(email: str, raw_token: str, display_name: str | None = None) -> None:
     """Background task: email a verification link (valid 24h, best-effort)."""
     settings = get_settings()
     if not settings.resend_api_key:
         return
     link = f"{settings.app_base_url.rstrip('/')}/verify-email?token={raw_token}"
     subject = "Ratslotse – E-Mail bestätigen"
-    body = (
-        "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
-        "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
-        "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
-        "<p style='margin:20px 0 8px'>Willkommen! Bitte bestätige deine E-Mail-Adresse über den "
-        "folgenden Link — er ist <b>24 Stunden</b> gültig:</p>"
-        f"<a href='{link}' style='display:inline-block;background:#2563eb;color:#fff;"
-        "text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px'>E-Mail bestätigen →</a>"
-        "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
-        "Wenn du dich nicht registriert hast, ignoriere diese E-Mail.</p>"
-        "</div>"
+    body = render_html_email(
+        subject,
+        "<p style='margin:0'>Ein Klick noch, dann ist dein Konto startklar: "
+        "Bestätige bitte deine E-Mail-Adresse — der Link ist <b>24 Stunden</b> gültig.</p>"
+        + knopf(link, "E-Mail bestätigen"),
+        greeting_name=display_name,
+        held="willkommen",
+        kicker="Willkommen an Bord",
+        titel="Schön, dass du da bist!",
+        fusszeile="Wenn du dich nicht registriert hast, ignoriere diese E-Mail — "
+                  "dann passiert nichts.",
     )
     text = (
         "Willkommen bei Ratslotse.\n\n"
@@ -409,5 +407,5 @@ def resend_verification(
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
     expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
     store.create_email_verification(int(user["id"]), token_hash, expires)
-    background.add_task(_send_verification_email, email, raw)
+    background.add_task(_send_verification_email, email, raw, user.get("display_name"))
     return {"ok": True}

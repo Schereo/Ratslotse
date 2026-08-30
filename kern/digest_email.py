@@ -7,7 +7,11 @@ etwas anderes lädt kein Client.
 Zum Dunkelmodus: Apple Mail und Outlook färben helle Flächen eigenmächtig um.
 Deshalb steht die Marke NICHT als blauer Text auf Weiß (den dreht der Client zu
 Blau auf Schwarz und der Kontrast bricht weg), sondern als Bildmarke mit
-eigenem Hintergrund — die bleibt in beiden Modi, wie sie ist.
+eigenem Hintergrund — die bleibt in beiden Modi, wie sie ist. Aus demselben
+Grund trägt jede Mail oben einen **Mail-Helden**: eine 3D-Lotti-Szene mit
+eingebackenem Himmel (``web/frontend/public/mail/held-*.png``, gebaut von
+``scripts/mail_helden/bauen.py``) — ein Bild mit eigenem Hintergrund statt
+einer Farbfläche, die ein Client umfärben könnte.
 """
 from __future__ import annotations
 
@@ -36,11 +40,38 @@ LOGO_URL = f"{APP_BASE_URL}/logo-mark.png"
 # einfach gequotet — mit 'Segoe UI' endete das Attribut mitten im Font-Stack,
 # und alles dahinter (Farbe, Hintergrund!) fiel je nach Client weg.
 _FONT = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif'
+_MONO = '"SF Mono",SFMono-Regular,Consolas,"Liberation Mono",Menlo,monospace'
 _BLAU = "#0764a6"      # Hafenblau, --primary
 _TEXT = "#0f172a"
 _GRAU = "#64748b"
 _LEISE = "#94a3b8"
 _LINIE = "#e2e8f0"
+_SEITE = "#eef4f9"     # Seiten-Grund hinter der Karte, nah an der App-Seite
+_RAHMEN = "#dbe5ee"    # Kartenrahmen, hsl(208 32% 89%)
+
+# Die Mail-Helden: je Anlass eine 3D-Lotti-Szene (600×210, geliefert in 2×).
+# Wer eine Mail baut, wählt hier — nicht mit einem freien Dateinamen.
+HELDEN: dict[str, str] = {
+    "meldung": "Lotti liest in einem Papierstapel",
+    "willkommen": "Lotti und ein Küken winken zur Begrüßung",
+    "passwort": "Lotti grübelt unter einem Fragezeichen",
+    "freigeschaltet": "Lotti jubelt mit Küken, Krabbe und Konfetti",
+    "abschied": "Lotti winkt zum Abschied, ein Herz über ihr",
+    "erinnerung": "Lotti erklärt zwei Küken etwas an einer Tafel",
+    "feedback": "Lotti hört aufmerksam zu",
+    "alarm": "Lotti staunt mit ausgebreiteten Flügeln",
+}
+
+
+def held_bild(held: str | None) -> str:
+    """Der Bildstreifen oben in der Karte. ``None`` = Karte ohne Helden."""
+    if not held:
+        return ""
+    alt = HELDEN[held]
+    return (
+        f"<img src='{APP_BASE_URL}/mail/held-{held}.png' width='598' alt='{_esc(alt)}' "
+        "style='display:block;width:100%;height:auto;border:0'>"
+    )
 
 
 def _esc(text: str) -> str:
@@ -174,28 +205,76 @@ def render_html_email(
     body_html_or_text: str,
     greeting_name: str | None = None,
     unterzeile: str = "",
+    *,
+    held: str | None = "meldung",
+    kicker: str | None = None,
+    titel: str | None = None,
+    fusszeile: str | None = None,
 ) -> str:
     """Eine fertig formatierte Nachricht in die Ratslotse-Hülle setzen.
+
+    Aufbau: Seiten-Grund → Kopfzeile → weiße Karte (Mail-Held oben, Inhalt
+    darunter) → Fuß. ``held`` wählt die Lotti-Szene über der Nachricht
+    (Schlüssel aus ``HELDEN``, ``None`` = ohne Bild); ``kicker`` und ``titel``
+    setzen eine Überschrift über den Text — Benachrichtigungen lassen beides
+    weg, weil ihr Körper seinen Kopf schon mitbringt. ``fusszeile`` ersetzt
+    das Abmelde-Kleingedruckte (fertiges HTML; ``""`` = gar keins) — die
+    Bestätigungs-Mail etwa geht an Konten, die noch gar keine Zustellung
+    gewählt haben.
 
     ``body_html_or_text`` darf Telegram-Erbe mit ``\\n`` enthalten — deshalb
     steht ``white-space:pre-wrap`` am Textblock. Wer sauberes HTML liefert
     (Absätze, Listen), bekommt es unverändert gerendert.
     """
+    kopf = ""
+    if kicker:
+        kopf += (
+            f"<div style='font-family:{_MONO};font-size:11px;letter-spacing:.11em;"
+            f"text-transform:uppercase;color:{_GRAU}'>{_esc(kicker)}</div>"
+        )
+    if titel:
+        kopf += (
+            f"<div style='margin-top:{6 if kicker else 0}px;font-size:21px;font-weight:700;"
+            f"color:{_TEXT};line-height:1.3'>{_esc(titel)}</div>"
+        )
     greeting = (
-        f"<div style='margin-top:22px;font-size:15px;color:{_TEXT}'>Moin {_esc(greeting_name)},</div>"
+        f"<div style='margin-top:{16 if kopf else 0}px;font-size:15px;color:{_TEXT}'>"
+        f"Moin {_esc(greeting_name)},</div>"
         if greeting_name else ""
     )
+    abstand = 14 if (kopf or greeting) else 0
     return (
-        f"<div style='max-width:600px;margin:0 auto;padding:24px 16px;font-family:{_FONT};"
-        f"color:{_TEXT};background:#ffffff'>"
-        f"{kopfzeile(unterzeile)}"
-        f"{greeting}"
-        f"<div style='margin-top:14px;white-space:pre-wrap;font-size:15px;line-height:1.55'>"
+        f"<div style='margin:0;padding:28px 12px;background:{_SEITE}'>"
+        f"<div style='max-width:600px;margin:0 auto;font-family:{_FONT};color:{_TEXT}'>"
+        f"<div style='padding:0 6px 14px'>{kopfzeile(unterzeile)}</div>"
+        f"<div style='background:#ffffff;border:1px solid {_RAHMEN};border-radius:18px;overflow:hidden'>"
+        f"{held_bild(held)}"
+        f"<div style='padding:24px 24px 28px'>"
+        f"{kopf}{greeting}"
+        f"<div style='margin-top:{abstand}px;white-space:pre-wrap;font-size:15px;line-height:1.55'>"
         f"{body_html_or_text}</div>"
-        f"<hr style='margin:28px 0 16px;border:none;border-top:1px solid {_LINIE}'>"
-        f"<a href='{APP_BASE_URL}' style='color:{_BLAU};text-decoration:none;font-size:14px'>"
-        "Zu Ratslotse &rarr;</a>"
-        f"{_abmelde_hinweis()}"
+        "</div></div>"
+        f"{_fuss(fusszeile)}"
+        "</div></div>"
+    )
+
+
+def _fuss(fusszeile: str | None) -> str:
+    """Unter der Karte: der Rückweg in die App plus Kleingedrucktes."""
+    if fusszeile is None:
+        hinweis = _abmelde_hinweis()
+    elif fusszeile:
+        hinweis = (
+            f"<div style='margin-top:10px;color:{_LEISE};font-size:12px;line-height:1.5'>"
+            f"{fusszeile}</div>"
+        )
+    else:
+        hinweis = ""
+    return (
+        "<div style='padding:18px 6px 6px'>"
+        f"<a href='{APP_BASE_URL}' style='color:{_BLAU};text-decoration:none;"
+        "font-size:14px;font-weight:600'>Zu Ratslotse &rarr;</a>"
+        f"{hinweis}"
         "</div>"
     )
 
@@ -205,23 +284,8 @@ def _abmelde_hinweis() -> str:
     echter Link auf die Zustellungs-Schalter, kein bloßer Seitenname zum
     Selbst-Suchen (Tims Wunsch 26.08.2026)."""
     return (
-        f"<div style='margin-top:14px;color:{_LEISE};font-size:12px;line-height:1.5'>"
+        f"<div style='margin-top:10px;color:{_LEISE};font-size:12px;line-height:1.5'>"
         "Du bekommst diese E-Mail, weil du bei Ratslotse die E-Mail-Zustellung aktiviert hast. "
         f"Den Kanal änderst du jederzeit unter <a href='{APP_BASE_URL}/account?zeig=zustellung' "
         f"style='color:{_LEISE};text-decoration:underline'>„Mein Konto“</a>.</div>"
-    )
-
-
-def _wrap(display_date: str, inner_html: str, topics_url: str) -> str:
-    """Hülle der alten Digest-Mail."""
-    return (
-        f"<div style='max-width:600px;margin:0 auto;padding:24px 16px;font-family:{_FONT};"
-        f"color:{_TEXT};background:#ffffff'>"
-        f"{kopfzeile(display_date)}"
-        f"<div style='margin-top:20px'>{inner_html}</div>"
-        f"<hr style='margin:28px 0 16px;border:none;border-top:1px solid {_LINIE}'>"
-        f"<a href='{topics_url}' style='color:{_BLAU};text-decoration:none;font-size:14px'>"
-        "Themen &amp; Treffer im Web verwalten &rarr;</a>"
-        f"{_abmelde_hinweis()}"
-        "</div>"
     )

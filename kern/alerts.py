@@ -50,6 +50,7 @@ def notify_admin(text: str, betreff: str = "Ratslotse – Cron-Alarm",
     if not recipient:
         return
     try:
+        from .digest_email import render_html_email
         from .email import email_ready, send_email
 
         if not email_ready():
@@ -57,13 +58,16 @@ def notify_admin(text: str, betreff: str = "Ratslotse – Cron-Alarm",
         send_email(
             recipient,
             betreff,
-            "<div style='max-width:560px;margin:0 auto;padding:24px 16px;"
-            "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a'>"
-            "<div style='font-size:20px;font-weight:700;color:#2563eb'>Ratslotse</div>"
-            f"<p style='margin:20px 0 8px;white-space:pre-wrap'>{text}</p>"
-            "<p style='margin-top:20px;color:#94a3b8;font-size:12px'>"
-            f"{fusszeile}</p>"
-            "</div>",
+            render_html_email(
+                betreff,
+                f"<div style='white-space:pre-wrap'>{text}</div>",
+                held="alarm",
+                kicker="Betrieb",
+                # „Ratslotse – Cron-Alarm" → „Cron-Alarm": Die Marke steht schon
+                # in der Kopfzeile der Hülle, doppelt wäre sie Rauschen.
+                titel=re.sub(r"^Ratslotse\s*[–-]\s*", "", betreff),
+                fusszeile=fusszeile,
+            ),
             text=re.sub(r"<[^>]+>", "", text),
         )
     except Exception:
