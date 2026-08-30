@@ -300,3 +300,153 @@ def test_zwei_positionen_in_einem_band_bleiben_leer():
         [tabelle, summen],
         [linien([85, 150], [484]), linien([], [])])
     assert all(z.erlaeuterung is None for z in aus.zeilen)
+
+
+# ------------------------------------------------------- Spalte „Vorschlag von“
+
+#: Kopfgeometrie von 230011: dieselbe Tabelle wie oben, aber mit der
+#: zweizeilig gesetzten Urheber-Spalte ganz rechts (Linien bei 758/815).
+def kopf_mit_urheber(jahr):
+    return kopf(jahr) + [w(767, 806, 40, "Vorschlag"), w(779, 794, 52, "von")]
+
+
+def urheber_wort(y, teile, x0=762):
+    """Ein mehrzeilig gewickeltes Urheber-Label in seiner Spalte."""
+    return [w(x0, x0 + 5 * len(t), y + 10 * i, t) for i, t in enumerate(teile)]
+
+
+def test_urheber_je_position_aus_der_letzten_spalte():
+    """Die Spalte „Vorschlag von“ landet an der Position — auch mehrzeilig
+    gewickelt und auch, wenn das Label ober- und unterhalb der
+    Positions-Grundlinie steht (die Zellen sind vertikal zentriert)."""
+    tabelle = kopf_mit_urheber(2021) + [
+        *position(100, 1, "01", [("20.000", "a")], bezeichnung=("Gleichstellung",)),
+        *urheber_wort(95, ["SPD/", "BÜNDNIS 90/", "DIE GRÜNEN"]),
+        *position(140, 2, "02", [("30.000", "a")], bezeichnung=("Personal",)),
+        *urheber_wort(138, ["Verw.", "I"]),
+    ]
+    summen = summenblock(2021, [
+        ("Verwaltungsentwurf", "100.000.000", "90.000.000", "10.000.000", ""),
+        ("Änderungsliste v. 19.11.2020 Verw. I", "0", "30.000", "-30.000", ""),
+        ("", "0", "20.000", "-20.000", "SPD/ BÜNDNIS 90/DIE GRÜNEN"),
+        ("Überschuss/ Fehlbedarf", "100.000.000", "90.050.000", "9.950.000", ""),
+    ])
+    aus = parse_ehh_seiten(
+        [tabelle, summen],
+        [linien([85, 120, 175], [70, 220, 380, 440, 484, 758, 815]), linien([], [])])
+
+    z1, z2 = aus.zeilen
+    assert z1.urheber == "SPD/ BÜNDNIS 90/ DIE GRÜNEN"
+    assert z2.urheber == "Verw. I"
+    # Und die Erläuterungs-Spalte hat den Urheber NICHT mitgenommen:
+    assert z1.erlaeuterung is None and z2.erlaeuterung is None
+
+
+def test_urheber_bleibt_aus_der_erlaeuterung_heraus():
+    """Ohne rechte Grenze zog die Erläuterung das Urheber-Label mitten in den
+    Satz — die Labels wickeln auf eigenen Grundlinien und fielen beim Falten
+    zwischen die Wörter („… gegen Gewalt an SPD/ Frauen …“)."""
+    tabelle = kopf_mit_urheber(2021) + [
+        *position(100, 1, "01", [("20.000", "a")], bezeichnung=("Gleichstellung",)),
+        w(490, 540, 95, "Mittel"), w(542, 580, 95, "gegen"),
+        w(490, 530, 105, "Gewalt."),
+        *urheber_wort(95, ["SPD/", "BÜNDNIS 90/", "DIE GRÜNEN"]),
+    ]
+    summen = summenblock(2021, [
+        ("Verwaltungsentwurf", "100.000.000", "90.000.000", "10.000.000", ""),
+        ("", "0", "20.000", "-20.000", "SPD/ BÜNDNIS 90/DIE GRÜNEN"),
+        ("Überschuss/ Fehlbedarf", "100.000.000", "90.020.000", "9.980.000", ""),
+    ])
+    aus = parse_ehh_seiten(
+        [tabelle, summen],
+        [linien([85, 120], [70, 220, 380, 440, 484, 758, 815]), linien([], [])])
+    assert aus.zeilen[0].erlaeuterung == "Mittel gegen Gewalt."
+    assert aus.zeilen[0].urheber == "SPD/ BÜNDNIS 90/ DIE GRÜNEN"
+
+
+def test_urheberprobe_reisst_bei_falscher_zuordnung():
+    """Die Zuschreibung wird gerechnet, nicht gelesen: Stimmt die Summe je
+    Urheber nicht mit seiner Zusammenstellungs-Zeile überein, gilt das
+    Dokument als ungelesen — lieber gar keine Liste als eine Kürzung an der
+    falschen Fraktion."""
+    tabelle = kopf_mit_urheber(2021) + [
+        # Beide Positionen tragen denselben Urheber — die Koalitionszeile
+        # (20.000) bliebe dann ohne Deckung.
+        *position(100, 1, "01", [("20.000", "a")], bezeichnung=("Gleichstellung",)),
+        *urheber_wort(98, ["Verw.", "I"]),
+        *position(140, 2, "02", [("30.000", "a")], bezeichnung=("Personal",)),
+        *urheber_wort(138, ["Verw.", "I"]),
+    ]
+    summen = summenblock(2021, [
+        ("Verwaltungsentwurf", "100.000.000", "90.000.000", "10.000.000", ""),
+        ("Änderungsliste v. 19.11.2020 Verw. I", "0", "30.000", "-30.000", ""),
+        ("", "0", "20.000", "-20.000", "SPD/ BÜNDNIS 90/DIE GRÜNEN"),
+        ("Überschuss/ Fehlbedarf", "100.000.000", "90.050.000", "9.950.000", ""),
+    ])
+    with pytest.raises(ListenFehler, match="Urheberprobe"):
+        parse_ehh_seiten(
+            [tabelle, summen],
+            [linien([85, 120, 175], [70, 220, 380, 440, 484, 758, 815]), linien([], [])])
+
+
+def test_vorschlag_im_fliesstext_ist_keine_spalte():
+    """Das Wort allein reicht nicht: In 271304 steht „Der eingebrachte
+    Vorschlag zur Erhöhung der Bewohnerparkgebühren der Politik …“ mitten in
+    einer Erläuterung. Ohne „von“ direkt darunter ist es keine Spalte — die
+    Erläuterung bleibt vollständig, der Urheber leer."""
+    tabelle = kopf(2024) + [
+        *position(100, 1, "01", [("20.000", "a")], bezeichnung=("Parken",)),
+        w(490, 502, 95, "Der"), w(504, 550, 95, "eingebrachte"),
+        w(552, 588, 95, "Vorschlag"), w(590, 602, 95, "zur"),
+        w(604, 639, 95, "Erhöhung"),
+    ]
+    summen = summenblock(2024, [
+        ("Verwaltungsentwurf", "100.000.000", "90.000.000", "10.000.000", ""),
+        ("Änderungsliste Verw. I", "0", "20.000", "-20.000", ""),
+        ("Überschuss/ Fehlbedarf", "100.000.000", "90.020.000", "9.980.000", ""),
+    ])
+    aus = parse_ehh_seiten(
+        [tabelle, summen],
+        [linien([85, 120], [70, 220, 380, 440, 484, 815]), linien([], [])])
+    assert aus.zeilen[0].urheber is None
+    assert aus.zeilen[0].erlaeuterung == "Der eingebrachte Vorschlag zur Erhöhung"
+
+
+# ------------------------------------------- Bezeichnung an gezeichneten Linien
+
+def test_bezeichnung_folgt_der_gezeichneten_spalte():
+    """Die Wickel-Nachlese nimmt die Spaltenkanten aus dem Linienraster, wo
+    die Seite eines zeichnet. Der zentrierte Kopf „Bezeichnung“ liegt je
+    Jahrgang verschieden weit neben seiner Spalte — geschätzt fielen im
+    Bestand 175 von 1.799 Namen angeschnitten aus („von und Frauen“ statt
+    „Chancengleichstellung von Männern und Frauen“)."""
+    # Kopfgeometrie von 230011 (nicht die von 300528 aus `kopf`): Der Kopf
+    # „Bezeichnung“ steht ab 266, die gezeichnete Spalte aber schon ab 221
+    # und bis 359. Die Schätzung daraus ist [241, 354] — „Chancengleich-
+    # stellung“ (ab 226) fällt links heraus, „Männern“ (bis 355) rechts.
+    kopf_230011 = [
+        w(389, 436, 30, "Änderungen"), w(438, 456, 30, "2021"),
+        w(266, 316, 52, "Bezeichnung"),
+        w(379, 403, 50, "Ertrag"), w(437, 470, 50, "Aufwand"),
+        w(595, 649, 52, "Erläuterungen"),
+    ]
+    tabelle = kopf_230011 + [
+        w(226, 306, 92, "Chancengleichstellung"), w(308, 321, 92, "von"),
+        w(324, 355, 92, "Männern"),
+        *position(100, 1, "01", [("20.000", "a")], bezeichnung=()),
+        w(270, 283, 108, "und"), w(286, 311, 108, "Frauen"),
+    ]
+    summen = summenblock(2021, [
+        ("Verwaltungsentwurf", "100.000.000", "90.000.000", "10.000.000", ""),
+        ("Änderungsliste Verw. I", "0", "20.000", "-20.000", ""),
+        ("Überschuss/ Fehlbedarf", "100.000.000", "90.020.000", "9.980.000", ""),
+    ])
+    mit = parse_ehh_seiten(
+        [tabelle, summen],
+        [linien([85, 120], [63, 84, 107, 138, 221, 359, 422, 484]), linien([], [])])
+    assert mit.zeilen[0].bezeichnung == "Chancengleichstellung von Männern und Frauen"
+
+    # Ohne Linien bleibt die alte Schätzung — sie schneidet, und genau das
+    # ist der Grund für die Linien-Fassung.
+    ohne = parse_ehh_seiten([tabelle, summen])
+    assert ohne.zeilen[0].bezeichnung == "von und Frauen"

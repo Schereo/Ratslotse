@@ -123,6 +123,11 @@ PROBEN: dict[str, str] = {
         "Absatz steht in dem Zeilenband, in dem auch seine Position steht — "
         "zugeordnet wird über die Geometrie des Dokuments, nicht über "
         "Abstands-Schätzung; ohne eindeutiges Band bleibt das Feld leer.",
+    "aenderungsliste_urheber":
+        "Wo das Dokument je Position einen Vorschlagenden nennt, wird die "
+        "Zuordnung gerechnet: Die Summe der Positionen jedes Urhebers muss "
+        "seine eigene Zeile in der Zusammenstellung treffen. Geht auch nur "
+        "eine Gruppe nicht auf, gilt das Dokument als ungelesen.",
     # Die Gebührenbedarfsberechnung (council/gebuehren.py) — die Rechnung, aus
     # der die Abfall- und Straßenreinigungsgebühren entstehen. Zwei Proben,
     # beide aus dem Dokument selbst und voneinander unabhängig.

@@ -1438,7 +1438,9 @@ def haushalt_aenderungslisten(
       (``jahr == jahrgang``). Dieselbe Maßnahme steht im Dokument je
       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
-      Summen.
+      Summen. ``urheber`` trägt, WER die Position vorschlug — gefüllt nur
+      beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte
+      „Vorschlag von“ führt; sonst ``null``.
     - ``summen``: die Zusammenstellungen ALLER Planjahre, inklusive der
       Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit
       Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige

@@ -160,6 +160,10 @@ class Zeile:
     #: ``None``, wenn die Zelle leer ist oder ihre Zuordnung nicht eindeutig
     #: über die Tabellenlinien läuft (s. ``_erlaeuterungen_anbauen``).
     erlaeuterung: str | None = None
+    #: WER diese Position vorgeschlagen hat — aus der Spalte „Vorschlag von“.
+    #: ``None`` überall dort, wo das Dokument die Spalte nicht führt (17 von
+    #: 18 EHH-Dokumenten); s. ``_urheber_anbauen``.
+    urheber: str | None = None
 
 
 @dataclass
@@ -334,6 +338,10 @@ class Spalten:
     #: Linke Kante des Kopfworts „Bezeichnung“ — für die Fragment-Nachlese
     #: mehrzeiliger Bezeichnungen. ``None``, wenn der Kopf fehlt.
     bezeichnung: float | None = None
+    #: Die GEZEICHNETE Bezeichnungs-Spalte (linke/rechte senkrechte Linie um
+    #: den Kopf). Wo die Seite ihr Raster zeichnet, gilt es statt der aus dem
+    #: Kopfwort geschätzten Zone — s. :func:`_bezeichnungsfragment`.
+    bez_spalte: tuple[float, float] | None = None
 
     @property
     def mitte(self) -> float:
@@ -345,10 +353,16 @@ class Spalten:
         return (self.ertrag - 35, self.aufwand + 35)
 
 
-def _spalten(zeilen: list[list[Wort]]) -> Spalten | None:
+def _spalten(zeilen: list[list[Wort]],
+             senkrecht: list[float] | None = None) -> Spalten | None:
     """Die Betragsspalten aus den Kopf-Wörtern „Ertrag“ und „Aufwand“.
     Fehlen sie, ist es keine Tabellenseite (Deckblatt, Zusammenstellung —
-    dort heißen die Spalten „Erträge“/„Aufwendungen“)."""
+    dort heißen die Spalten „Erträge“/„Aufwendungen“).
+
+    ``senkrecht`` (die gezeichneten Spaltenlinien der Seite) ist optional und
+    trägt nur die Bezeichnungs-Spalte bei — das Linienpaar, das den Kopf
+    „Bezeichnung“ einschließt.
+    """
     ertrag = aufwand = bezeichnung = None
     for zeile in zeilen[:14]:
         for x0, x1, _y, text in zeile:
@@ -360,7 +374,14 @@ def _spalten(zeilen: list[list[Wort]]) -> Spalten | None:
                 bezeichnung = x0
     if ertrag is None or aufwand is None:
         return None
-    return Spalten(ertrag=ertrag, aufwand=aufwand, bezeichnung=bezeichnung)
+    spalte = None
+    if senkrecht and bezeichnung is not None:
+        links = [x for x in senkrecht if x < bezeichnung]
+        rechts = [x for x in senkrecht if x > bezeichnung]
+        if links and rechts:
+            spalte = (max(links), min(rechts))
+    return Spalten(ertrag=ertrag, aufwand=aufwand, bezeichnung=bezeichnung,
+                   bez_spalte=spalte)
 
 
 def _zahl(text: str) -> int:
@@ -431,15 +452,30 @@ def _bezeichnungsfragment(zeile: list[Wort], spalten: Spalten) -> str | None:
     Kopfzeile) und Zahlen in der Betragszone (dann eine verrutschte
     Betragszeile — lieber gar kein Name als einer mit fremder Herkunft).
 
-    Der Kopf „Bezeichnung“ ist zentriert über seiner linksbündigen Spalte;
-    der Text beginnt gemessen bis 18 pt vor der Kopfkante (212801: Spalte ab
-    264, Kopf ab 282), links davon endet die Produkt-Spalte (212) — die 25 pt
-    Vorlauf lassen dazwischen Luft."""
-    if spalten.bezeichnung is None:
-        return None
-    links = spalten.bezeichnung - 25
+    Die Spaltengrenzen kommen aus dem GEZEICHNETEN Raster, wo die Seite eines
+    hat (:attr:`Spalten.bez_spalte`) — dieselbe Entscheidung wie bei der
+    Erläuterungs-Spalte: Geometrie schlägt Schätzung. Wie weit der zentrierte
+    Kopf neben seiner Spalte liegt, schwankt nämlich je Jahrgang: Gemessen
+    über alle 18 EHH-Dokumente fielen aus der geschätzten Zone 12–72 % der
+    Wörter, die zwischen den gedruckten Linien stehen — im fertigen Feld
+    175 von 1.799 Positionen (9,7 %), die dadurch einen angeschnittenen
+    Namen trugen („für SGB II“ statt „Grundsicherung für Arbeitssuchende
+    SGB II“, „von und Frauen“ statt „Chancengleichstellung von Männern und
+    Frauen“). Ohne Linien bleibt die alte Schätzung: Der Text beginnt
+    gemessen bis 18 pt vor der Kopfkante (212801: Spalte ab 264, Kopf ab
+    282), links davon endet die Produkt-Spalte (212) — die 25 pt Vorlauf
+    lassen dazwischen Luft."""
     zone_links, zone_rechts = spalten.zone
-    teil = [w for w in zeile if links <= w[0] and w[1] <= zone_links - 2]
+    if spalten.bez_spalte is not None:
+        # 1 pt Luft an beiden Kanten: Wortboxen setzen gelegentlich haarscharf
+        # auf ihrer Linie auf (gemessen 230011: „Männern“ endet bei 355,0 bei
+        # einer Spaltenlinie 359,4 — die Kante ist die Linie, nicht das Wort).
+        links, rechts = spalten.bez_spalte[0] - 1, spalten.bez_spalte[1] + 1
+    elif spalten.bezeichnung is not None:
+        links, rechts = spalten.bezeichnung - 25, zone_links - 2
+    else:
+        return None
+    teil = [w for w in zeile if links <= w[0] and w[1] <= rechts]
     if not teil:
         return None
     if any(w[1] < links for w in zeile):
@@ -497,8 +533,10 @@ def parse_ehh_seiten(seiten: list[list[Wort]],
     Modulkopf nicht aufgeht — halb gelesene Listen gibt es nicht.
 
     ``linien`` (je Seite die Tabellenlinien, s. :func:`seiten_linien`) ist
-    optional und trägt nur die Erläuterungs-Texte bei: Ohne Linien bleiben
-    die Beträge vollständig und ``erlaeuterung`` einfach ``None``.
+    optional und trägt die Textspalten bei: die Erläuterungen, die
+    Bezeichnungs-Spalte und den Urheber je Position. Ohne Linien bleiben die
+    Beträge vollständig, ``erlaeuterung`` und ``urheber`` einfach ``None``
+    und die Bezeichnungs-Nachlese fällt auf ihre Kopf-Schätzung zurück.
     """
     aus = Ergebnis()
     if seiten and (m := _STAND.search(_zeilentext([w for z in _zeilen_bilden(seiten[0]) for w in z]))):
@@ -515,7 +553,12 @@ def parse_ehh_seiten(seiten: list[list[Wort]],
         seitentext = " ".join(_zeilentext(z) for z in zeilen)
         marker = _JAHR_MARKER.search(seitentext)
         jahr = int(marker.group(1)) if marker else None
-        spalten = _spalten(zeilen)
+        seiten_linien_ = (linien[seiten_nr]
+                          if linien is not None and seiten_nr < len(linien) else None)
+        senkrecht = seiten_linien_[1] if seiten_linien_ else None
+        spalten = _spalten(zeilen, senkrecht)
+        urheber_links = (_urheber_grenze(woerter, senkrecht, spalten)
+                         if senkrecht and spalten is not None else None)
 
         seiten_positionen: list[tuple[float, Zeile]] = []
         fragmente: list[tuple[float, str]] = []
@@ -561,9 +604,12 @@ def parse_ehh_seiten(seiten: list[list[Wort]],
                     aus.summen.append(kandidat)
 
         _fragmente_anbauen(seiten_positionen, fragmente)
-        if spalten is not None and linien is not None and seiten_nr < len(linien):
+        if spalten is not None and seiten_linien_ is not None:
             _erlaeuterungen_anbauen(seiten_positionen, zeilen, spalten,
-                                    linien[seiten_nr])
+                                    seiten_linien_, urheber_links)
+            if urheber_links is not None:
+                _urheber_anbauen(seiten_positionen, zeilen, seiten_linien_,
+                                 urheber_links)
 
     if not aus.zeilen:
         raise ListenFehler("Keine Positionszeilen gefunden — andere Bauform?")
@@ -603,9 +649,90 @@ def _fragmente_anbauen(positionen: list[tuple[float, Zeile]],
         position.bezeichnung = " ".join(t for _, t in alle if t)
 
 
+def _urheber_grenze(woerter: list[Wort], senkrecht: list[float],
+                    spalten: Spalten) -> float | None:
+    """Die linke Kante der Spalte „Vorschlag von“ — oder ``None``.
+
+    Genau EIN Dokument des Bestands führt sie je Position: die
+    Beschluss-Datei zum Haushalt 2021 (230011, dazu ihre inhaltsgleiche
+    Zweitablage 230030), auf 20 ihrer 21 Seiten. Die übrigen sechzehn
+    Dokumente kennen den Urheber nur in der Zusammenstellung — dort steht er
+    ohnehin schon als Label seiner Summenzeile.
+
+    Gesucht wird der zweizeilig gesetzte KOPF, nicht das Wort: „Vorschlag“
+    mit „von“ direkt darunter in derselben Spalte. Das Wort allein reicht
+    nicht — in 271304 steht „Der eingebrachte **Vorschlag** zur Erhöhung der
+    Bewohnerparkgebühren der Politik …“ mitten in einer Erläuterung, und eine
+    Wortsuche hielt diese Seite prompt für eine mit Urheber-Spalte. Dazu zwei
+    Bedingungen aus dem Linienraster: Die Spalte liegt RECHTS der Beträge und
+    ist die LETZTE der Seite (rechts von ihrer Kante steht nur noch der
+    Tabellenrand). Ohne all das gibt es keine Grenze — dann läuft die
+    Erläuterung wie bisher bis zum Blattrand.
+    """
+    kopf = [w for w in woerter if w[3] == "Vorschlag"]
+    for x0, x1, y, _text in kopf:
+        # „von“ direkt darunter: dieselbe Spalte, die nächste Grundlinie.
+        if not any(v[3] == "von" and 0 < v[2] - y <= 22
+                   and v[0] < x1 and v[1] > x0 for v in woerter):
+            continue
+        links = [x for x in senkrecht if x < x0]
+        rechts = [x for x in senkrecht if x >= x1]
+        if not links or len(rechts) != 1:
+            continue
+        if max(links) <= spalten.aufwand:
+            continue
+        return max(links)
+    return None
+
+
+def _urheber_anbauen(positionen: list[tuple[float, Zeile]],
+                     zeilen: list[list[Wort]], linien: Linien,
+                     grenze: float) -> None:
+    """Die Spalte „Vorschlag von“ ihren Positionen zuschlagen.
+
+    Dieselbe Geometrie wie bei den Erläuterungen — die waagerechten Linien
+    teilen die Seite in Zeilenbänder, ein Band gehört genau einer Position.
+    Das ist hier nicht Bequemlichkeit, sondern Notwendigkeit: Die Labels
+    wickeln über drei Grundlinien („SPD/“ / „BÜNDNIS 90/“ / „DIE GRÜNEN“)
+    und stehen dabei ober- UND unterhalb der Positions-Grundlinie, weil die
+    Zellen vertikal zentriert sind. Nach Abstand geraten träfe es die
+    Nachbarzeile.
+
+    Bewiesen wird das Ergebnis NICHT hier, sondern in :func:`_proben`: Die
+    Summe der Positionen je Urheber muss die Zusammenstellungs-Zeile dieses
+    Urhebers treffen. Wem die Stadt eine Kürzung zuschreibt, ist die
+    folgenreichste Angabe dieses Moduls — sie wird gerechnet, nicht gelesen.
+    """
+    waagerecht, _senkrecht = linien
+    if not positionen or len(waagerecht) < 2:
+        return
+    baender: dict[int, list[Wort]] = {}
+    for zeile in zeilen:
+        for w in zeile:
+            if w[0] < grenze - 1:
+                continue
+            band = _band(waagerecht, w[2])
+            if band is not None:
+                baender.setdefault(band, []).append(w)
+
+    for py, position in positionen:
+        band = _band(waagerecht, py)
+        if band is None:
+            continue
+        if sum(1 for qy, _ in positionen if _band(waagerecht, qy) == band) > 1:
+            continue
+        woerter = sorted(baender.get(band, []), key=lambda w: (w[2], w[0]))
+        if woerter:
+            # Ohne `_zeilen_falten`: Ein Label ist keine Prosa, seine
+            # Schrägstriche sind Trennzeichen zwischen Fraktionen und keine
+            # Silbentrennung („SPD/“ + „BÜNDNIS 90/“ bleibt „SPD/ BÜNDNIS 90/“).
+            position.urheber = " ".join(
+                " ".join(w[3] for w in z) for z in _zeilen_bilden(woerter))
+
+
 def _erlaeuterungen_anbauen(positionen: list[tuple[float, Zeile]],
                             zeilen: list[list[Wort]], spalten: Spalten,
-                            linien: Linien) -> None:
+                            linien: Linien, urheber_grenze: float | None = None) -> None:
     """Die Erläuterungs-Spalte einer Seite ihren Positionen zuschlagen.
 
     Text hat keine Schlusssumme, gegen die man ihn beweisen könnte — an die
@@ -622,6 +749,13 @@ def _erlaeuterungen_anbauen(positionen: list[tuple[float, Zeile]],
     des Linienrasters (Fußzeilen wie „Seite 2 Verw. I 2026“) auch, und ohne
     brauchbare Linien bekommt die Seite gar keine Erläuterungen — lieber
     leer als per Raten an der falschen Zeile.
+
+    RECHTS endet die Spalte an ``urheber_grenze``, wo das Dokument eine
+    Spalte „Vorschlag von“ führt. Ohne diese Grenze zog die Erläuterung den
+    Urheber mit hinein, und zwar mitten in den Satz — die Labels wickeln auf
+    eigenen Grundlinien, also fielen sie beim Falten zwischen die Wörter der
+    Erläuterung („… gegen Gewalt an SPD/ Frauen u. häusl. Gewalt …“). Alle
+    187 Positionen von 230011 waren so verunreinigt.
     """
     if not positionen:
         return
@@ -630,11 +764,12 @@ def _erlaeuterungen_anbauen(positionen: list[tuple[float, Zeile]],
     if not grenzen or len(waagerecht) < 2:
         return
     erl_links = grenzen[0]
+    erl_rechts = urheber_grenze if urheber_grenze is not None else float("inf")
 
     baender: dict[int, list[Wort]] = {}
     for zeile in zeilen:
         for w in zeile:
-            if w[0] < erl_links - 1:
+            if w[0] < erl_links - 1 or w[0] >= erl_rechts - 1:
                 continue
             band = _band(waagerecht, w[2])
             if band is not None:
@@ -778,6 +913,79 @@ def _proben(aus: Ergebnis) -> None:
                 + ": " + "; ".join(f"{label}: {e:,}/{a:,}" for label, e, a in ziele))
         aus.eigene_zeile[jahr] = treffer[0]
 
+        _urheber_probe(aus, jahr, listen, toleranz)
+
+
+def _urheber_probe(aus: Ergebnis, jahr: int, listen: list[SummenZeile],
+                   toleranz: int) -> None:
+    """Die Summe der Positionen je Urheber muss SEINE Zusammenstellungs-Zeile
+    treffen — sonst gilt das Dokument als nicht gelesen.
+
+    Diese Probe ist der Grund, warum überhaupt ein Urheber gespeichert wird.
+    Wem die Stadt eine Streichung zuschreibt, ist die folgenreichste Angabe
+    dieses Moduls; sie darf nicht an einer Spaltenkante hängen. Das Dokument
+    rechnet sie sich selbst vor: 230011 teilt seine 187 Positionen auf
+    „Verw. I“, „Verw. II“ und „SPD/ BÜNDNIS 90/DIE GRÜNEN“ auf, und für
+    jedes der vier Planjahre steht die Summe jeder Gruppe als eigene Zeile
+    in der Zusammenstellung. Gemessen: 9 von 9 Gruppen treffen auf den Cent.
+
+    Sie ist HART wie die anderen — reißt sie, wird nichts gespeichert, auch
+    nicht die Beträge. Ein Dokument, das die Spalte führt und dessen
+    Zuordnung nicht aufgeht, soll im Ingest als „nicht gelesen“ auffallen und
+    nicht still ohne Urheber durchlaufen: Eine stumme Lücke sähe aus wie ein
+    Dokument ohne die Spalte, und genau die Unterscheidung ist hier wertvoll.
+
+    Die Labels der beiden Seiten sind NICHT deckungsgleich — die Position
+    sagt „Verw. I“, die Zusammenstellung „Änderungsliste v. 19.11.2020
+    Verw. I“. Zugeordnet wird deshalb über die Beträge; das Label muss
+    danach nur noch dazu passen (Teilzeichenkette), damit zwei betragsgleiche
+    Gruppen nicht die Zeilen tauschen können.
+    """
+    mit = [z for z in aus.zeilen if z.jahr == jahr and z.urheber]
+    if not mit:
+        return
+    ohne = [z for z in aus.zeilen if z.jahr == jahr and not z.urheber]
+    if ohne:
+        raise ListenFehler(
+            f"Urheberprobe {jahr}: {len(ohne)} von {len(mit) + len(ohne)} "
+            f"Positionen ohne Urheber, obwohl die Seite die Spalte führt "
+            f"(erste: lfd. {ohne[0].lfd}).")
+
+    gruppen: dict[str, list[int]] = {}
+    for z in mit:
+        summe = gruppen.setdefault(z.urheber, [0, 0])
+        summe[0] += z.ertrag or 0
+        summe[1] += z.aufwand or 0
+
+    vergeben: set[str] = set()
+    for urheber, (e, a) in sorted(gruppen.items()):
+        treffer = [s for s in listen
+                   if s.label not in vergeben
+                   and abs(s.ertraege - e) <= toleranz
+                   and abs(s.aufwendungen - a) <= toleranz
+                   and _label_passt(urheber, s.label)]
+        if len(treffer) != 1:
+            raise ListenFehler(
+                f"Urheberprobe {jahr}: „{urheber}“ summiert auf {e:,} / {a:,} — "
+                + ("keine Zusammenstellungs-Zeile trifft das" if not treffer
+                   else "mehrere Zeilen träfen das")
+                + ": " + "; ".join(
+                    f"{s.label}: {s.ertraege:,}/{s.aufwendungen:,}" for s in listen))
+        vergeben.add(treffer[0].label)
+
+
+def _label_passt(urheber: str, summen_label: str) -> bool:
+    """Steckt der Urheber der Position im Label seiner Summenzeile?
+
+    Verglichen wird ohne Leerzeichen und ohne Groß-/Kleinschreibung: Die
+    Zusammenstellung setzt „SPD/ BÜNDNIS 90/DIE GRÜNEN“, die Positionsspalte
+    bricht dasselbe Label anders um („SPD/ BÜNDNIS 90/ DIE GRÜNEN“) — es ist
+    das Papier, das dort verschieden umbricht, nicht die Aussage.
+    """
+    def kern(s: str) -> str:
+        return re.sub(r"\s+", "", s).casefold()
+    return kern(urheber) in kern(summen_label)
+
 
 def lies_ehh_liste(pdf_bytes: bytes) -> Ergebnis:
     """PDF → geprüfte Änderungsliste. Wirft :class:`ListenFehler`."""
@@ -790,7 +998,7 @@ def herkunft_fuer(label: str, url: str | None, dokument_id: int) -> Herkunft:
     return Herkunft(
         art="ris",
         probe=("aenderungsliste_summen", "aenderungsliste_positionen",
-               "aenderungsliste_erlaeuterungen"),
+               "aenderungsliste_erlaeuterungen", "aenderungsliste_urheber"),
         label=label,
         url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={dokument_id}&type=do",
         dokument_id=dokument_id,
