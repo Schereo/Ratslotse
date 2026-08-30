@@ -533,9 +533,10 @@ public struct DistrictOption: Codable, Sendable, Hashable, Identifiable {
     public let name: String
     public let kindLabel: String
     public let count: Int
+    public let description: String?
 
     enum CodingKeys: String, CodingKey {
-        case name, count
+        case name, count, description
         case placeID = "place_id"
         case kindLabel = "kind_label"
     }

@@ -570,6 +570,7 @@ private struct TopicSuggestion: Decodable, Sendable, Identifiable {
     var id: String { name }
     let name: String
     let description: String
+    let context: String?
     let n: Int
 }
 
@@ -597,6 +598,13 @@ private struct TopicSuggestionChoice: View {
                         .font(RatsFont.body(12.5, weight: .semibold))
                         .multilineTextAlignment(.leading)
                         .lineLimit(3)
+                    if let context = visibleContext {
+                        Text(context)
+                            .font(RatsFont.body(10.5))
+                            .foregroundStyle(RatsColor.secondary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2)
+                    }
                     Text(suggestion.n == 1 ? "1 Erwähnung" : "\(suggestion.n) Erwähnungen")
                         .font(RatsFont.mono(8.5))
                         .foregroundStyle(exists ? RatsColor.primary.opacity(0.72) : RatsColor.muted)
@@ -604,7 +612,7 @@ private struct TopicSuggestionChoice: View {
 
                 Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: visibleContext == nil ? 58 : 82, alignment: .topLeading)
             .padding(11)
             .background(exists ? RatsColor.primary.opacity(0.06) : RatsColor.card)
             .overlay(
@@ -617,6 +625,12 @@ private struct TopicSuggestionChoice: View {
         .foregroundStyle(exists ? RatsColor.primary : RatsColor.text)
         .disabled(disabled)
         .accessibilityLabel("\(suggestion.name), \(suggestion.n) Erwähnungen im letzten Jahr")
+    }
+
+    private var visibleContext: String? {
+        let value = (suggestion.context ?? suggestion.description)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
     }
 }
 
@@ -634,9 +648,14 @@ private struct TopicOnboardingStep: View {
     @State private var name = ""
     @State private var topics: [Topic] = []
     @State private var suggestions: [TopicSuggestion] = []
+    @State private var districts: [DistrictOption] = []
+    @State private var selectedDistrictID = ""
+    @State private var addingDistrict = false
     @State private var isWorking = false
     @State private var error: String?
     @State private var note: String?
+    @State private var successMessage: String?
+    @State private var successPulse = 0
 
     var body: some View {
         OnboardingStepPage(
@@ -661,6 +680,10 @@ private struct TopicOnboardingStep: View {
                     .font(RatsFont.body(11.5))
                     .foregroundStyle(RatsColor.secondary)
 
+                if !districts.isEmpty {
+                    favoriteDistrictPicker
+                }
+
                 if let error {
                     Text(error)
                         .font(RatsFont.body(12))
@@ -678,6 +701,10 @@ private struct TopicOnboardingStep: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(RatsColor.separator.opacity(0.6))
                         .clipShape(RoundedRectangle(cornerRadius: 9))
+                }
+                if let successMessage {
+                    TopicAddedConfirmation(message: successMessage)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
                 if !suggestions.isEmpty {
@@ -735,6 +762,7 @@ private struct TopicOnboardingStep: View {
             }
         )
         .task { await load() }
+        .sensoryFeedback(.success, trigger: successPulse)
     }
 
     private var topicNameField: some View {
@@ -769,6 +797,86 @@ private struct TopicOnboardingStep: View {
         .accessibilityLabel("Thema mit Lotti anlegen")
     }
 
+    private var favoriteDistrictPicker: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 11) {
+                RatsGlyphView(glyph: .location, color: RatsColor.primary)
+                    .frame(width: 21, height: 21)
+                    .padding(8)
+                    .background(RatsColor.primary.opacity(0.09))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text("Dein Stadtteil")
+                            .font(RatsFont.body(13.5, weight: .semibold))
+                        Text("optional")
+                            .font(RatsFont.mono(8.5))
+                            .foregroundStyle(RatsColor.muted)
+                    }
+                    Text("Lotti beobachtet dort neue Beschlüsse und Planungen für dich.")
+                        .font(RatsFont.body(11.5))
+                        .foregroundStyle(RatsColor.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Menu {
+                ForEach(districts) { district in
+                    Button {
+                        addFavoriteDistrict(district)
+                    } label: {
+                        if district.placeID == selectedDistrictID {
+                            Label(district.name, systemImage: "checkmark")
+                        } else {
+                            Text(district.name)
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Text(selectedDistrict?.name ?? "Stadtteil auswählen")
+                        .font(RatsFont.body(13, weight: .semibold))
+                        .foregroundStyle(selectedDistrict == nil ? RatsColor.secondary : RatsColor.text)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    if addingDistrict {
+                        ProgressView().controlSize(.small).tint(RatsColor.primary)
+                    } else if selectedDistrict != nil {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(RatsColor.success)
+                    } else {
+                        RatsGlyphView(glyph: .chevronDown, color: RatsColor.primary)
+                            .frame(width: 14, height: 14)
+                    }
+                }
+                .padding(.horizontal, 13)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(RatsColor.card)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .stroke(selectedDistrict == nil ? RatsColor.border : RatsColor.success.opacity(0.4))
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+            }
+            .disabled(addingDistrict || isWorking)
+            .accessibilityLabel("Bevorzugten Stadtteil auswählen")
+
+            if let selectedDistrict {
+                Text("\(selectedDistrict.name) steht jetzt unter „Deine Themen“ und löst passende Hinweise aus.")
+                    .font(RatsFont.body(10.5))
+                    .foregroundStyle(RatsColor.success)
+            }
+        }
+        .padding(12)
+        .background(RatsColor.stage)
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(RatsColor.border))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var selectedDistrict: DistrictOption? {
+        districts.first { $0.placeID == selectedDistrictID }
+    }
+
     private var canAddTopic: Bool {
         name.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2 && !isWorking
     }
@@ -785,12 +893,12 @@ private struct TopicOnboardingStep: View {
 #if DEBUG
         if ratsDebugValue("RATSLOTSE_DEBUG_TOPIC_SUGGESTIONS") == "1" {
             suggestions = [
-                TopicSuggestion(name: "Untere Nadorster Straße", description: "", n: 12),
-                TopicSuggestion(name: "Stadion Maastrichter Straße", description: "", n: 9),
-                TopicSuggestion(name: "Alte Fleiwa", description: "", n: 7),
-                TopicSuggestion(name: "Bebauungsplan 851", description: "", n: 5),
-                TopicSuggestion(name: "Quartier am Krusenbusch", description: "", n: 4),
-                TopicSuggestion(name: "Weser-Ems-Hallen", description: "", n: 3),
+                TopicSuggestion(name: "Untere Nadorster Straße", description: "", context: "Umbau und neue Verkehrsführung", n: 12),
+                TopicSuggestion(name: "Stadion Maastrichter Straße", description: "", context: "Planung des neuen Fußballstadions", n: 9),
+                TopicSuggestion(name: "Alte Fleiwa", description: "", context: "Quartiersentwicklung an der Industriestraße", n: 7),
+                TopicSuggestion(name: "Bebauungsplan 851", description: "", context: "Östlich Schützenweg / nördlich Hamelmannstraße", n: 5),
+                TopicSuggestion(name: "Quartier am Krusenbusch", description: "", context: "Wohnen und Infrastruktur im Süden", n: 4),
+                TopicSuggestion(name: "Weser-Ems-Hallen", description: "", context: "Veranstaltungszentrum und Umfeld", n: 3),
             ]
             return
         }
@@ -798,9 +906,19 @@ private struct TopicOnboardingStep: View {
         do {
             async let topicRequest: [Topic] = model.api.get("/api/topics")
             async let suggestionRequest: TopicSuggestionResponse = model.api.get("/api/topics/suggestions")
-            let result = try await (topicRequest, suggestionRequest)
+            async let districtRequest: DistrictOptions? = try? await model.api.get("/api/council/districts")
+            let result = try await (topicRequest, suggestionRequest, districtRequest)
             topics = result.0
             suggestions = result.1.suggestions
+            districts = (result.2?.districts ?? []).sorted {
+                $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            }
+            if selectedDistrictID.isEmpty,
+               let district = districts.first(where: { district in
+                   topics.contains { $0.name.localizedCaseInsensitiveCompare(district.name) == .orderedSame }
+               }) {
+                selectedDistrictID = district.placeID
+            }
         } catch { self.error = error.localizedDescription }
     }
 
@@ -829,6 +947,7 @@ private struct TopicOnboardingStep: View {
                     note = "\(described.matches) passende Beschlüsse gefunden."
                 }
                 try await createTopic(name: described.name, description: described.description)
+                showSuccess("„\(described.name)“ wird jetzt beobachtet.")
                 name = ""
             } catch { self.error = error.localizedDescription }
         }
@@ -842,8 +961,50 @@ private struct TopicOnboardingStep: View {
             defer { isWorking = false }
             do {
                 try await createTopic(name: suggestion.name, description: suggestion.description)
-                note = suggestion.n > 0 ? "\(suggestion.n) Erwähnungen im letzten Jahr." : nil
+                note = nil
+                showSuccess("„\(suggestion.name)“ wurde zu deinen Themen hinzugefügt.")
             } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    private func addFavoriteDistrict(_ district: DistrictOption) {
+        guard !addingDistrict, !isWorking else { return }
+        if topics.contains(where: { $0.name.localizedCaseInsensitiveCompare(district.name) == .orderedSame }) {
+            selectedDistrictID = district.placeID
+            showSuccess("„\(district.name)“ wird bereits als Stadtteil beobachtet.")
+            return
+        }
+        let previousSelection = selectedDistrictID
+        selectedDistrictID = district.placeID
+        addingDistrict = true
+        error = nil
+        note = nil
+        Task {
+            defer { addingDistrict = false }
+            do {
+                let detail = district.description?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let description: String
+                if let detail, !detail.isEmpty {
+                    description = "\(detail) Neue Beschlüsse, Planungen und Maßnahmen mit Bezug zu \(district.name)."
+                } else {
+                    description = "Neue Beschlüsse, Planungen und Maßnahmen des Oldenburger Stadtrats mit Bezug zu \(district.name)."
+                }
+                try await createTopic(name: district.name, description: description)
+                showSuccess("\(district.name) ist jetzt dein beobachteter Stadtteil.")
+            } catch {
+                selectedDistrictID = previousSelection
+                self.error = error.localizedDescription
+            }
+        }
+    }
+
+    private func showSuccess(_ message: String) {
+        successPulse += 1
+        withAnimation(.snappy(duration: 0.28)) { successMessage = message }
+        Task {
+            try? await Task.sleep(for: .seconds(4))
+            guard successMessage == message else { return }
+            withAnimation(.easeOut(duration: 0.2)) { successMessage = nil }
         }
     }
 
@@ -862,8 +1023,40 @@ private struct TopicOnboardingStep: View {
             do {
                 try await model.api.sendVoid("/api/topics/\(topic.id)", method: .delete)
                 topics.removeAll { $0.id == topic.id }
+                if let district = selectedDistrict,
+                   district.name.localizedCaseInsensitiveCompare(topic.name) == .orderedSame {
+                    selectedDistrictID = ""
+                }
             } catch { self.error = error.localizedDescription }
         }
+    }
+}
+
+private struct TopicAddedConfirmation: View {
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(RatsColor.success)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Thema hinzugefügt")
+                    .font(RatsFont.body(12.5, weight: .bold))
+                    .foregroundStyle(RatsColor.success)
+                Text(message)
+                    .font(RatsFont.body(11.5))
+                    .foregroundStyle(RatsColor.bodyText)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(11)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RatsColor.successTint)
+        .overlay(RoundedRectangle(cornerRadius: 11).stroke(RatsColor.success.opacity(0.3)))
+        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 

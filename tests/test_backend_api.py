@@ -2857,6 +2857,20 @@ def test_topic_suggestions_dedupe_similar(client):
     assert names == ["Stadtmuseum"]
 
 
+def test_topic_suggestion_gives_numbered_plan_a_place_context():
+    """Eine Plan-Nummer allein hilft niemandem; die API liefert den Ortsbezug
+    aus dem amtlichen Titel als eigene, kurze zweite Zeile."""
+    from web.backend.app.routers.topics import _suggestion_context
+
+    assert _suggestion_context("Bebauungsplan 851", {
+        "latest_title": (
+            "Bebauungsplan 851 (östlich Schützenweg/nördlich Hamelmannstraße) "
+            "– Satzungsbeschluss"
+        ),
+        "description": "",
+    }) == "östlich Schützenweg / nördlich Hamelmannstraße"
+
+
 # ---- KI-Frage: Folgefragen im Stream (Design 24a) ----
 def test_qa_share_roundtrip(client):
     """Teilen mit Substanz (Task 31): POST speichert den Antwort-Snapshot,

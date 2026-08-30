@@ -19,6 +19,23 @@ import Testing
     #expect(features.allSatisfy { !$0.geometry.isEmpty })
 }
 
+@Test func districtOptionsDecodeWithAndWithoutTheNewDescription() throws {
+    let data = Data(#"""
+    {
+      "districts": [
+        {"place_id":"innenstadt","name":"Innenstadt","kind_label":"Stadtteil","count":12,"description":"Oldenburgs Zentrum."},
+        {"place_id":"kreyenbrueck","name":"Kreyenbrück","kind_label":"Stadtteil","count":8}
+      ]
+    }
+    """#.utf8)
+
+    let response = try JSONDecoder().decode(DistrictOptions.self, from: data)
+
+    #expect(response.districts.map(\.name) == ["Innenstadt", "Kreyenbrück"])
+    #expect(response.districts[0].description == "Oldenburgs Zentrum.")
+    #expect(response.districts[1].description == nil)
+}
+
 @Test func webAnalysisLinksStayInsideTheNativeApp() throws {
     let router = AppRouter()
 

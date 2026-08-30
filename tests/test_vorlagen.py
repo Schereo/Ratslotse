@@ -350,6 +350,7 @@ def test_suggested_entity_topics_prefers_concrete_active(store):
     got = store.suggested_entity_topics(days_back=180)
     assert [(g["name"], g["n_recent"]) for g in got] == [("Veloroute 4", 3), ("Haarenufer", 2)]
     assert got[0]["description"].startswith("Geplanter Radschnellweg")
+    assert got[0]["latest_title"] == "D2"
 
 
 def test_anlagen_block_traegt_belegmarker():
