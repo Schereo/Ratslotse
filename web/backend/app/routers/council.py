@@ -2045,6 +2045,12 @@ def qa_share_lesen(token: str, nwz: Store = Depends(get_store)) -> dict:
     return share
 
 
+class AskRunde(BaseModel):
+    """Eine frühere Gesprächsrunde (Chat): Frage + gekürzte Antwort."""
+    frage: str = Field(max_length=300)
+    antwort: str = Field(default="", max_length=600)
+
+
 # ---- „Gründliche Recherche" (RG-10, Task 34) -------------------------------
 # Kein Request-gebundener Stream wie /ask: der Job läuft in einem Backend-
 # Thread weiter, wenn der Client wegnavigiert (Tims Kernanforderung). POST
@@ -2054,6 +2060,10 @@ def qa_share_lesen(token: str, nwz: Store = Depends(get_store)) -> dict:
 
 class DeepResearchBody(BaseModel):
     frage: str = Field(min_length=4, max_length=300)
+    # Wie bei /ask: die letzten Runden lösen Rückbezüge auf. Ohne sie
+    # zerlegte der Job eine Anschlussfrage wörtlich („Nochmal bitte
+    # ausführlich") — und recherchierte am Thema vorbei.
+    verlauf: list[AskRunde] = Field(default_factory=list, max_length=4)
     # „Meine Gespräche": läuft ein Gespräch, wird der fertige Bericht dort
     # angehängt — auch wenn die App längst zu ist.
     gespraech_id: int | None = Field(default=None, ge=1)
@@ -2097,7 +2107,8 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
     job_id = nwz.deep_job_anlegen(user["id"], frage)
     settings = get_settings()
     job = deepresearch.DeepJob(id=job_id, user_id=user["id"], frage=frage,
-                               gespraech_id=body.gespraech_id)
+                               gespraech_id=body.gespraech_id,
+                               verlauf=[r.model_dump() for r in body.verlauf])
     deepresearch.start_job(job, settings.nwz_db, settings.council_db)
     return {"job_id": job_id, "frei": _deep_frei(nwz, user)}
 
@@ -2591,12 +2602,6 @@ def goal_detail(key: str, _user: dict = Depends(require_active),
         "summary": store.goal_summary().get(key, _EMPTY_GOAL),
         "decisions": store.goal_detail(key),
     }
-
-
-class AskRunde(BaseModel):
-    """Eine frühere Gesprächsrunde (Chat): Frage + gekürzte Antwort."""
-    frage: str = Field(max_length=300)
-    antwort: str = Field(default="", max_length=600)
 
 
 class AskBody(BaseModel):

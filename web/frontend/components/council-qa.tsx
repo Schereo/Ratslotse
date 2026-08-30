@@ -725,6 +725,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     window.setTimeout(() => setFlashId((f) => (f === id ? null : f)), 1600);
   };
 
+  /** Die letzten Runden als Gesprächskontext (Antworten gekürzt). Beide Wege
+   *  schicken ihn mit: Ohne ihn kann das Backend Rückbezüge einer
+   *  Anschlussfrage („Nochmal bitte ausführlich") nicht auflösen. */
+  const baueVerlauf = () => turns
+    .filter((t) => t.antwort && !t.fehler)
+    .slice(-4)
+    .map((t) => ({ frage: t.frage.slice(0, 300), antwort: t.antwort.slice(0, 600) }));
+
   const ask = async (question: string) => {
     const text = question.trim();
     if (text.length < 4) return;
@@ -735,10 +743,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     // Gesprächskontext (Paket A): die letzten Runden, Antworten gekürzt.
-    const verlauf = turns
-      .filter((t) => t.antwort && !t.fehler)
-      .slice(-4)
-      .map((t) => ({ frage: t.frage.slice(0, 300), antwort: t.antwort.slice(0, 600) }));
+    const verlauf = baueVerlauf();
     // „Einfacher erklären" schreibt die zuletzt gezeigte Antwort um — dafür
     // braucht das Backend sie im VOLLTEXT. Der `verlauf` oben taugt nicht: dort
     // ist jede Antwort auf 600 Zeichen gekappt, er dient dem Auflösen von
@@ -895,7 +900,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     id: string; frage: string; status: string; bericht?: string | null;
     quellen?: { sources?: QaSource[]; presse?: PresseHinweis[]; debatten?: DebattenHinweis[];
       planungen?: Planung[]; anlagen?: AnlagenHinweis[]; cited?: number[];
-      gelesen?: number; zeitraum?: string;
+      gelesen?: number; zeitraum?: string; kontext?: string | null;
       facetten?: string[]; facetten_fertig?: number } | null;
   }): Turn => ({
     key: naechsterKey(),
@@ -903,7 +908,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     sources: job.quellen?.sources ?? [], presse: job.quellen?.presse ?? [],
     debatten: job.quellen?.debatten ?? [], anlagen: job.quellen?.anlagen ?? [],
     cited: job.quellen?.cited ?? [],
-    followups: [], kontext: job.frage,
+    followups: [], kontext: job.quellen?.kontext ?? job.frage,
     recherche: true, deepJobId: job.id,
     deepStatus: job.status === "fehler" ? "fehler"
       : job.status === "gestoppt" ? "gestoppt" : "fertig",
@@ -1069,7 +1074,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       const res = await fetch(apiUrl("/council/deep-research"), {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ frage: text, gespraech_id: gespraechId }),
+        body: JSON.stringify({ frage: text, gespraech_id: gespraechId,
+                               verlauf: baueVerlauf() }),
       });
       if (res.status === 429) {
         setTurns((ts) => ts.filter((t) => t.key !== key));

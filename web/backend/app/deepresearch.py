@@ -68,6 +68,11 @@ class DeepJob:
     user_id: int
     frage: str
     gespraech_id: int | None = None
+    #: Die letzten Gesprächsrunden (wie bei /ask), um Rückbezüge aufzulösen.
+    verlauf: list[dict] = field(default_factory=list)
+    #: Eigenständige Fassung der Frage — wird zu Beginn des Laufs aus Frage +
+    #: Verlauf gebildet. Leer, solange (oder wenn) nichts aufzulösen war.
+    recherche_frage: str = ""
     events: list[dict] = field(default_factory=list)
     cond: threading.Condition = field(default_factory=threading.Condition)
     done: bool = False
@@ -83,6 +88,14 @@ class DeepJob:
     #: Einmal melden, nicht je Anlauf (Teilbericht nach Stopp, Fehler nach
     #: Teilbericht …).
     gemeldet: bool = False
+
+    @property
+    def suchfrage(self) -> str:
+        """Womit gesucht, zerlegt und berichtet wird: bei einer Anschlussfrage
+        die aufgelöste Fassung, sonst die getippte. ``frage`` bleibt daneben
+        stehen — sie ist, was der Mensch geschrieben hat, und gehört so in
+        Anzeige, Gesprächs-Turn und DB."""
+        return self.recherche_frage or self.frage
 
 
 _registry: dict[str, DeepJob] = {}
@@ -233,7 +246,7 @@ def _melden_jetzt(job: DeepJob, nwz_db: str, status: str) -> None:
             store.close()
         if not owner:
             return
-        titel, text = _melde_text(status, job.frage)
+        titel, text = _melde_text(status, job.suchfrage)
         if delivery.push_quittung(owner, titel, text, MELDE_ZIEL):
             _log.info("deep %s: Fertig-Meldung an Konto %s (%s)", job.id, job.user_id, status)
     except Exception:  # noqa: BLE001 — eine Meldung darf nichts umbringen
@@ -247,7 +260,11 @@ def _quellen_payload(m: dict, cited: list[int]) -> dict:
             "debatten": m["debatten_kompakt"], "planungen": m["planungen"],
             "anlagen": m.get("anlagen_kompakt", []),
             "facetten": m["facetten_namen"], "facetten_fertig": m["facetten_fertig"],
-            "gelesen": m["gelesen"], "zeitraum": m["zeitraum"], "cited": cited}
+            "gelesen": m["gelesen"], "zeitraum": m["zeitraum"], "cited": cited,
+            # Worauf sich der Bericht bezieht (bei Anschlussfragen die
+            # aufgelöste Fassung): Ein aus der DB wiederhergestellter Turn
+            # soll denselben Schlüssel tragen wie der live gezeigte.
+            "kontext": m.get("kontext")}
 
 
 def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
@@ -263,7 +280,19 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
     try:
         # ---- Phase 1: zerlegen -------------------------------------------
         _emit(job, {"type": "phase", "phase": "zerlegen"})
-        facetten = qa.deep_zerlege(job.frage)
+        # Anschlussfragen tragen ihr Thema nicht im Text („Nochmal bitte
+        # ausführlich"). Ohne diesen Schritt zerlegte das Modell genau diesen
+        # Satz und recherchierte am Thema vorbei — wie /ask liefert die
+        # Analyse die eigenständige Fassung (Tims Befund 30.08.2026).
+        if job.verlauf:
+            try:
+                job.recherche_frage = (qa.analyse_query(job.frage, verlauf=job.verlauf)
+                                       .get("frage") or "").strip()
+            except Exception:  # noqa: BLE001 — schlimmstenfalls die Originalfrage
+                _log.warning("deep %s: Frage-Auflösung scheiterte", job.id, exc_info=True)
+            if job.recherche_frage and job.recherche_frage != job.frage:
+                _log.info("deep %s: Anschlussfrage aufgelöst → %r", job.id, job.recherche_frage)
+        facetten = qa.deep_zerlege(job.suchfrage)
         job.facetten_gesamt = len(facetten)
         _emit(job, {"type": "facetten", "facetten": [f["name"] for f in facetten]})
 
@@ -274,8 +303,8 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             emb = None
         # Akkuratheits-Paket: Entitäts-Anker der HAUPTfrage in jede
         # Facetten-Suche, Frische-Bonus bei Sachstands-Formulierung.
-        anker = qa.anker_ids_fuer(store, job.frage)
-        frisch = qa.recency_intent(job.frage)
+        anker = qa.anker_ids_fuer(store, job.suchfrage)
+        frisch = qa.recency_intent(job.suchfrage)
         beste: dict[int, float] = {}
         for f in facetten:
             if job.stop.is_set():
@@ -322,13 +351,13 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             try:
                 # Volltext statt Begriffsliste, und breiter als der UI-Block:
                 # siehe PRESSE_TOP.
-                hits_p = emb.search_presse(store, job.frage, job.frage,
+                hits_p = emb.search_presse(store, job.suchfrage, job.suchfrage,
                                            top_k=PRESSE_TOP, min_score=PRESSE_MIN)
                 presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
             except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
                 pass
             try:
-                hits_w = emb.search_wortbeitraege(store, job.frage, begriffe_alle, top_k=12)
+                hits_w = emb.search_wortbeitraege(store, job.suchfrage, begriffe_alle, top_k=12)
                 debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
                 # Aussprache zu den Top-Beschlüssen dazu (wie in /ask): Der
                 # Bericht zitiert die Station ohnehin — dann gehört ihre
@@ -345,7 +374,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             try:
                 # Task 33: Anlagen (Gutachten, Konzepte). Die schnelle Frage
                 # nutzt denselben Kanal inzwischen gezielt über ihren Plan.
-                hits_a = emb.search_anlagen(store, job.frage, begriffe_alle, top_k=6)
+                hits_a = emb.search_anlagen(store, job.suchfrage, begriffe_alle, top_k=6)
                 anlagen_rows = store.anlagen_by_ids([did for did, _, _ in hits_a])
                 fundstellen = {did: fs for did, _, fs in hits_a}
                 # nr = Beleg-Nummer der Anlage. Prompt (`[A<nr>]`) und Karten-
@@ -382,7 +411,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
         # gegen diesen Weg sind die Facetten gebaut (s. Abschnittskopf in
         # `council/qa.py`), und der lange Bericht hat keinen Grund, ihn offen
         # zu lassen. Die Frage entscheidet, die Begriffe füllen.
-        geld = qa.geld_kontext(store, job.frage, begriffe_alle, "thema")
+        geld = qa.geld_kontext(store, job.suchfrage, begriffe_alle, "thema")
 
         jahre = sorted({str(c.get("session_date") or "")[:4]
                         for c in candidates if c.get("session_date")})
@@ -395,7 +424,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             "geld": geld, "planungen": planungen, "anlagen": anlagen_rows,
             "facetten_namen": [f["name"] for f in facetten],
             "facetten_fertig": job.facetten_fertig, "gelesen": gelesen,
-            "zeitraum": zeitraum,
+            "zeitraum": zeitraum, "kontext": job.suchfrage,
             "sources": [_qa_source(c) for c in candidates],
             "presse_kompakt": [{"titel": p.get("titel"), "url": p.get("url"),
                                 "datum": p.get("datum")} for p in presse_rows],
@@ -415,7 +444,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
         }
         m = job.material
         _emit(job, {"type": "sources", "mode": "recherche", "qtype": "deep",
-                    "frage": job.frage, "sources": m["sources"],
+                    "frage": job.suchfrage, "sources": m["sources"],
                     "presse": m["presse_kompakt"], "debatten": m["debatten_kompakt"],
                     "anlagen": m["anlagen_kompakt"],
                     "planungen": m["planungen"], "gelesen": gelesen,
@@ -492,7 +521,7 @@ def _schreiben_und_abschliessen(job: DeepJob, nwz_db: str, council_db: str,
                 _emit(job, {"type": "replace", "text": vermerk})
             buf, gesendet = "", 0
             try:
-                for delta in qa.deep_bericht_stream(job.frage, candidates,
+                for delta in qa.deep_bericht_stream(job.suchfrage, candidates,
                                                     presse=m.get("presse"),
                                                     debatten=m.get("debatten"),
                                                     geld=m.get("geld"),
@@ -556,7 +585,7 @@ def _gespraech_anhaengen(nwz: Store, job: DeepJob, bericht: str,
         gespraech_id = job.gespraech_id
         neu = gespraech_id is None
         if neu:
-            gespraech_id = nwz.qa_gespraech_start(job.user_id, job.frage)
+            gespraech_id = nwz.qa_gespraech_start(job.user_id, job.suchfrage)
             if gespraech_id is None:
                 return None
         zitiert = set(cited)
@@ -571,7 +600,8 @@ def _gespraech_anhaengen(nwz: Store, job: DeepJob, bericht: str,
              "debatten": m.get("debatten_kompakt", []),
              "anlagen": m.get("anlagen_kompakt", []),
              "planungen": m.get("planungen", []),
-             "gelesen": m.get("gelesen"), "zeitraum": m.get("zeitraum")},
+             "gelesen": m.get("gelesen"), "zeitraum": m.get("zeitraum"),
+             "kontext": m.get("kontext")},
             ensure_ascii=False)
         if not nwz.qa_turn_speichern(gespraech_id, job.user_id, job.frage,
                                      bericht, quellen_json):
