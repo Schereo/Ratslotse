@@ -3571,6 +3571,55 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   Arbeitssuchende SGB II", „von und Frauen" statt „Chancengleichstellung
   von Männern und Frauen". Beide Spalten kommen jetzt aus dem Raster.
 
+- **Der Jahrgang 2019 des Finanzhaushalts.** Die Änderungslisten zum
+  **Finanzhaushalt** liest seit dem 30.08.2026 ein eigener Parser
+  (`council/aenderungslisten_fhh.py`, Ingest
+  `scripts/ingest_aenderungslisten_fhh.py`, Tabellen
+  `council_haushalt_aenderungen_fhh`/`…_summen`). Er ist das Gegenstück zum
+  Ergebnishaushalt: Dort steht, was die Stadt erwirtschaftet und verbraucht,
+  hier, was tatsächlich fließt — und vor allem, was **investiert** wird.
+
+  **Warum ein eigener Parser.** Wo der EHH zwei Betragsspalten führt, führt
+  der FHH fünf: `Soll laut Entwurf | Einzahlungen ± | Auszahlungen ± | VE ± |
+  neues Soll`. Den an 1.799 Positionen bewiesenen EHH-Leser darauf zu
+  verallgemeinern hätte ihn angefasst, um einen zweiten zu sparen. Geteilt
+  wird die Geometrie, nicht die Logik.
+
+  **Der FHH hat eine Probe, die der EHH nicht hat**, und sie ist die schärfste
+  des Ressorts: `Soll laut Entwurf + Einzahlung + Auszahlung = neues Soll`,
+  auf **jeder** Positionszeile. Landete ein Betrag eine Spalte daneben, ginge
+  sie nicht auf. Dazu kommen die drei Proben des EHH (Zeile, Kette, Position).
+
+  **Gelesen werden 15 der 18 Listen des Kernhaushalts**, 250 Positionen, 132
+  davon mit ihrem **Investitionscode** (`I10.089904.500`) — dem Anschluss an
+  `council_investitionsmassnahmen` und damit an die 4.459 Vorhaben auf
+  `/haushalt/investitionen`. Sieben der acht Jahrgänge sind vollständig; es
+  fehlt **2019**, dessen einzige Liste ihre Positionsprobe um 200.000 €
+  verfehlt. Zwei weitere Dokumente fallen durch (212802 in seinen späteren
+  Planjahren, 230016) — bei 230016 ohne Verlust: Die Beschluss-Datei 2021
+  liegt doppelt im Bestand, und die Zweitablage 230178 läuft durch. Was seine
+  Proben nicht besteht, wird nicht gespeichert; der Ingest nennt es beim
+  Namen.
+
+  **Acht Eigenheiten, jede an einem Riss gemessen:** Die Spalten kommen aus
+  dem letzten Lauf von sechs gleich breiten Linienkanten, nicht aus dem
+  Kopfwort — nur die erste Seite eines Blocks trägt einen Tabellenkopf. Das
+  Planjahr gilt über Seitengrenzen (in 256703 trug nur jede vierte Seite
+  eines). Eine Position besitzt ihre Grundlinie und alles bis zur nächsten;
+  ein Teil des Bestands setzt die Beträge 44 bis 67 pt unter die Zeile, also
+  näher an die folgende Position. Der Gedankenstrich ist ein Betrag (Null) —
+  auch das „+ / −“ im Spaltenkopf, weshalb der Kopf draußen bleiben muss. Die
+  Blocksumme steht im Rahmen, trägt aber kein „neues Soll“. Beträge stehen
+  auch in Klammern („(275.900)“), der Teilhaushalt ein- oder zweistellig
+  („8“ wie „08“), und dieselbe Position wird über zwei Zeilen gedruckt.
+  Entwurf und Endsumme sind optional: 212802 überschreibt seine Seite mit
+  „Übersicht aller Änderungen“ und nennt weder das eine noch das andere.
+
+  Die politischen Zeilen gibt es auch hier: 2020 −195.000 € und 2026
+  −45.000 € für SPD/CDU/FDP, 2021 für SPD/Bündnis 90/Die Grünen. Eine
+  **Anzeige im Frontend gibt es noch nicht** — dieser Schritt ist der Parser,
+  wie beim Ergebnishaushalt (#734 vor #739).
+
 - **Der Schlussbericht 2024** — sein PDF bringt keine Zeichenzuordnung mit,
   der Volltext besteht aus Glyphen-Nummern (`/12 /8 /6 □ /13 …`), sein
   Buchstabenanteil ist **0,000**. Eine zweite Kopie gibt es nicht.
