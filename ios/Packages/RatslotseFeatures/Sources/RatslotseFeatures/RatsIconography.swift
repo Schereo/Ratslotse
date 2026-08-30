@@ -23,6 +23,11 @@ enum RatsGlyph: Sendable {
     case back
     case history
     case research
+    case tag
+    case committee
+    case location
+    case people
+    case chevronDown
 
     fileprivate var lucideAssetName: String {
         switch self {
@@ -46,6 +51,11 @@ enum RatsGlyph: Sendable {
         case .back: "LucideArrowLeft"
         case .history: "LucideHistory"
         case .research: "LucideFileSearch2"
+        case .tag: "LucideTag"
+        case .committee: "LucideLandmark"
+        case .location: "LucideMapPin"
+        case .people: "LucideUsersRound"
+        case .chevronDown: "LucideChevronDown"
         }
     }
 }

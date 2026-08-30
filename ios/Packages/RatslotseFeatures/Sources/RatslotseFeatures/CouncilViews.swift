@@ -129,7 +129,7 @@ struct CouncilBrowserView: View {
                         if model.councilSection == .decisions {
                             CouncilQuickFilterMenu(
                                 title: "Thema",
-                                symbol: "tag",
+                                glyph: .tag,
                                 selection: policyField,
                                 options: [CouncilFilterOption(value: "", label: "Alle Themen")]
                                     + fields.map {
@@ -156,7 +156,7 @@ struct CouncilBrowserView: View {
 
                         CouncilQuickFilterMenu(
                             title: "Ausschuss",
-                            symbol: "building.columns",
+                            glyph: .committee,
                             selection: committee,
                             options: [CouncilFilterOption(value: "", label: "Alle Ausschüsse")]
                                 + committees.map { CouncilFilterOption(value: $0, label: $0) },
@@ -169,7 +169,7 @@ struct CouncilBrowserView: View {
                         if model.councilSection == .decisions {
                             CouncilQuickFilterMenu(
                                 title: "Ort",
-                                symbol: "mappin.and.ellipse",
+                                glyph: .location,
                                 selection: district,
                                 options: [CouncilFilterOption(value: "", label: "Alle Orte")]
                                     + districts.map {
@@ -182,7 +182,7 @@ struct CouncilBrowserView: View {
                             )
                             CouncilQuickFilterMenu(
                                 title: "Partei",
-                                symbol: "person.2",
+                                glyph: .people,
                                 selection: party,
                                 options: [CouncilFilterOption(value: "", label: "Alle Parteien")]
                                     + parties.map {
@@ -864,7 +864,7 @@ private struct CouncilFilterMenu: View {
 
 private struct CouncilQuickFilterMenu: View {
     let title: String
-    let symbol: String
+    let glyph: RatsGlyph
     let selection: String
     let options: [CouncilFilterOption]
     let onSelect: (String) -> Void
@@ -891,13 +891,13 @@ private struct CouncilQuickFilterMenu: View {
             }
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.system(size: 11, weight: .semibold))
+                RatsGlyphView(glyph: glyph, color: selected ? RatsColor.primary : RatsColor.secondary)
+                    .frame(width: 13, height: 13)
                 Text(selectedLabel)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .bold))
+                RatsGlyphView(glyph: .chevronDown, color: selected ? RatsColor.primary : RatsColor.secondary)
+                    .frame(width: 10, height: 10)
             }
             .font(RatsFont.body(12, weight: .semibold))
             .foregroundStyle(selected ? RatsColor.primary : RatsColor.secondary)
