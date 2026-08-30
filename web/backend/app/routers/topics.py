@@ -49,7 +49,7 @@ from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
 from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, TopicOut, TopicSeenIn
 
-logger = logging.getLogger("nwz.web.topics")
+logger = logging.getLogger("ratslotse.web.topics")
 
 router = APIRouter(prefix="/api/topics", tags=["topics"])
 
@@ -142,7 +142,7 @@ def list_topics(
     unseen = store.unseen_hit_counts(owner_id)
     topics = store.get_topics(owner_id)
     # Gezählt wird, was die Suche auch findet. Die gespeicherten Treffer liegen
-    # in nwz.sqlite, die Beschlüsse in council.sqlite — verschwindet ein
+    # in ratslotse.sqlite, die Beschlüsse in council.sqlite — verschwindet ein
     # Beschluss (Neu-Extraktion vergibt neue IDs), bleibt die Zeile hier stehen
     # und der Zähler versprach Treffer, die „alle ansehen" nicht liefern konnte
     # (Tims Befund 15.08.: „8 Einträge" → Suche sagt „nichts gefunden").

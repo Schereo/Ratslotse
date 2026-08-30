@@ -281,7 +281,7 @@ per `nohup` weiter, während der Workflow selbst schon fertig ist.
 ## Backups
 
 `scripts/backup_db.py` läuft täglich um 03:00 und sichert **beide** Datenbanken
-(`nwz.sqlite` und `council.sqlite`) mit der `sqlite3`-Backup-API — also
+(`ratslotse.sqlite` und `council.sqlite`) mit der `sqlite3`-Backup-API — also
 konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
 `data/backups/` mit Datum im Dateinamen.
 
@@ -387,7 +387,7 @@ Jeder LLM-Aufruf kann seinen Token-Verbrauch protokollieren. `kern/llm.py`
 akzeptiert dafür ein Schlüsselwort `_feature="…"`, das vor dem eigentlichen
 API-Call herausgezogen wird; `kern/usage.py` schreibt daraus eine Zeile in die
 Tabelle `llm_usage` (`ts`, `feature`, `model`, `prompt_tokens`,
-`completion_tokens`) in `nwz.sqlite`. Die Erfassung ist **best-effort**: Sie
+`completion_tokens`) in `ratslotse.sqlite`. Die Erfassung ist **best-effort**: Sie
 fängt jede Exception ab, damit Tracking niemals einen LLM-Aufruf kaputt macht —
 unter Schreib-Konkurrenz paralleler Backfills bedeutet eine verlorene Zeile
 lediglich eine leicht zu niedrige Statistik. Auch der Streaming-Pfad
@@ -487,9 +487,9 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 
 | Variable | Wofür | Pflicht | Default |
 |---|---|---|---|
-| `NWZ_DB` | Pfad zur Konten-/Themen-Datenbank | nein | `data/nwz.sqlite` |
+| `RATSLOTSE_DB` | Pfad zur Konten-/Themen-Datenbank | nein | `data/ratslotse.sqlite` |
 | `COUNCIL_DB` | Pfad zur Ratsdaten-Datenbank | nein | `data/council.sqlite` |
-| `NWZ_SQLITE` | Abweichender Pfad für das Usage-Tracking (`kern/usage.py`). **Achtung:** `kern/usage.py` liest ausschließlich diese Variable, der ganze Rest des Projekts `NWZ_DB`. Wer die Datenbank per `NWZ_DB` verschiebt, nimmt das Kosten-Tracking **nicht** mit — es schreibt still am alten Ort weiter. Beide zusammen setzen. | nein | `data/nwz.sqlite` |
+| `RATSLOTSE_SQLITE` | Abweichender Pfad für das Usage-Tracking (`kern/usage.py`). **Achtung:** `kern/usage.py` liest ausschließlich diese Variable, der ganze Rest des Projekts `RATSLOTSE_DB`. Wer die Datenbank per `RATSLOTSE_DB` verschiebt, nimmt das Kosten-Tracking **nicht** mit — es schreibt still am alten Ort weiter. Beide zusammen setzen. | nein | `data/ratslotse.sqlite` |
 | `SETUP_REMIND_AFTER_HOURS` | Wartezeit, bevor `remind_setup.py` an eine offene Einrichtung erinnert | nein | `48` |
 
 ### E-Mail & Benachrichtigung

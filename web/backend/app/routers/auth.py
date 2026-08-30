@@ -31,7 +31,7 @@ from ..session import clear_session_cookie, set_session_cookie
 # Email-verification links stay valid for 24h (more forgiving than the 1h reset link).
 _VERIFY_TTL_HOURS = 24
 
-logger = logging.getLogger("nwz.web.auth")
+logger = logging.getLogger("ratslotse.web.auth")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -88,7 +88,7 @@ def _notify_admins_registration(new_email: str) -> None:
     settings = get_settings()
     if not settings.resend_api_key:
         return
-    store = Store(settings.nwz_db)
+    store = Store(settings.ratslotse_db)
     try:
         admins = [
             u["email"] for u in store.list_web_users()

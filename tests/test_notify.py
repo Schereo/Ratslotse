@@ -1,6 +1,6 @@
 """Die harten Grenzen für Benachrichtigungen (Design 30a/C).
 
-Zwei davon leben in nwz/notify.py und sind hier festgehalten:
+Zwei davon leben in kern/notify.py und sind hier festgehalten:
 
 * **Nachtruhe 21–7 Uhr** — was ein Abendbeschluss auslöst, wartet bis 7 Uhr.
   Ratssitzungen enden regelmäßig nach 22 Uhr; nichts im Rat ist so dringend,
@@ -33,7 +33,7 @@ def _konto(store: Store, email: str = "a@b.de") -> int:
 
 @pytest.fixture()
 def store(tmp_path):
-    s = Store(tmp_path / "nwz.sqlite")
+    s = Store(tmp_path / "ratslotse.sqlite")
     yield s
     s.close()
 

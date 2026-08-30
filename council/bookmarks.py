@@ -1,6 +1,6 @@
 """Persönliche Merkliste über den beiden getrennten Ratslotse-Datenbanken.
 
-Die Eigentümerschaft lebt in ``nwz.sqlite``; Sitzungen, TOPs und Beschlüsse
+Die Eigentümerschaft lebt in ``ratslotse.sqlite``; Sitzungen, TOPs und Beschlüsse
 liegen in ``council.sqlite``. Dieses Modul löst die gespeicherten Snapshots
 gegen den aktuellen Ratsbestand auf. Besonders wichtig ist der Fallback über
 Vorlage und Titel: TOP-Nummern können sich bis zur Sitzung verschieben.

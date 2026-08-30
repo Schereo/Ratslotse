@@ -2,7 +2,7 @@
 
 All LLM prompts used by the bot and the cron jobs live here as named templates
 with sensible defaults. An admin can override any of them at runtime via the web
-frontend; overrides are persisted in the ``prompts`` table of ``nwz.sqlite`` and
+frontend; overrides are persisted in the ``prompts`` table of ``ratslotse.sqlite`` and
 take effect on the next call (no restart needed).
 
 Templates use ``str.format()`` placeholders. Literal braces (e.g. in JSON
@@ -15,7 +15,7 @@ import textwrap
 from datetime import datetime
 from pathlib import Path
 
-_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite"
+_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "ratslotse.sqlite"
 
 # --- Default prompt templates -------------------------------------------------
 # Each entry: key -> (title, description, template). Title/description are shown

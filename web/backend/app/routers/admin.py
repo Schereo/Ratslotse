@@ -22,7 +22,7 @@ from ..deps import get_council_store, get_store, require_admin
 from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn, PromptOut,
                        PromptUpdate, RoleUpdate, StatusUpdate, WebUserOut)
 
-logger = logging.getLogger("nwz.web.admin")
+logger = logging.getLogger("ratslotse.web.admin")
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -104,7 +104,7 @@ def quiz_stats(
 def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> list[AdminJob]:
     """Cron-Übersicht: je Job der letzte Lauf (Status, Dauer, Kennzahlen) plus
     kurze Historie. Der Zustand vergleicht das Alter des letzten Laufs mit dem
-    erwarteten Takt aus der Registry (nwz/jobs.py) — so fällt ein stiller
+    erwarteten Takt aus der Registry (kern/jobs.py) — so fällt ein stiller
     Ausfall auf, auch wenn keine Fehler-Mail kam (Job lief ja gar nicht)."""
     from datetime import datetime
 
@@ -150,7 +150,7 @@ def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store
 @router.get("/llm-usage")
 def llm_usage(_admin: dict = Depends(require_admin)) -> AdminLlmVerbrauch:
     """LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,
-    Monatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in nwz.sqlite)."""
+    Monatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in ratslotse.sqlite)."""
     from kern import usage
     return usage.dashboard(budget_monthly=get_settings().llm_budget_monthly)
 

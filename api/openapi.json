@@ -6887,7 +6887,7 @@
     },
     "/api/admin/jobs": {
       "get": {
-        "description": "Cron-Übersicht: je Job der letzte Lauf (Status, Dauer, Kennzahlen) plus\nkurze Historie. Der Zustand vergleicht das Alter des letzten Laufs mit dem\nerwarteten Takt aus der Registry (nwz/jobs.py) — so fällt ein stiller\nAusfall auf, auch wenn keine Fehler-Mail kam (Job lief ja gar nicht).",
+        "description": "Cron-Übersicht: je Job der letzte Lauf (Status, Dauer, Kennzahlen) plus\nkurze Historie. Der Zustand vergleicht das Alter des letzten Laufs mit dem\nerwarteten Takt aus der Registry (kern/jobs.py) — so fällt ein stiller\nAusfall auf, auch wenn keine Fehler-Mail kam (Job lief ja gar nicht).",
         "operationId": "jobs_api_admin_jobs_get",
         "responses": {
           "200": {
@@ -6913,7 +6913,7 @@
     },
     "/api/admin/llm-usage": {
       "get": {
-        "description": "LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,\nMonatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in nwz.sqlite).",
+        "description": "LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,\nMonatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in ratslotse.sqlite).",
         "operationId": "llm_usage_api_admin_llm_usage_get",
         "responses": {
           "200": {

@@ -150,7 +150,7 @@ absichtlich auf).
 Beschlüsse werden gegen die Themen der Nutzer*innen klassifiziert (mit strengem
 Verify-Pass) und speisen „Beschlüsse zu deinen Themen" samt Benachrichtigung.
 Die Treffer liegen in **`council_topic_matches`** — und zwar in der **Konten-DB**
-(`nwz.sqlite`), nicht in `council.sqlite`: Sie hängen an einem Konto, die
+(`ratslotse.sqlite`), nicht in `council.sqlite`: Sie hängen an einem Konto, die
 Ratsdaten selbst bleiben nutzerunabhängig. Welche Treffer schon gesehen wurden,
 steht in `topic_hits_seen` (Grundlage des „Neu"-Zählers).
 

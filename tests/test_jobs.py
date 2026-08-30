@@ -1,4 +1,4 @@
-"""Cron-Protokoll: run_guarded schreibt jeden Lauf in job_runs (nwz/alerts.py)."""
+"""Cron-Protokoll: run_guarded schreibt jeden Lauf in job_runs (kern/alerts.py)."""
 from __future__ import annotations
 
 import sys
@@ -15,10 +15,10 @@ from kern.store import Store  # noqa: E402
 
 @pytest.fixture()
 def db(tmp_path, monkeypatch):
-    """Temporäre nwz.sqlite — run_guarded findet sie über NWZ_DB."""
-    path = tmp_path / "nwz.sqlite"
+    """Temporäre ratslotse.sqlite — run_guarded findet sie über RATSLOTSE_DB."""
+    path = tmp_path / "ratslotse.sqlite"
     Store(path).close()
-    monkeypatch.setenv("NWZ_DB", str(path))
+    monkeypatch.setenv("RATSLOTSE_DB", str(path))
     return path
 
 

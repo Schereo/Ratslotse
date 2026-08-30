@@ -89,5 +89,5 @@ def test_prompt_verbietet_nachkomma_millionen():
 
 
 def test_qa_einfach_rendert_mit_seinen_platzhaltern(tmp_path, monkeypatch):
-    monkeypatch.setattr(prompts, "_DB_PATH", tmp_path / "nwz.sqlite")
+    monkeypatch.setattr(prompts, "_DB_PATH", tmp_path / "ratslotse.sqlite")
     prompts.render("qa_einfach", frage="F", bisher="B", context="C")

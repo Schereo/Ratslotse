@@ -53,7 +53,7 @@ def _plain(text_html: str, limit: int = 180) -> str:
 def _send_push_and_prune(devices: list[dict], title: str, body: str, data: dict[str, str]) -> None:
     """Send a push and drop the device tokens APNs/FCM reported as gone (app
     deleted, token rotated), so future sends stop retrying them. Opens its own
-    Store handle — same NWZ_DB-env/repo default as the cron scripts — because
+    Store handle — same RATSLOTSE_DB-env/repo default as the cron scripts — because
     callers only pass owner dicts, not their DB connection. Best-effort."""
     stale = send_push(devices, title, body, data)
     if not stale:
@@ -64,8 +64,8 @@ def _send_push_and_prune(devices: list[dict], title: str, body: str, data: dict[
 
         from .store import Store
 
-        db = os.environ.get("NWZ_DB") or str(
-            Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite"
+        db = os.environ.get("RATSLOTSE_DB") or str(
+            Path(__file__).resolve().parent.parent / "data" / "ratslotse.sqlite"
         )
         store = Store(db)
         try:

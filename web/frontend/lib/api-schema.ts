@@ -266,7 +266,7 @@ export interface paths {
          * Jobs
          * @description Cron-Übersicht: je Job der letzte Lauf (Status, Dauer, Kennzahlen) plus
          *     kurze Historie. Der Zustand vergleicht das Alter des letzten Laufs mit dem
-         *     erwarteten Takt aus der Registry (nwz/jobs.py) — so fällt ein stiller
+         *     erwarteten Takt aus der Registry (kern/jobs.py) — so fällt ein stiller
          *     Ausfall auf, auch wenn keine Fehler-Mail kam (Job lief ja gar nicht).
          */
         get: operations["jobs_api_admin_jobs_get"];
@@ -288,7 +288,7 @@ export interface paths {
         /**
          * Llm Usage
          * @description LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,
-         *     Monatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in nwz.sqlite).
+         *     Monatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in ratslotse.sqlite).
          */
         get: operations["llm_usage_api_admin_llm_usage_get"];
         put?: never;
@@ -10898,4 +10898,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 739b33dc64065e53cdfc4f2c38fedc341c3e08ecae2248edf5dd6315dacb1639
+// vertrag-sha256: b6acb1f1d251ba71e0fc1db9b53af159fb7000cd22854ffe9603f694eeb77532

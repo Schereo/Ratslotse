@@ -341,13 +341,13 @@ COUNCIL_USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
 
 
 class CouncilStore:
-    def __init__(self, path: str | Path, nwz_db_path: str | Path | None = None):
+    def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None):
         self._path = path
-        # Sibling nwz.sqlite holds the chat_id→owner_id map for the migration.
-        if nwz_db_path is None and isinstance(path, (str, Path)) and str(path) != ":memory:":
-            nwz_db_path = Path(path).parent / "nwz.sqlite"
-        self._nwz_db_path = nwz_db_path
-        # check_same_thread=False wie im nwz-Store: FastAPI führt sync-Dependencies
+        # Sibling ratslotse.sqlite holds the chat_id→owner_id map for the migration.
+        if ratslotse_db_path is None and isinstance(path, (str, Path)) and str(path) != ":memory:":
+            ratslotse_db_path = Path(path).parent / "ratslotse.sqlite"
+        self._ratslotse_db_path = ratslotse_db_path
+        # check_same_thread=False wie im Konten-Store: FastAPI führt sync-Dependencies
         # und Endpoint in (potenziell verschiedenen) Threadpool-Threads aus — die
         # Verbindung wandert also zwischen Threads. Sicher, weil jede Anfrage ihre
         # eigene Store-Instanz bekommt (keine parallele Nutzung EINER Verbindung).
@@ -2549,7 +2549,7 @@ class CouncilStore:
     def _migrate_owner_id(self) -> None:
         """Re-key the per-recipient dedup tables from Telegram chat_id to the
         canonical owner_id (=web_users.id). The map lives in the sibling
-        nwz.sqlite; existing rows are backfilled via it. Idempotent."""
+        ratslotse.sqlite; existing rows are backfilled via it. Idempotent."""
         cn_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
         sf_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(session_followups_sent)").fetchall()}
         if "owner_id" in cn_cols and "owner_id" in sf_cols:
@@ -2557,10 +2557,10 @@ class CouncilStore:
 
         # Build chat_id -> owner_id from kern.sqlite if available.
         chat_to_owner: dict[int, int] = {}
-        nwz_path = self._nwz_db_path
-        if nwz_path is not None and Path(str(nwz_path)).exists():
+        ratslotse_path = self._ratslotse_db_path
+        if ratslotse_path is not None and Path(str(ratslotse_path)).exists():
             try:
-                src = sqlite3.connect(str(nwz_path), timeout=15)
+                src = sqlite3.connect(str(ratslotse_path), timeout=15)
                 chat_to_owner = {
                     r[0]: r[1] for r in src.execute(
                         "SELECT telegram_chat_id, id FROM web_users WHERE telegram_chat_id IS NOT NULL"
@@ -4050,7 +4050,7 @@ class CouncilStore:
         params: list = []
         if only_ids is not None:
             # Design 28a/S4: Vorgegebene Beschluss-Menge (die semantischen Treffer
-            # eines Nutzer-Themas). Die Zuordnung liegt in nwz.sqlite, also in
+            # eines Nutzer-Themas). Die Zuordnung liegt in ratslotse.sqlite, also in
             # einer anderen Datei — ein JOIN ist unmöglich, der Router reicht
             # die ids herein. Bewusst getrennt von party_ids, damit sich beide
             # Einschränkungen kombinieren lassen.
@@ -5147,7 +5147,7 @@ class CouncilStore:
         """Aktive Fragen (mit Lösung) zu einer Id-Liste — für die Admin-Sichtung.
         Bereits ausgemusterte Fragen fallen raus, damit sie nach dem Ausmustern
         aus der Bewertungs-Liste verschwinden (ihre Alt-Bewertungen bleiben in
-        nwz.sqlite, laufen aber ins Leere)."""
+        ratslotse.sqlite, laufen aber ins Leere)."""
         if not ids:
             return []
         ph = ",".join("?" * len(ids))

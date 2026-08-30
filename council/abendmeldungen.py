@@ -14,7 +14,7 @@ wohnen sie in einem Modul und laufen aus einem Cron (``scripts/abendmeldungen.py
 
 Zur Herkunft von N6: Das Artboard nimmt an, „die Digest-Strecke aus
 digest_email.py läuft bereits — sie bekommt nur eine Push-Kurzfassung dazu."
-Das trifft nicht zu. ``nwz/digest_email.py`` rendert nur die Mail-Hülle
+Das trifft nicht zu. ``kern/digest_email.py`` rendert nur die Mail-Hülle
 (``render_html_email``); einen wöchentlichen Digest-Job gibt es nicht und gab es
 nicht. N6 ist deshalb hier neu gebaut — auf ``council_topic_matches``, also den
 Beschluss-Treffern zu den eigenen Themen.
@@ -71,7 +71,7 @@ def _n5_text(sitzung: dict, tops: list[dict]) -> tuple[str, str]:
     return titel, html
 
 
-def vorabend(council_store, nwz_store, heute: date | None = None) -> int:
+def vorabend(council_store, ratslotse_store, heute: date | None = None) -> int:
     """N5: Für alle Sitzungen von morgen die Erinnerungen einreihen.
 
     Empfänger sind, wer für diese Sitzung einen Themen-Treffer hat **oder** das
@@ -87,15 +87,15 @@ def vorabend(council_store, nwz_store, heute: date | None = None) -> int:
         if not ksinr:
             continue  # nur terminiert, ohne Tagesordnung — nichts zu erinnern
         empfaenger: dict[int, list[dict]] = {}
-        for owner_id in nwz_store.owners_with_agenda_match(ksinr):
-            empfaenger[owner_id] = nwz_store.agenda_matches_for_owner(
+        for owner_id in ratslotse_store.owners_with_agenda_match(ksinr):
+            empfaenger[owner_id] = ratslotse_store.agenda_matches_for_owner(
                 owner_id, [ksinr]).get(ksinr, [])
-        for owner_id in nwz_store.owners_subscribed_to(sitzung["committee"]):
+        for owner_id in ratslotse_store.owners_subscribed_to(sitzung["committee"]):
             empfaenger.setdefault(owner_id, [])
 
         for owner_id, tops in empfaenger.items():
             titel, html = _n5_text(sitzung, tops)
-            if notify.einreihen(nwz_store, owner_id, notify.N5_VORABEND, titel, html,
+            if notify.einreihen(ratslotse_store, owner_id, notify.N5_VORABEND, titel, html,
                                 f"/council?tab=sessions&ksinr={ksinr}"):
                 eingereiht += 1
     return eingereiht
@@ -129,21 +129,21 @@ def _n6_text(beschluesse: list[dict]) -> tuple[str, str]:
     return titel, f"<p>{bilanz}.</p><ul style='margin:0;padding-left:18px'>{zeilen}</ul>{rest}"
 
 
-def wochenueberblick(council_store, nwz_store, heute: date | None = None) -> int:
+def wochenueberblick(council_store, ratslotse_store, heute: date | None = None) -> int:
     """N6: Sonntags eine Nachricht mit den Beschlüssen der Woche zu den eigenen
     Themen. Ohne Treffer passiert nichts — die App schweigt lieber."""
     heute = heute or date.today()
     seit = (heute - timedelta(days=7)).isoformat()
     eingereiht = 0
 
-    for owner_id in nwz_store.owners_with_topic_matches_since(seit):
-        ids = nwz_store.topic_match_decision_ids_since(owner_id, seit)
+    for owner_id in ratslotse_store.owners_with_topic_matches_since(seit):
+        ids = ratslotse_store.topic_match_decision_ids_since(owner_id, seit)
         if not ids:
             continue
         beschluesse = council_store.get_decisions_by_ids(ids)
         if not beschluesse:
             continue
         titel, html = _n6_text(beschluesse)
-        if notify.einreihen(nwz_store, owner_id, notify.N6_WOCHE, titel, html, "/topics"):
+        if notify.einreihen(ratslotse_store, owner_id, notify.N6_WOCHE, titel, html, "/topics"):
             eingereiht += 1
     return eingereiht

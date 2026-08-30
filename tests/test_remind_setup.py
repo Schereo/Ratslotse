@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def _load(db_path: Path):
     """remind_setup.py als Modul laden (es liegt in scripts/, ist kein Paket)."""
-    os.environ["NWZ_DB"] = str(db_path)
+    os.environ["RATSLOTSE_DB"] = str(db_path)
     spec = importlib.util.spec_from_file_location(
         "remind_setup_under_test", ROOT / "scripts" / "remind_setup.py")
     mod = importlib.util.module_from_spec(spec)
@@ -34,9 +34,9 @@ def _load(db_path: Path):
 
 @pytest.fixture
 def db(tmp_path, monkeypatch):
-    path = tmp_path / "nwz.sqlite"
+    path = tmp_path / "ratslotse.sqlite"
     Store(path)  # legt Schema an
-    monkeypatch.setenv("NWZ_DB", str(path))
+    monkeypatch.setenv("RATSLOTSE_DB", str(path))
     monkeypatch.delenv("RESEND_API_KEY", raising=False)
     return path
 

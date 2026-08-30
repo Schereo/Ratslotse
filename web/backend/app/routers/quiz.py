@@ -1,6 +1,6 @@
 """Oldenburg-Quiz: Gebiets-Katalog, Runden, Auswertung, Bewertung, Statistik.
 
-Fragen liegen in council.sqlite (generiert), Punkte/Bewertungen in nwz.sqlite
+Fragen liegen in council.sqlite (generiert), Punkte/Bewertungen in ratslotse.sqlite
 (pro Konto). Der Router nutzt daher beide Stores. Wahlbereiche sind ein
 View auf ihre Stadtteile (keine eigenen Fragen) — der Filter expandiert sie.
 """

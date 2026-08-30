@@ -70,7 +70,7 @@ def test_push_quittung_ignoriert_den_kanal_aber_nicht_das_aus(monkeypatch):
 @pytest.fixture
 def welt(tmp_path, monkeypatch):
     """Konto mit Gerät + ein fertiger Job in der DB; Push wird mitgeschrieben."""
-    db = str(tmp_path / "nwz.sqlite")
+    db = str(tmp_path / "ratslotse.sqlite")
     store = Store(db)
     uid = store.create_web_user("a@b.de", "x", status="active")
     store.add_push_token(uid, "t1", "ios")

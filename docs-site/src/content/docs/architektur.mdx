@@ -87,13 +87,13 @@ Details in [App & Konten](/docs/app-und-konten/#benachrichtigungen-sechs-anläss
 Zwei SQLite-Dateien: eine für Konten & Themen, eine für die Ratsdaten
 (siehe [ADR 0005](/docs/adr/0005-sqlite-fts5/)).
 
-Die Trennlinie ist: **alles Nutzerbezogene** liegt in `nwz.sqlite`, **alle
+Die Trennlinie ist: **alles Nutzerbezogene** liegt in `ratslotse.sqlite`, **alle
 Ratsdaten** in `council.sqlite`. Deshalb liegen z. B. Themen-Treffer und
 Quiz-Antworten in der Konten-DB, obwohl sie auf Beschlüsse bzw. Fragen zeigen —
 ein Join über beide Dateien ist nicht möglich, solche Zeilen denormalisieren die
 nötigen Felder.
 
-**Konten & Nutzerdaten (`nwz.sqlite`)**
+**Konten & Nutzerdaten (`ratslotse.sqlite`)**
 
 - `web_users` — Konten (E-Mail, Passwort-Hash, Rolle, Status, `display_name`,
   `delivery_channel`, `badges`, `onboarding`, `apple_sub`, `token_version`)

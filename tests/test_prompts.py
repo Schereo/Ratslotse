@@ -1,4 +1,4 @@
-"""Tests for the admin-editable prompt store (nwz/prompts.py)."""
+"""Tests for the admin-editable prompt store (kern/prompts.py)."""
 from __future__ import annotations
 
 import pytest
@@ -9,7 +9,7 @@ from kern import prompts
 @pytest.fixture
 def temp_prompt_db(tmp_path, monkeypatch):
     """Point the prompt store at a throwaway DB so overrides don't touch real data."""
-    monkeypatch.setattr(prompts, "_DB_PATH", tmp_path / "nwz.sqlite")
+    monkeypatch.setattr(prompts, "_DB_PATH", tmp_path / "ratslotse.sqlite")
     return tmp_path
 
 

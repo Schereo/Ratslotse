@@ -36,7 +36,7 @@ from scripts.track_goals import process as track_goals  # noqa: E402
 from kern import notify  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
-NWZ_DB = ROOT / "data" / "nwz.sqlite"
+RATSLOTSE_DB = ROOT / "data" / "ratslotse.sqlite"
 LOOKBACK_DAYS = 90
 
 
@@ -51,7 +51,7 @@ def main() -> dict:
         from kern.store import Store as _BookmarkStore
         from council.store import CouncilStore as _BookmarkCouncilStore
 
-        _bookmarks = _BookmarkStore(NWZ_DB)
+        _bookmarks = _BookmarkStore(RATSLOTSE_DB)
         _pending = _bookmarks.pending_bookmark_ksinrs()
         _bookmarks.close()
         if _pending:
@@ -150,14 +150,14 @@ def main() -> dict:
     # steht das Ergebnis überhaupt fest. Die Sitzung selbst liegt dann meist
     # Wochen zurück (gemessen: Ausschüsse 6+ Wochen), deshalb nennt die Meldung
     # das Sitzungsdatum. Zugestellt wird direkt danach, unter den Grenzen aus
-    # nwz/notify.py.
+    # kern/notify.py.
     from kern.store import Store as NwzStore
     from council.ergebnisse import melde_ergebnisse
 
-    nwz = NwzStore(NWZ_DB)
-    ergebnisse = melde_ergebnisse(_store, nwz, stats.get("ksinrs") or [])
-    zugestellt = notify.zustellen(nwz)
-    nwz.close()
+    ratslotse = NwzStore(RATSLOTSE_DB)
+    ergebnisse = melde_ergebnisse(_store, ratslotse, stats.get("ksinrs") or [])
+    zugestellt = notify.zustellen(ratslotse)
+    ratslotse.close()
     print(f"Ergebnis-Meldungen: {ergebnisse} eingereiht, {zugestellt} zugestellt.")
     _store.close()
     return {

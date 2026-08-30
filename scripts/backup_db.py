@@ -5,7 +5,7 @@ gespiegelt.
 Gesichert wird ALLES, was der Server nicht aus dem Repo wiederherstellen kann:
 
 * **jede** Datenbank unter ``data/`` — nicht mehr eine feste Liste. Die zählte
-  ``nwz.sqlite`` und ``council.sqlite`` auf; eine dritte Datenbank wäre still
+  ``ratslotse.sqlite`` und ``council.sqlite`` auf; eine dritte Datenbank wäre still
   übersprungen worden, ohne dass jemand es gemerkt hätte.
 * die **gerenderten Planzeichnungen** (``data/plaene/``). Sie ließen sich aus
   den PDFs neu erzeugen, aber das ist ein Stapellauf über 600 Anlagen.

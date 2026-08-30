@@ -36,7 +36,7 @@ from ..schemas import UserOut
 from ..security import decode_rs256_token, hash_password
 from .auth import _app_access_token, _set_auth_cookie, _to_out
 
-logger = logging.getLogger("nwz.web.auth_apple")
+logger = logging.getLogger("ratslotse.web.auth_apple")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

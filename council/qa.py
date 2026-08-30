@@ -47,7 +47,7 @@ def extract_keywords(question: str) -> list[str]:
     return out[:8]
 
 
-# Die Prompt-Templates leben in nwz/prompts.py („qa_antwort" / „qa_suchbegriffe")
+# Die Prompt-Templates leben in kern/prompts.py („qa_antwort" / „qa_suchbegriffe")
 # und sind — wie alle anderen — über das Admin-UI live editierbar.
 
 

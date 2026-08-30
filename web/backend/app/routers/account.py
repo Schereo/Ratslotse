@@ -19,7 +19,7 @@ from ..schemas import (ChangePasswordRequest, DeleteAccountRequest, DeliveryUpda
 from ..security import hash_password, verify_password
 from .auth import _app_access_token, _set_auth_cookie, _to_out
 
-logger = logging.getLogger("nwz.web.account")
+logger = logging.getLogger("ratslotse.web.account")
 
 router = APIRouter(prefix="/api/account", tags=["account"])
 

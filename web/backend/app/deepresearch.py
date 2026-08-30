@@ -4,7 +4,7 @@ Der Kern-Unterschied zum /ask-Stream: die Recherche läuft in einem
 Hintergrund-Thread WEITER, wenn der Client die Verbindung verliert —
 Tab-Wechsel, App-Navigation, zugeklappter Laptop. Clients klemmen sich per
 SSE wieder an (Replay aller bisherigen Events + live weiter); der fertige
-Bericht steht zusätzlich persistent in ``deep_research_jobs`` (nwz.sqlite)
+Bericht steht zusätzlich persistent in ``deep_research_jobs`` (ratslotse.sqlite)
 und überlebt damit auch App- und Server-Neustarts.
 
 Ablauf eines Jobs (Phasen wie im Design 8a):
@@ -165,15 +165,15 @@ def sse_events(job: DeepJob, ab: int = 0):
             job.zuschauer = max(0, job.zuschauer - 1)
 
 
-def start_job(job: DeepJob, nwz_db: str, council_db: str) -> None:
+def start_job(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
     """Job registrieren und den Recherche-Thread starten."""
     with _reg_lock:
         _registry[job.id] = job
-    threading.Thread(target=_run, args=(job, nwz_db, council_db),
+    threading.Thread(target=_run, args=(job, ratslotse_db, council_db),
                      daemon=True, name=f"deep-{job.id}").start()
 
 
-def teilbericht_starten(job: DeepJob, nwz_db: str, council_db: str) -> bool:
+def teilbericht_starten(job: DeepJob, ratslotse_db: str, council_db: str) -> bool:
     """Nach einem Stopp: aus dem gesicherten Material doch noch den
     (Teil-)Bericht schreiben. False, wenn kein Material da ist."""
     if job.material is None or not job.material.get("candidates"):
@@ -182,7 +182,7 @@ def teilbericht_starten(job: DeepJob, nwz_db: str, council_db: str) -> bool:
         job.done = False
     job.stop.clear()
     threading.Thread(target=_schreiben_und_abschliessen,
-                     args=(job, nwz_db, council_db, True),
+                     args=(job, ratslotse_db, council_db, True),
                      daemon=True, name=f"deep-teil-{job.id}").start()
     return True
 
@@ -204,7 +204,7 @@ def _melde_text(status: str, frage: str) -> tuple[str, str]:
     return ("Deine Recherche ist fertig", zitat)
 
 
-def melden(job: DeepJob, nwz_db: str, status: str) -> None:
+def melden(job: DeepJob, ratslotse_db: str, status: str) -> None:
     """Fertig-Meldung anstoßen — verzögert und nur, wenn niemand zusieht.
 
     Wer den Bericht gerade vor sich hat, bekommt kein Banner über den eigenen
@@ -217,13 +217,13 @@ def melden(job: DeepJob, nwz_db: str, status: str) -> None:
     if job.gemeldet:
         return
     job.gemeldet = True
-    t = threading.Timer(MELDE_VERZUG, _melden_jetzt, args=(job, nwz_db, status))
+    t = threading.Timer(MELDE_VERZUG, _melden_jetzt, args=(job, ratslotse_db, status))
     t.daemon = True   # ein Neustart soll nicht auf die Meldung warten
     t.name = f"deep-melden-{job.id}"
     t.start()
 
 
-def _melden_jetzt(job: DeepJob, nwz_db: str, status: str) -> None:
+def _melden_jetzt(job: DeepJob, ratslotse_db: str, status: str) -> None:
     from kern import delivery
 
     try:
@@ -233,7 +233,7 @@ def _melden_jetzt(job: DeepJob, nwz_db: str, status: str) -> None:
         # dann auch keine DB anfassen.
         if not delivery.push_ready():
             return
-        store = Store(nwz_db)
+        store = Store(ratslotse_db)
         try:
             zeile = store.deep_job_get(job.id, job.user_id)
             if not zeile or zeile.get("gesehen"):
@@ -267,7 +267,7 @@ def _quellen_payload(m: dict, cited: list[int]) -> dict:
             "kontext": m.get("kontext")}
 
 
-def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
+def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
     """Der komplette Recherche-Ablauf. Läuft im eigenen Thread mit eigenen
     DB-Verbindungen (SQLite-Objekte sind nicht thread-übergreifend nutzbar)."""
     from council import qa
@@ -308,7 +308,7 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
         beste: dict[int, float] = {}
         for f in facetten:
             if job.stop.is_set():
-                _gestoppt(job, nwz_db)
+                _gestoppt(job, ratslotse_db)
                 return
             hits: list[tuple[int, float]] = []
             if emb is not None:
@@ -459,15 +459,15 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             _emit(job, {"type": "token", "text": text})
             _emit(job, {"type": "done", "cited": [], "gelesen": gelesen,
                         "zeitraum": zeitraum, "conversation_id": None})
-            _db_update(nwz_db, job.id, "fertig", bericht=text,
+            _db_update(ratslotse_db, job.id, "fertig", bericht=text,
                        quellen_json=json.dumps(_quellen_payload(m, []), ensure_ascii=False))
             _finish(job)
-            melden(job, nwz_db, "fertig")
+            melden(job, ratslotse_db, "fertig")
             return
 
         # ---- Phase 3: lesen (volle Vorlagen-Auszüge) ---------------------
         if job.stop.is_set():
-            _gestoppt(job, nwz_db)
+            _gestoppt(job, ratslotse_db)
             return
         _emit(job, {"type": "phase", "phase": "lesen", "dokumente": gelesen})
         try:
@@ -482,15 +482,15 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             pass
 
         # ---- Phase 4: schreiben ------------------------------------------
-        _schreiben_und_abschliessen(job, nwz_db, council_db, False)
+        _schreiben_und_abschliessen(job, ratslotse_db, council_db, False)
     except Exception:  # noqa: BLE001 — terminaler Fehler → ehrlich melden
         _log.exception("deep %s: Recherche fehlgeschlagen", job.id)
-        _fehler(job, nwz_db)
+        _fehler(job, ratslotse_db)
     finally:
         store.close()
 
 
-def _schreiben_und_abschliessen(job: DeepJob, nwz_db: str, council_db: str,
+def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str,
                                 teilbericht: bool) -> None:
     """Phase „Bericht schreiben" + Persistenz + Gesprächs-Anhang. Läuft am Ende
     von ``_run`` — oder als eigener Thread für den Teilbericht nach Stopp."""
@@ -549,43 +549,43 @@ def _schreiben_und_abschliessen(job: DeepJob, nwz_db: str, council_db: str,
         if job.stop.is_set() and not teilbericht:
             # Stopp mitten im Schreiben: Material bleibt gesichert, ein
             # „Teilbericht zeigen" generiert daraus einen sauberen Text.
-            _gestoppt(job, nwz_db)
+            _gestoppt(job, ratslotse_db)
             return
 
         bericht = vermerk + buf
         _, cited = qa.resolve_citations(bericht, {c["id"] for c in candidates})
 
-        nwz = Store(nwz_db)
+        ratslotse = Store(ratslotse_db)
         try:
-            gespraech_id = _gespraech_anhaengen(nwz, job, bericht, m, cited)
+            gespraech_id = _gespraech_anhaengen(ratslotse, job, bericht, m, cited)
             status = "teilbericht" if teilbericht else "fertig"
-            nwz.deep_job_update(job.id, status, bericht=bericht,
+            ratslotse.deep_job_update(job.id, status, bericht=bericht,
                                 quellen_json=json.dumps(_quellen_payload(m, cited),
                                                         ensure_ascii=False))
         finally:
-            nwz.close()
+            ratslotse.close()
         _emit(job, {"type": "done", "cited": cited, "gelesen": m.get("gelesen", 0),
                     "zeitraum": m.get("zeitraum", ""), "conversation_id": gespraech_id,
                     "teilbericht": teilbericht})
         _finish(job)
-        melden(job, nwz_db, status)
+        melden(job, ratslotse_db, status)
         registry_aufraeumen()
     except Exception:  # noqa: BLE001
         _log.exception("deep %s: Bericht scheiterte", job.id)
-        _fehler(job, nwz_db)
+        _fehler(job, ratslotse_db)
 
 
-def _gespraech_anhaengen(nwz: Store, job: DeepJob, bericht: str,
+def _gespraech_anhaengen(ratslotse: Store, job: DeepJob, bericht: str,
                          m: dict, cited: list[int]) -> int | None:
     """„Bericht erscheint hier im Gespräch": mit Einwilligung (qa_speichern)
     den Bericht als Turn ins laufende Gespräch hängen — best-effort."""
     try:
-        if nwz.get_qa_speichern(job.user_id) != 1:
+        if ratslotse.get_qa_speichern(job.user_id) != 1:
             return None
         gespraech_id = job.gespraech_id
         neu = gespraech_id is None
         if neu:
-            gespraech_id = nwz.qa_gespraech_start(job.user_id, job.suchfrage)
+            gespraech_id = ratslotse.qa_gespraech_start(job.user_id, job.suchfrage)
             if gespraech_id is None:
                 return None
         zitiert = set(cited)
@@ -603,47 +603,47 @@ def _gespraech_anhaengen(nwz: Store, job: DeepJob, bericht: str,
              "gelesen": m.get("gelesen"), "zeitraum": m.get("zeitraum"),
              "kontext": m.get("kontext")},
             ensure_ascii=False)
-        if not nwz.qa_turn_speichern(gespraech_id, job.user_id, job.frage,
+        if not ratslotse.qa_turn_speichern(gespraech_id, job.user_id, job.frage,
                                      bericht, quellen_json):
             if neu:
-                nwz.qa_gespraech_loeschen(gespraech_id, job.user_id)
+                ratslotse.qa_gespraech_loeschen(gespraech_id, job.user_id)
             return None
         return gespraech_id
     except Exception:  # noqa: BLE001 — Speichern ist Zusatz, nie Blocker
         return None
 
 
-def _db_update(nwz_db: str, job_id: str, status: str, bericht: str | None = None,
+def _db_update(ratslotse_db: str, job_id: str, status: str, bericht: str | None = None,
                quellen_json: str | None = None) -> None:
     """Kurzlebige eigene Verbindung — der Job-Thread darf keine Request-Stores
     teilen, und offene Handles sollen nicht liegen bleiben."""
-    store = Store(nwz_db)
+    store = Store(ratslotse_db)
     try:
         store.deep_job_update(job_id, status, bericht=bericht, quellen_json=quellen_json)
     finally:
         store.close()
 
 
-def _gestoppt(job: DeepJob, nwz_db: str) -> None:
+def _gestoppt(job: DeepJob, ratslotse_db: str) -> None:
     hat_material = bool(job.material and job.material.get("candidates"))
     _emit(job, {"type": "gestoppt", "facetten_fertig": job.facetten_fertig,
                 "facetten_gesamt": job.facetten_gesamt,
                 "teilbericht_moeglich": hat_material})
     try:
-        _db_update(nwz_db, job.id, "gestoppt")
+        _db_update(ratslotse_db, job.id, "gestoppt")
     except Exception:  # noqa: BLE001
         pass
     _finish(job)
 
 
-def _fehler(job: DeepJob, nwz_db: str) -> None:
+def _fehler(job: DeepJob, ratslotse_db: str) -> None:
     _emit(job, {"type": "fehler"})
     try:
-        _db_update(nwz_db, job.id, "fehler")
+        _db_update(ratslotse_db, job.id, "fehler")
     except Exception:  # noqa: BLE001
         pass
     _finish(job)
     # Auch der Fehlschlag wird gemeldet: Wer die App weggelegt hat, wartet sonst
     # auf einen Bericht, der nie kommt. Ein Stopp dagegen (``_gestoppt``) war
     # eine bewusste Handlung — der meldet sich nicht selbst zurück.
-    melden(job, nwz_db, "fehler")
+    melden(job, ratslotse_db, "fehler")

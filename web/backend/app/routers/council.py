@@ -213,7 +213,7 @@ def sessions(
     offset: int = Query(0, ge=0),
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
+    ratslotse: Store = Depends(get_store),
 ) -> SitzungsListe:
     # `total` ist die GESAMTZAHL der passenden Sitzungen, `count` nur die dieser
     # Seite. Vorher gab es nur count — die Liste endete deshalb still bei der
@@ -232,7 +232,7 @@ def sessions(
     # RL-902: „n TOPs zu deinen Themen" — Treffer der Tagesordnungs-
     # Klassifikation für die eingeloggte Nutzer*in (eine Batch-Abfrage).
     ksinrs = [r["ksinr"] for r in rows if r.get("ksinr")]
-    mine = nwz.agenda_matches_for_owner(user["id"], ksinrs)
+    mine = ratslotse.agenda_matches_for_owner(user["id"], ksinrs)
     for r in rows:
         matches = mine.get(r.get("ksinr") or 0)
         if matches:
@@ -334,7 +334,7 @@ def diese_woche(
 def wochenvorschau(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
+    ratslotse: Store = Depends(get_store),
 ) -> WochenvorschauIntern:
     """„Die Woche im Rat" (Design 14, davor 11d/12) — als VORSCHAU auf die
     kommenden Sitzungen, nicht als Rückblick auf Beschlüsse.
@@ -350,7 +350,7 @@ def wochenvorschau(
     Themen), deshalb werden sie hier geholt und hineingereicht.
     """
     vorschau_ksinrs = [s["ksinr"] for s in store.sitzungen_im_fenster()]
-    meine = nwz.agenda_matches_for_owner(user["id"], vorschau_ksinrs)
+    meine = ratslotse.agenda_matches_for_owner(user["id"], vorschau_ksinrs)
     return store.wochenvorschau(meine=meine)
 
 
@@ -1578,7 +1578,7 @@ def decisions(
     offset: int = Query(0, ge=0),
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
+    ratslotse: Store = Depends(get_store),
 ) -> BeschlussListe:
     if district:
         place = store.resolve_place(district)
@@ -1592,9 +1592,9 @@ def decisions(
     if topic is not None:
         # Nur eigene Themen — sonst ließe sich über eine fremde id deren
         # Trefferliste abfragen.
-        if not nwz.get_topic_for_owner(user["id"], topic):
+        if not ratslotse.get_topic_for_owner(user["id"], topic):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Thema nicht gefunden.")
-        only_ids = [m["decision_id"] for m in nwz.get_topic_decision_matches(topic)]
+        only_ids = [m["decision_id"] for m in ratslotse.get_topic_decision_matches(topic)]
     total = store.count_decisions(
         q, committee, outcome, faction, date_from, date_to, kind, category, field, party,
         include_subvotes=include_subvotes, only_ids=only_ids, district=district,
@@ -1626,7 +1626,7 @@ def decision_detail(
     decision_id: int,
     user: dict | None = Depends(optional_user),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
+    ratslotse: Store = Depends(get_store),
 ) -> BeschlussDetail:
     """Ein Beschluss mit allem Drum und Dran — **ohne Anmeldung lesbar**.
 
@@ -1754,7 +1754,7 @@ def decision_detail(
             # Ohne Anmeldung fehlt der Schlüssel ganz: Das Frontend blendet den
             # Verfolgen-Knopf über `data.follow &&` aus, ohne etwas zu wissen.
             if user:
-                out["follow"] = {"kvonr": kv, "following": nwz.is_following_vorlage(user["id"], kv)}
+                out["follow"] = {"kvonr": kv, "following": ratslotse.is_following_vorlage(user["id"], kv)}
     return out
 
 
@@ -1770,7 +1770,7 @@ def gespraeche_liste(limit: int = Query(30, ge=0, le=100),
                      offset: int = Query(0, ge=0),
                      q: str | None = Query(None, max_length=120),
                      user: dict = Depends(require_active),
-                     nwz: Store = Depends(get_store)) -> GespraecheListe:
+                     ratslotse: Store = Depends(get_store)) -> GespraecheListe:
     """Einwilligungs-Stand + eine Seite der gespeicherten Gespräche.
     `einstellung` ist null, solange die Erstnutzungs-Frage (6a①) nie
     beantwortet wurde.
@@ -1781,10 +1781,10 @@ def gespraeche_liste(limit: int = Query(30, ge=0, le=100),
     `weitere` sagt, ob „Ältere anzeigen" noch etwas nachliefert. `limit=0`
     holt nur die Zahlen — so fragt die Konto-Einstellung.
     """
-    seite = nwz.qa_gespraeche(user["id"], limit=limit, offset=offset, suche=q)
-    treffer = nwz.qa_gespraeche_anzahl(user["id"], suche=q)
-    gesamt = nwz.qa_gespraeche_anzahl(user["id"]) if q else treffer
-    return {"saves_conversations": nwz.get_qa_speichern(user["id"]),
+    seite = ratslotse.qa_gespraeche(user["id"], limit=limit, offset=offset, suche=q)
+    treffer = ratslotse.qa_gespraeche_anzahl(user["id"], suche=q)
+    gesamt = ratslotse.qa_gespraeche_anzahl(user["id"]) if q else treffer
+    return {"saves_conversations": ratslotse.get_qa_speichern(user["id"]),
             "conversations": seite,
             "total": gesamt,
             "matches": treffer,
@@ -1794,17 +1794,17 @@ def gespraeche_liste(limit: int = Query(30, ge=0, le=100),
 @router.post("/gespraeche/einstellung")
 def gespraeche_einstellung(body: GespraechEinstellungBody,
                            user: dict = Depends(require_active),
-                           nwz: Store = Depends(get_store)) -> GespraechEinstellung:
+                           ratslotse: Store = Depends(get_store)) -> GespraechEinstellung:
     """6a②: Schalter setzen. Löscht nichts — das entscheidet der Dialog
     über DELETE /gespraeche getrennt."""
-    nwz.set_qa_speichern(user["id"], body.an)
+    ratslotse.set_qa_speichern(user["id"], body.an)
     return {"saves_conversations": 1 if body.an else 0}
 
 
 @router.get("/gespraeche/{gespraech_id}")
 def gespraech_detail(gespraech_id: int, user: dict = Depends(require_active),
-                     nwz: Store = Depends(get_store)) -> GespraechDetail:
-    g = nwz.qa_gespraech(gespraech_id, user["id"])
+                     ratslotse: Store = Depends(get_store)) -> GespraechDetail:
+    g = ratslotse.qa_gespraech(gespraech_id, user["id"])
     if not g:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
     for t in g["turns"]:
@@ -1822,25 +1822,25 @@ class GespraechUmbenennenBody(BaseModel):
 @router.patch("/gespraeche/{gespraech_id}")
 def gespraech_umbenennen(gespraech_id: int, body: GespraechUmbenennenBody,
                          user: dict = Depends(require_active),
-                         nwz: Store = Depends(get_store)) -> Ok:
+                         ratslotse: Store = Depends(get_store)) -> Ok:
     """Design 9a②: Umbenennen aus dem Gespräche-Sheet (Wisch nach links)."""
-    if not nwz.qa_gespraech_umbenennen(gespraech_id, user["id"], body.title):
+    if not ratslotse.qa_gespraech_umbenennen(gespraech_id, user["id"], body.title):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
     return {"ok": True}
 
 
 @router.delete("/gespraeche/{gespraech_id}")
 def gespraech_loeschen(gespraech_id: int, user: dict = Depends(require_active),
-                       nwz: Store = Depends(get_store)) -> Ok:
-    if not nwz.qa_gespraech_loeschen(gespraech_id, user["id"]):
+                       ratslotse: Store = Depends(get_store)) -> Ok:
+    if not ratslotse.qa_gespraech_loeschen(gespraech_id, user["id"]):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
     return {"ok": True}
 
 
 @router.delete("/gespraeche")
 def gespraeche_alle_loeschen(user: dict = Depends(require_active),
-                             nwz: Store = Depends(get_store)) -> GespraecheGeloescht:
-    return {"deleted": nwz.qa_gespraeche_loeschen(user["id"])}
+                             ratslotse: Store = Depends(get_store)) -> GespraecheGeloescht:
+    return {"deleted": ratslotse.qa_gespraeche_loeschen(user["id"])}
 
 
 class QaFeedbackBody(BaseModel):
@@ -2117,7 +2117,7 @@ def qa_share_anlegen(
     body: QaShareBody,
     request: Request,
     user: dict = Depends(require_active),
-    nwz: Store = Depends(get_store),
+    ratslotse: Store = Depends(get_store),
 ) -> QaShareToken:
     """Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
     Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
@@ -2136,19 +2136,19 @@ def qa_share_anlegen(
         "parteien": [p.model_dump() for p in body.parteien],
         "grafik": _grafik_pruefen(body.grafik),
     }
-    token = nwz.qa_share_anlegen(user["id"], body.frage, body.antwort,
+    token = ratslotse.qa_share_anlegen(user["id"], body.frage, body.antwort,
                                  [q.model_dump() for q in body.quellen],
                                  extras if any(extras.values()) else None)
     return {"token": token}
 
 
 @router.get("/qa-share/{token}")
-def qa_share_lesen(token: str, nwz: Store = Depends(get_store)) -> QaShare:
+def qa_share_lesen(token: str, ratslotse: Store = Depends(get_store)) -> QaShare:
     """Öffentliche Snapshot-Ansicht — bewusst OHNE Login (der Link soll auch
     Menschen ohne Konto erreichen); enthält nie Konto-Daten."""
     if len(token) > 64:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
-    share = nwz.qa_share_get(token)
+    share = ratslotse.qa_share_get(token)
     if not share:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     return share
@@ -2166,7 +2166,7 @@ def qa_share_melden(
     token: str,
     body: QaShareReportBody,
     request: Request,
-    nwz: Store = Depends(get_store),
+    ratslotse: Store = Depends(get_store),
 ) -> Ok:
     """Öffentlicher Meldeweg für geteilte Inhalte (App Review 1.2).
 
@@ -2177,7 +2177,7 @@ def qa_share_melden(
     """
     if len(token) > 64:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
-    owner_id = nwz.qa_share_owner_id(token)
+    owner_id = ratslotse.qa_share_owner_id(token)
     if owner_id is None:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     qa_share_report_limiter.check(request)
@@ -2187,7 +2187,7 @@ def qa_share_melden(
         "privacy": "Privatsphäre / personenbezogene Daten",
         "other": "Anderer Grund",
     }
-    nwz.add_feedback(
+    ratslotse.add_feedback(
         0,
         None,
         "qa_share",
@@ -2229,22 +2229,22 @@ def _deep_limit(user: dict) -> int | None:
     return override if override is not None else deepresearch.TAGES_KONTINGENT
 
 
-def _deep_frei(nwz: Store, user: dict) -> int | None:
+def _deep_frei(ratslotse: Store, user: dict) -> int | None:
     limit = _deep_limit(user)
     if limit is None:
         return None  # unbegrenzt — der Client zeigt dann keinen Zähler
-    return max(0, limit - nwz.deep_jobs_heute(user["id"]))
+    return max(0, limit - ratslotse.deep_jobs_heute(user["id"]))
 
 
 @router.post("/deep-research", status_code=status.HTTP_201_CREATED)
 def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_active),
-                        nwz: Store = Depends(get_store)) -> RechercheGestartet:
+                        ratslotse: Store = Depends(get_store)) -> RechercheGestartet:
     """Recherche-Job starten. Kontingent: 5/Tag je KONTO aus der DB (nicht
     IP — übersteht Neustarts, und Abbruch/Fehler kosten laut Design nichts,
     was ein Fenster-Zähler nicht abbilden kann). Admins können das Limit je
     Konto erhöhen oder ausschalten (web_users.deep_limit)."""
     limit = _deep_limit(user)
-    if limit is not None and nwz.deep_jobs_heute(user["id"]) >= limit:
+    if limit is not None and ratslotse.deep_jobs_heute(user["id"]) >= limit:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
                             "Deine Recherchen für heute sind aufgebraucht — ab morgen geht es weiter.")
     if deepresearch.laufende_jobs(user["id"]) >= 1:
@@ -2253,40 +2253,40 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
     if deepresearch.laufende_jobs() >= deepresearch.MAX_PARALLEL:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "Gerade laufen viele Recherchen — bitte versuche es gleich nochmal.")
-    nwz.record_activity(user["id"], "recherche")
+    ratslotse.record_activity(user["id"], "recherche")
     frage = body.question.strip()
-    job_id = nwz.deep_job_anlegen(user["id"], frage)
+    job_id = ratslotse.deep_job_anlegen(user["id"], frage)
     settings = get_settings()
     job = deepresearch.DeepJob(id=job_id, user_id=user["id"], frage=frage,
                                gespraech_id=body.conversation_id,
                                verlauf=[r.model_dump() for r in body.history])
-    deepresearch.start_job(job, settings.nwz_db, settings.council_db)
-    return {"job_id": job_id, "frei": _deep_frei(nwz, user)}
+    deepresearch.start_job(job, settings.ratslotse_db, settings.council_db)
+    return {"job_id": job_id, "frei": _deep_frei(ratslotse, user)}
 
 
 @router.get("/deep-research/aktuell")
 def deep_research_aktuell(user: dict = Depends(require_active),
-                          nwz: Store = Depends(get_store)) -> RechercheAktuell:
+                          ratslotse: Store = Depends(get_store)) -> RechercheAktuell:
     """Der jüngste Job des Kontos + Rest-Kontingent — damit der Client nach
     Navigation/App-Neustart einen laufenden Job oder ungesehenen Bericht
     wiederfindet, ohne sich die ID gemerkt zu haben."""
-    return {"job": nwz.deep_job_aktuell(user["id"]),
-            "frei": _deep_frei(nwz, user)}
+    return {"job": ratslotse.deep_job_aktuell(user["id"]),
+            "frei": _deep_frei(ratslotse, user)}
 
 
 @router.get("/deep-research/{job_id}")
 def deep_research_snapshot(job_id: str, user: dict = Depends(require_active),
-                           nwz: Store = Depends(get_store)) -> RechercheSnapshot:
+                           ratslotse: Store = Depends(get_store)) -> RechercheSnapshot:
     """Persistierter Stand des Jobs (Bericht + Quellen bei fertig/teilbericht)."""
     if len(job_id) > 64:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
-    row = nwz.deep_job_get(job_id, user["id"])
+    row = ratslotse.deep_job_get(job_id, user["id"])
     if not row:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     # Läuft laut DB, aber kein Thread mehr da (Server-Neustart, Deploy):
     # ehrlich als Fehler ausweisen, sonst wartete der Client ewig.
     if row["status"] == "laeuft" and deepresearch.get_job(job_id) is None:
-        nwz.deep_job_update(job_id, "fehler")
+        ratslotse.deep_job_update(job_id, "fehler")
         row["status"] = "fehler"
     try:
         row["quellen"] = json.loads(row["quellen"]) if row.get("quellen") else None
@@ -2298,11 +2298,11 @@ def deep_research_snapshot(job_id: str, user: dict = Depends(require_active),
 @router.get("/deep-research/{job_id}/events")
 def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
                          user: dict = Depends(require_active),
-                         nwz: Store = Depends(get_store)) -> StreamingResponse:
+                         ratslotse: Store = Depends(get_store)) -> StreamingResponse:
     """SSE-Anschluss an einen laufenden Job: Replay aller Events ab ``ab``,
     dann live weiter. Ein Verbindungsabriss ist folgenlos — der Job läuft
     im Backend weiter, der Client verbindet sich einfach neu."""
-    row = nwz.deep_job_get(job_id, user["id"])
+    row = ratslotse.deep_job_get(job_id, user["id"])
     if not row:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     job = deepresearch.get_job(job_id)
@@ -2318,11 +2318,11 @@ def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
 
 @router.post("/deep-research/{job_id}/stop")
 def deep_research_stop(job_id: str, user: dict = Depends(require_active),
-                       nwz: Store = Depends(get_store)) -> RechercheGestoppt:
+                       ratslotse: Store = Depends(get_store)) -> RechercheGestoppt:
     """Abbrechen (Design 8c⑥): stoppt vor dem nächsten Such-/LLM-Schritt.
     Fertige Facetten bleiben als Material — die Antwort sagt, ob sich ein
     Teilbericht lohnt. Kostet kein Kontingent."""
-    if not nwz.deep_job_get(job_id, user["id"]):
+    if not ratslotse.deep_job_get(job_id, user["id"]):
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     job = deepresearch.get_job(job_id)
     if job is None or job.done:
@@ -2337,10 +2337,10 @@ def deep_research_stop(job_id: str, user: dict = Depends(require_active),
 
 @router.post("/deep-research/{job_id}/teilbericht")
 def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
-                              nwz: Store = Depends(get_store)) -> Ok:
+                              ratslotse: Store = Depends(get_store)) -> Ok:
     """Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht
     schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent."""
-    row = nwz.deep_job_get(job_id, user["id"])
+    row = ratslotse.deep_job_get(job_id, user["id"])
     if not row:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     job = deepresearch.get_job(job_id)
@@ -2352,17 +2352,17 @@ def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
                             "Kein Material gesichert — bitte neu recherchieren.")
     # Status VOR dem Thread-Start zurück auf laeuft — andersherum könnte der
     # (schnelle) Thread sein „teilbericht" schreiben und würde überschrieben.
-    nwz.deep_job_update(job_id, "laeuft")
+    ratslotse.deep_job_update(job_id, "laeuft")
     settings = get_settings()
-    deepresearch.teilbericht_starten(job, settings.nwz_db, settings.council_db)
+    deepresearch.teilbericht_starten(job, settings.ratslotse_db, settings.council_db)
     return {"ok": True}
 
 
 @router.post("/deep-research/{job_id}/gesehen")
 def deep_research_gesehen(job_id: str, user: dict = Depends(require_active),
-                          nwz: Store = Depends(get_store)) -> Ok:
+                          ratslotse: Store = Depends(get_store)) -> Ok:
     """Client hat den fertigen Bericht gerendert — nicht erneut einblenden."""
-    nwz.deep_job_gesehen(job_id, user["id"])
+    ratslotse.deep_job_gesehen(job_id, user["id"])
     return {"ok": True}
 
 
@@ -2411,14 +2411,14 @@ def _stations_signature(rows: list[dict]) -> str:
 def list_follows(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
+    ratslotse: Store = Depends(get_store),
 ) -> VorlagenFolgen:
     """Verfolgte Vorgänge mit ihrem aktuellen Stand — die Beratungsfolge liegt
     in der anderen Datenbank, deshalb hier je Follow eine Abfrage (die Zahl
     ist nutzergemacht und klein)."""
     today = date.today().isoformat()
     out = []
-    for f in nwz.get_vorlage_follows(user["id"]):
+    for f in ratslotse.get_vorlage_follows(user["id"]):
         stations = store.get_beratungen(f["kvonr"])
         naechste = next((b for b in stations if b.get("datum") and b["datum"] > today), None)
         letzte = next((b for b in reversed(stations) if b.get("datum") and b["datum"] <= today), None)
@@ -2437,13 +2437,13 @@ def follow_vorlage(
     kvonr: int,
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
+    ratslotse: Store = Depends(get_store),
 ) -> VorlageGefolgt:
     v = store.get_vorlage(kvonr)
     if not v:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Vorlage nicht gefunden.")
     # Den heutigen Stand mitschreiben: Was schon dasteht, ist keine Neuigkeit.
-    nwz.follow_vorlage(
+    ratslotse.follow_vorlage(
         user["id"], kvonr,
         vorlage_nr=v.get("vorlage_nr") or "", title=v.get("title") or "",
         stations=_stations_signature(store.get_beratungen(kvonr)),
@@ -2455,9 +2455,9 @@ def follow_vorlage(
 def unfollow_vorlage(
     kvonr: int,
     user: dict = Depends(require_active),
-    nwz: Store = Depends(get_store),
+    ratslotse: Store = Depends(get_store),
 ) -> VorlageEntfolgt:
-    nwz.unfollow_vorlage(user["id"], kvonr)
+    ratslotse.unfollow_vorlage(user["id"], kvonr)
     return {"kvonr": kvonr, "following": False}
 
 
@@ -2916,7 +2916,7 @@ def _anlagen_kompakt(rows: list[dict]) -> list[dict]:
              "auszug": (a.get("fundstelle") or "")[:220]} for a in rows]
 
 
-def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
+def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     answer_text: str, candidates: list[dict],
                     cited: list[int],
                     presse_rows: list[dict] | None = None,
@@ -2937,12 +2937,12 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
     try:
         if "conversation_id" not in body.model_fields_set:
             return None
-        if not answer_text.strip() or nwz.get_qa_speichern(user["id"]) != 1:
+        if not answer_text.strip() or ratslotse.get_qa_speichern(user["id"]) != 1:
             return None
         gespraech_id = body.conversation_id
         neu = gespraech_id is None
         if neu:
-            gespraech_id = nwz.qa_gespraech_start(user["id"], q_suche or body.question)
+            gespraech_id = ratslotse.qa_gespraech_start(user["id"], q_suche or body.question)
             if gespraech_id is None:
                 return None
         zitiert = set(cited)
@@ -2973,10 +2973,10 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
              "grafik": grafik,
              # Der Tagesordnungs-Baustein ebenso (Sitzungs-Fragetyp).
              "sitzungen": _sitzungen_kompakt(sitzungen or [])}, ensure_ascii=False)
-        if not nwz.qa_turn_speichern(gespraech_id, user["id"],
+        if not ratslotse.qa_turn_speichern(gespraech_id, user["id"],
                                      body.question, answer_text, quellen_json):
             if neu:
-                nwz.qa_gespraech_loeschen(gespraech_id, user["id"])
+                ratslotse.qa_gespraech_loeschen(gespraech_id, user["id"])
             return None
         return gespraech_id
     except Exception:  # noqa: BLE001 — Speichern ist Zusatz, nie Blocker
@@ -2986,7 +2986,7 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
 @router.post("/ask")
 def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         store: CouncilStore = Depends(get_council_store),
-        nwz: Store = Depends(get_store)) -> StreamingResponse:
+        ratslotse: Store = Depends(get_store)) -> StreamingResponse:
     """Answer a free-text question from the decisions, streamed as Server-Sent Events:
     progress steps → the ranked source decisions (the moment retrieval+rerank finish)
     → the answer token-by-token → a final event with the cited ids. Streaming makes
@@ -2997,7 +2997,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         # Adresse. Das Konto ist hier bereits sicher authentifiziert und damit
         # der faire, stabile Schlüssel für das Kosten-Limit.
         qa_limiter.check(request, subject=user["id"])
-    nwz.record_activity(user["id"], "ki_frage")  # Admin-Statistik (20a)
+    ratslotse.record_activity(user["id"], "ki_frage")  # Admin-Statistik (20a)
     q = body.question.strip()
     if len(q) < 4:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte eine etwas längere Frage stellen.")
@@ -3423,7 +3423,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 yield _sse({"type": "token", "text": leer_text})
                 # Auch der Kein-Treffer-Turn gehört ins gespeicherte Gespräch —
                 # sonst klafft im Transkript eine Lücke (Review-Befund B4).
-                gespraech_id = _turn_speichern(nwz, user, body, q_suche, leer_text, [], [],
+                gespraech_id = _turn_speichern(ratslotse, user, body, q_suche, leer_text, [], [],
                                                debatten_rows=debatten_rows,
                                                sitzungen=sitzungen)
                 yield _sse({"type": "done", "cited": [], "conversation_id": gespraech_id})
@@ -3600,7 +3600,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                   + zeiten.get("antwort_ms", 0))
             _log.info("qa_timings mode=%s typ=%s %s", mode, typ,
                       " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
-            gespraech_id = _turn_speichern(nwz, user, body, q_suche, answer_text,
+            gespraech_id = _turn_speichern(ratslotse, user, body, q_suche, answer_text,
                                            candidates, cited,
                                            presse_rows=presse_rows,
                                            debatten_rows=debatten_rows,
