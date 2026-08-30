@@ -1,9 +1,57 @@
 import EventKit
 import EventKitUI
+import Foundation
 import QuickLook
 import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
+
+enum CouncilBrowserCacheKey: String, Sendable {
+    case decisions
+    case sessions
+    case map
+    case filters
+}
+
+struct CouncilFilterSnapshot: Codable, Sendable {
+    let committees: [String]
+    let fields: [PolicyFieldOption]
+    let parties: [PartyOption]
+    let districts: [DistrictOption]
+}
+
+actor CouncilBrowserCache {
+    static let shared = CouncilBrowserCache()
+
+    private let directory: URL
+    private let decoder = JSONDecoder()
+    private let encoder = JSONEncoder()
+
+    init(directory: URL? = nil) {
+        if let directory {
+            self.directory = directory
+        } else {
+            let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+                ?? FileManager.default.temporaryDirectory
+            self.directory = base.appendingPathComponent("RatslotseCouncil", isDirectory: true)
+        }
+    }
+
+    func load<Value: Decodable & Sendable>(_ key: CouncilBrowserCacheKey) -> Value? {
+        guard let data = try? Data(contentsOf: fileURL(for: key)) else { return nil }
+        return try? decoder.decode(Value.self, from: data)
+    }
+
+    func store<Value: Encodable & Sendable>(_ value: Value, for key: CouncilBrowserCacheKey) {
+        guard let data = try? encoder.encode(value) else { return }
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try? data.write(to: fileURL(for: key), options: .atomic)
+    }
+
+    private func fileURL(for key: CouncilBrowserCacheKey) -> URL {
+        directory.appendingPathComponent("\(key.rawValue).json", isDirectory: false)
+    }
+}
 
 struct CouncilBrowserView: View {
     @Bindable var model: AppModel
@@ -218,7 +266,9 @@ struct CouncilBrowserView: View {
                             MonoKicker(model.councilSection.rawValue, trailing: total > 0 ? "\(total) gefunden" : nil)
                             if isLoading { ProgressView().controlSize(.small) }
                         }
-                        if let error { ErrorCard(message: error) { Task { await load() } } }
+                        if let error, !hasVisibleContent {
+                            ErrorCard(message: error) { Task { await load() } }
+                        }
                         if model.councilSection == .decisions {
                         ForEach(decisions) { decision in
                             Button { model.navigation.append(.decision(id: decision.id)) } label: {
@@ -267,6 +317,13 @@ struct CouncilBrowserView: View {
         .toolbarTitleDisplayMode(.inline)
         .onChange(of: model.councilSection) { _, _ in page = 0; Task { await load() } }
         .onChange(of: outcome) { _, _ in page = 0; Task { await load() } }
+        .onChange(of: model.isOffline) { wasOffline, isOffline in
+            guard wasOffline && !isOffline else { return }
+            Task {
+                await loadFilterOptions()
+                await load()
+            }
+        }
         .task {
             if committees.isEmpty { await loadFilterOptions() }
             if decisions.isEmpty && sessions.isEmpty { await load() }
@@ -370,7 +427,7 @@ struct CouncilBrowserView: View {
                         .councilMapGlassSurface(cornerRadius: 11)
                 }
 
-                if let error {
+                if let error, !hasVisibleContent {
                     ErrorCard(message: error) { Task { await load() } }
                 }
             }
@@ -445,6 +502,8 @@ struct CouncilBrowserView: View {
             return
         }
 #endif
+        await restoreCachedContentIfPossible()
+        guard !model.isOffline else { return }
         do {
             if model.councilSection == .decisions {
                 let page: DecisionPage = try await model.api.get(
@@ -467,6 +526,9 @@ struct CouncilBrowserView: View {
                 )
                 decisions = page.decisions
                 total = page.total
+                if canUseCanonicalCache {
+                    await CouncilBrowserCache.shared.store(page, for: .decisions)
+                }
             } else if model.councilSection == .sessions {
                 // Wie im Web: ohne Suche beginnt die Liste bei den nächsten
                 // Terminen (aufsteigend). Suche/Ausschussfilter wechseln in
@@ -485,12 +547,73 @@ struct CouncilBrowserView: View {
                 )
                 sessions = page.sessions
                 total = page.total
+                if canUseCanonicalCache {
+                    await CouncilBrowserCache.shared.store(page, for: .sessions)
+                }
             } else {
                 let response: CouncilMapPoints = try await model.api.get("/api/council/entities-map")
                 mapPoints = response.entities
                 total = response.entities.count
+                await CouncilBrowserCache.shared.store(response, for: .map)
             }
-        } catch { self.error = error.localizedDescription }
+        } catch {
+            // Network refreshes are deliberately silent while useful cached
+            // content is on screen. The global offline badge communicates the
+            // connection state without covering valid council data.
+            if !Self.isCancelledRequest(error), !hasVisibleContent {
+                self.error = error.localizedDescription
+            }
+        }
+    }
+
+    private var hasVisibleContent: Bool {
+        switch model.councilSection {
+        case .decisions: !decisions.isEmpty
+        case .sessions: !sessions.isEmpty
+        case .map: !mapPoints.isEmpty
+        }
+    }
+
+    private var canUseCanonicalCache: Bool {
+        guard page == 0 else { return false }
+        switch model.councilSection {
+        case .decisions:
+            return query.isEmpty && outcome.isEmpty && committee.isEmpty && policyField.isEmpty
+                && party.isEmpty && district.isEmpty && location.isEmpty
+                && sort == "date_desc" && !includeSubvotes && !hasDateFrom && !hasDateTo
+        case .sessions:
+            return query.isEmpty && committee.isEmpty && sessionScope == "upcoming"
+        case .map:
+            return true
+        }
+    }
+
+    private func restoreCachedContentIfPossible() async {
+        guard canUseCanonicalCache else { return }
+        switch model.councilSection {
+        case .decisions where decisions.isEmpty:
+            if let cached: DecisionPage = await CouncilBrowserCache.shared.load(.decisions) {
+                decisions = cached.decisions
+                total = cached.total
+            }
+        case .sessions where sessions.isEmpty:
+            if let cached: SessionPage = await CouncilBrowserCache.shared.load(.sessions) {
+                sessions = cached.sessions
+                total = cached.total
+            }
+        case .map where mapPoints.isEmpty:
+            if let cached: CouncilMapPoints = await CouncilBrowserCache.shared.load(.map) {
+                mapPoints = cached.entities
+                total = cached.entities.count
+            }
+        default:
+            break
+        }
+    }
+
+    private static func isCancelledRequest(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        return (error as? URLError)?.code == .cancelled
     }
 
     private func openMapPoint(_ point: CouncilMapPoint) {
@@ -509,6 +632,14 @@ struct CouncilBrowserView: View {
     }
 
     private func loadFilterOptions() async {
+        if committees.isEmpty,
+           let cached: CouncilFilterSnapshot = await CouncilBrowserCache.shared.load(.filters) {
+            committees = cached.committees
+            fields = cached.fields
+            parties = cached.parties
+            districts = cached.districts
+        }
+        guard !model.isOffline else { return }
         async let committeeRequest: CommitteeOptions = model.api.get("/api/council/committees")
         async let fieldRequest: PolicyFieldOptions = model.api.get("/api/council/fields")
         async let partyRequest: PartyOptions = model.api.get("/api/council/parties")
@@ -517,6 +648,17 @@ struct CouncilBrowserView: View {
         if let response = try? await fieldRequest { fields = response.fields }
         if let response = try? await partyRequest { parties = response.parties }
         if let response = try? await districtRequest { districts = response.districts }
+        if !committees.isEmpty || !fields.isEmpty || !parties.isEmpty || !districts.isEmpty {
+            await CouncilBrowserCache.shared.store(
+                CouncilFilterSnapshot(
+                    committees: committees,
+                    fields: fields,
+                    parties: parties,
+                    districts: districts
+                ),
+                for: .filters
+            )
+        }
     }
 
     private static let apiDate: DateFormatter = {

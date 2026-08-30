@@ -89,6 +89,7 @@ public final class AppModel {
     private static let pushPrimerSnoozeKey = "ratslotse.push-primer.snoozed-until"
     private static let appearanceKey = "ratslotse.appearance"
     private static let activeConversationKeyPrefix = "ratslotse.qa.active-conversation."
+    private static let cachedUserKey = "ratslotse.account.offline-user"
 
     public init(
         api: APIClient = APIClient(),
@@ -131,6 +132,12 @@ public final class AppModel {
     }
 
     public func bootstrap() async {
+        let hasStoredToken = await api.restoreAccessToken() != nil
+        let offlineUser = hasStoredToken ? cachedUserForOffline() : nil
+        // Render the last verified shell immediately. Configuration and
+        // account refresh continue below without holding the launch screen.
+        if let offlineUser { applyLocalUser(offlineUser) }
+
         do {
             let config: AppConfiguration = try await api.get("/api/app-config")
             updateNotice = config.notice
@@ -144,7 +151,7 @@ public final class AppModel {
             // Compatibility config is a safeguard, never a launch dependency.
         }
 
-        guard await api.restoreAccessToken() != nil else {
+        guard hasStoredToken else {
             session = .loggedOut
             return
         }
@@ -153,12 +160,18 @@ public final class AppModel {
             try await accept(user: me)
         } catch let error as APIError where error.isUnauthorized {
             try? await api.setAccessToken(nil)
+            defaults.removeObject(forKey: Self.cachedUserKey)
             session = .loggedOut
         } catch {
-            // An offline start keeps the token. The shell remains usable and
-            // retries bootstrap as soon as the user pulls to refresh.
-            session = .loggedOut
-            if !isOffline { alertMessage = error.localizedDescription }
+            // Keep the last verified local account active while the server is
+            // unreachable. The access token itself remains exclusively in the
+            // Keychain and a real 401 still logs the account out above.
+            if let offlineUser {
+                applyLocalUser(offlineUser)
+            } else {
+                session = .loggedOut
+                if !isOffline { alertMessage = error.localizedDescription }
+            }
         }
     }
 
@@ -241,9 +254,10 @@ public final class AppModel {
             try await accept(user: me)
         } catch let error as APIError where error.isUnauthorized {
             try? await api.setAccessToken(nil)
+            defaults.removeObject(forKey: Self.cachedUserKey)
             session = .loggedOut
         } catch {
-            alertMessage = error.localizedDescription
+            if user == nil && !isOffline { alertMessage = error.localizedDescription }
         }
     }
 
@@ -342,6 +356,7 @@ public final class AppModel {
         activeConversationID = nil
         tabletPage = nil
         navigation.removeAll()
+        defaults.removeObject(forKey: Self.cachedUserKey)
         session = .loggedOut
     }
 
@@ -446,18 +461,8 @@ public final class AppModel {
             }
         }
         if user.isActive { await synchronizeOnboarding() }
-        conversationSavingPreferenceOverride = nil
-        let conversationKey = Self.activeConversationKeyPrefix + String(user.id)
-        if user.savesConversations == 1,
-           defaults.object(forKey: conversationKey) != nil {
-            activeConversationID = defaults.integer(forKey: conversationKey)
-        } else {
-            activeConversationID = nil
-            if user.savesConversations == 0 {
-                defaults.removeObject(forKey: conversationKey)
-            }
-        }
-        session = user.isActive ? .active(user) : .pending(user)
+        applyLocalUser(user)
+        cacheUserForOffline(user)
         if tokenPersistenceFailed {
             alertMessage = "Du bist angemeldet. Die Sitzung konnte auf diesem Gerät jedoch nicht dauerhaft gespeichert werden."
         }
@@ -472,6 +477,36 @@ public final class AppModel {
             }
             await refreshBadges()
         }
+    }
+
+    private func applyLocalUser(_ user: User) {
+        conversationSavingPreferenceOverride = nil
+        let conversationKey = Self.activeConversationKeyPrefix + String(user.id)
+        if user.savesConversations == 1,
+           defaults.object(forKey: conversationKey) != nil {
+            activeConversationID = defaults.integer(forKey: conversationKey)
+        } else {
+            activeConversationID = nil
+            if user.savesConversations == 0 {
+                defaults.removeObject(forKey: conversationKey)
+            }
+        }
+        session = user.isActive ? .active(user) : .pending(user)
+    }
+
+    func cacheUserForOffline(_ user: User) {
+        guard let encoded = try? JSONEncoder().encode(user),
+              var object = try? JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        else { return }
+        // Never duplicate the bearer token outside the Keychain.
+        object["access_token"] = NSNull()
+        guard let safeData = try? JSONSerialization.data(withJSONObject: object) else { return }
+        defaults.set(safeData, forKey: Self.cachedUserKey)
+    }
+
+    func cachedUserForOffline() -> User? {
+        guard let data = defaults.data(forKey: Self.cachedUserKey) else { return nil }
+        return try? JSONDecoder().decode(User.self, from: data)
     }
 
     private func persistOnboarding(step: Int) {

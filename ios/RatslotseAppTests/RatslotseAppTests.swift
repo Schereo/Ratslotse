@@ -36,6 +36,38 @@ import Testing
     #expect(response.districts[1].description == nil)
 }
 
+@Test func councilBrowserCacheSurvivesARelaunch() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("ratslotse-council-cache-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let page = try JSONDecoder().decode(SessionPage.self, from: Data(#"""
+    {
+      "count": 1,
+      "total": 49,
+      "sessions": [{
+        "ksinr": 8101,
+        "committee": "Rat der Stadt",
+        "session_date": "2026-08-31",
+        "session_time": "18:00",
+        "location": "Alte Fleiwa",
+        "title": "Rat der Stadt",
+        "n_items": 13,
+        "my_topic_items": []
+      }]
+    }
+    """#.utf8))
+
+    let writer = CouncilBrowserCache(directory: directory)
+    await writer.store(page, for: .sessions)
+
+    // A fresh cache instance models the next app process after a relaunch.
+    let reader = CouncilBrowserCache(directory: directory)
+    let restored: SessionPage? = await reader.load(.sessions)
+    #expect(restored?.total == 49)
+    #expect(restored?.sessions.first?.committee == "Rat der Stadt")
+    #expect(restored?.sessions.first?.itemCount == 13)
+}
+
 @Test func webAnalysisLinksStayInsideTheNativeApp() throws {
     let router = AppRouter()
 
@@ -141,6 +173,39 @@ import Testing
 
     let relaunched = AppModel(defaults: defaults)
     #expect(relaunched.appearance == .dark)
+}
+
+@MainActor
+@Test func offlineAccountSnapshotSurvivesWithoutCopyingTheAccessToken() throws {
+    let suiteName = "de.ratslotse.tests.offline-account.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let user = try JSONDecoder().decode(User.self, from: Data(#"""
+    {
+      "id": 17,
+      "email": "offline@example.org",
+      "role": "user",
+      "status": "active",
+      "delivery_channel": "push",
+      "email_verified": true,
+      "apple_linked": false,
+      "has_password": true,
+      "access_token": "must-stay-in-keychain",
+      "display_name": "Offline Test",
+      "qa_speichern": 1
+    }
+    """#.utf8))
+
+    AppModel(defaults: defaults).cacheUserForOffline(user)
+    let relaunched = AppModel(defaults: defaults)
+    let restored = try #require(relaunched.cachedUserForOffline())
+
+    #expect(restored.id == 17)
+    #expect(restored.isActive)
+    #expect(restored.displayName == "Offline Test")
+    #expect(restored.accessToken == nil)
+    let raw = try #require(defaults.data(forKey: "ratslotse.account.offline-user"))
+    #expect(!String(decoding: raw, as: UTF8.self).contains("must-stay-in-keychain"))
 }
 
 @MainActor
