@@ -49,7 +49,7 @@ def main() -> dict:
     try:
         rows = [dict(r) for r in store._conn.execute(  # noqa: SLF001
             "SELECT a.document_id, a.label, a.url, a.raw_text, a.status, "
-            "       v.vorlage_nr "
+            "       v.template_number "
             "FROM council_anlagen a LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
             "WHERE a.label LIKE '%Gebührenbedarf%' ORDER BY a.document_id")]
         print(f"{len(rows)} Anlage(n) mit „Gebührenbedarf“ im Label.", flush=True)
@@ -59,11 +59,11 @@ def main() -> dict:
             if not (r["raw_text"] or "").strip():
                 ohne_text.append((r["document_id"], r["label"], r["status"]))
                 continue
-            bereiche, fehler = lies(r["raw_text"], r["vorlage_nr"])
+            bereiche, fehler = lies(r["raw_text"], r["template_number"])
             gelesen.extend((b, r) for b in bereiche)
             risse.extend(f"{r['document_id']}: {f}" for f in fehler)
             try:
-                saetze = lies_gebuehrensaetze(r["raw_text"], r["vorlage_nr"])
+                saetze = lies_gebuehrensaetze(r["raw_text"], r["template_number"])
             except GebuehrenFehler as fehler:
                 risse.append(f"{r['document_id']}, Anlage 4: {fehler}")
             else:

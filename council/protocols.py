@@ -86,13 +86,13 @@ Ausschusssitzung in Oldenburg. Antworte mit NUR JSON in genau dieser Form:
     {{
       "item_number": "TOP-Nummer wie '9.4'",
       "title": "TOP-Titel",
-      "beschluss": "Wortlaut des gefassten Beschlusses (Endergebnis), sinngemäß gekürzt",
+      "official_text": "Wortlaut des gefassten Beschlusses (Endergebnis), sinngemäß gekürzt",
       "outcome": "angenommen|abgelehnt|vertagt|zur_kenntnis|kein_beschluss",
       "vote": "einstimmig|mehrheitlich oder null",
-      "gegenstimmen": Zahl oder null,
-      "enthaltungen": Zahl oder null,
+      "no_votes": Zahl oder null,
+      "abstentions": Zahl oder null,
       "factions": ["Fraktionen, die zu diesem TOP Anträge/Änderungslisten stellten, sonst leer"],
-      "vorlage_nr": "Vorlagennummer wie '26/0042' oder null",
+      "template_number": "Vorlagennummer wie '26/0042' oder null",
       "raw_result": "der Original-Abstimmungssatz des Endergebnisses",
       "sub_votes": [
         {{
@@ -100,7 +100,7 @@ Ausschusssitzung in Oldenburg. Antworte mit NUR JSON in genau dieser Form:
 z.B. 'Änderungsantrag der BSW-Fraktion: Streichung des Punktes 8 (Umweltzone)'",
           "outcome": "angenommen|abgelehnt|vertagt",
           "vote": "einstimmig|mehrheitlich oder null",
-          "gegenstimmen": Zahl oder null,
+          "no_votes": Zahl oder null,
           "factions": ["antragstellende Fraktion(en)"],
           "raw_result": "der Original-Abstimmungssatz dieser Teilabstimmung"
         }}
@@ -120,7 +120,7 @@ einzelner Fraktionen) als eigenen Eintrag. Wenn es keine Teilabstimmungen gab: l
 Steht im Protokoll, WAS der Antrag ändern/erreichen sollte, gehört das hinein (sinngemäß \
 gekürzt). Nur wenn das Protokoll den Inhalt wirklich nicht nennt, reicht \
 'Änderungsantrag der X-Fraktion'.
-- Das Haupt-"outcome"/"vote"/"beschluss" beschreibt das ENDergebnis des TOP, die \
+- Das Haupt-"outcome"/"vote"/"official_text" beschreibt das ENDergebnis des TOP, die \
 sub_votes die einzelnen Abstimmungen davor.
 - Zahlen als Zahl ausschreiben (z.B. "fünf" -> 5).
 - Erfinde nichts; fehlende Werte = null.

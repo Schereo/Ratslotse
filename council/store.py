@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import logging
 import json
 import re
 from datetime import datetime, timezone
@@ -32,16 +33,16 @@ def _norm_title(t: str) -> str:
     return re.sub(r"\s+", " ", t).strip()
 
 
-def _dedup_keys(title: str, vorlage_nr, decision_id: int) -> list[str]:
+def _dedup_keys(title: str, template_number, decision_id: int) -> list[str]:
     """Collapse keys for a decision: the base Vorlage-Nr (strongest signal — same
     matter across committees/revisions, '22/0348' == '22/0348/1', and robust to title
     spelling variants) and the normalised title (catches recurring series under
     different Vorlagen). Two rows collapse if they share EITHER. Short/sparse titles
     fall back to the id so distinct tiny-title decisions are never merged."""
     keys: list[str] = []
-    if vorlage_nr and str(vorlage_nr).strip():
+    if template_number and str(template_number).strip():
         # Keep the base Vorlage (first two segments): "22/0348/1" → "22/0348".
-        keys.append("v:" + "/".join(str(vorlage_nr).strip().split("/")[:2]))
+        keys.append("v:" + "/".join(str(template_number).strip().split("/")[:2]))
     nt = _norm_title(title)
     keys.append("t:" + nt if len(nt) >= 12 else f"\x00id{decision_id}")
     return keys
@@ -72,7 +73,7 @@ CREATE TABLE IF NOT EXISTS council_agenda_items (
     ksinr        INTEGER NOT NULL,
     item_number  TEXT NOT NULL,
     title        TEXT NOT NULL,
-    vorlage_nr   TEXT,
+    template_number   TEXT,
     kvonr        INTEGER,
     is_public    INTEGER NOT NULL DEFAULT 1,
     UNIQUE(ksinr, item_number),
@@ -238,13 +239,13 @@ CREATE TABLE IF NOT EXISTS council_decisions (
     parent_item  TEXT,                          -- TOP number a subvote belongs to
     item_number  TEXT,
     title        TEXT,
-    beschluss    TEXT,
+    official_text    TEXT,
     outcome      TEXT,                          -- angenommen|abgelehnt|vertagt|zur_kenntnis|kein_beschluss
     vote         TEXT,                          -- einstimmig|mehrheitlich|null
-    gegenstimmen INTEGER,
-    enthaltungen INTEGER,
+    no_votes INTEGER,
+    abstentions INTEGER,
     factions     TEXT,                          -- JSON array
-    vorlage_nr   TEXT,
+    template_number   TEXT,
     kvonr        INTEGER,
     raw_result   TEXT,
     policy_field TEXT,                          -- one key from council.topics.POLICY_FIELDS
@@ -399,7 +400,40 @@ class CouncilStore:
                 yield
         finally:
             self._sammelt = False
+    def _spalten_umbenennen(self, tabelle: str, paare: list[tuple[str, str]]) -> None:
+        """Benennt Spalten um, sofern sie noch alt heißen — idempotent.
+
+        SQLite zieht Indizes und Fremdschlüssel selbst nach. Läuft bei jedem
+        Start; nach dem ersten Mal ist es ein PRAGMA und sonst nichts.
+        """
+        vorhanden = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
+        if not vorhanden:
+            return
+        for alt, neu in paare:
+            if alt in vorhanden and neu not in vorhanden:
+                with self._conn:
+                    self._conn.execute(
+                        f"ALTER TABLE {tabelle} RENAME COLUMN {alt} TO {neu}")
+                logging.getLogger("ratslotse.council.store").warning(
+                    "Spalte umbenannt: %s.%s → %s", tabelle, alt, neu)
+
     def _migrate(self) -> None:
+        # 08/2026: Der Code spricht Englisch, die Spalten ziehen nach. Ohne
+        # das bräuchte jede Abfrage einen Alias — und genau die wollen wir
+        # nicht (Tims Vorgabe „ohne Mappings").
+        self._spalten_umbenennen("council_decisions", [
+            ("beschluss", "official_text"), ("gegenstimmen", "no_votes"),
+            ("enthaltungen", "abstentions"), ("abweichung", "deviation"),
+            ("vorlage_nr", "template_number")])
+        for tabelle in ("council_ergebnisrechnung", "council_finanzrechnung"):
+            self._spalten_umbenennen(tabelle, [("abweichung", "deviation")])
+        for tabelle in ("council_agenda_items", "council_vorlagen", "council_gebuehren",
+                        "council_gebuehrensaetze", "council_haushaltssatzung",
+                        "council_wirtschaftsplaene", "council_nachbewilligungen",
+                        "council_spenden", "council_spenden_verworfen",
+                        "council_vorlage_embeddings"):
+            self._spalten_umbenennen(tabelle, [("vorlage_nr", "template_number")])
+
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
         if "agenda_hash" not in cols:
             with self._conn:
@@ -441,8 +475,8 @@ class CouncilStore:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN impact_reason TEXT")
                 # Abweichung des Beschlusses vom Beschlussvorschlag der Verwaltung
                 # (Regex-Ernte, council.ernte): unveraendert | leicht | stark.
-                if "abweichung" not in dec_cols:
-                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN abweichung TEXT")
+                if "deviation" not in dec_cols:
+                    self._conn.execute("ALTER TABLE council_decisions ADD COLUMN deviation TEXT")
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_field ON council_decisions(policy_field)"
                 )
@@ -583,17 +617,17 @@ class CouncilStore:
             "CREATE INDEX IF NOT EXISTS idx_entrelated_slug ON council_entity_related(slug, rank)"
         )
         # Vorlagen full text (council.vorlagen): the Sachverhalt/Begründung behind a
-        # decision. Keyed by kvonr (the SessionNet document id); vorlage_nr is the
+        # decision. Keyed by kvonr (the SessionNet document id); template_number is the
         # human number ("26/0330") decisions/agenda items reference.
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_vorlagen ("
-            "kvonr INTEGER PRIMARY KEY, vorlage_nr TEXT, title TEXT, art TEXT, "
+            "kvonr INTEGER PRIMARY KEY, template_number TEXT, title TEXT, art TEXT, "
             "document_id INTEGER, document_url TEXT, raw_text TEXT, n_pages INTEGER, "
             "fetched_at TEXT NOT NULL, "
             "status TEXT NOT NULL DEFAULT 'ok', "  # ok | empty | no_pdf | failed
             "anlagen_scanned INTEGER NOT NULL DEFAULT 0)"
         )
-        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_vorlagen_nr ON council_vorlagen(vorlage_nr)")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_vorlagen_nr ON council_vorlagen(template_number)")
         # anlagen_scanned kam nach dem ersten Deploy der Tabelle dazu.
         vcols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_vorlagen)").fetchall()}
         if "anlagen_scanned" not in vcols:
@@ -750,7 +784,7 @@ class CouncilStore:
             "thh_nr INTEGER, thh_name TEXT, "     # NULL = Gesamtrechnung
             "nr INTEGER NOT NULL, "               # Postennummer der Tabelle (1–24)
             "bezeichnung TEXT NOT NULL, "
-            "vorjahr REAL, ansatz REAL, ergebnis REAL, abweichung REAL, "
+            "vorjahr REAL, ansatz REAL, ergebnis REAL, deviation REAL, "
             "ist_summe INTEGER NOT NULL DEFAULT 0, "
             "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, thh_nr, nr))"
@@ -768,7 +802,7 @@ class CouncilStore:
                 "CREATE TABLE council_ergebnisrechnung ("
                 "jahr INTEGER NOT NULL, thh_nr INTEGER, thh_name TEXT, "
                 "nr INTEGER NOT NULL, bezeichnung TEXT NOT NULL, "
-                "vorjahr REAL, ansatz REAL, ergebnis REAL, abweichung REAL, "
+                "vorjahr REAL, ansatz REAL, ergebnis REAL, deviation REAL, "
                 "ist_summe INTEGER NOT NULL DEFAULT 0, "
                 "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
                 "PRIMARY KEY (jahr, thh_nr, nr))"
@@ -809,7 +843,7 @@ class CouncilStore:
             "rolle TEXT, "                        # stabiler Name, NULL = Einzelzeile
             "bezeichnung TEXT NOT NULL, "         # Wortlaut des Dokuments
             "vorjahr REAL, ansatz REAL, plan REAL, plan_art TEXT, "
-            "ergebnis REAL, abweichung REAL, ermaechtigung REAL, "
+            "ergebnis REAL, deviation REAL, ermaechtigung REAL, "
             "ist_summe INTEGER NOT NULL DEFAULT 0, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (jahr, nr))"
@@ -1594,7 +1628,7 @@ class CouncilStore:
             "bezugseinheit TEXT, "
             "gebuehr REAL, "                   # die errechnete, 3 Nachkommast.
             "gebuehrenvorschlag REAL, "        # die gerundete an den Rat
-            "vorlage_nr TEXT, "
+            "template_number TEXT, "
             "proben TEXT NOT NULL, "
             "herkunft_id INTEGER, "
             "fetched_at TEXT NOT NULL, "
@@ -1614,7 +1648,7 @@ class CouncilStore:
             "einheit TEXT NOT NULL, "
             "vorjahr REAL, "
             "veraenderung_prozent REAL, "
-            "vorlage_nr TEXT, "
+            "template_number TEXT, "
             "proben TEXT NOT NULL, "
             "herkunft_id INTEGER, "
             "fetched_at TEXT NOT NULL, "
@@ -1661,7 +1695,7 @@ class CouncilStore:
             "hebesatz_grundsteuer_b INTEGER, "
             "hebesatz_gewerbesteuer INTEGER, "
             "sitzung_am TEXT, "                       # NULL bei „xx.xx.JJJJ"
-            "vorlage_nr TEXT, "
+            "template_number TEXT, "
             "proben TEXT NOT NULL, "
             "herkunft_id INTEGER, "
             "fetched_at TEXT NOT NULL, "
@@ -1789,7 +1823,7 @@ class CouncilStore:
             "betrieb TEXT NOT NULL, "          # Kürzel aus wirtschaftsplan.BETRIEBE
             "jahr INTEGER NOT NULL, "          # Haushaltsjahr, nicht Jahr der Vorlage
             "betrieb_name TEXT NOT NULL, "
-            "vorlage_nr TEXT NOT NULL, "
+            "template_number TEXT NOT NULL, "
             # Nullbar seit 20.08.2026: Nicht jede Quelle gibt das volle Tripel.
             # Beschlusstext (EGH) und Erfolgsplan-Tabelle (AWB) liefern Erträge,
             # Aufwendungen UND Ergebnis; bei Bäderbetriebsgesellschaft, Stadion
@@ -1847,7 +1881,7 @@ class CouncilStore:
                 self._conn.execute(
                     "CREATE TABLE council_wirtschaftsplaene ("
                     "betrieb TEXT NOT NULL, jahr INTEGER NOT NULL, "
-                    "betrieb_name TEXT NOT NULL, vorlage_nr TEXT NOT NULL, "
+                    "betrieb_name TEXT NOT NULL, template_number TEXT NOT NULL, "
                     "ertraege REAL, aufwendungen REAL, steuern REAL, "
                     "ergebnis REAL NOT NULL, vermoegensplan REAL, "
                     "verpflichtungen REAL, entwurf_vom TEXT, proben TEXT NOT NULL, "
@@ -1858,10 +1892,10 @@ class CouncilStore:
                 # verschieben, und dann landeten Beträge in Textfeldern.
                 self._conn.execute(
                     "INSERT INTO council_wirtschaftsplaene "
-                    "(betrieb, jahr, betrieb_name, vorlage_nr, ertraege, aufwendungen, "
+                    "(betrieb, jahr, betrieb_name, template_number, ertraege, aufwendungen, "
                     " steuern, ergebnis, vermoegensplan, verpflichtungen, entwurf_vom, "
                     " proben, herkunft_id, fetched_at) "
-                    "SELECT betrieb, jahr, betrieb_name, vorlage_nr, ertraege, "
+                    "SELECT betrieb, jahr, betrieb_name, template_number, ertraege, "
                     " aufwendungen, steuern, ergebnis, vermoegensplan, verpflichtungen, "
                     " entwurf_vom, proben, herkunft_id, fetched_at FROM _wp_alt")
                 alt_n = self._conn.execute("SELECT COUNT(*) FROM _wp_alt").fetchone()[0]
@@ -2013,7 +2047,7 @@ class CouncilStore:
         # wäre falsch; NULL heißt „diese Zeile trägt keinen Betrag".
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_nachbewilligungen ("
-            "vorlage_nr TEXT PRIMARY KEY, "
+            "template_number TEXT PRIMARY KEY, "
             "jahr INTEGER, "                   # aus der Vorlagen-Nummer
             "titel TEXT NOT NULL, "
             "art TEXT NOT NULL, "              # bewilligung|verpflichtungs…|schwelle
@@ -2079,7 +2113,7 @@ class CouncilStore:
         # öffentlich, nicht die Liste dahinter.
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_spenden ("
-            "vorlage_nr TEXT PRIMARY KEY, "
+            "template_number TEXT PRIMARY KEY, "
             "jahr INTEGER NOT NULL, "          # Jahr der Sitzung
             "sitzung TEXT NOT NULL, "          # ISO-Datum
             "betrag REAL NOT NULL, "           # in Euro, wie beschlossen
@@ -2094,7 +2128,7 @@ class CouncilStore:
         # aus der Summe zu fehlen.
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_spenden_verworfen ("
-            "vorlage_nr TEXT PRIMARY KEY, "
+            "template_number TEXT PRIMARY KEY, "
             "sitzung TEXT, "
             "grund TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
@@ -2160,12 +2194,12 @@ class CouncilStore:
         # macht das Embedding-Skript idempotent (nur Geändertes wird neu embedded).
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_vorlage_embeddings ("
-            "vorlage_nr TEXT NOT NULL, "
+            "template_number TEXT NOT NULL, "
             "chunk_idx INTEGER NOT NULL, "
             "text_hash TEXT NOT NULL, "
             "chunk_text TEXT NOT NULL, "   # der Reranker bekommt die FUNDSTELLE zu sehen
             "vector BLOB NOT NULL, "
-            "PRIMARY KEY (vorlage_nr, chunk_idx))"
+            "PRIMARY KEY (template_number, chunk_idx))"
         )
         # Anlagen-Chunks (Task 33): Gutachten, Konzepte, Stellungnahmen — die
         # Volltexte lädt scripts/backfill_anlagen_texte.py, die Vektoren baut
@@ -2694,11 +2728,11 @@ class CouncilStore:
             )
             self._conn.executemany(
                 """INSERT OR IGNORE INTO council_agenda_items
-                   (ksinr, item_number, title, vorlage_nr, kvonr, is_public)
+                   (ksinr, item_number, title, template_number, kvonr, is_public)
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 [
                     (session.ksinr, i.item_number, i.title,
-                     i.vorlage_nr, i.kvonr, int(i.is_public))
+                     i.template_number, i.kvonr, int(i.is_public))
                     for i in session.agenda_items
                 ],
             )
@@ -2896,7 +2930,7 @@ class CouncilStore:
         "antraege", "antrag", "fraktionen", "fraktion", "gruppen", "gruppe",
         "ratsund", "ausschussmitglieder", "mitglieder", "berichte", "bericht",
         "anfragen", "anregungen", "mitteilungen", "verschiedenes", "verwaltung",
-        "beschluss", "beschluesse", "vorlagen", "sonstiges", "genehmigung",
+        "official_text", "beschluesse", "vorlagen", "sonstiges", "genehmigung",
         "protokolle", "protokolls", "tagesordnung", "oeffentlicher", "teil",
     })
 
@@ -3019,7 +3053,7 @@ class CouncilStore:
                 rang += 1.0
             if p.get("summary"):
                 rang += 0.4          # erklärbar schlägt unerklärt bei Gleichstand
-            if p.get("vorlage_nr"):
+            if p.get("template_number"):
                 rang += 0.2
             # Beschlussvorlage heißt: Die Verwaltung legt etwas zur
             # Entscheidung vor. Das ist unabhängig davon, welches Gremium
@@ -3121,7 +3155,7 @@ class CouncilStore:
         # verfügbare Signal dafür, ob überhaupt etwas entschieden werden soll.
         # Es lag bis 19.08.26 ungenutzt in der Datenbank.
         rohe = self._conn.execute(
-            f"SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr, s.summary, "
+            f"SELECT a.ksinr, a.item_number, a.title, a.template_number, a.kvonr, s.summary, "
             f"       v.art, so.text AS social_text "
             f"FROM council_agenda_items a "
             f"LEFT JOIN agenda_item_summaries s ON s.ksinr = a.ksinr AND s.item_number = a.item_number "
@@ -3164,7 +3198,7 @@ class CouncilStore:
         # nie als Punkt auftauchen — das gilt für Vorhaben UND Rubriken. Nur
         # die Vorhaben bündeln zusätzlich ihre Unterpunkte.
         kopfzeile = {(r["ksinr"], r["item_number"]) for r in rohe
-                     if not r["vorlage_nr"] and (r["ksinr"], r["item_number"]) in kinder_worte}
+                     if not r["template_number"] and (r["ksinr"], r["item_number"]) in kinder_worte}
         ueberschrift = {}
         for r in rohe:
             schl = (r["ksinr"], r["item_number"])
@@ -3196,7 +3230,7 @@ class CouncilStore:
                 # Die Karte sagt das dazu, statt ihn wie einen Punkt der
                 # amtlichen Tagesordnung zu zeigen — er steht in keiner.
                 "dringlich": ist_dringlichkeitsantrag(r["item_number"]),
-                "vorlage_nr": r["vorlage_nr"], "kvonr": r["kvonr"], "art": r["art"],
+                "template_number": r["template_number"], "kvonr": r["kvonr"], "art": r["art"],
                 "committee": sitz["committee"], "session_date": sitz["session_date"],
                 "gruppe_nr": gruppe_nr,
                 "gruppe_titel": ueberschrift.get((r["ksinr"], gruppe_nr)),
@@ -3383,7 +3417,7 @@ class CouncilStore:
                 "summary": k["summary"], "social_text": k.get("social_text"),
                 "dringlich": k.get("dringlich", False),
                 "wichtig": k["wichtig"], "wichtig_grund": k.get("wichtig_grund"),
-                "vorlage_nr": k["vorlage_nr"], "kvonr": k["kvonr"],
+                "template_number": k["template_number"], "kvonr": k["kvonr"],
                 "committee": k["committee"], "session_date": k["session_date"],
                 "gruppe_nr": k["gruppe_nr"], "gruppe_titel": k["gruppe_titel"],
                 "gruppe_stationen": k["gruppe_stationen"],
@@ -3519,7 +3553,7 @@ class CouncilStore:
         bis = (date.today() + timedelta(days=tage_voraus)).isoformat()
         if ksinr is not None:
             heute, bis = "0000-00-00", "9999-99-99"
-        sql = """SELECT a.ksinr, a.item_number, a.title, a.kvonr, a.vorlage_nr,
+        sql = """SELECT a.ksinr, a.item_number, a.title, a.kvonr, a.template_number,
                         cs.committee, cs.session_date,
                         v.art, v.amt, v.beschlussvorschlag, v.finanz_check,
                         v.klima_check, v.raw_text,
@@ -3694,7 +3728,7 @@ class CouncilStore:
 
     def agenda_items(self, ksinr: int) -> list[dict]:
         rows = self._conn.execute(
-            """SELECT item_number, title, vorlage_nr, kvonr, is_public
+            """SELECT item_number, title, template_number, kvonr, is_public
                FROM council_agenda_items WHERE ksinr = ?
                ORDER BY id""",
             (ksinr,),
@@ -3766,7 +3800,7 @@ class CouncilStore:
             filters.append(
                 """(cs.committee LIKE ? OR cs.ksinr IN (
                        SELECT ksinr FROM council_agenda_items
-                       WHERE title LIKE ? OR vorlage_nr LIKE ?))"""
+                       WHERE title LIKE ? OR template_number LIKE ?))"""
             )
             like = f"%{query}%"
             params += [like, like, like]
@@ -3821,9 +3855,9 @@ class CouncilStore:
             placeholders = ",".join("?" * len(ksinrs))
             like = f"%{query}%"
             matched = self._conn.execute(
-                f"""SELECT ksinr, item_number, title, vorlage_nr, kvonr, is_public
+                f"""SELECT ksinr, item_number, title, template_number, kvonr, is_public
                     FROM council_agenda_items
-                    WHERE ksinr IN ({placeholders}) AND (title LIKE ? OR vorlage_nr LIKE ?)
+                    WHERE ksinr IN ({placeholders}) AND (title LIKE ? OR template_number LIKE ?)
                     ORDER BY ksinr, id""",
                 [*ksinrs, like, like],
             ).fetchall()
@@ -3844,17 +3878,17 @@ class CouncilStore:
         return row is not None
 
     def _insert_decision(self, ksinr, position, kind, parent_item, item_number, title,
-                         beschluss, outcome, vote, gegenstimmen, enthaltungen, factions,
-                         vorlage_nr, kvonr, raw_result) -> None:
+                         official_text, outcome, vote, no_votes, abstentions, factions,
+                         template_number, kvonr, raw_result) -> None:
         cur = self._conn.execute(
             "INSERT INTO council_decisions "
-            "(ksinr, position, kind, parent_item, item_number, title, beschluss, outcome, "
-            " vote, gegenstimmen, enthaltungen, factions, vorlage_nr, kvonr, raw_result) "
+            "(ksinr, position, kind, parent_item, item_number, title, official_text, outcome, "
+            " vote, no_votes, abstentions, factions, template_number, kvonr, raw_result) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (ksinr, position, kind, parent_item, item_number, title, beschluss, outcome,
-             vote, _int_or_none(gegenstimmen), _int_or_none(enthaltungen),
+            (ksinr, position, kind, parent_item, item_number, title, official_text, outcome,
+             vote, _int_or_none(no_votes), _int_or_none(abstentions),
              json.dumps(factions or [], ensure_ascii=False),
-             vorlage_nr, _int_or_none(kvonr), raw_result),
+             template_number, _int_or_none(kvonr), raw_result),
         )
         # Nennt der Abstimmungssatz Fraktionen ausdrücklich (Gegenstimmen/
         # Enthaltungen), landen sie strukturiert in council_decision_votes —
@@ -3906,16 +3940,16 @@ class CouncilStore:
             pos = 0
             for d in decisions:
                 self._insert_decision(ksinr, pos, "decision", None,
-                                      d.get("item_number"), d.get("title"), d.get("beschluss"),
-                                      d.get("outcome"), d.get("vote"), d.get("gegenstimmen"),
-                                      d.get("enthaltungen"), d.get("factions"),
-                                      d.get("vorlage_nr"), d.get("kvonr"), d.get("raw_result"))
+                                      d.get("item_number"), d.get("title"), d.get("official_text"),
+                                      d.get("outcome"), d.get("vote"), d.get("no_votes"),
+                                      d.get("abstentions"), d.get("factions"),
+                                      d.get("template_number"), d.get("kvonr"), d.get("raw_result"))
                 pos += 1
                 for sv in d.get("sub_votes") or []:
                     self._insert_decision(ksinr, pos, "subvote", d.get("item_number"),
                                           d.get("item_number"), sv.get("description"), None,
-                                          sv.get("outcome"), sv.get("vote"), sv.get("gegenstimmen"),
-                                          sv.get("enthaltungen"), sv.get("factions"),
+                                          sv.get("outcome"), sv.get("vote"), sv.get("no_votes"),
+                                          sv.get("abstentions"), sv.get("factions"),
                                           None, None, sv.get("raw_result"))
                     pos += 1
             for a in attendance:
@@ -3936,51 +3970,51 @@ class CouncilStore:
                 )
             # Auch Revisions-Zitate („22/0348/1") an die Basis-Vorlage
             # („22/0348") hängen — exakter Treffer gewinnt vor dem Präfix
-            # (Review-Befund E2: sonst blieben kvonr und abweichung NULL,
+            # (Review-Befund E2: sonst blieben kvonr und deviation NULL,
             # obwohl get_vorlage_by_nr die Vorlage längst auflöst).
             self._conn.execute(
                 "UPDATE council_decisions SET kvonr = COALESCE("
-                "(SELECT MAX(v.kvonr) FROM council_vorlagen v WHERE v.vorlage_nr = council_decisions.vorlage_nr), "
+                "(SELECT MAX(v.kvonr) FROM council_vorlagen v WHERE v.template_number = council_decisions.template_number), "
                 "(SELECT MAX(v.kvonr) FROM council_vorlagen v "
-                " WHERE instr(council_decisions.vorlage_nr, v.vorlage_nr || '/') = 1)) "
-                "WHERE ksinr = ? AND kvonr IS NULL AND vorlage_nr IS NOT NULL",
+                " WHERE instr(council_decisions.template_number, v.template_number || '/') = 1)) "
+                "WHERE ksinr = ? AND kvonr IS NULL AND template_number IS NOT NULL",
                 (ksinr,),
             )
         self.refresh_abweichung(ksinr=ksinr)
 
-    def refresh_abweichung(self, ksinr: int | None = None, vorlage_nr: str | None = None) -> int:
-        """Beschluss ↔ Beschlussvorschlag vergleichen (council.ernte.abweichung)
+    def refresh_abweichung(self, ksinr: int | None = None, template_number: str | None = None) -> int:
+        """Beschluss ↔ Beschlussvorschlag vergleichen (council.ernte.deviation)
         und das Ergebnis an den Beschlüssen ablegen. Zwei Auslöser, weil Vorlage
         und Protokoll in beliebiger Reihenfolge eintreffen: nach save_protocol
-        (per ksinr) und nach save_vorlage (per vorlage_nr). Nur angenommene
+        (per ksinr) und nach save_vorlage (per template_number). Nur angenommene
         Beschlüsse — eine Vertagung oder Ablehnung ist keine Textänderung."""
         from council import ernte
 
-        sql = ("SELECT id, vorlage_nr, beschluss FROM council_decisions "
+        sql = ("SELECT id, template_number, official_text FROM council_decisions "
                "WHERE kind = 'decision' AND outcome = 'angenommen' "
-               "AND beschluss IS NOT NULL AND vorlage_nr IS NOT NULL")
+               "AND official_text IS NOT NULL AND template_number IS NOT NULL")
         args: tuple = ()
         if ksinr is not None:
             sql += " AND ksinr = ?"
             args = (ksinr,)
-        elif vorlage_nr is not None:
+        elif template_number is not None:
             # Auch Beschlüsse, die eine REVISION dieser Nummer zitieren
             # („22/0348/1" bei gespeicherter Basis „22/0348") — der
             # get_vorlage_by_nr-Fallback löst sie ohnehin auf (Befund E2).
-            base = "/".join(vorlage_nr.split("/")[:2])
-            sql += " AND (vorlage_nr IN (?, ?) OR vorlage_nr LIKE ? || '/%')"
-            args = (vorlage_nr, base, vorlage_nr)
+            base = "/".join(template_number.split("/")[:2])
+            sql += " AND (template_number IN (?, ?) OR template_number LIKE ? || '/%')"
+            args = (template_number, base, template_number)
         vorschlaege: dict[str, str | None] = {}
         updates = []
-        for did, nr, beschluss in self._conn.execute(sql, args).fetchall():
+        for did, nr, official_text in self._conn.execute(sql, args).fetchall():
             if nr not in vorschlaege:
                 v = self.get_vorlage_by_nr(nr)
                 vorschlaege[nr] = (v or {}).get("beschlussvorschlag")
-            updates.append((ernte.abweichung(vorschlaege[nr], beschluss), did))
+            updates.append((ernte.deviation(vorschlaege[nr], official_text), did))
         if updates:
             with self._conn:
                 self._conn.executemany(
-                    "UPDATE council_decisions SET abweichung = ? WHERE id = ?", updates)
+                    "UPDATE council_decisions SET deviation = ? WHERE id = ?", updates)
         return len(updates)
 
     def mark_protocol_failed(self, ksinr: int, document: dict) -> None:
@@ -4067,7 +4101,7 @@ class CouncilStore:
             else:
                 filters.append("0")  # party given but no matches
         if query:
-            filters.append("(d.title LIKE ? OR d.beschluss LIKE ? OR d.summary LIKE ?)")
+            filters.append("(d.title LIKE ? OR d.official_text LIKE ? OR d.summary LIKE ?)")
             like = f"%{query}%"
             params += [like, like, like]
         if committee:
@@ -4112,7 +4146,7 @@ class CouncilStore:
         elif not include_subvotes:
             # Design 23a: Änderungsanträge (kind='subvote') tauchen standardmäßig
             # NICHT als eigene Treffer auf — sie hängen als Kontext am Ursprungs-
-            # beschluss. include_subvotes=True (Filter „einzeln zeigen") bringt sie
+            # official_text. include_subvotes=True (Filter „einzeln zeigen") bringt sie
             # zurück; ein expliziter kind-Filter behält Vorrang.
             filters.append("d.kind = 'decision'")
         if faction:
@@ -4264,11 +4298,11 @@ class CouncilStore:
         """Beschlüsse ohne „einfach erklärt"-Kurzfassung (RL-904): nur echte
         Beschlüsse mit substanziellem Beschlusstext, neueste zuerst — so holt
         ein limitierter Backfill die relevantesten zuerst nach."""
-        sql = """SELECT d.id, d.title, d.beschluss, d.summary, cs.committee, cs.session_date
+        sql = """SELECT d.id, d.title, d.official_text, d.summary, cs.committee, cs.session_date
                  FROM council_decisions d
                  JOIN council_sessions cs ON cs.ksinr = d.ksinr
                  WHERE d.kind = 'decision' AND d.simple_summary IS NULL
-                   AND d.beschluss IS NOT NULL AND length(d.beschluss) >= 200
+                   AND d.official_text IS NOT NULL AND length(d.official_text) >= 200
                  ORDER BY cs.session_date DESC, d.id"""
         args: tuple = ()
         if limit is not None:
@@ -4289,7 +4323,7 @@ class CouncilStore:
         """Beschlüsse ohne Interessantheits-Score: nur echte Beschlüsse mit
         Titel, neueste zuerst (ein limitierter Backfill holt die relevantesten
         zuerst nach — wie bei „einfach erklärt")."""
-        sql = """SELECT d.id, d.title, d.beschluss, d.summary, d.outcome, d.amount_eur,
+        sql = """SELECT d.id, d.title, d.official_text, d.summary, d.outcome, d.amount_eur,
                         cs.committee, cs.session_date
                  FROM council_decisions d
                  JOIN council_sessions cs ON cs.ksinr = d.ksinr
@@ -4312,8 +4346,8 @@ class CouncilStore:
     def decisions_needing_impact(self, limit: int | None = None) -> list[dict]:
         """Beschlüsse ohne Tragweite-Score (RL-U16), neueste zuerst — mit den
         Struktur-Signalen, die der Prompt neben dem Text sehen soll."""
-        sql = """SELECT d.id, d.title, d.beschluss, d.summary, d.outcome, d.kind,
-                        d.amount_eur, d.vote, d.gegenstimmen, cs.committee, cs.session_date
+        sql = """SELECT d.id, d.title, d.official_text, d.summary, d.outcome, d.kind,
+                        d.amount_eur, d.vote, d.no_votes, cs.committee, cs.session_date
                  FROM council_decisions d
                  JOIN council_sessions cs ON cs.ksinr = d.ksinr
                  WHERE d.kind IN ('decision', 'subvote') AND d.impact IS NULL
@@ -4371,7 +4405,7 @@ class CouncilStore:
 
         heute = date.today().isoformat()
         bis = (date.today() + timedelta(days=tage_voraus)).isoformat()
-        sql = """SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr,
+        sql = """SELECT a.ksinr, a.item_number, a.title, a.template_number, a.kvonr,
                         s.summary, cs.committee, cs.session_date,
                         v.beschlussvorschlag, v.finanz_check, v.amt, v.art,
                         (SELECT COUNT(*) FROM council_beratungen b WHERE b.kvonr = a.kvonr)
@@ -4474,8 +4508,8 @@ class CouncilStore:
         früheres Jahr).
         """
         exclude = exclude_ids or set()
-        sql = """SELECT d.id, d.title, d.beschluss, d.summary, d.outcome, d.vote,
-                        d.amount_eur, d.interest, d.impact, d.gegenstimmen,
+        sql = """SELECT d.id, d.title, d.official_text, d.summary, d.outcome, d.vote,
+                        d.amount_eur, d.interest, d.impact, d.no_votes,
                         cs.committee, cs.session_date,
                         (? * d.interest + ? * d.impact) AS fundwert
                  FROM council_decisions d
@@ -4609,16 +4643,16 @@ class CouncilStore:
                 e["outcomes"].append(r["outcome"])
         return out
 
-    def vorlage_journey(self, vorlage_nr: str) -> list[dict]:
+    def vorlage_journey(self, template_number: str) -> list[dict]:
         """All sessions where a Vorlage appears on the agenda — its path through
         the committees and the council, oldest first."""
         rows = self._conn.execute(
             """SELECT DISTINCT cs.ksinr, cs.committee, cs.session_date, ci.item_number
                FROM council_agenda_items ci
                JOIN council_sessions cs ON cs.ksinr = ci.ksinr
-               WHERE ci.vorlage_nr = ?
+               WHERE ci.template_number = ?
                ORDER BY cs.session_date""",
-            (vorlage_nr,),
+            (template_number,),
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -4650,17 +4684,17 @@ class CouncilStore:
         with self._conn:
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_vorlagen "
-                "(kvonr, vorlage_nr, title, art, document_id, document_url, "
+                "(kvonr, template_number, title, art, document_id, document_url, "
                 " raw_text, n_pages, fetched_at, status, amt, klima_check, "
                 " finanz_check, beschlussvorschlag) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (row["kvonr"], row.get("vorlage_nr"), row.get("title"), row.get("art"),
+                (row["kvonr"], row.get("template_number"), row.get("title"), row.get("art"),
                  row.get("document_id"), row.get("document_url"), row.get("raw_text"),
                  row.get("n_pages"), now, row.get("status", "ok"),
                  ernte.federfuehrendes_amt(text), aus["klima"], aus["finanzen"],
                  ernte.beschlussvorschlag(text)),
             )
-        if row.get("vorlage_nr"):
-            self.refresh_abweichung(vorlage_nr=row["vorlage_nr"])
+        if row.get("template_number"):
+            self.refresh_abweichung(template_number=row["template_number"])
 
     def mark_vorlage_failed(self, kvonr: int) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
@@ -4670,17 +4704,17 @@ class CouncilStore:
                 "VALUES (?, ?, 'failed')", (kvonr, now),
             )
 
-    def get_vorlage_by_nr(self, vorlage_nr: str) -> dict | None:
-        """The Vorlage row for a decision's vorlage_nr. Falls back to the base
+    def get_vorlage_by_nr(self, template_number: str) -> dict | None:
+        """The Vorlage row for a decision's template_number. Falls back to the base
         number ("22/0348/1" → "22/0348") because protocols sometimes cite a
         revision the agenda linked under its base document."""
-        nr = (vorlage_nr or "").strip()
+        nr = (template_number or "").strip()
         if not nr:
             return None
         base = "/".join(nr.split("/")[:2])
         row = self._conn.execute(
-            "SELECT * FROM council_vorlagen WHERE vorlage_nr IN (?, ?) "
-            "ORDER BY (vorlage_nr = ?) DESC, kvonr DESC LIMIT 1",
+            "SELECT * FROM council_vorlagen WHERE template_number IN (?, ?) "
+            "ORDER BY (template_number = ?) DESC, kvonr DESC LIMIT 1",
             (nr, base, nr),
         ).fetchone()
         return dict(row) if row else None
@@ -4694,17 +4728,17 @@ class CouncilStore:
         return dict(row) if row else None
 
     def vorlage_texts_for(self, vorlage_nrs: list[str]) -> dict[str, str]:
-        """Batch raw texts for Q&A context enrichment: exact vorlage_nr → text
+        """Batch raw texts for Q&A context enrichment: exact template_number → text
         (only rows that actually have text). Best-effort — no base-nr fallback."""
         nrs = sorted({(n or "").strip() for n in vorlage_nrs if n and str(n).strip()})
         if not nrs:
             return {}
         ph = ",".join("?" * len(nrs))
         rows = self._conn.execute(
-            f"SELECT vorlage_nr, raw_text FROM council_vorlagen "
-            f"WHERE vorlage_nr IN ({ph}) AND status = 'ok'", nrs,
+            f"SELECT template_number, raw_text FROM council_vorlagen "
+            f"WHERE template_number IN ({ph}) AND status = 'ok'", nrs,
         ).fetchall()
-        return {r["vorlage_nr"]: r["raw_text"] for r in rows if r["raw_text"]}
+        return {r["template_number"]: r["raw_text"] for r in rows if r["raw_text"]}
 
     # --- Anlagen (documents attached to a Vorlage, incl. fraction motions) -----
 
@@ -4758,10 +4792,10 @@ class CouncilStore:
             out.append({"kvonr": r[0], "known_ids": known})
         return out
 
-    def anlagen_for_vorlage_nr(self, vorlage_nr: str) -> list[dict]:
+    def anlagen_for_vorlage_nr(self, template_number: str) -> list[dict]:
         """Anlagen for a decision's Vorlage (base-nr fallback like
         ``get_vorlage_by_nr``), motions first, each with parsed Antragsteller."""
-        v = self.get_vorlage_by_nr(vorlage_nr)
+        v = self.get_vorlage_by_nr(template_number)
         if not v:
             return []
         rows = self._conn.execute(
@@ -4826,7 +4860,7 @@ class CouncilStore:
         ph = ",".join("?" * len(kvonrs))
         rows = self._conn.execute(
             f"SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS art, "
-            f"       v.vorlage_nr, v.title AS vorlage_titel "
+            f"       v.template_number, v.title AS vorlage_titel "
             f"FROM council_beratungen b JOIN council_vorlagen v ON v.kvonr = b.kvonr "
             f"WHERE b.kvonr IN ({ph}) AND b.datum >= date('now') ORDER BY b.datum",
             kvonrs).fetchall()
@@ -4843,7 +4877,7 @@ class CouncilStore:
     #: Verkehrsausschuss-Termine an „Wie es weitergeht" (gemessen 19.08.,
     #: Tims Screenshot-Befund — nur „strasse" traf, kein n>=2 gefordert).
     _AUSBLICK_STOPP = {
-        "stand", "sachstand", "aktuell", "beschluss", "beschlusse", "beschluesse",
+        "stand", "sachstand", "aktuell", "official_text", "beschlusse", "beschluesse",
         "stadt", "oldenburg", "planung", "bericht", "vorlage", "thema", "themen",
         "strasse",
     }
@@ -4867,7 +4901,7 @@ class CouncilStore:
             return []
         rows = self._conn.execute(
             "SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS art, "
-            "       v.vorlage_nr, v.title AS vorlage_titel "
+            "       v.template_number, v.title AS vorlage_titel "
             "FROM council_beratungen b JOIN council_vorlagen v ON v.kvonr = b.kvonr "
             "WHERE b.datum >= date('now') ORDER BY b.datum").fetchall()
         bewertet: dict[int, tuple[int, dict]] = {}
@@ -5258,7 +5292,7 @@ class CouncilStore:
         try:
             rows = self._conn.execute(
                 "SELECT a.document_id, d.id AS beschluss_id, d.ksinr, d.item_number, "
-                "       d.title, d.outcome, d.vote, d.vorlage_nr, a.kvonr, "
+                "       d.title, d.outcome, d.vote, d.template_number, a.kvonr, "
                 "       cs.committee, cs.session_date "
                 "FROM council_anlagen a "
                 "JOIN council_decisions d ON d.kvonr = a.kvonr "
@@ -5277,7 +5311,7 @@ class CouncilStore:
                 "kvonr": r["kvonr"], "top": r["item_number"],
                 "titel": (r["title"] or "").strip() or None,
                 "outcome": r["outcome"], "vote": r["vote"],
-                "vorlage_nr": r["vorlage_nr"],
+                "template_number": r["template_number"],
                 "gremium": r["committee"], "datum": r["session_date"],
             })
         return aus
@@ -5317,7 +5351,7 @@ class CouncilStore:
         beschluesse = self.beschluesse_zu_dokumenten(
             sorted({d["dokument_id"] for d in aus if d.get("dokument_id")}))
         for d in aus:
-            d["beschluss"] = beschluesse.get(d.get("dokument_id"))
+            d["official_text"] = beschluesse.get(d.get("dokument_id"))
         return aus
 
     def _herkunft_verweistabellen(self) -> list[str]:
@@ -5570,7 +5604,7 @@ class CouncilStore:
         dazustehen.
 
         Jedes Dokument aus dem Ratsinformationssystem trägt zusätzlich seinen
-        ``beschluss`` — den Ratsvorgang, der es verabschiedet hat (s.
+        ``official_text`` — den Ratsvorgang, der es verabschiedet hat (s.
         :meth:`beschluesse_zu_dokumenten`). Der Beleg sagt damit nicht nur, in
         welchem Papier die Zahl steht, sondern wann der Rat darüber entschieden
         hat. Bei den Schichten von oldenburg.de und vom Landesamt bleibt das
@@ -5604,7 +5638,7 @@ class CouncilStore:
                 # `dokument_id` war nur der Schlüssel für den Nachschlag und
                 # fliegt wieder raus: Was auf die Seite geht, ist der Vorgang,
                 # nicht die RIS-interne Nummer des Anhangs.
-                r["beschluss"] = beschluesse.get(r.pop("dokument_id", None))
+                r["official_text"] = beschluesse.get(r.pop("dokument_id", None))
         return aus
 
     # --- Stadt-Haushalt (council.haushalt) -----------------------------------
@@ -5744,7 +5778,7 @@ class CouncilStore:
                         (jahr, thh_nr))
             self._conn.executemany(
                 "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, thh_name, nr, bezeichnung, "
-                " vorjahr, ansatz, plan, plan_art, ergebnis, abweichung, ist_summe, "
+                " vorjahr, ansatz, plan, plan_art, ergebnis, deviation, ist_summe, "
                 " quelle_label, quelle_url, fetched_at, herkunft_id) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 # `plan` fällt auf `ansatz` zurück, wenn der Aufrufer keine
@@ -5756,7 +5790,7 @@ class CouncilStore:
                   p.get("ansatz"),
                   p.get("ansatz") if p.get("plan") is None else p.get("plan"),
                   p.get("plan_art"),
-                  p.get("ergebnis"), p.get("abweichung"),
+                  p.get("ergebnis"), p.get("deviation"),
                   p.get("ist_summe", 0), herkunft.label, herkunft.url, now, hid)
                  for p in posten])
         return len(posten)
@@ -5820,7 +5854,7 @@ class CouncilStore:
         Liefert ``{gesamt: {...}, bereiche: [...]}`` — die Bereiche nach
         geplanten Aufwendungen absteigend, damit die größten oben stehen."""
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, ergebnis, abweichung "
+            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, ergebnis, deviation "
             "FROM council_ergebnisrechnung WHERE jahr = ? AND nr IN (12, 20) "
             "ORDER BY thh_nr, nr", (jahr,))]
 
@@ -5906,12 +5940,12 @@ class CouncilStore:
             self._conn.execute("DELETE FROM council_finanzrechnung WHERE jahr = ?", (jahr,))
             self._conn.executemany(
                 "INSERT INTO council_finanzrechnung (jahr, nr, rolle, bezeichnung, "
-                " vorjahr, ansatz, plan, plan_art, ergebnis, abweichung, "
+                " vorjahr, ansatz, plan, plan_art, ergebnis, deviation, "
                 " ermaechtigung, ist_summe, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(jahr, z["nr"], z.get("rolle"), z["bezeichnung"], z.get("vorjahr"),
                   z.get("ansatz"), z.get("plan"), z.get("plan_art"), z.get("ergebnis"),
-                  z.get("abweichung"), z.get("ermaechtigung"),
+                  z.get("deviation"), z.get("ermaechtigung"),
                   z.get("ist_summe", 0), hid, now)
                  for z in zeilen])
         return len(zeilen)
@@ -6755,11 +6789,11 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_wirtschaftsplaene "
-                "(betrieb, jahr, betrieb_name, vorlage_nr, ertraege, aufwendungen, "
+                "(betrieb, jahr, betrieb_name, template_number, ertraege, aufwendungen, "
                 " steuern, ergebnis, vermoegensplan, investitionen, verpflichtungen, "
                 " entwurf_vom, proben, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (plan.betrieb, plan.jahr, plan.betrieb_name, plan.vorlage_nr,
+                (plan.betrieb, plan.jahr, plan.betrieb_name, plan.template_number,
                  plan.ertraege, plan.aufwendungen, plan.steuern, plan.ergebnis,
                  plan.vermoegensplan, plan.investitionen, plan.verpflichtungen,
                  plan.entwurf_vom, proben, hid, now))
@@ -6783,13 +6817,13 @@ class CouncilStore:
                 "INSERT OR REPLACE INTO council_gebuehren "
                 "(jahr, bereich, bereich_name, kostenkalkulation, abzuege, "
                 " zu_deckende_kosten, bezugsmenge, bezugseinheit, gebuehr, "
-                " gebuehrenvorschlag, vorlage_nr, proben, herkunft_id, fetched_at) "
+                " gebuehrenvorschlag, template_number, proben, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (bedarf.jahr, bedarf.bereich, bedarf.bereich_name,
                  bedarf.kostenkalkulation, bedarf.abzuege,
                  bedarf.zu_deckende_kosten, bedarf.bezugsmenge,
                  bedarf.bezugseinheit, bedarf.gebuehr,
-                 bedarf.gebuehrenvorschlag, bedarf.vorlage_nr,
+                 bedarf.gebuehrenvorschlag, bedarf.template_number,
                  proben, hid, now))
         return 1
 
@@ -6816,11 +6850,11 @@ class CouncilStore:
                 self._conn.execute(
                     "INSERT OR REPLACE INTO council_gebuehrensaetze "
                     "(jahr, schluessel, bereich, bezeichnung, betrag, einheit, "
-                    " vorjahr, veraenderung_prozent, vorlage_nr, proben, "
+                    " vorjahr, veraenderung_prozent, template_number, proben, "
                     " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     (satz.jahr, satz.schluessel, satz.bereich, satz.bezeichnung,
                      satz.betrag, satz.einheit, satz.vorjahr,
-                     satz.veraenderung_prozent, satz.vorlage_nr, proben, hid, now))
+                     satz.veraenderung_prozent, satz.template_number, proben, hid, now))
         return len(saetze)
 
     def get_gebuehrensaetze(self) -> list[dict]:
@@ -6986,7 +7020,7 @@ class CouncilStore:
                 " kredite_investitionen, verpflichtungsermaechtigungen, "
                 " liquiditaetskredite, hebesatz_grundsteuer_a, "
                 " hebesatz_grundsteuer_b, hebesatz_gewerbesteuer, sitzung_am, "
-                " vorlage_nr, proben, herkunft_id, fetched_at) "
+                " template_number, proben, herkunft_id, fetched_at) "
                 "VALUES (" + ",".join("?" * 26) + ")",
                 (satzung.jahr, satzung.nachtrag, satzung.fassung,
                  satzung.ordentliche_ertraege, satzung.ordentliche_aufwendungen,
@@ -7000,7 +7034,7 @@ class CouncilStore:
                  satzung.liquiditaetskredite,
                  satzung.hebesatz_grundsteuer_a, satzung.hebesatz_grundsteuer_b,
                  satzung.hebesatz_gewerbesteuer, satzung.sitzung_am,
-                 satzung.vorlage_nr, proben, hid, now))
+                 satzung.template_number, proben, hid, now))
         return 1
 
     def get_haushaltssatzungen(self) -> list[dict]:
@@ -7263,31 +7297,31 @@ class CouncilStore:
         Muster nicht); die Feinentscheidung trifft
         ``nachbewilligungen.ist_nachbewilligung``.
 
-        **Der Join läuft über ``vorlage_nr``, nicht über ``kvonr``.** Das ist
+        **Der Join läuft über ``template_number``, nicht über ``kvonr``.** Das ist
         keine Stilfrage: ``council_decisions.kvonr`` ist im gesamten Bestand
         ``NULL`` (8.369 von 8.369 Zeilen). Ein Join darüber liefert
         schweigend null Treffer — und eine Seite, die behauptet, der Rat habe
         nie über eine Nachbewilligung entschieden."""
         try:
             vorlagen = [dict(r) for r in self._conn.execute(
-                "SELECT vorlage_nr, title, beschlussvorschlag, raw_text "
+                "SELECT template_number, title, beschlussvorschlag, raw_text "
                 "FROM council_vorlagen "
-                "WHERE vorlage_nr IS NOT NULL "
+                "WHERE template_number IS NOT NULL "
                 "  AND (title LIKE '%planmäßig%' OR title LIKE '%planmässig%')"
             )]
             rows = [dict(r) for r in self._conn.execute(
-                "SELECT d.id, d.vorlage_nr, d.outcome, d.vote, "
+                "SELECT d.id, d.template_number, d.outcome, d.vote, "
                 "       cs.committee, cs.session_date "
                 "FROM council_decisions d "
                 "JOIN council_sessions cs ON cs.ksinr = d.ksinr "
-                "WHERE d.vorlage_nr IS NOT NULL AND d.kind = 'decision' "
+                "WHERE d.template_number IS NOT NULL AND d.kind = 'decision' "
                 + self._BESCHLUSS_ORDNUNG
             )]
         except sqlite3.OperationalError:
             return [], {}
         beschluesse: dict[str, list[dict]] = {}
         for r in rows:
-            beschluesse.setdefault(str(r["vorlage_nr"]), []).append(r)
+            beschluesse.setdefault(str(r["template_number"]), []).append(r)
         return vorlagen, beschluesse
 
     def save_nachbewilligungen(self, zeilen: list[dict], herkunft) -> int:
@@ -7301,12 +7335,12 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_nachbewilligungen "
-                "(vorlage_nr, jahr, titel, art, kategorie, betrag, "
+                "(template_number, jahr, titel, art, kategorie, betrag, "
                 " betrag_quelle, beschlossen, im_rat, ratsentscheidung, "
                 " beschluss_id, gremien, "
                 " volltextprobe, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(z["vorlage_nr"], z.get("jahr"), z["titel"], z["art"],
+                [(z["template_number"], z.get("jahr"), z["titel"], z["art"],
                   z["kategorie"], z.get("betrag"), z.get("betrag_quelle"),
                   int(bool(z.get("beschlossen"))), int(bool(z.get("im_rat"))),
                   int(bool(z.get("ratsentscheidung"))),
@@ -7350,7 +7384,7 @@ class CouncilStore:
         """Die RIS-Serie, chronologisch. ``gremien`` kommt als Liste heraus."""
         try:
             rows = [dict(r) for r in self._conn.execute(
-                "SELECT * FROM council_nachbewilligungen ORDER BY vorlage_nr")]
+                "SELECT * FROM council_nachbewilligungen ORDER BY template_number")]
         except sqlite3.OperationalError:
             return []
         for r in rows:
@@ -7411,17 +7445,17 @@ class CouncilStore:
             rueck = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_spenden "
-                "(vorlage_nr, jahr, sitzung, betrag, gremium, layout, zweitstelle, "
+                "(template_number, jahr, sitzung, betrag, gremium, layout, zweitstelle, "
                 " proben, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                [(z["vorlage_nr"], z["jahr"], z["sitzung"], z["betrag"], z.get("gremium"),
+                [(z["template_number"], z["jahr"], z["sitzung"], z["betrag"], z.get("gremium"),
                   z.get("layout"), z["zweitstelle"], ",".join(z["proben"]),
                   self.merke_herkunft(z["herkunft"], fetched_at=now)
                   if z.get("herkunft") else rueck, now)
                  for z in zeilen])
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_spenden_verworfen "
-                "(vorlage_nr, sitzung, grund, herkunft_id, fetched_at) VALUES (?,?,?,?,?)",
-                [(v["vorlage_nr"], v.get("sitzung"), v["grund"], rueck, now)
+                "(template_number, sitzung, grund, herkunft_id, fetched_at) VALUES (?,?,?,?,?)",
+                [(v["template_number"], v.get("sitzung"), v["grund"], rueck, now)
                  for v in verworfen])
         return len(zeilen)
 
@@ -7432,7 +7466,7 @@ class CouncilStore:
         Datenbank ohne Ingest-Lauf), ist die Antwort leer statt ein Fehler."""
         try:
             rows = [dict(r) for r in self._conn.execute(
-                "SELECT * FROM council_spenden ORDER BY sitzung, vorlage_nr")]
+                "SELECT * FROM council_spenden ORDER BY sitzung, template_number")]
         except sqlite3.OperationalError:
             return []
         for r in rows:
@@ -7443,7 +7477,7 @@ class CouncilStore:
         """Die Zeilen ohne Zweitstelle, mit dem Satz, warum sie fehlen."""
         try:
             return [dict(r) for r in self._conn.execute(
-                "SELECT * FROM council_spenden_verworfen ORDER BY sitzung, vorlage_nr")]
+                "SELECT * FROM council_spenden_verworfen ORDER BY sitzung, template_number")]
         except sqlite3.OperationalError:
             return []
 
@@ -7462,15 +7496,15 @@ class CouncilStore:
         macht ``spenden.erkenne()``, damit die Regel an einer Stelle steht und
         nicht halb in SQL."""
         return [dict(r) for r in self._conn.execute(
-            """SELECT d.vorlage_nr, d.title AS titel, d.beschluss, d.outcome,
+            """SELECT d.template_number, d.title AS titel, d.official_text, d.outcome,
                       s.session_date AS sitzung, s.committee AS gremiensitzung,
                       v.raw_text, v.document_id AS dokument_id,
                       v.document_url AS dokument_url
                  FROM council_decisions d
                  LEFT JOIN council_sessions s ON s.ksinr = d.ksinr
-                 LEFT JOIN council_vorlagen v ON v.vorlage_nr = d.vorlage_nr
+                 LEFT JOIN council_vorlagen v ON v.template_number = d.template_number
                 WHERE d.kind = 'decision' AND d.title LIKE 'Annahme%Zuwendung%'
-                ORDER BY s.session_date, d.vorlage_nr""")]
+                ORDER BY s.session_date, d.template_number""")]
 
     # --- Steuertabellen des Jahrbuchs (1103 und 1105) -----------------------
 
@@ -8097,23 +8131,23 @@ class CouncilStore:
         from council.parties import CANONICAL_ORDER, order_key
 
         antraege = self._conn.execute(
-            """SELECT a.document_id, a.antragsteller, v.vorlage_nr
+            """SELECT a.document_id, a.antragsteller, v.template_number
                FROM council_anlagen a JOIN council_vorlagen v ON v.kvonr = a.kvonr
                WHERE a.is_antrag = 1 AND a.antragsteller != '[]'
-                 AND v.vorlage_nr IS NOT NULL AND v.vorlage_nr != ''""",
+                 AND v.template_number IS NOT NULL AND v.template_number != ''""",
         ).fetchall()
 
         per_party: dict[str, dict] = {}
         n_mit_beschluss = 0
         for row in antraege:
-            base = "/".join(row["vorlage_nr"].split("/")[:2])
+            base = "/".join(row["template_number"].split("/")[:2])
             # Trägt eine Vorlage mehrere Antrag-Anlagen (Änderungsanträge mehrerer
             # Parteien), zählt der Vorlagen-Endstand für jeden dieser Anträge.
             decision = self._conn.execute(
                 """SELECT d.outcome, cs.committee FROM council_decisions d
                    JOIN council_sessions cs ON cs.ksinr = d.ksinr
                    WHERE d.kind = 'decision' AND d.outcome IN ('angenommen','abgelehnt')
-                     AND (d.vorlage_nr = ? OR d.vorlage_nr LIKE ?)
+                     AND (d.template_number = ? OR d.template_number LIKE ?)
                    ORDER BY (cs.committee LIKE 'Rat%') DESC, cs.session_date DESC
                    LIMIT 1""", (base, base + "/%"),
             ).fetchone()
@@ -8142,8 +8176,8 @@ class CouncilStore:
 
     def get_unclassified_decisions(self, limit: int | None = None) -> list[dict]:
         """Decisions without a policy field yet — for the classification backfill/cron.
-        Returns id + the fields the classifier needs (title, beschluss, committee)."""
-        sql = ("SELECT d.id, d.title, d.beschluss, cs.committee "
+        Returns id + the fields the classifier needs (title, official_text, committee)."""
+        sql = ("SELECT d.id, d.title, d.official_text, cs.committee "
                "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
                "WHERE d.policy_field IS NULL ORDER BY d.id")
         if limit:
@@ -8171,37 +8205,37 @@ class CouncilStore:
             )
 
     def rebuild_fts(self) -> int:
-        """(Re)build the full-text index from all main decisions (title + beschluss +
+        """(Re)build the full-text index from all main decisions (title + official_text +
         summary + the first chunk of the Vorlage text + the first chunk of attached
         motion texts, so Sachverhalt AND original Antrag wording are findable). The
-        joins are grouped because distinct kvonrs can in theory share a vorlage_nr —
+        joins are grouped because distinct kvonrs can in theory share a template_number —
         duplicate rowids would break the FTS insert."""
         with self._conn:
             self._conn.execute("DELETE FROM council_decisions_fts")
             self._conn.execute(
                 "INSERT INTO council_decisions_fts(rowid, content) "
-                "SELECT d.id, REPLACE(COALESCE(d.title,'') || ' ' || COALESCE(d.beschluss,'') || ' ' "
+                "SELECT d.id, REPLACE(COALESCE(d.title,'') || ' ' || COALESCE(d.official_text,'') || ' ' "
                 "|| COALESCE(d.summary,'') || ' ' || COALESCE(sv.stext,'') || ' ' "
                 "|| COALESCE(v.vtext,'') || ' ' || COALESCE(an.atext,''), "
                 "'ß', 'ss') "  # unicode61 folds ä/ö/ü but not ß
                 "FROM council_decisions d "
-                "LEFT JOIN (SELECT vorlage_nr, ohne_kontaktdaten("
+                "LEFT JOIN (SELECT template_number, ohne_kontaktdaten("
                 "             substr(MAX(raw_text), 1, 8000)) AS vtext "
-                "           FROM council_vorlagen WHERE status = 'ok' GROUP BY vorlage_nr) v "
-                "  ON v.vorlage_nr = d.vorlage_nr "
+                "           FROM council_vorlagen WHERE status = 'ok' GROUP BY template_number) v "
+                "  ON v.template_number = d.template_number "
                 # `ohne_kontaktdaten()` ist eine SQLite-Funktion (s.
                 # `_verbinden`): Sie nimmt Kontonummern, Telefonnummern,
                 # E-Mail-Adressen und Anschriften aus dem Text, BEVOR er in
                 # den Volltextindex geht. Gespeichert bleibt er vollständig.
-                "LEFT JOIN (SELECT cv.vorlage_nr, ohne_kontaktdaten("
+                "LEFT JOIN (SELECT cv.template_number, ohne_kontaktdaten("
                 "             substr(GROUP_CONCAT(a.raw_text, ' '), 1, 4000)) AS atext "
                 "           FROM council_anlagen a JOIN council_vorlagen cv ON cv.kvonr = a.kvonr "
-                "           WHERE a.is_antrag = 1 AND a.status = 'ok' GROUP BY cv.vorlage_nr) an "
-                "  ON an.vorlage_nr = d.vorlage_nr "
+                "           WHERE a.is_antrag = 1 AND a.status = 'ok' GROUP BY cv.template_number) an "
+                "  ON an.template_number = d.template_number "
                 # Teilabstimmungen (Änderungsanträge) haben keine eigene FTS-Zeile —
                 # ihre Titel zählen zum Haupt-TOP, damit „Änderungsantrag der X zu Y"
                 # den zitierfähigen Hauptbeschluss findet (Design 23a: subvote-Inhalt
-                # steht im title, beschluss ist immer NULL).
+                # steht im title, official_text ist immer NULL).
                 "LEFT JOIN (SELECT ksinr, parent_item, substr(GROUP_CONCAT(title, ' '), 1, 2000) AS stext "
                 "           FROM council_decisions WHERE kind = 'subvote' AND parent_item IS NOT NULL "
                 "           GROUP BY ksinr, parent_item) sv "
@@ -8234,9 +8268,9 @@ class CouncilStore:
         return [(r[0], -float(r[1]), r[2] or "") for r in rows]
 
     def decisions_for_entities(self) -> list[dict]:
-        """Main decisions (id, title, beschluss) for the entity-extraction backfill."""
+        """Main decisions (id, title, official_text) for the entity-extraction backfill."""
         return [dict(r) for r in self._conn.execute(
-            "SELECT id, title, beschluss FROM council_decisions WHERE kind = 'decision'")]
+            "SELECT id, title, official_text FROM council_decisions WHERE kind = 'decision'")]
 
     def save_entities(self, entities: list[tuple], links: list[tuple]) -> int:
         """Full rebuild of the entity tables. ``entities`` = (slug, name, kind, n);
@@ -8332,27 +8366,27 @@ class CouncilStore:
         später geladenen Vorlage zurück. ``pending_only=False`` ist der
         bewusste Voll-Backfill nach dem Leeren der Scan-Tabelle.
         """
-        inner = """SELECT d.id, d.title, d.beschluss, d.vorlage_nr,
+        inner = """SELECT d.id, d.title, d.official_text, d.template_number,
                       COALESCE(
                         (SELECT v.raw_text FROM council_vorlagen v
                          WHERE v.kvonr = d.kvonr AND v.status = 'ok' LIMIT 1),
                         (SELECT v.raw_text FROM council_vorlagen v
-                         WHERE v.status = 'ok' AND v.vorlage_nr = d.vorlage_nr
+                         WHERE v.status = 'ok' AND v.template_number = d.template_number
                          ORDER BY v.kvonr DESC LIMIT 1),
                         (SELECT v.raw_text FROM council_vorlagen v
-                         WHERE v.status = 'ok' AND d.vorlage_nr IS NOT NULL
-                           AND instr(d.vorlage_nr, v.vorlage_nr || '/') = 1
+                         WHERE v.status = 'ok' AND d.template_number IS NOT NULL
+                           AND instr(d.template_number, v.template_number || '/') = 1
                          ORDER BY v.kvonr DESC LIMIT 1)
                       ) AS vorlage_text,
                       COALESCE(
                         (SELECT v.fetched_at FROM council_vorlagen v
                          WHERE v.kvonr = d.kvonr AND v.status = 'ok' LIMIT 1),
                         (SELECT v.fetched_at FROM council_vorlagen v
-                         WHERE v.status = 'ok' AND v.vorlage_nr = d.vorlage_nr
+                         WHERE v.status = 'ok' AND v.template_number = d.template_number
                          ORDER BY v.kvonr DESC LIMIT 1),
                         (SELECT v.fetched_at FROM council_vorlagen v
-                         WHERE v.status = 'ok' AND d.vorlage_nr IS NOT NULL
-                           AND instr(d.vorlage_nr, v.vorlage_nr || '/') = 1
+                         WHERE v.status = 'ok' AND d.template_number IS NOT NULL
+                           AND instr(d.template_number, v.template_number || '/') = 1
                          ORDER BY v.kvonr DESC LIMIT 1),
                         ''
                       ) AS vorlage_fetched_at,
@@ -8396,7 +8430,7 @@ class CouncilStore:
         out: dict[int, list[dict]] = {}
         for r in rows:
             out.setdefault(r["decision_id"], []).append({
-                "name": r["name"], "kind": "sonstiges", "source": "beschluss",
+                "name": r["name"], "kind": "sonstiges", "source": "official_text",
                 "evidence": r["name"], "method": "entity_obs", "confidence": 0.86,
             })
         return out
@@ -8750,7 +8784,7 @@ class CouncilStore:
                     "INSERT INTO council_decision_locations "
                     "(decision_id,location_slug,source,evidence,method,confidence,updated_at) "
                     "VALUES (?,?,?,?,?,?,?)",
-                    (decision_id, slug, row.get("source") or "beschluss",
+                    (decision_id, slug, row.get("source") or "official_text",
                      (row.get("evidence") or row["name"])[:500], row.get("method") or "llm",
                      max(0.0, min(1.0, float(row.get("confidence") or 0))), now),
                 )
@@ -9226,7 +9260,7 @@ class CouncilStore:
         for d in sorted((x for x in decisions if x.get("amount_eur")), key=lambda x: -x["amount_eur"]):
             if any(k in (d.get("title") or "").lower() for k in self._NON_SPENDING_TITLES):
                 continue
-            keys = _dedup_keys(d.get("title"), d.get("vorlage_nr"), d["id"])
+            keys = _dedup_keys(d.get("title"), d.get("template_number"), d["id"])
             if any(k in _seen for k in keys):
                 continue
             _seen.update(keys)
@@ -9372,7 +9406,7 @@ class CouncilStore:
 
     def neueste_stationen_fuer(self, kvonrs: list[int],
                                vorlage_basen: list[str]) -> list[dict]:
-        """Alle Beschlüsse (id, kvonr, vorlage_nr, session_date, committee) der
+        """Alle Beschlüsse (id, kvonr, template_number, session_date, committee) der
         genannten Vorlagen-Familien — Grundlage für den „ältere Station"-Marker:
         derselbe Text durchläuft mehrere Gremien (gleiches kvonr), Revisionen
         hängen ein Suffix an die Vorlagen-Nummer (26/0100 → 26/0100-1)."""
@@ -9385,10 +9419,10 @@ class CouncilStore:
             teile.append(f"d.kvonr IN ({','.join('?' * len(kvonrs))})")
             params += kvonrs
         for b in basen[:60]:
-            teile.append("d.vorlage_nr = ? OR d.vorlage_nr LIKE ?")
+            teile.append("d.template_number = ? OR d.template_number LIKE ?")
             params += [b, b + "-%"]
         rows = self._conn.execute(
-            "SELECT d.id, d.kvonr, d.vorlage_nr, cs.session_date, cs.committee "
+            "SELECT d.id, d.kvonr, d.template_number, cs.session_date, cs.committee "
             "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
             "WHERE " + " OR ".join(teile), params).fetchall()
         return [dict(r) for r in rows]
@@ -9489,9 +9523,9 @@ class CouncilStore:
     def decision_texts(self) -> list[dict]:
         """(id, text) per decision for the text match — title + Beschluss + summary."""
         rows = self._conn.execute(
-            "SELECT id, title, beschluss, summary FROM council_decisions").fetchall()
+            "SELECT id, title, official_text, summary FROM council_decisions").fetchall()
         return [{"id": r["id"],
-                 "text": " ".join(x for x in (r["title"], r["beschluss"], r["summary"]) if x)}
+                 "text": " ".join(x for x in (r["title"], r["official_text"], r["summary"]) if x)}
                 for r in rows]
 
     def committee_names(self) -> set[str]:
@@ -10521,7 +10555,7 @@ class CouncilStore:
 
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:
         """Main decisions with their text, for the € extraction backfill."""
-        sql = "SELECT id, title, beschluss FROM council_decisions WHERE kind = 'decision'"
+        sql = "SELECT id, title, official_text FROM council_decisions WHERE kind = 'decision'"
         if only_missing:
             sql += " AND amount_eur IS NULL"
         return [dict(r) for r in self._conn.execute(sql)]
@@ -10583,7 +10617,7 @@ class CouncilStore:
                 money[r["q"]] = r["eur"] or 0
 
         # Procedural tags aren't "topics" — keep them out of the emerging list.
-        procedural = {"bericht", "annahme", "vertagung", "kenntnisnahme", "beschluss",
+        procedural = {"bericht", "annahme", "vertagung", "kenntnisnahme", "official_text",
                       "antrag", "anfrage", "mitteilung", "vorlage", "abstimmung", "resolution"}
         recent = set(all_q[-2:])
         tagc: Counter = Counter()
@@ -10646,7 +10680,7 @@ class CouncilStore:
             # Collapse the same matter (shared Vorlage across committees/revisions) and
             # recurring series (same title, different Vorlage). Rows are amount-desc, so
             # the kept entry is the largest.
-            keys = _dedup_keys(r["title"], r["vorlage_nr"], r["id"])
+            keys = _dedup_keys(r["title"], r["template_number"], r["id"])
             if any(k in seen for k in keys):
                 continue
             seen.update(keys)
@@ -10662,7 +10696,7 @@ class CouncilStore:
         clauses = " AND ".join(["LOWER(d.title) NOT LIKE ?"] * len(self._NON_SPENDING_TITLES))
         params = [f"%{k}%" for k in self._NON_SPENDING_TITLES]
         rows = self._conn.execute(
-            f"""SELECT d.id, d.title, d.vorlage_nr, d.policy_field AS field, d.amount_eur AS eur
+            f"""SELECT d.id, d.title, d.template_number, d.policy_field AS field, d.amount_eur AS eur
                 FROM council_decisions d
                 WHERE d.kind = 'decision' AND d.amount_eur IS NOT NULL
                       AND d.policy_field IS NOT NULL AND {clauses}
@@ -10672,7 +10706,7 @@ class CouncilStore:
         seen: set = set()
         agg: dict[str, dict] = {}
         for r in rows:
-            keys = _dedup_keys(r["title"], r["vorlage_nr"], r["id"])
+            keys = _dedup_keys(r["title"], r["template_number"], r["id"])
             if any(k in seen for k in keys):
                 continue
             seen.update(keys)
@@ -10703,7 +10737,7 @@ class CouncilStore:
         from council.parties import order_key, parties_for_faction
 
         rows = self._conn.execute(
-            "SELECT factions, policy_field, outcome, gegenstimmen, enthaltungen "
+            "SELECT factions, policy_field, outcome, no_votes, abstentions "
             "FROM council_decisions WHERE kind = 'decision'"
         ).fetchall()
 
@@ -10779,7 +10813,7 @@ class CouncilStore:
         if not keywords:
             return []
         clause = " OR ".join(
-            ["d.title LIKE ? OR d.beschluss LIKE ? OR d.summary LIKE ? OR d.policy_tags LIKE ?"] * len(keywords)
+            ["d.title LIKE ? OR d.official_text LIKE ? OR d.summary LIKE ? OR d.policy_tags LIKE ?"] * len(keywords)
         )
         params: list = []
         for kw in keywords:
@@ -10791,7 +10825,7 @@ class CouncilStore:
             params.append(exclude_goal)
         params.append(limit)
         rows = self._conn.execute(
-            f"""SELECT d.id, d.title, d.beschluss, d.summary, d.outcome, cs.session_date
+            f"""SELECT d.id, d.title, d.official_text, d.summary, d.outcome, cs.session_date
                 FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
                 WHERE d.kind = 'decision' AND ({clause}){exclude_sql}
                 ORDER BY cs.session_date DESC LIMIT ?""",
@@ -10852,7 +10886,7 @@ class CouncilStore:
         Haupt-TOPs — sie tragen oft die konkreten Begriffe („Änderungsantrag der
         Fraktion X: Tempo 30 auf …"), die im knappen Hauptbeschluss fehlen."""
         rows = self._conn.execute(
-            "SELECT d.id, d.title, d.summary, d.beschluss, sv.stext FROM council_decisions d "
+            "SELECT d.id, d.title, d.summary, d.official_text, sv.stext FROM council_decisions d "
             "LEFT JOIN (SELECT ksinr, parent_item, substr(GROUP_CONCAT(title, ' · '), 1, 400) AS stext "
             "           FROM council_decisions WHERE kind = 'subvote' AND parent_item IS NOT NULL "
             "           GROUP BY ksinr, parent_item) sv "
@@ -10861,7 +10895,7 @@ class CouncilStore:
         ).fetchall()
         out = []
         for r in rows:
-            text = f"{r['title'] or ''}. {r['summary'] or r['beschluss'] or ''}".strip()[:500]
+            text = f"{r['title'] or ''}. {r['summary'] or r['official_text'] or ''}".strip()[:500]
             if r["stext"]:
                 text = f"{text} · {r['stext']}"[:800]
             out.append({"id": r["id"], "text": text})
@@ -10914,14 +10948,14 @@ class CouncilStore:
         import hashlib
 
         stored = dict(self._conn.execute(
-            "SELECT vorlage_nr, MIN(text_hash) FROM council_vorlage_embeddings GROUP BY vorlage_nr"
+            "SELECT template_number, MIN(text_hash) FROM council_vorlage_embeddings GROUP BY template_number"
         ).fetchall())
         rows = self._conn.execute(
-            "SELECT v.vorlage_nr, MAX(v.raw_text) AS raw_text FROM council_vorlagen v "
-            "WHERE v.status = 'ok' AND v.vorlage_nr IN "
-            "  (SELECT DISTINCT vorlage_nr FROM council_decisions "
-            "   WHERE kind = 'decision' AND vorlage_nr IS NOT NULL AND vorlage_nr != '') "
-            "GROUP BY v.vorlage_nr"
+            "SELECT v.template_number, MAX(v.raw_text) AS raw_text FROM council_vorlagen v "
+            "WHERE v.status = 'ok' AND v.template_number IN "
+            "  (SELECT DISTINCT template_number FROM council_decisions "
+            "   WHERE kind = 'decision' AND template_number IS NOT NULL AND template_number != '') "
+            "GROUP BY v.template_number"
         ).fetchall()
         out = []
         for r in rows:
@@ -10929,28 +10963,28 @@ class CouncilStore:
             if not text.strip():
                 continue
             h = hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()
-            if stored.get(r["vorlage_nr"]) != h:
-                out.append({"vorlage_nr": r["vorlage_nr"], "raw_text": text, "text_hash": h})
+            if stored.get(r["template_number"]) != h:
+                out.append({"template_number": r["template_number"], "raw_text": text, "text_hash": h})
         return out
 
-    def replace_vorlage_embeddings(self, vorlage_nr: str, text_hash: str,
+    def replace_vorlage_embeddings(self, template_number: str, text_hash: str,
                                    chunks: list[tuple[str, bytes]]) -> None:
         """Chunk-Text+Vektor einer Vorlage komplett ersetzen (alte Chunk-Anzahl
         kann abweichen, deshalb erst löschen)."""
         with self._conn:
             self._conn.execute(
-                "DELETE FROM council_vorlage_embeddings WHERE vorlage_nr = ?", (vorlage_nr,))
+                "DELETE FROM council_vorlage_embeddings WHERE template_number = ?", (template_number,))
             self._conn.executemany(
                 "INSERT INTO council_vorlage_embeddings "
-                "(vorlage_nr, chunk_idx, text_hash, chunk_text, vector) VALUES (?, ?, ?, ?, ?)",
-                [(vorlage_nr, i, text_hash, text, vec) for i, (text, vec) in enumerate(chunks)],
+                "(template_number, chunk_idx, text_hash, chunk_text, vector) VALUES (?, ?, ?, ?, ?)",
+                [(template_number, i, text_hash, text, vec) for i, (text, vec) in enumerate(chunks)],
             )
 
     def get_vorlage_embeddings(self) -> list:
-        """Alle (vorlage_nr, chunk_text, vector)-Zeilen — der Aufrufer baut die Matrix."""
+        """Alle (template_number, chunk_text, vector)-Zeilen — der Aufrufer baut die Matrix."""
         return self._conn.execute(
-            "SELECT vorlage_nr, chunk_text, vector FROM council_vorlage_embeddings "
-            "ORDER BY vorlage_nr, chunk_idx"
+            "SELECT template_number, chunk_text, vector FROM council_vorlage_embeddings "
+            "ORDER BY template_number, chunk_idx"
         ).fetchall()
 
     def vorlage_embeddings_version(self) -> tuple:
@@ -10976,7 +11010,7 @@ class CouncilStore:
         # `ocr_modell` und ist hier KEIN Kriterium: Ein gescannter
         # Wirtschaftsplan ist so durchsuchbar wie ein getippter.
         rows = self._conn.execute(
-            "SELECT a.document_id, a.label, a.raw_text, v.vorlage_nr, "
+            "SELECT a.document_id, a.label, a.raw_text, v.template_number, "
             "       v.title AS vorlage_titel FROM council_anlagen a "
             "LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
             "WHERE a.status = 'ok' AND a.raw_text IS NOT NULL AND a.raw_text != '' "
@@ -10995,12 +11029,12 @@ class CouncilStore:
             # Vektoren und Antwortfundstellen gelangen weiterhin keine
             # Kontaktdaten.
             material = "\0".join(("anlage-v2", r["label"] or "",
-                                  r["vorlage_nr"] or "", r["vorlage_titel"] or "",
+                                  r["template_number"] or "", r["vorlage_titel"] or "",
                                   text))
             h = hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
             if stored.get(r["document_id"]) != h:
                 out.append({"document_id": r["document_id"], "label": r["label"],
-                            "vorlage_nr": r["vorlage_nr"],
+                            "template_number": r["template_number"],
                             "vorlage_titel": r["vorlage_titel"],
                             "raw_text": text, "text_hash": h})
                 if limit and len(out) >= limit:
@@ -11040,7 +11074,7 @@ class CouncilStore:
         ph = ",".join("?" * len(document_ids))
         rows = self._conn.execute(
             f"SELECT a.document_id, a.label, a.url, a.kvonr, "
-            f"       v.vorlage_nr, v.title AS vorlage_titel "
+            f"       v.template_number, v.title AS vorlage_titel "
             f"FROM council_anlagen a LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
             f"WHERE a.document_id IN ({ph})", document_ids).fetchall()
         by_id = {r["document_id"]: dict(r) for r in rows}
@@ -11055,14 +11089,14 @@ class CouncilStore:
         billiger als ein zweiter großer Suchindex.
         """
         return [dict(r) for r in self._conn.execute(
-            "SELECT a.document_id, a.label, v.vorlage_nr, "
+            "SELECT a.document_id, a.label, v.template_number, "
             "       v.title AS vorlage_titel FROM council_anlagen a "
             "LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
             "WHERE a.status = 'ok' AND a.raw_text IS NOT NULL AND a.raw_text != '' "
             "ORDER BY a.document_id DESC").fetchall()]
 
     def decision_ids_for_vorlagen(self, vorlage_nrs: list[str]) -> dict[str, list[int]]:
-        """vorlage_nr → Beschluss-ids (alle Beratungsstationen), neueste zuerst.
+        """template_number → Beschluss-ids (alle Beratungsstationen), neueste zuerst.
         Bildet Vorlagen-Chunk-Treffer der semantischen Suche auf zitierbare
         Beschlüsse ab."""
         nrs = sorted({(n or "").strip() for n in vorlage_nrs if n and str(n).strip()})
@@ -11070,15 +11104,15 @@ class CouncilStore:
             return {}
         ph = ",".join("?" * len(nrs))
         rows = self._conn.execute(
-            f"""SELECT d.vorlage_nr, d.id FROM council_decisions d
+            f"""SELECT d.template_number, d.id FROM council_decisions d
                 JOIN council_sessions cs ON cs.ksinr = d.ksinr
-                WHERE d.kind = 'decision' AND d.vorlage_nr IN ({ph})
+                WHERE d.kind = 'decision' AND d.template_number IN ({ph})
                 ORDER BY cs.session_date DESC, d.id DESC""",
             nrs,
         ).fetchall()
         out: dict[str, list[int]] = {}
         for r in rows:
-            out.setdefault(r["vorlage_nr"], []).append(r["id"])
+            out.setdefault(r["template_number"], []).append(r["id"])
         return out
 
     # ---- Laufende Bauleitplan-Beteiligungen (council/beteiligung.py) ----
@@ -11458,7 +11492,7 @@ class CouncilStore:
             rows = [dict(r) for r in self._conn.execute(
                 "SELECT jahr, bereich, bereich_name, kostenkalkulation, abzuege, "
                 "zu_deckende_kosten, bezugsmenge, bezugseinheit, gebuehr, "
-                "gebuehrenvorschlag, vorlage_nr, herkunft_id "
+                "gebuehrenvorschlag, template_number, herkunft_id "
                 f"FROM council_gebuehren WHERE bereich IN ({platz}) "
                 "ORDER BY bereich, jahr DESC", bereiche)]
         except sqlite3.OperationalError:
@@ -11498,7 +11532,7 @@ class CouncilStore:
         if not jahr:
             return None
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, ergebnis, abweichung, "
+            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, ergebnis, deviation, "
             " herkunft_id FROM council_ergebnisrechnung "
             "WHERE jahr = ? AND nr IN (12, 20) ORDER BY thh_nr, nr", (jahr,))]
         if not rows:
@@ -11793,7 +11827,7 @@ class CouncilStore:
             "buergschaften": self._buergschafts_kontext(),
         }
 
-    def haushalts_anschluss(self, beschluss_id: int, vorlage_nr: str | None) -> dict | None:
+    def haushalts_anschluss(self, beschluss_id: int, template_number: str | None) -> dict | None:
         """Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht.
 
         Die Beschluss-Seite verweist seit H-21 auf den Haushalt — aber
@@ -11814,26 +11848,26 @@ class CouncilStore:
         """
         try:
             r = self._conn.execute(
-                "SELECT vorlage_nr, titel, betrag, jahr FROM council_nachbewilligungen "
+                "SELECT template_number, titel, betrag, jahr FROM council_nachbewilligungen "
                 "WHERE beschluss_id = ? LIMIT 1", (beschluss_id,)).fetchone()
         except sqlite3.OperationalError:
             r = None
         if r:
             return {"art": "nachbewilligung", "href": "/haushalt/plan-ist",
                     "jahr": r["jahr"], "betrag": r["betrag"],
-                    "titel": r["titel"], "vorlage_nr": r["vorlage_nr"]}
+                    "titel": r["titel"], "template_number": r["template_number"]}
 
-        if vorlage_nr:
+        if template_number:
             try:
                 b = self._conn.execute(
                     "SELECT title FROM council_vorlagen "
-                    "WHERE vorlage_nr = ? AND title LIKE '%bürgschaft%'",
-                    (vorlage_nr,)).fetchone()
+                    "WHERE template_number = ? AND title LIKE '%bürgschaft%'",
+                    (template_number,)).fetchone()
             except sqlite3.OperationalError:
                 b = None
             if b:
                 return {"art": "buergschaft", "href": "/haushalt/schulden",
-                        "titel": b["title"], "vorlage_nr": vorlage_nr}
+                        "titel": b["title"], "template_number": template_number}
         return None
 
     def buergschafts_vorlagen(self, limit: int = 40) -> list[dict]:
@@ -11857,18 +11891,18 @@ class CouncilStore:
         """
         try:
             rows = self._conn.execute(
-                """SELECT v.vorlage_nr, v.title, v.document_url,
+                """SELECT v.template_number, v.title, v.document_url,
                           MAX(s.session_date) AS datum,
                           (SELECT d2.id FROM council_decisions d2
                             JOIN council_sessions s2 ON s2.ksinr = d2.ksinr
-                           WHERE d2.vorlage_nr = v.vorlage_nr
+                           WHERE d2.template_number = v.template_number
                            ORDER BY s2.session_date DESC LIMIT 1) AS beschluss_id
                      FROM council_vorlagen v
-                     LEFT JOIN council_decisions d ON d.vorlage_nr = v.vorlage_nr
+                     LEFT JOIN council_decisions d ON d.template_number = v.template_number
                      LEFT JOIN council_sessions s ON s.ksinr = d.ksinr
                     WHERE v.title LIKE '%bürgschaft%'
-                    GROUP BY v.vorlage_nr
-                    ORDER BY datum DESC NULLS LAST, v.vorlage_nr DESC
+                    GROUP BY v.template_number
+                    ORDER BY datum DESC NULLS LAST, v.template_number DESC
                     LIMIT ?""", (limit,)).fetchall()
         except sqlite3.OperationalError:
             return []
@@ -12222,14 +12256,14 @@ class CouncilStore:
             j = int((satzung or sammel).group(1))
             st = anker.setdefault(j, {}).setdefault(r["ksinr"], {
                 "ksinr": r["ksinr"], "gremium": r["committee"],
-                "datum": r["session_date"], "top": None, "beschluss": None})
+                "datum": r["session_date"], "top": None, "official_text": None})
             if sammel:
                 # Der Sammelpunkt selbst ist die verlässlichste Angabe.
                 st["top"] = (r["item_number"] or "").strip() or st["top"]
             else:
                 if not st["top"]:
                     st["top"] = self._streit_oberpunkt(r["item_number"])
-                st["beschluss"] = {"outcome": r["outcome"], "vote": r["vote"]}
+                st["official_text"] = {"outcome": r["outcome"], "vote": r["vote"]}
         if not anker:
             return None
         gewaehlt = jahr if jahr in anker else max(anker)
@@ -12276,7 +12310,7 @@ class CouncilStore:
                 "gremium": st["gremium"], "datum": st["datum"],
                 "urheber": sorted(traeger.values(), key=lambda u: (-u["anzahl"], u["name"]))[:limit],
                 "verwaltung": verwaltung, "gesamt": gesamt,
-                "beschluss": st["beschluss"],
+                "official_text": st["official_text"],
             })
         if not stationen:
             return None
@@ -12445,10 +12479,10 @@ class CouncilStore:
         series) are collapsed via the normalised title, so the neighbours shown are
         genuinely distinct rather than the Ausschuss/Rat copy of this very decision."""
         base = self._conn.execute(
-            "SELECT title, vorlage_nr FROM council_decisions WHERE id = ?", (decision_id,)
+            "SELECT title, template_number FROM council_decisions WHERE id = ?", (decision_id,)
         ).fetchone()
         rows = self._conn.execute(
-            """SELECT d.id, d.title, d.vorlage_nr, d.summary, d.policy_field, d.outcome,
+            """SELECT d.id, d.title, d.template_number, d.summary, d.policy_field, d.outcome,
                       cs.session_date, cs.committee, sl.score
                FROM council_similar sl
                JOIN council_decisions d ON d.id = sl.neighbor_id
@@ -12456,10 +12490,10 @@ class CouncilStore:
                WHERE sl.decision_id = ? ORDER BY sl.rank LIMIT ?""",
             (decision_id, limit * 5),
         ).fetchall()
-        seen = set(_dedup_keys(base["title"], base["vorlage_nr"], decision_id)) if base else set()
+        seen = set(_dedup_keys(base["title"], base["template_number"], decision_id)) if base else set()
         out: list[dict] = []
         for r in rows:
-            keys = _dedup_keys(r["title"], r["vorlage_nr"], r["id"])
+            keys = _dedup_keys(r["title"], r["template_number"], r["id"])
             if any(k in seen for k in keys):
                 continue
             seen.update(keys)
@@ -12873,24 +12907,24 @@ class CouncilStore:
     def get_decisions_by_ids(self, ids: list[int]) -> list[dict]:
         """Fetch decisions by id, preserving the given order (for Q&A citations).
 
-        Liefert auch Abstimmung (vote/gegenstimmen/enthaltungen/raw_result) und
+        Liefert auch Abstimmung (vote/no_votes/abstentions/raw_result) und
         amount_eur mit: raw_result geht bei strittigen Beschlüssen in den
         QA-Kontext (dort stehen oft die Fraktionen der Gegenstimmen), und die
-        Fallback-Folgefragen in council/qa.py prüfen gegenstimmen/amount_eur —
+        Fallback-Folgefragen in council/qa.py prüfen no_votes/amount_eur —
         ohne diese Felder liefen die Zweige ins Leere."""
         if not ids:
             return []
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
-            f"""SELECT d.id, d.title, d.summary, d.beschluss, d.vorlage_nr,
+            f"""SELECT d.id, d.title, d.summary, d.official_text, d.template_number,
                        d.kvonr,
                        -- ksinr + item_number: Adresse der Station in der
                        -- Sitzung — darüber koppelt wortbeitraege_zu_beschluessen
                        -- die Aussprache an den Beschluss.
                        d.ksinr, d.item_number,
                        d.policy_field, d.outcome, d.impact, d.impact_reason,
-                       d.vote, d.gegenstimmen, d.enthaltungen, d.raw_result,
-                       d.amount_eur, d.factions, d.abweichung,
+                       d.vote, d.no_votes, d.abstentions, d.raw_result,
+                       d.amount_eur, d.factions, d.deviation,
                        v.amt, v.klima_check,
                        cs.session_date, cs.committee
                 FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
@@ -12911,7 +12945,7 @@ class CouncilStore:
         rows = self._conn.execute(
             """SELECT DISTINCT d.id FROM council_decisions d
                JOIN council_sessions cs ON cs.ksinr = d.ksinr
-               LEFT JOIN council_vorlagen v ON v.vorlage_nr = d.vorlage_nr
+               LEFT JOIN council_vorlagen v ON v.template_number = d.template_number
                LEFT JOIN council_anlagen a ON a.kvonr = v.kvonr AND a.is_antrag = 1
                WHERE d.kind = 'decision'
                  AND (d.factions LIKE ? OR a.antragsteller LIKE ?)
@@ -12927,7 +12961,7 @@ class CouncilStore:
             ids = thematisch or ids
         return ids[:limit]
 
-    def find_decision_ids(self, *, vorlage_nr: str | None = None, committee: str | None = None,
+    def find_decision_ids(self, *, template_number: str | None = None, committee: str | None = None,
                           session_date: str | None = None, title_like: str | None = None) -> list[int]:
         """Beschluss-ids über natürliche Schlüssel statt AUTOINCREMENT-ids.
 
@@ -12936,8 +12970,8 @@ class CouncilStore:
         ids nicht. Filter sind UND-verknüpft, mindestens einer ist Pflicht;
         Teilabstimmungen bleiben außen vor (nicht eigenständig zitierbar)."""
         conds, params = ["d.kind = 'decision'"], []
-        if vorlage_nr:
-            conds.append("d.vorlage_nr = ?"); params.append(str(vorlage_nr).strip())
+        if template_number:
+            conds.append("d.template_number = ?"); params.append(str(template_number).strip())
         if committee:
             conds.append("cs.committee LIKE ?"); params.append(f"%{committee.strip()}%")
         if session_date:
@@ -13011,7 +13045,7 @@ class CouncilStore:
         """
         vorlagen: dict[int, dict[str, list[dict]]] = {}
         for r in self._conn.execute(
-                "SELECT kvonr, vorlage_nr, title FROM council_vorlagen "
+                "SELECT kvonr, template_number, title FROM council_vorlagen "
                 "WHERE title LIKE 'Haushalt%' OR title LIKE 'HH %'").fetchall():
             m = self._HH_TITEL.match(r["title"] or "")
             if not m:
@@ -13023,10 +13057,10 @@ class CouncilStore:
             if "Verwaltungsentwurf" in titel:
                 art = "teil" if any(k in titel for k in self._HH_TEILBERICHT) else "entwurf"
             elif "Beschluss" in titel:
-                art = "beschluss"
+                art = "official_text"
             else:
                 continue
-            vorlagen.setdefault(j, {"entwurf": [], "teil": [], "beschluss": []})[art].append(dict(r))
+            vorlagen.setdefault(j, {"entwurf": [], "teil": [], "official_text": []})[art].append(dict(r))
 
         runden = []
         for j in sorted(vorlagen):
@@ -13037,7 +13071,7 @@ class CouncilStore:
 
     def _haushalt_runde(self, jahr: int, teile: dict[str, list[dict]]) -> dict | None:
         """Eine Haushaltsrunde zusammensetzen — siehe ``haushalt_weg``."""
-        beschluss_vorlagen = teile["beschluss"]
+        beschluss_vorlagen = teile["official_text"]
         stationen = self._hh_beratungen([v["kvonr"] for v in beschluss_vorlagen])
         if not stationen:
             return None
@@ -13056,7 +13090,7 @@ class CouncilStore:
         # zuzuordnen: über die Sitzung, nicht über eine geratene TOP-Nummer.
         votum = {}
         for d in self._conn.execute(
-                "SELECT id, ksinr, item_number, outcome, vote, gegenstimmen, enthaltungen "
+                "SELECT id, ksinr, item_number, outcome, vote, no_votes, abstentions "
                 "FROM council_decisions WHERE kind = 'decision' AND title LIKE ? "
                 "ORDER BY id", (f"Haushaltssatzung und Haushaltsplan {jahr}%",)).fetchall():
             votum.setdefault(d["ksinr"], dict(d))
@@ -13066,7 +13100,7 @@ class CouncilStore:
 
         return {
             "jahr": jahr,
-            "vorlage_nr": beschluss_vorlagen[0]["vorlage_nr"] if beschluss_vorlagen else None,
+            "template_number": beschluss_vorlagen[0]["template_number"] if beschluss_vorlagen else None,
             "kvonr": beschluss_vorlagen[0]["kvonr"] if beschluss_vorlagen else None,
             "einbringung": einbringung,
             "fachausschuesse": {
@@ -13089,7 +13123,7 @@ class CouncilStore:
         platz = ",".join("?" * len(kvonrs))
         rows = self._conn.execute(
             f"""SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS rolle, b.is_public,
-                       b.ksinr, v.vorlage_nr, v.title AS vorlage_titel,
+                       b.ksinr, v.template_number, v.title AS vorlage_titel,
                        a.item_number AS top, a.title AS top_titel
                   FROM council_beratungen b
                   JOIN council_vorlagen v ON v.kvonr = b.kvonr
@@ -13159,7 +13193,7 @@ class CouncilStore:
         - ``debatte``: die Wortbeiträge unter dem Sammelpunkt, in der
           Reihenfolge des Protokolls. Keine Auswahl, keine Zusammenfassung —
           wer kürzt, kürzt für alle gleich, und das tut erst die Anzeige.
-        - ``beschluss``: die Schlussabstimmung über die Haushaltssatzung.
+        - ``official_text``: die Schlussabstimmung über die Haushaltssatzung.
 
         Der Ausschuss stimmt über dieselben Listen ab wie der Rat, oft mit
         anderem Ergebnis; deshalb stehen beide Stationen nebeneinander statt
@@ -13170,7 +13204,7 @@ class CouncilStore:
         anker: dict[int, dict[int, dict]] = {}
         for r in self._conn.execute(
                 "SELECT d.id, d.ksinr, d.item_number, d.title, d.outcome, d.vote, "
-                "       d.gegenstimmen, d.enthaltungen, d.raw_result, d.vorlage_nr, "
+                "       d.no_votes, d.abstentions, d.raw_result, d.template_number, "
                 "       cs.committee, cs.session_date "
                 "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
                 "WHERE d.kind = 'decision' AND (d.title LIKE 'Haushaltssatzung und Haushaltsplan%' "
@@ -13188,28 +13222,28 @@ class CouncilStore:
                 "gremium": r["committee"],
                 "datum": r["session_date"],
                 "top": None,
-                "beschluss": None,
+                "official_text": None,
             })
             if satzung:
-                eintrag["beschluss"] = {
+                eintrag["official_text"] = {
                     "id": r["id"], "top": r["item_number"], "titel": titel,
                     "outcome": r["outcome"], "vote": r["vote"],
-                    "gegenstimmen": r["gegenstimmen"], "enthaltungen": r["enthaltungen"],
+                    "no_votes": r["no_votes"], "abstentions": r["abstentions"],
                     "wortlaut": (r["raw_result"] or "").strip() or None,
-                    "vorlage_nr": r["vorlage_nr"],
+                    "template_number": r["template_number"],
                 }
                 if not eintrag["top"]:
                     eintrag["top"] = self._streit_oberpunkt(r["item_number"])
             else:
                 # Der Sammelpunkt selbst — die verlässlichste Angabe für die Debatte.
                 eintrag["top"] = (r["item_number"] or "").strip() or eintrag["top"]
-                if eintrag["beschluss"] is None:
-                    eintrag["beschluss"] = {
+                if eintrag["official_text"] is None:
+                    eintrag["official_text"] = {
                         "id": r["id"], "top": r["item_number"], "titel": titel,
                         "outcome": r["outcome"], "vote": r["vote"],
-                        "gegenstimmen": r["gegenstimmen"], "enthaltungen": r["enthaltungen"],
+                        "no_votes": r["no_votes"], "abstentions": r["abstentions"],
                         "wortlaut": (r["raw_result"] or "").strip() or None,
-                        "vorlage_nr": r["vorlage_nr"],
+                        "template_number": r["template_number"],
                     }
 
         runden = []

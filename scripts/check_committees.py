@@ -41,7 +41,7 @@ def _agenda_hash(agenda_items) -> str:
     gegen den alten Snapshot findet nichts Nennbares, und genau dieser Fall
     zieht den Stand nur nach, ohne zu melden."""
     payload = "\n".join(
-        f"{i.item_number}\t{i.title}\t{i.vorlage_nr or ''}\t{int(i.is_public)}\t"
+        f"{i.item_number}\t{i.title}\t{i.template_number or ''}\t{int(i.is_public)}\t"
         f"{','.join(anlagen_schluessel(i.anlagen))}"
         for i in agenda_items
     )
@@ -244,7 +244,7 @@ def main() -> dict:
         # Titel der nichtöffentlichen TOPs stehen ohnehin im Ratsinfo und auf
         # der Sitzungsseite der App (dort mit „nichtöffentlich"-Marke).
         snapshot_items = [{"item_number": i.item_number, "title": i.title,
-                           "vorlage_nr": i.vorlage_nr or "",
+                           "template_number": i.template_number or "",
                            "is_public": bool(i.is_public),
                            # Anhänge mit Label: Der Diff nennt neue Anlagen
                            # beim Namen, nicht nur „irgendwas ist anders".

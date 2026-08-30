@@ -85,7 +85,7 @@ BERICHT_LABEL = ("Rechenschaftsbericht zum Jahresabschluss {jahr} der "
 def _serie(store: CouncilStore, trocken: bool) -> dict:
     """Die RIS-Serie lesen, prüfen, schreiben."""
     vorlagen, beschluesse = store.nachbewilligungs_vorlagen()
-    volltexte = {v["vorlage_nr"]: v.get("raw_text") or "" for v in vorlagen}
+    volltexte = {v["template_number"]: v.get("raw_text") or "" for v in vorlagen}
     serie = nb.aus_vorlagen(vorlagen, beschluesse)
     if not serie:
         print("  keine Nachbewilligungs-Vorlagen im Bestand")
@@ -96,23 +96,23 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         # Der maßgebliche Beschluss ist der erste — `nachbewilligungs_vorlagen`
         # liefert sie bereits in der Ordnung „Rat zuerst, dann die jüngste
         # Sitzung" (`CouncilStore._BESCHLUSS_ORDNUNG`).
-        stationen = beschluesse.get(b.vorlage_nr, [])
+        stationen = beschluesse.get(b.template_number, [])
         fuehrend = next((d for d in stationen if d.get("outcome") == "angenommen"),
                         stationen[0] if stationen else None)
         zeilen.append({
-            "vorlage_nr": b.vorlage_nr, "jahr": b.jahr, "titel": b.titel,
+            "template_number": b.template_number, "jahr": b.jahr, "titel": b.titel,
             "art": b.art, "kategorie": b.kategorie, "betrag": b.betrag,
             "betrag_quelle": b.betrag_quelle, "beschlossen": b.beschlossen,
             "im_rat": b.im_rat, "ratsentscheidung": b.ratsentscheidung,
             "beschluss_id": (fuehrend or {}).get("id"),
             "gremien": sorted({str(d.get("committee") or "") for d in stationen}),
-            "volltextprobe": nb.probe_volltext(b, volltexte.get(b.vorlage_nr)),
+            "volltextprobe": nb.probe_volltext(b, volltexte.get(b.template_number)),
         })
 
     einzel = [z for z in zeilen if z["art"] != nb.ART_SCHWELLE]
     aus_titel = sum(1 for z in einzel if z["betrag_quelle"] == "titel")
     aus_text = sum(1 for z in einzel if z["betrag_quelle"] == "beschlussvorschlag")
-    ohne = [z["vorlage_nr"] for z in einzel if z["betrag_quelle"] is None]
+    ohne = [z["template_number"] for z in einzel if z["betrag_quelle"] is None]
     geprueft = sum(1 for z in zeilen if z["volltextprobe"])
     quote = (aus_titel + aus_text) / len(einzel) * 100 if einzel else 0.0
 

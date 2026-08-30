@@ -86,8 +86,8 @@ def test_recency_boost_kippt_nur_nahe_scores():
 
 # ---- „Ältere Station"-Marker ------------------------------------------------
 
-def _decision(id_, kvonr, vorlage_nr, datum, committee="Rat", titel="Stadionneubau"):
-    return {"id": id_, "kvonr": kvonr, "vorlage_nr": vorlage_nr,
+def _decision(id_, kvonr, template_number, datum, committee="Rat", titel="Stadionneubau"):
+    return {"id": id_, "kvonr": kvonr, "template_number": template_number,
             "session_date": datum, "committee": committee, "title": titel,
             "summary": "", "outcome": "angenommen"}
 
@@ -102,8 +102,8 @@ def test_markiere_veraltete_ueber_kvonr_und_revisionen(tmp_path):
                 [(10, "Bauausschuss", "2024-03-01"), (11, "Rat", "2026-06-01"),
                  (12, "Finanzausschuss", "2025-01-15")])
             store._conn.executemany(
-                "INSERT INTO council_decisions (id, ksinr, position, kind, title, kvonr, vorlage_nr) "
-                "VALUES (?, ?, 1, 'beschluss', ?, ?, ?)",
+                "INSERT INTO council_decisions (id, ksinr, position, kind, title, kvonr, template_number) "
+                "VALUES (?, ?, 1, 'official_text', ?, ?, ?)",
                 [(101, 10, "Stadion (Ausschuss)", 500, "24/0100"),
                  (102, 11, "Stadion (Rat)", 500, "24/0100"),      # gleiche Vorlage, jünger
                  (103, 12, "Stadion Revision", 501, "24/0100-1"),  # Revisions-Familie
@@ -285,7 +285,7 @@ def _ausblick_store(tmp_path):
     store = CouncilStore(tmp_path / "a.sqlite")
     with store._conn:
         store._conn.executemany(
-            "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+            "INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
             "VALUES (?, ?, ?, datetime('now'))",
             [(1, "26/1", "Kompensation bei städtischen Baumfällungen"),
              (2, "26/2", "Bürgerbeteiligung an einem Windkraftwerk"),
@@ -323,11 +323,11 @@ def test_kommende_beratungen_matcht_auf_wortgrenzen(tmp_path):
     try:
         # Kompositum: „Baumfällungen" trifft, Wortanfang genügt.
         treffer = store.kommende_beratungen(["baumfällungen"])
-        assert [t["vorlage_nr"] for t in treffer] == ["26/1"]
-        assert store.kommende_beratungen(["windkraft"])[0]["vorlage_nr"] == "26/2"
+        assert [t["template_number"] for t in treffer] == ["26/1"]
+        assert store.kommende_beratungen(["windkraft"])[0]["template_number"] == "26/2"
         # Generisches „Stand" trifft NICHTS mehr (weder Stoppliste noch Wortmitte).
         assert store.kommende_beratungen(["stand"]) == []
-        assert store.kommende_beratungen(["sachstand", "beschluss"]) == []
+        assert store.kommende_beratungen(["sachstand", "official_text"]) == []
         # Kurze Wörter zählen nicht, leere Eingabe liefert leer.
         assert store.kommende_beratungen(["rat"]) == []
         assert store.kommende_beratungen([]) == []
@@ -346,7 +346,7 @@ def test_kommende_beratungen_ignoriert_strasse(tmp_path):
     try:
         with store._conn:
             store._conn.executemany(
-                "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+                "INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
                 "VALUES (?, ?, ?, datetime('now'))",
                 [(1, "26/1", "Widmung der Straße \"Sylter Ring\" - Beschluss"),
                  (2, "26/2", "Sachstand Hannah-Arendt-Straße (B-Plan S-745 A)")])

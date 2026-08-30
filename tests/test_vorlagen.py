@@ -24,7 +24,7 @@ VO_HTML = """<html><body>
 
 def test_parse_vorlage_page():
     meta = vorlagen.parse_vorlage_page(VO_HTML)
-    assert meta["vorlage_nr"] == "26/0330"
+    assert meta["template_number"] == "26/0330"
     assert meta["title"].startswith("Radweg Haarenufer")
     assert meta["art"] == "Beschlussvorlage"
     # Haupt-PDF ist der Link mit Label "Vorlage" — nicht die Anlage.
@@ -88,10 +88,10 @@ def store(tmp_path):
     s.close()
 
 
-def _seed_session(store, ksinr=1, kvonr=555, vorlage_nr="26/0330"):
+def _seed_session(store, ksinr=1, kvonr=555, template_number="26/0330"):
     store.save_session(CouncilSession(
         ksinr, "Rat der Stadt", "2026-01-01", "18:00", "Rathaus",
-        agenda_items=[AgendaItem("Ö 1", "Radweg Haarenufer", vorlage_nr=vorlage_nr, kvonr=kvonr)],
+        agenda_items=[AgendaItem("Ö 1", "Radweg Haarenufer", template_number=template_number, kvonr=kvonr)],
     ))
 
 
@@ -99,7 +99,7 @@ def test_vorlagen_store_roundtrip(store):
     _seed_session(store)
     assert store.missing_vorlage_kvonrs() == [555]
     store.save_vorlage({
-        "kvonr": 555, "vorlage_nr": "26/0330", "title": "Radweg Haarenufer",
+        "kvonr": 555, "template_number": "26/0330", "title": "Radweg Haarenufer",
         "art": "Beschlussvorlage", "document_id": 1, "document_url": "https://x/pdf",
         "raw_text": "Sachverhalt: Es soll ein Radweg gebaut werden.", "n_pages": 2, "status": "ok",
     })
@@ -115,10 +115,10 @@ def test_vorlagen_store_roundtrip(store):
 
 
 def test_vorlagen_failed_is_retried_no_pdf_is_not(store):
-    _seed_session(store, kvonr=7, vorlage_nr="26/0001")
+    _seed_session(store, kvonr=7, template_number="26/0001")
     store.mark_vorlage_failed(7)
     assert store.missing_vorlage_kvonrs() == [7]  # failed → beim nächsten Lauf erneut
-    store.save_vorlage({"kvonr": 7, "vorlage_nr": "26/0001", "status": "no_pdf"})
+    store.save_vorlage({"kvonr": 7, "template_number": "26/0001", "status": "no_pdf"})
     assert store.missing_vorlage_kvonrs() == []   # no_pdf → nicht erneut
 
 
@@ -127,7 +127,7 @@ def test_fts_includes_vorlage_text(store):
     store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg Haarenufer", "Wird gebaut.",
                            "angenommen", None, None, None, [], "26/0330", None, None)
     store._conn.commit()
-    store.save_vorlage({"kvonr": 555, "vorlage_nr": "26/0330", "status": "ok",
+    store.save_vorlage({"kvonr": 555, "template_number": "26/0330", "status": "ok",
                         "raw_text": "Im Sachverhalt geht es um Quartiersgaragen am Hafen."})
     assert store.rebuild_fts() == 1
     # "Quartiersgaragen" steht NUR im Vorlagen-Text — der Treffer beweist den Join.
@@ -174,7 +174,7 @@ def test_build_anlage_rows_classifies_antraege():
 
 def test_anlagen_store_and_stats(store):
     _seed_session(store)  # ksinr=1, kvonr=555, "26/0330", Rat der Stadt, 2026-01-01
-    store.save_vorlage({"kvonr": 555, "vorlage_nr": "26/0330", "status": "ok", "raw_text": "Sachverhalt: X."})
+    store.save_vorlage({"kvonr": 555, "template_number": "26/0330", "status": "ok", "raw_text": "Sachverhalt: X."})
     store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg", "Wird gebaut.",
                            "angenommen", None, None, None, [], "26/0330", None, None)
     store._conn.commit()
@@ -200,12 +200,12 @@ def test_anlagen_store_and_stats(store):
 def test_antrag_stats_prefers_rat_decision(store):
     """Ausschuss lehnt ab, der Rat nimmt an → es zählt der Rat."""
     store.save_session(CouncilSession(10, "Bauausschuss", "2026-01-10", "17:00", "Rathaus",
-                                      agenda_items=[AgendaItem("Ö 2", "X", vorlage_nr="26/0500", kvonr=700)]))
+                                      agenda_items=[AgendaItem("Ö 2", "X", template_number="26/0500", kvonr=700)]))
     store.save_session(CouncilSession(11, "Rat der Stadt", "2026-02-01", "17:00", "Rathaus"))
     store._insert_decision(10, 0, "decision", None, "Ö 2", "X", "B", "abgelehnt", None, None, None, [], "26/0500", None, None)
     store._insert_decision(11, 0, "decision", None, "Ö 9", "X", "B", "angenommen", None, None, None, [], "26/0500", None, None)
     store._conn.commit()
-    store.save_vorlage({"kvonr": 700, "vorlage_nr": "26/0500", "status": "ok"})
+    store.save_vorlage({"kvonr": 700, "template_number": "26/0500", "status": "ok"})
     store.save_anlagen(700, [{"document_id": 95, "url": "u", "label": "Antrag der CDU-Fraktion",
                               "is_antrag": 1, "antragsteller": ["CDU"], "status": "ok"}])
     stats = store.antrag_stats()
@@ -217,7 +217,7 @@ def test_fts_includes_antrag_text(store):
     store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg", "Wird gebaut.",
                            "angenommen", None, None, None, [], "26/0330", None, None)
     store._conn.commit()
-    store.save_vorlage({"kvonr": 555, "vorlage_nr": "26/0330", "status": "ok", "raw_text": "Sachverhalt."})
+    store.save_vorlage({"kvonr": 555, "template_number": "26/0330", "status": "ok", "raw_text": "Sachverhalt."})
     store.save_anlagen(555, [{"document_id": 90, "url": "u", "label": "Antrag der SPD-Fraktion",
                               "is_antrag": 1, "antragsteller": ["SPD"], "status": "ok",
                               "raw_text": "Wir beantragen Lastenradstellplätze am Bahnhof."}])
@@ -360,11 +360,11 @@ def test_anlagen_block_traegt_belegmarker():
     from council import qa
 
     block = qa._anlagen_block([
-        {"nr": 1, "label": "Schalltechnisches Gutachten", "vorlage_nr": "26/0100",
+        {"nr": 1, "label": "Schalltechnisches Gutachten", "template_number": "26/0100",
          "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
          "fundstelle": "Lärmpegel unter Grenzwert."},
         # Ohne nr zählt die Position — der Prompt bleibt auch dann belegbar.
-        {"label": "Wirtschaftsplan 2024", "vorlage_nr": None, "vorlage_titel": None,
+        {"label": "Wirtschaftsplan 2024", "template_number": None, "vorlage_titel": None,
          "fundstelle": "Gesamtinvestitionen 1.050.000 Euro."},
     ])
     assert "[A1] Schalltechnisches Gutachten (zur Vorlage 26/0100" in block

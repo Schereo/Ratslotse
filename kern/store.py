@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS committee_subscriptions (
 -- breite Netze; wer EINE konkrete Vorlage durch die Gremien begleiten will —
 -- die Schule im eigenen Viertel, das Stadion — hatte bisher keinen Weg dazu
 -- außer regelmäßig selbst nachzusehen. Ein Follow hängt an der kvonr (der
--- stabilen Vorlagen-Id des Ratsinfo); vorlage_nr und title sind eine Kopie
+-- stabilen Vorlagen-Id des Ratsinfo); template_number und title sind eine Kopie
 -- fürs Anzeigen, weil sie in der anderen Datenbank liegen (kein Join möglich).
 -- `stations` hält den zuletzt GEMELDETEN Stand der Beratungsfolge: Der Cron
 -- vergleicht dagegen und schickt nur, was wirklich dazugekommen ist.
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS vorlage_follows (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id    INTEGER NOT NULL,
     kvonr       INTEGER NOT NULL,
-    vorlage_nr  TEXT NOT NULL DEFAULT '',
+    template_number  TEXT NOT NULL DEFAULT '',
     title       TEXT NOT NULL DEFAULT '',
     stations    TEXT NOT NULL DEFAULT '[]',
     created_at  TEXT NOT NULL,
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     item_number        TEXT,
     decision_id        INTEGER,
     kvonr              INTEGER,
-    vorlage_nr         TEXT NOT NULL DEFAULT '',
+    template_number         TEXT NOT NULL DEFAULT '',
     title              TEXT NOT NULL DEFAULT '',
     subtitle           TEXT NOT NULL DEFAULT '',
     notify_result      INTEGER NOT NULL DEFAULT 0,
@@ -566,6 +566,8 @@ class Store:
             "nwz_username", "nwz_verified_at", "nwz_fulltext_allowed"])
         # Die Schnittstelle spricht Englisch, die Spalten ziehen nach.
         self._spalten_umbenennen("qa_gespraeche", [("titel", "title")])
+        for tabelle in ("vorlage_follows", "bookmarks"):
+            self._spalten_umbenennen(tabelle, [("vorlage_nr", "template_number")])
         self._spalten_umbenennen("qa_gespraech_turns", [
             ("gespraech_id", "conversation_id"), ("frage", "question"),
             ("antwort", "answer"), ("quellen", "sources")])
@@ -2580,7 +2582,7 @@ class Store:
     def add_bookmark(self, owner_id: int, *, kind: str, target_key: str,
                      ksinr: int | None = None, item_number: str | None = None,
                      decision_id: int | None = None, kvonr: int | None = None,
-                     vorlage_nr: str = "", title: str = "", subtitle: str = "") -> dict:
+                     template_number: str = "", title: str = "", subtitle: str = "") -> dict:
         """Einen öffentlichen Ratsinhalt merken und den aktuellen Snapshot ablegen.
 
         Ein erneuter Klick ist idempotent. Anzeige-Felder werden dabei
@@ -2592,17 +2594,17 @@ class Store:
             self._conn.execute(
                 """INSERT INTO bookmarks
                    (owner_id, kind, target_key, ksinr, item_number, decision_id,
-                    kvonr, vorlage_nr, title, subtitle, created_at)
+                    kvonr, template_number, title, subtitle, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT(owner_id, target_key) DO UPDATE SET
                      kind=excluded.kind, ksinr=excluded.ksinr,
                      item_number=excluded.item_number,
                      decision_id=COALESCE(excluded.decision_id, bookmarks.decision_id),
                      kvonr=COALESCE(excluded.kvonr, bookmarks.kvonr),
-                     vorlage_nr=excluded.vorlage_nr, title=excluded.title,
+                     template_number=excluded.template_number, title=excluded.title,
                      subtitle=excluded.subtitle""",
                 (owner_id, kind, target_key, ksinr, item_number, decision_id,
-                 kvonr, vorlage_nr or "", title or "", subtitle or "", now),
+                 kvonr, template_number or "", title or "", subtitle or "", now),
             )
         row = self._conn.execute(
             "SELECT * FROM bookmarks WHERE owner_id = ? AND target_key = ?",
@@ -2647,7 +2649,7 @@ class Store:
 
     def update_bookmark_snapshot(self, bookmark_id: int, *, item_number: str | None,
                                  decision_id: int | None, kvonr: int | None,
-                                 vorlage_nr: str, title: str, subtitle: str) -> None:
+                                 template_number: str, title: str, subtitle: str) -> None:
         """Aufgelöste aktuelle Kennungen zurückschreiben.
 
         So muss eine spätere Nummernverschiebung nur einmal über Titel/Vorlage
@@ -2656,9 +2658,9 @@ class Store:
         with self._conn:
             self._conn.execute(
                 """UPDATE bookmarks SET item_number=?, decision_id=?,
-                   kvonr=COALESCE(?, kvonr), vorlage_nr=?, title=?, subtitle=?
+                   kvonr=COALESCE(?, kvonr), template_number=?, title=?, subtitle=?
                    WHERE id=?""",
-                (item_number, decision_id, kvonr, vorlage_nr or "", title or "",
+                (item_number, decision_id, kvonr, template_number or "", title or "",
                  subtitle or "", bookmark_id),
             )
 
@@ -2696,7 +2698,7 @@ class Store:
 
     # ---- verfolgte Vorgänge (Design 28a/W1) ----
 
-    def follow_vorlage(self, owner_id: int, kvonr: int, *, vorlage_nr: str = "",
+    def follow_vorlage(self, owner_id: int, kvonr: int, *, template_number: str = "",
                        title: str = "", stations: str = "[]") -> bool:
         """Vorgang abonnieren. True = neu angelegt, False = folgte schon.
 
@@ -2708,8 +2710,8 @@ class Store:
         with self._conn:
             cur = self._conn.execute(
                 "INSERT OR IGNORE INTO vorlage_follows "
-                "(owner_id, kvonr, vorlage_nr, title, stations, created_at) VALUES (?,?,?,?,?,?)",
-                (owner_id, kvonr, vorlage_nr or "", title or "", stations, now),
+                "(owner_id, kvonr, template_number, title, stations, created_at) VALUES (?,?,?,?,?,?)",
+                (owner_id, kvonr, template_number or "", title or "", stations, now),
             )
         return cur.rowcount > 0
 
@@ -2722,7 +2724,7 @@ class Store:
 
     def get_vorlage_follows(self, owner_id: int) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT id, kvonr, vorlage_nr, title, created_at, notified_at "
+            "SELECT id, kvonr, template_number, title, created_at, notified_at "
             "FROM vorlage_follows WHERE owner_id = ? ORDER BY created_at DESC",
             (owner_id,),
         ).fetchall()
@@ -2741,7 +2743,7 @@ class Store:
         Konten bleiben draußen — sie sollen keine Post bekommen.
         """
         rows = self._conn.execute(
-            """SELECT f.id, f.owner_id, f.kvonr, f.vorlage_nr, f.title, f.stations,
+            """SELECT f.id, f.owner_id, f.kvonr, f.template_number, f.title, f.stations,
                       wu.delivery_channel, wu.email, wu.display_name
                FROM vorlage_follows f JOIN web_users wu ON wu.id = f.owner_id
                WHERE wu.status = 'active'

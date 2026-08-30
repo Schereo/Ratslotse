@@ -279,7 +279,7 @@ def test_sitzung_regel_und_tokenbudget():
     assert qa._answer_tokens("sitzung", eng=True) == 320
     messages, _ = qa._answer_messages(
         "Was hat der JHA am 17.06.2026 beschlossen?",
-        [{"id": 1, "title": "T", "beschluss": "B"}], typ="sitzung",
+        [{"id": 1, "title": "T", "official_text": "B"}], typ="sitzung",
         sitzungen=[{"committee": "Jugendhilfeausschuss", "session_date": "2026-06-17",
                     "beschluss_ids": [1], "kuenftig": False}])
     prompt = messages[0]["content"]

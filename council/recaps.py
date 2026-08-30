@@ -26,7 +26,7 @@ def _render_items(decisions: list[dict]) -> str:
         title = (d.get("title") or "").strip()
         summary = (d.get("summary") or "").strip()
         if not summary:
-            summary = " ".join((d.get("beschluss") or "").split())[:200]
+            summary = " ".join((d.get("official_text") or "").split())[:200]
         outcome = d.get("outcome") or ""
         head = f"- {date} [{outcome}] {title}".rstrip()
         lines.append(head + (f" — {summary}" if summary else ""))

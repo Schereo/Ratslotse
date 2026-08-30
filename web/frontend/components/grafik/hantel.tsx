@@ -68,7 +68,7 @@ export type HantelZeile = {
 };
 
 export type HantelMassstab = "prozent" | "betrag";
-export type HantelSortierung = "abweichung" | "alpha";
+export type HantelSortierung = "deviation" | "alpha";
 
 /** Der Satz, der die Nicht-Wertung ausschreibt, wenn die Zeilen AUSGABEN sind.
  *
@@ -84,7 +84,7 @@ const AUSGABEN_KEINE_WERTUNG =
 
 export function Hantel({
   zeilen, einheit = "Mio. €", massstab = "prozent",
-  sortierung = "abweichung", schwelle, beleg,
+  sortierung = "deviation", schwelle, beleg,
   wovon = "der Bereich", keineWertung = AUSGABEN_KEINE_WERTUNG,
 }: {
   zeilen: HantelZeile[];

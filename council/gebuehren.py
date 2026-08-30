@@ -167,7 +167,7 @@ class Gebuehrenbedarf:
     #: Der gerundete Vorschlag an den Rat — das, was am Ende erhoben wird.
     #: ``None``, wo das Dokument ihn nicht gesondert ausweist.
     gebuehrenvorschlag: float | None
-    vorlage_nr: str | None
+    template_number: str | None
 
 
 @dataclass(frozen=True)
@@ -186,7 +186,7 @@ class Gebuehrensatz:
     einheit: str
     vorjahr: float | None
     veraenderung_prozent: float | None
-    vorlage_nr: str | None
+    template_number: str | None
 
 
 @dataclass(frozen=True)
@@ -399,7 +399,7 @@ def _kaskade_aus_der_reihenfolge(teil: str) -> tuple[float, float, float] | None
     return gefunden
 
 
-def parse_anlage(teil: str, vorlage_nr: str | None = None) -> Gebuehrenbedarf:
+def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbedarf:
     """Eine Anlage lesen — geprüft, oder gar nicht."""
     bereich = _bereich_aus_kopf(teil)
     if bereich is None:
@@ -482,11 +482,11 @@ def parse_anlage(teil: str, vorlage_nr: str | None = None) -> Gebuehrenbedarf:
         gebuehr=gebuehr,
         gebuehrenvorschlag=(float(v.group(1).replace(".", "").replace(",", "."))
                             if v else None),
-        vorlage_nr=vorlage_nr,
+        template_number=template_number,
     )
 
 
-def lies(text: str, vorlage_nr: str | None = None
+def lies(text: str, template_number: str | None = None
          ) -> tuple[list[Gebuehrenbedarf], list[str]]:
     """Alle Anlagen eines Dokuments lesen.
 
@@ -496,7 +496,7 @@ def lies(text: str, vorlage_nr: str | None = None
     gelesen, risse = [], []
     for teil in teile_anlagen(text):
         try:
-            gelesen.append(parse_anlage(teil, vorlage_nr))
+            gelesen.append(parse_anlage(teil, template_number))
         except GebuehrenFehler as fehler:
             risse.append(str(fehler))
     return gelesen, risse
@@ -517,7 +517,7 @@ def _anlage_4(text: str) -> str | None:
     return flach[treffer[-1].end():] if treffer else None
 
 
-def _saetze_altes_layout(teil: str, vorlage_nr: str | None) -> list[Gebuehrensatz] | None:
+def _saetze_altes_layout(teil: str, template_number: str | None) -> list[Gebuehrensatz] | None:
     """Die eine Vorschlagszeile der Tabellen 2023–2025 lesen."""
     m = re.search(r"\bVorschl(?:ag|[äa]ge)(?:\s+f[üu]r)?\s+(\d{4})\s+", teil, re.I)
     if not m:
@@ -531,11 +531,11 @@ def _saetze_altes_layout(teil: str, vorlage_nr: str | None) -> list[Gebuehrensat
     return [Gebuehrensatz(
         jahr=jahr, schluessel=art.schluessel, bereich=art.bereich,
         bezeichnung=art.bezeichnung, betrag=wert, einheit=art.einheit,
-        vorjahr=None, veraenderung_prozent=None, vorlage_nr=vorlage_nr)
+        vorjahr=None, veraenderung_prozent=None, template_number=template_number)
         for art, wert in zip(SATZARTEN, werte, strict=True)]
 
 
-def _saetze_neues_layout(teil: str, vorlage_nr: str | None) -> list[Gebuehrensatz] | None:
+def _saetze_neues_layout(teil: str, template_number: str | None) -> list[Gebuehrensatz] | None:
     """Das Zeilenlayout ab 2026 samt Prozentprobe lesen."""
     if not re.search(r"Ver[äa]nderung\s+in\s+%", teil, re.I):
         return None
@@ -564,11 +564,11 @@ def _saetze_neues_layout(teil: str, vorlage_nr: str | None) -> list[Gebuehrensat
             jahr=jahr, schluessel=art.schluessel, bereich=art.bereich,
             bezeichnung=art.bezeichnung, betrag=betrag, einheit=art.einheit,
             vorjahr=vorjahr, veraenderung_prozent=veraenderung,
-            vorlage_nr=vorlage_nr))
+            template_number=template_number))
     return aus
 
 
-def lies_gebuehrensaetze(text: str, vorlage_nr: str | None = None) -> list[Gebuehrensatz]:
+def lies_gebuehrensaetze(text: str, template_number: str | None = None) -> list[Gebuehrensatz]:
     """Die Vorschläge aus Anlage 4 lesen und gegen Anlagen 1 und 3 halten.
 
     Ein bloßes „Anlage 4" ohne Tabelleninhalt (der OCR-Stand von 2020) ist
@@ -578,13 +578,13 @@ def lies_gebuehrensaetze(text: str, vorlage_nr: str | None = None) -> list[Gebue
     teil = _anlage_4(text)
     if not teil or not teil.strip():
         return []
-    saetze = (_saetze_neues_layout(teil, vorlage_nr)
-              or _saetze_altes_layout(teil, vorlage_nr))
+    saetze = (_saetze_neues_layout(teil, template_number)
+              or _saetze_altes_layout(teil, template_number))
     if saetze is None:
         raise GebuehrenFehler("Anlage 4: unbekanntes Tabellenlayout")
 
     jahr = saetze[0].jahr
-    bedarfe, risse = lies(text, vorlage_nr)
+    bedarfe, risse = lies(text, template_number)
     eckwerte = {
         b.bereich: b.gebuehrenvorschlag for b in bedarfe
         if b.jahr == jahr and b.bereich in ("abfallbehandlung", "strassenreinigung")

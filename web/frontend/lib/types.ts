@@ -40,7 +40,7 @@ export interface CouncilSession {
 export interface AgendaItem {
   item_number: string;
   title: string;
-  vorlage_nr: string | null;
+  template_number: string | null;
   kvonr: number | null;
   is_public: number;
   /** Dokument-Anhänge des TOP (RIS-PDFs) — ältere API-Antworten kennen das
@@ -69,7 +69,7 @@ export interface DecisionLocationMatch {
   stadtteil: string;
   place_id?: string | null;
   ortsbereich_id?: string | null;
-  source: "title" | "beschluss" | "vorlage";
+  source: "title" | "official_text" | "vorlage";
   evidence: string;
   method: string;
   confidence: number;
@@ -84,14 +84,14 @@ export interface CouncilDecision {
   parent_item: string | null;
   item_number: string | null;
   title: string | null;
-  beschluss: string | null;
+  official_text: string | null;
   outcome: DecisionOutcome | null;
   vote: string | null;
-  gegenstimmen: number | null;
-  enthaltungen: number | null;
+  no_votes: number | null;
+  abstentions: number | null;
   factions: string[];
   parties: string[];
-  vorlage_nr: string | null;
+  template_number: string | null;
   raw_result: string | null;
   committee: string;
   session_date: string;
@@ -108,7 +108,7 @@ export interface CouncilDecision {
    *  die zu diesem Beschluss gehören — für die Unterzeile in der Trefferliste. */
   subvote_summary?: { count: number; factions: string[]; outcomes: string[] } | null;
   /** Regex-Ernte: Wie stark weicht der Beschluss vom Verwaltungsvorschlag ab? */
-  abweichung?: "unveraendert" | "leicht" | "stark" | null;
+  deviation?: "unveraendert" | "leicht" | "stark" | null;
   /** Beim Ortsfilter: konkrete Treffer samt Fundstelle zur manuellen Prüfung. */
   location_matches?: DecisionLocationMatch[];
 }
@@ -127,7 +127,7 @@ export interface QaSource {
    *  deterministisch aus den Beschluss-Metadaten. */
   amount_eur?: number | null;
   /** Kostenentwicklung: gleiche Vorlagen-Familie = belegbares Delta. */
-  vorlage_nr?: string | null;
+  template_number?: string | null;
   factions?: string[];
   /** Bei Ortsfragen: konkrete, quellenbelegte Zuordnung zum gefragten Ort. */
   location_matches?: DecisionLocationMatch[];
@@ -469,7 +469,7 @@ export interface DecisionDetail {
   vorlage_url?: string | null;
   /** Eingelesener Vorlagen-Text (Sachverhalt/Begründung) zum Beschluss. */
   vorlage?: {
-    vorlage_nr: string | null;
+    template_number: string | null;
     title: string | null;
     art: string | null;
     document_url: string | null;
@@ -494,7 +494,7 @@ export interface DecisionDetail {
     art: "nachbewilligung" | "buergschaft";
     href: string;
     titel: string;
-    vorlage_nr: string;
+    template_number: string;
     jahr?: number | null;
     betrag?: number | null;
   } | null;

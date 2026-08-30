@@ -2912,7 +2912,7 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
             // Text ihre Anlage nicht und würden ersatzlos geschluckt.
             anlagen: (turn.anlagen ?? []).slice(0, 10).map((a, i) => ({
               nr: a.nr ?? i + 1,
-              label: a.label, url: a.url, vorlage_nr: a.vorlage_nr,
+              label: a.label, url: a.url, template_number: a.template_number,
               vorlage_titel: a.vorlage_titel, auszug: (a.auszug ?? "").slice(0, 600),
             })),
             // Ohne beitraege_liste: die Aufklapp-Beiträge blähen den Snapshot,
@@ -3273,7 +3273,7 @@ function Baustein({ turn, idToNum, onJump }: {
     const termineGeld = new Set(zeitreihe.map((s) => s.session_date));
     const familien = new Map<string, typeof zeitreihe>();
     for (const s of zeitreihe) {
-      const b = basis(s.vorlage_nr);
+      const b = basis(s.template_number);
       if (!b) continue;
       familien.set(b, [...(familien.get(b) ?? []), s]);
     }

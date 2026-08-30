@@ -32,7 +32,7 @@ def process(council_db: Path, only_missing: bool = False) -> dict:
     decs = store.decisions_for_amount(only_missing=only_missing)
     # Der Titel geht zusätzlich einzeln mit: Er entscheidet, ob der Beschluss
     # überhaupt ein Volumen hat oder Preise festsetzt (council.money).
-    rows = [(money.largest_amount(f"{d['title'] or ''}. {d['beschluss'] or ''}", d["title"]), d["id"])
+    rows = [(money.largest_amount(f"{d['title'] or ''}. {d['official_text'] or ''}", d["title"]), d["id"])
             for d in decs]
     store.set_amounts(rows)
     store.close()

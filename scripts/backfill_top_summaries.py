@@ -65,7 +65,7 @@ def main() -> dict:
                 uebersprungen += 1
                 continue
             agenda = [AgendaItem(item_number=i["item_number"], title=i["title"],
-                                 vorlage_nr=i.get("vorlage_nr") or "",
+                                 template_number=i.get("template_number") or "",
                                  is_public=bool(i.get("is_public", 1)))
                       for i in items]
             try:

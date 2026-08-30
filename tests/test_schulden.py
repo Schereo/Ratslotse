@@ -139,9 +139,9 @@ def test_summenprobe_schliesst_wo_die_quelle_stimmt(gelesen):
     darunter alle vier mit Fußnotenmarken. Die Probe prüft damit nicht nur die
     Quelle, sondern auch, dass der Entzerrer keine Ziffer abgeschnitten hat."""
     for jahr in (1995, 1999, 2001, 2008, 2010, 2024, 2025):
-        ok, abweichung = schulden.summenprobe(_zeile(gelesen, jahr))
-        assert ok, f"{jahr}: {abweichung:+,.0f} €"
-        assert abweichung == 0
+        ok, deviation = schulden.summenprobe(_zeile(gelesen, jahr))
+        assert ok, f"{jahr}: {deviation:+,.0f} €"
+        assert deviation == 0
 
 
 def test_summenprobe_faengt_eine_verdrehte_spalte():
@@ -153,8 +153,8 @@ def test_summenprobe_faengt_eine_verdrehte_spalte():
     ok, _ = schulden.summenprobe(zeile)
     assert ok, "Vertauschen zweier Summanden ändert die Summe nicht"
     zeile["eigenbetriebe"] = 41_000_000
-    ok, abweichung = schulden.summenprobe(zeile)
-    assert not ok and abweichung != 0
+    ok, deviation = schulden.summenprobe(zeile)
+    assert not ok and deviation != 0
 
 
 # --- Die unabhängige Gegenprobe --------------------------------------------

@@ -516,7 +516,7 @@ def test_bestandszeilen_tragen_keinen_ansatz():
     als Plan fände, wäre der Vorjahreswert — deshalb steht dort nichts."""
     r = _rollen(FR_2024, 2024)
     for rolle in ("anfangsbestand", "endbestand", "saldo_haushaltsunwirksam"):
-        assert r[rolle]["plan"] is None and r[rolle]["abweichung"] is None
+        assert r[rolle]["plan"] is None and r[rolle]["deviation"] is None
         assert r[rolle]["ergebnis"] is not None
 
 

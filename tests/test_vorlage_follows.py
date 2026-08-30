@@ -38,13 +38,13 @@ def _seed(ratslotse_db: Path, council_db: Path, stations: list[tuple], *, snapsh
     council = CouncilStore(council_db)
     with council._conn:  # noqa: SLF001 — Testfixture darf ans Innenleben
         council._conn.execute(  # noqa: SLF001
-            "INSERT OR REPLACE INTO council_vorlagen(kvonr, vorlage_nr, title, fetched_at) "
+            "INSERT OR REPLACE INTO council_vorlagen(kvonr, template_number, title, fetched_at) "
             "VALUES (700, '26/0001', 'Radweg Haarenufer', '2026-01-01')")
     council.close()
 
     store = Store(ratslotse_db)
     uid = store.create_web_user("a@test.de", "hash", "user", "active", email_verified=True)
-    store.follow_vorlage(uid, 700, vorlage_nr="26/0001", title="Radweg Haarenufer",
+    store.follow_vorlage(uid, 700, template_number="26/0001", title="Radweg Haarenufer",
                          stations=json.dumps(snapshot))
     store.close()
     return uid

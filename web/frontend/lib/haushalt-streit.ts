@@ -59,11 +59,11 @@ export type StreitBeschluss = {
   titel: string;
   outcome: string | null;
   vote: string | null;
-  gegenstimmen: number | null;
-  enthaltungen: number | null;
+  no_votes: number | null;
+  abstentions: number | null;
   /** Der Abstimmungssatz, wie er im Protokoll steht. */
   wortlaut: string | null;
-  vorlage_nr: string | null;
+  template_number: string | null;
 };
 
 export type StreitStation = {
@@ -71,7 +71,7 @@ export type StreitStation = {
   gremium: string;
   datum: string;
   top: string | null;
-  beschluss: StreitBeschluss | null;
+  official_text: StreitBeschluss | null;
   antraege: StreitAntrag[];
   debatte: StreitWortbeitrag[];
   protokoll_url: string | null;
@@ -126,7 +126,7 @@ export function antragsStationen(r: StreitRunde | null): StreitStation[] {
 /** Die Schlussabstimmung über die Haushaltssatzung — die letzte Station, die
  *  eine trägt. Vorherige Stationen haben denselben Punkt vertagt. */
 export function schlussbeschluss(r: StreitRunde | null): StreitStation | null {
-  const mit = (r?.stationen ?? []).filter((s) => s.beschluss?.outcome === "angenommen");
+  const mit = (r?.stationen ?? []).filter((s) => s.official_text?.outcome === "angenommen");
   return mit.length ? mit[mit.length - 1] : null;
 }
 

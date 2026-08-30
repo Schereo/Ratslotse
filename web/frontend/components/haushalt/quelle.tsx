@@ -348,14 +348,14 @@ function Fundstelle({ ziel }: { ziel: Belegziel }) {
  *  berichtet, er bewertet nicht (DESIGNSPRACHE § 7); ein grünes
  *  „beschlossen" machte aus einer Herkunftsangabe eine Meinung. */
 function Vorgang({ ziel }: { ziel: Belegziel }) {
-  const b = ziel.dokument.beschluss;
+  const b = ziel.dokument.official_text;
   if (!b || !b.datum) return null;
   const gremium = b.gremium ? gremiumKurz(b.gremium) : "Der Rat";
   return (
     <span className="mt-1 block text-[11px] leading-relaxed text-foreground/80">
       {gremium} hat das am {datumLang(b.datum)} {vorgangVerb(b.outcome)}
-      {b.vorlage_nr && (
-        <span className="text-muted-foreground"> · Vorlage {b.vorlage_nr}</span>
+      {b.template_number && (
+        <span className="text-muted-foreground"> · Vorlage {b.template_number}</span>
       )}
     </span>
   );
@@ -560,10 +560,10 @@ function Dokumentliste({ dokumente, eintraege }: {
           {d.fundstelle && (
             <span className="text-[11px] text-muted-foreground">· {d.fundstelle}</span>
           )}
-          {d.beschluss?.vorlage_nr
-            && !(d.label ?? "").includes(d.beschluss.vorlage_nr) && (
+          {d.official_text?.template_number
+            && !(d.label ?? "").includes(d.official_text.template_number) && (
             <span className="font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
-              Vorlage {d.beschluss.vorlage_nr}
+              Vorlage {d.official_text.template_number}
             </span>
           )}
         </li>

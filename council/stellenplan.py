@@ -640,7 +640,7 @@ def lies(text: str) -> dict:
                        if bestanden else []),
             "proben": proben, "bestanden": bestanden, "verworfen": verworfen,
             "unstimmig": [{"lfd_nr": z["lfd_nr"], "bezeichnung": z["bezeichnung"],
-                           "abweichung": round(_besetzungsrest(z), 2)}
+                           "deviation": round(_besetzungsrest(z), 2)}
                           for z in unstimmig],
             "nachweis": nachweis(gruppen, gesamt, einzeln, unstimmig, proben)})
 

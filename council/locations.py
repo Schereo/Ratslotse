@@ -111,7 +111,7 @@ Regeln:
 - Mehrere betroffene Orte einzeln nennen.
 - name: kürzeste Form, die im Text selbst vorkommt.
 - kind: strasse | platz | gebaeude | gebiet | stadtteil | gewaesser | sonstiges.
-- source: title | beschluss | vorlage.
+- source: title | official_text | vorlage.
 - evidence: kurzes wörtliches Textstück aus dem gelieferten Vorgang.
 - confidence: high bei eindeutiger Fundstelle, medium bei klarem räumlichem Bezug.
 - Wenn kein Ort sicher belegt ist: leere locations-Liste.
@@ -267,15 +267,15 @@ def extract_explicit_locations(text: str, *, source: str,
 
 def source_hash(row: dict) -> str:
     """Ändert sich Titel/Beschluss/Vorlage, wird der Vorgang erneut untersucht."""
-    raw = "\x1f".join(str(row.get(k) or "") for k in ("title", "beschluss", "vorlage_text"))
+    raw = "\x1f".join(str(row.get(k) or "") for k in ("title", "official_text", "vorlage_text"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def _context(row: dict) -> str:
     title = " ".join((row.get("title") or "").split())[:700]
-    beschluss = " ".join((row.get("beschluss") or "").split())[:1800]
+    official_text = " ".join((row.get("official_text") or "").split())[:1800]
     vorlage = " ".join((row.get("vorlage_text") or "").split())[:4500]
-    return f"<title>{title}</title>\n<beschluss>{beschluss}</beschluss>\n<vorlage>{vorlage}</vorlage>"
+    return f"<title>{title}</title>\n<official_text>{official_text}</official_text>\n<vorlage>{vorlage}</vorlage>"
 
 
 def extract_batch(rows: list[dict], model: str = MODEL) -> tuple[dict[int, list[dict]], object]:
@@ -334,7 +334,7 @@ def extract_batch(rows: list[dict], model: str = MODEL) -> tuple[dict[int, list[
             name = " ".join(str(loc.get("name") or "").split()).strip(" ,.;:()[]")
             evidence = " ".join(str(loc.get("evidence") or "").split()).strip()
             kind = loc.get("kind") if loc.get("kind") in KINDS else "sonstiges"
-            source = loc.get("source") if loc.get("source") in {"title", "beschluss", "vorlage"} else "vorlage"
+            source = loc.get("source") if loc.get("source") in {"title", "official_text", "vorlage"} else "vorlage"
             if not valid_llm_location(name, kind, evidence):
                 continue
             # Das Modell darf nur Textstellen zitieren, die wirklich im Kontext

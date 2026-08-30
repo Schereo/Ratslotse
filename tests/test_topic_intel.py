@@ -27,10 +27,10 @@ def store(tmp_path):
         (3, "Cäcilienbrücke: Zeitplan der Wiedereröffnung", "verkehr",
          "Der Zeitplan zur Wiedereröffnung wurde beschlossen."),
     ]
-    for did, title, field, beschluss in rows:
+    for did, title, field, official_text in rows:
         s._conn.execute(
-            "INSERT INTO council_decisions(id, ksinr, position, title, policy_field, beschluss) "
-            "VALUES (?,1,?,?,?,?)", (did, did, title, field, beschluss))
+            "INSERT INTO council_decisions(id, ksinr, position, title, policy_field, official_text) "
+            "VALUES (?,1,?,?,?,?)", (did, did, title, field, official_text))
     s._conn.commit()
     s.rebuild_fts()
     yield s

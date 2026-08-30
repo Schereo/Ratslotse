@@ -39,7 +39,7 @@ export type VergleichWert = {
 
 /** Die Ratsvorlage, mit der die Stadt den Vergleich selbst entwertet hat. */
 export type VergleichBeleg = {
-  vorlage_nr: string;
+  template_number: string;
   kvonr: number;
   vorlage_url: string;
   /** Der Eintrag in unserem eigenen Bestand — der Ausschuss hat den Bericht

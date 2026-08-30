@@ -437,7 +437,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                                   "protokoll_seite": d.get("seite")} for d in debatten_rows],
             "anlagen_kompakt": [{"nr": a.get("nr"), "label": a.get("label"),
                                  "url": a.get("url"),
-                                 "vorlage_nr": a.get("vorlage_nr"),
+                                 "template_number": a.get("template_number"),
                                  "vorlage_titel": a.get("vorlage_titel"),
                                  "auszug": (a.get("fundstelle") or "")[:220]}
                                 for a in anlagen_rows],
@@ -472,9 +472,9 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
         _emit(job, {"type": "phase", "phase": "lesen", "dokumente": gelesen})
         try:
             from council import vorlagen as vorlagen_mod
-            texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in candidates])
+            texts = store.vorlage_texts_for([c.get("template_number") or "" for c in candidates])
             for i, c in enumerate(candidates):
-                t = texts.get((c.get("vorlage_nr") or "").strip())
+                t = texts.get((c.get("template_number") or "").strip())
                 if t:
                     grenze = VOLLTEXT_ZEICHEN if i < VOLLTEXT_TOP else KURZTEXT_ZEICHEN
                     c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, grenze)

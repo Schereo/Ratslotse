@@ -384,8 +384,8 @@ export function PartyAttendanceBadge({ party, n }: { party: string; n: number })
  *  den Antrag, red = dagegen — so the majority block is red for a rejected motion
  *  (its "Gegenstimmen" are then the outvoted minority that voted *for*). */
 export function VoteBar({ d, presentCount }: { d: CouncilDecision; presentCount?: number }) {
-  const gegen = d.gegenstimmen ?? 0;
-  const enth = d.enthaltungen ?? 0;
+  const gegen = d.no_votes ?? 0;
+  const enth = d.abstentions ?? 0;
   const rejected = d.outcome === "abgelehnt";
   const deferred = d.outcome === "vertagt";
   const majColor = rejected ? "bg-red-500/80" : deferred ? "bg-amber-500/80" : "bg-green-500/80";

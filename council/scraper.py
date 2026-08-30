@@ -19,7 +19,7 @@ _TIME_RE = re.compile(r"(\d{2}:\d{2})")
 class AgendaItem:
     item_number: str        # "Ö 6.1", "N 17"
     title: str
-    vorlage_nr: str = ""   # e.g. "26/0396"
+    template_number: str = ""   # e.g. "26/0396"
     kvonr: int | None = None
     is_public: bool = True
     # Anhänge des TOP von der Sitzungsseite (Tims Befund 12.08.: sie fehlten
@@ -272,10 +272,10 @@ class CouncilScraper:
             if not title:
                 continue
 
-            vorlage_nr = ""
+            template_number = ""
             kvonr: int | None = None
             if len(cells) >= 3:
-                vorlage_nr = cells[2].get_text(strip=True)
+                template_number = cells[2].get_text(strip=True)
 
             # Extract kvonr from any link in the row
             for a in row.find_all("a", href=True):
@@ -312,7 +312,7 @@ class CouncilScraper:
             items.append(AgendaItem(
                 item_number=num_text,
                 title=title,
-                vorlage_nr=vorlage_nr,
+                template_number=template_number,
                 kvonr=kvonr,
                 is_public=is_public,
                 anlagen=anlagen if is_public else [],

@@ -121,7 +121,7 @@ def _analyse(committee: str, session_date: str,
         return [p for p in alle if not (p["number"] in gesehen or gesehen.add(p["number"]))]
 
     items_text = "\n".join(
-        f"{i.item_number}: {i.title}" + (f" [{i.vorlage_nr}]" if i.vorlage_nr else "")
+        f"{i.item_number}: {i.title}" + (f" [{i.template_number}]" if i.template_number else "")
         for i in relevant
     )
     if not items_text.strip():

@@ -619,7 +619,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "template": (
             "Beschluss: {title}\n"
             "Gremium: {committee} · Sitzung vom {session_date}\n\n"
-            "Beschlusstext:\n{beschluss}"
+            "Beschlusstext:\n{official_text}"
         ),
     },
     "impact_bewertung_system": {
@@ -780,7 +780,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Beschluss vom {session_date} ({committee}), Ergebnis: {outcome}.\n"
             "Titel: {title}\n"
             "Warum interessant: {interest_reason}\n\n"
-            "Beschlusstext (Auszug):\n{beschluss}"
+            "Beschlusstext (Auszug):\n{official_text}"
         ),
     },
     "entity_dubletten_system": {

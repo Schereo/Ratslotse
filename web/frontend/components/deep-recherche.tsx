@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 /** Künftige Beratungsstation einer zitierten Vorlage (Sitzungskalender). */
 export type Planung = {
   kvonr: number; datum: string | null; gremium: string | null;
-  vorlage_nr: string | null; vorlage_titel: string | null;
+  template_number: string | null; vorlage_titel: string | null;
 };
 
 export type DeepPhase = "zerlegen" | "suchen" | "lesen" | "schreiben";
@@ -334,7 +334,7 @@ export function WieEsWeitergeht({ planungen }: { planungen: Planung[] }) {
             <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
               <p className="text-[12.5px] leading-snug text-foreground">
-                {p.vorlage_titel || p.vorlage_nr || "Vorlage"}
+                {p.vorlage_titel || p.template_number || "Vorlage"}
               </p>
               <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
                 {p.gremium}{p.datum ? ` · ${fmtDatum(p.datum)}` : ""}

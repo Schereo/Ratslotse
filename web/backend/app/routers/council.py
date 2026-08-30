@@ -1697,15 +1697,15 @@ def decision_detail(
             bd["impact_reason"] = d["impact_reason"]
     if d.get("kind") == "decision" and d.get("item_number"):
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
-    if d.get("vorlage_nr"):
-        out["vorlage_journey"] = store.vorlage_journey(d["vorlage_nr"])
+    if d.get("template_number"):
+        out["vorlage_journey"] = store.vorlage_journey(d["template_number"])
         out["vorlage_url"] = _vorlage_url(d["kvonr"]) if d.get("kvonr") else None
         # Ingested Vorlage text (Sachverhalt/Begründung) — the why behind the
         # decision. Also our only kvonr source: protocols never carry one.
-        v = store.get_vorlage_by_nr(d["vorlage_nr"])
+        v = store.get_vorlage_by_nr(d["template_number"])
         if v:
             out["vorlage"] = {
-                "vorlage_nr": v.get("vorlage_nr"), "title": v.get("title"),
+                "template_number": v.get("template_number"), "title": v.get("title"),
                 "art": v.get("art"), "document_url": v.get("document_url"),
                 "n_pages": v.get("n_pages"),
                 "excerpt": vorlagen_mod.excerpt(v.get("raw_text") or "", 2600) or None,
@@ -1721,12 +1721,12 @@ def decision_detail(
             }
             if not out["vorlage_url"] and v.get("kvonr"):
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])
-        out["anlagen"] = store.anlagen_for_vorlage_nr(d["vorlage_nr"])
+        out["anlagen"] = store.anlagen_for_vorlage_nr(d["template_number"])
         # Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt
         # über eine echte Verknüpfung, nicht über eine Textsuche. `None` heißt
         # „nirgends nachweisbar", und die Seite lässt die Karte dann weg.
         out["haushalts_anschluss"] = store.haushalts_anschluss(
-            d["id"], d.get("vorlage_nr"))
+            d["id"], d.get("template_number"))
         # P1: gerenderte Planzeichnung (scripts/render_plaene.py) — B-Plan-
         # Beschlüsse leben vom Bild, nicht vom Anlagen-Download. Echte
         # Planzeichnungen vor Mischdokumenten: „Begründung mit Leitplan" hat
@@ -2012,7 +2012,7 @@ class QaShareAnlage(BaseModel):
     nr: int | None = Field(default=None, ge=1, le=99)
     label: str | None = Field(default=None, max_length=300)
     url: str | None = Field(default=None, max_length=500)
-    vorlage_nr: str | None = Field(default=None, max_length=60)
+    template_number: str | None = Field(default=None, max_length=60)
     vorlage_titel: str | None = Field(default=None, max_length=300)
     auszug: str = Field(default="", max_length=600)
 
@@ -2445,7 +2445,7 @@ def follow_vorlage(
     # Den heutigen Stand mitschreiben: Was schon dasteht, ist keine Neuigkeit.
     ratslotse.follow_vorlage(
         user["id"], kvonr,
-        vorlage_nr=v.get("vorlage_nr") or "", title=v.get("title") or "",
+        template_number=v.get("template_number") or "", title=v.get("title") or "",
         stations=_stations_signature(store.get_beratungen(kvonr)),
     )
     return {"kvonr": kvonr, "following": True}
@@ -2592,7 +2592,7 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         titel = (d.get("title") or "Beschluss des Oldenburger Stadtrats").strip()
         ergebnis = _PREVIEW_OUTCOME.get(d.get("outcome") or "")
         kopf = " · ".join(x for x in (d.get("committee"), _preview_datum(d.get("session_date"))) if x)
-        satz = (d.get("simple_summary") or d.get("summary") or d.get("beschluss") or "").strip()
+        satz = (d.get("simple_summary") or d.get("summary") or d.get("official_text") or "").strip()
         # Erst kürzen, dann das Ergebnis anhängen: Es ist die wertvollste
         # Information der Karte und darf nie dem Rotstift zum Opfer fallen.
         titel = _kuerzen(titel, 90)
@@ -2846,7 +2846,7 @@ def _qa_source(c: dict) -> dict:
         # Kostenentwicklung (10.08.26): Familien-Erkennung (gleiche Vorlage)
         # für das ehrliche Delta im Geld-Baustein — nur dort ist „gestiegen
         # von X auf Y" belegbar, alles andere wäre ein Äpfel/Birnen-Vergleich.
-        "vorlage_nr": c.get("vorlage_nr"),
+        "template_number": c.get("template_number"),
         "factions": qa._factions_of(c),
         # Bei einem expliziten Ortsfilter: exakte Zuordnung samt Fundstelle.
         # So bleibt im UI prüfbar, weshalb dieser Beschluss zum Ort gehört.
@@ -2911,7 +2911,7 @@ def _anlagen_kompakt(rows: list[dict]) -> list[dict]:
     einen kurzen, prüfbaren Anriss und verlinkt auf das Originaldokument.
     """
     return [{"nr": a.get("nr"), "label": a.get("label"), "url": a.get("url"),
-             "vorlage_nr": a.get("vorlage_nr"),
+             "template_number": a.get("template_number"),
              "vorlage_titel": a.get("vorlage_titel"),
              "auszug": (a.get("fundstelle") or "")[:220]} for a in rows]
 
@@ -3164,15 +3164,15 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     # Quellenanker dazu. Bei explizitem Ortsfilter darf auch
                     # dieser Nachladeweg den belegten Ort nicht umgehen.
                     by_vorlage = store.decision_ids_for_vorlagen(
-                        [a.get("vorlage_nr") for a in anlagen_rows])
+                        [a.get("template_number") for a in anlagen_rows])
                     if allowed_place_ids is not None:
                         erlaubte_nrn = {nr for nr, ids in by_vorlage.items()
                                        if any(i in allowed_place_ids for i in ids)}
                         anlagen_rows = [a for a in anlagen_rows
-                                        if a.get("vorlage_nr") in erlaubte_nrn]
+                                        if a.get("template_number") in erlaubte_nrn]
                     related_ids: list[int] = []
                     for a in anlagen_rows:
-                        ids = by_vorlage.get(a.get("vorlage_nr") or "", [])
+                        ids = by_vorlage.get(a.get("template_number") or "", [])
                         if allowed_place_ids is not None:
                             ids = [i for i in ids if i in allowed_place_ids]
                         related_ids.extend(ids[:2])
@@ -3477,9 +3477,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 ctx = [c for c in candidates if c["id"] in im_set][:QA_SITZUNG_N]
             if documents_enabled and not einfach:
                 try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
-                    texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
+                    texts = store.vorlage_texts_for([c.get("template_number") or "" for c in ctx])
                     for c in ctx:
-                        t = texts.get((c.get("vorlage_nr") or "").strip())
+                        t = texts.get((c.get("template_number") or "").strip())
                         if t:
                             c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
                 except Exception:  # noqa: BLE001
@@ -3683,12 +3683,12 @@ def haushalt_vergleich(
         "unter_100k": key in sv.UNTER_100K,
     } for key, name in sv.KREISFREIE_STAEDTE.items()]
 
-    beleg: dict = {"vorlage_nr": VERGLEICH_BELEG_VORLAGE,
+    beleg: dict = {"template_number": VERGLEICH_BELEG_VORLAGE,
                    "kvonr": VERGLEICH_BELEG_KVONR,
                    "vorlage_url": _vorlage_url(VERGLEICH_BELEG_KVONR),
                    "beschluss_id": None, "titel": None, "anlagen": []}
     try:
-        ids = store.find_decision_ids(vorlage_nr=VERGLEICH_BELEG_VORLAGE)
+        ids = store.find_decision_ids(template_number=VERGLEICH_BELEG_VORLAGE)
         beleg["beschluss_id"] = ids[0] if ids else None
         vorlage = store.get_vorlage_by_nr(VERGLEICH_BELEG_VORLAGE)
         if vorlage:

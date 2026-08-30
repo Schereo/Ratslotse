@@ -949,10 +949,10 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                                       sum(len(x["posten"]) for x in thh), schuetzen):
                     geschuetzt += 1 if alt_thh else 0
                 else:
-                    passt, abweichung = finanzberichte.summenprobe(thh, posten)
+                    passt, deviation = finanzberichte.summenprobe(thh, posten)
                     if not passt:
                         p.warnen(f"    Teilhaushalte verworfen: Summe weicht um "
-                                 f"{abweichung*100:.1f} % von der Gesamtrechnung ab")
+                                 f"{deviation*100:.1f} % von der Gesamtrechnung ab")
                         verworfen += 1
                     else:
                         for x in thh:
@@ -961,12 +961,12 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                                     probe="summenprobe",
                                     fundstelle=f"Teil-Ergebnisrechnung THH"
                                                f"{x['thh_nr']:02d} — {x['thh_name']}",
-                                    probe_ergebnis=f"{abweichung * 100:.2f} % "
+                                    probe_ergebnis=f"{deviation * 100:.2f} % "
                                                    f"Abweichung zur Gesamtrechnung",
                                     **anker),
                                 thh_nr=x["thh_nr"], thh_name=x["thh_name"])
                         p.sagen(f"    + {len(thh)} Teilhaushalte "
-                                f"(Summenprobe {abweichung*100:.2f} % Abweichung)")
+                                f"(Summenprobe {deviation*100:.2f} % Abweichung)")
                         neue_einheiten.add((jahr, "teilhaushalte"))
                         mit_thh += 1
 
@@ -1438,7 +1438,7 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
                         f"Dokument {r['document_id']}")
             for u in teil["unstimmig"]:
                 p.warnen(f"      Zeile {u['lfd_nr']} ({u['bezeichnung']}): der Plan "
-                         f"weicht hier um {u['abweichung']:+.2f} Stellen von sich "
+                         f"weicht hier um {u['deviation']:+.2f} Stellen von sich "
                          f"selbst ab — gespeichert und gekennzeichnet")
 
     voll = sorted(j for j, d in je_jahrgang.items() if len(d["teile"]) == 2)

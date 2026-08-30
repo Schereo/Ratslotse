@@ -110,11 +110,11 @@ def test_abweichung_containment_statt_ratio():
             "an den Ausschuss für Stadtplanung und Bauen beauftragt.")
     # Der extrahierte Beschluss ist oft nur der Anfang des Vorschlags — reine
     # Kürzung darf nicht als Änderung zählen (die symmetrische Ratio täte das).
-    assert ernte.abweichung(lang, lang[:80]) == "unveraendert"
-    assert ernte.abweichung(lang, lang) == "unveraendert"
-    assert ernte.abweichung(lang, "Der Tagesordnungspunkt wird auf die nächste Sitzung vertagt.") == "stark"
-    assert ernte.abweichung(lang, "zu kurz") is None
-    assert ernte.abweichung(None, lang) is None
+    assert ernte.deviation(lang, lang[:80]) == "unveraendert"
+    assert ernte.deviation(lang, lang) == "unveraendert"
+    assert ernte.deviation(lang, "Der Tagesordnungspunkt wird auf die nächste Sitzung vertagt.") == "stark"
+    assert ernte.deviation(lang, "zu kurz") is None
+    assert ernte.deviation(None, lang) is None
 
 
 def _session(store, ksinr=1):
@@ -129,7 +129,7 @@ PROTOKOLL_TEXT = "Protokoll\nSitzungsort: Kulturzentrum PFL, Peterstraße 3\nTei
 
 def test_save_vorlage_erntet_felder(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
-    store.save_vorlage({"kvonr": 7, "vorlage_nr": "22/0262", "raw_text": VORLAGE_TEXT})
+    store.save_vorlage({"kvonr": 7, "template_number": "22/0262", "raw_text": VORLAGE_TEXT})
     v = store.get_vorlage(7)
     assert v["amt"] == "Stadtplanungsamt"
     assert v["klima_check"].startswith("Prüfungsrelevant: Ja")
@@ -141,19 +141,19 @@ def test_save_vorlage_erntet_felder(tmp_path):
 def test_save_protocol_setzt_ort_kvonr_und_abweichung(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     _session(store)
-    store.save_vorlage({"kvonr": 7, "vorlage_nr": "22/0262", "raw_text": VORLAGE_TEXT})
+    store.save_vorlage({"kvonr": 7, "template_number": "22/0262", "raw_text": VORLAGE_TEXT})
     store.save_protocol(
         1, {"document_id": 1, "url": "u"}, {}, PROTOKOLL_TEXT, 1, "m",
         decisions=[{"item_number": "6.1", "title": "Vergnügungsstättenkonzept",
-                    "beschluss": "Der Tagesordnungspunkt wird auf die nächste Sitzung vertagt, "
+                    "official_text": "Der Tagesordnungspunkt wird auf die nächste Sitzung vertagt, "
                                  "da weiterer Beratungsbedarf besteht.",
-                    "outcome": "angenommen", "vorlage_nr": "22/0262"}],
+                    "outcome": "angenommen", "template_number": "22/0262"}],
         attendance=[])
     row = store._conn.execute(
-        "SELECT d.kvonr, d.abweichung, s.location FROM council_decisions d "
+        "SELECT d.kvonr, d.deviation, s.location FROM council_decisions d "
         "JOIN council_sessions s USING (ksinr)").fetchone()
     assert row["kvonr"] == 7                      # über die Vorlagen-Nr. verknüpft
-    assert row["abweichung"] == "stark"           # Vertagung ≠ Beschlussvorschlag
+    assert row["deviation"] == "stark"           # Vertagung ≠ Beschlussvorschlag
     assert row["location"] == "Kulturzentrum PFL, Peterstraße 3"
     store.close()
 
@@ -166,13 +166,13 @@ def test_vorlage_nach_protokoll_zieht_abweichung_nach(tmp_path):
     store.save_protocol(
         1, {"document_id": 1, "url": "u"}, {}, PROTOKOLL_TEXT, 1, "m",
         decisions=[{"item_number": "6.1", "title": "Vergnügungsstättenkonzept",
-                    "beschluss": "Das Vergnügungsstättenkonzept wird beschlossen. "
+                    "official_text": "Das Vergnügungsstättenkonzept wird beschlossen. "
                                  "Die Verwaltung wird mit der Umsetzung beauftragt.",
-                    "outcome": "angenommen", "vorlage_nr": "22/0262"}],
+                    "outcome": "angenommen", "template_number": "22/0262"}],
         attendance=[])
-    assert store._conn.execute("SELECT abweichung FROM council_decisions").fetchone()[0] is None
-    store.save_vorlage({"kvonr": 7, "vorlage_nr": "22/0262", "raw_text": VORLAGE_TEXT})
-    assert store._conn.execute("SELECT abweichung FROM council_decisions").fetchone()[0] == "unveraendert"
+    assert store._conn.execute("SELECT deviation FROM council_decisions").fetchone()[0] is None
+    store.save_vorlage({"kvonr": 7, "template_number": "22/0262", "raw_text": VORLAGE_TEXT})
+    assert store._conn.execute("SELECT deviation FROM council_decisions").fetchone()[0] == "unveraendert"
     store.close()
 
 
@@ -181,10 +181,10 @@ def test_qa_kontext_traegt_ernte_felder(tmp_path):
 
     ctx = qa._build_context([{
         "id": 5, "title": "Konzept", "committee": "Rat", "session_date": "2026-01-01",
-        "outcome": "angenommen", "beschluss": "Wird beschlossen.",
+        "outcome": "angenommen", "official_text": "Wird beschlossen.",
         "amt": "Stadtplanungsamt",
         "klima_check": "Prüfungsrelevant: Ja, steuert den Verkehr.",
-        "abweichung": "stark",
+        "deviation": "stark",
     }])
     assert "Federführung: Stadtplanungsamt" in ctx
     assert "Klima-Check der Verwaltung: Prüfungsrelevant: Ja" in ctx
@@ -192,7 +192,7 @@ def test_qa_kontext_traegt_ernte_felder(tmp_path):
     # „Nein"-Vermerke bleiben draußen — sie helfen keiner Antwort.
     ctx2 = qa._build_context([{
         "id": 6, "title": "Bericht", "committee": "Rat", "session_date": "2026-01-01",
-        "outcome": "angenommen", "beschluss": "Kenntnis.",
-        "klima_check": "Nein, nicht prüfungsrelevant.", "abweichung": "unveraendert",
+        "outcome": "angenommen", "official_text": "Kenntnis.",
+        "klima_check": "Nein, nicht prüfungsrelevant.", "deviation": "unveraendert",
     }])
     assert "Klima-Check" not in ctx2 and "Beschlussvorschlag" not in ctx2

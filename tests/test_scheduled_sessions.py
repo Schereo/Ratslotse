@@ -139,7 +139,7 @@ def _vorschau_store(tmp_path):
             ("Ö 6", "Berufung Beratendes Mitglied im Ausschuss", "26/4", 400),
         ]
         store._conn.executemany(
-            "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr, kvonr, is_public) "
+            "INSERT INTO council_agenda_items (ksinr, item_number, title, template_number, kvonr, is_public) "
             "VALUES (1, ?, ?, ?, ?, 1)", punkte)
         store._conn.execute(
             "INSERT INTO council_entities (id, slug, name, kind, n) "
@@ -178,7 +178,7 @@ def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
         # der Weg, auf dem der Museumsbericht nach oben rutschte.
         bericht = [{"title": "Bildende Kunst im Stadtmuseum (CDU-Fraktion vom 07.07.2026)",
                     "behandlung": "Kenntnisnahme", "vorgeschichte": 1,
-                    "summary": "Ein Satz dazu.", "vorlage_nr": "26/9",
+                    "summary": "Ein Satz dazu.", "template_number": "26/9",
                     "committee": "Kulturausschuss"}]
         store._punkte_bewerten(bericht)
         assert bericht[0]["rang"] <= 2.5
@@ -191,7 +191,7 @@ def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
         # das war der Befund, der die Dämpfung ausgelöst hat.
         roh = [{"title": "Berufung Beratendes Mitglied im Ausschuss",
                 "behandlung": "Entscheidung", "vorgeschichte": 0,
-                "summary": None, "vorlage_nr": "26/4"}]
+                "summary": None, "template_number": "26/4"}]
         store._punkte_bewerten(roh)
         assert roh[0]["wichtig"] < store.WICHTIG_MINDEST
     finally:
@@ -226,7 +226,7 @@ def test_wochenvorschau_deckelt_strassen_formalakte(tmp_path):
     try:
         with store._conn:
             store._conn.execute(
-                "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr, kvonr, is_public) "
+                "INSERT INTO council_agenda_items (ksinr, item_number, title, template_number, kvonr, is_public) "
                 "VALUES (1, 'Ö 7', 'Widmung der Straße \"Im Technologiepark\"', '26/7', 700, 1)")
             # Gespeicherte LLM-Fehlbewertung: 70 von 100.
             store.save_agenda_impact(1, "Ö 7", 70, "Klingt nach Infrastruktur")
@@ -371,10 +371,10 @@ def _gruppen_store(tmp_path):
             ("Ö 6.2", "Ausbau der Fahrradabstellanlagen (SPD-Fraktion vom 10.06.2026)", "26/4", 104),
         ]
         store._conn.executemany(
-            "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr, kvonr, is_public) "
+            "INSERT INTO council_agenda_items (ksinr, item_number, title, template_number, kvonr, is_public) "
             "VALUES (7, ?, ?, ?, ?, 1)", punkte)
         store._conn.executemany(
-            "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, art, fetched_at) "
+            "INSERT INTO council_vorlagen (kvonr, template_number, title, art, fetched_at) "
             "VALUES (?, ?, '', ?, datetime('now'))",
             [(101, "26/1", "Beschlussvorlage"), (102, "26/2", "Berichtsvorlage"),
              (103, "26/3", "Beschlussvorlage"), (104, "26/4", "Beschlussvorlage")])
@@ -436,7 +436,7 @@ def test_beschlussvorlage_haelt_die_kenntnisnahme_schranke_auf(tmp_path):
     store = CouncilStore(tmp_path / "s.sqlite")
     try:
         gemeinsam = {"behandlung": "Kenntnisnahme", "vorgeschichte": 0,
-                     "summary": "Ein Satz dazu.", "vorlage_nr": "26/1",
+                     "summary": "Ein Satz dazu.", "template_number": "26/1",
                      "committee": "Verkehrsausschuss"}
         punkte = [
             {**gemeinsam, "title": "VBN-Tarifanpassung 2027 - Beschluss",
@@ -445,9 +445,9 @@ def test_beschlussvorlage_haelt_die_kenntnisnahme_schranke_auf(tmp_path):
              "art": "Berichtsvorlage"},
         ]
         store._punkte_bewerten(punkte)
-        beschluss, bericht = punkte
-        assert beschluss["wichtig"] >= store.WICHTIG_MINDEST, "kommt jetzt auf die Karte"
-        assert beschluss["wichtig"] > bericht["wichtig"], (
+        official_text, bericht = punkte
+        assert official_text["wichtig"] >= store.WICHTIG_MINDEST, "kommt jetzt auf die Karte"
+        assert official_text["wichtig"] > bericht["wichtig"], (
             "die Entscheidung schlägt den Bericht — vorher war es umgekehrt")
         # Der Bericht bleibt gedeckelt: Die Schranke gilt weiter, wo sie stimmt.
         assert bericht["rang"] <= 2.5

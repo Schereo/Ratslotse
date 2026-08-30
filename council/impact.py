@@ -96,13 +96,13 @@ def dringlichkeits_boden(item_number: str | None) -> int | None:
 def _batch_text(decisions: list[dict]) -> str:
     lines: list[str] = []
     for d in decisions:
-        text = (d.get("beschluss") or d.get("summary") or "").strip().replace("\n", " ")
+        text = (d.get("official_text") or d.get("summary") or "").strip().replace("\n", " ")
         amount = d.get("amount_eur")
         signals = (
             f"Art {d.get('kind') or 'decision'} · Ergebnis {d.get('outcome') or '?'} · "
             f"Gremium {d.get('committee') or '?'} · "
             f"Betrag {f'{amount:,.0f} €'.replace(',', '.') if amount else 'keiner genannt'} · "
-            f"Beschlusstext {len(d.get('beschluss') or '')} Zeichen"
+            f"Beschlusstext {len(d.get('official_text') or '')} Zeichen"
         )
         lines.append(
             f"id {d['id']}: {(d.get('title') or '').strip()}\n"

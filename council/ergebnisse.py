@@ -74,10 +74,10 @@ def _stimmen(d: dict) -> str:
     teile = []
     if d.get("vote"):
         teile.append(str(d["vote"]))
-    if d.get("gegenstimmen"):
-        teile.append(f"{d['gegenstimmen']} dagegen")
-    if d.get("enthaltungen"):
-        teile.append(f"{d['enthaltungen']} Enthaltungen")
+    if d.get("no_votes"):
+        teile.append(f"{d['no_votes']} dagegen")
+    if d.get("abstentions"):
+        teile.append(f"{d['abstentions']} Enthaltungen")
     return ", ".join(teile)
 
 

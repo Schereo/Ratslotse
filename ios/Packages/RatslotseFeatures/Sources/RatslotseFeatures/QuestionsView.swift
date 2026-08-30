@@ -851,7 +851,7 @@ struct QuestionsView: View {
             "anlagen": [{
               "nr": 1,
               "label": "Übersichtskarte der Busspuren",
-              "vorlage_nr": "26/0801",
+              "template_number": "26/0801",
               "auszug": "Geplante Abschnitte am Innenstadtring.",
               "url": "https://example.org/karte.pdf"
             }],
@@ -1752,7 +1752,7 @@ private struct UncitedQuestionSourceRow: View {
 private func questionSourceMeta(_ source: DecisionSummary) -> String {
     let type: String = {
         let kind = source.kind?.lowercased() ?? ""
-        if kind.contains("beschluss") || source.outcome != nil { return "Beschluss" }
+        if kind.contains("official_text") || source.outcome != nil { return "Beschluss" }
         if kind.contains("vorlage") || source.templateNumber != nil { return "Vorlage" }
         return "Ratsunterlage"
     }()
@@ -2719,7 +2719,7 @@ struct CouncilEvidenceBlocks: View {
                         let row = EvidenceTextRow(
                             title: "[A\(number)] \(title)",
                             detail: item["auszug"]?.string,
-                            meta: item["vorlage_nr"]?.string,
+                            meta: item["template_number"]?.string,
                             symbol: "doc.text"
                         )
                         if let raw = item["url"]?.string, let url = URL(string: raw) {
@@ -2787,7 +2787,7 @@ struct CouncilEvidenceBlocks: View {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(planning.enumerated()), id: \.offset) { _, item in
                         EvidenceTextRow(
-                            title: item["vorlage_titel"]?.string ?? item["vorlage_nr"]?.string ?? "Vorlage",
+                            title: item["vorlage_titel"]?.string ?? item["template_number"]?.string ?? "Vorlage",
                             detail: item["gremium"]?.string,
                             meta: item["datum"]?.string,
                             symbol: "arrow.triangle.branch"

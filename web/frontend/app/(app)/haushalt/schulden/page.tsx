@@ -172,7 +172,7 @@ function BeschlussStrahl({ vorlagen }: { vorlagen: BuergschaftsVorlage[] }) {
         {gezeigt.map((v) => {
           const fort = FORTSCHREIBUNG.test(v.title);
           return (
-            <li key={v.vorlage_nr}
+            <li key={v.template_number}
               className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 border-l-2 border-border py-1.5 pl-3">
               <span className="flex-none font-mono text-[10.5px] tabular-nums text-muted-foreground">
                 {v.datum ? v.datum.slice(0, 7).split("-").reverse().join("/") : "—"}
@@ -538,7 +538,7 @@ function RahmenBlock({ zeile, herkunft }: {
           </div>
         ))}
       </dl>
-      <Dokumentbeleg h={herkunft} vorlageNr={zeile.vorlage_nr}
+      <Dokumentbeleg h={herkunft} vorlageNr={zeile.template_number}
         className="mt-3 border-t border-dashed border-border pt-2.5" />
     </section>
   );

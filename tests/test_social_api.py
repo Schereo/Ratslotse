@@ -178,7 +178,7 @@ def test_neue_beschluesse_filtert_wichtigkeit_und_id(client, monkeypatch, counci
 def test_hoechste_beschluss_id_ohne_bestand_ist_null(client, monkeypatch, council_store):
     token = _mit_token(monkeypatch)
     try:
-        r = client.get("/api/social/hoechste-beschluss-id",
+        r = client.get("/api/social/hoechste-official_text-id",
                        headers={"X-Social-Token": token})
         assert r.status_code == 200 and r.json() == {"hoechste_id": 0}
     finally:
@@ -213,7 +213,7 @@ def test_hochladen_vergibt_die_namen_selbst(client, monkeypatch, tmp_path):
 
 def test_kennung_darf_mehr_als_ein_datum_sein(client, monkeypatch, tmp_path):
     """Der Bot legt nicht nur Wochen-Karussells ab, sondern auch
-    „2026-08-24-fundstueck", „beschluss-4711" und „stories-2026-08-24".
+    „2026-08-24-fundstueck", „official_text-4711" und „stories-2026-08-24".
     Das Datumsmuster wies die alle ab."""
     token = _mit_token(monkeypatch)
     monkeypatch.setenv("SOCIAL_MEDIA_DIR", str(tmp_path))

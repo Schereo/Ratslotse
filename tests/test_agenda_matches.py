@@ -172,9 +172,9 @@ def test_verifiziere_items_nummer_titel_und_offbyone():
     session = CouncilSession(
         ksinr=1, committee="ASUK", session_date="2026-08-13", session_time="17:00",
         location="", agenda_items=[
-            AgendaItem(item_number="Ö 14.6", title="Vorhabenbezogener Bebauungsplan Nr. 81: Vorstellung des Bebauungsplans und des Artenschutzgutachtens", vorlage_nr="26/0627", is_public=True),
-            AgendaItem(item_number="Ö 14.7", title="Umsetzung der Ratsbeschlüsse zum Fliegerhorst (FDP-Fraktion) - Beschlussantrag", vorlage_nr="", is_public=True),
-            AgendaItem(item_number="N 2", title="Grundstücksangelegenheit", vorlage_nr="", is_public=False),
+            AgendaItem(item_number="Ö 14.6", title="Vorhabenbezogener Bebauungsplan Nr. 81: Vorstellung des Bebauungsplans und des Artenschutzgutachtens", template_number="26/0627", is_public=True),
+            AgendaItem(item_number="Ö 14.7", title="Umsetzung der Ratsbeschlüsse zum Fliegerhorst (FDP-Fraktion) - Beschlussantrag", template_number="", is_public=True),
+            AgendaItem(item_number="N 2", title="Grundstücksangelegenheit", template_number="", is_public=False),
         ])
 
     # Off-by-one: Nummer 14.6, Titel gehört zu 14.7 → Titel gewinnt.
@@ -201,10 +201,10 @@ def _sess_mit_vorlagen():
         ksinr=1, committee="ASUK", session_date="2026-08-13", session_time="17:00",
         location="", agenda_items=[
             AgendaItem(item_number="Ö 5", title="Sanierung Grundschule Musterweg",
-                       vorlage_nr="26/0001", is_public=True),
+                       template_number="26/0001", is_public=True),
             AgendaItem(item_number="Ö 6", title="Neubau Sporthalle an der Grundschule Musterweg",
-                       vorlage_nr="26/0002", is_public=True),
-            AgendaItem(item_number="Ö 7", title="Antrag der CDU zu Schulen", vorlage_nr="", is_public=True),
+                       template_number="26/0002", is_public=True),
+            AgendaItem(item_number="Ö 7", title="Antrag der CDU zu Schulen", template_number="", is_public=True),
         ])
 
 

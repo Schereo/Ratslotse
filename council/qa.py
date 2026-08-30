@@ -28,7 +28,7 @@ MODEL = os.environ.get("COUNCIL_QA_MODEL", "google/gemini-2.5-flash")
 EXPAND_MODEL = os.environ.get("COUNCIL_QA_EXPAND_MODEL", "google/gemini-2.5-flash-lite")
 
 _STOP = {
-    "wurde", "wurden", "wird", "werden", "beschlossen", "beschluss", "stadt", "stadtrat",
+    "wurde", "wurden", "wird", "werden", "beschlossen", "official_text", "stadt", "stadtrat",
     "oldenburg", "welche", "welcher", "welches", "wann", "warum", "wieso", "wofür",
     "haben", "hat", "gibt", "über", "zum", "zur", "eine", "einen", "einer", "nicht",
 }
@@ -875,7 +875,7 @@ def _gremium_passt(fragment: str, committee: str | None) -> bool:
 # Sitzungs-Anlass: Ein Datum allein macht noch keine Sitzungsfrage („Der
 # Bericht vom 12.06. sagt …") — es braucht ein Gremium oder ein Sitzungswort.
 _SITZUNG_ANLASS_RE = re.compile(
-    r"\b(sitzung\w*|beschloss\w*|beschluss\w*|beschluesse\w*|entschied\w*|"
+    r"\b(sitzung\w*|beschloss\w*|official_text\w*|beschluesse\w*|entschied\w*|"
     r"entscheidung\w*|tagesordnung\w*|getagt|tagte?n?|beraten|abgestimmt|"
     r"ergebnis\w*)\b")
 _SITZUNG_ZURUECK_RE = re.compile(
@@ -1105,7 +1105,7 @@ def markiere_veraltete(store, candidates: list[dict],
     if kandidaten_ids is None:
         kandidaten_ids = {c["id"] for c in candidates}
     kvonrs = [c.get("kvonr") for c in candidates if c.get("kvonr")]
-    basen = [b for b in (_vorlage_basis(c.get("vorlage_nr")) for c in candidates) if b]
+    basen = [b for b in (_vorlage_basis(c.get("template_number")) for c in candidates) if b]
     if not kvonrs and not basen:
         return
     try:
@@ -1118,8 +1118,8 @@ def markiere_veraltete(store, candidates: list[dict],
             continue
         gruppe = [r for r in rows if r["id"] != c["id"] and (
             (c.get("kvonr") and r.get("kvonr") == c.get("kvonr"))
-            or (_vorlage_basis(c.get("vorlage_nr"))
-                and _vorlage_basis(r.get("vorlage_nr")) == _vorlage_basis(c.get("vorlage_nr"))))]
+            or (_vorlage_basis(c.get("template_number"))
+                and _vorlage_basis(r.get("template_number")) == _vorlage_basis(c.get("template_number"))))]
         juengere = [r for r in gruppe if str(r.get("session_date") or "") > eigenes_datum]
         if not juengere:
             continue
@@ -1149,13 +1149,13 @@ def _build_context(candidates: list[dict]) -> str:
         # ein ISO-Datum landet sonst als „am 2026-06-01" in der Antwort.
         datum = _datum_de(c["session_date"]) if c.get("session_date") else None
         meta = " · ".join(p for p in (c.get("committee"), datum, c.get("outcome")) if p)
-        body = (c.get("summary") or c.get("beschluss") or "").strip()[:450]
+        body = (c.get("summary") or c.get("official_text") or "").strip()[:450]
         vorlage = (c.get("vorlage_excerpt") or "").strip()
         suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
         antragsteller = _factions_of(c)
         if antragsteller:
             suffix += f" — Antrag von: {', '.join(antragsteller)}"
-        strittig = (c.get("gegenstimmen") or 0) > 0 or (c.get("enthaltungen") or 0) > 0 \
+        strittig = (c.get("no_votes") or 0) > 0 or (c.get("abstentions") or 0) > 0 \
             or c.get("vote") == "mehrheitlich" or c.get("outcome") == "abgelehnt"
         raw_result = (c.get("raw_result") or "").strip()
         if strittig and raw_result:
@@ -1185,7 +1185,7 @@ def _build_context(candidates: list[dict]) -> str:
         # den Kontext füllen, ohne einer Antwort je zu helfen (Regex-Ernte).
         if ernte.klima_relevant(c.get("klima_check")):
             suffix += f" — Klima-Check der Verwaltung: {c['klima_check'][:200]}"
-        if c.get("abweichung") == "stark":
+        if c.get("deviation") == "stark":
             suffix += " — Der Rat wich deutlich vom Beschlussvorschlag der Verwaltung ab"
         impact = c.get("impact")
         if impact is not None and impact >= 70:
@@ -1293,7 +1293,7 @@ def _anlagen_block(anlagen: list[dict] | None) -> str:
         frisch.append(a)
     zeilen = "\n".join(
         f"[A{a.get('nr') or i + 1}] {a.get('label') or 'Anlage'} "
-        f"(zur Vorlage {a.get('vorlage_nr') or '?'}"
+        f"(zur Vorlage {a.get('template_number') or '?'}"
         f"{' — ' + a['vorlage_titel'][:80] if a.get('vorlage_titel') else ''}): "
         f"{(a.get('fundstelle') or '').strip()[:ANLAGEN_ZEICHEN]}"
         for i, a in enumerate(frisch))
@@ -1311,7 +1311,7 @@ def _planungen_block(planungen: list[dict] | None) -> str:
     if not planungen:
         return ""
     zeilen = "\n".join(
-        f"- {p.get('vorlage_titel') or p.get('vorlage_nr')}: {p.get('gremium')} am "
+        f"- {p.get('vorlage_titel') or p.get('template_number')}: {p.get('gremium')} am "
         f"{_datum_de(p.get('datum'))}" for p in planungen[:8])
     return ("\nGEPLANTE NÄCHSTE STATIONEN (aus den Beratungsfolgen — für den Abschnitt "
             "„Wie es weitergeht“; als Termin nennen, NIE mit [id]):\n" + zeilen + "\n")
@@ -2179,8 +2179,8 @@ def _gebuehren_block(g: dict | None) -> str:
                       "volumenabhängige Gebühr werden getrennt berechnet)")
             if r.get("gebuehrenvorschlag") is not None:
                 s += f"; gerundeter Gebührenvorschlag {geld(r['gebuehrenvorschlag'])}"
-            if r.get("vorlage_nr"):
-                s += f"; Vorlage {r['vorlage_nr']}"
+            if r.get("template_number"):
+                s += f"; Vorlage {r['template_number']}"
             s += _beleg_text(r.get("beleg"))
             zeilen.append(s)
     if not zeilen:
@@ -2637,7 +2637,7 @@ def _antraege_block(a: dict | None) -> str:
         for u in st.get("urheber") or []:
             zeilen.append(f"  - {u['name']}: {u['anzahl']} — davon {u['angenommen']} "
                           f"angenommen, {u['abgelehnt']} abgelehnt")
-        b = st.get("beschluss") or {}
+        b = st.get("official_text") or {}
         if b.get("outcome"):
             zeilen.append(f"  - Schlussabstimmung über die Haushaltssatzung: "
                           f"{b['outcome']}" + (f" ({b['vote']})" if b.get("vote") else ""))
@@ -3077,7 +3077,7 @@ def fallback_followups(candidates: list[dict]) -> list[str]:
 
     # 1) Umstritten? Dann ist die Abstimmung die naheliegendste Anschlussfrage.
     for c in candidates:
-        if (c.get("gegenstimmen") or 0) > 0 and (c.get("title") or "").strip():
+        if (c.get("no_votes") or 0) > 0 and (c.get("title") or "").strip():
             add(f"Wer stimmte gegen {_short_subject(c['title'])}?")
             break
     # 2) Themenfeld des Treffers — führt zu benachbarten Beschlüssen.

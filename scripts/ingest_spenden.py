@@ -75,7 +75,7 @@ def main() -> int:
                   f"{j['vorlagen']:>2} Vorlagen "
                   f"(Rat {j['rat']}, VA {j['verwaltungsausschuss']})")
         for v in verworfen:
-            print(f"  ohne Beleg: {v['vorlage_nr']} — {v['grund']}", file=sys.stderr)
+            print(f"  ohne Beleg: {v['template_number']} — {v['grund']}", file=sys.stderr)
 
         if args.trockenlauf:
             print("Trockenlauf — nichts gespeichert.")
@@ -107,7 +107,7 @@ def main() -> int:
                 art="ris",
                 dokument_id=v.get("dokument_id"),
                 url=v.get("dokument_url") or "https://buergerinfo.oldenburg.de/vo040.asp",
-                label=f"{LABEL} — Vorlage {v['vorlage_nr']}",
+                label=f"{LABEL} — Vorlage {v['template_number']}",
                 fundstelle=spenden.FUNDSTELLE,
                 stand=f"Sitzung vom {v['sitzung']}",
                 probe=v["proben"],

@@ -370,7 +370,7 @@ def test_stadion_regression(frage, tmp_path):
     kontext = qa.geld_kontext(store, frage, "Stadion Neubau Finanzierung Kosten", "thema")
     assert qa.geld_block(kontext) == "", sorted(kontext["facetten"])
     messages, _ = qa._answer_messages(
-        frage, [{"id": 5, "title": "Stadion Marschweg", "beschluss": "Zugestimmt.",
+        frage, [{"id": 5, "title": "Stadion Marschweg", "official_text": "Zugestimmt.",
                  "amount_eur": 4_200_000}], typ="thema", geld=kontext)
     prompt = messages[0]["content"]
     assert "Volumen: 4.200.000 €" in prompt          # der Beschluss-Betrag bleibt
@@ -591,12 +591,12 @@ def _befuellter_store(tmp_path) -> CouncilStore:
                  240_000_000.0, 251_900_000.0)]:
             store._conn.execute(
                 "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, thh_name, nr, bezeichnung, "
-                " ansatz, plan, plan_art, ergebnis, abweichung, ist_summe, fetched_at, herkunft_id) "
+                " ansatz, plan, plan_art, ergebnis, deviation, ist_summe, fetched_at, herkunft_id) "
                 "VALUES (2024,?,?,12,'Summe ordentliche Erträge',?,?,'ansatz',?,0,1,'',1)",
                 (thh, name, e_plan, e_plan, e_ist))
             store._conn.execute(
                 "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, thh_name, nr, bezeichnung, "
-                " ansatz, plan, plan_art, ergebnis, abweichung, ist_summe, fetched_at, herkunft_id) "
+                " ansatz, plan, plan_art, ergebnis, deviation, ist_summe, fetched_at, herkunft_id) "
                 "VALUES (2024,?,?,20,'Summe ordentliche Aufwendungen',?,?,'ansatz',?,0,1,'',1)",
                 (thh, name, a_plan, a_plan, a_ist))
         store._conn.execute(
@@ -745,7 +745,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         store._conn.executemany(
             "INSERT INTO council_gebuehren (jahr, bereich, bereich_name, "
             "kostenkalkulation, abzuege, zu_deckende_kosten, bezugsmenge, "
-            "bezugseinheit, gebuehr, gebuehrenvorschlag, vorlage_nr, proben, "
+            "bezugseinheit, gebuehr, gebuehrenvorschlag, template_number, proben, "
             "herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,7,'')",
             [(2025, "abfallbehandlung", "Abfallbehandlungsanlagen", 18_000_000.0,
               -2_000_000.0, 16_000_000.0, 114_475.0, "Mg", 139.772, 139.70,
@@ -1158,7 +1158,7 @@ def test_haushaltsregeln_haengen_am_kontext_nicht_am_fragetyp(tmp_path):
                               "Prüfbericht Beanstandung", "thema")
     messages, _ = qa._answer_messages(
         "Was hat das Rechnungsprüfungsamt beanstandet?",
-        [{"id": 1, "title": "T", "beschluss": "B"}], typ="thema", geld=kontext)
+        [{"id": 1, "title": "T", "official_text": "B"}], typ="thema", geld=kontext)
     prompt = messages[0]["content"]
     assert "RECHNUNGSPRÜFUNGSAMT" in prompt
     assert "JAHR IMMER NENNEN" in prompt and "PLAN IST NICHT IST" in prompt

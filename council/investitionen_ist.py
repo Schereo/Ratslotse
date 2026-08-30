@@ -317,8 +317,8 @@ def zeilensumme(zeile: dict) -> tuple[bool, float]:
     um von einer Rundungstoleranz gedeckt zu sein."""
     arten = ARTEN[zeile["regelwerk"]]
     summe = sum(zeile.get(a) or 0.0 for a in arten)
-    abweichung = summe - (zeile.get("insgesamt") or 0.0)
-    return abweichung == 0.0, abweichung
+    deviation = summe - (zeile.get("insgesamt") or 0.0)
+    return deviation == 0.0, deviation
 
 
 def lies(text: str) -> dict:
@@ -371,16 +371,16 @@ def lies(text: str) -> dict:
                     "grund": f"Zeile nicht in {len(SPALTEN[regelwerk])} Felder "
                              f"zerlegbar: {zeile['unlesbar']!r}"})
                 continue
-            ok, abweichung = zeilensumme(zeile)
+            ok, deviation = zeilensumme(zeile)
             bestanden += bool(ok)
             gerissen += not ok
             if not ok:
                 verworfen.append({
                     "jahr": zeile["jahr"], "regelwerk": regelwerk,
                     # Die Zahl neben dem Satz — s. Rückgabe-Beschreibung.
-                    "differenz": abweichung,
+                    "differenz": deviation,
                     "grund": f"Zeilensumme um "
-                             f"{de_zahl(abweichung, vorzeichen=True)} € gerissen; "
+                             f"{de_zahl(deviation, vorzeichen=True)} € gerissen; "
                              f"eine zweite Probe trägt diese Tabelle nicht"})
                 continue
             uebernommen = dict(zeile)

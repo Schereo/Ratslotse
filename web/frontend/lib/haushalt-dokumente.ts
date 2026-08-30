@@ -40,7 +40,7 @@ export type HaushaltDokument = {
   label: string | null;
   fundstelle: string | null;
   seite: number | null;
-  beschluss: Ratsvorgang | null;
+  official_text: Ratsvorgang | null;
 };
 
 /** Nach Quellenschlüssel. Ein Schlüssel fehlt, wo wir kein Dokument haben. */

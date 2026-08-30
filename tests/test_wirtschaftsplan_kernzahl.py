@@ -322,7 +322,7 @@ def test_probe_haengt_nur_dran_wo_sie_lief():
     def plan(investitionen):
         return Wirtschaftsplan(
             betrieb="bbo", betrieb_name="Bäderbetrieb der Stadt Oldenburg",
-            jahr=2026, vorlage_nr="25/0818/1", ertraege=None, aufwendungen=None,
+            jahr=2026, template_number="25/0818/1", ertraege=None, aufwendungen=None,
             steuern=None, ergebnis=0.0, vermoegensplan=None,
             verpflichtungen=None, entwurf_vom=None, investitionen=investitionen)
 

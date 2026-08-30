@@ -44,7 +44,7 @@ def anlagen_schluessel(anlagen: list | None) -> list[str]:
 def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
     """{"neu": [item], "entfernt": [item], "verschoben": [(alt, neu)],
     "umformuliert": [(alt, neu)], "vorlage": [(alt, neu)]} — Items sind dicts
-    mit item_number/title/vorlage_nr (optional is_public). Welche Punkte
+    mit item_number/title/template_number (optional is_public). Welche Punkte
     verglichen werden, entscheidet der Aufrufer."""
     # Titel sind NICHT eindeutig: Nichtöffentliche Teile führen reihenweise
     # TOPs namens „gesperrte Information". Ein Titel→Punkt-dict ließ alle
@@ -87,7 +87,7 @@ def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
     for vorher, i in paare:
         if str(vorher.get("item_number")) != str(i.get("item_number")):
             ergebnis["verschoben"].append((vorher, i))
-        elif _norm_vorlage(vorher.get("vorlage_nr")) != _norm_vorlage(i.get("vorlage_nr")):
+        elif _norm_vorlage(vorher.get("template_number")) != _norm_vorlage(i.get("template_number")):
             # Der häufigste stille Fall: Ein TOP steht ohne Vorlage auf der
             # Liste, die Verwaltung reicht sie nach. Nummer und Titel
             # bleiben, der Tagesordnungs-Hash ändert sich trotzdem — und
@@ -218,7 +218,7 @@ def diff_satz(diff: dict) -> str:
         teile.append(_zaehl(n, "ein Punkt wurde verschoben", "{n} Punkte wurden verschoben"))
     nach = zurueck = anders = 0
     for a, m in diff.get("vorlage", []):
-        alt_nr, neu_nr = _norm_vorlage(a.get("vorlage_nr")), _norm_vorlage(m.get("vorlage_nr"))
+        alt_nr, neu_nr = _norm_vorlage(a.get("template_number")), _norm_vorlage(m.get("template_number"))
         if neu_nr and not alt_nr:
             nach += 1
         elif alt_nr and not neu_nr:
@@ -261,7 +261,7 @@ def _leise(text: str) -> str:
 
 
 def _vorlage_daten(a: dict, n: dict) -> tuple[str, str]:
-    alt_nr, neu_nr = _norm_vorlage(a.get("vorlage_nr")), _norm_vorlage(n.get("vorlage_nr"))
+    alt_nr, neu_nr = _norm_vorlage(a.get("template_number")), _norm_vorlage(n.get("template_number"))
     if neu_nr and not alt_nr:
         return "Vorlage nachgereicht", f"Vorlage {neu_nr} liegt jetzt vor"
     if alt_nr and not neu_nr:
@@ -321,7 +321,7 @@ def nur_nummern_versatz(diff: dict) -> bool:
     # einmal von Hand nachsehen.
     for paar in (paar for _, mitglieder in kaskaden for paar in mitglieder):
         a, n = paar[0], paar[1]
-        if _norm_vorlage(a.get("vorlage_nr")) != _norm_vorlage(n.get("vorlage_nr")):
+        if _norm_vorlage(a.get("template_number")) != _norm_vorlage(n.get("template_number")):
             return False
         if ("anlagen" in a and "anlagen" in n
                 and anlagen_schluessel(a.get("anlagen")) != anlagen_schluessel(n.get("anlagen"))):

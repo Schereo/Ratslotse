@@ -19,7 +19,7 @@ MAX_BESCHLUSS_CHARS = 6000
 
 
 def generate_one(decision: dict) -> str | None:
-    """Kurzfassung für einen Beschluss-Dict (id/title/beschluss/committee/
+    """Kurzfassung für einen Beschluss-Dict (id/title/official_text/committee/
     session_date). None = LLM-Antwort unbrauchbar; "" = bewusst keine
     Erklärung möglich (wird NICHT gespeichert, damit ein späterer Lauf mit
     besserem Prompt erneut ansetzt)."""
@@ -29,7 +29,7 @@ def generate_one(decision: dict) -> str | None:
         title=(decision.get("title") or "(ohne Titel)").strip(),
         committee=decision.get("committee") or "",
         session_date=decision.get("session_date") or "",
-        beschluss=(decision.get("beschluss") or "")[:MAX_BESCHLUSS_CHARS],
+        official_text=(decision.get("official_text") or "")[:MAX_BESCHLUSS_CHARS],
     )
     try:
         resp = llm.chat_complete(

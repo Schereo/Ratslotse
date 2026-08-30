@@ -47,7 +47,7 @@ _NOISE_RE = re.compile(
 def parse_vorlage_page(html: str) -> dict | None:
     """Extract metadata, the main PDF link and the Anlagen list from a vo0050 page.
 
-    Returns ``{vorlage_nr, title, art, document_id, document_url, anlagen}`` —
+    Returns ``{template_number, title, art, document_id, document_url, anlagen}`` —
     ``anlagen`` is ``[{document_id, url, label}]`` for every further document
     (PDF fields ``None`` when the page has no public "Vorlage" document) — or
     ``None`` when the page is no Vorlage at all (invalid kvonr)."""
@@ -83,7 +83,7 @@ def parse_vorlage_page(html: str) -> dict | None:
             anlagen.append(entry)
 
     return {
-        "vorlage_nr": nr_cell.get_text(" ", strip=True) if nr_cell else "",
+        "template_number": nr_cell.get_text(" ", strip=True) if nr_cell else "",
         "title": title_cell.get_text(" ", strip=True) if title_cell else "",
         "art": art_cell.get_text(" ", strip=True) if art_cell else "",
         "document_id": document_id,

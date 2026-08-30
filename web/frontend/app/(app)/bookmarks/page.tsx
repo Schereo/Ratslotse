@@ -39,7 +39,7 @@ function preview(entry: BookmarkEntry): string | null {
   // Der Kartentext kennt Vorlage und Anlagen, die Kurzfassung nur den Titel —
   // dieselbe Reihenfolge wie in der Tagesordnung (`kurzfassung` in council/view).
   if (!d) return entry.agenda_item?.social_text || entry.agenda_item?.summary || null;
-  return d.simple_summary || d.summary || d.beschluss || null;
+  return d.simple_summary || d.summary || d.official_text || null;
 }
 
 function category(entry: BookmarkEntry): Exclude<Filter, "all"> | "other" {
@@ -218,7 +218,7 @@ export default function BookmarksPage() {
       const haystack = [
         entry.title, entry.subtitle, entry.item_number,
         entry.session?.committee, entry.session?.location,
-        entry.agenda_item?.vorlage_nr, preview(entry),
+        entry.agenda_item?.template_number, preview(entry),
       ].filter(Boolean).join(" ").toLocaleLowerCase("de");
       return haystack.includes(needle);
     });

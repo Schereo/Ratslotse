@@ -428,8 +428,8 @@ def test_hebesatzprobe_traegt_auch_die_winzige_grundsteuer_a(realsteuer):
     probe = sv.probe_hebesatz(rs.hebesaetze["403000"])
     assert probe["ok"], probe
     grundsteuer_a = next(t for t in probe["teilproben"] if t["steuer"] == "Grundsteuer A")
-    assert grundsteuer_a["abweichung"] == pytest.approx(2.0)
-    assert grundsteuer_a["abweichung"] / 63 > 0.03   # über 3 % — und trotzdem gut
+    assert grundsteuer_a["deviation"] == pytest.approx(2.0)
+    assert grundsteuer_a["deviation"] / 63 > 0.03   # über 3 % — und trotzdem gut
 
 
 def test_hebesatzprobe_prueft_die_gewerbesteuer_gegen_brutto(realsteuer):
@@ -598,7 +598,7 @@ def test_endpunkt_liefert_werte_und_den_beleg(tmp_path, kfa2026):
 
         # Ohne Vorlagen-Bestand bleibt der Beleg leer — aber er ist da, und
         # die Vorlagennummer steht drin.
-        assert antwort["beleg"]["vorlage_nr"] == VERGLEICH_BELEG_VORLAGE
+        assert antwort["beleg"]["template_number"] == VERGLEICH_BELEG_VORLAGE
         assert "17170" in antwort["beleg"]["vorlage_url"]
         assert antwort["beleg"]["beschluss_id"] is None
     finally:

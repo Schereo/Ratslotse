@@ -173,9 +173,9 @@ def test_merkliste_top_wird_zum_beschluss_und_meldet_ergebnis(client):
         8123, {"document_id": 444, "url": "https://example.test/protokoll.pdf"},
         {"protocol_nr": "V 1/26", "session_start": "17:00", "session_end": "18:00"},
         "zu 6 Neue Fahrradstraße\nBeschluss: angenommen\n- einstimmig -", 1, "test-model",
-        [{"item_number": "6", "title": "Neue Fahrradstraße", "beschluss": "Die Fahrradstraße wird eingerichtet.",
-          "outcome": "angenommen", "vote": "einstimmig", "gegenstimmen": 0,
-          "enthaltungen": 0, "factions": [], "vorlage_nr": "26/0999", "kvonr": 90999,
+        [{"item_number": "6", "title": "Neue Fahrradstraße", "official_text": "Die Fahrradstraße wird eingerichtet.",
+          "outcome": "angenommen", "vote": "einstimmig", "no_votes": 0,
+          "abstentions": 0, "factions": [], "template_number": "26/0999", "kvonr": 90999,
           "raw_result": "einstimmig", "sub_votes": []}],
         [],
     )
@@ -1292,12 +1292,12 @@ def test_decision_detail_includes_vorlage(client):
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     cs.save_session(CouncilSession(88, "Rat der Stadt", "2026-02-01", "18:00", "Rathaus",
-                                   agenda_items=[AgendaItem("Ö 2", "Radweg", vorlage_nr="26/0400", kvonr=901)]))
+                                   agenda_items=[AgendaItem("Ö 2", "Radweg", template_number="26/0400", kvonr=901)]))
     cs._insert_decision(88, 0, "decision", None, "Ö 2", "Radweg bauen", "Wird gebaut.",
                         "angenommen", None, None, None, [], "26/0400", None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 88").fetchone()[0]
-    cs.save_vorlage({"kvonr": 901, "vorlage_nr": "26/0400", "title": "Radweg", "art": "Beschlussvorlage",
+    cs.save_vorlage({"kvonr": 901, "template_number": "26/0400", "title": "Radweg", "art": "Beschlussvorlage",
                      "document_id": 12, "document_url": "https://buergerinfo.oldenburg.de/getfile.php?id=12",
                      "raw_text": "Sachverhalt:\nDie Stadt plant einen Radweg entlang der Haaren.",
                      "n_pages": 3, "status": "ok"})
@@ -1313,12 +1313,12 @@ def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     cs.save_session(CouncilSession(89, "Rat der Stadt", "2026-03-01", "18:00", "Rathaus",
-                                   agenda_items=[AgendaItem("Ö 3", "Lastenräder", vorlage_nr="26/0500", kvonr=902)]))
+                                   agenda_items=[AgendaItem("Ö 3", "Lastenräder", template_number="26/0500", kvonr=902)]))
     cs._insert_decision(89, 0, "decision", None, "Ö 3", "Lastenräder fördern", "Wird gefördert.",
                         "angenommen", None, None, None, [], "26/0500", None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 89").fetchone()[0]
-    cs.save_vorlage({"kvonr": 902, "vorlage_nr": "26/0500", "title": "Lastenräder", "art": "Beschlussvorlage",
+    cs.save_vorlage({"kvonr": 902, "template_number": "26/0500", "title": "Lastenräder", "art": "Beschlussvorlage",
                      "raw_text": "Sachverhalt: Förderung.", "n_pages": 2, "status": "ok"})
     cs.save_anlagen(902, [
         {"document_id": 77, "url": "https://x/77", "label": "Antrag der SPD-Fraktion vom 01.02.2026",
@@ -1348,14 +1348,14 @@ def test_field_recaps_endpoint(client):
 
 
 def test_recaps_render_items_falls_back_to_beschluss():
-    """_render_items uses summary when present, else the raw beschluss, and keeps the outcome."""
+    """_render_items uses summary when present, else the raw official_text, and keeps the outcome."""
     from council.recaps import _render_items
     out = _render_items([
         {"session_date": "2026-06-01", "title": "Radweg Haarenufer", "summary": "Ausbau beschlossen", "outcome": "angenommen"},
-        {"session_date": "2026-05-01", "title": "Brücke Y", "beschluss": "Sanierung wird beauftragt", "outcome": "abgelehnt"},
+        {"session_date": "2026-05-01", "title": "Brücke Y", "official_text": "Sanierung wird beauftragt", "outcome": "abgelehnt"},
     ])
     assert "Radweg Haarenufer — Ausbau beschlossen" in out
-    assert "Brücke Y — Sanierung wird beauftragt" in out  # falls back to beschluss
+    assert "Brücke Y — Sanierung wird beauftragt" in out  # falls back to official_text
     assert "[abgelehnt]" in out
 
 
@@ -3001,7 +3001,7 @@ def test_qa_share_traegt_bausteine(client):
         "presse": [{"titel": "Stadion: Stadt informiert",
                     "url": "https://www.oldenburg.de/x", "datum": "2026-06-02"}],
         "anlagen": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
-                     "vorlage_nr": "26/0123", "vorlage_titel": "Stadionneubau",
+                     "template_number": "26/0123", "vorlage_titel": "Stadionneubau",
                      "auszug": "Kapazität 15.000."}],
         "parteien": [{"partei": "SPD", "haltung": "dagegen", "position": "Skeptisch.",
                       "einig": True, "hinweis": None, "beitraege": 3,
@@ -3020,7 +3020,7 @@ def test_qa_share_traegt_bausteine(client):
     assert body["debatten"][1]["protokoll_url"] is None
     assert body["debatten"][1]["protokoll_seite"] is None
     assert body["presse"][0]["url"] == "https://www.oldenburg.de/x"
-    assert body["anlagen"][0]["vorlage_nr"] == "26/0123"
+    assert body["anlagen"][0]["template_number"] == "26/0123"
     assert body["parteien"][0]["haltung"] == "dagegen"
     assert "user_id" not in body
 
@@ -3251,7 +3251,7 @@ def test_ask_stream_haelt_marker_zurueck_und_liefert_suggestions(client, monkeyp
     _register(client)
     cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
              "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-07-02",
-             "committee": "Verkehrsausschuss", "score": 1.0, "gegenstimmen": 2}]
+             "committee": "Verkehrsausschuss", "score": 1.0, "no_votes": 2}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
     # Marker bewusst über Delta-Grenzen zerschnitten ("FOLGE" | "FRAGEN:").
@@ -3580,7 +3580,7 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
         "id": 106, "title": "Grundsatzbeschluss Stadionneubau",
         "summary": "Planung", "outcome": "angenommen",
         "session_date": "2026-06-01", "committee": "Rat", "score": 1.0,
-        "vorlage_nr": "26/0100", "kvonr": 106,
+        "template_number": "26/0100", "kvonr": 106,
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
         "frage": "Was steht im Schallgutachten zum Stadionneubau?",
@@ -3597,7 +3597,7 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
                         lambda *a, **k: [(901, 0.8, "Lärmpegel unter dem Grenzwert")])
     monkeypatch.setattr(CouncilStore, "anlagen_by_ids", lambda self, ids: [{
         "document_id": 901, "label": "Schalltechnisches Gutachten",
-        "url": "https://ris.test/gutachten.pdf", "vorlage_nr": "26/0100",
+        "url": "https://ris.test/gutachten.pdf", "template_number": "26/0100",
         "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
     }])
     monkeypatch.setattr(CouncilStore, "decision_ids_for_vorlagen",
@@ -3619,7 +3619,7 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
     sources = next(event for event in events if event["type"] == "sources")
     assert sources["anlagen"] == [{
         "nr": 1, "label": "Schalltechnisches Gutachten",
-        "url": "https://ris.test/gutachten.pdf", "vorlage_nr": "26/0100",
+        "url": "https://ris.test/gutachten.pdf", "template_number": "26/0100",
         "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
         "auszug": "Lärmpegel unter dem Grenzwert",
     }]
@@ -3637,7 +3637,7 @@ def test_ask_ohne_dokumentenbedarf_ueberspringt_anlagen_und_vorlagen(client, mon
     candidate = {
         "id": 107, "title": "Baumschutzsatzung", "summary": "Abstimmung",
         "outcome": "angenommen", "session_date": "2026-03-01",
-        "committee": "Rat", "score": 1.0, "vorlage_nr": "26/0200",
+        "committee": "Rat", "score": 1.0, "template_number": "26/0200",
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
         "frage": "Wurde die Baumschutzsatzung beschlossen?",
@@ -3933,7 +3933,7 @@ def test_ask_stream_faellt_auf_abgeleitete_fragen_zurueck(client, monkeypatch):
     _register(client)
     cand = [{"id": 9, "title": "Sanierung Cäcilienbrücke — Kosten", "summary": "",
              "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-06-01",
-             "committee": "Verkehrsausschuss", "score": 1.0, "gegenstimmen": 4,
+             "committee": "Verkehrsausschuss", "score": 1.0, "no_votes": 4,
              "amount_eur": 1_000_000}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -4075,7 +4075,7 @@ def _seed_bruecke(council: CouncilStore) -> None:
                 "Cäcilienbrücke — Ersatzverkehr Fähre",
                 "Cäcilienbrücke: Zeitplan der Wiedereröffnung"]):
             council._conn.execute(
-                "INSERT INTO council_decisions(ksinr, position, title, policy_field, beschluss) "
+                "INSERT INTO council_decisions(ksinr, position, title, policy_field, official_text) "
                 "VALUES (1,?,?,'verkehr','Beschluss zur Brücke.')", (i, title))
     council.rebuild_fts()
 
@@ -4313,7 +4313,7 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
     council.save_decision_locations(1, [
         {"name": "Klingenbergplatz", "kind": "platz", "source": "title",
          "evidence": "Widmung Klingenbergplatz", "method": "regex", "confidence": 0.98},
-        {"name": "Cloppenburger Straße", "kind": "strasse", "source": "beschluss",
+        {"name": "Cloppenburger Straße", "kind": "strasse", "source": "official_text",
          "evidence": "an der Cloppenburger Straße", "method": "regex", "confidence": 0.94},
     ], "hash-1")
     council.save_decision_locations(2, [
@@ -4491,14 +4491,14 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
 
 # --- Vorgänge verfolgen (Design 28a/W1) ------------------------------------
 
-def _seed_vorlage(kvonr: int = 4711, vorlage_nr: str = "26/0396",
+def _seed_vorlage(kvonr: int = 4711, template_number: str = "26/0396",
                   stations: list[tuple[str, str, str | None]] | None = None) -> None:
     """Eine Vorlage samt Beratungsfolge in die Council-DB legen."""
     council = CouncilStore(COUNCIL_DB)
     with council._conn:
         council._conn.execute(
-            "INSERT OR REPLACE INTO council_vorlagen(kvonr, vorlage_nr, title, fetched_at) "
-            "VALUES (?,?,?,'2026-01-01')", (kvonr, vorlage_nr, "Stadionneubau Maastrichter Straße"))
+            "INSERT OR REPLACE INTO council_vorlagen(kvonr, template_number, title, fetched_at) "
+            "VALUES (?,?,?,'2026-01-01')", (kvonr, template_number, "Stadionneubau Maastrichter Straße"))
         for datum, gremium, ergebnis in (stations or []):
             council._conn.execute(
                 "INSERT INTO council_beratungen(kvonr, datum, gremium, ergebnis, fetched_at) "
@@ -4515,7 +4515,7 @@ def test_vorlage_follow_anlegen_und_wieder_loesen(client):
 
     follows = client.get("/api/council/follows").json()["follows"]
     assert len(follows) == 1
-    assert follows[0]["vorlage_nr"] == "26/0396"
+    assert follows[0]["template_number"] == "26/0396"
     assert follows[0]["n_stationen"] == 1
     assert follows[0]["letzte"]["gremium"] == "Verkehrsausschuss"
 
@@ -4583,7 +4583,7 @@ def test_decision_detail_meldet_follow_zustand(client):
     council.save_session(CouncilSession(1, "Rat", "2026-01-15", "17:00", "Ratssaal"))
     with council._conn:
         council._conn.execute(
-            "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind, vorlage_nr, kvonr) "
+            "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind, template_number, kvonr) "
             "VALUES (1,1,0,'Stadion','angenommen','decision','26/0396',4711)")
     council.close()
 
@@ -4975,13 +4975,13 @@ def _deep_mocks(monkeypatch):
     monkeypatch.setattr(CouncilStore, "anlagen_by_ids", lambda self, ids: [
         {"document_id": 901, "label": "Schalltechnisches Gutachten", "kvonr": 111,
          "url": "https://buergerinfo.oldenburg.de/getfile.asp?id=901",
-         "vorlage_nr": "26/0100", "vorlage_titel": "Grundsatzbeschluss Stadionneubau"}])
+         "template_number": "26/0100", "vorlage_titel": "Grundsatzbeschluss Stadionneubau"}])
     cand = [
         {"id": 5, "title": "Grundsatzbeschluss Stadionneubau", "summary": "Neubau am Marschweg",
-         "vorlage_nr": "26/0100", "kvonr": 111, "policy_field": "sport", "outcome": "angenommen",
+         "template_number": "26/0100", "kvonr": 111, "policy_field": "sport", "outcome": "angenommen",
          "session_date": "2026-06-01", "committee": "Rat", "factions": None, "amount_eur": None},
         {"id": 7, "title": "Projektgesellschaft Stadion", "summary": "Gründung",
-         "vorlage_nr": "26/0200", "kvonr": 222, "policy_field": "sport", "outcome": "angenommen",
+         "template_number": "26/0200", "kvonr": 222, "policy_field": "sport", "outcome": "angenommen",
          "session_date": "2024-03-11", "committee": "Finanzausschuss", "factions": None,
          "amount_eur": None},
     ]
@@ -4990,7 +4990,7 @@ def _deep_mocks(monkeypatch):
     monkeypatch.setattr(CouncilStore, "orte_fuer_decisions", lambda self, ids: {})
     monkeypatch.setattr(CouncilStore, "geplante_beratungen_fuer", lambda self, kv: [
         {"kvonr": 111, "datum": "2099-09-14", "gremium": "Ausschuss für Finanzen",
-         "vorlage_nr": "26/0815", "vorlage_titel": "Finanzierungsbeschluss Projektgesellschaft"}])
+         "template_number": "26/0815", "vorlage_titel": "Finanzierungsbeschluss Projektgesellschaft"}])
     monkeypatch.setattr(CouncilStore, "haushalt_fuer_begriffe", lambda self, w: [])
     monkeypatch.setattr(CouncilStore, "vorlage_texts_for", lambda self, nrs: {})
     monkeypatch.setattr(qa_mod, "deep_bericht_stream",
@@ -5045,7 +5045,7 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     assert snap["status"] == "fertig" and "[5]" in snap["bericht"]
     assert snap["quellen"]["cited"] == [5]
     assert snap["quellen"]["planungen"][0]["vorlage_titel"].startswith("Finanzierungsbeschluss")
-    assert snap["quellen"]["anlagen"][0]["vorlage_nr"] == "26/0100"
+    assert snap["quellen"]["anlagen"][0]["template_number"] == "26/0100"
     akt = client.get("/api/council/deep-research/aktuell").json()
     assert akt["job"]["id"] == job_id and akt["job"]["gesehen"] == 0
     assert akt["frei"] == 4  # fertig zählt weiter gegen das Tageskontingent
@@ -5208,7 +5208,7 @@ def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
         job.material = {
             "candidates": [{"id": 5, "title": "Grundsatzbeschluss", "summary": "Neubau",
                             "session_date": "2026-06-01", "committee": "Rat",
-                            "vorlage_nr": None, "outcome": "angenommen"}],
+                            "template_number": None, "outcome": "angenommen"}],
             "presse": [], "debatten": [], "haushalt": [], "planungen": [],
             "facetten_namen": ["Beschlusslage", "Kosten", "B-Plan", "Debatte", "Weiter"],
             "facetten_fertig": 2, "gelesen": 1, "zeitraum": "2026",
@@ -5580,7 +5580,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
     cs = CouncilStore(COUNCIL_DB)
     try:
         zeilen = [
-            {"vorlage_nr": "26/0207", "jahr": 2026, "sitzung": "2026-04-13",
+            {"template_number": "26/0207", "jahr": 2026, "sitzung": "2026-04-13",
              "betrag": 435_941.0, "gremium": "Rat", "layout": "neu",
              "zweitstelle": "zerlegung",
              "proben": [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH],
@@ -5588,14 +5588,14 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
                  art="ris", dokument_id=304791, probe=[spenden.ZWEITSTELLE],
                  fundstelle=spenden.FUNDSTELLE,
                  probe_ergebnis="421.316 + 14.625 = 435.941")},
-            {"vorlage_nr": "26/0044", "jahr": 2026, "sitzung": "2026-02-09",
+            {"template_number": "26/0044", "jahr": 2026, "sitzung": "2026-02-09",
              "betrag": 1_800.0, "gremium": "Verwaltungsausschuss", "layout": "alt",
              "zweitstelle": "identisch", "proben": [spenden.ZWEITSTELLE],
              "herkunft": herkunft.Herkunft(
                  art="ris", dokument_id=300001, probe=[spenden.ZWEITSTELLE],
                  probe_ergebnis="identisch")},
         ]
-        verworfen = [{"vorlage_nr": "23/0265", "sitzung": "2023-05-03",
+        verworfen = [{"template_number": "23/0265", "sitzung": "2023-05-03",
                       "grund": "Die Vorlage schlug 52.000,00 Euro vor, das Protokoll "
                                "hält 51.500,00 Euro fest."}]
         cs.save_spenden(zeilen, verworfen, herkunft.Herkunft(
@@ -5607,8 +5607,8 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
 
         assert s["jahre"] == [{"jahr": 2026, "betrag": 437_741.0, "vorlagen": 2,
                                "rat": 1, "verwaltungsausschuss": 1}]
-        assert [v["vorlage_nr"] for v in s["vorlagen"]] == ["26/0044", "26/0207"]
-        assert s["ohne_beleg"][0]["vorlage_nr"] == "23/0265"
+        assert [v["template_number"] for v in s["vorlagen"]] == ["26/0044", "26/0207"]
+        assert s["ohne_beleg"][0]["template_number"] == "23/0265"
         assert "51.500,00" in s["ohne_beleg"][0]["grund"]
         # Wer über welche einzelne Zuwendung entscheidet — reist mit den Zahlen.
         assert {g["gremium"] for g in s["schwellen"]} == {

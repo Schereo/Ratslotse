@@ -15,7 +15,7 @@ from council.scraper import AgendaItem
 
 
 def _item(title: str = "Bebauungsplan 555: Aufstellung") -> AgendaItem:
-    return AgendaItem(item_number="Ö 5", title=title, vorlage_nr="26/0123", is_public=True)
+    return AgendaItem(item_number="Ö 5", title=title, template_number="26/0123", is_public=True)
 
 
 def _llm_returning(*contents: str | None):

@@ -35,7 +35,7 @@ def sitzung(store, ksinr, gremium, datum, tops):
 
 
 def vorlage(store, kvonr, nr, titel):
-    store.save_vorlage({"kvonr": kvonr, "vorlage_nr": nr, "title": titel})
+    store.save_vorlage({"kvonr": kvonr, "template_number": nr, "title": titel})
 
 
 def beratung(store, kvonr, datum, gremium, rolle, ksinr, top):
@@ -76,7 +76,7 @@ def test_runde_hat_einbringung_fachausschuesse_und_stationen(store):
     [r] = store.haushalt_weg()
 
     assert r["jahr"] == 2026
-    assert r["vorlage_nr"] == "25/0667"
+    assert r["template_number"] == "25/0667"
 
     # Die Einbringung ist die früheste Beratung einer Entwurfs-Vorlage.
     assert r["einbringung"]["datum"] == "2025-10-01"
@@ -162,7 +162,7 @@ def test_votum_kommt_aus_dem_kernhaushalts_beschluss(store):
     runde_2026(store)
     store._conn.execute(
         "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, "
-        "outcome, vote, gegenstimmen) VALUES (4, 5, 'decision', '6.5', "
+        "outcome, vote, no_votes) VALUES (4, 5, 'decision', '6.5', "
         "'Haushaltssatzung und Haushaltsplan 2026 (Kernhaushalt)', 'angenommen', "
         "'mehrheitlich', 20)")
     store._conn.commit()
@@ -170,7 +170,7 @@ def test_votum_kommt_aus_dem_kernhaushalts_beschluss(store):
     [r] = store.haushalt_weg()
     assert r["stationen"][0]["votum"] is None            # die vertagte Sitzung
     assert r["stationen"][-1]["votum"]["outcome"] == "angenommen"
-    assert r["stationen"][-1]["votum"]["gegenstimmen"] == 20
+    assert r["stationen"][-1]["votum"]["no_votes"] == 20
 
 
 def test_fremdes_haushaltsjahr_im_votum_zaehlt_nicht(store):

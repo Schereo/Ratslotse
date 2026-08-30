@@ -14,13 +14,13 @@ _OLD_SCHEMA = """
 CREATE TABLE council_decisions (
     id INTEGER PRIMARY KEY AUTOINCREMENT, ksinr INTEGER NOT NULL, position INTEGER NOT NULL,
     kind TEXT NOT NULL DEFAULT 'decision', parent_item TEXT, item_number TEXT, title TEXT,
-    beschluss TEXT, outcome TEXT, vote TEXT, gegenstimmen INTEGER, enthaltungen INTEGER,
-    factions TEXT, vorlage_nr TEXT, kvonr INTEGER, raw_result TEXT);
+    official_text TEXT, outcome TEXT, vote TEXT, no_votes INTEGER, abstentions INTEGER,
+    factions TEXT, template_number TEXT, kvonr INTEGER, raw_result TEXT);
 CREATE INDEX idx_decisions_ksinr ON council_decisions(ksinr);
 CREATE TABLE council_sessions (ksinr INTEGER PRIMARY KEY, committee TEXT, session_date TEXT,
     session_time TEXT, location TEXT, fetched_at TEXT NOT NULL DEFAULT '');
 INSERT INTO council_sessions VALUES (1,'Rat','2025-01-01','18:00','Rathaus','2025-01-01');
-INSERT INTO council_decisions (ksinr,position,kind,item_number,title,beschluss,outcome)
+INSERT INTO council_decisions (ksinr,position,kind,item_number,title,official_text,outcome)
     VALUES (1,0,'decision','1','Alt-Beschluss','Bestand vor Migration','angenommen');
 """
 
@@ -79,7 +79,7 @@ def test_party_analysis(tmp_path):
     for i, (fac, field, oc, g, e) in enumerate(motions, start=10):
         store._conn.execute(
             "INSERT INTO council_decisions "
-            "(ksinr,position,kind,item_number,title,beschluss,outcome,gegenstimmen,enthaltungen,factions,policy_field) "
+            "(ksinr,position,kind,item_number,title,official_text,outcome,no_votes,abstentions,factions,policy_field) "
             "VALUES (1,?,'decision',?,?,?,?,?,?,?,?)",
             (i, str(i), "T", "B", oc, g, e, json.dumps(fac), field),
         )
@@ -97,7 +97,7 @@ def test_party_analysis(tmp_path):
 def test_goal_links(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store._conn.execute(
-        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome,policy_field) "
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,official_text,outcome,policy_field) "
         "VALUES (20,1,0,'decision','1','Photovoltaik Schuldach','Solaranlage aufs Dach','angenommen','klima_umwelt')"
     )
     store._conn.commit()
@@ -126,7 +126,7 @@ def test_qa_keywords_and_fetch(tmp_path):
 
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store._conn.execute(
-        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome) "
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,official_text,outcome) "
         "VALUES (30,1,0,'decision','1','A','b','angenommen')"
     )
     store._conn.commit()
@@ -138,7 +138,7 @@ def test_similar_neighbours(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     for i in (10, 11, 12):
         store._conn.execute(
-            f"INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome) "
+            f"INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,official_text,outcome) "
             f"VALUES ({i},1,0,'decision','1','T{i}','b','angenommen')"
         )
     store._conn.commit()
@@ -181,7 +181,7 @@ def test_decisions_fts(tmp_path):
     for i, (t, b) in enumerate([("Radweg Nadorster Straße", "Ausbau eines Radwegs beschlossen"),
                                 ("Haushaltssatzung 2024", "Der Haushalt wird beschlossen")], 50):
         store._conn.execute(
-            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome) "
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,outcome) "
             "VALUES (?,1,0,'decision','1',?,?,'angenommen')", (i, t, b))
     store._conn.commit()
     store.rebuild_fts()
@@ -195,7 +195,7 @@ def test_entities(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # seeds a session ksinr=1
     for i, t in ((60, "Bebauungsplan Fliegerhorst Nord"), (61, "Altlastensanierung Fliegerhorst Süd")):
         store._conn.execute(
-            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome,policy_field,amount_eur) "
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,outcome,policy_field,amount_eur) "
             "VALUES (?,1,0,'decision','1',?,'b','angenommen','bauen_wohnen',1000000.0)", (i, t))
     store._conn.commit()
     store.save_entities([("fliegerhorst", "Fliegerhorst", "ort", 2)],
@@ -211,7 +211,7 @@ def test_entities(tmp_path):
 def test_money_by_field_and_trends_drivers(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session ksinr=1, date 2025-01-01
     seed = [
-        # id, title, field, amount, vorlage_nr
+        # id, title, field, amount, template_number
         (70, "Neubau Schwimmbad", "kultur_sport", 5_000_000.0, "22/0100"),
         (71, "Neubau Schwimmbad", "kultur_sport", 5_000_000.0, "22/0100/1"),  # Rat-Zwilling → dedupliziert
         (72, "Sanierung Radweg", "verkehr", 2_000_000.0, "22/0200"),
@@ -219,8 +219,8 @@ def test_money_by_field_and_trends_drivers(tmp_path):
     ]
     for i, title, field, amt, vnr in seed:
         store._conn.execute(
-            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,"
-            "outcome,policy_field,amount_eur,vorlage_nr) "
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,"
+            "outcome,policy_field,amount_eur,template_number) "
             "VALUES (?,1,0,'decision','1',?,'b','angenommen',?,?,?)", (i, title, field, amt, vnr))
     store._conn.commit()
 
@@ -241,7 +241,7 @@ def test_money_by_field_and_trends_drivers(tmp_path):
 def test_entity_meta_description_and_geo(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session ksinr=1
     store._conn.execute(
-        "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome,policy_field) "
+        "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,outcome,policy_field) "
         "VALUES (80,1,0,'decision','1','Fliegerhorst Bebauungsplan','Beschluss','angenommen','bauen_wohnen')")
     store._conn.commit()
     store.save_entities([("fliegerhorst", "Fliegerhorst", "ort", 1)], [("fliegerhorst", 80)])
@@ -274,8 +274,8 @@ def test_entity_money_dedup(tmp_path):
     ]
     for i, title, vnr, amt in seed:
         store._conn.execute(
-            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,"
-            "outcome,amount_eur,vorlage_nr) VALUES (?,1,0,'decision','1',?,'b','angenommen',?,?)",
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,"
+            "outcome,amount_eur,template_number) VALUES (?,1,0,'decision','1',?,'b','angenommen',?,?)",
             (i, title, amt, vnr))
     store._conn.commit()
     store.save_entities([("halle", "Halle", "ort", 4)], [("halle", i) for i in (70, 71, 72, 73)])
@@ -289,7 +289,7 @@ def test_entity_obs_incremental(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session 1, decision id=1
     for i, title in [(2, "Beschluss zum Fliegerhorst"), (3, "Sanierung Rathaus")]:
         store._conn.execute(
-            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome) "
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,outcome) "
             "VALUES (?,1,0,'decision','1',?,'b','angenommen')", (i, title))
     store._conn.commit()
 
@@ -358,10 +358,10 @@ def test_embedding_vectors(tmp_path):
 def test_party_filter(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store._conn.execute(
-        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome,factions) "
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,official_text,outcome,factions) "
         "VALUES (40,1,0,'decision','1','A','b','angenommen',?)", (json.dumps(["Bündnis 90/Die Grünen", "Fossil Free"]),))
     store._conn.execute(
-        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome,factions) "
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,official_text,outcome,factions) "
         "VALUES (41,1,0,'decision','2','B','b','angenommen',?)", (json.dumps(["CDU"]),))
     store._conn.commit()
 
@@ -515,7 +515,7 @@ def test_anlagen_embedding_roundtrip(tmp_path):
     try:
         with store._conn:
             store._conn.execute(
-                "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, status, fetched_at) "
+                "INSERT INTO council_vorlagen (kvonr, template_number, title, status, fetched_at) "
                 "VALUES (111, '26/0100', 'Grundsatzbeschluss Stadionneubau', 'ok', datetime('now'))")
             store._conn.executemany(
                 "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
@@ -528,7 +528,7 @@ def test_anlagen_embedding_roundtrip(tmp_path):
         todo = store.anlagen_missing_embeddings()
         # Nur die beiden ok-Anlagen, neueste (höchste id) zuerst; empty fehlt.
         assert [t["document_id"] for t in todo] == [903, 901]
-        assert todo[1]["vorlage_nr"] == "26/0100"
+        assert todo[1]["template_number"] == "26/0100"
         assert todo[1]["vorlage_titel"] == "Grundsatzbeschluss Stadionneubau"
 
         for t in todo:
@@ -580,7 +580,7 @@ def test_anlagen_reranking_bekommt_vorlagentitel(tmp_path, monkeypatch):
     try:
         with store._conn:
             store._conn.executemany(
-                "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, status, fetched_at) "
+                "INSERT INTO council_vorlagen (kvonr, template_number, title, status, fetched_at) "
                 "VALUES (?, ?, ?, 'ok', '')", [
                     (111, "26/0100", "Bebauungsplan Fliegerhorst"),
                     (222, "26/0200", "Bebauungsplan anderes Gebiet"),

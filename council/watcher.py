@@ -32,8 +32,8 @@ _VORLAGE_START = re.compile(
 
 
 def _vorlagen_auszuege(store, session: CouncilSession) -> dict[str, str]:
-    """vorlage_nr → aussagekräftiger Auszug aus dem Vorlagentext."""
-    nrs = [i.vorlage_nr for i in session.agenda_items if i.is_public and i.vorlage_nr]
+    """template_number → aussagekräftiger Auszug aus dem Vorlagentext."""
+    nrs = [i.template_number for i in session.agenda_items if i.is_public and i.template_number]
     if not nrs or store is None:
         return {}
     try:
@@ -71,7 +71,7 @@ def _classify_agenda(session: CouncilSession, topics: list[dict],
         return {}
 
     items_text = "\n".join(
-        f"{i.item_number}: {i.title}" + (f" [{i.vorlage_nr}]" if i.vorlage_nr else "")
+        f"{i.item_number}: {i.title}" + (f" [{i.template_number}]" if i.template_number else "")
         for i in session.agenda_items
         if i.is_public
     )
@@ -141,7 +141,7 @@ def _classify_agenda(session: CouncilSession, topics: list[dict],
             vorschlaege.append((idx, nums))
 
     ohne_vorlage = any(
-        not auszuege.get((per_nr[n].vorlage_nr or "") if n in per_nr else "")
+        not auszuege.get((per_nr[n].template_number or "") if n in per_nr else "")
         for _idx, nums in vorschlaege for n in nums)
     kurzfassungen = _kurzfassungen(store, session) if ohne_vorlage else {}
 
@@ -206,7 +206,7 @@ def _pruefe_am_text(session: CouncilSession, topic: dict, nums: list[str],
     def beleg(n: str) -> tuple[str, str]:
         """(Etikett, Text) — Vorlage schlägt Kurzfassung, sie ist die Quelle."""
         item = per_nr.get(n)
-        text = auszuege.get((item.vorlage_nr or "") if item else "")
+        text = auszuege.get((item.template_number or "") if item else "")
         if text:
             return "Vorlage", text
         kurz = kurzfassungen.get(n) or ""
@@ -375,7 +375,7 @@ def _agenda_hash(agenda_items) -> str:
     import hashlib
 
     payload = "\n".join(
-        f"{i.item_number}\t{i.title}\t{i.vorlage_nr or ''}\t{int(i.is_public)}"
+        f"{i.item_number}\t{i.title}\t{i.template_number or ''}\t{int(i.is_public)}"
         for i in agenda_items
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()

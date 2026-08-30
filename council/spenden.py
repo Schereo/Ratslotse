@@ -205,7 +205,7 @@ def erkenne(titel: str | None) -> bool:
 def lies(zeilen: Iterable[dict]) -> dict:
     """Beschlusszeilen → geprüfte Spendenreihe.
 
-    Erwartet je Zeile: ``vorlage_nr``, ``titel``, ``beschluss``, ``outcome``,
+    Erwartet je Zeile: ``template_number``, ``titel``, ``official_text``, ``outcome``,
     ``sitzung`` (ISO-Datum), ``raw_text`` (Volltext der Vorlage),
     ``dokument_id``, ``dokument_url``.
 
@@ -213,7 +213,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
 
     * ``vorlagen`` — je Vorlage **eine** Zeile, geprüft, mit ``proben``,
       ``betrag``, ``jahr``, ``gremium``, ``layout``.
-    * ``verworfen`` — je Eintrag ``{vorlage_nr, grund}``; der Grund ist ein
+    * ``verworfen`` — je Eintrag ``{template_number, grund}``; der Grund ist ein
       vollständiger Satz und für Leser*innen geschrieben.
     * ``jahre`` — die Jahresreihe, je Jahr Summe und Zahl der Vorlagen.
     * ``proben`` — Zähler, was wie oft griff.
@@ -226,20 +226,20 @@ def lies(zeilen: Iterable[dict]) -> dict:
         if not erkenne(z.get("titel")):
             continue
         zaehler["zeilen"] += 1
-        nr = z.get("vorlage_nr")
+        nr = z.get("template_number")
         raw = z.get("raw_text")
 
         if (z.get("outcome") or "") != "angenommen":
-            verworfen.append({"vorlage_nr": nr, "sitzung": z.get("sitzung"),
+            verworfen.append({"template_number": nr, "sitzung": z.get("sitzung"),
                               "grund": "Der Tagesordnungspunkt wurde nicht beschlossen — "
                                        "angenommen wurde nichts, also ist auch nichts "
                                        "eingenommen worden."})
             zaehler["nicht_beschlossen"] += 1
             continue
 
-        kopf = _erster(z.get("beschluss"))
+        kopf = _erster(z.get("official_text"))
         if kopf is None:
-            verworfen.append({"vorlage_nr": nr, "sitzung": z.get("sitzung"),
+            verworfen.append({"template_number": nr, "sitzung": z.get("sitzung"),
                               "grund": "Das Protokoll hält für diese Sitzung keinen Betrag "
                                        "fest, sondern nur, dass angenommen wurde."})
             zaehler["ohne_protokollbetrag"] += 1
@@ -251,7 +251,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
         art, teile = pruefe_zweitstelle(kopf, abschnitt)
 
         if not art:
-            verworfen.append({"vorlage_nr": nr, "sitzung": z.get("sitzung"),
+            verworfen.append({"template_number": nr, "sitzung": z.get("sitzung"),
                               "grund": _grund(raw, abschnitt, kopf, vorschlag, teile)})
             zaehler["ohne_zweitstelle"] += 1
             continue
@@ -264,7 +264,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
         zaehler[f"layout_{layout}"] += 1
 
         kandidaten.append({
-            "vorlage_nr": nr, "betrag": kopf, "sitzung": z.get("sitzung"),
+            "template_number": nr, "betrag": kopf, "sitzung": z.get("sitzung"),
             "jahr": int(str(z.get("sitzung"))[:4]), "gremium": gremium(z.get("titel")),
             "layout": layout, "zweitstelle": art, "teile": len(teile),
             "proben": proben, "dokument_id": z.get("dokument_id"),
@@ -278,8 +278,8 @@ def lies(zeilen: Iterable[dict]) -> dict:
     # Ausnahme geprüft), aber die Rats-Zeile ist die Entscheidung.
     je_vorlage: dict[str, dict] = {}
     for k in sorted(kandidaten, key=lambda k: (not k["im_rat"], k["sitzung"] or "")):
-        je_vorlage.setdefault(k["vorlage_nr"], k)
-    vorlagen = sorted(je_vorlage.values(), key=lambda k: (k["sitzung"] or "", k["vorlage_nr"]))
+        je_vorlage.setdefault(k["template_number"], k)
+    vorlagen = sorted(je_vorlage.values(), key=lambda k: (k["sitzung"] or "", k["template_number"]))
 
     jahre: dict[int, dict] = {}
     for v in vorlagen:

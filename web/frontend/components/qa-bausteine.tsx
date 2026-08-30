@@ -42,7 +42,7 @@ export type AnlagenHinweis = {
    *  Karte einfach ohne Buchstabe (in diesen Texten steht auch kein Marker). */
   nr?: number | null;
   label: string | null; url: string | null;
-  vorlage_nr: string | null; vorlage_titel: string | null; auszug: string;
+  template_number: string | null; vorlage_titel: string | null; auszug: string;
 };
 
 /** Task 16: Wortbeitrag aus einem Sitzungsprotokoll (Rede, Anfrage,
@@ -704,8 +704,8 @@ export function AnlagenBlock({ anlagen, ankerPrefix, buchstaben }: {
               <span className="min-w-0 flex-1 truncate font-medium group-hover:underline">
                 {a.label || "Anlage"}
               </span>
-              {a.vorlage_nr && (
-                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{a.vorlage_nr}</span>
+              {a.template_number && (
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{a.template_number}</span>
               )}
               <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
             </a>

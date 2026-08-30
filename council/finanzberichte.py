@@ -140,9 +140,9 @@ def _tabellenkopf(kopf: str, jahr: int) -> dict | None:
     # ohne das ``\s*`` fand der Kopf dort gar keine Abweichungsspalte — der
     # ganze Jahrgang fiel durch. Die Stelle ist nur ein Vorhandenseins-Test
     # (die Reihenfolge kommt aus Ansatz und Ergebnis), Aufweiten also gefahrlos.
-    finde("abweichung", r"mehr\s*\(\+\)", r"Differenz", r"Abweichung", r"Vergleich")
+    finde("deviation", r"mehr\s*\(\+\)", r"Differenz", r"Abweichung", r"Vergleich")
 
-    if "ergebnis" not in positionen or "abweichung" not in positionen:
+    if "ergebnis" not in positionen or "deviation" not in positionen:
         return None
 
     varianten: list[str] = []
@@ -171,7 +171,7 @@ def parse_ergebnisrechnung(text: str, jahr: int) -> list[dict]:
     """Ergebnisrechnung der Kernverwaltung aus dem Jahresabschluss-Volltext.
 
     Liefert je Posten ``{nr, bezeichnung, vorjahr, ansatz, ergebnis,
-    abweichung}`` in Euro. ``ansatz`` ist der Planwert des Jahres,
+    deviation}`` in Euro. ``ansatz`` ist der Planwert des Jahres,
     ``ergebnis`` das tatsächliche Ergebnis — genau das Paar, aus dem
     „geplant gegen tatsächlich" wird.
 
@@ -371,7 +371,7 @@ def _fenster(zahlen: list[float], kopf: dict, art: str) -> tuple | None:
     """Das Fenster in der Zahlenfolge suchen, das die Rechenprobe der
     jeweiligen Bezugsgröße erfüllt.
 
-    Zurück kommt ``(plan, ergebnis, abweichung, start_index, repariert)``.
+    Zurück kommt ``(plan, ergebnis, deviation, start_index, repariert)``.
 
     Genommen wird das **letzte** passende Fenster, also von rechts gelesen.
     Das ist die Anordnung, die der Kopf vorgibt: Ganz rechts steht die
@@ -393,17 +393,17 @@ def _fenster(zahlen: list[float], kopf: dict, art: str) -> tuple | None:
     exakt = repariert = None
     for i in range(mindest, len(zahlen) - breite + 1):
         if art == "ansatz_nachtrag":
-            ansatz, nachtrag, ergebnis, abweichung = zahlen[i:i + 4]
+            ansatz, nachtrag, ergebnis, deviation = zahlen[i:i + 4]
             if nachtrag == 0:
                 continue  # leere Nachtragsspalte → das ist der einfache Fall
             plan = ansatz + nachtrag
         else:
-            a, b, abweichung = zahlen[i:i + 3]
+            a, b, deviation = zahlen[i:i + 3]
             plan, ergebnis = (a, b) if plan_zuerst else (b, a)
-        if abs((ergebnis - plan) - abweichung) <= _TOLERANZ:
-            exakt = (plan, ergebnis, abweichung, i, False)
-        elif (abs((ergebnis - plan) + abweichung) <= _TOLERANZ_VORZEICHEN
-                and abweichung and ergebnis and plan):
+        if abs((ergebnis - plan) - deviation) <= _TOLERANZ:
+            exakt = (plan, ergebnis, deviation, i, False)
+        elif (abs((ergebnis - plan) + deviation) <= _TOLERANZ_VORZEICHEN
+                and deviation and ergebnis and plan):
             # Im Dokument fehlt das Minuszeichen (gesehen 2020, Summenzeile 20
             # des Schlussberichts). Nur reparieren, wenn der Betrag auf den
             # Cent passt — und nur bei einem echten Tripel: Ohne die
@@ -429,7 +429,7 @@ def _spalten_zuordnen(zahlen: list[float], kopf: dict) -> dict | None:
         gefunden = _fenster(zahlen, kopf, art)
         if not gefunden:
             continue
-        plan, ergebnis, abweichung, start, repariert = gefunden
+        plan, ergebnis, deviation, start, repariert = gefunden
         vorjahr = zahlen[0] if kopf["hat_vorjahr"] else None
         if art == "ansatz_nachtrag":
             ansatz = zahlen[start]          # Nachtrag steht direkt dahinter
@@ -441,7 +441,7 @@ def _spalten_zuordnen(zahlen: list[float], kopf: dict) -> dict | None:
         else:
             ansatz = plan
         return {"vorjahr": vorjahr, "ansatz": ansatz, "plan": plan,
-                "plan_art": art, "ergebnis": ergebnis, "abweichung": abweichung,
+                "plan_art": art, "ergebnis": ergebnis, "deviation": deviation,
                 "vorzeichen_repariert": repariert,
                 # Wo das gefundene Fenster in der Zahlenfolge anfängt. Die
                 # Ergebnisrechnung braucht das nicht; die Finanzrechnung liest
@@ -593,7 +593,7 @@ def _leerer_ansatz(zahlen: list[float], hat_vorjahr: bool) -> dict | None:
                 and not any(zahlen[i + 2:]):
             return {"vorjahr": zahlen[0] if i else None,
                     "ansatz": None, "plan": None, "plan_art": None,
-                    "ergebnis": zahlen[i], "abweichung": zahlen[i + 1],
+                    "ergebnis": zahlen[i], "deviation": zahlen[i + 1],
                     "vorzeichen_repariert": False, "_fenster_start": i}
     return None
 
@@ -638,9 +638,9 @@ def _ohne_vorjahr(zahlen: list[float], kopf: dict) -> dict | None:
         gefunden = _fenster(zahlen, ohne, art)
         if not gefunden:
             continue
-        plan, ergebnis, abweichung, start, repariert = gefunden
+        plan, ergebnis, deviation, start, repariert = gefunden
         return {"vorjahr": None, "ansatz": plan, "plan": plan, "plan_art": art,
-                "ergebnis": ergebnis, "abweichung": abweichung,
+                "ergebnis": ergebnis, "deviation": deviation,
                 "vorzeichen_repariert": repariert, "_fenster_start": start}
     return None
 
@@ -650,7 +650,7 @@ def parse_finanzrechnung(text: str, jahr: int) -> list[dict]:
     ausgezahlt hat.
 
     Liefert je Zeile ``{nr, rolle, bezeichnung, vorjahr, ansatz, plan,
-    plan_art, ergebnis, abweichung, ermaechtigung, ist_summe}``. ``nr`` ist
+    plan_art, ergebnis, deviation, ermaechtigung, ist_summe}``. ``nr`` ist
     die Nummer, die das Dokument vergibt (und die sich zwischen den
     Jahrgängen verschiebt), ``rolle`` der stabile Name aus :data:`ROLLEN` —
     Leser*innen und Frontend hängen an der Rolle, nie an der Nummer.
@@ -711,7 +711,7 @@ def parse_finanzrechnung(text: str, jahr: int) -> list[dict]:
                          and stelle < len(zahlen) else None)
         if rolle in OHNE_ANSATZ_ROLLEN:
             # Kein Ansatz im Dokument, also auch keiner bei uns (s. o.).
-            werte.update(ansatz=None, plan=None, plan_art=None, abweichung=None)
+            werte.update(ansatz=None, plan=None, plan_art=None, deviation=None)
             ermaechtigung = None
         out.append({"nr": nr, "rolle": rolle, "bezeichnung": bezeichnung,
                     "jahr": jahr, "ermaechtigung": ermaechtigung,
@@ -1060,17 +1060,17 @@ def pruefe_abweichungsgruende(gruende: list[dict], posten: list[dict],
     abgelehnt: list[str] = []
     for g in gruende:
         p = nach_nr.get(g["nr"])
-        if not p or p.get("abweichung") is None:
+        if not p or p.get("deviation") is None:
             abgelehnt.append(f"Posten {g['nr']}: keine passende Tabellenzeile")
             continue
-        ist_mio = p["abweichung"] / 1e6
+        ist_mio = p["deviation"] / 1e6
         if abs(ist_mio - g["delta_mio"]) > toleranz_mio:
             abgelehnt.append(
                 f"Posten {g['nr']}: Text {g['delta_mio']:+.1f} Mio. ≠ Tabelle {ist_mio:+.2f} Mio.")
             continue
         plan = p.get("plan")
         if plan:
-            ist_prozent = p["abweichung"] / plan * 100
+            ist_prozent = p["deviation"] / plan * 100
             if abs(ist_prozent - g["prozent"]) > toleranz_prozent:
                 abgelehnt.append(
                     f"Posten {g['nr']}: Text {g['prozent']:+.2f} % ≠ Tabelle {ist_prozent:+.2f} %")

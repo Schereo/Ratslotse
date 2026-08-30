@@ -159,7 +159,7 @@ def in_anlage_belegt(betrag: float, anlagen_texte: list[str]) -> bool:
     return any(ziffern in (t or "").replace(" ", "") for t in anlagen_texte)
 
 
-def parse_kernzahl(vorlage_nr: str, titel: str, vorlage_text: str,
+def parse_kernzahl(template_number: str, titel: str, vorlage_text: str,
                    jahr: int, anlagen_texte: list[str],
                    ) -> tuple[Wirtschaftsplan, str, str] | None:
     """Das beschlossene Jahresergebnis — belegt durch die Anlage.
@@ -183,7 +183,7 @@ def parse_kernzahl(vorlage_nr: str, titel: str, vorlage_text: str,
     lesbar = [x for x in anlagen_texte if x and x.strip()]
     if betrag != 0 and lesbar and not in_anlage_belegt(betrag, lesbar):
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Der Beschlusstext nennt {betrag:,.2f} € "
+            f"{template_number}: Der Beschlusstext nennt {betrag:,.2f} € "
             f"(„{wort}“), aber die Zahl steht in keiner Anlage — zwei "
             "Dokumente desselben Vorgangs widersprechen sich")
     # KEIN lesbarer Anlagentext ist etwas anderes als ein Widerspruch: Dann
@@ -208,11 +208,11 @@ def parse_kernzahl(vorlage_nr: str, titel: str, vorlage_text: str,
     key = _betrieb_key(titel)
     if key is None:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Betrieb unbekannt — Titel: {titel!r}")
+            f"{template_number}: Betrieb unbekannt — Titel: {titel!r}")
 
     plan = Wirtschaftsplan(
         betrieb=key, betrieb_name=BETRIEBE[key][1], jahr=jahr,
-        vorlage_nr=vorlage_nr,
+        template_number=template_number,
         # Diese Quelle nennt nur das Ergebnis. NULL heißt „sagt sie nicht" —
         # eine 0 wäre eine Behauptung über Erträge, die nirgends steht.
         ertraege=None, aufwendungen=None, steuern=None,

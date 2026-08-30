@@ -369,7 +369,7 @@ import Testing
         "id": 17,
         "title": "Haushaltsplan 2026",
         "simple_summary": "Lotti erklärt den Beschluss.",
-        "beschluss": "Der amtliche Wortlaut.",
+        "official_text": "Der amtliche Wortlaut.",
         "parties": ["SPD"],
         "policy_tags": ["Haushalt"],
         "raw_result": "mehrheitlich",
@@ -816,7 +816,7 @@ private final class FeedbackURLProtocol: URLProtocol {
         [{
           "item_number": "Ö 7",
           "title": "Sichere Querung an der Cloppenburger Straße",
-          "vorlage_nr": "26/0412",
+          "template_number": "26/0412",
           "is_public": 1,
           "summary": "Der Ausschuss berät zwei Varianten.",
           "anlagen": [
@@ -826,7 +826,7 @@ private final class FeedbackURLProtocol: URLProtocol {
         }, {
           "item_number": "Ö 8",
           "title": "Mitteilungen",
-          "vorlage_nr": null,
+          "template_number": null,
           "is_public": 1,
           "summary": null
         }]

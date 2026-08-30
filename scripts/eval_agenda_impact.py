@@ -59,7 +59,7 @@ def alte_heuristik(p: dict, entitaeten: list[tuple[str, int]], store: CouncilSto
         rang += 1.0
     if p.get("summary"):
         rang += 0.4
-    if p.get("vorlage_nr"):
+    if p.get("template_number"):
         rang += 0.2
     if store._PERSONALIE_RE.search(p["title"]):
         rang -= 2.0
@@ -76,7 +76,7 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
     ph = ",".join("?" * len(sitzungen))
     nach_sitzung = {s["ksinr"]: s for s in sitzungen}
     rohe = store._conn.execute(
-        f"SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr, s.summary, "
+        f"SELECT a.ksinr, a.item_number, a.title, a.template_number, a.kvonr, s.summary, "
         f"       substr(v.raw_text, 1, 1200) AS sachverhalt "
         f"FROM council_agenda_items a "
         f"LEFT JOIN agenda_item_summaries s ON s.ksinr = a.ksinr AND s.item_number = a.item_number "
@@ -93,7 +93,7 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
         punkte.append({
             "ksinr": r["ksinr"], "item_number": r["item_number"], "title": titel,
             "summary": (r["summary"] or "").strip() or None,
-            "sachverhalt": r["sachverhalt"], "vorlage_nr": r["vorlage_nr"], "kvonr": r["kvonr"],
+            "sachverhalt": r["sachverhalt"], "template_number": r["template_number"], "kvonr": r["kvonr"],
             "committee": sitz["committee"], "session_date": sitz["session_date"],
         })
     # Behandlungsart und Vorgeschichte wie im Original
