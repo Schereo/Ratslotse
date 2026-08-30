@@ -586,13 +586,6 @@ export interface Prompt {
   updated_by?: string | null;
 }
 
-export interface AdminQuizStats {
-  fragen_aktiv: number;
-  avg_accuracy: number;
-  gemeldet: number;
-  gebiete_niedrig: { area_type: string; area_key: string; n: number }[];
-}
-
 export interface WebUser {
   id: number;
   email: string;
@@ -619,20 +612,6 @@ export interface AdminFeedback {
   read_at: string | null;
 }
 
-export interface AdminUserRow {
-  id: number;
-  email: string;
-  role: "user" | "admin";
-  status: "active" | "pending";
-  created_at: string;
-  apple_linked: boolean;
-  n_topics: number;
-  n_abos: number;
-  n_quiz: number;
-  n_ki: number;
-  last_seen: string | null;
-}
-
 export interface AdminUserDetail {
   id: number;
   email: string;
@@ -655,22 +634,6 @@ export interface AdminUserDetail {
   deep_limit: number | null;
   /** true = Rate-Limits der Frage-Endpoints für dieses Konto aus. */
   limits_frei: boolean;
-}
-
-/** Ein Cron-Job in der Admin-Übersicht: Registry-Angaben + letzter Lauf. */
-export interface AdminJob {
-  key: string;
-  label: string;
-  description: string;
-  schedule: string;
-  /** ok = frisch gelaufen · stale = überfällig · error = zuletzt gescheitert · unknown = noch nie erfasst. */
-  state: "ok" | "stale" | "error" | "unknown";
-  age_h: number | null;
-  last: {
-    started_at: string; finished_at: string | null; status: string;
-    duration_s: number | null; stats: Record<string, number | string> | null; error: string | null;
-  } | null;
-  history: { started_at: string; status: string; duration_s: number | null }[];
 }
 
 export interface AdminGrowth {

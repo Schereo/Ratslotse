@@ -31,7 +31,7 @@ zusätzlich validiert oder mit Defaults gefüllt wird (siehe ``schemas.py``).
 """
 from __future__ import annotations
 
-from typing import Any, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 # --------------------------------------------------------------------------
 # Bausteine, die überall vorkommen
@@ -578,11 +578,17 @@ class AdminWachstum(TypedDict):
     council: AdminRatsStatistik
 
 
+class AdminQuizGebiet(TypedDict):
+    area_type: str
+    area_key: str
+    n: int
+
+
 class AdminQuizStatistik(TypedDict):
     fragen_aktiv: int
     avg_accuracy: float | None
     gemeldet: int
-    gebiete_niedrig: list[dict[str, Any]]
+    gebiete_niedrig: list[AdminQuizGebiet]
 
 
 class AdminJobLauf(TypedDict):
@@ -592,11 +598,15 @@ class AdminJobLauf(TypedDict):
 
 
 class AdminJob(TypedDict):
+    """``state`` ist eine geschlossene Menge — der Router rechnet sie aus, sie
+    kommt nicht aus der Datenbank, deshalb ist die Verengung hier sicher.
+    ``last`` dagegen ist eine ``SELECT *``-Zeile aus ``job_runs`` und bleibt
+    offen; das Frontend darf sie enger sehen als der Vertrag."""
     key: str
     label: str
     description: str
     schedule: str
-    state: str
+    state: Literal["ok", "stale", "error", "unknown"]
     age_h: float | None
     last: dict[str, Any] | None
     history: list[AdminJobLauf]
@@ -706,15 +716,24 @@ class SitzungsListe(TypedDict):
     total: Any
 
 
-class DieseWoche(TypedDict):
-    """2 Rückgabe-Zweige — was nicht in jedem steht, ist NotRequired."""
-    committee: NotRequired[Any]
-    decision_id: NotRequired[Any]
-    found: bool
-    interest_reason: NotRequired[Any]
-    outcome: NotRequired[Any]
-    session_date: NotRequired[Any]
-    title: NotRequired[Any]
+class DieseWocheOhne(TypedDict):
+    found: Literal[False]
+
+
+class DieseWocheMit(TypedDict):
+    found: Literal[True]
+    decision_id: int
+    title: str
+    outcome: str | None
+    committee: str | None
+    session_date: str | None
+    interest_reason: str
+
+
+# Eine echte Union statt einer Form mit lauter NotRequired: `found` unterscheidet
+# die beiden Fälle, und beide Clients bekommen daraus einen Typ, bei dem der
+# Zugriff auf `title` erst NACH der Prüfung auf `found` erlaubt ist.
+DieseWoche = DieseWocheMit | DieseWocheOhne
 
 
 class FundstueckDesTages(TypedDict):
@@ -730,15 +749,22 @@ class FundstueckDesTages(TypedDict):
     vote: NotRequired[Any]
 
 
-class ZahlDerWoche(TypedDict):
-    """2 Rückgabe-Zweige — was nicht in jedem steht, ist NotRequired."""
-    amount_eur: NotRequired[Any]
-    count: NotRequired[Any]
-    decision_id: NotRequired[Any]
-    kind: str
-    session_date: NotRequired[Any]
-    title: NotRequired[Any]
+class ZahlDerWocheBetrag(TypedDict):
+    kind: Literal["betrag"]
+    amount_eur: float
+    decision_id: int
+    title: str
+    session_date: str | None
     window_days: int
+
+
+class ZahlDerWocheAnzahl(TypedDict):
+    kind: Literal["anzahl"]
+    count: int
+    window_days: int
+
+
+ZahlDerWoche = ZahlDerWocheBetrag | ZahlDerWocheAnzahl
 
 
 class HaushaltProdukte(TypedDict):
