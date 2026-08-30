@@ -1,3 +1,5 @@
+import type { components } from "./api-schema";
+
 /** Wohin Benachrichtigungen gehen — „off" heißt: gar nicht. */
 export type DeliveryChannel = "email" | "both" | "push" | "off";
 
@@ -695,23 +697,12 @@ export interface UserQuizQuestion {
   correct_count: number;
   created_at: string;
 }
-export interface QuizQuestion {
-  id: number;
-  area_type: string;
-  area_key: string;
-  category: string;
-  difficulty: string;
-  question: string;
-  options: string[];
-  qtype?: "mc" | "estimate";
-  unit?: string | null;
-  range_min?: number | null;
-  range_max?: number | null;
-  /** Optionaler Tipp, der vor dem Auflösen eingeblendet werden kann. */
-  hint?: string | null;
-  source_type: string | null;
-  source_ref: string | null;
-}
+/** Eine Quizfrage OHNE Lösung — direkt aus dem API-Vertrag.
+ *
+ *  `source_type`/`source_ref` sind optional, weil die eigenen Übungsfragen
+ *  (`/quiz/own/round`) ohne Quelle gebaut werden. Der frühere Handtyp verlangte
+ *  sie und log damit über genau diesen Endpunkt. */
+export type QuizQuestion = components["schemas"]["QuizFrage"];
 export interface QuizImageCredit {
   url: string;
   author: string | null;

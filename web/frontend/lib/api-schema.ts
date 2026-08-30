@@ -4616,8 +4616,11 @@ export interface components {
             is_group: boolean;
             /** Item Number */
             item_number: string | null;
-            /** Kind */
-            kind: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "session" | "agenda_item" | "decision";
             /** Ksinr */
             ksinr: number | null;
             /** Notify Result */
@@ -4628,8 +4631,11 @@ export interface components {
             session: {
                 [key: string]: unknown;
             } | null;
-            /** State */
-            state: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "upcoming" | "waiting" | "protocol" | "decided" | "saved" | "unavailable" | "group";
             /** Subtitle */
             subtitle: string;
             /** Target Key */
@@ -5026,17 +5032,20 @@ export interface components {
             /** Area Type */
             area_type: string;
             /** Category */
-            category: string | null;
+            category: string;
             /** Difficulty */
-            difficulty: string | null;
+            difficulty: string;
             /** Hint */
             hint?: string | null;
             /** Id */
             id: number;
             /** Options */
             options: string[];
-            /** Qtype */
-            qtype: string;
+            /**
+             * Qtype
+             * @enum {string}
+             */
+            qtype: "mc" | "estimate";
             /** Question */
             question: string;
             /** Range Max */
@@ -5463,7 +5472,7 @@ export interface components {
             /** Id */
             id: number;
             /** Session Date */
-            session_date: string | null;
+            session_date: string;
             /** Title */
             title: string;
             /** Topic Name */
@@ -10455,4 +10464,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b04f531914a3bfeec68d193f5f43aa65c9aeb531038ec1e9a560a5d857dea175
+// vertrag-sha256: cc000f29ad9cecaefdb4a5a251a1eb9c40cff8ccda53387512d3f51b65a795fb

@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
   const hitsQuery = useQuery({
     queryKey: ["topic-latest-hits"],
-    queryFn: () => api.get<{ hits: TopicHit[] }>("/topics/latest-hits?limit=2"),
+    queryFn: () => vertrag.get("/topics/latest-hits?limit=2"),
   });
   const zahlQuery = useQuery({
     queryKey: ["zahl-der-woche"],

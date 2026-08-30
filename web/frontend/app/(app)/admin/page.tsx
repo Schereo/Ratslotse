@@ -948,7 +948,7 @@ function QuizModerationTab() {
   });
   const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "quiz", "flagged"],
-    queryFn: () => api.get<{ flagged: QuizFlagged[] }>("/admin/quiz/flagged"),
+    queryFn: () => vertrag.get("/admin/quiz/flagged"),
   });
 
   const retire = useMutation({

@@ -121,14 +121,15 @@ class Merkeintrag(TypedDict):
     deshalb hier vollständig aufgeschrieben. Die drei eingebetteten Objekte
     sind Roh-Zeilen und bleiben offen."""
     id: int
-    kind: str
+    kind: Literal["session", "agenda_item", "decision"]
     target_key: str
     title: str
     subtitle: str
     created_at: str
     notify_result: bool
     result_notified_at: str | None
-    state: str
+    state: Literal["upcoming", "waiting", "protocol", "decided", "saved",
+                   "unavailable", "group"]
     url: str
     ksinr: int | None
     item_number: str | None
@@ -262,7 +263,7 @@ class ThemenTreffer(TypedDict):
     id: int
     title: str
     committee: str
-    session_date: str | None
+    session_date: str
 
 
 class ThemenTrefferListe(TypedDict):
@@ -385,11 +386,13 @@ class QuizFrage(TypedDict):
     id: int
     area_type: str
     area_key: str
-    category: str | None
-    difficulty: str | None
+    category: str
+    difficulty: str
     question: str
     options: list[str]
-    qtype: str
+    # Geschrieben ausschließlich von unserem eigenen Code („mc" beim Anlegen
+    # eigener Fragen, „mc"/„estimate" bei den amtlichen) — deshalb benennbar.
+    qtype: Literal["mc", "estimate"]
     source_type: NotRequired[str | None]
     source_ref: NotRequired[str | None]
     hint: NotRequired[str | None]
