@@ -3178,7 +3178,7 @@ class CouncilStore:
                     for r in self._conn.execute(
                         f"SELECT ksinr, item_number, impact, reason FROM agenda_item_impact "
                         f"WHERE ksinr IN ({ph})", [s["ksinr"] for s in sitzungen])}
-        from council.impact import formalakt_deckel
+        from council.impact import dringlichkeits_boden, formalakt_deckel
 
         for k in kandidaten:
             eintrag = bewertet.get((k["ksinr"], k["item_number"]))
@@ -3194,6 +3194,16 @@ class CouncilStore:
             if deckel is not None and k["wichtig"] > deckel:
                 k["wichtig"] = deckel
                 k["wichtig_grund"] = None
+            # Und der Gegenpol: Dringlichkeitsanträge bekommen einen Boden.
+            # Die Rubrik misst Tragweite, nicht Aktualität — dass eine
+            # Fraktion die Tagesordnung für eine Sache aufmacht, wiegt sie
+            # nicht mit (Tims Entscheidung 30.08.26). Der Grund des Modells
+            # bleibt stehen: Er ist richtig, er wog nur die Kurzfristigkeit
+            # nicht mit. Lesezeitig wie der Deckel, damit er auch für schon
+            # bewertete Punkte sofort gilt.
+            boden = dringlichkeits_boden(k["item_number"])
+            if boden is not None and k["wichtig"] < boden:
+                k["wichtig"] = boden
         # Treffer zuerst, danach nach Rang: Ein Punkt zu einem eigenen Thema ist
         # relevanter als jeder gut bewertete Fremdpunkt.
         kandidaten.sort(key=lambda p: (0 if p["topic_name"] else 1, -p["wichtig"], p["session_date"]))
@@ -3298,7 +3308,13 @@ class CouncilStore:
                 # baut aus dieser Liste aber ganze Karten, und die standen
                 # dadurch grundsätzlich ohne Erklärung da (Tims Befund
                 # 19.08.26: „die zweite Seite hat keine Zusammenfassung").
-                "summary": k["summary"],
+                #
+                # Und derselbe Fehler noch einmal, 30.08.26: Der neue
+                # Kartentext fehlte hier, weil diese Liste Feld für Feld
+                # gebaut wird. Der Dringlichkeitsantrag zur PAK-Belastung
+                # stand deshalb auf der Karte — und darunter nichts. Wer hier
+                # ein Feld ergänzt, muss es an BEIDEN Stellen tun.
+                "summary": k["summary"], "social_text": k.get("social_text"),
                 "wichtig": k["wichtig"], "wichtig_grund": k.get("wichtig_grund"),
                 "vorlage_nr": k["vorlage_nr"], "kvonr": k["kvonr"],
                 "committee": k["committee"], "session_date": k["session_date"],

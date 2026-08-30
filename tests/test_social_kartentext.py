@@ -170,3 +170,26 @@ def test_der_text_wird_auf_kartenlaenge_gekappt(monkeypatch):
     text, _ = social_text.text_fuer(
         {"committee": "Rat", "session_date": "2026-08-31", "title": "Ein Punkt"}, [])
     assert len(text) <= social_text.MAX_ZEICHEN
+
+
+def test_auch_die_restliste_traegt_den_kartentext(store):
+    """Die zweite Karte einer Sitzung wird aus ``weitere_je_sitzung`` gebaut.
+
+    Diese Liste entsteht Feld für Feld — und genau dort fehlte der neue
+    Kartentext: Der Dringlichkeitsantrag zur PAK-Belastung stand auf der
+    Karte, darunter nichts (Tims Befund 30.08.26). Dieselbe Falle hatte am
+    19.08.26 schon die Kurzfassung erwischt.
+    """
+    _sitzung(store)
+    # Vier Punkte: Die Wochenvorschau zeigt drei, der vierte landet in der
+    # Restliste — und muss seinen Text behalten.
+    for i, nr in enumerate(("Ö 1", "Ö 2", "Ö 3", "Ö 4")):
+        _punkt(store, nummer=nr, titel=f"Ein inhaltlicher Punkt Nummer {i}",
+               impact=90 - i)
+        store.save_social_text(1, nr, f"Kartentext zu Punkt {i}.", "vorlage")
+
+    daten = store.wochenvorschau(tage=10, max_punkte=40)
+    assert all(p["social_text"] for p in daten["punkte"])
+    rest = daten["weitere_je_sitzung"][1]
+    assert rest, "kein Punkt in der Restliste — Test prüft nichts"
+    assert all(p["social_text"] for p in rest)

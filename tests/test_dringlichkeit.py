@@ -129,8 +129,9 @@ def test_der_punkt_ueberlebt_die_wochenvorschau(tmp_path):
     finally:
         store.close()
 
-    # Ohne Bewertung bleibt er draußen wie jeder unbewertete Punkt — kein
-    # Freifahrtschein, nur eine Eintrittskarte zur Bewertung.
+    # Auch OHNE LLM-Bewertung steht er da: Der Boden greift lesezeitig
+    # (Tims Entscheidung 30.08.26). Ein gewöhnlicher unbewerteter Punkt
+    # bleibt dagegen draußen — der Boden gilt nur für Dringlichkeitsanträge.
     store2 = CouncilStore(tmp_path / "ohne.sqlite")
     try:
         tag = (date.today() + timedelta(days=3)).isoformat()
@@ -138,11 +139,15 @@ def test_der_punkt_ueberlebt_die_wochenvorschau(tmp_path):
             "INSERT INTO council_sessions (ksinr, committee, session_date, "
             "session_time, location, fetched_at) VALUES (1, 'Rat', ?, '18:00', 'PFL', 'x')",
             (tag,))
-        store2._conn.execute(
-            "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
-            "VALUES (1, 'DZT 1', 'Dringlichkeitsantrag: Lachgas', 1)")
+        for nr, titel in (("DZT 1", "Dringlichkeitsantrag: Lachgas"),
+                          ("Ö 7", "Bericht über den Stand der Digitalisierung")):
+            store2._conn.execute(
+                "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
+                "VALUES (1, ?, ?, 1)", (nr, titel))
         store2._conn.commit()
-        assert store2.wochenvorschau(tage=10, max_punkte=40)["punkte"] == []
+        nummern = [p["item_number"]
+                   for p in store2.wochenvorschau(tage=10, max_punkte=40)["punkte"]]
+        assert nummern == ["DZT 1"]
     finally:
         store2.close()
 
@@ -182,5 +187,59 @@ def test_das_pdf_wandert_in_die_bewertung(tmp_path, monkeypatch):
         offen = store.agenda_items_needing_impact()
         dzt = next(p for p in offen if p["item_number"] == "DZT 1")
         assert "Flugplatzbäke" in (dzt["sachverhalt"] or "")
+    finally:
+        store.close()
+
+
+def test_der_boden_hebt_an_ohne_zu_senken():
+    """Die Rubrik misst Tragweite, nicht Aktualität. Ein Boden gleicht das
+    aus — und ein Boden ist keine Addition: Er hebt eine zu niedrige
+    Bewertung an und lässt eine hohe in Ruhe."""
+    from council.impact import DRINGLICHKEIT_MIN, dringlichkeits_boden
+
+    assert dringlichkeits_boden("DZT 1") == DRINGLICHKEIT_MIN
+    assert dringlichkeits_boden("DZT 2") == DRINGLICHKEIT_MIN
+    # Gewöhnliche Punkte fasst er nicht an — auch nicht, wenn „Dringlichkeit"
+    # im Titel steht; erkannt wird an der Kennung, nicht am Wortlaut.
+    assert dringlichkeits_boden("Ö 10.4") is None
+    assert dringlichkeits_boden(None) is None
+
+
+def test_der_boden_wirkt_in_der_wochenvorschau(tmp_path):
+    """Der ganze Weg: Ein mit 55 bewerteter Antrag steht mit 65 in der
+    Vorschau — genau der Fall vom 31.08.2026 (PAK-Belastung, Platz 8 von 17
+    Ratspunkten und damit an den Karten vorbei)."""
+    from datetime import date, timedelta
+
+    from council.impact import DRINGLICHKEIT_MIN
+    from council.store import CouncilStore
+
+    store = CouncilStore(tmp_path / "council.sqlite")
+    try:
+        tag = (date.today() + timedelta(days=3)).isoformat()
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, "
+            "session_time, location, fetched_at) VALUES (1, 'Rat', ?, '18:00', 'PFL', 'x')",
+            (tag,))
+        for nr, titel, wert in (
+                ("DZT 1", "Dringlichkeitsantrag: festegestellte PAK Belastung", 55),
+                ("DZT 2", "Dringlichkeitsantrag: Resolution Iran", 80),
+                ("Ö 9.1", "Sachlicher Teilflächennutzungsplan Windenergie", 85)):
+            store._conn.execute(
+                "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
+                "VALUES (1, ?, ?, 1)", (nr, titel))
+            store._conn.execute(
+                "INSERT INTO agenda_item_impact (ksinr, item_number, impact, reason, "
+                "created_at) VALUES (1, ?, ?, 'Ein Grund', 'x')", (nr, wert))
+        store._conn.commit()
+
+        nach_nr = {p["item_number"]: p
+                   for p in store.wochenvorschau(tage=10, max_punkte=40)["punkte"]}
+        assert nach_nr["DZT 1"]["wichtig"] == DRINGLICHKEIT_MIN     # 55 → 65
+        assert nach_nr["DZT 2"]["wichtig"] == 80                    # bleibt oben
+        assert nach_nr["Ö 9.1"]["wichtig"] == 85                    # unberührt
+        # Die Begründung des Modells bleibt stehen — sie war richtig, sie wog
+        # nur die Kurzfristigkeit nicht mit.
+        assert nach_nr["DZT 1"]["wichtig_grund"] == "Ein Grund"
     finally:
         store.close()
