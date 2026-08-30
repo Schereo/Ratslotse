@@ -995,6 +995,16 @@ class HaushaltAenderungslisten(TypedDict):
     herkunft: dict[str, Any]
     summen: Any
     zeilen: Any
+    # Der FINANZhaushalt, seit 08/2026. Eigene Schlüssel statt einer
+    # gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf
+    # Betragsspalten statt zwei, dazu der Investitionscode).
+    #
+    # Wer hier einen Schlüssel vergisst, merkt es nicht am Fehler, sondern am
+    # LEEREN Feld: Die Antwortform ist zugleich das Response-Model, und
+    # FastAPI schneidet weg, was nicht darinsteht. Genau so verschwanden diese
+    # beiden beim ersten Anlauf lautlos aus einer sonst korrekten Antwort.
+    fhh_summen: Any
+    fhh_zeilen: Any
 
 
 class BeschlussListe(TypedDict):

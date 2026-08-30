@@ -1492,13 +1492,25 @@ def haushalt_aenderungslisten(
       Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit
       Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige
       digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.
-    - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt.
+    - ``fhh_zeilen``/``fhh_summen``: dasselbe für den FINANZhaushalt
+      (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich
+      fließt und vor allem investiert wird. Getrennte Schlüssel statt einer
+      gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf
+      Betragsspalten statt zwei, dazu ``produkt`` mit dem Investitionscode),
+      und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.
+    - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —
+      für beide Haushalte gemeinsam.
     """
     d = store.get_haushalt_aenderungen()
+    f = store.get_haushalt_aenderungen_fhh()
     zeilen = [z for z in d["zeilen"] if z["jahr"] == z["jahrgang"]]
-    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None}
-                 | {s["herkunft_id"] for s in d["summen"] if s["herkunft_id"] is not None})
+    fhh_zeilen = [z for z in f["zeilen"] if z["jahr"] == z["jahrgang"]]
+    ids = sorted({z["herkunft_id"] for z in zeilen + fhh_zeilen
+                  if z["herkunft_id"] is not None}
+                 | {s["herkunft_id"] for s in d["summen"] + f["summen"]
+                    if s["herkunft_id"] is not None})
     return {"zeilen": zeilen, "summen": d["summen"],
+            "fhh_zeilen": fhh_zeilen, "fhh_summen": f["summen"],
             "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)}}
 
 

@@ -1935,6 +1935,12 @@
       },
       "HaushaltAenderungslisten": {
         "properties": {
+          "fhh_summen": {
+            "title": "Fhh Summen"
+          },
+          "fhh_zeilen": {
+            "title": "Fhh Zeilen"
+          },
           "herkunft": {
             "additionalProperties": true,
             "title": "Herkunft",
@@ -1950,7 +1956,9 @@
         "required": [
           "herkunft",
           "summen",
-          "zeilen"
+          "zeilen",
+          "fhh_summen",
+          "fhh_zeilen"
         ],
         "title": "HaushaltAenderungslisten",
         "type": "object"
@@ -9444,7 +9452,7 @@
     },
     "/api/council/haushalt/aenderungslisten": {
       "get": {
-        "description": "Der Inhalt der Änderungslisten — die Ebene unter ``/haushalt/streit``.\n\nDort steht, WER eine Liste einbrachte und ob sie durchkam; hier steht,\nwas drinstand: je Dokument (Verw. I–III und die Beschluss-Datei des\nFinanzausschusses) die Einzelpositionen samt der „Zusammenstellung der\nVeränderungen\", gegen die jede Positionsliste beim Einlesen bewiesen\nwurde (``council/aenderungslisten.py``).\n\n- ``zeilen``: NUR die Positionen des Haushaltsjahrgangs selbst\n  (``jahr == jahrgang``). Dieselbe Maßnahme steht im Dokument je\n  Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das\n  Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den\n  Summen. ``urheber`` trägt, WER die Position vorschlug — gefüllt nur\n  beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte\n  „Vorschlag von“ führt; sonst ``null``.\n- ``summen``: die Zusammenstellungen ALLER Planjahre, inklusive der\n  Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit\n  Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige\n  digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.\n- ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt.",
+        "description": "Der Inhalt der Änderungslisten — die Ebene unter ``/haushalt/streit``.\n\nDort steht, WER eine Liste einbrachte und ob sie durchkam; hier steht,\nwas drinstand: je Dokument (Verw. I–III und die Beschluss-Datei des\nFinanzausschusses) die Einzelpositionen samt der „Zusammenstellung der\nVeränderungen\", gegen die jede Positionsliste beim Einlesen bewiesen\nwurde (``council/aenderungslisten.py``).\n\n- ``zeilen``: NUR die Positionen des Haushaltsjahrgangs selbst\n  (``jahr == jahrgang``). Dieselbe Maßnahme steht im Dokument je\n  Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das\n  Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den\n  Summen. ``urheber`` trägt, WER die Position vorschlug — gefüllt nur\n  beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte\n  „Vorschlag von“ führt; sonst ``null``.\n- ``summen``: die Zusammenstellungen ALLER Planjahre, inklusive der\n  Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit\n  Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige\n  digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.\n- ``fhh_zeilen``/``fhh_summen``: dasselbe für den FINANZhaushalt\n  (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich\n  fließt und vor allem investiert wird. Getrennte Schlüssel statt einer\n  gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf\n  Betragsspalten statt zwei, dazu ``produkt`` mit dem Investitionscode),\n  und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.\n- ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —\n  für beide Haushalte gemeinsam.",
         "operationId": "haushalt_aenderungslisten_api_council_haushalt_aenderungslisten_get",
         "responses": {
           "200": {

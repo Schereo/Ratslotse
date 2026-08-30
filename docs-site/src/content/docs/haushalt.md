@@ -3616,9 +3616,36 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   „Übersicht aller Änderungen“ und nennt weder das eine noch das andere.
 
   Die politischen Zeilen gibt es auch hier: 2020 −195.000 € und 2026
-  −45.000 € für SPD/CDU/FDP, 2021 für SPD/Bündnis 90/Die Grünen. Eine
-  **Anzeige im Frontend gibt es noch nicht** — dieser Schritt ist der Parser,
-  wie beim Ergebnishaushalt (#734 vor #739).
+  −45.000 € für SPD/CDU/FDP, 2021 für SPD/Bündnis 90/Die Grünen.
+
+  **Angezeigt** wird das seit dem 30.08.2026 auf `/haushalt/mitreden#streit`
+  als eigene Karte „Was am Bauen geändert wurde", unter der Karte zum
+  Ergebnishaushalt. Eigene Karte und kein Umschalter: Die beiden Haushalte
+  beantworten verschiedene Fragen, und ein Umschalter legte nahe, es seien
+  zwei Ansichten derselben Sache. Drei Regeln stecken in ihr:
+
+  - **Ein- und Auszahlungen werden nicht gegeneinander verrechnet.** Im
+    Finanzhaushalt sind das zwei Richtungen, keine zwei Vorzeichen — eine
+    Einzahlung ist ein Zuschuss oder ein Verkauf, eine Auszahlung die
+    Investition. Den Saldo bildet das Dokument am Fuß der Liste.
+  - **Die Verpflichtungsermächtigung steht als Satz, nicht als Betrag der
+    Zeile.** Sie ist die Erlaubnis, künftige Jahre zu binden, kein Geld
+    dieses Jahres — und zählt auch im Dokument nicht in den Saldo.
+  - **Positionen ohne jeden Betrag bleiben draußen.** Das sind reine
+    Haushaltsvermerke; in einer Liste „was geändert wurde" behaupteten sie
+    eine Änderung, die es nicht gibt.
+
+  Der **Investitionscode** steht als Kennung an der Zeile, nicht als Link:
+  Die Suche auf „Was wird gebaut?" hält ihr Suchwort im Zustand, nicht in der
+  Adresse — ein Sprung dorthin käme auf einer leeren Suche an. Wer die Nummer
+  braucht, kann sie kopieren; ein Deep-Link wäre ein eigener Schritt.
+
+  Eine Falle beim Anschluss ans Frontend, die zweimal Zeit gekostet hat: Der
+  Endpunkt `/council/haushalt/aenderungslisten` hat seit 08/2026 eine
+  **typisierte Antwortform** (`web/backend/app/antworten.py`), und die ist
+  zugleich das Response-Model. Was dort nicht steht, schneidet FastAPI
+  lautlos weg — die neuen Schlüssel `fhh_zeilen`/`fhh_summen` fehlten
+  deshalb in einer sonst völlig korrekten Antwort, ohne jeden Fehler im Log.
 
 - **Der Schlussbericht 2024** — sein PDF bringt keine Zeichenzuordnung mit,
   der Volltext besteht aus Glyphen-Nummern (`/12 /8 /6 □ /13 …`), sein

@@ -51,9 +51,60 @@ export type AenderungsSumme = {
   herkunft_id: number | null;
 };
 
+/** Eine Position einer FINANZhaushalts-Änderungsliste.
+ *
+ *  Andere Form als beim Ergebnishaushalt, und deshalb ein eigener Typ: fünf
+ *  Betragsspalten statt zwei, dazu der Investitionscode. Die Namen sind die
+ *  des Dokuments — „Soll laut Entwurf", „neues Soll" —, damit sich die Zeile
+ *  im PDF wiederfinden lässt. */
+export type FhhZeile = {
+  jahrgang: number;
+  liste: string;
+  jahr: number;
+  lfd: number;
+  thh: number | null;
+  /** Auch „neu": Dann steht die Position im Entwurf noch gar nicht. */
+  seite_entwurf: string | null;
+  /** Der Investitionscode des Programms („I10.089904.500") — über ihn führt
+   *  der Weg zum Vorhaben auf `/haushalt/investitionen`. `null`, wo die
+   *  Position keinem einzelnen Vorhaben zugeordnet ist. */
+  produkt: string | null;
+  bezeichnung: string;
+  /** Euro. `null` = Zelle leer (reine Haushaltsvermerke tragen gar keine
+   *  Beträge), `0` = Gedankenstrich, also eine ausdrückliche Null. */
+  soll_entwurf: number | null;
+  einzahlung: number | null;
+  auszahlung: number | null;
+  /** Verpflichtungsermächtigungen — zählen NICHT in den Saldo. */
+  ve: number | null;
+  soll_neu: number | null;
+  erlaeuterung: string | null;
+  urheber: string | null;
+  dokument_id: number;
+  herkunft_id: number | null;
+};
+
+export type FhhSumme = {
+  jahrgang: number;
+  liste: string;
+  jahr: number;
+  typ: string;
+  label: string;
+  einzahlungen: number;
+  auszahlungen: number;
+  saldo: number;
+  ve: number | null;
+  eigene: number;
+  dokument_id: number;
+  herkunft_id: number | null;
+};
+
 export type AenderungslistenDaten = {
   zeilen: AenderungsZeile[];
   summen: AenderungsSumme[];
+  /** Der Finanzhaushalt — leer, solange sein Ingest nicht gelaufen ist. */
+  fhh_zeilen?: FhhZeile[];
+  fhh_summen?: FhhSumme[];
   herkunft: Record<string, Herkunft>;
 };
 
@@ -243,6 +294,50 @@ export function verfahrensWeg(
     beschlossen: liste === "afb_beschlossen",
     herkunft: herkunftVon(daten, entwurf.herkunft_id),
   };
+}
+
+/** Die Positionen des Finanzhaushalts eines Jahrgangs, nach Dokument geordnet.
+ *
+ *  Dieselbe Verfahrens-Reihenfolge wie beim Ergebnishaushalt (Verw. I → II →
+ *  III → Beschluss). Positionen OHNE jeden Betrag bleiben draußen: Das sind
+ *  reine Haushaltsvermerke — Text, den die Verwaltung in den Plan schreibt,
+ *  ohne dass sich eine Zahl ändert. Sie in einer Liste „was am Bauen geändert
+ *  wurde" zu zeigen, hieße eine Änderung zu behaupten, die es nicht gibt. */
+export type FhhListeImJahr = {
+  schluessel: string;
+  name: string;
+  zeilen: FhhZeile[];
+  /** Was die Liste im Jahrgang bewegt — die „eigene" Zeile der
+   *  Zusammenstellung, sonst `null`. */
+  saldo: { einzahlungen: number; auszahlungen: number; saldo: number } | null;
+  herkunft: Herkunft | null;
+};
+
+export function fhhListenFuerJahr(
+  daten: AenderungslistenDaten | null, jahr: number | null,
+): FhhListeImJahr[] {
+  if (!daten || jahr == null) return [];
+  const aus: FhhListeImJahr[] = [];
+  for (const schluessel of REIHENFOLGE) {
+    const zeilen = (daten.fhh_zeilen ?? []).filter(
+      (z) => z.jahrgang === jahr && z.liste === schluessel
+        && (z.einzahlung != null || z.auszahlung != null));
+    if (!zeilen.length) continue;
+    const eigene = (daten.fhh_summen ?? []).find(
+      (s) => s.jahrgang === jahr && s.jahr === jahr && s.liste === schluessel
+        && s.eigene === 1);
+    aus.push({
+      schluessel,
+      name: LISTEN_NAME[schluessel] ?? schluessel,
+      zeilen,
+      saldo: eigene
+        ? { einzahlungen: eigene.einzahlungen, auszahlungen: eigene.auszahlungen,
+            saldo: eigene.saldo }
+        : null,
+      herkunft: herkunftVon(daten, zeilen[0].herkunft_id),
+    });
+  }
+  return aus;
 }
 
 /** Vorzeichenfester Euro-Betrag fürs Listen-Raster: „+1,73 Mio. €“,
