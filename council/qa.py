@@ -99,8 +99,8 @@ def _verlauf_zeilen(verlauf: list[dict] | None) -> str:
     """Gesprächsverlauf als kompakte Zeilen (leer ohne Verlauf)."""
     zeilen = []
     for runde in (verlauf or [])[-VERLAUF_MAX_RUNDEN:]:
-        frage = " ".join(str(runde.get("frage") or "").split())[:_VERLAUF_FRAGE_MAX]
-        antwort = " ".join(str(runde.get("antwort") or "").split())[:_VERLAUF_ANTWORT_MAX]
+        frage = " ".join(str(runde.get("question") or "").split())[:_VERLAUF_FRAGE_MAX]
+        antwort = " ".join(str(runde.get("answer") or "").split())[:_VERLAUF_ANTWORT_MAX]
         if frage:
             zeilen.append(f"- Frage: {frage}" + (f" — Antwort (gekürzt): {antwort}" if antwort else ""))
     return "\n".join(zeilen)

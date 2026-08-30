@@ -10,4 +10,4 @@ data: {"type":"token","text":"baut aus [42]."}
 
 data: {"type":"suggestions","suggestions":["Wann beginnt das?"]}
 
-data: {"type":"done","gespraech_id":7}
+data: {"type":"done","conversation_id":7}

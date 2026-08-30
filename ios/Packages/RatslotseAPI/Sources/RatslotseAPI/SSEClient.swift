@@ -15,7 +15,7 @@ public struct SSEEvent: Codable, Sendable, Equatable {
 
     public var text: String? { fields["text"]?.string }
     public var step: String? { fields["step"]?.string }
-    public var conversationID: Int? { fields["gespraech_id"]?.int }
+    public var conversationID: Int? { fields["conversation_id"]?.int }
     public var suggestions: [String] {
         (fields["questions"] ?? fields["suggestions"])?.array?.compactMap(\.string) ?? []
     }

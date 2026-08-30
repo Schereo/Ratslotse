@@ -162,7 +162,7 @@ def test_snapshot_traegt_die_kondensierte_frage(tmp_path):
     try:
         uid = _user(store)
         store.set_qa_speichern(uid, True)
-        body = AskBody(question="Und was kostet das?", gespraech_id=None)
+        body = AskBody(question="Und was kostet das?", conversation_id=None)
         gid = _turn_speichern(store, {"id": uid}, body,
                               "Was kostet die Sanierung der Cäcilienbrücke?",
                               "Rund 40 Mio. € [1].", [], [])

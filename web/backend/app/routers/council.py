@@ -2198,8 +2198,8 @@ def qa_share_melden(
 
 class AskRunde(BaseModel):
     """Eine frühere Gesprächsrunde (Chat): Frage + gekürzte Antwort."""
-    frage: str = Field(max_length=300)
-    antwort: str = Field(default="", max_length=600)
+    question: str = Field(max_length=300)
+    answer: str = Field(default="", max_length=600)
 
 
 # ---- „Gründliche Recherche" (RG-10, Task 34) -------------------------------
@@ -2210,14 +2210,14 @@ class AskRunde(BaseModel):
 
 
 class DeepResearchBody(BaseModel):
-    frage: str = Field(min_length=4, max_length=300)
+    question: str = Field(min_length=4, max_length=300)
     # Wie bei /ask: die letzten Runden lösen Rückbezüge auf. Ohne sie
     # zerlegte der Job eine Anschlussfrage wörtlich („Nochmal bitte
     # ausführlich") — und recherchierte am Thema vorbei.
-    verlauf: list[AskRunde] = Field(default_factory=list, max_length=4)
+    history: list[AskRunde] = Field(default_factory=list, max_length=4)
     # „Meine Gespräche": läuft ein Gespräch, wird der fertige Bericht dort
     # angehängt — auch wenn die App längst zu ist.
-    gespraech_id: int | None = Field(default=None, ge=1)
+    conversation_id: int | None = Field(default=None, ge=1)
 
 
 def _deep_limit(user: dict) -> int | None:
@@ -2254,12 +2254,12 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "Gerade laufen viele Recherchen — bitte versuche es gleich nochmal.")
     nwz.record_activity(user["id"], "recherche")
-    frage = body.frage.strip()
+    frage = body.question.strip()
     job_id = nwz.deep_job_anlegen(user["id"], frage)
     settings = get_settings()
     job = deepresearch.DeepJob(id=job_id, user_id=user["id"], frage=frage,
-                               gespraech_id=body.gespraech_id,
-                               verlauf=[r.model_dump() for r in body.verlauf])
+                               gespraech_id=body.conversation_id,
+                               verlauf=[r.model_dump() for r in body.history])
     deepresearch.start_job(job, settings.nwz_db, settings.council_db)
     return {"job_id": job_id, "frei": _deep_frei(nwz, user)}
 
@@ -2760,10 +2760,10 @@ class AskBody(BaseModel):
     # Chat-Modus (Paket A): die letzten Runden erlauben Anschlussfragen wie
     # „Und was kostet das?" — die Analyse kondensiert daraus eine eigenständige
     # Suchfrage. Ohne Verlauf verhält sich /ask exakt wie bisher.
-    verlauf: list[AskRunde] = Field(default_factory=list, max_length=4)
+    history: list[AskRunde] = Field(default_factory=list, max_length=4)
     # „Meine Gespräche" (6a): laufendes Gespräch, an das der Turn gehängt wird —
     # nur wirksam, wenn das Konto qa_speichern = 1 gesetzt hat.
-    gespraech_id: int | None = Field(default=None, ge=1)
+    conversation_id: int | None = Field(default=None, ge=1)
     # „Einfacher erklären": die zuletzt angezeigte Antwort im VOLLTEXT — genau
     # die soll umgeschrieben werden. Der `verlauf` taugt dafür nicht, dort ist
     # jede Antwort auf 600 Zeichen gekappt (er dient dem Auflösen von
@@ -2935,11 +2935,11 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
     Gespräch wird wieder gelöscht, wenn der Turn-Insert scheitert — sonst
     bliebe ein leerer Eintrag in der Liste zurück (Befund B2)."""
     try:
-        if "gespraech_id" not in body.model_fields_set:
+        if "conversation_id" not in body.model_fields_set:
             return None
         if not answer_text.strip() or nwz.get_qa_speichern(user["id"]) != 1:
             return None
-        gespraech_id = body.gespraech_id
+        gespraech_id = body.conversation_id
         neu = gespraech_id is None
         if neu:
             gespraech_id = nwz.qa_gespraech_start(user["id"], q_suche or body.question)
@@ -3009,7 +3009,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # (expand_ms misst seit dem Fragetyp-Routing den EINEN Analyse-Call
             # — Begriffe + Typ —, der Schlüssel bleibt für Vergleichbarkeit.)
             zeiten: dict = {}
-            verlauf = [r.model_dump() for r in body.verlauf]
+            verlauf = [r.model_dump() for r in body.history]
             yield _sse({"type": "step", "step": "expand"})
             t0 = time.perf_counter()
             analyse = qa.analyse_query(q, verlauf=verlauf)
@@ -3426,7 +3426,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 gespraech_id = _turn_speichern(nwz, user, body, q_suche, leer_text, [], [],
                                                debatten_rows=debatten_rows,
                                                sitzungen=sitzungen)
-                yield _sse({"type": "done", "cited": [], "gespraech_id": gespraech_id})
+                yield _sse({"type": "done", "cited": [], "conversation_id": gespraech_id})
                 return
             # Task 32: Themengröße deterministisch — viele Treffer über eine
             # lange Zeitspanne (Stadion: 8 Jahre) heißt lange Historie, die
@@ -3530,7 +3530,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # letzte echte Frage aus dem Verlauf das Thema.
             frage_thema = q_suche
             if einfach and frage_thema.strip() == q and verlauf:
-                frage_thema = verlauf[-1].get("frage") or q
+                frage_thema = verlauf[-1].get("question") or q
             if latest_place and not einfach:
                 # Bei „zuletzt beschlossen“ ist das Ergebnis vollständig aus
                 # Datum + Abstimmung ableitbar. Die Produktionsprobe zeigte,
@@ -3609,7 +3609,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            grafik=grafik,
                                            sitzungen=sitzungen)
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
-                        "gespraech_id": gespraech_id})
+                        "conversation_id": gespraech_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
             _log.exception("KI-Frage fehlgeschlagen")
             yield _sse({"type": "error", "message": "Frage fehlgeschlagen."})

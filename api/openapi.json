@@ -825,25 +825,25 @@
       },
       "AskBody": {
         "properties": {
-          "gespraech_id": {
+          "conversation_id": {
             "minimum": 1.0,
-            "title": "Gespraech Id",
+            "title": "Conversation Id",
             "type": [
               "integer",
               "null"
             ]
           },
-          "question": {
-            "title": "Question",
-            "type": "string"
-          },
-          "verlauf": {
+          "history": {
             "items": {
               "$ref": "#/components/schemas/AskRunde"
             },
             "maxItems": 4,
-            "title": "Verlauf",
+            "title": "History",
             "type": "array"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
           },
           "vorherige_antwort": {
             "default": "",
@@ -861,20 +861,20 @@
       "AskRunde": {
         "description": "Eine frühere Gesprächsrunde (Chat): Frage + gekürzte Antwort.",
         "properties": {
-          "antwort": {
+          "answer": {
             "default": "",
             "maxLength": 600,
-            "title": "Antwort",
+            "title": "Answer",
             "type": "string"
           },
-          "frage": {
+          "question": {
             "maxLength": 300,
-            "title": "Frage",
+            "title": "Question",
             "type": "string"
           }
         },
         "required": [
-          "frage"
+          "question"
         ],
         "title": "AskRunde",
         "type": "object"
@@ -1250,31 +1250,31 @@
       },
       "DeepResearchBody": {
         "properties": {
-          "frage": {
-            "maxLength": 300,
-            "minLength": 4,
-            "title": "Frage",
-            "type": "string"
-          },
-          "gespraech_id": {
+          "conversation_id": {
             "minimum": 1.0,
-            "title": "Gespraech Id",
+            "title": "Conversation Id",
             "type": [
               "integer",
               "null"
             ]
           },
-          "verlauf": {
+          "history": {
             "items": {
               "$ref": "#/components/schemas/AskRunde"
             },
             "maxItems": 4,
-            "title": "Verlauf",
+            "title": "History",
             "type": "array"
+          },
+          "question": {
+            "maxLength": 300,
+            "minLength": 4,
+            "title": "Question",
+            "type": "string"
           }
         },
         "required": [
-          "frage"
+          "question"
         ],
         "title": "DeepResearchBody",
         "type": "object"

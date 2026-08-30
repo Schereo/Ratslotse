@@ -95,8 +95,8 @@ def test_analyse_kondensiert_mit_verlauf(monkeypatch):
     _llm_antwort(monkeypatch, json.dumps(
         {"frage": "Was kostet der Neubau der Cäcilienbrücke?",
          "begriffe": "Kosten Neubau Cäcilienbrücke", "typ": "geld", "partei": None}))
-    verlauf = [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
-                "antwort": "Der Rat forderte das WSA zur Beschleunigung auf. " * 20}]
+    verlauf = [{"question": "Wie ist der Stand bei der Cäcilienbrücke?",
+                "answer": "Der Rat forderte das WSA zur Beschleunigung auf. " * 20}]
     a = qa.analyse_query("Und was kostet das?", verlauf=verlauf)
     assert a["frage"] == "Was kostet der Neubau der Cäcilienbrücke?"
     # Cache-Schlüssel enthält den Verlauf: gleiche Frage OHNE Verlauf ist ein
@@ -108,7 +108,7 @@ def test_analyse_kondensiert_mit_verlauf(monkeypatch):
 
 
 def test_verlauf_zeilen_kuerzt_und_begrenzt():
-    runden = [{"frage": f"Frage {i}?", "antwort": "A" * 1000} for i in range(6)]
+    runden = [{"question": f"Frage {i}?", "answer": "A" * 1000} for i in range(6)]
     text = qa._verlauf_zeilen(runden)
     # Nur die letzten VERLAUF_MAX_RUNDEN, Antworten gekürzt.
     assert text.count("- Frage:") == qa.VERLAUF_MAX_RUNDEN
@@ -120,7 +120,7 @@ def test_verlauf_zeilen_kuerzt_und_begrenzt():
 def test_antwortprompt_traegt_gespraechskontext():
     messages, _ = qa._answer_messages(
         "Und wer ist zuständig?", [],
-        verlauf=[{"frage": "Stand Cäcilienbrücke?", "antwort": "Resolution ans WSA."}])
+        verlauf=[{"question": "Stand Cäcilienbrücke?", "answer": "Resolution ans WSA."}])
     assert "Dies ist eine Anschlussfrage in einem Gespräch" in messages[0]["content"]
     assert "Resolution ans WSA." in messages[0]["content"]
     messages, _ = qa._answer_messages("Frage?", [])
