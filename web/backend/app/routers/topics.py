@@ -35,7 +35,6 @@ from __future__ import annotations
 
 import re
 import logging
-import calendar
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -53,26 +52,20 @@ router = APIRouter(prefix="/api/topics", tags=["topics"])
 
 
 def _vor_sechs_monaten(heute: date | None = None) -> date:
-    """Der Stichtag hinter „n in 6 Monaten" auf der Themen-Karte.
+    """Der Stichtag hinter „n in 6 Monaten" — gerechnet wird er in
+    ``council.topic_intel``, weil seit dem 30.08.2026 auch der Wochenlauf
+    daran misst, ob ein neuer Treffer eine Mail wert ist. Zwei Kopien wären
+    zwei Grenzen, sobald eine davon jemand anfasst.
 
-    Ursprünglich waren es 30 Tage — dabei stand bei fast jedem Thema eine 0,
-    auch bei sehr lebendigen: Die Gremien tagen monatlich, im Sommer gar nicht,
-    und Protokolle kommen mit ein bis zwei Monaten Verzug. „0 in 30 Tagen" las
-    sich damit wie ein totes Thema, obwohl der Rat gerade erst entschieden
-    hatte (Tims Befund 28.08.2026 an „Schulbegleitung": „40+ gesamt · 0 in 30
-    Tagen"). Ein halbes Jahr umfasst mehrere Sitzungsrunden und trennt
-    dadurch wirklich Laufendes von Ruhendem.
-
-    Kalendarisch gerechnet statt „minus 183 Tage": Der Wert steht als „6
-    Monate" auf der Karte, also soll er auch ein halbes Jahr meinen. Am 31.
-    August wird daraus der 28./29. Februar — der letzte Tag, den es im
-    Zielmonat gibt.
+    Absichtlich erst im Aufruf importiert, wie jede andere Berührung mit
+    ``topic_intel`` in dieser Datei: Das Modul zieht ``kern.llm`` und damit das
+    openai-SDK nach, und das steht in ``requirements.txt``, nicht in
+    ``web/backend/requirements.txt`` — ein Import auf Modulebene machte den
+    API-Start davon abhängig.
     """
-    heute = heute or date.today()
-    monat = heute.month - 6
-    jahr = heute.year + (monat - 1) // 12
-    monat = (monat - 1) % 12 + 1
-    return date(jahr, monat, min(heute.day, calendar.monthrange(jahr, monat)[1]))
+    from council.topic_intel import vor_sechs_monaten
+
+    return vor_sechs_monaten(heute)
 
 
 def _own_topic(store: Store, owner_id: int, topic_id: int):

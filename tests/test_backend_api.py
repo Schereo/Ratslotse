@@ -1493,7 +1493,15 @@ def test_sechs_monats_fenster_rechnet_kalendarisch():
     30 Tage waren es bis zum 28.08.2026, und damit stand bei fast jedem Thema
     eine 0: Die Gremien tagen monatlich, im Sommer gar nicht.
     """
+    from council import topic_intel
+
     from app.routers.topics import _vor_sechs_monaten
+
+    # Seit dem 30.08.2026 hängt auch der Mail-Versand des Wochenlaufs an dieser
+    # Grenze — deshalb rechnet der Router sie nicht selbst, sondern reicht an
+    # `topic_intel` durch (verzögert importiert, damit das openai-SDK nicht am
+    # API-Start hängt).
+    assert _vor_sechs_monaten(date(2026, 8, 28)) == topic_intel.vor_sechs_monaten(date(2026, 8, 28))
 
     assert _vor_sechs_monaten(date(2026, 8, 28)) == date(2026, 2, 28)
     assert _vor_sechs_monaten(date(2026, 3, 15)) == date(2025, 9, 15)
