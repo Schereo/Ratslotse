@@ -1097,8 +1097,7 @@ private struct RatsQuestionComposer: View {
                     HStack(spacing: 7) {
                         RatsGlyphView(
                             glyph: .research,
-                            color: researchMode ? RatsColor.primary : RatsColor.secondary,
-                            lineWidth: 1.7
+                            color: researchMode ? RatsColor.primary : RatsColor.secondary
                         )
                         .frame(width: 16, height: 16)
                         Text(researchUnavailable ? "Heute ausgeschöpft" : "Gründlich recherchieren")
@@ -1346,7 +1345,7 @@ private struct QuestionTurnView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 if turn.research != nil {
                     HStack(spacing: 5) {
-                        RatsGlyphView(glyph: .research, color: RatsColor.primary, lineWidth: 1.65)
+                        RatsGlyphView(glyph: .research, color: RatsColor.primary)
                             .frame(width: 13, height: 13)
                         Text("Gründliche Recherche")
                     }
@@ -1823,7 +1822,7 @@ private struct QuestionEvidenceSidebar: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 11) {
-                    RatsGlyphView(glyph: .analysis, color: RatsColor.primary, lineWidth: 1.65)
+                    RatsGlyphView(glyph: .analysis, color: RatsColor.primary)
                         .frame(width: 19, height: 19)
                         .frame(width: 38, height: 38)
                         .background(RatsColor.primary.opacity(0.09))

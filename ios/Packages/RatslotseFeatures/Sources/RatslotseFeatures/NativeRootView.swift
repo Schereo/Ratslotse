@@ -194,7 +194,7 @@ private struct RatsRouteScaffold<Content: View>: View {
                 Button {
                     if !model.navigation.isEmpty { model.navigation.removeLast() }
                 } label: {
-                    RatsGlyphView(glyph: .back, color: RatsColor.bodyText, lineWidth: 2)
+                    RatsGlyphView(glyph: .back, color: RatsColor.bodyText)
                         .frame(width: 20, height: 20)
                         .frame(width: 38, height: 38)
                         .background(RatsColor.card)
@@ -708,8 +708,7 @@ private struct RatsSidebarNavigation: View {
             HStack(spacing: 11) {
                 RatsGlyphView(
                     glyph: destination.glyph,
-                    color: active == destination ? RatsColor.primaryText : RatsColor.secondary,
-                    lineWidth: active == destination ? 1.95 : 1.7
+                    color: active == destination ? RatsColor.primaryText : RatsColor.secondary
                 )
                 .frame(width: 20, height: 20)
                 .frame(width: 34, height: 34)
@@ -767,8 +766,7 @@ private struct RatsBottomNavigation: View {
                     VStack(spacing: 3) {
                         RatsGlyphView(
                             glyph: destination.glyph,
-                            color: active == destination ? RatsColor.primary : RatsColor.secondary,
-                            lineWidth: active == destination ? 2.05 : 1.65
+                            color: active == destination ? RatsColor.primary : RatsColor.secondary
                         )
                         .frame(width: 20, height: 20)
 

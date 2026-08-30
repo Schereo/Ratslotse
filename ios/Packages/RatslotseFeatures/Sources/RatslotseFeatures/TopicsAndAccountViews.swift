@@ -727,7 +727,7 @@ struct AccountView: View {
     private var accountHeader: some View {
         HStack {
             Button(action: back) {
-                RatsGlyphView(glyph: .back, color: RatsColor.bodyText, lineWidth: 2)
+                RatsGlyphView(glyph: .back, color: RatsColor.bodyText)
                     .frame(width: 20, height: 20)
                     .frame(width: 42, height: 42)
                     .background(RatsColor.card)

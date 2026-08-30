@@ -94,7 +94,7 @@ struct GuidedTourView: View {
                     Label {
                         MonoKicker(step.kicker)
                     } icon: {
-                        RatsGlyphView(glyph: step.glyph, color: RatsColor.primary, lineWidth: 2)
+                        RatsGlyphView(glyph: step.glyph, color: RatsColor.primary)
                             .frame(width: 22, height: 22)
                     }
 

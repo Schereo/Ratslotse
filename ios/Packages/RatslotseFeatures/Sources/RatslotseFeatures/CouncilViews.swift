@@ -2299,7 +2299,7 @@ struct SavedCouncilView: View {
                             .foregroundStyle(RatsColor.secondary)
                     }
                     Spacer()
-                    RatsGlyphView(glyph: .saved, color: RatsColor.primaryText, lineWidth: 1.8)
+                    RatsGlyphView(glyph: .saved, color: RatsColor.primaryText)
                         .frame(width: 20, height: 20)
                         .frame(width: 44, height: 44)
                         .background(RatsColor.primary)
@@ -2726,7 +2726,7 @@ private struct SessionListView: View {
                             .foregroundStyle(RatsColor.secondary)
                     }
                     Spacer()
-                    RatsGlyphView(glyph: .calendar, color: RatsColor.primaryText, lineWidth: 1.8)
+                    RatsGlyphView(glyph: .calendar, color: RatsColor.primaryText)
                         .frame(width: 20, height: 20)
                         .frame(width: 44, height: 44)
                         .background(RatsColor.primary)

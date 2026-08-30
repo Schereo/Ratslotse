@@ -488,7 +488,7 @@ private struct MoreDestinationScaffold<Content: View>: View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: back) {
-                    RatsGlyphView(glyph: .back, color: RatsColor.bodyText, lineWidth: 2)
+                    RatsGlyphView(glyph: .back, color: RatsColor.bodyText)
                         .frame(width: 20, height: 20)
                         .frame(width: 38, height: 38)
                         .background(RatsColor.card)

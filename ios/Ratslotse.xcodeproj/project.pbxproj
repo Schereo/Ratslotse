@@ -14,6 +14,7 @@
 		3DC82352060A9FC7219544CD /* OFL-Inter.txt in Resources */ = {isa = PBXBuildFile; fileRef = 8DBAB4419FA85A27A102C122 /* OFL-Inter.txt */; };
 		4D7A784B6B316F54E6CB3B87 /* RatslotseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C327482D77E35E3D932EB51 /* RatslotseApp.swift */; };
 		54DC27AF1E6BB13AC93B7844 /* RatslotseAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EABA56FCF5C2D393432D171 /* RatslotseAppDelegate.swift */; };
+		54EEC27DD77409448D4284C7 /* LucideIcons-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = F2470F6BF2181DFA7911BB1B /* LucideIcons-LICENSE.txt */; };
 		649DB469A3F85842662ACC49 /* RatslotseDesign in Frameworks */ = {isa = PBXBuildFile; productRef = F9FCBC0F2FA0B250E3B174C6 /* RatslotseDesign */; };
 		6ABFEDB2A8803C9DE060C4CA /* RatslotseAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C2D5448BA212656A6B890F /* RatslotseAppTests.swift */; };
 		70E48ADF8EA66F7332243AB4 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B4D5A7A73D7B0847301DC406 /* IBMPlexMono-Regular.ttf */; };
@@ -57,6 +58,7 @@
 		E140ED40D24CFEA81D628ADE /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		E3C2D5448BA212656A6B890F /* RatslotseAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatslotseAppTests.swift; sourceTree = "<group>"; };
 		E60A8FF280F6CB476028D701 /* RatslotseFeatures */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RatslotseFeatures; path = Packages/RatslotseFeatures; sourceTree = SOURCE_ROOT; };
+		F2470F6BF2181DFA7911BB1B /* LucideIcons-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LucideIcons-LICENSE.txt"; sourceTree = "<group>"; };
 		F6217EB0DE76D0F28ACDDE9D /* Inter-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Variable.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -143,6 +145,7 @@
 			children = (
 				0C29FB5C35A0C25078BD9C5D /* Fonts */,
 				BB30C7E925B562746E8169C7 /* Assets.xcassets */,
+				F2470F6BF2181DFA7911BB1B /* LucideIcons-LICENSE.txt */,
 				2E0527A1C047C39F746509A8 /* PrivacyInfo.xcprivacy */,
 				71991107FF7E56E02998B6A7 /* stadtteile-oldenburg.json */,
 			);
@@ -254,6 +257,7 @@
 				A09D3F22A10C89AACDE3958C /* IBMPlexMono-Medium.ttf in Resources */,
 				70E48ADF8EA66F7332243AB4 /* IBMPlexMono-Regular.ttf in Resources */,
 				2E7AA5A9CC0BFD650267BA48 /* Inter-Variable.ttf in Resources */,
+				54EEC27DD77409448D4284C7 /* LucideIcons-LICENSE.txt in Resources */,
 				28BD30569358E8A521F9C957 /* OFL-BricolageGrotesque.txt in Resources */,
 				2CCEC9C8A8DB932EBFB273E8 /* OFL-IBMPlexMono.txt in Resources */,
 				3DC82352060A9FC7219544CD /* OFL-Inter.txt in Resources */,

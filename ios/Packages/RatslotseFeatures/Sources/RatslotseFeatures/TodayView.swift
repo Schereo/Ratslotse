@@ -37,7 +37,7 @@ struct TodayView: View {
                     model.selectedTab = .questions
                 } label: {
                     HStack(spacing: 9) {
-                        RatsGlyphView(glyph: .ask, color: .white, lineWidth: 1.7)
+                        RatsGlyphView(glyph: .ask, color: .white)
                             .frame(width: 19, height: 19)
                         Text("Frag den Rat")
                     }
