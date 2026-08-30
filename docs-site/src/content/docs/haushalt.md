@@ -1553,6 +1553,43 @@ Deshalb hängt an jeder Bewegung ein Bezug, und alle drei kommen aus Daten:
   ausdrücklich dazu, dass das Minus damit nicht unecht wird — ein Plan preist
   Vorsicht ein.
 
+### Der Maßstab aus dem echten Verfahren
+
+Seit dem 30.08.2026 steht unter den Werkbänken die Größe, gegen die man jede
+Labor-Zahl halten sollte: **wie weit der Haushalt im wirklichen Verfahren
+gewandert ist**. Die „Zusammenstellung der Veränderungen" jeder Änderungsliste
+weist Verwaltungsentwurf und Endsumme nebeneinander aus — dazwischen liegt
+alles, was Verwaltung und Fraktionen geändert haben, und die Zeilen dazwischen
+sagen, wer davon wie viel bewegte.
+
+Für den Haushalt 2026: Der Entwurf stand bei −89,3 Mio. €, beschlossen wurden
+−68,7 Mio. €. Das Verfahren bewegte also **20,6 Mio. €** — davon 20,3 aus den
+drei Listen der Verwaltung und **218.299 € aus der Liste der Koalition**, also
+1,1 %.
+
+Genommen wird je Jahrgang das **vollständigste** Dokument, weil die Listen
+kumulativ sind: die Beschluss-Datei des Finanzausschusses, wo es sie gibt,
+sonst die höchste Verwaltungsliste. Gegenprobe an 2026: Verw. III endet bei
+−68.957.646 €, die Beschluss-Datei bei −68.739.348 € — die Differenz ist auf
+den Euro die politische Zeile. Wo keine Beschluss-Datei vorliegt (2019,
+2022–2025), endet der Weg beim letzten Stand der Verwaltung, und die Karte
+nennt ihn auch so; „beschlossen" steht dort nicht.
+
+:::note[Der 1-%-Satz ist kein Urteil, und die Karte sagt das]
+Dass die Verwaltungslisten ein Vielfaches der Fraktionslisten bewegen, ist
+**kein Befund über politische Durchsetzungskraft**, sondern über die Natur der
+beiden Listenarten: Die Verwaltung schreibt mit ihren Listen den eigenen
+Entwurf fort — neue Steuerschätzung, Tarifabschluss, geänderte Umlagen. Die
+Fraktionen ändern einzelne Posten, die sie politisch anders wollen. Ohne
+diesen Satz wäre die Aufteilungs-Grafik eine Wertung, die die Daten nicht
+hergeben; er steht deshalb fest auf der Karte, nicht in einer Fußnote.
+
+Und die Grafik selbst entfällt, wo sie lügen würde: Zeigen die Listen eines
+Jahrgangs in verschiedene Richtungen (2021: Verw. II +2,78 Mio. €, Verw. I
+−0,65, Politik −1,73), bliebe von einem gestapelten Balken eine Zerlegung
+übrig, die es nicht gibt. Dann stehen nur die Zahlen da.
+:::
+
 :::caution[Produktzahlen sind Vergleich, nicht Rechengrundlage]
 Die Simulation rechnet mit dem aktuellen Planjahr, die Produktebene stammt aus
 dem jüngsten auslesbaren Teilhaushaltsplan (2023). Beides zu verrechnen ergäbe

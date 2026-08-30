@@ -171,6 +171,80 @@ export function positionenVon(
       && kern.includes(labelKern(z.urheber)));
 }
 
+/** Was das Verfahren zwischen Entwurf und Beschluss bewegt hat — je Jahrgang.
+ *
+ *  Die Frage, die das Labor braucht, bevor jemand einen Regler anfasst: Wie
+ *  viel Spielraum hat der Rat selbst genutzt? Die Zusammenstellung jedes
+ *  Dokuments beantwortet sie, weil sie Entwurf und Endsumme nebeneinander
+ *  ausweist — dazwischen liegt alles, was das Verfahren geändert hat.
+ *
+ *  WELCHES DOKUMENT GILT. Je Jahrgang liegen mehrere vor, und sie sind
+ *  kumulativ: Die Liste der Verwaltung II führt Verw. I mit, die
+ *  Beschluss-Datei des Finanzausschusses zusätzlich die politischen Listen.
+ *  Genommen wird deshalb das VOLLSTÄNDIGSTE — die Beschluss-Datei, wo es sie
+ *  gibt, sonst die höchste Verwaltungsliste. Gegenprobe an 2026: Verw. III
+ *  endet bei −68.957.646, die Beschluss-Datei bei −68.739.348; die Differenz
+ *  ist auf den Euro die politische Zeile (218.299).
+ *
+ *  `beschlossen` sagt, ob das gilt, was der Name verspricht. Ohne
+ *  Beschluss-Datei endet der Weg beim letzten Stand der Verwaltung — das ist
+ *  NICHT der beschlossene Haushalt, und die Karte muss es anders nennen. */
+export type VerfahrensWeg = {
+  jahrgang: number;
+  /** Saldo des Verwaltungsentwurfs — der Ausgangspunkt. */
+  entwurf: number;
+  /** Saldo am Ende des gelesenen Dokuments. */
+  ende: number;
+  /** `ende − entwurf`: was das Verfahren insgesamt bewegt hat. */
+  bewegt: number;
+  /** Anteil der Listen der VERWALTUNG daran. */
+  verwaltung: number;
+  /** Anteil der politischen Listen (Fraktionen) — 0, wo es keine gibt. */
+  politik: number;
+  /** Die politischen Zeilen einzeln, für die Urheber-Marken. */
+  politikZeilen: AenderungsSumme[];
+  /** Endet der Weg beim BESCHLOSSENEN Haushalt (Beschluss-Datei des
+   *  Finanzausschusses) — oder nur beim letzten Stand der Verwaltung? */
+  beschlossen: boolean;
+  herkunft: Herkunft | null;
+};
+
+export function verfahrensWeg(
+  daten: AenderungslistenDaten | null, jahrgang: number | null,
+): VerfahrensWeg | null {
+  if (!daten || jahrgang == null) return null;
+  const imJahr = daten.summen.filter(
+    (s) => s.jahrgang === jahrgang && s.jahr === jahrgang);
+  if (!imJahr.length) return null;
+
+  // Das vollständigste Dokument: Beschluss zuerst, sonst die höchste
+  // Verwaltungsliste (REIHENFOLGE ist die des Verfahrens).
+  const kandidaten = [...REIHENFOLGE].reverse();
+  const liste = kandidaten.find((k) => imJahr.some((s) => s.liste === k));
+  if (!liste) return null;
+  const zeilen = imJahr.filter((s) => s.liste === liste);
+
+  const entwurf = zeilen.find((s) => s.typ === "entwurf");
+  const ende = zeilen.find((s) => s.typ === "endsumme");
+  if (!entwurf || !ende) return null;
+
+  const listen = zeilen.filter((s) => s.typ === "liste");
+  const politisch = listen.filter((s) => !s.label.includes("nderungsliste"));
+  const summeSaldo = (xs: AenderungsSumme[]) => xs.reduce((a, s) => a + s.saldo, 0);
+
+  return {
+    jahrgang,
+    entwurf: entwurf.saldo,
+    ende: ende.saldo,
+    bewegt: ende.saldo - entwurf.saldo,
+    verwaltung: summeSaldo(listen.filter((s) => s.label.includes("nderungsliste"))),
+    politik: summeSaldo(politisch),
+    politikZeilen: politisch,
+    beschlossen: liste === "afb_beschlossen",
+    herkunft: herkunftVon(daten, entwurf.herkunft_id),
+  };
+}
+
 /** Vorzeichenfester Euro-Betrag fürs Listen-Raster: „+1,73 Mio. €“,
  *  „−218.299 €“, „—“ für „kein Betrag in dieser Spalte“. */
 export function deltaBetrag(euro: number | null): string {
