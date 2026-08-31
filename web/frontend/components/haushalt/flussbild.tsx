@@ -55,7 +55,7 @@ const EIN_STUFEN = 6;
 function alsPosten(b: FlussBand): FlussPosten {
   return {
     id: b.id, label: b.label, lang: b.lang, wert: b.wert,
-    art: b.art === "posten" ? "posten" : "differenz",
+    art: b.art === "posten" ? "posten" : "difference",
   };
 }
 
@@ -133,7 +133,7 @@ export function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
     () => arten.arten.map((a) => ({
       key: String(a.nr),
       name: a.label,
-      wert: a.betrag,
+      wert: a.amount,
       gruppe: a.label,
       zusatz: a.label === a.lang ? undefined : a.lang,
     })),
@@ -149,10 +149,10 @@ export function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
   // Der gemessene Schnitt (s. Kopfkommentar) und die Aufzählung dessen, was
   // er bündelt — einmal „Mio. €" am Ende, die Legende nennt die Einheit ohnehin.
   const grenze = useMemo(
-    () => buendelGrenze(arten.arten.map((a) => a.betrag)), [arten]);
+    () => buendelGrenze(arten.arten.map((a) => a.amount)), [arten]);
   const gebuendelt = arten.arten.slice(grenze);
   const restZusatz = gebuendelt.length
-    ? gebuendelt.map((a) => `${a.label} ${deMio(a.betrag / 1e6)}`).join(" · ")
+    ? gebuendelt.map((a) => `${a.label} ${deMio(a.amount / 1e6)}`).join(" · ")
       + "\u00a0Mio.\u00a0€"
     : undefined;
 
@@ -203,7 +203,7 @@ function NurHerkunft({ arten, letztes, aufJahr }: {
           <p className="mt-1.5 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
             Die Einnahmeposten des Entwurfs ergeben zusammen
             {" "}{deMio(arten.gesamt / 1e6)}&#8239;Mio.&nbsp;€. In der Anzeigetafel oben stehen
-            {" "}{deMio(arten.tafel.ertraege / 1e6)}&#8239;Mio.&nbsp;€ aus dem beschlossenen
+            {" "}{deMio(arten.tafel.revenues / 1e6)}&#8239;Mio.&nbsp;€ aus dem beschlossenen
             Plan. Der Unterschied von {deMio(Math.abs(arten.tafel.abstand) / 1e6)}&#8239;Mio.&nbsp;€
             entsteht, weil beide Zahlen aus verschiedenen Fassungen stammen.
           </p>
@@ -367,7 +367,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
   const echterStand: "plan" | "ist" = zeigBild.stand;
   const beideStaende = !!istBild && !!planBild;
 
-  const saldoMio = mio(zeigBild.saldo) ?? 0;
+  const saldoMio = mio(zeigBild.balance) ?? 0;
   // Nur die Seite benennen, die WIRKLICH klemmt: „792,6 statt 792,6 bei den
   // Ausgaben" ist keine Auskunft, sondern Rauschen.
   const luecken = ([

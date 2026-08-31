@@ -121,8 +121,8 @@ function themenStaemme(question: string): string[] {
  *  keine, die ein frischer Vorschlag schon abdeckt: sonst steht das Stadion
  *  zweimal untereinander. Wird bewusst erst nach dem Mount aufgerufen; der
  *  statische Export darf nicht gegen ein zufälliges Ergebnis hydrieren. */
-function waehleBeispiele(frisch: string[], anzahl: number): string[] {
-  if (anzahl <= 0) return [];
+function waehleBeispiele(frisch: string[], count: number): string[] {
+  if (count <= 0) return [];
   const belegt = new Set(frisch.flatMap(themenStaemme));
   const pool = [...EXAMPLES];
   for (let i = pool.length - 1; i > 0; i--) {
@@ -131,7 +131,7 @@ function waehleBeispiele(frisch: string[], anzahl: number): string[] {
   }
   const frei = pool.filter((f) => !themenStaemme(f).some((s) => belegt.has(s)));
   // Lieber eine thematische Dublette als eine leere Liste.
-  return [...frei, ...pool.filter((f) => !frei.includes(f))].slice(0, anzahl);
+  return [...frei, ...pool.filter((f) => !frei.includes(f))].slice(0, count);
 }
 
 type Step = "expand" | "search" | "answer";
@@ -1484,7 +1484,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         sichtbar: zeigeGespraecheKnopf,
         titel: aktiv?.title ?? null,   // Ereignis-Schlüssel ist intern, der Wert kommt vom Server
         // Design 15: Der Kopf-Knopf zählt mit („Gespräche · 4").
-        anzahl: gesamt,
+        count: gesamt,
       },
     }));
   }, [zeigeGespraecheKnopf, gespraeche, gesamt, gespraechId]);

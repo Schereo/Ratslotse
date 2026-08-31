@@ -273,10 +273,10 @@ def schreibe_fehlende(store, *, limit: int | None = None, tage_voraus: int = 21,
         _dringlichkeit_nachladen(punkt)
     geschrieben = 0
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        for punkt, ergebnis in pool.map(lambda pa: (pa[0], text_fuer(pa[0], pa[1])), todo):
-            if not ergebnis:
+        for punkt, result in pool.map(lambda pa: (pa[0], text_fuer(pa[0], pa[1])), todo):
+            if not result:
                 continue          # kein Text ist besser als ein erfundener
-            text, quelle = ergebnis
+            text, quelle = result
             store.save_social_text(punkt["ksinr"], punkt["item_number"], text, quelle)
             geschrieben += 1
     return len(todo), geschrieben

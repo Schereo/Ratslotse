@@ -213,4 +213,4 @@ async def medien_ablegen(tag: str, dateien: list[UploadFile]) -> MedienAblage:
         urls.append(f"{settings.social_media_base_url.rstrip('/')}/{tag}/{name}")
 
     _log.info("Social-Medien abgelegt: %s (%d Bilder)", tag, len(urls))
-    return {"tag": tag, "anzahl": len(urls), "urls": urls}
+    return {"tag": tag, "count": len(urls), "urls": urls}

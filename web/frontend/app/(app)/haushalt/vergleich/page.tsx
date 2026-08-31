@@ -37,7 +37,7 @@ import { decisionHref } from "@/lib/routes";
 import {
   AUSGLIEDERUNGEN_2018, Herkunft, ROLLEN, VergleichDaten, WOLFSBURG,
   ZITAT_VERWALTUNG, antragAnlage, antwortAnlage, balken, herkunftVon,
-  juengstesJahr, platzVonOldenburg, reihe, steuerkraftJeEinwohner, veraenderung,
+  juengstesJahr, platzVonOldenburg, reihe, steuerkraftJeEinwohner, change,
 } from "@/lib/haushalt-vergleich";
 import { Staedtevergleich, Zeitreihe } from "@/components/haushalt/staedtevergleich";
 import { SlopePaar, type SlopePaarZeile } from "@/components/grafik/slope-paar";
@@ -349,9 +349,9 @@ export default function VergleichSeite() {
                   einem einzigen Unternehmen.
                 </p>
                 <Zeitreihe titel="Oldenburg" punkte={olReihe}
-                  veraenderung={veraenderung(olReihe)} />
+                  change={change(olReihe)} />
                 <Zeitreihe titel="Wolfsburg" punkte={wobReihe}
-                  veraenderung={veraenderung(wobReihe)} />
+                  change={change(wobReihe)} />
               </div>
             )}
             <Fundstelle h={hRealsteuern} />

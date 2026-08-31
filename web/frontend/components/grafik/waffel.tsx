@@ -42,7 +42,7 @@ export function Waffel({
   /** Die markierten (umrandeten) Quadrate: Menge, Legenden-Text und der
    *  Stichtag, zu dem gezählt wurde. Der Stichtag ist Pflicht — die
    *  Komponente rendert ihn in der Legende (GB-06). */
-  markiert: { anzahl: number; grund: string; stichtag: string };
+  markiert: { count: number; grund: string; stichtag: string };
   /** Was gezählt wird: „Stellen". */
   einheit: string;
   /** Legenden-Text der NICHT markierten Quadrate: „besetzt". */
@@ -60,10 +60,10 @@ export function Waffel({
 }) {
   const quadrate = Math.max(Math.round(gesamt / proQuadrat), 0);
   const markierte = Math.min(
-    Math.max(Math.round(markiert.anzahl / proQuadrat), 0), quadrate);
+    Math.max(Math.round(markiert.count / proQuadrat), 0), quadrate);
 
   const vorlesen =
-    `${deZahl(gesamt)} ${einheit}, davon ${deZahl(markiert.anzahl)} `
+    `${deZahl(gesamt)} ${einheit}, davon ${deZahl(markiert.count)} `
     + `${markiert.grund} (Stichtag ${markiert.stichtag}). Dargestellt als `
     + `${quadrate} Quadrate zu je ${deZahl(proQuadrat)} ${einheit}, gerundet; `
     + `${markierte} davon sind markiert.`;

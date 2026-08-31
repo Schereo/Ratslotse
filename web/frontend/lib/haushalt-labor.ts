@@ -33,14 +33,14 @@ export function hebesatzHeute(
 
 /** Der jüngste Ist-Betrag einer Steuerart aus dem Open-Data-Satz. */
 export function letzterSteuerbetrag(
-  steuern: { year: number; art: string; betrag: number | null }[],
+  steuern: { year: number; art: string; amount: number | null }[],
   art: string,
-): { year: number; betrag: number } | null {
+): { year: number; amount: number } | null {
   const z = steuern
-    .filter((s) => s.art === art && s.betrag)
+    .filter((s) => s.art === art && s.amount)
     .sort((a, b) => a.year - b.year)
     .at(-1);
-  return z ? { year: z.year, betrag: z.betrag as number } : null;
+  return z ? { year: z.year, amount: z.amount as number } : null;
 }
 
 /** Der Anteil der Grundsteuer A am gemeinsamen Aufkommen „Grundsteuer A+B“ —
@@ -145,9 +145,9 @@ export function planjahrErgebnisse(
   const eigene = zeilen.filter((z) => z.plan_jahrgang === jahrgang);
   const jahre = [...new Set(eigene.map((z) => z.year))].sort((a, b) => a - b);
   const reihe = jahre.flatMap((year) => {
-    const ordentlich = eigene.find((z) => z.year === year && z.nr === 21)?.betrag;
+    const ordentlich = eigene.find((z) => z.year === year && z.nr === 21)?.amount;
     if (ordentlich == null) return [];
-    const ausser = eigene.find((z) => z.year === year && z.nr === 24)?.betrag ?? 0;
+    const ausser = eigene.find((z) => z.year === year && z.nr === 24)?.amount ?? 0;
     return [{ year, ergebnisMio: (ordentlich + ausser) / 1e6 }];
   });
   return reihe.length >= 2 ? { planJahrgang: jahrgang, reihe } : null;
@@ -197,13 +197,13 @@ export function ruecklagenPfad(
  *  Jahres. Eine Spanne aus Beobachtungen, keine Marktannahme; mehr behauptet
  *  der Kredit-Baustein nicht. */
 export function gezahlteZinsspanne(
-  zinslast: { year: number; aufwand: number }[] | undefined,
+  zinslast: { year: number; expense: number }[] | undefined,
   schulden: { year: number; insgesamt: number }[] | undefined,
 ): { von: number; bis: number; jahre: [number, number] } | null {
   if (!zinslast?.length || !schulden?.length) return null;
   const saetze = zinslast.flatMap((z) => {
     const s = schulden.find((r) => r.year === z.year);
-    return s && s.insgesamt > 0 ? [{ year: z.year, satz: z.aufwand / s.insgesamt }] : [];
+    return s && s.insgesamt > 0 ? [{ year: z.year, satz: z.expense / s.insgesamt }] : [];
   });
   if (saetze.length < 2) return null;
   const sortiert = [...saetze].sort((a, b) => a.satz - b.satz);

@@ -64,7 +64,7 @@ ABSCHNITT_GRUPPEN = "Erläuterungen zum Sachvermögen"
 
 PROBE_AHK = "anlagen_ahk_kette"
 PROBE_ABSCHREIBUNG = "anlagen_abschreibungskette"
-PROBE_BUCHWERT = "anlagen_buchwert"
+PROBE_BUCHWERT = "assets_book_value"
 PROBE_BILANZ = "anlagen_gegen_bilanz"
 PROBE_UMBUCHUNG = "anlagen_umbuchungssaldo"
 
@@ -225,7 +225,7 @@ def parse_anlagenspiegel(text: str, year: int) -> list[dict]:
             "umbuchungen": w[3], "ahk_ende": w[4],
             "abschr_anfang": w[5], "abschreibung": w[6], "aufloesungen": w[7],
             "zuschreibungen": w[8], "abschr_umbuchungen": w[9], "abschr_ende": w[10],
-            "buchwert": w[11], "buchwert_vorjahr": w[12],
+            "book_value": w[11], "book_value_prior_year": w[12],
         })
     return zeilen
 
@@ -262,7 +262,7 @@ def probe(zeile: dict) -> tuple[list[str], list[str]]:
                 + zeile["zuschreibungen"] + zeile["abschr_umbuchungen"]),
                zeile["abschr_ende"], "Abschreibungen")
     pruefe(PROBE_BUCHWERT, zeile["ahk_ende"] + zeile["abschr_ende"],
-           zeile["buchwert"], "Buchwert")
+           zeile["book_value"], "Buchwert")
     return bestanden, risse
 
 
@@ -283,9 +283,9 @@ def gegen_bilanz(zeilen: list[dict], bilanz_posten: list[dict]) -> list[str]:
         bilanz = nach_rolle.get(rolle)
         if bilanz is None:
             continue
-        if abs(z["buchwert"] - bilanz) > TOLERANZ:
+        if abs(z["book_value"] - bilanz) > TOLERANZ:
             risse.append(f"{z['nr']} {z['bezeichnung'][:28]}: Anlagenspiegel "
-                         f"{z['buchwert']:,.2f} gegen Bilanz {bilanz:,.2f}")
+                         f"{z['book_value']:,.2f} gegen Bilanz {bilanz:,.2f}")
     return risse
 
 
@@ -332,8 +332,8 @@ def parse_sachvermoegen_gruppen(text: str, year: int) -> list[dict]:
             continue
         gruppen.append({
             "year": year, "gruppe": label,
-            "buchwert_vorjahr": _eur(g.group(2)),
-            "buchwert": _eur(g.group(3)),
+            "book_value_prior_year": _eur(g.group(2)),
+            "book_value": _eur(g.group(3)),
         })
     return gruppen
 
@@ -365,7 +365,7 @@ def umbuchungsprobe(zeilen: list[dict]) -> tuple[float, list[str]]:
     54.639,18 € vom Sachvermögen zum Immateriellen. Beide Male: Saldo 0,00 €.
     """
     haupt = [z for z in zeilen if "." not in z["nr"]]
-    saldo = sum(umbuchung_abgeleitet(z) for z in haupt)
-    if abs(saldo) <= TOLERANZ:
-        return saldo, []
-    return saldo, [f"Umbuchungen heben sich nicht auf: {saldo:,.2f} € bleiben übrig"]
+    balance = sum(umbuchung_abgeleitet(z) for z in haupt)
+    if abs(balance) <= TOLERANZ:
+        return balance, []
+    return balance, [f"Umbuchungen heben sich nicht auf: {balance:,.2f} € bleiben übrig"]

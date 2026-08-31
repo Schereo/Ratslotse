@@ -100,10 +100,10 @@ export type AbleseSteuerung = {
 
 /** Zustand einer Ablese-Grafik. `standard` ist die Stelle im Ruhezustand —
  *  üblicherweise die jüngste, damit die Leiste nie leer dasteht. */
-export function useAblesen(anzahl: number, standard: number): AbleseSteuerung {
+export function useAblesen(count: number, standard: number): AbleseSteuerung {
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   const [tastatur, setTastatur] = useState(false);
-  const grenze = Math.max(anzahl - 1, 0);
+  const grenze = Math.max(count - 1, 0);
   const klemme = (i: number) => Math.min(Math.max(i, 0), grenze);
   // Geklemmt statt roh: Wechselt der Datensatz unter einer offenen Auswahl
   // (Jahres-Umschalter), zeigte die Leiste sonst auf eine Stelle, die es nicht
@@ -111,8 +111,8 @@ export function useAblesen(anzahl: number, standard: number): AbleseSteuerung {
   const aktiv = klemme(gewaehlt ?? standard);
 
   const waehle = useCallback((i: number) => {
-    setGewaehlt(Math.min(Math.max(i, 0), Math.max(anzahl - 1, 0)));
-  }, [anzahl]);
+    setGewaehlt(Math.min(Math.max(i, 0), Math.max(count - 1, 0)));
+  }, [count]);
   const zuruecksetzen = useCallback(() => setGewaehlt(null), []);
 
   return { aktiv, gewaehlt: gewaehlt != null, waehle, zuruecksetzen, tastatur, setTastatur };

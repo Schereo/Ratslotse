@@ -195,11 +195,11 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
     const year = jahre[jahre.length - 1];
     const zeilen = daten.jahre[String(year)] ?? [];
     const g = summe(zeilen);
-    const defizit = g?.ertraege != null && g?.aufwendungen != null
-      ? mio(g.aufwendungen - g.ertraege) ?? 0 : 0;
+    const defizit = g?.revenues != null && g?.expenses != null
+      ? mio(g.expenses - g.revenues) ?? 0 : 0;
     const freiwillig = bereiche(zeilen)
       .filter((z) => PFLICHT_ZUORDNUNG[z.bereich]?.stufe === "freiwillig")
-      .map((z) => ({ bereich: z.bereich, aus: mio(z.aufwendungen) ?? 0 }))
+      .map((z) => ({ bereich: z.bereich, aus: mio(z.expenses) ?? 0 }))
       .sort((a, b) => b.aus - a.aus);
     const kraft = daten.steuerkraft.filter((k) => k.messzahl != null && k.zuweisungen != null).slice(-2);
     return { year, defizit, freiwillig, kraft };
@@ -221,15 +221,15 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const staedte = useMemo(
     () => staedteHebesaetze(vergleich, "hebesatz_gewerbesteuer"), [vergleich]);
 
-  const proPunktGewst = gewstBetrag && gewst ? gewstBetrag.betrag / 1e6 / gewst.satz : 0;
+  const proPunktGewst = gewstBetrag && gewst ? gewstBetrag.amount / 1e6 / gewst.satz : 0;
   const proPunktGrundst = grundstBetrag && grundst && anteilA != null
-    ? (grundstBetrag.betrag * (1 - anteilA)) / 1e6 / grundst.satz : null;
+    ? (grundstBetrag.amount * (1 - anteilA)) / 1e6 / grundst.satz : null;
 
   const einwohner = daten.einwohner?.einwohner ?? 0;
   const mehrEinnahmen = Math.round(
     (proPunktGewst * punkte
       + (proPunktGrundst ?? 0) * grundstPunkte
-      + (hunde ? (hunde.betrag / 1e6) * (hundePct / 100) : 0)) * 10) / 10;
+      + (hunde ? (hunde.amount / 1e6) * (hundePct / 100) : 0)) * 10) / 10;
   // Negativ gedrehte Bereiche sparen, aufgestockte kosten — `gespart` darf
   // deshalb negativ werden und heißt dann ehrlich „mehr ausgegeben“.
   const gespart = Math.round(
@@ -242,7 +242,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const maxWirkung = Math.round(
     (proPunktGewst * MAX_PUNKTE
       + (proPunktGrundst ?? 0) * MAX_PUNKTE
-      + (hunde ? (hunde.betrag / 1e6) * (MAX_HUNDE / 100) : 0)
+      + (hunde ? (hunde.amount / 1e6) * (MAX_HUNDE / 100) : 0)
       + basis.freiwillig.reduce((s, f) => s + (f.aus * MAX_KUERZUNG) / 100, 0)) * 10) / 10;
 
   // Der Rücklagen-Pfad über die Planjahre — und sein Vorgänger als Rückfall:
@@ -251,7 +251,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const planjahre = useMemo(
     () => planjahrErgebnisse(daten.ergebnishaushalt), [daten.ergebnishaushalt]);
   const ruecklage = juengsteRuecklage(daten);
-  const ruecklageMio = (ruecklage?.stand_nach_ergebnis ?? 0) / 1e6;
+  const ruecklageMio = (ruecklage?.state_after_result ?? 0) / 1e6;
   const pfadOhne = planjahre && ruecklageMio > 0
     ? ruecklagenPfad(planjahre.reihe, 0, ruecklageMio) : null;
   const pfadMit = planjahre && ruecklageMio > 0
@@ -273,7 +273,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
     if (jahrInv == null) return 0;
     const summe = (programm?.massnahmen ?? [])
       .filter((z) => z.year === jahrInv && vorhabenAus[z.code || z.bezeichnung])
-      .reduce((s, z) => s + z.gesamtsumme, 0);
+      .reduce((s, z) => s + z.grand_total, 0);
     return Math.round((summe / 1e6) * 10) / 10;
   }, [programm, vorhabenAus]);
   const etwasGeaendert = lueckeGeaendert || kredit

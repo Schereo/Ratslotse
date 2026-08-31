@@ -120,13 +120,13 @@ export function TermineAbschnitt({ onBestand }: {
     // als erreicht, sobald der Rat beschlossen hat.
     const r = data.runden[data.runden.length - 1];
     const ratsbeschluss = [...r.stationen]
-      .filter((st) => st.rolle === "Entscheidung" && st.ergebnis
-        && !/zurückgestellt|abgesetzt|vertagt/i.test(st.ergebnis))
+      .filter((st) => st.rolle === "Entscheidung" && st.result
+        && !/zurückgestellt|abgesetzt|vertagt/i.test(st.result))
       .sort((a, b) => a.datum.localeCompare(b.datum))
       .at(-1) ?? null;
     const roh = [
       { titel: "Einbringung", datum: r.einbringung?.datum ?? null },
-      { titel: r.fachausschuesse ? `Beratung, ${r.fachausschuesse.anzahl}\u00d7` : "Beratung",
+      { titel: r.fachausschuesse ? `Beratung, ${r.fachausschuesse.count}\u00d7` : "Beratung",
         datum: r.fachausschuesse?.bis ?? null },
       { titel: "Beschluss im Rat", datum: ratsbeschluss?.datum ?? null },
       { titel: `Haushaltsjahr ${r.year}`, datum: `${r.year}-01-01` },
@@ -177,7 +177,7 @@ export function TermineAbschnitt({ onBestand }: {
       label: "Einbringung",
       von: anker.einbringung.datum,
       offen: true,
-      gemessen: `in ${haeufigster.anzahl} von ${rh.jahrgaenge} Jahrgängen im ${MONATE[haeufigster.monat - 1]}`,
+      gemessen: `in ${haeufigster.count} von ${rh.jahrgaenge} Jahrgängen im ${MONATE[haeufigster.monat - 1]}`,
       href: sessionHref(anker.einbringung.ksinr, anker.einbringung.top ? [anker.einbringung.top] : undefined),
     });
   }
@@ -187,7 +187,7 @@ export function TermineAbschnitt({ onBestand }: {
       label: "Ausschüsse beraten",
       von: fach.von,
       bis: fach.bis,
-      gemessen: `${fach.anzahl} Termine in ${fach.gremien.length} Ausschüssen — hier entstehen die Änderungslisten`,
+      gemessen: `${fach.count} Termine in ${fach.gremien.length} Ausschüssen — hier entstehen die Änderungslisten`,
       href: "/haushalt/streit",
     });
   }
@@ -265,7 +265,7 @@ export function TermineAbschnitt({ onBestand }: {
             {haeufigster && (
               <>
                 Erfahrungsgemäß beginnt sie im{" "}
-                <strong>{MONATE[haeufigster.monat - 1]}</strong>: In {haeufigster.anzahl} von{" "}
+                <strong>{MONATE[haeufigster.monat - 1]}</strong>: In {haeufigster.count} von{" "}
                 {rh.jahrgaenge} Jahrgängen wurde der nächste Entwurf in diesem Monat
                 eingebracht — dann beginnt dieser Strahl von vorn.{" "}
               </>
@@ -290,7 +290,7 @@ export function TermineAbschnitt({ onBestand }: {
           <div className="mt-3 grid gap-3 @[34rem]:grid-cols-2">
             {haeufigster && (
               <Befund
-                zahl={`${haeufigster.anzahl} von ${rh.jahrgaenge}`}
+                zahl={`${haeufigster.count} von ${rh.jahrgaenge}`}
                 text={`Haushaltsjahren wurde der Entwurf im ${MONATE[haeufigster.monat - 1]} eingebracht. Der Auftakt ist der verlässlichste Termin im ganzen Verfahren.`}
               />
             )}
@@ -391,7 +391,7 @@ function Weg({ runde }: { runde: WegRunde }) {
             <p className="mt-1 text-[13.5px] font-bold leading-snug">
               {fach.gremien.length} Ausschüsse
               <span className="font-normal text-muted-foreground">
-                {" · "}{fach.anzahl} {fach.anzahl === 1 ? "Termin" : "Termine"}
+                {" · "}{fach.count} {fach.count === 1 ? "Termin" : "Termine"}
               </span>
             </p>
             <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/85">

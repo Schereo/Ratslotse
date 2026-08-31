@@ -266,7 +266,7 @@ export default function PersonalPage() {
                     einheit="Stellen"
                     grundLabel="besetzt"
                     markiert={{
-                      anzahl: kernLuecke.nicht_besetzt,
+                      count: kernLuecke.nicht_besetzt,
                       grund: `unbesetzt · rund ${pct(kernLuecke.anteil)} %`,
                       stichtag: deDatum(kernLuecke.stichtag),
                     }}
@@ -420,7 +420,7 @@ export default function PersonalPage() {
                         )}
                       </span>
                       <span className="flex-none font-mono text-[12px] tabular-nums text-muted-foreground">
-                        {deStellen(z.stellen_vorjahr)} Stellen
+                        {deStellen(z.positions_prior_year)} Stellen
                       </span>
                       <span className="w-[5.5rem] flex-none text-right font-display text-[14px] font-bold tabular-nums">
                         {deStellen(z.nicht_besetzt)}

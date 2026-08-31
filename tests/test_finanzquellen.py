@@ -134,20 +134,20 @@ def teilhaushalt_plan(thh_nr: int, thh_name: str, produkte: list[tuple],
     stehen sie im PDF-Extrakt, und nur so liest ``_thh_zahlen`` sie als eine
     Zahl. „6900" zerfiele dort in 690 und 0."""
     text = ""
-    for produkt_nr, name, amt, ertraege, aufwendungen in produkte:
-        ergebnis = ertraege - aufwendungen
+    for produkt_nr, name, amt, revenues, expenses in produkte:
+        result = revenues - expenses
         text += (
             f"Teilergebnishaushalt THH{thh_nr:02d}: {thh_name}\n"
             f"Produkt: {name} ({produkt_nr})\n"
             f"{amt}\n"
             f"Erträge und Aufwendungen Ergebnis {year - 1}\n- Euro -\n"
             f"Ansatz {year}\n- Euro -\nAnsatz {year + 1}\n- Euro -\n"
-            f"12. = Summe ordentliche Erträge {eur(ertraege - 100)} {eur(ertraege)}"
-            f" {eur(ertraege + 50)}\n"
-            f"20. = Summe ordentliche Aufwendungen {eur(aufwendungen - 100)}"
-            f" {eur(aufwendungen)} {eur(aufwendungen + 50)}\n"
-            f"21. ordentliches Ergebnis {eur(ergebnis - 0)} {eur(ergebnis)}"
-            f" {eur(ergebnis - 50)}\n"
+            f"12. = Summe ordentliche Erträge {eur(revenues - 100)} {eur(revenues)}"
+            f" {eur(revenues + 50)}\n"
+            f"20. = Summe ordentliche Aufwendungen {eur(expenses - 100)}"
+            f" {eur(expenses)} {eur(expenses + 50)}\n"
+            f"21. ordentliches Ergebnis {eur(result - 0)} {eur(result)}"
+            f" {eur(result - 50)}\n"
             "Kurzbeschreibung:\n")
     return text
 
@@ -439,8 +439,8 @@ def test_abweichende_zahlen_im_zweiten_dokument_werden_gemeldet(tmp_path):
     ändert einen Ansatz wirklich —, wäre das eine Entscheidung, die niemand
     nebenbei in einem unbeaufsichtigten Lauf treffen soll."""
     name, produkte = THH_PLAENE[1]
-    geaendert = [(nr, n, amt, ertraege + 1_000, aufwendungen)
-                 for nr, n, amt, ertraege, aufwendungen in produkte]
+    geaendert = [(nr, n, amt, revenues + 1_000, expenses)
+                 for nr, n, amt, revenues, expenses in produkte]
     store = _zwei_dokumente_ein_teilhaushalt(tmp_path, zweite_produkte=geaendert)
     try:
         p = finanzquellen.Protokoll(still=True)
@@ -455,9 +455,9 @@ def test_abweichende_zahlen_im_zweiten_dokument_werden_gemeldet(tmp_path):
         assert "600" in meldung and "640" in meldung
 
         # Gemeldet, nicht überschrieben: Es gilt weiter das erste Dokument.
-        ertraege = sorted(r[0] for r in store._conn.execute(  # noqa: SLF001
-            "SELECT ertraege FROM council_produkte"))
-        assert ertraege == [1_000.0, 4_000.0]
+        revenues = sorted(r[0] for r in store._conn.execute(  # noqa: SLF001
+            "SELECT revenues FROM council_produkte"))
+        assert revenues == [1_000.0, 4_000.0]
     finally:
         store.close()
 
@@ -770,7 +770,7 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
     # nicht trägt — so sieht ein Schreibweg aus, der `herkunft_id` vergisst.
     with thh_bestand._conn:  # noqa: SLF001
         thh_bestand._conn.execute(  # noqa: SLF001
-            "INSERT INTO council_steuern (year, art, betrag, fetched_at, herkunft_id) "
+            "INSERT INTO council_steuern (year, art, amount, fetched_at, herkunft_id) "
             "VALUES (2025, 'Gewerbesteuer (-umlage)', 222117000.0, '2026-08-20', NULL)")
     thh_bestand.close()
 

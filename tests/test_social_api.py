@@ -200,7 +200,7 @@ def test_hochladen_vergibt_die_namen_selbst(client, monkeypatch, tmp_path):
         )
         assert r.status_code == 200, r.text
         daten = r.json()
-        assert daten["anzahl"] == 2
+        assert daten["count"] == 2
         assert daten["urls"] == [
             "https://example.org/social/2026-08-24/2026-08-24-01.jpg",
             "https://example.org/social/2026-08-24/2026-08-24-02.jpg",

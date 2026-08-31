@@ -80,7 +80,7 @@ export type Herkunft = {
    *  heißen gleich und tragen Verschiedenes; wer im Backend nachschlägt,
    *  findet nicht, was hier ankommt. */
   proben: string[];
-  probe_ergebnis: string | null;
+  probe_result: string | null;
   stand: string | null;
   /** „Zuletzt bestätigt", nicht „zuerst gesehen": Der Zeitstempel wandert bei
    *  jedem Lauf vorwärts, der die Zeile wiedersieht (`merke_herkunft`). */

@@ -247,7 +247,7 @@ def test_fehlende_spalte_bricht_ab_statt_zu_raten(tmp_path):
     verstuemmelt[8] = [t for t in _KOPF_61_2021 if "Zerlegungen von Betriebsstätten" not in t]
     pfad = _mappe(tmp_path, "kaputt.xlsx", verstuemmelt, _BLATT_62_2021,
                   _TITEL_2021, _IMPRESSUM_2021)
-    with pytest.raises(ValueError, match="zerlegung_anzahl"):
+    with pytest.raises(ValueError, match="zerlegung_count"):
         gs.lies_bericht(pfad)
 
 
@@ -349,7 +349,7 @@ def test_summenprobe_faengt_eine_verrutschte_spalte(tmp_path):
     zeilen, verworfen = gs.zeilen(gs.lies_bericht(pfad))
     assert gs.OLDENBURG not in {z["schluessel"] for z in zeilen}
     assert verworfen[0]["grund"] == "Summenprobe"
-    assert "gesamt_betrag" in verworfen[0]["ergebnis"]
+    assert "gesamt_amount" in verworfen[0]["result"]
 
 
 def test_summenprobe_laeuft_auch_ohne_betrag(bericht2021):
@@ -412,7 +412,7 @@ def _herkunft() -> herkunft.Herkunft:
         probe=["gewst_summenprobe", "gewst_blattprobe", "gewst_hebesatzprobe"],
         label="Gewerbesteuerstatistik 2021 (Statistischer Bericht L IV 13)",
         url="https://example.org/gewst2021.xlsx",
-        fundstelle="Blatt 6.1 und 6.2", probe_ergebnis="3 Städte nachgerechnet",
+        fundstelle="Blatt 6.1 und 6.2", probe_result="3 Städte nachgerechnet",
         stand="Erschienen im März 2026")
 
 

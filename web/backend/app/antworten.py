@@ -432,7 +432,7 @@ class HoechsteBeschlussId(TypedDict):
 
 class MedienAblage(TypedDict):
     tag: str
-    anzahl: int
+    count: int
     urls: list[str]
 
 
@@ -891,7 +891,7 @@ class FundstueckDesTages(TypedDict):
 
 
 class ZahlDerWocheBetrag(TypedDict):
-    kind: Literal["betrag"]
+    kind: Literal["amount"]
     amount_eur: float
     decision_id: int
     title: str
@@ -900,7 +900,7 @@ class ZahlDerWocheBetrag(TypedDict):
 
 
 class ZahlDerWocheAnzahl(TypedDict):
-    kind: Literal["anzahl"]
+    kind: Literal["count"]
     count: int
     window_days: int
 
@@ -913,7 +913,7 @@ class HaushaltProdukte(TypedDict):
     alle_jahre: Any
     facetten: Any
     year: Any
-    plan_aufwendungen: Any
+    plan_expenses: Any
     produkt: Any
     produkte: Any
     treffer: int

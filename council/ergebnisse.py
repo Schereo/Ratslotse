@@ -14,7 +14,7 @@ das erscheint spät. Nachgemessen am 26.07.2026:
 
 Weder die Sitzungsseite noch die Beratungsfolge der Vorlage tragen das Ergebnis
 vorher: Auf der Sitzungsseite kommen „angenommen", „abgelehnt", „einstimmig"
-kein einziges Mal vor, und ``council_beratungen.ergebnis`` kennt nur
+kein einziges Mal vor, und ``council_beratungen.result`` kennt nur
 ``Kenntnisnahme`` / ``Entscheidung`` / ``Vorberatung`` — die Beratungsart, nicht
 das Ergebnis.
 

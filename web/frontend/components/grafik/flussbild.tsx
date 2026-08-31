@@ -48,9 +48,9 @@ export type FlussPosten = {
   /** Volle Bezeichnung — Panel, title, aria. */
   lang: string;
   wert: number;
-  /** `posten` = Kategorie (Rampe) · `differenz` = Ehrlichkeits-Band
+  /** `posten` = Kategorie (Rampe) · `difference` = Ehrlichkeits-Band
    *  („aus dem Ersparten", „nicht aufgeschlüsselt"): Schraffur + Signal. */
-  art: "posten" | "differenz";
+  art: "posten" | "difference";
 };
 
 export type FlussSeiteDaten = {
@@ -204,8 +204,8 @@ function SammelPanel({ lage, titel, teile, skala, format, einheit, onClose }: {
 /** Eine Zeile der Listenfassung: Name, Balken auf der gemeinsamen Skala,
  *  Betrag. Der Balken misst gegen dieselbe Skala wie die Bänder — sonst
  *  erzählten Listen- und Bandfassung zwei verschiedene Geschichten. */
-function ListenZeile({ band, lage, rang, anzahl, skala, format, einheit, sammel, offen, onToggle }: {
-  band: FlussPosten; lage: SeitenLage; rang: number; anzahl: number; skala: number;
+function ListenZeile({ band, lage, rang, count, skala, format, einheit, sammel, offen, onToggle }: {
+  band: FlussPosten; lage: SeitenLage; rang: number; count: number; skala: number;
   format: (w: number) => string; einheit: string;
   sammel: boolean; offen: boolean; onToggle: () => void;
 }) {
@@ -224,7 +224,7 @@ function ListenZeile({ band, lage, rang, anzahl, skala, format, einheit, sammel,
       <span className="mt-1 block h-2.5 w-full">
         {band.art === "posten" ? (
           <span className="block h-full rounded-[3px]"
-            style={{ width: `${anteil}%`, background: farbe(lage, rang, anzahl, band.art) }} />
+            style={{ width: `${anteil}%`, background: farbe(lage, rang, count, band.art) }} />
         ) : (
           <span className="hh-schraffur block h-full rounded-[3px] border border-dashed border-signal"
             style={{ width: `${anteil}%` }} />
@@ -289,7 +289,7 @@ function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, einhei
             </div>
             <div className="flex flex-col gap-2">
               {gezeigt.map((b, i) => (
-                <ListenZeile key={b.id} band={b} lage={lage} rang={i} anzahl={gezeigt.length}
+                <ListenZeile key={b.id} band={b} lage={lage} rang={i} count={gezeigt.length}
                   skala={skala} format={format} einheit={einheit}
                   sammel={b.id === "weitere"} offen={offen === lage}
                   onToggle={() => setOffen(offen === lage ? null : lage)} />

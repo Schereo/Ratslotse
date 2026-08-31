@@ -336,11 +336,11 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
     }
 
 
-def probennachweis(ergebnis: dict) -> str:
+def probennachweis(result: dict) -> str:
     """Der Messwert für die Herkunft — „was ist wirklich gelaufen?".
 
     Steht später im Beleg auf der Seite; deshalb Zahlen und keine Adjektive."""
-    p = ergebnis["proben"]
+    p = result["proben"]
     teile = [f"Summenprobe {p['summe_bestanden']} von "
              f"{p['summe_bestanden'] + p['summe_gerissen']} Jahrgängen"]
     geprueft = p["prokopf_bestanden"] + p["prokopf_gerissen"]

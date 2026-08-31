@@ -38,7 +38,7 @@ export type StellenZeile = {
   /** Stellen im Haushaltsjahr — die Planspalte. */
   stellen_plan: number;
   /** Stellen im Vorjahr. Auf DIESE Zahl beziehen sich alle Besetzungswerte. */
-  stellen_vorjahr: number;
+  positions_prior_year: number;
   besetzt: number;
   /** Nur Teil A: Eine Beamtenstelle darf mit Tarifbeschäftigten besetzt werden. */
   besetzt_beamte: number | null;
@@ -90,19 +90,19 @@ export function fehlt(daten: StellenplanDaten, jahrgang: number,
 /** Die Besetzungslücke eines Teils — ausschließlich aus der Vorjahresspalte.
  *
  *  `anteil` ist unsere einzige Division auf dieser Seite und steht auf der
- *  Seite als solche gekennzeichnet. Sie teilt durch `stellen_vorjahr`, nicht
+ *  Seite als solche gekennzeichnet. Sie teilt durch `positions_prior_year`, nicht
  *  durch `stellen_plan`: Beides sind Stellen, aber zu verschiedenen
  *  Zeitpunkten (s. Kopf dieser Datei). */
 export function luecke(z: StellenZeile | null): {
   stellen: number; besetzt: number; nicht_besetzt: number;
   anteil: number; stichtag: string | null;
 } | null {
-  if (!z || !z.stellen_vorjahr) return null;
+  if (!z || !z.positions_prior_year) return null;
   return {
-    stellen: z.stellen_vorjahr,
+    stellen: z.positions_prior_year,
     besetzt: z.besetzt,
     nicht_besetzt: z.nicht_besetzt,
-    anteil: z.nicht_besetzt / z.stellen_vorjahr,
+    anteil: z.nicht_besetzt / z.positions_prior_year,
     stichtag: z.stichtag,
   };
 }
@@ -122,12 +122,12 @@ export function jahrgaengeMitTeil(daten: StellenplanDaten,
  *  draußen — ihre Lücke ist keine Aussage über den Dienst, sondern über einen
  *  Übertrag. */
 export function groessteLuecken(zeilen: StellenZeile[], teil: StellenTeil,
-                                anzahl = 8): StellenZeile[] {
+                                count = 8): StellenZeile[] {
   return zeilen
     .filter((z) => z.art === "posten" && z.teil === teil && z.stimmig === 1)
     .filter((z) => z.nicht_besetzt > 0)
     .sort((a, b) => b.nicht_besetzt - a.nicht_besetzt)
-    .slice(0, anzahl);
+    .slice(0, count);
 }
 
 /** Stellen mit deutschem Komma und ohne unnötige Nachkommastellen.

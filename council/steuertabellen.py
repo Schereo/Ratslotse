@@ -380,7 +380,7 @@ def anteilsprobe(gelesen: dict) -> list[dict]:
 def istabgleich(gelesen: dict, ist_reihe: dict[int, dict[str, float]]) -> dict:
     """Das Rechnungsergebnis gegen Tabelle 1104 — **das Aufnahmekriterium**.
 
-    ``ist_reihe`` ist ``{year: {art: betrag_in_euro}}`` aus ``council_steuern``.
+    ``ist_reihe`` ist ``{year: {art: amount_in_euro}}`` aus ``council_steuern``.
     Verglichen wird in Tausend Euro, weil 1103 so druckt.
 
     Ein Jahrgang wird nur übernommen, wenn **jede** seiner Steuerarten dort

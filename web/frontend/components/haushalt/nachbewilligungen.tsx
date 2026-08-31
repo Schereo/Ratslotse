@@ -85,14 +85,14 @@ function KanalRangliste({ kanaele, beleg }: {
   kanaele: NachbewilligungsKanal[]; beleg: ReactNode;
 }) {
   const zeilen: RanglisteZeile[] = kanaele.map((k) => {
-    const anzahl = kanalAnzahl(k);
+    const count = kanalAnzahl(k);
     return {
       label: k.label,
       wert: kanalBetrag(k) / 1e6,
       // Der Rat ist die Zeile, um die es geht — hervorgehoben heißt „hier
       // schauen", nicht „das ist die gute".
       hervorgehoben: k.kanal === "rat",
-      zusatz: anzahl === 1 ? "1 Fall" : `${anzahl} Fälle`,
+      zusatz: count === 1 ? "1 Fall" : `${count} Fälle`,
     };
   });
   return (
@@ -133,7 +133,7 @@ function RatsListe({ posten }: { posten: Nachbewilligung[] }) {
               </span>
             </span>
             <span className="whitespace-nowrap text-right text-[12px] font-semibold tabular-nums">
-              {euro(n.betrag ?? 0)}&nbsp;€
+              {euro(n.amount ?? 0)}&nbsp;€
             </span>
           </div>
         );
@@ -239,10 +239,10 @@ export function NachbewilligungsBlock({ daten, year }: {
             Verwaltung oder es handelt sich um eine Eilentscheidung. Der Rat wird
             darüber unterrichtet.
           </p>
-          {bericht.verpflichtungen_betrag != null
-            && bericht.verpflichtungen_betrag > 0 && (
+          {bericht.commitments_amount != null
+            && bericht.commitments_amount > 0 && (
             <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
-              Nicht enthalten: {mio(bericht.verpflichtungen_betrag)}&#8239;Mio.&nbsp;€
+              Nicht enthalten: {mio(bericht.commitments_amount)}&#8239;Mio.&nbsp;€
               an Verpflichtungsermächtigungen. Sie erlauben, künftige Jahre zu
               binden, und fließen in diesem Jahr nicht — der Bericht zählt sie
               deshalb getrennt, und wir addieren sie nirgends dazu.

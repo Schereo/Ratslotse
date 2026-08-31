@@ -102,9 +102,9 @@ def ist_reihe(store: CouncilStore) -> tuple[dict, dict]:
     Ist-Abgleich von 1103, die zweite für die Sprungjahr-Probe von 1105."""
     alle: dict[int, dict[str, float]] = {}
     for zeile in store.get_steuereinnahmen():
-        if zeile.get("betrag") is None:
+        if zeile.get("amount") is None:
             continue
-        alle.setdefault(zeile["year"], {})[zeile["art"]] = float(zeile["betrag"])
+        alle.setdefault(zeile["year"], {})[zeile["art"]] = float(zeile["amount"])
     grundsteuer = {j: w[GRUNDSTEUER] for j, w in alle.items() if GRUNDSTEUER in w}
     return alle, grundsteuer
 
@@ -155,7 +155,7 @@ def _herkunft_1103(name: str, url: str | None, jahre: list[int],
             "führt nur drei Jahrgänge"),
         stand=f"Haushaltsjahre {spanne} · {stt.ABGRENZUNG_1103}",
         probe=proben,
-        probe_ergebnis=nachweis)
+        probe_result=nachweis)
 
 
 def main() -> int:
@@ -234,20 +234,20 @@ def main() -> int:
             proben_je_ausgabe: dict[str, list[str]] = {}
             urls: dict[str, str | None] = {}
             for name, text in ausgaben:
-                ergebnis = stt.lies_1103(text, alle_ist)
-                if ergebnis["abbruch"]:
-                    print(f"  {name}: {ergebnis['abbruch']}", file=sys.stderr)
+                result = stt.lies_1103(text, alle_ist)
+                if result["abbruch"]:
+                    print(f"  {name}: {result['abbruch']}", file=sys.stderr)
                     continue
-                for v in ergebnis["verworfen"]:
+                for v in result["verworfen"]:
                     print(f"  {name}: VERWORFEN {v['year']} — {v['grund']}",
                           file=sys.stderr)
-                if not ergebnis["zeilen"]:
+                if not result["zeilen"]:
                     continue
-                gelesen.append((name, ergebnis["zeilen"]))
-                proben_je_ausgabe[name] = ergebnis["proben"]
+                gelesen.append((name, result["zeilen"]))
+                proben_je_ausgabe[name] = result["proben"]
                 urls[name] = url_1103 if text is text_1103 else None
-                print(f"  {name}: {len(ergebnis['zeilen'])} Zeilen, "
-                      f"Jahrgänge {ergebnis['jahre']}")
+                print(f"  {name}: {len(result['zeilen'])} Zeilen, "
+                      f"Jahrgänge {result['jahre']}")
 
             zeilen_1103 = stt.zusammenlegen(
                 gelesen, lambda z: (z["year"], z["art"]))
@@ -265,14 +265,14 @@ def main() -> int:
             proben_1105: list[str] = []
             sprung = {"bestanden": [], "gerissen": [], "nicht_pruefbar": []}
             for name, text in ausgaben5:
-                ergebnis = stt.lies_1105(text, grundsteuer)
-                if ergebnis["abbruch"]:
-                    print(f"  {name}: {ergebnis['abbruch']}", file=sys.stderr)
+                result = stt.lies_1105(text, grundsteuer)
+                if result["abbruch"]:
+                    print(f"  {name}: {result['abbruch']}", file=sys.stderr)
                     continue
-                gelesen5.append((name, ergebnis["zeilen"]))
-                proben_1105 = ergebnis["proben"]
-                sprung = ergebnis["sprungjahre"]
-                print(f"  {name}: {len(ergebnis['zeilen'])} Zeilen")
+                gelesen5.append((name, result["zeilen"]))
+                proben_1105 = result["proben"]
+                sprung = result["sprungjahre"]
+                print(f"  {name}: {len(result['zeilen'])} Zeilen")
             zeilen_1105 = stt.zusammenlegen(
                 gelesen5, lambda z: (z["year"], z["art"]))
             jahre_1105 = sorted({z["year"] for z in zeilen_1105})
@@ -370,7 +370,7 @@ def main() -> int:
                     stand=f"Änderungsjahre {jahre_1105[0]}–{jahre_1105[-1]} · "
                           f"{stt.ABGRENZUNG_1105}",
                     probe=proben_1105,
-                    probe_ergebnis=nachweis5))
+                    probe_result=nachweis5))
                 print(f"  1105: {len(zeilen_1105)} Zeilen")
 
             print(f"\ngespeichert: {geschrieben} Zeilen")

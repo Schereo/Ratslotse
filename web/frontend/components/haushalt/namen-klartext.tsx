@@ -65,9 +65,9 @@ export function klartextZeilen(zeilen: HaushaltZeile[]): KlartextZeile[] {
       const k = bereichKanon(z.bereich);
       return {
         zeile: z,
-        aus: mio(z.aufwendungen) ?? 0,
-        stadt: z.ergebnis != null ? mio(-z.ergebnis) : null,
-        eigen: mio(z.ertraege),
+        aus: mio(z.expenses) ?? 0,
+        stadt: z.result != null ? mio(-z.result) : null,
+        eigen: mio(z.revenues),
         // Der Anzeigename ist die jüngste amtliche Schreibweise; verlinkt wird
         // weiter über den Slug des DB-Namens (Regel 2 des Wörterbuchs).
         name: k.name,

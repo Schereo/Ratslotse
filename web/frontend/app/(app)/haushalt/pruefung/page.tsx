@@ -40,7 +40,7 @@ function PruefungInner() {
   // (`onBestand`) — dieselbe Antwort, die unten die KettenMatrix trägt.
   const [bestand, setBestand] = useState<{
     gesamt: number;
-    jeJahr: { year: number; anzahl: number }[];
+    jeJahr: { year: number; count: number }[];
     ohneBericht: number[];
   } | null | undefined>(undefined);
   return (
@@ -85,16 +85,16 @@ function PruefungInner() {
               href: "#feststellungen",
               label: "Feststellungen je Jahrgang · gestrichelt = Bericht fehlt — klickt zur Matrix",
               skizze: (() => {
-                const max = Math.max(...bestand.jeJahr.map((j) => j.anzahl), 1);
+                const max = Math.max(...bestand.jeJahr.map((j) => j.count), 1);
                 const saeulen = [
-                  ...bestand.jeJahr.map((j) => ({ year: j.year, anzahl: j.anzahl as number | null })),
-                  ...bestand.ohneBericht.map((j) => ({ year: j, anzahl: null })),
+                  ...bestand.jeJahr.map((j) => ({ year: j.year, count: j.count as number | null })),
+                  ...bestand.ohneBericht.map((j) => ({ year: j, count: null })),
                 ].sort((a, b) => a.year - b.year);
                 return (
                   <span className="flex items-end gap-1" style={{ height: 44 }}>
-                    {saeulen.map((sl) => sl.anzahl != null ? (
+                    {saeulen.map((sl) => sl.count != null ? (
                       <span key={sl.year} className="w-5 rounded-[3px]" style={{
-                        height: `${Math.max((sl.anzahl / max) * 100, 8)}%`,
+                        height: `${Math.max((sl.count / max) * 100, 8)}%`,
                         background: "var(--sb-voll)",
                       }} />
                     ) : (

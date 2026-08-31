@@ -136,10 +136,10 @@ def repo(tmp_path):
 
 
 def test_schnitt_sortiert_ein_und_raeumt_auf(repo):
-    ergebnis = schnitt("1.13.0", datum="2026-08-17", wurzel=repo, nummern=lambda pfad: 777)
+    result = schnitt("1.13.0", datum="2026-08-17", wurzel=repo, nummern=lambda pfad: 777)
     text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert ergebnis.geschrieben and len(ergebnis.fragmente) == 2 and not ergebnis.ohne_nummer
+    assert result.geschrieben and len(result.fragmente) == 2 and not result.ohne_nummer
 
     # Leeres [Unreleased] bleibt oben stehen, darunter die neue Version.
     assert "## [Unreleased]\n\n## [1.13.0] – 2026-08-17\n" in text
@@ -178,21 +178,21 @@ def test_schnitt_zieht_die_vergleichslinks_nach(repo):
 
 def test_trocken_schreibt_nichts(repo):
     vorher = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
-    ergebnis = schnitt("1.13.0", datum="2026-08-17", wurzel=repo,
+    result = schnitt("1.13.0", datum="2026-08-17", wurzel=repo,
                        trocken=True, nummern=lambda pfad: 777)
-    assert not ergebnis.geschrieben
-    assert "## [1.13.0] – 2026-08-17" in ergebnis.text     # gerechnet …
+    assert not result.geschrieben
+    assert "## [1.13.0] – 2026-08-17" in result.text     # gerechnet …
     assert (repo / "CHANGELOG.md").read_text(encoding="utf-8") == vorher  # … aber nicht geschrieben
     assert len(list((repo / "changelog.d").glob("*.md"))) == 2
 
 
 def test_fragment_ohne_auffindbare_nummer(repo, capsys):
     """Kein Commit gefunden → Eintrag ohne Nummer plus Warnung, kein Abbruch."""
-    ergebnis = schnitt("1.13.0", datum="2026-08-17", wurzel=repo, nummern=lambda pfad: None)
+    result = schnitt("1.13.0", datum="2026-08-17", wurzel=repo, nummern=lambda pfad: None)
     text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
     neu = text.split("## [1.13.0]")[1].split("## [1.12.0]")[0]
     assert "**Eine neue Karte.**" in neu and "(#777)" not in neu
-    assert len(ergebnis.ohne_nummer) == 2
+    assert len(result.ohne_nummer) == 2
     assert "keine PR-Nummer" in capsys.readouterr().err
 
 

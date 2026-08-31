@@ -373,7 +373,7 @@ public struct CouncilConsultationStop: Codable, Sendable, Hashable, Identifiable
         case date = "datum"
         case committee = "gremium"
         case itemNumber = "top"
-        case result = "ergebnis"
+        case result = "result"
         case sessionID = "ksinr"
         case future
     }

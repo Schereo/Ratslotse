@@ -178,11 +178,11 @@ def test_beide_layouts_gehen_auf(text, year):
     jahrgang = _lies(text, year)
     posten = jahrgang["posten"]
     assert jahrgang["bilanzsumme"] == pytest.approx(SUMME[year], abs=0.01)
-    assert jahrgang["ausgleich_differenz"] == pytest.approx(0.0, abs=0.01)
+    assert jahrgang["balancing_difference"] == pytest.approx(0.0, abs=0.01)
     # Auch die Vorjahresspalte trägt für sich — daraus entsteht beim Einlesen
     # der älteste Stichtag, der kein eigenes Dokument hat.
     for seite in (bilanz.AKTIVA, bilanz.PASSIVA):
-        assert bilanz.summe(posten, seite, "wert_vorjahr") == pytest.approx(
+        assert bilanz.summe(posten, seite, "value_prior_year") == pytest.approx(
             SUMME[year - 1], abs=0.01)
 
 
@@ -376,7 +376,7 @@ def _kette() -> dict[int, dict]:
     """Zwei benachbarte Jahrgänge, wie sie beim Einlesen nebeneinanderliegen:
     2023 aus der Vorjahresspalte von 2024, 2024 aus seiner eigenen."""
     j2024 = _lies(B_2024, 2024)
-    j2023 = {"year": 2023, "posten": [{**p, "wert": p["wert_vorjahr"]}
+    j2023 = {"year": 2023, "posten": [{**p, "wert": p["value_prior_year"]}
                                       for p in j2024["posten"]]}
     return {2023: j2023, 2024: j2024}
 
@@ -627,7 +627,7 @@ def quelle():
     return herkunft.Herkunft(
         probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
         fundstelle="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
-        probe_ergebnis="Aktiva und Passiva stimmen auf den Cent überein",
+        probe_result="Aktiva und Passiva stimmen auf den Cent überein",
         stand="31.12.2024", art="ris", dokument_id=4711,
         label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf")
 
@@ -645,7 +645,7 @@ def test_store_bilanz_roundtrip(tmp_path, quelle):
             "year": 2024,
             "ruecklage": 188_946_996.63,
             "jahresergebnis": 6_136_250.91,
-            "stand_nach_ergebnis": pytest.approx(195_083_247.54, abs=0.01),
+            "state_after_result": pytest.approx(195_083_247.54, abs=0.01),
             "herkunft_id": rows[0]["herkunft_id"],
         }]
         assert sum(r["wert"] for r in rows if r["ebene"] == 1

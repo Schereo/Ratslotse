@@ -92,7 +92,7 @@ function Fundstelle({ h, className }: { h: Herkunft | null; className?: string }
 /** Die Kernaussage als Zahl — bewusst zwei Beträge und ein Anteil, mehr nicht.
  *  Der Anteil ist unsere Rechnung und steht als solche gekennzeichnet. */
 function Lueckenkopf({ daten, year }: { daten: KonzernDaten; year: number }) {
-  const a = kernAnteil(daten, year, "ertraege");
+  const a = kernAnteil(daten, year, "revenues");
   if (!a) return null;
   const prozent = Math.round(a.anteil * 100);
   const rest = a.konzern - a.kern;
@@ -149,7 +149,7 @@ export function KonzernAbschnitt({ onBestand }: {
     const a = data && year != null ? kernAnteil(data, year) : null;
     onBestand(year != null && a ? { anteil: a.anteil, year } : null);
   }, [onBestand, loading, data]);
-  const [art, setArt] = useState<LueckeArt>("ertraege");
+  const [art, setArt] = useState<LueckeArt>("revenues");
   const [year, setJahr] = useState<number | null>(null);
 
   const jahre = useMemo(() => (data ? traegerJahre(data, art) : []), [data, art]);
@@ -175,7 +175,7 @@ export function KonzernAbschnitt({ onBestand }: {
   const jd = aktJahr ? jahrDaten(data, aktJahr) : null;
   const zeilen = aktJahr ? traegerListe(data, aktJahr, art) : [];
   const verrechnung = aktJahr ? konsolidierung(data, aktJahr, art) : null;
-  const summe = jd ? (art === "ertraege" ? jd.ertraege_summe : jd.aufwendungen_summe) : null;
+  const summe = jd ? (art === "revenues" ? jd.revenues_total : jd.expenses_total) : null;
   // Die Trägeraufstellung hat ihre eigene Herkunft (Abschnitt 4.1.1), nicht
   // die der Postentabelle — sie steht anderswo und ist anders geprüft.
   const hTraeger = herkunftVon(data, (zeilen[0] ?? verrechnung)?.herkunft_id);
@@ -224,8 +224,8 @@ export function KonzernAbschnitt({ onBestand }: {
             value={art}
             onChange={setArt}
             options={[
-              { value: "ertraege", label: "Einnahmen" },
-              { value: "aufwendungen", label: "Ausgaben" },
+              { value: "revenues", label: "Einnahmen" },
+              { value: "expenses", label: "Ausgaben" },
             ]}
           />
         </div>
@@ -257,7 +257,7 @@ export function KonzernAbschnitt({ onBestand }: {
             )}
           </div>
           <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-            {art === "ertraege" ? "Einnahmen" : "Ausgaben"} {aktJahr}, aufgeteilt auf die
+            {art === "revenues" ? "Einnahmen" : "Ausgaben"} {aktJahr}, aufgeteilt auf die
             Betriebe und Gesellschaften, die die Stadt in ihre Rechnung einbezieht.
             <Beleg q="gesamtabschluss" />
           </p>

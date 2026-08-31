@@ -296,9 +296,9 @@ def _label(roh: str) -> str:
 def parse_bilanz(text: str, year: int) -> dict:
     """Die Bilanz eines Jahresabschlusses lesen.
 
-    Liefert ``{year, vorjahr, posten}``. ``posten`` ist eine Liste aus
-    ``{rolle, seite, ebene, nr, bezeichnung, wert, wert_vorjahr}`` — ``wert``
-    ist der Stand zum Bilanzstichtag des Jahrgangs, ``wert_vorjahr`` der
+    Liefert ``{year, prior_year, posten}``. ``posten`` ist eine Liste aus
+    ``{rolle, seite, ebene, nr, bezeichnung, wert, value_prior_year}`` — ``wert``
+    ist der Stand zum Bilanzstichtag des Jahrgangs, ``value_prior_year`` der
     Stand ein Jahr davor, den dieselbe Tabelle in ihrer ersten Spalte führt.
 
     ``gedruckte_summe`` steht dabei, wo der Jahrgang die Bilanzsumme unter
@@ -309,7 +309,7 @@ def parse_bilanz(text: str, year: int) -> dict:
     """
     roh = _abschnitt(text, year)
     if not roh:
-        return {"year": year, "vorjahr": year - 1, "posten": [],
+        return {"year": year, "prior_year": year - 1, "posten": [],
                 "gedruckte_summe": None}
 
     # Die gedruckte Bilanzsumme **zuerst** lesen und die Tabelle dann dort
@@ -351,11 +351,11 @@ def parse_bilanz(text: str, year: int) -> dict:
         posten.append({
             "rolle": name, "seite": seite, "ebene": ebene,
             "nr": m.group(1).rstrip("."), "bezeichnung": bezeichnung,
-            "wert_vorjahr": _eur(betraege[0]) if betraege else 0.0,
+            "value_prior_year": _eur(betraege[0]) if betraege else 0.0,
             "wert": _eur(betraege[1]) if betraege else 0.0,
         })
 
-    return {"year": year, "vorjahr": year - 1, "posten": posten,
+    return {"year": year, "prior_year": year - 1, "posten": posten,
             "gedruckte_summe": (_eur(gedruckt.group(1)), _eur(gedruckt.group(2)))
             if gedruckt else None}
 
@@ -402,14 +402,14 @@ def bilanzprobe(gelesen: dict) -> tuple[dict | None, list[str], list[str]]:
         return None, [f"Hauptposten fehlen: {', '.join(fehlend)}"], []
 
     aktiva, passiva = summe(posten, AKTIVA), summe(posten, PASSIVA)
-    differenz = abs(aktiva - passiva)
-    if differenz > TOLERANZ:
+    difference = abs(aktiva - passiva)
+    if difference > TOLERANZ:
         return None, [f"Bilanz gleicht nicht aus: Aktiva {aktiva:,.2f} € gegen "
-                      f"Passiva {passiva:,.2f} €, Differenz {differenz:,.2f} €"], []
+                      f"Passiva {passiva:,.2f} €, Differenz {difference:,.2f} €"], []
 
     jahrgang = {"year": gelesen["year"], "posten": posten,
                 "bilanzsumme": aktiva, "proben": ["bilanz_ausgleich"],
-                "ausgleich_differenz": differenz}
+                "balancing_difference": difference}
 
     gedruckt = gelesen.get("gedruckte_summe")
     if gedruckt is not None:
@@ -449,7 +449,7 @@ def vorjahreskette(jahrgaenge: dict[int, dict]) -> list[tuple[int, int, str]]:
             continue
         for rolle in PFLICHT_ROLLEN:
             hier = _wert(jahrgaenge[year]["posten"], rolle)
-            dort = _wert(jahrgaenge[folge]["posten"], rolle, "wert_vorjahr")
+            dort = _wert(jahrgaenge[folge]["posten"], rolle, "value_prior_year")
             if hier is None or dort is None:
                 continue
             if abs(hier - dort) > TOLERANZ:

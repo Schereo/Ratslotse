@@ -134,17 +134,17 @@ def _eur(s: str) -> float | None:
         return None
 
 
-def _de(betrag: float, vorzeichen: bool = False) -> str:
+def _de(amount: float, vorzeichen: bool = False) -> str:
     """Betrag in deutscher Schreibweise — „80.781.520,00".
 
     Nicht bloß Kosmetik: Der Rückgabewert von :func:`nachweis` landet als
-    ``probe_ergebnis`` in der Herkunft und steht damit im Beleg neben der Zahl
+    ``probe_result`` in der Herkunft und steht damit im Beleg neben der Zahl
     auf der Seite. Pythons ``{:,.2f}`` liefert dort englische Trennzeichen —
     „80,781,520.00" liest sich für Leser*innen wie ein anderer Betrag."""
-    s = f"{abs(betrag):,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    s = f"{abs(amount):,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
     if vorzeichen:
-        return ("+" if betrag >= 0 else "−") + s
-    return ("−" if betrag < 0 else "") + s
+        return ("+" if amount >= 0 else "−") + s
+    return ("−" if amount < 0 else "") + s
 
 
 def name(roh: str) -> str:
@@ -195,8 +195,8 @@ def summenprobe(zeilen: list[dict], gesamt: dict | None,
     if len(zeilen) < MINDEST_TEILHAUSHALTE:
         return False, (f"nur {len(zeilen)} Teilhaushalts-Zeilen gelesen "
                        f"(mindestens {MINDEST_TEILHAUSHALTE} erwartet)")
-    for feld, spalte in (("einzahlungen", "Einzahlungen"),
-                         ("auszahlungen", "Auszahlungen")):
+    for feld, spalte in (("inflows", "Einzahlungen"),
+                         ("outflows", "Auszahlungen")):
         gerechnet = sum(z[feld] for z in zeilen)
         rest = gerechnet - gesamt[feld]
         if abs(rest) > toleranz:
@@ -214,7 +214,7 @@ def nachweis(zeilen: list[dict], gesamt: dict | None, ok: bool, warum: str) -> s
     if not ok:
         return f"Summenprobe gerissen — {warum}"
     reste = [abs(sum(z[f] for z in zeilen) - gesamt[f])
-             for f in ("einzahlungen", "auszahlungen")]
+             for f in ("inflows", "outflows")]
     return (f"{len(zeilen)} Teilhaushalte ergeben die Summenzeile der Datei in "
             f"beiden Spalten (größter Restbetrag {_de(max(reste))} €)")
 
@@ -225,7 +225,7 @@ def lies(csv_text: str, year: int) -> dict:
     Liefert ``{year, zeilen, gesamt, finanzhaushalt, bestanden, nachweis}``:
 
     * ``zeilen`` — je Teilhaushalt ein dict mit ``thh_nr``, ``bezeichnung``,
-      ``einzahlungen``, ``auszahlungen``.
+      ``inflows``, ``outflows``.
     * ``gesamt`` — die Summenzeile *Finanzhaushalt Gesamtinvestitionen*, also
       das Ziel der Rechenprobe.
     * ``finanzhaushalt`` — die Zeile *Gesamtbetrag des Finanzhaushaltes*
@@ -254,7 +254,7 @@ def lies(csv_text: str, year: int) -> dict:
         ein, aus = _eur(teile[2]), _eur(teile[3])
         if ein is None or aus is None:
             continue
-        werte = {"einzahlungen": ein, "auszahlungen": aus}
+        werte = {"inflows": ein, "outflows": aus}
         m = _THH.match(schluessel)
         if m:
             zeilen.append({"thh_nr": int(m.group(1)),

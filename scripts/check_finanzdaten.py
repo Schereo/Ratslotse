@@ -330,7 +330,7 @@ def main(db: str | None = None, heute: date | None = None,
                      fusszeile="Hinweis des Cron-Jobs check_finanzdaten — kein Fehler.")
         gemeldet = True
 
-    ergebnis = {
+    result = {
         "Neue Jahrgänge": sum(len(v) for v in neu_gesamt.values()),
         "Neue Einheiten": neue_einheiten,
         "Bestand geschützt": geschuetzt,
@@ -339,11 +339,11 @@ def main(db: str | None = None, heute: date | None = None,
         "ausbleibend": ausbleibend,
     }
     for key, jahre in neu_gesamt.items():
-        ergebnis[finanzquellen.QUELLEN[key].label] = ", ".join(map(str, jahre))
-    p.sagen(f"Fertig: {ergebnis}")
+        result[finanzquellen.QUELLEN[key].label] = ", ".join(map(str, jahre))
+    p.sagen(f"Fertig: {result}")
     # Das Protokoll bleibt im Log, nicht in `job_runs`: Die Kennzahlen eines
     # Laufs stehen im Admin-Panel, und dort gehört keine Textwand hin.
-    return ergebnis
+    return result
 
 
 def _cli() -> int:

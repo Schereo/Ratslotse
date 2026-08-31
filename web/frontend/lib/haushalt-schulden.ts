@@ -49,7 +49,7 @@ export type SchuldenDaten = {
    *  keinem Dokument steht.
    *
    *  Leer, solange kein Jahresabschluss eingelesen ist. */
-  zinslast: { year: number; aufwand: number; herkunft_id: number | null }[];
+  zinslast: { year: number; expense: number; herkunft_id: number | null }[];
   /** Wofür die Stadt geradesteht — die zweite, größere Zahl dieser Seite.
    *
    *  Sie ist **keine Schuld**: eine Bürgschaft wird nur fällig, wenn die
@@ -86,7 +86,7 @@ export type SchuldenDaten = {
       year: number; insgesamt: number; je_einwohner: number | null;
       kernhaushalt: number | null; extrahaushalte: number | null;
       sonstige: number | null; bevoelkerung: number | null;
-      veraenderung: number | null; herkunft_id: number | null;
+      change: number | null; herkunft_id: number | null;
     };
     anteil_unter_50: number | null;
     abgrenzung: string;
@@ -99,7 +99,7 @@ export type SchuldenDaten = {
  *
  *  `genau` unterscheidet die beiden Darreichungsformen der Quelle: 2019/2020
  *  stehen auf den Cent in einer Tabelle, ab 2022 nennt der Anhang nur noch
- *  gerundete Millionen. `aus_folgejahr` trifft genau ein Jahr — 2021 nennt
+ *  gerundete Millionen. `out_next_year` trifft genau ein Jahr — 2021 nennt
  *  seinen eigenen Bestand nicht, die Zahl steht nur im Abschluss von 2022.
  *  Beides gehört an die Anzeige, sonst sehen sechs verschieden belegte
  *  Jahrgänge gleich aus. */
@@ -107,12 +107,12 @@ export type Buergschaft = {
   year: number;
   bestand: number;
   genau: boolean;
-  aus_folgejahr: boolean;
+  out_next_year: boolean;
   quelle: string;
   /** Die Begründung im Wortlaut der Stadt, wo das Dokument eine nennt. */
   grund: string | null;
   /** Die im Grund genannte Einzelzahl — 2022 die 135,9 Mio. fürs Klinikum. */
-  einzelbetrag: number | null;
+  single_amount: number | null;
   proben: string[];
   herkunft_id: number | null;
 };

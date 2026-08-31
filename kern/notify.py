@@ -53,7 +53,7 @@ N1_TAGESORDNUNG = "n1_tagesordnung"
 #: Greift nur, solange N1 selbst an ist — siehe ``gewuenscht``.
 N1_AENDERUNG = "n1_aenderung"
 N2_THEMA = "n2_thema"
-N3_ERGEBNIS = "n3_ergebnis"
+N3_ERGEBNIS = "n3_result"
 N4_VORGANG = "n4_vorgang"
 N5_VORABEND = "n5_vorabend"
 N6_WOCHE = "n6_woche"

@@ -21,7 +21,7 @@ export function KonzernTraegerListe({ zeilen, verrechnung, summe }: {
   summe: number | null;
 }) {
   if (!zeilen.length) return null;
-  const max = Math.max(...zeilen.map((z) => z.betrag));
+  const max = Math.max(...zeilen.map((z) => z.amount));
   return (
     <div>
       <ol className="flex flex-col gap-2">
@@ -32,13 +32,13 @@ export function KonzernTraegerListe({ zeilen, verrechnung, summe }: {
                 {KURZ[z.traeger_key] ?? z.traeger}
               </span>
               <span className="flex-none font-mono text-[11.5px] tabular-nums text-muted-foreground">
-                {deMio(z.betrag / 1e6)}&#8239;Mio.&nbsp;€
+                {deMio(z.amount / 1e6)}&#8239;Mio.&nbsp;€
               </span>
             </div>
             <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full"
                 style={{
-                  width: `${Math.max((z.betrag / max) * 100, 1)}%`,
+                  width: `${Math.max((z.amount / max) * 100, 1)}%`,
                   background: `var(--hh-ein-${Math.min(i, 6)})`,
                 }} />
             </div>
@@ -57,7 +57,7 @@ export function KonzernTraegerListe({ zeilen, verrechnung, summe }: {
               Verrechnung untereinander
             </span>
             <span className="flex-none font-mono text-[11.5px] tabular-nums text-muted-foreground">
-              {deMio(verrechnung.betrag / 1e6)}&#8239;Mio.&nbsp;€
+              {deMio(verrechnung.amount / 1e6)}&#8239;Mio.&nbsp;€
             </span>
           </div>
           <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">

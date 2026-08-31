@@ -43,12 +43,12 @@ def signature(rows: list[dict]) -> list[str]:
     """Fingerabdruck je Station — muss zum Backend passen (routers/council.py,
     _stations_signature). Datum, Gremium, Ergebnis: Eine Station gilt auch dann
     als neu, wenn nur das Ergebnis nachgetragen wurde — genau darauf wartet man."""
-    return [f"{r.get('datum') or ''}|{r.get('gremium') or ''}|{r.get('ergebnis') or ''}" for r in rows]
+    return [f"{r.get('datum') or ''}|{r.get('gremium') or ''}|{r.get('result') or ''}" for r in rows]
 
 
 def _label(station: str) -> str:
     """„2026-08-13|Verkehrsausschuss|angenommen" → lesbare Zeile."""
-    datum, gremium, ergebnis = (station.split("|") + ["", "", ""])[:3]
+    datum, gremium, result = (station.split("|") + ["", "", ""])[:3]
     tag = ""
     if datum:
         try:
@@ -57,7 +57,7 @@ def _label(station: str) -> str:
             tag = datum
     teile = [t for t in (gremium, tag) if t]
     kopf = " am ".join(teile) if len(teile) == 2 else (teile[0] if teile else "Neue Station")
-    return f"{kopf} — {ergebnis}" if ergebnis else f"{kopf} (Termin steht, Ergebnis folgt)"
+    return f"{kopf} — {result}" if result else f"{kopf} (Termin steht, Ergebnis folgt)"
 
 
 def _message(follow: dict, neu: list[str], app_url: str) -> str:

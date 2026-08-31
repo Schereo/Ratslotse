@@ -84,21 +84,21 @@ def parse_opendata_ergebnishaushalt(csv_text: str) -> list[dict]:
         if len(parts) < 4:
             continue
         code, name = parts[0].strip(), " ".join(parts[1].split())
-        ertraege, aufwendungen = _csv_num(parts[2]), _csv_num(parts[3])
-        if ertraege is None or aufwendungen is None:
+        revenues, expenses = _csv_num(parts[2]), _csv_num(parts[3])
+        if revenues is None or expenses is None:
             continue  # z. B. die Fehlbedarf-Zeile (leere Erträge-Spalte)
-        is_summe = code.startswith("Gesamtergebnishaushalt")
+        is_total = code.startswith("Gesamtergebnishaushalt")
         rows.append({
-            "bereich": "Summe" if is_summe else _CSV_NAMEN.get(name, name),
-            "ertraege": ertraege, "aufwendungen": aufwendungen,
-            "ergebnis": ertraege - aufwendungen,
-            "is_summe": 1 if is_summe else 0,
+            "bereich": "Summe" if is_total else _CSV_NAMEN.get(name, name),
+            "revenues": revenues, "expenses": expenses,
+            "result": revenues - expenses,
+            "is_total": 1 if is_total else 0,
         })
-    parts_ = [r for r in rows if not r["is_summe"]]
-    summe = next((r for r in rows if r["is_summe"]), None)
+    parts_ = [r for r in rows if not r["is_total"]]
+    summe = next((r for r in rows if r["is_total"]), None)
     if not summe or len(parts_) < 5:
         return []
-    for col in ("ertraege", "aufwendungen"):
+    for col in ("revenues", "expenses"):
         total = sum(r[col] for r in parts_)
         if abs(total - summe[col]) > 0.01 * max(summe[col], 1):
             return []  # Layout-Drift → lieber nichts als falsche Zahlen
@@ -154,7 +154,7 @@ _STEUERART_NAMEN = {
 
 def parse_steuereinnahmen(csv_text: str) -> list[dict]:
     """Ist-Steuereinnahmen-CSV (eine Zeile je Jahr, Spalten je Steuerart) →
-    Langformat ``{year, art, betrag}``. Beträge sind ganze Euro ohne
+    Langformat ``{year, art, amount}``. Beträge sind ganze Euro ohne
     Tausenderzeichen; leere Zellen fallen weg."""
     lines = [ln for ln in csv_text.splitlines() if ln.strip()]
     if not lines:
@@ -169,7 +169,7 @@ def parse_steuereinnahmen(csv_text: str) -> list[dict]:
         year = int(cells[0])
         for art, cell in zip(arten, cells[1:]):
             if cell:
-                rows.append({"year": year, "art": art, "betrag": float(cell)})
+                rows.append({"year": year, "art": art, "amount": float(cell)})
     return rows
 
 
@@ -266,7 +266,7 @@ def _num(s: str) -> float:
 
 def parse_ergebnishaushalt(text: str) -> list[dict]:
     """Zeilen der „Übersicht Ergebnishaushalt" → Liste
-    ``{bereich, ertraege, aufwendungen, ergebnis, is_summe}`` (Euro).
+    ``{bereich, revenues, expenses, result, is_total}`` (Euro).
     Kopf-/Fußzeilen (Spaltennummern, Seitenzahl, „-Euro-") fallen am Regex raus."""
     rows: list[dict] = []
     for line in text.splitlines():
@@ -277,8 +277,8 @@ def parse_ergebnishaushalt(text: str) -> list[dict]:
         name = m["name"].strip()
         rows.append({
             "bereich": name,
-            "ertraege": nums[0], "aufwendungen": nums[1], "ergebnis": nums[2],
-            "is_summe": 1 if name == "Summe" else 0,
+            "revenues": nums[0], "expenses": nums[1], "result": nums[2],
+            "is_total": 1 if name == "Summe" else 0,
         })
     return rows
 
@@ -296,11 +296,11 @@ def extract_from_pdf(pdf_path: str) -> list[dict]:
         if "Übersicht Ergebnishaushalt" not in text.strip()[:300]:
             continue
         rows = parse_ergebnishaushalt(text)
-        parts = [r for r in rows if not r["is_summe"]]
-        summe = next((r for r in rows if r["is_summe"]), None)
+        parts = [r for r in rows if not r["is_total"]]
+        summe = next((r for r in rows if r["is_total"]), None)
         if not summe or len(parts) < 5:
             continue
-        for col in ("ertraege", "aufwendungen"):
+        for col in ("revenues", "expenses"):
             total = sum(r[col] for r in parts)
             if abs(total - summe[col]) > 0.01 * max(summe[col], 1):
                 return []  # Layout-Drift → lieber nichts als falsche Zahlen
@@ -318,10 +318,10 @@ def _mio(v: float) -> int:
 
 
 def _chart(parts: list[dict], year: int, highlight: str | None = None,
-           col: str = "aufwendungen") -> str:
+           col: str = "expenses") -> str:
     """Balken-Serie je Teilhaushalt (absteigend, Mio. Euro) als JSON für die
     Auflösung; `highlight` hebt den gefragten Bereich hervor."""
-    word = "Aufwendungen" if col == "aufwendungen" else "Erträge"
+    word = "Aufwendungen" if col == "expenses" else "Erträge"
     items = [{"label": r["bereich"], "value": _mio(r[col]),
               **({"highlight": True} if r["bereich"] == highlight else {})}
              for r in sorted(parts, key=lambda r: -r[col])]
@@ -333,15 +333,15 @@ def _chart(parts: list[dict], year: int, highlight: str | None = None,
     }, ensure_ascii=False)
 
 
-def _share_chart(bereich: str, anteil_prozent: int, year: int) -> str:
+def _share_chart(bereich: str, share_pct: int, year: int) -> str:
     """Donut „Anteil eines Bereichs an den Gesamtausgaben" (Rest = übrige)."""
     return json.dumps({
         "type": "share",
         "title": f"Anteil an den geplanten Gesamtausgaben {year}",
         "unit": "Prozent",
         "items": [
-            {"label": bereich, "value": anteil_prozent, "highlight": True},
-            {"label": "Übrige Bereiche", "value": 100 - anteil_prozent},
+            {"label": bereich, "value": share_pct, "highlight": True},
+            {"label": "Übrige Bereiche", "value": 100 - share_pct},
         ],
     }, ensure_ascii=False)
 
@@ -460,10 +460,10 @@ _PFLICHT_SATZ = (
 def _netto_chart(parts: list[dict], year: int, highlight: str) -> str:
     """Balken „Zuschussbedarf je Teilhaushalt" (Aufwendungen minus eigene
     Erträge; nur Bereiche mit Fehlbetrag, absteigend)."""
-    neg = [r for r in parts if r["ergebnis"] < 0]
-    items = [{"label": r["bereich"], "value": _mio(-r["ergebnis"]),
+    neg = [r for r in parts if r["result"] < 0]
+    items = [{"label": r["bereich"], "value": _mio(-r["result"]),
               **({"highlight": True} if r["bereich"] == highlight else {})}
-             for r in sorted(neg, key=lambda r: r["ergebnis"])]
+             for r in sorted(neg, key=lambda r: r["result"])]
     return json.dumps({
         "type": "bars",
         "title": f"Zuschussbedarf {year} je Teilhaushalt (Ausgaben minus eigene Erträge)",
@@ -479,9 +479,9 @@ def _eigen_chart(parts: list[dict], year: int, highlight: str) -> str:
     (``_fachbereiche``) — der zentrale Finanzhaushalt bleibt draußen, sonst
     stünde neben 170 Mio. ein Balken von 529 Mio., der etwas ganz anderes misst
     (die Steuern der ganzen Stadt). Die Auslassung steht im Titel."""
-    items = [{"label": r["bereich"], "value": _mio(r["ertraege"]),
+    items = [{"label": r["bereich"], "value": _mio(r["revenues"]),
               **({"highlight": True} if r["bereich"] == highlight else {})}
-             for r in sorted(parts, key=lambda r: -r["ertraege"])]
+             for r in sorted(parts, key=lambda r: -r["revenues"])]
     return json.dumps({
         "type": "bars",
         "title": f"Eigene Einnahmen {year} je Bereich — ohne den zentralen Finanzhaushalt",
@@ -500,8 +500,8 @@ def _fachbereiche(parts: list[dict]) -> list[dict]:
     beim nächsten Jahrgang still kaputt — die Stadt benennt ihre Teilhaushalte
     um, ohne den Zuschnitt zu ändern (s. `_BEREICH_ALIASE`)."""
     eigen = [r for r in parts
-             if r["aufwendungen"] > 5_000_000 and 0 < r["ertraege"] < r["aufwendungen"]]
-    return sorted(eigen, key=lambda r: -r["ertraege"])
+             if r["expenses"] > 5_000_000 and 0 < r["revenues"] < r["expenses"]]
+    return sorted(eigen, key=lambda r: -r["revenues"])
 
 
 def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
@@ -511,25 +511,25 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     Fragetext), damit spätere Textfixes per refresh_quiz_payloads dieselbe
     Frage aktualisieren statt Dubletten anzulegen."""
     from council import quiz
-    parts = [r for r in rows if not r["is_summe"]]
-    summe = next((r for r in rows if r["is_summe"]), None)
+    parts = [r for r in rows if not r["is_total"]]
+    summe = next((r for r in rows if r["is_total"]), None)
     if not summe or len(parts) < 5:
         return []
     rng = random.Random(year)  # deterministisch je Jahr (Optionen mischen)
-    by_aufw = sorted(parts, key=lambda r: -r["aufwendungen"])
+    by_aufw = sorted(parts, key=lambda r: -r["expenses"])
     top = by_aufw[0]
     chart_all = _chart(parts, year)
 
     def key(name: str) -> str:
         return quiz._content_hash("topic", "haushalt", f"{name}-{year}")
 
-    gesamt = _mio(summe["aufwendungen"])
-    ertraege = _mio(summe["ertraege"])
-    defizit = _mio(summe["ertraege"] - summe["aufwendungen"]) * -1
-    top3 = ", ".join(f"{r['bereich']} ({_mio(r['aufwendungen'])} Mio.)" for r in by_aufw[:3])
+    gesamt = _mio(summe["expenses"])
+    revenues = _mio(summe["revenues"])
+    defizit = _mio(summe["revenues"] - summe["expenses"]) * -1
+    top3 = ", ".join(f"{r['bereich']} ({_mio(r['expenses'])} Mio.)" for r in by_aufw[:3])
     zusammensetzung = (
         f"Der Haushalt {year} plant laufende Ausgaben von rund {gesamt} Mio. Euro bei "
-        f"Einnahmen von rund {ertraege} Mio. Euro. Die größten Ausgabenblöcke: {top3}. "
+        f"Einnahmen von rund {revenues} Mio. Euro. Die größten Ausgabenblöcke: {top3}. "
         + _PFLICHT_SATZ +
         " Fachlich heißen die laufenden Ausgaben im Ergebnishaushalt „ordentliche "
         "Aufwendungen“ — Investitionen (z. B. Neubauten) zählen extra."
@@ -556,7 +556,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
             defizit, lo=max(1, round(defizit * 0.15)), hi=round(defizit * 4.5, -1),
             year=year, source_url=source_url, chart_json=chart_all,
             difficulty="schwer",
-            detail=(f"Geplant sind Einnahmen von rund {ertraege} Mio. und Ausgaben von rund "
+            detail=(f"Geplant sind Einnahmen von rund {revenues} Mio. und Ausgaben von rund "
                     f"{gesamt} Mio. Euro. Solche Fehlbeträge muss eine Stadt aus ihrer Rücklage "
                     "decken — ist die aufgebraucht, muss gekürzt werden. Im Haushalt heißen "
                     "Einnahmen und Ausgaben „Erträge“ und „Aufwendungen“."),
@@ -569,7 +569,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     # und gestreuten Slider-Positionen (sonst liegt die Antwort immer bei 36 %).
     span_pairs = ((0.2, 2.4), (0.5, 1.15), (0.15, 2.9))
     for i, r in enumerate(by_aufw[:3]):
-        m = _mio(r["aufwendungen"])
+        m = _mio(r["expenses"])
         if m < 10:
             continue
         lo_f, hi_f = span_pairs[i % len(span_pairs)]
@@ -600,27 +600,27 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         "difficulty": "leicht", "qtype": "mc",
         "question": f"Wofür gibt die Stadt Oldenburg {year} am meisten Geld aus?",
         "options": opts, "correct_index": opts.index(top["bereich"]),
-        "explanation": (f"Mit rund {_mio(top['aufwendungen'])} Mio. Euro ist "
+        "explanation": (f"Mit rund {_mio(top['expenses'])} Mio. Euro ist "
                         f"„{top['bereich']}“ der größte Ausgabenblock — dahinter stehen "
                         f"{top_info}."),
         "detail": _PFLICHT_SATZ, "topic": "Haushalt",
         "source_type": "stadt", "source_ref": source_url,
         "chart": _chart(parts, year, highlight=top["bereich"]),
-        "content_hash": key("top-aufwand"),
+        "content_hash": key("top-expense"),
     })
 
     # 7) MC: größter Ertragsbereich (dort landen Steuern & Zuweisungen).
-    by_ertrag = sorted(parts, key=lambda r: -r["ertraege"])
-    e_top = by_ertrag[0]
-    e_anteil = round(e_top["ertraege"] / max(summe["ertraege"], 1) * 100)
-    e_opts = [e_top["bereich"], *[r["bereich"] for r in by_ertrag[1:4]]]
+    by_revenue = sorted(parts, key=lambda r: -r["revenues"])
+    e_top = by_revenue[0]
+    e_anteil = round(e_top["revenues"] / max(summe["revenues"], 1) * 100)
+    e_opts = [e_top["bereich"], *[r["bereich"] for r in by_revenue[1:4]]]
     rng.shuffle(e_opts)
     qs.append({
         "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
         "difficulty": "mittel", "qtype": "mc",
         "question": f"In welchem Bereich des städtischen Haushalts landen {year} die höchsten Einnahmen?",
         "options": e_opts, "correct_index": e_opts.index(e_top["bereich"]),
-        "explanation": (f"„{e_top['bereich']}“ verbucht rund {_mio(e_top['ertraege'])} Mio. Euro "
+        "explanation": (f"„{e_top['bereich']}“ verbucht rund {_mio(e_top['revenues'])} Mio. Euro "
                         "an Erträgen — hier laufen zentrale Einnahmen wie Steuern und "
                         "Zuweisungen von Land und Bund auf."),
         "detail": (f"Rund {e_anteil} von 100 Euro aller Einnahmen laufen zentral in "
@@ -628,14 +628,14 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                    "Teil selbst — den Rest verteilt die Stadt aus diesem Topf."),
         "topic": "Haushalt",
         "source_type": "stadt", "source_ref": source_url,
-        "chart": _chart(parts, year, highlight=e_top["bereich"], col="ertraege"),
-        "content_hash": key("top-ertrag"),
+        "chart": _chart(parts, year, highlight=e_top["bereich"], col="revenues"),
+        "content_hash": key("top-revenue"),
     })
 
     # 8) Anteils-Frage mit Donut: Wie groß ist der Batzen „größter Bereich"?
-    anteil = round(top["aufwendungen"] / summe["aufwendungen"] * 100)
+    anteil = round(top["expenses"] / summe["expenses"] * 100)
     if 5 <= anteil <= 75 and abs(anteil - 50) > 10:
-        top3_anteil = round(sum(r["aufwendungen"] for r in by_aufw[:3]) / summe["aufwendungen"] * 100)
+        top3_anteil = round(sum(r["expenses"] for r in by_aufw[:3]) / summe["expenses"] * 100)
         q8 = _estimate(
             f"Wie viel Prozent seiner geplanten Gesamtausgaben {year} entfallen in Oldenburg "
             f"auf „{top['bereich']}“?",
@@ -654,24 +654,24 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     q9 = _estimate(
         f"Wie viel Geld plant die Stadt Oldenburg {year} einzunehmen — Steuern, "
         "Zuweisungen, Gebühren und mehr?",
-        ertraege, lo=max(50, round(ertraege * 0.25, -1)), hi=round(ertraege * 2.2, -2),
+        revenues, lo=max(50, round(revenues * 0.25, -1)), hi=round(revenues * 2.2, -2),
         year=year, source_url=source_url,
-        chart_json=_chart(parts, year, col="ertraege"),
+        chart_json=_chart(parts, year, col="revenues"),
         detail=("Die Einnahmen speisen sich vor allem aus Steuern (z. B. Gewerbesteuer und dem "
                 "Anteil an der Einkommensteuer), Schlüsselzuweisungen des Landes sowie Gebühren "
                 "und Entgelten — fachlich heißen sie im Ergebnishaushalt „ordentliche Erträge“."),
         hint=("Etwas weniger, als die Stadt ausgibt — deshalb gibt es ein Defizit."
               if defizit > 5 else None),
     )
-    q9["content_hash"] = key("ertraege")
+    q9["content_hash"] = key("revenues")
     qs.append(q9)
 
     # 10) MC: Welcher dieser Bereiche kostet am WENIGSTEN? (mittleres Feld,
     # damit die Antwort nicht offensichtlich ist; deterministische Auswahl)
-    mid = [r for r in by_aufw[4:12] if _mio(r["aufwendungen"]) >= 1]
+    mid = [r for r in by_aufw[4:12] if _mio(r["expenses"]) >= 1]
     if len(mid) >= 4:
         pick = [mid[0], mid[2], mid[-2], mid[-1]]
-        kleinster = min(pick, key=lambda r: r["aufwendungen"])
+        kleinster = min(pick, key=lambda r: r["expenses"])
         k_info = bereich_info(kleinster["bereich"])
         k_opts = [r["bereich"] for r in pick]
         rng.shuffle(k_opts)
@@ -680,7 +680,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
             "difficulty": "schwer", "qtype": "mc",
             "question": f"Welcher dieser Bereiche kostet die Stadt Oldenburg {year} am wenigsten?",
             "options": k_opts, "correct_index": k_opts.index(kleinster["bereich"]),
-            "explanation": (f"„{kleinster['bereich']}“ ist mit rund {_mio(kleinster['aufwendungen'])} Mio. Euro "
+            "explanation": (f"„{kleinster['bereich']}“ ist mit rund {_mio(kleinster['expenses'])} Mio. Euro "
                             "der kleinste der vier — das Diagramm zeigt die Größenordnungen."),
             "detail": (f"„{kleinster['bereich']}“ umfasst {k_info}." if k_info else None),
             "topic": "Haushalt",
@@ -690,9 +690,9 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         })
 
     # 11) Netto-Sicht: Brutto ≠ Netto — der stärkste Aha der Ergebnis-Spalte.
-    by_netto = sorted(parts, key=lambda r: r["ergebnis"])
+    by_netto = sorted(parts, key=lambda r: r["result"])
     n_top = by_netto[0]
-    if n_top["ergebnis"] < 0 and n_top["bereich"] != top["bereich"]:
+    if n_top["result"] < 0 and n_top["bereich"] != top["bereich"]:
         # Brutto-Spitzenreiter ist Pflicht-Distraktor (der Aha!), Rest aus der
         # Netto-Rangfolge auffüllen — ohne Dubletten.
         n_opts = [n_top["bereich"], top["bereich"]]
@@ -705,7 +705,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                 "question": (f"Welcher Bereich kostet die Stadt Oldenburg {year} unterm Strich "
                              "am meisten — nach Abzug eigener Einnahmen?"),
                 "options": n_opts, "correct_index": n_opts.index(n_top["bereich"]),
-                "explanation": (f"„{n_top['bereich']}“ hat mit rund {_mio(-n_top['ergebnis'])} Mio. Euro "
+                "explanation": (f"„{n_top['bereich']}“ hat mit rund {_mio(-n_top['result'])} Mio. Euro "
                                 "den größten Zuschussbedarf — die eigenen Einnahmen decken dort nur "
                                 "einen kleinen Teil der Ausgaben."),
                 "detail": (f"Brutto gibt die Stadt für „{top['bereich']}“ am meisten aus — dort stehen "
@@ -746,7 +746,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     fach = _fachbereiche(parts)
     # Bei nahezu gleichem Spitzenwert wäre die Frage nicht fair beantwortbar —
     # `_mio` rundet, zwei Bereiche stünden im Diagramm auf demselben Balken.
-    if len(fach) >= 4 and fach[0]["ertraege"] > fach[1]["ertraege"] * 1.15:
+    if len(fach) >= 4 and fach[0]["revenues"] > fach[1]["revenues"] * 1.15:
         e_top = fach[0]
         # Die vier stärksten — ein Feld aus Spitze und Schlusslicht machte die
         # Antwort zur Größenschätzung, nicht zur Frage nach den Einnahmen.
@@ -760,9 +760,9 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                          "Gebühren und Entgelte?"),
             "options": f_opts,
             "correct_index": f_opts.index(e_top["bereich"]),
-            "explanation": (f"„{e_top['bereich']}“ bringt rund {_mio(e_top['ertraege'])} Mio. Euro "
+            "explanation": (f"„{e_top['bereich']}“ bringt rund {_mio(e_top['revenues'])} Mio. Euro "
                             "eigene Erträge mit — mehr als jeder andere Fachbereich. Ausgeben "
-                            f"tut der Bereich mit rund {_mio(e_top['aufwendungen'])} Mio. Euro "
+                            f"tut der Bereich mit rund {_mio(e_top['expenses'])} Mio. Euro "
                             "deutlich mehr; die Differenz trägt die Allgemeinheit."),
             "detail": ("Hohe eigene Einnahmen sind kein Zeugnis: Wo Bund und Land gesetzliche "
                        "Leistungen mitfinanzieren, fließt viel Geld in den Haushalt — Straßen, "
@@ -828,9 +828,9 @@ def build_abschluss_questions(store) -> list[dict]:
         # 2025, Bilanz und Konzern-Tabellenband noch bei 2024). Ohne Jahr
         # nebeneinandergestellt wäre die Frage angreifbar — zu Recht.
         richtig = "Alle drei — je nachdem, was mitgezählt wird"
-        opts = [f"{_mio(kern['betrag'])} Mio. Euro ({kern['year']})",
+        opts = [f"{_mio(kern['amount'])} Mio. Euro ({kern['year']})",
                 f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['year']})",
-                f"{_mio(konzern['betrag'])} Mio. Euro ({konzern['year']})",
+                f"{_mio(konzern['amount'])} Mio. Euro ({konzern['year']})",
                 richtig]
         jahre = {kern["year"], schulden["year"], konzern["year"]}
         nachsatz = ("" if len(jahre) == 1 else
@@ -844,11 +844,11 @@ def build_abschluss_questions(store) -> list[dict]:
             "options": opts, "correct_index": opts.index(richtig),
             "explanation": (
                 f"Alle drei Zahlen stimmen — sie zählen Verschiedenes. "
-                f"{_mio(kern['betrag'])} Mio. Euro ({kern['year']}) sind die "
+                f"{_mio(kern['amount'])} Mio. Euro ({kern['year']}) sind die "
                 f"Geldschulden des Kernhaushalts, "
                 f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['year']}) die "
                 f"der Stadt samt ihren Eigenbetrieben, und "
-                f"{_mio(konzern['betrag'])} Mio. Euro ({konzern['year']}) die des "
+                f"{_mio(konzern['amount'])} Mio. Euro ({konzern['year']}) die des "
                 f"ganzen Konzerns mit allen Beteiligungen." + nachsatz),
             "detail": ("Wer eine Schuldenzahl nennt, muss die Abgrenzung dazusagen. "
                        "Addieren darf man sie nie: Die größere enthält die kleinere."),
@@ -860,15 +860,15 @@ def build_abschluss_questions(store) -> list[dict]:
     # 2) Die Bürgschaften — eine Zahl, die in keiner Schuldenreihe steht.
     buerg = (schulden or {}).get("buergschaften")
     if buerg and buerg.get("bestand"):
-        betrag = _mio(buerg["bestand"])
-        eigene = _mio(kern["betrag"]) if kern else None
-        vergleich = (f" Das ist rund das {buerg['bestand'] / kern['betrag']:.0f}-Fache "
+        amount = _mio(buerg["bestand"])
+        eigene = _mio(kern["amount"]) if kern else None
+        vergleich = (f" Das ist rund das {buerg['bestand'] / kern['amount']:.0f}-Fache "
                      f"der {eigene} Mio. Euro, die der Kernhaushalt selbst schuldet."
-                     if kern and kern["betrag"] else "")
+                     if kern and kern["amount"] else "")
         qs.append(_estimate(
             "Die Stadt Oldenburg steht für Kredite ihrer eigenen Gesellschaften "
             "gerade — für wie viele Millionen Euro?",
-            betrag, lo=max(5, round(betrag * 0.15)), hi=round(betrag * 3.2, -1),
+            amount, lo=max(5, round(amount * 0.15)), hi=round(amount * 3.2, -1),
             year=buerg["year"], source_url=ris, chart_json="",
             difficulty="schwer",
             detail=("Eine Bürgschaft kostet nichts, solange sie nicht gezogen wird — "
@@ -887,7 +887,7 @@ def build_abschluss_questions(store) -> list[dict]:
             zusatz = (f" Für den erwarteten Ausfall hält die Stadt {rueck} Mio. Euro "
                       f"zurück — {anteil} Prozent des Bestands.")
         qs[-1]["explanation"] = (
-            f"Zum 31.12.{buerg['year']} waren es {betrag} Mio. Euro." + zusatz)
+            f"Zum 31.12.{buerg['year']} waren es {amount} Mio. Euro." + zusatz)
         qs[-1]["content_hash"] = key("buergschaften")
 
     # 3) Der Substanzverlust: Was die Stadt jährlich abschreibt, gegen das, was
@@ -940,14 +940,14 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
     y0, y1 = years[0], years[-1]
 
     def summe(year: int) -> dict | None:
-        return next((r for r in by_year[year] if r["is_summe"]), None)
+        return next((r for r in by_year[year] if r["is_total"]), None)
 
     s0, s1 = summe(y0), summe(y1)
-    if not s0 or not s1 or s0["aufwendungen"] <= 0:
+    if not s0 or not s1 or s0["expenses"] <= 0:
         return []
-    series = [(y, summe(y)["aufwendungen"]) for y in years if summe(y)]
+    series = [(y, summe(y)["expenses"]) for y in years if summe(y)]
     trend_json = _trend_chart(series, f"Geplante Gesamtausgaben {y0}–{y1}")
-    wachstum = round((s1["aufwendungen"] / s0["aufwendungen"] - 1) * 100)
+    wachstum = round((s1["expenses"] / s0["expenses"] - 1) * 100)
 
     qs: list[dict] = []
 
@@ -962,10 +962,10 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
             "answer_value": float(wachstum), "answer_unit": "Prozent",
             "range_min": float(max(1, round(wachstum * 0.15))),
             "range_max": float(min(400, round(wachstum * 2.6))),
-            "explanation": (f"Von rund {_mio(s0['aufwendungen'])} auf rund {_mio(s1['aufwendungen'])} Mio. Euro — "
+            "explanation": (f"Von rund {_mio(s0['expenses'])} auf rund {_mio(s1['expenses'])} Mio. Euro — "
                             f"ein Plus von etwa {wachstum} Prozent."),
-            "detail": (f"Die geplanten ordentlichen Aufwendungen stiegen von {_mio(s0['aufwendungen'])} Mio. Euro "
-                       f"({y0}) auf {_mio(s1['aufwendungen'])} Mio. Euro ({y1}). Preissteigerungen, Tarifabschlüsse "
+            "detail": (f"Die geplanten ordentlichen Aufwendungen stiegen von {_mio(s0['expenses'])} Mio. Euro "
+                       f"({y0}) auf {_mio(s1['expenses'])} Mio. Euro ({y1}). Preissteigerungen, Tarifabschlüsse "
                        "und wachsende Pflichtaufgaben (etwa Sozialleistungen und Kinderbetreuung) treiben "
                        "die Ausgaben Jahr für Jahr — das Diagramm zeigt den Verlauf."),
             "hint": "Die Ausgaben sind kräftig gestiegen — mehr als ein Viertel.",
@@ -975,13 +975,13 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
         })
 
     # 2) Bereich mit dem stärksten Wachstum (nur namensgleiche Bereiche).
-    p0 = {r["bereich"]: r for r in by_year[y0] if not r["is_summe"]}
-    p1 = {r["bereich"]: r for r in by_year[y1] if not r["is_summe"]}
-    common = [b for b in p1 if b in p0 and p0[b]["aufwendungen"] > 1_000_000]
+    p0 = {r["bereich"]: r for r in by_year[y0] if not r["is_total"]}
+    p1 = {r["bereich"]: r for r in by_year[y1] if not r["is_total"]}
+    common = [b for b in p1 if b in p0 and p0[b]["expenses"] > 1_000_000]
     if len(common) >= 4:
-        growth = sorted(common, key=lambda b: p1[b]["aufwendungen"] - p0[b]["aufwendungen"], reverse=True)
+        growth = sorted(common, key=lambda b: p1[b]["expenses"] - p0[b]["expenses"], reverse=True)
         top_g = growth[0]
-        delta = _mio(p1[top_g]["aufwendungen"] - p0[top_g]["aufwendungen"])
+        delta = _mio(p1[top_g]["expenses"] - p0[top_g]["expenses"])
         opts = [top_g, *growth[len(growth) // 2:len(growth) // 2 + 2], growth[-1]][:4]
         opts = list(dict.fromkeys(opts))  # Dubletten raus (Sicherheitsnetz)
         if len(opts) == 4 and delta >= 10:
@@ -994,7 +994,7 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
                              "am stärksten gewachsen (in Euro)?"),
                 "options": opts, "correct_index": opts.index(top_g),
                 "explanation": (f"„{top_g}“ legte um rund {delta} Mio. Euro zu "
-                                f"(von {_mio(p0[top_g]['aufwendungen'])} auf {_mio(p1[top_g]['aufwendungen'])} Mio.)."),
+                                f"(von {_mio(p0[top_g]['expenses'])} auf {_mio(p1[top_g]['expenses'])} Mio.)."),
                 "detail": ("Wachsende Pflichtaufgaben schlagen vor allem in den großen Sozial- und "
                            "Bildungsbereichen zu Buche — das Diagramm zeigt den Verlauf der Gesamtausgaben."),
                 "topic": "Haushalt", "source_type": "stadt", "source_ref": source_url,

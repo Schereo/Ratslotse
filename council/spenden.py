@@ -166,10 +166,10 @@ def gremium(titel: str | None) -> str | None:
     return None
 
 
-def zustaendig(betrag: float) -> str:
+def zustaendig(amount: float) -> str:
     """Welches Gremium eine **einzelne** Zuwendung dieser Höhe annimmt."""
     for name, unten, oben in SCHWELLEN:
-        if (unten is None or betrag >= unten) and (oben is None or betrag <= oben):
+        if (unten is None or amount >= unten) and (oben is None or amount <= oben):
             return name
     return SCHWELLEN[-1][0]
 
@@ -212,7 +212,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
     Liefert:
 
     * ``vorlagen`` — je Vorlage **eine** Zeile, geprüft, mit ``proben``,
-      ``betrag``, ``year``, ``gremium``, ``layout``.
+      ``amount``, ``year``, ``gremium``, ``layout``.
     * ``verworfen`` — je Eintrag ``{template_number, grund}``; der Grund ist ein
       vollständiger Satz und für Leser*innen geschrieben.
     * ``jahre`` — die Jahresreihe, je Jahr Summe und Zahl der Vorlagen.
@@ -264,7 +264,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
         zaehler[f"layout_{layout}"] += 1
 
         kandidaten.append({
-            "template_number": nr, "betrag": kopf, "sitzung": z.get("sitzung"),
+            "template_number": nr, "amount": kopf, "sitzung": z.get("sitzung"),
             "year": int(str(z.get("sitzung"))[:4]), "gremium": gremium(z.get("titel")),
             "layout": layout, "zweitstelle": art, "teile": len(teile),
             "proben": proben, "dokument_id": z.get("dokument_id"),
@@ -283,16 +283,16 @@ def lies(zeilen: Iterable[dict]) -> dict:
 
     jahre: dict[int, dict] = {}
     for v in vorlagen:
-        e = jahre.setdefault(v["year"], {"year": v["year"], "betrag": 0.0, "vorlagen": 0,
+        e = jahre.setdefault(v["year"], {"year": v["year"], "amount": 0.0, "vorlagen": 0,
                                          "rat": 0, "verwaltungsausschuss": 0})
-        e["betrag"] += v["betrag"]
+        e["amount"] += v["amount"]
         e["vorlagen"] += 1
         if v["gremium"] == "Rat":
             e["rat"] += 1
         elif v["gremium"] == "Verwaltungsausschuss":
             e["verwaltungsausschuss"] += 1
     for e in jahre.values():
-        e["betrag"] = round(e["betrag"], 2)
+        e["amount"] = round(e["amount"], 2)
 
     return {
         "vorlagen": vorlagen,
@@ -302,9 +302,9 @@ def lies(zeilen: Iterable[dict]) -> dict:
     }
 
 
-def euro(betrag: float) -> str:
+def euro(amount: float) -> str:
     """1234567.8 → „1.234.567,80" — deutsche Schreibweise für Erklärsätze."""
-    return f"{betrag:,.2f}".translate(str.maketrans({",": ".", ".": ","}))
+    return f"{amount:,.2f}".translate(str.maketrans({",": ".", ".": ","}))
 
 
 def _grund(raw, abschnitt, kopf, vorschlag, teile) -> str:
@@ -339,14 +339,14 @@ def _grund(raw, abschnitt, kopf, vorschlag, teile) -> str:
             "der beschlossene prüfen ließe.")
 
 
-def probennachweis(ergebnis: dict) -> str:
+def probennachweis(result: dict) -> str:
     """Der Messwert für die Herkunft — Zahlen, keine Adjektive."""
-    p = ergebnis["proben"]
+    p = result["proben"]
     ident = p.get("zweitstelle_identisch", 0)
     zerl = p.get("zweitstelle_zerlegung", 0)
     return (f"{ident + zerl} von {p.get('zeilen', 0)} Beschlusszeilen tragen ihre "
             f"Zweitstelle ({ident} identisch, {zerl} als Zerlegung, die auf den Cent "
             f"aufgeht); {p.get('protokollabgleich', 0)} davon nennen denselben Betrag "
             f"auch im Beschlussvorschlag der Vorlage. Belegt sind damit "
-            f"{len(ergebnis['vorlagen'])} Vorlagen; {len(ergebnis['verworfen'])} "
+            f"{len(result['vorlagen'])} Vorlagen; {len(result['verworfen'])} "
             f"Zeilen bleiben draußen und stehen mit ihrem Grund dabei.")

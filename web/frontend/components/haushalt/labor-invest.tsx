@@ -67,8 +67,8 @@ export function InvestWerkbank({
   const year = programm?.jahre.at(-1) ?? null;
   const vorhaben = year != null
     ? (programm?.massnahmen ?? [])
-        .filter((z) => z.year === year && z.gesamtsumme > 0)
-        .sort((a, b) => b.gesamtsumme - a.gesamtsumme)
+        .filter((z) => z.year === year && z.grand_total > 0)
+        .sort((a, b) => b.grand_total - a.grand_total)
         .slice(0, ANZAHL)
     : [];
   const schluessel = (z: { code: string; bezeichnung: string }) =>
@@ -87,7 +87,7 @@ export function InvestWerkbank({
   };
   const gestrichen = vorhaben
     .filter((z) => vorhabenAus[schluessel(z)])
-    .reduce((s, z) => s + z.gesamtsumme, 0);
+    .reduce((s, z) => s + z.grand_total, 0);
 
   const schuldenLetzte = schulden?.reihe.length
     ? schulden.reihe[schulden.reihe.length - 1] : null;
@@ -168,7 +168,7 @@ export function InvestWerkbank({
                   </span>
                   <span className={cn("shrink-0 font-mono text-[12px] tabular-nums",
                     aus ? "font-medium text-signal" : "text-foreground")}>
-                    {aus ? "−" : ""}{deMio(z.gesamtsumme / 1e6)}&#8239;Mio.&nbsp;€
+                    {aus ? "−" : ""}{deMio(z.grand_total / 1e6)}&#8239;Mio.&nbsp;€
                   </span>
                 </div>
               );
@@ -235,7 +235,7 @@ export function InvestWerkbank({
                 </p>
                 <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted-foreground">
                   Zinsaufwand ÷ Schuldenstand, Abschlüsse {spanne.jahre[0]}–{spanne.jahre[1]}
-                  <Beleg q="jahresabschluss" /> — zuletzt {deMio(zinsLetzte.aufwand / 1e6)}&#8239;Mio.&nbsp;€
+                  <Beleg q="jahresabschluss" /> — zuletzt {deMio(zinsLetzte.expense / 1e6)}&#8239;Mio.&nbsp;€
                   Zinsen im Jahr {zinsLetzte.year}. Neue Kredite bekämen heutige Sätze;
                   mehr als die gezahlte Spanne behaupten wir nicht.
                 </p>

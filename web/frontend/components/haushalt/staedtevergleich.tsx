@@ -100,11 +100,11 @@ export function Staedtevergleich({
  *  Bewusst kein Diagramm: Drei Punkte tragen keine Achsen. Die Zahlen
  *  nebeneinander mit dem Prozentsatz dahinter sagen dasselbe auf einer Zeile. */
 export function Zeitreihe({
-  titel, punkte, veraenderung: delta,
+  titel, punkte, change: delta,
 }: {
   titel: string;
   punkte: { year: number; wert: number }[];
-  veraenderung: number | null;
+  change: number | null;
 }) {
   if (!punkte.length) return null;
   return (

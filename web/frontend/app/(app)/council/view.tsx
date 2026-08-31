@@ -488,7 +488,7 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
 function DecisionsTab({ committees }: { committees: string[] }) {
   const [q, setQ] = useMerker("suche:q", "");
   const [committee, setCommittee] = useMerker("suche:gremium", "");
-  const [outcome, setOutcome] = useMerker("suche:ergebnis", "");
+  const [outcome, setOutcome] = useMerker("suche:result", "");
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
   const [districts, setDistricts] = useState<{

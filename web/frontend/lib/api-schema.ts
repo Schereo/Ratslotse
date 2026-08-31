@@ -1485,7 +1485,7 @@ export interface paths {
          *     - ``finanzrechnung``: die Kassensicht aus demselben Jahresabschluss
          *       (Abschnitt 4.1) — nicht was gebucht, sondern was **gezahlt** wurde.
          *       Jede Zeile trägt neben der Nummer des Dokuments eine ``rolle``
-         *       (``saldo_verwaltung``, ``saldo_investition``, ``finanzmittel``, …);
+         *       (``balance_operating``, ``balance_capital``, ``finanzmittel``, …);
          *       **an der Rolle hängen, nicht an der Nummer**: Die Tabelle hat
          *       2017–2020 eine Zeile mehr als ab 2021, alle Nummern ab 08
          *       verschieben sich dadurch. ``ermaechtigung`` ist das aus Vorjahren
@@ -1508,7 +1508,7 @@ export interface paths {
          *       Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
          *       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
          *       Aufwand des Kernhaushalts; herausgerechnet wird das erst im
-         *       Gesamtabschluss. ``ertraege``/``aufwendungen`` sind ``null``, wo die
+         *       Gesamtabschluss. ``revenues``/``expenses`` sind ``null``, wo die
          *       Quelle nur das Ergebnis nennt, und ``proben`` sagt, welche Rechenprobe
          *       für die Zeile gelaufen ist,
          *     - ``abweichungsgruende``: warum ein Posten vom Plan abwich, in den Worten
@@ -1522,7 +1522,7 @@ export interface paths {
          *     - ``ausgabenreihe``: die lange Reihe aus Datensatz 1102 — ein Betrag je
          *       Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``regelwerk`` (die Naht
          *       2009/2010), die bestandenen ``proben`` und, wo die beiden Quellen sich
-         *       widersprechen, den Betrag der unterlegenen (``konflikt_betrag``).
+         *       widersprechen, den Betrag der unterlegenen (``conflict_amount``).
          *       ``regelwerke`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
          *       Abgrenzung — **beide gehören an jede Anzeige**: Links der Naht steht das
          *       Anordnungssoll des Verwaltungshaushalts, rechts die ordentlichen
@@ -1855,7 +1855,7 @@ export interface paths {
          *     Lücke **benennen**, statt sie als Null zu zeichnen oder still zu
          *     überspringen.
          *
-         *     Je Lücke steht dort neben dem Jahr die gemessene ``differenz`` in Euro
+         *     Je Lücke steht dort neben dem Jahr die gemessene ``difference`` in Euro
          *     (Auszahlungsarten minus ausgewiesene Summe, vorzeichenbehaftet) — die
          *     Zahl, die der Ingest-Lauf beim Verwerfen gemessen hat
          *     (``council_investitionen_ist_verworfen``). Sie ist der Unterschied
@@ -4578,8 +4578,8 @@ export interface components {
             alle_jahre: unknown;
             /** Facetten */
             facetten: unknown;
-            /** Plan Aufwendungen */
-            plan_aufwendungen: unknown;
+            /** Plan Expenses */
+            plan_expenses: unknown;
             /** Produkt */
             produkt: unknown;
             /** Produkte */
@@ -4747,8 +4747,8 @@ export interface components {
         };
         /** MedienAblage */
         MedienAblage: {
-            /** Anzahl */
-            anzahl: number;
+            /** Count */
+            count: number;
             /** Tag */
             tag: string;
             /** Urls */
@@ -6197,7 +6197,7 @@ export interface components {
              * Kind
              * @constant
              */
-            kind: "anzahl";
+            kind: "count";
             /** Window Days */
             window_days: number;
         };
@@ -6211,7 +6211,7 @@ export interface components {
              * Kind
              * @constant
              */
-            kind: "betrag";
+            kind: "amount";
             /** Session Date */
             session_date: string | null;
             /** Title */
@@ -10898,4 +10898,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 376509d6ddccecedd917203d71545ed757bdf86ee907d4bbd125b0c7da40f901
+// vertrag-sha256: b1d662b683d8130458a2f068ddac57cefc6239a57ebd0325e161e102c3c9d486

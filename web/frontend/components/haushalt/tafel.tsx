@@ -83,17 +83,17 @@ export function Tafel({ zeilen, year, aktuell, aktion, children }: {
   children?: ReactNode;
 }) {
   const gesamt = summe(zeilen);
-  const einMio = mio(gesamt?.ertraege);
-  const ausMio = mio(gesamt?.aufwendungen);
+  const einMio = mio(gesamt?.revenues);
+  const ausMio = mio(gesamt?.expenses);
   // Saldo aus den Rohwerten runden: 812,9 − 883,9 ergäbe −71,0, tatsächlich
   // sind es −71,1 (dieselbe Falle wie in `gegenbalken.tsx`).
-  const saldo = gesamt?.ertraege != null && gesamt?.aufwendungen != null
-    ? mio(gesamt.ertraege - gesamt.aufwendungen)
+  const balance = gesamt?.revenues != null && gesamt?.expenses != null
+    ? mio(gesamt.revenues - gesamt.expenses)
     : null;
   if (ausMio == null) return null;
 
-  const fehlt = saldo != null && saldo < 0 ? -saldo : null;
-  const ueber = saldo != null && saldo > 0 ? saldo : null;
+  const fehlt = balance != null && balance < 0 ? -balance : null;
+  const ueber = balance != null && balance > 0 ? balance : null;
 
   return (
     <div className="hh-tafel rounded-2xl p-4 sm:p-6">

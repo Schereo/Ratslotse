@@ -283,14 +283,14 @@ function Eigentuemerstreifen({ liste, herkunft }: {
               <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 flex-none rounded-[3px]"
                 style={{ background: `var(--hh-ein-${Math.min(i, 6)})` }} />
               <span className="min-w-0 flex-1 leading-snug">{e.name}</span>
-              {e.betrag_eur != null && (
+              {e.amount_eur != null && (
                 <span className="flex-none tabular-nums text-muted-foreground">
-                  {eur(e.betrag_eur)}
+                  {eur(e.amount_eur)}
                 </span>
               )}
-              {e.anteil_prozent != null && (
+              {e.share_pct != null && (
                 <span className="w-[62px] flex-none text-right font-semibold tabular-nums">
-                  {prozent(e.anteil_prozent)}
+                  {prozent(e.share_pct)}
                 </span>
               )}
             </li>

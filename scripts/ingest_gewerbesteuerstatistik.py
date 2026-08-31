@@ -118,7 +118,7 @@ def main() -> int:
                 zeilen, verworfen = gs.zeilen(jahrgang)
                 for v in verworfen:
                     print(f"    ÜBERSPRUNGEN {v['stadt']}: {v['grund']} — "
-                          f"{v['ergebnis']}")
+                          f"{v['result']}")
                 if not zeilen:
                     print("  ABBRUCH für diesen Jahrgang: keine einzige Stadt "
                           "hat ihre Summenprobe bestanden.")
@@ -126,7 +126,7 @@ def main() -> int:
 
                 # --- Probe 2: dasselbe im zweiten Blatt ---
                 blatt = gs.probe_blaetter(jahrgang)
-                print(f"  Blattprobe 6.1 gegen 6.2: {blatt['ergebnis']}")
+                print(f"  Blattprobe 6.1 gegen 6.2: {blatt['result']}")
                 if not blatt["ok"]:
                     for a in blatt["abweichungen"][:8]:
                         print(f"    ABWEICHUNG {a['stadt']}: {a['grund']}")
@@ -137,17 +137,17 @@ def main() -> int:
                 # --- Probe 3: der Hebesatz gegen das Jahrbuch ---
                 proben = ["gewst_summenprobe", "gewst_blattprobe"]
                 ergebnisse = [f"{len(zeilen)} Städte nachgerechnet",
-                              blatt["ergebnis"]]
+                              blatt["result"]]
                 erwartet = gs.hebesatz_im_jahr(treppe, jahrgang.year)
                 hebe = gs.probe_hebesatz(jahrgang, gs.OLDENBURG, erwartet)
-                print(f"  Hebesatzprobe: {hebe['ergebnis']}")
+                print(f"  Hebesatzprobe: {hebe['result']}")
                 if hebe["ok"] is False:
                     print("  ABBRUCH für diesen Jahrgang: Landesamt und "
                           "Jahrbuch nennen verschiedene Hebesätze.")
                     continue
                 if hebe["ok"]:
                     proben.append("gewst_hebesatzprobe")
-                    ergebnisse.append(hebe["ergebnis"])
+                    ergebnisse.append(hebe["result"])
 
                 geschrieben[jahrgang.year] = store.save_gewerbesteuerstatistik(
                     zeilen,
@@ -160,7 +160,7 @@ def main() -> int:
                                    "Sitz des Betriebes/der Betriebsstätte, "
                                    "kreisfreie Städte; Blatt 6.2 — dieselben "
                                    "Zahlen je Gemeinde, mit dem Hebesatz",
-                        probe_ergebnis=" · ".join(ergebnisse),
+                        probe_result=" · ".join(ergebnisse),
                         stand=jahrgang.stand))
                 print(f"  gespeichert: {geschrieben[jahrgang.year]} Städte")
 

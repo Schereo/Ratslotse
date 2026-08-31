@@ -20,18 +20,18 @@
 //     der Betrag darüber — sie gehören zu derselben Zahl.
 //  3. **Keine Null, wo eine Zahl steht.** Der kleinste Bereich nimmt 16 Tsd. €
 //     ein — in Millionen gerundet steht dort „0,0 Mio. € · 0 %", und das liest
-//     sich als „nichts", obwohl wir den Betrag genau kennen. Deshalb `betrag()`
+//     sich als „nichts", obwohl wir den Betrag genau kennen. Deshalb `amount()`
 //     mit passender Einheit und „unter 1 %" statt einer gerundeten Null.
 //  4. **Die Namen kommen aus den Daten, nicht von hier.** `thh_name` ist die
 //     Bezeichnung des Dokuments („Klima/Umwelt/Mobilität/Bau/Grün/Friedh."),
 //     Abkürzungen inklusive. Eine schönere Fassung im Frontend wäre eine
 //     zweite Wahrheit neben der Quelle und driftete beim nächsten Jahrgang.
 
-import { betrag } from "@/lib/haushalt";
+import { amount } from "@/lib/haushalt";
 import type { ErgebnisPosten } from "@/lib/haushalt";
 
 /** Eine Zeile der Aufschlüsselung. */
-type Bereich = { name: string; betrag: number };
+type Bereich = { name: string; amount: number };
 
 export function EntgelteBereiche({ zeilen, year, beleg }: {
   /** Die Teilhaushalts-Zeilen **eines** Postens und **eines** Jahres. */
@@ -40,18 +40,18 @@ export function EntgelteBereiche({ zeilen, year, beleg }: {
   /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle. */
   beleg?: React.ReactNode;
 }) {
-  // `ergebnis` ist nullbar: Ein Teilhaushalt, der diesen Posten nicht führt,
+  // `result` ist nullbar: Ein Teilhaushalt, der diesen Posten nicht führt,
   // hat dort keine Null, sondern keine Zeile. Beides als 0 zu zeichnen machte
   // aus „kommt hier nicht vor" ein „hat nichts eingenommen".
   const bereiche: Bereich[] = zeilen
-    .filter((z) => z.thh_name && z.ergebnis != null && z.ergebnis > 0)
-    .map((z) => ({ name: z.thh_name as string, betrag: z.ergebnis as number }))
-    .sort((a, b) => b.betrag - a.betrag);
+    .filter((z) => z.thh_name && z.result != null && z.result > 0)
+    .map((z) => ({ name: z.thh_name as string, amount: z.result as number }))
+    .sort((a, b) => b.amount - a.amount);
 
   if (bereiche.length < 2) return null;
 
-  const groesster = bereiche[0].betrag;
-  const summe = bereiche.reduce((s, b) => s + b.betrag, 0);
+  const groesster = bereiche[0].amount;
+  const summe = bereiche.reduce((s, b) => s + b.amount, 0);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -67,8 +67,8 @@ export function EntgelteBereiche({ zeilen, year, beleg }: {
 
       <ul className="mt-3 flex flex-col gap-2">
         {bereiche.map((b) => {
-          const anteil = Math.round((b.betrag / summe) * 100);
-          const { wert, einheit } = betrag(b.betrag);
+          const anteil = Math.round((b.amount / summe) * 100);
+          const { wert, einheit } = amount(b.amount);
           return (
             <li key={b.name}>
               <div className="flex items-baseline justify-between gap-3">
@@ -89,7 +89,7 @@ export function EntgelteBereiche({ zeilen, year, beleg }: {
                 <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-[color:var(--hh-ein-0)]"
-                    style={{ width: `${Math.max((b.betrag / groesster) * 100, 2)}%` }}
+                    style={{ width: `${Math.max((b.amount / groesster) * 100, 2)}%` }}
                   />
                 </div>
                 <span className="flex-none font-mono text-[10px] tabular-nums text-muted-foreground">

@@ -15,7 +15,7 @@ export type { Herkunft };
  *  mit der Zeile, statt hier zu stehen: Die beiden Rechnungswesen benennen
  *  ihre Arten verschieden, und eine Liste im Frontend wäre die zweite,
  *  konkurrierende Wahrheit. */
-export type Art = { feld: string; titel: string; betrag: number };
+export type Art = { feld: string; titel: string; amount: number };
 
 export type GebautJahr = {
   year: number;
@@ -29,12 +29,12 @@ export type GebautJahr = {
 
 /** Ein Jahr, das die Reihe ankündigt und nicht belegt.
  *
- *  `differenz` ist die GEMESSENE Lücke in Euro (Auszahlungsarten minus
+ *  `difference` ist die GEMESSENE Lücke in Euro (Auszahlungsarten minus
  *  ausgewiesene Summe, vorzeichenbehaftet) — sie kommt aus dem Ingest-Lauf,
  *  der den Jahrgang verworfen hat, und steht nirgends im Frontend. `null`,
  *  wo der Bestand keine Messung führt; dann nennt die Seite die Lücke ohne
  *  Betrag, statt einen zu erfinden. */
-export type GebautLuecke = { year: number; differenz: number | null };
+export type GebautLuecke = { year: number; difference: number | null };
 
 export type GebautDaten = {
   reihe: GebautJahr[];
@@ -72,7 +72,7 @@ export type AnlagePosten = {
   umbuchungen: number; ahk_ende: number;
   abschr_anfang: number; abschreibung: number; aufloesungen: number;
   zuschreibungen: number; abschr_umbuchungen: number; abschr_ende: number;
-  buchwert: number; buchwert_vorjahr: number;
+  book_value: number; book_value_prior_year: number;
   proben: string[];
   herkunft_id: number | null;
 };
@@ -82,8 +82,8 @@ export type AnlagePosten = {
 export type VermoegensGruppe = {
   year: number;
   gruppe: string;
-  buchwert: number;
-  buchwert_vorjahr: number | null;
+  book_value: number;
+  book_value_prior_year: number | null;
   herkunft_id: number | null;
 };
 
@@ -116,7 +116,7 @@ export function infrastruktur(anlagen: Anlagen | undefined, year: number): Anlag
  *  desselben Jahres. `null`, wo eine der beiden Zahlen fehlt — dann sagt die
  *  Seite nichts, statt eine Richtung zu raten. */
 export function verzehr(posten: AnlagePosten | null): {
-  zugaenge: number; abschreibung: number; saldo: number; faktor: number | null;
+  zugaenge: number; abschreibung: number; balance: number; faktor: number | null;
 } | null {
   if (!posten) return null;
   const abschreibung = Math.abs(posten.abschreibung);
@@ -124,7 +124,7 @@ export function verzehr(posten: AnlagePosten | null): {
   return {
     zugaenge: posten.zugaenge,
     abschreibung,
-    saldo: posten.zugaenge - abschreibung,
+    balance: posten.zugaenge - abschreibung,
     faktor: posten.zugaenge > 0 ? abschreibung / posten.zugaenge : null,
   };
 }
@@ -185,7 +185,7 @@ export function juengsteReihe(daten: GebautDaten | null): Reihe | null {
  *  Investitionstätigkeit", 2016 war es „bewegliches Sachvermögen". */
 export function groessterPosten(z: GebautJahr | null): Art | null {
   if (!z || !z.arten.length) return null;
-  return z.arten.reduce((a, b) => (b.betrag > a.betrag ? b : a));
+  return z.arten.reduce((a, b) => (b.amount > a.amount ? b : a));
 }
 
 /** Alle Auszahlungsarten einer Reihe, in der Spaltenfolge der Quelle — die

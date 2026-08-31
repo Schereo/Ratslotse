@@ -206,9 +206,9 @@ def test_grosse_tagesordnung_wird_in_tranchen_zerlegt(monkeypatch):
     def _fake(**kw):
         # Wie viele Punkte standen in DIESEM Prompt?
         text = kw["messages"][-1]["content"]
-        anzahl = sum(1 for z in text.splitlines() if z.startswith("Ö "))
-        aufrufe.append(anzahl)
-        assert kw["max_tokens"] >= 400 + 130 * anzahl - 1, "Budget wächst nicht mit"
+        count = sum(1 for z in text.splitlines() if z.startswith("Ö "))
+        aufrufe.append(count)
+        assert kw["max_tokens"] >= 400 + 130 * count - 1, "Budget wächst nicht mit"
         nummern = [z.split(":")[0].strip() for z in text.splitlines() if z.startswith("Ö ")]
         return _llm_returning(json.dumps({
             "has_content": True,

@@ -180,7 +180,7 @@ def importance_breakdown(decision: dict, n_beratungen: int | None = None) -> dic
             decision.get("vote"), decision.get("outcome"))),
         "verbindlich": (_W_BINDING, _binding_signal(
             decision.get("title"), decision.get("committee"), decision.get("kind"))),
-        "aufwand": (_W_EFFORT, _effort_signal(n_beratungen)),
+        "expense": (_W_EFFORT, _effort_signal(n_beratungen)),
     }
     present = [(w, s) for w, s in parts.values() if s is not None]
     total_w = sum(w for w, _ in present) or 1.0

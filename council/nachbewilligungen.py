@@ -211,10 +211,10 @@ def _beschliessendes_gremium(committee: str) -> bool:
     return any(committee.startswith(g) for g in _RATSGREMIEN)
 
 
-def de_betrag(wert: float, vorzeichen: bool = False) -> str:
+def de_amount(wert: float, vorzeichen: bool = False) -> str:
     """Ein Betrag in deutscher Schreibweise: ``288.000,00``.
 
-    Diese Texte landen über ``probe_ergebnis`` im Beleg-Chip und damit vor
+    Diese Texte landen über ``probe_result`` im Beleg-Chip und damit vor
     Leser*innen; ein englisch formatiertes ``288000.00`` stünde dort mitten in
     einem deutschen Satz."""
     s = f"{abs(wert):,.2f}".replace(",", "␟").replace(".", ",").replace("␟", ".")
@@ -324,9 +324,9 @@ class Bewilligung:
     kategorie: str
     year: int | None
     #: ``None`` bei :data:`ART_SCHWELLE` — dort ist der Titelbetrag die Grenze.
-    betrag: float | None
+    amount: float | None
     #: ``titel`` | ``beschlussvorschlag`` | ``None`` — welche Stufe traf.
-    betrag_quelle: str | None
+    amount_source: str | None
     #: Wie die Vorlage durch die Gremien lief; leer, wenn nur beantragt.
     beschluesse: tuple[dict, ...] = field(default_factory=tuple)
 
@@ -353,7 +353,7 @@ class Bewilligung:
     @property
     def zaehlt_in_summe(self) -> bool:
         """Nur erteilte Bewilligungen mit Betrag gehen in eine Jahressumme."""
-        return (self.art == ART_BEWILLIGUNG and self.betrag is not None
+        return (self.art == ART_BEWILLIGUNG and self.amount is not None
                 and self.beschlossen)
 
     @property
@@ -393,11 +393,11 @@ class Bewilligung:
                    for b in self.beschluesse)
 
 
-def betrag(titel: str, vorschlag: str | None = None,
+def amount(titel: str, vorschlag: str | None = None,
            volltext: str | None = None) -> tuple[float | None, str | None]:
     """Der Betrag einer Nachbewilligung, zweistufig.
 
-    → ``(betrag, quelle)`` mit ``quelle`` aus ``titel`` |
+    → ``(amount, quelle)`` mit ``quelle`` aus ``titel`` |
     ``beschlussvorschlag`` | ``None``. **Die Reihenfolge des Tupels ist
     (Wert, Herkunft)** — nicht umgekehrt.
 
@@ -442,12 +442,12 @@ def aus_vorlagen(vorlagen: list[dict],
         if not ist_nachbewilligung(titel):
             continue
         nr = v.get("template_number") or ""
-        wert, quelle = betrag(titel, v.get("beschlussvorschlag"),
+        wert, quelle = amount(titel, v.get("beschlussvorschlag"),
                               v.get("raw_text"))
         out.append(Bewilligung(
             template_number=nr, titel=titel, art=art(titel),
             kategorie=kategorie(titel), year=haushaltsjahr(nr),
-            betrag=wert, betrag_quelle=quelle,
+            amount=wert, amount_source=quelle,
             beschluesse=tuple(beschluesse.get(nr, ()))))
     return sorted(out, key=lambda b: b.template_number)
 
@@ -461,14 +461,14 @@ def jahressummen(bewilligungen: list[Bewilligung],
     entschieden hat (:attr:`Bewilligung.ratsentscheidung`, dort steht, warum
     die wörtliche Lesart hier 28 % danebenliegt).
     Die Verpflichtungsermächtigungen stehen **getrennt** daneben
-    (``verpflichtungen``/``verpflichtungen_betrag``) und sind in ``summe``
+    (``verpflichtungen``/``commitments_amount``) und sind in ``summe``
     nicht enthalten — dieselbe Trennung, die der Rechenschaftsbericht zieht."""
     jahre: dict[int, dict] = {}
 
     def eintrag(year: int) -> dict:
         return jahre.setdefault(year, {
             "year": year, "summe": 0.0, "faelle": 0,
-            "verpflichtungen": 0, "verpflichtungen_betrag": 0.0,
+            "verpflichtungen": 0, "commitments_amount": 0.0,
             "sammelberichte": 0})
 
     for b in bewilligungen:
@@ -483,10 +483,10 @@ def jahressummen(bewilligungen: list[Bewilligung],
         elif b.art == ART_VERPFLICHTUNG and b.beschlossen:
             e = eintrag(b.year)
             e["verpflichtungen"] += 1
-            e["verpflichtungen_betrag"] += b.betrag or 0.0
+            e["commitments_amount"] += b.amount or 0.0
         elif b.zaehlt_in_summe:
             e = eintrag(b.year)
-            e["summe"] += b.betrag
+            e["summe"] += b.amount
             e["faelle"] += 1
     return dict(sorted(jahre.items()))
 
@@ -502,9 +502,9 @@ def probe_volltext(bewilligung: Bewilligung, volltext: str | None) -> bool:
 
     Ohne Titelbetrag ist nichts zu prüfen — dann ist die Antwort ``False``,
     nicht ``True``: „nicht geprüft" darf nicht wie „bestanden" aussehen."""
-    if bewilligung.betrag_quelle != "titel" or bewilligung.betrag is None:
+    if bewilligung.amount_source != "titel" or bewilligung.amount is None:
         return False
-    return any(abs(_zahl(m.group("zahl"), m.group("skala")) - bewilligung.betrag)
+    return any(abs(_zahl(m.group("zahl"), m.group("skala")) - bewilligung.amount)
                < 0.005 for m in _TEXT_BETRAG.finditer(volltext or ""))
 
 
@@ -573,18 +573,18 @@ class Kanal:
 
     schluessel: str
     label: str
-    anzahl_konsumtiv: int
-    betrag_konsumtiv: float
-    anzahl_investiv: int
-    betrag_investiv: float
+    count_operating: int
+    amount_operating: float
+    count_capital: int
+    amount_capital: float
 
     @property
-    def anzahl(self) -> int:
-        return self.anzahl_konsumtiv + self.anzahl_investiv
+    def count(self) -> int:
+        return self.count_operating + self.count_capital
 
     @property
-    def betrag(self) -> float:
-        return self.betrag_konsumtiv + self.betrag_investiv
+    def amount(self) -> float:
+        return self.amount_operating + self.amount_capital
 
 
 @dataclass(frozen=True)
@@ -594,19 +594,19 @@ class Kapitel3:
     year: int
     kanaele: tuple[Kanal, ...]
     #: Was die Summenzeile der Tabelle selbst ausweist.
-    summe_konsumtiv: float
-    summe_investiv: float
+    total_operating: float
+    total_capital: float
     #: Was der Fließtext darüber behauptet.
     text_gesamt: float | None
     text_konsumtiv: float | None
     text_investiv: float | None
     #: Verpflichtungsermächtigungen — separat, nie in einer Summe.
-    verpflichtungen_betrag: float | None
+    commitments_amount: float | None
 
     @property
     def gesamt(self) -> float:
         """Die Summe, für die das Dokument selbst geradesteht."""
-        return self.summe_konsumtiv + self.summe_investiv
+        return self.total_operating + self.total_capital
 
     def kanal(self, schluessel: str) -> Kanal | None:
         return next((k for k in self.kanaele if k.schluessel == schluessel), None)
@@ -622,7 +622,7 @@ class Kapitel3:
         beide um 288.000 €; die Summenzeile ist die, die das Dokument selbst
         nachrechnet, und nur mit ihr ergeben die vier Wege zusammen 100 %."""
         rat = self.kanal("rat")
-        return (rat.betrag / self.gesamt * 100) if rat and self.gesamt else None
+        return (rat.amount / self.gesamt * 100) if rat and self.gesamt else None
 
 
 def _kapitel3_text(volltext: str) -> str | None:
@@ -667,8 +667,8 @@ def _kanal(text: str, schluessel: str, muster: str) -> Kanal | None:
         return None
     (ak, bk), (ai, bi) = zellen
     return Kanal(schluessel=schluessel, label=KANAELE[schluessel],
-                 anzahl_konsumtiv=ak, betrag_konsumtiv=bk,
-                 anzahl_investiv=ai, betrag_investiv=bi)
+                 count_operating=ak, amount_operating=bk,
+                 count_capital=ai, amount_capital=bi)
 
 
 def kapitel3(volltext: str, year: int) -> Kapitel3 | None:
@@ -692,13 +692,13 @@ def kapitel3(volltext: str, year: int) -> Kapitel3 | None:
     ve = _VE_TEXT.search(text)
     return Kapitel3(
         year=year, kanaele=kanaele,
-        summe_konsumtiv=_zahl(summe.group(1), None),
-        summe_investiv=_zahl(summe.group(2), None),
+        total_operating=_zahl(summe.group(1), None),
+        total_capital=_zahl(summe.group(2), None),
         text_gesamt=_zahl(gesamt.group(1), None) if gesamt else None,
         # Reihenfolge im Satz: erst investiv, dann konsumtiv.
         text_investiv=_zahl(auft.group(1), None) if auft else None,
         text_konsumtiv=_zahl(auft.group(2), None) if auft else None,
-        verpflichtungen_betrag=_zahl(ve.group(1), None) if ve else None)
+        commitments_amount=_zahl(ve.group(1), None) if ve else None)
 
 
 # --- Probe 3: das Dokument gegen sich selbst -------------------------------
@@ -720,7 +720,7 @@ class Tabellenprobe:
         return self.spalten_ok and self.gesamt_ok
 
     def als_text(self) -> str:
-        """Ein Satz fürs ``probe_ergebnis`` der Herkunft."""
+        """Ein Satz fürs ``probe_result`` der Herkunft."""
         if self.bestanden:
             return "Spalten und Gesamtsumme gehen auf den Cent auf."
         teile = []
@@ -728,13 +728,13 @@ class Tabellenprobe:
             teile.append(
                 f"Die Einzelzeilen ergeben nicht die Summenzeile des "
                 f"Dokuments (konsumtiv "
-                f"{de_betrag(self.abweichung_konsumtiv, vorzeichen=True)} €, "
+                f"{de_amount(self.abweichung_konsumtiv, vorzeichen=True)} €, "
                 f"investiv "
-                f"{de_betrag(self.abweichung_investiv, vorzeichen=True)} €)")
+                f"{de_amount(self.abweichung_investiv, vorzeichen=True)} €)")
         if not self.gesamt_ok:
             richtung = "mehr" if self.abweichung_gesamt > 0 else "weniger"
             teile.append(
-                f"Der Fließtext nennt {de_betrag(abs(self.abweichung_gesamt))} € "
+                f"Der Fließtext nennt {de_amount(abs(self.abweichung_gesamt))} € "
                 f"{richtung} als die Tabelle darunter")
         return "; ".join(teile) + "."
 
@@ -762,10 +762,10 @@ def probe_tabelle(kap: Kapitel3, toleranz: float = 0.005) -> Tabellenprobe:
       tabelle.
 
     In beiden Fällen wird der Widerspruch **gemeldet, nicht geglättet**: Was
-    hier zurückkommt, landet als ``probe_ergebnis`` an der Herkunft und von
+    hier zurückkommt, landet als ``probe_result`` an der Herkunft und von
     dort auf der Seite."""
-    ak = sum(k.betrag_konsumtiv for k in kap.kanaele) - kap.summe_konsumtiv
-    ai = sum(k.betrag_investiv for k in kap.kanaele) - kap.summe_investiv
+    ak = sum(k.amount_operating for k in kap.kanaele) - kap.total_operating
+    ai = sum(k.amount_capital for k in kap.kanaele) - kap.total_capital
     if kap.text_gesamt is None:
         gesamt_ok, ag = True, 0.0
     else:
@@ -810,8 +810,8 @@ class Ratsabgleich:
         prozent = ""
         if p is not None:
             prozent = (" (unter 0,01 %)" if abs(p) < 0.01
-                       else f" ({de_betrag(p, vorzeichen=True)} %)")
-        return (f"{self.year}: {de_betrag(self.deviation, vorzeichen=True)} € "
+                       else f" ({de_amount(p, vorzeichen=True)} %)")
+        return (f"{self.year}: {de_amount(self.deviation, vorzeichen=True)} € "
                 f"gegenüber dem Rechenschaftsbericht{prozent}, "
                 f"{self.unsere_faelle} gegen {self.bericht_faelle} Fälle.")
 
@@ -936,10 +936,10 @@ def probe_ratsabgleich(bewilligungen: list[Bewilligung], kap: Kapitel3,
         nur_uns = tuple(sorted(unsere - bericht))
     return Ratsabgleich(
         year=kap.year,
-        unsere_summe=sum(b.betrag or 0.0 for b in passend),
+        unsere_summe=sum(b.amount or 0.0 for b in passend),
         unsere_faelle=len(passend),
-        bericht_summe=rat.betrag if rat else 0.0,
-        bericht_faelle=rat.anzahl if rat else 0,
+        bericht_summe=rat.amount if rat else 0.0,
+        bericht_faelle=rat.count if rat else 0,
         nur_im_bericht=nur_bericht, nur_bei_uns=nur_uns)
 
 

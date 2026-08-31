@@ -60,7 +60,7 @@ def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
         neu_nach_titel.setdefault(_norm_titel(i.get("title")), []).append(i)
     alt_nach_nummer = {str(i.get("item_number")): i for i in alt}
 
-    ergebnis = {"neu": [], "entfernt": [], "verschoben": [], "umformuliert": [],
+    result = {"neu": [], "entfernt": [], "verschoben": [], "umformuliert": [],
                 "vorlage": [], "anlagen": []}
     benutzt: set[int] = set()   # id() der verbrauchten Alt-Zeilen
     paare: list[tuple[dict, dict]] = []
@@ -86,14 +86,14 @@ def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
 
     for vorher, i in paare:
         if str(vorher.get("item_number")) != str(i.get("item_number")):
-            ergebnis["verschoben"].append((vorher, i))
+            result["verschoben"].append((vorher, i))
         elif _norm_vorlage(vorher.get("template_number")) != _norm_vorlage(i.get("template_number")):
             # Der häufigste stille Fall: Ein TOP steht ohne Vorlage auf der
             # Liste, die Verwaltung reicht sie nach. Nummer und Titel
             # bleiben, der Tagesordnungs-Hash ändert sich trotzdem — und
             # die Änderungsmeldung hatte dazu bis hierher kein Wort
             # (Tims Befund 17.08.).
-            ergebnis["vorlage"].append((vorher, i))
+            result["vorlage"].append((vorher, i))
         elif ("anlagen" in vorher and "anlagen" in i
               and anlagen_schluessel(vorher.get("anlagen"))
               != anlagen_schluessel(i.get("anlagen"))):
@@ -102,7 +102,7 @@ def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
             # ohne das Feld sollen keine erfundenen Neuzugänge melden.
             # Nach der Vorlage geprüft: Eine nachgereichte Vorlage hängt
             # ihr PDF oft auch als Anlage an — das wäre sonst doppelt.
-            ergebnis["anlagen"].append((vorher, i))
+            result["anlagen"].append((vorher, i))
 
     for i in rest:
         # Titel neu — trägt die Nummer vorher einen ANDEREN Titel, ist der
@@ -111,13 +111,13 @@ def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
         if (an_nummer is not None and id(an_nummer) not in benutzt
                 and _norm_titel(an_nummer.get("title")) not in neu_nach_titel):
             benutzt.add(id(an_nummer))
-            ergebnis["umformuliert"].append((an_nummer, i))
+            result["umformuliert"].append((an_nummer, i))
         else:  # … sonst ist er schlicht neu.
-            ergebnis["neu"].append(i)
+            result["neu"].append(i)
     # Entfernt ist, was keinen Partner gefunden hat — auch der überzählige
     # Namensvetter, den die Titel-Sicht früher übersah.
-    ergebnis["entfernt"] = [i for i in alt if id(i) not in benutzt]
-    return ergebnis
+    result["entfernt"] = [i for i in alt if id(i) not in benutzt]
+    return result
 
 
 def hat_aenderungen(diff: dict) -> bool:

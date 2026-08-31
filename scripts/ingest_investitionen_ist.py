@@ -105,14 +105,14 @@ def main() -> int:
             for regelwerk, (von, bis) in sorted(spannen.items()):
                 print(f"{ii.REGELWERK[regelwerk]}: Spanne laut Titel {von}–{bis}")
 
-            ergebnis = ii.lies(text)
-            zeilen = ergebnis["zeilen"]
+            result = ii.lies(text)
+            zeilen = result["zeilen"]
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
-                  f"{ii.probennachweis(ergebnis)}")
-            for v in ergebnis["verworfen"]:
+                  f"{ii.probennachweis(result)}")
+            for v in result["verworfen"]:
                 print(f"    VERWORFEN {v['year']} ({v['regelwerk']}): {v['grund']}",
                       file=sys.stderr)
-            for regelwerk, jahre in sorted(ergebnis["fehlende_jahrgaenge"].items()):
+            for regelwerk, jahre in sorted(result["fehlende_jahrgaenge"].items()):
                 for j in jahre:
                     print(f"    FEHLT {j} ({regelwerk}): im Titel angekündigt, "
                           f"nicht übernommen", file=sys.stderr)
@@ -169,7 +169,7 @@ def main() -> int:
             geschrieben = 0
             for regelwerk in ("kameral", "doppik"):
                 teil = [z for z in zeilen if z["regelwerk"] == regelwerk]
-                verw = [v for v in ergebnis["verworfen"]
+                verw = [v for v in result["verworfen"]
                         if v["regelwerk"] == regelwerk]
                 # Ein Regelwerk ganz ohne Jahrgänge wird trotzdem geschrieben,
                 # WENN es verworfene hat: Sonst verlöre die Seite genau dann
@@ -188,7 +188,7 @@ def main() -> int:
                     f"Zeilensumme bestanden" if teil else
                     f"Kein Jahrgang von {bis - von + 1} angekündigten hat die "
                     f"Zeilensumme bestanden")
-                fehlt = ergebnis["fehlende_jahrgaenge"].get(regelwerk) or []
+                fehlt = result["fehlende_jahrgaenge"].get(regelwerk) or []
                 if fehlt:
                     # Was fehlt, gehört in den Messwert — sonst liest sich
                     # „Zeilensumme bestanden" wie eine Vollständigkeit, die
@@ -208,7 +208,7 @@ def main() -> int:
                           f"{nummer} — Investitionen {von} bis {bis}",
                     stand=f"Rechnungsergebnisse {von}–{bis}",
                     probe="investitionen_ist_zeilensumme",
-                    fundstelle=fundstelle, probe_ergebnis=nachweis),
+                    fundstelle=fundstelle, probe_result=nachweis),
                     verworfen=verw)
             print(f"  gespeichert: {geschrieben} Jahrgänge")
 

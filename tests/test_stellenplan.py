@@ -201,7 +201,7 @@ def test_besetzung_gehoert_zum_stichtag_nicht_zum_haushaltsjahr():
     162,69 und damit eine Zahl, die in keinem Dokument steht."""
     g = _gesamt(_teil(STELLENPLAN_2026_A))
     assert g["stellen_plan"] == 815.00
-    assert g["stellen_vorjahr"] == 796.00
+    assert g["positions_prior_year"] == 796.00
     assert g["nicht_besetzt"] == 143.71
     assert g["besetzt"] == pytest.approx(652.31)
     # Die Rechnung geht gegen das Vorjahr auf — und gegen das Planjahr nicht.
@@ -340,7 +340,7 @@ def test_besetzung_gegen_die_falsche_spalte_reisst_die_probe():
     Vorjahresspalte das Planjahr, ginge besetzt + nicht besetzt nicht mehr
     auf — hier um 19 Stellen daneben, weit jenseits jeder Rundung."""
     ok, warum = sp.besetzungsprobe([{
-        "stellen_vorjahr": 815.00, "besetzt": 652.31,
+        "positions_prior_year": 815.00, "besetzt": 652.31,
         "nicht_besetzt": 143.71, "name": "Stadt Oldenburg", "zeilen": 42}])
     assert ok is False
     assert "-19.0" in warum or "-18.9" in warum

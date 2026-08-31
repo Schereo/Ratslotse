@@ -220,10 +220,10 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   const gsLetzt = geld.get(letzter.year) ?? null;
   const rsLetzt = rueck.get(letzter.year) ?? null;
   // Der Jahrgang, der den Sprung erklärt — der mit der genannten Einzelzahl.
-  const sprung = reihe.find((z) => z.einzelbetrag != null) ?? null;
+  const sprung = reihe.find((z) => z.single_amount != null) ?? null;
   // Der Jahrgang ohne eigene Fundstelle: Seine Zahl steht nur als
   // Anfangsbestand im Abschluss des Folgejahres.
-  const nachgetragen = reihe.find((z) => z.aus_folgejahr) ?? null;
+  const nachgetragen = reihe.find((z) => z.out_next_year) ?? null;
 
   // BEIDE REIHEN IN EINER ZEICHENFLÄCHE. Die Aussage dieses Blocks ist kein
   // Stichtag, sondern eine Bewegung: Was die Stadt selbst schuldet, sinkt —
@@ -257,7 +257,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
     sprung?.grund
       ? {
           year: sprung.year,
-          kurz: `${deMio((sprung.einzelbetrag ?? 0) / 1e6)} Mio. €`,
+          kurz: `${deMio((sprung.single_amount ?? 0) / 1e6)} Mio. €`,
           text: `${sprung.year}: ${sprung.grund}`,
         }
       : null,
@@ -275,7 +275,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   // Wie genau die Quelle je Jahrgang ist. Das gehört an die Zahlen und nicht
   // in eine Fußnote am Seitenende — die Reihe mischt zwei Darreichungsformen.
   const cent = reihe.filter((z) => z.genau).map((z) => z.year);
-  const gerundet = reihe.filter((z) => !z.genau && !z.aus_folgejahr).map((z) => z.year);
+  const gerundet = reihe.filter((z) => !z.genau && !z.out_next_year).map((z) => z.year);
 
   return (
     <section className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -569,7 +569,7 @@ export default function SchuldenPage() {
   // Quelle weist keinen Pro-Kopf-Zins aus, und wir dividieren nicht selbst.
   const zinsreihe = useMemo(
     () => (ansicht === "insgesamt"
-      ? (data?.zinslast ?? []).map((z) => ({ year: z.year, wert: z.aufwand / 1e6 }))
+      ? (data?.zinslast ?? []).map((z) => ({ year: z.year, wert: z.expense / 1e6 }))
       : undefined),
     [data, ansicht]);
 
@@ -750,7 +750,7 @@ export default function SchuldenPage() {
                 Was der Schuldenstand im Jahr kostet
               </p>
               <p className="mt-2 font-display text-[26px] font-extrabold leading-none tracking-tight text-foreground">
-                {deMio(zins.aufwand / 1e6)}&#8239;Mio.&nbsp;€
+                {deMio(zins.expense / 1e6)}&#8239;Mio.&nbsp;€
               </p>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
                 Zinsen im Jahr {zins.year} — aus dem Jahresabschluss

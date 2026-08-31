@@ -156,17 +156,17 @@ LABEL_MUSTER = "%Investitionsprogramm%"
 GESAMTSUMME = "Gesamtsumme"
 
 
-def _de(betrag: float, vorzeichen: bool = False) -> str:
+def _de(amount: float, vorzeichen: bool = False) -> str:
     """Betrag in deutscher Schreibweise — „170.140.918,00".
 
     Wie in ``council/investitionen.py``: Der Rückgabewert von :func:`nachweis`
-    landet als ``probe_ergebnis`` in der Herkunft und steht damit im Beleg
+    landet als ``probe_result`` in der Herkunft und steht damit im Beleg
     neben der Zahl auf der Seite. Pythons ``{:,.2f}`` liefert dort englische
     Trennzeichen."""
-    s = f"{abs(betrag):,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    s = f"{abs(amount):,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
     if vorzeichen:
-        return ("+" if betrag >= 0 else "−") + s
-    return ("−" if betrag < 0 else "") + s
+        return ("+" if amount >= 0 else "−") + s
+    return ("−" if amount < 0 else "") + s
 
 
 def jahrgang(text: str | None) -> int | None:
@@ -253,10 +253,10 @@ def _name_und_betrag(blob: list[str]) -> tuple[str, int | None]:
             continue
         lauf = betragslauf(s)
         if lauf is not None:
-            kopf, betrag = lauf
+            kopf, amount = lauf
             if kopf:
                 teile.append(kopf)
-            return _namen_fuegen(teile), betrag
+            return _namen_fuegen(teile), amount
         teile.append(s)
     return _namen_fuegen(teile), None
 
@@ -266,11 +266,11 @@ def lies(text: str, year: int) -> dict:
 
     Liefert ``{year, kopftabelle, kopfsumme, abschnitte, bestanden, nachweis}``:
 
-    * ``kopftabelle`` — ``[{bezeichnung, gesamtsumme}]`` je Teilhaushalt aus
+    * ``kopftabelle`` — ``[{bezeichnung, grand_total}]`` je Teilhaushalt aus
       dem Gesamtinvestitionsprogramm.
     * ``kopfsumme`` — deren ausgewiesene ``Gesamtsumme``.
     * ``abschnitte`` — ``{thh_nr: {name, summe, massnahmen}}``; je Maßnahme
-      ``{code, bezeichnung, gesamtsumme}``.
+      ``{code, bezeichnung, grand_total}``.
     * ``bestanden`` — ob **alle drei** Proben aufgehen. Ist sie ``False``, sind
       ``abschnitte`` und ``kopftabelle`` leer: Ein Jahrgang, dessen Rechnung
       nicht aufgeht, gibt keine halben Maßnahmen her.
@@ -311,9 +311,9 @@ def _lies_kopftabelle(zeilen: list[str]) -> tuple[list[dict], int | None]:
             continue
         blob.append(s)
         if betragslauf(s) is not None:
-            name, betrag = _name_und_betrag(blob)
-            if name and betrag is not None:
-                zeilenmenge.append({"bezeichnung": name, "gesamtsumme": betrag})
+            name, amount = _name_und_betrag(blob)
+            if name and amount is not None:
+                zeilenmenge.append({"bezeichnung": name, "grand_total": amount})
             blob = []
     return zeilenmenge, summe
 
@@ -359,12 +359,12 @@ def _lies_abschnitte(zeilen: list[str]) -> dict[int, dict]:
         nonlocal code, blob
         det_schliessen()
         if code and akt is not None:
-            name, betrag = _name_und_betrag(blob)
-            if betrag is not None:
+            name, amount = _name_und_betrag(blob)
+            if amount is not None:
                 det = details.pop(code, [])
                 abschnitte[akt]["massnahmen"].append(
                     {"code": code, "bezeichnung": name or _name_aus_details(det),
-                     "gesamtsumme": betrag, "details": det})
+                     "grand_total": amount, "details": det})
         code, blob = None, []
 
     for z in zeilen:
@@ -415,7 +415,7 @@ def probe_abschnitt(abschnitt: dict, toleranz: float = TOLERANZ_EUR
     if len(abschnitt["massnahmen"]) < MINDEST_MASSNAHMEN:
         return False, (f"nur {len(abschnitt['massnahmen'])} Maßnahmen gelesen "
                        f"(mindestens {MINDEST_MASSNAHMEN} erwartet)")
-    gerechnet = sum(m["gesamtsumme"] for m in abschnitt["massnahmen"])
+    gerechnet = sum(m["grand_total"] for m in abschnitt["massnahmen"])
     rest = gerechnet - abschnitt["summe"]
     if abs(rest) > toleranz:
         return False, (f"{len(abschnitt['massnahmen'])} Maßnahmen ergeben "
@@ -435,7 +435,7 @@ def probe_wiederholung(kopftabelle: list[dict], abschnitte: dict,
     „Klima/Umwelt/Mobilität/Bau/Grün/Fri edh.", der Abschnittskopf
     „Klima/Umwelt/Mobilität/Bau/Grün/Friedh."; über den Namen verglichen
     scheiterte die Probe an einem Zeilenumbruch statt an einer Zahl."""
-    kopf = [z["gesamtsumme"] for z in kopftabelle]
+    kopf = [z["grand_total"] for z in kopftabelle]
     for nr, a in sorted(abschnitte.items()):
         if a["summe"] is None:
             return False, f"THH{nr:02d} weist keine „{GESAMTSUMME}“ aus"
@@ -452,7 +452,7 @@ def probe_kopftabelle(kopftabelle: list[dict], kopfsumme: int | None,
         return False, f"die Kopftabelle weist keine „{GESAMTSUMME}“ aus"
     if not kopftabelle:
         return False, "die Kopftabelle ist leer"
-    gerechnet = sum(z["gesamtsumme"] for z in kopftabelle)
+    gerechnet = sum(z["grand_total"] for z in kopftabelle)
     rest = gerechnet - kopfsumme
     if abs(rest) > toleranz:
         return False, (f"die {len(kopftabelle)} Teilhaushalte ergeben "

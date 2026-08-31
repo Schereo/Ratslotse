@@ -327,7 +327,7 @@ def debatte(abschnitt: str, anwesende: list[dict]) -> list[Wortbeitrag]:
     die Fraktion leer und ``fraktion_unklar`` steht auf ``True``."""
     index = _personen_index(anwesende)
     treffer = [m for m in _ANREDE_RE.finditer(abschnitt) if _beginnt_beitrag(abschnitt, m.start())]
-    ergebnis: list[Wortbeitrag] = []
+    result: list[Wortbeitrag] = []
     for i, m in enumerate(treffer):
         ende = treffer[i + 1].start() if i + 1 < len(treffer) else len(abschnitt)
         roh = abschnitt[m.start():ende]
@@ -355,8 +355,8 @@ def debatte(abschnitt: str, anwesende: list[dict]) -> list[Wortbeitrag]:
                 beitrag.fraktion = _fraktion_von(kandidaten[0])
             elif len(kandidaten) > 1:
                 beitrag.fraktion_unklar = True
-        ergebnis.append(beitrag)
-    return ergebnis
+        result.append(beitrag)
+    return result
 
 
 #: Wie viele zerlegte Debatten gleichzeitig im Gedächtnis bleiben. Ein Aufruf

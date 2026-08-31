@@ -59,11 +59,11 @@ def _inhaltsgleich(a: Ergebnis, b: Ergebnis) -> bool:
     Bestand (Dokumente 230011 und 230030) — verglichen wird der INHALT, nicht
     die Datei: gleiche Positionen, gleiche Summen."""
     def kern(e: Ergebnis):
-        # `key=repr`, weil `thh`/`ertrag` None sein dürfen — nackte Tupel
+        # `key=repr`, weil `thh`/`revenue` None sein dürfen — nackte Tupel
         # mit None neben int lassen sich nicht sortieren.
         return (sorted(((z.year, z.lfd, z.thh, z.produkt, z.bezeichnung,
-                         z.ertrag, z.aufwand) for z in e.zeilen), key=repr),
-                sorted(((s.year, s.typ, s.label, s.ertraege, s.aufwendungen)
+                         z.revenue, z.expense) for z in e.zeilen), key=repr),
+                sorted(((s.year, s.typ, s.label, s.revenues, s.expenses)
                         for s in e.summen), key=repr))
     return kern(a) == kern(b)
 
@@ -90,7 +90,7 @@ def main() -> dict:
             try:
                 pdf = _laden(r["url"])
                 time.sleep(0.6)
-                ergebnis = lies_ehh_liste(pdf)
+                result = lies_ehh_liste(pdf)
             except ListenFehler as fehler:
                 risse.append(f"{r['document_id']} ({r['label'][:50]}): {fehler}")
                 continue
@@ -98,19 +98,19 @@ def main() -> dict:
                 risse.append(f"{r['document_id']} ({r['label'][:50]}): "
                              f"Download fehlgeschlagen — {fehler}")
                 continue
-            gelesen.append((r, schluessel, ergebnis))
+            gelesen.append((r, schluessel, result))
 
         # Je (Jahrgang, Liste) genau EIN Dokument — Dubletten aussortieren,
         # echte Widersprüche stehen lassen statt zu raten.
         je_liste: dict[tuple[int, str], tuple[dict, str, Ergebnis]] = {}
         dubletten: list[str] = []
         konflikte: list[str] = []
-        for r, schluessel, ergebnis in gelesen:
-            key = (ergebnis.jahrgang, schluessel)
+        for r, schluessel, result in gelesen:
+            key = (result.jahrgang, schluessel)
             if key not in je_liste:
-                je_liste[key] = (r, schluessel, ergebnis)
+                je_liste[key] = (r, schluessel, result)
                 continue
-            if _inhaltsgleich(je_liste[key][2], ergebnis):
+            if _inhaltsgleich(je_liste[key][2], result):
                 dubletten.append(
                     f"{key[0]} {schluessel}: Dokument {r['document_id']} ist "
                     f"inhaltsgleich mit {je_liste[key][0]['document_id']} — übersprungen.")

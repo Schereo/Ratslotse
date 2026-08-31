@@ -32,7 +32,7 @@
 //
 // DER BETRAG AN DER LÜCKE KOMMT AUS DEN DATEN, nie von hier: Was der
 // Ingest-Lauf beim Verwerfen gemessen hat, steht seitdem in
-// `council_investitionen_ist_verworfen` und kommt als `differenz` je Lücke
+// `council_investitionen_ist_verworfen` und kommt als `difference` je Lücke
 // mit der Antwort (`fehlend`). `lueckeGrund()` unten setzt daraus den Satz
 // zusammen — und lässt den Betrag weg, wo die API keinen liefert. Eine
 // Jahreszahl mit fest verdrahtetem Betrag wäre eine Behauptung, die beim
@@ -68,10 +68,10 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
  *
  *  Mit Betrag, wo die API einen gemessenen führt („verworfen: 1,3 Mio. €
  *  Differenz im Dokument"), und ohne, wo nicht. Der Betrag wird hier
- *  formatiert und nirgends beziffert: Er steht in `differenz` und kommt aus
+ *  formatiert und nirgends beziffert: Er steht in `difference` und kommt aus
  *  dem Lauf, der den Jahrgang verworfen hat.
  *
- *  Vorzeichenlos, obwohl `differenz` eines trägt: Im Satz steht, wie weit die
+ *  Vorzeichenlos, obwohl `difference` eines trägt: Im Satz steht, wie weit die
  *  beiden Zahlen des Dokuments auseinanderliegen. Welche der sieben Zahlen
  *  danebenliegt, sagt die Tabelle nicht — ein „−" behauptete, es sei die
  *  Summe. */
@@ -81,8 +81,8 @@ function lueckeGrund(l: GebautLuecke): string {
   // muss der Grund die Auskunft allein tragen — dann wird er länger.
   const satz = "die Auszahlungsarten ergeben in der Quelltabelle nicht die "
     + "ausgewiesene Summe daneben";
-  if (l.differenz == null) return `verworfen: ${satz}`;
-  return `verworfen: ${deMioEuro(Math.abs(l.differenz))} Mio. € `
+  if (l.difference == null) return `verworfen: ${satz}`;
+  return `verworfen: ${deMioEuro(Math.abs(l.difference))} Mio. € `
     + `Differenz im Dokument`;
 }
 
@@ -153,7 +153,7 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
             : "Zugänge und Abschreibungen des Infrastrukturvermögens"}
         </h2>
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-          Straßen, Brücken und Kanäle stehen mit {deMioEuro(infra.buchwert)}&#8239;Mio.&nbsp;€ in der
+          Straßen, Brücken und Kanäle stehen mit {deMioEuro(infra.book_value)}&#8239;Mio.&nbsp;€ in der
           Bilanz {year}. Was im Jahr dazukam, steht neben dem, was im selben Jahr
           an Wert verloren ging — beide Zahlen aus derselben Tabelle des
           Jahresabschlusses. <Beleg q="jahresabschluss" />
@@ -195,8 +195,8 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
           <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
             Der Jahresabschluss gliedert das Infrastrukturvermögen weiter auf.
             Allein die Straßen, Wege und Plätze sanken von{" "}
-            {deMioEuro(strassenErst.g.buchwert_vorjahr ?? strassenErst.g.buchwert)}&#8239;Mio.&nbsp;€ auf{" "}
-            {deMioEuro(strassenLetzt.g.buchwert)}&#8239;Mio.&nbsp;€ — der Abschluss {year} nennt das
+            {deMioEuro(strassenErst.g.book_value_prior_year ?? strassenErst.g.book_value)}&#8239;Mio.&nbsp;€ auf{" "}
+            {deMioEuro(strassenLetzt.g.book_value)}&#8239;Mio.&nbsp;€ — der Abschluss {year} nennt das
             selbst einen <strong>Substanzverlust</strong>.
           </p>
         </div>
@@ -245,7 +245,7 @@ export function GebautAbschnitt({ onBestand }: {
       for (const z of r.jahre) {
         js.push({
           year: z.year,
-          teile: z.arten.map((a) => ({ art: a.titel, wert: a.betrag / 1e6 })),
+          teile: z.arten.map((a) => ({ art: a.titel, wert: a.amount / 1e6 })),
         });
       }
       for (const l of r.fehlend) js.push({ year: l.year, fehlt: lueckeGrund(l) });
@@ -282,7 +282,7 @@ export function GebautAbschnitt({ onBestand }: {
   // Die gemessenen Differenzen der Lücken — nur die, die eine tragen. Der
   // Satz unten nennt sie, wenn es sie gibt, und schweigt sonst.
   const gemesseneLuecken = useMemo(
-    () => alleFehlend.filter((l) => l.differenz != null), [alleFehlend]);
+    () => alleFehlend.filter((l) => l.difference != null), [alleFehlend]);
 
   if (loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">
@@ -385,7 +385,7 @@ export function GebautAbschnitt({ onBestand }: {
             {gross && (
               <div>
                 <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums sm:text-[32px]">
-                  {deMioEuro(gross.betrag)}&#8239;Mio.&nbsp;€
+                  {deMioEuro(gross.amount)}&#8239;Mio.&nbsp;€
                 </p>
                 <p className="mt-1 max-w-[28ch] text-[12px] text-muted-foreground">
                   größter Posten: {gross.titel}<Beleg q="gebaut" />
@@ -473,7 +473,7 @@ export function GebautAbschnitt({ onBestand }: {
                     <span key={l.year}>
                       {i > 0 && (i === gemesseneLuecken.length - 1 ? " und " : ", ")}
                       {gemesseneLuecken.length > 1 && `${l.year}: `}
-                      {deMioEuro(Math.abs(l.differenz!))}&#8239;Mio.&nbsp;€
+                      {deMioEuro(Math.abs(l.difference!))}&#8239;Mio.&nbsp;€
                     </span>
                   ))}
                   {" "}Unterschied.{" "}
@@ -493,7 +493,7 @@ export function GebautAbschnitt({ onBestand }: {
           <Anteilsbalken
             titel={`Wofür ${letzter.year}`}
             segmente={letzter.arten.map((a, i) => ({
-              label: a.titel, wert: a.betrag / 1e6,
+              label: a.titel, wert: a.amount / 1e6,
               farbe: TOENE[Math.min(i, TOENE.length - 1)],
             }))}
             gesamt={letzter.insgesamt / 1e6}

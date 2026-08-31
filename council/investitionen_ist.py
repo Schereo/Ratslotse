@@ -330,11 +330,11 @@ def lies(text: str) -> dict:
         Die übernommenen Jahrgänge, aufsteigend. Jede trägt ihr ``regelwerk``.
     ``verworfen``
         Jahrgänge, die die Probe nicht bestanden haben, mit ``grund`` und
-        ``differenz``. Ihre sieben Zahlen stehen nirgends in der Datenbank —
+        ``difference``. Ihre sieben Zahlen stehen nirgends in der Datenbank —
         anders als bei den Schulden gibt es hier keine zweite Probe, die
         wenigstens die Summe trüge (s. Modulkopf).
 
-        ``differenz`` ist die gemessene Lücke in Euro (Arten minus
+        ``difference`` ist die gemessene Lücke in Euro (Arten minus
         ausgewiesene Summe, vorzeichenbehaftet) — als **Zahl** neben dem
         Fließtext und nicht nur in ihm. Der Grund ist ein Satz für Menschen;
         die Zahl daraus zurückzuparsen wäre eine zweite, stille Schnittstelle.
@@ -367,7 +367,7 @@ def lies(text: str) -> dict:
                     "year": zeile["year"], "regelwerk": regelwerk,
                     # Keine Differenz: Ohne zerlegte Felder gibt es keine
                     # Summe, die man gegen die ausgewiesene halten könnte.
-                    "differenz": None,
+                    "difference": None,
                     "grund": f"Zeile nicht in {len(SPALTEN[regelwerk])} Felder "
                              f"zerlegbar: {zeile['unlesbar']!r}"})
                 continue
@@ -378,7 +378,7 @@ def lies(text: str) -> dict:
                 verworfen.append({
                     "year": zeile["year"], "regelwerk": regelwerk,
                     # Die Zahl neben dem Satz — s. Rückgabe-Beschreibung.
-                    "differenz": deviation,
+                    "difference": deviation,
                     "grund": f"Zeilensumme um "
                              f"{de_zahl(deviation, vorzeichen=True)} € gerissen; "
                              f"eine zweite Probe trägt diese Tabelle nicht"})
@@ -405,14 +405,14 @@ def lies(text: str) -> dict:
     }
 
 
-def probennachweis(ergebnis: dict) -> str:
+def probennachweis(result: dict) -> str:
     """Der Messwert für die Herkunft — „was ist wirklich gelaufen?".
 
     Steht später im Beleg auf der Seite; deshalb Zahlen und keine Adjektive."""
-    p = ergebnis["proben"]
+    p = result["proben"]
     gesamt = p["bestanden"] + p["gerissen"]
     text = f"Zeilensumme {p['bestanden']} von {gesamt} Jahrgängen"
     if p["gerissen"]:
-        jahre = ", ".join(str(v["year"]) for v in ergebnis["verworfen"])
+        jahre = ", ".join(str(v["year"]) for v in result["verworfen"])
         text += f"; verworfen: {jahre}"
     return text

@@ -93,10 +93,10 @@ def test_inhaltsverzeichnis_liefert_textziffern():
 # --- Feststellungen ---------------------------------------------------------
 
 def test_feststellungen_mit_marke_textziffer_und_seite():
-    ergebnis = pruefberichte.parse_feststellungen(BERICHT)
-    assert ergebnis["year"] == 2023
-    assert ergebnis["verworfen"] == []
-    gefunden = ergebnis["feststellungen"]
+    result = pruefberichte.parse_feststellungen(BERICHT)
+    assert result["year"] == 2023
+    assert result["verworfen"] == []
+    gefunden = result["feststellungen"]
     assert [f["marke"] for f in gefunden] == ["H", "WB"]
 
     hinweis, beanstandung = gefunden
@@ -161,9 +161,9 @@ def test_marke_ohne_legendeneintrag_wird_verworfen():
     manipuliert = BERICHT.replace(
         "\n WB  Das Rechnungsprüfungsamt beanstandet, dass Akontozahlungen",
         "\n K  Das Rechnungsprüfungsamt beanstandet, dass Akontozahlungen")
-    ergebnis = pruefberichte.parse_feststellungen(manipuliert)
-    assert [f["marke"] for f in ergebnis["feststellungen"]] == ["H"]
-    assert ergebnis["verworfen"] == [
+    result = pruefberichte.parse_feststellungen(manipuliert)
+    assert [f["marke"] for f in result["feststellungen"]] == ["H"]
+    assert result["verworfen"] == [
         {"marke": "K", "grund": "nicht in der Legende erklärt"}]
 
 
@@ -171,9 +171,9 @@ def test_marke_ohne_textziffer_wird_verworfen():
     """Ohne Inhaltsverzeichnis gibt es keine Fundstelle — und ohne Fundstelle
     keine Feststellung, auch wenn die Marken im Text stehen."""
     ohne_ivz = BERICHT.replace(INHALT, "Inhaltsverzeichnis \n \n")
-    ergebnis = pruefberichte.parse_feststellungen(ohne_ivz)
-    assert ergebnis["year"] == 2023
-    assert ergebnis["feststellungen"] == []
+    result = pruefberichte.parse_feststellungen(ohne_ivz)
+    assert result["year"] == 2023
+    assert result["feststellungen"] == []
 
 
 def test_bericht_ohne_legende_liefert_nichts():
@@ -185,8 +185,8 @@ def test_unterschrift_der_amtsleitung_ist_keine_marke():
     """Am Berichtsende steht der Name in gesperrter Schrift („K R U P K E").
     Mit nur einem Leerzeichen hinter der Marke ginge er als K-Marke durch."""
     mit_unterschrift = BERICHT + "\nK R U P K E \nLeiterin des Rechnungsprüfungsamtes \n"
-    ergebnis = pruefberichte.parse_feststellungen(mit_unterschrift)
-    assert [f["marke"] for f in ergebnis["feststellungen"]] == ["H", "WB"]
+    result = pruefberichte.parse_feststellungen(mit_unterschrift)
+    assert [f["marke"] for f in result["feststellungen"]] == ["H", "WB"]
 
 
 # --- Ketten über Jahrgänge --------------------------------------------------

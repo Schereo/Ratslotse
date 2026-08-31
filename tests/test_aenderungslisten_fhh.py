@@ -23,7 +23,7 @@ def w(x0, x1, y, text):
     return (float(x0), float(x1), float(y), text)
 
 
-def betrag(text, x1, y):
+def amount(text, x1, y):
     """Ein rechtsbündiger Betrag: die rechte Kante ist die Aussage."""
     return w(x1 - 4 * len(text), x1, y, text)
 
@@ -70,7 +70,7 @@ def position(y, lfd, thh, werte, produkt="I10.089904.500",
         aus.append(w(x, x + 5 * len(teil), y, teil))
         x += 5 * len(teil) + 5
     for feld, text in werte.items():
-        aus.append(betrag(text, KANTE[feld], y))
+        aus.append(amount(text, KANTE[feld], y))
     return aus
 
 
@@ -83,15 +83,15 @@ def summenblock(year, zeilen):
            w(250, 310, 44, "Einzahlungen"), w(318, 381, 44, "Auszahlungen"),
            w(408, 434, 44, "Saldo"), w(483, 496, 44, "VE")]
     y = 60
-    for label, ein, aus_, saldo, ve, urheber in zeilen:
+    for label, ein, aus_, balance, ve, urheber in zeilen:
         y += 20
         x = 45
         for teil in label.split():
             aus.append(w(x, x + 5 * len(teil), y, teil))
             x += 5 * len(teil) + 5
-        for text, kante in ((ein, 312), (aus_, 382), (saldo, 455), (ve, 519)):
+        for text, kante in ((ein, 312), (aus_, 382), (balance, 455), (ve, 519)):
             if text is not None:
-                aus.append(betrag(text, kante, y))
+                aus.append(amount(text, kante, y))
         if urheber:
             x = 530
             for teil in urheber.split():
@@ -146,10 +146,10 @@ def test_miniliste_rundlauf():
 
     z1, z2 = aus.zeilen
     assert (z1.lfd, z1.thh, z1.produkt) == (1, 3, "I10.089904.500")
-    assert (z1.soll_entwurf, z1.einzahlung, z1.auszahlung, z1.soll_neu) == (
+    assert (z1.planned_draft, z1.inflow, z1.outflow, z1.planned_new) == (
         0, 0, 400_000, 400_000)
     assert z2.bezeichnung == "VHS"
-    assert z2.soll_neu == 730_000
+    assert z2.planned_new == 730_000
     # Die Zusammenstellung: Entwurf, eine Liste, die Endsumme ohne Beschriftung.
     assert [s.typ for s in aus.summen] == ["entwurf", "liste", "endsumme"]
     assert aus.summen[1].ve == 0
@@ -191,7 +191,7 @@ def test_kopf_und_fusszeile_bleiben_draussen():
     ])
     aus = parse_fhh_seiten([tabelle, summen], [linien([100, 200]), linien([], [])])
     z = aus.zeilen[0]
-    assert (z.soll_entwurf, z.einzahlung, z.auszahlung, z.soll_neu) == (
+    assert (z.planned_draft, z.inflow, z.outflow, z.planned_new) == (
         0, 0, 400_000, 400_000)
 
 
@@ -205,9 +205,9 @@ def test_betraege_unter_der_grundlinie():
                   bezeichnung=("Zweites",)),
         # Die Beträge zu Position 1 stehen 67 pt tiefer, die zu Position 2
         # 45 pt — beide vor der jeweils nächsten Position.
-        *[betrag(t, KANTE[k], 171)
+        *[amount(t, KANTE[k], 171)
           for k, t in (("soll", "0"), ("aus", "577.000"), ("neu", "577.000"))],
-        *[betrag(t, KANTE[k], 227)
+        *[amount(t, KANTE[k], 227)
           for k, t in (("soll", "0"), ("aus", "30.000"), ("neu", "30.000"))],
     ]
     summen = summenblock(2026, [
@@ -217,8 +217,8 @@ def test_betraege_unter_der_grundlinie():
     ])
     aus = parse_fhh_seiten([tabelle, summen], [linien([90, 260]), linien([], [])])
     z1, z2 = aus.zeilen
-    assert z1.auszahlung == 577_000
-    assert z2.auszahlung == 30_000
+    assert z1.outflow == 577_000
+    assert z2.outflow == 30_000
 
 
 def test_summenzeile_des_blocks_ist_keine_position():
@@ -229,8 +229,8 @@ def test_summenzeile_des_blocks_ist_keine_position():
         *position(120, 1, "03", {"soll": "0", "ein": "0", "aus": "400.000",
                                  "neu": "400.000"}),
         # Die Blocksumme: zwei Spalten, kein neues Soll.
-        betrag("-34.800", KANTE["ein"], 200),
-        betrag("400.000", KANTE["aus"], 200),
+        amount("-34.800", KANTE["ein"], 200),
+        amount("400.000", KANTE["aus"], 200),
     ]
     summen = summenblock(2026, [
         ("Verwaltungsentwurf Stand: 01.10.25", "0", "0", "0", "0", None),
@@ -239,7 +239,7 @@ def test_summenzeile_des_blocks_ist_keine_position():
     ])
     aus = parse_fhh_seiten([tabelle, summen], [linien([100, 230]), linien([], [])])
     assert len(aus.zeilen) == 1
-    assert aus.zeilen[0].auszahlung == 400_000
+    assert aus.zeilen[0].outflow == 400_000
 
 
 def test_klammerbetrag_und_einstelliger_teilhaushalt():
@@ -258,7 +258,7 @@ def test_klammerbetrag_und_einstelliger_teilhaushalt():
     aus = parse_fhh_seiten([tabelle, summen], [linien([100, 150]), linien([], [])])
     z = aus.zeilen[0]
     assert z.thh == 8
-    assert z.soll_neu == 275_900
+    assert z.planned_new == 275_900
 
 
 def test_ohne_entwurf_und_endsumme():
@@ -300,7 +300,7 @@ def test_doppelt_gedruckte_position_wird_eine():
     ])
     aus = parse_fhh_seiten([tabelle, summen], [linien([100, 150, 210]), linien([], [])])
     assert len(aus.zeilen) == 1
-    assert aus.zeilen[0].auszahlung == 500_000
+    assert aus.zeilen[0].outflow == 500_000
 
 
 def test_widerspruechliche_doppelzeile_reisst():

@@ -77,7 +77,7 @@ import {
 
 // saldo aus den ROHWERTEN gerundet, nicht aus den gerundeten Mio. — sonst
 // driftet er um 0,1 (693,9 − 728,2 = −34,3, tatsächlich sind es −34,2).
-type Punkt = { year: number; ein: number; aus: number; saldo: number };
+type Punkt = { year: number; ein: number; aus: number; balance: number };
 /** Dasselbe Jahr, aber aus dem Jahresabschluss: ordentliche Erträge (Posten
  *  12) und Aufwendungen (20), wie sie tatsächlich angefallen sind. */
 type IstPunkt = Punkt & { planArt: PlanArt | null };
@@ -133,16 +133,16 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   const breit = aussenBreite >= SCHWELLE_ZWEISPALTIG;
   const schmal = breite < SCHWELLE_SCHMAL;
   const fs = schmal
-    ? { achse: 13, year: 14, saldo: 12.5, legende: 13, marke: 12.5 }
-    : { achse: 11, year: 12, saldo: 11.5, legende: 12, marke: 12 };
+    ? { achse: 13, year: 14, balance: 12.5, legende: 13, marke: 12.5 }
+    : { achse: 11, year: 12, balance: 11.5, legende: 12, marke: 12 };
 
   const jahre = jahreSortiert(daten);
   const punkte: Punkt[] = jahre
     .map((year) => {
       const s = summe(daten.jahre[String(year)] ?? []);
-      const ein = mio(s?.ertraege), aus = mio(s?.aufwendungen);
-      const saldo = mio((s?.ertraege ?? 0) - (s?.aufwendungen ?? 0));
-      return ein != null && aus != null && saldo != null ? { year, ein, aus, saldo } : null;
+      const ein = mio(s?.revenues), aus = mio(s?.expenses);
+      const balance = mio((s?.revenues ?? 0) - (s?.expenses ?? 0));
+      return ein != null && aus != null && balance != null ? { year, ein, aus, balance } : null;
     })
     .filter((p): p is Punkt => p !== null);
 
@@ -169,12 +169,12 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
     const g = abschluss.filter((p) => p.year === year && p.thh_nr == null);
     const finde = (nr: number): ErgebnisPosten | undefined => g.find((p) => p.nr === nr);
     const e = finde(12), a = finde(20);
-    const ein = mio(e?.ergebnis), aus = mio(a?.ergebnis);
+    const ein = mio(e?.result), aus = mio(a?.result);
     if (ein == null || aus == null) continue;
-    const saldo = mio((e!.ergebnis as number) - (a!.ergebnis as number));
-    if (saldo == null) continue;
+    const balance = mio((e!.result as number) - (a!.result as number));
+    if (balance == null) continue;
     istNach.set(year, {
-      year, ein, aus, saldo,
+      year, ein, aus, balance,
       planArt: (a?.plan_art ?? e?.plan_art ?? null) as PlanArt | null,
     });
   }
@@ -240,7 +240,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
 
   const erster = punkte[0];
   const letzter = punkte[punkte.length - 1];
-  const groessteLuecke = punkte.reduce((best, p) => (p.saldo < best.saldo ? p : best), punkte[0]);
+  const groessteLuecke = punkte.reduce((best, p) => (p.balance < best.balance ? p : best), punkte[0]);
   const letzterIst = istPunkte.length ? istPunkte[istPunkte.length - 1] : null;
 
   // Ab welchem Jahr durchgängig ein Minus geplant ist — die Überschrift wird
@@ -248,7 +248,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   // still falsch (Hausregel: keine jahresabhängige Rechenaussage als Text).
   let seit: number | null = null;
   for (let i = punkte.length - 1; i >= 0; i--) {
-    if (punkte[i].saldo < 0) seit = punkte[i].year; else break;
+    if (punkte[i].balance < 0) seit = punkte[i].year; else break;
   }
   const titel = seit == null
     ? `Geplante Einnahmen und Ausgaben ${alleJahre[0]} bis ${alleJahre[alleJahre.length - 1]}`
@@ -264,7 +264,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   // kennen — und im Bild steht an derselben Stelle „DATEN FEHLEN"
   // (aufgefallen im Lückentest, 16.08.).
   const letztesPlus = seit == null ? null
-    : punkte.filter((p) => p.year < seit && p.saldo >= 0).pop() ?? null;
+    : punkte.filter((p) => p.year < seit && p.balance >= 0).pop() ?? null;
 
   const wachstum = (a: number, b: number) => (a > 0 ? Math.round((b / a - 1) * 100) : null);
   const wachsAus = wachstum(erster.aus, letzter.aus);
@@ -286,17 +286,17 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
     const werte: AbleseWert[] = [
       { label: "Erträge", wert: p ? deMio(p.ein) : "—", farbe: "var(--hh-ein-0)" },
       { label: "Aufwand", wert: p ? deMio(p.aus) : "—", farbe: "var(--hh-aus-0)" },
-      { label: "Plan-Saldo", wert: p ? vorzeichen(p.saldo) : "—", signal: !!p && p.saldo < 0 },
+      { label: "Plan-Saldo", wert: p ? vorzeichen(p.balance) : "—", signal: !!p && p.balance < 0 },
     ];
     if (istPunkte.length) {
-      werte.push({ label: "Ist-Saldo", wert: ist ? vorzeichen(ist.saldo) : "—" });
+      werte.push({ label: "Ist-Saldo", wert: ist ? vorzeichen(ist.balance) : "—" });
     }
     const vorlesen = p
       ? [
           `${year}: geplant ${deMio(p.ein)} Millionen Euro Einnahmen,`,
           `${deMio(p.aus)} Millionen Euro Ausgaben,`,
-          `Geplantes Ergebnis: ${alsSatz(p.saldo)}.`,
-          ist ? `Tatsächlich laut Jahresabschluss ${alsSatz(ist.saldo)}.` : "Noch kein Jahresabschluss.",
+          `Geplantes Ergebnis: ${alsSatz(p.balance)}.`,
+          ist ? `Tatsächlich laut Jahresabschluss ${alsSatz(ist.balance)}.` : "Noch kein Jahresabschluss.",
         ].join(" ")
       : `${year}: keine Daten.`;
     return { titel: String(year) + (bezugsJahre.has(year) ? "*" : ""), werte, vorlesen };
@@ -381,12 +381,12 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                   {/* Minus in Signal-Orange (= „hier ist die Differenz"), Plus
                       neutral. Grün stünde für „gut" — eine Bewertung, die im
                       Haushalts-Bereich nirgends vorkommt. */}
-                  <span className={`${rand} text-right ${(p?.saldo ?? 0) < 0 ? "text-signal" : ""}`}>
-                    {p ? vorzeichen(p.saldo) : "—"}
+                  <span className={`${rand} text-right ${(p?.balance ?? 0) < 0 ? "text-signal" : ""}`}>
+                    {p ? vorzeichen(p.balance) : "—"}
                   </span>
                   {istPunkte.length > 0 && (
                     <span className={`${rand} text-right ${ist ? "font-semibold" : "text-muted-foreground"}`}>
-                      {ist ? vorzeichen(ist.saldo) : "—"}
+                      {ist ? vorzeichen(ist.balance) : "—"}
                     </span>
                   )}
                 </div>
@@ -413,8 +413,8 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
           Jahresabschlüssen.{" "}
           {letzterIst ? (
             <>Für {letzterIst.year} sah der Plan{" "}
-            {alsSatz(punkte.find((p) => p.year === letzterIst.year)?.saldo ?? 0)} vor.
-            Der Jahresabschluss weist dagegen {alsSatz(letzterIst.saldo)} aus.</>
+            {alsSatz(punkte.find((p) => p.year === letzterIst.year)?.balance ?? 0)} vor.
+            Der Jahresabschluss weist dagegen {alsSatz(letzterIst.balance)} aus.</>
           ) : (
             <>Was am Jahresende tatsächlich herauskam, steht im Jahresabschluss.</>
           )}{" "}
@@ -456,16 +456,16 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
             {letztesPlus && (
               <>Bis {letztesPlus.year} sahen die Haushaltspläne einen Überschuss vor.{" "}</>
             )}
-            {groessteLuecke.saldo < 0 ? (
+            {groessteLuecke.balance < 0 ? (
               <>Die größte geplante Lücke zeigt {groessteLuecke.year}: Die Ausgaben liegen
-              <strong> {deMio(-groessteLuecke.saldo)}&#8239;Mio.&nbsp;€</strong> über den
+              <strong> {deMio(-groessteLuecke.balance)}&#8239;Mio.&nbsp;€</strong> über den
               Einnahmen<Beleg q="plan" />.</>
             ) : (
               <>In keinem Jahr der Reihe liegen die geplanten Ausgaben über den Einnahmen<Beleg q="plan" />.</>
             )}
             {letzterIst && (
               <> Der Jahresabschluss {letzterIst.year} weist tatsächlich
-              {" "}{alsSatz(letzterIst.saldo)} aus<Beleg q="jahresabschluss" />.</>
+              {" "}{alsSatz(letzterIst.balance)} aus<Beleg q="jahresabschluss" />.</>
             )}
           </p>
 
@@ -606,7 +606,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                   <text x={x(g.year) + (rechts ? 8 : -8)} y={(y(g.ein) + y(g.aus)) / 2 + fs.marke / 3}
                     textAnchor={rechts ? "start" : "end"} fontSize={fs.marke} fontWeight={700}
                     className="fill-signal stroke-card" {...halo}>
-                    {vorzeichen(g.saldo)}
+                    {vorzeichen(g.balance)}
                   </text>
                 );
               })()}
@@ -625,10 +625,10 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                       className={fehlt ? "fill-signal font-mono" : year === letzter.year ? "fill-foreground font-mono" : "fill-muted-foreground font-mono"}>
                       {year}{bezugsJahre.has(year) ? "*" : ""}
                     </text>
-                    <text x={x(year)} y={ySaldo} fontSize={fs.saldo}
-                      className={fehlt || (p?.saldo ?? 0) < 0 ? "fill-signal" : "fill-muted-foreground"}
+                    <text x={x(year)} y={ySaldo} fontSize={fs.balance}
+                      className={fehlt || (p?.balance ?? 0) < 0 ? "fill-signal" : "fill-muted-foreground"}
                       fontWeight={year === letzter.year ? 600 : 400}>
-                      {fehlt ? "?" : vorzeichen(p!.saldo)}
+                      {fehlt ? "?" : vorzeichen(p!.balance)}
                     </text>
                   </g>
                 );

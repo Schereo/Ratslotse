@@ -50,9 +50,9 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowUp, Search } from "lucide-react";
-import { betrag } from "@/lib/haushalt";
+import { amount } from "@/lib/haushalt";
 import {
-  ProgrammDaten, ProgrammZeile, anzahl, gesamtJahr, herkunftVon, suche,
+  ProgrammDaten, ProgrammZeile, count, gesamtJahr, herkunftVon, suche,
   teilhaushaltSumme, teilhaushalte, vorhaben,
 } from "@/lib/haushalt-investitionsprogramm";
 import { rampenText } from "@/components/grafik/kachelflaeche";
@@ -72,9 +72,9 @@ function Zeile({ zeile, skala, bereichName }: {
   /** Bei bereichsübergreifenden Trefferlisten: wo das Vorhaben liegt. */
   bereichName?: string;
 }) {
-  const b = betrag(zeile.gesamtsumme);
-  const breite = skala > 0 && zeile.gesamtsumme > 0
-    ? Math.max(0.6, (zeile.gesamtsumme / skala) * 100)
+  const b = amount(zeile.grand_total);
+  const breite = skala > 0 && zeile.grand_total > 0
+    ? Math.max(0.6, (zeile.grand_total / skala) * 100)
     : 0;
   return (
     <li className="flex flex-col gap-1 py-2">
@@ -94,7 +94,7 @@ function Zeile({ zeile, skala, bereichName }: {
           </span>
         </span>
       </div>
-      {zeile.gesamtsumme >= 0 ? (
+      {zeile.grand_total >= 0 ? (
         <span className="block h-2 w-full overflow-hidden rounded-sm bg-muted/60">
           <span
             className="block h-full rounded-sm"
@@ -111,7 +111,7 @@ function Zeile({ zeile, skala, bereichName }: {
   );
 }
 
-type Sortierung = "gesamtsumme" | "alpha";
+type Sortierung = "grand_total" | "alpha";
 
 export function Vorhaben({
   daten, year, gewaehlt, aufWaehlen, zurueckAnker, farbeVonThh, stufeVonThh,
@@ -144,7 +144,7 @@ export function Vorhaben({
   // den Anfang, danach gehört das Feld der Leserin.
   const params = useSearchParams();
   const [wort, setWort] = useState(() => params.get("vorhaben") ?? "");
-  const [sortierung, setSortierung] = useState<Sortierung>("gesamtsumme");
+  const [sortierung, setSortierung] = useState<Sortierung>("grand_total");
   // Der Explorer hat seinen eigenen Jahrgang-Filter (H4-06): Die beiden
   // Quellen der Seite reichen verschieden weit (Portal 2022–2025, Plan
   // 2019–2026) — wer 2019 sehen will, darf nicht am Jahr der Seite hängen.
@@ -193,7 +193,7 @@ export function Vorhaben({
     return quelle.map((z) => ({
       key: `${z.thh_nr}-${z.code}`,
       name: z.bezeichnung,
-      wert: z.gesamtsumme,
+      wert: z.grand_total,
       gruppe: zuName(z.thh_nr),
       zusatz: aktiv == null ? zuName(z.thh_nr) : undefined,
     }));
@@ -211,7 +211,7 @@ export function Vorhaben({
   // Einmal je Liste, nicht einmal je Zeile: Bei 565 Vorhaben wäre die
   // Berechnung im map() ein Quadrat.
   const massstab = zeigen.length
-    ? Math.max(...zeigen.map((z) => z.gesamtsumme), 0)
+    ? Math.max(...zeigen.map((z) => z.grand_total), 0)
     : 0;
 
   if (!bereiche.length) return null;
@@ -296,7 +296,7 @@ export function Vorhaben({
             <option value="">alle Teilhaushalte</option>
             {bereiche.map((b) => (
               <option key={b.thh_nr} value={b.thh_nr}>
-                {b.bezeichnung} ({anzahl(daten, effJahr, b.thh_nr)})
+                {b.bezeichnung} ({count(daten, effJahr, b.thh_nr)})
               </option>
             ))}
           </select>
@@ -308,7 +308,7 @@ export function Vorhaben({
             onChange={(e) => setSortierung(e.target.value as Sortierung)}
             className="rounded-lg border border-border bg-background px-2 py-1.5 text-[12px] text-foreground"
           >
-            <option value="gesamtsumme">Gesamtsumme</option>
+            <option value="grand_total">Gesamtsumme</option>
             <option value="alpha">A–Z</option>
           </select>
         </label>
@@ -351,7 +351,7 @@ export function Vorhaben({
         <p className="mt-3.5 text-[12px] text-muted-foreground">
           {liste.length} Vorhaben · das Programm weist für „{nameVon(aktiv)}“{" "}
           <span className="font-semibold tabular-nums text-foreground">
-            {betrag(summe.gesamtsumme).wert} {betrag(summe.gesamtsumme).einheit}
+            {amount(summe.grand_total).wert} {amount(summe.grand_total).einheit}
           </span>{" "}
           aus.<Beleg q="investitionsprogramm" />
         </p>

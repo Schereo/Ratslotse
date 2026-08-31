@@ -160,23 +160,23 @@ export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; yea
     let topfRoh = 0;
     for (const z of teile) {
       const kanon = bereichKanon(z.bereich);
-      const gesamt = mio(z.aufwendungen) ?? 0;
-      const eigenRoh = z.ertraege ?? 0;
-      const ergebnis = z.ergebnis ?? 0;
+      const gesamt = mio(z.expenses) ?? 0;
+      const eigenRoh = z.revenues ?? 0;
+      const result = z.result ?? 0;
       const basis: Zeile = {
         roh: z.bereich,
         name: kanon.name,
         klartext: kanon.klartext,
         gesamt,
-        stadt: mio(-ergebnis) ?? 0,
+        stadt: mio(-result) ?? 0,
         eigen: mio(eigenRoh) ?? 0,
       };
-      if (ergebnis < 0) {
-        bedarfRoh += -ergebnis;
+      if (result < 0) {
+        bedarfRoh += -result;
         traeger.push(basis);
       } else {
-        topfRoh += ergebnis;
-        ueberschuss.push({ ...basis, plus: mio(ergebnis) ?? 0 });
+        topfRoh += result;
+        ueberschuss.push({ ...basis, plus: mio(result) ?? 0 });
       }
     }
     return {

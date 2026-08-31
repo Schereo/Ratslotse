@@ -29,8 +29,8 @@ export type InvestitionsZeile = {
   /** 0 auf den beiden Summenzeilen — sie tragen keine Teilhaushaltsnummer. */
   thh_nr: number;
   bezeichnung: string;
-  einzahlungen: number;
-  auszahlungen: number;
+  inflows: number;
+  outflows: number;
   herkunft_id: number | null;
 };
 
@@ -62,7 +62,7 @@ export function teilhaushalte(
   if (!daten) return [];
   return daten.teilhaushalte
     .filter((z) => z.year === year)
-    .sort((a, b) => b.auszahlungen - a.auszahlungen);
+    .sort((a, b) => b.outflows - a.outflows);
 }
 
 export function gesamtJahr(
@@ -90,8 +90,8 @@ export function investitionsAnteil(
 ): number | null {
   const g = gesamtJahr(daten, year);
   const f = finanzhaushaltJahr(daten, year);
-  if (!g || !f || !f.auszahlungen) return null;
-  return (g.auszahlungen / f.auszahlungen) * 100;
+  if (!g || !f || !f.outflows) return null;
+  return (g.outflows / f.outflows) * 100;
 }
 
 /** Was nach Abzug der Einzahlungen übrig bleibt — die Nettobelastung.
@@ -101,7 +101,7 @@ export function investitionsAnteil(
  *  Differenz ist der Betrag, den die Stadt selbst aufbringen muss. */
 export function netto(zeile: InvestitionsZeile | null): number | null {
   if (!zeile) return null;
-  return zeile.auszahlungen - zeile.einzahlungen;
+  return zeile.outflows - zeile.inflows;
 }
 
 /** Die Zeitreihe der Gesamtinvestitionen, aufsteigend nach Jahr. */

@@ -116,7 +116,7 @@ export function ImportanceBadge({ score, minShow = 55, className }: {
 
 const IMPORTANCE_SIGNAL_LABEL: Record<keyof ImportanceBreakdown["signals"], string> = {
   geld: "Geldbetrag", umstritten: "Umstrittenheit",
-  verbindlich: "Verbindlichkeit & Ebene", aufwand: "Beratungsaufwand",
+  verbindlich: "Verbindlichkeit & Ebene", expense: "Beratungsaufwand",
 };
 
 /** Ausführliche Wichtigkeits-Anzeige auf der Beschluss-Seite: Score + welche

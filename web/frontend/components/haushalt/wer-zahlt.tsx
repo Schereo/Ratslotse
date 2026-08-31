@@ -49,7 +49,7 @@ import { Gesetz } from "@/components/haushalt/gesetz";
 import { GlossaryText } from "@/components/glossary-text";
 import type { GewerbesteuerstatistikZeile } from "@/lib/haushalt";
 
-type SteuerZeile = { year: number; art: string; betrag: number | null };
+type SteuerZeile = { year: number; art: string; amount: number | null };
 type Hebesatz = { year: number; hebesatz: number; vorheriger: number | null };
 
 /** Ab wann ein Jahressprung „groß" heißt. Die Schwelle ist gesetzt, nicht
@@ -60,8 +60,8 @@ const SPRUNG = 15;
 function reihe(zeilen: SteuerZeile[], art: string | null) {
   if (!art) return [];
   return zeilen
-    .filter((z) => z.art === art && z.betrag != null && z.betrag > 0)
-    .map((z) => ({ year: z.year, betrag: z.betrag as number }))
+    .filter((z) => z.art === art && z.amount != null && z.amount > 0)
+    .map((z) => ({ year: z.year, amount: z.amount as number }))
     .sort((a, b) => a.year - b.year);
 }
 
@@ -70,11 +70,11 @@ function reihe(zeilen: SteuerZeile[], art: string | null) {
  *  Nur unmittelbar aufeinanderfolgende Jahre: Läge im Datensatz eine Lücke,
  *  verglichen wir sonst über sie hinweg und schrieben einen Zweijahres-Sprung
  *  als Jahressprung. */
-function aenderungen(r: { year: number; betrag: number }[]) {
+function aenderungen(r: { year: number; amount: number }[]) {
   return r.slice(1)
-    .map((z, i) => ({ year: z.year, vorjahr: r[i].year,
-                      prozent: ((z.betrag - r[i].betrag) / r[i].betrag) * 100 }))
-    .filter((p) => p.year === p.vorjahr + 1);
+    .map((z, i) => ({ year: z.year, prior_year: r[i].year,
+                      prozent: ((z.amount - r[i].amount) / r[i].amount) * 100 }))
+    .filter((p) => p.year === p.prior_year + 1);
 }
 
 function deProzent(v: number, stellen = 1): string {
@@ -161,7 +161,7 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   // „im Schnitt".
   const von = Math.max(eigen[0]?.year ?? 0, andere[0]?.year ?? 0);
   const bis = Math.min(eigen.at(-1)?.year ?? 0, andere.at(-1)?.year ?? 0);
-  const imFenster = (r: { year: number; betrag: number }[]) =>
+  const imFenster = (r: { year: number; amount: number }[]) =>
     r.filter((z) => z.year >= von && z.year <= bis);
 
   const eigenAend = aenderungen(imFenster(eigen));
@@ -213,8 +213,8 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   // Firma — je zahlendem Fall, nicht je Fall: Wer die Betriebe ohne
   // Steuermessbetrag mitteilte, vergliche zwei Zahlen, in denen unterschiedlich
   // viele Nullen stecken.
-  const je = (betrag: number | null, faelle: number | null) =>
-    betrag != null && faelle ? betrag / faelle : null;
+  const je = (amount: number | null, faelle: number | null) =>
+    amount != null && faelle ? amount / faelle : null;
   const jeZerlegt = je(statistik?.zerlegung_messbetrag_eur ?? null,
                        statistik?.zerlegungen_positiv ?? null);
   const jeOertlich = je(statistik?.festsetzung_messbetrag_eur ?? null,

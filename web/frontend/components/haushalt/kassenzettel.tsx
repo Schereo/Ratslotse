@@ -90,7 +90,7 @@ function ruecklageLeerAb(
  *  den Grund anschreibt, statt die beiden Nachbarjahre zu verbinden. */
 function ruecklagenReihe(zeilen: RuecklageJahr[]): JahrPunkt[] {
   const sortiert = [...zeilen]
-    .filter((z) => Number.isFinite(z.stand_nach_ergebnis))
+    .filter((z) => Number.isFinite(z.state_after_result))
     .sort((a, b) => a.year - b.year);
   if (!sortiert.length) return [];
   const nachJahr = new Map(sortiert.map((z) => [z.year, z]));
@@ -98,7 +98,7 @@ function ruecklagenReihe(zeilen: RuecklageJahr[]): JahrPunkt[] {
   for (let year = sortiert[0].year; year <= sortiert[sortiert.length - 1].year; year += 1) {
     const zeile = nachJahr.get(year);
     aus.push(zeile
-      ? { year, wert: zeile.stand_nach_ergebnis / 1e6 }
+      ? { year, wert: zeile.state_after_result / 1e6 }
       : {
           year,
           fehlt: "Für dieses Jahr liegt in den eingelesenen Jahresabschlüssen "
@@ -124,7 +124,7 @@ function transferAnteil(daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre">, th
     .sort((a, b) => b - a);
   for (const year of jahre) {
     const wert = (nr: number) => posten.find(
-      (p) => p.year === year && p.thh_nr === thhNr && p.nr === nr)?.ergebnis ?? null;
+      (p) => p.year === year && p.thh_nr === thhNr && p.nr === nr)?.result ?? null;
     const transfer = wert(18);
     const gesamt = wert(20);
     if (transfer != null && gesamt != null && gesamt > 0) {
@@ -144,9 +144,9 @@ function transferAnteil(daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre">, th
  *  trägt die Seite ohnehin schon für die Anzeigetafel. */
 export function kassenzettelQuellen(daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre">, year: number): QuellenSchluessel[] {
   const g = summe(daten.jahre[String(year)] ?? []);
-  if (!g || g.aufwendungen == null) return [];
+  if (!g || g.expenses == null) return [];
   const q: QuellenSchluessel[] = ["einwohner"];
-  if (g.ertraege != null && g.ertraege < g.aufwendungen) q.push("ruecklage");
+  if (g.revenues != null && g.revenues < g.expenses) q.push("ruecklage");
   if (transferAnteil(daten, BEREICH_NACH_SCHLUESSEL.finanzen.thh)) {
     q.push("ergebnisrechnung_thh");
   }
@@ -212,30 +212,30 @@ export function Kassenzettel({ daten, year, einwohner, className }: {
   const zeilen = daten.jahre[String(year)] ?? [];
   const gesamt = summe(zeilen);
   const kopf = einwohner.einwohner;
-  if (!gesamt || gesamt.aufwendungen == null || kopf <= 0) return null;
+  if (!gesamt || gesamt.expenses == null || kopf <= 0) return null;
 
   const jeKopf = (euro: number) => Math.round(euro / kopf);
 
   const posten = bereiche(zeilen)
-    .filter((z) => z.aufwendungen != null && z.aufwendungen > 0)
+    .filter((z) => z.expenses != null && z.expenses > 0)
     .map((z) => ({
       roh: z.bereich,
       kanon: bereichKanon(z.bereich),
-      euro: z.aufwendungen as number,
-      wert: jeKopf(z.aufwendungen as number),
+      euro: z.expenses as number,
+      wert: jeKopf(z.expenses as number),
     }))
     .sort((a, b) => b.euro - a.euro);
 
-  const summeJeKopf = jeKopf(gesamt.aufwendungen);
-  const einJeKopf = gesamt.ertraege != null ? jeKopf(gesamt.ertraege) : null;
+  const summeJeKopf = jeKopf(gesamt.expenses);
+  const einJeKopf = gesamt.revenues != null ? jeKopf(gesamt.revenues) : null;
   // Aus Rohwerten, nicht aus den angezeigten Millionen — sonst 403 statt 402.
-  const saldoEuro = gesamt.ertraege != null ? gesamt.ertraege - gesamt.aufwendungen : null;
+  const saldoEuro = gesamt.revenues != null ? gesamt.revenues - gesamt.expenses : null;
   const fehltEuro = saldoEuro != null && saldoEuro < 0 ? -saldoEuro : null;
   const ueberEuro = saldoEuro != null && saldoEuro > 0 ? saldoEuro : null;
 
   const ruecklage = juengsteRuecklage(daten);
   const ruecklagenVerlauf = ruecklagenReihe(daten.ruecklage ?? []);
-  const ruecklageEuro = ruecklage?.stand_nach_ergebnis ?? null;
+  const ruecklageEuro = ruecklage?.state_after_result ?? null;
   const ruecklageJeKopf = ruecklageEuro != null ? jeKopf(ruecklageEuro) : null;
   const restJeKopf = fehltEuro != null && ruecklageEuro != null
     ? jeKopf(ruecklageEuro - fehltEuro) : null;
@@ -309,7 +309,7 @@ export function Kassenzettel({ daten, year, einwohner, className }: {
             </h2>
             <p className="mt-2.5 max-w-[58ch] text-[13.5px] leading-relaxed text-foreground/90 sm:text-[14.5px]">
               Die Stadt plant für {year} Aufwendungen von{" "}
-              {deMio(mio(gesamt.aufwendungen))}&#8239;Mio.&nbsp;€. Um diese Größenordnung
+              {deMio(mio(gesamt.expenses))}&#8239;Mio.&nbsp;€. Um diese Größenordnung
               einzuordnen, teilen wir die Summe durch die Einwohnerzahl. Das ergibt
               rechnerisch {de(summeJeKopf)}&nbsp;€ pro Einwohner*in
               {gross.length === 2 && (
@@ -327,7 +327,7 @@ export function Kassenzettel({ daten, year, einwohner, className }: {
               <Karte kicker="So wird gerechnet">
                 <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/90">
                   Geplante Aufwendungen {year}{" "}
-                  <span className="font-mono">{de(gesamt.aufwendungen)}&nbsp;€</span>
+                  <span className="font-mono">{de(gesamt.expenses)}&nbsp;€</span>
                   <Beleg q="plan" /> geteilt durch{" "}
                   <span className="font-mono">{de(kopf)}</span> Einwohner*innen
                   <Beleg q="einwohner" /> ={" "}

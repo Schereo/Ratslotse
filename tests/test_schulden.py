@@ -79,8 +79,8 @@ def gelesen():
     return schulden.lies(TABELLE, EINWOHNER)
 
 
-def _zeile(ergebnis, year):
-    return next(z for z in ergebnis["zeilen"] if z["year"] == year)
+def _zeile(result, year):
+    return next(z for z in result["zeilen"] if z["year"] == year)
 
 
 # --- Erkennung --------------------------------------------------------------
@@ -274,7 +274,7 @@ def _herkunft(probe="schulden_summenzeile"):
         art="stadt", probe=probe, url=schulden.TABELLE_URL,
         label="Statistisches Jahrbuch, Tabelle 1108",
         fundstelle="Kapitel 11, Tabelle 1108",
-        probe_ergebnis="Testlauf", stand="Schuldenstand zum 31.12.2025")
+        probe_result="Testlauf", stand="Schuldenstand zum 31.12.2025")
 
 
 def test_speichern_und_lesen(tmp_path, gelesen):

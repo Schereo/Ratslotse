@@ -14,10 +14,10 @@ import type { Herkunft } from "@/lib/herkunft";
 
 export type HaushaltZeile = {
   bereich: string;
-  ertraege: number | null;
-  aufwendungen: number | null;
-  ergebnis: number | null;
-  is_summe: 0 | 1;
+  revenues: number | null;
+  expenses: number | null;
+  result: number | null;
+  is_total: 0 | 1;
   source_url: string | null;
 };
 
@@ -37,16 +37,16 @@ export const PLAN_ART_LABEL: Record<PlanArt, string> = {
 
 /** Ein Posten der Ergebnisrechnung aus dem Jahresabschluss (#500):
  *  `plan` = die Bezugsgröße der Abweichung, `ansatz` = der ursprüngliche
- *  Haushaltsansatz, `ergebnis` = was es tatsächlich wurde. In den meisten
+ *  Haushaltsansatz, `result` = was es tatsächlich wurde. In den meisten
  *  Jahrgängen sind `plan` und `ansatz` derselbe Wert. */
 export type ErgebnisPosten = {
   year: number; nr: number; bezeichnung: string;
   /** null = Kernverwaltung gesamt, sonst der Teilhaushalt (1–13). */
   thh_nr: number | null; thh_name: string | null;
-  vorjahr: number | null; ansatz: number | null;
+  prior_year: number | null; ansatz: number | null;
   plan: number | null; plan_art: PlanArt | null;
-  ergebnis: number | null; deviation: number | null;
-  ist_summe: 0 | 1;
+  result: number | null; deviation: number | null;
+  is_total: 0 | 1;
   quelle_label: string | null; quelle_url: string | null;
 };
 
@@ -71,20 +71,20 @@ export type ErgebnishaushaltZeile = {
   art: "ansatz" | "finanzplanung";
   nr: number;
   bezeichnung: string;
-  betrag: number;
-  ist_summe: 0 | 1;
+  amount: number;
+  is_total: 0 | 1;
   herkunft_id: number | null;
 };
 
 /** Überschussrücklage nach einem abgeschlossenen Jahr. Die Bilanz weist den
  * schon umgebuchten Bestand und das jüngste Jahresergebnis getrennt aus;
- * `stand_nach_ergebnis` ist deren Addition und entspricht der Formulierung
+ * `state_after_result` ist deren Addition und entspricht der Formulierung
  * des Vorberichts „unter Berücksichtigung des Ergebnisses“. */
 export type RuecklageJahr = {
   year: number;
   ruecklage: number;
   jahresergebnis: number;
-  stand_nach_ergebnis: number;
+  state_after_result: number;
   herkunft_id: number | null;
 };
 
@@ -93,10 +93,10 @@ export type RuecklageJahr = {
  *  2021 (eine Einzahlungsart fiel weg), wodurch sich jede Nummer ab 08 um eins
  *  verschiebt — der Finanzmittelsaldo ist 2019 die Zeile 33 und 2024 die 32. */
 export type FinanzRolle =
-  | "summe_ein_verwaltung" | "summe_aus_verwaltung" | "saldo_verwaltung"
-  | "summe_ein_investition" | "summe_aus_investition" | "saldo_investition"
-  | "finanzmittel" | "saldo_finanzierung" | "finanzmittelveraenderung"
-  | "saldo_haushaltsunwirksam" | "anfangsbestand" | "endbestand";
+  | "total_in_operating" | "total_out_operating" | "balance_operating"
+  | "total_in_capital" | "total_out_capital" | "balance_capital"
+  | "finanzmittel" | "balance_financing" | "finanzmittelveraenderung"
+  | "balance_non_budgetary" | "anfangsbestand" | "endbestand";
 
 /** Eine Zeile der Finanzrechnung der Kernverwaltung (Abschnitt 4.1 desselben
  *  Jahresabschlusses): nicht was gebucht, sondern was **gezahlt** wurde.
@@ -106,7 +106,7 @@ export type FinanzRolle =
  *  Sie ist `null`, wo der Jahrgang die Spalte nicht führt.
  *
  *  Die Bestandszeilen (`anfangsbestand`, `endbestand`,
- *  `saldo_haushaltsunwirksam`) tragen **keinen** `plan`: Ein Kassenbestand
+ *  `balance_non_budgetary`) tragen **keinen** `plan`: Ein Kassenbestand
  *  wird nicht veranschlagt, und das Dokument lässt die Spalte dort leer. */
 export type FinanzZeile = {
   year: number;
@@ -114,11 +114,11 @@ export type FinanzZeile = {
   nr: number;
   rolle: FinanzRolle | null;
   bezeichnung: string;
-  vorjahr: number | null; ansatz: number | null;
+  prior_year: number | null; ansatz: number | null;
   plan: number | null; plan_art: PlanArt | null;
-  ergebnis: number | null; deviation: number | null;
+  result: number | null; deviation: number | null;
   ermaechtigung: number | null;
-  ist_summe: 0 | 1;
+  is_total: 0 | 1;
 };
 
 /** Warum ein Posten vom Plan abwich — Abschnitt 6.3.1 des Jahresabschlusses,
@@ -140,7 +140,7 @@ export type Pruefbericht = {
 };
 
 /** Produktebene aus den Teilhaushalts-Plänen (#500) — was einzelne Aufgaben
- *  kosten. `ergebnis` ist negativ = Zuschussbedarf.
+ *  kosten. `result` ist negativ = Zuschussbedarf.
  *
  *  Dazu der Steckbrief, den die Pläne zu jedem Produkt führen: was die Aufgabe
  *  umfasst, worauf sie beruht, wie viel Spielraum die Stadt bei ihr hat. Alle
@@ -151,7 +151,7 @@ export type Spielraum = "niedrig" | "mittel" | "hoch";
 export type Produkt = {
   year: number; produkt_nr: string; produkt_name: string;
   thh_nr: number | null; thh_name: string | null; amt: string | null;
-  ertraege: number | null; aufwendungen: number | null; ergebnis: number | null;
+  revenues: number | null; expenses: number | null; result: number | null;
   kurzbeschreibung?: string | null;
   /** Die Rechtsgrundlagen, im Wortlaut des Plans. */
   auftragsgrundlage?: string | null;
@@ -170,13 +170,13 @@ export type Produkt = {
 
 export type ProdukteAntwort = {
   year: number; produkte: Produkt[]; treffer?: number;
-  abdeckung_prozent: number | null; plan_aufwendungen: number | null;
+  abdeckung_prozent: number | null; plan_expenses: number | null;
   /** Alle Jahrgänge mit Produktebene — die Bezugsreihe der `jahre` je
    *  Produkt. */
   alle_jahre?: number[];
   /** Filterwerte mit Anzahl + wie viele Produkte welches Feld tragen. */
   facetten?: {
-    aemter: { amt: string; anzahl: number }[];
+    aemter: { amt: string; count: number }[];
     spielraum: Partial<Record<Spielraum, number>>;
     mit_feld: Record<string, number>;
   };
@@ -268,7 +268,7 @@ export type KennzahlFund = {
   alt_bericht: number;
   neu: number;
   neu_bericht: number;
-  differenz: number;
+  difference: number;
 };
 
 export type Kennzahlen = {
@@ -283,7 +283,7 @@ export type Kennzahlen = {
 
 export type HaushaltDaten = {
   jahre: Record<string, HaushaltZeile[]>;
-  steuern: { year: number; art: string; betrag: number | null }[];
+  steuern: { year: number; art: string; amount: number | null }[];
   steuerkraft: {
     year: number; messzahl: number | null; messzahl_je_ew: number | null;
     zuweisungen: number | null; zuweisungen_je_ew: number | null;
@@ -467,10 +467,10 @@ export type Nachbewilligung = {
   art: NachbewilligungsArt;
   kategorie: NachbewilligungsKategorie;
   /** In Euro. `null` bei `art === "schwelle"`. */
-  betrag: number | null;
+  amount: number | null;
   /** Aus welcher Stufe der Betrag stammt: dem Titel oder dem
    *  Beschlussvorschlag der Vorlage. */
-  betrag_quelle: "titel" | "beschlussvorschlag" | null;
+  amount_source: "titel" | "beschlussvorschlag" | null;
   beschlossen: 0 | 1;
   /** Hat das **Plenum** selbst abgestimmt? Die wörtliche Auskunft — taugt als
    *  Zeilenhinweis („im Fachausschuss beschlossen"), aber **nie** als Basis
@@ -497,25 +497,25 @@ export type NachbewilligungsKanal = {
   /** Der Wortlaut der Stadt („Gemäß Haushaltsvermerk durch den Fachdienst
    *  200"), nicht unsere Umschreibung. */
   label: string;
-  anzahl_konsumtiv: number;
-  betrag_konsumtiv: number;
-  anzahl_investiv: number;
-  betrag_investiv: number;
+  count_operating: number;
+  amount_operating: number;
+  count_capital: number;
+  amount_capital: number;
   herkunft_id: number | null;
 };
 
 /** Ein Haushaltsjahr aus Kapitel 3 — die Gesamtsicht, die das RIS nicht hat. */
 export type NachbewilligungsJahr = {
   year: number;
-  summe_konsumtiv: number;
-  summe_investiv: number;
+  total_operating: number;
+  total_capital: number;
   /** Was der Fließtext des Kapitels als Gesamtsumme nennt. Steht getrennt von
    *  der Summenzeile, **weil beide 2022 auseinanderfallen** (288.000 €). Wer
    *  nur eine der Zahlen behielte, hätte den Widerspruch weggeräumt. */
   text_gesamt: number | null;
   /** Verpflichtungsermächtigungen des Jahres — der Bericht zählt sie
    *  ausdrücklich getrennt, und wir addieren sie nirgends dazu. */
-  verpflichtungen_betrag: number | null;
+  commitments_amount: number | null;
   probe_ok: 0 | 1;
   /** Im Klartext, was die Tabellenprobe gefunden hat. Steht auf der Seite,
    *  nicht nur im Log. */
@@ -546,7 +546,7 @@ export type Spenden = {
 
 export type SpendenJahr = {
   year: number;
-  betrag: number;
+  amount: number;
   vorlagen: number;
   rat: number;
   verwaltungsausschuss: number;
@@ -556,7 +556,7 @@ export type SpendenVorlage = {
   template_number: string;
   year: number;
   sitzung: string;
-  betrag: number;
+  amount: number;
   gremium?: string | null;
   /** „identisch" oder „zerlegung" — wie die Zweitstelle den Betrag belegt. */
   zweitstelle: string;
@@ -664,7 +664,7 @@ export type Regelwerk = "kameral" | "doppik";
 
 /** Welche der beiden Veröffentlichungen den Betrag geliefert hat. Nur dort
  *  interessant, wo sie sich widersprechen — dann steht die unterlegene Zahl
- *  als `konflikt_betrag` daneben. */
+ *  als `conflict_amount` daneben. */
 export type Ausgabenquelle = "pdf" | "csv";
 
 /** Wie eine Quelle auf der Seite heißt. „PDF" und „CSV" sind Dateiformate und
@@ -679,7 +679,7 @@ export const AUSGABEN_QUELLE_LABEL: Record<Ausgabenquelle, string> = {
   csv: "der Open-Data-Datensatz",
 };
 
-/** Ein Jahrgang der langen Reihe. `betrag` in Euro.
+/** Ein Jahrgang der langen Reihe. `amount` in Euro.
  *
  *  `proben` sind die Rechenproben, die dieser Jahrgang bestanden hat — sie
  *  sind gestaffelt: Die dreißig ältesten Jahre hängen allein an der
@@ -694,12 +694,12 @@ export const AUSGABEN_QUELLE_LABEL: Record<Ausgabenquelle, string> = {
 export type AusgabenreiheJahr = {
   year: number;
   regelwerk: Regelwerk;
-  betrag: number;
+  amount: number;
   quelle: Ausgabenquelle;
   proben: string[];
   /** Was die andere Veröffentlichung für dieses Jahr nennt — nur gefüllt, wo
    *  die beiden sich widersprechen. */
-  konflikt_betrag: number | null;
+  conflict_amount: number | null;
   konflikt_quelle: Ausgabenquelle | null;
   revidiert: 0 | 1;
   herkunft_id: number | null;
@@ -736,9 +736,9 @@ export function planGegenIst(
     .map((year) => {
       const teile = [21, 24].map((nr) =>
         posten.find((p) => p.year === year && p.nr === nr && p.thh_nr == null));
-      if (teile.some((t) => !t || t.plan == null || t.ergebnis == null)) return null;
+      if (teile.some((t) => !t || t.plan == null || t.result == null)) return null;
       const plan = teile.reduce((s, t) => s + (t!.plan as number), 0) / 1e6;
-      const ist = teile.reduce((s, t) => s + (t!.ergebnis as number), 0) / 1e6;
+      const ist = teile.reduce((s, t) => s + (t!.result as number), 0) / 1e6;
       return {
         year,
         plan: Math.round(plan * 10) / 10,
@@ -766,7 +766,7 @@ export function kassensicht(
   // Ohne die drei Salden ist die Aussage nicht vollständig — dann lieber gar
   // keine Kassensicht als eine halbe (die Kaskade lässt das gar nicht zu,
   // aber der Lesepfad soll sich nicht darauf verlassen).
-  return aus.saldo_verwaltung && aus.saldo_investition && aus.finanzmittel
+  return aus.balance_operating && aus.balance_capital && aus.finanzmittel
     ? aus : null;
 }
 
@@ -858,7 +858,7 @@ export type FlussDaten = {
   /** Gemeinsame Achse beider Seiten in Euro — die größere der beiden Summen. */
   skala: number;
   /** Erträge − Aufwendungen in Euro. */
-  saldo: number;
+  balance: number;
   /** Summenprobe (Geometrie): Σ der gezeichneten Bänder je Seite. */
   summeLinks: number;
   summeRechts: number;
@@ -929,13 +929,13 @@ export function flussbild(
   daten: HaushaltAuswahl<"ergebnisrechnung">, year: number, stand: "plan" | "ist",
 ): FlussDaten | null {
   const zahl = (p: ErgebnisPosten | undefined) =>
-    p ? (stand === "ist" ? p.ergebnis : p.ansatz) : null;
+    p ? (stand === "ist" ? p.result : p.ansatz) : null;
   const rows = (daten.ergebnisrechnung ?? []).filter((p) => p.year === year);
   const gesamt = rows.filter((p) => p.thh_nr == null);
 
-  const ertraege = zahl(gesamt.find((p) => p.nr === 12));
-  const aufwendungen = zahl(gesamt.find((p) => p.nr === 20));
-  if (!ertraege || !aufwendungen || ertraege <= 0 || aufwendungen <= 0) return null;
+  const revenues = zahl(gesamt.find((p) => p.nr === 12));
+  const expenses = zahl(gesamt.find((p) => p.nr === 20));
+  if (!revenues || !expenses || revenues <= 0 || expenses <= 0) return null;
 
   const arten: FlussBand[] = gesamt
     .filter((p) => p.nr >= 1 && p.nr <= 11 && (zahl(p) ?? 0) > 0)
@@ -961,14 +961,14 @@ export function flussbild(
   // Summenzeile übersteigen (fehlgelesene Zeile): Dann ragt nichts über den
   // Knoten hinaus, und `aufgeschluesselt` schaltet das Bild ohnehin ab.
   const skala = Math.max(
-    ertraege, aufwendungen,
+    revenues, expenses,
     arten.reduce((s, b) => s + b.wert, 0),
     bereiche.reduce((s, b) => s + b.wert, 0),
   );
 
-  const herkunft = flussSeite(arten, ertraege, skala,
+  const herkunft = flussSeite(arten, revenues, skala,
     "im Abschluss nicht aufgeschlüsselt", "aus dem Ersparten");
-  const verwendung = flussSeite(bereiche, aufwendungen, skala,
+  const verwendung = flussSeite(bereiche, expenses, skala,
     "im Abschluss nicht aufgeschlüsselt", "bleibt übrig");
 
   const summeLinks = herkunft.baender.reduce((s, b) => s + b.wert, 0);
@@ -976,7 +976,7 @@ export function flussbild(
   const luecke = (s: FlussSeite) => Math.abs(s.gesamt - s.teile);
   return {
     year, stand, herkunft, verwendung, skala,
-    saldo: ertraege - aufwendungen,
+    balance: revenues - expenses,
     summeLinks, summeRechts,
     stimmt: Math.abs(summeLinks - summeRechts) <= FLUSS_TOLERANZ
       && Math.abs(summeLinks - skala) <= FLUSS_TOLERANZ,
@@ -988,7 +988,7 @@ export function flussbild(
 /** Ein Wirtschaftsplan eines Eigenbetriebs oder einer städtischen
  *  Gesellschaft, wie der Rat ihn beschließt.
  *
- *  **`ertraege` und `aufwendungen` sind oft `null`, und das ist die Auskunft.**
+ *  **`revenues` und `expenses` sind oft `null`, und das ist die Auskunft.**
  *  Nur zwei der sechs Betriebe nennen sie in prüfbarer Form — der Eigenbetrieb
  *  Gebäudewirtschaft im Beschlusstext, der Abfallwirtschaftsbetrieb im
  *  Erfolgsplan seiner Anlage. Bei den übrigen ist die einzige doppelt belegte
@@ -1007,7 +1007,7 @@ export type GebuehrenZeile = {
   /** Was der Bereich im Jahr insgesamt kostet. */
   kostenkalkulation: number;
   /** Alles, was davon abgeht — negativ. */
-  abzuege: number;
+  deductions: number;
   /** Was die Gebührenzahler tragen. */
   zu_deckende_kosten: number;
   bezugsmenge: number | null;
@@ -1031,10 +1031,10 @@ export type GebuehrensatzZeile = {
   schluessel: string;
   bereich: string;
   bezeichnung: string;
-  betrag: number;
+  amount: number;
   einheit: string;
-  vorjahr: number | null;
-  veraenderung_prozent: number | null;
+  prior_year: number | null;
+  change_pct: number | null;
   template_number: string | null;
   proben: string;
   herkunft_id: number | null;
@@ -1054,20 +1054,20 @@ export type HaushaltssatzungZeile = {
   /** `entwurf` | `unbekannt` — nie `beschlossen`, s. o. */
   fassung: string;
 
-  ordentliche_ertraege: number;
-  ordentliche_aufwendungen: number;
-  ao_ertraege: number;
-  ao_aufwendungen: number;
+  ordinary_revenues: number;
+  ordinary_expenses: number;
+  extraordinary_revenues: number;
+  extraordinary_expenses: number;
 
-  ein_laufend: number;
-  aus_laufend: number;
-  ein_invest: number;
+  in_operating: number;
+  out_operating: number;
+  in_capital: number;
   aus_invest: number;
-  ein_finanz: number;
-  aus_finanz: number;
+  in_financing: number;
+  out_financing: number;
   /** Die „Nachrichtlich"-Zeilen der Satzung — nachgerechnet, nicht übernommen. */
-  ein_gesamt: number;
-  aus_gesamt: number;
+  in_total: number;
+  out_total: number;
 
   /** § 2. `0` heißt „nicht veranschlagt" und ist eine Aussage; `null` hieße
    *  „die Satzung sagt dazu nichts". */
@@ -1097,11 +1097,11 @@ export type WirtschaftsplanZeile = {
   betrieb_name: string;
   year: number;
   template_number: string;
-  ertraege: number | null;
-  aufwendungen: number | null;
+  revenues: number | null;
+  expenses: number | null;
   steuern: number | null;
   /** Als einziges immer da. */
-  ergebnis: number;
+  result: number;
   vermoegensplan: number | null;
   /** Die Investitionen IM Vermögensplan — ein Posten, nicht die Summe.
    *
@@ -1125,7 +1125,7 @@ export type EinnahmeartenPlan = {
    *  Jahrgang wie `year`, aber die Angabe gehört an die Anzeige. */
   planJahrgang: number;
   /** Ertragsarten (Posten 01–11), absteigend nach Betrag, in EURO. */
-  arten: { nr: number; label: string; lang: string; betrag: number }[];
+  arten: { nr: number; label: string; lang: string; amount: number }[];
   /** Die ausgewiesene Summenzeile (Posten 12) in Euro. */
   gesamt: number;
   /** Summe der Einzelposten — muss `gesamt` treffen, sonst wird nichts
@@ -1140,7 +1140,7 @@ export type EinnahmeartenPlan = {
    *  liegen sie 24,3 Mio. € auseinander. Wer beide auf einer Seite zeigt, muss
    *  den Abstand benennen — sonst steht dort ein Widerspruch, den sich der
    *  Leser selbst erklären soll. */
-  tafel: { ertraege: number; abstand: number } | null;
+  tafel: { revenues: number; abstand: number } | null;
 };
 
 /** Woher das Geld eines **Planjahres** kommen soll — die eine Seite, die es
@@ -1167,23 +1167,23 @@ export function einnahmearten(
   if (!zeilen.length) return null;
 
   const arten = zeilen
-    .filter((z) => z.nr >= 1 && z.nr <= 11 && z.betrag > 0)
+    .filter((z) => z.nr >= 1 && z.nr <= 11 && z.amount > 0)
     .map((z) => ({
       nr: z.nr,
       label: ERTRAGSART_KURZ[z.nr] ?? z.bezeichnung,
       lang: z.bezeichnung,
-      betrag: z.betrag,
+      amount: z.amount,
     }))
-    .sort((a, b) => b.betrag - a.betrag);
-  const gesamt = zeilen.find((z) => z.nr === 12)?.betrag ?? 0;
+    .sort((a, b) => b.amount - a.amount);
+  const gesamt = zeilen.find((z) => z.nr === 12)?.amount ?? 0;
   if (!arten.length || gesamt <= 0) return null;
 
-  const teile = arten.reduce((s, a) => s + a.betrag, 0);
+  const teile = arten.reduce((s, a) => s + a.amount, 0);
   // Dieselbe Toleranz wie das Flussbild (0,05 Mio. €): Was die ausgewiesene
   // Summe nicht trifft, ist keine Aufschlüsselung, sondern eine Auswahl.
   if (Math.abs(gesamt - teile) > FLUSS_TOLERANZ) return null;
 
-  const tafelErtraege = summe(daten.jahre?.[String(year)] ?? [])?.ertraege ?? null;
+  const tafelErtraege = summe(daten.jahre?.[String(year)] ?? [])?.revenues ?? null;
   return {
     year,
     planJahrgang: zeilen[0].plan_jahrgang,
@@ -1191,7 +1191,7 @@ export function einnahmearten(
     gesamt,
     teile,
     tafel: tafelErtraege == null
-      ? null : { ertraege: tafelErtraege, abstand: tafelErtraege - gesamt },
+      ? null : { revenues: tafelErtraege, abstand: tafelErtraege - gesamt },
   };
 }
 
@@ -1237,11 +1237,11 @@ export function naechstesProdukt(
 ): Produkt | null {
   if (mioBetrag < 0.2) return null;
   const passend = produkte.filter((p) =>
-    p.ergebnis != null && p.ergebnis < 0 && (!thhName || p.thh_name === thhName));
+    p.result != null && p.result < 0 && (!thhName || p.thh_name === thhName));
   if (!passend.length) return null;
   return passend.reduce((best, p) =>
-    Math.abs(-(p.ergebnis as number) / 1e6 - mioBetrag)
-      < Math.abs(-(best.ergebnis as number) / 1e6 - mioBetrag) ? p : best);
+    Math.abs(-(p.result as number) / 1e6 - mioBetrag)
+      < Math.abs(-(best.result as number) / 1e6 - mioBetrag) ? p : best);
 }
 
 /** Jüngster geprüfter Stand der verfügbaren Überschussrücklage. */
@@ -1249,7 +1249,7 @@ export function juengsteRuecklage(
   daten: HaushaltAuswahl<"ruecklage">,
 ): RuecklageJahr | null {
   return [...(daten.ruecklage ?? [])]
-    .filter((z) => Number.isFinite(z.stand_nach_ergebnis))
+    .filter((z) => Number.isFinite(z.state_after_result))
     .sort((a, b) => a.year - b.year)
     .at(-1) ?? null;
 }
@@ -1272,7 +1272,7 @@ export function deMio(v: number | null | undefined): string {
  *  Mio. anzugeben macht aus dem halben Bestand „0,0 Mio. €" — eine Zahl, die
  *  nichts mehr sagt, obwohl wir sie genau kennen. Auf den Bereichs- und
  *  Übersichtsseiten bleibt `deMio` richtig: dort ist Mio. die Hausnummer. */
-export function betrag(euro: number | null | undefined): { wert: string; einheit: string } {
+export function amount(euro: number | null | undefined): { wert: string; einheit: string } {
   if (euro == null) return { wert: "—", einheit: "" };
   const abs = Math.abs(euro);
   if (abs >= 1_000_000) return { wert: deMio(euro / 1e6), einheit: "Mio. €" };
@@ -1298,7 +1298,7 @@ export function fehlendeJahre(vorhanden: number[]): number[] {
 }
 
 export function summe(zeilen: HaushaltZeile[]): HaushaltZeile | undefined {
-  return zeilen.find((z) => z.is_summe === 1);
+  return zeilen.find((z) => z.is_total === 1);
 }
 
 /** Die lange Ausgabenreihe, sortiert und nur mit den Jahren, die auch einen
@@ -1318,7 +1318,7 @@ export function ausgabenreihe(daten: HaushaltAuswahl<"ausgabenreihe">): Ausgaben
  *  Kein Nebenschauplatz, sondern Inhalt: Wo zwei amtliche Quellen für dasselbe
  *  Jahr zwei Beträge nennen, gehört das auf die Seite — mit beiden Zahlen. */
 export function ausgabenKonflikte(daten: HaushaltAuswahl<"ausgabenreihe">): AusgabenreiheJahr[] {
-  return ausgabenreihe(daten).filter((z) => z.konflikt_betrag != null);
+  return ausgabenreihe(daten).filter((z) => z.conflict_amount != null);
 }
 
 /** Ein Jahr der Rats-Serie: was der Rat nachbewilligt hat, und was daneben
@@ -1359,10 +1359,10 @@ export function nachbewilligungsJahre(
       if (!n.beschlossen) continue;
       const e = hol(n.year);
       e.verpflichtungen += 1;
-      e.verpflichtungenBetrag += n.betrag ?? 0;
-    } else if (n.beschlossen && n.betrag != null) {
+      e.verpflichtungenBetrag += n.amount ?? 0;
+    } else if (n.beschlossen && n.amount != null) {
       const e = hol(n.year);
-      e.summe += n.betrag;
+      e.summe += n.amount;
       e.faelle += 1;
     }
   }
@@ -1377,8 +1377,8 @@ export function nachbewilligungenFuerJahr(
 ): Nachbewilligung[] {
   return (daten.nachbewilligungen?.serie ?? [])
     .filter((n) => n.year === year && n.art === "bewilligung"
-      && n.beschlossen === 1 && n.betrag != null)
-    .sort((a, b) => (b.betrag ?? 0) - (a.betrag ?? 0));
+      && n.beschlossen === 1 && n.amount != null)
+    .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
 }
 
 /** Wie viel Prozent der Nachbewilligungen eines Jahres der Rat selbst
@@ -1390,24 +1390,24 @@ export function nachbewilligungenFuerJahr(
  *  Dokument mit seiner eigenen Rechnung geradesteht. Wo beide auseinander-
  *  fallen (2022), sagt `probe_text` es an. */
 export function ratsAnteil(j: NachbewilligungsJahr): number | null {
-  const gesamt = j.summe_konsumtiv + j.summe_investiv;
+  const gesamt = j.total_operating + j.total_capital;
   const rat = j.kanaele.find((k) => k.kanal === "rat");
   if (!gesamt || !rat) return null;
-  return ((rat.betrag_konsumtiv + rat.betrag_investiv) / gesamt) * 100;
+  return ((rat.amount_operating + rat.amount_capital) / gesamt) * 100;
 }
 
 /** Gesamtsumme eines Kapitel-3-Jahrgangs (Summenzeile beider Spalten). */
 export function nachbewilligungGesamt(j: NachbewilligungsJahr): number {
-  return j.summe_konsumtiv + j.summe_investiv;
+  return j.total_operating + j.total_capital;
 }
 
 /** Ein Kanal quer über beide Spalten. */
 export function kanalBetrag(k: NachbewilligungsKanal): number {
-  return k.betrag_konsumtiv + k.betrag_investiv;
+  return k.amount_operating + k.amount_capital;
 }
 
 export function kanalAnzahl(k: NachbewilligungsKanal): number {
-  return k.anzahl_konsumtiv + k.anzahl_investiv;
+  return k.count_operating + k.count_capital;
 }
 
 /** Die Spendenjahre, die **vollständig** sind — also alle bis auf das
@@ -1434,26 +1434,26 @@ export function spendenLaufend(daten: HaushaltAuswahl<"spenden">): SpendenJahr |
  *  gleich viele Vorlagen, aber die Schwelle von 2.000 Euro sorgt dafür, dass
  *  fast das ganze Geld über den Rat läuft. */
 export function spendenGremien(daten: HaushaltAuswahl<"spenden">) {
-  const leer = { vorlagen: 0, betrag: 0 };
+  const leer = { vorlagen: 0, amount: 0 };
   const aus = { Rat: { ...leer }, Verwaltungsausschuss: { ...leer } };
   for (const v of daten.spenden?.vorlagen ?? []) {
     const k = v.gremium === "Rat" ? "Rat"
       : v.gremium === "Verwaltungsausschuss" ? "Verwaltungsausschuss" : null;
     if (!k) continue;
     aus[k].vorlagen += 1;
-    aus[k].betrag += v.betrag;
+    aus[k].amount += v.amount;
   }
   return aus;
 }
 
 export function bereiche(zeilen: HaushaltZeile[]): HaushaltZeile[] {
-  return zeilen.filter((z) => z.is_summe !== 1);
+  return zeilen.filter((z) => z.is_total !== 1);
 }
 
 /** Kostendeckungsgrad in Prozent (eigene Erträge / Aufwendungen), 0–100. */
 export function deckung(z: HaushaltZeile): number | null {
-  if (!z.aufwendungen || z.aufwendungen <= 0 || z.ertraege == null) return null;
-  return Math.round((z.ertraege / z.aufwendungen) * 100);
+  if (!z.expenses || z.expenses <= 0 || z.revenues == null) return null;
+  return Math.round((z.revenues / z.expenses) * 100);
 }
 
 /** URL-Slug eines Bereichsnamens („Jugend und Familie" → jugend-und-familie). */

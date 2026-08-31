@@ -67,7 +67,7 @@ export type HantelZeile = {
   einordnung: ReactNode | null;
 };
 
-export type HantelMassstab = "prozent" | "betrag";
+export type HantelMassstab = "prozent" | "amount";
 export type HantelSortierung = "deviation" | "alpha";
 
 /** Der Satz, der die Nicht-Wertung ausschreibt, wenn die Zeilen AUSGABEN sind.

@@ -41,7 +41,7 @@ export type ProgrammZeile = {
   bezeichnung: string;
   /** Gesamtinvestitionssumme — die Kosten über alle Jahre, nicht die
    *  Jahresrate. Die Jahresaufteilung liegt nicht vor. */
-  gesamtsumme: number;
+  grand_total: number;
   /** Die Namen der Sachkonto-Detailzeilen, „ · “-getrennt — sie sagen oft,
    *  was hinter einem generischen Namen steckt („Eig.kap. Zusch.Stadion
    *  Oldb GmbH & Co KG“). `null` bei Maßnahmen ohne Detailzeilen und in
@@ -78,7 +78,7 @@ export function teilhaushalte(
   if (!daten) return [];
   return daten.teilhaushalte
     .filter((z) => z.year === year)
-    .sort((a, b) => b.gesamtsumme - a.gesamtsumme);
+    .sort((a, b) => b.grand_total - a.grand_total);
 }
 
 export function gesamtJahr(
@@ -101,7 +101,7 @@ export function vorhaben(
   if (!daten) return [];
   return daten.massnahmen
     .filter((z) => z.year === year && z.thh_nr === thhNr)
-    .sort((a, b) => b.gesamtsumme - a.gesamtsumme);
+    .sort((a, b) => b.grand_total - a.grand_total);
 }
 
 /** Die Gesamtsumme, die das Dokument für einen Teilhaushalt ausweist. */
@@ -136,11 +136,11 @@ export function suche(
     .filter((z) => z.year === year
       && (z.bezeichnung.toLowerCase().includes(w)
           || (z.code ?? "").toLowerCase().includes(w)))
-    .sort((a, b) => b.gesamtsumme - a.gesamtsumme);
+    .sort((a, b) => b.grand_total - a.grand_total);
 }
 
 /** Wie viele Vorhaben ein Teilhaushalt führt — 0, wenn der Jahrgang fehlt. */
-export function anzahl(
+export function count(
   daten: ProgrammDaten | null,
   year: number,
   thhNr: number,

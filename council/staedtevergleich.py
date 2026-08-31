@@ -326,7 +326,7 @@ class KfaJahrgang:
     year: int
     #: Das mitgelieferte Vorjahr. Es ist die Rechenprobe: Es muss die
     #: Hauptspalte des Vorjahrgangs wiederholen.
-    vorjahr: int
+    prior_year: int
     stand: str | None
     #: Schlüssel → {stadt, einwohner, messzahl_teur, vorjahr_messzahl_teur}
     staedte: dict[str, dict] = field(default_factory=dict)
@@ -364,7 +364,7 @@ def lies_kfa(pfad: str) -> KfaJahrgang:
             if (m := re.search(r"Stand:\s*([\d.]+)", str(zelle or ""))):
                 stand = m.group(1)
 
-    jahrgang = KfaJahrgang(year=j_jahr, vorjahr=j_vor, stand=stand)
+    jahrgang = KfaJahrgang(year=j_jahr, prior_year=j_vor, stand=stand)
     for zeile in zeilen[kopf_idx + 1:]:
         if not zeile:
             continue
@@ -378,7 +378,7 @@ def lies_kfa(pfad: str) -> KfaJahrgang:
             "stadt": " ".join(str(zeile[c_name] or "").split()),
             "einwohner": _zahl(zeile[c_ew]) if c_ew < len(zeile) else None,
             "messzahl_teur": messzahl,
-            "vorjahr_messzahl_teur": _zahl(zeile[c_vor]) if c_vor < len(zeile) else None,
+            "prior_year_tax_index_keur": _zahl(zeile[c_vor]) if c_vor < len(zeile) else None,
         }
     return jahrgang
 
@@ -394,22 +394,22 @@ def probe_ueberlappung(alt: KfaJahrgang, neu: KfaJahrgang) -> dict:
 
     Geprüft wird über **alle** Gemeinden, nicht nur über die acht Städte.
     """
-    if neu.vorjahr != alt.year:
+    if neu.prior_year != alt.year:
         raise ValueError(
             f"Die Jahrgänge greifen nicht ineinander: {alt.year} und "
-            f"{neu.year} (Vorjahresspalte {neu.vorjahr}).")
+            f"{neu.year} (Vorjahresspalte {neu.prior_year}).")
     gemeinsam = sorted(set(alt.staedte) & set(neu.staedte))
     abweichungen = []
     for key in gemeinsam:
         a = alt.staedte[key]["messzahl_teur"]
-        b = neu.staedte[key]["vorjahr_messzahl_teur"]
+        b = neu.staedte[key]["prior_year_tax_index_keur"]
         if b is None or abs(a - b) > 0.5:
             abweichungen.append({"schluessel": key,
                                  "stadt": alt.staedte[key]["stadt"],
                                  "alt": a, "neu": b})
     return {"geprueft": len(gemeinsam), "abweichungen": abweichungen,
             "ok": not abweichungen,
-            "ergebnis": (f"{len(gemeinsam) - len(abweichungen)} von "
+            "result": (f"{len(gemeinsam) - len(abweichungen)} von "
                          f"{len(gemeinsam)} Gemeinden identisch")}
 
 
@@ -603,7 +603,7 @@ def probe_hebesatz(eintrag: dict) -> dict:
 
     ok = bool(ergebnisse) and all(e["ok"] for e in ergebnisse)
     return {"ok": ok, "teilproben": ergebnisse,
-            "ergebnis": f"größte Abweichung {schlimmster:.1f} Tsd. Euro"}
+            "result": f"größte Abweichung {schlimmster:.1f} Tsd. Euro"}
 
 
 def probe_dreijahresmittel(eintrag: dict) -> dict:
@@ -622,16 +622,16 @@ def probe_dreijahresmittel(eintrag: dict) -> dict:
     jahre = eintrag.get("je_jahr") or {}
     mittel, ew = eintrag.get("mittel_teur"), eintrag.get("einwohner_schnitt")
     if len(jahre) < 3 or mittel is None:
-        return {"ok": False, "ergebnis": "kein vollständiger Dreijahresblock"}
+        return {"ok": False, "result": "kein vollständiger Dreijahresblock"}
     rechnung = sum(j["teur"] for j in jahre.values()) / len(jahre)
     # Das Mittel dritteln erzeugt Rundungsreste von bis zu 2/3 Tsd. Euro.
-    betrag_ok = abs(rechnung - mittel) <= 1.0
+    amount_ok = abs(rechnung - mittel) <= 1.0
     je_ew_ok, je_ew_abw = True, 0.0
     if ew and eintrag.get("mittel_je_ew") is not None:
         je_ew_abw = abs(rechnung * 1000 / ew - eintrag["mittel_je_ew"])
         je_ew_ok = je_ew_abw <= 0.05
-    return {"ok": betrag_ok and je_ew_ok,
-            "ergebnis": (f"Mittel {rechnung:.0f} gegen ausgewiesene {mittel:.0f} "
+    return {"ok": amount_ok and je_ew_ok,
+            "result": (f"Mittel {rechnung:.0f} gegen ausgewiesene {mittel:.0f} "
                          f"Tsd. Euro, je Einwohner {je_ew_abw:.3f} Euro Abstand")}
 
 
@@ -678,7 +678,7 @@ def zeilen_realsteuern(jahrgang: Realsteuerjahrgang) -> tuple[list[dict], list[d
         if not probe["ok"]:
             verworfen.append({"schluessel": key, "stadt": KREISFREIE_STAEDTE[key],
                               "reihe": "realsteuern", "grund": "Hebesatzprobe",
-                              "ergebnis": probe["ergebnis"]})
+                              "result": probe["result"]})
             continue
         gemeinsam = {"reihe": "realsteuern", "year": jahrgang.year,
                      "schluessel": key, "stadt": KREISFREIE_STAEDTE[key]}
@@ -695,7 +695,7 @@ def zeilen_realsteuern(jahrgang: Realsteuerjahrgang) -> tuple[list[dict], list[d
         if not probe["ok"]:
             verworfen.append({"schluessel": key, "stadt": KREISFREIE_STAEDTE[key],
                               "reihe": "realsteuern", "grund": "Dreijahresmittel",
-                              "ergebnis": probe["ergebnis"]})
+                              "result": probe["result"]})
             continue
         # Jeder Jahreswert trägt SEIN Jahr, nicht das Berichtsjahr der Datei.
         # Der Realsteuervergleich 2025 führt auch 2023 und 2024 — eine Zeile,

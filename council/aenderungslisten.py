@@ -153,8 +153,8 @@ class Zeile:
     bezeichnung: str
     #: Euro, negativ = Minderung. ``None`` = Zeile ohne Betrag in dieser
     #: Spalte (auch beides ``None`` kommt vor: reine Haushaltsvermerke).
-    ertrag: int | None
-    aufwand: int | None
+    revenue: int | None
+    expense: int | None
     #: Der Text der Erläuterungs-Spalte — was diese Änderung IST („VWG: Der
     #: Entwurf des Wirtschaftsplans 2026 weist einen Zuschussbedarf …“).
     #: ``None``, wenn die Zelle leer ist oder ihre Zuordnung nicht eindeutig
@@ -173,9 +173,9 @@ class SummenZeile:
     year: int
     typ: str  # "entwurf" | "liste" | "endsumme"
     label: str
-    ertraege: int
-    aufwendungen: int
-    saldo: int
+    revenues: int
+    expenses: int
+    balance: int
 
 
 @dataclass
@@ -333,8 +333,8 @@ class Spalten:
     reißt die Positionsprobe — leiser Drift ist ausgeschlossen.
     """
 
-    ertrag: float   # x-Mitte des Kopfs „Ertrag“
-    aufwand: float  # x-Mitte des Kopfs „Aufwand“
+    revenue: float   # x-Mitte des Kopfs „Ertrag“
+    expense: float  # x-Mitte des Kopfs „Aufwand“
     #: Linke Kante des Kopfworts „Bezeichnung“ — für die Fragment-Nachlese
     #: mehrzeiliger Bezeichnungen. ``None``, wenn der Kopf fehlt.
     bezeichnung: float | None = None
@@ -345,12 +345,12 @@ class Spalten:
 
     @property
     def mitte(self) -> float:
-        return (self.ertrag + self.aufwand) / 2
+        return (self.revenue + self.expense) / 2
 
     @property
     def zone(self) -> tuple[float, float]:
         """(links, rechts): Wo Beträge ENDEN dürfen."""
-        return (self.ertrag - 35, self.aufwand + 35)
+        return (self.revenue - 35, self.expense + 35)
 
 
 def _spalten(zeilen: list[list[Wort]],
@@ -363,16 +363,16 @@ def _spalten(zeilen: list[list[Wort]],
     trägt nur die Bezeichnungs-Spalte bei — das Linienpaar, das den Kopf
     „Bezeichnung“ einschließt.
     """
-    ertrag = aufwand = bezeichnung = None
+    revenue = expense = bezeichnung = None
     for zeile in zeilen[:14]:
         for x0, x1, _y, text in zeile:
-            if text == "Ertrag" and ertrag is None:
-                ertrag = (x0 + x1) / 2
-            elif text == "Aufwand" and aufwand is None:
-                aufwand = (x0 + x1) / 2
+            if text == "Ertrag" and revenue is None:
+                revenue = (x0 + x1) / 2
+            elif text == "Aufwand" and expense is None:
+                expense = (x0 + x1) / 2
             elif text == "Bezeichnung" and bezeichnung is None:
                 bezeichnung = x0
-    if ertrag is None or aufwand is None:
+    if revenue is None or expense is None:
         return None
     spalte = None
     if senkrecht and bezeichnung is not None:
@@ -380,7 +380,7 @@ def _spalten(zeilen: list[list[Wort]],
         rechts = [x for x in senkrecht if x > bezeichnung]
         if links and rechts:
             spalte = (max(links), min(rechts))
-    return Spalten(ertrag=ertrag, aufwand=aufwand, bezeichnung=bezeichnung,
+    return Spalten(revenue=revenue, expense=expense, bezeichnung=bezeichnung,
                    bez_spalte=spalte)
 
 
@@ -395,8 +395,8 @@ def _position_lesen(zeile: list[Wort], year: int, spalten: Spalten) -> Zeile:
     seite_entwurf: int | None = None
     produkt: str | None = None
     bezeichnung: list[str] = []
-    ertrag: int | None = None
-    aufwand: int | None = None
+    revenue: int | None = None
+    expense: int | None = None
 
     zone_links, zone_rechts = spalten.zone
     for x0, x1, _y, text in zeile[2:]:
@@ -406,9 +406,9 @@ def _position_lesen(zeile: list[Wort], year: int, spalten: Spalten) -> Zeile:
                 # Mitte entscheidet. Auch ungepunktet: „-470“ ist ein echter
                 # Aufwand aus 300528 (Beträge unter 1.000 Euro gibt es).
                 if x1 <= spalten.mitte:
-                    ertrag = _zahl(text) if ertrag is None else ertrag
-                elif aufwand is None:
-                    aufwand = _zahl(text)
+                    revenue = _zahl(text) if revenue is None else revenue
+                elif expense is None:
+                    expense = _zahl(text)
                 continue
             if x1 > zone_rechts:
                 break  # Zahl in der Erläuterung — dahinter kommt nichts mehr
@@ -426,7 +426,7 @@ def _position_lesen(zeile: list[Wort], year: int, spalten: Spalten) -> Zeile:
 
     return Zeile(year=year, lfd=lfd, thh=thh, seite_entwurf=seite_entwurf,
                  produkt=produkt, bezeichnung=" ".join(bezeichnung),
-                 ertrag=ertrag, aufwand=aufwand)
+                 revenue=revenue, expense=expense)
 
 
 def _ist_position(zeile: list[Wort], spalten: Spalten | None) -> bool:
@@ -522,7 +522,7 @@ def _summen_zeile(year: int, typ: str, zeile: list[Wort]) -> SummenZeile:
     label = " ".join(w[3] for w in zeile
                      if w[1] <= x_erster or w[0] >= x_dritter).strip()
     return SummenZeile(year=year, typ=typ, label=label or typ,
-                       ertraege=e, aufwendungen=a, saldo=s)
+                       revenues=e, expenses=a, balance=s)
 
 
 def parse_ehh_seiten(seiten: list[list[Wort]],
@@ -679,7 +679,7 @@ def _urheber_grenze(woerter: list[Wort], senkrecht: list[float],
         rechts = [x for x in senkrecht if x >= x1]
         if not links or len(rechts) != 1:
             continue
-        if max(links) <= spalten.aufwand:
+        if max(links) <= spalten.expense:
             continue
         return max(links)
     return None
@@ -760,7 +760,7 @@ def _erlaeuterungen_anbauen(positionen: list[tuple[float, Zeile]],
     if not positionen:
         return
     waagerecht, senkrecht = linien
-    grenzen = [x for x in senkrecht if x > spalten.aufwand]
+    grenzen = [x for x in senkrecht if x > spalten.expense]
     if not grenzen or len(waagerecht) < 2:
         return
     erl_links = grenzen[0]
@@ -885,23 +885,23 @@ def _proben(aus: Ergebnis) -> None:
             abs(getattr(entwurf[0], feld)
                 + sum(getattr(s, feld) for s in listen)
                 - getattr(ende[0], feld)) <= toleranz
-            for feld in ("ertraege", "aufwendungen"))
+            for feld in ("revenues", "expenses"))
 
         # Positionsprobe: Wessen Zeile summieren wir hier eigentlich? Die
         # Kandidaten sind jede Listen-Zeile und — für die kumulierten
         # Beschluss-Dateien — die Summe aller Zeilen bzw. (wenn die Kette
         # nicht aufgeht, s. o.) allein „Endsumme − Entwurf“.
-        pos_e = sum(z.ertrag or 0 for z in aus.zeilen if z.year == year)
-        pos_a = sum(z.aufwand or 0 for z in aus.zeilen if z.year == year)
+        pos_e = sum(z.revenue or 0 for z in aus.zeilen if z.year == year)
+        pos_a = sum(z.expense or 0 for z in aus.zeilen if z.year == year)
         if kette_ok:
-            ziele = [(s.label, s.ertraege, s.aufwendungen) for s in listen]
+            ziele = [(s.label, s.revenues, s.expenses) for s in listen]
             if len(listen) > 1:
-                ziele.append(("alle", sum(s.ertraege for s in listen),
-                              sum(s.aufwendungen for s in listen)))
+                ziele.append(("alle", sum(s.revenues for s in listen),
+                              sum(s.expenses for s in listen)))
         else:
             ziele = [("beschlossen",
-                      ende[0].ertraege - entwurf[0].ertraege,
-                      ende[0].aufwendungen - entwurf[0].aufwendungen)]
+                      ende[0].revenues - entwurf[0].revenues,
+                      ende[0].expenses - entwurf[0].expenses)]
         treffer = [label for label, e, a in ziele
                    if abs(e - pos_e) <= toleranz and abs(a - pos_a) <= toleranz]
         if len(treffer) != 1:
@@ -954,15 +954,15 @@ def _urheber_probe(aus: Ergebnis, year: int, listen: list[SummenZeile],
     gruppen: dict[str, list[int]] = {}
     for z in mit:
         summe = gruppen.setdefault(z.urheber, [0, 0])
-        summe[0] += z.ertrag or 0
-        summe[1] += z.aufwand or 0
+        summe[0] += z.revenue or 0
+        summe[1] += z.expense or 0
 
     vergeben: set[str] = set()
     for urheber, (e, a) in sorted(gruppen.items()):
         treffer = [s for s in listen
                    if s.label not in vergeben
-                   and abs(s.ertraege - e) <= toleranz
-                   and abs(s.aufwendungen - a) <= toleranz
+                   and abs(s.revenues - e) <= toleranz
+                   and abs(s.expenses - a) <= toleranz
                    and _label_passt(urheber, s.label)]
         if len(treffer) != 1:
             raise ListenFehler(
@@ -970,7 +970,7 @@ def _urheber_probe(aus: Ergebnis, year: int, listen: list[SummenZeile],
                 + ("keine Zusammenstellungs-Zeile trifft das" if not treffer
                    else "mehrere Zeilen träfen das")
                 + ": " + "; ".join(
-                    f"{s.label}: {s.ertraege:,}/{s.aufwendungen:,}" for s in listen))
+                    f"{s.label}: {s.revenues:,}/{s.expenses:,}" for s in listen))
         vergeben.add(treffer[0].label)
 
 

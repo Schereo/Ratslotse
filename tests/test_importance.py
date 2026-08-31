@@ -85,9 +85,9 @@ def test_fehlendes_geldsignal_zieht_nicht_nach_unten():
     normiert), eine Null zöge den Beschluss aktiv nach unten. Ein
     Feststellungsbeschluss ist nicht unwichtig — wir wissen über sein Geld
     nur nichts."""
-    ohne_betrag = _dec(amount_eur=None, title="Jahresabschluss 2024")
+    without_amount = _dec(amount_eur=None, title="Jahresabschluss 2024")
     mit_bilanzsumme = _dec(amount_eur=580_193_969, title="Jahresabschluss 2024")
-    assert importance.importance_score(ohne_betrag) \
+    assert importance.importance_score(without_amount) \
         == importance.importance_score(mit_bilanzsumme)
 
 
@@ -112,7 +112,7 @@ def test_missing_signals_renormalise():
     # Beratungsfolge) → Score stützt sich allein darauf, kein Absturz auf 0.
     b = importance.importance_breakdown(_dec(title="Bebauungsplan als Satzung",
                                              committee="Rat der Stadt Oldenburg"))
-    assert b["signals"]["geld"] is None and b["signals"]["aufwand"] is None
+    assert b["signals"]["geld"] is None and b["signals"]["expense"] is None
     assert b["signals"]["verbindlich"] is not None
     assert b["score"] > 50  # verbindlich + Ratsebene
 
@@ -125,7 +125,7 @@ def test_subvote_is_discounted():
 
 def test_breakdown_shape():
     b = importance.importance_breakdown(_dec(amount_eur=1_000_000, no_votes=5), n_beratungen=3)
-    assert set(b["signals"]) == {"geld", "umstritten", "verbindlich", "aufwand"}
+    assert set(b["signals"]) == {"geld", "umstritten", "verbindlich", "expense"}
     assert set(b["contributions"]) == set(b["signals"])
     assert isinstance(b["score"], int)
 
@@ -157,9 +157,9 @@ def test_contributions_show_renormalised_weight():
     b = importance.importance_breakdown(
         _dec(title="Zukunft der Fahrradstraßen Haareneschstraße", committee="Rat",
              vote="mehrheitlich", no_votes=20))
-    assert b["signals"]["geld"] is None and b["signals"]["aufwand"] is None
+    assert b["signals"]["geld"] is None and b["signals"]["expense"] is None
     assert b["score"] == 81
-    assert b["contributions"] == {"geld": None, "umstritten": 52, "verbindlich": 29, "aufwand": None}
+    assert b["contributions"] == {"geld": None, "umstritten": 52, "verbindlich": 29, "expense": None}
 
 
 # ---- Store-Integration: Backfill + Sortierung -------------------------------

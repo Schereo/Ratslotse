@@ -22,8 +22,8 @@ export type { Herkunft };
 
 export type KonzernJahr = {
   year: number;
-  ertraege_summe?: number;
-  aufwendungen_summe?: number;
+  revenues_total?: number;
+  expenses_total?: number;
   ord_ergebnis?: number;
   gesamtergebnis?: number;
   zinsaufwand?: number;
@@ -34,12 +34,12 @@ export type KonzernJahr = {
 
 export type KonzernTraeger = {
   year: number;
-  art: "ertraege" | "aufwendungen";
+  art: "revenues" | "expenses";
   traeger_key: string;
   traeger: string;
   /** Euro — aus TEUR hochgerechnet, deshalb auf Tausend glatt. */
-  betrag: number;
-  vorjahr: number | null;
+  amount: number;
+  prior_year: number | null;
   herkunft_id: number | null;
 };
 
@@ -48,14 +48,14 @@ export type KonzernPosten = {
   nr: number;
   bezeichnung: string;
   rolle: string | null;
-  betrag: number;
-  vorjahr: number | null;
+  amount: number;
+  prior_year: number | null;
   herkunft_id: number | null;
 };
 
 export type Gegenprobe = {
   year: number;
-  art: "ertraege" | "aufwendungen";
+  art: "revenues" | "expenses";
   konzern: number;
   jahresabschluss: number;
   ok: boolean;
@@ -114,15 +114,15 @@ export function jahrDaten(daten: KonzernDaten, year: number): KonzernJahr | null
 /** Träger eines Jahres und einer Aufstellung, größter zuerst — ohne die
  *  Konsolidierungszeile, die separat danebensteht. */
 export function traegerListe(
-  daten: KonzernDaten, year: number, art: "ertraege" | "aufwendungen",
+  daten: KonzernDaten, year: number, art: "revenues" | "expenses",
 ): KonzernTraeger[] {
   return daten.traeger
     .filter((t) => t.year === year && t.art === art && t.traeger_key !== KONSOLIDIERUNG)
-    .sort((a, b) => b.betrag - a.betrag);
+    .sort((a, b) => b.amount - a.amount);
 }
 
 export function konsolidierung(
-  daten: KonzernDaten, year: number, art: "ertraege" | "aufwendungen",
+  daten: KonzernDaten, year: number, art: "revenues" | "expenses",
 ): KonzernTraeger | null {
   return daten.traeger.find(
     (t) => t.year === year && t.art === art && t.traeger_key === KONSOLIDIERUNG) ?? null;
@@ -132,7 +132,7 @@ export function konsolidierung(
  *  `daten.jahre`: Die Berichte bis 2016 führen den Abschnitt noch nicht, und
  *  2018 ist die Aufwendungsseite an ihrer eigenen Probe gescheitert. */
 export function traegerJahre(daten: KonzernDaten,
-                             art?: "ertraege" | "aufwendungen"): number[] {
+                             art?: "revenues" | "expenses"): number[] {
   const jahre = daten.traeger
     .filter((t) => !art || t.art === art)
     .map((t) => t.year);
@@ -144,18 +144,18 @@ export function traegerJahre(daten: KonzernDaten,
  *  Kernverwaltungs-Zeile ist der Anteil nicht bestimmbar, und ein geschätzter
  *  wäre hier das Gegenteil des Zwecks. */
 export function kernAnteil(
-  daten: KonzernDaten, year: number, art: "ertraege" | "aufwendungen" = "ertraege",
+  daten: KonzernDaten, year: number, art: "revenues" | "expenses" = "revenues",
 ): { kern: number; konzern: number; anteil: number } | null {
   const jd = jahrDaten(daten, year);
-  const konzern = art === "ertraege" ? jd?.ertraege_summe : jd?.aufwendungen_summe;
+  const konzern = art === "revenues" ? jd?.revenues_total : jd?.expenses_total;
   const kern = daten.traeger.find(
     (t) => t.year === year && t.art === art && t.traeger_key === "stadt");
   if (!konzern || !kern) return null;
-  return { kern: kern.betrag, konzern, anteil: kern.betrag / konzern };
+  return { kern: kern.amount, konzern, anteil: kern.amount / konzern };
 }
 
 /** Das jüngste Jahr, für das sich der Anteil überhaupt bilden lässt. */
 export function juengstesVergleichsjahr(daten: KonzernDaten): number | null {
-  const jahre = traegerJahre(daten, "ertraege");
+  const jahre = traegerJahre(daten, "revenues");
   return jahre.length ? jahre[jahre.length - 1] : null;
 }

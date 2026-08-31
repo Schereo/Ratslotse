@@ -52,13 +52,13 @@ function zentralePosten(daten: Daten): Posten[] {
   for (const s of STEUERARTEN) {
     if (s.datenArt) {
       const treffer = daten.steuern
-        .filter((r) => r.art === s.datenArt && r.betrag != null)
+        .filter((r) => r.art === s.datenArt && r.amount != null)
         .sort((a, b) => a.year - b.year);
       const letzte = treffer[treffer.length - 1];
       if (letzte) {
         out.push({
           slug: s.slug, titel: s.titel, wer: s.stellschraube,
-          mioWert: mio(letzte.betrag) ?? 0, year: letzte.year,
+          mioWert: mio(letzte.amount) ?? 0, year: letzte.year,
         });
       }
       continue;
@@ -88,8 +88,8 @@ function zentralePosten(daten: Daten): Posten[] {
 function Finanzkachel({ z, daten, year }: {
   z: HaushaltZeile; daten: Daten; year: number;
 }) {
-  const ein = mio(z.ertraege) ?? 0;
-  const aus = mio(z.aufwendungen) ?? 0;
+  const ein = mio(z.revenues) ?? 0;
+  const aus = mio(z.expenses) ?? 0;
   const posten = zentralePosten(daten);
   const istJahre = [...new Set(posten.map((p) => p.year))].sort();
 

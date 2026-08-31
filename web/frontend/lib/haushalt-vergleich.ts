@@ -153,7 +153,7 @@ export function reihe(daten: VergleichDaten, name: string,
 /** Wie sich ein Wert über die Reihe verändert hat — in Prozent, gerundet.
  *  `null`, wenn Anfang oder Ende fehlen; eine halbe Reihe ergibt keine
  *  Veränderung, sondern eine Lücke. */
-export function veraenderung(punkte: { year: number; wert: number }[]): number | null {
+export function change(punkte: { year: number; wert: number }[]): number | null {
   if (punkte.length < 2) return null;
   const erst = punkte[0].wert;
   const letzt = punkte[punkte.length - 1].wert;

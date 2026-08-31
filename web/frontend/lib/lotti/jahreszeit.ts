@@ -227,8 +227,8 @@ interface Flocke {
   wind: number; dreh: number;
 }
 
-function streuen(anzahl: number, tempo: [number, number], wind: number): Flocke[] {
-  return Array.from({ length: anzahl }, () => ({
+function streuen(count: number, tempo: [number, number], wind: number): Flocke[] {
+  return Array.from({ length: count }, () => ({
     x: -0.36 + Math.random() * 0.80,
     z: -0.32 + Math.random() * 0.26,
     y0: -0.05 + Math.random() * 0.55,

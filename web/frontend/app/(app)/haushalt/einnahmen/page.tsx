@@ -97,14 +97,14 @@ export default function EinnahmenPage() {
   const year = Math.max(...data.steuern.map((s) => s.year), 0);
   const betragFuer = (art: string | null) => {
     if (!art) return null;
-    return data.steuern.find((s) => s.year === year && s.art === art)?.betrag ?? null;
+    return data.steuern.find((s) => s.year === year && s.art === art)?.amount ?? null;
   };
   const zuweisungJahr = data.steuerkraft.filter((k) => k.zuweisungen != null).at(-1);
   // Der vollständige Ausgleich aus den Tabellen des Landes (Tausend Euro).
   // Optional: Ohne einen Lauf von scripts/ingest_staedtevergleich.py ist das
   // Feld leer, und die Seite zeigt weiter nur die Schlüsselzuweisungen.
   const ausgleich = (data.finanzausgleich ?? []).filter((f) => f.nettobetrag != null).at(-1);
-  const gesamt = data.steuern.find((s) => s.year === year && s.art === "insgesamt")?.betrag ?? null;
+  const gesamt = data.steuern.find((s) => s.year === year && s.art === "insgesamt")?.amount ?? null;
 
   // Karten: Betrag aus den Daten, innerhalb der Gruppe nach Betrag sortiert
   // (Quellen ohne Zahl ans Ende).
@@ -114,7 +114,7 @@ export default function EinnahmenPage() {
   // wie die Schlüsselzuweisungen es längst tun.
   const entgeltJahr = (posten: number) =>
     (data.ergebnisrechnung ?? [])
-      .filter((z) => z.nr === posten && z.thh_nr === null && z.ergebnis != null)
+      .filter((z) => z.nr === posten && z.thh_nr === null && z.result != null)
       .sort((a, b) => a.year - b.year)
       .at(-1) ?? null;
 
@@ -122,14 +122,14 @@ export default function EinnahmenPage() {
     const entgelt = a.ergebnisPosten ? entgeltJahr(a.ergebnisPosten) : null;
     return {
       art: a,
-      betrag: a.slug === "schluesselzuweisungen"
+      amount: a.slug === "schluesselzuweisungen"
         ? zuweisungJahr?.zuweisungen ?? null
-        : entgelt ? entgelt.ergebnis : betragFuer(a.datenArt),
+        : entgelt ? entgelt.result : betragFuer(a.datenArt),
       year: a.slug === "schluesselzuweisungen"
         ? zuweisungJahr?.year ?? year
         : entgelt ? entgelt.year : year,
     };
-  }).sort((a, b) => (b.betrag ?? -1) - (a.betrag ?? -1));
+  }).sort((a, b) => (b.amount ?? -1) - (a.amount ?? -1));
 
   const gruppen = GRUPPEN
     .map((g) => ({ ...g, karten: karten.filter((k) => k.art.spielraum === g.stufe) }))
@@ -149,11 +149,11 @@ export default function EinnahmenPage() {
   const spendenGrem = spendenGremien(data);
   const spendenOhne = data.spenden?.ohne_beleg ?? [];
   const spendenLetztes = spendenReihe[spendenReihe.length - 1];
-  const spendenGeld = spendenGrem.Rat.betrag + spendenGrem.Verwaltungsausschuss.betrag;
+  const spendenGeld = spendenGrem.Rat.amount + spendenGrem.Verwaltungsausschuss.amount;
 
   const quellen: QuellenSchluessel[] = ["steuern", "steuerkraft", "hebesaetze",
     ...(planErtraege ? (["ergebnishaushalt"] as const) : []),
-    ...(karten.some((k) => k.art.ergebnisPosten && k.betrag != null)
+    ...(karten.some((k) => k.art.ergebnisPosten && k.amount != null)
       ? (["jahresabschluss"] as const) : []),
     ...(spendenReihe.length ? (["spenden"] as const) : [])];
 
@@ -198,7 +198,7 @@ export default function EinnahmenPage() {
           // Bild.
           label: "",
           skizze: (["frei", "begrenzt", "keiner"] as Spielraum[]).map((stufe) => {
-            const anzahl = karten.filter((k) => k.art.spielraum === stufe).length;
+            const count = karten.filter((k) => k.art.spielraum === stufe).length;
             const ton = stufe === "frei" ? "var(--sb-voll)"
               : stufe === "begrenzt" ? "var(--sb-mittel)" : "var(--sb-blass)";
             return (
@@ -214,7 +214,7 @@ export default function EinnahmenPage() {
                   {SPIELRAUM_LABEL[stufe]}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-wrap gap-1">
-                  {Array.from({ length: anzahl }, (_, i) => (
+                  {Array.from({ length: count }, (_, i) => (
                     <span key={i} className="h-4 w-4 rounded-[3px]"
                       style={stufe === "keiner"
                         ? { border: "1.5px dashed var(--sb-strich)" }
@@ -302,7 +302,7 @@ export default function EinnahmenPage() {
             <span className="hidden h-px flex-1 bg-border sm:block" />
           </div>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {g.karten.map(({ art, betrag, year: bJahr }) => (
+            {g.karten.map(({ art, amount, year: bJahr }) => (
               <Link key={art.slug} href={`/haushalt/steuer?art=${art.slug}`}
                 className={cn(
                   "flex flex-col rounded-xl border bg-card p-3.5 shadow-sm transition-colors hover:border-primary/40",
@@ -311,9 +311,9 @@ export default function EinnahmenPage() {
                   g.stufe === "frei" ? "border-primary/25 bg-primary/[0.04]" : "border-border",
                 )}>
                 <p className="text-[13px] font-bold leading-snug">{art.titel}</p>
-                {betrag != null ? (
+                {amount != null ? (
                   <p className="mt-1.5 font-display text-[20px] font-bold leading-none tracking-tight tabular-nums">
-                    {deMio(betrag / 1e6)}
+                    {deMio(amount / 1e6)}
                     <span className="text-[11px] font-semibold text-muted-foreground">
                       &#8239;Mio.&nbsp;€
                     </span>
@@ -433,7 +433,7 @@ export default function EinnahmenPage() {
                   Hochrechnung. „789 Tsd. €" wäre hier eine Ungenauigkeit, die
                   die Quelle gar nicht hat. */}
               <p className="mt-0.5 font-display text-[24px] font-bold leading-none tabular-nums">
-                {Math.round(spendenLetztes.betrag).toLocaleString("de-DE")}
+                {Math.round(spendenLetztes.amount).toLocaleString("de-DE")}
                 <span className="ml-1 text-[13px] font-semibold text-muted-foreground">€</span>
                 <Beleg q="spenden" />
               </p>
@@ -449,14 +449,14 @@ export default function EinnahmenPage() {
                       sie über 700 px bei 46 px Höhe und zog acht Jahrgänge zu
                       einem flachen Draht. */}
                   <ZeitreiheMini
-                    reihe={spendenReihe.map((j) => ({ year: j.year, wert: j.betrag }))}
+                    reihe={spendenReihe.map((j) => ({ year: j.year, wert: j.amount }))}
                     format={(v) => `${Math.round(v / 1000).toLocaleString("de-DE")} Tsd.`}
                     ariaLabel={
                       `Angenommene Zuwendungen je Jahr, ${spendenReihe[0].year} bis `
                       + `${spendenLetztes.year}: von `
-                      + `${Math.round(spendenReihe[0].betrag).toLocaleString("de-DE")} auf `
-                      + `${Math.round(spendenLetztes.betrag).toLocaleString("de-DE")} Euro. `
-                      + `Höchststand ${Math.round(Math.max(...spendenReihe.map((j) => j.betrag)))
+                      + `${Math.round(spendenReihe[0].amount).toLocaleString("de-DE")} auf `
+                      + `${Math.round(spendenLetztes.amount).toLocaleString("de-DE")} Euro. `
+                      + `Höchststand ${Math.round(Math.max(...spendenReihe.map((j) => j.amount)))
                         .toLocaleString("de-DE")} Euro.`}
                   />
                 </div>
@@ -499,7 +499,7 @@ export default function EinnahmenPage() {
                 {spendenGrem.Verwaltungsausschuss.vorlagen} der Verwaltungsausschuss —,
                 aber{" "}
                 {spendenGeld > 0
-                  ? Math.round((spendenGrem.Rat.betrag / spendenGeld) * 100)
+                  ? Math.round((spendenGrem.Rat.amount / spendenGeld) * 100)
                   : 0}{" "}
                 Prozent des Geldes laufen über den Rat.
               </dd>
@@ -529,7 +529,7 @@ export default function EinnahmenPage() {
               <div>
                 <dt className="text-[12.5px] font-semibold">{spendenLauf.year} läuft noch</dt>
                 <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
-                  Bis jetzt {Math.round(spendenLauf.betrag).toLocaleString("de-DE")} €
+                  Bis jetzt {Math.round(spendenLauf.amount).toLocaleString("de-DE")} €
                   aus {spendenLauf.vorlagen} Beschlüssen. Das Jahr steht deshalb nicht
                   in der Kurve: Es wäre ein Rückgang zu sehen, den es nicht gibt.
                 </dd>

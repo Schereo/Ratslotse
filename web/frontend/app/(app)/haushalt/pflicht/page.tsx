@@ -45,7 +45,7 @@ import { ChevronRight, Scale } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
   HaushaltAuswahl, haushaltUrl, HaushaltZeile, ProdukteAntwort, SPIELRAUM_TEXT, Spielraum,
-  bereiche, bereichSlug, betrag, deMio, jahreSortiert, mio, summe,
+  bereiche, bereichSlug, amount, deMio, jahreSortiert, mio, summe,
 } from "@/lib/haushalt";
 import { BereichSchluessel, bereichKanon } from "@/lib/haushalt-bereiche";
 import {
@@ -146,11 +146,11 @@ export default function PflichtPage() {
   const year = jahre[jahre.length - 1];
   const zeilen = data.jahre[String(year)] ?? [];
   const gesamtzeile = summe(zeilen);
-  const gesamtAus = mio(gesamtzeile?.aufwendungen) ?? 0;
+  const gesamtAus = mio(gesamtzeile?.expenses) ?? 0;
   // Das geplante Minus als positive Zahl. Nur wenn beide Seiten dastehen —
   // eine Differenz aus einer fehlenden Zahl wäre erfunden.
-  const defizit = gesamtzeile?.ertraege != null && gesamtzeile?.aufwendungen != null
-    ? Math.max(0, mio(gesamtzeile.aufwendungen - gesamtzeile.ertraege) ?? 0)
+  const defizit = gesamtzeile?.revenues != null && gesamtzeile?.expenses != null
+    ? Math.max(0, mio(gesamtzeile.expenses - gesamtzeile.revenues) ?? 0)
     : 0;
 
   const rows: Zeile[] = bereiche(zeilen).map((z) => {
@@ -159,12 +159,12 @@ export default function PflichtPage() {
     const befund = kanon.schluessel ? befunde.get(kanon.schluessel) : undefined;
     return {
       z,
-      aus: mio(z.aufwendungen) ?? 0,
+      aus: mio(z.expenses) ?? 0,
       // Nur wenn BEIDE Seiten dastehen. Eine fehlende Ertragszeile als Null zu
       // lesen machte aus dem Zuschussbedarf den Bruttoaufwand — und damit aus
       // der Korrektur wieder den Fehler, den sie korrigiert.
-      netto: z.aufwendungen != null && z.ertraege != null
-        ? mio(z.aufwendungen - z.ertraege) : null,
+      netto: z.expenses != null && z.revenues != null
+        ? mio(z.expenses - z.revenues) : null,
       stufe: eintrag?.stufe ?? null,
       was: eintrag?.was ?? null,
       befund,
@@ -650,7 +650,7 @@ function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: numbe
   // Beträge statt nackter Prozente in der Legende: `anteil` ist normiert,
   // multipliziert mit dem Aufwand des Bereichs wird daraus wieder Geld —
   // der Anteilsbalken rechnet die Prozente selbst und schreibt beides an.
-  const aufwandMio = befund.aufwand / 1e6;
+  const aufwandMio = befund.expense / 1e6;
   const segmente: Anteil[] = [
     ...(["niedrig", "mittel", "hoch"] as Spielraum[]).map((s) => ({
       label: SPIELRAUM_TEXT[s].kurz, wert: befund.anteil[s] * aufwandMio, farbe: TON_SPIELRAUM[s],
@@ -697,7 +697,7 @@ function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: numbe
               <p className="text-[11.5px] font-semibold leading-snug">
                 {groesste.produkt_name}
                 <span className="ml-1.5 font-normal tabular-nums text-muted-foreground">
-                  {betrag(groesste.aufwendungen).wert}&nbsp;{betrag(groesste.aufwendungen).einheit}
+                  {amount(groesste.expenses).wert}&nbsp;{amount(groesste.expenses).einheit}
                 </span>
               </p>
               {/* Wortlaut des Teilhaushaltsplans, ungekürzt: Die Rechtsgrundlagen

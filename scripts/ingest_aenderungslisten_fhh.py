@@ -56,8 +56,8 @@ def _inhaltsgleich(a: FhhErgebnis, b: FhhErgebnis) -> bool:
     Datei — die 2021er Beschluss-Datei liegt doppelt im Bestand."""
     def kern(e: FhhErgebnis):
         return (sorted(((z.year, z.lfd, z.thh, z.produkt, z.bezeichnung,
-                         z.einzahlung, z.auszahlung) for z in e.zeilen), key=repr),
-                sorted(((s.year, s.typ, s.label, s.einzahlungen, s.auszahlungen)
+                         z.inflow, z.outflow) for z in e.zeilen), key=repr),
+                sorted(((s.year, s.typ, s.label, s.inflows, s.outflows)
                         for s in e.summen), key=repr))
     return kern(a) == kern(b)
 
@@ -84,7 +84,7 @@ def main() -> dict:
             try:
                 pdf = _laden(r["url"])
                 time.sleep(0.6)
-                ergebnis = lies_fhh_liste(pdf)
+                result = lies_fhh_liste(pdf)
             except ListenFehler as fehler:
                 risse.append(f"{r['document_id']} ({r['label'][:50]}): {fehler}")
                 continue
@@ -92,17 +92,17 @@ def main() -> dict:
                 risse.append(f"{r['document_id']} ({r['label'][:50]}): "
                              f"Download fehlgeschlagen — {fehler}")
                 continue
-            gelesen.append((r, schluessel, ergebnis))
+            gelesen.append((r, schluessel, result))
 
         je_liste: dict[tuple[int, str], tuple[dict, str, FhhErgebnis]] = {}
         dubletten: list[str] = []
         konflikte: list[str] = []
-        for r, schluessel, ergebnis in gelesen:
-            key = (ergebnis.jahrgang, schluessel)
+        for r, schluessel, result in gelesen:
+            key = (result.jahrgang, schluessel)
             if key not in je_liste:
-                je_liste[key] = (r, schluessel, ergebnis)
+                je_liste[key] = (r, schluessel, result)
                 continue
-            if _inhaltsgleich(je_liste[key][2], ergebnis):
+            if _inhaltsgleich(je_liste[key][2], result):
                 dubletten.append(
                     f"{key[0]} {schluessel}: Dokument {r['document_id']} ist "
                     f"inhaltsgleich mit {je_liste[key][0]['document_id']} — übersprungen.")

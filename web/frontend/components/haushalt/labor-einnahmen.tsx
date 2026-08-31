@@ -24,7 +24,7 @@
 
 import Link from "next/link";
 import { Lock } from "lucide-react";
-import { deMio, betrag, type GebuehrenZeile, type HebesatzZeile } from "@/lib/haushalt";
+import { deMio, amount, type GebuehrenZeile, type HebesatzZeile } from "@/lib/haushalt";
 import type { StadtHebesatz } from "@/lib/haushalt-labor";
 import { Beleg } from "@/components/haushalt/quelle";
 import { Regler } from "@/components/haushalt/regler";
@@ -94,7 +94,7 @@ export function EinnahmenWerkbank({
   /** Anteil der Grundsteuer A am gemeinsamen Aufkommen — aus dem LSN-Vergleich. */
   anteilA: number | null;
   hundePct: number; setHundePct: (v: number) => void;
-  hunde: { year: number; betrag: number } | null;
+  hunde: { year: number; amount: number } | null;
   staedte: StadtHebesatz[];
   historie: HebesatzZeile[];
   gebuehren: GebuehrenZeile[] | undefined;
@@ -105,7 +105,7 @@ export function EinnahmenWerkbank({
   const gewstWirkung = Math.round(proPunktGewst * punkte * 10) / 10;
   const grundstWirkung = proPunktGrundst != null
     ? Math.round(proPunktGrundst * grundstPunkte * 10) / 10 : 0;
-  const hundeWirkung = hunde ? Math.round(((hunde.betrag / 1e6) * hundePct) / 100 * 10) / 10 : 0;
+  const hundeWirkung = hunde ? Math.round(((hunde.amount / 1e6) * hundePct) / 100 * 10) / 10 : 0;
 
   // Die gesperrte Schraube braucht eine echte Zahl, sonst wäre sie nur ein
   // Icon: die umzulegenden Kosten des jüngsten Jahrgangs, alle drei Bereiche.
@@ -212,8 +212,8 @@ export function EinnahmenWerkbank({
               }
               wirkung={
                 grundstPunkte === 0 ? (
-                  <>Ein Punkt bringt überschlagen {betrag(proPunktGrundst * 1e6).wert}&#8239;
-                  {betrag(proPunktGrundst * 1e6).einheit} <Beleg q="steuern" /> — bei
+                  <>Ein Punkt bringt überschlagen {amount(proPunktGrundst * 1e6).wert}&#8239;
+                  {amount(proPunktGrundst * 1e6).einheit} <Beleg q="steuern" /> — bei
                   unveränderten Messbeträgen.</>
                 ) : (
                   <>
@@ -258,13 +258,13 @@ export function EinnahmenWerkbank({
             anzeige={
               hundePct === 0
                 ? <span className="text-muted-foreground">
-                    {betrag(hunde.betrag).wert}&nbsp;{betrag(hunde.betrag).einheit}<Beleg q="steuern" />
+                    {amount(hunde.amount).wert}&nbsp;{amount(hunde.amount).einheit}<Beleg q="steuern" />
                   </span>
                 : <strong className="text-signal">
                     {hundePct === -100
                       ? <>0&nbsp;€ (abgeschafft)</>
-                      : <>{betrag(hunde.betrag * (1 + hundePct / 100)).wert}&nbsp;
-                        {betrag(hunde.betrag * (1 + hundePct / 100)).einheit}{" "}
+                      : <>{amount(hunde.amount * (1 + hundePct / 100)).wert}&nbsp;
+                        {amount(hunde.amount * (1 + hundePct / 100)).einheit}{" "}
                         ({hundePct > 0 ? "+" : "−"}{Math.abs(hundePct)}&nbsp;%)</>}
                   </strong>
             }
@@ -273,7 +273,7 @@ export function EinnahmenWerkbank({
                 <>Aufkommen {hunde.year}. Der Regler zeigt die Größenordnung in beide
                 Richtungen: Sowohl eine Verdopplung als auch die Abschaffung verändern
                 das Ergebnis um rund{" "}
-                {anteilText(hunde.betrag / 1e6)}.</>
+                {anteilText(hunde.amount / 1e6)}.</>
               ) : hundePct > 0 ? (
                 <>
                   <strong className="text-foreground">+{deMio(hundeWirkung)}&#8239;Mio.&nbsp;€</strong>{" "}

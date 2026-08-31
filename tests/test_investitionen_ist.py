@@ -96,9 +96,9 @@ def test_die_fussnotenziffer_im_titel_verschiebt_die_spanne_nicht():
 
 def test_ohne_titel_kein_abschnitt():
     """Ein Text ohne die Titel liefert nichts — statt Zahlen zu raten."""
-    ergebnis = ii.lies("2010 4.814 3.313 6.331 4.112 239 2 18.811")
-    assert ergebnis["zeilen"] == []
-    assert ergebnis["spannen"] == {}
+    result = ii.lies("2010 4.814 3.313 6.331 4.112 239 2 18.811")
+    assert result["zeilen"] == []
+    assert result["spannen"] == {}
 
 
 # --- Die Zeilen lesen -------------------------------------------------------
@@ -163,9 +163,9 @@ def test_2019_faellt_ganz_heraus():
     einem Fall wenigstens die Summe (Fall 2022, ``council/schulden.py``) —
     diese Tabelle hat keine. Also fällt der Jahrgang mit allen sieben Zahlen,
     und die Summe kommt NICHT als „wenigstens die stimmt" herein."""
-    ergebnis = ii.lies(TABELLE)
-    assert 2019 not in [z["year"] for z in ergebnis["zeilen"]]
-    verworfen = [v for v in ergebnis["verworfen"] if v["year"] == 2019]
+    result = ii.lies(TABELLE)
+    assert 2019 not in [z["year"] for z in result["zeilen"]]
+    verworfen = [v for v in result["verworfen"] if v["year"] == 2019]
     assert len(verworfen) == 1
     assert "1.304.000" in verworfen[0]["grund"], verworfen[0]["grund"]
     # Deutsche Schreibweise, nicht 1,304,000 — der Grund landet im Protokoll.
@@ -182,9 +182,9 @@ def test_die_differenz_kommt_als_zahl_neben_dem_satz():
     vorzeichenbehaftet und in Euro: 66.595 T€ gezählt gegen 67.899 T€
     ausgewiesen."""
     verworfen = next(v for v in ii.lies(TABELLE)["verworfen"] if v["year"] == 2019)
-    assert verworfen["differenz"] == -1_304_000
+    assert verworfen["difference"] == -1_304_000
     # Und der Satz nennt dieselbe Zahl — zwei Auskünfte, eine Messung.
-    assert ii.de_zahl(verworfen["differenz"], vorzeichen=True) in verworfen["grund"]
+    assert ii.de_zahl(verworfen["difference"], vorzeichen=True) in verworfen["grund"]
 
 
 def test_eine_unzerlegbare_zeile_hat_KEINE_differenz():
@@ -196,7 +196,7 @@ def test_eine_unzerlegbare_zeile_hat_KEINE_differenz():
     kaputt = TABELLE.replace("2017 4.933 1.574 8.150 6.750 519 123 22.049",
                              "2017 4.933 1.574 8.150 6.750 519 22.049")
     verworfen = next(v for v in ii.lies(kaputt)["verworfen"] if v["year"] == 2017)
-    assert verworfen["differenz"] is None
+    assert verworfen["difference"] is None
     assert "zerlegbar" in verworfen["grund"]
 
 
@@ -280,7 +280,7 @@ def _speichern(store, gelesen):
             art="stadt", url=ii.TABELLE_URL,
             probe="investitionen_ist_zeilensumme",
             fundstelle=f"Tabelle {regelwerk}",
-            probe_ergebnis=f"{len(teil)} Jahrgänge"), verworfen=verworfen)
+            probe_result=f"{len(teil)} Jahrgänge"), verworfen=verworfen)
 
 
 def test_speichern_und_lesen(store, gelesen):
@@ -293,7 +293,7 @@ def test_speichern_und_lesen(store, gelesen):
     # Die Arten kommen in der Spaltenfolge der Quelle und tragen ihren Titel.
     assert [a["titel"] for a in juengster["arten"]] == [
         t for _, t in ii.SPALTEN["doppik"][:-1]]
-    assert sum(a["betrag"] for a in juengster["arten"]) == juengster["insgesamt"]
+    assert sum(a["amount"] for a in juengster["arten"]) == juengster["insgesamt"]
     # Und die kamerale Zeile hat ihre eigenen vier.
     assert len(reihe[0]["arten"]) == 4
     assert reihe[0]["arten"][0]["titel"] == "Gewährung von Darlehen"
@@ -321,7 +321,7 @@ def test_ein_zweiter_lauf_laesst_keine_karteileichen(store, gelesen):
         art="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
     z = next(z for z in store.get_investitionen_ist() if z["year"] == 2025)
     assert [a["feld"] for a in z["arten"]] == list(ii.ARTEN["doppik"][:-1])
-    assert sum(a["betrag"] for a in z["arten"]) == z["insgesamt"]
+    assert sum(a["amount"] for a in z["arten"]) == z["insgesamt"]
 
 
 def test_ein_lauf_raeumt_die_anderen_jahrgaenge_nicht_ab(store, gelesen):
@@ -344,7 +344,7 @@ def test_die_verworfenen_jahrgaenge_stehen_mit_ihrer_differenz_im_bestand(
     verworfen = store.get_investitionen_ist_verworfen()
     assert [v["year"] for v in verworfen] == [2019]
     assert verworfen[0]["regelwerk"] == "doppik"
-    assert verworfen[0]["differenz"] == -1_304_000
+    assert verworfen[0]["difference"] == -1_304_000
     assert verworfen[0]["herkunft_id"] is not None
     # Und der Jahrgang steht NICHT in der Reihe — die Lücke ist kein Wert.
     assert 2019 not in [z["year"] for z in store.get_investitionen_ist()]

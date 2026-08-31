@@ -341,6 +341,76 @@ COUNCIL_USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
 )
 
 
+#: Das Geld-Vokabular je Tabelle: (alt, neu). Steht bewusst als Literal-
+#: Tabelle NEBEN dem Code, damit ein Suchen-und-Ersetzen über die Datei
+#: die alten Namen nicht mitnimmt — siehe Kommentar in :meth:`_migrate`.
+_GELD_SPALTEN: list[tuple[str, list[tuple[str, str]]]] = [
+    ("council_anlagenspiegel", [
+        ("buchwert", "book_value"), ("buchwert_vorjahr", "book_value_prior_year")]),
+    ("council_ausgabenreihe", [("betrag", "amount"), ("konflikt_betrag", "conflict_amount")]),
+    ("council_beratungen", [("ergebnis", "result")]),
+    ("council_buergschaften", [
+        ("aus_folgejahr", "out_next_year"), ("einzelbetrag", "single_amount")]),
+    ("council_ergebnishaushalt", [("betrag", "amount"), ("ist_summe", "is_total")]),
+    ("council_ergebnisrechnung", [
+        ("vorjahr", "prior_year"), ("ergebnis", "result"), ("ist_summe", "is_total")]),
+    ("council_finanzrechnung", [
+        ("vorjahr", "prior_year"), ("ergebnis", "result"), ("ist_summe", "is_total")]),
+    ("council_gebuehren", [("abzuege", "deductions")]),
+    ("council_gebuehrensaetze", [
+        ("betrag", "amount"), ("vorjahr", "prior_year"),
+        ("veraenderung_prozent", "change_pct")]),
+    ("council_gesellschaft_eigentuemer", [
+        ("betrag_eur", "amount_eur"), ("anteil_prozent", "share_pct")]),
+    ("council_haushalt", [
+        ("ertraege", "revenues"), ("aufwendungen", "expenses"), ("ergebnis", "result"),
+        ("is_summe", "is_total")]),
+    ("council_haushalt_aenderungen", [("ertrag", "revenue"), ("aufwand", "expense")]),
+    ("council_haushalt_aenderungen_fhh", [
+        ("soll_entwurf", "planned_draft"), ("einzahlung", "inflow"), ("auszahlung", "outflow"),
+        ("soll_neu", "planned_new")]),
+    ("council_haushalt_aenderungen_fhh_summen", [
+        ("einzahlungen", "inflows"), ("auszahlungen", "outflows"), ("saldo", "balance")]),
+    ("council_haushalt_aenderungen_summen", [
+        ("ertraege", "revenues"), ("aufwendungen", "expenses"), ("saldo", "balance")]),
+    ("council_haushaltssatzung", [
+        ("ordentliche_ertraege", "ordinary_revenues"),
+        ("ordentliche_aufwendungen", "ordinary_expenses"),
+        ("ao_ertraege", "extraordinary_revenues"),
+        ("ao_aufwendungen", "extraordinary_expenses"), ("ein_laufend", "in_operating"),
+        ("aus_laufend", "out_operating"), ("ein_invest", "in_capital"),
+        ("ein_finanz", "in_financing"), ("aus_finanz", "out_financing"),
+        ("ein_gesamt", "in_total"), ("aus_gesamt", "out_total")]),
+    ("council_herkunft", [("probe_ergebnis", "probe_result")]),
+    ("council_integrierte_schulden", [("veraenderung", "change")]),
+    ("council_investitionen", [("einzahlungen", "inflows"), ("auszahlungen", "outflows")]),
+    ("council_investitionen_ist_arten", [("betrag", "amount")]),
+    ("council_investitionen_ist_verworfen", [("differenz", "difference")]),
+    ("council_investitionsmassnahmen", [("gesamtsumme", "grand_total")]),
+    ("council_konzern_posten", [
+        ("betrag", "amount"), ("vorjahr", "prior_year"), ("ist_summe", "is_total")]),
+    ("council_konzern_traeger", [
+        ("betrag_teur", "amount_keur"), ("vorjahr_teur", "prior_year_keur")]),
+    ("council_nachbewilligung_jahre", [
+        ("summe_konsumtiv", "total_operating"), ("summe_investiv", "total_capital"),
+        ("verpflichtungen_betrag", "commitments_amount")]),
+    ("council_nachbewilligung_kanaele", [
+        ("anzahl_konsumtiv", "count_operating"), ("betrag_konsumtiv", "amount_operating"),
+        ("anzahl_investiv", "count_capital"), ("betrag_investiv", "amount_capital")]),
+    ("council_nachbewilligungen", [("betrag", "amount"), ("betrag_quelle", "amount_source")]),
+    ("council_partei_meinungen_cache", [("ergebnis", "result")]),
+    ("council_produkte", [
+        ("ertraege", "revenues"), ("aufwendungen", "expenses"), ("ergebnis", "result")]),
+    ("council_spenden", [("betrag", "amount")]),
+    ("council_stellenplan", [("stellen_vorjahr", "positions_prior_year")]),
+    ("council_steuern", [("betrag", "amount")]),
+    ("council_vermoegensgruppen", [
+        ("buchwert", "book_value"), ("buchwert_vorjahr", "book_value_prior_year")]),
+    ("council_wirtschaftsplaene", [
+        ("ertraege", "revenues"), ("aufwendungen", "expenses"), ("ergebnis", "result")]),
+]
+
+
 class CouncilStore:
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None):
         self._path = path
@@ -426,7 +496,10 @@ class CouncilStore:
         'district'``). Ein UPDATE je Wert, das beim zweiten Lauf nichts mehr
         findet.
         """
-        if not list(self._conn.execute(f"PRAGMA table_info({tabelle})")):
+        vorhanden = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
+        if spalte not in vorhanden:
+            # Tabelle fehlt oder trägt die Spalte (noch) nicht — beides ist
+            # normal, etwa in einer frisch angelegten Datenbank.
             return
         for alt, neu in paare:
             cur = self._conn.execute(
@@ -438,7 +511,7 @@ class CouncilStore:
                     tabelle, spalte, alt, neu, cur.rowcount)
 
     def _migrate(self) -> None:
-        # `year` → `year`: derselbe Begriff in 43 Tabellen, deshalb aus einer
+        # `jahr` → `year`: derselbe Begriff in 43 Tabellen, deshalb aus einer
         # Liste statt 43 Zeilen. Die Namen stehen bewusst als Literale hier —
         # ein Suchen-und-Ersetzen über die Datei darf sie nicht mitnehmen.
         for tabelle in (
@@ -483,6 +556,24 @@ class CouncilStore:
                         "council_spenden", "council_spenden_verworfen",
                         "council_vorlage_embeddings"):
             self._spalten_umbenennen(tabelle, [("vorlage_nr", "template_number")])
+
+        # 08/2026, Geld-Vokabular: Beträge, Erträge, Aufwendungen, Salden.
+        # ACHTUNG bei künftigen Umbenennungen: Links steht der ALTE Name. Er
+        # ist die Quelle der Migration; wandert er mit, wird das Paar still
+        # wirkungslos und nur BESTEHENDE Datenbanken bleiben deutsch — frische
+        # legen ohnehin das neue Schema an, kein Test schlägt an.
+        # `tests/test_api_vertrag.py::test_keine_wirkungslosen_migrationspaare`
+        # ist genau dafür da.
+        for tabelle, paare in _GELD_SPALTEN:
+            self._spalten_umbenennen(tabelle, paare)
+        # Im Konzernabschluss stehen dieselben Begriffe auch als WERT in der
+        # Zeile — die Spalte umzubenennen allein reichte nicht, die Abfrage
+        # nach 'expenses' fände dann nichts.
+        self._werte_umschreiben("council_konzern_traeger", "art", [
+            ("ertraege", "revenues"), ("aufwendungen", "expenses")])
+        self._werte_umschreiben("council_konzern_posten", "rolle", [
+            ("ertraege_summe", "revenues_total"),
+            ("aufwendungen_summe", "expenses_total")])
 
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
         if "agenda_hash" not in cols:
@@ -755,7 +846,7 @@ class CouncilStore:
             "CREATE TABLE IF NOT EXISTS council_beratungen ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, kvonr INTEGER NOT NULL, "
             "datum TEXT, gremium TEXT NOT NULL DEFAULT '', top TEXT, "
-            "is_public INTEGER, ergebnis TEXT, ksinr INTEGER, "
+            "is_public INTEGER, result TEXT, ksinr INTEGER, "
             "fetched_at TEXT NOT NULL)"
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_beratungen_kvonr ON council_beratungen(kvonr)")
@@ -806,8 +897,8 @@ class CouncilStore:
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "year INTEGER NOT NULL, "
             "bereich TEXT NOT NULL, "                             # Teilhaushalt-Name; 'Summe' = Gesamtzeile
-            "ertraege REAL, aufwendungen REAL, ergebnis REAL, "  # ordentlich, in Euro
-            "is_summe INTEGER NOT NULL DEFAULT 0, "
+            "revenues REAL, expenses REAL, result REAL, "  # ordentlich, in Euro
+            "is_total INTEGER NOT NULL DEFAULT 0, "
             "source_url TEXT, fetched_at TEXT NOT NULL, "
             "UNIQUE(year, bereich))"
         )
@@ -818,7 +909,7 @@ class CouncilStore:
             "CREATE TABLE IF NOT EXISTS council_steuern ("
             "year INTEGER NOT NULL, "
             "art TEXT NOT NULL, "        # z. B. 'Gewerbesteuer (-umlage)', 'insgesamt'
-            "betrag REAL, "              # Euro, Ist (nicht Plan!)
+            "amount REAL, "              # Euro, Ist (nicht Plan!)
             "source_url TEXT, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (year, art))"
         )
@@ -834,8 +925,8 @@ class CouncilStore:
             "thh_nr INTEGER, thh_name TEXT, "     # NULL = Gesamtrechnung
             "nr INTEGER NOT NULL, "               # Postennummer der Tabelle (1–24)
             "bezeichnung TEXT NOT NULL, "
-            "vorjahr REAL, ansatz REAL, ergebnis REAL, deviation REAL, "
-            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "prior_year REAL, ansatz REAL, result REAL, deviation REAL, "
+            "is_total INTEGER NOT NULL DEFAULT 0, "
             "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (year, thh_nr, nr))"
         )
@@ -852,8 +943,8 @@ class CouncilStore:
                 "CREATE TABLE council_ergebnisrechnung ("
                 "year INTEGER NOT NULL, thh_nr INTEGER, thh_name TEXT, "
                 "nr INTEGER NOT NULL, bezeichnung TEXT NOT NULL, "
-                "vorjahr REAL, ansatz REAL, ergebnis REAL, deviation REAL, "
-                "ist_summe INTEGER NOT NULL DEFAULT 0, "
+                "prior_year REAL, ansatz REAL, result REAL, deviation REAL, "
+                "is_total INTEGER NOT NULL DEFAULT 0, "
                 "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
                 "PRIMARY KEY (year, thh_nr, nr))"
             )
@@ -892,9 +983,9 @@ class CouncilStore:
             "nr INTEGER NOT NULL, "               # Zeilennummer DES DOKUMENTS
             "rolle TEXT, "                        # stabiler Name, NULL = Einzelzeile
             "bezeichnung TEXT NOT NULL, "         # Wortlaut des Dokuments
-            "vorjahr REAL, ansatz REAL, plan REAL, plan_art TEXT, "
-            "ergebnis REAL, deviation REAL, ermaechtigung REAL, "
-            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "prior_year REAL, ansatz REAL, plan REAL, plan_art TEXT, "
+            "result REAL, deviation REAL, ermaechtigung REAL, "
+            "is_total INTEGER NOT NULL DEFAULT 0, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (year, nr))"
         )
@@ -924,7 +1015,7 @@ class CouncilStore:
         # gibt, ist das einzig Stabile — deshalb steht er in `bezeichnung`
         # im Wortlaut daneben.
         #
-        # Kein `wert_vorjahr`: Die zweite Spalte der Bilanz ist der Stichtag
+        # Kein `value_prior_year`: Die zweite Spalte der Bilanz ist der Stichtag
         # davor, und der ist ein **eigener Jahrgang** in dieser Tabelle. Sie
         # zusätzlich an der Zeile zu führen hieße, denselben Stand zweimal zu
         # speichern — mit der Aussicht, dass die beiden eines Tages
@@ -1002,8 +1093,8 @@ class CouncilStore:
             "art TEXT NOT NULL, "                  # ansatz | finanzplanung
             "nr INTEGER NOT NULL, "                # Postennummer 1–24, wie im Abschluss
             "bezeichnung TEXT NOT NULL, "
-            "betrag REAL NOT NULL, "
-            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "amount REAL NOT NULL, "
+            "is_total INTEGER NOT NULL DEFAULT 0, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (plan_jahrgang, year, nr))"
         )
@@ -1054,7 +1145,7 @@ class CouncilStore:
             "bezeichnung TEXT NOT NULL, "
             "besoldung TEXT, "                     # A 13, S 08 a, 15 …
             "stellen_plan REAL NOT NULL, "         # Stellen im Haushaltsjahr
-            "stellen_vorjahr REAL NOT NULL, "      # Stellen im Vorjahr
+            "positions_prior_year REAL NOT NULL, "      # Stellen im Vorjahr
             "besetzt REAL NOT NULL, "              # am Stichtag besetzt
             "besetzt_beamte REAL, "                # davon mit Beamt*innen (Teil A)
             "besetzt_arbeitnehmer REAL, "          # davon mit Tarifbeschäftigten (Teil A)
@@ -1093,8 +1184,8 @@ class CouncilStore:
             "ebene TEXT NOT NULL, "                # teilhaushalt|investitionen|finanzhaushalt
             "thh_nr INTEGER NOT NULL DEFAULT 0, "  # 0 = Summenzeile
             "bezeichnung TEXT NOT NULL, "
-            "einzahlungen REAL NOT NULL, "
-            "auszahlungen REAL NOT NULL, "
+            "inflows REAL NOT NULL, "
+            "outflows REAL NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (year, ebene, thh_nr))"
         )
@@ -1125,7 +1216,7 @@ class CouncilStore:
             "thh_nr INTEGER NOT NULL DEFAULT 0, "
             "code TEXT NOT NULL DEFAULT '', "      # IPSP-Element
             "bezeichnung TEXT NOT NULL, "
-            "gesamtsumme REAL NOT NULL, "
+            "grand_total REAL NOT NULL, "
             "details TEXT, "                       # Sachkonto-Detailnamen, " · "-getrennt
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (year, ebene, thh_nr, code))"
@@ -1165,7 +1256,7 @@ class CouncilStore:
             "produkt_nr TEXT NOT NULL, "          # z. B. P10.111023
             "produkt_name TEXT NOT NULL, "
             "thh_nr INTEGER, thh_name TEXT, amt TEXT, "
-            "ertraege REAL, aufwendungen REAL, ergebnis REAL, "
+            "revenues REAL, expenses REAL, result REAL, "
             "kurzbeschreibung TEXT, auftragsgrundlage TEXT, "
             "beeinflussbarkeit TEXT, "            # normalisiert: niedrig|mittel|hoch
             "beeinflussbarkeit_roh TEXT, "        # Wortlaut des Plans
@@ -1246,7 +1337,7 @@ class CouncilStore:
             "dokument_id INTEGER, "                # council_anlagen.document_id
             "label TEXT, url TEXT, "
             "fundstelle TEXT, seite INTEGER, "     # wo IM Dokument
-            "probe TEXT NOT NULL, probe_ergebnis TEXT, "  # womit abgesichert
+            "probe TEXT NOT NULL, probe_result TEXT, "  # womit abgesichert
             "stand TEXT, "                         # Stichtag des Inhalts
             "fetched_at TEXT NOT NULL)"            # zuletzt bestätigt
         )
@@ -1280,8 +1371,8 @@ class CouncilStore:
             "nr INTEGER NOT NULL, "                # Postennummer DIESES Jahrgangs
             "bezeichnung TEXT NOT NULL, "
             "rolle TEXT, "                         # ertraege_summe, zinsaufwand, …
-            "betrag REAL NOT NULL, vorjahr REAL, "  # Euro; vorjahr NULL = Spalte unlesbar
-            "ist_summe INTEGER NOT NULL DEFAULT 0, "
+            "amount REAL NOT NULL, prior_year REAL, "  # Euro; vorjahr NULL = Spalte unlesbar
+            "is_total INTEGER NOT NULL DEFAULT 0, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (year, nr))"
         )
@@ -1296,7 +1387,7 @@ class CouncilStore:
         # Die Beträge stehen in **Tausend Euro**, so wie der Bericht sie
         # ausweist, und die Spalten heißen auch so. Sie in Euro umzurechnen
         # hieße, sechs Stellen Genauigkeit zu behaupten, die das Dokument
-        # nicht hergibt — und niemand sähe es der Spalte `betrag` später an.
+        # nicht hergibt — und niemand sähe es der Spalte `amount` später an.
         #
         # Eigene `herkunft_id` je Zeile, nicht je Jahrgang: Diese Aufstellung
         # steht in einem anderen Abschnitt des Berichts als die Posten (4.1.1
@@ -1310,7 +1401,7 @@ class CouncilStore:
             "art TEXT NOT NULL, "                  # 'ertraege' | 'aufwendungen'
             "traeger_key TEXT NOT NULL, "          # stadt, klinikum, egh, konsolidierung, …
             "traeger TEXT NOT NULL, "
-            "betrag_teur REAL NOT NULL, vorjahr_teur REAL, "
+            "amount_keur REAL NOT NULL, prior_year_keur REAL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (year, art, traeger_key))"
         )
@@ -1399,8 +1490,8 @@ class CouncilStore:
             "gesellschaft TEXT NOT NULL, "
             "reihenfolge INTEGER NOT NULL, "
             "name TEXT NOT NULL, "
-            "betrag_eur REAL, "                # NULL, wo der Bericht nur % nennt
-            "anteil_prozent REAL, "
+            "amount_eur REAL, "                # NULL, wo der Bericht nur % nennt
+            "share_pct REAL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (bericht_jahr, gesellschaft, reihenfolge))"
         )
@@ -1583,7 +1674,7 @@ class CouncilStore:
             "feld TEXT NOT NULL, "             # Schlüssel aus investitionen_ist.SPALTEN
             "titel TEXT NOT NULL, "            # die Überschrift der Quelle
             "reihenfolge INTEGER NOT NULL, "   # Spaltenfolge der Tabelle
-            "betrag REAL NOT NULL, "
+            "amount REAL NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (year, feld))"
         )
@@ -1596,7 +1687,7 @@ class CouncilStore:
         # könnte (die Probe reißt, eine zweite gibt es nicht, also fällt der
         # ganze Jahrgang — s. `council/investitionen_ist.py`).
         #
-        # `differenz` ist der Grund für diese Tabelle: Ohne sie stünde die
+        # `difference` ist der Grund für diese Tabelle: Ohne sie stünde die
         # gemessene Lücke nur als Fließtext im `grund` und wäre für die Seite
         # nicht mehr zu haben, ohne einen Satz zurückzuparsen. `NULL`, wo
         # nichts zu messen war (eine Zeile, die sich nicht zerlegen ließ) —
@@ -1606,7 +1697,7 @@ class CouncilStore:
             "year INTEGER PRIMARY KEY, "
             "regelwerk TEXT NOT NULL, "        # kameral | doppik
             "grund TEXT NOT NULL, "            # der Satz aus dem Parser
-            "differenz REAL, "                 # Arten minus Summe, in Euro
+            "difference REAL, "                 # Arten minus Summe, in Euro
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
         # Die lange Ausgabenreihe — Datensatz 1102, ein Betrag je Jahr seit
@@ -1628,19 +1719,19 @@ class CouncilStore:
         # (2011 und 2022, s. die Fußnote auf /haushalt/schulden). Was die API
         # nicht liefern kann, kann das Frontend nicht versehentlich zeichnen.
         #
-        # `konflikt_betrag` ist der Betrag, den die ANDERE Quelle für dieses
+        # `conflict_amount` ist der Betrag, den die ANDERE Quelle für dieses
         # Jahr nennt — gefüllt nur, wo PDF und CSV sich widersprechen (2021).
-        # Dieselbe Rolle wie `differenz` in
+        # Dieselbe Rolle wie `difference` in
         # `council_investitionen_ist_verworfen`: Er macht aus „hier gab es
         # einen Widerspruch" eine Zahl, die die Seite anschreiben kann.
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_ausgabenreihe ("
             "year INTEGER PRIMARY KEY, "
             "regelwerk TEXT NOT NULL, "        # kameral | doppik
-            "betrag REAL NOT NULL, "           # in Euro
+            "amount REAL NOT NULL, "           # in Euro
             "quelle TEXT NOT NULL, "           # pdf | csv — wer den Wert lieferte
             "proben TEXT NOT NULL, "           # bestandene Proben, kommagetrennt
-            "konflikt_betrag REAL, "           # was die andere Quelle sagt
+            "conflict_amount REAL, "           # was die andere Quelle sagt
             "konflikt_quelle TEXT, "
             "revidiert INTEGER NOT NULL DEFAULT 0, "   # „r" der Quelle
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
@@ -1649,7 +1740,7 @@ class CouncilStore:
         # buergschaften.py) — wofür die Stadt geradesteht, nicht was sie
         # schuldet. 2024: 220,3 Mio. € gegen 43,7 Mio. € eigene Geldschulden.
         #
-        # `genau` und `aus_folgejahr` sind keine Technik, sondern Angaben über
+        # `genau` und `out_next_year` sind keine Technik, sondern Angaben über
         # die Zahl: Die Quelle nennt den Betrag 2019/2020 auf den Cent und ab
         # 2022 nur noch gerundet („rd. 220,3 Millionen"), und 2021 nennt sie
         # ihn überhaupt nicht — dieser Wert steht allein im Dokument des
@@ -1672,7 +1763,7 @@ class CouncilStore:
             "bereich TEXT NOT NULL, "          # Kürzel aus gebuehren.BEREICHE
             "bereich_name TEXT NOT NULL, "
             "kostenkalkulation REAL NOT NULL, "
-            "abzuege REAL NOT NULL, "          # negativ
+            "deductions REAL NOT NULL, "          # negativ
             "zu_deckende_kosten REAL NOT NULL, "
             "bezugsmenge REAL, "
             "bezugseinheit TEXT, "
@@ -1694,10 +1785,10 @@ class CouncilStore:
             "schluessel TEXT NOT NULL, "
             "bereich TEXT NOT NULL, "
             "bezeichnung TEXT NOT NULL, "
-            "betrag REAL NOT NULL, "
+            "amount REAL NOT NULL, "
             "einheit TEXT NOT NULL, "
-            "vorjahr REAL, "
-            "veraenderung_prozent REAL, "
+            "prior_year REAL, "
+            "change_pct REAL, "
             "template_number TEXT, "
             "proben TEXT NOT NULL, "
             "herkunft_id INTEGER, "
@@ -1720,18 +1811,18 @@ class CouncilStore:
             "year INTEGER NOT NULL, "
             "nachtrag INTEGER NOT NULL DEFAULT 0, "   # 0 = die Satzung selbst
             "fassung TEXT NOT NULL, "                 # entwurf | unbekannt
-            "ordentliche_ertraege REAL NOT NULL, "
-            "ordentliche_aufwendungen REAL NOT NULL, "
-            "ao_ertraege REAL NOT NULL, "
-            "ao_aufwendungen REAL NOT NULL, "
-            "ein_laufend REAL NOT NULL, aus_laufend REAL NOT NULL, "
-            "ein_invest REAL NOT NULL, aus_invest REAL NOT NULL, "
-            "ein_finanz REAL NOT NULL, aus_finanz REAL NOT NULL, "
+            "ordinary_revenues REAL NOT NULL, "
+            "ordinary_expenses REAL NOT NULL, "
+            "extraordinary_revenues REAL NOT NULL, "
+            "extraordinary_expenses REAL NOT NULL, "
+            "in_operating REAL NOT NULL, out_operating REAL NOT NULL, "
+            "in_capital REAL NOT NULL, aus_invest REAL NOT NULL, "
+            "in_financing REAL NOT NULL, out_financing REAL NOT NULL, "
             # Die beiden „Nachrichtlich"-Zeilen. Sie stehen NICHT nur als
             # Bequemlichkeit hier: Sie sind die Probe, an der die sechs Zeilen
             # darüber hängen, und wer sie mitspeichert, kann sie nachrechnen,
             # ohne das PDF noch einmal zu holen.
-            "ein_gesamt REAL NOT NULL, aus_gesamt REAL NOT NULL, "
+            "in_total REAL NOT NULL, out_total REAL NOT NULL, "
             # Nullbar, weil ein fehlender Paragraph etwas anderes ist als eine
             # Null: `kredite_investitionen = 0` heißt „nicht veranschlagt" (so
             # steht es dort in jedem gelesenen Jahrgang), NULL hieße „die
@@ -1769,8 +1860,8 @@ class CouncilStore:
             "seite_entwurf INTEGER, "
             "produkt TEXT, "
             "bezeichnung TEXT NOT NULL, "
-            "ertrag REAL, "                    # Euro; NULL = kein Betrag in
-            "aufwand REAL, "                   # dieser Spalte (Vermerke: beide)
+            "revenue REAL, "                    # Euro; NULL = kein Betrag in
+            "expense REAL, "                   # dieser Spalte (Vermerke: beide)
             "erlaeuterung TEXT, "              # die Erläuterungs-Spalte des PDFs
             # WER die Position vorgeschlagen hat — „Verw. I“, „SPD/ BÜNDNIS
             # 90/DIE GRÜNEN“. NULL, wo das Dokument die Spalte „Vorschlag
@@ -1801,9 +1892,9 @@ class CouncilStore:
             "year INTEGER NOT NULL, "
             "typ TEXT NOT NULL, "              # entwurf | liste | endsumme
             "label TEXT NOT NULL, "            # „Änderungsliste Verw. I", „SPD/CDU/FDP" …
-            "ertraege REAL NOT NULL, "
-            "aufwendungen REAL NOT NULL, "
-            "saldo REAL NOT NULL, "
+            "revenues REAL NOT NULL, "
+            "expenses REAL NOT NULL, "
+            "balance REAL NOT NULL, "
             # 1 = diese Zeile summiert die Positionen ihres Dokuments („die
             # eigene"); bei kumulierten Dokumenten trägt keine Zeile die 1 —
             # dort summieren die Positionen auf ALLE Listen zusammen.
@@ -1838,11 +1929,11 @@ class CouncilStore:
             # Die fünf Betragsspalten. NULL = Zelle leer (reine
             # Haushaltsvermerke tragen gar keine), 0 = Gedankenstrich, also
             # eine ausdrückliche Null.
-            "soll_entwurf REAL, "
-            "einzahlung REAL, "
-            "auszahlung REAL, "
+            "planned_draft REAL, "
+            "inflow REAL, "
+            "outflow REAL, "
             "ve REAL, "                        # Verpflichtungsermächtigungen
-            "soll_neu REAL, "
+            "planned_new REAL, "
             "erlaeuterung TEXT, "
             "urheber TEXT, "
             "dokument_id INTEGER NOT NULL, "
@@ -1856,9 +1947,9 @@ class CouncilStore:
             "year INTEGER NOT NULL, "
             "typ TEXT NOT NULL, "              # entwurf | liste | endsumme
             "label TEXT NOT NULL, "
-            "einzahlungen REAL NOT NULL, "
-            "auszahlungen REAL NOT NULL, "
-            "saldo REAL NOT NULL, "
+            "inflows REAL NOT NULL, "
+            "outflows REAL NOT NULL, "
+            "balance REAL NOT NULL, "
             # NULL, wo das Dokument keine VE-Spalte führt (die
             # Beschluss-Dateien). Sie zählt NICHT in den Saldo.
             "ve REAL, "
@@ -1880,10 +1971,10 @@ class CouncilStore:
             # und Bäderbetrieb nennt nur die **Kernzahl** eine geprüfte Zahl —
             # das Jahresergebnis, das der Rat beschließt. Eine 0 dort wäre eine
             # Behauptung, ein NULL ist die Auskunft „diese Quelle sagt es nicht".
-            "ertraege REAL, "                  # Erfolgsplan, in Euro
-            "aufwendungen REAL, "
+            "revenues REAL, "                  # Erfolgsplan, in Euro
+            "expenses REAL, "
             "steuern REAL, "                   # bis 2020 keine eigene Zeile → 0
-            "ergebnis REAL NOT NULL, "         # als einziges immer da
+            "result REAL NOT NULL, "         # als einziges immer da
             "vermoegensplan REAL, "            # Ein- = Auszahlungen, eine Zahl
             # NICHT dasselbe wie `vermoegensplan`, und die Verwechslung wäre
             # teuer: Der Vermögensplan ist die Gesamtsumme (Ein- = Auszahlungen),
@@ -1903,8 +1994,8 @@ class CouncilStore:
             # ersetzen und nicht danebenstehen.
             "PRIMARY KEY (betrieb, year))"
         )
-        # Bestände, die vor dem 20.08.2026 angelegt wurden, tragen `ertraege`
-        # und `aufwendungen` noch als NOT NULL. SQLite kann eine Spalte nicht
+        # Bestände, die vor dem 20.08.2026 angelegt wurden, tragen `revenues`
+        # und `expenses` noch als NOT NULL. SQLite kann eine Spalte nicht
         # nachträglich nullbar machen — die Tabelle muss neu gebaut und der
         # Inhalt umkopiert werden. Erkannt wird der Altstand am Schema selbst
         # (`PRAGMA table_info`, Spalte `notnull`), nicht an einer Versionsnummer:
@@ -1921,7 +2012,7 @@ class CouncilStore:
                     "ALTER TABLE council_wirtschaftsplaene ADD COLUMN investitionen REAL")
             wp_spalten = self._conn.execute(
                 "PRAGMA table_info(council_wirtschaftsplaene)").fetchall()
-        if any(s[1] == "ertraege" and s[3] == 1 for s in wp_spalten):
+        if any(s[1] == "revenues" and s[3] == 1 for s in wp_spalten):
             # `with self._conn` und nicht `self.transaktion()`: Diese Migration
             # läuft aus `_migrate()` heraus, also noch während `__init__` — der
             # Sammel-Zustand der Transaktionshilfe existiert da noch nicht.
@@ -1932,8 +2023,8 @@ class CouncilStore:
                     "CREATE TABLE council_wirtschaftsplaene ("
                     "betrieb TEXT NOT NULL, year INTEGER NOT NULL, "
                     "betrieb_name TEXT NOT NULL, template_number TEXT NOT NULL, "
-                    "ertraege REAL, aufwendungen REAL, steuern REAL, "
-                    "ergebnis REAL NOT NULL, vermoegensplan REAL, "
+                    "revenues REAL, expenses REAL, steuern REAL, "
+                    "result REAL NOT NULL, vermoegensplan REAL, "
                     "verpflichtungen REAL, entwurf_vom TEXT, proben TEXT NOT NULL, "
                     "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
                     "PRIMARY KEY (betrieb, year))")
@@ -1942,11 +2033,11 @@ class CouncilStore:
                 # verschieben, und dann landeten Beträge in Textfeldern.
                 self._conn.execute(
                     "INSERT INTO council_wirtschaftsplaene "
-                    "(betrieb, year, betrieb_name, template_number, ertraege, aufwendungen, "
-                    " steuern, ergebnis, vermoegensplan, verpflichtungen, entwurf_vom, "
+                    "(betrieb, year, betrieb_name, template_number, revenues, expenses, "
+                    " steuern, result, vermoegensplan, verpflichtungen, entwurf_vom, "
                     " proben, herkunft_id, fetched_at) "
-                    "SELECT betrieb, year, betrieb_name, template_number, ertraege, "
-                    " aufwendungen, steuern, ergebnis, vermoegensplan, verpflichtungen, "
+                    "SELECT betrieb, year, betrieb_name, template_number, revenues, "
+                    " expenses, steuern, result, vermoegensplan, verpflichtungen, "
                     " entwurf_vom, proben, herkunft_id, fetched_at FROM _wp_alt")
                 alt_n = self._conn.execute("SELECT COUNT(*) FROM _wp_alt").fetchone()[0]
                 neu_n = self._conn.execute(
@@ -1961,10 +2052,10 @@ class CouncilStore:
             "year INTEGER PRIMARY KEY, "
             "bestand REAL NOT NULL, "          # in Euro
             "genau INTEGER NOT NULL, "         # 1 = auf den Cent belegt
-            "aus_folgejahr INTEGER NOT NULL, " # 1 = Anfangsbestand des Folgejahrs
+            "out_next_year INTEGER NOT NULL, " # 1 = Anfangsbestand des Folgejahrs
             "quelle TEXT NOT NULL, "           # anhang | tabelle
             "grund TEXT, "                     # Begründung im Wortlaut der Stadt
-            "einzelbetrag REAL, "              # die im Grund genannte Zahl (2022)
+            "single_amount REAL, "              # die im Grund genannte Zahl (2022)
             "proben TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
@@ -1987,7 +2078,7 @@ class CouncilStore:
             "umbuchungen REAL, ahk_ende REAL, "
             "abschr_anfang REAL, abschreibung REAL, aufloesungen REAL, "
             "zuschreibungen REAL, abschr_umbuchungen REAL, abschr_ende REAL, "
-            "buchwert REAL, buchwert_vorjahr REAL, "
+            "book_value REAL, book_value_prior_year REAL, "
             "proben TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (year, nr))"
@@ -2001,8 +2092,8 @@ class CouncilStore:
             "CREATE TABLE IF NOT EXISTS council_vermoegensgruppen ("
             "year INTEGER NOT NULL, "
             "gruppe TEXT NOT NULL, "
-            "buchwert REAL NOT NULL, "
-            "buchwert_vorjahr REAL, "
+            "book_value REAL NOT NULL, "
+            "book_value_prior_year REAL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (year, gruppe))"
         )
@@ -2073,7 +2164,7 @@ class CouncilStore:
             "extra_unter_50 REAL, sonstige_unter_50 REAL, "
             # Die Veränderung, die der Band selbst ausweist. Angabe der Quelle,
             # nicht unsere Rechnung — deshalb gespeichert statt abgeleitet.
-            "veraenderung REAL, "
+            "change REAL, "
             "proben TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
@@ -2092,7 +2183,7 @@ class CouncilStore:
         # Dokuments viermal zu wiederholen — und die Probe, dass die Teile sie
         # ergeben, hätte nichts mehr, wogegen sie prüfen könnte.
         #
-        # `betrag` ist NULL, wo der Titel nur eine Wertgrenze nennt (die neun
+        # `amount` ist NULL, wo der Titel nur eine Wertgrenze nennt (die neun
         # Sammelberichte). Eine 0 stünde dort für „nichts nachbewilligt" und
         # wäre falsch; NULL heißt „diese Zeile trägt keinen Betrag".
         self._conn.execute(
@@ -2102,8 +2193,8 @@ class CouncilStore:
             "titel TEXT NOT NULL, "
             "art TEXT NOT NULL, "              # bewilligung|verpflichtungs…|schwelle
             "kategorie TEXT NOT NULL, "        # ueberplanmaessig|ausser…|beides
-            "betrag REAL, "                    # NULL bei art='schwelle'
-            "betrag_quelle TEXT, "             # titel | beschlussvorschlag
+            "amount REAL, "                    # NULL bei art='schwelle'
+            "amount_source TEXT, "             # titel | beschlussvorschlag
             "beschlossen INTEGER NOT NULL DEFAULT 0, "
             # Zwei Spalten, weil es zwei verschiedene Fragen sind:
             # `im_rat` = das Plenum hat abgestimmt (die wörtliche Auskunft,
@@ -2126,13 +2217,13 @@ class CouncilStore:
             "CREATE TABLE IF NOT EXISTS council_nachbewilligung_jahre ("
             "year INTEGER PRIMARY KEY, "
             # Was die Summenzeile der Tabelle selbst ausweist …
-            "summe_konsumtiv REAL NOT NULL, "
-            "summe_investiv REAL NOT NULL, "
+            "total_operating REAL NOT NULL, "
+            "total_capital REAL NOT NULL, "
             # … und was der Fließtext darüber behauptet. Beides wird
             # gespeichert, gerade WEIL es 2022 auseinanderfällt: Wer nur eine
             # der beiden Zahlen behielte, hätte den Widerspruch weggeräumt.
             "text_gesamt REAL, "
-            "verpflichtungen_betrag REAL, "
+            "commitments_amount REAL, "
             # Das Ergebnis der Tabellenprobe im Klartext — es steht auf der
             # Seite, nicht nur im Log.
             "probe_ok INTEGER NOT NULL DEFAULT 0, "
@@ -2144,10 +2235,10 @@ class CouncilStore:
             "year INTEGER NOT NULL, "
             "kanal TEXT NOT NULL, "            # rat|oberbuergermeister|…
             "label TEXT NOT NULL, "            # der Wortlaut der Stadt
-            "anzahl_konsumtiv INTEGER NOT NULL, "
-            "betrag_konsumtiv REAL NOT NULL, "
-            "anzahl_investiv INTEGER NOT NULL, "
-            "betrag_investiv REAL NOT NULL, "
+            "count_operating INTEGER NOT NULL, "
+            "amount_operating REAL NOT NULL, "
+            "count_capital INTEGER NOT NULL, "
+            "amount_capital REAL NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (year, kanal))"
         )
@@ -2166,7 +2257,7 @@ class CouncilStore:
             "template_number TEXT PRIMARY KEY, "
             "year INTEGER NOT NULL, "          # Jahr der Sitzung
             "sitzung TEXT NOT NULL, "          # ISO-Datum
-            "betrag REAL NOT NULL, "           # in Euro, wie beschlossen
+            "amount REAL NOT NULL, "           # in Euro, wie beschlossen
             "gremium TEXT, "                   # Rat | Verwaltungsausschuss
             "layout TEXT, "                    # neu | alt — welcher Abschnitt trug
             "zweitstelle TEXT NOT NULL, "      # identisch | zerlegung
@@ -2338,7 +2429,7 @@ class CouncilStore:
         # ändert den Hash und erzwingt die Nachverdichtung von selbst.
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_partei_meinungen_cache ("
-            "schluessel TEXT PRIMARY KEY, frage TEXT, ergebnis TEXT NOT NULL, "
+            "schluessel TEXT PRIMARY KEY, frage TEXT, result TEXT NOT NULL, "
             "created_at TEXT NOT NULL)"
         )
         # Erledigt-Marker der Wortbeitrags-Extraktion am Protokoll: auch ein
@@ -3302,13 +3393,13 @@ class CouncilStore:
         if kvonrs:
             ph2 = ",".join("?" * len(kvonrs))
             for b in self._conn.execute(
-                    f"SELECT kvonr, datum, ergebnis FROM council_beratungen "
+                    f"SELECT kvonr, datum, result FROM council_beratungen "
                     f"WHERE kvonr IN ({ph2}) ORDER BY datum", kvonrs):
                 stationen.setdefault(b["kvonr"], []).append(dict(b))
         for k in kandidaten:
             reihe = stationen.get(k["kvonr"] or 0, [])
             heutige = next((b for b in reihe if b["datum"] == k["session_date"]), None)
-            k["behandlung"] = (heutige or {}).get("ergebnis")
+            k["behandlung"] = (heutige or {}).get("result")
             k["vorgeschichte"] = sum(1 for b in reihe if (b["datum"] or "9999") < k["session_date"])
             k["antragsteller"], k["titel_kurz"] = self._titel_zerlegen(k["title"])
 
@@ -4503,10 +4594,10 @@ class CouncilStore:
             r["wiederkehr"] = zaehler.get(self._wiederkehr_schluessel(r["title"]), 1)
             r["antragsteller"], _ = self._titel_zerlegen(r["title"] or "")
             reihe = [dict(b) for b in self._conn.execute(
-                "SELECT datum, ergebnis FROM council_beratungen WHERE kvonr = ? ORDER BY datum",
+                "SELECT datum, result FROM council_beratungen WHERE kvonr = ? ORDER BY datum",
                 (r["kvonr"] or 0,))]
             heutige = next((b for b in reihe if b["datum"] == r["session_date"]), None)
-            r["behandlung"] = (heutige or {}).get("ergebnis")
+            r["behandlung"] = (heutige or {}).get("result")
         return echte[:limit] if limit is not None else echte
 
     def save_agenda_impact(self, ksinr: int, item_number: str,
@@ -4875,17 +4966,17 @@ class CouncilStore:
             for r in rows:
                 self._conn.execute(
                     "INSERT INTO council_beratungen "
-                    "(kvonr, datum, gremium, top, is_public, ergebnis, ksinr, fetched_at) "
+                    "(kvonr, datum, gremium, top, is_public, result, ksinr, fetched_at) "
                     "VALUES (?,?,?,?,?,?,?,?)",
                     (kvonr, r.get("datum"), r.get("gremium") or "", r.get("top"),
                      None if r.get("is_public") is None else int(bool(r.get("is_public"))),
-                     r.get("ergebnis"), r.get("ksinr"), now),
+                     r.get("result"), r.get("ksinr"), now),
                 )
         return len(rows)
 
     def get_beratungen(self, kvonr: int) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT datum, gremium, top, is_public, ergebnis, ksinr "
+            "SELECT datum, gremium, top, is_public, result, ksinr "
             "FROM council_beratungen WHERE kvonr = ? "
             "ORDER BY datum IS NULL, datum", (kvonr,),
         ).fetchall()
@@ -4896,11 +4987,11 @@ class CouncilStore:
         weitergeht"-Stoff.
 
         Das Datum entscheidet, NICHT das Ergebnis-Feld. Die erste Fassung
-        verlangte zusätzlich ein leeres ``ergebnis`` — und lieferte damit
+        verlangte zusätzlich ein leeres ``result`` — und lieferte damit
         dauerhaft nichts: Bei künftigen Stationen trägt das Feld die geplante
         BEHANDLUNG („Vorberatung", „Kenntnisnahme"), kein Resultat. Am
         11.08.2026 nachgemessen: 22 Termine ab heute, davon 0 mit leerem
-        ``ergebnis`` — der Block blieb also immer leer, auch im
+        ``result`` — der Block blieb also immer leer, auch im
         Recherche-Bericht. Die Behandlungsart kommt als ``art`` mit; sie sagt
         dem Leser, was dort passieren soll.
         """
@@ -4909,7 +5000,7 @@ class CouncilStore:
             return []
         ph = ",".join("?" * len(kvonrs))
         rows = self._conn.execute(
-            f"SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS art, "
+            f"SELECT b.kvonr, b.datum, b.gremium, b.result AS art, "
             f"       v.template_number, v.title AS vorlage_titel "
             f"FROM council_beratungen b JOIN council_vorlagen v ON v.kvonr = b.kvonr "
             f"WHERE b.kvonr IN ({ph}) AND b.datum >= date('now') ORDER BY b.datum",
@@ -4950,7 +5041,7 @@ class CouncilStore:
         if not worte:
             return []
         rows = self._conn.execute(
-            "SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS art, "
+            "SELECT b.kvonr, b.datum, b.gremium, b.result AS art, "
             "       v.template_number, v.title AS vorlage_titel "
             "FROM council_beratungen b JOIN council_vorlagen v ON v.kvonr = b.kvonr "
             "WHERE b.datum >= date('now') ORDER BY b.datum").fetchall()
@@ -4990,7 +5081,7 @@ class CouncilStore:
                WHERE ci.kvonr IS NOT NULL AND cs.session_date >= ?
                UNION
                SELECT DISTINCT b.kvonr FROM council_beratungen b
-               WHERE (b.ergebnis IS NULL AND b.datum <= ?) OR b.datum >= ?""",
+               WHERE (b.result IS NULL AND b.datum <= ?) OR b.datum >= ?""",
             (cutoff, horizon, date.today().isoformat()),
         ).fetchall()
         return [r[0] for r in rows]
@@ -5299,10 +5390,10 @@ class CouncilStore:
         f = h.felder()
         cur = self._conn.execute(
             "INSERT INTO council_herkunft (schluessel, art, dokument_id, label, url, "
-            " fundstelle, seite, probe, probe_ergebnis, stand, fetched_at) "
+            " fundstelle, seite, probe, probe_result, stand, fetched_at) "
             "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (schluessel, f["art"], f["dokument_id"], f["label"], f["url"],
-             f["fundstelle"], f["seite"], f["probe"], f["probe_ergebnis"],
+             f["fundstelle"], f["seite"], f["probe"], f["probe_result"],
              f["stand"], jetzt))
         return int(cur.lastrowid)
 
@@ -5708,19 +5799,19 @@ class CouncilStore:
             self._conn.execute("DELETE FROM council_haushalt WHERE year = ?", (year,))
             for r in rows:
                 self._conn.execute(
-                    "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, "
-                    " ergebnis, is_summe, source_url, fetched_at, herkunft_id) "
+                    "INSERT INTO council_haushalt (year, bereich, revenues, expenses, "
+                    " result, is_total, source_url, fetched_at, herkunft_id) "
                     "VALUES (?,?,?,?,?,?,?,?,?)",
-                    (year, r["bereich"], r.get("ertraege"), r.get("aufwendungen"),
-                     r.get("ergebnis"), int(r.get("is_summe", 0)),
+                    (year, r["bereich"], r.get("revenues"), r.get("expenses"),
+                     r.get("result"), int(r.get("is_total", 0)),
                      herkunft.url, now, hid))
         return len(rows)
 
     def get_haushalt(self, year: int) -> list[dict]:
         """Ergebnishaushalt eines Jahres (Teilhaushalte + Summenzeile)."""
         rows = self._conn.execute(
-            "SELECT bereich, ertraege, aufwendungen, ergebnis, is_summe, source_url "
-            "FROM council_haushalt WHERE year = ? ORDER BY is_summe, aufwendungen DESC",
+            "SELECT bereich, revenues, expenses, result, is_total, source_url "
+            "FROM council_haushalt WHERE year = ? ORDER BY is_total, expenses DESC",
             (year,)).fetchall()
         return [dict(r) for r in rows]
 
@@ -5736,16 +5827,16 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_steuern "
-                "(year, art, betrag, source_url, fetched_at, herkunft_id) "
+                "(year, art, amount, source_url, fetched_at, herkunft_id) "
                 "VALUES (?,?,?,?,?,?)",
-                [(r["year"], r["art"], r.get("betrag"), herkunft.url, now, hid)
+                [(r["year"], r["art"], r.get("amount"), herkunft.url, now, hid)
                  for r in rows])
         return len(rows)
 
     def get_steuereinnahmen(self) -> list[dict]:
         """Alle Ist-Steuereinnahmen, älteste zuerst (Langformat je Jahr × Art)."""
         return [dict(r) for r in self._conn.execute(
-            "SELECT year, art, betrag FROM council_steuern ORDER BY year, art")]
+            "SELECT year, art, amount FROM council_steuern ORDER BY year, art")]
 
     def save_steuerkraft(self, rows: list[dict], herkunft) -> int:
         """Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr ersetzen.
@@ -5828,7 +5919,7 @@ class CouncilStore:
                         (year, thh_nr))
             self._conn.executemany(
                 "INSERT INTO council_ergebnisrechnung (year, thh_nr, thh_name, nr, bezeichnung, "
-                " vorjahr, ansatz, plan, plan_art, ergebnis, deviation, ist_summe, "
+                " prior_year, ansatz, plan, plan_art, result, deviation, is_total, "
                 " quelle_label, quelle_url, fetched_at, herkunft_id) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 # `plan` fällt auf `ansatz` zurück, wenn der Aufrufer keine
@@ -5836,12 +5927,12 @@ class CouncilStore:
                 # ausdrücklichem ``None``. `p.get("plan", …)` täte das nicht:
                 # Der Vorgabewert greift nur bei fehlendem Schlüssel. Dieselbe
                 # Falle stand im Lesepfad (s. `get_plan_ist.plan_von`).
-                [(year, thh_nr, thh_name, p["nr"], p["bezeichnung"], p.get("vorjahr"),
+                [(year, thh_nr, thh_name, p["nr"], p["bezeichnung"], p.get("prior_year"),
                   p.get("ansatz"),
                   p.get("ansatz") if p.get("plan") is None else p.get("plan"),
                   p.get("plan_art"),
-                  p.get("ergebnis"), p.get("deviation"),
-                  p.get("ist_summe", 0), herkunft.label, herkunft.url, now, hid)
+                  p.get("result"), p.get("deviation"),
+                  p.get("is_total", 0), herkunft.label, herkunft.url, now, hid)
                  for p in posten])
         return len(posten)
 
@@ -5904,7 +5995,7 @@ class CouncilStore:
         Liefert ``{gesamt: {...}, bereiche: [...]}`` — die Bereiche nach
         geplanten Aufwendungen absteigend, damit die größten oben stehen."""
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, ergebnis, deviation "
+            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, result, deviation "
             "FROM council_ergebnisrechnung WHERE year = ? AND nr IN (12, 20) "
             "ORDER BY thh_nr, nr", (year,))]
 
@@ -5933,12 +6024,12 @@ class CouncilStore:
             a = next((r for r in teil if r["nr"] == 20), {})
             # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
             # ursprüngliche Haushaltsansatz — 2018 und 2020 fallen auseinander.
-            return {"ertraege_plan": plan_von(e),
-                    "ertraege_ansatz": e.get("ansatz"),
-                    "ertraege_ist": e.get("ergebnis"),
-                    "aufwendungen_plan": plan_von(a),
-                    "aufwendungen_ansatz": a.get("ansatz"),
-                    "aufwendungen_ist": a.get("ergebnis"),
+            return {"revenues_planned": plan_von(e),
+                    "revenues_budgeted": e.get("ansatz"),
+                    "revenues_actual": e.get("result"),
+                    "expenses_planned": plan_von(a),
+                    "expenses_budgeted": a.get("ansatz"),
+                    "expenses_actual": a.get("result"),
                     "plan_art": a.get("plan_art") or e.get("plan_art")}
 
         gesamt = [r for r in rows if r["thh_nr"] is None]
@@ -5946,7 +6037,7 @@ class CouncilStore:
         for nr in sorted({r["thh_nr"] for r in rows if r["thh_nr"] is not None}):
             teil = [r for r in rows if r["thh_nr"] == nr]
             bereiche.append({"thh_nr": nr, "thh_name": teil[0]["thh_name"], **bauen(teil)})
-        bereiche.sort(key=lambda b: -(b["aufwendungen_plan"] or 0))
+        bereiche.sort(key=lambda b: -(b["expenses_planned"] or 0))
         return {"year": year, "gesamt": bauen(gesamt) if gesamt else None, "bereiche": bereiche}
 
     def plan_ist_jahre(self) -> list[int]:
@@ -5990,13 +6081,13 @@ class CouncilStore:
             self._conn.execute("DELETE FROM council_finanzrechnung WHERE year = ?", (year,))
             self._conn.executemany(
                 "INSERT INTO council_finanzrechnung (year, nr, rolle, bezeichnung, "
-                " vorjahr, ansatz, plan, plan_art, ergebnis, deviation, "
-                " ermaechtigung, ist_summe, herkunft_id, fetched_at) "
+                " prior_year, ansatz, plan, plan_art, result, deviation, "
+                " ermaechtigung, is_total, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(year, z["nr"], z.get("rolle"), z["bezeichnung"], z.get("vorjahr"),
-                  z.get("ansatz"), z.get("plan"), z.get("plan_art"), z.get("ergebnis"),
+                [(year, z["nr"], z.get("rolle"), z["bezeichnung"], z.get("prior_year"),
+                  z.get("ansatz"), z.get("plan"), z.get("plan_art"), z.get("result"),
                   z.get("deviation"), z.get("ermaechtigung"),
-                  z.get("ist_summe", 0), hid, now)
+                  z.get("is_total", 0), hid, now)
                  for z in zeilen])
         return len(zeilen)
 
@@ -6089,7 +6180,7 @@ class CouncilStore:
         for row in rows:
             z = jahre.setdefault(row["year"], {
                 "year": row["year"], "ruecklage": None,
-                "jahresergebnis": None, "stand_nach_ergebnis": None,
+                "jahresergebnis": None, "state_after_result": None,
                 "herkunft_id": row["herkunft_id"],
             })
             if row["rolle"] == "ueberschussruecklage_ordentlich":
@@ -6101,7 +6192,7 @@ class CouncilStore:
             z = jahre[year]
             if z["ruecklage"] is None or z["jahresergebnis"] is None:
                 continue
-            z["stand_nach_ergebnis"] = z["ruecklage"] + z["jahresergebnis"]
+            z["state_after_result"] = z["ruecklage"] + z["jahresergebnis"]
             aus.append(z)
         return aus
 
@@ -6168,10 +6259,10 @@ class CouncilStore:
                 (plan_jahrgang,))
             self._conn.executemany(
                 "INSERT INTO council_ergebnishaushalt (plan_jahrgang, year, art, nr, "
-                " bezeichnung, betrag, ist_summe, fetched_at, herkunft_id) "
+                " bezeichnung, amount, is_total, fetched_at, herkunft_id) "
                 "VALUES (?,?,?,?,?,?,?,?,?)",
                 [(plan_jahrgang, z["year"], z["art"], z["nr"], z["bezeichnung"],
-                  z["betrag"], 1 if z.get("ist_summe") else 0, now, hid)
+                  z["amount"], 1 if z.get("is_total") else 0, now, hid)
                  for z in zeilen])
         return len(zeilen)
 
@@ -6248,12 +6339,12 @@ class CouncilStore:
             self._conn.executemany(
                 "INSERT INTO council_stellenplan (jahrgang, teil, zeile, art, "
                 " gruppe, lfd_nr, bezeichnung, besoldung, stellen_plan, "
-                " stellen_vorjahr, besetzt, besetzt_beamte, besetzt_arbeitnehmer, "
+                " positions_prior_year, besetzt, besetzt_beamte, besetzt_arbeitnehmer, "
                 " nicht_besetzt, stichtag, stimmig, fetched_at, herkunft_id) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(jahrgang, teil, i, z["art"], z.get("gruppe"), z.get("lfd_nr"),
                   z["bezeichnung"], z.get("besoldung"), z["stellen_plan"],
-                  z["stellen_vorjahr"], z["besetzt"], z.get("besetzt_beamte"),
+                  z["positions_prior_year"], z["besetzt"], z.get("besetzt_beamte"),
                   z.get("besetzt_arbeitnehmer"), z["nicht_besetzt"], stichtag,
                   1 if z.get("stimmig", 1) else 0, now, hid)
                  for i, z in enumerate(zeilen)])
@@ -6318,20 +6409,20 @@ class CouncilStore:
             self._conn.execute(
                 "DELETE FROM council_investitionen WHERE year = ?", (year,))
             werte = [(year, "teilhaushalt", z["thh_nr"], z["bezeichnung"],
-                      z["einzahlungen"], z["auszahlungen"], now, hid)
+                      z["inflows"], z["outflows"], now, hid)
                      for z in zeilen]
             werte.append((year, "investitionen", 0, gesamt["bezeichnung"],
-                          gesamt["einzahlungen"], gesamt["auszahlungen"], now, hid))
+                          gesamt["inflows"], gesamt["outflows"], now, hid))
             if finanzhaushalt:
                 hid_fh = (self.merke_herkunft(herkunft_finanzhaushalt, fetched_at=now)
                           if herkunft_finanzhaushalt is not None else hid)
                 werte.append((year, "finanzhaushalt", 0,
                               finanzhaushalt["bezeichnung"],
-                              finanzhaushalt["einzahlungen"],
-                              finanzhaushalt["auszahlungen"], now, hid_fh))
+                              finanzhaushalt["inflows"],
+                              finanzhaushalt["outflows"], now, hid_fh))
             self._conn.executemany(
                 "INSERT INTO council_investitionen (year, ebene, thh_nr, bezeichnung, "
-                " einzahlungen, auszahlungen, fetched_at, herkunft_id) "
+                " inflows, outflows, fetched_at, herkunft_id) "
                 "VALUES (?,?,?,?,?,?,?,?)", werte)
         return len(werte)
 
@@ -6395,7 +6486,7 @@ class CouncilStore:
             for nr, a in sorted(gelesen["abschnitte"].items()):
                 for m in a["massnahmen"]:
                     werte.append((year, "massnahme", nr, m["code"],
-                                  m["bezeichnung"], m["gesamtsumme"],
+                                  m["bezeichnung"], m["grand_total"],
                                   " · ".join(m.get("details") or []) or None,
                                   now, hid))
                 werte.append((year, "teilhaushalt", nr, "", a["name"],
@@ -6404,7 +6495,7 @@ class CouncilStore:
                           gelesen["kopfsumme"], None, now, hid))
             self._conn.executemany(
                 "INSERT INTO council_investitionsmassnahmen "
-                "(year, ebene, thh_nr, code, bezeichnung, gesamtsumme, "
+                "(year, ebene, thh_nr, code, bezeichnung, grand_total, "
                 " details, fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?,?)",
                 werte)
         return len(werte)
@@ -6472,17 +6563,17 @@ class CouncilStore:
             self._conn.execute("DELETE FROM council_konzern_traeger WHERE year = ?", (year,))
             self._conn.executemany(
                 "INSERT INTO council_konzern_posten (year, nr, bezeichnung, rolle, "
-                " betrag, vorjahr, ist_summe, fetched_at, herkunft_id) "
+                " amount, prior_year, is_total, fetched_at, herkunft_id) "
                 "VALUES (?,?,?,?,?,?,?,?,?)",
-                [(year, p["nr"], p["bezeichnung"], p.get("rolle"), p["betrag"],
-                  p.get("vorjahr"), 1 if p.get("ist_summe") else 0, now, hid)
+                [(year, p["nr"], p["bezeichnung"], p.get("rolle"), p["amount"],
+                  p.get("prior_year"), 1 if p.get("is_total") else 0, now, hid)
                  for p in posten])
             self._conn.executemany(
                 "INSERT INTO council_konzern_traeger (year, art, traeger_key, traeger, "
-                " betrag_teur, vorjahr_teur, fetched_at, herkunft_id) "
+                " amount_keur, prior_year_keur, fetched_at, herkunft_id) "
                 "VALUES (?,?,?,?,?,?,?,?)",
-                [(year, t["art"], t["traeger_key"], t["traeger"], t["betrag_teur"],
-                  t.get("vorjahr_teur"), now, hid_traeger) for t in traeger])
+                [(year, t["art"], t["traeger_key"], t["traeger"], t["amount_keur"],
+                  t.get("prior_year_keur"), now, hid_traeger) for t in traeger])
         return {"posten": len(posten), "traeger": len(traeger)}
 
     def konzern_jahre(self) -> list[int]:
@@ -6521,15 +6612,15 @@ class CouncilStore:
         stärkste Bestätigung, die dieser Bestand hergibt."""
         try:
             rows = self._conn.execute(
-                "SELECT year, bezeichnung, ergebnis FROM council_ergebnisrechnung "
-                "WHERE thh_nr IS NULL AND ergebnis IS NOT NULL "
+                "SELECT year, bezeichnung, result FROM council_ergebnisrechnung "
+                "WHERE thh_nr IS NULL AND result IS NOT NULL "
                 "  AND bezeichnung LIKE 'Summe ordentliche%' ORDER BY year").fetchall()
         except sqlite3.OperationalError:
             return {}
         aus: dict[int, dict] = {}
         for r in rows:
-            art = "ertraege" if "Erträge" in r["bezeichnung"] else "aufwendungen"
-            aus.setdefault(r["year"], {})[art] = r["ergebnis"]
+            art = "revenues" if "Erträge" in r["bezeichnung"] else "expenses"
+            aus.setdefault(r["year"], {})[art] = r["result"]
         return aus
 
     # --- Beteiligungsbericht (§ 151 NKomVG) ---------------------------------
@@ -6598,11 +6689,11 @@ class CouncilStore:
             for z in eigentuemer or []:
                 self._conn.execute(
                     "INSERT INTO council_gesellschaft_eigentuemer (bericht_jahr, "
-                    " gesellschaft, reihenfolge, name, betrag_eur, "
-                    " anteil_prozent, fetched_at, herkunft_id) "
+                    " gesellschaft, reihenfolge, name, amount_eur, "
+                    " share_pct, fetched_at, herkunft_id) "
                     "VALUES (?,?,?,?,?,?,?,?)",
                     (z["bericht_jahr"], z["gesellschaft"], z["reihenfolge"],
-                     z["name"], z.get("betrag_eur"), z.get("anteil_prozent"), now,
+                     z["name"], z.get("amount_eur"), z.get("share_pct"), now,
                      self.merke_herkunft(z["herkunft"], fetched_at=now)))
         return {"gesellschaften": len(stammdaten), "texte": len(texte),
                 "kennzahlen": len(kennzahlen), "personen": len(personen or []),
@@ -6712,11 +6803,11 @@ class CouncilStore:
             if year is None:
                 rows = self._conn.execute(
                     "SELECT * FROM council_konzern_traeger ORDER BY year, art, "
-                    "betrag_teur DESC").fetchall()
+                    "amount_keur DESC").fetchall()
             else:
                 rows = self._conn.execute(
                     "SELECT * FROM council_konzern_traeger WHERE year = ? "
-                    "ORDER BY art, betrag_teur DESC", (year,)).fetchall()
+                    "ORDER BY art, amount_keur DESC", (year,)).fetchall()
         except sqlite3.OperationalError:
             return []
         return [dict(r) for r in rows]
@@ -6787,11 +6878,11 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_ausgabenreihe "
-                "(year, regelwerk, betrag, quelle, proben, konflikt_betrag, "
+                "(year, regelwerk, amount, quelle, proben, conflict_amount, "
                 " konflikt_quelle, revidiert, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?)",
-                [(z["year"], z["regelwerk"], z["betrag"], z["quelle"],
-                  ",".join(z.get("proben") or []), z.get("konflikt_betrag"),
+                [(z["year"], z["regelwerk"], z["amount"], z["quelle"],
+                  ",".join(z.get("proben") or []), z.get("conflict_amount"),
                   z.get("konflikt_quelle"), int(bool(z.get("revidiert"))),
                   hid, now) for z in zeilen])
         return len(zeilen)
@@ -6839,12 +6930,12 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_wirtschaftsplaene "
-                "(betrieb, year, betrieb_name, template_number, ertraege, aufwendungen, "
-                " steuern, ergebnis, vermoegensplan, investitionen, verpflichtungen, "
+                "(betrieb, year, betrieb_name, template_number, revenues, expenses, "
+                " steuern, result, vermoegensplan, investitionen, verpflichtungen, "
                 " entwurf_vom, proben, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (plan.betrieb, plan.year, plan.betrieb_name, plan.template_number,
-                 plan.ertraege, plan.aufwendungen, plan.steuern, plan.ergebnis,
+                 plan.revenues, plan.expenses, plan.steuern, plan.result,
                  plan.vermoegensplan, plan.investitionen, plan.verpflichtungen,
                  plan.entwurf_vom, proben, hid, now))
         return 1
@@ -6865,12 +6956,12 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_gebuehren "
-                "(year, bereich, bereich_name, kostenkalkulation, abzuege, "
+                "(year, bereich, bereich_name, kostenkalkulation, deductions, "
                 " zu_deckende_kosten, bezugsmenge, bezugseinheit, gebuehr, "
                 " gebuehrenvorschlag, template_number, proben, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (bedarf.year, bedarf.bereich, bedarf.bereich_name,
-                 bedarf.kostenkalkulation, bedarf.abzuege,
+                 bedarf.kostenkalkulation, bedarf.deductions,
                  bedarf.zu_deckende_kosten, bedarf.bezugsmenge,
                  bedarf.bezugseinheit, bedarf.gebuehr,
                  bedarf.gebuehrenvorschlag, bedarf.template_number,
@@ -6899,12 +6990,12 @@ class CouncilStore:
                 hid = self.merke_herkunft(herkunft, fetched_at=now)
                 self._conn.execute(
                     "INSERT OR REPLACE INTO council_gebuehrensaetze "
-                    "(year, schluessel, bereich, bezeichnung, betrag, einheit, "
-                    " vorjahr, veraenderung_prozent, template_number, proben, "
+                    "(year, schluessel, bereich, bezeichnung, amount, einheit, "
+                    " prior_year, change_pct, template_number, proben, "
                     " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     (satz.year, satz.schluessel, satz.bereich, satz.bezeichnung,
-                     satz.betrag, satz.einheit, satz.vorjahr,
-                     satz.veraenderung_prozent, satz.template_number, proben, hid, now))
+                     satz.amount, satz.einheit, satz.prior_year,
+                     satz.change_pct, satz.template_number, proben, hid, now))
         return len(saetze)
 
     def get_gebuehrensaetze(self) -> list[dict]:
@@ -6924,7 +7015,7 @@ class CouncilStore:
             return []
 
     def save_haushalt_aenderungen(self, dokument_id: int, liste: str,
-                                  ergebnis, herkunft) -> int:
+                                  result, herkunft) -> int:
         """Eine geprüfte Änderungsliste speichern — Positionen und Summen.
 
         Ersetzt wird je ``(jahrgang, liste)``: Ein Jahrgang hat genau ein
@@ -6934,7 +7025,7 @@ class CouncilStore:
         schreibt, was seine Proben bestanden hat (council/aenderungslisten.py).
         """
         now = datetime.utcnow().isoformat(timespec="seconds")
-        jahrgang = ergebnis.jahrgang
+        jahrgang = result.jahrgang
         with self.transaktion():
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             for tabelle in ("council_haushalt_aenderungen",
@@ -6945,25 +7036,25 @@ class CouncilStore:
             self._conn.executemany(
                 "INSERT INTO council_haushalt_aenderungen (jahrgang, liste, "
                 " year, lfd, thh, seite_entwurf, produkt, bezeichnung, "
-                " ertrag, aufwand, erlaeuterung, urheber, dokument_id, "
+                " revenue, expense, erlaeuterung, urheber, dokument_id, "
                 " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(jahrgang, liste, z.year, z.lfd, z.thh, z.seite_entwurf,
-                  z.produkt, z.bezeichnung, z.ertrag, z.aufwand,
+                  z.produkt, z.bezeichnung, z.revenue, z.expense,
                   z.erlaeuterung, z.urheber, dokument_id, hid, now)
-                 for z in ergebnis.zeilen])
+                 for z in result.zeilen])
             self._conn.executemany(
                 "INSERT INTO council_haushalt_aenderungen_summen (jahrgang, "
-                " liste, year, typ, label, ertraege, aufwendungen, saldo, "
+                " liste, year, typ, label, revenues, expenses, balance, "
                 " eigene, dokument_id, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(jahrgang, liste, s.year, s.typ, s.label, s.ertraege,
-                  s.aufwendungen, s.saldo,
-                  1 if ergebnis.eigene_zeile.get(s.year) == s.label else 0,
-                  dokument_id, hid, now) for s in ergebnis.summen])
-        return len(ergebnis.zeilen)
+                [(jahrgang, liste, s.year, s.typ, s.label, s.revenues,
+                  s.expenses, s.balance,
+                  1 if result.eigene_zeile.get(s.year) == s.label else 0,
+                  dokument_id, hid, now) for s in result.summen])
+        return len(result.zeilen)
 
     def save_haushalt_aenderungen_fhh(self, dokument_id: int, liste: str,
-                                      ergebnis, herkunft) -> int:
+                                      result, herkunft) -> int:
         """Eine FHH-Änderungsliste speichern — Positionen und Zusammenstellung.
 
         Wie beim Ergebnishaushalt: Die Proben liefen im Parser
@@ -6972,7 +7063,7 @@ class CouncilStore:
         ersetzt den Stand also gefahrlos.
         """
         now = datetime.utcnow().isoformat(timespec="seconds")
-        jahrgang = ergebnis.jahrgang
+        jahrgang = result.jahrgang
         with self.transaktion():
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             for tabelle in ("council_haushalt_aenderungen_fhh",
@@ -6983,23 +7074,23 @@ class CouncilStore:
             self._conn.executemany(
                 "INSERT INTO council_haushalt_aenderungen_fhh (jahrgang, "
                 " liste, year, lfd, thh, seite_entwurf, produkt, bezeichnung, "
-                " soll_entwurf, einzahlung, auszahlung, ve, soll_neu, "
+                " planned_draft, inflow, outflow, ve, planned_new, "
                 " erlaeuterung, urheber, dokument_id, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(jahrgang, liste, z.year, z.lfd, z.thh, z.seite_entwurf,
-                  z.produkt, z.bezeichnung, z.soll_entwurf, z.einzahlung,
-                  z.auszahlung, z.ve, z.soll_neu, z.erlaeuterung, z.urheber,
-                  dokument_id, hid, now) for z in ergebnis.zeilen])
+                  z.produkt, z.bezeichnung, z.planned_draft, z.inflow,
+                  z.outflow, z.ve, z.planned_new, z.erlaeuterung, z.urheber,
+                  dokument_id, hid, now) for z in result.zeilen])
             self._conn.executemany(
                 "INSERT INTO council_haushalt_aenderungen_fhh_summen (jahrgang, "
-                " liste, year, typ, label, einzahlungen, auszahlungen, saldo, "
+                " liste, year, typ, label, inflows, outflows, balance, "
                 " ve, eigene, dokument_id, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(jahrgang, liste, s.year, s.typ, s.label, s.einzahlungen,
-                  s.auszahlungen, s.saldo, s.ve,
-                  1 if ergebnis.eigene_zeile.get(s.year) == s.label else 0,
-                  dokument_id, hid, now) for s in ergebnis.summen])
-        return len(ergebnis.zeilen)
+                [(jahrgang, liste, s.year, s.typ, s.label, s.inflows,
+                  s.outflows, s.balance, s.ve,
+                  1 if result.eigene_zeile.get(s.year) == s.label else 0,
+                  dokument_id, hid, now) for s in result.summen])
+        return len(result.zeilen)
 
     def get_haushalt_aenderungen_fhh(self, jahrgang: int | None = None) -> dict:
         """Positionen und Summen der FHH-Änderungslisten, älteste zuerst.
@@ -7010,13 +7101,13 @@ class CouncilStore:
         try:
             zeilen = [dict(r) for r in self._conn.execute(
                 "SELECT jahrgang, liste, year, lfd, thh, seite_entwurf, produkt, "
-                " bezeichnung, soll_entwurf, einzahlung, auszahlung, ve, "
-                " soll_neu, erlaeuterung, urheber, dokument_id, herkunft_id "
+                " bezeichnung, planned_draft, inflow, outflow, ve, "
+                " planned_new, erlaeuterung, urheber, dokument_id, herkunft_id "
                 f"FROM council_haushalt_aenderungen_fhh {wo} "
                 "ORDER BY jahrgang, liste, year, lfd", args)]
             summen = [dict(r) for r in self._conn.execute(
-                "SELECT jahrgang, liste, year, typ, label, einzahlungen, "
-                " auszahlungen, saldo, ve, eigene, dokument_id, herkunft_id "
+                "SELECT jahrgang, liste, year, typ, label, inflows, "
+                " outflows, balance, ve, eigene, dokument_id, herkunft_id "
                 f"FROM council_haushalt_aenderungen_fhh_summen {wo} "
                 "ORDER BY jahrgang, liste, year", args)]
         except sqlite3.OperationalError:
@@ -7033,12 +7124,12 @@ class CouncilStore:
         try:
             zeilen = [dict(r) for r in self._conn.execute(
                 "SELECT jahrgang, liste, year, lfd, thh, seite_entwurf, "
-                " produkt, bezeichnung, ertrag, aufwand, erlaeuterung, "
+                " produkt, bezeichnung, revenue, expense, erlaeuterung, "
                 " urheber, dokument_id, herkunft_id FROM council_haushalt_aenderungen "
                 f"{wo} ORDER BY jahrgang, liste, year, lfd", args)]
             summen = [dict(r) for r in self._conn.execute(
-                "SELECT jahrgang, liste, year, typ, label, ertraege, "
-                " aufwendungen, saldo, eigene, dokument_id, herkunft_id "
+                "SELECT jahrgang, liste, year, typ, label, revenues, "
+                " expenses, balance, eigene, dokument_id, herkunft_id "
                 "FROM council_haushalt_aenderungen_summen "
                 f"{wo} ORDER BY jahrgang, liste, year", args)]
         except sqlite3.OperationalError:
@@ -7063,22 +7154,22 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_haushaltssatzung "
-                "(year, nachtrag, fassung, ordentliche_ertraege, "
-                " ordentliche_aufwendungen, ao_ertraege, ao_aufwendungen, "
-                " ein_laufend, aus_laufend, ein_invest, aus_invest, "
-                " ein_finanz, aus_finanz, ein_gesamt, aus_gesamt, "
+                "(year, nachtrag, fassung, ordinary_revenues, "
+                " ordinary_expenses, extraordinary_revenues, extraordinary_expenses, "
+                " in_operating, out_operating, in_capital, aus_invest, "
+                " in_financing, out_financing, in_total, out_total, "
                 " kredite_investitionen, verpflichtungsermaechtigungen, "
                 " liquiditaetskredite, hebesatz_grundsteuer_a, "
                 " hebesatz_grundsteuer_b, hebesatz_gewerbesteuer, sitzung_am, "
                 " template_number, proben, herkunft_id, fetched_at) "
                 "VALUES (" + ",".join("?" * 26) + ")",
                 (satzung.year, satzung.nachtrag, satzung.fassung,
-                 satzung.ordentliche_ertraege, satzung.ordentliche_aufwendungen,
-                 satzung.ao_ertraege, satzung.ao_aufwendungen,
-                 satzung.ein_laufend, satzung.aus_laufend,
-                 satzung.ein_invest, satzung.aus_invest,
-                 satzung.ein_finanz, satzung.aus_finanz,
-                 satzung.ein_gesamt, satzung.aus_gesamt,
+                 satzung.ordinary_revenues, satzung.ordinary_expenses,
+                 satzung.extraordinary_revenues, satzung.extraordinary_expenses,
+                 satzung.in_operating, satzung.out_operating,
+                 satzung.in_capital, satzung.aus_invest,
+                 satzung.in_financing, satzung.out_financing,
+                 satzung.in_total, satzung.out_total,
                  satzung.kredite_investitionen,
                  satzung.verpflichtungsermaechtigungen,
                  satzung.liquiditaetskredite,
@@ -7142,12 +7233,12 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_buergschaften "
-                "(year, bestand, genau, aus_folgejahr, quelle, grund, "
-                " einzelbetrag, proben, herkunft_id, fetched_at) "
+                "(year, bestand, genau, out_next_year, quelle, grund, "
+                " single_amount, proben, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?)",
                 [(z["year"], z["bestand"], int(bool(z.get("genau"))),
-                  int(bool(z.get("aus_folgejahr"))), z["quelle"], z.get("grund"),
-                  z.get("einzelbetrag"), ",".join(z.get("proben") or []),
+                  int(bool(z.get("out_next_year"))), z["quelle"], z.get("grund"),
+                  z.get("single_amount"), ",".join(z.get("proben") or []),
                   hid, now) for z in zeilen])
         return len(zeilen)
 
@@ -7220,14 +7311,14 @@ class CouncilStore:
                 "INSERT INTO council_anlagenspiegel "
                 "(year, nr, bezeichnung, spalten, ahk_anfang, zugaenge, abgaenge, "
                 " umbuchungen, ahk_ende, abschr_anfang, abschreibung, aufloesungen, "
-                " zuschreibungen, abschr_umbuchungen, abschr_ende, buchwert, "
-                " buchwert_vorjahr, proben, herkunft_id, fetched_at) "
+                " zuschreibungen, abschr_umbuchungen, abschr_ende, book_value, "
+                " book_value_prior_year, proben, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(year, z["nr"], z["bezeichnung"], z["spalten"],
                   z["ahk_anfang"], z["zugaenge"], z["abgaenge"], z["umbuchungen"],
                   z["ahk_ende"], z["abschr_anfang"], z["abschreibung"],
                   z["aufloesungen"], z["zuschreibungen"], z["abschr_umbuchungen"],
-                  z["abschr_ende"], z["buchwert"], z["buchwert_vorjahr"],
+                  z["abschr_ende"], z["book_value"], z["book_value_prior_year"],
                   ",".join(z.get("proben") or []), hid, now) for z in zeilen])
         return len(zeilen)
 
@@ -7250,9 +7341,9 @@ class CouncilStore:
             self._conn.execute("DELETE FROM council_vermoegensgruppen WHERE year = ?", (year,))
             self._conn.executemany(
                 "INSERT INTO council_vermoegensgruppen "
-                "(year, gruppe, buchwert, buchwert_vorjahr, herkunft_id, fetched_at) "
+                "(year, gruppe, book_value, book_value_prior_year, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?)",
-                [(year, g["gruppe"], g["buchwert"], g.get("buchwert_vorjahr"), hid, now)
+                [(year, g["gruppe"], g["book_value"], g.get("book_value_prior_year"), hid, now)
                  for g in gruppen])
         return len(gruppen)
 
@@ -7266,7 +7357,7 @@ class CouncilStore:
     def get_buergschaften(self) -> list[dict]:
         """Der Bürgschaftsbestand je Jahr, aufsteigend.
 
-        ``genau`` und ``aus_folgejahr`` kommen als Wahrheitswerte heraus, nicht
+        ``genau`` und ``out_next_year`` kommen als Wahrheitswerte heraus, nicht
         als 0/1: Sie sind Angaben über die Belegqualität und werden im Frontend
         als solche gelesen, nicht gerechnet."""
         try:
@@ -7277,7 +7368,7 @@ class CouncilStore:
         for r in rows:
             r["proben"] = [p for p in (r.get("proben") or "").split(",") if p]
             r["genau"] = bool(r["genau"])
-            r["aus_folgejahr"] = bool(r["aus_folgejahr"])
+            r["out_next_year"] = bool(r["out_next_year"])
         return rows
 
     def save_integrierte_schulden(self, zeile: dict, herkunft) -> int:
@@ -7289,13 +7380,13 @@ class CouncilStore:
                 "INSERT OR REPLACE INTO council_integrierte_schulden "
                 "(year, ars, bevoelkerung, insgesamt, je_einwohner, kernhaushalt, "
                 " extrahaushalte, sonstige, extra_unter_50, sonstige_unter_50, "
-                " veraenderung, proben, herkunft_id, fetched_at) "
+                " change, proben, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (zeile["year"], zeile["ars"], zeile.get("bevoelkerung"),
                  zeile["insgesamt"], zeile.get("je_einwohner"),
                  zeile.get("kernhaushalt"), zeile.get("extrahaushalte"),
                  zeile.get("sonstige"), zeile.get("extra_unter_50"),
-                 zeile.get("sonstige_unter_50"), zeile.get("insgesamt_veraenderung"),
+                 zeile.get("sonstige_unter_50"), zeile.get("insgesamt_change"),
                  ",".join(zeile.get("proben") or []), hid, now))
         return 1
 
@@ -7385,13 +7476,13 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_nachbewilligungen "
-                "(template_number, year, titel, art, kategorie, betrag, "
-                " betrag_quelle, beschlossen, im_rat, ratsentscheidung, "
+                "(template_number, year, titel, art, kategorie, amount, "
+                " amount_source, beschlossen, im_rat, ratsentscheidung, "
                 " beschluss_id, gremien, "
                 " volltextprobe, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(z["template_number"], z.get("year"), z["titel"], z["art"],
-                  z["kategorie"], z.get("betrag"), z.get("betrag_quelle"),
+                  z["kategorie"], z.get("amount"), z.get("amount_source"),
                   int(bool(z.get("beschlossen"))), int(bool(z.get("im_rat"))),
                   int(bool(z.get("ratsentscheidung"))),
                   z.get("beschluss_id"),
@@ -7413,21 +7504,21 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_nachbewilligung_jahre "
-                "(year, summe_konsumtiv, summe_investiv, text_gesamt, "
-                " verpflichtungen_betrag, probe_ok, probe_text, herkunft_id, "
+                "(year, total_operating, total_capital, text_gesamt, "
+                " commitments_amount, probe_ok, probe_text, herkunft_id, "
                 " fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
-                (year["year"], year["summe_konsumtiv"], year["summe_investiv"],
-                 year.get("text_gesamt"), year.get("verpflichtungen_betrag"),
+                (year["year"], year["total_operating"], year["total_capital"],
+                 year.get("text_gesamt"), year.get("commitments_amount"),
                  int(bool(year.get("probe_ok"))), year.get("probe_text"),
                  hid, now))
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_nachbewilligung_kanaele "
-                "(year, kanal, label, anzahl_konsumtiv, betrag_konsumtiv, "
-                " anzahl_investiv, betrag_investiv, herkunft_id, fetched_at) "
+                "(year, kanal, label, count_operating, amount_operating, "
+                " count_capital, amount_capital, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?)",
-                [(year["year"], k["kanal"], k["label"], k["anzahl_konsumtiv"],
-                  k["betrag_konsumtiv"], k["anzahl_investiv"],
-                  k["betrag_investiv"], hid, now) for k in kanaele])
+                [(year["year"], k["kanal"], k["label"], k["count_operating"],
+                  k["amount_operating"], k["count_capital"],
+                  k["amount_capital"], hid, now) for k in kanaele])
         return len(kanaele)
 
     def get_nachbewilligungen(self) -> list[dict]:
@@ -7495,9 +7586,9 @@ class CouncilStore:
             rueck = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_spenden "
-                "(template_number, year, sitzung, betrag, gremium, layout, zweitstelle, "
+                "(template_number, year, sitzung, amount, gremium, layout, zweitstelle, "
                 " proben, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                [(z["template_number"], z["year"], z["sitzung"], z["betrag"], z.get("gremium"),
+                [(z["template_number"], z["year"], z["sitzung"], z["amount"], z.get("gremium"),
                   z.get("layout"), z["zweitstelle"], ",".join(z["proben"]),
                   self.merke_herkunft(z["herkunft"], fetched_at=now)
                   if z.get("herkunft") else rueck, now)
@@ -7651,7 +7742,7 @@ class CouncilStore:
         mehr als die Summe daneben.
 
         ``verworfen`` sind die Jahrgänge, die die Probe **nicht** bestanden
-        haben (``lies()["verworfen"]``): Grund und gemessene ``differenz``
+        haben (``lies()["verworfen"]``): Grund und gemessene ``difference``
         werden mitgeschrieben, damit die Seite ihre Lücke beziffern kann
         statt sie nur zu behaupten. Ein Jahrgang, der jetzt durchkommt,
         verliert dabei seinen alten Lücken-Eintrag — sonst stünde er in
@@ -7683,7 +7774,7 @@ class CouncilStore:
                     arten.append((z["year"], feld, titel, i, z[feld], hid, now))
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_investitionen_ist_arten "
-                "(year, feld, titel, reihenfolge, betrag, herkunft_id, fetched_at) "
+                "(year, feld, titel, reihenfolge, amount, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?)", arten)
             # Ein übernommener Jahrgang ist keine Lücke mehr.
             self._conn.executemany(
@@ -7691,9 +7782,9 @@ class CouncilStore:
                 [(z["year"],) for z in zeilen])
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_investitionen_ist_verworfen "
-                "(year, regelwerk, grund, differenz, herkunft_id, fetched_at) "
+                "(year, regelwerk, grund, difference, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?)",
-                [(v["year"], v["regelwerk"], v["grund"], v.get("differenz"),
+                [(v["year"], v["regelwerk"], v["grund"], v.get("difference"),
                   hid, now) for v in (verworfen or [])])
         return len(zeilen)
 
@@ -7714,7 +7805,7 @@ class CouncilStore:
         je_jahr: dict[int, list[dict]] = {}
         for a in arten:
             je_jahr.setdefault(a["year"], []).append(
-                {"feld": a["feld"], "titel": a["titel"], "betrag": a["betrag"]})
+                {"feld": a["feld"], "titel": a["titel"], "amount": a["amount"]})
         for r in rows:
             r["arten"] = je_jahr.get(r["year"], [])
         return rows
@@ -7767,8 +7858,8 @@ class CouncilStore:
             return None
         neu = rows[-1]
         try:
-            arten = [(r["titel"], r["betrag"]) for r in self._conn.execute(
-                "SELECT titel, betrag FROM council_investitionen_ist_arten "
+            arten = [(r["titel"], r["amount"]) for r in self._conn.execute(
+                "SELECT titel, amount FROM council_investitionen_ist_arten "
                 "WHERE year = ? ORDER BY reihenfolge", (neu["year"],))]
         except sqlite3.OperationalError:
             arten = []
@@ -7935,13 +8026,13 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.executemany(
                 "INSERT OR REPLACE INTO council_produkte (year, produkt_nr, produkt_name, "
-                " thh_nr, thh_name, amt, ertraege, aufwendungen, ergebnis, "
+                " thh_nr, thh_name, amt, revenues, expenses, result, "
                 " kurzbeschreibung, auftragsgrundlage, beeinflussbarkeit, "
                 " beeinflussbarkeit_roh, wirkungskreis, zielgruppe, "
                 " quelle_label, quelle_url, fetched_at, herkunft_id) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(year, p["produkt_nr"], p["produkt_name"], p.get("thh_nr"), p.get("thh_name"),
-                  p.get("amt"), p.get("ertraege"), p.get("aufwendungen"), p.get("ergebnis"),
+                  p.get("amt"), p.get("revenues"), p.get("expenses"), p.get("result"),
                   p.get("kurzbeschreibung"), p.get("auftragsgrundlage"),
                   p.get("beeinflussbarkeit"), p.get("beeinflussbarkeit_roh"),
                   p.get("wirkungskreis"), p.get("zielgruppe"),
@@ -7978,7 +8069,7 @@ class CouncilStore:
                           "OR kurzbeschreibung LIKE ?)")
                 args.extend([f"%{wort}%"] * 4)
         sql = ("SELECT * FROM council_produkte WHERE " + " AND ".join(wo)
-               + " ORDER BY ergebnis ASC" + (" LIMIT ?" if limit else ""))
+               + " ORDER BY result ASC" + (" LIMIT ?" if limit else ""))
         if limit:
             args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
@@ -7997,7 +8088,7 @@ class CouncilStore:
         Stufen mit Anzahl, plus wie viele Produkte überhaupt einen Steckbrief
         tragen. Letzteres gehört sichtbar auf die Seite: Ein Filter, der die
         halbe Liste verschluckt, muss sich erklären."""
-        aemter = [{"amt": r[0], "anzahl": r[1]} for r in self._conn.execute(
+        aemter = [{"amt": r[0], "count": r[1]} for r in self._conn.execute(
             "SELECT amt, COUNT(*) FROM council_produkte WHERE year = ? AND amt IS NOT NULL "
             "GROUP BY amt ORDER BY COUNT(*) DESC, amt", (year,))]
         spielraum = {r[0]: r[1] for r in self._conn.execute(
@@ -11333,11 +11424,11 @@ class CouncilStore:
         # mehreren Facetten, das treffende Wort steht dort oft weiter hinten.
         woerter = [w.lower() for w in begriffe if len(w) >= 4][:16]
         rows = self._conn.execute(
-            "SELECT year, bereich, ertraege, aufwendungen, ergebnis, is_summe "
+            "SELECT year, bereich, revenues, expenses, result, is_total "
             "FROM council_haushalt WHERE year = ?", (year,)).fetchall()
         out = []
         for r in rows:
-            if r["is_summe"]:
+            if r["is_total"]:
                 if any(w in ("haushalt", "gesamthaushalt", "haushaltsplan") for w in woerter):
                     out.append(dict(r))
                 continue
@@ -11354,15 +11445,15 @@ class CouncilStore:
                 platz = ",".join("?" * len(namen))
                 alt = {
                     r["bereich"]: r for r in self._conn.execute(
-                        f"SELECT bereich, ertraege, aufwendungen FROM council_haushalt "
+                        f"SELECT bereich, revenues, expenses FROM council_haushalt "
                         f"WHERE year = ? AND bereich IN ({platz})", (frueh, *namen))
                 }
                 for r in out:
                     a = alt.get(r["bereich"])
                     if a:
-                        r["jahr_davor"] = frueh
-                        r["aufwendungen_davor"] = a["aufwendungen"]
-                        r["ertraege_davor"] = a["ertraege"]
+                        r["year_before"] = frueh
+                        r["expenses_before"] = a["expenses"]
+                        r["revenues_before"] = a["revenues"]
         return out
 
     #: Suchbegriffe → Steuerart, wie sie im Open-Data-CSV heißt. Bewusst
@@ -11409,14 +11500,14 @@ class CouncilStore:
         out: list[dict] = []
         for art in arten[:3]:
             rows = self._conn.execute(
-                "SELECT year, betrag FROM council_steuern WHERE art = ? AND year IN (?, ?)",
+                "SELECT year, amount FROM council_steuern WHERE art = ? AND year IN (?, ?)",
                 (art, neuestes, neuestes - 10)).fetchall()
-            werte = {r["year"]: r["betrag"] for r in rows}
+            werte = {r["year"]: r["amount"] for r in rows}
             if neuestes not in werte:
                 continue
-            out.append({"art": art, "year": neuestes, "betrag": werte[neuestes],
-                        "jahr_davor": neuestes - 10 if (neuestes - 10) in werte else None,
-                        "betrag_davor": werte.get(neuestes - 10)})
+            out.append({"art": art, "year": neuestes, "amount": werte[neuestes],
+                        "year_before": neuestes - 10 if (neuestes - 10) in werte else None,
+                        "amount_before": werte.get(neuestes - 10)})
         return out
 
     def steuerkraft_kontext(self) -> dict | None:
@@ -11436,7 +11527,7 @@ class CouncilStore:
             return None
         neu, alt = dict(rows[0]), dict(rows[1])
         return {"year": neu["year"], "messzahl": neu["messzahl"], "zuweisungen": neu["zuweisungen"],
-                "jahr_davor": alt["year"], "messzahl_davor": alt["messzahl"],
+                "year_before": alt["year"], "messzahl_davor": alt["messzahl"],
                 "zuweisungen_davor": alt["zuweisungen"]}
 
     # ---- Der Haushalts-Bestand als Quelle der KI-Frage (Tim, 16.08.) -------
@@ -11540,7 +11631,7 @@ class CouncilStore:
         try:
             platz = ",".join("?" for _ in bereiche)
             rows = [dict(r) for r in self._conn.execute(
-                "SELECT year, bereich, bereich_name, kostenkalkulation, abzuege, "
+                "SELECT year, bereich, bereich_name, kostenkalkulation, deductions, "
                 "zu_deckende_kosten, bezugsmenge, bezugseinheit, gebuehr, "
                 "gebuehrenvorschlag, template_number, herkunft_id "
                 f"FROM council_gebuehren WHERE bereich IN ({platz}) "
@@ -11561,7 +11652,7 @@ class CouncilStore:
                             "werte": werte})
         return {"bereiche": gruppen} if gruppen else None
 
-    def ergebnis_ist_fuer_begriffe(self, begriffe: list[str], limit: int = 2) -> dict | None:
+    def result_actual_for_terms(self, begriffe: list[str], limit: int = 2) -> dict | None:
         """„Geplant und tatsächlich" aus dem jüngsten Jahresabschluss.
 
         Der Unterschied zu ``haushalt_fuer_begriffe`` ist das ganze Anliegen:
@@ -11576,13 +11667,13 @@ class CouncilStore:
         try:
             year = self._conn.execute(
                 "SELECT MAX(year) FROM council_ergebnisrechnung "
-                "WHERE ergebnis IS NOT NULL").fetchone()[0]
+                "WHERE result IS NOT NULL").fetchone()[0]
         except sqlite3.OperationalError:
             return None
         if not year:
             return None
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, ergebnis, deviation, "
+            "SELECT thh_nr, thh_name, nr, ansatz, plan, plan_art, result, deviation, "
             " herkunft_id FROM council_ergebnisrechnung "
             "WHERE year = ? AND nr IN (12, 20) ORDER BY thh_nr, nr", (year,))]
         if not rows:
@@ -11595,10 +11686,10 @@ class CouncilStore:
             # dort NULL (ALTER TABLE füllt nichts nach), s. get_plan_ist.
             return {
                 "name": (a.get("thh_name") or e.get("thh_name")),
-                "ertraege_plan": e.get("ansatz") if e.get("plan") is None else e.get("plan"),
-                "ertraege_ist": e.get("ergebnis"),
-                "aufwendungen_plan": a.get("ansatz") if a.get("plan") is None else a.get("plan"),
-                "aufwendungen_ist": a.get("ergebnis"),
+                "revenues_planned": e.get("ansatz") if e.get("plan") is None else e.get("plan"),
+                "revenues_actual": e.get("result"),
+                "expenses_planned": a.get("ansatz") if a.get("plan") is None else a.get("plan"),
+                "expenses_actual": a.get("result"),
                 "plan_art": a.get("plan_art") or e.get("plan_art"),
                 "herkunft_id": a.get("herkunft_id") or e.get("herkunft_id"),
             }
@@ -11695,13 +11786,13 @@ class CouncilStore:
         if not year:
             return None
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT produkt_nr, produkt_name, amt, aufwendungen, ergebnis, "
+            "SELECT produkt_nr, produkt_name, amt, expenses, result, "
             " kurzbeschreibung, auftragsgrundlage, beeinflussbarkeit, herkunft_id "
             "FROM council_produkte WHERE year = ?", (year,))]
         bewertet = [(self._trifft(f"{r['produkt_name']} {r.get('amt') or ''} "
                                   f"{r.get('kurzbeschreibung') or ''}", begriffe), r)
                     for r in rows]
-        passend = [r for n, r in sorted(bewertet, key=lambda x: (-x[0], x[1].get("ergebnis") or 0))
+        passend = [r for n, r in sorted(bewertet, key=lambda x: (-x[0], x[1].get("result") or 0))
                    if n][:limit]
         if not passend:
             return None
@@ -11726,21 +11817,21 @@ class CouncilStore:
         # Über die ROLLE, nicht über die Nummer: Posten 15 ist bis 2018 die
         # Ertragssumme und ab 2019 der Versorgungsaufwand (s. Schema-Kommentar).
         summen = {r["rolle"]: dict(r) for r in self._conn.execute(
-            "SELECT rolle, bezeichnung, betrag, herkunft_id FROM council_konzern_posten "
-            "WHERE year = ? AND rolle IN ('ertraege_summe', 'aufwendungen_summe')", (year,))}
+            "SELECT rolle, bezeichnung, amount, herkunft_id FROM council_konzern_posten "
+            "WHERE year = ? AND rolle IN ('revenues_total', 'expenses_total')", (year,))}
         traeger = [dict(r) for r in self._conn.execute(
-            "SELECT art, traeger, betrag_teur FROM council_konzern_traeger "
-            "WHERE year = ? AND art = 'aufwendungen' AND traeger_key != 'konsolidierung' "
-            "ORDER BY betrag_teur DESC LIMIT 5", (year,))]
+            "SELECT art, traeger, amount_keur FROM council_konzern_traeger "
+            "WHERE year = ? AND art = 'expenses' AND traeger_key != 'konsolidierung' "
+            "ORDER BY amount_keur DESC LIMIT 5", (year,))]
         if not summen and not traeger:
             return None
-        ertraege = summen.get("ertraege_summe") or {}
-        aufwand = summen.get("aufwendungen_summe") or {}
-        return {"year": year, "ertraege": ertraege.get("betrag"),
-                "aufwendungen": aufwand.get("betrag"), "traeger": traeger,
+        revenues = summen.get("revenues_total") or {}
+        expense = summen.get("expenses_total") or {}
+        return {"year": year, "revenues": revenues.get("amount"),
+                "expenses": expense.get("amount"), "traeger": traeger,
                 "kern": self.kernverwaltung_ist().get(year) or {},
-                "beleg": self._beleg(aufwand.get("herkunft_id")
-                                     or ertraege.get("herkunft_id"))}
+                "beleg": self._beleg(expense.get("herkunft_id")
+                                     or revenues.get("herkunft_id"))}
 
     def staedtevergleich_kontext(self, reihe: str = "steuerkraft") -> dict | None:
         """Die jüngste Kennzahl einer Reihe für alle acht kreisfreien Städte.
@@ -11789,7 +11880,7 @@ class CouncilStore:
         if not year:
             return None
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT nr, bezeichnung, betrag, ist_summe, herkunft_id "
+            "SELECT nr, bezeichnung, amount, is_total, herkunft_id "
             "FROM council_ergebnishaushalt WHERE year = ? AND art = 'ansatz' ORDER BY nr",
             (year,))]
         if not rows:
@@ -11799,7 +11890,7 @@ class CouncilStore:
         if not passend:
             # Ohne Treffer die Summenzeilen — sie beantworten „was nimmt die
             # Stadt ein, was gibt sie aus" und sind nie daneben.
-            passend = [r for r in rows if r["ist_summe"]][:limit]
+            passend = [r for r in rows if r["is_total"]][:limit]
         if not passend:
             return None
         return {"year": year, "posten": passend,
@@ -11898,13 +11989,13 @@ class CouncilStore:
         """
         try:
             r = self._conn.execute(
-                "SELECT template_number, titel, betrag, year FROM council_nachbewilligungen "
+                "SELECT template_number, titel, amount, year FROM council_nachbewilligungen "
                 "WHERE beschluss_id = ? LIMIT 1", (beschluss_id,)).fetchone()
         except sqlite3.OperationalError:
             r = None
         if r:
             return {"art": "nachbewilligung", "href": "/haushalt/plan-ist",
-                    "year": r["year"], "betrag": r["betrag"],
+                    "year": r["year"], "amount": r["amount"],
                     "titel": r["titel"], "template_number": r["template_number"]}
 
         if template_number:
@@ -11984,7 +12075,7 @@ class CouncilStore:
                 "ORDER BY year DESC LIMIT 1").fetchone()
             if r:
                 aus.append({"art": "Kernhaushalt (nur Geldschulden)", "year": r["year"],
-                            "betrag": r["wert"],
+                            "amount": r["wert"],
                             "quelle": "Bilanz des Jahresabschlusses"})
         except sqlite3.OperationalError:
             pass
@@ -11994,7 +12085,7 @@ class CouncilStore:
                 "ORDER BY year DESC LIMIT 1").fetchone()
             if r:
                 aus.append({"art": "Konzern Stadt (anteilig, mit Beteiligungen)",
-                            "year": r["year"], "betrag": r["insgesamt"],
+                            "year": r["year"], "amount": r["insgesamt"],
                             "quelle": "Integrierte Schulden der Statistischen Ämter"})
         except sqlite3.OperationalError:
             pass
@@ -12056,7 +12147,7 @@ class CouncilStore:
             return None
         year = year["j"]
         zeilen = [dict(r) for r in self._conn.execute(
-            "SELECT nr, bezeichnung, ergebnis, rolle, herkunft_id "
+            "SELECT nr, bezeichnung, result, rolle, herkunft_id "
             "FROM council_finanzrechnung WHERE year = ? ORDER BY nr", (year,))]
         if not zeilen:
             return None
@@ -12064,7 +12155,7 @@ class CouncilStore:
         # stehen schon im Ergebnisrechnungs-Block.
         summen = [z for z in zeilen if z.get("rolle")]
         return {"year": year,
-                "zeilen": [(z["bezeichnung"], z["ergebnis"], z["rolle"]) for z in summen],
+                "zeilen": [(z["bezeichnung"], z["result"], z["rolle"]) for z in summen],
                 "beleg": self._beleg(zeilen[0].get("herkunft_id"))}
 
     def nachbewilligungen_kontext(self, year: int | None = None) -> dict | None:
@@ -12085,19 +12176,19 @@ class CouncilStore:
         zeile = next((r for r in rows if r["year"] == year), rows[-1])
         kanaele = []
         try:
-            kanaele = [(r["kanal"], r["betrag_konsumtiv"], r["betrag_investiv"])
+            kanaele = [(r["kanal"], r["amount_operating"], r["amount_capital"])
                        for r in self._conn.execute(
-                           "SELECT kanal, betrag_konsumtiv, betrag_investiv "
+                           "SELECT kanal, amount_operating, amount_capital "
                            "FROM council_nachbewilligung_kanaele WHERE year = ?",
                            (zeile["year"],))]
         except sqlite3.OperationalError:
             pass
         return {"year": zeile["year"],
-                "konsumtiv": zeile.get("summe_konsumtiv"),
-                "investiv": zeile.get("summe_investiv"),
-                "gesamt": (zeile.get("summe_konsumtiv") or 0)
-                          + (zeile.get("summe_investiv") or 0),
-                "verpflichtungen": zeile.get("verpflichtungen_betrag"),
+                "konsumtiv": zeile.get("total_operating"),
+                "investiv": zeile.get("total_capital"),
+                "gesamt": (zeile.get("total_operating") or 0)
+                          + (zeile.get("total_capital") or 0),
+                "verpflichtungen": zeile.get("commitments_amount"),
                 "kanaele": kanaele,
                 "probe_text": zeile.get("probe_text") if not zeile.get("probe_ok") else None,
                 "beleg": self._beleg(zeile.get("herkunft_id"))}
@@ -12197,7 +12288,7 @@ class CouncilStore:
         if not year:
             return None
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT ebene, thh_nr, bezeichnung, einzahlungen, auszahlungen, herkunft_id "
+            "SELECT ebene, thh_nr, bezeichnung, inflows, outflows, herkunft_id "
             "FROM council_investitionen WHERE year = ? AND ebene IN "
             "('investitionen', 'teilhaushalt') ORDER BY thh_nr", (year,))]
         gesamt = next((r for r in rows if r["ebene"] == "investitionen"), None)
@@ -12209,7 +12300,7 @@ class CouncilStore:
         if not passend:
             # Ohne Begriffs-Treffer die größten Brocken: „Was wird gebaut?"
             # meint die, über die zu reden sich lohnt.
-            passend = sorted(teile, key=lambda r: -(r["auszahlungen"] or 0))[:limit]
+            passend = sorted(teile, key=lambda r: -(r["outflows"] or 0))[:limit]
         return {"year": year, "gesamt": gesamt, "teilhaushalte": passend,
                 "beleg": self._beleg(gesamt.get("herkunft_id"))}
 
@@ -12243,7 +12334,7 @@ class CouncilStore:
         if not jahrgang:
             return None
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT teil, bezeichnung, stellen_plan, stellen_vorjahr, besetzt, "
+            "SELECT teil, bezeichnung, stellen_plan, positions_prior_year, besetzt, "
             " nicht_besetzt, stichtag, herkunft_id FROM council_stellenplan "
             "WHERE jahrgang = ? AND art = 'gesamt' ORDER BY teil", (jahrgang,))]
         if not rows:
@@ -12347,9 +12438,9 @@ class CouncilStore:
                 for name in (antrag.urheber or "").split(" / "):
                     if not name:
                         continue
-                    e = traeger.setdefault(name, {"name": name, "anzahl": 0,
+                    e = traeger.setdefault(name, {"name": name, "count": 0,
                                                   "angenommen": 0, "abgelehnt": 0})
-                    e["anzahl"] += 1
+                    e["count"] += 1
                     if antrag.outcome == "angenommen":
                         e["angenommen"] += 1
                     elif antrag.outcome == "abgelehnt":
@@ -12358,7 +12449,7 @@ class CouncilStore:
                 continue
             stationen.append({
                 "gremium": st["gremium"], "datum": st["datum"],
-                "urheber": sorted(traeger.values(), key=lambda u: (-u["anzahl"], u["name"]))[:limit],
+                "urheber": sorted(traeger.values(), key=lambda u: (-u["count"], u["name"]))[:limit],
                 "verwaltung": verwaltung, "gesamt": gesamt,
                 "official_text": st["official_text"],
             })
@@ -12875,7 +12966,7 @@ class CouncilStore:
 
     def partei_meinungen_cache_get(self, schluessel: str, max_age_days: int = 14):
         row = self._conn.execute(
-            "SELECT ergebnis FROM council_partei_meinungen_cache "
+            "SELECT result FROM council_partei_meinungen_cache "
             "WHERE schluessel = ? AND created_at >= datetime('now', ?)",
             (schluessel, f"-{int(max_age_days)} days")).fetchone()
         if not row:
@@ -12885,12 +12976,12 @@ class CouncilStore:
         except (ValueError, TypeError):
             return None
 
-    def partei_meinungen_cache_set(self, schluessel: str, frage: str, ergebnis) -> None:
+    def partei_meinungen_cache_set(self, schluessel: str, frage: str, result) -> None:
         with self._conn:
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_partei_meinungen_cache "
-                "(schluessel, frage, ergebnis, created_at) VALUES (?, ?, ?, datetime('now'))",
-                (schluessel, frage[:300], json.dumps(ergebnis, ensure_ascii=False)))
+                "(schluessel, frage, result, created_at) VALUES (?, ?, ?, datetime('now'))",
+                (schluessel, frage[:300], json.dumps(result, ensure_ascii=False)))
             # Alt-Einträge räumen sich beim Schreiben mit weg (klein halten).
             self._conn.execute(
                 "DELETE FROM council_partei_meinungen_cache "
@@ -13155,7 +13246,7 @@ class CouncilStore:
             "einbringung": einbringung,
             "fachausschuesse": {
                 "von": fach[0]["datum"], "bis": fach[-1]["datum"],
-                "anzahl": len(fach),
+                "count": len(fach),
                 "gremien": sorted({b["gremium"] for b in fach}),
             } if fach else None,
             "stationen": stationen,
@@ -13172,7 +13263,7 @@ class CouncilStore:
             return []
         platz = ",".join("?" * len(kvonrs))
         rows = self._conn.execute(
-            f"""SELECT b.kvonr, b.datum, b.gremium, b.ergebnis AS rolle, b.is_public,
+            f"""SELECT b.kvonr, b.datum, b.gremium, b.result AS rolle, b.is_public,
                        b.ksinr, v.template_number, v.title AS vorlage_titel,
                        a.item_number AS top, a.title AS top_titel
                   FROM council_beratungen b
@@ -13183,7 +13274,7 @@ class CouncilStore:
         out = []
         for r in rows:
             s = dict(r)
-            s["ergebnis"] = self._hh_ergebnis(s.pop("top_titel"))
+            s["result"] = self._hh_ergebnis(s.pop("top_titel"))
             # Jede Station trägt den Schlüssel, auch wenn nur die Stationen der
             # Sammelvorlage ihn je füllen — eine Station mit und eine ohne
             # `votum` wären zwei Formen derselben Sache.

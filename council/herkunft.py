@@ -464,7 +464,7 @@ PROBEN: dict[str, str] = {
         "Dieselbe Rechnung für die Abschreibungen: aufgelaufener Stand, "
         "Abschreibung des Jahres, Auflösungen für Abgänge und Zuschreibungen "
         "ergeben den ausgewiesenen Endstand.",
-    "anlagen_buchwert":
+    "assets_book_value":
         "Anschaffungswert minus aufgelaufener Abschreibung ist der Buchwert, "
         "den die Tabelle in ihrer letzten Spalte selbst ausweist.",
     "anlagen_gegen_bilanz":
@@ -767,7 +767,7 @@ class Herkunft:
     seite: int | None = None
     #: Der Messwert der Probe, wo sie einen liefert: „0,02 % Abweichung".
     #: Belegt, dass sie wirklich lief und nicht nur behauptet wird.
-    probe_ergebnis: str | None = None
+    probe_result: str | None = None
     #: Stichtag/Datenstand des Inhalts — nicht der Abrufzeitpunkt. Bei den
     #: Beteiligungen der Punkt, an dem sich Konzern- und Einzelabschluss
     #: unterscheiden.
@@ -805,7 +805,7 @@ class Herkunft:
         return {"art": self.art, "dokument_id": self.dokument_id,
                 "label": self.label, "url": self.url,
                 "fundstelle": self.fundstelle, "seite": self.seite,
-                "probe": str(self.probe), "probe_ergebnis": self.probe_ergebnis,
+                "probe": str(self.probe), "probe_result": self.probe_result,
                 "stand": self.stand}
 
     def schluessel(self) -> str:

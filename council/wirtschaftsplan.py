@@ -133,10 +133,10 @@ _BETRAG = r"([+-]?\s*\d{1,3}(?:\.\d{3})*(?:,\d{2})?)"
 #: Die Zeilen des Beschlusstextes. `steuer` fehlt in den Jahrgängen 2019/2020
 #: und zählt dann als 0.
 _ZEILEN = {
-    "ertraege":   r"mit Ertr[äa]gen von\s*" + _BETRAG,
-    "aufwendungen": r"mit Aufwendungen von\s*" + _BETRAG,
+    "revenues":   r"mit Ertr[äa]gen von\s*" + _BETRAG,
+    "expenses": r"mit Aufwendungen von\s*" + _BETRAG,
     "steuern":    r"mit steuerlichen Aufwendungen von\s*" + _BETRAG,
-    "ergebnis":   r"und einem Jahresergebnis von\s*" + _BETRAG,
+    "result":   r"und einem Jahresergebnis von\s*" + _BETRAG,
     "vermoegensplan": r"Einzahlungen und Auszahlungen von je\s*" + _BETRAG,
     "verpflichtungen": r"Verpflichtungserm[äa]chtigungen von\s*" + _BETRAG,
 }
@@ -191,10 +191,10 @@ class Wirtschaftsplan:
     betrieb_name: str
     year: int             # Haushaltsjahr, nicht das Jahr der Vorlage
     template_number: str
-    ertraege: float
-    aufwendungen: float
+    revenues: float
+    expenses: float
     steuern: float
-    ergebnis: float
+    result: float
     #: Einzahlungen = Auszahlungen; das Dokument nennt nur eine Zahl.
     vermoegensplan: float | None
     verpflichtungen: float | None
@@ -213,9 +213,9 @@ class Wirtschaftsplan:
     investitionen: float | None = None
 
     @property
-    def probe_ergebnis(self) -> str:
+    def probe_result(self) -> str:
         """Der Messwert der Probe, für die Herkunft."""
-        rest = self.ertraege - self.aufwendungen - self.steuern - self.ergebnis
+        rest = self.revenues - self.expenses - self.steuern - self.result
         return f"Erfolgsplan geht auf, Restbetrag {rest:.2f} €"
 
 
@@ -269,16 +269,16 @@ def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtsc
     # 2020 gab es die Zeile nicht), `vermoegensplan` und `verpflichtungen`
     # ebenfalls — sie stehen in einem eigenen Absatz, den ein künftiges Layout
     # anders setzen könnte, ohne die Erfolgsplan-Zeilen zu berühren.
-    if not {"ertraege", "aufwendungen", "ergebnis"} <= werte.keys():
+    if not {"revenues", "expenses", "result"} <= werte.keys():
         return None
 
     steuern = werte.get("steuern", 0.0)
-    rest = werte["ertraege"] - werte["aufwendungen"] - steuern - werte["ergebnis"]
+    rest = werte["revenues"] - werte["expenses"] - steuern - werte["result"]
     if abs(rest) > TOLERANZ_EUR:
         raise WirtschaftsplanFehler(
             f"{template_number}: Erfolgsplan geht nicht auf — "
-            f"{werte['ertraege']:.2f} − {werte['aufwendungen']:.2f} − {steuern:.2f} "
-            f"≠ {werte['ergebnis']:.2f} (Restbetrag {rest:.2f} €)")
+            f"{werte['revenues']:.2f} − {werte['expenses']:.2f} − {steuern:.2f} "
+            f"≠ {werte['result']:.2f} (Restbetrag {rest:.2f} €)")
 
     m_jahr = _JAHR_TEXT.search(flach)
     if not m_jahr:
@@ -306,8 +306,8 @@ def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtsc
     m_entwurf = _ENTWURF.search(flach)
     return Wirtschaftsplan(
         betrieb=key, betrieb_name=name, year=year, template_number=template_number,
-        ertraege=werte["ertraege"], aufwendungen=werte["aufwendungen"],
-        steuern=steuern, ergebnis=werte["ergebnis"],
+        revenues=werte["revenues"], expenses=werte["expenses"],
+        steuern=steuern, result=werte["result"],
         vermoegensplan=werte.get("vermoegensplan"),
         verpflichtungen=werte.get("verpflichtungen"),
         entwurf_vom=m_entwurf.group(1) if m_entwurf else None,
@@ -363,7 +363,7 @@ def herkunft_fuer(plan: Wirtschaftsplan, url: str | None,
         label=dokument_name(plan),
         url=url,
         fundstelle="Beschlussvorschlag der Vorlage",
-        probe_ergebnis=plan.probe_ergebnis,
+        probe_result=plan.probe_result,
         stand=(f"Verwaltungsentwurf vom {plan.entwurf_vom}"
                if plan.entwurf_vom else "Fassung der Einbringung"),
     )

@@ -82,8 +82,8 @@ def kernverwaltung(store: CouncilStore) -> dict[int, float]:
     werte: dict[int, float] = {}
     for p in store.get_ergebnisrechnung():
         if p.get("thh_nr") is None and p.get("nr") == POSTEN_AUFWENDUNGEN \
-                and p.get("ergebnis") is not None:
-            werte[p["year"]] = float(p["ergebnis"])
+                and p.get("result") is not None:
+            werte[p["year"]] = float(p["result"])
     return werte
 
 
@@ -185,23 +185,23 @@ def main() -> int:
             abschluesse = kernverwaltung(store)
             print(f"Gegenprobe möglich für {len(abschluesse)} Jahrgänge mit "
                   f"Jahresabschluss")
-            ergebnis = ar.lies(csv.get("kameral", ""), csv.get("doppik", ""),
+            result = ar.lies(csv.get("kameral", ""), csv.get("doppik", ""),
                                text, abschluesse)
-            zeilen = ergebnis["zeilen"]
+            zeilen = result["zeilen"]
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
-                  f"{ar.probennachweis(ergebnis)}")
-            for v in ergebnis["verworfen"]:
+                  f"{ar.probennachweis(result)}")
+            for v in result["verworfen"]:
                 print(f"    VERWORFEN {v['year']}: {v['grund']}", file=sys.stderr)
-            for k in ergebnis["konflikte"]:
+            for k in result["konflikte"]:
                 print(f"    WIDERSPRUCH {k['year']}: "
                       f"{k['gewaehlt'].upper()} nennt "
-                      f"{ar.de_zahl(k['betrag'] / 1e6, 3)} Mio. €, "
+                      f"{ar.de_zahl(k['amount'] / 1e6, 3)} Mio. €, "
                       f"{k['verworfen'].upper()} "
-                      f"{ar.de_zahl(k['konflikt_betrag'] / 1e6, 3)} Mio. € — "
-                      f"{ar.de_zahl(k['differenz'] / 1e6, 3)} Mio. € "
+                      f"{ar.de_zahl(k['conflict_amount'] / 1e6, 3)} Mio. € — "
+                      f"{ar.de_zahl(k['difference'] / 1e6, 3)} Mio. € "
                       f"Unterschied; übernommen wird "
                       f"{k['gewaehlt'].upper()} (besteht die Pro-Kopf-Probe)")
-            for regelwerk, jahre in sorted(ergebnis["fehlende_jahrgaenge"].items()):
+            for regelwerk, jahre in sorted(result["fehlende_jahrgaenge"].items()):
                 for j in jahre:
                     print(f"    FEHLT {j} ({regelwerk})", file=sys.stderr)
             if not zeilen:
@@ -210,9 +210,9 @@ def main() -> int:
                 return 1
 
             erster, letzter = zeilen[0], zeilen[-1]
-            print(f"  {erster['year']}: {ar.de_zahl(erster['betrag'] / 1e6, 1)} "
+            print(f"  {erster['year']}: {ar.de_zahl(erster['amount'] / 1e6, 1)} "
                   f"Mio. € · {letzter['year']}: "
-                  f"{ar.de_zahl(letzter['betrag'] / 1e6, 1)} Mio. €")
+                  f"{ar.de_zahl(letzter['amount'] / 1e6, 1)} Mio. €")
 
             if args.trockenlauf:
                 print("Trockenlauf — nichts gespeichert.")
@@ -254,16 +254,16 @@ def main() -> int:
             for (regelwerk, quelle, proben), teil in sorted(
                     gruppen.items(), key=lambda kv: kv[1][0]["year"]):
                 spanne = _spanne([z["year"] for z in teil])
-                anzahl = (f"{len(teil)} Jahrgänge" if len(teil) != 1
+                count = (f"{len(teil)} Jahrgänge" if len(teil) != 1
                           else "1 Jahrgang")
-                nachweis = f"{anzahl} ({spanne}), bestanden: " \
+                nachweis = f"{count} ({spanne}), bestanden: " \
                     + ", ".join(ar.PROBEN_KURZ[n] for n in proben)
-                if any(z.get("konflikt_betrag") for z in teil):
-                    k = next(z for z in teil if z.get("konflikt_betrag"))
+                if any(z.get("conflict_amount") for z in teil):
+                    k = next(z for z in teil if z.get("conflict_amount"))
                     nachweis += (
                         f"; für {k['year']} widersprechen sich die beiden "
                         f"Quellen um "
-                        f"{ar.de_zahl(abs(k['konflikt_betrag'] - k['betrag']) / 1e6, 3)}"
+                        f"{ar.de_zahl(abs(k['conflict_amount'] - k['amount']) / 1e6, 3)}"
                         f" Mio. € — übernommen ist der Wert, der seine "
                         f"Pro-Kopf-Rechnung erfüllt")
                 geschrieben += store.save_ausgabenreihe(teil, h.Herkunft(
@@ -279,9 +279,9 @@ def main() -> int:
                     fundstelle=_fundstelle(
                         regelwerk, quelle,
                         "ausgabenreihe_jahresabschluss" in proben),
-                    probe_ergebnis=nachweis))
+                    probe_result=nachweis))
                 print(f"  {ar.REGELWERK[regelwerk]}, {spanne} "
-                      f"({quelle.upper()}): {anzahl}")
+                      f"({quelle.upper()}): {count}")
             print(f"  gespeichert: {geschrieben} Jahrgänge")
 
         store.herkunft_aufraeumen()

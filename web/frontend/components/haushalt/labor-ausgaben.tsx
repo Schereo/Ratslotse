@@ -43,11 +43,11 @@ export function AusgabenWerkbank({
         {freiwillig.map((f) => {
           const pct = aenderung[f.bereich] ?? 0;
           /** Positive Beträge = eingespart, negative = zusätzlich ausgegeben. */
-          const betrag = -Math.round(f.aus * pct) / 100;
+          const amount = -Math.round(f.aus * pct) / 100;
           const drin = produkte
-            .filter((p) => p.thh_name === f.bereich && p.ergebnis != null && p.ergebnis < 0)
+            .filter((p) => p.thh_name === f.bereich && p.result != null && p.result < 0)
             .slice(0, 3);
-          const vergleich = naechstesProdukt(produkte, Math.abs(betrag), f.bereich);
+          const vergleich = naechstesProdukt(produkte, Math.abs(amount), f.bereich);
           return (
             <Regler
               key={f.bereich}
@@ -75,7 +75,7 @@ export function AusgabenWerkbank({
                     {drin.map((p, i) => (
                       <span key={p.produkt_nr}>
                         {i > 0 && ", "}
-                        {p.produkt_name} ({deMio(-(p.ergebnis as number) / 1e6)}&#8239;Mio.&nbsp;€)
+                        {p.produkt_name} ({deMio(-(p.result as number) / 1e6)}&#8239;Mio.&nbsp;€)
                       </span>
                     ))}.</>
                   ) : (
@@ -83,8 +83,8 @@ export function AusgabenWerkbank({
                   )
                 ) : pct < 0 ? (
                   <>
-                    <strong>{deMio(betrag)}&#8239;Mio.&nbsp;€ weniger</strong> ·{" "}
-                    {jeEinwohner(betrag)} · {anteilText(betrag)}.
+                    <strong>{deMio(amount)}&#8239;Mio.&nbsp;€ weniger</strong> ·{" "}
+                    {jeEinwohner(amount)} · {anteilText(amount)}.
                     {vergleich && (
                       <> Ungefähr so viel, wie <strong>{vergleich.produkt_name}</strong> im
                       ganzen Jahr kostet.</>
@@ -92,8 +92,8 @@ export function AusgabenWerkbank({
                   </>
                 ) : (
                   <>
-                    <strong>{deMio(-betrag)}&#8239;Mio.&nbsp;€ mehr</strong> für {f.bereich} ·{" "}
-                    {jeEinwohner(-betrag)} — vergrößert das Minus um {anteilText(-betrag)}.
+                    <strong>{deMio(-amount)}&#8239;Mio.&nbsp;€ mehr</strong> für {f.bereich} ·{" "}
+                    {jeEinwohner(-amount)} — vergrößert das Minus um {anteilText(-amount)}.
                     {vergleich && (
                       <> So viel kostet <strong>{vergleich.produkt_name}</strong> im ganzen Jahr —
                       etwa das käme dazu.</>
