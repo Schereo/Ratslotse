@@ -83,14 +83,14 @@ def store(tmp_path):
              (5, "Rat", "2019-11-05"), (6, "Rat", "2026-06-01")])
         st._conn.executemany(
             "INSERT INTO council_attendance (ksinr, name, party, role) VALUES (?, ?, ?, ?)",
-            [(1, "Tim Harms", "Bündnis 90/Die Grünen", "mitglied"),
-             (2, "Tim Ebbeke Harms", "Bündnis 90/Die Grünen", "mitglied"),
-             (1, "Dr. Ingo Harms", "CDU", "mitglied"),
-             (2, "Dr. Ingo Harms", "CDU", "mitglied"),
-             (3, "Jan Freede", "Verwaltung", "verwaltung"),
-             (4, "Jan Reinder Freede", "Verwaltung", "verwaltung"),
-             (5, "Christine Berta Wolff", "Bündnis 90/Die Grünen", "mitglied"),
-             (6, "Christine Wolff", "Bündnis 90/Die Grünen", "mitglied")])
+            [(1, "Tim Harms", "Bündnis 90/Die Grünen", "member"),
+             (2, "Tim Ebbeke Harms", "Bündnis 90/Die Grünen", "member"),
+             (1, "Dr. Ingo Harms", "CDU", "member"),
+             (2, "Dr. Ingo Harms", "CDU", "member"),
+             (3, "Jan Freede", "Verwaltung", "administration"),
+             (4, "Jan Reinder Freede", "Verwaltung", "administration"),
+             (5, "Christine Berta Wolff", "Bündnis 90/Die Grünen", "member"),
+             (6, "Christine Wolff", "Bündnis 90/Die Grünen", "member")])
         st._conn.executemany(
             "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, top, "
             "text, extracted_at) VALUES (?, ?, ?, 'Bündnis 90/Die Grünen', 'rede', 'Ö 1', ?, "

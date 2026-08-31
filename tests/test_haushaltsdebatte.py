@@ -42,18 +42,18 @@ def store(tmp_path):
 
 
 ANWESEND = [
-    {"name": "Kurt Bernhardt", "party": "Bündnis 90/Die Grünen", "role": "mitglied"},
-    {"name": "Lidia Bernhardt", "party": "AfD", "role": "mitglied"},
-    {"name": "Nicole Piechotta", "party": "SPD", "role": "mitglied"},
-    {"name": "Ulf Prange", "party": "SPD", "role": "mitglied"},
-    {"name": "Jens Lükermann", "party": "FDP/Volt", "role": "mitglied"},
-    {"name": "Thorsten van Ellen", "party": "Bündnis 90/Die Grünen", "role": "mitglied"},
-    {"name": "Dr. Esther Niewerth-Baumann", "party": "CDU", "role": "mitglied"},
-    {"name": "Dr. Sebastian Rohe", "party": "Bündnis 90/Die Grünen", "role": "mitglied"},
-    {"name": "Dr. Georg Rohe", "party": "FDP/Volt", "role": "mitglied"},
-    {"name": "Franz Norrenbrock", "party": "WFO-LKR", "role": "mitglied"},
-    {"name": "Vally Finke", "party": None, "role": "mitglied"},
-    {"name": "Tim Harms", "party": "Bündnis 90/Die Grünen", "role": "vorsitz"},
+    {"name": "Kurt Bernhardt", "party": "Bündnis 90/Die Grünen", "role": "member"},
+    {"name": "Lidia Bernhardt", "party": "AfD", "role": "member"},
+    {"name": "Nicole Piechotta", "party": "SPD", "role": "member"},
+    {"name": "Ulf Prange", "party": "SPD", "role": "member"},
+    {"name": "Jens Lükermann", "party": "FDP/Volt", "role": "member"},
+    {"name": "Thorsten van Ellen", "party": "Bündnis 90/Die Grünen", "role": "member"},
+    {"name": "Dr. Esther Niewerth-Baumann", "party": "CDU", "role": "member"},
+    {"name": "Dr. Sebastian Rohe", "party": "Bündnis 90/Die Grünen", "role": "member"},
+    {"name": "Dr. Georg Rohe", "party": "FDP/Volt", "role": "member"},
+    {"name": "Franz Norrenbrock", "party": "WFO-LKR", "role": "member"},
+    {"name": "Vally Finke", "party": None, "role": "member"},
+    {"name": "Tim Harms", "party": "Bündnis 90/Die Grünen", "role": "chair"},
     {"name": "Dr. Julia Figura", "party": "Verwaltung", "role": "verwaltung"},
 ]
 

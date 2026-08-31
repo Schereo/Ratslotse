@@ -1409,10 +1409,10 @@ struct DecisionDetailView: View {
             "deviation": "stark"
           },
           "attendance": [
-            {"name":"A","party":"SPD","role":"mitglied"},
-            {"name":"B","party":"SPD","role":"mitglied"},
-            {"name":"C","party":"CDU","role":"mitglied"},
-            {"name":"D","party":"Grüne","role":"mitglied"}
+            {"name":"A","party":"SPD","role":"member"},
+            {"name":"B","party":"SPD","role":"member"},
+            {"name":"C","party":"CDU","role":"member"},
+            {"name":"D","party":"Grüne","role":"member"}
           ],
           "entities": [{"slug":"haushalt-2026","name":"Haushalt 2026"}],
           "present_parties": ["SPD", "CDU", "Grüne", "FDP"],
@@ -2156,7 +2156,7 @@ private struct DecisionAttendanceCard: View {
     }
 
     private var partyCounts: [(party: String, count: Int)] {
-        let excluded = Set(["verwaltung", "protokoll", "gast"])
+        let excluded = Set(["administration", "minutes", "guest"])
         let counts = attendance.reduce(into: [String: Int]()) { result, attendee in
             guard !excluded.contains(attendee.role?.lowercased() ?? ""),
                   let party = attendee.party, !party.isEmpty else { return }

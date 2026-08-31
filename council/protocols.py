@@ -80,7 +80,7 @@ Ausschusssitzung in Oldenburg. Antworte mit NUR JSON in exact dieser Form:
   "session_start": "HH:MM oder null",
   "session_end": "HH:MM oder null",
   "attendance": [
-    {{"name": "Vor- und Nachname", "party": "Fraktion oder Gruppe (z.B. SPD, CDU, Verwaltung)", "role": "vorsitz|mitglied|verwaltung|protokoll|gast", "note": "z.B. 'bis TOP 20.2' oder null"}}
+    {{"name": "Vor- und Nachname", "party": "Fraktion oder Gruppe (z.B. SPD, CDU, Verwaltung)", "role": "chair|member|administration|minutes|guest", "note": "z.B. 'bis TOP 20.2' oder null"}}
   ],
   "decisions": [
     {{

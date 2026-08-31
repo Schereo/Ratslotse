@@ -322,10 +322,10 @@ def test_council_members_merge_by_slug(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session 1 = Rat, 2025-01-01
     store._conn.execute("INSERT INTO council_sessions VALUES (2,'Bauausschuss','2025-02-01','17:00','Rathaus','2025-02-01')")
     rows = [
-        (1, "Dr. Max Mustermann", "SPD", "vorsitz"),   # title variant of the same person …
-        (2, "Max Mustermann", "SPD", "mitglied"),       # … merges by slug → one entry, unique key
-        (1, "Erika Musterfrau", "CDU", "mitglied"),
-        (1, "Frau Schmidt", "", "verwaltung"),          # excluded role
+        (1, "Dr. Max Mustermann", "SPD", "chair"),   # title variant of the same person …
+        (2, "Max Mustermann", "SPD", "member"),       # … merges by slug → one entry, unique key
+        (1, "Erika Musterfrau", "CDU", "member"),
+        (1, "Frau Schmidt", "", "administration"),          # excluded role
     ]
     for ksinr, name, party, role in rows:
         store._conn.execute("INSERT INTO council_attendance(ksinr,name,party,role) VALUES (?,?,?,?)", (ksinr, name, party, role))

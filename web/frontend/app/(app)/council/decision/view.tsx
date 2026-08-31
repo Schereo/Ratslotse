@@ -468,7 +468,7 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
 }
 
 function presentMembers(att: DecisionDetail["attendance"]): number {
-  return att.filter((a) => a.role === "vorsitz" || a.role === "mitglied" || !a.role).length;
+  return att.filter((a) => a.role === "chair" || a.role === "member" || !a.role).length;
 }
 
 /** Design 25a: Nachbarbeschlüsse sind Kontext, keine Hauptsache — standardmäßig

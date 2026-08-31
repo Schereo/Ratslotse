@@ -46,7 +46,7 @@ export type Aufsichtsperson = {
   gremium: string | null;
   name: string;
   position: string | null;
-  vorsitz: "vorsitz" | "stellvertretung" | null;
+  chair_role: "chair" | "deputy" | null;
   /** Klammerzusatz aus dem Bericht, etwa „bis 30. Juni 2022". */
   note: string | null;
   /** Als **Ratsmitglied** im Personenverzeichnis gefunden — dann führt der
@@ -266,7 +266,7 @@ export type Aufsichtsgruppe = {
 /** Rang der Gruppen: Vorsitz zuerst, dann der Rat, dann die Belegschaft,
  *  dann alles Übrige, zuletzt die ohne bekanntes Amt. */
 function gruppenRang(key: string): number {
-  if (key === "vorsitz") return 0;
+  if (key === "chair") return 0;
   if (key === "") return 4;
   if (/ratsmitglied|rat der stadt|ratsherr|ratsfrau/i.test(key)) return 1;
   if (/beschäftigt|arbeitnehmer|personalrat|betriebsrat|belegschaft/i.test(key)) return 2;
@@ -287,17 +287,17 @@ export function aufsichtsgruppen(personen: Aufsichtsperson[],
                                  zuordenbar: boolean): Aufsichtsgruppe[] {
   const nach = new Map<string, Aufsichtsperson[]>();
   for (const p of personen) {
-    const key = p.vorsitz ? "vorsitz" : ((zuordenbar && p.position) || "");
+    const key = p.chair_role ? "chair" : ((zuordenbar && p.position) || "");
     nach.set(key, [...(nach.get(key) ?? []), p]);
   }
   return [...nach.entries()]
     .map(([key, liste]) => ({
       key,
-      titel: key === "vorsitz" ? "Vorsitz" : key || "Weitere Mitglieder",
+      titel: key === "chair" ? "Vorsitz" : key || "Weitere Mitglieder",
       // Im Vorsitz steht die Vorsitzende vor ihrer Stellvertretung, sonst
       // bleibt die Reihenfolge des Berichts.
-      personen: key === "vorsitz"
-        ? [...liste].sort((a, b) => (a.vorsitz === "vorsitz" ? 0 : 1) - (b.vorsitz === "vorsitz" ? 0 : 1))
+      personen: key === "chair"
+        ? [...liste].sort((a, b) => (a.chair_role === "chair" ? 0 : 1) - (b.chair_role === "chair" ? 0 : 1))
         : liste,
     }))
     .sort((a, b) => gruppenRang(a.key) - gruppenRang(b.key) || a.titel.localeCompare(b.titel, "de"));

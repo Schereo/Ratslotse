@@ -278,7 +278,7 @@ CREATE TABLE IF NOT EXISTS council_attendance (
     ksinr   INTEGER NOT NULL,
     name    TEXT,
     party   TEXT,
-    role    TEXT,                               -- vorsitz|mitglied|verwaltung|protokoll|gast
+    role    TEXT,                               -- chair|member|administration|minutes|guest
     note    TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_attendance_ksinr ON council_attendance(ksinr);
@@ -503,7 +503,7 @@ _STRUKTUR_SPALTEN: list[tuple[str, list[tuple[str, str]]]] = [
 #: Fachbegriffe des Haushalts- und Beteiligungsteils: eindeutige Wörter,
 #: die im Code nur als Bezeichner vorkommen. Die deutschen Wörter, die
 #: zugleich mitten in Regexen und Wortlisten stehen (`stadt`, `beschlossen`,
-#: `steuern`, `besetzt`, `vorsitz`, `gesellschaft`, `einwohner`), sind
+#: `steuern`, `besetzt`, `gesellschaft`, `einwohner`), sind
 #: bewusst NICHT dabei — sie kommen mit ihrer eigenen Prüfung. Links steht
 #: wie immer der ALTE Name.
 _FACH_SPALTEN: list[tuple[str, list[tuple[str, str]]]] = [
@@ -820,6 +820,18 @@ class CouncilStore:
             self._spalten_umbenennen(tabelle, paare)
         for tabelle, paare in _FACH_SPALTEN:
             self._spalten_umbenennen(tabelle, paare)
+        # Die Rollen der Anwesenheitsliste. Sie stehen NUR als Wert in der
+        # Zeile — geschrieben vom Protokoll-Modell, gelesen von jeder
+        # Mitglieder-Abfrage. Ohne diese Migration fände `role IN
+        # ('member','chair')` in einem gewachsenen Bestand null Zeilen, und
+        # das Personen-Verzeichnis wäre über Nacht leer.
+        self._werte_umschreiben("council_attendance", "role", [
+            ("vorsitz", "chair"), ("mitglied", "member"),
+            ("verwaltung", "administration"), ("protokoll", "minutes"),
+            ("gast", "guest"), ("beratend", "advisory")])
+        self._spalten_umbenennen("council_gesellschaft_personen", [("vorsitz", "chair_role")])
+        self._werte_umschreiben("council_gesellschaft_personen", "chair_role", [
+            ("vorsitz", "chair"), ("stellvertretung", "deputy")])
         # ZUERST die Spalte, DANN ihr Wert — `amount_source` nennt seit dem
         # Umbenennen von `beschlussvorschlag` die neue Spalte.
         self._werte_umschreiben("council_nachbewilligungen", "amount_source", [
@@ -1722,7 +1734,7 @@ class CouncilStore:
             "gremium TEXT NOT NULL, "          # Betriebsausschuss, Aufsichtsrat, …
             "name TEXT NOT NULL, "
             "position TEXT, "                  # NULL, wenn die Probe riss
-            "vorsitz TEXT, "                   # vorsitz | stellvertretung | NULL
+            "chair_role TEXT, "                # chair | deputy | NULL
             "note TEXT, "                   # „bis 30. Juni 2022"
             "roles_assignable INTEGER NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
@@ -6930,10 +6942,10 @@ class CouncilStore:
                 self._conn.execute(
                     "INSERT INTO council_gesellschaft_personen (report_year, "
                     " gesellschaft, sort_order, gremium, name, position, "
-                    " vorsitz, note, roles_assignable, fetched_at, "
+                    " chair_role, note, roles_assignable, fetched_at, "
                     " herkunft_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                     (z["report_year"], z["gesellschaft"], z["sort_order"],
-                     z["gremium"], z["name"], z.get("position"), z.get("vorsitz"),
+                     z["gremium"], z["name"], z.get("position"), z.get("chair_role"),
                      z.get("note"), int(bool(z["roles_assignable"])), now,
                      self.merke_herkunft(z["herkunft"], fetched_at=now)))
             for z in eigentuemer or []:
@@ -10134,7 +10146,7 @@ class CouncilStore:
         rows = self._conn.execute(
             """SELECT a.name, a.note, cs.session_date
                FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
-               WHERE a.role = 'verwaltung' AND a.name IS NOT NULL AND a.name != ''"""
+               WHERE a.role = 'administration' AND a.name IS NOT NULL AND a.name != ''"""
         ).fetchall()
         g: dict = defaultdict(lambda: {"names": Counter(), "roles": Counter(),
                                        "first": None, "last": None})
@@ -10199,7 +10211,7 @@ class CouncilStore:
         # Lexikon-Oltmanns — eines beratenden NABU-Mitglieds von 2026.
         for (name,) in self._conn.execute(
                 "SELECT DISTINCT name FROM council_attendance "
-                "WHERE role NOT IN ('mitglied','vorsitz','verwaltung') "
+                "WHERE role NOT IN ('member','chair','administration') "
                 "AND name IS NOT NULL AND name != ''"):
             sl = self.person_slug(name)
             if not sl or sl in gesehen:
@@ -10450,7 +10462,12 @@ class CouncilStore:
         }
 
     # --- Council members (from attendance: who sits on the council) ------------------
-    _MEMBER_ROLES = ("mitglied", "vorsitz")  # exclude verwaltung/protokoll/gast/beratend
+    #: Das ganze Rollen-Vokabular der Anwesenheitsliste. `advisory` vergibt
+    #: der Protokoll-Prompt nicht mehr (er nennt fünf Rollen); die Zeilen aus
+    #: seiner früheren Fassung tragen den Wert weiter und sollen dabei
+    #: richtig einsortiert bleiben — deshalb steht er hier.
+    ATTENDANCE_ROLES = ("chair", "member", "administration", "minutes", "guest", "advisory")
+    _MEMBER_ROLES = ("member", "chair")   # der Rest ist kein Mandat
     # Titel UND Anreden: „Herr Jens Freymuth" und „Jens Freymuth" sind dieselbe
     # Person — ohne die Anreden entstanden Dubletten im Mitglieder-Verzeichnis
     # (Tims Befund 10.08.). Adelspartikel („zu", „von") bleiben absichtlich
@@ -10662,7 +10679,7 @@ class CouncilStore:
         return [c["label"]] if c["kind"] in ("partei", "gruppe") else []
 
     def list_members(self) -> list[dict]:
-        """Council members from attendance (role mitglied/vorsitz), grouped by *slug* so
+        """Council members from attendance (role member/chair), grouped by *slug* so
         title variants of the same person ("Dr. X" and "X") merge into ONE entry (and the
         React list gets unique keys). Per person: canonical (most-frequent) name, die
         **letzte aktive Fraktion** (nicht die häufigste — Wechsler wie FDP→Volt oder
@@ -10679,7 +10696,7 @@ class CouncilStore:
         rows = self._conn.execute(
             """SELECT a.name, a.ksinr, a.party, cs.committee, cs.session_date
                FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
-               WHERE a.role IN ('mitglied','vorsitz') AND a.name IS NOT NULL AND a.name != ''"""
+               WHERE a.role IN ('member','chair') AND a.name IS NOT NULL AND a.name != ''"""
         ).fetchall()
         g: dict = defaultdict(lambda: {"names": Counter(), "ksinrs": set(), "committees": set(),
                                        "first": None, "last": None, "party_at": None,
@@ -10748,7 +10765,7 @@ class CouncilStore:
         from collections import Counter
         slug = self.personen_kanon().get(slug, slug)
         namen = [r["name"] for r in self._conn.execute(
-            "SELECT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
+            "SELECT name FROM council_attendance WHERE role IN ('member','chair') "
             "AND name IS NOT NULL AND name != ''")]
         passend = [n for n in namen if self.person_slug(n) == slug]
         return self._anzeige_name(Counter(passend), slug) if passend else None
@@ -10765,7 +10782,7 @@ class CouncilStore:
         from council.parties import classify_faction
         slug = self.personen_kanon().get(slug, slug)
         names = [r["name"] for r in self._conn.execute(
-            "SELECT DISTINCT name FROM council_attendance WHERE role IN ('mitglied','vorsitz') "
+            "SELECT DISTINCT name FROM council_attendance WHERE role IN ('member','chair') "
             "AND name IS NOT NULL AND name != ''")]
         matched = [n for n in names if self.person_slug(n) == slug]
         if not matched:
@@ -10773,24 +10790,24 @@ class CouncilStore:
         ph = ",".join("?" * len(matched))
         name = self._anzeige_name(Counter(  # kanonische Form, darin häufigste Schreibweise
             r["name"] for r in self._conn.execute(
-                f"SELECT name FROM council_attendance WHERE name IN ({ph}) AND role IN ('mitglied','vorsitz')",
+                f"SELECT name FROM council_attendance WHERE name IN ({ph}) AND role IN ('member','chair')",
                 matched)), slug)
         chairs = {r["committee"] for r in self._conn.execute(
             f"SELECT DISTINCT cs.committee FROM council_attendance a JOIN council_sessions cs ON cs.ksinr=a.ksinr "
-            f"WHERE a.name IN ({ph}) AND a.role='vorsitz'", matched)}
+            f"WHERE a.name IN ({ph}) AND a.role='chair'", matched)}
         committees = self._conn.execute(
             f"""SELECT cs.committee, COUNT(DISTINCT a.ksinr) n
                 FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
-                WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
+                WHERE a.name IN ({ph}) AND a.role IN ('member','chair')
                 GROUP BY cs.committee ORDER BY n DESC""", matched).fetchall()
         span = self._conn.execute(
             f"""SELECT COUNT(DISTINCT a.ksinr) n, MIN(cs.session_date) first, MAX(cs.session_date) last
                 FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
-                WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')""", matched).fetchone()
+                WHERE a.name IN ({ph}) AND a.role IN ('member','chair')""", matched).fetchone()
         recent = self._conn.execute(
             f"""SELECT cs.ksinr, cs.committee, cs.session_date FROM council_attendance a
                 JOIN council_sessions cs ON cs.ksinr = a.ksinr
-                WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
+                WHERE a.name IN ({ph}) AND a.role IN ('member','chair')
                 ORDER BY cs.session_date DESC LIMIT 12""", matched).fetchall()
         # Fraktions-/Gruppen-Verlauf aus der Anwesenheit: aufeinanderfolgende
         # Sitzungen derselben Zugehörigkeit zu Phasen zusammengefasst — die einzige
@@ -10802,7 +10819,7 @@ class CouncilStore:
         for r in self._conn.execute(
             f"""SELECT cs.session_date d, a.party FROM council_attendance a
                 JOIN council_sessions cs ON cs.ksinr = a.ksinr
-                WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
+                WHERE a.name IN ({ph}) AND a.role IN ('member','chair')
                 ORDER BY cs.session_date""", matched):
             c = classify_faction(r["party"])
             if c["kind"] == "unbekannt":
@@ -10846,7 +10863,7 @@ class CouncilStore:
         # rund 300 ms je Aufruf (gemessen 21.08.2026).
         im_plenum = self._conn.execute(
             f"""SELECT 1 FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
-                WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
+                WHERE a.name IN ({ph}) AND a.role IN ('member','chair')
                   AND cs.committee = ? LIMIT 1""", matched + [self.PLENUM]).fetchone()
         # `slug` ist hier schon die kanonische Namensform (s. Kopf der Methode).
         art = "rat" if (im_plenum or slug in self._ris_ratsmitglieder()) else "beratend"
@@ -10857,7 +10874,7 @@ class CouncilStore:
             for r in self._conn.execute(
                     f"""SELECT a.party FROM council_attendance a
                         JOIN council_sessions cs ON cs.ksinr = a.ksinr
-                        WHERE a.name IN ({ph}) AND a.role IN ('mitglied','vorsitz')
+                        WHERE a.name IN ({ph}) AND a.role IN ('member','chair')
                         ORDER BY cs.session_date DESC""", matched):
                 organisation = self._organisation_label(r["party"])
                 if organisation:
@@ -10905,7 +10922,7 @@ class CouncilStore:
         laden können."""
         from collections import Counter
         namen = [r["name"] for r in self._conn.execute(
-            "SELECT name FROM council_attendance WHERE role = 'verwaltung' "
+            "SELECT name FROM council_attendance WHERE role = 'administration' "
             "AND name IS NOT NULL AND name != ''")]
         passend = [n for n in namen if self._person_slug(n) == slug]
         return self._person_anzeige(Counter(passend).most_common(1)[0][0]) if passend else None

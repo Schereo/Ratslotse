@@ -1216,7 +1216,7 @@ function AttendanceSection({ detail }: { detail: SessionDetail }) {
   if (att.length === 0) return null;
   const byParty: Record<string, number> = {};
   for (const a of att) {
-    if (a.role === "verwaltung" || a.role === "protokoll" || a.role === "gast") continue;
+    if (a.role === "administration" || a.role === "minutes" || a.role === "guest") continue;
     const p = normalizeParty(a.party || "—");
     byParty[p] = (byParty[p] ?? 0) + 1;
   }

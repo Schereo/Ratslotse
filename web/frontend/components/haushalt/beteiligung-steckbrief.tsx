@@ -383,7 +383,7 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
             <ul className="mt-1.5 grid gap-1.5 @xl/organ:grid-cols-2 @4xl/organ:grid-cols-3">
               {gr.personen.map((p, i) => (
                 <Person key={`${p.name}-${i}`} p={p}
-                  zeigeFunktion={gr.key === "vorsitz" && zuordenbar} />
+                  zeigeFunktion={gr.key === "chair" && zuordenbar} />
               ))}
             </ul>
           </div>

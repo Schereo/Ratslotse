@@ -1651,7 +1651,7 @@ def decision_detail(
     # Falsches über reale Personen — „FDP/Volt" wurde zu „FDP" (Volt fiel weg),
     # „Gruppe DIE LINKE./Piratenpartei" zu „Die Linke" (Piraten fielen weg).
     present = {faction_label(a["party"]) for a in attendance
-               if (a.get("role") or "mitglied") in ("vorsitz", "mitglied")}
+               if (a.get("role") or "member") in ("chair", "member")}
     present.discard("parteilos")   # keine Fraktion, gehört nicht in die Reihe
     out: dict = {
         "decision": d,
