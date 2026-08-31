@@ -297,7 +297,7 @@ export function KennzahlenAbschnitt() {
   }
 
   const korrekturen = korrekturenVon(daten);
-  const berichte = [...new Set(daten.series.map((p) => p.report_year))];
+  const n_reports = [...new Set(daten.series.map((p) => p.report_year))];
   const quelleUrl = "https://buergerinfo.oldenburg.de";
 
   return (
@@ -311,7 +311,7 @@ export function KennzahlenAbschnitt() {
               Am Ende jedes Rechenschaftsberichts fasst die Stadt ihren Jahresabschluss
               in dreizehn Kennzahlen zusammen. Zu jeder Kennzahl veröffentlicht sie auch
               den verwendeten Rechenweg. {jahre[0]}–{jahre[jahre.length - 1]} aus{" "}
-              {ZAHLWORT[berichte.length] ?? berichte.length} Berichten.
+              {ZAHLWORT[n_reports.length] ?? n_reports.length} Berichten.
             </p>
           </div>
           <a href={quelleUrl} target="_blank" rel="noopener noreferrer"

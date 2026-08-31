@@ -380,7 +380,7 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
   const entity = series.find((z) => z.year === s.year)?.insgesamt ?? null;
 
   const stufen = [
-    { titel: "Kernhaushalt", wert: s.kernhaushalt,
+    { titel: "Kernhaushalt", wert: s.core_budget,
       was: "Investitionskredite der Stadtverwaltung selbst" },
     { titel: "Stadt als Rechtsträger", wert: entity,
       was: "dazu die Eigenbetriebe — die Zahl oben auf dieser Seite" },
@@ -397,7 +397,7 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
         <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
           {/* Gerechnet, nicht geschrieben — hier stand „43,7" als Text und
               wäre beim nächsten Tabellenband still falsch geworden. */}
-          {s.kernhaushalt != null ? `${deMio(s.kernhaushalt / 1e6)} · ` : ""}
+          {s.core_budget != null ? `${deMio(s.core_budget / 1e6)} · ` : ""}
           {entity ? `${deMio(entity / 1e6)} · ` : ""}
           {deMio(s.insgesamt / 1e6)}&#8239;Mio.&nbsp;€ — drei unterschiedliche Abgrenzungen
         </h2>
@@ -598,8 +598,8 @@ export default function SchuldenPage() {
   // Seite, die „gestiegen" als Text trägt, wird mit dem nächsten Jahrgang
   // still falsch.
   const deltaAbs = letzter.insgesamt - erster.insgesamt;
-  const proKopfDa = letzter.je_einwohner != null && erster.je_einwohner != null;
-  const deltaKopf = proKopfDa ? letzter.je_einwohner! - erster.je_einwohner! : null;
+  const proKopfDa = letzter.per_capita != null && erster.per_capita != null;
+  const deltaKopf = proKopfDa ? letzter.per_capita! - erster.per_capita! : null;
   const gegenlaeufig = deltaKopf != null && Math.sign(deltaAbs) !== Math.sign(deltaKopf);
 
   // Der jüngste Jahrgang mit belegter Aufteilung — die Aufteilung ist nicht
@@ -641,7 +641,7 @@ export default function SchuldenPage() {
           if (!st) return null;
           const entity = (data?.series ?? []).find((z) => z.year === st.year)?.insgesamt ?? null;
           const stufen = [
-            { titel: "Kernhaushalt", wert: st.kernhaushalt },
+            { titel: "Kernhaushalt", wert: st.core_budget },
             { titel: "Stadt als Rechtsträger", wert: entity },
             { titel: "der ganze Konzern", wert: st.insgesamt },
           ].filter((x): x is { titel: string; wert: number } => x.wert != null);
@@ -706,10 +706,10 @@ export default function SchuldenPage() {
                 insgesamt<Beleg q="schulden" />
               </p>
             </div>
-            {letzter.je_einwohner != null && (
+            {letzter.per_capita != null && (
               <div>
                 <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums sm:text-[32px]">
-                  {deEuro(letzter.je_einwohner)}&nbsp;€
+                  {deEuro(letzter.per_capita)}&nbsp;€
                 </p>
                 <p className="mt-1 text-[12px] text-muted-foreground">
                   je Einwohner*in<Beleg q="schulden" />
@@ -788,7 +788,7 @@ export default function SchuldenPage() {
             onChange={setAnsicht}
             options={[
               { value: "insgesamt", label: "Insgesamt" },
-              { value: "je_einwohner", label: "Je Einwohner*in" },
+              { value: "per_capita", label: "Je Einwohner*in" },
             ]}
           />
         </div>
@@ -874,7 +874,7 @@ export default function SchuldenPage() {
               Kreditportfolios. Dieselbe Stadt, dieselben Schulden, andere
               Spalte.<Beleg q="schulden" />
             </li>
-            {ansicht === "je_einwohner" && (
+            {ansicht === "per_capita" && (
               <li>
                 <strong>2023 sank der Betrag je Einwohner*in um 36&nbsp;€ — obwohl
                 die Schulden stiegen.</strong> Der Zensus 2022 zählte 4.079 Menschen
@@ -885,7 +885,7 @@ export default function SchuldenPage() {
               </li>
             )}
           </ul>
-          {ansicht === "je_einwohner" && (
+          {ansicht === "per_capita" && (
             /* Der Vollständigkeit halber, aber NICHT als vierter Aufzählungspunkt:
                2012 wirkte dieselbe Mechanik, trug aber nur 30 der 125 € — den Rest
                hat die Stadt wirklich aufgenommen. Als gleichrangiger Punkt neben

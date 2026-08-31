@@ -155,7 +155,7 @@ def main() -> int:
             juengster = zeilen[-1]
             print(f"  jüngster Jahrgang {juengster['year']}: "
                   f"{_de(juengster['insgesamt'] / 1e6, 1)} Mio. € insgesamt, "
-                  f"{_de(juengster['je_einwohner'])} € je Einwohner*in")
+                  f"{_de(juengster['per_capita'])} € je Einwohner*in")
 
             if args.trockenlauf:
                 print("Trockenlauf — nichts gespeichert.")

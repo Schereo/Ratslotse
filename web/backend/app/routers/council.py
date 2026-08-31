@@ -746,7 +746,7 @@ def haushalt_beteiligungen(
       ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr
       Rohtext steht weiter in ``texte``,
     - ``kennzahlen``: die Zeitreihe je Gesellschaft (Jahresergebnis,
-      Bilanzsumme, Eigenkapitalquote). ``berichte`` sagt, wie viele Berichte
+      Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
     - ``konzernvergleich``: für die Gesellschaften, die auch im
@@ -991,7 +991,7 @@ def haushalt_uebersicht(
     - ``ansatz_jahre``: die Jahre mit einem Haushaltsansatz — die Liste, aus
       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
     - ``wirtschaftsplaene``: die Wirtschaftspläne der Eigenbetriebe und
-      städtischen Gesellschaften, je ``betrieb`` und ``year``. **Nicht mit dem
+      städtischen Gesellschaften, je ``enterprise`` und ``year``. **Nicht mit dem
       Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
       Aufwand des Kernhaushalts; herausgerechnet wird das erst im
@@ -1103,7 +1103,7 @@ def haushalt_uebersicht(
         # Die Gebührenbedarfsberechnung — woraus die Abfall- und
         # Straßenreinigungsgebühren entstehen.
         #
-        # `gebuehr` und `reference_quantity` sind bei der Abfallsammlung NULL, und das
+        # `fee` und `reference_quantity` sind bei der Abfallsammlung NULL, und das
         # ist die Auskunft: Sie erhebt eine Grundgebühr UND eine Gebühr je
         # Liter, dort gibt es keine einzelne Division. Wer die Spalte anzeigt,
         # schreibt die Leerstelle an, statt eine 0 zu zeichnen.
@@ -1485,7 +1485,7 @@ def haushalt_aenderungslisten(
       (``year == budget_year``). Dieselbe Maßnahme steht im Dokument je
       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
-      Summen. ``urheber`` trägt, WER die Position vorschlug — gefüllt nur
+      Summen. ``author`` trägt, WER die Position vorschlug — gefüllt nur
       beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte
       „Vorschlag von“ führt; sonst ``null``.
     - ``summen``: die Zusammenstellungen ALLER Planjahre, inklusive der
@@ -1711,13 +1711,13 @@ def decision_detail(
                 "excerpt": vorlagen_mod.excerpt(v.get("raw_text") or "", 2600) or None,
                 # Regex-Ernte: federführendes Amt + Klima-Check der Verwaltung.
                 "office": v.get("office"),
-                "klima_check": v.get("klima_check"),
-                "klima_relevant": ernte.klima_relevant(v.get("klima_check")),
+                "climate_impact": v.get("climate_impact"),
+                "klima_relevant": ernte.klima_relevant(v.get("climate_impact")),
                 # „Finanzielle Auswirkungen" der Verwaltung — dieselbe
                 # Regex-Ernte wie der Klima-Check, auf der Beschluss-Seite als
                 # „Was kostet das?" (Design H-21). Amtlicher Wortlaut, deshalb
                 # unverändert und als Zitat gekennzeichnet.
-                "finanz_check": v.get("finanz_check"),
+                "financial_impact": v.get("financial_impact"),
             }
             if not out["vorlage_url"] and v.get("kvonr"):
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])
@@ -1846,7 +1846,7 @@ def gespraeche_alle_loeschen(user: dict = Depends(require_active),
 class QaFeedbackBody(BaseModel):
     frage: str = Field(min_length=1, max_length=300)
     antwort_auszug: str | None = Field(default=None, max_length=500)
-    bewertung: str = Field(pattern="^(up|down)$")
+    rating: str = Field(pattern="^(up|down)$")
     grund: str | None = Field(default=None, max_length=500)
 
 
@@ -1862,7 +1862,7 @@ def qa_feedback(
     KI-Frage selbst ist es auch); die Feldlängen begrenzt das Schema, das
     Rate-Limit hält Skript-Flutung von Tabelle und Backups fern."""
     qa_feedback_limiter.check(request)
-    store.save_qa_feedback(body.frage, body.antwort_auszug, body.bewertung,
+    store.save_qa_feedback(body.frage, body.antwort_auszug, body.rating,
                            body.grund, user_id=(user or {}).get("id"))
     return {"ok": True}
 
@@ -3695,7 +3695,7 @@ def haushalt_vergleich(
             beleg["titel"] = vorlage.get("title")
         beleg["anlagen"] = [
             {"document_id": a["document_id"], "label": a["label"],
-             "url": a["url"], "is_antrag": a.get("is_antrag", 0)}
+             "url": a["url"], "is_motion": a.get("is_motion", 0)}
             for a in store.anlagen_for_vorlage_nr(VERGLEICH_BELEG_VORLAGE)]
     except sqlite3.OperationalError:
         # Eine Datenbank ohne Vorlagen-Bestand (etwa im Test) soll die Seite
@@ -3875,7 +3875,7 @@ def haushalt_schulden(
     kommt aus ``council/schulden.py`` und nicht aus dem Frontend, damit beide
     Seiten dieselbe Auskunft geben.
 
-    ``je_einwohner`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
+    ``per_capita`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
     kommt so aus der Tabelle; dass sie zur Einwohnerzahl aus dem Open-Data-
     Datensatz passt, ist die Probe, die den Wert überhaupt hereingelassen hat
     (``herkunft[…].probes``).

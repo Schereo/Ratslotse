@@ -70,7 +70,7 @@ export type SteuerArt = {
   stufen: SteuerStufe[];
   /** Rechenbeispiel, wo es eines gibt — konkret statt abstrakt. */
   beispiel?: { rechnung: string; note: string };
-  /* Hier stand bis 19.08.2026 `hebesatz?: number` — der aktuelle Satz als
+  /* Hier stand bis 19.08.2026 `rate?: number` — der aktuelle Satz als
      Zahl im Quelltext (439 bzw. 539). Sie war nicht bloß Deko: Der Steckbrief
      rechnete den Überschlag „was brächte ein Punkt mehr?" damit und druckte
      sie als Rechenweg aus. Seit `council_hebesaetze` die Reihe seit 1980

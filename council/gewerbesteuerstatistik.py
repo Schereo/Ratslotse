@@ -288,7 +288,7 @@ class Gewerbesteuerjahrgang:
     korrektur: str | None = None
     #: Schlüssel → die neun Werte aus Blatt 6.1 plus ``stadt``/``gesperrt``.
     staedte: dict[str, dict] = field(default_factory=dict)
-    #: Schlüssel → ``{stadt, gesamt_*, hebesatz, gesperrt}`` aus Blatt 6.2.
+    #: Schlüssel → ``{stadt, gesamt_*, rate, gesperrt}`` aus Blatt 6.2.
     gemeinden: dict[str, dict] = field(default_factory=dict)
 
     @property
@@ -378,7 +378,7 @@ def _blatt(pfad: str, blatt: str, erwartet: tuple[str, ...],
             eintrag[name] = wert
             eintrag["gesperrt"] = eintrag["gesperrt"] or gesperrt
         if mit_hebesatz:
-            eintrag["hebesatz"] = sv._zahl(_zelle(zeile, c_hebesatz))
+            eintrag["rate"] = sv._zahl(_zelle(zeile, c_hebesatz))
         aus[key] = eintrag
     return aus
 
@@ -478,10 +478,10 @@ def hebesatz_im_jahr(zeilen: list[dict], year: int,
     """
     passend = [z for z in zeilen
                if z.get("art") == art and int(z.get("year", 0)) <= year
-               and z.get("hebesatz") is not None]
+               and z.get("rate") is not None]
     if not passend:
         return None
-    return float(max(passend, key=lambda z: int(z["year"]))["hebesatz"])
+    return float(max(passend, key=lambda z: int(z["year"]))["rate"])
 
 
 def probe_hebesatz(budget_year: Gewerbesteuerjahrgang, schluessel: str,
@@ -500,7 +500,7 @@ def probe_hebesatz(budget_year: Gewerbesteuerjahrgang, schluessel: str,
     Probe als nicht gelaufen — nicht als bestanden.
     """
     eintrag = budget_year.gemeinden.get(schluessel) or {}
-    satz = eintrag.get("hebesatz")
+    satz = eintrag.get("rate")
     if satz is None or hebesatz_1105 is None:
         return {"ok": None,
                 "result": ("kein Vergleichswert" if satz is not None
@@ -558,16 +558,16 @@ def zeilen(budget_year: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
             # „Oldenburg (Oldenburg)"), und eine Reihe, die ihren eigenen
             # Namen wechselt, sieht in jeder Anzeige nach zwei Städten aus.
             "stadt": STAEDTE[key],
-            "faelle": eintrag["gesamt_count"],
+            "cases": eintrag["gesamt_count"],
             "cases_positive": eintrag["gesamt_positiv"],
             "tax_base_eur": eintrag["gesamt_amount"],
-            "festsetzungen": eintrag["festsetzung_count"],
+            "assessments": eintrag["festsetzung_count"],
             "assessments_positive": eintrag["festsetzung_positiv"],
             "assessment_tax_base_eur": eintrag["festsetzung_amount"],
             "apportionments": eintrag["zerlegung_count"],
             "apportionments_positive": eintrag["zerlegung_positiv"],
             "apportioned_assessment_eur": eintrag["zerlegung_amount"],
-            "hebesatz": gemeinde.get("hebesatz"),
+            "rate": gemeinde.get("rate"),
             "gesperrt": bool(eintrag.get("gesperrt")),
         })
     return aus, verworfen

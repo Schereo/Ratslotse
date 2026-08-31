@@ -25,10 +25,10 @@ export function hebesatzHeute(
   zeilen: HebesatzZeile[] | undefined, art: string,
 ): { satz: number; seit: number } | null {
   const series = (zeilen ?? [])
-    .filter((z) => z.art === art && z.hebesatz != null)
+    .filter((z) => z.art === art && z.rate != null)
     .sort((a, b) => a.year - b.year);
   const letzte = series.at(-1);
-  return letzte ? { satz: letzte.hebesatz as number, seit: letzte.year } : null;
+  return letzte ? { satz: letzte.rate as number, seit: letzte.year } : null;
 }
 
 /** Der jüngste Ist-Betrag einer Steuerart aus dem Open-Data-Satz. */
@@ -105,14 +105,14 @@ export function staedteHebesaetze(
  *  Landestopf schwankt), heißt ehrlich „es blieb alles übrig“, nicht „es
  *  blieb mehr als alles übrig“. */
 export function daempferSpanne(
-  steuerkraft: { year: number; messzahl: number | null; allocations: number | null }[],
+  steuerkraft: { year: number; tax_index: number | null; allocations: number | null }[],
 ): { verbleibVon: number; verbleibBis: number; paare: number } | null {
   const series = steuerkraft
-    .filter((k) => k.messzahl != null && k.allocations != null)
+    .filter((k) => k.tax_index != null && k.allocations != null)
     .sort((a, b) => a.year - b.year);
   const quoten: number[] = [];
   for (let i = 1; i < series.length; i++) {
-    const dMess = (series[i].messzahl as number) - (series[i - 1].messzahl as number);
+    const dMess = (series[i].tax_index as number) - (series[i - 1].tax_index as number);
     const dZuw = (series[i].allocations as number) - (series[i - 1].allocations as number);
     // Nur Jahre, in denen die Steuerkraft nennenswert gestiegen ist — ein
     // Verhältnis über einer Mini-Änderung wäre Rauschen, keine Beobachtung.

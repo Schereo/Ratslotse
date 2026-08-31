@@ -26,7 +26,7 @@ import { IstKurve } from "@/components/haushalt/ist-kurve";
 import { SteuerPlanIst } from "@/components/haushalt/steuer-plan-ist";
 import { EntgeltePlanIst } from "@/components/haushalt/entgelte-plan-ist";
 import { EntgelteBereiche } from "@/components/haushalt/entgelte-bereiche";
-import { HebesatzTreppe } from "@/components/haushalt/hebesatz-treppe";
+import { HebesatzTreppe } from "@/components/haushalt/rate-treppe";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { AbgelehnteStufe } from "@/components/haushalt/abgelehnte-stufe";
 import { Grenzen } from "@/components/haushalt/steuer-grenzen";
@@ -193,14 +193,14 @@ function SteuerInner() {
   // später als der Beschluss), teilte man sonst durch einen Satz, der für
   // dieses Geld nie gegolten hat.
   //
-  // Bis 19.08.2026 stand hier `art.hebesatz` — eine Zahl im Quelltext
+  // Bis 19.08.2026 stand hier `art.rate` — eine Zahl im Quelltext
   // (`439` für die Gewerbesteuer). Sie stimmte zufällig, weil der Rat den Satz
   // seit 2015 nicht angefasst hat; der nächste Beschluss hätte sie still
   // falsch gemacht, während die echte Reihe schon danebenlag.
   const hebesatzGalt = letzte
     ? hebeHaupt.filter((z) => z.year <= letzte.year).at(-1) ?? null
     : null;
-  const punktSatz = hebesatzGalt?.hebesatz ?? null;
+  const punktSatz = hebesatzGalt?.rate ?? null;
 
   // Ein Hebesatzpunkt, überschlagen aus dem Ist — bewusst als Überschlag
   // benannt. Nur wo Betrag und Hebesatz dieselbe Steuer meinen: Bei der
@@ -224,7 +224,7 @@ function SteuerInner() {
   const geltendeStufe = hebeHaupt.at(-1) ?? null;
   const vorgeschlagen = (satzungDaten?.haushaltssatzung ?? [])
     .find((z) => z.year === HEBESATZ_ABGELEHNT.year && z.supplement === 0)
-    ?.hebesatz_gewerbesteuer ?? null;
+    ?.trade_tax_rate ?? null;
 
   // Das Aufkommen als `{year: euro}` — der Pflicht-Kontext neben jedem
   // Hebesatz-Sprung. Ohne ihn liest sich „+21 %" als „alle zahlen 21 % mehr",
@@ -317,16 +317,16 @@ function SteuerInner() {
         const akt = series.at(-1);
         if (series.length < 2 || !akt) return null;
         const stufen = series.slice(-4);
-        const min = Math.min(...stufen.map((z) => z.hebesatz));
-        const max = Math.max(...stufen.map((z) => z.hebesatz));
+        const min = Math.min(...stufen.map((z) => z.rate));
+        const max = Math.max(...stufen.map((z) => z.rate));
         const hoehe = (w: number) => (max > min ? 12 + ((w - min) / (max - min)) * 28 : 24);
         return (
           <Seitenbuehne
             kicker={`Steuer-Steckbrief · Hebesatz ${art.hebesatzArten?.[0] ?? art.titel}`}
-            zahl={<><ZaehlZahl wert={akt.hebesatz} />&#8239;% seit {akt.year}</>}
+            zahl={<><ZaehlZahl wert={akt.rate} />&#8239;% seit {akt.year}</>}
             sub={`davor ${series.length - 1} ${series.length - 1 === 1 ? "Änderung" : "Änderungen"} seit ${series[0].year} — beschlossen jeweils vom Rat`}
             minibild={{
-              href: "#hebesatz",
+              href: "#rate",
               label: "Hebesatz-Treppe — klickt zur ganzen Reihe seit 1980",
               skizze: (
                 // Mit Achse und Werten (Tim, 26.08.: „komplett ohne Achse ohne
@@ -345,24 +345,24 @@ function SteuerInner() {
                           {i > 0 && (
                             <span className="sb-schritt absolute" style={{
                               left: `${links}%`,
-                              bottom: Math.min(hoehe(stufen[i - 1].hebesatz), hoehe(z.hebesatz)),
-                              height: Math.abs(hoehe(z.hebesatz) - hoehe(stufen[i - 1].hebesatz)),
+                              bottom: Math.min(hoehe(stufen[i - 1].rate), hoehe(z.rate)),
+                              height: Math.abs(hoehe(z.rate) - hoehe(stufen[i - 1].rate)),
                               borderLeft: "2px dashed var(--sb-strich)",
                               animationDelay: `${0.1 + i * 0.16}s`,
                             }} />
                           )}
                           <span className="sb-schritt absolute" style={{
                             left: `${links}%`, width: `${breite}%`,
-                            bottom: hoehe(z.hebesatz), borderTop: "3px solid var(--sb-voll)",
+                            bottom: hoehe(z.rate), borderTop: "3px solid var(--sb-voll)",
                             animationDelay: `${0.18 + i * 0.16}s`,
                           }} />
                           {beschriftet && (
                             <span className="sb-schritt absolute font-mono text-[9px] leading-none tabular-nums text-muted-foreground" style={{
                               [i === 0 ? "left" : "right"]: `${i === 0 ? links : 0}%`,
-                              bottom: hoehe(z.hebesatz) + 5,
+                              bottom: hoehe(z.rate) + 5,
                               animationDelay: `${0.26 + i * 0.16}s`,
                             }}>
-                              {z.hebesatz}&#8239;%
+                              {z.rate}&#8239;%
                             </span>
                           )}
                         </span>
@@ -556,7 +556,7 @@ function SteuerInner() {
             Vorjahre liege uns nicht vor. Sie lag die ganze Zeit vor — auf
             demselben Blatt wie die Steuereinnahmen, die wir längst lesen. */}
         {hebeHaupt.length >= 2 ? (
-          <div id="hebesatz" className="scroll-mt-20">
+          <div id="rate" className="scroll-mt-20">
           <HebesatzTreppe
             series={hebeHaupt}
             zweitreihe={hebeZweit}
@@ -590,7 +590,7 @@ function SteuerInner() {
         ) : (
           /* Der Rückfall, wenn die Reihe fehlt — und zwar OHNE Zahl.
              Bis 19.08.2026 stand hier ein Kasten „2025 · Rat — Hebesatz 439 %"
-             aus `art.hebesatz`, also aus dem Quelltext. Das war die schlechteste
+             aus `art.rate`, also aus dem Quelltext. Das war die schlechteste
              Stelle für eine hartkodierte Zahl: ein Beleg-Chip daneben, der auf
              Tabelle 1105 zeigte, während die Zahl gar nicht von dort kam.
              Fehlt die Reihe, hat die Seite keinen belegten Satz — dann steht
@@ -627,7 +627,7 @@ function SteuerInner() {
               {geltendeStufe && (
                 <AbgelehnteStufe
                   year={HEBESATZ_ABGELEHNT.year}
-                  geltend={geltendeStufe.hebesatz}
+                  geltend={geltendeStufe.rate}
                   geltendSeit={geltendeStufe.year}
                   vorgeschlagen={vorgeschlagen}
                   proPunkt={proPunkt}

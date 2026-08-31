@@ -639,7 +639,7 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
 
     Zurück: ``{"zeilen": [...], "probes": [...], "sprungjahre": {...},
     "abbruch": str|None}``. ``zeilen`` sind speicherfertige Datensätze
-    ``{year, art, hebesatz, prior_rate}``.
+    ``{year, art, rate, prior_rate}``.
     """
     start = erkenne_1105(text)
     roh = parse_1105(text)
@@ -684,7 +684,7 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
         for art in HEBESATZ_ARTEN:
             zeilen.append({
                 "year": eintrag["year"], "art": art,
-                "hebesatz": eintrag[art],
+                "rate": eintrag[art],
                 "prior_rate": vorher[art] if vorher else None,
             })
     return {"zeilen": zeilen, "probes": probes, "sprungjahre": sprung,

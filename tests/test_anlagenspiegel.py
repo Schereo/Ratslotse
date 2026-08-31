@@ -54,7 +54,7 @@ def test_dreizehn_spalten_und_drei_ketten():
     z = g[0]
     assert z["spalten"] == 13
     assert z["additions"] == 13_478_238.51
-    assert z["abschreibung"] == -6_523_027.43
+    assert z["depreciation"] == -6_523_027.43
     assert z["book_value"] == 91_394_171.68
 
     bestanden, risse = asp.probe(z)
@@ -123,12 +123,12 @@ def test_umbuchungen_muessen_sich_aufheben():
     Lücken — 2019 waren es 396.635,53 € zwischen zwei Positionen.
     """
     zeilen = [
-        {"nr": "1", "depreciation_opening": -100.0, "abschreibung": -10.0, "depreciation_releases": 0.0,
+        {"nr": "1", "depreciation_opening": -100.0, "depreciation": -10.0, "depreciation_releases": 0.0,
          "write_ups": 0.0, "depreciation_transfers": 0.0, "depreciation_closing": -60.0},
-        {"nr": "2", "depreciation_opening": -200.0, "abschreibung": -20.0, "depreciation_releases": 0.0,
+        {"nr": "2", "depreciation_opening": -200.0, "depreciation": -20.0, "depreciation_releases": 0.0,
          "write_ups": 0.0, "depreciation_transfers": 0.0, "depreciation_closing": -270.0},
         # Untergliederung — darf NICHT mitzählen, sonst wäre alles doppelt.
-        {"nr": "2.1", "depreciation_opening": -50.0, "abschreibung": -5.0, "depreciation_releases": 0.0,
+        {"nr": "2.1", "depreciation_opening": -50.0, "depreciation": -5.0, "depreciation_releases": 0.0,
          "write_ups": 0.0, "depreciation_transfers": 0.0, "depreciation_closing": -105.0},
     ]
     balance, risse = asp.umbuchungsprobe(zeilen)

@@ -188,7 +188,7 @@ def test_die_kaskade_geht_auf():
     Sie sind positiv, die Abzüge negativ. Ihre Namen wechseln zwischen den
     drei Bereichen — an ihnen zu hängen hieße, drei Vokabulare zu pflegen."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2025)[0])
-    assert b.kostenkalkulation == 11_661_361.0
+    assert b.cost_calculation == 11_661_361.0
     assert b.deductions == -(3_668_314 + 5_000 + 240_000 + 361_777)
     assert b.costs_to_cover == 7_386_270.0
 
@@ -232,7 +232,7 @@ def test_positive_ueberdeckung_wird_nur_bei_exakter_kaskade_abgezogen():
     assert b.year == 2020
     assert b.deductions == -(2_881_800 + 3_000 + 168_200 + 280_500)
     assert b.costs_to_cover == 6_428_050
-    assert b.gebuehr == 121.974 and b.reference_quantity == 52_700
+    assert b.fee == 121.974 and b.reference_quantity == 52_700
 
     kaputt = text.replace("280.500 €", "280.400 €")
     with pytest.raises(GebuehrenFehler, match="Rest"):
@@ -247,8 +247,8 @@ def test_die_division_geht_auf():
     b = parse_anlage(teile_anlagen(ANLAGE_1_2025)[0])
     assert b.reference_quantity == 52_845
     assert b.reference_unit == "Mg"
-    assert b.gebuehr == 139.772
-    assert abs(b.costs_to_cover / b.reference_quantity - b.gebuehr) < 0.001
+    assert b.fee == 139.772
+    assert abs(b.costs_to_cover / b.reference_quantity - b.fee) < 0.001
     assert b.fee_proposed == 139.70
 
 
@@ -267,7 +267,7 @@ def test_zerrissene_menge_wird_an_der_gebuehr_erkannt():
     b = parse_anlage(teile_anlagen(ANLAGE_3_2026)[0])
     assert b.reference_quantity == 771_000
     assert b.reference_unit == "Meter Quadratwurzel"
-    assert b.gebuehr == 4.039
+    assert b.fee == 4.039
 
 
 def test_ohne_passende_menge_wird_nichts_gespeichert():
@@ -287,10 +287,10 @@ def test_beschriftungen_und_betraege_getrennt():
     Beschriftung sucht, findet dort nichts — die Zuordnung kommt aus der
     Reihenfolge und gilt nur, weil sie die Kaskade erfüllt."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2024)[0])
-    assert b.kostenkalkulation == 10_901_750.0
+    assert b.cost_calculation == 10_901_750.0
     assert b.costs_to_cover == 6_897_117.0
     assert b.reference_quantity == 51_200
-    assert b.gebuehr == 134.709
+    assert b.fee == 134.709
 
 
 def test_nicht_der_gerundete_vorschlag():
@@ -298,7 +298,7 @@ def test_nicht_der_gerundete_vorschlag():
     Vorschlag zwei (134,70). Wer den Vorschlag nimmt, speichert eine Zahl,
     die die Division nicht erfüllt."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2024)[0])
-    assert b.gebuehr == 134.709
+    assert b.fee == 134.709
     assert b.fee_proposed == 134.70
 
 
@@ -321,7 +321,7 @@ def test_abfallsammlung_hat_keine_division():
     b = parse_anlage(teile_anlagen(ANLAGE_2_2026)[0])
     assert b.area == "abfallsammlung"
     assert b.costs_to_cover == 13_762_012.0
-    assert b.gebuehr is None and b.reference_quantity is None
+    assert b.fee is None and b.reference_quantity is None
 
 
 def test_die_herkunft_nennt_nur_die_gelaufenen_proben():

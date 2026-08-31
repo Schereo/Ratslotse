@@ -261,12 +261,12 @@ def test_layout_ohne_leerzeilen():
     ("Änderungsliste der BSW-Fraktion zum Erfolgsplan", ["BSW"]),
 ])
 def test_urheber(titel, erwartet):
-    assert hd.urheber(titel) == erwartet
+    assert hd.author(titel) == erwartet
 
 
 def test_gruppe_schluckt_die_einzelparteien():
     """„Gruppe FDP/Volt" darf nicht zusätzlich als „FDP" und „Volt" zählen."""
-    assert hd.urheber("Änderungsliste der Gruppe FDP/Volt") == ["FDP/Volt"]
+    assert hd.author("Änderungsliste der Gruppe FDP/Volt") == ["FDP/Volt"]
 
 
 def test_verwaltungsliste_ist_kein_fraktionsantrag():
@@ -274,7 +274,7 @@ def test_verwaltungsliste_ist_kein_fraktionsantrag():
                              "outcome": "angenommen", "vote": "einstimmig",
                              "item_number": "6.5", "ksinr": 1})
     assert a.ist_verwaltung is True
-    assert a.urheber is None
+    assert a.author is None
 
 
 def test_sammelabstimmung_ist_kein_antrag():
@@ -354,7 +354,7 @@ def test_nur_antraege_des_sammelpunkts(store):
         "TOP 7.1 gehört nicht zum Haushalts-Sammelpunkt 6"
     )
     verwaltung = [a for a in rat["antraege"] if a["ist_verwaltung"]]
-    assert len(verwaltung) == 1 and verwaltung[0]["urheber"] is None
+    assert len(verwaltung) == 1 and verwaltung[0]["author"] is None
 
 
 def test_debatte_haengt_an_der_station(store):

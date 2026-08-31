@@ -49,13 +49,13 @@ def eur(x: float) -> str:
 
 def jahresabschluss(year: int, e_plan: float, e_ist: float,
                     a_plan: float, a_ist: float,
-                    ve: float, va: float, mit_thh: bool = True) -> str:
+                    commitment_authorizations: float, va: float, mit_thh: bool = True) -> str:
     """Ein Jahresabschluss-Extrakt, der alle vier Proben besteht.
 
-    ``ve``/``va`` sind die Ist-Werte des Vorjahres (Posten 12 und 20) — sie
+    ``commitment_authorizations``/``va`` sind die Ist-Werte des Vorjahres (Posten 12 und 20) — sie
     stehen in der Vorjahresspalte und schließen damit die Kette zum
     Vorgängerjahrgang."""
-    r_plan, r_ist, r_vor = e_plan - a_plan, e_ist - a_ist, ve - va
+    r_plan, r_ist, r_vor = e_plan - a_plan, e_ist - a_ist, commitment_authorizations - va
     text = f"""3.1 Ergebnisrechnung Kernverwaltung
 Erträge und Aufwendungen Ergebnis des
 Vorjahres
@@ -74,8 +74,8 @@ weniger (-)4)
  - Euro -
 1 2 3 4 5 6 7
 ordentliche Erträge
-01. Steuern und ähnliche Abgaben {eur(ve * 0.4)} {eur(e_plan * 0.4)}  {eur(e_ist * 0.4)} {eur(e_ist * 0.4 - e_plan * 0.4)}
-12. = Summe ordentliche Erträge {eur(ve)} {eur(e_plan)}  {eur(e_ist)} {eur(e_ist - e_plan)}
+01. Steuern und ähnliche Abgaben {eur(commitment_authorizations * 0.4)} {eur(e_plan * 0.4)}  {eur(e_ist * 0.4)} {eur(e_ist * 0.4 - e_plan * 0.4)}
+12. = Summe ordentliche Erträge {eur(commitment_authorizations)} {eur(e_plan)}  {eur(e_ist)} {eur(e_ist - e_plan)}
 ordentliche Aufwendungen
 13. Personalaufwendungen {eur(va * 0.2)} {eur(a_plan * 0.2)}  {eur(a_ist * 0.2)} {eur(a_ist * 0.2 - a_plan * 0.2)}
 20. = Summe ordentliche
@@ -104,7 +104,7 @@ weniger (-)4)
  - Euro -
 1 2 3 4 5 6 7
 Ordentliche Erträge
-12. =Summe ordentliche Erträge {eur(ve)} {eur(e_plan)}  {eur(e_ist)} {eur(e_ist - e_plan)}
+12. =Summe ordentliche Erträge {eur(commitment_authorizations)} {eur(e_plan)}  {eur(e_ist)} {eur(e_ist - e_plan)}
 Ordentliche Aufwendungen
 20. =Summe ordentliche Aufwendungen {eur(va)} {eur(a_plan)}  {eur(a_ist)} {eur(a_ist - a_plan)}
 """
@@ -116,13 +116,13 @@ Ordentliche Aufwendungen
 JAHRGAENGE = {
     2023: dict(e_plan=664_000_000.0, e_ist=732_000_000.0,
                a_plan=674_000_000.0, a_ist=683_000_000.0,
-               ve=696_000_000.0, va=661_000_000.0),
+               commitment_authorizations=696_000_000.0, va=661_000_000.0),
     2024: dict(e_plan=693_000_000.0, e_ist=799_000_000.0,
                a_plan=727_000_000.0, a_ist=764_000_000.0,
-               ve=732_000_000.0, va=683_000_000.0),
+               commitment_authorizations=732_000_000.0, va=683_000_000.0),
     2025: dict(e_plan=710_000_000.0, e_ist=815_000_000.0,
                a_plan=750_000_000.0, a_ist=790_000_000.0,
-               ve=799_000_000.0, va=764_000_000.0),
+               commitment_authorizations=799_000_000.0, va=764_000_000.0),
 }
 
 
@@ -527,7 +527,7 @@ def test_dokument_das_die_probe_reisst_kommt_nicht_herein(bestand, tmp_path):
     automatischer Lauf darf sie nicht lockern — er ist der Grund, warum sie
     existiert."""
     kaputt = jahresabschluss(2026, e_plan=1e6, e_ist=2e6, a_plan=5e5, a_ist=6e5,
-                             ve=815_000_000.0, va=790_000_000.0)
+                             commitment_authorizations=815_000_000.0, va=790_000_000.0)
     # Ordentliches Ergebnis verfälscht: 12 − 20 geht nicht mehr auf 21 auf.
     kaputt = kaputt.replace("21. ordentliches Ergebnis 25.000.000,00 500.000,00",
                             "21. ordentliches Ergebnis 25.000.000,00 111.111,11")

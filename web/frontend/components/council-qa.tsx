@@ -354,7 +354,7 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
   const [abgegeben, setAbgegeben] = useState<"up" | "down" | null>(null);
   const [frageGrund, setFrageGrund] = useState(false);
   const [grund, setGrund] = useState("");
-  const post = (bewertung: "up" | "down", grundText?: string) =>
+  const post = (rating: "up" | "down", grundText?: string) =>
     void fetch(apiUrl("/council/qa-feedback"), {
       method: "POST",
       credentials: "include",
@@ -362,22 +362,22 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
       body: JSON.stringify({
         question: turn.question.slice(0, 300),
         antwort_auszug: turn.answer.slice(0, 500) || null,
-        bewertung,
+        rating,
         grund: grundText?.trim() || null,
       }),
     }).catch(() => {});
-  const senden = (bewertung: "up" | "down") => {
+  const senden = (rating: "up" | "down") => {
     // Nochmal auf denselben Daumen: nichts zu melden, nichts zu senden — das
     // spart eine Zeile in der Tabelle und einen Schlag aufs Rate-Limit.
-    if (bewertung === abgegeben) return;
+    if (rating === abgegeben) return;
     const korrektur = abgegeben !== null;
-    setAbgegeben(bewertung);
-    setFrageGrund(bewertung === "down");
+    setAbgegeben(rating);
+    setFrageGrund(rating === "down");
     // Beim Umschwenken auf „hilfreich" ist der alte Grund hinfällig.
-    if (bewertung === "up") setGrund("");
+    if (rating === "up") setGrund("");
     // Der Daumen zählt sofort — auch wenn der Grund nie kommt.
-    post(bewertung);
-    if (bewertung === "up") toast.success(korrektur ? "Danke — Bewertung geändert." : "Danke für die Rückmeldung!");
+    post(rating);
+    if (rating === "up") toast.success(korrektur ? "Danke — Bewertung geändert." : "Danke für die Rückmeldung!");
   };
   const grundNachreichen = () => {
     setFrageGrund(false);

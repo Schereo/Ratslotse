@@ -48,7 +48,7 @@ def hebesatz_probe(store: CouncilStore, satzung) -> str | None:
     """
     try:
         rows = store._conn.execute(  # noqa: SLF001
-            "SELECT art, hebesatz FROM council_hebesaetze WHERE year = ?",
+            "SELECT art, rate FROM council_hebesaetze WHERE year = ?",
             (satzung.year,)).fetchall()
     except Exception:  # noqa: BLE001 — Tabelle kann fehlen
         return None
@@ -56,9 +56,9 @@ def hebesatz_probe(store: CouncilStore, satzung) -> str | None:
         return None
 
     felder = {
-        "grundsteuer_a": satzung.hebesatz_grundsteuer_a,
-        "grundsteuer_b": satzung.hebesatz_grundsteuer_b,
-        "gewerbesteuer": satzung.hebesatz_gewerbesteuer,
+        "grundsteuer_a": satzung.property_tax_a_rate,
+        "grundsteuer_b": satzung.property_tax_b_rate,
+        "gewerbesteuer": satzung.trade_tax_rate,
     }
     geprueft = []
     for art, wert in rows:

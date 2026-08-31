@@ -47,7 +47,7 @@ export type StreitAntrag = {
   outcome: string | null;
   vote: string | null;
   /** Fraktion(en) bzw. Gruppe hinter der Liste, null bei Verwaltungslisten. */
-  urheber: string | null;
+  author: string | null;
   ist_verwaltung: boolean;
   top: string | null;
   ksinr: number;
@@ -149,7 +149,7 @@ export function redenJeFraktion(station: StreitStation | null): { label: string;
 export const EINZELNE = "Einzelne Ratsmitglieder";
 
 export type BilanzStand = { ein: number; durch: number };
-export type BilanzZeile = { urheber: string; fa: BilanzStand; rat: BilanzStand };
+export type BilanzZeile = { author: string; fa: BilanzStand; rat: BilanzStand };
 
 /** Die Verhandlungsbilanz eines Jahrgangs für <PunkteBilanz> (GB-09):
  *  je Urheber, getrennt nach Finanzausschuss und Rat, wie viele
@@ -169,15 +169,15 @@ export function verhandlungsBilanz(r: StreitRunde | null): BilanzZeile[] {
     // Die Stationen sind in Oldenburg der Ausschuss für Finanzen und
     // Beteiligungen und der Rat (council/store.haushalt_streit) — alles,
     // was nicht der Rat ist, zählt deshalb zur Ausschuss-Spalte.
-    const page: keyof Omit<BilanzZeile, "urheber"> = s.gremium === "Rat" ? "rat" : "fa";
+    const page: keyof Omit<BilanzZeile, "author"> = s.gremium === "Rat" ? "rat" : "fa";
     for (const a of s.antraege) {
       if (a.ist_verwaltung) continue;
-      const urheber = a.urheber ?? EINZELNE;
-      const z = bilanz.get(urheber)
-        ?? { urheber, fa: { ein: 0, durch: 0 }, rat: { ein: 0, durch: 0 } };
+      const author = a.author ?? EINZELNE;
+      const z = bilanz.get(author)
+        ?? { author, fa: { ein: 0, durch: 0 }, rat: { ein: 0, durch: 0 } };
       z[page].ein += 1;
       if (a.outcome === "angenommen") z[page].durch += 1;
-      bilanz.set(urheber, z);
+      bilanz.set(author, z);
     }
   }
   return [...bilanz.values()];

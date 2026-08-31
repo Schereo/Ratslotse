@@ -30,7 +30,7 @@ from council.store import CouncilStore
 ALTES_SCHEMA = """
 CREATE TABLE council_anlagen (
   document_id INTEGER PRIMARY KEY, kvonr INTEGER NOT NULL, label TEXT,
-  url TEXT, is_antrag INTEGER NOT NULL DEFAULT 0, antragsteller TEXT,
+  url TEXT, is_motion INTEGER NOT NULL DEFAULT 0, applicants TEXT,
   raw_text TEXT, n_pages INTEGER, fetched_at TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'listed');
 CREATE TABLE council_ergebnisrechnung (

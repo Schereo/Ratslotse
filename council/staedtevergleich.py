@@ -328,7 +328,7 @@ class KfaJahrgang:
     #: Hauptspalte des Vorjahrgangs wiederholen.
     prior_year: int
     stand: str | None
-    #: Schlüssel → {stadt, einwohner, messzahl_teur, vorjahr_messzahl_teur}
+    #: Schlüssel → {stadt, einwohner, tax_index_keur, vorjahr_tax_index_keur}
     staedte: dict[str, dict] = field(default_factory=dict)
 
 
@@ -371,13 +371,13 @@ def lies_kfa(pfad: str) -> KfaJahrgang:
         key = schluessel_normalisieren(zeile[c_key] if c_key < len(zeile) else None)
         if not key:
             continue
-        messzahl = _zahl(zeile[c_jahr]) if c_jahr < len(zeile) else None
-        if messzahl is None:
+        tax_index = _zahl(zeile[c_jahr]) if c_jahr < len(zeile) else None
+        if tax_index is None:
             continue
         budget_year.staedte[key] = {
             "stadt": " ".join(str(zeile[c_name] or "").split()),
             "einwohner": _zahl(zeile[c_ew]) if c_ew < len(zeile) else None,
-            "messzahl_teur": messzahl,
+            "tax_index_keur": tax_index,
             "prior_year_tax_index_keur": _zahl(zeile[c_vor]) if c_vor < len(zeile) else None,
         }
     return budget_year
@@ -401,7 +401,7 @@ def probe_ueberlappung(alt: KfaJahrgang, neu: KfaJahrgang) -> dict:
     gemeinsam = sorted(set(alt.staedte) & set(neu.staedte))
     abweichungen = []
     for key in gemeinsam:
-        a = alt.staedte[key]["messzahl_teur"]
+        a = alt.staedte[key]["tax_index_keur"]
         b = neu.staedte[key]["prior_year_tax_index_keur"]
         if b is None or abs(a - b) > 0.5:
             abweichungen.append({"schluessel": key,
@@ -427,7 +427,7 @@ class Realsteuerjahrgang:
 
     year: int
     stand: str | None
-    #: Schlüssel → {stadt, hebesatz_*, grundbetrag_*_teur, ist_*_teur, …}
+    #: Schlüssel → {stadt, rate_*, grundbetrag_*_teur, ist_*_teur, …}
     hebesaetze: dict[str, dict] = field(default_factory=dict)
     #: Schlüssel → {stadt, einwohner_schnitt, je_jahr: {year: (teur, je_ew)}, …}
     einnahmekraft: dict[str, dict] = field(default_factory=dict)
@@ -469,7 +469,7 @@ def lies_realsteuervergleich(pfad: str) -> Realsteuerjahrgang:
                   if suffix == "gewerbesteuer"
                   else rf"{kopf}; Ist-Aufkommen; EUR je")
         bezug[suffix] = {
-            "hebesatz": _finde(spalten, rf"{kopf}; Hebesatz"),
+            "rate": _finde(spalten, rf"{kopf}; Hebesatz"),
             "grundbetrag": _finde(spalten, rf"{kopf}; Grundbetrag; in 1000"),
             "ist": _finde(spalten, ist),
             "ist_je_ew": _finde(spalten, ist_ew),
@@ -577,13 +577,13 @@ def probe_hebesatz(eintrag: dict) -> dict:
     ergebnisse, schlimmster = [], 0.0
     for kopf, suffix in _REALSTEUERN.items():
         grundbetrag = eintrag.get(f"grundbetrag_{suffix}")
-        hebesatz = eintrag.get(f"hebesatz_{suffix}")
+        rate = eintrag.get(f"rate_{suffix}")
         ist = eintrag.get(f"ist_{suffix}")   # bei der Gewerbesteuer: brutto
-        if grundbetrag is None or hebesatz is None or ist is None:
+        if grundbetrag is None or rate is None or ist is None:
             continue
-        erwartet = grundbetrag * hebesatz / 100
+        erwartet = grundbetrag * rate / 100
         deviation = abs(erwartet - ist)
-        toleranz = 0.5 * hebesatz / 100 + 0.5
+        toleranz = 0.5 * rate / 100 + 0.5
         ergebnisse.append({"steuer": kopf, "deviation": deviation,
                            "toleranz": toleranz, "ok": deviation <= toleranz})
         schlimmster = max(schlimmster, deviation)
@@ -655,7 +655,7 @@ def zeilen_steuerkraft(budget_year: KfaJahrgang) -> list[dict]:
         gemeinsam = {"series": "steuerkraft", "year": budget_year.year,
                      "schluessel": key, "stadt": name}
         aus.append({**gemeinsam, "indicator": "steuerkraftmesszahl",
-                    "wert": eintrag["messzahl_teur"], "einheit": "teur"})
+                    "wert": eintrag["tax_index_keur"], "einheit": "teur"})
         if eintrag.get("einwohner"):
             aus.append({**gemeinsam, "indicator": "einwohner",
                         "wert": eintrag["einwohner"], "einheit": "anzahl"})
@@ -683,7 +683,7 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
         gemeinsam = {"series": "realsteuern", "year": budget_year.year,
                      "schluessel": key, "stadt": KREISFREIE_STAEDTE[key]}
         for suffix in _REALSTEUERN.values():
-            if (wert := eintrag.get(f"hebesatz_{suffix}")) is not None:
+            if (wert := eintrag.get(f"rate_{suffix}")) is not None:
                 zeilen.append({**gemeinsam, "indicator": f"hebesatz_{suffix}",
                                "wert": wert, "einheit": "prozent"})
             if (wert := eintrag.get(f"ist_je_ew_{suffix}")) is not None:

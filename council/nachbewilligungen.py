@@ -68,7 +68,7 @@ genommen, nicht der größte.
 
 Woher der Beschlussvorschlag kommt
 -----------------------------------
-``council_vorlagen.beschlussvorschlag`` ist die richtige Spalte dafür — aber
+``council_vorlagen.proposed_decision`` ist die richtige Spalte dafür — aber
 im Bestand ist sie fast leer (7 von 5019 Zeilen, alle Jahrgang 2026): Gefüllt
 wird sie erst seit ``council/ernte.py`` und nur beim Neu-Einlesen einer
 Vorlage. Deshalb nimmt :func:`amount` sie, **wenn** sie steht, und erntet
@@ -325,7 +325,7 @@ class Bewilligung:
     year: int | None
     #: ``None`` bei :data:`ART_SCHWELLE` — dort ist der Titelbetrag die Grenze.
     amount: float | None
-    #: ``titel`` | ``beschlussvorschlag`` | ``None`` — welche Stufe traf.
+    #: ``titel`` | ``proposed_decision`` | ``None`` — welche Stufe traf.
     amount_source: str | None
     #: Wie die Vorlage durch die Gremien lief; leer, wenn nur beantragt.
     beschluesse: tuple[dict, ...] = field(default_factory=tuple)
@@ -363,13 +363,13 @@ class Bewilligung:
         Die enge, wörtliche Frage. Sie ist eine Auskunft für Leser*innen
         („diese Vorlage hat der Fachausschuss abschließend entschieden"), aber
         sie ist **nicht** das Maß für den Rats-Anteil — dafür siehe
-        :attr:`ratsentscheidung`."""
+        :attr:`council_decision`."""
         return any(str(b.get("committee", "")).startswith("Rat")
                    and b.get("outcome") == "angenommen"
                    for b in self.beschluesse)
 
     @property
-    def ratsentscheidung(self) -> bool:
+    def council_decision(self) -> bool:
         """Zählt der Rechenschaftsbericht das unter „Beschluss des Rates"?
 
         **Das ist die Zahl, um die es auf der Seite geht**, und sie ist weiter
@@ -398,13 +398,13 @@ def amount(titel: str, vorschlag: str | None = None,
     """Der Betrag einer Nachbewilligung, zweistufig.
 
     → ``(amount, quelle)`` mit ``quelle`` aus ``titel`` |
-    ``beschlussvorschlag`` | ``None``. **Die Reihenfolge des Tupels ist
+    ``proposed_decision`` | ``None``. **Die Reihenfolge des Tupels ist
     (Wert, Herkunft)** — nicht umgekehrt.
 
-    ``vorschlag`` ist ``council_vorlagen.beschlussvorschlag``, falls gefüllt;
+    ``vorschlag`` ist ``council_vorlagen.proposed_decision``, falls gefüllt;
     ``volltext`` der ``raw_text`` derselben Vorlage. Steht der Vorschlag nicht
     in der Spalte, wird er aus dem Volltext geerntet — mit derselben Funktion,
-    die auch die Spalte füllt (``council.ernte.beschlussvorschlag``), damit
+    die auch die Spalte füllt (``council.ernte.proposed_decision``), damit
     beide Wege dasselbe finden.
 
     Bei :data:`ART_SCHWELLE` gibt es bewusst **nichts** zurück: Der Betrag im
@@ -414,9 +414,9 @@ def amount(titel: str, vorschlag: str | None = None,
     m = _TITEL_BETRAG.search(titel or "")
     if m:
         return _zahl(m.group("zahl"), m.group("skala")), "titel"
-    text = vorschlag or ernte.beschlussvorschlag(volltext or "")
+    text = vorschlag or ernte.proposed_decision(volltext or "")
     wert = _betrag_aus_vorschlag(text)
-    return (wert, "beschlussvorschlag") if wert is not None else (None, None)
+    return (wert, "proposed_decision") if wert is not None else (None, None)
 
 
 def aus_vorlagen(vorlagen: list[dict],
@@ -425,7 +425,7 @@ def aus_vorlagen(vorlagen: list[dict],
     """Die Rats-Serie aus dem RIS — je **Vorlage** eine :class:`Bewilligung`.
 
     ``vorlagen`` sind Zeilen aus ``council_vorlagen`` (``template_number``,
-    ``title``, optional ``beschlussvorschlag`` und ``raw_text``);
+    ``title``, optional ``proposed_decision`` und ``raw_text``);
     ``beschluesse`` bildet ``template_number`` auf die zugehörigen Zeilen aus
     ``council_decisions`` ab (mit ``committee``, ``session_date``,
     ``outcome``).
@@ -442,7 +442,7 @@ def aus_vorlagen(vorlagen: list[dict],
         if not ist_nachbewilligung(titel):
             continue
         nr = v.get("template_number") or ""
-        wert, quelle = amount(titel, v.get("beschlussvorschlag"),
+        wert, quelle = amount(titel, v.get("proposed_decision"),
                               v.get("raw_text"))
         out.append(Bewilligung(
             template_number=nr, titel=titel, art=art(titel),
@@ -458,21 +458,21 @@ def jahressummen(bewilligungen: list[Bewilligung],
 
     ``nur_rat=True`` zählt, was der Rechenschaftsbericht als „Beschluss des
     Rates" bucht — also auch die Fälle, die der Finanzausschuss abschließend
-    entschieden hat (:attr:`Bewilligung.ratsentscheidung`, dort steht, warum
+    entschieden hat (:attr:`Bewilligung.council_decision`, dort steht, warum
     die wörtliche Lesart hier 28 % danebenliegt).
     Die Verpflichtungsermächtigungen stehen **getrennt** daneben
-    (``verpflichtungen``/``commitments_amount``) und sind in ``summe``
+    (``commitments``/``commitments_amount``) und sind in ``summe``
     nicht enthalten — dieselbe Trennung, die der Rechenschaftsbericht zieht."""
     jahre: dict[int, dict] = {}
 
     def eintrag(year: int) -> dict:
         return jahre.setdefault(year, {
-            "year": year, "summe": 0.0, "faelle": 0,
-            "verpflichtungen": 0, "commitments_amount": 0.0,
+            "year": year, "summe": 0.0, "cases": 0,
+            "commitments": 0, "commitments_amount": 0.0,
             "sammelberichte": 0})
 
     for b in bewilligungen:
-        if b.year is None or (nur_rat and not b.ratsentscheidung):
+        if b.year is None or (nur_rat and not b.council_decision):
             continue
         # Der Eintrag entsteht erst, wenn wirklich etwas hineinfällt: Eine
         # nur beantragte Vorlage darf kein Jahr mit lauter Nullen erzeugen —
@@ -482,12 +482,12 @@ def jahressummen(bewilligungen: list[Bewilligung],
             eintrag(b.year)["sammelberichte"] += 1
         elif b.art == ART_VERPFLICHTUNG and b.beschlossen:
             e = eintrag(b.year)
-            e["verpflichtungen"] += 1
+            e["commitments"] += 1
             e["commitments_amount"] += b.amount or 0.0
         elif b.zaehlt_in_summe:
             e = eintrag(b.year)
             e["summe"] += b.amount
-            e["faelle"] += 1
+            e["cases"] += 1
     return dict(sorted(jahre.items()))
 
 
@@ -689,7 +689,7 @@ def kapitel3(volltext: str, year: int) -> Kapitel3 | None:
                                 for s, m in _KANAL_LABEL.items()) if k)
     gesamt = _GESAMT.search(text)
     auft = _AUFTEILUNG.search(text)
-    ve = _VE_TEXT.search(text)
+    commitment_authorizations = _VE_TEXT.search(text)
     return Kapitel3(
         year=year, channels=channels,
         total_operating=_zahl(summe.group(1), None),
@@ -698,7 +698,7 @@ def kapitel3(volltext: str, year: int) -> Kapitel3 | None:
         # Reihenfolge im Satz: erst investiv, dann konsumtiv.
         text_investiv=_zahl(auft.group(1), None) if auft else None,
         text_konsumtiv=_zahl(auft.group(2), None) if auft else None,
-        commitments_amount=_zahl(ve.group(1), None) if ve else None)
+        commitments_amount=_zahl(commitment_authorizations.group(1), None) if commitment_authorizations else None)
 
 
 # --- Probe 3: das Dokument gegen sich selbst -------------------------------

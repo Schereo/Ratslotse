@@ -19,7 +19,7 @@
 // Die Beschluss-Datei zum Haushalt 2021 führt eine Spalte „Vorschlag von"
 // je POSITION. Für diesen einen Jahrgang steht deshalb Zeile für Zeile da,
 // was die Koalition ändern wollte — und der Kasten oben sagt das statt des
-// „nur die Summe"-Satzes. Entschieden wird das an den Daten (`urheber` ist
+// „nur die Summe"-Satzes. Entschieden wird das an den Daten (`author` ist
 // gefüllt), nicht an der Jahreszahl: Führt ein künftiges Dokument die Spalte
 // wieder, stimmt der Text von selbst.
 //
@@ -76,8 +76,8 @@ function ListenKarte({ liste, year }: { liste: ListeImJahr; year: number }) {
   // Führt eine Liste durchgehend denselben, wiederholte die Marke nur den
   // Namen der Karte darüber. Genau eine Datei im Bestand führt mehrere
   // (der Beschluss 2021 mit Verw. I, Verw. II und der Koalitionsliste).
-  const urheber = new Set(liste.zeilen.map((z) => z.urheber).filter(Boolean));
-  const zeigeUrheber = urheber.size > 1;
+  const author = new Set(liste.zeilen.map((z) => z.author).filter(Boolean));
+  const zeigeUrheber = author.size > 1;
   return (
     <details className="group border-t border-border/60 py-2.5 first:border-t-0 first:pt-0">
       <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -85,7 +85,7 @@ function ListenKarte({ liste, year }: { liste: ListeImJahr; year: number }) {
         <span className="text-[13px] font-semibold text-foreground">{liste.name}</span>
         <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
           {liste.zeilen.length} Position{liste.zeilen.length === 1 ? "" : "en"} für {year}
-          {zeigeUrheber && ` · von ${urheber.size} Vorschlagenden`}
+          {zeigeUrheber && ` · von ${author.size} Vorschlagenden`}
         </span>
         {liste.balance && (
           <span className={cn("ml-auto whitespace-nowrap font-mono text-[11.5px] font-medium tabular-nums",
@@ -137,9 +137,9 @@ function ListenKarte({ liste, year }: { liste: ListeImJahr; year: number }) {
                 <span className="ml-2 font-mono text-[10px] text-muted-foreground">
                   {z.sub_budget != null ? `THH ${String(z.sub_budget).padStart(2, "0")}` : "alle THH"}
                 </span>
-                {zeigeUrheber && z.urheber && (
+                {zeigeUrheber && z.author && (
                   <span className="ml-2 align-baseline">
-                    <UrheberMarke label={z.urheber} klein />
+                    <UrheberMarke label={z.author} klein />
                   </span>
                 )}
                 {z.explanation && (

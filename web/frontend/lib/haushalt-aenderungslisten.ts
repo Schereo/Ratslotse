@@ -31,7 +31,7 @@ export type AenderungsZeile = {
   /** Wer die Position vorgeschlagen hat („Verw. I", „SPD/ BÜNDNIS 90/ DIE
    *  GRÜNEN"). `null` überall dort, wo das Dokument die Spalte „Vorschlag
    *  von" nicht führt — das sind alle Jahrgänge außer 2021. */
-  urheber: string | null;
+  author: string | null;
   document_id: number;
   herkunft_id: number | null;
 };
@@ -76,10 +76,10 @@ export type FhhZeile = {
   inflow: number | null;
   outflow: number | null;
   /** Verpflichtungsermächtigungen — zählen NICHT in den Saldo. */
-  ve: number | null;
+  commitment_authorizations: number | null;
   planned_new: number | null;
   explanation: string | null;
-  urheber: string | null;
+  author: string | null;
   document_id: number;
   herkunft_id: number | null;
 };
@@ -93,7 +93,7 @@ export type FhhSumme = {
   inflows: number;
   outflows: number;
   balance: number;
-  ve: number | null;
+  commitment_authorizations: number | null;
   eigene: number;
   document_id: number;
   herkunft_id: number | null;
@@ -218,8 +218,8 @@ export function positionenVon(
   const kern = labelKern(summe.label);
   return daten.zeilen.filter(
     (z) => z.budget_year === summe.budget_year && z.year === summe.year
-      && z.liste === summe.liste && z.urheber != null
-      && kern.includes(labelKern(z.urheber)));
+      && z.liste === summe.liste && z.author != null
+      && kern.includes(labelKern(z.author)));
 }
 
 /** Was das Verfahren zwischen Entwurf und Beschluss bewegt hat — je Jahrgang.

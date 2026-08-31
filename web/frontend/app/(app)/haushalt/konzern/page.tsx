@@ -74,7 +74,7 @@ function KonzernSeiteInner() {
   const jeDokument = useMemo(() => {
     const zeilen = data?.wirtschaftsplaene ?? [];
     const jeBetrieb = new Map<string, typeof zeilen>();
-    for (const z of zeilen) jeBetrieb.set(z.betrieb, [...(jeBetrieb.get(z.betrieb) ?? []), z]);
+    for (const z of zeilen) jeBetrieb.set(z.enterprise, [...(jeBetrieb.get(z.enterprise) ?? []), z]);
     const gruppen = [...jeBetrieb.values()]
       .sort((a, b) => Math.abs(b.at(-1)?.result ?? 0) - Math.abs(a.at(-1)?.result ?? 0));
     const urls = gruppen

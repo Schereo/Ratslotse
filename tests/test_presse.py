@@ -129,13 +129,13 @@ def test_planfaelle_parser(monkeypatch):
         text = _PLANFAELLE
         def raise_for_status(self): pass
     monkeypatch.setattr(beteiligung._session, "get", lambda *a, **k: R())
-    faelle = beteiligung.fetch_planfaelle()
-    assert len(faelle) == 2
-    assert faelle[0]["plan_nrs"] == ["bp-831", "fnp-82"]
-    assert faelle[0]["bis"] is None  # Abwägungsschritt ohne Zeitraum
-    assert faelle[1]["plan_nrs"] == ["bp-81"]
-    assert faelle[1]["von"] == "2026-07-06" and faelle[1]["bis"] == "2026-08-17"
-    assert faelle[1]["url"].startswith("https://oldenburg.planungsbeteiligung.de/FRONTEND/")
+    cases = beteiligung.fetch_planfaelle()
+    assert len(cases) == 2
+    assert cases[0]["plan_nrs"] == ["bp-831", "fnp-82"]
+    assert cases[0]["bis"] is None  # Abwägungsschritt ohne Zeitraum
+    assert cases[1]["plan_nrs"] == ["bp-81"]
+    assert cases[1]["von"] == "2026-07-06" and cases[1]["bis"] == "2026-08-17"
+    assert cases[1]["url"].startswith("https://oldenburg.planungsbeteiligung.de/FRONTEND/")
 
 
 def test_plan_nummern_matching_ohne_fehlgriffe():

@@ -151,7 +151,7 @@ class Gebuehrenbedarf:
     area: str
     area_name: str
     #: Was der Bereich im Haushaltsjahr insgesamt kostet.
-    kostenkalkulation: float
+    cost_calculation: float
     #: Alles, was davon abgezogen wird — negativ. Erstattungen Dritter,
     #: Erlöse, Rückstellungen und die Über-/Unterdeckung aus Vorjahren.
     deductions: float
@@ -163,7 +163,7 @@ class Gebuehrenbedarf:
     #: Kaskade ist trotzdem geprüft.
     reference_quantity: float | None
     reference_unit: str | None
-    gebuehr: float | None
+    fee: float | None
     #: Der gerundete Vorschlag an den Rat — das, was am Ende erhoben wird.
     #: ``None``, wo das Dokument ihn nicht gesondert ausweist.
     fee_proposed: float | None
@@ -306,7 +306,7 @@ def teile_anlagen(text: str) -> list[str]:
     return [t for t in teile if _bereich_aus_kopf(t)]
 
 
-def _menge_aus_der_probe(teil: str, zu_decken: float, gebuehr: float) -> float:
+def _menge_aus_der_probe(teil: str, zu_decken: float, fee: float) -> float:
     """Die Bezugsmenge daran erkennen, dass sie die gedruckte Gebühr ergibt.
 
     NICHT geraten und nicht die erste passende Zahl genommen: Im Textextrakt
@@ -334,11 +334,11 @@ def _menge_aus_der_probe(teil: str, zu_decken: float, gebuehr: float) -> float:
             continue
 
     treffer = [(w, pos) for w, pos in kandidaten
-               if w and abs(zu_decken / w - gebuehr) <= TOLERANZ_GEBUEHR]
+               if w and abs(zu_decken / w - fee) <= TOLERANZ_GEBUEHR]
     if not treffer:
         raise GebuehrenFehler(
             f"Keine Bezugsmenge im Text ergibt die gedruckte Gebühr "
-            f"({gebuehr:.3f} aus {zu_decken:.2f} €) — die Division lässt sich "
+            f"({fee:.3f} aus {zu_decken:.2f} €) — die Division lässt sich "
             "nicht nachrechnen, also wird nichts gespeichert.")
     werte = {w for w, _ in treffer}
     if len(werte) == 1:
@@ -356,7 +356,7 @@ def _menge_aus_der_probe(teil: str, zu_decken: float, gebuehr: float) -> float:
     davor = [(pos, w) for w, pos in treffer if g and pos < g.start()]
     if not davor:
         raise GebuehrenFehler(
-            f"Mehrere Bezugsmengen ergäben die Gebühr {gebuehr:.3f}: "
+            f"Mehrere Bezugsmengen ergäben die Gebühr {fee:.3f}: "
             f"{sorted(werte)}, und keine steht vor der Gebührenzeile — "
             "nicht entscheidbar.")
     return max(davor)[1]
@@ -444,7 +444,7 @@ def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbeda
     # erfundene wäre schlimmer als keine. Der Jahrgang wird trotzdem
     # gespeichert — seine Kaskade ist geprüft, nur die zweite Probe fehlt.
     g = _GEBUEHR_MIT_EINHEIT.search(teil)
-    gebuehr = menge = None
+    fee = menge = None
     einheit = None
     if g is not None:
         einheit = _einheit_aus(g.group(1))
@@ -453,33 +453,33 @@ def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbeda
                 f"{area[1]} {year.group(1)}: Unbekannte Bezugseinheit "
                 f"„{' '.join(g.group(1).split())}“ — eine erfundene Einheit "
                 "wäre eine Behauptung über das Dokument.")
-        gebuehr = float(g.group(2).replace(".", "").replace(",", "."))
+        fee = float(g.group(2).replace(".", "").replace(",", "."))
         try:
-            menge = _menge_aus_der_probe(teil, zu_decken, gebuehr)
+            menge = _menge_aus_der_probe(teil, zu_decken, fee)
         except GebuehrenFehler:
             # Wahrscheinlich der gerundete VORSCHLAG erwischt statt der
             # errechneten Gebühr — das passiert, wo der Textextrakt
             # Beschriftungen und Beträge trennt. Die errechnete hat drei
             # Nachkommastellen; welche der Kandidaten es ist, entscheidet
             # wieder die Division und nicht die Reihenfolge.
-            gebuehr = menge = None
+            fee = menge = None
             for kandidat in _GEBUEHR_DREISTELLIG.findall(teil):
                 wert = float(kandidat.replace(".", "").replace(",", "."))
                 try:
                     menge = _menge_aus_der_probe(teil, zu_decken, wert)
                 except GebuehrenFehler:
                     continue
-                gebuehr = wert
+                fee = wert
                 break
-            if gebuehr is None:
+            if fee is None:
                 raise
     v = _VORSCHLAG.search(teil)
 
     return Gebuehrenbedarf(
         year=int(year.group(1)), area=area[0], area_name=area[1],
-        kostenkalkulation=kalkulation, deductions=deductions,
+        cost_calculation=kalkulation, deductions=deductions,
         costs_to_cover=zu_decken, reference_quantity=menge, reference_unit=einheit,
-        gebuehr=gebuehr,
+        fee=fee,
         fee_proposed=(float(v.group(1).replace(".", "").replace(",", "."))
                             if v else None),
         template_number=template_number,
@@ -621,14 +621,14 @@ def herkunft_fuer_satz(satz: Gebuehrensatz, *, url: str | None,
 def herkunft_fuer(bedarf: Gebuehrenbedarf, *, url: str | None,
                   document_id: int | None, label: str | None) -> Herkunft:
     """Die Herkunft: die Anlage, und was an ihr nachgerechnet wurde."""
-    rest = bedarf.kostenkalkulation + bedarf.deductions - bedarf.costs_to_cover
+    rest = bedarf.cost_calculation + bedarf.deductions - bedarf.costs_to_cover
     probes = [PROBE_KASKADE]
     division = ""
-    if bedarf.gebuehr is not None and bedarf.reference_quantity:
+    if bedarf.fee is not None and bedarf.reference_quantity:
         probes.append(PROBE_DIVISION)
         division = (f"; {bedarf.costs_to_cover:,.0f} € ÷ "
                     f"{bedarf.reference_quantity:,.0f} {bedarf.reference_unit} = "
-                    f"{bedarf.gebuehr:.3f} €")
+                    f"{bedarf.fee:.3f} €")
     return Herkunft(
         art="ris",
         probe=probes,

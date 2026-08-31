@@ -56,7 +56,7 @@ export type GebautDaten = {
 
 /** Eine Zeile des Anlagenspiegels: eine Vermögensposition in einem Jahr.
  *
- *  Die Vorzeichen sind die des Dokuments: `disposals`, `abschreibung` und
+ *  Die Vorzeichen sind die des Dokuments: `disposals`, `depreciation` und
  *  `depreciation_closing` stehen negativ. Wer sie beim Anzeigen dreht, muss es überall
  *  tun — eine halb gedrehte Reihe ist schlimmer als eine ungedrehte. */
 export type AnlagePosten = {
@@ -70,7 +70,7 @@ export type AnlagePosten = {
   spalten: number;
   cost_opening: number; additions: number; disposals: number;
   transfers: number; cost_closing: number;
-  depreciation_opening: number; abschreibung: number; depreciation_releases: number;
+  depreciation_opening: number; depreciation: number; depreciation_releases: number;
   write_ups: number; depreciation_transfers: number; depreciation_closing: number;
   book_value: number; book_value_prior_year: number;
   probes: string[];
@@ -116,16 +116,16 @@ export function infrastruktur(anlagen: Anlagen | undefined, year: number): Anlag
  *  desselben Jahres. `null`, wo eine der beiden Zahlen fehlt — dann sagt die
  *  Seite nichts, statt eine Richtung zu raten. */
 export function verzehr(posten: AnlagePosten | null): {
-  additions: number; abschreibung: number; balance: number; faktor: number | null;
+  additions: number; depreciation: number; balance: number; faktor: number | null;
 } | null {
   if (!posten) return null;
-  const abschreibung = Math.abs(posten.abschreibung);
-  if (!posten.additions && !abschreibung) return null;
+  const depreciation = Math.abs(posten.depreciation);
+  if (!posten.additions && !depreciation) return null;
   return {
     additions: posten.additions,
-    abschreibung,
-    balance: posten.additions - abschreibung,
-    faktor: posten.additions > 0 ? abschreibung / posten.additions : null,
+    depreciation,
+    balance: posten.additions - depreciation,
+    faktor: posten.additions > 0 ? depreciation / posten.additions : null,
   };
 }
 

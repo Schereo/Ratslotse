@@ -150,8 +150,8 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
   const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = nach[nach.length - 1];
   const series: JahrPunkt[] = nach
-    .filter((z) => z.gebuehr != null)
-    .map((z) => ({ year: z.year, wert: z.gebuehr as number }));
+    .filter((z) => z.fee != null)
+    .map((z) => ({ year: z.year, wert: z.fee as number }));
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -173,14 +173,14 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
           nachvollziehbar ist — als Fußnote wäre sie wertlos. */}
       <div className="mt-3">
         <Zeile label={`Was der Bereich ${letzte.year} kostet`}
-          wert={letzte.kostenkalkulation} />
+          wert={letzte.cost_calculation} />
         <Zeile label="davon getragen von Dritten, Erlösen und Vorjahren"
           wert={letzte.deductions} />
         <Zeile label="Von den Gebühren zu decken"
           wert={letzte.costs_to_cover} summe />
       </div>
 
-      {letzte.gebuehr != null && letzte.reference_quantity != null ? (
+      {letzte.fee != null && letzte.reference_quantity != null ? (
         <div className="mt-3 rounded-xl bg-muted/40 px-3 py-2.5">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4">
             <span className="text-[12.5px] text-muted-foreground">
@@ -188,7 +188,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
               {letzte.reference_unit}
             </span>
             <span className="font-display text-[17px] font-bold tabular-nums">
-              <Euro wert={letzte.gebuehr} stellen={3} />
+              <Euro wert={letzte.fee} stellen={3} />
             </span>
           </div>
           <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
@@ -217,14 +217,14 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
       {/* Bei Behandlung und Straßenreinigung steht der konkrete Vorschlag
           bereits direkt an der Division. Nur die mehrteilige Abfallsammlung
           braucht die vollständige Tarifliste statt einer Einzelzahl. */}
-      <Tarifliste tarife={letzte.gebuehr == null ? tarife : []} />
+      <Tarifliste tarife={letzte.fee == null ? tarife : []} />
 
       <div className="mt-2.5">
         <p className="text-[12px] leading-relaxed text-muted-foreground">
           <Beleg q="gebuehren" />{" "}
           Nachgerechnet: Die Kalkulationskosten minus alle Abzüge ergeben die zu
           deckenden Kosten
-          {letzte.gebuehr != null && <>, und diese geteilt durch die Menge die
+          {letzte.fee != null && <>, und diese geteilt durch die Menge die
             Gebühr</>}.
         </p>
         <Dokumentbeleg h={herkunftFuer(letzte.herkunft_id)}

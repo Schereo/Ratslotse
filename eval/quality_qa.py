@@ -81,7 +81,7 @@ def erzeugen(label: str, db: Path) -> Path:
     from council import embeddings as emb
 
     store = CouncilStore(db)
-    faelle = []
+    cases = []
     try:
         for f in FRAGEN:
             t0 = time.perf_counter()
@@ -128,7 +128,7 @@ def erzeugen(label: str, db: Path) -> Path:
             antwort, cited = qa.answer_question(
                 f["frage"], ctx, typ=typ, presse=presse_rows,
                 haushalt=haushalt, debatten=debatten_rows, gross=gross)
-            faelle.append({
+            cases.append({
                 "id": f["id"], "fokus": f["fokus"], "frage": f["frage"], "typ": typ,
                 "antwort": qa.split_followups(antwort)[0], "cited": cited,
                 "quellen": [{"id": c["id"], "title": c.get("title"),
@@ -137,12 +137,12 @@ def erzeugen(label: str, db: Path) -> Path:
                 "ms": round((time.perf_counter() - t0) * 1000),
             })
             print(f"  · {f['id']}: {len(cands)} Kandidaten, {len(cited)} zitiert, "
-                  f"{faelle[-1]['ms']} ms", flush=True)
+                  f"{cases[-1]['ms']} ms", flush=True)
     finally:
         store.close()
     RESULTS.mkdir(parents=True, exist_ok=True)
     out = RESULTS / f"{label}.json"
-    out.write_text(json.dumps({"label": label, "db": str(db), "faelle": faelle},
+    out.write_text(json.dumps({"label": label, "db": str(db), "cases": cases},
                               ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"gespeichert: {out}")
     return out
@@ -177,9 +177,9 @@ def judge(label_a: str, label_b: str) -> Path:
     Frage), damit weder Reihenfolge noch Label durchsickern."""
     a_data = json.loads((RESULTS / f"{label_a}.json").read_text(encoding="utf-8"))
     b_data = json.loads((RESULTS / f"{label_b}.json").read_text(encoding="utf-8"))
-    b_by_id = {f["id"]: f for f in b_data["faelle"]}
+    b_by_id = {f["id"]: f for f in b_data["cases"]}
     zeilen, urteile = [], []
-    for fa in a_data["faelle"]:
+    for fa in a_data["cases"]:
         fb = b_by_id.get(fa["id"])
         if not fb:
             continue
@@ -232,7 +232,7 @@ def judge(label_a: str, label_b: str) -> Path:
     # Kandidatenset? Deterministisch messbar und unabhängig davon, wie das
     # Antwortmodell im Einzelfall formuliert.
     frische = []
-    for fa in a_data["faelle"]:
+    for fa in a_data["cases"]:
         fb = b_by_id.get(fa["id"])
         if not fb:
             continue

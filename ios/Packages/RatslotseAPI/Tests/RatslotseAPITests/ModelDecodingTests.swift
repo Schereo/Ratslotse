@@ -33,7 +33,7 @@ import Testing
       },
       "anlagen": [{
         "document_id": 77, "label": "Antrag der SPD", "url": "https://example.test/77.pdf",
-        "is_antrag": 1, "antragsteller": ["SPD"], "status": "ok"
+        "is_motion": 1, "applicants": ["SPD"], "status": "ok"
       }],
       "beteiligung": {
         "titel": "Beteiligung zum Plan", "schritt": "Entwurf", "von": "2026-01-01",
@@ -197,7 +197,7 @@ import Testing
         "summary": "Neue Wohnungen am Krusenbusch.",
         "committee": "Ausschuss für Stadtplanung und Bauen",
         "session_date": "2026-08-31",
-        "antragsteller": "SPD-Fraktion",
+        "applicants": "SPD-Fraktion",
         "topic_name": "Wohnen",
         "wichtig_grund": "Legt langfristig fest, was gebaut werden darf.",
         "top": true
@@ -211,7 +211,7 @@ import Testing
         "summary": null,
         "committee": "Ausschuss für Stadtplanung und Bauen",
         "session_date": "2026-08-31",
-        "antragsteller": null,
+        "applicants": null,
         "topic_name": null,
         "wichtig_grund": null
       }]},

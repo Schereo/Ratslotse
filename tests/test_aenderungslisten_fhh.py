@@ -33,7 +33,7 @@ def amount(text, x1, y):
 SENKRECHT = [51.2, 73.3, 98.1, 135.7, 198.1, 313.8, 367.6, 421.5, 475.4,
              529.3, 581.7, 789.7]
 #: Rechte Kanten der fünf Betragsspalten — dort enden ihre Zahlen.
-KANTE = {"soll": 365, "ein": 419, "aus": 473, "ve": 527, "neu": 579}
+KANTE = {"soll": 365, "ein": 419, "aus": 473, "commitment_authorizations": 527, "neu": 579}
 
 
 def linien(waagerecht, senkrecht=None):
@@ -83,18 +83,18 @@ def summenblock(year, zeilen):
            w(250, 310, 44, "Einzahlungen"), w(318, 381, 44, "Auszahlungen"),
            w(408, 434, 44, "Saldo"), w(483, 496, 44, "VE")]
     y = 60
-    for label, ein, aus_, balance, ve, urheber in zeilen:
+    for label, ein, aus_, balance, commitment_authorizations, author in zeilen:
         y += 20
         x = 45
         for teil in label.split():
             aus.append(w(x, x + 5 * len(teil), y, teil))
             x += 5 * len(teil) + 5
-        for text, kante in ((ein, 312), (aus_, 382), (balance, 455), (ve, 519)):
+        for text, kante in ((ein, 312), (aus_, 382), (balance, 455), (commitment_authorizations, 519)):
             if text is not None:
                 aus.append(amount(text, kante, y))
-        if urheber:
+        if author:
             x = 530
-            for teil in urheber.split():
+            for teil in author.split():
                 aus.append(w(x, x + 5 * len(teil), y, teil))
                 x += 5 * len(teil) + 5
     return aus
@@ -152,7 +152,7 @@ def test_miniliste_rundlauf():
     assert z2.planned_new == 730_000
     # Die Zusammenstellung: Entwurf, eine Liste, die Endsumme ohne Beschriftung.
     assert [s.typ for s in aus.summen] == ["entwurf", "liste", "endsumme"]
-    assert aus.summen[1].ve == 0
+    assert aus.summen[1].commitment_authorizations == 0
 
 
 def test_zeilenprobe_reisst_bei_verrutschter_spalte():

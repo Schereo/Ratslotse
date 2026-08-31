@@ -163,7 +163,7 @@ class Zeile:
     #: WER diese Position vorgeschlagen hat — aus der Spalte „Vorschlag von“.
     #: ``None`` überall dort, wo das Dokument die Spalte nicht führt (17 von
     #: 18 EHH-Dokumenten); s. ``_urheber_anbauen``.
-    urheber: str | None = None
+    author: str | None = None
 
 
 @dataclass
@@ -535,7 +535,7 @@ def parse_ehh_seiten(seiten: list[list[Wort]],
     ``linien`` (je Seite die Tabellenlinien, s. :func:`seiten_linien`) ist
     optional und trägt die Textspalten bei: die Erläuterungen, die
     Bezeichnungs-Spalte und den Urheber je Position. Ohne Linien bleiben die
-    Beträge vollständig, ``explanation`` und ``urheber`` einfach ``None``
+    Beträge vollständig, ``explanation`` und ``author`` einfach ``None``
     und die Bezeichnungs-Nachlese fällt auf ihre Kopf-Schätzung zurück.
     """
     aus = Ergebnis()
@@ -726,7 +726,7 @@ def _urheber_anbauen(positionen: list[tuple[float, Zeile]],
             # Ohne `_zeilen_falten`: Ein Label ist keine Prosa, seine
             # Schrägstriche sind Trennzeichen zwischen Fraktionen und keine
             # Silbentrennung („SPD/“ + „BÜNDNIS 90/“ bleibt „SPD/ BÜNDNIS 90/“).
-            position.urheber = " ".join(
+            position.author = " ".join(
                 " ".join(w[3] for w in z) for z in _zeilen_bilden(woerter))
 
 
@@ -941,10 +941,10 @@ def _urheber_probe(aus: Ergebnis, year: int, listen: list[SummenZeile],
     danach nur noch dazu passen (Teilzeichenkette), damit zwei betragsgleiche
     Gruppen nicht die Zeilen tauschen können.
     """
-    mit = [z for z in aus.zeilen if z.year == year and z.urheber]
+    mit = [z for z in aus.zeilen if z.year == year and z.author]
     if not mit:
         return
-    ohne = [z for z in aus.zeilen if z.year == year and not z.urheber]
+    ohne = [z for z in aus.zeilen if z.year == year and not z.author]
     if ohne:
         raise ListenFehler(
             f"Urheberprobe {year}: {len(ohne)} von {len(mit) + len(ohne)} "
@@ -953,20 +953,20 @@ def _urheber_probe(aus: Ergebnis, year: int, listen: list[SummenZeile],
 
     gruppen: dict[str, list[int]] = {}
     for z in mit:
-        summe = gruppen.setdefault(z.urheber, [0, 0])
+        summe = gruppen.setdefault(z.author, [0, 0])
         summe[0] += z.revenue or 0
         summe[1] += z.expense or 0
 
     vergeben: set[str] = set()
-    for urheber, (e, a) in sorted(gruppen.items()):
+    for author, (e, a) in sorted(gruppen.items()):
         treffer = [s for s in listen
                    if s.label not in vergeben
                    and abs(s.revenues - e) <= toleranz
                    and abs(s.expenses - a) <= toleranz
-                   and _label_passt(urheber, s.label)]
+                   and _label_passt(author, s.label)]
         if len(treffer) != 1:
             raise ListenFehler(
-                f"Urheberprobe {year}: „{urheber}“ summiert auf {e:,} / {a:,} — "
+                f"Urheberprobe {year}: „{author}“ summiert auf {e:,} / {a:,} — "
                 + ("keine Zusammenstellungs-Zeile trifft das" if not treffer
                    else "mehrere Zeilen träfen das")
                 + ": " + "; ".join(
@@ -974,7 +974,7 @@ def _urheber_probe(aus: Ergebnis, year: int, listen: list[SummenZeile],
         vergeben.add(treffer[0].label)
 
 
-def _label_passt(urheber: str, summen_label: str) -> bool:
+def _label_passt(author: str, summen_label: str) -> bool:
     """Steckt der Urheber der Position im Label seiner Summenzeile?
 
     Verglichen wird ohne Leerzeichen und ohne Groß-/Kleinschreibung: Die
@@ -984,7 +984,7 @@ def _label_passt(urheber: str, summen_label: str) -> bool:
     """
     def kern(s: str) -> str:
         return re.sub(r"\s+", "", s).casefold()
-    return kern(urheber) in kern(summen_label)
+    return kern(author) in kern(summen_label)
 
 
 def lies_ehh_liste(pdf_bytes: bytes) -> Ergebnis:

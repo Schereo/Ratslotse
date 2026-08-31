@@ -137,7 +137,7 @@ _VORSCHLAG_RE = re.compile(
     re.DOTALL)
 
 
-def beschlussvorschlag(vorlagen_text: str) -> str | None:
+def proposed_decision(vorlagen_text: str) -> str | None:
     m = _VORSCHLAG_RE.search(vorlagen_text or "")
     if not m:
         return None

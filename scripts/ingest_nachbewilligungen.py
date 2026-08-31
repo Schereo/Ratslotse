@@ -103,7 +103,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
             "template_number": b.template_number, "year": b.year, "titel": b.titel,
             "art": b.art, "category": b.category, "amount": b.amount,
             "amount_source": b.amount_source, "beschlossen": b.beschlossen,
-            "in_plenary": b.in_plenary, "ratsentscheidung": b.ratsentscheidung,
+            "in_plenary": b.in_plenary, "council_decision": b.council_decision,
             "decision_id": (fuehrend or {}).get("id"),
             "committees": sorted({str(d.get("committee") or "") for d in stationen}),
             "fulltext_probe": nb.probe_volltext(b, volltexte.get(b.template_number)),
@@ -111,7 +111,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
 
     einzel = [z for z in zeilen if z["art"] != nb.ART_SCHWELLE]
     aus_titel = sum(1 for z in einzel if z["amount_source"] == "titel")
-    aus_text = sum(1 for z in einzel if z["amount_source"] == "beschlussvorschlag")
+    aus_text = sum(1 for z in einzel if z["amount_source"] == "proposed_decision")
     ohne = [z["template_number"] for z in einzel if z["amount_source"] is None]
     geprueft = sum(1 for z in zeilen if z["fulltext_probe"])
     quote = (aus_titel + aus_text) / len(einzel) * 100 if einzel else 0.0
@@ -124,7 +124,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
 
     if trocken:
         for j, e in nb.jahressummen(serie).items():
-            print(f"    {j}: {e['summe']:>15,.2f} € ({e['faelle']} Fälle)")
+            print(f"    {j}: {e['summe']:>15,.2f} € ({e['cases']} Fälle)")
         return {"vorlagen": len(zeilen), "trocken": True}
 
     nachweis = (f"{aus_titel} von {len(einzel)} Beträgen stehen im Titel, "
@@ -196,7 +196,7 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
                 stand=f"Haushaltsjahr {year}",
                 probe_result=f"{probe.als_text()} {abgleich.als_text()}"))
         gelesen += 1
-    return {"berichte": gelesen, "widersprueche": len(widersprueche)}
+    return {"n_reports": gelesen, "widersprueche": len(widersprueche)}
 
 
 def main() -> dict:

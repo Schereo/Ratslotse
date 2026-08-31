@@ -1425,8 +1425,8 @@ struct DecisionDetailView: View {
             "document_url":"https://ratslotse.de",
             "excerpt":"Die Verwaltung legt den Entwurf des Haushaltsplans vor. Er bündelt laufende Aufgaben und geplante Investitionen der Stadt.",
             "office":"Amt für Finanzen",
-            "klima_check":"Mehrere Investitionen betreffen energetische Sanierungen und klimafreundliche Mobilität.",
-            "finanz_check":"Die vorgesehenen Investitionen sind in der mittelfristigen Finanzplanung berücksichtigt."
+            "climate_impact":"Mehrere Investitionen betreffen energetische Sanierungen und klimafreundliche Mobilität.",
+            "financial_impact":"Die vorgesehenen Investitionen sind in der mittelfristigen Finanzplanung berücksichtigt."
           },
           "anlagen": [
             {"document_id":77,"label":"Haushaltsplan 2026 – Gesamtfassung","url":"https://ratslotse.de","is_antrag":0,"antragsteller":[],"status":"ok"},

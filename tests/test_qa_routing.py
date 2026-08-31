@@ -252,12 +252,12 @@ def test_metadatenfragen_entfernen_vorsorgliche_dokumente():
         "intent": "overview", "channels": ["decisions", "documents"],
         "needs": ["dates", "votes", "documents"],
     }})
-    faelle = [
+    cases = [
         ("thema", "Welcher Ausschuss hat über die Flötenteichschule beraten?"),
         ("thema", "Welche Beschlüsse gab es bisher zur Cäcilienbrücke?"),
         ("sitzung", "Was hat der Verkehrsausschuss am 17. Juni 2026 beschlossen?"),
     ]
-    for typ, question in faelle:
+    for typ, question in cases:
         resolved = qa.research_plan_with_mandatory(plan, typ=typ, question=question)
         assert resolved["channels"] == ["decisions"] or resolved["channels"] == [
             "decisions", "sessions"]
@@ -483,11 +483,11 @@ def test_qa_feedback_speichern(tmp_path):
     store.save_qa_feedback("Wie lief es?", "Antwort " * 200, "down", "  zu vage  ", user_id=7)
     store.save_qa_feedback("Und sonst?", None, "up", None)
     rows = store._conn.execute(
-        "SELECT frage, bewertung, grund, user_id, length(antwort_auszug) AS al "
+        "SELECT frage, rating, grund, user_id, length(antwort_auszug) AS al "
         "FROM council_qa_feedback ORDER BY id").fetchall()
-    assert rows[0]["bewertung"] == "down" and rows[0]["grund"] == "zu vage"
+    assert rows[0]["rating"] == "down" and rows[0]["grund"] == "zu vage"
     assert rows[0]["user_id"] == 7 and rows[0]["al"] <= 500
-    assert rows[1]["bewertung"] == "up" and rows[1]["grund"] is None
+    assert rows[1]["rating"] == "up" and rows[1]["grund"] is None
     import pytest as _pytest
     with _pytest.raises(ValueError):
         store.save_qa_feedback("x", None, "meh", None)
@@ -502,9 +502,9 @@ def test_qa_feedback_korrektur_ueberschreibt(tmp_path):
     store.save_qa_feedback("Wie lief es?", "Antwort", "down", "zu vage", user_id=7)
     store.save_qa_feedback("Wie lief es?", "Antwort", "up", None, user_id=7)
     rows = store._conn.execute(
-        "SELECT bewertung, grund FROM council_qa_feedback WHERE user_id = 7").fetchall()
+        "SELECT rating, grund FROM council_qa_feedback WHERE user_id = 7").fetchall()
     assert len(rows) == 1, "Korrektur darf keine zweite Zeile anlegen"
-    assert rows[0]["bewertung"] == "up"
+    assert rows[0]["rating"] == "up"
     assert rows[0]["grund"] is None, "Grund des Daumen-runter ist nach der Korrektur hinfällig"
     # Andere Frage und anonyme Rückmeldungen bleiben eigene Zeilen.
     store.save_qa_feedback("Und sonst?", None, "down", None, user_id=7)
@@ -586,9 +586,9 @@ def test_steuern_block_trennt_ist_von_plan():
 
 
 def test_steuerkraft_block_nennt_die_daempfer_regel():
-    ctx = qa._steuerkraft_block({"year": 2024, "messzahl": 325716249.0,
+    ctx = qa._steuerkraft_block({"year": 2024, "tax_index": 325716249.0,
                                  "allocations": 69209992.0, "year_before": 2023,
-                                 "messzahl_davor": 279815776.0,
+                                 "tax_index_before": 279815776.0,
                                  "zuweisungen_davor": 99569120.0})
     assert "FINANZAUSGLEICH" in ctx
     assert "325.716.249" in ctx and "69.209.992" in ctx
@@ -628,12 +628,12 @@ def test_steuerkraft_kontext_braucht_zwei_jahre(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_steuerkraft (year, messzahl, allocations, fetched_at) "
+            "INSERT INTO council_steuerkraft (year, tax_index, allocations, fetched_at) "
             "VALUES (2023, 279815776, 99569120, '')")
     assert store.steuerkraft_kontext() is None  # ein Jahr reicht nicht
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_steuerkraft (year, messzahl, allocations, fetched_at) "
+            "INSERT INTO council_steuerkraft (year, tax_index, allocations, fetched_at) "
             "VALUES (2024, 325716249, 69209992, '')")
     k = store.steuerkraft_kontext()
     assert k["year"] == 2024 and k["year_before"] == 2023

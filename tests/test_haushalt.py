@@ -313,10 +313,10 @@ def test_parse_steuerkraft_rueckt_aufs_ausgleichsjahr():
     assert [k["year"] for k in kraft] == [1993, 2025, 2026]
     # Der Betrag, den das LSN als Steuerkraftmesszahl 2026 führt, steht in der
     # CSV unter 2025 — bei uns jetzt unter 2026.
-    assert kraft[-1]["messzahl"] == 348_164_497.0
+    assert kraft[-1]["tax_index"] == 348_164_497.0
     assert kraft[-1]["allocations"] == 82_278_144.0
     # Ausgleichsjahr 2025: die Beträge, die das LSN in KFA 2025 führt.
-    assert kraft[1]["messzahl"] == 325_716_249.0
+    assert kraft[1]["tax_index"] == 325_716_249.0
     assert kraft[1]["allocations"] == 69_209_992.0
     # Pro-Kopf-Spalten kommen nicht mit: Ihr Nenner gehört zum falschen Jahr.
     assert all(k["tax_capacity_per_capita"] is None and k["allocations_per_capita"] is None
@@ -335,7 +335,7 @@ def test_parse_steuerkraft_und_store_roundtrip(tmp_path, quelle):
     assert store.save_steuerkraft(kraft, q) == 3
     got = store.get_steuerkraft()
     assert [g["year"] for g in got] == [1993, 2025, 2026]
-    assert got[-1]["messzahl"] == 348_164_497.0
+    assert got[-1]["tax_index"] == 348_164_497.0
 
 
 def test_save_steuerkraft_raeumt_verwaiste_jahrgaenge_ab(tmp_path, quelle):
@@ -344,16 +344,16 @@ def test_save_steuerkraft_raeumt_verwaiste_jahrgaenge_ab(tmp_path, quelle):
     Leiche zurück, mit den Beträgen seines Nachfolgers."""
     store = CouncilStore(tmp_path / "c.sqlite")
     q = quelle("Steuerkraft-CSV", "http://csv", probe=UNGEPRUEFT)
-    alt = [{"year": j, "messzahl": 1.0, "tax_capacity_per_capita": None,
+    alt = [{"year": j, "tax_index": 1.0, "tax_capacity_per_capita": None,
             "allocations": 2.0, "allocations_per_capita": None} for j in (1992, 1993)]
     assert store.save_steuerkraft(alt, q) == 2
 
-    neu = [{"year": j, "messzahl": 9.0, "tax_capacity_per_capita": None,
+    neu = [{"year": j, "tax_index": 9.0, "tax_capacity_per_capita": None,
             "allocations": 8.0, "allocations_per_capita": None} for j in (1993, 1994)]
     assert store.save_steuerkraft(neu, q) == 2
     got = store.get_steuerkraft()
     assert [g["year"] for g in got] == [1993, 1994]  # 1992 ist weg
-    assert all(g["messzahl"] == 9.0 for g in got)
+    assert all(g["tax_index"] == 9.0 for g in got)
 
 
 def test_parse_einwohner():
@@ -1461,9 +1461,9 @@ def test_store_pruefberichte_roundtrip(tmp_path, quelle):
         2023, quelle("Schlussbericht 2023", "http://x", probe="eingangsformel"), 61, True)
     store.save_pruefbericht_quelle(
         2024, quelle("Schlussbericht 2024", "http://y", probe="eingangsformel"), 64, False)
-    berichte = store.get_pruefbericht_quellen()
-    assert [b["year"] for b in berichte] == [2023, 2024]
-    assert berichte[0]["readable"] == 1 and berichte[1]["readable"] == 0
+    n_reports = store.get_pruefbericht_quellen()
+    assert [b["year"] for b in n_reports] == [2023, 2024]
+    assert n_reports[0]["readable"] == 1 and n_reports[1]["readable"] == 0
     store.close()
 
 
@@ -1485,7 +1485,7 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_schulden (year, insgesamt, je_einwohner, fetched_at) "
+    c.execute("INSERT INTO council_schulden (year, insgesamt, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
     c.execute("INSERT INTO council_bilanz (year, role, page, level, label, wert, "
               " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
@@ -1602,7 +1602,7 @@ def test_haushalts_anschluss_nur_wo_er_belegt_ist(tmp_path):
     c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
               "VALUES (2, '24/0999', 'Neubau einer Schule', '2026-08-18')")
     c.execute("INSERT INTO council_nachbewilligungen (template_number, titel, art, category, "
-              " beschlossen, in_plenary, ratsentscheidung, fulltext_probe, amount, year, "
+              " beschlossen, in_plenary, council_decision, fulltext_probe, amount, year, "
               " decision_id, committees, fetched_at) "
               "VALUES ('18/0187', 'Außerplanmäßige Bewilligung', 'ausserplanmaessig', "
               " 'sonstiges', 1, 1, 1, 1, 500000.0, 2018, 812, '[]', '2026-08-18')")

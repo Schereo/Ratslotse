@@ -1199,7 +1199,7 @@ def konzernvergleich(store, year: int) -> list[dict]:
     return sorted(aus, key=lambda z: abs(z["difference"]), reverse=True)
 
 
-def _nachweis(delta: float | None, berichte: int) -> str:
+def _nachweis(delta: float | None, n_reports: int) -> str:
     """Was die Proben bei **dieser** Zahl gemessen haben.
 
     Nicht der Probenname (der steht in ``herkunft.PROBEN`` und wird dort für
@@ -1208,8 +1208,8 @@ def _nachweis(delta: float | None, berichte: int) -> str:
     teile = []
     if delta is not None:
         teile.append(f"Dokumentprobe: Δ {delta + 0.0:.2f}".replace("-0.00", "0.00"))
-    if berichte > 1:
-        teile.append(f"in {berichte} Berichten übereinstimmend")
+    if n_reports > 1:
+        teile.append(f"in {n_reports} Berichten übereinstimmend")
     return "; ".join(teile)
 
 
@@ -1390,7 +1390,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         kennzahlen_zeilen.append({
             "gesellschaft": key, "indicator": indicator, "year": year,
             "wert": je_bericht[juengster], "einheit": EINHEITEN[indicator],
-            "report_year": juengster, "berichte": len(je_bericht),
+            "report_year": juengster, "n_reports": len(je_bericht),
             "herkunft": _h.Herkunft(
                 probe=probes,
                 citation=f"Abschnitt {g.classification} — Kennzahlen im Zeitverlauf",

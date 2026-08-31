@@ -110,7 +110,7 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
         heutige = next((b for b in series if b["datum"] == p["session_date"]), None)
         p["behandlung"] = (heutige or {}).get("result")
         p["vorgeschichte"] = sum(1 for b in series if (b["datum"] or "9999") < p["session_date"])
-        p["antragsteller"], p["titel_kurz"] = store._titel_zerlegen(p["title"])
+        p["applicants"], p["titel_kurz"] = store._titel_zerlegen(p["title"])
         p["topic_name"] = None
         p["stationen"] = len(series)
         # Das Signal, das den Unterschied macht: Wie oft stand genau das schon
@@ -121,7 +121,7 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
     if kv:
         ph3 = ",".join("?" * len(kv))
         vor = {r["kvonr"]: dict(r) for r in store._conn.execute(
-            f"SELECT kvonr, beschlussvorschlag, finanz_check, office FROM council_vorlagen "
+            f"SELECT kvonr, proposed_decision, financial_impact, office FROM council_vorlagen "
             f"WHERE kvonr IN ({ph3})", kv)}
         for p in punkte:
             p.update({k: v for k, v in (vor.get(p["kvonr"]) or {}).items() if k != "kvonr"})

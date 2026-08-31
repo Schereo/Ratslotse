@@ -227,7 +227,7 @@ _STEUERKRAFT_VERSATZ = 1
 
 def parse_steuerkraft(csv_text: str) -> list[dict]:
     """Steuerkraftmesszahl/Schlüsselzuweisungen-CSV → je Jahr ein dict
-    ``{year, messzahl, tax_capacity_per_capita, allocations, allocations_per_capita}``.
+    ``{year, tax_index, tax_capacity_per_capita, allocations, allocations_per_capita}``.
 
     ``year`` ist das **Ausgleichsjahr** — die CSV-Jahreszahl plus
     :data:`_STEUERKRAFT_VERSATZ`; die Begründung steht dort.
@@ -246,7 +246,7 @@ def parse_steuerkraft(csv_text: str) -> list[dict]:
             continue
         vals = [float(c) if c else None for c in cells[1:5]]
         rows.append({"year": int(cells[0]) + _STEUERKRAFT_VERSATZ,
-                     "messzahl": vals[0], "tax_capacity_per_capita": None,
+                     "tax_index": vals[0], "tax_capacity_per_capita": None,
                      "allocations": vals[2], "allocations_per_capita": None})
     return rows
 
@@ -896,7 +896,7 @@ def build_abschluss_questions(store) -> list[dict]:
     zeilen = [z for z in store.get_anlagenspiegel() if z.get("nr") == "2"]
     if zeilen:
         z = max(zeilen, key=lambda r: r["year"])
-        zubau, verzehr = z.get("additions") or 0, abs(z.get("abschreibung") or 0)
+        zubau, verzehr = z.get("additions") or 0, abs(z.get("depreciation") or 0)
         if zubau > 0 and verzehr > 0:
             faktor = verzehr / zubau
             richtig = _komma(faktor) + " Euro"

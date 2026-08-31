@@ -409,8 +409,8 @@ public struct CouncilTemplate: Codable, Sendable, Equatable {
         case documentURL = "document_url"
         case pageCount = "n_pages"
         case department = "office"
-        case climateCheck = "klima_check"
-        case financialCheck = "finanz_check"
+        case climateCheck = "climate_impact"
+        case financialCheck = "financial_impact"
     }
 }
 
@@ -426,8 +426,8 @@ public struct CouncilAttachment: Codable, Sendable, Hashable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case label, url, status
         case documentID = "document_id"
-        case isMotion = "is_antrag"
-        case applicants = "antragsteller"
+        case isMotion = "is_motion"
+        case applicants = "applicants"
     }
 
     public init(from decoder: Decoder) throws {
@@ -853,7 +853,7 @@ public struct WeekPreviewItem: Codable, Sendable, Identifiable {
         case itemNumber = "item_number"
         case shortTitle = "titel_kurz"
         case sessionDate = "session_date"
-        case applicant = "antragsteller"
+        case applicant = "applicants"
         case topicName = "topic_name"
         case impactReason = "wichtig_grund"
         case featured = "top"

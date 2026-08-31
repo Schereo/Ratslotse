@@ -115,10 +115,10 @@ def _build_anlage_rows(anlagen: list[dict], skip_document_ids: frozenset = froze
     link-only so daily re-scans don't re-download their PDFs."""
     rows: list[dict] = []
     for a in anlagen:
-        row = {**a, "is_antrag": 0, "antragsteller": [], "raw_text": "", "n_pages": 0,
+        row = {**a, "is_motion": 0, "applicants": [], "raw_text": "", "n_pages": 0,
                "status": "listed"}
         if _ANTRAG_LABEL_RE.search(a["label"] or "") and a["document_id"] not in skip_document_ids:
-            row["is_antrag"] = 1
+            row["is_motion"] = 1
             try:
                 text, n_pages = _pdf_text(a["url"])
                 row["raw_text"], row["n_pages"] = text, n_pages
@@ -127,7 +127,7 @@ def _build_anlage_rows(anlagen: list[dict], skip_document_ids: frozenset = froze
                 row["status"] = "failed"
             # 4000 statt 1500 Zeichen: bei Anträgen mit langem Briefkopf stehen
             # die Fraktionen erst nach der Anrede — 1500 ließ 37 % leer.
-            row["antragsteller"] = parties_in_text(a["label"]) or parties_in_text(row["raw_text"][:4000])
+            row["applicants"] = parties_in_text(a["label"]) or parties_in_text(row["raw_text"][:4000])
         rows.append(row)
     return rows
 

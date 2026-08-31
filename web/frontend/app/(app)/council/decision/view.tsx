@@ -212,20 +212,20 @@ function GlanceCard({
           angenommenen Beschlüsse vor.
         </GlanceDisclosure>
       )}
-      {data.vorlage?.klima_check && (
+      {data.vorlage?.climate_impact && (
         <GlanceDisclosure
           icon={<Leaf className={cn("h-3.5 w-3.5", data.vorlage.klima_relevant ? "text-primary" : "text-muted-foreground")} />}
           label="Klima-Check"
           badge={data.vorlage.klima_relevant == null ? undefined : data.vorlage.klima_relevant ? "relevant" : "nicht relevant"}
         >
-          {data.vorlage.klima_check}
+          {data.vorlage.climate_impact}
         </GlanceDisclosure>
       )}
       {/* „Was kostet das?" (Design H-21): Die Verwaltung schreibt in jede
           Vorlage, welche finanziellen Folgen sie sieht. Amtlicher Wortlaut,
           deshalb unverändert und ausdrücklich als Verwaltungsangabe
           gekennzeichnet — nicht unsere Einschätzung. */}
-      {data.vorlage?.finanz_check && (
+      {data.vorlage?.financial_impact && (
         <GlanceDisclosure
           icon={<Euro className="h-3.5 w-3.5 text-primary" />}
           label="Was kostet das?"
@@ -234,7 +234,7 @@ function GlanceCard({
           {/* Wörtliches Zitat: Zitatkante links, Anführungszeichen, kein
               Fettdruck — es ist der amtliche Wortlaut, nicht unsere Zahl. */}
           <span className="block border-l-2 border-border pl-2.5 text-foreground/85">
-            „{data.vorlage.finanz_check.trim()}“
+            „{data.vorlage.financial_impact.trim()}“
           </span>
           {/* Die Quellenangabe steht immer, der Weiterverweis nur dort, wo es
               den Haushalts-Bereich gibt — auf Prod ist /haushalt ein 404
@@ -810,9 +810,9 @@ function DecisionDetailInner() {
                         <FileDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         <span className="truncate text-foreground">{an.label || "Dokument"}</span>
                       </span>
-                      {an.is_antrag === 1 && an.antragsteller.length > 0 && (
+                      {an.is_motion === 1 && an.applicants.length > 0 && (
                         <span className="flex shrink-0 items-center gap-1">
-                          {an.antragsteller.map((p) => <PartyBadge key={p} party={p} />)}
+                          {an.applicants.map((p) => <PartyBadge key={p} party={p} />)}
                         </span>
                       )}
                     </a>

@@ -50,7 +50,7 @@ import { GlossaryText } from "@/components/glossary-text";
 import type { GewerbesteuerstatistikZeile } from "@/lib/haushalt";
 
 type SteuerZeile = { year: number; art: string; amount: number | null };
-type Hebesatz = { year: number; hebesatz: number; prior_rate: number | null };
+type Hebesatz = { year: number; rate: number; prior_rate: number | null };
 
 /** Ab wann ein Jahressprung „groß" heißt. Die Schwelle ist gesetzt, nicht
  *  gemessen — deshalb steht sie im Text, den der Block ausgibt. */
@@ -183,7 +183,7 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   // behauptet: Steht im Bestand irgendwann ein Sprung, der doch auf einem
   // Beschluss beruht, sagt der Satz das dann auch.
   //
-  // NUR ECHTE ÄNDERUNGEN — dieselbe Bedingung wie in `hebesatz-treppe.tsx`.
+  // NUR ECHTE ÄNDERUNGEN — dieselbe Bedingung wie in `rate-treppe.tsx`.
   // Tabelle 1105 führt ein Jahr, sobald sich IRGENDEIN Realsteuer-Hebesatz
   // geändert hat, nicht nur der dieser Steuer: 2002 stieg die Grundsteuer,
   // die Gewerbesteuer stand unverändert bei 410 %. Ohne diesen Filter zählte
@@ -192,7 +192,7 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   // (gesehen in der Vorschau am 24.08.2026).
   const beschlussJahre = new Set(
     hebesaetze
-      .filter((z) => z.prior_rate != null && z.hebesatz !== z.prior_rate)
+      .filter((z) => z.prior_rate != null && z.rate !== z.prior_rate)
       .map((z) => z.year)
       .filter((j) => j > von && j <= bis));
   const mitBeschluss = spruenge.filter((p) => beschlussJahre.has(p.year)).length;
@@ -204,17 +204,17 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   // dann gibt es keinen Nenner, durch den sich teilen ließe. Für Oldenburg
   // ist das in keinem der Jahrgänge 2017–2021 der Fall, für Salzgitter und
   // Wolfsburg in jedem.
-  const ohneSteuer = statistik ? statistik.faelle - statistik.cases_positive : 0;
-  const zahlenAnteil = statistik && statistik.faelle
-    ? (statistik.cases_positive / statistik.faelle) * 100 : 0;
+  const ohneSteuer = statistik ? statistik.cases - statistik.cases_positive : 0;
+  const zahlenAnteil = statistik && statistik.cases
+    ? (statistik.cases_positive / statistik.cases) * 100 : 0;
   const zerlegtAnteil = statistik?.tax_base_eur && statistik.apportioned_assessment_eur != null
     ? (statistik.apportioned_assessment_eur / statistik.tax_base_eur) * 100 : null;
   // Wie viel mehr eine zerlegte Betriebsstätte trägt als eine rein örtliche
   // Firma — je zahlendem Fall, nicht je Fall: Wer die Betriebe ohne
   // Steuermessbetrag mitteilte, vergliche zwei Zahlen, in denen unterschiedlich
   // viele Nullen stecken.
-  const je = (amount: number | null, faelle: number | null) =>
-    amount != null && faelle ? amount / faelle : null;
+  const je = (amount: number | null, cases: number | null) =>
+    amount != null && cases ? amount / cases : null;
   const jeZerlegt = je(statistik?.apportioned_assessment_eur ?? null,
                        statistik?.apportionments_positive ?? null);
   const jeOertlich = je(statistik?.assessment_tax_base_eur ?? null,
@@ -262,7 +262,7 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
 
           <div className="mt-3 grid gap-3 @sm:grid-cols-3">
             <Kennzahl
-              wert={deZahl(statistik.faelle)}
+              wert={deZahl(statistik.cases)}
               label="Betriebe und Betriebsstätten sind in Oldenburg erfasst" />
             <Kennzahl betont
               wert={deZahl(statistik.cases_positive)}

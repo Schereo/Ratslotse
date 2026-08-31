@@ -336,8 +336,8 @@ def test_urheber_je_position_aus_der_letzten_spalte():
         [linien([85, 120, 175], [70, 220, 380, 440, 484, 758, 815]), linien([], [])])
 
     z1, z2 = aus.zeilen
-    assert z1.urheber == "SPD/ BÜNDNIS 90/ DIE GRÜNEN"
-    assert z2.urheber == "Verw. I"
+    assert z1.author == "SPD/ BÜNDNIS 90/ DIE GRÜNEN"
+    assert z2.author == "Verw. I"
     # Und die Erläuterungs-Spalte hat den Urheber NICHT mitgenommen:
     assert z1.explanation is None and z2.explanation is None
 
@@ -361,7 +361,7 @@ def test_urheber_bleibt_aus_der_erlaeuterung_heraus():
         [tabelle, summen],
         [linien([85, 120], [70, 220, 380, 440, 484, 758, 815]), linien([], [])])
     assert aus.zeilen[0].explanation == "Mittel gegen Gewalt."
-    assert aus.zeilen[0].urheber == "SPD/ BÜNDNIS 90/ DIE GRÜNEN"
+    assert aus.zeilen[0].author == "SPD/ BÜNDNIS 90/ DIE GRÜNEN"
 
 
 def test_urheberprobe_reisst_bei_falscher_zuordnung():
@@ -408,7 +408,7 @@ def test_vorschlag_im_fliesstext_ist_keine_spalte():
     aus = parse_ehh_seiten(
         [tabelle, summen],
         [linien([85, 120], [70, 220, 380, 440, 484, 815]), linien([], [])])
-    assert aus.zeilen[0].urheber is None
+    assert aus.zeilen[0].author is None
     assert aus.zeilen[0].explanation == "Der eingebrachte Vorschlag zur Erhöhung"
 
 

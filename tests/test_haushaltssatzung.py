@@ -93,7 +93,7 @@ def test_die_satzung_prueft_sich_selbst():
     Zwei unabhängig gesetzte Stellen desselben Dokuments."""
     s = parse_satzung(SATZUNG_2024)
     assert s.in_operating + s.in_capital + s.in_financing == s.in_total
-    assert s.out_operating + s.aus_invest + s.out_financing == s.out_total
+    assert s.out_operating + s.out_capital + s.out_financing == s.out_total
     assert s.in_total == 696_646_544.0
     assert s.out_total == 785_265_003.0
 
@@ -186,15 +186,15 @@ festgesetzt.
 Die Grundsteuerhebesätze sind der aktuellen Satzung der Stadt Oldenburg (Oldb) zu entnehmen.
 """
     s = parse_satzung(ab2025)
-    assert s.hebesatz_gewerbesteuer == 439
-    assert s.hebesatz_grundsteuer_a is None
-    assert s.hebesatz_grundsteuer_b is None
+    assert s.trade_tax_rate == 439
+    assert s.property_tax_a_rate is None
+    assert s.property_tax_b_rate is None
 
 
 def test_hebesaetze_werden_gelesen():
     s = parse_satzung(SATZUNG_2024)
-    assert (s.hebesatz_grundsteuer_a, s.hebesatz_grundsteuer_b,
-            s.hebesatz_gewerbesteuer) == (390, 445, 439)
+    assert (s.property_tax_a_rate, s.property_tax_b_rate,
+            s.trade_tax_rate) == (390, 445, 439)
 
 
 # --------------------------------------------------------------------------

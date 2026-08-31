@@ -121,12 +121,12 @@ def main() -> int:
         print(f"Mit Eckwerten: {len(gefunden)} · ohne: {len(luecken)} · "
               f"Probe gerissen: {len(risse)}\n")
 
-        for plan, _ in sorted(gefunden, key=lambda x: (x[0].betrieb, x[0].year)):
-            print(f"  {plan.year}  {plan.betrieb:8s} "
+        for plan, _ in sorted(gefunden, key=lambda x: (x[0].enterprise, x[0].year)):
+            print(f"  {plan.year}  {plan.enterprise:8s} "
                   f"Erträge {plan.revenues / 1e6:7.1f} Mio. €  "
                   f"Ergebnis {plan.result / 1e6:8.3f} Mio. €  "
-                  f"Vermögensplan {(plan.vermoegensplan or 0) / 1e6:7.1f} Mio. €  "
-                  f"({plan.template_number}, Entwurf {plan.entwurf_vom})")
+                  f"Vermögensplan {(plan.capital_plan or 0) / 1e6:7.1f} Mio. €  "
+                  f"({plan.template_number}, Entwurf {plan.draft_date})")
 
         if risse:
             print("\nProbe gerissen — NICHT gespeichert:")
@@ -138,7 +138,7 @@ def main() -> int:
         # der eigentliche Befund dieser Schicht.
         ohne_nach_betrieb: dict[str, int] = {}
         for lücke in luecken:
-            name = lücke["betrieb_name"] or "unbekannter Betrieb"
+            name = lücke["enterprise_name"] or "unbekannter Betrieb"
             ohne_nach_betrieb[name] = ohne_nach_betrieb.get(name, 0) + 1
         if ohne_nach_betrieb:
             print("\nOhne Eckwerte im Beschlusstext (Zahlen stehen in der Anlage):")
@@ -156,7 +156,7 @@ def main() -> int:
             erkannt = betrieb_aus_titel(r["title"])
             if not erkannt or erkannt[0] not in VOKABULAR:
                 continue
-            betrieb = erkannt[0]
+            enterprise = erkannt[0]
             year = jahr_aus_titel(r["title"])
             if year is None:
                 continue
@@ -181,7 +181,7 @@ def main() -> int:
             for a in readable:
                 try:
                     plan, probes = parse_erfolgsplan(
-                        r["template_number"], betrieb, year, a["raw_text"])
+                        r["template_number"], enterprise, year, a["raw_text"])
                 except WirtschaftsplanFehler as fehler:
                     anlagen_risse.append(f"{r['template_number']} (Anlage "
                                          f"{a['document_id']}): {fehler}")
@@ -191,8 +191,8 @@ def main() -> int:
 
         if aus_anlage:
             print("\nAus dem Erfolgsplan der Anlage:")
-            for plan, probes, a in sorted(aus_anlage, key=lambda x: (x[0].betrieb, x[0].year)):
-                print(f"  {plan.year}  {plan.betrieb:8s} "
+            for plan, probes, a in sorted(aus_anlage, key=lambda x: (x[0].enterprise, x[0].year)):
+                print(f"  {plan.year}  {plan.enterprise:8s} "
                       f"Erträge {plan.revenues / 1e6:7.3f} Mio. €  "
                       f"Ergebnis {plan.result / 1e6:+7.3f} Mio. €  "
                       f"({len(probes)} Spalten geprüft, Anlage {a['document_id']})")
@@ -213,8 +213,8 @@ def main() -> int:
         # Für die Betriebe, deren Tabelle sich nicht selbst vorrechnet. Greift
         # nur, wo die beiden anderen Wege nichts geliefert haben — sonst stünde
         # eine Zeile mit bloßem Ergebnis gegen eine mit vollem Tripel.
-        schon = {(plan.betrieb, plan.year) for plan, _ in gefunden} | {
-            (plan.betrieb, plan.year) for plan, _, _ in aus_anlage}
+        schon = {(plan.enterprise, plan.year) for plan, _ in gefunden} | {
+            (plan.enterprise, plan.year) for plan, _, _ in aus_anlage}
         kernzahlen = []
         for r in rows:
             erkannt = betrieb_aus_titel(r["title"])
@@ -236,8 +236,8 @@ def main() -> int:
         if kernzahlen:
             print("\nKernzahl aus dem Beschlusstext:")
             for plan, wort, lage, _ in sorted(kernzahlen,
-                                              key=lambda x: (x[0].betrieb, x[0].year)):
-                print(f"  {plan.year}  {plan.betrieb:16s} "
+                                              key=lambda x: (x[0].enterprise, x[0].year)):
+                print(f"  {plan.year}  {plan.enterprise:16s} "
                       f"Ergebnis {plan.result / 1e6:+8.3f} Mio. €   "
                       f"[{lage}] {BELEGLAGE[lage]}")
 

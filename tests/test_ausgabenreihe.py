@@ -156,7 +156,7 @@ def test_eine_echte_euro_datei_faellt_komplett_durch():
 def test_die_marke_revidiert_zerlegt_den_pro_kopf_wert_nicht():
     """``3.917r`` sind 3.917 mit der Marke „revidiert", nicht 39.171."""
     z = next(z for z in ar.parse_pdf(PDF) if z["year"] == 2023)
-    assert z["je_einwohner"] == 3917
+    assert z["per_capita"] == 3917
     assert z["revised"] is True
 
 
@@ -400,9 +400,9 @@ def test_die_tabelle_fuehrt_keine_einwohnerzahl(tmp_path, gelesen):
             art="stadt", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf"))
         spalten = {r[1] for r in store._conn.execute(
             "PRAGMA table_info(council_ausgabenreihe)")}
-        assert not spalten & {"einwohner", "je_einwohner", "pro_kopf"}
+        assert not spalten & {"einwohner", "per_capita", "pro_kopf"}
         assert not any(k in store.get_ausgabenreihe()[0]
-                       for k in ("einwohner", "je_einwohner"))
+                       for k in ("einwohner", "per_capita"))
     finally:
         store.close()
 

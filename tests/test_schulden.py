@@ -186,7 +186,7 @@ def test_prokopfprobe_faengt_einen_faktor_tausend():
     """Die Quelle rechnet in Tausend Euro. Wer die Umrechnung vergisst, liegt
     um Faktor 1000 daneben — die Summenprobe merkt davon nichts, weil sie
     innerhalb derselben Einheit rechnet. Diese hier merkt es."""
-    zeile = {"year": 2025, "insgesamt": 336_994, "je_einwohner": 1908}
+    zeile = {"year": 2025, "insgesamt": 336_994, "per_capita": 1908}
     ok, _ = schulden.prokopfprobe(zeile, 176614)
     assert not ok
 
@@ -204,7 +204,7 @@ def test_2022_verliert_seine_aufteilung_aber_nicht_seine_summe(gelesen):
     verwerfen hieße, eine belegte Zahl wegzuwerfen."""
     z = _zeile(gelesen, 2022)
     assert z["insgesamt"] == 281_457_000
-    assert z["je_einwohner"] == 1652
+    assert z["per_capita"] == 1652
     assert all(z[art] is None for art in schulden.ARTEN)
     assert z["breakdown_rejected"] == 1_078_000
     assert z["probes"] == ["schulden_prokopf"]
@@ -233,7 +233,7 @@ def test_betraege_kommen_in_euro_an(gelesen):
     assert z["insgesamt"] == 336_994_000
     assert z["credit_market"] == 40_804_000
     assert z["municipal_enterprises"] == 296_190_000
-    assert z["je_einwohner"] == 1908
+    assert z["per_capita"] == 1908
 
 
 def test_revidierte_werte_bleiben_als_angabe_erhalten(gelesen):

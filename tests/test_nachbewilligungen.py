@@ -316,7 +316,7 @@ def test_zweite_stufe_schliesst_die_luecke():
         "Überplanmäßige Bewilligung für den Teilhaushalt 04, Budget 22",
         VORSCHLAG_RECHTSAMT)
     assert wert == pytest.approx(65_000.0)
-    assert quelle == "beschlussvorschlag"
+    assert quelle == "proposed_decision"
 
 
 def test_zweite_stufe_liest_mehrauszahlung_von():
@@ -325,7 +325,7 @@ def test_zweite_stufe_liest_mehrauszahlung_von():
         "Überplanmäßige Eigenkapitalstärkung für das Klinikum Oldenburg AöR",
         VORSCHLAG_KLINIKUM)
     assert wert == pytest.approx(7_300_000.0)
-    assert quelle == "beschlussvorschlag"
+    assert quelle == "proposed_decision"
 
 
 def test_deckungsbetrag_gewinnt_nicht():
@@ -338,7 +338,7 @@ def test_deckungsbetrag_gewinnt_nicht():
 
 
 def test_zweite_stufe_aus_volltext_wenn_spalte_leer():
-    """``beschlussvorschlag`` ist im Bestand fast überall leer (7 von 5019).
+    """``proposed_decision`` ist im Bestand fast überall leer (7 von 5019).
     Steht sie nicht, wird der Vorschlag aus ``raw_text`` geerntet."""
     volltext = "Sachverhalt und Vorgeschichte\n\n" + VORSCHLAG_STRASSENBAU
     wert, quelle = nb.amount(
@@ -346,7 +346,7 @@ def test_zweite_stufe_aus_volltext_wenn_spalte_leer():
         "Straßenbaumaßnahme Kreuzung Schützenhofstraße/Bremer Straße",
         None, volltext)
     assert wert == pytest.approx(105_000.0)
-    assert quelle == "beschlussvorschlag"
+    assert quelle == "proposed_decision"
 
 
 # --- Die drei Fallen -------------------------------------------------------
@@ -372,7 +372,7 @@ def test_sammelbericht_schlaegt_verpflichtungsermaechtigung():
 def test_verpflichtungsermaechtigung_zaehlt_nicht_mit():
     """Eine VE bindet künftige Jahre; sie ist keine Ausgabe dieses Jahres.
     Der Rechenschaftsbericht zählt sie getrennt, wir auch."""
-    ve = nb.Bewilligung(
+    commitment_authorizations = nb.Bewilligung(
         template_number="23/0359", titel="…", art=nb.ART_VERPFLICHTUNG,
         category="ausserplanmaessig", year=2023, amount=840_000.0,
         amount_source="titel",
@@ -382,10 +382,10 @@ def test_verpflichtungsermaechtigung_zaehlt_nicht_mit():
         category="ueberplanmaessig", year=2023, amount=11_716_000.0,
         amount_source="titel",
         beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
-    assert not ve.zaehlt_in_summe
-    summen = nb.jahressummen([ve, echt])
+    assert not commitment_authorizations.zaehlt_in_summe
+    summen = nb.jahressummen([commitment_authorizations, echt])
     assert summen[2023]["summe"] == pytest.approx(11_716_000.0)
-    assert summen[2023]["verpflichtungen"] == 1
+    assert summen[2023]["commitments"] == 1
     assert summen[2023]["commitments_amount"] == pytest.approx(840_000.0)
 
 
@@ -460,7 +460,7 @@ def test_aus_vorlagen_zaehlt_je_vorlage_einmal():
          "session_date": "2023-11-27"}]}
     serie = nb.aus_vorlagen(vorlagen, beschluesse)
     assert len(serie) == 1
-    assert nb.jahressummen(serie)[2023]["faelle"] == 1
+    assert nb.jahressummen(serie)[2023]["cases"] == 1
     assert nb.jahressummen(serie)[2023]["summe"] == pytest.approx(11_716_000.0)
 
 
@@ -484,7 +484,7 @@ def test_probe_volltext_ohne_titelbetrag_ist_nicht_bestanden():
     """„Nicht geprüft" darf nicht wie „bestanden" aussehen."""
     b = nb.Bewilligung(template_number="24/0836", titel="…", art=nb.ART_BEWILLIGUNG,
                        category="ueberplanmaessig", year=2024, amount=65_000.0,
-                       amount_source="beschlussvorschlag")
+                       amount_source="proposed_decision")
     assert not nb.probe_volltext(b, VORSCHLAG_RECHTSAMT)
 
 
@@ -619,13 +619,13 @@ def test_de_betrag_schreibt_deutsch():
 #: Wer diese Werte ändert, ändert eine Aussage über eine amtliche Quelle —
 #: erst nachmessen, dann anfassen.
 GEMESSEN = {
-    2022: {"unsere": 23_956_742.00, "faelle": 12,
+    2022: {"unsere": 23_956_742.00, "cases": 12,
            "bericht": 23_825_742.00, "bericht_faelle": 11,
            "deviation": 131_000.00},
-    2023: {"unsere": 33_871_800.00, "faelle": 26,
+    2023: {"unsere": 33_871_800.00, "cases": 26,
            "bericht": 33_871_700.00, "bericht_faelle": 26,
            "deviation": 100.00},
-    2024: {"unsere": 43_096_100.00, "faelle": 21,
+    2024: {"unsere": 43_096_100.00, "cases": 21,
            "bericht": 42_171_646.29, "bericht_faelle": 21,
            "deviation": 924_453.71},
 }
@@ -714,12 +714,12 @@ def test_finanzausschuss_zaehlt_als_ratsbeschluss():
     plenum = _bewilligung("24/0359", 100_000.0, "Rat")
     ausschuss = _bewilligung("24/0834", 375_000.0,
                              "Ausschuss für Finanzen und Beteiligungen")
-    assert plenum.in_plenary and plenum.ratsentscheidung
+    assert plenum.in_plenary and plenum.council_decision
     assert not ausschuss.in_plenary, "das Plenum hat nicht abgestimmt"
-    assert ausschuss.ratsentscheidung, "der Bericht bucht es trotzdem als Rat"
+    assert ausschuss.council_decision, "der Bericht bucht es trotzdem als Rat"
     summen = nb.jahressummen([plenum, ausschuss], nur_rat=True)
     assert summen[2024]["summe"] == pytest.approx(475_000.0)
-    assert summen[2024]["faelle"] == 2
+    assert summen[2024]["cases"] == 2
 
 
 def test_fremder_ausschuss_zaehlt_nicht_als_ratsbeschluss():
@@ -728,7 +728,7 @@ def test_fremder_ausschuss_zaehlt_nicht_als_ratsbeschluss():
     fremd = _bewilligung(
         "24/0900", 50_000.0,
         "Betriebsausschuss Eigenbetrieb Gebäudewirtschaft und Hochbau")
-    assert not fremd.ratsentscheidung
+    assert not fremd.council_decision
     assert nb.jahressummen([fremd], nur_rat=True) == {}
 
 

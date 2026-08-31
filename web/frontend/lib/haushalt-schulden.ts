@@ -15,7 +15,7 @@ export type SchuldenJahr = {
   municipal_enterprises: number | null;
   insgesamt: number;
   /** Betrag je Einwohner*in — die Angabe DER QUELLE, nicht unsere Division. */
-  je_einwohner: number | null;
+  per_capita: number | null;
   breakdown_rejected: number | null;
   /** Die Quelle hat diesen Jahrgang nachträglich korrigiert („r"). */
   revised: number;
@@ -83,8 +83,8 @@ export type SchuldenDaten = {
    *  die die Stadt nicht haftet (2024: 58 %). */
   integrierte_schulden?: {
     as_of_date: {
-      year: number; insgesamt: number; je_einwohner: number | null;
-      kernhaushalt: number | null; extra_budgets: number | null;
+      year: number; insgesamt: number; per_capita: number | null;
+      core_budget: number | null; extra_budgets: number | null;
       sonstige: number | null; population: number | null;
       change: number | null; herkunft_id: number | null;
     };
@@ -141,7 +141,7 @@ export { herkunftVon } from "@/lib/haushalt";
  *  gewachsen. Nur die absolute Reihe zu zeigen hieße, das Wachstum der Stadt
  *  als Schuldenaufbau zu lesen; nur die Pro-Kopf-Reihe zu zeigen, den
  *  absoluten Anstieg zu verschweigen. */
-export type Ansicht = "insgesamt" | "je_einwohner";
+export type Ansicht = "insgesamt" | "per_capita";
 
 export type Punkt = { year: number; wert: number };
 
@@ -151,7 +151,7 @@ export function punkte(series: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
       year: z.year,
       // Absolutbeträge in Mio., Pro-Kopf-Beträge in Euro — sonst stünde die
       // eine Reihe bei 337 und die andere bei 0,0019.
-      wert: ansicht === "insgesamt" ? z.insgesamt / 1e6 : (z.je_einwohner ?? NaN),
+      wert: ansicht === "insgesamt" ? z.insgesamt / 1e6 : (z.per_capita ?? NaN),
     }))
     .filter((p) => Number.isFinite(p.wert));
 }
@@ -164,7 +164,7 @@ export function punkte(series: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
  *  die Trennung erklärt aber den Sprung von 2010, als die Stadt einen
  *  Eigenbetrieb gründete und 108,9 Mio. € Kredite dorthin übertrug.
  *  `null`, wo die Aufteilung nicht belegt ist. */
-export function kernhaushalt(z: SchuldenJahr): number | null {
+export function core_budget(z: SchuldenJahr): number | null {
   if (z.credit_market == null) return null;
   return z.credit_market + (z.special_funds ?? 0) + (z.public_authorities ?? 0);
 }
@@ -175,7 +175,7 @@ export type Aufteilung = { year: number; kern: number; municipal_enterprises: nu
 export function aufteilungen(series: SchuldenJahr[]): Aufteilung[] {
   const aus: Aufteilung[] = [];
   for (const z of series) {
-    const kern = kernhaushalt(z);
+    const kern = core_budget(z);
     if (kern == null || z.municipal_enterprises == null) continue;
     aus.push({ year: z.year, kern, municipal_enterprises: z.municipal_enterprises });
   }

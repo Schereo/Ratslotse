@@ -5,7 +5,7 @@ Dreizehn Schichten tragen den Bereich. Sieben davon hängen als **Anlagen** an
 Ratsvorlagen und liegen mit Volltext in ``council_anlagen``; woran man sie
 dort erkennt (Label-Muster, Mindestseitenzahl, Ausschlüsse), stand bis 08/2026
 verstreut in zwei Ingest-Skripten. Hier steht es einmal. ``ingest_finanz-
-berichte.py``, ``ingest_pruefberichte.py`` und der Cron ``check_finanzdaten.py``
+n_reports.py``, ``ingest_pruefberichte.py`` und der Cron ``check_finanzdaten.py``
 lesen dieselbe Definition — auf die Frage „ist das ein Jahresabschluss?" gibt
 es sonst zwei Antworten, und eine davon veraltet still.
 
@@ -1659,7 +1659,7 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
     alle_formeln = [f for _, _, _, formeln, _ in gelesen for f in formeln]
     nummern = kennzahlen.fassungen(alle_formeln)
 
-    berichte = verworfen = 0
+    n_reports = verworfen = 0
     werte_gesamt = formeln_gesamt = 0
     bilanz_geprueft = vermoegen_geprueft = 0
     gesammelt: list[dict] = []
@@ -1708,7 +1708,7 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
                 probe_result=f"{bilanz_ok} Quoten und {verm_ok} Jahrgänge "
                                f"gegen die Bilanz nachgerechnet",
                 stand=f"Rechenschaftsbericht {report_year}"))
-        berichte += 1
+        n_reports += 1
         werte_gesamt += len(zeilen)
         formeln_gesamt += len(formeln)
         gesammelt += zeilen
@@ -1729,7 +1729,7 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
             f"{arten['definition']} Definitionswechsel, "
             f"{arten['umbenennung']} bloße Umbenennungen")
 
-    return {"kennzahlen_berichte": berichte,
+    return {"kennzahlen_berichte": n_reports,
             "kennzahlen_werte": werte_gesamt,
             "kennzahlen_formeln": formeln_gesamt,
             "kennzahlen_ohne_tabelle": ohne_tabelle,

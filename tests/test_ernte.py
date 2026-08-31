@@ -95,11 +95,11 @@ def test_blockende_feuert_nicht_mitten_im_satz():
         "Prüfungsrelevant: Ja, der Bau von Photovoltaik- Anlagen spart CO2 im Betrieb.")
     text2 = ("Beschlussvorschlag:\nDie Prüfung erfolgt gemäß\nAnlage 1 und wird beauftragt.\n"
              "Sachverhalt:\nEgal.")
-    assert ernte.beschlussvorschlag(text2) == "Die Prüfung erfolgt gemäß Anlage 1 und wird beauftragt."
+    assert ernte.proposed_decision(text2) == "Die Prüfung erfolgt gemäß Anlage 1 und wird beauftragt."
 
 
 def test_beschlussvorschlag_endet_am_sachverhalt():
-    v = ernte.beschlussvorschlag(VORLAGE_TEXT)
+    v = ernte.proposed_decision(VORLAGE_TEXT)
     assert v == ("Das Vergnügungsstättenkonzept wird beschlossen. "
                  "Die Verwaltung wird mit der Umsetzung beauftragt.")
 
@@ -132,9 +132,9 @@ def test_save_vorlage_erntet_felder(tmp_path):
     store.save_vorlage({"kvonr": 7, "template_number": "22/0262", "raw_text": VORLAGE_TEXT})
     v = store.get_vorlage(7)
     assert v["office"] == "Stadtplanungsamt"
-    assert v["klima_check"].startswith("Prüfungsrelevant: Ja")
-    assert v["finanz_check"].startswith("Kosten von 50.000")
-    assert v["beschlussvorschlag"].startswith("Das Vergnügungsstättenkonzept")
+    assert v["climate_impact"].startswith("Prüfungsrelevant: Ja")
+    assert v["financial_impact"].startswith("Kosten von 50.000")
+    assert v["proposed_decision"].startswith("Das Vergnügungsstättenkonzept")
     store.close()
 
 
@@ -183,7 +183,7 @@ def test_qa_kontext_traegt_ernte_felder(tmp_path):
         "id": 5, "title": "Konzept", "committee": "Rat", "session_date": "2026-01-01",
         "outcome": "angenommen", "official_text": "Wird beschlossen.",
         "office": "Stadtplanungsamt",
-        "klima_check": "Prüfungsrelevant: Ja, steuert den Verkehr.",
+        "climate_impact": "Prüfungsrelevant: Ja, steuert den Verkehr.",
         "deviation": "stark",
     }])
     assert "Federführung: Stadtplanungsamt" in ctx
@@ -193,6 +193,6 @@ def test_qa_kontext_traegt_ernte_felder(tmp_path):
     ctx2 = qa._build_context([{
         "id": 6, "title": "Bericht", "committee": "Rat", "session_date": "2026-01-01",
         "outcome": "angenommen", "official_text": "Kenntnis.",
-        "klima_check": "Nein, nicht prüfungsrelevant.", "deviation": "unveraendert",
+        "climate_impact": "Nein, nicht prüfungsrelevant.", "deviation": "unveraendert",
     }])
     assert "Klima-Check" not in ctx2 and "Beschlussvorschlag" not in ctx2

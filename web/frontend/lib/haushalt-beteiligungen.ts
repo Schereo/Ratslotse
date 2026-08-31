@@ -91,7 +91,7 @@ export type Kennzahl = {
   einheit: "eur" | "prozent";
   report_year: number;
   /** In wie vielen Berichten dieser Wert übereinstimmend steht. */
-  berichte: number;
+  n_reports: number;
   herkunft_id: number | null;
 };
 
