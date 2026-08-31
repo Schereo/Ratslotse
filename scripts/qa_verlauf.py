@@ -95,10 +95,10 @@ def main() -> dict:
 
         print("\n=== Feedback ===")
         for f in council._conn.execute(
-                "SELECT created, rating, frage, grund FROM council_qa_feedback "
+                "SELECT created, rating, frage, reason FROM council_qa_feedback "
                 "WHERE user_id = ? ORDER BY created", (uid,)):
             print(f"  {str(f['created'])[:16]} {f['rating']} · {f['frage'][:70]}"
-                  + (f"\n      Grund: {f['grund']}" if f["grund"] else ""))
+                  + (f"\n      Grund: {f['reason']}" if f["reason"] else ""))
         return {"Gespräche": len(gespraeche), "Fragen": n_turns}
     finally:
         ratslotse.close()

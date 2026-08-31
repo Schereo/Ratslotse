@@ -745,7 +745,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     # Seine Einheit ist der TEIL, nicht der Jahrgang: Teil A und Teil B kommen
     # einzeln durch ihre Proben (2026 ist Teil B im PDF unlesbar).
     assert schichten["stellenplan"]["monat"] == "Oktober"
-    assert schichten["stellenplan"]["einheit"] == "Teile"
+    assert schichten["stellenplan"]["unit"] == "Teile"
     # Der Gesamtabschluss hinkt am weitesten hinterher: Er kann erst entstehen,
     # wenn alle einbezogenen Betriebe geprüft sind.
     assert schichten["konzernabschluss"]["monat"] == "Februar"
@@ -991,7 +991,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
                   if k["company"] == "egh" and k["indicator"] == "bilanzsumme"
                   and k["year"] == 2024)
     assert bilanz["wert"] == 580193968.91
-    assert bilanz["einheit"] == "eur"
+    assert bilanz["unit"] == "eur"
     # Ein einzelner Bericht kann die Überlappung nicht bieten — die Zahl ist
     # trotzdem gedeckt, nämlich durch die Bilanz im Dokument selbst.
     assert bilanz["n_reports"] == 1
@@ -1014,7 +1014,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     personen = [p for p in b["personen"] if p["company"] == "egh"]
     assert [p["name"] for p in personen] == ["Ruth Regina Drügemöller",
                                              "Ingrid Kruse"]
-    assert personen[0]["gremium"] == "Betriebsausschuss"
+    assert personen[0]["committee"] == "Betriebsausschuss"
     assert personen[0]["chair_role"] == "chair"
     assert personen[1]["chair_role"] == "deputy"
     assert all(p["position"] == "Ratsmitglied" for p in personen)
@@ -1203,7 +1203,7 @@ def test_haushalt_gebaut_beziffert_seine_luecken(client):
         gut = [z for z in zeilen if ii.zeilensumme(z)[0]]
         assert [z["year"] for z in gut] == [2018, 2020], "2019 muss reißen"
         verworfen = [{"year": 2019, "accounting_system": "doppik", "difference": -1_304_000.0,
-                      "grund": "Zeilensumme um -1.304.000 € gerissen"}]
+                      "reason": "Zeilensumme um -1.304.000 € gerissen"}]
         cs.save_investitionen_ist(gut, herkunft.Herkunft(
             art="stadt", url="https://example.org/1107.pdf",
             probe="investitionen_ist_zeilensumme",
@@ -4482,10 +4482,10 @@ def _seed_vorlage(kvonr: int = 4711, template_number: str = "26/0396",
         council._conn.execute(
             "INSERT OR REPLACE INTO council_vorlagen(kvonr, template_number, title, fetched_at) "
             "VALUES (?,?,?,'2026-01-01')", (kvonr, template_number, "Stadionneubau Maastrichter Straße"))
-        for datum, gremium, result in (stations or []):
+        for datum, committee, result in (stations or []):
             council._conn.execute(
-                "INSERT INTO council_beratungen(kvonr, datum, gremium, result, fetched_at) "
-                "VALUES (?,?,?,?,'2026-01-01')", (kvonr, datum, gremium, result))
+                "INSERT INTO council_beratungen(kvonr, datum, committee, result, fetched_at) "
+                "VALUES (?,?,?,?,'2026-01-01')", (kvonr, datum, committee, result))
     council.close()
 
 
@@ -4500,7 +4500,7 @@ def test_vorlage_follow_anlegen_und_wieder_loesen(client):
     assert len(follows) == 1
     assert follows[0]["template_number"] == "26/0396"
     assert follows[0]["n_stationen"] == 1
-    assert follows[0]["letzte"]["gremium"] == "Verkehrsausschuss"
+    assert follows[0]["letzte"]["committee"] == "Verkehrsausschuss"
 
     # Zweimal folgen bleibt ein Follow (UNIQUE owner+kvonr).
     client.post("/api/council/vorlage/4711/follow")
@@ -4554,8 +4554,8 @@ def test_vorlage_follow_naechste_station_ist_die_zukuenftige(client):
     ])
     client.post("/api/council/vorlage/4711/follow")
     f = client.get("/api/council/follows").json()["follows"][0]
-    assert f["naechste"]["gremium"] == "Rat"
-    assert f["letzte"]["gremium"] == "Verkehrsausschuss"
+    assert f["naechste"]["committee"] == "Rat"
+    assert f["letzte"]["committee"] == "Verkehrsausschuss"
 
 
 def test_decision_detail_meldet_follow_zustand(client):
@@ -4972,7 +4972,7 @@ def _deep_mocks(monkeypatch):
                         lambda self, ids: [dict(c) for c in cand if c["id"] in ids])
     monkeypatch.setattr(CouncilStore, "orte_fuer_decisions", lambda self, ids: {})
     monkeypatch.setattr(CouncilStore, "geplante_beratungen_fuer", lambda self, kv: [
-        {"kvonr": 111, "datum": "2099-09-14", "gremium": "Ausschuss für Finanzen",
+        {"kvonr": 111, "datum": "2099-09-14", "committee": "Ausschuss für Finanzen",
          "template_number": "26/0815", "vorlage_titel": "Finanzierungsbeschluss Projektgesellschaft"}])
     monkeypatch.setattr(CouncilStore, "haushalt_fuer_begriffe", lambda self, w: [])
     monkeypatch.setattr(CouncilStore, "vorlage_texts_for", lambda self, nrs: {})
@@ -5008,7 +5008,7 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     assert sum(1 for t in typen if t == "facette") == 2
     src = next(e for e in events if e["type"] == "sources")
     assert [s["id"] for s in src["sources"]] == [5, 7]  # Union beider Facetten, bester Score zuerst
-    assert src["planungen"][0]["gremium"] == "Ausschuss für Finanzen"
+    assert src["planungen"][0]["committee"] == "Ausschuss für Finanzen"
     # Task 33: Anlagen-Treffer mit Fundstelle im sources-Event, gelesen zählt sie mit.
     assert src["anlagen"][0]["label"] == "Schalltechnisches Gutachten"
     assert src["anlagen"][0]["auszug"].startswith("Lärmpegel")
@@ -5564,7 +5564,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
     try:
         zeilen = [
             {"template_number": "26/0207", "year": 2026, "sitzung": "2026-04-13",
-             "amount": 435_941.0, "gremium": "Rat", "layout": "neu",
+             "amount": 435_941.0, "committee": "Rat", "layout": "neu",
              "second_mention": "zerlegung",
              "probes": [donations.ZWEITSTELLE, donations.PROTOKOLLABGLEICH],
              "herkunft": herkunft.Herkunft(
@@ -5572,14 +5572,14 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
                  citation=donations.FUNDSTELLE,
                  probe_result="421.316 + 14.625 = 435.941")},
             {"template_number": "26/0044", "year": 2026, "sitzung": "2026-02-09",
-             "amount": 1_800.0, "gremium": "Verwaltungsausschuss", "layout": "alt",
+             "amount": 1_800.0, "committee": "Verwaltungsausschuss", "layout": "alt",
              "second_mention": "identisch", "probes": [donations.ZWEITSTELLE],
              "herkunft": herkunft.Herkunft(
                  art="ris", document_id=300001, probe=[donations.ZWEITSTELLE],
                  probe_result="identisch")},
         ]
         verworfen = [{"template_number": "23/0265", "sitzung": "2023-05-03",
-                      "grund": "Die Vorlage schlug 52.000,00 Euro vor, das Protokoll "
+                      "reason": "Die Vorlage schlug 52.000,00 Euro vor, das Protokoll "
                                "hält 51.500,00 Euro fest."}]
         cs.save_spenden(zeilen, verworfen, herkunft.Herkunft(
             art="ris", url="https://buergerinfo.example.org/vo040.asp",
@@ -5592,9 +5592,9 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
                                "rat": 1, "verwaltungsausschuss": 1}]
         assert [v["template_number"] for v in s["vorlagen"]] == ["26/0044", "26/0207"]
         assert s["ohne_beleg"][0]["template_number"] == "23/0265"
-        assert "51.500,00" in s["ohne_beleg"][0]["grund"]
+        assert "51.500,00" in s["ohne_beleg"][0]["reason"]
         # Wer über welche einzelne Zuwendung entscheidet — reist mit den Zahlen.
-        assert {g["gremium"] for g in s["schwellen"]} == {
+        assert {g["committee"] for g in s["schwellen"]} == {
             "Oberbürgermeister", "Verwaltungsausschuss", "Rat"}
         # Ohne aufgelöste Herkunft stünde die Zahl ohne Beleg da.
         for v in s["vorlagen"]:
@@ -5776,7 +5776,7 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
         cs.save_buergschaften([{
             "year": 2024, "balance": 220_300_000.0, "exact": False,
             "out_next_year": False, "quelle": "anhang",
-            "grund": "Hintergrund ist, dass die verbürgten Bestandsdarlehen "
+            "reason": "Hintergrund ist, dass die verbürgten Bestandsdarlehen "
                      "seitens der Beteiligungen getilgt wurden.",
             "single_amount": None, "probes": [bg.PROBE_KETTE],
         }], h_mod.Herkunft(art="ris", probe=[bg.PROBE_KETTE], document_id=295294,

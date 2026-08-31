@@ -571,7 +571,7 @@ export default function EinnahmenPage() {
                     <LueckenFeld
                       key={v.template_number}
                       label={v.template_number}
-                      grund={v.grund}
+                      reason={v.reason}
                       datum={v.sitzung
                         ? new Date(v.sitzung).toLocaleDateString("de-DE")
                         : undefined}

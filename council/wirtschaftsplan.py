@@ -326,7 +326,7 @@ def ohne_eckwerte(template_number: str, titel: str) -> dict:
         "enterprise": erkannt[0] if erkannt else None,
         "enterprise_name": erkannt[1] if erkannt else None,
         "titel": titel,
-        "grund": "Der Beschlusstext stimmt der anliegenden Fassung zu, ohne die "
+        "reason": "Der Beschlusstext stimmt der anliegenden Fassung zu, ohne die "
                  "Eckwerte zu nennen — die Zahlen stehen in der Anlage.",
     }
 

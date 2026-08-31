@@ -126,7 +126,7 @@ export function VerfahrensWegKarte({ daten, budget_year, className }: {
           className="mt-3"
           titel="Woher diese Bewegung kam"
           gesamt={Math.abs(weg.bewegt)}
-          einheit="€"
+          unit="€"
           segmente={[
             { label: "Listen der Verwaltung", wert: Math.abs(weg.verwaltung),
               farbe: "var(--hh-aus-2)" },

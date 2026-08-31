@@ -33,7 +33,7 @@ export type VergleichWert = {
   city: string;
   indicator: string;
   wert: number;
-  einheit: string;
+  unit: string;
   herkunft_id: number | null;
 };
 

@@ -183,7 +183,7 @@ class Gebuehrensatz:
     area: str
     label: str
     amount: float
-    einheit: str
+    unit: str
     prior_year: float | None
     change_pct: float | None
     template_number: str | None
@@ -195,7 +195,7 @@ class _Satzart:
     area: str
     code: str
     label: str
-    einheit: str
+    unit: str
     modernes_muster: str
 
 
@@ -445,10 +445,10 @@ def parse_anlage(part: str, template_number: str | None = None) -> Gebuehrenbeda
     # gespeichert — seine Kaskade ist geprüft, nur die zweite Probe fehlt.
     g = _GEBUEHR_MIT_EINHEIT.search(part)
     fee = menge = None
-    einheit = None
+    unit = None
     if g is not None:
-        einheit = _einheit_aus(g.group(1))
-        if einheit is None:
+        unit = _einheit_aus(g.group(1))
+        if unit is None:
             raise GebuehrenFehler(
                 f"{area[1]} {year.group(1)}: Unbekannte Bezugseinheit "
                 f"„{' '.join(g.group(1).split())}“ — eine erfundene Einheit "
@@ -478,7 +478,7 @@ def parse_anlage(part: str, template_number: str | None = None) -> Gebuehrenbeda
     return Gebuehrenbedarf(
         year=int(year.group(1)), area=area[0], area_name=area[1],
         cost_calculation=kalkulation, deductions=deductions,
-        costs_to_cover=zu_decken, reference_quantity=menge, reference_unit=einheit,
+        costs_to_cover=zu_decken, reference_quantity=menge, reference_unit=unit,
         fee=fee,
         fee_proposed=(float(v.group(1).replace(".", "").replace(",", "."))
                             if v else None),
@@ -530,7 +530,7 @@ def _saetze_altes_layout(part: str, template_number: str | None) -> list[Gebuehr
             "Tarifbeträge in der Vorschlagszeile — nichts gespeichert.")
     return [Gebuehrensatz(
         year=year, schluessel=art.schluessel, area=art.area,
-        label=art.label, amount=wert, einheit=art.einheit,
+        label=art.label, amount=wert, unit=art.unit,
         prior_year=None, change_pct=None, template_number=template_number)
         for art, wert in zip(SATZARTEN, werte, strict=True)]
 
@@ -562,7 +562,7 @@ def _saetze_neues_layout(part: str, template_number: str | None) -> list[Gebuehr
                 f"{change:.2f} %.")
         aus.append(Gebuehrensatz(
             year=year, schluessel=art.schluessel, area=art.area,
-            label=art.label, amount=amount, einheit=art.einheit,
+            label=art.label, amount=amount, unit=art.unit,
             prior_year=prior_year, change_pct=change,
             template_number=template_number))
     return aus

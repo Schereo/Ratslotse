@@ -10,12 +10,12 @@
 
 import { Abweichungsgrund } from "@/lib/haushalt";
 
-export function Warum({ grund, kompakt = false }: {
-  grund: Abweichungsgrund | null;
+export function Warum({ reason, kompakt = false }: {
+  reason: Abweichungsgrund | null;
   /** Ohne eigene Überschrift, wenn der Betrag schon darüber steht. */
   kompakt?: boolean;
 }) {
-  if (!grund) return null;
+  if (!reason) return null;
   return (
     <details className="group ml-0.5 border-l-2 border-border pl-2.5">
       <summary className="cursor-pointer list-none text-[11.5px] font-semibold text-primary marker:content-none">
@@ -25,10 +25,10 @@ export function Warum({ grund, kompakt = false }: {
         <span className="hidden group-open:inline">Weniger</span>
       </summary>
       <p className="mt-1.5 max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
-        {grund.text}
+        {reason.text}
       </p>
       <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.09em] text-muted-foreground">
-        Jahresabschluss {grund.year}, Abschnitt 6.3.1 — Wortlaut der Verwaltung
+        Jahresabschluss {reason.year}, Abschnitt 6.3.1 — Wortlaut der Verwaltung
       </p>
     </details>
   );

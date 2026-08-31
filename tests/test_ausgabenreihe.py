@@ -206,8 +206,8 @@ def test_eine_zeile_im_falschen_block_wird_nicht_umsortiert():
               "2011;162173;371743;2292\n")
     result = ar.lies(falsch, "", None, None)
     assert result["zeilen"] == []
-    grund = result["verworfen"][0]["grund"]
-    assert "kameral" in grund and "doppik" in grund
+    reason = result["verworfen"][0]["reason"]
+    assert "kameral" in reason and "doppik" in reason
 
 
 def test_kein_lesepfad_rechnet_ueber_die_naht(gelesen):
@@ -270,8 +270,8 @@ def test_ein_jahrgang_gegen_seinen_abschluss_faellt_wenn_er_zu_weit_liegt():
     daneben = {**ABSCHLUESSE, 2024: 700_000_000.0}
     result = ar.lies(CSV_KAMERAL, CSV_DOPPIK, PDF, daneben)
     assert 2024 not in [z["year"] for z in result["zeilen"]]
-    grund = next(v for v in result["verworfen"] if v["year"] == 2024)["grund"]
-    assert "Ergebnisrechnung" in grund and "Stiftungen" in grund
+    reason = next(v for v in result["verworfen"] if v["year"] == 2024)["reason"]
+    assert "Ergebnisrechnung" in reason and "Stiftungen" in reason
 
 
 def test_jahre_ohne_abschluss_tragen_die_probe_nicht(gelesen):
@@ -348,8 +348,8 @@ def test_zwei_stimmige_quellen_mit_zwei_betraegen_entscheiden_nichts():
     pdf = PDF.replace("2010 161.334 358.800 2.224", "2010 161.334 400.000 2.479")
     result = ar.lies(CSV_KAMERAL, CSV_DOPPIK, pdf, None)
     assert 2010 not in [z["year"] for z in result["zeilen"]]
-    grund = next(v for v in result["verworfen"] if v["year"] == 2010)["grund"]
-    assert "verschiedene Beträge" in grund
+    reason = next(v for v in result["verworfen"] if v["year"] == 2010)["reason"]
+    assert "verschiedene Beträge" in reason
 
 
 # --- Der Weg in den Bestand -------------------------------------------------

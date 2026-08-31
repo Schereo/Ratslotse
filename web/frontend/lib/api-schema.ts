@@ -5031,10 +5031,10 @@ export interface components {
             answer_excerpt?: string | null;
             /** Frage */
             frage: string;
-            /** Grund */
-            grund?: string | null;
             /** Rating */
             rating: string;
+            /** Reason */
+            reason?: string | null;
         };
         /** QaShareAnlage */
         QaShareAnlage: {
@@ -8825,7 +8825,7 @@ export interface operations {
     person_wortbeitraege_api_council_person__slug__wortbeitraege_get: {
         parameters: {
             query?: {
-                gremium?: string | null;
+                committee?: string | null;
                 offset?: number;
                 limit?: number;
             };
@@ -10741,4 +10741,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 384929e3937301b6cad2731ce2824a753ac10c47c91e9d0e899c17159da4d1f0
+// vertrag-sha256: c5b546c0681cf77f978ef66c4bff3ce3a2c8ebee570c08521679978682116e4c

@@ -371,7 +371,7 @@ public struct CouncilConsultationStop: Codable, Sendable, Hashable, Identifiable
 
     enum CodingKeys: String, CodingKey {
         case date = "datum"
-        case committee = "gremium"
+        case committee = "committee"
         case itemNumber = "top"
         case result = "result"
         case sessionID = "ksinr"

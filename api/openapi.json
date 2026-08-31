@@ -3474,18 +3474,18 @@
             "title": "Frage",
             "type": "string"
           },
-          "grund": {
-            "maxLength": 500,
-            "title": "Grund",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "rating": {
             "pattern": "^(up|down)$",
             "title": "Rating",
             "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -9990,10 +9990,10 @@
           },
           {
             "in": "query",
-            "name": "gremium",
+            "name": "committee",
             "required": false,
             "schema": {
-              "title": "Gremium",
+              "title": "Committee",
               "type": [
                 "string",
                 "null"

@@ -305,10 +305,10 @@ def spaltenproben(text: str, enterprise: str) -> list[Spaltenprobe]:
     # Zustand, eine stillschweigend verschobene Zahl nicht — wer den ersten
     # solchen Jahrgang findet, trägt hier die Umrechnung ein und prüft sie an
     # ihm.
-    einheit = einheit_an_der_kopfzeile(zeilen, kopfzeile_index(zeilen))
-    if einheit:
+    unit = einheit_an_der_kopfzeile(zeilen, kopfzeile_index(zeilen))
+    if unit:
         raise WirtschaftsplanFehler(
-            f"Die Tabelle ist in „{einheit}“ ausgewiesen, nicht in vollen Euro. "
+            f"Die Tabelle ist in „{unit}“ ausgewiesen, nicht in vollen Euro. "
             "Die Spaltenprobe würde das nicht bemerken (sie ist skaleninvariant), "
             "deshalb wird dieser Jahrgang nicht gelesen.")
 

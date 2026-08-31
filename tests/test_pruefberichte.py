@@ -164,7 +164,7 @@ def test_marke_ohne_legendeneintrag_wird_verworfen():
     result = pruefberichte.parse_feststellungen(manipuliert)
     assert [f["mark"] for f in result["feststellungen"]] == ["H"]
     assert result["verworfen"] == [
-        {"mark": "K", "grund": "nicht in der Legende erklärt"}]
+        {"mark": "K", "reason": "nicht in der Legende erklärt"}]
 
 
 def test_marke_ohne_textziffer_wird_verworfen():

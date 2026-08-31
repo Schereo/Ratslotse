@@ -12,7 +12,7 @@ Auszahlungszeilen müssen die Summe ergeben, die sie darunter als
 
 WAS HIER EINGELESEN WIRD, IST NICHT BESCHLOSSEN. Alle Satzungen im
 Ratsinformationssystem sind Verwaltungsentwürfe — die beschlossene Fassung
-steht im Amtsblatt. Jede Zeile trägt deshalb `fassung='entwurf'`, und der Lauf
+steht im Amtsblatt. Jede Zeile trägt deshalb `version='entwurf'`, und der Lauf
 sagt es bei jedem Jahrgang noch einmal dazu.
 """
 from __future__ import annotations
@@ -109,7 +109,7 @@ def main() -> dict:
                 kr = ("nicht veranschlagt" if satzung.investment_loans == 0
                       else (f"{(satzung.investment_loans or 0) / 1e6:,.1f} Mio. €"
                             if satzung.investment_loans else "—"))
-                print(f"  {satzung.year}  [{satzung.fassung}]  "
+                print(f"  {satzung.year}  [{satzung.version}]  "
                       f"Dispo {lk:>14}  Investitionskredite: {kr}", flush=True)
 
         if ohne_text:

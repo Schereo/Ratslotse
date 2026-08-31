@@ -62,13 +62,13 @@ function entzerre(ys: number[], abstand: number, von: number, bis: number): numb
 }
 
 export function SlopePaar({
-  paare, bruchLabel, einheit, vonLabel, bisLabel, nachkomma = 0, beleg,
+  paare, bruchLabel, unit, vonLabel, bisLabel, nachkomma = 0, beleg,
 }: {
   paare: SlopePaarZeile[];
   /** Was die beiden Spalten trennt — Pflicht, s. Kopfkommentar. */
   bruchLabel: string;
   /** Steht hinter jedem Wert: „%", „€". */
-  einheit: string;
+  unit: string;
   /** Spaltenköpfe: „2024" und „2025 · Reform". */
   vonLabel: string;
   bisLabel: string;
@@ -80,7 +80,7 @@ export function SlopePaar({
   const beschreibungId = useId();
   if (!paare.length) return null;
 
-  const wert = (v: number) => `${deZahl(v, nachkomma)} ${einheit}`;
+  const wert = (v: number) => `${deZahl(v, nachkomma)} ${unit}`;
   const unveraendert = (p: SlopePaarZeile) => p.vorher === p.nachher;
 
   // Die Delta-Liste ist zugleich die Fassung für die Vorlesehilfe — sie sagt
@@ -211,7 +211,7 @@ export function SlopePaar({
       <div id={beschreibungId}>{deltaListe(false)}</div>
 
       <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-muted-foreground">
-        <span>Werte in {einheit === "%" ? "Prozent v. H." : einheit}.</span>
+        <span>Werte in {unit === "%" ? "Prozent v. H." : unit}.</span>
         {beleg}
       </p>
     </div>

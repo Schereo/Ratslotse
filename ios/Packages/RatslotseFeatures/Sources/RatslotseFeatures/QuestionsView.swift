@@ -869,12 +869,12 @@ struct QuestionsView: View {
             }],
             "planungen": [{
               "vorlage_titel": "Umsetzung der Busspuren",
-              "gremium": "Verkehrsausschuss",
+              "committee": "Verkehrsausschuss",
               "datum": "2026-11-12"
             }],
             "grafik": {
               "titel": "Vorgesehene Investitionen",
-              "einheit": "Mio. €",
+              "unit": "Mio. €",
               "note": "Planwerte aus der Beschlussvorlage.",
               "series": [
                 {"year": 2026, "wert": 2.1},
@@ -2451,7 +2451,7 @@ private struct QuestionAnswerActions: View {
             let frage: String
             let answer_excerpt: String?
             let rating: String
-            let grund: String?
+            let reason: String?
         }
         Task {
             try? await model.api.sendVoid(
@@ -2460,7 +2460,7 @@ private struct QuestionAnswerActions: View {
                     frage: String(turn.question.prefix(300)),
                     answer_excerpt: String(turn.answer.prefix(500)),
                     rating: value,
-                    grund: nil
+                    reason: nil
                 )
             )
         }
@@ -2788,7 +2788,7 @@ struct CouncilEvidenceBlocks: View {
                     ForEach(Array(planning.enumerated()), id: \.offset) { _, item in
                         EvidenceTextRow(
                             title: item["vorlage_titel"]?.string ?? item["template_number"]?.string ?? "Vorlage",
-                            detail: item["gremium"]?.string,
+                            detail: item["committee"]?.string,
                             meta: item["datum"]?.string,
                             symbol: "arrow.triangle.branch"
                         )
@@ -2890,7 +2890,7 @@ private struct EvidenceChartData {
         points = parsed
         guard points.count >= 2 else { return nil }
         title = root["titel"]?.string ?? "Entwicklung"
-        unit = root["einheit"]?.string ?? "Wert"
+        unit = root["unit"]?.string ?? "Wert"
         note = root["note"]?.string
         source = root["quelle"]?.string
         decimals = max(0, min(3, root["nachkomma"]?.int ?? 0))

@@ -166,7 +166,7 @@ def main() -> int:
                 for iid, score, warum in rate_agenda_batch(part):
                     if iid in nach_id:
                         nach_id[iid]["tragweite"] = score
-                        nach_id[iid]["grund"] = warum
+                        nach_id[iid]["reason"] = warum
 
         alt_top = max(punkte, key=lambda p: p["alt"])
         neu_top = max(punkte, key=lambda p: p["wichtig"])
@@ -178,8 +178,8 @@ def main() -> int:
         print(f"  regeln    {neu_top['wichtig']:>5}  {kurz(neu_top)}")
         if llm_top:
             print(f"  tragweite {llm_top['tragweite']:>5}  {kurz(llm_top)}")
-            if llm_top.get("grund"):
-                print(f"            ↳ {llm_top['grund'][:88]}")
+            if llm_top.get("reason"):
+                print(f"            ↳ {llm_top['reason'][:88]}")
             if kurz(llm_top) != kurz(alt_top):
                 unterschiede += 1
 

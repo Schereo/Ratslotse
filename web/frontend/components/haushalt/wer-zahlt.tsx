@@ -91,8 +91,8 @@ function deZahl(v: number): string {
  *  `betont` markiert die eine Zahl, um die es geht (wie viele zahlen). Die
  *  beiden anderen sind ihr Bezug; alle drei gleich laut zu setzen hieße, die
  *  Frage nicht zu beantworten. */
-function Kennzahl({ wert, einheit, label, betont = false }: {
-  wert: string; einheit?: string; label: string; betont?: boolean;
+function Kennzahl({ wert, unit, label, betont = false }: {
+  wert: string; unit?: string; label: string; betont?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-0.5">
@@ -100,9 +100,9 @@ function Kennzahl({ wert, einheit, label, betont = false }: {
         ? "font-display text-[24px] font-bold leading-none tabular-nums text-primary"
         : "font-display text-[24px] font-bold leading-none tabular-nums text-foreground"}>
         {wert}
-        {einheit && (
+        {unit && (
           <span className="ml-0.5 text-[14px] font-semibold text-muted-foreground">
-            {einheit}
+            {unit}
           </span>
         )}
       </span>
@@ -269,7 +269,7 @@ export function WerZahlt({ taxes, art, vergleichArt, vergleichTitel, tax_rates,
               label={`davon zahlen überhaupt Gewerbesteuer — ${deProzent(zahlenAnteil, 0)}\u00a0%`} />
             {zerlegtAnteil != null && statistik.apportionments_positive != null && (
               <Kennzahl
-                wert={deProzent(zerlegtAnteil)} einheit="%"
+                wert={deProzent(zerlegtAnteil)} unit="%"
                 label={`des Steuermessbetrags kommen von ${deZahl(statistik.apportionments_positive)} `
                        + "Betriebsstätten größerer Firmen"} />
             )}

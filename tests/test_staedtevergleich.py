@@ -465,7 +465,7 @@ def test_stadt_mit_kaputter_hebesatzprobe_wird_verworfen(tmp_path):
     zeilen, verworfen = sv.zeilen_realsteuern(sv.lies_realsteuervergleich(pfad))
 
     assert [v["city"] for v in verworfen] == ["Oldenburg"]
-    assert verworfen[0]["grund"] == "Hebesatzprobe"
+    assert verworfen[0]["reason"] == "Hebesatzprobe"
     # Die anderen Städte bleiben — ein Fehler in einer Zeile darf nicht den
     # ganzen Jahrgang mitnehmen.
     hebesatz_staedte = {z["city"] for z in zeilen if z["indicator"].startswith("hebesatz_")}

@@ -329,7 +329,7 @@ def lies(text: str) -> dict:
     ``zeilen``
         Die übernommenen Jahrgänge, aufsteigend. Jede trägt ihr ``accounting_system``.
     ``verworfen``
-        Jahrgänge, die die Probe nicht bestanden haben, mit ``grund`` und
+        Jahrgänge, die die Probe nicht bestanden haben, mit ``reason`` und
         ``difference``. Ihre sieben Zahlen stehen nirgends in der Datenbank —
         anders als bei den Schulden gibt es hier keine zweite Probe, die
         wenigstens die Summe trüge (s. Modulkopf).
@@ -368,7 +368,7 @@ def lies(text: str) -> dict:
                     # Keine Differenz: Ohne zerlegte Felder gibt es keine
                     # Summe, die man gegen die ausgewiesene halten könnte.
                     "difference": None,
-                    "grund": f"Zeile nicht in {len(SPALTEN[accounting_system])} Felder "
+                    "reason": f"Zeile nicht in {len(SPALTEN[accounting_system])} Felder "
                              f"zerlegbar: {zeile['unlesbar']!r}"})
                 continue
             ok, deviation = zeilensumme(zeile)
@@ -379,7 +379,7 @@ def lies(text: str) -> dict:
                     "year": zeile["year"], "accounting_system": accounting_system,
                     # Die Zahl neben dem Satz — s. Rückgabe-Beschreibung.
                     "difference": deviation,
-                    "grund": f"Zeilensumme um "
+                    "reason": f"Zeilensumme um "
                              f"{de_zahl(deviation, vorzeichen=True)} € gerissen; "
                              f"eine zweite Probe trägt diese Tabelle nicht"})
                 continue

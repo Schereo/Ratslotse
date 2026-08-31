@@ -276,7 +276,7 @@ def test_einheit_eines_teilhaushalts_plans_ist_der_teilhaushalt():
     row = {"label": "2028 010 Vw THH04 Haushalt 2028 Verwaltungsentwurf",
            "kopf": "Erträge und Aufwendungen Ergebnis 2026\nAnsatz 2027\nAnsatz 2028\n"}
     assert q.einheiten_von(row) == {(2027, 4)}
-    assert q.einheit == "Teilhaushalte"
+    assert q.unit == "Teilhaushalte"
 
 
 # --- Die gemeinsame Ursache: Bestand je Einheit, nicht je Jahr ---------------
@@ -706,7 +706,7 @@ def test_teilweise_gelesener_jahrgang_gibt_sich_zu_erkennen(thh_bestand):
         assert sub_budget["einheiten"] == {"2026": 4, "2027": 2}
         assert sub_budget["einheiten_voll"] == 4
         assert sub_budget["teilweise"] == [2027], "2027 hat nur zwei von vier Teilhaushalten"
-        assert sub_budget["einheit"] == "Teilhaushalte"
+        assert sub_budget["unit"] == "Teilhaushalte"
     finally:
         thh_bestand.close()
 
@@ -903,7 +903,7 @@ def staedtevergleich(store: CouncilStore, series: str, years: list[int]) -> None
     for year in years:
         store.save_staedtevergleich(series, [
             {"year": year, "schluessel": "403000", "city": "Oldenburg (Oldb), Stadt",
-             "indicator": "steuerkraftmesszahl", "wert": 1.0, "einheit": "teur"},
+             "indicator": "steuerkraftmesszahl", "wert": 1.0, "unit": "teur"},
         ], h.Herkunft(art="lsn", probe=h.UNGEPRUEFT,
                       url="https://www.statistik.niedersachsen.de/download/227086"))
 

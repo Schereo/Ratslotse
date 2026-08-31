@@ -122,7 +122,7 @@ function Tarifliste({ tarife }: { tarife: GebuehrensatzZeile[] }) {
                 <Euro wert={t.amount} stellen={2} />
               </span>
               <span className="block text-[10.5px] leading-snug text-muted-foreground">
-                {t.einheit}
+                {t.unit}
                 {t.change_pct != null && t.change_pct !== 0 && (
                   <> · {t.change_pct > 0 ? "+" : ""}
                     {deZahl(t.change_pct, 2)}&#8239;%</>
@@ -235,7 +235,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
         <div className="mt-3">
           <Zeitreihe
             series={series}
-            einheit="€"
+            unit="€"
             nachkomma={2}
             titel="Gebühr im Zeitverlauf"
             // Ohne Jahresspanne: Die Zeitreihe hängt sie selbst an, und

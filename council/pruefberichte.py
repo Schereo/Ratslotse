@@ -362,23 +362,23 @@ def parse_feststellungen(text: str) -> dict:
     verworfen: list[dict] = []
     for pos, mark in marken:
         if mark not in legende:
-            verworfen.append({"mark": mark, "grund": "nicht in der Legende erklärt"})
+            verworfen.append({"mark": mark, "reason": "nicht in der Legende erklärt"})
             continue
         kapitel_hier = [k for k in kapitel if k[0] < pos]
         if not kapitel_hier:
-            verworfen.append({"mark": mark, "grund": "keine Textziffer davor"})
+            verworfen.append({"mark": mark, "reason": "keine Textziffer davor"})
             continue
         _, text_number, section = kapitel_hier[-1]
         ende = next((g for g in grenzen if g > pos), len(text))
         absaetze = _absaetze(text[pos:ende])
         if not absaetze:
             verworfen.append({"mark": mark, "text_number": text_number,
-                              "grund": "kein Textblock hinter der Marke"})
+                              "reason": "kein Textblock hinter der Marke"})
             continue
         inhalt = re.sub(r"^(?:WB|B|H|K)\s+", "", absaetze[0])
         if len(inhalt) < MIN_LAENGE:
             verworfen.append({"mark": mark, "text_number": text_number,
-                              "grund": f"Textblock zu kurz ({len(inhalt)} Zeichen)"})
+                              "reason": f"Textblock zu kurz ({len(inhalt)} Zeichen)"})
             continue
         folge = absaetze[1] if len(absaetze) > 1 else None
         if folge and len(folge) > FOLGEABSATZ_MAX:

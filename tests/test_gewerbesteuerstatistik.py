@@ -330,7 +330,7 @@ def test_vollstaendig_gesperrte_stadt_ist_kein_probenfehler(tmp_path):
     pfad = _mappe(tmp_path, "confidential.xlsx", blatt, blatt62, _TITEL_2021,
                   _IMPRESSUM_2021)
     zeilen, verworfen = gs.zeilen(gs.lies_bericht(pfad))
-    assert [v["grund"] for v in verworfen] == ["Geheimhaltung"]
+    assert [v["reason"] for v in verworfen] == ["Geheimhaltung"]
     assert "102000" not in {z["schluessel"] for z in zeilen}
 
 
@@ -348,7 +348,7 @@ def test_summenprobe_faengt_eine_verrutschte_spalte(tmp_path):
                   _IMPRESSUM_2021)
     zeilen, verworfen = gs.zeilen(gs.lies_bericht(pfad))
     assert gs.OLDENBURG not in {z["schluessel"] for z in zeilen}
-    assert verworfen[0]["grund"] == "Summenprobe"
+    assert verworfen[0]["reason"] == "Summenprobe"
     assert "gesamt_amount" in verworfen[0]["result"]
 
 
@@ -376,7 +376,7 @@ def test_blattprobe_reisst_bei_widerspruch(tmp_path):
                   _TITEL_2021, _IMPRESSUM_2021)
     probe = gs.probe_blaetter(gs.lies_bericht(pfad))
     assert not probe["ok"]
-    assert "gesamt_positiv" in probe["abweichungen"][0]["grund"]
+    assert "gesamt_positiv" in probe["abweichungen"][0]["reason"]
 
 
 def test_hebesatz_kommt_aus_der_treppe_nicht_aus_dem_jahr():

@@ -279,7 +279,7 @@ def lies(text: str, population: dict[int, int] | None = None) -> dict:
     for zeile in roh:
         if zeile.get("unlesbar"):
             verworfen.append({"year": zeile["year"],
-                              "grund": f"Zeile nicht in {len(SPALTEN)} Felder "
+                              "reason": f"Zeile nicht in {len(SPALTEN)} Felder "
                                        f"zerlegbar: {zeile['unlesbar']!r}"})
             continue
         s_ok, deviation = summenprobe(zeile)
@@ -295,15 +295,15 @@ def lies(text: str, population: dict[int, int] | None = None) -> dict:
         bestanden = [n for n, ok in (("schulden_summenzeile", s_ok),
                                      ("schulden_prokopf", k_ok)) if ok]
         if not bestanden:
-            grund = (f"Summenprobe um {deviation:+,.0f} € gerissen"
+            reason = (f"Summenprobe um {deviation:+,.0f} € gerissen"
                      if not s_ok else "Summenprobe gerissen")
             if k_ok is False:
-                grund += (f"; Pro-Kopf-Probe ebenfalls "
+                reason += (f"; Pro-Kopf-Probe ebenfalls "
                           f"({gerechnet:,.2f} € gerechnet gegen "
                           f"{zeile['per_capita']:,.0f} € ausgewiesen)")
             else:
-                grund += "; keine Einwohnerzahl für die Gegenprobe"
-            verworfen.append({"year": zeile["year"], "grund": grund})
+                reason += "; keine Einwohnerzahl für die Gegenprobe"
+            verworfen.append({"year": zeile["year"], "reason": reason})
             continue
 
         uebernommen = dict(zeile)

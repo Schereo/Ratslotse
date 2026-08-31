@@ -64,14 +64,14 @@ function OfficesGantt({ current }: { current: Membership[] }) {
             // rechts daneben. Zweispaltig fraß die Namensspalte auf dem Handy
             // die halbe Breite — Ämter wurden abgeschnitten („Wirtschaft & Dig…")
             // und junge Ämter schrumpften zum Punkt. Ab sm bleibt der Gantt.
-            <div key={`${m.gremium}-${i}`}
+            <div key={`${m.committee}-${i}`}
               className="flex flex-wrap items-center gap-x-1.5 gap-y-1 sm:grid sm:grid-cols-[14rem_1fr] sm:gap-3">
               <span className="flex w-full min-w-0 items-center gap-1.5 sm:w-auto">
                 {chair
                   ? <Gavel className="h-3.5 w-3.5 shrink-0 text-signal" />
                   : <span className="w-3.5 shrink-0" aria-hidden />}
-                <span className={cnEllipsis(chair)} title={m.gremium}>
-                  {shortCommittee(m.gremium)}
+                <span className={cnEllipsis(chair)} title={m.committee}>
+                  {shortCommittee(m.committee)}
                   {/* nowrap nur schmal, wo der Name umbrechen darf: sonst landet
                       der Trenner allein am Zeilenende und „Stellv." rutscht in
                       die nächste. Ab sm wird ohnehin gekürzt statt umgebrochen. */}
@@ -251,9 +251,9 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
             <div className="border-t border-border px-4 py-3">
               <div className="space-y-1.5">
                 {past.map((m, i) => (
-                  <div key={`${m.gremium}-${i}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                    <span className="min-w-0 text-[13px] text-foreground" title={m.gremium}>
-                      {shortCommittee(m.gremium)}
+                  <div key={`${m.committee}-${i}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                    <span className="min-w-0 text-[13px] text-foreground" title={m.committee}>
+                      {shortCommittee(m.committee)}
                       {isChair(m.role) && <span className="ml-1.5 text-[11px] font-medium text-signal">{isDeputy(m.role) ? "stellv. Vorsitz" : "Vorsitz"}</span>}
                     </span>
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
@@ -451,7 +451,7 @@ function Wortbeitraege({ slug, erste, gesamt, committees }: {
   committees: { committee: string; n: number }[];
 }) {
   const [items, setItems] = useState<WB[]>(erste);
-  const [gremium, setGremium] = useState<string>("");
+  const [committee, setGremium] = useState<string>("");
   const [total, setTotal] = useState(gesamt);
   const [laedt, setLaedt] = useState(false);
   const [fehler, setFehler] = useState(false);
@@ -461,7 +461,7 @@ function Wortbeitraege({ slug, erste, gesamt, committees }: {
     setFehler(false);
     try {
       const p = new URLSearchParams({ offset: String(ab), limit: "20" });
-      if (naechstesGremium) p.set("gremium", naechstesGremium);
+      if (naechstesGremium) p.set("committee", naechstesGremium);
       const r = await fetch(apiUrl(`/council/person/${encodeURIComponent(slug)}/wortbeitraege?${p}`),
         { credentials: "include", headers: authHeaders() });
       if (!r.ok) throw new Error();
@@ -487,8 +487,8 @@ function Wortbeitraege({ slug, erste, gesamt, committees }: {
       aside={`${items.length} von ${total} · Paraphrasen`}>
       {committees.length > 1 && (
         <div className="mb-2.5">
-          <label className="sr-only" htmlFor="wb-gremium">Nach Gremium filtern</label>
-          <select id="wb-gremium" value={gremium}
+          <label className="sr-only" htmlFor="wb-committee">Nach Gremium filtern</label>
+          <select id="wb-committee" value={committee}
             onChange={(e) => filtern(e.target.value)}
             className="h-8 w-full max-w-[22rem] rounded-[10px] border border-border bg-card px-2 text-[13px] outline-none focus:border-primary">
             <option value="">Alle Gremien ({gesamt})</option>
@@ -512,7 +512,7 @@ function Wortbeitraege({ slug, erste, gesamt, committees }: {
       )}
       {items.length < total && (
         <button type="button" disabled={laedt}
-          onClick={() => void laden(gremium, items.length)}
+          onClick={() => void laden(committee, items.length)}
           className="mt-2 w-full rounded-[11px] border border-border bg-card py-2 text-[13px] font-medium transition-colors hover:bg-muted disabled:opacity-60">
           {laedt ? "Wird geladen …" : `Mehr anzeigen (noch ${total - items.length})`}
         </button>
@@ -520,7 +520,7 @@ function Wortbeitraege({ slug, erste, gesamt, committees }: {
       {fehler && (
         <p className="mt-2 text-[12px] text-signal">
           Konnte nicht geladen werden.{" "}
-          <button type="button" onClick={() => void laden(gremium, items.length)}
+          <button type="button" onClick={() => void laden(committee, items.length)}
             className="font-medium underline">Nochmal versuchen</button>
         </p>
       )}

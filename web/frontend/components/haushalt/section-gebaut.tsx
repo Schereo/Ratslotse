@@ -172,7 +172,7 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
             segmente: [{ label: "Neu ins Vermögen", wert: v.additions / 1e6 }] },
         ]}
         basis={Math.max(v.depreciation, v.additions) / 1e6}
-        einheit="Mio. €"
+        unit="Mio. €"
         beleg={<Beleg q="jahresabschluss" />}
       />
 
@@ -206,7 +206,7 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
       {strassenReihe.length > 0 && strassenReihe.length < years.length ? (
         <LueckenFeld
           label={`vor ${strassenReihe[0].year}`}
-          grund="Die Jahresabschlüsse gliedern das Infrastrukturvermögen erst ab diesem Jahrgang weiter auf. Die Gesamtsumme steht für alle Jahre da."
+          reason="Die Jahresabschlüsse gliedern das Infrastrukturvermögen erst ab diesem Jahrgang weiter auf. Die Gesamtsumme steht für alle Jahre da."
         />
       ) : null}
 
@@ -430,7 +430,7 @@ export function GebautAbschnitt({ onBestand }: {
           <NahtSaeulen
             years={nahtJahre}
             naht={naht}
-            einheit="Mio. €"
+            unit="Mio. €"
             titel="Auszahlungen für Investitionen"
             beleg={<Beleg q="gebaut" />}
           />

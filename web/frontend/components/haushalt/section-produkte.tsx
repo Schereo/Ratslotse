@@ -190,7 +190,7 @@ function Treffer({ p, max, aktiv, alleJahre, eingebettet = false }: {
             {n < 0 && "+"}{b.wert}
           </span>
           <span className="mt-0.5 block font-mono text-[9.5px] uppercase text-muted-foreground">
-            {b.einheit}
+            {b.unit}
           </span>
         </span>
       </div>
@@ -453,19 +453,19 @@ function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahr
         </p>
         <p className="mt-1.5 font-display text-[30px] font-bold leading-none tracking-tight tabular-nums">
           {n < 0 && "+"}{gross.wert}
-          <span className="text-base font-semibold text-muted-foreground">&#8239;{gross.einheit}</span>
+          <span className="text-base font-semibold text-muted-foreground">&#8239;{gross.unit}</span>
           <Beleg q="teilhaushalt" />
         </p>
         <p className="mt-2 max-w-[62ch] text-[12.5px] leading-relaxed text-foreground/85">
           {n > 0 ? (
-            <>Für {year} sind <strong>{aus.wert}&#8239;{aus.einheit}</strong> Aufwendungen
-              geplant. Dem stehen <strong>{ein.wert}&#8239;{ein.einheit}</strong> eigene
+            <>Für {year} sind <strong>{aus.wert}&#8239;{aus.unit}</strong> Aufwendungen
+              geplant. Dem stehen <strong>{ein.wert}&#8239;{ein.unit}</strong> eigene
               Erträge gegenüber, etwa Gebühren oder Erstattungen. Den verbleibenden
               Zuschussbedarf finanziert der allgemeine Haushalt.</>
           ) : (
             <>Bei diesem Produkt übersteigen die geplanten eigenen Erträge von{" "}
-              <strong>{ein.wert}&#8239;{ein.einheit}</strong> die geplanten Aufwendungen
-              von {aus.wert}&#8239;{aus.einheit}.</>
+              <strong>{ein.wert}&#8239;{ein.unit}</strong> die geplanten Aufwendungen
+              von {aus.wert}&#8239;{aus.unit}.</>
           )}
         </p>
         {/* Zwei Ehrlichkeits-Zeilen, auf jedem Gerät (H4-04): Ist-Zahlen gibt

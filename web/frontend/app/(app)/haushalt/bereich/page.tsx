@@ -126,13 +126,13 @@ function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
                 wechselt — ein gemeinsamer Kopf wäre für die kleinen Posten
                 falsch. */}
             <span className="w-[86px] flex-none whitespace-nowrap text-right font-mono text-[11.5px] tabular-nums">
-              {amount(a.wert).wert}&#8239;<span className="text-muted-foreground">{amount(a.wert).einheit}</span>
+              {amount(a.wert).wert}&#8239;<span className="text-muted-foreground">{amount(a.wert).unit}</span>
             </span>
           </div>
         ))}
       </div>
       <p className="mt-3 border-t border-border/60 pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-        Zusammen {amount(gesamt).wert}&nbsp;{amount(gesamt).einheit} — aus dem Jahresabschluss
+        Zusammen {amount(gesamt).wert}&nbsp;{amount(gesamt).unit} — aus dem Jahresabschluss
         {" "}{year}<Beleg q="ergebnisrechnung_thh" />. Der Plan für {planJahr} weist
         {" "}{deMio(planEin)}&nbsp;Mio.&nbsp;€ aus; die Aufteilung dazu gibt es erst,
         wenn das Jahr abgerechnet ist.
@@ -374,7 +374,7 @@ function BereichInner() {
         <Gegenbalken
           zeilen={einVoran ? [balkenEin, balkenAus] : [balkenAus, balkenEin]}
           basis={Math.max(rohAus, rohEin)}
-          einheit="Mio. €"
+          unit="Mio. €"
           restLabel={einVoran ? "Überschuss des Bereichs" : "Zuschussbedarf"}
         />
         {einVoran ? (
@@ -500,7 +500,7 @@ function BereichInner() {
                     className="flex items-baseline gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent">
                     <span className="min-w-0 flex-1 truncate text-[12.5px]">{p.product_name}</span>
                     <span className="flex-none whitespace-nowrap font-mono text-[11.5px] tabular-nums">
-                      {b.wert}&#8239;<span className="text-muted-foreground">{b.einheit}</span>
+                      {b.wert}&#8239;<span className="text-muted-foreground">{b.unit}</span>
                     </span>
                   </Link>
                 );
@@ -697,7 +697,7 @@ function BereichInner() {
                             {(g.delta_meur ?? 0) > 0 ? "+" : ""}{deMio(g.delta_meur)}&#8239;Mio.&nbsp;€
                           </span>
                         </span>
-                        <Warum grund={g} kompakt />
+                        <Warum reason={g} kompakt />
                       </div>
                     ))}
                     <p className="text-[11px] leading-relaxed text-muted-foreground">

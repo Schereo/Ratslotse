@@ -90,7 +90,7 @@ function Zeile({ zeile, skala, bereichName }: {
         <span className="flex-none font-display text-[14px] font-bold tabular-nums">
           {b.wert}
           <span className="ml-1 text-[10px] font-medium text-muted-foreground">
-            {b.einheit}
+            {b.unit}
           </span>
         </span>
       </div>
@@ -351,7 +351,7 @@ export function Vorhaben({
         <p className="mt-3.5 text-[12px] text-muted-foreground">
           {liste.length} Vorhaben · das Programm weist für „{nameVon(aktiv)}“{" "}
           <span className="font-semibold tabular-nums text-foreground">
-            {amount(summe.grand_total).wert} {amount(summe.grand_total).einheit}
+            {amount(summe.grand_total).wert} {amount(summe.grand_total).unit}
           </span>{" "}
           aus.<Beleg q="investitionsprogramm" />
         </p>

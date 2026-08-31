@@ -163,7 +163,7 @@ def test_komponentenprobe_faellt_auf_wenn_ein_teil_fehlt(kfa2026):
     probe = sk.probe_komponenten(budget_year)
     assert not probe["ok"]
     assert probe["abweichungen"][0]["schluessel"] == "403000"
-    assert "69210 statt 79785" in probe["abweichungen"][0]["grund"]
+    assert "69210 statt 79785" in probe["abweichungen"][0]["reason"]
 
 
 def test_rundung_auf_volle_tausend_reisst_die_probe_nicht(kfa2026):
@@ -195,7 +195,7 @@ def test_jahrbuchabgleich_reisst_wenn_eine_komponente_fehlt(kfa2026):
 
 def test_zeilen_tragen_tausend_euro_und_keine_pro_kopf_spalte(kfa2026):
     zeilen = sk.zeilen_finanzausgleich(sk.lies_zuweisungen(kfa2026)[0])
-    assert {z["einheit"] for z in zeilen} == {"teur"}
+    assert {z["unit"] for z in zeilen} == {"teur"}
     assert not [z for z in zeilen if z["indicator"] == "nettobetrag_je_ew"]
     ol = {z["indicator"]: z["wert"] for z in zeilen if z["schluessel"] == "403000"}
     assert ol == {"zuweisungen_gemeindeaufgaben": 51653.0,

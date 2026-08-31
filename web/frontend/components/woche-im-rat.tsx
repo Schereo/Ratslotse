@@ -102,7 +102,7 @@ function zeitraum(von: string, bis: string, kurz: boolean) {
 
 /** Gremiumsname je Stufe (Matrix 14d): volle Bezeichnung → ohne „Ausschuss
  *  für" → Kurzform. `shortCommittee` macht genau den mittleren Schritt. */
-function gremium(name: string, dichte: Dichte) {
+function committee(name: string, dichte: Dichte) {
   return dichte === "desktop" ? name : shortCommittee(name);
 }
 
@@ -385,7 +385,7 @@ function RailSitzung({ sitzung, punkte, rest, badge, treffer, mehrere, dichte }:
     <div>
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
         <span className={cn("font-bold text-foreground", desktop ? "text-[13.5px]" : "text-[13px]")}>
-          {gremium(sitzung.committee, dichte)}
+          {committee(sitzung.committee, dichte)}
         </span>
         <span className={cn("text-muted-foreground", desktop ? "text-[11.5px]" : "text-[11px]")}>
           {/* Matrix 14d: Desktop zeigt Uhrzeit UND Ort, iPad nur die Uhrzeit. */}
@@ -535,7 +535,7 @@ function RuhigeZeile({ sitzung, dichte }: { sitzung: WochenSitzung; dichte: Dich
         "font-semibold text-foreground/90",
         desktop ? "text-[13.5px]" : "text-[13px]",
       )}>
-        {gremium(sitzung.committee, dichte)}
+        {committee(sitzung.committee, dichte)}
       </span>
       <span className={cn("text-muted-foreground", desktop ? "text-[11.5px]" : "text-[11px]")}>
         {zeit}

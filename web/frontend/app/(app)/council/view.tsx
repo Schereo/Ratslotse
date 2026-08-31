@@ -487,7 +487,7 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
 
 function DecisionsTab({ committees }: { committees: string[] }) {
   const [q, setQ] = useMerker("suche:q", "");
-  const [committee, setCommittee] = useMerker("suche:gremium", "");
+  const [committee, setCommittee] = useMerker("suche:committee", "");
   const [outcome, setOutcome] = useMerker("suche:result", "");
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
@@ -1244,7 +1244,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
   // Filter überleben den Tab-Wechsel (Tims iOS-Befund 12.08.): Wer sucht und
   // kurz woanders nachsieht, will nicht neu tippen.
   const [q, setQ] = useMerker("sitzungen:q", "");
-  const [committee, setCommittee] = useMerker("sitzungen:gremium", "");
+  const [committee, setCommittee] = useMerker("sitzungen:committee", "");
   // RL-F06: ?ksinr=… (Deep-Link von „Heute") — Sitzung aufklappen, sanft
   // hinscrollen und kurz aufblitzen lassen (wie der Fußnoten-Flash der KI).
   const deepSp = useSearchParams();

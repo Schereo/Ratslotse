@@ -655,10 +655,10 @@ def zeilen_steuerkraft(budget_year: KfaJahrgang) -> list[dict]:
         gemeinsam = {"series": "tax_capacity", "year": budget_year.year,
                      "schluessel": key, "city": name}
         aus.append({**gemeinsam, "indicator": "steuerkraftmesszahl",
-                    "wert": eintrag["tax_index_keur"], "einheit": "teur"})
+                    "wert": eintrag["tax_index_keur"], "unit": "teur"})
         if eintrag.get("population"):
             aus.append({**gemeinsam, "indicator": "population",
-                        "wert": eintrag["population"], "einheit": "anzahl"})
+                        "wert": eintrag["population"], "unit": "anzahl"})
     return aus
 
 
@@ -677,7 +677,7 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
         probe = probe_hebesatz(eintrag)
         if not probe["ok"]:
             verworfen.append({"schluessel": key, "city": KREISFREIE_STAEDTE[key],
-                              "series": "realsteuern", "grund": "Hebesatzprobe",
+                              "series": "realsteuern", "reason": "Hebesatzprobe",
                               "result": probe["result"]})
             continue
         gemeinsam = {"series": "realsteuern", "year": budget_year.year,
@@ -685,16 +685,16 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
         for suffix in _REALSTEUERN.values():
             if (wert := eintrag.get(f"rate_{suffix}")) is not None:
                 zeilen.append({**gemeinsam, "indicator": f"hebesatz_{suffix}",
-                               "wert": wert, "einheit": "percent"})
+                               "wert": wert, "unit": "percent"})
             if (wert := eintrag.get(f"ist_je_ew_{suffix}")) is not None:
                 zeilen.append({**gemeinsam, "indicator": f"ist_je_ew_{suffix}",
-                               "wert": wert, "einheit": "eur_je_ew"})
+                               "wert": wert, "unit": "eur_je_ew"})
 
     for key, eintrag in sorted(budget_year.einnahmekraft.items()):
         probe = probe_dreijahresmittel(eintrag)
         if not probe["ok"]:
             verworfen.append({"schluessel": key, "city": KREISFREIE_STAEDTE[key],
-                              "series": "realsteuern", "grund": "Dreijahresmittel",
+                              "series": "realsteuern", "reason": "Dreijahresmittel",
                               "result": probe["result"]})
             continue
         # Jeder Jahreswert trägt SEIN Jahr, nicht das Berichtsjahr der Datei.
@@ -704,5 +704,5 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
             zeilen.append({"series": "realsteuern", "year": year,
                            "schluessel": key, "city": KREISFREIE_STAEDTE[key],
                            "indicator": "steuereinnahmekraft_je_ew",
-                           "wert": werte["je_ew"], "einheit": "eur_je_ew"})
+                           "wert": werte["je_ew"], "unit": "eur_je_ew"})
     return zeilen, verworfen

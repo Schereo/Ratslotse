@@ -191,9 +191,9 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
         if maengel:
             print(f"  verworfen ({punkt.get('item_number')}): {'; '.join(maengel)}")
             continue
-        gedeckt, grund = kritiker.pruefe_llm(text, ktx)
+        gedeckt, reason = kritiker.pruefe_llm(text, ktx)
         if not gedeckt:
-            print(f"  verworfen ({punkt.get('item_number')}): nicht gedeckt — {grund}")
+            print(f"  verworfen ({punkt.get('item_number')}): nicht gedeckt — {reason}")
             continue
         return text, quelle
     return None

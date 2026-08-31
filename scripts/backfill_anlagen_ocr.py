@@ -198,11 +198,11 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
                 # Renderer da ist, richtig gelesen.
                 if lesung.gelesen == 0 or len(lesung.text) < ocr.MIN_SEITE:
                     leer += 1
-                    grund = ("keine Seite ließ sich in ein Bild verwandeln — "
+                    reason = ("keine Seite ließ sich in ein Bild verwandeln — "
                              "fehlt der Renderer? (pip install pypdfium2)"
                              if lesung.weg == "keiner" else "kein Text erkannt")
                     print(f"  [{did}] nichts gelesen ({lesung.seiten} Seiten): "
-                          f"{grund}", flush=True)
+                          f"{reason}", flush=True)
                     continue
                 # Kontonummern und Anschriften kommen GAR NICHT ERST in den
                 # Bestand (`council/kontaktdaten.entfernen`). Telefon und

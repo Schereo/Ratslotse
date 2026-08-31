@@ -74,7 +74,7 @@ def main() -> dict:
         # Kein Schlüssel → nichts verschicken UND nichts als erinnert markieren,
         # sonst verlöre man die Kandidaten stillschweigend.
         print(f"{len(pending)} offene Einrichtungen, aber kein RESEND_API_KEY — übersprungen.")
-        return {"kandidaten": len(pending), "gesendet": 0, "grund": "kein_mailversand"}
+        return {"kandidaten": len(pending), "gesendet": 0, "reason": "kein_mailversand"}
 
     sent = 0
     for u in pending:

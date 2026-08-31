@@ -254,11 +254,11 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   // ein nacktes ⓘ sagt dort nur, DASS etwas war, nicht was (Tims Befund
   // 18.08.). `sprung` hat immer eine Einzelzahl — so ist er definiert (s. o.).
   const annotationen = [
-    sprung?.grund
+    sprung?.reason
       ? {
           year: sprung.year,
           kurz: `${deMio((sprung.single_amount ?? 0) / 1e6)} Mio. €`,
-          text: `${sprung.year}: ${sprung.grund}`,
+          text: `${sprung.year}: ${sprung.reason}`,
         }
       : null,
     nachgetragen
@@ -310,7 +310,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
       <Zeitreihe
         series={verbuergt}
         zweitreihe={{ label: "eigene Geldschulden", series: eigene }}
-        einheit="Mio. €"
+        unit="Mio. €"
         titel="Verbürgt und selbst geschuldet"
         ariaTitel={`Bürgschaftsbestand und eigene Geldschulden der Stadt Oldenburg, `
           + `${erster.year} bis ${letzter.year}, in Millionen Euro`}
@@ -503,7 +503,7 @@ function RahmenBlock({ zeile, herkunft }: {
       {/* Steht VOR den Zahlen, nicht als Fußnote darunter: Wer sie erst liest
           und dann erfährt, dass sie nicht beschlossen sind, hat sie schon
           geglaubt (dieselbe Regel wie der Summen-Kasten auf /haushalt/betriebe). */}
-      {zeile.fassung !== "beschlossen" && (
+      {zeile.version !== "beschlossen" && (
         <p className="mt-3 rounded-xl border border-signal/40 bg-signal/5 px-3 py-2
                       text-[12.5px] leading-relaxed text-foreground/85">
           <strong>Entwurf der Verwaltung, kein Ratsbeschluss.</strong> Im
@@ -806,7 +806,7 @@ export default function SchuldenPage() {
             series={kurve}
             titel={ansicht === "total" ? "Schulden total" : "Schulden je Einwohner*in"}
             ariaTitel={`Schuldenstand ${erster.year} bis ${letzter.year}`}
-            einheit={ansicht === "total" ? "Mio. €" : "€ je Einwohner*in"}
+            unit={ansicht === "total" ? "Mio. €" : "€ je Einwohner*in"}
             // Millionen mit einer Stelle, Pro-Kopf-Beträge ohne — sonst stünde
             // „1.908,0 €" an einer Zahl, die die Quelle ganzzahlig ausweist.
             format={ansicht === "total" ? (v) => deMio(v) : deEuro}

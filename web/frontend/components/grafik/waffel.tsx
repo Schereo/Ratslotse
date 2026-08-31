@@ -32,19 +32,19 @@ import { deZahl } from "@/components/grafik/format";
 import { cn } from "@/lib/utils";
 
 export function Waffel({
-  gesamt, proQuadrat = 10, markiert, einheit, grundLabel,
+  gesamt, proQuadrat = 10, markiert, unit, grundLabel,
   spaltenDesk = 14, spaltenMobil = 10, beleg, luecke, className,
 }: {
-  /** Die Gesamtmenge, die die Waffel zeigt — in `einheit`. */
+  /** Die Gesamtmenge, die die Waffel zeigt — in `unit`. */
   gesamt: number;
   /** Wie viel ein Quadrat zählt. */
   proQuadrat?: number;
   /** Die markierten (umrandeten) Quadrate: Menge, Legenden-Text und der
    *  Stichtag, zu dem gezählt wurde. Der Stichtag ist Pflicht — die
    *  Komponente rendert ihn in der Legende (GB-06). */
-  markiert: { count: number; grund: string; as_of_date: string };
+  markiert: { count: number; reason: string; as_of_date: string };
   /** Was gezählt wird: „Stellen". */
-  einheit: string;
+  unit: string;
   /** Legenden-Text der NICHT markierten Quadrate: „besetzt". */
   grundLabel: string;
   /** Quadrate je Reihe — Desktop/Tablet und mobil (H4-A). */
@@ -55,7 +55,7 @@ export function Waffel({
   /** Eine Lücke, die zu dieser Waffel gehört (Teil B 2026: PDF unlesbar).
    *  Rendert die Komponente, nie die Seite — so bleibt sie auch mobil eine
    *  sichtbare Zeile (H4-05). */
-  luecke?: { label: string; grund: string; datum?: string };
+  luecke?: { label: string; reason: string; datum?: string };
   className?: string;
 }) {
   const quadrate = Math.max(Math.round(gesamt / proQuadrat), 0);
@@ -63,9 +63,9 @@ export function Waffel({
     Math.max(Math.round(markiert.count / proQuadrat), 0), quadrate);
 
   const vorlesen =
-    `${deZahl(gesamt)} ${einheit}, davon ${deZahl(markiert.count)} `
-    + `${markiert.grund} (Stichtag ${markiert.as_of_date}). Dargestellt als `
-    + `${quadrate} Quadrate zu je ${deZahl(proQuadrat)} ${einheit}, gerundet; `
+    `${deZahl(gesamt)} ${unit}, davon ${deZahl(markiert.count)} `
+    + `${markiert.reason} (Stichtag ${markiert.as_of_date}). Dargestellt als `
+    + `${quadrate} Quadrate zu je ${deZahl(proQuadrat)} ${unit}, gerundet; `
     + `${markierte} davon sind markiert.`;
 
   return (
@@ -106,19 +106,19 @@ export function Waffel({
         <span className="flex items-center gap-1.5">
           <span aria-hidden="true"
             className="h-3 w-3 flex-none rounded-[3px] border-2 border-dashed border-signal/80" />
-          {markiert.grund}
+          {markiert.reason}
         </span>
       </div>
 
       {/* Rundungszeile — automatisch, damit die behauptete Genauigkeit nie
           größer ist als die gezeichnete. */}
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
-        {quadrate} Quadrate, gerundet · 1 Quadrat = {deZahl(proQuadrat)} {einheit}
+        {quadrate} Quadrate, gerundet · 1 Quadrat = {deZahl(proQuadrat)} {unit}
         {beleg}
       </p>
 
       {luecke && (
-        <LueckenFeld label={luecke.label} grund={luecke.grund} datum={luecke.datum} />
+        <LueckenFeld label={luecke.label} reason={luecke.reason} datum={luecke.datum} />
       )}
     </div>
   );

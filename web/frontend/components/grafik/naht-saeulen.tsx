@@ -45,7 +45,7 @@ import {
 import { LueckenFeld } from "@/components/grafik/luecken-field";
 import { deZahl } from "@/components/grafik/format";
 
-/** Ein Teil einer Säule — Titel wie in der Quelle, Wert in `einheit`. */
+/** Ein Teil einer Säule — Titel wie in der Quelle, Wert in `unit`. */
 export type NahtTeil = { art: string; wert: number };
 
 /** Ein Jahr der Reihe: entweder belegt (mit seinen Teilen) oder eine Lücke
@@ -96,7 +96,7 @@ function gruppiere(years: NahtJahr[], count: number, toene: readonly string[]): 
   return gruppen;
 }
 
-export function NahtSaeulen({ years, naht, gruppierungMobil = 2, einheit, titel, beleg }: {
+export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, beleg }: {
   /** Alle Jahre aufsteigend, Lücken eingeschlossen — die x-Achse ist
    *  vollständig, keine Säule kann still fehlen. */
   years: NahtJahr[];
@@ -106,7 +106,7 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, einheit, titel,
   /** Wie viele Stapel-Gruppen mobil bleiben (H4-A: 2). */
   gruppierungMobil?: number;
   /** Einheit aller Werte, z. B. „Mio. €“. */
-  einheit: string;
+  unit: string;
   titel: string;
   /** Beleg-Chip der Seite, steht an der Kopfzeile. */
   beleg?: ReactNode;
@@ -184,7 +184,7 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, einheit, titel,
     const farbeVon = (art: string) =>
       g.find((x) => x.arten.includes(art))?.farbe;
     const teile = j.teile.map((t) => ({
-      label: t.art, wert: `${deZahl(t.wert, 1)} ${einheit}`,
+      label: t.art, wert: `${deZahl(t.wert, 1)} ${unit}`,
       farbe: farbeVon(t.art),
     }));
     // Eine Reihe mit nur EINER Art (die lange Ausgabenreihe) hätte sonst
@@ -195,12 +195,12 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, einheit, titel,
     return {
       titel: String(j.year),
       werte: eineArt ? teile : [
-        { label: "total", wert: `${deZahl(summe(j), 1)} ${einheit}` },
+        { label: "total", wert: `${deZahl(summe(j), 1)} ${unit}` },
         ...teile,
       ],
       vorlesen: eineArt
-        ? `${j.year}: ${j.teile[0].art} ${deZahl(summe(j), 1)} ${einheit}.`
-        : `${j.year}: total ${deZahl(summe(j), 1)} ${einheit}, davon `
+        ? `${j.year}: ${j.teile[0].art} ${deZahl(summe(j), 1)} ${unit}.`
+        : `${j.year}: total ${deZahl(summe(j), 1)} ${unit}, davon `
           + j.teile.map((t) => `${t.art} ${deZahl(t.wert, 1)}`).join(", ") + ".",
     };
   });
@@ -212,12 +212,12 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, einheit, titel,
           {titel}{beleg}
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {years[0].year}–{years[years.length - 1].year} · {belegte.length} Werte · {einheit}
+          {years[0].year}–{years[years.length - 1].year} · {belegte.length} Werte · {unit}
         </span>
       </div>
 
       <AbleseBeschreibung id={beschreibungId}>
-        {`${titel}, ${years[0].year} bis ${years[years.length - 1].year} in ${einheit}: `
+        {`${titel}, ${years[0].year} bis ${years[years.length - 1].year} in ${unit}: `
           + years.map((j) => `${j.year} ${istLuecke(j) ? "keine Angabe" : deZahl(summe(j), 1)}`).join(", ")
           + (naht ? `. ${naht.text}` : "")}
       </AbleseBeschreibung>
@@ -365,7 +365,7 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, einheit, titel,
       )}
       {years.filter(istLuecke).map((j) => (
         <LueckenFeld key={j.year} className="mt-2"
-          label={String(j.year)} grund={j.fehlt} datum={j.datum} />
+          label={String(j.year)} reason={j.fehlt} datum={j.datum} />
       ))}
     </div>
   );

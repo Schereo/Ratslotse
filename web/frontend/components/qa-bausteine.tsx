@@ -56,7 +56,7 @@ export type AnlagenHinweis = {
 export type QaGrafik = {
   art: string;
   titel: string;
-  einheit: string;
+  unit: string;
   nachkomma: number;
   series: { year: number; wert: number }[];
   note?: string | null;
@@ -434,7 +434,7 @@ export type ParteiMeinung = {
   kernaussage: { text: string; speaker: string | null; datum: string | null } | null;
   beitraege: number;
   beitraege_liste?: { speaker: string | null; datum: string; art: string | null;
-    gremium: string | null; text: string }[];
+    committee: string | null; text: string }[];
 };
 
 /* --------------------------- Antworttext ---------------------------- */
@@ -1051,7 +1051,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                           <li key={bi} className="text-[12px] leading-snug">
                             <p className="font-mono text-[10px] text-muted-foreground">
                               {b.speaker ? <SprecherName name={b.speaker} partei={p.partei} datum={b.datum} /> : "Ohne Namen"} · {b.datum}
-                              {b.gremium ? ` · ${b.gremium}` : ""}
+                              {b.committee ? ` · ${b.committee}` : ""}
                             </p>
                             <p className="mt-0.5 text-muted-foreground">{b.text}{b.text.length >= 300 ? "…" : ""}</p>
                           </li>
@@ -1091,7 +1091,7 @@ export function GrafikKarte({ grafik }: { grafik: QaGrafik }) {
     <div className="rounded-xl border border-border bg-card p-3">
       <Zeitreihe
         series={grafik.series}
-        einheit={grafik.einheit}
+        unit={grafik.unit}
         nachkomma={grafik.nachkomma}
         titel={grafik.titel}
         ariaTitel={`${grafik.titel} im Verlauf, aus den Daten der Stadt`}

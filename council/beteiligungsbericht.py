@@ -770,7 +770,7 @@ class Aufsichtsperson:
     """Eine Person in einem Aufsichtsorgan — so, wie der Bericht sie führt."""
 
     #: „Betriebsausschuss", „Aufsichtsrat", „Gesellschafterversammlung".
-    gremium: str
+    committee: str
     name: str
     #: Aus der zweiten Spalte — ``None``, wenn die Rechenprobe gerissen ist
     #: oder der Bericht für dieses Gremium keine Funktionsspalte führt.
@@ -827,7 +827,7 @@ def _gremiumsname(roh: str) -> str:
     return name
 
 
-def _person_zerlegen(zeile: str, gremium: str, sort_order: int) -> Aufsichtsperson:
+def _person_zerlegen(zeile: str, committee: str, sort_order: int) -> Aufsichtsperson:
     """Eine Zeile der Namensspalte → Name, Vorsitz und Amtszeit-Zusatz.
 
     Der Name ist, was **vor** dem ersten Komma und außerhalb aller Klammern
@@ -860,7 +860,7 @@ def _person_zerlegen(zeile: str, gremium: str, sort_order: int) -> Aufsichtspers
     for t in teile[1:]:
         einordnen(t)
     return Aufsichtsperson(
-        gremium=gremium, name=" ".join(teile[0].split()), position=None,
+        committee=committee, name=" ".join(teile[0].split()), position=None,
         chair_role=chair_role, note=", ".join(hinweise) or None,
         sort_order=sort_order)
 
@@ -884,7 +884,7 @@ def aufsichtsorgane(text: str) -> tuple[list[Aufsichtsperson], bool]:
     personen: list[Aufsichtsperson] = []
     zuordenbar = True
     for i, kopf in enumerate(koepfe):
-        gremium = _gremiumsname(kopf.group(1))
+        committee = _gremiumsname(kopf.group(1))
         bis = koepfe[i + 1].start() if i + 1 < len(koepfe) else len(text)
         zeilen = _zeilen_fuegen(text[kopf.end():bis])
 
@@ -910,7 +910,7 @@ def aufsichtsorgane(text: str) -> tuple[list[Aufsichtsperson], bool]:
             namenszeilen = zeilen
         namenszeilen = [z for z in namenszeilen if not _GRUPPENKOPF.match(z)]
 
-        block = [_person_zerlegen(z, gremium, len(personen) + n)
+        block = [_person_zerlegen(z, committee, len(personen) + n)
                  for n, z in enumerate(namenszeilen)]
         haelt = len(block) == len(funktionen)
         if haelt:
@@ -1140,7 +1140,7 @@ def ueberlappung(jahrgaenge: dict[int, list[Gesellschaft]]) -> dict:
 
 #: Einheit je Kennzahl — für die Anzeige, und damit niemand Euro gegen Prozent
 #: in dieselbe Achse zeichnet.
-EINHEITEN = {key: einheit for key, _, einheit in KENNZAHLEN}
+EINHEITEN = {key: unit for key, _, unit in KENNZAHLEN}
 
 
 def alle_werte(jahrgaenge: dict[int, list[Gesellschaft]]
@@ -1329,7 +1329,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
             for person in liste:
                 personen.append({
                     "report_year": year, "company": g.key,
-                    "sort_order": person.sort_order, "gremium": person.gremium,
+                    "sort_order": person.sort_order, "committee": person.committee,
                     "name": person.name, "position": person.position,
                     "chair_role": person.chair_role, "note": person.note,
                     "roles_assignable": zuordenbar,
@@ -1341,7 +1341,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                         probe=("beteiligung_spaltenprobe" if person.position
                                else _h.UNGEPRUEFT),
                         citation=f"Abschnitt {g.classification} — "
-                                   f"{person.gremium}",
+                                   f"{person.committee}",
                         probe_result=(f"{len(liste)} Namen, "
                                         f"{len(liste)} Funktionen"
                                         if person.position else None),
@@ -1389,7 +1389,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         g = next(x for x in e["gesellschaften"] if x.key == key)
         kennzahlen_zeilen.append({
             "company": key, "indicator": indicator, "year": year,
-            "wert": je_bericht[juengster], "einheit": EINHEITEN[indicator],
+            "wert": je_bericht[juengster], "unit": EINHEITEN[indicator],
             "report_year": juengster, "n_reports": len(je_bericht),
             "herkunft": _h.Herkunft(
                 probe=probes,

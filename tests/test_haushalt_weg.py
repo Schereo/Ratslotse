@@ -25,10 +25,10 @@ def store(tmp_path):
     s.close()
 
 
-def sitzung(store, ksinr, gremium, datum, tops):
+def sitzung(store, ksinr, committee, datum, tops):
     """Eine Sitzung samt Tagesordnung. `tops` = [(nummer, titel, kvonr)]."""
     store.save_session(CouncilSession(
-        ksinr=ksinr, committee=gremium, session_date=datum,
+        ksinr=ksinr, committee=committee, session_date=datum,
         session_time="17:00", location="Rathaus",
         agenda_items=[AgendaItem(item_number=n, title=t, kvonr=k) for n, t, k in tops],
     ))
@@ -38,8 +38,8 @@ def vorlage(store, kvonr, nr, titel):
     store.save_vorlage({"kvonr": kvonr, "template_number": nr, "title": titel})
 
 
-def beratung(store, kvonr, datum, gremium, role, ksinr, top):
-    store.save_beratungen(kvonr, [{"datum": datum, "gremium": gremium, "top": top,
+def beratung(store, kvonr, datum, committee, role, ksinr, top):
+    store.save_beratungen(kvonr, [{"datum": datum, "committee": committee, "top": top,
                                    "is_public": True, "result": role, "ksinr": ksinr}])
 
 
@@ -64,9 +64,9 @@ def runde_2026(store):
              "Kenntnisnahme", 1, "5")
     beratung(store, 101, "2025-11-11", "Schulausschuss", "Kenntnisnahme", 2, "4")
     store.save_beratungen(102, [
-        {"datum": "2025-12-15", "gremium": "Rat", "top": "5", "is_public": True,
+        {"datum": "2025-12-15", "committee": "Rat", "top": "5", "is_public": True,
          "result": "Entscheidung", "ksinr": 3},
-        {"datum": "2026-02-09", "gremium": "Rat", "top": "6", "is_public": True,
+        {"datum": "2026-02-09", "committee": "Rat", "top": "6", "is_public": True,
          "result": "Entscheidung", "ksinr": 4},
     ])
 
@@ -80,7 +80,7 @@ def test_runde_hat_einbringung_fachausschuesse_und_stationen(store):
 
     # Die Einbringung ist die früheste Beratung einer Entwurfs-Vorlage.
     assert r["einbringung"]["datum"] == "2025-10-01"
-    assert r["einbringung"]["gremium"] == "Ausschuss für Finanzen und Beteiligungen"
+    assert r["einbringung"]["committee"] == "Ausschuss für Finanzen und Beteiligungen"
     # Die TOP-Nummer kommt vollständig aus der Tagesordnung („Ö 5", nicht „5“) —
     # sonst zeigt der Link auf der Sitzungsseite auf den falschen Punkt.
     assert r["einbringung"]["top"] == "Ö 5"
@@ -90,7 +90,7 @@ def test_runde_hat_einbringung_fachausschuesse_und_stationen(store):
         "committees": ["Schulausschuss"],
     }
 
-    assert [(s["datum"], s["gremium"], s["result"]) for s in r["stationen"]] == [
+    assert [(s["datum"], s["committee"], s["result"]) for s in r["stationen"]] == [
         ("2025-12-15", "Rat", "zurückgestellt/abgesetzt"),
         ("2026-02-09", "Rat", "geändert beschlossen"),
     ]

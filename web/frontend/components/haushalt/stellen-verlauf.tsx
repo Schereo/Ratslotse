@@ -89,7 +89,7 @@ export function StellenPaare({ zeilen, skala, aktJahr }: {
             ) : (
               <>
                 <LueckenFeld label={String(budget_year)}
-                  grund={fehlt ?? "liegt nicht vor"} className="min-w-0" />
+                  reason={fehlt ?? "liegt nicht vor"} className="min-w-0" />
                 <span className="text-right font-mono text-[12.5px] tabular-nums text-muted-foreground">
                   — · —
                 </span>

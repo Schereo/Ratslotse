@@ -191,7 +191,7 @@ def main() -> int:
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
                   f"{ar.probennachweis(result)}")
             for v in result["verworfen"]:
-                print(f"    VERWORFEN {v['year']}: {v['grund']}", file=sys.stderr)
+                print(f"    VERWORFEN {v['year']}: {v['reason']}", file=sys.stderr)
             for k in result["konflikte"]:
                 print(f"    WIDERSPRUCH {k['year']}: "
                       f"{k['gewaehlt'].upper()} nennt "

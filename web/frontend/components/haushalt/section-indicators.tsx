@@ -97,7 +97,7 @@ function Standtafel({
             {g.keys.map((key) => {
               const punkte = punkteVon(daten, key);
               const hier = punkte.find((p) => p.year === year) ?? null;
-              const einheit = daten.einheit[key] ?? "eur";
+              const unit = daten.unit[key] ?? "eur";
               const aktiv = key === gewaehlt;
               return (
                 <li key={key}>
@@ -112,7 +112,7 @@ function Standtafel({
                        die Vorlesehilfe vorlesen soll — samt dem, was ein Tipp
                        bewirkt. */
                     aria-label={`${daten.label[key] ?? key}: ${
-                      hier ? schreibe(einheit, hier.wert, hier.stellen)
+                      hier ? schreibe(unit, hier.wert, hier.stellen)
                            : `für ${year} nicht ausgewiesen`
                     }${hier ? ` im Jahr ${year}` : ""} — Verlauf anzeigen`}
                     className={`flex w-full flex-col items-start gap-0.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${
@@ -123,7 +123,7 @@ function Standtafel({
                   >
                     <span className="font-display text-[19px] font-bold leading-none tracking-tight tabular-nums">
                       {hier
-                        ? schreibe(einheit, hier.wert, hier.stellen)
+                        ? schreibe(unit, hier.wert, hier.stellen)
                         : <span className="text-muted-foreground">—</span>}
                     </span>
                     <span className="text-[12px] leading-snug text-muted-foreground">
@@ -159,25 +159,25 @@ function Verlauf({
   daten: NonNullable<Daten["indicators"]>;
   gewaehlt: string;
 }) {
-  const einheit = daten.einheit[gewaehlt] ?? "eur";
+  const unit = daten.unit[gewaehlt] ?? "eur";
   const label = daten.label[gewaehlt] ?? gewaehlt;
   const { series, anmerkung } = useMemo(() => reiheVon(daten, gewaehlt), [daten, gewaehlt]);
   const formula = formelVon(daten, gewaehlt);
   const korrekturen = korrekturenVon(daten, gewaehlt);
-  const format = formatVon(einheit);
+  const format = formatVon(unit);
   if (!series.length) return null;
 
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <Zeitreihe
         series={series}
-        einheit={einheitWort(einheit)}
+        unit={einheitWort(unit)}
         format={format}
-        nachkomma={einheit === "anzahl" ? 0 : 2}
+        nachkomma={unit === "anzahl" ? 0 : 2}
         titel={label}
         ariaTitel={`${label} im Verlauf, wie die Rechenschaftsberichte sie ausweisen`}
         vorjahresdifferenz
-        differenzFormat={differenzFormatVon(einheit)}
+        differenzFormat={differenzFormatVon(unit)}
         tabelle
         annotationen={anmerkung ? [anmerkung] : undefined}
       />
@@ -210,8 +210,8 @@ function Verlauf({
               <li key={`${k.year}-${k.neu_bericht}`}
                 className="text-[12.5px] leading-relaxed text-muted-foreground">
                 <span className="tabular-nums text-foreground">{k.year}</span>:{" "}
-                {schreibe(einheit, k.alt)} im Bericht {k.alt_bericht}, dann{" "}
-                {schreibe(einheit, k.neu)} im Bericht {k.neu_bericht}.
+                {schreibe(unit, k.alt)} im Bericht {k.alt_bericht}, dann{" "}
+                {schreibe(unit, k.neu)} im Bericht {k.neu_bericht}.
               </li>
             ))}
           </ul>
@@ -248,7 +248,7 @@ function Korrekturen({ daten }: { daten: NonNullable<Daten["indicators"]> }) {
       </div>
       <ul className="flex flex-col divide-y divide-border">
         {alle.map((k) => {
-          const einheit = daten.einheit[k.indicator] ?? "eur";
+          const unit = daten.unit[k.indicator] ?? "eur";
           return (
             <li key={`${k.indicator}-${k.year}-${k.neu_bericht}`}
               className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2 first:pt-0 last:pb-0">
@@ -257,10 +257,10 @@ function Korrekturen({ daten }: { daten: NonNullable<Daten["indicators"]> }) {
                 <span className="tabular-nums text-muted-foreground">{k.year}</span>
               </span>
               <span className="flex-none text-[13px] tabular-nums text-muted-foreground">
-                {schreibe(einheit, k.alt)}
+                {schreibe(unit, k.alt)}
                 <span className="px-1.5 text-muted-foreground">→</span>
                 <span className="font-semibold text-foreground">
-                  {schreibe(einheit, k.neu)}
+                  {schreibe(unit, k.neu)}
                 </span>
               </span>
               <span className="flex-none text-[11.5px] tabular-nums text-muted-foreground">

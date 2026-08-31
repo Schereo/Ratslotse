@@ -366,7 +366,7 @@ export function PruefungAbschnitt({ onBestand }: {
           <KettenMatrix
             ketten={matrixKetten}
             years={years}
-            lueckenJahre={data.ohne_bericht.map((j) => ({ year: j, grund: LUECKEN_GRUND }))}
+            lueckenJahre={data.ohne_bericht.map((j) => ({ year: j, reason: LUECKEN_GRUND }))}
             marken={data.legende}
             beleg={<Beleg q="pruefbericht" />}
             detail={(mk) => {
@@ -388,7 +388,7 @@ export function PruefungAbschnitt({ onBestand }: {
         data.ohne_bericht.length > 0 && (
           <div className="flex flex-col gap-1.5">
             {data.ohne_bericht.map((j) => (
-              <LueckenFeld key={j} label={String(j)} grund={LUECKEN_GRUND} />
+              <LueckenFeld key={j} label={String(j)} reason={LUECKEN_GRUND} />
             ))}
           </div>
         )

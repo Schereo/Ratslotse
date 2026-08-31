@@ -291,10 +291,10 @@ def test_sammelabstimmung_ist_kein_antrag():
 def _runde_2026(store):
     """Ein Jahrgang, wie er im Bestand liegt: Ausschuss und Rat stimmen über
     dieselben Listen ab, der Rat führt die Debatte."""
-    for ksinr, gremium, datum in ((10, "Ausschuss für Finanzen und Beteiligungen", "2026-02-04"),
+    for ksinr, committee, datum in ((10, "Ausschuss für Finanzen und Beteiligungen", "2026-02-04"),
                                   (11, "Rat", "2026-02-09")):
         store.save_session(CouncilSession(
-            ksinr=ksinr, committee=gremium, session_date=datum, session_time="17:00",
+            ksinr=ksinr, committee=committee, session_date=datum, session_time="17:00",
             location="Rathaus",
             agenda_items=[AgendaItem(item_number="6", title="Haushalt 2026", kvonr=None)],
         ))
@@ -335,7 +335,7 @@ def test_haushalt_streit_baut_jahrgang(store):
     (runde,) = store.haushalt_streit()
     assert runde["year"] == 2026
     # Ausschuss vor Rat, auch wenn beide am selben Tag tagen.
-    assert [s["gremium"] for s in runde["stationen"]] == [
+    assert [s["committee"] for s in runde["stationen"]] == [
         "Ausschuss für Finanzen und Beteiligungen", "Rat"]
 
     rat = runde["stationen"][1]

@@ -210,7 +210,7 @@ class Finanzquelle:
     balance: Callable[[CouncilStore], set[tuple]]
     #: Wie eine Einheit für Leserinnen heißt — ``None``, wo ein Dokument den
     #: ganzen Jahrgang trägt und „vollständig" keine Frage ist.
-    einheit: str | None = None
+    unit: str | None = None
     erkennung: Erkennung | None = None
     #: Welche Einheiten ein Kandidat füllen könnte — aus Label bzw. Textkopf,
     #: nie aus ``fetched_at``.
@@ -1093,8 +1093,8 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             if braucht_gesamt or not alt_gruende:
                 roh = finanzberichte.parse_abweichungsgruende(v["text"], year)
                 angenommen, abgelehnt = finanzberichte.pruefe_abweichungsgruende(roh, posten)
-                for grund in abgelehnt:
-                    p.warnen(f"    Erläuterung verworfen — {grund}")
+                for reason in abgelehnt:
+                    p.warnen(f"    Erläuterung verworfen — {reason}")
                 if bestandsschutz(p, f"{year} Erläuterungen", alt_gruende,
                                   len(angenommen), schuetzen):
                     store.save_abweichungsgruende(year, angenommen, herkunft.Herkunft(
@@ -1384,9 +1384,9 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
         if fehlend:
             # Der Unterschied, den ein Leser sonst nicht sähe: „gibt es nicht"
             # gegen „steht drin, ist aber nicht lesbar".
-            grund = ("das PDF gibt dort Glyphen statt Buchstaben aus"
+            reason = ("das PDF gibt dort Glyphen statt Buchstaben aus"
                      if gelesen["glyphen"] else "im Dokument nicht gefunden")
-            p.warnen(f"  {budget_year}: Teil {', '.join(fehlend)} fehlt — {grund} "
+            p.warnen(f"  {budget_year}: Teil {', '.join(fehlend)} fehlt — {reason} "
                      f"(Dokument {r['document_id']})")
 
         for part in gelesen["teile"]:
@@ -1671,9 +1671,9 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
     for r, report_year, zeilen, formeln, unbekannt in sorted(
             gelesen, key=lambda g: g[1]):
         for z in zeilen:
-            z["fassung"] = nummern.get((z["indicator"], report_year))
+            z["version"] = nummern.get((z["indicator"], report_year))
         for f in formeln:
-            f["fassung"] = nummern[(f["indicator"], report_year)]
+            f["version"] = nummern[(f["indicator"], report_year)]
 
         if unbekannt:
             for u in unbekannt[:3]:
@@ -2033,9 +2033,9 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
         result = konzernabschluss.lies(r["raw_text"] or "")
         if not result["bestanden"]:
             gerissen = [x["probe"] for x in result["probes"] if not x["ok"]]
-            grund = (f"Probe gerissen: {'; '.join(gerissen)}" if gerissen
+            reason = (f"Probe gerissen: {'; '.join(gerissen)}" if gerissen
                      else f"nur {len(result['probes'])} von 3 Proben rechenbar")
-            p.warnen(f"  {year}: {grund} — Dokument {r['document_id']}, nicht gespeichert")
+            p.warnen(f"  {year}: {reason} — Dokument {r['document_id']}, nicht gespeichert")
             verworfen_gesamt += result["verworfen"]
             continue
         alt = _anzahl(store, "SELECT COUNT(*) FROM council_konzern_posten WHERE year = ?",
@@ -2149,7 +2149,7 @@ for _q in (
             # dieselbe Jahreszahl im Titel und sind ein anderes Dokument.
             ausschluesse=("%Rechenschaft%", "%Schlussbericht%"),
         ),
-        einheit="Ebenen",
+        unit="Ebenen",
         einheiten_von=_einheiten_jahresabschluss,
         balance=_bestand_jahresabschluss,
         einlesen=lies_jahresabschluesse,
@@ -2176,7 +2176,7 @@ for _q in (
             ausschluesse=("%Schlussbericht%", "%Klävemann%", "%Sozialstiftung%"),
             mindest_seiten=60,
         ),
-        einheit="Berichte",
+        unit="Berichte",
         einheiten_von=_einheiten_kennzahlen,
         balance=_bestand_kennzahlen,
         einlesen=lies_kennzahlen,
@@ -2236,7 +2236,7 @@ for _q in (
                             ordnung="document_id"),
         # Die Einheit ist der Teilhaushalt, nicht der Jahrgang: Ein Jahr
         # verteilt sich auf rund neun Anlagen, die einzeln lesbar werden.
-        einheit="Teilhaushalte",
+        unit="Teilhaushalte",
         einheiten_von=_einheiten_teilhaushalt,
         balance=_bestand_produkte,
         einlesen=lies_teilhaushalte,
@@ -2323,7 +2323,7 @@ for _q in (
         ),
         # Die Einheit ist der Teil, nicht der Jahrgang: Teil A und Teil B
         # kommen einzeln durch ihre Proben.
-        einheit="Teile",
+        unit="Teile",
         einheiten_von=_einheiten_stellenplan,
         balance=_bestand_stellenplan,
         einlesen=lies_stellenplaene,
@@ -2698,10 +2698,10 @@ def datenstand(store: CouncilStore, heute: date | None = None) -> list[dict]:
             "jahrgaenge": years, "luecken": luecken,
             # Je Jahrgang die Zahl der Einheiten (Teilhaushalte bzw. Ebenen) —
             # und wie viele der bestbelegte Jahrgang hat.
-            "einheit": q.einheit,
+            "unit": q.unit,
             "einheiten": {str(j): n for j, n in sorted(je_jahr.items())},
-            "einheiten_voll": voll if q.einheit else None,
-            "teilweise": teilweise if q.einheit else [],
+            "einheiten_voll": voll if q.unit else None,
+            "teilweise": teilweise if q.unit else [],
             "neuester": years[-1] if years else None,
             "offen": offen, "ueberfaellig": ueberfaellig,
             "naechster_jahrgang": naechster,

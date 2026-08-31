@@ -227,7 +227,7 @@ export type FinanzausgleichJahr = {
  *  2021 „53,15%". Wer eine Reihe über diesen Wechsel zeichnet, muss ihn
  *  anschreiben können, statt aus der glatteren Zahl eine genauere zu machen.
  *
- *  `fassung` nummeriert den gedruckten Rechenweg. Wechselt sie zwischen zwei
+ *  `version` nummeriert den gedruckten Rechenweg. Wechselt sie zwischen zwei
  *  Jahren, darf über die Stelle **keine Linie laufen**: Die Stadt hat dann
  *  etwas anderes gemessen, nicht etwas anderes herausbekommen. */
 export type KennzahlPunkt = {
@@ -235,7 +235,7 @@ export type KennzahlPunkt = {
   year: number;
   wert: number;
   stellen: number;
-  fassung: number | null;
+  version: number | null;
   /** Aus welchem Rechenschaftsbericht dieser Stand stammt. */
   report_year: number;
   herkunft_id?: number | null;
@@ -245,7 +245,7 @@ export type KennzahlPunkt = {
  *  denen er so stand. */
 export type KennzahlFormel = {
   indicator: string;
-  fassung: number;
+  version: number;
   /** Wie die Überschrift im Bericht lautet — nicht unser Label. */
   heading: string;
   formula: string;
@@ -275,7 +275,7 @@ export type Kennzahlen = {
   /** Schlüssel → Klartext. Steht einmal statt an jeder der 365 Zeilen. */
   label: Record<string, string>;
   /** Schlüssel → „prozent" | „eur" | „anzahl". */
-  einheit: Record<string, string>;
+  unit: Record<string, string>;
   series: KennzahlPunkt[];
   formeln: KennzahlFormel[];
   funde: KennzahlFund[];
@@ -539,9 +539,9 @@ export type Spenden = {
   years: SpendenJahr[];
   vorlagen: SpendenVorlage[];
   /** Beschlusszeilen ohne Zweitstelle — mit dem Satz, warum sie fehlen. */
-  ohne_beleg: { template_number: string; sitzung?: string | null; grund: string }[];
+  ohne_beleg: { template_number: string; sitzung?: string | null; reason: string }[];
   /** Wer über welche **einzelne** Zuwendung entscheidet. */
-  schwellen: { gremium: string; ab: number | null; bis: number | null }[];
+  schwellen: { committee: string; ab: number | null; bis: number | null }[];
 };
 
 export type SpendenJahr = {
@@ -557,7 +557,7 @@ export type SpendenVorlage = {
   year: number;
   sitzung: string;
   amount: number;
-  gremium?: string | null;
+  committee?: string | null;
   /** „identisch" oder „zerlegung" — wie die Zweitstelle den Betrag belegt. */
   second_mention: string;
   probes: string[];
@@ -1032,7 +1032,7 @@ export type GebuehrensatzZeile = {
   area: string;
   label: string;
   amount: number;
-  einheit: string;
+  unit: string;
   prior_year: number | null;
   change_pct: number | null;
   template_number: string | null;
@@ -1042,7 +1042,7 @@ export type GebuehrensatzZeile = {
 
 /** Ein Jahrgang der Haushaltssatzung (§§ 1–5).
  *
- *  ACHTUNG BEI DER ANZEIGE: `fassung` ist in jeder Zeile des Bestands
+ *  ACHTUNG BEI DER ANZEIGE: `version` ist in jeder Zeile des Bestands
  *  `"entwurf"`. Im Ratsinformationssystem liegen ausschließlich
  *  Verwaltungsentwürfe; die beschlossene Satzung erscheint im Amtsblatt. Eine
  *  Anzeige, die das wegließe, machte aus einem Vorschlag der Verwaltung einen
@@ -1052,7 +1052,7 @@ export type HaushaltssatzungZeile = {
   /** 0 = die Satzung selbst. Nachträge werden (noch) nicht gelesen. */
   supplement: number;
   /** `entwurf` | `unbekannt` — nie `beschlossen`, s. o. */
-  fassung: string;
+  version: string;
 
   ordinary_revenues: number;
   ordinary_expenses: number;
@@ -1272,14 +1272,14 @@ export function deMio(v: number | null | undefined): string {
  *  Mio. anzugeben macht aus dem halben Bestand „0,0 Mio. €" — eine Zahl, die
  *  nichts mehr sagt, obwohl wir sie genau kennen. Auf den Bereichs- und
  *  Übersichtsseiten bleibt `deMio` richtig: dort ist Mio. die Hausnummer. */
-export function amount(euro: number | null | undefined): { wert: string; einheit: string } {
-  if (euro == null) return { wert: "—", einheit: "" };
+export function amount(euro: number | null | undefined): { wert: string; unit: string } {
+  if (euro == null) return { wert: "—", unit: "" };
   const abs = Math.abs(euro);
-  if (abs >= 1_000_000) return { wert: deMio(euro / 1e6), einheit: "Mio. €" };
+  if (abs >= 1_000_000) return { wert: deMio(euro / 1e6), unit: "Mio. €" };
   if (abs >= 10_000) {
-    return { wert: Math.round(euro / 1000).toLocaleString("de-DE"), einheit: "Tsd. €" };
+    return { wert: Math.round(euro / 1000).toLocaleString("de-DE"), unit: "Tsd. €" };
   }
-  return { wert: Math.round(euro).toLocaleString("de-DE"), einheit: "€" };
+  return { wert: Math.round(euro).toLocaleString("de-DE"), unit: "€" };
 }
 
 export function jahreSortiert(daten: HaushaltAuswahl<"years">): number[] {
@@ -1437,8 +1437,8 @@ export function spendenGremien(daten: HaushaltAuswahl<"donations">) {
   const leer = { vorlagen: 0, amount: 0 };
   const aus = { Rat: { ...leer }, Verwaltungsausschuss: { ...leer } };
   for (const v of daten.donations?.vorlagen ?? []) {
-    const k = v.gremium === "Rat" ? "Rat"
-      : v.gremium === "Verwaltungsausschuss" ? "Verwaltungsausschuss" : null;
+    const k = v.committee === "Rat" ? "Rat"
+      : v.committee === "Verwaltungsausschuss" ? "Verwaltungsausschuss" : null;
     if (!k) continue;
     aus[k].vorlagen += 1;
     aus[k].amount += v.amount;

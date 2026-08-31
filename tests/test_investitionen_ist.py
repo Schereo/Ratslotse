@@ -167,9 +167,9 @@ def test_2019_faellt_ganz_heraus():
     assert 2019 not in [z["year"] for z in result["zeilen"]]
     verworfen = [v for v in result["verworfen"] if v["year"] == 2019]
     assert len(verworfen) == 1
-    assert "1.304.000" in verworfen[0]["grund"], verworfen[0]["grund"]
+    assert "1.304.000" in verworfen[0]["reason"], verworfen[0]["reason"]
     # Deutsche Schreibweise, nicht 1,304,000 — der Grund landet im Protokoll.
-    assert "1,304,000" not in verworfen[0]["grund"]
+    assert "1,304,000" not in verworfen[0]["reason"]
 
 
 def test_die_differenz_kommt_als_zahl_neben_dem_satz():
@@ -184,7 +184,7 @@ def test_die_differenz_kommt_als_zahl_neben_dem_satz():
     verworfen = next(v for v in ii.lies(TABELLE)["verworfen"] if v["year"] == 2019)
     assert verworfen["difference"] == -1_304_000
     # Und der Satz nennt dieselbe Zahl — zwei Auskünfte, eine Messung.
-    assert ii.de_zahl(verworfen["difference"], vorzeichen=True) in verworfen["grund"]
+    assert ii.de_zahl(verworfen["difference"], vorzeichen=True) in verworfen["reason"]
 
 
 def test_eine_unzerlegbare_zeile_hat_KEINE_differenz():
@@ -197,7 +197,7 @@ def test_eine_unzerlegbare_zeile_hat_KEINE_differenz():
                              "2017 4.933 1.574 8.150 6.750 519 22.049")
     verworfen = next(v for v in ii.lies(kaputt)["verworfen"] if v["year"] == 2017)
     assert verworfen["difference"] is None
-    assert "zerlegbar" in verworfen["grund"]
+    assert "zerlegbar" in verworfen["reason"]
 
 
 def test_die_luecke_wird_gemeldet(gelesen):

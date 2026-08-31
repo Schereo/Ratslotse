@@ -391,7 +391,7 @@ def istabgleich(gelesen: dict, ist_reihe: dict[int, dict[str, float]]) -> dict:
     herein, und genau so ist der Versatz im Datensatz 1106 jahrelang unbemerkt
     geblieben.
 
-    Zurück: ``{"bestanden": [years], "verworfen": [{year, grund}]}``.
+    Zurück: ``{"bestanden": [years], "verworfen": [{year, reason}]}``.
     """
     zeilen = gelesen["zeilen"]
     arten = [a for a in zeilen if a not in (SUMME, ZUWEISUNGEN)]
@@ -402,7 +402,7 @@ def istabgleich(gelesen: dict, ist_reihe: dict[int, dict[str, float]]) -> dict:
         if fehlend:
             verworfen.append({
                 "year": year,
-                "grund": f"Tabelle 1104 führt für {year} keinen Wert zu "
+                "reason": f"Tabelle 1104 führt für {year} keinen Wert zu "
                          f"{', '.join(sorted(fehlend))} — ohne Zweitquelle ist "
                          f"die Jahresbeschriftung ungeprüft"})
             continue
@@ -414,7 +414,7 @@ def istabgleich(gelesen: dict, ist_reihe: dict[int, dict[str, float]]) -> dict:
                 abweichend.append(f"{art}: 1103 {hier} vs. 1104 {dort} T€")
         if abweichend:
             verworfen.append({"year": year,
-                              "grund": "; ".join(abweichend)})
+                              "reason": "; ".join(abweichend)})
             continue
         bestanden.append(year)
     return {"bestanden": bestanden, "verworfen": verworfen}
@@ -613,16 +613,16 @@ def sprungjahrprobe(zeilen: list[dict],
         year = jetzt["year"]
         if jetzt["Grundsteuer B"] <= vor["Grundsteuer B"]:
             offen.append({"year": year,
-                          "grund": "Grundsteuer B unverändert oder gesenkt — "
+                          "reason": "Grundsteuer B unverändert oder gesenkt — "
                                    "die Probe misst einen Anstieg"})
             continue
         if year in BEMESSUNG_NEU:
-            offen.append({"year": year, "grund": BEMESSUNG_NEU[year]})
+            offen.append({"year": year, "reason": BEMESSUNG_NEU[year]})
             continue
         fehlt = [j for j in (year - 1, year, year + 1) if not grundsteuer_ist.get(j)]
         if fehlt:
             offen.append({"year": year,
-                          "grund": "die Aufkommensreihe führt "
+                          "reason": "die Aufkommensreihe führt "
                                    f"{', '.join(str(j) for j in fehlt)} nicht"})
             continue
         im_jahr = grundsteuer_ist[year] / grundsteuer_ist[year - 1] - 1

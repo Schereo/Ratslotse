@@ -333,7 +333,7 @@ def main() -> dict:
         # „Warum bekommst du das?" — mit Direktlink auf den Schalter, um den es
         # geht. Die Änderungs-Meldung nennt zusätzlich ihren eigenen
         # Abschalt-Weg: Abo behalten, nur die Änderungs-Meldungen loswerden.
-        grund = digest_email.gremium_abo_begruendung(session.committee)
+        reason = digest_email.gremium_abo_begruendung(session.committee)
         grund_update = digest_email.gremium_abo_begruendung(
             session.committee, mit_aenderungs_schalter=True)
         # Ein Kopf für alle drei Fälle, aus frischen Sitzungsdaten — vorher gab
@@ -360,7 +360,7 @@ def main() -> dict:
                 continue
             print(f"  {session.session_date} {session.committee} → owner {owner_id} (neu)")
             notify.einreihen(ratslotse_store, owner_id, notify.N1_TAGESORDNUNG,
-                             subject, base_message + grund, sitzung_href(ksinr),
+                             subject, base_message + reason, sitzung_href(ksinr),
                              push_text=push_neu)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
@@ -450,10 +450,10 @@ def main() -> dict:
             it["id"] = i
         nach_id = {it["id"]: it for it in offen}
         for start in range(0, len(offen), BATCH_SIZE):
-            for iid, score, grund in rate_agenda_batch(offen[start : start + BATCH_SIZE]):
+            for iid, score, reason in rate_agenda_batch(offen[start : start + BATCH_SIZE]):
                 it = nach_id.get(iid)
                 if it:
-                    council_store.save_agenda_impact(it["ksinr"], it["item_number"], score, grund)
+                    council_store.save_agenda_impact(it["ksinr"], it["item_number"], score, reason)
                     bewertet += 1
         if offen:
             print(f"  Tragweite: {bewertet}/{len(offen)} Tagesordnungspunkte bewertet")

@@ -372,9 +372,9 @@ def test_altes_layout_liefert_zwoelf_benannte_tarife():
 def test_neues_layout_prueft_jede_aenderung_gegen_das_vorjahr():
     saetze = lies_gebuehrensaetze(
         ANLAGE_1_2026 + ANLAGE_3_2026 + ANLAGE_4_2026, "25/0999")
-    grund = next(s for s in saetze if s.schluessel == "grundgebuehr")
+    reason = next(s for s in saetze if s.schluessel == "grundgebuehr")
     assert len(saetze) == 12
-    assert (grund.amount, grund.prior_year, grund.change_pct) == (62, 50, 24)
+    assert (reason.amount, reason.prior_year, reason.change_pct) == (62, 50, 24)
 
     kaputt = ANLAGE_4_2026.replace("24,00%", "23,00%")
     with pytest.raises(GebuehrenFehler, match="ergeben 24.00 %"):

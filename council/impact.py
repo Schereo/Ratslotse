@@ -244,7 +244,7 @@ def rate_agenda_batch(items: list[dict], _tiefe: int = 0) -> list[tuple[int, int
         except (TypeError, ValueError):
             continue
         if iid in valid_ids and 0 <= score <= 100:
-            warum = str(r.get("warum") or r.get("grund") or "").strip()
+            warum = str(r.get("warum") or r.get("reason") or "").strip()
             deckel = _deckel_je_id.get(iid)
             if deckel is not None and score > deckel:
                 score = deckel
@@ -294,13 +294,13 @@ def rate_batch(decisions: list[dict], _tiefe: int = 0) -> list[tuple[int, int, s
         except (TypeError, ValueError):
             continue
         if did in valid_ids and 0 <= score <= 100:
-            grund = str(r.get("grund") or "").strip()
+            reason = str(r.get("reason") or "").strip()
             deckel = deckel_je_id.get(did)
             if deckel is not None and score > deckel:
                 score = deckel
-                grund = ("Formsache: Die Straße wird nur amtlich gewidmet oder "
+                reason = ("Formsache: Die Straße wird nur amtlich gewidmet oder "
                          "eingezogen — für den Alltag ändert sich nichts.")
-            out.append((did, score, grund[:300]))
+            out.append((did, score, reason[:300]))
     fehlend = valid_ids - {did for did, _s, _g in out}
     if fehlend:
         out += _nachgefasst(rate_batch,

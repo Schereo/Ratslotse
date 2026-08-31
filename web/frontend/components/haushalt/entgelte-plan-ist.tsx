@@ -69,7 +69,7 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
       <div className="mt-3">
         <Hantel
           zeilen={hantelZeilen}
-          einheit="Mio. €"
+          unit="Mio. €"
           /* Chronologie schlägt Rangfolge: Dass 2024 auf 2023 folgt, muss die
              Reihenfolge tragen — wie weit es danebenlag, zeigt die Länge. */
           sortierung="alpha"

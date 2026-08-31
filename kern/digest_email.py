@@ -143,7 +143,7 @@ def meta(text: str) -> str:
     )
 
 
-def gremium_abo_begruendung(gremium: str, mit_aenderungs_schalter: bool = False) -> str:
+def gremium_abo_begruendung(committee: str, mit_aenderungs_schalter: bool = False) -> str:
     """„Warum bekommst du das?" unter einer Gremien-Meldung (N1).
 
     Die Zeile gehört in den **Meldungskörper**, nicht in die Mail-Hülle: Nur so
@@ -164,7 +164,7 @@ def gremium_abo_begruendung(gremium: str, mit_aenderungs_schalter: bool = False)
                                     "Nur Änderungs-Meldungen abschalten")
     return (
         f"<div style='margin-top:18px;color:{_GRAU};font-size:12px;line-height:1.6'>"
-        f"Du bekommst diese Meldung, weil du das Gremium „{_esc(gremium)}“ abonniert hast."
+        f"Du bekommst diese Meldung, weil du das Gremium „{_esc(committee)}“ abonniert hast."
         f"<br>{wege}</div>"
     )
 

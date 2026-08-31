@@ -483,11 +483,11 @@ def test_qa_feedback_speichern(tmp_path):
     store.save_qa_feedback("Wie lief es?", "Antwort " * 200, "down", "  zu vage  ", user_id=7)
     store.save_qa_feedback("Und sonst?", None, "up", None)
     rows = store._conn.execute(
-        "SELECT frage, rating, grund, user_id, length(answer_excerpt) AS al "
+        "SELECT frage, rating, reason, user_id, length(answer_excerpt) AS al "
         "FROM council_qa_feedback ORDER BY id").fetchall()
-    assert rows[0]["rating"] == "down" and rows[0]["grund"] == "zu vage"
+    assert rows[0]["rating"] == "down" and rows[0]["reason"] == "zu vage"
     assert rows[0]["user_id"] == 7 and rows[0]["al"] <= 500
-    assert rows[1]["rating"] == "up" and rows[1]["grund"] is None
+    assert rows[1]["rating"] == "up" and rows[1]["reason"] is None
     import pytest as _pytest
     with _pytest.raises(ValueError):
         store.save_qa_feedback("x", None, "meh", None)
@@ -502,10 +502,10 @@ def test_qa_feedback_korrektur_ueberschreibt(tmp_path):
     store.save_qa_feedback("Wie lief es?", "Antwort", "down", "zu vage", user_id=7)
     store.save_qa_feedback("Wie lief es?", "Antwort", "up", None, user_id=7)
     rows = store._conn.execute(
-        "SELECT rating, grund FROM council_qa_feedback WHERE user_id = 7").fetchall()
+        "SELECT rating, reason FROM council_qa_feedback WHERE user_id = 7").fetchall()
     assert len(rows) == 1, "Korrektur darf keine zweite Zeile anlegen"
     assert rows[0]["rating"] == "up"
-    assert rows[0]["grund"] is None, "Grund des Daumen-runter ist nach der Korrektur hinfällig"
+    assert rows[0]["reason"] is None, "Grund des Daumen-runter ist nach der Korrektur hinfällig"
     # Andere Frage und anonyme Rückmeldungen bleiben eigene Zeilen.
     store.save_qa_feedback("Und sonst?", None, "down", None, user_id=7)
     store.save_qa_feedback("Wie lief es?", None, "down", None)

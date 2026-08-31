@@ -763,7 +763,7 @@ struct PublicPersonProfile: Codable, Sendable {
 
             enum CodingKeys: String, CodingKey {
                 case kgrnr
-                case committee = "gremium"
+                case committee = "committee"
                 case role = "role"
                 case from = "von"
                 case until = "bis"
@@ -1416,7 +1416,7 @@ private struct PersonProfileOverview: View {
                 URLQueryItem(name: "limit", value: "20"),
             ]
             if !selectedCommittee.isEmpty {
-                query.append(URLQueryItem(name: "gremium", value: selectedCommittee))
+                query.append(URLQueryItem(name: "committee", value: selectedCommittee))
             }
             let page: SpeechPage = try await model.api.get(
                 "/api/council/person/\(person.slug)/wortbeitraege",

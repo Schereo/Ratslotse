@@ -219,8 +219,8 @@ def test_ohne_jede_bestandene_probe_faellt_der_jahrgang_ganz_weg():
     ohne = schulden.lies(TABELLE, {j: z for j, z in EINWOHNER.items() if j != 2022})
     assert all(z["year"] != 2022 for z in ohne["zeilen"])
     verworfen = next(v for v in ohne["verworfen"] if v["year"] == 2022)
-    assert "Summenprobe" in verworfen["grund"]
-    assert "keine Einwohnerzahl" in verworfen["grund"]
+    assert "Summenprobe" in verworfen["reason"]
+    assert "keine Einwohnerzahl" in verworfen["reason"]
 
 
 # --- Einheiten und Inhalt ---------------------------------------------------

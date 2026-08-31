@@ -110,7 +110,7 @@ def main() -> int:
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
                   f"{ii.probennachweis(result)}")
             for v in result["verworfen"]:
-                print(f"    VERWORFEN {v['year']} ({v['accounting_system']}): {v['grund']}",
+                print(f"    VERWORFEN {v['year']} ({v['accounting_system']}): {v['reason']}",
                       file=sys.stderr)
             for accounting_system, years in sorted(result["fehlende_jahrgaenge"].items()):
                 for j in years:

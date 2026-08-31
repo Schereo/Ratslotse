@@ -263,11 +263,11 @@ export default function PersonalPage() {
                   <Waffel
                     gesamt={kernLuecke.stellen}
                     proQuadrat={10}
-                    einheit="Stellen"
+                    unit="Stellen"
                     grundLabel="besetzt"
                     markiert={{
                       count: kernLuecke.vacant,
-                      grund: `unbesetzt · rund ${pct(kernLuecke.anteil)} %`,
+                      reason: `unbesetzt · rund ${pct(kernLuecke.anteil)} %`,
                       as_of_date: deDatum(kernLuecke.as_of_date),
                     }}
                   />

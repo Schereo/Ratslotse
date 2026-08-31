@@ -157,7 +157,7 @@ import Testing
         {"partei":"SPD","haltung":"dafür","position":"Zustimmung","einig":true},
         {"partei":"CDU","haltung":"dagegen","position":"Ablehnung","einig":false}
       ],
-      "grafik": {"art":"linie","titel":"Kosten","einheit":"Mio. €","series":[{"year":2026,"wert":2.5}]}
+      "grafik": {"art":"linie","titel":"Kosten","unit":"Mio. €","series":[{"year":2026,"wert":2.5}]}
     }
     """#.utf8)
 
@@ -649,7 +649,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           }],
           "ris": {
             "kpenr": 17, "name": "Tim Ebbeke Harms", "current_faction": "Grüne",
-            "memberships": [{"kgrnr": 2, "gremium": "Rat", "role": "Mitglied", "von": "2021-11-01", "bis": null}]
+            "memberships": [{"kgrnr": 2, "committee": "Rat", "role": "Mitglied", "von": "2021-11-01", "bis": null}]
           },
           "committees": [{"committee": "Rat", "n": 39, "chair": true}],
           "recent": [{"ksinr": 4599, "committee": "Kulturausschuss", "session_date": "2026-06-16"}],

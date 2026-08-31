@@ -179,7 +179,7 @@ def test_backfill_importance_store(tmp_path):
         c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome) "
                   "VALUES (2,0,'decision','Kenntnisnahme der Niederschrift','zur_kenntnis')")
         for datum in ("2025-01-01", "2025-02-01"):
-            c.execute("INSERT INTO council_beratungen(kvonr,datum,gremium,fetched_at) VALUES (555,?,'Rat','x')", (datum,))
+            c.execute("INSERT INTO council_beratungen(kvonr,datum,committee,fetched_at) VALUES (555,?,'Rat','x')", (datum,))
 
     assert store.backfill_importance() == 2
     by_title = {d["title"]: d for d in store.search_decisions(sort="importance", limit=10)}

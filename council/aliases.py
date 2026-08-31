@@ -235,7 +235,7 @@ def decide(pairs: list[dict], entities: list[dict], titles: dict[int, list[str]]
                 canon, alias = alias, canon
             pair["canonical"] = canon["id"]
             pair["alias"] = alias["id"]
-            pair["reason"] = (item.get("grund") or "").strip()[:200]
+            pair["reason"] = (item.get("reason") or "").strip()[:200]
             confirmed.append(pair)
     return confirmed
 

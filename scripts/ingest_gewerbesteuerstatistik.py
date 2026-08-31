@@ -117,7 +117,7 @@ def main() -> int:
                 # --- Probe 1: die Rechnung in der Zeile ---
                 zeilen, verworfen = gs.zeilen(budget_year)
                 for v in verworfen:
-                    print(f"    ÜBERSPRUNGEN {v['stadt']}: {v['grund']} — "
+                    print(f"    ÜBERSPRUNGEN {v['stadt']}: {v['reason']} — "
                           f"{v['result']}")
                 if not zeilen:
                     print("  ABBRUCH für diesen Jahrgang: keine einzige Stadt "
@@ -129,7 +129,7 @@ def main() -> int:
                 print(f"  Blattprobe 6.1 gegen 6.2: {blatt['result']}")
                 if not blatt["ok"]:
                     for a in blatt["abweichungen"][:8]:
-                        print(f"    ABWEICHUNG {a['stadt']}: {a['grund']}")
+                        print(f"    ABWEICHUNG {a['stadt']}: {a['reason']}")
                     print("  ABBRUCH für diesen Jahrgang: Die beiden Blätter "
                           "widersprechen sich. Lieber keine Zahlen als falsche.")
                     continue

@@ -155,7 +155,7 @@ def test_ohne_eckwerte_kommt_nichts_zurueck():
 def test_die_luecke_wird_benannt():
     lücke = ohne_eckwerte("25/0818", TITEL_BBO)
     assert lücke["enterprise"] == "bbo"
-    assert "Anlage" in lücke["grund"]
+    assert "Anlage" in lücke["reason"]
 
 
 def test_gerissene_probe_wirft():

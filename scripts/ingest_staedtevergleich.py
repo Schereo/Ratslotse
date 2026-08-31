@@ -158,7 +158,7 @@ def main() -> int:
                 print(f"  {probe_k['result']}")
                 if not probe_k["ok"]:
                     for abw in probe_k["abweichungen"][:8]:
-                        print(f"    ABWEICHUNG {abw['stadt']}: {abw['grund']}")
+                        print(f"    ABWEICHUNG {abw['stadt']}: {abw['reason']}")
                     print("  ÜBERSPRUNGEN: Was seine Probe reißt, kommt nicht "
                           "in die Datenbank.")
                     continue
@@ -199,7 +199,7 @@ def main() -> int:
 
             zeilen, verworfen = sv.zeilen_realsteuern(rs)
             for v in verworfen:
-                print(f"    VERWORFEN {v['stadt']}: {v['grund']} — {v['result']}")
+                print(f"    VERWORFEN {v['stadt']}: {v['reason']} — {v['result']}")
             if not zeilen:
                 print("  ABBRUCH: keine einzige Stadt hat ihre Probe bestanden.")
                 return 1

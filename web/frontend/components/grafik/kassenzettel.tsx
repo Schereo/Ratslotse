@@ -94,7 +94,7 @@ export function Kassenzettel({
   bezahltMit?: BonZeile[];
   bezahltMitTitel?: string;
   /** PFLICHT: Bezugsgröße, Stichtag, Quelle — sichtbar unter dem Zettel. */
-  teiler: { zahl: number; einheit: string; as_of_date: string; quelle: ReactNode };
+  teiler: { zahl: number; unit: string; as_of_date: string; quelle: ReactNode };
   /** PFLICHT: der „Was diese Zahl nicht ist"-Kasten, je Punkt ein Satz. */
   nichtAussagen: NichtAussage[];
   /** Weitere Bon-Abschnitte vor der Quellzeile (z. B. Rücklagen-Stand). */
@@ -186,7 +186,7 @@ export function Kassenzettel({
               wurde und woher die Zahl stammt. */}
           <p className="mt-2 px-1 text-center text-[11px] leading-relaxed text-muted-foreground">
             Berechnet mit <span className="font-medium tabular-nums text-foreground/80">{deZahl(teiler.zahl)}</span>{" "}
-            {teiler.einheit} · Stand {teiler.as_of_date} · {teiler.quelle}
+            {teiler.unit} · Stand {teiler.as_of_date} · {teiler.quelle}
           </p>
         </div>
 

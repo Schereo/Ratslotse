@@ -96,7 +96,7 @@ function KanalRangliste({ channels, beleg }: {
     };
   });
   return (
-    <RanglisteSchiene zeilen={zeilen} einheit="Mio.&nbsp;€" nachkomma={2}
+    <RanglisteSchiene zeilen={zeilen} unit="Mio.&nbsp;€" nachkomma={2}
       beleg={beleg} />
   );
 }
