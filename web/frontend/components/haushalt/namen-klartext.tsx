@@ -192,9 +192,9 @@ function Zeile({ z, skala, breit, aktiv }: {
 type Sortierung = "aus" | "stadt";
 
 /** Das Verzeichnis. `aktiv` hebt den Bereich hervor, von dem man kommt. */
-export function NamenKlartext({ zeilen, jahr, aktiv, className }: {
+export function NamenKlartext({ zeilen, year, aktiv, className }: {
   zeilen: HaushaltZeile[];
-  jahr: number;
+  year: number;
   /** Bereichsname (DB-Schreibweise) der aufrufenden Seite. */
   aktiv?: string;
   className?: string;
@@ -237,7 +237,7 @@ export function NamenKlartext({ zeilen, jahr, aktiv, className }: {
           </div>
         </div>
         <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Mio. € · {jahr} · {rows.length} Teilhaushalte
+          Mio. € · {year} · {rows.length} Teilhaushalte
         </span>
       </div>
       {/* Die Balken-Legende einmal für alle Zeilen — dieselben zwei Töne wie

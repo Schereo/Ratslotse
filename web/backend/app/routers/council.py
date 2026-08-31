@@ -402,7 +402,7 @@ def zahl_der_woche(
 
 @router.get("/haushalt/produkte")
 def haushalt_produkte(
-    jahr: int,
+    year: int,
     thh: int | None = None,
     q: str | None = None,
     amt: str | None = None,
@@ -435,22 +435,22 @@ def haushalt_produkte(
     Bestand steht. Gegen ``alle_jahre`` gehalten wird daraus das
     Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
     vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen."""
-    produkte = store.get_produkte(jahr, thh, suche=q, amt=amt,
+    produkte = store.get_produkte(year, thh, suche=q, amt=amt,
                                   beeinflussbarkeit=spielraum)
     abdeckung = store.produkt_abdeckung()
     for p in produkte:
         p["jahre"] = abdeckung.get(p["produkt_nr"], [])
-    einzeln = store.produkt(jahr, nr) if nr else None
+    einzeln = store.produkt(year, nr) if nr else None
     if einzeln:
         einzeln["jahre"] = abdeckung.get(einzeln["produkt_nr"], [])
-    summe = sum(p["aufwendungen"] or 0 for p in store.get_produkte(jahr))
-    plan = next((z for z in store.get_haushalt(jahr) if z["is_summe"]), None)
+    summe = sum(p["aufwendungen"] or 0 for p in store.get_produkte(year))
+    plan = next((z for z in store.get_haushalt(year) if z["is_summe"]), None)
     quote = round(summe / plan["aufwendungen"] * 100, 1) if plan and plan["aufwendungen"] else None
-    return {"jahr": jahr, "produkte": produkte, "abdeckung_prozent": quote,
+    return {"year": year, "produkte": produkte, "abdeckung_prozent": quote,
             "plan_aufwendungen": plan["aufwendungen"] if plan else None,
             "treffer": len(produkte),
             "alle_jahre": store.produkte_jahre(),
-            "facetten": store.produkt_facetten(jahr),
+            "facetten": store.produkt_facetten(year),
             "produkt": einzeln}
 
 
@@ -598,7 +598,7 @@ def haushalt_konzern(
     je_jahr: dict[int, dict] = {}
     for p in posten:
         eintrag = je_jahr.setdefault(
-            p["jahr"], {"jahr": p["jahr"], "herkunft_id": p["herkunft_id"]})
+            p["year"], {"year": p["year"], "herkunft_id": p["herkunft_id"]})
         if p["rolle"]:
             eintrag[p["rolle"]] = p["betrag"]
 
@@ -609,11 +609,11 @@ def haushalt_konzern(
     for t in traeger:
         if t["traeger_key"] != "stadt":
             continue
-        ist = (kern.get(t["jahr"]) or {}).get(t["art"])
+        ist = (kern.get(t["year"]) or {}).get(t["art"])
         if ist is None:
             continue
         gegenprobe.append({
-            "jahr": t["jahr"], "art": t["art"],
+            "year": t["year"], "art": t["art"],
             "konzern": t["betrag_teur"] * 1000.0, "jahresabschluss": ist,
             "ok": abs(t["betrag_teur"] - ist / 1000.0) <= 1.0,
         })
@@ -784,7 +784,7 @@ def haushalt_beteiligungen(
                   if z["herkunft_id"] is not None})
     return {
         "berichtsjahre": berichtsjahre,
-        "jahre": sorted({z["jahr"] for z in kennzahlen}),
+        "jahre": sorted({z["year"] for z in kennzahlen}),
         "gesellschaften": [{**g, "funktionen_zuordenbar":
                             g["gesellschaft"] not in gerissen}
                            for g in gesellschaften],
@@ -928,7 +928,7 @@ def haushalt_dokumente(
     man wieder selbst suchen darf. Hier steht, welches PDF zu welchem Jahr
     gehört, damit der Link das Dokument des **gezeigten** Jahres öffnet.
 
-    ``{"dokumente": {"<quellenschluessel>": [{jahr, url, label, fundstelle,
+    ``{"dokumente": {"<quellenschluessel>": [{year, url, label, fundstelle,
     seite}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
     Dokument haben; die Oberfläche fällt dann auf die statische Adresse
     zurück und sagt dazu, wohin sie führt.
@@ -991,7 +991,7 @@ def haushalt_uebersicht(
     - ``ansatz_jahre``: die Jahre mit einem Haushaltsansatz — die Liste, aus
       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
     - ``wirtschaftsplaene``: die Wirtschaftspläne der Eigenbetriebe und
-      städtischen Gesellschaften, je ``betrieb`` und ``jahr``. **Nicht mit dem
+      städtischen Gesellschaften, je ``betrieb`` und ``year``. **Nicht mit dem
       Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
       Aufwand des Kernhaushalts; herausgerechnet wird das erst im
@@ -1321,7 +1321,7 @@ def _kennzahlen(store: CouncilStore) -> dict:
     return {
         "label": {k.key: k.label for k in kennzahlen_mod.KENNZAHLEN},
         "einheit": {k.key: k.einheit for k in kennzahlen_mod.KENNZAHLEN},
-        "reihe": [{"kennzahl": z["kennzahl"], "jahr": z["jahr"], "wert": z["wert"],
+        "reihe": [{"kennzahl": z["kennzahl"], "year": z["year"], "wert": z["wert"],
                    "stellen": z["stellen"], "fassung": z["fassung"],
                    "bericht_jahr": z["bericht_jahr"], "herkunft_id": z["herkunft_id"]}
                   for z in kennzahlen_mod.neueste(staende)],
@@ -1399,7 +1399,7 @@ def _spenden_jahre(vorlagen: list[dict]) -> list[dict]:
     jedem Lauf neu stimmen müsste."""
     jahre: dict[int, dict] = {}
     for v in vorlagen:
-        e = jahre.setdefault(v["jahr"], {"jahr": v["jahr"], "betrag": 0.0, "vorlagen": 0,
+        e = jahre.setdefault(v["year"], {"year": v["year"], "betrag": 0.0, "vorlagen": 0,
                                          "rat": 0, "verwaltungsausschuss": 0})
         e["betrag"] += v["betrag"]
         e["vorlagen"] += 1
@@ -1414,7 +1414,7 @@ def _spenden_jahre(vorlagen: list[dict]) -> list[dict]:
 
 @router.get("/haushalt/weg")
 def haushalt_weg(
-    jahr: int | None = None,
+    year: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> HaushaltWeg:
@@ -1427,24 +1427,24 @@ def haushalt_weg(
     ``stationen`` bis zur Entscheidung im Rat; jede Station trägt ``ksinr``
     und ``top``, ist also auf ihre Sitzung verlinkbar.
 
-    **Ohne ``jahr`` kommen alle Jahrgänge.** Das ist Absicht: Die Aussage
+    **Ohne ``year`` kommen alle Jahrgänge.** Das ist Absicht: Die Aussage
     dieser Seite liegt nicht im einzelnen Jahr, sondern in der Streuung — dass
     der Entwurf verlässlich im Oktober kommt, die Entscheidung aber zwischen
     Dezember und Februar wandert, sieht man erst über acht Jahrgänge. Eine
     Seite, die das behaupten will, braucht sie alle gleichzeitig; ein
     Jahres-Umschalter, der je Klick nachlädt, wäre acht Anfragen für 30 Zeilen.
-    ``jahr`` grenzt trotzdem ein, wenn jemand nur eine Runde braucht.
+    ``year`` grenzt trotzdem ein, wenn jemand nur eine Runde braucht.
 
     Was hier **nicht** steht: die Termine der laufenden Runde.
     ``council_scheduled_sessions`` kennt keine Tagesordnung — wir können nicht
     sagen, welche der kommenden Sitzungen die Haushaltssitzung wird, und raten
     es auch nicht."""
-    return {"runden": store.haushalt_weg(jahr)}
+    return {"runden": store.haushalt_weg(year)}
 
 
 @router.get("/haushalt/streit")
 def haushalt_streit(
-    jahr: int | None = None,
+    year: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> HaushaltStreit:
@@ -1455,7 +1455,7 @@ def haushalt_streit(
     Schlussabstimmung. Alles kommt aus den Ratsdaten: Beschlusszeilen,
     Anwesenheitsliste und Protokoll-Volltext derselben Sitzung.
 
-    **Ohne ``jahr`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
+    **Ohne ``year`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
     aus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst
     über die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);
     die Seite lädt sie einmal und schaltet danach ohne Netz zwischen den
@@ -1465,7 +1465,7 @@ def haushalt_streit(
     seit 08/2026 ``/haushalt/aenderungslisten`` (direkt darunter), Position
     für Position aus den gelesenen EHH-Dokumenten. Hier bleibt die
     Verfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam."""
-    return {"runden": store.haushalt_streit(jahr)}
+    return {"runden": store.haushalt_streit(year)}
 
 
 @router.get("/haushalt/aenderungslisten")
@@ -1482,7 +1482,7 @@ def haushalt_aenderungslisten(
     wurde (``council/aenderungslisten.py``).
 
     - ``zeilen``: NUR die Positionen des Haushaltsjahrgangs selbst
-      (``jahr == jahrgang``). Dieselbe Maßnahme steht im Dokument je
+      (``year == jahrgang``). Dieselbe Maßnahme steht im Dokument je
       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
       Summen. ``urheber`` trägt, WER die Position vorschlug — gefüllt nur
@@ -1503,8 +1503,8 @@ def haushalt_aenderungslisten(
     """
     d = store.get_haushalt_aenderungen()
     f = store.get_haushalt_aenderungen_fhh()
-    zeilen = [z for z in d["zeilen"] if z["jahr"] == z["jahrgang"]]
-    fhh_zeilen = [z for z in f["zeilen"] if z["jahr"] == z["jahrgang"]]
+    zeilen = [z for z in d["zeilen"] if z["year"] == z["jahrgang"]]
+    fhh_zeilen = [z for z in f["zeilen"] if z["year"] == z["jahrgang"]]
     ids = sorted({z["herkunft_id"] for z in zeilen + fhh_zeilen
                   if z["herkunft_id"] is not None}
                  | {s["herkunft_id"] for s in d["summen"] + f["summen"]
@@ -2087,7 +2087,7 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
     if not isinstance(g, dict):
         return None
     try:
-        reihe = [{"jahr": int(p["jahr"]), "wert": float(p["wert"])}
+        reihe = [{"year": int(p["year"]), "wert": float(p["wert"])}
                  for p in (g.get("reihe") or [])[:60]]
     except (KeyError, TypeError, ValueError):
         return None
@@ -3668,8 +3668,8 @@ def haushalt_vergleich(
     jahre: dict[str, list[int]] = {}
     for w in werte:
         jahre.setdefault(w["reihe"], [])
-        if w["jahr"] not in jahre[w["reihe"]]:
-            jahre[w["reihe"]].append(w["jahr"])
+        if w["year"] not in jahre[w["reihe"]]:
+            jahre[w["reihe"]].append(w["year"])
     for liste in jahre.values():
         liste.sort()
 
@@ -3759,7 +3759,7 @@ def haushalt_gebaut(
     gruppen = store.get_vermoegensgruppen()
     ids = sorted({z["herkunft_id"] for z in (*reihe, *anlagen, *gruppen)
                   if z["herkunft_id"] is not None})
-    gemessen = {(v["regelwerk"], v["jahr"]): v.get("differenz")
+    gemessen = {(v["regelwerk"], v["year"]): v.get("differenz")
                 for v in store.get_investitionen_ist_verworfen()}
 
     # Lücken je Regelwerk: Was zwischen dem ersten und dem letzten belegten
@@ -3769,17 +3769,17 @@ def haushalt_gebaut(
     # Herkunft, den derselbe Lauf schreibt.)
     fehlend: dict[str, list[dict]] = {}
     for regelwerk in _ii.REGELWERK:
-        jahre = sorted(z["jahr"] for z in reihe if z["regelwerk"] == regelwerk)
+        jahre = sorted(z["year"] for z in reihe if z["regelwerk"] == regelwerk)
         if len(jahre) < 2:
             continue
-        luecke = [{"jahr": j, "differenz": gemessen.get((regelwerk, j))}
+        luecke = [{"year": j, "differenz": gemessen.get((regelwerk, j))}
                   for j in range(jahre[0], jahre[-1] + 1) if j not in set(jahre)]
         if luecke:
             fehlend[regelwerk] = luecke
 
     return {
         "reihe": reihe,
-        "jahre": [z["jahr"] for z in reihe],
+        "jahre": [z["year"] for z in reihe],
         "abgrenzung": _ii.ABGRENZUNG,
         # Wie die beiden Rechnungswesen heißen — damit die Beschriftung nicht
         # in zwei Sprachen existiert (dieselbe Entscheidung wie bei `arten`
@@ -3799,9 +3799,9 @@ def haushalt_gebaut(
         # aus einer Quellenlücke eine Datenlücke.
         "anlagen": {
             "reihe": anlagen,
-            "jahre": sorted({z["jahr"] for z in anlagen}),
+            "jahre": sorted({z["year"] for z in anlagen}),
             "gruppen": gruppen,
-            "gruppen_jahre": sorted({g["jahr"] for g in gruppen}),
+            "gruppen_jahre": sorted({g["year"] for g in gruppen}),
             "proben": anlagenspiegel_mod.PROBEN,
         },
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
@@ -3903,8 +3903,8 @@ def haushalt_schulden(
     # Verwechslung im Thema, und sie stünde in keinem Dokument.
     zins: list[dict] = []
     try:
-        for jahr in store.ergebnisrechnung_jahre():
-            for posten in store.get_ergebnisrechnung(jahr):
+        for year in store.ergebnisrechnung_jahre():
+            for posten in store.get_ergebnisrechnung(year):
                 if posten["nr"] != _s.POSTEN_ZINSAUFWAND:
                     continue
                 # NUR die Gesamtrechnung (`thh_nr IS NULL`). Der Jahresabschluss
@@ -3917,7 +3917,7 @@ def haushalt_schulden(
                 if posten.get("ergebnis") is None:
                     continue          # ein Jahrgang ohne Ist trägt hier nichts
                 zins.append({
-                    "jahr": jahr,
+                    "year": year,
                     "aufwand": posten["ergebnis"],
                     "herkunft_id": posten.get("herkunft_id"),
                 })
@@ -3946,7 +3946,7 @@ def haushalt_schulden(
 
     return {
         "reihe": zeilen,
-        "jahre": [z["jahr"] for z in zeilen],
+        "jahre": [z["year"] for z in zeilen],
         "abgrenzung": _s.ABGRENZUNG,
         # `genau` und `aus_folgejahr` sind Angaben über den BELEG, nicht über
         # die Zahl: 2019/2020 stehen auf den Cent im Dokument, ab 2022 rundet

@@ -226,15 +226,15 @@ def test_ansatz_und_finanzplanung_landen_getrennt():
 
     nach_art: dict[str, set[int]] = {}
     for z in r["zeilen"]:
-        nach_art.setdefault(z["art"], set()).add(z["jahr"])
+        nach_art.setdefault(z["art"], set()).add(z["year"])
     assert nach_art == {"ansatz": {2026},
                         "finanzplanung": {2027, 2028, 2029}}
 
     # Die beiden vorderen Spalten werden gar nicht erst gespeichert: Die erste
     # ist ein Ist (dafür gibt es council_ergebnisrechnung), die zweite ein
     # fortgeschriebener Vorjahresansatz, der dem beschlossenen widerspräche.
-    assert 2024 not in {z["jahr"] for z in r["zeilen"]}
-    assert 2025 not in {z["jahr"] for z in r["zeilen"]}
+    assert 2024 not in {z["year"] for z in r["zeilen"]}
+    assert 2025 not in {z["year"] for z in r["zeilen"]}
 
 
 def test_die_gespeicherten_betraege_sind_die_des_dokuments():
@@ -247,7 +247,7 @@ def test_die_gespeicherten_betraege_sind_die_des_dokuments():
     assert ansatz[21] == -92_200_345.0       # ordentliches Ergebnis
 
     # Die Finanzplanung trägt andere Zahlen — und zwar die des richtigen Jahres.
-    fp = {(z["jahr"], z["nr"]): z["betrag"] for z in r["zeilen"]
+    fp = {(z["year"], z["nr"]): z["betrag"] for z in r["zeilen"]
           if z["art"] == "finanzplanung"}
     assert fp[(2027, 1)] == 366_584_100.0
     assert fp[(2028, 1)] == 372_762_700.0
@@ -266,7 +266,7 @@ def test_ist_spalte_wird_gelesen_aber_nicht_gespeichert():
     assert r["ist_jahr"] == 2024
     assert r["ist"][1] == 377_878_954.16
     assert r["ist"][12] == 799_511_849.05
-    assert all(z["jahr"] != 2024 for z in r["zeilen"])
+    assert all(z["year"] != 2024 for z in r["zeilen"])
 
 
 # --- 2. Die Pflicht-Proben ---------------------------------------------------
@@ -424,12 +424,12 @@ def test_store_haelt_ansatz_und_finanzplanung_auseinander(tmp_path):
     # 2026 steht zweimal in der Tabelle — einmal als beschlossener Ansatz,
     # einmal als das, was der Plan 2025 dafür vorausgesehen hatte.
     fuer_2026 = {(z["plan_jahrgang"], z["art"]): z["betrag"]
-                 for z in store.get_ergebnishaushalt(jahr=2026) if z["nr"] == 12}
+                 for z in store.get_ergebnishaushalt(year=2026) if z["nr"] == 12}
     assert fuer_2026 == {(2026, "ansatz"): 788_574_714.0,
                          (2025, "finanzplanung"): 755_494_699.0}
 
     # Und die Frage „was gilt?" hat genau eine Antwort.
-    (beschlossen,) = [z for z in store.get_ergebnishaushalt(jahr=2026, art="ansatz")
+    (beschlossen,) = [z for z in store.get_ergebnishaushalt(year=2026, art="ansatz")
                       if z["nr"] == 12]
     assert beschlossen["betrag"] == 788_574_714.0
     assert beschlossen["plan_jahrgang"] == 2026
@@ -441,7 +441,7 @@ def test_ansatz_jahre_fuehren_keine_finanzplanung(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_ergebnishaushalt(2026, eh.lies(GEH_2026)["zeilen"], _quelle())
     assert store.ansatz_jahre() == [2026]
-    alle = {z["jahr"] for z in store.get_ergebnishaushalt()}
+    alle = {z["year"] for z in store.get_ergebnishaushalt()}
     assert alle == {2026, 2027, 2028, 2029}
     store.close()
 

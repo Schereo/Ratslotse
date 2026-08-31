@@ -229,7 +229,7 @@ def test_positive_ueberdeckung_wird_nur_bei_exakter_kaskade_abgezogen():
     Gebührenvorschlag 121,95 €
     """
     b = parse_anlage(text)
-    assert b.jahr == 2020
+    assert b.year == 2020
     assert b.abzuege == -(2_881_800 + 3_000 + 168_200 + 280_500)
     assert b.zu_deckende_kosten == 6_428_050
     assert b.gebuehr == 121.974 and b.bezugsmenge == 52_700
@@ -351,7 +351,7 @@ def test_die_drei_bereiche_werden_getrennt():
     assert not risse
     assert [b.bereich for b in gelesen] == [
         "abfallbehandlung", "abfallsammlung", "strassenreinigung"]
-    assert {b.jahr for b in gelesen} == {2026}
+    assert {b.year for b in gelesen} == {2026}
 
 
 # --------------------------------------------------------------------------
@@ -362,7 +362,7 @@ def test_altes_layout_liefert_zwoelf_benannte_tarife():
     saetze = lies_gebuehrensaetze(
         ANLAGE_1_2025 + ANLAGE_3_2025 + ANLAGE_4_2025, "24/0999")
     assert len(saetze) == 12
-    assert {s.jahr for s in saetze} == {2025}
+    assert {s.year for s in saetze} == {2025}
     assert next(s for s in saetze if s.schluessel == "grundgebuehr").betrag == 50
     assert next(s for s in saetze if s.schluessel == "litergebuehr").betrag == 1.34
     assert next(s for s in saetze if s.schluessel == "sperrmuell_2m3").betrag == 16

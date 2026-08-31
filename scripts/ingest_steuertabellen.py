@@ -98,13 +98,13 @@ def link_suchen(muster) -> str | None:
 def ist_reihe(store: CouncilStore) -> tuple[dict, dict]:
     """``council_steuern`` in die beiden Formen bringen, die die Proben brauchen.
 
-    ``({jahr: {art: euro}}, {jahr: grundsteuer_euro})`` — die erste für den
+    ``({year: {art: euro}}, {year: grundsteuer_euro})`` — die erste für den
     Ist-Abgleich von 1103, die zweite für die Sprungjahr-Probe von 1105."""
     alle: dict[int, dict[str, float]] = {}
     for zeile in store.get_steuereinnahmen():
         if zeile.get("betrag") is None:
             continue
-        alle.setdefault(zeile["jahr"], {})[zeile["art"]] = float(zeile["betrag"])
+        alle.setdefault(zeile["year"], {})[zeile["art"]] = float(zeile["betrag"])
     grundsteuer = {j: w[GRUNDSTEUER] for j, w in alle.items() if GRUNDSTEUER in w}
     return alle, grundsteuer
 
@@ -239,7 +239,7 @@ def main() -> int:
                     print(f"  {name}: {ergebnis['abbruch']}", file=sys.stderr)
                     continue
                 for v in ergebnis["verworfen"]:
-                    print(f"  {name}: VERWORFEN {v['jahr']} — {v['grund']}",
+                    print(f"  {name}: VERWORFEN {v['year']} — {v['grund']}",
                           file=sys.stderr)
                 if not ergebnis["zeilen"]:
                     continue
@@ -250,8 +250,8 @@ def main() -> int:
                       f"Jahrgänge {ergebnis['jahre']}")
 
             zeilen_1103 = stt.zusammenlegen(
-                gelesen, lambda z: (z["jahr"], z["art"]))
-            jahre_1103 = sorted({z["jahr"] for z in zeilen_1103})
+                gelesen, lambda z: (z["year"], z["art"]))
+            jahre_1103 = sorted({z["year"] for z in zeilen_1103})
             print(f"  zusammengelegt: {len(zeilen_1103)} Zeilen · "
                   f"Jahrgänge {jahre_1103}")
 
@@ -274,18 +274,18 @@ def main() -> int:
                 sprung = ergebnis["sprungjahre"]
                 print(f"  {name}: {len(ergebnis['zeilen'])} Zeilen")
             zeilen_1105 = stt.zusammenlegen(
-                gelesen5, lambda z: (z["jahr"], z["art"]))
-            jahre_1105 = sorted({z["jahr"] for z in zeilen_1105})
+                gelesen5, lambda z: (z["year"], z["art"]))
+            jahre_1105 = sorted({z["year"] for z in zeilen_1105})
             if zeilen_1105:
                 print(f"  zusammengelegt: {len(zeilen_1105)} Zeilen · "
                       f"{len(jahre_1105)} Änderungsjahre {jahre_1105}")
                 for e in sprung["bestanden"]:
-                    print(f"    Sprungjahr {e['jahr']}: Hebesatz "
+                    print(f"    Sprungjahr {e['year']}: Hebesatz "
                           f"{e['hebesatz_vorher']}→{e['hebesatz_nachher']}, "
                           f"Aufkommen im Jahr {e['im_jahr'] * 100:+.2f} %, "
                           f"danach {e['danach'] * 100:+.2f} %")
                 for e in sprung["nicht_pruefbar"]:
-                    print(f"    nicht prüfbar {e['jahr']}: {e['grund']}")
+                    print(f"    nicht prüfbar {e['year']}: {e['grund']}")
 
             if not zeilen_1103 and not zeilen_1105:
                 print("ABBRUCH: keine der beiden Tabellen hat eine Probe "
@@ -327,7 +327,7 @@ def main() -> int:
             for zeile in zeilen_1103:
                 nach_ausgabe.setdefault(zeile["ausgabe"], []).append(zeile)
             for name, teil in sorted(nach_ausgabe.items()):
-                jahre = sorted({z["jahr"] for z in teil})
+                jahre = sorted({z["year"] for z in teil})
                 proben = proben_je_ausgabe.get(name) or ["steuerplan_summenzeile"]
                 nachweis = (
                     f"{len(jahre)} Jahrgänge ({jahre[0]}–{jahre[-1]}), "
@@ -341,7 +341,7 @@ def main() -> int:
 
             if zeilen_1105:
                 gemessen = ", ".join(
-                    f"{e['jahr']} ({e['im_jahr'] * 100:+.1f} % im Jahr gegen "
+                    f"{e['year']} ({e['im_jahr'] * 100:+.1f} % im Jahr gegen "
                     f"{e['danach'] * 100:+.1f} % danach)"
                     for e in sprung["bestanden"])
                 nachweis5 = (
@@ -351,7 +351,7 @@ def main() -> int:
                     + (f"; Sprungjahr-Probe an der Aufkommensreihe für "
                        f"{gemessen}" if gemessen else "")
                     + ("; nicht prüfbar: "
-                       + ", ".join(str(e["jahr"])
+                       + ", ".join(str(e["year"])
                                    for e in sprung["nicht_pruefbar"])
                        if sprung["nicht_pruefbar"] else ""))
                 letzte_ausgabe = zeilen_1105[-1]["ausgabe"]

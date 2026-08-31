@@ -49,7 +49,7 @@ _UA = {"User-Agent": "Ratslotse/1.0 (ratslotse.de; Haushalts-Bereich)"}
 
 def _spanne(rows: list[dict]) -> str:
     """„1998–2025" aus den Jahrgängen einer Datensatz-Lieferung."""
-    jahre = sorted({r["jahr"] for r in rows})
+    jahre = sorted({r["year"] for r in rows})
     return f"{jahre[0]}–{jahre[-1]}" if jahre else ""
 
 
@@ -119,28 +119,28 @@ def main() -> int:
         # nicht halb gespeichert (council/investitionen.py entscheidet das).
         p = finanzquellen.Protokoll()
         gespeichert: list[int] = []
-        for jahr, url in sorted(haushalt.INVESTITIONEN_CSV_URLS.items()):
+        for year, url in sorted(haushalt.INVESTITIONEN_CSV_URLS.items()):
             r = requests.get(url, headers=_UA, timeout=120)
             if r.status_code != 200:
-                print(f"Investitionen {jahr}: HTTP {r.status_code} — übersprungen",
+                print(f"Investitionen {year}: HTTP {r.status_code} — übersprungen",
                       file=sys.stderr)
                 continue
-            gelesen = investitionen.lies(r.text, jahr)
+            gelesen = investitionen.lies(r.text, year)
             if not gelesen["bestanden"]:
-                print(f"Investitionen {jahr}: {gelesen['nachweis']} — "
+                print(f"Investitionen {year}: {gelesen['nachweis']} — "
                       f"nicht gespeichert", file=sys.stderr)
                 continue
             # Ein leeres oder deutlich geschrumpftes Ergebnis ersetzt keinen
             # gefüllten Jahrgang (dieselbe Regel wie in den Finanzberichten).
-            alt = len(store.get_investitionen(jahr=jahr))
+            alt = len(store.get_investitionen(year=year))
             neu = len(gelesen["zeilen"]) + 1 + (1 if gelesen["finanzhaushalt"] else 0)
-            if not finanzquellen.bestandsschutz(p, f"Investitionen {jahr}", alt, neu):
+            if not finanzquellen.bestandsschutz(p, f"Investitionen {year}", alt, neu):
                 continue
 
             anker = dict(art="opendata", url=url,
-                         label=f"Finanzhaushalt der Stadt Oldenburg {jahr}")
+                         label=f"Finanzhaushalt der Stadt Oldenburg {year}")
             n = store.save_investitionen(
-                jahr, gelesen["zeilen"], gelesen["gesamt"],
+                year, gelesen["zeilen"], gelesen["gesamt"],
                 herkunft.Herkunft(
                     probe="investitionen_summenzeile",
                     fundstelle="Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — "
@@ -149,9 +149,9 @@ def main() -> int:
                                "die Summenzeile „Finanzhaushalt "
                                "Gesamtinvestitionen“. Für welches Jahr die Datei "
                                "gilt, steht nicht in ihr, sondern in ihrem "
-                               f"Dateinamen (…_{jahr}_Finanzhaushalt.csv)",
+                               f"Dateinamen (…_{year}_Finanzhaushalt.csv)",
                     probe_ergebnis=gelesen["nachweis"],
-                    stand=f"Haushaltsplan {jahr} — Plan, nicht Ist",
+                    stand=f"Haushaltsplan {year} — Plan, nicht Ist",
                     **anker),
                 finanzhaushalt=gelesen["finanzhaushalt"],
                 herkunft_finanzhaushalt=herkunft.Herkunft(
@@ -167,11 +167,11 @@ def main() -> int:
                                "Verwaltungstätigkeit. Bezugsgröße für den "
                                "Investitionsanteil, nicht Teil der geprüften "
                                "Rechnung",
-                    stand=f"Haushaltsplan {jahr} — Plan, nicht Ist",
+                    stand=f"Haushaltsplan {year} — Plan, nicht Ist",
                     **anker) if gelesen["finanzhaushalt"] else None)
-            gespeichert.append(jahr)
+            gespeichert.append(year)
             g = gelesen["gesamt"]
-            print(f"Investitionen {jahr}: {len(gelesen['zeilen'])} Teilhaushalte, "
+            print(f"Investitionen {year}: {len(gelesen['zeilen'])} Teilhaushalte, "
                   f"{n} Zeilen · Auszahlungen {g['auszahlungen']/1e6:.1f} Mio. · "
                   f"Einzahlungen {g['einzahlungen']/1e6:.1f} Mio. · "
                   f"{gelesen['nachweis']}")

@@ -76,13 +76,13 @@ Gesamtbetrag des Finanzhaushaltes;;743796496;850520503
 
 # --- Die Probe geht auf ------------------------------------------------------
 
-@pytest.mark.parametrize("text, jahr, ein, aus", [
+@pytest.mark.parametrize("text, year, ein, aus", [
     (FH_2022, 2022, 34_357_401, 104_809_781),
     (FH_2025, 2025, 39_672_063, 80_781_520),
 ])
-def test_echte_datei_besteht_die_summenprobe(text, jahr, ein, aus):
+def test_echte_datei_besteht_die_summenprobe(text, year, ein, aus):
     """Beide Jahrgänge gehen auf — und zwar auf den Euro genau."""
-    r = inv.lies(text, jahr)
+    r = inv.lies(text, year)
     assert r["bestanden"] is True
     assert len(r["zeilen"]) == 13
     assert r["gesamt"]["einzahlungen"] == ein
@@ -183,8 +183,8 @@ def test_leere_datei():
 
 def test_teilhaushalt_heisst_ueber_die_jahrgaenge_gleich():
     """Sonst stünden in jeder Zeitreihe zwei Bereiche, wo einer ist."""
-    def namen(text, jahr):
-        return {z["thh_nr"]: z["bezeichnung"] for z in inv.lies(text, jahr)["zeilen"]}
+    def namen(text, year):
+        return {z["thh_nr"]: z["bezeichnung"] for z in inv.lies(text, year)["zeilen"]}
 
     a, b = namen(FH_2022, 2022), namen(FH_2025, 2025)
     assert a[8] == b[8] == "Verkehr und Straßenbau"
@@ -215,18 +215,18 @@ def test_alle_hinterlegten_urls_tragen_ihren_jahrgang():
     """Sonst spräche eine Zeile über ein anderes Jahr, als ihre URL zeigt."""
     from council import haushalt
 
-    for jahr, url in haushalt.INVESTITIONEN_CSV_URLS.items():
-        assert inv.jahrgang_aus_url(url) == jahr
+    for year, url in haushalt.INVESTITIONEN_CSV_URLS.items():
+        assert inv.jahrgang_aus_url(url) == year
 
 
 # --- Speichern: Herkunft je Zeile, zwei Proben, keine Lücken -----------------
 
-def _speichern(store: CouncilStore, text: str, jahr: int) -> dict:
-    r = inv.lies(text, jahr)
-    anker = dict(art="opendata", url=f"https://example.org/{jahr}_Finanzhaushalt.csv",
-                 label=f"Finanzhaushalt der Stadt Oldenburg {jahr}")
+def _speichern(store: CouncilStore, text: str, year: int) -> dict:
+    r = inv.lies(text, year)
+    anker = dict(art="opendata", url=f"https://example.org/{year}_Finanzhaushalt.csv",
+                 label=f"Finanzhaushalt der Stadt Oldenburg {year}")
     store.save_investitionen(
-        jahr, r["zeilen"], r["gesamt"],
+        year, r["zeilen"], r["gesamt"],
         herkunft.Herkunft(probe="investitionen_summenzeile",
                           fundstelle="Datensatz 1101, Tabellenblatt Finanzhaushalt",
                           probe_ergebnis=r["nachweis"], **anker),
@@ -242,10 +242,10 @@ def test_speichern_und_lesen(tmp_path):
     _speichern(store, FH_2025, 2025)
 
     assert store.investitionen_jahre() == [2025]
-    zeilen = store.get_investitionen(jahr=2025, ebene="teilhaushalt")
+    zeilen = store.get_investitionen(year=2025, ebene="teilhaushalt")
     assert len(zeilen) == 13
     assert {z["bezeichnung"] for z in zeilen} >= {"Schule und Bildung"}
-    gesamt = store.get_investitionen(jahr=2025, ebene="investitionen")
+    gesamt = store.get_investitionen(year=2025, ebene="investitionen")
     assert len(gesamt) == 1
     assert gesamt[0]["auszahlungen"] == 80_781_520
     # Jede Zeile weiß, woher sie kommt.
@@ -258,7 +258,7 @@ def test_bezugsgroesse_traegt_ungeprueft_die_investitionen_nicht(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     _speichern(store, FH_2025, 2025)
 
-    je_ebene = {z["ebene"]: z for z in store.get_investitionen(jahr=2025)
+    je_ebene = {z["ebene"]: z for z in store.get_investitionen(year=2025)
                 if z["ebene"] != "teilhaushalt"}
     herkuenfte = {h["id"]: h for h in store.get_herkunft()}
     geprueft = herkuenfte[je_ebene["investitionen"]["herkunft_id"]]
@@ -278,7 +278,7 @@ def test_erneuter_lauf_ersetzt_statt_zu_verdoppeln(tmp_path):
     vorher = len(store.get_herkunft())
     _speichern(store, FH_2025, 2025)
 
-    assert len(store.get_investitionen(jahr=2025)) == 15
+    assert len(store.get_investitionen(year=2025)) == 15
     # Idempotent über den Fingerabdruck: keine neuen Herkunfts-Datensätze.
     assert len(store.get_herkunft()) == vorher
 

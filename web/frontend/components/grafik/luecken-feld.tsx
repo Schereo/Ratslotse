@@ -1,6 +1,6 @@
 // <LueckenFeld> — eine Lücke mit Grund und Datum (GB-00).
 //
-// Lücken sind im Baukasten Daten, kein Sonderfall (`{jahr, fehlt}` im
+// Lücken sind im Baukasten Daten, kein Sonderfall (`{year, fehlt}` im
 // Daten-Vertrag, `components/grafik/daten.ts`). Dieses Feld ist ihre
 // TEXTFORM: der Satz, der sagt, WAS fehlt und WARUM — „2019 — verworfen:
 // 1,3 Mio. € Differenz im Dokument". Gerendert wird er von der Grafik

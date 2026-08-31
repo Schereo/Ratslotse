@@ -160,7 +160,7 @@ def in_anlage_belegt(betrag: float, anlagen_texte: list[str]) -> bool:
 
 
 def parse_kernzahl(template_number: str, titel: str, vorlage_text: str,
-                   jahr: int, anlagen_texte: list[str],
+                   year: int, anlagen_texte: list[str],
                    ) -> tuple[Wirtschaftsplan, str, str] | None:
     """Das beschlossene Jahresergebnis — belegt durch die Anlage.
 
@@ -211,7 +211,7 @@ def parse_kernzahl(template_number: str, titel: str, vorlage_text: str,
             f"{template_number}: Betrieb unbekannt — Titel: {titel!r}")
 
     plan = Wirtschaftsplan(
-        betrieb=key, betrieb_name=BETRIEBE[key][1], jahr=jahr,
+        betrieb=key, betrieb_name=BETRIEBE[key][1], year=year,
         template_number=template_number,
         # Diese Quelle nennt nur das Ergebnis. NULL heißt „sagt sie nicht" —
         # eine 0 wäre eine Behauptung über Erträge, die nirgends steht.
@@ -315,5 +315,5 @@ def herkunft_fuer(plan: Wirtschaftsplan, wort: str, beleglage: str,
                     if kvonr else None),
         fundstelle="Beschlussvorschlag der Vorlage",
         probe_ergebnis=f"„{wort}“ — {BELEGLAGE[beleglage]}",
-        stand=f"Wirtschaftsplan {plan.jahr}, Fassung des Ratsbeschlusses",
+        stand=f"Wirtschaftsplan {plan.year}, Fassung des Ratsbeschlusses",
     )

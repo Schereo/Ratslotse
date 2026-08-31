@@ -49,8 +49,8 @@ import { Gesetz } from "@/components/haushalt/gesetz";
 import { GlossaryText } from "@/components/glossary-text";
 import type { GewerbesteuerstatistikZeile } from "@/lib/haushalt";
 
-type SteuerZeile = { jahr: number; art: string; betrag: number | null };
-type Hebesatz = { jahr: number; hebesatz: number; vorheriger: number | null };
+type SteuerZeile = { year: number; art: string; betrag: number | null };
+type Hebesatz = { year: number; hebesatz: number; vorheriger: number | null };
 
 /** Ab wann ein Jahressprung „groß" heißt. Die Schwelle ist gesetzt, nicht
  *  gemessen — deshalb steht sie im Text, den der Block ausgibt. */
@@ -61,8 +61,8 @@ function reihe(zeilen: SteuerZeile[], art: string | null) {
   if (!art) return [];
   return zeilen
     .filter((z) => z.art === art && z.betrag != null && z.betrag > 0)
-    .map((z) => ({ jahr: z.jahr, betrag: z.betrag as number }))
-    .sort((a, b) => a.jahr - b.jahr);
+    .map((z) => ({ year: z.year, betrag: z.betrag as number }))
+    .sort((a, b) => a.year - b.year);
 }
 
 /** Die Veränderung gegenüber dem Vorjahr, in Prozent — je Jahrespaar eines.
@@ -70,11 +70,11 @@ function reihe(zeilen: SteuerZeile[], art: string | null) {
  *  Nur unmittelbar aufeinanderfolgende Jahre: Läge im Datensatz eine Lücke,
  *  verglichen wir sonst über sie hinweg und schrieben einen Zweijahres-Sprung
  *  als Jahressprung. */
-function aenderungen(r: { jahr: number; betrag: number }[]) {
+function aenderungen(r: { year: number; betrag: number }[]) {
   return r.slice(1)
-    .map((z, i) => ({ jahr: z.jahr, vorjahr: r[i].jahr,
+    .map((z, i) => ({ year: z.year, vorjahr: r[i].year,
                       prozent: ((z.betrag - r[i].betrag) / r[i].betrag) * 100 }))
-    .filter((p) => p.jahr === p.vorjahr + 1);
+    .filter((p) => p.year === p.vorjahr + 1);
 }
 
 function deProzent(v: number, stellen = 1): string {
@@ -159,10 +159,10 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   // Beide Reihen auf denselben Zeitraum: Ein Mittelwert über 28 Jahre neben
   // einem über 12 verglichen zwei verschiedene Epochen und hieße trotzdem
   // „im Schnitt".
-  const von = Math.max(eigen[0]?.jahr ?? 0, andere[0]?.jahr ?? 0);
-  const bis = Math.min(eigen.at(-1)?.jahr ?? 0, andere.at(-1)?.jahr ?? 0);
-  const imFenster = (r: { jahr: number; betrag: number }[]) =>
-    r.filter((z) => z.jahr >= von && z.jahr <= bis);
+  const von = Math.max(eigen[0]?.year ?? 0, andere[0]?.year ?? 0);
+  const bis = Math.min(eigen.at(-1)?.year ?? 0, andere.at(-1)?.year ?? 0);
+  const imFenster = (r: { year: number; betrag: number }[]) =>
+    r.filter((z) => z.year >= von && z.year <= bis);
 
   const eigenAend = aenderungen(imFenster(eigen));
   const andereAend = aenderungen(imFenster(andere));
@@ -193,9 +193,9 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   const beschlussJahre = new Set(
     hebesaetze
       .filter((z) => z.vorheriger != null && z.hebesatz !== z.vorheriger)
-      .map((z) => z.jahr)
+      .map((z) => z.year)
       .filter((j) => j > von && j <= bis));
-  const mitBeschluss = spruenge.filter((p) => beschlussJahre.has(p.jahr)).length;
+  const mitBeschluss = spruenge.filter((p) => beschlussJahre.has(p.year)).length;
 
   // --- Der Nenner ---------------------------------------------------------
   // Alles gerechnet, nichts geschrieben: Kommt ein neuer Erhebungsjahrgang
@@ -256,7 +256,7 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
               Wie viele es sind
             </p>
             <span className="font-mono text-[9.5px] uppercase text-muted-foreground">
-              Erhebungsjahr {statistik.jahr}
+              Erhebungsjahr {statistik.year}
             </span>
           </div>
 
@@ -381,7 +381,7 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
               {zerlegtAnteil != null && zerlegtFaktor != null && statistik && (
                 <>
                   {" "}Dieser Weg trägt den größeren Teil: {deProzent(zerlegtAnteil)}&nbsp;% des
-                  Steuermessbetrags kamen {statistik.jahr} aus zerlegten Betriebsstätten, und je
+                  Steuermessbetrags kamen {statistik.year} aus zerlegten Betriebsstätten, und je
                   zahlendem Fall war das rund das{" "}
                   {deProzent(zerlegtFaktor)}-Fache einer Firma, die nur hier sitzt.
                 </>

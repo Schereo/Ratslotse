@@ -95,7 +95,7 @@ export function einheitWort(einheit: string): string {
 /** Alle Punkte einer Kennzahl, nach Jahr. */
 export function punkteVon(daten: Kennzahlen, key: string): KennzahlPunkt[] {
   return daten.reihe.filter((p) => p.kennzahl === key)
-    .sort((a, b) => a.jahr - b.jahr);
+    .sort((a, b) => a.year - b.year);
 }
 
 /** Die Reihe einer Kennzahl — mit dem Bruch, wo die Stadt etwas anderes misst.
@@ -110,31 +110,31 @@ export function punkteVon(daten: Kennzahlen, key: string): KennzahlPunkt[] {
  *  kein Tooltip. */
 export function reiheVon(daten: Kennzahlen, key: string): {
   reihe: JahrPunkt[];
-  anmerkung: { jahr: number; kurz: string; text: string } | null;
+  anmerkung: { year: number; kurz: string; text: string } | null;
 } {
   const punkte = punkteVon(daten, key);
   const wechsel = daten.funde.find(
     (f) => f.kennzahl === key && f.art === "definition");
   if (!wechsel || !punkte.length) {
-    return { reihe: punkte.map((p) => ({ jahr: p.jahr, wert: p.wert })), anmerkung: null };
+    return { reihe: punkte.map((p) => ({ year: p.year, wert: p.wert })), anmerkung: null };
   }
 
   const einheit = daten.einheit[key] ?? "eur";
   const juengste = Math.max(...punkte.map((p) => p.fassung ?? 0));
-  const erstesNeues = punkte.find((p) => (p.fassung ?? 0) === juengste)?.jahr ?? null;
+  const erstesNeues = punkte.find((p) => (p.fassung ?? 0) === juengste)?.year ?? null;
   const text = `Ab dem Rechenschaftsbericht ${wechsel.neu_bericht} rechnet die `
-    + `Stadt anders. Für ${wechsel.jahr} ergibt der alte Weg `
+    + `Stadt anders. Für ${wechsel.year} ergibt der alte Weg `
     + `${schreibe(einheit, wechsel.alt)}, der neue ${schreibe(einheit, wechsel.neu)} `
     + `— deshalb läuft die Linie hier nicht durch.`;
   return {
     reihe: punkte.map((p) => ({
-      jahr: p.jahr,
+      year: p.year,
       wert: p.wert,
-      ...(p.jahr === erstesNeues && punkte[0].jahr !== erstesNeues
+      ...(p.year === erstesNeues && punkte[0].year !== erstesNeues
         ? { bruchDavor: text } : {}),
     })),
-    anmerkung: erstesNeues != null && punkte[0].jahr !== erstesNeues
-      ? { jahr: erstesNeues, kurz: "anderer Rechenweg", text }
+    anmerkung: erstesNeues != null && punkte[0].year !== erstesNeues
+      ? { year: erstesNeues, kurz: "anderer Rechenweg", text }
       : null,
   };
 }
@@ -154,11 +154,11 @@ export function formelVon(daten: Kennzahlen, key: string): KennzahlFormel | null
 export function korrekturenVon(daten: Kennzahlen, key?: string): KennzahlFund[] {
   return daten.funde
     .filter((f) => f.art === "revision" && (!key || f.kennzahl === key))
-    .sort((a, b) => b.neu_bericht - a.neu_bericht || b.jahr - a.jahr);
+    .sort((a, b) => b.neu_bericht - a.neu_bericht || b.year - a.year);
 }
 
 /** Das jüngste Jahr, für das überhaupt eine Kennzahl vorliegt. */
 export function juengstesJahr(daten: Kennzahlen): number | null {
-  const jahre = daten.reihe.map((p) => p.jahr);
+  const jahre = daten.reihe.map((p) => p.year);
   return jahre.length ? Math.max(...jahre) : null;
 }

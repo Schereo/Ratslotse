@@ -40,7 +40,7 @@ function verteile100<T extends { wert: number }>(rows: T[], gesamt: number) {
   return basis.filter((r) => r.euro > 0);
 }
 
-export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: number }) {
+export function Steuereuro({ zeilen, year }: { zeilen: HaushaltZeile[]; year: number }) {
   // Welcher Bereich gerade hervorgehoben ist — null = keiner, der Ruhezustand.
   const [hervor, setHervor] = useState<number | null>(null);
   const parts = zeilen.filter((z) => z.is_summe !== 1);
@@ -86,7 +86,7 @@ export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: nu
   return (
     <div>
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Von 100 Euro geplanter Ausgaben · {jahr}
+        Von 100 Euro geplanter Ausgaben · {year}
       </p>
       {top && zweit && (
         <p className="mb-3 mt-1.5 max-w-[38ch] font-display text-[19px] font-bold leading-snug tracking-tight">
@@ -96,7 +96,7 @@ export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: nu
 
       <div className="flex flex-wrap items-start gap-5">
         <svg viewBox="0 0 280 280" className="w-full max-w-[280px] flex-none" role="img"
-          aria-label={`Aufteilung von 100 Euro Ausgaben ${jahr}: ${felder.map((f) => `${f.name} ${f.euro} Euro`).join(", ")}`}
+          aria-label={`Aufteilung von 100 Euro Ausgaben ${year}: ${felder.map((f) => `${f.name} ${f.euro} Euro`).join(", ")}`}
           // Zeiger raus = Ruhezustand. Beim Tippen feuert `pointerleave` erst,
           // wenn woanders hingetippt wird — die Hervorhebung bleibt also
           // stehen, statt sofort zurückzuspringen.

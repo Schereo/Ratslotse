@@ -128,7 +128,7 @@ export default function PflichtPage() {
   // den Satz zu schreiben hieße, beim nächsten Nachzug still zu lügen.
   const produktVon = data?.produkt_jahre?.length ? Math.min(...data.produkt_jahre) : null;
   const { data: produktdaten } = useFetch<ProdukteAntwort>(
-    produktJahr ? `/council/haushalt/produkte?jahr=${produktJahr}` : null,
+    produktJahr ? `/council/haushalt/produkte?year=${produktJahr}` : null,
   );
 
   const befunde = useMemo<Map<BereichSchluessel, SpielraumBefund>>(
@@ -143,8 +143,8 @@ export default function PflichtPage() {
   }
 
   const jahre = jahreSortiert(data);
-  const jahr = jahre[jahre.length - 1];
-  const zeilen = data.jahre[String(jahr)] ?? [];
+  const year = jahre[jahre.length - 1];
+  const zeilen = data.jahre[String(year)] ?? [];
   const gesamtzeile = summe(zeilen);
   const gesamtAus = mio(gesamtzeile?.aufwendungen) ?? 0;
   // Das geplante Minus als positive Zahl. Nur wenn beide Seiten dastehen —
@@ -209,7 +209,7 @@ export default function PflichtPage() {
   const weicht = geprueft.filter((r) => r.urteil === "weicht");
 
   return (
-    <Quellenkontext schluessel={QUELLEN} jahr={jahr}>
+    <Quellenkontext schluessel={QUELLEN} year={year}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -235,7 +235,7 @@ export default function PflichtPage() {
         const freiwilligProzent = (freiwilligAus / gesamtAus) * 100;
         return (
           <Seitenbuehne
-            kicker={`Anteil an allen Ausgaben · Plan ${jahr}`}
+            kicker={`Anteil an allen Ausgaben · Plan ${year}`}
             zahl={<><ZaehlZahl wert={pflichtProzent} nachkomma={0} />&#8239;% der Ausgaben
               sind Pflicht oder Pflicht mit Spielraum</>}
             sub={weicht.length > 0
@@ -277,7 +277,7 @@ export default function PflichtPage() {
       <section id="ausgabenbild" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Geplante Ausgaben {jahr}
+            Geplante Ausgaben {year}
           </h2>
           <p className="font-display text-[19px] font-bold tabular-nums">
             {deMio(gesamtAus)}<span className="ml-1 text-[12px] font-semibold text-muted-foreground">Mio.&nbsp;€</span>
@@ -290,7 +290,7 @@ export default function PflichtPage() {
             Defizit-Marke als Signal-Strich mit Erklärsatz. */}
         <Gegenbalken
           className="mt-3"
-          zeilen={[{ titel: `Alle Ausgaben ${jahr}`, segmente }]}
+          zeilen={[{ titel: `Alle Ausgaben ${year}`, segmente }]}
           basis={gesamtAus}
           marke={defizit > 0 && gesamtAus > 0 ? {
             wert: defizit,
@@ -614,7 +614,7 @@ function BereichsZeile({ r, gesamt, produktJahr }: {
       {produktJahr && (
         <div className="mt-3 rounded-lg border border-border/70 bg-muted/40 p-2.5">
           {befund && befund.dominant ? (
-            <Selbstauskunft befund={befund} jahr={produktJahr} />
+            <Selbstauskunft befund={befund} year={produktJahr} />
           ) : (
             <p className="text-[12px] leading-relaxed text-muted-foreground">
               {befund
@@ -641,7 +641,7 @@ function BereichsZeile({ r, gesamt, produktJahr }: {
  *  Auskunft der Karte. Der Satz nennt dann keine eigene Quote mehr: Eine
  *  Mehrheit von 48 % als „die" Antwort auszugeben, während der Balken
  *  darüber drei zeigt, wäre die halbe Wahrheit in Fettdruck. */
-function Selbstauskunft({ befund, jahr }: { befund: SpielraumBefund; jahr: number }) {
+function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: number }) {
   const dominant = befund.dominant!;
   const anteil = Math.round(befund.anteil[dominant] * 100);
   const groesste = befund.groesste;
@@ -673,13 +673,13 @@ function Selbstauskunft({ befund, jahr }: { befund: SpielraumBefund; jahr: numbe
           {gemischt ? (
             <>
               Hier verteilen sich die Angaben der Stadt über mehrere Stufen
-              ({befund.produkte} {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {jahr}).
+              ({befund.produkte} {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {year}).
             </>
           ) : (
             <>
               Bei <strong className="tabular-nums">{anteil}&nbsp;%</strong> der Ausgaben dieses Bereichs
               sieht die Stadt <strong>{SPIELRAUM_TEXT[dominant].kurz}</strong> ({befund.produkte}{" "}
-              {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {jahr}).
+              {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {year}).
             </>
           )}
           <Beleg q="teilhaushalt" />

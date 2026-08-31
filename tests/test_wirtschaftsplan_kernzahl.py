@@ -146,7 +146,7 @@ def test_die_anlage_darf_die_zahl_verklebt_fuehren():
 def test_planungsgesellschaft_und_betriebsgesellschaft_sind_zwei():
     """2024 legen BEIDE einen Wirtschaftsplan vor (−152.000 € und −190.000 €).
     Ein gemeinsames Muster „Stadion" schrieb den einen Betrag unter den Namen
-    der anderen — und die Tabelle hätte es nie gemerkt, weil (betrieb, jahr)
+    der anderen — und die Tabelle hätte es nie gemerkt, weil (betrieb, year)
     der Schlüssel ist."""
     assert betrieb_aus_titel(
         "Stadionplanungsgesellschaft mbH: Wirtschaftsplan 2024")[0] == "stadion_planung"
@@ -322,7 +322,7 @@ def test_probe_haengt_nur_dran_wo_sie_lief():
     def plan(investitionen):
         return Wirtschaftsplan(
             betrieb="bbo", betrieb_name="Bäderbetrieb der Stadt Oldenburg",
-            jahr=2026, template_number="25/0818/1", ertraege=None, aufwendungen=None,
+            year=2026, template_number="25/0818/1", ertraege=None, aufwendungen=None,
             steuern=None, ergebnis=0.0, vermoegensplan=None,
             verpflichtungen=None, entwurf_vom=None, investitionen=investitionen)
 

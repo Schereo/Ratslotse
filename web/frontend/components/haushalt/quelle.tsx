@@ -70,14 +70,14 @@ type Kontext = {
    *  gerechnet, statt ihn von Hand zu pflegen (s. `standText`). */
   jahrgaenge: Jahrgaenge | undefined;
   /** Der Jahrgang, den die Seite gerade zeigt — `null`, wo sie keinen hat. */
-  jahr: number | null;
+  year: number | null;
   /** Die Nummern dieser Seite — je Papier oder je Quellenart, s.
    *  `nummerierung`. Chips und Verzeichnis lesen daraus dieselbe Ziffer. */
   eintraege: NummerEintrag[];
 };
 
 const SeitenQuellen = createContext<Kontext>({
-  schluessel: [], dokumente: undefined, jahrgaenge: undefined, jahr: null,
+  schluessel: [], dokumente: undefined, jahrgaenge: undefined, year: null,
   eintraege: [],
 });
 
@@ -103,12 +103,12 @@ function zeigeImVerzeichnis(k: QuellenSchluessel) {
 /** Klammert die Seite: legt fest, welche Quellen sie nutzt, in welcher
  *  Reihenfolge sie nummeriert werden — und welchen Jahrgang sie zeigt.
  *
- *  `jahr` ist der Grund, warum es diesen Provider gibt und nicht nur eine
+ *  `year` ist der Grund, warum es diesen Provider gibt und nicht nur eine
  *  Liste: Derselbe Beleg „Jahresabschluss" führt auf acht verschiedene PDFs,
  *  je nachdem, welches Jahr die Seite gerade anzeigt. Seiten ohne Jahrgang
  *  lassen ihn weg; dann nimmt der Beleg das jüngste Dokument und schreibt den
  *  Jahrgang an. */
-export function Quellenkontext({ schluessel, jeDokument = LEER, jahr = null, children }: {
+export function Quellenkontext({ schluessel, jeDokument = LEER, year = null, children }: {
   schluessel: QuellenSchluessel[];
   /** Quellenarten, deren Papiere je eine eigene Nummer bekommen sollen.
    *
@@ -120,7 +120,7 @@ export function Quellenkontext({ schluessel, jeDokument = LEER, jahr = null, chi
    *  Der Wert muss über Renderdurchläufe stabil sein (`useMemo`), sonst läuft
    *  die Nummerierung bei jedem Tastendruck neu. */
   jeDokument?: JeDokument;
-  jahr?: number | null;
+  year?: number | null;
   children: ReactNode;
 }) {
   // Ein Aufruf je Seite, wenige Dutzend Zeilen. Bewusst hier und nicht in
@@ -128,11 +128,11 @@ export function Quellenkontext({ schluessel, jeDokument = LEER, jahr = null, chi
   // und die eine, die es vergisst, zeigt wieder auf die Startseite.
   const { data } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
   const eintraege = useMemo(
-    () => nummerierung(schluessel, jeDokument, data?.dokumente, jahr),
-    [schluessel, jeDokument, data?.dokumente, jahr]);
+    () => nummerierung(schluessel, jeDokument, data?.dokumente, year),
+    [schluessel, jeDokument, data?.dokumente, year]);
   return (
     <SeitenQuellen.Provider value={{
-      schluessel, dokumente: data?.dokumente, jahrgaenge: data?.jahrgaenge, jahr,
+      schluessel, dokumente: data?.dokumente, jahrgaenge: data?.jahrgaenge, year,
       eintraege,
     }}>
       {children}
@@ -157,7 +157,7 @@ export function Beleg({ q, h, className }: {
   className?: string;
 }) {
   const { offen, setOffen, knopf, faehnchen, lage } = useFaehnchen();
-  const { schluessel, dokumente, jahrgaenge, jahr, eintraege } =
+  const { schluessel, dokumente, jahrgaenge, year, eintraege } =
     useContext(SeitenQuellen);
   const quelle = QUELLEN[q];
   const idx = schluessel.indexOf(q);
@@ -188,10 +188,10 @@ export function Beleg({ q, h, className }: {
   // Steht die Nummer für genau ein Papier, zeigt das Fähnchen dessen
   // Fundstelle — sonst die der Art (das jüngste Papier des Jahrgangs).
   const ziel = eintrag.dokument
-    ? { dokument: eintrag.dokument, jahrgang: eintrag.dokument.jahr,
-        abweichend: jahr == null || eintrag.dokument.jahr !== jahr,
+    ? { dokument: eintrag.dokument, jahrgang: eintrag.dokument.year,
+        abweichend: year == null || eintrag.dokument.year !== year,
         weitere: 0 }
-    : belegziel(dokumente, q, jahr);
+    : belegziel(dokumente, q, year);
   return (
     <span className="relative inline-block">
       <button
@@ -585,7 +585,7 @@ function Dokumentliste({ dokumente, eintraege }: {
  *  einzige nachprüfbare Zahl das beschlossene Jahresergebnis …") und wäre
  *  fünfmal untereinander kein Beleg mehr, sondern eine Wand. */
 export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluessel[] }) {
-  const { dokumente, jahrgaenge, jahr, eintraege } = useContext(SeitenQuellen);
+  const { dokumente, jahrgaenge, year, eintraege } = useContext(SeitenQuellen);
   if (!schluessel.length) return null;
   // Die Nummern in Gruppen je Quellenart — sie liegen zusammenhängend, weil
   // `nummerierung` die Schlüssel der Reihe nach abarbeitet.
@@ -606,7 +606,7 @@ export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluess
         {gruppen.map(({ k, nummern }) => {
           const q = QUELLEN[k];
           const einzeln = nummern.length > 1 || nummern[0].dokument != null;
-          const ziel = belegziel(dokumente, k, jahr);
+          const ziel = belegziel(dokumente, k, year);
           const alle = nummern[0].dokumente;
           return (
             <div key={k} id={eintragId(k)} className="flex scroll-mt-24 gap-2.5">

@@ -86,14 +86,14 @@ function Fundstelle({ daten, id }: { daten: StellenplanDaten; id: number | null 
 }
 
 export default function PersonalPage() {
-  const [jahr, setJahr] = useState<number | null>(null);
+  const [year, setJahr] = useState<number | null>(null);
   const [teil, setTeil] = useState<StellenTeil>("A");
   // Detailtabelle mobil hinter „alle Gruppen zeigen" (H4-05); ab Tablet
   // immer offen — die Klassen dazu stehen in globals.css (gb-nur-mobil).
   const [gruppenOffen, setGruppenOffen] = useState(false);
   const jahrgaenge = useFetch<StellenplanDaten>("/council/haushalt/stellenplan");
   const alle = jahrgaenge.data?.jahrgaenge ?? [];
-  const aktJahr = jahr && alle.includes(jahr) ? jahr : alle.at(-1) ?? null;
+  const aktJahr = year && alle.includes(year) ? year : alle.at(-1) ?? null;
 
   // Die Einzelposten kommen nur für das gewählte Jahr — rund 190 Zeilen je
   // Jahrgang, und die Seite zeigt davon acht.
@@ -153,7 +153,7 @@ export default function PersonalPage() {
   const [vglA, vglB] = vergleich;
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]} jahr={aktJahr}>
+    <Quellenkontext schluessel={[...QUELLEN]} year={aktJahr}>
       <div className="flex flex-col gap-4">
         {/* items-start statt items-end (24.08.): Rechts steht jetzt das
             Schritt-Zeichen über dem Quelle-Knopf — die Spalte ist so hoch wie

@@ -14,7 +14,7 @@ export type { Herkunft };
 export type AenderungsZeile = {
   jahrgang: number;
   liste: string;
-  jahr: number;
+  year: number;
   lfd: number;
   /** `null` = die Position gilt pauschal „alle" Teilhaushalte (2019). */
   thh: number | null;
@@ -39,7 +39,7 @@ export type AenderungsZeile = {
 export type AenderungsSumme = {
   jahrgang: number;
   liste: string;
-  jahr: number;
+  year: number;
   typ: string; // "entwurf" | "liste" | "endsumme"
   label: string;
   ertraege: number;
@@ -60,7 +60,7 @@ export type AenderungsSumme = {
 export type FhhZeile = {
   jahrgang: number;
   liste: string;
-  jahr: number;
+  year: number;
   lfd: number;
   thh: number | null;
   /** Auch „neu": Dann steht die Position im Entwurf noch gar nicht. */
@@ -87,7 +87,7 @@ export type FhhZeile = {
 export type FhhSumme = {
   jahrgang: number;
   liste: string;
-  jahr: number;
+  year: number;
   typ: string;
   label: string;
   einzahlungen: number;
@@ -146,17 +146,17 @@ export type ListeImJahr = {
 };
 
 export function listenFuerJahr(
-  daten: AenderungslistenDaten | null, jahr: number | null,
+  daten: AenderungslistenDaten | null, year: number | null,
 ): ListeImJahr[] {
-  if (!daten || jahr == null) return [];
+  if (!daten || year == null) return [];
   const aus: ListeImJahr[] = [];
   for (const schluessel of REIHENFOLGE) {
     const zeilen = daten.zeilen.filter(
-      (z) => z.jahrgang === jahr && z.liste === schluessel);
+      (z) => z.jahrgang === year && z.liste === schluessel);
     if (!zeilen.length) continue;
     const summen = daten.summen.filter(
-      (s) => s.jahrgang === jahr && s.liste === schluessel);
-    const imJahr = summen.filter((s) => s.jahr === jahr);
+      (s) => s.jahrgang === year && s.liste === schluessel);
+    const imJahr = summen.filter((s) => s.year === year);
     const eigene = imJahr.find((s) => s.eigene === 1);
     const entwurf = imJahr.find((s) => s.typ === "entwurf");
     const ende = imJahr.find((s) => s.typ === "endsumme");
@@ -169,13 +169,13 @@ export function listenFuerJahr(
             saldo: ende.saldo - entwurf.saldo,
           }
         : null;
-    const bis = Math.max(...summen.map((s) => s.jahr));
+    const bis = Math.max(...summen.map((s) => s.year));
     aus.push({
       schluessel,
       name: LISTEN_NAME[schluessel] ?? schluessel,
       zeilen,
       saldo,
-      bisPlanjahr: bis > jahr ? bis : null,
+      bisPlanjahr: bis > year ? bis : null,
       herkunft: herkunftVon(daten, zeilen[0].herkunft_id),
     });
   }
@@ -187,11 +187,11 @@ export function listenFuerJahr(
  *  sie sind der einzige digitale Beleg der Fraktionslisten (die selbst
  *  Tischvorlagen blieben). */
 export function politikZeilen(
-  daten: AenderungslistenDaten | null, jahr: number | null,
+  daten: AenderungslistenDaten | null, year: number | null,
 ): AenderungsSumme[] {
-  if (!daten || jahr == null) return [];
+  if (!daten || year == null) return [];
   return daten.summen.filter(
-    (s) => s.jahrgang === jahr && s.jahr === jahr && s.typ === "liste"
+    (s) => s.jahrgang === year && s.year === year && s.typ === "liste"
       && !s.label.includes("nderungsliste"));
 }
 
@@ -217,7 +217,7 @@ export function positionenVon(
   if (!daten) return [];
   const kern = labelKern(summe.label);
   return daten.zeilen.filter(
-    (z) => z.jahrgang === summe.jahrgang && z.jahr === summe.jahr
+    (z) => z.jahrgang === summe.jahrgang && z.year === summe.year
       && z.liste === summe.liste && z.urheber != null
       && kern.includes(labelKern(z.urheber)));
 }
@@ -265,7 +265,7 @@ export function verfahrensWeg(
 ): VerfahrensWeg | null {
   if (!daten || jahrgang == null) return null;
   const imJahr = daten.summen.filter(
-    (s) => s.jahrgang === jahrgang && s.jahr === jahrgang);
+    (s) => s.jahrgang === jahrgang && s.year === jahrgang);
   if (!imJahr.length) return null;
 
   // Das vollständigste Dokument: Beschluss zuerst, sonst die höchste
@@ -314,17 +314,17 @@ export type FhhListeImJahr = {
 };
 
 export function fhhListenFuerJahr(
-  daten: AenderungslistenDaten | null, jahr: number | null,
+  daten: AenderungslistenDaten | null, year: number | null,
 ): FhhListeImJahr[] {
-  if (!daten || jahr == null) return [];
+  if (!daten || year == null) return [];
   const aus: FhhListeImJahr[] = [];
   for (const schluessel of REIHENFOLGE) {
     const zeilen = (daten.fhh_zeilen ?? []).filter(
-      (z) => z.jahrgang === jahr && z.liste === schluessel
+      (z) => z.jahrgang === year && z.liste === schluessel
         && (z.einzahlung != null || z.auszahlung != null));
     if (!zeilen.length) continue;
     const eigene = (daten.fhh_summen ?? []).find(
-      (s) => s.jahrgang === jahr && s.jahr === jahr && s.liste === schluessel
+      (s) => s.jahrgang === year && s.year === year && s.liste === schluessel
         && s.eigene === 1);
     aus.push({
       schluessel,

@@ -296,10 +296,10 @@ def parse(text: str, regelwerk: str) -> list[dict]:
             continue
         felder = [_zelle(f) for f in m.group(2).split()]
         if len(felder) != len(spalten) or any(w is None for w in felder):
-            zeilen.append({"jahr": int(m.group(1)), "regelwerk": regelwerk,
+            zeilen.append({"year": int(m.group(1)), "regelwerk": regelwerk,
                            "unlesbar": roh.strip()})
             continue
-        zeile: dict = {"jahr": int(m.group(1)), "regelwerk": regelwerk,
+        zeile: dict = {"year": int(m.group(1)), "regelwerk": regelwerk,
                        "unlesbar": None}
         for (feld, _), wert in zip(spalten, felder):
             zeile[feld] = wert * TAUSEND
@@ -364,7 +364,7 @@ def lies(text: str) -> dict:
         for zeile in parse(abschnitt, regelwerk):
             if zeile.get("unlesbar"):
                 verworfen.append({
-                    "jahr": zeile["jahr"], "regelwerk": regelwerk,
+                    "year": zeile["year"], "regelwerk": regelwerk,
                     # Keine Differenz: Ohne zerlegte Felder gibt es keine
                     # Summe, die man gegen die ausgewiesene halten könnte.
                     "differenz": None,
@@ -376,7 +376,7 @@ def lies(text: str) -> dict:
             gerissen += not ok
             if not ok:
                 verworfen.append({
-                    "jahr": zeile["jahr"], "regelwerk": regelwerk,
+                    "year": zeile["year"], "regelwerk": regelwerk,
                     # Die Zahl neben dem Satz — s. Rückgabe-Beschreibung.
                     "differenz": deviation,
                     "grund": f"Zeilensumme um "
@@ -388,10 +388,10 @@ def lies(text: str) -> dict:
             uebernommen["probe"] = "investitionen_ist_zeilensumme"
             zeilen.append(uebernommen)
 
-    zeilen.sort(key=lambda z: z["jahr"])
+    zeilen.sort(key=lambda z: z["year"])
     luecken: dict[str, list[int]] = {}
     for regelwerk, (von, bis) in spannen.items():
-        da = {z["jahr"] for z in zeilen if z["regelwerk"] == regelwerk}
+        da = {z["year"] for z in zeilen if z["regelwerk"] == regelwerk}
         fehlt = [j for j in range(von, bis + 1) if j not in da]
         if fehlt:
             luecken[regelwerk] = fehlt
@@ -413,6 +413,6 @@ def probennachweis(ergebnis: dict) -> str:
     gesamt = p["bestanden"] + p["gerissen"]
     text = f"Zeilensumme {p['bestanden']} von {gesamt} Jahrgängen"
     if p["gerissen"]:
-        jahre = ", ".join(str(v["jahr"]) for v in ergebnis["verworfen"])
+        jahre = ", ".join(str(v["year"]) for v in ergebnis["verworfen"])
         text += f"; verworfen: {jahre}"
     return text

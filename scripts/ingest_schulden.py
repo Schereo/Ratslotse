@@ -137,13 +137,13 @@ def main() -> int:
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
                   f"{schulden.probennachweis(ergebnis)}")
             for v in ergebnis["verworfen"]:
-                print(f"    VERWORFEN {v['jahr']}: {v['grund']}", file=sys.stderr)
+                print(f"    VERWORFEN {v['year']}: {v['grund']}", file=sys.stderr)
             for f in ergebnis["fehlende_jahrgaenge"]:
                 print(f"    FEHLT {f}: im Titel angekündigt, nicht gelesen",
                       file=sys.stderr)
             ohne_arten = [z for z in zeilen if z["aufteilung_verworfen"] is not None]
             for z in ohne_arten:
-                print(f"    {z['jahr']}: Aufteilung verworfen — die Schuldenarten "
+                print(f"    {z['year']}: Aufteilung verworfen — die Schuldenarten "
                       f"ergeben {_de(z['aufteilung_verworfen'], vorzeichen=True)} € "
                       f"gegenüber der ausgewiesenen Summe. Die Summe trägt die "
                       f"Pro-Kopf-Gegenprobe und bleibt.")
@@ -153,7 +153,7 @@ def main() -> int:
                 return 1
 
             juengster = zeilen[-1]
-            print(f"  jüngster Jahrgang {juengster['jahr']}: "
+            print(f"  jüngster Jahrgang {juengster['year']}: "
                   f"{_de(juengster['insgesamt'] / 1e6, 1)} Mio. € insgesamt, "
                   f"{_de(juengster['je_einwohner'])} € je Einwohner*in")
 
@@ -209,7 +209,7 @@ def main() -> int:
             geschrieben = 0
             for probenlage in sorted({tuple(z["proben"]) for z in zeilen}):
                 teil = [z for z in zeilen if tuple(z["proben"]) == probenlage]
-                jahre = [z["jahr"] for z in teil]
+                jahre = [z["year"] for z in teil]
                 spanne_teil = (f"Jahrgänge {jahre[0]}–{jahre[-1]}" if len(jahre) > 1
                                else f"Jahrgang {jahre[0]}")
                 namen = " und ".join(PROBENNAMEN[p] for p in probenlage)

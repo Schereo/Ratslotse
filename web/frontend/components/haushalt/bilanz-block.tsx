@@ -84,7 +84,7 @@ export function BilanzBlock() {
   const beihilfe = p.beihilferueckstellungen?.wert ?? null;
   const kredite = p.geldschulden?.wert ?? null;
   const v = vielfaches(s);
-  const cash = cashPoolingHinweis(data, s.jahr);
+  const cash = cashPoolingHinweis(data, s.year);
 
   return (
     <>
@@ -92,7 +92,7 @@ export function BilanzBlock() {
       <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Und was hat die Stadt? · Bilanz zum 31.12.{s.jahr}
+            Und was hat die Stadt? · Bilanz zum 31.12.{s.year}
           </p>
           <span className="font-mono text-[10px] uppercase text-muted-foreground">
             {data.jahre.length} Stichtage · {data.jahre[0]}–{data.jahre[data.jahre.length - 1]}
@@ -190,12 +190,12 @@ export function BilanzBlock() {
       {cash && p.schulden && (
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Warum die Bilanz {s.jahr} plötzlich {deMio(p.schulden.wert / 1e6)}&#8239;Mio.&nbsp;€
+            Warum die Bilanz {s.year} plötzlich {deMio(p.schulden.wert / 1e6)}&#8239;Mio.&nbsp;€
             Schulden ausweist
           </p>
           <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
             Die Bilanz zählt unter „Schulden" alle Verbindlichkeiten, nicht nur
-            Kredite — und dieser Posten ist {s.jahr} sprunghaft gewachsen, ohne dass
+            Kredite — und dieser Posten ist {s.year} sprunghaft gewachsen, ohne dass
             die Stadt Geld aufgenommen hätte. Was dahintersteckt, schreibt der
             Jahresabschluss selbst:
           </p>
@@ -210,7 +210,7 @@ export function BilanzBlock() {
             ))}
           </div>
           <p className="mt-2.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Jahresabschluss {s.jahr}, Abschnitt 6.2.7 — Wortlaut der Verwaltung
+            Jahresabschluss {s.year}, Abschnitt 6.2.7 — Wortlaut der Verwaltung
           </p>
         </section>
       )}

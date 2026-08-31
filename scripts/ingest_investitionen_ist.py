@@ -110,7 +110,7 @@ def main() -> int:
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
                   f"{ii.probennachweis(ergebnis)}")
             for v in ergebnis["verworfen"]:
-                print(f"    VERWORFEN {v['jahr']} ({v['regelwerk']}): {v['grund']}",
+                print(f"    VERWORFEN {v['year']} ({v['regelwerk']}): {v['grund']}",
                       file=sys.stderr)
             for regelwerk, jahre in sorted(ergebnis["fehlende_jahrgaenge"].items()):
                 for j in jahre:
@@ -129,7 +129,7 @@ def main() -> int:
                     key=lambda p: p[1], default=None)
                 titel = dict(ii.SPALTEN["doppik"]).get(
                     groesste[0], "") if groesste else ""
-                print(f"  jüngster Jahrgang {j['jahr']}: "
+                print(f"  jüngster Jahrgang {j['year']}: "
                       f"{ii.de_zahl(j['insgesamt'] / 1e6, 1)} Mio. € insgesamt"
                       + (f", größter Posten „{titel}“ mit "
                          f"{ii.de_zahl(groesste[1] / 1e6, 1)} Mio. €" if groesste else ""))
@@ -183,7 +183,7 @@ def main() -> int:
                               f"{nummer} — je Jahr die Auszahlungsarten "
                               f"({arten}) und ihre Summe")
                 nachweis = (
-                    f"Jahrgänge {teil[0]['jahr']}–{teil[-1]['jahr']} "
+                    f"Jahrgänge {teil[0]['year']}–{teil[-1]['year']} "
                     f"({len(teil)} von {bis - von + 1} angekündigten): "
                     f"Zeilensumme bestanden" if teil else
                     f"Kein Jahrgang von {bis - von + 1} angekündigten hat die "

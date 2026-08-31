@@ -1504,7 +1504,7 @@ export interface paths {
          *     - ``ansatz_jahre``: die Jahre mit einem Haushaltsansatz — die Liste, aus
          *       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
          *     - ``wirtschaftsplaene``: die Wirtschaftspläne der Eigenbetriebe und
-         *       städtischen Gesellschaften, je ``betrieb`` und ``jahr``. **Nicht mit dem
+         *       städtischen Gesellschaften, je ``betrieb`` und ``year``. **Nicht mit dem
          *       Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
          *       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
          *       Aufwand des Kernhaushalts; herausgerechnet wird das erst im
@@ -1599,7 +1599,7 @@ export interface paths {
          *     wurde (``council/aenderungslisten.py``).
          *
          *     - ``zeilen``: NUR die Positionen des Haushaltsjahrgangs selbst
-         *       (``jahr == jahrgang``). Dieselbe Maßnahme steht im Dokument je
+         *       (``year == jahrgang``). Dieselbe Maßnahme steht im Dokument je
          *       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
          *       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
          *       Summen. ``urheber`` trägt, WER die Position vorschlug — gefüllt nur
@@ -1794,7 +1794,7 @@ export interface paths {
          *     man wieder selbst suchen darf. Hier steht, welches PDF zu welchem Jahr
          *     gehört, damit der Link das Dokument des **gezeigten** Jahres öffnet.
          *
-         *     ``{"dokumente": {"<quellenschluessel>": [{jahr, url, label, fundstelle,
+         *     ``{"dokumente": {"<quellenschluessel>": [{year, url, label, fundstelle,
          *     seite}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
          *     Dokument haben; die Oberfläche fällt dann auf die statische Adresse
          *     zurück und sagt dazu, wohin sie führt.
@@ -2193,7 +2193,7 @@ export interface paths {
          *     Schlussabstimmung. Alles kommt aus den Ratsdaten: Beschlusszeilen,
          *     Anwesenheitsliste und Protokoll-Volltext derselben Sitzung.
          *
-         *     **Ohne ``jahr`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
+         *     **Ohne ``year`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
          *     aus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst
          *     über die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);
          *     die Seite lädt sie einmal und schaltet danach ohne Netz zwischen den
@@ -2272,13 +2272,13 @@ export interface paths {
          *     ``stationen`` bis zur Entscheidung im Rat; jede Station trägt ``ksinr``
          *     und ``top``, ist also auf ihre Sitzung verlinkbar.
          *
-         *     **Ohne ``jahr`` kommen alle Jahrgänge.** Das ist Absicht: Die Aussage
+         *     **Ohne ``year`` kommen alle Jahrgänge.** Das ist Absicht: Die Aussage
          *     dieser Seite liegt nicht im einzelnen Jahr, sondern in der Streuung — dass
          *     der Entwurf verlässlich im Oktober kommt, die Entscheidung aber zwischen
          *     Dezember und Februar wandert, sieht man erst über acht Jahrgänge. Eine
          *     Seite, die das behaupten will, braucht sie alle gleichzeitig; ein
          *     Jahres-Umschalter, der je Klick nachlädt, wäre acht Anfragen für 30 Zeilen.
-         *     ``jahr`` grenzt trotzdem ein, wenn jemand nur eine Runde braucht.
+         *     ``year`` grenzt trotzdem ein, wenn jemand nur eine Runde braucht.
          *
          *     Was hier **nicht** steht: die Termine der laufenden Runde.
          *     ``council_scheduled_sessions`` kennt keine Tagesordnung — wir können nicht
@@ -4578,8 +4578,6 @@ export interface components {
             alle_jahre: unknown;
             /** Facetten */
             facetten: unknown;
-            /** Jahr */
-            jahr: unknown;
             /** Plan Aufwendungen */
             plan_aufwendungen: unknown;
             /** Produkt */
@@ -4588,6 +4586,8 @@ export interface components {
             produkte: unknown;
             /** Treffer */
             treffer: number;
+            /** Year */
+            year: unknown;
         };
         /** HaushaltPruefberichte */
         HaushaltPruefberichte: {
@@ -8656,7 +8656,7 @@ export interface operations {
     haushalt_produkte_api_council_haushalt_produkte_get: {
         parameters: {
             query: {
-                jahr: number;
+                year: number;
                 thh?: number | null;
                 q?: string | null;
                 amt?: string | null;
@@ -8774,7 +8774,7 @@ export interface operations {
     haushalt_streit_api_council_haushalt_streit_get: {
         parameters: {
             query?: {
-                jahr?: number | null;
+                year?: number | null;
             };
             header?: never;
             path?: never;
@@ -8825,7 +8825,7 @@ export interface operations {
     haushalt_weg_api_council_haushalt_weg_get: {
         parameters: {
             query?: {
-                jahr?: number | null;
+                year?: number | null;
             };
             header?: never;
             path?: never;
@@ -10898,4 +10898,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 107f623cdf20fa7d4d5001c9594c13d1ac2339e159bcaceb37565d45986a2d93
+// vertrag-sha256: 376509d6ddccecedd917203d71545ed757bdf86ee907d4bbd125b0c7da40f901

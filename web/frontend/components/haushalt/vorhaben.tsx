@@ -114,11 +114,11 @@ function Zeile({ zeile, skala, bereichName }: {
 type Sortierung = "gesamtsumme" | "alpha";
 
 export function Vorhaben({
-  daten, jahr, gewaehlt, aufWaehlen, zurueckAnker, farbeVonThh, stufeVonThh,
+  daten, year, gewaehlt, aufWaehlen, zurueckAnker, farbeVonThh, stufeVonThh,
 }: {
   daten: ProgrammDaten | null;
   /** Der Jahrgang, den die Seite oben zeigt — Startwert des Filters. */
-  jahr: number;
+  year: number;
   /** Teilhaushaltsnummer, oder `null` für „alle Teilhaushalte". */
   gewaehlt: number | null;
   aufWaehlen: (thhNr: number | null) => void;
@@ -131,7 +131,7 @@ export function Vorhaben({
    *  Kachel (`grafik/kachelflaeche.ts`, `rampenText`). */
   stufeVonThh: (thhNr: number) => number;
 }) {
-  // `?vorhaben=` und `?jahr=` — der Landeplatz für Links von außen.
+  // `?vorhaben=` und `?year=` — der Landeplatz für Links von außen.
   //
   // Von den Änderungslisten zum Finanzhaushalt (/haushalt/mitreden#streit)
   // führt seit 08/2026 ein Link auf die Nummer eines Vorhabens. Damit er
@@ -149,12 +149,12 @@ export function Vorhaben({
   // Quellen der Seite reichen verschieden weit (Portal 2022–2025, Plan
   // 2019–2026) — wer 2019 sehen will, darf nicht am Jahr der Seite hängen.
   const [jahrWahl, setJahrWahl] = useState<number | null>(
-    () => Number(params.get("jahr")) || null);
+    () => Number(params.get("year")) || null);
   const suchfeld = useRef<HTMLInputElement>(null);
 
   const jahre = useMemo(
     () => [...(daten?.jahre ?? [])].sort((a, b) => a - b), [daten]);
-  const effJahr = jahrWahl != null && jahre.includes(jahrWahl) ? jahrWahl : jahr;
+  const effJahr = jahrWahl != null && jahre.includes(jahrWahl) ? jahrWahl : year;
 
   const bereiche = useMemo(() => teilhaushalte(daten, effJahr), [daten, effJahr]);
   const treffer = useMemo(() => suche(daten, effJahr, wort), [daten, effJahr, wort]);
@@ -184,10 +184,10 @@ export function Vorhaben({
   const knoten: TreemapKnoten[] = useMemo(() => {
     const quelle = aktiv != null
       ? vorhaben(daten, effJahr, aktiv)
-      : (daten?.massnahmen ?? []).filter((z) => z.jahr === effJahr);
+      : (daten?.massnahmen ?? []).filter((z) => z.year === effJahr);
     const zuName = (nr: number) => {
       const b = (daten?.teilhaushalte ?? []).find(
-        (t) => t.jahr === effJahr && t.thh_nr === nr);
+        (t) => t.year === effJahr && t.thh_nr === nr);
       return b?.bezeichnung ?? `Teilhaushalt ${nr}`;
     };
     return quelle.map((z) => ({

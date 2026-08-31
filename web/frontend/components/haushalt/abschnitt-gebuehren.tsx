@@ -101,11 +101,11 @@ function Zeile({ label, wert, summe = false }: {
 
 function Tarifliste({ tarife }: { tarife: GebuehrensatzZeile[] }) {
   if (!tarife.length) return null;
-  const jahr = tarife[0].jahr;
+  const year = tarife[0].year;
   return (
     <div className="mt-3 rounded-xl border border-border bg-muted/25 px-3 py-2.5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-[12.5px] font-semibold">Konkrete Tarifvorschläge {jahr}</p>
+        <p className="text-[12.5px] font-semibold">Konkrete Tarifvorschläge {year}</p>
         <span className="font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
           Anlage 4
         </span>
@@ -147,11 +147,11 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
    *  entscheidet diese Karte selbst. */
   herkunftFuer: (id: number | null) => Herkunft | null;
 }) {
-  const nach = [...zeilen].sort((a, b) => a.jahr - b.jahr);
+  const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = nach[nach.length - 1];
   const reihe: JahrPunkt[] = nach
     .filter((z) => z.gebuehr != null)
-    .map((z) => ({ jahr: z.jahr, wert: z.gebuehr as number }));
+    .map((z) => ({ year: z.year, wert: z.gebuehr as number }));
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -160,7 +160,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
           {letzte.bereich_name}
         </h2>
         <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-          Berechnung {letzte.jahr}
+          Berechnung {letzte.year}
         </span>
       </div>
       {WAS_ES_IST[letzte.bereich] && (
@@ -172,7 +172,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
       {/* Die Rechnung ausgeschrieben. Sie ist der Grund, dass die Zahl unten
           nachvollziehbar ist — als Fußnote wäre sie wertlos. */}
       <div className="mt-3">
-        <Zeile label={`Was der Bereich ${letzte.jahr} kostet`}
+        <Zeile label={`Was der Bereich ${letzte.year} kostet`}
           wert={letzte.kostenkalkulation} />
         <Zeile label="davon getragen von Dritten, Erlösen und Vorjahren"
           wert={letzte.abzuege} />
@@ -285,10 +285,10 @@ export function GebuehrenAbschnitt({ data, loading }: {
     );
   }
 
-  const jahre = nachBereich.flat().map((z) => z.jahr);
+  const jahre = nachBereich.flat().map((z) => z.year);
   const juengstes = Math.max(...jahre);
   const aeltestes = Math.min(...jahre);
-  const tarifJahr = Math.max(0, ...(data?.gebuehrensaetze ?? []).map((z) => z.jahr));
+  const tarifJahr = Math.max(0, ...(data?.gebuehrensaetze ?? []).map((z) => z.year));
 
   return (
       <div className="flex flex-col gap-4">
@@ -321,7 +321,7 @@ export function GebuehrenAbschnitt({ data, loading }: {
           {nachBereich.map((zeilen) => (
             <BereichsKarte key={zeilen[0].bereich} zeilen={zeilen}
               tarife={(data?.gebuehrensaetze ?? [])
-                .filter((z) => z.jahr === tarifJahr && z.bereich === zeilen[0].bereich)}
+                .filter((z) => z.year === tarifJahr && z.bereich === zeilen[0].bereich)}
               herkunftFuer={(id) => herkunftVon(data, id)} />
           ))}
         </div>

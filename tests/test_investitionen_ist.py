@@ -41,7 +41,7 @@ TABELLE = """Stadt Oldenburg (Oldb) - Statistik
           in Tausend Euro 2003 bis 2009
                 -  Rechnungsergebnisse
 Haushalts- Gewährung Erwerb von Baumaß- Neuanschaf- insgesamt
-jahr von Darlehen Grundver- nahmen fungen von
+year von Darlehen Grundver- nahmen fungen von
 mögen beweglichen
 Vermögen
 S 1 S 2 S 3 S 4 S 5 S 6
@@ -52,7 +52,7 @@ Quelle: Stadt Oldenburg - Fachdienst Finanzen
             in Tausend Euro 2010 bis 20251
                -  Rechnungsergebnisse laut Finanzrechnung der Kernverwaltung -
 Haushalts- Aktivierbare Erwerb von Baumaß- Erwerb von Erwerb von Sonstige insgesamt
-jahr Zuwendungen Grundstücken nahmen beweglichem Sachver- Investitions-
+year Zuwendungen Grundstücken nahmen beweglichem Sachver- Investitions-
 und Gebäuden mögen tätigkeit
 S 1 S 2 S 3 S 4 S 5 S 6 S 7 S 8
 2010 4.814 3.313 6.331 4.112 239 2 18.811
@@ -107,8 +107,8 @@ def test_beide_reihen_kommen_mit_ihren_eigenen_arten(gelesen):
     """Kameral vier Auszahlungsarten, doppisch sechs — je Regelwerk eigene."""
     kameral = [z for z in gelesen["zeilen"] if z["regelwerk"] == "kameral"]
     doppik = [z for z in gelesen["zeilen"] if z["regelwerk"] == "doppik"]
-    assert [z["jahr"] for z in kameral] == [2003, 2009]
-    assert [z["jahr"] for z in doppik] == [2010, 2017, 2018, 2020, 2025]
+    assert [z["year"] for z in kameral] == [2003, 2009]
+    assert [z["year"] for z in doppik] == [2010, 2017, 2018, 2020, 2025]
     assert len(ii.ARTEN["kameral"]) == 4
     assert len(ii.ARTEN["doppik"]) == 6
     # Und kein Feldname doppelt sich zwischen den Regelwerken außer der Summe.
@@ -120,7 +120,7 @@ def test_beide_reihen_kommen_mit_ihren_eigenen_arten(gelesen):
 
 def test_betraege_stehen_in_euro(gelesen):
     """Die Quelle rechnet in Tausend Euro, gespeichert wird in Euro."""
-    z = next(z for z in gelesen["zeilen"] if z["jahr"] == 2025)
+    z = next(z for z in gelesen["zeilen"] if z["year"] == 2025)
     assert z["insgesamt"] == 60_773_000
     assert z["baumassnahmen"] == 16_208_000
     assert z["sonstige"] == 20_083_000
@@ -128,7 +128,7 @@ def test_betraege_stehen_in_euro(gelesen):
 
 def test_die_kamerale_zeile_traegt_ihre_eigenen_felder(gelesen):
     """2003 hat „Gewährung von Darlehen", nicht „Aktivierbare Zuwendungen"."""
-    z = next(z for z in gelesen["zeilen"] if z["jahr"] == 2003)
+    z = next(z for z in gelesen["zeilen"] if z["year"] == 2003)
     assert z["darlehen"] == 0
     assert z["baumassnahmen_k"] == 14_792_000
     assert "zuwendungen" not in z, "eine doppische Spalte in einer kameralen Zeile"
@@ -152,7 +152,7 @@ def test_zeilensumme_haelt_in_jedem_uebernommenen_jahrgang(gelesen):
     """Kein Jahrgang kommt herein, dessen Arten die Summe nicht ergeben."""
     for z in gelesen["zeilen"]:
         ok, deviation = ii.zeilensumme(z)
-        assert ok, f"{z['jahr']}: {deviation:+,.0f} €"
+        assert ok, f"{z['year']}: {deviation:+,.0f} €"
 
 
 def test_2019_faellt_ganz_heraus():
@@ -164,8 +164,8 @@ def test_2019_faellt_ganz_heraus():
     diese Tabelle hat keine. Also fällt der Jahrgang mit allen sieben Zahlen,
     und die Summe kommt NICHT als „wenigstens die stimmt" herein."""
     ergebnis = ii.lies(TABELLE)
-    assert 2019 not in [z["jahr"] for z in ergebnis["zeilen"]]
-    verworfen = [v for v in ergebnis["verworfen"] if v["jahr"] == 2019]
+    assert 2019 not in [z["year"] for z in ergebnis["zeilen"]]
+    verworfen = [v for v in ergebnis["verworfen"] if v["year"] == 2019]
     assert len(verworfen) == 1
     assert "1.304.000" in verworfen[0]["grund"], verworfen[0]["grund"]
     # Deutsche Schreibweise, nicht 1,304,000 — der Grund landet im Protokoll.
@@ -181,7 +181,7 @@ def test_die_differenz_kommt_als_zahl_neben_dem_satz():
     Umformulieren bricht. Deshalb reist die Differenz als ``float`` mit,
     vorzeichenbehaftet und in Euro: 66.595 T€ gezählt gegen 67.899 T€
     ausgewiesen."""
-    verworfen = next(v for v in ii.lies(TABELLE)["verworfen"] if v["jahr"] == 2019)
+    verworfen = next(v for v in ii.lies(TABELLE)["verworfen"] if v["year"] == 2019)
     assert verworfen["differenz"] == -1_304_000
     # Und der Satz nennt dieselbe Zahl — zwei Auskünfte, eine Messung.
     assert ii.de_zahl(verworfen["differenz"], vorzeichen=True) in verworfen["grund"]
@@ -195,7 +195,7 @@ def test_eine_unzerlegbare_zeile_hat_KEINE_differenz():
     Summe genau", also das Gegenteil des Befunds."""
     kaputt = TABELLE.replace("2017 4.933 1.574 8.150 6.750 519 123 22.049",
                              "2017 4.933 1.574 8.150 6.750 519 22.049")
-    verworfen = next(v for v in ii.lies(kaputt)["verworfen"] if v["jahr"] == 2017)
+    verworfen = next(v for v in ii.lies(kaputt)["verworfen"] if v["year"] == 2017)
     assert verworfen["differenz"] is None
     assert "zerlegbar" in verworfen["grund"]
 
@@ -286,7 +286,7 @@ def _speichern(store, gelesen):
 def test_speichern_und_lesen(store, gelesen):
     _speichern(store, gelesen)
     reihe = store.get_investitionen_ist()
-    assert [z["jahr"] for z in reihe] == [2003, 2009, 2010, 2017, 2018, 2020, 2025]
+    assert [z["year"] for z in reihe] == [2003, 2009, 2010, 2017, 2018, 2020, 2025]
     juengster = reihe[-1]
     assert juengster["regelwerk"] == "doppik"
     assert juengster["insgesamt"] == 60_773_000
@@ -314,12 +314,12 @@ def test_ein_zweiter_lauf_laesst_keine_karteileichen(store, gelesen):
     die Aufteilung summierte sich auf mehr als die Summe daneben — eine
     Zeile, die sich selbst widerspricht, ohne dass ein Lauf etwas meldet."""
     _speichern(store, gelesen)
-    schmaler = dict(next(z for z in gelesen["zeilen"] if z["jahr"] == 2025))
+    schmaler = dict(next(z for z in gelesen["zeilen"] if z["year"] == 2025))
     schmaler["sonstige"] = None
     schmaler["insgesamt"] = 40_690_000
     store.save_investitionen_ist([schmaler], herkunft.Herkunft(
         art="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
-    z = next(z for z in store.get_investitionen_ist() if z["jahr"] == 2025)
+    z = next(z for z in store.get_investitionen_ist() if z["year"] == 2025)
     assert [a["feld"] for a in z["arten"]] == list(ii.ARTEN["doppik"][:-1])
     assert sum(a["betrag"] for a in z["arten"]) == z["insgesamt"]
 
@@ -327,7 +327,7 @@ def test_ein_zweiter_lauf_laesst_keine_karteileichen(store, gelesen):
 def test_ein_lauf_raeumt_die_anderen_jahrgaenge_nicht_ab(store, gelesen):
     """``save_*`` ersetzt nur, was die Lieferung mitbringt."""
     _speichern(store, gelesen)
-    nur_2025 = [z for z in gelesen["zeilen"] if z["jahr"] == 2025]
+    nur_2025 = [z for z in gelesen["zeilen"] if z["year"] == 2025]
     store.save_investitionen_ist(nur_2025, herkunft.Herkunft(
         art="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
     assert len(store.get_investitionen_ist()) == 7
@@ -342,12 +342,12 @@ def test_die_verworfenen_jahrgaenge_stehen_mit_ihrer_differenz_im_bestand(
     auseinanderlagen" — und sie darf nirgends im Frontend stehen."""
     _speichern(store, gelesen)
     verworfen = store.get_investitionen_ist_verworfen()
-    assert [v["jahr"] for v in verworfen] == [2019]
+    assert [v["year"] for v in verworfen] == [2019]
     assert verworfen[0]["regelwerk"] == "doppik"
     assert verworfen[0]["differenz"] == -1_304_000
     assert verworfen[0]["herkunft_id"] is not None
     # Und der Jahrgang steht NICHT in der Reihe — die Lücke ist kein Wert.
-    assert 2019 not in [z["jahr"] for z in store.get_investitionen_ist()]
+    assert 2019 not in [z["year"] for z in store.get_investitionen_ist()]
 
 
 def test_ein_geretteter_jahrgang_verliert_seinen_lueckeneintrag(store, gelesen):
@@ -356,13 +356,13 @@ def test_ein_geretteter_jahrgang_verliert_seinen_lueckeneintrag(store, gelesen):
     Ohne das Löschen stünde derselbe Jahrgang in beiden Tabellen, und die
     Seite zeigte eine beschriftete Lücke neben einer gezeichneten Säule."""
     _speichern(store, gelesen)
-    assert [v["jahr"] for v in store.get_investitionen_ist_verworfen()] == [2019]
+    assert [v["year"] for v in store.get_investitionen_ist_verworfen()] == [2019]
     geheilt = ii.parse("2019 6.004 3.306 19.304 6.701 626 30.654 66.595", "doppik")
     assert ii.zeilensumme(geheilt[0])[0], "die Testzeile muss die Probe bestehen"
     store.save_investitionen_ist(geheilt, herkunft.Herkunft(
         art="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
     assert store.get_investitionen_ist_verworfen() == []
-    assert 2019 in [z["jahr"] for z in store.get_investitionen_ist()]
+    assert 2019 in [z["year"] for z in store.get_investitionen_ist()]
 
 
 def test_leere_datenbank_liefert_leer(store):
@@ -380,9 +380,9 @@ def test_kontext_nimmt_nur_die_doppische_reihe(store, gelesen):
     sie zu einer Reihe zu addieren."""
     _speichern(store, gelesen)
     k = store.investitionen_ist_kontext()
-    assert k["jahr"] == 2025
+    assert k["year"] == 2025
     assert k["reihe_ab"] == 2010, "die kamerale Reihe ist mit hereingerutscht"
-    assert k["hoch"]["jahr"] == 2020
+    assert k["hoch"]["year"] == 2020
     assert k["abgrenzung"] == ii.ABGRENZUNG
     assert k["beleg"]["url"] == ii.TABELLE_URL
 

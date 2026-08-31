@@ -103,7 +103,7 @@ export function Zeitreihe({
   titel, punkte, veraenderung: delta,
 }: {
   titel: string;
-  punkte: { jahr: number; wert: number }[];
+  punkte: { year: number; wert: number }[];
   veraenderung: number | null;
 }) {
   if (!punkte.length) return null;
@@ -116,10 +116,10 @@ export function Zeitreihe({
           14 px über den Kartenrand hinaus. */}
       <span className="inline-flex flex-wrap items-baseline gap-x-0.5 font-mono text-[12px] tabular-nums text-muted-foreground">
         {punkte.map((p, i) => (
-          <span key={p.jahr} className="whitespace-nowrap">
+          <span key={p.year} className="whitespace-nowrap">
             {i > 0 && <span className="px-1 text-muted-foreground/60">→</span>}
             {euroJeEw(p.wert)}&nbsp;€
-            <span className="ml-0.5 text-[10px]">({p.jahr})</span>
+            <span className="ml-0.5 text-[10px]">({p.year})</span>
           </span>
         ))}
       </span>

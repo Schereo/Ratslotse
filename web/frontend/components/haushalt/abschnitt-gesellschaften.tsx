@@ -80,7 +80,7 @@ import { schrittNummer } from "@/components/haushalt/schritt-weiter";
  *  Mio. €, ohne erfundene Zwischenjahre — was der Bericht nicht nennt,
  *  bleibt Lücke (die Sparkline bricht dort, `defined()`). */
 function ergebnisReihe(ergebnisse: Kennzahl[]): JahrPunkt[] {
-  return ergebnisse.map((k) => ({ jahr: k.jahr, wert: k.wert / 1_000_000 }));
+  return ergebnisse.map((k) => ({ year: k.year, wert: k.wert / 1_000_000 }));
 }
 
 /** Eine Gesellschafts-Karte (H3-02): Form, Auftrag in einem Satz, eine
@@ -96,7 +96,7 @@ function Karte({ daten, g, onOeffnen }: {
   const satz = auftragSatz(daten, g);
   const einordnung = einordnungFuer(daten, g, ergebnisse);
   const reihe = ergebnisReihe(ergebnisse);
-  const von = ergebnisse[0]?.jahr, bis = juengstes?.jahr;
+  const von = ergebnisse[0]?.year, bis = juengstes?.year;
   const anteil = stadtAnteil(daten, g.gesellschaft);
 
   // Aufbau als Artikel mit aufgespanntem Öffnen-Knopf (kein Block- und kein
@@ -137,7 +137,7 @@ function Karte({ daten, g, onOeffnen }: {
         <div className="flex items-end justify-between gap-4">
           <div className="min-w-0">
             <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
-              Ergebnis {juengstes.jahr}
+              Ergebnis {juengstes.year}
             </p>
             <p className="font-display text-[22px] font-bold leading-tight tracking-tight tabular-nums">
               {wertText(juengstes)}
@@ -149,7 +149,7 @@ function Karte({ daten, g, onOeffnen }: {
                 reihe={reihe}
                 format={(v) => deZahl(v, 1)}
                 ariaLabel={`Jahresergebnis ${von} bis ${bis} in Mio. Euro: ${ergebnisse
-                  .map((k) => `${k.jahr} ${eur(k.wert)}`).join(", ")}.`}
+                  .map((k) => `${k.year} ${eur(k.wert)}`).join(", ")}.`}
               />
             </div>
           )}

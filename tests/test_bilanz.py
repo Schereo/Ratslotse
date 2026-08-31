@@ -159,9 +159,9 @@ SUMME = {2018: 1_156_033_798.05, 2019: 1_193_569_494.14,
          2023: 1_346_894_677.20, 2024: 1_479_988_960.00}
 
 
-def _lies(text: str, jahr: int) -> dict:
+def _lies(text: str, year: int) -> dict:
     """Parsen und die Pflichtprobe bestehen — sonst ist der Test schon kaputt."""
-    jahrgang, fehler, _ = bilanz.bilanzprobe(bilanz.parse_bilanz(text, jahr))
+    jahrgang, fehler, _ = bilanz.bilanzprobe(bilanz.parse_bilanz(text, year))
     assert jahrgang is not None, fehler
     return jahrgang
 
@@ -172,23 +172,23 @@ def _werte(jahrgang: dict) -> dict[str, float]:
 
 # --- Beide Layouts ----------------------------------------------------------
 
-@pytest.mark.parametrize("text, jahr", [(B_2019, 2019), (B_2024, 2024)])
-def test_beide_layouts_gehen_auf(text, jahr):
+@pytest.mark.parametrize("text, year", [(B_2019, 2019), (B_2024, 2024)])
+def test_beide_layouts_gehen_auf(text, year):
     """Aktiva = Passiva, auf den Cent — in beiden Layouts und beiden Spalten."""
-    jahrgang = _lies(text, jahr)
+    jahrgang = _lies(text, year)
     posten = jahrgang["posten"]
-    assert jahrgang["bilanzsumme"] == pytest.approx(SUMME[jahr], abs=0.01)
+    assert jahrgang["bilanzsumme"] == pytest.approx(SUMME[year], abs=0.01)
     assert jahrgang["ausgleich_differenz"] == pytest.approx(0.0, abs=0.01)
     # Auch die Vorjahresspalte trägt für sich — daraus entsteht beim Einlesen
     # der älteste Stichtag, der kein eigenes Dokument hat.
     for seite in (bilanz.AKTIVA, bilanz.PASSIVA):
         assert bilanz.summe(posten, seite, "wert_vorjahr") == pytest.approx(
-            SUMME[jahr - 1], abs=0.01)
+            SUMME[year - 1], abs=0.01)
 
 
-@pytest.mark.parametrize("text, jahr", [(B_2019, 2019), (B_2024, 2024)])
-def test_alle_pflichtposten_stehen_auf_ihrer_seite(text, jahr):
-    posten = {p["rolle"]: p for p in _lies(text, jahr)["posten"]}
+@pytest.mark.parametrize("text, year", [(B_2019, 2019), (B_2024, 2024)])
+def test_alle_pflichtposten_stehen_auf_ihrer_seite(text, year):
+    posten = {p["rolle"]: p for p in _lies(text, year)["posten"]}
     assert set(bilanz.PFLICHT_ROLLEN) <= set(posten)
     for rolle in bilanz.HAUPTPOSTEN[bilanz.AKTIVA]:
         assert posten[rolle]["seite"] == bilanz.AKTIVA
@@ -321,11 +321,11 @@ def test_eine_falsche_gedruckte_summe_kostet_nur_ihre_probe():
 
 # --- Die Gliederung der Rückstellungen --------------------------------------
 
-@pytest.mark.parametrize("text, jahr", [(B_2019, 2019), (B_2024, 2024)])
-def test_pension_plus_beihilfe_ergibt_die_oberposition(text, jahr):
+@pytest.mark.parametrize("text, year", [(B_2019, 2019), (B_2024, 2024)])
+def test_pension_plus_beihilfe_ergibt_die_oberposition(text, year):
     """Der Widerspruch, der diesen Parser ausgelöst hat: Es sind **zwei**
     Zahlen, und beide stimmen. 3.1 schließt die Beihilfe ein, 3.1.1 nicht."""
-    jahrgang = _lies(text, jahr)
+    jahrgang = _lies(text, year)
     w = _werte(jahrgang)
     assert w["pensionsrueckstellungen"] + w["beihilferueckstellungen"] == pytest.approx(
         w["pensionen_gesamt"], abs=0.01)
@@ -376,7 +376,7 @@ def _kette() -> dict[int, dict]:
     """Zwei benachbarte Jahrgänge, wie sie beim Einlesen nebeneinanderliegen:
     2023 aus der Vorjahresspalte von 2024, 2024 aus seiner eigenen."""
     j2024 = _lies(B_2024, 2024)
-    j2023 = {"jahr": 2023, "posten": [{**p, "wert": p["wert_vorjahr"]}
+    j2023 = {"year": 2023, "posten": [{**p, "wert": p["wert_vorjahr"]}
                                       for p in j2024["posten"]]}
     return {2023: j2023, 2024: j2024}
 
@@ -395,8 +395,8 @@ def test_vorjahreskette_findet_einen_riss():
             p["wert"] += 1000.0
     risse = bilanz.vorjahreskette(kette)
     assert len(risse) == 1
-    jahr, folge, warum = risse[0]
-    assert (jahr, folge) == (2023, 2024)
+    year, folge, warum = risse[0]
+    assert (year, folge) == (2023, 2024)
     assert "sachvermoegen" in warum
 
 
@@ -420,8 +420,8 @@ def test_kassenprobe_findet_die_abweichung():
     jahrgaenge = {2024: _lies(B_2024, 2024)}
     risse = bilanz.kassenprobe(jahrgaenge, {2024: 118_000_000.00})
     assert len(risse) == 1
-    jahr, warum = risse[0]
-    assert jahr == 2024
+    year, warum = risse[0]
+    assert year == 2024
     assert "Liquide Mittel" in warum and "Endbestand" in warum
 
 
@@ -642,7 +642,7 @@ def test_store_bilanz_roundtrip(tmp_path, quelle):
         werte = {r["rolle"]: r["wert"] for r in rows}
         assert werte["pensionen_gesamt"] == 311_789_660.00
         assert store.get_ruecklagen() == [{
-            "jahr": 2024,
+            "year": 2024,
             "ruecklage": 188_946_996.63,
             "jahresergebnis": 6_136_250.91,
             "stand_nach_ergebnis": pytest.approx(195_083_247.54, abs=0.01),

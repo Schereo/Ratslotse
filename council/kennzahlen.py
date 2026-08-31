@@ -225,7 +225,7 @@ def parse_kennzahlen(text: str, bericht_jahr: int) -> tuple[list[dict], list[str
         if treffer is None:
             unbekannt.append(_flach(text_) or "(ohne Beschriftung)")
         else:
-            for jahr, (wert, stellen, prozent) in zip(jahre, werte):
+            for year, (wert, stellen, prozent) in zip(jahre, werte):
                 # Das Prozentzeichen ist ein zweites, unabhängiges Signal für
                 # die Einheit — steht es an einer Euro-Kennzahl, stimmt die
                 # Spaltenzuordnung nicht.
@@ -233,7 +233,7 @@ def parse_kennzahlen(text: str, bericht_jahr: int) -> tuple[list[dict], list[str
                     unbekannt.append(f"{treffer.key}: Einheit passt nicht zum Wert {wert}")
                     break
                 zeilen.append({"bericht_jahr": bericht_jahr, "kennzahl": treffer.key,
-                               "label": treffer.label, "jahr": jahr, "wert": wert,
+                               "label": treffer.label, "year": year, "wert": wert,
                                "einheit": treffer.einheit, "stellen": stellen})
         beschriftung.clear()
         werte.clear()
@@ -396,11 +396,11 @@ def ueberlappungsprobe(zeilen: list[dict]) -> tuple[int, list[dict]]:
     """
     nach_zelle: dict[tuple[str, int], list[dict]] = {}
     for z in zeilen:
-        nach_zelle.setdefault((z["kennzahl"], z["jahr"]), []).append(z)
+        nach_zelle.setdefault((z["kennzahl"], z["year"]), []).append(z)
 
     bestaetigt = 0
     funde: list[dict] = []
-    for (kennzahl, jahr), gruppe in sorted(nach_zelle.items()):
+    for (kennzahl, year), gruppe in sorted(nach_zelle.items()):
         gruppe = sorted(gruppe, key=lambda z: z["bericht_jahr"])
         for aelter, juenger in zip(gruppe, gruppe[1:]):
             diff = juenger["wert"] - aelter["wert"]
@@ -413,7 +413,7 @@ def ueberlappungsprobe(zeilen: list[dict]) -> tuple[int, list[dict]]:
             funde.append({
                 "art": "umbenennung" if gleich else
                        ("definition" if umgestellt else "revision"),
-                "kennzahl": kennzahl, "jahr": jahr,
+                "kennzahl": kennzahl, "year": year,
                 "alt": aelter["wert"], "alt_bericht": aelter["bericht_jahr"],
                 "neu": juenger["wert"], "neu_bericht": juenger["bericht_jahr"],
                 "differenz": round(diff, 4)})
@@ -432,22 +432,22 @@ def gegen_bilanz(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[dict
     posten: dict[tuple[int, str], float] = {}
     for b in bilanz:
         if b.get("rolle") in AKTIVA:
-            summe[b["jahr"]] = summe.get(b["jahr"], 0.0) + b["wert"]
+            summe[b["year"]] = summe.get(b["year"], 0.0) + b["wert"]
         if b.get("rolle"):
-            posten[(b["jahr"], b["rolle"])] = b["wert"]
+            posten[(b["year"], b["rolle"])] = b["wert"]
 
     geprueft = 0
     risse: list[dict] = []
     for z in zeilen:
         rolle = BILANZ_QUOTE.get(z["kennzahl"])
-        zaehler = posten.get((z["jahr"], rolle)) if rolle else None
-        if zaehler is None or not summe.get(z["jahr"]):
+        zaehler = posten.get((z["year"], rolle)) if rolle else None
+        if zaehler is None or not summe.get(z["year"]):
             continue
-        eigen = zaehler * 100 / summe[z["jahr"]]
+        eigen = zaehler * 100 / summe[z["year"]]
         if abs(eigen - z["wert"]) <= toleranz(z["stellen"], z["stellen"]):
             geprueft += 1
         else:
-            risse.append({"kennzahl": z["kennzahl"], "jahr": z["jahr"],
+            risse.append({"kennzahl": z["kennzahl"], "year": z["year"],
                           "bericht_jahr": z["bericht_jahr"],
                           "gedruckt": z["wert"], "gerechnet": round(eigen, 4)})
     return geprueft, risse
@@ -474,29 +474,29 @@ def vermoegensprobe(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[d
     rap: dict[int, float] = {}
     for b in bilanz:
         if b.get("rolle") in AKTIVA:
-            aktiva[b["jahr"]] = aktiva.get(b["jahr"], 0.0) + b["wert"]
+            aktiva[b["year"]] = aktiva.get(b["year"], 0.0) + b["wert"]
         if b.get("rolle") == "aktive_rap":
-            rap[b["jahr"]] = b["wert"]
+            rap[b["year"]] = b["wert"]
 
     # Nur Zeilen DESSELBEN Berichts multiplizieren — zwei Berichte gemischt
     # wäre eine andere Rechnung, und ihr Ergebnis sagte nichts über beide.
     je_bericht: dict[tuple[int, int], dict[str, dict]] = {}
     for z in zeilen:
-        je_bericht.setdefault((z["bericht_jahr"], z["jahr"]), {})[z["kennzahl"]] = z
+        je_bericht.setdefault((z["bericht_jahr"], z["year"]), {})[z["kennzahl"]] = z
 
     geprueft = 0
     risse: list[dict] = []
-    for (bericht_jahr, jahr), zellen in sorted(je_bericht.items()):
+    for (bericht_jahr, year), zellen in sorted(je_bericht.items()):
         kopf = zellen.get("vermoegen_je_einwohner")
         leute = zellen.get("einwohner")
-        if not (kopf and leute) or jahr not in aktiva:
+        if not (kopf and leute) or year not in aktiva:
             continue
-        soll = aktiva[jahr] - rap.get(jahr, 0.0)
+        soll = aktiva[year] - rap.get(year, 0.0)
         ist = kopf["wert"] * leute["wert"]
         if abs(ist - soll) <= 0.5 * 10 ** -kopf["stellen"] * leute["wert"]:
             geprueft += 1
         else:
-            risse.append({"bericht_jahr": bericht_jahr, "jahr": jahr,
+            risse.append({"bericht_jahr": bericht_jahr, "year": year,
                           "gerechnet": round(ist, 2), "bilanz": round(soll, 2),
                           "differenz": round(ist - soll, 2)})
     return geprueft, risse
@@ -510,7 +510,7 @@ def neueste(zeilen: list[dict]) -> list[dict]:
     """
     beste: dict[tuple[str, int], dict] = {}
     for z in zeilen:
-        schluessel = (z["kennzahl"], z["jahr"])
+        schluessel = (z["kennzahl"], z["year"])
         if schluessel not in beste or z["bericht_jahr"] > beste[schluessel]["bericht_jahr"]:
             beste[schluessel] = z
-    return sorted(beste.values(), key=lambda z: (z["kennzahl"], z["jahr"]))
+    return sorted(beste.values(), key=lambda z: (z["kennzahl"], z["year"]))

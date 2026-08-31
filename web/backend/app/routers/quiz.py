@@ -255,7 +255,7 @@ def map_answer(payload: QuizMapIn,
 MAX_OWN_QUESTIONS = 200  # Schutz gegen Massen-Anlage; großzügig für echte Nutzung
 
 
-YEAR_UNITS = {"jahr", "jahre"}
+YEAR_UNITS = {"jahr", "jahre"}   # vom Menschen getippte Einheit, kein Bezeichner
 YEAR_SPAN = 50  # ± Jahre um eine Jahreszahl (zentriertes Fenster)
 
 

@@ -40,7 +40,7 @@ export type WegStation = {
 };
 
 export type WegRunde = {
-  jahr: number;
+  year: number;
   template_number: string | null;
   kvonr: number | null;
   einbringung: WegStation | null;
@@ -80,7 +80,7 @@ export function tageZumJahresbeginn(r: WegRunde): number | null {
   const e = entscheidung(r);
   if (!e) return null;
   const [j, m, t] = e.datum.split("-").map(Number);
-  return Math.round((Date.UTC(j, m - 1, t) - Date.UTC(r.jahr, 0, 1)) / 86_400_000);
+  return Math.round((Date.UTC(j, m - 1, t) - Date.UTC(r.year, 0, 1)) / 86_400_000);
 }
 
 export type Rhythmus = {
@@ -123,7 +123,7 @@ export function rhythmus(runden: WegRunde[]): Rhythmus {
  *  „heute" liegt — das ist das Jahr, in dem das Geld gerade ausgegeben wird.
  *  Gibt es (noch) keine Runde zu diesem Jahr, trägt die jüngste. */
 export function strahlRunde(runden: WegRunde[], heute: Date): WegRunde | null {
-  return runden.find((r) => r.jahr === heute.getFullYear())
+  return runden.find((r) => r.year === heute.getFullYear())
     ?? runden[runden.length - 1] ?? null;
 }
 
@@ -138,7 +138,7 @@ export function monateZwischen(von: string, bis: string): number {
  *  liefert — gebraucht werden nur Jahr und das Datum der Sitzung, in der
  *  der Rat den Abschluss festgestellt hat. */
 export type AbschlussDok = {
-  jahr: number | null;
+  year: number | null;
   official_text: { datum: string | null } | null;
 };
 
@@ -163,11 +163,11 @@ export function jahresabschlussMass(doks: AbschlussDok[] | undefined): Abschluss
   const versaetze = new Map<number, number>();
   for (const d of doks ?? []) {
     const datum = d.official_text?.datum;
-    if (d.jahr == null || !datum) continue;
+    if (d.year == null || !datum) continue;
     const [bj, bm] = datum.split("-").map(Number);
     if (!bj || !bm) continue;
-    monate.push((bj - d.jahr) * 12 + bm);
-    versaetze.set(bj - d.jahr, (versaetze.get(bj - d.jahr) ?? 0) + 1);
+    monate.push((bj - d.year) * 12 + bm);
+    versaetze.set(bj - d.year, (versaetze.get(bj - d.year) ?? 0) + 1);
   }
   if (!monate.length) return null;
   monate.sort((a, b) => a - b);

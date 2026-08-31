@@ -58,7 +58,7 @@ function vorhabenNummer(code: string): string {
 }
 
 
-function ListenKarte({ liste, jahr }: { liste: FhhListeImJahr; jahr: number }) {
+function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
   const mitCode = liste.zeilen.filter((z) => z.produkt).length;
   return (
     <details className="group border-t border-border/60 py-2.5 first:border-t-0 first:pt-0">
@@ -66,7 +66,7 @@ function ListenKarte({ liste, jahr }: { liste: FhhListeImJahr; jahr: number }) {
         <ChevronDown className="h-3.5 w-3.5 translate-y-0.5 text-muted-foreground transition-transform group-open:rotate-180" />
         <span className="text-[13px] font-semibold text-foreground">{liste.name}</span>
         <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-          {liste.zeilen.length} Position{liste.zeilen.length === 1 ? "" : "en"} für {jahr}
+          {liste.zeilen.length} Position{liste.zeilen.length === 1 ? "" : "en"} für {year}
           {mitCode > 0 && ` · ${mitCode} mit Vorhaben-Nummer`}
         </span>
         {liste.saldo && (
@@ -116,7 +116,7 @@ function ListenKarte({ liste, jahr }: { liste: FhhListeImJahr; jahr: number }) {
                 )}
                 {z.produkt && (
                   <Link
-                    href={`/haushalt/investitionen?vorhaben=${encodeURIComponent(vorhabenNummer(z.produkt))}&jahr=${z.jahr}#vorhaben`}
+                    href={`/haushalt/investitionen?vorhaben=${encodeURIComponent(vorhabenNummer(z.produkt))}&year=${z.year}#vorhaben`}
                     // Bewusst „suchen" und nicht „zum Vorhaben": Der Link
                     // führt auf eine SUCHE, und die findet ihr Vorhaben in gut
                     // der Hälfte der Fälle (gemessen 32 von 56). Ein Link, der
@@ -168,12 +168,12 @@ function ListenKarte({ liste, jahr }: { liste: FhhListeImJahr; jahr: number }) {
   );
 }
 
-export function StreitFinanzhaushalt({ daten, jahr }: {
+export function StreitFinanzhaushalt({ daten, year }: {
   daten: AenderungslistenDaten | null;
-  jahr: number | null;
+  year: number | null;
 }) {
-  const listen = fhhListenFuerJahr(daten, jahr);
-  if (!jahr || !listen.length) return null;
+  const listen = fhhListenFuerJahr(daten, year);
+  if (!year || !listen.length) return null;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -182,7 +182,7 @@ export function StreitFinanzhaushalt({ daten, jahr }: {
           Was am Bauen geändert wurde
         </h2>
         <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-          Haushalt {jahr}
+          Haushalt {year}
         </span>
       </div>
       <p className="mt-1 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
@@ -200,7 +200,7 @@ export function StreitFinanzhaushalt({ daten, jahr }: {
       </p>
 
       <div className="mt-3">
-        {listen.map((l) => <ListenKarte key={l.schluessel} liste={l} jahr={jahr} />)}
+        {listen.map((l) => <ListenKarte key={l.schluessel} liste={l} year={year} />)}
       </div>
     </div>
   );

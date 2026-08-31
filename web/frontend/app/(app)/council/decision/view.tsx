@@ -269,7 +269,7 @@ function GlanceCard({
               {data.haushalts_anschluss.art === "nachbewilligung" ? (
                 <>
                   Diese Entscheidung zählt zu den Nachbewilligungen
-                  {data.haushalts_anschluss.jahr ? ` ${data.haushalts_anschluss.jahr}` : ""} —
+                  {data.haushalts_anschluss.year ? ` ${data.haushalts_anschluss.year}` : ""} —
                   Geld, das außerhalb des beschlossenen Haushalts bewilligt wurde.
                 </>
               ) : (

@@ -49,7 +49,7 @@ function InvestitionenInner() {
   const [plan, setPlan] = useState<{ vorhaben: number; von: number; bis: number } | null | undefined>(undefined);
   const [gebaut, setGebaut] = useState<{ jahrgaenge: number; luecken: number[] } | null | undefined>(undefined);
   return (
-    // KEIN gemeinsames `jahr`: Der Plan zeigt den gewählten Jahrgang (`?jahr=`),
+    // KEIN gemeinsames `year`: Der Plan zeigt den gewählten Jahrgang (`?year=`),
     // das Ist den jüngsten abgeflossenen — die liegen naturgemäß auseinander,
     // das ist ja der Gegenstand dieser Seite. Ohne den Wert nimmt jeder Beleg
     // das jüngste Dokument SEINER Quelle und schreibt den Jahrgang an.

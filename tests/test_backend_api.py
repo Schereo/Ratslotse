@@ -794,20 +794,20 @@ def test_haushalt_dokumente_nennt_je_jahrgang_das_richtige_pdf(client):
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     try:
-        for jahr, doc in ((2023, 280861), (2024, 295294)):
-            cs.save_ergebnisrechnung(jahr, [
+        for year, doc in ((2023, 280861), (2024, 295294)):
+            cs.save_ergebnisrechnung(year, [
                 {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
                  "ergebnis": 1.0, "ist_summe": 1}],
                 herkunft.Herkunft(
                     art="ris", probe="strukturprobe", dokument_id=doc,
-                    label=f"Jahresabschluss {jahr}",
+                    label=f"Jahresabschluss {year}",
                     url=f"https://buergerinfo.oldenburg.de/getfile.php?id={doc}&type=do",
                     fundstelle="Ergebnisrechnung der Kernverwaltung", seite=161))
     finally:
         cs.close()
 
     doks = client.get("/api/council/haushalt/dokumente").json()["dokumente"]
-    nach_jahr = {d["jahr"]: d for d in doks["jahresabschluss"]}
+    nach_jahr = {d["year"]: d for d in doks["jahresabschluss"]}
     # Der Jahrgangswechsel führt auf ein ANDERES Dokument — genau das war die
     # Zusage, und genau die konnte die statische Adresse nicht halten.
     assert nach_jahr[2023]["url"].endswith("id=280861&type=do")
@@ -858,13 +858,13 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
         cs.close()
 
     b = client.get("/api/council/haushalt/aenderungslisten").json()
-    assert [z["jahr"] for z in b["zeilen"]] == [2026]
+    assert [z["year"] for z in b["zeilen"]] == [2026]
     assert b["zeilen"][0]["erlaeuterung"] == "Mehrbedarf laut Schulentwicklungsplan."
     # Wer die Position vorschlug, reist mit — die Streit-Seite setzt daran
     # ihre Urheber-Marke und ihren „nur die Summe"-Satz.
     assert b["zeilen"][0]["urheber"] == "Verw. I"
-    assert {s["jahr"] for s in b["summen"]} == {2026, 2027}
-    eigene = {s["label"]: s["eigene"] for s in b["summen"] if s["jahr"] == 2026}
+    assert {s["year"] for s in b["summen"]} == {2026, 2027}
+    eigene = {s["label"]: s["eigene"] for s in b["summen"] if s["year"] == 2026}
     assert eigene["Änderungsliste Verw. I"] == 1
     assert eigene["SPD/ CDU/ FDP"] == 0
     # Jede Zeile findet ihr Papier: Die Herkunft-Karte deckt alle Verweise.
@@ -969,7 +969,7 @@ def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
 
     # Und der Beleg findet das Dokument des Jahrgangs — einmal, nicht zweimal.
     doks = client.get("/api/council/haushalt/dokumente").json()["dokumente"]
-    assert [d["jahr"] for d in doks["investitionen"]] == [2025]
+    assert [d["year"] for d in doks["investitionen"]] == [2025]
 
 
 def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
@@ -1006,7 +1006,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
 
     bilanz = next(k for k in b["kennzahlen"]
                   if k["gesellschaft"] == "egh" and k["kennzahl"] == "bilanzsumme"
-                  and k["jahr"] == 2024)
+                  and k["year"] == 2024)
     assert bilanz["wert"] == 580193968.91
     assert bilanz["einheit"] == "eur"
     # Ein einzelner Bericht kann die Überlappung nicht bieten — die Zahl ist
@@ -1194,7 +1194,7 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
     # Die Erklärsätze für die Leserin kommen mit.
     assert len(h_posten["proben"]) == 3
     # Gegenprobe: 799.057 TEUR gegen 799.057.202,86 € — auf Tausend genau.
-    assert b["gegenprobe"] == [{"jahr": 2024, "art": "ertraege",
+    assert b["gegenprobe"] == [{"year": 2024, "art": "ertraege",
                                 "konzern": 799057000.0,
                                 "jahresabschluss": 799057202.86, "ok": True}]
 
@@ -1218,8 +1218,8 @@ def test_haushalt_gebaut_beziffert_seine_luecken(client):
             "2019 6.004 3.306 19.304 6.701 626 30.654 67.899\n"
             "2020 9.165 1.753 16.462 8.340 495 34.266 70.481\n", "doppik")
         gut = [z for z in zeilen if ii.zeilensumme(z)[0]]
-        assert [z["jahr"] for z in gut] == [2018, 2020], "2019 muss reißen"
-        verworfen = [{"jahr": 2019, "regelwerk": "doppik", "differenz": -1_304_000.0,
+        assert [z["year"] for z in gut] == [2018, 2020], "2019 muss reißen"
+        verworfen = [{"year": 2019, "regelwerk": "doppik", "differenz": -1_304_000.0,
                       "grund": "Zeilensumme um -1.304.000 € gerissen"}]
         cs.save_investitionen_ist(gut, herkunft.Herkunft(
             art="stadt", url="https://example.org/1107.pdf",
@@ -1229,8 +1229,8 @@ def test_haushalt_gebaut_beziffert_seine_luecken(client):
         cs.close()
 
     b = client.get("/api/council/haushalt/gebaut").json()
-    assert [z["jahr"] for z in b["reihe"]] == [2018, 2020]
-    assert b["fehlend"] == {"doppik": [{"jahr": 2019, "differenz": -1_304_000.0}]}
+    assert [z["year"] for z in b["reihe"]] == [2018, 2020]
+    assert b["fehlend"] == {"doppik": [{"year": 2019, "differenz": -1_304_000.0}]}
 
 
 def test_haushalt_gebaut_erfindet_keine_differenz(client):
@@ -1255,7 +1255,7 @@ def test_haushalt_gebaut_erfindet_keine_differenz(client):
         cs.close()
 
     b = client.get("/api/council/haushalt/gebaut").json()
-    assert b["fehlend"] == {"doppik": [{"jahr": 2019, "differenz": None}]}
+    assert b["fehlend"] == {"doppik": [{"year": 2019, "differenz": None}]}
 
 
 def test_sessions_carry_my_topic_items(client):
@@ -4594,7 +4594,7 @@ def test_decision_detail_meldet_follow_zustand(client):
 
 # --- Sitzungsliste: Blättern und Gesamtzahl ---------------------------------
 
-def _seed_sessions(n: int, *, jahr: int = 2025) -> None:
+def _seed_sessions(n: int, *, year: int = 2025) -> None:
     """n vergangene Sitzungen, absteigend datiert (Tag 1..n im Januar/Februar)."""
     council = CouncilStore(COUNCIL_DB)
     for i in range(n):
@@ -4602,7 +4602,7 @@ def _seed_sessions(n: int, *, jahr: int = 2025) -> None:
         monat, tag = (1, tag) if tag <= 28 else (2, tag - 28)
         council.save_session(CouncilSession(
             1000 + i, "Rat" if i % 2 else "Sozialausschuss",
-            f"{jahr}-{monat:02d}-{tag:02d}", "17:00", "Ratssaal"))
+            f"{year}-{monat:02d}-{tag:02d}", "17:00", "Ratssaal"))
     council.close()
 
 
@@ -5461,7 +5461,7 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
         daten = antwort.json()
 
         zins = daten["zinslast"]
-        assert [z["jahr"] for z in zins] == [2024], "je Jahr genau eine Zinslast"
+        assert [z["year"] for z in zins] == [2024], "je Jahr genau eine Zinslast"
         assert zins[0]["aufwand"] == 7_250_000.0
         # Die Herkunft muss mitkommen — sonst steht die Zahl ohne Beleg da.
         assert str(zins[0]["herkunft_id"]) in daten["herkunft"]
@@ -5580,7 +5580,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
     cs = CouncilStore(COUNCIL_DB)
     try:
         zeilen = [
-            {"template_number": "26/0207", "jahr": 2026, "sitzung": "2026-04-13",
+            {"template_number": "26/0207", "year": 2026, "sitzung": "2026-04-13",
              "betrag": 435_941.0, "gremium": "Rat", "layout": "neu",
              "zweitstelle": "zerlegung",
              "proben": [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH],
@@ -5588,7 +5588,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
                  art="ris", dokument_id=304791, probe=[spenden.ZWEITSTELLE],
                  fundstelle=spenden.FUNDSTELLE,
                  probe_ergebnis="421.316 + 14.625 = 435.941")},
-            {"template_number": "26/0044", "jahr": 2026, "sitzung": "2026-02-09",
+            {"template_number": "26/0044", "year": 2026, "sitzung": "2026-02-09",
              "betrag": 1_800.0, "gremium": "Verwaltungsausschuss", "layout": "alt",
              "zweitstelle": "identisch", "proben": [spenden.ZWEITSTELLE],
              "herkunft": herkunft.Herkunft(
@@ -5605,7 +5605,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
         daten = client.get("/api/council/haushalt").json()
         s = daten["spenden"]
 
-        assert s["jahre"] == [{"jahr": 2026, "betrag": 437_741.0, "vorlagen": 2,
+        assert s["jahre"] == [{"year": 2026, "betrag": 437_741.0, "vorlagen": 2,
                                "rat": 1, "verwaltungsausschuss": 1}]
         assert [v["template_number"] for v in s["vorlagen"]] == ["26/0044", "26/0207"]
         assert s["ohne_beleg"][0]["template_number"] == "23/0265"
@@ -5791,7 +5791,7 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_buergschaften([{
-            "jahr": 2024, "bestand": 220_300_000.0, "genau": False,
+            "year": 2024, "bestand": 220_300_000.0, "genau": False,
             "aus_folgejahr": False, "quelle": "anhang",
             "grund": "Hintergrund ist, dass die verbürgten Bestandsdarlehen "
                      "seitens der Beteiligungen getilgt wurden.",
@@ -5804,7 +5804,7 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
         cs.close()
 
     b = client.get("/api/council/haushalt/schulden").json()["buergschaften"]
-    assert [z["jahr"] for z in b["reihe"]] == [2024]
+    assert [z["year"] for z in b["reihe"]] == [2024]
     z = b["reihe"][0]
     assert z["bestand"] == 220_300_000.0
     # Die Quelle rundet selbst — das muss an der Zahl stehen bleiben.
@@ -5837,7 +5837,7 @@ def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client)
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_integrierte_schulden({
-            "jahr": 2024, "ars": isch.ARS_OLDENBURG, "bevoelkerung": 176_336.0,
+            "year": 2024, "ars": isch.ARS_OLDENBURG, "bevoelkerung": 176_336.0,
             "insgesamt": 740_330_163.0, "je_einwohner": 4_198.41,
             "kernhaushalt": 43_690_972.0, "extrahaushalte": 140_916_720.89,
             "sonstige": 555_722_470.11, "extra_unter_50": 2_397_841.89,
@@ -5851,7 +5851,7 @@ def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client)
         cs.close()
 
     i = client.get("/api/council/haushalt/schulden").json()["integrierte_schulden"]
-    assert i["stichtag"]["jahr"] == 2024
+    assert i["stichtag"]["year"] == 2024
     assert i["stichtag"]["insgesamt"] == 740_330_163.0
     # Der Anteil wird gerechnet, nicht abgeschrieben — er entscheidet, wie die
     # Zahl gelesen werden darf, und ändert sich mit jeder Ausgabe.
@@ -5870,7 +5870,7 @@ def test_integrierte_schulden_kommen_nur_mit_bestandener_kernprobe():
     """
     from council import integrierte_schulden as isch
 
-    gefunden = {"jahr": 2024, "kernhaushalt": 43_690_972.0}
+    gefunden = {"year": 2024, "kernhaushalt": 43_690_972.0}
     ok, warum = isch.kernprobe(gefunden, 43_690_971.71)
     assert ok and "0.29" in warum
 

@@ -912,7 +912,7 @@ class HaushaltProdukte(TypedDict):
     abdeckung_prozent: Any
     alle_jahre: Any
     facetten: Any
-    jahr: Any
+    year: Any
     plan_aufwendungen: Any
     produkt: Any
     produkte: Any

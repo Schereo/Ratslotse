@@ -32,7 +32,7 @@ export function StaedteLeiter({ staedte, heute, deinWert, geaendert }: {
   geaendert: boolean;
 }) {
   if (staedte.length < 3) return null;
-  const jahr = staedte[0].jahr;
+  const year = staedte[0].year;
 
   const zeilen: Zeile[] = staedte.map((s) => ({
     name: s.istOldenburg ? "Oldenburg · heute" : s.stadt,
@@ -59,7 +59,7 @@ export function StaedteLeiter({ staedte, heute, deinWert, geaendert }: {
   return (
     <div className="mt-3 rounded-xl bg-muted/40 p-3">
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Die kreisfreien Städte · {jahr}
+        Die kreisfreien Städte · {year}
       </p>
       <div className="mt-1.5 flex flex-col">
         {zeilen.map((z) => (

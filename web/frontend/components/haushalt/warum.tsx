@@ -28,7 +28,7 @@ export function Warum({ grund, kompakt = false }: {
         {grund.text}
       </p>
       <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.09em] text-muted-foreground">
-        Jahresabschluss {grund.jahr}, Abschnitt 6.3.1 — Wortlaut der Verwaltung
+        Jahresabschluss {grund.year}, Abschnitt 6.3.1 — Wortlaut der Verwaltung
       </p>
     </details>
   );

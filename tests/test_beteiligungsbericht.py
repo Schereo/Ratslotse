@@ -385,7 +385,7 @@ def test_lies_ganzer_bericht_mit_proben():
     assert egh.kennzahlen["bilanzsumme"][2024] == 580193968.91
     assert egh.abschnitte["gegenstand"]
     # Bilanzprobe und Ergebnisprobe für die drei Bilanzjahre.
-    proben = {(x["kennzahl"], x["jahr"]): x for x in e["dokumentproben"]}
+    proben = {(x["kennzahl"], x["year"]): x for x in e["dokumentproben"]}
     assert proben[("bilanzsumme", 2024)]["ok"]
     assert proben[("jahresergebnis", 2024)]["ok"]
     assert all(x["ok"] for x in e["dokumentproben"])
@@ -400,7 +400,7 @@ def test_ueberlappung_bestaetigt_und_widerspricht():
     b.kennzahlen = {"bilanzsumme": {2022: 559822592.60, 2023: 999.0}}
     u = bb.ueberlappung({2023: [a], 2024: [b]})
     assert u["bestaetigt"][("egh", "bilanzsumme", 2022)] == 2
-    assert [w["jahr"] for w in u["widersprueche"]] == [2023]
+    assert [w["year"] for w in u["widersprueche"]] == [2023]
 
 
 # --- Einlesen und Speichern -------------------------------------------------
@@ -438,7 +438,7 @@ def test_gespeicherte_kennzahl_traegt_probe_und_messwert(tmp_path):
         "label": "Beteiligungsbericht 2024"}},
         finanzquellen.Protokoll(still=True))
     zeilen = [z for z in store.get_gesellschaft_kennzahlen("egh")
-              if z["kennzahl"] == "bilanzsumme" and z["jahr"] == 2024]
+              if z["kennzahl"] == "bilanzsumme" and z["year"] == 2024]
     assert len(zeilen) == 1
     h = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
     assert h["art"] == "stadt"

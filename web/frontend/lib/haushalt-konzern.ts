@@ -21,7 +21,7 @@ import type { Herkunft } from "@/lib/herkunft";
 export type { Herkunft };
 
 export type KonzernJahr = {
-  jahr: number;
+  year: number;
   ertraege_summe?: number;
   aufwendungen_summe?: number;
   ord_ergebnis?: number;
@@ -33,7 +33,7 @@ export type KonzernJahr = {
 };
 
 export type KonzernTraeger = {
-  jahr: number;
+  year: number;
   art: "ertraege" | "aufwendungen";
   traeger_key: string;
   traeger: string;
@@ -44,7 +44,7 @@ export type KonzernTraeger = {
 };
 
 export type KonzernPosten = {
-  jahr: number;
+  year: number;
   nr: number;
   bezeichnung: string;
   rolle: string | null;
@@ -54,7 +54,7 @@ export type KonzernPosten = {
 };
 
 export type Gegenprobe = {
-  jahr: number;
+  year: number;
   art: "ertraege" | "aufwendungen";
   konzern: number;
   jahresabschluss: number;
@@ -107,25 +107,25 @@ export const ART: Record<string, string> = {
   weh: "Veranstaltungshallen, städtische Beteiligung.",
 };
 
-export function jahrDaten(daten: KonzernDaten, jahr: number): KonzernJahr | null {
-  return daten.konzern.find((k) => k.jahr === jahr) ?? null;
+export function jahrDaten(daten: KonzernDaten, year: number): KonzernJahr | null {
+  return daten.konzern.find((k) => k.year === year) ?? null;
 }
 
 /** Träger eines Jahres und einer Aufstellung, größter zuerst — ohne die
  *  Konsolidierungszeile, die separat danebensteht. */
 export function traegerListe(
-  daten: KonzernDaten, jahr: number, art: "ertraege" | "aufwendungen",
+  daten: KonzernDaten, year: number, art: "ertraege" | "aufwendungen",
 ): KonzernTraeger[] {
   return daten.traeger
-    .filter((t) => t.jahr === jahr && t.art === art && t.traeger_key !== KONSOLIDIERUNG)
+    .filter((t) => t.year === year && t.art === art && t.traeger_key !== KONSOLIDIERUNG)
     .sort((a, b) => b.betrag - a.betrag);
 }
 
 export function konsolidierung(
-  daten: KonzernDaten, jahr: number, art: "ertraege" | "aufwendungen",
+  daten: KonzernDaten, year: number, art: "ertraege" | "aufwendungen",
 ): KonzernTraeger | null {
   return daten.traeger.find(
-    (t) => t.jahr === jahr && t.art === art && t.traeger_key === KONSOLIDIERUNG) ?? null;
+    (t) => t.year === year && t.art === art && t.traeger_key === KONSOLIDIERUNG) ?? null;
 }
 
 /** Jahre, für die die Trägeraufstellung vorliegt — nicht dieselben wie
@@ -135,7 +135,7 @@ export function traegerJahre(daten: KonzernDaten,
                              art?: "ertraege" | "aufwendungen"): number[] {
   const jahre = daten.traeger
     .filter((t) => !art || t.art === art)
-    .map((t) => t.jahr);
+    .map((t) => t.year);
   return [...new Set(jahre)].sort((a, b) => a - b);
 }
 
@@ -144,12 +144,12 @@ export function traegerJahre(daten: KonzernDaten,
  *  Kernverwaltungs-Zeile ist der Anteil nicht bestimmbar, und ein geschätzter
  *  wäre hier das Gegenteil des Zwecks. */
 export function kernAnteil(
-  daten: KonzernDaten, jahr: number, art: "ertraege" | "aufwendungen" = "ertraege",
+  daten: KonzernDaten, year: number, art: "ertraege" | "aufwendungen" = "ertraege",
 ): { kern: number; konzern: number; anteil: number } | null {
-  const jd = jahrDaten(daten, jahr);
+  const jd = jahrDaten(daten, year);
   const konzern = art === "ertraege" ? jd?.ertraege_summe : jd?.aufwendungen_summe;
   const kern = daten.traeger.find(
-    (t) => t.jahr === jahr && t.art === art && t.traeger_key === "stadt");
+    (t) => t.year === year && t.art === art && t.traeger_key === "stadt");
   if (!konzern || !kern) return null;
   return { kern: kern.betrag, konzern, anteil: kern.betrag / konzern };
 }

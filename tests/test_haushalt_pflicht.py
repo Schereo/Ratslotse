@@ -49,7 +49,7 @@ import { BEREICHE } from "%(bereiche)s";
 
 const ein = JSON.parse(process.argv[2]);
 
-const befunde = spielraumBefunde(ein.produkte ?? [], ein.jahr ?? 2023);
+const befunde = spielraumBefunde(ein.produkte ?? [], ein.year ?? 2023);
 const alsObjekt = {};
 for (const [k, b] of befunde) {
   alsObjekt[k] = {
@@ -115,8 +115,8 @@ def _lauf(tmp_path: Path, **ein) -> dict:
     return json.loads(fertig.stdout)
 
 
-def _p(nr: str, thh: str, aufwand: float, stufe: str | None, jahr: int = 2023) -> dict:
-    return {"jahr": jahr, "produkt_nr": nr, "produkt_name": nr, "thh_nr": None,
+def _p(nr: str, thh: str, aufwand: float, stufe: str | None, year: int = 2023) -> dict:
+    return {"year": year, "produkt_nr": nr, "produkt_name": nr, "thh_nr": None,
             "thh_name": thh, "amt": None, "ertraege": None,
             "aufwendungen": aufwand, "ergebnis": None,
             "beeinflussbarkeit": stufe, "auftragsgrundlage": "SGB VIII",
@@ -160,7 +160,7 @@ def test_unbekannter_bereich_faellt_zurueck_statt_zu_raten(tmp_path):
 def test_gewichtet_nach_aufwand_nicht_nach_kopfzahl(tmp_path):
     """Drei kleine Angebote mit „viel Spielraum" schlagen keinen
     Rechtsanspruch von 54 Mio. €."""
-    r = _lauf(tmp_path, jahr=2023, produkte=[
+    r = _lauf(tmp_path, year=2023, produkte=[
         _p("A", "Soziales und Gesundheit", 54_000_000, "niedrig"),
         _p("B", "Soziales und Gesundheit", 300_000, "hoch"),
         _p("C", "Soziales und Gesundheit", 200_000, "hoch"),
@@ -178,7 +178,7 @@ def test_gewichtet_nach_aufwand_nicht_nach_kopfzahl(tmp_path):
 def test_alte_schreibweise_landet_im_selben_befund(tmp_path):
     """Produktzeilen aus zwei Jahrgängen desselben Teilhaushalts werden
     zusammengeführt — über das Wörterbuch, nicht über den Namen."""
-    r = _lauf(tmp_path, jahr=2023, produkte=[
+    r = _lauf(tmp_path, year=2023, produkte=[
         _p("A", "Klima/Umwelt/Mobilität/Bau/Grün/Friedh.", 1_000_000, "niedrig"),
         _p("B", "Umwelt, Bauordnung, Grün  u. Friedhöfe", 3_000_000, "mittel"),
     ])
@@ -189,7 +189,7 @@ def test_alte_schreibweise_landet_im_selben_befund(tmp_path):
 
 @braucht_node
 def test_gleichstand_hat_keine_dominante_stufe(tmp_path):
-    r = _lauf(tmp_path, jahr=2023, produkte=[
+    r = _lauf(tmp_path, year=2023, produkte=[
         _p("A", "Stadtplanung", 1_000_000, "niedrig"),
         _p("B", "Stadtplanung", 1_000_000, "hoch"),
     ])
@@ -201,7 +201,7 @@ def test_ohne_angabe_wird_ausgewiesen_nicht_verteilt(tmp_path):
     """Fehlende Selbstauskunft ist ein eigener Anteil. Trägt sie die Mehrheit
     des Geldes, gibt es keine dominante Stufe — die Stadt hat dann nichts
     gesagt, und wir erfinden es nicht."""
-    r = _lauf(tmp_path, jahr=2023, produkte=[
+    r = _lauf(tmp_path, year=2023, produkte=[
         _p("A", "Verkehr und Straßenbau", 6_000_000, None),
         _p("B", "Verkehr und Straßenbau", 4_000_000, "mittel"),
     ])
@@ -212,9 +212,9 @@ def test_ohne_angabe_wird_ausgewiesen_nicht_verteilt(tmp_path):
 
 @braucht_node
 def test_fremdes_jahr_zaehlt_nicht_mit(tmp_path):
-    r = _lauf(tmp_path, jahr=2023, produkte=[
-        _p("A", "Kultur, Museen, Sport", 1_000_000, "hoch", jahr=2023),
-        _p("B", "Kultur, Museen, Sport", 9_000_000, "niedrig", jahr=2022),
+    r = _lauf(tmp_path, year=2023, produkte=[
+        _p("A", "Kultur, Museen, Sport", 1_000_000, "hoch", year=2023),
+        _p("B", "Kultur, Museen, Sport", 9_000_000, "niedrig", year=2022),
     ])
     assert r["befunde"]["kultur"]["produkte"] == 1
     assert r["befunde"]["kultur"]["dominant"] == "hoch"
@@ -225,7 +225,7 @@ def test_ohne_produktebene_ist_offen_keine_uebereinstimmung(tmp_path):
     """Der Nenner der Aussage „X von Y Bereichen decken sich" darf nur
     Bereiche enthalten, für die es überhaupt eine Angabe gibt."""
     r = _lauf(
-        tmp_path, jahr=2023,
+        tmp_path, year=2023,
         produkte=[_p("A", "Kultur, Museen, Sport", 1_000_000, "hoch")],
         schluessel={"Kultur, Museen, Sport": "kultur", "Schule und Bildung": "schule"},
         urteile={"Kultur, Museen, Sport": "freiwillig", "Schule und Bildung": "spielraum"},
@@ -239,7 +239,7 @@ def test_abweichung_wird_gemeldet_nicht_geglaettet(tmp_path):
     """„Jugend und Familie" ist der echte Fall: redaktionell „Pflicht mit
     Spielraum", die Stadt sieht für den Großteil des Geldes kaum welchen."""
     r = _lauf(
-        tmp_path, jahr=2023,
+        tmp_path, year=2023,
         produkte=[
             _p("A", "Jugend und Familie", 71_100_000, "niedrig"),
             _p("B", "Jugend und Familie", 6_200_000, "mittel"),

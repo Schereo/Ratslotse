@@ -264,7 +264,7 @@ def erkenne_1103(text: str) -> tuple[int, int] | None:
 
 
 def parse_1103(text: str) -> dict:
-    """Tabelle 1103 → ``{"jahre": [...], "zeilen": {art: {jahr: {plan, ist}}},
+    """Tabelle 1103 → ``{"jahre": [...], "zeilen": {art: {year: {plan, ist}}},
     "unbekannt": [...], "vorlaeufig": [...]}``.
 
     Beträge in **Tausend Euro**, wie gedruckt — umgerechnet wird erst beim
@@ -315,9 +315,9 @@ def parse_1103(text: str) -> dict:
             unbekannt.append(re.sub(r"\s+", " ", label))
             continue
         je_jahr: dict[int, dict] = {}
-        for i, jahr in enumerate(jahre):
+        for i, year in enumerate(jahre):
             block = felder[i * 4:(i + 1) * 4]
-            je_jahr[jahr] = {
+            je_jahr[year] = {
                 "plan": _teur(block[0]), "plan_anteil": _prozent(block[1]),
                 "ist": _teur(block[2]), "ist_anteil": _prozent(block[3]),
             }
@@ -338,12 +338,12 @@ def summenprobe(gelesen: dict) -> dict[int, dict[str, float]]:
     if SUMME not in zeilen:
         return aus
     teile = [a for a in zeilen if a != SUMME]
-    for jahr in gelesen["jahre"]:
-        aus[jahr] = {}
+    for year in gelesen["jahre"]:
+        aus[year] = {}
         for spalte in ("plan", "ist"):
-            summe = sum(zeilen[a][jahr][spalte] for a in teile
-                        if jahr in zeilen[a])
-            aus[jahr][spalte] = summe - zeilen[SUMME][jahr][spalte]
+            summe = sum(zeilen[a][year][spalte] for a in teile
+                        if year in zeilen[a])
+            aus[year][spalte] = summe - zeilen[SUMME][year][spalte]
     return aus
 
 
@@ -364,15 +364,15 @@ def anteilsprobe(gelesen: dict) -> list[dict]:
     for art, je_jahr in zeilen.items():
         if art == SUMME:
             continue
-        for jahr, werte in je_jahr.items():
-            gesamt = zeilen[SUMME][jahr]
+        for year, werte in je_jahr.items():
+            gesamt = zeilen[SUMME][year]
             for spalte in ("plan", "ist"):
                 if not gesamt[spalte]:
                     continue
                 gerechnet = round(werte[spalte] / gesamt[spalte] * 100, 2)
                 gedruckt = werte[f"{spalte}_anteil"]
                 if abs(gerechnet - gedruckt) > 0.011:
-                    fehler.append({"art": art, "jahr": jahr, "spalte": spalte,
+                    fehler.append({"art": art, "year": year, "spalte": spalte,
                                    "gerechnet": gerechnet, "gedruckt": gedruckt})
     return fehler
 
@@ -380,7 +380,7 @@ def anteilsprobe(gelesen: dict) -> list[dict]:
 def istabgleich(gelesen: dict, ist_reihe: dict[int, dict[str, float]]) -> dict:
     """Das Rechnungsergebnis gegen Tabelle 1104 — **das Aufnahmekriterium**.
 
-    ``ist_reihe`` ist ``{jahr: {art: betrag_in_euro}}`` aus ``council_steuern``.
+    ``ist_reihe`` ist ``{year: {art: betrag_in_euro}}`` aus ``council_steuern``.
     Verglichen wird in Tausend Euro, weil 1103 so druckt.
 
     Ein Jahrgang wird nur übernommen, wenn **jede** seiner Steuerarten dort
@@ -391,32 +391,32 @@ def istabgleich(gelesen: dict, ist_reihe: dict[int, dict[str, float]]) -> dict:
     herein, und genau so ist der Versatz im Datensatz 1106 jahrelang unbemerkt
     geblieben.
 
-    Zurück: ``{"bestanden": [jahre], "verworfen": [{jahr, grund}]}``.
+    Zurück: ``{"bestanden": [jahre], "verworfen": [{year, grund}]}``.
     """
     zeilen = gelesen["zeilen"]
     arten = [a for a in zeilen if a not in (SUMME, ZUWEISUNGEN)]
     bestanden: list[int] = []
     verworfen: list[dict] = []
-    for jahr in gelesen["jahre"]:
-        fehlend = [a for a in arten if ist_reihe.get(jahr, {}).get(a) is None]
+    for year in gelesen["jahre"]:
+        fehlend = [a for a in arten if ist_reihe.get(year, {}).get(a) is None]
         if fehlend:
             verworfen.append({
-                "jahr": jahr,
-                "grund": f"Tabelle 1104 führt für {jahr} keinen Wert zu "
+                "year": year,
+                "grund": f"Tabelle 1104 führt für {year} keinen Wert zu "
                          f"{', '.join(sorted(fehlend))} — ohne Zweitquelle ist "
                          f"die Jahresbeschriftung ungeprüft"})
             continue
         abweichend = []
         for art in arten:
-            hier = zeilen[art][jahr]["ist"]
-            dort = round(ist_reihe[jahr][art] / 1000)
+            hier = zeilen[art][year]["ist"]
+            dort = round(ist_reihe[year][art] / 1000)
             if hier != dort:
                 abweichend.append(f"{art}: 1103 {hier} vs. 1104 {dort} T€")
         if abweichend:
-            verworfen.append({"jahr": jahr,
+            verworfen.append({"year": year,
                               "grund": "; ".join(abweichend)})
             continue
-        bestanden.append(jahr)
+        bestanden.append(year)
     return {"bestanden": bestanden, "verworfen": verworfen}
 
 
@@ -439,10 +439,10 @@ def lies_1103(text: str, ist_reihe: dict[int, dict[str, float]]) -> dict:
     #    (Zeilen mit anderer Feldzahl kommen gar nicht durch) — hier fällt nur
     #    auf, wenn dadurch NICHTS übrig blieb.
     abweichungen = summenprobe(gelesen)
-    if not abweichungen or any(v for jahr in abweichungen.values()
-                               for v in jahr.values()):
-        schlimmste = max((abs(v) for jahr in abweichungen.values()
-                          for v in jahr.values()), default=None)
+    if not abweichungen or any(v for year in abweichungen.values()
+                               for v in year.values()):
+        schlimmste = max((abs(v) for year in abweichungen.values()
+                          for v in year.values()), default=None)
         return {"zeilen": [], "jahre": [], "verworfen": [], "proben": proben,
                 "spanne": gelesen["spanne"], "unbekannt": gelesen["unbekannt"],
                 "abbruch": (
@@ -469,15 +469,15 @@ def lies_1103(text: str, ist_reihe: dict[int, dict[str, float]]) -> dict:
     for art, je_jahr in gelesen["zeilen"].items():
         if art in (SUMME, ZUWEISUNGEN):
             continue
-        for jahr in abgleich["bestanden"]:
-            werte = je_jahr[jahr]
+        for year in abgleich["bestanden"]:
+            werte = je_jahr[year]
             zeilen.append({
-                "jahr": jahr, "art": art,
+                "year": year, "art": art,
                 "plan": werte["plan"] * 1000.0,
                 "ist": werte["ist"] * 1000.0,
-                "vorlaeufig": jahr in gelesen["vorlaeufig"],
+                "vorlaeufig": year in gelesen["vorlaeufig"],
             })
-    zeilen.sort(key=lambda z: (z["jahr"], z["art"]))
+    zeilen.sort(key=lambda z: (z["year"], z["art"]))
     return {"zeilen": zeilen, "jahre": abgleich["bestanden"],
             "verworfen": abgleich["verworfen"], "proben": proben,
             "spanne": gelesen["spanne"], "unbekannt": gelesen["unbekannt"],
@@ -497,8 +497,8 @@ def erkenne_1105(text: str) -> int | None:
     treffer = re.search(r"1105\b.{0,120}?seit\s+(\d{4})", text, re.S)
     if not treffer:
         return None
-    jahr = int(treffer.group(1))
-    return jahr if 1900 <= jahr <= 2100 else None
+    year = int(treffer.group(1))
+    return year if 1900 <= year <= 2100 else None
 
 
 def _bereich_1105(text: str) -> list[str]:
@@ -547,7 +547,7 @@ def spaltenprobe(text: str) -> bool:
 
 
 def parse_1105(text: str) -> list[dict]:
-    """Tabelle 1105 → ``[{jahr, "Grundsteuer A": …, "Grundsteuer B": …,
+    """Tabelle 1105 → ``[{year, "Grundsteuer A": …, "Grundsteuer B": …,
     "Gewerbesteuer": …}]``, aufsteigend nach Jahr.
 
     Eine Zeile ist ein Jahr und **genau drei** ganze Zahlen. Die Beträge aus
@@ -560,14 +560,14 @@ def parse_1105(text: str) -> list[dict]:
         treffer = _HEBESATZ_ZEILE.match(zeile.strip())
         if not treffer:
             continue
-        jahr = int(treffer.group(1))
-        if not 1900 <= jahr <= 2100:
+        year = int(treffer.group(1))
+        if not 1900 <= year <= 2100:
             continue
-        eintrag = {"jahr": jahr}
+        eintrag = {"year": year}
         for i, art in enumerate(HEBESATZ_ARTEN, start=2):
             eintrag[art] = int(treffer.group(i))
         aus.append(eintrag)
-    aus.sort(key=lambda z: z["jahr"])
+    aus.sort(key=lambda z: z["year"])
     return aus
 
 
@@ -584,7 +584,7 @@ def treppenprobe(zeilen: list[dict]) -> list[int]:
     doppelt: list[int] = []
     for vor, jetzt in zip(zeilen, zeilen[1:]):
         if all(jetzt[a] == vor[a] for a in HEBESATZ_ARTEN):
-            doppelt.append(jetzt["jahr"])
+            doppelt.append(jetzt["year"])
     return doppelt
 
 
@@ -610,24 +610,24 @@ def sprungjahrprobe(zeilen: list[dict],
     """
     bestanden, gerissen, offen = [], [], []
     for vor, jetzt in zip(zeilen, zeilen[1:]):
-        jahr = jetzt["jahr"]
+        year = jetzt["year"]
         if jetzt["Grundsteuer B"] <= vor["Grundsteuer B"]:
-            offen.append({"jahr": jahr,
+            offen.append({"year": year,
                           "grund": "Grundsteuer B unverändert oder gesenkt — "
                                    "die Probe misst einen Anstieg"})
             continue
-        if jahr in BEMESSUNG_NEU:
-            offen.append({"jahr": jahr, "grund": BEMESSUNG_NEU[jahr]})
+        if year in BEMESSUNG_NEU:
+            offen.append({"year": year, "grund": BEMESSUNG_NEU[year]})
             continue
-        fehlt = [j for j in (jahr - 1, jahr, jahr + 1) if not grundsteuer_ist.get(j)]
+        fehlt = [j for j in (year - 1, year, year + 1) if not grundsteuer_ist.get(j)]
         if fehlt:
-            offen.append({"jahr": jahr,
+            offen.append({"year": year,
                           "grund": "die Aufkommensreihe führt "
                                    f"{', '.join(str(j) for j in fehlt)} nicht"})
             continue
-        im_jahr = grundsteuer_ist[jahr] / grundsteuer_ist[jahr - 1] - 1
-        danach = grundsteuer_ist[jahr + 1] / grundsteuer_ist[jahr] - 1
-        eintrag = {"jahr": jahr, "im_jahr": im_jahr, "danach": danach,
+        im_jahr = grundsteuer_ist[year] / grundsteuer_ist[year - 1] - 1
+        danach = grundsteuer_ist[year + 1] / grundsteuer_ist[year] - 1
+        eintrag = {"year": year, "im_jahr": im_jahr, "danach": danach,
                    "hebesatz_vorher": vor["Grundsteuer B"],
                    "hebesatz_nachher": jetzt["Grundsteuer B"]}
         (bestanden if im_jahr > danach else gerissen).append(eintrag)
@@ -639,7 +639,7 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
 
     Zurück: ``{"zeilen": [...], "proben": [...], "sprungjahre": {...},
     "abbruch": str|None}``. ``zeilen`` sind speicherfertige Datensätze
-    ``{jahr, art, hebesatz, vorheriger}``.
+    ``{year, art, hebesatz, vorheriger}``.
     """
     start = erkenne_1105(text)
     roh = parse_1105(text)
@@ -652,10 +652,10 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
                 "abbruch": "Der Tabellenkopf nennt die Spalten nicht in der "
                            "erwarteten Reihenfolge (Grundsteuer A, Grundsteuer "
                            "B, Gewerbesteuer) — es wird nichts übernommen."}
-    if start is not None and roh[0]["jahr"] != start:
+    if start is not None and roh[0]["year"] != start:
         return {"zeilen": [], "proben": proben, "sprungjahre": {"bestanden": [], "gerissen": [], "nicht_pruefbar": []},
                 "abbruch": f"Der Titel nennt „seit {start}“, die erste Zeile "
-                           f"ist aber {roh[0]['jahr']}."}
+                           f"ist aber {roh[0]['year']}."}
     proben.append("hebesatz_spaltenkopf")
 
     doppelt = treppenprobe(roh)
@@ -668,7 +668,7 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
 
     sprung = sprungjahrprobe(roh, grundsteuer_ist)
     if sprung["gerissen"]:
-        jahre = ", ".join(str(e["jahr"]) for e in sprung["gerissen"])
+        jahre = ", ".join(str(e["year"]) for e in sprung["gerissen"])
         return {"zeilen": [], "proben": proben, "sprungjahre": sprung,
                 "abbruch": (
                     f"Die Sprungjahr-Probe reißt für {jahre}: Das Aufkommen "
@@ -683,7 +683,7 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
         vorher = roh[i - 1] if i else None
         for art in HEBESATZ_ARTEN:
             zeilen.append({
-                "jahr": eintrag["jahr"], "art": art,
+                "year": eintrag["year"], "art": art,
                 "hebesatz": eintrag[art],
                 "vorheriger": vorher[art] if vorher else None,
             })

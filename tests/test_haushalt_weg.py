@@ -75,7 +75,7 @@ def test_runde_hat_einbringung_fachausschuesse_und_stationen(store):
     runde_2026(store)
     [r] = store.haushalt_weg()
 
-    assert r["jahr"] == 2026
+    assert r["year"] == 2026
     assert r["template_number"] == "25/0667"
 
     # Die Einbringung ist die früheste Beratung einer Entwurfs-Vorlage.
@@ -140,7 +140,7 @@ def test_haushaltsplan_einer_stiftung_ist_keine_runde(store):
     sitzung(store, 11, "Rat", "2026-02-09", [("Ö 6.1", "Klävemann Beschluss: ungeändert beschlossen", 300)])
     beratung(store, 300, "2026-02-09", "Rat", "Entscheidung", 11, "6.1")
 
-    assert [r["jahr"] for r in store.haushalt_weg()] == [2026]
+    assert [r["year"] for r in store.haushalt_weg()] == [2026]
 
 
 def test_ohne_sammelvorlage_keine_runde(store):
@@ -194,5 +194,5 @@ def test_jahr_grenzt_ein(store):
             [("Ö 5", "Haushalt 2025 Beschluss: geändert beschlossen", 500)])
     beratung(store, 500, "2024-12-16", "Rat", "Entscheidung", 30, "5")
 
-    assert [r["jahr"] for r in store.haushalt_weg()] == [2025, 2026]
-    assert [r["jahr"] for r in store.haushalt_weg(2026)] == [2026]
+    assert [r["year"] for r in store.haushalt_weg()] == [2025, 2026]
+    assert [r["year"] for r in store.haushalt_weg(2026)] == [2026]

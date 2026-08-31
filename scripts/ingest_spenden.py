@@ -42,7 +42,7 @@ def _lauf_herkunft(ergebnis: dict) -> h.Herkunft:
 
     Sie zeigt auf die Suche im Bürgerinfo statt auf ein einzelnes Dokument:
     Eine verworfene Zeile hat ihren Beleg ja gerade nicht."""
-    jahre = [v["jahr"] for v in ergebnis["vorlagen"]]
+    jahre = [v["year"] for v in ergebnis["vorlagen"]]
     spanne = f"{min(jahre)}–{max(jahre)}" if jahre else "—"
     return h.Herkunft(
         art="ris",
@@ -71,7 +71,7 @@ def main() -> int:
         print(f"Vorlagen mit Zweitstelle: {len(vorlagen)}")
         print(f"Zeilen ohne Zweitstelle:  {len(verworfen)}")
         for j in ergebnis["jahre"]:
-            print(f"  {j['jahr']}  {spenden.euro(j['betrag']):>14} €  "
+            print(f"  {j['year']}  {spenden.euro(j['betrag']):>14} €  "
                   f"{j['vorlagen']:>2} Vorlagen "
                   f"(Rat {j['rat']}, VA {j['verwaltungsausschuss']})")
         for v in verworfen:

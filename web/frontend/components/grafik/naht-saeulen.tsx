@@ -17,7 +17,7 @@
 // Mittel- oder Veränderungsfunktion zwischen zwei Jahren — erst recht nicht
 // zwischen zwei Regelwerken.
 //
-// LÜCKEN SIND DATEN (`{jahr, fehlt}`): Ein verworfener Jahrgang steht als
+// LÜCKEN SIND DATEN (`{year, fehlt}`): Ein verworfener Jahrgang steht als
 // schraffierte Säule in voller Höhe im Bild (Konvention des Bereichs, s.
 // LueckenFeld) und darunter als beschriftetes <LueckenFeld> — gerendert von
 // der Komponente, nie von der Seite. Die Ableseleiste nennt an dieser
@@ -51,8 +51,8 @@ export type NahtTeil = { art: string; wert: number };
 /** Ein Jahr der Reihe: entweder belegt (mit seinen Teilen) oder eine Lücke
  *  mit Grund — der Daten-Vertrag des Baukastens (daten.ts). */
 export type NahtJahr =
-  | { jahr: number; teile: NahtTeil[] }
-  | { jahr: number; fehlt: string; datum?: string };
+  | { year: number; teile: NahtTeil[] }
+  | { year: number; fehlt: string; datum?: string };
 
 function istLuecke(j: NahtJahr): j is Extract<NahtJahr, { fehlt: string }> {
   return "fehlt" in j;
@@ -119,13 +119,13 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
   // Die zwei Welten — geteilt an der Naht. Ohne Naht ist alles Welt 1 (blau).
   const grenze = naht ? naht.zwischen[0] : Number.NEGATIVE_INFINITY;
   const welten: NahtJahr[][] = [
-    jahre.filter((j) => j.jahr <= grenze),
-    jahre.filter((j) => j.jahr > grenze),
+    jahre.filter((j) => j.year <= grenze),
+    jahre.filter((j) => j.year > grenze),
   ];
   // Kein useMemo: 22 Jahre × 6 Arten sind billiger als die Abhängigkeitsliste.
   const gruppen = welten.map((w, i) => gruppiere(w, gruppenZahl, WELT_TOENE[i]));
 
-  const weltVon = (jahr: number) => (jahr <= grenze ? 0 : 1);
+  const weltVon = (year: number) => (year <= grenze ? 0 : 1);
   const summe = (j: NahtJahr) =>
     istLuecke(j) ? 0 : j.teile.reduce((s, t) => s + t.wert, 0);
 
@@ -139,7 +139,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
   // ── Geometrie: d3-scale rechnet, React zeichnet. ──────────────────────────
   const W = breite;
   const X0 = 6, X1 = W - 6;
-  const nahtIdx = naht ? jahre.findIndex((j) => j.jahr === naht.zwischen[1]) : -1;
+  const nahtIdx = naht ? jahre.findIndex((j) => j.year === naht.zwischen[1]) : -1;
   const innen = X1 - X0 - (naht ? NAHT_W : 0);
   const xBand = scaleBand<number>()
     .domain(jahre.map((_, i) => i))
@@ -154,7 +154,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
   const nahtX = nahtIdx > 0 ? (xVon(nahtIdx - 1) + xBand.bandwidth() + xVon(nahtIdx)) / 2 : null;
 
   // Endwerte: die erste und die letzte BELEGTE Säule tragen ihre Zahl direkt.
-  const endwerte = new Set([belegte[0].jahr, belegte[belegte.length - 1].jahr]);
+  const endwerte = new Set([belegte[0].year, belegte[belegte.length - 1].year]);
 
   // Jahresachse: zweistellig; mobil nur erste, letzte, Lücken — und die Naht.
   //
@@ -175,12 +175,12 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
   const stellen: AbleseStelle[] = jahre.map((j) => {
     if (istLuecke(j)) {
       return {
-        titel: String(j.jahr),
+        titel: String(j.year),
         werte: [{ label: "keine Angabe", wert: "—" }],
-        vorlesen: `${j.jahr}: keine Angabe — ${j.fehlt}.`,
+        vorlesen: `${j.year}: keine Angabe — ${j.fehlt}.`,
       };
     }
-    const g = gruppen[weltVon(j.jahr)];
+    const g = gruppen[weltVon(j.year)];
     const farbeVon = (art: string) =>
       g.find((x) => x.arten.includes(art))?.farbe;
     const teile = j.teile.map((t) => ({
@@ -193,14 +193,14 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
     // Name sagt ohnehin mehr als das Wort „insgesamt".
     const eineArt = teile.length === 1;
     return {
-      titel: String(j.jahr),
+      titel: String(j.year),
       werte: eineArt ? teile : [
         { label: "insgesamt", wert: `${deZahl(summe(j), 1)} ${einheit}` },
         ...teile,
       ],
       vorlesen: eineArt
-        ? `${j.jahr}: ${j.teile[0].art} ${deZahl(summe(j), 1)} ${einheit}.`
-        : `${j.jahr}: insgesamt ${deZahl(summe(j), 1)} ${einheit}, davon `
+        ? `${j.year}: ${j.teile[0].art} ${deZahl(summe(j), 1)} ${einheit}.`
+        : `${j.year}: insgesamt ${deZahl(summe(j), 1)} ${einheit}, davon `
           + j.teile.map((t) => `${t.art} ${deZahl(t.wert, 1)}`).join(", ") + ".",
     };
   });
@@ -212,19 +212,19 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
           {titel}{beleg}
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {jahre[0].jahr}–{jahre[jahre.length - 1].jahr} · {belegte.length} Werte · {einheit}
+          {jahre[0].year}–{jahre[jahre.length - 1].year} · {belegte.length} Werte · {einheit}
         </span>
       </div>
 
       <AbleseBeschreibung id={beschreibungId}>
-        {`${titel}, ${jahre[0].jahr} bis ${jahre[jahre.length - 1].jahr} in ${einheit}: `
-          + jahre.map((j) => `${j.jahr} ${istLuecke(j) ? "keine Angabe" : deZahl(summe(j), 1)}`).join(", ")
+        {`${titel}, ${jahre[0].year} bis ${jahre[jahre.length - 1].year} in ${einheit}: `
+          + jahre.map((j) => `${j.year} ${istLuecke(j) ? "keine Angabe" : deZahl(summe(j), 1)}`).join(", ")
           + (naht ? `. ${naht.text}` : "")}
       </AbleseBeschreibung>
 
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
         aria-describedby={beschreibungId}
-        aria-label={`${titel}, ${jahre[0].jahr} bis ${jahre[jahre.length - 1].jahr}`}>
+        aria-label={`${titel}, ${jahre[0].year} bis ${jahre[jahre.length - 1].year}`}>
         <defs>
           <pattern id={`${beschreibungId}-luecke`} width="6" height="6"
             patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -241,7 +241,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
             // Volle Höhe: Der Platzhalter sagt „hier fehlt die Angabe", nicht
             // „hier war es niedrig" — Konvention wie überall im Bereich.
             return (
-              <g key={j.jahr}>
+              <g key={j.year}>
                 <rect x={x} y={YTOP} width={b} height={Y0 - YTOP}
                   fill={`url(#${beschreibungId}-luecke)`} />
                 <rect x={x} y={YTOP} width={b} height={Y0 - YTOP} rx={3}
@@ -250,7 +250,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
               </g>
             );
           }
-          const g = gruppen[weltVon(j.jahr)];
+          const g = gruppen[weltVon(j.year)];
           const werte = g.map((gr) => ({
             farbe: gr.farbe,
             wert: j.teile.filter((t) => gr.arten.includes(t.art))
@@ -259,7 +259,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
           // Von unten stapeln: größte Gruppe unten, 2 px Fuge dazwischen.
           let unten = Y0;
           return (
-            <g key={j.jahr}>
+            <g key={j.year}>
               {werte.map((s, k) => {
                 const hoehe = Math.max(Y0 - y(s.wert), 0);
                 const oben = unten - hoehe;
@@ -269,7 +269,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
                     style={{ fill: s.farbe }} />
                 ) : null;
               })}
-              {endwerte.has(j.jahr) && (() => {
+              {endwerte.has(j.year) && (() => {
                 // Die Endwerte stehen über der ersten und der letzten Säule,
                 // und beide stehen am Rand. Mittig zentriert ragt die Zahl
                 // dort aus der viewBox: Bei 54 Säulen auf 375 px war aus
@@ -307,10 +307,10 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
         )}
 
         {jahre.map((j, i) => beschriftet(j, i) && (
-          <text key={j.jahr} x={mitte(i)} y={Y0 + 16} textAnchor="middle" fontSize={10}
+          <text key={j.year} x={mitte(i)} y={Y0 + 16} textAnchor="middle" fontSize={10}
             className={i === jahre.length - 1
               ? "fill-foreground font-mono" : "fill-muted-foreground font-mono"}>
-            {String(j.jahr).slice(-2)}
+            {String(j.year).slice(-2)}
           </text>
         ))}
 
@@ -321,7 +321,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
           marken={(i) => {
             const j = jahre[i];
             if (istLuecke(j)) return [];
-            const welt = weltVon(j.jahr);
+            const welt = weltVon(j.year);
             return [{ y: y(summe(j)), farbe: WELT_TOENE[welt][0] }];
           }}
         />
@@ -336,7 +336,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
       <div className="mt-2.5 flex flex-col gap-1.5">
         {welten.map((w, wi) => {
           if (!w.length || !gruppen[wi].length) return null;
-          const von = w[0].jahr, bis = w[w.length - 1].jahr;
+          const von = w[0].year, bis = w[w.length - 1].year;
           return (
             <div key={wi} className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
@@ -364,8 +364,8 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
         </p>
       )}
       {jahre.filter(istLuecke).map((j) => (
-        <LueckenFeld key={j.jahr} className="mt-2"
-          label={String(j.jahr)} grund={j.fehlt} datum={j.datum} />
+        <LueckenFeld key={j.year} className="mt-2"
+          label={String(j.year)} grund={j.fehlt} datum={j.datum} />
       ))}
     </div>
   );

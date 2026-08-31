@@ -157,7 +157,7 @@ import Testing
         {"partei":"SPD","haltung":"dafür","position":"Zustimmung","einig":true},
         {"partei":"CDU","haltung":"dagegen","position":"Ablehnung","einig":false}
       ],
-      "grafik": {"art":"linie","titel":"Kosten","einheit":"Mio. €","reihe":[{"jahr":2026,"wert":2.5}]}
+      "grafik": {"art":"linie","titel":"Kosten","einheit":"Mio. €","reihe":[{"year":2026,"wert":2.5}]}
     }
     """#.utf8)
 

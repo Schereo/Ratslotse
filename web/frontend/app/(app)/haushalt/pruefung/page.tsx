@@ -40,12 +40,12 @@ function PruefungInner() {
   // (`onBestand`) — dieselbe Antwort, die unten die KettenMatrix trägt.
   const [bestand, setBestand] = useState<{
     gesamt: number;
-    jeJahr: { jahr: number; anzahl: number }[];
+    jeJahr: { year: number; anzahl: number }[];
     ohneBericht: number[];
   } | null | undefined>(undefined);
   return (
-    // KEIN `jahr` am Kontext. Die beiden Abschnitte führen verschiedene
-    // Jahrgänge — der Prüfbericht den gewählten (`?jahr=`), die Kennzahlen den
+    // KEIN `year` am Kontext. Die beiden Abschnitte führen verschiedene
+    // Jahrgänge — der Prüfbericht den gewählten (`?year=`), die Kennzahlen den
     // jüngsten Rechenschaftsbericht. Ein gemeinsamer Wert wäre für einen von
     // beiden der falsche; ohne ihn nimmt jeder Beleg das jüngste Dokument
     // seiner Quelle und schreibt den Jahrgang an.
@@ -72,7 +72,7 @@ function PruefungInner() {
             Leerplatz im Minibild (LückenFeld-Regel). */}
         {bestand ? (
           <Seitenbuehne
-            kicker={`Rechnungsprüfung ${Math.min(...bestand.jeJahr.map((j) => j.jahr))}–${Math.max(...bestand.jeJahr.map((j) => j.jahr))}`}
+            kicker={`Rechnungsprüfung ${Math.min(...bestand.jeJahr.map((j) => j.year))}–${Math.max(...bestand.jeJahr.map((j) => j.year))}`}
             zahl={<><ZaehlZahl wert={bestand.gesamt} /> Feststellungen
               aus {bestand.jeJahr.length} Jahren</>}
             sub={bestand.ohneBericht.length > 0 ? (
@@ -87,18 +87,18 @@ function PruefungInner() {
               skizze: (() => {
                 const max = Math.max(...bestand.jeJahr.map((j) => j.anzahl), 1);
                 const saeulen = [
-                  ...bestand.jeJahr.map((j) => ({ jahr: j.jahr, anzahl: j.anzahl as number | null })),
-                  ...bestand.ohneBericht.map((j) => ({ jahr: j, anzahl: null })),
-                ].sort((a, b) => a.jahr - b.jahr);
+                  ...bestand.jeJahr.map((j) => ({ year: j.year, anzahl: j.anzahl as number | null })),
+                  ...bestand.ohneBericht.map((j) => ({ year: j, anzahl: null })),
+                ].sort((a, b) => a.year - b.year);
                 return (
                   <span className="flex items-end gap-1" style={{ height: 44 }}>
                     {saeulen.map((sl) => sl.anzahl != null ? (
-                      <span key={sl.jahr} className="w-5 rounded-[3px]" style={{
+                      <span key={sl.year} className="w-5 rounded-[3px]" style={{
                         height: `${Math.max((sl.anzahl / max) * 100, 8)}%`,
                         background: "var(--sb-voll)",
                       }} />
                     ) : (
-                      <span key={sl.jahr} className="w-5 rounded-[3px]" style={{
+                      <span key={sl.year} className="w-5 rounded-[3px]" style={{
                         height: "68%",
                         border: "1.5px dashed hsl(var(--signal))",
                       }} />
@@ -140,7 +140,7 @@ function PruefungInner() {
 }
 
 export default function PruefungPage() {
-  // `useSearchParams` im Prüfungs-Abschnitt (`?jahr=`) braucht eine
+  // `useSearchParams` im Prüfungs-Abschnitt (`?year=`) braucht eine
   // Suspense-Grenze — sie lag vorher an der Prüfungs-Seite und bleibt hier.
   return (
     <Suspense

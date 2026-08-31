@@ -70,10 +70,10 @@ type Daten = HaushaltAuswahl<(typeof FELDER)[number]>;
  *  Bericht 2021, die Reinvestitionsquote erst ab 2022). Was fehlt, fehlt
  *  sichtbar. */
 function Standtafel({
-  daten, jahr, gewaehlt, aufWahl,
+  daten, year, gewaehlt, aufWahl,
 }: {
   daten: NonNullable<Daten["kennzahlen"]>;
-  jahr: number;
+  year: number;
   gewaehlt: string;
   aufWahl: (key: string) => void;
 }) {
@@ -96,7 +96,7 @@ function Standtafel({
           <ul className="mt-3 grid gap-2 sm:grid-cols-2 desk:grid-cols-3">
             {g.keys.map((key) => {
               const punkte = punkteVon(daten, key);
-              const hier = punkte.find((p) => p.jahr === jahr) ?? null;
+              const hier = punkte.find((p) => p.year === year) ?? null;
               const einheit = daten.einheit[key] ?? "eur";
               const aktiv = key === gewaehlt;
               return (
@@ -113,8 +113,8 @@ function Standtafel({
                        bewirkt. */
                     aria-label={`${daten.label[key] ?? key}: ${
                       hier ? schreibe(einheit, hier.wert, hier.stellen)
-                           : `für ${jahr} nicht ausgewiesen`
-                    }${hier ? ` im Jahr ${jahr}` : ""} — Verlauf anzeigen`}
+                           : `für ${year} nicht ausgewiesen`
+                    }${hier ? ` im Jahr ${year}` : ""} — Verlauf anzeigen`}
                     className={`flex w-full flex-col items-start gap-0.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${
                       aktiv
                         ? "border-primary/40 bg-primary/[0.06]"
@@ -131,7 +131,7 @@ function Standtafel({
                     </span>
                     {!hier && (
                       <span className="text-[11px] leading-snug text-muted-foreground">
-                        für {jahr} nicht ausgewiesen
+                        für {year} nicht ausgewiesen
                       </span>
                     )}
                   </button>
@@ -207,9 +207,9 @@ function Verlauf({
           </p>
           <ul className="mt-1.5 flex flex-col gap-1">
             {korrekturen.map((k) => (
-              <li key={`${k.jahr}-${k.neu_bericht}`}
+              <li key={`${k.year}-${k.neu_bericht}`}
                 className="text-[12.5px] leading-relaxed text-muted-foreground">
-                <span className="tabular-nums text-foreground">{k.jahr}</span>:{" "}
+                <span className="tabular-nums text-foreground">{k.year}</span>:{" "}
                 {schreibe(einheit, k.alt)} im Bericht {k.alt_bericht}, dann{" "}
                 {schreibe(einheit, k.neu)} im Bericht {k.neu_bericht}.
               </li>
@@ -250,11 +250,11 @@ function Korrekturen({ daten }: { daten: NonNullable<Daten["kennzahlen"]> }) {
         {alle.map((k) => {
           const einheit = daten.einheit[k.kennzahl] ?? "eur";
           return (
-            <li key={`${k.kennzahl}-${k.jahr}-${k.neu_bericht}`}
+            <li key={`${k.kennzahl}-${k.year}-${k.neu_bericht}`}
               className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2 first:pt-0 last:pb-0">
               <span className="min-w-0 flex-1 text-[13px] leading-snug text-foreground">
                 {daten.label[k.kennzahl] ?? k.kennzahl}{" "}
-                <span className="tabular-nums text-muted-foreground">{k.jahr}</span>
+                <span className="tabular-nums text-muted-foreground">{k.year}</span>
               </span>
               <span className="flex-none text-[13px] tabular-nums text-muted-foreground">
                 {schreibe(einheit, k.alt)}
@@ -279,13 +279,13 @@ export function KennzahlenAbschnitt() {
   const [gewaehlt, setGewaehlt] = useState("eigenkapitalquote_1");
 
   const daten = data?.kennzahlen ?? null;
-  const jahr = daten ? juengstesJahr(daten) : null;
+  const year = daten ? juengstesJahr(daten) : null;
   const jahre = useMemo(
-    () => (daten ? [...new Set(daten.reihe.map((p) => p.jahr))].sort((a, b) => a - b) : []),
+    () => (daten ? [...new Set(daten.reihe.map((p) => p.year))].sort((a, b) => a - b) : []),
     [daten],
   );
 
-  if (!daten || jahr == null || !daten.reihe.length) {
+  if (!daten || year == null || !daten.reihe.length) {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="font-display text-2xl font-bold tracking-tight">Die dreizehn Zahlen</h1>
@@ -335,7 +335,7 @@ export function KennzahlenAbschnitt() {
           </p>
         </section>
 
-        <Standtafel daten={daten} jahr={jahr} gewaehlt={gewaehlt} aufWahl={setGewaehlt} />
+        <Standtafel daten={daten} year={year} gewaehlt={gewaehlt} aufWahl={setGewaehlt} />
 
         <Verlauf daten={daten} gewaehlt={gewaehlt} />
 

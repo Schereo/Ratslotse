@@ -190,7 +190,7 @@ def bericht2017(tmp_path) -> str:
 def test_erhebungsjahr_und_erscheinen_stehen_getrennt(bericht2021):
     """Fünf Jahre liegen dazwischen — beide Angaben gehören an die Zahl."""
     jg = gs.lies_bericht(bericht2021)
-    assert jg.jahr == 2021
+    assert jg.year == 2021
     assert jg.erschienen == "Erschienen im März 2026"
     assert jg.korrektur is None
     assert jg.stand == "Erschienen im März 2026"
@@ -295,7 +295,7 @@ def test_alte_schreibweise_ergibt_dieselben_zahlen(bericht2017):
     """Derselbe Parser, anderer Jahrgang — inklusive Wiederholungsspalte und
     fehlender Einheit in Blatt 6.2."""
     jg = gs.lies_bericht(bericht2017)
-    assert jg.jahr == 2017
+    assert jg.year == 2017
     zeilen, verworfen = gs.zeilen(jg)
     assert not verworfen
     assert zeilen[0]["faelle"] == 8071
@@ -384,10 +384,10 @@ def test_hebesatz_kommt_aus_der_treppe_nicht_aus_dem_jahr():
     Zeile — es gilt der Satz von 2015. Wer auf Gleichheit sucht, findet
     nichts und hielte die Probe für nicht durchführbar."""
     treppe = [
-        {"jahr": 2011, "art": "Gewerbesteuer", "hebesatz": 430, "vorheriger": 410},
-        {"jahr": 2015, "art": "Gewerbesteuer", "hebesatz": 439, "vorheriger": 430},
-        {"jahr": 2015, "art": "Grundsteuer B", "hebesatz": 445, "vorheriger": 430},
-        {"jahr": 2025, "art": "Grundsteuer B", "hebesatz": 539, "vorheriger": 445},
+        {"year": 2011, "art": "Gewerbesteuer", "hebesatz": 430, "vorheriger": 410},
+        {"year": 2015, "art": "Gewerbesteuer", "hebesatz": 439, "vorheriger": 430},
+        {"year": 2015, "art": "Grundsteuer B", "hebesatz": 445, "vorheriger": 430},
+        {"year": 2025, "art": "Grundsteuer B", "hebesatz": 539, "vorheriger": 445},
     ]
     assert gs.hebesatz_im_jahr(treppe, 2021) == 439
     assert gs.hebesatz_im_jahr(treppe, 2012) == 430
@@ -430,7 +430,7 @@ def test_speichern_und_lesen(tmp_path, bericht2021):
         zeilen, _ = gs.zeilen(gs.lies_bericht(bericht2021))
         assert store.save_gewerbesteuerstatistik(zeilen, _herkunft()) == 3
         gelesen = store.get_gewerbesteuerstatistik(gs.OLDENBURG)
-        assert [z["jahr"] for z in gelesen] == [2021]
+        assert [z["year"] for z in gelesen] == [2021]
         assert gelesen[0]["faelle_positiv"] == 3642
         assert all(z["herkunft_id"] for z in gelesen)
         assert store.herkunft_luecken().get("council_gewerbesteuerstatistik") is None
@@ -454,13 +454,13 @@ def test_ein_jahrgang_ersetzt_nur_sich_selbst(tmp_path, bericht2017, bericht2021
         for pfad in (bericht2017, bericht2021):
             zeilen, _ = gs.zeilen(gs.lies_bericht(pfad))
             store.save_gewerbesteuerstatistik(zeilen, _herkunft())
-        assert [z["jahr"] for z in store.get_gewerbesteuerstatistik(gs.OLDENBURG)] \
+        assert [z["year"] for z in store.get_gewerbesteuerstatistik(gs.OLDENBURG)] \
             == [2017, 2021]
 
         zeilen, _ = gs.zeilen(gs.lies_bericht(bericht2021))
         store.save_gewerbesteuerstatistik(zeilen, _herkunft())
         alle = store.get_gewerbesteuerstatistik()
-        assert [z["jahr"] for z in store.get_gewerbesteuerstatistik(gs.OLDENBURG)] \
+        assert [z["year"] for z in store.get_gewerbesteuerstatistik(gs.OLDENBURG)] \
             == [2017, 2021]
         assert len(alle) == 4  # 2017: Oldenburg · 2021: drei Städte
     finally:

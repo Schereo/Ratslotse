@@ -81,7 +81,7 @@ def _glatt(text: str) -> str:
 
 @dataclass(frozen=True)
 class Haushaltssatzung:
-    jahr: int
+    year: int
     #: 0 = die Satzung selbst, 1.. = Nachtrag. Nachträge liest dieses Modul
     #: (noch) nicht; das Feld hält den Platz und den Primärschlüssel frei.
     nachtrag: int
@@ -193,8 +193,8 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
     """
     t = _glatt(text)
 
-    jahr = _JAHR.search(t)
-    if jahr is None:
+    year = _JAHR.search(t)
+    if year is None:
         raise SatzungFehler("Kein Haushaltsjahr im Text („für das Haushaltsjahr JJJJ“)")
     if "Nachtragshaushaltssatzung" in t:
         raise SatzungFehler(
@@ -235,7 +235,7 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
     ve = _VE.search(t)
 
     return Haushaltssatzung(
-        jahr=int(jahr.group(1)), nachtrag=0,
+        year=int(year.group(1)), nachtrag=0,
         # Der Bestand kennt nur Entwürfe (s. Modul-Kopf). Sollte je ein
         # Dokument ohne jeden Entwurfs-Vermerk auftauchen, heißt es hier
         # `unbekannt` und NICHT `beschlossen` — behauptet wird nichts.
@@ -267,13 +267,13 @@ def herkunft_fuer(satzung: Haushaltssatzung, *, url: str | None,
         art="ris",
         probe=proben,
         dokument_id=dokument_id,
-        label=label or f"Haushaltssatzung {satzung.jahr}",
+        label=label or f"Haushaltssatzung {satzung.year}",
         url=url,
-        fundstelle=f"Haushaltssatzung {satzung.jahr}, §§ 1–5",
+        fundstelle=f"Haushaltssatzung {satzung.year}, §§ 1–5",
         probe_ergebnis=ergebnis,
         # Die Fassung gehört in den STAND und nicht in eine Fußnote: Wer diese
         # Zahlen liest, liest einen Vorschlag der Verwaltung.
-        stand=(f"Haushaltssatzung {satzung.jahr}, "
+        stand=(f"Haushaltssatzung {satzung.year}, "
                + ("Verwaltungsentwurf" if satzung.fassung == "entwurf"
                   else "Fassung unbekannt")),
     )

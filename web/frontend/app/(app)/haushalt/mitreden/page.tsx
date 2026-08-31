@@ -9,7 +9,7 @@
 // Gemessen war der Befund schärfer als „neunzehn sind viele": Mehrere Seiten
 // waren entlang unserer EINLESE-Geschichte geschnitten, nicht entlang der
 // Frage, die jemand hat. Diese Abschnitte beantworten zusammen eine einzige —
-// „Wie rede ich mit?" —, und `/haushalt/jahr` war im ganzen Frontend über
+// „Wie rede ich mit?" —, und `/haushalt/year` war im ganzen Frontend über
 // nichts als den Wegweiser erreichbar. Eine Seite, die sonst niemand
 // verlinkt, trägt nicht als eigenes Ziel.
 //
@@ -69,7 +69,7 @@ function MitredenInner() {
   const [termine, setTermine] = useState<{
     naechster: { datum: string; gremium: string } | null;
     phasen: { titel: string; datum: string | null; erledigt: boolean; aktuell: boolean }[];
-    jahr: number;
+    year: number;
   } | null | undefined>(undefined);
   const [streit, setStreit] = useState<{ beitraege: number; von: number; bis: number } | null | undefined>(undefined);
   const heute = useMemo(() => new Date(), []);
@@ -111,7 +111,7 @@ function MitredenInner() {
             : null;
           const phasen = termine?.phasen ?? [];
           const minibild = phasen.length ? {
-            label: `Der Weg des Haushalts ${termine!.jahr} — der Punkt mit dem Ring ist der Stand heute`,
+            label: `Der Weg des Haushalts ${termine!.year} — der Punkt mit dem Ring ist der Stand heute`,
             skizze: phasen.map((ph, i) => (
               // Eine Zeile je Phase: Punkt, Titel, Datum rechtsbündig. Die
               // Linie läuft DURCH die Zeile (nicht als Stummel unter dem
@@ -246,7 +246,7 @@ function MitredenInner() {
 }
 
 export default function MitredenPage() {
-  // `useSearchParams` im Streit-Abschnitt (`?jahr=`) braucht eine
+  // `useSearchParams` im Streit-Abschnitt (`?year=`) braucht eine
   // Suspense-Grenze — sie lag vorher an der Streit-Seite und zieht mit um.
   return (
     <Suspense

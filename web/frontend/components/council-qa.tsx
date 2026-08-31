@@ -533,7 +533,7 @@ function kurzerGegenstand(roh: string): string {
  *  in der Meta-Zeile; leer, wenn nichts zitiert wurde. */
 function stuetztAuf(zitierte: QaSource[]): string {
   if (zitierte.length === 0) return "";
-  const jahre = zitierte.map((s) => jahr(s.session_date)).filter(Boolean).sort();
+  const jahre = zitierte.map((s) => year(s.session_date)).filter(Boolean).sort();
   const n = zitierte.length;
   if (jahre.length === 0) return `stützt sich auf ${n} ${n === 1 ? "Beschluss" : "Beschlüsse"}`;
   const von = jahre[0], bis = jahre[jahre.length - 1];
@@ -547,7 +547,7 @@ const fmtDatum = (d?: string | null) =>
  *  ein 00:30-Uhr-Gespräch aufs Vortagsdatum (Befund F14). */
 const fmtUtcKurz = (d: string) =>
   fmtDatumKurz(/Z$|[+-]\d\d:?\d\d$/.test(d) ? d : `${d}Z`);
-const jahr = (d?: string | null) => (d ? d.slice(0, 4) : "");
+const year = (d?: string | null) => (d ? d.slice(0, 4) : "");
 
 /** Relativer Tag für Sheet und „Zuletzt gefragt": „heute", „gestern", sonst
  *  „05.08.". Server-Zeitstempel sind UTC ohne Suffix, daher das Z-Anfügen. */
@@ -2794,7 +2794,7 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
                   {s.factions[0]}
                 </span>
               )}
-              <span className="shrink-0 font-mono text-[9.5px] leading-none text-muted-foreground">{jahr(s.session_date)}</span>
+              <span className="shrink-0 font-mono text-[9.5px] leading-none text-muted-foreground">{year(s.session_date)}</span>
             </button>
           ))}
         </div>

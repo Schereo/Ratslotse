@@ -32,10 +32,10 @@ export function KonzernLuecke({ daten, art }: { daten: KonzernDaten; art: Luecke
     .map((k) => {
       const konzern = art === "ertraege" ? k.ertraege_summe : k.aufwendungen_summe;
       if (konzern == null) return null;
-      const anteil = kernAnteil(daten, k.jahr, art);
-      return { jahr: k.jahr, konzern, kern: anteil?.kern ?? null };
+      const anteil = kernAnteil(daten, k.year, art);
+      return { year: k.year, konzern, kern: anteil?.kern ?? null };
     })
-    .filter((z): z is { jahr: number; konzern: number; kern: number | null } => z !== null);
+    .filter((z): z is { year: number; konzern: number; kern: number | null } => z !== null);
   if (zeilen.length < 2) return null;
 
   const max = Math.max(...zeilen.map((z) => z.konzern));
@@ -47,9 +47,9 @@ export function KonzernLuecke({ daten, art }: { daten: KonzernDaten; art: Luecke
           const breite = (z.konzern / max) * 100;
           const kernAnteilProzent = z.kern != null ? (z.kern / z.konzern) * 100 : null;
           return (
-            <div key={z.jahr} className="flex items-center gap-2.5">
+            <div key={z.year} className="flex items-center gap-2.5">
               <span className="w-9 flex-none font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                {z.jahr}
+                {z.year}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="h-5 w-full">

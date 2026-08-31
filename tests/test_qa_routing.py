@@ -573,7 +573,7 @@ def test_beschluss_kontext_traegt_deutsches_datum():
 # die noch niemand abgerechnet hat.
 
 def test_steuern_block_trennt_ist_von_plan():
-    ctx = qa._steuern_block([{"art": "Gewerbesteuer (-umlage)", "jahr": 2025,
+    ctx = qa._steuern_block([{"art": "Gewerbesteuer (-umlage)", "year": 2025,
                               "betrag": 222117000.0, "jahr_davor": 2015,
                               "betrag_davor": 120000000.0}])
     assert "IST-Zahlen" in ctx and "NICHT der Haushaltsplan" in ctx
@@ -582,11 +582,11 @@ def test_steuern_block_trennt_ist_von_plan():
     assert qa._steuern_block([]) == ""
     # „insgesamt" bekommt einen sprechenden Namen statt des CSV-Schlüssels.
     assert "Steuereinnahmen insgesamt" in qa._steuern_block(
-        [{"art": "insgesamt", "jahr": 2025, "betrag": 387208000.0}])
+        [{"art": "insgesamt", "year": 2025, "betrag": 387208000.0}])
 
 
 def test_steuerkraft_block_nennt_die_daempfer_regel():
-    ctx = qa._steuerkraft_block({"jahr": 2024, "messzahl": 325716249.0,
+    ctx = qa._steuerkraft_block({"year": 2024, "messzahl": 325716249.0,
                                  "zuweisungen": 69209992.0, "jahr_davor": 2023,
                                  "messzahl_davor": 279815776.0,
                                  "zuweisungen_davor": 99569120.0})
@@ -601,15 +601,15 @@ def test_steuerkraft_block_nennt_die_daempfer_regel():
 def test_steuern_fuer_begriffe_matcht_kuratierte_synonyme(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
-        for jahr, art, betrag in [
+        for year, art, betrag in [
             (2025, "Gewerbesteuer (-umlage)", 222117000.0),
             (2015, "Gewerbesteuer (-umlage)", 120000000.0),
             (2025, "Grundsteuer A+B", 32585000.0),
             (2025, "insgesamt", 387208000.0),
         ]:
             store._conn.execute(
-                "INSERT INTO council_steuern (jahr, art, betrag, fetched_at) VALUES (?,?,?,'')",
-                (jahr, art, betrag))
+                "INSERT INTO council_steuern (year, art, betrag, fetched_at) VALUES (?,?,?,'')",
+                (year, art, betrag))
 
     treffer = store.steuern_fuer_begriffe(["Wie", "hoch", "ist", "die", "Gewerbesteuer"])
     assert [t["art"] for t in treffer] == ["Gewerbesteuer (-umlage)"]
@@ -628,15 +628,15 @@ def test_steuerkraft_kontext_braucht_zwei_jahre(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_steuerkraft (jahr, messzahl, zuweisungen, fetched_at) "
+            "INSERT INTO council_steuerkraft (year, messzahl, zuweisungen, fetched_at) "
             "VALUES (2023, 279815776, 99569120, '')")
     assert store.steuerkraft_kontext() is None  # ein Jahr reicht nicht
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_steuerkraft (jahr, messzahl, zuweisungen, fetched_at) "
+            "INSERT INTO council_steuerkraft (year, messzahl, zuweisungen, fetched_at) "
             "VALUES (2024, 325716249, 69209992, '')")
     k = store.steuerkraft_kontext()
-    assert k["jahr"] == 2024 and k["jahr_davor"] == 2023
+    assert k["year"] == 2024 and k["jahr_davor"] == 2023
     assert k["zuweisungen"] == 69209992.0 and k["zuweisungen_davor"] == 99569120.0
     store.close()
 
@@ -644,11 +644,11 @@ def test_steuerkraft_kontext_braucht_zwei_jahre(tmp_path):
 def test_haushalt_fuer_begriffe_traegt_entwicklung(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
-        for jahr, aufw in [(2020, 30000000.0), (2026, 46194645.0)]:
+        for year, aufw in [(2020, 30000000.0), (2026, 46194645.0)]:
             store._conn.execute(
                 "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, "
                 "is_summe, fetched_at) VALUES (?, 'Verkehr und Straßenbau', 1, ?, -1, 0, '')",
-                (jahr, aufw))
+                (year, aufw))
         # Bereich mit geändertem Zuschnitt: NUR im neuesten Jahr vorhanden.
         store._conn.execute(
             "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, "

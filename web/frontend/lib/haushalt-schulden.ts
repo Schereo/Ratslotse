@@ -5,7 +5,7 @@ import type { Herkunft } from "@/lib/herkunft";
 export type { Herkunft };
 
 export type SchuldenJahr = {
-  jahr: number;
+  year: number;
   /** Die vier Schuldenarten in Euro. `null`, wo die Aufteilung an ihrer Probe
    *  gescheitert ist — dann steht in `aufteilung_verworfen`, wie groß die
    *  Lücke war. Die Summe daneben bleibt trotzdem gültig. */
@@ -49,7 +49,7 @@ export type SchuldenDaten = {
    *  keinem Dokument steht.
    *
    *  Leer, solange kein Jahresabschluss eingelesen ist. */
-  zinslast: { jahr: number; aufwand: number; herkunft_id: number | null }[];
+  zinslast: { year: number; aufwand: number; herkunft_id: number | null }[];
   /** Wofür die Stadt geradesteht — die zweite, größere Zahl dieser Seite.
    *
    *  Sie ist **keine Schuld**: eine Bürgschaft wird nur fällig, wenn die
@@ -61,8 +61,8 @@ export type SchuldenDaten = {
     reihe: Buergschaft[];
     /** Bilanzposten 3.7 je Jahr — nur 2021–2024 im Bestand; die früheren
      *  Abschlüsse gliedern die Rückstellungen anders. */
-    rueckstellung: { jahr: number; wert: number | null; herkunft_id: number | null }[];
-    geldschulden: { jahr: number; wert: number | null; herkunft_id: number | null }[];
+    rueckstellung: { year: number; wert: number | null; herkunft_id: number | null }[];
+    geldschulden: { year: number; wert: number | null; herkunft_id: number | null }[];
     abgrenzung: string;
     /** Die Ratsbeschlüsse hinter dem Bestand — die GESCHICHTE, nicht die Summe.
      *
@@ -83,7 +83,7 @@ export type SchuldenDaten = {
    *  die die Stadt nicht haftet (2024: 58 %). */
   integrierte_schulden?: {
     stichtag: {
-      jahr: number; insgesamt: number; je_einwohner: number | null;
+      year: number; insgesamt: number; je_einwohner: number | null;
       kernhaushalt: number | null; extrahaushalte: number | null;
       sonstige: number | null; bevoelkerung: number | null;
       veraenderung: number | null; herkunft_id: number | null;
@@ -104,7 +104,7 @@ export type SchuldenDaten = {
  *  Beides gehört an die Anzeige, sonst sehen sechs verschieden belegte
  *  Jahrgänge gleich aus. */
 export type Buergschaft = {
-  jahr: number;
+  year: number;
   bestand: number;
   genau: boolean;
   aus_folgejahr: boolean;
@@ -143,12 +143,12 @@ export { herkunftVon } from "@/lib/haushalt";
  *  absoluten Anstieg zu verschweigen. */
 export type Ansicht = "insgesamt" | "je_einwohner";
 
-export type Punkt = { jahr: number; wert: number };
+export type Punkt = { year: number; wert: number };
 
 export function punkte(reihe: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
   return reihe
     .map((z) => ({
-      jahr: z.jahr,
+      year: z.year,
       // Absolutbeträge in Mio., Pro-Kopf-Beträge in Euro — sonst stünde die
       // eine Reihe bei 337 und die andere bei 0,0019.
       wert: ansicht === "insgesamt" ? z.insgesamt / 1e6 : (z.je_einwohner ?? NaN),
@@ -169,7 +169,7 @@ export function kernhaushalt(z: SchuldenJahr): number | null {
   return z.kreditmarkt + (z.sondermittel ?? 0) + (z.gebietskoerperschaften ?? 0);
 }
 
-export type Aufteilung = { jahr: number; kern: number; eigenbetriebe: number };
+export type Aufteilung = { year: number; kern: number; eigenbetriebe: number };
 
 /** Nur die Jahre, für die eine belegte Aufteilung vorliegt. */
 export function aufteilungen(reihe: SchuldenJahr[]): Aufteilung[] {
@@ -177,7 +177,7 @@ export function aufteilungen(reihe: SchuldenJahr[]): Aufteilung[] {
   for (const z of reihe) {
     const kern = kernhaushalt(z);
     if (kern == null || z.eigenbetriebe == null) continue;
-    aus.push({ jahr: z.jahr, kern, eigenbetriebe: z.eigenbetriebe });
+    aus.push({ year: z.year, kern, eigenbetriebe: z.eigenbetriebe });
   }
   return aus;
 }
@@ -193,13 +193,13 @@ export function ohneAufteilung(reihe: SchuldenJahr[]): SchuldenJahr[] {
  *  gesucht wird. */
 export function groessterSprung(
   p: Punkt[], richtung: "rauf" | "runter",
-): { jahr: number; delta: number } | null {
-  let treffer: { jahr: number; delta: number } | null = null;
+): { year: number; delta: number } | null {
+  let treffer: { year: number; delta: number } | null = null;
   for (let i = 1; i < p.length; i++) {
     const delta = p[i].wert - p[i - 1].wert;
     if (richtung === "runter" ? delta >= 0 : delta <= 0) continue;
     if (!treffer || Math.abs(delta) > Math.abs(treffer.delta)) {
-      treffer = { jahr: p[i].jahr, delta };
+      treffer = { year: p[i].year, delta };
     }
   }
   return treffer;

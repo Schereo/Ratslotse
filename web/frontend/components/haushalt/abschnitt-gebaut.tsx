@@ -127,17 +127,17 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
 function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
   const a = daten?.anlagen;
   const jahre = a?.jahre ?? [];
-  const jahr = jahre[jahre.length - 1];
-  const infra = infrastruktur(a, jahr);
-  const sach = sachvermoegen(a, jahr);
+  const year = jahre[jahre.length - 1];
+  const infra = infrastruktur(a, year);
+  const sach = sachvermoegen(a, year);
   const v = verzehr(infra);
-  if (!a || !jahr || !infra || !v) return null;
+  if (!a || !year || !infra || !v) return null;
 
   // Die Straßenreihe gibt es erst ab 2022 — die Jahre davor sind eine Lücke
   // der QUELLE, nicht der Daten. Sie wird benannt, nicht überbrückt.
   const strassenReihe = jahre
-    .map((j) => ({ jahr: j, g: strassen(a, j) }))
-    .filter((x): x is { jahr: number; g: NonNullable<ReturnType<typeof strassen>> } => !!x.g);
+    .map((j) => ({ year: j, g: strassen(a, j) }))
+    .filter((x): x is { year: number; g: NonNullable<ReturnType<typeof strassen>> } => !!x.g);
   const strassenErst = strassenReihe[0];
   const strassenLetzt = strassenReihe[strassenReihe.length - 1];
 
@@ -154,7 +154,7 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
         </h2>
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
           Straßen, Brücken und Kanäle stehen mit {deMioEuro(infra.buchwert)}&#8239;Mio.&nbsp;€ in der
-          Bilanz {jahr}. Was im Jahr dazukam, steht neben dem, was im selben Jahr
+          Bilanz {year}. Was im Jahr dazukam, steht neben dem, was im selben Jahr
           an Wert verloren ging — beide Zahlen aus derselben Tabelle des
           Jahresabschlusses. <Beleg q="jahresabschluss" />
         </p>
@@ -166,9 +166,9 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
         // herein. Die Werte des Anlagenspiegels stehen in Euro; ohne diese
         // Umrechnung stünde „17.036.012,7 Mio. €" da.
         zeilen={[
-          { titel: `Abgeschrieben ${jahr}`, rampe: "aus",
+          { titel: `Abgeschrieben ${year}`, rampe: "aus",
             segmente: [{ label: "Wertverlust des Jahres", wert: v.abschreibung / 1e6 }] },
-          { titel: `Zugegangen ${jahr}`, rampe: "ein",
+          { titel: `Zugegangen ${year}`, rampe: "ein",
             segmente: [{ label: "Neu ins Vermögen", wert: v.zugaenge / 1e6 }] },
         ]}
         basis={Math.max(v.abschreibung, v.zugaenge) / 1e6}
@@ -196,7 +196,7 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
             Der Jahresabschluss gliedert das Infrastrukturvermögen weiter auf.
             Allein die Straßen, Wege und Plätze sanken von{" "}
             {deMioEuro(strassenErst.g.buchwert_vorjahr ?? strassenErst.g.buchwert)}&#8239;Mio.&nbsp;€ auf{" "}
-            {deMioEuro(strassenLetzt.g.buchwert)}&#8239;Mio.&nbsp;€ — der Abschluss {jahr} nennt das
+            {deMioEuro(strassenLetzt.g.buchwert)}&#8239;Mio.&nbsp;€ — der Abschluss {year} nennt das
             selbst einen <strong>Substanzverlust</strong>.
           </p>
         </div>
@@ -205,7 +205,7 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
 
       {strassenReihe.length > 0 && strassenReihe.length < jahre.length ? (
         <LueckenFeld
-          label={`vor ${strassenReihe[0].jahr}`}
+          label={`vor ${strassenReihe[0].year}`}
           grund="Die Jahresabschlüsse gliedern das Infrastrukturvermögen erst ab diesem Jahrgang weiter auf. Die Gesamtsumme steht für alle Jahre da."
         />
       ) : null}
@@ -244,13 +244,13 @@ export function GebautAbschnitt({ onBestand }: {
     for (const r of alle) {
       for (const z of r.jahre) {
         js.push({
-          jahr: z.jahr,
+          year: z.year,
           teile: z.arten.map((a) => ({ art: a.titel, wert: a.betrag / 1e6 })),
         });
       }
-      for (const l of r.fehlend) js.push({ jahr: l.jahr, fehlt: lueckeGrund(l) });
+      for (const l of r.fehlend) js.push({ year: l.year, fehlt: lueckeGrund(l) });
     }
-    return js.sort((a, b) => a.jahr - b.jahr);
+    return js.sort((a, b) => a.year - b.year);
   }, [alle]);
 
   useEffect(() => {
@@ -258,7 +258,7 @@ export function GebautAbschnitt({ onBestand }: {
     if (!nahtJahre.length) { onBestand(null); return; }
     onBestand({
       jahrgaenge: nahtJahre.filter((j) => !("fehlt" in j && j.fehlt)).length,
-      luecken: nahtJahre.filter((j) => "fehlt" in j && j.fehlt).map((j) => j.jahr),
+      luecken: nahtJahre.filter((j) => "fehlt" in j && j.fehlt).map((j) => j.year),
     });
   }, [onBestand, loading, nahtJahre]);
 
@@ -267,8 +267,8 @@ export function GebautAbschnitt({ onBestand }: {
   const naht = useMemo(() => {
     const alt = aeltere[0];
     if (!alt || !juengste) return undefined;
-    const links = alt.jahre[alt.jahre.length - 1].jahr;
-    const rechts = juengste.jahre[0].jahr;
+    const links = alt.jahre[alt.jahre.length - 1].year;
+    const rechts = juengste.jahre[0].year;
     return {
       zwischen: [links, rechts] as [number, number],
       text: `Links ${alt.titel}, rechts ${juengste.titel} — zwei Regelwerke `
@@ -278,7 +278,7 @@ export function GebautAbschnitt({ onBestand }: {
   }, [aeltere, juengste]);
 
   const alleFehlend = useMemo(
-    () => alle.flatMap((r) => r.fehlend).sort((a, b) => a.jahr - b.jahr), [alle]);
+    () => alle.flatMap((r) => r.fehlend).sort((a, b) => a.year - b.year), [alle]);
   // Die gemessenen Differenzen der Lücken — nur die, die eine tragen. Der
   // Satz unten nennt sie, wenn es sie gibt, und schweigt sonst.
   const gemesseneLuecken = useMemo(
@@ -313,7 +313,7 @@ export function GebautAbschnitt({ onBestand }: {
             </h2>
             <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
               Der Haushaltsplan sagt, was die Stadt bauen und kaufen will. Hier steht,
-              was im Jahr {letzter.jahr} tatsächlich abgeflossen ist:{" "}
+              was im Jahr {letzter.year} tatsächlich abgeflossen ist:{" "}
               {deMioEuro(letzter.insgesamt)}&#8239;Mio.&nbsp;€.
             </p>
           </div>
@@ -371,7 +371,7 @@ export function GebautAbschnitt({ onBestand }: {
             Eigenbetrieb Gebäudewirtschaft baut daneben und steht nicht drin. */}
         <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Haushaltsjahr {letzter.jahr} · Rechnungsergebnis
+            Haushaltsjahr {letzter.year} · Rechnungsergebnis
           </p>
           <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
             <div>
@@ -420,7 +420,7 @@ export function GebautAbschnitt({ onBestand }: {
             </h2>
             <p className="mt-1.5 max-w-[72ch] text-[13px] leading-relaxed text-foreground/90">
               Tatsächlich ausgezahltes Geld für Investitionen,{" "}
-              {erster?.jahr}&nbsp;bis&nbsp;{letzter.jahr} — nicht die Pläne, sondern die
+              {erster?.year}&nbsp;bis&nbsp;{letzter.year} — nicht die Pläne, sondern die
               Kassenlage danach.{" "}
               {naht && <>Der Bruch {naht.zwischen[0]}/{naht.zwischen[1]} markiert einen
               Wechsel des Rechnungswesens. Die Werte davor und danach wurden nach
@@ -447,7 +447,7 @@ export function GebautAbschnitt({ onBestand }: {
               Warum die Zeitreihe einen Bruch hat
             </p>
             <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-              Zum 1. Januar {juengste.jahre[0].jahr} stellte die Stadt ihr Rechnungswesen
+              Zum 1. Januar {juengste.jahre[0].year} stellte die Stadt ihr Rechnungswesen
               von der Kameralistik auf die doppelte Buchführung um. Für frühere Jahre nennt
               das Statistische Jahrbuch „Ausgaben für eigene Investitionen“, danach
               „Auszahlungen für Investitionstätigkeiten“. Die Begriffe beruhen auf
@@ -458,11 +458,11 @@ export function GebautAbschnitt({ onBestand }: {
           <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               {alleFehlend.length === 1
-                ? `${alleFehlend[0].jahr} kann nicht ausgewiesen werden`
+                ? `${alleFehlend[0].year} kann nicht ausgewiesen werden`
                 : "Nicht ausweisbare Jahrgänge"}
             </p>
             <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-              Für {alleFehlend.map((l) => l.jahr).join(", ")} ergeben die einzelnen
+              Für {alleFehlend.map((l) => l.year).join(", ")} ergeben die einzelnen
               Auszahlungsarten in der Quelltabelle nicht den Betrag, der daneben als
               Summe ausgewiesen ist.{" "}
               {/* Die gemessene Weite der Lücke — aus den Daten, nicht aus dem
@@ -470,9 +470,9 @@ export function GebautAbschnitt({ onBestand }: {
               {gemesseneLuecken.length > 0 && (
                 <>Gemessen sind es{" "}
                   {gemesseneLuecken.map((l, i) => (
-                    <span key={l.jahr}>
+                    <span key={l.year}>
                       {i > 0 && (i === gemesseneLuecken.length - 1 ? " und " : ", ")}
-                      {gemesseneLuecken.length > 1 && `${l.jahr}: `}
+                      {gemesseneLuecken.length > 1 && `${l.year}: `}
                       {deMioEuro(Math.abs(l.differenz!))}&#8239;Mio.&nbsp;€
                     </span>
                   ))}
@@ -491,7 +491,7 @@ export function GebautAbschnitt({ onBestand }: {
         {/* Wofür — der jüngste Jahrgang aufgeschlüsselt. */}
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <Anteilsbalken
-            titel={`Wofür ${letzter.jahr}`}
+            titel={`Wofür ${letzter.year}`}
             segmente={letzter.arten.map((a, i) => ({
               label: a.titel, wert: a.betrag / 1e6,
               farbe: TOENE[Math.min(i, TOENE.length - 1)],
@@ -521,7 +521,7 @@ export function GebautAbschnitt({ onBestand }: {
             <li>
               <strong>Nicht die ganze Bautätigkeit der Stadt.</strong> Gezählt wird die
               Kernverwaltung. Was der Eigenbetrieb Gebäudewirtschaft und Hochbau baut —
-              seit {juengste.jahre[0].jahr} ein großer Teil des städtischen Hochbaus —,
+              seit {juengste.jahre[0].year} ein großer Teil des städtischen Hochbaus —,
               steht hier nicht, und die städtischen Gesellschaften ebenso wenig. Was
               neben dem Haushalt noch läuft, zeigt{" "}
               <Link href="/haushalt/konzern" className="font-semibold text-primary">

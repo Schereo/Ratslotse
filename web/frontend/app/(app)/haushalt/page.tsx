@@ -61,11 +61,11 @@ export default function HaushaltPage() {
   // genau ihn. Die volle Ebene wären 795 statt 178 KB — bei identischem Bild.
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER, "20"));
   const jahre = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
-  const [jahr, setJahr] = useState<number | null>(null);
+  const [year, setJahr] = useState<number | null>(null);
   const [visual, setVisual] = useState<"balken" | "euro">("balken");
   const jahrLeiste = useRef<HTMLDivElement>(null);
 
-  const aktJahr = jahr ?? jahre[jahre.length - 1] ?? null;
+  const aktJahr = year ?? jahre[jahre.length - 1] ?? null;
   const zeilen = aktJahr && data ? data.jahre[String(aktJahr)] ?? [] : [];
   const gesamt = summe(zeilen);
   // Aus Rohwerten gerundet — 883,9 − 812,9 ergäbe 71,0, tatsächlich sind es 71,1.
@@ -82,19 +82,19 @@ export default function HaushaltPage() {
   const lange = useMemo(() => (data ? ausgabenreihe(data) : []), [data]);
   const langeJahre = useMemo<NahtJahr[]>(() => {
     if (!data?.ausgabenreihe || lange.length < 2) return [];
-    const nach = new Map(lange.map((z) => [z.jahr, z]));
+    const nach = new Map(lange.map((z) => [z.year, z]));
     const js: NahtJahr[] = [];
-    for (let y = lange[0].jahr; y <= lange[lange.length - 1].jahr; y++) {
+    for (let y = lange[0].year; y <= lange[lange.length - 1].year; y++) {
       const z = nach.get(y);
       js.push(z
         ? {
-            jahr: y,
+            year: y,
             teile: [{
               art: data.ausgabenreihe.regelwerke[z.regelwerk].titel,
               wert: z.betrag / 1e6,
             }],
           }
-        : { jahr: y, fehlt: "kein Wert in den beiden Veröffentlichungen der Stadt" });
+        : { year: y, fehlt: "kein Wert in den beiden Veröffentlichungen der Stadt" });
     }
     return js;
   }, [data, lange]);
@@ -108,7 +108,7 @@ export default function HaushaltPage() {
   useEffect(() => {
     const leiste = jahrLeiste.current;
     if (!leiste || aktJahr == null) return;
-    const pille = leiste.querySelector<HTMLElement>(`[data-jahr="${aktJahr}"]`);
+    const pille = leiste.querySelector<HTMLElement>(`[data-year="${aktJahr}"]`);
     if (!pille) return;
     const ziel = pille.offsetLeft - (leiste.clientWidth - pille.offsetWidth) / 2;
     leiste.scrollLeft = Math.max(0, ziel);
@@ -157,13 +157,13 @@ export default function HaushaltPage() {
   // — der eigentliche Nebengewinn dieser Quelle. Gemessen an dem, was wir an
   // Abschlüssen haben, nicht an einer Jahreszahl im Code.
   const juengsterAbschluss = Math.max(
-    0, ...(data.ergebnisrechnung ?? []).map((p) => p.jahr));
+    0, ...(data.ergebnisrechnung ?? []).map((p) => p.year));
   const vorDemAbschluss =
-    langLetzter && juengsterAbschluss > 0 && langLetzter.jahr > juengsterAbschluss
-      ? langLetzter.jahr : null;
+    langLetzter && juengsterAbschluss > 0 && langLetzter.year > juengsterAbschluss
+      ? langLetzter.year : null;
 
   return (
-    <Quellenkontext schluessel={quellen} jahr={aktJahr}>
+    <Quellenkontext schluessel={quellen} year={aktJahr}>
     <div className="flex flex-col gap-4">
       {/* Kopf: Jahr-Umschalter und Quelle. Der Titel der Seite steht auf der
           Anzeigetafel — hier oben nur der Kicker, damit klar ist, wo man ist. */}
@@ -184,7 +184,7 @@ export default function HaushaltPage() {
                 for (let y = jahre[0]; y <= jahre[jahre.length - 1]; y++) alle.push(y);
                 return alle.map((y) =>
                   jahre.includes(y) ? (
-                    <button key={y} type="button" data-jahr={y} onClick={() => setJahr(y)}
+                    <button key={y} type="button" data-year={y} onClick={() => setJahr(y)}
                       className={
                         "rounded-full px-3 py-1 text-[12.5px] " + (y === aktJahr
                           ? "bg-primary font-semibold text-primary-foreground"
@@ -220,7 +220,7 @@ export default function HaushaltPage() {
           Kern-Visual auf einer Fläche, die in beiden Themes dunkel ist. */}
       <Tafel
         zeilen={zeilen}
-        jahr={aktJahr}
+        year={aktJahr}
         aktuell={aktJahr === jahre[jahre.length - 1]}
         aktion={
           <Segmented value={visual} onChange={setVisual} options={[
@@ -230,8 +230,8 @@ export default function HaushaltPage() {
         }
       >
         {visual === "balken"
-          ? <Gegenbalken zeilen={zeilen} jahr={aktJahr} />
-          : <Steuereuro zeilen={zeilen} jahr={aktJahr} />}
+          ? <Gegenbalken zeilen={zeilen} year={aktJahr} />
+          : <Steuereuro zeilen={zeilen} year={aktJahr} />}
       </Tafel>
       {quelle && (
         <p className="-mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -263,7 +263,7 @@ export default function HaushaltPage() {
           fühlt — und die Zeile, um die es politisch geht, als letzte des Bons
           („aus dem Ersparten"). */}
       {zeigtZettel && data.einwohner ? (
-        <Kassenzettel daten={data} jahr={aktJahr} einwohner={data.einwohner} />
+        <Kassenzettel daten={data} year={aktJahr} einwohner={data.einwohner} />
       ) : defizit != null && defizit > 0 ? (
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
@@ -281,7 +281,7 @@ export default function HaushaltPage() {
       {/* Die Bereiche als Tabelle (H2-03): löst die untere Hälfte der
           Anzeigetafel auf — welcher Bereich wie viel ausgibt und wie viel
           davon die Stadt selbst trägt. */}
-      <Bereichstabelle zeilen={zeilen} jahr={aktJahr} />
+      <Bereichstabelle zeilen={zeilen} year={aktJahr} />
 
       {/* Flussbild (H-18): Einnahmearten → eine Kasse → Bereiche. Steht NACH
           dem Gegenbalken, weil es dessen linke Seite auflöst: Der Balken zeigt,
@@ -294,7 +294,7 @@ export default function HaushaltPage() {
                 Jahresabschluss — auch dort, wo für ein Planjahr die
                 Herkunftsseite aus dem Gesamtergebnishaushalt steht. Sie wohnt
                 jetzt in der Komponente, die weiß, was sie gezeichnet hat. */}
-            <Flussbild daten={data} jahr={aktJahr} />
+            <Flussbild daten={data} year={aktJahr} />
           </div>
 
           <LottiErklaert
@@ -325,11 +325,11 @@ export default function HaushaltPage() {
         <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div>
             <h2 className="max-w-[30ch] font-display text-[19px] font-bold leading-snug tracking-tight">
-              Die Ausgaben der Stadt seit {langErster.jahr}
+              Die Ausgaben der Stadt seit {langErster.year}
             </h2>
             <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
-              Die Veröffentlichungen der Stadt nennen für {langErster.jahr} insgesamt{" "}
-              {deMio(langErster.betrag / 1e6)}&#8239;Mio.&nbsp;€ und für {langLetzter.jahr}{" "}
+              Die Veröffentlichungen der Stadt nennen für {langErster.year} insgesamt{" "}
+              {deMio(langErster.betrag / 1e6)}&#8239;Mio.&nbsp;€ und für {langLetzter.year}{" "}
               {deMio(langLetzter.betrag / 1e6)}&#8239;Mio.&nbsp;€ Ausgaben
               <Beleg q="ausgabenreihe" />.{" "}
               {nahtAb != null && (
@@ -387,13 +387,13 @@ export default function HaushaltPage() {
       {(konflikte.length > 0 || vorDemAbschluss) && (
         <div className="grid gap-4 breit:grid-cols-2">
           {konflikte.map((k) => (
-            <section key={k.jahr}
+            <section key={k.year}
               className="rounded-2xl border border-border bg-card p-4 shadow-sm">
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
                 Amtliche Quellen widersprechen sich
               </p>
               <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-                Für {k.jahr} stehen zwei amtliche Gesamtsummen nebeneinander:{" "}
+                Für {k.year} stehen zwei amtliche Gesamtsummen nebeneinander:{" "}
                 {AUSGABEN_QUELLE_LABEL[k.quelle]} nennt {deMio(k.betrag / 1e6)}&#8239;Mio.&nbsp;€,{" "}
                 {k.konflikt_quelle
                   ? AUSGABEN_QUELLE_LABEL[k.konflikt_quelle]
@@ -407,7 +407,7 @@ export default function HaushaltPage() {
                     Ohne ihn trägt der Wert allein die Rechnung, die in der
                     Tabelle selbst steht. */}
                 {k.proben.includes("ausgabenreihe_jahresabschluss") ? (
-                  <>Er stimmt mit der Gesamtergebnisrechnung im Jahresabschluss {k.jahr}
+                  <>Er stimmt mit der Gesamtergebnisrechnung im Jahresabschluss {k.year}
                   überein<Beleg q="jahresabschluss" />.</>
                 ) : (
                   <>Nur dieser Wert passt zu dem Pro-Kopf-Betrag in derselben

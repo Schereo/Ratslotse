@@ -71,7 +71,7 @@ def test_liest_layout_a_und_findet_die_planspalte():
     """Die Planspalte ist die dritte — gefunden über das Haushaltsjahr, nicht
     über die Position."""
     plan, proben = parse_erfolgsplan("24/0671", "awb", 2025, LAYOUT_A)
-    assert plan.jahr == 2025
+    assert plan.year == 2025
     assert plan.ertraege == 25_197_796.0
     assert plan.aufwendungen == 24_570_285.0
     assert plan.ergebnis == 627_511.0

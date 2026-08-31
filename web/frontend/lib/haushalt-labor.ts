@@ -26,21 +26,21 @@ export function hebesatzHeute(
 ): { satz: number; seit: number } | null {
   const reihe = (zeilen ?? [])
     .filter((z) => z.art === art && z.hebesatz != null)
-    .sort((a, b) => a.jahr - b.jahr);
+    .sort((a, b) => a.year - b.year);
   const letzte = reihe.at(-1);
-  return letzte ? { satz: letzte.hebesatz as number, seit: letzte.jahr } : null;
+  return letzte ? { satz: letzte.hebesatz as number, seit: letzte.year } : null;
 }
 
 /** Der jüngste Ist-Betrag einer Steuerart aus dem Open-Data-Satz. */
 export function letzterSteuerbetrag(
-  steuern: { jahr: number; art: string; betrag: number | null }[],
+  steuern: { year: number; art: string; betrag: number | null }[],
   art: string,
-): { jahr: number; betrag: number } | null {
+): { year: number; betrag: number } | null {
   const z = steuern
     .filter((s) => s.art === art && s.betrag)
-    .sort((a, b) => a.jahr - b.jahr)
+    .sort((a, b) => a.year - b.year)
     .at(-1);
-  return z ? { jahr: z.jahr, betrag: z.betrag as number } : null;
+  return z ? { year: z.year, betrag: z.betrag as number } : null;
 }
 
 /** Der Anteil der Grundsteuer A am gemeinsamen Aufkommen „Grundsteuer A+B“ —
@@ -59,9 +59,9 @@ export function grundsteuerAnteilA(vergleich: VergleichDaten | null): number | n
   const werte = vergleich.werte.filter(
     (w) => w.reihe === "realsteuern" && w.schluessel === oldenburg
       && (w.kennzahl === "ist_je_ew_grundsteuer_a" || w.kennzahl === "ist_je_ew_grundsteuer_b"));
-  const jahr = Math.max(...werte.map((w) => w.jahr), -Infinity);
-  const a = werte.find((w) => w.jahr === jahr && w.kennzahl === "ist_je_ew_grundsteuer_a")?.wert;
-  const b = werte.find((w) => w.jahr === jahr && w.kennzahl === "ist_je_ew_grundsteuer_b")?.wert;
+  const year = Math.max(...werte.map((w) => w.year), -Infinity);
+  const a = werte.find((w) => w.year === year && w.kennzahl === "ist_je_ew_grundsteuer_a")?.wert;
+  const b = werte.find((w) => w.year === year && w.kennzahl === "ist_je_ew_grundsteuer_b")?.wert;
   if (a == null || b == null || a + b <= 0) return null;
   return a / (a + b);
 }
@@ -70,7 +70,7 @@ export type StadtHebesatz = {
   stadt: string;
   wert: number;
   istOldenburg: boolean;
-  jahr: number;
+  year: number;
 };
 
 /** Die Hebesätze der kreisfreien Städte, jüngstes vorliegendes Jahr,
@@ -81,13 +81,13 @@ export function staedteHebesaetze(
 ): StadtHebesatz[] {
   if (!vergleich) return [];
   const jahre = vergleich.jahre.realsteuern ?? [];
-  const jahr = jahre.at(-1);
-  if (jahr == null) return [];
+  const year = jahre.at(-1);
+  if (year == null) return [];
   const oldenburg = vergleich.staedte.find((s) => s.ist_oldenburg)?.schluessel;
   return vergleich.werte
-    .filter((w) => w.reihe === "realsteuern" && w.jahr === jahr && w.kennzahl === kennzahl)
+    .filter((w) => w.reihe === "realsteuern" && w.year === year && w.kennzahl === kennzahl)
     .map((w) => ({
-      stadt: w.stadt, wert: w.wert, jahr: w.jahr,
+      stadt: w.stadt, wert: w.wert, year: w.year,
       istOldenburg: w.schluessel === oldenburg,
     }))
     .sort((a, b) => b.wert - a.wert);
@@ -105,11 +105,11 @@ export function staedteHebesaetze(
  *  Landestopf schwankt), heißt ehrlich „es blieb alles übrig“, nicht „es
  *  blieb mehr als alles übrig“. */
 export function daempferSpanne(
-  steuerkraft: { jahr: number; messzahl: number | null; zuweisungen: number | null }[],
+  steuerkraft: { year: number; messzahl: number | null; zuweisungen: number | null }[],
 ): { verbleibVon: number; verbleibBis: number; paare: number } | null {
   const reihe = steuerkraft
     .filter((k) => k.messzahl != null && k.zuweisungen != null)
-    .sort((a, b) => a.jahr - b.jahr);
+    .sort((a, b) => a.year - b.year);
   const quoten: number[] = [];
   for (let i = 1; i < reihe.length; i++) {
     const dMess = (reihe[i].messzahl as number) - (reihe[i - 1].messzahl as number);
@@ -139,21 +139,21 @@ export function daempferSpanne(
  *  mit dem beschlossenen Minus der Ergebnis-Karte zusammen. */
 export function planjahrErgebnisse(
   zeilen: ErgebnishaushaltZeile[] | undefined,
-): { planJahrgang: number; reihe: { jahr: number; ergebnisMio: number }[] } | null {
+): { planJahrgang: number; reihe: { year: number; ergebnisMio: number }[] } | null {
   if (!zeilen?.length) return null;
   const jahrgang = Math.max(...zeilen.map((z) => z.plan_jahrgang));
   const eigene = zeilen.filter((z) => z.plan_jahrgang === jahrgang);
-  const jahre = [...new Set(eigene.map((z) => z.jahr))].sort((a, b) => a - b);
-  const reihe = jahre.flatMap((jahr) => {
-    const ordentlich = eigene.find((z) => z.jahr === jahr && z.nr === 21)?.betrag;
+  const jahre = [...new Set(eigene.map((z) => z.year))].sort((a, b) => a - b);
+  const reihe = jahre.flatMap((year) => {
+    const ordentlich = eigene.find((z) => z.year === year && z.nr === 21)?.betrag;
     if (ordentlich == null) return [];
-    const ausser = eigene.find((z) => z.jahr === jahr && z.nr === 24)?.betrag ?? 0;
-    return [{ jahr, ergebnisMio: (ordentlich + ausser) / 1e6 }];
+    const ausser = eigene.find((z) => z.year === year && z.nr === 24)?.betrag ?? 0;
+    return [{ year, ergebnisMio: (ordentlich + ausser) / 1e6 }];
   });
   return reihe.length >= 2 ? { planJahrgang: jahrgang, reihe } : null;
 }
 
-export type PfadPunkt = { jahr: number; stand: number };
+export type PfadPunkt = { year: number; stand: number };
 
 export type RuecklagenPfad = {
   /** Geprüfter Bestand vor dem ersten Planjahr, in Mio. €. */
@@ -176,7 +176,7 @@ export type RuecklagenPfad = {
  *  hebt ihn für alle Planjahre. Das ist eine Fortschreibung, keine Prognose,
  *  und steht so an der Grafik. */
 export function ruecklagenPfad(
-  ergebnisse: { jahr: number; ergebnisMio: number }[],
+  ergebnisse: { year: number; ergebnisMio: number }[],
   wirkungMio: number,
   startMio: number,
 ): RuecklagenPfad {
@@ -186,10 +186,10 @@ export function ruecklagenPfad(
   for (const e of ergebnisse) {
     const minus = Math.max(0, -e.ergebnisMio - wirkungMio);
     stand -= minus;
-    if (stand < 0 && kippjahr == null) kippjahr = e.jahr;
-    punkte.push({ jahr: e.jahr, stand: Math.max(0, stand) });
+    if (stand < 0 && kippjahr == null) kippjahr = e.year;
+    punkte.push({ year: e.year, stand: Math.max(0, stand) });
   }
-  return { start: startMio, punkte, kippjahr, letztesPlanjahr: ergebnisse.at(-1)?.jahr ?? 0 };
+  return { start: startMio, punkte, kippjahr, letztesPlanjahr: ergebnisse.at(-1)?.year ?? 0 };
 }
 
 /** Die Zinssätze, die die Stadt zuletzt WIRKLICH gezahlt hat — Zinsaufwand
@@ -197,17 +197,17 @@ export function ruecklagenPfad(
  *  Jahres. Eine Spanne aus Beobachtungen, keine Marktannahme; mehr behauptet
  *  der Kredit-Baustein nicht. */
 export function gezahlteZinsspanne(
-  zinslast: { jahr: number; aufwand: number }[] | undefined,
-  schulden: { jahr: number; insgesamt: number }[] | undefined,
+  zinslast: { year: number; aufwand: number }[] | undefined,
+  schulden: { year: number; insgesamt: number }[] | undefined,
 ): { von: number; bis: number; jahre: [number, number] } | null {
   if (!zinslast?.length || !schulden?.length) return null;
   const saetze = zinslast.flatMap((z) => {
-    const s = schulden.find((r) => r.jahr === z.jahr);
-    return s && s.insgesamt > 0 ? [{ jahr: z.jahr, satz: z.aufwand / s.insgesamt }] : [];
+    const s = schulden.find((r) => r.year === z.year);
+    return s && s.insgesamt > 0 ? [{ year: z.year, satz: z.aufwand / s.insgesamt }] : [];
   });
   if (saetze.length < 2) return null;
   const sortiert = [...saetze].sort((a, b) => a.satz - b.satz);
-  const jahre = saetze.map((s) => s.jahr);
+  const jahre = saetze.map((s) => s.year);
   return {
     von: sortiert[0].satz,
     bis: sortiert[sortiert.length - 1].satz,

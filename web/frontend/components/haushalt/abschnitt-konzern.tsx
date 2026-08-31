@@ -91,8 +91,8 @@ function Fundstelle({ h, className }: { h: Herkunft | null; className?: string }
 
 /** Die Kernaussage als Zahl — bewusst zwei Beträge und ein Anteil, mehr nicht.
  *  Der Anteil ist unsere Rechnung und steht als solche gekennzeichnet. */
-function Lueckenkopf({ daten, jahr }: { daten: KonzernDaten; jahr: number }) {
-  const a = kernAnteil(daten, jahr, "ertraege");
+function Lueckenkopf({ daten, year }: { daten: KonzernDaten; year: number }) {
+  const a = kernAnteil(daten, year, "ertraege");
   if (!a) return null;
   const prozent = Math.round(a.anteil * 100);
   const rest = a.konzern - a.kern;
@@ -100,7 +100,7 @@ function Lueckenkopf({ daten, jahr }: { daten: KonzernDaten; jahr: number }) {
     <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div>
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Haushaltsjahr {jahr} · ordentliche Erträge
+          Haushaltsjahr {year} · ordentliche Erträge
         </p>
         <p className="mt-1.5 max-w-[70ch] text-sm leading-relaxed text-foreground/90">
           Der Haushalts-Bereich zeigt die <GlossaryText text="Kernverwaltung" />:{" "}
@@ -139,21 +139,21 @@ export function KonzernAbschnitt({ onBestand }: {
   /** Meldet den jüngsten Kernhaushalt-Anteil nach oben — die Seitenbühne im
    *  Kopf zeigt denselben Anteilsbalken wie dieser Abschnitt, aus derselben
    *  Antwort (H5-02). Erträge, wie im Vergleichsbalken unten. */
-  onBestand?: (b: { anteil: number; jahr: number } | null) => void;
+  onBestand?: (b: { anteil: number; year: number } | null) => void;
 } = {}) {
   const { data, loading } = useFetch<KonzernDaten>("/council/haushalt/konzern");
 
   useEffect(() => {
     if (!onBestand || loading) return;
-    const jahr = data ? juengstesVergleichsjahr(data) : null;
-    const a = data && jahr != null ? kernAnteil(data, jahr) : null;
-    onBestand(jahr != null && a ? { anteil: a.anteil, jahr } : null);
+    const year = data ? juengstesVergleichsjahr(data) : null;
+    const a = data && year != null ? kernAnteil(data, year) : null;
+    onBestand(year != null && a ? { anteil: a.anteil, year } : null);
   }, [onBestand, loading, data]);
   const [art, setArt] = useState<LueckeArt>("ertraege");
-  const [jahr, setJahr] = useState<number | null>(null);
+  const [year, setJahr] = useState<number | null>(null);
 
   const jahre = useMemo(() => (data ? traegerJahre(data, art) : []), [data, art]);
-  const aktJahr = jahr && jahre.includes(jahr) ? jahr : jahre.at(-1) ?? null;
+  const aktJahr = year && jahre.includes(year) ? year : jahre.at(-1) ?? null;
   const kopfJahr = data ? juengstesVergleichsjahr(data) : null;
 
   if (loading) {
@@ -202,7 +202,7 @@ export function KonzernAbschnitt({ onBestand }: {
           )}
         </div>
 
-        <Lueckenkopf daten={data} jahr={kopfJahr} />
+        <Lueckenkopf daten={data} year={kopfJahr} />
 
         <LottiErklaert
           titel="Was ist ein Gesamtabschluss?"

@@ -5,7 +5,7 @@
 // Bis zum 21.08.2026 die eigene Seite /haushalt/streit. Zusammengelegt mit
 // „Wann entschieden wird" und dem Haushalts-Labor; Begründung im Kopf von
 // `abschnitt-termine.tsx`. Der Jahrgangs-Umschalter arbeitet weiter mit
-// `?jahr=` — die Suspense-Grenze dafür liegt jetzt bei der Seite.
+// `?year=` — die Suspense-Grenze dafür liegt jetzt bei der Seite.
 
 // /haushalt/streit — „Der Streit ums Geld".
 //
@@ -319,7 +319,7 @@ export function StreitAbschnitt({ onBestand }: {
    *  Abschnitts, aus derselben Antwort (H5-02). */
   onBestand?: (b: { beitraege: number; von: number; bis: number } | null) => void;
 } = {}) {
-  const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
+  const gewaehltesJahr = Number(useSearchParams().get("year")) || null;
   const { data, loading } = useFetch<StreitDaten>("/council/haushalt/streit");
 
   useEffect(() => {
@@ -333,8 +333,8 @@ export function StreitAbschnitt({ onBestand }: {
   const { data: listen } = useFetch<AenderungslistenDaten>("/council/haushalt/aenderungslisten");
 
   const jahre = useMemo(() => jahrgaenge(data ?? null), [data]);
-  const jahr = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre[0] ?? null;
-  const r = useMemo(() => runde(data ?? null, jahr), [data, jahr]);
+  const year = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre[0] ?? null;
+  const r = useMemo(() => runde(data ?? null, year), [data, year]);
 
   const debatte = debattenStation(r);
   const schluss = schlussbeschluss(r);
@@ -360,7 +360,7 @@ export function StreitAbschnitt({ onBestand }: {
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
   }
-  if (!jahr || !r) {
+  if (!year || !r) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
         Für keinen Jahrgang liegt bisher ein ausgelesenes Protokoll vor.{" "}
@@ -385,7 +385,7 @@ export function StreitAbschnitt({ onBestand }: {
 
         {/* Jahrgangs-Umschalter. Query-Param statt dynamischem Segment: Der
             Capacitor-Export kennt die Jahre zur Bauzeit nicht — dieselbe
-            Konvention wie /haushalt/plan-ist?jahr=… */}
+            Konvention wie /haushalt/plan-ist?year=… */}
         <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Haushaltsjahr
@@ -397,11 +397,11 @@ export function StreitAbschnitt({ onBestand }: {
             {jahre.map((j) => (
               <Link
                 key={j}
-                href={`/haushalt/streit?jahr=${j}`}
+                href={`/haushalt/streit?year=${j}`}
                 scroll={false}
                 className={cn(
                   "flex-none rounded-full border px-3 py-1 font-mono text-[12px] font-medium tabular-nums transition-colors",
-                  j === jahr
+                  j === year
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
                 )}
@@ -428,11 +428,11 @@ export function StreitAbschnitt({ onBestand }: {
                 Verhandlungsbilanz
               </h2>
               <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-                Haushalt {jahr}
+                Haushalt {year}
               </span>
             </div>
             <p className="mt-1 text-[15px] font-bold leading-snug">
-              Wer wollte den Haushalt {jahr} ändern — und kam damit durch?
+              Wer wollte den Haushalt {year} ändern — und kam damit durch?
             </p>
             <p className="mt-1 max-w-[66ch] text-[12.5px] leading-relaxed text-muted-foreground">
               Jeder Punkt steht für die Abstimmung über eine Änderungsliste; ein gefüllter
@@ -474,7 +474,7 @@ export function StreitAbschnitt({ onBestand }: {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <OutcomeBadge outcome={(schluss.official_text.outcome ?? null) as DecisionOutcome | null} />
               <span className="text-[13.5px] font-semibold text-foreground">
-                Haushaltssatzung und Haushaltsplan {r.jahr}
+                Haushaltssatzung und Haushaltsplan {r.year}
               </span>
             </div>
             {schluss.official_text.wortlaut && (
@@ -542,13 +542,13 @@ export function StreitAbschnitt({ onBestand }: {
 
         {/* Was in den Listen stand — die Inhalts-Ebene (Positionen und
             Fraktions-Summen), seit die Änderungslisten gelesen werden. */}
-        <StreitListenInhalt daten={listen ?? null} jahr={jahr} />
+        <StreitListenInhalt daten={listen ?? null} year={year} />
 
         {/* Der zweite Teil desselben Haushalts. Er steht DANACH, weil
             der Ergebnishaushalt die größere Geschichte ist — dort geht
             es um den laufenden Betrieb der Stadt; hier um einzelne
             Bauvorhaben. Fehlt sein Ingest, verschwindet die Karte. */}
-        <StreitFinanzhaushalt daten={listen ?? null} jahr={jahr} />
+        <StreitFinanzhaushalt daten={listen ?? null} year={year} />
 
         {/* Was gesagt wurde. */}
         {debatte && debatte.debatte.length > 0 && (
@@ -597,7 +597,7 @@ export function StreitAbschnitt({ onBestand }: {
             <div className="mt-3 border-t border-dashed border-border pt-4">
               {/* `key` je Jahrgang: setzt Pfad und Beobachter des
                   Bausteins beim Jahrgangswechsel neu auf. */}
-              <DebattenListe key={jahr ?? 0} reden={debatte.debatte} />
+              <DebattenListe key={year ?? 0} reden={debatte.debatte} />
             </div>
             <p className="mt-3 max-w-[86ch] border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
               {HINWEIS_REDE}

@@ -72,9 +72,9 @@ export function Summe({ label, wert, ton, beleg }: {
   );
 }
 
-export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
+export function Tafel({ zeilen, year, aktuell, aktion, children }: {
   zeilen: HaushaltZeile[];
-  jahr: number;
+  year: number;
   /** Ist das das jüngste Haushaltsjahr? Steuert nur die Zeitform. */
   aktuell: boolean;
   /** Umschalter o. Ä., sitzt im Fuß der Tafel. */
@@ -100,7 +100,7 @@ export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
         <div className="min-w-0">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-primary sm:text-[10.5px]">
-            Stadthaushalt Oldenburg {jahr}
+            Stadthaushalt Oldenburg {year}
           </p>
           {/* 19ch war zu eng: Der Satz passt in zwei Zeilen, die Begrenzung erzwang
               aber eine dritte — und weil `hyphens: auto` auf allen Überschriften
@@ -111,7 +111,7 @@ export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
           <h1 className="mt-2.5 max-w-[30ch] text-balance font-display text-[23px] font-bold leading-[1.15] tracking-tight sm:text-[32px]">
             {aktuell
               ? <>Oldenburg plant Ausgaben von {deMio(ausMio)} Millionen&nbsp;Euro.</>
-              : <>Für {jahr} plante Oldenburg Ausgaben von {deMio(ausMio)} Millionen&nbsp;Euro.</>}
+              : <>Für {year} plante Oldenburg Ausgaben von {deMio(ausMio)} Millionen&nbsp;Euro.</>}
           </h1>
           {fehlt != null && (
             <p className="mt-3 max-w-[52ch] text-[13.5px] leading-relaxed text-muted-foreground sm:text-[15px]">

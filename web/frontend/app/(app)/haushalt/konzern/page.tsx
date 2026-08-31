@@ -62,7 +62,7 @@ function KonzernSeiteInner() {
   // dieselben Antworten, die unten Anteilsbalken und Gesellschafts-Liste
   // tragen. Kein zweiter Abruf, keine zweite Wahrheit.
   // `undefined` = lädt, `null` = entschieden nichts — dann keine Bühne.
-  const [kern, setKern] = useState<{ anteil: number; jahr: number } | null | undefined>(undefined);
+  const [kern, setKern] = useState<{ anteil: number; year: number } | null | undefined>(undefined);
   const [bericht, setBericht] = useState<{
     gesellschaften: number; kennzahlen: number; von: number; bis: number;
   } | null | undefined>(undefined);
@@ -78,7 +78,7 @@ function KonzernSeiteInner() {
     const gruppen = [...jeBetrieb.values()]
       .sort((a, b) => Math.abs(b.at(-1)?.ergebnis ?? 0) - Math.abs(a.at(-1)?.ergebnis ?? 0));
     const urls = gruppen
-      .map((g) => [...g].sort((a, b) => a.jahr - b.jahr).at(-1))
+      .map((g) => [...g].sort((a, b) => a.year - b.year).at(-1))
       .map((z) => (z ? herkunftVon(data, z.herkunft_id)?.url : undefined))
       .filter((u): u is string => !!u);
     return urls.length ? { wirtschaftsplan: urls } : {};
@@ -107,7 +107,7 @@ function KonzernSeiteInner() {
             gegen den Rest des Konzerns — klickt zur gemeinsamen Rechnung. */}
         {kern ? (
           <Seitenbuehne
-            kicker={`Gesamtabschluss · Konzern Oldenburg · ${kern.jahr}`}
+            kicker={`Gesamtabschluss · Konzern Oldenburg · ${kern.year}`}
             zahl={<>Der Kernhaushalt ist <ZaehlZahl wert={kern.anteil * 100} />&#8239;% der Stadt</>}
             sub={bericht
               ? `${bericht.gesellschaften} Betriebe und Gesellschaften · ${bericht.kennzahlen} Kennzahlen aus den Jahren ${bericht.von}–${bericht.bis}`

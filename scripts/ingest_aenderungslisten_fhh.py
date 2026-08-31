@@ -55,9 +55,9 @@ def _inhaltsgleich(a: FhhErgebnis, b: FhhErgebnis) -> bool:
     """Zwei Anlagen, ein Dokument? Verglichen wird der INHALT, nicht die
     Datei — die 2021er Beschluss-Datei liegt doppelt im Bestand."""
     def kern(e: FhhErgebnis):
-        return (sorted(((z.jahr, z.lfd, z.thh, z.produkt, z.bezeichnung,
+        return (sorted(((z.year, z.lfd, z.thh, z.produkt, z.bezeichnung,
                          z.einzahlung, z.auszahlung) for z in e.zeilen), key=repr),
-                sorted(((s.jahr, s.typ, s.label, s.einzahlungen, s.auszahlungen)
+                sorted(((s.year, s.typ, s.label, s.einzahlungen, s.auszahlungen)
                         for s in e.summen), key=repr))
     return kern(a) == kern(b)
 
@@ -114,7 +114,7 @@ def main() -> dict:
 
         print("\nGelesen:", flush=True)
         for (jahrgang, schluessel), (r, _s, e) in sorted(je_liste.items()):
-            jahre = sorted({z.jahr for z in e.zeilen})
+            jahre = sorted({z.year for z in e.zeilen})
             politisch = sorted({s.label for s in e.summen if s.typ == "liste"
                                 and "nderungslist" not in s.label
                                 and not s.label.startswith("Verw")})

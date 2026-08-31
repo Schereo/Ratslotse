@@ -566,7 +566,10 @@ class Store:
             "nwz_username", "nwz_verified_at", "nwz_fulltext_allowed"])
         # Die Schnittstelle spricht Englisch, die Spalten ziehen nach.
         self._spalten_umbenennen("qa_gespraeche", [("titel", "title")])
-        self._spalten_umbenennen("user_quiz_questions", [("district", "district")])
+        # Der ALTE Name ist die Quelle der Migration — in #859 hatte ein
+        # Suchen-und-Ersetzen ihn mitgenommen und den Schritt wirkungslos
+        # gemacht. Bestehende Datenbanken wären deutsch geblieben.
+        self._spalten_umbenennen("user_quiz_questions", [("stadtteil", "district")])
         self._spalten_umbenennen("qa_shares", [
             ("frage", "question"), ("antwort", "answer"), ("quellen", "sources")])
         self._spalten_umbenennen("deep_research_jobs", [

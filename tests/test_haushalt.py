@@ -297,7 +297,7 @@ def test_parse_opendata_rejects_broken_sums():
 def test_parse_steuereinnahmen_langformat():
     rows = haushalt.parse_steuereinnahmen(CSV_STEUERN)
     assert len(rows) == 16  # 2 Jahre × 8 Spalten
-    gew_2025 = next(r for r in rows if r["jahr"] == 2025 and r["art"].startswith("Gewerbesteuer"))
+    gew_2025 = next(r for r in rows if r["year"] == 2025 and r["art"].startswith("Gewerbesteuer"))
     assert gew_2025["betrag"] == 222_117_000.0
     # Umlaute restauriert, Kopf-Leerzeichen weg:
     arten = {r["art"] for r in rows}
@@ -310,7 +310,7 @@ def test_parse_steuerkraft_rueckt_aufs_ausgleichsjahr():
     bleiben unangetastet: Sie stimmen auf den Euro mit den KFA-Tabellen des
     LSN überein, nur eben unter dem nächsten Jahr."""
     kraft = haushalt.parse_steuerkraft(CSV_STEUERKRAFT)
-    assert [k["jahr"] for k in kraft] == [1993, 2025, 2026]
+    assert [k["year"] for k in kraft] == [1993, 2025, 2026]
     # Der Betrag, den das LSN als Steuerkraftmesszahl 2026 führt, steht in der
     # CSV unter 2025 — bei uns jetzt unter 2026.
     assert kraft[-1]["messzahl"] == 348_164_497.0
@@ -334,7 +334,7 @@ def test_parse_steuerkraft_und_store_roundtrip(tmp_path, quelle):
     assert len(store.get_steuereinnahmen()) == 16
     assert store.save_steuerkraft(kraft, q) == 3
     got = store.get_steuerkraft()
-    assert [g["jahr"] for g in got] == [1993, 2025, 2026]
+    assert [g["year"] for g in got] == [1993, 2025, 2026]
     assert got[-1]["messzahl"] == 348_164_497.0
 
 
@@ -344,15 +344,15 @@ def test_save_steuerkraft_raeumt_verwaiste_jahrgaenge_ab(tmp_path, quelle):
     Leiche zurück, mit den Beträgen seines Nachfolgers."""
     store = CouncilStore(tmp_path / "c.sqlite")
     q = quelle("Steuerkraft-CSV", "http://csv", probe=UNGEPRUEFT)
-    alt = [{"jahr": j, "messzahl": 1.0, "messzahl_je_ew": None,
+    alt = [{"year": j, "messzahl": 1.0, "messzahl_je_ew": None,
             "zuweisungen": 2.0, "zuweisungen_je_ew": None} for j in (1992, 1993)]
     assert store.save_steuerkraft(alt, q) == 2
 
-    neu = [{"jahr": j, "messzahl": 9.0, "messzahl_je_ew": None,
+    neu = [{"year": j, "messzahl": 9.0, "messzahl_je_ew": None,
             "zuweisungen": 8.0, "zuweisungen_je_ew": None} for j in (1993, 1994)]
     assert store.save_steuerkraft(neu, q) == 2
     got = store.get_steuerkraft()
-    assert [g["jahr"] for g in got] == [1993, 1994]  # 1992 ist weg
+    assert [g["year"] for g in got] == [1993, 1994]  # 1992 ist weg
     assert all(g["messzahl"] == 9.0 for g in got)
 
 
@@ -366,15 +366,15 @@ def test_parse_einwohner():
            "2025;176614;850170;4814\n"
            "Fußnote;;;\n")
     rows = haushalt.parse_einwohner(csv)
-    assert rows == [{"jahr": 2010, "einwohner": 161334}, {"jahr": 2025, "einwohner": 176614}]
+    assert rows == [{"year": 2010, "einwohner": 161334}, {"year": 2025, "einwohner": 176614}]
 
 
 def test_store_einwohner_roundtrip(tmp_path, quelle):
     store = CouncilStore(tmp_path / "c.sqlite")
     assert store.save_einwohner(
-        [{"jahr": 2024, "einwohner": 176242}, {"jahr": 2025, "einwohner": 176614}],
+        [{"year": 2024, "einwohner": 176242}, {"year": 2025, "einwohner": 176614}],
         quelle("Einwohner-CSV", "http://csv", probe=UNGEPRUEFT)) == 2
-    assert store.einwohner_aktuell() == {"jahr": 2025, "einwohner": 176614}
+    assert store.einwohner_aktuell() == {"year": 2025, "einwohner": 176614}
     store.close()
 
 
@@ -678,7 +678,7 @@ def test_parse_teilergebnishaushalt_produkte():
     assert p["produkt_nr"] == "P10.111023" and p["produkt_name"] == "Archivierung"
     assert p["thh_nr"] == 6 and p["amt"] == "Amt für Kultur, Museen und Sport"
     # Haushaltsjahr = ERSTER Ansatz (2019), nicht das letzte Finanzplanungsjahr
-    assert p["jahr"] == 2019
+    assert p["year"] == 2019
     assert p["ertraege"] == 4206.0 and p["aufwendungen"] == 484_239.0
     assert p["ergebnis"] == -480_033.0
     # Die angeklebte Seitenzahl (601) darf kein Wert werden.
@@ -702,7 +702,7 @@ def test_teilergebnishaushalt_ab_plan_2025_mit_zwei_beschriftungszeilen():
     assert p["produkt_name"] == "Rechnungsprüfung (örtliche Prüfung)"
     assert p["amt"] == "Rechnungsprüfungsamt"
     # Haushaltsjahr = ERSTER Ansatz (2024), nicht die Finanzplanungsjahre.
-    assert p["jahr"] == 2024
+    assert p["year"] == 2024
     assert p["ertraege"] == 160_800.0 and p["aufwendungen"] == 1_349_214.0
     assert p["ergebnis"] == -1_188_414.0
     # Die Rechenprobe des Dokuments geht auf: 12 − 20 = 21.
@@ -899,11 +899,11 @@ def test_produkt_steckbrief_migration(tmp_path):
     conn = sqlite3.connect(pfad)
     conn.execute(
         "CREATE TABLE council_produkte ("
-        "jahr INTEGER NOT NULL, produkt_nr TEXT NOT NULL, produkt_name TEXT NOT NULL, "
+        "year INTEGER NOT NULL, produkt_nr TEXT NOT NULL, produkt_name TEXT NOT NULL, "
         "thh_nr INTEGER, thh_name TEXT, amt TEXT, "
         "ertraege REAL, aufwendungen REAL, ergebnis REAL, "
         "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
-        "PRIMARY KEY (jahr, produkt_nr))")
+        "PRIMARY KEY (year, produkt_nr))")
     conn.execute("INSERT INTO council_produkte VALUES "
                  "(2019,'P10.111023','Archivierung',6,'Kultur',NULL,1,2,-1,NULL,NULL,'x')")
     conn.commit()
@@ -1220,10 +1220,10 @@ def test_ergebnisrechnung_2020_bezug_ist_ansatz_plus_nachtrag():
 
 def test_strukturprobe_12_minus_20_ist_21():
     """Probe innerhalb der Tabelle, ohne jede zweite Quelle."""
-    for text, jahr in ((JA_2017, 2017), (JA_2018, 2018), (JA_2020, 2020)):
-        posten = finanzberichte.parse_ergebnisrechnung(text, jahr)
+    for text, year in ((JA_2017, 2017), (JA_2018, 2018), (JA_2020, 2020)):
+        posten = finanzberichte.parse_ergebnisrechnung(text, year)
         ok, warum = finanzberichte.strukturprobe(posten)
-        assert ok is True, f"{jahr}: {warum}"
+        assert ok is True, f"{year}: {warum}"
     # Stimmt das ordentliche Ergebnis nicht, fällt der Jahrgang durch.
     posten = finanzberichte.parse_ergebnisrechnung(JA_2017, 2017)
     for p in posten:
@@ -1440,7 +1440,7 @@ def test_pruefbericht_erkennung():
             "Prüfung des Jahresabschlusses 2021 der Stadt Oldenburg (Oldb)\n"
             "Rechnungsprüfungsamt " + "Text zur Prüfung. " * 50)
     treffer = finanzberichte.pruefbericht_aus_anlage("13 Schlussbericht RPA 2021", echt)
-    assert treffer and treffer["jahr"] == 2021 and treffer["lesbar"] is True
+    assert treffer and treffer["year"] == 2021 and treffer["lesbar"] is True
 
     # Stiftungen und Eigenbetriebe tragen eine andere Formel.
     stiftung = ("Schlussbericht des Rechnungsprüfungsamtes über die Prüfung des "
@@ -1452,7 +1452,7 @@ def test_pruefbericht_erkennung():
     treffer = finanzberichte.pruefbericht_aus_anlage(
         "Schlussbericht des Rechnungsprüfungsamtes über die Prüfung des "
         "Jahresabschlusses 2024 der Stadt Oldenburg (Oldb)", kaputt)
-    assert treffer and treffer["jahr"] == 2024 and treffer["lesbar"] is False
+    assert treffer and treffer["year"] == 2024 and treffer["lesbar"] is False
 
 
 def test_store_pruefberichte_roundtrip(tmp_path, quelle):
@@ -1462,7 +1462,7 @@ def test_store_pruefberichte_roundtrip(tmp_path, quelle):
     store.save_pruefbericht_quelle(
         2024, quelle("Schlussbericht 2024", "http://y", probe="eingangsformel"), 64, False)
     berichte = store.get_pruefbericht_quellen()
-    assert [b["jahr"] for b in berichte] == [2023, 2024]
+    assert [b["year"] for b in berichte] == [2023, 2024]
     assert berichte[0]["lesbar"] == 1 and berichte[1]["lesbar"] == 0
     store.close()
 
@@ -1485,12 +1485,12 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_schulden (jahr, insgesamt, je_einwohner, fetched_at) "
+    c.execute("INSERT INTO council_schulden (year, insgesamt, je_einwohner, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
-    c.execute("INSERT INTO council_bilanz (jahr, rolle, seite, ebene, bezeichnung, wert, "
+    c.execute("INSERT INTO council_bilanz (year, rolle, seite, ebene, bezeichnung, wert, "
               " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
-    c.execute("INSERT INTO council_buergschaften (jahr, bestand, genau, aus_folgejahr, "
+    c.execute("INSERT INTO council_buergschaften (year, bestand, genau, aus_folgejahr, "
               " quelle, proben, fetched_at) VALUES (2024, 220300000, 1, 0, "
               " 'jahresabschluss', '', '2026-08-18')")
     c.commit()
@@ -1500,7 +1500,7 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
     assert not any("Wie hoch sind die Schulden" in q["question"] for q in fragen)
     assert any("gerade" in q["question"] for q in fragen)
 
-    c.execute("INSERT INTO council_integrierte_schulden (jahr, ars, insgesamt, proben, "
+    c.execute("INSERT INTO council_integrierte_schulden (year, ars, insgesamt, proben, "
               " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
     c.commit()
     fragen = haushalt.build_abschluss_questions(store)
@@ -1602,7 +1602,7 @@ def test_haushalts_anschluss_nur_wo_er_belegt_ist(tmp_path):
     c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
               "VALUES (2, '24/0999', 'Neubau einer Schule', '2026-08-18')")
     c.execute("INSERT INTO council_nachbewilligungen (template_number, titel, art, kategorie, "
-              " beschlossen, im_rat, ratsentscheidung, volltextprobe, betrag, jahr, "
+              " beschlossen, im_rat, ratsentscheidung, volltextprobe, betrag, year, "
               " beschluss_id, gremien, fetched_at) "
               "VALUES ('18/0187', 'Außerplanmäßige Bewilligung', 'ausserplanmaessig', "
               " 'sonstiges', 1, 1, 1, 1, 500000.0, 2018, 812, '[]', '2026-08-18')")
@@ -1614,7 +1614,7 @@ def test_haushalts_anschluss_nur_wo_er_belegt_ist(tmp_path):
 
     # Nachbewilligung: erkannt über die Beschluss-Nummer, nicht über den Text.
     a = store.haushalts_anschluss(812, "18/0187")
-    assert a and a["art"] == "nachbewilligung" and a["jahr"] == 2018
+    assert a and a["art"] == "nachbewilligung" and a["year"] == 2018
 
     # Alles andere: nichts. Lieber keine Karte als eine, die überall gleich steht.
     assert store.haushalts_anschluss(1, "24/0999") is None

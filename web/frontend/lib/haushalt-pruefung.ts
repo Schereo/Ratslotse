@@ -12,7 +12,7 @@
  *  auszeichnet. `marke` ist B/WB/H/K, `marke_name` und `marke_erlaeuterung`
  *  sind die Legende **dieses** Jahrgangs — nicht unsere Formulierung. */
 export type Feststellung = {
-  jahr: number;
+  year: number;
   lfd: number;
   marke: string;
   marke_name: string;
@@ -86,10 +86,10 @@ export function wiederholungsketten(feststellungen: Feststellung[]): Kette[] {
   const ketten: Kette[] = [];
   for (const [schluessel, eintraege] of nach) {
     if (!eintraege.some((f) => f.marke === "WB")) continue;
-    const sortiert = [...eintraege].sort((a, b) => a.jahr - b.jahr || a.lfd - b.lfd);
-    const jahre = [...new Set(sortiert.map((f) => f.jahr))];
+    const sortiert = [...eintraege].sort((a, b) => a.year - b.year || a.lfd - b.lfd);
+    const jahre = [...new Set(sortiert.map((f) => f.year))];
     const beanstandet = [...new Set(
-      sortiert.filter((f) => f.marke === "B" || f.marke === "WB").map((f) => f.jahr))];
+      sortiert.filter((f) => f.marke === "B" || f.marke === "WB").map((f) => f.year))];
     ketten.push({
       schluessel,
       titel: sortiert[sortiert.length - 1].abschnitt,
@@ -105,10 +105,10 @@ export function wiederholungsketten(feststellungen: Feststellung[]): Kette[] {
 /** Feststellungen eines Jahrgangs, nach Textziffer gebündelt — so steht auf
  *  der Seite dieselbe Gliederung wie im Bericht. */
 export function nachAbschnitt(
-  feststellungen: Feststellung[], jahr: number,
+  feststellungen: Feststellung[], year: number,
 ): { textziffer: string; abschnitt: string; eintraege: Feststellung[] }[] {
   const gruppen: { textziffer: string; abschnitt: string; eintraege: Feststellung[] }[] = [];
-  for (const f of feststellungen.filter((x) => x.jahr === jahr).sort((a, b) => a.lfd - b.lfd)) {
+  for (const f of feststellungen.filter((x) => x.year === year).sort((a, b) => a.lfd - b.lfd)) {
     const letzte = gruppen[gruppen.length - 1];
     if (letzte && letzte.textziffer === f.textziffer) letzte.eintraege.push(f);
     else gruppen.push({ textziffer: f.textziffer, abschnitt: f.abschnitt, eintraege: [f] });

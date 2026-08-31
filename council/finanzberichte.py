@@ -109,7 +109,7 @@ def _kopf_normalisieren(kopf: str) -> str:
     return " ".join(re.sub(r"-\s*\n\s*", "", kopf).split())
 
 
-def _tabellenkopf(kopf: str, jahr: int) -> dict | None:
+def _tabellenkopf(kopf: str, year: int) -> dict | None:
     """Aus dem Tabellenkopf lesen, welche Spalten es gibt und in welcher
     Reihenfolge — die Grundlage für alles Weitere.
 
@@ -129,12 +129,12 @@ def _tabellenkopf(kopf: str, jahr: int) -> dict | None:
 
     # Achtung: „Ermächtigungen des Haushaltsjahres" darf nicht als Ergebnis
     # durchgehen — deshalb steht „Ergebnis" in den Mustern immer mit dabei.
-    finde("vorjahr", r"Ergebnis des Vorjahres", rf"Ergebnis {jahr - 1}")
+    finde("vorjahr", r"Ergebnis des Vorjahres", rf"Ergebnis {year - 1}")
     finde("ansatz", r"Ansätze des Haushaltsjahres", r"Ansätze des Haushaltsplanes",
-          rf"Ansätze? {jahr}", r"Ansätze des", r"\bAnsatz\b")
+          rf"Ansätze? {year}", r"Ansätze des", r"\bAnsatz\b")
     finde("nachtrag", r"Veränderung durch\s*Nachtrag", r"\bNachtrag\b")
     finde("gesamtermaechtigung", r"Gesamtermächtigung")
-    finde("ergebnis", r"Ergebnis des Haushaltsjahres", rf"Ergebnis {jahr}")
+    finde("ergebnis", r"Ergebnis des Haushaltsjahres", rf"Ergebnis {year}")
     # Der Zwischenraum vor der Klammer ist nicht verlässlich: Die
     # Finanzrechnung 2017 schreibt „mehr(+), weniger(-)" ohne Leerzeichen, und
     # ohne das ``\s*`` fand der Kopf dort gar keine Abweichungsspalte — der
@@ -167,7 +167,7 @@ def _plan_zuerst(kopf: dict, art: str) -> bool:
     return kopf["positionen"][spalte] < kopf["positionen"]["ergebnis"]
 
 
-def parse_ergebnisrechnung(text: str, jahr: int) -> list[dict]:
+def parse_ergebnisrechnung(text: str, year: int) -> list[dict]:
     """Ergebnisrechnung der Kernverwaltung aus dem Jahresabschluss-Volltext.
 
     Liefert je Posten ``{nr, bezeichnung, vorjahr, ansatz, ergebnis,
@@ -196,10 +196,10 @@ def parse_ergebnisrechnung(text: str, jahr: int) -> list[dict]:
     ende = text.find("Gesamtergebnisrechnung", start + 6000)
     block = text[start:ende if ende > 0 else start + 12000]
 
-    return _posten_aus_block(block, jahr)
+    return _posten_aus_block(block, year)
 
 
-def _posten_aus_block(block: str, jahr: int) -> list[dict]:
+def _posten_aus_block(block: str, year: int) -> list[dict]:
     """Die Posten einer Ergebnisrechnungs-Tabelle lesen — gemeinsam genutzt
     von der Gesamtrechnung und den Teil-Ergebnisrechnungen je Teilhaushalt,
     die dieselbe Tabellenform haben.
@@ -207,7 +207,7 @@ def _posten_aus_block(block: str, jahr: int) -> list[dict]:
     Jeder Abschnitt trägt seinen eigenen Kopf; er steht vor der ersten
     Zwischenüberschrift („Ordentliche Erträge")."""
     schnitt = re.search(r"[Oo]rdentliche Erträge", block)
-    kopf = _tabellenkopf(block[:schnitt.start()] if schnitt else block[:900], jahr)
+    kopf = _tabellenkopf(block[:schnitt.start()] if schnitt else block[:900], year)
     if kopf is None:
         return []
 
@@ -239,7 +239,7 @@ def _posten_aus_block(block: str, jahr: int) -> list[dict]:
         werte = _spalten_zuordnen(zahlen, kopf)
         if werte is None:
             continue
-        out.append({"nr": nr, "bezeichnung": bezeichnung, "jahr": jahr,
+        out.append({"nr": nr, "bezeichnung": bezeichnung, "year": year,
                     "ist_summe": 1 if nr in SUMMEN_POSTEN else 0, **werte})
     return out
 
@@ -254,7 +254,7 @@ def _posten_aus_block(block: str, jahr: int) -> list[dict]:
 _THH_ABSCHNITT = re.compile(r"Teil\s*-?\s*Ergebnisrechnung\s+THH\s?(\d\d)\s*([^\n]{0,60})")
 
 
-def parse_teilergebnisrechnungen(text: str, jahr: int) -> list[dict]:
+def parse_teilergebnisrechnungen(text: str, year: int) -> list[dict]:
     """Teil-Ergebnisrechnungen je Teilhaushalt aus dem Jahresabschluss.
 
     Liefert dieselben Posten wie ``parse_ergebnisrechnung``, zusätzlich mit
@@ -274,7 +274,7 @@ def parse_teilergebnisrechnungen(text: str, jahr: int) -> list[dict]:
         # Bis zum nächsten Abschnitt lesen, damit keine Werte des folgenden
         # Teilhaushalts hineinrutschen.
         ende = stellen[i + 1].start() if i + 1 < len(stellen) else m.end() + 9000
-        posten = _posten_aus_block(text[m.end():ende], jahr)
+        posten = _posten_aus_block(text[m.end():ende], year)
         nummern = {p["nr"] for p in posten}
         if not {12, 20} <= nummern:
             continue  # kein vollständiger Ergebnis-Abschnitt
@@ -342,26 +342,26 @@ def vorjahreskette(je_jahr: dict[int, list[dict]],
 
     Geprüft werden die Summenzeilen 12 und 20 jedes benachbarten Paares.
     Zurück kommt die Liste der **gerissenen** Glieder als
-    ``(jahr, folgejahr, begruendung)`` — leer heißt: alles schließt.
+    ``(year, folgejahr, begruendung)`` — leer heißt: alles schließt.
 
     Weil ein gerissenes Glied nicht verrät, welche der beiden Seiten falsch
     gelesen wurde, verliert der Aufrufer beide. Das ist die konservative
     Lesart und entspricht dem Grundsatz dieses Moduls: lieber eine Lücke als
     eine Zahl, die niemand nachrechnen kann."""
     kaputt: list[tuple[int, int, str]] = []
-    for jahr in sorted(je_jahr):
-        folge = jahr + 1
+    for year in sorted(je_jahr):
+        folge = year + 1
         if folge not in je_jahr:
             continue
-        vorher = {p["nr"]: p for p in je_jahr[jahr]}
+        vorher = {p["nr"]: p for p in je_jahr[year]}
         nachher = {p["nr"]: p for p in je_jahr[folge]}
         for nr in (12, 20):
             ist = vorher.get(nr, {}).get("ergebnis")
             genannt = nachher.get(nr, {}).get("vorjahr")
             if ist is None or genannt is None:
-                kaputt.append((jahr, folge, f"Posten {nr}: Wert fehlt"))
+                kaputt.append((year, folge, f"Posten {nr}: Wert fehlt"))
             elif abs(ist - genannt) > toleranz:
-                kaputt.append((jahr, folge,
+                kaputt.append((year, folge,
                                f"Posten {nr}: Ist {ist:,.2f} ≠ Vorjahresspalte "
                                f"{genannt:,.2f}"))
     return kaputt
@@ -645,7 +645,7 @@ def _ohne_vorjahr(zahlen: list[float], kopf: dict) -> dict | None:
     return None
 
 
-def parse_finanzrechnung(text: str, jahr: int) -> list[dict]:
+def parse_finanzrechnung(text: str, year: int) -> list[dict]:
     """Abschnitt 4.1 des Jahresabschlusses: was die Stadt wirklich ein- und
     ausgezahlt hat.
 
@@ -678,7 +678,7 @@ def parse_finanzrechnung(text: str, jahr: int) -> list[dict]:
 
     schnitt = re.search(r"Einzahlungen aus\s+laufender", block)
     kopfblock = block[:schnitt.start()] if schnitt else block[:900]
-    kopf = _tabellenkopf(kopfblock, jahr)
+    kopf = _tabellenkopf(kopfblock, year)
     if kopf is None:
         return []
     hat_ermaechtigung = _fuehrt_ermaechtigung(kopfblock, kopf)
@@ -714,7 +714,7 @@ def parse_finanzrechnung(text: str, jahr: int) -> list[dict]:
             werte.update(ansatz=None, plan=None, plan_art=None, deviation=None)
             ermaechtigung = None
         out.append({"nr": nr, "rolle": rolle, "bezeichnung": bezeichnung,
-                    "jahr": jahr, "ermaechtigung": ermaechtigung,
+                    "year": year, "ermaechtigung": ermaechtigung,
                     "ist_summe": 1 if rolle else 0, **werte})
     return out
 
@@ -892,21 +892,21 @@ def kassenkette(je_jahr: dict[int, list[dict]],
     beiden fällt hier auf, ohne dass wir eine eigene Rechnung anstellen.
 
     Zurück kommt die Liste der **gerissenen** Glieder als
-    ``(jahr, folgejahr, begruendung)``. Geprüft wird nur, wo beide Jahrgänge
+    ``(year, folgejahr, begruendung)``. Geprüft wird nur, wo beide Jahrgänge
     ihre Bestandszeilen führen — sie sind laut Dokument optional, und ein
     fehlendes Glied ist keine gerissene Kette."""
     kaputt: list[tuple[int, int, str]] = []
-    for jahr in sorted(je_jahr):
-        if jahr + 1 not in je_jahr:
+    for year in sorted(je_jahr):
+        if year + 1 not in je_jahr:
             continue
-        ende = next((p.get("ergebnis") for p in je_jahr[jahr]
+        ende = next((p.get("ergebnis") for p in je_jahr[year]
                      if p.get("rolle") == "endbestand"), None)
-        anfang = next((p.get("ergebnis") for p in je_jahr[jahr + 1]
+        anfang = next((p.get("ergebnis") for p in je_jahr[year + 1]
                        if p.get("rolle") == "anfangsbestand"), None)
         if ende is None or anfang is None:
             continue
         if abs(ende - anfang) > toleranz:
-            kaputt.append((jahr, jahr + 1,
+            kaputt.append((year, year + 1,
                            f"Endbestand {ende:,.2f} € ≠ Anfangsbestand des "
                            f"Folgejahres {anfang:,.2f} €"))
     return kaputt
@@ -980,7 +980,7 @@ def _fliesstext(roh: str) -> str:
     return " ".join(_SEITENFUSS.sub(" ", ohne_trennung).split())
 
 
-def parse_abweichungsgruende(text: str, jahr: int) -> list[dict]:
+def parse_abweichungsgruende(text: str, year: int) -> list[dict]:
     """Abschnitt 6.3.1 des Jahresabschlusses: **warum** ein Posten vom Plan
     abweicht, je Posten und in den Worten der Verwaltung.
 
@@ -1023,7 +1023,7 @@ def parse_abweichungsgruende(text: str, jahr: int) -> list[dict]:
         vorzeichen = -1 if m.group(3) == "-" else 1
         vz_prozent = -1 if m.group(5) == "-" else 1
         out.append({
-            "jahr": jahr, "nr": nr,
+            "year": year, "nr": nr,
             "bezeichnung": " ".join(m.group(2).split()),
             "delta_mio": _eur_lose(m.group(4)) * vorzeichen,
             "prozent": _eur_lose(m.group(6)) * vz_prozent,
@@ -1101,7 +1101,7 @@ def pruefbericht_aus_anlage(label: str | None, raw_text: str | None) -> dict | N
     """Erkennt den Schlussbericht des Rechnungsprüfungsamts zur
     **Kernverwaltung** und sagt, ob sein Volltext brauchbar ist.
 
-    Liefert ``{jahr, lesbar, buchstabenanteil}`` oder ``None``. Gesucht wird
+    Liefert ``{year, lesbar, buchstabenanteil}`` oder ``None``. Gesucht wird
     zuerst im Text, ersatzweise im Label — beim Jahrgang 2024 ist der Text
     unbrauchbar, das Dokument aber vorhanden und verlinkbar.
 
@@ -1116,7 +1116,7 @@ def pruefbericht_aus_anlage(label: str | None, raw_text: str | None) -> dict | N
         return None
     buchstaben = sum(ch.isalpha() for ch in text)
     anteil = buchstaben / max(len(text), 1)
-    return {"jahr": int(treffer.group(1)), "lesbar": anteil >= _TEXT_MINDESTANTEIL,
+    return {"year": int(treffer.group(1)), "lesbar": anteil >= _TEXT_MINDESTANTEIL,
             "buchstabenanteil": round(anteil, 4)}
 
 
@@ -1403,7 +1403,7 @@ def _steckbrief(block: str) -> dict[str, str | None]:
 
 def parse_teilergebnishaushalt(text: str) -> list[dict]:
     """Produkte eines Teilhaushalts-Plans → je Produkt ein dict mit
-    ``{thh_nr, thh_name, produkt_nr, produkt_name, amt, jahr, ertraege,
+    ``{thh_nr, thh_name, produkt_nr, produkt_name, amt, year, ertraege,
     aufwendungen, ergebnis}`` für das **Haushaltsjahr** des Dokuments — das
     ist der ERSTE Ansatz im Tabellenkopf; die weiteren Spalten sind die
     mittelfristige Finanzplanung und keine beschlossenen Ansätze.
@@ -1482,7 +1482,7 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
         gefunden[produkt_nr] = {
             "thh_nr": int(thh_nr), "thh_name": thh_name.strip(),
             "produkt_nr": produkt_nr, "produkt_name": produkt_name.strip(),
-            "amt": amt.strip(), "jahr": jahre[ansatz_idx], **werte,
+            "amt": amt.strip(), "year": jahre[ansatz_idx], **werte,
             **steckbrief,
             "beeinflussbarkeit": normalisiere_beeinflussbarkeit(
                 steckbrief["beeinflussbarkeit_roh"]),

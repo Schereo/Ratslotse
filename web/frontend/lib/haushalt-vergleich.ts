@@ -28,7 +28,7 @@ export type VergleichStadt = {
 
 export type VergleichWert = {
   reihe: "steuerkraft" | "realsteuern";
-  jahr: number;
+  year: number;
   schluessel: string;
   stadt: string;
   kennzahl: string;
@@ -69,11 +69,11 @@ export function herkunftVon(daten: VergleichDaten,
  *  Die Oberfläche zeigt dann eine Lücke, keine geschätzte Zahl. */
 export function kennzahl(
   daten: VergleichDaten, reihe: "steuerkraft" | "realsteuern",
-  name: string, jahr: number,
+  name: string, year: number,
 ): Map<string, VergleichWert> {
   const aus = new Map<string, VergleichWert>();
   for (const w of daten.werte) {
-    if (w.reihe === reihe && w.kennzahl === name && w.jahr === jahr) {
+    if (w.reihe === reihe && w.kennzahl === name && w.year === year) {
       aus.set(w.schluessel, w);
     }
   }
@@ -102,9 +102,9 @@ export type Balken = {
  *  auf der Seite dazugeschrieben, dass geteilt wurde — dieselbe Regel wie bei
  *  `LottiVergleich`. Gespeichert wird der Wert bewusst nicht, sonst ließe
  *  sich später nicht mehr unterscheiden, was amtlich ist und was gerechnet. */
-export function steuerkraftJeEinwohner(daten: VergleichDaten, jahr: number): Balken[] {
-  const messzahl = kennzahl(daten, "steuerkraft", "steuerkraftmesszahl", jahr);
-  const einwohner = kennzahl(daten, "steuerkraft", "einwohner", jahr);
+export function steuerkraftJeEinwohner(daten: VergleichDaten, year: number): Balken[] {
+  const messzahl = kennzahl(daten, "steuerkraft", "steuerkraftmesszahl", year);
+  const einwohner = kennzahl(daten, "steuerkraft", "einwohner", year);
   const aus: Balken[] = [];
   for (const s of daten.staedte) {
     const m = messzahl.get(s.schluessel);
@@ -121,8 +121,8 @@ export function steuerkraftJeEinwohner(daten: VergleichDaten, jahr: number): Bal
 
 /** Eine gespeicherte Pro-Kopf- oder Prozent-Kennzahl als Balkenliste. */
 export function balken(daten: VergleichDaten, reihe: "steuerkraft" | "realsteuern",
-                       name: string, jahr: number): Balken[] {
-  const werte = kennzahl(daten, reihe, name, jahr);
+                       name: string, year: number): Balken[] {
+  const werte = kennzahl(daten, reihe, name, year);
   const aus: Balken[] = [];
   for (const s of daten.staedte) {
     const w = werte.get(s.schluessel);
@@ -143,17 +143,17 @@ export function platzVonOldenburg(zeilen: Balken[]): number | null {
 
 /** Eine Zeitreihe je Stadt — für die Steuereinnahmekraft über drei Jahre. */
 export function reihe(daten: VergleichDaten, name: string,
-                      schluessel: string): { jahr: number; wert: number }[] {
+                      schluessel: string): { year: number; wert: number }[] {
   return daten.werte
     .filter((w) => w.kennzahl === name && w.schluessel === schluessel)
-    .map((w) => ({ jahr: w.jahr, wert: w.wert }))
-    .sort((a, b) => a.jahr - b.jahr);
+    .map((w) => ({ year: w.year, wert: w.wert }))
+    .sort((a, b) => a.year - b.year);
 }
 
 /** Wie sich ein Wert über die Reihe verändert hat — in Prozent, gerundet.
  *  `null`, wenn Anfang oder Ende fehlen; eine halbe Reihe ergibt keine
  *  Veränderung, sondern eine Lücke. */
-export function veraenderung(punkte: { jahr: number; wert: number }[]): number | null {
+export function veraenderung(punkte: { year: number; wert: number }[]): number | null {
   if (punkte.length < 2) return null;
   const erst = punkte[0].wert;
   const letzt = punkte[punkte.length - 1].wert;

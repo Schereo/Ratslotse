@@ -33,10 +33,10 @@ import type { ErgebnisPosten } from "@/lib/haushalt";
 /** Eine Zeile der Aufschlüsselung. */
 type Bereich = { name: string; betrag: number };
 
-export function EntgelteBereiche({ zeilen, jahr, beleg }: {
+export function EntgelteBereiche({ zeilen, year, beleg }: {
   /** Die Teilhaushalts-Zeilen **eines** Postens und **eines** Jahres. */
   zeilen: ErgebnisPosten[];
-  jahr: number;
+  year: number;
   /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle. */
   beleg?: React.ReactNode;
 }) {
@@ -61,7 +61,7 @@ export function EntgelteBereiche({ zeilen, jahr, beleg }: {
         </p>
         {/* Ehrliche Menge statt „viele" (Designsprache § 6). */}
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {bereiche.length} Bereiche · {jahr}
+          {bereiche.length} Bereiche · {year}
         </span>
       </div>
 

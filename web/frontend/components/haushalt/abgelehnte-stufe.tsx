@@ -29,10 +29,10 @@ import { deMio } from "@/lib/haushalt";
 import { deZahl } from "@/components/grafik/format";
 
 export function AbgelehnteStufe({
-  jahr, geltend, geltendSeit, vorgeschlagen, proPunkt, beleg, satzungBeleg,
+  year, geltend, geltendSeit, vorgeschlagen, proPunkt, beleg, satzungBeleg,
 }: {
   /** Das Haushaltsjahr, für das der Vorschlag galt. */
-  jahr: number;
+  year: number;
   /** Der Hebesatz, der gilt — in Prozentpunkten. */
   geltend: number;
   /** Seit wann er gilt (Änderungsjahr der Reihe). */
@@ -109,7 +109,7 @@ export function AbgelehnteStufe({
       {mehr == null && (
         <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
           Um wie viele Punkte der Satz hätte steigen sollen, können wir für{" "}
-          {jahr} nicht belegen — deshalb steht hier keine Höhe, nur der
+          {year} nicht belegen — deshalb steht hier keine Höhe, nur der
           geltende Satz.
         </p>
       )}

@@ -118,9 +118,9 @@ _KFA_KOPF = [
     "Bezeichnung der Kreisfreien Stadt, Gemeinde und Samtgemeinde",
     "Einwohnerzahl1) vom 30.06.{ew}",
     "Steuerkraftmesszahlen {vor}, Beträge in 1000 Euro",
-    "Steuerkraftmesszahlen {jahr}, Beträge in 1000 Euro",
-    "Abweichung Steuerkraftmesszahlen {jahr} abzüglich Steuerkraftmesszahlen {vor}",
-    "Relative Zu- und Abnahme der Steuerkraftmesszahl {jahr} gegenüber {vor}",
+    "Steuerkraftmesszahlen {year}, Beträge in 1000 Euro",
+    "Abweichung Steuerkraftmesszahlen {year} abzüglich Steuerkraftmesszahlen {vor}",
+    "Relative Zu- und Abnahme der Steuerkraftmesszahl {year} gegenüber {vor}",
 ]
 
 #: Wörtlich aus KFA 2026, Blatt ST_KR_MESS_VGL: die acht kreisfreien Städte,
@@ -156,12 +156,12 @@ KFA2025_ZEILEN = [
 ]
 
 
-def _kfa_blatt(jahr: int, zeilen: list[tuple]) -> dict[int, list]:
-    vor = jahr - 1
-    kopf = [t.format(jahr=jahr, vor=vor, ew=vor) for t in _KFA_KOPF]
+def _kfa_blatt(year: int, zeilen: list[tuple]) -> dict[int, list]:
+    vor = year - 1
+    kopf = [t.format(year=year, vor=vor, ew=vor) for t in _KFA_KOPF]
     blatt: dict[int, list] = {
         1: ["Kommunaler Finanzausgleich"],
-        2: [f"Stand: 26.03.{jahr}"],
+        2: [f"Stand: 26.03.{year}"],
         # Der Zeiger auf die Vorlesehilfe — er ist die einzige Angabe, aus der
         # der Parser die Kopfzeile ermittelt.
         3: ["Der Tabellenkopf für Vorlesehilfen befindet sich in Zeile 14."],
@@ -313,7 +313,7 @@ def test_doctype_wird_abgelehnt(tmp_path):
 
 def test_kfa_liest_die_acht_staedte(kfa2026):
     jahrgang = sv.lies_kfa(kfa2026)
-    assert (jahrgang.jahr, jahrgang.vorjahr) == (2026, 2025)
+    assert (jahrgang.year, jahrgang.vorjahr) == (2026, 2025)
     assert jahrgang.stand == "26.03.2026"
     # Alle Gemeinden der Datei, nicht nur die Städte: Die Überlappungsprobe
     # ist nur dann etwas wert, wenn sie über den ganzen Bestand läuft.
@@ -377,7 +377,7 @@ def test_steuerkraft_zeilen_nur_kreisfreie_staedte_und_ohne_pro_kopf(kfa2026):
     assert "151009" not in schluessel   # Gifhorn ist kreisangehörig
     # Der Pro-Kopf-Wert ist UNSERE Division und wird deshalb nicht gespeichert.
     assert {z["kennzahl"] for z in zeilen} == {"steuerkraftmesszahl", "einwohner"}
-    assert all(z["jahr"] == 2026 for z in zeilen)
+    assert all(z["year"] == 2026 for z in zeilen)
     # Der Name kommt aus unserer Liste, nicht aus der Datei — sonst wechselte
     # er mit dem Jahrgang mit.
     assert {z["stadt"] for z in zeilen if z["schluessel"] == "403000"} == {"Oldenburg"}
@@ -402,7 +402,7 @@ def test_steuerkraft_je_einwohner_ergibt_die_veroeffentlichten_werte(kfa2026):
 
 def test_realsteuervergleich_liest_hebesaetze_und_einnahmekraft(realsteuer):
     rs = sv.lies_realsteuervergleich(realsteuer)
-    assert rs.jahr == 2025
+    assert rs.year == 2025
     assert rs.stand == "Korrigierte Version vom 30.07.2026"
     ol = rs.hebesaetze["403000"]
     assert (ol["hebesatz_grundsteuer_a"], ol["hebesatz_grundsteuer_b"],
@@ -493,11 +493,11 @@ def test_jeder_jahreswert_traegt_sein_eigenes_jahr(realsteuer):
     """Der Realsteuervergleich 2025 führt auch 2023 und 2024. Alles unter dem
     Dateijahr abzulegen machte aus drei Jahren eines."""
     zeilen, _ = sv.zeilen_realsteuern(sv.lies_realsteuervergleich(realsteuer))
-    jahre = {z["jahr"] for z in zeilen if z["kennzahl"] == "steuereinnahmekraft_je_ew"}
+    jahre = {z["year"] for z in zeilen if z["kennzahl"] == "steuereinnahmekraft_je_ew"}
     assert jahre == {2023, 2024, 2025}
-    assert {z["jahr"] for z in zeilen if z["kennzahl"].startswith("hebesatz_")} == {2025}
+    assert {z["year"] for z in zeilen if z["kennzahl"].startswith("hebesatz_")} == {2025}
     ol25 = next(z for z in zeilen if z["stadt"] == "Oldenburg"
-                and z["kennzahl"] == "steuereinnahmekraft_je_ew" and z["jahr"] == 2023)
+                and z["kennzahl"] == "steuereinnahmekraft_je_ew" and z["year"] == 2023)
     assert ol25["wert"] == pytest.approx(1673.43)
 
 

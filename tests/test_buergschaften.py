@@ -102,15 +102,15 @@ def test_die_luecke_wird_nur_dort_aus_dem_folgejahr_gefuellt_wo_sie_ist():
     r = b.reihe(gefunden)
     # 2021 und 2023 fehlen in dieser Auswahl und werden beide zu Recht aus dem
     # Anfangsbestand des Folgejahrs ergänzt.
-    assert [z["jahr"] for z in r] == [2019, 2021, 2022, 2023, 2024]
-    nachgetragen = {z["jahr"] for z in r if z["aus_folgejahr"]}
+    assert [z["year"] for z in r] == [2019, 2021, 2022, 2023, 2024]
+    nachgetragen = {z["year"] for z in r if z["aus_folgejahr"]}
     assert nachgetragen == {2021, 2023}
 
     # Der eigentliche Punkt: 2019, 2022 und 2024 sprechen selbst und behalten
     # ihre eigene Fundstelle — 2019 samt Cent-Genauigkeit.
     for z in r:
-        if z["jahr"] in {2019, 2022, 2024}:
-            assert z["aus_folgejahr"] is False, z["jahr"]
+        if z["year"] in {2019, 2022, 2024}:
+            assert z["aus_folgejahr"] is False, z["year"]
     assert r[0]["genau"] is True and r[0]["bestand"] == 74_991_739.16
 
 
@@ -124,7 +124,7 @@ def test_kettenprobe_findet_einen_widerspruch():
     assert b.kettenprobe(echt) == []        # 2024 kennt 2023 nicht → kein Riss
 
     gefaelscht = b.parse_bestand(ANHANG_2024, 2024)
-    zerissen = [{**b.parse_bestand(ANHANG_2022, 2022), "jahr": 2023,
+    zerissen = [{**b.parse_bestand(ANHANG_2022, 2022), "year": 2023,
                  "bestand": 200_000_000.0}, gefaelscht]
     risse = b.kettenprobe(zerissen)
     assert len(risse) == 1 and "214.8" in risse[0] and "200.0" in risse[0]
@@ -133,7 +133,7 @@ def test_kettenprobe_findet_einen_widerspruch():
 def test_rundungsdifferenz_ist_kein_riss():
     """Die Quelle rundet auf Zehntel-Millionen; zwei Rundungen dürfen sich um
     weniger als eine halbe Stelle unterscheiden, ohne dass jemand irrt."""
-    a = {"jahr": 2023, "bestand": 214_800_000.0, "aus_folgejahr": False}
-    b_ = {"jahr": 2024, "bestand": 220_300_000.0, "aus_folgejahr": False,
+    a = {"year": 2023, "bestand": 214_800_000.0, "aus_folgejahr": False}
+    b_ = {"year": 2024, "bestand": 220_300_000.0, "aus_folgejahr": False,
           "vorjahr_jahr": 2023, "vorjahr_bestand": 214_760_000.0}
     assert b.kettenprobe([a, b_]) == []

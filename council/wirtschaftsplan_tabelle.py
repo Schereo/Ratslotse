@@ -156,7 +156,7 @@ _KOPFSPALTE = re.compile(r"(Ist|Plan|Ergebnis)\s+(20\d{2})")
 #: Der Satz unter der Tabelle. „Euro" und „€" kommen beide vor, und er läuft
 #: über einen Zeilenumbruch — deshalb wird der Text vorher geglättet.
 _PROSA = re.compile(
-    r"Erfolgsplan\s+(?P<jahr>\d{4})\s+umfasst.{0,80}?Ertr[äa]ge.{0,60}?insgesamt\s+"
+    r"Erfolgsplan\s+(?P<year>\d{4})\s+umfasst.{0,80}?Ertr[äa]ge.{0,60}?insgesamt\s+"
     r"(?P<ertraege>[\d.]+)\s*(?:€|Euro).{0,90}?Aufwendungen.{0,60}?insgesamt\s+"
     r"(?P<aufwendungen>[\d.]+)\s*(?:€|Euro)")
 
@@ -190,7 +190,7 @@ class Spaltenprobe:
     """Das Ergebnis der Rechenprobe einer Spalte."""
 
     art: str          # ist | ansatz | finanzplanung
-    jahr: int
+    year: int
     ertraege: float
     aufwendungen: float
     ergebnis: float
@@ -226,7 +226,7 @@ def _datenzeile(zeilen: list[str], muster: tuple[str, ...]) -> tuple[str, list[f
 
 
 def kopfspalten(zeilen: list[str], mindestens: int = 4) -> list[tuple[str, int]]:
-    """Die Spalten der Tabelle als ``(art, jahr)`` — aus der Kopfzeile.
+    """Die Spalten der Tabelle als ``(art, year)`` — aus der Kopfzeile.
 
     ``art`` ist ``ist`` für die Rückschau (das Dokument schreibt „Ist" oder
     „Ergebnis") und sonst ``plan``; welches der Planjahre **der** Haushalt ist,
@@ -235,8 +235,8 @@ def kopfspalten(zeilen: list[str], mindestens: int = 4) -> list[tuple[str, int]]
     for zeile in zeilen:
         treffer = _KOPFSPALTE.findall(zeile)
         if len(treffer) >= mindestens:
-            return [("ist" if wort in ("Ist", "Ergebnis") else "plan", int(jahr))
-                    for wort, jahr in treffer]
+            return [("ist" if wort in ("Ist", "Ergebnis") else "plan", int(year))
+                    for wort, year in treffer]
     return []
 
 
@@ -333,8 +333,8 @@ def spaltenproben(text: str, betrieb: str) -> list[Spaltenprobe]:
             f"{breite} Beträge")
 
     return [
-        Spaltenprobe(art=art, jahr=jahr, ertraege=e, aufwendungen=a, ergebnis=g)
-        for (art, jahr), e, a, g in zip(
+        Spaltenprobe(art=art, year=year, ertraege=e, aufwendungen=a, ergebnis=g)
+        for (art, year), e, a, g in zip(
             kopf, gefunden["ertraege"], gefunden["aufwendungen"], gefunden["ergebnis"])
     ]
 
@@ -369,13 +369,13 @@ def prosa_summen(text: str) -> tuple[int, float, float] | None:
     m = _PROSA.search(_glaetten(text))
     if not m:
         return None
-    return (int(m.group("jahr")),
+    return (int(m.group("year")),
             _eur(m.group("ertraege")), _eur(m.group("aufwendungen")))
 
 
-def plan_bezug(proben: list[Spaltenprobe], jahr: int) -> float:
+def plan_bezug(proben: list[Spaltenprobe], year: int) -> float:
     """Die Ertragssumme des Planjahres — Bezugsgröße der Bereichsprobe."""
-    return next((p.ertraege for p in proben if p.jahr == jahr), 0.0)
+    return next((p.ertraege for p in proben if p.year == year), 0.0)
 
 
 def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
@@ -392,13 +392,13 @@ def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
     if gerissen:
         raise WirtschaftsplanFehler(
             f"{template_number}: {len(gerissen)} von {len(proben)} Spalten gehen nicht "
-            "auf — " + "; ".join(f"{p.jahr}: Rest {p.rest:+.2f} €" for p in gerissen))
+            "auf — " + "; ".join(f"{p.year}: Rest {p.rest:+.2f} €" for p in gerissen))
 
-    plan = next((p for p in proben if p.jahr == haushaltsjahr), None)
+    plan = next((p for p in proben if p.year == haushaltsjahr), None)
     if plan is None:
         raise WirtschaftsplanFehler(
             f"{template_number}: Haushaltsjahr {haushaltsjahr} steht nicht in der "
-            f"Kopfzeile (dort: {sorted(p.jahr for p in proben)})")
+            f"Kopfzeile (dort: {sorted(p.year for p in proben)})")
 
     # Die Bereichsprobe beantwortet: Haben wir die Gesamtzeile erwischt? Ein
     # Betriebszweig wäre um ein Vielfaches kleiner und fiele hier durch, lange
@@ -408,7 +408,7 @@ def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
     bereiche = bereichsprobe(text, betrieb)
     if bereiche:
         n_zweige, reste = bereiche
-        i = next((k for k, p_ in enumerate(proben) if p_.jahr == haushaltsjahr), None)
+        i = next((k for k, p_ in enumerate(proben) if p_.year == haushaltsjahr), None)
         if i is not None and i < len(reste) and plan_bezug(proben, haushaltsjahr):
             abstand = abs(reste[i]) / max(plan_bezug(proben, haushaltsjahr), 1.0)
             if abstand > BEREICHE_SCHWELLE:
@@ -430,7 +430,7 @@ def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
 
     name = BETRIEBE[betrieb][1]
     return Wirtschaftsplan(
-        betrieb=betrieb, betrieb_name=name, jahr=haushaltsjahr,
+        betrieb=betrieb, betrieb_name=name, year=haushaltsjahr,
         template_number=template_number,
         ertraege=plan.ertraege, aufwendungen=plan.aufwendungen,
         # Kein eigener Steuerposten: Was der Beschlusstext des EGH als
@@ -477,5 +477,5 @@ def herkunft_fuer(plan: Wirtschaftsplan, proben: list[Spaltenprobe],
         fundstelle=("Erfolgsplan der Anlage (per OCR gelesen)" if ocr_modell
                     else "Erfolgsplan der Anlage"),
         probe_ergebnis=ergebnis,
-        stand=f"Wirtschaftsplan {plan.jahr}, Fassung der Anlage",
+        stand=f"Wirtschaftsplan {plan.year}, Fassung der Anlage",
     )

@@ -3,14 +3,14 @@
 // „Wann der Haushalt entschieden wird" — der ERSTE Abschnitt von
 // /haushalt/mitreden.
 //
-// Bis zum 21.08.2026 war das die eigene Seite /haushalt/jahr. Sie ist mit
+// Bis zum 21.08.2026 war das die eigene Seite /haushalt/year. Sie ist mit
 // „Der Streit ums Geld" und dem Haushalts-Labor zusammengelegt worden: Alle
 // drei beantworten dieselbe Frage („Wie rede ich mit?"), und der Bereich war
 // auf neunzehn Schritte gewachsen (Tim, 21.08.: „man wird erschlagen vor
 // Inhalten"). Der Rahmen — Quellenkontext, Verzeichnis, Weiter-Karte — liegt
 // jetzt bei der Seite; hier steht nur noch der Inhalt.
 
-// /haushalt/jahr — „Wann der Haushalt entschieden wird" (H3-06/H4-14,
+// /haushalt/year — „Wann der Haushalt entschieden wird" (H3-06/H4-14,
 // davor H2-10).
 //
 // Die einzige Seite des Haushalts-Bereichs, die nicht aus Finanzdokumenten
@@ -96,7 +96,7 @@ export function TermineAbschnitt({ onBestand }: {
      *  uns befinden, welche Phasen es gerade gibt"). Aus derselben Runde, die
      *  der große Zeitstrahl unten zeichnet. */
     phasen: { titel: string; datum: string | null; erledigt: boolean; aktuell: boolean }[];
-    jahr: number;
+    year: number;
   }) => void;
 } = {}) {
   const { data, loading } = useFetch<WegDaten>("/council/haushalt/weg");
@@ -107,7 +107,7 @@ export function TermineAbschnitt({ onBestand }: {
 
   useEffect(() => {
     if (!onBestand || loading) return;
-    if (!data?.runden.length) { onBestand({ naechster: null, phasen: [], jahr: 0 }); return; }
+    if (!data?.runden.length) { onBestand({ naechster: null, phasen: [], year: 0 }); return; }
     const tag = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`;
     const kommend = data.runden
       .flatMap((r) => r.stationen)
@@ -129,7 +129,7 @@ export function TermineAbschnitt({ onBestand }: {
       { titel: r.fachausschuesse ? `Beratung, ${r.fachausschuesse.anzahl}\u00d7` : "Beratung",
         datum: r.fachausschuesse?.bis ?? null },
       { titel: "Beschluss im Rat", datum: ratsbeschluss?.datum ?? null },
-      { titel: `Haushaltsjahr ${r.jahr}`, datum: `${r.jahr}-01-01` },
+      { titel: `Haushaltsjahr ${r.year}`, datum: `${r.year}-01-01` },
     ];
     const erledigt = roh.map((ph) => ph.datum != null && ph.datum <= tag);
     const laufend = erledigt.findIndex((e) => !e);
@@ -144,7 +144,7 @@ export function TermineAbschnitt({ onBestand }: {
       naechster: kommend[0]
         ? { datum: kommend[0].datum, gremium: kommend[0].gremium } : null,
       phasen,
-      jahr: r.jahr,
+      year: r.year,
     });
   }, [onBestand, loading, data, heute]);
 
@@ -160,9 +160,9 @@ export function TermineAbschnitt({ onBestand }: {
     );
   }
 
-  const jahre = runden.map((r) => r.jahr);
-  const jahr = gewaehlt != null && jahre.includes(gewaehlt) ? gewaehlt : jahre[jahre.length - 1];
-  const runde = runden.find((r) => r.jahr === jahr)!;
+  const jahre = runden.map((r) => r.year);
+  const year = gewaehlt != null && jahre.includes(gewaehlt) ? gewaehlt : jahre[jahre.length - 1];
+  const runde = runden.find((r) => r.year === year)!;
   const rh = rhythmus(runden);
   const haeufigster = rh.entwurfMonate[0];
   const abschluss = jahresabschlussMass(dokumente?.dokumente?.jahresabschluss);
@@ -201,16 +201,16 @@ export function TermineAbschnitt({ onBestand }: {
     });
   }
   stationen.push({
-    label: `Haushaltsjahr ${anker.jahr}`,
-    von: `${anker.jahr}-01-01`,
-    bis: `${anker.jahr}-12-31`,
+    label: `Haushaltsjahr ${anker.year}`,
+    von: `${anker.year}-01-01`,
+    bis: `${anker.year}-12-31`,
     gemessen: "das Geld wird ausgegeben — das Haushaltsjahr ist das Kalenderjahr",
   });
   let abschlussVon: string | null = null;
   if (abschluss) {
     const jahrVersatz = Math.floor((abschluss.medianMonate - 1) / 12);
     const monat = ((abschluss.medianMonate - 1) % 12) + 1;
-    abschlussVon = `${anker.jahr + jahrVersatz}-${String(monat).padStart(2, "0")}-15`;
+    abschlussVon = `${anker.year + jahrVersatz}-${String(monat).padStart(2, "0")}-15`;
     stationen.push({
       label: "Jahresabschluss",
       von: abschlussVon,
@@ -244,7 +244,7 @@ export function TermineAbschnitt({ onBestand }: {
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Der Weg des Haushalts {anker.jahr}
+              Der Weg des Haushalts {anker.year}
             </h2>
             <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
               {rh.jahrgaenge} Jahrgänge · RIS-Sitzungsdaten
@@ -294,10 +294,10 @@ export function TermineAbschnitt({ onBestand }: {
                 text={`Haushaltsjahren wurde der Entwurf im ${MONATE[haeufigster.monat - 1]} eingebracht. Der Auftakt ist der verlässlichste Termin im ganzen Verfahren.`}
               />
             )}
-            {rh.frueheste && rh.spaeteste && rh.frueheste.jahr !== rh.spaeteste.jahr && (
+            {rh.frueheste && rh.spaeteste && rh.frueheste.year !== rh.spaeteste.year && (
               <Befund
                 zahl={`${deTagMonat(entscheidung(rh.frueheste)!.datum)} – ${deTagMonat(entscheidung(rh.spaeteste)!.datum)}`}
-                text={`weit streut der Tag, an dem der Rat abschließend entschied — gemessen am Beginn des Haushaltsjahres am frühesten für ${rh.frueheste.jahr}, am spätesten für ${rh.spaeteste.jahr}. Ein fester Monat lässt sich daraus nicht machen.`}
+                text={`weit streut der Tag, an dem der Rat abschließend entschied — gemessen am Beginn des Haushaltsjahres am frühesten für ${rh.frueheste.year}, am spätesten für ${rh.spaeteste.year}. Ein fester Monat lässt sich daraus nicht machen.`}
               />
             )}
           </div>
@@ -318,25 +318,25 @@ export function TermineAbschnitt({ onBestand }: {
           role="group" aria-label="Haushaltsjahr wählen">
           {runden.map((r) => (
             <button
-              key={r.jahr}
+              key={r.year}
               type="button"
-              onClick={() => setGewaehlt(r.jahr)}
-              aria-pressed={r.jahr === jahr}
+              onClick={() => setGewaehlt(r.year)}
+              aria-pressed={r.year === year}
               className={cn(
                 "flex-none rounded-full border px-3.5 py-1.5 font-mono text-[12px] font-medium tabular-nums transition-colors active:scale-[0.97]",
-                r.jahr === jahr
+                r.year === year
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-muted-foreground hover:text-foreground",
               )}
             >
-              {r.jahr}
+              {r.year}
             </button>
           ))}
         </div>
 
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Die Stationen des Haushalts {runde.jahr}
+            Die Stationen des Haushalts {runde.year}
           </h2>
           <div className="mt-2">
             <Weg runde={runde} />

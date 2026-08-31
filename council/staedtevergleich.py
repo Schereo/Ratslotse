@@ -318,12 +318,12 @@ def _zahl(wert: object) -> float | None:
 class KfaJahrgang:
     """Ein Ausgleichsjahr aus ``ST_KR_MESS_VGL``.
 
-    ``jahr`` ist das Ausgleichsjahr, das die Datei selbst benennt — **nicht**
+    ``year`` ist das Ausgleichsjahr, das die Datei selbst benennt — **nicht**
     das, unter dem unser Open-Data-Bestand dieselben Beträge führt (s.
     Modulkopf).
     """
 
-    jahr: int
+    year: int
     #: Das mitgelieferte Vorjahr. Es ist die Rechenprobe: Es muss die
     #: Hauptspalte des Vorjahrgangs wiederholen.
     vorjahr: int
@@ -364,7 +364,7 @@ def lies_kfa(pfad: str) -> KfaJahrgang:
             if (m := re.search(r"Stand:\s*([\d.]+)", str(zelle or ""))):
                 stand = m.group(1)
 
-    jahrgang = KfaJahrgang(jahr=j_jahr, vorjahr=j_vor, stand=stand)
+    jahrgang = KfaJahrgang(year=j_jahr, vorjahr=j_vor, stand=stand)
     for zeile in zeilen[kopf_idx + 1:]:
         if not zeile:
             continue
@@ -394,10 +394,10 @@ def probe_ueberlappung(alt: KfaJahrgang, neu: KfaJahrgang) -> dict:
 
     Geprüft wird über **alle** Gemeinden, nicht nur über die acht Städte.
     """
-    if neu.vorjahr != alt.jahr:
+    if neu.vorjahr != alt.year:
         raise ValueError(
-            f"Die Jahrgänge greifen nicht ineinander: {alt.jahr} und "
-            f"{neu.jahr} (Vorjahresspalte {neu.vorjahr}).")
+            f"Die Jahrgänge greifen nicht ineinander: {alt.year} und "
+            f"{neu.year} (Vorjahresspalte {neu.vorjahr}).")
     gemeinsam = sorted(set(alt.staedte) & set(neu.staedte))
     abweichungen = []
     for key in gemeinsam:
@@ -425,11 +425,11 @@ _REALSTEUERN = {"Grundsteuer A": "grundsteuer_a",
 class Realsteuerjahrgang:
     """Ein Berichtsjahr des Realsteuervergleichs (Blätter ``2_1`` und ``5_1``)."""
 
-    jahr: int
+    year: int
     stand: str | None
     #: Schlüssel → {stadt, hebesatz_*, grundbetrag_*_teur, ist_*_teur, …}
     hebesaetze: dict[str, dict] = field(default_factory=dict)
-    #: Schlüssel → {stadt, einwohner_schnitt, je_jahr: {jahr: (teur, je_ew)}, …}
+    #: Schlüssel → {stadt, einwohner_schnitt, je_jahr: {year: (teur, je_ew)}, …}
     einnahmekraft: dict[str, dict] = field(default_factory=dict)
 
 
@@ -441,8 +441,8 @@ def lies_realsteuervergleich(pfad: str) -> Realsteuerjahrgang:
     Städte unter derselben Schlüsselnummer — verbunden wird darüber, nie über
     den Namen.
     """
-    jahr, stand = _realsteuer_kopf(pfad)
-    jahrgang = Realsteuerjahrgang(jahr=jahr, stand=stand)
+    year, stand = _realsteuer_kopf(pfad)
+    jahrgang = Realsteuerjahrgang(year=year, stand=stand)
 
     # --- Blatt 2_1: Hebesätze, Grundbeträge, Ist-Aufkommen ---
     zeilen = blatt_lesen(pfad, "2_1")
@@ -544,17 +544,17 @@ def _realsteuer_kopf(pfad: str) -> tuple[int, str | None]:
     das gehört an die Zahl: Die Fassung, die wir gelesen haben, ist nicht
     zwingend die erste, die es gab.
     """
-    jahr, stand = None, None
+    year, stand = None, None
     for zeile in blatt_lesen(pfad, "Titel"):
         for zelle in zeile:
             text = " ".join(str(zelle or "").split())
             if (m := re.search(r"Realsteuervergleich\s+(\d{4})", text)):
-                jahr = int(m.group(1))
+                year = int(m.group(1))
             if (m := re.search(r"(Korrigierte Version vom [\d.]+)", text)):
                 stand = m.group(1)
-    if jahr is None:
+    if year is None:
         raise ValueError(f"{pfad}: Auf dem Titelblatt steht kein Berichtsjahr")
-    return jahr, stand
+    return year, stand
 
 
 def probe_hebesatz(eintrag: dict) -> dict:
@@ -652,7 +652,7 @@ def zeilen_steuerkraft(jahrgang: KfaJahrgang) -> list[dict]:
         eintrag = jahrgang.staedte.get(key)
         if not eintrag:
             continue
-        gemeinsam = {"reihe": "steuerkraft", "jahr": jahrgang.jahr,
+        gemeinsam = {"reihe": "steuerkraft", "year": jahrgang.year,
                      "schluessel": key, "stadt": name}
         aus.append({**gemeinsam, "kennzahl": "steuerkraftmesszahl",
                     "wert": eintrag["messzahl_teur"], "einheit": "teur"})
@@ -680,7 +680,7 @@ def zeilen_realsteuern(jahrgang: Realsteuerjahrgang) -> tuple[list[dict], list[d
                               "reihe": "realsteuern", "grund": "Hebesatzprobe",
                               "ergebnis": probe["ergebnis"]})
             continue
-        gemeinsam = {"reihe": "realsteuern", "jahr": jahrgang.jahr,
+        gemeinsam = {"reihe": "realsteuern", "year": jahrgang.year,
                      "schluessel": key, "stadt": KREISFREIE_STAEDTE[key]}
         for suffix in _REALSTEUERN.values():
             if (wert := eintrag.get(f"hebesatz_{suffix}")) is not None:
@@ -700,8 +700,8 @@ def zeilen_realsteuern(jahrgang: Realsteuerjahrgang) -> tuple[list[dict], list[d
         # Jeder Jahreswert trägt SEIN Jahr, nicht das Berichtsjahr der Datei.
         # Der Realsteuervergleich 2025 führt auch 2023 und 2024 — eine Zeile,
         # die alles unter 2025 ablegte, machte aus drei Jahren eines.
-        for jahr, werte in sorted(eintrag["je_jahr"].items()):
-            zeilen.append({"reihe": "realsteuern", "jahr": jahr,
+        for year, werte in sorted(eintrag["je_jahr"].items()):
+            zeilen.append({"reihe": "realsteuern", "year": year,
                            "schluessel": key, "stadt": KREISFREIE_STAEDTE[key],
                            "kennzahl": "steuereinnahmekraft_je_ew",
                            "wert": werte["je_ew"], "einheit": "eur_je_ew"})

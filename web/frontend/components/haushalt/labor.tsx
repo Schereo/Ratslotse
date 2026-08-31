@@ -105,8 +105,8 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
       </p>
       <div className="mt-3 flex flex-col gap-2">
         {reihe.map((r) => (
-          <div key={r.jahr} className="flex items-center gap-2.5">
-            <span className="w-9 shrink-0 font-mono text-[11px] text-muted-foreground">{r.jahr}</span>
+          <div key={r.year} className="flex items-center gap-2.5">
+            <span className="w-9 shrink-0 font-mono text-[11px] text-muted-foreground">{r.year}</span>
             {/* Zwei Balken an gemeinsamer Nulllinie: Plan grau, Ist blau. */}
             <span className="relative h-6 min-w-0 flex-1">
               <span className="absolute inset-y-0 left-1/2 w-px bg-border" />
@@ -145,10 +145,10 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
       <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
         Aus den Jahresabschlüssen der Stadt <Beleg q="jahresabschluss" /> — ordentliches plus außerordentliches
         Ergebnis. Das heißt nicht, dass das Minus oben unecht wäre: Es heißt, dass ein Plan Vorsicht
-        einpreist. Für {reihe[reihe.length - 1].jahr + 1} und später liegt noch kein Abschluss vor.
+        einpreist. Für {reihe[reihe.length - 1].year + 1} und später liegt noch kein Abschluss vor.
         {abweichenderBezug.length > 0 && (
           <>
-            {" "}* In {abweichenderBezug.map((r) => r.jahr).join(" und ")} vergleicht der
+            {" "}* In {abweichenderBezug.map((r) => r.year).join(" und ")} vergleicht der
             Abschluss nicht mit dem ursprünglichen Ansatz, sondern mit dem fortgeschriebenen
             Plan ({[...new Set(abweichenderBezug.map((r) => PLAN_ART_LABEL[r.planArt]))].join(", ")}
             ) — so rechnet die Stadt dort selbst.
@@ -192,8 +192,8 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
 
   const basis = useMemo(() => {
     const jahre = jahreSortiert(daten);
-    const jahr = jahre[jahre.length - 1];
-    const zeilen = daten.jahre[String(jahr)] ?? [];
+    const year = jahre[jahre.length - 1];
+    const zeilen = daten.jahre[String(year)] ?? [];
     const g = summe(zeilen);
     const defizit = g?.ertraege != null && g?.aufwendungen != null
       ? mio(g.aufwendungen - g.ertraege) ?? 0 : 0;
@@ -202,7 +202,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
       .map((z) => ({ bereich: z.bereich, aus: mio(z.aufwendungen) ?? 0 }))
       .sort((a, b) => b.aus - a.aus);
     const kraft = daten.steuerkraft.filter((k) => k.messzahl != null && k.zuweisungen != null).slice(-2);
-    return { jahr, defizit, freiwillig, kraft };
+    return { year, defizit, freiwillig, kraft };
   }, [daten]);
 
   // Die Grundlagen der drei Einnahme-Regler — jeder aus seiner Reihe, keiner
@@ -272,7 +272,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
     const jahrInv = programm?.jahre.at(-1) ?? null;
     if (jahrInv == null) return 0;
     const summe = (programm?.massnahmen ?? [])
-      .filter((z) => z.jahr === jahrInv && vorhabenAus[z.code || z.bezeichnung])
+      .filter((z) => z.year === jahrInv && vorhabenAus[z.code || z.bezeichnung])
       .reduce((s, z) => s + z.gesamtsumme, 0);
     return Math.round((summe / 1e6) * 10) / 10;
   }, [programm, vorhabenAus]);
@@ -317,7 +317,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
       kompakt ? "shadow-[0_6px_16px_-10px_rgba(2,32,71,0.5)]" : "shadow-sm")}>
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
-          Dein Haushalt {basis.jahr}
+          Dein Haushalt {basis.year}
         </p>
         {etwasGeaendert && (
           <button type="button" onClick={zuruecksetzen}
@@ -586,10 +586,10 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
         <div className="flex flex-col gap-3">
           {werkbank === "einnahmen" && (
             <EinnahmenWerkbank
-              basisJahr={basis.jahr}
+              basisJahr={basis.year}
               punkte={punkte} setPunkte={setPunkte}
               gewst={gewst} proPunktGewst={proPunktGewst}
-              gewstBasisJahr={gewstBetrag?.jahr ?? null}
+              gewstBasisJahr={gewstBetrag?.year ?? null}
               grundstPunkte={grundstPunkte} setGrundstPunkte={setGrundstPunkte}
               grundst={grundst} proPunktGrundst={proPunktGrundst} anteilA={anteilA}
               hundePct={hundePct} setHundePct={setHundePct} hunde={hunde}
@@ -603,7 +603,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
           {werkbank === "ausgaben" && (
             <AusgabenWerkbank
               freiwillig={basis.freiwillig}
-              produkte={produkte} produktJahr={produktJahr} basisJahr={basis.jahr}
+              produkte={produkte} produktJahr={produktJahr} basisJahr={basis.year}
               aenderung={aenderung}
               setAenderung={(bereich, pct) => setAenderung((k) => ({ ...k, [bereich]: pct }))}
               maxProzent={MAX_KUERZUNG}
@@ -680,7 +680,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               Schlüsselzuweisungen — wie stark, zeigt die Spanne an der Ergebnis-Karte.
               {basis.kraft.length === 2 && (
                 <>
-                  {" "}Zuletzt: {basis.kraft[0].jahr} auf {basis.kraft[1].jahr} stieg die
+                  {" "}Zuletzt: {basis.kraft[0].year} auf {basis.kraft[1].year} stieg die
                   Steuerkraft um {deMio(((basis.kraft[1].messzahl ?? 0) - (basis.kraft[0].messzahl ?? 0)) / 1e6)}
                   &#8239;Mio.&nbsp;€ und die Zuweisung um{" "}
                   {deMio(((basis.kraft[1].zuweisungen ?? 0) - (basis.kraft[0].zuweisungen ?? 0)) / 1e6)}

@@ -58,7 +58,7 @@ export type QaGrafik = {
   titel: string;
   einheit: string;
   nachkomma: number;
-  reihe: { jahr: number; wert: number }[];
+  reihe: { year: number; wert: number }[];
   hinweis?: string | null;
   quelle?: string | null;
   /** Anschlussstelle in den Haushalts-Bereich — der Link erscheint nur
@@ -166,7 +166,7 @@ function klammerIstParteiLabel(inhalt: string, badgePartei: string | null): bool
  *  der Zeile), sonst gibt es kein Badge (lieber keins als ein geratenes, Tims
  *  Oltmanns-Befund). */
 function usePersonSuche(): (name: string, partei?: string | null,
-                           jahr?: number | null) => PersonEintrag | null {
+                           year?: number | null) => PersonEintrag | null {
   const lexikon = usePersonenLexikon();
   const map = useMemo(() => {
     const m = new Map<string, PersonEintrag[]>();
@@ -178,7 +178,7 @@ function usePersonSuche(): (name: string, partei?: string | null,
     }
     return m;
   }, [lexikon]);
-  return (name: string, partei?: string | null, jahr?: number | null) => {
+  return (name: string, partei?: string | null, year?: number | null) => {
     const woerter = (name || "").match(/[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}/g);
     if (!woerter || map.size === 0) return null;
     const nachname = falteName(woerter[woerter.length - 1]);
@@ -206,7 +206,7 @@ function usePersonSuche(): (name: string, partei?: string | null,
     // Baumann (CDU)" hätte sonst das Badge von Udo Baumann bekommen.
     const k = parteiKuerzel(partei ?? null);
     if (k !== "Rat") {
-      echte = echte.filter((p) => hatteFraktion(p, k, jahr));
+      echte = echte.filter((p) => hatteFraktion(p, k, year));
       if (echte.length === 0) return null;
       if (echte.length === 1) return echte[0];
     }
@@ -215,9 +215,9 @@ function usePersonSuche(): (name: string, partei?: string | null,
     // Paul Behrens. Am Prod-Bestand gemessen bringt die Stufe rund 1.400
     // weitere Beiträge, ohne einer Zuordnung der Fraktions-Stufe zu
     // widersprechen (21.08.2026).
-    if (!jahr) return null;
+    if (!year) return null;
     const imZeitraum = echte.filter(
-      (p) => p.von && p.bis && Number(p.von) <= jahr && jahr <= Number(p.bis));
+      (p) => p.von && p.bis && Number(p.von) <= year && year <= Number(p.bis));
     return imZeitraum.length === 1 ? imZeitraum[0] : null;
   };
 }
@@ -229,11 +229,11 @@ function usePersonSuche(): (name: string, partei?: string | null,
  *  in den Anwesenheitslisten steht, und mit Jahr auch nur die passende Phase.
  *  Wer eine Fraktion nie hatte, bekommt weiter kein Badge — „Dr. Niewerth
  *  Baumann (CDU)" wird so nicht zu Udo Baumann. */
-function hatteFraktion(p: PersonEintrag, kuerzel: string, jahr?: number | null): boolean {
+function hatteFraktion(p: PersonEintrag, kuerzel: string, year?: number | null): boolean {
   if (parteienPassen(parteiKuerzel(p.partei), kuerzel)) return true;
   return (p.phasen ?? []).some((ph) =>
     parteienPassen(parteiKuerzel(ph.partei), kuerzel)
-    && (!jahr || (Number(ph.von) <= jahr && jahr <= Number(ph.bis))));
+    && (!year || (Number(ph.von) <= year && year <= Number(ph.bis))));
 }
 
 /** Gruppen-Toleranz beim Fraktions-Vergleich: Die Protokolle labeln mal die

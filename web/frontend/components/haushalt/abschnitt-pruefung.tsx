@@ -104,7 +104,7 @@ function FeststellungsZeile({ f, zeigeJahr = false }: { f: Feststellung; zeigeJa
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <MarkePille marke={f.marke} name={f.marke_name} klein />
         <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-          {zeigeJahr && <>{f.jahr} · </>}
+          {zeigeJahr && <>{f.year} · </>}
           Textziffer {f.textziffer}
           {f.seite != null && <> · Seite {f.seite}</>}
         </span>
@@ -121,7 +121,7 @@ function FeststellungsZeile({ f, zeigeJahr = false }: { f: Feststellung; zeigeJa
       {link && (
         <a href={link} target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 pl-3 text-[11.5px] font-semibold text-primary">
-          Im Schlussbericht {f.jahr} nachlesen
+          Im Schlussbericht {f.year} nachlesen
           <ExternalLink className="h-3 w-3" />
         </a>
       )}
@@ -175,11 +175,11 @@ function AbschnittsFeld({ textziffer, abschnitt, eintraege }: {
  *  des Abschnitts in diesem Jahrgang (WB vor B vor K vor H). */
 function alsMatrixKetten(ketten: Kette[], jahreAnzahl: number): MatrixKette[] {
   return ketten.map((k) => {
-    const zellen: { jahr: number; marke: string }[] = [];
-    for (const jahr of k.jahre) {
-      const hier = k.eintraege.filter((f) => f.jahr === jahr)
+    const zellen: { year: number; marke: string }[] = [];
+    for (const year of k.jahre) {
+      const hier = k.eintraege.filter((f) => f.year === year)
         .sort((a, b) => markeRang(a.marke) - markeRang(b.marke));
-      if (hier[0]) zellen.push({ jahr, marke: hier[0].marke });
+      if (hier[0]) zellen.push({ year, marke: hier[0].marke });
     }
     return {
       key: k.schluessel,
@@ -198,11 +198,11 @@ export function PruefungAbschnitt({ onBestand }: {
    *  Schlussbericht — die Lücke gehört in den Kopf, nicht in die Fußnote. */
   onBestand?: (b: {
     gesamt: number;
-    jeJahr: { jahr: number; anzahl: number }[];
+    jeJahr: { year: number; anzahl: number }[];
     ohneBericht: number[];
   } | null) => void;
 } = {}) {
-  const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
+  const gewaehltesJahr = Number(useSearchParams().get("year")) || null;
   const { data, loading } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte");
 
   useEffect(() => {
@@ -211,8 +211,8 @@ export function PruefungAbschnitt({ onBestand }: {
     onBestand({
       gesamt: data.feststellungen.length,
       jeJahr: data.jahre.map((j) => ({
-        jahr: j,
-        anzahl: data.feststellungen.filter((f) => f.jahr === j).length,
+        year: j,
+        anzahl: data.feststellungen.filter((f) => f.year === j).length,
       })),
       ohneBericht: data.ohne_bericht,
     });
@@ -222,28 +222,28 @@ export function PruefungAbschnitt({ onBestand }: {
   const [nurSchwer, setNurSchwer] = useState(false);
 
   const jahre = data?.jahre ?? [];
-  const jahr = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre.at(-1) ?? null;
+  const year = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre.at(-1) ?? null;
   const alle = useMemo(() => data?.feststellungen ?? [], [data]);
   const ketten = useMemo(() => wiederholungsketten(alle), [alle]);
   const matrixKetten = useMemo(
     () => alsMatrixKetten(ketten, jahre.length), [ketten, jahre.length]);
   const zahl = useMemo(() => markenZaehlen(alle), [alle]);
   const imJahr = useMemo(
-    () => (jahr ? alle.filter((f) => f.jahr === jahr) : []), [alle, jahr]);
+    () => (year ? alle.filter((f) => f.year === year) : []), [alle, year]);
   const schwerImJahr = useMemo(
     () => imJahr.filter((f) => SCHWER.has(f.marke)).length, [imJahr]);
   // Die Zahl der Abschnitte im Kartenkopf zählt IMMER den ganzen Bericht —
   // sie beschreibt das Dokument, nicht unsere Ansicht davon.
   const abschnitteGesamt = useMemo(
-    () => (jahr ? nachAbschnitt(imJahr, jahr).length : 0), [imJahr, jahr]);
-  const gruppen = useMemo(() => (jahr
-    ? nachAbschnitt(nurSchwer ? imJahr.filter((f) => SCHWER.has(f.marke)) : imJahr, jahr)
-    : []), [imJahr, jahr, nurSchwer]);
+    () => (year ? nachAbschnitt(imJahr, year).length : 0), [imJahr, year]);
+  const gruppen = useMemo(() => (year
+    ? nachAbschnitt(nurSchwer ? imJahr.filter((f) => SCHWER.has(f.marke)) : imJahr, year)
+    : []), [imJahr, year, nurSchwer]);
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
   }
-  if (!jahr || !alle.length) {
+  if (!year || !alle.length) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
         Für kein Jahr liegt bisher ein ausgelesener Schlussbericht vor.{" "}
@@ -366,7 +366,7 @@ export function PruefungAbschnitt({ onBestand }: {
           <KettenMatrix
             ketten={matrixKetten}
             jahre={jahre}
-            lueckenJahre={data.ohne_bericht.map((j) => ({ jahr: j, grund: LUECKEN_GRUND }))}
+            lueckenJahre={data.ohne_bericht.map((j) => ({ year: j, grund: LUECKEN_GRUND }))}
             marken={data.legende}
             beleg={<Beleg q="pruefbericht" />}
             detail={(mk) => {
@@ -375,7 +375,7 @@ export function PruefungAbschnitt({ onBestand }: {
               return (
                 <div className="flex flex-col gap-3 rounded-xl bg-muted/35 p-3">
                   {k.eintraege.map((f) => (
-                    <FeststellungsZeile key={`${f.jahr}-${f.lfd}`} f={f} zeigeJahr />
+                    <FeststellungsZeile key={`${f.year}-${f.lfd}`} f={f} zeigeJahr />
                   ))}
                 </div>
               );
@@ -400,7 +400,7 @@ export function PruefungAbschnitt({ onBestand }: {
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Schlussbericht zum Jahresabschluss {jahr}
+            Schlussbericht zum Jahresabschluss {year}
           </p>
           <span className="font-mono text-[10px] uppercase text-muted-foreground">
             {imJahr.length} Feststellungen · {abschnitteGesamt} Abschnitte
@@ -415,9 +415,9 @@ export function PruefungAbschnitt({ onBestand }: {
             <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
               <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
                 {jahre.map((j) => (
-                  <Link key={j} href={`/haushalt/pruefung?jahr=${j}`} scroll={false}
+                  <Link key={j} href={`/haushalt/pruefung?year=${j}`} scroll={false}
                     className={cn("rounded-full px-3 py-1 text-[12.5px]",
-                      j === jahr ? "bg-primary font-semibold text-primary-foreground" : "text-foreground/75 hover:bg-accent")}>
+                      j === year ? "bg-primary font-semibold text-primary-foreground" : "text-foreground/75 hover:bg-accent")}>
                     {j}
                   </Link>
                 ))}

@@ -181,7 +181,7 @@ def _label(roh: str) -> str:
     return kopf.strip(" .,")
 
 
-def parse_anlagenspiegel(text: str, jahr: int) -> list[dict]:
+def parse_anlagenspiegel(text: str, year: int) -> list[dict]:
     """Die Zeilen der Anlagenübersicht — je Vermögensposition eine.
 
     Zeilen ohne Beträge (etwa „1.3 Ähnliche Rechte", die es in Oldenburg
@@ -220,7 +220,7 @@ def parse_anlagenspiegel(text: str, jahr: int) -> list[dict]:
             w = w[:9] + [0.0] + w[9:]
         label = _label(roh)
         zeilen.append({
-            "jahr": jahr, "nr": nr, "bezeichnung": label, "spalten": spalten,
+            "year": year, "nr": nr, "bezeichnung": label, "spalten": spalten,
             "ahk_anfang": w[0], "zugaenge": w[1], "abgaenge": w[2],
             "umbuchungen": w[3], "ahk_ende": w[4],
             "abschr_anfang": w[5], "abschreibung": w[6], "aufloesungen": w[7],
@@ -299,7 +299,7 @@ _GRUPPE = re.compile(
     r"(-?\d{1,3}(?:\.\d{3})*,\d{2})\s*€")
 
 
-def parse_sachvermoegen_gruppen(text: str, jahr: int) -> list[dict]:
+def parse_sachvermoegen_gruppen(text: str, year: int) -> list[dict]:
     """Die Untergliederung des Infrastrukturvermögens — Straßen, Brücken, …
 
     Der Anlagenspiegel führt Infrastrukturvermögen als **eine** Zeile. Die
@@ -331,7 +331,7 @@ def parse_sachvermoegen_gruppen(text: str, jahr: int) -> list[dict]:
         if len(label) < 4:
             continue
         gruppen.append({
-            "jahr": jahr, "gruppe": label,
+            "year": year, "gruppe": label,
             "buchwert_vorjahr": _eur(g.group(2)),
             "buchwert": _eur(g.group(3)),
         })

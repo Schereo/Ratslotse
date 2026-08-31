@@ -86,7 +86,7 @@ export type Textabschnitt = {
 export type Kennzahl = {
   gesellschaft: string;
   kennzahl: "jahresergebnis" | "bilanzsumme" | "eigenkapitalquote";
-  jahr: number;
+  year: number;
   wert: number;
   einheit: "eur" | "prozent";
   bericht_jahr: number;
@@ -98,7 +98,7 @@ export type Kennzahl = {
 export type Konzernzeile = {
   gesellschaft: string;
   name: string;
-  jahr: number;
+  year: number;
   konzern_beitrag: number;
   jahresergebnis: number;
   differenz: number;
@@ -152,7 +152,7 @@ export function reihen(daten: BeteiligungsDaten | null, gesellschaft: string) {
     liste.push(k);
     aus.set(k.kennzahl, liste);
   }
-  for (const liste of aus.values()) liste.sort((a, b) => a.jahr - b.jahr);
+  for (const liste of aus.values()) liste.sort((a, b) => a.year - b.year);
   return aus;
 }
 
@@ -167,7 +167,7 @@ export function juengster(daten: BeteiligungsDaten | null, gesellschaft: string,
   let treffer: Kennzahl | null = null;
   for (const k of daten?.kennzahlen ?? []) {
     if (k.gesellschaft !== gesellschaft || k.kennzahl !== kennzahl) continue;
-    if (!treffer || k.jahr > treffer.jahr) treffer = k;
+    if (!treffer || k.year > treffer.year) treffer = k;
   }
   return treffer;
 }
@@ -229,7 +229,7 @@ export function einordnungFuer(daten: BeteiligungsDaten, g: Gesellschaft,
   }
   const juengstes = ergebnisse[ergebnisse.length - 1];
   const vergleich = daten.konzernvergleich.find((z) => z.gesellschaft === g.gesellschaft);
-  if (juengstes && vergleich && vergleich.jahr === juengstes.jahr
+  if (juengstes && vergleich && vergleich.year === juengstes.year
       && Math.abs(vergleich.differenz) <= 1000) {
     return "Der Betrag ist deckungsgleich mit dem Gesamtabschluss — zwei Quellen, "
       + "eine Zahl.";

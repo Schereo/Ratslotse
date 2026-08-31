@@ -33,7 +33,7 @@ export type { Herkunft };
 
 /** Eine Zeile aus `council_investitionsmassnahmen`. */
 export type ProgrammZeile = {
-  jahr: number;
+  year: number;
   ebene: "massnahme" | "teilhaushalt" | "gesamt";
   thh_nr: number;
   /** IPSP-Element („I10.090126"); leer auf den beiden Summenebenen. */
@@ -73,19 +73,19 @@ export function herkunftVon(
  *  sie sind der Sonderfall (Tilgungen, Ausleihungen). */
 export function teilhaushalte(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
 ): ProgrammZeile[] {
   if (!daten) return [];
   return daten.teilhaushalte
-    .filter((z) => z.jahr === jahr)
+    .filter((z) => z.year === year)
     .sort((a, b) => b.gesamtsumme - a.gesamtsumme);
 }
 
 export function gesamtJahr(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
 ): ProgrammZeile | null {
-  return daten?.gesamt.find((z) => z.jahr === jahr) ?? null;
+  return daten?.gesamt.find((z) => z.year === year) ?? null;
 }
 
 /** Die Vorhaben eines Teilhaushalts, nach Gesamtsumme absteigend.
@@ -95,23 +95,23 @@ export function gesamtJahr(
  *  Vorhaben ist, nicht welches die kleinste Kontonummer hat. */
 export function vorhaben(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
   thhNr: number,
 ): ProgrammZeile[] {
   if (!daten) return [];
   return daten.massnahmen
-    .filter((z) => z.jahr === jahr && z.thh_nr === thhNr)
+    .filter((z) => z.year === year && z.thh_nr === thhNr)
     .sort((a, b) => b.gesamtsumme - a.gesamtsumme);
 }
 
 /** Die Gesamtsumme, die das Dokument für einen Teilhaushalt ausweist. */
 export function teilhaushaltSumme(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
   thhNr: number,
 ): ProgrammZeile | null {
   return daten?.teilhaushalte.find(
-    (z) => z.jahr === jahr && z.thh_nr === thhNr) ?? null;
+    (z) => z.year === year && z.thh_nr === thhNr) ?? null;
 }
 
 /** Vorhaben eines Jahrgangs, deren Bezeichnung ODER Nummer zur Suche passt.
@@ -127,13 +127,13 @@ export function teilhaushaltSumme(
  *  von Hand eintippt, findet sie damit ebenso. */
 export function suche(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
   wort: string,
 ): ProgrammZeile[] {
   const w = wort.trim().toLowerCase();
   if (!daten || w.length < 2) return [];
   return daten.massnahmen
-    .filter((z) => z.jahr === jahr
+    .filter((z) => z.year === year
       && (z.bezeichnung.toLowerCase().includes(w)
           || (z.code ?? "").toLowerCase().includes(w)))
     .sort((a, b) => b.gesamtsumme - a.gesamtsumme);
@@ -142,12 +142,12 @@ export function suche(
 /** Wie viele Vorhaben ein Teilhaushalt führt — 0, wenn der Jahrgang fehlt. */
 export function anzahl(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
   thhNr: number,
 ): number {
   if (!daten) return 0;
   return daten.massnahmen.filter(
-    (z) => z.jahr === jahr && z.thh_nr === thhNr).length;
+    (z) => z.year === year && z.thh_nr === thhNr).length;
 }
 
 /** Der Jahrgang, den der Block zeigen soll.

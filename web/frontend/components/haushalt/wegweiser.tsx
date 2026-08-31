@@ -16,7 +16,7 @@
 //
 // AUS SIEBEN SCHRITTEN WERDEN VIER STUFEN (16.08., dritte Runde). Der
 // Bereich hatte damals zwölf Unterseiten, und drei davon fand niemand:
-// `/haushalt/jahr` und `/haushalt/vergleich` waren im ganzen Frontend von
+// `/haushalt/year` und `/haushalt/vergleich` waren im ganzen Frontend von
 // keinem einzigen `href` erreichbar, `/haushalt/bereiche` nur rückwärts —
 // über die Detailseite eines einzelnen Bereichs, also von innen nach außen.
 //
