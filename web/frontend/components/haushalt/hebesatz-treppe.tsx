@@ -48,11 +48,11 @@ type Stufe = {
 };
 
 export function HebesatzTreppe({
-  reihe, zweitreihe, zweitLabel, titel, aufkommen, aufkommenLabel,
+  series, zweitreihe, zweitLabel, titel, aufkommen, aufkommenLabel,
   bemessungNeu, abgrenzung, grundlage, beleg, aufkommenBeleg,
 }: {
   /** Die Änderungsjahre DIESER Steuer, aufsteigend. */
-  reihe: HebesatzZeile[];
+  series: HebesatzZeile[];
   /** Zweiter Satz derselben Steuer in derselben Einheit (Grundsteuer A neben B). */
   zweitreihe?: HebesatzZeile[];
   zweitLabel?: string;
@@ -75,8 +75,8 @@ export function HebesatzTreppe({
   beleg?: React.ReactNode;
   aufkommenBeleg?: React.ReactNode;
 }) {
-  if (reihe.length < 2) return null;
-  const sortiert = [...reihe].sort((a, b) => a.year - b.year);
+  if (series.length < 2) return null;
+  const sortiert = [...series].sort((a, b) => a.year - b.year);
 
   const stufen: Stufe[] = sortiert.map((z) => {
     const vorher = aufkommen[z.year - 1];
@@ -121,11 +121,11 @@ export function HebesatzTreppe({
       <div className="mt-3">
         <Zeitreihe
           treppe
-          reihe={sortiert.map((z) => ({ year: z.year, wert: z.hebesatz }))}
+          series={sortiert.map((z) => ({ year: z.year, wert: z.hebesatz }))}
           zweitreihe={zweitreihe && zweitreihe.length >= 2 && zweitLabel
             ? {
               label: zweitLabel,
-              reihe: [...zweitreihe].sort((a, b) => a.year - b.year)
+              series: [...zweitreihe].sort((a, b) => a.year - b.year)
                 .map((z) => ({ year: z.year, wert: z.hebesatz })),
               format: (v) => `${deZahl(v, 0)} %`,
             }

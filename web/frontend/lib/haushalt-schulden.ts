@@ -34,7 +34,7 @@ export type BuergschaftsVorlage = {
 };
 
 export type SchuldenDaten = {
-  reihe: SchuldenJahr[];
+  series: SchuldenJahr[];
   jahre: number[];
   /** Was diese Zahlen zählen — kommt aus `council/schulden.py`, damit
    *  Oberfläche und Datenbank dieselbe Auskunft geben. */
@@ -58,7 +58,7 @@ export type SchuldenDaten = {
    *  die eigenen Geldschulden daneben (43,7 Mio.) und die Rückstellung für
    *  den erwarteten Ausfall (1,3 Mio.). */
   buergschaften?: {
-    reihe: Buergschaft[];
+    series: Buergschaft[];
     /** Bilanzposten 3.7 je Jahr — nur 2021–2024 im Bestand; die früheren
      *  Abschlüsse gliedern die Rückstellungen anders. */
     rueckstellung: { year: number; wert: number | null; herkunft_id: number | null }[];
@@ -70,7 +70,7 @@ export type SchuldenDaten = {
      *  warum: „Verlängerung Ausfallbürgschaft … über 300.000 Euro für die
      *  Volkshochschule" ist dieselbe Bürgschaft wie zwei Jahre zuvor,
      *  „Anpassung … Weser-Ems Halle" ändert eine bestehende. Was der Bestand
-     *  ist, sagt allein der Jahresabschluss (`reihe`). */
+     *  ist, sagt allein der Jahresabschluss (`series`). */
     vorlagen?: BuergschaftsVorlage[];
   };
   /** Die dritte Schuldenzahl — was der ganze „Konzern Stadt" anteilig
@@ -123,8 +123,8 @@ export type Buergschaft = {
  *  Jahresabschlüsse enden früher. Wer beide Reihen am selben Jahr aufhängt,
  *  zeigt für die Zinsen dauerhaft nichts. */
 export function juengsteZinslast(daten: SchuldenDaten | null) {
-  const reihe = daten?.zinslast ?? [];
-  return reihe.length ? reihe[reihe.length - 1] : null;
+  const series = daten?.zinslast ?? [];
+  return series.length ? series[series.length - 1] : null;
 }
 
 // Die Suche stand hier bis zum 21.08.2026 als eigene Fassung — eine von neun
@@ -145,8 +145,8 @@ export type Ansicht = "insgesamt" | "je_einwohner";
 
 export type Punkt = { year: number; wert: number };
 
-export function punkte(reihe: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
-  return reihe
+export function punkte(series: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
+  return series
     .map((z) => ({
       year: z.year,
       // Absolutbeträge in Mio., Pro-Kopf-Beträge in Euro — sonst stünde die
@@ -172,9 +172,9 @@ export function kernhaushalt(z: SchuldenJahr): number | null {
 export type Aufteilung = { year: number; kern: number; municipal_enterprises: number };
 
 /** Nur die Jahre, für die eine belegte Aufteilung vorliegt. */
-export function aufteilungen(reihe: SchuldenJahr[]): Aufteilung[] {
+export function aufteilungen(series: SchuldenJahr[]): Aufteilung[] {
   const aus: Aufteilung[] = [];
-  for (const z of reihe) {
+  for (const z of series) {
     const kern = kernhaushalt(z);
     if (kern == null || z.municipal_enterprises == null) continue;
     aus.push({ year: z.year, kern, municipal_enterprises: z.municipal_enterprises });
@@ -184,8 +184,8 @@ export function aufteilungen(reihe: SchuldenJahr[]): Aufteilung[] {
 
 /** Die Jahre ohne belegte Aufteilung — die Seite benennt sie, statt einen
  *  leeren Balken unkommentiert zu lassen. */
-export function ohneAufteilung(reihe: SchuldenJahr[]): SchuldenJahr[] {
-  return reihe.filter((z) => z.breakdown_rejected != null);
+export function ohneAufteilung(series: SchuldenJahr[]): SchuldenJahr[] {
+  return series.filter((z) => z.breakdown_rejected != null);
 }
 
 /** Die größte Veränderung von einem Jahr aufs nächste — aus den Daten

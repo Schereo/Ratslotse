@@ -954,7 +954,7 @@ class HaushaltKonzern(TypedDict):
     jahre: Any
     konzern: list[Any]
     posten: Any
-    traeger: list[Any]
+    entity: list[Any]
 
 
 class HaushaltBeteiligungen(TypedDict):
@@ -1142,8 +1142,8 @@ class HaushaltGebaut(TypedDict):
     fehlend: Any
     herkunft: dict[str, Any]
     jahre: list[Any]
-    regelwerke: list[Any]
-    reihe: Any
+    accounting_systems: list[Any]
+    series: Any
 
 
 class HaushaltBilanz(TypedDict):
@@ -1160,5 +1160,5 @@ class HaushaltSchulden(TypedDict):
     herkunft: dict[str, Any]
     integrierte_schulden: Any
     jahre: list[Any]
-    reihe: Any
+    series: Any
     zinslast: Any

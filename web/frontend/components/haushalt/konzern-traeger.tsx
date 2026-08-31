@@ -26,10 +26,10 @@ export function KonzernTraegerListe({ zeilen, verrechnung, summe }: {
     <div>
       <ol className="flex flex-col gap-2">
         {zeilen.map((z, i) => (
-          <li key={z.traeger_key}>
+          <li key={z.entity_key}>
             <div className="flex items-baseline justify-between gap-3">
               <span className="min-w-0 text-[13px] font-semibold leading-snug">
-                {KURZ[z.traeger_key] ?? z.traeger}
+                {KURZ[z.entity_key] ?? z.entity}
               </span>
               <span className="flex-none font-mono text-[11.5px] tabular-nums text-muted-foreground">
                 {deMio(z.amount / 1e6)}&#8239;Mio.&nbsp;€
@@ -42,9 +42,9 @@ export function KonzernTraegerListe({ zeilen, verrechnung, summe }: {
                   background: `var(--hh-ein-${Math.min(i, 6)})`,
                 }} />
             </div>
-            {ART[z.traeger_key] && (
+            {ART[z.entity_key] && (
               <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                {ART[z.traeger_key]}
+                {ART[z.entity_key]}
               </p>
             )}
           </li>

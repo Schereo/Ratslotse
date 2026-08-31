@@ -135,7 +135,7 @@ def test_die_zerlegung_traegt_den_betrag():
     assert len(erg["vorlagen"]) == 1
     v = erg["vorlagen"][0]
     assert v["amount"] == 435_941
-    assert v["zweitstelle"] == "zerlegung"
+    assert v["second_mention"] == "split"
     assert v["layout"] == "neu"
     assert spenden.ZWEITSTELLE in v["probes"]
     assert spenden.PROTOKOLLABGLEICH in v["probes"]
@@ -153,7 +153,7 @@ def test_das_aeltere_layout_traegt_dieselbe_probe():
     v = erg["vorlagen"][0]
     assert v["amount"] == 140_664.24
     assert v["layout"] == "alt"
-    assert v["zweitstelle"] == "zerlegung"
+    assert v["second_mention"] == "split"
 
 
 def test_die_identische_zweitstelle_zaehlt_auch():
@@ -165,7 +165,7 @@ def test_die_identische_zweitstelle_zaehlt_auch():
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     v = erg["vorlagen"][0]
     assert v["amount"] == 1_800
-    assert v["zweitstelle"] == "identisch"
+    assert v["second_mention"] == "identical"
     assert v["gremium"] == "Verwaltungsausschuss"
 
 

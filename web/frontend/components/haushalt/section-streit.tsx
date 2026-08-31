@@ -350,7 +350,7 @@ export function StreitAbschnitt({ onBestand }: {
       farbe: z.urheber.includes("/") || z.urheber === EINZELNE
         ? undefined
         : parteiDot(z.urheber),
-      gremien: { fa: z.fa, rat: z.rat },
+      committees: { fa: z.fa, rat: z.rat },
     })),
     [r],
   );

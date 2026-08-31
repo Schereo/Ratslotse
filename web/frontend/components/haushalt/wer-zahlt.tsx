@@ -57,7 +57,7 @@ type Hebesatz = { year: number; hebesatz: number; prior_rate: number | null };
 const SPRUNG = 15;
 
 /** Die Ist-Reihe einer Steuerart, aufsteigend und ohne Lücken-Jahre. */
-function reihe(zeilen: SteuerZeile[], art: string | null) {
+function series(zeilen: SteuerZeile[], art: string | null) {
   if (!art) return [];
   return zeilen
     .filter((z) => z.art === art && z.amount != null && z.amount > 0)
@@ -153,8 +153,8 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
    *  er gegen die Angabe an den Daten. */
   statistikAbgrenzung?: string;
 }) {
-  const eigen = reihe(steuern, art);
-  const andere = reihe(steuern, vergleichArt);
+  const eigen = series(steuern, art);
+  const andere = series(steuern, vergleichArt);
 
   // Beide Reihen auf denselben Zeitraum: Ein Mittelwert über 28 Jahre neben
   // einem über 12 verglichen zwei verschiedene Epochen und hieße trotzdem

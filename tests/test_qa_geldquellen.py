@@ -261,7 +261,7 @@ class _MessStore:
     def konzern_kontext(self):
         return self._merken("konzern_kontext", None)
 
-    def staedtevergleich_kontext(self, reihe="steuerkraft"):
+    def staedtevergleich_kontext(self, series="steuerkraft"):
         return self._merken("staedtevergleich_kontext", None)
 
     def schulden_kontext(self):
@@ -634,13 +634,13 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             [(13, 'Summe ordentliche Erträge', 'revenues_total', 1_238_000_000.0),
              (21, 'Summe ordentliche Aufwendungen', 'expenses_total', 1_242_000_000.0)])
         store._conn.executemany(
-            "INSERT INTO council_konzern_traeger (year, art, traeger_key, traeger, "
+            "INSERT INTO council_konzern_traeger (year, art, entity_key, entity, "
             " amount_keur, fetched_at, herkunft_id) VALUES (2024,'expenses',?,?,?,'',1)",
             [("stadt", "Stadt Oldenburg (Kernverwaltung)", 812_300.0),
              ("klinikum", "Klinikum Oldenburg AöR", 390_000.0),
              ("konsolidierung", "Konsolidierung", -120_000.0)])
         store._conn.executemany(
-            "INSERT INTO council_staedtevergleich (reihe, year, schluessel, stadt, indicator, "
+            "INSERT INTO council_staedtevergleich (series, year, schluessel, stadt, indicator, "
             " wert, einheit, herkunft_id, fetched_at) VALUES "
             "('steuerkraft',2024,?,?,'Steuerkraftmesszahl je Einwohner',?,'EUR',1,'')",
             [("03403", "Oldenburg", 1834.0), ("03404", "Osnabrück", 1712.0),
@@ -1402,8 +1402,8 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
     geld = qa.geld_kontext(store, "Wie hoch sind die Schulden der Stadt?")
     g = qa.geld_grafik(store, geld)
     assert g and g["art"] == "schulden"
-    assert [p["year"] for p in g["reihe"]] == [1995, 2024, 2025]
-    assert g["reihe"][-1]["wert"] == 337.0            # Mio, gerundet
+    assert [p["year"] for p in g["series"]] == [1995, 2024, 2025]
+    assert g["series"][-1]["wert"] == 337.0            # Mio, gerundet
     assert g["einheit"] == "Mio. €"
     assert g["note"], "Die Abgrenzung reist mit der Grafik"
 
@@ -1414,7 +1414,7 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
     geld = qa.geld_kontext(store, "Wie hat sich die Gewerbesteuer entwickelt?")
     g = qa.geld_grafik(store, geld)
     assert g and g["art"] == "steuern"
-    assert g["reihe"][-1]["wert"] == 222.1
+    assert g["series"][-1]["wert"] == 222.1
 
     leer = CouncilStore(str(tmp_path / "leer.sqlite"))
     geld = qa.geld_kontext(leer, "Wie hoch sind die Schulden der Stadt?")
@@ -1437,17 +1437,17 @@ def test_grafik_pruefung_am_share_snapshot():
     from app.routers.council import _grafik_pruefen
 
     gut = {"art": "schulden", "titel": "Schuldenstand", "einheit": "Mio. €",
-           "nachkomma": 1, "reihe": [{"year": 1995, "wert": 190.0},
+           "nachkomma": 1, "series": [{"year": 1995, "wert": 190.0},
                                      {"year": 2025, "wert": 337.0}],
            "note": "Stadt als Rechtsträger", "quelle": "Jahrbuch 1108"}
     geprueft = _grafik_pruefen(gut)
-    assert geprueft and geprueft["reihe"] == gut["reihe"]
+    assert geprueft and geprueft["series"] == gut["series"]
 
     # Fremde Felder fallen weg, statt ausgeliefert zu werden.
     assert "boese" not in (_grafik_pruefen({**gut, "boese": "<script>"}) or {})
     # Kaputte Reihen: lieber keine Grafik als eine erfundene.
-    assert _grafik_pruefen({**gut, "reihe": [{"year": "x", "wert": 1}]}) is None
-    assert _grafik_pruefen({**gut, "reihe": [{"year": 2025, "wert": 337.0}]}) is None
+    assert _grafik_pruefen({**gut, "series": [{"year": "x", "wert": 1}]}) is None
+    assert _grafik_pruefen({**gut, "series": [{"year": 2025, "wert": 337.0}]}) is None
     assert _grafik_pruefen("kein dict") is None
     assert _grafik_pruefen(None) is None
     # Längen werden gekappt — der Snapshot ist kein Blob-Speicher.

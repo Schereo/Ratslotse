@@ -157,7 +157,7 @@ import Testing
         {"partei":"SPD","haltung":"dafür","position":"Zustimmung","einig":true},
         {"partei":"CDU","haltung":"dagegen","position":"Ablehnung","einig":false}
       ],
-      "grafik": {"art":"linie","titel":"Kosten","einheit":"Mio. €","reihe":[{"year":2026,"wert":2.5}]}
+      "grafik": {"art":"linie","titel":"Kosten","einheit":"Mio. €","series":[{"year":2026,"wert":2.5}]}
     }
     """#.utf8)
 
@@ -648,7 +648,7 @@ private final class FeedbackURLProtocol: URLProtocol {
             "first": "2021-11-22", "last": "2026-06-16", "n": 136
           }],
           "ris": {
-            "kpenr": 17, "name": "Tim Ebbeke Harms", "fraktion_aktuell": "Grüne",
+            "kpenr": 17, "name": "Tim Ebbeke Harms", "current_faction": "Grüne",
             "memberships": [{"kgrnr": 2, "gremium": "Rat", "role": "Mitglied", "von": "2021-11-01", "bis": null}]
           },
           "committees": [{"committee": "Rat", "n": 39, "chair": true}],

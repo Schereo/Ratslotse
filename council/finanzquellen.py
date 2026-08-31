@@ -605,7 +605,7 @@ def _bestand_lsn_steuerkraft(store: CouncilStore) -> set[tuple]:
     hier tatsächlich „fertig"."""
     return {(r[0],) for r in _jahre(
         store, "SELECT DISTINCT year FROM council_staedtevergleich "
-               "WHERE reihe = 'steuerkraft'")}
+               "WHERE series = 'steuerkraft'")}
 
 
 def _bestand_lsn_realsteuern(store: CouncilStore) -> set[tuple]:
@@ -619,7 +619,7 @@ def _bestand_lsn_realsteuern(store: CouncilStore) -> set[tuple]:
     der Zahl, nicht das Deckblatt, auf dem sie stand."""
     return {(r[0],) for r in _jahre(
         store, "SELECT DISTINCT year FROM council_staedtevergleich "
-               "WHERE reihe = 'realsteuern'")}
+               "WHERE series = 'realsteuern'")}
 
 
 def _bestand_lsn_gewerbesteuer(store: CouncilStore) -> set[tuple]:
@@ -1493,7 +1493,7 @@ def lies_buergschaften(store: CouncilStore, p: Protokoll) -> dict:
         # hat.
         return {"jahrgaenge": 0, "kette_gerissen": len(risse), "glieder": 0}
 
-    zeilen = buergschaften.reihe(gefunden)
+    zeilen = buergschaften.series(gefunden)
     glieder = sum(1 for g in gefunden if "prior_year_stock" in g)
     for z in zeilen:
         # Der Beleg ist das Dokument, in dem die Zahl STEHT — für 2021 also
@@ -2044,8 +2044,8 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
                               len(result["posten"]), schuetzen):
             geschuetzt += 1 if alt else 0
             continue
-        traeger = [z | {"art": block["art"]}
-                   for block in result["traeger"] for z in block["zeilen"]]
+        entity = [z | {"art": block["art"]}
+                   for block in result["entity"] for z in block["zeilen"]]
 
         # Zwei Herkünfte, weil es zwei Abschnitte sind: Die Posten stehen in
         # 3.2, die Trägeraufstellung in 4.1.1, und sie sind durch verschiedene
@@ -2063,23 +2063,23 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
         h_traeger = herkunft.Herkunft(
             probe=["konzern_zeilenprobe", "konzern_traegersumme", "konzern_querprobe"],
             citation="Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
-            probe_result=konzernabschluss.traegernachweis(result["traeger"]),
-            **anker) if traeger else None
-        store.save_konzern_jahrgang(year, result["posten"], traeger,
+            probe_result=konzernabschluss.traegernachweis(result["entity"]),
+            **anker) if entity else None
+        store.save_konzern_jahrgang(year, result["posten"], entity,
                                     h_posten, h_traeger)
         gelesen[year] = result["posten"]
         verworfen_gesamt += result["verworfen"]
-        je_jahr[year] = {"posten": len(result["posten"]), "traeger": len(traeger),
-                         "aufstellungen": len(result["traeger"]),
+        je_jahr[year] = {"posten": len(result["posten"]), "entity": len(entity),
+                         "aufstellungen": len(result["entity"]),
                          "verworfen": result["verworfen"]}
-        p.sagen(f"  {year}: {len(result['posten'])} Posten · {len(traeger)} Trägerzeilen "
-                f"aus {len(result['traeger'])} Aufstellungen"
+        p.sagen(f"  {year}: {len(result['posten'])} Posten · {len(entity)} Trägerzeilen "
+                f"aus {len(result['entity'])} Aufstellungen"
                 f" · verworfen {result['verworfen']} · Dokument {r['document_id']}")
         # Nur melden, wenn eine *vorhandene* Aufstellung durchgefallen ist.
         # Bis 2016 führt der Bericht den Abschnitt 4.1.1 noch nicht — das ist
         # eine Lücke der Quelle und keine Meldung wert.
-        if len(result["traeger"]) < result["traeger_gefunden"]:
-            p.warnen(f"  {year}: {result['traeger_gefunden'] - len(result['traeger'])} "
+        if len(result["entity"]) < result["traeger_gefunden"]:
+            p.warnen(f"  {year}: {result['traeger_gefunden'] - len(result['entity'])} "
                      f"von {result['traeger_gefunden']} Trägeraufstellungen an ihrer "
                      "Spalten- oder Querprobe gescheitert")
 
@@ -2088,7 +2088,7 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
             "neue_einheiten": [(j,) for j in sorted(je_jahr)],
             "je_jahr": je_jahr, "bestand_geschuetzt": geschuetzt,
             "konzern_posten": sum(d["posten"] for d in je_jahr.values()),
-            "konzern_traeger": sum(d["traeger"] for d in je_jahr.values()),
+            "konzern_traeger": sum(d["entity"] for d in je_jahr.values()),
             "verworfen": verworfen_gesamt, **kette}
 
 

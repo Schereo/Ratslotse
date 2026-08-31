@@ -37,7 +37,7 @@ import { decisionHref } from "@/lib/routes";
 import {
   AUSGLIEDERUNGEN_2018, Herkunft, ROLLEN, VergleichDaten, WOLFSBURG,
   ZITAT_VERWALTUNG, antragAnlage, antwortAnlage, balken, herkunftVon,
-  juengstesJahr, platzVonOldenburg, reihe, steuerkraftJeEinwohner, change,
+  juengstesJahr, platzVonOldenburg, series, steuerkraftJeEinwohner, change,
 } from "@/lib/haushalt-vergleich";
 import { Staedtevergleich, Zeitreihe } from "@/components/haushalt/staedtevergleich";
 import { SlopePaar, type SlopePaarZeile } from "@/components/grafik/slope-paar";
@@ -155,12 +155,12 @@ export default function VergleichSeite() {
   // Die Herkunft hängt an der Zeile, nicht an der Seite — beide Reihen haben
   // eine eigene (verschiedene Dateien, verschiedene Proben).
   const hSteuerkraft = herkunftVon(data,
-    data.werte.find((w) => w.reihe === "steuerkraft")?.herkunft_id);
+    data.werte.find((w) => w.series === "steuerkraft")?.herkunft_id);
   const hRealsteuern = herkunftVon(data,
-    data.werte.find((w) => w.reihe === "realsteuern")?.herkunft_id);
+    data.werte.find((w) => w.series === "realsteuern")?.herkunft_id);
 
-  const olReihe = reihe(data, "steuereinnahmekraft_je_ew", "403000");
-  const wobReihe = reihe(data, "steuereinnahmekraft_je_ew", WOLFSBURG);
+  const olReihe = series(data, "steuereinnahmekraft_je_ew", "403000");
+  const wobReihe = series(data, "steuereinnahmekraft_je_ew", WOLFSBURG);
 
   const antwort = antwortAnlage(data.beleg);
   const antrag = antragAnlage(data.beleg);

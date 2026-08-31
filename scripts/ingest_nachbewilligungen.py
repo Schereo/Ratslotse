@@ -105,7 +105,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
             "amount_source": b.amount_source, "beschlossen": b.beschlossen,
             "in_plenary": b.in_plenary, "ratsentscheidung": b.ratsentscheidung,
             "decision_id": (fuehrend or {}).get("id"),
-            "gremien": sorted({str(d.get("committee") or "") for d in stationen}),
+            "committees": sorted({str(d.get("committee") or "") for d in stationen}),
             "fulltext_probe": nb.probe_volltext(b, volltexte.get(b.template_number)),
         })
 

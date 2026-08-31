@@ -271,7 +271,7 @@ def zeilen_finanzausgleich(budget_year: KfaZuweisungen) -> list[dict]:
     nennt die Ausgabe 2025 „452,46 € je Ew.", die Ausgabe 2026 „452,27 €".
     Derselbe Nettobetrag, revidierte Einwohnerzahl. Der Absolutwert ist
     stabil, der Quotient nicht — wer pro Kopf braucht, teilt selbst durch die
-    Einwohnerzahl, die dieselbe Datei in ``reihe='steuerkraft'`` mitliefert.
+    Einwohnerzahl, die dieselbe Datei in ``series='steuerkraft'`` mitliefert.
     """
     aus: list[dict] = []
     for key, w in sorted(budget_year.staedte.items()):

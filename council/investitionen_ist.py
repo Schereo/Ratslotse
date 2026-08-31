@@ -245,16 +245,16 @@ def _zelle(feld: str) -> float | None:
 def erkenne(text: str) -> dict[str, tuple[int, int]]:
     """Welche der beiden Tabellen steckt im Text — und welche Spanne deckt sie?
 
-    Rückgabe ``{regelwerk: (von, bis)}``, leer wenn keine gefunden wurde. Die
+    Rückgabe ``{accounting_system: (von, bis)}``, leer wenn keine gefunden wurde. Die
     Spannen kommen aus den Titeln und nicht aus den gelesenen Zeilen: Sie sind
     damit Angaben des Dokuments, gegen die sich prüfen lässt, ob der Parser
     alle Jahrgänge erwischt hat (:func:`lies` tut das)."""
     flach = re.sub(r"\s+", " ", text or "")
     gefunden: dict[str, tuple[int, int]] = {}
-    for regelwerk, muster in _TITEL.items():
+    for accounting_system, muster in _TITEL.items():
         m = muster.search(flach)
         if m:
-            gefunden[regelwerk] = (int(m.group(1)), int(m.group(2)))
+            gefunden[accounting_system] = (int(m.group(1)), int(m.group(2)))
     return gefunden
 
 
@@ -278,7 +278,7 @@ def _abschnitte(text: str) -> dict[str, str]:
             "doppik": "\n".join(zeilen[schnitt:])}
 
 
-def parse(text: str, regelwerk: str) -> list[dict]:
+def parse(text: str, accounting_system: str) -> list[dict]:
     """Die Datenzeilen **eines** Abschnitts → je Jahrgang ein dict in Euro.
 
     Die Quelle rechnet in Tausend Euro; die dabei behauptete Genauigkeit ist
@@ -288,7 +288,7 @@ def parse(text: str, regelwerk: str) -> list[dict]:
     Zeilen, deren Felderzahl nicht zum Regelwerk passt, werden als
     ``unlesbar`` markiert statt zurechtgebogen; welche das waren, sagt
     :func:`lies`."""
-    spalten = SPALTEN[regelwerk]
+    spalten = SPALTEN[accounting_system]
     zeilen: list[dict] = []
     for roh in (text or "").splitlines():
         m = _ZEILE.match(roh.strip())
@@ -296,10 +296,10 @@ def parse(text: str, regelwerk: str) -> list[dict]:
             continue
         felder = [_zelle(f) for f in m.group(2).split()]
         if len(felder) != len(spalten) or any(w is None for w in felder):
-            zeilen.append({"year": int(m.group(1)), "regelwerk": regelwerk,
+            zeilen.append({"year": int(m.group(1)), "accounting_system": accounting_system,
                            "unlesbar": roh.strip()})
             continue
-        zeile: dict = {"year": int(m.group(1)), "regelwerk": regelwerk,
+        zeile: dict = {"year": int(m.group(1)), "accounting_system": accounting_system,
                        "unlesbar": None}
         for (feld, _), wert in zip(spalten, felder):
             zeile[feld] = wert * TAUSEND
@@ -315,7 +315,7 @@ def zeilensumme(zeile: dict) -> tuple[bool, float]:
     den Euro auf. Eine Toleranz würde hier nur den einen Jahrgang durchwinken,
     für den sie gedacht wäre — und der ist mit 1,3 Mio. € ohnehin zu weit weg,
     um von einer Rundungstoleranz gedeckt zu sein."""
-    arten = ARTEN[zeile["regelwerk"]]
+    arten = ARTEN[zeile["accounting_system"]]
     summe = sum(zeile.get(a) or 0.0 for a in arten)
     deviation = summe - (zeile.get("insgesamt") or 0.0)
     return deviation == 0.0, deviation
@@ -327,7 +327,7 @@ def lies(text: str) -> dict:
     Rückgabe:
 
     ``zeilen``
-        Die übernommenen Jahrgänge, aufsteigend. Jede trägt ihr ``regelwerk``.
+        Die übernommenen Jahrgänge, aufsteigend. Jede trägt ihr ``accounting_system``.
     ``verworfen``
         Jahrgänge, die die Probe nicht bestanden haben, mit ``grund`` und
         ``difference``. Ihre sieben Zahlen stehen nirgends in der Datenbank —
@@ -356,19 +356,19 @@ def lies(text: str) -> dict:
     verworfen: list[dict] = []
     bestanden = gerissen = 0
 
-    for regelwerk, section in _abschnitte(text).items():
-        if regelwerk not in spannen:
+    for accounting_system, section in _abschnitte(text).items():
+        if accounting_system not in spannen:
             # Kein Titel, keine Tabelle: Ein Abschnitt ohne seinen eigenen
             # Titel ist Beifang aus dem Seitenkopf und keine Datenquelle.
             continue
-        for zeile in parse(section, regelwerk):
+        for zeile in parse(section, accounting_system):
             if zeile.get("unlesbar"):
                 verworfen.append({
-                    "year": zeile["year"], "regelwerk": regelwerk,
+                    "year": zeile["year"], "accounting_system": accounting_system,
                     # Keine Differenz: Ohne zerlegte Felder gibt es keine
                     # Summe, die man gegen die ausgewiesene halten könnte.
                     "difference": None,
-                    "grund": f"Zeile nicht in {len(SPALTEN[regelwerk])} Felder "
+                    "grund": f"Zeile nicht in {len(SPALTEN[accounting_system])} Felder "
                              f"zerlegbar: {zeile['unlesbar']!r}"})
                 continue
             ok, deviation = zeilensumme(zeile)
@@ -376,7 +376,7 @@ def lies(text: str) -> dict:
             gerissen += not ok
             if not ok:
                 verworfen.append({
-                    "year": zeile["year"], "regelwerk": regelwerk,
+                    "year": zeile["year"], "accounting_system": accounting_system,
                     # Die Zahl neben dem Satz — s. Rückgabe-Beschreibung.
                     "difference": deviation,
                     "grund": f"Zeilensumme um "
@@ -390,11 +390,11 @@ def lies(text: str) -> dict:
 
     zeilen.sort(key=lambda z: z["year"])
     luecken: dict[str, list[int]] = {}
-    for regelwerk, (von, bis) in spannen.items():
-        da = {z["year"] for z in zeilen if z["regelwerk"] == regelwerk}
+    for accounting_system, (von, bis) in spannen.items():
+        da = {z["year"] for z in zeilen if z["accounting_system"] == accounting_system}
         fehlt = [j for j in range(von, bis + 1) if j not in da]
         if fehlt:
-            luecken[regelwerk] = fehlt
+            luecken[accounting_system] = fehlt
 
     return {
         "zeilen": zeilen,

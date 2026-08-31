@@ -104,9 +104,9 @@ def _spanne(jahre: list[int]) -> str:
                      for b in bloecke)
 
 
-def _fundstelle(regelwerk: str, quelle: str, mit_abschluss: bool) -> str:
+def _fundstelle(accounting_system: str, quelle: str, mit_abschluss: bool) -> str:
     """Wo genau die Zahlen dieser Gruppe stehen — je nach Quellenlage."""
-    titel = ar.TITEL[regelwerk]
+    titel = ar.TITEL[accounting_system]
     if quelle == "csv":
         return (f"Datensatz 1102, Spalte „{titel}“ — je Haushaltsjahr die "
                 f"Einwohnerzahl (Stichtag 31.12. des Vorjahres), der Betrag in "
@@ -141,18 +141,18 @@ def main() -> int:
         with tempfile.TemporaryDirectory() as tmp:
             # --- Die beiden CSV-Dateien ------------------------------------
             csv: dict[str, str] = {}
-            for regelwerk, url in ar.CSV_URLS.items():
+            for accounting_system, url in ar.CSV_URLS.items():
                 antwort = requests.get(url, headers=_UA, timeout=120)
                 if antwort.status_code != 200:
-                    print(f"CSV {regelwerk}: HTTP {antwort.status_code} — "
+                    print(f"CSV {accounting_system}: HTTP {antwort.status_code} — "
                           f"übersprungen", file=sys.stderr)
-                    csv[regelwerk] = ""
+                    csv[accounting_system] = ""
                     continue
                 # Das Portal liefert die Dateien ohne Kodierungsangabe;
                 # requests rät dann Latin-1 und macht aus „für“ ein „fÃ¼r“.
                 antwort.encoding = antwort.encoding or "utf-8-sig"
-                csv[regelwerk] = antwort.text
-                print(f"CSV {regelwerk}: {len(antwort.content)} Bytes")
+                csv[accounting_system] = antwort.text
+                print(f"CSV {accounting_system}: {len(antwort.content)} Bytes")
 
             # --- Das PDF des Jahrbuchs -------------------------------------
             if args.pdf:
@@ -178,8 +178,8 @@ def main() -> int:
                       "1102-Tabellenblöcke zu finden. Es wird nichts "
                       "geschrieben.", file=sys.stderr)
                 return 1
-            for regelwerk, (von, bis) in sorted(spannen.items()):
-                print(f"{ar.REGELWERK[regelwerk]}: Spanne laut Titel {von}–{bis}")
+            for accounting_system, (von, bis) in sorted(spannen.items()):
+                print(f"{ar.REGELWERK[accounting_system]}: Spanne laut Titel {von}–{bis}")
 
             # --- Lesen und prüfen -------------------------------------------
             abschluesse = kernverwaltung(store)
@@ -201,9 +201,9 @@ def main() -> int:
                       f"{ar.de_zahl(k['difference'] / 1e6, 3)} Mio. € "
                       f"Unterschied; übernommen wird "
                       f"{k['gewaehlt'].upper()} (besteht die Pro-Kopf-Probe)")
-            for regelwerk, jahre in sorted(result["fehlende_jahrgaenge"].items()):
+            for accounting_system, jahre in sorted(result["fehlende_jahrgaenge"].items()):
                 for j in jahre:
-                    print(f"    FEHLT {j} ({regelwerk})", file=sys.stderr)
+                    print(f"    FEHLT {j} ({accounting_system})", file=sys.stderr)
             if not zeilen:
                 print("ABBRUCH: kein einziger Jahrgang hat eine Probe bestanden.",
                       file=sys.stderr)
@@ -248,10 +248,10 @@ def main() -> int:
             gruppen: dict[tuple, list[dict]] = {}
             for z in zeilen:
                 gruppen.setdefault(
-                    (z["regelwerk"], z["quelle"], tuple(z["probes"])), []).append(z)
+                    (z["accounting_system"], z["quelle"], tuple(z["probes"])), []).append(z)
 
             geschrieben = 0
-            for (regelwerk, quelle, probes), teil in sorted(
+            for (accounting_system, quelle, probes), teil in sorted(
                     gruppen.items(), key=lambda kv: kv[1][0]["year"]):
                 spanne = _spanne([z["year"] for z in teil])
                 count = (f"{len(teil)} Jahrgänge" if len(teil) != 1
@@ -268,19 +268,19 @@ def main() -> int:
                         f"Pro-Kopf-Rechnung erfüllt")
                 geschrieben += store.save_ausgabenreihe(teil, h.Herkunft(
                     art="opendata" if quelle == "csv" else "stadt",
-                    url=(ar.CSV_URLS[regelwerk] if quelle == "csv"
+                    url=(ar.CSV_URLS[accounting_system] if quelle == "csv"
                          else (url or ar.TABELLE_URL)),
                     label=("Open-Data-Portal der Stadt Oldenburg, Datensatz "
-                           f"1102 — {ar.TITEL[regelwerk]}" if quelle == "csv"
+                           f"1102 — {ar.TITEL[accounting_system]}" if quelle == "csv"
                            else "Statistisches Jahrbuch der Stadt Oldenburg, "
-                                f"Tabelle 1102 — {ar.TITEL[regelwerk]}"),
-                    stand=f"Haushaltsjahre {spanne} · {ar.ABGRENZUNG[regelwerk]}",
+                                f"Tabelle 1102 — {ar.TITEL[accounting_system]}"),
+                    stand=f"Haushaltsjahre {spanne} · {ar.ABGRENZUNG[accounting_system]}",
                     probe=list(probes),
                     citation=_fundstelle(
-                        regelwerk, quelle,
+                        accounting_system, quelle,
                         "ausgabenreihe_jahresabschluss" in probes),
                     probe_result=nachweis))
-                print(f"  {ar.REGELWERK[regelwerk]}, {spanne} "
+                print(f"  {ar.REGELWERK[accounting_system]}, {spanne} "
                       f"({quelle.upper()}): {count}")
             print(f"  gespeichert: {geschrieben} Jahrgänge")
 

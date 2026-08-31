@@ -186,14 +186,14 @@ def finanzabschnitt(raw: str | None) -> tuple[str | None, str | None]:
 
 
 def pruefe_zweitstelle(kopf: float | None, section: str | None) -> tuple[str | None, list[float]]:
-    """Nennt der Finanz-Abschnitt denselben Betrag? („identisch"/„zerlegung")"""
+    """Nennt der Finanz-Abschnitt denselben Betrag? („identical"/„split")"""
     teile = betraege(section) if section else []
     if kopf is None or not teile:
         return None, teile
     if any(abs(t - kopf) < _CENT for t in teile):
-        return "identisch", teile
+        return "identical", teile
     if abs(sum(teile) - kopf) < _CENT:
-        return "zerlegung", teile
+        return "split", teile
     return None, teile
 
 
@@ -266,7 +266,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
         kandidaten.append({
             "template_number": nr, "amount": kopf, "sitzung": z.get("sitzung"),
             "year": int(str(z.get("sitzung"))[:4]), "gremium": gremium(z.get("titel")),
-            "layout": layout, "zweitstelle": art, "teile": len(teile),
+            "layout": layout, "second_mention": art, "teile": len(teile),
             "probes": probes, "document_id": z.get("document_id"),
             "dokument_url": z.get("dokument_url"),
             "in_plenary": z.get("gremiensitzung") == "Rat",

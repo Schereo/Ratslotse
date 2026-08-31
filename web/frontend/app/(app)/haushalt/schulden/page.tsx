@@ -209,28 +209,28 @@ function BeschlussStrahl({ vorlagen }: { vorlagen: BuergschaftsVorlage[] }) {
 
 function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   const b = daten?.buergschaften;
-  const reihe = b?.reihe ?? [];
-  if (!reihe.length) return null;
+  const series = b?.series ?? [];
+  if (!series.length) return null;
 
   const geld = new Map((b?.geldschulden ?? []).map((z) => [z.year, z.wert]));
   const rueck = new Map((b?.rueckstellung ?? []).map((z) => [z.year, z.wert]));
-  const letzter = reihe[reihe.length - 1];
-  const erster = reihe[0];
+  const letzter = series[series.length - 1];
+  const erster = series[0];
   const gsErst = geld.get(erster.year) ?? null;
   const gsLetzt = geld.get(letzter.year) ?? null;
   const rsLetzt = rueck.get(letzter.year) ?? null;
   // Der Jahrgang, der den Sprung erklärt — der mit der genannten Einzelzahl.
-  const sprung = reihe.find((z) => z.single_amount != null) ?? null;
+  const sprung = series.find((z) => z.single_amount != null) ?? null;
   // Der Jahrgang ohne eigene Fundstelle: Seine Zahl steht nur als
   // Anfangsbestand im Abschluss des Folgejahres.
-  const nachgetragen = reihe.find((z) => z.out_next_year) ?? null;
+  const nachgetragen = series.find((z) => z.out_next_year) ?? null;
 
   // BEIDE REIHEN IN EINER ZEICHENFLÄCHE. Die Aussage dieses Blocks ist kein
   // Stichtag, sondern eine Bewegung: Was die Stadt selbst schuldet, sinkt —
   // wofür sie geradesteht, steigt. Nebeneinander gezeichnet sieht man das;
   // untereinander gelistet (so stand es bis 08/2026 hier) muss man es rechnen.
-  const verbuergt: JahrPunkt[] = reihe.map((z) => ({ year: z.year, wert: z.bestand / 1e6 }));
-  const eigene: JahrPunkt[] = reihe.map((z) => {
+  const verbuergt: JahrPunkt[] = series.map((z) => ({ year: z.year, wert: z.bestand / 1e6 }));
+  const eigene: JahrPunkt[] = series.map((z) => {
     const w = geld.get(z.year);
     return w == null
       ? { year: z.year, fehlt: "für dieses Jahr liegt keine geparste Bilanz vor" }
@@ -243,7 +243,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   // zu werden — eine Überschrift, die ihre Daten überlebt hat, wäre der
   // schlimmere Fehler als gar keine.
   const schere =
-    reihe.length > 1 && gsErst != null && gsLetzt != null
+    series.length > 1 && gsErst != null && gsLetzt != null
     && gsLetzt < gsErst && letzter.bestand > erster.bestand
       ? { rueckgang: (1 - gsLetzt / gsErst) * 100, faktor: letzter.bestand / erster.bestand }
       : null;
@@ -274,8 +274,8 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
 
   // Wie genau die Quelle je Jahrgang ist. Das gehört an die Zahlen und nicht
   // in eine Fußnote am Seitenende — die Reihe mischt zwei Darreichungsformen.
-  const cent = reihe.filter((z) => z.exact).map((z) => z.year);
-  const gerundet = reihe.filter((z) => !z.exact && !z.out_next_year).map((z) => z.year);
+  const cent = series.filter((z) => z.exact).map((z) => z.year);
+  const gerundet = series.filter((z) => !z.exact && !z.out_next_year).map((z) => z.year);
 
   return (
     <section className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -308,8 +308,8 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
           Grafiken nebeneinander hätten zwei Maßstäbe — und damit genau den
           Vergleich zerstört, um den es hier geht. */}
       <Zeitreihe
-        reihe={verbuergt}
-        zweitreihe={{ label: "eigene Geldschulden", reihe: eigene }}
+        series={verbuergt}
+        zweitreihe={{ label: "eigene Geldschulden", series: eigene }}
         einheit="Mio. €"
         titel="Verbürgt und selbst geschuldet"
         ariaTitel={`Bürgschaftsbestand und eigene Geldschulden der Stadt Oldenburg, `
@@ -349,7 +349,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         <strong className="text-foreground">Ein Bestand, keine Summe der Beschlüsse.</strong>{" "}
         Die einzelnen Bürgschaftsbeschlüsse lassen sich nicht addieren, weil Verlängerungen
         frühere Beschlüsse ersetzen können. Gezeigt wird der von der Stadt ausgewiesene Bestand —
-        {erster.year === letzter.year ? " ein Stichtag." : ` ${reihe.length} Stichtage.`}
+        {erster.year === letzter.year ? " ein Stichtag." : ` ${series.length} Stichtage.`}
       </p>
 
       <BeschlussStrahl vorlagen={b?.vorlagen ?? []} />
@@ -375,14 +375,14 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
   const i = daten?.integrierte_schulden;
   if (!i?.as_of_date) return null;
   const s = i.as_of_date;
-  const reihe = daten?.reihe ?? [];
+  const series = daten?.series ?? [];
   // Der Rechtsträger-Wert desselben Stichtags — die mittlere der drei Zahlen.
-  const traeger = reihe.find((z) => z.year === s.year)?.insgesamt ?? null;
+  const entity = series.find((z) => z.year === s.year)?.insgesamt ?? null;
 
   const stufen = [
     { titel: "Kernhaushalt", wert: s.kernhaushalt,
       was: "Investitionskredite der Stadtverwaltung selbst" },
-    { titel: "Stadt als Rechtsträger", wert: traeger,
+    { titel: "Stadt als Rechtsträger", wert: entity,
       was: "dazu die Eigenbetriebe — die Zahl oben auf dieser Seite" },
     { titel: "Der ganze Konzern", wert: s.insgesamt,
       was: "dazu Extrahaushalte und Beteiligungen, anteilig nach Beteiligungshöhe" },
@@ -398,7 +398,7 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
           {/* Gerechnet, nicht geschrieben — hier stand „43,7" als Text und
               wäre beim nächsten Tabellenband still falsch geworden. */}
           {s.kernhaushalt != null ? `${deMio(s.kernhaushalt / 1e6)} · ` : ""}
-          {traeger ? `${deMio(traeger / 1e6)} · ` : ""}
+          {entity ? `${deMio(entity / 1e6)} · ` : ""}
           {deMio(s.insgesamt / 1e6)}&#8239;Mio.&nbsp;€ — drei unterschiedliche Abgrenzungen
         </h2>
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
@@ -561,10 +561,10 @@ export default function SchuldenPage() {
       : null;
   }, [satzungDaten]);
 
-  const reihe = data?.reihe ?? [];
-  const kurve = useMemo(() => punkte(reihe, ansicht), [reihe, ansicht]);
-  const teilung = useMemo(() => aufteilungen(reihe), [reihe]);
-  const luecken = useMemo(() => ohneAufteilung(reihe), [reihe]);
+  const series = data?.series ?? [];
+  const kurve = useMemo(() => punkte(series, ansicht), [series, ansicht]);
+  const teilung = useMemo(() => aufteilungen(series), [series]);
+  const luecken = useMemo(() => ohneAufteilung(series), [series]);
   // Die Zinslinie in der Kurve (H4-13) — nur in der absoluten Ansicht: Die
   // Quelle weist keinen Pro-Kopf-Zins aus, und wir dividieren nicht selbst.
   const zinsreihe = useMemo(
@@ -580,7 +580,7 @@ export default function SchuldenPage() {
   }
   // Ohne eingelesene Zeitreihe gibt es diese Seite nicht — lieber ein
   // ehrlicher Hinweis als eine Seite voller Striche.
-  if (!data || reihe.length < 2) {
+  if (!data || series.length < 2) {
     return (
       <div className="rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground">
         Für diese Seite ist die Schuldenzeitreihe noch nicht eingelesen.{" "}
@@ -589,8 +589,8 @@ export default function SchuldenPage() {
     );
   }
 
-  const letzter = reihe[reihe.length - 1];
-  const erster = reihe[0];
+  const letzter = series[series.length - 1];
+  const erster = series[0];
   const hLetzter = herkunftVon(data, letzter.herkunft_id);
   const quelleUrl = hLetzter?.url ?? null;
 
@@ -639,10 +639,10 @@ export default function SchuldenPage() {
         {(() => {
           const st = data?.integrierte_schulden?.as_of_date;
           if (!st) return null;
-          const traeger = (data?.reihe ?? []).find((z) => z.year === st.year)?.insgesamt ?? null;
+          const entity = (data?.series ?? []).find((z) => z.year === st.year)?.insgesamt ?? null;
           const stufen = [
             { titel: "Kernhaushalt", wert: st.kernhaushalt },
-            { titel: "Stadt als Rechtsträger", wert: traeger },
+            { titel: "Stadt als Rechtsträger", wert: entity },
             { titel: "der ganze Konzern", wert: st.insgesamt },
           ].filter((x): x is { titel: string; wert: number } => x.wert != null);
           if (stufen.length < 2) return null;
@@ -803,7 +803,7 @@ export default function SchuldenPage() {
               2010 mit seiner Erklärung am Ort des Knicks. Der ganze Satz samt
               Beleg steht darunter in „Zwei Sprünge, die keine Politik waren". */}
           <Zeitreihe
-            reihe={kurve}
+            series={kurve}
             titel={ansicht === "insgesamt" ? "Schulden insgesamt" : "Schulden je Einwohner*in"}
             ariaTitel={`Schuldenstand ${erster.year} bis ${letzter.year}`}
             einheit={ansicht === "insgesamt" ? "Mio. €" : "€ je Einwohner*in"}
@@ -814,7 +814,7 @@ export default function SchuldenPage() {
             vorjahresdifferenz
             tabelle
             zweitreihe={zinsreihe && zinsreihe.length
-              ? { label: "Zinslast p. a.", reihe: zinsreihe, format: (v) => deMio(v) }
+              ? { label: "Zinslast p. a.", series: zinsreihe, format: (v) => deMio(v) }
               : undefined}
             annotationen={ansicht === "insgesamt" ? [{
               year: 2010,
@@ -911,7 +911,7 @@ export default function SchuldenPage() {
                 Wer schuldet was ({jTeilung.year})
               </p>
               <span className="font-mono text-[10px] uppercase text-muted-foreground">
-                {teilung.length} von {reihe.length} Jahren aufgeschlüsselt
+                {teilung.length} von {series.length} Jahren aufgeschlüsselt
               </span>
             </div>
             {/* --hh-aus-0 und --hh-aus-2, NICHT aus-3: Die Segmente tragen

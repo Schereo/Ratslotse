@@ -155,7 +155,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
   const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = juengsteZeile(zeilen);
   const b = beleg(letzte.probes);
-  const reihe: JahrPunkt[] = nach.map((z) => ({ year: z.year, wert: z.result / 1e6 }));
+  const series: JahrPunkt[] = nach.map((z) => ({ year: z.year, wert: z.result / 1e6 }));
   const zeigKurve = nach.length >= 3;
 
   return (
@@ -264,7 +264,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
       {zeigKurve && (
         <div className="mt-3">
           <Zeitreihe
-            reihe={reihe}
+            series={series}
             einheit="Mio. €"
             nachkomma={2}
             titel="Jahresergebnis im Plan"

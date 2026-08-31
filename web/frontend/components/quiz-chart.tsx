@@ -70,13 +70,13 @@ function einheitKurz(unit: string): string {
  *  Labels keine Jahre sind. Dann rendert die Rangliste, statt eine Zeitachse
  *  zu behaupten, die es nicht gibt. */
 function jahresreihe(items: QuizChartData["items"]): JahrPunkt[] | null {
-  const reihe: JahrPunkt[] = [];
+  const series: JahrPunkt[] = [];
   for (const it of items) {
     const year = Number(it.label);
     if (!Number.isInteger(year) || year < 1900 || year > 2200) return null;
-    reihe.push({ year, wert: it.value });
+    series.push({ year, wert: it.value });
   }
-  return reihe.length >= 2 ? reihe : null;
+  return series.length >= 2 ? series : null;
 }
 
 function Rangliste({ chart }: { chart: QuizChartData }) {
@@ -132,13 +132,13 @@ export function QuizChart({ chart, className }: { chart: QuizChartData; classNam
     );
   }
 
-  const reihe = type === "trend" ? jahresreihe(chart.items) : null;
+  const series = type === "trend" ? jahresreihe(chart.items) : null;
   return (
     <div className={rahmen}>
       <p className="text-xs font-semibold text-foreground">{chart.title}</p>
       <div className="mt-2">
-        {reihe
-          ? <Zeitreihe reihe={reihe} einheit={einheitKurz(chart.unit)}
+        {series
+          ? <Zeitreihe series={series} einheit={einheitKurz(chart.unit)}
               ariaTitel={chart.title} nachkomma={0} />
           : <Rangliste chart={chart} />}
       </div>

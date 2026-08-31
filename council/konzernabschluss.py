@@ -388,7 +388,7 @@ def parse_traeger(text: str) -> list[dict]:
                 if any(w is None for w in werte):
                     continue
                 key, anzeige = erkannt
-                zeilen.append({"art": art, "traeger_key": key, "traeger": anzeige,
+                zeilen.append({"art": art, "entity_key": key, "entity": anzeige,
                                "amount_keur": werte[0], "prior_year_keur": werte[1],
                                "change_keur": werte[2],
                                "probe_ok": abs((werte[0] - werte[1]) - werte[2])
@@ -428,7 +428,7 @@ _QUERPROBE = {"revenues": "revenues_total", "expenses": "expenses_total"}
 def lies(text: str) -> dict:
     """Einen Gesamtabschluss vollständig lesen, mit allen Proben.
 
-    Liefert ``{"posten", "traeger", "probes", "bestanden", "verworfen"}``.
+    Liefert ``{"posten", "entity", "probes", "bestanden", "verworfen"}``.
     ``bestanden`` sagt nur etwas über die Gesamtergebnisrechnung — sie ist der
     Kern, ohne den der Jahrgang wertlos ist. Die Trägeraufstellung wird je
     Aufstellung einzeln beurteilt: 2018 weist die Aufwendungsseite eine
@@ -443,7 +443,7 @@ def lies(text: str) -> dict:
     ger = parse_gesamtergebnisrechnung(text)
     posten = ger["posten"] if ger else []
     nach_rolle = {p["role"]: p for p in posten if p["role"]}
-    traeger, verworfen = [], 0
+    entity, verworfen = [], 0
     gefunden = parse_traeger(text)
     for block in gefunden:
         verworfen += block["verworfen"]
@@ -454,11 +454,11 @@ def lies(text: str) -> dict:
         block["querprobe_ok"] = (block["querprobe_delta"] is not None
                                  and abs(block["querprobe_delta"]) <= TOLERANZ_TEUR)
         if block["spaltenprobe_ok"] and block["querprobe_ok"]:
-            traeger.append(block)
+            entity.append(block)
         else:
             verworfen += len(block["zeilen"])
     return {"posten": posten if ger and ger["bestanden"] else [],
-            "traeger": traeger,
+            "entity": entity,
             # Wie viele Aufstellungen im Dokument stehen — nicht dasselbe wie
             # die Zahl der übernommenen. 2014–2016 kennen den Abschnitt 4.1.1
             # noch gar nicht; das ist eine Lücke der Quelle, keine gerissene
@@ -482,12 +482,12 @@ def probennachweis(probes: list[dict]) -> str:
                      for p in probes if p["ok"])
 
 
-def traegernachweis(traeger: list[dict]) -> str:
+def traegernachweis(entity: list[dict]) -> str:
     """Dasselbe für die Trägeraufstellung: die größte gemessene Abweichung
     der Spalten- und der Querprobe, in TEUR."""
-    if not traeger:
+    if not entity:
         return ""
-    spalte = max(abs(b["spaltenprobe_delta"]) for b in traeger)
-    quer = max(abs(b["querprobe_delta"] or 0.0) for b in traeger)
+    spalte = max(abs(b["spaltenprobe_delta"]) for b in entity)
+    quer = max(abs(b["querprobe_delta"] or 0.0) for b in entity)
     return (f"Trägersumme: Δ {spalte:.0f} TEUR; "
             f"Abgleich mit der Ergebnisrechnung: Δ {quer:.0f} TEUR")

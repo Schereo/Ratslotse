@@ -895,13 +895,13 @@ def test_hinweis_trennt_spaete_stadt_von_kaputtem_muster(bestand, tmp_path):
 # Jahrgang, der nach seinem üblichen Monat plus Karenz ausbleibt, ist eine
 # Meldung wert, sonst erinnert sich nach zwölf Monaten niemand.
 
-def staedtevergleich(store: CouncilStore, reihe: str, jahre: list[int]) -> None:
+def staedtevergleich(store: CouncilStore, series: str, jahre: list[int]) -> None:
     """Ein paar Zeilen je Jahrgang — der Inhalt ist hier egal, gezählt wird
     das Jahr."""
     from council import herkunft as h
 
     for year in jahre:
-        store.save_staedtevergleich(reihe, [
+        store.save_staedtevergleich(series, [
             {"year": year, "schluessel": "403000", "stadt": "Oldenburg (Oldb), Stadt",
              "indicator": "steuerkraftmesszahl", "wert": 1.0, "einheit": "teur"},
         ], h.Herkunft(art="lsn", probe=h.UNGEPRUEFT,

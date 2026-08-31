@@ -217,7 +217,7 @@ function BereichInner() {
   const nachBrutto = [...alle].sort((a, b) => b.brutto - a.brutto);
   const rangNetto = nachNetto.findIndex((x) => x.r.area === z.area) + 1;
   const bruttoTop = nachBrutto[0];
-  const reihe = bereichsReihe(data, z.area);
+  const series = bereichsReihe(data, z.area);
   const quelle = quellenLabel(zeilen, year);
   const info = bereichInfo(z.area);
   const maxWert = Math.max(...alle.map((x) => (ranking === "netto" ? x.netto : x.brutto)), 1);
@@ -533,13 +533,13 @@ function BereichInner() {
           <div className="flex items-baseline justify-between gap-3">
             <Kicker>Entwicklung des Bereichs</Kicker>
             <span className="font-mono text-[10px] uppercase text-muted-foreground">
-              {reihe.length >= 2
-                ? `${reihe[0].year}–${reihe[reihe.length - 1].year} · ${reihe.length} Jahre`
+              {series.length >= 2
+                ? `${series[0].year}–${series[series.length - 1].year} · ${series.length} Jahre`
                 : "Noch keine Reihe"}
             </span>
           </div>
-          {reihe.length >= 2 ? (() => {
-            const werte = reihe.map((r) => -(mio(r.zeile.result) ?? 0));
+          {series.length >= 2 ? (() => {
+            const werte = series.map((r) => -(mio(r.zeile.result) ?? 0));
             // Welche Größe die Reihe überhaupt beschreibt, entscheidet ihr
             // Vorzeichen. Ein Bereich mit Überschuss (Finanzmanagement) hat
             // durchweg negative Netto-Werte; „−80,0 Mio. € weniger
@@ -569,7 +569,7 @@ function BereichInner() {
                       {kopf.delta > 0 ? "+" : kopf.delta < 0 ? "−" : ""}{deMio(Math.abs(kopf.delta))}
                     </p>
                     <p className="max-w-[54ch] text-[12.5px] leading-relaxed text-foreground/85">
-                      Mio.&nbsp;€ gegenüber {reihe[0].year}: Der {kopf.wort} des Bereichs
+                      Mio.&nbsp;€ gegenüber {series[0].year}: Der {kopf.wort} des Bereichs
                       {" "}{kopf.delta >= 0 ? "stieg" : "sank"} von {deMio(kopf.von)} auf
                       {" "}{deMio(kopf.bis)}&nbsp;Mio.&nbsp;€
                       {kopf.prozent != null && <> — {kopf.delta >= 0 ? "ein Plus" : "ein Minus"} von {kopf.prozent}&nbsp;%</>}
@@ -578,7 +578,7 @@ function BereichInner() {
                   </div>
                 )}
                 <div className="mt-3 grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 gap-y-1 text-xs tabular-nums">
-                  {reihe.map(({ year: j, zeile }, i) => (
+                  {series.map(({ year: j, zeile }, i) => (
                     <div key={j} className="contents">
                       <span className="font-mono text-muted-foreground">{j}</span>
                       <div className="h-2.5 rounded-[3px] bg-muted">
@@ -597,10 +597,10 @@ function BereichInner() {
                   ))}
                 </div>
                 <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-                  {reihe.length < jahre.length
-                    ? <>Vor {reihe[0].year} führte der Plan den Bereich unter anderem Namen — die
+                  {series.length < jahre.length
+                    ? <>Vor {series[0].year} führte der Plan den Bereich unter anderem Namen — die
                         Reihe beginnt dort, wo der Name belegt ist.</>
-                    : <>Der Bereich heißt seit {reihe[0].year} unverändert; nur deshalb zeigen wir
+                    : <>Der Bereich heißt seit {series[0].year} unverändert; nur deshalb zeigen wir
                         die Reihe durchgehend. Wo Teilhaushalte umbenannt oder neu zugeschnitten
                         wurden, zeigen wir keine Kurve.</>}
                   {" "}Planwerte, nicht Jahresabschluss<Beleg q="plan" />.

@@ -94,7 +94,7 @@ export function einheitWort(einheit: string): string {
 
 /** Alle Punkte einer Kennzahl, nach Jahr. */
 export function punkteVon(daten: Kennzahlen, key: string): KennzahlPunkt[] {
-  return daten.reihe.filter((p) => p.indicator === key)
+  return daten.series.filter((p) => p.indicator === key)
     .sort((a, b) => a.year - b.year);
 }
 
@@ -109,14 +109,14 @@ export function punkteVon(daten: Kennzahlen, key: string): KennzahlPunkt[] {
  *  dann in der Ableseleiste, sobald das Jahr gewählt ist — Text im Layout,
  *  kein Tooltip. */
 export function reiheVon(daten: Kennzahlen, key: string): {
-  reihe: JahrPunkt[];
+  series: JahrPunkt[];
   anmerkung: { year: number; kurz: string; text: string } | null;
 } {
   const punkte = punkteVon(daten, key);
   const wechsel = daten.funde.find(
     (f) => f.indicator === key && f.art === "definition");
   if (!wechsel || !punkte.length) {
-    return { reihe: punkte.map((p) => ({ year: p.year, wert: p.wert })), anmerkung: null };
+    return { series: punkte.map((p) => ({ year: p.year, wert: p.wert })), anmerkung: null };
   }
 
   const einheit = daten.einheit[key] ?? "eur";
@@ -127,7 +127,7 @@ export function reiheVon(daten: Kennzahlen, key: string): {
     + `${schreibe(einheit, wechsel.alt)}, der neue ${schreibe(einheit, wechsel.neu)} `
     + `— deshalb läuft die Linie hier nicht durch.`;
   return {
-    reihe: punkte.map((p) => ({
+    series: punkte.map((p) => ({
       year: p.year,
       wert: p.wert,
       ...(p.year === erstesNeues && punkte[0].year !== erstesNeues
@@ -159,6 +159,6 @@ export function korrekturenVon(daten: Kennzahlen, key?: string): KennzahlFund[] 
 
 /** Das jüngste Jahr, für das überhaupt eine Kennzahl vorliegt. */
 export function juengstesJahr(daten: Kennzahlen): number | null {
-  const jahre = daten.reihe.map((p) => p.year);
+  const jahre = daten.series.map((p) => p.year);
   return jahre.length ? Math.max(...jahre) : null;
 }

@@ -47,7 +47,7 @@ def _bestand(store: CouncilStore) -> dict[str, dict]:
     aus: dict[str, dict] = defaultdict(
         lambda: {"ksinr": set(), "erste": None, "letzte": None,
                  "roles": Counter(), "parteien": Counter(),
-                 "gremien": set(), "namen": Counter()})
+                 "committees": set(), "namen": Counter()})
     for r in store._conn.execute(
             """SELECT a.name, a.ksinr, a.role, a.party, cs.committee, cs.session_date
                FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
@@ -59,7 +59,7 @@ def _bestand(store: CouncilStore) -> dict[str, dict]:
         e["ksinr"].add(r["ksinr"])
         e["roles"][r["role"]] += 1
         e["namen"][r["name"]] += 1
-        e["gremien"].add(r["committee"])
+        e["committees"].add(r["committee"])
         if r["party"]:
             e["parteien"][r["party"]] += 1
         d = r["session_date"]
@@ -89,7 +89,7 @@ def main(alle: bool = False, db: Path | None = None) -> dict:
             print(f"  {p['a']}  ↔  {p['b']}{mark}")
             print(_zeile(p["a"], a))
             print(_zeile(p["b"], b))
-            gemeinsam = sorted(a["gremien"] & b["gremien"])
+            gemeinsam = sorted(a["committees"] & b["committees"])
             print(f"    gemeinsame Gremien: {', '.join(gemeinsam) if gemeinsam else '—'}")
             print()
         if offen:

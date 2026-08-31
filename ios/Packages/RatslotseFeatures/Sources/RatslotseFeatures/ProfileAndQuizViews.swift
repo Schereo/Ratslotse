@@ -777,7 +777,7 @@ struct PublicPersonProfile: Codable, Sendable {
 
         enum CodingKeys: String, CodingKey {
             case kpenr, name, memberships
-            case currentFaction = "fraktion_aktuell"
+            case currentFaction = "current_faction"
         }
     }
 

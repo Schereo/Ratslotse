@@ -44,7 +44,7 @@ export type WegRunde = {
   template_number: string | null;
   kvonr: number | null;
   einbringung: WegStation | null;
-  fachausschuesse: { von: string; bis: string; count: number; gremien: string[] } | null;
+  fachausschuesse: { von: string; bis: string; count: number; committees: string[] } | null;
   stationen: WegStation[];
 };
 

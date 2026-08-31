@@ -102,26 +102,26 @@ def main() -> int:
                 print("ABBRUCH: Tabelle 1107-1 ist nicht zu finden — ihr Titel "
                       "fehlt. Es wird nichts geschrieben.", file=sys.stderr)
                 return 1
-            for regelwerk, (von, bis) in sorted(spannen.items()):
-                print(f"{ii.REGELWERK[regelwerk]}: Spanne laut Titel {von}–{bis}")
+            for accounting_system, (von, bis) in sorted(spannen.items()):
+                print(f"{ii.REGELWERK[accounting_system]}: Spanne laut Titel {von}–{bis}")
 
             result = ii.lies(text)
             zeilen = result["zeilen"]
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
                   f"{ii.probennachweis(result)}")
             for v in result["verworfen"]:
-                print(f"    VERWORFEN {v['year']} ({v['regelwerk']}): {v['grund']}",
+                print(f"    VERWORFEN {v['year']} ({v['accounting_system']}): {v['grund']}",
                       file=sys.stderr)
-            for regelwerk, jahre in sorted(result["fehlende_jahrgaenge"].items()):
+            for accounting_system, jahre in sorted(result["fehlende_jahrgaenge"].items()):
                 for j in jahre:
-                    print(f"    FEHLT {j} ({regelwerk}): im Titel angekündigt, "
+                    print(f"    FEHLT {j} ({accounting_system}): im Titel angekündigt, "
                           f"nicht übernommen", file=sys.stderr)
             if not zeilen:
                 print("ABBRUCH: kein einziger Jahrgang hat die Probe bestanden.",
                       file=sys.stderr)
                 return 1
 
-            doppik = [z for z in zeilen if z["regelwerk"] == "doppik"]
+            doppik = [z for z in zeilen if z["accounting_system"] == "doppik"]
             if doppik:
                 j = doppik[-1]
                 groesste = max(
@@ -167,18 +167,18 @@ def main() -> int:
             # des Endpunkts (`abgrenzung`) und damit auf der Seite direkt an
             # der großen Zahl.
             geschrieben = 0
-            for regelwerk in ("kameral", "doppik"):
-                teil = [z for z in zeilen if z["regelwerk"] == regelwerk]
+            for accounting_system in ("kameral", "doppik"):
+                teil = [z for z in zeilen if z["accounting_system"] == accounting_system]
                 verw = [v for v in result["verworfen"]
-                        if v["regelwerk"] == regelwerk]
+                        if v["accounting_system"] == accounting_system]
                 # Ein Regelwerk ganz ohne Jahrgänge wird trotzdem geschrieben,
                 # WENN es verworfene hat: Sonst verlöre die Seite genau dann
                 # die Begründung ihrer Lücke, wenn alles gerissen ist.
                 if not teil and not verw:
                     continue
-                von, bis = spannen[regelwerk]
-                nummer = "1107-1" if regelwerk == "doppik" else "1107"
-                arten = ", ".join(t for _, t in ii.SPALTEN[regelwerk][:-1])
+                von, bis = spannen[accounting_system]
+                nummer = "1107-1" if accounting_system == "doppik" else "1107"
+                arten = ", ".join(t for _, t in ii.SPALTEN[accounting_system][:-1])
                 citation = (f"Kapitel 11 „Verwaltung und Finanzen“, Tabelle "
                               f"{nummer} — je Jahr die Auszahlungsarten "
                               f"({arten}) und ihre Summe")
@@ -188,7 +188,7 @@ def main() -> int:
                     f"Zeilensumme bestanden" if teil else
                     f"Kein Jahrgang von {bis - von + 1} angekündigten hat die "
                     f"Zeilensumme bestanden")
-                fehlt = result["fehlende_jahrgaenge"].get(regelwerk) or []
+                fehlt = result["fehlende_jahrgaenge"].get(accounting_system) or []
                 if fehlt:
                     # Was fehlt, gehört in den Messwert — sonst liest sich
                     # „Zeilensumme bestanden" wie eine Vollständigkeit, die

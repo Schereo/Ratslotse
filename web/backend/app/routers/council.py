@@ -575,7 +575,7 @@ def haushalt_konzern(
     - ``konzern``: je Jahrgang die Summen des Konzerns (Erträge,
       Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und
       Personalaufwand) samt bestandener Rechenprobe und Fundstelle,
-    - ``traeger``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
+    - ``entity``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
       Zeile pro Aufgabenträger, Beträge in **Euro** (der Bericht rundet sie
       auf Tausend, daher die glatten Endziffern),
     - ``posten``: die vollständige Gesamtergebnisrechnung je Jahrgang,
@@ -592,7 +592,7 @@ def haushalt_konzern(
     auf ``/haushalt`` nicht verrechenbar. Die Seite sagt das; die API liefert
     deshalb auch keine gemischten Summen, sondern beide Reihen getrennt."""
     posten = store.get_konzern_posten()
-    traeger = store.get_konzern_traeger()
+    entity = store.get_konzern_traeger()
     kern = store.kernverwaltung_ist()
 
     je_jahr: dict[int, dict] = {}
@@ -606,8 +606,8 @@ def haushalt_konzern(
     # Jahresabschluss (Euro). Abgeglichen wird auf Tausend genau — feiner
     # kann es nicht sein, der Bericht rundet dort.
     gegenprobe = []
-    for t in traeger:
-        if t["traeger_key"] != "stadt":
+    for t in entity:
+        if t["entity_key"] != "stadt":
             continue
         ist = (kern.get(t["year"]) or {}).get(t["art"])
         if ist is None:
@@ -618,15 +618,15 @@ def haushalt_konzern(
             "ok": abs(t["amount_keur"] - ist / 1000.0) <= 1.0,
         })
 
-    ids = sorted({z["herkunft_id"] for z in (*posten, *traeger)
+    ids = sorted({z["herkunft_id"] for z in (*posten, *entity)
                   if z["herkunft_id"] is not None})
     return {
         "jahre": store.konzern_jahre(),
         "konzern": [je_jahr[j] for j in sorted(je_jahr)],
-        "traeger": [{**t, "amount": t["amount_keur"] * 1000.0,
+        "entity": [{**t, "amount": t["amount_keur"] * 1000.0,
                      "prior_year": (t["prior_year_keur"] * 1000.0
                                  if t["prior_year_keur"] is not None else None)}
-                    for t in traeger],
+                    for t in entity],
         "posten": posten,
         "gegenprobe": gegenprobe,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
@@ -688,8 +688,8 @@ def _lexikon_zuordnung(store: CouncilStore,
     # Je Name die häufigste Funktion des Berichts — Eingang der Heilung unten.
     funktionen: dict[str, Counter] = defaultdict(Counter)
     for p in personen:
-        if p.get("funktion"):
-            funktionen[p["name"]][p["funktion"]] += 1
+        if p.get("position"):
+            funktionen[p["name"]][p["position"]] += 1
 
     aus: dict[str, dict] = {}
     for name in {p["name"] for p in personen}:
@@ -736,7 +736,7 @@ def haushalt_beteiligungen(
     - ``personen``: die Aufsichtsorgane, Person für Person, mit Gremium,
       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
       eindeutig kennt — ``slug`` und ``partei`` für die Personen-Seite.
-      ``funktion`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
+      ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
       ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
       spaltenweise ausgibt (``council/beteiligungsbericht.py``),
@@ -1007,10 +1007,10 @@ def haushalt_uebersicht(
     - ``produkt_jahre``: Jahre, für die die Produktebene vorliegt,
     - ``plan_ist_jahre``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
     - ``ausgabenreihe``: die lange Reihe aus Datensatz 1102 — ein Betrag je
-      Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``regelwerk`` (die Naht
+      Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``accounting_system`` (die Naht
       2009/2010), die bestandenen ``probes`` und, wo die beiden Quellen sich
       widersprechen, den Betrag der unterlegenen (``conflict_amount``).
-      ``regelwerke`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
+      ``accounting_systems`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
       Abgrenzung — **beide gehören an jede Anzeige**: Links der Naht steht das
       Anordnungssoll des Verwaltungshaushalts, rechts die ordentlichen
       Aufwendungen der Gesamtergebnisrechnung, und über den Schnitt darf keine
@@ -1130,7 +1130,7 @@ def haushalt_uebersicht(
         "ausgabenreihe": lambda: {
             "zeilen": store.get_ausgabenreihe(),
             "naht_ab": ausgabenreihe_mod.NAHT_AB,
-            "regelwerke": {
+            "accounting_systems": {
                 r: {"label": ausgabenreihe_mod.REGELWERK[r],
                     "titel": ausgabenreihe_mod.TITEL[r],
                     "abgrenzung": ausgabenreihe_mod.ABGRENZUNG[r]}
@@ -1140,9 +1140,9 @@ def haushalt_uebersicht(
         # Die dreizehn Kennzahlen des Rechenschaftsberichts. Drei Listen, und
         # jede hat ihren eigenen Grund:
         #
-        # `reihe` ist die Anzeigereihe — je Kennzahl und Jahr der Wert aus dem
+        # `series` ist die Anzeigereihe — je Kennzahl und Jahr der Wert aus dem
         # JÜNGSTEN Bericht, der ihn druckt. `staende` ist die Belegkette: alle
-        # Stände aller sechs Berichte, aus denen sich `reihe` ergibt. Ohne die
+        # Stände aller sechs Berichte, aus denen sich `series` ergibt. Ohne die
         # zweite Liste könnte niemand nachvollziehen, dass die Steuerquote
         # 2021 einmal 49,05 % hieß.
         #
@@ -1193,7 +1193,7 @@ def haushalt_uebersicht(
         # irreführend (2025: Satz +21 %, Aufkommen −4,6 %).
         #
         # `abgrenzung` reist mit den Zahlen, nicht im Frontend — dieselbe Regel
-        # wie bei `ausgabenreihe.regelwerke`: Eine Legende, die es in zwei
+        # wie bei `ausgabenreihe.accounting_systems`: Eine Legende, die es in zwei
         # Sprachen gibt, driftet.
         "steuerplan": lambda: {
             "zeilen": store.get_steuerplan(),
@@ -1321,7 +1321,7 @@ def _kennzahlen(store: CouncilStore) -> dict:
     return {
         "label": {k.key: k.label for k in kennzahlen_mod.KENNZAHLEN},
         "einheit": {k.key: k.einheit for k in kennzahlen_mod.KENNZAHLEN},
-        "reihe": [{"indicator": z["indicator"], "year": z["year"], "wert": z["wert"],
+        "series": [{"indicator": z["indicator"], "year": z["year"], "wert": z["wert"],
                    "stellen": z["stellen"], "fassung": z["fassung"],
                    "report_year": z["report_year"], "herkunft_id": z["herkunft_id"]}
                   for z in kennzahlen_mod.neueste(staende)],
@@ -2087,11 +2087,11 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
     if not isinstance(g, dict):
         return None
     try:
-        reihe = [{"year": int(p["year"]), "wert": float(p["wert"])}
-                 for p in (g.get("reihe") or [])[:60]]
+        series = [{"year": int(p["year"]), "wert": float(p["wert"])}
+                 for p in (g.get("series") or [])[:60]]
     except (KeyError, TypeError, ValueError):
         return None
-    if len(reihe) < 2:
+    if len(series) < 2:
         return None
     # Der „Mehr dazu"-Link: NUR relative Ziele in den Haushalts-Bereich.
     # Der Snapshot ist öffentlich — ein durchgereichtes href wäre sonst ein
@@ -2106,7 +2106,7 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
             "titel": str(g.get("titel") or "")[:120],
             "einheit": str(g.get("einheit") or "")[:20],
             "nachkomma": max(0, min(int(g.get("nachkomma") or 0), 3)),
-            "reihe": reihe,
+            "series": series,
             "note": (str(g["note"])[:500] if g.get("note") else None),
             "quelle": (str(g["quelle"])[:200] if g.get("quelle") else None),
             "mehr": mehr}
@@ -2610,12 +2610,12 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         if not p:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Ratsmitglied nicht gefunden.")
         partei = p.get("party")
-        gremien = len(p.get("committees") or [])
+        committees = len(p.get("committees") or [])
         return {
             "title": f"{p['name']} ({partei})" if partei else p["name"],
             "description": (
                 f"Ratsmitglied in Oldenburg · {p.get('sessions', 0)} Sitzungen"
-                + (f" · {gremien} Gremien" if gremien else "")
+                + (f" · {committees} Gremien" if committees else "")
                 + ". Anwesenheit und Beschlüsse im Ratslotse."
             ),
         }
@@ -3667,9 +3667,9 @@ def haushalt_vergleich(
     werte = store.get_staedtevergleich()
     jahre: dict[str, list[int]] = {}
     for w in werte:
-        jahre.setdefault(w["reihe"], [])
-        if w["year"] not in jahre[w["reihe"]]:
-            jahre[w["reihe"]].append(w["year"])
+        jahre.setdefault(w["series"], [])
+        if w["year"] not in jahre[w["series"]]:
+            jahre[w["series"]].append(w["year"])
     for liste in jahre.values():
         liste.sort()
 
@@ -3728,7 +3728,7 @@ def haushalt_gebaut(
     voneinander abzuziehen und das Ergebnis „Umsetzungsquote" zu nennen — eine
     Zahl, die in keiner Quelle steht (``council/investitionen_ist.py``).
 
-    ``regelwerk`` trennt die beiden Tabellen, und das ist die tragende Angabe
+    ``accounting_system`` trennt die beiden Tabellen, und das ist die tragende Angabe
     dieser Antwort: Zum 01.01.2010 stellte die Stadt von kameraler auf
     doppische Buchführung um. Das Dokument trennt seine Reihen genau dort und
     begründet es in einer Fußnote. Wer über diesen Schnitt hinweg eine Linie
@@ -3754,12 +3754,12 @@ def haushalt_gebaut(
     from council import anlagenspiegel as anlagenspiegel_mod
     from council import investitionen_ist as _ii
 
-    reihe = store.get_investitionen_ist()
+    series = store.get_investitionen_ist()
     anlagen = store.get_anlagenspiegel()
     gruppen = store.get_vermoegensgruppen()
-    ids = sorted({z["herkunft_id"] for z in (*reihe, *anlagen, *gruppen)
+    ids = sorted({z["herkunft_id"] for z in (*series, *anlagen, *gruppen)
                   if z["herkunft_id"] is not None})
-    gemessen = {(v["regelwerk"], v["year"]): v.get("difference")
+    gemessen = {(v["accounting_system"], v["year"]): v.get("difference")
                 for v in store.get_investitionen_ist_verworfen()}
 
     # Lücken je Regelwerk: Was zwischen dem ersten und dem letzten belegten
@@ -3768,23 +3768,23 @@ def haushalt_gebaut(
     # durch, sähe man ihn hier nicht; das steht dann im Beleg-Messwert der
     # Herkunft, den derselbe Lauf schreibt.)
     fehlend: dict[str, list[dict]] = {}
-    for regelwerk in _ii.REGELWERK:
-        jahre = sorted(z["year"] for z in reihe if z["regelwerk"] == regelwerk)
+    for accounting_system in _ii.REGELWERK:
+        jahre = sorted(z["year"] for z in series if z["accounting_system"] == accounting_system)
         if len(jahre) < 2:
             continue
-        luecke = [{"year": j, "difference": gemessen.get((regelwerk, j))}
+        luecke = [{"year": j, "difference": gemessen.get((accounting_system, j))}
                   for j in range(jahre[0], jahre[-1] + 1) if j not in set(jahre)]
         if luecke:
-            fehlend[regelwerk] = luecke
+            fehlend[accounting_system] = luecke
 
     return {
-        "reihe": reihe,
-        "jahre": [z["year"] for z in reihe],
+        "series": series,
+        "jahre": [z["year"] for z in series],
         "abgrenzung": _ii.ABGRENZUNG,
         # Wie die beiden Rechnungswesen heißen — damit die Beschriftung nicht
         # in zwei Sprachen existiert (dieselbe Entscheidung wie bei `arten`
         # in /haushalt/schulden).
-        "regelwerke": [{"schluessel": k, "titel": t}
+        "accounting_systems": [{"schluessel": k, "titel": t}
                        for k, t in _ii.REGELWERK.items()],
         "fehlend": fehlend,
         # DIE ANDERE HÄLFTE DER GESCHICHTE. Bis hierher zeigt die Seite, was
@@ -3798,7 +3798,7 @@ def haushalt_gebaut(
         # Block und keine Spalte: Wer sie als Teil der Reihe ausgäbe, machte
         # aus einer Quellenlücke eine Datenlücke.
         "anlagen": {
-            "reihe": anlagen,
+            "series": anlagen,
             "jahre": sorted({z["year"] for z in anlagen}),
             "gruppen": gruppen,
             "gruppen_jahre": sorted({g["year"] for g in gruppen}),
@@ -3945,7 +3945,7 @@ def haushalt_schulden(
                              if z.get("herkunft_id") is not None})
 
     return {
-        "reihe": zeilen,
+        "series": zeilen,
         "jahre": [z["year"] for z in zeilen],
         "abgrenzung": _s.ABGRENZUNG,
         # `exact` und `out_next_year` sind Angaben über den BELEG, nicht über
@@ -3954,14 +3954,14 @@ def haushalt_schulden(
         # nur im Abschluss des Folgejahres. Wer alle sechs gleich formatiert,
         # behauptet eine Genauigkeit, die es für vier davon nicht gibt.
         "buergschaften": {
-            "reihe": buerg,
+            "series": buerg,
             "rueckstellung": rueckstellung,
             "geldschulden": geldschulden,
             "abgrenzung": _b.ABGRENZUNG,
             # Die Ratsbeschlüsse dahinter — als GESCHICHTE, nicht als Summe.
             # Unter den Vorlagen sind Verlängerungen und Anpassungen derselben
             # Bürgschaft; addiert zählte man dieselbe Zusage mehrfach. Was der
-            # Bestand ist, sagt allein der Jahresabschluss (`reihe`).
+            # Bestand ist, sagt allein der Jahresabschluss (`series`).
             "vorlagen": store.buergschafts_vorlagen(),
         },
         # Die dritte Zahl — nur der jüngste Stichtag, und ausdrücklich ohne

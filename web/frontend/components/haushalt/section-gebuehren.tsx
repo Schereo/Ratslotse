@@ -149,7 +149,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
 }) {
   const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = nach[nach.length - 1];
-  const reihe: JahrPunkt[] = nach
+  const series: JahrPunkt[] = nach
     .filter((z) => z.gebuehr != null)
     .map((z) => ({ year: z.year, wert: z.gebuehr as number }));
 
@@ -231,10 +231,10 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
           vorlageNr={letzte.template_number} />
       </div>
 
-      {reihe.length >= 3 && (
+      {series.length >= 3 && (
         <div className="mt-3">
           <Zeitreihe
-            reihe={reihe}
+            series={series}
             einheit="€"
             nachkomma={2}
             titel="Gebühr im Zeitverlauf"

@@ -155,7 +155,7 @@ def test_wortbeitraege_person_seiten_und_gremienfilter(tmp_path):
     store = _wb_store(tmp_path)
     try:
         d = store.wortbeitraege_person("Tim Harms", limit=20)
-        assert {g["committee"]: g["n"] for g in d["gremien"]} == {"Rat": 3, "Verkehrsausschuss": 1}
+        assert {g["committee"]: g["n"] for g in d["committees"]} == {"Rat": 3, "Verkehrsausschuss": 1}
 
         nur_verkehr = store.wortbeitraege_person("Tim Harms", gremium="Verkehrsausschuss")
         assert nur_verkehr["total"] == 1 and nur_verkehr["gesamt"] == 4
@@ -263,7 +263,7 @@ def _bericht_personen(store, zeilen):
     with store._conn:
         store._conn.executemany(
             "INSERT INTO council_gesellschaft_personen (report_year, gesellschaft, "
-            "sort_order, gremium, name, funktion, vorsitz, note, "
+            "sort_order, gremium, name, position, vorsitz, note, "
             "roles_assignable, fetched_at) "
             "VALUES (?, 'gsg', ?, 'Aufsichtsrat', ?, ?, NULL, NULL, 1, datetime('now'))",
             [(j, i, n, f) for i, (j, n, f) in enumerate(zeilen)])
@@ -540,7 +540,7 @@ def test_ris_stammdaten_zaehlen_als_mandat(tmp_path):
         assert store.list_members()  # Cache der Varianten füllen
         with store._conn:
             store._conn.execute(
-                "INSERT INTO council_persons (kpenr, name, fraktion_aktuell, fetched_at) "
+                "INSERT INTO council_persons (kpenr, name, current_faction, fetched_at) "
                 "VALUES (99, 'Sabine Görg', 'SPD', datetime('now'))")
             store._conn.execute(
                 "INSERT INTO council_memberships (kpenr, kgrnr, gremium, role, von, bis, fetched_at) "
@@ -694,7 +694,7 @@ def test_gruppen_label_wird_zur_partei_aufgeloest(tmp_path):
                  (2, "Vally Finke", "Für Oldenburg"),           # eigenständige Gruppe
                  (2, "Manfred Klöpper", "Gruppe DIE LINKE./Piratenpartei")])
             store._conn.execute(
-                "INSERT INTO council_persons (kpenr, name, fraktion_aktuell, fetched_at) "
+                "INSERT INTO council_persons (kpenr, name, current_faction, fetched_at) "
                 "VALUES (7, 'Jens Lükermann', 'Volt', datetime('now'))")
         m = {x["slug"]: x for x in store.list_members()}
         assert m["benno-schulz"]["party"] == "FDP"          # aus der eigenen Historie

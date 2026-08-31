@@ -187,7 +187,7 @@ export function TermineAbschnitt({ onBestand }: {
       label: "Ausschüsse beraten",
       von: fach.von,
       bis: fach.bis,
-      gemessen: `${fach.count} Termine in ${fach.gremien.length} Ausschüssen — hier entstehen die Änderungslisten`,
+      gemessen: `${fach.count} Termine in ${fach.committees.length} Ausschüssen — hier entstehen die Änderungslisten`,
       href: "/haushalt/streit",
     });
   }
@@ -389,7 +389,7 @@ function Weg({ runde }: { runde: WegRunde }) {
               Teilhaushalte in den Fachausschüssen
             </p>
             <p className="mt-1 text-[13.5px] font-bold leading-snug">
-              {fach.gremien.length} Ausschüsse
+              {fach.committees.length} Ausschüsse
               <span className="font-normal text-muted-foreground">
                 {" · "}{fach.count} {fach.count === 1 ? "Termin" : "Termine"}
               </span>
@@ -407,7 +407,7 @@ function Weg({ runde }: { runde: WegRunde }) {
                 wo ein Name endet und der nächste beginnt, sagte nur ein
                 Mittelpunkt. */}
             <ul className="mt-2 flex flex-wrap gap-1.5">
-              {fach.gremien.map((g) => (
+              {fach.committees.map((g) => (
                 <li key={g}
                   className="rounded-full border border-border px-2.5 py-0.5 text-[11px] leading-relaxed text-muted-foreground">
                   {g}

@@ -80,7 +80,7 @@ function SteuerInner() {
     HaushaltAuswahl<typeof SATZUNG_FELDER[number]>>(haushaltUrl(SATZUNG_FELDER));
   const art = steuerartFinden(slug);
 
-  const reihe = useMemo(() => {
+  const series = useMemo(() => {
     if (!data || !art?.datenArt) return [];
     return data.steuern
       .filter((s) => s.art === art.datenArt && s.amount != null && s.amount > 0)
@@ -125,7 +125,7 @@ function SteuerInner() {
     .filter((z) => z.result != null)
     .map((z) => ({ year: z.year, amount: z.result as number }));
 
-  const anzeigeReihe = istZuweisung ? zuwReihe : istEntgelt ? entgeltReihe : reihe;
+  const anzeigeReihe = istZuweisung ? zuwReihe : istEntgelt ? entgeltReihe : series;
   const letzte = anzeigeReihe.at(-1);
 
   // Der Anteil braucht seinen Nenner IM TEXT: „3 %" ohne „wovon" ist keine
@@ -230,7 +230,7 @@ function SteuerInner() {
   // Hebesatz-Sprung. Ohne ihn liest sich „+21 %" als „alle zahlen 21 % mehr",
   // und das war 2025 nachweislich falsch.
   const aufkommen: Record<number, number> = {};
-  for (const s of reihe) aufkommen[s.year] = s.amount;
+  for (const s of series) aufkommen[s.year] = s.amount;
 
   // Die Quellen dieser Seite in Lese-Reihenfolge — daraus zählt der Provider
   // die Fußnoten-Nummern.
@@ -313,10 +313,10 @@ function SteuerInner() {
           in der Kennzahl-Karte oben, mit eigenem Jahr). Nur wo eine
           Hebesatz-Reihe vorliegt (Realsteuern); erfunden wird keine. */}
       {(() => {
-        const reihe = [...hebeHaupt].sort((a, b) => a.year - b.year);
-        const akt = reihe.at(-1);
-        if (reihe.length < 2 || !akt) return null;
-        const stufen = reihe.slice(-4);
+        const series = [...hebeHaupt].sort((a, b) => a.year - b.year);
+        const akt = series.at(-1);
+        if (series.length < 2 || !akt) return null;
+        const stufen = series.slice(-4);
         const min = Math.min(...stufen.map((z) => z.hebesatz));
         const max = Math.max(...stufen.map((z) => z.hebesatz));
         const hoehe = (w: number) => (max > min ? 12 + ((w - min) / (max - min)) * 28 : 24);
@@ -324,7 +324,7 @@ function SteuerInner() {
           <Seitenbuehne
             kicker={`Steuer-Steckbrief · Hebesatz ${art.hebesatzArten?.[0] ?? art.titel}`}
             zahl={<><ZaehlZahl wert={akt.hebesatz} />&#8239;% seit {akt.year}</>}
-            sub={`davor ${reihe.length - 1} ${reihe.length - 1 === 1 ? "Änderung" : "Änderungen"} seit ${reihe[0].year} — beschlossen jeweils vom Rat`}
+            sub={`davor ${series.length - 1} ${series.length - 1 === 1 ? "Änderung" : "Änderungen"} seit ${series[0].year} — beschlossen jeweils vom Rat`}
             minibild={{
               href: "#hebesatz",
               label: "Hebesatz-Treppe — klickt zur ganzen Reihe seit 1980",
@@ -438,7 +438,7 @@ function SteuerInner() {
 
       {anzeigeReihe.length >= 2 && (
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <IstKurve reihe={anzeigeReihe} />
+          <IstKurve series={anzeigeReihe} />
           <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[11px] text-muted-foreground">
             Quelle {istZuweisung
               ? "Schlüsselzuweisungen"
@@ -558,7 +558,7 @@ function SteuerInner() {
         {hebeHaupt.length >= 2 ? (
           <div id="hebesatz" className="scroll-mt-20">
           <HebesatzTreppe
-            reihe={hebeHaupt}
+            series={hebeHaupt}
             zweitreihe={hebeZweit}
             zweitLabel={art.hebesatzArten?.[1]}
             titel={art.titel}

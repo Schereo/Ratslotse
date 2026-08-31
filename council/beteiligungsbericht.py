@@ -774,7 +774,7 @@ class Aufsichtsperson:
     name: str
     #: Aus der zweiten Spalte — ``None``, wenn die Rechenprobe gerissen ist
     #: oder der Bericht für dieses Gremium keine Funktionsspalte führt.
-    funktion: str | None
+    position: str | None
     #: ``"vorsitz"`` | ``"stellvertretung"`` | ``None``.
     vorsitz: str | None
     #: Amtszeit-Zusatz, wörtlich: „bis 30. Juni 2022".
@@ -834,7 +834,7 @@ def _person_zerlegen(zeile: str, gremium: str, sort_order: int) -> Aufsichtspers
     steht. Alles dahinter ist Beiwerk und wird eingeordnet: Vorsitz, Zeitraum
     — oder, wo es weder das eine noch das andere ist („Dr. Julia Figura,
     Stadtkämmerin"), fallengelassen. Ein Amt aus der Namensspalte in das Feld
-    ``funktion`` zu schreiben hieße, die Funktionsspalte zu übergehen, deren
+    ``position`` zu schreiben hieße, die Funktionsspalte zu übergehen, deren
     Zuordnung gerade die Probe absichert."""
     # „Hans -Georg Heß", „Prof. Dr. -Ing. Weisensee": Der Satz setzt Leerraum
     # vor den Bindestrich. Das ist derselbe Schaden wie bei den Beträgen.
@@ -860,7 +860,7 @@ def _person_zerlegen(zeile: str, gremium: str, sort_order: int) -> Aufsichtspers
     for t in teile[1:]:
         einordnen(t)
     return Aufsichtsperson(
-        gremium=gremium, name=" ".join(teile[0].split()), funktion=None,
+        gremium=gremium, name=" ".join(teile[0].split()), position=None,
         vorsitz=vorsitz, note=", ".join(hinweise) or None,
         sort_order=sort_order)
 
@@ -915,7 +915,7 @@ def aufsichtsorgane(text: str) -> tuple[list[Aufsichtsperson], bool]:
         haelt = len(block) == len(funktionen)
         if haelt:
             for p, f in zip(block, funktionen):
-                p.funktion = f
+                p.position = f
         elif funktionen or kopf.group(2):
             # Nur wo der Bericht eine Funktionsspalte führt, ist eine
             # gerissene Probe ein Befund. Ohne Spalte gibt es nichts zu paaren.
@@ -929,7 +929,7 @@ def aufsichtsorgane(text: str) -> tuple[list[Aufsichtsperson], bool]:
         # keine, hieße der Hinweis „hier stimmt etwas nicht" für eine Liste,
         # die aussieht wie die andere — und niemand wüsste, welche gemeint ist.
         for p in personen:
-            p.funktion = None
+            p.position = None
     return personen, zuordenbar
 
 
@@ -1081,21 +1081,21 @@ def lies(seiten: list[str]) -> dict:
         for indicator, gegen, betragsweise in (
                 ("bilanzsumme", g.bilanzsummen, False),
                 ("jahresergebnis", g.guv, True)):
-            reihe = g.kennzahlen.get(indicator) or {}
-            gemeinsam = sorted(set(reihe) & set(gegen))
+            series = g.kennzahlen.get(indicator) or {}
+            gemeinsam = sorted(set(series) & set(gegen))
             for j in gemeinsam:
-                links, rechts = reihe[j], gegen[j]
+                links, rechts = series[j], gegen[j]
                 if betragsweise:
                     links, rechts = abs(links), abs(rechts)
                 delta = abs(links - rechts)
                 dokumentproben.append(
                     {"gesellschaft": g.key, "indicator": indicator, "year": j,
                      "delta": delta, "ok": delta <= TOLERANZ_EUR})
-            if reihe and not gemeinsam:
+            if series and not gemeinsam:
                 warnungen.append(
                     f"{g.name}: {indicator} ohne Gegenstelle im Dokument "
                     f"(dort {sorted(gegen) or '—'}, in den Kennzahlen "
-                    f"{sorted(reihe)})")
+                    f"{sorted(series)})")
     return {"budget_year": jg, "gesellschaften": ges, "warnungen": warnungen,
             "dokumentproben": dokumentproben}
 
@@ -1115,8 +1115,8 @@ def ueberlappung(jahrgaenge: dict[int, list[Gesellschaft]]) -> dict:
     gesammelt: dict[tuple[str, str, int], dict[int, float]] = {}
     for bericht, liste in sorted(jahrgaenge.items()):
         for g in liste:
-            for indicator, reihe in g.kennzahlen.items():
-                for year, wert in reihe.items():
+            for indicator, series in g.kennzahlen.items():
+                for year, wert in series.items():
                     gesammelt.setdefault((g.key, indicator, year), {})[bericht] = wert
 
     bestaetigt: dict[tuple[str, str, int], int] = {}
@@ -1153,8 +1153,8 @@ def alle_werte(jahrgaenge: dict[int, list[Gesellschaft]]
     aus: dict[tuple[str, str, int], dict[int, float]] = {}
     for report_year, liste in sorted(jahrgaenge.items()):
         for g in liste:
-            for indicator, reihe in g.kennzahlen.items():
-                for year, wert in reihe.items():
+            for indicator, series in g.kennzahlen.items():
+                for year, wert in series.items():
                     aus.setdefault((g.key, indicator, year), {})[report_year] = wert
     return aus
 
@@ -1172,10 +1172,10 @@ def konzernvergleich(store, year: int) -> list[dict]:
     obwohl sie etwas erwirtschaftet haben (gemessene Zahlen im Modulkopf). Was
     hier herauskommt, ist eine Einordnung für die Seite und eine Kennzahl fürs
     Protokoll — nichts, was einen Wert verwirft."""
-    traeger: dict[str, dict[str, float]] = {}
+    entity: dict[str, dict[str, float]] = {}
     for z in store.get_konzern_traeger(year):
-        traeger.setdefault(z["traeger_key"], {})[z["art"]] = z["amount_keur"]
-    if not traeger:
+        entity.setdefault(z["entity_key"], {})[z["art"]] = z["amount_keur"]
+    if not entity:
         return []
 
     ergebnisse = {z["gesellschaft"]: z["wert"]
@@ -1184,11 +1184,11 @@ def konzernvergleich(store, year: int) -> list[dict]:
     aus: list[dict] = []
     for g in store.get_gesellschaften():
         schluessel = g.get("consolidated_key")
-        if not schluessel or schluessel not in traeger:
+        if not schluessel or schluessel not in entity:
             continue
         if g["gesellschaft"] not in ergebnisse:
             continue
-        v = traeger[schluessel]
+        v = entity[schluessel]
         if "revenues" not in v or "expenses" not in v:
             continue
         beitrag = (v["revenues"] - v["expenses"]) * 1000.0
@@ -1330,7 +1330,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 personen.append({
                     "report_year": year, "gesellschaft": g.key,
                     "sort_order": person.sort_order, "gremium": person.gremium,
-                    "name": person.name, "funktion": person.funktion,
+                    "name": person.name, "position": person.position,
                     "vorsitz": person.vorsitz, "note": person.note,
                     "roles_assignable": zuordenbar,
                     # Der Name selbst trägt keine Probe — er steht einmal im
@@ -1338,13 +1338,13 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                     # gerissen ist, steht auch kein Amt da, und die Zeile sagt
                     # ausdrücklich „ungeprüft" statt eine Probe zu behaupten.
                     "herkunft": _h.Herkunft(
-                        probe=("beteiligung_spaltenprobe" if person.funktion
+                        probe=("beteiligung_spaltenprobe" if person.position
                                else _h.UNGEPRUEFT),
                         citation=f"Abschnitt {g.classification} — "
                                    f"{person.gremium}",
                         probe_result=(f"{len(liste)} Namen, "
                                         f"{len(liste)} Funktionen"
-                                        if person.funktion else None),
+                                        if person.position else None),
                         **gemeinsam)})
 
             eigner, anteilsprobe = beteiligungsverhaeltnisse(

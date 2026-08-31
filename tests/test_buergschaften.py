@@ -99,7 +99,7 @@ def test_die_luecke_wird_nur_dort_aus_dem_folgejahr_gefuellt_wo_sie_ist():
     gefunden = [b.parse_bestand(TABELLE_2019, 2019),
                 b.parse_bestand(ANHANG_2022, 2022),
                 b.parse_bestand(ANHANG_2024, 2024)]
-    r = b.reihe(gefunden)
+    r = b.series(gefunden)
     # 2021 und 2023 fehlen in dieser Auswahl und werden beide zu Recht aus dem
     # Anfangsbestand des Folgejahrs ergänzt.
     assert [z["year"] for z in r] == [2019, 2021, 2022, 2023, 2024]

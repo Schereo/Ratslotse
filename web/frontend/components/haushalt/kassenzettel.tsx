@@ -387,7 +387,7 @@ export function Kassenzettel({ daten, year, einwohner, className }: {
           <Karte kicker="Rücklage im Zeitverlauf">
             <Zeitreihe
               className="mt-3"
-              reihe={ruecklagenVerlauf}
+              series={ruecklagenVerlauf}
               titel="Verfügbar nach Jahresergebnis"
               einheit="Mio. €"
               nachkomma={1}

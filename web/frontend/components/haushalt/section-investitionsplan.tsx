@@ -56,7 +56,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { amount, deMio, mio } from "@/lib/haushalt";
 import {
   Herkunft, InvestitionenDaten, InvestitionsZeile, finanzhaushaltJahr,
-  gesamtJahr, herkunftVon, investitionsAnteil, netto, reihe, teilhaushalte,
+  gesamtJahr, herkunftVon, investitionsAnteil, netto, series, teilhaushalte,
 } from "@/lib/haushalt-investitionen";
 import {
   ProgrammDaten, count, passenderJahrgang,
@@ -236,7 +236,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
   const skala = zeilen.length ? zeilen[0].outflows : 0;
   const h = herkunftVon(data, gesamt?.herkunft_id);
   const hBezug = herkunftVon(data, bezug?.herkunft_id);
-  const zeitreihe = reihe(data);
+  const zeitreihe = series(data);
 
   if (loading) {
     return (

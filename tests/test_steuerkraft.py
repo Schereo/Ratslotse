@@ -218,10 +218,10 @@ def test_gespeichert_kommt_je_ausgleichsjahr_eine_zeile_zurueck(tmp_path, kfa202
             label="KFA 2026", url="https://example.org/kfa.xlsx",
             probe_result="3 von 3 Städten"))
 
-        reihe = store.get_finanzausgleich()
-        assert [r["year"] for r in reihe] == [2025, 2026]
-        assert reihe[0]["zuweisungen_uebertragener_wirkungskreis"] == 10575
-        assert reihe[1]["nettobetrag"] == 93438
+        series = store.get_finanzausgleich()
+        assert [r["year"] for r in series] == [2025, 2026]
+        assert series[0]["zuweisungen_uebertragener_wirkungskreis"] == 10575
+        assert series[1]["nettobetrag"] == 93438
         # Und die Steuerkraft-Reihe bleibt davon unberührt.
         assert store.get_staedtevergleich("steuerkraft") == []
     finally:

@@ -152,9 +152,9 @@ export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; yea
   const [sortierung, setSortierung] = useState<Sortierung>("stadt");
   const [alle, setAlle] = useState(false);
 
-  const { traeger, ueberschuss, bedarfSumme, topfSumme, luecke } = useMemo(() => {
+  const { entity, ueberschuss, bedarfSumme, topfSumme, luecke } = useMemo(() => {
     const teile = bereiche(zeilen);
-    const traeger: Zeile[] = [];
+    const entity: Zeile[] = [];
     const ueberschuss: (Zeile & { plus: number })[] = [];
     let bedarfRoh = 0;
     let topfRoh = 0;
@@ -173,14 +173,14 @@ export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; yea
       };
       if (result < 0) {
         bedarfRoh += -result;
-        traeger.push(basis);
+        entity.push(basis);
       } else {
         topfRoh += result;
         ueberschuss.push({ ...basis, plus: mio(result) ?? 0 });
       }
     }
     return {
-      traeger,
+      entity,
       ueberschuss,
       bedarfSumme: mio(bedarfRoh) ?? 0,
       topfSumme: mio(topfRoh) ?? 0,
@@ -192,8 +192,8 @@ export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; yea
   }, [zeilen]);
 
   const sortiert = useMemo(
-    () => [...traeger].sort((a, b) => (sortierung === "stadt" ? b.stadt - a.stadt : b.gesamt - a.gesamt)),
-    [traeger, sortierung],
+    () => [...entity].sort((a, b) => (sortierung === "stadt" ? b.stadt - a.stadt : b.gesamt - a.gesamt)),
+    [entity, sortierung],
   );
 
   if (!sortiert.length) return null;
@@ -207,8 +207,8 @@ export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; yea
 
   // Der Befund der Tabelle, aus den Daten gelesen statt hineingeschrieben:
   // Trägt der größte Ausgabenposten auch die größten Kosten für die Stadt?
-  const groessteAusgabe = [...traeger].sort((a, b) => b.gesamt - a.gesamt)[0];
-  const groesstenKosten = [...traeger].sort((a, b) => b.stadt - a.stadt)[0];
+  const groessteAusgabe = [...entity].sort((a, b) => b.gesamt - a.gesamt)[0];
+  const groesstenKosten = [...entity].sort((a, b) => b.stadt - a.stadt)[0];
   const auseinander = groessteAusgabe && groesstenKosten
     && groessteAusgabe.roh !== groesstenKosten.roh;
 
@@ -219,7 +219,7 @@ export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; yea
           <h2 className="max-w-[46ch] text-[17px] font-bold leading-snug tracking-tight sm:text-[20px]">
             {auseinander
               ? "Hohe Ausgaben bedeuten nicht automatisch einen hohen Zuschussbedarf"
-              : `Die ${traeger.length + ueberschuss.length} Bereiche im Überblick`}
+              : `Die ${entity.length + ueberschuss.length} Bereiche im Überblick`}
           </h2>
           <p className="mt-2 max-w-[74ch] text-[13px] leading-relaxed text-foreground/85">
             Die Länge jedes Balkens zeigt die geplanten Ausgaben eines Bereichs. Der{" "}

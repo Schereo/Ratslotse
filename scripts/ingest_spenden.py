@@ -114,7 +114,7 @@ def main() -> int:
                 probe_result=(
                     f"Beschlossen {spenden.euro(v['amount'])} Euro; derselbe "
                     f"Betrag steht im Abschnitt zu den finanziellen Auswirkungen "
-                    + ("noch einmal." if v["zweitstelle"] == "identisch"
+                    + ("noch einmal." if v["second_mention"] == "identisch"
                        else f"als Zerlegung in {v['teile']} Teilbeträge, die sich "
                             f"auf den Cent aufaddieren.")))
 

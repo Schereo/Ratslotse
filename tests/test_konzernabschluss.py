@@ -303,7 +303,7 @@ def test_traeger_werden_mit_schluessel_gelesen():
     assert block["art"] == "revenues"
     assert block["spaltenprobe_ok"]
     assert block["verworfen"] == 0
-    nach_key = {z["traeger_key"]: z for z in block["zeilen"]}
+    nach_key = {z["entity_key"]: z for z in block["zeilen"]}
     assert nach_key["stadt"]["amount_keur"] == 799057
     assert nach_key["klinikum"]["amount_keur"] == 368100
     assert nach_key["konsolidierung"]["amount_keur"] == -98506
@@ -320,7 +320,7 @@ def test_spaltenprobe_verwirft_widerspruechliche_aufstellung():
     # Und `lies` nimmt sie deshalb nicht auf.
     result = ka.lies(GER_2018 + TRAEGER_2018_AUFW)
     assert result["bestanden"]          # die Postentabelle bleibt gültig
-    assert result["traeger"] == []      # die Aufstellung nicht
+    assert result["entity"] == []      # die Aufstellung nicht
     assert result["traeger_gefunden"] == 1
 
 
@@ -329,14 +329,14 @@ def test_querprobe_verlangt_uebereinstimmung_mit_der_postentabelle():
     desselben Berichts — sie müssen dasselbe sagen."""
     result = ka.lies(GER_2019 + TRAEGER_2024)
     # 2019er Postentabelle gegen 2024er Trägerliste: passt nicht zusammen.
-    assert result["traeger"] == []
+    assert result["entity"] == []
     assert result["traeger_gefunden"] == 1
 
 
 def test_vorzeichen_mit_leerzeichen():
     """Bis 2020 schreibt der Bericht „ - 80.462" und „+ 16.098"."""
     block = ka.parse_traeger(TRAEGER_2018_AUFW)[0]
-    nach_key = {z["traeger_key"]: z for z in block["zeilen"]}
+    nach_key = {z["entity_key"]: z for z in block["zeilen"]}
     assert nach_key["konsolidierung"]["amount_keur"] == -80462
     assert nach_key["stadt"]["prior_year_keur"] == 521420
 
@@ -368,10 +368,10 @@ def test_speichern_und_lesen(tmp_path):
     try:
         result = ka.lies(GER_2024_ZUSAMMEN)
         assert result["bestanden"]
-        traeger = [z | {"art": b["art"]}
-                   for b in result["traeger"] for z in b["zeilen"]]
+        entity = [z | {"art": b["art"]}
+                   for b in result["entity"] for z in b["zeilen"]]
         store.save_konzern_jahrgang(
-            2024, result["posten"], traeger,
+            2024, result["posten"], entity,
             _herkunft("Abschnitt 3.2, Gesamtergebnisrechnung des Konzerns",
                       ["konzern_ergebnisprobe", "konzern_ausserordentlich",
                        "konzern_gesamtergebnis"],
@@ -379,13 +379,13 @@ def test_speichern_und_lesen(tmp_path):
             _herkunft("Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
                       ["konzern_zeilenprobe", "konzern_traegersumme",
                        "konzern_querprobe"],
-                      ka.traegernachweis(result["traeger"])))
+                      ka.traegernachweis(result["entity"])))
 
         assert store.konzern_jahre() == [2024]
         posten = {p["role"]: p for p in store.get_konzern_posten(2024) if p["role"]}
         assert posten["revenues_total"]["amount"] == 1241548906.55
 
-        zeilen = {z["traeger_key"]: z for z in store.get_konzern_traeger(2024)}
+        zeilen = {z["entity_key"]: z for z in store.get_konzern_traeger(2024)}
         assert zeilen["stadt"]["amount_keur"] == 799057
 
         # Zwei Abschnitte, zwei Herkünfte — nicht eine für den ganzen Jahrgang.
@@ -410,7 +410,7 @@ def test_speichern_und_lesen(tmp_path):
         # zweite Herkunft an (idempotent über den Fingerabdruck).
         vorher = len(store.get_herkunft())
         store.save_konzern_jahrgang(
-            2024, result["posten"], traeger,
+            2024, result["posten"], entity,
             _herkunft("Abschnitt 3.2, Gesamtergebnisrechnung des Konzerns",
                       ["konzern_ergebnisprobe", "konzern_ausserordentlich",
                        "konzern_gesamtergebnis"],
@@ -418,7 +418,7 @@ def test_speichern_und_lesen(tmp_path):
             _herkunft("Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
                       ["konzern_zeilenprobe", "konzern_traegersumme",
                        "konzern_querprobe"],
-                      ka.traegernachweis(result["traeger"])))
+                      ka.traegernachweis(result["entity"])))
         assert len(store.get_konzern_posten(2024)) == len(result["posten"])
         assert len(store.get_herkunft()) == vorher
     finally:
@@ -453,8 +453,8 @@ def test_gegenprobe_gegen_die_kernverwaltung(tmp_path):
         assert ist[2024]["revenues"] == 799057202.86
 
         result = ka.lies(GER_2024_ZUSAMMEN)
-        stadt = next(z for b in result["traeger"] for z in b["zeilen"]
-                     if z["traeger_key"] == "stadt")
+        stadt = next(z for b in result["entity"] for z in b["zeilen"]
+                     if z["entity_key"] == "stadt")
         # Der Bericht rundet auf Tausend — genauer geht der Abgleich nicht.
         assert abs(stadt["amount_keur"] - ist[2024]["revenues"] / 1000.0) <= 1.0
     finally:

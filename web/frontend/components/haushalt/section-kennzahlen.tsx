@@ -161,16 +161,16 @@ function Verlauf({
 }) {
   const einheit = daten.einheit[gewaehlt] ?? "eur";
   const label = daten.label[gewaehlt] ?? gewaehlt;
-  const { reihe, anmerkung } = useMemo(() => reiheVon(daten, gewaehlt), [daten, gewaehlt]);
+  const { series, anmerkung } = useMemo(() => reiheVon(daten, gewaehlt), [daten, gewaehlt]);
   const formel = formelVon(daten, gewaehlt);
   const korrekturen = korrekturenVon(daten, gewaehlt);
   const format = formatVon(einheit);
-  if (!reihe.length) return null;
+  if (!series.length) return null;
 
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <Zeitreihe
-        reihe={reihe}
+        series={series}
         einheit={einheitWort(einheit)}
         format={format}
         nachkomma={einheit === "anzahl" ? 0 : 2}
@@ -281,11 +281,11 @@ export function KennzahlenAbschnitt() {
   const daten = data?.kennzahlen ?? null;
   const year = daten ? juengstesJahr(daten) : null;
   const jahre = useMemo(
-    () => (daten ? [...new Set(daten.reihe.map((p) => p.year))].sort((a, b) => a - b) : []),
+    () => (daten ? [...new Set(daten.series.map((p) => p.year))].sort((a, b) => a - b) : []),
     [daten],
   );
 
-  if (!daten || year == null || !daten.reihe.length) {
+  if (!daten || year == null || !daten.series.length) {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="font-display text-2xl font-bold tracking-tight">Die dreizehn Zahlen</h1>
@@ -297,7 +297,7 @@ export function KennzahlenAbschnitt() {
   }
 
   const korrekturen = korrekturenVon(daten);
-  const berichte = [...new Set(daten.reihe.map((p) => p.report_year))];
+  const berichte = [...new Set(daten.series.map((p) => p.report_year))];
   const quelleUrl = "https://buergerinfo.oldenburg.de";
 
   return (

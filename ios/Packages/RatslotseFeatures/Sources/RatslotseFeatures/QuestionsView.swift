@@ -876,7 +876,7 @@ struct QuestionsView: View {
               "titel": "Vorgesehene Investitionen",
               "einheit": "Mio. €",
               "note": "Planwerte aus der Beschlussvorlage.",
-              "reihe": [
+              "series": [
                 {"year": 2026, "wert": 2.1},
                 {"year": 2027, "wert": 4.3},
                 {"year": 2028, "wert": 2.5}
@@ -2862,7 +2862,7 @@ private struct EvidenceChartData {
 
     init?(_ value: JSONValue?) {
         guard let root = value?.object else { return nil }
-        let rows = root["reihe"]?.array ?? []
+        let rows = root["series"]?.array ?? []
         var parsed: [Point] = []
         parsed.reserveCapacity(rows.count)
         for (index, row) in rows.enumerated() {

@@ -1520,10 +1520,10 @@ export interface paths {
          *     - ``produkt_jahre``: Jahre, für die die Produktebene vorliegt,
          *     - ``plan_ist_jahre``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
          *     - ``ausgabenreihe``: die lange Reihe aus Datensatz 1102 — ein Betrag je
-         *       Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``regelwerk`` (die Naht
+         *       Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``accounting_system`` (die Naht
          *       2009/2010), die bestandenen ``probes`` und, wo die beiden Quellen sich
          *       widersprechen, den Betrag der unterlegenen (``conflict_amount``).
-         *       ``regelwerke`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
+         *       ``accounting_systems`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
          *       Abgrenzung — **beide gehören an jede Anzeige**: Links der Naht steht das
          *       Anordnungssoll des Verwaltungshaushalts, rechts die ordentlichen
          *       Aufwendungen der Gesamtergebnisrechnung, und über den Schnitt darf keine
@@ -1651,7 +1651,7 @@ export interface paths {
          *     - ``personen``: die Aufsichtsorgane, Person für Person, mit Gremium,
          *       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
          *       eindeutig kennt — ``slug`` und ``partei`` für die Personen-Seite.
-         *       ``funktion`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
+         *       ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
          *       ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
          *       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
          *       spaltenweise ausgibt (``council/beteiligungsbericht.py``),
@@ -1842,7 +1842,7 @@ export interface paths {
          *     voneinander abzuziehen und das Ergebnis „Umsetzungsquote" zu nennen — eine
          *     Zahl, die in keiner Quelle steht (``council/investitionen_ist.py``).
          *
-         *     ``regelwerk`` trennt die beiden Tabellen, und das ist die tragende Angabe
+         *     ``accounting_system`` trennt die beiden Tabellen, und das ist die tragende Angabe
          *     dieser Antwort: Zum 01.01.2010 stellte die Stadt von kameraler auf
          *     doppische Buchführung um. Das Dokument trennt seine Reihen genau dort und
          *     begründet es in einer Fußnote. Wer über diesen Schnitt hinweg eine Linie
@@ -1981,7 +1981,7 @@ export interface paths {
          *     - ``konzern``: je Jahrgang die Summen des Konzerns (Erträge,
          *       Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und
          *       Personalaufwand) samt bestandener Rechenprobe und Fundstelle,
-         *     - ``traeger``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
+         *     - ``entity``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
          *       Zeile pro Aufgabenträger, Beträge in **Euro** (der Bericht rundet sie
          *       auf Tausend, daher die glatten Endziffern),
          *     - ``posten``: die vollständige Gesamtergebnisrechnung je Jahrgang,
@@ -4506,6 +4506,8 @@ export interface components {
         HaushaltGebaut: {
             /** Abgrenzung */
             abgrenzung: unknown;
+            /** Accounting Systems */
+            accounting_systems: unknown[];
             /** Anlagen */
             anlagen: {
                 [key: string]: unknown;
@@ -4518,10 +4520,8 @@ export interface components {
             };
             /** Jahre */
             jahre: unknown[];
-            /** Regelwerke */
-            regelwerke: unknown[];
-            /** Reihe */
-            reihe: unknown;
+            /** Series */
+            series: unknown;
         };
         /** HaushaltInvestitionen */
         HaushaltInvestitionen: {
@@ -4555,6 +4555,8 @@ export interface components {
         };
         /** HaushaltKonzern */
         HaushaltKonzern: {
+            /** Entity */
+            entity: unknown[];
             /** Gegenprobe */
             gegenprobe: unknown;
             /** Herkunft */
@@ -4567,8 +4569,6 @@ export interface components {
             konzern: unknown[];
             /** Posten */
             posten: unknown;
-            /** Traeger */
-            traeger: unknown[];
         };
         /** HaushaltProdukte */
         HaushaltProdukte: {
@@ -4618,8 +4618,8 @@ export interface components {
             integrierte_schulden: unknown;
             /** Jahre */
             jahre: unknown[];
-            /** Reihe */
-            reihe: unknown;
+            /** Series */
+            series: unknown;
             /** Zinslast */
             zinslast: unknown;
         };
@@ -10902,4 +10902,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 5339717cc89d83a8c0c64cf769c65a8a464320d79580d2e30a9ae45f90400bdd
+// vertrag-sha256: df40ba62fd69e395650550336be48c8b92bc3467b577bed79e30dc32f9ea66f5

@@ -301,7 +301,7 @@ def _zelle(feld: str) -> tuple[float | None, str]:
 def erkenne(text: str) -> dict[str, tuple[int, int]]:
     """Welche Blöcke stecken im PDF-Text — und welche Spanne kündigt jeder an?
 
-    Rückgabe ``{regelwerk: (von, bis)}``, leer wenn keiner gefunden wurde. Die
+    Rückgabe ``{accounting_system: (von, bis)}``, leer wenn keiner gefunden wurde. Die
     Spannen kommen aus den Titeln und nicht aus den gelesenen Zeilen: Damit
     sind sie Angaben des Dokuments, gegen die sich prüfen lässt, ob alle
     angekündigten Jahrgänge auch angekommen sind (:func:`lies` tut das).
@@ -310,10 +310,10 @@ def erkenne(text: str) -> dict[str, tuple[int, int]]:
     CSV 1972 — die dreißig Jahre davor stehen nur dort."""
     flach = re.sub(r"\s+", " ", text or "")
     gefunden: dict[str, tuple[int, int]] = {}
-    for regelwerk, muster in _TITEL.items():
+    for accounting_system, muster in _TITEL.items():
         m = muster.search(flach)
         if m:
-            gefunden[regelwerk] = (int(m.group(1)), int(m.group(2)))
+            gefunden[accounting_system] = (int(m.group(1)), int(m.group(2)))
     return gefunden
 
 
@@ -453,7 +453,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
     Rückgabe:
 
     ``zeilen``
-        Die übernommenen Jahrgänge, aufsteigend. Jeder trägt ``regelwerk``,
+        Die übernommenen Jahrgänge, aufsteigend. Jeder trägt ``accounting_system``,
         ``quelle`` (welche Datei den Betrag geliefert hat), die Namen seiner
         bestandenen ``probes`` und — wo die Quellen sich widersprachen —
         ``conflict_amount``/``conflict_source``.
@@ -553,7 +553,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
             probes.append("ausgabenreihe_jahresabschluss")
 
         zeile = {
-            "year": year, "regelwerk": regelwerk_von(year),
+            "year": year, "accounting_system": regelwerk_von(year),
             "amount": gewaehlt["amount"], "quelle": gewaehlt["quelle"],
             "revised": bool(gewaehlt.get("revised")),
             "conflict_amount": konflikt["amount"] if konflikt else None,
@@ -572,10 +572,10 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
 
     da = {z["year"] for z in zeilen}
     luecken: dict[str, list[int]] = {}
-    for regelwerk, (von, bis) in spannen.items():
+    for accounting_system, (von, bis) in spannen.items():
         fehlt = [j for j in range(von, bis + 1) if j not in da]
         if fehlt:
-            luecken[regelwerk] = fehlt
+            luecken[accounting_system] = fehlt
     # Und die Löcher in der Reihe selbst — die CSV kündigt keine Spanne an,
     # ihre Vollständigkeit misst sich deshalb an ihrem eigenen Anfang und Ende.
     if zeilen:

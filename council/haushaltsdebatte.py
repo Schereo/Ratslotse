@@ -531,12 +531,12 @@ def antrag_aus_zeile(zeile: dict) -> Antrag | None:
     if not titel or _SAMMELABSTIMMUNG.match(titel):
         return None
     ist_verw = bool(_VERWALTUNGSLISTE.search(titel))
-    traeger = [] if ist_verw else urheber(titel)
+    entity = [] if ist_verw else urheber(titel)
     return Antrag(
         titel=titel,
         outcome=zeile.get("outcome"),
         vote=zeile.get("vote"),
-        urheber=" / ".join(traeger) if traeger else None,
+        urheber=" / ".join(entity) if entity else None,
         ist_verwaltung=ist_verw,
         top=zeile.get("item_number"),
         ksinr=zeile.get("ksinr"),

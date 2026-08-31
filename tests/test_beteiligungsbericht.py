@@ -506,9 +506,9 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
                                url="https://example.org/ga2024.pdf",
                                probe="konzern_traegersumme")
     store.save_konzern_jahrgang(2024, [], [
-        {"art": "revenues", "traeger_key": "egh", "traeger": "EGH",
+        {"art": "revenues", "entity_key": "egh", "entity": "EGH",
          "amount_keur": 69889.0, "prior_year_keur": None},
-        {"art": "expenses", "traeger_key": "egh", "traeger": "EGH",
+        {"art": "expenses", "entity_key": "egh", "entity": "EGH",
          "amount_keur": 72590.0, "prior_year_keur": None},
     ], quelle)
 
@@ -608,7 +608,7 @@ def test_aufsichtsorgane_paart_spalten_wenn_die_probe_haelt():
     assert [p.name for p in personen] == [
         "Nicolai Beerheide", "Rita Schilling", "Dr. Sebastian Rohe",
         "Benno Sönke Schulz", "Dr. Georg Rohe"]
-    assert all(p.funktion == "Ratsmitglied" for p in personen)
+    assert all(p.position == "Ratsmitglied" for p in personen)
     assert all(p.gremium == "Betriebsausschuss" for p in personen)
     assert [p.vorsitz for p in personen[:3]] == ["vorsitz", "stellvertretung", None]
     assert personen[3].note == "bis 17. Juni 2024"
@@ -625,7 +625,7 @@ def test_aufsichtsorgane_ohne_probe_bleibt_jedes_amt_leer():
     genannten Person ein Amt anzuhängen, das sie nie hatte."""
     personen, zuordenbar = bb.aufsichtsorgane(AUFSICHT_AWB_2023)
     assert not zuordenbar
-    assert all(p.funktion is None for p in personen)
+    assert all(p.position is None for p in personen)
     # Die Umbrüche mitten im Eintrag sind zusammengefügt, nicht gezählt.
     assert [p.name for p in personen] == [
         "Klaus Raschke", "Dr. Sebastian Rohe", "Claudia Petra Küpker",
@@ -654,9 +654,9 @@ def test_aufsichtsorgane_traegergliederung_zaehlt_nicht_als_person():
     assert "Stadt Oldenburg" not in [p.name for p in personen]
     assert len(personen) == 8
     assert personen[0].name == "Dr. Julia Figura"
-    assert personen[0].funktion == "Stadtkämmerin"
-    assert personen[-1].funktion == "Kreistagsmitglied"
-    assert personen[-2].funktion == "1. Kreisrat (Vorsitzender)"
+    assert personen[0].position == "Stadtkämmerin"
+    assert personen[-1].position == "Kreistagsmitglied"
+    assert personen[-2].position == "1. Kreisrat (Vorsitzender)"
     assert {p.gremium for p in personen} == {"Verwaltungsrat"}
 
 
@@ -669,7 +669,7 @@ def test_aufsichtsorgane_trennt_mehrere_gremien():
     assert [p.sort_order for p in personen] == list(range(13))
     aufsichtsrat = [p for p in personen if p.gremium == "Aufsichtsrat"]
     assert aufsichtsrat[4].vorsitz == "vorsitz"
-    assert aufsichtsrat[-1].funktion == "Vertreter Hochschule"
+    assert aufsichtsrat[-1].position == "Vertreter Hochschule"
 
 
 def test_aufsichtsorgane_ohne_funktionsspalte_ist_kein_befund():
@@ -682,7 +682,7 @@ def test_aufsichtsorgane_ohne_funktionsspalte_ist_kein_befund():
     personen, zuordenbar = bb.aufsichtsorgane(AUFSICHT_TGO_BESITZ_2024)
     assert zuordenbar
     assert len(personen) == 4
-    assert all(p.funktion is None for p in personen)
+    assert all(p.position is None for p in personen)
     assert personen[0].name.startswith("Vertreter/in der TGO")
 
 
@@ -772,7 +772,7 @@ def test_personen_und_eigentuemer_landen_mit_herkunft_im_bestand(tmp_path):
     personen = store.get_gesellschaft_personen()
     assert [p["name"] for p in personen] == ["Ruth Regina Drügemöller",
                                              "Ingrid Kruse"]
-    assert all(p["funktion"] == "Ratsmitglied" for p in personen)
+    assert all(p["position"] == "Ratsmitglied" for p in personen)
     assert all(p["roles_assignable"] == 1 for p in personen)
     h = store.get_herkunft([personen[0]["herkunft_id"]])[0]
     assert h["probe"] == "beteiligung_spaltenprobe"
