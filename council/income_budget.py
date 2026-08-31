@@ -169,12 +169,12 @@ def kopfjahre(text: str) -> list[int]:
     if len(treffer) != SPALTEN:
         return []
     arten = [a for a, _ in treffer]
-    jahre = [int(j) for _, j in treffer]
+    years = [int(j) for _, j in treffer]
     if arten != ["Ergebnis"] + ["Ansatz"] * (SPALTEN - 1):
         return []
-    if jahre != list(range(jahre[0], jahre[0] + SPALTEN)):
+    if years != list(range(years[0], years[0] + SPALTEN)):
         return []
-    return jahre
+    return years
 
 
 def budget_year(text: str | None) -> int | None:
@@ -185,8 +185,8 @@ def budget_year(text: str | None) -> int | None:
     Finanzplanung. Auch nicht die Jahreszahl im Label — die trägt nur die
     Hälfte der Dokumente (vier von acht heißen schlicht
     „005 Gesamtergebnishaushalt")."""
-    jahre = kopfjahre(text or "")
-    return jahre[2] if jahre else None
+    years = kopfjahre(text or "")
+    return years[2] if years else None
 
 
 def _zeilen_lesen(text: str) -> dict[int, list[float | None]]:
@@ -294,7 +294,7 @@ def planspaltenprobe(zeilen: dict[int, list[float | None]],
 def lies(text: str) -> dict:
     """Einen Gesamtergebnishaushalt auswerten.
 
-    Liefert ``{budget_year, jahre, zeilen, ist, ist_jahr, probes, bestanden,
+    Liefert ``{budget_year, years, zeilen, ist, ist_jahr, probes, bestanden,
     nachweis}``:
 
     * ``zeilen`` — je Posten und Planjahr ein dict mit ``year``, ``art``
@@ -306,9 +306,9 @@ def lies(text: str) -> dict:
     * ``bestanden`` — ob beide Pflicht-Proben aufgehen. Ist sie ``False``, ist
       ``zeilen`` leer: Ein Dokument, dessen Tabelle nicht aufgeht, gibt keine
       halben Zahlen her."""
-    jahre = kopfjahre(text)
-    if not jahre:
-        return {"budget_year": None, "jahre": [], "zeilen": [], "ist": {},
+    years = kopfjahre(text)
+    if not years:
+        return {"budget_year": None, "years": [], "zeilen": [], "ist": {},
                 "ist_jahr": None, "probes": [], "bestanden": False,
                 "nachweis": "Tabellenkopf nicht in der erwarteten Form"}
 
@@ -327,15 +327,15 @@ def lies(text: str) -> dict:
                 continue
             for nr, werte in sorted(gelesen.items()):
                 zeilen.append({
-                    "year": jahre[sp], "art": art, "nr": nr,
+                    "year": years[sp], "art": art, "nr": nr,
                     "label": ERGEBNIS_POSTEN[nr],
                     "amount": werte[sp],
                     "is_total": 1 if nr in SUMMEN_POSTEN else 0,
                 })
     return {
-        "budget_year": jahre[2], "jahre": jahre, "zeilen": zeilen,
+        "budget_year": years[2], "years": years, "zeilen": zeilen,
         "ist": {nr: w[0] for nr, w in gelesen.items()},
-        "ist_jahr": jahre[0], "probes": probes, "bestanden": bestanden,
+        "ist_jahr": years[0], "probes": probes, "bestanden": bestanden,
         "nachweis": nachweis(gelesen, probes),
     }
 

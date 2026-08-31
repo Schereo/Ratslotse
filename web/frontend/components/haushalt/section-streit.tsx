@@ -332,8 +332,8 @@ export function StreitAbschnitt({ onBestand }: {
   // MB Protokolle, und die Listen braucht erst, wer bis zu ihrem Block liest.
   const { data: listen } = useFetch<AenderungslistenDaten>("/council/haushalt/aenderungslisten");
 
-  const jahre = useMemo(() => jahrgaenge(data ?? null), [data]);
-  const year = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre[0] ?? null;
+  const years = useMemo(() => jahrgaenge(data ?? null), [data]);
+  const year = gewaehltesJahr && years.includes(gewaehltesJahr) ? gewaehltesJahr : years[0] ?? null;
   const r = useMemo(() => runde(data ?? null, year), [data, year]);
 
   const debatte = debattenStation(r);
@@ -394,7 +394,7 @@ export function StreitAbschnitt({ onBestand }: {
               Blick über die Jahre ist der Sinn des Umschalters), ab 744 px
               passen alle Pillen nebeneinander. */}
           <div className="scrollbar-none -mx-1 mt-2 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [@media(min-width:744px)]:flex-wrap">
-            {jahre.map((j) => (
+            {years.map((j) => (
               <Link
                 key={j}
                 href={`/haushalt/streit?year=${j}`}

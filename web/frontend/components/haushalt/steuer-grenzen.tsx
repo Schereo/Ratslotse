@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { Calculator, Search } from "lucide-react";
-import type { SteuerArt } from "@/lib/haushalt-steuern";
+import type { SteuerArt } from "@/lib/haushalt-taxes";
 
 /** Was die Seite über diese Einnahmeart **nicht** sagt — in EINEM Block.
  *

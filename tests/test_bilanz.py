@@ -643,7 +643,7 @@ def test_store_bilanz_roundtrip(tmp_path, quelle):
         assert werte["pensionen_gesamt"] == 311_789_660.00
         assert store.get_ruecklagen() == [{
             "year": 2024,
-            "ruecklage": 188_946_996.63,
+            "reserves": 188_946_996.63,
             "jahresergebnis": 6_136_250.91,
             "state_after_result": pytest.approx(195_083_247.54, abs=0.01),
             "herkunft_id": rows[0]["herkunft_id"],

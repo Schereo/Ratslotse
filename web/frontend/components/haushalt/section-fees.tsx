@@ -53,7 +53,7 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
  *  Wirtschaftsplänen in EINEM Aufruf — beide Abschnitte brauchen `herkunft`,
  *  und `useFetch` hat keinen Zwischenspeicher. */
 export type GebuehrenDaten = HaushaltAuswahl<
-  "gebuehren" | "gebuehrensaetze" | "herkunft"
+  "fees" | "fee_rates" | "herkunft"
 >;
 
 /** Was der Bereich macht — eine Zeile, damit die Zahl einen Gegenstand hat. */
@@ -134,7 +134,7 @@ function Tarifliste({ tarife }: { tarife: GebuehrensatzZeile[] }) {
       </dl>
       <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
         Das sind die ausdrücklich benannten Vorschläge der Verwaltung, keine
-        aus den Gesamtkosten errechnete Durchschnittsgebühr.<Beleg q="gebuehren" />
+        aus den Gesamtkosten errechnete Durchschnittsgebühr.<Beleg q="fees" />
       </p>
     </div>
   );
@@ -221,7 +221,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
 
       <div className="mt-2.5">
         <p className="text-[12px] leading-relaxed text-muted-foreground">
-          <Beleg q="gebuehren" />{" "}
+          <Beleg q="fees" />{" "}
           Nachgerechnet: Die Kalkulationskosten minus alle Abzüge ergeben die zu
           deckenden Kosten
           {letzte.fee != null && <>, und diese geteilt durch die Menge die
@@ -253,7 +253,7 @@ export function GebuehrenAbschnitt({ data, loading }: {
   data: GebuehrenDaten | null; loading: boolean;
 }) {
   const nachBereich = useMemo(() => {
-    const zeilen = data?.gebuehren ?? [];
+    const zeilen = data?.fees ?? [];
     const gruppen = new Map<string, GebuehrenZeile[]>();
     for (const z of zeilen) {
       const liste = gruppen.get(z.area) ?? [];
@@ -285,10 +285,10 @@ export function GebuehrenAbschnitt({ data, loading }: {
     );
   }
 
-  const jahre = nachBereich.flat().map((z) => z.year);
-  const juengstes = Math.max(...jahre);
-  const aeltestes = Math.min(...jahre);
-  const tarifJahr = Math.max(0, ...(data?.gebuehrensaetze ?? []).map((z) => z.year));
+  const years = nachBereich.flat().map((z) => z.year);
+  const juengstes = Math.max(...years);
+  const aeltestes = Math.min(...years);
+  const tarifJahr = Math.max(0, ...(data?.fee_rates ?? []).map((z) => z.year));
 
   return (
       <div className="flex flex-col gap-4">
@@ -320,7 +320,7 @@ export function GebuehrenAbschnitt({ data, loading }: {
         <div className="grid gap-4 lg:grid-cols-2">
           {nachBereich.map((zeilen) => (
             <BereichsKarte key={zeilen[0].area} zeilen={zeilen}
-              tarife={(data?.gebuehrensaetze ?? [])
+              tarife={(data?.fee_rates ?? [])
                 .filter((z) => z.year === tarifJahr && z.area === zeilen[0].area)}
               herkunftFuer={(id) => herkunftVon(data, id)} />
           ))}

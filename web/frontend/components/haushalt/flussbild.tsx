@@ -167,7 +167,7 @@ export function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
       anteil
       restZusatz={restZusatz}
       restHinweis="Antippen zeigt die einzelnen Posten."
-      beleg={<Beleg q="ergebnishaushalt" />}
+      beleg={<Beleg q="income_budget" />}
     />
   );
 }
@@ -277,17 +277,17 @@ function Luecke({ year, letztes, aufJahr }: {
  *  bleiben: Wo ein Flussbild steht, zitiert es den Jahresabschluss; wo für ein
  *  Planjahr die Herkunftsseite steht, den Gesamtergebnishaushalt. */
 export function flussbildQuellen(
-  daten: HaushaltAuswahl<"ergebnisrechnung" | "ergebnishaushalt" | "jahre">,
+  daten: HaushaltAuswahl<"income_statement" | "income_budget" | "years">,
   year: number,
 ): QuellenSchluessel[] {
   if (!flussJahre(daten).length) return [];
   const bild = flussbild(daten, year, "ist") ?? flussbild(daten, year, "plan");
-  if (!bild && einnahmearten(daten, year)) return ["ergebnishaushalt"];
+  if (!bild && einnahmearten(daten, year)) return ["income_budget"];
   return ["jahresabschluss"];
 }
 
 export function Flussbild({ daten, year, onJahrWechsel }: {
-  daten: HaushaltAuswahl<"ergebnisrechnung" | "ergebnishaushalt" | "jahre">;
+  daten: HaushaltAuswahl<"income_statement" | "income_budget" | "years">;
   year: number;
   /** Der saubere Weg, das Angebot einzulösen — die Seite hält das Jahr.
    *  Optional, damit die Einbindung unverändert weiterläuft; ohne ihn greift
@@ -297,7 +297,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
   const [stand, setStand] = useState<"plan" | "ist">("ist");
   const [tabelle, setTabelle] = useState(false);
 
-  const jahre = useMemo(() => flussJahre(daten), [daten]);
+  const years = useMemo(() => flussJahre(daten), [daten]);
   // KEIN stiller Jahreswechsel: Das Bild zeigt das Jahr der Seite oder gar
   // keines. Fehlt es, tritt `Luecke` an seine Stelle (Begründung dort).
   const istBild = useMemo(() => flussbild(daten, year, "ist"), [daten, year]);
@@ -305,7 +305,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
   const bild = stand === "ist" ? istBild ?? planBild : planBild ?? istBild;
 
   // `flussJahre` ist aufsteigend — das jüngste vollständige Jahr steht hinten.
-  const letztes = jahre.length ? jahre[jahre.length - 1] : null;
+  const letztes = years.length ? years[years.length - 1] : null;
   // Für den Ersatzfall: dasselbe noch einmal für das jüngste Jahr. Muss ein
   // Hook sein und vor jedem `return` stehen.
   const letztesIst = useMemo(

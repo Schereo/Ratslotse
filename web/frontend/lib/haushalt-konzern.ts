@@ -28,7 +28,7 @@ export type KonzernJahr = {
   total_result?: number;
   interest_expenses?: number;
   personnel_expenses?: number;
-  steuern?: number;
+  taxes?: number;
   herkunft_id: number | null;
 };
 
@@ -62,7 +62,7 @@ export type Gegenprobe = {
 };
 
 export type KonzernDaten = {
-  jahre: number[];
+  years: number[];
   konzern: KonzernJahr[];
   entity: KonzernTraeger[];
   posten: KonzernPosten[];
@@ -129,14 +129,14 @@ export function konsolidierung(
 }
 
 /** Jahre, für die die Trägeraufstellung vorliegt — nicht dieselben wie
- *  `daten.jahre`: Die Berichte bis 2016 führen den Abschnitt noch nicht, und
+ *  `daten.years`: Die Berichte bis 2016 führen den Abschnitt noch nicht, und
  *  2018 ist die Aufwendungsseite an ihrer eigenen Probe gescheitert. */
 export function traegerJahre(daten: KonzernDaten,
                              art?: "revenues" | "expenses"): number[] {
-  const jahre = daten.entity
+  const years = daten.entity
     .filter((t) => !art || t.art === art)
     .map((t) => t.year);
-  return [...new Set(jahre)].sort((a, b) => a - b);
+  return [...new Set(years)].sort((a, b) => a - b);
 }
 
 /** Der Anteil, den der Kernhaushalt am Konzern hat — die Zahl, um die es auf
@@ -156,6 +156,6 @@ export function kernAnteil(
 
 /** Das jüngste Jahr, für das sich der Anteil überhaupt bilden lässt. */
 export function juengstesVergleichsjahr(daten: KonzernDaten): number | null {
-  const jahre = traegerJahre(daten, "revenues");
-  return jahre.length ? jahre[jahre.length - 1] : null;
+  const years = traegerJahre(daten, "revenues");
+  return years.length ? years[years.length - 1] : null;
 }

@@ -286,7 +286,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
         if m and "Aufteilung" not in z:
             teil = m.group(1)
             teile.setdefault(teil, {"zeilen": [], "summen": [], "spalten": None,
-                                    "jahre": set(), "stichtage": set(),
+                                    "years": set(), "stichtage": set(),
                                     "spaltenstreit": set(), "unlesbar": []})
             im_kopf, kopf, puffer = True, [z], ""
             continue
@@ -304,7 +304,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
             # widerspricht er sich, fällt das hier auf und nicht später.
             year, as_of_date = _kopfangaben(" ".join(kopf))
             if year:
-                t["jahre"].add(year)
+                t["years"].add(year)
             if as_of_date:
                 t["stichtage"].add(as_of_date)
             if t["spalten"] is None:
@@ -573,7 +573,7 @@ def lies(text: str) -> dict:
     ohne diese Angabe stünde beides gleich da."""
     roh = _teile_lesen(text)
     result: list[dict] = []
-    jahre: set[int] = set()
+    years: set[int] = set()
 
     for name in sorted(roh):
         t = roh[name]
@@ -589,12 +589,12 @@ def lies(text: str) -> dict:
                 "nachweis": f"Teil {name} nennt {gesehen or 'keine'} Spalten "
                             f"statt {soll} — nicht gelesen"})
             continue
-        if len(t["jahre"]) != 1 or len(t["stichtage"]) > 1:
+        if len(t["years"]) != 1 or len(t["stichtage"]) > 1:
             result.append({
                 "teil": name, "as_of_date": None, "year": None, "zeilen": [],
                 "probes": [], "bestanden": False, "verworfen": len(t["zeilen"]),
                 "nachweis": f"Teil {name}: der Tabellenkopf nennt "
-                            f"{sorted(t['jahre']) or 'kein'} Haushaltsjahr und "
+                            f"{sorted(t['years']) or 'kein'} Haushaltsjahr und "
                             f"{sorted(t['stichtage']) or 'keinen'} Stichtag"})
             continue
 
@@ -630,9 +630,9 @@ def lies(text: str) -> dict:
 
         bestanden = all(p["ok"] for p in probes)
         unstimmig = unstimmige_zeilen(einzeln)
-        year = next(iter(t["jahre"]))
+        year = next(iter(t["years"]))
         if bestanden:
-            jahre.add(year)
+            years.add(year)
         result.append({
             "teil": name, "year": year,
             "as_of_date": next(iter(t["stichtage"]), None),
@@ -646,7 +646,7 @@ def lies(text: str) -> dict:
 
     return {"budget_year": budget_year(text), "teile": result,
             "glyphen": bool(_GLYPHEN.search(text or "")),
-            "jahre": sorted(jahre)}
+            "years": sorted(years)}
 
 
 def nachweis(gruppen: list[dict], gesamt: list[dict], zeilen: list[dict],

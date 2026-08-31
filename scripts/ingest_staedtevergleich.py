@@ -38,7 +38,7 @@ Aufruf::
 
 Die Übersichtsseiten, auf denen die jeweils neuen Nummern stehen:
 
-- ``statistik.niedersachsen.de/kommunaler-finanzausgleich/…-tabellen-214575.html``
+- ``statistik.niedersachsen.de/kommunaler-fiscal_equalization/…-tabellen-214575.html``
 - ``statistik.niedersachsen.de/…/realsteuervergleich_in_niedersachsen/…-197957.html``
 """
 from __future__ import annotations
@@ -54,7 +54,7 @@ sys.path.insert(0, str(ROOT))
 
 from council import herkunft as h  # noqa: E402
 from council import staedtevergleich as sv  # noqa: E402
-from council import steuerkraft as sk  # noqa: E402
+from council import tax_capacity as sk  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -107,7 +107,7 @@ def main() -> int:
     args = ap.parse_args()
 
     store = CouncilStore(Path(args.db))
-    geschrieben = {"steuerkraft": 0, "realsteuern": 0, "finanzausgleich": 0}
+    geschrieben = {"tax_capacity": 0, "realsteuern": 0, "fiscal_equalization": 0}
     try:
         with tempfile.TemporaryDirectory() as tmp:
             ablage = Path(tmp)
@@ -132,8 +132,8 @@ def main() -> int:
                 return 1
 
             zeilen = sv.zeilen_steuerkraft(neu)
-            geschrieben["steuerkraft"] = store.save_staedtevergleich(
-                "steuerkraft", zeilen,
+            geschrieben["tax_capacity"] = store.save_staedtevergleich(
+                "tax_capacity", zeilen,
                 h.Herkunft(
                     art="lsn", probe="lsn_zweijahresueberlappung",
                     label=f"Kommunaler Finanzausgleich {neu.year}, endgültig — "
@@ -143,7 +143,7 @@ def main() -> int:
                                "je Gemeinde, zwei Ausgleichsjahre nebeneinander",
                     probe_result=probe["result"],
                     stand=neu.stand))
-            print(f"  gespeichert: {geschrieben['steuerkraft']} Werte "
+            print(f"  gespeichert: {geschrieben['tax_capacity']} Werte "
                   f"({len(sv.KREISFREIE_STAEDTE)} kreisfreie Städte)")
 
             # --- Die drei Komponenten der Zuweisung (Blatt 9a) --------------
@@ -175,8 +175,8 @@ def main() -> int:
                             return 1
                         probes.append(probe_j["result"])
             if zeilen_fa:
-                geschrieben["finanzausgleich"] = store.save_staedtevergleich(
-                    "finanzausgleich", zeilen_fa,
+                geschrieben["fiscal_equalization"] = store.save_staedtevergleich(
+                    "fiscal_equalization", zeilen_fa,
                     h.Herkunft(
                         art="lsn",
                         probe=["kfa_komponentenprobe", "kfa_jahrbuchabgleich"],
@@ -189,7 +189,7 @@ def main() -> int:
                                    "Finanzausgleichsumlage je kreisfreier Stadt",
                         probe_result=" · ".join(probes),
                         stand=neu.stand))
-                print(f"  gespeichert: {geschrieben['finanzausgleich']} Werte")
+                print(f"  gespeichert: {geschrieben['fiscal_equalization']} Werte")
 
             # --- Realsteuervergleich ---
             print("Realsteuervergleich:")

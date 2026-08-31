@@ -152,8 +152,8 @@ export function KonzernAbschnitt({ onBestand }: {
   const [art, setArt] = useState<LueckeArt>("revenues");
   const [year, setJahr] = useState<number | null>(null);
 
-  const jahre = useMemo(() => (data ? traegerJahre(data, art) : []), [data, art]);
-  const aktJahr = year && jahre.includes(year) ? year : jahre.at(-1) ?? null;
+  const years = useMemo(() => (data ? traegerJahre(data, art) : []), [data, art]);
+  const aktJahr = year && years.includes(year) ? year : years.at(-1) ?? null;
   const kopfJahr = data ? juengstesVergleichsjahr(data) : null;
 
   if (loading) {
@@ -240,9 +240,9 @@ export function KonzernAbschnitt({ onBestand }: {
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               Wer gehört dazu?
             </p>
-            {jahre.length > 1 && (
+            {years.length > 1 && (
               <div className="flex flex-wrap gap-1">
-                {jahre.map((j) => (
+                {years.map((j) => (
                   <button key={j} type="button" onClick={() => setJahr(j)}
                     className={cn(
                       "rounded-full border px-2.5 py-1 font-mono text-[11px] tabular-nums transition-colors",

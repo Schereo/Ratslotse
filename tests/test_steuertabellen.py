@@ -208,7 +208,7 @@ def test_die_umgebrochenen_zeilennamen_finden_ihre_steuerart():
 
 def test_die_jahresspanne_steht_im_umgebrochenen_titel():
     assert stt.erkenne_1103(PDF_1103) == (2023, 2025)
-    assert stt.parse_1103(PDF_1103)["jahre"] == [2023, 2024, 2025]
+    assert stt.parse_1103(PDF_1103)["years"] == [2023, 2024, 2025]
 
 
 def test_eine_angeklebte_fussnotenziffer_verschiebt_das_jahr_nicht():
@@ -280,7 +280,7 @@ def test_ein_verrutschtes_feld_reisst_die_anteilsprobe():
 def test_die_beschriftung_wird_gegen_tabelle_1104_geprueft():
     """Alle drei Jahrgänge kommen herein, weil die zweite Tabelle sie bestätigt."""
     result = stt.lies_1103(PDF_1103, IST_REIHE)
-    assert result["jahre"] == [2023, 2024, 2025]
+    assert result["years"] == [2023, 2024, 2025]
     assert result["verworfen"] == []
     assert "steuerplan_istabgleich" in result["probes"]
 
@@ -294,7 +294,7 @@ def test_ein_jahresversatz_wuerde_auffallen():
     verschoben = {year + 1: werte for year, werte in IST_REIHE.items()}
     result = stt.lies_1103(PDF_1103, verschoben)
     assert result["zeilen"] == []
-    assert result["jahre"] == []
+    assert result["years"] == []
     assert len(result["verworfen"]) == 3
 
 
@@ -305,7 +305,7 @@ def test_ein_jahrgang_ohne_zweitquelle_kommt_nicht_rein():
     noch nicht führt, ist kein Fehler, sondern eine Wartezeit."""
     ohne_2025 = {j: w for j, w in IST_REIHE.items() if j != 2025}
     result = stt.lies_1103(PDF_1103, ohne_2025)
-    assert result["jahre"] == [2023, 2024]
+    assert result["years"] == [2023, 2024]
     assert [v["year"] for v in result["verworfen"]] == [2025]
     assert "ohne Zweitquelle" in result["verworfen"][0]["grund"]
     assert all(z["year"] != 2025 for z in result["zeilen"])
@@ -316,7 +316,7 @@ def test_ein_widersprechender_betrag_verwirft_den_jahrgang():
     falsch = {j: dict(w) for j, w in IST_REIHE.items()}
     falsch[2024][GEWERBE] = 199_000_000
     result = stt.lies_1103(PDF_1103, falsch)
-    assert result["jahre"] == [2023, 2025]
+    assert result["years"] == [2023, 2025]
     assert "1103 202918 vs. 1104 199000" in result["verworfen"][0]["grund"]
 
 
@@ -329,8 +329,8 @@ def test_das_archiv_verlaengert_die_reihe_ueber_drei_jahrgaenge_hinaus():
     abrufbar — mit ihr wäre 2022 verloren. Aus beiden zusammen werden vier."""
     alt = stt.lies_1103(PDF_1103_AUSGABE_2024, IST_REIHE)
     neu = stt.lies_1103(PDF_1103, IST_REIHE)
-    assert alt["jahre"] == [2022, 2023, 2024]
-    assert neu["jahre"] == [2023, 2024, 2025]
+    assert alt["years"] == [2022, 2023, 2024]
+    assert neu["years"] == [2023, 2024, 2025]
 
     zusammen = stt.zusammenlegen(
         [("1103-2024-AZ.pdf", alt["zeilen"]), ("1103-2025-AZ.pdf", neu["zeilen"])],
@@ -369,9 +369,9 @@ def test_die_nachbartabelle_auf_demselben_blatt_wird_nicht_mitgelesen():
     """1104 steht darüber und hat achtspaltige Zeilen mit denselben Jahren.
 
     Ohne Bereichsgrenze käme „2015 31.321 …" als Hebesatzzeile herein."""
-    jahre = [z["year"] for z in stt.parse_1105(PDF_1105)]
-    assert jahre.count(2015) == 1
-    assert 2004 not in jahre
+    years = [z["year"] for z in stt.parse_1105(PDF_1105)]
+    assert years.count(2015) == 1
+    assert 2004 not in years
 
 
 def test_das_startjahr_steht_im_titel_trotz_klebender_fussnote():
@@ -401,10 +401,10 @@ def test_die_treppe_wird_nicht_interpoliert():
     hätte jemand jedes Jahr entschieden. Und würde jemand interpolieren, stünde
     für 2020 ein Satz, den es nie gab."""
     zeilen = stt.lies_1105(PDF_1105, GRUNDSTEUER_IST)["zeilen"]
-    jahre = sorted({z["year"] for z in zeilen})
-    assert jahre == [1980, 1984, 1988, 1994, 1997, 2002, 2011, 2015, 2025]
+    years = sorted({z["year"] for z in zeilen})
+    assert years == [1980, 1984, 1988, 1994, 1997, 2002, 2011, 2015, 2025]
     # Kein Jahr zwischen zwei Stufen, insbesondere keines der zehn ab 2016.
-    assert not [j for j in range(2016, 2025) if j in jahre]
+    assert not [j for j in range(2016, 2025) if j in years]
     b = {z["year"]: z for z in zeilen if z["art"] == "Grundsteuer B"}
     assert b[2015]["rate"] == 445
     assert b[2025] == {"year": 2025, "art": "Grundsteuer B",

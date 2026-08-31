@@ -115,7 +115,7 @@ type Zeile = {
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-const FELDER = ["jahre", "produkt_jahre"] as const;
+const FELDER = ["years", "product_years"] as const;
 
 export default function PflichtPage() {
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
@@ -123,10 +123,10 @@ export default function PflichtPage() {
   // Die Produktebene reicht nicht bis ins Planjahr — welches Jahr sie trägt,
   // sagt die Übersicht. Deshalb erst der zweite Aufruf, und nur wenn es
   // überhaupt eines gibt (`useFetch(null)` überspringt).
-  const produktJahr = data?.produkt_jahre?.length ? Math.max(...data.produkt_jahre) : null;
+  const produktJahr = data?.product_years?.length ? Math.max(...data.product_years) : null;
   // Der erste Jahrgang kommt ebenfalls aus den Daten. „2018" als feste Zahl in
   // den Satz zu schreiben hieße, beim nächsten Nachzug still zu lügen.
-  const produktVon = data?.produkt_jahre?.length ? Math.min(...data.produkt_jahre) : null;
+  const produktVon = data?.product_years?.length ? Math.min(...data.product_years) : null;
   const { data: produktdaten } = useFetch<ProdukteAntwort>(
     produktJahr ? `/council/haushalt/produkte?year=${produktJahr}` : null,
   );
@@ -142,9 +142,9 @@ export default function PflichtPage() {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
   }
 
-  const jahre = jahreSortiert(data);
-  const year = jahre[jahre.length - 1];
-  const zeilen = data.jahre[String(year)] ?? [];
+  const years = jahreSortiert(data);
+  const year = years[years.length - 1];
+  const zeilen = data.years[String(year)] ?? [];
   const gesamtzeile = summe(zeilen);
   const gesamtAus = mio(gesamtzeile?.expenses) ?? 0;
   // Das geplante Minus als positive Zahl. Nur wenn beide Seiten dastehen —

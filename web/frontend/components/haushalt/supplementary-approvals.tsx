@@ -32,7 +32,7 @@
 // widersprechen sich selbst (2022: 288.000 € zwischen Fließtext und eigener
 // Tabelle; 2023: eine Zelle mit Anzahl 0 und trotzdem einem Betrag). Was die
 // Tabellenprobe gefunden hat, steht als Satz am Jahr — `probe_text` kommt
-// fertig formuliert aus `council/nachbewilligungen.py`, damit Seite und Test
+// fertig formuliert aus `council/supplementary_approvals.py`, damit Seite und Test
 // dieselbe Aussage tragen.
 
 import { useState, type ReactNode } from "react";
@@ -152,12 +152,12 @@ function RatsListe({ posten }: { posten: Nachbewilligung[] }) {
 }
 
 export function NachbewilligungsBlock({ daten, year }: {
-  daten: HaushaltAuswahl<"nachbewilligungen">; year: number;
+  daten: HaushaltAuswahl<"supplementary_approvals">; year: number;
 }) {
   const alleJahre = nachbewilligungsJahre(daten);
   const unseres = alleJahre.find((j) => j.year === year);
   const bericht: NachbewilligungsJahr | undefined =
-    (daten.nachbewilligungen?.jahre ?? []).find((j) => j.year === year);
+    (daten.supplementary_approvals?.years ?? []).find((j) => j.year === year);
   const posten = nachbewilligungenFuerJahr(daten, year);
   // Ohne jede Zahl gar nichts zeigen — eine Überschrift über einer leeren
   // Fläche behauptet, es habe nichts gegeben.
@@ -169,7 +169,7 @@ export function NachbewilligungsBlock({ daten, year }: {
   const ratsZeile = ratsKanal ? kanalBetrag(ratsKanal) : null;
   // Der Vergleichswert für den Satz über die Entwicklung: das früheste Jahr,
   // für das ein Bericht vorliegt.
-  const n_reports = (daten.nachbewilligungen?.jahre ?? [])
+  const n_reports = (daten.supplementary_approvals?.years ?? [])
     .slice().sort((a, b) => a.year - b.year);
   const erstes = n_reports[0];
   const zeigtEntwicklung = erstes && bericht && erstes.year !== bericht.year;
@@ -331,11 +331,11 @@ export function NachbewilligungsBlock({ daten, year }: {
  *  worden. Das ist ein Befund über den Bestand, kein Vorwurf — die Vorlagen
  *  sind vorher im Fachausschuss beraten, und was dort keine Mehrheit findet,
  *  erreicht den Rat meist gar nicht erst. */
-export function NachbewilligungsBefund({ daten }: { daten: HaushaltAuswahl<"nachbewilligungen"> }) {
-  const serie = (daten.nachbewilligungen?.serie ?? [])
+export function NachbewilligungsBefund({ daten }: { daten: HaushaltAuswahl<"supplementary_approvals"> }) {
+  const serie = (daten.supplementary_approvals?.serie ?? [])
     .filter((n) => n.art !== "schwelle");
   if (serie.length < 20) return null;
-  const jahre = serie.map((n) => n.year).filter((j): j is number => j != null);
+  const years = serie.map((n) => n.year).filter((j): j is number => j != null);
   const beschlossen = serie.filter((n) => n.decided === 1).length;
   // Die Differenz wird ausgeschrieben statt verschwiegen — sonst fragt sich
   // jede*r, was mit dem Rest passiert ist, und die naheliegende Vermutung
@@ -348,7 +348,7 @@ export function NachbewilligungsBefund({ daten }: { daten: HaushaltAuswahl<"nach
   const ohneErgebnis = serie.length - beschlossen - unterrichtet;
   return (
     <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-      Seit {Math.min(...jahre)} sind {serie.length} solcher Vorlagen in Rat und
+      Seit {Math.min(...years)} sind {serie.length} solcher Vorlagen in Rat und
       Fachausschuss aufgerufen worden. {beschlossen} wurden beschlossen, keine
       abgelehnt.
       {unterrichtet > 0 && (

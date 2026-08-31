@@ -463,10 +463,10 @@ def jahressummen(bewilligungen: list[Bewilligung],
     Die Verpflichtungsermächtigungen stehen **getrennt** daneben
     (``commitments``/``commitments_amount``) und sind in ``summe``
     nicht enthalten — dieselbe Trennung, die der Rechenschaftsbericht zieht."""
-    jahre: dict[int, dict] = {}
+    years: dict[int, dict] = {}
 
     def eintrag(year: int) -> dict:
-        return jahre.setdefault(year, {
+        return years.setdefault(year, {
             "year": year, "summe": 0.0, "cases": 0,
             "commitments": 0, "commitments_amount": 0.0,
             "sammelberichte": 0})
@@ -488,7 +488,7 @@ def jahressummen(bewilligungen: list[Bewilligung],
             e = eintrag(b.year)
             e["summe"] += b.amount
             e["cases"] += 1
-    return dict(sorted(jahre.items()))
+    return dict(sorted(years.items()))
 
 
 # --- Probe 1: der Titelbetrag steht im Volltext noch einmal -----------------

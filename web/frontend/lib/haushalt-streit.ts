@@ -214,11 +214,11 @@ export function bestand(daten: StreitDaten | null): {
       beitraege += s.debatte.length;
     }
   }
-  const jahre = runden.map((r) => r.year);
+  const years = runden.map((r) => r.year);
   return {
     listen, beitraege, jahrgaenge: runden.length,
-    von: jahre.length ? Math.min(...jahre) : 0,
-    bis: jahre.length ? Math.max(...jahre) : 0,
+    von: years.length ? Math.min(...years) : 0,
+    bis: years.length ? Math.max(...years) : 0,
   };
 }
 

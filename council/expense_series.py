@@ -318,7 +318,7 @@ def erkenne(text: str) -> dict[str, tuple[int, int]]:
 
 
 def parse_pdf(text: str) -> list[dict]:
-    """Die Datenzeilen des PDFs → ``{year, einwohner, amount, per_capita,
+    """Die Datenzeilen des PDFs → ``{year, population, amount, per_capita,
     revised, quelle}``, Beträge in Euro.
 
     Beide Blöcke stehen auf derselben Seite untereinander; getrennt wird am
@@ -337,7 +337,7 @@ def parse_pdf(text: str) -> list[dict]:
             continue
         (ew, _), (amount, _), (kopf, mark) = felder
         zeilen.append({
-            "year": int(m.group(1)), "einwohner": int(ew or 0),
+            "year": int(m.group(1)), "population": int(ew or 0),
             "amount": (amount or 0.0) * TAUSEND, "per_capita": kopf,
             "revised": mark == "r", "quelle": "pdf",
         })
@@ -362,7 +362,7 @@ def parse_csv(csv_text: str) -> list[dict]:
         if not (c[1].isdigit() and c[2].isdigit() and c[3].isdigit()):
             continue
         zeilen.append({
-            "year": int(c[0]), "einwohner": int(c[1]),
+            "year": int(c[0]), "population": int(c[1]),
             "amount": float(c[2]) * TAUSEND, "per_capita": float(c[3]),
             "revised": False, "quelle": "csv",
         })
@@ -379,7 +379,7 @@ def prokopfprobe(zeile: dict) -> tuple[bool, float | None]:
     beginnt erst 2002, der Jahresabschluss erst 2017, die dreißig Jahre davor
     hängen allein an ihr. Sie ist zugleich die einzige, die eine falsche
     Einheit aufdecken kann."""
-    ew, kopf = zeile.get("einwohner"), zeile.get("per_capita")
+    ew, kopf = zeile.get("population"), zeile.get("per_capita")
     if not ew or kopf is None or zeile.get("amount") is None:
         return False, None
     gerechnet = zeile["amount"] / ew
@@ -443,10 +443,10 @@ def _wähle(kandidaten: list[dict]) -> tuple[dict | None, dict | None, str]:
 
 
 def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
-         ergebnisrechnung: dict[int, float] | None = None) -> dict:
+         income_statement: dict[int, float] | None = None) -> dict:
     """Die ganze Reihe einlesen und jeden Jahrgang durch seine Proben schicken.
 
-    ``ergebnisrechnung`` ist ``{year: Posten 20 der Gesamtrechnung in Euro}``
+    ``income_statement`` ist ``{year: Posten 20 der Gesamtrechnung in Euro}``
     aus ``council_ergebnisrechnung`` — ohne diese Abbildung läuft alles
     andere, nur ohne die dritte Probe.
 
@@ -471,7 +471,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
     ``probes``
         Was gerechnet wurde, in Zahlen — Grundlage des Beleg-Messwerts.
     """
-    ergebnisrechnung = ergebnisrechnung or {}
+    income_statement = income_statement or {}
     spannen = erkenne(pdf_text or "")
 
     # Je Jahr sammeln, was die Quellen sagen. Eine Zeile, die im falschen
@@ -533,7 +533,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
             if ok:
                 probes.append("ausgabenreihe_zweitquelle")
 
-        g_ok, anteil = gegenprobe(gewaehlt["amount"], ergebnisrechnung.get(year))
+        g_ok, anteil = gegenprobe(gewaehlt["amount"], income_statement.get(year))
         if g_ok is None:
             zaehler["ohne_jahresabschluss"] += 1
         else:

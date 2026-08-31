@@ -54,7 +54,7 @@ import { cn } from "@/lib/utils";
  *  denselben Zeilen die Nummerierung der Wirtschaftspläne rechnen
  *  (`jeDokument`), und `useFetch` hat keinen Zwischenspeicher: Ein zweiter
  *  Aufruf wäre ein zweiter Request auf dieselbe Adresse. */
-export type BetriebeDaten = HaushaltAuswahl<"wirtschaftsplaene" | "herkunft">;
+export type BetriebeDaten = HaushaltAuswahl<"business_plans" | "herkunft">;
 
 
 
@@ -288,7 +288,7 @@ export function BetriebeAbschnitt({ data, loading }: {
   data: BetriebeDaten | null; loading: boolean;
 }) {
   const nachBetrieb = useMemo(() => {
-    const zeilen = data?.wirtschaftsplaene ?? [];
+    const zeilen = data?.business_plans ?? [];
     const gruppen = new Map<string, WirtschaftsplanZeile[]>();
     for (const z of zeilen) {
       const liste = gruppen.get(z.enterprise) ?? [];
@@ -321,9 +321,9 @@ export function BetriebeAbschnitt({ data, loading }: {
     );
   }
 
-  const jahre = (data.wirtschaftsplaene ?? []).map((z) => z.year);
-  const juengstes = Math.max(...jahre);
-  const aeltestes = Math.min(...jahre);
+  const years = (data.business_plans ?? []).map((z) => z.year);
+  const juengstes = Math.max(...years);
+  const aeltestes = Math.min(...years);
 
   return (
       <div className="flex flex-col gap-4">

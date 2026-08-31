@@ -152,9 +152,9 @@ export function Vorhaben({
     () => Number(params.get("year")) || null);
   const suchfeld = useRef<HTMLInputElement>(null);
 
-  const jahre = useMemo(
-    () => [...(daten?.jahre ?? [])].sort((a, b) => a - b), [daten]);
-  const effJahr = jahrWahl != null && jahre.includes(jahrWahl) ? jahrWahl : year;
+  const years = useMemo(
+    () => [...(daten?.years ?? [])].sort((a, b) => a - b), [daten]);
+  const effJahr = jahrWahl != null && years.includes(jahrWahl) ? jahrWahl : year;
 
   const bereiche = useMemo(() => teilhaushalte(daten, effJahr), [daten, effJahr]);
   const treffer = useMemo(() => suche(daten, effJahr, wort), [daten, effJahr, wort]);
@@ -226,7 +226,7 @@ export function Vorhaben({
           {alleAnzahl.toLocaleString("de-DE")} Vorhaben, durchsuchbar
         </h2>
         <span className="font-mono text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
-          Investitionsprogramm {jahre[0]}–{jahre[jahre.length - 1]}
+          Investitionsprogramm {years[0]}–{years[years.length - 1]}
         </span>
       </div>
       <p className="mt-1 max-w-[86ch] text-[12.5px] leading-relaxed text-foreground/90">
@@ -272,7 +272,7 @@ export function Vorhaben({
           Selects statt eines Filter-Sheets — sie sind auf jedem Gerät und mit
           der Tastatur bedienbar, und drei Filter rechtfertigen kein Sheet. */}
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-        {jahre.length > 1 && (
+        {years.length > 1 && (
           <label className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
             Jahrgang
             <select
@@ -280,7 +280,7 @@ export function Vorhaben({
               onChange={(e) => setJahrWahl(Number(e.target.value))}
               className="rounded-lg border border-border bg-background px-2 py-1.5 text-[12px] text-foreground"
             >
-              {jahre.map((j) => (
+              {years.map((j) => (
                 <option key={j} value={j}>{j}</option>
               ))}
             </select>

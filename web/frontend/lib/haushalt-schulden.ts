@@ -35,7 +35,7 @@ export type BuergschaftsVorlage = {
 
 export type SchuldenDaten = {
   series: SchuldenJahr[];
-  jahre: number[];
+  years: number[];
   /** Was diese Zahlen zählen — kommt aus `council/schulden.py`, damit
    *  Oberfläche und Datenbank dieselbe Auskunft geben. */
   abgrenzung: string;

@@ -74,9 +74,9 @@ type Gruppe = { label: string; arten: string[]; farbe: string };
 /** Die Gruppen einer Farbwelt: größte Arten zuerst (eigene Gruppen), der
  *  Rest gebündelt als „übrige“. Gerechnet über alle Jahre der Welt, damit
  *  die Stapel-Reihenfolge über die Jahre stabil bleibt. */
-function gruppiere(jahre: NahtJahr[], count: number, toene: readonly string[]): Gruppe[] {
+function gruppiere(years: NahtJahr[], count: number, toene: readonly string[]): Gruppe[] {
   const summen = new Map<string, number>();
-  for (const j of jahre) {
+  for (const j of years) {
     if (istLuecke(j)) continue;
     for (const t of j.teile) summen.set(t.art, (summen.get(t.art) ?? 0) + t.wert);
   }
@@ -96,10 +96,10 @@ function gruppiere(jahre: NahtJahr[], count: number, toene: readonly string[]): 
   return gruppen;
 }
 
-export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel, beleg }: {
+export function NahtSaeulen({ years, naht, gruppierungMobil = 2, einheit, titel, beleg }: {
   /** Alle Jahre aufsteigend, Lücken eingeschlossen — die x-Achse ist
    *  vollständig, keine Säule kann still fehlen. */
-  jahre: NahtJahr[];
+  years: NahtJahr[];
   /** Der Systembruch: zwischen welchen Jahren, und der Satz dazu. Ohne Naht
    *  rendert die Komponente eine Welt (die blaue). */
   naht?: { zwischen: [number, number]; text: string };
@@ -119,8 +119,8 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
   // Die zwei Welten — geteilt an der Naht. Ohne Naht ist alles Welt 1 (blau).
   const grenze = naht ? naht.zwischen[0] : Number.NEGATIVE_INFINITY;
   const welten: NahtJahr[][] = [
-    jahre.filter((j) => j.year <= grenze),
-    jahre.filter((j) => j.year > grenze),
+    years.filter((j) => j.year <= grenze),
+    years.filter((j) => j.year > grenze),
   ];
   // Kein useMemo: 22 Jahre × 6 Arten sind billiger als die Abhängigkeitsliste.
   const gruppen = welten.map((w, i) => gruppiere(w, gruppenZahl, WELT_TOENE[i]));
@@ -131,18 +131,18 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
 
   // Vor dem frühen Ausstieg: Hooks müssen in jeder Render-Runde in derselben
   // Reihenfolge laufen, auch wenn die Reihe (noch) leer ist.
-  const ablesen = useAblesen(jahre.length, Math.max(jahre.length - 1, 0));
+  const ablesen = useAblesen(years.length, Math.max(years.length - 1, 0));
 
-  const belegte = jahre.filter((j) => !istLuecke(j));
+  const belegte = years.filter((j) => !istLuecke(j));
   if (!belegte.length) return null;
 
   // ── Geometrie: d3-scale rechnet, React zeichnet. ──────────────────────────
   const W = breite;
   const X0 = 6, X1 = W - 6;
-  const nahtIdx = naht ? jahre.findIndex((j) => j.year === naht.zwischen[1]) : -1;
+  const nahtIdx = naht ? years.findIndex((j) => j.year === naht.zwischen[1]) : -1;
   const innen = X1 - X0 - (naht ? NAHT_W : 0);
   const xBand = scaleBand<number>()
-    .domain(jahre.map((_, i) => i))
+    .domain(years.map((_, i) => i))
     .range([0, Math.max(innen, 1)])
     .paddingInner(0.16);
   const versatz = (i: number) => (nahtIdx >= 0 && i >= nahtIdx ? NAHT_W : 0);
@@ -162,7 +162,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
   // Bei 54 Säulen ist die Schrittweite 2, und die vorletzte Rasterzahl liegt
   // dann genau eine Säule neben der letzten — im Bild stand dort „2425".
   const beschriftet = (j: NahtJahr, i: number): boolean => {
-    const letzter = jahre.length - 1;
+    const letzter = years.length - 1;
     if (i === letzter) return true;
     if (!schmal) {
       const schritt = Math.max(Math.ceil(20 / Math.max(xBand.step(), 1)), 1);
@@ -172,7 +172,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
   };
 
   // ── Ableseleiste: trennt ALLE Arten, auf jedem Gerät. ─────────────────────
-  const stellen: AbleseStelle[] = jahre.map((j) => {
+  const stellen: AbleseStelle[] = years.map((j) => {
     if (istLuecke(j)) {
       return {
         titel: String(j.year),
@@ -212,19 +212,19 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
           {titel}{beleg}
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {jahre[0].year}–{jahre[jahre.length - 1].year} · {belegte.length} Werte · {einheit}
+          {years[0].year}–{years[years.length - 1].year} · {belegte.length} Werte · {einheit}
         </span>
       </div>
 
       <AbleseBeschreibung id={beschreibungId}>
-        {`${titel}, ${jahre[0].year} bis ${jahre[jahre.length - 1].year} in ${einheit}: `
-          + jahre.map((j) => `${j.year} ${istLuecke(j) ? "keine Angabe" : deZahl(summe(j), 1)}`).join(", ")
+        {`${titel}, ${years[0].year} bis ${years[years.length - 1].year} in ${einheit}: `
+          + years.map((j) => `${j.year} ${istLuecke(j) ? "keine Angabe" : deZahl(summe(j), 1)}`).join(", ")
           + (naht ? `. ${naht.text}` : "")}
       </AbleseBeschreibung>
 
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
         aria-describedby={beschreibungId}
-        aria-label={`${titel}, ${jahre[0].year} bis ${jahre[jahre.length - 1].year}`}>
+        aria-label={`${titel}, ${years[0].year} bis ${years[years.length - 1].year}`}>
         <defs>
           <pattern id={`${beschreibungId}-luecke`} width="6" height="6"
             patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -234,7 +234,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
 
         <line x1={X0} y1={Y0} x2={X1} y2={Y0} className="stroke-border" />
 
-        {jahre.map((j, i) => {
+        {years.map((j, i) => {
           const x = xVon(i);
           const b = xBand.bandwidth();
           if (istLuecke(j)) {
@@ -306,9 +306,9 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
           </g>
         )}
 
-        {jahre.map((j, i) => beschriftet(j, i) && (
+        {years.map((j, i) => beschriftet(j, i) && (
           <text key={j.year} x={mitte(i)} y={Y0 + 16} textAnchor="middle" fontSize={10}
-            className={i === jahre.length - 1
+            className={i === years.length - 1
               ? "fill-foreground font-mono" : "fill-muted-foreground font-mono"}>
             {String(j.year).slice(-2)}
           </text>
@@ -319,7 +319,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
           x={mitte} xVon={X0} xBis={X1}
           yVon={YTOP} hoehe={Y0 - YTOP} fangHoehe={Y0 + 20 - YTOP}
           marken={(i) => {
-            const j = jahre[i];
+            const j = years[i];
             if (istLuecke(j)) return [];
             const welt = weltVon(j.year);
             return [{ y: y(summe(j)), farbe: WELT_TOENE[welt][0] }];
@@ -363,7 +363,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
           {naht.text}
         </p>
       )}
-      {jahre.filter(istLuecke).map((j) => (
+      {years.filter(istLuecke).map((j) => (
         <LueckenFeld key={j.year} className="mt-2"
           label={String(j.year)} grund={j.fehlt} datum={j.datum} />
       ))}

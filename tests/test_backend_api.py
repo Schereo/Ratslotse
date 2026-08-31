@@ -706,13 +706,13 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     _register(client)
     b = client.get("/api/council/haushalt/datenstand").json()
     schichten = {s["key"]: s for s in b["schichten"]}
-    assert set(schichten) == {"haushaltsplan", "ergebnishaushalt", "investitionen",
+    assert set(schichten) == {"haushaltsplan", "income_budget", "investitionen",
                               "investitionsprogramm",
                               "jahresabschluss", "teilhaushalt", "stellenplan",
-                              "kennzahlen", "rpa_fundstelle",
+                              "indicators", "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
-                              "beteiligungsbericht", "gebuehren",
-                              "haushaltssatzung",
+                              "beteiligungsbericht", "fees",
+                              "budget_bylaw",
                               "wirtschaftsplan",
                               "schulden",
                               "lsn_steuerkraft", "lsn_realsteuern",
@@ -734,8 +734,8 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     # Der Gesamtergebnishaushalt ist eine Anlage des Haushaltsplans und kommt
     # deshalb mit ihm — anders als der Plan zieht der Cron ihn aber selbst
     # nach, weil er im Anlagenbestand liegt statt auf oldenburg.de.
-    assert schichten["ergebnishaushalt"]["monat"] == "Oktober"
-    assert schichten["ergebnishaushalt"]["automatisch"] is True
+    assert schichten["income_budget"]["monat"] == "Oktober"
+    assert schichten["income_budget"]["automatisch"] is True
     # Das Investitionsprogramm ist Anlage 004 desselben Plans: gleicher Takt,
     # und der Cron zieht es selbst nach — anders als die Investitionen, die vom
     # Open-Data-Portal kommen und deren Ebene darüber es ist.
@@ -932,7 +932,7 @@ def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
         cs.close()
 
     b = client.get("/api/council/haushalt/investitionen").json()
-    assert b["jahre"] == [2025]
+    assert b["years"] == [2025]
     assert len(b["teilhaushalte"]) == 5
     assert {z["sub_budget_no"] for z in b["teilhaushalte"]} == {1, 3, 4, 8, 12}
     assert b["gesamt"][0]["outflows"] == 63352260
@@ -987,7 +987,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert egh["consolidated_key"] == "egh"
     assert egh["page"] == 2
 
-    bilanz = next(k for k in b["kennzahlen"]
+    bilanz = next(k for k in b["indicators"]
                   if k["company"] == "egh" and k["indicator"] == "bilanzsumme"
                   and k["year"] == 2024)
     assert bilanz["wert"] == 580193968.91
@@ -1162,7 +1162,7 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
         cs.close()
 
     b = client.get("/api/council/haushalt/konzern").json()
-    assert b["jahre"] == [2024]
+    assert b["years"] == [2024]
     assert b["konzern"][0]["revenues_total"] == 1241548906.55
     # Träger kommen in Euro heraus, gespeichert sind sie in TEUR.
     stadt = next(t for t in b["entity"] if t["entity_key"] == "stadt")
@@ -5513,7 +5513,7 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
             label="Jahresabschluss 2024", url="https://example.org/ja.pdf"))
 
         daten = client.get("/api/council/haushalt/bilanz").json()
-        assert daten["jahre"] == [2024]
+        assert daten["years"] == [2024]
 
         nach_rolle = {p["role"]: p for p in daten["posten"]}
         # Die beiden Zahlen, die beide „Schulden" heißen — getrennt geführt.
@@ -5542,7 +5542,7 @@ def test_haushalt_bilanz_ohne_bestand_bleibt_leer(client):
     _register(client)
     antwort = client.get("/api/council/haushalt/bilanz")
     assert antwort.status_code == 200
-    assert antwort.json() == {"jahre": [], "posten": [], "erlaeuterungen": [],
+    assert antwort.json() == {"years": [], "posten": [], "erlaeuterungen": [],
                               "herkunft": {}}
 
 
@@ -5557,7 +5557,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
        stillschweigend aus der Summe,
     3. die ``herkunft_id`` jeder Vorlage, aufgelöst in ``herkunft``.
     """
-    from council import herkunft, spenden
+    from council import herkunft, donations
 
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
@@ -5566,16 +5566,16 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
             {"template_number": "26/0207", "year": 2026, "sitzung": "2026-04-13",
              "amount": 435_941.0, "gremium": "Rat", "layout": "neu",
              "second_mention": "zerlegung",
-             "probes": [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH],
+             "probes": [donations.ZWEITSTELLE, donations.PROTOKOLLABGLEICH],
              "herkunft": herkunft.Herkunft(
-                 art="ris", document_id=304791, probe=[spenden.ZWEITSTELLE],
-                 citation=spenden.FUNDSTELLE,
+                 art="ris", document_id=304791, probe=[donations.ZWEITSTELLE],
+                 citation=donations.FUNDSTELLE,
                  probe_result="421.316 + 14.625 = 435.941")},
             {"template_number": "26/0044", "year": 2026, "sitzung": "2026-02-09",
              "amount": 1_800.0, "gremium": "Verwaltungsausschuss", "layout": "alt",
-             "second_mention": "identisch", "probes": [spenden.ZWEITSTELLE],
+             "second_mention": "identisch", "probes": [donations.ZWEITSTELLE],
              "herkunft": herkunft.Herkunft(
-                 art="ris", document_id=300001, probe=[spenden.ZWEITSTELLE],
+                 art="ris", document_id=300001, probe=[donations.ZWEITSTELLE],
                  probe_result="identisch")},
         ]
         verworfen = [{"template_number": "23/0265", "sitzung": "2023-05-03",
@@ -5583,12 +5583,12 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
                                "hält 51.500,00 Euro fest."}]
         cs.save_spenden(zeilen, verworfen, herkunft.Herkunft(
             art="ris", url="https://buergerinfo.example.org/vo040.asp",
-            probe=[spenden.ZWEITSTELLE], probe_result="2 Vorlagen belegt"))
+            probe=[donations.ZWEITSTELLE], probe_result="2 Vorlagen belegt"))
 
         daten = client.get("/api/council/haushalt").json()
-        s = daten["spenden"]
+        s = daten["donations"]
 
-        assert s["jahre"] == [{"year": 2026, "amount": 437_741.0, "vorlagen": 2,
+        assert s["years"] == [{"year": 2026, "amount": 437_741.0, "vorlagen": 2,
                                "rat": 1, "verwaltungsausschuss": 1}]
         assert [v["template_number"] for v in s["vorlagen"]] == ["26/0044", "26/0207"]
         assert s["ohne_beleg"][0]["template_number"] == "23/0265"
@@ -5611,7 +5611,7 @@ def test_haushalt_spenden_nennen_keine_gebenden(client):
     keinem Feldnamen liefern — auch nicht, wenn später jemand eine Spalte
     ergänzt."""
     _register(client)
-    s = client.get("/api/council/haushalt").json()["spenden"]
+    s = client.get("/api/council/haushalt").json()["donations"]
     felder = {k.lower() for v in s["vorlagen"] for k in v} | {k.lower() for k in s}
     for verboten in ("spender", "geber", "name", "zuwendungsgeber", "person"):
         assert not any(verboten in f for f in felder)
@@ -5620,8 +5620,8 @@ def test_haushalt_spenden_nennen_keine_gebenden(client):
 def test_haushalt_bleibt_ohne_spenden_ruhig(client):
     """Auf Produktion sind die Haushalts-Tabellen leer (Umgebungs-Gate)."""
     _register(client)
-    s = client.get("/api/council/haushalt").json()["spenden"]
-    assert s["jahre"] == [] and s["vorlagen"] == [] and s["ohne_beleg"] == []
+    s = client.get("/api/council/haushalt").json()["donations"]
+    assert s["years"] == [] and s["vorlagen"] == [] and s["ohne_beleg"] == []
     assert len(s["schwellen"]) == 3
 
 
@@ -5661,8 +5661,8 @@ def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
 
     def hole(**q):
         teil = "&".join(f"{k}={v}" for k, v in q.items())
-        return client.get(f"/api/council/haushalt?felder=ergebnisrechnung&{teil}"
-                          ).json()["ergebnisrechnung"]
+        return client.get(f"/api/council/haushalt?felder=income_statement&{teil}"
+                          ).json()["income_statement"]
 
     voll = hole()
     assert len(voll) == 4, "ohne Parameter kommt alles — der alte Vertrag"
@@ -5684,7 +5684,7 @@ def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
     assert {z["nr"] for z in fluss if z["sub_budget_no"] is None} == {12, 20}
 
     # Ein Tippfehler ist ein Fehler, keine stille Luecke — wie bei `felder`.
-    antwort = client.get("/api/council/haushalt?felder=ergebnisrechnung&thh_posten=zwanzig")
+    antwort = client.get("/api/council/haushalt?felder=income_statement&thh_posten=zwanzig")
     assert antwort.status_code == 400 and "zwanzig" in antwort.json()["detail"]
 
 
@@ -5703,19 +5703,19 @@ def test_haushalt_felder_schneidet_zu_und_meldet_tippfehler(client):
     _register(client)
 
     alles = client.get("/api/council/haushalt").json()
-    for pflicht in ("jahre", "steuern", "ergebnisrechnung", "spenden",
-                    "nachbewilligungen", "herkunft", "produkt_jahre"):
+    for pflicht in ("years", "taxes", "income_statement", "donations",
+                    "supplementary_approvals", "herkunft", "product_years"):
         assert pflicht in alles, pflicht
 
-    schmal = client.get("/api/council/haushalt?felder=jahre,produkt_jahre").json()
-    assert set(schmal) == {"jahre", "produkt_jahre"}
-    assert schmal["jahre"] == alles["jahre"]      # zugeschnitten, nicht verändert
+    schmal = client.get("/api/council/haushalt?felder=years,product_years").json()
+    assert set(schmal) == {"years", "product_years"}
+    assert schmal["years"] == alles["years"]      # zugeschnitten, nicht verändert
 
     # Leerzeichen und leere Glieder sind Tippfehler-Nachbarn, kein Fehlerfall.
     assert set(client.get(
-        "/api/council/haushalt?felder= jahre , ,steuern ").json()) == {"jahre", "steuern"}
+        "/api/council/haushalt?felder= years , ,taxes ").json()) == {"years", "taxes"}
 
-    antwort = client.get("/api/council/haushalt?felder=jahre,produktjahre")
+    antwort = client.get("/api/council/haushalt?felder=years,produktjahre")
     assert antwort.status_code == 400
     assert "produktjahre" in antwort.json()["detail"]
 
@@ -5754,7 +5754,7 @@ def test_haushalt_schickt_nur_belegte_herkunft(client):
 
     # Und andersherum: Wird die Ergebnisrechnung nicht angefordert, zeigt keine
     # gesendete Zeile mehr auf ihren Beleg — dann reist er auch nicht mit.
-    schmal = client.get("/api/council/haushalt?felder=steuern,herkunft").json()
+    schmal = client.get("/api/council/haushalt?felder=taxes,herkunft").json()
     assert schmal["herkunft"] == {}
 
 

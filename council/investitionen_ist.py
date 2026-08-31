@@ -413,6 +413,6 @@ def probennachweis(result: dict) -> str:
     gesamt = p["bestanden"] + p["gerissen"]
     text = f"Zeilensumme {p['bestanden']} von {gesamt} Jahrgängen"
     if p["gerissen"]:
-        jahre = ", ".join(str(v["year"]) for v in result["verworfen"])
-        text += f"; verworfen: {jahre}"
+        years = ", ".join(str(v["year"]) for v in result["verworfen"])
+        text += f"; verworfen: {years}"
     return text

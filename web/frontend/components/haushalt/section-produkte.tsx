@@ -78,8 +78,8 @@ function netto(p: Produkt): number {
 
 /** Aufeinanderfolgende Jahre zu Spannen bündeln: [2019, 2020, 2022] →
  *  „2019–2020, 2022". */
-function jahresspannen(jahre: number[]): string {
-  const sortiert = [...jahre].sort((a, b) => a - b);
+function jahresspannen(years: number[]): string {
+  const sortiert = [...years].sort((a, b) => a - b);
   const teile: string[] = [];
   let von = sortiert[0], bis = sortiert[0];
   for (const j of sortiert.slice(1)) {
@@ -100,12 +100,12 @@ function jahresspannen(jahre: number[]): string {
  *  sichtbar — Lücken zeigen geht vor (H4-A). Kein Signal-Orange: Eine Lücke
  *  im Bestand ist die Lücken-Konvention (gestrichelt), keine Abweichung des
  *  Produkts. */
-function AbdeckungsBadge({ jahre, alle, knapp }: {
-  jahre?: number[]; alle: number[]; knapp?: boolean;
+function AbdeckungsBadge({ years, alle, knapp }: {
+  years?: number[]; alle: number[]; knapp?: boolean;
 }) {
   // Mit nur einem Jahrgang im Bestand gäbe es nichts abzudecken.
-  if (!jahre?.length || alle.length < 2) return null;
-  const fehlt = alle.filter((j) => !jahre.includes(j));
+  if (!years?.length || alle.length < 2) return null;
+  const fehlt = alle.filter((j) => !years.includes(j));
   if (!fehlt.length) {
     return (
       <span className={cn(
@@ -198,7 +198,7 @@ function Treffer({ p, max, aktiv, alleJahre, eingebettet = false }: {
         <div className="h-full rounded-full bg-primary/60"
           style={{ width: `${Math.max((Math.abs(n) / max) * 100, 1.5)}%` }} />
       </div>
-      {(p.controllability || (p.jahre && alleJahre.length > 1)) && (
+      {(p.controllability || (p.years && alleJahre.length > 1)) && (
         <p className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
           <span>
             {p.controllability && (
@@ -207,7 +207,7 @@ function Treffer({ p, max, aktiv, alleJahre, eingebettet = false }: {
               </span></>
             )}
           </span>
-          <AbdeckungsBadge jahre={p.jahre} alle={alleJahre} knapp />
+          <AbdeckungsBadge years={p.years} alle={alleJahre} knapp />
         </p>
       )}
     </Link>
@@ -475,10 +475,10 @@ function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahr
         <p className="mt-2 border-t border-border/60 pt-2 text-[11.5px] leading-relaxed text-muted-foreground">
           Planzahlen: Was die Aufgabe tatsächlich gekostet hat, weist der Haushalt auf
           Produktebene nicht aus.
-          {p.jahre && p.jahre.length > 0 && alleJahre.length > 1 && (() => {
-            const fehlt = alleJahre.filter((j) => !p.jahre!.includes(j));
+          {p.years && p.years.length > 0 && alleJahre.length > 1 && (() => {
+            const fehlt = alleJahre.filter((j) => !p.years!.includes(j));
             return (
-              <> Im Bestand liegt das Produkt für {jahresspannen(p.jahre)}
+              <> Im Bestand liegt das Produkt für {jahresspannen(p.years)}
                 {fehlt.length > 0 && <> — ohne {jahresspannen(fehlt)}, dort liegt der
                   Teilhaushaltsplan nicht auslesbar vor</>}.</>
             );
@@ -675,8 +675,8 @@ export function ProdukteAbschnitt({ onBestand }: {
   // Jüngstes Jahr mit Produktebene. Die Liste kommt aus der Übersicht, damit
   // die Seite kein Jahr rät, das es nicht gibt.
   const year = useMemo(() => {
-    const jahre = uebersicht.data?.produkt_jahre ?? [];
-    return jahre.length ? Math.max(...jahre) : null;
+    const years = uebersicht.data?.product_years ?? [];
+    return years.length ? Math.max(...years) : null;
   }, [uebersicht.data]);
 
   const abfrage = useMemo(() => {
@@ -741,7 +741,7 @@ export function ProdukteAbschnitt({ onBestand }: {
   }
 
   const produkte = data?.produkte ?? [];
-  const alleJahre = data?.alle_jahre ?? uebersicht.data?.produkt_jahre ?? [];
+  const alleJahre = data?.alle_jahre ?? uebersicht.data?.product_years ?? [];
   const maxWert = Math.max(...produkte.map((p) => Math.abs(netto(p))), 1);
   const gefiltert = Boolean(entprellt.trim() || office || spielraum);
   const aemter = data?.facetten?.aemter ?? [];
@@ -949,4 +949,4 @@ export function ProdukteAbschnitt({ onBestand }: {
   );
 }
 
-const FELDER = ["produkt_jahre"] as const;
+const FELDER = ["product_years"] as const;

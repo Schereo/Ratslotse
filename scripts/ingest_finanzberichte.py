@@ -75,7 +75,7 @@ _EIGEN = ("neue_jahrgaenge", "bestand_geschuetzt")
 def main() -> int:
     ap = argparse.ArgumentParser(description="Jahresabschlüsse und Teilhaushalte einlesen")
     ap.add_argument("--nur", choices=["jahresabschluss", "teilhaushalte",
-                                      "ergebnishaushalt", "stellenplan",
+                                      "income_budget", "stellenplan",
                                       "investitionsprogramm"],
                     default=None)
     ap.add_argument("--db", default=str(COUNCIL_DB))
@@ -120,14 +120,14 @@ def main() -> int:
             # Leser kommt zuletzt, weil zwei seiner drei Proben gegen die
             # Bilanz rechnen — die muss vorher stehen.
             print("Kennzahlen des Rechenschaftsberichts:")
-            uebernehmen("kennzahlen", finanzquellen.lies_kennzahlen(store, p))
+            uebernehmen("indicators", finanzquellen.lies_kennzahlen(store, p))
         if args.nur in (None, "teilhaushalte"):
             print("Teilhaushalte (Produktebene):")
             uebernehmen("teilhaushalt",
                         finanzquellen.lies_teilhaushalte(store, p, schuetzen=schuetzen))
-        if args.nur in (None, "ergebnishaushalt"):
+        if args.nur in (None, "income_budget"):
             print("Gesamtergebnishaushalt (Planjahre):")
-            uebernehmen("ergebnishaushalt",
+            uebernehmen("income_budget",
                         finanzquellen.lies_ergebnishaushalte(store, p, schuetzen=schuetzen))
         if args.nur in (None, "stellenplan"):
             print("Stellenplan (Stellen und Besetzung):")

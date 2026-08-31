@@ -31,7 +31,7 @@ import { Beleg } from "@/components/haushalt/quelle";
 import { NamenKlartext } from "@/components/haushalt/namen-klartext";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
-import { STEUERARTEN } from "@/lib/haushalt-steuern";
+import { STEUERARTEN } from "@/lib/haushalt-taxes";
 import { bereichSchluessel } from "@/lib/haushalt-bereiche";
 import {
   HaushaltAuswahl, haushaltUrl, HaushaltZeile, bereichSlug, bereiche, deMio, jahreSortiert, mio,
@@ -42,7 +42,7 @@ import {
  *  den Daten, Titel und Stellschraube aus den Steuer-Steckbriefen.
  *
  *  Bewusst KEINE eigene Liste der Einnahmearten: Wer welche Stellschraube
- *  bedient, steht redaktionell schon in `lib/haushalt-steuern.ts` und wird von
+ *  bedient, steht redaktionell schon in `lib/haushalt-taxes.ts` und wird von
  *  `/haushalt/einnahmen` und den Steckbriefen benutzt. Eine zweite Fassung
  *  hier wäre ein zweiter Stand derselben Aussage. */
 type Posten = { slug: string; titel: string; wer: string; mioWert: number; year: number };
@@ -51,7 +51,7 @@ function zentralePosten(daten: Daten): Posten[] {
   const out: Posten[] = [];
   for (const s of STEUERARTEN) {
     if (s.datenArt) {
-      const treffer = daten.steuern
+      const treffer = daten.taxes
         .filter((r) => r.art === s.datenArt && r.amount != null)
         .sort((a, b) => a.year - b.year);
       const letzte = treffer[treffer.length - 1];
@@ -69,7 +69,7 @@ function zentralePosten(daten: Daten): Posten[] {
     // die Leistung erbringt. Sie hier aufzuführen wäre genau der Fehler, den
     // die Seite erklären will.
     if (s.slug === "schluesselzuweisungen") {
-      const treffer = daten.steuerkraft
+      const treffer = daten.tax_capacity
         .filter((r) => r.allocations != null)
         .sort((a, b) => a.year - b.year);
       const letzte = treffer[treffer.length - 1];
@@ -166,7 +166,7 @@ function Finanzkachel({ z, daten, year }: {
           <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
             Die Einnahmen oben sind abgerechnete Ist-Werte
             {istJahre.length ? ` (${istJahre.join(" und ")})` : ""}
-            <Beleg q="steuern" /><Beleg q="steuerkraft" />, die {deMio(ein)}&nbsp;Mio.&nbsp;€
+            <Beleg q="taxes" /><Beleg q="tax_capacity" />, die {deMio(ein)}&nbsp;Mio.&nbsp;€
             daneben der Plan für {year}. Zwei verschiedene Stände: Sie addieren sich nicht
             zur Ertragszeile, und die Liste ist auch nicht vollständig — Zinsen,
             Konzessionsabgaben und weitere allgemeine Erträge sind nicht darunter.
@@ -186,7 +186,7 @@ function Finanzkachel({ z, daten, year }: {
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-const FELDER = ["jahre", "produkt_jahre", "steuern", "steuerkraft"] as const;
+const FELDER = ["years", "product_years", "taxes", "tax_capacity"] as const;
 
 /** Der Ausschnitt, den diese Seite holt. */
 type Daten = HaushaltAuswahl<typeof FELDER[number]>;
@@ -197,9 +197,9 @@ export function BereicheAbschnitt() {
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
   }
-  const jahre = jahreSortiert(data);
-  const year = jahre[jahre.length - 1];
-  const zeilen = year ? data.jahre[String(year)] ?? [] : [];
+  const years = jahreSortiert(data);
+  const year = years[years.length - 1];
+  const zeilen = year ? data.years[String(year)] ?? [] : [];
   if (!year || !bereiche(zeilen).length) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
@@ -210,7 +210,7 @@ export function BereicheAbschnitt() {
   }
 
   const finanzen = bereiche(zeilen).find((z) => bereichSchluessel(z.area) === "finanzen");
-  const produktJahre = (data.produkt_jahre ?? []).slice().sort((a, b) => a - b);
+  const produktJahre = (data.product_years ?? []).slice().sort((a, b) => a - b);
   const produktBis = produktJahre[produktJahre.length - 1] ?? null;
 
   return (

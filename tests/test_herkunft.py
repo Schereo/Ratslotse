@@ -663,9 +663,9 @@ def test_jahrgaenge_trennen_die_zwei_ebenen_des_abschlusses(tmp_path):
                 "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, nr, label, "
                 " fetched_at) VALUES (?, ?, 12, 'Erträge', '2026-01-01')", (year, sub_budget))
 
-    jahre = store.haushalt_jahrgaenge()
-    assert jahre["jahresabschluss"] == [2022, 2023]
-    assert jahre["ergebnisrechnung_thh"] == [2022]
+    years = store.haushalt_jahrgaenge()
+    assert years["jahresabschluss"] == [2022, 2023]
+    assert years["ergebnisrechnung_thh"] == [2022]
     store.close()
 
 

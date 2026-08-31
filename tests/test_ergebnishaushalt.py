@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import pytest
 
-from council import ergebnishaushalt as eh
+from council import income_budget as eh
 from council import finanzquellen, herkunft
 from council.store import CouncilStore
 
@@ -440,7 +440,7 @@ def test_ansatz_jahre_fuehren_keine_finanzplanung(tmp_path):
     """Ein Jahr-Umschalter, der 2029 anbietet, behauptet einen Beschluss."""
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_ergebnishaushalt(2026, eh.lies(GEH_2026)["zeilen"], _quelle())
-    assert store.ansatz_jahre() == [2026]
+    assert store.budgeted_years() == [2026]
     alle = {z["year"] for z in store.get_ergebnishaushalt()}
     assert alle == {2026, 2027, 2028, 2029}
     store.close()
@@ -535,7 +535,7 @@ def test_ein_gerissener_jahrgang_laesst_den_bestand_stehen(tmp_path):
     bericht = finanzquellen.lies_ergebnishaushalte(store, p)
     assert bericht["plan_verworfen"] == 1
     assert len(store.get_ergebnishaushalt()) == 92        # unangetastet
-    assert store.ansatz_jahre() == [2026]
+    assert store.budgeted_years() == [2026]
     store.close()
 
 

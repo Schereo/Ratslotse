@@ -22,11 +22,11 @@ import {
 } from "@/lib/haushalt";
 import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
 import { LueckenFeld } from "@/components/grafik/luecken-feld";
-import { SPIELRAUM_LABEL, STEUERARTEN, Spielraum } from "@/lib/haushalt-steuern";
+import { SPIELRAUM_LABEL, STEUERARTEN, Spielraum } from "@/lib/haushalt-taxes";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { FinanzausgleichDaempfer } from "@/components/haushalt/finanzausgleich-daempfer";
+import { FinanzausgleichDaempfer } from "@/components/haushalt/fiscal-equalization-daempfer";
 import { ZuweisungDreiteilig } from "@/components/haushalt/zuweisung-dreiteilig";
 import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
@@ -79,13 +79,13 @@ const GRUPPEN: { stufe: Spielraum; titel: string; text: string }[] = [
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-// `ergebnisrechnung` seit 24.08.2026: Die Gebühren-Karte trug bis dahin
+// `income_statement` seit 24.08.2026: Die Gebühren-Karte trug bis dahin
 // „Betrag noch nicht eingelesen", während ihr Steckbrief die Zahl längst
 // hätte holen können. Zwei Seiten dürfen zur selben Zahl nicht
 // Verschiedenes sagen — die Regel stand schon im Steckbrief, nur
 // andersherum.
-const FELDER = ["jahre", "steuern", "steuerkraft", "finanzausgleich", "spenden",
-  "ergebnisrechnung", "ergebnishaushalt"] as const;
+const FELDER = ["years", "taxes", "tax_capacity", "fiscal_equalization", "donations",
+  "income_statement", "income_budget"] as const;
 
 export default function EinnahmenPage() {
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
@@ -94,17 +94,17 @@ export default function EinnahmenPage() {
     return <div className="py-16 text-center text-sm text-muted-foreground">Einnahmen werden geladen …</div>;
   }
 
-  const year = Math.max(...data.steuern.map((s) => s.year), 0);
+  const year = Math.max(...data.taxes.map((s) => s.year), 0);
   const betragFuer = (art: string | null) => {
     if (!art) return null;
-    return data.steuern.find((s) => s.year === year && s.art === art)?.amount ?? null;
+    return data.taxes.find((s) => s.year === year && s.art === art)?.amount ?? null;
   };
-  const zuweisungJahr = data.steuerkraft.filter((k) => k.allocations != null).at(-1);
+  const zuweisungJahr = data.tax_capacity.filter((k) => k.allocations != null).at(-1);
   // Der vollständige Ausgleich aus den Tabellen des Landes (Tausend Euro).
   // Optional: Ohne einen Lauf von scripts/ingest_staedtevergleich.py ist das
   // Feld leer, und die Seite zeigt weiter nur die Schlüsselzuweisungen.
-  const ausgleich = (data.finanzausgleich ?? []).filter((f) => f.nettobetrag != null).at(-1);
-  const gesamt = data.steuern.find((s) => s.year === year && s.art === "insgesamt")?.amount ?? null;
+  const ausgleich = (data.fiscal_equalization ?? []).filter((f) => f.nettobetrag != null).at(-1);
+  const gesamt = data.taxes.find((s) => s.year === year && s.art === "insgesamt")?.amount ?? null;
 
   // Karten: Betrag aus den Daten, innerhalb der Gruppe nach Betrag sortiert
   // (Quellen ohne Zahl ans Ende).
@@ -113,7 +113,7 @@ export default function EinnahmenPage() {
   // zwingend das der Steuerreihe — deshalb trägt jede Karte ihr eigenes,
   // wie die Schlüsselzuweisungen es längst tun.
   const entgeltJahr = (posten: number) =>
-    (data.ergebnisrechnung ?? [])
+    (data.income_statement ?? [])
       .filter((z) => z.nr === posten && z.sub_budget_no === null && z.result != null)
       .sort((a, b) => a.year - b.year)
       .at(-1) ?? null;
@@ -139,7 +139,7 @@ export default function EinnahmenPage() {
   // Der jüngste aufgestellte Ansatz, nicht eines der drei späteren
   // Finanzplanungsjahre. Die Seite zeigt damit neben den jüngsten Ist-Werten
   // erstmals auch vollständig, woher das Geld im geltenden Plan kommen soll.
-  const planJahr = Math.max(0, ...(data.ergebnishaushalt ?? [])
+  const planJahr = Math.max(0, ...(data.income_budget ?? [])
     .filter((z) => z.art === "ansatz")
     .map((z) => z.year));
   const planErtraege = planJahr ? einnahmearten(data, planJahr) : null;
@@ -147,15 +147,15 @@ export default function EinnahmenPage() {
   const spendenReihe = spendenJahre(data);
   const spendenLauf = spendenLaufend(data);
   const spendenGrem = spendenGremien(data);
-  const spendenOhne = data.spenden?.ohne_beleg ?? [];
+  const spendenOhne = data.donations?.ohne_beleg ?? [];
   const spendenLetztes = spendenReihe[spendenReihe.length - 1];
   const spendenGeld = spendenGrem.Rat.amount + spendenGrem.Verwaltungsausschuss.amount;
 
-  const quellen: QuellenSchluessel[] = ["steuern", "steuerkraft", "hebesaetze",
-    ...(planErtraege ? (["ergebnishaushalt"] as const) : []),
+  const quellen: QuellenSchluessel[] = ["taxes", "tax_capacity", "tax_rates",
+    ...(planErtraege ? (["income_budget"] as const) : []),
     ...(karten.some((k) => k.art.ergebnisPosten && k.amount != null)
       ? (["jahresabschluss"] as const) : []),
-    ...(spendenReihe.length ? (["spenden"] as const) : [])];
+    ...(spendenReihe.length ? (["donations"] as const) : [])];
 
   return (
     <Quellenkontext schluessel={quellen}>
@@ -265,7 +265,7 @@ export default function EinnahmenPage() {
             </div>
             <p className="font-display text-[20px] font-bold tabular-nums">
               {deMio(planErtraege.gesamt / 1e6)}&#8239;Mio.&nbsp;€
-              <Beleg q="ergebnishaushalt" />
+              <Beleg q="income_budget" />
             </p>
           </div>
           <p className="mt-2 max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
@@ -320,8 +320,8 @@ export default function EinnahmenPage() {
                     <span className="ml-1 font-sans text-[10px] font-normal text-muted-foreground">
                       {bJahr}
                       <Beleg q={art.slug === "schluesselzuweisungen"
-                        ? "steuerkraft"
-                        : art.ergebnisPosten ? "jahresabschluss" : "steuern"} />
+                        ? "tax_capacity"
+                        : art.ergebnisPosten ? "jahresabschluss" : "taxes"} />
                     </span>
                   </p>
                 ) : (
@@ -340,13 +340,13 @@ export default function EinnahmenPage() {
       {/* Der Dämpfer schließt die Seite ab, weil er erklärt, warum selbst die
           erste Gruppe weniger Spielraum hat, als sie verspricht. Er nennt
           bewusst keinen Faktor — Begründung im Kopf der Komponente. */}
-      <FinanzausgleichDaempfer steuerkraft={data.steuerkraft} />
+      <FinanzausgleichDaempfer tax_capacity={data.tax_capacity} />
 
       {/* Direkt unter der Kurve, weil er sie einordnet: Was dort als
           „Schlüsselzuweisungen" steht, sind zwei von drei Komponenten. Der
           Block ersetzt die Zahl nicht, er stellt die vollständige daneben
           (council/steuerkraft.py). */}
-      <ZuweisungDreiteilig series={data.finanzausgleich} />
+      <ZuweisungDreiteilig series={data.fiscal_equalization} />
 
       {/* Der Satz verglich bis 16.08. die Steuern eines Ist-Jahres mit den
           Ausgaben eines Planjahres („deckt nur einen Teil dessen, was die
@@ -419,11 +419,11 @@ export default function EinnahmenPage() {
              jetzt oben neben der Kennzahl — dort, wo vorher die Kurve allein
              die halbe Zeile füllte. */}
       {spendenLetztes && (
-        <section className="@container/spenden rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <section className="@container/donations rounded-2xl border border-border bg-card p-4 shadow-sm">
           <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Auch das sind Einnahmen
           </h2>
-          <div className="mt-2.5 grid gap-x-8 gap-y-4 @3xl/spenden:grid-cols-2 @3xl/spenden:items-start">
+          <div className="mt-2.5 grid gap-x-8 gap-y-4 @3xl/donations:grid-cols-2 @3xl/donations:items-start">
             <div className="min-w-0">
               <p className="text-[12.5px] font-semibold">
                 Angenommene Zuwendungen {spendenLetztes.year}
@@ -435,7 +435,7 @@ export default function EinnahmenPage() {
               <p className="mt-0.5 font-display text-[24px] font-bold leading-none tabular-nums">
                 {Math.round(spendenLetztes.amount).toLocaleString("de-DE")}
                 <span className="ml-1 text-[13px] font-semibold text-muted-foreground">€</span>
-                <Beleg q="spenden" />
+                <Beleg q="donations" />
               </p>
               <p className="mt-1 text-[11.5px] text-muted-foreground">
                 aus {spendenLetztes.vorlagen} Beschlüssen
@@ -486,7 +486,7 @@ export default function EinnahmenPage() {
               deckelt die Spalte selbst (gemessen: 535 px ≙ 82 Zeichen bei
               12,5 px, der Deckel liegt bei 80). Dieselbe Schwelle wie bei den
               „Was diese Zahlen nicht hergeben"-Listen der Nachbarseiten. */}
-          <dl className="mt-3.5 grid gap-x-8 gap-y-3 border-t border-border pt-3 @3xl/spenden:grid-cols-2">
+          <dl className="mt-3.5 grid gap-x-8 gap-y-3 border-t border-border pt-3 @3xl/donations:grid-cols-2">
             <div>
               <dt className="text-[12.5px] font-semibold">
                 Wer entscheidet, hängt an 2.000 Euro
@@ -536,7 +536,7 @@ export default function EinnahmenPage() {
               </div>
             )}
             {spendenOhne.length > 0 && (
-              <div className="@3xl/spenden:col-span-2">
+              <div className="@3xl/donations:col-span-2">
                 <dt className="text-[12.5px] font-semibold">
                   {spendenOhne.length}{" "}
                   {spendenOhne.length === 1 ? "Beschluss fehlt" : "Beschlüsse fehlen"} in
@@ -551,7 +551,7 @@ export default function EinnahmenPage() {
                     das die Vorlage gegen das Protokoll stellte — vier von
                     sechs Feldern trugen ihn wörtlich untereinander. Er gilt
                     für die ganze Kategorie und steht deshalb hier, einmal;
-                    `council/spenden.py` schreibt seither je Zeile nur noch
+                    `council/donations.py` schreibt seither je Zeile nur noch
                     deren eigene Zahlen. */}
                 <dd className="mt-0.5 max-w-[80ch] text-[12.5px] leading-relaxed text-muted-foreground">
                   Ihre Beträge sind in den Summen oben nicht enthalten: In diesen
@@ -566,7 +566,7 @@ export default function EinnahmenPage() {
                     das ist der Preis dafür, dass keine Vorlage stillschweigend
                     aus der Summe fällt. Zweispaltig gesetzt kostet er nur noch
                     die halbe Höhe; eingeklappt wird trotzdem nichts. */}
-                <dd className="mt-1.5 grid gap-1.5 @3xl/spenden:grid-cols-2">
+                <dd className="mt-1.5 grid gap-1.5 @3xl/donations:grid-cols-2">
                   {spendenOhne.map((v) => (
                     <LueckenFeld
                       key={v.template_number}

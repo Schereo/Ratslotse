@@ -90,7 +90,7 @@ Die Datei ist gebaut wie die des Realsteuervergleichs — dieselbe Behörde,
 dasselbe Format, derselbe ausgeschriebene Vorlese-Tabellenkopf, der sagt, in
 welcher Zeile er steht. ``council/staedtevergleich.py`` liest das bereits ohne
 Fremdpaket; diese Schicht benutzt dieselben Werkzeuge, so wie
-``council/steuerkraft.py`` es auch tut. Ein zweiter Leser wäre eine zweite
+``council/tax_capacity.py`` es auch tut. Ein zweiter Leser wäre eine zweite
 Stelle, an der derselbe Fehler passieren kann.
 
 Drei Fallen, die dieser Parser bewusst umgeht

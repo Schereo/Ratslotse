@@ -179,16 +179,16 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
 
   useEffect(() => {
     if (!onBestand || programmLaedt) return;
-    if (!programm?.massnahmen.length || !programm.jahre.length) { onBestand(null); return; }
+    if (!programm?.massnahmen.length || !programm.years.length) { onBestand(null); return; }
     onBestand({
       vorhaben: programm.massnahmen.length,
-      von: Math.min(...programm.jahre),
-      bis: Math.max(...programm.jahre),
+      von: Math.min(...programm.years),
+      bis: Math.max(...programm.years),
     });
   }, [onBestand, programm, programmLaedt]);
-  const jahre = useMemo(() => [...(data?.jahre ?? [])].sort((a, b) => a - b), [data]);
+  const years = useMemo(() => [...(data?.years ?? [])].sort((a, b) => a - b), [data]);
   const [year, setJahr] = useState<number | null>(null);
-  const aktJahr = year ?? (jahre.length ? jahre[jahre.length - 1] : null);
+  const aktJahr = year ?? (years.length ? years[years.length - 1] : null);
 
   // Welcher Bereich in den Vorhaben offen ist, steht in der URL: Ein Link auf
   // ein einzelnes Vorhaben soll teilbar sein, und der Zurück-Knopf des
@@ -205,7 +205,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
     router.replace(s ? `/haushalt/investitionen?${s}` : "/haushalt/investitionen",
                    { scroll: false });
   };
-  const programmJahr = passenderJahrgang(programm?.jahre ?? [], aktJahr);
+  const programmJahr = passenderJahrgang(programm?.years ?? [], aktJahr);
 
   const zeilen = useMemo(
     () => (aktJahr != null ? teilhaushalte(data, aktJahr) : []),
@@ -246,7 +246,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
     );
   }
 
-  if (!data || !jahre.length || aktJahr == null || !gesamt) {
+  if (!data || !years.length || aktJahr == null || !gesamt) {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
@@ -336,12 +336,12 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
             </p>
           )}
 
-          {jahre.length > 1 && (
+          {years.length > 1 && (
             <div className="mt-5 flex justify-end border-t border-border pt-4">
               <Segmented
                 value={String(aktJahr)}
                 onChange={(v) => setJahr(Number(v))}
-                options={jahre.map((j) => ({ value: String(j), label: String(j) }))}
+                options={years.map((j) => ({ value: String(j), label: String(j) }))}
               />
             </div>
           )}
@@ -529,7 +529,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
             </li>
             <li>
               <strong className="font-semibold text-foreground">
-                Die Zahlen enden {jahre[jahre.length - 1]}.
+                Die Zahlen enden {years[years.length - 1]}.
               </strong>{" "}
               Die Stadt stellt diesen Datensatz erst im Jahr nach dem
               Haushaltsjahr ins Open-Data-Portal. Für das laufende Jahr gibt es

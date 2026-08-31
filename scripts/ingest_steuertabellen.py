@@ -140,9 +140,9 @@ def _ausgaben(bereich_muster: str, live_url: str | None, live_text: str | None,
     return aus
 
 
-def _herkunft_1103(name: str, url: str | None, jahre: list[int],
+def _herkunft_1103(name: str, url: str | None, years: list[int],
                    probes: list[str], nachweis: str) -> h.Herkunft:
-    spanne = (f"{jahre[0]}–{jahre[-1]}" if len(jahre) > 1 else str(jahre[0]))
+    spanne = (f"{years[0]}–{years[-1]}" if len(years) > 1 else str(years[0]))
     return h.Herkunft(
         art="stadt",
         url=url or stt.TABELLE_1103_URL,
@@ -247,7 +247,7 @@ def main() -> int:
                 proben_je_ausgabe[name] = result["probes"]
                 urls[name] = url_1103 if text is text_1103 else None
                 print(f"  {name}: {len(result['zeilen'])} Zeilen, "
-                      f"Jahrgänge {result['jahre']}")
+                      f"Jahrgänge {result['years']}")
 
             zeilen_1103 = stt.zusammenlegen(
                 gelesen, lambda z: (z["year"], z["art"]))
@@ -327,17 +327,17 @@ def main() -> int:
             for zeile in zeilen_1103:
                 nach_ausgabe.setdefault(zeile["ausgabe"], []).append(zeile)
             for name, teil in sorted(nach_ausgabe.items()):
-                jahre = sorted({z["year"] for z in teil})
+                years = sorted({z["year"] for z in teil})
                 probes = proben_je_ausgabe.get(name) or ["steuerplan_summenzeile"]
                 nachweis = (
-                    f"{len(jahre)} Jahrgänge ({jahre[0]}–{jahre[-1]}), "
+                    f"{len(years)} Jahrgänge ({years[0]}–{years[-1]}), "
                     f"bestanden: "
                     + ", ".join(stt.PROBEN_KURZ.get(n, n) for n in probes))
                 geschrieben += store.save_steuerplan(
-                    teil, _herkunft_1103(name, urls.get(name), jahre,
+                    teil, _herkunft_1103(name, urls.get(name), years,
                                          probes, nachweis))
                 print(f"  1103 {name}: {len(teil)} Zeilen, "
-                      f"Jahrgänge {jahre[0]}–{jahre[-1]}")
+                      f"Jahrgänge {years[0]}–{years[-1]}")
 
             if zeilen_1105:
                 gemessen = ", ".join(

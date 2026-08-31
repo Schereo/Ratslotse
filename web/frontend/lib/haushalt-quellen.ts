@@ -29,8 +29,8 @@
 //
 // `stand` bleibt für die vier Fälle, die sich NICHT ableiten lassen, und als
 // Rückfall, solange die Antwort nicht da ist:
-//   * `hebesaetze` — ein Beschlussdatum, keine Datenspanne;
-//   * `ruecklage` — Bilanzreihe plus Bestätigung im späteren Vorbericht;
+//   * `tax_rates` — ein Beschlussdatum, keine Datenspanne;
+//   * `reserves` — Bilanzreihe plus Bestätigung im späteren Vorbericht;
 //   * `vergleich_2018` — eine einzelne Ratsvorlage, die nie einen zweiten
 //     Jahrgang bekommt;
 //   * `ratsbeschluss` — „seit Januar 2018", nach oben offen und deshalb
@@ -69,10 +69,10 @@ export type Jahrgaenge = Partial<Record<QuellenSchluessel, number[]>>;
  *  Ladezustand: Vier Quellen haben gar keine ableitbare Spanne, und eine
  *  leere Tabelle (frische Datenbank, fehlgeschlagener Ingest) darf nicht in
  *  ein nacktes „Stand" münden. */
-export function standText(q: Quelle, jahre: number[] | undefined): string {
-  if (q.standWort === undefined || !jahre || jahre.length === 0) return q.stand;
-  const von = jahre[0];
-  const bis = jahre[jahre.length - 1];
+export function standText(q: Quelle, years: number[] | undefined): string {
+  if (q.standWort === undefined || !years || years.length === 0) return q.stand;
+  const von = years[0];
+  const bis = years[years.length - 1];
   const spanne = von === bis ? `${von}` : `${von}–${bis}`;
   return [q.standWort, spanne, q.standZusatz].filter(Boolean).join(" ");
 }
@@ -81,18 +81,18 @@ export function standText(q: Quelle, jahre: number[] | undefined): string {
  *  als `Quelle` getypt (inklusive optionaler Felder wie `lizenz`), und die
  *  Union bleibt trotzdem eng genug, um Tippfehler beim Aufruf zu fangen. */
 export type QuellenSchluessel =
-  | "plan" | "steuern" | "steuerkraft" | "hebesaetze" | "ruecklage"
+  | "plan" | "taxes" | "tax_capacity" | "tax_rates" | "reserves"
   // Die Plan-Seite je Steuerart (Jahrbuch 1103). Ein eigener Schlüssel neben
-  // `steuern`, weil es eine andere Tabelle mit einer anderen Grenze ist: Die
+  // `taxes`, weil es eine andere Tabelle mit einer anderen Grenze ist: Die
   // Ist-Reihe führt 28 Jahrgänge, diese hier drei.
-  | "steuerplan"
+  | "tax_plan"
   | "jahresabschluss" | "teilhaushalt" | "stellenplan" | "pruefbericht"
   // Der Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — dieselbe
   // Postengliederung wie der Jahresabschluss, aber für Jahre, die noch keinen
   // haben. Ein eigener Schlüssel, weil es eine andere Sorte Zahl ist: Der
   // Abschluss zählt, was geflossen IST, dieser Plan, was fließen SOLL — und
   // zwar in der Fassung der Einbringung, nicht des Ratsbeschlusses.
-  | "ergebnishaushalt"
+  | "income_budget"
   // Die Wirtschaftspläne der Eigenbetriebe. Eigener Schlüssel, weil es ein
   // anderer Haushalt ist: Er wird in derselben Ratssitzung beschlossen, gehört
   // aber nicht zum Kernhaushalt und ist mit ihm nicht addierbar.
@@ -100,22 +100,22 @@ export type QuellenSchluessel =
   // Die Haushaltssatzung — der Rahmen um den Plan. Eigener Schlüssel, weil sie
   // etwas anderes ist als der Haushaltsplan: Der Plan sagt, wofür das Geld
   // ausgegeben werden SOLL, die Satzung, was die Stadt DÜRFTE.
-  | "haushaltssatzung"
+  | "budget_bylaw"
   // Die Gebührenbedarfsberechnung — eigener Schlüssel, weil sie ein anderes
   // Dokument ist als der Wirtschaftsplan desselben Betriebs: Der Plan sagt,
   // was der Betrieb vorhat, die Berechnung, was die Leute dafür zahlen.
-  | "gebuehren"
+  | "fees"
   // Die Änderungslisten zum Haushalt — eigener Schlüssel, weil sie weder der
   // Plan noch die Satzung sind: Sie sind das Protokoll dessen, was sich
   // zwischen Entwurf und Beschluss noch bewegt hat, Position für Position.
   | "aenderungsliste"
   | "gesamtabschluss"
-  | "einwohner" | "ergebnisrechnung_thh" | "ratsbeschluss"
+  | "population" | "ergebnisrechnung_thh" | "ratsbeschluss"
   // Die Kassensicht aus denselben Jahresabschlüssen. Ein eigener Schlüssel,
   // weil es ein anderer Abschnitt mit einer anderen Abgrenzung ist: Die
   // Ergebnisrechnung bucht, die Finanzrechnung zahlt. Ein gemeinsamer Eintrag
   // lüde dazu ein, ihre Zahlen für dieselben zu halten.
-  | "finanzrechnung"
+  | "cash_flow_statement"
   // Die Vermögensseite aus denselben Jahresabschlüssen (Abschnitt 2.1).
   // Wieder ein eigener Schlüssel, wieder aus demselben Grund: Ergebnis- und
   // Finanzrechnung zählen ein **Jahr**, die Bilanz einen **Stichtag**. Ihre
@@ -145,18 +145,18 @@ export type QuellenSchluessel =
   // ANDERES Dokument als der Abschluss, mit eigener Vorlagennummer — und seine
   // Besonderheit (jeder Bericht druckt fünf Jahre, die Berichte widersprechen
   // sich an sieben Stellen) gehört an die Quelle, nicht an eine Zahl.
-  | "kennzahlen"
+  | "indicators"
   // Die lange Ausgabenreihe seit 1972 — die einzige Quelle des Bereichs, die
   // in zwei Veröffentlichungen zugleich steht (Jahrbuch UND Open-Data-Portal)
   // und deshalb einen gemeinsamen Eintrag braucht: Wer nur eine der beiden
   // nennt, verschweigt die Hälfte der Reihe.
-  | "ausgabenreihe"
+  | "expense_series"
   // Die Zuwendungen an die Stadt — die einzige Quelle des Bereichs, die kein
   // Dokument der Statistik oder der Finanzverwaltung ist, sondern eine Reihe
   // von Ratsbeschlüssen. Ihr eigener Eintrag, weil ihre Grenze eine andere ist
   // als bei allen übrigen: Der Beschluss macht die Summe öffentlich, die
   // Liste der Gebenden bleibt in einer Anlage, die wir nicht haben.
-  | "spenden"
+  | "donations"
   // A12: Der Beteiligungsbericht — die einzige Quelle des Bereichs, die ein
   // eigener Cron von oldenburg.de herunterlädt.
   | "beteiligungsbericht";
@@ -179,7 +179,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     // 404, die Übersicht darüber steht. Geprüft im Tote-Links-Lauf.
     url: "https://www.oldenburg.de/startseite/politik/verwaltung-finanzen.html",
   },
-  steuern: {
+  taxes: {
     titel: "Steuereinnahmen der Stadt Oldenburg seit 1998",
     citation:
       "Datensatz 1104, eine Zeile je Haushaltsjahr, Spalten je Steuerart. " +
@@ -194,7 +194,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     art: "csv",
     url: "https://opendata.oldenburg.de/sites/default/files/1104_Steuereinnahmen_0.csv",
   },
-  steuerkraft: {
+  tax_capacity: {
     titel: "Steuerkraftmesszahlen und Schlüsselzuweisungen seit 1993",
     citation:
       "Datensatz 1106: Steuerkraftmesszahl und Schlüsselzuweisungen (Anordnungssoll) " +
@@ -217,7 +217,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   // gibt es noch nicht" und als Stand allein „2025". Beides ist überholt: Die
   // Reihe stand die ganze Zeit im Statistischen Jahrbuch — in Tabelle 1105,
   // auf demselben Blatt wie die Steuereinnahmen, die wir längst lesen.
-  hebesaetze: {
+  tax_rates: {
     titel: "Realsteuer-Hebesätze der Stadt Oldenburg seit 1980",
     citation:
       "Tabelle 1105, je Änderungsjahr die Hebesätze für Grundsteuer A, Grundsteuer B " +
@@ -233,7 +233,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     art: "pdf",
     url: "https://www.oldenburg.de/startseite/rathaus/politik-verwaltung/stadtverwaltung/statistik/statistisches-jahrbuch.html",
   },
-  steuerplan: {
+  tax_plan: {
     titel: "Steuern und Finanzzuweisungen — Plan neben Ergebnis",
     citation:
       "Tabelle 1103, je Steuerart zwei Spalten pro Jahr: der Ansatz nach dem beschlossenen " +
@@ -287,7 +287,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
-  gebuehren: {
+  fees: {
     titel: "Gebührenbedarfsberechnungen des Abfallwirtschaftsbetriebs",
     citation:
       "Die Anlagen 1 bis 4 der jährlichen Ratsvorlage " +
@@ -322,7 +322,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
-  haushaltssatzung: {
+  budget_bylaw: {
     titel: "Haushaltssatzungen der Stadt Oldenburg",
     citation:
       "Die Haushaltssatzung, die dem Haushaltsplan als Anlage beiliegt — drei " +
@@ -341,7 +341,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
-  ergebnishaushalt: {
+  income_budget: {
     titel: "Gesamtergebnishaushalte der Stadt Oldenburg (Planjahre)",
     citation:
       "Anlage 005 des Haushaltsplans: die Erträge und Aufwendungen des kommenden " +
@@ -430,7 +430,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
-  ruecklage: {
+  reserves: {
     titel: "Überschussrücklage aus den Jahresabschlüssen",
     citation:
       "Bilanzposition 1.2.1 „Rücklagen aus Überschüssen des ordentlichen " +
@@ -447,7 +447,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   // Haushalts-Bereich diese Datei nicht gleichzeitig anfassen müssen. Wer
   // später doch einen Schlüssel braucht: nur ANHÄNGEN, mit Kommentarmarke,
   // niemals bestehende Einträge umsortieren oder umformatieren.
-  einwohner: {
+  population: {
     titel: "Einwohnerzahlen der Stadt Oldenburg je Haushaltsjahr",
     citation:
       "Datensatz 1102, Einwohner-Spalte — eine Zeile je Haushaltsjahr, Stichtag " +
@@ -477,7 +477,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
-  finanzrechnung: {
+  cash_flow_statement: {
     titel: "Finanzrechnung der Kernverwaltung (Jahresabschlüsse)",
     citation:
       "Abschnitt 4.1 derselben Jahresabschlüsse: die Ein- und Auszahlungen des " +
@@ -513,7 +513,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
   },
-  kennzahlen: {
+  indicators: {
     titel: "Kennzahlenübersicht der Rechenschaftsberichte",
     citation:
       "Die Anlage „Kennzahlenübersicht und Berechnungsmethoden“ am Ende jedes " +
@@ -678,7 +678,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/" +
       "40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/1108-2025-AZ.pdf",
   },
-  ausgabenreihe: {
+  expense_series: {
     titel:
       "Ausgaben der Stadt Oldenburg seit 1972 — Datensatz 1102 " +
       "(Statistisches Jahrbuch und Open-Data-Portal)",
@@ -715,7 +715,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/" +
       "40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/1102-2025-AZ.pdf",
   },
-  spenden: {
+  donations: {
     titel:
       "Ratsvorlagen „Annahme von Zuwendungen“ — Beschlüsse des Rates und des " +
       "Verwaltungsausschusses",

@@ -49,7 +49,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from council import herkunft as h  # noqa: E402
-from council import nachbewilligungen as nb  # noqa: E402
+from council import supplementary_approvals as nb  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 #: Die Rechenschaftsberichte mit Kapitel 3 im Bestand. Der Schlüssel ist das

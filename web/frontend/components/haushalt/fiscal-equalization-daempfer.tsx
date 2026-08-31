@@ -62,12 +62,12 @@ const H = 190, Y0 = 150, YTOP = 20;
  *  Ziffern der Direktbeschriftung. */
 const halo = { paintOrder: "stroke", strokeWidth: 3, strokeLinejoin: "round" } as const;
 
-export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] }) {
+export function FinanzausgleichDaempfer({ tax_capacity }: { tax_capacity: Kraft[] }) {
   // 260 statt der üblichen 280: Dieses Diagramm trägt keine Jahreszahlen an
   // der Achse und bleibt deshalb zwanzig Pixel schmaler noch lesbar.
   const { box, breite } = useBreite(640, 260);
 
-  const series = steuerkraft
+  const series = tax_capacity
     .filter((k): k is Kraft & { tax_index: number; allocations: number } =>
       k.tax_index != null && k.allocations != null)
     .sort((a, b) => a.year - b.year);
@@ -212,7 +212,7 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
           }} />
           Schlüsselzuweisungen
         </span>
-        <span>Mio.&nbsp;€ je Ausgleichsjahr<Beleg q="steuerkraft" /></span>
+        <span>Mio.&nbsp;€ je Ausgleichsjahr<Beleg q="tax_capacity" /></span>
       </div>
 
       {/* Der Kern: Warum hier keine Zahl steht. Die Auszählung ist die

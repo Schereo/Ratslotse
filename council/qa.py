@@ -1324,8 +1324,8 @@ def deep_bericht_stream(frage: str, candidates: list[dict],
                         planungen: list[dict] | None = None,
                         anlagen: list[dict] | None = None,
                         model: str = MODEL,
-                        steuern: list[dict] | None = None,
-                        steuerkraft: dict | None = None,
+                        taxes: list[dict] | None = None,
+                        tax_capacity: dict | None = None,
                         geld: dict | None = None):
     """Der lange Deep-Research-Bericht als Token-Stream (Task 34).
 
@@ -1339,7 +1339,7 @@ def deep_bericht_stream(frage: str, candidates: list[dict],
     Plan ist nicht Ist, Quelle nennen, nicht rechnen). Sie stehen VOR den
     Zahlen, weil ihr eigener Wortlaut auf „eigene Abschnitte unten" verweist.
     """
-    geld = _geld_vereinheitlichen(geld, haushalt, steuern, steuerkraft)
+    geld = _geld_vereinheitlichen(geld, haushalt, taxes, tax_capacity)
     zusatz = (_debatten_block(debatten) + _presse_block(presse)
               + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
     prompt = prompts.render("deep_bericht", frage=frage.strip()[:300],
@@ -1706,11 +1706,11 @@ def _steuerkraft_block(k: dict | None) -> str:
 #: der andere drinbliebe, stünde eine Investitionszahl ohne ihr Gegenstück im
 #: Kontext — und die Regel „nie voneinander abziehen" hinge an einer Zahl, die
 #: gar nicht da ist. Nebeneinander fallen sie zusammen oder gar nicht.
-GELD_FACETTEN = ("schulden", "gebuehren", "stellenplan", "investitionen", "gebaut",
+GELD_FACETTEN = ("schulden", "fees", "stellenplan", "investitionen", "gebaut",
                  "ist", "gruende", "pruefung", "produkte", "antraege",
-                 "plan", "ansatz", "steuern", "ausgleich", "konzern", "vergleich",
+                 "plan", "ansatz", "taxes", "ausgleich", "konzern", "vergleich",
                  # Die vier Schichten aus den Jahresabschlüssen (08/2026).
-                 "bilanz", "kassensicht", "nachbewilligungen", "kennzahlen")
+                 "bilanz", "kassensicht", "supplementary_approvals", "indicators")
 
 #: Alle Muster arbeiten auf `_falte()`-Text: kleingeschrieben, Umlaute
 #: ausgeschrieben, Satzzeichen zu Leerzeichen. Deshalb steht hier „pruef",
@@ -1773,7 +1773,7 @@ _F_ANSATZ = re.compile(
 # Fliegerhorst geplant?" zog sonst den Jahresabschluss in eine reine
 # Planungsfrage. Die weichen Wörter brauchen deshalb einen Geld-Anker.
 _F_IST_HART = re.compile(
-    r"ausgegeben|jahresabschluss|ergebnisrechnung|abgerechnet|rechnungsergebnis|"
+    r"ausgegeben|jahresabschluss|income_statement|abgerechnet|rechnungsergebnis|"
     r"ueberschritten|fehlbetrag|\bdefizit|ueberschuss|\bbilanz")
 _F_IST_WEICH = re.compile(
     r"tatsaechlich|wirklich|am ende|unterm strich|eingehalten|abweich|"
@@ -1816,7 +1816,7 @@ _F_BILANZ = re.compile(
 # „auszahlung" steht bewusst NICHT drin: Das Wort gehört zu den Investitionen
 # und zöge die Kassensicht in jede Bau-Frage.
 _F_KASSE = re.compile(
-    r"finanzrechnung|kassensicht|kassenwirksam|liquide|liquiditaet|"
+    r"cash_flow_statement|kassensicht|kassenwirksam|liquide|liquiditaet|"
     r"zahlungsmittel|tatsaechlich geflossen|wirklich geflossen")
 _F_NACHBEWILLIGUNG = re.compile(
     r"nachbewilli|ueberplanmaessig|ausserplanmaessig|117 nkomvg|"
@@ -1826,7 +1826,7 @@ _F_NACHBEWILLIGUNG = re.compile(
 _F_KENNZAHL = re.compile(
     r"kennzahl|eigenkapitalquote|anlagenintensitaet|infrastrukturquote|"
     r"steuerquote|personalintensitaet|reinvestitionsquote|"
-    r"vermoegen je einwohner|vermoegen pro einwohner")
+    r"vermoegen je population|vermoegen pro population")
 _F_INVEST = re.compile(
     r"investit|investier|investiv|\bgebaut\b|\bbauen\b|neubau|baumassnahm|"
     r"finanzhaushalt|auszahlung")
@@ -1894,9 +1894,9 @@ def geld_facetten(frage: str, typ: str = "topic") -> set[str]:
     if _F_IST_HART.search(t) or (_F_IST_WEICH.search(t) and "plan" in f):
         f.add("ist")
     if _F_STEUERN.search(t):
-        f.add("steuern")
+        f.add("taxes")
     if _F_GEBUEHREN.search(t):
-        f.add("gebuehren")
+        f.add("fees")
     # „Was kostet X?" ist die Frage, die die Produktebene beantwortet — dort
     # steht eine Aufgabe mit ihren Kosten. Die Aufgaben-Wörter („muss die
     # Stadt …", „Rechtsgrundlage", „kürzen") ziehen sie auch ohne Kostenwort:
@@ -1906,12 +1906,12 @@ def geld_facetten(frage: str, typ: str = "topic") -> set[str]:
         f.add("produkte")
     # Das Warum steht im Jahresabschluss — ohne dessen Zahlen schwebt es.
     # Deshalb zieht `gruende` immer `ist` mit.
-    if _F_GRUND.search(t) and (f & {"plan", "ist", "steuern"}):
+    if _F_GRUND.search(t) and (f & {"plan", "ist", "taxes"}):
         f.add("gruende")
         f.add("ist")
     # Der NFAG-Dämpfer: eigenständig bei Hebesatz-/Zuweisungs-Fragen, sonst
     # immer dann, wenn Steuern im Spiel sind (Verhalten von vor dieser Runde).
-    if _F_AUSGLEICH.search(t) or "steuern" in f:
+    if _F_AUSGLEICH.search(t) or "taxes" in f:
         f.add("ausgleich")
     # Der Konzern: bei seinen eigenen Wörtern — oder wenn jemand nach dem
     # GANZEN fragt („Was kostet die Stadt insgesamt?"). Der Kernhaushalt
@@ -1932,9 +1932,9 @@ def geld_facetten(frage: str, typ: str = "topic") -> set[str]:
     if _F_KASSE.search(t) or "ist" in f:
         f.add("kassensicht")
     if _F_NACHBEWILLIGUNG.search(t):
-        f.add("nachbewilligungen")
+        f.add("supplementary_approvals")
     if _F_KENNZAHL.search(t):
-        f.add("kennzahlen")
+        f.add("indicators")
     # Investitionen: der ANDERE Haushalt. Bewusst kein `plan` dazu — wer
     # fragt, was gebaut wird, soll keine Ergebnishaushalt-Zahl danebengelegt
     # bekommen. Fragt jemand nach beidem („Wie viel gibt die Stadt für
@@ -1986,17 +1986,17 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "topic") -> d
     # Die Begriffe kommen aus der Expansion; ohne sie tut es die Frage selbst.
     woerter = [w for w in (begriffe or frage or "").split() if w]
     aus: dict = {"facetten": sorted(facetten)}
-    if "gebuehren" in facetten:
-        aus["gebuehren"] = _sicher(store.gebuehren_fuer_begriffe, woerter)
+    if "fees" in facetten:
+        aus["fees"] = _sicher(store.gebuehren_fuer_begriffe, woerter)
     if "plan" in facetten:
         aus["haushalt"] = _sicher(store.haushalt_fuer_begriffe, woerter, standard=[])
-    if "steuern" in facetten:
-        aus["steuern"] = _sicher(store.steuern_fuer_begriffe, woerter, standard=[])
+    if "taxes" in facetten:
+        aus["taxes"] = _sicher(store.steuern_fuer_begriffe, woerter, standard=[])
     if "ausgleich" in facetten:
         # Wie bisher: der Dämpfer nur, wenn es wirklich um Steuern geht —
         # sonst hinge er an jeder Zuweisungs-Frage ohne Bezug.
-        if aus.get("steuern") or _F_AUSGLEICH.search(_falte(frage or "")):
-            aus["steuerkraft"] = _sicher(store.steuerkraft_kontext)
+        if aus.get("taxes") or _F_AUSGLEICH.search(_falte(frage or "")):
+            aus["tax_capacity"] = _sicher(store.steuerkraft_kontext)
     if "ist" in facetten:
         aus["ist"] = _sicher(store.result_actual_for_terms, woerter)
     if "gruende" in facetten:
@@ -2021,11 +2021,11 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "topic") -> d
         aus["bilanz"] = _sicher(store.bilanz_kontext)
     if "kassensicht" in facetten:
         aus["kassensicht"] = _sicher(store.kassensicht_kontext)
-    if "nachbewilligungen" in facetten:
-        aus["nachbewilligungen"] = _sicher(store.nachbewilligungen_kontext,
+    if "supplementary_approvals" in facetten:
+        aus["supplementary_approvals"] = _sicher(store.nachbewilligungen_kontext,
                                            haushaltsjahr(frage))
-    if "kennzahlen" in facetten:
-        aus["kennzahlen"] = _sicher(store.kennzahlen_kontext)
+    if "indicators" in facetten:
+        aus["indicators"] = _sicher(store.kennzahlen_kontext)
     if "investitionen" in facetten:
         aus["investitionen"] = _sicher(store.investitionen_fuer_begriffe, woerter)
     if "gebaut" in facetten:
@@ -2110,11 +2110,11 @@ def geld_grafik(store, geld: dict) -> dict | None:
                          "label": "Wie viel Schulden hat Oldenburg?"},
             }
 
-    if geld.get("steuern"):
+    if geld.get("taxes"):
         # Die Art, die die Frage getroffen hat — `steuern_fuer_begriffe` hat
         # sie schon aufgelöst („gewinnt die erste": sie ist die, nach der
         # gefragt wurde; die weiteren sind Beifang der Synonyme).
-        art = geld["steuern"][0]["art"]
+        art = geld["taxes"][0]["art"]
         series = [{"year": r["year"], "wert": round(r["amount"] / 1e6, 1)}
                  for r in store.get_steuereinnahmen()
                  if r["art"] == art and r.get("amount") is not None]
@@ -2122,7 +2122,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
             titel = ("Steuereinnahmen insgesamt" if art == "insgesamt"
                      else f"{art} — Ist-Einnahmen")
             return {
-                "art": "steuern",
+                "art": "taxes",
                 "titel": titel,
                 "einheit": "Mio. €",
                 "nachkomma": 1,
@@ -2564,8 +2564,8 @@ def _gebaut_block(g: dict | None) -> str:
     for titel, amount in g.get("arten") or []:
         zeilen.append(f"  - davon {titel}: {_eur(amount)}")
     if g.get("fehlend"):
-        jahre = ", ".join(str(j) for j in g["fehlend"])
-        zeilen.append(f"- NICHT im Bestand: {jahre}. Dort ergeben die "
+        years = ", ".join(str(j) for j in g["fehlend"])
+        zeilen.append(f"- NICHT im Bestand: {years}. Dort ergeben die "
                       "Auszahlungsarten in der Quelltabelle nicht die Summe "
                       "daneben; der Jahrgang wurde deshalb nicht übernommen. "
                       "Diese Jahre haben KEINEN Wert — weder null noch geschätzt.")
@@ -2661,11 +2661,11 @@ GELD_MAX_CHARS = 4500
 #: Baustein je Facette. Reihenfolge steckt in GELD_FACETTEN.
 _GELD_BAUSTEINE = {
     "schulden": ("schulden", _schulden_block),
-    "gebuehren": ("gebuehren", _gebuehren_block),
+    "fees": ("fees", _gebuehren_block),
     "bilanz": ("bilanz", _bilanz_block),
     "kassensicht": ("kassensicht", _kassensicht_block),
-    "nachbewilligungen": ("nachbewilligungen", _nachbewilligungen_block),
-    "kennzahlen": ("kennzahlen", _kennzahlen_block),
+    "supplementary_approvals": ("supplementary_approvals", _nachbewilligungen_block),
+    "indicators": ("indicators", _kennzahlen_block),
     "stellenplan": ("stellenplan", _stellenplan_block),
     "investitionen": ("investitionen", _investitionen_block),
     "gebaut": ("gebaut", _gebaut_block),
@@ -2676,20 +2676,20 @@ _GELD_BAUSTEINE = {
     "antraege": ("antraege", _antraege_block),
     "plan": ("haushalt", _haushalt_block),
     "ansatz": ("ansatz", _ansatz_block),
-    "steuern": ("steuern", _steuern_block),
-    "ausgleich": ("steuerkraft", _steuerkraft_block),
+    "taxes": ("taxes", _steuern_block),
+    "ausgleich": ("tax_capacity", _steuerkraft_block),
     "konzern": ("konzern", _konzern_block),
     "vergleich": ("vergleich", _vergleich_block),
 }
 
 
-def _geld_vereinheitlichen(geld: dict | None, haushalt, steuern, steuerkraft) -> dict:
+def _geld_vereinheitlichen(geld: dict | None, haushalt, taxes, tax_capacity) -> dict:
     """Alter Aufrufweg (haushalt=/steuern=/steuerkraft=) und neuer (geld=) auf
     eine Form bringen. Die Deep-Research-Pipeline reicht die drei Listen
     weiterhin einzeln durch; sie soll dafür nicht umgebaut werden müssen."""
     if geld:
         return geld
-    return {"haushalt": haushalt, "steuern": steuern, "steuerkraft": steuerkraft}
+    return {"haushalt": haushalt, "taxes": taxes, "tax_capacity": tax_capacity}
 
 
 def geld_block(geld: dict | None) -> str:
@@ -2819,15 +2819,15 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      anlagen: list[dict] | None = None,
                      gross: bool = False, steckbriefe: list[dict] | None = None,
                      duenn: bool = False, eng: bool = False,
-                     steuern: list[dict] | None = None,
-                     steuerkraft: dict | None = None,
+                     taxes: list[dict] | None = None,
+                     tax_capacity: dict | None = None,
                      geld: dict | None = None,
                      sitzungen: list[dict] | None = None,
                      ort: dict | None = None) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
                  if vtext else "")
-    geld = _geld_vereinheitlichen(geld, haushalt, steuern, steuerkraft)
+    geld = _geld_vereinheitlichen(geld, haushalt, taxes, tax_capacity)
     ortsregel = ""
     if ort:
         ortsregel = (
@@ -2988,13 +2988,13 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     anlagen: list[dict] | None = None,
                     gross: bool = False, steckbriefe: list[dict] | None = None,
                     duenn: bool = False, eng: bool = False,
-                    steuern: list[dict] | None = None, steuerkraft: dict | None = None,
+                    taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                     geld: dict | None = None, sitzungen: list[dict] | None = None,
                     ort: dict | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
-                                       steuern, steuerkraft, geld, sitzungen, ort)
+                                       taxes, tax_capacity, geld, sitzungen, ort)
     resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -3007,7 +3007,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   anlagen: list[dict] | None = None,
                   gross: bool = False, steckbriefe: list[dict] | None = None,
                   duenn: bool = False, eng: bool = False,
-                  steuern: list[dict] | None = None, steuerkraft: dict | None = None,
+                  taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                   geld: dict | None = None, sitzungen: list[dict] | None = None,
                   ort: dict | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
@@ -3015,7 +3015,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
-                                       steuern, steuerkraft, geld, sitzungen, ort)
+                                       taxes, tax_capacity, geld, sitzungen, ort)
     yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 

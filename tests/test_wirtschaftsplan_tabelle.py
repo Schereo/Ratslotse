@@ -102,10 +102,10 @@ def test_das_ergebnis_ist_nicht_der_jahresueberschuss():
 def test_die_gespeicherte_zeile_erfuellt_dieselbe_beziehung_wie_der_beschlusstext():
     """`Erträge − Aufwendungen − Steuern = Ergebnis` gilt für JEDE Zeile der
     Tabelle, egal ob sie aus dem Beschlusstext oder aus einer Anlage kommt.
-    Die Null bei `steuern` ist deshalb eine Aussage, keine Lücke."""
+    Die Null bei `taxes` ist deshalb eine Aussage, keine Lücke."""
     plan, _ = parse_erfolgsplan("24/0671", "awb", 2025, LAYOUT_A)
-    assert plan.steuern == 0.0
-    assert abs(plan.revenues - plan.expenses - plan.steuern - plan.result) <= TOLERANZ_EUR
+    assert plan.taxes == 0.0
+    assert abs(plan.revenues - plan.expenses - plan.taxes - plan.result) <= TOLERANZ_EUR
 
 
 def test_kopfspalten_lesen_art_und_jahr():

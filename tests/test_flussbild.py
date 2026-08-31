@@ -114,9 +114,9 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
 
 def _daten(store: CouncilStore) -> dict:
     """Die Nutzlast, wie ``GET /api/council/haushalt`` sie liefert (Ausschnitt)."""
-    return {"jahre": {}, "steuern": [], "steuerkraft": [], "einwohner": None,
-            "ergebnisrechnung": store.get_ergebnisrechnung(),
-            "plan_ist_jahre": store.plan_ist_jahre()}
+    return {"years": {}, "taxes": [], "tax_capacity": [], "population": None,
+            "income_statement": store.get_ergebnisrechnung(),
+            "plan_actual_years": store.plan_actual_years()}
 
 
 # --- Die echte Funktion über Node laufen lassen ------------------------------
@@ -137,7 +137,7 @@ const page = (s) => ({
 // verschlucken, sonst stimmten die Bandbreiten nicht mehr mit der Tabelle.
 const geb = fasseKleineZusammen(bild.herkunft.baender, bild.skala, 0.05);
 console.log(JSON.stringify({
-  jahre: flussJahre(daten),
+  years: flussJahre(daten),
   stand: bild.stand,
   skala: bild.skala,
   balance: bild.balance,
@@ -241,7 +241,7 @@ def test_ueberschuss_landet_auf_der_anderen_seite(tmp_path):
     daten = _daten(store)
     store.close()
     # Plan-Stand umdrehen: Erträge über Aufwendungen.
-    for p in daten["ergebnisrechnung"]:
+    for p in daten["income_statement"]:
         if p["sub_budget_no"] is None and p["nr"] == 12:
             p["ansatz"] = AUFWENDUNGEN_PLAN + 30_000_000.0
 
@@ -305,7 +305,7 @@ def test_nur_jahre_mit_beiden_seiten(tmp_path):
     r = _fluss(tmp_path, _daten(store))
     store.close()
 
-    assert r["jahre"] == [JAHR]
+    assert r["years"] == [JAHR]
 
 
 # --- Datengrundlage: läuft auch ohne Node -----------------------------------

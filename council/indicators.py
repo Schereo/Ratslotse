@@ -202,8 +202,8 @@ def parse_kennzahlen(text: str, report_year: int) -> tuple[list[dict], list[str]
     dreizehn passt, ist entweder eine neue Kennzahl oder ein Parser-Fehler.
     Beides gehört gemeldet, nicht verschluckt.
     """
-    jahre = jahresspalten(text)
-    if len(jahre) < 3:
+    years = jahresspalten(text)
+    if len(years) < 3:
         return [], []
 
     m = KOPF.search(text)
@@ -225,7 +225,7 @@ def parse_kennzahlen(text: str, report_year: int) -> tuple[list[dict], list[str]
         if treffer is None:
             unbekannt.append(_flach(text_) or "(ohne Beschriftung)")
         else:
-            for year, (wert, stellen, prozent) in zip(jahre, werte):
+            for year, (wert, stellen, prozent) in zip(years, werte):
                 # Das Prozentzeichen ist ein zweites, unabhängiges Signal für
                 # die Einheit — steht es an einer Euro-Kennzahl, stimmt die
                 # Spaltenzuordnung nicht.
@@ -242,7 +242,7 @@ def parse_kennzahlen(text: str, report_year: int) -> tuple[list[dict], list[str]
         treffer = WERT.fullmatch(wort)
         if treffer:
             werte.append((*_zahl(treffer.group(1)), bool(treffer.group(2))))
-            if len(werte) == len(jahre):
+            if len(werte) == len(years):
                 abschliessen()
         else:
             if werte:                       # neue Zeile beginnt, alte war kurz
@@ -488,7 +488,7 @@ def vermoegensprobe(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[d
     risse: list[dict] = []
     for (report_year, year), zellen in sorted(je_bericht.items()):
         kopf = zellen.get("vermoegen_je_einwohner")
-        leute = zellen.get("einwohner")
+        leute = zellen.get("population")
         if not (kopf and leute) or year not in aktiva:
             continue
         soll = aktiva[year] - rap.get(year, 0.0)

@@ -3,7 +3,7 @@
     "id": "fee-waste-why",
     "question": "Warum steigen die Abfallgebühren?",
     "allowed_types": ["money", "topic"],
-    "expected_facets": ["gebuehren"],
+    "expected_facets": ["fees"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["debates", "documents"]
   },
@@ -11,7 +11,7 @@
     "id": "fee-street-amount",
     "question": "Wie hoch ist die Straßenreinigungsgebühr?",
     "allowed_types": ["money", "topic"],
-    "expected_facets": ["gebuehren"],
+    "expected_facets": ["fees"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["debates", "documents"]
   },
@@ -19,7 +19,7 @@
     "id": "fee-waste-method",
     "question": "Wie werden die Müllgebühren berechnet?",
     "allowed_types": ["money", "topic"],
-    "expected_facets": ["gebuehren"],
+    "expected_facets": ["fees"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["debates"]
   },
@@ -67,7 +67,7 @@
     "id": "tax-income",
     "question": "Wie hoch waren die Steuereinnahmen?",
     "allowed_types": ["money"],
-    "expected_facets": ["plan", "ansatz", "steuern", "ausgleich"],
+    "expected_facets": ["plan", "ansatz", "taxes", "ausgleich"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["debates", "documents"]
   },

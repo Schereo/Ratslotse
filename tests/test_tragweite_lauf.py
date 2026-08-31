@@ -85,10 +85,10 @@ def test_der_store_ist_beim_bewerten_noch_offen(tmp_path, monkeypatch):
 
     monkeypatch.setattr(impact, "rate_agenda_batch", _bewerten)
 
-    kennzahlen = modul.main()
+    indicators = modul.main()
     assert gesehen == [1], "der Block hat den Punkt gar nicht erst gesehen"
-    assert kennzahlen["Tragweite bewertet"] == 1
-    assert kennzahlen["Tragweite offen"] == 1
+    assert indicators["Tragweite bewertet"] == 1
+    assert indicators["Tragweite offen"] == 1
 
     # Und der Wert ist wirklich in der Datenbank gelandet.
     conn = sqlite3.connect(tmp_path / "council.sqlite")
@@ -117,6 +117,6 @@ def test_ohne_offene_punkte_bleibt_der_lauf_still(tmp_path, monkeypatch):
 
     monkeypatch.setattr(impact, "rate_agenda_batch", lambda items: [])
 
-    kennzahlen = modul.main()
-    assert kennzahlen["Tragweite offen"] == 0
-    assert kennzahlen["Tragweite bewertet"] == 0
+    indicators = modul.main()
+    assert indicators["Tragweite offen"] == 0
+    assert indicators["Tragweite bewertet"] == 0

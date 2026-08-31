@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import pytest
 
-from council import ausgabenreihe as ar
+from council import expense_series as ar
 from council import herkunft
 from council.store import CouncilStore
 
@@ -172,8 +172,8 @@ def test_jede_zeile_traegt_ihr_regelwerk(gelesen):
 def test_die_naht_liegt_zwischen_2009_und_2010(gelesen):
     """Das Umstellungsdatum steht in der Fußnote der Quelle: 01.01.2010."""
     assert ar.NAHT_AB == 2010
-    jahre = [z["year"] for z in gelesen["zeilen"]]
-    assert 2009 in jahre and 2010 in jahre
+    years = [z["year"] for z in gelesen["zeilen"]]
+    assert 2009 in years and 2010 in years
     assert next(z for z in gelesen["zeilen"] if z["year"] == 2009)["accounting_system"] \
         == "kameral"
     assert next(z for z in gelesen["zeilen"] if z["year"] == 2010)["accounting_system"] \

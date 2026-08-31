@@ -327,10 +327,10 @@ def test_parse_steuerkraft_und_store_roundtrip(tmp_path, quelle):
     kraft = haushalt.parse_steuerkraft(CSV_STEUERKRAFT)
 
     store = CouncilStore(tmp_path / "c.sqlite")
-    steuern = haushalt.parse_steuereinnahmen(CSV_STEUERN)
+    taxes = haushalt.parse_steuereinnahmen(CSV_STEUERN)
     q = quelle("Steuer-CSV", "http://csv", probe=UNGEPRUEFT)
-    assert store.save_steuereinnahmen(steuern, q) == 16
-    assert store.save_steuereinnahmen(steuern, q) == 16  # idempotent
+    assert store.save_steuereinnahmen(taxes, q) == 16
+    assert store.save_steuereinnahmen(taxes, q) == 16  # idempotent
     assert len(store.get_steuereinnahmen()) == 16
     assert store.save_steuerkraft(kraft, q) == 3
     got = store.get_steuerkraft()
@@ -358,7 +358,7 @@ def test_save_steuerkraft_raeumt_verwaiste_jahrgaenge_ab(tmp_path, quelle):
 
 def test_parse_einwohner():
     """Einwohnerzahlen aus dem 1102-CSV — Bezugsgröße für Pro-Kopf-Angaben.
-    Die Aufwendungs-Spalte derselben Datei liest ``council/ausgabenreihe.py``
+    Die Aufwendungs-Spalte derselben Datei liest ``council/expense_series.py``
     (dort mit ihren eigenen Proben); dieser Parser nimmt sie nicht mit."""
     csv = ("Haushaltsjahr;Einwohner am 31.12. des Vorjahres;Aufwendungen gesamt [T Euro];"
            "Aufwendungen je Einwohner [Euro]\n"
@@ -366,15 +366,15 @@ def test_parse_einwohner():
            "2025;176614;850170;4814\n"
            "Fußnote;;;\n")
     rows = haushalt.parse_einwohner(csv)
-    assert rows == [{"year": 2010, "einwohner": 161334}, {"year": 2025, "einwohner": 176614}]
+    assert rows == [{"year": 2010, "population": 161334}, {"year": 2025, "population": 176614}]
 
 
 def test_store_einwohner_roundtrip(tmp_path, quelle):
     store = CouncilStore(tmp_path / "c.sqlite")
     assert store.save_einwohner(
-        [{"year": 2024, "einwohner": 176242}, {"year": 2025, "einwohner": 176614}],
+        [{"year": 2024, "population": 176242}, {"year": 2025, "population": 176614}],
         quelle("Einwohner-CSV", "http://csv", probe=UNGEPRUEFT)) == 2
-    assert store.einwohner_aktuell() == {"year": 2025, "einwohner": 176614}
+    assert store.einwohner_aktuell() == {"year": 2025, "population": 176614}
     store.close()
 
 
@@ -649,17 +649,17 @@ Ziel(e):
 def test_parse_ergebnisrechnung_plan_und_ist():
     posten = finanzberichte.parse_ergebnisrechnung(JA_2023, 2023)
     nach_nr = {p["nr"]: p for p in posten}
-    steuern = nach_nr[1]
-    assert steuern["ansatz"] == 287_275_000.0      # geplant
-    assert steuern["result"] == 341_608_473.52   # tatsächlich
-    assert steuern["prior_year"] == 305_411_797.55
+    taxes = nach_nr[1]
+    assert taxes["ansatz"] == 287_275_000.0      # geplant
+    assert taxes["result"] == 341_608_473.52   # tatsächlich
+    assert taxes["prior_year"] == 305_411_797.55
     # Mehrzeilige Bezeichnung („Zuwendungen und allgemeine\nUmlagen 1)")
     assert nach_nr[2]["result"] == 168_262_169.22
     # Summenzeilen als solche markiert
     assert nach_nr[12]["is_total"] == 1 and nach_nr[20]["is_total"] == 1
     assert nach_nr[12]["ansatz"] == 664_574_528.42
     # Die Gesamtergebnisrechnung (anderer Umfang!) darf NICHT mitgelesen werden.
-    assert steuern["ansatz"] != 888_888_888.88
+    assert taxes["ansatz"] != 888_888_888.88
 
 
 def test_ergebnisrechnung_verwirft_unplausible_zeilen():
@@ -1033,7 +1033,7 @@ def test_store_plan_ist(tmp_path, quelle):
             quelle("JA 2023", "http://ja2023", probe="summenprobe"),
             sub_budget_no=t["sub_budget_no"], sub_budget_name=t["sub_budget_name"])
 
-    assert store.plan_ist_jahre() == [2023]
+    assert store.plan_actual_years() == [2023]
     pi = store.get_plan_ist(2023)
     assert pi["gesamt"]["revenues_planned"] == 664_574_528.42
     assert pi["gesamt"]["revenues_actual"] == 732_987_197.61
@@ -1322,16 +1322,16 @@ def test_parse_abweichungsgruende():
     gruende = finanzberichte.parse_abweichungsgruende(JA_WARUM, 2024)
     nach_nr = {g["nr"]: g for g in gruende}
     assert set(nach_nr) == {1, 4}
-    steuern = nach_nr[1]
-    assert steuern["delta_meur"] == 75.1 and steuern["prozent"] == 24.82
-    assert steuern["label"] == "Steuern und ähnliche Abgaben"
+    taxes = nach_nr[1]
+    assert taxes["delta_meur"] == 75.1 and taxes["prozent"] == 24.82
+    assert taxes["label"] == "Steuern und ähnliche Abgaben"
     # Silbentrennung aufgelöst, Seitenfuß raus, Wortlaut unverändert.
-    assert "nahezu auf den Bereich der Gewerbesteuer" in steuern["text"]
-    assert "na- hezu" not in steuern["text"]
-    assert "JA 161" not in steuern["text"]
+    assert "nahezu auf den Bereich der Gewerbesteuer" in taxes["text"]
+    assert "na- hezu" not in taxes["text"]
+    assert "JA 161" not in taxes["text"]
     # Der Abschnitt zur FINANZrechnung trägt dieselbe Überschrift und darf
     # nicht mitgelesen werden.
-    assert "Laufende Verwaltungstätigkeit" not in steuern["text"]
+    assert "Laufende Verwaltungstätigkeit" not in taxes["text"]
 
 
 #: Wie die echten Jahresabschlüsse gebaut sind: Zwischen dem letzten Posten

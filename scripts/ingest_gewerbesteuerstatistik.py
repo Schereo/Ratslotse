@@ -5,7 +5,7 @@ Quelle ist der Statistische Bericht **L IV 13** des Landesamts für Statistik
 Niedersachsen, ohne Anmeldung als xlsx abrufbar. Gelesen werden die Blätter
 6.1 (kreisfreie Städte) und 6.2 (Gemeinden); was dabei herauskommt und warum
 es nicht neben die Aufkommenskurve gehört, steht im Kopf von
-``council/gewerbesteuerstatistik.py``.
+``council/trade_tax_statistics.py``.
 
 Warum von Hand und nicht per Cron
 ---------------------------------
@@ -49,7 +49,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from council import gewerbesteuerstatistik as gs  # noqa: E402
+from council import trade_tax_statistics as gs  # noqa: E402
 from council import herkunft as h  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 

@@ -106,10 +106,10 @@ export type Konzernzeile = {
 
 export type BeteiligungsDaten = {
   berichtsjahre: number[];
-  jahre: number[];
+  years: number[];
   gesellschaften: Gesellschaft[];
   texte: Textabschnitt[];
-  kennzahlen: Kennzahl[];
+  indicators: Kennzahl[];
   konzernvergleich: Konzernzeile[];
   /** Optional, und das ist die ganze Fallback-Logik der Seite: Wo die Liste
    *  fehlt (ältere API) oder für eine Gesellschaft leer bleibt (Probe nicht
@@ -146,7 +146,7 @@ export function herkunftVon(daten: BeteiligungsDaten | null, id: number | null |
  *  nach Jahr sortiert. */
 export function reihen(daten: BeteiligungsDaten | null, company: string) {
   const aus = new Map<Kennzahl["indicator"], Kennzahl[]>();
-  for (const k of daten?.kennzahlen ?? []) {
+  for (const k of daten?.indicators ?? []) {
     if (k.company !== company) continue;
     const liste = aus.get(k.indicator) ?? [];
     liste.push(k);
@@ -165,7 +165,7 @@ export function reihen(daten: BeteiligungsDaten | null, company: string) {
 export function juengster(daten: BeteiligungsDaten | null, company: string,
                           indicator: Kennzahl["indicator"]): Kennzahl | null {
   let treffer: Kennzahl | null = null;
-  for (const k of daten?.kennzahlen ?? []) {
+  for (const k of daten?.indicators ?? []) {
     if (k.company !== company || k.indicator !== indicator) continue;
     if (!treffer || k.year > treffer.year) treffer = k;
   }

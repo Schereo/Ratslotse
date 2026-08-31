@@ -4,7 +4,7 @@
 Die einzige Finanz-Schicht des Bereichs, die **nichts lädt**: Ihre Quelle
 liegt schon da — die Beschlusszeilen aus den Protokollen und die
 Vorlagen-Volltexte, die ``check_protocols.py`` ohnehin nachzieht. Der Lauf
-liest sie, prüft jede Zeile gegen ihre Zweitstelle (``council/spenden.py``)
+liest sie, prüft jede Zeile gegen ihre Zweitstelle (``council/donations.py``)
 und schreibt, was besteht.
 
 Daraus folgt die Reihenfolge im Ops-Workflow: **nach**
@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council import finanzquellen, herkunft as h, spenden  # noqa: E402
+from council import finanzquellen, herkunft as h, donations  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -42,16 +42,16 @@ def _lauf_herkunft(result: dict) -> h.Herkunft:
 
     Sie zeigt auf die Suche im Bürgerinfo statt auf ein einzelnes Dokument:
     Eine verworfene Zeile hat ihren Beleg ja gerade nicht."""
-    jahre = [v["year"] for v in result["vorlagen"]]
-    spanne = f"{min(jahre)}–{max(jahre)}" if jahre else "—"
+    years = [v["year"] for v in result["vorlagen"]]
+    spanne = f"{min(years)}–{max(years)}" if years else "—"
     return h.Herkunft(
         art="ris",
         url="https://buergerinfo.oldenburg.de/vo040.asp",
         label=LABEL,
-        citation=spenden.FUNDSTELLE,
+        citation=donations.FUNDSTELLE,
         stand=f"Sitzungsjahre {spanne}",
-        probe=[spenden.ZWEITSTELLE],
-        probe_result=spenden.probennachweis(result))
+        probe=[donations.ZWEITSTELLE],
+        probe_result=donations.probennachweis(result))
 
 
 def main() -> int:
@@ -64,14 +64,14 @@ def main() -> int:
     store = CouncilStore(args.db)
     try:
         roh = store.zuwendungsbeschluesse()
-        result = spenden.lies(roh)
+        result = donations.lies(roh)
         vorlagen, verworfen = result["vorlagen"], result["verworfen"]
 
         print(f"Beschlusszeilen gelesen: {result['probes'].get('zeilen', 0)}")
         print(f"Vorlagen mit Zweitstelle: {len(vorlagen)}")
         print(f"Zeilen ohne Zweitstelle:  {len(verworfen)}")
-        for j in result["jahre"]:
-            print(f"  {j['year']}  {spenden.euro(j['amount']):>14} €  "
+        for j in result["years"]:
+            print(f"  {j['year']}  {donations.euro(j['amount']):>14} €  "
                   f"{j['vorlagen']:>2} Vorlagen "
                   f"(Rat {j['rat']}, VA {j['verwaltungsausschuss']})")
         for v in verworfen:
@@ -108,11 +108,11 @@ def main() -> int:
                 document_id=v.get("document_id"),
                 url=v.get("dokument_url") or "https://buergerinfo.oldenburg.de/vo040.asp",
                 label=f"{LABEL} — Vorlage {v['template_number']}",
-                citation=spenden.FUNDSTELLE,
+                citation=donations.FUNDSTELLE,
                 stand=f"Sitzung vom {v['sitzung']}",
                 probe=v["probes"],
                 probe_result=(
-                    f"Beschlossen {spenden.euro(v['amount'])} Euro; derselbe "
+                    f"Beschlossen {donations.euro(v['amount'])} Euro; derselbe "
                     f"Betrag steht im Abschnitt zu den finanziellen Auswirkungen "
                     + ("noch einmal." if v["second_mention"] == "identisch"
                        else f"als Zerlegung in {v['teile']} Teilbeträge, die sich "

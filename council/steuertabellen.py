@@ -167,7 +167,7 @@ SUMME = "\x00insgesamt"
 #: ``council_steuern`` keine Entsprechung, gegen die sich ihre
 #: Jahresbeschriftung prüfen ließe. Sie tragen deshalb die Summenprobe mit und
 #: werden nicht gespeichert. (Der Abgleich der Zuweisungen gehört zu
-#: ``council/steuerkraft.py``, wo die Abgrenzung des Landes danebensteht;
+#: ``council/tax_capacity.py``, wo die Abgrenzung des Landes danebensteht;
 #: „Finanzzuweisungen" hier ist NICHT dasselbe wie „Schlüsselzuweisungen"
 #: dort.)
 ZUWEISUNGEN = "\x00finanzzuweisungen"
@@ -264,7 +264,7 @@ def erkenne_1103(text: str) -> tuple[int, int] | None:
 
 
 def parse_1103(text: str) -> dict:
-    """Tabelle 1103 → ``{"jahre": [...], "zeilen": {art: {year: {plan, ist}}},
+    """Tabelle 1103 → ``{"years": [...], "zeilen": {art: {year: {plan, ist}}},
     "unbekannt": [...], "provisional": [...]}``.
 
     Beträge in **Tausend Euro**, wie gedruckt — umgerechnet wird erst beim
@@ -275,16 +275,16 @@ def parse_1103(text: str) -> dict:
     zeilen: dict[str, dict[int, dict]] = {}
     unbekannt: list[str] = []
     if not spanne:
-        return {"jahre": [], "zeilen": zeilen, "unbekannt": unbekannt,
+        return {"years": [], "zeilen": zeilen, "unbekannt": unbekannt,
                 "provisional": [], "spanne": None}
-    jahre = list(range(spanne[0], spanne[1] + 1))
+    years = list(range(spanne[0], spanne[1] + 1))
 
     # Welche Jahrgänge die Tabelle selbst als vorläufig ausweist. Die Spalte
     # heißt dann „vorläufiges Rechnungsergebnis" statt „Rechnungsergebnis" —
     # gezählt wird, nicht geraten, und markiert werden die JÜNGSTEN Jahre:
     # Ein abgerechnetes Jahr wird nicht nachträglich vorläufig.
     anzahl_vorlaeufig = len(re.findall(r"vorl(?:ä|ae)ufig", text, re.I))
-    provisional = jahre[len(jahre) - anzahl_vorlaeufig:] if anzahl_vorlaeufig else []
+    provisional = years[len(years) - anzahl_vorlaeufig:] if anzahl_vorlaeufig else []
 
     im_koerper = False
     puffer: list[str] = []
@@ -305,7 +305,7 @@ def parse_1103(text: str) -> dict:
         # Je Jahr zwei Paare (Plan, Ist), je Paar Betrag und Anteil. Alles
         # andere ist keine Zeile dieser Tabelle — eine Kopfzeile, die zufällig
         # Zahlen trägt, oder eine Ausgabe mit anderem Spaltensatz.
-        if len(felder) != len(jahre) * 4:
+        if len(felder) != len(years) * 4:
             puffer.append(zeile.strip())
             continue
         label = " ".join([*puffer, treffer.group("label")]).strip()
@@ -315,14 +315,14 @@ def parse_1103(text: str) -> dict:
             unbekannt.append(re.sub(r"\s+", " ", label))
             continue
         je_jahr: dict[int, dict] = {}
-        for i, year in enumerate(jahre):
+        for i, year in enumerate(years):
             block = felder[i * 4:(i + 1) * 4]
             je_jahr[year] = {
                 "plan": _teur(block[0]), "plan_anteil": _prozent(block[1]),
                 "ist": _teur(block[2]), "ist_anteil": _prozent(block[3]),
             }
         zeilen[art] = je_jahr
-    return {"jahre": jahre, "zeilen": zeilen, "unbekannt": unbekannt,
+    return {"years": years, "zeilen": zeilen, "unbekannt": unbekannt,
             "provisional": provisional, "spanne": spanne}
 
 
@@ -338,7 +338,7 @@ def summenprobe(gelesen: dict) -> dict[int, dict[str, float]]:
     if SUMME not in zeilen:
         return aus
     teile = [a for a in zeilen if a != SUMME]
-    for year in gelesen["jahre"]:
+    for year in gelesen["years"]:
         aus[year] = {}
         for spalte in ("plan", "ist"):
             summe = sum(zeilen[a][year][spalte] for a in teile
@@ -391,13 +391,13 @@ def istabgleich(gelesen: dict, ist_reihe: dict[int, dict[str, float]]) -> dict:
     herein, und genau so ist der Versatz im Datensatz 1106 jahrelang unbemerkt
     geblieben.
 
-    Zurück: ``{"bestanden": [jahre], "verworfen": [{year, grund}]}``.
+    Zurück: ``{"bestanden": [years], "verworfen": [{year, grund}]}``.
     """
     zeilen = gelesen["zeilen"]
     arten = [a for a in zeilen if a not in (SUMME, ZUWEISUNGEN)]
     bestanden: list[int] = []
     verworfen: list[dict] = []
-    for year in gelesen["jahre"]:
+    for year in gelesen["years"]:
         fehlend = [a for a in arten if ist_reihe.get(year, {}).get(a) is None]
         if fehlend:
             verworfen.append({
@@ -423,14 +423,14 @@ def istabgleich(gelesen: dict, ist_reihe: dict[int, dict[str, float]]) -> dict:
 def lies_1103(text: str, ist_reihe: dict[int, dict[str, float]]) -> dict:
     """Eine Ausgabe der Tabelle 1103 lesen und prüfen.
 
-    Zurück: ``{"zeilen": [...], "jahre": [...], "verworfen": [...],
+    Zurück: ``{"zeilen": [...], "years": [...], "verworfen": [...],
     "probes": [...], "spanne": (von, bis), "unbekannt": [...]}``.
     ``zeilen`` sind speicherfertige Datensätze mit Beträgen **in Euro**.
     """
     gelesen = parse_1103(text)
     probes: list[str] = []
-    if not gelesen["jahre"] or not gelesen["zeilen"]:
-        return {"zeilen": [], "jahre": [], "verworfen": [], "probes": probes,
+    if not gelesen["years"] or not gelesen["zeilen"]:
+        return {"zeilen": [], "years": [], "verworfen": [], "probes": probes,
                 "spanne": gelesen["spanne"], "unbekannt": gelesen["unbekannt"],
                 "abbruch": "In der Datei ist keine Tabelle 1103 zu finden."}
 
@@ -443,7 +443,7 @@ def lies_1103(text: str, ist_reihe: dict[int, dict[str, float]]) -> dict:
                                for v in year.values()):
         schlimmste = max((abs(v) for year in abweichungen.values()
                           for v in year.values()), default=None)
-        return {"zeilen": [], "jahre": [], "verworfen": [], "probes": probes,
+        return {"zeilen": [], "years": [], "verworfen": [], "probes": probes,
                 "spanne": gelesen["spanne"], "unbekannt": gelesen["unbekannt"],
                 "abbruch": (
                     "Die Summenprobe reißt: Die Steuerarten ergeben nicht die "
@@ -455,7 +455,7 @@ def lies_1103(text: str, ist_reihe: dict[int, dict[str, float]]) -> dict:
     probes.append("steuerplan_summenzeile")
 
     if anteilsprobe(gelesen):
-        return {"zeilen": [], "jahre": [], "verworfen": [], "probes": probes,
+        return {"zeilen": [], "years": [], "verworfen": [], "probes": probes,
                 "spanne": gelesen["spanne"], "unbekannt": gelesen["unbekannt"],
                 "abbruch": "Die Anteilsprobe reißt: Ein Betrag steht neben "
                            "einem Prozentsatz, der nicht zu ihm gehört."}
@@ -478,7 +478,7 @@ def lies_1103(text: str, ist_reihe: dict[int, dict[str, float]]) -> dict:
                 "provisional": year in gelesen["provisional"],
             })
     zeilen.sort(key=lambda z: (z["year"], z["art"]))
-    return {"zeilen": zeilen, "jahre": abgleich["bestanden"],
+    return {"zeilen": zeilen, "years": abgleich["bestanden"],
             "verworfen": abgleich["verworfen"], "probes": probes,
             "spanne": gelesen["spanne"], "unbekannt": gelesen["unbekannt"],
             "abbruch": None}
@@ -668,10 +668,10 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
 
     sprung = sprungjahrprobe(roh, grundsteuer_ist)
     if sprung["gerissen"]:
-        jahre = ", ".join(str(e["year"]) for e in sprung["gerissen"])
+        years = ", ".join(str(e["year"]) for e in sprung["gerissen"])
         return {"zeilen": [], "probes": probes, "sprungjahre": sprung,
                 "abbruch": (
-                    f"Die Sprungjahr-Probe reißt für {jahre}: Das Aufkommen "
+                    f"Die Sprungjahr-Probe reißt für {years}: Das Aufkommen "
                     "zieht dort nicht im genannten Jahr an, sondern später. "
                     "Das ist genau das Muster eines Jahresversatzes (vgl. "
                     "Datensatz 1106) — es wird nichts übernommen.")}

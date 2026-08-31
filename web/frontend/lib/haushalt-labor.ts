@@ -33,10 +33,10 @@ export function hebesatzHeute(
 
 /** Der jüngste Ist-Betrag einer Steuerart aus dem Open-Data-Satz. */
 export function letzterSteuerbetrag(
-  steuern: { year: number; art: string; amount: number | null }[],
+  taxes: { year: number; art: string; amount: number | null }[],
   art: string,
 ): { year: number; amount: number } | null {
-  const z = steuern
+  const z = taxes
     .filter((s) => s.art === art && s.amount)
     .sort((a, b) => a.year - b.year)
     .at(-1);
@@ -80,8 +80,8 @@ export function staedteHebesaetze(
   indicator: "hebesatz_gewerbesteuer" | "hebesatz_grundsteuer_b",
 ): StadtHebesatz[] {
   if (!vergleich) return [];
-  const jahre = vergleich.jahre.realsteuern ?? [];
-  const year = jahre.at(-1);
+  const years = vergleich.years.realsteuern ?? [];
+  const year = years.at(-1);
   if (year == null) return [];
   const oldenburg = vergleich.staedte.find((s) => s.ist_oldenburg)?.schluessel;
   return vergleich.werte
@@ -105,9 +105,9 @@ export function staedteHebesaetze(
  *  Landestopf schwankt), heißt ehrlich „es blieb alles übrig“, nicht „es
  *  blieb mehr als alles übrig“. */
 export function daempferSpanne(
-  steuerkraft: { year: number; tax_index: number | null; allocations: number | null }[],
+  tax_capacity: { year: number; tax_index: number | null; allocations: number | null }[],
 ): { verbleibVon: number; verbleibBis: number; paare: number } | null {
-  const series = steuerkraft
+  const series = tax_capacity
     .filter((k) => k.tax_index != null && k.allocations != null)
     .sort((a, b) => a.year - b.year);
   const quoten: number[] = [];
@@ -143,8 +143,8 @@ export function planjahrErgebnisse(
   if (!zeilen?.length) return null;
   const budget_year = Math.max(...zeilen.map((z) => z.plan_budget_year));
   const eigene = zeilen.filter((z) => z.plan_budget_year === budget_year);
-  const jahre = [...new Set(eigene.map((z) => z.year))].sort((a, b) => a - b);
-  const series = jahre.flatMap((year) => {
+  const years = [...new Set(eigene.map((z) => z.year))].sort((a, b) => a - b);
+  const series = years.flatMap((year) => {
     const ordentlich = eigene.find((z) => z.year === year && z.nr === 21)?.amount;
     if (ordentlich == null) return [];
     const ausser = eigene.find((z) => z.year === year && z.nr === 24)?.amount ?? 0;
@@ -199,7 +199,7 @@ export function ruecklagenPfad(
 export function gezahlteZinsspanne(
   zinslast: { year: number; expense: number }[] | undefined,
   schulden: { year: number; insgesamt: number }[] | undefined,
-): { von: number; bis: number; jahre: [number, number] } | null {
+): { von: number; bis: number; years: [number, number] } | null {
   if (!zinslast?.length || !schulden?.length) return null;
   const saetze = zinslast.flatMap((z) => {
     const s = schulden.find((r) => r.year === z.year);
@@ -207,10 +207,10 @@ export function gezahlteZinsspanne(
   });
   if (saetze.length < 2) return null;
   const sortiert = [...saetze].sort((a, b) => a.satz - b.satz);
-  const jahre = saetze.map((s) => s.year);
+  const years = saetze.map((s) => s.year);
   return {
     von: sortiert[0].satz,
     bis: sortiert[sortiert.length - 1].satz,
-    jahre: [Math.min(...jahre), Math.max(...jahre)],
+    years: [Math.min(...years), Math.max(...years)],
   };
 }

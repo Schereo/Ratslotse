@@ -35,7 +35,7 @@ export type InvestitionsZeile = {
 };
 
 export type InvestitionenDaten = {
-  jahre: number[];
+  years: number[];
   teilhaushalte: InvestitionsZeile[];
   gesamt: InvestitionsZeile[];
   finanzhaushalt: InvestitionsZeile[];

@@ -234,7 +234,7 @@ def summenprobe(zeile: dict) -> tuple[bool, float]:
     return deviation == 0.0, deviation
 
 
-def prokopfprobe(zeile: dict, einwohner: int | None) -> tuple[bool | None, float | None]:
+def prokopfprobe(zeile: dict, population: int | None) -> tuple[bool | None, float | None]:
     """Gesamtschuld ÷ Einwohnerzahl = der ausgewiesene Pro-Kopf-Betrag?
 
     Die unabhängige Probe: Der Divisor kommt aus Datensatz 1102 des
@@ -247,13 +247,13 @@ def prokopfprobe(zeile: dict, einwohner: int | None) -> tuple[bool | None, float
     ganze Einheit: Die Quelle rundet den Pro-Kopf-Betrag auf volle Euro, und
     schon deshalb ist der letzte Euro nicht zu halten."""
     ausgewiesen = zeile.get("per_capita")
-    if not einwohner or ausgewiesen is None or zeile.get("insgesamt") is None:
+    if not population or ausgewiesen is None or zeile.get("insgesamt") is None:
         return None, None
-    gerechnet = zeile["insgesamt"] / einwohner
+    gerechnet = zeile["insgesamt"] / population
     return abs(gerechnet - ausgewiesen) <= 1.0, gerechnet
 
 
-def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
+def lies(text: str, population: dict[int, int] | None = None) -> dict:
     """Die Tabelle einlesen und jeden Jahrgang durch beide Proben schicken.
 
     Rückgabe:
@@ -268,7 +268,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
     ``probes``
         Was gerechnet wurde, in Zahlen — Grundlage des Beleg-Texts.
     """
-    einwohner = einwohner or {}
+    population = population or {}
     spanne = erkenne(text)
     roh = parse(text)
 
@@ -283,7 +283,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
                                        f"zerlegbar: {zeile['unlesbar']!r}"})
             continue
         s_ok, deviation = summenprobe(zeile)
-        k_ok, gerechnet = prokopfprobe(zeile, einwohner.get(zeile["year"]))
+        k_ok, gerechnet = prokopfprobe(zeile, population.get(zeile["year"]))
         summe_ok += bool(s_ok)
         summe_gerissen += not s_ok
         if k_ok is None:
@@ -318,8 +318,8 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
         uebernommen["probes"] = bestanden
         zeilen.append(uebernommen)
 
-    jahre = sorted(z["year"] for z in zeilen)
-    luecken = ([j for j in range(spanne[0], spanne[1] + 1) if j not in jahre]
+    years = sorted(z["year"] for z in zeilen)
+    luecken = ([j for j in range(spanne[0], spanne[1] + 1) if j not in years]
                if spanne else [])
     return {
         "zeilen": zeilen,

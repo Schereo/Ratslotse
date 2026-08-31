@@ -470,7 +470,7 @@ def main() -> dict:
     ratslotse_store.close()
 
     print(f"Done — {notifications_sent} Meldung(en) eingereiht, {zugestellt} zugestellt.")
-    kennzahlen = {
+    indicators = {
         "Gremien": len(committees),
         "Sitzungen mit Tagesordnung": len(session_ids),
         "Termine im Kalender": len(scheduled),
@@ -485,13 +485,13 @@ def main() -> dict:
     # eine Kennzahl „0", die niemandem auffiel. Erst hier werfen, damit die
     # Meldungen oben trotzdem alle rausgegangen sind.
     if offen and not bewertet:
-        for k, v in kennzahlen.items():
+        for k, v in indicators.items():
             print(f"  {k}: {v}")
         raise RuntimeError(
             f"Tragweite-Bewertung hat 0 von {len(offen)} Punkten bewertet"
             + (f" — {tragweite_fehler}" if tragweite_fehler else
                " — das Modell lieferte für keinen Batch ein verwertbares Ergebnis"))
-    return kennzahlen
+    return indicators
 
 
 if __name__ == "__main__":

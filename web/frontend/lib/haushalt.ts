@@ -82,7 +82,7 @@ export type ErgebnishaushaltZeile = {
  * des Vorberichts „unter Berücksichtigung des Ergebnisses“. */
 export type RuecklageJahr = {
   year: number;
-  ruecklage: number;
+  reserves: number;
   jahresergebnis: number;
   state_after_result: number;
   herkunft_id: number | null;
@@ -165,13 +165,13 @@ export type Produkt = {
   source_label: string | null; source_url: string | null;
   /** Jahrgänge, in denen dieses Produkt im Bestand steht — gegen
    *  `alle_jahre` gehalten wird daraus das Abdeckungs-Badge (H4-04). */
-  jahre?: number[];
+  years?: number[];
 };
 
 export type ProdukteAntwort = {
   year: number; produkte: Produkt[]; treffer?: number;
   abdeckung_prozent: number | null; plan_expenses: number | null;
-  /** Alle Jahrgänge mit Produktebene — die Bezugsreihe der `jahre` je
+  /** Alle Jahrgänge mit Produktebene — die Bezugsreihe der `years` je
    *  Produkt. */
   alle_jahre?: number[];
   /** Filterwerte mit Anzahl + wie viele Produkte welches Feld tragen. */
@@ -209,7 +209,7 @@ export const SPIELRAUM_TEXT: Record<Spielraum, { kurz: string; lang: string }> =
 /** Ein Ausgleichsjahr aus Blatt „9a" der KFA-Tabellen des Landes.
  *
  *  Alle Beträge in **Tausend Euro**. Die Jahresangabe ist die des Landes
- *  (Ausgleichsjahr) — dieselbe, auf die `steuerkraft` seit der
+ *  (Ausgleichsjahr) — dieselbe, auf die `tax_capacity` seit der
  *  Jahres-Korrektur am Datensatz 1106 gerückt ist. */
 export type FinanzausgleichJahr = {
   year: number;
@@ -282,41 +282,41 @@ export type Kennzahlen = {
 };
 
 export type HaushaltDaten = {
-  jahre: Record<string, HaushaltZeile[]>;
-  steuern: { year: number; art: string; amount: number | null }[];
-  steuerkraft: {
+  years: Record<string, HaushaltZeile[]>;
+  taxes: { year: number; art: string; amount: number | null }[];
+  tax_capacity: {
     year: number; tax_index: number | null; tax_capacity_per_capita: number | null;
     allocations: number | null; allocations_per_capita: number | null;
   }[];
   /** Die drei Komponenten der Landeszuweisung je Ausgleichsjahr, in **Tausend
    *  Euro** (so führt das Landesamt sie) — Quelle: LSN, Blatt „9a".
    *
-   *  Warum das neben `steuerkraft` steht und nicht darin: `steuerkraft.
+   *  Warum das neben `tax_capacity` steht und nicht darin: `tax_capacity.
    *  allocations` kommt aus dem Open-Data-Datensatz 1106 der Stadt und
    *  enthält **nur zwei** der drei Komponenten (Gemeinde- plus Kreisaufgaben,
    *  auf den Euro nachgemessen). Die dritte gibt es nur beim Land. Zwei
    *  Quellen, zwei Felder — ein gemeinsames Feld verlöre die Auskunft, wer
    *  welche Zahl veröffentlicht. */
-  finanzausgleich?: FinanzausgleichJahr[];
+  fiscal_equalization?: FinanzausgleichJahr[];
   /** Jüngste Einwohnerzahl — Bezugsgröße für Pro-Kopf-Einordnungen. */
-  einwohner: { year: number; einwohner: number } | null;
+  population: { year: number; population: number } | null;
   /** Ansatz, Plan und Ergebnis je Posten aus den Jahresabschlüssen. */
-  ergebnisrechnung?: ErgebnisPosten[];
+  income_statement?: ErgebnisPosten[];
   /** Die Kassensicht aus denselben Jahresabschlüssen (Abschnitt 4.1). */
-  finanzrechnung?: FinanzZeile[];
+  cash_flow_statement?: FinanzZeile[];
   /** Warum ein Posten vom Plan abwich (Abschnitt 6.3.1). */
-  abweichungsgruende?: Abweichungsgrund[];
+  variance_reasons?: Abweichungsgrund[];
   /** Schlussberichte des Rechnungsprüfungsamts je Jahrgang. */
-  pruefbericht_quellen?: Pruefbericht[];
+  audit_report_sources?: Pruefbericht[];
   /** Jahre, für die die Produktebene vorliegt. */
-  produkt_jahre?: number[];
+  product_years?: number[];
   /** Die Postengliederung für Jahre **ohne** Jahresabschluss, aus dem
    *  Gesamtergebnishaushalt der Haushaltspläne (Anlage 005). */
-  ergebnishaushalt?: ErgebnishaushaltZeile[];
+  income_budget?: ErgebnishaushaltZeile[];
   /** Verfügbare Überschussrücklage aus den Jahresabschlüssen. */
-  ruecklage?: RuecklageJahr[];
+  reserves?: RuecklageJahr[];
   /** Die Wirtschaftspläne der Eigenbetriebe — der Haushalt neben dem Haushalt. */
-  wirtschaftsplaene?: WirtschaftsplanZeile[];
+  business_plans?: WirtschaftsplanZeile[];
   /** Die Herkunft je `herkunft_id` — nur die Einträge, auf die eine gelieferte
    *  Zeile zeigt.
    *
@@ -332,39 +332,39 @@ export type HaushaltDaten = {
    *  (`components/haushalt/quelle.tsx: Dokumentbeleg`). */
   herkunft?: Record<string, Herkunft>;
   /** Die Haushaltssatzung je Jahrgang — der Rahmen um den Plan. */
-  haushaltssatzung?: HaushaltssatzungZeile[];
+  budget_bylaw?: HaushaltssatzungZeile[];
   /** Woraus die Abfall- und Straßenreinigungsgebühren entstehen. */
-  gebuehren?: GebuehrenZeile[];
+  fees?: GebuehrenZeile[];
   /** Die konkreten Tarifvorschläge derselben Unterlagen. */
-  gebuehrensaetze?: GebuehrensatzZeile[];
+  fee_rates?: GebuehrensatzZeile[];
   /** Jahre mit einem beschlossenen **Haushaltsansatz** — das jüngste ist das
    *  Jahr, für das gerade ein Haushalt gilt.
    *
    *  Bewusst OHNE die Finanzplanungsjahre desselben Dokuments: Der Plan
    *  schreibt über fünf Spalten „Ansatz", aufgestellt ist aber nur eines der
    *  Jahre; die übrigen sind Vorausschau nach § 8 NKomVG, die jeder neue
-   *  Haushalt neu schreibt (`store.ansatz_jahre` filtert das). Wer diese Liste
+   *  Haushalt neu schreibt (`store.budgeted_years` filtert das). Wer diese Liste
    *  als Jahr-Umschalter benutzt, bekommt deshalb keine Jahre angeboten, für
    *  die nie ein Haushalt beschlossen wurde. */
-  ansatz_jahre?: number[];
+  budgeted_years?: number[];
   /** Jahre mit „geplant gegen tatsächlich" je Teilhaushalt. */
-  plan_ist_jahre?: number[];
+  plan_actual_years?: number[];
   /** Die lange Ausgabenreihe aus Datensatz 1102 — ein Betrag je Jahr seit 1972. */
-  ausgabenreihe?: Ausgabenreihe;
+  expense_series?: Ausgabenreihe;
   /** Nachbewilligungen nach § 117 NKomVG — was beschlossen wurde, nachdem der
    *  Haushalt beschlossen war. */
-  nachbewilligungen?: Nachbewilligungen;
+  supplementary_approvals?: Nachbewilligungen;
   /** Was die Stadt an Zuwendungen annimmt, aus den Ratsbeschlüssen. */
-  spenden?: Spenden;
+  donations?: Spenden;
   /** Was je Steuerart geplant war und was daraus wurde (Jahrbuch 1103). */
-  steuerplan?: Steuerplan;
+  tax_plan?: Steuerplan;
   /** Die Realsteuer-Hebesätze je Änderungsjahr seit 1980 (Jahrbuch 1105). */
-  hebesaetze?: Hebesaetze;
+  tax_rates?: Hebesaetze;
   /** Wie viele Betriebe die Gewerbesteuer aufbringen (Landesamt für Statistik). */
-  gewerbesteuerstatistik?: Gewerbesteuerstatistik;
+  trade_tax_statistics?: Gewerbesteuerstatistik;
   /** Die dreizehn Kennzahlen des Rechenschaftsberichts — mit den Rechenwegen,
    *  die die Stadt danebendruckt, und den Korrekturen zwischen den Berichten. */
-  kennzahlen?: Kennzahlen;
+  indicators?: Kennzahlen;
 };
 
 /** Die Adresse der Haushalts-Übersicht, zugeschnitten auf das, was eine Seite
@@ -526,17 +526,17 @@ export type NachbewilligungsJahr = {
 
 export type Nachbewilligungen = {
   serie: Nachbewilligung[];
-  jahre: NachbewilligungsJahr[];
+  years: NachbewilligungsJahr[];
   channels: Record<string, string>;
 };
 
-/** Zuwendungen an die Stadt (`council/spenden.py`).
+/** Zuwendungen an die Stadt (`council/donations.py`).
  *
  *  Es gibt hier **kein** Feld für die Gebenden, und das ist Absicht: Die Namen
  *  stehen nur in der Anlage „Zuwendungsliste", die nicht im Bestand ist. Was
  *  der Typ nicht kennt, kann die Seite nicht versehentlich zeigen. */
 export type Spenden = {
-  jahre: SpendenJahr[];
+  years: SpendenJahr[];
   vorlagen: SpendenVorlage[];
   /** Beschlusszeilen ohne Zweitstelle — mit dem Satz, warum sie fehlen. */
   ohne_beleg: { template_number: string; sitzung?: string | null; grund: string }[];
@@ -566,7 +566,7 @@ export type SpendenVorlage = {
 
 /** Plan neben Ist je Steuerart — Tabelle 1103 des Statistischen Jahrbuchs.
  *
- *  `art` trägt **dieselbe** Schreibweise wie `HaushaltDaten.steuern[].art`;
+ *  `art` trägt **dieselbe** Schreibweise wie `HaushaltDaten.taxes[].art`;
  *  darüber findet ein Steckbrief seine Zeilen, und daran hängt die Prüfung der
  *  Jahresbeschriftung im Ingest. */
 export type Steuerplan = {
@@ -607,7 +607,7 @@ export type Hebesaetze = {
  *
  *  **Das ist die Veranlagung, nicht das Aufkommen.** Der Steuermessbetrag
  *  entsteht aus dem Gewerbeertrag eines Erhebungsjahres; was in diesem Jahr in
- *  der Kasse ankam, steht in `steuern` und ist etwas anderes — in den drei
+ *  der Kasse ankam, steht in `taxes` und ist etwas anderes — in den drei
  *  prüfbaren Jahren lagen beide zwischen 13 % darunter und 27 % darüber. Keine
  *  Anzeige darf die zwei Reihen zu einer machen; `abgrenzung` sagt es im
  *  Klartext und kommt deshalb mit den Zahlen aus der API. */
@@ -728,11 +728,11 @@ export type Ausgabenreihe = {
  *  Gesamtermächtigung, 2020 der Ansatz samt Nachtrag. Eine Reihe, die das
  *  vermischt, ohne es zu sagen, wäre still falsch. */
 export function planGegenIst(
-  daten: HaushaltAuswahl<"ergebnisrechnung">,
+  daten: HaushaltAuswahl<"income_statement">,
 ): { year: number; plan: number; ist: number; delta: number; planArt: PlanArt }[] {
-  const posten = daten.ergebnisrechnung ?? [];
-  const jahre = [...new Set(posten.map((p) => p.year))].sort((a, b) => a - b);
-  return jahre
+  const posten = daten.income_statement ?? [];
+  const years = [...new Set(posten.map((p) => p.year))].sort((a, b) => a - b);
+  return years
     .map((year) => {
       const teile = [21, 24].map((nr) =>
         posten.find((p) => p.year === year && p.nr === nr && p.sub_budget_no == null));
@@ -757,9 +757,9 @@ export function planGegenIst(
  *  zu werden. Fehlende Rollen bleiben `undefined`; die optionalen
  *  Bestandszeilen erlaubt das Dokument ausdrücklich wegzulassen. */
 export function kassensicht(
-  daten: HaushaltAuswahl<"finanzrechnung">, year: number,
+  daten: HaushaltAuswahl<"cash_flow_statement">, year: number,
 ): Partial<Record<FinanzRolle, FinanzZeile>> | null {
-  const zeilen = (daten.finanzrechnung ?? []).filter((z) => z.year === year);
+  const zeilen = (daten.cash_flow_statement ?? []).filter((z) => z.year === year);
   if (!zeilen.length) return null;
   const aus: Partial<Record<FinanzRolle, FinanzZeile>> = {};
   for (const z of zeilen) if (z.role) aus[z.role] = z;
@@ -772,16 +772,16 @@ export function kassensicht(
 
 /** Die Erläuterung zu einem Posten eines Jahres — oder nichts. */
 export function grundZuPosten(
-  daten: HaushaltAuswahl<"abweichungsgruende">, year: number, nr: number,
+  daten: HaushaltAuswahl<"variance_reasons">, year: number, nr: number,
 ): Abweichungsgrund | null {
-  return (daten.abweichungsgruende ?? []).find((g) => g.year === year && g.nr === nr) ?? null;
+  return (daten.variance_reasons ?? []).find((g) => g.year === year && g.nr === nr) ?? null;
 }
 
 /** Der Schlussbericht des Rechnungsprüfungsamts zu einem Jahrgang. */
 export function pruefberichtZuJahr(
-  daten: HaushaltAuswahl<"pruefbericht_quellen">, year: number,
+  daten: HaushaltAuswahl<"audit_report_sources">, year: number,
 ): Pruefbericht | null {
-  return (daten.pruefbericht_quellen ?? []).find((p) => p.year === year) ?? null;
+  return (daten.audit_report_sources ?? []).find((p) => p.year === year) ?? null;
 }
 
 /** Erläuterungen, die einen bestimmten Teilhaushalt ausdrücklich nennen.
@@ -793,13 +793,13 @@ export function pruefberichtZuJahr(
  *  sie wird auf der Seite auch so angeschrieben statt als Aufteilung
  *  ausgegeben, die das Dokument nicht hergibt. */
 export function gruendeFuerBereich(
-  daten: HaushaltAuswahl<"abweichungsgruende">, year: number, thhNr: number,
+  daten: HaushaltAuswahl<"variance_reasons">, year: number, thhNr: number,
 ): Abweichungsgrund[] {
   // „Teilhaushalt 10", „THH 10", „THH10" — mit und ohne führende Null.
   const n = String(thhNr);
   const muster = new RegExp(
     `(?:Teilhaushalt|THH)\\s?0?${n}(?!\\d)`, "i");
-  return (daten.abweichungsgruende ?? [])
+  return (daten.variance_reasons ?? [])
     .filter((g) => g.year === year && muster.test(g.text))
     .sort((a, b) => Math.abs(b.delta_meur ?? 0) - Math.abs(a.delta_meur ?? 0));
 }
@@ -876,8 +876,8 @@ const FLUSS_TOLERANZ = 50_000;
  *  Ertragsarten UND Teilhaushalte hergeben. Ein Abschluss ohne
  *  Teilhaushalts-Ebene (2019) trägt nur die halbe Grafik — die zeigen wir
  *  nicht, sonst stünde rechts nichts neben einer vollen linken Seite. */
-export function flussJahre(daten: HaushaltAuswahl<"ergebnisrechnung">): number[] {
-  const posten = daten.ergebnisrechnung ?? [];
+export function flussJahre(daten: HaushaltAuswahl<"income_statement">): number[] {
+  const posten = daten.income_statement ?? [];
   return [...new Set(posten.map((p) => p.year))]
     .sort((a, b) => a - b)
     .filter((year) => {
@@ -926,11 +926,11 @@ function flussSeite(
  *  je `sub_budget_no`) — beide aus derselben Tabelle desselben Jahres, damit nie zwei
  *  Stände nebeneinander stehen. `null`, wenn eine Seite fehlt. */
 export function flussbild(
-  daten: HaushaltAuswahl<"ergebnisrechnung">, year: number, stand: "plan" | "ist",
+  daten: HaushaltAuswahl<"income_statement">, year: number, stand: "plan" | "ist",
 ): FlussDaten | null {
   const zahl = (p: ErgebnisPosten | undefined) =>
     p ? (stand === "ist" ? p.result : p.ansatz) : null;
-  const rows = (daten.ergebnisrechnung ?? []).filter((p) => p.year === year);
+  const rows = (daten.income_statement ?? []).filter((p) => p.year === year);
   const gesamt = rows.filter((p) => p.sub_budget_no == null);
 
   const revenues = zahl(gesamt.find((p) => p.nr === 12));
@@ -1099,7 +1099,7 @@ export type WirtschaftsplanZeile = {
   template_number: string;
   revenues: number | null;
   expenses: number | null;
-  steuern: number | null;
+  taxes: number | null;
   /** Als einziges immer da. */
   result: number;
   capital_plan: number | null;
@@ -1160,9 +1160,9 @@ export type EinnahmeartenPlan = {
  *  nicht treffen — dieselbe Regel wie beim Flussbild: Was sich nicht aufaddiert,
  *  wird nicht gezeichnet. */
 export function einnahmearten(
-  daten: HaushaltAuswahl<"ergebnishaushalt" | "jahre">, year: number,
+  daten: HaushaltAuswahl<"income_budget" | "years">, year: number,
 ): EinnahmeartenPlan | null {
-  const zeilen = (daten.ergebnishaushalt ?? [])
+  const zeilen = (daten.income_budget ?? [])
     .filter((z) => z.year === year && z.art === "ansatz");
   if (!zeilen.length) return null;
 
@@ -1183,7 +1183,7 @@ export function einnahmearten(
   // Summe nicht trifft, ist keine Aufschlüsselung, sondern eine Auswahl.
   if (Math.abs(gesamt - teile) > FLUSS_TOLERANZ) return null;
 
-  const tafelErtraege = summe(daten.jahre?.[String(year)] ?? [])?.revenues ?? null;
+  const tafelErtraege = summe(daten.years?.[String(year)] ?? [])?.revenues ?? null;
   return {
     year,
     planJahrgang: zeilen[0].plan_budget_year,
@@ -1246,9 +1246,9 @@ export function naechstesProdukt(
 
 /** Jüngster geprüfter Stand der verfügbaren Überschussrücklage. */
 export function juengsteRuecklage(
-  daten: HaushaltAuswahl<"ruecklage">,
+  daten: HaushaltAuswahl<"reserves">,
 ): RuecklageJahr | null {
-  return [...(daten.ruecklage ?? [])]
+  return [...(daten.reserves ?? [])]
     .filter((z) => Number.isFinite(z.state_after_result))
     .sort((a, b) => a.year - b.year)
     .at(-1) ?? null;
@@ -1282,8 +1282,8 @@ export function amount(euro: number | null | undefined): { wert: string; einheit
   return { wert: Math.round(euro).toLocaleString("de-DE"), einheit: "€" };
 }
 
-export function jahreSortiert(daten: HaushaltAuswahl<"jahre">): number[] {
-  return Object.keys(daten.jahre).map(Number).sort((a, b) => a - b);
+export function jahreSortiert(daten: HaushaltAuswahl<"years">): number[] {
+  return Object.keys(daten.years).map(Number).sort((a, b) => a - b);
 }
 
 /** Lücken zwischen erstem und letztem vorhandenen Jahr — die Zeitreihe zeigt
@@ -1308,8 +1308,8 @@ export function summe(zeilen: HaushaltZeile[]): HaushaltZeile | undefined {
  *  Die API liefert bereits sortiert; hier wird trotzdem sortiert, weil die
  *  Naht-Grafik eine aufsteigende Achse voraussetzt und ein Lesepfad, der sich
  *  auf die Reihenfolge einer fremden Antwort verlässt, still kippt. */
-export function ausgabenreihe(daten: HaushaltAuswahl<"ausgabenreihe">): AusgabenreiheJahr[] {
-  const zeilen = daten.ausgabenreihe?.zeilen ?? [];
+export function expense_series(daten: HaushaltAuswahl<"expense_series">): AusgabenreiheJahr[] {
+  const zeilen = daten.expense_series?.zeilen ?? [];
   return [...zeilen].sort((a, b) => a.year - b.year);
 }
 
@@ -1317,8 +1317,8 @@ export function ausgabenreihe(daten: HaushaltAuswahl<"ausgabenreihe">): Ausgaben
  *
  *  Kein Nebenschauplatz, sondern Inhalt: Wo zwei amtliche Quellen für dasselbe
  *  Jahr zwei Beträge nennen, gehört das auf die Seite — mit beiden Zahlen. */
-export function ausgabenKonflikte(daten: HaushaltAuswahl<"ausgabenreihe">): AusgabenreiheJahr[] {
-  return ausgabenreihe(daten).filter((z) => z.conflict_amount != null);
+export function ausgabenKonflikte(daten: HaushaltAuswahl<"expense_series">): AusgabenreiheJahr[] {
+  return expense_series(daten).filter((z) => z.conflict_amount != null);
 }
 
 /** Ein Jahr der Rats-Serie: was der Rat nachbewilligt hat, und was daneben
@@ -1339,19 +1339,19 @@ export type NachbewilligungsSumme = {
 };
 
 export function nachbewilligungsJahre(
-  daten: HaushaltAuswahl<"nachbewilligungen">,
+  daten: HaushaltAuswahl<"supplementary_approvals">,
 ): NachbewilligungsSumme[] {
-  const jahre = new Map<number, NachbewilligungsSumme>();
+  const years = new Map<number, NachbewilligungsSumme>();
   const hol = (year: number) => {
-    let e = jahre.get(year);
+    let e = years.get(year);
     if (!e) {
       e = { year, summe: 0, cases: 0, commitments: 0,
             verpflichtungenBetrag: 0, sammelberichte: 0 };
-      jahre.set(year, e);
+      years.set(year, e);
     }
     return e;
   };
-  for (const n of daten.nachbewilligungen?.serie ?? []) {
+  for (const n of daten.supplementary_approvals?.serie ?? []) {
     if (n.year == null) continue;
     if (n.art === "schwelle") {
       hol(n.year).sammelberichte += 1;
@@ -1366,16 +1366,16 @@ export function nachbewilligungsJahre(
       e.cases += 1;
     }
   }
-  return [...jahre.values()].sort((a, b) => a.year - b.year);
+  return [...years.values()].sort((a, b) => a.year - b.year);
 }
 
 /** Die Bewilligungen eines Jahres, größte zuerst — die Liste, die auf ihre
  *  Beschluss-Seiten verlinkt. Ohne Sammelberichte und ohne
  *  Verpflichtungsermächtigungen: Die stehen auf der Seite getrennt. */
 export function nachbewilligungenFuerJahr(
-  daten: HaushaltAuswahl<"nachbewilligungen">, year: number,
+  daten: HaushaltAuswahl<"supplementary_approvals">, year: number,
 ): Nachbewilligung[] {
-  return (daten.nachbewilligungen?.serie ?? [])
+  return (daten.supplementary_approvals?.serie ?? [])
     .filter((n) => n.year === year && n.art === "bewilligung"
       && n.decided === 1 && n.amount != null)
     .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
@@ -1416,16 +1416,16 @@ export function kanalAnzahl(k: NachbewilligungsKanal): number {
  *  Das laufende Jahr hat erst die Beschlüsse bis heute; es in eine Reihe zu
  *  zeichnen, hieße einen Rückgang zu zeigen, den es nicht gibt. Es steht
  *  deshalb daneben als Satz, nicht in der Kurve. */
-export function spendenJahre(daten: HaushaltAuswahl<"spenden">): SpendenJahr[] {
-  const jahre = daten.spenden?.jahre ?? [];
+export function spendenJahre(daten: HaushaltAuswahl<"donations">): SpendenJahr[] {
+  const years = daten.donations?.years ?? [];
   const laufend = new Date().getFullYear();
-  return jahre.filter((j) => j.year < laufend).sort((a, b) => a.year - b.year);
+  return years.filter((j) => j.year < laufend).sort((a, b) => a.year - b.year);
 }
 
 /** Das laufende Jahr, sofern es schon Beschlüsse trägt. */
-export function spendenLaufend(daten: HaushaltAuswahl<"spenden">): SpendenJahr | null {
+export function spendenLaufend(daten: HaushaltAuswahl<"donations">): SpendenJahr | null {
   const laufend = new Date().getFullYear();
-  return (daten.spenden?.jahre ?? []).find((j) => j.year === laufend) ?? null;
+  return (daten.donations?.years ?? []).find((j) => j.year === laufend) ?? null;
 }
 
 /** Rat und Verwaltungsausschuss über alle belegten Vorlagen.
@@ -1433,10 +1433,10 @@ export function spendenLaufend(daten: HaushaltAuswahl<"spenden">): SpendenJahr |
  *  Die Aufteilung ist selbst die Auskunft: Beide Gremien behandeln ungefähr
  *  gleich viele Vorlagen, aber die Schwelle von 2.000 Euro sorgt dafür, dass
  *  fast das ganze Geld über den Rat läuft. */
-export function spendenGremien(daten: HaushaltAuswahl<"spenden">) {
+export function spendenGremien(daten: HaushaltAuswahl<"donations">) {
   const leer = { vorlagen: 0, amount: 0 };
   const aus = { Rat: { ...leer }, Verwaltungsausschuss: { ...leer } };
-  for (const v of daten.spenden?.vorlagen ?? []) {
+  for (const v of daten.donations?.vorlagen ?? []) {
     const k = v.gremium === "Rat" ? "Rat"
       : v.gremium === "Verwaltungsausschuss" ? "Verwaltungsausschuss" : null;
     if (!k) continue;
@@ -1469,11 +1469,11 @@ export function bereichSlug(name: string): string {
  *  Die Teilhaushalts-Zuschnitte ändern sich über die Jahre; eine kurze Reihe
  *  ist dann die ehrliche Antwort, keine fehlende. */
 export function bereichsReihe(
-  daten: HaushaltAuswahl<"jahre">, name: string,
+  daten: HaushaltAuswahl<"years">, name: string,
 ): { year: number; zeile: HaushaltZeile }[] {
   return jahreSortiert(daten)
     .map((year) => {
-      const z = daten.jahre[String(year)]?.find((r) => r.area === name);
+      const z = daten.years[String(year)]?.find((r) => r.area === name);
       return z ? { year, zeile: z } : null;
     })
     .filter((x): x is { year: number; zeile: HaushaltZeile } => x !== null);

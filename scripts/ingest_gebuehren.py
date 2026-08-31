@@ -2,7 +2,7 @@
 """Die Gebührenbedarfsberechnungen einlesen — Abfall und Straßenreinigung.
 
 Liest die Anlagen, deren Label „Gebührenbedarf" enthält
-(`council/gebuehren.py`), und speichert je Bereich und Jahrgang eine Zeile.
+(`council/fees.py`), und speichert je Bereich und Jahrgang eine Zeile.
 Jeder Block prüft sich zweimal selbst: die Kaskade (Kalkulation minus alle
 Abzüge = zu deckende Kosten) und die Division (Kosten ÷ Bezugsmenge =
 gedruckte Gebühr). Was nicht aufgeht, wird nicht gespeichert.
@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council.gebuehren import (  # noqa: E402
+from council.fees import (  # noqa: E402
     GebuehrenFehler,
     herkunft_fuer,
     herkunft_fuer_satz,
@@ -105,7 +105,7 @@ def main() -> dict:
         if args.trockenlauf:
             print("\n— Trockenlauf, nichts gespeichert.", flush=True)
             return {"gelesen": len(gelesen),
-                    "gebuehrensaetze": sum(len(s) for s, _ in saetze_gelesen),
+                    "fee_rates": sum(len(s) for s, _ in saetze_gelesen),
                     "risse": len(risse),
                     "ohne_text": len(ohne_text), "trocken": 1}
 
@@ -120,7 +120,7 @@ def main() -> dict:
               f"{len({b.year for b, _ in gelesen})} Jahrgänge; "
               f"{sum(len(s) for s, _ in saetze_gelesen)} konkrete Tarife.", flush=True)
         return {"gelesen": len(gelesen), "risse": len(risse),
-                "gebuehrensaetze": sum(len(s) for s, _ in saetze_gelesen),
+                "fee_rates": sum(len(s) for s, _ in saetze_gelesen),
                 "ohne_text": len(ohne_text), "befund": risse}
     finally:
         store.close()

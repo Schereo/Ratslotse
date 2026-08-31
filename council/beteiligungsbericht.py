@@ -296,7 +296,7 @@ class Gesellschaft:
     consolidated_key: str | None = None
     bekannt: bool = True
     abschnitte: dict[str, str] = field(default_factory=dict)
-    kennzahlen: dict[str, dict[int, float]] = field(default_factory=dict)
+    indicators: dict[str, dict[int, float]] = field(default_factory=dict)
     #: Bilanzsummen aus der Bilanz, je Stichtagsjahr.
     bilanzsummen: dict[int, float] = field(default_factory=dict)
     #: Jahresergebnisse aus der Gewinn- und Verlustrechnung, je Stichtagsjahr.
@@ -449,7 +449,7 @@ _JAHRZEILE = re.compile(r"((?:20\d\d[ \t]+){1,6}20\d\d)")
 _SEITENKOPF = re.compile(r"Stadt Oldenburg\s*[–-]\s*Beteiligungsbericht")
 
 
-def kennzahlen(section: str) -> tuple[dict[str, dict[int, float]], list[str]]:
+def indicators(section: str) -> tuple[dict[str, dict[int, float]], list[str]]:
     """Die Tabelle „Kennzahlen im Zeitverlauf" eines Abschnitts lesen.
 
     Liefert ``({indicator: {year: wert}}, warnungen)``.
@@ -475,7 +475,7 @@ def kennzahlen(section: str) -> tuple[dict[str, dict[int, float]], list[str]]:
     if not jm:
         # „Historische Daten liegen noch nicht vor." — kein Fehler, nur nichts da.
         return {}, []
-    jahre = [int(j) for j in jm.group(1).split()]
+    years = [int(j) for j in jm.group(1).split()]
     rest = rumpf[jm.end():]
 
     stellen = []
@@ -491,11 +491,11 @@ def kennzahlen(section: str) -> tuple[dict[str, dict[int, float]], list[str]]:
         bis = stellen[i + 1][0] if i + 1 < len(stellen) else len(rest)
         zeile = _SEITENKOPF.split(rest[ab:bis])[0]
         werte = _zahlen(zeile)
-        if len(werte) == len(jahre):
-            reihen[key] = dict(zip(jahre, werte))
+        if len(werte) == len(years):
+            reihen[key] = dict(zip(years, werte))
         else:
             warnungen.append(
-                f"{key}: {len(werte)} Werte für {len(jahre)} Jahre — Zeile "
+                f"{key}: {len(werte)} Werte für {len(years)} Jahre — Zeile "
                 f"verworfen (Zuordnung Jahr↔Wert nicht gesichert)")
     return reihen, warnungen
 
@@ -531,10 +531,10 @@ def bilanzsummen(section: str) -> dict[int, float]:
         koepfe = list(_STICHTAGE.finditer(section[:m.start()]))
         if not koepfe:
             continue
-        jahre = [int(t.rsplit(".", 1)[1]) for t in koepfe[-1].group(1).split()]
+        years = [int(t.rsplit(".", 1)[1]) for t in koepfe[-1].group(1).split()]
         werte = _zahlen(m.group(1))
-        if len(werte) == len(jahre):
-            reihen.append((jahre, werte))
+        if len(werte) == len(years):
+            reihen.append((years, werte))
     if len(reihen) != 2 or reihen[0] != reihen[1]:
         return {}
     return dict(zip(reihen[0][0], reihen[0][1]))
@@ -580,10 +580,10 @@ def guv_ergebnisse(section: str) -> dict[int, float]:
         koepfe = list(_STICHTAGE.finditer(section[:m.start()]))
         if not koepfe:
             continue
-        jahre = [int(t.rsplit(".", 1)[1]) for t in koepfe[-1].group(1).split()]
+        years = [int(t.rsplit(".", 1)[1]) for t in koepfe[-1].group(1).split()]
         werte = _zahlen(m.group(1))
-        if len(werte) == len(jahre):
-            aus = dict(zip(jahre, werte))
+        if len(werte) == len(years):
+            aus = dict(zip(years, werte))
     return aus
 
 
@@ -1068,7 +1068,7 @@ def lies(seiten: list[str]) -> dict:
     for i, g in enumerate(ges):
         text = "\n".join(seiten[g.page - 1:grenzen[i + 1] - 1])
         g.abschnitte = abschnitte(text)
-        g.kennzahlen, kw = kennzahlen(text)
+        g.indicators, kw = indicators(text)
         g.bilanzsummen = bilanzsummen(text)
         g.guv = guv_ergebnisse(text)
         warnungen += [f"{g.name}: {w}" for w in kw]
@@ -1081,7 +1081,7 @@ def lies(seiten: list[str]) -> dict:
         for indicator, gegen, betragsweise in (
                 ("bilanzsumme", g.bilanzsummen, False),
                 ("jahresergebnis", g.guv, True)):
-            series = g.kennzahlen.get(indicator) or {}
+            series = g.indicators.get(indicator) or {}
             gemeinsam = sorted(set(series) & set(gegen))
             for j in gemeinsam:
                 links, rechts = series[j], gegen[j]
@@ -1115,7 +1115,7 @@ def ueberlappung(jahrgaenge: dict[int, list[Gesellschaft]]) -> dict:
     gesammelt: dict[tuple[str, str, int], dict[int, float]] = {}
     for bericht, liste in sorted(jahrgaenge.items()):
         for g in liste:
-            for indicator, series in g.kennzahlen.items():
+            for indicator, series in g.indicators.items():
                 for year, wert in series.items():
                     gesammelt.setdefault((g.key, indicator, year), {})[bericht] = wert
 
@@ -1153,7 +1153,7 @@ def alle_werte(jahrgaenge: dict[int, list[Gesellschaft]]
     aus: dict[tuple[str, str, int], dict[int, float]] = {}
     for report_year, liste in sorted(jahrgaenge.items()):
         for g in liste:
-            for indicator, series in g.kennzahlen.items():
+            for indicator, series in g.indicators.items():
                 for year, wert in series.items():
                     aus.setdefault((g.key, indicator, year), {})[report_year] = wert
     return aus
@@ -1257,7 +1257,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
 
     if not gelesen:
         p.warnen("  Kein lesbarer Jahrgang — Bestand bleibt unangetastet")
-        return {"gesellschaften": 0, "texte": 0, "kennzahlen": 0, "verworfen": 0,
+        return {"gesellschaften": 0, "texte": 0, "indicators": 0, "verworfen": 0,
                 "widersprueche": 0, "bestand_geschuetzt": 0, "jahrgaenge": []}
 
     # Welche (Gesellschaft, Kennzahl, Bezugsjahr) hat im Dokument eine
@@ -1403,7 +1403,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
     alt = len(store.get_gesellschaft_kennzahlen())
     if not bestandsschutz(p, "Beteiligungsbericht (Kennzahlen)", alt,
                           len(kennzahlen_zeilen), schuetzen):
-        return {"gesellschaften": 0, "texte": 0, "kennzahlen": 0, "personen": 0,
+        return {"gesellschaften": 0, "texte": 0, "indicators": 0, "personen": 0,
                 "eigentuemer": 0, "ohne_zuordnung": len(ohne_zuordnung),
                 "verworfen": verworfen, "widersprueche": len(u["widersprueche"]),
                 "bestand_geschuetzt": 1, "jahrgaenge": sorted(gelesen)}
@@ -1411,7 +1411,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
     bericht = store.save_beteiligungsbericht(stammdaten, texte, kennzahlen_zeilen,
                                              personen, eigentuemer)
     p.sagen(f"  gespeichert: {bericht['gesellschaften']} Gesellschafts-Einträge, "
-            f"{bericht['texte']} Textabschnitte, {bericht['kennzahlen']} Kennzahlen, "
+            f"{bericht['texte']} Textabschnitte, {bericht['indicators']} Kennzahlen, "
             f"{bericht['personen']} Aufsichtspersonen, "
             f"{bericht['eigentuemer']} Eigentümer "
             f"({verworfen} ohne Probe verworfen)")

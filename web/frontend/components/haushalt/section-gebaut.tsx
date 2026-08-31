@@ -126,8 +126,8 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
  *  Rendert nichts, solange kein Anlagenspiegel eingelesen ist. */
 function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
   const a = daten?.anlagen;
-  const jahre = a?.jahre ?? [];
-  const year = jahre[jahre.length - 1];
+  const years = a?.years ?? [];
+  const year = years[years.length - 1];
   const infra = infrastruktur(a, year);
   const sach = sachvermoegen(a, year);
   const v = verzehr(infra);
@@ -135,7 +135,7 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
 
   // Die Straßenreihe gibt es erst ab 2022 — die Jahre davor sind eine Lücke
   // der QUELLE, nicht der Daten. Sie wird benannt, nicht überbrückt.
-  const strassenReihe = jahre
+  const strassenReihe = years
     .map((j) => ({ year: j, g: strassen(a, j) }))
     .filter((x): x is { year: number; g: NonNullable<ReturnType<typeof strassen>> } => !!x.g);
   const strassenErst = strassenReihe[0];
@@ -203,7 +203,7 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
 
       ) : null}
 
-      {strassenReihe.length > 0 && strassenReihe.length < jahre.length ? (
+      {strassenReihe.length > 0 && strassenReihe.length < years.length ? (
         <LueckenFeld
           label={`vor ${strassenReihe[0].year}`}
           grund="Die Jahresabschlüsse gliedern das Infrastrukturvermögen erst ab diesem Jahrgang weiter auf. Die Gesamtsumme steht für alle Jahre da."
@@ -242,7 +242,7 @@ export function GebautAbschnitt({ onBestand }: {
   const nahtJahre = useMemo<NahtJahr[]>(() => {
     const js: NahtJahr[] = [];
     for (const r of alle) {
-      for (const z of r.jahre) {
+      for (const z of r.years) {
         js.push({
           year: z.year,
           teile: z.arten.map((a) => ({ art: a.titel, wert: a.amount / 1e6 })),
@@ -267,8 +267,8 @@ export function GebautAbschnitt({ onBestand }: {
   const naht = useMemo(() => {
     const alt = aeltere[0];
     if (!alt || !juengste) return undefined;
-    const links = alt.jahre[alt.jahre.length - 1].year;
-    const rechts = juengste.jahre[0].year;
+    const links = alt.years[alt.years.length - 1].year;
+    const rechts = juengste.years[0].year;
     return {
       zwischen: [links, rechts] as [number, number],
       text: `Links ${alt.titel}, rechts ${juengste.titel} — zwei Regelwerke `
@@ -289,7 +289,7 @@ export function GebautAbschnitt({ onBestand }: {
       Investitionszahlen werden geladen …
     </div>;
   }
-  if (!data || !juengste || juengste.jahre.length < 2) {
+  if (!data || !juengste || juengste.years.length < 2) {
     return (
       <div className="rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground">
         Für diese Seite sind die Rechnungsergebnisse noch nicht eingelesen.{" "}
@@ -298,7 +298,7 @@ export function GebautAbschnitt({ onBestand }: {
     );
   }
 
-  const letzter = juengste.jahre[juengste.jahre.length - 1];
+  const letzter = juengste.years[juengste.years.length - 1];
   const erster = nahtJahre.find((j) => !("fehlt" in j));
   const hLetzter = herkunftVon(data, letzter.herkunft_id);
   const quelleUrl = hLetzter?.url ?? null;
@@ -428,7 +428,7 @@ export function GebautAbschnitt({ onBestand }: {
             </p>
           </div>
           <NahtSaeulen
-            jahre={nahtJahre}
+            years={nahtJahre}
             naht={naht}
             einheit="Mio. €"
             titel="Auszahlungen für Investitionen"
@@ -447,7 +447,7 @@ export function GebautAbschnitt({ onBestand }: {
               Warum die Zeitreihe einen Bruch hat
             </p>
             <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-              Zum 1. Januar {juengste.jahre[0].year} stellte die Stadt ihr Rechnungswesen
+              Zum 1. Januar {juengste.years[0].year} stellte die Stadt ihr Rechnungswesen
               von der Kameralistik auf die doppelte Buchführung um. Für frühere Jahre nennt
               das Statistische Jahrbuch „Ausgaben für eigene Investitionen“, danach
               „Auszahlungen für Investitionstätigkeiten“. Die Begriffe beruhen auf
@@ -521,7 +521,7 @@ export function GebautAbschnitt({ onBestand }: {
             <li>
               <strong>Nicht die ganze Bautätigkeit der Stadt.</strong> Gezählt wird die
               Kernverwaltung. Was der Eigenbetrieb Gebäudewirtschaft und Hochbau baut —
-              seit {juengste.jahre[0].year} ein großer Teil des städtischen Hochbaus —,
+              seit {juengste.years[0].year} ein großer Teil des städtischen Hochbaus —,
               steht hier nicht, und die städtischen Gesellschaften ebenso wenig. Was
               neben dem Haushalt noch läuft, zeigt{" "}
               <Link href="/haushalt/konzern" className="font-semibold text-primary">

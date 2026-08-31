@@ -2,7 +2,7 @@
 """Die Haushaltssatzungen einlesen — Kreditermächtigung, Dispo, Finanzhaushalt.
 
 Liest die Anlagen, deren Label „Haushaltssatzung" enthält
-(`council/haushaltssatzung.py`), und speichert je Jahrgang eine Zeile. Jede
+(`council/budget_bylaw.py`), und speichert je Jahrgang eine Zeile. Jede
 Satzung prüft sich dabei selbst: Ihre drei Einzahlungs- und drei
 Auszahlungszeilen müssen die Summe ergeben, die sie darunter als
 „Nachrichtlich" selbst ausweist. Was nicht aufgeht, wird nicht gespeichert.
@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council.haushaltssatzung import (  # noqa: E402
+from council.budget_bylaw import (  # noqa: E402
     SatzungFehler,
     herkunft_fuer,
     parse_satzung,

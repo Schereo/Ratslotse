@@ -51,7 +51,7 @@ export type ProgrammZeile = {
 };
 
 export type ProgrammDaten = {
-  jahre: number[];
+  years: number[];
   massnahmen: ProgrammZeile[];
   teilhaushalte: ProgrammZeile[];
   gesamt: ProgrammZeile[];
@@ -158,10 +158,10 @@ export function count(
  *  weit: Portal 2022–2025, Haushaltsplan 2019–2026), fällt es auf den
  *  jüngsten eigenen zurück. */
 export function passenderJahrgang(
-  jahre: number[],
+  years: number[],
   gewuenscht: number | null,
 ): number | null {
-  if (!jahre.length) return null;
-  if (gewuenscht != null && jahre.includes(gewuenscht)) return gewuenscht;
-  return [...jahre].sort((a, b) => a - b)[jahre.length - 1];
+  if (!years.length) return null;
+  if (gewuenscht != null && years.includes(gewuenscht)) return gewuenscht;
+  return [...years].sort((a, b) => a - b)[years.length - 1];
 }

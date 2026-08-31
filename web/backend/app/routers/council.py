@@ -19,12 +19,12 @@ from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.parties import faction_label, order_key
-from council import ausgabenreihe as ausgabenreihe_mod
-from council import kennzahlen as kennzahlen_mod
-from council import nachbewilligungen as nachbewilligungen_mod
-from council import spenden as spenden_mod
+from council import expense_series as ausgabenreihe_mod
+from council import indicators as kennzahlen_mod
+from council import supplementary_approvals as nachbewilligungen_mod
+from council import donations as spenden_mod
 from council import steuertabellen
-from council import gewerbesteuerstatistik as gewst
+from council import trade_tax_statistics as gewst
 from council import beteiligungsbericht, qa
 from council import ernte
 from council import importance
@@ -431,7 +431,7 @@ def haushalt_produkte(
     Produkte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die
     Lücke aus, statt sie zu verschweigen.
 
-    Jedes Produkt trägt zusätzlich ``jahre`` — die Jahrgänge, in denen es im
+    Jedes Produkt trägt zusätzlich ``years`` — die Jahrgänge, in denen es im
     Bestand steht. Gegen ``alle_jahre`` gehalten wird daraus das
     Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
     vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen."""
@@ -439,10 +439,10 @@ def haushalt_produkte(
                                   controllability=spielraum)
     abdeckung = store.produkt_abdeckung()
     for p in produkte:
-        p["jahre"] = abdeckung.get(p["product_no"], [])
+        p["years"] = abdeckung.get(p["product_no"], [])
     einzeln = store.product(year, nr) if nr else None
     if einzeln:
-        einzeln["jahre"] = abdeckung.get(einzeln["product_no"], [])
+        einzeln["years"] = abdeckung.get(einzeln["product_no"], [])
     summe = sum(p["expenses"] or 0 for p in store.get_produkte(year))
     plan = next((z for z in store.get_haushalt(year) if z["is_total"]), None)
     quote = round(summe / plan["expenses"] * 100, 1) if plan and plan["expenses"] else None
@@ -542,21 +542,21 @@ def haushalt_pruefberichte(
     ``mark`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
     ``/haushalt/plan-ist``, der nur die Kette der wiederholten Beanstandungen
     braucht: Der volle Bestand ist eine Viertel-Megabyte Prosa und hat auf
-    einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``jahre`` und
+    einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``years`` und
     ``legende`` bleiben dabei die des Gesamtbestands — sonst stünde in der
     Fußzeile eine Jahresliste, die vom Filter abhängt.
     """
     zeilen = store.get_pruefberichte()
-    jahre = store.pruefbericht_jahre()
+    years = store.pruefbericht_jahre()
     legende: dict[str, dict] = {}
     for z in zeilen:  # aufsteigend sortiert — der letzte Eintrag gewinnt
         legende[z["mark"]] = {"name": z["mark_name"],
                                "explanation": z["mark_explanation"]}
     return {
-        "jahre": jahre,
+        "years": years,
         "legende": legende,
         "feststellungen": [z for z in zeilen if mark is None or z["mark"] == mark],
-        "ohne_bericht": [j for j in store.ergebnisrechnung_jahre() if j not in jahre],
+        "ohne_bericht": [j for j in store.ergebnisrechnung_jahre() if j not in years],
     }
 
 
@@ -571,7 +571,7 @@ def haushalt_konzern(
     Konzernzahl allein sagt nichts, sie sagt erst etwas neben der
     Kernverwaltung im selben Jahr.
 
-    - ``jahre``: Jahrgänge mit eingelesenem Gesamtabschluss,
+    - ``years``: Jahrgänge mit eingelesenem Gesamtabschluss,
     - ``konzern``: je Jahrgang die Summen des Konzerns (Erträge,
       Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und
       Personalaufwand) samt bestandener Rechenprobe und Fundstelle,
@@ -621,7 +621,7 @@ def haushalt_konzern(
     ids = sorted({z["herkunft_id"] for z in (*posten, *entity)
                   if z["herkunft_id"] is not None})
     return {
-        "jahre": store.konzern_jahre(),
+        "years": store.konzern_jahre(),
         "konzern": [je_jahr[j] for j in sorted(je_jahr)],
         "entity": [{**t, "amount": t["amount_keur"] * 1000.0,
                      "prior_year": (t["prior_year_keur"] * 1000.0
@@ -745,7 +745,7 @@ def haushalt_beteiligungen(
       Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das
       ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr
       Rohtext steht weiter in ``texte``,
-    - ``kennzahlen``: die Zeitreihe je Gesellschaft (Jahresergebnis,
+    - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
@@ -754,7 +754,7 @@ def haushalt_beteiligungen(
       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
       und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie
       etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,
-    - ``berichtsjahre`` / ``jahre``: welche Berichte gelesen sind und welche
+    - ``berichtsjahre`` / ``years``: welche Berichte gelesen sind und welche
       Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die
       Berichte — jeder führt vier bis fünf Jahre mit),
     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.
@@ -763,7 +763,7 @@ def haushalt_beteiligungen(
     aufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``)."""
     berichtsjahre = store.beteiligungsbericht_jahre()
     gesellschaften = store.get_gesellschaften()
-    kennzahlen = store.get_gesellschaft_kennzahlen()
+    indicators = store.get_gesellschaft_kennzahlen()
     texte = [t for g in gesellschaften
              for t in store.get_gesellschaft_texte(g["company"])]
     personen = store.get_gesellschaft_personen()
@@ -779,12 +779,12 @@ def haushalt_beteiligungen(
     verzeichnis = _lexikon_zuordnung(store, personen)
 
     ids = sorted({z["herkunft_id"]
-                  for z in (*gesellschaften, *texte, *kennzahlen, *personen,
+                  for z in (*gesellschaften, *texte, *indicators, *personen,
                             *eigentuemer)
                   if z["herkunft_id"] is not None})
     return {
         "berichtsjahre": berichtsjahre,
-        "jahre": sorted({z["year"] for z in kennzahlen}),
+        "years": sorted({z["year"] for z in indicators}),
         "gesellschaften": [{**g, "roles_assignable":
                             g["company"] not in gerissen}
                            for g in gesellschaften],
@@ -793,7 +793,7 @@ def haushalt_beteiligungen(
                       bool(p["roles_assignable"]),
                       **verzeichnis[p["name"]]} for p in personen],
         "eigentuemer": eigentuemer,
-        "kennzahlen": kennzahlen,
+        "indicators": indicators,
         "konzernvergleich": vergleich,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
@@ -811,7 +811,7 @@ def haushalt_investitionen(
     Bereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort
     nur als Abschreibung auf, verteilt über Jahrzehnte).
 
-    - ``jahre``: Haushaltsjahre, für die Investitionen vorliegen,
+    - ``years``: Haushaltsjahre, für die Investitionen vorliegen,
     - ``teilhaushalte``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
       Investitionstätigkeit,
     - ``gesamt``: je Jahr die Summenzeile der Datei — das **Ziel der
@@ -832,7 +832,7 @@ def haushalt_investitionen(
     zeilen = store.get_investitionen()
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
     return {
-        "jahre": store.investitionen_jahre(),
+        "years": store.investitionen_jahre(),
         "teilhaushalte": [z for z in zeilen if z["level"] == "teilhaushalt"],
         "gesamt": [z for z in zeilen if z["level"] == "investitionen"],
         "finanzhaushalt": [z for z in zeilen if z["level"] == "finanzhaushalt"],
@@ -850,7 +850,7 @@ def haushalt_investitionsprogramm(
     Aus Anlage 004 des Haushaltsplans: nicht „Schule und Bildung: 8,3 Mio. €",
     sondern „BBS Haarentor: Ausstattung". Acht Jahrgänge, rund 4.500 Vorhaben.
 
-    - ``jahre``: Jahrgänge, für die ein Programm vorliegt,
+    - ``years``: Jahrgänge, für die ein Programm vorliegt,
     - ``massnahmen``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und
       **Gesamtinvestitionssumme**,
     - ``teilhaushalte``: je Teilhaushalt die Gesamtsumme, die das Dokument am
@@ -874,7 +874,7 @@ def haushalt_investitionsprogramm(
     zeilen = store.get_investitionsmassnahmen()
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
     return {
-        "jahre": store.investitionsprogramm_jahre(),
+        "years": store.investitionsprogramm_jahre(),
         "massnahmen": [z for z in zeilen if z["level"] == "massnahme"],
         "teilhaushalte": [z for z in zeilen if z["level"] == "teilhaushalt"],
         "gesamt": [z for z in zeilen if z["level"] == "gesamt"],
@@ -959,17 +959,17 @@ def haushalt_uebersicht(
 ) -> HaushaltUebersicht:
     """Datenfundament des Haushalts-Bereichs, in einem Aufruf:
 
-    - ``jahre``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
+    - ``years``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
       Quelle je Zeile — Haushaltsplan-PDF bzw. Open-Data-CSV der Stadt),
-    - ``steuern``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
-    - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen je
+    - ``taxes``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
+    - ``tax_capacity``: Steuerkraftmesszahl + Schlüsselzuweisungen je
       Ausgleichsjahr seit 1993 (die Jahreszahl der Quelle ist beim Einlesen
       um ein Jahr korrigiert, s. ``council/haushalt._STEUERKRAFT_VERSATZ``;
       die ``*_je_ew``-Felder sind deshalb leer),
-    - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
-    - ``ergebnisrechnung``: Ansatz, Plan und Ergebnis je Posten aus den
+    - ``population``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
+    - ``income_statement``: Ansatz, Plan und Ergebnis je Posten aus den
       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
-    - ``finanzrechnung``: die Kassensicht aus demselben Jahresabschluss
+    - ``cash_flow_statement``: die Kassensicht aus demselben Jahresabschluss
       (Abschnitt 4.1) — nicht was gebucht, sondern was **gezahlt** wurde.
       Jede Zeile trägt neben der Nummer des Dokuments eine ``role``
       (``balance_operating``, ``balance_capital``, ``finanzmittel``, …);
@@ -977,7 +977,7 @@ def haushalt_uebersicht(
       2017–2020 eine Zeile mehr als ab 2021, alle Nummern ab 08
       verschieben sich dadurch. ``authorization`` ist das aus Vorjahren
       übertragene Geld und ``NULL``, wo der Jahrgang die Spalte nicht führt,
-    - ``ergebnishaushalt``: dieselben Posten für Jahre **ohne**
+    - ``income_budget``: dieselben Posten für Jahre **ohne**
       Jahresabschluss, aus dem Gesamtergebnishaushalt der Haushaltspläne.
       Jede Zeile trägt ``art`` (``ansatz`` = das Jahr, für das dieser Plan
       der Haushalt ist; ``finanzplanung`` = mittelfristige Vorausschau nach
@@ -988,9 +988,9 @@ def haushalt_uebersicht(
       der Einbringungs-Vorlage, sind also der **Entwurf** der Verwaltung —
       der Beleg (``herkunft.stand``) sagt das, die Anzeige sollte es
       anschreiben,
-    - ``ansatz_jahre``: die Jahre mit einem Haushaltsansatz — die Liste, aus
+    - ``budgeted_years``: die Jahre mit einem Haushaltsansatz — die Liste, aus
       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
-    - ``wirtschaftsplaene``: die Wirtschaftspläne der Eigenbetriebe und
+    - ``business_plans``: die Wirtschaftspläne der Eigenbetriebe und
       städtischen Gesellschaften, je ``enterprise`` und ``year``. **Nicht mit dem
       Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
@@ -998,15 +998,15 @@ def haushalt_uebersicht(
       Gesamtabschluss. ``revenues``/``expenses`` sind ``null``, wo die
       Quelle nur das Ergebnis nennt, und ``probes`` sagt, welche Rechenprobe
       für die Zeile gelaufen ist,
-    - ``abweichungsgruende``: warum ein Posten vom Plan abwich, in den Worten
+    - ``variance_reasons``: warum ein Posten vom Plan abwich, in den Worten
       der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
     - ``pruefberichte``: Fundstelle des RPA-Schlussberichts je Jahrgang,
     - ``herkunft``: je ``herkunft_id`` das Dokument, die Fundstelle darin, die
       bestandene Rechenprobe samt Messwert und der Stichtag — nachschlagbar
       über die ``herkunft_id`` der einzelnen Datenzeilen,
-    - ``produkt_jahre``: Jahre, für die die Produktebene vorliegt,
-    - ``plan_ist_jahre``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
-    - ``ausgabenreihe``: die lange Reihe aus Datensatz 1102 — ein Betrag je
+    - ``product_years``: Jahre, für die die Produktebene vorliegt,
+    - ``plan_actual_years``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
+    - ``expense_series``: die lange Reihe aus Datensatz 1102 — ein Betrag je
       Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``accounting_system`` (die Naht
       2009/2010), die bestandenen ``probes`` und, wo die beiden Quellen sich
       widersprechen, den Betrag der unterlegenen (``conflict_amount``).
@@ -1016,41 +1016,41 @@ def haushalt_uebersicht(
       Aufwendungen der Gesamtergebnisrechnung, und über den Schnitt darf keine
       Linie laufen. Eine Einwohnerzahl liefert dieser Block bewusst nicht
       (Begründung an der Tabelle in ``council/store.py``).
-    - ``spenden``: was die Stadt an Zuwendungen annimmt, aus den
-      Ratsbeschlüssen. ``jahre`` ist die Reihe (Betrag, Zahl der Vorlagen,
+    - ``donations``: was die Stadt an Zuwendungen annimmt, aus den
+      Ratsbeschlüssen. ``years`` ist die Reihe (Betrag, Zahl der Vorlagen,
       Aufteilung Rat/Verwaltungsausschuss), ``vorlagen`` die einzelnen
       Beschlüsse mit ihrer Vorlagen-Nummer, ``ohne_beleg`` die Zeilen, die
       ihre Zweitstelle **nicht** tragen — samt dem Satz, warum. Die
       ``schwellen`` sagen, wer über welche Zuwendung entscheidet.
       **Die Namen der Gebenden liefert dieser Block nicht**, und das ist
       keine Lücke, die sich schließt: Sie stehen nur in der Anlage
-      „Zuwendungsliste", die nicht im Bestand ist (``council/spenden.py``).
-    - ``steuerplan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
+      „Zuwendungsliste", die nicht im Bestand ist (``council/donations.py``).
+    - ``tax_plan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
       dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``provisional`` ist die
       Angabe der Quelle über sich selbst — die jüngste Spalte heißt dort
       „vorläufiges Rechnungsergebnis". Die ``art``-Werte sind **dieselben** wie
-      in ``steuern``; daran hängt die Prüfung der Jahresbeschriftung.
-    - ``hebesaetze``: die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980
+      in ``taxes``; daran hängt die Prüfung der Jahresbeschriftung.
+    - ``tax_rates``: die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980
       (Tabelle 1105). Die Jahre dazwischen fehlen nicht, sie ändern nichts —
       ein Satz gilt bis zur nächsten Änderung. Wer die Reihe zeichnet, zeichnet
       eine Treppe und interpoliert nicht. ``bemessung_neu`` nennt die Jahre, in
       denen sich die Bemessungsgrundlage mitänderte; **ohne diese Angabe darf
       kein Hebesatz-Sprung angezeigt werden**, denn 2025 stieg der Satz um
       21 %, während das Aufkommen um 4,6 % sank.
-    - ``gewerbesteuerstatistik``: wie viele Betriebe und Betriebsstätten in
+    - ``trade_tax_statistics``: wie viele Betriebe und Betriebsstätten in
       Oldenburg erfasst sind, wie viele davon überhaupt einen Steuermessbetrag
       haben, und wie sich dieser auf reine Festsetzungen und Zerlegungen
       verteilt (Landesamt für Statistik, Bericht L IV 13). **Das ist die
       Veranlagung, nicht das Aufkommen**: Messbetrag mal Hebesatz ergibt nicht
-      die Zahl aus ``steuern`` — in den drei prüfbaren Jahren lagen beide
+      die Zahl aus ``taxes`` — in den drei prüfbaren Jahren lagen beide
       zwischen 13 % darunter und 27 % darüber. ``abgrenzung`` sagt das im
       Klartext und reist deshalb mit den Zahlen mit.
 
-    Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
+    Fehlende Jahre (Datenlücken) fehlen schlicht in ``years`` — das Frontend
     zeigt Lücken ehrlich, statt zu interpolieren.
 
     ``felder`` schneidet die Antwort auf das zu, was die aufrufende Seite
-    wirklich rendert (kommagetrennt, z. B. ``?felder=jahre,produkt_jahre``).
+    wirklich rendert (kommagetrennt, z. B. ``?felder=years,product_years``).
     ``thh_posten`` schneidet zusätzlich INNERHALB der Ergebnisrechnung — sie
     ist der größte Block, und ihre Teilhaushalts-Ebene braucht fast niemand
     vollständig (s. :func:`_ergebnisrechnung`).
@@ -1060,9 +1060,9 @@ def haushalt_uebersicht(
     sondern gar nicht erst aus der Datenbank gelesen werden.
     """
     bausteine: dict[str, Callable[[], object]] = {
-        "jahre": lambda: {str(y): store.get_haushalt(y) for y in store.haushalt_years()},
-        "steuern": store.get_steuereinnahmen,
-        "steuerkraft": store.get_steuerkraft,
+        "years": lambda: {str(y): store.get_haushalt(y) for y in store.haushalt_years()},
+        "taxes": store.get_steuereinnahmen,
+        "tax_capacity": store.get_steuerkraft,
         # Die Zeile darüber ist unvollständig, und zwar systematisch: Der
         # Open-Data-Datensatz 1106 führt nur zwei der drei Komponenten des
         # Finanzausgleichs (Gemeinde- und Kreisaufgaben). Die dritte —
@@ -1070,27 +1070,27 @@ def haushalt_uebersicht(
         # der Summe — steht nur beim Land. Sie kommt hier als eigenes Feld
         # dazu, in **Tausend Euro** und mit der Jahresangabe des Landes
         # (Ausgleichsjahr). Näheres in council/steuerkraft.py.
-        "finanzausgleich": store.get_finanzausgleich,
-        "einwohner": store.einwohner_aktuell,
+        "fiscal_equalization": store.get_finanzausgleich,
+        "population": store.einwohner_aktuell,
         # Aus den Jahresabschlüssen (RIS-Anlagen): Ansatz UND Ergebnis je
         # Posten — „geplant gegen tatsächlich" und die Erträge nach Arten.
         # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
         # ursprüngliche Haushaltsansatz; `plan_art` sagt, welche gemeint ist.
-        "ergebnisrechnung": lambda: _ergebnisrechnung(store, thh_posten),
+        "income_statement": lambda: _ergebnisrechnung(store, thh_posten),
         # Dieselben Dokumente, Abschnitt 4.1: was tatsächlich geflossen ist.
         # Die Ergebnisrechnung darüber weist für 2024 einen Überschuss aus,
         # diese Tabelle im selben Heft einen Finanzmittel-Fehlbetrag — beides
         # stimmt, und ohne die zweite Zahl entsteht ein falscher Eindruck.
-        "finanzrechnung": store.get_finanzrechnung,
+        "cash_flow_statement": store.get_finanzrechnung,
         # Die Planjahre: dieselbe Postengliederung für Jahre, die noch keinen
         # Abschluss haben. `art` trennt den Haushaltsansatz von der
         # mittelfristigen Finanzplanung — ohne diese Angabe darf keine Zahl
         # aus dieser Liste angezeigt werden.
-        "ergebnishaushalt": store.get_ergebnishaushalt,
+        "income_budget": store.get_ergebnishaushalt,
         # Überschussrücklage aus der Bilanz: Position 1.2.1 plus das am
         # Stichtag noch separat ausgewiesene Jahresergebnis. Keine Konstante.
-        "ruecklage": store.get_ruecklagen,
-        "ansatz_jahre": store.ansatz_jahre,
+        "reserves": store.get_ruecklagen,
+        "budgeted_years": store.budgeted_years,
         # Die Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften
         # — der Haushalt NEBEN dem Haushalt. Klein genug für die Übersicht (29
         # Zeilen), deshalb kein eigener Endpunkt.
@@ -1107,8 +1107,8 @@ def haushalt_uebersicht(
         # ist die Auskunft: Sie erhebt eine Grundgebühr UND eine Gebühr je
         # Liter, dort gibt es keine einzelne Division. Wer die Spalte anzeigt,
         # schreibt die Leerstelle an, statt eine 0 zu zeichnen.
-        "gebuehren": store.get_gebuehren,
-        "gebuehrensaetze": store.get_gebuehrensaetze,
+        "fees": store.get_gebuehren,
+        "fee_rates": store.get_gebuehrensaetze,
         # Die Haushaltssatzung — der Rahmen um den Plan (Kreditermächtigung,
         # Dispo-Höchstbetrag, Verpflichtungsermächtigungen, Finanzhaushalt).
         #
@@ -1116,18 +1116,18 @@ def haushalt_uebersicht(
         # ausschließlich Verwaltungsentwürfe; die beschlossene Satzung
         # erscheint im Amtsblatt. Wer das Feld wegblendet, macht aus einem
         # Vorschlag der Verwaltung einen Ratsbeschluss.
-        "haushaltssatzung": store.get_haushaltssatzungen,
-        "wirtschaftsplaene": store.get_wirtschaftsplaene,
-        "abweichungsgruende": store.get_abweichungsgruende,
-        "pruefbericht_quellen": store.get_pruefbericht_quellen,
-        "produkt_jahre": store.produkte_jahre,
+        "budget_bylaw": store.get_haushaltssatzungen,
+        "business_plans": store.get_wirtschaftsplaene,
+        "variance_reasons": store.get_abweichungsgruende,
+        "audit_report_sources": store.get_pruefbericht_quellen,
+        "product_years": store.produkte_jahre,
         # Jahre mit Teilhaushalts-Ist — füttert den Jahr-Umschalter auf
         # /haushalt/plan-ist, ohne dass das Frontend die Liste durchsucht.
-        "plan_ist_jahre": store.plan_ist_jahre,
+        "plan_actual_years": store.plan_actual_years,
         # Die lange Reihe seit 1972. Die Begriffe reisen mit den Zahlen, statt
         # im Frontend zu stehen: Sie sind Angaben der Quelle wie der Betrag
         # selbst, und eine Legende, die es in zwei Sprachen gibt, driftet.
-        "ausgabenreihe": lambda: {
+        "expense_series": lambda: {
             "zeilen": store.get_ausgabenreihe(),
             "naht_ab": ausgabenreihe_mod.NAHT_AB,
             "accounting_systems": {
@@ -1153,7 +1153,7 @@ def haushalt_uebersicht(
         # `funde` sind die Unterschiede zwischen zwei Berichten, eingeteilt in
         # Korrektur, Definitionswechsel und bloße Umbenennung — gemessen, nicht
         # angenommen (council/kennzahlen.py).
-        "kennzahlen": lambda: _kennzahlen(store),
+        "indicators": lambda: _kennzahlen(store),
         # Nachbewilligungen nach § 117 NKomVG — was beschlossen wurde,
         # nachdem der Haushalt beschlossen war. Zwei Listen, die **nicht**
         # ineinander gerechnet werden dürfen:
@@ -1163,7 +1163,7 @@ def haushalt_uebersicht(
         # entscheiden dieselbe Sache, und 131 der 287 Zeilen sind Dubletten).
         # `decision_id` zeigt auf die vorhandene Beschluss-Seite.
         #
-        # `jahre` ist Kapitel 3 des Rechenschaftsberichts mit seinen **vier
+        # `years` ist Kapitel 3 des Rechenschaftsberichts mit seinen **vier
         # Entscheidungswegen**. Nur dort steht die Gesamtsumme; der Rat ist
         # eine Teilmenge davon, und sie schrumpft (88 → 73 %). Eine Anzeige,
         # die nur `serie` zeigt, muss das dazusagen.
@@ -1172,16 +1172,16 @@ def haushalt_uebersicht(
         # **keine** Summe: Eine Verpflichtungsermächtigung bindet künftige
         # Jahre, sie fließt nicht in diesem. Der Bericht zählt sie ebenso
         # getrennt.
-        "nachbewilligungen": lambda: {
+        "supplementary_approvals": lambda: {
             "serie": store.get_nachbewilligungen(),
-            "jahre": store.get_nachbewilligung_jahre(),
+            "years": store.get_nachbewilligung_jahre(),
             "channels": nachbewilligungen_mod.KANAELE,
         },
         # Zuwendungen an die Stadt. `ohne_beleg` reist mit den Zahlen mit,
         # damit die Seite die Lücke anschreiben kann, statt sie stillschweigend
         # aus der Summe zu lassen — sechs Zeilen, jede mit ihrem Grund.
-        "spenden": lambda: {
-            "jahre": _spenden_jahre(store.get_spenden()),
+        "donations": lambda: {
+            "years": _spenden_jahre(store.get_spenden()),
             "vorlagen": store.get_spenden(),
             "ohne_beleg": store.get_spenden_verworfen(),
             "schwellen": [{"gremium": g, "ab": unten, "bis": oben}
@@ -1193,13 +1193,13 @@ def haushalt_uebersicht(
         # irreführend (2025: Satz +21 %, Aufkommen −4,6 %).
         #
         # `abgrenzung` reist mit den Zahlen, nicht im Frontend — dieselbe Regel
-        # wie bei `ausgabenreihe.accounting_systems`: Eine Legende, die es in zwei
+        # wie bei `expense_series.accounting_systems`: Eine Legende, die es in zwei
         # Sprachen gibt, driftet.
-        "steuerplan": lambda: {
+        "tax_plan": lambda: {
             "zeilen": store.get_steuerplan(),
             "abgrenzung": steuertabellen.ABGRENZUNG_1103,
         },
-        "hebesaetze": lambda: {
+        "tax_rates": lambda: {
             # NUR die Änderungsjahre — die Jahre dazwischen fehlen nicht,
             # sondern haben nichts geändert. Wer diese Reihe zeichnet, zeichnet
             # eine TREPPE: Ein Satz gilt bis zur nächsten Änderung, und
@@ -1215,7 +1215,7 @@ def haushalt_uebersicht(
         # Nur Oldenburg, obwohl die Tabelle alle acht kreisfreien Städte führt
         # — diese Seite ist ein Steckbrief und kein Vergleich, und die sieben
         # anderen Städte wären hier Ballast, den niemand rendert.
-        "gewerbesteuerstatistik": lambda: {
+        "trade_tax_statistics": lambda: {
             "zeilen": store.get_gewerbesteuerstatistik(gewst.OLDENBURG),
             # Zwei Fassungen: `abgrenzung_kurz` ist der eine Satz, ohne den die
             # Zahlen irreführen, und steht auf der Seite immer; `abgrenzung`
@@ -1267,7 +1267,7 @@ def haushalt_uebersicht(
     # der sie stammt (`components/haushalt/quelle.tsx: Dokumentbeleg`).
     #
     # Die Karte reist dabei nicht als Ganzes: Es gehen nur die Einträge mit,
-    # auf die eine gesendete Zeile zeigt — bei `felder=wirtschaftsplaene`
+    # auf die eine gesendete Zeile zeigt — bei `felder=business_plans`
     # sind das keine 40.
     if not gewuenscht or "herkunft" in gewuenscht:
         daten["herkunft"] = {str(h["id"]): h
@@ -1372,7 +1372,7 @@ def _herkunft_ids(obj: object) -> set[int]:
     """Jede ``herkunft_id``, die irgendwo in einer Antwort steckt.
 
     Rekursiv und nicht als Aufzählung der bekannten Blöcke: Die Übersicht führt
-    19 davon, teils zwei Ebenen tief (``nachbewilligungen.jahre[].channels[]``).
+    19 davon, teils zwei Ebenen tief (``supplementary_approvals.years[].channels[]``).
     Eine Liste zum Nachpflegen wäre die Sorte Code, die beim nächsten Block
     vergessen wird — und der Fehler fiele erst auf, wenn irgendwo ein
     Beleg-Chip fehlt. ``herkunft_id`` ist repo-weit der einzige Feldname, der
@@ -1397,9 +1397,9 @@ def _spenden_jahre(vorlagen: list[dict]) -> list[dict]:
     Gespeichert ist je Vorlage eine Zeile; die Jahressumme daraus zu bilden
     ist billig und hält die Tabelle frei von einer abgeleiteten Größe, die bei
     jedem Lauf neu stimmen müsste."""
-    jahre: dict[int, dict] = {}
+    years: dict[int, dict] = {}
     for v in vorlagen:
-        e = jahre.setdefault(v["year"], {"year": v["year"], "amount": 0.0, "vorlagen": 0,
+        e = years.setdefault(v["year"], {"year": v["year"], "amount": 0.0, "vorlagen": 0,
                                          "rat": 0, "verwaltungsausschuss": 0})
         e["amount"] += v["amount"]
         e["vorlagen"] += 1
@@ -1407,9 +1407,9 @@ def _spenden_jahre(vorlagen: list[dict]) -> list[dict]:
             e["rat"] += 1
         elif v.get("gremium") == "Verwaltungsausschuss":
             e["verwaltungsausschuss"] += 1
-    for e in jahre.values():
+    for e in years.values():
         e["amount"] = round(e["amount"], 2)
-    return [jahre[j] for j in sorted(jahre)]
+    return [years[j] for j in sorted(years)]
 
 
 @router.get("/haushalt/weg")
@@ -3639,7 +3639,7 @@ def haushalt_vergleich(
 
     Zwei Teile, und der zweite ist der wichtigere:
 
-    - ``werte``/``staedte``/``jahre``: Steuerkraft und Hebesätze der acht
+    - ``werte``/``staedte``/``years``: Steuerkraft und Hebesätze der acht
       kreisfreien Städte Niedersachsens aus den beiden Tabellen des
       Landesamts für Statistik. Dieselbe Kennzahl, dieselbe Stelle, dieselbe
       Abgrenzung für alle — der Auslagerungsgrad einer Stadt greift hier
@@ -3665,12 +3665,12 @@ def haushalt_vergleich(
     from council import staedtevergleich as sv
 
     werte = store.get_staedtevergleich()
-    jahre: dict[str, list[int]] = {}
+    years: dict[str, list[int]] = {}
     for w in werte:
-        jahre.setdefault(w["series"], [])
-        if w["year"] not in jahre[w["series"]]:
-            jahre[w["series"]].append(w["year"])
-    for liste in jahre.values():
+        years.setdefault(w["series"], [])
+        if w["year"] not in years[w["series"]]:
+            years[w["series"]].append(w["year"])
+    for liste in years.values():
         liste.sort()
 
     staedte = [{
@@ -3706,7 +3706,7 @@ def haushalt_vergleich(
     return {
         "staedte": staedte,
         "werte": werte,
-        "jahre": jahre,
+        "years": years,
         "beleg": beleg,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
@@ -3769,17 +3769,17 @@ def haushalt_gebaut(
     # Herkunft, den derselbe Lauf schreibt.)
     fehlend: dict[str, list[dict]] = {}
     for accounting_system in _ii.REGELWERK:
-        jahre = sorted(z["year"] for z in series if z["accounting_system"] == accounting_system)
-        if len(jahre) < 2:
+        years = sorted(z["year"] for z in series if z["accounting_system"] == accounting_system)
+        if len(years) < 2:
             continue
         luecke = [{"year": j, "difference": gemessen.get((accounting_system, j))}
-                  for j in range(jahre[0], jahre[-1] + 1) if j not in set(jahre)]
+                  for j in range(years[0], years[-1] + 1) if j not in set(years)]
         if luecke:
             fehlend[accounting_system] = luecke
 
     return {
         "series": series,
-        "jahre": [z["year"] for z in series],
+        "years": [z["year"] for z in series],
         "abgrenzung": _ii.ABGRENZUNG,
         # Wie die beiden Rechnungswesen heißen — damit die Beschriftung nicht
         # in zwei Sprachen existiert (dieselbe Entscheidung wie bei `arten`
@@ -3799,7 +3799,7 @@ def haushalt_gebaut(
         # aus einer Quellenlücke eine Datenlücke.
         "anlagen": {
             "series": anlagen,
-            "jahre": sorted({z["year"] for z in anlagen}),
+            "years": sorted({z["year"] for z in anlagen}),
             "gruppen": gruppen,
             "gruppen_jahre": sorted({g["year"] for g in gruppen}),
             "probes": anlagenspiegel_mod.PROBEN,
@@ -3844,7 +3844,7 @@ def haushalt_bilanz(
     Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
     (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
     unter ``role="schulden"`` selbst. **Die Zahl darf ohne diesen Text nicht
-    angezeigt werden** — dieselbe Bauart wie ``abweichungsgruende`` für die
+    angezeigt werden** — dieselbe Bauart wie ``variance_reasons`` für die
     Ergebnisrechnung.
     """
     posten = store.get_bilanz()
@@ -3852,7 +3852,7 @@ def haushalt_bilanz(
     ids = sorted({z["herkunft_id"] for z in posten + erlaeuterungen
                   if z["herkunft_id"] is not None})
     return {
-        "jahre": store.bilanz_jahre(),
+        "years": store.bilanz_jahre(),
         "posten": posten,
         "erlaeuterungen": erlaeuterungen,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
@@ -3946,7 +3946,7 @@ def haushalt_schulden(
 
     return {
         "series": zeilen,
-        "jahre": [z["year"] for z in zeilen],
+        "years": [z["year"] for z in zeilen],
         "abgrenzung": _s.ABGRENZUNG,
         # `exact` und `out_next_year` sind Angaben über den BELEG, nicht über
         # die Zahl: 2019/2020 stehen auf den Cent im Dokument, ab 2022 rundet

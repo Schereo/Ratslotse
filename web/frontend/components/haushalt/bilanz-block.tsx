@@ -95,7 +95,7 @@ export function BilanzBlock() {
             Und was hat die Stadt? · Bilanz zum 31.12.{s.year}
           </p>
           <span className="font-mono text-[10px] uppercase text-muted-foreground">
-            {data.jahre.length} Stichtage · {data.jahre[0]}–{data.jahre[data.jahre.length - 1]}
+            {data.years.length} Stichtage · {data.years[0]}–{data.years[data.years.length - 1]}
           </span>
         </div>
         <p className="font-display text-[26px] font-bold leading-none tracking-tight tabular-nums sm:text-[30px]">

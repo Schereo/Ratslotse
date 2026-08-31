@@ -122,12 +122,12 @@ def main() -> dict:
 
         print("\nGelesen:", flush=True)
         for (budget_year, schluessel), (r, _s, e) in sorted(je_liste.items()):
-            jahre = sorted({z.year for z in e.zeilen})
+            years = sorted({z.year for z in e.zeilen})
             politisch = sorted({s.label for s in e.summen
                                 if s.typ == "liste" and "nderungsliste" not in s.label})
             zusatz = f"  · politische Zeile: {', '.join(politisch)}" if politisch else ""
             print(f"  {budget_year}  {schluessel:16} Dok. {r['document_id']}  "
-                  f"{len(e.zeilen):>3} Positionen ({jahre[0]}–{jahre[-1]}){zusatz}",
+                  f"{len(e.zeilen):>3} Positionen ({years[0]}–{years[-1]}){zusatz}",
                   flush=True)
 
         for titel, eintraege in (("Dubletten", dubletten),

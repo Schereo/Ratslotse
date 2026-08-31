@@ -13,7 +13,7 @@ gehalten:
 Dazu, als dritte Probe, unser eigener Bestand: Für die Jahre mit
 Jahresabschluss muss der Betrag zur Ergebnisrechnung desselben Jahres passen.
 Die drei Proben und ihre Messwerte stehen im Kopf von
-``council/ausgabenreihe.py``.
+``council/expense_series.py``.
 
 Warum von Hand und nicht per Cron
 ---------------------------------
@@ -44,7 +44,7 @@ from pypdf import PdfReader
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from council import ausgabenreihe as ar  # noqa: E402
+from council import expense_series as ar  # noqa: E402
 from council import finanzquellen  # noqa: E402
 from council import herkunft as h  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
@@ -78,7 +78,7 @@ def kernverwaltung(store: CouncilStore) -> dict[int, float]:
     Die Gesamtrechnung, also ``sub_budget_no IS NULL`` — dieselbe Ebene, die auch die
     Statistik zählt, nur **ohne** die nicht rechtsfähigen Stiftungen. Genau
     dieser Unterschied ist die Toleranz der Gegenprobe (s.
-    ``council/ausgabenreihe.gegenprobe``)."""
+    ``council/expense_series.gegenprobe``)."""
     werte: dict[int, float] = {}
     for p in store.get_ergebnisrechnung():
         if p.get("sub_budget_no") is None and p.get("nr") == POSTEN_AUFWENDUNGEN \
@@ -87,7 +87,7 @@ def kernverwaltung(store: CouncilStore) -> dict[int, float]:
     return werte
 
 
-def _spanne(jahre: list[int]) -> str:
+def _spanne(years: list[int]) -> str:
     """„1972–2001" — und „2010–2016, 2025", wo die Gruppe Löcher hat.
 
     Kein ``von–bis`` über alles: Die Gruppen entstehen nach bestandenen Proben,
@@ -95,7 +95,7 @@ def _spanne(jahre: list[int]) -> str:
     Quellen, noch kein Jahresabschluss) — „2010–2025" behauptete dort, die
     Jahre dazwischen gehörten auch dazu, und die haben eine Probe mehr."""
     bloecke: list[list[int]] = []
-    for j in sorted(jahre):
+    for j in sorted(years):
         if bloecke and j == bloecke[-1][-1] + 1:
             bloecke[-1].append(j)
         else:
@@ -201,8 +201,8 @@ def main() -> int:
                       f"{ar.de_zahl(k['difference'] / 1e6, 3)} Mio. € "
                       f"Unterschied; übernommen wird "
                       f"{k['gewaehlt'].upper()} (besteht die Pro-Kopf-Probe)")
-            for accounting_system, jahre in sorted(result["fehlende_jahrgaenge"].items()):
-                for j in jahre:
+            for accounting_system, years in sorted(result["fehlende_jahrgaenge"].items()):
+                for j in years:
                     print(f"    FEHLT {j} ({accounting_system})", file=sys.stderr)
             if not zeilen:
                 print("ABBRUCH: kein einziger Jahrgang hat eine Probe bestanden.",

@@ -24,15 +24,15 @@ import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weit
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { PruefungAbschnitt } from "@/components/haushalt/section-pruefung";
-import { KennzahlenAbschnitt } from "@/components/haushalt/section-kennzahlen";
+import { KennzahlenAbschnitt } from "@/components/haushalt/section-indicators";
 
 /** Ausgeschrieben, nicht zusammengesetzt: `tests/test_quellen_dokumente.py`
  *  liest die Literale dieser Liste, um stumme Beleg-Chips zu finden. */
-const QUELLEN: QuellenSchluessel[] = ["pruefbericht", "kennzahlen", "bilanz"];
+const QUELLEN: QuellenSchluessel[] = ["pruefbericht", "indicators", "bilanz"];
 
 const MARKEN = [
   { id: "feststellungen", titel: "Was geprüft wurde" },
-  { id: "kennzahlen", titel: "Die dreizehn Zahlen" },
+  { id: "indicators", titel: "Die dreizehn Zahlen" },
 ];
 
 function PruefungInner() {
@@ -127,7 +127,7 @@ function PruefungInner() {
           <PruefungAbschnitt onBestand={setBestand} />
         </section>
 
-        <section id="kennzahlen" className={`${ANKER_KLASSE} border-t border-border pt-4`}>
+        <section id="indicators" className={`${ANKER_KLASSE} border-t border-border pt-4`}>
           <KennzahlenAbschnitt />
         </section>
 

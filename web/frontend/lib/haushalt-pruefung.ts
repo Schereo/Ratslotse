@@ -32,7 +32,7 @@ export type Feststellung = {
 };
 
 export type PruefberichtDaten = {
-  jahre: number[];
+  years: number[];
   legende: Record<string, { name: string; explanation: string | null }>;
   feststellungen: Feststellung[];
   /** Jahre mit ausgelesenem Jahresabschluss, aber ohne Schlussbericht. */
@@ -57,7 +57,7 @@ export type Kette = {
   schluessel: string;
   /** Titel aus dem jüngsten Jahrgang — Abschnitte werden umbenannt. */
   titel: string;
-  jahre: number[];
+  years: number[];
   eintraege: Feststellung[];
   /** Jahre, in denen der Abschnitt eine Beanstandung trug (B oder WB). */
   beanstandet: number[];
@@ -87,13 +87,13 @@ export function wiederholungsketten(feststellungen: Feststellung[]): Kette[] {
   for (const [schluessel, eintraege] of nach) {
     if (!eintraege.some((f) => f.mark === "WB")) continue;
     const sortiert = [...eintraege].sort((a, b) => a.year - b.year || a.seq - b.seq);
-    const jahre = [...new Set(sortiert.map((f) => f.year))];
+    const years = [...new Set(sortiert.map((f) => f.year))];
     const beanstandet = [...new Set(
       sortiert.filter((f) => f.mark === "B" || f.mark === "WB").map((f) => f.year))];
     ketten.push({
       schluessel,
       titel: sortiert[sortiert.length - 1].section,
-      jahre, eintraege: sortiert, beanstandet,
+      years, eintraege: sortiert, beanstandet,
     });
   }
   return ketten.sort((a, b) =>

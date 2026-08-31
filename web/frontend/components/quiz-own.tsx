@@ -28,7 +28,7 @@ const YEAR_SPAN = 50;  // ± Jahre um eine Jahreszahl (muss zu quiz.py passen)
 
 /** Jahreszahl: Einheit Jahr/Jahre UND >= 100 (kleine Werte = Dauer). */
 function isYear(unit: string, value: number): boolean {
-  return ["year", "jahre"].includes(unit.trim().toLowerCase()) && Math.abs(value) >= 100;
+  return ["year", "years"].includes(unit.trim().toLowerCase()) && Math.abs(value) >= 100;
 }
 
 /** Slider-Grenzen aus der Antwort ableiten (Spiegel von `_auto_range` im

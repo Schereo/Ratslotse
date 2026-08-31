@@ -169,8 +169,8 @@ def lies_zuweisungen(pfad: str) -> list[KfaZuweisungen]:
 
     c_key = sv._finde(spalten, r"Schlüsselnummer")
     c_name = sv._finde(spalten, r"Bezeichnung")
-    jahre = _jahresspalten(spalten)
-    vollstaendig = {j: s for j, s in jahre.items()
+    years = _jahresspalten(spalten)
+    vollstaendig = {j: s for j, s in years.items()
                     if set(KOMPONENTEN.values()) <= set(s) and "nettobetrag" in s}
     if c_key is None or c_name is None or len(vollstaendig) < 1:
         raise ValueError(
@@ -271,7 +271,7 @@ def zeilen_finanzausgleich(budget_year: KfaZuweisungen) -> list[dict]:
     nennt die Ausgabe 2025 „452,46 € je Ew.", die Ausgabe 2026 „452,27 €".
     Derselbe Nettobetrag, revidierte Einwohnerzahl. Der Absolutwert ist
     stabil, der Quotient nicht — wer pro Kopf braucht, teilt selbst durch die
-    Einwohnerzahl, die dieselbe Datei in ``series='steuerkraft'`` mitliefert.
+    Einwohnerzahl, die dieselbe Datei in ``series='tax_capacity'`` mitliefert.
     """
     aus: list[dict] = []
     for key, w in sorted(budget_year.staedte.items()):
