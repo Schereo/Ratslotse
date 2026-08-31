@@ -14,7 +14,7 @@ export type WochenSitzung = {
 };
 export type WochenPunkt = {
   ksinr: number; item_number: string; title: string; titel_kurz?: string;
-  antragsteller?: string | null; summary: string | null;
+  applicants?: string | null; summary: string | null;
   /** Der aus Vorlage UND Anlagen geschriebene Satz (`agenda_item_social`) —
    *  besser als `summary`, die allein aus dem Titel entsteht. */
   social_text?: string | null;
@@ -447,7 +447,7 @@ function RailPunkt({ punkt, top, mehrere, dichte }: {
   punkt: WochenPunkt; top: boolean; mehrere?: boolean; dichte: Dichte;
 }) {
   const desktop = dichte === "desktop";
-  const wer = punkt.antragsteller;
+  const wer = punkt.applicants;
   return (
     <Link
       href={topHref(punkt.ksinr, punkt.item_number)}
@@ -617,8 +617,8 @@ function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, m
             className="flex items-start gap-1.5"
           >
             {/* Matrix 14d: mobil nur der Punkt, kein Antragsteller-Text. */}
-            {p.antragsteller
-              ? <span className="mt-[5px]"><ParteiPunkte wer={p.antragsteller} size={6} /></span>
+            {p.applicants
+              ? <span className="mt-[5px]"><ParteiPunkte wer={p.applicants} size={6} /></span>
               : <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />}
             <span className="text-[12.5px] leading-snug text-foreground">
               {p.titel_kurz || p.title}

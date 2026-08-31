@@ -52,7 +52,7 @@ import {
 
 type Kraft = {
   year: number;
-  messzahl: number | null;
+  tax_index: number | null;
   allocations: number | null;
 };
 
@@ -68,8 +68,8 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   const { box, breite } = useBreite(640, 260);
 
   const series = steuerkraft
-    .filter((k): k is Kraft & { messzahl: number; allocations: number } =>
-      k.messzahl != null && k.allocations != null)
+    .filter((k): k is Kraft & { tax_index: number; allocations: number } =>
+      k.tax_index != null && k.allocations != null)
     .sort((a, b) => a.year - b.year);
 
   // Vor dem Ausstieg: Ein Hook hinter einem `return` ist kein Hook mehr.
@@ -82,7 +82,7 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   // Sie ist gegen einen einheitlichen Jahresversatz immun, weil sie nur
   // aufeinanderfolgende Zeilen derselben Tabelle vergleicht.
   const steigend = series.slice(1)
-    .map((k, i) => ({ dKraft: k.messzahl - series[i].messzahl, dZuw: k.allocations - series[i].allocations }))
+    .map((k, i) => ({ dKraft: k.tax_index - series[i].tax_index, dZuw: k.allocations - series[i].allocations }))
     .filter((p) => p.dKraft > 0);
   const gegenlaeufig = steigend.filter((p) => p.dZuw < 0).length;
 
@@ -94,11 +94,11 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   // Skala ließen sich hübscher zeichnen, würden aber genau die Aussage
   // erzeugen, die hier widerlegt werden soll: Man kann zwei beliebig
   // gestreckte Kurven immer zur Deckung bringen.
-  const hoechst = Math.max(...series.map((k) => Math.max(k.messzahl, k.allocations))) / 1e6;
+  const hoechst = Math.max(...series.map((k) => Math.max(k.tax_index, k.allocations))) / 1e6;
   const hi = Math.ceil(hoechst / 100) * 100;
   const x = (i: number) => X0 + (i / (series.length - 1)) * (X1 - X0);
   const y = (v: number) => Y0 - (v / hi) * (Y0 - YTOP);
-  const pfad = (feld: "messzahl" | "allocations") =>
+  const pfad = (feld: "tax_index" | "allocations") =>
     series.map((k, i) => `${i ? "L" : "M"}${x(i)} ${y(k[feld] / 1e6)}`).join(" ");
 
   const gitter = [0.5, 1].map((f) => Math.round(hi * f));
@@ -114,10 +114,10 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   const stellen: AbleseStelle[] = series.map((k) => ({
     titel: String(k.year),
     werte: [
-      { label: "Steuerkraft", wert: deMio(k.messzahl / 1e6), farbe: "var(--hh-ein-0)" },
+      { label: "Steuerkraft", wert: deMio(k.tax_index / 1e6), farbe: "var(--hh-ein-0)" },
       { label: "Zuweisungen", wert: deMio(k.allocations / 1e6), farbe: "var(--hh-aus-2)" },
     ],
-    vorlesen: `Ausgleichsjahr ${k.year}: Steuerkraftmesszahl ${deMio(k.messzahl / 1e6)} Millionen Euro, `
+    vorlesen: `Ausgleichsjahr ${k.year}: Steuerkraftmesszahl ${deMio(k.tax_index / 1e6)} Millionen Euro, `
       + `Schlüsselzuweisungen ${deMio(k.allocations / 1e6)} Millionen Euro.`,
   }));
 
@@ -142,7 +142,7 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
       <div ref={box} className="mt-3">
         <AbleseBeschreibung id={beschreibungId}>
           {`Zwei Reihen über die Ausgleichsjahre ${series[0].year} bis ${letzte.year}, in Millionen Euro. `
-            + `Steuerkraftmesszahl: ${series.map((k) => `${k.year} ${deMio(k.messzahl / 1e6)}`).join(", ")}. `
+            + `Steuerkraftmesszahl: ${series.map((k) => `${k.year} ${deMio(k.tax_index / 1e6)}`).join(", ")}. `
             + `Schlüsselzuweisungen: ${series.map((k) => `${k.year} ${deMio(k.allocations / 1e6)}`).join(", ")}.`}
         </AbleseBeschreibung>
         <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
@@ -157,14 +157,14 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
           ))}
           <line x1={X0} y1={Y0} x2={X1} y2={Y0} className="stroke-border" />
 
-          <path d={pfad("messzahl")} fill="none" strokeWidth={2.2} strokeLinejoin="round"
+          <path d={pfad("tax_index")} fill="none" strokeWidth={2.2} strokeLinejoin="round"
             strokeLinecap="round" style={{ stroke: "var(--hh-ein-0)" }} />
           <path d={pfad("allocations")} fill="none" strokeWidth={2.2} strokeLinejoin="round"
             strokeLinecap="round" style={{ stroke: "var(--hh-aus-2)" }} strokeDasharray="5 3" />
 
-          <text x={x(series.length - 1)} y={y(letzte.messzahl / 1e6) - 8} textAnchor="end"
+          <text x={x(series.length - 1)} y={y(letzte.tax_index / 1e6) - 8} textAnchor="end"
             fontSize={fs.wert} fontWeight={700} className="stroke-card" {...halo}
-            style={{ fill: "var(--hh-ein-0)" }}>{deMio(letzte.messzahl / 1e6)}</text>
+            style={{ fill: "var(--hh-ein-0)" }}>{deMio(letzte.tax_index / 1e6)}</text>
           <text x={x(series.length - 1)} y={y(letzte.allocations / 1e6) - 8} textAnchor="end"
             fontSize={fs.wert} fontWeight={700} className="stroke-card" {...halo}
             style={{ fill: "var(--hh-aus-2)" }}>{deMio(letzte.allocations / 1e6)}</text>
@@ -192,7 +192,7 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
             x={(i) => x(i)} xVon={X0} xBis={X1}
             yVon={YTOP} hoehe={Y0 - YTOP} fangHoehe={176 - YTOP}
             marken={(i) => [
-              { y: y(series[i].messzahl / 1e6), farbe: "var(--hh-ein-0)" },
+              { y: y(series[i].tax_index / 1e6), farbe: "var(--hh-ein-0)" },
               { y: y(series[i].allocations / 1e6), farbe: "var(--hh-aus-2)" },
             ]}
           />

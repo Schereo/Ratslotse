@@ -670,7 +670,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # Zeilen reichen — der Baustein zeigt genau diese vier Bezugspunkte.
         store._conn.executemany(
             "INSERT INTO council_schulden (year, credit_market, special_funds, "
-            " public_authorities, municipal_enterprises, insgesamt, je_einwohner, "
+            " public_authorities, municipal_enterprises, insgesamt, per_capita, "
             " revised, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,0,3,'')",
             [(1995, None, None, None, None, 198_000_000.0, 1_420.0),
              (2013, None, None, None, None, 512_400_000.0, 3_180.0),
@@ -744,8 +744,8 @@ def _befuellter_store(tmp_path) -> CouncilStore:
               "gebuehren_kaskade,gebuehren_division", "2026")])
         store._conn.executemany(
             "INSERT INTO council_gebuehren (year, area, area_name, "
-            "kostenkalkulation, deductions, costs_to_cover, reference_quantity, "
-            "reference_unit, gebuehr, fee_proposed, template_number, probes, "
+            "cost_calculation, deductions, costs_to_cover, reference_quantity, "
+            "reference_unit, fee, fee_proposed, template_number, probes, "
             "herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,7,'')",
             [(2025, "abfallbehandlung", "Abfallbehandlungsanlagen", 18_000_000.0,
               -2_000_000.0, 16_000_000.0, 114_475.0, "Mg", 139.772, 139.70,
@@ -1321,7 +1321,7 @@ def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_schulden (year, insgesamt, je_einwohner, fetched_at) "
+    c.execute("INSERT INTO council_schulden (year, insgesamt, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
     c.execute("INSERT INTO council_bilanz (year, role, page, level, label, wert, "
               " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "

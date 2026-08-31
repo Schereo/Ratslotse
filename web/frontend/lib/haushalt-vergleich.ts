@@ -46,7 +46,7 @@ export type VergleichBeleg = {
    *  zur Kenntnis genommen. `null`, wenn der Bestand ihn (noch) nicht kennt. */
   decision_id: number | null;
   titel: string | null;
-  anlagen: { document_id: number; label: string | null; url: string | null; is_antrag: number }[];
+  anlagen: { document_id: number; label: string | null; url: string | null; is_motion: number }[];
 };
 
 export type VergleichDaten = {
@@ -103,11 +103,11 @@ export type Balken = {
  *  `LottiVergleich`. Gespeichert wird der Wert bewusst nicht, sonst ließe
  *  sich später nicht mehr unterscheiden, was amtlich ist und was gerechnet. */
 export function steuerkraftJeEinwohner(daten: VergleichDaten, year: number): Balken[] {
-  const messzahl = indicator(daten, "steuerkraft", "steuerkraftmesszahl", year);
+  const tax_index = indicator(daten, "steuerkraft", "steuerkraftmesszahl", year);
   const einwohner = indicator(daten, "steuerkraft", "einwohner", year);
   const aus: Balken[] = [];
   for (const s of daten.staedte) {
-    const m = messzahl.get(s.schluessel);
+    const m = tax_index.get(s.schluessel);
     const e = einwohner.get(s.schluessel);
     if (!m || !e || !e.wert) continue;
     aus.push({

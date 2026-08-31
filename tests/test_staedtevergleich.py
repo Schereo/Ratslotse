@@ -319,7 +319,7 @@ def test_kfa_liest_die_acht_staedte(kfa2026):
     # ist nur dann etwas wert, wenn sie über den ganzen Bestand läuft.
     assert len(budget_year.staedte) == len(KFA2026_ZEILEN)
     ol = budget_year.staedte["403000"]
-    assert ol["messzahl_teur"] == 348164
+    assert ol["tax_index_keur"] == 348164
     assert ol["einwohner"] == 176410
     assert ol["prior_year_tax_index_keur"] == 325716
 
@@ -335,7 +335,7 @@ def test_kfa_findet_die_kopfzeile_ueber_den_hinweis_der_datei(tmp_path):
                   for nr, werte in blatt.items()}
     verschoben[3] = ["Der Tabellenkopf für Vorlesehilfen befindet sich in Zeile 17."]
     pfad = schreibe_xlsx(tmp_path / "verschoben.xlsx", {"ST_KR_MESS_VGL": verschoben})
-    assert sv.lies_kfa(pfad).staedte["403000"]["messzahl_teur"] == 348164
+    assert sv.lies_kfa(pfad).staedte["403000"]["tax_index_keur"] == 348164
 
 
 def test_kfa_ohne_hinweis_bricht_ab_statt_zu_raten(tmp_path):
@@ -405,8 +405,8 @@ def test_realsteuervergleich_liest_hebesaetze_und_einnahmekraft(realsteuer):
     assert rs.year == 2025
     assert rs.stand == "Korrigierte Version vom 30.07.2026"
     ol = rs.hebesaetze["403000"]
-    assert (ol["hebesatz_grundsteuer_a"], ol["hebesatz_grundsteuer_b"],
-            ol["hebesatz_gewerbesteuer"]) == (500, 539, 439)
+    assert (ol["rate_grundsteuer_a"], ol["rate_grundsteuer_b"],
+            ol["rate_gewerbesteuer"]) == (500, 539, 439)
     # Angezeigt wird netto — brutto behält die Stadt nicht.
     assert ol["ist_je_ew_gewerbesteuer"] == pytest.approx(1233.36)
     assert rs.einnahmekraft["403000"]["je_jahr"][2025]["je_ew"] == pytest.approx(2033.66)
@@ -448,7 +448,7 @@ def test_hebesatzprobe_prueft_die_gewerbesteuer_gegen_brutto(realsteuer):
     assert (ol["ist_gewerbesteuer"] - ol["umlage_gewerbesteuer"]
             == pytest.approx(ol["netto_gewerbesteuer"], abs=1.0))
     # Und gegen netto geprüft wäre die Abweichung exakt die Umlage gewesen.
-    erwartet_brutto = ol["grundbetrag_gewerbesteuer"] * ol["hebesatz_gewerbesteuer"] / 100
+    erwartet_brutto = ol["grundbetrag_gewerbesteuer"] * ol["rate_gewerbesteuer"] / 100
     assert (erwartet_brutto - ol["netto_gewerbesteuer"]
             == pytest.approx(ol["umlage_gewerbesteuer"], abs=2.0))
 

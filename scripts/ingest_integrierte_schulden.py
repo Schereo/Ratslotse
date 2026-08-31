@@ -98,7 +98,7 @@ def main() -> int:
 
     anteil = isch.anteil_unter_50(gefunden)
     print(f"{gefunden['year']}: {gefunden['insgesamt']/1e6:.2f} Mio. € "
-          f"({gefunden['je_einwohner']:,.0f} € je Einwohner*in)")
+          f"({gefunden['per_capita']:,.0f} € je Einwohner*in)")
     print(f"  davon aus Beteiligungen unter 50 %: {anteil*100:.1f} %")
 
     store = CouncilStore(Path(args.db))

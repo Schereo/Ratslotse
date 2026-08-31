@@ -32,7 +32,7 @@ Aufruf::
 
 Die Übersichtsseite mit den jeweils neuen Nummern:
 ``statistik.niedersachsen.de/themen/gewerbesteuer-niedersachsen/
-gewerbesteuer-in-niedersachsen-statistische-berichte-179300.html``
+gewerbesteuer-in-niedersachsen-statistische-n_reports-179300.html``
 
 Ältere Jahrgänge als 2017 gibt es nur als PDF (geprüft für 2013: die
 Gemeindetabelle ist da, aber im PDF-Satz). Sie brauchten einen zweiten Parser
@@ -90,7 +90,7 @@ def _holen(ort: str, ablage: Path) -> tuple[Path, str | None]:
 def main() -> int:
     ap = argparse.ArgumentParser(
         description="Gewerbesteuerstatistik (LSN, L IV 13) einlesen")
-    ap.add_argument("berichte", nargs="+",
+    ap.add_argument("n_reports", nargs="+",
                     help="Statistische Berichte als Datei oder Adresse")
     ap.add_argument("--db", default=str(COUNCIL_DB))
     args = ap.parse_args()
@@ -108,7 +108,7 @@ def main() -> int:
     try:
         with tempfile.TemporaryDirectory() as tmp:
             ablage = Path(tmp)
-            for ort in args.berichte:
+            for ort in args.n_reports:
                 pfad, url = _holen(ort, ablage)
                 budget_year = gs.lies_bericht(str(pfad))
                 print(f"Erhebungsjahr {budget_year.year} "

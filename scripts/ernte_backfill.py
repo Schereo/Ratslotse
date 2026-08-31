@@ -37,7 +37,7 @@ def main(db: str | None = None) -> dict:
     for kvonr, text in rows:
         aus = ernte.auswirkungen(text)
         office = ernte.federfuehrendes_amt(text)
-        vorschlag = ernte.beschlussvorschlag(text)
+        vorschlag = ernte.proposed_decision(text)
         updates.append((office, aus["klima"], aus["finanzen"], vorschlag, kvonr))
         zaehler["vorlagen"] += 1
         zaehler["office"] += bool(office)
@@ -46,8 +46,8 @@ def main(db: str | None = None) -> dict:
         zaehler["vorschlag"] += bool(vorschlag)
     with conn:
         conn.executemany(
-            "UPDATE council_vorlagen SET office = ?, klima_check = ?, "
-            "finanz_check = ?, beschlussvorschlag = ? WHERE kvonr = ?", updates)
+            "UPDATE council_vorlagen SET office = ?, climate_impact = ?, "
+            "financial_impact = ?, proposed_decision = ? WHERE kvonr = ?", updates)
 
     prot = conn.execute("SELECT ksinr, raw_text FROM council_protocols "
                         "WHERE raw_text IS NOT NULL").fetchall()

@@ -406,9 +406,9 @@ def test_die_treppe_wird_nicht_interpoliert():
     # Kein Jahr zwischen zwei Stufen, insbesondere keines der zehn ab 2016.
     assert not [j for j in range(2016, 2025) if j in jahre]
     b = {z["year"]: z for z in zeilen if z["art"] == "Grundsteuer B"}
-    assert b[2015]["hebesatz"] == 445
+    assert b[2015]["rate"] == 445
     assert b[2025] == {"year": 2025, "art": "Grundsteuer B",
-                       "hebesatz": 539, "prior_rate": 445}
+                       "rate": 539, "prior_rate": 445}
 
 
 def test_eine_zeile_die_nichts_aendert_faellt_auf():

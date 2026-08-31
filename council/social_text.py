@@ -112,14 +112,14 @@ def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
         teile.append(f"Art der Vorlage: {punkt['art']}")
     if punkt.get("office"):
         teile.append(f"Federführung: {punkt['office']}")
-    if punkt.get("beschlussvorschlag"):
+    if punkt.get("proposed_decision"):
         teile.append("Beschlussvorschlag (ein VORSCHLAG, noch kein Beschluss): "
-                     + _eine_zeile(punkt["beschlussvorschlag"])[:4000])
-    if punkt.get("finanz_check"):
-        teile.append("Kosten laut Vorlage: " + _eine_zeile(punkt["finanz_check"])[:2000])
-    if punkt.get("klima_check"):
+                     + _eine_zeile(punkt["proposed_decision"])[:4000])
+    if punkt.get("financial_impact"):
+        teile.append("Kosten laut Vorlage: " + _eine_zeile(punkt["financial_impact"])[:2000])
+    if punkt.get("climate_impact"):
         teile.append("Klimawirkung laut Vorlage: "
-                     + _eine_zeile(punkt["klima_check"])[:1200])
+                     + _eine_zeile(punkt["climate_impact"])[:1200])
 
     kern = vorlagen_kern(punkt.get("raw_text"))
     if kern:
@@ -133,14 +133,14 @@ def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
         text = _eine_zeile(a.get("raw_text"))[:min(ANLAGE_EINZELN, budget)]
         if not text:
             continue
-        mark = "Antrag" if a.get("is_antrag") else "Anlage"
-        wer = f" von {a['antragsteller']}" if a.get("antragsteller") else ""
+        mark = "Antrag" if a.get("is_motion") else "Anlage"
+        wer = f" von {a['applicants']}" if a.get("applicants") else ""
         teile.append(f"{mark}{wer} – {a.get('label') or 'ohne Titel'}: {text}")
         budget -= len(text)
         genutzt += 1
 
     quelle = "titel"
-    if kern or punkt.get("beschlussvorschlag"):
+    if kern or punkt.get("proposed_decision"):
         quelle = "vorlage+anlagen" if genutzt else "vorlage"
     return "\n\n".join(teile), quelle
 

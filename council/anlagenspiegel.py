@@ -223,7 +223,7 @@ def parse_anlagenspiegel(text: str, year: int) -> list[dict]:
             "year": year, "nr": nr, "label": label, "spalten": spalten,
             "cost_opening": w[0], "additions": w[1], "disposals": w[2],
             "transfers": w[3], "cost_closing": w[4],
-            "depreciation_opening": w[5], "abschreibung": w[6], "depreciation_releases": w[7],
+            "depreciation_opening": w[5], "depreciation": w[6], "depreciation_releases": w[7],
             "write_ups": w[8], "depreciation_transfers": w[9], "depreciation_closing": w[10],
             "book_value": w[11], "book_value_prior_year": w[12],
         })
@@ -258,7 +258,7 @@ def probe(zeile: dict) -> tuple[list[str], list[str]]:
     # ausgewiesen und über den Jahrgang geprüft (`umbuchungsprobe`).
     if zeile.get("spalten") == 13:
         pruefe(PROBE_ABSCHREIBUNG,
-               (zeile["depreciation_opening"] + zeile["abschreibung"] + zeile["depreciation_releases"]
+               (zeile["depreciation_opening"] + zeile["depreciation"] + zeile["depreciation_releases"]
                 + zeile["write_ups"] + zeile["depreciation_transfers"]),
                zeile["depreciation_closing"], "Abschreibungen")
     pruefe(PROBE_BUCHWERT, zeile["cost_closing"] + zeile["depreciation_closing"],
@@ -346,7 +346,7 @@ def umbuchung_abgeleitet(zeile: dict) -> float:
     Differenz zwischen der Spaltensumme und dem ausgewiesenen Endstand.
     Ab 2021 gibt es die Spalte, und der Rest ist null.
     """
-    kette = (zeile["depreciation_opening"] + zeile["abschreibung"] + zeile["depreciation_releases"]
+    kette = (zeile["depreciation_opening"] + zeile["depreciation"] + zeile["depreciation_releases"]
              + zeile["write_ups"] + zeile["depreciation_transfers"])
     return zeile["depreciation_closing"] - kette
 

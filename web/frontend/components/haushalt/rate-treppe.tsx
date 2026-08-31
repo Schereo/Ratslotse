@@ -39,7 +39,7 @@ import type { HebesatzZeile } from "@/lib/haushalt";
 /** Eine Änderung, mit dem, was sie im selben Jahr bewirkt hat. */
 type Stufe = {
   year: number;
-  hebesatz: number;
+  rate: number;
   prior_rate: number | null;
   /** Aufkommen im Änderungsjahr und im Jahr davor, in Euro. */
   aufkommen: { vorher: number; nachher: number } | null;
@@ -83,7 +83,7 @@ export function HebesatzTreppe({
     const nachher = aufkommen[z.year];
     return {
       year: z.year,
-      hebesatz: z.hebesatz,
+      rate: z.rate,
       prior_rate: z.prior_rate,
       aufkommen: vorher != null && nachher != null ? { vorher, nachher } : null,
       bemessung: bemessungNeu[String(z.year)] ?? null,
@@ -95,7 +95,7 @@ export function HebesatzTreppe({
   // nur die Gewerbesteuer. Ein „445 → 445 %" im Steckbrief der Grundsteuer
   // wäre eine Änderung, die es nicht gab.
   const echteAenderungen = stufen.filter(
-    (s) => s.prior_rate == null || s.hebesatz !== s.prior_rate);
+    (s) => s.prior_rate == null || s.rate !== s.prior_rate);
   const erste = sortiert[0];
   const letzte = sortiert[sortiert.length - 1];
   const ohneAufkommen = echteAenderungen.filter(
@@ -121,12 +121,12 @@ export function HebesatzTreppe({
       <div className="mt-3">
         <Zeitreihe
           treppe
-          series={sortiert.map((z) => ({ year: z.year, wert: z.hebesatz }))}
+          series={sortiert.map((z) => ({ year: z.year, wert: z.rate }))}
           zweitreihe={zweitreihe && zweitreihe.length >= 2 && zweitLabel
             ? {
               label: zweitLabel,
               series: [...zweitreihe].sort((a, b) => a.year - b.year)
-                .map((z) => ({ year: z.year, wert: z.hebesatz })),
+                .map((z) => ({ year: z.year, wert: z.rate })),
               format: (v) => `${deZahl(v, 0)} %`,
             }
             : undefined}
@@ -135,7 +135,7 @@ export function HebesatzTreppe({
           format={(v) => deZahl(v, 0)}
           ariaTitel={`Hebesatz der ${titel} von ${erste.year} bis ${letzte.year},`
             + ` ${echteAenderungen.length - 1} Änderungen, zuletzt`
-            + ` ${deZahl(letzte.hebesatz, 0)} Prozent`}
+            + ` ${deZahl(letzte.rate, 0)} Prozent`}
           /* Keine `tabelle`: Die Werte stehen unten ohnehin einzeln — und dort
              mit dem Aufkommen daneben, ohne das ein Hebesatz irreführt. */
           note="Prozentpunkte · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln."
@@ -150,8 +150,8 @@ export function HebesatzTreppe({
         </p>
         <ul className="mt-2 flex flex-col gap-2">
           {echteAenderungen.filter((s) => s.prior_rate != null).map((s) => {
-            const punkte = s.hebesatz - (s.prior_rate as number);
-            const relativ = (s.hebesatz / (s.prior_rate as number) - 1) * 100;
+            const punkte = s.rate - (s.prior_rate as number);
+            const relativ = (s.rate / (s.prior_rate as number) - 1) * 100;
             const auf = s.aufkommen;
             const aufRelativ = auf ? (auf.nachher / auf.vorher - 1) * 100 : null;
             return (
@@ -161,7 +161,7 @@ export function HebesatzTreppe({
                     {s.year}
                   </span>
                   <span className="text-[12.5px] font-semibold tabular-nums">
-                    {deZahl(s.prior_rate, 0)} → {deZahl(s.hebesatz, 0)}&nbsp;%
+                    {deZahl(s.prior_rate, 0)} → {deZahl(s.rate, 0)}&nbsp;%
                   </span>
                   <span className="text-[11.5px] tabular-nums text-muted-foreground">
                     {mitVorzeichen(punkte, 0)} Punkte · {mitVorzeichen(relativ)}&nbsp;%

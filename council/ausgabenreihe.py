@@ -318,7 +318,7 @@ def erkenne(text: str) -> dict[str, tuple[int, int]]:
 
 
 def parse_pdf(text: str) -> list[dict]:
-    """Die Datenzeilen des PDFs → ``{year, einwohner, amount, je_einwohner,
+    """Die Datenzeilen des PDFs → ``{year, einwohner, amount, per_capita,
     revised, quelle}``, Beträge in Euro.
 
     Beide Blöcke stehen auf derselben Seite untereinander; getrennt wird am
@@ -338,7 +338,7 @@ def parse_pdf(text: str) -> list[dict]:
         (ew, _), (amount, _), (kopf, mark) = felder
         zeilen.append({
             "year": int(m.group(1)), "einwohner": int(ew or 0),
-            "amount": (amount or 0.0) * TAUSEND, "je_einwohner": kopf,
+            "amount": (amount or 0.0) * TAUSEND, "per_capita": kopf,
             "revised": mark == "r", "quelle": "pdf",
         })
     return zeilen
@@ -363,7 +363,7 @@ def parse_csv(csv_text: str) -> list[dict]:
             continue
         zeilen.append({
             "year": int(c[0]), "einwohner": int(c[1]),
-            "amount": float(c[2]) * TAUSEND, "je_einwohner": float(c[3]),
+            "amount": float(c[2]) * TAUSEND, "per_capita": float(c[3]),
             "revised": False, "quelle": "csv",
         })
     return zeilen
@@ -379,7 +379,7 @@ def prokopfprobe(zeile: dict) -> tuple[bool, float | None]:
     beginnt erst 2002, der Jahresabschluss erst 2017, die dreißig Jahre davor
     hängen allein an ihr. Sie ist zugleich die einzige, die eine falsche
     Einheit aufdecken kann."""
-    ew, kopf = zeile.get("einwohner"), zeile.get("je_einwohner")
+    ew, kopf = zeile.get("einwohner"), zeile.get("per_capita")
     if not ew or kopf is None or zeile.get("amount") is None:
         return False, None
     gerechnet = zeile["amount"] / ew

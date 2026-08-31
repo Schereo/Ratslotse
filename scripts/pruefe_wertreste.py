@@ -71,9 +71,22 @@ def quelltext() -> str:
     return _PAAR.sub(" ", "\n".join(teile))
 
 
-def funde(db: Path, code: str) -> list[tuple[str, str, list[tuple[str, int]]]]:
+def _gebaut(wert: str, code: str) -> bool:
+    """Wird der Wert per f-String zusammengesetzt? (``f"hebesatz_{suffix}"``)
+
+    Ohne diese Ausnahme meldet die Prüfung jeden zusammengesetzten Schlüssel
+    als tot — er steht ja nirgends als ganze Zeichenkette im Quelltext.
+    Gesucht wird jedes Präfix bis zu einem Unterstrich, gefolgt von ``{``.
+    """
+    teile = wert.split("_")
+    return any(f'"{"_".join(teile[:i])}_{{' in code for i in range(1, len(teile)))
+
+
+def funde(db: Path, code: str):
+    """``(funde, gebaut)`` — Fehlerliste und die per f-String erzeugten Werte."""
     c = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
-    aus = []
+    aus: list[tuple[str, str, list[tuple[str, int]]]] = []
+    gebaut: list[tuple[str, str, str]] = []
     tabellen = [t for (t,) in c.execute(
         "SELECT name FROM sqlite_master WHERE type='table' "
         "AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts_%'")]
@@ -96,13 +109,18 @@ def funde(db: Path, code: str) -> list[tuple[str, str, list[tuple[str, int]]]]:
             for w in sorted(werte):
                 if f'"{w}"' in code or f"'{w}'" in code:
                     continue
+                if _gebaut(w, code):
+                    # Der Schreiber lebt (f-String), aber kein Leser nennt
+                    # den Wert im Ganzen. Kein Fehler — aber sichtbar.
+                    gebaut.append((tabelle, spalte, w))
+                    continue
                 n = c.execute(f"SELECT count(*) FROM {tabelle} WHERE {spalte} = ?",
                               (w,)).fetchone()[0]
                 stumm.append((w, n))
             if stumm:
                 aus.append((tabelle, spalte, stumm))
     c.close()
-    return aus
+    return aus, gebaut
 
 
 def main() -> int:
@@ -113,8 +131,14 @@ def main() -> int:
         print(f"FEHLT: {args.db}")
         return 2
 
-    gefunden = funde(args.db, quelltext())
+    gefunden, gebaut = funde(args.db, quelltext())
     print(f"{args.db.name}: Schlüsselspalten gegen den Quelltext geprüft.")
+    if gebaut:
+        print("Zusammengesetzt geschrieben, aber von niemandem im Ganzen "
+              "gelesen (kein Fehler — nur nachsehen, ob jemand sie noch "
+              "lesen SOLLTE):")
+        for tabelle, spalte, w in gebaut:
+            print(f"  {tabelle}.{spalte}: {w}")
     if not gefunden:
         print("Jeder gespeicherte Schlüssel kommt im Code vor.")
         return 0

@@ -819,7 +819,7 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
         zeilen=[
             Zeile(2026, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000,
                   explanation="Mehrbedarf laut Schulentwicklungsplan.",
-                  urheber="Verw. I"),
+                  author="Verw. I"),
             Zeile(2027, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000),
         ],
         summen=[
@@ -845,7 +845,7 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     assert b["zeilen"][0]["explanation"] == "Mehrbedarf laut Schulentwicklungsplan."
     # Wer die Position vorschlug, reist mit — die Streit-Seite setzt daran
     # ihre Urheber-Marke und ihren „nur die Summe"-Satz.
-    assert b["zeilen"][0]["urheber"] == "Verw. I"
+    assert b["zeilen"][0]["author"] == "Verw. I"
     assert {s["year"] for s in b["summen"]} == {2026, 2027}
     eigene = {s["label"]: s["eigene"] for s in b["summen"] if s["year"] == 2026}
     assert eigene["Änderungsliste Verw. I"] == 1
@@ -994,7 +994,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert bilanz["einheit"] == "eur"
     # Ein einzelner Bericht kann die Überlappung nicht bieten — die Zahl ist
     # trotzdem gedeckt, nämlich durch die Bilanz im Dokument selbst.
-    assert bilanz["berichte"] == 1
+    assert bilanz["n_reports"] == 1
     h_zahl = b["herkunft"][str(bilanz["herkunft_id"])]
     assert h_zahl["probe"] == "beteiligung_bilanzprobe"
     assert "Abschnitt 2.2.1" in h_zahl["citation"]
@@ -1305,13 +1305,13 @@ def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
                      "raw_text": "Sachverhalt: Förderung.", "n_pages": 2, "status": "ok"})
     cs.save_anlagen(902, [
         {"document_id": 77, "url": "https://x/77", "label": "Antrag der SPD-Fraktion vom 01.02.2026",
-         "is_antrag": 1, "antragsteller": ["SPD"], "raw_text": "Wir beantragen…", "status": "ok"},
+         "is_motion": 1, "applicants": ["SPD"], "raw_text": "Wir beantragen…", "status": "ok"},
         {"document_id": 78, "url": "https://x/78", "label": "Anlage - Standortkarte", "status": "listed"},
     ])
     cs.close()
     data = client.get(f"/api/council/decision/{did}").json()
     assert [a["document_id"] for a in data["anlagen"]] == [77, 78]  # Antrag zuerst
-    assert data["anlagen"][0]["antragsteller"] == ["SPD"]
+    assert data["anlagen"][0]["applicants"] == ["SPD"]
     stats = client.get("/api/council/analysis").json()["antrag_stats"]
     assert {"party": "SPD", "n": 1, "angenommen": 1, "abgelehnt": 0} in stats["parties"]
 
@@ -5821,8 +5821,8 @@ def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client)
     try:
         cs.save_integrierte_schulden({
             "year": 2024, "ars": isch.ARS_OLDENBURG, "population": 176_336.0,
-            "insgesamt": 740_330_163.0, "je_einwohner": 4_198.41,
-            "kernhaushalt": 43_690_972.0, "extra_budgets": 140_916_720.89,
+            "insgesamt": 740_330_163.0, "per_capita": 4_198.41,
+            "core_budget": 43_690_972.0, "extra_budgets": 140_916_720.89,
             "sonstige": 555_722_470.11, "extra_under_50": 2_397_841.89,
             "other_below_50": 431_522_725.5, "insgesamt_change": -13.6,
             "probes": [isch.PROBE_KERNHAUSHALT],
@@ -5853,7 +5853,7 @@ def test_integrierte_schulden_kommen_nur_mit_bestandener_kernprobe():
     """
     from council import integrierte_schulden as isch
 
-    gefunden = {"year": 2024, "kernhaushalt": 43_690_972.0}
+    gefunden = {"year": 2024, "core_budget": 43_690_972.0}
     ok, warum = isch.kernprobe(gefunden, 43_690_971.71)
     assert ok and "0.29" in warum
 

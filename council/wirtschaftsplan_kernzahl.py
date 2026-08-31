@@ -211,13 +211,13 @@ def parse_kernzahl(template_number: str, titel: str, vorlage_text: str,
             f"{template_number}: Betrieb unbekannt — Titel: {titel!r}")
 
     plan = Wirtschaftsplan(
-        betrieb=key, betrieb_name=BETRIEBE[key][1], year=year,
+        enterprise=key, enterprise_name=BETRIEBE[key][1], year=year,
         template_number=template_number,
         # Diese Quelle nennt nur das Ergebnis. NULL heißt „sagt sie nicht" —
         # eine 0 wäre eine Behauptung über Erträge, die nirgends steht.
         revenues=None, expenses=None, steuern=None,
         result=amount,
-        vermoegensplan=None, verpflichtungen=None, entwurf_vom=None,
+        capital_plan=None, commitments=None, draft_date=None,
         # Der zweite Satz über Geld in derselben Vorlage — mit eigener
         # Probe, sonst `None` (s. `investitionen_aus_beschluss`).
         investitionen=investitionen_aus_beschluss(vorlage_text),

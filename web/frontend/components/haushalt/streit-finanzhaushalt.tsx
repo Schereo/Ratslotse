@@ -144,10 +144,10 @@ function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
                     {z.explanation}
                   </span>
                 )}
-                {z.ve != null && z.ve !== 0 && (
+                {z.commitment_authorizations != null && z.commitment_authorizations !== 0 && (
                   <span className="mt-0.5 block text-[10.5px] leading-relaxed text-muted-foreground">
                     Dazu eine Verpflichtungsermächtigung über{" "}
-                    <span className="font-mono tabular-nums">{deltaBetrag(z.ve)}</span> —
+                    <span className="font-mono tabular-nums">{deltaBetrag(z.commitment_authorizations)}</span> —
                     die Erlaubnis, künftige Jahre zu binden. Sie ist kein Geld dieses
                     Jahres und zählt auch im Dokument nicht in den Saldo.
                   </span>

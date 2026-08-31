@@ -93,7 +93,7 @@ def test_ueberschuss_mit_negativem_betrag_wirft():
 def test_zahl_aus_dem_beschluss_steht_in_der_anlage():
     plan, wort, lage = parse_kernzahl(
         "25/0819", TITEL_BBGO, TEXT_BBGO, 2026, [ANLAGE_BBGO])
-    assert plan.betrieb == "bbgo"
+    assert plan.enterprise == "bbgo"
     assert plan.result == -10_128_335.0
     assert lage == "belegt"
 
@@ -231,8 +231,8 @@ def test_die_einheit_darf_auch_EUR_heissen():
 def test_hafen_ist_zweifach_belegt():
     plan, wort, lage = parse_kernzahl("18/0790", TITEL_HAFEN, TEXT_HAFEN, 2019,
                                       [ANLAGE_HAFEN])
-    assert plan.betrieb == "hafen"
-    assert plan.betrieb_name == "Eigenbetrieb Hafen der Stadt Oldenburg"
+    assert plan.enterprise == "hafen"
+    assert plan.enterprise_name == "Eigenbetrieb Hafen der Stadt Oldenburg"
     assert plan.result == -273_950.0
     assert lage == "belegt"
 
@@ -321,10 +321,10 @@ def test_probe_haengt_nur_dran_wo_sie_lief():
 
     def plan(investitionen):
         return Wirtschaftsplan(
-            betrieb="bbo", betrieb_name="Bäderbetrieb der Stadt Oldenburg",
+            enterprise="bbo", enterprise_name="Bäderbetrieb der Stadt Oldenburg",
             year=2026, template_number="25/0818/1", revenues=None, expenses=None,
-            steuern=None, result=0.0, vermoegensplan=None,
-            verpflichtungen=None, entwurf_vom=None, investitionen=investitionen)
+            steuern=None, result=0.0, capital_plan=None,
+            commitments=None, draft_date=None, investitionen=investitionen)
 
     mit = herkunft_fuer(plan(10_752_000.0), "0,00 Euro", "ausgeglichen",
                         url=None, kvonr=1)

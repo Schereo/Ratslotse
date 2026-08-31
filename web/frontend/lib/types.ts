@@ -478,10 +478,10 @@ export interface DecisionDetail {
     /** Regex-Ernte: federführendes Amt aus dem Vorlagen-Kopf. */
     office?: string | null;
     /** Regex-Ernte: Klima-Check der Verwaltung („Auswirkungen: b) Klima"). */
-    klima_check?: string | null;
+    climate_impact?: string | null;
     klima_relevant?: boolean | null;
     /** „Finanzielle Auswirkungen" aus der Vorlage (amtlicher Wortlaut). */
-    finanz_check?: string | null;
+    financial_impact?: string | null;
   } | null;
   /** Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt über
    *  eine echte Verknüpfung, nicht über eine Textsuche.
@@ -506,8 +506,8 @@ export interface DecisionDetail {
     document_id: number;
     label: string | null;
     url: string | null;
-    is_antrag: number;
-    antragsteller: string[];
+    is_motion: number;
+    applicants: string[];
     status: string;
     /** 1 = Planzeichnung gerendert (scripts/render_plaene.py). */
     bild?: number;

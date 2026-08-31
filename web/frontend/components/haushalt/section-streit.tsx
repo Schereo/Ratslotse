@@ -261,7 +261,7 @@ function AntragsZeile({ a }: { a: StreitAntrag }) {
         {a.ist_verwaltung ? (
           <span className="text-[12px] font-semibold text-muted-foreground">Verwaltung</span>
         ) : (
-          <Fraktion label={a.urheber} />
+          <Fraktion label={a.author} />
         )}
         <p className="mt-0.5 max-w-[86ch] text-[12.5px] leading-relaxed text-muted-foreground">
           {a.titel}
@@ -346,10 +346,10 @@ export function StreitAbschnitt({ onBestand }: {
   // KEINEN Parteipunkt — dieselbe Regel wie in <Fraktion> oben.
   const bilanzZeilen: PunkteZeile[] = useMemo(
     () => verhandlungsBilanz(r).map((z) => ({
-      fraktion: z.urheber,
-      farbe: z.urheber.includes("/") || z.urheber === EINZELNE
+      fraktion: z.author,
+      farbe: z.author.includes("/") || z.author === EINZELNE
         ? undefined
-        : parteiDot(z.urheber),
+        : parteiDot(z.author),
       committees: { fa: z.fa, rat: z.rat },
     })),
     [r],

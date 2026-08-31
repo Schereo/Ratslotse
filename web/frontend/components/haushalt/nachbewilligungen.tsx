@@ -169,9 +169,9 @@ export function NachbewilligungsBlock({ daten, year }: {
   const ratsZeile = ratsKanal ? kanalBetrag(ratsKanal) : null;
   // Der Vergleichswert für den Satz über die Entwicklung: das früheste Jahr,
   // für das ein Bericht vorliegt.
-  const berichte = (daten.nachbewilligungen?.jahre ?? [])
+  const n_reports = (daten.nachbewilligungen?.jahre ?? [])
     .slice().sort((a, b) => a.year - b.year);
-  const erstes = berichte[0];
+  const erstes = n_reports[0];
   const zeigtEntwicklung = erstes && bericht && erstes.year !== bericht.year;
 
   return (
@@ -181,8 +181,8 @@ export function NachbewilligungsBlock({ daten, year }: {
           Nachträglich bewilligte Ausgaben · {year}
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {berichte.length
-            ? `${berichte[0].year}–${berichte[berichte.length - 1].year} mit Gesamtsicht`
+          {n_reports.length
+            ? `${n_reports[0].year}–${n_reports[n_reports.length - 1].year} mit Gesamtsicht`
             : "Ratsbeschlüsse seit 2018"}
         </span>
       </div>

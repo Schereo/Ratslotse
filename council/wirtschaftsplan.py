@@ -137,8 +137,8 @@ _ZEILEN = {
     "expenses": r"mit Aufwendungen von\s*" + _BETRAG,
     "steuern":    r"mit steuerlichen Aufwendungen von\s*" + _BETRAG,
     "result":   r"und einem Jahresergebnis von\s*" + _BETRAG,
-    "vermoegensplan": r"Einzahlungen und Auszahlungen von je\s*" + _BETRAG,
-    "verpflichtungen": r"Verpflichtungserm[äa]chtigungen von\s*" + _BETRAG,
+    "capital_plan": r"Einzahlungen und Auszahlungen von je\s*" + _BETRAG,
+    "commitments": r"Verpflichtungserm[äa]chtigungen von\s*" + _BETRAG,
 }
 
 #: „für das Haushaltsjahr 2026" — die Jahresangabe im Beschlusstext.
@@ -187,8 +187,8 @@ class WirtschaftsplanFehler(ValueError):
 class Wirtschaftsplan:
     """Die Eckwerte eines Wirtschaftsplans, wie der Rat sie beschließt."""
 
-    betrieb: str          # Kürzel aus BETRIEBE
-    betrieb_name: str
+    enterprise: str          # Kürzel aus BETRIEBE
+    enterprise_name: str
     year: int             # Haushaltsjahr, nicht das Jahr der Vorlage
     template_number: str
     revenues: float
@@ -196,10 +196,10 @@ class Wirtschaftsplan:
     steuern: float
     result: float
     #: Einzahlungen = Auszahlungen; das Dokument nennt nur eine Zahl.
-    vermoegensplan: float | None
-    verpflichtungen: float | None
+    capital_plan: float | None
+    commitments: float | None
     #: Datum des Verwaltungsentwurfs — der Stand, den diese Zahlen tragen.
-    entwurf_vom: str | None
+    draft_date: str | None
     #: Die Investitionen IM Vermögensplan — ein Posten, nicht die Summe.
     #:
     #: Zwei Betriebe, zwei Sprechweisen: Der EGH nennt im Beschlusstext die
@@ -266,7 +266,7 @@ def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtsc
             werte[feld] = _eur(m.group(1))
 
     # Ohne diese drei ist es kein Eckwert-Block. `steuern` darf fehlen (bis
-    # 2020 gab es die Zeile nicht), `vermoegensplan` und `verpflichtungen`
+    # 2020 gab es die Zeile nicht), `capital_plan` und `commitments`
     # ebenfalls — sie stehen in einem eigenen Absatz, den ein künftiges Layout
     # anders setzen könnte, ohne die Erfolgsplan-Zeilen zu berühren.
     if not {"revenues", "expenses", "result"} <= werte.keys():
@@ -305,12 +305,12 @@ def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtsc
 
     m_entwurf = _ENTWURF.search(flach)
     return Wirtschaftsplan(
-        betrieb=key, betrieb_name=name, year=year, template_number=template_number,
+        enterprise=key, enterprise_name=name, year=year, template_number=template_number,
         revenues=werte["revenues"], expenses=werte["expenses"],
         steuern=steuern, result=werte["result"],
-        vermoegensplan=werte.get("vermoegensplan"),
-        verpflichtungen=werte.get("verpflichtungen"),
-        entwurf_vom=m_entwurf.group(1) if m_entwurf else None,
+        capital_plan=werte.get("capital_plan"),
+        commitments=werte.get("commitments"),
+        draft_date=m_entwurf.group(1) if m_entwurf else None,
     )
 
 
@@ -323,8 +323,8 @@ def ohne_eckwerte(template_number: str, titel: str) -> dict:
     erkannt = betrieb_aus_titel(titel)
     return {
         "template_number": template_number,
-        "betrieb": erkannt[0] if erkannt else None,
-        "betrieb_name": erkannt[1] if erkannt else None,
+        "enterprise": erkannt[0] if erkannt else None,
+        "enterprise_name": erkannt[1] if erkannt else None,
         "titel": titel,
         "grund": "Der Beschlusstext stimmt der anliegenden Fassung zu, ohne die "
                  "Eckwerte zu nennen — die Zahlen stehen in der Anlage.",
@@ -350,7 +350,7 @@ def dokument_name(plan: Wirtschaftsplan) -> str:
     schließt ``label`` ein): Der nächste Einlesevorgang legt neue Zeilen in
     ``council_herkunft`` an und hängt die Daten dort ein. Die alten bleiben
     unreferenziert liegen — sichtbar wird davon nichts."""
-    return f"{plan.betrieb_name}: Wirtschaftsplan {plan.year}"
+    return f"{plan.enterprise_name}: Wirtschaftsplan {plan.year}"
 
 
 def herkunft_fuer(plan: Wirtschaftsplan, url: str | None,
@@ -364,6 +364,6 @@ def herkunft_fuer(plan: Wirtschaftsplan, url: str | None,
         url=url,
         citation="Beschlussvorschlag der Vorlage",
         probe_result=plan.probe_result,
-        stand=(f"Verwaltungsentwurf vom {plan.entwurf_vom}"
-               if plan.entwurf_vom else "Fassung der Einbringung"),
+        stand=(f"Verwaltungsentwurf vom {plan.draft_date}"
+               if plan.draft_date else "Fassung der Einbringung"),
     )

@@ -44,10 +44,10 @@ function eur(v: number): string {
  *  (dieselbe Begründung wie bei der großen Treppe des Steuer-Steckbriefs). */
 function HistorieTreppe({ series, bisJahr }: { series: HebesatzZeile[]; bisJahr: number }) {
   const stufen = series
-    .filter((z) => z.hebesatz != null)
+    .filter((z) => z.rate != null)
     .sort((a, b) => a.year - b.year);
   if (stufen.length < 2) return null;
-  const saetze = stufen.map((z) => z.hebesatz as number);
+  const saetze = stufen.map((z) => z.rate as number);
   const [min, max] = [Math.min(...saetze), Math.max(...saetze)];
   const vonJahr = stufen[0].year;
   const breite = 280, hoehe = 44;
@@ -55,7 +55,7 @@ function HistorieTreppe({ series, bisJahr }: { series: HebesatzZeile[]; bisJahr:
   const y = (satz: number) => 6 + (1 - (satz - min) / Math.max(1, max - min)) * (hoehe - 14);
   let pfad = "";
   stufen.forEach((z, i) => {
-    const px = x(z.year), py = y(z.hebesatz as number);
+    const px = x(z.year), py = y(z.rate as number);
     pfad += i === 0 ? `M${px},${py}` : `H${px} V${py}`;
   });
   pfad += ` H${breite}`;
@@ -64,11 +64,11 @@ function HistorieTreppe({ series, bisJahr }: { series: HebesatzZeile[]; bisJahr:
     <div className="mt-2.5 border-t border-dashed border-border pt-2.5">
       <svg viewBox={`0 0 ${breite} ${hoehe}`} className="block h-11 w-full" aria-hidden>
         <path d={pfad} fill="none" strokeWidth="2" style={{ stroke: "var(--hh-ein-1)" }} />
-        <circle cx={x(letzte.year)} cy={y(letzte.hebesatz as number)} r="3"
+        <circle cx={x(letzte.year)} cy={y(letzte.rate as number)} r="3"
           style={{ fill: "hsl(var(--primary))" }} />
       </svg>
       <p className="mt-1 text-[10.5px] text-muted-foreground">
-        Die eigene Reihe seit {vonJahr}: {letzte.hebesatz}&nbsp;% gelten seit {letzte.year}
+        Die eigene Reihe seit {vonJahr}: {letzte.rate}&nbsp;% gelten seit {letzte.year}
         <Beleg q="hebesaetze" /> — wenige Entscheidungen, lange Gültigkeit.
       </p>
     </div>

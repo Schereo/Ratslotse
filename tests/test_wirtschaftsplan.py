@@ -98,15 +98,15 @@ Der Vermögensplan weist Investitionen in Höhe von 15.902.000 Euro aus.
 def test_liest_die_eckwerte_des_aktuellen_jahrgangs():
     p = parse_wirtschaftsplan("25/0722", TITEL_2026, TEXT_2026)
     assert isinstance(p, Wirtschaftsplan)
-    assert p.betrieb == "egh"
+    assert p.enterprise == "egh"
     assert p.year == 2026, "das Haushaltsjahr, nicht das Jahr der Vorlage (2025)"
     assert p.revenues == 82_815_150.0
     assert p.expenses == 82_824_771.0
     assert p.steuern == 6_000.0
     assert p.result == -15_621.0
-    assert p.vermoegensplan == 51_134_100.0
-    assert p.verpflichtungen == 104_980_000.0
-    assert p.entwurf_vom == "01.10.2025"
+    assert p.capital_plan == 51_134_100.0
+    assert p.commitments == 104_980_000.0
+    assert p.draft_date == "01.10.2025"
 
 
 def test_das_vorzeichen_ueberlebt_den_leerraum():
@@ -154,7 +154,7 @@ def test_ohne_eckwerte_kommt_nichts_zurueck():
 
 def test_die_luecke_wird_benannt():
     lücke = ohne_eckwerte("25/0818", TITEL_BBO)
-    assert lücke["betrieb"] == "bbo"
+    assert lücke["enterprise"] == "bbo"
     assert "Anlage" in lücke["grund"]
 
 
@@ -220,7 +220,7 @@ def test_speichern_und_lesen(tmp_path):
         zeilen = store.get_wirtschaftsplaene("egh")
         assert len(zeilen) == 1
         assert zeilen[0]["result"] == -15_621.0
-        assert zeilen[0]["betrieb_name"].startswith("Eigenbetrieb Gebäudewirtschaft")
+        assert zeilen[0]["enterprise_name"].startswith("Eigenbetrieb Gebäudewirtschaft")
         assert "wirtschaftsplan_erfolgsplan" in zeilen[0]["probes"]
         assert store.wirtschaftsplan_jahre("egh") == [2026]
         assert store.wirtschaftsplan_jahre("bbo") == []

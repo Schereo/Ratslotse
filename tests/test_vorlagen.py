@@ -158,18 +158,18 @@ def test_build_anlage_rows_classifies_antraege():
         {"document_id": 2, "url": "https://x/2", "label": "Antrag der SPD-Fraktion vom 10.03.2026"},
     ])
     plan, antrag = rows[0], rows[1]
-    assert plan["is_antrag"] == 0 and plan["status"] == "listed" and plan["antragsteller"] == []
+    assert plan["is_motion"] == 0 and plan["status"] == "listed" and plan["applicants"] == []
     # Antrag: als solcher erkannt + Antragsteller aus dem Label; der PDF-Download
     # schlägt gegen https://x/2 fehl → status failed, aber die Zeile bleibt nutzbar.
-    assert antrag["is_antrag"] == 1
-    assert antrag["antragsteller"] == ["SPD"]
+    assert antrag["is_motion"] == 1
+    assert antrag["applicants"] == ["SPD"]
     assert antrag["status"] == "failed"
     # skip_document_ids: bekannter Antrag wird nicht erneut geladen (kein Download-Versuch).
     skipped = vorlagen._build_anlage_rows(
         [{"document_id": 2, "url": "https://x/2", "label": "Antrag der SPD-Fraktion"}],
         skip_document_ids=frozenset({2}),
     )[0]
-    assert skipped["is_antrag"] == 0 and skipped["status"] == "listed"
+    assert skipped["is_motion"] == 0 and skipped["status"] == "listed"
 
 
 def test_anlagen_store_and_stats(store):
@@ -180,7 +180,7 @@ def test_anlagen_store_and_stats(store):
     store._conn.commit()
     n = store.save_anlagen(555, [
         {"document_id": 90, "url": "https://x/90", "label": "Antrag der SPD-Fraktion",
-         "is_antrag": 1, "antragsteller": ["SPD"], "raw_text": "Die SPD beantragt…", "n_pages": 2, "status": "ok"},
+         "is_motion": 1, "applicants": ["SPD"], "raw_text": "Die SPD beantragt…", "n_pages": 2, "status": "ok"},
         {"document_id": 91, "url": "https://x/91", "label": "Anlage - Lageplan", "status": "listed"},
     ])
     assert n == 2
@@ -190,7 +190,7 @@ def test_anlagen_store_and_stats(store):
     # Decision-Page-Liste: Antrag zuerst, Antragsteller geparst
     anlagen = store.anlagen_for_vorlage_nr("26/0330")
     assert [a["document_id"] for a in anlagen] == [90, 91]
-    assert anlagen[0]["antragsteller"] == ["SPD"]
+    assert anlagen[0]["applicants"] == ["SPD"]
     # Erfolgsquote: 1 SPD-Antrag, Vorlage im Rat angenommen
     stats = store.antrag_stats()
     assert stats["n_antraege"] == 1 and stats["n_mit_beschluss"] == 1
@@ -207,7 +207,7 @@ def test_antrag_stats_prefers_rat_decision(store):
     store._conn.commit()
     store.save_vorlage({"kvonr": 700, "template_number": "26/0500", "status": "ok"})
     store.save_anlagen(700, [{"document_id": 95, "url": "u", "label": "Antrag der CDU-Fraktion",
-                              "is_antrag": 1, "antragsteller": ["CDU"], "status": "ok"}])
+                              "is_motion": 1, "applicants": ["CDU"], "status": "ok"}])
     stats = store.antrag_stats()
     assert stats["parties"] == [{"party": "CDU", "n": 1, "angenommen": 1, "abgelehnt": 0}]
 
@@ -219,7 +219,7 @@ def test_fts_includes_antrag_text(store):
     store._conn.commit()
     store.save_vorlage({"kvonr": 555, "template_number": "26/0330", "status": "ok", "raw_text": "Sachverhalt."})
     store.save_anlagen(555, [{"document_id": 90, "url": "u", "label": "Antrag der SPD-Fraktion",
-                              "is_antrag": 1, "antragsteller": ["SPD"], "status": "ok",
+                              "is_motion": 1, "applicants": ["SPD"], "status": "ok",
                               "raw_text": "Wir beantragen Lastenradstellplätze am Bahnhof."}])
     store.rebuild_fts()
     # "Lastenradstellplätze" steht NUR im Antrags-PDF — der Treffer beweist den Join.

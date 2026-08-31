@@ -62,11 +62,11 @@ def test_kontext_nimmt_vorlage_und_anlagen():
     Vorlagentext UND Anlagen — nicht nur den Titel wie die Kurzfassung."""
     punkt = {"committee": "Rat", "session_date": "2026-08-31",
              "title": "Bebauungsplan 837", "art": "Beschlussvorlage",
-             "office": "Stadtplanung", "beschlussvorschlag": "Der Rat beschließt …",
-             "finanz_check": "Kosten: 1,2 Mio Euro", "klima_check": None,
+             "office": "Stadtplanung", "proposed_decision": "Der Rat beschließt …",
+             "financial_impact": "Kosten: 1,2 Mio Euro", "climate_impact": None,
              "raw_text": "Briefkopf. Sachverhalt: 8,6 Hektar, davon 3,9 im "
                          "Landschaftsschutzgebiet."}
-    anlagen = [{"label": "Antrag der SPD", "is_antrag": 1, "antragsteller": "SPD-Fraktion",
+    anlagen = [{"label": "Antrag der SPD", "is_motion": 1, "applicants": "SPD-Fraktion",
                 "raw_text": "Wir beantragen 110 Wohneinheiten."}]
     ktx, quelle = social_text.kontext(punkt, anlagen)
 
@@ -98,9 +98,9 @@ def test_grosse_anlagen_verdraengen_die_argumente_nicht():
     punkt = {"committee": "Rat", "session_date": "2026-08-31", "title": "Innenentwicklung",
              "raw_text": "Sachverhalt: kurz."}
     # Reihenfolge wie aus ``anlagen_fuer``: Anträge zuerst.
-    anlagen = [{"label": "Antrag", "is_antrag": 1, "antragsteller": "CDU",
+    anlagen = [{"label": "Antrag", "is_motion": 1, "applicants": "CDU",
                 "raw_text": "Kernforderung: mehr Innenentwicklung."},
-               {"label": "Materialband", "is_antrag": 0, "antragsteller": None,
+               {"label": "Materialband", "is_motion": 0, "applicants": None,
                 "raw_text": "Planwerk " * 100_000}]
     ktx, _ = social_text.kontext(punkt, anlagen)
 

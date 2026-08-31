@@ -98,7 +98,7 @@ class Haushaltssatzung:
     in_operating: float
     out_operating: float
     in_capital: float
-    aus_invest: float
+    out_capital: float
     in_financing: float
     out_financing: float
     #: Die „Nachrichtlich"-Zeilen — nachgerechnet, nicht übernommen.
@@ -116,9 +116,9 @@ class Haushaltssatzung:
     #: § 5. Ab 2026 nennt die Satzung nur noch die Gewerbesteuer und verweist
     #: für die Grundsteuer auf eine eigene Satzung — die beiden Felder sind
     #: dann leer, und das ist die Auskunft, keine Lücke im Einlesen.
-    hebesatz_grundsteuer_a: int | None
-    hebesatz_grundsteuer_b: int | None
-    hebesatz_gewerbesteuer: int | None
+    property_tax_a_rate: int | None
+    property_tax_b_rate: int | None
+    trade_tax_rate: int | None
 
     #: Das im Text genannte Sitzungsdatum, ``None`` bei „xx.xx.20xx".
     session_date: str | None
@@ -143,7 +143,7 @@ _FINANZ = {
     "in_operating": r"2\.1 der Einzahlungen aus laufender Verwaltungst[äa]tigkeit\s*",
     "out_operating": r"2\.2 der Auszahlungen aus laufender Verwaltungst[äa]tigkeit\s*",
     "in_capital": r"2\.3 der Einzahlungen f[üu]r Investitionst[äa]tigkeit\s*",
-    "aus_invest": r"2\.4 der Auszahlungen f[üu]r Investitionst[äa]tigkeit\s*",
+    "out_capital": r"2\.4 der Auszahlungen f[üu]r Investitionst[äa]tigkeit\s*",
     "in_financing": r"2\.5 der Einzahlungen f[üu]r Finanzierungst[äa]tigkeit\s*",
     "out_financing": r"2\.6 der Auszahlungen f[üu]r Finanzierungst[äa]tigkeit\s*",
 }
@@ -213,7 +213,7 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
     in_total, out_total = _eur(ne.group(1)), _eur(na.group(1))
 
     total_in = werte["in_operating"] + werte["in_capital"] + werte["in_financing"]
-    total_out = werte["out_operating"] + werte["aus_invest"] + werte["out_financing"]
+    total_out = werte["out_operating"] + werte["out_capital"] + werte["out_financing"]
     for name, gerechnet, gedruckt in (("Einzahlungen", total_in, in_total),
                                       ("Auszahlungen", total_out, out_total)):
         if abs(gerechnet - gedruckt) > TOLERANZ_EUR:
@@ -232,7 +232,7 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
     if _LIQUI.search(t) and (m := _LIQUI_BETRAG.search(t)):
         liqui = _eur(m.group(1))
 
-    ve = _VE.search(t)
+    commitment_authorizations = _VE.search(t)
 
     return Haushaltssatzung(
         year=int(year.group(1)), supplement=0,
@@ -243,11 +243,11 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
         **werte,
         in_total=in_total, out_total=out_total,
         investment_loans=kredite,
-        commitment_authorizations=_eur(ve.group(1)) if ve else None,
+        commitment_authorizations=_eur(commitment_authorizations.group(1)) if commitment_authorizations else None,
         liquidity_loans=liqui,
-        hebesatz_grundsteuer_a=_zahl(_GRUNDSTEUER_A, t),
-        hebesatz_grundsteuer_b=_zahl(_GRUNDSTEUER_B, t),
-        hebesatz_gewerbesteuer=_zahl(_GEWERBESTEUER, t),
+        property_tax_a_rate=_zahl(_GRUNDSTEUER_A, t),
+        property_tax_b_rate=_zahl(_GRUNDSTEUER_B, t),
+        trade_tax_rate=_zahl(_GEWERBESTEUER, t),
         session_date=(m.group(1) if (m := _SITZUNG.search(t)) else None),
         template_number=template_number,
     )

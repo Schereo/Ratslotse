@@ -144,7 +144,7 @@ SPALTEN: tuple[tuple[str, str], ...] = (
     ("municipal_enterprises", "Schulden der Eigenbetriebe einschließlich Kliniken "
                       "und innere Darlehen"),
     ("insgesamt", "Schulden insgesamt"),
-    ("je_einwohner", "Schulden je Einwohner*in"),
+    ("per_capita", "Schulden je Einwohner*in"),
 )
 
 #: Die vier Schuldenarten, die sich zur Summe addieren müssen.
@@ -214,7 +214,7 @@ def parse(text: str) -> list[dict]:
         zeile: dict = {"year": int(m.group(1)), "unlesbar": None}
         for (feld, _), (wert, mark) in zip(SPALTEN, felder):
             # Der Pro-Kopf-Betrag steht schon in Euro, die Schuldenarten nicht.
-            zeile[feld] = wert if feld == "je_einwohner" else wert * TAUSEND
+            zeile[feld] = wert if feld == "per_capita" else wert * TAUSEND
             if mark == "r":
                 zeile["revised"] = True
         zeile.setdefault("revised", False)
@@ -246,7 +246,7 @@ def prokopfprobe(zeile: dict, einwohner: int | None) -> tuple[bool | None, float
     ist vor 2010 der Normalfall und kein Mangel dieser Zeile. Toleranz ist eine
     ganze Einheit: Die Quelle rundet den Pro-Kopf-Betrag auf volle Euro, und
     schon deshalb ist der letzte Euro nicht zu halten."""
-    ausgewiesen = zeile.get("je_einwohner")
+    ausgewiesen = zeile.get("per_capita")
     if not einwohner or ausgewiesen is None or zeile.get("insgesamt") is None:
         return None, None
     gerechnet = zeile["insgesamt"] / einwohner
@@ -300,7 +300,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
             if k_ok is False:
                 grund += (f"; Pro-Kopf-Probe ebenfalls "
                           f"({gerechnet:,.2f} € gerechnet gegen "
-                          f"{zeile['je_einwohner']:,.0f} € ausgewiesen)")
+                          f"{zeile['per_capita']:,.0f} € ausgewiesen)")
             else:
                 grund += "; keine Einwohnerzahl für die Gegenprobe"
             verworfen.append({"year": zeile["year"], "grund": grund})

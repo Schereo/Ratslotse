@@ -1453,7 +1453,7 @@ export interface paths {
          *     - ``ansatz_jahre``: die Jahre mit einem Haushaltsansatz — die Liste, aus
          *       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
          *     - ``wirtschaftsplaene``: die Wirtschaftspläne der Eigenbetriebe und
-         *       städtischen Gesellschaften, je ``betrieb`` und ``year``. **Nicht mit dem
+         *       städtischen Gesellschaften, je ``enterprise`` und ``year``. **Nicht mit dem
          *       Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
          *       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
          *       Aufwand des Kernhaushalts; herausgerechnet wird das erst im
@@ -1551,7 +1551,7 @@ export interface paths {
          *       (``year == budget_year``). Dieselbe Maßnahme steht im Dokument je
          *       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
          *       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
-         *       Summen. ``urheber`` trägt, WER die Position vorschlug — gefüllt nur
+         *       Summen. ``author`` trägt, WER die Position vorschlug — gefüllt nur
          *       beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte
          *       „Vorschlag von“ führt; sonst ``null``.
          *     - ``summen``: die Zusammenstellungen ALLER Planjahre, inklusive der
@@ -1610,7 +1610,7 @@ export interface paths {
          *       ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr
          *       Rohtext steht weiter in ``texte``,
          *     - ``kennzahlen``: die Zeitreihe je Gesellschaft (Jahresergebnis,
-         *       Bilanzsumme, Eigenkapitalquote). ``berichte`` sagt, wie viele Berichte
+         *       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
          *       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
          *       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
          *     - ``konzernvergleich``: für die Gesellschaften, die auch im
@@ -2058,7 +2058,7 @@ export interface paths {
          *     kommt aus ``council/schulden.py`` und nicht aus dem Frontend, damit beide
          *     Seiten dieselbe Auskunft geben.
          *
-         *     ``je_einwohner`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
+         *     ``per_capita`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
          *     kommt so aus der Tabelle; dass sie zur Einwohnerzahl aus dem Open-Data-
          *     Datensatz passt, ist die Probe, die den Wert überhaupt hereingelassen hat
          *     (``herkunft[…].probes``).
@@ -5029,12 +5029,12 @@ export interface components {
         QaFeedbackBody: {
             /** Antwort Auszug */
             antwort_auszug?: string | null;
-            /** Bewertung */
-            bewertung: string;
             /** Frage */
             frage: string;
             /** Grund */
             grund?: string | null;
+            /** Rating */
+            rating: string;
         };
         /** QaShareAnlage */
         QaShareAnlage: {
@@ -10741,4 +10741,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 9ad27b51fbb3d1f1794d5e5ea5931e2a397a14ebf6d8bba89210d20e6185ea60
+// vertrag-sha256: 6701e03c0086cab33ca5aeb15942a2414076109811556bc293d7e52385eb98ae

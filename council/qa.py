@@ -1152,9 +1152,9 @@ def _build_context(candidates: list[dict]) -> str:
         body = (c.get("summary") or c.get("official_text") or "").strip()[:450]
         vorlage = (c.get("vorlage_excerpt") or "").strip()
         suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
-        antragsteller = _factions_of(c)
-        if antragsteller:
-            suffix += f" — Antrag von: {', '.join(antragsteller)}"
+        applicants = _factions_of(c)
+        if applicants:
+            suffix += f" — Antrag von: {', '.join(applicants)}"
         strittig = (c.get("no_votes") or 0) > 0 or (c.get("abstentions") or 0) > 0 \
             or c.get("vote") == "mehrheitlich" or c.get("outcome") == "abgelehnt"
         raw_result = (c.get("raw_result") or "").strip()
@@ -1183,8 +1183,8 @@ def _build_context(candidates: list[dict]) -> str:
                     suffix += f"; Fundstelle: {evidence[:220]}"
         # Klima-Check nur bei „prüfungsrelevant: Ja" — die Nein-Floskeln würden
         # den Kontext füllen, ohne einer Antwort je zu helfen (Regex-Ernte).
-        if ernte.klima_relevant(c.get("klima_check")):
-            suffix += f" — Klima-Check der Verwaltung: {c['klima_check'][:200]}"
+        if ernte.klima_relevant(c.get("climate_impact")):
+            suffix += f" — Klima-Check der Verwaltung: {c['climate_impact'][:200]}"
         if c.get("deviation") == "stark":
             suffix += " — Der Rat wich deutlich vom Beschlussvorschlag der Verwaltung ab"
         impact = c.get("impact")
@@ -1640,8 +1640,8 @@ def _steuerkraft_block(k: dict | None) -> str:
     return (
         "\nFINANZAUSGLEICH (Hintergrund, nur nutzen, wenn nach Hebesätzen oder\n"
         "höheren Einnahmen gefragt wird; NIE mit [id]):\n"
-        f"- Steuerkraftmesszahl {k['year']}: {_eur(k['messzahl'])} "
-        f"(davor {k['year_before']}: {_eur(k['messzahl_davor'])})\n"
+        f"- Steuerkraftmesszahl {k['year']}: {_eur(k['tax_index'])} "
+        f"(davor {k['year_before']}: {_eur(k['tax_index_before'])})\n"
         f"- Schlüsselzuweisungen des Landes {k['year']}: {_eur(k['allocations'])} "
         f"(davor {k['year_before']}: {_eur(k['zuweisungen_davor'])})\n"
         "- REGEL: Steigt die eigene Steuerkraft, sinken die Schlüsselzuweisungen des\n"
@@ -2168,12 +2168,12 @@ def _gebuehren_block(g: dict | None) -> str:
     for gruppe in g["bereiche"]:
         for r in gruppe.get("werte") or []:
             s = (f"- {r['area_name']} {r['year']}: Kostenkalkulation "
-                 f"{_eur(r.get('kostenkalkulation'))}, Abzüge "
+                 f"{_eur(r.get('cost_calculation'))}, Abzüge "
                  f"{_eur(r.get('deductions'))}, durch Gebühren zu decken "
                  f"{_eur(r.get('costs_to_cover'))}")
-            if r.get("gebuehr") is not None:
+            if r.get("fee") is not None:
                 einheit = f" je {r['reference_unit']}" if r.get("reference_unit") else ""
-                s += f"; errechnete Gebühr {geld(r['gebuehr'], 3)}{einheit}"
+                s += f"; errechnete Gebühr {geld(r['fee'], 3)}{einheit}"
             else:
                 s += ("; keine einzelne Gebühr ausgewiesen (Grundgebühr und "
                       "volumenabhängige Gebühr werden getrennt berechnet)")
@@ -2395,10 +2395,10 @@ def _nachbewilligungen_block(n: dict | None) -> str:
         if summe:
             anteil = f" — {summe / n['gesamt'] * 100:.0f} %" if n["gesamt"] else ""
             zeilen.append(f"  - {namen.get(channel, channel)}: {_eur(summe)}{anteil}")
-    if n.get("verpflichtungen"):
+    if n.get("commitments"):
         zeilen.append(f"- Verpflichtungsermächtigungen (binden KÜNFTIGE Jahre, "
                       f"gehören in KEINE Summe mit den Beträgen darüber): "
-                      f"{_eur(n['verpflichtungen'])}")
+                      f"{_eur(n['commitments'])}")
     if n.get("probe_text"):
         zeilen.append(f"- Einschränkung der Quelle: {n['probe_text']}")
     return (f"\nNACHBEWILLIGUNGEN {n['year']} (§ 117 NKomVG, Rechenschaftsbericht "
@@ -2466,8 +2466,8 @@ def _schulden_block(s: dict | None) -> str:
     if not s or s.get("insgesamt") is None:
         return ""
     kopf = f"- Schuldenstand am Jahresende {s['year']}: {_eur(s['insgesamt'])}"
-    if s.get("je_einwohner"):
-        kopf += f" — das sind {_eur(s['je_einwohner'])} je Einwohner*in"
+    if s.get("per_capita"):
+        kopf += f" — das sind {_eur(s['per_capita'])} je Einwohner*in"
     if s.get("revised"):
         kopf += " (von der Quelle als revidierter Wert gekennzeichnet)"
     zeilen = [kopf]
@@ -2634,7 +2634,7 @@ def _antraege_block(a: dict | None) -> str:
             kopf += (f", davon {st['verwaltung']} der Verwaltung (Fortschreibung des "
                      "eigenen Entwurfs, kein Fraktionsantrag)")
         zeilen.append(kopf)
-        for u in st.get("urheber") or []:
+        for u in st.get("author") or []:
             zeilen.append(f"  - {u['name']}: {u['count']} — davon {u['angenommen']} "
                           f"angenommen, {u['abgelehnt']} abgelehnt")
         b = st.get("official_text") or {}

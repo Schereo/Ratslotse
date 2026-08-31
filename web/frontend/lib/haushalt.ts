@@ -285,7 +285,7 @@ export type HaushaltDaten = {
   jahre: Record<string, HaushaltZeile[]>;
   steuern: { year: number; art: string; amount: number | null }[];
   steuerkraft: {
-    year: number; messzahl: number | null; tax_capacity_per_capita: number | null;
+    year: number; tax_index: number | null; tax_capacity_per_capita: number | null;
     allocations: number | null; allocations_per_capita: number | null;
   }[];
   /** Die drei Komponenten der Landeszuweisung je Ausgleichsjahr, in **Tausend
@@ -470,7 +470,7 @@ export type Nachbewilligung = {
   amount: number | null;
   /** Aus welcher Stufe der Betrag stammt: dem Titel oder dem
    *  Beschlussvorschlag der Vorlage. */
-  amount_source: "titel" | "beschlussvorschlag" | null;
+  amount_source: "titel" | "proposed_decision" | null;
   beschlossen: 0 | 1;
   /** Hat das **Plenum** selbst abgestimmt? Die wörtliche Auskunft — taugt als
    *  Zeilenhinweis („im Fachausschuss beschlossen"), aber **nie** als Basis
@@ -482,7 +482,7 @@ export type Nachbewilligung = {
    *  was der Ausschuss für Finanzen und Beteiligungen **abschließend**
    *  entscheidet. 2024 sind das 8 von 21 Fällen — wer stattdessen `in_plenary`
    *  summiert, zeigt 30,9 statt 43,1 Mio. € und damit 28 % zu wenig. */
-  ratsentscheidung: 0 | 1;
+  council_decision: 0 | 1;
   /** Ziel für den Link auf die vorhandene Beschluss-Seite. */
   decision_id: number | null;
   committees: string[];
@@ -627,14 +627,14 @@ export type GewerbesteuerstatistikZeile = {
   year: number;
   stadt: string;
   /** Betriebe und Betriebsstätten, für die hier Gewerbesteuer erhoben wird. */
-  faelle: number;
+  cases: number;
   /** Davon die, die einen positiven Steuermessbetrag haben — also zahlen. */
   cases_positive: number;
   /** Summe der Steuermessbeträge in Euro. `null` heißt **gesperrt**
    *  (Geheimhaltung), nicht „null Euro". */
   tax_base_eur: number | null;
   /** Betriebe, die nur hier eine Betriebsstätte haben. */
-  festsetzungen: number | null;
+  assessments: number | null;
   assessments_positive: number | null;
   assessment_tax_base_eur: number | null;
   /** Betriebsstätten, deren Messbetrag nach Arbeitslöhnen auf mehrere
@@ -643,7 +643,7 @@ export type GewerbesteuerstatistikZeile = {
   apportionments_positive: number | null;
   apportioned_assessment_eur: number | null;
   /** Der Hebesatz, den das Landesamt nachrichtlich beilegt (Prozentpunkte). */
-  hebesatz: number | null;
+  rate: number | null;
   /** Ob für diese Stadt ein Betrag der Geheimhaltung unterliegt. */
   gesperrt: number;
 };
@@ -653,7 +653,7 @@ export type HebesatzZeile = {
   /** „Grundsteuer A" · „Grundsteuer B" · „Gewerbesteuer". */
   art: string;
   /** Prozentpunkte. */
-  hebesatz: number;
+  rate: number;
   /** Der Satz, der bis zu diesem Jahr galt — `null` in der ersten Zeile. */
   prior_rate: number | null;
 };
@@ -995,7 +995,7 @@ export function flussbild(
  *  Zahl das Jahresergebnis. Eine 0 an diesen Stellen wäre eine Behauptung. */
 /** Ein Bereich einer Gebührenbedarfsberechnung.
  *
- *  ACHTUNG BEI DER ANZEIGE: `gebuehr` und `reference_quantity` sind bei der
+ *  ACHTUNG BEI DER ANZEIGE: `fee` und `reference_quantity` sind bei der
  *  **Abfallsammlung** `null`, und das ist die Auskunft und keine Lücke: Sie
  *  erhebt eine Grundgebühr UND eine Gebühr je Liter Behältervolumen, es gibt
  *  dort also keine einzelne Division. Eine 0 wäre eine Behauptung. */
@@ -1005,7 +1005,7 @@ export type GebuehrenZeile = {
   area: string;
   area_name: string;
   /** Was der Bereich im Jahr insgesamt kostet. */
-  kostenkalkulation: number;
+  cost_calculation: number;
   /** Alles, was davon abgeht — negativ. */
   deductions: number;
   /** Was die Gebührenzahler tragen. */
@@ -1013,7 +1013,7 @@ export type GebuehrenZeile = {
   reference_quantity: number | null;
   reference_unit: string | null;
   /** Die errechnete Gebühr, drei Nachkommastellen. */
-  gebuehr: number | null;
+  fee: number | null;
   /** Der gerundete Vorschlag an den Rat — das, was erhoben wird. */
   fee_proposed: number | null;
   template_number: string | null;
@@ -1022,7 +1022,7 @@ export type GebuehrenZeile = {
 };
 
 /** Ein ausdrücklich benannter Tarif aus Anlage 4 der
- * Gebührenbedarfsberechnung. Anders als `GebuehrenZeile.gebuehr` ist das
+ * Gebührenbedarfsberechnung. Anders als `GebuehrenZeile.fee` ist das
  * keine aus einer Gesamtkalkulation abgeleitete Durchschnittsgröße, sondern
  * der konkrete Verwaltungsvorschlag für Grundgebühr, Litergebühr, Karte oder
  * Anlieferung. */
@@ -1062,7 +1062,7 @@ export type HaushaltssatzungZeile = {
   in_operating: number;
   out_operating: number;
   in_capital: number;
-  aus_invest: number;
+  out_capital: number;
   in_financing: number;
   out_financing: number;
   /** Die „Nachrichtlich"-Zeilen der Satzung — nachgerechnet, nicht übernommen. */
@@ -1080,9 +1080,9 @@ export type HaushaltssatzungZeile = {
   /** § 5. Ab dem Jahrgang 2025 nennt die Satzung nur noch die Gewerbesteuer
    *  und verweist für die Grundsteuer auf eine eigene Satzung — dann sind
    *  diese beiden Felder leer, und das ist die Auskunft. */
-  hebesatz_grundsteuer_a: number | null;
-  hebesatz_grundsteuer_b: number | null;
-  hebesatz_gewerbesteuer: number | null;
+  property_tax_a_rate: number | null;
+  property_tax_b_rate: number | null;
+  trade_tax_rate: number | null;
 
   /** Das im Text genannte Sitzungsdatum, `null` bei „xx.xx.JJJJ". */
   session_date: string | null;
@@ -1093,8 +1093,8 @@ export type HaushaltssatzungZeile = {
 
 export type WirtschaftsplanZeile = {
   /** Kürzel: `egh`, `awb`, `bbo`, `bbgo`, `stadion`, `stadion_planung`. */
-  betrieb: string;
-  betrieb_name: string;
+  enterprise: string;
+  enterprise_name: string;
   year: number;
   template_number: string;
   revenues: number | null;
@@ -1102,18 +1102,18 @@ export type WirtschaftsplanZeile = {
   steuern: number | null;
   /** Als einziges immer da. */
   result: number;
-  vermoegensplan: number | null;
+  capital_plan: number | null;
   /** Die Investitionen IM Vermögensplan — ein Posten, nicht die Summe.
    *
-   *  Nicht mit `vermoegensplan` verwechseln: Der ist die Gesamtsumme
+   *  Nicht mit `capital_plan` verwechseln: Der ist die Gesamtsumme
    *  (Einzahlungen = Auszahlungen), diese Zahl ein Posten darin. Der
    *  Bäderbetrieb nennt im Beschlusstext nur den Posten, der Eigenbetrieb
    *  Gebäudewirtschaft nur die Summe — beide dürfen nicht dieselbe Zeile
    *  bekommen. */
   investitionen: number | null;
-  verpflichtungen: number | null;
+  commitments: number | null;
   /** Stand des Verwaltungsentwurfs, wo das Dokument ihn nennt. */
-  entwurf_vom: string | null;
+  draft_date: string | null;
   /** Komma-getrennt, welche Rechenproben für diese Zeile gelaufen sind. */
   probes: string;
   herkunft_id: number | null;
@@ -1332,8 +1332,8 @@ export function ausgabenKonflikte(daten: HaushaltAuswahl<"ausgabenreihe">): Ausg
 export type NachbewilligungsSumme = {
   year: number;
   summe: number;
-  faelle: number;
-  verpflichtungen: number;
+  cases: number;
+  commitments: number;
   verpflichtungenBetrag: number;
   sammelberichte: number;
 };
@@ -1345,7 +1345,7 @@ export function nachbewilligungsJahre(
   const hol = (year: number) => {
     let e = jahre.get(year);
     if (!e) {
-      e = { year, summe: 0, faelle: 0, verpflichtungen: 0,
+      e = { year, summe: 0, cases: 0, commitments: 0,
             verpflichtungenBetrag: 0, sammelberichte: 0 };
       jahre.set(year, e);
     }
@@ -1358,12 +1358,12 @@ export function nachbewilligungsJahre(
     } else if (n.art === "verpflichtungsermaechtigung") {
       if (!n.beschlossen) continue;
       const e = hol(n.year);
-      e.verpflichtungen += 1;
+      e.commitments += 1;
       e.verpflichtungenBetrag += n.amount ?? 0;
     } else if (n.beschlossen && n.amount != null) {
       const e = hol(n.year);
       e.summe += n.amount;
-      e.faelle += 1;
+      e.cases += 1;
     }
   }
   return [...jahre.values()].sort((a, b) => a.year - b.year);

@@ -464,7 +464,7 @@ class Antrag:
     titel: str
     outcome: str | None
     vote: str | None
-    urheber: str | None       # gruppen-bewusstes Label, None bei Verwaltung
+    author: str | None       # gruppen-bewusstes Label, None bei Verwaltung
     ist_verwaltung: bool
     top: str | None
     ksinr: int
@@ -474,7 +474,7 @@ class Antrag:
             "titel": self.titel,
             "outcome": self.outcome,
             "vote": self.vote,
-            "urheber": self.urheber,
+            "author": self.author,
             "ist_verwaltung": self.ist_verwaltung,
             "top": self.top,
             "ksinr": self.ksinr,
@@ -500,7 +500,7 @@ _URHEBER_MUSTER: list[tuple[re.Pattern, str]] = [
 ]
 
 
-def urheber(titel: str) -> list[str]:
+def author(titel: str) -> list[str]:
     """Alle Fraktionen/Gruppen, die eine Änderungsliste tragen — in der
     Reihenfolge, in der das Protokoll sie nennt.
 
@@ -531,12 +531,12 @@ def antrag_aus_zeile(zeile: dict) -> Antrag | None:
     if not titel or _SAMMELABSTIMMUNG.match(titel):
         return None
     ist_verw = bool(_VERWALTUNGSLISTE.search(titel))
-    entity = [] if ist_verw else urheber(titel)
+    entity = [] if ist_verw else author(titel)
     return Antrag(
         titel=titel,
         outcome=zeile.get("outcome"),
         vote=zeile.get("vote"),
-        urheber=" / ".join(entity) if entity else None,
+        author=" / ".join(entity) if entity else None,
         ist_verwaltung=ist_verw,
         top=zeile.get("item_number"),
         ksinr=zeile.get("ksinr"),

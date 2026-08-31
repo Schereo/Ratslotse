@@ -162,24 +162,24 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h3 className="font-display text-[15px] font-bold leading-tight">
-          {letzte.betrieb_name}
+          {letzte.enterprise_name}
         </h3>
         <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
           Plan {letzte.year}
         </span>
       </div>
-      {WAS_SIE_TUN[letzte.betrieb] && (
+      {WAS_SIE_TUN[letzte.enterprise] && (
         <p className="mt-1 max-w-[62ch] text-[12.5px] leading-relaxed text-foreground/80">
-          {WAS_SIE_TUN[letzte.betrieb]}
+          {WAS_SIE_TUN[letzte.enterprise]}
         </p>
       )}
       {/* Nur zeigen, wenn die Reihe wirklich vor dem jüngsten Jahrgang des
           Bereichs endet — sonst stünde der Satz eines Tages an einer Karte,
           die längst weiterläuft. */}
-      {ENDE[letzte.betrieb] && letzte.year < juengstesJahr && (
+      {ENDE[letzte.enterprise] && letzte.year < juengstesJahr && (
         <p className="mt-1.5 max-w-[62ch] border-l-2 border-border pl-2.5
                       text-[12px] leading-relaxed text-muted-foreground">
-          {ENDE[letzte.betrieb]}
+          {ENDE[letzte.enterprise]}
         </p>
       )}
 
@@ -226,11 +226,11 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
         </p>
       )}
 
-      {(letzte.vermoegensplan != null || letzte.investitionen != null) && (
+      {(letzte.capital_plan != null || letzte.investitionen != null) && (
         <p className="mt-2 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
-          {letzte.vermoegensplan != null ? (
+          {letzte.capital_plan != null ? (
             <>Dazu ein Vermögensplan über{" "}
-              {deMio(letzte.vermoegensplan / 1e6)}&#8239;Mio.&nbsp;€</>
+              {deMio(letzte.capital_plan / 1e6)}&#8239;Mio.&nbsp;€</>
           ) : (
             // NICHT „Vermögensplan über X": Der Beschlusstext nennt hier nur
             // die Investitionen, und die sind ein Posten des Vermögensplans,
@@ -239,9 +239,9 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
             <>Im Vermögensplan stehen Investitionen über{" "}
               {deMio(letzte.investitionen! / 1e6)}&#8239;Mio.&nbsp;€</>
           )}
-          {letzte.verpflichtungen != null && (
+          {letzte.commitments != null && (
             <> und Verpflichtungsermächtigungen über{" "}
-              {deMio(letzte.verpflichtungen / 1e6)}&#8239;Mio.&nbsp;€, die künftige
+              {deMio(letzte.commitments / 1e6)}&#8239;Mio.&nbsp;€, die künftige
               Jahre binden</>
           )}.
         </p>
@@ -252,7 +252,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
           <span className="font-semibold text-foreground">Beleg: {b.kurz}.</span>{" "}
           {b.lang}
           <Beleg q="wirtschaftsplan" h={herkunftFuer(letzte.herkunft_id)} />
-          {letzte.entwurf_vom && ` · Stand des Verwaltungsentwurfs: ${letzte.entwurf_vom}`}
+          {letzte.draft_date && ` · Stand des Verwaltungsentwurfs: ${letzte.draft_date}`}
         </p>
         {/* Bis zum 21.08.2026 stand hier „Vorlage 25/0722" als toter Text —
             die Nummer des Papiers, aus dem die Zahl stammt, ohne Weg dorthin.
@@ -268,7 +268,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
             einheit="Mio. €"
             nachkomma={2}
             titel="Jahresergebnis im Plan"
-            ariaTitel={`Geplantes Jahresergebnis ${letzte.betrieb_name}, `
+            ariaTitel={`Geplantes Jahresergebnis ${letzte.enterprise_name}, `
               + `${nach[0].year} bis ${letzte.year}, in Millionen Euro`}
           />
         </div>
@@ -291,9 +291,9 @@ export function BetriebeAbschnitt({ data, loading }: {
     const zeilen = data?.wirtschaftsplaene ?? [];
     const gruppen = new Map<string, WirtschaftsplanZeile[]>();
     for (const z of zeilen) {
-      const liste = gruppen.get(z.betrieb) ?? [];
+      const liste = gruppen.get(z.enterprise) ?? [];
       liste.push(z);
-      gruppen.set(z.betrieb, liste);
+      gruppen.set(z.enterprise, liste);
     }
     // Nach der Größe des jüngsten Ergebnisses sortiert — der Betrag, um den es
     // geht, nicht das Alphabet. Absteigend nach Betrag heißt: der größte
@@ -361,7 +361,7 @@ export function BetriebeAbschnitt({ data, loading }: {
 
         <div className="grid gap-4 lg:grid-cols-2">
           {nachBetrieb.map((zeilen) => (
-            <BetriebsKarte key={zeilen[0].betrieb} zeilen={zeilen}
+            <BetriebsKarte key={zeilen[0].enterprise} zeilen={zeilen}
               juengstesJahr={juengstes}
               herkunftFuer={(id) => herkunftVon(data, id)} />
           ))}

@@ -138,10 +138,10 @@ class FhhZeile:
     planned_draft: int | None
     inflow: int | None
     outflow: int | None
-    ve: int | None
+    commitment_authorizations: int | None
     planned_new: int | None
     explanation: str | None = None
-    urheber: str | None = None
+    author: str | None = None
 
 
 @dataclass
@@ -157,7 +157,7 @@ class FhhSumme:
     #: Verpflichtungsermächtigungen — die Verwaltungslisten weisen sie aus,
     #: die Beschluss-Dateien nicht. Sie zählen NICHT in den Saldo (dieselbe
     #: Regel wie bei den Nachbewilligungen).
-    ve: int | None = None
+    commitment_authorizations: int | None = None
 
 
 @dataclass
@@ -356,7 +356,7 @@ def _position_lesen(zeile: list[Wort], year: int, spalten: FhhSpalten) -> FhhZei
         year=year, seq=seq, sub_budget=sub_budget, page_draft=page, product=product,
         label=" ".join(label),
         planned_draft=None, inflow=None, outflow=None,
-        ve=None, planned_new=None,
+        commitment_authorizations=None, planned_new=None,
     )
 
 
@@ -421,7 +421,7 @@ class SummenSpalten:
     ein: float
     aus: float
     balance: float
-    ve: float | None
+    commitment_authorizations: float | None
 
 
 #: Wie weit die rechte Kante eines Betrags von der ihres Kopfworts abweichen
@@ -442,11 +442,11 @@ def _summen_spalten(zeilen: list[list[Wort]]) -> SummenSpalten | None:
             elif _SALDO_KOPF.fullmatch(text):
                 kanten.setdefault("balance", x1)
             elif text == "VE":
-                kanten.setdefault("ve", x1)
+                kanten.setdefault("commitment_authorizations", x1)
     if not {"ein", "aus", "balance"} <= kanten.keys():
         return None
     return SummenSpalten(kanten["ein"], kanten["aus"], kanten["balance"],
-                         kanten.get("ve"))
+                         kanten.get("commitment_authorizations"))
 
 
 def _summen_zellen(zeile: list[Wort], spalten: SummenSpalten,
@@ -459,8 +459,8 @@ def _summen_zellen(zeile: list[Wort], spalten: SummenSpalten,
     Zusammenstellungs-Zeile.
     """
     felder = {"ein": spalten.ein, "aus": spalten.aus, "balance": spalten.balance}
-    if spalten.ve is not None:
-        felder["ve"] = spalten.ve
+    if spalten.commitment_authorizations is not None:
+        felder["commitment_authorizations"] = spalten.commitment_authorizations
     zellen: dict[str, int] = {}
     erster = letzter = None
     for x0, x1, _y, text in zeile:
@@ -497,10 +497,10 @@ def _summen_zeile(year: int, typ: str, zeile: list[Wort],
     # Links des ersten Betrags steht die Beschriftung, rechts des letzten der
     # Urheber („Vorschlag von" — nur die Beschluss-Dateien führen ihn).
     label = " ".join(w[3] for w in zeile if w[1] <= erster).strip()
-    urheber = " ".join(w[3] for w in zeile if w[0] >= letzter).strip()
-    return FhhSumme(year=year, typ=typ, label=(label or urheber or "liste"),
+    author = " ".join(w[3] for w in zeile if w[0] >= letzter).strip()
+    return FhhSumme(year=year, typ=typ, label=(label or author or "liste"),
                     inflows=ein, outflows=aus, balance=balance,
-                    ve=zellen.get("ve"))
+                    commitment_authorizations=zellen.get("commitment_authorizations"))
 
 
 def _block_jahr(block_jahr: int | None, aus: FhhErgebnis, typ: str) -> int:
@@ -644,7 +644,7 @@ def _doppelzeilen_falten(zeilen: list[FhhZeile]) -> list[FhhZeile]:
         if erste is None:
             aus[schluessel] = z
             continue
-        for feld in ("planned_draft", "inflow", "outflow", "ve", "planned_new"):
+        for feld in ("planned_draft", "inflow", "outflow", "commitment_authorizations", "planned_new"):
             alt_wert, neu_wert = getattr(erste, feld), getattr(z, feld)
             if neu_wert is None:
                 continue
@@ -653,7 +653,7 @@ def _doppelzeilen_falten(zeilen: list[FhhZeile]) -> list[FhhZeile]:
                     f"Position {z.year}/seq {z.seq} steht zweimal mit "
                     f"verschiedenem {feld}: {alt_wert:,} und {neu_wert:,}.")
             setattr(erste, feld, neu_wert)
-        for feld in ("explanation", "label", "urheber"):
+        for feld in ("explanation", "label", "author"):
             alt_text, neu_text = getattr(erste, feld), getattr(z, feld)
             if neu_text and neu_text != alt_text:
                 setattr(erste, feld, f"{alt_text} {neu_text}".strip()
@@ -804,7 +804,7 @@ def _betraege_anbauen(positionen: list[tuple[float, FhhZeile]],
         for oben, position, unten in spannen:
             if oben - 2 <= y < unten:
                 (position.planned_draft, position.inflow,
-                 position.outflow, position.ve, position.planned_new) = (
+                 position.outflow, position.commitment_authorizations, position.planned_new) = (
                     zellen.get(i) for i in range(5))
                 break
 
@@ -845,7 +845,7 @@ def _texte_anbauen(positionen: list[tuple[float, FhhZeile]],
         if (woerter := sorted(erl_baender.get(b, []), key=lambda w: (w[2], w[0]))):
             position.explanation = zeilen_falten(zeilen_bilden(woerter))
         if (woerter := sorted(urh_baender.get(b, []), key=lambda w: (w[2], w[0]))):
-            position.urheber = " ".join(
+            position.author = " ".join(
                 " ".join(w[3] for w in z) for z in zeilen_bilden(woerter))
 
 

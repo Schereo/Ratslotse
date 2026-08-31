@@ -147,20 +147,20 @@ def _agenda_batch_text(items: list[dict]) -> str:
         # Modell komplett, obwohl sie in der Vorlage steht.
         if it.get("art"):
             signals.append(f"Vorlagenart {it['art']}")
-        if it.get("antragsteller"):
-            signals.append(f"Antrag von {it['antragsteller']}")
+        if it.get("applicants"):
+            signals.append(f"Antrag von {it['applicants']}")
         if it.get("stationen"):
             signals.append(f"{it['stationen']} Stationen in der Beratungsfolge")
         if it.get("office"):
             signals.append(f"Federführung {it['office']}")
         teile = [f"id {it['id']}: {(it.get('title') or '').strip()}",
                  "  Signale: " + " · ".join(signals)]
-        if it.get("beschlussvorschlag"):
+        if it.get("proposed_decision"):
             teile.append("  Soll beschlossen werden: "
-                         + " ".join(str(it["beschlussvorschlag"]).split())[:500])
-        if it.get("finanz_check"):
+                         + " ".join(str(it["proposed_decision"]).split())[:500])
+        if it.get("financial_impact"):
             teile.append("  Kosten laut Vorlage: "
-                         + " ".join(str(it["finanz_check"]).split())[:280])
+                         + " ".join(str(it["financial_impact"]).split())[:280])
         # Der Sachverhalt aus der Vorlage schlägt die Kurzfassung — nicht
         # umgekehrt. Die Kurzfassung entsteht allein aus dem TITEL („Du kennst
         # nur den Titel des Punktes" steht wörtlich in ihrem Prompt), das

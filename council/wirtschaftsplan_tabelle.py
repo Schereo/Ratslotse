@@ -276,16 +276,16 @@ def einheit_an_der_kopfzeile(zeilen: list[str], kopf_index: int) -> str | None:
     return None
 
 
-def spaltenproben(text: str, betrieb: str) -> list[Spaltenprobe]:
+def spaltenproben(text: str, enterprise: str) -> list[Spaltenprobe]:
     """Die Rechenprobe jeder Spalte des Erfolgsplans.
 
     Wirft :class:`WirtschaftsplanFehler`, wenn die drei Summenzeilen nicht
     gleich viele Beträge tragen: Dann ist die Spaltenzuordnung nicht mehr
     gesichert, und eine Probe über verrutschte Spalten prüfte nichts.
     """
-    if betrieb not in VOKABULAR:
+    if enterprise not in VOKABULAR:
         raise WirtschaftsplanFehler(
-            f"Für '{betrieb}' ist kein Zeilen-Vokabular hinterlegt — erst die "
+            f"Für '{enterprise}' ist kein Zeilen-Vokabular hinterlegt — erst die "
             "Beschriftungen des Erfolgsplans prüfen und in VOKABULAR eintragen.")
     zeilen = text.splitlines()
     kopf = kopfspalten(zeilen)
@@ -314,7 +314,7 @@ def spaltenproben(text: str, betrieb: str) -> list[Spaltenprobe]:
 
     gefunden: dict[str, list[float]] = {}
     labels: dict[str, str] = {}
-    for feld, muster in VOKABULAR[betrieb].items():
+    for feld, muster in VOKABULAR[enterprise].items():
         treffer = _datenzeile(zeilen, muster)
         if treffer is None:
             raise WirtschaftsplanFehler(
@@ -339,7 +339,7 @@ def spaltenproben(text: str, betrieb: str) -> list[Spaltenprobe]:
     ]
 
 
-def bereichsprobe(text: str, betrieb: str) -> tuple[int, list[float]] | None:
+def bereichsprobe(text: str, enterprise: str) -> tuple[int, list[float]] | None:
     """Wie weit die Betriebszweige von der Gesamtzeile abweichen, je Spalte.
 
     Der Erfolgsplan führt seine Ertragszeile fünfmal: einmal für alle Bereiche
@@ -349,7 +349,7 @@ def bereichsprobe(text: str, betrieb: str) -> tuple[int, list[float]] | None:
 
     ``None``, wenn es keine Zweige gibt (dann greift die Probe nicht).
     """
-    muster = VOKABULAR.get(betrieb, {}).get("revenues", ())
+    muster = VOKABULAR.get(enterprise, {}).get("revenues", ())
     zeilen: list[list[float]] = []
     for zeile in text.splitlines():
         if not any(re.search(rf"^\s*{m}\b", zeile) for m in muster):
@@ -378,7 +378,7 @@ def plan_bezug(probes: list[Spaltenprobe], year: int) -> float:
     return next((p.revenues for p in probes if p.year == year), 0.0)
 
 
-def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
+def parse_erfolgsplan(template_number: str, enterprise: str, haushaltsjahr: int,
                       text: str) -> tuple[Wirtschaftsplan, list[Spaltenprobe]]:
     """Den Erfolgsplan einer Anlage lesen — geprüft, oder gar nicht.
 
@@ -386,7 +386,7 @@ def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
     der Finanzplanungsjahre, die nicht gespeichert werden — sie belegen, dass
     der Textextrakt der ganzen Tabelle trägt).
     """
-    probes = spaltenproben(text, betrieb)
+    probes = spaltenproben(text, enterprise)
 
     gerissen = [p for p in probes if not p.geht_auf]
     if gerissen:
@@ -405,7 +405,7 @@ def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
     # bevor die Schwelle greift. Ein Widerspruch INNERHALB des Dokuments (wie
     # 2025) reißt den Jahrgang dagegen nicht — die Summe ist durch zwei andere
     # Proben gedeckt, und dann fällt die Aufteilung und nicht die Summe.
-    bereiche = bereichsprobe(text, betrieb)
+    bereiche = bereichsprobe(text, enterprise)
     if bereiche:
         n_zweige, reste = bereiche
         i = next((k for k, p_ in enumerate(probes) if p_.year == haushaltsjahr), None)
@@ -428,9 +428,9 @@ def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
                 f"{plan.revenues:.0f} / {plan.expenses:.0f} € — "
                 "zwei Stellen desselben Dokuments widersprechen sich")
 
-    name = BETRIEBE[betrieb][1]
+    name = BETRIEBE[enterprise][1]
     return Wirtschaftsplan(
-        betrieb=betrieb, betrieb_name=name, year=haushaltsjahr,
+        enterprise=enterprise, enterprise_name=name, year=haushaltsjahr,
         template_number=template_number,
         revenues=plan.revenues, expenses=plan.expenses,
         # Kein eigener Steuerposten: Was der Beschlusstext des EGH als
@@ -441,8 +441,8 @@ def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
         steuern=0.0, result=plan.result,
         # Der Vermögensplan steht in einer eigenen Tabelle dieser Anlage und
         # bringt eigene Proben mit; er ist nicht Teil dieser Schicht.
-        vermoegensplan=None, verpflichtungen=None,
-        entwurf_vom=None,
+        capital_plan=None, commitments=None,
+        draft_date=None,
     ), probes
 
 

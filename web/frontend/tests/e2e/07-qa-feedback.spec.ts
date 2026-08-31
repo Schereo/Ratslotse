@@ -37,7 +37,7 @@ test.describe("Daumen-Feedback", () => {
     // Jede Bewertung mitschreiben, statt sie an das echte Backend zu geben.
     const gesendet: string[] = [];
     await page.route("**/api/council/qa-feedback", async (route) => {
-      gesendet.push(JSON.parse(route.request().postData() ?? "{}").bewertung);
+      gesendet.push(JSON.parse(route.request().postData() ?? "{}").rating);
       await route.fulfill({ status: 201, contentType: "application/json", body: '{"ok":true}' });
     });
 

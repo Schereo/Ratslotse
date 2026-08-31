@@ -2450,7 +2450,7 @@ private struct QuestionAnswerActions: View {
         struct Body: Codable, Sendable {
             let frage: String
             let antwort_auszug: String?
-            let bewertung: String
+            let rating: String
             let grund: String?
         }
         Task {
@@ -2459,7 +2459,7 @@ private struct QuestionAnswerActions: View {
                 body: Body(
                     frage: String(turn.question.prefix(300)),
                     antwort_auszug: String(turn.answer.prefix(500)),
-                    bewertung: value,
+                    rating: value,
                     grund: nil
                 )
             )

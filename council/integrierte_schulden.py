@@ -93,9 +93,9 @@ KERN_TOLERANZ = 1.0
 #: gekürzt. Die Nummern sind Spaltenindizes, keine Tabellennummern.
 SPALTEN: dict[str, int] = {
     "ars": 0, "name": 1, "verwaltungsform": 2, "population": 3,
-    "insgesamt": 4, "insgesamt_change": 5, "je_einwohner": 6,
+    "insgesamt": 4, "insgesamt_change": 5, "per_capita": 6,
     "gesamthaushalt": 7, "gesamthaushalt_change": 8,
-    "kernhaushalt": 9, "kernhaushalt_change": 10,
+    "core_budget": 9, "kernhaushalt_change": 10,
     "extra_budgets": 11, "extrahaushalte_change": 12,
     "extra_100": 13, "extra_50_100": 14, "extra_under_50": 15,
     "sonstige": 16, "sonstige_change": 17,
@@ -182,7 +182,7 @@ def kernprobe(gefunden: dict, bilanz_geldschulden: float | None) -> tuple[bool, 
     herein. Sie prüft nicht die 740 Millionen (die kann niemand gegenrechnen),
     sondern dass die Tabelle **von dieser Stadt** handelt und ihre Systematik
     zu unserer passt."""
-    kern = gefunden.get("kernhaushalt")
+    kern = gefunden.get("core_budget")
     if kern is None:
         return False, "der Tabellenband nennt keinen Kernhaushalt"
     if bilanz_geldschulden is None:
