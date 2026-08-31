@@ -665,6 +665,25 @@ class CouncilStore:
             ("aufwendungen_summe", "expenses_total")])
         for tabelle, paare in _STRUKTUR_SPALTEN:
             self._spalten_umbenennen(tabelle, paare)
+        # Dieselben Begriffe stehen auch als WERT in den Zeilen. Der
+        # Geld-Schnitt hat die Spalten umbenannt und diese drei Stellen
+        # übersehen — der Code schrieb danach `balance_operating`, in der
+        # Datenbank stand weiter `saldo_verwaltung`, und jede Abfrage danach
+        # fand nichts. Gefunden hat das `scripts/pruefe_wertreste.py`.
+        self._werte_umschreiben("council_finanzrechnung", "rolle", [
+            ("summe_ein_verwaltung", "total_in_operating"),
+            ("summe_aus_verwaltung", "total_out_operating"),
+            ("saldo_verwaltung", "balance_operating"),
+            ("summe_ein_investition", "total_in_capital"),
+            ("summe_aus_investition", "total_out_capital"),
+            ("saldo_investition", "balance_capital"),
+            ("saldo_finanzierung", "balance_financing"),
+            ("saldo_haushaltsunwirksam", "balance_non_budgetary")])
+        self._werte_umschreiben("council_konzern_posten", "rolle", [
+            ("ao_ertraege", "extraordinary_revenues"),
+            ("ao_aufwendungen", "extraordinary_expenses")])
+        self._werte_umschreiben("council_herkunft", "probe", [
+            ("anlagen_buchwert", "assets_book_value")])
 
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
         if "agenda_hash" not in cols:
