@@ -176,7 +176,7 @@ export function InvestWerkbank({
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground">
             Warum diese Auswahl — und so viel Fliegerhorst? Das Programm nennt nur
-            einen Teil seiner Vorhaben einzeln: Straßenbau sehr exact, Schulen
+            einen Teil seiner Vorhaben einzeln: Straßenbau sehr genau, Schulen
             dagegen nur als Sammelposten. Hier stehen die größten <em>benannten</em>{" "}
             Einzelmaßnahmen — die Gewichtung ist die des Dokuments, nicht unsere.
           </p>

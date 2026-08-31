@@ -60,7 +60,7 @@ def main() -> int:
         r.raise_for_status()
         steuern = haushalt.parse_steuereinnahmen(r.text)
         if not steuern:
-            print("Steuereinnahmen-CSV nicht readable — nichts gespeichert.", file=sys.stderr)
+            print("Steuereinnahmen-CSV nicht lesbar — nichts gespeichert.", file=sys.stderr)
             return 1
         # Diese drei Datensätze tragen keine Rechenprobe: eine Zeile je Jahr,
         # keine Summe, gegen die sich etwas prüfen ließe. Das ausdrücklich zu
@@ -79,7 +79,7 @@ def main() -> int:
         r.raise_for_status()
         kraft = haushalt.parse_steuerkraft(r.text)
         if not kraft:
-            print("Steuerkraft-CSV nicht readable — nichts gespeichert.", file=sys.stderr)
+            print("Steuerkraft-CSV nicht lesbar — nichts gespeichert.", file=sys.stderr)
             return 1
         n = store.save_steuerkraft(kraft, herkunft.Herkunft(
             art="opendata", probe=herkunft.UNGEPRUEFT,
@@ -111,7 +111,7 @@ def main() -> int:
                 stand=_spanne(ew)))
             print(f"Einwohnerzahlen: {n} Jahre ({_spanne(ew)}).")
         else:
-            print("Einwohner-CSV nicht readable — übersprungen.", file=sys.stderr)
+            print("Einwohner-CSV nicht lesbar — übersprungen.", file=sys.stderr)
 
         # --- Investitionen (Finanzhaushalt) ---------------------------------
         # Die einzige dieser Dateien mit einer Rechenprobe im Dokument selbst.

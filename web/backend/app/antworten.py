@@ -60,12 +60,24 @@ class Sitzungszeile(TypedDict):
     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
     (``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier
     nichts still abgeschnitten wird."""
-    ksinr: int
+    # NULL für terminierte Sitzungen OHNE veröffentlichte Tagesordnung: Die
+    # liefert `upcoming_sessions` mit, und im Ratsinformationssystem gibt es
+    # sie noch nicht als Sitzung mit Nummer (s. `social.wochenvorschau`).
+    # Als `int` deklariert war das ein 500 an genau den Wochen, in denen die
+    # nächste Ratssitzung noch keine Tagesordnung hat.
+    ksinr: int | None
     committee: str
     session_date: str
     session_time: NotRequired[str | None]
     location: NotRequired[str | None]
     fetched_at: NotRequired[str | None]
+    # Zahl der öffentlichen Tagesordnungspunkte. `upcoming_sessions` /
+    # `recent_sessions` / `search_sessions` liefern sie, `get_session` nicht —
+    # deshalb NotRequired. Sie hat hier GEFEHLT, und weil nicht deklarierte
+    # Felder still ENTFERNT werden (s. Modulkopf), zeigten beide Frontends
+    # „0 TOPs" bzw. eine leere Zahl vor „TOPs". Aufgefallen erst an echten
+    # Daten — die Testfixtures beider Seiten setzen `n_items` selbst.
+    n_items: NotRequired[int]
     # Vom Sitzungs-Endpunkt angereichert: die TOPs dieser Sitzung, die zu
     # einem Thema des Kontos passen.
     my_topic_items: NotRequired[list[dict[str, Any]]]

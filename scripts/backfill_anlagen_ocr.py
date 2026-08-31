@@ -100,7 +100,7 @@ def kandidaten(store: CouncilStore, nur_finanz: bool, document_id: int | None,
         # noch einmal aufzunehmen hieße, sie ein zweites Mal zu bezahlen.
         wo = ("(status = 'empty' OR (status = 'ok' AND raw_text LIKE ?)) "
               "AND url IS NOT NULL")
-        werte = ["[Seite %nicht readable gemacht]%"]
+        werte = ["[Seite %nicht lesbar gemacht]%"]
         if nur_finanz:
             muster = finanz_muster()
             wo += " AND (" + " OR ".join("label LIKE ?" for _ in muster) + ")"
@@ -246,7 +246,7 @@ def main() -> dict:
     ap.add_argument("--nur-finanz", action="store_true",
                     help="nur Anlagen, aus denen der Haushalts-Bereich liest")
     ap.add_argument("--document-id", type=int, default=None,
-                    help="exact ein Dokument, unabhängig von seinem Status")
+                    help="genau ein Dokument, unabhängig von seinem Status")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--max-seiten", type=int, default=MAX_SEITEN)
     ap.add_argument("--workers", type=int, default=3)

@@ -1175,7 +1175,7 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
         budget_year = gelesen["budget_year"]
         if budget_year is None:
             p.warnen(f"  Dokument {r['document_id']} ({r['label']!r}): Tabellenkopf "
-                     f"nicht readable — übersprungen")
+                     f"nicht lesbar — übersprungen")
             verworfen += 1
             continue
         if (budget_year,) in vorhanden:

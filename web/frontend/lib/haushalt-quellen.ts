@@ -347,7 +347,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
       "Anlage 005 des Haushaltsplans: die Erträge und Aufwendungen des kommenden " +
       "Jahres nach denselben Posten 1–24, die auch der Jahresabschluss führt — für " +
       "Jahre, die noch keinen Abschluss haben. " +
-      "Von den fünf Spalten, die das Dokument „Ansatz“ nennt, ist exact eine der " +
+      "Von den fünf Spalten, die das Dokument „Ansatz“ nennt, ist genau eine der " +
       "Haushaltsansatz; die übrigen sind mittelfristige Finanzplanung nach § 8 NKomVG " +
       "und werden hier nicht gezeigt. " +
       "Es ist der Entwurf der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, " +

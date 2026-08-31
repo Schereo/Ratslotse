@@ -321,7 +321,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
 
       {cent.length > 0 || gerundet.length > 0 ? (
         <p className="max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
-          <strong className="text-foreground">Wie exact die Quelle ist.</strong>{" "}
+          <strong className="text-foreground">Wie genau die Quelle ist.</strong>{" "}
           {cent.length > 0 ? (
             <>Für {cent.join(" und ")} nennt der Jahresabschluss den Betrag auf
               den Cent{gerundet.length > 0 ? ", " : ". "}</>

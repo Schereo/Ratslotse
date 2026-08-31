@@ -78,7 +78,7 @@ function PruefungInner() {
             sub={bestand.ohneBericht.length > 0 ? (
               <span className="font-semibold text-[color:hsl(var(--signal))]">
                 {bestand.ohneBericht.join(" und ")} {bestand.ohneBericht.length > 1 ? "fehlen" : "fehlt"} ersatzlos —
-                geprüft wurde, der Schlussbericht ist nicht readable veröffentlicht
+                geprüft wurde, der Schlussbericht ist nicht lesbar veröffentlicht
               </span>
             ) : "erstmalige und wiederholte Beanstandungen, Hinweise und Klarstellungen"}
             minibild={{

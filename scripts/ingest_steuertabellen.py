@@ -123,7 +123,7 @@ def _ausgaben(bereich_muster: str, live_url: str | None, live_text: str | None,
         try:
             aus.append((name, pdf_text(pfad)))
         except Exception as exc:                            # noqa: BLE001
-            sagen(f"  Archiv-Fassung {name} nicht readable: {exc}")
+            sagen(f"  Archiv-Fassung {name} nicht lesbar: {exc}")
     if aus:
         sagen(f"  Archiv: {len(aus)} Ausgabe(n) — "
               f"{', '.join(n for n, _ in aus)}")

@@ -49,7 +49,7 @@ Antworte mit NUR JSON in dieser Form:
 {{"results": [{{"id": <id>, "field": "<schlüssel>", "tags": ["..."], "summary": "..."}}]}}
 
 Regeln:
-- Gib für JEDE vorgelegte id exact ein Ergebnis mit exakt derselben id zurück.
+- Gib für JEDE vorgelegte id genau ein Ergebnis mit exakt derselben id zurück.
 - "field" MUSS einer der Schlüssel sein; im Zweifel "sonstiges".
 - Erfinde nichts; fasse nur den vorgelegten Text zusammen.
 - Berufung, Besetzung, Umbesetzung oder Benennung von Mitgliedern in Ausschüssen,

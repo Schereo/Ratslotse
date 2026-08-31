@@ -68,7 +68,7 @@ TEMPERATUR = 0.0
 #: Er hat einen NAMEN, weil ihn zwei Stellen kennen müssen: Hier wird er
 #: geschrieben, und `backfill_anlagen_ocr.kandidaten()` erkennt daran eine
 #: Anlage, die zwar `status='ocr'` trägt, aber nichts vom Papier enthält.
-PLATZHALTER = "[Seite {nr}: nicht readable gemacht]"
+PLATZHALTER = "[Seite {nr}: nicht lesbar gemacht]"
 
 #: Kürzer als das gilt eine Seite als ungelesen. Eine leere Rückseite gibt es
 #: in diesen Scans durchaus; sie zählt als gelesen-und-leer, nicht als Fehler.

@@ -81,7 +81,7 @@ export default function BarrierefreiheitPage() {
               <li>
                 <strong>Amtliche Originaldokumente:</strong> Die verlinkten PDFs stammen aus dem Ratsinformationssystem
                 der Stadt Oldenburg. Auf deren Barrierefreiheit habe ich keinen Einfluss; Ratslotse bereitet ihren
-                Inhalt aber als Text auf, der ohne PDF readable ist.
+                Inhalt aber als Text auf, der ohne PDF lesbar ist.
               </li>
               <li>
                 <strong>KI-Antworten</strong> entstehen automatisch. Sprache und Länge schwanken; eine

@@ -117,7 +117,7 @@ PROBEN: dict[str, str] = {
         "Die Summe der gelesenen Einzelpositionen trifft je Planjahr die "
         "Zusammenstellung — die Zeile, die dieses Dokument summiert, oder "
         "bei kumulierten Beschluss-Dateien Endsumme minus Entwurf. Stünde "
-        "ein Betrag in der falschen Spalte, ginge exact das nicht auf.",
+        "ein Betrag in der falschen Spalte, ginge genau das nicht auf.",
     "aenderungsliste_erlaeuterungen":
         "Die Erläuterungs-Texte folgen den gedruckten Tabellenlinien: Jeder "
         "Absatz steht in dem Zeilenband, in dem auch seine Position steht — "
@@ -243,7 +243,7 @@ PROBEN: dict[str, str] = {
         "Bestätigung neben den beiden Seiten.",
     "rueckstellungs_gliederung":
         "Die Rückstellungen für Pensionen und die für Beihilfe ergeben "
-        "zusammen exact den Sammelposten, den die Bilanz eine Zeile darüber "
+        "zusammen genau den Sammelposten, den die Bilanz eine Zeile darüber "
         "ausweist. Damit steht fest, welche der beiden Zahlen gemeint ist, "
         "die im Umlauf sind.",
     "bilanz_vorjahreskette":
@@ -295,7 +295,7 @@ PROBEN: dict[str, str] = {
         "jeder Spalte, nicht nur bei den geplanten Stellen.",
     "stellenplan_besetzung":
         "Die Rechnung hinter den unbesetzten Stellen geht auf: besetzte plus "
-        "unbesetzte Stellen ergeben exact die Zahl der Stellen, die der Plan "
+        "unbesetzte Stellen ergeben genau die Zahl der Stellen, die der Plan "
         "für den Stichtag ausweist.",
     "stellenplan_gesamtsumme":
         "Die Gruppensummen ergeben zusammen die Gesamtzeile des Plans. Der "
@@ -324,7 +324,7 @@ PROBEN: dict[str, str] = {
         "die Tabelle ist also von oben bis unten in sich consistent.",
     "konzern_traegersumme":
         "Die einbezogenen Betriebe und Gesellschaften ergeben zusammen mit der "
-        "Verrechnung untereinander exact die Summe, die der Bericht ausweist.",
+        "Verrechnung untereinander genau die Summe, die der Bericht ausweist.",
     "konzern_querprobe":
         "Dieselbe Summe steht an zwei Stellen des Berichts — in der "
         "Ergebnisrechnung des Konzerns und in der Aufstellung, wer wie viel "
@@ -342,14 +342,14 @@ PROBEN: dict[str, str] = {
         "Die Rechnung, die eine Grundsteuer oder Gewerbesteuer ausmacht, geht "
         "auf: Grundbetrag mal Hebesatz ergibt das Aufkommen, das die Tabelle "
         "ausweist. Bei der Gewerbesteuer zusätzlich, dass nach Abzug der "
-        "Umlage exact der Betrag bleibt, den wir zeigen.",
+        "Umlage genau der Betrag bleibt, den wir zeigen.",
     # Gewerbesteuerstatistik des LSN (council/gewerbesteuerstatistik.py). Drei
     # Proben, die aufeinander aufbauen: die Rechnung in der Zeile, dieselbe
     # Zeile im zweiten Blatt, und ein Wert daraus gegen ein Dokument aus einem
     # anderen Haus.
     "gewst_summenprobe":
         "Jeder Fall ist entweder eine reine Festsetzung oder eine Zerlegung. "
-        "Beide Gruppen ergeben zusammen exact die Gesamtzahl, die dieselbe "
+        "Beide Gruppen ergeben zusammen genau die Gesamtzahl, die dieselbe "
         "Zeile ausweist — für die Betriebe, für die zahlenden darunter und "
         "für den Steuermessbetrag.",
     "gewst_blattprobe":
@@ -366,13 +366,13 @@ PROBEN: dict[str, str] = {
     "kfa_komponentenprobe":
         "Die drei Bestandteile der Zuweisung — für Gemeindeaufgaben, für "
         "Kreisaufgaben und für die übertragenen staatlichen Aufgaben — ergeben "
-        "nach Abzug der Finanzausgleichsumlage exact den Nettobetrag, den "
+        "nach Abzug der Finanzausgleichsumlage genau den Nettobetrag, den "
         "dieselbe Zeile ausweist. Für alle acht kreisfreien Städte und beide "
         "Jahre, die eine Ausgabe führt.",
     "kfa_jahrbuchabgleich":
         "Was das Land als Zuweisung festsetzt, taucht in den Büchern der Stadt "
         "wieder auf: Tabelle 1103 des Statistischen Jahrbuchs nennt unter "
-        "„Finanzzuweisungen“ für 2023 und 2024 auf das Tausend exact denselben "
+        "„Finanzzuweisungen“ für 2023 und 2024 auf das Tausend genau denselben "
         "Betrag. Für 2025 stehen 79.785 gegen 79.787 Tausend Euro — dort ist "
         "das Rechnungsergebnis der Stadt noch vorläufig.",
     "lsn_dreijahresmittel":
@@ -383,7 +383,7 @@ PROBEN: dict[str, str] = {
     # Investitionen aus dem Finanzhaushalt (council/investitionen.py). Die
     # einzige Portal-CSV des Bereichs, die eine Probe mitbringt.
     "investitionen_summenzeile":
-        "Die Teilhaushalte ergeben zusammen exact die Summenzeile, die dieselbe "
+        "Die Teilhaushalte ergeben zusammen genau die Summenzeile, die dieselbe "
         "Datei ausweist — in beiden Spalten, bei den Einzahlungen wie bei den "
         "Auszahlungen.",
     # Die Ist-Investitionen aus den Tabellen 1107/1107-1 des Statistischen
@@ -393,7 +393,7 @@ PROBEN: dict[str, str] = {
     # sie reißt, wird deshalb ganz verworfen und nicht halb übernommen.
     "investitionen_ist_zeilensumme":
         "Die Auszahlungsarten des Jahres — Baumaßnahmen, Grundstücke, "
-        "bewegliches Vermögen und die übrigen — ergeben zusammen exact den "
+        "bewegliches Vermögen und die übrigen — ergeben zusammen genau den "
         "Betrag, den dieselbe Zeile daneben als Summe ausweist.",
     # Investitionsprogramm, Anlage 004 des Haushaltsplans
     # (council/investitionsprogramm.py). Drei Proben, die das Dokument selbst
@@ -401,7 +401,7 @@ PROBEN: dict[str, str] = {
     # zweite ist die stärkste — sie verbindet zwei Stellen, die siebzig Seiten
     # auseinanderliegen.
     "investitionsprogramm_abschnitt":
-        "Die einzelnen Vorhaben eines Teilhaushalts ergeben zusammen exact die "
+        "Die einzelnen Vorhaben eines Teilhaushalts ergeben zusammen genau die "
         "Gesamtsumme, die das Investitionsprogramm am Ende seines Abschnitts "
         "ausweist.",
     "investitionsprogramm_wiederholung":
@@ -409,7 +409,7 @@ PROBEN: dict[str, str] = {
         "rund siebzig Seiten früher, in der Übersicht über alle Teilhaushalte. "
         "Beide Stellen stimmen überein.",
     "investitionsprogramm_kopftabelle":
-        "In dieser Übersicht ergeben die Teilhaushalte zusammen exact die "
+        "In dieser Übersicht ergeben die Teilhaushalte zusammen genau die "
         "Gesamtsumme des Investitionsprogramms.",
     # Schuldenzeitreihe aus Tabelle 1108 des Statistischen Jahrbuchs
     # (council/schulden.py). Die zweite ist die stärkere: Ihr Divisor kommt aus
@@ -418,7 +418,7 @@ PROBEN: dict[str, str] = {
     "schulden_summenzeile":
         "Die vier Schuldenarten der Tabelle — Kreditmarkt, öffentliche "
         "Sondermittel, Gebietskörperschaften und Eigenbetriebe — ergeben "
-        "zusammen exact die Summe, die daneben ausgewiesen ist.",
+        "zusammen genau die Summe, die daneben ausgewiesen ist.",
     "schulden_prokopf":
         "Die ausgewiesene Gesamtschuld, geteilt durch die Einwohnerzahl aus "
         "dem Open-Data-Datensatz der Stadt, ergibt den Betrag je Einwohner*in, "
@@ -481,7 +481,7 @@ PROBEN: dict[str, str] = {
         "letzte Nachkommastelle überein.",
     "kennzahlen_vermoegensprobe":
         "„Vermögen je Einwohner*in“ mal „Anzahl der "
-        "Einwohnenden“ — zwei Zeilen derselben Tabelle — ergibt exact "
+        "Einwohnenden“ — zwei Zeilen derselben Tabelle — ergibt genau "
         "die Bilanzsumme ohne "
         "Rechnungsabgrenzung, wie die Bilanz sie ausweist.",
     "kennzahlen_ueberlappung":
@@ -501,7 +501,7 @@ PROBEN: dict[str, str] = {
         "Beschlussvorschlag, einmal im Abschnitt zu den finanziellen "
         "Auswirkungen. Dort entweder als dieselbe Zahl oder zerlegt in "
         "Mehrerträge und Sachspenden — und diese Zerlegung addiert sich auf "
-        "den Cent exact auf den Gesamtbetrag.",
+        "den Cent genau auf den Gesamtbetrag.",
     "spenden_protokollabgleich":
         "Was die Vorlage vorschlägt, hat der Rat auch beschlossen: Das "
         "Sitzungsprotokoll nennt denselben Betrag wie der Beschlussvorschlag. "
@@ -514,12 +514,12 @@ PROBEN: dict[str, str] = {
     # kostet.
     "steuerplan_summenzeile":
         "Die einzelnen Steuerarten und die Finanzzuweisungen ergeben zusammen "
-        "exact die Zeile „insgesamt“, die dieselbe Tabelle ausweist — und zwar "
+        "genau die Zeile „insgesamt“, die dieselbe Tabelle ausweist — und zwar "
         "in jeder ihrer sechs Spalten: im Haushaltsplan wie im "
         "Rechnungsergebnis, für jedes der drei Jahre.",
     "steuerplan_anteilsprobe":
         "Neben jedem Betrag druckt die Tabelle seinen Anteil an der "
-        "Gesamtsumme. Der Betrag, geteilt durch die Summe, ergibt exact diesen "
+        "Gesamtsumme. Der Betrag, geteilt durch die Summe, ergibt genau diesen "
         "Prozentsatz — damit steht fest, dass jeder Betrag in der Spalte steht, "
         "in der wir ihn gelesen haben.",
     "steuerplan_istabgleich":
@@ -548,7 +548,7 @@ PROBEN: dict[str, str] = {
     # das noch in keinem zweiten Bericht steht.
     "beteiligung_seitenprobe":
         "Der Bericht sagt zweimal, wo diese Gesellschaft steht: Sein "
-        "Inhaltsverzeichnis nennt die Seite, und auf exact dieser Seite steht "
+        "Inhaltsverzeichnis nennt die Seite, und auf genau dieser Seite steht "
         "ihre Gliederungsnummer. Damit gehört der Abschnitt nachweislich zu "
         "ihr und nicht zur Gesellschaft davor.",
     "beteiligung_bilanzprobe":
@@ -557,7 +557,7 @@ PROBEN: dict[str, str] = {
         "Kennzahlen-Tabelle desselben Abschnitts nennt sie ein drittes Mal. "
         "Alle drei stimmen überein.",
     "beteiligung_ergebnisprobe":
-        "Die Gewinn- und Verlustrechnung der Gesellschaft schließt mit exact "
+        "Die Gewinn- und Verlustrechnung der Gesellschaft schließt mit genau "
         "dem Jahresergebnis, das die Kennzahlen-Tabelle desselben Abschnitts "
         "führt.",
     "beteiligung_spaltenprobe":
@@ -568,7 +568,7 @@ PROBEN: dict[str, str] = {
         "Längen auseinanderlaufen, steht bei dieser Gesellschaft an keinem "
         "Namen ein Amt.",
     "beteiligung_anteilsprobe":
-        "Die Anteile der Gesellschafter ergeben zusammen exact das "
+        "Die Anteile der Gesellschafter ergeben zusammen genau das "
         "Stammkapital, das dieselbe Tabelle als Summe ausweist — und ihre "
         "Prozentsätze zusammen 100.",
     "beteiligung_ueberlappung":

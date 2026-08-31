@@ -3035,7 +3035,10 @@
               },
               "ksinr": {
                 "title": "Ksinr",
-                "type": "integer"
+                "type": [
+                  "integer",
+                  "null"
+                ]
               },
               "location": {
                 "title": "Location",
@@ -3051,6 +3054,10 @@
                 },
                 "title": "My Topic Items",
                 "type": "array"
+              },
+              "n_items": {
+                "title": "N Items",
+                "type": "integer"
               },
               "session_date": {
                 "title": "Session Date",
@@ -5058,7 +5065,10 @@
           },
           "ksinr": {
             "title": "Ksinr",
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "location": {
             "title": "Location",
@@ -5074,6 +5084,10 @@
             },
             "title": "My Topic Items",
             "type": "array"
+          },
+          "n_items": {
+            "title": "N Items",
+            "type": "integer"
           },
           "session_date": {
             "title": "Session Date",

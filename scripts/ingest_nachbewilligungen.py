@@ -157,7 +157,7 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
             continue
         kap = nb.kapitel3(text, year)
         if not kap:
-            print(f"  {year}: Kapitel 3 nicht readable (Dokument {dokument})")
+            print(f"  {year}: Kapitel 3 nicht lesbar (Dokument {dokument})")
             continue
         probe = nb.probe_tabelle(kap)
         abgleich = nb.probe_ratsabgleich(

@@ -233,7 +233,7 @@ def _dringlichkeit_nachladen(punkt: dict) -> None:
         text, _seiten = _pdf_text(punkt["anlage_url"])
         punkt["raw_text"] = text
     except Exception as fehler:  # noqa: BLE001 — ein kaputtes PDF kippt keinen Lauf
-        print(f"  {punkt['item_number']}: PDF nicht readable ({fehler})")
+        print(f"  {punkt['item_number']}: PDF nicht lesbar ({fehler})")
 
 
 def _mit_anlagen(store, punkte: list[dict]) -> list[tuple[dict, list[dict]]]:

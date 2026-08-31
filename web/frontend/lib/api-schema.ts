@@ -4915,13 +4915,15 @@ export interface components {
                 /** Fetched At */
                 fetched_at?: string | null;
                 /** Ksinr */
-                ksinr: number;
+                ksinr: number | null;
                 /** Location */
                 location?: string | null;
                 /** My Topic Items */
                 my_topic_items?: {
                     [key: string]: unknown;
                 }[];
+                /** N Items */
+                n_items?: number;
                 /** Session Date */
                 session_date: string;
                 /** Session Time */
@@ -5685,13 +5687,15 @@ export interface components {
             /** Fetched At */
             fetched_at?: string | null;
             /** Ksinr */
-            ksinr: number;
+            ksinr: number | null;
             /** Location */
             location?: string | null;
             /** My Topic Items */
             my_topic_items?: {
                 [key: string]: unknown;
             }[];
+            /** N Items */
+            n_items?: number;
             /** Session Date */
             session_date: string;
             /** Session Time */
@@ -10898,4 +10902,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f2f05d774d2587add73b7297386e9d05451673b5e9f363ddf76647562d4ea877
+// vertrag-sha256: b8011626e06d8e55a9e94f7aff96c586067dc3b24e62ee9b59b0447f07ac0036
