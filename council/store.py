@@ -3412,6 +3412,31 @@ class CouncilStore:
         )
     """
 
+    def live_windows(self, day: str) -> dict[str, str]:
+        """Startzeit → Startzeit der NÄCHSTEN Sitzung desselben Tages.
+
+        Zurück kommt ``{"16:00": "16:30", "16:30": "18:00"}`` — die letzte
+        Startzeit des Tages fehlt, für sie greift der Deckel aus
+        ``council.live``. Warum die Nachfolgerin überhaupt ein Ende ist, steht
+        im Modul-Docstring dort; zusammengesetzt wird beides in
+        ``council.live.window_end``.
+
+        Gilt für heute und später; für vergangene Tage liefert die Abfrage
+        nichts (``_UPCOMING_FROM`` blickt nur nach vorn).
+        """
+        rows = self._conn.execute(
+            f"""SELECT DISTINCT NULLIF(session_time, '') AS start
+                {self._UPCOMING_FROM}
+                WHERE session_date = ? AND NULLIF(session_time, '') IS NOT NULL
+                ORDER BY start""",
+            (day, day, day),
+        ).fetchall()
+        starts = [r["start"] for r in rows]
+        # Gleichzeitige Sitzungen teilen sich eine Zeile und damit ihr Fenster —
+        # DISTINCT hält sie zusammen, statt sie sich gegenseitig beenden zu
+        # lassen (das täte ein LEAD über die Zeilen).
+        return dict(zip(starts, starts[1:]))
+
     def sessions_on(self, tag: str) -> list[dict]:
         """Alle Sitzungen an einem Kalendertag — für die Vorabend-Erinnerung
         (Design 30a, N5). Terminierte ohne Tagesordnung kommen mit; der Aufrufer

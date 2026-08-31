@@ -937,7 +937,9 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   );
 }
 
-/** RL-U10: kleiner LIVE-Chip an der laufenden Sitzung (Startzeit + 4 h). */
+/** RL-U10: kleiner LIVE-Chip an der laufenden Sitzung — von der Startzeit bis
+ *  zur nächsten Sitzung desselben Tages (s. `lib/live`). An Ratstagen trug ihn
+ *  vorher der Ausschuss noch, während längst der Rat tagte. */
 function LiveChip() {
   return (
     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-bold text-red-600 dark:text-red-400">

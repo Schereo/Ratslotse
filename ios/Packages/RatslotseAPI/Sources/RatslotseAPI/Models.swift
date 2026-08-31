@@ -628,6 +628,13 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     public let committee: String
     public let sessionDate: String
     public let sessionTime: String?
+    /// End of the LIVE window, computed by the server (`council/live.py`):
+    /// the start of the next session that day, or a cap from the start —
+    /// three hours for committees, four for the council. Council days run
+    /// three bodies back to back (16:00 general committee, 16:30
+    /// administrative committee, 18:00 council); they wait for each other
+    /// instead of meeting in parallel. Only sent for today's sessions.
+    public let liveUntil: String?
     public let location: String?
     public let title: String
     public let itemCount: Int
@@ -638,6 +645,7 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
         case calendarID = "calendar_id"
         case sessionDate = "session_date"
         case sessionTime = "session_time"
+        case liveUntil = "live_until"
         case itemCount = "n_items"
         case myTopicItems = "my_topic_items"
     }
@@ -649,6 +657,7 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
         committee = try values.decodeIfPresent(String.self, forKey: .committee) ?? "Gremium"
         sessionDate = try values.decodeIfPresent(String.self, forKey: .sessionDate) ?? ""
         sessionTime = try values.decodeIfPresent(String.self, forKey: .sessionTime)
+        liveUntil = try values.decodeIfPresent(String.self, forKey: .liveUntil)
         location = try values.decodeIfPresent(String.self, forKey: .location)
         title = try values.decodeIfPresent(String.self, forKey: .title) ?? committee
         itemCount = try values.decodeIfPresent(Int.self, forKey: .itemCount) ?? 0

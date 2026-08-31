@@ -28,6 +28,7 @@ from council import trade_tax_statistics as gewst
 from council import beteiligungsbericht, qa
 from council import ernte
 from council import importance
+from council import live as live_mod
 from council import sitzungspause as pause_mod
 from council import vorlagen as vorlagen_mod
 from council import places
@@ -202,6 +203,25 @@ def place_detail(
     }
 
 
+def _stamp_live_windows(rows: list[dict], store: CouncilStore) -> list[dict]:
+    """Setzt ``live_until`` auf allen Zeilen von HEUTE (``council.live``).
+
+    Nur heutige Sitzungen können laufen, also rechnet das auch nur für heute.
+    Die Entscheidung selbst trifft der Client, weil nur er die Uhr der
+    Nutzerin kennt — hier steht, WANN das Fenster zugeht, nicht ob es gerade
+    offen ist. ``None`` bleibt es nur bei Terminen ohne Uhrzeit.
+    """
+    today = date.today().isoformat()
+    heutige = [r for r in rows if str(r.get("session_date") or "")[:10] == today]
+    if not heutige:
+        return rows
+    windows = store.live_windows(today)
+    for r in heutige:
+        start = r.get("session_time") or ""
+        r["live_until"] = live_mod.window_end(r.get("committee"), start, windows.get(start))
+    return rows
+
+
 @router.get("/sessions")
 def sessions(
     q: str = "",
@@ -238,7 +258,7 @@ def sessions(
         if matches:
             r["my_topic_items"] = matches
 
-    return {"count": len(rows), "total": total, "sessions": rows}
+    return {"count": len(rows), "total": total, "sessions": _stamp_live_windows(rows, store)}
 
 
 @router.get("/sitzungspause")
@@ -270,8 +290,9 @@ _HEUTE_CACHE: dict = {"at": 0.0, "data": None}
 @router.get("/heute")
 def heute(store: CouncilStore = Depends(get_council_store)) -> HeuteBriefing:
     """RL-901: „Heute im Rat" für die Landing — public (wie public-stats).
-    Drei Zustände: Sitzung heute (mit 2 Top-TOPs + Restzähler) · nächste
-    Sitzung · Sitzungspause. Cache 15 min."""
+    Drei Zustände: Sitzung heute (``sessions``: alle des Tages, je mit 2
+    Top-TOPs, Restzähler und ``live_until``) · nächste Sitzung ·
+    Sitzungspause. Cache 15 min — die Uhr liest der Client selbst."""
     import time
     now = time.time()
     if _HEUTE_CACHE["data"] is not None and now - _HEUTE_CACHE["at"] < 900:
@@ -281,16 +302,31 @@ def heute(store: CouncilStore = Depends(get_council_store)) -> HeuteBriefing:
     upcoming = store.upcoming_sessions(limit=10)
     sessions_today = [s for s in upcoming if str(s["session_date"])[:10] == today]
     if sessions_today:
-        s = sessions_today[0]
-        # Terminierte Sitzungen (aus dem Kalender) haben noch keinen ksinr.
-        items = [i for i in store.agenda_items(s["ksinr"]) if i.get("is_public")] if s.get("ksinr") else []
+        windows = store.live_windows(today)
+
+        def eintrag(s: dict) -> dict:
+            # Terminierte Sitzungen (aus dem Kalender) haben noch keinen ksinr.
+            items = [i for i in store.agenda_items(s["ksinr"]) if i.get("is_public")] if s.get("ksinr") else []
+            zeit = s.get("session_time") or ""
+            return {
+                "committee": s["committee"],
+                "session_time": zeit,
+                "live_until": live_mod.window_end(s["committee"], zeit, windows.get(zeit)),
+                "tops": [str(i.get("title") or "")[:90] for i in items[:2]],
+                "rest": max(len(items) - 2, 0),
+            }
+
+        # An Ratstagen sind es drei nacheinander (Ausschuss für Allgemeine
+        # Angelegenheiten → Verwaltungsausschuss → Rat). Die Leiste schaltet
+        # clientseitig auf die, die gerade läuft — deshalb kommt der ganze Tag
+        # mit. Die Felder oben bleiben bei der ersten Sitzung, damit ältere
+        # App-Installationen weiterlesen wie bisher.
+        eintraege = [eintrag(s) for s in sessions_today]
         data = {
             "state": "heute",
-            "committee": s["committee"],
-            "session_time": s.get("session_time") or "",
-            "tops": [str(i.get("title") or "")[:90] for i in items[:2]],
-            "rest": max(len(items) - 2, 0),
+            **eintraege[0],
             "n_sessions_today": len(sessions_today),
+            "sessions": eintraege,
         }
     elif upcoming:
         s = upcoming[0]
