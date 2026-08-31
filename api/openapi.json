@@ -9451,7 +9451,7 @@
     },
     "/api/council/heute": {
       "get": {
-        "description": "RL-901: „Heute im Rat\" für die Landing — public (wie public-stats).\nDrei Zustände: Sitzung heute (mit 2 Top-TOPs + Restzähler) · nächste\nSitzung · Sitzungspause. Cache 15 min.",
+        "description": "RL-901: „Heute im Rat\" für die Landing — public (wie public-stats).\nDrei Zustände: Sitzung heute (``sessions``: alle des Tages, je mit 2\nTop-TOPs, Restzähler und ``live_until``) · nächste Sitzung ·\nSitzungspause. Cache 15 min — die Uhr liest der Client selbst.",
         "operationId": "heute_api_council_heute_get",
         "responses": {
           "200": {

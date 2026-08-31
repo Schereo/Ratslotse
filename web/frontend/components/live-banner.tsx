@@ -6,13 +6,14 @@ import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui";
-import { isLiveNow, isStadtrat, laufzeitText, O1_STREAM_URL } from "@/lib/live";
+import { currentSessionToday, isStadtrat, runningTimeText, O1_STREAM_URL } from "@/lib/live";
 
 type Session = {
   ksinr: number | null;
   committee: string;
   session_date: string;
   session_time: string;
+  live_until?: string | null;
   location?: string | null;
   n_items: number;
   my_topic_items?: { item_number: string; topic_name: string }[];
@@ -21,9 +22,13 @@ type Session = {
 /**
  * RL-U10 (Design 10a/11a): Live-Karte auf „Heute" — sitzt im Slot des
  * Pause-Banners (Live und Pause schließen sich zeitlich aus). „Live" heißt
- * nur: Startzeit erreicht, seit weniger als 4 h — kein TOP-Tracking. Der
- * O1-Stream-Knopf erscheint ausschließlich beim Stadtrat (einziges
- * übertragenes Gremium). Teilt die Query mit „Nächste Sitzungen".
+ * nur: Startzeit erreicht, Nachfolgerin noch nicht dran — kein TOP-Tracking.
+ * Der O1-Stream-Knopf erscheint ausschließlich beim Stadtrat (einziges
+ * übertragenes Gremium).
+ *
+ * Das `limit` deckt den längsten Sitzungstag ab (Ratstage bringen drei
+ * Gremien nacheinander, s. `lib/live`): Wer knapper lädt, hat die laufende
+ * Sitzung womöglich gar nicht in der Hand.
  */
 export function LiveBanner() {
   // Minütlich neu bewerten — die Karte erscheint/verschwindet von selbst.
@@ -35,12 +40,12 @@ export function LiveBanner() {
 
   const { data } = useQuery({
     queryKey: ["upcoming-sessions"],
-    queryFn: () => api.get<{ sessions: Session[] }>("/council/sessions?scope=upcoming&limit=3"),
+    queryFn: () => api.get<{ sessions: Session[] }>("/council/sessions?scope=upcoming&limit=6"),
   });
-  const live = (data?.sessions ?? []).find((s) => isLiveNow(s, now));
+  const live = currentSessionToday(data?.sessions, now);
   if (!live) return null;
 
-  const laufzeit = laufzeitText(live.session_time, now);
+  const laufzeit = runningTimeText(live.session_time, now);
   const myCount = new Set((live.my_topic_items ?? []).map((m) => m.item_number)).size;
   const stadtrat = isStadtrat(live.committee);
 
@@ -88,8 +93,12 @@ export function LiveBanner() {
 
       <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-2">
         <Button size="sm" asChild>
+          {/* Ohne ksinr gibt es keine Tagesordnung — das trifft genau die
+              nichtöffentlichen Gremien (Verwaltungsausschuss), die nur als
+              Kalendertermin bekannt sind. Dann führt der Knopf dorthin,
+              wohin er wirklich führt. */}
           <Link href={live.ksinr ? `/council?tab=sessions&ksinr=${live.ksinr}` : "/council?tab=sessions"}>
-            Tagesordnung
+            {live.ksinr ? "Tagesordnung" : "Sitzungskalender"}
           </Link>
         </Button>
         {stadtrat && (
