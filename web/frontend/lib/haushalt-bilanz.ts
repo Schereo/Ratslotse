@@ -37,7 +37,7 @@ export type BilanzPosten = {
   nr: string | null;
   /** Wortlaut des Dokuments. */
   label: string;
-  wert: number;
+  value: number;
   herkunft_id: number | null;
 };
 
@@ -114,7 +114,7 @@ export function as_of_date(daten: BilanzDaten | null, year: number): Stichtag | 
   }
   const haupt = [...AKTIVA_HAUPT, ...PASSIVA_HAUPT];
   if (haupt.some((r) => posten[r] === undefined)) return null;
-  const bilanzsumme = AKTIVA_HAUPT.reduce((n, r) => n + (posten[r]?.wert ?? 0), 0);
+  const bilanzsumme = AKTIVA_HAUPT.reduce((n, r) => n + (posten[r]?.value ?? 0), 0);
   return {
     year, posten, bilanzsumme,
     herkunft_id: posten.sachvermoegen?.herkunft_id ?? null,
@@ -133,11 +133,11 @@ export function segmente(s: Stichtag, page: "aktiva" | "passiva") {
     .map((r) => ({
       label: KURZ[r] ?? s.posten[r]?.label ?? r,
       kurz: KURZ[r],
-      wert: (s.posten[r]?.wert ?? 0) / 1e6,
+      value: (s.posten[r]?.value ?? 0) / 1e6,
       role: r,
     }))
-    .filter((x) => x.wert > 0)
-    .sort((a, b) => b.wert - a.wert);
+    .filter((x) => x.value > 0)
+    .sort((a, b) => b.value - a.value);
 }
 
 /** Wie oft die Pensionsrückstellungen in die Kreditschulden passen.
@@ -146,8 +146,8 @@ export function segmente(s: Stichtag, page: "aktiva" | "passiva") {
  *  Jahrgang still falsch. Gibt `null`, wenn eine der beiden Zahlen fehlt
  *  oder die Geldschulden null sind. */
 export function vielfaches(s: Stichtag): number | null {
-  const pension = s.posten.pensionen_gesamt?.wert;
-  const kredite = s.posten.geldschulden?.wert;
+  const pension = s.posten.pensionen_gesamt?.value;
+  const kredite = s.posten.geldschulden?.value;
   if (!pension || !kredite) return null;
   return pension / kredite;
 }

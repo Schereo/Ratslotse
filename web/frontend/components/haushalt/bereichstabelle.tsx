@@ -35,7 +35,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, Info } from "lucide-react";
 import { Segmented } from "@/components/ui";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { bereichKanon } from "@/lib/haushalt-bereiche";
 import { HaushaltZeile, bereichSlug, bereiche, deMio, mio } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";

@@ -18,7 +18,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
@@ -49,7 +49,7 @@ function PruefungInner() {
     // jüngsten Rechenschaftsbericht. Ein gemeinsamer Wert wäre für einen von
     // beiden der falsche; ohne ihn nimmt jeder Beleg das jüngste Dokument
     // seiner Quelle und schreibt den Jahrgang an.
-    <Quellenkontext schluessel={QUELLEN}>
+    <Quellenkontext keys={QUELLEN}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -73,7 +73,7 @@ function PruefungInner() {
         {balance ? (
           <Seitenbuehne
             kicker={`Rechnungsprüfung ${Math.min(...balance.jeJahr.map((j) => j.year))}–${Math.max(...balance.jeJahr.map((j) => j.year))}`}
-            zahl={<><ZaehlZahl wert={balance.gesamt} /> Feststellungen
+            zahl={<><ZaehlZahl value={balance.gesamt} /> Feststellungen
               aus {balance.jeJahr.length} Jahren</>}
             sub={balance.ohneBericht.length > 0 ? (
               <span className="font-semibold text-[color:hsl(var(--signal))]">
@@ -133,7 +133,7 @@ function PruefungInner() {
 
         <SchrittWeiter href="/haushalt/pruefung" />
 
-        <Quellenverzeichnis schluessel={QUELLEN} />
+        <Quellenverzeichnis keys={QUELLEN} />
       </div>
     </Quellenkontext>
   );

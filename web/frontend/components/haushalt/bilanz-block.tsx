@@ -48,7 +48,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { deMio } from "@/lib/haushalt";
 import { Gegenbalken } from "@/components/grafik/gegenbalken";
 import { Einordnung } from "@/components/grafik/einordnung";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import {
   BilanzDaten, cashPoolingHinweis, juengsterStichtag, segmente, vielfaches,
 } from "@/lib/haushalt-bilanz";
@@ -79,10 +79,10 @@ export function BilanzBlock() {
   if (!data || !s) return null;
 
   const p = s.posten;
-  const pension = p.pensionen_gesamt?.wert ?? null;
-  const nurPension = p.pensionsrueckstellungen?.wert ?? null;
-  const beihilfe = p.beihilferueckstellungen?.wert ?? null;
-  const kredite = p.geldschulden?.wert ?? null;
+  const pension = p.pensionen_gesamt?.value ?? null;
+  const nurPension = p.pensionsrueckstellungen?.value ?? null;
+  const beihilfe = p.beihilferueckstellungen?.value ?? null;
+  const kredite = p.geldschulden?.value ?? null;
   const v = vielfaches(s);
   const cash = cashPoolingHinweis(data, s.year);
 
@@ -190,7 +190,7 @@ export function BilanzBlock() {
       {cash && p.schulden && (
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Warum die Bilanz {s.year} plötzlich {deMio(p.schulden.wert / 1e6)}&#8239;Mio.&nbsp;€
+            Warum die Bilanz {s.year} plötzlich {deMio(p.schulden.value / 1e6)}&#8239;Mio.&nbsp;€
             Schulden ausweist
           </p>
           <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">

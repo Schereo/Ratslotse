@@ -46,7 +46,7 @@ import { LueckenFeld } from "@/components/grafik/luecken-field";
 import { deZahl } from "@/components/grafik/format";
 
 /** Ein Teil einer Säule — Titel wie in der Quelle, Wert in `unit`. */
-export type NahtTeil = { art: string; wert: number };
+export type NahtTeil = { art: string; value: number };
 
 /** Ein Jahr der Reihe: entweder belegt (mit seinen Teilen) oder eine Lücke
  *  mit Grund — der Daten-Vertrag des Baukastens (daten.ts). */
@@ -78,7 +78,7 @@ function gruppiere(years: NahtJahr[], count: number, toene: readonly string[]): 
   const summen = new Map<string, number>();
   for (const j of years) {
     if (istLuecke(j)) continue;
-    for (const t of j.teile) summen.set(t.art, (summen.get(t.art) ?? 0) + t.wert);
+    for (const t of j.teile) summen.set(t.art, (summen.get(t.art) ?? 0) + t.value);
   }
   const sortiert = [...summen.entries()].sort((a, b) => b[1] - a[1]).map(([a]) => a);
   if (!sortiert.length) return [];
@@ -127,7 +127,7 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, be
 
   const weltVon = (year: number) => (year <= grenze ? 0 : 1);
   const summe = (j: NahtJahr) =>
-    istLuecke(j) ? 0 : j.teile.reduce((s, t) => s + t.wert, 0);
+    istLuecke(j) ? 0 : j.teile.reduce((s, t) => s + t.value, 0);
 
   // Vor dem frühen Ausstieg: Hooks müssen in jeder Render-Runde in derselben
   // Reihenfolge laufen, auch wenn die Reihe (noch) leer ist.
@@ -176,7 +176,7 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, be
     if (istLuecke(j)) {
       return {
         titel: String(j.year),
-        werte: [{ label: "keine Angabe", wert: "—" }],
+        werte: [{ label: "keine Angabe", value: "—" }],
         vorlesen: `${j.year}: keine Angabe — ${j.fehlt}.`,
       };
     }
@@ -184,7 +184,7 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, be
     const farbeVon = (art: string) =>
       g.find((x) => x.arten.includes(art))?.farbe;
     const teile = j.teile.map((t) => ({
-      label: t.art, wert: `${deZahl(t.wert, 1)} ${unit}`,
+      label: t.art, value: `${deZahl(t.value, 1)} ${unit}`,
       farbe: farbeVon(t.art),
     }));
     // Eine Reihe mit nur EINER Art (die lange Ausgabenreihe) hätte sonst
@@ -195,13 +195,13 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, be
     return {
       titel: String(j.year),
       werte: eineArt ? teile : [
-        { label: "total", wert: `${deZahl(summe(j), 1)} ${unit}` },
+        { label: "total", value: `${deZahl(summe(j), 1)} ${unit}` },
         ...teile,
       ],
       vorlesen: eineArt
         ? `${j.year}: ${j.teile[0].art} ${deZahl(summe(j), 1)} ${unit}.`
         : `${j.year}: total ${deZahl(summe(j), 1)} ${unit}, davon `
-          + j.teile.map((t) => `${t.art} ${deZahl(t.wert, 1)}`).join(", ") + ".",
+          + j.teile.map((t) => `${t.art} ${deZahl(t.value, 1)}`).join(", ") + ".",
     };
   });
 
@@ -253,15 +253,15 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, be
           const g = gruppen[weltVon(j.year)];
           const werte = g.map((gr) => ({
             farbe: gr.farbe,
-            wert: j.teile.filter((t) => gr.arten.includes(t.art))
-              .reduce((s, t) => s + t.wert, 0),
+            value: j.teile.filter((t) => gr.arten.includes(t.art))
+              .reduce((s, t) => s + t.value, 0),
           }));
           // Von unten stapeln: größte Gruppe unten, 2 px Fuge dazwischen.
           let unten = Y0;
           return (
             <g key={j.year}>
               {werte.map((s, k) => {
-                const hoehe = Math.max(Y0 - y(s.wert), 0);
+                const hoehe = Math.max(Y0 - y(s.value), 0);
                 const oben = unten - hoehe;
                 unten = oben - 2;
                 return hoehe > 0 ? (

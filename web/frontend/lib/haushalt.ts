@@ -233,7 +233,7 @@ export type FinanzausgleichJahr = {
 export type KennzahlPunkt = {
   indicator: string;
   year: number;
-  wert: number;
+  value: number;
   stellen: number;
   version: number | null;
   /** Aus welchem Rechenschaftsbericht dieser Stand stammt. */
@@ -329,7 +329,7 @@ export type HaushaltDaten = {
    *  ein Jahrgang Wirtschaftsplan sind bis zu sieben Pläne von sieben
    *  Betrieben. Dann ist die `herkunft_id` der Zeile die einzige Angabe, die
    *  „diese Zahl steht in DIESEM Papier" beantwortet
-   *  (`components/haushalt/quelle.tsx: Dokumentbeleg`). */
+   *  (`components/haushalt/source.tsx: Dokumentbeleg`). */
   herkunft?: Record<string, Herkunft>;
   /** Die Haushaltssatzung je Jahrgang — der Rahmen um den Plan. */
   budget_bylaw?: HaushaltssatzungZeile[];
@@ -695,7 +695,7 @@ export type AusgabenreiheJahr = {
   year: number;
   accounting_system: Regelwerk;
   amount: number;
-  quelle: Ausgabenquelle;
+  source: Ausgabenquelle;
   probes: string[];
   /** Was die andere Veröffentlichung für dieses Jahr nennt — nur gefüllt, wo
    *  die beiden sich widersprechen. */
@@ -837,7 +837,7 @@ export type FlussBand = {
   lang: string;
   /** Betrag in EURO (nicht Mio.): Sämtliche Summen und die Probe rechnen mit
    *  Rohwerten, sonst driftet der Vergleich um bis zu 0,1 je Posten. */
-  wert: number;
+  value: number;
   art: "posten" | "rest" | "ausgleich";
 };
 
@@ -903,18 +903,18 @@ function flussSeite(
   teile: FlussBand[], gesamt: number, skala: number,
   restLabel: string, ausgleichLabel: string,
 ): FlussSeite {
-  const summeTeile = teile.reduce((s, b) => s + b.wert, 0);
-  const baender = [...teile].sort((a, b) => b.wert - a.wert);
+  const summeTeile = teile.reduce((s, b) => s + b.value, 0);
+  const baender = [...teile].sort((a, b) => b.value - a.value);
   const rest = gesamt - summeTeile;
   if (rest > FLUSS_TOLERANZ) {
-    baender.push({ id: "rest", label: restLabel, lang: restLabel, wert: rest, art: "rest" });
+    baender.push({ id: "rest", label: restLabel, lang: restLabel, value: rest, art: "rest" });
   }
   const gedeckt = summeTeile + Math.max(rest, 0);
   const ausgleich = skala - gedeckt;
   if (ausgleich > FLUSS_TOLERANZ) {
     baender.push({
       id: "ausgleich", label: ausgleichLabel, lang: ausgleichLabel,
-      wert: ausgleich, art: "ausgleich",
+      value: ausgleich, art: "ausgleich",
     });
   }
   return { baender, gesamt, teile: summeTeile };
@@ -943,7 +943,7 @@ export function flussbild(
       id: `art-${p.nr}`,
       label: ERTRAGSART_KURZ[p.nr] ?? p.label,
       lang: p.label,
-      wert: zahl(p) as number,
+      value: zahl(p) as number,
       art: "posten" as const,
     }));
   const bereiche: FlussBand[] = rows
@@ -952,7 +952,7 @@ export function flussbild(
       id: `sub_budget-${p.sub_budget_no}`,
       label: p.sub_budget_name ?? `Teilhaushalt ${p.sub_budget_no}`,
       lang: p.sub_budget_name ?? `Teilhaushalt ${p.sub_budget_no}`,
-      wert: zahl(p) as number,
+      value: zahl(p) as number,
       art: "posten" as const,
     }));
   if (!arten.length || !bereiche.length) return null;
@@ -962,8 +962,8 @@ export function flussbild(
   // Knoten hinaus, und `aufgeschluesselt` schaltet das Bild ohnehin ab.
   const skala = Math.max(
     revenues, expenses,
-    arten.reduce((s, b) => s + b.wert, 0),
-    bereiche.reduce((s, b) => s + b.wert, 0),
+    arten.reduce((s, b) => s + b.value, 0),
+    bereiche.reduce((s, b) => s + b.value, 0),
   );
 
   const herkunft = flussSeite(arten, revenues, skala,
@@ -971,8 +971,8 @@ export function flussbild(
   const verwendung = flussSeite(bereiche, expenses, skala,
     "im Abschluss nicht aufgeschlüsselt", "bleibt übrig");
 
-  const summeLinks = herkunft.baender.reduce((s, b) => s + b.wert, 0);
-  const summeRechts = verwendung.baender.reduce((s, b) => s + b.wert, 0);
+  const summeLinks = herkunft.baender.reduce((s, b) => s + b.value, 0);
+  const summeRechts = verwendung.baender.reduce((s, b) => s + b.value, 0);
   const luecke = (s: FlussSeite) => Math.abs(s.gesamt - s.teile);
   return {
     year, stand, herkunft, verwendung, skala,
@@ -1028,7 +1028,7 @@ export type GebuehrenZeile = {
  * Anlieferung. */
 export type GebuehrensatzZeile = {
   year: number;
-  schluessel: string;
+  key: string;
   area: string;
   label: string;
   amount: number;
@@ -1207,15 +1207,15 @@ export function fasseKleineZusammen(
   baender: FlussBand[], skala: number, mindestAnteil: number,
 ): { gezeigt: FlussBand[]; gebuendelt: FlussBand[] } {
   const gross = baender.filter(
-    (b) => b.art !== "posten" || b.wert >= mindestAnteil * skala);
+    (b) => b.art !== "posten" || b.value >= mindestAnteil * skala);
   const gebuendelt = baender.filter(
-    (b) => b.art === "posten" && b.wert < mindestAnteil * skala);
+    (b) => b.art === "posten" && b.value < mindestAnteil * skala);
   if (gebuendelt.length < 2) return { gezeigt: baender, gebuendelt: [] };
   const sammel: FlussBand = {
     id: "weitere",
     label: `${gebuendelt.length} weitere`,
     lang: `${gebuendelt.length} weitere Posten`,
-    wert: gebuendelt.reduce((s, b) => s + b.wert, 0),
+    value: gebuendelt.reduce((s, b) => s + b.value, 0),
     art: "posten",
   };
   // Sammelposten und Ehrlichkeits-Bänder ans Ende: Der Stapel liest sich von
@@ -1272,14 +1272,14 @@ export function deMio(v: number | null | undefined): string {
  *  Mio. anzugeben macht aus dem halben Bestand „0,0 Mio. €" — eine Zahl, die
  *  nichts mehr sagt, obwohl wir sie genau kennen. Auf den Bereichs- und
  *  Übersichtsseiten bleibt `deMio` richtig: dort ist Mio. die Hausnummer. */
-export function amount(euro: number | null | undefined): { wert: string; unit: string } {
-  if (euro == null) return { wert: "—", unit: "" };
+export function amount(euro: number | null | undefined): { value: string; unit: string } {
+  if (euro == null) return { value: "—", unit: "" };
   const abs = Math.abs(euro);
-  if (abs >= 1_000_000) return { wert: deMio(euro / 1e6), unit: "Mio. €" };
+  if (abs >= 1_000_000) return { value: deMio(euro / 1e6), unit: "Mio. €" };
   if (abs >= 10_000) {
-    return { wert: Math.round(euro / 1000).toLocaleString("de-DE"), unit: "Tsd. €" };
+    return { value: Math.round(euro / 1000).toLocaleString("de-DE"), unit: "Tsd. €" };
   }
-  return { wert: Math.round(euro).toLocaleString("de-DE"), unit: "€" };
+  return { value: Math.round(euro).toLocaleString("de-DE"), unit: "€" };
 }
 
 export function jahreSortiert(daten: HaushaltAuswahl<"years">): number[] {
@@ -1568,7 +1568,7 @@ const BEREICH_TEXTE: Record<BereichSchluessel, string> = {
  *  auftaucht. Bestehende Aufrufe (`BEREICH_INFO[zeile.area]`) bleiben damit
  *  gültig und treffen jetzt auch die Schreibweisen fremder Jahrgänge. */
 export const BEREICH_INFO: Record<string, string> = Object.fromEntries(
-  BEREICHE.flatMap((b) => b.aliase.map((a) => [a, BEREICH_TEXTE[b.schluessel]])),
+  BEREICHE.flatMap((b) => b.aliase.map((a) => [a, BEREICH_TEXTE[b.key]])),
 );
 
 /** Langtext zu einem Bereichsnamen — robuster als der Zugriff auf

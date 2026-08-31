@@ -92,8 +92,8 @@ def main() -> int:
     result: dict = {}
 
     def uebernehmen(name: str, part: dict) -> None:
-        for schluessel, wert in part.items():
-            result[f"{name}_{schluessel}" if schluessel in _EIGEN else schluessel] = wert
+        for key, value in part.items():
+            result[f"{name}_{key}" if key in _EIGEN else key] = value
 
     try:
         if args.nur in (None, "jahresabschluss"):

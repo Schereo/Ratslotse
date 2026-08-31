@@ -57,7 +57,7 @@ import {
 } from "@/lib/haushalt-investitionsprogramm";
 import { rampenText } from "@/components/grafik/kachelflaeche";
 import { Treemap, type TreemapKnoten } from "@/components/grafik/treemap";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 
 /** Eine Zeile der Vorhaben-Liste.
  *
@@ -88,7 +88,7 @@ function Zeile({ zeile, skala, bereichName }: {
           )}
         </span>
         <span className="flex-none font-display text-[14px] font-bold tabular-nums">
-          {b.wert}
+          {b.value}
           <span className="ml-1 text-[10px] font-medium text-muted-foreground">
             {b.unit}
           </span>
@@ -182,7 +182,7 @@ export function Vorhaben({
   // Die Kachelfläche: alle Vorhaben des Jahrgangs (oder des gewählten
   // Bereichs), Schlüssel je Vorhaben, Gruppe = Teilhaushalt.
   const knoten: TreemapKnoten[] = useMemo(() => {
-    const quelle = aktiv != null
+    const source = aktiv != null
       ? vorhaben(daten, effJahr, aktiv)
       : (daten?.massnahmen ?? []).filter((z) => z.year === effJahr);
     const zuName = (nr: number) => {
@@ -190,10 +190,10 @@ export function Vorhaben({
         (t) => t.year === effJahr && t.sub_budget_no === nr);
       return b?.label ?? `Teilhaushalt ${nr}`;
     };
-    return quelle.map((z) => ({
+    return source.map((z) => ({
       key: `${z.sub_budget_no}-${z.code}`,
       name: z.label,
-      wert: z.grand_total,
+      value: z.grand_total,
       gruppe: zuName(z.sub_budget_no),
       zusatz: aktiv == null ? zuName(z.sub_budget_no) : undefined,
     }));
@@ -351,7 +351,7 @@ export function Vorhaben({
         <p className="mt-3.5 text-[12px] text-muted-foreground">
           {liste.length} Vorhaben · das Programm weist für „{nameVon(aktiv)}“{" "}
           <span className="font-semibold tabular-nums text-foreground">
-            {amount(summe.grand_total).wert} {amount(summe.grand_total).unit}
+            {amount(summe.grand_total).value} {amount(summe.grand_total).unit}
           </span>{" "}
           aus.<Beleg q="investitionsprogramm" />
         </p>

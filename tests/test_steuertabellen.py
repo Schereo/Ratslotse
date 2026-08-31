@@ -448,8 +448,8 @@ def test_ein_jahresversatz_wuerde_die_sprungjahr_probe_reissen():
     dem genannten Jahr. Beide Richtungen werden unterstellt; die Probe muss
     jede finden, und dann darf nichts gespeichert werden."""
     for richtung, versatz in (("zu früh", +1), ("zu spät", -1)):
-        verschoben = {year + versatz: wert
-                      for year, wert in GRUNDSTEUER_IST.items()}
+        verschoben = {year + versatz: value
+                      for year, value in GRUNDSTEUER_IST.items()}
         sprung = stt.sprungjahrprobe(stt.parse_1105(PDF_1105), verschoben)
         assert sprung["bestanden"] == [], richtung
         assert [e["year"] for e in sprung["gerissen"]] == [2002, 2011, 2015], richtung

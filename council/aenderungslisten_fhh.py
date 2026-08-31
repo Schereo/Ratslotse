@@ -300,9 +300,9 @@ def _zelle(zeile: list[Wort], links: float, rechts: float) -> int | None:
     """Der Betrag einer Spalte in dieser Zeile — Beträge sind rechtsbündig."""
     for x0, x1, _y, text in zeile:
         if links < x1 <= rechts + 1 and x0 >= links - 1:
-            wert = _wert(text)
-            if wert is not None:
-                return wert
+            value = _wert(text)
+            if value is not None:
+                return value
     return None
 
 
@@ -464,8 +464,8 @@ def _summen_zellen(zeile: list[Wort], spalten: SummenSpalten,
     zellen: dict[str, int] = {}
     erster = letzter = None
     for x0, x1, _y, text in zeile:
-        wert = _wert(text)
-        if wert is None:
+        value = _wert(text)
+        if value is None:
             continue
         name, abstand = min(((n, abs(x1 - k)) for n, k in felder.items()),
                             key=lambda p: p[1])
@@ -473,7 +473,7 @@ def _summen_zellen(zeile: list[Wort], spalten: SummenSpalten,
             return None
         if name in zellen:
             return None
-        zellen[name] = wert
+        zellen[name] = value
         erster = x0 if erster is None else min(erster, x0)
         letzter = x1 if letzter is None else max(letzter, x1)
     if not {"ein", "aus", "balance"} <= zellen.keys():
@@ -639,10 +639,10 @@ def _doppelzeilen_falten(zeilen: list[FhhZeile]) -> list[FhhZeile]:
     """
     aus: dict[tuple[int, int], FhhZeile] = {}
     for z in zeilen:
-        schluessel = (z.year, z.seq)
-        erste = aus.get(schluessel)
+        key = (z.year, z.seq)
+        erste = aus.get(key)
         if erste is None:
-            aus[schluessel] = z
+            aus[key] = z
             continue
         for spaltenname in ("planned_draft", "inflow", "outflow",
                             "commitment_authorizations", "planned_new"):
@@ -735,12 +735,12 @@ def _betragszeilen(zeilen: list[list[Wort]], spalten: FhhSpalten,
             for i, (links, rechts) in enumerate(spalten.amount):
                 if not (links < w[1] <= rechts + 1 and w[0] >= links - 1):
                     continue
-                wert = _wert(w[3])
-                if wert is None:
+                value = _wert(w[3])
+                if value is None:
                     continue
                 if i in zellen:
                     mehrdeutig.add(i)
-                zellen[i] = wert
+                zellen[i] = value
         for i in mehrdeutig:
             zellen.pop(i, None)
         if len(zellen) >= 2 and _SOLL_NEU in zellen:

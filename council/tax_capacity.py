@@ -218,12 +218,12 @@ def probe_komponenten(budget_year: KfaZuweisungen) -> dict:
         teile = [w.get("zuweisungen_gemeindeaufgaben"),
                  w.get("zuweisungen_kreisaufgaben"), w.get(UEBERTRAGEN)]
         if any(t is None for t in teile) or w.get("nettobetrag") is None:
-            abweichungen.append({"schluessel": key, "city": w.get("city"),
+            abweichungen.append({"key": key, "city": w.get("city"),
                                  "reason": "Komponente fehlt"})
             continue
         summe = sum(teile) - (w.get("finanzausgleichsumlage") or 0)
         if abs(summe - w["nettobetrag"]) > 1:
-            abweichungen.append({"schluessel": key, "city": w.get("city"),
+            abweichungen.append({"key": key, "city": w.get("city"),
                                  "reason": f"{summe:.0f} statt {w['nettobetrag']:.0f} T€"})
     n = len(budget_year.staedte)
     return {"geprueft": n, "abweichungen": abweichungen, "ok": not abweichungen,
@@ -234,7 +234,7 @@ def probe_komponenten(budget_year: KfaZuweisungen) -> dict:
 
 
 def probe_gegen_jahrbuch(budget_year: KfaZuweisungen, jahrbuch_teur: float,
-                         schluessel: str = sv.OLDENBURG) -> dict:
+                         key: str = sv.OLDENBURG) -> dict:
     """Die zweite Probe: Trifft der Nettobetrag die Bücher der Stadt?
 
     ``jahrbuch_teur`` ist die Zeile „Finanzzuweisungen" aus Tabelle 1103 des
@@ -242,16 +242,16 @@ def probe_gegen_jahrbuch(budget_year: KfaZuweisungen, jahrbuch_teur: float,
     Behörden, dieselbe Zahl — das ist die stärkere der beiden Proben, weil sie
     nicht innerhalb eines Dokuments rechnet.
     """
-    wert = (budget_year.staedte.get(schluessel) or {}).get("nettobetrag")
-    if wert is None:
-        return {"ok": False, "result": f"kein Nettobetrag für {schluessel}"}
-    abstand = abs(wert - jahrbuch_teur)
+    value = (budget_year.staedte.get(key) or {}).get("nettobetrag")
+    if value is None:
+        return {"ok": False, "result": f"kein Nettobetrag für {key}"}
+    abstand = abs(value - jahrbuch_teur)
     anteil = abstand / max(jahrbuch_teur, 1)
     return {
         "ok": anteil <= JAHRBUCH_TOLERANZ,
-        "lsn_teur": wert, "jahrbuch_teur": jahrbuch_teur,
+        "lsn_teur": value, "jahrbuch_teur": jahrbuch_teur,
         "abweichung_prozent": round(anteil * 100, 4),
-        "result": (f"Ausgleichsjahr {budget_year.year}: {wert:,.0f} T€ (Land) "
+        "result": (f"Ausgleichsjahr {budget_year.year}: {value:,.0f} T€ (Land) "
                      f"gegen {jahrbuch_teur:,.0f} T€ (Jahrbuch 1103) — "
                      f"{anteil * 100:.4f} % Abstand".replace(",", ".")),
     }
@@ -275,10 +275,10 @@ def zeilen_finanzausgleich(budget_year: KfaZuweisungen) -> list[dict]:
     """
     aus: list[dict] = []
     for key, w in sorted(budget_year.staedte.items()):
-        for name, wert in sorted(w.items()):
-            if name in ("city", "nettobetrag_je_ew") or wert is None:
+        for name, value in sorted(w.items()):
+            if name in ("city", "nettobetrag_je_ew") or value is None:
                 continue
-            aus.append({"year": budget_year.year, "schluessel": key,
+            aus.append({"year": budget_year.year, "key": key,
                         "city": sv.KREISFREIE_STAEDTE.get(key, w.get("city", "")),
-                        "indicator": name, "wert": float(wert), "unit": "teur"})
+                        "indicator": name, "value": float(value), "unit": "teur"})
     return aus

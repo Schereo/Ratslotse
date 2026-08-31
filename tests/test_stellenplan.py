@@ -420,14 +420,14 @@ def test_jede_zeile_weiss_woher_sie_kommt(tmp_path):
     zeilen = store.get_stellenplan()
     assert zeilen and all(z["herkunft_id"] for z in zeilen)
 
-    quelle = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
-    assert quelle["document_id"] == 297432
-    assert quelle["citation"] == "Teil A: Beamtinnen und Beamte"
+    source = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
+    assert source["document_id"] == 297432
+    assert source["citation"] == "Teil A: Beamtinnen und Beamte"
     # Es ist der Verwaltungsentwurf, nicht der Beschluss — und die Besetzung
     # hat einen Stichtag. Beides muss der Beleg sagen können.
-    assert "Stand der Einbringung" in quelle["stand"]
-    assert "2025-06-30" in quelle["stand"]
-    assert quelle["probe"].startswith("stellenplan_spaltenprobe")
+    assert "Stand der Einbringung" in source["stand"]
+    assert "2025-06-30" in source["stand"]
+    assert source["probe"].startswith("stellenplan_spaltenprobe")
     store.close()
 
 

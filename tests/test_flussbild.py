@@ -89,9 +89,9 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
     wie sie entsteht, wenn eine Zeile im PDF nicht lesbar war."""
     anteil_e = ERTRAEGE_PLAN / ERTRAEGE_IST
     gesamt = [
-        {"nr": nr, "label": bez, "ansatz": round(wert * anteil_e, 2),
-         "result": wert, "deviation": round(wert - wert * anteil_e, 2), "is_total": 0}
-        for nr, bez, wert in ERTRAGSARTEN if nr != ohne_posten
+        {"nr": nr, "label": bez, "ansatz": round(value * anteil_e, 2),
+         "result": value, "deviation": round(value - value * anteil_e, 2), "is_total": 0}
+        for nr, bez, value in ERTRAGSARTEN if nr != ohne_posten
     ]
     gesamt += [
         {"nr": 12, "label": "Summe ordentliche Erträge", "ansatz": ERTRAEGE_PLAN,
@@ -105,10 +105,10 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
     store.save_ergebnisrechnung(JAHR, gesamt, _quelle(JAHR))
 
     anteil_a = AUFWENDUNGEN_PLAN / AUFWENDUNGEN_IST
-    for nr, name, wert in TEILHAUSHALTE:
+    for nr, name, value in TEILHAUSHALTE:
         store.save_ergebnisrechnung(JAHR, [
             {"nr": 20, "label": "Summe ordentliche Aufwendungen",
-             "ansatz": round(wert * anteil_a, 2), "result": wert, "is_total": 1},
+             "ansatz": round(value * anteil_a, 2), "result": value, "is_total": 1},
         ], _quelle(JAHR, "summenprobe"), sub_budget_no=nr, sub_budget_name=name)
 
 
@@ -130,8 +130,8 @@ if (!bild) { console.log(JSON.stringify({ bild: null })); process.exit(0); }
 const page = (s) => ({
   gesamt: s.gesamt,
   teile: s.teile,
-  summe: s.baender.reduce((a, b) => a + b.wert, 0),
-  baender: s.baender.map((b) => ({ id: b.id, label: b.label, wert: b.wert, art: b.art })),
+  summe: s.baender.reduce((a, b) => a + b.value, 0),
+  baender: s.baender.map((b) => ({ id: b.id, label: b.label, value: b.value, art: b.art })),
 });
 // Auch die Bündelung muss die Summe erhalten — ein Sammelposten darf nichts
 // verschlucken, sonst stimmten die Bandbreiten nicht mehr mit der Tabelle.
@@ -147,7 +147,7 @@ console.log(JSON.stringify({
   aufgeschluesselt: bild.aufgeschluesselt,
   herkunft: page(bild.herkunft),
   verwendung: page(bild.verwendung),
-  gebuendeltSumme: geb.gezeigt.reduce((a, b) => a + b.wert, 0),
+  gebuendeltSumme: geb.gezeigt.reduce((a, b) => a + b.value, 0),
   gebuendeltAnzahl: geb.gebuendelt.length,
 }));
 """
@@ -166,9 +166,9 @@ def _lib_fuer_node(tmp_path: Path) -> Path:
     ziel = tmp_path / "lib"
     ziel.mkdir(exist_ok=True)
     for name in ("haushalt.ts", "haushalt-bereiche.ts"):
-        quelle = (FRONTEND / "lib" / name).read_text(encoding="utf-8")
+        source = (FRONTEND / "lib" / name).read_text(encoding="utf-8")
         (ziel / name).write_text(
-            re.sub(r'from "@/lib/([\w-]+)"', r'from "./\1.ts"', quelle),
+            re.sub(r'from "@/lib/([\w-]+)"', r'from "./\1.ts"', source),
             encoding="utf-8")
     return ziel / "haushalt.ts"
 
@@ -222,7 +222,7 @@ def test_das_minus_wird_zum_ausgleichsband_und_nicht_weggerechnet(tmp_path):
     assert minus > 0
     ausgleich = [b for b in r["herkunft"]["baender"] if b["art"] == "ausgleich"]
     assert len(ausgleich) == 1
-    assert ausgleich[0]["wert"] == pytest.approx(minus, abs=0.01)
+    assert ausgleich[0]["value"] == pytest.approx(minus, abs=0.01)
     assert ausgleich[0]["label"] == "aus dem Ersparten"
     # Auf der Ausgabenseite gibt es nichts auszugleichen.
     assert not [b for b in r["verwendung"]["baender"] if b["art"] == "ausgleich"]
@@ -270,7 +270,7 @@ def test_fehlende_zeile_wird_gezeigt_statt_gestreckt(tmp_path):
     # Die Lücke steht als eigenes Band da, nicht auf die anderen verteilt.
     fehlt = [b for b in r["herkunft"]["baender"] if b["art"] == "rest"]
     assert len(fehlt) == 1
-    assert fehlt[0]["wert"] == pytest.approx(
+    assert fehlt[0]["value"] == pytest.approx(
         ERTRAGSARTEN[0][2], abs=0.01)
 
 
@@ -340,28 +340,28 @@ def test_viewbox_haengt_an_der_gemessenen_breite():
     Seit dem Grafik-Baukasten (GB-07) zeichnet
     ``components/grafik/flussbild.tsx`` — die Eigenschaft wohnt dort, die
     Haushalts-Datei ist nur noch der Adapter."""
-    quelle = _lies("components/grafik/flussbild.tsx")
-    assert "const W = breite;" in quelle
-    assert "viewBox={`0 0 ${W} ${H}`}" in quelle
-    assert "new ResizeObserver" in quelle
+    source = _lies("components/grafik/flussbild.tsx")
+    assert "const W = breite;" in source
+    assert "viewBox={`0 0 ${W} ${H}`}" in source
+    assert "new ResizeObserver" in source
 
 
 def test_schmal_wird_umgebaut_nicht_geschrumpft():
     """Unter der Schwelle gibt es gestapelte Listen statt gestauchter
     Bänder — ein zusammengeschobenes Flussbild war schon zweimal der Befund.
     Auch diese Regel zeichnet seit GB-07 der Baukasten."""
-    quelle = _lies("components/grafik/flussbild.tsx")
-    assert "SCHWELLE_BREIT" in quelle
-    assert "breite < SCHWELLE_BREIT" in quelle
-    assert "<Listen seiten={seiten}" in quelle
+    source = _lies("components/grafik/flussbild.tsx")
+    assert "SCHWELLE_BREIT" in source
+    assert "breite < SCHWELLE_BREIT" in source
+    assert "<Listen seiten={seiten}" in source
 
 
 def test_ohne_vollstaendige_aufschluesselung_kein_bild():
     """Die Weigerung ist Absicht und muss im Code stehen bleiben: Lieber keine
     Grafik als eine, die eine Lücke glattzieht."""
-    quelle = _lies("components/haushalt/flussbild.tsx")
+    source = _lies("components/haushalt/flussbild.tsx")
     # Seit 16.08. heißt die Variable `zeigBild`: Fehlt das gewählte Jahr,
     # zeigt die Komponente das jüngste vollständige — die Weigerung, eine
     # LÜCKE glattzuziehen, gilt unverändert und ist genau das hier Geprüfte.
-    assert "!zeigBild.aufgeschluesselt ?" in quelle
-    assert "gestreckt" in quelle
+    assert "!zeigBild.aufgeschluesselt ?" in source
+    assert "gestreckt" in source

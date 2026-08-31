@@ -18,7 +18,7 @@ import type { Herkunft } from "@/lib/herkunft";
 export type { Herkunft };
 
 export type VergleichStadt = {
-  schluessel: string;
+  key: string;
   name: string;
   ist_oldenburg: boolean;
   /** Unter 100.000 Einwohnern rechnet das NFAG die Steuerkraftmesszahl mit
@@ -29,10 +29,10 @@ export type VergleichStadt = {
 export type VergleichWert = {
   series: "tax_capacity" | "realsteuern";
   year: number;
-  schluessel: string;
+  key: string;
   city: string;
   indicator: string;
-  wert: number;
+  value: number;
   unit: string;
   herkunft_id: number | null;
 };
@@ -74,7 +74,7 @@ export function indicator(
   const aus = new Map<string, VergleichWert>();
   for (const w of daten.werte) {
     if (w.series === series && w.indicator === name && w.year === year) {
-      aus.set(w.schluessel, w);
+      aus.set(w.key, w);
     }
   }
   return aus;
@@ -88,9 +88,9 @@ export function juengstesJahr(daten: VergleichDaten,
 }
 
 export type Balken = {
-  schluessel: string;
+  key: string;
   name: string;
-  wert: number;
+  value: number;
   ist_oldenburg: boolean;
   unter_100k: boolean;
 };
@@ -107,16 +107,16 @@ export function steuerkraftJeEinwohner(daten: VergleichDaten, year: number): Bal
   const population = indicator(daten, "tax_capacity", "population", year);
   const aus: Balken[] = [];
   for (const s of daten.staedte) {
-    const m = tax_index.get(s.schluessel);
-    const e = population.get(s.schluessel);
-    if (!m || !e || !e.wert) continue;
+    const m = tax_index.get(s.key);
+    const e = population.get(s.key);
+    if (!m || !e || !e.value) continue;
     aus.push({
-      schluessel: s.schluessel, name: s.name,
-      wert: (m.wert * 1000) / e.wert,
+      key: s.key, name: s.name,
+      value: (m.value * 1000) / e.value,
       ist_oldenburg: s.ist_oldenburg, unter_100k: s.unter_100k,
     });
   }
-  return aus.sort((a, b) => b.wert - a.wert);
+  return aus.sort((a, b) => b.value - a.value);
 }
 
 /** Eine gespeicherte Pro-Kopf- oder Prozent-Kennzahl als Balkenliste. */
@@ -125,14 +125,14 @@ export function balken(daten: VergleichDaten, series: "tax_capacity" | "realsteu
   const werte = indicator(daten, series, name, year);
   const aus: Balken[] = [];
   for (const s of daten.staedte) {
-    const w = werte.get(s.schluessel);
+    const w = werte.get(s.key);
     if (!w) continue;
     aus.push({
-      schluessel: s.schluessel, name: s.name, wert: w.wert,
+      key: s.key, name: s.name, value: w.value,
       ist_oldenburg: s.ist_oldenburg, unter_100k: s.unter_100k,
     });
   }
-  return aus.sort((a, b) => b.wert - a.wert);
+  return aus.sort((a, b) => b.value - a.value);
 }
 
 /** Oldenburgs Platz in einer Balkenliste, 1-basiert. */
@@ -143,20 +143,20 @@ export function platzVonOldenburg(zeilen: Balken[]): number | null {
 
 /** Eine Zeitreihe je Stadt — für die Steuereinnahmekraft über drei Jahre. */
 export function series(daten: VergleichDaten, name: string,
-                      schluessel: string): { year: number; wert: number }[] {
+                      key: string): { year: number; value: number }[] {
   return daten.werte
-    .filter((w) => w.indicator === name && w.schluessel === schluessel)
-    .map((w) => ({ year: w.year, wert: w.wert }))
+    .filter((w) => w.indicator === name && w.key === key)
+    .map((w) => ({ year: w.year, value: w.value }))
     .sort((a, b) => a.year - b.year);
 }
 
 /** Wie sich ein Wert über die Reihe verändert hat — in Prozent, gerundet.
  *  `null`, wenn Anfang oder Ende fehlen; eine halbe Reihe ergibt keine
  *  Veränderung, sondern eine Lücke. */
-export function change(punkte: { year: number; wert: number }[]): number | null {
+export function change(punkte: { year: number; value: number }[]): number | null {
   if (punkte.length < 2) return null;
-  const erst = punkte[0].wert;
-  const letzt = punkte[punkte.length - 1].wert;
+  const erst = punkte[0].value;
+  const letzt = punkte[punkte.length - 1].value;
   if (!erst) return null;
   return Math.round(((letzt - erst) / erst) * 100);
 }

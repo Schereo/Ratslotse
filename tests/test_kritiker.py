@@ -42,11 +42,11 @@ def test_zahlen_aus_der_quelle_kommen_durch():
 def test_grosse_betraege_in_allen_schreibweisen():
     """Die Vorlage schreibt „13.500.000,00 Euro", die Karte „13,5 Millionen"
     — oder umgekehrt. Beides ist dieselbe Zahl."""
-    quelle = "Bürgschaft für ein Darlehen in Höhe von 13.500.000,00 Euro."
-    assert kritiker.pruefe("Beantragt ist eine Bürgschaft über 13.500.000 Euro.", quelle) == []
-    assert kritiker.pruefe("Beantragt ist eine Bürgschaft über 13,5 Millionen Euro.", quelle) == []
+    source = "Bürgschaft für ein Darlehen in Höhe von 13.500.000,00 Euro."
+    assert kritiker.pruefe("Beantragt ist eine Bürgschaft über 13.500.000 Euro.", source) == []
+    assert kritiker.pruefe("Beantragt ist eine Bürgschaft über 13,5 Millionen Euro.", source) == []
     # Eine andere Zahl bleibt eine andere Zahl.
-    assert kritiker.pruefe("Beantragt ist eine Bürgschaft über 15,5 Millionen Euro.", quelle)
+    assert kritiker.pruefe("Beantragt ist eine Bürgschaft über 15,5 Millionen Euro.", source)
 
 
 def test_ohne_vorlage_faellt_jede_angabe_durch():
@@ -61,20 +61,20 @@ def test_ohne_vorlage_faellt_jede_angabe_durch():
 def test_wertungen_und_vorweggenommene_ergebnisse():
     """Was der Prompt verbietet, prüft der Kritiker nach: Ein Prompt ist eine
     Bitte, das hier ist eine Prüfung."""
-    quelle = "Bürgschaft über 13.500.000 Euro für das Klinikum."
+    source = "Bürgschaft über 13.500.000 Euro für das Klinikum."
     assert any("wertet" in m for m in kritiker.pruefe(
-        "Die Bürgschaft trägt ein hohes Risiko für die Stadt.", quelle))
+        "Die Bürgschaft trägt ein hohes Risiko für die Stadt.", source))
     assert any("Ergebnis" in m for m in kritiker.pruefe(
-        "Der Rat beschließt eine Bürgschaft über 13.500.000 Euro.", quelle))
+        "Der Rat beschließt eine Bürgschaft über 13.500.000 Euro.", source))
     assert any("wichtig" in m.lower() for m in kritiker.pruefe(
-        "Eine wichtige Entscheidung steht an.", quelle))
+        "Eine wichtige Entscheidung steht an.", source))
 
 
 def test_aktenzeichen_und_laenge():
-    quelle = "Bericht der Verwaltung zur Grundsteuer C."
+    source = "Bericht der Verwaltung zur Grundsteuer C."
     assert any("Aktenzeichen" in m for m in kritiker.pruefe(
-        "Vorgestellt wird ein Bericht der Verwaltung [26/0666].", quelle))
-    assert any("zu lang" in m for m in kritiker.pruefe("Beantragt ist " + "x" * 300, quelle))
+        "Vorgestellt wird ein Bericht der Verwaltung [26/0666].", source))
+    assert any("zu lang" in m for m in kritiker.pruefe("Beantragt ist " + "x" * 300, source))
 
 
 def test_jahreszahlen_brauchen_keinen_beleg():
@@ -143,10 +143,10 @@ def test_zahlwoerter_zaehlen_als_beleg():
     Jahren". Sachlich dasselbe — ohne diese Brücke meldete der Kritiker
     einen Fehler, wo keiner ist (der einzige Fehlalarm auf 22 Texte im
     ersten Produktionslauf)."""
-    quelle = ("das verlorengehende Kronenvolumen innerhalb eines Zeitraums von zehn "
+    source = ("das verlorengehende Kronenvolumen innerhalb eines Zeitraums von zehn "
               "Jahren durch Ersatzpflanzungen vollständig auszugleichen")
     assert kritiker.pruefe(
         "Beantragt ist, Verluste innerhalb von 10 Jahren durch Ersatzpflanzungen "
-        "auszugleichen.", quelle) == []
+        "auszugleichen.", source) == []
     # Eine andere Zahl bleibt trotzdem eine andere.
-    assert kritiker.pruefe("Beantragt ist ein Ausgleich in 14 Jahren.", quelle)
+    assert kritiker.pruefe("Beantragt ist ein Ausgleich in 14 Jahren.", source)

@@ -41,7 +41,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import type { Herkunft } from "@/lib/herkunft";
 import {
   Beleg, Dokumentbeleg,
-} from "@/components/haushalt/quelle";
+} from "@/components/haushalt/source";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -112,15 +112,15 @@ const BELEGLAGE: Record<string, { kurz: string; lang: string }> = {
 };
 
 function beleg(probes: string): { kurz: string; lang: string } {
-  for (const schluessel of Object.keys(BELEGLAGE)) {
-    if (probes.includes(schluessel)) return BELEGLAGE[schluessel];
+  for (const key of Object.keys(BELEGLAGE)) {
+    if (probes.includes(key)) return BELEGLAGE[key];
   }
   return { kurz: "geprüft", lang: "Die Rechenprobe dieser Zeile ist gelaufen." };
 }
 
 /** Ein Betrag in Mio. €, oder ein Strich mit Begründung. */
-function Betrag({ wert, fehltWeil }: { wert: number | null; fehltWeil: string }) {
-  if (wert == null) {
+function Betrag({ value, fehltWeil }: { value: number | null; fehltWeil: string }) {
+  if (value == null) {
     return (
       <span className="text-muted-foreground" title={fehltWeil}>
         —<span className="sr-only"> {fehltWeil}</span>
@@ -129,7 +129,7 @@ function Betrag({ wert, fehltWeil }: { wert: number | null; fehltWeil: string })
   }
   return (
     <span className="tabular-nums">
-      {deMio(wert / 1e6)}&#8239;Mio.&nbsp;€
+      {deMio(value / 1e6)}&#8239;Mio.&nbsp;€
     </span>
   );
 }
@@ -155,7 +155,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
   const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = juengsteZeile(zeilen);
   const b = beleg(letzte.probes);
-  const series: JahrPunkt[] = nach.map((z) => ({ year: z.year, wert: z.result / 1e6 }));
+  const series: JahrPunkt[] = nach.map((z) => ({ year: z.year, value: z.result / 1e6 }));
   const zeigKurve = nach.length >= 3;
 
   return (
@@ -186,12 +186,12 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
       <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]">
         <dt className="text-muted-foreground">Erträge</dt>
         <dd className="text-right font-semibold">
-          <Betrag wert={letzte.revenues}
+          <Betrag value={letzte.revenues}
             fehltWeil="Diese Quelle nennt nur das Jahresergebnis." />
         </dd>
         <dt className="text-muted-foreground">Aufwendungen</dt>
         <dd className="text-right font-semibold">
-          <Betrag wert={letzte.expenses}
+          <Betrag value={letzte.expenses}
             fehltWeil="Diese Quelle nennt nur das Jahresergebnis." />
         </dd>
         <dt className="border-t border-border pt-1 font-semibold">Ergebnis</dt>

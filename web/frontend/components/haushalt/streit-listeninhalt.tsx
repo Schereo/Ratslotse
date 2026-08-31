@@ -33,7 +33,7 @@ import {
   AenderungslistenDaten, ListeImJahr, deltaBetrag, listenFuerJahr,
   politikZeilen, positionenVon,
 } from "@/lib/haushalt-aenderungslisten";
-import { Beleg, Dokumentbeleg } from "@/components/haushalt/quelle";
+import { Beleg, Dokumentbeleg } from "@/components/haushalt/source";
 import { BetragZelle, TextZelle, ZahlenTabelle } from "@/components/haushalt/zahlen-tabelle";
 import { parteiDot } from "@/components/qa-bausteine";
 import { cn } from "@/lib/utils";
@@ -246,7 +246,7 @@ export function StreitListenInhalt({ daten, year }: {
 
       {listen.length > 0 && (
         <div className="mt-3">
-          {listen.map((l) => <ListenKarte key={l.schluessel} liste={l} year={year} />)}
+          {listen.map((l) => <ListenKarte key={l.key} liste={l} year={year} />)}
         </div>
       )}
     </div>

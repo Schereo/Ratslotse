@@ -1459,7 +1459,7 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
             continue
 
         werte = {}
-        for schluessel, muster in (
+        for key, muster in (
             ("revenues", r"12\.\s*=?\s*Summe ordentliche\s*Erträge"),
             ("expenses", r"20\.\s*=?\s*Summe ordentliche\s*Aufwendungen"),
             ("result", r"21\.\s*ordentliches Ergebnis"),
@@ -1469,7 +1469,7 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
             zahlen = _thh_wertezeile(block, muster, spalten)
             if zahlen is None:
                 continue
-            werte[schluessel] = zahlen[ansatz_idx]
+            werte[key] = zahlen[ansatz_idx]
         if len(werte) < 3:
             continue
         # Prüfsumme des Dokuments: Erträge − Aufwendungen = Ergebnis.

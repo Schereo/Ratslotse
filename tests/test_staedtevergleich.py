@@ -55,26 +55,26 @@ def schreibe_xlsx(pfad, blaetter: dict[str, dict[int, list]]) -> str:
     texte: list[str] = []
     index: dict[str, int] = {}
 
-    def text_id(wert: str) -> int:
-        if wert not in index:
-            index[wert] = len(texte)
-            texte.append(wert)
-        return index[wert]
+    def text_id(value: str) -> int:
+        if value not in index:
+            index[value] = len(texte)
+            texte.append(value)
+        return index[value]
 
     blatt_xml: dict[str, str] = {}
     for name, zeilen in blaetter.items():
         teile = []
         for nr in sorted(zeilen):
             zellen = []
-            for i, wert in enumerate(zeilen[nr]):
-                if wert is None or wert == "":
+            for i, value in enumerate(zeilen[nr]):
+                if value is None or value == "":
                     continue
                 ref = f"{_spaltenname(i)}{nr}"
-                if isinstance(wert, (int, float)):
-                    zellen.append(f'<c r="{ref}"><v>{wert}</v></c>')
+                if isinstance(value, (int, float)):
+                    zellen.append(f'<c r="{ref}"><v>{value}</v></c>')
                 else:
                     zellen.append(
-                        f'<c r="{ref}" t="s"><v>{text_id(str(wert))}</v></c>')
+                        f'<c r="{ref}" t="s"><v>{text_id(str(value))}</v></c>')
             teile.append(f'<row r="{nr}">{"".join(zellen)}</row>')
         blatt_xml[name] = (
             '<?xml version="1.0" encoding="UTF-8"?>'
@@ -361,7 +361,7 @@ def test_ueberlappungsprobe_schlaegt_an_wenn_ein_wert_abweicht(tmp_path, kfa2026
                          {"ST_KR_MESS_VGL": _kfa_blatt(2025, manipuliert)})
     probe = sv.probe_ueberlappung(sv.lies_kfa(pfad), sv.lies_kfa(kfa2026))
     assert not probe["ok"]
-    assert [a["schluessel"] for a in probe["abweichungen"]] == ["404000"]
+    assert [a["key"] for a in probe["abweichungen"]] == ["404000"]
 
 
 def test_ueberlappungsprobe_verlangt_aneinandergrenzende_jahrgaenge(kfa2026):
@@ -372,15 +372,15 @@ def test_ueberlappungsprobe_verlangt_aneinandergrenzende_jahrgaenge(kfa2026):
 
 def test_steuerkraft_zeilen_nur_kreisfreie_staedte_und_ohne_pro_kopf(kfa2026):
     zeilen = sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026))
-    schluessel = {z["schluessel"] for z in zeilen}
-    assert schluessel == set(sv.KREISFREIE_STAEDTE)
-    assert "151009" not in schluessel   # Gifhorn ist kreisangehörig
+    key = {z["key"] for z in zeilen}
+    assert key == set(sv.KREISFREIE_STAEDTE)
+    assert "151009" not in key   # Gifhorn ist kreisangehörig
     # Der Pro-Kopf-Wert ist UNSERE Division und wird deshalb nicht gespeichert.
     assert {z["indicator"] for z in zeilen} == {"steuerkraftmesszahl", "population"}
     assert all(z["year"] == 2026 for z in zeilen)
     # Der Name kommt aus unserer Liste, nicht aus der Datei — sonst wechselte
     # er mit dem Jahrgang mit.
-    assert {z["city"] for z in zeilen if z["schluessel"] == "403000"} == {"Oldenburg"}
+    assert {z["city"] for z in zeilen if z["key"] == "403000"} == {"Oldenburg"}
 
 
 def test_steuerkraft_je_einwohner_ergibt_die_veroeffentlichten_werte(kfa2026):
@@ -388,7 +388,7 @@ def test_steuerkraft_je_einwohner_ergibt_die_veroeffentlichten_werte(kfa2026):
     zeilen = sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026))
     je_stadt: dict[str, dict] = {}
     for z in zeilen:
-        je_stadt.setdefault(z["city"], {})[z["indicator"]] = z["wert"]
+        je_stadt.setdefault(z["city"], {})[z["indicator"]] = z["value"]
     je_ew = {stadt: w["steuerkraftmesszahl"] * 1000 / w["population"]
              for stadt, w in je_stadt.items()}
     assert je_ew["Oldenburg"] == pytest.approx(1973.61, abs=0.01)
@@ -498,7 +498,7 @@ def test_jeder_jahreswert_traegt_sein_eigenes_jahr(realsteuer):
     assert {z["year"] for z in zeilen if z["indicator"].startswith("hebesatz_")} == {2025}
     ol25 = next(z for z in zeilen if z["city"] == "Oldenburg"
                 and z["indicator"] == "steuereinnahmekraft_je_ew" and z["year"] == 2023)
-    assert ol25["wert"] == pytest.approx(1673.43)
+    assert ol25["value"] == pytest.approx(1673.43)
 
 
 # --- Speichern --------------------------------------------------------------

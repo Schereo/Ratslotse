@@ -32,7 +32,7 @@ import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
@@ -74,7 +74,7 @@ function MitredenInner() {
   const [streit, setStreit] = useState<{ beitraege: number; von: number; bis: number } | null | undefined>(undefined);
   const heute = useMemo(() => new Date(), []);
   return (
-    <Quellenkontext schluessel={QUELLEN}>
+    <Quellenkontext keys={QUELLEN}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -158,7 +158,7 @@ function MitredenInner() {
                 kicker="Ratskalender · Beratungsfolge des Haushalts"
                 zahl={tage === 0 ? <>Nächster Termin: heute</>
                   : tage === 1 ? <>Nächster Termin: morgen</>
-                    : <>Nächster Termin: in <ZaehlZahl wert={tage} /> Tagen</>}
+                    : <>Nächster Termin: in <ZaehlZahl value={tage} /> Tagen</>}
                 sub={`${naechster.committee} am ${deDatum(naechster.datum)}`}
                 minibild={minibild}
               />
@@ -168,7 +168,7 @@ function MitredenInner() {
             return (
               <Seitenbuehne
                 kicker={`Haushaltsberatungen ${streit.von}–${streit.bis}`}
-                zahl={<><ZaehlZahl wert={streit.beitraege} /> Wortbeiträge in den
+                zahl={<><ZaehlZahl value={streit.beitraege} /> Wortbeiträge in den
                   Ratsdebatten zum Haushalt</>}
                 sub="ein nächster Termin steht noch nicht im Ratskalender"
                 minibild={minibild}
@@ -230,7 +230,7 @@ function MitredenInner() {
 
         <SchrittWeiter href="/haushalt/mitreden" />
 
-        <Quellenverzeichnis schluessel={QUELLEN} />
+        <Quellenverzeichnis keys={QUELLEN} />
 
         <Link
           href="/haushalt"

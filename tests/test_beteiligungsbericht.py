@@ -501,7 +501,7 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
         "label": "Beteiligungsbericht 2024"}},
         finanzquellen.Protokoll(still=True))
 
-    quelle = herkunft.Herkunft(art="ris", document_id=302709,
+    source = herkunft.Herkunft(art="ris", document_id=302709,
                                label="Gesamtabschluss 2024",
                                url="https://example.org/ga2024.pdf",
                                probe="konzern_traegersumme")
@@ -510,7 +510,7 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
          "amount_keur": 69889.0, "prior_year_keur": None},
         {"art": "expenses", "entity_key": "egh", "entity": "EGH",
          "amount_keur": 72590.0, "prior_year_keur": None},
-    ], quelle)
+    ], source)
 
     v = bb.konzernvergleich(store, 2024)
     assert len(v) == 1

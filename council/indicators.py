@@ -225,15 +225,15 @@ def parse_kennzahlen(text: str, report_year: int) -> tuple[list[dict], list[str]
         if treffer is None:
             unbekannt.append(_flach(text_) or "(ohne Beschriftung)")
         else:
-            for year, (wert, stellen, percent) in zip(years, werte):
+            for year, (value, stellen, percent) in zip(years, werte):
                 # Das Prozentzeichen ist ein zweites, unabhängiges Signal für
                 # die Einheit — steht es an einer Euro-Kennzahl, stimmt die
                 # Spaltenzuordnung nicht.
                 if percent != (treffer.unit == "percent"):
-                    unbekannt.append(f"{treffer.key}: Einheit passt nicht zum Wert {wert}")
+                    unbekannt.append(f"{treffer.key}: Einheit passt nicht zum Wert {value}")
                     break
                 zeilen.append({"report_year": report_year, "indicator": treffer.key,
-                               "label": treffer.label, "year": year, "wert": wert,
+                               "label": treffer.label, "year": year, "value": value,
                                "unit": treffer.unit, "stellen": stellen})
         beschriftung.clear()
         werte.clear()
@@ -403,7 +403,7 @@ def ueberlappungsprobe(zeilen: list[dict]) -> tuple[int, list[dict]]:
     for (indicator, year), gruppe in sorted(nach_zelle.items()):
         gruppe = sorted(gruppe, key=lambda z: z["report_year"])
         for aelter, juenger in zip(gruppe, gruppe[1:]):
-            diff = juenger["wert"] - aelter["wert"]
+            diff = juenger["value"] - aelter["value"]
             gleich = abs(diff) <= toleranz(aelter["stellen"], juenger["stellen"])
             umgestellt = (aelter.get("version") and juenger.get("version")
                           and aelter["version"] != juenger["version"])
@@ -414,8 +414,8 @@ def ueberlappungsprobe(zeilen: list[dict]) -> tuple[int, list[dict]]:
                 "art": "umbenennung" if gleich else
                        ("definition" if umgestellt else "revision"),
                 "indicator": indicator, "year": year,
-                "alt": aelter["wert"], "alt_bericht": aelter["report_year"],
-                "neu": juenger["wert"], "neu_bericht": juenger["report_year"],
+                "alt": aelter["value"], "alt_bericht": aelter["report_year"],
+                "neu": juenger["value"], "neu_bericht": juenger["report_year"],
                 "difference": round(diff, 4)})
     return bestaetigt, funde
 
@@ -432,9 +432,9 @@ def gegen_bilanz(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[dict
     posten: dict[tuple[int, str], float] = {}
     for b in bilanz:
         if b.get("role") in AKTIVA:
-            summe[b["year"]] = summe.get(b["year"], 0.0) + b["wert"]
+            summe[b["year"]] = summe.get(b["year"], 0.0) + b["value"]
         if b.get("role"):
-            posten[(b["year"], b["role"])] = b["wert"]
+            posten[(b["year"], b["role"])] = b["value"]
 
     geprueft = 0
     risse: list[dict] = []
@@ -444,12 +444,12 @@ def gegen_bilanz(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[dict
         if zaehler is None or not summe.get(z["year"]):
             continue
         eigen = zaehler * 100 / summe[z["year"]]
-        if abs(eigen - z["wert"]) <= toleranz(z["stellen"], z["stellen"]):
+        if abs(eigen - z["value"]) <= toleranz(z["stellen"], z["stellen"]):
             geprueft += 1
         else:
             risse.append({"indicator": z["indicator"], "year": z["year"],
                           "report_year": z["report_year"],
-                          "gedruckt": z["wert"], "gerechnet": round(eigen, 4)})
+                          "gedruckt": z["value"], "gerechnet": round(eigen, 4)})
     return geprueft, risse
 
 
@@ -474,9 +474,9 @@ def vermoegensprobe(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[d
     rap: dict[int, float] = {}
     for b in bilanz:
         if b.get("role") in AKTIVA:
-            aktiva[b["year"]] = aktiva.get(b["year"], 0.0) + b["wert"]
+            aktiva[b["year"]] = aktiva.get(b["year"], 0.0) + b["value"]
         if b.get("role") == "aktive_rap":
-            rap[b["year"]] = b["wert"]
+            rap[b["year"]] = b["value"]
 
     # Nur Zeilen DESSELBEN Berichts multiplizieren — zwei Berichte gemischt
     # wäre eine andere Rechnung, und ihr Ergebnis sagte nichts über beide.
@@ -492,8 +492,8 @@ def vermoegensprobe(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[d
         if not (kopf and leute) or year not in aktiva:
             continue
         soll = aktiva[year] - rap.get(year, 0.0)
-        ist = kopf["wert"] * leute["wert"]
-        if abs(ist - soll) <= 0.5 * 10 ** -kopf["stellen"] * leute["wert"]:
+        ist = kopf["value"] * leute["value"]
+        if abs(ist - soll) <= 0.5 * 10 ** -kopf["stellen"] * leute["value"]:
             geprueft += 1
         else:
             risse.append({"report_year": report_year, "year": year,
@@ -510,7 +510,7 @@ def neueste(zeilen: list[dict]) -> list[dict]:
     """
     beste: dict[tuple[str, int], dict] = {}
     for z in zeilen:
-        schluessel = (z["indicator"], z["year"])
-        if schluessel not in beste or z["report_year"] > beste[schluessel]["report_year"]:
-            beste[schluessel] = z
+        key = (z["indicator"], z["year"])
+        if key not in beste or z["report_year"] > beste[key]["report_year"]:
+            beste[key] = z
     return sorted(beste.values(), key=lambda z: (z["indicator"], z["year"]))

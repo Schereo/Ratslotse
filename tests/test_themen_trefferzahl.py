@@ -178,11 +178,11 @@ def test_anlegen_rechnet_mit_derselben_definition():
     ``mark_topic_hits_seen`` verhindert ein „n neu" für Beschlüsse, die die
     Nutzer:in gerade erst als Zahl entstehen sieht.
     """
-    quelle = (ROOT / "web" / "backend" / "app" / "routers" / "topics.py").read_text(encoding="utf-8")
-    assert "topic_intel.treffer(" in quelle
-    assert "save_topic_decision_matches" in quelle
-    assert "als_neu=False" in quelle
-    assert "mark_topic_hits_seen" in quelle
+    source = (ROOT / "web" / "backend" / "app" / "routers" / "topics.py").read_text(encoding="utf-8")
+    assert "topic_intel.treffer(" in source
+    assert "save_topic_decision_matches" in source
+    assert "als_neu=False" in source
+    assert "mark_topic_hits_seen" in source
 
 
 def test_karte_trennt_die_beiden_nullen():

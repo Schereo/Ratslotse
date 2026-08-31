@@ -24,7 +24,7 @@ import { deMio, type HaushaltssatzungZeile } from "@/lib/haushalt";
 import type { ProgrammDaten } from "@/lib/haushalt-investitionsprogramm";
 import type { SchuldenDaten } from "@/lib/haushalt-schulden";
 import { gezahlteZinsspanne } from "@/lib/haushalt-labor";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { cn } from "@/lib/utils";
 
 /** Wie viele Vorhaben die Liste zeigt — die größten; alles andere steht
@@ -57,7 +57,7 @@ export function InvestWerkbank({
   schulden: SchuldenDaten | null;
   satzung: HaushaltssatzungZeile[] | undefined;
   vorhabenAus: Record<string, boolean>;
-  toggleVorhaben: (schluessel: string) => void;
+  toggleVorhaben: (key: string) => void;
   kredit: boolean;
   setKredit: (v: boolean) => void;
   /** Das Minus des Planjahres nach dem aktuellen Szenario, in Mio. € —
@@ -71,7 +71,7 @@ export function InvestWerkbank({
         .sort((a, b) => b.grand_total - a.grand_total)
         .slice(0, ANZAHL)
     : [];
-  const schluessel = (z: { code: string; label: string }) =>
+  const key = (z: { code: string; label: string }) =>
     z.code || z.label;
   /** Detailzeilen, die etwas SAGEN: Wiederholt ein Sachkonto nur den
    *  Maßnahmen-Namen (ggf. abgeschnitten), trägt es nichts — was bleibt,
@@ -86,7 +86,7 @@ export function InvestWerkbank({
     return eigene.length ? eigene.join(" · ") : null;
   };
   const gestrichen = vorhaben
-    .filter((z) => vorhabenAus[schluessel(z)])
+    .filter((z) => vorhabenAus[key(z)])
     .reduce((s, z) => s + z.grand_total, 0);
 
   const schuldenLetzte = schulden?.series.length
@@ -130,17 +130,17 @@ export function InvestWerkbank({
           </div>
           <div className="mt-2 flex flex-col">
             {vorhaben.map((z) => {
-              const aus = !!vorhabenAus[schluessel(z)];
+              const aus = !!vorhabenAus[key(z)];
               // Kein Vorhaben ohne Namen: Trägt die Summenzeile im Dokument
               // keinen (und die Detailzeilen keinen gemeinsamen), steht hier
               // der Code — eine benannte Lücke statt eines leeren Schalters.
               const name = z.label || `Maßnahme ${z.code}`;
               return (
-                <div key={schluessel(z)}
+                <div key={key(z)}
                   className="flex items-start gap-3 border-t border-border/60 py-2.5 first:border-t-0">
                   <div className="pt-0.5">
                     <Schalter an={!aus} label={name}
-                      onClick={() => toggleVorhaben(schluessel(z))} />
+                      onClick={() => toggleVorhaben(key(z))} />
                   </div>
                   <span className="min-w-0 flex-1">
                     <span className={cn("text-[12.5px] leading-snug",

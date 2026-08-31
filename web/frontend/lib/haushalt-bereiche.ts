@@ -47,7 +47,7 @@ export type BereichSchluessel =
   | "stiftungen";
 
 export type Bereich = {
-  schluessel: BereichSchluessel;
+  key: BereichSchluessel;
   /** Nummer des Teilhaushalts im Haushaltsplan (Reihenfolge der Übersicht). */
   sub_budget: number;
   /** Anzeigename: die jüngste amtliche Schreibweise, nicht unsere Erfindung. */
@@ -68,7 +68,7 @@ export type Bereich = {
  *  vor der Summe, in jedem Jahrgang 2020–2026). */
 export const BEREICHE: readonly Bereich[] = [
   {
-    schluessel: "verwaltungsfuehrung",
+    key: "verwaltungsfuehrung",
     sub_budget: 1,
     name: "Verwaltungsführung",
     kurz: "Verwaltungsspitze",
@@ -82,7 +82,7 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Verwaltungsführung"],
   },
   {
-    schluessel: "personal",
+    key: "personal",
     sub_budget: 2,
     name: "Personal/Organisation/Digitalisierung/IT",
     kurz: "Personal & IT",
@@ -99,7 +99,7 @@ export const BEREICHE: readonly Bereich[] = [
     ],
   },
   {
-    schluessel: "wirtschaft",
+    key: "wirtschaft",
     sub_budget: 3,
     name: "Wirtschaftsförderung, Liegenschaften",
     kurz: "Wirtschaft & Flächen",
@@ -109,7 +109,7 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Wirtschaftsförderung, Liegenschaften"],
   },
   {
-    schluessel: "finanzen",
+    key: "finanzen",
     sub_budget: 4,
     name: "Finanzmanagement und Recht",
     kurz: "Finanzen",
@@ -119,7 +119,7 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Finanzmanagement und Recht"],
   },
   {
-    schluessel: "sicherheit",
+    key: "sicherheit",
     sub_budget: 5,
     name: "Sicherheit und Ordnung",
     kurz: "Sicherheit",
@@ -129,7 +129,7 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Sicherheit und Ordnung"],
   },
   {
-    schluessel: "kultur",
+    key: "kultur",
     sub_budget: 6,
     name: "Kultur, Museen, Sport",
     kurz: "Kultur & Sport",
@@ -139,7 +139,7 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Kultur, Museen, Sport"],
   },
   {
-    schluessel: "stadtplanung",
+    key: "stadtplanung",
     sub_budget: 7,
     name: "Stadtplanung",
     kurz: "Stadtplanung",
@@ -149,7 +149,7 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Stadtplanung"],
   },
   {
-    schluessel: "verkehr",
+    key: "verkehr",
     sub_budget: 8,
     name: "Verkehr und Straßenbau",
     kurz: "Verkehr & Straßen",
@@ -157,7 +157,7 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Verkehr und Straßenbau"],
   },
   {
-    schluessel: "umwelt",
+    key: "umwelt",
     sub_budget: 9,
     name: "Klima/Umwelt/Mobilität/Bau/Grün/Friedh.",
     kurz: "Klima & Umwelt",
@@ -172,7 +172,7 @@ export const BEREICHE: readonly Bereich[] = [
     ],
   },
   {
-    schluessel: "soziales",
+    key: "soziales",
     sub_budget: 10,
     name: "Soziales und Gesundheit",
     kurz: "Soziales",
@@ -183,7 +183,7 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Soziales und Gesundheit"],
   },
   {
-    schluessel: "jugend",
+    key: "jugend",
     sub_budget: 11,
     name: "Jugend und Familie",
     kurz: "Jugend & Familie",
@@ -192,7 +192,7 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Jugend und Familie"],
   },
   {
-    schluessel: "schule",
+    key: "schule",
     sub_budget: 12,
     name: "Schule und Bildung",
     kurz: "Schulen",
@@ -202,7 +202,7 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Schule und Bildung"],
   },
   {
-    schluessel: "stiftungen",
+    key: "stiftungen",
     sub_budget: 13,
     name: "nicht rechtsfähige Stiftungen",
     kurz: "Stiftungen",
@@ -214,7 +214,7 @@ export const BEREICHE: readonly Bereich[] = [
 ];
 
 export const BEREICH_NACH_SCHLUESSEL: Record<BereichSchluessel, Bereich> =
-  Object.fromEntries(BEREICHE.map((b) => [b.schluessel, b])) as Record<
+  Object.fromEntries(BEREICHE.map((b) => [b.key, b])) as Record<
     BereichSchluessel,
     Bereich
   >;
@@ -245,7 +245,7 @@ const NACH_ALIAS: Map<string, Bereich> = new Map(
 /** Ergebnis der Auflösung — immer gefüllt, auch für unbekannte Namen. */
 export type BereichKanon = {
   /** `null`, wenn der Name im Wörterbuch fehlt (neuer Jahrgang). */
-  schluessel: BereichSchluessel | null;
+  key: BereichSchluessel | null;
   sub_budget: number | null;
   /** Anzeigename; bei unbekanntem Namen der Rohname aus der Datenbank. */
   name: string;
@@ -269,7 +269,7 @@ export function bereichKanon(name: string): BereichKanon {
   if (!b) {
     const roh = name.trim();
     return {
-      schluessel: null,
+      key: null,
       sub_budget: null,
       name: roh,
       kurz: notKurz(roh),
@@ -278,7 +278,7 @@ export function bereichKanon(name: string): BereichKanon {
     };
   }
   return {
-    schluessel: b.schluessel,
+    key: b.key,
     sub_budget: b.sub_budget,
     name: b.name,
     kurz: b.kurz,
@@ -300,7 +300,7 @@ export function bereichKlartext(name: string): string | null {
 /** Kanonischer Schlüssel, oder `null` — der Schlüssel für eigene Maps
  *  (Pflicht/Kür, Farben, Icons). Nie den Namen als Schlüssel nehmen. */
 export function bereichSchluessel(name: string): BereichSchluessel | null {
-  return bereichKanon(name).schluessel;
+  return bereichKanon(name).key;
 }
 
 /** Die Summenzeile trägt keinen Bereichsnamen — `is_total` der Zeile ist die

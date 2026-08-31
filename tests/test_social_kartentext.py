@@ -68,7 +68,7 @@ def test_kontext_nimmt_vorlage_und_anlagen():
                          "Landschaftsschutzgebiet."}
     anlagen = [{"label": "Antrag der SPD", "is_motion": 1, "applicants": "SPD-Fraktion",
                 "raw_text": "Wir beantragen 110 Wohneinheiten."}]
-    ktx, quelle = social_text.kontext(punkt, anlagen)
+    ktx, source = social_text.kontext(punkt, anlagen)
 
     assert "Bebauungsplan 837" in ktx
     assert "1,2 Mio Euro" in ktx
@@ -80,14 +80,14 @@ def test_kontext_nimmt_vorlage_und_anlagen():
     # Der Beschlussvorschlag ist als VORSCHLAG gekennzeichnet — sonst schreibt
     # das Modell „Der Rat beschließt" und nimmt das Ergebnis vorweg.
     assert "noch kein Beschluss" in ktx
-    assert quelle == "vorlage+anlagen"
+    assert source == "vorlage+anlagen"
 
 
 def test_kontext_meldet_ehrlich_wenn_nur_der_titel_da_ist():
-    """``quelle`` beantwortet später die Frage, warum ein Text dünn ist."""
-    ktx, quelle = social_text.kontext(
+    """``source`` beantwortet später die Frage, warum ein Text dünn ist."""
+    ktx, source = social_text.kontext(
         {"committee": "Rat", "session_date": "2026-08-31", "title": "Irgendein Punkt"}, [])
-    assert quelle == "titel"
+    assert source == "titel"
     assert "Irgendein Punkt" in ktx
 
 

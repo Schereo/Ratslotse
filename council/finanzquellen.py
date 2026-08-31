@@ -752,9 +752,9 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
     Was ein Jahrgang bekommt, bekommt er in **einer** Transaktion
     (``store.transaktion()``): Ein Abbruch mittendrin ließe ihn sonst halb
     zurück, und halb sieht für den nächsten Lauf aus wie fertig."""
-    quelle = QUELLEN["jahresabschluss"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["jahresabschluss"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     gelesen: dict[int, dict] = {}
     uebersprungen = vorzeichen_repariert = 0
@@ -1034,7 +1034,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                         label=label, url=url))
                     neue_einheiten.add((year, "bilanz"))
                     mit_bilanz += 1
-                    werte = {x["role"]: x["wert"] for x in bil["posten"]}
+                    werte = {x["role"]: x["value"] for x in bil["posten"]}
                     p.sagen(f"    + Bilanz: {len(bil['posten'])} Posten · Bilanzsumme "
                             f"{bil['bilanzsumme']/1e6:.1f} Mio. € · Pensionsrückstellungen "
                             f"{werte.get('pensionen_gesamt', 0)/1e6:.1f} Mio. € "
@@ -1050,7 +1050,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                         a = bilanz.summe(bil["posten"], bilanz.AKTIVA, "value_prior_year")
                         pa = bilanz.summe(bil["posten"], bilanz.PASSIVA, "value_prior_year")
                         if a and pa and abs(a - pa) <= bilanz.TOLERANZ:
-                            vorposten = [{**x, "wert": x["value_prior_year"]}
+                            vorposten = [{**x, "value": x["value_prior_year"]}
                                          for x in bil["posten"]]
                             vorproben = ["bilanz_ausgleich"]
                             if prior_year in endbestaende:
@@ -1157,9 +1157,9 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
     an der Einbringungs-Vorlage. Das steht in der Herkunft (``stand``), damit
     eine Seite es anschreiben kann; die Begründung samt Messwerten im
     Modulkopf von ``council/income_budget.py``."""
-    quelle = QUELLEN["income_budget"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["income_budget"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     # Die Ist-Werte der Kernverwaltung einmal holen — Grundlage der Gegenprobe.
     ist_bestand: dict[int, dict[int, float]] = {}
@@ -1271,9 +1271,9 @@ def lies_investitionsprogramme(store: CouncilStore, p: Protokoll,
     Wie beim Gesamtergebnishaushalt hängt die Anlage an der
     Einbringungs-Vorlage: Es ist der **Entwurf der Verwaltung**, nicht der
     Stand nach den Beratungen. Das steht in der Herkunft (``stand``)."""
-    quelle = QUELLEN["investitionsprogramm"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["investitionsprogramm"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     je_jahrgang: dict[int, dict] = {}
     geschuetzt = verworfen = 0
@@ -1359,9 +1359,9 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
     Summenzeilen darüber gehen auf, und ein Teil mit 140 Zeilen wegen eines
     städtischen Übertragsfehlers wegzuwerfen hieße, eine belegte Zahl gegen
     gar keine zu tauschen. Die Zahl steht im Protokoll."""
-    quelle = QUELLEN["stellenplan"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["stellenplan"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     je_jahrgang: dict[int, dict] = {}
     neue_einheiten: set[tuple] = set()
@@ -1466,8 +1466,8 @@ def lies_buergschaften(store: CouncilStore, p: Protokoll) -> dict:
     (``council/buergschaften.kettenprobe``), und ein Riss darf gar nicht erst
     in den Bestand.
     """
-    quelle = QUELLEN["jahresabschluss"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    source = QUELLEN["jahresabschluss"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
 
     gefunden: list[dict] = []
     beleg: dict[int, dict] = {}
@@ -1533,8 +1533,8 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
     Tabelle: Reißt eine Kette in 2019, sagt das nichts über 2024. Ein
     gerissener Jahrgang wird verworfen und benannt, die übrigen bleiben.
     """
-    quelle = QUELLEN["jahresabschluss"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    source = QUELLEN["jahresabschluss"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
 
     jahrgaenge = verworfen = zeilen_gesamt = 0
     geprueft = gerissen = 0
@@ -1559,7 +1559,7 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
         risse += umb_risse
         # Die Gegenprobe an der Bilanz — eine andere Quelle im selben Heft.
         bilanz_posten = [dict(x) for x in store._conn.execute(  # noqa: SLF001
-            "SELECT role, wert FROM council_bilanz WHERE year = ?", (year,))]
+            "SELECT role, value FROM council_bilanz WHERE year = ?", (year,))]
         bilanz_risse = anlagenspiegel.gegen_bilanz(zeilen, bilanz_posten)
         if not bilanz_risse and bilanz_posten:
             for z in zeilen:
@@ -1629,8 +1629,8 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
     2022, sagt das nichts über den Bericht 2024. Die Überlappungsprobe läuft
     dagegen erst **nach** allen Berichten — sie braucht mindestens zwei.
     """
-    quelle = QUELLEN["indicators"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    source = QUELLEN["indicators"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
 
     # ERSTER DURCHGANG: alles lesen. Die Fassungsnummer eines Rechenwegs lässt
     # sich erst vergeben, wenn ALLE Berichte vorliegen — sie sagt ja gerade,
@@ -1665,7 +1665,7 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
     gesammelt: list[dict] = []
 
     bilanz_posten = [dict(x) for x in store._conn.execute(  # noqa: SLF001
-        "SELECT year, role, wert FROM council_bilanz WHERE role IS NOT NULL")]
+        "SELECT year, role, value FROM council_bilanz WHERE role IS NOT NULL")]
 
     # ZWEITER DURCHGANG: prüfen und schreiben, Bericht für Bericht.
     for r, report_year, zeilen, formeln, unbekannt in sorted(
@@ -1750,9 +1750,9 @@ def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,
 
     Eine Zeile je Jahrgang, ein Dokument je Zeile — hier ist die Einheit
     tatsächlich der Jahrgang, und „da" heißt „fertig"."""
-    quelle = QUELLEN["rpa_fundstelle"]
-    rows = quelle.dokumente(store, "document_id, label, url, n_pages, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["rpa_fundstelle"]
+    rows = source.dokumente(store, "document_id, label, url, n_pages, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
     neu: list[int] = []
     gefunden = unlesbar = 0
     for r in rows:
@@ -1815,9 +1815,9 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     ein Nachtragshaushalt etwa, der einen Ansatz wirklich ändert. Dann wird
     gemeldet statt still überschrieben; welcher Stand gilt, entscheidet
     niemand nebenbei in einem unbeaufsichtigten Lauf."""
-    quelle = QUELLEN["teilhaushalt"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["teilhaushalt"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
     if nur_fehlende:
         rows = [r for r in rows if (teilhaushalt_jahrgang((r["raw_text"] or "")[:4000]),
                                     teilhaushalt_nummer(r["label"])) not in vorhanden]
@@ -1851,13 +1851,13 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
                     # Zeile mehr zeigt (`herkunft_aufraeumen` fegte sechs
                     # Stück je Lauf wieder weg).
                     if (year, sub_budget_no) in versorgt:
-                        signatur, quelle = versorgt[(year, sub_budget_no)]
+                        signatur, source = versorgt[(year, sub_budget_no)]
                         if _produkt_signatur(stueck) != signatur:
                             p.warnen(
                                 f"  {year} THH{sub_budget_no}: Dokument {r['document_id']} "
                                 f"({r['label']!r}) trägt ANDERE Zahlen als "
-                                f"Dokument {quelle['document_id']} "
-                                f"({quelle['label']!r}), das den Teilhaushalt "
+                                f"Dokument {source['document_id']} "
+                                f"({source['label']!r}), das den Teilhaushalt "
                                 f"versorgt hat — es gilt weiter das erste. "
                                 f"Bitte prüfen, welcher Stand der richtige ist.")
                         dubletten += 1
@@ -1936,9 +1936,9 @@ def lies_pruefungsfeststellungen(store: CouncilStore, p: Protokoll,
     für einen Blick in den Bericht — nicht für eine gelockerte Regel."""
     from collections import Counter
 
-    quelle = QUELLEN["pruefungsfeststellungen"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["pruefungsfeststellungen"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     je_jahr: dict[int, dict] = {}
     geschuetzt = 0
@@ -2014,9 +2014,9 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
     Protokoll und in der Rückgabe — schlägt sie an, hat sich etwas an der
     Quelle geändert, und das gehört angesehen, nicht automatisch entschieden.
     """
-    quelle = QUELLEN["konzernabschluss"]
-    rows = quelle.dokumente(store, "document_id, label, url, n_pages, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["konzernabschluss"]
+    rows = source.dokumente(store, "document_id, label, url, n_pages, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     je_jahr: dict[int, dict] = {}
     gelesen: dict[int, list[dict]] = {}
@@ -2693,7 +2693,7 @@ def datenstand(store: CouncilStore, heute: date | None = None) -> list[dict]:
         zeilen.append({
             "key": q.key, "label": q.label, "was": q.was,
             "tabelle": q.tabelle, "herkunft": q.herkunft,
-            "quelle": STELLEN.get(q.herkunft, q.herkunft),
+            "source": STELLEN.get(q.herkunft, q.herkunft),
             "automatisch": q.automatisch,
             "jahrgaenge": years, "luecken": luecken,
             # Je Jahrgang die Zahl der Einheiten (Teilhaushalte bzw. Ebenen) —

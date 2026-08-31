@@ -29,7 +29,7 @@ import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import { HaushaltAuswahl, haushaltUrl, herkunftVon } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
@@ -85,7 +85,7 @@ function KonzernSeiteInner() {
   }, [data]);
 
   return (
-    <Quellenkontext schluessel={QUELLEN} jeDokument={jeDokument}>
+    <Quellenkontext keys={QUELLEN} jeDokument={jeDokument}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -108,7 +108,7 @@ function KonzernSeiteInner() {
         {kern ? (
           <Seitenbuehne
             kicker={`Gesamtabschluss · Konzern Oldenburg · ${kern.year}`}
-            zahl={<>Der Kernhaushalt ist <ZaehlZahl wert={kern.anteil * 100} />&#8239;% der Stadt</>}
+            zahl={<>Der Kernhaushalt ist <ZaehlZahl value={kern.anteil * 100} />&#8239;% der Stadt</>}
             sub={bericht
               ? `${bericht.gesellschaften} Betriebe und Gesellschaften · ${bericht.indicators} Kennzahlen aus den Jahren ${bericht.von}–${bericht.bis}`
               : "gemessen an den Erträgen des jüngsten Gesamtabschlusses"}
@@ -165,7 +165,7 @@ function KonzernSeiteInner() {
 
         <SchrittWeiter href="/haushalt/konzern" />
 
-        <Quellenverzeichnis schluessel={QUELLEN} />
+        <Quellenverzeichnis keys={QUELLEN} />
       </div>
     </Quellenkontext>
   );

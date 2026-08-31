@@ -54,7 +54,7 @@ import {
 } from "@/lib/haushalt-pflicht";
 import { Anteilsbalken, type Anteil } from "@/components/haushalt/anteilsbalken";
 import { Gegenbalken } from "@/components/grafik/gegenbalken";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
@@ -156,7 +156,7 @@ export default function PflichtPage() {
   const rows: Zeile[] = bereiche(zeilen).map((z) => {
     const kanon = bereichKanon(z.area);
     const eintrag = pflichtFuer(z.area);
-    const befund = kanon.schluessel ? befunde.get(kanon.schluessel) : undefined;
+    const befund = kanon.key ? befunde.get(kanon.key) : undefined;
     return {
       z,
       aus: mio(z.expenses) ?? 0,
@@ -196,9 +196,9 @@ export default function PflichtPage() {
   // nicht aneinanderlegen kann.
   const segmente: Anteil[] = [
     ...[...STUFEN].reverse().map((s) => ({
-      label: PFLICHT_LABEL[s], wert: summeAus(proStufe(s)), farbe: TON_STUFE[s],
+      label: PFLICHT_LABEL[s], value: summeAus(proStufe(s)), farbe: TON_STUFE[s],
     })),
-    { label: "noch nicht eingeordnet", wert: summeAus(ohneStufe), farbe: TON_OFFEN, offen: true },
+    { label: "noch nicht eingeordnet", value: summeAus(ohneStufe), farbe: TON_OFFEN, offen: true },
   ];
 
   // Der Abgleich — und ehrlich über den Nenner: Bereiche ohne Produktebene
@@ -209,7 +209,7 @@ export default function PflichtPage() {
   const weicht = geprueft.filter((r) => r.urteil === "weicht");
 
   return (
-    <Quellenkontext schluessel={QUELLEN} year={year}>
+    <Quellenkontext keys={QUELLEN} year={year}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -236,7 +236,7 @@ export default function PflichtPage() {
         return (
           <Seitenbuehne
             kicker={`Anteil an allen Ausgaben · Plan ${year}`}
-            zahl={<><ZaehlZahl wert={pflichtProzent} nachkomma={0} />&#8239;% der Ausgaben
+            zahl={<><ZaehlZahl value={pflichtProzent} nachkomma={0} />&#8239;% der Ausgaben
               sind Pflicht oder Pflicht mit Spielraum</>}
             sub={weicht.length > 0
               ? `bei ${weicht.length} von ${geprueft.length} Bereichen sieht die Verwaltung es selbst anders`
@@ -293,7 +293,7 @@ export default function PflichtPage() {
           zeilen={[{ titel: `Alle Ausgaben ${year}`, segmente }]}
           basis={gesamtAus}
           mark={defizit > 0 && gesamtAus > 0 ? {
-            wert: defizit,
+            value: defizit,
             label: `Der Strich markiert das geplante Minus: ${deMio(defizit)} Mio. €, `
               + `also ${((defizit / gesamtAus) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })} % derselben Ausgaben.`,
           } : undefined}
@@ -456,7 +456,7 @@ export default function PflichtPage() {
 
       <SchrittWeiter href="/haushalt/pflicht" />
 
-      <Quellenverzeichnis schluessel={QUELLEN} />
+      <Quellenverzeichnis keys={QUELLEN} />
     </div>
     </Quellenkontext>
   );
@@ -653,9 +653,9 @@ function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: numbe
   const aufwandMio = befund.expense / 1e6;
   const segmente: Anteil[] = [
     ...(["niedrig", "mittel", "hoch"] as Spielraum[]).map((s) => ({
-      label: SPIELRAUM_TEXT[s].kurz, wert: befund.anteil[s] * aufwandMio, farbe: TON_SPIELRAUM[s],
+      label: SPIELRAUM_TEXT[s].kurz, value: befund.anteil[s] * aufwandMio, farbe: TON_SPIELRAUM[s],
     })),
-    { label: "ohne Angabe", wert: befund.anteil.ohne * aufwandMio, farbe: TON_OFFEN, offen: true },
+    { label: "ohne Angabe", value: befund.anteil.ohne * aufwandMio, farbe: TON_OFFEN, offen: true },
   ];
   // Das ◇ klammert den ganzen Block: Es ist dasselbe Zeichen wie im
   // Doppelmarker und sagt in einem Glyph, wessen Antwort hier steht —
@@ -697,7 +697,7 @@ function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: numbe
               <p className="text-[11.5px] font-semibold leading-snug">
                 {groesste.product_name}
                 <span className="ml-1.5 font-normal tabular-nums text-muted-foreground">
-                  {amount(groesste.expenses).wert}&nbsp;{amount(groesste.expenses).unit}
+                  {amount(groesste.expenses).value}&nbsp;{amount(groesste.expenses).unit}
                 </span>
               </p>
               {/* Wortlaut des Teilhaushaltsplans, ungekürzt: Die Rechtsgrundlagen

@@ -47,7 +47,7 @@ export type FlussPosten = {
   label: string;
   /** Volle Bezeichnung — Panel, title, aria. */
   lang: string;
-  wert: number;
+  value: number;
   /** `posten` = Kategorie (Rampe) · `difference` = Ehrlichkeits-Band
    *  („aus dem Ersparten", „nicht aufgeschlüsselt"): Schraffur + Signal. */
   art: "posten" | "difference";
@@ -71,7 +71,7 @@ export type FlussTopf = {
   kurz: string;
   /** Überschrift des Topf-Blocks in der Listen-Fassung. */
   lang: string;
-  wert: number;
+  value: number;
   /** Der Satz IM Knoten (Band-Fassung, senkrecht): „Alles Geld der Stadt". */
   satz: string;
   /** Der Satz im Topf-Block der Listen-Fassung. */
@@ -106,15 +106,15 @@ export function fasseKleineZusammen(
   baender: FlussPosten[], skala: number, mindestAnteil: number,
 ): { gezeigt: FlussPosten[]; gebuendelt: FlussPosten[] } {
   const gross = baender.filter(
-    (b) => b.art !== "posten" || b.wert >= mindestAnteil * skala);
+    (b) => b.art !== "posten" || b.value >= mindestAnteil * skala);
   const gebuendelt = baender.filter(
-    (b) => b.art === "posten" && b.wert < mindestAnteil * skala);
+    (b) => b.art === "posten" && b.value < mindestAnteil * skala);
   if (gebuendelt.length < 2) return { gezeigt: baender, gebuendelt: [] };
   const sammel: FlussPosten = {
     id: "weitere",
     label: `${gebuendelt.length} weitere`,
     lang: `${gebuendelt.length} weitere Posten`,
-    wert: gebuendelt.reduce((s, b) => s + b.wert, 0),
+    value: gebuendelt.reduce((s, b) => s + b.value, 0),
     art: "posten",
   };
   // Sammelposten und Differenz-Bänder ans Ende: Der Stapel liest sich von
@@ -153,7 +153,7 @@ function entzerre(zentren: number[], mindest: number, unten: number): number[] {
 function stapeln(baender: FlussPosten[], faktor: number, gap: number, start: number) {
   let y = start;
   return baender.map((b) => {
-    const dicke = b.wert * faktor;
+    const dicke = b.value * faktor;
     const oben = y;
     y += dicke + gap;
     return { band: b, oben, dicke, mitte: oben + dicke / 2 };
@@ -166,7 +166,7 @@ function SammelPanel({ lage, titel, teile, skala, format, unit, onClose }: {
   lage: SeitenLage; titel: string; teile: FlussPosten[]; skala: number;
   format: (w: number) => string; unit: string; onClose: () => void;
 }) {
-  const groesste = Math.max(...teile.map((t) => t.wert), 1);
+  const groesste = Math.max(...teile.map((t) => t.value), 1);
   return (
     <div className="mt-3 rounded-xl border border-border bg-card p-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -179,22 +179,22 @@ function SammelPanel({ lage, titel, teile, skala, format, unit, onClose }: {
         </button>
       </div>
       <div className="mt-2 flex flex-col gap-1.5">
-        {[...teile].sort((a, b) => b.wert - a.wert).map((t) => (
+        {[...teile].sort((a, b) => b.value - a.value).map((t) => (
           <div key={t.id} className="grid grid-cols-[minmax(0,1fr)_70px_auto] items-center gap-x-2.5">
             <span className="truncate text-[12px]" title={t.lang}>{t.lang}</span>
             <span className="h-1.5 rounded-full bg-muted">
               <span className="block h-full rounded-full"
-                style={{ width: `${(t.wert / groesste) * 100}%`, background: farbe(lage, 2, 4, "posten") }} />
+                style={{ width: `${(t.value / groesste) * 100}%`, background: farbe(lage, 2, 4, "posten") }} />
             </span>
             <span className="whitespace-nowrap text-right text-[12px] tabular-nums">
-              {format(t.wert)}&#8239;{unit}
+              {format(t.value)}&#8239;{unit}
             </span>
           </div>
         ))}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Zusammen {format(teile.reduce((s, t) => s + t.wert, 0))}&#8239;{unit} —
-        {" "}{((teile.reduce((s, t) => s + t.wert, 0) / skala) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })}
+        Zusammen {format(teile.reduce((s, t) => s + t.value, 0))}&#8239;{unit} —
+        {" "}{((teile.reduce((s, t) => s + t.value, 0) / skala) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })}
         &nbsp;% von allem.
       </p>
     </div>
@@ -209,7 +209,7 @@ function ListenZeile({ band, lage, rang, count, skala, format, unit, sammel, off
   format: (w: number) => string; unit: string;
   sammel: boolean; offen: boolean; onToggle: () => void;
 }) {
-  const anteil = (band.wert / skala) * 100;
+  const anteil = (band.value / skala) * 100;
   const inhalt = (
     <>
       <span className="flex items-baseline justify-between gap-2.5">
@@ -218,7 +218,7 @@ function ListenZeile({ band, lage, rang, count, skala, format, unit, sammel, off
           {band.art === "posten" ? band.label : band.lang}
         </span>
         <span className="flex-none text-[12px] tabular-nums">
-          {format(band.wert)}<span className="text-muted-foreground">&#8239;{unit}</span>
+          {format(band.value)}<span className="text-muted-foreground">&#8239;{unit}</span>
         </span>
       </span>
       <span className="mt-1 block h-2.5 w-full">
@@ -252,7 +252,7 @@ function TopfBlock({ topf, format, unit }: {
         {topf.lang}
       </p>
       <p className="mt-1 font-display text-[19px] font-bold tabular-nums tracking-tight">
-        {format(topf.wert)}<span className="text-xs font-semibold text-muted-foreground">&#8239;{unit}&nbsp;€</span>
+        {format(topf.value)}<span className="text-xs font-semibold text-muted-foreground">&#8239;{unit}&nbsp;€</span>
       </p>
       <p className="mt-1 text-[11.5px] leading-relaxed text-foreground/80">
         {topf.note}
@@ -332,7 +332,7 @@ export function Flussbild({
   /** Gemeinsame Achse beider Seiten — von der Seite gerechnet, nie hier. */
   skala: number;
   /** Fertige de-DE-Formatierung eines Wertes (GB-00: Intl, `format.ts`). */
-  format: (wert: number) => string;
+  format: (value: number) => string;
   /** Suffix hinter formatierten Werten („Mio."). */
   unit?: string;
   /** Unter diesem Anteil der Skala wandert ein Posten in den Sammelposten. */
@@ -433,8 +433,8 @@ function Baender({ links, rechts, topf, skala, mindestAnteil, format, unit, brei
   // und gilt für beide. Die kürzere Seite bleibt kürzer.
   const nutz = stapelHoehe - GAP * Math.max(nL - 1, nR - 1, 0);
   const faktor = nutz / skala;
-  const hoeheL = gl.gezeigt.reduce((s, b) => s + b.wert * faktor, 0) + GAP * (nL - 1);
-  const hoeheR = gr.gezeigt.reduce((s, b) => s + b.wert * faktor, 0) + GAP * (nR - 1);
+  const hoeheL = gl.gezeigt.reduce((s, b) => s + b.value * faktor, 0) + GAP * (nL - 1);
+  const hoeheR = gr.gezeigt.reduce((s, b) => s + b.value * faktor, 0) + GAP * (nR - 1);
   const hoeheTopf = skala * faktor;
   const mitteY = OBEN + stapelHoehe / 2;
   const H = OBEN + stapelHoehe + UNTEN;
@@ -502,7 +502,7 @@ function Baender({ links, rechts, topf, skala, mindestAnteil, format, unit, brei
       </text>
       <text x={xTopf + TOPF / 2} y={topfOben + hoeheTopf + 17} textAnchor="middle"
         fontSize={13} fontWeight={700} className="fill-foreground">
-        {format(topf.wert)}
+        {format(topf.value)}
       </text>
       <text x={xTopf + TOPF / 2} y={topfOben + hoeheTopf + 29} textAnchor="middle"
         fontSize={10} className="fill-muted-foreground font-mono">
@@ -544,7 +544,7 @@ function Beschriftung({ x, y, breite, band, format, rechtsbuendig = false, istSa
         title={band.lang}>
         {band.art === "posten" ? band.label : band.lang}
       </span>
-      <span className="flex-none tabular-nums text-muted-foreground">{format(band.wert)}</span>
+      <span className="flex-none tabular-nums text-muted-foreground">{format(band.value)}</span>
     </>
   );
   return (

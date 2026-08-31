@@ -41,7 +41,7 @@ import type { Herkunft } from "@/lib/herkunft";
 import { deZahl } from "@/components/grafik/format";
 import {
   Beleg, Dokumentbeleg,
-} from "@/components/haushalt/quelle";
+} from "@/components/haushalt/source";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -76,13 +76,13 @@ const MASSSTAB: Record<string, string> = {
   Liter: "je Liter Behältervolumen",
 };
 
-function Euro({ wert, stellen = 0 }: { wert: number; stellen?: number }) {
-  return <>{deZahl(wert, stellen)}&nbsp;€</>;
+function Euro({ value, stellen = 0 }: { value: number; stellen?: number }) {
+  return <>{deZahl(value, stellen)}&nbsp;€</>;
 }
 
 /** Eine Kaskadenzeile: Bezeichnung links, Betrag rechts. */
-function Zeile({ label, wert, summe = false }: {
-  label: string; wert: number; summe?: boolean;
+function Zeile({ label, value, summe = false }: {
+  label: string; value: number; summe?: boolean;
 }) {
   return (
     <div className={
@@ -93,7 +93,7 @@ function Zeile({ label, wert, summe = false }: {
         {label}
       </span>
       <span className="tabular-nums text-[13px]">
-        <Euro wert={wert} />
+        <Euro value={value} />
       </span>
     </div>
   );
@@ -112,14 +112,14 @@ function Tarifliste({ tarife }: { tarife: GebuehrensatzZeile[] }) {
       </div>
       <dl className="mt-2 grid gap-x-5 gap-y-1.5 sm:grid-cols-2">
         {tarife.map((t) => (
-          <div key={t.schluessel}
+          <div key={t.key}
             className="flex items-baseline justify-between gap-3 border-t border-border/70 pt-1.5">
             <dt className="min-w-0 text-[11.5px] leading-snug text-muted-foreground">
               {t.label}
             </dt>
             <dd className="max-w-[48%] flex-none text-right tabular-nums">
               <span className="block text-[12px] font-semibold">
-                <Euro wert={t.amount} stellen={2} />
+                <Euro value={t.amount} stellen={2} />
               </span>
               <span className="block text-[10.5px] leading-snug text-muted-foreground">
                 {t.unit}
@@ -151,7 +151,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
   const letzte = nach[nach.length - 1];
   const series: JahrPunkt[] = nach
     .filter((z) => z.fee != null)
-    .map((z) => ({ year: z.year, wert: z.fee as number }));
+    .map((z) => ({ year: z.year, value: z.fee as number }));
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -173,11 +173,11 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
           nachvollziehbar ist — als Fußnote wäre sie wertlos. */}
       <div className="mt-3">
         <Zeile label={`Was der Bereich ${letzte.year} kostet`}
-          wert={letzte.cost_calculation} />
+          value={letzte.cost_calculation} />
         <Zeile label="davon getragen von Dritten, Erlösen und Vorjahren"
-          wert={letzte.deductions} />
+          value={letzte.deductions} />
         <Zeile label="Von den Gebühren zu decken"
-          wert={letzte.costs_to_cover} summe />
+          value={letzte.costs_to_cover} summe />
       </div>
 
       {letzte.fee != null && letzte.reference_quantity != null ? (
@@ -188,7 +188,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
               {letzte.reference_unit}
             </span>
             <span className="font-display text-[17px] font-bold tabular-nums">
-              <Euro wert={letzte.fee} stellen={3} />
+              <Euro value={letzte.fee} stellen={3} />
             </span>
           </div>
           <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
@@ -196,7 +196,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
             {letzte.fee_proposed != null && (
               <> · dem Rat vorgeschlagen:{" "}
                 <strong className="text-foreground">
-                  <Euro wert={letzte.fee_proposed} stellen={2} />
+                  <Euro value={letzte.fee_proposed} stellen={2} />
                 </strong>
               </>
             )}

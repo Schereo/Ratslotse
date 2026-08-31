@@ -75,7 +75,7 @@ import {
   jahrgaenge, ohneZuordnung, redenJeFraktion, runde, schlussbeschluss,
   verhandlungsBilanz, vorschau,
 } from "@/lib/haushalt-streit";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { StreitListenInhalt } from "@/components/haushalt/streit-listeninhalt";
 import { StreitFinanzhaushalt } from "@/components/haushalt/streit-finanzhaushalt";
 import type { AenderungslistenDaten } from "@/lib/haushalt-aenderungslisten";
@@ -355,7 +355,7 @@ export function StreitAbschnitt({ onBestand }: {
     [r],
   );
   const zuordnung = useMemo(() => ohneZuordnung(data ?? null), [data]);
-  const quelle = useMemo(() => balance(data ?? null), [data]);
+  const source = useMemo(() => balance(data ?? null), [data]);
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
@@ -450,11 +450,11 @@ export function StreitAbschnitt({ onBestand }: {
                 Prosa — sie wird nicht zeilenweise gelesen, sondern einmal
                 gescannt. Mit Deckel brach „214 Wortbeiträge" allein in eine
                 zweite Zeile, was schlechter aussah als die lange erste. */}
-            {quelle.jahrgaenge > 0 && (
+            {source.jahrgaenge > 0 && (
               <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                Ratsinformationssystem, Änderungslisten und Protokolle {quelle.von}–{quelle.bis}{" "}
-                · {quelle.listen.toLocaleString("de-DE")} Listen ·{" "}
-                {quelle.beitraege.toLocaleString("de-DE")} Wortbeiträge
+                Ratsinformationssystem, Änderungslisten und Protokolle {source.von}–{source.bis}{" "}
+                · {source.listen.toLocaleString("de-DE")} Listen ·{" "}
+                {source.beitraege.toLocaleString("de-DE")} Wortbeiträge
               </p>
             )}
           </div>

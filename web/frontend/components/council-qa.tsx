@@ -276,8 +276,8 @@ function VorlesenKnopf({ text }: { text: string }) {
 /** Beleg-Peek (5a/I-01): Ein Zitat-Chip öffnet erst die Kurzinfo der Quelle —
  *  Titel, Gremium, Kernaussage — statt sofort wegzuspringen. Von dort geht es
  *  in den Beschluss oder zur Quellenliste. Escape/Backdrop schließen. */
-function BelegPeek({ quelle, nummer, onClose, onListe }: {
-  quelle: QaSource; nummer: number | undefined; onClose: () => void; onListe: () => void;
+function BelegPeek({ source, nummer, onClose, onListe }: {
+  source: QaSource; nummer: number | undefined; onClose: () => void; onListe: () => void;
 }) {
   const router = useRouter();
   const karteRef = useRef<HTMLDivElement>(null);
@@ -306,10 +306,10 @@ function BelegPeek({ quelle, nummer, onClose, onListe }: {
             {nummer}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold leading-snug text-foreground">{quelle.title}</p>
+            <p className="text-sm font-semibold leading-snug text-foreground">{source.title}</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {quelle.committee} · {fmtDatum(quelle.session_date)}
-              {quelle.outcome && OUTCOME_LABEL[quelle.outcome] ? ` · ${OUTCOME_LABEL[quelle.outcome]}` : ""}
+              {source.committee} · {fmtDatum(source.session_date)}
+              {source.outcome && OUTCOME_LABEL[source.outcome] ? ` · ${OUTCOME_LABEL[source.outcome]}` : ""}
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Schließen"
@@ -317,22 +317,22 @@ function BelegPeek({ quelle, nummer, onClose, onListe }: {
             <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
-        {quelle.summary && (
-          <p className="mt-2.5 text-[13px] leading-relaxed text-muted-foreground">{quelle.summary}</p>
+        {source.summary && (
+          <p className="mt-2.5 text-[13px] leading-relaxed text-muted-foreground">{source.summary}</p>
         )}
-        {quelle.location_matches?.[0] && (
+        {source.location_matches?.[0] && (
           <div className="mt-2.5 rounded-lg bg-muted/60 px-2.5 py-2 text-[11px] leading-relaxed text-muted-foreground">
             <p className="flex items-center gap-1 font-semibold text-foreground">
               <MapPin className="h-3 w-3" aria-hidden />
-              Ortsbezug: {quelle.location_matches[0].name}
+              Ortsbezug: {source.location_matches[0].name}
             </p>
-            {quelle.location_matches[0].evidence && (
-              <p className="mt-0.5">Fundstelle: {quelle.location_matches[0].evidence}</p>
+            {source.location_matches[0].evidence && (
+              <p className="mt-0.5">Fundstelle: {source.location_matches[0].evidence}</p>
             )}
           </div>
         )}
         <div className="mt-3 flex items-center gap-2">
-          <button type="button" onClick={() => router.push(decisionHref(quelle.id))}
+          <button type="button" onClick={() => router.push(decisionHref(source.id))}
             className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
             Beschluss öffnen <ArrowRight className="h-3 w-3" aria-hidden />
           </button>
@@ -2285,7 +2285,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             const q = turn.sources.find((s) => s.id === peekId);
             const id = peekId;
             return q ? (
-              <BelegPeek quelle={q} nummer={idToNum.get(id)}
+              <BelegPeek source={q} nummer={idToNum.get(id)}
                 onClose={() => setPeekId(null)}
                 onListe={() => {
                   // Bei älteren Turns liegt die Quellenliste hinter der

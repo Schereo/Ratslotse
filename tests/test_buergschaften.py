@@ -54,7 +54,7 @@ def test_anhang_liefert_beide_enden_und_den_grund():
     g = b.parse_bestand(ANHANG_2024, 2024)
     assert g["balance"] == 220_300_000.0
     assert g["exact"] is False          # „rd." — die Quelle rundet selbst
-    assert g["quelle"] == "anhang"
+    assert g["source"] == "anhang"
     # Das zweite Ende ist der Anfangsbestand: die halbe Kettenprobe.
     assert g["prior_year_year"] == 2023
     assert g["prior_year_stock"] == 214_800_000.0
@@ -80,7 +80,7 @@ def test_die_frueheren_jahrgaenge_kommen_auf_den_cent():
     g = b.parse_bestand(TABELLE_2019, 2019)
     assert g["balance"] == 74_991_739.16
     assert g["exact"] is True           # keine Rundung — das darf die Anzeige zeigen
-    assert g["quelle"] == "tabelle"
+    assert g["source"] == "tabelle"
     assert "prior_year_stock" not in g   # die Tabelle nennt nur ein Ende
 
 

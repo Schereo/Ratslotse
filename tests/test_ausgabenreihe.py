@@ -122,7 +122,7 @@ def test_das_pdf_deckt_die_reihe_nicht_ab(gelesen):
     assert gelesen["spannen"]["kameral"][0] == 2002
     assert gelesen["zeilen"][0]["year"] == 1972
     nur_csv = [z for z in gelesen["zeilen"] if z["year"] < 2002]
-    assert nur_csv and all(z["quelle"] == "csv" for z in nur_csv)
+    assert nur_csv and all(z["source"] == "csv" for z in nur_csv)
 
 
 # --- Die Einheit ------------------------------------------------------------
@@ -301,7 +301,7 @@ def test_2021_der_widerspruch_wird_festgehalten(gelesen):
     über eine amtliche Quelle."""
     z = next(z for z in gelesen["zeilen"] if z["year"] == 2021)
     assert z["amount"] == 608_910_000
-    assert z["quelle"] == "pdf"
+    assert z["source"] == "pdf"
     assert z["conflict_amount"] == 613_572_000
     assert z["conflict_source"] == "csv"
     # Die Zweitquellenprobe hat für dieses Jahr NICHT bestanden und steht
@@ -323,7 +323,7 @@ def test_es_ist_der_einzige_widerspruch(gelesen):
     p = gelesen["probes"]
     assert p["zweitquelle_gerissen"] == 1
     assert p["zweitquelle_bestanden"] == len(
-        [z for z in gelesen["zeilen"] if z["quelle"] == "pdf"]) - 1
+        [z for z in gelesen["zeilen"] if z["source"] == "pdf"]) - 1
 
 
 def test_ohne_das_pdf_faellt_2021_ganz_heraus():

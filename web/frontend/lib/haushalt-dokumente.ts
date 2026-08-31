@@ -196,13 +196,13 @@ export type NummerEintrag = {
  *  Regel dahinter ist inhaltlich: Eine eigene Nummer bekommt ein Papier dort,
  *  wo eine einzelne Aussage auf genau ihm ruht. */
 export function nummerierung(
-  schluessel: readonly QuellenSchluessel[],
+  key: readonly QuellenSchluessel[],
   jeDokument: JeDokument,
   dokumente: HaushaltDokumente | undefined,
   year: number | null | undefined,
 ): NummerEintrag[] {
   const aus: NummerEintrag[] = [];
-  for (const q of schluessel) {
+  for (const q of key) {
     const benutzte = jeDokument[q];
     if (benutzte && benutzte.length > 1) {
       // DIE SEITE SAGT, WELCHE PAPIERE SIE BENUTZT — nicht der Jahrgang.

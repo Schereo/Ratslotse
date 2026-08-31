@@ -10906,10 +10906,10 @@
         "summary": "Health"
       }
     },
-    "/api/kommunalwahl/quelle/{slug}": {
+    "/api/kommunalwahl/source/{slug}": {
       "get": {
         "description": "Ist das PDF hinter dem Partei-Link noch die ausgewertete Datei?",
-        "operationId": "quelle_pruefen_api_kommunalwahl_quelle__slug__get",
+        "operationId": "quelle_pruefen_api_kommunalwahl_source__slug__get",
         "parameters": [
           {
             "in": "path",

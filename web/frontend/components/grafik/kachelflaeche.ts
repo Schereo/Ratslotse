@@ -49,14 +49,14 @@ export type Kachel<T> = {
 };
 
 /** Das Layout, zur Laufzeit gerechnet — je Jahrgang, je Filter neu. */
-export function kacheln<T extends { wert: number }>(
+export function kacheln<T extends { value: number }>(
   knoten: T[], breite: number, hoehe: number,
 ): Kachel<T>[] {
   if (!knoten.length || breite <= 0 || hoehe <= 0) return [];
-  const wurzel = hierarchy<{ children?: T[]; wert?: number }>({ children: knoten })
-    .sum((d) => d.wert ?? 0)
+  const wurzel = hierarchy<{ children?: T[]; value?: number }>({ children: knoten })
+    .sum((d) => d.value ?? 0)
     .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
-  return treemap<{ children?: T[]; wert?: number }>()
+  return treemap<{ children?: T[]; value?: number }>()
     .tile(QUADRATISCH)
     .size([breite, hoehe])
     .paddingInner(FUGE)(wurzel)
@@ -148,7 +148,7 @@ export function buendelGrenze(werte: number[]): number {
   for (let ab = werte.length; ab >= 1; ab -= 1) {
     const rest = werte.slice(ab).reduce((s, w) => s + w, 0);
     const knoten = [...werte.slice(0, ab), ...(rest > 0 ? [rest] : [])]
-      .map((wert) => ({ wert }));
+      .map((value) => ({ value }));
     let alle = true;
     for (let b = 520; b <= 1200 && alle; b += 8) {
       for (const k of kacheln(knoten, b, kachelHoehe(b))) {

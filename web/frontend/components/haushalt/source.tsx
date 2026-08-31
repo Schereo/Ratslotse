@@ -64,7 +64,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 
 type Kontext = {
-  schluessel: QuellenSchluessel[];
+  keys: QuellenSchluessel[];
   dokumente: HaushaltDokumente | undefined;
   /** Die Jahrgänge je Quelle aus dem Bestand — daraus wird der Datenstand
    *  gerechnet, statt ihn von Hand zu pflegen (s. `standText`). */
@@ -77,7 +77,7 @@ type Kontext = {
 };
 
 const SeitenQuellen = createContext<Kontext>({
-  schluessel: [], dokumente: undefined, jahrgaenge: undefined, year: null,
+  keys: [], dokumente: undefined, jahrgaenge: undefined, year: null,
   eintraege: [],
 });
 
@@ -85,7 +85,7 @@ const SeitenQuellen = createContext<Kontext>({
  *  die Beleg-Chips brauchen ein Ziel, das sie ohne Umweg aufklappen können. */
 const VERZEICHNIS_ID = "quellenverzeichnis";
 
-const eintragId = (k: QuellenSchluessel) => `quelle-${k}`;
+const eintragId = (k: QuellenSchluessel) => `source-${k}`;
 
 /** Den Eintrag einer Quelle im Verzeichnis zeigen: aufklappen, hinscrollen.
  *
@@ -108,8 +108,8 @@ function zeigeImVerzeichnis(k: QuellenSchluessel) {
  *  je nachdem, welches Jahr die Seite gerade anzeigt. Seiten ohne Jahrgang
  *  lassen ihn weg; dann nimmt der Beleg das jüngste Dokument und schreibt den
  *  Jahrgang an. */
-export function Quellenkontext({ schluessel, jeDokument = LEER, year = null, children }: {
-  schluessel: QuellenSchluessel[];
+export function Quellenkontext({ keys, jeDokument = LEER, year = null, children }: {
+  keys: QuellenSchluessel[];
   /** Quellenarten, deren Papiere je eine eigene Nummer bekommen sollen.
    *
    *  Je Quellenart die ADRESSEN der Papiere, auf denen einzelne Aussagen der
@@ -128,11 +128,11 @@ export function Quellenkontext({ schluessel, jeDokument = LEER, year = null, chi
   // und die eine, die es vergisst, zeigt wieder auf die Startseite.
   const { data } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
   const eintraege = useMemo(
-    () => nummerierung(schluessel, jeDokument, data?.dokumente, year),
-    [schluessel, jeDokument, data?.dokumente, year]);
+    () => nummerierung(keys, jeDokument, data?.dokumente, year),
+    [keys, jeDokument, data?.dokumente, year]);
   return (
     <SeitenQuellen.Provider value={{
-      schluessel, dokumente: data?.dokumente, jahrgaenge: data?.jahrgaenge, year,
+      keys, dokumente: data?.dokumente, jahrgaenge: data?.jahrgaenge, year,
       eintraege,
     }}>
       {children}
@@ -157,10 +157,10 @@ export function Beleg({ q, h, className }: {
   className?: string;
 }) {
   const { offen, setOffen, knopf, faehnchen, lage } = useFaehnchen();
-  const { schluessel, dokumente, jahrgaenge, year, eintraege } =
+  const { keys, dokumente, jahrgaenge, year, eintraege } =
     useContext(SeitenQuellen);
-  const quelle = QUELLEN[q];
-  const idx = schluessel.indexOf(q);
+  const source = QUELLEN[q];
+  const idx = keys.indexOf(q);
   // Quelle nicht angemeldet: lieber keinen Chip als eine falsche Nummer.
   //
   // ABER NICHT LAUTLOS. Genau das ist am 21.08.2026 aufgefallen: Drei Chips
@@ -180,7 +180,7 @@ export function Beleg({ q, h, className }: {
     return null;
   }
   // Die Nummer kommt aus der Zuteilung der Seite, nicht mehr aus der
-  // Position in `schluessel`: Wo eine Art mehrere Papiere hat und die Seite
+  // Position in `keys`: Wo eine Art mehrere Papiere hat und die Seite
   // sie einzeln nummerieren lässt, trägt jede Zahl die Ziffer IHRES Papiers.
   const eintrag = nummerFuer(eintraege, q, h?.url);
   if (!eintrag) return null;
@@ -198,7 +198,7 @@ export function Beleg({ q, h, className }: {
         ref={knopf}
         type="button"
         onClick={() => setOffen((o) => !o)}
-        aria-label={`Beleg ${nr}: ${quelle.titel}`}
+        aria-label={`Beleg ${nr}: ${source.titel}`}
         aria-expanded={offen}
         className={cn(
           "ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded bg-primary/10 align-super text-[9px] font-bold text-primary transition-colors hover:bg-primary/20",
@@ -219,7 +219,7 @@ export function Beleg({ q, h, className }: {
           className="fixed z-30 block max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-3 text-left shadow-[0_12px_32px_-10px_rgba(2,32,71,0.28)]"
         >
           <QuelleInhalt
-            quelle={quelle} nr={nr}
+            source={source} nr={nr}
             ziel={ziel}
             jahrgaenge={jahrgaenge?.[q]}
             imVerzeichnis={() => { setOffen(false); zeigeImVerzeichnis(q); }}
@@ -366,10 +366,10 @@ function Vorgang({ ziel }: { ziel: Belegziel }) {
  *  Beides derselbe Baustein, weil sich beides nur in einem unterscheidet: der
  *  Adresse. Der Text kommt aus ihr (`zielText`), der Jahrgang steht daneben,
  *  sobald das Dokument nicht das des gezeigten Jahres ist. */
-function Zeile({ ziel, quelle, klein }: {
-  ziel: Belegziel | null; quelle: Quelle; klein?: boolean;
+function Zeile({ ziel, source, klein }: {
+  ziel: Belegziel | null; source: Quelle; klein?: boolean;
 }) {
-  const url = ziel?.dokument.url ?? quelle.url;
+  const url = ziel?.dokument.url ?? source.url;
   if (!url) return null;
   const gross = klein ? "text-[11px]" : "text-[11.5px]";
   return (
@@ -391,17 +391,17 @@ function Zeile({ ziel, quelle, klein }: {
   );
 }
 
-function QuelleInhalt({ quelle, nr, ziel, jahrgaenge, imVerzeichnis }: {
-  quelle: Quelle; nr: number; ziel: Belegziel | null;
+function QuelleInhalt({ source, nr, ziel, jahrgaenge, imVerzeichnis }: {
+  source: Quelle; nr: number; ziel: Belegziel | null;
   jahrgaenge: number[] | undefined; imVerzeichnis: () => void;
 }) {
   return (
     <>
       <span className="block text-[11.5px] font-bold leading-snug">
-        {nr}. {quelle.titel}
+        {nr}. {source.titel}
       </span>
       {/* DER LANGE ABSATZ STEHT HIER NICHT MEHR (Tim, 21.08.2026: „der Text,
-          der dann erscheint, ist wirklich riesig"). `quelle.citation` ist
+          der dann erscheint, ist wirklich riesig"). `source.citation` ist
           ein redaktioneller Absatz über alle Jahrgänge — bei den
           Wirtschaftsplänen sechs Zeilen, die auf einem Handybildschirm den
           halben Platz einnehmen und dabei nicht das beantworten, wofür man
@@ -412,9 +412,9 @@ function QuelleInhalt({ quelle, nr, ziel, jahrgaenge, imVerzeichnis }: {
       {ziel && <Fundstelle ziel={ziel} />}
       {ziel && <Vorgang ziel={ziel} />}
       <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
-        <span>Stand {standText(quelle, jahrgaenge)}</span>
+        <span>Stand {standText(source, jahrgaenge)}</span>
       </span>
-      <Zeile ziel={ziel} quelle={quelle} klein />
+      <Zeile ziel={ziel} source={source} klein />
       {/* Der Rückweg ins Verzeichnis. Dort steht, was hier keinen Platz hat:
           der Absatz zur Quelle, ihr Herausgeber, die Lizenz — und bei
           mehreren Papieren alle neun Teilhaushalts-Anlagen. */}
@@ -584,9 +584,9 @@ function Dokumentliste({ dokumente, eintraege }: {
  *  redaktioneller Text über alle Jahrgänge („Bei den Gesellschaften ist die
  *  einzige nachprüfbare Zahl das beschlossene Jahresergebnis …") und wäre
  *  fünfmal untereinander kein Beleg mehr, sondern eine Wand. */
-export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluessel[] }) {
+export function Quellenverzeichnis({ keys }: { keys: QuellenSchluessel[] }) {
   const { dokumente, jahrgaenge, year, eintraege } = useContext(SeitenQuellen);
-  if (!schluessel.length) return null;
+  if (!keys.length) return null;
   // Die Nummern in Gruppen je Quellenart — sie liegen zusammenhängend, weil
   // `nummerierung` die Schlüssel der Reihe nach abarbeitet.
   const gruppen: { k: QuellenSchluessel; nummern: NummerEintrag[] }[] = [];
@@ -653,7 +653,7 @@ export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluess
                   <>
                     {ziel && <Fundstelle ziel={ziel} />}
                     {ziel && <Vorgang ziel={ziel} />}
-                    <Zeile ziel={ziel} quelle={q} />
+                    <Zeile ziel={ziel} source={q} />
                   </>
                 )}
               </div>

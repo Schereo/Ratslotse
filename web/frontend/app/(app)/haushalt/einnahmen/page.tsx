@@ -23,7 +23,7 @@ import {
 import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
 import { LueckenFeld } from "@/components/grafik/luecken-field";
 import { SPIELRAUM_LABEL, STEUERARTEN, Spielraum } from "@/lib/haushalt-taxes";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { FinanzausgleichDaempfer } from "@/components/haushalt/fiscal-equalization-daempfer";
@@ -158,7 +158,7 @@ export default function EinnahmenPage() {
     ...(spendenReihe.length ? (["donations"] as const) : [])];
 
   return (
-    <Quellenkontext schluessel={quellen}>
+    <Quellenkontext keys={quellen}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -186,7 +186,7 @@ export default function EinnahmenPage() {
           Gruppen erklärt. */}
       <Seitenbuehne
         kicker="Spielraum über alle Quellen"
-        zahl={<>Bei <ZaehlZahl wert={frei} /> von {karten.length} Einnahmequellen kann der
+        zahl={<>Bei <ZaehlZahl value={frei} /> von {karten.length} Einnahmequellen kann der
           Rat die Höhe selbst festlegen</>}
         sub={GRUPPEN.find((g) => g.stufe === "frei")?.text}
         minibild={{
@@ -449,7 +449,7 @@ export default function EinnahmenPage() {
                       sie über 700 px bei 46 px Höhe und zog acht Jahrgänge zu
                       einem flachen Draht. */}
                   <ZeitreiheMini
-                    series={spendenReihe.map((j) => ({ year: j.year, wert: j.amount }))}
+                    series={spendenReihe.map((j) => ({ year: j.year, value: j.amount }))}
                     format={(v) => `${Math.round(v / 1000).toLocaleString("de-DE")} Tsd.`}
                     ariaLabel={
                       `Angenommene Zuwendungen je Jahr, ${spendenReihe[0].year} bis `
@@ -621,7 +621,7 @@ export default function EinnahmenPage() {
 
       <SchrittWeiter href="/haushalt/einnahmen" />
 
-      <Quellenverzeichnis schluessel={quellen} />
+      <Quellenverzeichnis keys={quellen} />
     </div>
     </Quellenkontext>
   );

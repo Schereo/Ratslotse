@@ -131,7 +131,7 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
               </p>
               <ol className="mt-2 space-y-1.5">
                 {share.sources.map((q, i) => (
-                  <li key={q.id} id={`quelle-${i + 1}`} className="flex items-baseline gap-2 text-[13px]">
+                  <li key={q.id} id={`source-${i + 1}`} className="flex items-baseline gap-2 text-[13px]">
                     <span className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded bg-primary/10 px-0.5 text-[10px] font-bold text-primary">{i + 1}</span>
                     <span className="min-w-0 flex-1">
                       <Link href={`/council/decision?id=${q.id}`} className="hover:underline">{q.title}</Link>

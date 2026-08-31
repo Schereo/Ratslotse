@@ -69,7 +69,7 @@ import {
   ErgebnisPosten, HaushaltAuswahl, PLAN_ART_LABEL, PlanArt,
   deMio, fehlendeJahre, jahreSortiert, mio, summe,
 } from "@/lib/haushalt";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseMarke, AbleseStelle, AbleseWert,
   Ableseleiste, useAblesen,
@@ -112,8 +112,8 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"income_statement"
 
   useEffect(() => {
     const setzeWennGeaendert = (
-      wert: number | null, setter: (n: number) => void, alt: () => number,
-    ) => { if (wert != null && Math.abs(wert - alt()) > 0.5) setter(wert); };
+      value: number | null, setter: (n: number) => void, alt: () => number,
+    ) => { if (value != null && Math.abs(value - alt()) > 0.5) setter(value); };
     let letztesAussen = 0, letztesBild = 560;
     const pruefe = () => {
       setzeWennGeaendert(breiteVon(aussen.current), (n) => {
@@ -284,12 +284,12 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"income_statement"
     const p = punkte.find((q) => q.year === year);
     const ist = istNach.get(year);
     const werte: AbleseWert[] = [
-      { label: "Erträge", wert: p ? deMio(p.ein) : "—", farbe: "var(--hh-ein-0)" },
-      { label: "Aufwand", wert: p ? deMio(p.aus) : "—", farbe: "var(--hh-aus-0)" },
-      { label: "Plan-Saldo", wert: p ? vorzeichen(p.balance) : "—", signal: !!p && p.balance < 0 },
+      { label: "Erträge", value: p ? deMio(p.ein) : "—", farbe: "var(--hh-ein-0)" },
+      { label: "Aufwand", value: p ? deMio(p.aus) : "—", farbe: "var(--hh-aus-0)" },
+      { label: "Plan-Saldo", value: p ? vorzeichen(p.balance) : "—", signal: !!p && p.balance < 0 },
     ];
     if (istPunkte.length) {
-      werte.push({ label: "Ist-Saldo", wert: ist ? vorzeichen(ist.balance) : "—" });
+      werte.push({ label: "Ist-Saldo", value: ist ? vorzeichen(ist.balance) : "—" });
     }
     const vorlesen = p
       ? [

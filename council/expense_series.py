@@ -319,7 +319,7 @@ def erkenne(text: str) -> dict[str, tuple[int, int]]:
 
 def parse_pdf(text: str) -> list[dict]:
     """Die Datenzeilen des PDFs → ``{year, population, amount, per_capita,
-    revised, quelle}``, Beträge in Euro.
+    revised, source}``, Beträge in Euro.
 
     Beide Blöcke stehen auf derselben Seite untereinander; getrennt wird am
     Titel des zweiten. Der Schnitt ist hier weniger kritisch als bei 1107,
@@ -339,7 +339,7 @@ def parse_pdf(text: str) -> list[dict]:
         zeilen.append({
             "year": int(m.group(1)), "population": int(ew or 0),
             "amount": (amount or 0.0) * TAUSEND, "per_capita": kopf,
-            "revised": mark == "r", "quelle": "pdf",
+            "revised": mark == "r", "source": "pdf",
         })
     return zeilen
 
@@ -364,7 +364,7 @@ def parse_csv(csv_text: str) -> list[dict]:
         zeilen.append({
             "year": int(c[0]), "population": int(c[1]),
             "amount": float(c[2]) * TAUSEND, "per_capita": float(c[3]),
-            "revised": False, "quelle": "csv",
+            "revised": False, "source": "csv",
         })
     return zeilen
 
@@ -432,7 +432,7 @@ def _wähle(kandidaten: list[dict]) -> tuple[dict | None, dict | None, str]:
         # Einig. Das PDF gewinnt als Fundstelle, weil es die Untertitel und
         # Fußnoten trägt — der Betrag ist ohnehin derselbe. Gewählt wird nur
         # aus den Zeilen, die ihre eigene Rechnung bestanden haben.
-        pdf = next((k for k in bestanden if k["quelle"] == "pdf"), None)
+        pdf = next((k for k in bestanden if k["source"] == "pdf"), None)
         return pdf or bestanden[0], None, ""
     if len(bestanden) == 1:
         gewaehlt = bestanden[0]
@@ -454,7 +454,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
 
     ``zeilen``
         Die übernommenen Jahrgänge, aufsteigend. Jeder trägt ``accounting_system``,
-        ``quelle`` (welche Datei den Betrag geliefert hat), die Namen seiner
+        ``source`` (welche Datei den Betrag geliefert hat), die Namen seiner
         bestandenen ``probes`` und — wo die Quellen sich widersprachen —
         ``conflict_amount``/``conflict_source``.
     ``verworfen``
@@ -497,14 +497,14 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
                              f"{regelwerk_von(z['year'])}e"})
                 continue
             je_quelle = kandidaten.setdefault(z["year"], {})
-            if z["quelle"] in je_quelle:
+            if z["source"] in je_quelle:
                 verworfen.append({
                     "year": z["year"],
-                    "reason": f"steht in derselben Quelle ({z['quelle']}) "
+                    "reason": f"steht in derselben Quelle ({z['source']}) "
                              f"mehr als einmal"})
-                je_quelle[z["quelle"]] = {"doppelt": True}
+                je_quelle[z["source"]] = {"doppelt": True}
                 continue
-            je_quelle[z["quelle"]] = z
+            je_quelle[z["source"]] = z
 
     zeilen: list[dict] = []
     konflikte: list[dict] = []
@@ -554,18 +554,18 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
 
         zeile = {
             "year": year, "accounting_system": regelwerk_von(year),
-            "amount": gewaehlt["amount"], "quelle": gewaehlt["quelle"],
+            "amount": gewaehlt["amount"], "source": gewaehlt["source"],
             "revised": bool(gewaehlt.get("revised")),
             "conflict_amount": konflikt["amount"] if konflikt else None,
-            "conflict_source": konflikt["quelle"] if konflikt else None,
+            "conflict_source": konflikt["source"] if konflikt else None,
             "probes": probes,
         }
         zeilen.append(zeile)
         if konflikt:
             konflikte.append({
-                "year": year, "gewaehlt": gewaehlt["quelle"],
+                "year": year, "gewaehlt": gewaehlt["source"],
                 "amount": gewaehlt["amount"],
-                "verworfen": konflikt["quelle"],
+                "verworfen": konflikt["source"],
                 "conflict_amount": konflikt["amount"],
                 "difference": konflikt["amount"] - gewaehlt["amount"],
             })

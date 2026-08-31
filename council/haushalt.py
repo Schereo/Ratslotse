@@ -439,8 +439,8 @@ _BEREICH_INFO = {
 }
 
 _BEREICH_NACH_ALIAS = {
-    _norm_bereich(alias): schluessel
-    for schluessel, aliase in _BEREICH_ALIASE.items()
+    _norm_bereich(alias): key
+    for key, aliase in _BEREICH_ALIASE.items()
     for alias in aliase
 }
 
@@ -779,7 +779,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     return qs
 
 
-def _komma(wert: float, stellen: int = 1) -> str:
+def _komma(value: float, stellen: int = 1) -> str:
     """Eine Zahl deutsch schreiben — NUR die Zahl.
 
     Es gibt in dieser Datei zwei Stellen, an denen ein `.replace(".", ",")`
@@ -787,7 +787,7 @@ def _komma(wert: float, stellen: int = 1) -> str:
     erwischte. Deshalb geht die Umstellung hier durch eine Funktion, der man
     nichts anderes als eine Zahl übergeben kann.
     """
-    return f"{wert:.{stellen}f}".replace(".", ",")
+    return f"{value:.{stellen}f}".replace(".", ",")
 
 
 def build_abschluss_questions(store) -> list[dict]:

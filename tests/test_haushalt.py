@@ -103,10 +103,10 @@ def test_chart_json_shape():
     assert sum(1 for it in chart["items"] if it.get("highlight")) == 1
 
 
-def test_store_haushalt_roundtrip_and_quiz(tmp_path, quelle):
+def test_store_haushalt_roundtrip_and_quiz(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     rows = haushalt.parse_ergebnishaushalt(PAGE_2026)
-    q = quelle("Haushaltsplan 2026", "http://pdf", probe="summenzeile")
+    q = source("Haushaltsplan 2026", "http://pdf", probe="summenzeile")
     assert store.save_haushalt(2026, rows, q) == 14
     assert store.save_haushalt(2026, rows, q) == 14  # Re-Ingest idempotent
     got = store.get_haushalt(2026)
@@ -323,12 +323,12 @@ def test_parse_steuerkraft_rueckt_aufs_ausgleichsjahr():
                for k in kraft)
 
 
-def test_parse_steuerkraft_und_store_roundtrip(tmp_path, quelle):
+def test_parse_steuerkraft_und_store_roundtrip(tmp_path, source):
     kraft = haushalt.parse_steuerkraft(CSV_STEUERKRAFT)
 
     store = CouncilStore(tmp_path / "c.sqlite")
     taxes = haushalt.parse_steuereinnahmen(CSV_STEUERN)
-    q = quelle("Steuer-CSV", "http://csv", probe=UNGEPRUEFT)
+    q = source("Steuer-CSV", "http://csv", probe=UNGEPRUEFT)
     assert store.save_steuereinnahmen(taxes, q) == 16
     assert store.save_steuereinnahmen(taxes, q) == 16  # idempotent
     assert len(store.get_steuereinnahmen()) == 16
@@ -338,12 +338,12 @@ def test_parse_steuerkraft_und_store_roundtrip(tmp_path, quelle):
     assert got[-1]["tax_index"] == 348_164_497.0
 
 
-def test_save_steuerkraft_raeumt_verwaiste_jahrgaenge_ab(tmp_path, quelle):
+def test_save_steuerkraft_raeumt_verwaiste_jahrgaenge_ab(tmp_path, source):
     """Beim Umstellen auf das Ausgleichsjahr wandert jede Zeile ein Jahr
     weiter — ein reines INSERT OR REPLACE ließe den ältesten Jahrgang als
     Leiche zurück, mit den Beträgen seines Nachfolgers."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    q = quelle("Steuerkraft-CSV", "http://csv", probe=UNGEPRUEFT)
+    q = source("Steuerkraft-CSV", "http://csv", probe=UNGEPRUEFT)
     alt = [{"year": j, "tax_index": 1.0, "tax_capacity_per_capita": None,
             "allocations": 2.0, "allocations_per_capita": None} for j in (1992, 1993)]
     assert store.save_steuerkraft(alt, q) == 2
@@ -369,11 +369,11 @@ def test_parse_einwohner():
     assert rows == [{"year": 2010, "population": 161334}, {"year": 2025, "population": 176614}]
 
 
-def test_store_einwohner_roundtrip(tmp_path, quelle):
+def test_store_einwohner_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     assert store.save_einwohner(
         [{"year": 2024, "population": 176242}, {"year": 2025, "population": 176614}],
-        quelle("Einwohner-CSV", "http://csv", probe=UNGEPRUEFT)) == 2
+        source("Einwohner-CSV", "http://csv", probe=UNGEPRUEFT)) == 2
     assert store.einwohner_aktuell() == {"year": 2025, "population": 176614}
     store.close()
 
@@ -830,10 +830,10 @@ def test_steckbrief_erfindet_nichts():
     assert p["controllability"] == "niedrig"
 
 
-def test_store_finanzberichte_roundtrip(tmp_path, quelle):
+def test_store_finanzberichte_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     posten = finanzberichte.parse_ergebnisrechnung(JA_2023, 2023)
-    q = quelle("JA 2023", "http://x")
+    q = source("JA 2023", "http://x")
     assert store.save_ergebnisrechnung(2023, posten, q) == len(posten)
     assert store.save_ergebnisrechnung(2023, posten, q) == len(posten)  # idempotent
     assert store.ergebnisrechnung_jahre() == [2023]
@@ -841,7 +841,7 @@ def test_store_finanzberichte_roundtrip(tmp_path, quelle):
     assert geladen[1]["ansatz"] == 287_275_000.0
 
     produkte = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)
-    assert store.save_produkte(2019, produkte, quelle(
+    assert store.save_produkte(2019, produkte, source(
         "THH06", "http://thh06", probe="produktzeile")) == 1
     assert store.produkte_jahre() == [2019]
     assert store.get_produkte(2019, sub_budget_no=6)[0]["product_name"] == "Archivierung"
@@ -855,14 +855,14 @@ def test_store_finanzberichte_roundtrip(tmp_path, quelle):
     store.close()
 
 
-def test_produkt_suche_und_filter(tmp_path, quelle):
+def test_produkt_suche_und_filter(tmp_path, source):
     """Suche und Filter laufen serverseitig — mit dem Steckbrief trägt jede
     Zeile mehrere hundert Zeichen Fließtext."""
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_produkte(2019, finanzberichte.parse_teilergebnishaushalt(THH_PLAN),
-                        quelle("THH06", "http://thh06", probe="produktzeile"))
+                        source("THH06", "http://thh06", probe="produktzeile"))
     store.save_produkte(2019, finanzberichte.parse_teilergebnishaushalt(THH_MIT_GRUNDDATEN),
-                        quelle("THH10", "http://thh10", probe="produktzeile"))
+                        source("THH10", "http://thh10", probe="produktzeile"))
     assert len(store.get_produkte(2019)) == 2
 
     # Name, Nummer, Amt und Kurzbeschreibung sind durchsuchbar …
@@ -1023,14 +1023,14 @@ def test_summenprobe_prueft_auch_das_ist():
     assert ok is False and anteil > 0.3
 
 
-def test_store_plan_ist(tmp_path, quelle):
+def test_store_plan_ist(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     gesamt = finanzberichte.parse_ergebnisrechnung(JA_THH, 2023)
-    store.save_ergebnisrechnung(2023, gesamt, quelle("JA 2023", "http://ja2023"))
+    store.save_ergebnisrechnung(2023, gesamt, source("JA 2023", "http://ja2023"))
     for t in finanzberichte.parse_teilergebnisrechnungen(JA_THH, 2023):
         store.save_ergebnisrechnung(
             2023, t["posten"],
-            quelle("JA 2023", "http://ja2023", probe="summenprobe"),
+            source("JA 2023", "http://ja2023", probe="summenprobe"),
             sub_budget_no=t["sub_budget_no"], sub_budget_name=t["sub_budget_name"])
 
     assert store.plan_actual_years() == [2023]
@@ -1417,10 +1417,10 @@ def test_abweichungsgruende_brauchen_die_rechenprobe():
     assert angenommen == [] and any("%" in a for a in abgelehnt)
 
 
-def test_store_abweichungsgruende_roundtrip(tmp_path, quelle):
+def test_store_abweichungsgruende_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     gruende = finanzberichte.parse_abweichungsgruende(JA_WARUM, 2024)
-    q = quelle("JA 2024", "http://x", probe="abweichungstext")
+    q = source("JA 2024", "http://x", probe="abweichungstext")
     assert store.save_abweichungsgruende(2024, gruende, q) == 2
     assert store.save_abweichungsgruende(2024, gruende, q) == 2
     geladen = store.get_abweichungsgruende(2024)
@@ -1455,12 +1455,12 @@ def test_pruefbericht_erkennung():
     assert treffer and treffer["year"] == 2024 and treffer["readable"] is False
 
 
-def test_store_pruefberichte_roundtrip(tmp_path, quelle):
+def test_store_pruefberichte_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_pruefbericht_quelle(
-        2023, quelle("Schlussbericht 2023", "http://x", probe="eingangsformel"), 61, True)
+        2023, source("Schlussbericht 2023", "http://x", probe="eingangsformel"), 61, True)
     store.save_pruefbericht_quelle(
-        2024, quelle("Schlussbericht 2024", "http://y", probe="eingangsformel"), 64, False)
+        2024, source("Schlussbericht 2024", "http://y", probe="eingangsformel"), 64, False)
     n_reports = store.get_pruefbericht_quellen()
     assert [b["year"] for b in n_reports] == [2023, 2024]
     assert n_reports[0]["readable"] == 1 and n_reports[1]["readable"] == 0
@@ -1487,11 +1487,11 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
     c = store._conn                                       # noqa: SLF001
     c.execute("INSERT INTO council_schulden (year, total, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
-    c.execute("INSERT INTO council_bilanz (year, role, page, level, label, wert, "
+    c.execute("INSERT INTO council_bilanz (year, role, page, level, label, value, "
               " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
     c.execute("INSERT INTO council_buergschaften (year, balance, exact, out_next_year, "
-              " quelle, probes, fetched_at) VALUES (2024, 220300000, 1, 0, "
+              " source, probes, fetched_at) VALUES (2024, 220300000, 1, 0, "
               " 'jahresabschluss', '', '2026-08-18')")
     c.commit()
 
@@ -1515,9 +1515,9 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
         assert "(20" in opt, opt
 
     # Stabile Schlüssel: keine Jahreszahl drin, und über zwei Läufe gleich.
-    schluessel = {q["content_hash"] for q in fragen}
-    assert len(schluessel) == len(fragen)
-    assert schluessel == {q["content_hash"] for q in
+    key = {q["content_hash"] for q in fragen}
+    assert len(key) == len(fragen)
+    assert key == {q["content_hash"] for q in
                           haushalt.build_abschluss_questions(store)}
 
 

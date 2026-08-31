@@ -877,9 +877,9 @@ struct QuestionsView: View {
               "unit": "Mio. €",
               "note": "Planwerte aus der Beschlussvorlage.",
               "series": [
-                {"year": 2026, "wert": 2.1},
-                {"year": 2027, "wert": 4.3},
-                {"year": 2028, "wert": 2.5}
+                {"year": 2026, "value": 2.1},
+                {"year": 2027, "value": 4.3},
+                {"year": 2028, "value": 2.5}
               ]
             }
           }
@@ -2868,7 +2868,7 @@ private struct EvidenceChartData {
         for (index, row) in rows.enumerated() {
             guard let fields = row.object else { continue }
             var number: Double?
-            for key in ["wert", "value", "amount"] {
+            for key in ["value", "value", "amount"] {
                 if case .number(let found)? = fields[key] {
                     number = found
                     break
@@ -2892,7 +2892,7 @@ private struct EvidenceChartData {
         title = root["titel"]?.string ?? "Entwicklung"
         unit = root["unit"]?.string ?? "Wert"
         note = root["note"]?.string
-        source = root["quelle"]?.string
+        source = root["source"]?.string
         decimals = max(0, min(3, root["nachkomma"]?.int ?? 0))
     }
 

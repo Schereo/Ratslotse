@@ -20,7 +20,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import {
   STEUERARTEN, SPIELRAUM_LABEL, type SteuerArt, steuerartNachSlug,
 } from "@/lib/haushalt-taxes";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { LottiErklaert, LottiVergleich } from "@/components/haushalt/lotti-erklaert";
 import { IstKurve } from "@/components/haushalt/ist-kurve";
 import { SteuerPlanIst } from "@/components/haushalt/steuer-plan-ist";
@@ -132,22 +132,22 @@ function SteuerInner() {
   // Aussage. Und der Nenner ist nicht überall derselbe — Steuern misst man an
   // den Steuereinnahmen, Gebühren an allen ordentlichen Erträgen. Beides steht
   // in derselben Quelle wie der Zähler, gemischt wird nie.
-  const bezug: { wert: number | null; was: string } | null = istZuweisung
+  const bezug: { value: number | null; was: string } | null = istZuweisung
     ? null
     : istEntgelt
       ? {
-          wert: (data.income_statement ?? []).find(
+          value: (data.income_statement ?? []).find(
             (z) => z.nr === 12 && z.sub_budget_no === null && z.year === letzte?.year,
           )?.result ?? null,
           was: "aller ordentlichen Erträge",
         }
       : {
-          wert: data.taxes.find(
+          value: data.taxes.find(
             (s) => s.year === letzte?.year && s.art === "total",
           )?.amount ?? null,
           was: "aller Steuereinnahmen",
         };
-  const anteil = letzte && bezug?.wert ? Math.round((letzte.amount / bezug.wert) * 100) : null;
+  const anteil = letzte && bezug?.value ? Math.round((letzte.amount / bezug.value) * 100) : null;
   const population = data.population?.population ?? 0;
 
   // Welche Quelle den Hauptbetrag trägt — einmal bestimmt, überall derselbe
@@ -253,7 +253,7 @@ function SteuerInner() {
          ...(statistik ? (["lsn_gewerbesteuer"] as const) : [])];
 
   return (
-    <Quellenkontext schluessel={quellen}>
+    <Quellenkontext keys={quellen}>
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -300,7 +300,7 @@ function SteuerInner() {
             </p>
             {anteil != null && (
               <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                {anteil}&nbsp;% {bezug!.was} ({deMio(bezug!.wert! / 1e6)}&#8239;Mio.&nbsp;€)
+                {anteil}&nbsp;% {bezug!.was} ({deMio(bezug!.value! / 1e6)}&#8239;Mio.&nbsp;€)
               </p>
             )}
           </div>
@@ -323,7 +323,7 @@ function SteuerInner() {
         return (
           <Seitenbuehne
             kicker={`Steuer-Steckbrief · Hebesatz ${art.hebesatzArten?.[0] ?? art.titel}`}
-            zahl={<><ZaehlZahl wert={akt.rate} />&#8239;% seit {akt.year}</>}
+            zahl={<><ZaehlZahl value={akt.rate} />&#8239;% seit {akt.year}</>}
             sub={`davor ${series.length - 1} ${series.length - 1 === 1 ? "Änderung" : "Änderungen"} seit ${series[0].year} — beschlossen jeweils vom Rat`}
             minibild={{
               href: "#rate",
@@ -707,7 +707,7 @@ function SteuerInner() {
         ))}
       </div>
 
-      <Quellenverzeichnis schluessel={quellen} />
+      <Quellenverzeichnis keys={quellen} />
     </div>
     </Quellenkontext>
   );

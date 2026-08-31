@@ -734,9 +734,9 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
           onClick={() => {
             const el = document.getElementById(`deep-limit-${data.id}`) as HTMLInputElement | null;
             const roh = (el?.value ?? "").trim();
-            const wert = roh === "" ? null : Math.max(0, Math.min(999, Number(roh)));
-            if (wert !== null && Number.isNaN(wert)) return;
-            limitsMutation.mutate({ deep_limit: wert, limits_frei: data.limits_frei });
+            const value = roh === "" ? null : Math.max(0, Math.min(999, Number(roh)));
+            if (value !== null && Number.isNaN(value)) return;
+            limitsMutation.mutate({ deep_limit: value, limits_frei: data.limits_frei });
           }}>
           Speichern
         </Button>

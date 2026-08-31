@@ -24,7 +24,7 @@ import type { SteuerArt } from "@/lib/haushalt-taxes";
 export function Grenzen({ art }: { art: SteuerArt }) {
   const eintraege = [
     art.punktUnmoeglich && {
-      schluessel: "punkt",
+      key: "punkt",
       icon: Calculator,
       /* Dieselbe Frage wie auf der Zahl-Karte der anderen Steuerarten —
          der Text darunter ist ihre Antwort, nicht ihre Wiederholung. */
@@ -35,7 +35,7 @@ export function Grenzen({ art }: { art: SteuerArt }) {
       link: null as { href: string; text: string } | null,
     },
     {
-      schluessel: "beschluesse",
+      key: "beschluesse",
       icon: Search,
       titel: "Was der Rat dazu entschieden hat",
       text: "Die automatische Verknüpfung von Beschlüssen mit Einnahmearten "
@@ -46,7 +46,7 @@ export function Grenzen({ art }: { art: SteuerArt }) {
       },
     },
   ].filter(Boolean) as {
-    schluessel: string;
+    key: string;
     icon: typeof Search;
     titel: string;
     text: string;
@@ -60,7 +60,7 @@ export function Grenzen({ art }: { art: SteuerArt }) {
       </p>
       <div className="mt-2.5 flex flex-col divide-y divide-dashed divide-border">
         {eintraege.map((e) => (
-          <div key={e.schluessel} className="flex gap-2.5 py-2.5 first:pt-0 last:pb-0">
+          <div key={e.key} className="flex gap-2.5 py-2.5 first:pt-0 last:pb-0">
             <e.icon aria-hidden
               className="mt-0.5 h-4 w-4 flex-none text-muted-foreground" />
             <div className="min-w-0">

@@ -1374,8 +1374,8 @@ class Store:
         if not row or not row[0]:
             return {}
         try:
-            wert = _json.loads(row[0])
-            return wert if isinstance(wert, dict) else {}
+            value = _json.loads(row[0])
+            return value if isinstance(value, dict) else {}
         except (ValueError, TypeError):
             return {}
 

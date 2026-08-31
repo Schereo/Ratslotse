@@ -297,7 +297,7 @@ def parse_bilanz(text: str, year: int) -> dict:
     """Die Bilanz eines Jahresabschlusses lesen.
 
     Liefert ``{year, prior_year, posten}``. ``posten`` ist eine Liste aus
-    ``{role, page, level, nr, label, wert, value_prior_year}`` — ``wert``
+    ``{role, page, level, nr, label, value, value_prior_year}`` — ``value``
     ist der Stand zum Bilanzstichtag des Jahrgangs, ``value_prior_year`` der
     Stand ein Jahr davor, den dieselbe Tabelle in ihrer ersten Spalte führt.
 
@@ -352,7 +352,7 @@ def parse_bilanz(text: str, year: int) -> dict:
             "role": name, "page": page, "level": level,
             "nr": m.group(1).rstrip("."), "label": label,
             "value_prior_year": _eur(betraege[0]) if betraege else 0.0,
-            "wert": _eur(betraege[1]) if betraege else 0.0,
+            "value": _eur(betraege[1]) if betraege else 0.0,
         })
 
     return {"year": year, "prior_year": year - 1, "posten": posten,
@@ -362,14 +362,14 @@ def parse_bilanz(text: str, year: int) -> dict:
 
 # --- Die Proben --------------------------------------------------------------
 
-def _wert(posten: list[dict], role: str, spalte: str = "wert") -> float | None:
+def _wert(posten: list[dict], role: str, spalte: str = "value") -> float | None:
     for p in posten:
         if p["role"] == role:
             return p[spalte]
     return None
 
 
-def summe(posten: list[dict], page: str, spalte: str = "wert") -> float | None:
+def summe(posten: list[dict], page: str, spalte: str = "value") -> float | None:
     """Die Summe der Hauptposten einer Seite — oder ``None``, wenn einer fehlt."""
     werte = [_wert(posten, r, spalte) for r in HAUPTPOSTEN[page]]
     return sum(werte) if all(w is not None for w in werte) else None

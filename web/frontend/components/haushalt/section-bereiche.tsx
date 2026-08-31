@@ -27,7 +27,7 @@
 import Link from "next/link";
 import { ChevronRight, ArrowRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { NamenKlartext } from "@/components/haushalt/namen-klartext";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";

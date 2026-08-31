@@ -87,7 +87,7 @@ export type Kennzahl = {
   company: string;
   indicator: "jahresergebnis" | "bilanzsumme" | "eigenkapitalquote";
   year: number;
-  wert: number;
+  value: number;
   unit: "eur" | "percent";
   report_year: number;
   /** In wie vielen Berichten dieser Wert übereinstimmend steht. */
@@ -223,7 +223,7 @@ export function einordnungFuer(daten: BeteiligungsDaten, g: Gesellschaft,
   };
   if (redaktionell[g.company]) return redaktionell[g.company];
 
-  if (ergebnisse.length >= 2 && ergebnisse.every((k) => k.wert === 0)) {
+  if (ergebnisse.length >= 2 && ergebnisse.every((k) => k.value === 0)) {
     return "Die Null ist Vertragslage, kein Stillstand: Der Betrieb führt sein "
       + "Ergebnis an die Stadt ab oder bekommt es ausgeglichen.";
   }
@@ -354,26 +354,26 @@ export function anteilsGewicht(e: Eigentuemer): number {
  *  macht, erfüllt seinen Auftrag — dieselbe Begründung wie in
  *  `components/grafik/hantel.tsx`. Das Minus steht da, weil es zur Zahl
  *  gehört, nicht als Urteil. */
-export function eur(wert: number): string {
-  const abs = Math.abs(wert);
+export function eur(value: number): string {
+  const abs = Math.abs(value);
   if (abs >= 1_000_000) {
-    return `${(wert / 1_000_000).toLocaleString("de-DE", {
+    return `${(value / 1_000_000).toLocaleString("de-DE", {
       minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mio. €`;
   }
   if (abs >= 1_000) {
-    return `${(wert / 1_000).toLocaleString("de-DE", {
+    return `${(value / 1_000).toLocaleString("de-DE", {
       maximumFractionDigits: 0 })} Tsd. €`;
   }
-  return `${wert.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`;
+  return `${value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`;
 }
 
-export function percent(wert: number): string {
-  return `${wert.toLocaleString("de-DE", {
+export function percent(value: number): string {
+  return `${value.toLocaleString("de-DE", {
     minimumFractionDigits: 1, maximumFractionDigits: 2 })} %`;
 }
 
 export function wertText(k: Kennzahl): string {
-  return k.unit === "percent" ? percent(k.wert) : eur(k.wert);
+  return k.unit === "percent" ? percent(k.value) : eur(k.value);
 }
 
 /** Die Gesellschaften, sortiert wie im Bericht (Eigenbetriebe, Anstalten,

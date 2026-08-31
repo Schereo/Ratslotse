@@ -52,7 +52,7 @@ import {
 import { PruefberichtDaten, wiederholungsketten } from "@/lib/haushalt-pruefung";
 import { Warum } from "@/components/haushalt/warum";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { MarkePille } from "@/components/haushalt/mark";
 import { Hantel, HantelMassstab } from "@/components/grafik/hantel";
@@ -78,7 +78,7 @@ function PruefungsHinweis() {
   const chain = useMemo(() => {
     if (!data?.feststellungen?.length) return null;
     return wiederholungsketten(data.feststellungen)
-      .find((k) => k.schluessel.includes("planistvergleich")) ?? null;
+      .find((k) => k.key.includes("planistvergleich")) ?? null;
   }, [data]);
   if (!chain) return null;
   // Ausdrücklich die jüngste WIEDERHOLTE Beanstandung, nicht einfach den
@@ -114,8 +114,8 @@ function PruefungsHinweis() {
  *  Vorzeichen steht als Zeichen da, nicht als Urteil — deshalb tragen alle
  *  Beträge dieselbe Textfarbe, und `stark` hebt nur die Summenzeile heraus,
  *  wie im Dokument. */
-function KassenZeile({ label, note, wert, stark }: {
-  label: string; note?: string; wert: number | null; stark?: boolean;
+function KassenZeile({ label, note, value, stark }: {
+  label: string; note?: string; value: number | null; stark?: boolean;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2">
@@ -132,7 +132,7 @@ function KassenZeile({ label, note, wert, stark }: {
       </dt>
       <dd className={cn("flex-none tabular-nums",
         stark ? "font-display text-[19px] font-bold" : "text-[15px] font-semibold")}>
-        {wert != null && wert > 0 && "+"}{deMio(wert)}
+        {value != null && value > 0 && "+"}{deMio(value)}
         <span className="ml-0.5 text-[11px] font-semibold text-muted-foreground">
           Mio.&nbsp;€
         </span>
@@ -256,7 +256,7 @@ function PlanIstInner() {
   // `ratsbeschluss` kommt dazu, sobald der Nachbewilligungs-Block etwas zu
   // zeigen hat: Seine Liste verlinkt Vorlagen aus dem Bürgerinformations-
   // system, und ein Beleg-Chip ohne angemeldete Quelle rendert nichts (siehe
-  // `components/haushalt/quelle.tsx`) — die Zeilen stünden dann ohne Beleg da.
+  // `components/haushalt/source.tsx`) — die Zeilen stünden dann ohne Beleg da.
   const hatNachbewilligungen = (data.supplementary_approvals?.serie ?? []).length > 0;
   const quellen: QuellenSchluessel[] = [
     "jahresabschluss",
@@ -315,7 +315,7 @@ function PlanIstInner() {
     .sort((a, b) => Math.abs(b.delta_meur ?? 0) - Math.abs(a.delta_meur ?? 0));
 
   return (
-    <Quellenkontext schluessel={quellen} year={year}>
+    <Quellenkontext keys={quellen} year={year}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -343,9 +343,9 @@ function PlanIstInner() {
           kicker={`Jahresabschluss ${year} · Mio. € Aufwand`}
           zahl={
             <span className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-              <span>geplant <ZaehlZahl wert={gesamt.aufwPlan} nachkomma={1} /></span>
+              <span>geplant <ZaehlZahl value={gesamt.aufwPlan} nachkomma={1} /></span>
               <span aria-hidden="true" className="relative top-[-0.28em] h-0 w-9 flex-none border-t-2 border-foreground" />
-              <span>geworden <ZaehlZahl wert={gesamt.aufwIst} nachkomma={1} /></span>
+              <span>geworden <ZaehlZahl value={gesamt.aufwIst} nachkomma={1} /></span>
             </span>
           }
           sub={<>
@@ -509,21 +509,21 @@ function PlanIstInner() {
             <KassenZeile
               label="Aus laufender Arbeit blieb übrig"
               note="Steuern, Gebühren und Zuweisungen minus Personal, Sachkosten und Sozialleistungen"
-              wert={mio(kasse.balance_operating?.result)} />
+              value={mio(kasse.balance_operating?.result)} />
             <KassenZeile
               label="Für Investitionen floss ab"
               note={kasse.total_out_capital?.result != null
                 ? `${deMio(mio(kasse.total_out_capital.result))} Mio. € ausgezahlt für Bau, Grundstücke, Geräte und Zuschüsse — abzüglich der Einzahlungen`
                 : undefined}
-              wert={mio(kasse.balance_capital?.result)} />
+              value={mio(kasse.balance_capital?.result)} />
             <KassenZeile
               label={kasse.cash_surplus?.label ?? "Finanzmittel-Überschuss/-Fehlbetrag"}
-              wert={mio(kasse.cash_surplus?.result)} stark />
+              value={mio(kasse.cash_surplus?.result)} stark />
             {kasse.cash_change && kasse.balance_financing && (
               <KassenZeile
                 label="Nach Kredittilgung"
                 note={`${deMio(mio(Math.abs(kasse.balance_financing.result ?? 0)))} Mio. € Tilgung`}
-                wert={mio(kasse.cash_change.result)} />
+                value={mio(kasse.cash_change.result)} />
             )}
           </dl>
           {kasse.opening_balance?.result != null && kasse.closing_balance?.result != null && (
@@ -609,10 +609,10 @@ function PlanIstInner() {
                 {([
                   ["percent", "Abweichung in Prozent"],
                   ["amount", "Abweichung in Millionen"],
-                ] as [HantelMassstab, string][]).map(([wert, text]) => (
-                  <button key={wert} type="button" onClick={() => setMassstab(wert)}
+                ] as [HantelMassstab, string][]).map(([value, text]) => (
+                  <button key={value} type="button" onClick={() => setMassstab(value)}
                     className={cn("whitespace-nowrap rounded-full px-3 py-1 text-[12.5px]",
-                      massstab === wert
+                      massstab === value
                         ? "bg-card font-semibold shadow-sm"
                         : "text-foreground/70 hover:text-foreground")}>
                     {text}
@@ -832,7 +832,7 @@ function PlanIstInner() {
 
       <SchrittWeiter href="/haushalt/plan-ist" />
 
-      <Quellenverzeichnis schluessel={quellen} />
+      <Quellenverzeichnis keys={quellen} />
     </div>
     </Quellenkontext>
   );

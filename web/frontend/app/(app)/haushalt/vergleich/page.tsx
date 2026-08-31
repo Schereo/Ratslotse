@@ -41,7 +41,7 @@ import {
 } from "@/lib/haushalt-vergleich";
 import { Staedtevergleich, Zeitreihe } from "@/components/haushalt/staedtevergleich";
 import { SlopePaar, type SlopePaarZeile } from "@/components/grafik/slope-paar";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
@@ -141,9 +141,9 @@ export default function VergleichSeite() {
   const rsVorjahr = grundsteuerVorher.length > 0 ? rsVorjahrKandidat : null;
   const sprungPaare: SlopePaarZeile[] = grundsteuer
     .flatMap((z): SlopePaarZeile[] => {
-      const vorher = grundsteuerVorher.find((v) => v.schluessel === z.schluessel);
+      const vorher = grundsteuerVorher.find((v) => v.key === z.key);
       return vorher ? [{
-        label: z.name, vorher: vorher.wert, nachher: z.wert,
+        label: z.name, vorher: vorher.value, nachher: z.value,
         hervorgehoben: z.ist_oldenburg,
       }] : [];
     })
@@ -167,7 +167,7 @@ export default function VergleichSeite() {
   const hatZahlen = tax_capacity.length > 0 || grundsteuer.length > 0;
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]}>
+    <Quellenkontext keys={[...QUELLEN]}>
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
@@ -186,25 +186,25 @@ export default function VergleichSeite() {
         {platz != null && tax_capacity.length > 1 && skJahr && (
           <Seitenbuehne
             kicker="Kreisfreie Städte Niedersachsens"
-            zahl={<>Platz <ZaehlZahl wert={platz} /> von {tax_capacity.length} bei
+            zahl={<>Platz <ZaehlZahl value={platz} /> von {tax_capacity.length} bei
               der Steuerkraft</>}
             sub={`Steuerkraftmesszahl je Einwohner*in · Ausgleichsjahr ${skJahr} — unsere Pro-Kopf-Rechnung, keine amtliche Kennzahl`}
             minibild={{
               href: "#tax_capacity",
               label: "Städte-Leiter — Oldenburg markiert, klickt zur Rangliste",
               skizze: (() => {
-                const werte = tax_capacity.map((z) => z.wert);
+                const werte = tax_capacity.map((z) => z.value);
                 const min = Math.min(...werte), max = Math.max(...werte);
                 const pos = (w: number) => max > min ? 2 + ((w - min) / (max - min)) * 90 : 50;
                 return (
                   <span className="relative block h-[18px]">
                     <span className="absolute inset-x-0 top-2 h-[2px]" style={{ background: "var(--sb-blass)" }} />
                     {tax_capacity.map((z) => z.ist_oldenburg ? (
-                      <span key={z.schluessel} className="absolute top-[3px] h-3 w-3 rounded-full shadow-[0_0_0_3px_hsl(var(--primary)/0.18)]"
-                        style={{ left: `${pos(z.wert)}%`, background: "var(--sb-voll)" }} />
+                      <span key={z.key} className="absolute top-[3px] h-3 w-3 rounded-full shadow-[0_0_0_3px_hsl(var(--primary)/0.18)]"
+                        style={{ left: `${pos(z.value)}%`, background: "var(--sb-voll)" }} />
                     ) : (
-                      <span key={z.schluessel} className="absolute top-[5px] h-2 w-2 rounded-full"
-                        style={{ left: `${pos(z.wert)}%`, background: "var(--sb-mittel)" }} />
+                      <span key={z.key} className="absolute top-[5px] h-2 w-2 rounded-full"
+                        style={{ left: `${pos(z.value)}%`, background: "var(--sb-mittel)" }} />
                     ))}
                   </span>
                 );
@@ -236,12 +236,12 @@ export default function VergleichSeite() {
               Die <GlossaryText text="Steuerkraftmesszahl" /> ist die Größe, mit der das
               Land bemisst, wie finanzstark eine Gemeinde ist.
               {oldenburg && platz === 1 && (
-                <> Oldenburg liegt mit <strong>{Math.round(oldenburg.wert).toLocaleString("de-DE")}&nbsp;Euro
+                <> Oldenburg liegt mit <strong>{Math.round(oldenburg.value).toLocaleString("de-DE")}&nbsp;Euro
                 je Einwohner*in</strong> an der <strong>Spitze aller acht kreisfreien Städte
                 Niedersachsens</strong>.</>
               )}
               {oldenburg && platz !== null && platz > 1 && (
-                <> Oldenburg steht mit <strong>{Math.round(oldenburg.wert).toLocaleString("de-DE")}&nbsp;Euro
+                <> Oldenburg steht mit <strong>{Math.round(oldenburg.value).toLocaleString("de-DE")}&nbsp;Euro
                 je Einwohner*in</strong> auf Platz {platz} von {tax_capacity.length}.</>
               )}
               <Beleg q="lsn_finanzausgleich" />
@@ -510,7 +510,7 @@ export default function VergleichSeite() {
               (Designsprache §4). */}
           <ul className="mt-3 grid gap-x-6 gap-y-2.5 @5xl/section:grid-cols-3">
             {Object.entries(ROLLEN).map(([key, r]) => {
-              const stadt = data.staedte.find((s) => s.schluessel === key);
+              const stadt = data.staedte.find((s) => s.key === key);
               if (!stadt) return null;
               return (
                 <li key={key} className="border-l-2 border-border pl-3">
@@ -588,7 +588,7 @@ export default function VergleichSeite() {
 
         <SchrittWeiter href="/haushalt/vergleich" />
 
-        <Quellenverzeichnis schluessel={[...QUELLEN]} />
+        <Quellenverzeichnis keys={[...QUELLEN]} />
       </div>
     </Quellenkontext>
   );

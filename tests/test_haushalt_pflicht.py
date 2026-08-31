@@ -65,15 +65,15 @@ for (const b of BEREICHE) {
     ueberAliase[a] = {
       ueberNamen: PFLICHT_ZUORDNUNG[a]?.stufe ?? null,
       ueberFunktion: pflichtFuer(a)?.stufe ?? null,
-      erwartet: PFLICHT_NACH_SCHLUESSEL[b.schluessel]?.stufe ?? null,
+      erwartet: PFLICHT_NACH_SCHLUESSEL[b.key]?.stufe ?? null,
     };
   }
 }
 
 const urteile = {};
 for (const [name, stufe] of Object.entries(ein.urteile ?? {})) {
-  const schluessel = ein.schluessel[name];
-  urteile[name] = abgleich(stufe, befunde.get(schluessel));
+  const key = ein.key[name];
+  urteile[name] = abgleich(stufe, befunde.get(key));
 }
 
 console.log(JSON.stringify({
@@ -81,7 +81,7 @@ console.log(JSON.stringify({
   ueberAliase,
   urteile,
   stufen: Object.fromEntries(
-    BEREICHE.map((b) => [b.schluessel, PFLICHT_NACH_SCHLUESSEL[b.schluessel]?.stufe ?? null])),
+    BEREICHE.map((b) => [b.key, PFLICHT_NACH_SCHLUESSEL[b.key]?.stufe ?? null])),
   erwartet: STUFE_ERWARTET,
   // Groß-/Kleinschreibung und doppelte Leerzeichen fängt die Normalisierung
   // ab — der Rückfall muss trotzdem greifen, nicht raten.
@@ -94,9 +94,9 @@ def _lib(tmp_path: Path) -> dict[str, str]:
     ziel = tmp_path / "lib"
     ziel.mkdir(exist_ok=True)
     for name in MODULE:
-        quelle = (FRONTEND / "lib" / name).read_text(encoding="utf-8")
+        source = (FRONTEND / "lib" / name).read_text(encoding="utf-8")
         (ziel / name).write_text(
-            re.sub(r'from "@/lib/([\w-]+)"', r'from "./\1.ts"', quelle),
+            re.sub(r'from "@/lib/([\w-]+)"', r'from "./\1.ts"', source),
             encoding="utf-8")
     return {
         "lib": (ziel / "haushalt-pflicht.ts").as_posix(),
@@ -227,7 +227,7 @@ def test_ohne_produktebene_ist_offen_keine_uebereinstimmung(tmp_path):
     r = _lauf(
         tmp_path, year=2023,
         produkte=[_p("A", "Kultur, Museen, Sport", 1_000_000, "hoch")],
-        schluessel={"Kultur, Museen, Sport": "kultur", "Schule und Bildung": "schule"},
+        key={"Kultur, Museen, Sport": "kultur", "Schule und Bildung": "schule"},
         urteile={"Kultur, Museen, Sport": "freiwillig", "Schule und Bildung": "spielraum"},
     )
     assert r["urteile"]["Kultur, Museen, Sport"] == "deckt"
@@ -244,7 +244,7 @@ def test_abweichung_wird_gemeldet_nicht_geglaettet(tmp_path):
             _p("A", "Jugend und Familie", 71_100_000, "niedrig"),
             _p("B", "Jugend und Familie", 6_200_000, "mittel"),
         ],
-        schluessel={"Jugend und Familie": "jugend"},
+        key={"Jugend und Familie": "jugend"},
         urteile={"Jugend und Familie": "spielraum"},
     )
     assert r["stufen"]["jugend"] == "spielraum"

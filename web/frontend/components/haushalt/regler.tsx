@@ -18,18 +18,18 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export function Regler({
-  id, label, wert, min, max, step, onChange,
+  id, label, value, min, max, step, onChange,
   anzeige, ist, marken, wirkung, geaendert,
 }: {
   id: string;
   label: ReactNode;
-  wert: number;
+  value: number;
   min: number; max: number; step: number;
   onChange: (v: number) => void;
   /** Der Wert rechts neben dem Titel — schon fertig formatiert. */
   anzeige: ReactNode;
   /** Wo steht die Stadt heute? (Wert auf der Skala, meist 0.) */
-  ist?: { wert: number; label: string };
+  ist?: { value: number; label: string };
   /** Beschriftung der beiden Anschläge. */
   marken?: { min: string; max: string };
   /** Was bewirkt dieser Regler gerade? */
@@ -39,8 +39,8 @@ export function Regler({
   const anteil = (v: number) => ((v - min) / (max - min)) * 100;
   // Die Füllung läuft von der Ist-Marke zum aktuellen Wert — so zeigt der
   // Balken die Änderung, nicht den absoluten Wert.
-  const von = Math.min(anteil(ist?.wert ?? min), anteil(wert));
-  const bis = Math.max(anteil(ist?.wert ?? min), anteil(wert));
+  const von = Math.min(anteil(ist?.value ?? min), anteil(value));
+  const bis = Math.max(anteil(ist?.value ?? min), anteil(value));
 
   return (
     <div>
@@ -61,10 +61,10 @@ export function Regler({
         {/* Ist-Marke: der Bezugspunkt, der vorher fehlte */}
         {ist && (
           <div aria-hidden className="pointer-events-none absolute top-1/2 h-4 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/35"
-            style={{ left: `${anteil(ist.wert)}%` }} />
+            style={{ left: `${anteil(ist.value)}%` }} />
         )}
         <input
-          id={id} type="range" min={min} max={max} step={step} value={wert}
+          id={id} type="range" min={min} max={max} step={step} value={value}
           onChange={(e) => onChange(Number(e.target.value))}
           className="hh-regler absolute inset-0 h-6 w-full"
         />
@@ -81,7 +81,7 @@ export function Regler({
           {ist && (
             <span aria-hidden
               className="absolute -translate-x-1/2 whitespace-nowrap font-mono text-[10px] text-foreground/55"
-              style={{ left: `${anteil(ist.wert)}%` }}>
+              style={{ left: `${anteil(ist.value)}%` }}>
               {ist.label}
             </span>
           )}

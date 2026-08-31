@@ -39,16 +39,16 @@ export function Staedtevergleich({
   hinweisUnter100k?: boolean;
 }) {
   if (!zeilen.length) return null;
-  const groesster = Math.max(...zeilen.map((z) => z.wert));
+  const groesster = Math.max(...zeilen.map((z) => z.value));
   const betroffen = hinweisUnter100k && zeilen.some((z) => z.unter_100k);
 
   return (
     <div>
       <ol className="flex flex-col gap-1.5">
         {zeilen.map((z) => {
-          const anteil = groesster > 0 ? (z.wert / groesster) * 100 : 0;
+          const anteil = groesster > 0 ? (z.value / groesster) * 100 : 0;
           return (
-            <li key={z.schluessel} className="grid grid-cols-[7.5rem_1fr_auto] items-center gap-2 sm:grid-cols-[9rem_1fr_auto] sm:gap-3">
+            <li key={z.key} className="grid grid-cols-[7.5rem_1fr_auto] items-center gap-2 sm:grid-cols-[9rem_1fr_auto] sm:gap-3">
               <span className={cn(
                 "truncate text-[12.5px] leading-tight",
                 z.ist_oldenburg ? "font-bold text-foreground" : "text-muted-foreground",
@@ -76,8 +76,8 @@ export function Staedtevergleich({
                 z.ist_oldenburg ? "font-bold text-foreground" : "text-muted-foreground",
               )}>
                 {unit === "percent"
-                  ? `${Math.round(z.wert)} %`
-                  : `${euroJeEw(z.wert)} €`}
+                  ? `${Math.round(z.value)} %`
+                  : `${euroJeEw(z.value)} €`}
               </span>
             </li>
           );
@@ -103,7 +103,7 @@ export function Zeitreihe({
   titel, punkte, change: delta,
 }: {
   titel: string;
-  punkte: { year: number; wert: number }[];
+  punkte: { year: number; value: number }[];
   change: number | null;
 }) {
   if (!punkte.length) return null;
@@ -118,7 +118,7 @@ export function Zeitreihe({
         {punkte.map((p, i) => (
           <span key={p.year} className="whitespace-nowrap">
             {i > 0 && <span className="px-1 text-muted-foreground/60">→</span>}
-            {euroJeEw(p.wert)}&nbsp;€
+            {euroJeEw(p.value)}&nbsp;€
             <span className="ml-0.5 text-[10px]">({p.year})</span>
           </span>
         ))}

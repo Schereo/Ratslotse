@@ -44,7 +44,7 @@ import {
 import { StellenPaare, StellenPaareLegende } from "@/components/haushalt/stellen-verlauf";
 import { Waffel } from "@/components/grafik/waffel";
 import { Einordnung } from "@/components/grafik/einordnung";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
@@ -153,7 +153,7 @@ export default function PersonalPage() {
   const [vglA, vglB] = vergleich;
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]} year={aktJahr}>
+    <Quellenkontext keys={[...QUELLEN]} year={aktJahr}>
       <div className="flex flex-col gap-4">
         {/* items-start statt items-end (24.08.): Rechts steht jetzt das
             Schritt-Zeichen über dem Quelle-Knopf — die Spalte ist so hoch wie
@@ -190,7 +190,7 @@ export default function PersonalPage() {
           return (
             <Seitenbuehne
               kicker={`Stellenplan Teil ${part} · ${TEIL_LABEL[part]} · Plan ${teilNeu}`}
-              zahl={<><ZaehlZahl wert={kern.positions_planned}
+              zahl={<><ZaehlZahl value={kern.positions_planned}
                 nachkomma={Number.isInteger(kern.positions_planned) ? 0 : 1} /> Stellen
                 hält die Stadt vor</>}
               sub={kernLuecke
@@ -491,7 +491,7 @@ export default function PersonalPage() {
 
         <SchrittWeiter href="/haushalt/personal" />
 
-        <Quellenverzeichnis schluessel={[...QUELLEN]} />
+        <Quellenverzeichnis keys={[...QUELLEN]} />
       </div>
     </Quellenkontext>
   );

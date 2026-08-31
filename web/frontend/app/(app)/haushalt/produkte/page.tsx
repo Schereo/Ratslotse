@@ -16,7 +16,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
@@ -44,7 +44,7 @@ function ProdukteSeiteInner() {
   // `undefined` = lädt (Platzhalter hält die Höhe), `null` = entschieden
   // nichts (keine Bühne), sonst die Werte.
   const [balance, setBestand] = useState<{
-    count: number; year: number; beispiele: { name: string; wert: number }[];
+    count: number; year: number; beispiele: { name: string; value: number }[];
   } | null | undefined>(undefined);
   return (
     // KEIN gemeinsames `year`: Die Bereichs-Übersicht zeigt den jüngsten
@@ -52,7 +52,7 @@ function ProdukteSeiteInner() {
     // die liegen auseinander, weil die Produktebene erst mit dem Abschluss
     // vorliegt. Ohne den Wert nimmt jeder Beleg das jüngste Dokument seiner
     // Quelle und schreibt den Jahrgang an.
-    <Quellenkontext schluessel={QUELLEN}>
+    <Quellenkontext keys={QUELLEN}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -77,7 +77,7 @@ function ProdukteSeiteInner() {
         {balance ? (
           <Seitenbuehne
             kicker={`Produktebene · Haushaltsjahr ${balance.year}`}
-            zahl={<><ZaehlZahl wert={balance.count} /> einzelne Aufgaben, vom Stadtarchiv
+            zahl={<><ZaehlZahl value={balance.count} /> einzelne Aufgaben, vom Stadtarchiv
               bis zum Schwimmbad</>}
             sub="jede mit Kosten, zuständigem Amt und Auftragsgrundlage"
             minibild={{
@@ -87,12 +87,12 @@ function ProdukteSeiteInner() {
                 // Echte Namen statt Baum-Skizze (Tim, 26.08.: „übersichtlicher
                 // umbauen") — dieselben Zeilen, die die Trefferliste oben
                 // trägt, verkleinert.
-                const max = Math.max(...balance.beispiele.map((b) => b.wert), 1);
+                const max = Math.max(...balance.beispiele.map((b) => b.value), 1);
                 return balance.beispiele.map((b) => (
                   <span key={b.name} className="flex flex-col gap-[3px]">
                     <span className="truncate text-[9.5px] leading-none text-muted-foreground">{b.name}</span>
                     <span className="block h-3 rounded-[4px]" style={{
-                      width: `${Math.max((b.wert / max) * 100, 4)}%`,
+                      width: `${Math.max((b.value / max) * 100, 4)}%`,
                       background: "var(--sb-voll)",
                     }} />
                   </span>
@@ -120,7 +120,7 @@ function ProdukteSeiteInner() {
 
         <SchrittWeiter href="/haushalt/produkte" />
 
-        <Quellenverzeichnis schluessel={QUELLEN} />
+        <Quellenverzeichnis keys={QUELLEN} />
       </div>
     </Quellenkontext>
   );

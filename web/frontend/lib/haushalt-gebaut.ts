@@ -42,7 +42,7 @@ export type GebautDaten = {
   /** Was diese Zahlen zählen — kommt aus `council/investitionen_ist.py`,
    *  damit Oberfläche und Datenbank dieselbe Auskunft geben. */
   abgrenzung: string;
-  accounting_systems: { schluessel: string; titel: string }[];
+  accounting_systems: { key: string; titel: string }[];
   /** Jahre, die INNERHALB einer Reihe fehlen, je Regelwerk. Sie sind nicht
    *  null, sondern unbelegt: Ihre Zeilensumme geht in der Quelle selbst nicht
    *  auf, und anders als bei den Schulden gibt es keine zweite Probe, die
@@ -141,7 +141,7 @@ export function herkunftVon(daten: GebautDaten | null, id: number | null): Herku
 }
 
 export type Reihe = {
-  schluessel: string;
+  key: string;
   titel: string;
   years: GebautJahr[];
   /** Was in dieser Reihe fehlt — je Lücke das Jahr und die gemessene
@@ -158,10 +158,10 @@ export function reihen(daten: GebautDaten | null): Reihe[] {
   if (!daten) return [];
   return daten.accounting_systems
     .map((r) => ({
-      schluessel: r.schluessel,
+      key: r.key,
       titel: r.titel,
-      years: daten.series.filter((z) => z.accounting_system === r.schluessel),
-      fehlend: daten.fehlend[r.schluessel] ?? [],
+      years: daten.series.filter((z) => z.accounting_system === r.key),
+      fehlend: daten.fehlend[r.key] ?? [],
     }))
     .filter((r) => r.years.length > 0);
 }

@@ -105,7 +105,7 @@ def main() -> int:
     try:
         posten = [p for p in store.get_bilanz_posten("geldschulden")
                   if p["year"] == gefunden["year"]]
-        ok, warum = isch.kernprobe(gefunden, posten[0]["wert"] if posten else None)
+        ok, warum = isch.kernprobe(gefunden, posten[0]["value"] if posten else None)
         print(f"  Kernhaushalts-Probe: {'bestanden' if ok else 'GERISSEN'} — {warum}")
         if not ok:
             raise SystemExit("Ohne bestandene Probe wird nichts gespeichert.")

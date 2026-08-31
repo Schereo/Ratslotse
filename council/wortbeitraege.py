@@ -118,25 +118,25 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
             text = str(r.get("text") or "").strip()
             if len(text) < 15:
                 continue
-            schluessel = (str(r.get("speaker") or "").strip().lower(), text[:80].lower())
-            if schluessel in gesehen:
+            key = (str(r.get("speaker") or "").strip().lower(), text[:80].lower())
+            if key in gesehen:
                 continue
-            gesehen.add(schluessel)
+            gesehen.add(key)
             art = str(r.get("art") or "rede").strip().lower()
 
             def field(name: str, max_len: int | None = None) -> str | None:
-                wert = str(r.get(name) or "").strip()
-                if max_len and len(wert) > max_len:
+                value = str(r.get(name) or "").strip()
+                if max_len and len(value) > max_len:
                     # NIE mitten im Wort abschneiden: Aus „Fraktion Bündnis
                     # Vernunft und Gerechtigkeit Oldenburg" wurde bei hartem
                     # Schnitt „…und Gerechtigk" — genau so stand es in einer
                     # KI-Antwort (Befund 12.08.). Lieber am letzten Leerzeichen
                     # kappen; die Grenzen sind ohnehin nur ein Schutz gegen
                     # Ausreißer, keine inhaltliche Vorgabe.
-                    schnitt = wert[:max_len]
+                    schnitt = value[:max_len]
                     leer = schnitt.rfind(" ")
-                    wert = (schnitt[:leer] if leer > max_len * 0.6 else schnitt).rstrip(" ,;-/")
-                return wert or None
+                    value = (schnitt[:leer] if leer > max_len * 0.6 else schnitt).rstrip(" ,;-/")
+                return value or None
 
             beitraege.append({
                 "art": art if art in ARTEN else "rede",

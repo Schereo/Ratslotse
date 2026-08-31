@@ -59,7 +59,7 @@ export type ZeitstrahlTermin = {
   datum: string;
   /** Herkunft ist Teil des Vertrags: Der Strahl zeigt nur Termine, die
    *  wirklich im Ratskalender stehen — nichts Erratenes. */
-  quelle: "kalender";
+  source: "kalender";
 };
 
 // ---- Beschriftung: Intl statt d3-time-format (GB-15) ---------------------

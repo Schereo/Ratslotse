@@ -163,7 +163,7 @@ def parse_bestand(text: str, year: int) -> dict | None:
                 "year": year,
                 "balance": nach_jahr[year],
                 "exact": False,
-                "quelle": "anhang",
+                "source": "anhang",
                 "citation": ABSCHNITT,
                 "out_next_year": False,
             }
@@ -185,7 +185,7 @@ def parse_bestand(text: str, year: int) -> dict | None:
                 "year": year,
                 "balance": _zahl(amount.group(1)),
                 "exact": True,
-                "quelle": "tabelle",
+                "source": "tabelle",
                 "citation": TABELLENZEILE,
                 "out_next_year": False,
             }
@@ -205,7 +205,7 @@ def out_next_year(gefunden: dict) -> dict | None:
         "year": gefunden["prior_year_year"],
         "balance": gefunden["prior_year_stock"],
         "exact": False,
-        "quelle": "anhang",
+        "source": "anhang",
         "citation": f"{ABSCHNITT} (Jahresabschluss {gefunden['year']})",
         "out_next_year": True,
     }

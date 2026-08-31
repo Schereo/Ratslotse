@@ -290,9 +290,9 @@ RB 46
 @pytest.mark.parametrize("nr,titel,erwartet", TITEL_REGEL + TITEL_AUSREISSER)
 def test_betrag_aus_titel(nr, titel, erwartet):
     """Jeder Regelfall und jeder Ausreißer wird aus dem Titel gelesen."""
-    wert, quelle = nb.amount(titel)
-    assert wert == pytest.approx(erwartet), nr
-    assert quelle == "titel", nr
+    value, source = nb.amount(titel)
+    assert value == pytest.approx(erwartet), nr
+    assert source == "titel", nr
 
 
 @pytest.mark.parametrize("titel", TITEL_OHNE_BETRAG)
@@ -303,50 +303,50 @@ def test_titel_ohne_betrag_liefert_nichts(titel):
 
 def test_rueckgabe_ist_wert_dann_quelle():
     """Die Reihenfolge des Tupels ist (Betrag, Quelle) — nicht umgekehrt."""
-    wert, quelle = nb.amount(TITEL_REGEL[0][1])
-    assert isinstance(wert, float)
-    assert quelle == "titel"
+    value, source = nb.amount(TITEL_REGEL[0][1])
+    assert isinstance(value, float)
+    assert source == "titel"
 
 
 # --- Stufe 2: der Beschlussvorschlag ---------------------------------------
 
 def test_zweite_stufe_schliesst_die_luecke():
     """Ein Titel ohne Betrag, ein Vorschlag mit — die Stufe greift."""
-    wert, quelle = nb.amount(
+    value, source = nb.amount(
         "Überplanmäßige Bewilligung für den Teilhaushalt 04, Budget 22",
         VORSCHLAG_RECHTSAMT)
-    assert wert == pytest.approx(65_000.0)
-    assert quelle == "proposed_decision"
+    assert value == pytest.approx(65_000.0)
+    assert source == "proposed_decision"
 
 
 def test_zweite_stufe_liest_mehrauszahlung_von():
     """„eine Mehrauszahlung **von** 7,3 Millionen Euro" — ohne „in Höhe"."""
-    wert, quelle = nb.amount(
+    value, source = nb.amount(
         "Überplanmäßige Eigenkapitalstärkung für das Klinikum Oldenburg AöR",
         VORSCHLAG_KLINIKUM)
-    assert wert == pytest.approx(7_300_000.0)
-    assert quelle == "proposed_decision"
+    assert value == pytest.approx(7_300_000.0)
+    assert source == "proposed_decision"
 
 
 def test_deckungsbetrag_gewinnt_nicht():
     """Die Deckungsvorschlags-Falle: der **erste** Betrag zählt, nicht der
     größte. Nähme man den größten, stünden hier 2.500.000 statt 800.000."""
-    wert, _ = nb.amount(
+    value, _ = nb.amount(
         "Überplanmäßige Bewilligung für Mehraufwendungen für den Teilhaushalt 04",
         VORSCHLAG_DECKUNG_GROESSER)
-    assert wert == pytest.approx(800_000.0)
+    assert value == pytest.approx(800_000.0)
 
 
 def test_zweite_stufe_aus_volltext_wenn_spalte_leer():
     """``proposed_decision`` ist im Bestand fast überall leer (7 von 5019).
     Steht sie nicht, wird der Vorschlag aus ``raw_text`` geerntet."""
     volltext = "Sachverhalt und Vorgeschichte\n\n" + VORSCHLAG_STRASSENBAU
-    wert, quelle = nb.amount(
+    value, source = nb.amount(
         "Antrag auf Bewilligung einer außerplanmäßigen Auszahlung für die "
         "Straßenbaumaßnahme Kreuzung Schützenhofstraße/Bremer Straße",
         None, volltext)
-    assert wert == pytest.approx(105_000.0)
-    assert quelle == "proposed_decision"
+    assert value == pytest.approx(105_000.0)
+    assert source == "proposed_decision"
 
 
 # --- Die drei Fallen -------------------------------------------------------

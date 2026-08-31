@@ -37,7 +37,7 @@ const SPLITTER = 10;
 //     gezeichnet wird (unter 520 px rendert die Komponente eine Rangliste).
 // --------------------------------------------------------------------------
 for (const [name, werte] of [["Erträge", ERTRAEGE], ["Investitionen", INVESTITIONEN]]) {
-  const knoten = werte.map((wert, i) => ({ wert, i }));
+  const knoten = werte.map((value, i) => ({ value, i }));
   let schlimmste = { kurz: Infinity, breite: 0, masse: "" };
   for (let breite = 520; breite <= 1200; breite += 4) {
     for (const k of kacheln(knoten, breite, kachelHoehe(breite))) {
@@ -61,7 +61,7 @@ for (const [name, werte] of [["Erträge", ERTRAEGE], ["Investitionen", INVESTITI
 //     Anteil verschwände, ohne dass die Summe darunter es merkt.
 // --------------------------------------------------------------------------
 for (const [name, werte] of [["Erträge", ERTRAEGE], ["Investitionen", INVESTITIONEN]]) {
-  const knoten = werte.map((wert, i) => ({ wert, i }));
+  const knoten = werte.map((value, i) => ({ value, i }));
   const breite = 854, hoehe = kachelHoehe(breite);
   const gelegt = kacheln(knoten, breite, hoehe);
   pruefe(`${name}: jede Kachel liegt im Rahmen`,
@@ -75,9 +75,9 @@ for (const [name, werte] of [["Erträge", ERTRAEGE], ["Investitionen", INVESTITI
   // deshalb wird das VERHÄLTNIS zweier Kacheln geprüft, nicht ihr Betrag —
   // und nur für die großen, bei denen die Fuge nicht ins Gewicht fällt.
   const summe = werte.reduce((s, w) => s + w, 0);
-  const gross = gelegt.filter((k) => k.daten.wert / summe > 0.05);
+  const gross = gelegt.filter((k) => k.daten.value / summe > 0.05);
   for (const k of gross) {
-    const soll = k.daten.wert / summe;
+    const soll = k.daten.value / summe;
     const ist = (k.breite * k.hoehe) / (breite * hoehe);
     pruefe(`${name}: Kachel ${k.daten.i} hält ihren Flächenanteil`,
       Math.abs(ist - soll) < 0.02,
@@ -108,7 +108,7 @@ pruefe("Beschriftung: eine schmale, hohe Kachel trägt sie (vertikal)",
   const alleBeschriftet = (ab) => {
     const rest = ERTRAEGE.slice(ab).reduce((s, w) => s + w, 0);
     const knoten = [...ERTRAEGE.slice(0, ab), ...(rest > 0 ? [rest] : [])]
-      .map((wert) => ({ wert }));
+      .map((value) => ({ value }));
     for (let b = 520; b <= 1200; b += 8) {
       for (const k of kacheln(knoten, b, kachelHoehe(b))) {
         if (!beschriftet(k.breite, k.hoehe)) return false;

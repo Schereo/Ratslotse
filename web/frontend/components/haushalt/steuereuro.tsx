@@ -27,8 +27,8 @@ import { cn } from "@/lib/utils";
 
 /** Ganze Euro je Bereich per größtem Rest auf exakt 100 bringen —
  *  simple Rundung ergäbe je nach Jahr 98–102 Felder. */
-function verteile100<T extends { wert: number }>(rows: T[], gesamt: number) {
-  const roh = rows.map((r) => ({ ...r, exakt: (r.wert / gesamt) * 100 }));
+function verteile100<T extends { value: number }>(rows: T[], gesamt: number) {
+  const roh = rows.map((r) => ({ ...r, exakt: (r.value / gesamt) * 100 }));
   const basis = roh.map((r) => ({ ...r, euro: Math.floor(r.exakt) }));
   let rest = 100 - basis.reduce((s, r) => s + r.euro, 0);
   const nachRest = [...basis].sort((a, b) => (b.exakt - b.euro) - (a.exakt - a.euro));
@@ -53,10 +53,10 @@ export function Steuereuro({ zeilen, year }: { zeilen: HaushaltZeile[]; year: nu
   const sortiert = [...parts]
     .map((z) => {
       const kanon = bereichKanon(z.area);
-      return { name: kanon.name, kurz: kanon.kurz, wert: z.expenses ?? 0 };
+      return { name: kanon.name, kurz: kanon.kurz, value: z.expenses ?? 0 };
     })
-    .filter((r) => r.wert > 0)
-    .sort((a, b) => b.wert - a.wert);
+    .filter((r) => r.value > 0)
+    .sort((a, b) => b.value - a.value);
   // Ab Platz 10 bündeln — kleiner als 1 Feld wird sonst unsichtbar.
   const gross = sortiert.slice(0, 9);
   const kleine = sortiert.slice(9);
@@ -64,7 +64,7 @@ export function Steuereuro({ zeilen, year }: { zeilen: HaushaltZeile[]; year: nu
     ? [...gross, {
         name: `${kleine.length} kleinere Bereiche`,
         kurz: `${kleine.length} kleinere`,
-        wert: kleine.reduce((s, r) => s + r.wert, 0),
+        value: kleine.reduce((s, r) => s + r.value, 0),
       }]
     : gross;
   const felder = verteile100(rows, gesamt.expenses);

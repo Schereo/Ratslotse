@@ -44,7 +44,7 @@
 // `lib/haushalt-taxes.ts`), der hier jahrelang als Konstante stand und nur
 // zufällig stimmte.
 
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { Gesetz } from "@/components/haushalt/gesetz";
 import { GlossaryText } from "@/components/glossary-text";
 import type { GewerbesteuerstatistikZeile } from "@/lib/haushalt";
@@ -91,15 +91,15 @@ function deZahl(v: number): string {
  *  `betont` markiert die eine Zahl, um die es geht (wie viele zahlen). Die
  *  beiden anderen sind ihr Bezug; alle drei gleich laut zu setzen hieße, die
  *  Frage nicht zu beantworten. */
-function Kennzahl({ wert, unit, label, betont = false }: {
-  wert: string; unit?: string; label: string; betont?: boolean;
+function Kennzahl({ value, unit, label, betont = false }: {
+  value: string; unit?: string; label: string; betont?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className={betont
         ? "font-display text-[24px] font-bold leading-none tabular-nums text-primary"
         : "font-display text-[24px] font-bold leading-none tabular-nums text-foreground"}>
-        {wert}
+        {value}
         {unit && (
           <span className="ml-0.5 text-[14px] font-semibold text-muted-foreground">
             {unit}
@@ -112,8 +112,8 @@ function Kennzahl({ wert, unit, label, betont = false }: {
 }
 
 /** Eine Vergleichszeile: Label · Balken · Wert (Baustein RG-04). */
-function Zeile({ label, wert, anteil, farbe }: {
-  label: string; wert: string; anteil: number; farbe: string;
+function Zeile({ label, value, anteil, farbe }: {
+  label: string; value: string; anteil: number; farbe: string;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -125,7 +125,7 @@ function Zeile({ label, wert, anteil, farbe }: {
           style={{ width: `${Math.max(anteil, 3)}%`, background: farbe }} />
       </span>
       <span className="w-[62px] flex-none text-right font-display text-[15px] font-bold tabular-nums">
-        {wert}<span className="text-[11px] font-semibold text-muted-foreground">&nbsp;%</span>
+        {value}<span className="text-[11px] font-semibold text-muted-foreground">&nbsp;%</span>
       </span>
     </div>
   );
@@ -262,14 +262,14 @@ export function WerZahlt({ taxes, art, vergleichArt, vergleichTitel, tax_rates,
 
           <div className="mt-3 grid gap-3 @sm:grid-cols-3">
             <Kennzahl
-              wert={deZahl(statistik.cases)}
+              value={deZahl(statistik.cases)}
               label="Betriebe und Betriebsstätten sind in Oldenburg erfasst" />
             <Kennzahl betont
-              wert={deZahl(statistik.cases_positive)}
+              value={deZahl(statistik.cases_positive)}
               label={`davon zahlen überhaupt Gewerbesteuer — ${deProzent(zahlenAnteil, 0)}\u00a0%`} />
             {zerlegtAnteil != null && statistik.apportionments_positive != null && (
               <Kennzahl
-                wert={deProzent(zerlegtAnteil)} unit="%"
+                value={deProzent(zerlegtAnteil)} unit="%"
                 label={`des Steuermessbetrags kommen von ${deZahl(statistik.apportionments_positive)} `
                        + "Betriebsstätten größerer Firmen"} />
             )}
@@ -331,9 +331,9 @@ export function WerZahlt({ taxes, art, vergleichArt, vergleichTitel, tax_rates,
           </p>
 
           <div className="mt-2.5 flex flex-col gap-2">
-            <Zeile label="Gewerbesteuer" wert={deProzent(eigenMittel)}
+            <Zeile label="Gewerbesteuer" value={deProzent(eigenMittel)}
               anteil={(eigenMittel / skala) * 100} farbe="var(--hh-ein-0)" />
-            <Zeile label={vergleichTitel} wert={deProzent(andereMittel)}
+            <Zeile label={vergleichTitel} value={deProzent(andereMittel)}
               anteil={(andereMittel / skala) * 100} farbe="var(--hh-ein-3)" />
           </div>
           <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">

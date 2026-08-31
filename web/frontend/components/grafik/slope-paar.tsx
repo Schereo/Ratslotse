@@ -80,7 +80,7 @@ export function SlopePaar({
   const beschreibungId = useId();
   if (!paare.length) return null;
 
-  const wert = (v: number) => `${deZahl(v, nachkomma)} ${unit}`;
+  const value = (v: number) => `${deZahl(v, nachkomma)} ${unit}`;
   const unveraendert = (p: SlopePaarZeile) => p.vorher === p.nachher;
 
   // Die Delta-Liste ist zugleich die Fassung für die Vorlesehilfe — sie sagt
@@ -104,15 +104,15 @@ export function SlopePaar({
             </span>
             {unveraendert(p) ? (
               <span className="font-mono text-[12px] tabular-nums text-muted-foreground">
-                {wert(p.vorher)} · unverändert
+                {value(p.vorher)} · unverändert
               </span>
             ) : (
               <span className={cn("whitespace-nowrap font-mono text-[12px] tabular-nums",
                 p.hervorgehoben ? "font-bold text-foreground" : "text-muted-foreground")}>
-                {wert(p.vorher)}
+                {value(p.vorher)}
                 <span aria-hidden="true" className="mx-1.5">→</span>
                 <span className="sr-only">auf </span>
-                {wert(p.nachher)}
+                {value(p.nachher)}
               </span>
             )}
           </li>

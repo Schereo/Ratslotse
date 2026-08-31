@@ -2844,7 +2844,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/kommunalwahl/quelle/{slug}": {
+    "/api/kommunalwahl/source/{slug}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2855,7 +2855,7 @@ export interface paths {
          * Quelle Pruefen
          * @description Ist das PDF hinter dem Partei-Link noch die ausgewertete Datei?
          */
-        get: operations["quelle_pruefen_api_kommunalwahl_quelle__slug__get"];
+        get: operations["quelle_pruefen_api_kommunalwahl_source__slug__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9473,7 +9473,7 @@ export interface operations {
             };
         };
     };
-    quelle_pruefen_api_kommunalwahl_quelle__slug__get: {
+    quelle_pruefen_api_kommunalwahl_source__slug__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10741,4 +10741,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c5b546c0681cf77f978ef66c4bff3ce3a2c8ebee570c08521679978682116e4c
+// vertrag-sha256: aa1ebc6ef3c86e10bd3ba483624a83b70a2cb9598270baa6e3280672b65f4d74

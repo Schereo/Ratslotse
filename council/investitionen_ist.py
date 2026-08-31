@@ -301,8 +301,8 @@ def parse(text: str, accounting_system: str) -> list[dict]:
             continue
         zeile: dict = {"year": int(m.group(1)), "accounting_system": accounting_system,
                        "unlesbar": None}
-        for (field, _), wert in zip(spalten, felder):
-            zeile[field] = wert * TAUSEND
+        for (field, _), value in zip(spalten, felder):
+            zeile[field] = value * TAUSEND
         zeilen.append(zeile)
     return zeilen
 

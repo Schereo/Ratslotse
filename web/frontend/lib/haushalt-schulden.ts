@@ -61,8 +61,8 @@ export type SchuldenDaten = {
     series: Buergschaft[];
     /** Bilanzposten 3.7 je Jahr — nur 2021–2024 im Bestand; die früheren
      *  Abschlüsse gliedern die Rückstellungen anders. */
-    rueckstellung: { year: number; wert: number | null; herkunft_id: number | null }[];
-    geldschulden: { year: number; wert: number | null; herkunft_id: number | null }[];
+    rueckstellung: { year: number; value: number | null; herkunft_id: number | null }[];
+    geldschulden: { year: number; value: number | null; herkunft_id: number | null }[];
     abgrenzung: string;
     /** Die Ratsbeschlüsse hinter dem Bestand — die GESCHICHTE, nicht die Summe.
      *
@@ -108,7 +108,7 @@ export type Buergschaft = {
   balance: number;
   exact: boolean;
   out_next_year: boolean;
-  quelle: string;
+  source: string;
   /** Die Begründung im Wortlaut der Stadt, wo das Dokument eine nennt. */
   reason: string | null;
   /** Die im Grund genannte Einzelzahl — 2022 die 135,9 Mio. fürs Klinikum. */
@@ -143,7 +143,7 @@ export { herkunftVon } from "@/lib/haushalt";
  *  absoluten Anstieg zu verschweigen. */
 export type Ansicht = "total" | "per_capita";
 
-export type Punkt = { year: number; wert: number };
+export type Punkt = { year: number; value: number };
 
 export function punkte(series: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
   return series
@@ -151,9 +151,9 @@ export function punkte(series: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
       year: z.year,
       // Absolutbeträge in Mio., Pro-Kopf-Beträge in Euro — sonst stünde die
       // eine Reihe bei 337 und die andere bei 0,0019.
-      wert: ansicht === "total" ? z.total / 1e6 : (z.per_capita ?? NaN),
+      value: ansicht === "total" ? z.total / 1e6 : (z.per_capita ?? NaN),
     }))
-    .filter((p) => Number.isFinite(p.wert));
+    .filter((p) => Number.isFinite(p.value));
 }
 
 /** Der Kernhaushalt: alles außer den Eigenbetrieben.
@@ -196,7 +196,7 @@ export function groessterSprung(
 ): { year: number; delta: number } | null {
   let treffer: { year: number; delta: number } | null = null;
   for (let i = 1; i < p.length; i++) {
-    const delta = p[i].wert - p[i - 1].wert;
+    const delta = p[i].value - p[i - 1].value;
     if (richtung === "runter" ? delta >= 0 : delta <= 0) continue;
     if (!treffer || Math.abs(delta) > Math.abs(treffer.delta)) {
       treffer = { year: p[i].year, delta };

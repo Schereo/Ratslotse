@@ -27,7 +27,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import type { VergleichDaten } from "@/lib/haushalt-vergleich";
 import type { ProgrammDaten } from "@/lib/haushalt-investitionsprogramm";
 import type { SchuldenDaten } from "@/lib/haushalt-schulden";
-import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -84,7 +84,7 @@ export default function LaborPage() {
   }
 
   return (
-    <Quellenkontext schluessel={QUELLEN} year={jahreSortiert(data).at(-1) ?? null}>
+    <Quellenkontext keys={QUELLEN} year={jahreSortiert(data).at(-1) ?? null}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -132,7 +132,7 @@ export default function LaborPage() {
 
       <SchrittWeiter href="/haushalt/labor" />
 
-      <Quellenverzeichnis schluessel={QUELLEN} />
+      <Quellenverzeichnis keys={QUELLEN} />
     </div>
     </Quellenkontext>
   );

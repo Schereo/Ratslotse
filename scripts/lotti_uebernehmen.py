@@ -45,8 +45,8 @@ MODELL_DATEIEN = {
 
 
 def main() -> dict:
-    quelle = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else QUELLE_VORGABE
-    buendel = quelle / "assets" / "lotti"
+    source = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else QUELLE_VORGABE
+    buendel = source / "assets" / "lotti"
     if not (buendel / "lotti.json").is_file():
         sys.exit(
             f"Kein Lotti-Bündel unter {buendel} — liegt das Social-Repo woanders?\n"
@@ -64,7 +64,7 @@ def main() -> dict:
     # ── Modell-Dateien: wörtlich kopieren.
     for von, nach in MODELL_DATEIEN.items():
         (FRONTEND / nach).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(quelle / von, FRONTEND / nach)
+        shutil.copy2(source / von, FRONTEND / nach)
 
     # ── Stempel-Abgleich: Bündel gegen Modell.
     verzeichnis = json.loads((ziel / "lotti.json").read_text())

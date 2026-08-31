@@ -346,7 +346,7 @@ def dokument_name(plan: Wirtschaftsplan) -> str:
     unter jedem Beleg („Der Rat hat das am … beschlossen · Vorlage 25/0722").
     Was dort fehlte, war der Name — und der ist es, wonach man sucht.
 
-    ACHTUNG, das ändert den Herkunfts-Fingerabdruck (``Herkunft.schluessel``
+    ACHTUNG, das ändert den Herkunfts-Fingerabdruck (``Herkunft.key``
     schließt ``label`` ein): Der nächste Einlesevorgang legt neue Zeilen in
     ``council_herkunft`` an und hängt die Daten dort ein. Die alten bleiben
     unreferenziert liegen — sichtbar wird davon nichts."""

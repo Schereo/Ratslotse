@@ -102,7 +102,7 @@ def _ist_abkuerzung(bis_punkt: str) -> bool:
 def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
     """(Text fürs Modell, Herkunftsmarke) — alles, was über den Punkt vorliegt.
 
-    Die Marke wandert in ``agenda_item_social.quelle`` und beantwortet
+    Die Marke wandert in ``agenda_item_social.source`` und beantwortet
     später die Frage, warum ein Text dünn ist: „titel" heißt, es gab nichts
     außer der Überschrift.
     """
@@ -139,10 +139,10 @@ def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
         budget -= len(text)
         genutzt += 1
 
-    quelle = "titel"
+    source = "titel"
     if kern or punkt.get("proposed_decision"):
-        quelle = "vorlage+anlagen" if genutzt else "vorlage"
-    return "\n\n".join(teile), quelle
+        source = "vorlage+anlagen" if genutzt else "vorlage"
+    return "\n\n".join(teile), source
 
 
 def _eine_zeile(roh: str | None) -> str:
@@ -156,7 +156,7 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
     None ist kein Fehler, sondern ein gültiges Ergebnis: Der Bot fällt dann
     auf die Kurzfassung zurück. Lieber keine Zeile als eine erfundene.
     """
-    ktx, quelle = kontext(punkt, anlagen)
+    ktx, source = kontext(punkt, anlagen)
     system = prompts.get("social_kartentext_system")
     user = prompts.render("social_kartentext_user", kontext=ktx)
 
@@ -195,7 +195,7 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
         if not gedeckt:
             print(f"  verworfen ({punkt.get('item_number')}): nicht gedeckt — {reason}")
             continue
-        return text, quelle
+        return text, source
     return None
 
 
@@ -276,7 +276,7 @@ def schreibe_fehlende(store, *, limit: int | None = None, tage_voraus: int = 21,
         for punkt, result in pool.map(lambda pa: (pa[0], text_fuer(pa[0], pa[1])), todo):
             if not result:
                 continue          # kein Text ist besser als ein erfundener
-            text, quelle = result
-            store.save_social_text(punkt["ksinr"], punkt["item_number"], text, quelle)
+            text, source = result
+            store.save_social_text(punkt["ksinr"], punkt["item_number"], text, source)
             geschrieben += 1
     return len(todo), geschrieben

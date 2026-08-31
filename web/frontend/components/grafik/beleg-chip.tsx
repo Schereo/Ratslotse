@@ -2,7 +2,7 @@
 // jede Zahl trägt ihren Beleg).
 //
 // Bewusst KEINE eigene Implementierung: Der Chip existiert seit der ersten
-// Haushalts-Runde als `Beleg` in `components/haushalt/quelle.tsx`, samt
+// Haushalts-Runde als `Beleg` in `components/haushalt/source.tsx`, samt
 // Quellenkontext (seitenweise Nummerierung), Popover mit Fundstelle und
 // Ratsvorgang sowie Verzeichnis am Seitenfuß. Das hier ist nur die Tür des
 // Baukastens zu genau diesem System — eine zweite Chip-Sorte wäre die
@@ -25,4 +25,4 @@ export {
   Quellenkontext,
   Quellenverzeichnis,
   Apparat,
-} from "@/components/haushalt/quelle";
+} from "@/components/haushalt/source";

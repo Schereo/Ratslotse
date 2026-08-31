@@ -32,7 +32,7 @@
 export type Anteil = {
   label: string;
   /** In derselben Einheit wie `gesamt`. */
-  wert: number;
+  value: number;
   /** CSS-Farbe, üblicherweise `var(--hh-aus-n)`. */
   farbe: string;
   /** Schraffiert statt gefüllt — für „keine Angabe". */
@@ -41,13 +41,13 @@ export type Anteil = {
 
 export type Marke = {
   /** In derselben Einheit wie `gesamt`. */
-  wert: number;
+  value: number;
   label: string;
 };
 
-function percent(wert: number, gesamt: number): number {
+function percent(value: number, gesamt: number): number {
   if (!gesamt) return 0;
-  return Math.max(0, Math.min(100, (wert / gesamt) * 100));
+  return Math.max(0, Math.min(100, (value / gesamt) * 100));
 }
 
 function deProzent(p: number): string {
@@ -74,9 +74,9 @@ export function Anteilsbalken({
   titel?: string;
   className?: string;
 }) {
-  const gezeigt = segmente.filter((s) => s.wert > 0);
+  const gezeigt = segmente.filter((s) => s.value > 0);
   const beschreibung = gezeigt
-    .map((s) => `${s.label} ${deProzent(percent(s.wert, gesamt))}`)
+    .map((s) => `${s.label} ${deProzent(percent(s.value, gesamt))}`)
     .join(", ");
 
   return (
@@ -102,7 +102,7 @@ export function Anteilsbalken({
             <div
               key={`${s.label}-${i}`}
               style={{
-                width: `${percent(s.wert, gesamt)}%`,
+                width: `${percent(s.value, gesamt)}%`,
                 background: s.offen ? schraffur(s.farbe) : s.farbe,
                 // Ohne Mindestbreite verschwindet ein 0,05-%-Segment ganz —
                 // und mit ihm die Auskunft, dass es den Posten gibt.
@@ -114,7 +114,7 @@ export function Anteilsbalken({
         {mark && gesamt > 0 && (
           <div
             className="pointer-events-none absolute top-0 z-10"
-            style={{ left: `${percent(mark.wert, gesamt)}%`, height: hoehe }}
+            style={{ left: `${percent(mark.value, gesamt)}%`, height: hoehe }}
           >
             <div className="h-full w-0.5 -translate-x-1/2 bg-signal" />
           </div>
@@ -137,10 +137,10 @@ export function Anteilsbalken({
               />
               <span className="min-w-0 flex-1 leading-snug">{s.label}</span>
               <span className="flex-none tabular-nums text-muted-foreground">
-                {s.wert.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;{unit}
+                {s.value.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;{unit}
               </span>
               <span className="w-[52px] flex-none text-right font-semibold tabular-nums">
-                {deProzent(percent(s.wert, gesamt))}
+                {deProzent(percent(s.value, gesamt))}
               </span>
             </li>
           ))}

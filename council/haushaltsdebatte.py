@@ -408,16 +408,16 @@ def debatte_zu_top(text: str, top: str, anwesende: list[dict]) -> list[dict]:
     Zurück kommen **Kopien**: Die Listen gehen in eine API-Antwort, und ein
     Aufrufer, der daran herumschreibt, änderte sonst den Eintrag für alle
     folgenden."""
-    schluessel = _gedaechtnis_schluessel(text, top, anwesende)
-    gemerkt = _gedaechtnis.get(schluessel)
+    key = _gedaechtnis_schluessel(text, top, anwesende)
+    gemerkt = _gedaechtnis.get(key)
     if gemerkt is None:
         section = top_abschnitt(saeubern(text), top, bis_unterpunkt=True)
         gemerkt = [b.als_dict() for b in debatte(section, anwesende)]
-        _gedaechtnis[schluessel] = gemerkt
+        _gedaechtnis[key] = gemerkt
         while len(_gedaechtnis) > _GEDAECHTNIS_MAX:
             _gedaechtnis.popitem(last=False)
     else:
-        _gedaechtnis.move_to_end(schluessel)
+        _gedaechtnis.move_to_end(key)
     return [dict(b) for b in gemerkt]
 
 

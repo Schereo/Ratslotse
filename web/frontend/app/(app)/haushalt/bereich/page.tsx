@@ -47,7 +47,7 @@ import {
 } from "@/lib/haushalt";
 import { BEREICHE, bereichKanon, bereichSchluessel } from "@/lib/haushalt-bereiche";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { Gegenbalken } from "@/components/grafik/gegenbalken";
 import { Hantel } from "@/components/grafik/hantel";
 import { Warum } from "@/components/haushalt/warum";
@@ -56,7 +56,7 @@ import { BereichReiter, ReiterTafel, type Reiter } from "@/components/haushalt/a
 import { Datenstand } from "@/components/haushalt/datenstand";
 import { cn } from "@/lib/utils";
 
-type ReiterId = "ueberblick" | "planist" | "quelle";
+type ReiterId = "ueberblick" | "planist" | "source";
 
 function Karte({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -81,23 +81,23 @@ function Kicker({ children }: { children: React.ReactNode }) {
  *  öffentlich-rechtlichen Entgelte, in denen die Elternbeiträge stecken, die
  *  VIERTgrößte Position. Statt eines geschätzten Satzes steht hier die
  *  ausgelesene Aufteilung — mit dem Jahr, aus dem sie stammt. */
-function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
+function EigeneErtraege({ daten, key, planEin, planJahr }: {
   daten: Daten;
-  schluessel: string | null;
+  key: string | null;
   planEin: number;
   planJahr: number;
 }) {
   const posten = (daten.income_statement ?? []).filter(
-    (p) => p.sub_budget_name != null && bereichSchluessel(p.sub_budget_name) === schluessel
+    (p) => p.sub_budget_name != null && bereichSchluessel(p.sub_budget_name) === key
            && p.nr >= 1 && p.nr <= 11 && (p.result ?? 0) > 0);
-  if (!posten.length || !schluessel) return null;
+  if (!posten.length || !key) return null;
   const year = Math.max(...posten.map((p) => p.year));
   const arten = posten
     .filter((p) => p.year === year)
-    .map((p) => ({ nr: p.nr, label: ERTRAGSART_KURZ[p.nr] ?? p.label, wert: p.result as number }))
-    .sort((a, b) => b.wert - a.wert);
+    .map((p) => ({ nr: p.nr, label: ERTRAGSART_KURZ[p.nr] ?? p.label, value: p.result as number }))
+    .sort((a, b) => b.value - a.value);
   if (arten.length < 2) return null;
-  const gesamt = arten.reduce((s, a) => s + a.wert, 0);
+  const gesamt = arten.reduce((s, a) => s + a.value, 0);
 
   return (
     <Karte>
@@ -116,7 +116,7 @@ function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
             <span className="w-[38%] flex-none text-[12.5px] leading-snug sm:w-[44%]">{a.label}</span>
             <div className="h-3 flex-1 rounded-[3px] bg-muted">
               <div className="h-full rounded-[3px]" style={{
-                width: `${(a.wert / arten[0].wert) * 100}%`,
+                width: `${(a.value / arten[0].value) * 100}%`,
                 background: `var(--hh-ein-${Math.min(i, 6)})`,
               }} />
             </div>
@@ -126,13 +126,13 @@ function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
                 wechselt — ein gemeinsamer Kopf wäre für die kleinen Posten
                 falsch. */}
             <span className="w-[86px] flex-none whitespace-nowrap text-right font-mono text-[11.5px] tabular-nums">
-              {amount(a.wert).wert}&#8239;<span className="text-muted-foreground">{amount(a.wert).unit}</span>
+              {amount(a.value).value}&#8239;<span className="text-muted-foreground">{amount(a.value).unit}</span>
             </span>
           </div>
         ))}
       </div>
       <p className="mt-3 border-t border-border/60 pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-        Zusammen {amount(gesamt).wert}&nbsp;{amount(gesamt).unit} — aus dem Jahresabschluss
+        Zusammen {amount(gesamt).value}&nbsp;{amount(gesamt).unit} — aus dem Jahresabschluss
         {" "}{year}<Beleg q="ergebnisrechnung_thh" />. Der Plan für {planJahr} weist
         {" "}{deMio(planEin)}&nbsp;Mio.&nbsp;€ aus; die Aufteilung dazu gibt es erst,
         wenn das Jahr abgerechnet ist.
@@ -169,7 +169,7 @@ function bereichAusParam(zeilen: HaushaltZeile[], eingang: string): HaushaltZeil
   const kanon = BEREICHE.find((b) =>
     bereichSlug(b.name) === gesucht || b.aliase.some((a) => bereichSlug(a) === gesucht));
   if (!kanon) return undefined;
-  return liste.find((r) => bereichSchluessel(r.area) === kanon.schluessel);
+  return liste.find((r) => bereichSchluessel(r.area) === kanon.key);
 }
 
 function BereichInner() {
@@ -218,7 +218,7 @@ function BereichInner() {
   const rangNetto = nachNetto.findIndex((x) => x.r.area === z.area) + 1;
   const bruttoTop = nachBrutto[0];
   const series = bereichsReihe(data, z.area);
-  const quelle = quellenLabel(zeilen, year);
+  const source = quellenLabel(zeilen, year);
   const info = bereichInfo(z.area);
   const maxWert = Math.max(...alle.map((x) => (ranking === "netto" ? x.netto : x.brutto)), 1);
   const d = deckung(z);
@@ -240,11 +240,11 @@ function BereichInner() {
   // Legende entlasten.
   const balkenAus = {
     titel: "Geplante Aufwendungen", rampe: "aus" as const,
-    segmente: [{ label: "Aufwendungen des Bereichs", wert: rohAus }],
+    segmente: [{ label: "Aufwendungen des Bereichs", value: rohAus }],
   };
   const balkenEin = {
     titel: "Geplante eigene Erträge", rampe: "ein" as const,
-    segmente: [{ label: "eigene Erträge", wert: rohEin }],
+    segmente: [{ label: "eigene Erträge", value: rohEin }],
   };
 
   // Vergleichsbereich für den Kostendeckungs-Satz: der größte andere Bereich
@@ -258,7 +258,7 @@ function BereichInner() {
   // Zeilen des Jahresabschlusses zu diesem Teilhaushalt — über den kanonischen
   // Schlüssel, nicht über das erste Wort des Namens.
   const abschluss = (data.income_statement ?? []).filter(
-    (p) => p.sub_budget_name != null && bereichSchluessel(p.sub_budget_name) === kanon.schluessel
+    (p) => p.sub_budget_name != null && bereichSchluessel(p.sub_budget_name) === kanon.key
            && (p.nr === 12 || p.nr === 20));
   const planIstJahre = [...new Set(abschluss.map((p) => p.year))].sort((a, b) => a - b);
   const planIstZeilen = planIstJahre
@@ -293,12 +293,12 @@ function BereichInner() {
   const reiterListe: Reiter<ReiterId>[] = [
     { id: "ueberblick", label: "Überblick" },
     ...(hatPlanIst ? [{ id: "planist" as const, label: "Geplant und geworden" }] : []),
-    { id: "quelle", label: "Quelle" },
+    { id: "source", label: "Quelle" },
   ];
   const aktiv = reiterListe.some((r) => r.id === reiter) ? reiter : "ueberblick";
 
   return (
-    <Quellenkontext schluessel={quellen} year={year}>
+    <Quellenkontext keys={quellen} year={year}>
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt {year}</Link>
@@ -355,11 +355,11 @@ function BereichInner() {
           ganzen Bereichs (Gegenbalken, Bereichskarten); „kostet die Stadt"
           wäre eine zweite für dieselbe Sache. */}
       <div className="flex flex-none flex-wrap gap-x-6 gap-y-3 sm:gap-x-7 lg:pt-1">
-        <Summe label={`Aufwendungen ${year}`} wert={aus} beleg={<Beleg q="plan" />} />
-        <Summe label="eigene Erträge" wert={ein} ton="ein" />
+        <Summe label={`Aufwendungen ${year}`} value={aus} beleg={<Beleg q="plan" />} />
+        <Summe label="eigene Erträge" value={ein} ton="ein" />
         {/* Dieselbe Schwelle wie unten im Balken (Rohwert-Vergleich), damit
             Kopf und Bild nie zwei verschiedene Richtungen behaupten. */}
-        <Summe label={einVoran ? "Überschuss" : "Zuschussbedarf"} wert={Math.abs(netto)} ton="signal" />
+        <Summe label={einVoran ? "Überschuss" : "Zuschussbedarf"} value={Math.abs(netto)} ton="signal" />
       </div>
       </div>
 
@@ -412,7 +412,7 @@ function BereichInner() {
       <ReiterTafel id="ueberblick" aktiv={aktiv} className="flex flex-col gap-4">
         {/* Die Rechnung des Bereichs steht seit 24.08. oben auf der Tafel —
             der Überblick beginnt mit dem Blick HINTER ihre Einnahmen-Leiste. */}
-        <EigeneErtraege daten={data} schluessel={kanon.schluessel} planEin={ein} planJahr={year} />
+        <EigeneErtraege daten={data} key={kanon.key} planEin={ein} planJahr={year} />
 
         {/* Brutto gegen Netto — der Umschalter IST das Lehrstück. */}
         <Karte>
@@ -436,18 +436,18 @@ function BereichInner() {
           </p>
           <div className="grid grid-cols-[minmax(110px,150px)_1fr_60px] items-center gap-x-2.5 gap-y-1.5 text-xs">
             {alle.slice(0, 6).map(({ r, netto: n, brutto: b }, i) => {
-              const wert = ranking === "netto" ? n : b;
+              const value = ranking === "netto" ? n : b;
               const ich = r.area === z.area;
               return (
                 <div key={r.area} className="contents">
                   <span className={cn("truncate", ich && "font-bold")}>{bereichKanon(r.area).kurz}</span>
                   <div className="h-3.5 rounded-[3px] bg-muted">
                     <div className="h-full rounded-[3px]" style={{
-                      width: `${Math.max((wert / maxWert) * 100, 2)}%`,
+                      width: `${Math.max((value / maxWert) * 100, 2)}%`,
                       background: `var(--hh-ein-${Math.min(i, 6)})`,
                     }} />
                   </div>
-                  <span className={cn("text-right tabular-nums", ich && "font-bold")}>{deMio(wert)}</span>
+                  <span className={cn("text-right tabular-nums", ich && "font-bold")}>{deMio(value)}</span>
                 </div>
               );
             })}
@@ -500,7 +500,7 @@ function BereichInner() {
                     className="flex items-baseline gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent">
                     <span className="min-w-0 flex-1 truncate text-[12.5px]">{p.product_name}</span>
                     <span className="flex-none whitespace-nowrap font-mono text-[11.5px] tabular-nums">
-                      {b.wert}&#8239;<span className="text-muted-foreground">{b.unit}</span>
+                      {b.value}&#8239;<span className="text-muted-foreground">{b.unit}</span>
                     </span>
                   </Link>
                 );
@@ -714,7 +714,7 @@ function BereichInner() {
         </ReiterTafel>
       )}
 
-      <ReiterTafel id="quelle" aktiv={aktiv} className="flex flex-col gap-4">
+      <ReiterTafel id="source" aktiv={aktiv} className="flex flex-col gap-4">
         <Karte>
           <Kicker>Diese Seite in einem Absatz</Kicker>
           <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
@@ -726,13 +726,13 @@ function BereichInner() {
           </p>
           <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
             Quelle dieser Seite:{" "}
-            {quelle.url
-              ? <a href={quelle.url} target="_blank" rel="noopener noreferrer" className="underline decoration-dotted">{quelle.text}</a>
-              : quelle.text} · Teilhaushalt {kanon.name} · ordentliche Erträge und Aufwendungen.
+            {source.url
+              ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="underline decoration-dotted">{source.text}</a>
+              : source.text} · Teilhaushalt {kanon.name} · ordentliche Erträge und Aufwendungen.
           </p>
         </Karte>
         <Datenstand />
-        <Quellenverzeichnis schluessel={quellen} />
+        <Quellenverzeichnis keys={quellen} />
       </ReiterTafel>
     </div>
     </Quellenkontext>

@@ -212,9 +212,9 @@ def parse(text: str) -> list[dict]:
             zeilen.append({"year": int(m.group(1)), "unlesbar": roh.strip()})
             continue
         zeile: dict = {"year": int(m.group(1)), "unlesbar": None}
-        for (field, _), (wert, mark) in zip(SPALTEN, felder):
+        for (field, _), (value, mark) in zip(SPALTEN, felder):
             # Der Pro-Kopf-Betrag steht schon in Euro, die Schuldenarten nicht.
-            zeile[field] = wert if field == "per_capita" else wert * TAUSEND
+            zeile[field] = value if field == "per_capita" else value * TAUSEND
             if mark == "r":
                 zeile["revised"] = True
         zeile.setdefault("revised", False)

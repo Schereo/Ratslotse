@@ -363,16 +363,16 @@ def test_altes_layout_liefert_zwoelf_benannte_tarife():
         ANLAGE_1_2025 + ANLAGE_3_2025 + ANLAGE_4_2025, "24/0999")
     assert len(saetze) == 12
     assert {s.year for s in saetze} == {2025}
-    assert next(s for s in saetze if s.schluessel == "grundgebuehr").amount == 50
-    assert next(s for s in saetze if s.schluessel == "litergebuehr").amount == 1.34
-    assert next(s for s in saetze if s.schluessel == "sperrmuell_2m3").amount == 16
-    assert next(s for s in saetze if s.schluessel == "gruengut_05m3").amount == 3
+    assert next(s for s in saetze if s.key == "grundgebuehr").amount == 50
+    assert next(s for s in saetze if s.key == "litergebuehr").amount == 1.34
+    assert next(s for s in saetze if s.key == "sperrmuell_2m3").amount == 16
+    assert next(s for s in saetze if s.key == "gruengut_05m3").amount == 3
 
 
 def test_neues_layout_prueft_jede_aenderung_gegen_das_vorjahr():
     saetze = lies_gebuehrensaetze(
         ANLAGE_1_2026 + ANLAGE_3_2026 + ANLAGE_4_2026, "25/0999")
-    reason = next(s for s in saetze if s.schluessel == "grundgebuehr")
+    reason = next(s for s in saetze if s.key == "grundgebuehr")
     assert len(saetze) == 12
     assert (reason.amount, reason.prior_year, reason.change_pct) == (62, 50, 24)
 

@@ -121,12 +121,12 @@ export function HebesatzTreppe({
       <div className="mt-3">
         <Zeitreihe
           treppe
-          series={sortiert.map((z) => ({ year: z.year, wert: z.rate }))}
+          series={sortiert.map((z) => ({ year: z.year, value: z.rate }))}
           zweitreihe={zweitreihe && zweitreihe.length >= 2 && zweitLabel
             ? {
               label: zweitLabel,
               series: [...zweitreihe].sort((a, b) => a.year - b.year)
-                .map((z) => ({ year: z.year, wert: z.rate })),
+                .map((z) => ({ year: z.year, value: z.rate })),
               format: (v) => `${deZahl(v, 0)} %`,
             }
             : undefined}

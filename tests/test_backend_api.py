@@ -752,9 +752,9 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     # Der Städtevergleich kommt gar nicht von der Stadt — das muss die
     # Fußzeile des Blocks aus den Daten lesen können.
     assert schichten["lsn_realsteuern"]["monat"] == "November"
-    assert (schichten["lsn_steuerkraft"]["quelle"]
+    assert (schichten["lsn_steuerkraft"]["source"]
             == "Landesamt für Statistik Niedersachsen")
-    assert schichten["haushaltsplan"]["quelle"] == "Portal der Stadt"
+    assert schichten["haushaltsplan"]["source"] == "Portal der Stadt"
     # Leerer Bestand: Lücken behaupten, wo nie etwas war, wäre falsch.
     assert schichten["jahresabschluss"]["jahrgaenge"] == []
     assert schichten["jahresabschluss"]["luecken"] == []
@@ -990,7 +990,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     bilanz = next(k for k in b["indicators"]
                   if k["company"] == "egh" and k["indicator"] == "bilanzsumme"
                   and k["year"] == 2024)
-    assert bilanz["wert"] == 580193968.91
+    assert bilanz["value"] == 580193968.91
     assert bilanz["unit"] == "eur"
     # Ein einzelner Bericht kann die Überlappung nicht bieten — die Zahl ist
     # trotzdem gedeckt, nämlich durch die Bilanz im Dokument selbst.
@@ -5282,9 +5282,9 @@ def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
 
     _register(client)
     aufrufe = []
-    schluessel = []
+    key = []
     monkeypatch.setattr(council_router.qa_limiter, "check",
-                        lambda request, *, subject=None: (aufrufe.append(1), schluessel.append(subject)))
+                        lambda request, *, subject=None: (aufrufe.append(1), key.append(subject)))
     cand = [{"id": 5, "title": "Radweg", "summary": "Ausbau", "policy_field": "verkehr",
              "outcome": "angenommen", "session_date": "2026-07-02",
              "committee": "Verkehrsausschuss", "score": 1.0}]
@@ -5298,7 +5298,7 @@ def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
 
     frag()
     assert len(aufrufe) == 1  # normal: Limiter wird gefragt
-    assert schluessel == [1]  # Mobilfunk-CGNAT teilt nicht mehr den IP-Bucket
+    assert key == [1]  # Mobilfunk-CGNAT teilt nicht mehr den IP-Bucket
     store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
@@ -5493,15 +5493,15 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
             url="https://example.org/ja.pdf")
         cs.save_bilanz(2024, [
             {"role": "geldschulden", "page": bilanz.PASSIVA, "level": 2,
-             "nr": "2.1", "label": "Geldschulden", "wert": 43_690_971.71},
+             "nr": "2.1", "label": "Geldschulden", "value": 43_690_971.71},
             {"role": "schulden", "page": bilanz.PASSIVA, "level": 1,
-             "nr": "2", "label": "Schulden", "wert": 207_116_175.19},
+             "nr": "2", "label": "Schulden", "value": 207_116_175.19},
             {"role": "pensionen_gesamt", "page": bilanz.PASSIVA, "level": 2,
              "nr": "3.1",
              "label": "Pensionsrückstellungen und ähnliche Verpflichtungen",
-             "wert": 311_789_660.00},
+             "value": 311_789_660.00},
             {"role": "liquide_mittel", "page": bilanz.AKTIVA, "level": 1,
-             "nr": "4", "label": "Liquide Mittel", "wert": 118_001_891.26},
+             "nr": "4", "label": "Liquide Mittel", "value": 118_001_891.26},
         ], q)
         cs.save_bilanz_erlaeuterungen(2024, [
             {"role": "schulden", "nr": 7, "heading": "Schulden",
@@ -5517,8 +5517,8 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
 
         nach_rolle = {p["role"]: p for p in daten["posten"]}
         # Die beiden Zahlen, die beide „Schulden" heißen — getrennt geführt.
-        assert nach_rolle["geldschulden"]["wert"] == 43_690_971.71
-        assert nach_rolle["schulden"]["wert"] == 207_116_175.19
+        assert nach_rolle["geldschulden"]["value"] == 43_690_971.71
+        assert nach_rolle["schulden"]["value"] == 207_116_175.19
         assert nach_rolle["liquide_mittel"]["page"] == "aktiva"
         assert nach_rolle["schulden"]["level"] == 1
 
@@ -5775,7 +5775,7 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
     try:
         cs.save_buergschaften([{
             "year": 2024, "balance": 220_300_000.0, "exact": False,
-            "out_next_year": False, "quelle": "anhang",
+            "out_next_year": False, "source": "anhang",
             "reason": "Hintergrund ist, dass die verbürgten Bestandsdarlehen "
                      "seitens der Beteiligungen getilgt wurden.",
             "single_amount": None, "probes": [bg.PROBE_KETTE],

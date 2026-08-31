@@ -211,28 +211,28 @@ def _beschliessendes_gremium(committee: str) -> bool:
     return any(committee.startswith(g) for g in _RATSGREMIEN)
 
 
-def de_amount(wert: float, vorzeichen: bool = False) -> str:
+def de_amount(value: float, vorzeichen: bool = False) -> str:
     """Ein Betrag in deutscher Schreibweise: ``288.000,00``.
 
     Diese Texte landen über ``probe_result`` im Beleg-Chip und damit vor
     Leser*innen; ein englisch formatiertes ``288000.00`` stünde dort mitten in
     einem deutschen Satz."""
-    s = f"{abs(wert):,.2f}".replace(",", "␟").replace(".", ",").replace("␟", ".")
+    s = f"{abs(value):,.2f}".replace(",", "␟").replace(".", ",").replace("␟", ".")
     if vorzeichen:
-        return ("+" if wert >= 0 else "−") + s
-    return ("−" if wert < 0 else "") + s
+        return ("+" if value >= 0 else "−") + s
+    return ("−" if value < 0 else "") + s
 
 
 def _zahl(zahl: str, skala: str | None) -> float:
     """„1.500.000,50" + „Mio." → float. Deutsche Schreibweise, ohne Fallstrick:
     der Punkt ist Tausender-, das Komma Dezimaltrennzeichen."""
-    wert = float(zahl.replace(".", "").replace(",", "."))
+    value = float(zahl.replace(".", "").replace(",", "."))
     s = (skala or "").lower()
     if s.startswith(("mio", "mill")):
-        return wert * 1e6
+        return value * 1e6
     if s.startswith(("mrd", "milliard")):
-        return wert * 1e9
-    return wert
+        return value * 1e9
+    return value
 
 
 def art(titel: str) -> str:
@@ -397,7 +397,7 @@ def amount(titel: str, vorschlag: str | None = None,
            volltext: str | None = None) -> tuple[float | None, str | None]:
     """Der Betrag einer Nachbewilligung, zweistufig.
 
-    → ``(amount, quelle)`` mit ``quelle`` aus ``titel`` |
+    → ``(amount, source)`` mit ``source`` aus ``titel`` |
     ``proposed_decision`` | ``None``. **Die Reihenfolge des Tupels ist
     (Wert, Herkunft)** — nicht umgekehrt.
 
@@ -415,8 +415,8 @@ def amount(titel: str, vorschlag: str | None = None,
     if m:
         return _zahl(m.group("zahl"), m.group("skala")), "titel"
     text = vorschlag or ernte.proposed_decision(volltext or "")
-    wert = _betrag_aus_vorschlag(text)
-    return (wert, "proposed_decision") if wert is not None else (None, None)
+    value = _betrag_aus_vorschlag(text)
+    return (value, "proposed_decision") if value is not None else (None, None)
 
 
 def aus_vorlagen(vorlagen: list[dict],
@@ -442,12 +442,12 @@ def aus_vorlagen(vorlagen: list[dict],
         if not ist_nachbewilligung(titel):
             continue
         nr = v.get("template_number") or ""
-        wert, quelle = amount(titel, v.get("proposed_decision"),
+        value, source = amount(titel, v.get("proposed_decision"),
                               v.get("raw_text"))
         out.append(Bewilligung(
             template_number=nr, titel=titel, art=art(titel),
             category=category(titel), year=haushaltsjahr(nr),
-            amount=wert, amount_source=quelle,
+            amount=value, amount_source=source,
             beschluesse=tuple(beschluesse.get(nr, ()))))
     return sorted(out, key=lambda b: b.template_number)
 
@@ -571,7 +571,7 @@ _ZELLE = re.compile(rf"^\s*(\d+)(?:\s+({_NUM}))?\s*$")
 class Kanal:
     """Ein Entscheidungskanal mit seinen beiden Spalten."""
 
-    schluessel: str
+    key: str
     label: str
     count_operating: int
     amount_operating: float
@@ -608,8 +608,8 @@ class Kapitel3:
         """Die Summe, für die das Dokument selbst geradesteht."""
         return self.total_operating + self.total_capital
 
-    def channel(self, schluessel: str) -> Kanal | None:
-        return next((k for k in self.channels if k.schluessel == schluessel), None)
+    def channel(self, key: str) -> Kanal | None:
+        return next((k for k in self.channels if k.key == key), None)
 
     @property
     def rats_anteil(self) -> float | None:
@@ -636,7 +636,7 @@ def _kapitel3_text(volltext: str) -> str | None:
     return rest[:ende.start()] if ende else rest[:120_000]
 
 
-def _kanal(text: str, schluessel: str, muster: str) -> Kanal | None:
+def _kanal(text: str, key: str, muster: str) -> Kanal | None:
     """Eine Kanalzeile lesen: zwei Paare aus Anzahl und (optional) Betrag.
 
     Das erste Paar ist die konsumtive Spalte, das zweite die investive — so
@@ -649,7 +649,7 @@ def _kanal(text: str, schluessel: str, muster: str) -> Kanal | None:
     rest = text[m.end():]
     grenzen = [t.start() for t in
                (re.compile(v).search(rest) for k, v in _KANAL_LABEL.items()
-                if k != schluessel) if t]
+                if k != key) if t]
     summe = re.search(r"(?m)^\s*Summe\s", rest)
     if summe:
         grenzen.append(summe.start())
@@ -666,7 +666,7 @@ def _kanal(text: str, schluessel: str, muster: str) -> Kanal | None:
     if len(zellen) < 2:
         return None
     (ak, bk), (ai, bi) = zellen
-    return Kanal(schluessel=schluessel, label=KANAELE[schluessel],
+    return Kanal(key=key, label=KANAELE[key],
                  count_operating=ak, amount_operating=bk,
                  count_capital=ai, amount_capital=bi)
 

@@ -124,7 +124,7 @@ def lies_fragment(pfad: Path) -> Fragment:
             continue
         paar = SCHLUESSEL.match(zeile)
         if not paar:
-            raise FragmentFehler(f"{pfad.name}: '{zeile.strip()}' ist kein 'schluessel: wert'")
+            raise FragmentFehler(f"{pfad.name}: '{zeile.strip()}' ist kein 'key: value'")
         werte[paar.group(1).lower()] = paar.group(2)
 
     roh_kategorie = werte.get("kategorie", "").strip().lower()
