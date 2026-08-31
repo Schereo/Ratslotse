@@ -86,10 +86,10 @@ def erzeugen(label: str, db: Path) -> Path:
         for f in FRAGEN:
             t0 = time.perf_counter()
             analyse = qa.analyse_query(f["frage"])
-            expanded, typ = analyse["begriffe"], analyse["typ"]
-            q_suche = analyse["frage"]
+            expanded, typ = analyse["terms"], analyse["kind"]
+            q_suche = analyse["question"]
             hits = emb.hybrid_search(store, q_suche, expanded, top_k=40, pool=55,
-                                     varianten=analyse.get("varianten"),
+                                     varianten=analyse.get("variants"),
                                      anker_ids=qa.anker_ids_fuer(store, q_suche),
                                      recency=qa.recency_intent(q_suche))
             cands = store.get_decisions_by_ids([h[0] for h in hits])

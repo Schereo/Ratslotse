@@ -265,11 +265,11 @@ def test_analyse_sitzung_setzt_nur_der_router(monkeypatch):
     """Behauptet die LLM-Analyse den Typ „sitzung", fehlt die aufgelöste
     Sitzung — dann gilt „thema", wie bei „person"."""
     from types import SimpleNamespace
-    payload = json.dumps({"begriffe": "Sitzung Juni", "typ": "sitzung"})
+    payload = json.dumps({"terms": "Sitzung Juni", "kind": "sitzung"})
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **kw: SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=payload))], usage=None))
     qa._ANALYSE_CACHE.clear()
-    assert qa.analyse_query("Was war in der Sitzung?")["typ"] == "thema"
+    assert qa.analyse_query("Was war in der Sitzung?")["kind"] == "thema"
     qa._ANALYSE_CACHE.clear()
 
 

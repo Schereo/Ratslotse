@@ -3304,9 +3304,9 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
 
     monkeypatch.setattr(council_router, "_qa_retrieve", fake_retrieve)
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Was kostet die Sporthalle in Kreyenbrück?",
-        "begriffe": "Sporthalle Sanierung Kosten Kreyenbrück",
-        "typ": "geld", "partei": None, "varianten": [], "eng": False,
+        "question": "Was kostet die Sporthalle in Kreyenbrück?",
+        "terms": "Sporthalle Sanierung Kosten Kreyenbrück",
+        "kind": "geld", "party": None, "variants": [], "eng": False,
     })
     monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
 
@@ -3365,9 +3365,9 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
     monkeypatch.setattr(council_router, "_qa_retrieve",
                         lambda *a, **k: ([], "semantisch"))
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Was hat Bernhard Ellberg zu Kreyenbrück gesagt?",
-        "begriffe": "Bernhard Ellberg Kreyenbrück", "typ": "thema",
-        "partei": None, "varianten": [], "eng": False,
+        "question": "Was hat Bernhard Ellberg zu Kreyenbrück gesagt?",
+        "terms": "Bernhard Ellberg Kreyenbrück", "kind": "thema",
+        "party": None, "variants": [], "eng": False,
     })
     monkeypatch.setattr(emb, "search_wortbeitraege_von_person",
                         lambda *a, **k: (_ for _ in ()).throw(
@@ -3424,9 +3424,9 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     cs.close()
 
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Was wurde in Kreyenbrück zuletzt beschlossen?",
-        "begriffe": "Kreyenbrück Beschlüsse", "typ": "thema",
-        "partei": None, "varianten": [], "eng": False,
+        "question": "Was wurde in Kreyenbrück zuletzt beschlossen?",
+        "terms": "Kreyenbrück Beschlüsse", "kind": "thema",
+        "party": None, "variants": [], "eng": False,
     })
     monkeypatch.setattr(council_router, "_qa_retrieve",
                         lambda *a, **k: (_ for _ in ()).throw(
@@ -3478,9 +3478,9 @@ def test_ask_gueltiger_plan_ohne_debatten_ueberspringt_den_kanal(client, monkeyp
         "score": 1.0,
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Wie ist der aktuelle Stand beim Stadionneubau?",
-        "begriffe": "Stadionneubau Stand", "typ": "verlauf", "partei": None,
-        "varianten": [], "eng": False,
+        "question": "Wie ist der aktuelle Stand beim Stadionneubau?",
+        "terms": "Stadionneubau Stand", "kind": "verlauf", "party": None,
+        "variants": [], "eng": False,
         "rechercheplan": {
             "intent": "status", "channels": ["decisions", "press", "documents"],
             "sort": "newest", "needs": ["current_info", "documents", "dates"],
@@ -3520,9 +3520,9 @@ def test_ask_gueltiger_faktenplan_ueberspringt_presse_und_zukunft(client, monkey
         "score": 1.0, "kvonr": 105,
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Wurde die Baumschutzsatzung angenommen?",
-        "begriffe": "Baumschutzsatzung Abstimmung", "typ": "thema", "partei": None,
-        "varianten": [], "eng": True,
+        "question": "Wurde die Baumschutzsatzung angenommen?",
+        "terms": "Baumschutzsatzung Abstimmung", "kind": "thema", "party": None,
+        "variants": [], "eng": True,
         "rechercheplan": {
             "intent": "fact", "channels": ["decisions", "documents"],
             "sort": "relevance", "needs": ["votes", "documents"], "valid": True,
@@ -3566,9 +3566,9 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
         "template_number": "26/0100", "kvonr": 106,
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Was steht im Schallgutachten zum Stadionneubau?",
-        "begriffe": "Schallgutachten Stadionneubau Lärm", "typ": "thema",
-        "partei": None, "varianten": [], "eng": False,
+        "question": "Was steht im Schallgutachten zum Stadionneubau?",
+        "terms": "Schallgutachten Stadionneubau Lärm", "kind": "thema",
+        "party": None, "variants": [], "eng": False,
         "rechercheplan": {
             "intent": "fact", "channels": ["decisions", "documents"],
             "sort": "relevance", "needs": ["documents"], "valid": True,
@@ -3623,9 +3623,9 @@ def test_ask_ohne_dokumentenbedarf_ueberspringt_anlagen_und_vorlagen(client, mon
         "committee": "Rat", "score": 1.0, "template_number": "26/0200",
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Wurde die Baumschutzsatzung beschlossen?",
-        "begriffe": "Baumschutzsatzung Abstimmung", "typ": "thema",
-        "partei": None, "varianten": [], "eng": True,
+        "question": "Wurde die Baumschutzsatzung beschlossen?",
+        "terms": "Baumschutzsatzung Abstimmung", "kind": "thema",
+        "party": None, "variants": [], "eng": True,
         "rechercheplan": {
             "intent": "fact", "channels": ["decisions", "documents"],
             "sort": "relevance", "needs": ["votes"], "valid": True,
@@ -3737,8 +3737,8 @@ def test_ask_sitzungsfrage_ueberlebt_die_kondensierung(client, monkeypatch):
     cs.close()
     # Analyse liefert eine kondensierte Fassung OHNE erkennbares Signalwort.
     monkeypatch.setattr(qa_mod, "analyse_query", lambda q, **k: {
-        "frage": "Themen der Sitzung des Bauausschusses", "begriffe": "Bauausschuss Themen",
-        "typ": "thema", "partei": None, "varianten": [], "eng": False})
+        "question": "Themen der Sitzung des Bauausschusses", "terms": "Bauausschuss Themen",
+        "kind": "thema", "party": None, "variants": [], "eng": False})
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: ([], "semantisch"))
     with client.stream("POST", "/api/council/ask", json={
             "question": "Um was geht es im Bauausschuss morgen?"}) as r:
@@ -4914,8 +4914,8 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
     def fake_analyse(q, model=None, verlauf=None):
         gesehen["frage"] = q
         gesehen["verlauf"] = verlauf
-        return {"frage": "Was kostet der Neubau der Cäcilienbrücke?",
-                "begriffe": "Kosten Cäcilienbrücke", "typ": "geld", "partei": None}
+        return {"question": "Was kostet der Neubau der Cäcilienbrücke?",
+                "terms": "Kosten Cäcilienbrücke", "kind": "geld", "party": None}
 
     cand = [{"id": 5, "title": "Ersatzbau Cäcilienbrücke", "summary": "Kosten",
              "outcome": "angenommen", "session_date": "2025-08-25", "committee": "Rat", "score": 1.0}]
@@ -4944,8 +4944,8 @@ def _deep_mocks(monkeypatch):
     from council import qa as qa_mod
 
     monkeypatch.setattr(qa_mod, "deep_zerlege", lambda frage, **k: [
-        {"name": "Beschlusslage", "frage": "Stand Stadion", "begriffe": "stadion neubau"},
-        {"name": "Kosten", "frage": "Kosten Stadion", "begriffe": "kosten finanzierung"},
+        {"name": "Beschlusslage", "question": "Stand Stadion", "terms": "stadion neubau"},
+        {"name": "Kosten", "question": "Kosten Stadion", "terms": "kosten finanzierung"},
     ])
     monkeypatch.setattr(emb_mod, "hybrid_search",
                         lambda store, q, e, **k: [(5, 1.2)] if "stadion" in e else [(5, 0.8), (7, 0.4)])
@@ -5063,12 +5063,12 @@ def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
     def _analyse(frage, **k):
         gesehen["frage"] = frage
         gesehen["verlauf"] = k.get("verlauf")
-        return {"frage": "Wichtigste Themen in Krusenbusch in den letzten Jahren",
-                "begriffe": "krusenbusch wohnquartier", "typ": "thema", "partei": None}
+        return {"question": "Wichtigste Themen in Krusenbusch in den letzten Jahren",
+                "terms": "krusenbusch wohnquartier", "kind": "thema", "party": None}
 
     def _zerlege(frage, **k):
         zerlegt.append(frage)
-        return [{"name": "Beschlusslage", "frage": frage, "begriffe": "krusenbusch"}]
+        return [{"name": "Beschlusslage", "question": frage, "terms": "krusenbusch"}]
 
     def _bericht(frage, cands, **k):
         berichtet.append(frage)

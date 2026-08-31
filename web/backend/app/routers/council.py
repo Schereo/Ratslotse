@@ -3013,7 +3013,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             yield _sse({"type": "step", "step": "expand"})
             t0 = time.perf_counter()
             analyse = qa.analyse_query(q, verlauf=verlauf)
-            expanded, typ = analyse["begriffe"], analyse["typ"]
+            expanded, typ = analyse["terms"], analyse["kind"]
             # Punktfrage (Datum/Zahl/Name)? Dann antwortet das Modell knapp —
             # der Befund kam aus einer echten Nutzer-Frage, der nach dem
             # gesuchten Datum noch fünf Redebeiträge folgten (12.08.).
@@ -3029,7 +3029,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 eng = False  # „kurz und knapp" und „einfach" sind zwei Register
             # Retrieval + Reranker arbeiten mit der EIGENSTÄNDIGEN Fassung der
             # Frage — „Und was kostet das?" sucht sonst nach nichts.
-            q_suche = analyse["frage"]
+            q_suche = analyse["question"]
             zeiten["expand_ms"] = round((time.perf_counter() - t0) * 1000)
             # Personen-Fragetyp (10.08.26): nennt die Frage eine Ratsperson,
             # antworten wir aus DEREN Wortbeiträgen — deterministisch erkannt,
@@ -3084,14 +3084,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 mode = "chronologisch"
             else:
                 candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
-                                                varianten=analyse.get("varianten"),
+                                                varianten=analyse.get("variants"),
                                                 place_ids=place_ids)
             partei_ids: set[int] = set()
-            if typ == "partei" and analyse.get("partei"):
+            if typ == "partei" and analyse.get("party"):
                 # Anträge der gefragten Fraktion zum Thema in den Pool — die
                 # semantische Suche kennt den Antragsteller-Filter nicht.
                 try:
-                    extra_ids = store.antrag_decision_ids(analyse["partei"], expanded)
+                    extra_ids = store.antrag_decision_ids(analyse["party"], expanded)
                     if allowed_place_ids is not None:
                         extra_ids = [i for i in extra_ids if i in allowed_place_ids]
                     partei_ids = set(extra_ids)

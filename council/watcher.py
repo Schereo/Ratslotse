@@ -131,11 +131,12 @@ def _classify_agenda(session: CouncilSession, topics: list[dict],
     vorschlaege: list[tuple[int, list[str]]] = []
     for m in data.get("matches", []):
         idx = m.get("topic_index", 0) - 1
-        # Neues Format: [{"nummer", "titel"}]; Altformat (auch für Admin-
-        # Prompt-Overrides): ["Ö 6.1", …] ohne Titel-Anker.
+        # Neues Format: [{"number", "title"}]. Der Rückfall auf ["Ö 6.1", …]
+        # ohne Titel-Anker bleibt: Modelle antworten gelegentlich in der
+        # älteren Form, und ein Treffer ohne Anker ist besser als keiner.
         roh = m.get("items")
         if roh is None:
-            roh = [{"nummer": n} for n in m.get("item_numbers", [])]
+            roh = [{"number": n} for n in m.get("item_numbers", [])]
         nums = _verifiziere_items(session, roh)
         if 0 <= idx < len(topics) and nums:
             vorschlaege.append((idx, nums))
@@ -232,7 +233,7 @@ def _pruefe_am_text(session: CouncilSession, topic: dict, nums: list[str],
         if roh.startswith("```"):
             roh = roh.strip("`")
             roh = roh[roh.find("{"):]
-        behalten = json.loads(roh).get("treffer", [])
+        behalten = json.loads(roh).get("hits", [])
     except Exception:  # noqa: BLE001 — Prüfung ist Schärfung, kein Blocker
         return nums
     erlaubt = {" ".join(str(x).split()).upper() for x in behalten}
@@ -264,9 +265,9 @@ def _verifiziere_items(session: CouncilSession, roh: list) -> list[str]:
     out: list[str] = []
     for eintrag in roh:
         if isinstance(eintrag, str):
-            eintrag = {"nummer": eintrag}
-        nummer = " ".join(str(eintrag.get("nummer") or "").split()).upper()
-        titel = _falte_titel(eintrag.get("titel") or "")
+            eintrag = {"number": eintrag}
+        nummer = " ".join(str(eintrag.get("number") or "").split()).upper()
+        titel = _falte_titel(eintrag.get("title") or "")
         item = per_nummer.get(nummer)
         if item is None and nummer:
             # „14.7" ohne Ö/N-Präfix: nur übernehmen, wenn eindeutig.

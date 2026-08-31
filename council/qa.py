@@ -304,8 +304,8 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
     Cäcilienbrücke?"), sonst bleibt sie die Original-Frage. Retrieval UND
     Reranker arbeiten mit dieser Fassung. Robust: bei kaputtem JSON oder
     LLM-Fehler kommt das Verhalten von vor dem Routing zurück."""
-    fallback = {"frage": question, "begriffe": question, "typ": "thema", "partei": None,
-                "varianten": [], "eng": False, "rechercheplan": _research_plan({})}
+    fallback = {"question": question, "terms": question, "kind": "thema", "party": None,
+                "variants": [], "eng": False, "rechercheplan": _research_plan({})}
     vtext = _verlauf_zeilen(verlauf)
     key = f"{model}|{hash(vtext)}|{' '.join(question.split()).lower()[:300]}"
     hit = _ANALYSE_CACHE.get(key)
@@ -321,15 +321,15 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
             messages=[{"role": "user", "content": prompt}], **extra,
         )
         data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
-        frage = " ".join(str(data.get("frage") or "").split())[:300]
-        begriffe = " ".join(str(data.get("begriffe") or "").split())
-        typ = str(data.get("typ") or "").strip().lower()
-        partei = (str(data.get("partei")).strip() or None) if data.get("partei") else None
+        frage = " ".join(str(data.get("question") or "").split())[:300]
+        begriffe = " ".join(str(data.get("terms") or "").split())
+        typ = str(data.get("kind") or "").strip().lower()
+        partei = (str(data.get("party")).strip() or None) if data.get("party") else None
         # Multi-Query (Task 32): Perspektiv-Umformulierungen füllen Lücken,
         # die die eine Expansion verfehlt („Wie ist der Stand?" findet keine
         # Finanzierungs-Beschlüsse). Kandidaten-Union passiert in hybrid_search.
         varianten = [" ".join(str(v).split())[:120]
-                     for v in (data.get("varianten") or []) if isinstance(v, str) and str(v).strip()][:2]
+                     for v in (data.get("variants") or []) if isinstance(v, str) and str(v).strip()][:2]
         # Punktfrage? („Wann wurde X beschlossen?") — dann antwortet das Modell
         # knapp statt mit Verlauf + Debatten-Absatz. Reist im ohnehin laufenden
         # Analyse-Call mit, kostet also keine zusätzliche Latenz.
@@ -341,8 +341,8 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
             typ = "thema"
         if typ != "partei":
             partei = None
-        out = {"frage": frage or question, "begriffe": begriffe or question,
-               "typ": typ, "partei": partei, "varianten": varianten, "eng": eng,
+        out = {"question": frage or question, "terms": begriffe or question,
+               "kind": typ, "party": partei, "variants": varianten, "eng": eng,
                "rechercheplan": _research_plan(data)}
         if begriffe:  # nur brauchbare Analysen cachen
             if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
@@ -1227,7 +1227,7 @@ def _factions_of(c: dict) -> list[str]:
 def deep_zerlege(frage: str, model: str = EXPAND_MODEL) -> list[dict]:
     """Deep Research (Task 34): Frage → 3-5 Recherche-Facetten
     [{name, frage, begriffe}]. Fallback: eine Facette = die Frage selbst."""
-    fallback = [{"name": "Gesamtbild", "frage": frage, "begriffe": frage}]
+    fallback = [{"name": "Gesamtbild", "question": frage, "terms": frage}]
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         resp = llm.chat_complete(
@@ -1241,13 +1241,13 @@ def deep_zerlege(frage: str, model: str = EXPAND_MODEL) -> list[dict]:
         for f in (data.get("facetten") or [])[:5]:
             if not isinstance(f, dict):
                 continue
-            fr = " ".join(str(f.get("frage") or "").split())[:200]
+            fr = " ".join(str(f.get("question") or "").split())[:200]
             if not fr:
                 continue
             facetten.append({
                 "name": " ".join(str(f.get("name") or "Facette").split())[:40],
                 "frage": fr,
-                "begriffe": " ".join(str(f.get("begriffe") or fr).split())[:200],
+                "terms": " ".join(str(f.get("terms") or fr).split())[:200],
             })
         return facetten or fallback
     except Exception:  # noqa: BLE001
