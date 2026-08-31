@@ -66,10 +66,10 @@ def sample(conn: sqlite3.Connection, *, method: str, limit: int, seed: int,
     if scope == "geocoded":
         where.append("l.lat IS NOT NULL AND l.lon IS NOT NULL")
     elif scope == "district":
-        where.append("l.stadtteil IS NOT NULL")
+        where.append("l.district IS NOT NULL")
     rows = conn.execute(
         "SELECT dl.decision_id,dl.location_slug,dl.source,dl.evidence,dl.method,"
-        "dl.confidence,l.name,l.kind,l.lat,l.lon,l.stadtteil,d.title,d.official_text,"
+        "dl.confidence,l.name,l.kind,l.lat,l.lon,l.district,d.title,d.official_text,"
         "d.template_number,d.kvonr FROM council_decision_locations dl "
         "JOIN council_locations l ON l.slug=dl.location_slug "
         "JOIN council_decisions d ON d.id=dl.decision_id WHERE " + " AND ".join(where),
@@ -106,7 +106,7 @@ def sample(conn: sqlite3.Connection, *, method: str, limit: int, seed: int,
             "evidence": row["evidence"],
             "context": _snippet(source_text, row["evidence"], radius=context_radius),
             "confidence": row["confidence"],
-            "stadtteil": row["stadtteil"],
+            "district": row["district"],
         })
     return result
 
