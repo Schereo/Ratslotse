@@ -149,7 +149,7 @@ import Testing
       "question": "Was wurde beschlossen?",
       "answer": "Der Rat hat zugestimmt [42].",
       "created": "2026-08-29T08:15:00",
-      "sources": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"angenommen"}],
+      "sources": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"accepted"}],
       "debatten": [{"speaker":"Anna Beispiel","party":"SPD","auszug":"Wir stimmen zu."}],
       "presse": [{"title":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
       "anlagen": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],

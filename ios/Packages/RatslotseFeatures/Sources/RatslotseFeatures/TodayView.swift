@@ -1141,32 +1141,32 @@ private struct DecisionOutcomeSignal: View {
 
     private var label: String {
         switch outcome {
-        case "angenommen": "Angenommen"
-        case "abgelehnt": "Abgelehnt"
-        case "vertagt": "Vertagt"
-        case "zur_kenntnis": "Zur Kenntnis"
-        case "kein_beschluss": "Kein Beschluss"
+        case "accepted": "Angenommen"
+        case "rejected": "Abgelehnt"
+        case "postponed": "Vertagt"
+        case "noted": "Zur Kenntnis"
+        case "no_decision": "Kein Beschluss"
         default: outcome.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 
     private var color: Color {
         switch outcome {
-        case "angenommen": RatsColor.success
-        case "abgelehnt": RatsColor.danger
-        case "vertagt": RatsColor.warning
-        case "zur_kenntnis": RatsColor.primary
+        case "accepted": RatsColor.success
+        case "rejected": RatsColor.danger
+        case "postponed": RatsColor.warning
+        case "noted": RatsColor.primary
         default: RatsColor.muted
         }
     }
 
     private var symbol: String {
         switch outcome {
-        case "angenommen": "checkmark"
-        case "abgelehnt": "xmark"
-        case "vertagt": "clock.arrow.circlepath"
-        case "zur_kenntnis": "eye.fill"
-        case "kein_beschluss": "minus"
+        case "accepted": "checkmark"
+        case "rejected": "xmark"
+        case "postponed": "clock.arrow.circlepath"
+        case "noted": "eye.fill"
+        case "no_decision": "minus"
         default: "circle.fill"
         }
     }

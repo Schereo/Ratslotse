@@ -115,7 +115,7 @@ Eine Begründung ist in der Anlage aufgeführt.
 """
 
 
-def row(nr, raw, official_text, *, title=None, outcome="angenommen",
+def row(nr, raw, official_text, *, title=None, outcome="accepted",
           sitzung="2024-03-11", gremiensitzung="Rat", document_id=4711):
     return {"template_number": nr, "title": title or "Annahme von Zuwendungen durch den Rat",
             "official_text": official_text, "outcome": outcome, "session_date": sitzung,
@@ -223,7 +223,7 @@ def test_ein_abgesetzter_punkt_ist_keine_einnahme():
     """21/0694: „Der Tagesordnungspunkt wurde abgesetzt.“"""
     erg = donations.lies([row(
         "21/0694", None, "Der Tagesordnungspunkt wurde abgesetzt.",
-        outcome="vertagt")])
+        outcome="postponed")])
     assert erg["vorlagen"] == []
     assert "nicht beschlossen" in erg["verworfen"][0]["reason"]
 

@@ -569,7 +569,7 @@ def _vorgang(store, *, kvonr=900, document_id=7001, stationen=()):
             ksinr, {"document_id": ksinr, "url": f"https://example.org/p{ksinr}.pdf"},
             {"protocol_nr": "01/25"}, "Kurzbericht.", 4, "test",
             [{"item_number": "5", "title": "Jahresabschluss 2024",
-              "outcome": outcome, "vote": "mehrheitlich", "kvonr": kvonr}], [])
+              "outcome": outcome, "vote": "majority", "kvonr": kvonr}], [])
 
 
 def _herkunft_mit_dokument(store, document_id=7001):
@@ -583,13 +583,13 @@ def _herkunft_mit_dokument(store, document_id=7001):
 def test_beschluss_haengt_am_dokument(tmp_path):
     """Die Zahl kennt nicht nur ihr Papier, sondern ihren Vorgang."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    _vorgang(store, stationen=[(41, "Rat", "2025-09-16", "angenommen")])
+    _vorgang(store, stationen=[(41, "Rat", "2025-09-16", "accepted")])
     hid = _herkunft_mit_dokument(store)
 
     (h,) = store.get_herkunft([hid])
     assert h["official_text"]["date"] == "2025-09-16"
     assert h["official_text"]["committee"] == "Rat"
-    assert h["official_text"]["outcome"] == "angenommen"
+    assert h["official_text"]["outcome"] == "accepted"
     assert h["official_text"]["kvonr"] == 900
     store.close()
 
@@ -601,8 +601,8 @@ def test_rat_sticht_den_ausschuss(tmp_path):
     Ergebnis. Entschieden wird deshalb am Gremium, nicht am Datum."""
     store = CouncilStore(tmp_path / "c.sqlite")
     _vorgang(store, stationen=[
-        (40, "Ausschuss für Finanzen und Beteiligungen", "2025-09-02", "zur_kenntnis"),
-        (41, "Rat", "2025-09-16", "angenommen"),
+        (40, "Ausschuss für Finanzen und Beteiligungen", "2025-09-02", "noted"),
+        (41, "Rat", "2025-09-16", "accepted"),
     ])
     hid = _herkunft_mit_dokument(store)
 
@@ -619,11 +619,11 @@ def test_vertagter_vorgang_wird_nicht_verschwiegen(tmp_path):
     stumm verschwinden — die Seite soll sagen können, dass noch nichts
     entschieden ist."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    _vorgang(store, stationen=[(41, "Rat", "2025-09-16", "vertagt")])
+    _vorgang(store, stationen=[(41, "Rat", "2025-09-16", "postponed")])
     hid = _herkunft_mit_dokument(store)
 
     (h,) = store.get_herkunft([hid])
-    assert h["official_text"]["outcome"] == "vertagt"
+    assert h["official_text"]["outcome"] == "postponed"
     store.close()
 
 

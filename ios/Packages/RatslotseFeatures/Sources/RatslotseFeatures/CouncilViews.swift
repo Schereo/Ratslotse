@@ -154,9 +154,9 @@ struct CouncilBrowserView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 7) {
                         FilterChip(label: "Alle", selected: outcome.isEmpty) { outcome = "" }
-                        FilterChip(label: "Angenommen", selected: outcome == "angenommen") { outcome = "angenommen" }
-                        FilterChip(label: "Abgelehnt", selected: outcome == "abgelehnt") { outcome = "abgelehnt" }
-                        FilterChip(label: "Vertagt", selected: outcome == "vertagt") { outcome = "vertagt" }
+                        FilterChip(label: "Angenommen", selected: outcome == "accepted") { outcome = "accepted" }
+                        FilterChip(label: "Abgelehnt", selected: outcome == "rejected") { outcome = "rejected" }
+                        FilterChip(label: "Vertagt", selected: outcome == "postponed") { outcome = "postponed" }
                         if !location.isEmpty {
                             FilterChip(label: "Ort: \(locationName.isEmpty ? location : locationName)", selected: true) {
                                 location = ""
@@ -681,8 +681,8 @@ struct CouncilBrowserView: View {
               "committee": "Rat der Stadt",
               "session_date": "2026-02-09",
               "item_number": "6.5",
-              "outcome": "angenommen",
-              "vote": "mehrheitlich",
+              "outcome": "accepted",
+              "vote": "majority",
               "no_votes": 20,
               "amount_eur": 12400000,
               "importance": 82,
@@ -695,8 +695,8 @@ struct CouncilBrowserView: View {
               "committee": "Verkehrsausschuss",
               "session_date": "2026-09-03",
               "item_number": "7",
-              "outcome": "angenommen",
-              "vote": "einstimmig",
+              "outcome": "accepted",
+              "vote": "unanimous",
               "importance": 58,
               "factions": ["Grüne", "SPD"]
             },
@@ -707,7 +707,7 @@ struct CouncilBrowserView: View {
               "committee": "Ausschuss für Stadtplanung und Bauen",
               "session_date": "2026-08-31",
               "item_number": "4",
-              "outcome": "vertagt",
+              "outcome": "postponed",
               "importance": 41,
               "factions": []
             }
@@ -1393,8 +1393,8 @@ struct DecisionDetailView: View {
             "official_text": "Die Haushaltssatzung und der Haushaltsplan 2026 werden einschließlich der mittelfristigen Ergebnis- und Finanzplanung sowie des Investitionsprogramms beschlossen.",
             "committee": "Rat der Stadt",
             "session_date": "2026-02-09",
-            "outcome": "angenommen",
-            "vote": "mehrheitlich",
+            "outcome": "accepted",
+            "vote": "majority",
             "no_votes": 20,
             "abstentions": 2,
             "factions": ["SPD", "Grüne"],
@@ -1406,7 +1406,7 @@ struct DecisionDetailView: View {
             "policy_tags": ["Haushalt", "Investitionen"],
             "amount_eur": 12400000,
             "importance": 82,
-            "deviation": "stark"
+            "deviation": "strong"
           },
           "attendance": [
             {"name":"A","party":"SPD","role":"member"},
@@ -1833,19 +1833,19 @@ private struct DecisionDetailOutcome: View {
 
     private var label: String {
         switch outcome {
-        case "angenommen": "Angenommen"
-        case "abgelehnt": "Abgelehnt"
-        case "vertagt": "Vertagt"
-        case "zur_kenntnis": "Zur Kenntnis"
+        case "accepted": "Angenommen"
+        case "rejected": "Abgelehnt"
+        case "postponed": "Vertagt"
+        case "noted": "Zur Kenntnis"
         default: outcome.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 
     private var color: Color {
         switch outcome {
-        case "angenommen": RatsColor.success
-        case "abgelehnt": RatsColor.danger
-        case "vertagt": RatsColor.warning
+        case "accepted": RatsColor.success
+        case "rejected": RatsColor.danger
+        case "postponed": RatsColor.warning
         default: RatsColor.primary
         }
     }
@@ -1942,7 +1942,7 @@ private struct DecisionGlanceCard: View {
                 DecisionGlanceDivider()
                 Text("ABSTIMMUNG").font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
                 if let vote = decision.vote {
-                    Text(vote.capitalized)
+                    Text(voteLabel(vote).capitalized)
                         .font(RatsFont.body(16, weight: .bold))
                         .foregroundStyle(RatsColor.text)
                         .padding(.top, 3)
@@ -1967,7 +1967,7 @@ private struct DecisionGlanceCard: View {
                     .padding(.top, 5)
             }
 
-            if decision.deviation == "stark" {
+            if decision.deviation == "strong" {
                 DecisionGlanceDivider()
                 Label("Vom Vorschlag deutlich abgewichen", systemImage: "arrow.triangle.branch")
                     .font(RatsFont.body(12, weight: .semibold))
@@ -2768,7 +2768,7 @@ struct SavedCouncilView: View {
                 "simple_summary": "Der Rat schafft die Grundlage für schnellere und verlässlichere Busverbindungen.",
                 "committee": "Rat",
                 "session_date": "2026-08-26",
-                "outcome": "angenommen",
+                "outcome": "accepted",
                 "item_number": "Ö 10"
               }
             },

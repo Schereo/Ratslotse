@@ -216,14 +216,14 @@ export function naechsterHaushaltsTermin(sitzungen: KommendeSitzung[] | undefine
  *  es ist die Formulierung, unter der man den Punkt im Original wiederfindet. */
 export function ergebnisArt(
   result: string | null,
-): "angenommen" | "abgelehnt" | "vertagt" | "zur_kenntnis" | "kein_beschluss" {
+): "accepted" | "rejected" | "postponed" | "noted" | "no_decision" {
   const e = (result ?? "").toLowerCase();
-  if (!e) return "kein_beschluss";
-  if (e.includes("abgelehnt")) return "abgelehnt";
-  if (e.includes("beschlossen")) return "angenommen";
-  if (e.includes("kenntnis")) return "zur_kenntnis";
+  if (!e) return "no_decision";
+  if (e.includes("abgelehnt")) return "rejected";
+  if (e.includes("beschlossen")) return "accepted";
+  if (e.includes("kenntnis")) return "noted";
   if (e.includes("zurückgestellt") || e.includes("abgesetzt") || e.includes("verwiesen")) {
-    return "vertagt";
+    return "postponed";
   }
-  return "kein_beschluss";
+  return "no_decision";
 }

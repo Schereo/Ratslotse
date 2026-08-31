@@ -136,7 +136,7 @@ def neue_beschluesse(
            FROM council_decisions d
            JOIN council_sessions cs ON cs.ksinr = d.ksinr
            WHERE d.id > ? AND d.kind = 'decision'
-             AND d.outcome IN ('angenommen', 'abgelehnt')
+             AND d.outcome IN ('accepted', 'rejected')
              AND COALESCE(d.importance, 0) >= ?
            ORDER BY d.id""",
         (seit_id, mindest_wichtig))]

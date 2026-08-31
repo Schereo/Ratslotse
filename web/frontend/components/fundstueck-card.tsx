@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button, Card } from "@/components/ui";
-import { OutcomeDot } from "@/components/decision-ui";
+import { OutcomeDot, voteLabel } from "@/components/decision-ui";
 import { ShareButton } from "@/components/share-button";
 import { decisionHref } from "@/lib/routes";
 import type { DecisionOutcome } from "@/lib/types";
@@ -52,7 +52,7 @@ export function FundstueckCard() {
         <OutcomeDot outcome={data.outcome} />
         <span>
           {data.committee} · {fmtDate(data.session_date)}
-          {data.vote && ` · ${data.vote}`}
+          {data.vote && ` · ${voteLabel(data.vote)}`}
         </span>
       </div>
       <div className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-2">

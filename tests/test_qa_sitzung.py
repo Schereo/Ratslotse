@@ -91,7 +91,7 @@ def _store_mit_sitzungen(tmp_path):
                                   (4, 0, "Stadionneubau")):
             store._conn.execute(
                 "INSERT INTO council_decisions (ksinr, position, item_number, kind, title, outcome) "
-                "VALUES (?, ?, ?, 'decision', ?, 'angenommen')", (ksinr, pos, str(pos + 1), title))
+                "VALUES (?, ?, ?, 'decision', ?, 'accepted')", (ksinr, pos, str(pos + 1), title))
         # Subvotes zählen nicht als eigene Tagesordnungspunkte.
         store._conn.execute(
             "INSERT INTO council_decisions (ksinr, position, kind, title) "

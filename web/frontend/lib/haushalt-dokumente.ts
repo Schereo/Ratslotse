@@ -82,10 +82,10 @@ export type Belegziel = {
  *  Ergebnisse sagen „behandelt" — das stimmt immer und behauptet nichts. */
 export function vorgangVerb(outcome: string | null): string {
   switch (outcome) {
-    case "angenommen": return "beschlossen";
-    case "abgelehnt": return "abgelehnt";
-    case "vertagt": return "vertagt";
-    case "zur_kenntnis": return "zur Kenntnis genommen";
+    case "accepted": return "beschlossen";
+    case "rejected": return "abgelehnt";
+    case "postponed": return "vertagt";
+    case "noted": return "zur Kenntnis genommen";
     default: return "behandelt";
   }
 }

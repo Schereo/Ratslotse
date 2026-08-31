@@ -8214,7 +8214,7 @@
             "required": false,
             "schema": {
               "default": "",
-              "pattern": "^(|angenommen|abgelehnt|vertagt|zur_kenntnis|kein_beschluss)$",
+              "pattern": "^(|accepted|rejected|postponed|noted|no_decision)$",
               "title": "Outcome",
               "type": "string"
             }

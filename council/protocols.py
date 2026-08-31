@@ -87,8 +87,8 @@ Ausschusssitzung in Oldenburg. Antworte mit NUR JSON in genau dieser Form:
       "item_number": "TOP-Nummer wie '9.4'",
       "title": "TOP-Titel",
       "official_text": "Wortlaut des gefassten Beschlusses (Endergebnis), sinngemäß gekürzt",
-      "outcome": "angenommen|abgelehnt|vertagt|zur_kenntnis|kein_beschluss",
-      "vote": "einstimmig|mehrheitlich oder null",
+      "outcome": "accepted|rejected|postponed|noted|no_decision",
+      "vote": "unanimous|majority oder null",
       "no_votes": Zahl oder null,
       "abstentions": Zahl oder null,
       "factions": ["Fraktionen, die zu diesem TOP Anträge/Änderungslisten stellten, sonst leer"],
@@ -98,8 +98,8 @@ Ausschusssitzung in Oldenburg. Antworte mit NUR JSON in genau dieser Form:
         {{
           "description": "WAS beantragt wurde — Antragsart, Fraktion UND inhaltliches Anliegen, \
 z.B. 'Änderungsantrag der BSW-Fraktion: Streichung des Punktes 8 (Umweltzone)'",
-          "outcome": "angenommen|abgelehnt|vertagt",
-          "vote": "einstimmig|mehrheitlich oder null",
+          "outcome": "accepted|rejected|postponed",
+          "vote": "unanimous|majority oder null",
           "no_votes": Zahl oder null,
           "factions": ["antragstellende Fraktion(en)"],
           "raw_result": "der Original-Abstimmungssatz dieser Teilabstimmung"
@@ -113,7 +113,7 @@ Regeln:
 - Nur Tagesordnungspunkte mit echtem Inhalt/Beschluss/Bericht aufnehmen. Reine \
 Formalia (Feststellung der Beschlussfähigkeit, Genehmigung der Tagesordnung, \
 Genehmigung von Protokollen) WEGLASSEN.
-- "outcome" = "zur_kenntnis", wenn nur ein Bericht zur Kenntnis genommen wurde.
+- "outcome" = "noted", wenn nur ein Bericht zur Kenntnis genommen wurde.
 - "sub_votes": JEDE einzelne Teilabstimmung (z.B. über Änderungslisten/Anträge \
 einzelner Fraktionen) als eigenen Eintrag. Wenn es keine Teilabstimmungen gab: leere Liste.
 - "description" der sub_votes: Nenne das inhaltliche Anliegen, nicht nur die Antragsart. \

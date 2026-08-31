@@ -517,7 +517,7 @@ def latest_real_decision(candidates: list[dict]) -> dict | None:
     der Antrag gerade nicht beschlossen wurde.
     """
     return next((c for c in candidates
-                 if c.get("outcome") in ("angenommen", "abgelehnt")), None)
+                 if c.get("outcome") in ("accepted", "rejected")), None)
 
 
 def latest_place_answer(candidates: list[dict]) -> str:
@@ -531,6 +531,8 @@ def latest_place_answer(candidates: list[dict]) -> str:
     if not candidates:
         return "Dazu habe ich keine Ratsvorgänge mit belegtem Ortsbezug gefunden."
 
+    from council import ergebnisse   # spät: ergebnisse zieht kern.notify
+
     decision = latest_real_decision(candidates)
     if not decision:
         latest = candidates[0]
@@ -539,12 +541,13 @@ def latest_place_answer(candidates: list[dict]) -> str:
         return (
             "Einen angenommenen oder abgelehnten Beschluss habe ich dazu nicht gefunden. "
             f"Der jüngste Ratsvorgang war am {date}: „{title}“ "
-            f"(Ergebnis: {latest.get('outcome') or 'nicht angegeben'}) [{latest['id']}]."
+            f"(Ergebnis: {ergebnisse.ERGEBNIS_WORT.get(latest.get('outcome') or '', 'nicht angegeben')})"
+            f" [{latest['id']}]."
         )
 
     date = _datum_de(decision.get("session_date"))
     title = " ".join(str(decision.get("title") or "Unbenannter Beschluss").split())[:300]
-    if decision.get("outcome") == "abgelehnt":
+    if decision.get("outcome") == "rejected":
         answer = (
             f"Die jüngste Abstimmungsentscheidung war am {date}: „{title}“ wurde "
             f"abgelehnt, also nicht beschlossen [{decision['id']}]."
@@ -560,7 +563,7 @@ def latest_place_answer(candidates: list[dict]) -> str:
     if newer:
         neuer_datum = _datum_de(newer.get("session_date"))
         neuer_titel = " ".join(str(newer.get("title") or "Unbenannter Vorgang").split())[:300]
-        if newer.get("outcome") == "zur_kenntnis":
+        if newer.get("outcome") == "noted":
             answer += (
                 f" Danach wurde am {neuer_datum} noch „{neuer_titel}“ zur Kenntnis "
                 f"genommen [{newer['id']}]; das war kein neuer Beschluss."
@@ -1156,7 +1159,7 @@ def _build_context(candidates: list[dict]) -> str:
         if applicants:
             suffix += f" — Antrag von: {', '.join(applicants)}"
         strittig = (c.get("no_votes") or 0) > 0 or (c.get("abstentions") or 0) > 0 \
-            or c.get("vote") == "mehrheitlich" or c.get("outcome") == "abgelehnt"
+            or c.get("vote") == "majority" or c.get("outcome") == "rejected"
         raw_result = (c.get("raw_result") or "").strip()
         if strittig and raw_result:
             suffix += f" — Abstimmung: {raw_result[:180]}"
@@ -1185,7 +1188,7 @@ def _build_context(candidates: list[dict]) -> str:
         # den Kontext füllen, ohne einer Antwort je zu helfen (Regex-Ernte).
         if ernte.klima_relevant(c.get("climate_impact")):
             suffix += f" — Klima-Check der Verwaltung: {c['climate_impact'][:200]}"
-        if c.get("deviation") == "stark":
+        if c.get("deviation") == "strong":
             suffix += " — Der Rat wich deutlich vom Beschlussvorschlag der Verwaltung ab"
         impact = c.get("impact")
         if impact is not None and impact >= 70:
@@ -2635,12 +2638,15 @@ def _antraege_block(a: dict | None) -> str:
                      "eigenen Entwurfs, kein Fraktionsantrag)")
         zeilen.append(kopf)
         for u in st.get("author") or []:
-            zeilen.append(f"  - {u['name']}: {u['count']} — davon {u['angenommen']} "
-                          f"angenommen, {u['abgelehnt']} abgelehnt")
+            zeilen.append(f"  - {u['name']}: {u['count']} — davon {u['accepted']} "
+                          f"angenommen, {u['rejected']} abgelehnt")
         b = st.get("official_text") or {}
         if b.get("outcome"):
+            from council import ergebnisse   # spät: ergebnisse zieht kern.notify
             zeilen.append(f"  - Schlussabstimmung über die Haushaltssatzung: "
-                          f"{b['outcome']}" + (f" ({b['vote']})" if b.get("vote") else ""))
+                          f"{ergebnisse.ERGEBNIS_WORT.get(b['outcome'], b['outcome'])}"
+                          + (f" ({ergebnisse.VOTE_WORT.get(b['vote'], b['vote'])})"
+                             if b.get("vote") else ""))
     return (f"\nDER STREIT UM DEN HAUSHALT {a['year']} (Änderungslisten aus den "
             "Sitzungs-\nprotokollen; Jahreszahl = HAUSHALTSjahr, der Beschluss fällt "
             "oft im Jahr\ndavor).\nDIE GRENZE DIESER QUELLE GEHÖRT IN DIE ANTWORT: Sie "

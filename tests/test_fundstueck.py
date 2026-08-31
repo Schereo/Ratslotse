@@ -21,11 +21,11 @@ def _store(tmp_path) -> CouncilStore:
     store.save_session(CouncilSession(2, "Kulturausschuss", "2024-03-05", "17:00", "PFL"))
     with store._conn:
         store._insert_decision(1, 0, "decision", None, "Ö 1", "Grüne Wellen fürs Rad", TEXT,
-                               "angenommen", "einstimmig", None, None, [], None, None, None)
+                               "accepted", "unanimous", None, None, [], None, None, None)
         store._insert_decision(2, 0, "decision", None, "Ö 1", "Museumskonzept", TEXT,
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
         store._insert_decision(2, 1, "decision", None, "Ö 2", "Geschäftsordnung", TEXT,
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
     return store
 
 
@@ -149,9 +149,9 @@ def _fake_resp(payload: dict):
 def test_rate_batch_filters_hallucinated_ids(monkeypatch):
     decisions = [
         {"id": 1, "title": "A", "official_text": TEXT, "committee": "Rat",
-         "session_date": "2024-01-01", "outcome": "angenommen"},
+         "session_date": "2024-01-01", "outcome": "accepted"},
         {"id": 2, "title": "B", "official_text": TEXT, "committee": "Rat",
-         "session_date": "2024-01-01", "outcome": "angenommen"},
+         "session_date": "2024-01-01", "outcome": "accepted"},
     ]
     payload = {"ratings": [
         {"id": 1, "score": 77, "reason": "gut"},
@@ -164,7 +164,7 @@ def test_rate_batch_filters_hallucinated_ids(monkeypatch):
 
 def test_write_story_guards(monkeypatch):
     decision = {"id": 1, "title": "Grüne Wellen", "official_text": TEXT, "committee": "Rat",
-                "session_date": "2020-07-22", "outcome": "angenommen", "interest_reason": ""}
+                "session_date": "2020-07-22", "outcome": "accepted", "interest_reason": ""}
     monkeypatch.setattr(fundstueck.llm, "chat_complete",
                         lambda **kw: _fake_resp({"story": "Der Rat beschloss 2020, grüne Wellen fürs Rad zu testen."}))
     assert fundstueck.write_story(decision).startswith("Der Rat beschloss 2020")

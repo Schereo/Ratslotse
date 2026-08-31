@@ -126,7 +126,7 @@ export function antragsStationen(r: StreitRunde | null): StreitStation[] {
 /** Die Schlussabstimmung über die Haushaltssatzung — die letzte Station, die
  *  eine trägt. Vorherige Stationen haben denselben Punkt vertagt. */
 export function schlussbeschluss(r: StreitRunde | null): StreitStation | null {
-  const mit = (r?.stationen ?? []).filter((s) => s.official_text?.outcome === "angenommen");
+  const mit = (r?.stationen ?? []).filter((s) => s.official_text?.outcome === "accepted");
   return mit.length ? mit[mit.length - 1] : null;
 }
 
@@ -176,7 +176,7 @@ export function verhandlungsBilanz(r: StreitRunde | null): BilanzZeile[] {
       const z = bilanz.get(author)
         ?? { author, fa: { ein: 0, durch: 0 }, rat: { ein: 0, durch: 0 } };
       z[page].ein += 1;
-      if (a.outcome === "angenommen") z[page].durch += 1;
+      if (a.outcome === "accepted") z[page].durch += 1;
       bilanz.set(author, z);
     }
   }

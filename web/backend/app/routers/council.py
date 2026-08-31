@@ -1591,7 +1591,7 @@ def _agenda_aenderungen(store: CouncilStore, ksinr: int) -> list[dict]:
 def decisions(
     q: str = "",
     committee: str = "",
-    outcome: str = Query("", pattern="^(|angenommen|abgelehnt|vertagt|zur_kenntnis|kein_beschluss)$"),
+    outcome: str = Query("", pattern="^(|accepted|rejected|postponed|noted|no_decision)$"),
     faction: str = "",
     date_from: str = "",
     date_to: str = "",
@@ -2577,11 +2577,11 @@ def personen_lexikon(response: Response,
 # ---- Link-Vorschau (Design 29a, P1) ----
 # Wortlaut der Ergebnisse für die eine Zeile, die WhatsApp & Co. anzeigen.
 _PREVIEW_OUTCOME = {
-    "angenommen": "angenommen",
-    "abgelehnt": "abgelehnt",
-    "vertagt": "vertagt",
-    "zur_kenntnis": "zur Kenntnis genommen",
-    "kein_beschluss": "ohne Beschluss",
+    "accepted": "angenommen",
+    "rejected": "abgelehnt",
+    "postponed": "vertagt",
+    "noted": "zur Kenntnis genommen",
+    "no_decision": "ohne Beschluss",
 }
 
 

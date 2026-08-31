@@ -18,17 +18,17 @@ def _store_with_decisions(tmp_path) -> CouncilStore:
     with store._conn:
         # Kandidat (neuere Sitzung zuerst erwartet).
         store._insert_decision(2, 0, "decision", None, "Ö 1", "Museumskonzept", LANG,
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
         # Kandidat, ältere Sitzung.
         store._insert_decision(1, 0, "decision", None, "Ö 2", "Radweg", LANG,
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
         # Kein Kandidat: zu kurzer Text, Subvote, ohne Beschlusstext.
         store._insert_decision(1, 1, "decision", None, "Ö 3", "Kurz", "Zu kurz.",
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
         store._insert_decision(1, 2, "subvote", "Ö 2", None, "Änderungsantrag", LANG,
-                               "abgelehnt", None, None, None, [], None, None, None)
+                               "rejected", None, None, None, [], None, None, None)
         store._insert_decision(1, 3, "decision", None, "Ö 4", "Bericht", None,
-                               "zur_kenntnis", None, None, None, [], None, None, None)
+                               "noted", None, None, None, [], None, None, None)
     return store
 
 

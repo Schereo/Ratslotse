@@ -110,9 +110,9 @@ def test_abweichung_containment_statt_ratio():
             "an den Ausschuss für Stadtplanung und Bauen beauftragt.")
     # Der extrahierte Beschluss ist oft nur der Anfang des Vorschlags — reine
     # Kürzung darf nicht als Änderung zählen (die symmetrische Ratio täte das).
-    assert ernte.deviation(lang, lang[:80]) == "unveraendert"
-    assert ernte.deviation(lang, lang) == "unveraendert"
-    assert ernte.deviation(lang, "Der Tagesordnungspunkt wird auf die nächste Sitzung vertagt.") == "stark"
+    assert ernte.deviation(lang, lang[:80]) == "unchanged"
+    assert ernte.deviation(lang, lang) == "unchanged"
+    assert ernte.deviation(lang, "Der Tagesordnungspunkt wird auf die nächste Sitzung vertagt.") == "strong"
     assert ernte.deviation(lang, "zu kurz") is None
     assert ernte.deviation(None, lang) is None
 
@@ -147,13 +147,13 @@ def test_save_protocol_setzt_ort_kvonr_und_abweichung(tmp_path):
         decisions=[{"item_number": "6.1", "title": "Vergnügungsstättenkonzept",
                     "official_text": "Der Tagesordnungspunkt wird auf die nächste Sitzung vertagt, "
                                  "da weiterer Beratungsbedarf besteht.",
-                    "outcome": "angenommen", "template_number": "22/0262"}],
+                    "outcome": "accepted", "template_number": "22/0262"}],
         attendance=[])
     row = store._conn.execute(
         "SELECT d.kvonr, d.deviation, s.location FROM council_decisions d "
         "JOIN council_sessions s USING (ksinr)").fetchone()
     assert row["kvonr"] == 7                      # über die Vorlagen-Nr. verknüpft
-    assert row["deviation"] == "stark"           # Vertagung ≠ Beschlussvorschlag
+    assert row["deviation"] == "strong"           # Vertagung ≠ Beschlussvorschlag
     assert row["location"] == "Kulturzentrum PFL, Peterstraße 3"
     store.close()
 
@@ -168,11 +168,11 @@ def test_vorlage_nach_protokoll_zieht_abweichung_nach(tmp_path):
         decisions=[{"item_number": "6.1", "title": "Vergnügungsstättenkonzept",
                     "official_text": "Das Vergnügungsstättenkonzept wird beschlossen. "
                                  "Die Verwaltung wird mit der Umsetzung beauftragt.",
-                    "outcome": "angenommen", "template_number": "22/0262"}],
+                    "outcome": "accepted", "template_number": "22/0262"}],
         attendance=[])
     assert store._conn.execute("SELECT deviation FROM council_decisions").fetchone()[0] is None
     store.save_vorlage({"kvonr": 7, "template_number": "22/0262", "raw_text": VORLAGE_TEXT})
-    assert store._conn.execute("SELECT deviation FROM council_decisions").fetchone()[0] == "unveraendert"
+    assert store._conn.execute("SELECT deviation FROM council_decisions").fetchone()[0] == "unchanged"
     store.close()
 
 
@@ -181,10 +181,10 @@ def test_qa_kontext_traegt_ernte_felder(tmp_path):
 
     ctx = qa._build_context([{
         "id": 5, "title": "Konzept", "committee": "Rat", "session_date": "2026-01-01",
-        "outcome": "angenommen", "official_text": "Wird beschlossen.",
+        "outcome": "accepted", "official_text": "Wird beschlossen.",
         "office": "Stadtplanungsamt",
         "climate_impact": "Prüfungsrelevant: Ja, steuert den Verkehr.",
-        "deviation": "stark",
+        "deviation": "strong",
     }])
     assert "Federführung: Stadtplanungsamt" in ctx
     assert "Klima-Check der Verwaltung: Prüfungsrelevant: Ja" in ctx
@@ -192,7 +192,7 @@ def test_qa_kontext_traegt_ernte_felder(tmp_path):
     # „Nein"-Vermerke bleiben draußen — sie helfen keiner Antwort.
     ctx2 = qa._build_context([{
         "id": 6, "title": "Bericht", "committee": "Rat", "session_date": "2026-01-01",
-        "outcome": "angenommen", "official_text": "Kenntnis.",
-        "climate_impact": "Nein, nicht prüfungsrelevant.", "deviation": "unveraendert",
+        "outcome": "accepted", "official_text": "Kenntnis.",
+        "climate_impact": "Nein, nicht prüfungsrelevant.", "deviation": "unchanged",
     }])
     assert "Klima-Check" not in ctx2 and "Beschlussvorschlag" not in ctx2

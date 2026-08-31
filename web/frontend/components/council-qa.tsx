@@ -156,14 +156,14 @@ const MODE_LABEL: Record<string, string> = {
 };
 
 const OUTCOME_BADGE: Record<string, string> = {
-  angenommen: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-  abgelehnt: "bg-signal/10 text-signal",
-  vertagt: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-  zur_kenntnis: "bg-muted text-muted-foreground",
+  accepted: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  rejected: "bg-signal/10 text-signal",
+  postponed: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  noted: "bg-muted text-muted-foreground",
 };
 const OUTCOME_LABEL: Record<string, string> = {
-  angenommen: "Angenommen", abgelehnt: "Abgelehnt", vertagt: "Vertagt",
-  zur_kenntnis: "Zur Kenntnis", kein_beschluss: "Kein Beschluss",
+  accepted: "Angenommen", rejected: "Abgelehnt", postponed: "Vertagt",
+  noted: "Zur Kenntnis", no_decision: "Kein Beschluss",
 };
 
 /** Gesprächs-Zeile der „Meine Gespräche"-Liste (5a/I-04). */

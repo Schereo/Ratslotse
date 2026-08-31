@@ -240,8 +240,8 @@ CREATE TABLE IF NOT EXISTS council_decisions (
     item_number  TEXT,
     title        TEXT,
     official_text    TEXT,
-    outcome      TEXT,                          -- angenommen|abgelehnt|vertagt|zur_kenntnis|kein_beschluss
-    vote         TEXT,                          -- einstimmig|mehrheitlich|null
+    outcome      TEXT,                          -- accepted|rejected|postponed|noted|no_decision
+    vote         TEXT,                          -- unanimous|majority|null
     no_votes INTEGER,
     abstentions INTEGER,
     factions     TEXT,                          -- JSON array
@@ -1068,6 +1068,16 @@ class CouncilStore:
                         "council_kennzahlen"):
             self._werte_umschreiben(tabelle, "unit", [
                 ("prozent", "percent"), ("anzahl", "count")])
+        # Das Ergebnis-Vokabular der Beschlüsse. Angezeigt wird weiter deutsch —
+        # die Beschriftungen hängen jetzt an den englischen Schlüsseln.
+        self._werte_umschreiben("council_decisions", "outcome", [
+            ("angenommen", "accepted"), ("abgelehnt", "rejected"),
+            ("vertagt", "postponed"), ("zur_kenntnis", "noted"),
+            ("kein_beschluss", "no_decision")])
+        self._werte_umschreiben("council_decisions", "vote", [
+            ("einstimmig", "unanimous"), ("mehrheitlich", "majority")])
+        self._werte_umschreiben("council_decisions", "deviation", [
+            ("unveraendert", "unchanged"), ("leicht", "slight"), ("stark", "strong")])
 
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
         if "agenda_hash" not in cols:
@@ -1109,7 +1119,7 @@ class CouncilStore:
                 if "impact_reason" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN impact_reason TEXT")
                 # Abweichung des Beschlusses vom Beschlussvorschlag der Verwaltung
-                # (Regex-Ernte, council.ernte): unveraendert | leicht | stark.
+                # (Regex-Ernte, council.ernte): unchanged | slight | strong.
                 if "deviation" not in dec_cols:
                     self._conn.execute("ALTER TABLE council_decisions ADD COLUMN deviation TEXT")
                 self._conn.execute(
@@ -4651,7 +4661,7 @@ class CouncilStore:
         from council import ernte
 
         sql = ("SELECT id, template_number, official_text FROM council_decisions "
-               "WHERE kind = 'decision' AND outcome = 'angenommen' "
+               "WHERE kind = 'decision' AND outcome = 'accepted' "
                "AND official_text IS NOT NULL AND template_number IS NOT NULL")
         args: tuple = ()
         if ksinr is not None:
@@ -4720,8 +4730,8 @@ class CouncilStore:
         return d
 
     # Outcomes grouped into "real votes" vs "reports / no decision".
-    _VOTE_OUTCOMES = ("angenommen", "abgelehnt", "vertagt")
-    _REPORT_OUTCOMES = ("zur_kenntnis", "kein_beschluss")
+    _VOTE_OUTCOMES = ("accepted", "rejected", "postponed")
+    _REPORT_OUTCOMES = ("noted", "no_decision")
 
     def decision_ids_for_party(self, party: str) -> list[int]:
         """IDs of main decisions whose Antragsteller includes ``party`` —
@@ -5939,7 +5949,7 @@ class CouncilStore:
         **Das Ergebnis wird mitgeliefert, nicht gefiltert.** Ein Dokument, das
         an einer vertagten Vorlage hängt, ist keine Zahl ohne Beleg — es ist
         eine Zahl, deren Vorgang noch läuft, und genau das soll die Seite
-        sagen können. Wer hier auf ``outcome = 'angenommen'`` einschränkte,
+        sagen können. Wer hier auf ``outcome = 'accepted'`` einschränkte,
         ließe die interessanteren Fälle stumm verschwinden.
 
         Eine Anlage ohne Vorlage im Bestand liefert **keinen** Eintrag; die
@@ -8806,7 +8816,7 @@ class CouncilStore:
             decision = self._conn.execute(
                 """SELECT d.outcome, cs.committee FROM council_decisions d
                    JOIN council_sessions cs ON cs.ksinr = d.ksinr
-                   WHERE d.kind = 'decision' AND d.outcome IN ('angenommen','abgelehnt')
+                   WHERE d.kind = 'decision' AND d.outcome IN ('accepted','rejected')
                      AND (d.template_number = ? OR d.template_number LIKE ?)
                    ORDER BY (cs.committee LIKE 'Rat%') DESC, cs.session_date DESC
                    LIMIT 1""", (base, base + "/%"),
@@ -8823,7 +8833,7 @@ class CouncilStore:
                 # können inzwischen entfernte Labels (z. B. WFO/LKR) stehen.
                 if p not in CANONICAL_ORDER:
                     continue
-                s = per_party.setdefault(p, {"party": p, "n": 0, "angenommen": 0, "abgelehnt": 0})
+                s = per_party.setdefault(p, {"party": p, "n": 0, "accepted": 0, "rejected": 0})
                 s["n"] += 1
                 s[decision["outcome"]] += 1
 
@@ -11416,7 +11426,7 @@ class CouncilStore:
         with_factions = 0
 
         for fac, field, outcome, gegen, enth in rows:
-            if field and outcome in ("angenommen", "abgelehnt", "vertagt"):
+            if field and outcome in ("accepted", "rejected", "postponed"):
                 field_total[field] += 1
                 if (gegen or 0) > 0 or (enth or 0) > 0:
                     field_contested[field] += 1
@@ -11446,11 +11456,11 @@ class CouncilStore:
         success = []
         for p in party_total:
             oc = party_outcome.get(p, Counter())
-            decided = oc["angenommen"] + oc["abgelehnt"]
+            decided = oc["accepted"] + oc["rejected"]
             success.append({
                 "party": p, "motions": party_total[p],
-                "angenommen": oc["angenommen"], "abgelehnt": oc["abgelehnt"], "vertagt": oc["vertagt"],
-                "rate": round(oc["angenommen"] / decided, 3) if decided else None,
+                "accepted": oc["accepted"], "rejected": oc["rejected"], "postponed": oc["postponed"],
+                "rate": round(oc["accepted"] / decided, 3) if decided else None,
             })
         success.sort(key=lambda s: s["motions"], reverse=True)
 
@@ -12963,12 +12973,12 @@ class CouncilStore:
                     if not name:
                         continue
                     e = entity.setdefault(name, {"name": name, "count": 0,
-                                                  "angenommen": 0, "abgelehnt": 0})
+                                                  "accepted": 0, "rejected": 0})
                     e["count"] += 1
-                    if antrag.outcome == "angenommen":
-                        e["angenommen"] += 1
-                    elif antrag.outcome == "abgelehnt":
-                        e["abgelehnt"] += 1
+                    if antrag.outcome == "accepted":
+                        e["accepted"] += 1
+                    elif antrag.outcome == "rejected":
+                        e["rejected"] += 1
             if not gesamt:
                 continue
             stationen.append({

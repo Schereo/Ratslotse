@@ -173,9 +173,9 @@ def test_merkliste_top_wird_zum_beschluss_und_meldet_ergebnis(client):
         {"protocol_nr": "V 1/26", "session_start": "17:00", "session_end": "18:00"},
         "zu 6 Neue Fahrradstraße\nBeschluss: angenommen\n- einstimmig -", 1, "test-model",
         [{"item_number": "6", "title": "Neue Fahrradstraße", "official_text": "Die Fahrradstraße wird eingerichtet.",
-          "outcome": "angenommen", "vote": "einstimmig", "no_votes": 0,
+          "outcome": "accepted", "vote": "unanimous", "no_votes": 0,
           "abstentions": 0, "factions": [], "template_number": "26/0999", "kvonr": 90999,
-          "raw_result": "einstimmig", "sub_votes": []}],
+          "raw_result": "unanimous", "sub_votes": []}],
         [],
     )
     ratslotse = Store(RATSLOTSE_DB)
@@ -189,7 +189,7 @@ def test_merkliste_top_wird_zum_beschluss_und_meldet_ergebnis(client):
     listed = client.get("/api/bookmarks").json()["bookmarks"]
     assert len(listed) == 1
     assert listed[0]["state"] == "decided"
-    assert listed[0]["decision"]["outcome"] == "angenommen"
+    assert listed[0]["decision"]["outcome"] == "accepted"
     decision_id = listed[0]["decision"]["id"]
 
     # Auf der Beschluss-Seite noch einmal „Merken" bleibt derselbe Eintrag.
@@ -1277,7 +1277,7 @@ def test_decision_detail_includes_vorlage(client):
     cs.save_session(CouncilSession(88, "Rat der Stadt", "2026-02-01", "18:00", "Rathaus",
                                    agenda_items=[AgendaItem("Ö 2", "Radweg", template_number="26/0400", kvonr=901)]))
     cs._insert_decision(88, 0, "decision", None, "Ö 2", "Radweg bauen", "Wird gebaut.",
-                        "angenommen", None, None, None, [], "26/0400", None, None)
+                        "accepted", None, None, None, [], "26/0400", None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 88").fetchone()[0]
     cs.save_vorlage({"kvonr": 901, "template_number": "26/0400", "title": "Radweg", "kind": "Beschlussvorlage",
@@ -1298,7 +1298,7 @@ def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
     cs.save_session(CouncilSession(89, "Rat der Stadt", "2026-03-01", "18:00", "Rathaus",
                                    agenda_items=[AgendaItem("Ö 3", "Lastenräder", template_number="26/0500", kvonr=902)]))
     cs._insert_decision(89, 0, "decision", None, "Ö 3", "Lastenräder fördern", "Wird gefördert.",
-                        "angenommen", None, None, None, [], "26/0500", None, None)
+                        "accepted", None, None, None, [], "26/0500", None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 89").fetchone()[0]
     cs.save_vorlage({"kvonr": 902, "template_number": "26/0500", "title": "Lastenräder", "kind": "Beschlussvorlage",
@@ -1313,7 +1313,7 @@ def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
     assert [a["document_id"] for a in data["anlagen"]] == [77, 78]  # Antrag zuerst
     assert data["anlagen"][0]["applicants"] == ["SPD"]
     stats = client.get("/api/council/analysis").json()["antrag_stats"]
-    assert {"party": "SPD", "n": 1, "angenommen": 1, "abgelehnt": 0} in stats["parties"]
+    assert {"party": "SPD", "n": 1, "accepted": 1, "rejected": 0} in stats["parties"]
 
 
 def test_field_recaps_endpoint(client):
@@ -1334,12 +1334,12 @@ def test_recaps_render_items_falls_back_to_beschluss():
     """_render_items uses summary when present, else the raw official_text, and keeps the outcome."""
     from council.recaps import _render_items
     out = _render_items([
-        {"session_date": "2026-06-01", "title": "Radweg Haarenufer", "summary": "Ausbau beschlossen", "outcome": "angenommen"},
-        {"session_date": "2026-05-01", "title": "Brücke Y", "official_text": "Sanierung wird beauftragt", "outcome": "abgelehnt"},
+        {"session_date": "2026-06-01", "title": "Radweg Haarenufer", "summary": "Ausbau beschlossen", "outcome": "accepted"},
+        {"session_date": "2026-05-01", "title": "Brücke Y", "official_text": "Sanierung wird beauftragt", "outcome": "rejected"},
     ])
     assert "Radweg Haarenufer — Ausbau beschlossen" in out
     assert "Brücke Y — Sanierung wird beauftragt" in out  # falls back to official_text
-    assert "[abgelehnt]" in out
+    assert "[rejected]" in out
 
 
 # ---- topics (owned by the web account) ----
@@ -1402,7 +1402,7 @@ def test_topic_decision_matching(client):
     cs.save_session(CouncilSession(77, "Verkehrsausschuss", "2026-03-01", "18:00", "Rathaus",
                                    agenda_items=[AgendaItem("Ö 1", "Radweg Haarenufer")]))
     cs._insert_decision(77, 0, "decision", None, "1", "Radweg Haarenufer ausbauen",
-                        "Beschluss", "angenommen", None, None, None, [], None, None, None)
+                        "Beschluss", "accepted", None, None, None, [], None, None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 77").fetchone()[0]
     cs.close()
@@ -1434,7 +1434,7 @@ def _seed_schulbegleitung(n: int = 3) -> list[int]:
     for i in range(n):
         cs._insert_decision(78, i, "decision", None, str(i + 1),
                             f"Pauschalierte Schulbegleitung {i + 1}",
-                            "Beschluss", "angenommen", None, None, None, [], None, None, None)
+                            "Beschluss", "accepted", None, None, None, [], None, None, None)
     cs._conn.commit()
     ids = [r[0] for r in cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 78")]
     cs.close()
@@ -1577,7 +1577,7 @@ def _seed_datierte_beschluesse(tage: list[str]) -> list[int]:
         cs.save_session(CouncilSession(ksinr, "Sozialausschuss", tag, "18:00", "Rathaus",
                                        agenda_items=[AgendaItem("Ö 1", f"Punkt {i}")]))
         cs._insert_decision(ksinr, 0, "decision", None, "1", f"Beschluss vom {tag}",
-                            "Beschluss", "angenommen", None, None, None, [], None, None, None)
+                            "Beschluss", "accepted", None, None, None, [], None, None, None)
         cs._conn.commit()
         ids.append(cs._conn.execute(
             "SELECT id FROM council_decisions WHERE ksinr = ?", (ksinr,)).fetchone()[0])
@@ -1630,7 +1630,7 @@ def test_karte_traegt_ihre_juengsten_treffer(client):
     t = client.get("/api/topics").json()[0]
     assert [h["id"] for h in t["recent_hits"]] == ids[:5]          # neueste zuerst, gedeckelt bei 5
     assert t["recent_hits"][0]["committee"] == "Sozialausschuss"
-    assert t["recent_hits"][0]["outcome"] == "angenommen"
+    assert t["recent_hits"][0]["outcome"] == "accepted"
     assert t["decision_count"] == len(ids)
     # „3 in 6 Monaten" ist die zweite Hälfte der Kicker-Zeile: Sie sagt, ob ein
     # Thema gerade läuft oder ruht — die Gesamtzahl kann beides bedeuten.
@@ -1745,9 +1745,9 @@ def test_themenliste_enthaelt_auch_berichte(client):
     cs.save_session(CouncilSession(78, "Bauausschuss", "2026-03-02", "18:00", "Rathaus",
                                    agenda_items=[AgendaItem("Ö 1", "Fliegerhorst")]))
     cs._insert_decision(78, 0, "decision", None, "1", "Erschließung Fliegerhorststraße",
-                        "Beschluss", "angenommen", None, None, None, [], None, None, None)
+                        "Beschluss", "accepted", None, None, None, [], None, None, None)
     cs._insert_decision(78, 1, "decision", None, "2", "Sachstandsbericht Fliegerhorst",
-                        None, "zur_kenntnis", None, None, None, [], None, None, None)
+                        None, "noted", None, None, None, [], None, None, None)
     cs._conn.commit()
     ids = [r[0] for r in cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 78")]
     cs.close()
@@ -2577,7 +2577,7 @@ def test_verlaengerung_laesst_den_sse_strom_in_ruhe(client, monkeypatch):
 
     _register(client)
     cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-07-02",
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-07-02",
              "committee": "Verkehrsausschuss", "score": 1.0}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -2886,7 +2886,7 @@ def test_topic_suggestions_dedupe_similar(client):
     with council._conn:
         for i in range(3):
             council._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
-                                     "angenommen", None, None, None, [], None, None, None)
+                                     "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in council._conn.execute(
             "SELECT id FROM council_decisions ORDER BY id").fetchall()]
         ents = [(1, "stadion-maastrichter", "Stadion Maastrichter Straße", "ort"),
@@ -2935,7 +2935,7 @@ def test_qa_share_roundtrip(client):
         "question": "Was wurde zum Stadion entschieden?",
         "answer": "Der Rat stimmte zu [5].",
         "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
-                     "committee": "Rat", "outcome": "angenommen"}],
+                     "committee": "Rat", "outcome": "accepted"}],
     })
     assert r.status_code == 201
     token = r.json()["token"]
@@ -2968,7 +2968,7 @@ def test_qa_share_traegt_bausteine(client):
         "question": "Was sagt der Rat zum Stadion?",
         "answer": "Der Rat stimmte zu [5].",
         "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
-                     "committee": "Rat", "outcome": "angenommen"}],
+                     "committee": "Rat", "outcome": "accepted"}],
         "debatten": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "art": "rede",
                       "top": "6.1 Stadionneubau", "auszug": "Warnte vor einem Millionengrab.",
                       "committee": "Rat", "date": "2026-06-01",
@@ -3137,7 +3137,7 @@ def test_ask_ersetzt_abgerissenen_stream(client, monkeypatch):
 
     _register(client)
     cand = [{"id": 5, "title": "Entlastungsstraße Fliegerhorst", "summary": "Planung",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-04-13",
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-04-13",
              "committee": "Verkehrsausschuss", "score": 1.0}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -3185,7 +3185,7 @@ def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
 
     _register(client)
     cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-07-02",
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-07-02",
              "committee": "Verkehrsausschuss", "score": 1.0}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -3233,7 +3233,7 @@ def test_ask_stream_haelt_marker_zurueck_und_liefert_suggestions(client, monkeyp
 
     _register(client)
     cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-07-02",
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-07-02",
              "committee": "Verkehrsausschuss", "score": 1.0, "no_votes": 2}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -3271,8 +3271,8 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
             "(id,ksinr,position,title,summary,outcome,kind,amount_eur) "
             "VALUES (?,77,?,?,?,?, 'decision',?)",
             [
-                (1, 1, "Sporthalle Kreyenbrück", "Sanierung", "angenommen", 2_500_000),
-                (2, 2, "Sanierung Rathaus", "Fassade", "angenommen", 9_000_000),
+                (1, 1, "Sporthalle Kreyenbrück", "Sanierung", "accepted", 2_500_000),
+                (2, 2, "Sanierung Rathaus", "Fassade", "accepted", 9_000_000),
             ],
         )
     cs.save_decision_locations(1, [{
@@ -3345,7 +3345,7 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
             "INSERT INTO council_decisions "
             "(id,ksinr,position,item_number,title,summary,outcome,kind) "
             "VALUES (5,88,1,'7','Sporthalle Kreyenbrück - Beschluss','Sanierung',"
-            "'angenommen','decision')")
+            "'accepted','decision')")
     cs.save_decision_locations(5, [{
         "name": "Kreyenbrück", "kind": "district", "source": "title",
         "evidence": "Sporthalle Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
@@ -3405,9 +3405,9 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     rows = [
-        (101, 901, "2025-12-11", "Alter Beschluss", "angenommen"),
-        (102, 902, "2026-04-21", "Neuer echter Beschluss", "angenommen"),
-        (103, 903, "2026-04-28", "Neuester Sachstandsbericht", "zur_kenntnis"),
+        (101, 901, "2025-12-11", "Alter Beschluss", "accepted"),
+        (102, 902, "2026-04-21", "Neuer echter Beschluss", "accepted"),
+        (103, 903, "2026-04-28", "Neuester Sachstandsbericht", "noted"),
     ]
     for decision_id, ksinr, tag, title, outcome in rows:
         cs.save_session(CouncilSession(ksinr, "Rat", tag, "17:00", "Rathaus"))
@@ -3474,7 +3474,7 @@ def test_ask_gueltiger_plan_ohne_debatten_ueberspringt_den_kanal(client, monkeyp
     _register(client)
     candidate = {
         "id": 104, "title": "Grundsatzbeschluss Stadionneubau", "summary": "Stand",
-        "outcome": "angenommen", "session_date": "2026-06-01", "committee": "Rat",
+        "outcome": "accepted", "session_date": "2026-06-01", "committee": "Rat",
         "score": 1.0,
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
@@ -3516,7 +3516,7 @@ def test_ask_gueltiger_faktenplan_ueberspringt_presse_und_zukunft(client, monkey
     _register(client)
     candidate = {
         "id": 105, "title": "Antrag Baumschutzsatzung", "summary": "Abstimmung",
-        "outcome": "angenommen", "session_date": "2026-03-01", "committee": "Rat",
+        "outcome": "accepted", "session_date": "2026-03-01", "committee": "Rat",
         "score": 1.0, "kvonr": 105,
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
@@ -3561,7 +3561,7 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
     _register(client)
     candidate = {
         "id": 106, "title": "Grundsatzbeschluss Stadionneubau",
-        "summary": "Planung", "outcome": "angenommen",
+        "summary": "Planung", "outcome": "accepted",
         "session_date": "2026-06-01", "committee": "Rat", "score": 1.0,
         "template_number": "26/0100", "kvonr": 106,
     }
@@ -3619,7 +3619,7 @@ def test_ask_ohne_dokumentenbedarf_ueberspringt_anlagen_und_vorlagen(client, mon
     _register(client)
     candidate = {
         "id": 107, "title": "Baumschutzsatzung", "summary": "Abstimmung",
-        "outcome": "angenommen", "session_date": "2026-03-01",
+        "outcome": "accepted", "session_date": "2026-03-01",
         "committee": "Rat", "score": 1.0, "template_number": "26/0200",
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
@@ -3666,7 +3666,7 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
         for i, title in ((1, "Krippengruppe"), (2, "Kita-Bericht"), (3, "Richtlinien Jugendarbeit")):
             cs._conn.execute(
                 "INSERT INTO council_decisions (id, ksinr, position, item_number, kind, title, outcome) "
-                "VALUES (?, 4673, ?, ?, 'decision', ?, 'angenommen')", (i, i, str(i + 4), title))
+                "VALUES (?, 4673, ?, ?, 'decision', ?, 'accepted')", (i, i, str(i + 4), title))
         cs._conn.execute(  # Subvotes sind kein eigener Tagesordnungspunkt
             "INSERT INTO council_decisions (id, ksinr, position, kind, title) "
             "VALUES (9, 4673, 9, 'subvote', 'Änderungsantrag')")
@@ -3675,13 +3675,13 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
             "VALUES (100, 'Rat', '2025-01-01', '17:00', '', '')")
         cs._conn.execute(
             "INSERT INTO council_decisions (id, ksinr, position, kind, title, outcome) "
-            "VALUES (50, 100, 0, 'decision', 'Anderes Thema', 'angenommen')")
+            "VALUES (50, 100, 0, 'decision', 'Anderes Thema', 'accepted')")
     cs.close()
     # Die Semantik findet nur EINEN der drei TOPs — plus einen fremden Treffer.
     cand = [{"id": 2, "title": "Kita-Bericht", "score": 0.95, "session_date": "2026-06-17",
-             "committee": "Jugendhilfeausschuss", "outcome": "angenommen"},
+             "committee": "Jugendhilfeausschuss", "outcome": "accepted"},
             {"id": 50, "title": "Anderes Thema", "score": 0.9, "session_date": "2025-01-01",
-             "committee": "Rat", "outcome": "angenommen"}]
+             "committee": "Rat", "outcome": "accepted"}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (list(cand), "semantisch"))
     gesehen: dict = {}
 
@@ -3773,7 +3773,7 @@ def test_ask_keine_debatten_vor_der_sitzung(client, monkeypatch):
             "VALUES (12, 'Jugendhilfeausschuss', '2026-06-17', '16:00', '', '')")
         cs._conn.execute(
             "INSERT INTO council_decisions (id, ksinr, position, item_number, kind, title, outcome) "
-            "VALUES (1, 12, 0, '5', 'decision', 'Krippengruppe', 'angenommen')")
+            "VALUES (1, 12, 0, '5', 'decision', 'Krippengruppe', 'accepted')")
     cs.close()
     # Die Semantik „findet" immer denselben alten Wortbeitrag …
     monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [(77, 0.9)])
@@ -3784,7 +3784,7 @@ def test_ask_keine_debatten_vor_der_sitzung(client, monkeypatch):
          "committee": "Rat", "page": None, "ksinr": 100}] if ids else [])
     monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen", lambda self, c: [])
     alt = {"id": 50, "title": "Altes Bau-Thema", "score": 0.9,
-           "session_date": "2021-01-01", "committee": "Rat", "outcome": "angenommen"}
+           "session_date": "2021-01-01", "committee": "Rat", "outcome": "accepted"}
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: ([dict(alt)], "semantisch"))
 
     def frag(question):
@@ -3859,13 +3859,13 @@ def test_ask_einfacher_erklaeren_nimmt_den_eigenen_prompt(client, monkeypatch):
 
     _register(client)
     cand = [{"id": 5, "title": "Ausfallbürgschaft Stadion", "summary": "Bürgschaft",
-             "policy_field": "sport", "outcome": "angenommen", "session_date": "2026-06-01",
+             "policy_field": "sport", "outcome": "accepted", "session_date": "2026-06-01",
              "committee": "Rat", "score": 1.0},
             {"id": 6, "title": "Nahverkehrsplan Teilfortschreibung", "summary": "ÖPNV",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-06-01",
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-06-01",
              "committee": "Rat", "score": 0.9},
             {"id": 7, "title": "Ganz anderer Beschluss", "summary": "Formalie",
-             "policy_field": "sonstiges", "outcome": "angenommen", "session_date": "2026-05-01",
+             "policy_field": "sonstiges", "outcome": "accepted", "session_date": "2026-05-01",
              "committee": "Rat", "score": 0.8}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -3915,7 +3915,7 @@ def test_ask_stream_faellt_auf_abgeleitete_fragen_zurueck(client, monkeypatch):
 
     _register(client)
     cand = [{"id": 9, "title": "Sanierung Cäcilienbrücke — Kosten", "summary": "",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-06-01",
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-06-01",
              "committee": "Verkehrsausschuss", "score": 1.0, "no_votes": 4,
              "amount_eur": 1_000_000}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
@@ -4135,7 +4135,7 @@ def test_suggestions_lassen_vages_nie_durch(client, monkeypatch):
     with council._conn:
         for i in range(3):
             council._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
-                                     "angenommen", None, None, None, [], None, None, None)
+                                     "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
         for eid, slug, name in [(1, "cae-bruecke", "Cäcilienbrücke"), (2, "buergerbeteiligung", "Bürgerbeteiligung")]:
             council._conn.execute(
@@ -4179,7 +4179,7 @@ def test_suggestions_filtern_gattungswoerter_ohne_llm(client, monkeypatch):
     with council._conn:
         for i in range(3):
             council._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
-                                     "angenommen", None, None, None, [], None, None, None)
+                                     "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
         for eid, slug, name in [(1, "klima", "Klima"), (2, "fliegerhorst", "Fliegerhorst")]:
             council._conn.execute(
@@ -4225,13 +4225,13 @@ def test_decisions_topic_filter_grenzt_ein_und_kombiniert(client):
     with council._conn:
         council._conn.execute(
             "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
-            "VALUES (1,1,0,'Radweg beschlossen','angenommen','decision')")
+            "VALUES (1,1,0,'Radweg beschlossen','accepted','decision')")
         council._conn.execute(
             "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
-            "VALUES (2,1,1,'Radweg abgelehnt','abgelehnt','decision')")
+            "VALUES (2,1,1,'Radweg abgelehnt','rejected','decision')")
         council._conn.execute(
             "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
-            "VALUES (3,1,2,'Ganz anderes Thema','angenommen','decision')")
+            "VALUES (3,1,2,'Ganz anderes Thema','accepted','decision')")
     council.close()
 
     tid = client.post("/api/topics", json={"name": "Radwege", "description": "Alles zu Radwegen"}).json()["id"]
@@ -4247,7 +4247,7 @@ def test_decisions_topic_filter_grenzt_ein_und_kombiniert(client):
     assert r.json()["total"] == 2
     assert {d["id"] for d in r.json()["decisions"]} == {1, 2}
     # Thema UND Ergebnis-Filter greifen zusammen.
-    assert client.get(f"/api/council/decisions?limit=50&topic={tid}&outcome=abgelehnt").json()["total"] == 1
+    assert client.get(f"/api/council/decisions?limit=50&topic={tid}&outcome=rejected").json()["total"] == 1
 
 
 def test_decisions_topic_filter_nur_eigene_themen(client):
@@ -4269,7 +4269,7 @@ def test_decisions_topic_ohne_treffer_liefert_leer(client):
     with council._conn:
         council._conn.execute(
             "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
-            "VALUES (1,1,0,'Irgendwas','angenommen','decision')")
+            "VALUES (1,1,0,'Irgendwas','accepted','decision')")
     council.close()
     tid = client.post("/api/topics", json={"name": "Leer", "description": "ohne Treffer"}).json()["id"]
     assert client.get(f"/api/council/decisions?limit=50&topic={tid}").json()["total"] == 0
@@ -4287,10 +4287,10 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
             "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
             "VALUES (?,1,?,?,?,'decision')",
             [
-                (1, 0, "Widmung Klingenbergplatz", "angenommen"),
-                (2, 1, "Sportpark Kreyenbrück", "abgelehnt"),
-                (3, 2, "Sanierung Rathaus", "angenommen"),
-                (4, 3, "Bericht aus Kreyenbrück", "zur_kenntnis"),
+                (1, 0, "Widmung Klingenbergplatz", "accepted"),
+                (2, 1, "Sportpark Kreyenbrück", "rejected"),
+                (3, 2, "Sanierung Rathaus", "accepted"),
+                (4, 3, "Bericht aus Kreyenbrück", "noted"),
             ],
         )
     council.save_decision_locations(1, [
@@ -4353,7 +4353,7 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
     assert "lon" in first["location_matches"][0]
     # Ortsbezug und vorhandene Suchfilter greifen gemeinsam.
     accepted = client.get(
-        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=vote&outcome=angenommen"
+        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=vote&outcome=accepted"
     ).json()
     assert accepted["total"] == 1 and accepted["decisions"][0]["id"] == 1
     reports = client.get(
@@ -4370,7 +4370,7 @@ def test_curated_place_alias_filters_by_stable_id_and_has_profile(client):
     with council._conn:
         council._conn.execute(
             "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
-            "VALUES (1,1,0,'Neues aus der Donnerschwee-Kaserne','angenommen','decision')"
+            "VALUES (1,1,0,'Neues aus der Donnerschwee-Kaserne','accepted','decision')"
         )
     council.save_decision_locations(1, [{
         "name": "Donnerschwee-Kaserne",
@@ -4417,7 +4417,7 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
     with council._conn:
         council._conn.executemany(
             "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
-            "VALUES (?,1,?,'Planung Testanger','angenommen','decision')",
+            "VALUES (?,1,?,'Planung Testanger','accepted','decision')",
             [(1, 0), (2, 1), (3, 2)],
         )
     for decision_id in (1, 2, 3):
@@ -4567,7 +4567,7 @@ def test_decision_detail_meldet_follow_zustand(client):
     with council._conn:
         council._conn.execute(
             "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind, template_number, kvonr) "
-            "VALUES (1,1,0,'Stadion','angenommen','decision','26/0396',4711)")
+            "VALUES (1,1,0,'Stadion','accepted','decision','26/0396',4711)")
     council.close()
 
     assert client.get("/api/council/decision/1").json()["follow"] == {"kvonr": 4711, "following": False}
@@ -4641,7 +4641,7 @@ def test_link_vorschau_ist_oeffentlich_und_beschreibt_den_beschluss(client):
     cs = CouncilStore(COUNCIL_DB)
     cs.save_session(CouncilSession(4242, "Verkehrsausschuss", "2026-03-05", "17:00", "Fleiwa"))
     cs._insert_decision(4242, 0, "decision", None, "Ö 5", "Radwegeausbau Nadorster Straße",
-                        "Der Ausbau wird beschlossen.", "angenommen", "mehrheitlich", 3, 1,
+                        "Der Ausbau wird beschlossen.", "accepted", "majority", 3, 1,
                         ["SPD"], None, None, None)
     cs._conn.commit()
     did = cs._conn.execute(
@@ -4679,7 +4679,7 @@ def _seed_geteilter_beschluss(ksinr=5150, mit_vorgang=True) -> int:
     cs.save_session(CouncilSession(ksinr, "Verkehrsausschuss", "2026-06-08", "17:00", "Fleiwa",
                                    agenda_items=[AgendaItem("Ö 4", "Radweg Nadorster Straße")]))
     cs._insert_decision(ksinr, 0, "decision", None, "Ö 4", "Radweg Nadorster Straße",
-                        "Der Ausbau wird beschlossen.", "angenommen", "einstimmig", 0, 0,
+                        "Der Ausbau wird beschlossen.", "accepted", "unanimous", 0, 0,
                         ["SPD", "Grüne"],
                         "25/0123" if mit_vorgang else None,
                         4711 if mit_vorgang else None, None)
@@ -4706,7 +4706,7 @@ def test_geteilter_beschluss_ist_ohne_anmeldung_lesbar(client):
     assert r.status_code == 200, "Beschluss muss ohne Anmeldung erreichbar sein"
     data = r.json()
     assert data["decision"]["title"] == "Radweg Nadorster Straße"
-    assert data["decision"]["outcome"] == "angenommen"
+    assert data["decision"]["outcome"] == "accepted"
     # Der Kontext, der die Seite lesbar macht, ist mit dabei:
     assert data["present_parties"] and data["importance_breakdown"]
     assert "ratsinfo_url" in data
@@ -4837,7 +4837,7 @@ def test_vorschau_karte_bleibt_lesbar_auch_bei_amtstiteln(client):
     cs = CouncilStore(COUNCIL_DB)
     cs.save_session(CouncilSession(6001, "Rat der Stadt", "2026-05-04", "17:00", "Rathaus"))
     # Ohne Beschlusstext — dann drohte die Beschreibung bei „Gremium · Datum." zu enden.
-    cs._insert_decision(6001, 0, "decision", None, "Ö 2", lang, None, "vertagt",
+    cs._insert_decision(6001, 0, "decision", None, "Ö 2", lang, None, "postponed",
                         None, None, None, [], None, None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 6001").fetchone()[0]
@@ -4854,7 +4854,7 @@ def test_vorschau_karte_bleibt_lesbar_auch_bei_amtstiteln(client):
     # Kurze Titel bleiben unangetastet.
     cs = CouncilStore(COUNCIL_DB)
     cs._insert_decision(6001, 1, "decision", None, "Ö 3", "Radweg beschlossen",
-                        "Wird gebaut.", "angenommen", None, None, None, [], None, None, None)
+                        "Wird gebaut.", "accepted", None, None, None, [], None, None, None)
     cs._conn.commit()
     kurz_id = cs._conn.execute(
         "SELECT id FROM council_decisions WHERE item_number = 'Ö 3'").fetchone()[0]
@@ -4918,7 +4918,7 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
                 "terms": "Kosten Cäcilienbrücke", "kind": "money", "party": None}
 
     cand = [{"id": 5, "title": "Ersatzbau Cäcilienbrücke", "summary": "Kosten",
-             "outcome": "angenommen", "session_date": "2025-08-25", "committee": "Rat", "score": 1.0}]
+             "outcome": "accepted", "session_date": "2025-08-25", "committee": "Rat", "score": 1.0}]
     monkeypatch.setattr(qa_mod, "analyse_query", fake_analyse)
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Antwort [5]."]))
@@ -4961,10 +4961,10 @@ def _deep_mocks(monkeypatch):
          "template_number": "26/0100", "vorlage_titel": "Grundsatzbeschluss Stadionneubau"}])
     cand = [
         {"id": 5, "title": "Grundsatzbeschluss Stadionneubau", "summary": "Neubau am Marschweg",
-         "template_number": "26/0100", "kvonr": 111, "policy_field": "sport", "outcome": "angenommen",
+         "template_number": "26/0100", "kvonr": 111, "policy_field": "sport", "outcome": "accepted",
          "session_date": "2026-06-01", "committee": "Rat", "factions": None, "amount_eur": None},
         {"id": 7, "title": "Projektgesellschaft Stadion", "summary": "Gründung",
-         "template_number": "26/0200", "kvonr": 222, "policy_field": "sport", "outcome": "angenommen",
+         "template_number": "26/0200", "kvonr": 222, "policy_field": "sport", "outcome": "accepted",
          "session_date": "2024-03-11", "committee": "Finanzausschuss", "factions": None,
          "amount_eur": None},
     ]
@@ -5191,7 +5191,7 @@ def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
         job.material = {
             "candidates": [{"id": 5, "title": "Grundsatzbeschluss", "summary": "Neubau",
                             "session_date": "2026-06-01", "committee": "Rat",
-                            "template_number": None, "outcome": "angenommen"}],
+                            "template_number": None, "outcome": "accepted"}],
             "presse": [], "debatten": [], "haushalt": [], "planungen": [],
             "facetten_namen": ["Beschlusslage", "Kosten", "B-Plan", "Debatte", "Weiter"],
             "facetten_fertig": 2, "gelesen": 1, "zeitraum": "2026",
@@ -5286,7 +5286,7 @@ def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
     monkeypatch.setattr(council_router.qa_limiter, "check",
                         lambda request, *, subject=None: (aufrufe.append(1), key.append(subject)))
     cand = [{"id": 5, "title": "Radweg", "summary": "Ausbau", "policy_field": "verkehr",
-             "outcome": "angenommen", "session_date": "2026-07-02",
+             "outcome": "accepted", "session_date": "2026-07-02",
              "committee": "Verkehrsausschuss", "score": 1.0}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -5319,7 +5319,7 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
 
     _register(client)
     cand = [{"id": 5, "title": "Stadionneubau", "summary": "Grundsatz", "policy_field": "sport",
-             "outcome": "angenommen", "session_date": "2026-06-01",
+             "outcome": "accepted", "session_date": "2026-06-01",
              "committee": "Rat", "score": 1.0}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -5913,7 +5913,7 @@ def test_committees_bleibt_eine_reine_namensliste(client):
     cs.save_session(CouncilSession(7101, "Verkehrsausschuss", kommend, "16:30", "PFL"))
     cs.save_session(CouncilSession(7102, "Kulturausschuss", "2019-03-04", "17:00", "PFL"))
     cs._insert_decision(7101, 0, "decision", None, "Ö 2", "Radweg", "Wird gebaut.",
-                        "angenommen", None, None, None, [], None, None, None)
+                        "accepted", None, None, None, [], None, None, None)
     cs._conn.commit()
     cs.close()
 
@@ -5939,7 +5939,7 @@ def test_council_parties_liefert_kanonische_filterwerte(client):
     cs = CouncilStore(COUNCIL_DB)
     cs.save_session(CouncilSession(7201, "Rat der Stadt", "2026-08-28", "17:00", "Rathaus"))
     cs._insert_decision(7201, 0, "decision", None, "Ö 2", "Gemeinsamer Antrag", "Beschlossen.",
-                        "angenommen", None, None, None, ["Gruppe FDP/Volt", "SPD-Fraktion"],
+                        "accepted", None, None, None, ["Gruppe FDP/Volt", "SPD-Fraktion"],
                         None, None, None)
     cs._conn.commit()
     cs.close()

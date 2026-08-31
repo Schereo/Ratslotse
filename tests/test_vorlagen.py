@@ -125,7 +125,7 @@ def test_vorlagen_failed_is_retried_no_pdf_is_not(store):
 def test_fts_includes_vorlage_text(store):
     _seed_session(store)
     store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg Haarenufer", "Wird gebaut.",
-                           "angenommen", None, None, None, [], "26/0330", None, None)
+                           "accepted", None, None, None, [], "26/0330", None, None)
     store._conn.commit()
     store.save_vorlage({"kvonr": 555, "template_number": "26/0330", "status": "ok",
                         "raw_text": "Im Sachverhalt geht es um Quartiersgaragen am Hafen."})
@@ -176,7 +176,7 @@ def test_anlagen_store_and_stats(store):
     _seed_session(store)  # ksinr=1, kvonr=555, "26/0330", Rat der Stadt, 2026-01-01
     store.save_vorlage({"kvonr": 555, "template_number": "26/0330", "status": "ok", "raw_text": "Sachverhalt: X."})
     store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg", "Wird gebaut.",
-                           "angenommen", None, None, None, [], "26/0330", None, None)
+                           "accepted", None, None, None, [], "26/0330", None, None)
     store._conn.commit()
     n = store.save_anlagen(555, [
         {"document_id": 90, "url": "https://x/90", "label": "Antrag der SPD-Fraktion",
@@ -194,7 +194,7 @@ def test_anlagen_store_and_stats(store):
     # Erfolgsquote: 1 SPD-Antrag, Vorlage im Rat angenommen
     stats = store.antrag_stats()
     assert stats["n_antraege"] == 1 and stats["n_mit_beschluss"] == 1
-    assert stats["parties"] == [{"party": "SPD", "n": 1, "angenommen": 1, "abgelehnt": 0}]
+    assert stats["parties"] == [{"party": "SPD", "n": 1, "accepted": 1, "rejected": 0}]
 
 
 def test_antrag_stats_prefers_rat_decision(store):
@@ -202,20 +202,20 @@ def test_antrag_stats_prefers_rat_decision(store):
     store.save_session(CouncilSession(10, "Bauausschuss", "2026-01-10", "17:00", "Rathaus",
                                       agenda_items=[AgendaItem("Ö 2", "X", template_number="26/0500", kvonr=700)]))
     store.save_session(CouncilSession(11, "Rat der Stadt", "2026-02-01", "17:00", "Rathaus"))
-    store._insert_decision(10, 0, "decision", None, "Ö 2", "X", "B", "abgelehnt", None, None, None, [], "26/0500", None, None)
-    store._insert_decision(11, 0, "decision", None, "Ö 9", "X", "B", "angenommen", None, None, None, [], "26/0500", None, None)
+    store._insert_decision(10, 0, "decision", None, "Ö 2", "X", "B", "rejected", None, None, None, [], "26/0500", None, None)
+    store._insert_decision(11, 0, "decision", None, "Ö 9", "X", "B", "accepted", None, None, None, [], "26/0500", None, None)
     store._conn.commit()
     store.save_vorlage({"kvonr": 700, "template_number": "26/0500", "status": "ok"})
     store.save_anlagen(700, [{"document_id": 95, "url": "u", "label": "Antrag der CDU-Fraktion",
                               "is_motion": 1, "applicants": ["CDU"], "status": "ok"}])
     stats = store.antrag_stats()
-    assert stats["parties"] == [{"party": "CDU", "n": 1, "angenommen": 1, "abgelehnt": 0}]
+    assert stats["parties"] == [{"party": "CDU", "n": 1, "accepted": 1, "rejected": 0}]
 
 
 def test_fts_includes_antrag_text(store):
     _seed_session(store)
     store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg", "Wird gebaut.",
-                           "angenommen", None, None, None, [], "26/0330", None, None)
+                           "accepted", None, None, None, [], "26/0330", None, None)
     store._conn.commit()
     store.save_vorlage({"kvonr": 555, "template_number": "26/0330", "status": "ok", "raw_text": "Sachverhalt."})
     store.save_anlagen(555, [{"document_id": 90, "url": "u", "label": "Antrag der SPD-Fraktion",
@@ -230,7 +230,7 @@ def test_qa_context_includes_vorlage_excerpt():
     from council.qa import _build_context
     ctx = _build_context([{
         "id": 5, "title": "Radweg", "committee": "Rat", "session_date": "2026-01-01",
-        "outcome": "angenommen", "summary": "Kurz.",
+        "outcome": "accepted", "summary": "Kurz.",
         "vorlage_excerpt": "Sachverhalt: Darum geht es wirklich.",
     }])
     assert "— Aus der Vorlage: Sachverhalt: Darum geht es wirklich." in ctx
@@ -270,7 +270,7 @@ def test_list_entities_recency_and_trending_tags(store):
     store.save_session(CouncilSession(1, "Rat der Stadt", recent, "17:00", "Rathaus"))
     store.save_session(CouncilSession(2, "Rat der Stadt", old, "17:00", "Rathaus"))
     for ks, tags in [(1, '["Radverkehr", "Wärmeplanung"]'), (2, '["Radverkehr"]')]:
-        store._insert_decision(ks, 0, "decision", None, "Ö 1", f"D{ks}", "B", "angenommen",
+        store._insert_decision(ks, 0, "decision", None, "Ö 1", f"D{ks}", "B", "accepted",
                                None, None, None, [], None, None, None)
     with store._conn:
         store._conn.execute("UPDATE council_decisions SET policy_tags='[\"Radverkehr\", \"Wärmeplanung\"]' WHERE ksinr=1")
@@ -302,7 +302,7 @@ def test_parties_for_faction_gruppen_multi_mapping():
 
 def test_decision_row_zaehlt_gruppe_fuer_beide_parteien(store):
     _seed_session(store)
-    store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg", "B", "angenommen",
+    store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg", "B", "accepted",
                            None, None, None, ["Gruppe FDP/Volt"], None, None, None)
     store._conn.commit()
     d = store.get_decisions(1)[0]
@@ -322,9 +322,9 @@ def test_suggested_entity_topics_prefers_concrete_active(store):
     with store._conn:
         for i in range(4):
             store._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
-                                   "angenommen", None, None, None, [], None, None, None)
+                                   "accepted", None, None, None, [], None, None, None)
         store._insert_decision(2, 0, "decision", None, "Ö 9", "Alt", "B",
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in store._conn.execute(
             "SELECT id FROM council_decisions ORDER BY id").fetchall()]
         ents = [(1, "veloroute-4", "Veloroute 4", "projekt", 3),

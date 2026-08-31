@@ -80,6 +80,8 @@ import type { DokumenteAntwort } from "@/lib/haushalt-dokumente";
 import { Zeitstrahl, ZeitstrahlStation } from "@/components/grafik/zeitstrahl";
 import { StationsZeile } from "@/components/haushalt/weg-stationen";
 import { Beleg } from "@/components/haushalt/source";
+import { OUTCOME_META, voteLabel } from "@/components/decision-ui";
+import type { DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 
@@ -452,13 +454,13 @@ function Weg({ runde }: { runde: WegRunde }) {
  *  daneben Stiftungen und Eigenbetriebe — deren Voten stehen hier bewusst
  *  nicht, sonst nennte die Zeile eine Mehrheit für etwas anderes. */
 function Votum({ votum }: { votum: NonNullable<WegStation["votum"]> }) {
-  const teile = [votum.vote, votum.no_votes != null ? `${votum.no_votes} Gegenstimmen` : null,
+  const teile = [voteLabel(votum.vote) || null, votum.no_votes != null ? `${votum.no_votes} Gegenstimmen` : null,
     votum.abstentions ? `${votum.abstentions} Enthaltungen` : null].filter(Boolean);
   return (
     <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
       Abstimmung über die Haushaltssatzung:{" "}
       <Link href={decisionHref(votum.id)} className="font-semibold text-primary">
-        {votum.outcome ?? "Ergebnis im Protokoll"}
+        {(votum.outcome && OUTCOME_META[votum.outcome as DecisionOutcome]?.label) ?? "Ergebnis im Protokoll"}
       </Link>
       {teile.length > 0 && ` · ${teile.join(", ")}`}
     </p>

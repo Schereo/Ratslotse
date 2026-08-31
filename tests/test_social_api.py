@@ -158,7 +158,7 @@ def test_neue_beschluesse_filtert_wichtigkeit_und_id(client, monkeypatch, counci
         c.execute(
             "INSERT INTO council_decisions (id, ksinr, position, kind, title, "
             "outcome, vote, importance) VALUES (?, 1, 1, 'decision', "
-            "'Beschluss ' || ?, 'angenommen', 'mehrheitlich', ?)",
+            "'Beschluss ' || ?, 'accepted', 'majority', ?)",
             (bid, bid, wichtig))
     c.execute("INSERT INTO council_decision_votes (decision_id, faction, stance) "
               "VALUES (10, 'CDU', 'dagegen')")

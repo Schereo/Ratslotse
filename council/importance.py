@@ -107,7 +107,7 @@ def _money_signal(amount_eur: float | None, title: str | None = None) -> float |
 def _contention_signal(no_votes: int | None, abstentions: int | None,
                        vote: str | None, outcome: str | None) -> float | None:
     # Nur aussagekräftig, wenn tatsächlich abgestimmt wurde.
-    if outcome in (None, "kein_beschluss", "zur_kenntnis"):
+    if outcome in (None, "no_decision", "noted"):
         return None
     g = no_votes or 0
     e = abstentions or 0
@@ -117,9 +117,9 @@ def _contention_signal(no_votes: int | None, abstentions: int | None,
         return min(1.0, 0.45 + 0.55 * min(1.0, (g + 0.5 * e) / 10.0))
     # Keine Zahlen extrahiert → auf das (zuverlässigere) `vote`-Feld stützen.
     v = (vote or "").strip().lower()
-    if v == "mehrheitlich":
+    if v == "majority":
         return 0.6   # es gab Gegenstimmen, nur nicht als Zahl erfasst
-    if v == "einstimmig":
+    if v == "unanimous":
         return 0.12  # klar einstimmig → wenig umstritten
     return None      # gar keine Abstimmungsinfo → Signal fehlt (nicht 0)
 

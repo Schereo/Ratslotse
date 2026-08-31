@@ -9,14 +9,14 @@ import Testing
         "id": 42, "ksinr": 88, "kind": "decision", "item_number": "Ö 2",
         "title": "Radweg bauen", "summary": "Der Radweg wird gebaut.",
         "committee": "Verkehrsausschuss", "session_date": "2026-02-01",
-        "outcome": "angenommen", "vote": "mehrheitlich", "no_votes": 2,
+        "outcome": "accepted", "vote": "majority", "no_votes": 2,
         "abstentions": 1, "factions": ["SPD"], "template_number": "26/0400"
       },
       "present_parties": ["CDU", "SPD"],
       "ratsinfo_url": "https://buergerinfo.oldenburg.de/si0057.php?__ksinr=88",
       "sub_votes": [{
         "id": 43, "title": "Änderungsantrag", "committee": "Verkehrsausschuss",
-        "session_date": "2026-02-01", "outcome": "abgelehnt", "factions": ["CDU"]
+        "session_date": "2026-02-01", "outcome": "rejected", "factions": ["CDU"]
       }],
       "vorlage_journey": [{
         "ksinr": 87, "committee": "Ausschuss", "session_date": "2026-01-20", "item_number": "Ö 3"
@@ -103,7 +103,7 @@ import Testing
     {"bookmarks":[{
       "id":5,"kind":"decision","title":"Radweg","subtitle":"Rat · 2026-02-01",
       "state":"decided","url":"/council/decision?id=42","ksinr":88,"item_number":"Ö 2",
-      "notify_result":false,"decision":{"id":42,"title":"Radweg","outcome":"angenommen"},
+      "notify_result":false,"decision":{"id":42,"title":"Radweg","outcome":"accepted"},
       "session":null
     }]}
     """#
@@ -146,7 +146,7 @@ import Testing
         "title": "Neue Busspuren",
         "committee": "Rat der Stadt",
         "session_date": "2026-08-26",
-        "outcome": "angenommen",
+        "outcome": "accepted",
         "is_new": true
       }],
       "hits_30d": 3

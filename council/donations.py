@@ -229,7 +229,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
         nr = z.get("template_number")
         raw = z.get("raw_text")
 
-        if (z.get("outcome") or "") != "angenommen":
+        if (z.get("outcome") or "") != "accepted":
             verworfen.append({"template_number": nr, "session_date": z.get("session_date"),
                               "reason": "Der Tagesordnungspunkt wurde nicht beschlossen — "
                                        "angenommen wurde nichts, also ist auch nichts "

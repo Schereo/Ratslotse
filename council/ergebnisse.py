@@ -35,11 +35,11 @@ logger = logging.getLogger("council.ergebnisse")
 
 #: Wie ein Ergebnis in der Meldung heißt.
 ERGEBNIS_WORT = {
-    "angenommen": "angenommen",
-    "abgelehnt": "abgelehnt",
-    "vertagt": "vertagt",
-    "zur_kenntnis": "zur Kenntnis genommen",
-    "kein_beschluss": "ohne Beschluss geblieben",
+    "accepted": "angenommen",
+    "rejected": "abgelehnt",
+    "postponed": "vertagt",
+    "noted": "zur Kenntnis genommen",
+    "no_decision": "ohne Beschluss geblieben",
 }
 
 MONATE = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
@@ -69,11 +69,15 @@ def datum_lang(iso: str) -> str:
         return str(iso or "")
 
 
+#: Wie ein Abstimmungsverhältnis in der Meldung heißt.
+VOTE_WORT = {"unanimous": "einstimmig", "majority": "mehrheitlich"}
+
+
 def _stimmen(d: dict) -> str:
     """„einstimmig" bzw. „mehrheitlich, 11 dagegen" — nur, wenn belegt."""
     teile = []
     if d.get("vote"):
-        teile.append(str(d["vote"]))
+        teile.append(VOTE_WORT.get(d["vote"], str(d["vote"])))
     if d.get("no_votes"):
         teile.append(f"{d['no_votes']} dagegen")
     if d.get("abstentions"):

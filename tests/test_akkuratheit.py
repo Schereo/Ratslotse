@@ -89,7 +89,7 @@ def test_recency_boost_kippt_nur_nahe_scores():
 def _decision(id_, kvonr, template_number, date, committee="Rat", title="Stadionneubau"):
     return {"id": id_, "kvonr": kvonr, "template_number": template_number,
             "session_date": date, "committee": committee, "title": title,
-            "summary": "", "outcome": "angenommen"}
+            "summary": "", "outcome": "accepted"}
 
 
 def test_markiere_veraltete_ueber_kvonr_und_revisionen(tmp_path):
@@ -179,9 +179,9 @@ def test_latest_intent_ist_enger_als_allgemeine_aktualitaet():
     assert not qa.latest_intent("Was wurde 2019 zuletzt in Kreyenbrück beschlossen?")
     messages, _ = qa._answer_messages(
         "Was wurde in Kreyenbrück zuletzt beschlossen?",
-        [{"id": 1, "title": "Sachstandsbericht", "outcome": "zur_kenntnis",
+        [{"id": 1, "title": "Sachstandsbericht", "outcome": "noted",
           "session_date": "2026-04-28"},
-         {"id": 2, "title": "Jüngster echter Beschluss", "outcome": "angenommen",
+         {"id": 2, "title": "Jüngster echter Beschluss", "outcome": "accepted",
           "session_date": "2026-04-21"}],
         typ="ort",
     )
@@ -189,20 +189,20 @@ def test_latest_intent_ist_enger_als_allgemeine_aktualitaet():
     assert "echte Entscheidung" in messages[0]["content"]
     assert "[2] vom 2026-04-21" in messages[0]["content"]
     assert qa.latest_real_decision([
-        {"id": 1, "outcome": "zur_kenntnis"},
-        {"id": 2, "outcome": "vertagt"},
-        {"id": 3, "outcome": "abgelehnt"},
-        {"id": 4, "outcome": "angenommen"},
+        {"id": 1, "outcome": "noted"},
+        {"id": 2, "outcome": "postponed"},
+        {"id": 3, "outcome": "rejected"},
+        {"id": 4, "outcome": "accepted"},
     ])["id"] == 3
 
 
 def test_latest_place_answer_ist_deterministisch_und_unterscheidet_berichte():
     answer = qa.latest_place_answer([
-        {"id": 1, "title": "Neuer Sachstandsbericht", "outcome": "zur_kenntnis",
+        {"id": 1, "title": "Neuer Sachstandsbericht", "outcome": "noted",
          "session_date": "2026-04-28", "committee": "Rat"},
-        {"id": 2, "title": "Jüngster echter Beschluss", "outcome": "angenommen",
+        {"id": 2, "title": "Jüngster echter Beschluss", "outcome": "accepted",
          "session_date": "2026-04-21", "committee": "Rat"},
-        {"id": 3, "title": "Alter Beschluss", "outcome": "angenommen",
+        {"id": 3, "title": "Alter Beschluss", "outcome": "accepted",
          "session_date": "2025-12-11", "committee": "Rat"},
     ])
     assert answer.startswith("Am 21.04.2026")
@@ -211,14 +211,14 @@ def test_latest_place_answer_ist_deterministisch_und_unterscheidet_berichte():
     assert "Alter Beschluss" not in answer
 
     rejected = qa.latest_place_answer([
-        {"id": 4, "title": "Antrag auf Umbau", "outcome": "abgelehnt",
+        {"id": 4, "title": "Antrag auf Umbau", "outcome": "rejected",
          "session_date": "2026-05-02", "committee": "Bauausschuss"},
     ])
     assert "jüngste Abstimmungsentscheidung" in rejected
     assert "abgelehnt" in rejected and "nicht beschlossen [4]" in rejected
 
     report_only = qa.latest_place_answer([
-        {"id": 5, "title": "Bericht", "outcome": "zur_kenntnis",
+        {"id": 5, "title": "Bericht", "outcome": "noted",
          "session_date": "2026-05-03"},
     ])
     assert report_only.startswith("Einen angenommenen oder abgelehnten Beschluss")

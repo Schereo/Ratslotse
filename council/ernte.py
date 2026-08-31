@@ -151,7 +151,7 @@ def _norm(s: str) -> str:
 def deviation(vorschlag: str | None, official_text: str | None) -> str | None:
     """Wie stark weicht der gefasste Beschluss vom Verwaltungsvorschlag ab?
 
-    → "unveraendert" | "leicht" | "stark" | None (eine Seite fehlt oder ist zu
+    → "unchanged" | "slight" | "strong" | None (eine Seite fehlt oder ist zu
     kurz). Maß ist Containment, nicht die symmetrische difflib-Ratio: der aus
     dem Protokoll extrahierte Beschluss ist oft eine Kurzfassung des Vorschlags
     — Kürzung allein ist keine inhaltliche Änderung. Gezählt wird, welcher
@@ -165,7 +165,7 @@ def deviation(vorschlag: str | None, official_text: str | None) -> str | None:
     getroffen = sum(bl.size for bl in sm.get_matching_blocks() if bl.size >= 12)
     anteil = getroffen / len(kurz)
     if anteil >= 0.9:
-        return "unveraendert"
+        return "unchanged"
     if anteil >= 0.55:
-        return "leicht"
-    return "stark"
+        return "slight"
+    return "strong"

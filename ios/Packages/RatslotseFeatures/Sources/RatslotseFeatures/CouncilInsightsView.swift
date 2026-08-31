@@ -906,7 +906,7 @@ struct CouncilInsightsView: View {
                 CouncilGoal(key: "klima", label: "Klimaneutrale Stadt", description: "Emissionen senken und Oldenburg an den Klimawandel anpassen.", voran: 18, bremst: 3, neutral: 7, total: 28),
                 CouncilGoal(key: "teilhabe", label: "Soziale Teilhabe", description: "Gute Zugänge zu Wohnen, Bildung und öffentlichem Leben schaffen.", voran: 14, bremst: 2, neutral: 5, total: 21),
             ]
-            goalDetails["klima"] = [GoalDecision(id: 1, title: "Neue Busspuren für Oldenburg", summary: "Busverkehr beschleunigen.", policyField: "verkehr", outcome: "angenommen", sessionDate: "2026-08-26", committee: "Rat", stance: "voran", rationale: "Stärkt den öffentlichen Verkehr.")]
+            goalDetails["klima"] = [GoalDecision(id: 1, title: "Neue Busspuren für Oldenburg", summary: "Busverkehr beschleunigen.", policyField: "verkehr", outcome: "accepted", sessionDate: "2026-08-26", committee: "Rat", stance: "voran", rationale: "Stärkt den öffentlichen Verkehr.")]
             return
         }
 #endif
