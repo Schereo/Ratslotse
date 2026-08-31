@@ -3055,6 +3055,10 @@
                 "title": "My Topic Items",
                 "type": "array"
               },
+              "n_items": {
+                "title": "N Items",
+                "type": "integer"
+              },
               "session_date": {
                 "title": "Session Date",
                 "type": "string"
@@ -5080,6 +5084,10 @@
             },
             "title": "My Topic Items",
             "type": "array"
+          },
+          "n_items": {
+            "title": "N Items",
+            "type": "integer"
           },
           "session_date": {
             "title": "Session Date",

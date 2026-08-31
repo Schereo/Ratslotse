@@ -4922,6 +4922,8 @@ export interface components {
                 my_topic_items?: {
                     [key: string]: unknown;
                 }[];
+                /** N Items */
+                n_items?: number;
                 /** Session Date */
                 session_date: string;
                 /** Session Time */
@@ -5692,6 +5694,8 @@ export interface components {
             my_topic_items?: {
                 [key: string]: unknown;
             }[];
+            /** N Items */
+            n_items?: number;
             /** Session Date */
             session_date: string;
             /** Session Time */
@@ -10898,4 +10902,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 16d2f04c4b7015e9fe88c222a859372f590fd5bec7de4ddfbe443e8a8f801792
+// vertrag-sha256: b8011626e06d8e55a9e94f7aff96c586067dc3b24e62ee9b59b0447f07ac0036

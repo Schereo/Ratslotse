@@ -10,3 +10,7 @@ worden — sie standen unter anderem in den Belegtexten unter den Zahlen
 
 Außerdem lief das Auswertungs-Skript für die Ortszuordnung seit der
 Stadtteil-Umbenennung in einen Datenbankfehler.
+
+**Die Zahl der Tagesordnungspunkte fehlte in der Sitzungsliste.** Web und App
+zeigten „0 TOPs" bzw. eine leere Zahl — der Wert wurde beim Ausliefern still
+entfernt, weil er in der Antwortform nicht stand.
