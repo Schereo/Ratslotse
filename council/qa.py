@@ -64,7 +64,7 @@ _EXPAND_CACHE_MAX = 256
 # „person" und „sitzung" liefert die LLM-Analyse nie — die Typen werden
 # deterministisch gesetzt, wenn finde_person eine Ratsperson bzw.
 # finde_sitzungen eine konkrete Sitzung in der Frage erkennt (Router).
-QUERY_TYPES = ("thema", "verlauf", "partei", "geld", "person", "sitzung", "ort")
+QUERY_TYPES = ("topic", "history", "party", "money", "person", "session", "place")
 _ANALYSE_CACHE: dict[str, dict] = {}
 
 # Rechercheplaner im Shadow-Mode: Diese Kanäle existieren heute bereits oder
@@ -184,16 +184,16 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
         c for c in (plan.get("channels") or []) if c in RESEARCH_CHANNELS))
     mandatory = ["decisions"]
     # Manche klaren Finanzfragen klassifiziert das Modell sinnvoll als
-    # ``thema`` (Prüfbericht, Pflichtaufgabe, Gebühren). Der deterministische
+    # ``topic`` (Prüfbericht, Pflichtaufgabe, Gebühren). Der deterministische
     # Quellenrouter erkennt sie trotzdem; der Rechercheplan muss dazu passen.
     finance_facets = geld_facetten(question, typ)
-    if typ == "geld" or finance_facets:
+    if typ == "money" or finance_facets:
         mandatory.append("budget")
-    if typ in ("person", "partei") or person:
+    if typ in ("person", "party") or person:
         mandatory.append("debates")
     if place:
         mandatory.append("places")
-    if typ == "sitzung" or sessions:
+    if typ == "session" or sessions:
         mandatory.append("sessions")
     mandatory = list(dict.fromkeys(mandatory))
 
@@ -251,7 +251,7 @@ def research_plan_with_mandatory(plan: dict, *, typ: str, question: str = "",
         suppressed.append("documents")
     elif ("documents" in selected and question
           and not _EXPLICIT_DOCUMENT_RE.search(question)
-          and (typ in ("person", "partei", "sitzung")
+          and (typ in ("person", "party", "session")
                or latest_decision or definition_only or finance_facets
                or _DECISION_METADATA_RE.search(question))):
         # Das Analysemodell schwankt bei Metadatenfragen trotz klarer Prompt-
@@ -298,13 +298,13 @@ def research_plan_log_record(question: str, plan: dict, typ: str,
 
 def analyse_query(question: str, model: str = EXPAND_MODEL,
                   verlauf: list[dict] | None = None) -> dict:
-    """{"frage", "begriffe", "typ", "partei"} zur Frage. ``frage`` ist die
+    """{"question", "terms", "kind", "party"} zur Frage. ``question`` ist die
     EIGENSTÄNDIGE Fassung: Bei mitgegebenem Gesprächsverlauf (Chat) löst die
     Analyse Rückbezüge auf („Und was kostet das?" → „Was kostet der Neubau der
     Cäcilienbrücke?"), sonst bleibt sie die Original-Frage. Retrieval UND
     Reranker arbeiten mit dieser Fassung. Robust: bei kaputtem JSON oder
     LLM-Fehler kommt das Verhalten von vor dem Routing zurück."""
-    fallback = {"question": question, "terms": question, "kind": "thema", "party": None,
+    fallback = {"question": question, "terms": question, "kind": "topic", "party": None,
                 "variants": [], "eng": False, "rechercheplan": _research_plan({})}
     vtext = _verlauf_zeilen(verlauf)
     key = f"{model}|{hash(vtext)}|{' '.join(question.split()).lower()[:300]}"
@@ -334,12 +334,12 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         # knapp statt mit Verlauf + Debatten-Absatz. Reist im ohnehin laufenden
         # Analyse-Call mit, kostet also keine zusätzliche Latenz.
         eng = bool(data.get("eng") is True)
-        if typ not in QUERY_TYPES or typ in ("person", "sitzung", "ort"):
-            # „person"/„sitzung"/„ort" setzt ausschließlich der Router
+        if typ not in QUERY_TYPES or typ in ("person", "session", "place"):
+            # „person"/„session"/„place" setzt ausschließlich der Router
             # (deterministische Erkennung) — behauptet das Modell den Typ,
             # fehlt die Person bzw. die aufgelöste Sitzung.
-            typ = "thema"
-        if typ != "partei":
+            typ = "topic"
+        if typ != "party":
             partei = None
         out = {"question": frage or question, "terms": begriffe or question,
                "kind": typ, "party": partei, "variants": varianten, "eng": eng,
@@ -381,14 +381,14 @@ ENG_REGEL = (
 )
 
 EXTRA_REGELN = {
-    "thema": "",
-    "verlauf": (
+    "topic": "",
+    "history": (
         "Diese Frage zielt auf den VERLAUF: Erzähle chronologisch (die Beschlüsse "
         "stehen bereits älteste zuerst), nenne zu jeder Station das Datum — die "
         "Datums-Regel oben gilt für diese Frage NICHT — und ende mit dem aktuellen "
         "Stand. 4–8 Sätze sind hier angemessen."
     ),
-    "partei": (
+    "party": (
         "Diese Frage zielt auf eine Fraktion/Gruppe: Stütze dich auf deren Anträge "
         "und Änderungsanträge (im Kontext als „Antrag von: …“ markiert) und auf "
         "ausdrücklich protokollierte Abstimmungssätze. WICHTIG: Das Ratsinfo kennt "
@@ -402,14 +402,14 @@ EXTRA_REGELN = {
     # bekommt seine Regeln aus `geld_regeln()` — dynamisch, je nach dem, was
     # tatsächlich im Kontext steht. Die beiden Wege sind absichtlich getrennt:
     # Eine Frage kann Beschluss-Beträge wollen, Haushaltszahlen, oder beides.
-    "geld": (
+    "money": (
         "Diese Frage zielt auf Beträge: Nenne die konkreten Summen aus den "
         "Beschlüssen (im Kontext als „Volumen: …“ markiert), gerundet und mit "
         "Einordnung, wofür das Geld ist. Tauchen zum selben Vorhaben mehrere "
         "Summen aus verschiedenen Jahren auf, benenne die Entwicklung mit "
         "Ausgangs- und Endwert samt Datum und zitiere beide Beschlüsse."
     ),
-    "ort": (
+    "place": (
         "Diese Frage zielt auf EINEN KONKRETEN ORT aus dem Ratslotse-Ortskatalog. "
         "Im Kontext stehen nur Beschlüsse mit belegtem Bezug zu diesem Ort. "
         "Unterscheide den Ort von seinem größeren Ortsbereich und behaupte nicht, "
@@ -430,7 +430,7 @@ EXTRA_REGELN = {
     # Sitzungs-Fragetyp (25.08.26): deterministisch gesetzt, wenn die Frage
     # eine konkrete Sitzung nennt — deren Beschlüsse stehen dann vollständig
     # und in Sitzungs-Reihenfolge vorn im Kontext (Router).
-    "sitzung": (
+    "session": (
         "Diese Frage zielt auf EINE KONKRETE SITZUNG (siehe Abschnitt ZUR "
         "GEFRAGTEN SITZUNG): Ihre Tagesordnungspunkte stehen — soweit ein "
         "Protokoll ausgewertet ist — VOLLSTÄNDIG und in Sitzungs-Reihenfolge "
@@ -1665,8 +1665,8 @@ def _steuerkraft_block(k: dict | None) -> str:
 # 1. DIE FACETTEN KOMMEN AUS DEM FRAGE-WORTLAUT, NICHT AUS DEM LLM-FRAGETYP.
 #    Der Fragetyp (`analyse_query`) ist ein LLM-Urteil und lautet für „Was hat
 #    das Rechnungsprüfungsamt beanstandet?" oder „Muss die Stadt das Theater
-#    betreiben?" mit gutem Grund `thema` — es sind keine Betragsfragen. Hinge
-#    der Haushalts-Kontext am Typ `geld`, bekämen genau diese Fragen nichts.
+#    betreiben?" mit gutem Grund `topic` — es sind keine Betragsfragen. Hinge
+#    der Haushalts-Kontext am Typ `money`, bekämen genau diese Fragen nichts.
 #    Deterministische Erkennung am Wortlaut ist außerdem das Einzige, was sich
 #    ohne API-Schlüssel messen lässt — und gemessen wird hier
 #    (tests/test_qa_geldquellen.py).
@@ -1868,12 +1868,12 @@ def haushaltsjahr(frage: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def geld_facetten(frage: str, typ: str = "thema") -> set[str]:
+def geld_facetten(frage: str, typ: str = "topic") -> set[str]:
     """Welche Haushalts-Quellen beantworten diese Frage? (Deterministisch.)
 
     Gemessen am ROHEN Fragewortlaut — nicht an den expandierten Suchbegriffen
     und nicht am LLM-Fragetyp (Begründung im Abschnittskopf oben). ``typ`` ist
-    nur ein Auffangnetz: Sagt das Modell ``geld`` und trifft trotzdem kein
+    nur ein Auffangnetz: Sagt das Modell ``money`` und trifft trotzdem kein
     Muster, kommen die Plan-Zahlen — das ist genau das Verhalten von vor
     dieser Runde, das damit unverändert erhalten bleibt.
 
@@ -1945,7 +1945,7 @@ def geld_facetten(frage: str, typ: str = "thema") -> set[str]:
     # Positions- und Verlaufsfragen ist das noch keine Haushaltsfrage; dort
     # braucht es zusätzlich einen ausdrücklichen Geld-Anker.
     if (_F_INVEST.search(t)
-            and (typ not in ("partei", "person", "verlauf") or _F_PLAN.search(t))):
+            and (typ not in ("party", "person", "history") or _F_PLAN.search(t))):
         # Immer beide: „Was wird gebaut?" hat einen Plan und ein Ist, und die
         # Frage sagt fast nie, welches von beidem gemeint ist. Nur den Plan zu
         # liefern hieße, jede Rückschau mit Absichtserklärungen zu beantworten;
@@ -1958,7 +1958,7 @@ def geld_facetten(frage: str, typ: str = "thema") -> set[str]:
         f.add("stellenplan")
     if _F_AENDERUNGSLISTE.search(t) or (_F_STREIT.search(t) and (f & {"plan", "ansatz"})):
         f.add("antraege")
-    if not f and typ == "geld":
+    if not f and typ == "money":
         f = {"plan"}   # das Verhalten von vor dieser Runde, unverändert
     return f
 
@@ -1973,7 +1973,7 @@ def _sicher(fn, *args, standard=None):
         return standard
 
 
-def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "thema") -> dict:
+def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "topic") -> dict:
     """Alle einschlägigen Haushalts-Quellen zu einer Frage in EINEM Aufruf.
 
     Der Router ruft nur noch das hier; welche Store-Methoden dabei laufen,
@@ -2718,7 +2718,7 @@ def geld_block(geld: dict | None) -> str:
 def geld_regeln(geld: dict | None, eng: bool = False) -> str:
     """Antwort-Regeln für den Haushalts-Kontext — nur, wenn welcher da ist.
 
-    Bewusst getrennt von ``EXTRA_REGELN["geld"]``: Die Regel dort ist für
+    Bewusst getrennt von ``EXTRA_REGELN["money"]``: Die Regel dort ist für
     BESCHLUSS-Beträge gebaut („Nenne die Summen aus den Beschlüssen, im
     Kontext als ‚Volumen: …‘ markiert") und war die einzige, die eine
     Geldfrage je zu sehen bekam. Für „Wie viel gibt Oldenburg für Soziales
@@ -2811,7 +2811,7 @@ DUENN_REGEL = (
 )
 
 
-def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
+def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      model: str = MODEL, presse: list[dict] | None = None,
                      verlauf: list[dict] | None = None,
                      haushalt: list[dict] | None = None,
@@ -2860,7 +2860,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
                             # Die Haushalts-Regeln hängen am KONTEXT, nicht am
                             # Fragetyp: „Was hat das Rechnungsprüfungsamt
                             # beanstandet?" ist für das Analyse-Modell mit gutem
-                            # Grund `thema` — die Feststellungen liegen trotzdem
+                            # Grund `topic` — die Feststellungen liegen trotzdem
                             # im Prompt und brauchen ihre Regeln.
                             extra_regeln=(ENG_REGEL if eng else EXTRA_REGELN.get(typ, ""))
                             + ortsregel
@@ -2976,13 +2976,13 @@ def _answer_tokens(typ: str, gross: bool = False, eng: bool = False) -> int:
     # Große Themen (Task 32) bekommen Platz für die gegliederte Langfassung.
     if gross:
         return 2200
-    if typ == "sitzung":
+    if typ == "session":
         # Der Rückblick muss JEDEN Punkt der Sitzung erwähnen dürfen.
         return 1400
-    return 1100 if typ == "verlauf" else 1000
+    return 1100 if typ == "history" else 1000
 
 
-def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
+def answer_question(question: str, candidates: list[dict], model: str = MODEL, typ: str = "topic",
                     presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                     haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
                     anlagen: list[dict] | None = None,
@@ -3001,7 +3001,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
     return resolve_citations(answer, {c["id"] for c in candidates})
 
 
-def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ: str = "thema",
+def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ: str = "topic",
                   presse: list[dict] | None = None, verlauf: list[dict] | None = None,
                   haushalt: list[dict] | None = None, debatten: list[dict] | None = None,
                   anlagen: list[dict] | None = None,

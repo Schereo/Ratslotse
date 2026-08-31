@@ -3035,7 +3035,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # antworten wir aus DEREN Wortbeiträgen — deterministisch erkannt,
             # schlägt thema/verlauf (nicht aber partei/geld).
             person = qa.finde_person(store, q_suche)
-            if person and typ not in ("partei", "geld"):
+            if person and typ not in ("party", "money"):
                 typ = "person"
             # Orts-Fragetyp: dieselbe deterministische Stammdaten-Erkennung wie
             # bei Personen. Ein Alias wie „Donnerschwee-Kaserne“ wird dabei auf
@@ -3045,8 +3045,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Geld-, Partei-, Verlaufs-, Personen- und Sitzungsfragen behalten
             # ihre Spezialregeln. Nur eine allgemeine Themenfrage wird zur
             # reinen Ortsfrage.
-            if ort and typ == "thema" and not person:
-                typ = "ort"
+            if ort and typ == "topic" and not person:
+                typ = "place"
             # Sitzungs-Fragetyp (25.08.26): Nennt die Frage ein konkretes
             # Sitzungsdatum oder die letzte/nächste Sitzung eines Gremiums,
             # wird die Sitzung deterministisch aufgelöst und ihre Beschlüsse
@@ -3061,9 +3061,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             sitzungen = [] if person else (qa.finde_sitzungen(store, q_suche)
                                            or qa.finde_sitzungen(store, q))
             sitzung_ids = [i for s in sitzungen for i in s.get("beschluss_ids") or []]
-            if sitzungen and typ not in ("partei", "geld"):
-                typ = "sitzung"
-            latest_place = bool(ort and typ == "ort"
+            if sitzungen and typ not in ("party", "money"):
+                typ = "session"
+            latest_place = bool(ort and typ == "place"
                                 and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
             shadow_plan = qa.research_plan_with_mandatory(
                 analyse.get("rechercheplan") or {}, typ=typ, question=q_suche,
@@ -3087,7 +3087,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                 varianten=analyse.get("variants"),
                                                 place_ids=place_ids)
             partei_ids: set[int] = set()
-            if typ == "partei" and analyse.get("party"):
+            if typ == "party" and analyse.get("party"):
                 # Anträge der gefragten Fraktion zum Thema in den Pool — die
                 # semantische Suche kennt den Antragsteller-Filter nicht.
                 try:
@@ -3109,7 +3109,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                          if allowed_place_ids is not None else sitzung_ids)
                 nachgeladen = store.get_decisions_by_ids(
                     [i for i in effective_sitzung_ids if i not in have])
-                if typ == "sitzung":
+                if typ == "session":
                     pos = {i: n for n, i in enumerate(effective_sitzung_ids)}
                     eigene = sorted(
                         [c for c in candidates if c["id"] in pos] + nachgeladen,
@@ -3210,7 +3210,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # davon deterministisch ohne Debatten.
             debates_enabled = qa.research_channel_enabled(shadow_plan, "debates")
             if (not latest_place and debates_enabled
-                    and (typ != "sitzung" or sitzung_ids)):
+                    and (typ != "session" or sitzung_ids)):
                 try:
                     # Task 16: Wortbeiträge aus den Protokollen (Reden, Anfragen,
                     # Einwohnerfragen, Zusagen) — die Substanz, die nicht in den
@@ -3344,7 +3344,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Sitzung + TOP + Sprecher + kuratierter Ortsbezug sind harte
                 # Beziehungen, keine Ähnlichkeitsschätzung.
                 lage = "solide"
-            if typ == "sitzung" and sitzungen:
+            if typ == "session" and sitzungen:
                 # Die Sitzung ist deterministisch aufgelöst, kein Ähnlichkeits-
                 # Raten — die Dünn-Regel hätte hier nichts zu bremsen. Gilt
                 # auch OHNE Beschlüsse (kommender Termin, Protokoll-Verzug):
@@ -3438,7 +3438,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # verlangt ~500 Wörter mit Zwischenüberschriften — das ist das
             # Gegenteil von dem, was der Knopf verspricht.
             gross = (len(candidates) >= 25 or spanne >= 3) and not einfach
-            if typ == "sitzung":
+            if typ == "session":
                 # Länge nach Sitzungsgröße statt Kandidatenzahl — die zählt
                 # nach dem Voll-Merge der Sitzung immer hoch.
                 gross = len(sitzung_ids) >= 12 and not einfach
@@ -3467,9 +3467,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 fehlend = [c for c in candidates[QA_ANSWER_N:] if c["id"] in partei_ids][:6]
                 if fehlend:
                     ctx = ctx[:QA_ANSWER_N - len(fehlend)] + fehlend
-            if typ == "verlauf":
+            if typ == "history":
                 ctx = qa.sort_verlauf(ctx)
-            if typ == "sitzung" and sitzung_ids and not einfach:
+            if typ == "session" and sitzung_ids and not einfach:
                 # ALLE Beschlüsse der Sitzung in den Antwort-Kontext — der
                 # QA_ANSWER_N-Deckel würde große Sitzungen wieder anschneiden,
                 # und genau das Anschneiden ist der Anlass dieses Fragetyps.

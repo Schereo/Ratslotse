@@ -3306,7 +3306,7 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
         "question": "Was kostet die Sporthalle in Kreyenbrück?",
         "terms": "Sporthalle Sanierung Kosten Kreyenbrück",
-        "kind": "geld", "party": None, "variants": [], "eng": False,
+        "kind": "money", "party": None, "variants": [], "eng": False,
     })
     monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
 
@@ -3318,10 +3318,10 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
     assert gesehen["place_ids"] == [1]
-    assert gesehen["typ"] == "geld"
+    assert gesehen["typ"] == "money"
     assert gesehen["ctx"] == [1]
     assert gesehen["ort"]["id"] == "kreyenbrueck"
-    assert sources["qtype"] == "geld"
+    assert sources["qtype"] == "money"
     assert [source["id"] for source in sources["sources"]] == [1]
     match = sources["sources"][0]["location_matches"][0]
     assert match["name"] == "Kreyenbrück"
@@ -3366,7 +3366,7 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
                         lambda *a, **k: ([], "semantisch"))
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
         "question": "Was hat Bernhard Ellberg zu Kreyenbrück gesagt?",
-        "terms": "Bernhard Ellberg Kreyenbrück", "kind": "thema",
+        "terms": "Bernhard Ellberg Kreyenbrück", "kind": "topic",
         "party": None, "variants": [], "eng": False,
     })
     monkeypatch.setattr(emb, "search_wortbeitraege_von_person",
@@ -3425,7 +3425,7 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
 
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
         "question": "Was wurde in Kreyenbrück zuletzt beschlossen?",
-        "terms": "Kreyenbrück Beschlüsse", "kind": "thema",
+        "terms": "Kreyenbrück Beschlüsse", "kind": "topic",
         "party": None, "variants": [], "eng": False,
     })
     monkeypatch.setattr(council_router, "_qa_retrieve",
@@ -3449,7 +3449,7 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
     assert sources["mode"] == "chronologisch"
-    assert sources["qtype"] == "ort"
+    assert sources["qtype"] == "place"
     assert sources["beleglage"] == "solide"
     assert sources["debatten"] == []
     assert [row["id"] for row in sources["sources"]] == [103, 102, 101]
@@ -3479,7 +3479,7 @@ def test_ask_gueltiger_plan_ohne_debatten_ueberspringt_den_kanal(client, monkeyp
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
         "question": "Wie ist der aktuelle Stand beim Stadionneubau?",
-        "terms": "Stadionneubau Stand", "kind": "verlauf", "party": None,
+        "terms": "Stadionneubau Stand", "kind": "history", "party": None,
         "variants": [], "eng": False,
         "rechercheplan": {
             "intent": "status", "channels": ["decisions", "press", "documents"],
@@ -3521,7 +3521,7 @@ def test_ask_gueltiger_faktenplan_ueberspringt_presse_und_zukunft(client, monkey
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
         "question": "Wurde die Baumschutzsatzung angenommen?",
-        "terms": "Baumschutzsatzung Abstimmung", "kind": "thema", "party": None,
+        "terms": "Baumschutzsatzung Abstimmung", "kind": "topic", "party": None,
         "variants": [], "eng": True,
         "rechercheplan": {
             "intent": "fact", "channels": ["decisions", "documents"],
@@ -3567,7 +3567,7 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
         "question": "Was steht im Schallgutachten zum Stadionneubau?",
-        "terms": "Schallgutachten Stadionneubau Lärm", "kind": "thema",
+        "terms": "Schallgutachten Stadionneubau Lärm", "kind": "topic",
         "party": None, "variants": [], "eng": False,
         "rechercheplan": {
             "intent": "fact", "channels": ["decisions", "documents"],
@@ -3624,7 +3624,7 @@ def test_ask_ohne_dokumentenbedarf_ueberspringt_anlagen_und_vorlagen(client, mon
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
         "question": "Wurde die Baumschutzsatzung beschlossen?",
-        "terms": "Baumschutzsatzung Abstimmung", "kind": "thema",
+        "terms": "Baumschutzsatzung Abstimmung", "kind": "topic",
         "party": None, "variants": [], "eng": True,
         "rechercheplan": {
             "intent": "fact", "channels": ["decisions", "documents"],
@@ -3653,7 +3653,7 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
     17.06.2026 beschlossen?" lief rein semantisch — 3 der 6 TOPs fehlten in der
     Antwort, darunter ein echter Beschluss (echte Nutzerfrage). Jetzt wird die
     Sitzung deterministisch aufgelöst: ALLE ihre Beschlüsse in Tagesordnungs-
-    Reihenfolge vorn im Kontext, qtype "sitzung", Beleglage solide."""
+    Reihenfolge vorn im Kontext, qtype "session", Beleglage solide."""
     from app.routers import council as council_router
     from council import qa as qa_mod
 
@@ -3698,13 +3698,13 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
         body = "".join(r.iter_text())
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     src = next(e for e in events if e["type"] == "sources")
-    assert src["qtype"] == "sitzung"
+    assert src["qtype"] == "session"
     assert src["beleglage"] == "solide"  # deterministisch aufgelöst, nie „dünn"
     # Die Sitzung steht vollständig und in Tagesordnungs-Reihenfolge vorn.
     assert [s["id"] for s in src["sources"]] == [1, 2, 3, 50]
     # Der Antwort-Kontext trägt die GANZE Sitzung — ohne Subvote und ohne den
     # Fremd-Treffer, der sonst als Sitzungsergebnis durchginge.
-    assert gesehen["typ"] == "sitzung"
+    assert gesehen["typ"] == "session"
     assert gesehen["ids"] == [1, 2, 3]
     assert gesehen["sitzungen"][0]["committee"] == "Jugendhilfeausschuss"
     # Sitzung MIT Beschlüssen: das sources-Event nennt sie, aber ohne
@@ -3738,14 +3738,14 @@ def test_ask_sitzungsfrage_ueberlebt_die_kondensierung(client, monkeypatch):
     # Analyse liefert eine kondensierte Fassung OHNE erkennbares Signalwort.
     monkeypatch.setattr(qa_mod, "analyse_query", lambda q, **k: {
         "question": "Themen der Sitzung des Bauausschusses", "terms": "Bauausschuss Themen",
-        "kind": "thema", "party": None, "variants": [], "eng": False})
+        "kind": "topic", "party": None, "variants": [], "eng": False})
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: ([], "semantisch"))
     with client.stream("POST", "/api/council/ask", json={
             "question": "Um was geht es im Bauausschuss morgen?"}) as r:
         body = "".join(r.iter_text())
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     src = next(e for e in events if e["type"] == "sources")
-    assert src["qtype"] == "sitzung"
+    assert src["qtype"] == "session"
     answer = "".join(e["text"] for e in events if e["type"] == "token")
     assert "tagt erst am" in answer and "Bebauungsplan N-777" in answer
 
@@ -3795,11 +3795,11 @@ def test_ask_keine_debatten_vor_der_sitzung(client, monkeypatch):
 
     # Zukunfts-Sitzung: KEINE Debatten, trotz „Treffer" der Semantik.
     src = frag("Um was geht es im Bauausschuss morgen?")
-    assert src["qtype"] == "sitzung" and src["debatten"] == []
+    assert src["qtype"] == "session" and src["debatten"] == []
     # Vergangene Sitzung mit Beschlüssen: Debatten bleiben (Positivprobe —
     # dieselben Mocks liefern hier sichtbar den Beitrag).
     src = frag("Was hat der Jugendhilfeausschuss am 17.06.2026 beschlossen?")
-    assert src["qtype"] == "sitzung"
+    assert src["qtype"] == "session"
     assert [d["sprecher"] for d in src["debatten"]] == ["Alt Redner"]
 
 
@@ -4915,7 +4915,7 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
         gesehen["frage"] = q
         gesehen["verlauf"] = verlauf
         return {"question": "Was kostet der Neubau der Cäcilienbrücke?",
-                "terms": "Kosten Cäcilienbrücke", "kind": "geld", "party": None}
+                "terms": "Kosten Cäcilienbrücke", "kind": "money", "party": None}
 
     cand = [{"id": 5, "title": "Ersatzbau Cäcilienbrücke", "summary": "Kosten",
              "outcome": "angenommen", "session_date": "2025-08-25", "committee": "Rat", "score": 1.0}]
@@ -5064,7 +5064,7 @@ def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
         gesehen["frage"] = frage
         gesehen["verlauf"] = k.get("verlauf")
         return {"question": "Wichtigste Themen in Krusenbusch in den letzten Jahren",
-                "terms": "krusenbusch wohnquartier", "kind": "thema", "party": None}
+                "terms": "krusenbusch wohnquartier", "kind": "topic", "party": None}
 
     def _zerlege(frage, **k):
         zerlegt.append(frage)

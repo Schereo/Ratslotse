@@ -2789,7 +2789,7 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
                 {idToNum.get(s.id)}
               </span>
               <span className="max-w-[210px] truncate text-[12px] font-medium leading-none sm:max-w-[240px]">{s.title}</span>
-              {turn.qtype === "partei" && s.factions && s.factions.length > 0 && (
+              {turn.qtype === "party" && s.factions && s.factions.length > 0 && (
                 <span className="rounded-[4px] bg-signal/10 px-1 py-px text-[9px] font-bold leading-none text-signal">
                   {s.factions[0]}
                 </span>
@@ -2800,7 +2800,7 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
         </div>
       )}
       {/* Partei-Ehrlichkeit (RG-05). */}
-      {turn.qtype === "partei" && (
+      {turn.qtype === "party" && (
         <p className="mt-2 text-[11px] leading-snug text-muted-foreground/80">
           Abstimmungsergebnisse einzelner Fraktionen erfasst das Ratsinformationssystem nicht —
           deshalb zeigt Ratslotse hier bewusst keine Stimm-Grafik.
@@ -3210,7 +3210,7 @@ function Baustein({ turn, idToNum, onJump }: {
   // fünf Beschlüsse derselben Ratssitzung („Was wurde am 01.06. beschlossen?")
   // sind eine Aufzählung, kein Verlauf (Tims Befund 09.08.).
   const termine = new Set(zitierteQuellen.map((s) => s.session_date).filter(Boolean));
-  if (turn.qtype === "verlauf" && zitierteQuellen.length >= 2 && termine.size >= 2) {
+  if (turn.qtype === "history" && zitierteQuellen.length >= 2 && termine.size >= 2) {
     const stationen = [...zitierteQuellen].sort((a, b) => (a.session_date ?? "").localeCompare(b.session_date ?? ""));
     return (
       <div className="rounded-xl border border-border bg-card p-3.5">
@@ -3256,7 +3256,7 @@ function Baustein({ turn, idToNum, onJump }: {
     );
   }
 
-  if (turn.qtype === "geld") {
+  if (turn.qtype === "money") {
     const mitBetrag = zitierteQuellen.filter((s) => (s.amount_eur ?? 0) > 0);
     if (mitBetrag.length === 0) return null;
     const max = Math.max(...mitBetrag.map((s) => s.amount_eur ?? 0));
@@ -3332,7 +3332,7 @@ function Baustein({ turn, idToNum, onJump }: {
     );
   }
 
-  if (turn.qtype === "partei") {
+  if (turn.qtype === "party") {
     const zaehler = new Map<string, number>();
     for (const s of turn.sources) for (const f of s.factions ?? []) zaehler.set(f, (zaehler.get(f) ?? 0) + 1);
     const dominant = [...zaehler.entries()].sort((a, b) => b[1] - a[1])[0];

@@ -40,47 +40,47 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # --- Tims sechs Pflichtfragen ------------------------------------------
     # „Was kostet X?" ist die Frage der Produktebene: dort steht eine Aufgabe
     # mit ihren Kosten. Der Teilhaushalt (plan) trägt die grobe Summe dazu.
-    ("Was kostet die Feuerwehr?", "geld", {"plan", "produkte"}),
+    ("Was kostet die Feuerwehr?", "money", {"plan", "produkte"}),
     # Dieselbe Frage als KOMPOSITUM. `\bkost` trifft nur „kostet"/„Kosten" am
     # Wortanfang; „Personalkosten", „Baukosten", „Betriebskosten" gingen bis
     # zum 17.08. leer aus — gemessen, nicht vermutet. Die Endung `kosten\b`
     # fängt sie. Beim Personal kommt der Stellenplan dazu, und das ist die
     # bessere Antwort: Personalausgaben ohne die Stellen dahinter sind eine
     # Zahl ohne Erklärung.
-    ("Wie hoch sind die Personalkosten?", "geld", {"plan", "produkte", "stellenplan"}),
-    ("Was sind die Baukosten der Schule?", "geld", {"plan", "produkte"}),
+    ("Wie hoch sind die Personalkosten?", "money", {"plan", "produkte", "stellenplan"}),
+    ("Was sind die Baukosten der Schule?", "money", {"plan", "produkte"}),
     # Plan gegen Ist — das kann NUR der Jahresabschluss beantworten.
     # `kassensicht` kommt seit 08/2026 mit jedem `ist` mit: Für 2024 weist die
     # Ergebnisrechnung einen Überschuss aus und die Finanzrechnung einen
     # Fehlbetrag an Finanzmitteln. Wer nur eine der beiden nennt, sagt die
     # halbe Wahrheit — und zwar je nach Zufall die optimistische oder die
     # pessimistische Hälfte.
-    ("Hat die Stadt 2024 mehr ausgegeben als geplant?", "geld",
+    ("Hat die Stadt 2024 mehr ausgegeben als geplant?", "money",
      {"plan", "ist", "kassensicht"}),
     # Das „Warum" steht in den Erläuterungen; die Steuer-Ist-Zahlen und der
     # NFAG-Dämpfer gehören dazu, sonst klingt jede Mehreinnahme nach Gewinn.
-    ("Warum kam so viel mehr Gewerbesteuer rein?", "geld",
+    ("Warum kam so viel mehr Gewerbesteuer rein?", "money",
      {"gruende", "ist", "steuern", "ausgleich", "kassensicht"}),
     # Präzise und allein: eine Prüfbericht-Frage will keinen Haushaltsplan.
-    ("Was hat das Rechnungsprüfungsamt beanstandet?", "thema", {"pruefung"}),
+    ("Was hat das Rechnungsprüfungsamt beanstandet?", "topic", {"pruefung"}),
     # „Insgesamt" ist das Stichwort für den Konzern: der Kernhaushalt
     # antwortet mit 799 Mio., der Gesamtabschluss mit 1.242 Mio.
-    ("Was kostet die Stadt insgesamt?", "geld", {"plan", "produkte", "konzern"}),
+    ("Was kostet die Stadt insgesamt?", "money", {"plan", "produkte", "konzern"}),
     # Keine Betragsfrage — eine Rechtsfrage. Nur die Produktebene führt die
     # Auftragsgrundlage je Aufgabe.
-    ("Muss die Stadt das Theater betreiben?", "thema", {"produkte"}),
-    ("Warum steigen die Abfallgebühren?", "thema", {"gebuehren"}),
-    ("Wie hoch ist die Straßenreinigungsgebühr?", "geld", {"gebuehren"}),
-    ("Wie werden die Müllgebühren berechnet?", "thema", {"gebuehren"}),
+    ("Muss die Stadt das Theater betreiben?", "topic", {"produkte"}),
+    ("Warum steigen die Abfallgebühren?", "topic", {"gebuehren"}),
+    ("Wie hoch ist die Straßenreinigungsgebühr?", "money", {"gebuehren"}),
+    ("Wie werden die Müllgebühren berechnet?", "topic", {"gebuehren"}),
 
     # --- Weitere echte Fragen ----------------------------------------------
-    ("Wie viel gibt Oldenburg für Soziales aus?", "geld", {"plan", "produkte"}),
-    ("Wie hoch ist der Hebesatz der Grundsteuer?", "geld", {"steuern", "ausgleich"}),
-    ("Wie steht Oldenburg im Vergleich zu Osnabrück da?", "geld", {"vergleich"}),
-    ("Welche Aufgaben könnte die Stadt streichen?", "thema", {"produkte"}),
+    ("Wie viel gibt Oldenburg für Soziales aus?", "money", {"plan", "produkte"}),
+    ("Wie hoch ist der Hebesatz der Grundsteuer?", "money", {"steuern", "ausgleich"}),
+    ("Wie steht Oldenburg im Vergleich zu Osnabrück da?", "money", {"vergleich"}),
+    ("Welche Aufgaben könnte die Stadt streichen?", "topic", {"produkte"}),
     # „Steuereinnahmen" trägt „einnahm" und zieht damit auch die Plan-Seite —
     # gewollt: Die Antwort kann Ist und Ansatz nebeneinanderstellen.
-    ("Wie hoch waren die Steuereinnahmen?", "geld",
+    ("Wie hoch waren die Steuereinnahmen?", "money",
      {"plan", "ansatz", "steuern", "ausgleich"}),
 
     # --- Die vier Schichten, die die KI-Frage bis 17.08. nicht kannte -------
@@ -89,7 +89,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     #
     # Schulden sind ein BESTAND. Vorher: {"plan"} — der Ergebnishaushalt, in
     # dem der Schuldenstand nicht vorkommt.
-    ("Wie viel Schulden hat Oldenburg?", "geld", {"schulden"}),
+    ("Wie viel Schulden hat Oldenburg?", "money", {"schulden"}),
     # Der ANDERE Haushalt. Vorher: {} bzw. {"plan"}.
     #
     # Seit 17.08. IMMER BEIDE: `investitionen` ist der Plan aus dem
@@ -97,38 +97,38 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # Frage sagt fast nie, welches von beidem gemeint ist — und die Regel
     # „nie voneinander abziehen" hinge an einer Zahl, die gar nicht im
     # Kontext steht, wenn nur eine der beiden käme.
-    ("Was wird gebaut?", "thema", {"investitionen", "gebaut"}),
-    ("Wie viel investiert die Stadt?", "geld", {"investitionen", "gebaut"}),
+    ("Was wird gebaut?", "topic", {"investitionen", "gebaut"}),
+    ("Wie viel investiert die Stadt?", "money", {"investitionen", "gebaut"}),
     # Stellen statt Euro. Vorher: {} — Personalfragen bekamen Aufwendungen.
-    ("Wie viele Stellen sind unbesetzt?", "thema", {"stellenplan"}),
-    ("Wie viele Mitarbeiter hat die Stadt?", "thema", {"stellenplan"}),
+    ("Wie viele Stellen sind unbesetzt?", "topic", {"stellenplan"}),
+    ("Wie viele Mitarbeiter hat die Stadt?", "topic", {"stellenplan"}),
     # Die Änderungslisten. Vorher: {"plan", "ansatz"} — die Plan-Zahlen des
     # Haushalts, aber kein Wort darüber, wer ihn ändern wollte.
-    ("Wer wollte den Haushalt ändern?", "thema", {"plan", "ansatz", "antraege"}),
-    ("Welche Änderungslisten gab es zum Haushalt 2026?", "thema",
+    ("Wer wollte den Haushalt ändern?", "topic", {"plan", "ansatz", "antraege"}),
+    ("Welche Änderungslisten gab es zum Haushalt 2026?", "topic",
      {"plan", "ansatz", "antraege"}),
 
     # --- Negativfälle -------------------------------------------------------
     # Ohne diese Zeilen optimiert man auf „lädt immer alles" und überflutet
     # den Kontext. Jede Frage hier muss GAR KEINE Haushaltsquelle ziehen.
-    ("Wie ist der Stand beim Stadion?", "verlauf", set()),
-    ("Was wurde zum Stadion beschlossen?", "thema", set()),
-    ("Wer stimmte gegen den Stadionumbau?", "partei", set()),
-    ("Wie lief die Debatte um das Stadion?", "verlauf", set()),
-    ("Was ist am Fliegerhorst geplant?", "thema", set()),
-    ("Was wurde zum Radweg an der Donnerschweer Straße beschlossen?", "thema", set()),
-    ("Wann tagt der Rat das nächste Mal?", "thema", set()),
-    ("Was sagte die SPD zum Klimaschutz?", "partei", set()),
-    ("Was sagte die SPD zum Stadionneubau?", "partei", set()),
-    ("Wie hat sich die Diskussion um den Stadionneubau entwickelt?", "verlauf", set()),
-    ("Was ist die GSG?", "thema", set()),
-    ("Wer ist im Verwaltungsausschuss?", "thema", set()),
+    ("Wie ist der Stand beim Stadion?", "history", set()),
+    ("Was wurde zum Stadion beschlossen?", "topic", set()),
+    ("Wer stimmte gegen den Stadionumbau?", "party", set()),
+    ("Wie lief die Debatte um das Stadion?", "history", set()),
+    ("Was ist am Fliegerhorst geplant?", "topic", set()),
+    ("Was wurde zum Radweg an der Donnerschweer Straße beschlossen?", "topic", set()),
+    ("Wann tagt der Rat das nächste Mal?", "topic", set()),
+    ("Was sagte die SPD zum Klimaschutz?", "party", set()),
+    ("Was sagte die SPD zum Stadionneubau?", "party", set()),
+    ("Wie hat sich die Diskussion um den Stadionneubau entwickelt?", "history", set()),
+    ("Was ist die GSG?", "topic", set()),
+    ("Wer ist im Verwaltungsausschuss?", "topic", set()),
     # Die Gegenprobe zu den vier Neuzugängen: Wörter, die ihnen nahekommen,
     # ohne sie zu meinen. „Anträge stellen" ist das Verb, keine Planstelle;
     # „Debatte" ohne Haushalts-Anker ist kein Haushaltsstreit.
-    ("Wie viele Anträge stellen die Fraktionen?", "thema", set()),
-    ("Wer stellte den Antrag zum Radweg?", "thema", set()),
-    ("Was wurde zum Müllkonzept beschlossen?", "thema", set()),
+    ("Wie viele Anträge stellen die Fraktionen?", "topic", set()),
+    ("Wer stellte den Antrag zum Radweg?", "topic", set()),
+    ("Was wurde zum Müllkonzept beschlossen?", "topic", set()),
 
     # --- Die fünfzehn Goldfragen der Jahresabschluss-Schichten (08/2026) ----
     # Bilanz, Kassensicht, Nachbewilligungen, Kennzahlen und die drei
@@ -139,41 +139,41 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # 1–3: Die Bilanz. Ein STICHTAG, kein Jahr — und deshalb bewusst ohne
     # `plan`: Wer nach dem Vermögen fragt, soll keine Jahresausgabe daneben
     # bekommen, die sich damit nicht verrechnen lässt.
-    ("Wie hoch ist das Eigenkapital der Stadt Oldenburg?", "geld", {"bilanz"}),
-    ("Was besitzt die Stadt eigentlich?", "geld", {"bilanz"}),
-    ("Wie viel hat die Stadt für Pensionen zurückgestellt?", "geld", {"bilanz"}),
+    ("Wie hoch ist das Eigenkapital der Stadt Oldenburg?", "money", {"bilanz"}),
+    ("Was besitzt die Stadt eigentlich?", "money", {"bilanz"}),
+    ("Wie viel hat die Stadt für Pensionen zurückgestellt?", "money", {"bilanz"}),
 
     # 4–5: Die Kassensicht. Sie kommt auch ungefragt mit, sobald es um das Ist
     # geht — 2024 weist die Ergebnisrechnung einen Überschuss aus und die
     # Finanzrechnung einen Fehlbetrag, und nur beide zusammen sind ehrlich.
-    ("Wie viel Geld ist 2024 tatsächlich geflossen?", "geld", {"kassensicht"}),
-    ("Wie hoch waren die liquiden Mittel am Jahresende?", "geld",
+    ("Wie viel Geld ist 2024 tatsächlich geflossen?", "money", {"kassensicht"}),
+    ("Wie hoch waren die liquiden Mittel am Jahresende?", "money",
      {"bilanz", "kassensicht"}),   # „liquide" trifft beide Quellen — richtig so
 
     # 6–7: Nachbewilligungen. Geld außerhalb des beschlossenen Haushalts.
-    ("Was wurde 2024 nachbewilligt?", "geld", {"nachbewilligungen"}),
-    ("Wie viel wurde überplanmäßig bewilligt?", "geld", {"nachbewilligungen"}),
+    ("Was wurde 2024 nachbewilligt?", "money", {"nachbewilligungen"}),
+    ("Wie viel wurde überplanmäßig bewilligt?", "money", {"nachbewilligungen"}),
 
     # 8–10: Die Kennzahlen. Die einzige Quelle, die ihre Formeln mitliefert —
     # „Eigenkapitalquote" zieht zusätzlich die Bilanz, aus der sie stammt.
-    ("Wie hoch ist die Eigenkapitalquote?", "geld", {"bilanz", "kennzahlen"}),
-    ("Wie hat sich die Steuerquote entwickelt?", "geld",
+    ("Wie hoch ist die Eigenkapitalquote?", "money", {"bilanz", "kennzahlen"}),
+    ("Wie hat sich die Steuerquote entwickelt?", "money",
      {"kennzahlen", "steuern", "ausgleich"}),
-    ("Welche Kennzahlen nennt die Stadt zu ihrem Abschluss?", "geld",
+    ("Welche Kennzahlen nennt die Stadt zu ihrem Abschluss?", "money",
      {"kennzahlen"}),
 
     # 11–13: Die Bürgschaften — 220,3 Mio. €, die in keiner Schuldenreihe
     # stehen. Sie hängen an der Schulden-Facette, weil sie nur neben den
     # Schulden einen Sinn ergeben.
-    ("Wofür bürgt die Stadt Oldenburg?", "geld", {"schulden"}),
-    ("Wie hoch ist der Bürgschaftsbestand?", "geld", {"schulden"}),
-    ("Welche Eventualverbindlichkeiten hat die Stadt?", "geld", {"schulden"}),
+    ("Wofür bürgt die Stadt Oldenburg?", "money", {"schulden"}),
+    ("Wie hoch ist der Bürgschaftsbestand?", "money", {"schulden"}),
+    ("Welche Eventualverbindlichkeiten hat die Stadt?", "money", {"schulden"}),
 
     # 14–15: Die Gegenprobe. Beide Fragen klingen nach Haushalt und sind
     # keiner — „Bürgerbegehren" und „Oldenburg" haben beide „burg" im Wort,
     # und genau daran ist das erste Bürgschafts-Muster gescheitert.
-    ("Wie ist der Stand beim Bürgerbegehren zum Schloss?", "thema", set()),
-    ("Wie viele Bürgerinnen und Bürger hat Oldenburg?", "thema", set()),
+    ("Wie ist der Stand beim Bürgerbegehren zum Schloss?", "topic", set()),
+    ("Wie viele Bürgerinnen und Bürger hat Oldenburg?", "topic", set()),
 ]
 
 #: Welche Store-Methode eine Facette anfasst. Die zweite Hälfte der Messung:
@@ -367,11 +367,11 @@ def test_stadion_regression(frage, tmp_path):
     Die Facette entscheidet, ob GEFRAGT wird, die Quelle, ob etwas
     ZURÜCKKOMMT."""
     store = _befuellter_store(tmp_path)
-    kontext = qa.geld_kontext(store, frage, "Stadion Neubau Finanzierung Kosten", "thema")
+    kontext = qa.geld_kontext(store, frage, "Stadion Neubau Finanzierung Kosten", "topic")
     assert qa.geld_block(kontext) == "", sorted(kontext["facetten"])
     messages, _ = qa._answer_messages(
         frage, [{"id": 5, "title": "Stadion Marschweg", "official_text": "Zugestimmt.",
-                 "amount_eur": 4_200_000}], typ="thema", geld=kontext)
+                 "amount_eur": 4_200_000}], typ="topic", geld=kontext)
     prompt = messages[0]["content"]
     assert "Volumen: 4.200.000 €" in prompt          # der Beschluss-Betrag bleibt
     for kopf in ("STADTHAUSHALT", "GEPLANT UND TATSÄCHLICH", "RECHNUNGSPRÜFUNGSAMT",
@@ -424,7 +424,7 @@ NEUE_FACETTEN = [
 def test_neue_facetten_werden_erkannt(facette, fragen):
     """Fünf Formulierungen je Schicht — alle müssen ihre Quelle ziehen."""
     for frage in fragen:
-        gefunden = qa.geld_facetten(frage, "thema")
+        gefunden = qa.geld_facetten(frage, "topic")
         assert facette in gefunden, f"„{frage}“ → {sorted(gefunden)}"
 
 
@@ -449,7 +449,7 @@ def test_neue_facetten_ziehen_sich_nicht_gegenseitig(facette, fragen):
               "investitionen": {"gebaut"}}
     erlaubt = {facette} | zusatz.get(facette, set())
     for frage in fragen:
-        gefunden = qa.geld_facetten(frage, "thema")
+        gefunden = qa.geld_facetten(frage, "topic")
         fremde = gefunden - erlaubt
         assert not fremde, f"„{frage}“ zieht zusätzlich {sorted(fremde)}"
 
@@ -461,7 +461,7 @@ def test_schuldenfrage_zieht_weder_plan_noch_stellenplan():
     Schulden sind ein Bestand am Stichtag. Weder `plan` (Teilhaushalte) noch
     `ansatz` (Gesamtergebnishaushalt) führen sie; beide zu laden hieße, dem
     Modell Jahresbeträge neben einen Bestand zu legen."""
-    f = qa.geld_facetten("Wie viel Schulden hat Oldenburg?", "geld")
+    f = qa.geld_facetten("Wie viel Schulden hat Oldenburg?", "money")
     assert f == {"schulden"}
     assert "plan" not in f and "ansatz" not in f and "stellenplan" not in f
 
@@ -471,7 +471,7 @@ def test_investitionsfrage_zieht_nicht_den_ergebnishaushalt():
 
     Sie zieht den Finanzhaushalt — und zwar in beiden Fassungen: den Plan
     aus dem Haushaltsplan und das Ist aus dem Statistischen Jahrbuch."""
-    f = qa.geld_facetten("Wie viel investiert die Stadt?", "geld")
+    f = qa.geld_facetten("Wie viel investiert die Stadt?", "money")
     assert f == {"investitionen", "gebaut"}
     assert "plan" not in f and "ansatz" not in f
 
@@ -481,16 +481,16 @@ def test_stellen_als_verb_zieht_den_stellenplan_nicht():
 
     Ohne diese Unterscheidung hinge der ganze Stellenplan an einem der
     häufigsten deutschen Verben."""
-    assert qa.geld_facetten("Wie viele Anträge stellen die Fraktionen?", "thema") == set()
-    assert qa.geld_facetten("Wer stellte den Antrag zum Radweg?", "thema") == set()
+    assert qa.geld_facetten("Wie viele Anträge stellen die Fraktionen?", "topic") == set()
+    assert qa.geld_facetten("Wer stellte den Antrag zum Radweg?", "topic") == set()
     # Die echte Zählfrage bleibt erkannt.
-    assert "stellenplan" in qa.geld_facetten("Wie viele Stellen hat die Stadt?", "thema")
+    assert "stellenplan" in qa.geld_facetten("Wie viele Stellen hat die Stadt?", "topic")
 
 
 def test_debatte_ohne_haushalt_ist_kein_haushaltsstreit():
     """`antraege` braucht einen Haushalts-Anker; „Debatte" allein reicht nicht."""
-    assert "antraege" not in qa.geld_facetten("Wie lief die Debatte um das Stadion?", "verlauf")
-    assert "antraege" in qa.geld_facetten("Wie lief die Haushaltsdebatte?", "thema")
+    assert "antraege" not in qa.geld_facetten("Wie lief die Debatte um das Stadion?", "history")
+    assert "antraege" in qa.geld_facetten("Wie lief die Haushaltsdebatte?", "topic")
 
 
 def test_jahrgang_aus_der_frage_geht_an_die_aenderungslisten():
@@ -500,18 +500,18 @@ def test_jahrgang_aus_der_frage_geht_an_die_aenderungslisten():
     assert qa.haushaltsjahr("Wer wollte den Haushalt 2024 ändern?") == 2024
     assert qa.haushaltsjahr("Wer wollte den Haushalt ändern?") is None
     store = _MessStore()
-    qa.geld_kontext(store, "Wer wollte den Haushalt 2024 ändern?", "Haushalt 2026 Etat", "thema")
+    qa.geld_kontext(store, "Wer wollte den Haushalt 2024 ändern?", "Haushalt 2026 Etat", "topic")
     assert store.jahr_argument == 2024
     store = _MessStore()
-    qa.geld_kontext(store, "Wer wollte den Haushalt ändern?", "Haushalt 2026 Etat", "thema")
+    qa.geld_kontext(store, "Wer wollte den Haushalt ändern?", "Haushalt 2026 Etat", "topic")
     assert store.jahr_argument is None
 
 
 def test_typ_geld_bleibt_das_auffangnetz():
     """Rückwärtskompatibilität: Sagt das Modell ``geld`` und trifft kein
     Muster, kommen die Plan-Zahlen — genau wie vor dieser Runde."""
-    assert qa.geld_facetten("Wie hoch fiel das aus?", "geld") == {"plan"}
-    assert qa.geld_facetten("Wie hoch fiel das aus?", "thema") == set()
+    assert qa.geld_facetten("Wie hoch fiel das aus?", "money") == {"plan"}
+    assert qa.geld_facetten("Wie hoch fiel das aus?", "topic") == set()
 
 
 # ---------------------------------------------------------------------------
@@ -559,7 +559,7 @@ def test_umformulierungen_landen_bei_derselben_quelle(name, fragen, erwartet):
     leitfacette = {"Kosten einer Aufgabe": "produkte", "Plan gegen Ist": "ist",
                    "Prüfbericht": "pruefung", "Pflichtaufgabe": "produkte"}[name]
     for frage in fragen:
-        f = qa.geld_facetten(frage, "thema")
+        f = qa.geld_facetten(frage, "topic")
         assert leitfacette in f, f"„{frage}“ verfehlt die Quelle {leitfacette} (fand {sorted(f)})"
         if erwartet is not None:
             assert f == erwartet, f"„{frage}“ → {sorted(f)}"
@@ -1006,7 +1006,7 @@ def test_leere_datenbank_liefert_leere_bausteine(tmp_path):
     for frage in ("Was kostet die Stadt insgesamt?",
                   "Wie viel Schulden hat Oldenburg, was wird gebaut, wie viele "
                   "Stellen sind unbesetzt und wer wollte den Haushalt ändern?"):
-        kontext = qa.geld_kontext(store, frage, "", "geld")
+        kontext = qa.geld_kontext(store, frage, "", "money")
         assert qa.geld_block(kontext) == "", frage
         assert qa.geld_regeln(kontext) == "", frage
     store.close()
@@ -1066,7 +1066,7 @@ def test_neuer_baustein_bleibt_in_seiner_groesse(facette, grenze, tmp_path):
              "stellenplan": "Wie viele Stellen sind unbesetzt?",
              "investitionen": "Was wird gebaut?",
              "antraege": "Welche Änderungslisten gab es zum Haushalt 2026?"}[facette]
-    kontext = qa.geld_kontext(store, frage, frage, "thema")
+    kontext = qa.geld_kontext(store, frage, frage, "topic")
     schluessel, bauer = qa._GELD_BAUSTEINE[facette]
     text = bauer(kontext.get(schluessel))
     assert text, f"{facette} liefert nichts — Fixture verrutscht?"
@@ -1089,7 +1089,7 @@ def test_echte_fragen_bleiben_weit_unter_dem_deckel(tmp_path):
                   "Wie viel gibt die Stadt für Personal aus?",
                   "Was kostet die Feuerwehr?",
                   "Warum kam so viel mehr Gewerbesteuer rein?"]:
-        kontext = qa.geld_kontext(store, frage, frage, "thema")
+        kontext = qa.geld_kontext(store, frage, frage, "topic")
         laenge = len(qa.geld_block(kontext))
         assert 0 < laenge <= 2200, f"„{frage}“: {laenge} Zeichen"
     store.close()
@@ -1158,7 +1158,7 @@ def test_haushaltsregeln_haengen_am_kontext_nicht_am_fragetyp(tmp_path):
                               "Prüfbericht Beanstandung", "thema")
     messages, _ = qa._answer_messages(
         "Was hat das Rechnungsprüfungsamt beanstandet?",
-        [{"id": 1, "title": "T", "official_text": "B"}], typ="thema", geld=kontext)
+        [{"id": 1, "title": "T", "official_text": "B"}], typ="topic", geld=kontext)
     prompt = messages[0]["content"]
     assert "RECHNUNGSPRÜFUNGSAMT" in prompt
     assert "JAHR IMMER NENNEN" in prompt and "PLAN IST NICHT IST" in prompt
@@ -1171,8 +1171,8 @@ def test_geldregeln_treten_bei_punktfragen_zurueck(tmp_path):
     """Punktfrage („Wie hoch war X?") — die Kürze-Regel gewinnt, es bleibt die
     Pflicht, Jahr und Quelle zu nennen."""
     store = _befuellter_store(tmp_path)
-    kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr Brandschutz", "geld")
-    messages, _ = qa._answer_messages("Was kostet die Feuerwehr?", [], typ="geld",
+    kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr Brandschutz", "money")
+    messages, _ = qa._answer_messages("Was kostet die Feuerwehr?", [], typ="money",
                                       geld=kontext, eng=True)
     prompt = messages[0]["content"]
     assert "HÖCHSTENS 3 Sätzen" in prompt
@@ -1190,7 +1190,7 @@ def test_alter_aufrufweg_bleibt_unveraendert():
     Verhaltenswechsel wäre der schlechtere Weg, ihn abzuräumen."""
     zeilen = [{"year": 2026, "area": "Verkehr und Straßenbau",
                "expenses": 46194645.0, "revenues": 17510637.0}]
-    messages, _ = qa._answer_messages("Was kostet der Verkehr?", [], typ="geld",
+    messages, _ = qa._answer_messages("Was kostet der Verkehr?", [], typ="money",
                                       haushalt=zeilen)
     assert "STADTHAUSHALT" in messages[0]["content"]
     assert "46.194.645" in messages[0]["content"]
@@ -1236,7 +1236,7 @@ def test_deepresearch_ruft_geld_kontext_statt_einzelquellen():
 
 def test_facetten_stehen_im_kontext_zum_mitloggen():
     store = _MessStore()
-    kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr", "geld")
+    kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr", "money")
     assert kontext["facetten"] == sorted({"plan", "produkte"})
 
 

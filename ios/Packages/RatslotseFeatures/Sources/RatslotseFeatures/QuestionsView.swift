@@ -1573,9 +1573,9 @@ private struct QuestionTypeInsight: View {
 
     @ViewBuilder var body: some View {
         switch type {
-        case "verlauf": timeline
-        case "geld": money
-        case "partei": party
+        case "history": timeline
+        case "money": money
+        case "party": party
         default: EmptyView()
         }
     }

@@ -434,7 +434,7 @@ def main() -> int:
                                      recency=qa.recency_intent(analyse["question"]))
             cands = store.get_decisions_by_ids([h[0] for h in hits])
             qa.markiere_veraltete(store, cands)
-            if typ == "partei" and analyse.get("party"):
+            if typ == "party" and analyse.get("party"):
                 try:
                     extra_ids = store.antrag_decision_ids(analyse["party"], expanded)
                     have = {c["id"] for c in cands}
@@ -482,8 +482,8 @@ def main() -> int:
         if args.nur_retrieval:
             return []
         ctx = [dict(c) for c in candidates_of(case)[:ANSWER_N]]
-        typ = typen.get(case["id"], "thema")
-        if typ == "verlauf":
+        typ = typen.get(case["id"], "topic")
+        if typ == "history":
             ctx = qa.sort_verlauf(ctx)
         if not with_impact:
             for c in ctx:

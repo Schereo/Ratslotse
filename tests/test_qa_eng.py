@@ -22,9 +22,9 @@ def test_eng_regel_ersetzt_die_typ_regeln_und_die_debatten_pflicht():
 
 def test_eng_kappt_das_token_budget():
     """Zweite Bremse neben der Prompt-Regel — ein Ausreißer bleibt kurz."""
-    assert qa._answer_tokens("thema", gross=False, eng=True) == 320
-    assert qa._answer_tokens("thema", gross=True, eng=True) == 320   # gross verliert
-    assert qa._answer_tokens("thema", gross=False, eng=False) >= 1000
+    assert qa._answer_tokens("topic", gross=False, eng=True) == 320
+    assert qa._answer_tokens("topic", gross=True, eng=True) == 320   # gross verliert
+    assert qa._answer_tokens("topic", gross=False, eng=False) >= 1000
 
 
 def test_analyse_liest_eng_aus_der_antwort(monkeypatch):
@@ -35,13 +35,13 @@ def test_analyse_liest_eng_aus_der_antwort(monkeypatch):
             self.choices = [type("C", (), {"message": type("M", (), {"content": text})()})()]
 
     payload = json.dumps({"frage": "Wann wurde X beschlossen?", "begriffe": "X Beschluss",
-                          "typ": "thema", "eng": True, "varianten": []})
+                          "typ": "topic", "eng": True, "varianten": []})
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **kw: _Antwort(payload))
     qa._ANALYSE_CACHE.clear()
     assert qa.analyse_query("Wann wurde X beschlossen?")["eng"] is True
 
     payload2 = json.dumps({"frage": "Was wurde zu X entschieden?", "begriffe": "X",
-                           "typ": "thema", "eng": False, "varianten": []})
+                           "typ": "topic", "eng": False, "varianten": []})
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **kw: _Antwort(payload2))
     qa._ANALYSE_CACHE.clear()
     assert qa.analyse_query("Was wurde zu X entschieden?")["eng"] is False
