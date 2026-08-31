@@ -78,13 +78,13 @@ def _zeile(slug: str, e: dict) -> str:
 def main(alle: bool = False, db: Path | None = None) -> dict:
     store = CouncilStore(str(db or COUNCIL_DB))
     try:
-        bestand = _bestand(store)
-        paare = namensformen.verdachtsfaelle({s: e["ksinr"] for s, e in bestand.items()})
+        balance = _bestand(store)
+        paare = namensformen.verdachtsfaelle({s: e["ksinr"] for s, e in balance.items()})
         offen = [p for p in paare if not p["gefuehrt"]]
-        print(f"{len(bestand)} Namensformen, {len(namensformen.GRUPPEN)} geführte Gruppen, "
+        print(f"{len(balance)} Namensformen, {len(namensformen.GRUPPEN)} geführte Gruppen, "
               f"{len(offen)} ungeprüfte Verdachtspaare\n")
         for p in (paare if alle else offen):
-            a, b = bestand[p["a"]], bestand[p["b"]]
+            a, b = balance[p["a"]], balance[p["b"]]
             mark = " (geführt)" if p["gefuehrt"] else ""
             print(f"  {p['a']}  ↔  {p['b']}{mark}")
             print(_zeile(p["a"], a))
@@ -94,7 +94,7 @@ def main(alle: bool = False, db: Path | None = None) -> dict:
             print()
         if offen:
             print("Geprüfte Paare gehören nach council/namensformen.py → GRUPPEN.")
-        return {"formen": len(bestand), "verdacht": len(offen)}
+        return {"formen": len(balance), "verdacht": len(offen)}
     finally:
         store.close()
 

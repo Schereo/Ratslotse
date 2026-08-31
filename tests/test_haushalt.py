@@ -78,7 +78,7 @@ def test_build_questions_grounded_and_asymmetric():
         assert q["answer_unit"] in ("Mio. Euro", "Prozent") and q["source_ref"] == "http://pdf"
         assert q["topic"] == "Haushalt" and q["area_key"] == "haushalt"
     # Gesamt-Aufwendungen: 883,9 Mio → 884.
-    gesamt = next(q for q in est if "insgesamt" in q["question"])
+    gesamt = next(q for q in est if "total" in q["question"])
     assert gesamt["answer_value"] == 884.0
     # MC „größter Ausgabenblock" zeigt auf Soziales und Gesundheit.
     top = next(q for q in mc if "am meisten" in q["question"])
@@ -263,7 +263,7 @@ Gesamtergebnishaushalt;; 633.564.957,00 ; 399.118.579,00
 Ordentliches Ergebnis (Fehlbedarf);;;-34.240.657,00 
 """
 
-CSV_STEUERN = """Haushaltsjahr;Grundsteuer A+B;Gewerbesteuer (-umlage);Einkommensteueranteil;Gemeindeanteil an der Umsatzsteuer ;Getraenkesteuer;Vergnuegungssteuer;sonstige Steuern;insgesamt
+CSV_STEUERN = """Haushaltsjahr;Grundsteuer A+B;Gewerbesteuer (-umlage);Einkommensteueranteil;Gemeindeanteil an der Umsatzsteuer ;Getraenkesteuer;Vergnuegungssteuer;sonstige Steuern;total
 1998;17629000;42719000;38025000;5428000;0;1321000;426000;105548000
 2025;32585000;222117000;106086000;22233000;0;3368000;819000;387208000
 """
@@ -1323,7 +1323,7 @@ def test_parse_abweichungsgruende():
     nach_nr = {g["nr"]: g for g in gruende}
     assert set(nach_nr) == {1, 4}
     taxes = nach_nr[1]
-    assert taxes["delta_meur"] == 75.1 and taxes["prozent"] == 24.82
+    assert taxes["delta_meur"] == 75.1 and taxes["percent"] == 24.82
     assert taxes["label"] == "Steuern und ähnliche Abgaben"
     # Silbentrennung aufgelöst, Seitenfuß raus, Wortlaut unverändert.
     assert "nahezu auf den Bereich der Gewerbesteuer" in taxes["text"]
@@ -1425,7 +1425,7 @@ def test_store_abweichungsgruende_roundtrip(tmp_path, quelle):
     assert store.save_abweichungsgruende(2024, gruende, q) == 2
     geladen = store.get_abweichungsgruende(2024)
     assert [g["nr"] for g in geladen] == [1, 4]
-    assert geladen[0]["prozent"] == 24.82
+    assert geladen[0]["percent"] == 24.82
     assert store.get_abweichungsgruende(1999) == []
     store.close()
 
@@ -1485,12 +1485,12 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_schulden (year, insgesamt, per_capita, fetched_at) "
+    c.execute("INSERT INTO council_schulden (year, total, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
     c.execute("INSERT INTO council_bilanz (year, role, page, level, label, wert, "
               " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
-    c.execute("INSERT INTO council_buergschaften (year, bestand, exact, out_next_year, "
+    c.execute("INSERT INTO council_buergschaften (year, balance, exact, out_next_year, "
               " quelle, probes, fetched_at) VALUES (2024, 220300000, 1, 0, "
               " 'jahresabschluss', '', '2026-08-18')")
     c.commit()
@@ -1500,7 +1500,7 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
     assert not any("Wie hoch sind die Schulden" in q["question"] for q in fragen)
     assert any("gerade" in q["question"] for q in fragen)
 
-    c.execute("INSERT INTO council_integrierte_schulden (year, ars, insgesamt, probes, "
+    c.execute("INSERT INTO council_integrierte_schulden (year, ars, total, probes, "
               " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
     c.commit()
     fragen = haushalt.build_abschluss_questions(store)

@@ -229,7 +229,7 @@ def main(db: str | None = None, heute: date | None = None,
     try:
         for key in finanzquellen.REIHENFOLGE:
             q = finanzquellen.QUELLEN[key]
-            vorhanden = q.bestand(store)
+            vorhanden = q.balance(store)
             if not q.automatisch:
                 # Beobachtet, nicht eingelesen: Diese Schicht kommt per
                 # Download und bleibt Sache eines Ingest-Skripts von Hand.

@@ -73,7 +73,7 @@ function series(zeilen: SteuerZeile[], art: string | null) {
 function aenderungen(r: { year: number; amount: number }[]) {
   return r.slice(1)
     .map((z, i) => ({ year: z.year, prior_year: r[i].year,
-                      prozent: ((z.amount - r[i].amount) / r[i].amount) * 100 }))
+                      percent: ((z.amount - r[i].amount) / r[i].amount) * 100 }))
     .filter((p) => p.year === p.prior_year + 1);
 }
 
@@ -170,14 +170,14 @@ export function WerZahlt({ taxes, art, vergleichArt, vergleichTitel, tax_rates,
   // Messteil weg — der Rechtsgrund steht trotzdem, er hängt an keiner Reihe.
   const misst = eigenAend.length >= 5 && andereAend.length >= 5;
 
-  const mittel = (a: { prozent: number }[]) =>
-    a.reduce((s, p) => s + Math.abs(p.prozent), 0) / a.length;
+  const mittel = (a: { percent: number }[]) =>
+    a.reduce((s, p) => s + Math.abs(p.percent), 0) / a.length;
   const eigenMittel = misst ? mittel(eigenAend) : 0;
   const andereMittel = misst ? mittel(andereAend) : 0;
   const skala = Math.max(eigenMittel, andereMittel) || 1;
 
-  const spruenge = eigenAend.filter((p) => Math.abs(p.prozent) > SPRUNG);
-  const andereSpruenge = andereAend.filter((p) => Math.abs(p.prozent) > SPRUNG);
+  const spruenge = eigenAend.filter((p) => Math.abs(p.percent) > SPRUNG);
+  const andereSpruenge = andereAend.filter((p) => Math.abs(p.percent) > SPRUNG);
 
   // Hat der Rat in einem Sprungjahr den Hebesatz angefasst? Ausgezählt statt
   // behauptet: Steht im Bestand irgendwann ein Sprung, der doch auf einem

@@ -40,7 +40,7 @@ TABELLE = """Stadt Oldenburg (Oldb) - Statistik
 1107  Ausgaben der Stadt Oldenburg für eigene Investitionen
           in Tausend Euro 2003 bis 2009
                 -  Rechnungsergebnisse
-Haushalts- Gewährung Erwerb von Baumaß- Neuanschaf- insgesamt
+Haushalts- Gewährung Erwerb von Baumaß- Neuanschaf- total
 year von Darlehen Grundver- nahmen fungen von
 mögen beweglichen
 Vermögen
@@ -51,7 +51,7 @@ Quelle: Stadt Oldenburg - Fachdienst Finanzen
 1107-1 Auszahlungen der Stadt Oldenburg für Investitionstätigkeiten
             in Tausend Euro 2010 bis 20251
                -  Rechnungsergebnisse laut Finanzrechnung der Kernverwaltung -
-Haushalts- Aktivierbare Erwerb von Baumaß- Erwerb von Erwerb von Sonstige insgesamt
+Haushalts- Aktivierbare Erwerb von Baumaß- Erwerb von Erwerb von Sonstige total
 year Zuwendungen Grundstücken nahmen beweglichem Sachver- Investitions-
 und Gebäuden mögen tätigkeit
 S 1 S 2 S 3 S 4 S 5 S 6 S 7 S 8
@@ -121,7 +121,7 @@ def test_beide_reihen_kommen_mit_ihren_eigenen_arten(gelesen):
 def test_betraege_stehen_in_euro(gelesen):
     """Die Quelle rechnet in Tausend Euro, gespeichert wird in Euro."""
     z = next(z for z in gelesen["zeilen"] if z["year"] == 2025)
-    assert z["insgesamt"] == 60_773_000
+    assert z["total"] == 60_773_000
     assert z["baumassnahmen"] == 16_208_000
     assert z["sonstige"] == 20_083_000
 
@@ -217,7 +217,7 @@ def test_probennachweis_nennt_zahlen_keine_adjektive(gelesen):
 
 # --- Die Zellen-Regel -------------------------------------------------------
 
-@pytest.mark.parametrize("feld,erwartet", [
+@pytest.mark.parametrize("field,erwartet", [
     ("18.811", 18811),
     ("0", 0),
     ("2", 2),
@@ -234,8 +234,8 @@ def test_probennachweis_nennt_zahlen_keine_adjektive(gelesen):
     ("x", None),
     ("", None),
 ])
-def test_zelle(feld, erwartet):
-    assert ii._zelle(feld) == erwartet
+def test_zelle(field, erwartet):
+    assert ii._zelle(field) == erwartet
 
 
 def test_de_zahl_schreibt_deutsch():
@@ -274,13 +274,13 @@ def store(tmp_path):
 
 def _speichern(store, gelesen):
     for accounting_system in ("kameral", "doppik"):
-        teil = [z for z in gelesen["zeilen"] if z["accounting_system"] == accounting_system]
+        part = [z for z in gelesen["zeilen"] if z["accounting_system"] == accounting_system]
         verworfen = [v for v in gelesen["verworfen"] if v["accounting_system"] == accounting_system]
-        store.save_investitionen_ist(teil, herkunft.Herkunft(
+        store.save_investitionen_ist(part, herkunft.Herkunft(
             art="stadt", url=ii.TABELLE_URL,
             probe="investitionen_ist_zeilensumme",
             citation=f"Tabelle {accounting_system}",
-            probe_result=f"{len(teil)} Jahrgänge"), verworfen=verworfen)
+            probe_result=f"{len(part)} Jahrgänge"), verworfen=verworfen)
 
 
 def test_speichern_und_lesen(store, gelesen):
@@ -289,11 +289,11 @@ def test_speichern_und_lesen(store, gelesen):
     assert [z["year"] for z in series] == [2003, 2009, 2010, 2017, 2018, 2020, 2025]
     juengster = series[-1]
     assert juengster["accounting_system"] == "doppik"
-    assert juengster["insgesamt"] == 60_773_000
+    assert juengster["total"] == 60_773_000
     # Die Arten kommen in der Spaltenfolge der Quelle und tragen ihren Titel.
     assert [a["titel"] for a in juengster["arten"]] == [
         t for _, t in ii.SPALTEN["doppik"][:-1]]
-    assert sum(a["amount"] for a in juengster["arten"]) == juengster["insgesamt"]
+    assert sum(a["amount"] for a in juengster["arten"]) == juengster["total"]
     # Und die kamerale Zeile hat ihre eigenen vier.
     assert len(series[0]["arten"]) == 4
     assert series[0]["arten"][0]["titel"] == "Gewährung von Darlehen"
@@ -316,12 +316,12 @@ def test_ein_zweiter_lauf_laesst_keine_karteileichen(store, gelesen):
     _speichern(store, gelesen)
     schmaler = dict(next(z for z in gelesen["zeilen"] if z["year"] == 2025))
     schmaler["sonstige"] = None
-    schmaler["insgesamt"] = 40_690_000
+    schmaler["total"] = 40_690_000
     store.save_investitionen_ist([schmaler], herkunft.Herkunft(
         art="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
     z = next(z for z in store.get_investitionen_ist() if z["year"] == 2025)
-    assert [a["feld"] for a in z["arten"]] == list(ii.ARTEN["doppik"][:-1])
-    assert sum(a["amount"] for a in z["arten"]) == z["insgesamt"]
+    assert [a["field"] for a in z["arten"]] == list(ii.ARTEN["doppik"][:-1])
+    assert sum(a["amount"] for a in z["arten"]) == z["total"]
 
 
 def test_ein_lauf_raeumt_die_anderen_jahrgaenge_nicht_ab(store, gelesen):

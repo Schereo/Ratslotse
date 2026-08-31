@@ -26,19 +26,19 @@ import { GlossaryText } from "@/components/glossary-text";
 
 /** Die drei Komponenten in der Reihenfolge, in der das Blatt sie führt. */
 const TEILE: {
-  feld: keyof FinanzausgleichJahr;
+  field: keyof FinanzausgleichJahr;
   titel: string;
   erklaerung: string;
   imDatensatz: boolean;
 }[] = [
   {
-    feld: "zuweisungen_gemeindeaufgaben",
+    field: "zuweisungen_gemeindeaufgaben",
     titel: "Für Gemeindeaufgaben",
     erklaerung: "Der große Teil des Ausgleichs: Geld für das, was jede Gemeinde tut.",
     imDatensatz: true,
   },
   {
-    feld: "zuweisungen_kreisaufgaben",
+    field: "zuweisungen_kreisaufgaben",
     titel: "Für Kreisaufgaben",
     erklaerung:
       "Oldenburg ist kreisfrei und erledigt zusätzlich die Aufgaben eines Landkreises — "
@@ -46,7 +46,7 @@ const TEILE: {
     imDatensatz: true,
   },
   {
-    feld: "zuweisungen_uebertragener_wirkungskreis",
+    field: "zuweisungen_uebertragener_wirkungskreis",
     titel: "Für übertragene staatliche Aufgaben",
     erklaerung:
       "Geld dafür, dass die Stadt Aufgaben des Landes miterledigt: Standesamt, "
@@ -87,9 +87,9 @@ export function ZuweisungDreiteilig({ series }: { series?: FinanzausgleichJahr[]
 
       <dl className="mt-3 divide-y divide-dashed divide-border border-y border-dashed border-border">
         {TEILE.map((t) => {
-          const wert = j[t.feld];
+          const wert = j[t.field];
           return (
-            <div key={t.feld} className="grid grid-cols-[1fr_auto] items-baseline gap-x-4 py-2.5">
+            <div key={t.field} className="grid grid-cols-[1fr_auto] items-baseline gap-x-4 py-2.5">
               <dt className="min-w-0">
                 <span className="text-[13px] font-semibold leading-snug">{t.titel}</span>
                 {!t.imDatensatz && (
@@ -136,7 +136,7 @@ export function ZuweisungDreiteilig({ series }: { series?: FinanzausgleichJahr[]
         Die Kurve und die Kachel „Schlüsselzuweisungen vom Land“ nennen{" "}
         {deMio(zweiTeile / 1000)}&nbsp;Mio.&nbsp;€ — das ist derselbe Ausgleich, nur ohne den
         dritten Teil. Beide Zahlen stimmen; sie zählen Verschiedenes. Wer wissen will, was vom
-        Land insgesamt kommt, nimmt die untere.
+        Land total kommt, nimmt die untere.
       </p>
       <p className="mt-2 border-t border-dashed border-border pt-2.5 text-[11px] text-muted-foreground">
         Quelle: Landesamt für Statistik Niedersachsen, Blatt „9a“

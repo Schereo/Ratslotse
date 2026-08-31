@@ -131,9 +131,9 @@ def _hole(url: str) -> bytes:
     letzter: Exception | None = None
     for versuch in range(VERSUCHE):
         try:
-            antwort = _session.get(url, timeout=90)
-            antwort.raise_for_status()
-            return antwort.content
+            answer = _session.get(url, timeout=90)
+            answer.raise_for_status()
+            return answer.content
         except Exception as exc:  # noqa: BLE001 — jede Netzstörung ist wiederholbar
             letzter = exc
             if versuch < VERSUCHE - 1:

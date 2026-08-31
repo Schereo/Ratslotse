@@ -361,7 +361,7 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({
         question: turn.question.slice(0, 300),
-        antwort_auszug: turn.answer.slice(0, 500) || null,
+        answer_excerpt: turn.answer.slice(0, 500) || null,
         rating,
         grund: grundText?.trim() || null,
       }),
@@ -2629,7 +2629,7 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
   const mitSuche = gesamt >= 8;
   const begriff = suche.trim();
   /** Wogegen die Liste zählt: mit Suchwort die Treffer, sonst der Bestand. */
-  const bestand = begriff ? treffer : gesamt;
+  const balance = begriff ? treffer : gesamt;
   const gruppen = (["Heute", "Gestern", "Älter"] as const)
     .map((name) => ({ name, eintraege: gespraeche.filter((g) => sheetGruppe(g.updated) === name) }))
     .filter((gr) => gr.eintraege.length > 0);
@@ -2702,7 +2702,7 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
           {weitere && !sucht && (
             <button type="button" onClick={onMehr} disabled={laedtMehr}
               className="mt-2 flex h-10 w-full items-center justify-center rounded-[11px] border border-border bg-card text-[12.5px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60">
-              {laedtMehr ? "Lädt …" : `Ältere anzeigen (noch ${bestand - gespraeche.length})`}
+              {laedtMehr ? "Lädt …" : `Ältere anzeigen (noch ${balance - gespraeche.length})`}
             </button>
           )}
         </div>
@@ -2898,7 +2898,7 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
               committee: q.committee ?? null, outcome: q.outcome ?? null,
             })),
             debatten: (turn.debatten ?? []).slice(0, 20).map((d) => ({
-              sprecher: d.sprecher, partei: d.partei, art: d.art,
+              speaker: d.speaker, partei: d.partei, art: d.art,
               top: (d.top ?? "")?.slice(0, 300) || null,
               auszug: (d.auszug ?? "").slice(0, 2000),
               committee: d.committee, datum: d.datum,

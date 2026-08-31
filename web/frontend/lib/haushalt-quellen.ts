@@ -722,7 +722,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     citation:
       "Acht- bis zwölfmal im Jahr beschließen Rat oder Verwaltungsausschuss, " +
       "welche angebotenen Zuwendungen die Stadt annimmt. Der Beschluss nennt " +
-      "eine Summe („in Höhe von insgesamt … EUR laut anliegender Liste“); " +
+      "eine Summe („in Höhe von total … EUR laut anliegender Liste“); " +
       "dieselbe Summe steht in der Vorlage ein zweites Mal, im Abschnitt zu " +
       "den finanziellen Auswirkungen, dort oft zerlegt in Geldzuwendungen und " +
       "Sachspenden. " +

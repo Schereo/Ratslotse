@@ -46,7 +46,7 @@ export type AenderungsSumme = {
   expenses: number;
   balance: number;
   /** 1 = die Zeile, die die Positionen dieses Dokuments summiert. */
-  eigene: number;
+  own: number;
   document_id: number;
   herkunft_id: number | null;
 };
@@ -94,7 +94,7 @@ export type FhhSumme = {
   outflows: number;
   balance: number;
   commitment_authorizations: number | null;
-  eigene: number;
+  own: number;
   document_id: number;
   herkunft_id: number | null;
 };
@@ -157,7 +157,7 @@ export function listenFuerJahr(
     const summen = daten.summen.filter(
       (s) => s.budget_year === year && s.liste === schluessel);
     const imJahr = summen.filter((s) => s.year === year);
-    const eigene = imJahr.find((s) => s.eigene === 1);
+    const eigene = imJahr.find((s) => s.own === 1);
     const entwurf = imJahr.find((s) => s.typ === "entwurf");
     const ende = imJahr.find((s) => s.typ === "endsumme");
     const balance = eigene
@@ -325,7 +325,7 @@ export function fhhListenFuerJahr(
     if (!zeilen.length) continue;
     const eigene = (daten.fhh_summen ?? []).find(
       (s) => s.budget_year === year && s.year === year && s.liste === schluessel
-        && s.eigene === 1);
+        && s.own === 1);
     aus.push({
       schluessel,
       name: LISTEN_NAME[schluessel] ?? schluessel,

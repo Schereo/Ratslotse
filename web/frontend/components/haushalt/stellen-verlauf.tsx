@@ -27,7 +27,7 @@
 // als Zeile stehen — mit <LueckenFeld> statt Balken. Die Lücke rendert die
 // Komponente, nie die Seite (GB-00); sie bleibt auch mobil sichtbar (H4-05).
 
-import { LueckenFeld } from "@/components/grafik/luecken-feld";
+import { LueckenFeld } from "@/components/grafik/luecken-field";
 import { deStellen } from "@/lib/haushalt-stellenplan";
 import type { StellenZeile } from "@/lib/haushalt-stellenplan";
 import { cn } from "@/lib/utils";

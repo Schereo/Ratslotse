@@ -44,8 +44,8 @@ STELLENPLAN_2026_A = """1523
 Stellenplan 00100 Stadt Oldenburg
 Teil A: Beamtinnen und Beamte Datum: 01.01.2026
 Lfd.Nr. Laufbahngruppen und Bes.-Gruppe Zahl der Stellen im Zahl der Stellen im Vorjahr Vermerke, Erläuterungen
-Amtsbezeichnungen Haushaltsjahr 2026 insgesamt davon am 30.6.2025
-insgesamt tatsächlich besetzt nicht
+Amtsbezeichnungen Haushaltsjahr 2026 total davon am 30.6.2025
+total tatsächlich besetzt nicht
 mit
 Beamtinnen/
 Beamten
@@ -89,8 +89,8 @@ Ent w u r f  2 0 2 6
 Stellenplan 00100 Stadt Oldenburg
 Teil A: Beamtinnen und Beamte Datum: 01.01.2026
 Lfd.Nr. Laufbahngruppen und Bes.-Gruppe Zahl der Stellen im Zahl der Stellen im Vorjahr Vermerke, Erläuterungen
-Amtsbezeichnungen Haushaltsjahr 2026 insgesamt davon am 30.6.2025
-insgesamt tatsächlich besetzt nicht
+Amtsbezeichnungen Haushaltsjahr 2026 total davon am 30.6.2025
+total tatsächlich besetzt nicht
 mit
 Beamtinnen/
 Beamten
@@ -137,7 +137,7 @@ Summe 815,00 796,00 455,86 196,45 143,71
 TEIL_B_KLEIN = """Stellenplan 00100 Stadt Oldenburg
 Teil B: Arbeitnehmerinnen und Arbeitnehmer Datum: 01.01.2025
 Lfd.Nr. Funktionsbezeichnung Entgeltgruppe Zahl der Zahl der Stellen im Vorjahr Vermerke, Erläuterungen
-Sondertarif Stellen im insgesamt davon am 30.6.2024
+Sondertarif Stellen im total davon am 30.6.2024
 Haushaltsjahr 2025 tatsächlich
 besetzt
 nicht
@@ -157,7 +157,7 @@ Summe Beschäftigte TVöD 23,00 22,00 17,20 4,80
 UNSTIMMIGE_ZEILEN_2023 = """Stellenplan 00100 Stadt Oldenburg
 Teil B: Arbeitnehmerinnen und Arbeitnehmer Datum: 01.01.2023
 Lfd.Nr. Funktionsbezeichnung Entgeltgruppe Zahl der Zahl der Stellen im Vorjahr Vermerke, Erläuterungen
-Sondertarif Stellen im insgesamt davon am 30.6.2022
+Sondertarif Stellen im total davon am 30.6.2022
 Haushaltsjahr 2023 tatsächlich
 besetzt
 nicht
@@ -184,11 +184,11 @@ def _anlage(store: CouncilStore, text: str, document_id: int = 297432,
 
 
 def _teil(text: str, name: str = "A") -> dict:
-    return next(t for t in sp.lies(text)["teile"] if t["teil"] == name)
+    return next(t for t in sp.lies(text)["teile"] if t["part"] == name)
 
 
-def _gesamt(teil: dict) -> dict:
-    return next(z for z in teil["zeilen"] if z["art"] == "gesamt")
+def _gesamt(part: dict) -> dict:
+    return next(z for z in part["zeilen"] if z["art"] == "gesamt")
 
 
 # --- 1. Wem die unbesetzten Stellen gehören ---------------------------------
@@ -228,8 +228,8 @@ def test_teil_a_trennt_beamte_und_tarifbeschaeftigte():
 def test_der_seitenwechsel_verdoppelt_keine_zeile():
     """Kopf und Spaltennummern stehen auf jeder Seite noch einmal. Sie dürfen
     weder als Daten noch als zweiter Teil A durchgehen."""
-    teil = _teil(STELLENPLAN_2026_A)
-    posten = [z for z in teil["zeilen"] if z["art"] == "posten"]
+    part = _teil(STELLENPLAN_2026_A)
+    posten = [z for z in part["zeilen"] if z["art"] == "posten"]
     assert len(posten) == 42
     assert [z["seq_no"] for z in posten] == list(range(1, 43))
 
@@ -264,33 +264,33 @@ I. Nachwuchskräfte und informatorisch beschäftigte Kräfte im Stellenplan 2026
 1 Bachelor "Bauingenieurwesen" Studienrichtlinie TVöD-V 1,00 1,00
 2 Bachelor "Öffentliche Verwaltung" Praktikumsvergütung/Stipendium 9,00 11,00
 """
-    teil = _teil(text)
-    assert teil["bestanden"] is True
-    assert teil["verworfen"] == 0
-    assert _gesamt(teil)["positions_planned"] == 815.00
-    assert not [z for z in teil["zeilen"] if "Bachelor" in z["label"]]
+    part = _teil(text)
+    assert part["bestanden"] is True
+    assert part["verworfen"] == 0
+    assert _gesamt(part)["positions_planned"] == 815.00
+    assert not [z for z in part["zeilen"] if "Bachelor" in z["label"]]
 
 
 # --- 3. Die Proben ----------------------------------------------------------
 
 def test_alle_vier_proben_gehen_auf():
-    teil = _teil(STELLENPLAN_2026_A)
-    assert teil["bestanden"] is True
-    assert [p["probe"] for p in teil["probes"]] == [
+    part = _teil(STELLENPLAN_2026_A)
+    assert part["bestanden"] is True
+    assert [p["probe"] for p in part["probes"]] == [
         "stellenplan_spaltenprobe", "stellenplan_gruppensummen",
         "stellenplan_besetzung", "stellenplan_gesamtsumme"]
-    assert all(p["probe"] in herkunft.PROBEN for p in teil["probes"])
+    assert all(p["probe"] in herkunft.PROBEN for p in part["probes"])
 
 
 def test_teil_b_traegt_drei_proben_statt_vier():
     """Teil B hat eine Gruppe, deren Summe zugleich die Gesamtsumme ist. Eine
     vierte Probe zu behaupten hieße, dieselbe Rechnung zweimal zu zählen."""
-    teil = _teil(TEIL_B_KLEIN, "B")
-    assert teil["bestanden"] is True
-    assert [p["probe"] for p in teil["probes"]] == [
+    part = _teil(TEIL_B_KLEIN, "B")
+    assert part["bestanden"] is True
+    assert [p["probe"] for p in part["probes"]] == [
         "stellenplan_spaltenprobe", "stellenplan_gruppensummen",
         "stellenplan_besetzung"]
-    g = _gesamt(teil)
+    g = _gesamt(part)
     assert g["positions_planned"] == 23.00
     # Teil B kennt die Aufteilung der Besetzung nicht.
     assert g.get("filled_by_officials") is None
@@ -308,20 +308,20 @@ def test_andere_spaltenzahl_wird_gar_nicht_erst_gelesen():
     Spalten, wo Teil A neun hat, ist es ein anderes Dokument — und die
     Bedeutung jeder Spalte wäre geraten."""
     text = STELLENPLAN_2026_A.replace("1 2 3 4 5 6 7 8 9", "1 2 3 4 5 6 7 8")
-    teil = _teil(text)
-    assert teil["bestanden"] is False
-    assert teil["zeilen"] == []
-    assert "Spalten" in teil["nachweis"]
+    part = _teil(text)
+    assert part["bestanden"] is False
+    assert part["zeilen"] == []
+    assert "Spalten" in part["nachweis"]
 
 
 def test_gerissene_gruppensumme_verwirft_den_ganzen_teil():
     text = STELLENPLAN_2026_A.replace(
         "Summe Laufbahngruppe 2 430,00 412,00 249,69 91,36 70,96",
         "Summe Laufbahngruppe 2 431,00 412,00 249,69 91,36 70,96")
-    teil = _teil(text)
-    assert teil["bestanden"] is False
-    assert teil["zeilen"] == []
-    assert "Laufbahngruppe 2" in teil["nachweis"]
+    part = _teil(text)
+    assert part["bestanden"] is False
+    assert part["zeilen"] == []
+    assert "Laufbahngruppe 2" in part["nachweis"]
 
 
 def test_gerissene_gesamtsumme_verwirft_den_ganzen_teil():
@@ -330,9 +330,9 @@ def test_gerissene_gesamtsumme_verwirft_den_ganzen_teil():
     text = STELLENPLAN_2026_A.replace(
         "Summe 815,00 796,00 455,86 196,45 143,71",
         "Summe 820,00 796,00 455,86 196,45 143,71")
-    teil = _teil(text)
-    assert teil["bestanden"] is False
-    assert teil["zeilen"] == []
+    part = _teil(text)
+    assert part["bestanden"] is False
+    assert part["zeilen"] == []
 
 
 def test_besetzung_gegen_die_falsche_spalte_reisst_die_probe():
@@ -365,17 +365,17 @@ def test_widerspruechliche_zeilen_werden_gekennzeichnet_nicht_verworfen():
     1.643 Stellen ein — wegen eines Übertrags, den das Dokument selbst wieder
     geraderückt. Gespeichert wird deshalb, was im Plan steht, mit einer
     Markierung daneben."""
-    teil = _teil(UNSTIMMIGE_ZEILEN_2023, "B")
-    assert teil["bestanden"] is True
-    assert [u["seq_no"] for u in teil["unstimmig"]] == [34, 40]
-    assert [u["deviation"] for u in teil["unstimmig"]] == [1.0, -1.0]
+    part = _teil(UNSTIMMIGE_ZEILEN_2023, "B")
+    assert part["bestanden"] is True
+    assert [u["seq_no"] for u in part["unstimmig"]] == [34, 40]
+    assert [u["deviation"] for u in part["unstimmig"]] == [1.0, -1.0]
 
-    posten = {z["seq_no"]: z for z in teil["zeilen"] if z["art"] == "posten"}
+    posten = {z["seq_no"]: z for z in part["zeilen"] if z["art"] == "posten"}
     assert posten[34]["consistent"] == 0
     assert posten[40]["consistent"] == 0
     # Und der Wert selbst bleibt der des Dokuments — nicht zurechtgerechnet.
     assert posten[34]["filled"] == 52.79
-    assert _gesamt(teil)["consistent"] == 1
+    assert _gesamt(part)["consistent"] == 1
 
 
 def test_ein_stimmiger_jahrgang_meldet_keine_ausreisser():
@@ -393,7 +393,7 @@ def test_fehlender_teil_b_wird_als_glyphensalat_erkannt():
         "/0 /1 /2 /3 /3 /2 /4 /5 /3 /6 /4 /i255 /0 /1 /6 /10 /1 /i255 /11 /3\n")
     gelesen = sp.lies(text)
     assert gelesen["glyphen"] is True
-    assert [t["teil"] for t in gelesen["teile"]] == ["A"]
+    assert [t["part"] for t in gelesen["teile"]] == ["A"]
 
 
 def test_einheit_ist_der_teil_nicht_der_jahrgang(tmp_path):

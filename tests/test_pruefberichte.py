@@ -215,7 +215,7 @@ def test_speichern_und_lesen(tmp_path, quelle):
         zeilen = store.get_pruefberichte()
         assert [z["mark"] for z in zeilen] == ["H", "WB"]
         assert zeilen[1]["text_number"] == "4.2.4"
-        assert zeilen[1]["kette"] == pruefberichte.kettenschluessel("Bilanzposition: Schulden")
+        assert zeilen[1]["chain"] == pruefberichte.kettenschluessel("Bilanzposition: Schulden")
         assert zeilen[1]["source_url"].endswith("id=280863&type=do")
 
         # Erneuter Ingest ersetzt den Jahrgang, statt ihn zu verdoppeln.

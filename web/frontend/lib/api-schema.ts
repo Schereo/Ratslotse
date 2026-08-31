@@ -5027,8 +5027,8 @@ export interface components {
         };
         /** QaFeedbackBody */
         QaFeedbackBody: {
-            /** Antwort Auszug */
-            antwort_auszug?: string | null;
+            /** Answer Excerpt */
+            answer_excerpt?: string | null;
             /** Frage */
             frage: string;
             /** Grund */
@@ -5097,8 +5097,8 @@ export interface components {
             protokoll_seite?: number | null;
             /** Protokoll Url */
             protokoll_url?: string | null;
-            /** Sprecher */
-            sprecher?: string | null;
+            /** Speaker */
+            speaker?: string | null;
             /** Top */
             top?: string | null;
         };
@@ -5106,8 +5106,8 @@ export interface components {
         QaShareKernaussage: {
             /** Datum */
             datum?: string | null;
-            /** Sprecher */
-            sprecher?: string | null;
+            /** Speaker */
+            speaker?: string | null;
             /**
              * Text
              * @default
@@ -5132,8 +5132,8 @@ export interface components {
             kernaussage?: {
                 /** Datum */
                 datum?: string | null;
-                /** Sprecher */
-                sprecher?: string | null;
+                /** Speaker */
+                speaker?: string | null;
                 /**
                  * Text
                  * @default
@@ -10741,4 +10741,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 60e439dce98c54ef513019b64fd700cc8a076f06d052c8274ce7c5419f09a156
+// vertrag-sha256: 384929e3937301b6cad2731ce2824a753ac10c47c91e9d0e899c17159da4d1f0

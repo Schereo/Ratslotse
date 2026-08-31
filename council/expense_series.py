@@ -284,15 +284,15 @@ def regelwerk_von(year: int) -> str:
     return "doppik" if year >= NAHT_AB else "kameral"
 
 
-def _zelle(feld: str) -> tuple[float | None, str]:
+def _zelle(field: str) -> tuple[float | None, str]:
     """Ein PDF-Tabellenfeld → (Zahl, Marke). ``(None, "")``, wenn es keine ist.
 
     Ohne Tausenderpunkt gilt das Feld ungeteilt: ``891`` sind 891 und nicht 89
     mit Fußnote 1."""
-    feld = feld.strip()
-    if "." not in feld:
-        return (float(feld), "") if feld.isdigit() else (None, "")
-    m = _ZELLE.match(feld)
+    field = field.strip()
+    if "." not in field:
+        return (float(field), "") if field.isdigit() else (None, "")
+    m = _ZELLE.match(field)
     if not m:
         return (None, "")
     return float(m.group(1).replace(".", "")), m.group(2) or ""

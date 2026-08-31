@@ -183,7 +183,7 @@ def teilbericht_starten(job: DeepJob, ratslotse_db: str, council_db: str) -> boo
     job.stop.clear()
     threading.Thread(target=_schreiben_und_abschliessen,
                      args=(job, ratslotse_db, council_db, True),
-                     daemon=True, name=f"deep-teil-{job.id}").start()
+                     daemon=True, name=f"deep-part-{job.id}").start()
     return True
 
 
@@ -428,7 +428,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             "sources": [_qa_source(c) for c in candidates],
             "presse_kompakt": [{"titel": p.get("titel"), "url": p.get("url"),
                                 "datum": p.get("datum")} for p in presse_rows],
-            "debatten_kompakt": [{"sprecher": d.get("sprecher"), "partei": d.get("partei"),
+            "debatten_kompakt": [{"speaker": d.get("speaker"), "partei": d.get("partei"),
                                   "art": d.get("art"), "top": d.get("top"),
                                   "auszug": (d.get("text") or "")[:2000],
                                   "committee": d.get("committee"),

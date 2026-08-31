@@ -61,9 +61,9 @@ def link_suchen() -> str | None:
 
     ``None``, wenn die Seite ihn nicht (mehr) führt — dann greift die
     hinterlegte Adresse, und der Lauf sagt, dass er das tut."""
-    antwort = requests.get(ar.JAHRBUCH_URL, headers=_UA, timeout=120)
-    antwort.raise_for_status()
-    treffer = ar.LINK_MUSTER.search(antwort.text)
+    answer = requests.get(ar.JAHRBUCH_URL, headers=_UA, timeout=120)
+    answer.raise_for_status()
+    treffer = ar.LINK_MUSTER.search(answer.text)
     return urljoin(ar.JAHRBUCH_URL, treffer.group(1)) if treffer else None
 
 
@@ -142,17 +142,17 @@ def main() -> int:
             # --- Die beiden CSV-Dateien ------------------------------------
             csv: dict[str, str] = {}
             for accounting_system, url in ar.CSV_URLS.items():
-                antwort = requests.get(url, headers=_UA, timeout=120)
-                if antwort.status_code != 200:
-                    print(f"CSV {accounting_system}: HTTP {antwort.status_code} — "
+                answer = requests.get(url, headers=_UA, timeout=120)
+                if answer.status_code != 200:
+                    print(f"CSV {accounting_system}: HTTP {answer.status_code} — "
                           f"übersprungen", file=sys.stderr)
                     csv[accounting_system] = ""
                     continue
                 # Das Portal liefert die Dateien ohne Kodierungsangabe;
                 # requests rät dann Latin-1 und macht aus „für“ ein „fÃ¼r“.
-                antwort.encoding = antwort.encoding or "utf-8-sig"
-                csv[accounting_system] = antwort.text
-                print(f"CSV {accounting_system}: {len(antwort.content)} Bytes")
+                answer.encoding = answer.encoding or "utf-8-sig"
+                csv[accounting_system] = answer.text
+                print(f"CSV {accounting_system}: {len(answer.content)} Bytes")
 
             # --- Das PDF des Jahrbuchs -------------------------------------
             if args.pdf:
@@ -165,11 +165,11 @@ def main() -> int:
                     url = ar.TABELLE_URL
                     print(f"HINWEIS: Die Übersichtsseite führt keinen Link auf "
                           f"1102 mehr — es gilt die hinterlegte Adresse: {url}")
-                antwort = requests.get(url, headers=_UA, timeout=120)
-                antwort.raise_for_status()
+                answer = requests.get(url, headers=_UA, timeout=120)
+                answer.raise_for_status()
                 pfad = Path(tmp) / "1102.pdf"
-                pfad.write_bytes(antwort.content)
-                print(f"  geladen: {ar.de_zahl(len(antwort.content))} Bytes")
+                pfad.write_bytes(answer.content)
+                print(f"  geladen: {ar.de_zahl(len(answer.content))} Bytes")
 
             text = pdf_text(pfad)
             spannen = ar.erkenne(text)
@@ -251,22 +251,22 @@ def main() -> int:
                     (z["accounting_system"], z["quelle"], tuple(z["probes"])), []).append(z)
 
             geschrieben = 0
-            for (accounting_system, quelle, probes), teil in sorted(
+            for (accounting_system, quelle, probes), part in sorted(
                     gruppen.items(), key=lambda kv: kv[1][0]["year"]):
-                spanne = _spanne([z["year"] for z in teil])
-                count = (f"{len(teil)} Jahrgänge" if len(teil) != 1
+                spanne = _spanne([z["year"] for z in part])
+                count = (f"{len(part)} Jahrgänge" if len(part) != 1
                           else "1 Jahrgang")
                 nachweis = f"{count} ({spanne}), bestanden: " \
                     + ", ".join(ar.PROBEN_KURZ[n] for n in probes)
-                if any(z.get("conflict_amount") for z in teil):
-                    k = next(z for z in teil if z.get("conflict_amount"))
+                if any(z.get("conflict_amount") for z in part):
+                    k = next(z for z in part if z.get("conflict_amount"))
                     nachweis += (
                         f"; für {k['year']} widersprechen sich die beiden "
                         f"Quellen um "
                         f"{ar.de_zahl(abs(k['conflict_amount'] - k['amount']) / 1e6, 3)}"
                         f" Mio. € — übernommen ist der Wert, der seine "
                         f"Pro-Kopf-Rechnung erfüllt")
-                geschrieben += store.save_ausgabenreihe(teil, h.Herkunft(
+                geschrieben += store.save_ausgabenreihe(part, h.Herkunft(
                     art="opendata" if quelle == "csv" else "stadt",
                     url=(ar.CSV_URLS[accounting_system] if quelle == "csv"
                          else (url or ar.TABELLE_URL)),

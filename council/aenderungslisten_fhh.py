@@ -369,23 +369,23 @@ def _bezeichnungsfragment(zeile: list[Wort], spalten: FhhSpalten) -> str | None:
     Betragsspalten macht sie zu einer verrutschten Positionszeile.
     """
     links, rechts = spalten.bez
-    teil = [w for w in zeile if links - 1 <= w[0] and w[1] <= rechts + 1]
-    if not teil:
+    part = [w for w in zeile if links - 1 <= w[0] and w[1] <= rechts + 1]
+    if not part:
         return None
     if any(w[1] < links - 1 for w in zeile):
         return None
     if any(_zelle([w], *spalten.amount[i]) is not None
            for w in zeile for i in range(5)):
         return None
-    return " ".join(w[3] for w in teil)
+    return " ".join(w[3] for w in part)
 
 
 def _produktfragment(zeile: list[Wort], spalten: FhhSpalten) -> str | None:
     """Der abgerissene Schwanz eines Investitionscodes („.500“)."""
     bez_links = spalten.bez[0]
-    teil = [w for w in zeile if w[1] <= bez_links and w[3].startswith(".")
+    part = [w for w in zeile if w[1] <= bez_links and w[3].startswith(".")
             and re.fullmatch(r"\.\d+", w[3])]
-    return teil[0][3] if len(teil) == 1 else None
+    return part[0][3] if len(part) == 1 else None
 
 
 # ------------------------------------------------------------- Zusammenstellung
@@ -644,19 +644,20 @@ def _doppelzeilen_falten(zeilen: list[FhhZeile]) -> list[FhhZeile]:
         if erste is None:
             aus[schluessel] = z
             continue
-        for feld in ("planned_draft", "inflow", "outflow", "commitment_authorizations", "planned_new"):
-            alt_wert, neu_wert = getattr(erste, feld), getattr(z, feld)
+        for spaltenname in ("planned_draft", "inflow", "outflow",
+                            "commitment_authorizations", "planned_new"):
+            alt_wert, neu_wert = getattr(erste, spaltenname), getattr(z, spaltenname)
             if neu_wert is None:
                 continue
             if alt_wert is not None and alt_wert != neu_wert:
                 raise ListenFehler(
                     f"Position {z.year}/seq {z.seq} steht zweimal mit "
-                    f"verschiedenem {feld}: {alt_wert:,} und {neu_wert:,}.")
-            setattr(erste, feld, neu_wert)
-        for feld in ("explanation", "label", "author"):
-            alt_text, neu_text = getattr(erste, feld), getattr(z, feld)
+                    f"verschiedenem {spaltenname}: {alt_wert:,} und {neu_wert:,}.")
+            setattr(erste, spaltenname, neu_wert)
+        for spaltenname in ("explanation", "label", "author"):
+            alt_text, neu_text = getattr(erste, spaltenname), getattr(z, spaltenname)
             if neu_text and neu_text != alt_text:
-                setattr(erste, feld, f"{alt_text} {neu_text}".strip()
+                setattr(erste, spaltenname, f"{alt_text} {neu_text}".strip()
                         if alt_text else neu_text)
     return list(aus.values())
 
@@ -898,9 +899,9 @@ def _proben(aus: FhhErgebnis) -> None:
         # Fehlt eines von beiden, bleiben die Listen selbst die Referenz der
         # Positionsprobe — bei den kumulierten Dateien ihre Summe („alle“).
         kette_ok = not (entwurf and ende) or all(
-            abs(getattr(entwurf[0], feld) + sum(getattr(s, feld) for s in listen)
-                - getattr(ende[0], feld)) <= toleranz
-            for feld in ("inflows", "outflows"))
+            abs(getattr(entwurf[0], field) + sum(getattr(s, field) for s in listen)
+                - getattr(ende[0], field)) <= toleranz
+            for field in ("inflows", "outflows"))
 
         pos_e = sum(z.inflow or 0 for z in aus.zeilen if z.year == year)
         pos_a = sum(z.outflow or 0 for z in aus.zeilen if z.year == year)

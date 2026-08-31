@@ -1654,7 +1654,7 @@ class Store:
             self._conn.execute("UPDATE web_users SET qa_speichern = ? WHERE id = ?",
                                (1 if an else 0, user_id))
 
-    def qa_share_anlegen(self, user_id: int, frage: str, antwort: str,
+    def qa_share_anlegen(self, user_id: int, frage: str, answer: str,
                          quellen: list[dict] | None,
                          extras: dict | None = None) -> str:
         """Snapshot einer geteilten Antwort (Task 31) → öffentliches Token.
@@ -1670,7 +1670,7 @@ class Store:
             self._conn.execute(
                 "INSERT INTO qa_shares (token, user_id, question, answer, sources, created, extras) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (token, user_id, frage[:300], antwort[:8000],
+                (token, user_id, frage[:300], answer[:8000],
                  json.dumps(quellen or [], ensure_ascii=False), now,
                  json.dumps(extras, ensure_ascii=False) if extras else None))
         return token
@@ -1806,7 +1806,7 @@ class Store:
             return int(cur.lastrowid)
 
     def qa_turn_speichern(self, gespraech_id: int, user_id: int, frage: str,
-                          antwort: str, quellen_json: str | None) -> bool:
+                          answer: str, quellen_json: str | None) -> bool:
         """Turn anhängen — nur ins eigene Gespräch (user_id doppelt geprüft)."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
@@ -1818,7 +1818,7 @@ class Store:
             self._conn.execute(
                 "INSERT INTO qa_gespraech_turns (conversation_id, user_id, question, answer, sources, created) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (gespraech_id, user_id, frage[:600], antwort[:8000], quellen_json, now))
+                (gespraech_id, user_id, frage[:600], answer[:8000], quellen_json, now))
             self._conn.execute("UPDATE qa_gespraeche SET updated = ? WHERE id = ?",
                                (now, gespraech_id))
             return True
@@ -2430,12 +2430,12 @@ class Store:
             return 0
         with self._conn:
             for i in range(0, len(tot), 500):
-                teil = tot[i : i + 500]
-                ph = ",".join("?" * len(teil))
+                part = tot[i : i + 500]
+                ph = ",".join("?" * len(part))
                 self._conn.execute(
-                    f"DELETE FROM council_topic_matches WHERE decision_id IN ({ph})", teil)
+                    f"DELETE FROM council_topic_matches WHERE decision_id IN ({ph})", part)
                 self._conn.execute(
-                    f"DELETE FROM topic_hits_seen WHERE decision_id IN ({ph})", teil)
+                    f"DELETE FROM topic_hits_seen WHERE decision_id IN ({ph})", part)
         return len(tot)
 
     def topic_decision_counts(self, owner_id: int) -> dict[int, int]:

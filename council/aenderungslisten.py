@@ -475,15 +475,15 @@ def _bezeichnungsfragment(zeile: list[Wort], spalten: Spalten) -> str | None:
         links, rechts = spalten.label - 25, zone_links - 2
     else:
         return None
-    teil = [w for w in zeile if links <= w[0] and w[1] <= rechts]
-    if not teil:
+    part = [w for w in zeile if links <= w[0] and w[1] <= rechts]
+    if not part:
         return None
     if any(w[1] < links for w in zeile):
         return None
     if any(re.fullmatch(_ZAHL, w[3]) and zone_links <= w[1] <= zone_rechts
            for w in zeile):
         return None
-    return " ".join(w[3] for w in teil)
+    return " ".join(w[3] for w in part)
 
 
 def _betrag_tokens(zeile: list[Wort]) -> list[Wort]:
@@ -882,10 +882,10 @@ def _proben(aus: Ergebnis) -> None:
         # summieren — alles, was das Dokument insgesamt ändert.
         toleranz = 2 * (len(listen) + 1)
         kette_ok = all(
-            abs(getattr(entwurf[0], feld)
-                + sum(getattr(s, feld) for s in listen)
-                - getattr(ende[0], feld)) <= toleranz
-            for feld in ("revenues", "expenses"))
+            abs(getattr(entwurf[0], field)
+                + sum(getattr(s, field) for s in listen)
+                - getattr(ende[0], field)) <= toleranz
+            for field in ("revenues", "expenses"))
 
         # Positionsprobe: Wessen Zeile summieren wir hier eigentlich? Die
         # Kandidaten sind jede Listen-Zeile und — für die kumulierten

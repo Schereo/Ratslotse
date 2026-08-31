@@ -10,7 +10,7 @@ def test_eng_regel_ersetzt_die_typ_regeln_und_die_debatten_pflicht():
     """Bei eng=True steht die Kürze-Regel im Prompt — und der Debatten-Block
     verlangt KEIN Meinungsbild mehr. Ohne das gewann die „IMMER ergänzen"-
     Anweisung des Blocks gegen die Kürze (im Test genau so gemessen)."""
-    debatten = [{"sprecher": "Meier", "partei": "SPD", "datum": "2026-01-01",
+    debatten = [{"speaker": "Meier", "partei": "SPD", "datum": "2026-01-01",
                  "text": "Ein Beitrag zur Sache.", "art": "rede"}]
     block_eng = qa._debatten_block(debatten, eng=True)
     block_normal = qa._debatten_block(debatten, eng=False)

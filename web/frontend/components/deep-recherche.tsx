@@ -117,7 +117,7 @@ export function RechercheFortschritt({ phase, facetten, facettenFertig, dokument
   // hydriert.
   const [nativ, setNativ] = useState(false);
   useEffect(() => { setNativ(isNativeApp()); }, []);
-  const prozent =
+  const percent =
     phase === "zerlegen" ? 8
     : phase === "suchen" ? 10 + (facetten.length ? (facettenFertig / facetten.length) * 45 : 20)
     : phase === "lesen" ? 62
@@ -176,7 +176,7 @@ export function RechercheFortschritt({ phase, facetten, facettenFertig, dokument
       <div className="mt-3 flex items-center gap-2.5">
         <span className="h-[5px] flex-1 overflow-hidden rounded-full bg-primary/10">
           <span className="block h-full rounded-full bg-primary transition-[width] duration-700"
-            style={{ width: `${prozent}%` }} />
+            style={{ width: `${percent}%` }} />
         </span>
         <span className="whitespace-nowrap font-mono text-[10px] text-muted-foreground">{restzeit}</span>
         <button type="button" onClick={onStop}

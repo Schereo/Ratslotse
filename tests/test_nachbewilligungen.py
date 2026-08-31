@@ -64,7 +64,7 @@ TITEL_AUSREISSER = [
      187_804.11),
     # „insgesamt" zwischen Wendung und Zahl.
     ("25/0559", "Außerplanmäßige Bewilligung zweier Verpflichtungsermächtigungen "
-                "in Höhe von insgesamt 500.000 Euro für einen Vertrag mit den "
+                "in Höhe von total 500.000 Euro für einen Vertrag mit den "
                 "Nds. Landesforsten - Kompensation -Beschluss", 500_000.0),
 ]
 
@@ -152,7 +152,7 @@ as Haushaltsjahr 2022 hat der Rat gemäß § 117 NKomVG über- und außer-
 planmäßige Aufwendungen und Auszahlungen beschlossen beziehungsweise wurde
 er über Eilentscheidungen und die vom Oberbürgermeister oder Vertretung als uner-
 heblich gemäß § 6 der Haushaltssatzung entschiedenen Fälle unterrichtet. Es wur-
-den über- und außerplanmäßige Aufwendungen und Auszahlungen von insgesamt
+den über- und außerplanmäßige Aufwendungen und Auszahlungen von total
 26.969.523,30 Euro genehmigt. Davon entfielen 10.032.086,30 Euro auf investive
 und 16.649.437,00 Euro auf konsumtive Zwecke. Darüber hinaus wurde im Jahr
 2022 eine überplanmäßige Verpflichtungsermächtigung in Höhe von 150.000 Euro
@@ -198,11 +198,11 @@ Für das Haushaltsjahr 2023 hat der Rat gemäß § 117 NKomVG über- und außer-
 planmäßige Aufwendungen und Auszahlungen beschlossen beziehungsweise wurde
 er über Eilentscheidungen und die vom Oberbürgermeister oder Vertretung als uner-
 heblich gemäß § 6 der Haushaltssatzung entschiedenen Fälle unterrichtet. Es wur-
-den über- und außerplanmäßige Aufwendungen und Auszahlungen von insgesamt
+den über- und außerplanmäßige Aufwendungen und Auszahlungen von total
 40.236.162,59 Euro genehmigt. Davon entfielen 8.835.307,05 Euro auf investive und
 31.400.855,54 Euro auf konsumtive Zwecke. Darüber hinaus wurden im Jahr 2023
 vom Rat sechs über- bzw. außerplanmäßige Verpflichtungsermächtigungen in Höhe
-von insgesamt 4.870.000,00 Euro bewilligt.
+von total 4.870.000,00 Euro bewilligt.
 
 Über-/ außerplanmäßige
 Aufwendungen bzw. Aus-
@@ -244,11 +244,11 @@ Für das Haushaltsjahr 2024 hat der Rat gemäß § 117 NKomVG über- und außer-
 planmäßige Aufwendungen und Auszahlungen beschlossen beziehungsweise wurde
 er über Eilentscheidungen und die vom Oberbürgermeister oder Vertretung als uner-
 heblich gemäß § 6 der Haushaltssatzung entschiedenen Fälle unterrichtet. Es wur-
-den über- und außerplanmäßige Aufwendungen und Auszahlungen von insgesamt
+den über- und außerplanmäßige Aufwendungen und Auszahlungen von total
 57.492.845,28 Euro genehmigt. Davon entfielen 11.653.645,24 Euro auf investive
 und 45.839.200,04 Euro auf konsumtive Zwecke. Darüber hinaus wurden im Jahr
 2024 vom Rat drei über- bzw. außerplanmäßige Verpflichtungsermächtigungen in
-Höhe von insgesamt 1.480.000,00 Euro bewilligt. Zudem wurde eine außerplanmä-
+Höhe von total 1.480.000,00 Euro bewilligt. Zudem wurde eine außerplanmä-
 ßige Verpflichtungsermächtigung in Höhe von 35.000,00 Euro durch den Oberbür-
 germeister bewilligt. Der Rat wurde hierüber nachrichtlich unterrichtet.
 

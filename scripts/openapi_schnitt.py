@@ -62,9 +62,9 @@ def _nullbar_zusammenziehen(knoten):
             if isinstance(rest, dict) and "type" in rest and not (set(rest) & _KEIN_TYP):
                 neu = dict(rest)
                 neu["type"] = [rest["type"], "null"]
-                for feld in ("title", "description"):
-                    if feld in knoten:
-                        neu.setdefault(feld, knoten[feld])
+                for field in ("title", "description"):
+                    if field in knoten:
+                        neu.setdefault(field, knoten[field])
                 return _nullbar_zusammenziehen(neu)
         return {k: _nullbar_zusammenziehen(v) for k, v in knoten.items()}
     if isinstance(knoten, list):
@@ -85,7 +85,7 @@ def _nullbare_refs_inlinen(spec: dict) -> dict:
     """
     schemas = spec.get("components", {}).get("schemas", {})
 
-    def gehe(knoten, kette: tuple[str, ...] = ()):
+    def gehe(knoten, chain: tuple[str, ...] = ()):
         if isinstance(knoten, dict):
             zweige = knoten.get("anyOf")
             if isinstance(zweige, list) and len(zweige) == 2 and {"type": "null"} in zweige:
@@ -94,16 +94,16 @@ def _nullbare_refs_inlinen(spec: dict) -> dict:
                     name = rest["$ref"].split("/")[-1]
                     # Zyklusschutz: Ein Schema, das sich selbst (mittelbar)
                     # enthält, würde sonst endlos ausgeschrieben.
-                    if name in schemas and name not in kette:
+                    if name in schemas and name not in chain:
                         ziel = copy.deepcopy(schemas[name])
                         ziel["type"] = [ziel.get("type", "object"), "null"]
-                        for feld in ("title", "description"):
-                            if feld in knoten:
-                                ziel.setdefault(feld, knoten[feld])
-                        return gehe(ziel, kette + (name,))
-            return {k: gehe(v, kette) for k, v in knoten.items()}
+                        for field in ("title", "description"):
+                            if field in knoten:
+                                ziel.setdefault(field, knoten[field])
+                        return gehe(ziel, chain + (name,))
+            return {k: gehe(v, chain) for k, v in knoten.items()}
         if isinstance(knoten, list):
-            return [gehe(x, kette) for x in knoten]
+            return [gehe(x, chain) for x in knoten]
         return knoten
 
     return gehe(spec)
@@ -115,10 +115,10 @@ def offene_nullable(spec: dict) -> list[str]:
     dort von Hand oder gibt der Form im Backend einen nicht-nullbaren Vertreter."""
     offen = []
     for name, s in (spec.get("components", {}).get("schemas", {})).items():
-        for feld, p in (s.get("properties") or {}).items():
+        for field, p in (s.get("properties") or {}).items():
             zweige = p.get("anyOf")
             if isinstance(zweige, list) and {"type": "null"} in zweige:
-                offen.append(f"{name}.{feld}")
+                offen.append(f"{name}.{field}")
     return sorted(offen)
 
 

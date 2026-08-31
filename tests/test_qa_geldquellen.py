@@ -241,7 +241,7 @@ class _MessStore:
     def steuern_fuer_begriffe(self, b):
         return self._merken(
             "steuern_fuer_begriffe",
-            [{"art": "insgesamt", "year": 2025, "amount": 1.0}] if self._steuern_treffer else [])
+            [{"art": "total", "year": 2025, "amount": 1.0}] if self._steuern_treffer else [])
 
     def steuerkraft_kontext(self):
         return self._merken("steuerkraft_kontext", None)
@@ -601,13 +601,13 @@ def _befuellter_store(tmp_path) -> CouncilStore:
                 (sub_budget, name, a_plan, a_plan, a_ist))
         store._conn.execute(
             "INSERT INTO council_abweichungsgruende (year, nr, label, delta_meur, "
-            " prozent, text, fetched_at, herkunft_id) VALUES "
+            " percent, text, fetched_at, herkunft_id) VALUES "
             "(2024, 1, 'Steuern und ähnliche Abgaben', 21.4, 5.2, "
             " 'Die Mehrerträge beruhen im Wesentlichen auf Nachveranlagungen bei der "
             "Gewerbesteuer aus Vorjahren.', '', 1)")
         store._conn.execute(
             "INSERT INTO council_pruefberichte (year, seq, mark, mark_name, text_number, "
-            " section, kette, page, text, fetched_at, herkunft_id) VALUES "
+            " section, chain, page, text, fetched_at, herkunft_id) VALUES "
             "(2023, 1, 'WB', 'Wiederholte Beanstandung', '4.5.2', 'Vergabewesen', 'verg', 87, "
             " 'Die Dokumentation der Vergabeentscheidungen ist erneut unvollständig.', '', 2)")
         store._conn.execute(
@@ -670,7 +670,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # Zeilen reichen — der Baustein zeigt genau diese vier Bezugspunkte.
         store._conn.executemany(
             "INSERT INTO council_schulden (year, credit_market, special_funds, "
-            " public_authorities, municipal_enterprises, insgesamt, per_capita, "
+            " public_authorities, municipal_enterprises, total, per_capita, "
             " revised, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,0,3,'')",
             [(1995, None, None, None, None, 198_000_000.0, 1_420.0),
              (2013, None, None, None, None, 512_400_000.0, 3_180.0),
@@ -692,7 +692,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # Stellenplan: beide Teile, nur die Gesamtzeilen. besetzt +
         # nicht_besetzt = stellen_vorjahr (die Besetzungsprobe des Plans).
         store._conn.executemany(
-            "INSERT INTO council_stellenplan (budget_year, teil, zeile, art, label, "
+            "INSERT INTO council_stellenplan (budget_year, part, zeile, art, label, "
             " positions_planned, positions_prior_year, filled, vacant, as_of_date, "
             " herkunft_id, fetched_at) VALUES (2026,?,0,'gesamt',?,?,?,?,?,'30.06.2025',?,'')",
             [("A", "Gesamt Teil A", 815.50, 802.00, 761.25, 40.75, 5),
@@ -811,7 +811,7 @@ def test_pruefung_block_fuehrt_wiederholte_beanstandung_zuerst(tmp_path):
     text = qa._pruefung_block(p)
     assert "Wiederholte Beanstandung" in text and "Textziffer 4.5.2" in text
     assert "S. 87" in text
-    assert "2023" in text and "insgesamt 2 Feststellungen" in text
+    assert "2023" in text and "total 2 Feststellungen" in text
     assert "AUSWAHL" in text
     store.close()
 
@@ -947,7 +947,7 @@ def test_stellenplan_nennt_den_fehlenden_teil(tmp_path):
     eine Antwort, die dann „815 Stellen" sagt, unterschlägt 1.700."""
     store = _befuellter_store(tmp_path)
     with store._conn:
-        store._conn.execute("DELETE FROM council_stellenplan WHERE teil = 'B'")
+        store._conn.execute("DELETE FROM council_stellenplan WHERE part = 'B'")
     text = qa._stellenplan_block(store.stellenplan_kontext())
     assert "NICHT im Bestand: der Teil für Arbeitnehmerinnen und Arbeitnehmer" in text
     assert "nicht der ganze Stellenplan" in text
@@ -1026,7 +1026,7 @@ def test_voller_geld_kontext_bleibt_im_budget(tmp_path):
     # Eine Frage, die acht der zehn Quellen zieht — mehr geht in einem Satz
     # kaum, ohne ihn zu erfinden.
     kontext = qa.geld_kontext(
-        store, "Warum kostet die Stadt insgesamt mehr als geplant, was hat das "
+        store, "Warum kostet die Stadt total mehr als geplant, was hat das "
                "Rechnungsprüfungsamt dazu beanstandet, wie sehen die Erträge im "
                "Haushalt aus und wie ist das im Vergleich zu Osnabrück?",
         "Haushalt Soziales Theater Feuerwehr Steuern", "geld")
@@ -1105,7 +1105,7 @@ def test_die_neuen_facetten_verdraengen_die_alten_nicht_komplett(tmp_path):
     fragt, wäre kein Zeichensparen, sondern ein Datenverlust."""
     store = _befuellter_store(tmp_path)
     kontext = qa.geld_kontext(
-        store, "Warum kostet die Stadt insgesamt mehr als geplant, wie viele "
+        store, "Warum kostet die Stadt total mehr als geplant, wie viele "
                "Schulden hat sie, was wird gebaut, wie viele Stellen sind "
                "unbesetzt, was hat das Rechnungsprüfungsamt beanstandet und wie "
                "ist das im Vergleich zu Osnabrück?",
@@ -1128,7 +1128,7 @@ def test_budget_kappt_ganze_bausteine_statt_saetze(tmp_path):
     """Reißt das Budget, fallen die HINTEREN Facetten weg — nicht alle in der
     Mitte. Ein halb abgeschnittener Prüfbericht wäre schlimmer als keiner."""
     store = _befuellter_store(tmp_path)
-    kontext = qa.geld_kontext(store, "Warum gibt die Stadt insgesamt mehr aus als "
+    kontext = qa.geld_kontext(store, "Warum gibt die Stadt total mehr aus als "
                                      "geplant und was wurde beanstandet?",
                               "Haushalt Steuern Soziales", "geld")
     voll = qa.geld_block(kontext)
@@ -1314,21 +1314,21 @@ def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
     Der Test hält außerdem die SPALTENNAMEN fest. Beide Abfragen stehen hinter
     einem `except sqlite3.OperationalError` — ein Tippfehler im Spaltennamen
     fiele sonst nie auf, sondern ließe die Zahl einfach weg (genau so passiert:
-    `amount` statt `insgesamt`).
+    `amount` statt `total`).
     """
     from council import qa
     from council.store import CouncilStore
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_schulden (year, insgesamt, per_capita, fetched_at) "
+    c.execute("INSERT INTO council_schulden (year, total, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
     c.execute("INSERT INTO council_bilanz (year, role, page, level, label, wert, "
               " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
-    c.execute("INSERT INTO council_integrierte_schulden (year, ars, insgesamt, probes, "
+    c.execute("INSERT INTO council_integrierte_schulden (year, ars, total, probes, "
               " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
-    c.execute("INSERT INTO council_buergschaften (year, bestand, exact, out_next_year, "
+    c.execute("INSERT INTO council_buergschaften (year, balance, exact, out_next_year, "
               " quelle, probes, fetched_at) "
               "VALUES (2024, 220300000, 1, 0, 'jahresabschluss', '', '2026-08-18')")
     c.commit()
@@ -1337,7 +1337,7 @@ def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
     arten = {w["art"]: w["amount"] for w in k["weitere"]}
     assert arten["Kernhaushalt (nur Geldschulden)"] == 43_690_972
     assert arten["Konzern Stadt (anteilig, mit Beteiligungen)"] == 740_300_000
-    assert k["buergschaften"]["bestand"] == 220_300_000
+    assert k["buergschaften"]["balance"] == 220_300_000
 
     text = qa._schulden_block(k)
     for amount in ("294.851.000", "43.690.972", "740.300.000", "220.300.000"):
@@ -1391,7 +1391,7 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
     for year, amount in ((1995, 190_000_000), (2024, 294_851_000), (2025, 336_994_000)):
-        c.execute("INSERT INTO council_schulden (year, insgesamt, fetched_at) "
+        c.execute("INSERT INTO council_schulden (year, total, fetched_at) "
                   "VALUES (?, ?, '2026-08-18')", (year, amount))
     for year, amount in ((1998, 80_000_000), (2025, 222_100_000)):
         c.execute("INSERT INTO council_steuern (year, art, amount, fetched_at) "

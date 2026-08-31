@@ -198,12 +198,12 @@ export function ruecklagenPfad(
  *  der Kredit-Baustein nicht. */
 export function gezahlteZinsspanne(
   zinslast: { year: number; expense: number }[] | undefined,
-  schulden: { year: number; insgesamt: number }[] | undefined,
+  schulden: { year: number; total: number }[] | undefined,
 ): { von: number; bis: number; years: [number, number] } | null {
   if (!zinslast?.length || !schulden?.length) return null;
   const saetze = zinslast.flatMap((z) => {
     const s = schulden.find((r) => r.year === z.year);
-    return s && s.insgesamt > 0 ? [{ year: z.year, satz: z.expense / s.insgesamt }] : [];
+    return s && s.total > 0 ? [{ year: z.year, satz: z.expense / s.total }] : [];
   });
   if (saetze.length < 2) return null;
   const sortiert = [...saetze].sort((a, b) => a.satz - b.satz);

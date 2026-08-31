@@ -167,7 +167,7 @@ SPALTEN: dict[str, tuple[tuple[str, str], ...]] = {
         ("grundvermoegen", "Erwerb von Grundvermögen"),
         ("baumassnahmen_k", "Baumaßnahmen"),
         ("bewegliches_k", "Neuanschaffungen von beweglichen Vermögen"),
-        ("insgesamt", "insgesamt"),
+        ("total", "insgesamt"),
     ),
     "doppik": (
         ("zuwendungen", "Aktivierbare Zuwendungen"),
@@ -176,7 +176,7 @@ SPALTEN: dict[str, tuple[tuple[str, str], ...]] = {
         ("bewegliches", "Erwerb von beweglichem Sachvermögen"),
         ("finanzanlagen", "Erwerb von Finanzanlagevermögen"),
         ("sonstige", "Sonstige Investitionstätigkeit"),
-        ("insgesamt", "insgesamt"),
+        ("total", "insgesamt"),
     ),
 }
 
@@ -225,7 +225,7 @@ def de_zahl(zahl: float, nachkomma: int = 0, vorzeichen: bool = False) -> str:
     return text.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
 
 
-def _zelle(feld: str) -> float | None:
+def _zelle(field: str) -> float | None:
     """Ein Tabellenfeld → Zahl, oder ``None``, wenn es keine ist.
 
     Ohne Tausenderpunkt gilt das Feld ungeteilt: ``239`` sind 239 und nicht 23
@@ -235,10 +235,10 @@ def _zelle(feld: str) -> float | None:
     um eine Stelle zu schrumpfen. (Wortgleich zu ``schulden._zelle`` gedacht,
     aber ohne das ``r`` für „revidiert" — 1107 kennt keine revidierten Werte.)
     """
-    feld = feld.strip()
-    if "." not in feld:
-        return float(feld) if feld.isdigit() else None
-    m = _ZELLE.match(feld)
+    field = field.strip()
+    if "." not in field:
+        return float(field) if field.isdigit() else None
+    m = _ZELLE.match(field)
     return float(m.group(1).replace(".", "")) if m else None
 
 
@@ -301,8 +301,8 @@ def parse(text: str, accounting_system: str) -> list[dict]:
             continue
         zeile: dict = {"year": int(m.group(1)), "accounting_system": accounting_system,
                        "unlesbar": None}
-        for (feld, _), wert in zip(spalten, felder):
-            zeile[feld] = wert * TAUSEND
+        for (field, _), wert in zip(spalten, felder):
+            zeile[field] = wert * TAUSEND
         zeilen.append(zeile)
     return zeilen
 
@@ -317,7 +317,7 @@ def zeilensumme(zeile: dict) -> tuple[bool, float]:
     um von einer Rundungstoleranz gedeckt zu sein."""
     arten = ARTEN[zeile["accounting_system"]]
     summe = sum(zeile.get(a) or 0.0 for a in arten)
-    deviation = summe - (zeile.get("insgesamt") or 0.0)
+    deviation = summe - (zeile.get("total") or 0.0)
     return deviation == 0.0, deviation
 
 

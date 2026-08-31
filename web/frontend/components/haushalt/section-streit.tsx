@@ -71,7 +71,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { sessionHref } from "@/lib/routes";
 import {
   EINZELNE, HINWEIS_REDE, StreitAntrag, StreitDaten, StreitStation, StreitWortbeitrag,
-  antragsStationen, bestand, datumLang, debattenStation, gremiumKurz,
+  antragsStationen, balance, datumLang, debattenStation, gremiumKurz,
   jahrgaenge, ohneZuordnung, redenJeFraktion, runde, schlussbeschluss,
   verhandlungsBilanz, vorschau,
 } from "@/lib/haushalt-streit";
@@ -324,7 +324,7 @@ export function StreitAbschnitt({ onBestand }: {
 
   useEffect(() => {
     if (!onBestand || loading) return;
-    const q = data ? bestand(data) : null;
+    const q = data ? balance(data) : null;
     onBestand(q && q.beitraege > 0
       ? { beitraege: q.beitraege, von: q.von, bis: q.bis } : null);
   }, [onBestand, loading, data]);
@@ -355,7 +355,7 @@ export function StreitAbschnitt({ onBestand }: {
     [r],
   );
   const zuordnung = useMemo(() => ohneZuordnung(data ?? null), [data]);
-  const quelle = useMemo(() => bestand(data ?? null), [data]);
+  const quelle = useMemo(() => balance(data ?? null), [data]);
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;

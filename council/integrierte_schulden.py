@@ -93,12 +93,12 @@ KERN_TOLERANZ = 1.0
 #: gekürzt. Die Nummern sind Spaltenindizes, keine Tabellennummern.
 SPALTEN: dict[str, int] = {
     "ars": 0, "name": 1, "verwaltungsform": 2, "population": 3,
-    "insgesamt": 4, "insgesamt_change": 5, "per_capita": 6,
+    "total": 4, "insgesamt_change": 5, "per_capita": 6,
     "gesamthaushalt": 7, "gesamthaushalt_change": 8,
     "core_budget": 9, "kernhaushalt_change": 10,
     "extra_budgets": 11, "extrahaushalte_change": 12,
     "extra_100": 13, "extra_50_100": 14, "extra_under_50": 15,
-    "sonstige": 16, "sonstige_change": 17,
+    "other": 16, "sonstige_change": 17,
     "sonstige_100": 18, "sonstige_50_100": 19, "other_below_50": 20,
 }
 
@@ -168,7 +168,7 @@ def anteil_unter_50(gefunden: dict) -> float | None:
 
     Gerechnet statt abgeschrieben: Der Wert entscheidet, wie die Zahl gelesen
     werden darf, und er ändert sich mit jeder Ausgabe. 2024 sind es 58 %."""
-    gesamt = gefunden.get("insgesamt")
+    gesamt = gefunden.get("total")
     if not gesamt:
         return None
     unter = (gefunden.get("extra_under_50") or 0.0) + (gefunden.get("other_below_50") or 0.0)

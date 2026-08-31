@@ -318,8 +318,8 @@ def test_store_liefert_genau_die_felder_die_das_bild_liest(tmp_path):
     zeilen = store.get_ergebnisrechnung(JAHR)
     store.close()
 
-    for feld in ("year", "nr", "label", "sub_budget_no", "sub_budget_name", "ansatz", "result"):
-        assert all(feld in z for z in zeilen), feld
+    for field in ("year", "nr", "label", "sub_budget_no", "sub_budget_name", "ansatz", "result"):
+        assert all(field in z for z in zeilen), field
     arten = [z for z in zeilen if z["sub_budget_no"] is None and 1 <= z["nr"] <= 11]
     bereiche = [z for z in zeilen if z["sub_budget_no"] is not None and z["nr"] == 20]
     assert len(arten) == 11 and len(bereiche) == 12

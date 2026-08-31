@@ -171,7 +171,7 @@ def test_rechenweg_endet_nicht_in_der_naechsten_ueberschrift():
     2019 keine Leerzeile. Wer bis zur nächsten Leerzeile liest, zieht die
     Überschrift in die Formel.
     """
-    formeln = {f["indicator"]: f["formel"] for f in kz.parse_formeln(TABELLE_2019, 2019)}
+    formeln = {f["indicator"]: f["formula"] for f in kz.parse_formeln(TABELLE_2019, 2019)}
     assert formeln["eigenkapitalquote_1"] == \
         "100 * Nettoposition (ohne Sonderposten) / Bilanzsumme"
     assert formeln["vermoegen_je_einwohner"] == \
@@ -185,8 +185,8 @@ def test_trennstrich_am_zeilenende_wird_geheilt():
             "Steuerquote\n"
             "Ermittlung: Steuerträge und ähnliche Abgaben * 100 / ordentliche "
             "Gesamtaufwen-\ndungen\n")
-    formel = kz.parse_formeln(text, 2019)[0]["formel"]
-    assert formel.endswith("ordentliche Gesamtaufwendungen")
+    formula = kz.parse_formeln(text, 2019)[0]["formula"]
+    assert formula.endswith("ordentliche Gesamtaufwendungen")
 
 
 def test_umbruch_ohne_trennstrich_wird_auch_geheilt():
@@ -206,7 +206,7 @@ def test_umbruch_ohne_trennstrich_wird_auch_geheilt():
             "   \n"
             "Steuerquote:  \n"
             "Ermittlung: Steuerträge und ähnliche Abgaben * 100 / ordentliche Gesamtaufwendungen\n")
-    formeln = {f["indicator"]: f["formel"] for f in kz.parse_formeln(text, 2021)}
+    formeln = {f["indicator"]: f["formula"] for f in kz.parse_formeln(text, 2021)}
     assert formeln["personalintensitaet"] == (
         "Aufwand für Personal (inklusive Versorgung) * 100 / ordentliche "
         "Gesamtaufwendungen")
@@ -228,11 +228,11 @@ def test_fassungen_trennen_rechenwege_und_nicht_schreibweisen():
     """Neuer Rechenweg = neue Nummer. „inkl." und „inklusive" sind einer."""
     formeln = [
         {"indicator": "vermoegen_je_einwohner", "report_year": 2019,
-         "formel": "Gesamtvermögen (inkl. Liquide Mittel) / Einwohnerzahl"},
+         "formula": "Gesamtvermögen (inkl. Liquide Mittel) / Einwohnerzahl"},
         {"indicator": "vermoegen_je_einwohner", "report_year": 2020,
-         "formel": "Gesamtvermögen (inklusive Liquide Mittel) / Einwohnerzahl"},
+         "formula": "Gesamtvermögen (inklusive Liquide Mittel) / Einwohnerzahl"},
         {"indicator": "vermoegen_je_einwohner", "report_year": 2022,
-         "formel": "Aktiva (ohne Aktive Rechnungsabgrenzung) / Einwohnerzahl"},
+         "formula": "Aktiva (ohne Aktive Rechnungsabgrenzung) / Einwohnerzahl"},
     ]
     n = kz.fassungen(formeln)
     assert n[("vermoegen_je_einwohner", 2019)] == n[("vermoegen_je_einwohner", 2020)]

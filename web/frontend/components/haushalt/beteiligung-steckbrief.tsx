@@ -54,7 +54,7 @@ import {
   KENNZAHL_TITEL, Kennzahl, RECHTSFORM_TITEL,
   absatzVorschau, anteilsGewicht, aufsichtsgruppen,
   aufsichtspersonen, eigentuemerVon, einordnungFuer, eur, gremiumName, herkunftVon,
-  prozent, rechtsform, reihen, textVon, wertText,
+  percent, rechtsform, reihen, textVon, wertText,
 } from "@/lib/haushalt-beteiligungen";
 import { personHref } from "@/lib/routes";
 import type { JahrPunkt } from "@/components/grafik/daten";
@@ -290,7 +290,7 @@ function Eigentuemerstreifen({ liste, herkunft }: {
               )}
               {e.share_pct != null && (
                 <span className="w-[62px] flex-none text-right font-semibold tabular-nums">
-                  {prozent(e.share_pct)}
+                  {percent(e.share_pct)}
                 </span>
               )}
             </li>

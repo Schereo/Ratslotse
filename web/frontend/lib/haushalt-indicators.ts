@@ -65,7 +65,7 @@ export const GRUPPEN: { titel: string; question: string; keys: string[] }[] = [
  *  Datei: 2019 stand „48%", ab 2021 „53,15%". Wer hier zwei Stellen erzwingt,
  *  macht aus einer gerundeten Angabe eine genaue. */
 export function schreibe(einheit: string, wert: number, stellen = 2): string {
-  if (einheit === "prozent") return `${deZahl(wert, stellen)} %`;
+  if (einheit === "percent") return `${deZahl(wert, stellen)} %`;
   if (einheit === "anzahl") return deZahl(wert, 0);
   return `${deZahl(wert, stellen)} €`;
 }
@@ -83,13 +83,13 @@ export function formatVon(einheit: string): (wert: number) => string {
  *  wäre 8,3 %. Beides „−4,51 %" zu schreiben, wären zwei Zahlen unter einer
  *  Schreibweise. Bei Euro und Personen ändert sich nichts. */
 export function differenzFormatVon(einheit: string): (wert: number) => string {
-  if (einheit !== "prozent") return formatVon(einheit);
+  if (einheit !== "percent") return formatVon(einheit);
   return (wert) => `${deZahl(wert, 2)} %-Punkte`;
 }
 
 /** Die Einheit für die Kopfzeile der Grafik. */
 export function einheitWort(einheit: string): string {
-  return einheit === "prozent" ? "%" : einheit === "anzahl" ? "Personen" : "€";
+  return einheit === "percent" ? "%" : einheit === "anzahl" ? "Personen" : "€";
 }
 
 /** Alle Punkte einer Kennzahl, nach Jahr. */

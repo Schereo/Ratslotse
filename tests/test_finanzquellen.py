@@ -175,7 +175,7 @@ def anlage(store: CouncilStore, document_id: int, label: str,
 
 
 @pytest.fixture()
-def bestand(tmp_path):
+def balance(tmp_path):
     """Council-DB mit drei Jahresabschlüssen als Anlage — noch nichts eingelesen."""
     store = CouncilStore(tmp_path / "council.sqlite")
     for i, (year, werte) in enumerate(sorted(JAHRGAENGE.items())):
@@ -236,14 +236,14 @@ def test_erkennung_ist_eine_quelle_fuer_skript_und_cron():
     assert werte == ["%Jahresabschluss%", 100, "%Rechenschaft%", "%Schlussbericht%"]
 
 
-def test_rechenschaftsbericht_und_schlussbericht_sind_keine_jahresabschluesse(bestand):
+def test_rechenschaftsbericht_und_schlussbericht_sind_keine_jahresabschluesse(balance):
     """Beide tragen dieselbe Jahreszahl im Titel und sind ein anderes Dokument."""
-    anlage(bestand, 200, "15 Rechenschaftsbericht 2025 Stadt Oldenburg", "x")
-    anlage(bestand, 201, "Schlussbericht zum Jahresabschluss 2025", "x")
-    anlage(bestand, 202, "Jahresabschluss 2025 Auszug", "x", n_pages=4)
+    anlage(balance, 200, "15 Rechenschaftsbericht 2025 Stadt Oldenburg", "x")
+    anlage(balance, 201, "Schlussbericht zum Jahresabschluss 2025", "x")
+    anlage(balance, 202, "Jahresabschluss 2025 Auszug", "x", n_pages=4)
 
     gefunden = {r["document_id"] for r in
-                finanzquellen.QUELLEN["jahresabschluss"].kandidaten(bestand)}
+                finanzquellen.QUELLEN["jahresabschluss"].kandidaten(balance)}
     assert gefunden == {100, 101, 102}
 
 
@@ -349,24 +349,24 @@ def test_cron_zieht_den_nachgereichten_teilhaushalt_nach(thh_bestand, tmp_path):
     assert bericht["Neue Einheiten"] == 2
 
 
-def test_fehlende_teilhaushalts_ebene_wird_nachgezogen(bestand, tmp_path):
+def test_fehlende_teilhaushalts_ebene_wird_nachgezogen(balance, tmp_path):
     """Ein Jahresabschluss trägt zwei Ebenen. Die Summenprobe kann die zweite
     verwerfen, während die erste steht — dann ist der Jahrgang in der Tabelle,
     aber halb. ``ergebnisrechnung_jahre()`` („irgendeine Zeile") hielte ihn
     für fertig."""
     p = finanzquellen.Protokoll(still=True)
-    finanzquellen.lies_jahresabschluesse(bestand, p)
-    vollstaendig = inhalt(bestand)
+    finanzquellen.lies_jahresabschluesse(balance, p)
+    vollstaendig = inhalt(balance)
 
     # Der Zustand nach einem Lauf, in dem nur die Teilhaushalte scheiterten.
-    with bestand._conn:  # noqa: SLF001
-        bestand._conn.execute(  # noqa: SLF001
+    with balance._conn:  # noqa: SLF001
+        balance._conn.execute(  # noqa: SLF001
             "DELETE FROM council_ergebnisrechnung WHERE year = 2024 AND sub_budget_no IS NOT NULL")
-        bestand._conn.execute(  # noqa: SLF001
+        balance._conn.execute(  # noqa: SLF001
             "DELETE FROM council_abweichungsgruende WHERE year = 2024")
-    assert 2024 in bestand.ergebnisrechnung_jahre(), "die Gesamtrechnung steht noch"
-    assert 2024 not in bestand.plan_actual_years()
-    bestand.close()
+    assert 2024 in balance.ergebnisrechnung_jahre(), "die Gesamtrechnung steht noch"
+    assert 2024 not in balance.plan_actual_years()
+    balance.close()
 
     bericht = check_finanzdaten.main(db=str(tmp_path / "council.sqlite"),
                                      heute=date(2026, 8, 16), still=True)
@@ -474,19 +474,19 @@ def test_kandidaten_kommen_in_veroeffentlichungs_reihenfolge():
 
 # --- Der Lauf ---------------------------------------------------------------
 
-def test_holt_den_fehlenden_jahrgang_nach(bestand, tmp_path):
+def test_holt_den_fehlenden_jahrgang_nach(balance, tmp_path):
     """Erst alles einlesen, dann einen Jahrgang löschen — der Job zieht ihn
     zurück, ohne dass ihm jemand sagt, welcher es ist."""
     p = finanzquellen.Protokoll(still=True)
-    finanzquellen.lies_jahresabschluesse(bestand, p)
-    assert bestand.ergebnisrechnung_jahre() == [2023, 2024, 2025]
-    vollstaendig = inhalt(bestand)
+    finanzquellen.lies_jahresabschluesse(balance, p)
+    assert balance.ergebnisrechnung_jahre() == [2023, 2024, 2025]
+    vollstaendig = inhalt(balance)
 
-    with bestand._conn:  # noqa: SLF001
-        bestand._conn.execute(  # noqa: SLF001
+    with balance._conn:  # noqa: SLF001
+        balance._conn.execute(  # noqa: SLF001
             "DELETE FROM council_ergebnisrechnung WHERE year = 2024")
-    assert bestand.ergebnisrechnung_jahre() == [2023, 2025]
-    bestand.close()
+    assert balance.ergebnisrechnung_jahre() == [2023, 2025]
+    balance.close()
 
     bericht = check_finanzdaten.main(db=str(tmp_path / "council.sqlite"),
                                      heute=date(2026, 8, 16), still=True)
@@ -502,8 +502,8 @@ def test_holt_den_fehlenden_jahrgang_nach(bestand, tmp_path):
         store.close()
 
 
-def test_zweiter_lauf_aendert_nichts(bestand, tmp_path):
-    bestand.close()
+def test_zweiter_lauf_aendert_nichts(balance, tmp_path):
+    balance.close()
     db = str(tmp_path / "council.sqlite")
     check_finanzdaten.main(db=db, heute=date(2026, 8, 16), still=True)
 
@@ -521,7 +521,7 @@ def test_zweiter_lauf_aendert_nichts(bestand, tmp_path):
         store.close()
 
 
-def test_dokument_das_die_probe_reisst_kommt_nicht_herein(bestand, tmp_path):
+def test_dokument_das_die_probe_reisst_kommt_nicht_herein(balance, tmp_path):
     """Die Strukturprobe (12 − 20 = 21) ist keine Formalie: Sie ist der
     Unterschied zwischen einer gelesenen und einer geratenen Tabelle. Ein
     automatischer Lauf darf sie nicht lockern — er ist der Grund, warum sie
@@ -531,8 +531,8 @@ def test_dokument_das_die_probe_reisst_kommt_nicht_herein(bestand, tmp_path):
     # Ordentliches Ergebnis verfälscht: 12 − 20 geht nicht mehr auf 21 auf.
     kaputt = kaputt.replace("21. ordentliches Ergebnis 25.000.000,00 500.000,00",
                             "21. ordentliches Ergebnis 25.000.000,00 111.111,11")
-    anlage(bestand, 110, "15 Jahresabschluss 2026 Stadt Oldenburg", kaputt)
-    bestand.close()
+    anlage(balance, 110, "15 Jahresabschluss 2026 Stadt Oldenburg", kaputt)
+    balance.close()
 
     p = finanzquellen.Protokoll(still=True)
     bericht = check_finanzdaten.main(db=str(tmp_path / "council.sqlite"),
@@ -573,25 +573,25 @@ def test_deutlich_geschrumpftes_ergebnis_wird_zurueckgewiesen():
     assert finanzquellen.bestandsschutz(p2, "2025", alt=0, neu=3) is True
 
 
-def test_job_laesst_bestand_stehen_wenn_der_parser_nichts_mehr_liefert(bestand, tmp_path):
+def test_job_laesst_bestand_stehen_wenn_der_parser_nichts_mehr_liefert(balance, tmp_path):
     """Ändert die Stadt ihr Tabellenlayout, liefert der Parser irgendwann
     nichts — dann bleibt der alte Stand stehen und der Lauf meldet es."""
     p = finanzquellen.Protokoll(still=True)
-    finanzquellen.lies_jahresabschluesse(bestand, p)
-    vorher = inhalt(bestand)
+    finanzquellen.lies_jahresabschluesse(balance, p)
+    vorher = inhalt(balance)
 
     # Alle drei Dokumente unleserlich machen — der Bestand bleibt.
-    with bestand._conn:  # noqa: SLF001
-        bestand._conn.execute(  # noqa: SLF001
+    with balance._conn:  # noqa: SLF001
+        balance._conn.execute(  # noqa: SLF001
             "UPDATE council_anlagen SET raw_text = 'Layout geändert'")
 
     p2 = finanzquellen.Protokoll(still=True)
-    finanzquellen.lies_jahresabschluesse(bestand, p2)
+    finanzquellen.lies_jahresabschluesse(balance, p2)
     try:
-        assert inhalt(bestand) == vorher
-        assert bestand.ergebnisrechnung_jahre() == [2023, 2024, 2025]
+        assert inhalt(balance) == vorher
+        assert balance.ergebnisrechnung_jahre() == [2023, 2024, 2025]
     finally:
-        bestand.close()
+        balance.close()
     assert any("keine Summenzeilen" in z for z in p2.warnungen)
 
 
@@ -628,7 +628,7 @@ def test_leerer_prueferbericht_loescht_die_feststellungen_nicht(tmp_path, quelle
 
 # --- Datenstand und Hinweis -------------------------------------------------
 
-def test_ein_jahrgang_landet_ganz_oder_gar_nicht(bestand, monkeypatch):
+def test_ein_jahrgang_landet_ganz_oder_gar_nicht(balance, monkeypatch):
     """Ohne gemeinsame Klammer braucht ein Jahresabschluss 1 + n + 1
     Transaktionen. Bricht der Lauf dazwischen ab, bleibt der Jahrgang halb in
     der Datenbank — und halb sieht für den nächsten Lauf aus wie fertig."""
@@ -643,18 +643,18 @@ def test_ein_jahrgang_landet_ganz_oder_gar_nicht(bestand, monkeypatch):
     monkeypatch.setattr(CouncilStore, "save_ergebnisrechnung", platzt)
     p = finanzquellen.Protokoll(still=True)
     with pytest.raises(RuntimeError):
-        finanzquellen.lies_jahresabschluesse(bestand, p)
+        finanzquellen.lies_jahresabschluesse(balance, p)
 
     try:
         # 2023 war vor dem Abbruch fertig und bleibt es.
-        assert 2023 in bestand.ergebnisrechnung_jahre()
+        assert 2023 in balance.ergebnisrechnung_jahre()
         # 2024 ist komplett zurückgerollt — keine halbe Gesamtrechnung, keine
         # halben Teilhaushalte, die den nächsten Lauf glauben ließen, es stünde.
-        assert 2024 not in bestand.ergebnisrechnung_jahre()
-        assert 2024 not in bestand.plan_actual_years()
-        assert bestand.get_abweichungsgruende(2024) == []
+        assert 2024 not in balance.ergebnisrechnung_jahre()
+        assert 2024 not in balance.plan_actual_years()
+        assert balance.get_abweichungsgruende(2024) == []
     finally:
-        bestand.close()
+        balance.close()
 
 
 def test_handlauf_kommt_auch_an_einem_schrumpfenden_jahrgang_vorbei():
@@ -789,26 +789,26 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
     assert "council_steuern" in gemeldet[0]
 
 
-def test_hinweis_ohne_herkunftsluecke_schweigt_darueber(bestand):
+def test_hinweis_ohne_herkunftsluecke_schweigt_darueber(balance):
     """Der Block erscheint nur, wenn es ihn zu berichten gibt — sonst stünde
     unter jeder Mail eine leere Überschrift."""
-    stand = finanzquellen.datenstand(bestand, date(2027, 11, 1))
+    stand = finanzquellen.datenstand(balance, date(2027, 11, 1))
     ohne = check_finanzdaten._hinweis_text(stand, {}, {}, date(2027, 11, 1))
     mit = check_finanzdaten._hinweis_text(stand, {}, {}, date(2027, 11, 1),
                                           {"council_steuern": 7})
-    bestand.close()
+    balance.close()
     assert "woher sie kommen" not in ohne
     assert "woher sie kommen" in mit and "7 Zeile(n)" in mit
 
 
-def test_datenstand_nennt_den_naechsten_jahrgang_und_wann_er_kommt(bestand):
+def test_datenstand_nennt_den_naechsten_jahrgang_und_wann_er_kommt(balance):
     p = finanzquellen.Protokoll(still=True)
-    finanzquellen.lies_jahresabschluesse(bestand, p)
+    finanzquellen.lies_jahresabschluesse(balance, p)
 
     # Mitte August 2026: Der Abschluss 2025 kommt üblicherweise im September
     # 2026 — er ist noch nicht überfällig, sondern schlicht noch nicht da.
     stand = {z["key"]: z for z in
-             finanzquellen.datenstand(bestand, date(2026, 8, 16))}
+             finanzquellen.datenstand(balance, date(2026, 8, 16))}
     ja = stand["jahresabschluss"]
     assert ja["jahrgaenge"] == [2023, 2024, 2025] and ja["neuester"] == 2025
     assert ja["naechster_jahrgang"] == 2026 and ja["naechster_ab"] == "2027-09-01"
@@ -818,37 +818,37 @@ def test_datenstand_nennt_den_naechsten_jahrgang_und_wann_er_kommt(bestand):
     # deshalb steht er als eigene Zeile da.
     plan = stand["haushaltsplan"]
     assert plan["erwarteter_monat"] == 10 and plan["automatisch"] is False
-    bestand.close()
+    balance.close()
 
 
-def test_ueberfaellig_erst_nach_der_karenz(bestand):
+def test_ueberfaellig_erst_nach_der_karenz(balance):
     """Vier Wochen Luft: Die Einbringung ist in acht Jahren zweimal um einen
     Monat verrutscht. Wer sofort meldet, meldet den Normalfall."""
     p = finanzquellen.Protokoll(still=True)
-    finanzquellen.lies_jahresabschluesse(bestand, p)
+    finanzquellen.lies_jahresabschluesse(balance, p)
 
     def offen(heute: date) -> list[int]:
-        stand = {z["key"]: z for z in finanzquellen.datenstand(bestand, heute)}
+        stand = {z["key"]: z for z in finanzquellen.datenstand(balance, heute)}
         return stand["jahresabschluss"]["ueberfaellig"]
 
     assert offen(date(2027, 9, 15)) == []    # gerade erst fällig
     assert offen(date(2027, 9, 30)) == [2026]  # vier Wochen vorbei
-    bestand.close()
+    balance.close()
 
 
-def test_luecken_im_bestand_bleiben_sichtbar(bestand):
+def test_luecken_im_bestand_bleiben_sichtbar(balance):
     p = finanzquellen.Protokoll(still=True)
-    finanzquellen.lies_jahresabschluesse(bestand, p)
-    with bestand._conn:  # noqa: SLF001
-        bestand._conn.execute(  # noqa: SLF001
+    finanzquellen.lies_jahresabschluesse(balance, p)
+    with balance._conn:  # noqa: SLF001
+        balance._conn.execute(  # noqa: SLF001
             "DELETE FROM council_ergebnisrechnung WHERE year = 2024")
 
-    stand = {z["key"]: z for z in finanzquellen.datenstand(bestand, date(2026, 8, 16))}
+    stand = {z["key"]: z for z in finanzquellen.datenstand(balance, date(2026, 8, 16))}
     assert stand["jahresabschluss"]["luecken"] == [2024]
-    bestand.close()
+    balance.close()
 
 
-def test_hinweis_wiederholt_sich_nicht(bestand, tmp_path, monkeypatch):
+def test_hinweis_wiederholt_sich_nicht(balance, tmp_path, monkeypatch):
     """Alle vierzehn Tage dieselbe Mail wäre eine, die niemand mehr liest.
     Verglichen wird mit dem letzten Lauf aus ``job_runs``."""
     from kern.store import Store
@@ -856,7 +856,7 @@ def test_hinweis_wiederholt_sich_nicht(bestand, tmp_path, monkeypatch):
     ratslotse = tmp_path / "ratslotse.sqlite"
     Store(ratslotse).close()
     monkeypatch.setenv("RATSLOTSE_DB", str(ratslotse))
-    bestand.close()
+    balance.close()
 
     verschickt: list[str] = []
     monkeypatch.setattr("kern.alerts.notify_admin",
@@ -873,17 +873,17 @@ def test_hinweis_wiederholt_sich_nicht(bestand, tmp_path, monkeypatch):
     assert len(verschickt) == 1, "unveränderter Stand — kein zweiter Hinweis"
 
 
-def test_hinweis_trennt_spaete_stadt_von_kaputtem_muster(bestand, tmp_path):
+def test_hinweis_trennt_spaete_stadt_von_kaputtem_muster(balance, tmp_path):
     """Der Unterschied trägt die ganze Nachricht: „kein Dokument da" heißt
     abwarten, „Dokument da, aber nicht übernommen" heißt nachsehen."""
-    stand = finanzquellen.datenstand(bestand, date(2027, 11, 1))
+    stand = finanzquellen.datenstand(balance, date(2027, 11, 1))
     ohne = check_finanzdaten._hinweis_text(stand, {}, {}, date(2027, 11, 1))
     assert "kein passendes Dokument" in ohne
 
     gesehen = {"jahresabschluss": {z for z in range(2000, 2100)}}
     mit = check_finanzdaten._hinweis_text(stand, gesehen, {}, date(2027, 11, 1))
     assert "wird aber nicht übernommen" in mit
-    bestand.close()
+    balance.close()
 
 
 # --- Städtevergleich: die Schicht, die keinen Cron hat ----------------------

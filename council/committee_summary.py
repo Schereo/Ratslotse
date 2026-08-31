@@ -113,10 +113,10 @@ def _analyse(committee: str, session_date: str,
     if len(relevant) > _MAX_TOPS_PRO_LAUF:
         alle: list[dict] = []
         for start in range(0, len(relevant), _MAX_TOPS_PRO_LAUF):
-            teil = _analyse(committee, session_date, relevant[start:start + _MAX_TOPS_PRO_LAUF])
-            if teil is None:
+            part = _analyse(committee, session_date, relevant[start:start + _MAX_TOPS_PRO_LAUF])
+            if part is None:
                 return None
-            alle.extend(teil)
+            alle.extend(part)
         gesehen = set()
         return [p for p in alle if not (p["number"] in gesehen or gesehen.add(p["number"]))]
 

@@ -103,10 +103,10 @@ def test_share_extras_und_alte_zeilen(tmp_path):
     uid = _user(store)
     token = store.qa_share_anlegen(
         uid, "Frage?", "Antwort [5].", [{"id": 5, "title": "T"}],
-        {"debatten": [{"sprecher": "Wenzel", "auszug": "Warnte."}],
+        {"debatten": [{"speaker": "Wenzel", "auszug": "Warnte."}],
          "presse": [], "anlagen": [], "parteien": [{"partei": "SPD"}]})
     share = store.qa_share_get(token)
-    assert share["debatten"][0]["sprecher"] == "Wenzel"
+    assert share["debatten"][0]["speaker"] == "Wenzel"
     assert share["parteien"][0]["partei"] == "SPD"
     assert share["presse"] == [] and share["anlagen"] == []
 
@@ -124,7 +124,7 @@ def test_share_extras_und_alte_zeilen(tmp_path):
     conn.executescript(
         "ALTER TABLE qa_shares RENAME TO qa_shares_alt;"
         "CREATE TABLE qa_shares (token TEXT PRIMARY KEY, user_id INTEGER NOT NULL,"
-        " frage TEXT NOT NULL, antwort TEXT NOT NULL, quellen TEXT, created TEXT NOT NULL);"
+        " frage TEXT NOT NULL, answer TEXT NOT NULL, quellen TEXT, created TEXT NOT NULL);"
         "INSERT INTO qa_shares SELECT token, user_id, question, answer, sources, created"  # aus der schon migrierten Tabelle in die nachgebaute alte
         " FROM qa_shares_alt;"
         "DROP TABLE qa_shares_alt;")

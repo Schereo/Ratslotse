@@ -114,7 +114,7 @@ Drei Fallen, die dieser Parser bewusst umgeht
    sperrt das LSN den Betrag und druckt „g" (2021: Salzgitter und Wolfsburg).
    Die **Anzahlen stehen trotzdem da**. Ein Parser, der „g" zu 0 macht,
    behauptet, dort werde keine Gewerbesteuer gezahlt. Hier wird der Betrag zu
-   ``None`` und die Zeile trägt ``gesperrt``; Oldenburg ist in keinem der fünf
+   ``None`` und die Zeile trägt ``confidential``; Oldenburg ist in keinem der fünf
    geprüften Jahrgänge (2017–2021) gesperrt.
 """
 from __future__ import annotations
@@ -245,7 +245,7 @@ def _zelle(zeile: list[object], idx: int | None) -> object:
 
 
 def _wert(roh: object) -> tuple[float | None, bool]:
-    """Zellwert einer Wertespalte → ``(wert, gesperrt)``.
+    """Zellwert einer Wertespalte → ``(wert, confidential)``.
 
     Drei Fälle, und der mittlere ist der Grund für diese Funktion:
 
@@ -286,9 +286,9 @@ class Gewerbesteuerjahrgang:
     erschienen: str | None = None
     #: „Korrigierte Fassung vom 11.02.2026", wo es eine gibt (Jahrgang 2020).
     korrektur: str | None = None
-    #: Schlüssel → die neun Werte aus Blatt 6.1 plus ``city``/``gesperrt``.
+    #: Schlüssel → die neun Werte aus Blatt 6.1 plus ``city``/``confidential``.
     staedte: dict[str, dict] = field(default_factory=dict)
-    #: Schlüssel → ``{city, gesamt_*, rate, gesperrt}`` aus Blatt 6.2.
+    #: Schlüssel → ``{city, gesamt_*, rate, confidential}`` aus Blatt 6.2.
     gemeinden: dict[str, dict] = field(default_factory=dict)
 
     @property
@@ -371,12 +371,12 @@ def _blatt(pfad: str, blatt: str, erwartet: tuple[str, ...],
             continue
         eintrag: dict = {
             "city": " ".join(str(_zelle(zeile, c_name) or "").split()),
-            "gesperrt": False,
+            "confidential": False,
         }
         for name in erwartet:
-            wert, gesperrt = _wert(_zelle(zeile, zuordnung[name]))
+            wert, confidential = _wert(_zelle(zeile, zuordnung[name]))
             eintrag[name] = wert
-            eintrag["gesperrt"] = eintrag["gesperrt"] or gesperrt
+            eintrag["confidential"] = eintrag["confidential"] or confidential
         if mit_hebesatz:
             eintrag["rate"] = sv._zahl(_zelle(zeile, c_hebesatz))
         aus[key] = eintrag
@@ -420,7 +420,7 @@ def probe_summen(eintrag: dict) -> dict:
         werte = [eintrag.get(summe), eintrag.get(a), eintrag.get(b)]
         if any(w is None for w in werte):
             teilproben.append({"groesse": summe, "ok": None,
-                               "grund": "gesperrt oder nicht ausgewiesen"})
+                               "grund": "confidential oder nicht ausgewiesen"})
             continue
         deviation = abs(werte[0] - (werte[1] + werte[2]))
         ok = deviation < 0.5
@@ -537,7 +537,7 @@ def zeilen(budget_year: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
         # sich, es steht nur nichts da. Der Unterschied gehört ins Protokoll,
         # sonst sucht beim nächsten Lauf jemand einen Parserfehler, den es
         # nicht gibt.
-        if eintrag.get("gesamt_count") is None and eintrag.get("gesperrt"):
+        if eintrag.get("gesamt_count") is None and eintrag.get("confidential"):
             verworfen.append({"schluessel": key, "city": eintrag["city"],
                               "grund": "Geheimhaltung",
                               "result": "das Landesamt weist für diese Stadt "
@@ -568,6 +568,6 @@ def zeilen(budget_year: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
             "apportionments_positive": eintrag["zerlegung_positiv"],
             "apportioned_assessment_eur": eintrag["zerlegung_amount"],
             "rate": gemeinde.get("rate"),
-            "gesperrt": bool(eintrag.get("gesperrt")),
+            "confidential": bool(eintrag.get("confidential")),
         })
     return aus, verworfen

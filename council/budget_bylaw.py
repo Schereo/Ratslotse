@@ -169,11 +169,11 @@ _GRUNDSTEUER_B = re.compile(r"Grundsteuer B\)?\s*" + _HEBESATZ, re.I)
 _GEWERBESTEUER = re.compile(r"Gewerbesteuer(?:\s+wird[^.]{0,80}?auf)?\s*" + _HEBESATZ, re.I)
 
 
-def _pflichtbetrag(text: str, muster: str, feld: str) -> float:
+def _pflichtbetrag(text: str, muster: str, field: str) -> float:
     treffer = re.search(muster + _BETRAG, text)
     if treffer is None:
         raise SatzungFehler(
-            f"Zeile '{feld}' steht nicht in der Satzung (gesucht: {muster!r}) — "
+            f"Zeile '{field}' steht nicht in der Satzung (gesucht: {muster!r}) — "
             "vermutlich ein anderes Layout, und dann ist keine Zuordnung sicher.")
     return _eur(treffer.group(1))
 
@@ -202,8 +202,8 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
             "(bisher / erhöht um / vermindert um / Gesamtbetrag) und wird von "
             "diesem Modul bewusst nicht gelesen.")
 
-    werte = {feld: _pflichtbetrag(t, muster, feld)
-             for feld, muster in {**_ERGEBNIS, **_FINANZ}.items()}
+    werte = {field: _pflichtbetrag(t, muster, field)
+             for field, muster in {**_ERGEBNIS, **_FINANZ}.items()}
 
     ne, na = _NACHRICHTLICH_EIN.search(t), _NACHRICHTLICH_AUS.search(t)
     if ne is None or na is None:

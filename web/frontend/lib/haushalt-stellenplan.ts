@@ -29,7 +29,7 @@ export type StellenTeil = "A" | "B";
  *  der Seite soll die Zahl der Stadt stehen, nicht unsere Addition. */
 export type StellenZeile = {
   budget_year: number;
-  teil: StellenTeil;
+  part: StellenTeil;
   art: "posten" | "gruppe" | "gesamt";
   gruppe: string | null;
   seq_no: number | null;
@@ -59,7 +59,7 @@ export type StellenplanDaten = {
   gruppen: StellenZeile[];
   /** Nur für den angefragten Jahrgang — je Jahrgang rund 190 Zeilen. */
   zeilen: StellenZeile[];
-  fehlend: { budget_year: number; teil: StellenTeil; name: string }[];
+  fehlend: { budget_year: number; part: StellenTeil; name: string }[];
   herkunft: Record<string, Herkunft>;
 };
 
@@ -76,15 +76,15 @@ export const TEILE: StellenTeil[] = ["A", "B"];
 
 /** Die Gesamtzeile eines Jahrgangs und Teils — oder `null`, wo sie fehlt. */
 export function gesamt(daten: StellenplanDaten, budget_year: number,
-                       teil: StellenTeil): StellenZeile | null {
-  return daten.summen.find((z) => z.budget_year === budget_year && z.teil === teil) ?? null;
+                       part: StellenTeil): StellenZeile | null {
+  return daten.summen.find((z) => z.budget_year === budget_year && z.part === part) ?? null;
 }
 
 /** Fehlt dieser Teil im Jahrgang? Dann gibt es ihn nicht als Null, sondern
  *  als Lücke mit Begründung. */
 export function fehlt(daten: StellenplanDaten, budget_year: number,
-                      teil: StellenTeil): boolean {
-  return daten.fehlend.some((f) => f.budget_year === budget_year && f.teil === teil);
+                      part: StellenTeil): boolean {
+  return daten.fehlend.some((f) => f.budget_year === budget_year && f.part === part);
 }
 
 /** Die Besetzungslücke eines Teils — ausschließlich aus der Vorjahresspalte.
@@ -109,8 +109,8 @@ export function luecke(z: StellenZeile | null): {
 
 /** Jahrgänge, für die dieser Teil vorliegt — aufsteigend. */
 export function jahrgaengeMitTeil(daten: StellenplanDaten,
-                                  teil: StellenTeil): number[] {
-  return daten.summen.filter((z) => z.teil === teil)
+                                  part: StellenTeil): number[] {
+  return daten.summen.filter((z) => z.part === part)
     .map((z) => z.budget_year).sort((a, b) => a - b);
 }
 
@@ -121,10 +121,10 @@ export function jahrgaengeMitTeil(daten: StellenplanDaten,
  *  in denen der Plan sich selbst widerspricht (`consistent === 0`), bleiben
  *  draußen — ihre Lücke ist keine Aussage über den Dienst, sondern über einen
  *  Übertrag. */
-export function groessteLuecken(zeilen: StellenZeile[], teil: StellenTeil,
+export function groessteLuecken(zeilen: StellenZeile[], part: StellenTeil,
                                 count = 8): StellenZeile[] {
   return zeilen
-    .filter((z) => z.art === "posten" && z.teil === teil && z.consistent === 1)
+    .filter((z) => z.art === "posten" && z.part === part && z.consistent === 1)
     .filter((z) => z.vacant > 0)
     .sort((a, b) => b.vacant - a.vacant)
     .slice(0, count);

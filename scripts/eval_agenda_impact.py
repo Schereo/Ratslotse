@@ -159,11 +159,11 @@ def main() -> int:
 
         if not args.ohne_llm:
             for start_i in range(0, len(punkte), BATCH_SIZE):
-                teil = punkte[start_i : start_i + BATCH_SIZE]
-                for j, p in enumerate(teil):
+                part = punkte[start_i : start_i + BATCH_SIZE]
+                for j, p in enumerate(part):
                     p["id"] = start_i + j
-                nach_id = {p["id"]: p for p in teil}
-                for iid, score, warum in rate_agenda_batch(teil):
+                nach_id = {p["id"]: p for p in part}
+                for iid, score, warum in rate_agenda_batch(part):
                     if iid in nach_id:
                         nach_id[iid]["tragweite"] = score
                         nach_id[iid]["grund"] = warum

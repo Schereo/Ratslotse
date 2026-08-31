@@ -251,7 +251,7 @@ export function InvestWerkbank({
             {schuldenLetzte ? (
               <>
                 <p className="font-display text-[17px] font-bold tabular-nums">
-                  {deMio(schuldenLetzte.insgesamt / 1e6)}&#8239;Mio.&nbsp;€
+                  {deMio(schuldenLetzte.total / 1e6)}&#8239;Mio.&nbsp;€
                 </p>
                 <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted-foreground">
                   Stand {schuldenLetzte.year}<Beleg q="schulden" />

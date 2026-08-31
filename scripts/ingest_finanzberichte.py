@@ -91,8 +91,8 @@ def main() -> int:
     schuetzen = not args.auch_schrumpfen
     result: dict = {}
 
-    def uebernehmen(name: str, teil: dict) -> None:
-        for schluessel, wert in teil.items():
+    def uebernehmen(name: str, part: dict) -> None:
+        for schluessel, wert in part.items():
             result[f"{name}_{schluessel}" if schluessel in _EIGEN else schluessel] = wert
 
     try:

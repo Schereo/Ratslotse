@@ -42,7 +42,7 @@ import { useBreite } from "@/lib/use-breite";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
 } from "@/components/grafik/ablesen";
-import { LueckenFeld } from "@/components/grafik/luecken-feld";
+import { LueckenFeld } from "@/components/grafik/luecken-field";
 import { deZahl } from "@/components/grafik/format";
 
 /** Ein Teil einer Säule — Titel wie in der Quelle, Wert in `einheit`. */
@@ -195,12 +195,12 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, einheit, titel,
     return {
       titel: String(j.year),
       werte: eineArt ? teile : [
-        { label: "insgesamt", wert: `${deZahl(summe(j), 1)} ${einheit}` },
+        { label: "total", wert: `${deZahl(summe(j), 1)} ${einheit}` },
         ...teile,
       ],
       vorlesen: eineArt
         ? `${j.year}: ${j.teile[0].art} ${deZahl(summe(j), 1)} ${einheit}.`
-        : `${j.year}: insgesamt ${deZahl(summe(j), 1)} ${einheit}, davon `
+        : `${j.year}: total ${deZahl(summe(j), 1)} ${einheit}, davon `
           + j.teile.map((t) => `${t.art} ${deZahl(t.wert, 1)}`).join(", ") + ".",
     };
   });

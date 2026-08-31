@@ -156,8 +156,8 @@ _KOPFSPALTE = re.compile(r"(Ist|Plan|Ergebnis)\s+(20\d{2})")
 #: Der Satz unter der Tabelle. „Euro" und „€" kommen beide vor, und er läuft
 #: über einen Zeilenumbruch — deshalb wird der Text vorher geglättet.
 _PROSA = re.compile(
-    r"Erfolgsplan\s+(?P<year>\d{4})\s+umfasst.{0,80}?Ertr[äa]ge.{0,60}?insgesamt\s+"
-    r"(?P<revenues>[\d.]+)\s*(?:€|Euro).{0,90}?Aufwendungen.{0,60}?insgesamt\s+"
+    r"Erfolgsplan\s+(?P<year>\d{4})\s+umfasst.{0,80}?Ertr[äa]ge.{0,60}?total\s+"
+    r"(?P<revenues>[\d.]+)\s*(?:€|Euro).{0,90}?Aufwendungen.{0,60}?total\s+"
     r"(?P<expenses>[\d.]+)\s*(?:€|Euro)")
 
 #: Wie weit die Betriebszweige von ihrer Gesamtzeile abweichen dürfen, damit
@@ -314,12 +314,12 @@ def spaltenproben(text: str, enterprise: str) -> list[Spaltenprobe]:
 
     gefunden: dict[str, list[float]] = {}
     labels: dict[str, str] = {}
-    for feld, muster in VOKABULAR[enterprise].items():
+    for field, muster in VOKABULAR[enterprise].items():
         treffer = _datenzeile(zeilen, muster)
         if treffer is None:
             raise WirtschaftsplanFehler(
-                f"Zeile '{feld}' nicht gefunden (gesucht: {', '.join(muster)})")
-        labels[feld], gefunden[feld] = treffer
+                f"Zeile '{field}' nicht gefunden (gesucht: {', '.join(muster)})")
+        labels[field], gefunden[field] = treffer
 
     laengen = {len(v) for v in gefunden.values()}
     if len(laengen) != 1:

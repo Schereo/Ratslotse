@@ -120,9 +120,9 @@ def test_dasselbe_thema_nicht_zweimal_kurz_nacheinander(tmp_path):
     assert "stadionneubau" in _kernworte("Stadionneubau Maastrichter Straße")
     assert "oldenburg" not in _kernworte("Stadt Oldenburg: Beschluss")
 
-    gesperrt = [_kernworte("Gründung der Stadion Oldenburg GmbH & Co. KG")]
-    assert not _thema_frei("Stadion Oldenburg GmbH: Grundstücksübertragungen", gesperrt)
-    assert _thema_frei("Fortschreibung des Lärmaktionsplans", gesperrt)
+    confidential = [_kernworte("Gründung der Stadion Oldenburg GmbH & Co. KG")]
+    assert not _thema_frei("Stadion Oldenburg GmbH: Grundstücksübertragungen", confidential)
+    assert _thema_frei("Fortschreibung des Lärmaktionsplans", confidential)
 
 
 def test_fundstueck_persistence_and_lookup(tmp_path):

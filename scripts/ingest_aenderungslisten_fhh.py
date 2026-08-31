@@ -47,8 +47,8 @@ COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlit
 
 def _laden(url: str) -> bytes:
     anfrage = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(anfrage, timeout=45) as antwort:
-        return antwort.read()
+    with urllib.request.urlopen(anfrage, timeout=45) as answer:
+        return answer.read()
 
 
 def _inhaltsgleich(a: FhhErgebnis, b: FhhErgebnis) -> bool:

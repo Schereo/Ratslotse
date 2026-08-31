@@ -67,19 +67,19 @@ def main() -> dict:
         for g in gespraeche:
             print(f"\n--- Gespräch {g['id']} ({str(g['created'])[:16]}): {g['titel']}")
             turns = ratslotse._conn.execute(
-                "SELECT frage, antwort, quellen, created FROM qa_gespraech_turns "
+                "SELECT frage, answer, quellen, created FROM qa_gespraech_turns "
                 "WHERE gespraech_id = ? ORDER BY id", (g["id"],)).fetchall()
             n_turns += len(turns)
             for t in turns:
                 q = json.loads(t["quellen"] or "{}")
                 quellen, zitiert = q.get("sources", []), q.get("cited", [])
                 print(f"\n  [{str(t['created'])[:16]}] FRAGE: {t['frage']}")
-                print(f"  ANTWORT: {len(t['antwort'] or '')} Zeichen, "
+                print(f"  ANTWORT: {len(t['answer'] or '')} Zeichen, "
                       f"{len(zitiert)} Zitate, {len(quellen)} Quellen"
                       + "".join(f", {len(q[k])} {k}" for k in
                                 ("debatten", "presse", "planungen", "anlagen") if q.get(k)))
                 if not args.kurz:
-                    for zeile in (t["antwort"] or "").splitlines():
+                    for zeile in (t["answer"] or "").splitlines():
                         if zeile.strip():
                             print(f"    {zeile}")
                 for s in quellen[:12]:

@@ -488,8 +488,8 @@ def lies_realsteuervergleich(pfad: str) -> Realsteuerjahrgang:
         eintrag: dict = {"city": " ".join(str(
             zeile[c_name] if c_name is not None and c_name < len(zeile) else "").split())}
         for suffix, cols in bezug.items():
-            for feld, idx in cols.items():
-                eintrag[f"{feld}_{suffix}"] = (
+            for spaltenname, idx in cols.items():
+                eintrag[f"{spaltenname}_{suffix}"] = (
                     _zahl(zeile[idx]) if idx is not None and idx < len(zeile) else None)
         budget_year.tax_rates[key] = eintrag
 
@@ -685,7 +685,7 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
         for suffix in _REALSTEUERN.values():
             if (wert := eintrag.get(f"rate_{suffix}")) is not None:
                 zeilen.append({**gemeinsam, "indicator": f"hebesatz_{suffix}",
-                               "wert": wert, "einheit": "prozent"})
+                               "wert": wert, "einheit": "percent"})
             if (wert := eintrag.get(f"ist_je_ew_{suffix}")) is not None:
                 zeilen.append({**gemeinsam, "indicator": f"ist_je_ew_{suffix}",
                                "wert": wert, "einheit": "eur_je_ew"})

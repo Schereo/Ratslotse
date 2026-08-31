@@ -146,7 +146,7 @@ private struct BadgeTile: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .shadow(color: badge.earned ? palette.accent.opacity(0.11) : .clear, radius: 11, y: 5)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(badge.title), \(badge.earned ? "entdeckt" : "noch gesperrt")")
+        .accessibilityLabel("\(badge.title), \(badge.earned ? "entdeckt" : "noch confidential")")
         .accessibilityHint(badge.hint)
     }
 

@@ -218,10 +218,10 @@ def test_die_zuwendungsannahme_behaelt_ihren_betrag():
     Kleine Beträge sind nicht automatisch Stückpreise."""
     assert largest_amount(
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "insgesamt 60,00 EUR laut anliegender Liste an.") == 60
+        "total 60,00 EUR laut anliegender Liste an.") == 60
     assert largest_amount(
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "insgesamt 140.664,24 EUR laut anliegender Liste an.") == 140_664.24
+        "total 140.664,24 EUR laut anliegender Liste an.") == 140_664.24
 
 
 def test_ein_stueckpreis_neben_einem_volumen_kostet_das_volumen_nicht():

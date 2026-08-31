@@ -67,7 +67,7 @@ export type QaGrafik = {
 };
 
 export type DebattenHinweis = {
-  sprecher: string | null; partei: string | null; art: string;
+  speaker: string | null; partei: string | null; art: string;
   top: string | null; auszug: string; committee: string | null; datum: string | null;
   /** getfile-URL des Protokoll-PDFs — ältere gespeicherte Gespräche kennen
    *  das Feld nicht, dann fehlt schlicht das Icon. */
@@ -431,9 +431,9 @@ export function PersonBadge({ p, zeilenPartei = null }: {
 export type ParteiMeinung = {
   partei: string; haltung?: "dafür" | "dagegen" | "offen" | "gewandelt";
   position: string; einig: boolean; note: string | null;
-  kernaussage: { text: string; sprecher: string | null; datum: string | null } | null;
+  kernaussage: { text: string; speaker: string | null; datum: string | null } | null;
   beitraege: number;
-  beitraege_liste?: { sprecher: string | null; datum: string; art: string | null;
+  beitraege_liste?: { speaker: string | null; datum: string; art: string | null;
     gremium: string | null; text: string }[];
 };
 
@@ -866,8 +866,8 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
     <li className="text-[12.5px] leading-snug">
       <p className="flex items-baseline gap-2">
         <span className="min-w-0 flex-1 truncate font-medium">
-          {d.sprecher
-            ? <SprecherName name={d.sprecher} partei={d.partei} datum={d.datum} zeigePartei />
+          {d.speaker
+            ? <SprecherName name={d.speaker} partei={d.partei} datum={d.datum} zeigePartei />
             : <>Ohne Namen{d.partei ? ` (${d.partei})` : ""}</>}
           {/* Zusagen der Verwaltung sind Selbstverpflichtungen — kein
               Meinungsbeitrag unter vielen. Sie bekommen deshalb ein eigenes
@@ -1041,7 +1041,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                       <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">
                         {p.kernaussage.text}
                         <span className="font-mono text-[10px] not-italic text-muted-foreground/80">
-                          {" "}— {p.kernaussage.sprecher ? <SprecherName name={p.kernaussage.sprecher} partei={p.partei} datum={p.kernaussage.datum} /> : "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
+                          {" "}— {p.kernaussage.speaker ? <SprecherName name={p.kernaussage.speaker} partei={p.partei} datum={p.kernaussage.datum} /> : "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
                         </span>
                       </p>
                     )}
@@ -1050,7 +1050,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                         {p.beitraege_liste.map((b, bi) => (
                           <li key={bi} className="text-[12px] leading-snug">
                             <p className="font-mono text-[10px] text-muted-foreground">
-                              {b.sprecher ? <SprecherName name={b.sprecher} partei={p.partei} datum={b.datum} /> : "Ohne Namen"} · {b.datum}
+                              {b.speaker ? <SprecherName name={b.speaker} partei={p.partei} datum={b.datum} /> : "Ohne Namen"} · {b.datum}
                               {b.gremium ? ` · ${b.gremium}` : ""}
                             </p>
                             <p className="mt-0.5 text-muted-foreground">{b.text}{b.text.length >= 300 ? "…" : ""}</p>

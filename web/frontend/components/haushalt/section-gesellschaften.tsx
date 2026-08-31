@@ -476,7 +476,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
                 Schritt {schrittNummer("/haushalt/konzern")} · Und ist das die ganze Stadt?
               </span>
               <span className="mt-0.5 block text-[13.5px] font-semibold leading-snug">
-                Wie groß der Konzern Stadt insgesamt ist — Kernverwaltung und alle
+                Wie groß der Konzern Stadt total ist — Kernverwaltung und alle
                 Einheiten zusammen — zeigt der Gesamtabschluss.
               </span>
             </span>

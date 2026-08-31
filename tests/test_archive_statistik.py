@@ -63,7 +63,7 @@ class Netz:
         self.etags: dict[str, str] = {}
         self.abrufe: list[str] = []
 
-    def antwort(self, url, etag=None, last_modified=None, session=None):
+    def answer(self, url, etag=None, last_modified=None, session=None):
         self.abrufe.append(url)
         if url not in self.inhalte:
             raise a.AbrufFehler(f"{url}: HTTP 404")
@@ -91,7 +91,7 @@ def netz(monkeypatch):
         "https://www.statistik.niedersachsen.de/download/227086":
             b"PK\x03\x04 KFA 2026",
     })
-    monkeypatch.setattr(a, "hole", n.antwort)
+    monkeypatch.setattr(a, "hole", n.answer)
     monkeypatch.setattr(a, "PAUSE", 0)
     # Kein Mail-Versand und keine job_runs-Historie in Tests.
     monkeypatch.setattr(a, "_melden", lambda *args, **kwargs: None)

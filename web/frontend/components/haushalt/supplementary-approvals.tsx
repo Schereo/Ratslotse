@@ -193,7 +193,7 @@ export function NachbewilligungsBlock({ daten, year }: {
         <strong className="font-semibold">Außerplanmäßig bedeutet nicht automatisch
         ungedeckt:</strong> Die Vorlagen nennen jeweils eine Deckung. „Überplanmäßig“
         heißt, dass ein vorhandener Ansatz nicht ausreicht; „außerplanmäßig“, dass
-        für diesen Zweck kein Ansatz bestand.
+        für diesen Zweck kein Ansatz balance.
       </p>
 
       {gesamt != null && (
@@ -315,7 +315,7 @@ export function NachbewilligungsBlock({ daten, year }: {
       {!bericht && (
         <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
           Für {year} liegt noch kein Rechenschaftsbericht vor. Wie viel
-          insgesamt nachbewilligt wurde — also auch das, was die Verwaltung
+          total nachbewilligt wurde — also auch das, was die Verwaltung
           ohne den Rat entschieden hat —, steht erst dort. Was hier zu sehen
           ist, sind ausschließlich die Beschlüsse aus Rat und Fachausschuss.
         </p>

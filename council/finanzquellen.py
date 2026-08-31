@@ -207,7 +207,7 @@ class Finanzquelle:
     #: check_finanzdaten).
     herkunft: str
     #: Welche **Einheiten** schon im Bestand stehen (Menge von Tupeln).
-    bestand: Callable[[CouncilStore], set[tuple]]
+    balance: Callable[[CouncilStore], set[tuple]]
     #: Wie eine Einheit für Leserinnen heißt — ``None``, wo ein Dokument den
     #: ganzen Jahrgang trägt und „vollständig" keine Frage ist.
     einheit: str | None = None
@@ -280,15 +280,15 @@ class Finanzquelle:
         ``lies_*``-Funktionen riefen ihre ``_bestand_*``-Funktion bis 08/2026
         **direkt** auf, an ihrem eigenen Registry-Eintrag vorbei. Damit gab es
         auf die Frage „was habe ich schon?" zwei Antworten — die des Crons
-        (über ``bestand``) und die des Einlesens —, und ein Wechsel an einer
+        (über ``balance``) und die des Einlesens —, und ein Wechsel an einer
         Stelle wäre an der anderen still unbemerkt geblieben. Genau die
         Doppelung, gegen die es diese Registry gibt (s. Modulkopf).
         """
-        return self.bestand(store) if nur_fehlende else set()
+        return self.balance(store) if nur_fehlende else set()
 
     def offene_einheiten(self, store: CouncilStore) -> set[tuple]:
         """Einheiten, für die ein Dokument vorliegt, die aber fehlen."""
-        vorhanden = self.bestand(store)
+        vorhanden = self.balance(store)
         moeglich: set[tuple] = set()
         for r in self.kandidaten(store):
             moeglich |= r["einheiten"]
@@ -682,7 +682,7 @@ def _produkt_signatur(zeilen: list[dict]) -> tuple:
     über die ganze Zeile: Sonst vergliche die Sortierung irgendwann ``None``
     mit einem Text, und ein leeres Steckbrief-Feld risse einen unbeaufsichtigten
     Lauf mit einem ``TypeError`` ab."""
-    return tuple(tuple(z.get(feld) for feld in PRODUKT_FELDER)
+    return tuple(tuple(z.get(field) for field in PRODUKT_FELDER)
                  for z in sorted(zeilen, key=lambda z: z["product_no"]))
 
 
@@ -823,9 +823,9 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
     # Vorjahres-Kette: Das Ist eines Jahres steht im Folgejahrgang noch einmal.
     # Ein gerissenes Glied verrät nicht, welche Seite falsch ist — also fallen
     # beide raus. In der Praxis schließen alle Glieder.
-    kette = finanzberichte.vorjahreskette({j: v["posten"] for j, v in gelesen.items()})
+    chain = finanzberichte.vorjahreskette({j: v["posten"] for j, v in gelesen.items()})
     verdaechtig: set[int] = set()
-    for year, folge, warum in kette:
+    for year, folge, warum in chain:
         p.warnen(f"  Vorjahres-Kette {year}→{folge} gerissen: {warum} — beide Jahrgänge "
                  f"werden nicht gespeichert")
         verdaechtig |= {year, folge}
@@ -1115,7 +1115,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             "neue_einheiten": sorted(neue_einheiten, key=repr),
             "years": len(gelesen) - len(verdaechtig), "uebersprungen": uebersprungen,
             "jahre_mit_teilhaushalten": mit_thh, "thh_verworfen": verworfen,
-            "kettenglieder_geprueft": glieder, "kette_gerissen": len(kette),
+            "kettenglieder_geprueft": glieder, "kette_gerissen": len(chain),
             "vorzeichen_repariert": vorzeichen_repariert,
             "bestand_geschuetzt": geschuetzt,
             "jahre_mit_finanzrechnung": mit_kasse,
@@ -1379,7 +1379,7 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
             continue
         je_jahrgang[budget_year] = {"teile": {}, "unstimmig": 0}
 
-        gefunden = {t["teil"] for t in gelesen["teile"]}
+        gefunden = {t["part"] for t in gelesen["teile"]}
         fehlend = sorted(set(stellenplan.TEIL_SPALTEN) - gefunden)
         if fehlend:
             # Der Unterschied, den ein Leser sonst nicht sähe: „gibt es nicht"
@@ -1389,54 +1389,54 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
             p.warnen(f"  {budget_year}: Teil {', '.join(fehlend)} fehlt — {grund} "
                      f"(Dokument {r['document_id']})")
 
-        for teil in gelesen["teile"]:
-            name = teil["teil"]
+        for part in gelesen["teile"]:
+            name = part["part"]
             if (budget_year, name) in vorhanden:
                 continue
-            if not teil["bestanden"]:
-                p.warnen(f"  {budget_year} Teil {name}: {teil['nachweis']} — "
+            if not part["bestanden"]:
+                p.warnen(f"  {budget_year} Teil {name}: {part['nachweis']} — "
                          f"Dokument {r['document_id']}, nicht gespeichert")
                 verworfen += 1
                 continue
 
             alt = _anzahl(store, "SELECT COUNT(*) FROM council_stellenplan "
-                                 "WHERE budget_year = ? AND teil = ?", (budget_year, name))
+                                 "WHERE budget_year = ? AND part = ?", (budget_year, name))
             if not bestandsschutz(p, f"{budget_year} Stellenplan Teil {name}", alt,
-                                  len(teil["zeilen"]), schuetzen):
+                                  len(part["zeilen"]), schuetzen):
                 geschuetzt += 1 if alt else 0
                 continue
 
             store.save_stellenplan(
-                budget_year, name, teil["zeilen"],
+                budget_year, name, part["zeilen"],
                 herkunft.Herkunft(
-                    art="ris", probe=[pr["probe"] for pr in teil["probes"]],
+                    art="ris", probe=[pr["probe"] for pr in part["probes"]],
                     document_id=r["document_id"], label=r["label"], url=r["url"],
                     citation=f"Teil {name}: {stellenplan.TEIL_NAMEN[name]}",
-                    probe_result=teil["nachweis"],
+                    probe_result=part["nachweis"],
                     # Wie beim Gesamtergebnishaushalt: Die Anlage hängt an der
                     # Vorlage, mit der die Verwaltung den Haushalt einbringt.
                     stand=f"Stellenplan {budget_year} — Stand der Einbringung, "
-                          f"Besetzung am {teil['as_of_date']}"),
-                as_of_date=teil["as_of_date"])
+                          f"Besetzung am {part['as_of_date']}"),
+                as_of_date=part["as_of_date"])
             neue_einheiten.add((budget_year, name))
 
-            gesamt = next((z for z in teil["zeilen"] if z["art"] == "gesamt"), None)
+            gesamt = next((z for z in part["zeilen"] if z["art"] == "gesamt"), None)
             je_jahrgang[budget_year]["teile"][name] = {
-                "zeilen": len(teil["zeilen"]),
+                "zeilen": len(part["zeilen"]),
                 "stellen": gesamt["positions_planned"] if gesamt else None,
                 "vacant": gesamt["vacant"] if gesamt else None,
             }
-            je_jahrgang[budget_year]["unstimmig"] += len(teil["unstimmig"])
-            unstimmig_gesamt += len(teil["unstimmig"])
+            je_jahrgang[budget_year]["unstimmig"] += len(part["unstimmig"])
+            unstimmig_gesamt += len(part["unstimmig"])
             if gesamt:
                 anteil = (gesamt["vacant"] / gesamt["positions_prior_year"] * 100
                           if gesamt["positions_prior_year"] else 0.0)
                 p.sagen(f"  {budget_year} Teil {name}: {gesamt['positions_planned']:,.2f} Stellen "
-                        f"geplant · am {teil['as_of_date']} waren {gesamt['vacant']:,.2f} "
+                        f"geplant · am {part['as_of_date']} waren {gesamt['vacant']:,.2f} "
                         f"von {gesamt['positions_prior_year']:,.2f} nicht besetzt "
-                        f"({anteil:.1f} %) · {len(teil['zeilen'])} Zeilen · "
+                        f"({anteil:.1f} %) · {len(part['zeilen'])} Zeilen · "
                         f"Dokument {r['document_id']}")
-            for u in teil["unstimmig"]:
+            for u in part["unstimmig"]:
                 p.warnen(f"      Zeile {u['seq_no']} ({u['label']}): der Plan "
                          f"weicht hier um {u['deviation']:+.2f} Stellen von sich "
                          f"selbst ab — gespeichert und gekennzeichnet")
@@ -1513,11 +1513,11 @@ def lies_buergschaften(store: CouncilStore, p: Protokoll) -> dict:
                 art="ris", probe=probes or [buergschaften.PROBE_KETTE],
                 document_id=r["document_id"], label=r["label"], url=r["url"],
                 citation=z["citation"],
-                probe_result=(f"{z['bestand']/1e6:.1f} Mio. € Bestand"
+                probe_result=(f"{z['balance']/1e6:.1f} Mio. € Bestand"
                                 + ("" if z["exact"] else ", von der Quelle gerundet")),
                 stand=f"Jahresabschluss {quell_jahr}"))
         woher = " (aus dem Folgejahr)" if z["out_next_year"] else ""
-        p.sagen(f"  {z['year']}: {z['bestand']/1e6:7.1f} Mio. €{woher}")
+        p.sagen(f"  {z['year']}: {z['balance']/1e6:7.1f} Mio. €{woher}")
     return {"jahrgaenge": len(zeilen), "kette_gerissen": 0, "glieder": glieder}
 
 
@@ -1834,16 +1834,16 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
             ohne += 1
             continue
         for year in {x["year"] for x in produkte}:
-            teil = [x for x in produkte if x["year"] == year]
+            part = [x for x in produkte if x["year"] == year]
             # ``save_produkte`` löscht nichts, überschreibt aber Zeile für
             # Zeile. Verglichen wird deshalb je Teilhaushalt, nicht je Jahr:
             # Ein Dokument trägt immer nur seinen eigenen THH bei, gegen den
             # Jahresbestand gehalten sähe jedes Dokument wie ein Einbruch aus.
             with store.transaktion():
-                for sub_budget_no in sorted({x.get("sub_budget_no") for x in teil}, key=lambda v: v or 0):
+                for sub_budget_no in sorted({x.get("sub_budget_no") for x in part}, key=lambda v: v or 0):
                     if (year, sub_budget_no) in vorhanden:
                         continue
-                    stueck = [x for x in teil if x.get("sub_budget_no") == sub_budget_no]
+                    stueck = [x for x in part if x.get("sub_budget_no") == sub_budget_no]
                     # Zweites Dokument für denselben Teilhaushalt: Das erste
                     # hat ihn versorgt (siehe Docstring). Nur die Herkunft
                     # würde hier noch getauscht — und mit ihr entstünde ein
@@ -1880,8 +1880,8 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
                     versorgt[(year, sub_budget_no)] = (_produkt_signatur(stueck), r)
                     neue_einheiten.add((year, sub_budget_no))
                     je_jahr[year] = je_jahr.get(year, 0) + len(stueck)
-                    for feld in STECKBRIEF:
-                        mit_feld[feld] += sum(1 for x in stueck if x.get(feld))
+                    for field in STECKBRIEF:
+                        mit_feld[field] += sum(1 for x in stueck if x.get(field))
     for year in sorted(je_jahr):
         p.sagen(f"  {year}: {je_jahr[year]} Produkt-Zeilen")
     if dubletten:
@@ -1903,13 +1903,13 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
         "SELECT COUNT(*) FROM council_produkte").fetchone()[0]
     p.sagen(f"  Steckbrief-Abdeckung ({gesamt} Produkte in der Tabelle):")
     abdeckung: dict[str, int] = {}
-    for feld in STECKBRIEF:
+    for field in STECKBRIEF:
         n = store._conn.execute(  # noqa: SLF001
-            f"SELECT COUNT(*) FROM council_produkte WHERE {feld} IS NOT NULL "
-            f"AND {feld} != ''").fetchone()[0]
-        abdeckung[feld] = n
+            f"SELECT COUNT(*) FROM council_produkte WHERE {field} IS NOT NULL "
+            f"AND {field} != ''").fetchone()[0]
+        abdeckung[field] = n
         anteil = f"{n / gesamt * 100:.1f} %" if gesamt else "–"
-        p.sagen(f"    {feld:20s} {n:>5}  ({anteil})")
+        p.sagen(f"    {field:20s} {n:>5}  ({anteil})")
     return {"neue_jahrgaenge": sorted(je_jahr),
             "neue_einheiten": sorted(neue_einheiten), "dokumente": len(rows),
             "ohne_treffer": ohne, "bestand_geschuetzt": geschuetzt,
@@ -2083,13 +2083,13 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
                      f"von {result['traeger_gefunden']} Trägeraufstellungen an ihrer "
                      "Spalten- oder Querprobe gescheitert")
 
-    kette = _kette_pruefen(gelesen, p)
+    chain = _kette_pruefen(gelesen, p)
     return {"neue_jahrgaenge": sorted(je_jahr),
             "neue_einheiten": [(j,) for j in sorted(je_jahr)],
             "je_jahr": je_jahr, "bestand_geschuetzt": geschuetzt,
             "konzern_posten": sum(d["posten"] for d in je_jahr.values()),
             "konzern_traeger": sum(d["entity"] for d in je_jahr.values()),
-            "verworfen": verworfen_gesamt, **kette}
+            "verworfen": verworfen_gesamt, **chain}
 
 
 #: Rollen, deren Vorjahresspalte gegen den Vorjahrgang geprüft wird.
@@ -2151,7 +2151,7 @@ for _q in (
         ),
         einheit="Ebenen",
         einheiten_von=_einheiten_jahresabschluss,
-        bestand=_bestand_jahresabschluss,
+        balance=_bestand_jahresabschluss,
         einlesen=lies_jahresabschluesse,
     ),
     Finanzquelle(
@@ -2178,7 +2178,7 @@ for _q in (
         ),
         einheit="Berichte",
         einheiten_von=_einheiten_kennzahlen,
-        bestand=_bestand_kennzahlen,
+        balance=_bestand_kennzahlen,
         einlesen=lies_kennzahlen,
     ),
     Finanzquelle(
@@ -2195,7 +2195,7 @@ for _q in (
             oder=True,
         ),
         einheiten_von=_einheiten_schlussbericht,
-        bestand=_bestand_schlussberichte,
+        balance=_bestand_schlussberichte,
         einlesen=lies_schlussbericht_fundstellen,
     ),
     Finanzquelle(
@@ -2214,7 +2214,7 @@ for _q in (
             ordnung="document_id",
         ),
         einheiten_von=_einheiten_feststellungen,
-        bestand=_bestand_feststellungen,
+        balance=_bestand_feststellungen,
         einlesen=lies_pruefungsfeststellungen,
     ),
     Finanzquelle(
@@ -2238,7 +2238,7 @@ for _q in (
         # verteilt sich auf rund neun Anlagen, die einzeln lesbar werden.
         einheit="Teilhaushalte",
         einheiten_von=_einheiten_teilhaushalt,
-        bestand=_bestand_produkte,
+        balance=_bestand_produkte,
         einlesen=lies_teilhaushalte,
     ),
     Finanzquelle(
@@ -2265,7 +2265,7 @@ for _q in (
             ordnung="document_id",
         ),
         einheiten_von=_einheiten_konzernabschluss,
-        bestand=_bestand_konzernabschluss,
+        balance=_bestand_konzernabschluss,
         einlesen=lies_konzernabschluesse,
     ),
     Finanzquelle(
@@ -2293,7 +2293,7 @@ for _q in (
             ordnung="document_id",
         ),
         einheiten_von=_einheiten_ergebnishaushalt,
-        bestand=_bestand_ergebnishaushalt,
+        balance=_bestand_ergebnishaushalt,
         einlesen=lies_ergebnishaushalte,
     ),
     Finanzquelle(
@@ -2325,7 +2325,7 @@ for _q in (
         # kommen einzeln durch ihre Proben.
         einheit="Teile",
         einheiten_von=_einheiten_stellenplan,
-        bestand=_bestand_stellenplan,
+        balance=_bestand_stellenplan,
         einlesen=lies_stellenplaene,
     ),
     Finanzquelle(
@@ -2348,7 +2348,7 @@ for _q in (
         herkunft="opendata",
         nachschub="Download vom Open-Data-Portal, "
                   "scripts/ingest_finanzen_opendata.py",
-        bestand=_bestand_investitionen,
+        balance=_bestand_investitionen,
     ),
     Finanzquelle(
         key="investitionsprogramm",
@@ -2379,7 +2379,7 @@ for _q in (
             ordnung="document_id",
         ),
         einheiten_von=_einheiten_investitionsprogramm,
-        bestand=_bestand_investitionsprogramm,
+        balance=_bestand_investitionsprogramm,
         einlesen=lies_investitionsprogramme,
     ),
     Finanzquelle(
@@ -2396,7 +2396,7 @@ for _q in (
         # beobachtet diese Schicht nur und meldet, wenn ein Jahrgang ausbleibt.
         herkunft="stadt",
         nachschub="Download von oldenburg.de, scripts/ingest_haushalt.py",
-        bestand=_bestand_haushaltsplan,
+        balance=_bestand_haushaltsplan,
     ),
     Finanzquelle(
         key="fees",
@@ -2418,7 +2418,7 @@ for _q in (
             label_muster=("%Gebührenbedarf%",),
         ),
         nachschub="scripts/ingest_gebuehren.py",
-        bestand=_bestand_gebuehren,
+        balance=_bestand_gebuehren,
     ),
     Finanzquelle(
         key="budget_bylaw",
@@ -2447,7 +2447,7 @@ for _q in (
             ausschluesse=("%Nachtrag%",),
         ),
         nachschub="scripts/ingest_haushaltssatzung.py",
-        bestand=_bestand_haushaltssatzung,
+        balance=_bestand_haushaltssatzung,
     ),
     Finanzquelle(
         key="wirtschaftsplan",
@@ -2485,7 +2485,7 @@ for _q in (
         ),
         nachschub="liegt schon im Bestand (council_vorlagen), "
                   "scripts/ingest_wirtschaftsplaene.py",
-        bestand=_bestand_wirtschaftsplan,
+        balance=_bestand_wirtschaftsplan,
     ),
     Finanzquelle(
         key="schulden",
@@ -2508,7 +2508,7 @@ for _q in (
         # Der Cron beobachtet diese Schicht nur und meldet, wenn sie ausbleibt.
         herkunft="stadt",
         nachschub="Download von oldenburg.de, scripts/ingest_schulden.py",
-        bestand=_bestand_schulden,
+        balance=_bestand_schulden,
     ),
     Finanzquelle(
         key="beteiligungsbericht",
@@ -2532,7 +2532,7 @@ for _q in (
         herkunft="stadt",
         nachschub="eigener Cron scripts/check_beteiligungsbericht.py "
                   "(lädt von oldenburg.de)",
-        bestand=_bestand_beteiligungsbericht,
+        balance=_bestand_beteiligungsbericht,
     ),
     Finanzquelle(
         key="lsn_steuerkraft",
@@ -2549,7 +2549,7 @@ for _q in (
         herkunft="lsn",
         nachschub="Download vom Landesamt für Statistik, "
                   "scripts/ingest_staedtevergleich.py --kfa",
-        bestand=_bestand_lsn_steuerkraft,
+        balance=_bestand_lsn_steuerkraft,
     ),
     Finanzquelle(
         key="lsn_realsteuern",
@@ -2571,7 +2571,7 @@ for _q in (
         herkunft="lsn",
         nachschub="Download vom Landesamt für Statistik, "
                   "scripts/ingest_staedtevergleich.py --realsteuer",
-        bestand=_bestand_lsn_realsteuern,
+        balance=_bestand_lsn_realsteuern,
     ),
     Finanzquelle(
         key="lsn_gewerbesteuer",
@@ -2591,7 +2591,7 @@ for _q in (
         herkunft="lsn",
         nachschub="Download vom Landesamt für Statistik, "
                   "scripts/ingest_gewerbesteuerstatistik.py",
-        bestand=_bestand_lsn_gewerbesteuer,
+        balance=_bestand_lsn_gewerbesteuer,
     ),
 ):
     QUELLEN[_q.key] = _q
@@ -2675,7 +2675,7 @@ def datenstand(store: CouncilStore, heute: date | None = None) -> list[dict]:
     zeilen = []
     for key in REIHENFOLGE:
         q = QUELLEN[key]
-        einheiten = q.bestand(store)
+        einheiten = q.balance(store)
         je_jahr: dict[int, int] = {}
         for e in einheiten:
             je_jahr[e[0]] = je_jahr.get(e[0], 0) + 1

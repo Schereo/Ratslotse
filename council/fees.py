@@ -306,7 +306,7 @@ def teile_anlagen(text: str) -> list[str]:
     return [t for t in teile if _bereich_aus_kopf(t)]
 
 
-def _menge_aus_der_probe(teil: str, zu_decken: float, fee: float) -> float:
+def _menge_aus_der_probe(part: str, zu_decken: float, fee: float) -> float:
     """Die Bezugsmenge daran erkennen, dass sie die gedruckte Gebühr ergibt.
 
     NICHT geraten und nicht die erste passende Zahl genommen: Im Textextrakt
@@ -318,7 +318,7 @@ def _menge_aus_der_probe(teil: str, zu_decken: float, fee: float) -> float:
     # und eine zusammengesetzte Zahl („7 71.000") ließe sich hinterher nicht
     # mehr im Text wiederfinden.
     kandidaten: list[tuple[float, int]] = []
-    for m in _MENGE.finditer(teil):
+    for m in _MENGE.finditer(part):
         try:
             wert = float(m.group(1).replace(".", ""))
         except ValueError:
@@ -326,7 +326,7 @@ def _menge_aus_der_probe(teil: str, zu_decken: float, fee: float) -> float:
         if wert > 0:
             kandidaten.append((wert, m.start()))
     # Und die im Textextrakt zerrissenen Formen.
-    for m in re.finditer(r"(?<![\d,.])(\d{1,3})\s+([\d.]{3,})(?!\s*€)", teil):
+    for m in re.finditer(r"(?<![\d,.])(\d{1,3})\s+([\d.]{3,})(?!\s*€)", part):
         try:
             kandidaten.append((float((m.group(1) + m.group(2)).replace(".", "")),
                                m.start()))
@@ -352,7 +352,7 @@ def _menge_aus_der_probe(teil: str, zu_decken: float, fee: float) -> float:
     # Entschieden wird deshalb an der LAGE: Die Bezugsmenge steht im
     # „Gebührenermittlung"-Block unmittelbar über der Gebühr. Das ist eine
     # Aussage über den Aufbau des Dokuments, keine über die Zahl.
-    g = _GEBUEHR_MIT_EINHEIT.search(teil)
+    g = _GEBUEHR_MIT_EINHEIT.search(part)
     davor = [(pos, w) for w, pos in treffer if g and pos < g.start()]
     if not davor:
         raise GebuehrenFehler(
@@ -362,7 +362,7 @@ def _menge_aus_der_probe(teil: str, zu_decken: float, fee: float) -> float:
     return max(davor)[1]
 
 
-def _kaskade_aus_der_reihenfolge(teil: str) -> tuple[float, float, float] | None:
+def _kaskade_aus_der_reihenfolge(part: str) -> tuple[float, float, float] | None:
     """Kalkulation, Abzüge und Deckungsbetrag aus der REIHENFOLGE der Beträge.
 
     Der Notweg für Jahrgänge, in denen der Textextrakt Beschriftungen und
@@ -378,7 +378,7 @@ def _kaskade_aus_der_reihenfolge(teil: str) -> tuple[float, float, float] | None
     # Leere Treffer überspringen: Das Betrags-Muster lässt eine leere
     # Ziffernfolge zu, wenn im Extrakt nur ein „€" ohne Zahl steht.
     betraege: list[tuple[float, int]] = []
-    for m in _BETRAG_RE.finditer(teil):
+    for m in _BETRAG_RE.finditer(part):
         roh = m.group(1).strip()
         if not roh.strip("-. "):
             continue
@@ -399,20 +399,20 @@ def _kaskade_aus_der_reihenfolge(teil: str) -> tuple[float, float, float] | None
     return gefunden
 
 
-def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbedarf:
+def parse_anlage(part: str, template_number: str | None = None) -> Gebuehrenbedarf:
     """Eine Anlage lesen — geprüft, oder gar nicht."""
-    area = _bereich_aus_kopf(teil)
+    area = _bereich_aus_kopf(part)
     if area is None:
         raise GebuehrenFehler("Kein bekannter Bereich im Anlagenkopf")
-    year = _JAHR.search(teil)
+    year = _JAHR.search(part)
     if year is None:
         raise GebuehrenFehler("Kein Jahrgang („Gebührenbedarfsberechnung JJJJ“)")
 
-    k = _KALKULATION.search(teil)
-    d = _ZU_DECKEN.search(teil)
+    k = _KALKULATION.search(part)
+    d = _ZU_DECKEN.search(part)
     if k and d:
         kalkulation, zu_decken = _eur(k.group(1)), _eur(d.group(1))
-        kaskade = teil[k.end():d.start()]
+        kaskade = part[k.end():d.start()]
         deductions = sum(_eur(x) for x in _BETRAG_RE.findall(kaskade)
                       if x.strip().startswith("-"))
         rest = kalkulation + deductions - zu_decken
@@ -423,7 +423,7 @@ def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbeda
                 deductions -= wert
     else:
         # Beschriftungen und Beträge stehen in getrennten Blöcken (2024).
-        ueber_reihenfolge = _kaskade_aus_der_reihenfolge(teil)
+        ueber_reihenfolge = _kaskade_aus_der_reihenfolge(part)
         if ueber_reihenfolge is None:
             raise GebuehrenFehler(
                 "Kaskade unvollständig: "
@@ -443,7 +443,7 @@ def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbeda
     # Division „zu deckende Kosten ÷ Menge" gibt es dort nicht, und eine
     # erfundene wäre schlimmer als keine. Der Jahrgang wird trotzdem
     # gespeichert — seine Kaskade ist geprüft, nur die zweite Probe fehlt.
-    g = _GEBUEHR_MIT_EINHEIT.search(teil)
+    g = _GEBUEHR_MIT_EINHEIT.search(part)
     fee = menge = None
     einheit = None
     if g is not None:
@@ -455,7 +455,7 @@ def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbeda
                 "wäre eine Behauptung über das Dokument.")
         fee = float(g.group(2).replace(".", "").replace(",", "."))
         try:
-            menge = _menge_aus_der_probe(teil, zu_decken, fee)
+            menge = _menge_aus_der_probe(part, zu_decken, fee)
         except GebuehrenFehler:
             # Wahrscheinlich der gerundete VORSCHLAG erwischt statt der
             # errechneten Gebühr — das passiert, wo der Textextrakt
@@ -463,17 +463,17 @@ def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbeda
             # Nachkommastellen; welche der Kandidaten es ist, entscheidet
             # wieder die Division und nicht die Reihenfolge.
             fee = menge = None
-            for kandidat in _GEBUEHR_DREISTELLIG.findall(teil):
+            for kandidat in _GEBUEHR_DREISTELLIG.findall(part):
                 wert = float(kandidat.replace(".", "").replace(",", "."))
                 try:
-                    menge = _menge_aus_der_probe(teil, zu_decken, wert)
+                    menge = _menge_aus_der_probe(part, zu_decken, wert)
                 except GebuehrenFehler:
                     continue
                 fee = wert
                 break
             if fee is None:
                 raise
-    v = _VORSCHLAG.search(teil)
+    v = _VORSCHLAG.search(part)
 
     return Gebuehrenbedarf(
         year=int(year.group(1)), area=area[0], area_name=area[1],
@@ -494,9 +494,9 @@ def lies(text: str, template_number: str | None = None
     nicht mit: Sie stehen in eigenen Anlagen und prüfen sich einzeln.
     """
     gelesen, risse = [], []
-    for teil in teile_anlagen(text):
+    for part in teile_anlagen(text):
         try:
-            gelesen.append(parse_anlage(teil, template_number))
+            gelesen.append(parse_anlage(part, template_number))
         except GebuehrenFehler as fehler:
             risse.append(str(fehler))
     return gelesen, risse
@@ -517,13 +517,13 @@ def _anlage_4(text: str) -> str | None:
     return flach[treffer[-1].end():] if treffer else None
 
 
-def _saetze_altes_layout(teil: str, template_number: str | None) -> list[Gebuehrensatz] | None:
+def _saetze_altes_layout(part: str, template_number: str | None) -> list[Gebuehrensatz] | None:
     """Die eine Vorschlagszeile der Tabellen 2023–2025 lesen."""
-    m = re.search(r"\bVorschl(?:ag|[äa]ge)(?:\s+f[üu]r)?\s+(\d{4})\s+", teil, re.I)
+    m = re.search(r"\bVorschl(?:ag|[äa]ge)(?:\s+f[üu]r)?\s+(\d{4})\s+", part, re.I)
     if not m:
         return None
     year = int(m.group(1))
-    werte = [_satz_eur(x) for x in _SATZ_BETRAG.findall(teil[m.end():])]
+    werte = [_satz_eur(x) for x in _SATZ_BETRAG.findall(part[m.end():])]
     if len(werte) != len(SATZARTEN):
         raise GebuehrenFehler(
             f"Anlage 4 für {year}: {len(werte)} statt {len(SATZARTEN)} "
@@ -535,11 +535,11 @@ def _saetze_altes_layout(teil: str, template_number: str | None) -> list[Gebuehr
         for art, wert in zip(SATZARTEN, werte, strict=True)]
 
 
-def _saetze_neues_layout(teil: str, template_number: str | None) -> list[Gebuehrensatz] | None:
+def _saetze_neues_layout(part: str, template_number: str | None) -> list[Gebuehrensatz] | None:
     """Das Zeilenlayout ab 2026 samt Prozentprobe lesen."""
-    if not re.search(r"Ver[äa]nderung\s+in\s+%", teil, re.I):
+    if not re.search(r"Ver[äa]nderung\s+in\s+%", part, re.I):
         return None
-    kopf = re.search(r"\bVorschlag\s+(\d{4})(?:\s+\d{4})+", teil, re.I)
+    kopf = re.search(r"\bVorschlag\s+(\d{4})(?:\s+\d{4})+", part, re.I)
     if not kopf:
         raise GebuehrenFehler("Anlage 4: Vorschlagsjahr im Tabellenkopf fehlt")
     year = int(kopf.group(1))
@@ -548,7 +548,7 @@ def _saetze_neues_layout(teil: str, template_number: str | None) -> list[Gebuehr
         m = re.search(
             rf"\b{art.code}\s+{art.modernes_muster}\s+"
             rf"(-?[\d.]+,\d{{2}})%\s+{_SATZ_BETRAG_EURO}\s+"
-            rf"{_SATZ_BETRAG_EURO}", teil, re.I)
+            rf"{_SATZ_BETRAG_EURO}", part, re.I)
         if not m:
             raise GebuehrenFehler(
                 f"Anlage 4 für {year}: Tarifzeile „{art.label}“ fehlt")
@@ -575,11 +575,11 @@ def lies_gebuehrensaetze(text: str, template_number: str | None = None) -> list[
     keine kaputte Zahl und liefert deshalb eine leere Liste. Sobald aber ein
     bekanntes Tabellenlayout beginnt, gilt: alle zwölf Zeilen oder keine.
     """
-    teil = _anlage_4(text)
-    if not teil or not teil.strip():
+    part = _anlage_4(text)
+    if not part or not part.strip():
         return []
-    saetze = (_saetze_neues_layout(teil, template_number)
-              or _saetze_altes_layout(teil, template_number))
+    saetze = (_saetze_neues_layout(part, template_number)
+              or _saetze_altes_layout(part, template_number))
     if saetze is None:
         raise GebuehrenFehler("Anlage 4: unbekanntes Tabellenlayout")
 

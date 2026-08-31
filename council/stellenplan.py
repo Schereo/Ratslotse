@@ -224,20 +224,20 @@ def _summenregex(spalten: int) -> re.Pattern:
 def _werte(spalten: int, roh: tuple) -> dict:
     """Die gelesenen Zahlen unter ihre Namen — plus ``filled`` als Summe der
     Besetzungsarten, damit beide Teile dieselbe Frage gleich beantworten."""
-    feld = dict(zip(LAYOUT[spalten], (_wert(g) for g in roh)))
-    if "filled" not in feld:
-        feld["filled"] = feld["filled_by_officials"] + feld["filled_by_employees"]
-    return feld
+    field = dict(zip(LAYOUT[spalten], (_wert(g) for g in roh)))
+    if "filled" not in field:
+        field["filled"] = field["filled_by_officials"] + field["filled_by_employees"]
+    return field
 
 
-def _bezeichnung(text: str, teil: str) -> tuple[str, str | None]:
+def _bezeichnung(text: str, part: str) -> tuple[str, str | None]:
     """Amts-/Funktionsbezeichnung und Besoldungs- bzw. Entgeltgruppe trennen.
 
     Trifft das Muster nicht, bleibt die Gruppe leer und der ganze Text steht
     als Bezeichnung — eine halb geratene Besoldungsgruppe wäre schlechter als
     keine."""
     text = re.sub(r"\s+", " ", text).strip()
-    m = (_GRUPPE_A if teil == "A" else _GRUPPE_B).search(text)
+    m = (_GRUPPE_A if part == "A" else _GRUPPE_B).search(text)
     if not m:
         return text, None
     return text[:m.start()].strip(), re.sub(r"\s+", " ", m.group(1)).strip()
@@ -272,7 +272,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
     laufen hinter den Zahlen noch eine Zeile weiter. Wer das flach zieht,
     verliert die Grenze zwischen zwei Datensätzen."""
     teile: dict[str, dict] = {}
-    teil: str | None = None
+    part: str | None = None
     im_kopf = False
     kopf: list[str] = []
     puffer = ""
@@ -284,15 +284,15 @@ def _teile_lesen(text: str) -> dict[str, dict]:
 
         m = _TEIL.search(z)
         if m and "Aufteilung" not in z:
-            teil = m.group(1)
-            teile.setdefault(teil, {"zeilen": [], "summen": [], "spalten": None,
+            part = m.group(1)
+            teile.setdefault(part, {"zeilen": [], "summen": [], "spalten": None,
                                     "years": set(), "stichtage": set(),
                                     "spaltenstreit": set(), "unlesbar": []})
             im_kopf, kopf, puffer = True, [z], ""
             continue
-        if teil is None:
+        if part is None:
             continue
-        t = teile[teil]
+        t = teile[part]
 
         if im_kopf:
             kopf.append(z)
@@ -315,7 +315,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
             continue
 
         if any(e in z for e in _ENDE):
-            teil, puffer = None, ""
+            part, puffer = None, ""
             continue
         if t["spalten"] not in LAYOUT:
             continue
@@ -323,7 +323,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
         # Tabelle (die Ausbildungs-Übersicht hat sechs Spalten).
         andere = _spaltenzeile(z)
         if andere is not None and andere != t["spalten"]:
-            teil, puffer = None, ""
+            part, puffer = None, ""
             continue
 
         if _SUMME.match(z):
@@ -346,7 +346,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
         m = _zeilenregex(t["spalten"]).match(puffer)
         if not m:
             continue
-        bez, gruppe = _bezeichnung(m.group(2), teil)
+        bez, gruppe = _bezeichnung(m.group(2), part)
         t["zeilen"].append({"seq_no": int(m.group(1)), "label": bez,
                             "pay_grade": gruppe,
                             **_werte(t["spalten"], m.groups()[2:])})
@@ -438,10 +438,10 @@ def unstimmige_zeilen(zeilen: list[dict],
 def _summenvergleich(gerechnet: dict, genannt: dict, wo: str,
                      toleranz: float) -> str:
     """Zwei Wertesätze spaltenweise vergleichen → Fehlertext oder ``""``."""
-    for feld, wert in genannt.items():
-        rest = gerechnet.get(feld, 0.0) - wert
+    for field, wert in genannt.items():
+        rest = gerechnet.get(field, 0.0) - wert
         if abs(rest) > toleranz:
-            return (f"{wo}: {feld} ergibt {gerechnet.get(feld, 0.0):.2f}, "
+            return (f"{wo}: {field} ergibt {gerechnet.get(field, 0.0):.2f}, "
                     f"die Summenzeile nennt {wert:.2f} ({rest:+.2f})")
     return ""
 
@@ -562,7 +562,7 @@ def lies(text: str) -> dict:
     """Einen Stellenplan auswerten.
 
     Liefert ``{budget_year, teile, glyphen}``. ``teile`` ist eine Liste — je Teil
-    ein dict mit ``teil`` (``A``/``B``), ``as_of_date``, ``zeilen``, ``probes``,
+    ein dict mit ``part`` (``A``/``B``), ``as_of_date``, ``zeilen``, ``probes``,
     ``bestanden``, ``nachweis`` und ``verworfen``. Ein Teil, dessen Proben
     nicht aufgehen, hat **keine** ``zeilen``: Eine Tabelle, die sich nicht
     selbst bestätigt, gibt keine halben Zahlen her.
@@ -584,14 +584,14 @@ def lies(text: str) -> dict:
         if t["spalten"] != soll or t["spaltenstreit"]:
             gesehen = sorted({t["spalten"], *t["spaltenstreit"]} - {None})
             result.append({
-                "teil": name, "as_of_date": None, "year": None, "zeilen": [],
+                "part": name, "as_of_date": None, "year": None, "zeilen": [],
                 "probes": [], "bestanden": False, "verworfen": len(t["zeilen"]),
                 "nachweis": f"Teil {name} nennt {gesehen or 'keine'} Spalten "
                             f"statt {soll} — nicht gelesen"})
             continue
         if len(t["years"]) != 1 or len(t["stichtage"]) > 1:
             result.append({
-                "teil": name, "as_of_date": None, "year": None, "zeilen": [],
+                "part": name, "as_of_date": None, "year": None, "zeilen": [],
                 "probes": [], "bestanden": False, "verworfen": len(t["zeilen"]),
                 "nachweis": f"Teil {name}: der Tabellenkopf nennt "
                             f"{sorted(t['years']) or 'kein'} Haushaltsjahr und "
@@ -634,7 +634,7 @@ def lies(text: str) -> dict:
         if bestanden:
             years.add(year)
         result.append({
-            "teil": name, "year": year,
+            "part": name, "year": year,
             "as_of_date": next(iter(t["stichtage"]), None),
             "zeilen": (_zeilen_bauen(gruppen, gesamt, unstimmig)
                        if bestanden else []),

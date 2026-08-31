@@ -89,9 +89,9 @@ def link_suchen(muster) -> str | None:
 
     ``None``, wenn die Seite ihn nicht (mehr) führt — dann greift die
     hinterlegte Adresse, und der Lauf sagt, dass er das tut."""
-    antwort = requests.get(stt.JAHRBUCH_URL, headers=_UA, timeout=120)
-    antwort.raise_for_status()
-    treffer = muster.search(antwort.text)
+    answer = requests.get(stt.JAHRBUCH_URL, headers=_UA, timeout=120)
+    answer.raise_for_status()
+    treffer = muster.search(answer.text)
     return urljoin(stt.JAHRBUCH_URL, treffer.group(1)) if treffer else None
 
 
@@ -208,10 +208,10 @@ def main() -> int:
                         print(f"  HINWEIS: Die Übersichtsseite führt keinen "
                               f"Link auf {kennung} mehr — es gilt die "
                               f"hinterlegte Adresse: {url}")
-                    antwort = requests.get(url, headers=_UA, timeout=120)
-                    antwort.raise_for_status()
+                    answer = requests.get(url, headers=_UA, timeout=120)
+                    answer.raise_for_status()
                     pfad = Path(tmp) / f"{kennung}.pdf"
-                    pfad.write_bytes(antwort.content)
+                    pfad.write_bytes(answer.content)
                     return url, pdf_text(pfad)
                 except Exception as exc:                    # noqa: BLE001
                     print(f"  Live-Abruf für {kennung} gescheitert ({exc}) — "
@@ -326,17 +326,17 @@ def main() -> int:
             nach_ausgabe: dict[str, list[dict]] = {}
             for zeile in zeilen_1103:
                 nach_ausgabe.setdefault(zeile["ausgabe"], []).append(zeile)
-            for name, teil in sorted(nach_ausgabe.items()):
-                years = sorted({z["year"] for z in teil})
+            for name, part in sorted(nach_ausgabe.items()):
+                years = sorted({z["year"] for z in part})
                 probes = proben_je_ausgabe.get(name) or ["steuerplan_summenzeile"]
                 nachweis = (
                     f"{len(years)} Jahrgänge ({years[0]}–{years[-1]}), "
                     f"bestanden: "
                     + ", ".join(stt.PROBEN_KURZ.get(n, n) for n in probes))
                 geschrieben += store.save_steuerplan(
-                    teil, _herkunft_1103(name, urls.get(name), years,
+                    part, _herkunft_1103(name, urls.get(name), years,
                                          probes, nachweis))
-                print(f"  1103 {name}: {len(teil)} Zeilen, "
+                print(f"  1103 {name}: {len(part)} Zeilen, "
                       f"Jahrgänge {years[0]}–{years[-1]}")
 
             if zeilen_1105:

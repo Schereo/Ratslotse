@@ -502,7 +502,7 @@ def haushalt_stellenplan(
     from council import stellenplan as _sp
 
     da = store.stellenplan_einheiten()
-    fehlend = [{"budget_year": j, "teil": t, "name": _sp.TEIL_NAMEN[t]}
+    fehlend = [{"budget_year": j, "part": t, "name": _sp.TEIL_NAMEN[t]}
                for j in jahrgaenge for t in sorted(_sp.TEIL_SPALTEN)
                if (j, t) not in da]
 
@@ -1306,13 +1306,13 @@ def _kennzahlen(store: CouncilStore) -> dict:
         if eintrag is None:
             fassungen[schluessel] = {
                 "indicator": f["indicator"], "fassung": f["fassung"],
-                "heading": f["heading"], "formel": f["formel"],
+                "heading": f["heading"], "formula": f["formula"],
                 "von_bericht": f["report_year"], "bis_bericht": f["report_year"],
                 "herkunft_id": f["herkunft_id"]}
         elif f["report_year"] > eintrag["bis_bericht"]:
             # Der jüngste Bericht gibt Wortlaut und Beleg — er ist der, den
             # jemand aufschlägt, wenn er nachsehen will.
-            eintrag.update(bis_bericht=f["report_year"], formel=f["formel"],
+            eintrag.update(bis_bericht=f["report_year"], formula=f["formula"],
                            heading=f["heading"],
                            herkunft_id=f["herkunft_id"])
         else:
@@ -1845,7 +1845,7 @@ def gespraeche_alle_loeschen(user: dict = Depends(require_active),
 
 class QaFeedbackBody(BaseModel):
     frage: str = Field(min_length=1, max_length=300)
-    antwort_auszug: str | None = Field(default=None, max_length=500)
+    answer_excerpt: str | None = Field(default=None, max_length=500)
     rating: str = Field(pattern="^(up|down)$")
     grund: str | None = Field(default=None, max_length=500)
 
@@ -1862,7 +1862,7 @@ def qa_feedback(
     KI-Frage selbst ist es auch); die Feldlängen begrenzt das Schema, das
     Rate-Limit hält Skript-Flutung von Tabelle und Backups fern."""
     qa_feedback_limiter.check(request)
-    store.save_qa_feedback(body.frage, body.antwort_auszug, body.rating,
+    store.save_qa_feedback(body.frage, body.answer_excerpt, body.rating,
                            body.grund, user_id=(user or {}).get("id"))
     return {"ok": True}
 
@@ -1979,7 +1979,7 @@ class QaShareQuelle(BaseModel):
 
 
 class QaShareDebatte(BaseModel):
-    sprecher: str | None = Field(default=None, max_length=120)
+    speaker: str | None = Field(default=None, max_length=120)
     partei: str | None = Field(default=None, max_length=60)
     art: str = Field(default="rede", max_length=30)
     top: str | None = Field(default=None, max_length=300)
@@ -2019,7 +2019,7 @@ class QaShareAnlage(BaseModel):
 
 class QaShareKernaussage(BaseModel):
     text: str = Field(default="", max_length=600)
-    sprecher: str | None = Field(default=None, max_length=120)
+    speaker: str | None = Field(default=None, max_length=120)
     datum: str | None = Field(default=None, max_length=10)
 
 
@@ -2893,7 +2893,7 @@ def _sitzungen_kompakt(sitzungen: list[dict]) -> list[dict]:
 
 
 def _debatten_kompakt(rows: list[dict]) -> list[dict]:
-    return [{"sprecher": d.get("sprecher"), "partei": d.get("partei"),
+    return [{"speaker": d.get("speaker"), "partei": d.get("partei"),
              "art": d.get("art"), "top": d.get("top"),
              "auszug": (d.get("text") or "")[:2000],
              "committee": d.get("committee"),
@@ -3232,7 +3232,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         orts_candidates = store.get_decisions_by_ids(place_ids or [])
                         debatten_rows = store.wortbeitraege_zu_beschluessen(
                             orts_candidates, max_gesamt=10, max_je_top=4,
-                            sprecher=person["nachname"])
+                            speaker=person["nachname"])
                         linked_ids = list(dict.fromkeys(
                             row["zu_beschluss"] for row in debatten_rows))
                         have = {c["id"] for c in candidates}
@@ -3979,7 +3979,7 @@ def haushalt_schulden(
         "zinslast": zins,
         # Die Spaltenüberschriften der Quelle, in ihrer Reihenfolge — damit die
         # Legende nicht in zwei Sprachen existiert.
-        "arten": [{"feld": feld, "titel": titel}
-                  for feld, titel in _s.SPALTEN[:4]],
+        "arten": [{"field": field, "titel": titel}
+                  for field, titel in _s.SPALTEN[:4]],
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }

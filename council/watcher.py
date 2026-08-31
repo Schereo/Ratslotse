@@ -222,14 +222,14 @@ def _pruefe_am_text(session: CouncilSession, topic: dict, nums: list[str],
         label, text = belege[n]
         zeilen.append(f"{n}: {item.title if item else n}\n    {label or 'Vorlage'}: {text or '—'}")
     try:
-        antwort = llm.chat_complete(
+        answer = llm.chat_complete(
             model=MODEL, response_format={"type": "json_object"}, temperature=0,
             max_tokens=400,
             messages=[{"role": "user", "content": prompts.render(
                 "council_watcher_pruefung", thema=topic.get("name", ""),
                 beschreibung=topic.get("description", ""), kandidaten="\n".join(zeilen))}],
         )
-        roh = (antwort.choices[0].message.content or "").strip()
+        roh = (answer.choices[0].message.content or "").strip()
         if roh.startswith("```"):
             roh = roh.strip("`")
             roh = roh[roh.find("{"):]

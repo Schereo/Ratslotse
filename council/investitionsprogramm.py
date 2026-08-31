@@ -231,16 +231,16 @@ def _namen_fuegen(teile: list[str]) -> str:
     Großschreibung setzt das Kompositum fort, Kleinschreibung ist das zweite
     Glied einer Aufzählung."""
     s = ""
-    for teil in teile:
-        teil = teil.strip()
-        if not teil:
+    for part in teile:
+        part = part.strip()
+        if not part:
             continue
         if not s:
-            s = teil
-        elif s.endswith("-") and teil[:1].isupper():
-            s += teil
+            s = part
+        elif s.endswith("-") and part[:1].isupper():
+            s += part
         else:
-            s += " " + teil
+            s += " " + part
     return " ".join(s.split())
 
 

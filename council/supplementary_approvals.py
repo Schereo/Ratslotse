@@ -158,7 +158,7 @@ _SKALA = r"(?:Mio\.?|Millionen|Million|Mrd\.?|Milliarden?)"
 #: Stufe 1 — der Titel. „in Höhe von [insgesamt] 250.000 EUR", auch
 #: „1 Million EUR", „450.000,00 €" und „99.000,- Euro".
 _TITEL_BETRAG = re.compile(
-    rf"in\s+H(?:ö|oe)he\s+von\s+(?:insgesamt\s+)?(?P<zahl>{_NUM})\s*"
+    rf"in\s+H(?:ö|oe)he\s+von\s+(?:total\s+)?(?P<zahl>{_NUM})\s*"
     rf"(?P<skala>{_SKALA})?\s*(?:,-)?\s*{_WAEHRUNG}", re.IGNORECASE)
 
 #: Stufe 2 — der Beschlussvorschlag. Dasselbe, plus die Schreibweise ohne
@@ -166,7 +166,7 @@ _TITEL_BETRAG = re.compile(
 _TEXT_BETRAG = re.compile(
     rf"(?:in\s+H(?:ö|oe)he\s+von|"
     rf"Mehr(?:auszahlung|aufwand|aufwendungen|einzahlung)\s+von)\s+"
-    rf"(?:insgesamt\s+)?(?P<zahl>{_NUM})\s*(?P<skala>{_SKALA})?\s*(?:,-)?\s*"
+    rf"(?:total\s+)?(?P<zahl>{_NUM})\s*(?P<skala>{_SKALA})?\s*(?:,-)?\s*"
     rf"{_WAEHRUNG}", re.IGNORECASE)
 
 #: Ab hier redet der Beschlussvorschlag über die **Deckung**, nicht mehr über
@@ -519,7 +519,7 @@ _KAP3 = re.compile(
 _KAP4 = re.compile(r"(?m)^\s*4\s+Erm[äa]chtigungs[üu]bertragungen")
 
 _GESAMT = re.compile(
-    rf"Aufwendungen\s+und\s+Auszahlungen\s+von\s+insgesamt\s+({_NUM})\s*Euro",
+    rf"Aufwendungen\s+und\s+Auszahlungen\s+von\s+total\s+({_NUM})\s*Euro",
     re.IGNORECASE | re.DOTALL)
 _AUFTEILUNG = re.compile(
     rf"Davon\s+entfielen\s+({_NUM})\s*Euro\s+auf\s+investive\s+und\s+"
@@ -533,7 +533,7 @@ _AUFTEILUNG = re.compile(
 _VE_TEXT = re.compile(
     rf"Dar[üu]ber\s+hinaus\s+wurden?[\s\S]{{0,200}}?"
     rf"Verpflichtungserm[äa]chtigung(?:en)?\s+in\s+H[öo]he\s+von\s+"
-    rf"(?:insgesamt\s+)?({_NUM})\s*Euro", re.IGNORECASE)
+    rf"(?:total\s+)?({_NUM})\s*Euro", re.IGNORECASE)
 _SUMMENZEILE = re.compile(rf"(?m)^\s*Summe\s+({_NUM})\s+({_NUM})\s*$")
 
 #: Der Kopf der Übersichtstabelle — und die Grenze, ab der die Kanalnamen
@@ -807,12 +807,12 @@ class Ratsabgleich:
         if abs(self.deviation) < 0.005:
             return (f"{self.year}: identisch mit dem Rechenschaftsbericht "
                     f"({self.bericht_faelle} Fälle).")
-        prozent = ""
+        percent = ""
         if p is not None:
-            prozent = (" (unter 0,01 %)" if abs(p) < 0.01
+            percent = (" (unter 0,01 %)" if abs(p) < 0.01
                        else f" ({de_amount(p, vorzeichen=True)} %)")
         return (f"{self.year}: {de_amount(self.deviation, vorzeichen=True)} € "
-                f"gegenüber dem Rechenschaftsbericht{prozent}, "
+                f"gegenüber dem Rechenschaftsbericht{percent}, "
                 f"{self.unsere_faelle} gegen {self.bericht_faelle} Fälle.")
 
 

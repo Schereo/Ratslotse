@@ -75,15 +75,15 @@ function PruefungsHinweis() {
   // Nur die wiederholten Beanstandungen: Der volle Bestand ist rund 250 kB
   // Prosa und wird auf dieser Seite nirgends angezeigt.
   const { data } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte?mark=WB");
-  const kette = useMemo(() => {
+  const chain = useMemo(() => {
     if (!data?.feststellungen?.length) return null;
     return wiederholungsketten(data.feststellungen)
       .find((k) => k.schluessel.includes("planistvergleich")) ?? null;
   }, [data]);
-  if (!kette) return null;
+  if (!chain) return null;
   // Ausdrücklich die jüngste WIEDERHOLTE Beanstandung, nicht einfach den
   // letzten Eintrag: Der Abschnitt trägt in denselben Jahren auch Hinweise.
-  const juengste = [...kette.eintraege].reverse().find((f) => f.mark === "WB");
+  const juengste = [...chain.eintraege].reverse().find((f) => f.mark === "WB");
   if (!juengste) return null;
 
   return (
@@ -99,7 +99,7 @@ function PruefungsHinweis() {
         {juengste.text}
       </p>
       <span className="flex items-center gap-1 text-[12.5px] font-semibold text-primary">
-        In {kette.years.length} von {data?.years.length} geprüften Jahren als wiederholte
+        In {chain.years.length} von {data?.years.length} geprüften Jahren als wiederholte
         Beanstandung ausgewiesen — alle Feststellungen ansehen
         <ArrowRight size={14} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
       </span>
@@ -158,7 +158,7 @@ function PlanIstInner() {
   const gewaehltesJahr = Number(useSearchParams().get("year")) || null;
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
   const [zahlenOffen, setZahlenOffen] = useState(false);
-  const [massstab, setMassstab] = useState<HantelMassstab>("prozent");
+  const [massstab, setMassstab] = useState<HantelMassstab>("percent");
 
   const years = data?.plan_actual_years ?? [];
   const year = gewaehltesJahr && years.includes(gewaehltesJahr) ? gewaehltesJahr : years.at(-1) ?? null;
@@ -177,17 +177,17 @@ function PlanIstInner() {
 
     const nrs = [...new Set(zeilen.filter((p) => p.sub_budget_no != null).map((p) => p.sub_budget_no))];
     const bereiche = nrs.map((nr) => {
-      const teil = zeilen.filter((p) => p.sub_budget_no === nr);
-      const te = summe(teil, 12), ta = summe(teil, 20);
+      const part = zeilen.filter((p) => p.sub_budget_no === nr);
+      const te = summe(part, 12), ta = summe(part, 20);
       return {
-        nr, name: teil[0]?.sub_budget_name ?? `Teilhaushalt ${nr}`,
+        nr, name: part[0]?.sub_budget_name ?? `Teilhaushalt ${nr}`,
         aufwPlan: mio(ta?.plan), aufwIst: mio(ta?.result),
         ertrPlan: mio(te?.plan), ertrIst: mio(te?.result),
       };
     });
     type Aufw = { aufwPlan: number | null; aufwIst: number | null };
     const abw = (b: Aufw) => (b.aufwIst ?? 0) - (b.aufwPlan ?? 0);
-    bereiche.sort((x, y) => massstab === "prozent"
+    bereiche.sort((x, y) => massstab === "percent"
       ? Math.abs(abw(y)) / Math.abs(y.aufwPlan || 1) - Math.abs(abw(x)) / Math.abs(x.aufwPlan || 1)
       : Math.abs(abw(y)) - Math.abs(abw(x)));
 
@@ -607,7 +607,7 @@ function PlanIstInner() {
             <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
               <div className="flex w-max flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
                 {([
-                  ["prozent", "Abweichung in Prozent"],
+                  ["percent", "Abweichung in Prozent"],
                   ["amount", "Abweichung in Millionen"],
                 ] as [HantelMassstab, string][]).map(([wert, text]) => (
                   <button key={wert} type="button" onClick={() => setMassstab(wert)}
@@ -621,7 +621,7 @@ function PlanIstInner() {
               </div>
             </div>
             <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-              {massstab === "prozent"
+              {massstab === "percent"
                 ? "Gemessen am eigenen Plan — so lässt sich ein Bereich von 231 Mio. € mit einem von 6 Mio. € vergleichen. Vorn steht, wessen Plan am weitesten danebenlag."
                 : "Gemessen in Euro — vorn steht, wo am meisten Geld anders floss als geplant. Kleine Bereiche verschwinden dabei fast."}
             </p>
@@ -692,10 +692,10 @@ function PlanIstInner() {
                   <span className="text-[12.5px] font-semibold">{g.label}</span>
                   <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-signal">
                     {(g.delta_meur ?? 0) > 0 ? "+" : ""}{deMio(g.delta_meur)}&#8239;Mio.&nbsp;€
-                    {g.prozent != null && (
+                    {g.percent != null && (
                       <span className="text-muted-foreground">
-                        {" "}({g.prozent > 0 ? "+" : ""}
-                        {g.prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%)
+                        {" "}({g.percent > 0 ? "+" : ""}
+                        {g.percent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%)
                       </span>
                     )}
                   </span>
@@ -759,15 +759,15 @@ function PlanIstInner() {
               <tbody>
                 {bereiche.map((b) => {
                   const d = (b.aufwIst ?? 0) - (b.aufwPlan ?? 0);
-                  const prozent = b.aufwPlan ? (d / b.aufwPlan) * 100 : 0;
+                  const percent = b.aufwPlan ? (d / b.aufwPlan) * 100 : 0;
                   return (
                     <tr key={b.nr} className="border-t border-border/60">
                       <td className="py-1 pr-2">{b.name}</td>
                       <td className="py-1 pr-2 text-right">{deMio(b.aufwPlan)}</td>
                       <td className="py-1 pr-2 text-right font-semibold">{deMio(b.aufwIst)}</td>
-                      <td className={cn("py-1 text-right", Math.abs(prozent) >= 1 && "text-signal")}>
-                        {d > 0 ? "+" : ""}{deMio(d)} ({prozent > 0 ? "+" : ""}
-                        {prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%)
+                      <td className={cn("py-1 text-right", Math.abs(percent) >= 1 && "text-signal")}>
+                        {d > 0 ? "+" : ""}{deMio(d)} ({percent > 0 ? "+" : ""}
+                        {percent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%)
                       </td>
                     </tr>
                   );

@@ -964,11 +964,11 @@ public struct BadgeSnapshot: Codable, Sendable, Equatable {
 
 public struct AskRound: Codable, Sendable {
     public let frage: String
-    public let antwort: String
+    public let answer: String
 
-    public init(frage: String, antwort: String) {
+    public init(frage: String, answer: String) {
         self.frage = frage
-        self.antwort = antwort
+        self.answer = answer
     }
 }
 

@@ -38,7 +38,7 @@ const MARKEN = [
 function PruefungInner() {
   // Die Zahlen der Bühne kommen aus dem Feststellungs-Abschnitt selbst
   // (`onBestand`) — dieselbe Antwort, die unten die KettenMatrix trägt.
-  const [bestand, setBestand] = useState<{
+  const [balance, setBestand] = useState<{
     gesamt: number;
     jeJahr: { year: number; count: number }[];
     ohneBericht: number[];
@@ -70,14 +70,14 @@ function PruefungInner() {
         {/* Die Bühne (H5-02/H5-09). Die fehlenden Jahrgänge stehen im Kopf,
             nicht in der Fußnote: als Signal-Zeile und als gestrichelter
             Leerplatz im Minibild (LückenFeld-Regel). */}
-        {bestand ? (
+        {balance ? (
           <Seitenbuehne
-            kicker={`Rechnungsprüfung ${Math.min(...bestand.jeJahr.map((j) => j.year))}–${Math.max(...bestand.jeJahr.map((j) => j.year))}`}
-            zahl={<><ZaehlZahl wert={bestand.gesamt} /> Feststellungen
-              aus {bestand.jeJahr.length} Jahren</>}
-            sub={bestand.ohneBericht.length > 0 ? (
+            kicker={`Rechnungsprüfung ${Math.min(...balance.jeJahr.map((j) => j.year))}–${Math.max(...balance.jeJahr.map((j) => j.year))}`}
+            zahl={<><ZaehlZahl wert={balance.gesamt} /> Feststellungen
+              aus {balance.jeJahr.length} Jahren</>}
+            sub={balance.ohneBericht.length > 0 ? (
               <span className="font-semibold text-[color:hsl(var(--signal))]">
-                {bestand.ohneBericht.join(" und ")} {bestand.ohneBericht.length > 1 ? "fehlen" : "fehlt"} ersatzlos —
+                {balance.ohneBericht.join(" und ")} {balance.ohneBericht.length > 1 ? "fehlen" : "fehlt"} ersatzlos —
                 geprüft wurde, der Schlussbericht ist nicht lesbar veröffentlicht
               </span>
             ) : "erstmalige und wiederholte Beanstandungen, Hinweise und Klarstellungen"}
@@ -85,10 +85,10 @@ function PruefungInner() {
               href: "#feststellungen",
               label: "Feststellungen je Jahrgang · gestrichelt = Bericht fehlt — klickt zur Matrix",
               skizze: (() => {
-                const max = Math.max(...bestand.jeJahr.map((j) => j.count), 1);
+                const max = Math.max(...balance.jeJahr.map((j) => j.count), 1);
                 const saeulen = [
-                  ...bestand.jeJahr.map((j) => ({ year: j.year, count: j.count as number | null })),
-                  ...bestand.ohneBericht.map((j) => ({ year: j, count: null })),
+                  ...balance.jeJahr.map((j) => ({ year: j.year, count: j.count as number | null })),
+                  ...balance.ohneBericht.map((j) => ({ year: j, count: null })),
                 ].sort((a, b) => a.year - b.year);
                 return (
                   <span className="flex items-end gap-1" style={{ height: 44 }}>
@@ -108,7 +108,7 @@ function PruefungInner() {
               })(),
             }}
           />
-        ) : bestand === undefined ? (
+        ) : balance === undefined ? (
           <SeitenbuehneLaedt kicker="Rechnungsprüfung" />
         ) : null}
 

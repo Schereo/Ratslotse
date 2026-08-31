@@ -94,7 +94,7 @@ function Fundstelle({ h, className }: { h: Herkunft | null; className?: string }
 function Lueckenkopf({ daten, year }: { daten: KonzernDaten; year: number }) {
   const a = kernAnteil(daten, year, "revenues");
   if (!a) return null;
-  const prozent = Math.round(a.anteil * 100);
+  const percent = Math.round(a.anteil * 100);
   const rest = a.konzern - a.kern;
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -116,13 +116,13 @@ function Lueckenkopf({ daten, year }: { daten: KonzernDaten; year: number }) {
       <div>
         <div className="flex h-7 w-full overflow-hidden rounded-lg">
           <div className="flex items-center justify-end pr-2"
-            style={{ width: `${prozent}%`, background: "var(--hh-ein-0)" }}>
+            style={{ width: `${percent}%`, background: "var(--hh-ein-0)" }}>
             <span className="font-mono text-[10.5px] font-semibold"
-              style={{ color: "var(--hh-seg-text)" }}>{prozent}&nbsp;%</span>
+              style={{ color: "var(--hh-seg-text)" }}>{percent}&nbsp;%</span>
           </div>
           <div className="flex flex-1 items-center pl-2" style={{ background: "var(--hh-ein-4)" }}>
             <span className="font-mono text-[10.5px] font-semibold text-foreground/70">
-              {100 - prozent}&nbsp;%
+              {100 - percent}&nbsp;%
             </span>
           </div>
         </div>

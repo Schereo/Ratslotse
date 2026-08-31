@@ -3460,9 +3460,9 @@
       },
       "QaFeedbackBody": {
         "properties": {
-          "antwort_auszug": {
+          "answer_excerpt": {
             "maxLength": 500,
-            "title": "Antwort Auszug",
+            "title": "Answer Excerpt",
             "type": [
               "string",
               "null"
@@ -3673,9 +3673,9 @@
               "null"
             ]
           },
-          "sprecher": {
+          "speaker": {
             "maxLength": 120,
-            "title": "Sprecher",
+            "title": "Speaker",
             "type": [
               "string",
               "null"
@@ -3703,9 +3703,9 @@
               "null"
             ]
           },
-          "sprecher": {
+          "speaker": {
             "maxLength": 120,
-            "title": "Sprecher",
+            "title": "Speaker",
             "type": [
               "string",
               "null"
@@ -3752,9 +3752,9 @@
                   "null"
                 ]
               },
-              "sprecher": {
+              "speaker": {
                 "maxLength": 120,
-                "title": "Sprecher",
+                "title": "Speaker",
                 "type": [
                   "string",
                   "null"

@@ -37,8 +37,8 @@ Gesamtertrag 24.058.098 € 23.892.230 € 25.197.796 € 25.531.456 € 25.980.
 Gesamtaufwendungen 22.005.713 € 23.349.624 € 24.570.285 € 24.982.783 € 25.403.531 € 25.832.694 €
 Gesamtergebnis 2.052.385 € 542.606 € 627.511 € 548.673 € 576.714 € 556.557 €
 
-Der Erfolgsplan 2025 umfasst voraussichtlich anfallende Erträge in Höhe von insgesamt 25.197.796 € und voraussichtlich entstehende
-Aufwendungen in Höhe von insgesamt 24.570.285 €.
+Der Erfolgsplan 2025 umfasst voraussichtlich anfallende Erträge in Höhe von total 25.197.796 € und voraussichtlich entstehende
+Aufwendungen in Höhe von total 24.570.285 €.
 
 Anlage 1 - Abfallbehandlungsanlagen -
 Gesamtertrag 1.934.257 € 2.074.521 € 2.433.361 € 2.626.137 € 2.822.768 € 3.023.332 €
@@ -59,7 +59,7 @@ Summe Aufwendungen 23.904.250 € 24.462.985 € 26.036.000 € 26.550.046 € 2
 11. Ergebnis nach Steuern 316.225 € 649.211 € 711.250 € 711.250 € 711.250 € 711.250 €
 12. Sonstige Steuern 21.901 € 21.700 € 22.650 € 22.650 € 22.650 € 22.650 €
 13. Jahresüberschuss (+) / Jahresfehlbetrag (-) 294.324 € 627.511 € 688.600 € 688.600 € 688.600 € 688.600 €
-Der Erfolgsplan 2026 umfasst voraussichtlich anfallende Erträge in Höhe von insgesamt 26.747.250 Euro und voraussichtlich entstehende Aufwendungen in Höhe von insgesamt 26.036.000 Euro.
+Der Erfolgsplan 2026 umfasst voraussichtlich anfallende Erträge in Höhe von total 26.747.250 Euro und voraussichtlich entstehende Aufwendungen in Höhe von total 26.036.000 Euro.
 """
 
 
@@ -141,7 +141,7 @@ def test_prosa_probe_findet_beide_schreibweisen():
 
 def test_prosa_die_der_tabelle_widerspricht_ist_ein_fehler():
     """Zwei Stellen desselben Dokuments dürfen sich nicht widersprechen."""
-    kaputt = LAYOUT_A.replace("insgesamt 25.197.796 €", "insgesamt 25.000.000 €", 1)
+    kaputt = LAYOUT_A.replace("total 25.197.796 €", "total 25.000.000 €", 1)
     with pytest.raises(WirtschaftsplanFehler) as fehler:
         parse_erfolgsplan("24/0671", "awb", 2025, kaputt)
     assert "widersprechen sich" in str(fehler.value)
@@ -256,7 +256,7 @@ Sparte 6750 Straßenreinigung\t-28.963 €\t-27.800 €\t-21.500 €\t-21.500 �
 
 Jahresergebnis\t85.565 €\t139.847 €\t93.031 €\t-15.767 €\t70.732 €\t110.202 €
 
-Der Erfolgsplan 2019 umfasst voraussichtlich anfallende Erträge in Höhe von insgesamt 20.280.001 € und voraussichtlich entstehende Aufwendungen in Höhe von insgesamt 19.989.470 €.
+Der Erfolgsplan 2019 umfasst voraussichtlich anfallende Erträge in Höhe von total 20.280.001 € und voraussichtlich entstehende Aufwendungen in Höhe von total 19.989.470 €.
 """
 
 # Der Vorbericht steht rund 140 Zeilen VOR der Tabelle und redet von Millionen.

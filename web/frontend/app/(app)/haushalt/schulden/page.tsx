@@ -229,7 +229,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   // Stichtag, sondern eine Bewegung: Was die Stadt selbst schuldet, sinkt —
   // wofür sie geradesteht, steigt. Nebeneinander gezeichnet sieht man das;
   // untereinander gelistet (so stand es bis 08/2026 hier) muss man es rechnen.
-  const verbuergt: JahrPunkt[] = series.map((z) => ({ year: z.year, wert: z.bestand / 1e6 }));
+  const verbuergt: JahrPunkt[] = series.map((z) => ({ year: z.year, wert: z.balance / 1e6 }));
   const eigene: JahrPunkt[] = series.map((z) => {
     const w = geld.get(z.year);
     return w == null
@@ -244,8 +244,8 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   // schlimmere Fehler als gar keine.
   const schere =
     series.length > 1 && gsErst != null && gsLetzt != null
-    && gsLetzt < gsErst && letzter.bestand > erster.bestand
-      ? { rueckgang: (1 - gsLetzt / gsErst) * 100, faktor: letzter.bestand / erster.bestand }
+    && gsLetzt < gsErst && letzter.balance > erster.balance
+      ? { rueckgang: (1 - gsLetzt / gsErst) * 100, faktor: letzter.balance / erster.balance }
       : null;
 
   // Die beiden Stellen, an denen die Quelle selbst etwas erklärt. Der Text
@@ -286,7 +286,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
           {schere
             ? "Eigene Geldschulden sinken, Bürgschaften steigen"
-            : <>Bürgschaften: {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€</>}
+            : <>Bürgschaften: {deMio(letzter.balance / 1e6)}&#8239;Mio.&nbsp;€</>}
         </h2>
         {schere && gsLetzt != null ? (
           <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
@@ -294,7 +294,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
             {deZahl(schere.rueckgang, 0)}&nbsp;% abgebaut — auf{" "}
             {deMio(gsLetzt / 1e6)}&#8239;Mio.&nbsp;€. Im selben Zeitraum ist das
             Volumen, für das sie bürgt, auf das {deZahl(schere.faktor, 1)}-Fache
-            gestiegen: {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€. Beide
+            gestiegen: {deMio(letzter.balance / 1e6)}&#8239;Mio.&nbsp;€. Beide
             Zahlen stehen in denselben Jahresabschlüssen.<Beleg q="bilanz" />
           </p>
         ) : null}
@@ -338,8 +338,8 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
           <strong className="text-foreground">Womit die Stadt rechnet:</strong>{" "}
           Für erwartete Ausfälle stehen {deEuro(rsLetzt)}&nbsp;€ in der Bilanz
-          ({letzter.year})<Beleg q="bilanz" /> — {((rsLetzt / letzter.bestand) * 100).toFixed(2).replace(".", ",")}&nbsp;%
-          des verbürgten Volumens. Die {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€ sind
+          ({letzter.year})<Beleg q="bilanz" /> — {((rsLetzt / letzter.balance) * 100).toFixed(2).replace(".", ",")}&nbsp;%
+          des verbürgten Volumens. Die {deMio(letzter.balance / 1e6)}&#8239;Mio.&nbsp;€ sind
           also nicht das, was die Stadt zu zahlen erwartet, sondern das, wofür sie
           im äußersten Fall einsteht.
         </p>
@@ -377,14 +377,14 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
   const s = i.as_of_date;
   const series = daten?.series ?? [];
   // Der Rechtsträger-Wert desselben Stichtags — die mittlere der drei Zahlen.
-  const entity = series.find((z) => z.year === s.year)?.insgesamt ?? null;
+  const entity = series.find((z) => z.year === s.year)?.total ?? null;
 
   const stufen = [
     { titel: "Kernhaushalt", wert: s.core_budget,
       was: "Investitionskredite der Stadtverwaltung selbst" },
     { titel: "Stadt als Rechtsträger", wert: entity,
       was: "dazu die Eigenbetriebe — die Zahl oben auf dieser Seite" },
-    { titel: "Der ganze Konzern", wert: s.insgesamt,
+    { titel: "Der ganze Konzern", wert: s.total,
       was: "dazu Extrahaushalte und Beteiligungen, anteilig nach Beteiligungshöhe" },
   ].filter((x) => x.wert != null);
 
@@ -399,7 +399,7 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
               wäre beim nächsten Tabellenband still falsch geworden. */}
           {s.core_budget != null ? `${deMio(s.core_budget / 1e6)} · ` : ""}
           {entity ? `${deMio(entity / 1e6)} · ` : ""}
-          {deMio(s.insgesamt / 1e6)}&#8239;Mio.&nbsp;€ — drei unterschiedliche Abgrenzungen
+          {deMio(s.total / 1e6)}&#8239;Mio.&nbsp;€ — drei unterschiedliche Abgrenzungen
         </h2>
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
           Die Beträge unterscheiden sich danach, welche Einheiten einbezogen werden.
@@ -549,7 +549,7 @@ export default function SchuldenPage() {
   const { data, loading } = useFetch<SchuldenDaten>("/council/haushalt/schulden");
   const { data: satzungDaten } = useFetch<
     HaushaltAuswahl<typeof SATZUNG_FELDER[number]>>(haushaltUrl(SATZUNG_FELDER));
-  const [ansicht, setAnsicht] = useState<Ansicht>("insgesamt");
+  const [ansicht, setAnsicht] = useState<Ansicht>("total");
 
   // Der jüngste Jahrgang — die Satzung, die gerade gilt bzw. vorgeschlagen
   // ist. Sortiert wird hier und nicht im Vertrauen auf die API.
@@ -568,7 +568,7 @@ export default function SchuldenPage() {
   // Die Zinslinie in der Kurve (H4-13) — nur in der absoluten Ansicht: Die
   // Quelle weist keinen Pro-Kopf-Zins aus, und wir dividieren nicht selbst.
   const zinsreihe = useMemo(
-    () => (ansicht === "insgesamt"
+    () => (ansicht === "total"
       ? (data?.zinslast ?? []).map((z) => ({ year: z.year, wert: z.expense / 1e6 }))
       : undefined),
     [data, ansicht]);
@@ -597,7 +597,7 @@ export default function SchuldenPage() {
   // Die Richtungen über die ganze Reihe — gerechnet, nicht geschrieben: Eine
   // Seite, die „gestiegen" als Text trägt, wird mit dem nächsten Jahrgang
   // still falsch.
-  const deltaAbs = letzter.insgesamt - erster.insgesamt;
+  const deltaAbs = letzter.total - erster.total;
   const proKopfDa = letzter.per_capita != null && erster.per_capita != null;
   const deltaKopf = proKopfDa ? letzter.per_capita! - erster.per_capita! : null;
   const gegenlaeufig = deltaKopf != null && Math.sign(deltaAbs) !== Math.sign(deltaKopf);
@@ -639,11 +639,11 @@ export default function SchuldenPage() {
         {(() => {
           const st = data?.integrierte_schulden?.as_of_date;
           if (!st) return null;
-          const entity = (data?.series ?? []).find((z) => z.year === st.year)?.insgesamt ?? null;
+          const entity = (data?.series ?? []).find((z) => z.year === st.year)?.total ?? null;
           const stufen = [
             { titel: "Kernhaushalt", wert: st.core_budget },
             { titel: "Stadt als Rechtsträger", wert: entity },
-            { titel: "der ganze Konzern", wert: st.insgesamt },
+            { titel: "der ganze Konzern", wert: st.total },
           ].filter((x): x is { titel: string; wert: number } => x.wert != null);
           if (stufen.length < 2) return null;
           const max = Math.max(...stufen.map((x) => x.wert));
@@ -651,7 +651,7 @@ export default function SchuldenPage() {
           return (
             <Seitenbuehne
               kicker={`Drei Zählweisen, eine Stadt · Stand 31.12.${st.year}`}
-              zahl={<><ZaehlZahl wert={st.insgesamt / 1e6} nachkomma={1} />&#8239;Mio.&nbsp;€
+              zahl={<><ZaehlZahl wert={st.total / 1e6} nachkomma={1} />&#8239;Mio.&nbsp;€
                 im weitesten Begriff</>}
               sub={<>
                 {stufen.map((x, i) => (
@@ -685,7 +685,7 @@ export default function SchuldenPage() {
 
         {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
         <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-          Ende {letzter.year} waren es {deMio(letzter.insgesamt / 1e6)}&#8239;Mio.&nbsp;€.
+          Ende {letzter.year} waren es {deMio(letzter.total / 1e6)}&#8239;Mio.&nbsp;€.
           Was diese Zahl zählt und was nicht, steht direkt darunter — bei Schulden
           ist das der Unterschied zwischen zwei Antworten.
         </p>
@@ -700,10 +700,10 @@ export default function SchuldenPage() {
           <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
             <div>
               <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums sm:text-[32px]">
-                {deMio(letzter.insgesamt / 1e6)}&#8239;Mio.&nbsp;€
+                {deMio(letzter.total / 1e6)}&#8239;Mio.&nbsp;€
               </p>
               <p className="mt-1 text-[12px] text-muted-foreground">
-                insgesamt<Beleg q="schulden" />
+                total<Beleg q="schulden" />
               </p>
             </div>
             {letzter.per_capita != null && (
@@ -787,7 +787,7 @@ export default function SchuldenPage() {
             value={ansicht}
             onChange={setAnsicht}
             options={[
-              { value: "insgesamt", label: "Insgesamt" },
+              { value: "total", label: "Insgesamt" },
               { value: "per_capita", label: "Je Einwohner*in" },
             ]}
           />
@@ -804,19 +804,19 @@ export default function SchuldenPage() {
               Beleg steht darunter in „Zwei Sprünge, die keine Politik waren". */}
           <Zeitreihe
             series={kurve}
-            titel={ansicht === "insgesamt" ? "Schulden insgesamt" : "Schulden je Einwohner*in"}
+            titel={ansicht === "total" ? "Schulden total" : "Schulden je Einwohner*in"}
             ariaTitel={`Schuldenstand ${erster.year} bis ${letzter.year}`}
-            einheit={ansicht === "insgesamt" ? "Mio. €" : "€ je Einwohner*in"}
+            einheit={ansicht === "total" ? "Mio. €" : "€ je Einwohner*in"}
             // Millionen mit einer Stelle, Pro-Kopf-Beträge ohne — sonst stünde
             // „1.908,0 €" an einer Zahl, die die Quelle ganzzahlig ausweist.
-            format={ansicht === "insgesamt" ? (v) => deMio(v) : deEuro}
+            format={ansicht === "total" ? (v) => deMio(v) : deEuro}
             spruenge
             vorjahresdifferenz
             tabelle
             zweitreihe={zinsreihe && zinsreihe.length
               ? { label: "Zinslast p. a.", series: zinsreihe, format: (v) => deMio(v) }
               : undefined}
-            annotationen={ansicht === "insgesamt" ? [{
+            annotationen={ansicht === "total" ? [{
               year: 2010,
               kurz: "108,9 Mio. € umgebucht",
               text: "2010 übertrug die Stadt 108,9 Mio. € Kredite an den neuen "
@@ -855,7 +855,7 @@ export default function SchuldenPage() {
             einen Sprung zu behaupten, den man nicht sieht. */}
         <section className="@container rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            {ansicht === "insgesamt"
+            {ansicht === "total"
               ? "Zwei Brüche durch organisatorische Änderungen"
               : "Drei Brüche durch Organisation oder Statistik"}
           </p>

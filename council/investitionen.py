@@ -195,14 +195,14 @@ def summenprobe(zeilen: list[dict], gesamt: dict | None,
     if len(zeilen) < MINDEST_TEILHAUSHALTE:
         return False, (f"nur {len(zeilen)} Teilhaushalts-Zeilen gelesen "
                        f"(mindestens {MINDEST_TEILHAUSHALTE} erwartet)")
-    for feld, spalte in (("inflows", "Einzahlungen"),
+    for field, spalte in (("inflows", "Einzahlungen"),
                          ("outflows", "Auszahlungen")):
-        gerechnet = sum(z[feld] for z in zeilen)
-        rest = gerechnet - gesamt[feld]
+        gerechnet = sum(z[field] for z in zeilen)
+        rest = gerechnet - gesamt[field]
         if abs(rest) > toleranz:
             return False, (f"{spalte}: die {len(zeilen)} Teilhaushalte ergeben "
                            f"{_de(gerechnet)} €, die Summenzeile nennt "
-                           f"{_de(gesamt[feld])} € ({_de(rest, vorzeichen=True)} €)")
+                           f"{_de(gesamt[field])} € ({_de(rest, vorzeichen=True)} €)")
     return True, ""
 
 

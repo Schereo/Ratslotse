@@ -117,7 +117,7 @@ function ruecklagenReihe(zeilen: RuecklageJahr[]): JahrPunkt[] {
  *  gerechnet und mit seinem Jahr angeschrieben, statt als feste Zahl zu
  *  veralten. */
 function transferAnteil(daten: HaushaltAuswahl<"income_statement" | "years">, thhNr: number): {
-  year: number; prozent: number;
+  year: number; percent: number;
 } | null {
   const posten = daten.income_statement ?? [];
   const years = [...new Set(posten.filter((p) => p.sub_budget_no === thhNr).map((p) => p.year))]
@@ -128,7 +128,7 @@ function transferAnteil(daten: HaushaltAuswahl<"income_statement" | "years">, th
     const transfer = wert(18);
     const gesamt = wert(20);
     if (transfer != null && gesamt != null && gesamt > 0) {
-      return { year, prozent: Math.round((transfer / gesamt) * 100) };
+      return { year, percent: Math.round((transfer / gesamt) * 100) };
     }
   }
   return null;
@@ -372,7 +372,7 @@ export function Kassenzettel({ daten, year, population, className }: {
                 <strong className="font-semibold text-foreground">{finanzen.kurz}</strong>{" "}
                 sind nicht die Verwaltungskosten der Kämmerei. Dort verbucht die Stadt auch
                 Transferzahlungen wie die Gewerbesteuer- und Finanzausgleichsumlage
-                {transfer && <>; im Jahresabschluss {transfer.year} waren {transfer.prozent}&nbsp;%
+                {transfer && <>; im Jahresabschluss {transfer.year} waren {transfer.percent}&nbsp;%
                   der Aufwendungen dieses Bereichs solche Zahlungen<Beleg q="ergebnisrechnung_thh" /></>}.
               </p>
             )}

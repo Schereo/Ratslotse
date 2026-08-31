@@ -15,14 +15,14 @@ export type { Herkunft };
  *  mit der Zeile, statt hier zu stehen: Die beiden Rechnungswesen benennen
  *  ihre Arten verschieden, und eine Liste im Frontend wäre die zweite,
  *  konkurrierende Wahrheit. */
-export type Art = { feld: string; titel: string; amount: number };
+export type Art = { field: string; titel: string; amount: number };
 
 export type GebautJahr = {
   year: number;
   /** `"kameral"` (bis 2009) oder `"doppik"` (ab 2010). */
   accounting_system: string;
   /** Die ausgewiesene Summenspalte in Euro. */
-  insgesamt: number;
+  total: number;
   arten: Art[];
   herkunft_id: number | null;
 };
@@ -193,13 +193,13 @@ export function groessterPosten(z: GebautJahr | null): Art | null {
  *
  *  Aus den Daten und nicht aus einer Konstante: Käme eine Art dazu oder fiele
  *  eine weg, stünde die Legende sonst gegen die Balken. */
-export function artenDerReihe(r: Reihe | null): { feld: string; titel: string }[] {
+export function artenDerReihe(r: Reihe | null): { field: string; titel: string }[] {
   if (!r) return [];
   const gesehen = new Map<string, string>();
   for (const z of r.years) {
-    for (const a of z.arten) if (!gesehen.has(a.feld)) gesehen.set(a.feld, a.titel);
+    for (const a of z.arten) if (!gesehen.has(a.field)) gesehen.set(a.field, a.titel);
   }
-  return [...gesehen].map(([feld, titel]) => ({ feld, titel }));
+  return [...gesehen].map(([field, titel]) => ({ field, titel }));
 }
 
 /** Deutsche Anzeige eines Euro-Betrags in Millionen, eine Nachkommastelle. */

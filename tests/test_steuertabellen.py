@@ -62,7 +62,7 @@ steuer 3.500 0,90 3.537 0,81 4.000 1,00 2.233 0,47 3.500 0,87 3.368 0,72
 Hundesteuer 805 0,21 813 0,19 820 0,21 819 0,17 820 0,20 819 0,18
 Finanz-
 zuweisungen 115.365 29,58 110.049 25,22 107.227 26,91 109.498 23,29 82.465 20,53 79.787 17,09
-insgesamt 389.974 100,00 436.386 100,00 398.407 100,00 470.147 100,00 401.696 100,00 466.995 100,00
+total 389.974 100,00 436.386 100,00 398.407 100,00 470.147 100,00 401.696 100,00 466.995 100,00
 Quelle: Stadt Oldenburg - Fachdienst Finanzen
 Einnahmeart
 2023
@@ -109,7 +109,7 @@ steuer 3.300 0,94 3.548 0,91 3.500 0,90 3.537 0,81 4.000 1,00 2.233 0,47
 Hundesteuer 800 0,23 805 0,21 805 0,21 813 0,19 820 0,21 819 0,17
 Finanz-
 zuweisungen 99.000 28,20 101.500 25,90 115.365 29,58 110.049 25,22 107.227 26,91 109.498 23,29
-insgesamt 351.100 100,00 391.961 100,00 389.974 100,00 436.386 100,00 398.407 100,00 470.147 100,00
+total 351.100 100,00 391.961 100,00 389.974 100,00 436.386 100,00 398.407 100,00 470.147 100,00
 Quelle: Stadt Oldenburg - Fachdienst Finanzen
 Einnahmeart
 Kapitel 11 - Verwaltung und Finanzen"""
@@ -120,7 +120,7 @@ Kapitel 11 - Verwaltung und Finanzen"""
 PDF_1105 = """Stadt Oldenburg (Oldb) - Statistik
 1104   Steuereinnahmen in Tausend Euro 2004 bis 2025
                (Jahres-Rechnungsergebnis)
-Haus- Grund- Gewerbe- Ein- Gemeinde- Getränke- Vergnügungs- sonstige insgesamt
+Haus- Grund- Gewerbe- Ein- Gemeinde- Getränke- Vergnügungs- sonstige total
 halts- steuer steuer kommens- anteil steuer 1 steuer Steuern 2
 year A + B =-umlage steuer- an der
 S 1 S 2 S 3 S 4 S 5 S 6 S 7 S 8 S 9
@@ -547,7 +547,7 @@ def test_ein_zweiter_lauf_wirft_aeltere_jahrgaenge_nicht_weg(tmp_path):
     ("Vergnügungs- steuer", "Vergnügungssteuer"),
     ("Hundesteuer", "sonstige Steuern"),
     ("Finanz- zuweisungen", stt.ZUWEISUNGEN),
-    ("insgesamt", stt.SUMME),
+    ("total", stt.SUMME),
     ("Grunderwerbsteuer", None),
 ])
 def test_zeilennamen_werden_auf_die_arten_der_ist_reihe_abgebildet(label, erwartet):

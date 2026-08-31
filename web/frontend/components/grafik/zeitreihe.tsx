@@ -49,7 +49,7 @@ import { cn } from "@/lib/utils";
 import { istLuecke, type JahrLuecke, type JahrPunkt, type JahrWert } from "./daten";
 import { achsenStellen, ySpanne } from "./skala";
 import { deZahl } from "./format";
-import { LueckenFeld } from "./luecken-feld";
+import { LueckenFeld } from "./luecken-field";
 import {
   AbleseBeschreibung, AbleseFlaeche, Ableseleiste, useAblesen,
   type AbleseStelle, type AbleseWert,
@@ -620,15 +620,15 @@ export function Zeitreihe({
 
         {/* Fläche + Linie: `defined()` hat die Segmente an den Lücken schon
             getrennt — hier wird nur noch gezeichnet. */}
-        {nullbasis && abschnitte.map((teil, i) => (
-          <path key={`f${i}`} d={flaeche(teil) ?? undefined} style={{ fill: TON }} opacity={0.08} />
+        {nullbasis && abschnitte.map((part, i) => (
+          <path key={`f${i}`} d={flaeche(part) ?? undefined} style={{ fill: TON }} opacity={0.08} />
         ))}
         {zweitreihe && (
           <path d={zweitLinie(zweitStellen) ?? undefined} fill="none" strokeWidth={1.5}
             strokeDasharray="5 4" strokeLinecap="round" style={{ stroke: TON_ZWEIT }} />
         )}
-        {abschnitte.map((teil, i) => (
-          <path key={`l${i}`} d={linie(teil) ?? undefined} fill="none" strokeWidth={2.2}
+        {abschnitte.map((part, i) => (
+          <path key={`l${i}`} d={linie(part) ?? undefined} fill="none" strokeWidth={2.2}
             strokeLinejoin="round" strokeLinecap="round" style={{ stroke: TON }} />
         ))}
 

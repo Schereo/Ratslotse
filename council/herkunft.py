@@ -514,7 +514,7 @@ PROBEN: dict[str, str] = {
     # kostet.
     "steuerplan_summenzeile":
         "Die einzelnen Steuerarten und die Finanzzuweisungen ergeben zusammen "
-        "genau die Zeile „insgesamt“, die dieselbe Tabelle ausweist — und zwar "
+        "genau die Zeile „total“, die dieselbe Tabelle ausweist — und zwar "
         "in jeder ihrer sechs Spalten: im Haushaltsplan wie im "
         "Rechnungsergebnis, für jedes der drei Jahre.",
     "steuerplan_anteilsprobe":

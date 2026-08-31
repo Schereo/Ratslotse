@@ -483,7 +483,7 @@ def test_qa_feedback_speichern(tmp_path):
     store.save_qa_feedback("Wie lief es?", "Antwort " * 200, "down", "  zu vage  ", user_id=7)
     store.save_qa_feedback("Und sonst?", None, "up", None)
     rows = store._conn.execute(
-        "SELECT frage, rating, grund, user_id, length(antwort_auszug) AS al "
+        "SELECT frage, rating, grund, user_id, length(answer_excerpt) AS al "
         "FROM council_qa_feedback ORDER BY id").fetchall()
     assert rows[0]["rating"] == "down" and rows[0]["grund"] == "zu vage"
     assert rows[0]["user_id"] == 7 and rows[0]["al"] <= 500
@@ -582,7 +582,7 @@ def test_steuern_block_trennt_ist_von_plan():
     assert qa._steuern_block([]) == ""
     # „insgesamt" bekommt einen sprechenden Namen statt des CSV-Schlüssels.
     assert "Steuereinnahmen insgesamt" in qa._steuern_block(
-        [{"art": "insgesamt", "year": 2025, "amount": 387208000.0}])
+        [{"art": "total", "year": 2025, "amount": 387208000.0}])
 
 
 def test_steuerkraft_block_nennt_die_daempfer_regel():
@@ -605,7 +605,7 @@ def test_steuern_fuer_begriffe_matcht_kuratierte_synonyme(tmp_path):
             (2025, "Gewerbesteuer (-umlage)", 222117000.0),
             (2015, "Gewerbesteuer (-umlage)", 120000000.0),
             (2025, "Grundsteuer A+B", 32585000.0),
-            (2025, "insgesamt", 387208000.0),
+            (2025, "total", 387208000.0),
         ]:
             store._conn.execute(
                 "INSERT INTO council_steuern (year, art, amount, fetched_at) VALUES (?,?,?,'')",
@@ -617,7 +617,7 @@ def test_steuern_fuer_begriffe_matcht_kuratierte_synonyme(tmp_path):
     assert treffer[0]["year_before"] == 2015 and treffer[0]["amount_before"] == 120000000.0
 
     # Allgemeine Geldfrage → Gesamtsumme; unpassende Frage → nichts.
-    assert [t["art"] for t in store.steuern_fuer_begriffe(["Steuereinnahmen"])] == ["insgesamt"]
+    assert [t["art"] for t in store.steuern_fuer_begriffe(["Steuereinnahmen"])] == ["total"]
     assert store.steuern_fuer_begriffe(["Radweg", "Bauantrag"]) == []
     # Satzzeichen dürfen nicht am Match hindern.
     assert store.steuern_fuer_begriffe(["Grundsteuer?"])[0]["art"] == "Grundsteuer A+B"

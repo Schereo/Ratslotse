@@ -43,7 +43,7 @@ function ProdukteSeiteInner() {
   // davon …" trägt. Kein zweiter Abruf, keine zweite Wahrheit.
   // `undefined` = lädt (Platzhalter hält die Höhe), `null` = entschieden
   // nichts (keine Bühne), sonst die Werte.
-  const [bestand, setBestand] = useState<{
+  const [balance, setBestand] = useState<{
     count: number; year: number; beispiele: { name: string; wert: number }[];
   } | null | undefined>(undefined);
   return (
@@ -74,10 +74,10 @@ function ProdukteSeiteInner() {
             Teilhaushalt, darunter eingerückt seine Aufgaben — klickt zur
             Suche. Bis die Antwort des Abschnitts da ist, hält der
             Platzhalter die Höhe, damit die Seite nicht springt. */}
-        {bestand ? (
+        {balance ? (
           <Seitenbuehne
-            kicker={`Produktebene · Haushaltsjahr ${bestand.year}`}
-            zahl={<><ZaehlZahl wert={bestand.count} /> einzelne Aufgaben, vom Stadtarchiv
+            kicker={`Produktebene · Haushaltsjahr ${balance.year}`}
+            zahl={<><ZaehlZahl wert={balance.count} /> einzelne Aufgaben, vom Stadtarchiv
               bis zum Schwimmbad</>}
             sub="jede mit Kosten, zuständigem Amt und Auftragsgrundlage"
             minibild={{
@@ -87,8 +87,8 @@ function ProdukteSeiteInner() {
                 // Echte Namen statt Baum-Skizze (Tim, 26.08.: „übersichtlicher
                 // umbauen") — dieselben Zeilen, die die Trefferliste oben
                 // trägt, verkleinert.
-                const max = Math.max(...bestand.beispiele.map((b) => b.wert), 1);
-                return bestand.beispiele.map((b) => (
+                const max = Math.max(...balance.beispiele.map((b) => b.wert), 1);
+                return balance.beispiele.map((b) => (
                   <span key={b.name} className="flex flex-col gap-[3px]">
                     <span className="truncate text-[9.5px] leading-none text-muted-foreground">{b.name}</span>
                     <span className="block h-3 rounded-[4px]" style={{
@@ -100,7 +100,7 @@ function ProdukteSeiteInner() {
               })(),
             }}
           />
-        ) : bestand === undefined ? (
+        ) : balance === undefined ? (
           <SeitenbuehneLaedt kicker="Produktebene" />
         ) : null}
 
