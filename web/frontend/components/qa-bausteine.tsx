@@ -92,7 +92,7 @@ export type PersonEintrag = {
    *  Mitgesellschafter). `von`/`bis` sind hier BERICHTSJAHRGÄNGE, nicht
    *  Sitzungsjahre, und `aktiv` heißt „steht im jüngsten Bericht". */
   art: "rat" | "beratend" | "stadt" | "beteiligung" | "blocker";
-  partei: string | null; rolle: string | null;
+  partei: string | null; role: string | null;
   /** Fraktions-Phasen mit Zeitraum — NUR bei Wechslern gesetzt (13 Personen im
    *  Bestand). `partei` ist die heutige; hier steht, was vorher war. */
   phasen?: { partei: string; von: string; bis: string }[] | null;
@@ -359,7 +359,7 @@ export function PersonBadge({ p, zeilenPartei = null }: {
     : p.art === "beratend" ? { bg: "hsl(209 18% 65%)", ring: true }
     : parteiDot(p.partei || "");
   const label = zeilenPartei ? parteiKuerzel(zeilenPartei) : personBadgeLabel(p);
-  const rolle = p.rolle
+  const role = p.role
     || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}`
       : p.art === "beteiligung" ? "Aufsichtsorgan einer städtischen Gesellschaft"
       : p.art === "beratend" ? "Beratendes Mitglied"
@@ -379,7 +379,7 @@ export function PersonBadge({ p, zeilenPartei = null }: {
   return (
     <span ref={ref} className="relative inline-block align-baseline">
       <button type="button" onClick={oeffnen}
-        aria-expanded={offen} title={`${p.name} — ${rolle}`}
+        aria-expanded={offen} title={`${p.name} — ${role}`}
         className="ml-1 inline-flex -translate-y-[1px] items-center gap-1 rounded-full border border-border bg-card px-1.5 py-px align-baseline text-[10px] font-medium leading-[14px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
         <span aria-hidden className={cn("h-[7px] w-[7px] shrink-0 rounded-full", dot.ring && "ring-1 ring-border")}
           style={{ backgroundColor: dot.bg }} />
@@ -400,7 +400,7 @@ export function PersonBadge({ p, zeilenPartei = null }: {
           style={{ left: pos.left, top: pos.top }}>
           <span className="block text-[13px] font-semibold text-foreground">{p.name}</span>
           <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
-            {p.aktiv ? rolle : `Ehemals: ${rolle}`}
+            {p.aktiv ? role : `Ehemals: ${role}`}
           </span>
           {gewechselt && (
             <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">
@@ -413,7 +413,7 @@ export function PersonBadge({ p, zeilenPartei = null }: {
           {/* Verwaltung verlinkt nur mit ERKANNTEM Amt (Tims Wunsch 19.08.) —
               ohne rolle liefert /person/{slug} 404 (verwaltung_detail() im
               Backend), und ein toter Link ist schlimmer als kein Link (#588). */}
-          {(p.art === "rat" || (p.art === "stadt" && p.rolle)) && (
+          {(p.art === "rat" || (p.art === "stadt" && p.role)) && (
             /* Next-Link statt <a>: Der harte Reload warf beim Zurückkommen
                den Gesprächs-State weg (Tims Befund 12.08.) — client-seitig
                bleibt die History intakt und der Restore greift. */

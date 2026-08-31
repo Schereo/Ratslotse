@@ -39,17 +39,17 @@ export function ErgebnisAbzeichen({ result, className }: {
  *  Gremium: „zurückgestellt/abgesetzt" ist breiter als die halbe Zeile, und
  *  daneben brach „Ausschuss für Finanzen und Beteiligungen" auf 375 px in
  *  drei Zeilen um. */
-export function StationsZeile({ station, rolle, children }: {
+export function StationsZeile({ station, role, children }: {
   station: WegStation;
   /** Was die Station im Verfahren ist — steht über dem Gremium. */
-  rolle: string;
+  role: string;
   children?: React.ReactNode;
 }) {
   return (
     <div className="border-t border-border/70 py-3 first:border-t-0">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-          {rolle}
+          {role}
         </p>
         <ErgebnisAbzeichen result={station.result} />
       </div>

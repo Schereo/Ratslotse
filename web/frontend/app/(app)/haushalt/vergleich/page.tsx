@@ -517,7 +517,7 @@ export default function VergleichSeite() {
                   <p className="text-[13px] font-bold">
                     {stadt.name}
                     <span className="ml-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                      {r.rolle}
+                      {r.role}
                     </span>
                   </p>
                   <p className="mt-0.5 max-w-[72ch] text-[12.5px] leading-relaxed text-muted-foreground">

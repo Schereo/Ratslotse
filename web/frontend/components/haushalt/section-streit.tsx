@@ -162,7 +162,7 @@ function RednerPunkt({ b, rechts }: { b: StreitWortbeitrag; rechts: boolean }) {
     // volle Breite, nicht nur bis zur Mitte.
     rechts ? "left-1 @2xl:left-auto @2xl:right-1" : "left-1",
   );
-  if (b.rolle !== "rat") {
+  if (b.role !== "rat") {
     return <span aria-hidden data-punkt className={cn(lage, "border-[1.5px] border-muted-foreground/70 bg-card")} />;
   }
   if (b.fraktion_unklar || !b.fraktion) {
@@ -226,7 +226,7 @@ function Rede({ b, rechts }: { b: StreitWortbeitrag; rechts: boolean }) {
           {/* Bei Verwaltung und Sitzungsleitung sagt die Anrede die Rolle
               schon („Oberbürgermeister", „Stadtkämmerin") — ein zusätzliches
               „Verwaltung" daneben wäre dieselbe Angabe zweimal. */}
-          {b.rolle === "rat" && (b.fraktion_unklar ? (
+          {b.role === "rat" && (b.fraktion_unklar ? (
             <span className="text-[11.5px] text-muted-foreground">Fraktion nicht eindeutig</span>
           ) : b.fraktion && (
             <span className="text-[11.5px] font-medium text-foreground/80">{b.fraktion}</span>

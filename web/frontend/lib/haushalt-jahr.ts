@@ -26,7 +26,7 @@ export type WegStation = {
   datum: string;
   gremium: string;
   /** Rolle laut Beratungsfolge: Kenntnisnahme, Vorberatung, Entscheidung. */
-  rolle: string | null;
+  role: string | null;
   is_public: number | null;
   ksinr: number;
   template_number: string | null;

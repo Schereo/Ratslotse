@@ -517,20 +517,20 @@ function PlanIstInner() {
                 : undefined}
               wert={mio(kasse.balance_capital?.result)} />
             <KassenZeile
-              label={kasse.finanzmittel?.label ?? "Finanzmittel-Überschuss/-Fehlbetrag"}
-              wert={mio(kasse.finanzmittel?.result)} stark />
-            {kasse.finanzmittelveraenderung && kasse.balance_financing && (
+              label={kasse.cash_surplus?.label ?? "Finanzmittel-Überschuss/-Fehlbetrag"}
+              wert={mio(kasse.cash_surplus?.result)} stark />
+            {kasse.cash_change && kasse.balance_financing && (
               <KassenZeile
                 label="Nach Kredittilgung"
                 note={`${deMio(mio(Math.abs(kasse.balance_financing.result ?? 0)))} Mio. € Tilgung`}
-                wert={mio(kasse.finanzmittelveraenderung.result)} />
+                wert={mio(kasse.cash_change.result)} />
             )}
           </dl>
-          {kasse.anfangsbestand?.result != null && kasse.endbestand?.result != null && (
+          {kasse.opening_balance?.result != null && kasse.closing_balance?.result != null && (
             <p className="mt-3 max-w-[70ch] text-[13px] leading-relaxed text-foreground/85">
-              Am 1. Januar lagen <strong>{deMio(mio(kasse.anfangsbestand.result))}&#8239;Mio.&nbsp;€</strong>{" "}
+              Am 1. Januar lagen <strong>{deMio(mio(kasse.opening_balance.result))}&#8239;Mio.&nbsp;€</strong>{" "}
               in der Kasse, am 31. Dezember{" "}
-              <strong>{deMio(mio(kasse.endbestand.result))}&#8239;Mio.&nbsp;€</strong>
+              <strong>{deMio(mio(kasse.closing_balance.result))}&#8239;Mio.&nbsp;€</strong>
               <Beleg q="finanzrechnung" />.
             </p>
           )}

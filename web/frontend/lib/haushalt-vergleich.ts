@@ -167,9 +167,9 @@ export function change(punkte: { year: number; wert: number }[]): number | null 
  *  entscheidet ihr Aufgabenzuschnitt und ihre Struktur, nicht ihre Zahlenhöhe.
  *  Alle acht kreisfreien Städte stehen trotzdem in den Listen — eine Aussage
  *  wie „der höchste Wert von allen" ist nur mit allen prüfbar. */
-export const ROLLEN: Record<string, { rolle: string; text: string }> = {
+export const ROLLEN: Record<string, { role: string; text: string }> = {
   "404000": {
-    rolle: "Der Zwilling",
+    role: "Der Zwilling",
     text: "94 Prozent unserer Einwohnerzahl, dieselbe Rechtsstellung, dieselbe "
       + "Aufteilung in Eigenbetriebe: Gebäudewirtschaft und Abfall laufen auch dort "
       + "getrennt vom Haushalt, das Krankenhaus gehört auch dort der Stadt. Wo die "
@@ -177,14 +177,14 @@ export const ROLLEN: Record<string, { rolle: string; text: string }> = {
       + "und nicht die Politik.",
   },
   "101000": {
-    rolle: "Das Gegenmodell",
+    role: "Das Gegenmodell",
     text: "Anderthalbmal so groß — und bei der Auslagerung das genaue Gegenteil: "
       + "Gebäudewirtschaft, Abfall und Entwässerung stehen dort im Haushalt selbst. "
       + "Deshalb weist Braunschweig weit höhere Ausgaben aus, ohne mehr zu leisten. "
       + "Bei der Grundsteuer B verlangt die Stadt 750 Prozent.",
   },
   "401000": {
-    rolle: "Der Maßstab nach unten",
+    role: "Der Maßstab nach unten",
     text: "Direkt nebenan, derselbe Aufgabenzuschnitt — und die mit Abstand "
       + "schwächste Steuerkraft der acht. Delmenhorst beantwortet die Frage, wie gut "
       + "Oldenburg eigentlich dasteht, ehrlicher als jeder Durchschnitt.",

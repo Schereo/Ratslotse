@@ -505,19 +505,15 @@ ROLLEN: tuple[tuple[str, str], ...] = (
     ("total_in_capital", r"Summe der Einzahlungen (?:aus|f[üu]r) Investitionst"),
     ("total_out_capital", r"Summe der Auszahlungen (?:aus|f[üu]r) Investitionst"),
     ("balance_capital", r"^Saldo aus Investitionst"),
-    ("finanzmittel", r"^Finanzmittel-\s*[ÜU]berschuss"),
-    ("balance_financing", r"^Saldo aus Finanzierungst"),
-    ("finanzmittelveraenderung", r"^Finanzmittel(?:ver[äa]nderung|bestand)\b"),
-    ("balance_non_budgetary", r"^Saldo aus haushaltsunwirksamen"),
-    ("anfangsbestand", r"Anfangsbestand an Zahlungsmitteln"),
-    ("endbestand", r"Endbestand an Zahlungsmitteln"),
-)
+    ("cash_surplus", r"^Finanzmittel-\s*[ÜU]berschuss"),    ("balance_financing", r"^Saldo aus Finanzierungst"),
+    ("cash_change", r"^Finanzmittel(?:ver[äa]nderung|bestand)\b"),    ("balance_non_budgetary", r"^Saldo aus haushaltsunwirksamen"),
+    ("opening_balance", r"Anfangsbestand an Zahlungsmitteln"),    ("closing_balance", r"Endbestand an Zahlungsmitteln"),)
 
 #: Die sieben Zeilen, ohne die ein Jahrgang wertlos ist. Fehlt eine davon oder
 #: reißt eine ihrer Proben, kommt der ganze Jahrgang nicht herein.
 PFLICHT_ROLLEN = ("total_in_operating", "total_out_operating", "balance_operating",
                   "total_in_capital", "total_out_capital",
-                  "balance_capital", "finanzmittel")
+                  "balance_capital", "cash_surplus")
 
 #: Alle übrigen Rollen sind Kür: Das Dokument bezeichnet sie in seiner Fußnote
 #: selbst als optional („Die Zeilen 37 bis 41 können optional ergänzt werden").
@@ -529,7 +525,7 @@ PFLICHT_ROLLEN = ("total_in_operating", "total_out_operating", "balance_operatin
 #: „Plan" findet, ist der Vorjahreswert oder eine Wiederholung; 2018 kam so
 #: für den Anfangsbestand ein Ansatz von 61,7 Mio. € heraus, den niemand je
 #: beschlossen hat. Für diese Rollen wird deshalb nur das Ist gespeichert.
-OHNE_ANSATZ_ROLLEN = ("balance_non_budgetary", "anfangsbestand", "endbestand")
+OHNE_ANSATZ_ROLLEN = ("balance_non_budgetary", "opening_balance", "closing_balance")
 
 #: Seitenfuß mitten in der Tabelle. Anders als in `_SEITENFUSS` wird hier auf
 #: derselben Zeile ersetzt und der Zeilenumbruch behalten: Die Postennummern
@@ -649,10 +645,10 @@ def parse_finanzrechnung(text: str, year: int) -> list[dict]:
     """Abschnitt 4.1 des Jahresabschlusses: was die Stadt wirklich ein- und
     ausgezahlt hat.
 
-    Liefert je Zeile ``{nr, rolle, label, prior_year, ansatz, plan,
+    Liefert je Zeile ``{nr, role, label, prior_year, ansatz, plan,
     plan_art, result, deviation, authorization, is_total}``. ``nr`` ist
     die Nummer, die das Dokument vergibt (und die sich zwischen den
-    Jahrgängen verschiebt), ``rolle`` der stabile Name aus :data:`ROLLEN` —
+    Jahrgängen verschiebt), ``role`` der stabile Name aus :data:`ROLLEN` —
     Leser*innen und Frontend hängen an der Rolle, nie an der Nummer.
 
     ``authorization`` ist die letzte Spalte: Geld, das aus Vorjahren
@@ -696,7 +692,7 @@ def parse_finanzrechnung(text: str, year: int) -> list[dict]:
         roh = inhalt[nr][:260]
         zahlen = [_eur(z) for z in _BETRAG.findall(roh)]
         label = " ".join(_BETRAG.split(roh)[0].split()).strip(" .")
-        rolle = _rolle(label)
+        role = _rolle(label)
         werte = (_leerer_ansatz(zahlen, kopf["has_prior_year"])
                  or _spalten_zuordnen(zahlen, kopf)
                  or _ohne_vorjahr(zahlen, kopf))
@@ -709,13 +705,13 @@ def parse_finanzrechnung(text: str, year: int) -> list[dict]:
             4 if werte.get("plan_art") == "ansatz_nachtrag" else 3)
         authorization = (zahlen[stelle] if hat_ermaechtigung
                          and stelle < len(zahlen) else None)
-        if rolle in OHNE_ANSATZ_ROLLEN:
+        if role in OHNE_ANSATZ_ROLLEN:
             # Kein Ansatz im Dokument, also auch keiner bei uns (s. o.).
             werte.update(ansatz=None, plan=None, plan_art=None, deviation=None)
             authorization = None
-        out.append({"nr": nr, "rolle": rolle, "label": label,
+        out.append({"nr": nr, "role": role, "label": label,
                     "year": year, "authorization": authorization,
-                    "is_total": 1 if rolle else 0, **werte})
+                    "is_total": 1 if role else 0, **werte})
     return out
 
 
@@ -736,7 +732,7 @@ def _bereiche(nach_rolle: dict[str, dict]) -> list[tuple[str, int, int, str]] | 
         return "Zeilen nicht gefunden: " + ", ".join(fehlend)
     if not (nr["balance_operating"] == nr["total_out_operating"] + 1
             and nr["balance_capital"] == nr["total_out_capital"] + 1
-            and nr["finanzmittel"] == nr["balance_capital"] + 1):
+            and nr["cash_surplus"] == nr["balance_capital"] + 1):
         return ("Reihenfolge passt nicht zur Nummerierung: "
                 + ", ".join(f"{r}={nr[r]}" for r in PFLICHT_ROLLEN))
     return [
@@ -757,7 +753,7 @@ def _bereiche(nach_rolle: dict[str, dict]) -> list[tuple[str, int, int, str]] | 
 #: Die drei Salden der Kaskade: ``ziel = a (±) b``.
 _SALDEN = (("total_in_operating", "total_out_operating", "balance_operating", -1),
            ("total_in_capital", "total_out_capital", "balance_capital", -1),
-           ("balance_operating", "balance_capital", "finanzmittel", +1))
+           ("balance_operating", "balance_capital", "cash_surplus", +1))
 
 #: Die Kür-Ketten: ``(glieder, ziel, was die Kette belegt)``.
 #:
@@ -773,11 +769,11 @@ _SALDEN = (("total_in_operating", "total_out_operating", "balance_operating", -1
 #: Finanzmittelveränderung. Fällt die erste Kette, ist die zweite nicht mehr
 #: belegt, auch wenn sie für sich aufginge.
 _KUER_KETTEN = (
-    (("finanzmittel", "balance_financing"), "finanzmittelveraenderung",
-     ("balance_financing", "finanzmittelveraenderung")),
-    (("anfangsbestand", "finanzmittelveraenderung", "balance_non_budgetary"),
-     "endbestand",
-     ("anfangsbestand", "balance_non_budgetary", "endbestand")),
+    (("cash_surplus", "balance_financing"), "cash_change",
+     ("balance_financing", "cash_change")),
+    (("opening_balance", "cash_change", "balance_non_budgetary"),
+     "closing_balance",
+     ("opening_balance", "balance_non_budgetary", "closing_balance")),
 )
 
 
@@ -812,7 +808,7 @@ def finanzprobe(posten: list[dict], toleranz: float = _FR_TOLERANZ
 
     Gibt ``(uebernommen, fehler, hinweise)`` zurück. Ist ``fehler`` nicht
     leer, gehört der Jahrgang nicht in den Bestand."""
-    nach_rolle = {p["rolle"]: p for p in posten if p.get("rolle")}
+    nach_rolle = {p["role"]: p for p in posten if p.get("role")}
     nach_nr = {p["nr"]: p for p in posten}
     bereiche = _bereiche(nach_rolle)
     if isinstance(bereiche, str):
@@ -825,8 +821,8 @@ def finanzprobe(posten: list[dict], toleranz: float = _FR_TOLERANZ
         return sum(nach_nr[n].get(feld) or 0 for n in range(von, bis + 1) if n in nach_nr)
 
     for feld, wie in (("result", "Ist"), ("plan", "Ansatz")):
-        for name, von, bis, rolle in bereiche:
-            soll, ist = nach_rolle[rolle].get(feld), summe(von, bis, feld)
+        for name, von, bis, role in bereiche:
+            soll, ist = nach_rolle[role].get(feld), summe(von, bis, feld)
             if soll is None:
                 fehler.append(f"{wie}: {name} — Summenzeile ohne Wert")
             elif abs(ist - soll) > toleranz:
@@ -844,8 +840,8 @@ def finanzprobe(posten: list[dict], toleranz: float = _FR_TOLERANZ
 
     # Die Ermächtigungen: eigene Probe, eigenes Schicksal.
     traegt_ermaechtigung = True
-    for name, von, bis, rolle in bereiche:
-        soll = nach_rolle[rolle].get("authorization")
+    for name, von, bis, role in bereiche:
+        soll = nach_rolle[role].get("authorization")
         ist = summe(von, bis, "authorization")
         if soll is None and not ist:
             continue  # der Jahrgang führt diese Spalte hier nicht
@@ -877,7 +873,7 @@ def finanzprobe(posten: list[dict], toleranz: float = _FR_TOLERANZ
             continue
         gestrichen |= set(lizenziert)
 
-    uebernommen = [p for p in posten if p.get("rolle") not in gestrichen]
+    uebernommen = [p for p in posten if p.get("role") not in gestrichen]
     return (uebernommen if not fehler else []), fehler, hinweise
 
 
@@ -900,9 +896,9 @@ def kassenkette(je_jahr: dict[int, list[dict]],
         if year + 1 not in je_jahr:
             continue
         ende = next((p.get("result") for p in je_jahr[year]
-                     if p.get("rolle") == "endbestand"), None)
+                     if p.get("role") == "closing_balance"), None)
         anfang = next((p.get("result") for p in je_jahr[year + 1]
-                       if p.get("rolle") == "anfangsbestand"), None)
+                       if p.get("role") == "opening_balance"), None)
         if ende is None or anfang is None:
             continue
         if abs(ende - anfang) > toleranz:

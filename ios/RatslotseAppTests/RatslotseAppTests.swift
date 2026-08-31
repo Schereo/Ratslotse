@@ -649,7 +649,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           }],
           "ris": {
             "kpenr": 17, "name": "Tim Ebbeke Harms", "fraktion_aktuell": "Grüne",
-            "memberships": [{"kgrnr": 2, "gremium": "Rat", "rolle": "Mitglied", "von": "2021-11-01", "bis": null}]
+            "memberships": [{"kgrnr": 2, "gremium": "Rat", "role": "Mitglied", "von": "2021-11-01", "bis": null}]
           },
           "committees": [{"committee": "Rat", "n": 39, "chair": true}],
           "recent": [{"ksinr": 4599, "committee": "Kulturausschuss", "session_date": "2026-06-16"}],
@@ -679,7 +679,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "typ": "verwaltung",
           "name": "Jürgen Krogmann",
           "slug": "juergen-krogmann",
-          "rolle": "Oberbürgermeister",
+          "role": "Oberbürgermeister",
           "aktiv": true,
           "von": "2014",
           "bis": "2026",

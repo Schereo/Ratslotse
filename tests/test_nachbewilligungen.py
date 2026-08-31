@@ -498,8 +498,8 @@ def test_probe_volltext_ohne_titelbetrag_ist_nicht_bestanden():
 def test_kapitel3_liest_die_vier_kanaele(text, year, council_amount, rat_anzahl, gesamt):
     kap = nb.kapitel3(text, year)
     assert kap is not None
-    assert len(kap.kanaele) == 4, "alle vier Wege, auch die leeren"
-    rat = kap.kanal("rat")
+    assert len(kap.channels) == 4, "alle vier Wege, auch die leeren"
+    rat = kap.channel("council")
     assert rat.amount == pytest.approx(council_amount)
     assert rat.count == rat_anzahl
     assert kap.gesamt == pytest.approx(gesamt)
@@ -510,7 +510,7 @@ def test_eilentscheidung_ohne_konsumtiven_betrag():
     darunter aber schon. Ein Muster, das den Betrag erzwingt, nimmt die
     Anzahl der nächsten Zeile als Betrag der vorigen."""
     kap = nb.kapitel3(RB_2022, 2022)
-    eil = kap.kanal("eilentscheidung")
+    eil = kap.channel("urgent_decision")
     assert eil.count_operating == 0
     assert eil.amount_operating == 0.0
     assert eil.count_capital == 1
@@ -521,7 +521,7 @@ def test_kanal_findet_die_tabelle_nicht_die_prosa():
     """Der einleitende Satz nennt „Eilentscheidungen" auch. Wer dort landet,
     liest keine Zellen mehr — 2022 fehlten so 180.000 €."""
     kap = nb.kapitel3(RB_2022, 2022)
-    assert kap.kanal("eilentscheidung") is not None
+    assert kap.channel("urgent_decision") is not None
 
 
 def test_verpflichtungsermaechtigungen_kommen_aus_dem_fliesstext():
@@ -637,7 +637,7 @@ def test_gemessene_abweichungen_sind_festgenagelt(year):
     dass der Parser die Zahlen des Dokuments unverändert liest."""
     soll = GEMESSEN[year]
     kap = nb.kapitel3({2022: RB_2022, 2023: RB_2023, 2024: RB_2024}[year], year)
-    rat = kap.kanal("rat")
+    rat = kap.channel("council")
     assert rat.amount == pytest.approx(soll["bericht"])
     assert rat.count == soll["bericht_faelle"]
     # Und die Rechnung, die daraus die Abweichung macht.

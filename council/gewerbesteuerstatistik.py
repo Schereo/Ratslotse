@@ -186,8 +186,8 @@ BLOECKE: tuple[tuple[str, str], ...] = (
 
 #: Die neun Wertespalten von Blatt 6.1 — Block × Rolle.
 ERWARTET_KREISE: tuple[str, ...] = tuple(
-    f"{block}_{rolle}" for block, _ in BLOECKE
-    for rolle in ("count", "positiv", "amount"))
+    f"{block}_{role}" for block, _ in BLOECKE
+    for role in ("count", "positiv", "amount"))
 
 #: Blatt 6.2 führt nur den Gesamtblock, dafür den Hebesatz.
 ERWARTET_GEMEINDEN: tuple[str, ...] = ("gesamt_count", "gesamt_positiv",
@@ -224,16 +224,16 @@ def spaltenzuordnung(spalten: dict[int, str]) -> dict[str, int]:
         if block is None:
             continue
         if re.match(r"\s*Anzahl\b", text, re.IGNORECASE):
-            rolle = "positiv" if "positiv" in text.lower() else "count"
+            role = "positiv" if "positiv" in text.lower() else "count"
         elif "steuermessbetrag" in text.lower() and not re.search(
                 r"Prozent|%", text, re.IGNORECASE):
-            rolle = "amount"
+            role = "amount"
         else:
             continue
         # Die erste passende Spalte gewinnt. 2017 wiederholt Blatt 6.1 die
         # Schlüsselspalte am Zeilenende; dieselbe Vorsicht gilt für jede
         # Wiederholungsspalte, die das LSN als Lesehilfe einzieht.
-        aus.setdefault(f"{block}_{rolle}", idx)
+        aus.setdefault(f"{block}_{role}", idx)
     return aus
 
 

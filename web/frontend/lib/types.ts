@@ -384,7 +384,7 @@ export interface MemberDetail {
     kpenr: number;
     name: string;
     fraktion_aktuell: string | null;
-    memberships: { kgrnr: number | null; gremium: string; rolle: string | null; von: string | null; bis: string | null }[];
+    memberships: { kgrnr: number | null; gremium: string; role: string | null; von: string | null; bis: string | null }[];
   } | null;
   committees: { committee: string; n: number; chair: boolean }[];
   recent: { ksinr: number; committee: string; session_date: string }[];
@@ -405,7 +405,7 @@ export interface MemberDetail {
  *  `bis` sind Jahre der Protokoll-Erwähnung, keine amtliche Amtszeit. */
 export interface VerwaltungDetail {
   typ: "verwaltung";
-  name: string; slug: string; rolle: string | null;
+  name: string; slug: string; role: string | null;
   aktiv: boolean; von: string | null; bis: string | null;
   wortbeitraege?: MemberDetail["wortbeitraege"];
   wortbeitraege_gesamt?: number;

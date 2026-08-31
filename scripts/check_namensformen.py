@@ -46,7 +46,7 @@ def _bestand(store: CouncilStore) -> dict[str, dict]:
     """Je Namensform (ungefaltet!): Sitzungen, Zeitraum, Rollen, Fraktionen."""
     aus: dict[str, dict] = defaultdict(
         lambda: {"ksinr": set(), "erste": None, "letzte": None,
-                 "rollen": Counter(), "parteien": Counter(),
+                 "roles": Counter(), "parteien": Counter(),
                  "gremien": set(), "namen": Counter()})
     for r in store._conn.execute(
             """SELECT a.name, a.ksinr, a.role, a.party, cs.committee, cs.session_date
@@ -57,7 +57,7 @@ def _bestand(store: CouncilStore) -> dict[str, dict]:
             continue
         e = aus[sl]
         e["ksinr"].add(r["ksinr"])
-        e["rollen"][r["role"]] += 1
+        e["roles"][r["role"]] += 1
         e["namen"][r["name"]] += 1
         e["gremien"].add(r["committee"])
         if r["party"]:
@@ -70,9 +70,9 @@ def _bestand(store: CouncilStore) -> dict[str, dict]:
 
 def _zeile(slug: str, e: dict) -> str:
     partei = ", ".join(p for p, _ in e["parteien"].most_common(2)) or "—"
-    rollen = ", ".join(f"{r}×{n}" for r, n in e["rollen"].most_common())
+    roles = ", ".join(f"{r}×{n}" for r, n in e["roles"].most_common())
     return (f"    {slug:34s} {len(e['ksinr']):4d} Sitzungen  "
-            f"{e['erste']} … {e['letzte']}  [{rollen}]  {partei}")
+            f"{e['erste']} … {e['letzte']}  [{roles}]  {partei}")
 
 
 def main(alle: bool = False, db: Path | None = None) -> dict:

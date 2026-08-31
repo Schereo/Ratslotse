@@ -868,9 +868,9 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
     endbestaende: dict[int, float] = {}
     for year, v in gelesen.items():
         for z in v["kasse"] or ():
-            if z.get("rolle") == "endbestand" and z.get("result") is not None:
+            if z.get("role") == "closing_balance" and z.get("result") is not None:
                 endbestaende[year] = z["result"]
-            elif z.get("rolle") == "anfangsbestand" and z.get("result") is not None:
+            elif z.get("role") == "opening_balance" and z.get("result") is not None:
                 endbestaende.setdefault(year - 1, z["result"])
     for year, warum in bilanz.kassenprobe(bilanzen, endbestaende):
         p.warnen(f"  Bilanz {year}: Kreuzprobe gegen die Finanzrechnung gerissen "
@@ -983,11 +983,11 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                                       len(v["kasse"]), schuetzen):
                     geschuetzt += 1
                 else:
-                    rollen = {x["rolle"] for x in v["kasse"] if x.get("rolle")}
+                    roles = {x["role"] for x in v["kasse"] if x.get("role")}
                     probes = ["finanzkaskade"]
                     if any(x.get("authorization") is not None for x in v["kasse"]):
                         probes.append("finanz_ermaechtigungen")
-                    if "endbestand" in rollen:
+                    if "closing_balance" in roles:
                         probes.append("finanz_bestandskette")
                     if any((year + s) in gelesen and gelesen[year + s]["kasse"]
                            for s in (-1, 1)):
@@ -1000,7 +1000,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                     neue_einheiten.add((year, "kasse"))
                     mit_kasse += 1
                     balance = next((x["result"] for x in v["kasse"]
-                                  if x["rolle"] == "finanzmittel"), None)
+                                  if x["role"] == "cash_surplus"), None)
                     p.sagen(f"    + Finanzrechnung: {len(v['kasse'])} Zeilen · "
                             f"Finanzmittelsaldo {balance/1e6:+.1f} Mio. €")
 
@@ -1034,7 +1034,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                         label=label, url=url))
                     neue_einheiten.add((year, "bilanz"))
                     mit_bilanz += 1
-                    werte = {x["rolle"]: x["wert"] for x in bil["posten"]}
+                    werte = {x["role"]: x["wert"] for x in bil["posten"]}
                     p.sagen(f"    + Bilanz: {len(bil['posten'])} Posten · Bilanzsumme "
                             f"{bil['bilanzsumme']/1e6:.1f} Mio. € · Pensionsrückstellungen "
                             f"{werte.get('pensionen_gesamt', 0)/1e6:.1f} Mio. € "
@@ -1559,7 +1559,7 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
         risse += umb_risse
         # Die Gegenprobe an der Bilanz — eine andere Quelle im selben Heft.
         bilanz_posten = [dict(x) for x in store._conn.execute(  # noqa: SLF001
-            "SELECT rolle, wert FROM council_bilanz WHERE year = ?", (year,))]
+            "SELECT role, wert FROM council_bilanz WHERE year = ?", (year,))]
         bilanz_risse = anlagenspiegel.gegen_bilanz(zeilen, bilanz_posten)
         if not bilanz_risse and bilanz_posten:
             for z in zeilen:
@@ -1665,7 +1665,7 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
     gesammelt: list[dict] = []
 
     bilanz_posten = [dict(x) for x in store._conn.execute(  # noqa: SLF001
-        "SELECT year, rolle, wert FROM council_bilanz WHERE rolle IS NOT NULL")]
+        "SELECT year, role, wert FROM council_bilanz WHERE role IS NOT NULL")]
 
     # ZWEITER DURCHGANG: prüfen und schreiben, Bericht für Bericht.
     for r, report_year, zeilen, formeln, unbekannt in sorted(
@@ -2093,8 +2093,8 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
 
 
 #: Rollen, deren Vorjahresspalte gegen den Vorjahrgang geprüft wird.
-_KETTEN_ROLLEN = ("revenues_total", "expenses_total", "ord_ergebnis",
-                  "gesamtergebnis")
+_KETTEN_ROLLEN = ("revenues_total", "expenses_total", "ordinary_result",
+                  "total_result")
 
 
 def _kette_pruefen(gelesen: dict[int, list[dict]], p: Protokoll) -> dict:
@@ -2107,19 +2107,19 @@ def _kette_pruefen(gelesen: dict[int, list[dict]], p: Protokoll) -> dict:
     for year in sorted(gelesen):
         if year - 1 not in gelesen:
             continue
-        jetzt = {x["rolle"]: x for x in gelesen[year] if x["rolle"]}
-        vorher = {x["rolle"]: x for x in gelesen[year - 1] if x["rolle"]}
+        jetzt = {x["role"]: x for x in gelesen[year] if x["role"]}
+        vorher = {x["role"]: x for x in gelesen[year - 1] if x["role"]}
         toleranz = 1000.0 if year <= 2016 else konzernabschluss.TOLERANZ_EUR
-        for rolle in _KETTEN_ROLLEN:
-            a = (jetzt.get(rolle) or {}).get("prior_year")
-            b = (vorher.get(rolle) or {}).get("amount")
+        for role in _KETTEN_ROLLEN:
+            a = (jetzt.get(role) or {}).get("prior_year")
+            b = (vorher.get(role) or {}).get("amount")
             if a is None or b is None:
                 continue
             geprueft += 1
             if abs(a - b) <= toleranz:
                 bestanden += 1
             else:
-                p.warnen(f"  Vorjahres-Kette {year - 1}→{year} {rolle}: "
+                p.warnen(f"  Vorjahres-Kette {year - 1}→{year} {role}: "
                          f"{b:,.2f} gegen {a:,.2f} — Abweichung {a - b:+,.2f}")
     if geprueft:
         p.sagen(f"  Vorjahres-Kette: {bestanden}/{geprueft} über Dokumentgrenzen geschlossen")

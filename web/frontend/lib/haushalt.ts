@@ -95,8 +95,8 @@ export type RuecklageJahr = {
 export type FinanzRolle =
   | "total_in_operating" | "total_out_operating" | "balance_operating"
   | "total_in_capital" | "total_out_capital" | "balance_capital"
-  | "finanzmittel" | "balance_financing" | "finanzmittelveraenderung"
-  | "balance_non_budgetary" | "anfangsbestand" | "endbestand";
+  | "cash_surplus" | "balance_financing" | "cash_change"
+  | "balance_non_budgetary" | "opening_balance" | "closing_balance";
 
 /** Eine Zeile der Finanzrechnung der Kernverwaltung (Abschnitt 4.1 desselben
  *  Jahresabschlusses): nicht was gebucht, sondern was **gezahlt** wurde.
@@ -105,14 +105,14 @@ export type FinanzRolle =
  *  Geld aus früheren Jahren, das in diesem Jahr noch ausgegeben werden durfte.
  *  Sie ist `null`, wo der Jahrgang die Spalte nicht führt.
  *
- *  Die Bestandszeilen (`anfangsbestand`, `endbestand`,
+ *  Die Bestandszeilen (`opening_balance`, `closing_balance`,
  *  `balance_non_budgetary`) tragen **keinen** `plan`: Ein Kassenbestand
  *  wird nicht veranschlagt, und das Dokument lässt die Spalte dort leer. */
 export type FinanzZeile = {
   year: number;
   /** Zeilennummer des Dokuments — nur für die Fundstelle, nie zum Suchen. */
   nr: number;
-  rolle: FinanzRolle | null;
+  role: FinanzRolle | null;
   label: string;
   prior_year: number | null; ansatz: number | null;
   plan: number | null; plan_art: PlanArt | null;
@@ -493,7 +493,7 @@ export type Nachbewilligung = {
 /** Ein Entscheidungsweg aus Kapitel 3 des Rechenschaftsberichts. */
 export type NachbewilligungsKanal = {
   year: number;
-  kanal: string;
+  channel: string;
   /** Der Wortlaut der Stadt („Gemäß Haushaltsvermerk durch den Fachdienst
    *  200"), nicht unsere Umschreibung. */
   label: string;
@@ -521,13 +521,13 @@ export type NachbewilligungsJahr = {
    *  nicht nur im Log. */
   probe_text: string | null;
   herkunft_id: number | null;
-  kanaele: NachbewilligungsKanal[];
+  channels: NachbewilligungsKanal[];
 };
 
 export type Nachbewilligungen = {
   serie: Nachbewilligung[];
   jahre: NachbewilligungsJahr[];
-  kanaele: Record<string, string>;
+  channels: Record<string, string>;
 };
 
 /** Zuwendungen an die Stadt (`council/spenden.py`).
@@ -762,11 +762,11 @@ export function kassensicht(
   const zeilen = (daten.finanzrechnung ?? []).filter((z) => z.year === year);
   if (!zeilen.length) return null;
   const aus: Partial<Record<FinanzRolle, FinanzZeile>> = {};
-  for (const z of zeilen) if (z.rolle) aus[z.rolle] = z;
+  for (const z of zeilen) if (z.role) aus[z.role] = z;
   // Ohne die drei Salden ist die Aussage nicht vollständig — dann lieber gar
   // keine Kassensicht als eine halbe (die Kaskade lässt das gar nicht zu,
   // aber der Lesepfad soll sich nicht darauf verlassen).
-  return aus.balance_operating && aus.balance_capital && aus.finanzmittel
+  return aus.balance_operating && aus.balance_capital && aus.cash_surplus
     ? aus : null;
 }
 
@@ -1391,7 +1391,7 @@ export function nachbewilligungenFuerJahr(
  *  fallen (2022), sagt `probe_text` es an. */
 export function ratsAnteil(j: NachbewilligungsJahr): number | null {
   const gesamt = j.total_operating + j.total_capital;
-  const rat = j.kanaele.find((k) => k.kanal === "rat");
+  const rat = j.channels.find((k) => k.channel === "rat");
   if (!gesamt || !rat) return null;
   return ((rat.amount_operating + rat.amount_capital) / gesamt) * 100;
 }

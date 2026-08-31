@@ -274,13 +274,13 @@ def gegen_bilanz(zeilen: list[dict], bilanz_posten: list[dict]) -> list[str]:
     ist das kein Riss — dann gibt es die Gegenprobe für dieses Jahr eben
     nicht, und das darf die Anzeige sagen.
     """
-    nach_rolle = {p["rolle"]: p.get("wert") for p in bilanz_posten}
+    nach_rolle = {p["role"]: p.get("wert") for p in bilanz_posten}
     risse: list[str] = []
     for z in zeilen:
-        rolle = BILANZ_ROLLE.get(z["nr"])
-        if not rolle:
+        role = BILANZ_ROLLE.get(z["nr"])
+        if not role:
             continue
-        bilanz = nach_rolle.get(rolle)
+        bilanz = nach_rolle.get(role)
         if bilanz is None:
             continue
         if abs(z["book_value"] - bilanz) > TOLERANZ:

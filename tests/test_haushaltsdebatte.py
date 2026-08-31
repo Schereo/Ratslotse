@@ -133,8 +133,8 @@ def test_debatte_zerlegt_und_ordnet_zu():
     # bleibt deshalb so stehen, wie das Protokoll ihn schreibt.
     assert [b.name for b in beitraege] == ["Krogmann", "Nicole Piechotta", "Bernhardt"]
     ob, spd, gruen = beitraege
-    assert ob.rolle == "verwaltung" and ob.fraktion is None
-    assert spd.rolle == "rat" and spd.fraktion == "SPD"
+    assert ob.role == "verwaltung" and ob.fraktion is None
+    assert spd.role == "rat" and spd.fraktion == "SPD"
     # Namensvettern: ohne Vornamen im Protokoll KEINE Fraktion behaupten.
     assert gruen.fraktion is None and gruen.fraktion_unklar is True
 
@@ -203,7 +203,7 @@ def test_sitzungsleitung_zaehlt_zu_keiner_fraktion():
             "Er bittet die Fraktionen, sich an die vereinbarten Redezeiten zu halten, und "
             "kündigt an, die Reihenfolge beizubehalten.")
     (b,) = hd.debatte(text, ANWESEND)
-    assert b.rolle == "leitung"
+    assert b.role == "leitung"
     assert b.fraktion is None, "die Leitung spricht nicht für ihre Fraktion"
 
 
@@ -216,7 +216,7 @@ def test_rednerliste_in_einer_rede_wird_nicht_zerschnitten():
             "Lükermann. Dem vorgeschaltet werde die Verwaltung mit ihrer Einführung.")
     beitraege = hd.debatte(text, ANWESEND)
     assert len(beitraege) == 1
-    assert beitraege[0].rolle == "leitung"
+    assert beitraege[0].role == "leitung"
 
 
 def test_kurzes_verfahren_ist_keine_rede():
@@ -362,7 +362,7 @@ def test_debatte_haengt_an_der_station(store):
     rat = store.haushalt_streit()[0]["stationen"][1]
     fraktionen = [b["fraktion"] for b in rat["debatte"]]
     assert "SPD" in fraktionen
-    assert rat["debatte"][0]["rolle"] == "verwaltung"
+    assert rat["debatte"][0]["role"] == "verwaltung"
 
 
 def test_jahr_grenzt_ein(store):

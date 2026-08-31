@@ -98,7 +98,7 @@ PASSIVA = "passiva"
 
 #: Die Zeilen, auf die es ankommt, erkannt am Wortlaut des Dokuments.
 #:
-#: ``(rolle, page, level, muster)``. ``level`` 1 sind die Hauptposten, aus
+#: ``(role, page, level, muster)``. ``level`` 1 sind die Hauptposten, aus
 #: denen die Bilanzsumme besteht; ``level`` 2 und 3 sind Unterposten, die
 #: einzeln etwas erzählen.
 #:
@@ -297,7 +297,7 @@ def parse_bilanz(text: str, year: int) -> dict:
     """Die Bilanz eines Jahresabschlusses lesen.
 
     Liefert ``{year, prior_year, posten}``. ``posten`` ist eine Liste aus
-    ``{rolle, page, level, nr, label, wert, value_prior_year}`` — ``wert``
+    ``{role, page, level, nr, label, wert, value_prior_year}`` — ``wert``
     ist der Stand zum Bilanzstichtag des Jahrgangs, ``value_prior_year`` der
     Stand ein Jahr davor, den dieselbe Tabelle in ihrer ersten Spalte führt.
 
@@ -331,10 +331,10 @@ def parse_bilanz(text: str, year: int) -> dict:
         satz = block[m.end():ende]
         betraege = _BETRAG.findall(satz)
         label = _label(satz[:satz.find(betraege[0])] if betraege else satz)
-        rolle = _rolle(label)
-        if rolle is None:
+        role = _rolle(label)
+        if role is None:
             continue
-        name, page, level = rolle
+        name, page, level = role
         # Eine Bilanzzeile führt genau zwei Spalten: Vorjahr und Stichtag.
         # Alles andere ist ein Lesefehler — meist eine verschluckte
         # Zeilengrenze, hinter der die Beträge der nächsten Zeile mithängen.
@@ -349,7 +349,7 @@ def parse_bilanz(text: str, year: int) -> dict:
             continue
         gesehen.add(name)
         posten.append({
-            "rolle": name, "page": page, "level": level,
+            "role": name, "page": page, "level": level,
             "nr": m.group(1).rstrip("."), "label": label,
             "value_prior_year": _eur(betraege[0]) if betraege else 0.0,
             "wert": _eur(betraege[1]) if betraege else 0.0,
@@ -362,9 +362,9 @@ def parse_bilanz(text: str, year: int) -> dict:
 
 # --- Die Proben --------------------------------------------------------------
 
-def _wert(posten: list[dict], rolle: str, spalte: str = "wert") -> float | None:
+def _wert(posten: list[dict], role: str, spalte: str = "wert") -> float | None:
     for p in posten:
-        if p["rolle"] == rolle:
+        if p["role"] == role:
             return p[spalte]
     return None
 
@@ -447,14 +447,14 @@ def vorjahreskette(jahrgaenge: dict[int, dict]) -> list[tuple[int, int, str]]:
         folge = year + 1
         if folge not in jahrgaenge:
             continue
-        for rolle in PFLICHT_ROLLEN:
-            hier = _wert(jahrgaenge[year]["posten"], rolle)
-            dort = _wert(jahrgaenge[folge]["posten"], rolle, "value_prior_year")
+        for role in PFLICHT_ROLLEN:
+            hier = _wert(jahrgaenge[year]["posten"], role)
+            dort = _wert(jahrgaenge[folge]["posten"], role, "value_prior_year")
             if hier is None or dort is None:
                 continue
             if abs(hier - dort) > TOLERANZ:
                 risse.append((year, folge,
-                              f"{rolle}: {hier:,.2f} € im Abschluss {year}, "
+                              f"{role}: {hier:,.2f} € im Abschluss {year}, "
                               f"{dort:,.2f} € als Vorjahr im Abschluss {folge}"))
                 break
     return risse
@@ -504,7 +504,7 @@ def parse_erlaeuterungen(text: str, year: int) -> list[dict]:
     Finanzvermögen. **Diese Zahl darf ohne diesen Text nicht angezeigt
     werden.**
 
-    Liefert je Abschnitt ``{rolle, nr, heading, text}``. Zwei Abschnitte
+    Liefert je Abschnitt ``{role, nr, heading, text}``. Zwei Abschnitte
     (6.2.2 Sachvermögen, 6.2.3 Finanzvermögen) betten Tabellen in ihren Text
     ein; als Fließtext gelesen sind das Zahlenkolonnen ohne Spalten. Sie
     werden gespeichert, aber nichts zwingt eine Seite, sie anzuzeigen.
@@ -528,7 +528,7 @@ def parse_erlaeuterungen(text: str, year: int) -> list[dict]:
         roh = re.sub(r"-\s*\n\s*", "", roh)
         absaetze = [" ".join(a.split()) for a in re.split(r"\n\s*\n", roh)]
         inhalt = "\n\n".join(a for a in absaetze if a)
-        raus.append({"rolle": PFLICHT_ROLLEN[nr - 1], "nr": nr,
+        raus.append({"role": PFLICHT_ROLLEN[nr - 1], "nr": nr,
                      "heading": " ".join(m.group(2).split()),
                      "text": inhalt})
     return raus

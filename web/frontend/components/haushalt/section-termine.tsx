@@ -120,7 +120,7 @@ export function TermineAbschnitt({ onBestand }: {
     // als erreicht, sobald der Rat beschlossen hat.
     const r = data.runden[data.runden.length - 1];
     const ratsbeschluss = [...r.stationen]
-      .filter((st) => st.rolle === "Entscheidung" && st.result
+      .filter((st) => st.role === "Entscheidung" && st.result
         && !/zurückgestellt|abgesetzt|vertagt/i.test(st.result))
       .sort((a, b) => a.datum.localeCompare(b.datum))
       .at(-1) ?? null;
@@ -373,7 +373,7 @@ function Weg({ runde }: { runde: WegRunde }) {
       </Ablauf>
 
       {runde.einbringung && (
-        <StationsZeile station={runde.einbringung} rolle="Entwurf eingebracht">
+        <StationsZeile station={runde.einbringung} role="Entwurf eingebracht">
           <p className="mt-1 text-[12.5px] leading-relaxed text-foreground/85">
             {deDatum(runde.einbringung.datum)} — ab hier sind der Entwurf und alle Zahlen
             öffentlich einsehbar.
@@ -422,7 +422,7 @@ function Weg({ runde }: { runde: WegRunde }) {
         <StationsZeile
           key={`${s.ksinr}-${i}`}
           station={s}
-          rolle={s.gremium === "Rat"
+          role={s.gremium === "Rat"
             ? (s === letzte ? "Entscheidung im Rat" : "Im Rat aufgerufen")
             : "Vorberatung"}
         >

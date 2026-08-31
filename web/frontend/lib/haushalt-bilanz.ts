@@ -29,7 +29,7 @@ export type BilanzRolle =
 
 export type BilanzPosten = {
   year: number;
-  rolle: BilanzRolle;
+  role: BilanzRolle;
   page: "aktiva" | "passiva";
   /** 1 = Hauptposten; nur diese ergeben zusammen die Bilanzsumme. */
   level: number;
@@ -47,7 +47,7 @@ export type BilanzPosten = {
  *  Zahl überhaupt gezeigt werden darf — s. `cashPoolingHinweis`. */
 export type BilanzErlaeuterung = {
   year: number;
-  rolle: BilanzRolle;
+  role: BilanzRolle;
   nr: number;
   heading: string;
   text: string;
@@ -110,7 +110,7 @@ export function as_of_date(daten: BilanzDaten | null, year: number): Stichtag | 
   if (!daten) return null;
   const posten: Partial<Record<BilanzRolle, BilanzPosten>> = {};
   for (const p of daten.posten) {
-    if (p.year === year) posten[p.rolle] = p;
+    if (p.year === year) posten[p.role] = p;
   }
   const haupt = [...AKTIVA_HAUPT, ...PASSIVA_HAUPT];
   if (haupt.some((r) => posten[r] === undefined)) return null;
@@ -128,13 +128,13 @@ export function as_of_date(daten: BilanzDaten | null, year: number): Stichtag | 
  *  0,6-%-Posten als dunkelstes Segment ganz links wäre eine Betonung, die
  *  der Betrag nicht trägt. */
 export function segmente(s: Stichtag, page: "aktiva" | "passiva") {
-  const rollen = page === "aktiva" ? AKTIVA_HAUPT : PASSIVA_HAUPT;
-  return rollen
+  const roles = page === "aktiva" ? AKTIVA_HAUPT : PASSIVA_HAUPT;
+  return roles
     .map((r) => ({
       label: KURZ[r] ?? s.posten[r]?.label ?? r,
       kurz: KURZ[r],
       wert: (s.posten[r]?.wert ?? 0) / 1e6,
-      rolle: r,
+      role: r,
     }))
     .filter((x) => x.wert > 0)
     .sort((a, b) => b.wert - a.wert);
@@ -154,10 +154,10 @@ export function vielfaches(s: Stichtag): number | null {
 
 /** Die Erläuterung des Anhangs zu einem Hauptposten. */
 export function explanation(
-  daten: BilanzDaten | null, year: number, rolle: BilanzRolle,
+  daten: BilanzDaten | null, year: number, role: BilanzRolle,
 ): BilanzErlaeuterung | null {
   if (!daten) return null;
-  return daten.erlaeuterungen.find((e) => e.year === year && e.rolle === rolle) ?? null;
+  return daten.erlaeuterungen.find((e) => e.year === year && e.role === role) ?? null;
 }
 
 /** Ist der Schuldensprung dieses Jahrgangs ein Buchungsartefakt?

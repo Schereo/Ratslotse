@@ -22,8 +22,8 @@ const yearOf = (d: string | null | undefined): number | null => {
   const y = d ? parseInt(d.slice(0, 4), 10) : NaN;
   return Number.isFinite(y) ? y : null;
 };
-const isChair = (rolle: string | null) => !!rolle && /vorsitz/i.test(rolle);
-const isDeputy = (rolle: string | null) => !!rolle && /(stellv|stv\.)/i.test(rolle);
+const isChair = (role: string | null) => !!role && /vorsitz/i.test(role);
+const isDeputy = (role: string | null) => !!role && /(stellv|stv\.)/i.test(role);
 const initials = (name: string) =>
   name.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
 
@@ -48,14 +48,14 @@ function OfficesGantt({ current }: { current: Membership[] }) {
   const span = Math.max(1, thisYear - minYear);
   const midYear = minYear + Math.round(span / 2);
   const rows = [...current].sort((a, b) => {
-    const ca = isChair(a.rolle) ? 0 : 1, cb = isChair(b.rolle) ? 0 : 1;
+    const ca = isChair(a.role) ? 0 : 1, cb = isChair(b.role) ? 0 : 1;
     return ca !== cb ? ca - cb : (yearOf(a.von) ?? minYear) - (yearOf(b.von) ?? minYear);
   });
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex flex-col gap-2.5">
         {rows.map((m, i) => {
-          const chair = isChair(m.rolle);
+          const chair = isChair(m.role);
           const vy = yearOf(m.von) ?? minYear;
           const leftPct = Math.min(90, Math.max(0, ((vy - minYear) / span) * 100));
           const showLabel = 100 - leftPct >= 26 && m.von;
@@ -75,7 +75,7 @@ function OfficesGantt({ current }: { current: Membership[] }) {
                   {/* nowrap nur schmal, wo der Name umbrechen darf: sonst landet
                       der Trenner allein am Zeilenende und „Stellv." rutscht in
                       die nächste. Ab sm wird ohnehin gekürzt statt umgebrochen. */}
-                  {isDeputy(m.rolle) && <span className="ml-1 text-[11px] font-normal text-muted-foreground max-sm:whitespace-nowrap">· Stellv.</span>}
+                  {isDeputy(m.role) && <span className="ml-1 text-[11px] font-normal text-muted-foreground max-sm:whitespace-nowrap">· Stellv.</span>}
                 </span>
                 {/* Das Jahr steht schmal IMMER in der Namenszeile — im Balken
                     wäre es bei kurzer Amtszeit unlesbar oder ganz weg. */}
@@ -254,7 +254,7 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
                   <div key={`${m.gremium}-${i}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                     <span className="min-w-0 text-[13px] text-foreground" title={m.gremium}>
                       {shortCommittee(m.gremium)}
-                      {isChair(m.rolle) && <span className="ml-1.5 text-[11px] font-medium text-signal">{isDeputy(m.rolle) ? "stellv. Vorsitz" : "Vorsitz"}</span>}
+                      {isChair(m.role) && <span className="ml-1.5 text-[11px] font-medium text-signal">{isDeputy(m.role) ? "stellv. Vorsitz" : "Vorsitz"}</span>}
                     </span>
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                       {m.von ? yearOf(m.von) : "?"} – {m.bis ? yearOf(m.bis) : "heute"}
@@ -380,7 +380,7 @@ function VerwaltungProfil({ data }: { data: VerwaltungDetail }) {
             </span>
           </div>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            {data.rolle}{zeitraum && <> · {zeitraum}</>}
+            {data.role}{zeitraum && <> · {zeitraum}</>}
           </p>
         </div>
         <Popover>

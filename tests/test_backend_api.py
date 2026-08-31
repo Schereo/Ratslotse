@@ -1161,7 +1161,7 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
         cs.save_konzern_jahrgang(
             2024,
             [{"nr": 13, "label": "Summe ordentliche Erträge",
-              "rolle": "revenues_total", "amount": 1241548906.55,
+              "role": "revenues_total", "amount": 1241548906.55,
               "prior_year": 1139375959.21, "is_total": 1}],
             [{"art": "revenues", "traeger_key": "stadt",
               "traeger": "Kernverwaltung (Stadt Oldenburg)",
@@ -4780,7 +4780,7 @@ def test_verwaltung_mit_erkanntem_amt_hat_eigenen_steckbrief(client):
     r = client.get("/api/council/person/juergen-krogmann")
     assert r.status_code == 200
     body = r.json()
-    assert body["typ"] == "verwaltung" and body["rolle"] == "Oberbürgermeister"
+    assert body["typ"] == "verwaltung" and body["role"] == "Oberbürgermeister"
 
     # Nur eine Vertretungs-Notiz, kein erkanntes Amt → weiterhin 404.
     assert client.get("/api/council/person/dagmar-sachse").status_code == 404
@@ -5488,7 +5488,7 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
     Drei Dinge muss der Endpunkt zusammen ausliefern, sonst steht die
     Oberfläche vor einer Zahl, die sie nicht verantworten kann:
 
-    * die Posten mit ``rolle``, ``page`` und ``level`` — an der
+    * die Posten mit ``role``, ``page`` und ``level`` — an der
       Gliederungsnummer darf nichts hängen, „1." ist ab 2021 auf der
       Aktivseite etwas anderes als auf der Passivseite,
     * die **Erläuterungen** des Anhangs. Für ``schulden`` sind sie keine
@@ -5509,19 +5509,19 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
             stand="31.12.2024", document_id=295294, label="Jahresabschluss 2024",
             url="https://example.org/ja.pdf")
         cs.save_bilanz(2024, [
-            {"rolle": "geldschulden", "page": bilanz.PASSIVA, "level": 2,
+            {"role": "geldschulden", "page": bilanz.PASSIVA, "level": 2,
              "nr": "2.1", "label": "Geldschulden", "wert": 43_690_971.71},
-            {"rolle": "schulden", "page": bilanz.PASSIVA, "level": 1,
+            {"role": "schulden", "page": bilanz.PASSIVA, "level": 1,
              "nr": "2", "label": "Schulden", "wert": 207_116_175.19},
-            {"rolle": "pensionen_gesamt", "page": bilanz.PASSIVA, "level": 2,
+            {"role": "pensionen_gesamt", "page": bilanz.PASSIVA, "level": 2,
              "nr": "3.1",
              "label": "Pensionsrückstellungen und ähnliche Verpflichtungen",
              "wert": 311_789_660.00},
-            {"rolle": "liquide_mittel", "page": bilanz.AKTIVA, "level": 1,
+            {"role": "liquide_mittel", "page": bilanz.AKTIVA, "level": 1,
              "nr": "4", "label": "Liquide Mittel", "wert": 118_001_891.26},
         ], q)
         cs.save_bilanz_erlaeuterungen(2024, [
-            {"rolle": "schulden", "nr": 7, "heading": "Schulden",
+            {"role": "schulden", "nr": 7, "heading": "Schulden",
              "text": "… ergibt sich eine Bilanzverlängerung … 138,2 Millionen Euro."},
         ], herkunft.Herkunft(
             art="ris", probe="bilanz_erlaeuterung",
@@ -5532,7 +5532,7 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
         daten = client.get("/api/council/haushalt/bilanz").json()
         assert daten["jahre"] == [2024]
 
-        nach_rolle = {p["rolle"]: p for p in daten["posten"]}
+        nach_rolle = {p["role"]: p for p in daten["posten"]}
         # Die beiden Zahlen, die beide „Schulden" heißen — getrennt geführt.
         assert nach_rolle["geldschulden"]["wert"] == 43_690_971.71
         assert nach_rolle["schulden"]["wert"] == 207_116_175.19
@@ -5540,7 +5540,7 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
         assert nach_rolle["schulden"]["level"] == 1
 
         # Ohne diesen Text darf die Seite die 207,1 Mio. € nicht zeigen.
-        erl = {e["rolle"]: e for e in daten["erlaeuterungen"]}
+        erl = {e["role"]: e for e in daten["erlaeuterungen"]}
         assert "Bilanzverlängerung" in erl["schulden"]["text"]
 
         # Jede Zahl und jeder Text tragen ihren Beleg.

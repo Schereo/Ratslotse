@@ -431,16 +431,16 @@ def gegen_bilanz(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[dict
     summe: dict[int, float] = {}
     posten: dict[tuple[int, str], float] = {}
     for b in bilanz:
-        if b.get("rolle") in AKTIVA:
+        if b.get("role") in AKTIVA:
             summe[b["year"]] = summe.get(b["year"], 0.0) + b["wert"]
-        if b.get("rolle"):
-            posten[(b["year"], b["rolle"])] = b["wert"]
+        if b.get("role"):
+            posten[(b["year"], b["role"])] = b["wert"]
 
     geprueft = 0
     risse: list[dict] = []
     for z in zeilen:
-        rolle = BILANZ_QUOTE.get(z["indicator"])
-        zaehler = posten.get((z["year"], rolle)) if rolle else None
+        role = BILANZ_QUOTE.get(z["indicator"])
+        zaehler = posten.get((z["year"], role)) if role else None
         if zaehler is None or not summe.get(z["year"]):
             continue
         eigen = zaehler * 100 / summe[z["year"]]
@@ -473,9 +473,9 @@ def vermoegensprobe(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[d
     aktiva: dict[int, float] = {}
     rap: dict[int, float] = {}
     for b in bilanz:
-        if b.get("rolle") in AKTIVA:
+        if b.get("role") in AKTIVA:
             aktiva[b["year"]] = aktiva.get(b["year"], 0.0) + b["wert"]
-        if b.get("rolle") == "aktive_rap":
+        if b.get("role") == "aktive_rap":
             rap[b["year"]] = b["wert"]
 
     # Nur Zeilen DESSELBEN Berichts multiplizieren — zwei Berichte gemischt

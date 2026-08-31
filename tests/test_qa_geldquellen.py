@@ -629,7 +629,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             "(2023, 'P26.262001', 'Theater und Konzerte', 'Kulturamt', 300000, 9800000, "
             " -9500000, 'Freiwillige Leistung der Stadt', 'hoch', '', 1)")
         store._conn.executemany(
-            "INSERT INTO council_konzern_posten (year, nr, label, rolle, amount, "
+            "INSERT INTO council_konzern_posten (year, nr, label, role, amount, "
             " is_total, fetched_at, herkunft_id) VALUES (2024,?,?,?,?,1,'',1)",
             [(13, 'Summe ordentliche Erträge', 'revenues_total', 1_238_000_000.0),
              (21, 'Summe ordentliche Aufwendungen', 'expenses_total', 1_242_000_000.0)])
@@ -1323,7 +1323,7 @@ def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
     c = store._conn                                       # noqa: SLF001
     c.execute("INSERT INTO council_schulden (year, insgesamt, je_einwohner, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
-    c.execute("INSERT INTO council_bilanz (year, rolle, page, level, label, wert, "
+    c.execute("INSERT INTO council_bilanz (year, role, page, level, label, wert, "
               " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
     c.execute("INSERT INTO council_integrierte_schulden (year, ars, insgesamt, probes, "

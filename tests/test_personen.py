@@ -247,13 +247,13 @@ def test_personen_lexikon_rat_verwaltung_und_zeitlichkeit(tmp_path):
         assert adler["aktiv"] is False  # zuletzt vor ~2,5 Jahren gesehen
 
         kro = lex["juergen-krogmann"]
-        assert kro["art"] == "stadt" and kro["rolle"] == "Oberbürgermeister"
+        assert kro["art"] == "stadt" and kro["role"] == "Oberbürgermeister"
 
         # Zeit-Zusätze („bis TOP 8.2") und Vertretungs-Notizen sind kein Amt.
-        assert lex["dagmar-sachse"]["rolle"] is None
+        assert lex["dagmar-sachse"]["role"] is None
         # Amt bleibt erhalten, aktiv aber nicht mehr (Nießen lange raus).
         niessen = lex["gabriele-niessen"]
-        assert niessen["rolle"] == "Stadtbaurätin" and niessen["aktiv"] is False
+        assert niessen["role"] == "Stadtbaurätin" and niessen["aktiv"] is False
     finally:
         store.close()
 
@@ -293,7 +293,7 @@ def test_personen_lexikon_beteiligung_mit_funktion(tmp_path):
 
         harms = lex["karin-harms"]
         assert harms["art"] == "beteiligung"
-        assert harms["rolle"] == "Landrätin"      # die Funktion aus dem Bericht
+        assert harms["role"] == "Landrätin"      # die Funktion aus dem Bericht
         assert harms["partei"] is None            # der Bericht nennt keine
         # Zeitraum = Berichtsjahrgänge, nicht Amtszeit.
         assert (harms["von"], harms["bis"]) == ("2022", "2024")
@@ -301,7 +301,7 @@ def test_personen_lexikon_beteiligung_mit_funktion(tmp_path):
 
         # Wer nur in einem alten Bericht steht, gilt nicht mehr als aktuell.
         bartels = lex["inga-bartels"]
-        assert bartels["rolle"] == "Beschäftigtenvertreterin"
+        assert bartels["role"] == "Beschäftigtenvertreterin"
         assert (bartels["von"], bartels["bis"], bartels["aktiv"]) == ("2022", "2022", False)
     finally:
         store.close()
@@ -398,7 +398,7 @@ def test_personen_lexikon_beteiligung_ueberschreibt_kein_ratsmandat(tmp_path):
         # Beteiligungsbericht.
         assert arten["juergen-krogmann"] == "stadt"
         krogmann = next(p for p in lex if p["slug"] == "juergen-krogmann")
-        assert krogmann["rolle"] == "Oberbürgermeister"
+        assert krogmann["role"] == "Oberbürgermeister"
     finally:
         store.close()
 
@@ -473,7 +473,7 @@ def test_personen_lexikon_beteiligung_nur_echte_personennamen(tmp_path):
 
         # Der Mensch mit vollem Namen steht drin …
         assert lex["ralph-bruder"]["art"] == "beteiligung"
-        assert lex["manfred-weisensee"]["rolle"] == "Vertreter Hochschule"
+        assert lex["manfred-weisensee"]["role"] == "Vertreter Hochschule"
         # … die kahlen Nachnamen nicht (von einem Namensvetter nicht zu
         # unterscheiden) …
         assert "bruder" not in lex and "weisensee" not in lex
@@ -499,7 +499,7 @@ def test_beratendes_mitglied_ohne_fraktions_zeitreihe(tmp_path):
         assert behrens["faction_timeline"]
         lex = {p["slug"]: p for p in store.personen_lexikon()}
         assert lex["ben-carlsson-skiba"]["art"] == "beratend"
-        assert lex["ben-carlsson-skiba"]["rolle"] == "Beratendes Mitglied · Fridays for Future Oldenburg"
+        assert lex["ben-carlsson-skiba"]["role"] == "Beratendes Mitglied · Fridays for Future Oldenburg"
         assert lex["paul-behrens"]["art"] == "rat"
     finally:
         store.close()
@@ -543,7 +543,7 @@ def test_ris_stammdaten_zaehlen_als_mandat(tmp_path):
                 "INSERT INTO council_persons (kpenr, name, fraktion_aktuell, fetched_at) "
                 "VALUES (99, 'Sabine Görg', 'SPD', datetime('now'))")
             store._conn.execute(
-                "INSERT INTO council_memberships (kpenr, kgrnr, gremium, rolle, von, bis, fetched_at) "
+                "INSERT INTO council_memberships (kpenr, kgrnr, gremium, role, von, bis, fetched_at) "
                 "VALUES (99, 1, 'Rat', 'Ratsmitglied', '2026-01-01', NULL, datetime('now'))")
         m = {x["slug"]: x for x in store.list_members()}
         assert m["sabine-goerg"]["art"] == "rat"
@@ -626,7 +626,7 @@ def test_verwaltung_detail_nur_mit_erkanntem_amt(tmp_path):
                 [(1, "Krogmann", "Wird geprüft.")])
 
         kro = store.verwaltung_detail("juergen-krogmann")
-        assert kro["typ"] == "verwaltung" and kro["rolle"] == "Oberbürgermeister"
+        assert kro["typ"] == "verwaltung" and kro["role"] == "Oberbürgermeister"
         assert kro["aktiv"] is True
         assert kro["wortbeitraege_gesamt"] == 1
 

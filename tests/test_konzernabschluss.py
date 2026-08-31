@@ -172,7 +172,7 @@ TRAEGER_2018_AUFW = (
 
 
 def _rollen(result: dict) -> dict[str, float]:
-    return {p["rolle"]: p["amount"] for p in result["posten"] if p["rolle"]}
+    return {p["role"]: p["amount"] for p in result["posten"] if p["role"]}
 
 
 # --- Erkennung --------------------------------------------------------------
@@ -200,14 +200,14 @@ def test_alte_nummerierung_wird_an_der_beschriftung_erkannt():
     """2018: Posten 15 ist die Ertragssumme, nicht Posten 13."""
     result = ka.parse_gesamtergebnisrechnung(GER_2018)
     assert result["bestanden"]
-    rollen = _rollen(result)
-    assert rollen["revenues_total"] == 927894462.76
-    assert rollen["expenses_total"] == 878621831.00
-    assert rollen["ord_ergebnis"] == 49272631.76
-    assert rollen["gesamtergebnis"] == 54743572.80
-    assert rollen["zinsaufwand"] == 9637446.97
+    roles = _rollen(result)
+    assert roles["revenues_total"] == 927894462.76
+    assert roles["expenses_total"] == 878621831.00
+    assert roles["ordinary_result"] == 49272631.76
+    assert roles["total_result"] == 54743572.80
+    assert roles["interest_expenses"] == 9637446.97
     # Die Nummer wandert mit dem Jahrgang, die Rolle nicht.
-    nummern = {p["rolle"]: p["nr"] for p in result["posten"] if p["rolle"]}
+    nummern = {p["role"]: p["nr"] for p in result["posten"] if p["role"]}
     assert nummern["revenues_total"] == 15
 
 
@@ -215,11 +215,11 @@ def test_neue_nummerierung_liefert_dieselben_rollen():
     """2019 zählt anders (13/21/22) — die Rollen heißen weiter gleich."""
     result = ka.parse_gesamtergebnisrechnung(GER_2019)
     assert result["bestanden"]
-    rollen = _rollen(result)
-    assert rollen["revenues_total"] == 932052457.60
-    assert rollen["expenses_total"] == 922350191.52
-    assert rollen["gesamtergebnis"] == 18601580.40
-    nummern = {p["rolle"]: p["nr"] for p in result["posten"] if p["rolle"]}
+    roles = _rollen(result)
+    assert roles["revenues_total"] == 932052457.60
+    assert roles["expenses_total"] == 922350191.52
+    assert roles["total_result"] == 18601580.40
+    nummern = {p["role"]: p["nr"] for p in result["posten"] if p["role"]}
     assert nummern["revenues_total"] == 13
 
 
@@ -243,7 +243,7 @@ def test_anlagenuebersicht_wird_nicht_mitgelesen():
     """Direkt hinter der Tabelle folgt die Anlagenübersicht, die ebenfalls
     mit „1." beginnt. Nach dem Gesamtjahresergebnis ist Schluss."""
     result = ka.parse_gesamtergebnisrechnung(GER_2019)
-    assert result["posten"][-1]["rolle"] == "gesamtergebnis"
+    assert result["posten"][-1]["role"] == "total_result"
     assert not any("Konzessionen" in p["label"] for p in result["posten"])
 
 
@@ -262,8 +262,8 @@ def test_unterposten_reissen_die_summe_nicht_an_sich():
     einer eigenen Zeile ohne Nummer. Sie dem offenen Posten zuzuschlagen
     ergäbe 11,2 statt 12,1 Mio. Zinsaufwand — lieber gar kein Wert."""
     result = ka.parse_gesamtergebnisrechnung(GER_2014)
-    rollen = _rollen(result)
-    assert "zinsaufwand" not in rollen
+    roles = _rollen(result)
+    assert "interest_expenses" not in roles
     assert not any(p["amount"] == 11209002.22 for p in result["posten"])
 
 
@@ -382,7 +382,7 @@ def test_speichern_und_lesen(tmp_path):
                       ka.traegernachweis(result["traeger"])))
 
         assert store.konzern_jahre() == [2024]
-        posten = {p["rolle"]: p for p in store.get_konzern_posten(2024) if p["rolle"]}
+        posten = {p["role"]: p for p in store.get_konzern_posten(2024) if p["role"]}
         assert posten["revenues_total"]["amount"] == 1241548906.55
 
         zeilen = {z["traeger_key"]: z for z in store.get_konzern_traeger(2024)}
