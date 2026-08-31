@@ -418,7 +418,7 @@ def test_speichern_legt_drei_ebenen_an(tmp_path):
     try:
         g = ip.lies(IP_2026, 2026)
         store.save_investitionsprogramm(2026, g, herkunft.Herkunft(
-            art="ris", probe=["investitionsprogramm_abschnitt",
+            kind="ris", probe=["investitionsprogramm_abschnitt",
                               "investitionsprogramm_wiederholung",
                               "investitionsprogramm_kopftabelle"],
             document_id=297440, label="2026 004 Vw Investitionsprogramm",
@@ -441,7 +441,7 @@ def test_zweiter_lauf_ersetzt_statt_zu_verdoppeln(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         g = ip.lies(IP_2026, 2026)
-        h = herkunft.Herkunft(art="ris", probe="investitionsprogramm_abschnitt",
+        h = herkunft.Herkunft(kind="ris", probe="investitionsprogramm_abschnitt",
                               document_id=297440)
         store.save_investitionsprogramm(2026, g, h)
         store.save_investitionsprogramm(2026, g, h)

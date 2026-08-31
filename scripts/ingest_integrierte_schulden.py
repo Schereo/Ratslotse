@@ -115,7 +115,7 @@ def main() -> int:
         store.save_integrierte_schulden(
             {**gefunden, "probes": [isch.PROBE_KERNHAUSHALT]},
             herkunft_mod.Herkunft(
-                art="lsn", probe=[isch.PROBE_KERNHAUSHALT],
+                kind="lsn", probe=[isch.PROBE_KERNHAUSHALT],
                 label="Integrierte Schulden der Gemeinden und Gemeindeverbände",
                 url=source_url or isch.UEBERSICHT_URL,
                 citation=f"Tabelle 2, Blatt {isch.BLATT}, "

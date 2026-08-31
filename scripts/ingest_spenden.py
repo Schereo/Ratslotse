@@ -45,7 +45,7 @@ def _lauf_herkunft(result: dict) -> h.Herkunft:
     years = [v["year"] for v in result["vorlagen"]]
     spanne = f"{min(years)}–{max(years)}" if years else "—"
     return h.Herkunft(
-        art="ris",
+        kind="ris",
         url="https://buergerinfo.oldenburg.de/vo040.asp",
         label=LABEL,
         citation=donations.FUNDSTELLE,
@@ -104,7 +104,7 @@ def main() -> int:
         # eine Zeile ohne ihn ansieht, soll das lesen können.
         for v in vorlagen:
             v["herkunft"] = h.Herkunft(
-                art="ris",
+                kind="ris",
                 document_id=v.get("document_id"),
                 url=v.get("dokument_url") or "https://buergerinfo.oldenburg.de/vo040.asp",
                 label=f"{LABEL} — Vorlage {v['template_number']}",

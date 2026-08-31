@@ -505,7 +505,7 @@ def test_jeder_jahreswert_traegt_sein_eigenes_jahr(realsteuer):
 
 def _herkunft(probe="lsn_zweijahresueberlappung") -> herkunft.Herkunft:
     return herkunft.Herkunft(
-        art="lsn", probe=probe, label="Kommunaler Finanzausgleich 2026",
+        kind="lsn", probe=probe, label="Kommunaler Finanzausgleich 2026",
         url="https://example.org/kfa2026.xlsx",
         citation="Blatt ST_KR_MESS_VGL", probe_result="403 von 403",
         as_of="26.03.2026")
@@ -532,7 +532,7 @@ def test_speichern_und_lesen(tmp_path, kfa2026):
         # Die Erklärsätze der Probe hängen an der Herkunft und sind für die
         # Leserin geschrieben.
         h = store.get_herkunft([gelesen[0]["herkunft_id"]])[0]
-        assert h["art"] == "lsn"
+        assert h["kind"] == "lsn"
         assert h["probes"] and "Finanzausgleichs" in h["probes"][0]
     finally:
         store.close()

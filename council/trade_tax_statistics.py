@@ -477,7 +477,7 @@ def hebesatz_im_jahr(zeilen: list[dict], year: int,
     durchführbar.
     """
     passend = [z for z in zeilen
-               if z.get("art") == art and int(z.get("year", 0)) <= year
+               if z.get("kind") == art and int(z.get("year", 0)) <= year
                and z.get("rate") is not None]
     if not passend:
         return None

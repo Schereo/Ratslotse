@@ -420,7 +420,7 @@ function WortbeitragZeile({ w, erste }: {
     <div className={cn("py-2.5 text-[13px] leading-relaxed", !erste && "border-t border-border")}>
       <p className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
         <span className="min-w-0 truncate">
-          {WB_ART[w.art] ?? w.art}{w.top ? ` · ${w.top}` : ""} · {shortCommittee(w.committee ?? "")}
+          {WB_ART[w.kind] ?? w.kind}{w.top ? ` · ${w.top}` : ""} · {shortCommittee(w.committee ?? "")}
         </span>
         <span className="shrink-0">{formatDate(w.session_date)}</span>
       </p>

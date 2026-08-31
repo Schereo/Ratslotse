@@ -101,7 +101,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
                         stationen[0] if stationen else None)
         zeilen.append({
             "template_number": b.template_number, "year": b.year, "title": b.title,
-            "art": b.art, "category": b.category, "amount": b.amount,
+            "kind": b.kind, "category": b.category, "amount": b.amount,
             "amount_source": b.amount_source, "decided": b.decided,
             "in_plenary": b.in_plenary, "council_decision": b.council_decision,
             "decision_id": (fuehrend or {}).get("id"),
@@ -132,7 +132,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
                 f"ist in {geprueft} von {aus_titel} Fällen im Volltext "
                 f"wiedergefunden worden")
     store.save_nachbewilligungen(zeilen, h.Herkunft(
-        art="ris",
+        kind="ris",
         url="https://www.oldenburg-kreis.de/bi/",
         label="Vorlagen im Ratsinformationssystem der Stadt Oldenburg",
         citation="Titel und Beschlussvorschlag der Vorlage",
@@ -188,7 +188,7 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
               "count_capital": k.count_capital,
               "amount_capital": k.amount_capital} for k in kap.channels],
             h.Herkunft(
-                art="ris", document_id=dokument,
+                kind="ris", document_id=dokument,
                 label=BERICHT_LABEL.format(year=year),
                 citation="Kapitel 3 — Über- und außerplanmäßige "
                            "Aufwendungen und Auszahlungen",

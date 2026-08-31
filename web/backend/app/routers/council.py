@@ -489,9 +489,9 @@ def haushalt_stellenplan(
     Und die Besetzungszahlen gehören zur **Vorjahresspalte**, nicht zum
     Haushaltsjahr: Geplant wird vorwärts, gezählt werden kann nur rückwärts.
     ``as_of_date`` sagt, auf welchen Tag sie sich beziehen."""
-    summen = store.get_stellenplan(art="gesamt")
-    gruppen = store.get_stellenplan(art="gruppe")
-    zeilen = (store.get_stellenplan(art="posten", budget_year=budget_year)
+    summen = store.get_stellenplan(kind="gesamt")
+    gruppen = store.get_stellenplan(kind="gruppe")
+    zeilen = (store.get_stellenplan(kind="posten", budget_year=budget_year)
               if budget_year is not None else [])
     jahrgaenge = sorted({z["budget_year"] for z in summen})
 
@@ -609,11 +609,11 @@ def haushalt_konzern(
     for t in entity:
         if t["entity_key"] != "stadt":
             continue
-        ist = (kern.get(t["year"]) or {}).get(t["art"])
+        ist = (kern.get(t["year"]) or {}).get(t["kind"])
         if ist is None:
             continue
         gegenprobe.append({
-            "year": t["year"], "art": t["art"],
+            "year": t["year"], "art": t["kind"],
             "konzern": t["amount_keur"] * 1000.0, "jahresabschluss": ist,
             "ok": abs(t["amount_keur"] - ist / 1000.0) <= 1.0,
         })
@@ -1706,7 +1706,7 @@ def decision_detail(
         if v:
             out["vorlage"] = {
                 "template_number": v.get("template_number"), "title": v.get("title"),
-                "art": v.get("art"), "document_url": v.get("document_url"),
+                "kind": v.get("kind"), "document_url": v.get("document_url"),
                 "n_pages": v.get("n_pages"),
                 "excerpt": vorlagen_mod.excerpt(v.get("raw_text") or "", 2600) or None,
                 # Regex-Ernte: federführendes Amt + Klima-Check der Verwaltung.

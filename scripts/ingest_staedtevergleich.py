@@ -135,7 +135,7 @@ def main() -> int:
             geschrieben["tax_capacity"] = store.save_staedtevergleich(
                 "tax_capacity", zeilen,
                 h.Herkunft(
-                    art="lsn", probe="lsn_zweijahresueberlappung",
+                    kind="lsn", probe="lsn_zweijahresueberlappung",
                     label=f"Kommunaler Finanzausgleich {neu.year}, endgültig — "
                           f"Ergebnis- und Vergleichstabellen",
                     url=url_neu or QUELLEN_STAND.get(f"kfa{neu.year}"),
@@ -178,7 +178,7 @@ def main() -> int:
                 geschrieben["fiscal_equalization"] = store.save_staedtevergleich(
                     "fiscal_equalization", zeilen_fa,
                     h.Herkunft(
-                        art="lsn",
+                        kind="lsn",
                         probe=["kfa_komponentenprobe", "kfa_jahrbuchabgleich"],
                         label=f"Kommunaler Finanzausgleich {neu.year}, endgültig — "
                               f"Ergebnis- und Vergleichstabellen",
@@ -206,7 +206,7 @@ def main() -> int:
             geschrieben["realsteuern"] = store.save_staedtevergleich(
                 "realsteuern", zeilen,
                 h.Herkunft(
-                    art="lsn", probe=["lsn_hebesatzprobe", "lsn_dreijahresmittel"],
+                    kind="lsn", probe=["lsn_hebesatzprobe", "lsn_dreijahresmittel"],
                     label=f"Realsteuervergleich {rs.year} (Statistischer Bericht "
                           f"L II 7 / L II 9)",
                     url=url_rs or QUELLEN_STAND.get(f"realsteuer{rs.year}"),

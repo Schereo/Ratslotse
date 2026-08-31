@@ -144,7 +144,7 @@ def _herkunft_1103(name: str, url: str | None, years: list[int],
                    probes: list[str], nachweis: str) -> h.Herkunft:
     spanne = (f"{years[0]}–{years[-1]}" if len(years) > 1 else str(years[0]))
     return h.Herkunft(
-        art="stadt",
+        kind="stadt",
         url=url or stt.TABELLE_1103_URL,
         label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1103 ({name})",
         citation=(
@@ -356,7 +356,7 @@ def main() -> int:
                        if sprung["nicht_pruefbar"] else ""))
                 letzte_ausgabe = zeilen_1105[-1]["ausgabe"]
                 geschrieben += store.save_hebesaetze(zeilen_1105, h.Herkunft(
-                    art="stadt",
+                    kind="stadt",
                     url=url_1105 or stt.TABELLE_1105_URL,
                     label="Statistisches Jahrbuch der Stadt Oldenburg, "
                           f"Tabelle 1105 ({letzte_ausgabe})",

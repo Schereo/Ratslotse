@@ -388,7 +388,7 @@ def parse_traeger(text: str) -> list[dict]:
                 if any(w is None for w in werte):
                     continue
                 key, anzeige = erkannt
-                zeilen.append({"art": art, "entity_key": key, "entity": anzeige,
+                zeilen.append({"kind": art, "entity_key": key, "entity": anzeige,
                                "amount_keur": werte[0], "prior_year_keur": werte[1],
                                "change_keur": werte[2],
                                "probe_ok": abs((werte[0] - werte[1]) - werte[2])
@@ -406,7 +406,7 @@ def parse_traeger(text: str) -> list[dict]:
         gut = [z for z in zeilen if z["probe_ok"]]
         gerechnet = sum(z["amount_keur"] for z in zeilen)
         aus.append({
-            "art": art,
+            "kind": art,
             "zeilen": gut,
             "verworfen": len(zeilen) - len(gut),
             "total_keur": summe["amount_keur"],
@@ -447,7 +447,7 @@ def lies(text: str) -> dict:
     gefunden = parse_traeger(text)
     for block in gefunden:
         verworfen += block["verworfen"]
-        summenposten = nach_rolle.get(_QUERPROBE[block["art"]])
+        summenposten = nach_rolle.get(_QUERPROBE[block["kind"]])
         block["querprobe_delta"] = (
             round(block["total_keur"] - summenposten["amount"] / 1000.0, 2)
             if summenposten else None)

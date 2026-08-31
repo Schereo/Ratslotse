@@ -203,7 +203,7 @@ def main() -> int:
                 # beziffert — im Fließtext des Grundes wäre sie für die
                 # Oberfläche verloren.
                 geschrieben += store.save_investitionen_ist(part, h.Herkunft(
-                    art="stadt", url=url or ii.TABELLE_URL,
+                    kind="stadt", url=url or ii.TABELLE_URL,
                     label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle "
                           f"{nummer} — Investitionen {von} bis {bis}",
                     as_of=f"Rechnungsergebnisse {von}–{bis}",

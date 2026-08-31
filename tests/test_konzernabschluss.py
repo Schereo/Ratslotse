@@ -29,7 +29,7 @@ from council.store import CouncilStore
 #: die Anlage, Fundstelle im Dokument, die drei Proben der Ergebnisrechnung.
 def _herkunft(citation: str, probes: list[str], messwert: str = "") -> herkunft.Herkunft:
     return herkunft.Herkunft(
-        art="ris", document_id=302709, label="Prüfbericht GA 2024",
+        kind="ris", document_id=302709, label="Prüfbericht GA 2024",
         url="https://example.org/ga2024.pdf", citation=citation,
         probe=probes, probe_result=messwert or None,
         as_of="Gesamtabschluss zum 31.12.2024")
@@ -300,7 +300,7 @@ def test_traeger_werden_mit_schluessel_gelesen():
     bloecke = ka.parse_traeger(TRAEGER_2024)
     assert len(bloecke) == 1
     block = bloecke[0]
-    assert block["art"] == "revenues"
+    assert block["kind"] == "revenues"
     assert block["spaltenprobe_ok"]
     assert block["verworfen"] == 0
     nach_key = {z["entity_key"]: z for z in block["zeilen"]}
@@ -314,7 +314,7 @@ def test_spaltenprobe_verwirft_widerspruechliche_aufstellung():
     """2018 Aufwendungen: Die Konsolidierungszeile des Berichts passt nicht
     zu seiner eigenen Summenzeile (64 TEUR Unterschied)."""
     block = ka.parse_traeger(TRAEGER_2018_AUFW)[0]
-    assert block["art"] == "expenses"
+    assert block["kind"] == "expenses"
     assert not block["spaltenprobe_ok"]
     assert block["spaltenprobe_delta"] == -64.0
     # Und `lies` nimmt sie deshalb nicht auf.
@@ -368,7 +368,7 @@ def test_speichern_und_lesen(tmp_path):
     try:
         result = ka.lies(GER_2024_ZUSAMMEN)
         assert result["bestanden"]
-        entity = [z | {"art": b["art"]}
+        entity = [z | {"kind": b["kind"]}
                    for b in result["entity"] for z in b["zeilen"]]
         store.save_konzern_jahrgang(
             2024, result["posten"], entity,
@@ -429,9 +429,9 @@ def test_herkunft_ohne_probe_ist_nicht_baubar():
     """Die Regel des Formats, an unserem Fall: Wer speichern will, muss
     sagen, womit die Zahl abgesichert ist."""
     with pytest.raises(ValueError):
-        herkunft.Herkunft(art="ris", probe=[], document_id=302709)
+        herkunft.Herkunft(kind="ris", probe=[], document_id=302709)
     with pytest.raises(ValueError):
-        herkunft.Herkunft(art="ris", probe="konzern_erfunden", document_id=302709)
+        herkunft.Herkunft(kind="ris", probe="konzern_erfunden", document_id=302709)
 
 
 def test_gegenprobe_gegen_die_kernverwaltung(tmp_path):
@@ -446,7 +446,7 @@ def test_gegenprobe_gegen_die_kernverwaltung(tmp_path):
             {"nr": 20, "label": "Summe ordentliche Aufwendungen",
              "result": 764416063.76, "is_total": 1},
         ], herkunft.Herkunft(
-            art="ris", probe="strukturprobe", document_id=295294,
+            kind="ris", probe="strukturprobe", document_id=295294,
             label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf"))
 
         ist = store.kernverwaltung_ist()

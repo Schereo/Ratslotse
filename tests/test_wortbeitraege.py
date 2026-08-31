@@ -41,25 +41,25 @@ def test_fenster_splitting():
 
 def test_extract_validierung(monkeypatch):
     rows = [
-        {"art": "anfrage", "top": "Ö 5", "speaker": "Ratsfrau Meyer", "party": "SPD",
+        {"kind": "anfrage", "top": "Ö 5", "speaker": "Ratsfrau Meyer", "party": "SPD",
          "text": "Wann wird der Radweg an der Alexanderstraße saniert?",
          "answer": "Die Verwaltung sagt eine Prüfung bis Q3 zu."},
-        {"art": "quatsch", "speaker": "Herr Schulz",
+        {"kind": "quatsch", "speaker": "Herr Schulz",
          "text": "Ein Beitrag mit unbekannter Art wird zur Rede."},
-        {"art": "rede", "speaker": "X", "text": "zu kurz"},
+        {"kind": "rede", "speaker": "X", "text": "zu kurz"},
         "kein dict",
     ]
     _llm_liefert(monkeypatch, [json.dumps(rows)])
     out = wb.extract_wortbeitraege("Protokolltext")
     assert len(out) == 2
-    assert out[0]["art"] == "anfrage" and out[0]["answer"].startswith("Die Verwaltung")
-    assert out[1]["art"] == "rede"  # Fallback bei unbekannter Art
+    assert out[0]["kind"] == "anfrage" and out[0]["answer"].startswith("Die Verwaltung")
+    assert out[1]["kind"] == "rede"  # Fallback bei unbekannter Art
 
 
 def test_choices_null_wird_retried(monkeypatch):
     """Provider liefert choices=null (Content-Filter/Fehler): das darf nicht
     aus der Retry-Schleife ausbrechen (Massenlauf-Befund ksinr 4299/4301)."""
-    eintrag = {"art": "rede", "speaker": "Herr Baak",
+    eintrag = {"kind": "rede", "speaker": "Herr Baak",
                "text": "Die Investitionen zum Stadion stießen auf geteilte Meinungen."}
     antworten = [SimpleNamespace(choices=None, usage=None),
                  SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
@@ -79,7 +79,7 @@ def test_choices_null_wird_retried(monkeypatch):
 def test_leeres_array_auf_grosses_fenster_wird_retried(monkeypatch):
     """Provider-Aussetzer: valides [] auf ein volles Fenster → ein Neuversuch
     (ksinr 4417 lieferte beim ersten Lauf 0, beim zweiten 80 Beiträge)."""
-    eintrag = {"art": "rede", "speaker": "Herr Harms",
+    eintrag = {"kind": "rede", "speaker": "Herr Harms",
                "text": "Die Fliegerhorststraße braucht ein Gutachten zur Nullvariante."}
     calls = _llm_liefert(monkeypatch, ["[]", json.dumps([eintrag])])
     gross = "z" * (wb.LEER_VERDAECHTIG_AB + 1)
@@ -95,7 +95,7 @@ def test_leeres_array_auf_grosses_fenster_wird_retried(monkeypatch):
 def test_abgeschnittenes_json_wird_geborgen(monkeypatch):
     """Token-Limit mitten im Array (Flash auf ksinr 4066): die vollständigen
     Objekte werden gerettet statt das ganze Fenster zu verlieren."""
-    ganz = {"art": "rede", "speaker": "Frau Conty",
+    ganz = {"kind": "rede", "speaker": "Frau Conty",
             "text": "Die SPD unterstützt den Prüfauftrag zur Fliegerhorststraße."}
     kaputt = json.dumps([ganz, ganz], indent=1)[:-30]  # mitten im 2. Objekt gekappt
     calls = _llm_liefert(monkeypatch, [kaputt])
@@ -109,7 +109,7 @@ def test_abgeschnittenes_json_wird_geborgen(monkeypatch):
 
 
 def test_extract_dict_wrapper_und_dedupe(monkeypatch):
-    eintrag = {"art": "rede", "speaker": "Frau Krüger",
+    eintrag = {"kind": "rede", "speaker": "Frau Krüger",
                "text": "Der Fliegerhorst braucht endlich eine Altlastensanierung."}
     # Modell wickelt das Array in ein Objekt; zwei Fenster liefern denselben
     # Beitrag → Dedupe über (sprecher, text-Anfang).
@@ -135,7 +135,7 @@ def store(tmp_path):
     s.close()
 
 
-BEITRAG = {"art": "einwohnerfrage", "top": "Ö 2", "speaker": "Peter Petersen",
+BEITRAG = {"kind": "einwohnerfrage", "top": "Ö 2", "speaker": "Peter Petersen",
            "party": None, "text": "Warum dauert die Sanierung des Fliegerhorst-Geländes so lange?",
            "answer": "Die Altlastenprüfung läuft noch."}
 
@@ -148,7 +148,7 @@ def test_save_fts_und_by_ids(store):
     rows = store.wortbeitraege_by_ids([contribution_id])
     assert rows[0]["committee"] == "Rat der Stadt"
     assert rows[0]["session_date"] == "2026-05-01"
-    assert rows[0]["art"] == "einwohnerfrage"
+    assert rows[0]["kind"] == "einwohnerfrage"
     # Auch der Antwort-Text ist durchsuchbar.
     assert store.search_wortbeitraege_fts("Altlastenprüfung")
 
@@ -185,7 +185,7 @@ def test_paralleler_save_hinterlaesst_keine_fts_waisen(store):
     store.save_wortbeitraege(100, [BEITRAG])
     # Fremde Zeile im selben ksinr simuliert den nebenläufigen Save.
     cur = store._conn.execute(
-        "INSERT INTO council_wortbeitraege (ksinr, position, art, text, extracted_at) "
+        "INSERT INTO council_wortbeitraege (ksinr, position, kind, text, extracted_at) "
         "VALUES (100, 99, 'rede', 'Nebenläufig eingefügter Beitrag über Wechloy.', 'x')")
     store._conn.execute(
         "INSERT INTO council_wortbeitraege_fts(rowid, content) VALUES (?, ?)",
@@ -267,7 +267,7 @@ def test_seiten_aufloesen_ankert_am_sprecher(store):
     ]
     _protokoll_mit_seiten(store, 100, seiten)
     store.save_wortbeitraege(100, [
-        {"art": "rede", "top": "5", "speaker": "Dr. Ratjen-Damerau", "party": "FDP",
+        {"kind": "rede", "top": "5", "speaker": "Dr. Ratjen-Damerau", "party": "FDP",
          "text": "Die FDP begrüßt die Neuausrichtung des Stadtmuseums und den "
                  "Architektenwettbewerb.", "answer": None}])
     from council.wortbeitraege import seiten_aufloesen
@@ -541,10 +541,10 @@ def test_partei_meinungen_cache(store):
 
 def test_debatten_block_format():
     block = qa._debatten_block([
-        {"art": "anfrage", "speaker": "Ratsfrau Meyer", "party": "SPD",
+        {"kind": "anfrage", "speaker": "Ratsfrau Meyer", "party": "SPD",
          "top": "Radweg", "text": "Wann wird saniert?", "answer": "Prüfung bis Q3.",
          "committee": "Verkehrsausschuss", "session_date": "2026-04-12"},
-        {"art": "rede", "speaker": None, "party": None, "top": None,
+        {"kind": "rede", "speaker": None, "party": None, "top": None,
          "text": "Beitrag ohne Metadaten.", "answer": None,
          "committee": None, "session_date": None},
     ])
@@ -563,7 +563,7 @@ def test_debatten_block_format():
 def test_debatten_block_im_antwortprompt(monkeypatch):
     messages, _ = qa._answer_messages(
         "Was ist mit dem Radweg?", [{"id": 1, "title": "T", "official_text": "B"}],
-        debatten=[{"art": "zusage", "speaker": "Stadtbaurat", "party": None,
+        debatten=[{"kind": "zusage", "speaker": "Stadtbaurat", "party": None,
                    "top": None, "text": "Die Verwaltung sagt die Prüfung zu.",
                    "answer": None, "committee": None, "session_date": None}])
     assert "Zusage der Verwaltung von Stadtbaurat" in messages[0]["content"]
@@ -589,11 +589,11 @@ def test_wortbeitraege_zu_beschluessen_koppelt_ueber_die_station(store):
         "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
         "VALUES (4663, 'Ausschuss für Stadtgrün', '2026-02-12', '17:00', 'Rathaus', '2026-02-13')")
     store.save_wortbeitraege(4663, [
-        {"art": "rede", "top": "Fliegerhorst Oldenburg - 2. Grundwassermonitoring ehemalige Schießanlage",
+        {"kind": "rede", "top": "Fliegerhorst Oldenburg - 2. Grundwassermonitoring ehemalige Schießanlage",
          "speaker": "Jaekel", "party": None,
          "text": "Vinylchlorid stammt wahrscheinlich aus der militärischen Nutzung.", "answer": None},
         # Sammel-TOP derselben Sitzung: darf NIE mitkommen.
-        {"art": "anfrage", "top": "16 Anfragen und Anregungen", "speaker": "Oltmanns",
+        {"kind": "anfrage", "top": "16 Anfragen und Anregungen", "speaker": "Oltmanns",
          "party": None, "text": "Frage zu Baumfällungen.", "answer": None},
     ])
     official_text = {"id": 20852, "ksinr": 4663, "item_number": "10",
@@ -612,9 +612,9 @@ def test_wortbeitraege_zu_beschluessen_filtert_optional_nach_person(store):
     """Person + Ort bleibt über den Beschlussanker belegt, ohne Wortmeldungen
     anderer Personen aus demselben TOP mitzunehmen."""
     store.save_wortbeitraege(100, [
-        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Bernhard Ellberg",
+        {"kind": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Bernhard Ellberg",
          "party": "SPD", "text": "Die Halle soll zügig saniert werden.", "answer": None},
-        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Anna Beispiel",
+        {"kind": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Anna Beispiel",
          "party": "CDU", "text": "Die Finanzierung müsse geklärt werden.", "answer": None},
     ])
     official_text = {"id": 77, "ksinr": 100, "item_number": "7",
@@ -629,7 +629,7 @@ def test_wortbeitraege_zu_beschluessen_deckelt_die_menge(store):
         "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
         "VALUES (5000, 'Rat', '2026-03-01', '17:00', 'Rathaus', '2026-03-02')")
     store.save_wortbeitraege(5000, [
-        {"art": "rede", "top": "Grosses Thema", "speaker": f"Redner {i}",
+        {"kind": "rede", "top": "Grosses Thema", "speaker": f"Redner {i}",
          "party": None, "text": f"Beitrag {i}", "answer": None} for i in range(10)
     ])
     b = [{"id": 7, "ksinr": 5000, "item_number": "3", "title": "Grosses Thema"}]

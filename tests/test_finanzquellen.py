@@ -770,7 +770,7 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
     # nicht trägt — so sieht ein Schreibweg aus, der `herkunft_id` vergisst.
     with thh_bestand._conn:  # noqa: SLF001
         thh_bestand._conn.execute(  # noqa: SLF001
-            "INSERT INTO council_steuern (year, art, amount, fetched_at, herkunft_id) "
+            "INSERT INTO council_steuern (year, kind, amount, fetched_at, herkunft_id) "
             "VALUES (2025, 'Gewerbesteuer (-umlage)', 222117000.0, '2026-08-20', NULL)")
     thh_bestand.close()
 
@@ -904,7 +904,7 @@ def staedtevergleich(store: CouncilStore, series: str, years: list[int]) -> None
         store.save_staedtevergleich(series, [
             {"year": year, "key": "403000", "city": "Oldenburg (Oldb), Stadt",
              "indicator": "steuerkraftmesszahl", "value": 1.0, "unit": "teur"},
-        ], h.Herkunft(art="lsn", probe=h.UNGEPRUEFT,
+        ], h.Herkunft(kind="lsn", probe=h.UNGEPRUEFT,
                       url="https://www.statistik.niedersachsen.de/download/227086"))
 
 

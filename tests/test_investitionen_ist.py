@@ -251,7 +251,7 @@ def test_die_probe_ist_dem_herkunfts_register_bekannt():
     nicht erst speichern (``ValueError``) — und ohne Eintrag dort hätte der
     Beleg auf der Seite keinen Satz für Leser*innen."""
     assert "investitionen_ist_zeilensumme" in herkunft.PROBEN
-    h = herkunft.Herkunft(art="stadt", url=ii.TABELLE_URL,
+    h = herkunft.Herkunft(kind="stadt", url=ii.TABELLE_URL,
                           probe="investitionen_ist_zeilensumme")
     assert h.geprueft
     assert herkunft.probe_texte(h.probe)
@@ -277,7 +277,7 @@ def _speichern(store, gelesen):
         part = [z for z in gelesen["zeilen"] if z["accounting_system"] == accounting_system]
         verworfen = [v for v in gelesen["verworfen"] if v["accounting_system"] == accounting_system]
         store.save_investitionen_ist(part, herkunft.Herkunft(
-            art="stadt", url=ii.TABELLE_URL,
+            kind="stadt", url=ii.TABELLE_URL,
             probe="investitionen_ist_zeilensumme",
             citation=f"Tabelle {accounting_system}",
             probe_result=f"{len(part)} Jahrgänge"), verworfen=verworfen)
@@ -318,7 +318,7 @@ def test_ein_zweiter_lauf_laesst_keine_karteileichen(store, gelesen):
     schmaler["sonstige"] = None
     schmaler["total"] = 40_690_000
     store.save_investitionen_ist([schmaler], herkunft.Herkunft(
-        art="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
+        kind="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
     z = next(z for z in store.get_investitionen_ist() if z["year"] == 2025)
     assert [a["field"] for a in z["arten"]] == list(ii.ARTEN["doppik"][:-1])
     assert sum(a["amount"] for a in z["arten"]) == z["total"]
@@ -329,7 +329,7 @@ def test_ein_lauf_raeumt_die_anderen_jahrgaenge_nicht_ab(store, gelesen):
     _speichern(store, gelesen)
     nur_2025 = [z for z in gelesen["zeilen"] if z["year"] == 2025]
     store.save_investitionen_ist(nur_2025, herkunft.Herkunft(
-        art="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
+        kind="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
     assert len(store.get_investitionen_ist()) == 7
 
 
@@ -360,7 +360,7 @@ def test_ein_geretteter_jahrgang_verliert_seinen_lueckeneintrag(store, gelesen):
     geheilt = ii.parse("2019 6.004 3.306 19.304 6.701 626 30.654 66.595", "doppik")
     assert ii.zeilensumme(geheilt[0])[0], "die Testzeile muss die Probe bestehen"
     store.save_investitionen_ist(geheilt, herkunft.Herkunft(
-        art="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
+        kind="stadt", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))
     assert store.get_investitionen_ist_verworfen() == []
     assert 2019 in [z["year"] for z in store.get_investitionen_ist()]
 

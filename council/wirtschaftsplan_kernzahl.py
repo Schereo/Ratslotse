@@ -304,7 +304,7 @@ def herkunft_fuer(plan: Wirtschaftsplan, wort: str, beleglage: str,
                   url: str | None, kvonr: int | None) -> Herkunft:
     """Die Herkunft: die **Vorlage**, mit der Anlage als Gegenprobe."""
     return Herkunft(
-        art="ris",
+        kind="ris",
         # Die zweite Probe steht nur dran, wo sie auch gelaufen ist: Sie hängt
         # an einem Satz, den nicht jede Vorlage schreibt.
         probe=([PROBE_KERNZAHL, PROBE_INVESTITIONEN]

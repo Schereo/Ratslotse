@@ -79,7 +79,7 @@ JAHR = 2024
 def _quelle(year: int, probe: str = "strukturprobe") -> Herkunft:
     """Die Herkunft, die `save_ergebnisrechnung` verlangt — hier nur Beiwerk:
     Das Flussbild liest Zahlen, nicht Belege."""
-    return Herkunft(art="ris", probe=probe, label=f"Jahresabschluss {year}",
+    return Herkunft(kind="ris", probe=probe, label=f"Jahresabschluss {year}",
                     url=f"https://example.org/ja-{year}.pdf",
                     citation="Ergebnisrechnung der Kernverwaltung")
 

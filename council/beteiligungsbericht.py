@@ -1174,7 +1174,7 @@ def konzernvergleich(store, year: int) -> list[dict]:
     Protokoll — nichts, was einen Wert verwirft."""
     entity: dict[str, dict[str, float]] = {}
     for z in store.get_konzern_traeger(year):
-        entity.setdefault(z["entity_key"], {})[z["art"]] = z["amount_keur"]
+        entity.setdefault(z["entity_key"], {})[z["kind"]] = z["amount_keur"]
     if not entity:
         return []
 
@@ -1285,7 +1285,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                  f"widersprechen sich ({w['werte']}) — Wert verworfen")
 
     def anker(e: dict, g: Gesellschaft) -> dict:
-        return {"art": "stadt", "url": e["url"], "label": e["label"],
+        return {"kind": "stadt", "url": e["url"], "label": e["label"],
                 "page": g.seite_gedruckt,
                 "as_of": f"Beteiligungsbericht {e['report_year']}"}
 

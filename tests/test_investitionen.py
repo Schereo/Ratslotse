@@ -223,7 +223,7 @@ def test_alle_hinterlegten_urls_tragen_ihren_jahrgang():
 
 def _speichern(store: CouncilStore, text: str, year: int) -> dict:
     r = inv.lies(text, year)
-    anker = dict(art="opendata", url=f"https://example.org/{year}_Finanzhaushalt.csv",
+    anker = dict(kind="opendata", url=f"https://example.org/{year}_Finanzhaushalt.csv",
                  label=f"Finanzhaushalt der Stadt Oldenburg {year}")
     store.save_investitionen(
         year, r["zeilen"], r["gesamt"],
@@ -299,7 +299,7 @@ def test_probe_ist_mit_erklaersatz_registriert():
     assert "investitionen_summenzeile" in herkunft.PROBEN
     assert "council_investitionen" in herkunft.HERKUNFT_TABELLEN
     with pytest.raises(ValueError):
-        herkunft.Herkunft(art="opendata", probe="gibtsnicht",
+        herkunft.Herkunft(kind="opendata", probe="gibtsnicht",
                           url="https://example.org/x.csv")
 
 

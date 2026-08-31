@@ -320,7 +320,7 @@ class Bewilligung:
     template_number: str
     title: str
     #: :data:`ART_BEWILLIGUNG` | :data:`ART_VERPFLICHTUNG` | :data:`ART_SCHWELLE`
-    art: str
+    kind: str
     category: str
     year: int | None
     #: ``None`` bei :data:`ART_SCHWELLE` — dort ist der Titelbetrag die Grenze.
@@ -353,7 +353,7 @@ class Bewilligung:
     @property
     def zaehlt_in_summe(self) -> bool:
         """Nur erteilte Bewilligungen mit Betrag gehen in eine Jahressumme."""
-        return (self.art == ART_BEWILLIGUNG and self.amount is not None
+        return (self.kind == ART_BEWILLIGUNG and self.amount is not None
                 and self.decided)
 
     @property
@@ -445,7 +445,7 @@ def aus_vorlagen(vorlagen: list[dict],
         value, source = amount(title, v.get("proposed_decision"),
                               v.get("raw_text"))
         out.append(Bewilligung(
-            template_number=nr, title=title, art=art(title),
+            template_number=nr, title=title, kind=art(title),
             category=category(title), year=haushaltsjahr(nr),
             amount=value, amount_source=source,
             beschluesse=tuple(beschluesse.get(nr, ()))))
@@ -478,9 +478,9 @@ def jahressummen(bewilligungen: list[Bewilligung],
         # nur beantragte Vorlage darf kein Jahr mit lauter Nullen erzeugen —
         # das sähe aus wie „2022 gab es nichts" statt „hier ist nichts
         # beschlossen worden".
-        if b.art == ART_SCHWELLE:
+        if b.kind == ART_SCHWELLE:
             eintrag(b.year)["sammelberichte"] += 1
-        elif b.art == ART_VERPFLICHTUNG and b.decided:
+        elif b.kind == ART_VERPFLICHTUNG and b.decided:
             e = eintrag(b.year)
             e["commitments"] += 1
             e["commitments_amount"] += b.amount or 0.0

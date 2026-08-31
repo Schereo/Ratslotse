@@ -1502,7 +1502,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
             "beitraege_liste": [{
                 "speaker": b.get("speaker"),
                 "date": _datum_de(b.get("session_date")),
-                "art": b.get("art"),
+                "art": b.get("kind"),
                 "committee": b.get("committee"),
                 "text": (b.get("text") or "").strip()[:2000],
             } for b in gruppen[e["party"]]],
@@ -1547,7 +1547,7 @@ def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
         wer = d.get("speaker") or "?"
         if d.get("party"):
             wer += f" ({d['party']})"
-        kopf = f"{art_label.get(d.get('art') or 'rede', 'Redebeitrag')} von {wer}"
+        kopf = f"{art_label.get(d.get('kind') or 'rede', 'Redebeitrag')} von {wer}"
         if d.get("session_date"):
             kopf += f" am {_datum_de(d['session_date'])}"
         if d.get("committee"):
@@ -1621,7 +1621,7 @@ def _steuern_block(zeilen: list[dict] | None) -> str:
         return ""
     teile = []
     for r in zeilen:
-        name = "Steuereinnahmen insgesamt" if r["art"] == "total" else r["art"]
+        name = "Steuereinnahmen insgesamt" if r["kind"] == "total" else r["kind"]
         s = f"- {name} ({r['year']}, tatsächlich eingenommen): {_eur(r.get('amount'))}"
         if r.get("year_before") and r.get("amount_before"):
             s += f" — {r['year_before']} waren es {_eur(r['amount_before'])}"
@@ -2114,10 +2114,10 @@ def geld_grafik(store, geld: dict) -> dict | None:
         # Die Art, die die Frage getroffen hat — `steuern_fuer_begriffe` hat
         # sie schon aufgelöst („gewinnt die erste": sie ist die, nach der
         # gefragt wurde; die weiteren sind Beifang der Synonyme).
-        art = geld["taxes"][0]["art"]
+        art = geld["taxes"][0]["kind"]
         series = [{"year": r["year"], "value": round(r["amount"] / 1e6, 1)}
                  for r in store.get_steuereinnahmen()
-                 if r["art"] == art and r.get("amount") is not None]
+                 if r["kind"] == art and r.get("amount") is not None]
         if len(series) >= 2:
             title = ("Steuereinnahmen insgesamt" if art == "total"
                      else f"{art} — Ist-Einnahmen")

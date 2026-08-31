@@ -374,7 +374,7 @@ def _gruppen_store(tmp_path):
             "INSERT INTO council_agenda_items (ksinr, item_number, title, template_number, kvonr, is_public) "
             "VALUES (7, ?, ?, ?, ?, 1)", punkte)
         store._conn.executemany(
-            "INSERT INTO council_vorlagen (kvonr, template_number, title, art, fetched_at) "
+            "INSERT INTO council_vorlagen (kvonr, template_number, title, kind, fetched_at) "
             "VALUES (?, ?, '', ?, datetime('now'))",
             [(101, "26/1", "Beschlussvorlage"), (102, "26/2", "Berichtsvorlage"),
              (103, "26/3", "Beschlussvorlage"), (104, "26/4", "Beschlussvorlage")])
@@ -440,9 +440,9 @@ def test_beschlussvorlage_haelt_die_kenntnisnahme_schranke_auf(tmp_path):
                      "committee": "Verkehrsausschuss"}
         punkte = [
             {**gemeinsam, "title": "VBN-Tarifanpassung 2027 - Beschluss",
-             "art": "Beschlussvorlage"},
+             "kind": "Beschlussvorlage"},
             {**gemeinsam, "title": "Geplante Änderung der Verordnung über Parkgebühren - Bericht",
-             "art": "Berichtsvorlage"},
+             "kind": "Berichtsvorlage"},
         ]
         store._punkte_bewerten(punkte)
         official_text, bericht = punkte

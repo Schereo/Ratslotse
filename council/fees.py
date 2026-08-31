@@ -613,7 +613,7 @@ def herkunft_fuer_satz(satz: Gebuehrensatz, *, url: str | None,
         result += (f"; {satz.amount:.2f} € gegen {satz.prior_year:.2f} € = "
                      f"{satz.change_pct:.2f} %")
     return Herkunft(
-        art="ris", probe=probes, document_id=document_id, label=label,
+        kind="ris", probe=probes, document_id=document_id, label=label,
         url=url, citation=f"Anlage 4, {satz.label}, Vorschlag {satz.year}",
         probe_result=result, as_of=f"Gebührenvorschlag {satz.year}")
 
@@ -630,7 +630,7 @@ def herkunft_fuer(bedarf: Gebuehrenbedarf, *, url: str | None,
                     f"{bedarf.reference_quantity:,.0f} {bedarf.reference_unit} = "
                     f"{bedarf.fee:.3f} €")
     return Herkunft(
-        art="ris",
+        kind="ris",
         probe=probes,
         document_id=document_id,
         label=label or f"Gebührenbedarfsberechnung {bedarf.year}",

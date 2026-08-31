@@ -267,7 +267,7 @@ def main() -> int:
                         f" Mio. € — übernommen ist der Wert, der seine "
                         f"Pro-Kopf-Rechnung erfüllt")
                 geschrieben += store.save_ausgabenreihe(part, h.Herkunft(
-                    art="opendata" if source == "csv" else "stadt",
+                    kind="opendata" if source == "csv" else "stadt",
                     url=(ar.CSV_URLS[accounting_system] if source == "csv"
                          else (url or ar.TABELLE_URL)),
                     label=("Open-Data-Portal der Stadt Oldenburg, Datensatz "

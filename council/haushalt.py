@@ -169,7 +169,7 @@ def parse_steuereinnahmen(csv_text: str) -> list[dict]:
         year = int(cells[0])
         for art, cell in zip(arten, cells[1:]):
             if cell:
-                rows.append({"year": year, "art": art, "amount": float(cell)})
+                rows.append({"year": year, "kind": art, "amount": float(cell)})
     return rows
 
 

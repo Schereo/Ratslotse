@@ -199,7 +199,7 @@ def _anlage(store: CouncilStore, text: str, document_id: int = 297441) -> None:
 
 def _quelle(document_id: int = 297441) -> herkunft.Herkunft:
     return herkunft.Herkunft(
-        art="ris", probe=["ergebnishaushalt_summenzeilen",
+        kind="ris", probe=["ergebnishaushalt_summenzeilen",
                           "ergebnishaushalt_planspalte"],
         document_id=document_id, label="2026 005 Vw Gesamtergebnishaushalt",
         url="https://example.org/geh2026.pdf",
@@ -226,7 +226,7 @@ def test_ansatz_und_finanzplanung_landen_getrennt():
 
     nach_art: dict[str, set[int]] = {}
     for z in r["zeilen"]:
-        nach_art.setdefault(z["art"], set()).add(z["year"])
+        nach_art.setdefault(z["kind"], set()).add(z["year"])
     assert nach_art == {"ansatz": {2026},
                         "finanzplanung": {2027, 2028, 2029}}
 
@@ -240,7 +240,7 @@ def test_ansatz_und_finanzplanung_landen_getrennt():
 def test_die_gespeicherten_betraege_sind_die_des_dokuments():
     """Stichproben gegen das PDF — die dritte Spalte, nicht die letzte."""
     r = eh.lies(GEH_2026)
-    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["art"] == "ansatz"}
+    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["kind"] == "ansatz"}
     assert ansatz[1] == 388_377_600.0        # Steuern und ähnliche Abgaben
     assert ansatz[12] == 788_574_714.0       # Summe ordentliche Erträge
     assert ansatz[20] == 880_775_058.0       # Summe ordentliche Aufwendungen
@@ -248,7 +248,7 @@ def test_die_gespeicherten_betraege_sind_die_des_dokuments():
 
     # Die Finanzplanung trägt andere Zahlen — und zwar die des richtigen Jahres.
     fp = {(z["year"], z["nr"]): z["amount"] for z in r["zeilen"]
-          if z["art"] == "finanzplanung"}
+          if z["kind"] == "finanzplanung"}
     assert fp[(2027, 1)] == 366_584_100.0
     assert fp[(2028, 1)] == 372_762_700.0
     assert fp[(2029, 1)] == 378_699_900.0
@@ -361,7 +361,7 @@ def test_fussnotenzeichen_kosten_keinen_posten():
     Ohne diesen Schnitt fielen die Posten 02 und 05 aus, mit ihnen die
     Summenprobe und damit die Jahrgänge 2025 und 2026, um die es hier geht."""
     r = eh.lies(GEH_2026)
-    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["art"] == "ansatz"}
+    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["kind"] == "ansatz"}
     assert ansatz[2] == 145_012_116.0     # nicht 1,0
     assert ansatz[5] == 26_622_594.0
 
@@ -385,7 +385,7 @@ def test_leerer_posten_faellt_nicht_auf_die_kontenzeile_herein():
 def test_umbrochene_postennamen_bleiben_lesbar():
     """„07. Kostenerstattungen und\\nKostenumlagen" steht über zwei Zeilen."""
     r = eh.lies(GEH_2026)
-    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["art"] == "ansatz"}
+    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["kind"] == "ansatz"}
     assert ansatz[7] == 146_842_124.0
     assert ansatz[15] == 53_098_053.0
 
@@ -394,7 +394,7 @@ def test_zeile_ohne_nummer_hinter_posten_24_bleibt_draussen():
     """Direkt hinter Posten 24 steht „Jahresergebnis …" ohne Postennummer.
     Ihre Zahlen gehörten sonst noch zu 24."""
     r = eh.lies(GEH_2026)
-    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["art"] == "ansatz"}
+    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["kind"] == "ansatz"}
     assert ansatz[24] == 2_909_050.0          # nicht -89.291.295 (Jahresergebnis)
 
 
@@ -423,13 +423,13 @@ def test_store_haelt_ansatz_und_finanzplanung_auseinander(tmp_path):
     assert store.ergebnishaushalt_jahrgaenge() == [2025, 2026]
     # 2026 steht zweimal in der Tabelle — einmal als beschlossener Ansatz,
     # einmal als das, was der Plan 2025 dafür vorausgesehen hatte.
-    fuer_2026 = {(z["plan_budget_year"], z["art"]): z["amount"]
+    fuer_2026 = {(z["plan_budget_year"], z["kind"]): z["amount"]
                  for z in store.get_ergebnishaushalt(year=2026) if z["nr"] == 12}
     assert fuer_2026 == {(2026, "ansatz"): 788_574_714.0,
                          (2025, "finanzplanung"): 755_494_699.0}
 
     # Und die Frage „was gilt?" hat genau eine Antwort.
-    (beschlossen,) = [z for z in store.get_ergebnishaushalt(year=2026, art="ansatz")
+    (beschlossen,) = [z for z in store.get_ergebnishaushalt(year=2026, kind="ansatz")
                       if z["nr"] == 12]
     assert beschlossen["amount"] == 788_574_714.0
     assert beschlossen["plan_budget_year"] == 2026
@@ -598,7 +598,7 @@ def test_plan_faellt_auf_ansatz_zurueck(tmp_path):
     `/haushalt/plan-ist` schrieb „Planwerte konnten wir nicht auslesen" über
     jeden Jahrgang eines nicht neu eingelesenen Bestands."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    q = herkunft.Herkunft(art="ris", probe=herkunft.UNBEKANNT, document_id=1,
+    q = herkunft.Herkunft(kind="ris", probe=herkunft.UNBEKANNT, document_id=1,
                           label="Jahresabschluss 2023", url="https://example.org/ja.pdf")
     # So sieht eine Zeile aus, die vor #510 geschrieben wurde: ansatz ja,
     # plan und plan_kind nein.

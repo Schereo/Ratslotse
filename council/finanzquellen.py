@@ -900,7 +900,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
         # verschiedenen Proben; eine gemeinsame Herkunft wäre für beide
         # ungenau. Die Vorjahres-Kette wird nur genannt, wo sie greift: Ohne
         # gelesenen Nachbarjahrgang gibt es kein Glied, das schließen könnte.
-        anker = dict(art="ris", document_id=v["document_id"], label=label,
+        anker = dict(kind="ris", document_id=v["document_id"], label=label,
                      url=url, as_of=f"Jahresabschluss {year}")
         proben_gesamt = ["strukturprobe"]
         if year - 1 in gelesen or year + 1 in gelesen:
@@ -1030,7 +1030,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                         probe_result=f"Aktiva und Passiva stimmen auf den Cent "
                                        f"überein (Bilanzsumme {summe_de} Mio. €)",
                         as_of=f"31.12.{year}",
-                        art="ris", document_id=v["document_id"],
+                        kind="ris", document_id=v["document_id"],
                         label=label, url=url))
                     neue_einheiten.add((year, "bilanz"))
                     mit_bilanz += 1
@@ -1062,7 +1062,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                                 probe_result="Aktiva und Passiva der Vorjahresspalte "
                                                "stimmen auf den Cent überein",
                                 as_of=f"31.12.{prior_year}",
-                                art="ris", document_id=v["document_id"],
+                                kind="ris", document_id=v["document_id"],
                                 label=label, url=url))
                             p.sagen(f"      + Stichtag {prior_year} aus der "
                                     f"Vorjahresspalte ({a/1e6:.1f} Mio. €)")
@@ -1075,7 +1075,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                                            "wesentlichen Bilanzpositionen",
                                 probe_result=v["erlaeuterungsprobe"],
                                 as_of=f"Jahresabschluss {year}",
-                                art="ris", document_id=v["document_id"],
+                                kind="ris", document_id=v["document_id"],
                                 label=label, url=url))
                         mit_erlaeuterungen += 1
                         p.sagen(f"      + {len(v['erlaeuterungen'])} Erläuterungen "
@@ -1209,7 +1209,7 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
         gegenproben.append(gp)
 
         store.save_ergebnishaushalt(budget_year, gelesen["zeilen"], herkunft.Herkunft(
-            art="ris", probe=["ergebnishaushalt_summenzeilen",
+            kind="ris", probe=["ergebnishaushalt_summenzeilen",
                               "ergebnishaushalt_planspalte"],
             document_id=r["document_id"], label=r["label"], url=r["url"],
             citation="Gesamtergebnishaushalt, Posten 1–24 — Spalte "
@@ -1223,10 +1223,10 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
             # Seite muss das sagen können.
             as_of=f"Haushaltsplan {budget_year}, Anlage 005 — Stand der Einbringung"))
 
-        ansatz = [z for z in gelesen["zeilen"] if z["art"] == "ansatz"]
+        ansatz = [z for z in gelesen["zeilen"] if z["kind"] == "ansatz"]
         e = next((z["amount"] for z in ansatz if z["nr"] == 12), None)
         a = next((z["amount"] for z in ansatz if z["nr"] == 20), None)
-        fp = sorted({z["year"] for z in gelesen["zeilen"] if z["art"] == "finanzplanung"})
+        fp = sorted({z["year"] for z in gelesen["zeilen"] if z["kind"] == "finanzplanung"})
         je_jahrgang[budget_year] = {"zeilen": len(gelesen["zeilen"]),
                                  "ansatz": len(ansatz), "finanzplanung": fp}
         p.sagen(f"  {budget_year}: Ansatz {e/1e6:.1f} Mio. Erträge / {a/1e6:.1f} Mio. "
@@ -1310,7 +1310,7 @@ def lies_investitionsprogramme(store: CouncilStore, p: Protokoll,
             continue
 
         store.save_investitionsprogramm(year, gelesen, herkunft.Herkunft(
-            art="ris", probe=["investitionsprogramm_abschnitt",
+            kind="ris", probe=["investitionsprogramm_abschnitt",
                               "investitionsprogramm_wiederholung",
                               "investitionsprogramm_kopftabelle"],
             document_id=r["document_id"], label=r["label"], url=r["url"],
@@ -1409,7 +1409,7 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
             store.save_stellenplan(
                 budget_year, name, part["zeilen"],
                 herkunft.Herkunft(
-                    art="ris", probe=[pr["probe"] for pr in part["probes"]],
+                    kind="ris", probe=[pr["probe"] for pr in part["probes"]],
                     document_id=r["document_id"], label=r["label"], url=r["url"],
                     citation=f"Teil {name}: {stellenplan.TEIL_NAMEN[name]}",
                     probe_result=part["nachweis"],
@@ -1420,7 +1420,7 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
                 as_of_date=part["as_of_date"])
             neue_einheiten.add((budget_year, name))
 
-            gesamt = next((z for z in part["zeilen"] if z["art"] == "gesamt"), None)
+            gesamt = next((z for z in part["zeilen"] if z["kind"] == "gesamt"), None)
             je_jahrgang[budget_year]["teile"][name] = {
                 "zeilen": len(part["zeilen"]),
                 "stellen": gesamt["positions_planned"] if gesamt else None,
@@ -1510,7 +1510,7 @@ def lies_buergschaften(store: CouncilStore, p: Protokoll) -> dict:
         store.save_buergschaften(
             [{**z, "single_amount": einzeln, "probes": probes}],
             herkunft.Herkunft(
-                art="ris", probe=probes or [buergschaften.PROBE_KETTE],
+                kind="ris", probe=probes or [buergschaften.PROBE_KETTE],
                 document_id=r["document_id"], label=r["label"], url=r["url"],
                 citation=z["citation"],
                 probe_result=(f"{z['balance']/1e6:.1f} Mio. € Bestand"
@@ -1582,7 +1582,7 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
         store.save_anlagenspiegel(
             year, zeilen,
             herkunft.Herkunft(
-                art="ris", probe=sorted({x for z in zeilen for x in z["probes"]}),
+                kind="ris", probe=sorted({x for z in zeilen for x in z["probes"]}),
                 document_id=r["document_id"], label=r["label"], url=r["url"],
                 citation=anlagenspiegel.ABSCHNITT,
                 probe_result=f"{geprueft} Rechenwege geprüft, keiner gerissen",
@@ -1595,7 +1595,7 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
             store.save_vermoegensgruppen(
                 year, gruppen,
                 herkunft.Herkunft(
-                    art="ris", probe=[anlagenspiegel.PROBE_BUCHWERT],
+                    kind="ris", probe=[anlagenspiegel.PROBE_BUCHWERT],
                     document_id=r["document_id"], label=r["label"], url=r["url"],
                     citation="Erläuterungen zum Sachvermögen",
                     probe_result=f"{len(gruppen)} Untergruppen",
@@ -1702,7 +1702,7 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
         store.save_kennzahlen(
             report_year, zeilen, formeln,
             herkunft.Herkunft(
-                art="ris", probe=probes or herkunft.UNGEPRUEFT,
+                kind="ris", probe=probes or herkunft.UNGEPRUEFT,
                 document_id=r["document_id"], label=r["label"], url=r["url"],
                 citation="Anlage: Kennzahlenübersicht und Berechnungsmethoden",
                 probe_result=f"{bilanz_ok} Quoten und {verm_ok} Jahrgänge "
@@ -1769,7 +1769,7 @@ def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,
         store.save_pruefbericht_quelle(
             treffer["year"],
             herkunft.Herkunft(
-                art="ris", probe=probes, document_id=r["document_id"],
+                kind="ris", probe=probes, document_id=r["document_id"],
                 label=r["label"], url=r["url"],
                 citation="Deckblatt und Eingangsformel des Schlussberichts",
                 probe_result=f"Buchstabenanteil im Volltext "
@@ -1869,7 +1869,7 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
                         geschuetzt += 1 if alt else 0
                         continue
                     store.save_produkte(year, stueck, herkunft.Herkunft(
-                        art="ris", probe="produktzeile",
+                        kind="ris", probe="produktzeile",
                         document_id=r["document_id"], label=r["label"], url=r["url"],
                         citation=(f"Teilergebnishaushalt THH{sub_budget_no:02d}, "
                                     f"Produktebene mit Steckbrief" if sub_budget_no
@@ -1966,7 +1966,7 @@ def lies_pruefungsfeststellungen(store: CouncilStore, p: Protokoll,
         marken = Counter(f["mark"] for f in gefunden)
         if not trocken:
             store.save_pruefbericht(year, gefunden, herkunft.Herkunft(
-                art="ris", probe="legende_und_verzeichnis",
+                kind="ris", probe="legende_und_verzeichnis",
                 document_id=r["document_id"], label=r["label"], url=r["url"],
                 # Grob mit Absicht: Die genaue Fundstelle einer Feststellung
                 # ist ihre Textziffer und ihre Seite, und die stehen je Zeile
@@ -2052,7 +2052,7 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
         # Proben gedeckt. `as_of` nennt den Stichtag des Inhalts — bei den
         # Beteiligungen ist genau das der Punkt, an dem sich Konzern- und
         # Einzelabschluss unterscheiden werden.
-        anker = dict(art="ris", document_id=r["document_id"], label=r["label"],
+        anker = dict(kind="ris", document_id=r["document_id"], label=r["label"],
                      url=r["url"], as_of=f"Gesamtabschluss zum 31.12.{year}")
         h_posten = herkunft.Herkunft(
             probe=["konzern_ergebnisprobe", "konzern_ausserordentlich",

@@ -49,6 +49,6 @@ def source():
 
     def bauen(label: str = "Testdokument", url: str | None = "https://example.org/d.pdf",
               probe: str = "strukturprobe", **rest):
-        return Herkunft(art="ris", probe=probe, label=label, url=url, **rest)
+        return Herkunft(kind="ris", probe=probe, label=label, url=url, **rest)
 
     return bauen
