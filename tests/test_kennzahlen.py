@@ -336,6 +336,6 @@ def test_neueste_nimmt_den_juengsten_bericht():
         {"indicator": "steuerquote", "year": 2021, "report_year": 2023, "wert": 45.92},
         {"indicator": "steuerquote", "year": 2021, "report_year": 2022, "wert": 49.05},
     ]
-    reihe = kz.neueste(zeilen)
-    assert len(reihe) == 1
-    assert reihe[0]["wert"] == 45.92 and reihe[0]["report_year"] == 2023
+    series = kz.neueste(zeilen)
+    assert len(series) == 1
+    assert series[0]["wert"] == 45.92 and series[0]["report_year"] == 2023

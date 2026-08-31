@@ -346,7 +346,7 @@ export default function EinnahmenPage() {
           „Schlüsselzuweisungen" steht, sind zwei von drei Komponenten. Der
           Block ersetzt die Zahl nicht, er stellt die vollständige daneben
           (council/steuerkraft.py). */}
-      <ZuweisungDreiteilig reihe={data.finanzausgleich} />
+      <ZuweisungDreiteilig series={data.finanzausgleich} />
 
       {/* Der Satz verglich bis 16.08. die Steuern eines Ist-Jahres mit den
           Ausgaben eines Planjahres („deckt nur einen Teil dessen, was die
@@ -449,7 +449,7 @@ export default function EinnahmenPage() {
                       sie über 700 px bei 46 px Höhe und zog acht Jahrgänge zu
                       einem flachen Draht. */}
                   <ZeitreiheMini
-                    reihe={spendenReihe.map((j) => ({ year: j.year, wert: j.amount }))}
+                    series={spendenReihe.map((j) => ({ year: j.year, wert: j.amount }))}
                     format={(v) => `${Math.round(v / 1000).toLocaleString("de-DE")} Tsd.`}
                     ariaLabel={
                       `Angenommene Zuwendungen je Jahr, ${spendenReihe[0].year} bis `

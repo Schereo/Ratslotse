@@ -34,7 +34,7 @@ export type Gesellschaft = {
 /** Ein Mitglied des Aufsichtsorgans — Betriebsausschuss, Aufsichtsrat oder
  *  Verwaltungsrat, je nach Rechtsform.
  *
- *  `funktion` ist `null`, wo der Bericht die Zuordnung nicht hergibt: Er
+ *  `position` ist `null`, wo der Bericht die Zuordnung nicht hergibt: Er
  *  listet Namen und Funktionen in zwei getrennten Spalten, die sich nur nach
  *  Position paaren lassen — und das ist nur erlaubt, wenn beide Listen exakt
  *  gleich lang sind. `null` heißt deshalb **unbekannt**, nie „keine". Der
@@ -45,7 +45,7 @@ export type Aufsichtsperson = {
   /** Wie das Organ im Bericht heißt — aus der Kopfzeile der Liste. */
   gremium: string | null;
   name: string;
-  funktion: string | null;
+  position: string | null;
   vorsitz: "vorsitz" | "stellvertretung" | null;
   /** Klammerzusatz aus dem Bericht, etwa „bis 30. Juni 2022". */
   note: string | null;
@@ -287,7 +287,7 @@ export function aufsichtsgruppen(personen: Aufsichtsperson[],
                                  zuordenbar: boolean): Aufsichtsgruppe[] {
   const nach = new Map<string, Aufsichtsperson[]>();
   for (const p of personen) {
-    const key = p.vorsitz ? "vorsitz" : ((zuordenbar && p.funktion) || "");
+    const key = p.vorsitz ? "vorsitz" : ((zuordenbar && p.position) || "");
     nach.set(key, [...(nach.get(key) ?? []), p]);
   }
   return [...nach.entries()]

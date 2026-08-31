@@ -322,7 +322,7 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
       {(data.wortbeitraege?.length ?? 0) > 0 && (
         <Wortbeitraege slug={data.slug} erste={data.wortbeitraege ?? []}
           gesamt={data.wortbeitraege_gesamt ?? (data.wortbeitraege?.length ?? 0)}
-          gremien={data.wortbeitraege_gremien ?? []} />
+          committees={data.wortbeitraege_gremien ?? []} />
       )}
 
       {/* Zuletzt anwesend */}
@@ -401,7 +401,7 @@ function VerwaltungProfil({ data }: { data: VerwaltungDetail }) {
       {(data.wortbeitraege?.length ?? 0) > 0 && (
         <Wortbeitraege slug={data.slug} erste={data.wortbeitraege ?? []}
           gesamt={data.wortbeitraege_gesamt ?? (data.wortbeitraege?.length ?? 0)}
-          gremien={data.wortbeitraege_gremien ?? []} />
+          committees={data.wortbeitraege_gremien ?? []} />
       )}
     </Card>
   );
@@ -446,9 +446,9 @@ type WB = NonNullable<MemberDetail["wortbeitraege"]>[number];
  *  zeigen); erst „Mehr anzeigen" oder ein Gremien-Wechsel fragt nach. Der
  *  Filter zeigt die Anzahl je Gremium — bei vierzehn Ausschüssen ist das der
  *  Unterschied zwischen Suchen und Finden. */
-function Wortbeitraege({ slug, erste, gesamt, gremien }: {
+function Wortbeitraege({ slug, erste, gesamt, committees }: {
   slug: string; erste: WB[]; gesamt: number;
-  gremien: { committee: string; n: number }[];
+  committees: { committee: string; n: number }[];
 }) {
   const [items, setItems] = useState<WB[]>(erste);
   const [gremium, setGremium] = useState<string>("");
@@ -485,14 +485,14 @@ function Wortbeitraege({ slug, erste, gesamt, gremien }: {
   return (
     <Section title="Aus den Protokollen"
       aside={`${items.length} von ${total} · Paraphrasen`}>
-      {gremien.length > 1 && (
+      {committees.length > 1 && (
         <div className="mb-2.5">
           <label className="sr-only" htmlFor="wb-gremium">Nach Gremium filtern</label>
           <select id="wb-gremium" value={gremium}
             onChange={(e) => filtern(e.target.value)}
             className="h-8 w-full max-w-[22rem] rounded-[10px] border border-border bg-card px-2 text-[13px] outline-none focus:border-primary">
             <option value="">Alle Gremien ({gesamt})</option>
-            {gremien.map((g) => (
+            {committees.map((g) => (
               <option key={g.committee} value={g.committee}>
                 {shortCommittee(g.committee)} ({g.n})
               </option>

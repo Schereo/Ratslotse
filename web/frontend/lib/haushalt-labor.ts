@@ -24,10 +24,10 @@ import type { VergleichDaten } from "@/lib/haushalt-vergleich";
 export function hebesatzHeute(
   zeilen: HebesatzZeile[] | undefined, art: string,
 ): { satz: number; seit: number } | null {
-  const reihe = (zeilen ?? [])
+  const series = (zeilen ?? [])
     .filter((z) => z.art === art && z.hebesatz != null)
     .sort((a, b) => a.year - b.year);
-  const letzte = reihe.at(-1);
+  const letzte = series.at(-1);
   return letzte ? { satz: letzte.hebesatz as number, seit: letzte.year } : null;
 }
 
@@ -57,7 +57,7 @@ export function grundsteuerAnteilA(vergleich: VergleichDaten | null): number | n
   const oldenburg = vergleich.staedte.find((s) => s.ist_oldenburg)?.schluessel;
   if (!oldenburg) return null;
   const werte = vergleich.werte.filter(
-    (w) => w.reihe === "realsteuern" && w.schluessel === oldenburg
+    (w) => w.series === "realsteuern" && w.schluessel === oldenburg
       && (w.indicator === "ist_je_ew_grundsteuer_a" || w.indicator === "ist_je_ew_grundsteuer_b"));
   const year = Math.max(...werte.map((w) => w.year), -Infinity);
   const a = werte.find((w) => w.year === year && w.indicator === "ist_je_ew_grundsteuer_a")?.wert;
@@ -85,7 +85,7 @@ export function staedteHebesaetze(
   if (year == null) return [];
   const oldenburg = vergleich.staedte.find((s) => s.ist_oldenburg)?.schluessel;
   return vergleich.werte
-    .filter((w) => w.reihe === "realsteuern" && w.year === year && w.indicator === indicator)
+    .filter((w) => w.series === "realsteuern" && w.year === year && w.indicator === indicator)
     .map((w) => ({
       stadt: w.stadt, wert: w.wert, year: w.year,
       istOldenburg: w.schluessel === oldenburg,
@@ -107,13 +107,13 @@ export function staedteHebesaetze(
 export function daempferSpanne(
   steuerkraft: { year: number; messzahl: number | null; allocations: number | null }[],
 ): { verbleibVon: number; verbleibBis: number; paare: number } | null {
-  const reihe = steuerkraft
+  const series = steuerkraft
     .filter((k) => k.messzahl != null && k.allocations != null)
     .sort((a, b) => a.year - b.year);
   const quoten: number[] = [];
-  for (let i = 1; i < reihe.length; i++) {
-    const dMess = (reihe[i].messzahl as number) - (reihe[i - 1].messzahl as number);
-    const dZuw = (reihe[i].allocations as number) - (reihe[i - 1].allocations as number);
+  for (let i = 1; i < series.length; i++) {
+    const dMess = (series[i].messzahl as number) - (series[i - 1].messzahl as number);
+    const dZuw = (series[i].allocations as number) - (series[i - 1].allocations as number);
     // Nur Jahre, in denen die Steuerkraft nennenswert gestiegen ist — ein
     // Verhältnis über einer Mini-Änderung wäre Rauschen, keine Beobachtung.
     if (dMess > 1_000_000) quoten.push(Math.min(1, Math.max(0, -dZuw / dMess)));
@@ -139,18 +139,18 @@ export function daempferSpanne(
  *  mit dem beschlossenen Minus der Ergebnis-Karte zusammen. */
 export function planjahrErgebnisse(
   zeilen: ErgebnishaushaltZeile[] | undefined,
-): { planJahrgang: number; reihe: { year: number; ergebnisMio: number }[] } | null {
+): { planJahrgang: number; series: { year: number; ergebnisMio: number }[] } | null {
   if (!zeilen?.length) return null;
   const budget_year = Math.max(...zeilen.map((z) => z.plan_budget_year));
   const eigene = zeilen.filter((z) => z.plan_budget_year === budget_year);
   const jahre = [...new Set(eigene.map((z) => z.year))].sort((a, b) => a - b);
-  const reihe = jahre.flatMap((year) => {
+  const series = jahre.flatMap((year) => {
     const ordentlich = eigene.find((z) => z.year === year && z.nr === 21)?.amount;
     if (ordentlich == null) return [];
     const ausser = eigene.find((z) => z.year === year && z.nr === 24)?.amount ?? 0;
     return [{ year, ergebnisMio: (ordentlich + ausser) / 1e6 }];
   });
-  return reihe.length >= 2 ? { planJahrgang: budget_year, reihe } : null;
+  return series.length >= 2 ? { planJahrgang: budget_year, series } : null;
 }
 
 export type PfadPunkt = { year: number; stand: number };

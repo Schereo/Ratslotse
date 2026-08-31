@@ -27,7 +27,7 @@ export type VergleichStadt = {
 };
 
 export type VergleichWert = {
-  reihe: "steuerkraft" | "realsteuern";
+  series: "steuerkraft" | "realsteuern";
   year: number;
   schluessel: string;
   stadt: string;
@@ -68,12 +68,12 @@ export function herkunftVon(daten: VergleichDaten,
  *  nicht aufging, steht gar nicht im Bestand (`council/staedtevergleich.py`).
  *  Die Oberfläche zeigt dann eine Lücke, keine geschätzte Zahl. */
 export function indicator(
-  daten: VergleichDaten, reihe: "steuerkraft" | "realsteuern",
+  daten: VergleichDaten, series: "steuerkraft" | "realsteuern",
   name: string, year: number,
 ): Map<string, VergleichWert> {
   const aus = new Map<string, VergleichWert>();
   for (const w of daten.werte) {
-    if (w.reihe === reihe && w.indicator === name && w.year === year) {
+    if (w.series === series && w.indicator === name && w.year === year) {
       aus.set(w.schluessel, w);
     }
   }
@@ -82,8 +82,8 @@ export function indicator(
 
 /** Das jüngste Jahr einer Reihe, für das überhaupt etwas vorliegt. */
 export function juengstesJahr(daten: VergleichDaten,
-                              reihe: "steuerkraft" | "realsteuern"): number | null {
-  const jahre = daten.jahre[reihe] ?? [];
+                              series: "steuerkraft" | "realsteuern"): number | null {
+  const jahre = daten.jahre[series] ?? [];
   return jahre.length ? jahre[jahre.length - 1] : null;
 }
 
@@ -120,9 +120,9 @@ export function steuerkraftJeEinwohner(daten: VergleichDaten, year: number): Bal
 }
 
 /** Eine gespeicherte Pro-Kopf- oder Prozent-Kennzahl als Balkenliste. */
-export function balken(daten: VergleichDaten, reihe: "steuerkraft" | "realsteuern",
+export function balken(daten: VergleichDaten, series: "steuerkraft" | "realsteuern",
                        name: string, year: number): Balken[] {
-  const werte = indicator(daten, reihe, name, year);
+  const werte = indicator(daten, series, name, year);
   const aus: Balken[] = [];
   for (const s of daten.staedte) {
     const w = werte.get(s.schluessel);
@@ -142,7 +142,7 @@ export function platzVonOldenburg(zeilen: Balken[]): number | null {
 }
 
 /** Eine Zeitreihe je Stadt — für die Steuereinnahmekraft über drei Jahre. */
-export function reihe(daten: VergleichDaten, name: string,
+export function series(daten: VergleichDaten, name: string,
                       schluessel: string): { year: number; wert: number }[] {
   return daten.werte
     .filter((w) => w.indicator === name && w.schluessel === schluessel)

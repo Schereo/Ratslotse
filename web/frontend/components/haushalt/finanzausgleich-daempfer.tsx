@@ -67,22 +67,22 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   // der Achse und bleibt deshalb zwanzig Pixel schmaler noch lesbar.
   const { box, breite } = useBreite(640, 260);
 
-  const reihe = steuerkraft
+  const series = steuerkraft
     .filter((k): k is Kraft & { messzahl: number; allocations: number } =>
       k.messzahl != null && k.allocations != null)
     .sort((a, b) => a.year - b.year);
 
   // Vor dem Ausstieg: Ein Hook hinter einem `return` ist kein Hook mehr.
-  const ablesen = useAblesen(reihe.length, Math.max(reihe.length - 1, 0));
+  const ablesen = useAblesen(series.length, Math.max(series.length - 1, 0));
   const beschreibungId = useId();
-  if (reihe.length < 3) return null;
+  if (series.length < 3) return null;
 
   // Wie oft ist die Zuweisung überhaupt gegenläufig? Das ist die einzige
   // Kennzahl, die dieser Block nennt — eine Auszählung, kein Umrechnungskurs.
   // Sie ist gegen einen einheitlichen Jahresversatz immun, weil sie nur
   // aufeinanderfolgende Zeilen derselben Tabelle vergleicht.
-  const steigend = reihe.slice(1)
-    .map((k, i) => ({ dKraft: k.messzahl - reihe[i].messzahl, dZuw: k.allocations - reihe[i].allocations }))
+  const steigend = series.slice(1)
+    .map((k, i) => ({ dKraft: k.messzahl - series[i].messzahl, dZuw: k.allocations - series[i].allocations }))
     .filter((p) => p.dKraft > 0);
   const gegenlaeufig = steigend.filter((p) => p.dZuw < 0).length;
 
@@ -94,16 +94,16 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   // Skala ließen sich hübscher zeichnen, würden aber genau die Aussage
   // erzeugen, die hier widerlegt werden soll: Man kann zwei beliebig
   // gestreckte Kurven immer zur Deckung bringen.
-  const hoechst = Math.max(...reihe.map((k) => Math.max(k.messzahl, k.allocations))) / 1e6;
+  const hoechst = Math.max(...series.map((k) => Math.max(k.messzahl, k.allocations))) / 1e6;
   const hi = Math.ceil(hoechst / 100) * 100;
-  const x = (i: number) => X0 + (i / (reihe.length - 1)) * (X1 - X0);
+  const x = (i: number) => X0 + (i / (series.length - 1)) * (X1 - X0);
   const y = (v: number) => Y0 - (v / hi) * (Y0 - YTOP);
   const pfad = (feld: "messzahl" | "allocations") =>
-    reihe.map((k, i) => `${i ? "L" : "M"}${x(i)} ${y(k[feld] / 1e6)}`).join(" ");
+    series.map((k, i) => `${i ? "L" : "M"}${x(i)} ${y(k[feld] / 1e6)}`).join(" ");
 
   const gitter = [0.5, 1].map((f) => Math.round(hi * f));
-  const schritt = Math.ceil(reihe.length / (schmal ? 4 : 7));
-  const letzte = reihe[reihe.length - 1];
+  const schritt = Math.ceil(series.length / (schmal ? 4 : 7));
+  const letzte = series[series.length - 1];
 
   // Angeschrieben sind dauerhaft die beiden Endwerte — mehr passt zwischen 33
   // Jahrgänge nicht, ohne dass sich die Ziffern überlagern. Jedes einzelne
@@ -111,7 +111,7 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
   // beim Überfahren, Antippen oder mit den Pfeiltasten wechselt. Eine Tabelle
   // hatte dieser Block nie; die vollständige Reihe steht als sr-only-Absatz
   // daneben und wird von der Grafik referenziert.
-  const stellen: AbleseStelle[] = reihe.map((k) => ({
+  const stellen: AbleseStelle[] = series.map((k) => ({
     titel: String(k.year),
     werte: [
       { label: "Steuerkraft", wert: deMio(k.messzahl / 1e6), farbe: "var(--hh-ein-0)" },
@@ -128,7 +128,7 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
           Was das Land gegenrechnet
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          Ausgleichsjahre {reihe[0].year}–{letzte.year}
+          Ausgleichsjahre {series[0].year}–{letzte.year}
         </span>
       </div>
 
@@ -141,13 +141,13 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
 
       <div ref={box} className="mt-3">
         <AbleseBeschreibung id={beschreibungId}>
-          {`Zwei Reihen über die Ausgleichsjahre ${reihe[0].year} bis ${letzte.year}, in Millionen Euro. `
-            + `Steuerkraftmesszahl: ${reihe.map((k) => `${k.year} ${deMio(k.messzahl / 1e6)}`).join(", ")}. `
-            + `Schlüsselzuweisungen: ${reihe.map((k) => `${k.year} ${deMio(k.allocations / 1e6)}`).join(", ")}.`}
+          {`Zwei Reihen über die Ausgleichsjahre ${series[0].year} bis ${letzte.year}, in Millionen Euro. `
+            + `Steuerkraftmesszahl: ${series.map((k) => `${k.year} ${deMio(k.messzahl / 1e6)}`).join(", ")}. `
+            + `Schlüsselzuweisungen: ${series.map((k) => `${k.year} ${deMio(k.allocations / 1e6)}`).join(", ")}.`}
         </AbleseBeschreibung>
         <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
           aria-describedby={beschreibungId}
-          aria-label={`Steuerkraft und Zuweisungen, Ausgleichsjahre ${reihe[0].year} bis ${letzte.year}`}>
+          aria-label={`Steuerkraft und Zuweisungen, Ausgleichsjahre ${series[0].year} bis ${letzte.year}`}>
           {gitter.map((v) => (
             <g key={v}>
               <line x1={X0} y1={y(v)} x2={X1} y2={y(v)} className="stroke-border/60" />
@@ -162,18 +162,18 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
           <path d={pfad("allocations")} fill="none" strokeWidth={2.2} strokeLinejoin="round"
             strokeLinecap="round" style={{ stroke: "var(--hh-aus-2)" }} strokeDasharray="5 3" />
 
-          <text x={x(reihe.length - 1)} y={y(letzte.messzahl / 1e6) - 8} textAnchor="end"
+          <text x={x(series.length - 1)} y={y(letzte.messzahl / 1e6) - 8} textAnchor="end"
             fontSize={fs.wert} fontWeight={700} className="stroke-card" {...halo}
             style={{ fill: "var(--hh-ein-0)" }}>{deMio(letzte.messzahl / 1e6)}</text>
-          <text x={x(reihe.length - 1)} y={y(letzte.allocations / 1e6) - 8} textAnchor="end"
+          <text x={x(series.length - 1)} y={y(letzte.allocations / 1e6) - 8} textAnchor="end"
             fontSize={fs.wert} fontWeight={700} className="stroke-card" {...halo}
             style={{ fill: "var(--hh-aus-2)" }}>{deMio(letzte.allocations / 1e6)}</text>
 
           {/* Die Randbeschriftungen ankern nach innen. Mittig zentriert stand
               die letzte Jahreszahl bei 375 px vier Pixel über der rechten
               SVG-Kante und wurde abgeschnitten (Befund 16.08.2026). */}
-          {reihe.map((k, i) => {
-            const letzterTick = i === reihe.length - 1;
+          {series.map((k, i) => {
+            const letzterTick = i === series.length - 1;
             if (!(i % schritt === 0 || letzterTick)) return null;
             return (
               <text key={k.year} x={x(i)} y={172} fontSize={fs.year}
@@ -192,8 +192,8 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
             x={(i) => x(i)} xVon={X0} xBis={X1}
             yVon={YTOP} hoehe={Y0 - YTOP} fangHoehe={176 - YTOP}
             marken={(i) => [
-              { y: y(reihe[i].messzahl / 1e6), farbe: "var(--hh-ein-0)" },
-              { y: y(reihe[i].allocations / 1e6), farbe: "var(--hh-aus-2)" },
+              { y: y(series[i].messzahl / 1e6), farbe: "var(--hh-ein-0)" },
+              { y: y(series[i].allocations / 1e6), farbe: "var(--hh-aus-2)" },
             ]}
           />
         </svg>

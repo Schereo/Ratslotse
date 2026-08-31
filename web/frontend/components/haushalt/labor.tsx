@@ -81,13 +81,13 @@ function eur(v: number): string {
 /** Geplant gegen tatsächlich (Jahresabschlüsse) — der Maßstab dafür, wie
  *  belastbar die Zahl ist, gegen die hier angerechnet wird. */
 function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
-  const reihe = planGegenIst(daten);
-  if (reihe.length < 2) return null;
-  const spanne = Math.max(...reihe.flatMap((r) => [Math.abs(r.plan), Math.abs(r.ist)]));
-  const besser = reihe.filter((r) => r.delta > 0).length;
-  const deltas = reihe.map((r) => r.delta).sort((a, b) => a - b);
+  const series = planGegenIst(daten);
+  if (series.length < 2) return null;
+  const spanne = Math.max(...series.flatMap((r) => [Math.abs(r.plan), Math.abs(r.ist)]));
+  const besser = series.filter((r) => r.delta > 0).length;
+  const deltas = series.map((r) => r.delta).sort((a, b) => a - b);
   // Jahrgänge, deren „geplant" nicht der nackte Ansatz ist (2018, 2020).
-  const abweichenderBezug = reihe.filter((r) => r.planArt !== "ansatz");
+  const abweichenderBezug = series.filter((r) => r.planArt !== "ansatz");
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -95,16 +95,16 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
         Wie verlässlich ist der Plan?
       </p>
       <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/85">
-        {besser === reihe.length ? (
-          <>In <strong>allen {reihe.length} Jahren</strong>, für die ein Jahresabschluss vorliegt,
+        {besser === series.length ? (
+          <>In <strong>allen {series.length} Jahren</strong>, für die ein Jahresabschluss vorliegt,
           fiel das Ergebnis besser aus als geplant — zwischen {deMio(deltas[0])} und{" "}
           {deMio(deltas[deltas.length - 1])}&#8239;Mio.&nbsp;€.</>
         ) : (
-          <>In {besser} von {reihe.length} Jahren fiel das Ergebnis besser aus als geplant.</>
+          <>In {besser} von {series.length} Jahren fiel das Ergebnis besser aus als geplant.</>
         )}
       </p>
       <div className="mt-3 flex flex-col gap-2">
-        {reihe.map((r) => (
+        {series.map((r) => (
           <div key={r.year} className="flex items-center gap-2.5">
             <span className="w-9 shrink-0 font-mono text-[11px] text-muted-foreground">{r.year}</span>
             {/* Zwei Balken an gemeinsamer Nulllinie: Plan grau, Ist blau. */}
@@ -145,7 +145,7 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
       <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
         Aus den Jahresabschlüssen der Stadt <Beleg q="jahresabschluss" /> — ordentliches plus außerordentliches
         Ergebnis. Das heißt nicht, dass das Minus oben unecht wäre: Es heißt, dass ein Plan Vorsicht
-        einpreist. Für {reihe[reihe.length - 1].year + 1} und später liegt noch kein Abschluss vor.
+        einpreist. Für {series[series.length - 1].year + 1} und später liegt noch kein Abschluss vor.
         {abweichenderBezug.length > 0 && (
           <>
             {" "}* In {abweichenderBezug.map((r) => r.year).join(" und ")} vergleicht der
@@ -253,9 +253,9 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const ruecklage = juengsteRuecklage(daten);
   const ruecklageMio = (ruecklage?.state_after_result ?? 0) / 1e6;
   const pfadOhne = planjahre && ruecklageMio > 0
-    ? ruecklagenPfad(planjahre.reihe, 0, ruecklageMio) : null;
+    ? ruecklagenPfad(planjahre.series, 0, ruecklageMio) : null;
   const pfadMit = planjahre && ruecklageMio > 0
-    ? ruecklagenPfad(planjahre.reihe, wirkung, ruecklageMio) : null;
+    ? ruecklagenPfad(planjahre.series, wirkung, ruecklageMio) : null;
   const daempfer = useMemo(() => daempferSpanne(daten.steuerkraft), [daten.steuerkraft]);
   const reichweiteVorher = basis.defizit > 0 && ruecklageMio > 0
     ? ruecklageMio / basis.defizit : Infinity;

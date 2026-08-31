@@ -42,8 +42,8 @@ function eur(v: number): string {
 /** Die eigene Hebesatz-Geschichte als Mini-Treppe — eine Treppe, keine Kurve:
  *  Tabelle 1105 führt nur Änderungsjahre, dazwischen gilt der Satz weiter
  *  (dieselbe Begründung wie bei der großen Treppe des Steuer-Steckbriefs). */
-function HistorieTreppe({ reihe, bisJahr }: { reihe: HebesatzZeile[]; bisJahr: number }) {
-  const stufen = reihe
+function HistorieTreppe({ series, bisJahr }: { series: HebesatzZeile[]; bisJahr: number }) {
+  const stufen = series
     .filter((z) => z.hebesatz != null)
     .sort((a, b) => a.year - b.year);
   if (stufen.length < 2) return null;
@@ -172,7 +172,7 @@ export function EinnahmenWerkbank({
             deinWert={gewst.satz + punkte}
             geaendert={punkte !== 0}
           />
-          <HistorieTreppe reihe={historie} bisJahr={basisJahr} />
+          <HistorieTreppe series={historie} bisJahr={basisJahr} />
           <Link href="/haushalt/steuer?art=gewerbesteuer"
             className="mt-2.5 inline-flex text-[12px] font-semibold text-primary">
             Wer den Hebesatz beschließt →

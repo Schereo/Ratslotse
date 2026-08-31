@@ -383,7 +383,7 @@ export interface MemberDetail {
   ris: {
     kpenr: number;
     name: string;
-    fraktion_aktuell: string | null;
+    current_faction: string | null;
     memberships: { kgrnr: number | null; gremium: string; role: string | null; von: string | null; bis: string | null }[];
   } | null;
   committees: { committee: string; n: number; chair: boolean }[];

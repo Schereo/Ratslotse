@@ -105,7 +105,7 @@ export function netto(zeile: InvestitionsZeile | null): number | null {
 }
 
 /** Die Zeitreihe der Gesamtinvestitionen, aufsteigend nach Jahr. */
-export function reihe(daten: InvestitionenDaten | null): InvestitionsZeile[] {
+export function series(daten: InvestitionenDaten | null): InvestitionsZeile[] {
   if (!daten) return [];
   return [...daten.gesamt].sort((a, b) => a.year - b.year);
 }

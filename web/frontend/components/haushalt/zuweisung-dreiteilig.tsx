@@ -55,8 +55,8 @@ const TEILE: {
   },
 ];
 
-export function ZuweisungDreiteilig({ reihe }: { reihe?: FinanzausgleichJahr[] }) {
-  const jahre = (reihe ?? []).filter((j) => j.nettobetrag != null);
+export function ZuweisungDreiteilig({ series }: { series?: FinanzausgleichJahr[] }) {
+  const jahre = (series ?? []).filter((j) => j.nettobetrag != null);
   if (!jahre.length) return null;
   const j = jahre[jahre.length - 1];
 

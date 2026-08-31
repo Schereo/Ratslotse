@@ -276,7 +276,7 @@ export type Kennzahlen = {
   label: Record<string, string>;
   /** Schlüssel → „prozent" | „eur" | „anzahl". */
   einheit: Record<string, string>;
-  reihe: KennzahlPunkt[];
+  series: KennzahlPunkt[];
   formeln: KennzahlFormel[];
   funde: KennzahlFund[];
 };
@@ -485,7 +485,7 @@ export type Nachbewilligung = {
   ratsentscheidung: 0 | 1;
   /** Ziel für den Link auf die vorhandene Beschluss-Seite. */
   decision_id: number | null;
-  gremien: string[];
+  committees: string[];
   fulltext_probe: 0 | 1;
   herkunft_id: number | null;
 };
@@ -559,7 +559,7 @@ export type SpendenVorlage = {
   amount: number;
   gremium?: string | null;
   /** „identisch" oder „zerlegung" — wie die Zweitstelle den Betrag belegt. */
-  zweitstelle: string;
+  second_mention: string;
   probes: string[];
   herkunft_id?: number | null;
 };
@@ -693,7 +693,7 @@ export const AUSGABEN_QUELLE_LABEL: Record<Ausgabenquelle, string> = {
  *  `council/store.py`. */
 export type AusgabenreiheJahr = {
   year: number;
-  regelwerk: Regelwerk;
+  accounting_system: Regelwerk;
   amount: number;
   quelle: Ausgabenquelle;
   probes: string[];
@@ -711,7 +711,7 @@ export type Ausgabenreihe = {
   naht_ab: number;
   /** Je Regelwerk der Titel der Quelle und ihre Abgrenzung. Beide reisen mit
    *  den Daten, damit die Legende nicht in zwei Sprachen existiert. */
-  regelwerke: Record<Regelwerk, { label: string; titel: string; abgrenzung: string }>;
+  accounting_systems: Record<Regelwerk, { label: string; titel: string; abgrenzung: string }>;
 };
 
 /** „Geplant gegen tatsächlich" je abgeschlossenem Jahr, in Mio.

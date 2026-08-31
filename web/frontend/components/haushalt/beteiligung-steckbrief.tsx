@@ -30,7 +30,7 @@
 //     in einer dritten. Wer keinen Eintrag hat, bleibt ein Element ohne Link;
 //     erfunden wird nichts.
 //
-// `funktion: null` HEISST UNBEKANNT, NICHT „KEINE". Der Bericht führt Namen
+// `position: null` HEISST UNBEKANNT, NICHT „KEINE". Der Bericht führt Namen
 // und Funktionen in zwei getrennten Spalten; paaren lassen sie sich nur nach
 // Position, und das nur bei exakt gleicher Länge. Wo die Probe scheitert
 // (`roles_assignable === false`), zeigt die Seite die Namen OHNE Ämter
@@ -163,7 +163,7 @@ function Kopfzahl({ titel, k }: { titel: string; k: Kennzahl | null }) {
 function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft }) {
   const alleReihen = useMemo(() => reihen(daten, g.gesellschaft), [daten, g.gesellschaft]);
   const ergebnisse = alleReihen.get("jahresergebnis") ?? [];
-  const reihe = ergebnisReihe(ergebnisse);
+  const series = ergebnisReihe(ergebnisse);
   const von = ergebnisse[0]?.year, bis = ergebnisse[ergebnisse.length - 1]?.year;
   const quote = alleReihen.get("eigenkapitalquote") ?? [];
   // Die Eigenkapitalquote des jüngsten Jahres trägt keine Probe und steht
@@ -191,10 +191,10 @@ function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft })
             );
           })}
         </dl>
-        {reihe.length >= 2 && (
+        {series.length >= 2 && (
           <div className="w-[168px] flex-none">
             <ZeitreiheMini
-              reihe={reihe}
+              series={series}
               format={(v) => deZahl(v, 1)}
               ariaLabel={`Jahresergebnis ${von} bis ${bis} in Mio. Euro: ${ergebnisse
                 .map((k) => `${k.year} ${eur(k.wert)}`).join(", ")}.`}
@@ -315,7 +315,7 @@ function Eigentuemerstreifen({ liste, herkunft }: {
  *  einem Aufsichtsmandat ein Plakat. */
 function Person({ p, zeigeFunktion }: { p: Aufsichtsperson; zeigeFunktion: boolean }) {
   const dot = p.partei ? parteiDot(p.partei) : null;
-  const zusatz = [zeigeFunktion ? p.funktion : null, p.note].filter(Boolean).join(" · ");
+  const zusatz = [zeigeFunktion ? p.position : null, p.note].filter(Boolean).join(" · ");
 
   return (
     <li className="min-w-0 rounded-xl border border-border px-3 py-2">

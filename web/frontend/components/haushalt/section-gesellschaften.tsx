@@ -95,7 +95,7 @@ function Karte({ daten, g, onOeffnen }: {
   const juengstes = ergebnisse[ergebnisse.length - 1] ?? null;
   const satz = auftragSatz(daten, g);
   const einordnung = einordnungFuer(daten, g, ergebnisse);
-  const reihe = ergebnisReihe(ergebnisse);
+  const series = ergebnisReihe(ergebnisse);
   const von = ergebnisse[0]?.year, bis = juengstes?.year;
   const anteil = stadtAnteil(daten, g.gesellschaft);
 
@@ -143,10 +143,10 @@ function Karte({ daten, g, onOeffnen }: {
               {wertText(juengstes)}
             </p>
           </div>
-          {reihe.length >= 2 && (
+          {series.length >= 2 && (
             <div className="w-[128px] flex-none pb-0.5">
               <ZeitreiheMini
-                reihe={reihe}
+                series={series}
                 format={(v) => deZahl(v, 1)}
                 ariaLabel={`Jahresergebnis ${von} bis ${bis} in Mio. Euro: ${ergebnisse
                   .map((k) => `${k.year} ${eur(k.wert)}`).join(", ")}.`}

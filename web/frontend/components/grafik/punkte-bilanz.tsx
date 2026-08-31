@@ -50,7 +50,7 @@ export type PunkteZeile = {
   /** Identitätspunkt (8 px). Ohne Angabe neutral — Gruppen und kombinierte
    *  Labels bekommen NIE die Farbe der erstgenannten Partei. */
   farbe?: { bg: string; ring?: boolean };
-  gremien: { fa: PunkteStand; rat: PunkteStand };
+  committees: { fa: PunkteStand; rat: PunkteStand };
 };
 
 /** Punktgröße in px — fest, auf jedem Gerät (H4-A: „Fairness-Regel gilt auf
@@ -113,8 +113,8 @@ function Punkte({ stand, kontext }: { stand: PunkteStand; kontext: string }) {
 
 function summe(z: PunkteZeile): PunkteStand {
   return {
-    ein: z.gremien.fa.ein + z.gremien.rat.ein,
-    durch: z.gremien.fa.durch + z.gremien.rat.durch,
+    ein: z.committees.fa.ein + z.committees.rat.ein,
+    durch: z.committees.fa.durch + z.committees.rat.durch,
   };
 }
 
@@ -177,10 +177,10 @@ export function PunkteBilanz({ zeilen, beleg, className }: {
                   </span>
                 </div>
                 <div role="cell" className={cn("flex min-h-[38px] items-center border-t border-border/60", TRENNER)}>
-                  <Punkte stand={z.gremien.fa} kontext="Im Finanzausschuss" />
+                  <Punkte stand={z.committees.fa} kontext="Im Finanzausschuss" />
                 </div>
                 <div role="cell" className={cn("flex min-h-[38px] items-center border-t border-border/60", TRENNER)}>
-                  <Punkte stand={z.gremien.rat} kontext="Im Rat" />
+                  <Punkte stand={z.committees.rat} kontext="Im Rat" />
                 </div>
                 <div role="cell" className={cn("flex min-h-[38px] items-center justify-end border-t border-border/60 font-mono text-[12px] tabular-nums", TRENNER)}>
                   {s.ein}
@@ -215,11 +215,11 @@ export function PunkteBilanz({ zeilen, beleg, className }: {
                 <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                   FA
                 </span>
-                <Punkte stand={z.gremien.fa} kontext="Im Finanzausschuss" />
+                <Punkte stand={z.committees.fa} kontext="Im Finanzausschuss" />
                 <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                   Rat
                 </span>
-                <Punkte stand={z.gremien.rat} kontext="Im Rat" />
+                <Punkte stand={z.committees.rat} kontext="Im Rat" />
               </div>
             </li>
           );

@@ -90,7 +90,7 @@ export default function HaushaltPage() {
         ? {
             year: y,
             teile: [{
-              art: data.ausgabenreihe.regelwerke[z.regelwerk].titel,
+              art: data.ausgabenreihe.accounting_systems[z.accounting_system].titel,
               wert: z.amount / 1e6,
             }],
           }
@@ -362,10 +362,10 @@ export default function HaushaltPage() {
                  ["doppik", `ab ${nahtAb}`]] as const).map(([r, spanne]) => (
                 <div key={r}>
                   <dt className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                    {spanne} · {data.ausgabenreihe!.regelwerke[r].titel}
+                    {spanne} · {data.ausgabenreihe!.accounting_systems[r].titel}
                   </dt>
                   <dd className="mt-1 max-w-[74ch] text-[12px] leading-relaxed text-foreground/80">
-                    {data.ausgabenreihe!.regelwerke[r].abgrenzung}
+                    {data.ausgabenreihe!.accounting_systems[r].abgrenzung}
                   </dd>
                 </div>
               ))}

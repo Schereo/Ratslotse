@@ -2087,16 +2087,16 @@ def geld_grafik(store, geld: dict) -> dict | None:
     Antwort sieht aus wie bisher — das Gate erledigt sich über die Daten.
     """
     if geld.get("schulden"):
-        reihe = [{"year": r["year"], "wert": round(r["insgesamt"] / 1e6, 1)}
+        series = [{"year": r["year"], "wert": round(r["insgesamt"] / 1e6, 1)}
                  for r in store.get_schulden() if r.get("insgesamt") is not None]
-        if len(reihe) >= 2:
+        if len(series) >= 2:
             s = geld["schulden"]
             return {
                 "art": "schulden",
                 "titel": "Schuldenstand der Stadt",
                 "einheit": "Mio. €",
                 "nachkomma": 1,
-                "reihe": reihe,
+                "series": series,
                 # Die Abgrenzung reist mit der Grafik wie mit jeder Zahl:
                 # Ohne sie ist „337 Mio. €" eine von drei Zahlen, die alle
                 # „die Schulden der Stadt" heißen.
@@ -2115,10 +2115,10 @@ def geld_grafik(store, geld: dict) -> dict | None:
         # sie schon aufgelöst („gewinnt die erste": sie ist die, nach der
         # gefragt wurde; die weiteren sind Beifang der Synonyme).
         art = geld["steuern"][0]["art"]
-        reihe = [{"year": r["year"], "wert": round(r["amount"] / 1e6, 1)}
+        series = [{"year": r["year"], "wert": round(r["amount"] / 1e6, 1)}
                  for r in store.get_steuereinnahmen()
                  if r["art"] == art and r.get("amount") is not None]
-        if len(reihe) >= 2:
+        if len(series) >= 2:
             titel = ("Steuereinnahmen insgesamt" if art == "insgesamt"
                      else f"{art} — Ist-Einnahmen")
             return {
@@ -2126,7 +2126,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
                 "titel": titel,
                 "einheit": "Mio. €",
                 "nachkomma": 1,
-                "reihe": reihe,
+                "series": series,
                 "note": ("Abrechnungszahlen der Stadt, keine Planwerte — "
                             "je Jahr das, was tatsächlich eingenommen wurde."),
                 "quelle": "Statistisches Jahrbuch der Stadt Oldenburg, Ist-Steuereinnahmen",
@@ -2293,8 +2293,8 @@ def _konzern_block(k: dict | None) -> str:
         zeilen.append(f"- Davon Kernverwaltung (der „normale“ Haushalt) {k['year']}: "
                       f"Aufwendungen {_eur(kern['expenses'])} — die Differenz sind "
                       f"Eigenbetriebe und Beteiligungen")
-    for t in (k.get("traeger") or [])[:4]:
-        zeilen.append(f"- {t['traeger']}: {_eur((t.get('amount_keur') or 0) * 1000)} "
+    for t in (k.get("entity") or [])[:4]:
+        zeilen.append(f"- {t['entity']}: {_eur((t.get('amount_keur') or 0) * 1000)} "
                       f"Aufwendungen (auf Tausend Euro exact, mehr gibt der Bericht nicht her)")
     return (f"\nDER KONZERN STADT OLDENBURG (konsolidierter Gesamtabschluss {k['year']} —\n"
             "Kernverwaltung PLUS Eigenbetriebe und Beteiligungen). Nutze das, wenn nach\n"

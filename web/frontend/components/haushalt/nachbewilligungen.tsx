@@ -344,7 +344,7 @@ export function NachbewilligungsBefund({ daten }: { daten: HaushaltAuswahl<"nach
   // Oberbürgermeister oder eine Eilentscheidung), und solche, zu denen im
   // Bestand kein Ergebnis steht.
   const unterrichtet = serie.filter(
-    (n) => n.beschlossen === 0 && n.gremien.length > 0).length;
+    (n) => n.beschlossen === 0 && n.committees.length > 0).length;
   const ohneErgebnis = serie.length - beschlossen - unterrichtet;
   return (
     <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">

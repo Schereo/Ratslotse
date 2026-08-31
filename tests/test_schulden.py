@@ -410,13 +410,13 @@ def test_endpunkt_liefert_reihe_abgrenzung_und_belege(tmp_path, gelesen):
         antwort = haushalt_schulden(_user=None, store=store)
 
         assert antwort["jahre"][-1] == 2025
-        assert antwort["reihe"][-1]["insgesamt"] == 336_994_000
+        assert antwort["series"][-1]["insgesamt"] == 336_994_000
         # Die Abgrenzung kommt aus dem Parser-Modul, nicht aus dem Frontend.
         assert antwort["abgrenzung"] == schulden.ABGRENZUNG
         assert [a["feld"] for a in antwort["arten"]] == list(schulden.ARTEN)
 
         # Jede Zeile findet ihren Beleg, und der trägt Erklärsätze.
-        for zeile in antwort["reihe"]:
+        for zeile in antwort["series"]:
             h = antwort["herkunft"][str(zeile["herkunft_id"])]
             assert h["probes"], "Beleg ohne Erklärsatz"
             assert h["url"]
@@ -438,7 +438,7 @@ def test_endpunkt_bleibt_ohne_bestand_ruhig(tmp_path):
     store = CouncilStore(tmp_path / "leer.sqlite")
     try:
         antwort = haushalt_schulden(_user=None, store=store)
-        assert antwort["reihe"] == [] and antwort["jahre"] == []
+        assert antwort["series"] == [] and antwort["jahre"] == []
         assert antwort["abgrenzung"]
     finally:
         store.close()

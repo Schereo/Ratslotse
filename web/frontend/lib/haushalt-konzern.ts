@@ -35,8 +35,8 @@ export type KonzernJahr = {
 export type KonzernTraeger = {
   year: number;
   art: "revenues" | "expenses";
-  traeger_key: string;
-  traeger: string;
+  entity_key: string;
+  entity: string;
   /** Euro — aus TEUR hochgerechnet, deshalb auf Tausend glatt. */
   amount: number;
   prior_year: number | null;
@@ -64,7 +64,7 @@ export type Gegenprobe = {
 export type KonzernDaten = {
   jahre: number[];
   konzern: KonzernJahr[];
-  traeger: KonzernTraeger[];
+  entity: KonzernTraeger[];
   posten: KonzernPosten[];
   gegenprobe: Gegenprobe[];
   /** Nach `herkunft_id`. Die beiden Ebenen eines Jahrgangs tragen
@@ -116,16 +116,16 @@ export function jahrDaten(daten: KonzernDaten, year: number): KonzernJahr | null
 export function traegerListe(
   daten: KonzernDaten, year: number, art: "revenues" | "expenses",
 ): KonzernTraeger[] {
-  return daten.traeger
-    .filter((t) => t.year === year && t.art === art && t.traeger_key !== KONSOLIDIERUNG)
+  return daten.entity
+    .filter((t) => t.year === year && t.art === art && t.entity_key !== KONSOLIDIERUNG)
     .sort((a, b) => b.amount - a.amount);
 }
 
 export function konsolidierung(
   daten: KonzernDaten, year: number, art: "revenues" | "expenses",
 ): KonzernTraeger | null {
-  return daten.traeger.find(
-    (t) => t.year === year && t.art === art && t.traeger_key === KONSOLIDIERUNG) ?? null;
+  return daten.entity.find(
+    (t) => t.year === year && t.art === art && t.entity_key === KONSOLIDIERUNG) ?? null;
 }
 
 /** Jahre, für die die Trägeraufstellung vorliegt — nicht dieselben wie
@@ -133,7 +133,7 @@ export function konsolidierung(
  *  2018 ist die Aufwendungsseite an ihrer eigenen Probe gescheitert. */
 export function traegerJahre(daten: KonzernDaten,
                              art?: "revenues" | "expenses"): number[] {
-  const jahre = daten.traeger
+  const jahre = daten.entity
     .filter((t) => !art || t.art === art)
     .map((t) => t.year);
   return [...new Set(jahre)].sort((a, b) => a - b);
@@ -148,8 +148,8 @@ export function kernAnteil(
 ): { kern: number; konzern: number; anteil: number } | null {
   const jd = jahrDaten(daten, year);
   const konzern = art === "revenues" ? jd?.revenues_total : jd?.expenses_total;
-  const kern = daten.traeger.find(
-    (t) => t.year === year && t.art === art && t.traeger_key === "stadt");
+  const kern = daten.entity.find(
+    (t) => t.year === year && t.art === art && t.entity_key === "stadt");
   if (!konzern || !kern) return null;
   return { kern: kern.amount, konzern, anteil: kern.amount / konzern };
 }

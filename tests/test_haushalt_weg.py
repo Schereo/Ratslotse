@@ -87,7 +87,7 @@ def test_runde_hat_einbringung_fachausschuesse_und_stationen(store):
 
     assert r["fachausschuesse"] == {
         "von": "2025-11-11", "bis": "2025-11-11", "count": 1,
-        "gremien": ["Schulausschuss"],
+        "committees": ["Schulausschuss"],
     }
 
     assert [(s["datum"], s["gremium"], s["result"]) for s in r["stationen"]] == [
@@ -129,7 +129,7 @@ def test_schreibweisen_des_titels(store, titel):
     runde_2026(store)
     store._conn.execute("UPDATE council_vorlagen SET title = ? WHERE kvonr = 101", (titel,))
     [r] = store.haushalt_weg()
-    assert r["fachausschuesse"]["gremien"] == ["Schulausschuss"]
+    assert r["fachausschuesse"]["committees"] == ["Schulausschuss"]
 
 
 def test_haushaltsplan_einer_stiftung_ist_keine_runde(store):

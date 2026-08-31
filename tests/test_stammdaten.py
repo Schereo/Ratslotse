@@ -130,7 +130,7 @@ def test_store_persons_memberships_and_slug_match(tmp_path):
     ])
     # Slug-Match über Titel-Varianten hinweg (Anwesenheit schreibt teils "Dr. ...")
     p = store.person_stammdaten_for_names(["Dr. Hans-Henning Adler"])
-    assert p and p["kpenr"] == 4 and p["fraktion_aktuell"] == "BSW"
+    assert p and p["kpenr"] == 4 and p["current_faction"] == "BSW"
     # Laufende Mitgliedschaft zuerst
     assert p["memberships"][0]["bis"] is None
     assert store.person_stammdaten_for_names(["Unbekannte Person"]) is None

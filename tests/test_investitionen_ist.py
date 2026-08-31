@@ -105,8 +105,8 @@ def test_ohne_titel_kein_abschnitt():
 
 def test_beide_reihen_kommen_mit_ihren_eigenen_arten(gelesen):
     """Kameral vier Auszahlungsarten, doppisch sechs — je Regelwerk eigene."""
-    kameral = [z for z in gelesen["zeilen"] if z["regelwerk"] == "kameral"]
-    doppik = [z for z in gelesen["zeilen"] if z["regelwerk"] == "doppik"]
+    kameral = [z for z in gelesen["zeilen"] if z["accounting_system"] == "kameral"]
+    doppik = [z for z in gelesen["zeilen"] if z["accounting_system"] == "doppik"]
     assert [z["year"] for z in kameral] == [2003, 2009]
     assert [z["year"] for z in doppik] == [2010, 2017, 2018, 2020, 2025]
     assert len(ii.ARTEN["kameral"]) == 4
@@ -273,30 +273,30 @@ def store(tmp_path):
 
 
 def _speichern(store, gelesen):
-    for regelwerk in ("kameral", "doppik"):
-        teil = [z for z in gelesen["zeilen"] if z["regelwerk"] == regelwerk]
-        verworfen = [v for v in gelesen["verworfen"] if v["regelwerk"] == regelwerk]
+    for accounting_system in ("kameral", "doppik"):
+        teil = [z for z in gelesen["zeilen"] if z["accounting_system"] == accounting_system]
+        verworfen = [v for v in gelesen["verworfen"] if v["accounting_system"] == accounting_system]
         store.save_investitionen_ist(teil, herkunft.Herkunft(
             art="stadt", url=ii.TABELLE_URL,
             probe="investitionen_ist_zeilensumme",
-            citation=f"Tabelle {regelwerk}",
+            citation=f"Tabelle {accounting_system}",
             probe_result=f"{len(teil)} Jahrgänge"), verworfen=verworfen)
 
 
 def test_speichern_und_lesen(store, gelesen):
     _speichern(store, gelesen)
-    reihe = store.get_investitionen_ist()
-    assert [z["year"] for z in reihe] == [2003, 2009, 2010, 2017, 2018, 2020, 2025]
-    juengster = reihe[-1]
-    assert juengster["regelwerk"] == "doppik"
+    series = store.get_investitionen_ist()
+    assert [z["year"] for z in series] == [2003, 2009, 2010, 2017, 2018, 2020, 2025]
+    juengster = series[-1]
+    assert juengster["accounting_system"] == "doppik"
     assert juengster["insgesamt"] == 60_773_000
     # Die Arten kommen in der Spaltenfolge der Quelle und tragen ihren Titel.
     assert [a["titel"] for a in juengster["arten"]] == [
         t for _, t in ii.SPALTEN["doppik"][:-1]]
     assert sum(a["amount"] for a in juengster["arten"]) == juengster["insgesamt"]
     # Und die kamerale Zeile hat ihre eigenen vier.
-    assert len(reihe[0]["arten"]) == 4
-    assert reihe[0]["arten"][0]["titel"] == "Gewährung von Darlehen"
+    assert len(series[0]["arten"]) == 4
+    assert series[0]["arten"][0]["titel"] == "Gewährung von Darlehen"
 
 
 def test_jede_zeile_traegt_eine_herkunft(store, gelesen):
@@ -343,7 +343,7 @@ def test_die_verworfenen_jahrgaenge_stehen_mit_ihrer_differenz_im_bestand(
     _speichern(store, gelesen)
     verworfen = store.get_investitionen_ist_verworfen()
     assert [v["year"] for v in verworfen] == [2019]
-    assert verworfen[0]["regelwerk"] == "doppik"
+    assert verworfen[0]["accounting_system"] == "doppik"
     assert verworfen[0]["difference"] == -1_304_000
     assert verworfen[0]["herkunft_id"] is not None
     # Und der Jahrgang steht NICHT in der Reihe — die Lücke ist kein Wert.

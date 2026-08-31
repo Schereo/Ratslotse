@@ -211,7 +211,7 @@ def out_next_year(gefunden: dict) -> dict | None:
     }
 
 
-def reihe(gefundene: list[dict]) -> list[dict]:
+def series(gefundene: list[dict]) -> list[dict]:
     """Die fertige Reihe: eigene Fundstellen, Lücken aus dem Folgejahr gefüllt.
 
     Die Regel steht hier und nicht beim Aufrufer, weil sie leicht falsch

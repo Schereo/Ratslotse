@@ -1034,7 +1034,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert personen[0]["gremium"] == "Betriebsausschuss"
     assert personen[0]["vorsitz"] == "vorsitz"
     assert personen[1]["vorsitz"] == "stellvertretung"
-    assert all(p["funktion"] == "Ratsmitglied" for p in personen)
+    assert all(p["position"] == "Ratsmitglied" for p in personen)
     # Ohne Personenverzeichnis im Testbestand gibt es keinen Treffer — und
     # dann steht dort ausdrücklich nichts statt irgendwer.
     assert all(p["slug"] is None and p["partei"] is None for p in personen)
@@ -1082,7 +1082,7 @@ def test_beteiligungen_namensvetter_bekommt_keinen_slug():
             ]
 
     z = _lexikon_zuordnung(Lexikon(), [
-        {"name": n, "funktion": "Ratsmitglied"} for n in (
+        {"name": n, "position": "Ratsmitglied"} for n in (
             "Dr. Sebastian Rohe", "Dr. Georg Rohe", "Rohe", "Christine Wolff",
             "Peter Schmidt", "Vertreter/in der Landessparkasse zu Oldenburg")])
     # Vor- und Nachname zusammen sind eindeutig — Titel zählen nicht mit.
@@ -1127,9 +1127,9 @@ def test_beteiligungen_verlinkt_nur_wer_eine_seite_hat():
             ]
 
     z = _lexikon_zuordnung(Lexikon(), [
-        {"name": "Jürgen Krogmann", "funktion": "Oberbürgermeister"},
-        {"name": "Karin Harms", "funktion": "Landrätin"},
-        {"name": "Claudia Oeljeschleger", "funktion": "Ratsmitglied"},
+        {"name": "Jürgen Krogmann", "position": "Oberbürgermeister"},
+        {"name": "Karin Harms", "position": "Landrätin"},
+        {"name": "Claudia Oeljeschleger", "position": "Ratsmitglied"},
     ])
     # Bekannt, aber ohne Seite → kein Link.
     assert z["Jürgen Krogmann"]["slug"] is None
@@ -1163,11 +1163,11 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
             [{"nr": 13, "label": "Summe ordentliche Erträge",
               "role": "revenues_total", "amount": 1241548906.55,
               "prior_year": 1139375959.21, "is_total": 1}],
-            [{"art": "revenues", "traeger_key": "stadt",
-              "traeger": "Kernverwaltung (Stadt Oldenburg)",
+            [{"art": "revenues", "entity_key": "stadt",
+              "entity": "Kernverwaltung (Stadt Oldenburg)",
               "amount_keur": 799057.0, "prior_year_keur": 732987.0},
-             {"art": "revenues", "traeger_key": "klinikum",
-              "traeger": "Klinikum Oldenburg AöR",
+             {"art": "revenues", "entity_key": "klinikum",
+              "entity": "Klinikum Oldenburg AöR",
               "amount_keur": 368100.0, "prior_year_keur": 336858.0}],
             herkunft.Herkunft(probe=["konzern_ergebnisprobe", "konzern_ausserordentlich",
                                      "konzern_gesamtergebnis"],
@@ -1182,7 +1182,7 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
     assert b["jahre"] == [2024]
     assert b["konzern"][0]["revenues_total"] == 1241548906.55
     # Träger kommen in Euro heraus, gespeichert sind sie in TEUR.
-    stadt = next(t for t in b["traeger"] if t["traeger_key"] == "stadt")
+    stadt = next(t for t in b["entity"] if t["entity_key"] == "stadt")
     assert stadt["amount"] == 799057000.0
     # Die beiden Ebenen tragen verschiedene Herkünfte — verschiedene
     # Abschnitte desselben Berichts, verschiedene Proben.
@@ -1219,7 +1219,7 @@ def test_haushalt_gebaut_beziffert_seine_luecken(client):
             "2020 9.165 1.753 16.462 8.340 495 34.266 70.481\n", "doppik")
         gut = [z for z in zeilen if ii.zeilensumme(z)[0]]
         assert [z["year"] for z in gut] == [2018, 2020], "2019 muss reißen"
-        verworfen = [{"year": 2019, "regelwerk": "doppik", "difference": -1_304_000.0,
+        verworfen = [{"year": 2019, "accounting_system": "doppik", "difference": -1_304_000.0,
                       "grund": "Zeilensumme um -1.304.000 € gerissen"}]
         cs.save_investitionen_ist(gut, herkunft.Herkunft(
             art="stadt", url="https://example.org/1107.pdf",
@@ -1229,7 +1229,7 @@ def test_haushalt_gebaut_beziffert_seine_luecken(client):
         cs.close()
 
     b = client.get("/api/council/haushalt/gebaut").json()
-    assert [z["year"] for z in b["reihe"]] == [2018, 2020]
+    assert [z["year"] for z in b["series"]] == [2018, 2020]
     assert b["fehlend"] == {"doppik": [{"year": 2019, "difference": -1_304_000.0}]}
 
 
@@ -4757,7 +4757,7 @@ def test_thema_und_person_sind_ohne_anmeldung_lesbar(client):
     wb = client.get("/api/council/person/anke-luedtke/wortbeitraege?limit=5")
     assert wb.status_code == 200
     b = wb.json()
-    assert set(b) >= {"items", "total", "gesamt", "gremien"}
+    assert set(b) >= {"items", "total", "gesamt", "committees"}
     assert client.get("/api/council/person/gibtsnicht/wortbeitraege").status_code == 404
     # Grenzen greifen: limit über 100 und negatives offset werden abgewiesen.
     assert client.get("/api/council/person/anke-luedtke/wortbeitraege?limit=500").status_code == 422
@@ -4787,7 +4787,7 @@ def test_verwaltung_mit_erkanntem_amt_hat_eigenen_steckbrief(client):
 
     wb = client.get("/api/council/person/juergen-krogmann/wortbeitraege")
     assert wb.status_code == 200
-    assert set(wb.json()) >= {"items", "total", "gesamt", "gremien"}
+    assert set(wb.json()) >= {"items", "total", "gesamt", "committees"}
 
     # Ratsmitglieder-Antwort trägt jetzt ebenfalls den typ-Diskriminator.
     assert client.get("/api/council/person/anke-luedtke").json()["typ"] == "rat"
@@ -5582,7 +5582,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
         zeilen = [
             {"template_number": "26/0207", "year": 2026, "sitzung": "2026-04-13",
              "amount": 435_941.0, "gremium": "Rat", "layout": "neu",
-             "zweitstelle": "zerlegung",
+             "second_mention": "zerlegung",
              "probes": [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH],
              "herkunft": herkunft.Herkunft(
                  art="ris", document_id=304791, probe=[spenden.ZWEITSTELLE],
@@ -5590,7 +5590,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
                  probe_result="421.316 + 14.625 = 435.941")},
             {"template_number": "26/0044", "year": 2026, "sitzung": "2026-02-09",
              "amount": 1_800.0, "gremium": "Verwaltungsausschuss", "layout": "alt",
-             "zweitstelle": "identisch", "probes": [spenden.ZWEITSTELLE],
+             "second_mention": "identisch", "probes": [spenden.ZWEITSTELLE],
              "herkunft": herkunft.Herkunft(
                  art="ris", document_id=300001, probe=[spenden.ZWEITSTELLE],
                  probe_result="identisch")},
@@ -5804,8 +5804,8 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
         cs.close()
 
     b = client.get("/api/council/haushalt/schulden").json()["buergschaften"]
-    assert [z["year"] for z in b["reihe"]] == [2024]
-    z = b["reihe"][0]
+    assert [z["year"] for z in b["series"]] == [2024]
+    z = b["series"][0]
     assert z["bestand"] == 220_300_000.0
     # Die Quelle rundet selbst — das muss an der Zahl stehen bleiben.
     assert z["exact"] is False and z["out_next_year"] is False
@@ -5818,7 +5818,7 @@ def test_haushalt_schulden_ohne_buergschaften_bleibt_leer(client):
     zeigt die Seite den Block gar nicht, statt eine Null zu behaupten."""
     _register(client)
     b = client.get("/api/council/haushalt/schulden").json()["buergschaften"]
-    assert b["reihe"] == [] and b["rueckstellung"] == [] and b["geldschulden"] == []
+    assert b["series"] == [] and b["rueckstellung"] == [] and b["geldschulden"] == []
 
 
 def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client):

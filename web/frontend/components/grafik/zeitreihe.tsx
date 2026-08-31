@@ -112,8 +112,8 @@ const definiert = (s: Stelle): s is WertStelle => s.art === "wert";
  *  Die Unterscheidung, die dahinter steht: „wir wissen es nicht" (Lücke,
  *  Schraffur, Linienbruch) gegen „es hat sich nichts geändert" (Stufe). Beide
  *  verbieten dieselbe Interpolation, aber aus verschiedenen Gründen. */
-function normalisiere(reihe: JahrPunkt[], treppe = false): Stelle[] {
-  const sortiert = [...reihe].sort((a, b) => a.year - b.year);
+function normalisiere(series: JahrPunkt[], treppe = false): Stelle[] {
+  const sortiert = [...series].sort((a, b) => a.year - b.year);
   if (!sortiert.length) return [];
   if (treppe) {
     return sortiert.map((p) => istLuecke(p)
@@ -132,13 +132,13 @@ function normalisiere(reihe: JahrPunkt[], treppe = false): Stelle[] {
 }
 
 export function Zeitreihe({
-  reihe, einheit, ariaTitel, titel, nachkomma = 1, format, zweitreihe,
+  series, einheit, ariaTitel, titel, nachkomma = 1, format, zweitreihe,
   annotationen, spruenge = false, vorjahresdifferenz = false, differenzFormat,
   tabelle = false, leisteHaftet = true,
   umschalter, beleg, nullbasis = true, note, treppe = false, className,
 }: {
   /** Punkte UND Lücken in einer Liste (Daten-Vertrag GB-00). */
-  reihe: JahrPunkt[];
+  series: JahrPunkt[];
   /** Steht in der Ableseleiste und der Kopf-Zeile, z. B. „Mio. €". */
   einheit: string;
   /** Der Satz für die Vorlesehilfe — Pflicht, eine Grafik ohne Namen ist
@@ -156,7 +156,7 @@ export function Zeitreihe({
   format?: (wert: number) => string;
   /** Dünn und gestrichelt IN derselben Zeichenfläche (GB-01),
    *  z. B. die Zinslast zur Schuldenreihe. */
-  zweitreihe?: { label: string; reihe: JahrPunkt[]; format?: (wert: number) => string };
+  zweitreihe?: { label: string; series: JahrPunkt[]; format?: (wert: number) => string };
   /** Beschriftete Stellen („2010: 108,9 Mio. an Eigenbetriebe umgebucht").
    *  Im Bild ein ⓘ-Marker (breit mit `kurz` daneben); der ganze Satz steht in
    *  der **Ableseleiste**, sobald das Jahr gewählt ist — ein Tipp aufs ⓘ
@@ -226,7 +226,7 @@ export function Zeitreihe({
 }) {
   const { box, breite } = useBreite();
   const [tabelleOffen, setTabelleOffen] = useState(false);
-  const stellenListe = normalisiere(reihe, treppe);
+  const stellenListe = normalisiere(series, treppe);
   const beschreibungId = useId();
   const ablesen = useAblesen(
     stellenListe.length,
@@ -249,7 +249,7 @@ export function Zeitreihe({
   // außerhalb hätte keine Stelle im Bild und würde von der Skala nach
   // draußen gerechnet — die Linie liefe aus der Zeichenfläche.
   const zweitStellen = zweitreihe
-    ? normalisiere(zweitreihe.reihe.filter(
+    ? normalisiere(zweitreihe.series.filter(
         (p) => p.year >= spanneVon && p.year <= spanneBis), treppe)
     : [];
   const zweitNach = new Map(zweitStellen.map((s) => [s.year, s]));
@@ -789,8 +789,8 @@ export function Zeitreihe({
  *  Seite liefert den Satz) — es gibt keine Einzelziele, die verloren gingen.
  *  Lücken brechen die Linie über dasselbe `defined()`; ein Sparkline-Knick
  *  über eine Lücke hinweg wäre dieselbe Interpolation wie im großen Bild. */
-export function ZeitreiheMini({ reihe, ariaLabel, format, className }: {
-  reihe: JahrPunkt[];
+export function ZeitreiheMini({ series, ariaLabel, format, className }: {
+  series: JahrPunkt[];
   /** Ganzer Satz für die Vorlesehilfe — die Mini-Form ist EIN Bild. */
   ariaLabel: string;
   /** Formatiert die Endpunkt-Beschriftung (Vorgabe: `deZahl(v, 1)`). */
@@ -798,7 +798,7 @@ export function ZeitreiheMini({ reihe, ariaLabel, format, className }: {
   className?: string;
 }) {
   const { box, breite } = useBreite(220, 120);
-  const stellen = normalisiere(reihe);
+  const stellen = normalisiere(series);
   const werte = stellen.filter(definiert);
   if (werte.length < 2) return null;
 

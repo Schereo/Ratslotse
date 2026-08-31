@@ -106,13 +106,13 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
                 f"WHERE kvonr IN ({ph2}) ORDER BY datum", kvonrs):
             stationen.setdefault(b["kvonr"], []).append(dict(b))
     for p in punkte:
-        reihe = stationen.get(p["kvonr"] or 0, [])
-        heutige = next((b for b in reihe if b["datum"] == p["session_date"]), None)
+        series = stationen.get(p["kvonr"] or 0, [])
+        heutige = next((b for b in series if b["datum"] == p["session_date"]), None)
         p["behandlung"] = (heutige or {}).get("result")
-        p["vorgeschichte"] = sum(1 for b in reihe if (b["datum"] or "9999") < p["session_date"])
+        p["vorgeschichte"] = sum(1 for b in series if (b["datum"] or "9999") < p["session_date"])
         p["antragsteller"], p["titel_kurz"] = store._titel_zerlegen(p["title"])
         p["topic_name"] = None
-        p["stationen"] = len(reihe)
+        p["stationen"] = len(series)
         # Das Signal, das den Unterschied macht: Wie oft stand genau das schon
         # auf einer Tagesordnung? (Zuwendungen 101×, Haushaltssatzung 3×.)
         p["wiederkehr"] = store._wiederkehr().get(store._wiederkehr_schluessel(p["title"]), 1)

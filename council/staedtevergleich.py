@@ -652,7 +652,7 @@ def zeilen_steuerkraft(budget_year: KfaJahrgang) -> list[dict]:
         eintrag = budget_year.staedte.get(key)
         if not eintrag:
             continue
-        gemeinsam = {"reihe": "steuerkraft", "year": budget_year.year,
+        gemeinsam = {"series": "steuerkraft", "year": budget_year.year,
                      "schluessel": key, "stadt": name}
         aus.append({**gemeinsam, "indicator": "steuerkraftmesszahl",
                     "wert": eintrag["messzahl_teur"], "einheit": "teur"})
@@ -677,10 +677,10 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
         probe = probe_hebesatz(eintrag)
         if not probe["ok"]:
             verworfen.append({"schluessel": key, "stadt": KREISFREIE_STAEDTE[key],
-                              "reihe": "realsteuern", "grund": "Hebesatzprobe",
+                              "series": "realsteuern", "grund": "Hebesatzprobe",
                               "result": probe["result"]})
             continue
-        gemeinsam = {"reihe": "realsteuern", "year": budget_year.year,
+        gemeinsam = {"series": "realsteuern", "year": budget_year.year,
                      "schluessel": key, "stadt": KREISFREIE_STAEDTE[key]}
         for suffix in _REALSTEUERN.values():
             if (wert := eintrag.get(f"hebesatz_{suffix}")) is not None:
@@ -694,14 +694,14 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
         probe = probe_dreijahresmittel(eintrag)
         if not probe["ok"]:
             verworfen.append({"schluessel": key, "stadt": KREISFREIE_STAEDTE[key],
-                              "reihe": "realsteuern", "grund": "Dreijahresmittel",
+                              "series": "realsteuern", "grund": "Dreijahresmittel",
                               "result": probe["result"]})
             continue
         # Jeder Jahreswert trägt SEIN Jahr, nicht das Berichtsjahr der Datei.
         # Der Realsteuervergleich 2025 führt auch 2023 und 2024 — eine Zeile,
         # die alles unter 2025 ablegte, machte aus drei Jahren eines.
         for year, werte in sorted(eintrag["je_jahr"].items()):
-            zeilen.append({"reihe": "realsteuern", "year": year,
+            zeilen.append({"series": "realsteuern", "year": year,
                            "schluessel": key, "stadt": KREISFREIE_STAEDTE[key],
                            "indicator": "steuereinnahmekraft_je_ew",
                            "wert": werte["je_ew"], "einheit": "eur_je_ew"})

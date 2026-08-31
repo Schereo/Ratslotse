@@ -58,7 +58,7 @@ export type QaGrafik = {
   titel: string;
   einheit: string;
   nachkomma: number;
-  reihe: { year: number; wert: number }[];
+  series: { year: number; wert: number }[];
   note?: string | null;
   quelle?: string | null;
   /** Anschlussstelle in den Haushalts-Bereich — der Link erscheint nur
@@ -1086,11 +1086,11 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
  *  stammt — im Chat ist das die eine Verwechslung, die niemand riskieren
  *  darf: Alles andere auf dem Bildschirm ist generierter Text. */
 export function GrafikKarte({ grafik }: { grafik: QaGrafik }) {
-  if ((grafik.reihe?.length ?? 0) < 2) return null;
+  if ((grafik.series?.length ?? 0) < 2) return null;
   return (
     <div className="rounded-xl border border-border bg-card p-3">
       <Zeitreihe
-        reihe={grafik.reihe}
+        series={grafik.series}
         einheit={grafik.einheit}
         nachkomma={grafik.nachkomma}
         titel={grafik.titel}

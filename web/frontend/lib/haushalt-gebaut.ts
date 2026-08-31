@@ -20,7 +20,7 @@ export type Art = { feld: string; titel: string; amount: number };
 export type GebautJahr = {
   year: number;
   /** `"kameral"` (bis 2009) oder `"doppik"` (ab 2010). */
-  regelwerk: string;
+  accounting_system: string;
   /** Die ausgewiesene Summenspalte in Euro. */
   insgesamt: number;
   arten: Art[];
@@ -37,12 +37,12 @@ export type GebautJahr = {
 export type GebautLuecke = { year: number; difference: number | null };
 
 export type GebautDaten = {
-  reihe: GebautJahr[];
+  series: GebautJahr[];
   jahre: number[];
   /** Was diese Zahlen zählen — kommt aus `council/investitionen_ist.py`,
    *  damit Oberfläche und Datenbank dieselbe Auskunft geben. */
   abgrenzung: string;
-  regelwerke: { schluessel: string; titel: string }[];
+  accounting_systems: { schluessel: string; titel: string }[];
   /** Jahre, die INNERHALB einer Reihe fehlen, je Regelwerk. Sie sind nicht
    *  null, sondern unbelegt: Ihre Zeilensumme geht in der Quelle selbst nicht
    *  auf, und anders als bei den Schulden gibt es keine zweite Probe, die
@@ -88,7 +88,7 @@ export type VermoegensGruppe = {
 };
 
 export type Anlagen = {
-  reihe: AnlagePosten[];
+  series: AnlagePosten[];
   jahre: number[];
   gruppen: VermoegensGruppe[];
   /** Die Jahre MIT Untergliederung — kürzer als `jahre`, und das muss die
@@ -102,12 +102,12 @@ export type Anlagen = {
  *  Nummer „2" ist die Zeile, um die es geht: Sie enthält Gebäude, Straßen und
  *  Fahrzeuge. Immaterielles (1) und Finanzvermögen (3) nutzen sich nicht ab. */
 export function sachvermoegen(anlagen: Anlagen | undefined, year: number): AnlagePosten | null {
-  return (anlagen?.reihe ?? []).find((z) => z.year === year && z.nr === "2") ?? null;
+  return (anlagen?.series ?? []).find((z) => z.year === year && z.nr === "2") ?? null;
 }
 
 /** Das Infrastrukturvermögen (2.3) eines Jahres — Straßen, Brücken, Kanäle. */
 export function infrastruktur(anlagen: Anlagen | undefined, year: number): AnlagePosten | null {
-  return (anlagen?.reihe ?? []).find((z) => z.year === year && z.nr === "2.3") ?? null;
+  return (anlagen?.series ?? []).find((z) => z.year === year && z.nr === "2.3") ?? null;
 }
 
 /** Baut die Stadt schneller auf, als ihr Bestand verfällt?
@@ -156,11 +156,11 @@ export type Reihe = {
  *  fallen weg — eine Überschrift ohne Zahlen wäre ein Versprechen. */
 export function reihen(daten: GebautDaten | null): Reihe[] {
   if (!daten) return [];
-  return daten.regelwerke
+  return daten.accounting_systems
     .map((r) => ({
       schluessel: r.schluessel,
       titel: r.titel,
-      jahre: daten.reihe.filter((z) => z.regelwerk === r.schluessel),
+      jahre: daten.series.filter((z) => z.accounting_system === r.schluessel),
       fehlend: daten.fehlend[r.schluessel] ?? [],
     }))
     .filter((r) => r.jahre.length > 0);

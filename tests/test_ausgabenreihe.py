@@ -166,7 +166,7 @@ def test_jede_zeile_traegt_ihr_regelwerk(gelesen):
     """Links der Naht kameral, rechts doppisch — an jeder einzelnen Zeile."""
     for z in gelesen["zeilen"]:
         erwartet = "kameral" if z["year"] < ar.NAHT_AB else "doppik"
-        assert z["regelwerk"] == erwartet, z
+        assert z["accounting_system"] == erwartet, z
 
 
 def test_die_naht_liegt_zwischen_2009_und_2010(gelesen):
@@ -174,9 +174,9 @@ def test_die_naht_liegt_zwischen_2009_und_2010(gelesen):
     assert ar.NAHT_AB == 2010
     jahre = [z["year"] for z in gelesen["zeilen"]]
     assert 2009 in jahre and 2010 in jahre
-    assert next(z for z in gelesen["zeilen"] if z["year"] == 2009)["regelwerk"] \
+    assert next(z for z in gelesen["zeilen"] if z["year"] == 2009)["accounting_system"] \
         == "kameral"
-    assert next(z for z in gelesen["zeilen"] if z["year"] == 2010)["regelwerk"] \
+    assert next(z for z in gelesen["zeilen"] if z["year"] == 2010)["accounting_system"] \
         == "doppik"
 
 
