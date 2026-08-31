@@ -87,7 +87,7 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"income_statement"> }) {
   const besser = series.filter((r) => r.delta > 0).length;
   const deltas = series.map((r) => r.delta).sort((a, b) => a - b);
   // Jahrgänge, deren „geplant" nicht der nackte Ansatz ist (2018, 2020).
-  const abweichenderBezug = series.filter((r) => r.planArt !== "ansatz");
+  const abweichenderBezug = series.filter((r) => r.planArt !== "budget");
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -127,7 +127,7 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"income_statement"> }) {
               {/* Jahrgänge, deren „geplant" nicht der nackte Ansatz ist,
                   tragen ein Sternchen — die Fußnote sagt, was gemeint ist. */}
               <span className="w-2 text-left text-muted-foreground">
-                {r.planArt !== "ansatz" ? "*" : " "}
+                {r.planArt !== "budget" ? "*" : " "}
               </span>
             </span>
           </div>

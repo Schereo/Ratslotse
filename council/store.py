@@ -595,6 +595,12 @@ _REST_SPALTEN: list[tuple[str, list[tuple[str, str]]]] = [
     ("council_abweichungsgruende", [("prozent", "percent")]),
     ("council_gewerbesteuerstatistik", [("gesperrt", "confidential")]),
     ("council_anlagen", [("bild", "is_image")]),
+    ("council_ergebnisrechnung", [("plan_art", "plan_kind")]),
+    ("council_finanzrechnung", [("plan_art", "plan_kind")]),
+    ("council_haushalt_aenderungen", [("liste", "list_key")]),
+    ("council_haushalt_aenderungen_fhh", [("liste", "list_key")]),
+    ("council_haushalt_aenderungen_summen", [("liste", "list_key"), ("typ", "kind")]),
+    ("council_haushalt_aenderungen_fhh_summen", [("liste", "list_key"), ("typ", "kind")]),
     ("council_anlagenspiegel", [("spalten", "n_columns")]),
     ("council_ergebnisrechnung", [("ansatz", "budgeted")]),
     ("council_finanzrechnung", [("ansatz", "budgeted")]),
@@ -1001,6 +1007,24 @@ class CouncilStore:
         self._werte_umschreiben("council_nachbewilligungen", "amount_source", [
             ("beschlussvorschlag", "proposed_decision"), ("titel", "title")])
         self._werte_umschreiben("agenda_item_social", "source", [("titel", "title")])
+        # ZUERST die Spalten (oben), DANN ihre Werte: `_werte_umschreiben`
+        # prüft auf den Spaltennamen und kehrt still zurück, wenn er noch
+        # anders heißt.
+        for tabelle in ("council_haushalt_aenderungen", "council_haushalt_aenderungen_fhh",
+                        "council_haushalt_aenderungen_summen",
+                        "council_haushalt_aenderungen_fhh_summen"):
+            self._werte_umschreiben(tabelle, "list_key", [
+                ("verwaltung_1", "administration_1"), ("verwaltung_2", "administration_2"),
+                ("verwaltung_3", "administration_3"), ("afb_beschlossen", "fc_decided")])
+        for tabelle in ("council_haushalt_aenderungen_summen",
+                        "council_haushalt_aenderungen_fhh_summen"):
+            self._werte_umschreiben(tabelle, "kind", [
+                ("entwurf", "draft"), ("liste", "list"), ("endsumme", "final_total")])
+        for tabelle in ("council_ergebnisrechnung", "council_finanzrechnung"):
+            self._werte_umschreiben(tabelle, "plan_kind", [
+                ("ansatz_nachtrag", "supplementary_budget"),
+                ("gesamtermaechtigung", "total_authorization"),
+                ("ansatz", "budget")])
         self._herkunft_schluessel_neu()
         self._doppelte_bildspalte_aufloesen()
         # Der Parteien-Cache hält die ROHE Modellantwort als JSON; sie trug
@@ -1394,10 +1418,10 @@ class CouncilStore:
         # Bezugsgröße der Abweichung die Gesamtermächtigung, 2020 der Ansatz
         # samt Nachtrag (27 Mio. Unterschied!), sonst der nackte Ansatz.
         # Deshalb steht in `ansatz` weiter der ursprüngliche Haushaltsansatz,
-        # in `plan` die Bezugsgröße und in `plan_art`, welche davon gemeint
+        # in `plan` die Bezugsgröße und in `plan_kind`, welche davon gemeint
         # ist. Ohne das letzte Feld wäre eine Mehrjahres-Kurve still falsch.
         # Nachrüsten per ALTER: Der Primärschlüssel bleibt, nichts geht verloren.
-        for spalte, typ in (("plan", "REAL"), ("plan_art", "TEXT")):
+        for spalte, typ in (("plan", "REAL"), ("plan_kind", "TEXT")):
             if spalte not in spalten:
                 try:
                     self._conn.execute(
@@ -1425,7 +1449,7 @@ class CouncilStore:
             "nr INTEGER NOT NULL, "               # Zeilennummer DES DOKUMENTS
             "role TEXT, "                        # stabiler Name, NULL = Einzelzeile
             "label TEXT NOT NULL, "         # Wortlaut des Dokuments
-            "prior_year REAL, budgeted REAL, plan REAL, plan_art TEXT, "
+            "prior_year REAL, budgeted REAL, plan REAL, plan_kind TEXT, "
             "result REAL, deviation REAL, authorization REAL, "
             "is_total INTEGER NOT NULL DEFAULT 0, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
@@ -2295,7 +2319,7 @@ class CouncilStore:
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_haushalt_aenderungen ("
             "budget_year INTEGER NOT NULL, "      # Haushaltsjahrgang der Liste
-            "liste TEXT NOT NULL, "            # verwaltung_1..3 | afb_beschlossen
+            "list_key TEXT NOT NULL, "         # administration_1..3 | fc_decided
             "year INTEGER NOT NULL, "          # Planjahr der Position
             "seq INTEGER NOT NULL, "
             "sub_budget INTEGER, "                    # NULL = „alle" (pauschal)
@@ -2311,7 +2335,7 @@ class CouncilStore:
             "author TEXT, "
             "document_id INTEGER NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
-            "PRIMARY KEY (budget_year, liste, year, seq))"
+            "PRIMARY KEY (budget_year, list_key, year, seq))"
         )
         # Erläuterungs- (26.08.2026) und Urheber-Spalte (30.08.2026) kamen
         # nach dem ersten Ingest dazu — additiv, gefüllt werden sie vom
@@ -2330,9 +2354,9 @@ class CouncilStore:
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_haushalt_aenderungen_summen ("
             "budget_year INTEGER NOT NULL, "
-            "liste TEXT NOT NULL, "            # das DOKUMENT, aus dem sie stammt
+            "list_key TEXT NOT NULL, "         # das DOKUMENT, aus dem sie stammt
             "year INTEGER NOT NULL, "
-            "typ TEXT NOT NULL, "              # entwurf | liste | endsumme
+            "kind TEXT NOT NULL, "             # draft | list | final_total
             "label TEXT NOT NULL, "            # „Änderungsliste Verw. I", „SPD/CDU/FDP" …
             "revenues REAL NOT NULL, "
             "expenses REAL NOT NULL, "
@@ -2343,7 +2367,7 @@ class CouncilStore:
             "own INTEGER NOT NULL DEFAULT 0, "
             "document_id INTEGER NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
-            "PRIMARY KEY (budget_year, liste, year, typ, label))"
+            "PRIMARY KEY (budget_year, list_key, year, kind, label))"
         )
 
         # Dieselben Änderungslisten, aber für den FINANZhaushalt
@@ -2356,7 +2380,7 @@ class CouncilStore:
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_haushalt_aenderungen_fhh ("
             "budget_year INTEGER NOT NULL, "
-            "liste TEXT NOT NULL, "            # verwaltung_1..3 | afb_beschlossen
+            "list_key TEXT NOT NULL, "         # administration_1..3 | fc_decided
             "year INTEGER NOT NULL, "          # Planjahr der Position
             "seq INTEGER NOT NULL, "
             "sub_budget INTEGER, "
@@ -2380,14 +2404,14 @@ class CouncilStore:
             "author TEXT, "
             "document_id INTEGER NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
-            "PRIMARY KEY (budget_year, liste, year, seq))"
+            "PRIMARY KEY (budget_year, list_key, year, seq))"
         )
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_haushalt_aenderungen_fhh_summen ("
             "budget_year INTEGER NOT NULL, "
-            "liste TEXT NOT NULL, "
+            "list_key TEXT NOT NULL, "
             "year INTEGER NOT NULL, "
-            "typ TEXT NOT NULL, "              # entwurf | liste | endsumme
+            "kind TEXT NOT NULL, "             # draft | list | final_total
             "label TEXT NOT NULL, "
             "inflows REAL NOT NULL, "
             "outflows REAL NOT NULL, "
@@ -2398,7 +2422,7 @@ class CouncilStore:
             "own INTEGER NOT NULL DEFAULT 0, "
             "document_id INTEGER NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
-            "PRIMARY KEY (budget_year, liste, year, typ, label))"
+            "PRIMARY KEY (budget_year, list_key, year, kind, label))"
         )
 
         self._conn.execute(
@@ -6361,7 +6385,7 @@ class CouncilStore:
                         (year, sub_budget_no))
             self._conn.executemany(
                 "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, sub_budget_name, nr, label, "
-                " prior_year, budgeted, plan, plan_art, result, deviation, is_total, "
+                " prior_year, budgeted, plan, plan_kind, result, deviation, is_total, "
                 " source_label, source_url, fetched_at, herkunft_id) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 # `plan` fällt auf `ansatz` zurück, wenn der Aufrufer keine
@@ -6372,7 +6396,7 @@ class CouncilStore:
                 [(year, sub_budget_no, sub_budget_name, p["nr"], p["label"], p.get("prior_year"),
                   p.get("budgeted"),
                   p.get("budgeted") if p.get("plan") is None else p.get("plan"),
-                  p.get("plan_art"),
+                  p.get("plan_kind"),
                   p.get("result"), p.get("deviation"),
                   p.get("is_total", 0), herkunft.label, herkunft.url, now, hid)
                  for p in posten])
@@ -6437,7 +6461,7 @@ class CouncilStore:
         Liefert ``{gesamt: {...}, bereiche: [...]}`` — die Bereiche nach
         geplanten Aufwendungen absteigend, damit die größten oben stehen."""
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT sub_budget_no, sub_budget_name, nr, budgeted, plan, plan_art, result, deviation "
+            "SELECT sub_budget_no, sub_budget_name, nr, budgeted, plan, plan_kind, result, deviation "
             "FROM council_ergebnisrechnung WHERE year = ? AND nr IN (12, 20) "
             "ORDER BY sub_budget_no, nr", (year,))]
 
@@ -6446,7 +6470,7 @@ class CouncilStore:
 
             Der Rückfall ist kein Schönheitsfehler, sondern der Normalfall für
             jeden Bestand, der vor #510 geschrieben wurde: `plan` und
-            `plan_art` kamen damals per ALTER TABLE dazu, und ALTER TABLE füllt
+            `plan_kind` kamen damals per ALTER TABLE dazu, und ALTER TABLE füllt
             nichts nach — alle vorhandenen Zeilen tragen dort seither NULL,
             obwohl `budgeted` danebensteht und richtig ist. Auf `/haushalt/
             plan-ist` hieß das: „Die Planwerte der Gesamtrechnung konnten wir
@@ -6472,7 +6496,7 @@ class CouncilStore:
                     "expenses_planned": plan_von(a),
                     "expenses_budgeted": a.get("budgeted"),
                     "expenses_actual": a.get("result"),
-                    "plan_art": a.get("plan_art") or e.get("plan_art")}
+                    "plan_kind": a.get("plan_kind") or e.get("plan_kind")}
 
         gesamt = [r for r in rows if r["sub_budget_no"] is None]
         bereiche = []
@@ -6523,11 +6547,11 @@ class CouncilStore:
             self._conn.execute("DELETE FROM council_finanzrechnung WHERE year = ?", (year,))
             self._conn.executemany(
                 "INSERT INTO council_finanzrechnung (year, nr, role, label, "
-                " prior_year, budgeted, plan, plan_art, result, deviation, "
+                " prior_year, budgeted, plan, plan_kind, result, deviation, "
                 " authorization, is_total, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(year, z["nr"], z.get("role"), z["label"], z.get("prior_year"),
-                  z.get("budgeted"), z.get("plan"), z.get("plan_art"), z.get("result"),
+                  z.get("budgeted"), z.get("plan"), z.get("plan_kind"), z.get("result"),
                   z.get("deviation"), z.get("authorization"),
                   z.get("is_total", 0), hid, now)
                  for z in zeilen])
@@ -7473,10 +7497,10 @@ class CouncilStore:
             for tabelle in ("council_haushalt_aenderungen",
                             "council_haushalt_aenderungen_summen"):
                 self._conn.execute(
-                    f"DELETE FROM {tabelle} WHERE budget_year = ? AND liste = ?",
+                    f"DELETE FROM {tabelle} WHERE budget_year = ? AND list_key = ?",
                     (budget_year, liste))
             self._conn.executemany(
-                "INSERT INTO council_haushalt_aenderungen (budget_year, liste, "
+                "INSERT INTO council_haushalt_aenderungen (budget_year, list_key, "
                 " year, seq, sub_budget, page_draft, product, label, "
                 " revenue, expense, explanation, author, document_id, "
                 " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -7486,7 +7510,7 @@ class CouncilStore:
                  for z in result.zeilen])
             self._conn.executemany(
                 "INSERT INTO council_haushalt_aenderungen_summen (budget_year, "
-                " liste, year, typ, label, revenues, expenses, balance, "
+                " list_key, year, kind, label, revenues, expenses, balance, "
                 " own, document_id, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(budget_year, liste, s.year, s.typ, s.label, s.revenues,
@@ -7511,11 +7535,11 @@ class CouncilStore:
             for tabelle in ("council_haushalt_aenderungen_fhh",
                             "council_haushalt_aenderungen_fhh_summen"):
                 self._conn.execute(
-                    f"DELETE FROM {tabelle} WHERE budget_year = ? AND liste = ?",
+                    f"DELETE FROM {tabelle} WHERE budget_year = ? AND list_key = ?",
                     (budget_year, liste))
             self._conn.executemany(
                 "INSERT INTO council_haushalt_aenderungen_fhh (budget_year, "
-                " liste, year, seq, sub_budget, page_draft, product, label, "
+                " list_key, year, seq, sub_budget, page_draft, product, label, "
                 " planned_draft, inflow, outflow, commitment_authorizations, planned_new, "
                 " explanation, author, document_id, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -7525,7 +7549,7 @@ class CouncilStore:
                   document_id, hid, now) for z in result.zeilen])
             self._conn.executemany(
                 "INSERT INTO council_haushalt_aenderungen_fhh_summen (budget_year, "
-                " liste, year, typ, label, inflows, outflows, balance, "
+                " list_key, year, kind, label, inflows, outflows, balance, "
                 " commitment_authorizations, own, document_id, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [(budget_year, liste, s.year, s.typ, s.label, s.inflows,
@@ -7542,16 +7566,16 @@ class CouncilStore:
         wo, args = ("WHERE budget_year = ?", (budget_year,)) if budget_year else ("", ())
         try:
             zeilen = [dict(r) for r in self._conn.execute(
-                "SELECT budget_year, liste, year, seq, sub_budget, page_draft, product, "
+                "SELECT budget_year, list_key, year, seq, sub_budget, page_draft, product, "
                 " label, planned_draft, inflow, outflow, commitment_authorizations, "
                 " planned_new, explanation, author, document_id, herkunft_id "
                 f"FROM council_haushalt_aenderungen_fhh {wo} "
-                "ORDER BY budget_year, liste, year, seq", args)]
+                "ORDER BY budget_year, list_key, year, seq", args)]
             summen = [dict(r) for r in self._conn.execute(
-                "SELECT budget_year, liste, year, typ, label, inflows, "
+                "SELECT budget_year, list_key, year, kind, label, inflows, "
                 " outflows, balance, commitment_authorizations, own, document_id, herkunft_id "
                 f"FROM council_haushalt_aenderungen_fhh_summen {wo} "
-                "ORDER BY budget_year, liste, year", args)]
+                "ORDER BY budget_year, list_key, year", args)]
         except sqlite3.OperationalError:
             return {"zeilen": [], "summen": []}
         return {"zeilen": zeilen, "summen": summen}
@@ -7565,15 +7589,15 @@ class CouncilStore:
         wo, args = ("WHERE budget_year = ?", (budget_year,)) if budget_year else ("", ())
         try:
             zeilen = [dict(r) for r in self._conn.execute(
-                "SELECT budget_year, liste, year, seq, sub_budget, page_draft, "
+                "SELECT budget_year, list_key, year, seq, sub_budget, page_draft, "
                 " product, label, revenue, expense, explanation, "
                 " author, document_id, herkunft_id FROM council_haushalt_aenderungen "
-                f"{wo} ORDER BY budget_year, liste, year, seq", args)]
+                f"{wo} ORDER BY budget_year, list_key, year, seq", args)]
             summen = [dict(r) for r in self._conn.execute(
-                "SELECT budget_year, liste, year, typ, label, revenues, "
+                "SELECT budget_year, list_key, year, kind, label, revenues, "
                 " expenses, balance, own, document_id, herkunft_id "
                 "FROM council_haushalt_aenderungen_summen "
-                f"{wo} ORDER BY budget_year, liste, year", args)]
+                f"{wo} ORDER BY budget_year, list_key, year", args)]
         except sqlite3.OperationalError:
             return {"zeilen": [], "summen": []}
         return {"zeilen": zeilen, "summen": summen}
@@ -12108,7 +12132,7 @@ class CouncilStore:
         20) und — wenn die Frage einen Bereich nennt — bis zu ``limit``
         Teilhaushalte.
 
-        ``plan_art`` reist mit: „Plan" heißt 2018 Gesamtermächtigung und 2020
+        ``plan_kind`` reist mit: „Plan" heißt 2018 Gesamtermächtigung und 2020
         Ansatz samt Nachtrag. Eine Abweichung ohne ihre Bezugsgröße zu nennen,
         wäre in genau den zwei Jahrgängen falsch, in denen es darauf ankommt."""
         try:
@@ -12120,7 +12144,7 @@ class CouncilStore:
         if not year:
             return None
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT sub_budget_no, sub_budget_name, nr, budgeted, plan, plan_art, result, deviation, "
+            "SELECT sub_budget_no, sub_budget_name, nr, budgeted, plan, plan_kind, result, deviation, "
             " herkunft_id FROM council_ergebnisrechnung "
             "WHERE year = ? AND nr IN (12, 20) ORDER BY sub_budget_no, nr", (year,))]
         if not rows:
@@ -12133,11 +12157,11 @@ class CouncilStore:
             # dort NULL (ALTER TABLE füllt nichts nach), s. get_plan_ist.
             return {
                 "name": (a.get("sub_budget_name") or e.get("sub_budget_name")),
-                "revenues_planned": e.get("ansatz") if e.get("plan") is None else e.get("plan"),
+                "revenues_planned": e.get("budgeted") if e.get("plan") is None else e.get("plan"),
                 "revenues_actual": e.get("result"),
-                "expenses_planned": a.get("ansatz") if a.get("plan") is None else a.get("plan"),
+                "expenses_planned": a.get("budgeted") if a.get("plan") is None else a.get("plan"),
                 "expenses_actual": a.get("result"),
-                "plan_art": a.get("plan_art") or e.get("plan_art"),
+                "plan_kind": a.get("plan_kind") or e.get("plan_kind"),
                 "herkunft_id": a.get("herkunft_id") or e.get("herkunft_id"),
             }
 

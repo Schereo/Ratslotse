@@ -589,7 +589,7 @@ def test_gegenprobe_misst_und_verwirft_nicht():
 def test_plan_faellt_auf_ansatz_zurueck(tmp_path):
     """Regressionstest zum Befund „2023 und 2024 tragen keinen Plan".
 
-    Die Spalten `plan`/`plan_art` kamen mit #510 per ALTER TABLE dazu, und
+    Die Spalten `plan`/`plan_kind` kamen mit #510 per ALTER TABLE dazu, und
     ALTER TABLE füllt nichts nach: Jede vorher geschriebene Zeile trägt dort
     NULL, obwohl `ansatz` danebensteht und stimmt. `get_plan_ist` sollte das
     abfangen — tat es aber nicht, weil ``r.get("plan", r.get("ansatz"))``
@@ -601,7 +601,7 @@ def test_plan_faellt_auf_ansatz_zurueck(tmp_path):
     q = herkunft.Herkunft(art="ris", probe=herkunft.UNBEKANNT, document_id=1,
                           label="Jahresabschluss 2023", url="https://example.org/ja.pdf")
     # So sieht eine Zeile aus, die vor #510 geschrieben wurde: ansatz ja,
-    # plan und plan_art nein.
+    # plan und plan_kind nein.
     alt = [{"nr": 12, "label": "Summe ordentliche Erträge", "budgeted": 664_574_528.42,
             "plan": None, "result": 732_987_197.61, "is_total": 1},
            {"nr": 20, "label": "Summe ordentliche Aufwendungen",

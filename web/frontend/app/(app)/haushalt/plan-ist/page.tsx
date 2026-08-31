@@ -166,7 +166,7 @@ function PlanIstInner() {
   const { gesamt, bereiche, arten, planArt, ansatzAbweichend } = useMemo(() => {
     const leer = {
       gesamt: null as null | Record<string, number | null>, bereiche: [] as Bereich[],
-      arten: [] as ErgebnisPosten[], planArt: "ansatz" as PlanArt,
+      arten: [] as ErgebnisPosten[], planArt: "budget" as PlanArt,
       ansatzAbweichend: null as null | { ertr: number | null; aufw: number | null },
     };
     if (!data || !year) return leer;
@@ -208,7 +208,7 @@ function PlanIstInner() {
         aufwPlan: mio(a?.plan), aufwIst: mio(a?.result),
       },
       bereiche, arten,
-      planArt: (a?.plan_art ?? e?.plan_art ?? "ansatz") as PlanArt,
+      planArt: (a?.plan_kind ?? e?.plan_kind ?? "budget") as PlanArt,
       ansatzAbweichend: weicht(e) || weicht(a)
         ? { ertr: mio(e?.budgeted), aufw: mio(a?.budgeted) }
         : null,
@@ -574,7 +574,7 @@ function PlanIstInner() {
             <strong>{PLAN_ART_LABEL[planArt]}</strong>. Der Rat hatte im Ursprungsplan{" "}
             {deMio(ansatzAbweichend.ertr)}&#8239;Mio.&nbsp;€ Einnahmen und{" "}
             {deMio(ansatzAbweichend.aufw)}&#8239;Mio.&nbsp;€ Ausgaben beschlossen; unterjährig kam{" "}
-            {planArt === "ansatz_nachtrag" ? "ein Nachtragshaushalt" : "Ermächtigungen und Übertragungen"}{" "}
+            {planArt === "supplementary_budget" ? "ein Nachtragshaushalt" : "Ermächtigungen und Übertragungen"}{" "}
             hinzu. Die Zahlen unten messen gegen den fortgeschriebenen Plan — so rechnet die
             Stadt selbst<Beleg q="jahresabschluss" />.
           </p>

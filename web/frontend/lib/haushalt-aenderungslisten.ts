@@ -13,7 +13,7 @@ export type { Herkunft };
 
 export type AenderungsZeile = {
   budget_year: number;
-  liste: string;
+  list_key: string;
   year: number;
   seq: number;
   /** `null` = die Position gilt pauschal „alle" Teilhaushalte (2019). */
@@ -38,9 +38,9 @@ export type AenderungsZeile = {
 
 export type AenderungsSumme = {
   budget_year: number;
-  liste: string;
+  list_key: string;
   year: number;
-  typ: string; // "entwurf" | "liste" | "endsumme"
+  kind: string; // "entwurf" | "liste" | "endsumme"
   label: string;
   revenues: number;
   expenses: number;
@@ -59,7 +59,7 @@ export type AenderungsSumme = {
  *  im PDF wiederfinden lässt. */
 export type FhhZeile = {
   budget_year: number;
-  liste: string;
+  list_key: string;
   year: number;
   seq: number;
   sub_budget: number | null;
@@ -86,9 +86,9 @@ export type FhhZeile = {
 
 export type FhhSumme = {
   budget_year: number;
-  liste: string;
+  list_key: string;
   year: number;
-  typ: string;
+  kind: string;
   label: string;
   inflows: number;
   outflows: number;
@@ -152,14 +152,14 @@ export function listenFuerJahr(
   const aus: ListeImJahr[] = [];
   for (const key of REIHENFOLGE) {
     const zeilen = daten.zeilen.filter(
-      (z) => z.budget_year === year && z.liste === key);
+      (z) => z.budget_year === year && z.list_key === key);
     if (!zeilen.length) continue;
     const summen = daten.summen.filter(
-      (s) => s.budget_year === year && s.liste === key);
+      (s) => s.budget_year === year && s.list_key === key);
     const imJahr = summen.filter((s) => s.year === year);
     const eigene = imJahr.find((s) => s.own === 1);
-    const entwurf = imJahr.find((s) => s.typ === "entwurf");
-    const ende = imJahr.find((s) => s.typ === "endsumme");
+    const entwurf = imJahr.find((s) => s.kind === "entwurf");
+    const ende = imJahr.find((s) => s.kind === "endsumme");
     const balance = eigene
       ? { revenues: eigene.revenues, expenses: eigene.expenses, balance: eigene.balance }
       : entwurf && ende
@@ -191,7 +191,7 @@ export function politikZeilen(
 ): AenderungsSumme[] {
   if (!daten || year == null) return [];
   return daten.summen.filter(
-    (s) => s.budget_year === year && s.year === year && s.typ === "liste"
+    (s) => s.budget_year === year && s.year === year && s.kind === "liste"
       && !s.label.includes("nderungsliste"));
 }
 
@@ -218,7 +218,7 @@ export function positionenVon(
   const kern = labelKern(summe.label);
   return daten.zeilen.filter(
     (z) => z.budget_year === summe.budget_year && z.year === summe.year
-      && z.liste === summe.liste && z.author != null
+      && z.list_key === summe.list_key && z.author != null
       && kern.includes(labelKern(z.author)));
 }
 
@@ -271,15 +271,15 @@ export function verfahrensWeg(
   // Das vollständigste Dokument: Beschluss zuerst, sonst die höchste
   // Verwaltungsliste (REIHENFOLGE ist die des Verfahrens).
   const kandidaten = [...REIHENFOLGE].reverse();
-  const liste = kandidaten.find((k) => imJahr.some((s) => s.liste === k));
+  const liste = kandidaten.find((k) => imJahr.some((s) => s.list_key === k));
   if (!liste) return null;
-  const zeilen = imJahr.filter((s) => s.liste === liste);
+  const zeilen = imJahr.filter((s) => s.list_key === liste);
 
-  const entwurf = zeilen.find((s) => s.typ === "entwurf");
-  const ende = zeilen.find((s) => s.typ === "endsumme");
+  const entwurf = zeilen.find((s) => s.kind === "entwurf");
+  const ende = zeilen.find((s) => s.kind === "endsumme");
   if (!entwurf || !ende) return null;
 
-  const listen = zeilen.filter((s) => s.typ === "liste");
+  const listen = zeilen.filter((s) => s.kind === "liste");
   const politisch = listen.filter((s) => !s.label.includes("nderungsliste"));
   const summeSaldo = (xs: AenderungsSumme[]) => xs.reduce((a, s) => a + s.balance, 0);
 
@@ -320,11 +320,11 @@ export function fhhListenFuerJahr(
   const aus: FhhListeImJahr[] = [];
   for (const key of REIHENFOLGE) {
     const zeilen = (daten.fhh_zeilen ?? []).filter(
-      (z) => z.budget_year === year && z.liste === key
+      (z) => z.budget_year === year && z.list_key === key
         && (z.inflow != null || z.outflow != null));
     if (!zeilen.length) continue;
     const eigene = (daten.fhh_summen ?? []).find(
-      (s) => s.budget_year === year && s.year === year && s.liste === key
+      (s) => s.budget_year === year && s.year === year && s.list_key === key
         && s.own === 1);
     aus.push({
       key,

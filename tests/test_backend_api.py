@@ -823,18 +823,18 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
             Zeile(2027, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000),
         ],
         summen=[
-            SummenZeile(2026, "entwurf", "Verwaltungsentwurf", 0, 0, 0),
+            SummenZeile(2026, "draft", "Verwaltungsentwurf", 0, 0, 0),
             SummenZeile(2026, "liste", "Änderungsliste Verw. I", 0, 500_000, -500_000),
             SummenZeile(2026, "liste", "SPD/ CDU/ FDP", 0, -218_299, 218_299),
-            SummenZeile(2026, "endsumme", "Endsumme", 0, 281_701, -281_701),
-            SummenZeile(2027, "endsumme", "Endsumme", 0, 500_000, -500_000),
+            SummenZeile(2026, "final_total", "Endsumme", 0, 281_701, -281_701),
+            SummenZeile(2027, "final_total", "Endsumme", 0, 500_000, -500_000),
         ],
         eigene_zeile={2026: "Änderungsliste Verw. I"},
     )
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_haushalt_aenderungen(
-            4711, "verwaltung_1", erg,
+            4711, "administration_1", erg,
             herkunft_fuer("Änderungsliste Verw. I",
                           "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do", 4711))
     finally:
@@ -867,16 +867,16 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
                          "Förderprogramm Dachbegrünung", 0, None, 100_000,
                          None, 100_000,
                          explanation="Wird ab Januar im Amt 40 bearbeitet.")],
-        summen=[FhhSumme(2026, "entwurf", "Verwaltungsentwurf", 0, 0, 0, 0),
+        summen=[FhhSumme(2026, "draft", "Verwaltungsentwurf", 0, 0, 0, 0),
                 FhhSumme(2026, "liste", "Änderungsliste Verw. I",
                          0, 100_000, -100_000, 0),
-                FhhSumme(2026, "endsumme", "Endsumme", 0, 100_000, -100_000, 0)],
+                FhhSumme(2026, "final_total", "Endsumme", 0, 100_000, -100_000, 0)],
         eigene_zeile={2026: "Änderungsliste Verw. I"},
     )
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_haushalt_aenderungen_fhh(
-            4712, "verwaltung_1", fhh,
+            4712, "administration_1", fhh,
             fhh_herkunft("2026 FHH Änderungsliste Verwaltung I", None, 4712))
     finally:
         cs.close()

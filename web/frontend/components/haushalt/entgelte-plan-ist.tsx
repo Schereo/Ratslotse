@@ -12,9 +12,9 @@
 // DIE BEZUGSGRÖSSE WECHSELT ÜBER DIE JAHRGÄNGE. Wogegen ein Abschluss seine
 // Abweichung rechnet, ist nicht in allen Jahren dasselbe: 2018 gegen die
 // Gesamtermächtigung, 2020 gegen den Ansatz samt Nachtrag, sonst gegen den
-// nackten Ansatz. Das steht als `plan_art` an jeder Zeile, und es gehört an
+// nackten Ansatz. Das steht als `plan_kind` an jeder Zeile, und es gehört an
 // jede Hantel: Ohne diese Angabe vergliche die Reihe stillschweigend
-// Verschiedenes. Deshalb ist `plan_art` hier die Einordnung — nicht `null`,
+// Verschiedenes. Deshalb ist `plan_kind` hier die Einordnung — nicht `null`,
 // wie bei Tabelle 1103, die über sich selbst nichts sagt.
 //
 // KEINE BEWERTUNG (Regel des ganzen Bereichs). Weniger Gebühren als geplant
@@ -45,8 +45,8 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
     // Die Bezugsgröße dieses Jahrgangs, im Klartext des Dokuments. Wo sie
     // fehlt, wird sie nicht durch „Ansatz" ersetzt — dann steht sie eben nicht
     // da, statt geraten zu werden.
-    einordnung: z.plan_art
-      ? `Verglichen wird gegen: ${PLAN_ART_LABEL[z.plan_art]}.`
+    einordnung: z.plan_kind
+      ? `Verglichen wird gegen: ${PLAN_ART_LABEL[z.plan_kind]}.`
       : null,
   }));
 

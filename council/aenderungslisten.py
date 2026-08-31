@@ -110,8 +110,8 @@ _ROEMISCH = {"I": 1, "II": 2, "III": 3, "1": 1, "2": 2, "3": 3}
 def liste_aus_label(label: str | None) -> str | None:
     """Anlagen-Label → Listen-Schlüssel, oder ``None`` für „gehört nicht her“.
 
-    ``verwaltung_1``/``_2``/``_3`` für die Verwaltungslisten,
-    ``afb_beschlossen`` für die kumulierte Beschluss-Datei des
+    ``administration_1``/``_2``/``_3`` für die Verwaltungslisten,
+    ``fc_decided`` für die kumulierte Beschluss-Datei des
     Finanzausschusses. Die Reihenfolge der Prüfungen ist die Sortierung:
     Erst raus, was sicher nicht gemeint ist — „2026 FHH Änderungsliste
     Verwaltung I“ enthält schließlich auch „Verwaltung I“.
@@ -120,10 +120,10 @@ def liste_aus_label(label: str | None) -> str | None:
     if _LABEL_RAUS.search(t):
         return None
     if _LABEL_AFB.search(t) and _LABEL_EHH.search(t):
-        return "afb_beschlossen"
+        return "fc_decided"
     m = _LABEL_VERW.search(t)
     if m and _LABEL_EHH.search(t) and "nderungsliste" in t:
-        return f"verwaltung_{_ROEMISCH[m.group(1).upper()]}"
+        return f"administration_{_ROEMISCH[m.group(1).upper()]}"
     return None
 
 
@@ -171,7 +171,7 @@ class SummenZeile:
     """Eine Zeile der Zusammenstellung: Entwurf, eine Liste oder die Endsumme."""
 
     year: int
-    typ: str  # "entwurf" | "liste" | "endsumme"
+    typ: str  # "draft" | "list" | "final_total"
     label: str
     revenues: int
     expenses: int
@@ -588,19 +588,19 @@ def parse_ehh_seiten(seiten: list[list[Wort]],
                 # Position — Zusammenstellungen stehen auf eigenen Seiten.
                 continue
             if _ENTWURF.search(text):
-                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "entwurf"), "entwurf", row))
+                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "draft"), "draft", row))
             elif _ENDSUMME.search(text):
-                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "endsumme"), "endsumme", row))
+                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "final_total"), "final_total", row))
             elif _LISTE.search(text):
-                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "liste"), "liste", row))
+                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "list"), "list", row))
             else:
                 # Die frühen AFB-Übersichten führen die POLITISCH beschlossene
                 # Liste ohne jedes Stichwort: nur drei Beträge plus Urheber in
                 # der „Vorschlag von“-Spalte („0 1.728.605 -1.728.605
                 # SPD/ BÜNDNIS 90/DIE GRÜNEN“). Das Label hinter den Zahlen
                 # ist die Bedingung — eine nackte Zahlenreihe bleibt draußen.
-                kandidat = _summen_zeile(_block_jahr(block_jahr, aus, "liste"), "liste", row)
-                if kandidat.label != "liste":
+                kandidat = _summen_zeile(_block_jahr(block_jahr, aus, "list"), "list", row)
+                if kandidat.label != "list":
                     aus.summen.append(kandidat)
 
         _fragmente_anbauen(seiten_positionen, fragmente)
@@ -850,8 +850,8 @@ def _block_jahr(block_jahr: int | None, aus: Ergebnis, typ: str) -> int:
     if block_jahr is not None:
         return block_jahr
     years = sorted({z.year for z in aus.zeilen})
-    entwuerfe = sum(1 for s in aus.summen if s.typ == "entwurf")
-    idx = entwuerfe if typ == "entwurf" else entwuerfe - 1
+    entwuerfe = sum(1 for s in aus.summen if s.typ == "draft")
+    idx = entwuerfe if typ == "draft" else entwuerfe - 1
     if 0 <= idx < len(years):
         return years[idx]
     raise ListenFehler("Zusammenstellungs-Block ohne erkennbares Planjahr.")
@@ -862,9 +862,9 @@ def _proben(aus: Ergebnis) -> None:
     beim Lesen jeder Summenzeile)."""
     years = sorted({z.year for z in aus.zeilen})
     for year in years:
-        entwurf = [s for s in aus.summen if s.year == year and s.typ == "entwurf"]
-        listen = [s for s in aus.summen if s.year == year and s.typ == "liste"]
-        ende = [s for s in aus.summen if s.year == year and s.typ == "endsumme"]
+        entwurf = [s for s in aus.summen if s.year == year and s.typ == "draft"]
+        listen = [s for s in aus.summen if s.year == year and s.typ == "list"]
+        ende = [s for s in aus.summen if s.year == year and s.typ == "final_total"]
         if len(entwurf) != 1 or len(ende) != 1 or not listen:
             raise ListenFehler(
                 f"Zusammenstellung {year}: erwartet 1×Entwurf, ≥1×Liste, "

@@ -2205,11 +2205,11 @@ def _ist_block(ist: dict | None) -> str:
     zeilen = [f"- Gesamt {ist['year']}: Aufwendungen geplant {_eur(g.get('expenses_planned'))}, "
               f"tatsächlich {_eur(g.get('expenses_actual'))}; Erträge geplant "
               f"{_eur(g.get('revenues_planned'))}, tatsächlich {_eur(g.get('revenues_actual'))}"]
-    if g.get("plan_art") and g["plan_art"] != "ansatz":
+    if g.get("plan_kind") and g["plan_kind"] != "budget":
         # 2018 ist die Bezugsgröße die Gesamtermächtigung, 2020 der Ansatz samt
         # Nachtrag (27 Mio. Unterschied). Ohne diesen Hinweis vergleicht die
         # Antwort in genau diesen Jahrgängen zwei verschiedene Dinge.
-        zeilen.append(f"  (\"geplant\" ist in diesem Jahrgang der/die {g['plan_art']}, "
+        zeilen.append(f"  (\"geplant\" ist in diesem Jahrgang der/die {g['plan_kind']}, "
                       f"nicht der nackte Haushaltsansatz — sag das dazu)")
     for b in ist.get("bereiche") or []:
         zeilen.append(f"- {b.get('name')} {ist['year']}: Aufwendungen geplant "

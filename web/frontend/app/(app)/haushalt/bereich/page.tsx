@@ -267,7 +267,7 @@ function BereichInner() {
       // `plan` ist die Bezugsgröße des jeweiligen Jahrgangs, nicht überall der
       // nackte Ansatz — 2018 und 2020 weichen ab (Fußnote unten).
       return {
-        label: String(j) + (a?.plan_art && a.plan_art !== "ansatz" ? "*" : ""),
+        label: String(j) + (a?.plan_kind && a.plan_kind !== "budget" ? "*" : ""),
         plan: mio(a?.plan), ist: mio(a?.result),
         // Kein Erklärsatz je Jahr: Die bereichsbezogenen Erläuterungen des
         // Abschlusses stehen direkt unter der Hantel („Was der Abschluss …
@@ -655,7 +655,7 @@ function BereichInner() {
         <ReiterTafel id="planist" aktiv={aktiv} className="flex flex-col gap-4">
           {(() => {
             const abweichend = abschluss.filter(
-              (p) => p.nr === 20 && p.plan_art && p.plan_art !== "ansatz");
+              (p) => p.nr === 20 && p.plan_kind && p.plan_kind !== "budget");
             const letztesJahr = planIstJahre[planIstJahre.length - 1];
             const thhNr = abschluss.find((p) => p.sub_budget_no != null)?.sub_budget_no ?? kanon.sub_budget;
             const gruende = thhNr != null ? gruendeFuerBereich(data, letztesJahr, thhNr) : [];
@@ -683,7 +683,7 @@ function BereichInner() {
                     * In {[...new Set(abweichend.map((p) => p.year))].join(" und ")} vergleicht der
                     Abschluss nicht mit dem ursprünglichen Ansatz, sondern mit dem
                     fortgeschriebenen Plan
-                    ({[...new Set(abweichend.map((p) => PLAN_ART_LABEL[p.plan_art as PlanArt]))].join(", ")}).
+                    ({[...new Set(abweichend.map((p) => PLAN_ART_LABEL[p.plan_kind as PlanArt]))].join(", ")}).
                   </p>
                 )}
                 {gruende.length > 0 && (

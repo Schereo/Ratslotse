@@ -98,8 +98,8 @@ _ROEMISCH = {"I": 1, "II": 2, "III": 3, "1": 1, "2": 2, "3": 3}
 def liste_aus_label(label: str | None) -> str | None:
     """Anlagen-Label → Listen-Schlüssel, oder ``None`` für „gehört nicht her“.
 
-    Dieselben Schlüssel wie beim EHH (``verwaltung_1..3``,
-    ``afb_beschlossen``), damit beide Haushalte im Frontend nebeneinander
+    Dieselben Schlüssel wie beim EHH (``administration_1..3``,
+    ``fc_decided``), damit beide Haushalte im Frontend nebeneinander
     dieselbe Sprache sprechen. Von 32 Anlagen, deren Label „Finanzhaushalt“
     oder „FHH“ trägt, bleiben so die 18 des Kernhaushalts übrig — genauso
     viele, wie es EHH-Listen gibt.
@@ -108,10 +108,10 @@ def liste_aus_label(label: str | None) -> str | None:
     if _LABEL_RAUS.search(t) or not _LABEL_FHH.search(t):
         return None
     if _LABEL_AFB.search(t):
-        return "afb_beschlossen"
+        return "fc_decided"
     m = _LABEL_VERW.search(t)
     if m and "nderungslist" in t:
-        return f"verwaltung_{_ROEMISCH[m.group(1).upper()]}"
+        return f"administration_{_ROEMISCH[m.group(1).upper()]}"
     return None
 
 
@@ -149,7 +149,7 @@ class FhhSumme:
     """Eine Zeile der Zusammenstellung: Entwurf, eine Liste oder die Endsumme."""
 
     year: int
-    typ: str  # "entwurf" | "liste" | "endsumme"
+    typ: str  # "draft" | "list" | "final_total"
     label: str
     inflows: int
     outflows: int
@@ -498,7 +498,7 @@ def _summen_zeile(year: int, typ: str, row: list[Wort],
     # Urheber („Vorschlag von" — nur die Beschluss-Dateien führen ihn).
     label = " ".join(w[3] for w in row if w[1] <= erster).strip()
     author = " ".join(w[3] for w in row if w[0] >= letzter).strip()
-    return FhhSumme(year=year, typ=typ, label=(label or author or "liste"),
+    return FhhSumme(year=year, typ=typ, label=(label or author or "list"),
                     inflows=ein, outflows=aus, balance=balance,
                     commitment_authorizations=zellen.get("commitment_authorizations"))
 
@@ -509,8 +509,8 @@ def _block_jahr(block_jahr: int | None, aus: FhhErgebnis, typ: str) -> int:
     if block_jahr is not None:
         return block_jahr
     years = sorted({z.year for z in aus.zeilen})
-    entwuerfe = sum(1 for s in aus.summen if s.typ == "entwurf")
-    idx = entwuerfe if typ == "entwurf" else entwuerfe - 1
+    entwuerfe = sum(1 for s in aus.summen if s.typ == "draft")
+    idx = entwuerfe if typ == "draft" else entwuerfe - 1
     if 0 <= idx < len(years):
         return years[idx]
     raise ListenFehler("Zusammenstellungs-Block ohne erkennbares Planjahr.")
@@ -589,21 +589,21 @@ def parse_fhh_seiten(seiten: list[list[Wort]],
             links_text = " ".join(w[3] for w in row if w[1] <= erster).strip()
             rechts_text = " ".join(w[3] for w in row if w[0] >= letzter).strip()
             if _ENTWURF.search(text):
-                typ = "entwurf"
+                typ = "draft"
             elif _LISTE.search(text):
-                typ = "liste"
+                typ = "list"
             elif links_text or rechts_text:
                 # Eine Zeile mit eigener Beschriftung, aber ohne Stichwort:
                 # die politische Liste der Beschluss-Dateien. Ihr Label steht
                 # RECHTS der Beträge, in der Spalte „Vorschlag von" — nur
                 # links zu suchen machte sie zur zweiten Endsumme, und die
                 # Zusammenstellung meldete „1×Entwurf, 1×Liste, 2×Endsumme".
-                typ = "liste"
+                typ = "list"
             else:
                 # Nackte Zahlenreihe ohne jede Beschriftung — die Summe unter
                 # dem Block. Die Beschluss-Dateien setzen sie ohne
                 # „Überschuss/Fehlbedarf" davor, anders als der EHH.
-                typ = "endsumme"
+                typ = "final_total"
             aus.summen.append(_summen_zeile(
                 _block_jahr(block_jahr, aus, typ), typ, row, zellen, erster, letzter))
 
@@ -875,9 +875,9 @@ def _proben(aus: FhhErgebnis) -> None:
             f"({len(schief)} von {len(voll)} Zeilen betroffen)")
 
     for year in sorted({z.year for z in aus.zeilen}):
-        entwurf = [s for s in aus.summen if s.year == year and s.typ == "entwurf"]
-        listen = [s for s in aus.summen if s.year == year and s.typ == "liste"]
-        ende = [s for s in aus.summen if s.year == year and s.typ == "endsumme"]
+        entwurf = [s for s in aus.summen if s.year == year and s.typ == "draft"]
+        listen = [s for s in aus.summen if s.year == year and s.typ == "list"]
+        ende = [s for s in aus.summen if s.year == year and s.typ == "final_total"]
         # Die Endsumme ist OPTIONAL, anders als beim EHH: Die
         # FHH-Beschluss-Dateien führen je Block nur den Entwurf und die
         # Listen und verzichten auf die Schlusszeile (303359, 230016/230178).
