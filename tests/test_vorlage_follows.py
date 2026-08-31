@@ -79,7 +79,7 @@ def _letzte_meldung(ratslotse_db) -> str:
 def test_bekannter_stand_loest_nichts_aus(dbs):
     """Wer gerade abonniert hat, kennt die bisherigen Stationen — keine Mail."""
     mod, ratslotse_db, council_db = dbs
-    stationen = [("2026-01-15", "Verkehrsausschuss", "angenommen")]
+    stationen = [("2026-01-15", "Verkehrsausschuss", "accepted")]
     _seed(ratslotse_db, council_db, stationen, snapshot=mod.signature(_rows(stationen)))
 
     with patch.object(mod.stammdaten, "fetch_beratungsfolge", return_value=_rows(stationen)), \
@@ -93,7 +93,7 @@ def test_bekannter_stand_loest_nichts_aus(dbs):
 def test_neue_station_wird_gemeldet_und_dann_nicht_mehr(dbs):
     """Die neue Station geht genau einmal raus — der zweite Lauf ist still."""
     mod, ratslotse_db, council_db = dbs
-    alt = [("2026-01-15", "Verkehrsausschuss", "angenommen")]
+    alt = [("2026-01-15", "Verkehrsausschuss", "accepted")]
     neu = alt + [("2026-02-20", "Rat", "beschlossen")]
     _seed(ratslotse_db, council_db, alt, snapshot=mod.signature(_rows(alt)))
 
@@ -129,7 +129,7 @@ def test_abruf_fehler_meldet_nichts_und_friert_den_stand_nicht_ein(dbs):
     """Ein kaputter Abruf darf keine Meldung erzeugen — und beim nächsten Lauf
     muss die echte Neuigkeit noch ankommen."""
     mod, ratslotse_db, council_db = dbs
-    alt = [("2026-01-15", "Verkehrsausschuss", "angenommen")]
+    alt = [("2026-01-15", "Verkehrsausschuss", "accepted")]
     neu = alt + [("2026-02-20", "Rat", "beschlossen")]
     _seed(ratslotse_db, council_db, alt, snapshot=mod.signature(_rows(alt)))
     # Der gespeicherte Stand in der Council-DB entspricht dem alten.
@@ -151,7 +151,7 @@ def test_abruf_fehler_meldet_nichts_und_friert_den_stand_nicht_ein(dbs):
 
 def test_gesperrtes_konto_bekommt_keine_post(dbs):
     mod, ratslotse_db, council_db = dbs
-    alt = [("2026-01-15", "Verkehrsausschuss", "angenommen")]
+    alt = [("2026-01-15", "Verkehrsausschuss", "accepted")]
     uid = _seed(ratslotse_db, council_db, alt, snapshot=mod.signature(_rows(alt)))
     store = Store(ratslotse_db)
     store.set_web_user_status(uid, "blocked")

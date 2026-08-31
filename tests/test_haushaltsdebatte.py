@@ -271,7 +271,7 @@ def test_gruppe_schluckt_die_einzelparteien():
 
 def test_verwaltungsliste_ist_kein_fraktionsantrag():
     a = hd.antrag_aus_zeile({"title": "Änderungsliste Verwaltung I zum Ergebnishaushalt",
-                             "outcome": "angenommen", "vote": "einstimmig",
+                             "outcome": "accepted", "vote": "unanimous",
                              "item_number": "6.5", "ksinr": 1})
     assert a.ist_verwaltung is True
     assert a.author is None
@@ -282,7 +282,7 @@ def test_sammelabstimmung_ist_kein_antrag():
     die Schlussabstimmung über das Ganze, kein weiterer Antrag."""
     for title in ("So geänderter Erfolgsplan einschließlich der Änderungslisten",
                   "Abstimmung über den so geänderten Ergebnishaushalt"):
-        assert hd.antrag_aus_zeile({"title": title, "outcome": "angenommen", "vote": None,
+        assert hd.antrag_aus_zeile({"title": title, "outcome": "accepted", "vote": None,
                                     "item_number": "6.5", "ksinr": 1}) is None
 
 
@@ -302,24 +302,24 @@ def _runde_2026(store):
     # Teilabstimmungen hängen als ``sub_votes`` am Beschluss und tragen ihren
     # Text in ``description`` — so schreibt der Protokoll-Import sie.
     gemeinsam = [
-        {"item_number": "6", "title": "Haushalt 2026", "outcome": "angenommen",
-         "vote": "mehrheitlich"},
+        {"item_number": "6", "title": "Haushalt 2026", "outcome": "accepted",
+         "vote": "majority"},
         {"item_number": "6.5", "title": "Haushaltssatzung und Haushaltsplan 2026 (Kernhaushalt)",
-         "outcome": "angenommen", "vote": "mehrheitlich", "no_votes": 20,
+         "outcome": "accepted", "vote": "majority", "no_votes": 20,
          "raw_result": "- mehrheitlich bei 20 Gegenstimmen angenommen -",
          "sub_votes": [
              {"description": "Änderungsliste der CDU-Fraktion zum Ergebnishaushalt",
-              "outcome": "abgelehnt", "vote": "mehrheitlich"},
+              "outcome": "rejected", "vote": "majority"},
              {"description": "Änderungsliste Verwaltung I zum Ergebnishaushalt",
-              "outcome": "angenommen", "vote": "einstimmig"},
+              "outcome": "accepted", "vote": "unanimous"},
              {"description": "Abstimmung über den so geänderten Ergebnishaushalt",
-              "outcome": "angenommen", "vote": "mehrheitlich"},
+              "outcome": "accepted", "vote": "majority"},
          ]},
         # Ein Punkt AUSSERHALB des Sammelpunkts darf nicht mitgezählt werden.
-        {"item_number": "7.1", "title": "Stellenplan 2026", "outcome": "angenommen",
-         "vote": "mehrheitlich",
+        {"item_number": "7.1", "title": "Stellenplan 2026", "outcome": "accepted",
+         "vote": "majority",
          "sub_votes": [{"description": "Änderungsliste der SPD-Fraktion zum Stellenplan",
-                        "outcome": "angenommen", "vote": "mehrheitlich"}]},
+                        "outcome": "accepted", "vote": "majority"}]},
     ]
     for ksinr in (10, 11):
         store.save_protocol(
@@ -340,7 +340,7 @@ def test_haushalt_streit_baut_jahrgang(store):
 
     rat = runde["stationen"][1]
     assert rat["top"] == "6", "der Sammelpunkt trägt die Debatte"
-    assert rat["official_text"]["outcome"] == "angenommen"
+    assert rat["official_text"]["outcome"] == "accepted"
     assert rat["official_text"]["no_votes"] == 20
     assert rat["protokoll_url"] == "https://example.org/p11.pdf"
 
@@ -410,8 +410,8 @@ def test_geaendertes_protokoll_wird_neu_gerechnet(store):
     store.save_protocol(
         11, {"document_id": 11, "url": "https://example.org/p11.pdf"},
         {"protocol_nr": "01/26"}, "zu 6 Haushalt 2026\nKurzbericht.\n", 22, "test",
-        [{"item_number": "6", "title": "Haushalt 2026", "outcome": "angenommen",
-          "vote": "mehrheitlich"}], ANWESEND)
+        [{"item_number": "6", "title": "Haushalt 2026", "outcome": "accepted",
+          "vote": "majority"}], ANWESEND)
 
     nachher = store.haushalt_streit()[0]["stationen"][-1]["debatte"]
     assert nachher != vorher

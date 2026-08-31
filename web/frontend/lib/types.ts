@@ -66,7 +66,7 @@ export interface AgendaItem {
 }
 
 export type DecisionOutcome =
-  | "angenommen" | "abgelehnt" | "vertagt" | "zur_kenntnis" | "kein_beschluss";
+  | "accepted" | "rejected" | "postponed" | "noted" | "no_decision";
 
 export interface DecisionLocationMatch {
   name: string;
@@ -193,14 +193,14 @@ export interface PartyAnalysis {
   };
   success_rates: {
     party: string; motions: number;
-    angenommen: number; abgelehnt: number; vertagt: number; rate: number | null;
+    accepted: number; rejected: number; postponed: number; rate: number | null;
   }[];
   contention: { field: string; total: number; contested: number; contested_rate: number }[];
   alliances: { a: string; b: string; count: number }[];
   field_labels: Record<string, string>;
   /** Erfolgsquoten der eingereichten Antrags-Dokumente (Anlagen-Ingestion). */
   antrag_stats?: {
-    parties: { party: string; n: number; angenommen: number; abgelehnt: number }[];
+    parties: { party: string; n: number; accepted: number; rejected: number }[];
     n_antraege: number;
     n_mit_beschluss: number;
   } | null;

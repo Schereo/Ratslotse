@@ -97,7 +97,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         # liefert sie bereits in der Ordnung „Rat zuerst, dann die jüngste
         # Sitzung" (`CouncilStore._BESCHLUSS_ORDNUNG`).
         stationen = beschluesse.get(b.template_number, [])
-        fuehrend = next((d for d in stationen if d.get("outcome") == "angenommen"),
+        fuehrend = next((d for d in stationen if d.get("outcome") == "accepted"),
                         stationen[0] if stationen else None)
         zeilen.append({
             "template_number": b.template_number, "year": b.year, "title": b.title,

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag, Euro } from "lucide-react";
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
-import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { OutcomeDot, OUTCOME_META, voteLabel, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref, sessionHref } from "@/lib/routes";
 import { apiUrl } from "@/lib/api";
 import { shortCommittee } from "@/lib/committees";
@@ -148,7 +148,7 @@ function GlanceCard({
   unanimous: boolean;
   className?: string;
 }) {
-  const hasVote = d.outcome === "angenommen" || d.outcome === "abgelehnt" || !!d.vote;
+  const hasVote = d.outcome === "accepted" || d.outcome === "rejected" || !!d.vote;
   return (
     <Card className={cn("p-4", className)}>
       <h2 className="font-display text-sm font-bold text-foreground">Auf einen Blick</h2>
@@ -309,7 +309,7 @@ function GlanceCard({
  *  „mehrheitlich · 18 dagegen · 2 Enth."). */
 function voteSummary(d: CouncilDecision): string {
   const parts: string[] = [];
-  if (d.vote) parts.push(d.vote);
+  if (d.vote) parts.push(voteLabel(d.vote));
   if (d.no_votes) parts.push(`${d.no_votes} dagegen`);
   if (d.abstentions) parts.push(`${d.abstentions} Enth.`);
   return parts.join(" · ");
@@ -458,7 +458,7 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
         />
         <p className="text-[11px] font-semibold uppercase tracking-wider text-green-700 dark:text-green-400">Endgültiger Beschluss</p>
         <p className="mt-1 text-sm leading-relaxed text-foreground">
-          {(OUTCOME_META[d.outcome ?? "kein_beschluss"]?.label ?? "Beschlossen")}
+          {(OUTCOME_META[d.outcome ?? "no_decision"]?.label ?? "Beschlossen")}
           {voteSummary(d) ? ` — ${voteSummary(d)}` : ""}
         </p>
         {d.summary && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{d.summary}</p>}
@@ -567,8 +567,8 @@ function DecisionDetailInner() {
   if (!data) notFound();
 
   const d = data.decision;
-  const unanimous = d.outcome === "angenommen"
-    && (d.vote === "einstimmig" || ((d.no_votes ?? 0) === 0 && (d.abstentions ?? 0) === 0));
+  const unanimous = d.outcome === "accepted"
+    && (d.vote === "unanimous" || ((d.no_votes ?? 0) === 0 && (d.abstentions ?? 0) === 0));
   const present = presentMembers(data.attendance);
   const byParty: Record<string, number> = {};
   for (const a of data.attendance) {

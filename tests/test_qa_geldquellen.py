@@ -710,21 +710,21 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             eintraege.append((ksinr, 0, "decision", top, "Haushalt 2026", None, None))
             eintraege.append((ksinr, 1, "decision", f"{top}.9",
                               "Haushaltssatzung und Haushaltsplan 2026",
-                              "angenommen", "mehrheitlich"))
+                              "accepted", "majority"))
         for ksinr, top, lauf in ((9001, "6", 10), (9002, "7", 10)):
             listen = [
-                ("Änderungsliste Verwaltung I zum Ergebnishaushalt", "angenommen"),
-                ("Änderungsliste der CDU-Fraktion zum Ergebnishaushalt", "abgelehnt"),
-                ("Änderungsliste der CDU-Fraktion zum Finanzhaushalt", "abgelehnt"),
+                ("Änderungsliste Verwaltung I zum Ergebnishaushalt", "accepted"),
+                ("Änderungsliste der CDU-Fraktion zum Ergebnishaushalt", "rejected"),
+                ("Änderungsliste der CDU-Fraktion zum Finanzhaushalt", "rejected"),
                 ("Änderungsliste der Fraktionen SPD und Bündnis 90/Die Grünen "
-                 "zum Ergebnishaushalt", "angenommen"),
-                ("Änderungsliste der Gruppe FDP/Volt zum Ergebnishaushalt", "abgelehnt"),
+                 "zum Ergebnishaushalt", "accepted"),
+                ("Änderungsliste der Gruppe FDP/Volt zum Ergebnishaushalt", "rejected"),
                 ("So geänderter Ergebnishaushalt einschließlich der Änderungslisten",
-                 "angenommen"),
+                 "accepted"),
             ]
             for i, (title, result) in enumerate(listen):
                 eintraege.append((ksinr, lauf + i, "subvote", f"{top}.{i + 1}",
-                                  title, result, "mehrheitlich"))
+                                  title, result, "majority"))
         store._conn.executemany(
             "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, "
             " outcome, vote) VALUES (?,?,?,?,?,?,?)", eintraege)

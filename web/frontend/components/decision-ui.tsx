@@ -228,16 +228,27 @@ export function ImportanceMeter({ score, signals, contributions, baseScore, impa
 }
 
 export const OUTCOME_META: Record<DecisionOutcome, { label: string; cls: string }> = {
-  angenommen: { label: "Angenommen", cls: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
-  abgelehnt: { label: "Abgelehnt", cls: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
-  vertagt: { label: "Vertagt", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
-  zur_kenntnis: { label: "Zur Kenntnis", cls: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
-  kein_beschluss: { label: "Kein Beschluss", cls: "bg-muted text-muted-foreground" },
+  accepted: { label: "Angenommen", cls: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
+  rejected: { label: "Abgelehnt", cls: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
+  postponed: { label: "Vertagt", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
+  noted: { label: "Zur Kenntnis", cls: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
+  no_decision: { label: "Kein Beschluss", cls: "bg-muted text-muted-foreground" },
 };
+
+/** „einstimmig" bzw. „mehrheitlich" — der gespeicherte Wert ist englisch,
+ *  freie Protokoll-Formulierungen („einstimmig bei einer Enthaltung") stehen
+ *  so in der Quelle und kommen unverändert durch. */
+export const VOTE_LABEL: Record<string, string> = {
+  unanimous: "einstimmig", majority: "mehrheitlich",
+};
+
+export function voteLabel(vote: string | null | undefined): string {
+  return vote ? (VOTE_LABEL[vote] ?? vote) : "";
+}
 
 export function OutcomeBadge({ outcome }: { outcome: DecisionOutcome | null }) {
   if (!outcome) return null;
-  const m = OUTCOME_META[outcome] ?? OUTCOME_META.kein_beschluss;
+  const m = OUTCOME_META[outcome] ?? OUTCOME_META.no_decision;
   return (
     <span className={cn("shrink-0 whitespace-nowrap rounded-md px-2.5 py-0.5 text-xs font-medium", m.cls)}>
       {m.label}
@@ -249,19 +260,19 @@ export function OutcomeBadge({ outcome }: { outcome: DecisionOutcome | null }) {
 // Wort, nie Balken/Border") — das gefüllte Badge bleibt dem Detail-Kopf
 // vorbehalten. Farben exakt aus der Spec.
 const OUTCOME_DOT_CLS: Record<DecisionOutcome, string> = {
-  angenommen: "bg-[#22c55e]",
-  abgelehnt: "bg-[#ef4444]",
-  vertagt: "bg-[#f59e0b]",
-  zur_kenntnis: "bg-blue-500",
-  kein_beschluss: "bg-muted-foreground/50",
+  accepted: "bg-[#22c55e]",
+  rejected: "bg-[#ef4444]",
+  postponed: "bg-[#f59e0b]",
+  noted: "bg-blue-500",
+  no_decision: "bg-muted-foreground/50",
 };
 
 export function OutcomeDot({ outcome }: { outcome: DecisionOutcome | null }) {
   if (!outcome) return null;
-  const m = OUTCOME_META[outcome] ?? OUTCOME_META.kein_beschluss;
+  const m = OUTCOME_META[outcome] ?? OUTCOME_META.no_decision;
   return (
     <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium text-foreground">
-      <span className={cn("h-[7px] w-[7px] rounded-full", OUTCOME_DOT_CLS[outcome] ?? OUTCOME_DOT_CLS.kein_beschluss)} aria-hidden />
+      <span className={cn("h-[7px] w-[7px] rounded-full", OUTCOME_DOT_CLS[outcome] ?? OUTCOME_DOT_CLS.no_decision)} aria-hidden />
       {m.label}
     </span>
   );
@@ -386,11 +397,11 @@ export function PartyAttendanceBadge({ party, n }: { party: string; n: number })
 export function VoteBar({ d, presentCount }: { d: CouncilDecision; presentCount?: number }) {
   const gegen = d.no_votes ?? 0;
   const enth = d.abstentions ?? 0;
-  const rejected = d.outcome === "abgelehnt";
-  const deferred = d.outcome === "vertagt";
+  const rejected = d.outcome === "rejected";
+  const deferred = d.outcome === "postponed";
   const majColor = rejected ? "bg-red-500/80" : deferred ? "bg-amber-500/80" : "bg-green-500/80";
   const dissentColor = rejected ? "bg-green-500/80" : "bg-red-500/80";
-  const unanimous = d.vote === "einstimmig" || (gegen === 0 && enth === 0);
+  const unanimous = d.vote === "unanimous" || (gegen === 0 && enth === 0);
 
   if (unanimous) {
     return (

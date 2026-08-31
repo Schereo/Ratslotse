@@ -560,7 +560,7 @@ def test_beschluss_kontext_traegt_deutsches_datum():
     messages, _ = qa._answer_messages(
         "Was wurde zum Stadion entschieden?",
         [{"id": 7, "title": "Stadionneubau", "official_text": "Zugestimmt.",
-          "committee": "Rat", "session_date": "2026-06-01", "outcome": "angenommen"}])
+          "committee": "Rat", "session_date": "2026-06-01", "outcome": "accepted"}])
     prompt = messages[0]["content"]
     assert "01.06.2026" in prompt
     assert "2026-06-01" not in prompt

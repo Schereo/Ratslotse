@@ -422,7 +422,7 @@ def test_ergebnis_meldung_nennt_das_sitzungsdatum(store, monkeypatch, tmp_path):
                                         agenda_items=[AgendaItem("Ö 6", "Radweg Nadorster Straße")]))
     with council._conn:
         council._insert_decision(4652, 0, "decision", None, "Ö 6", "Radweg Nadorster Straße",
-                                 "Wird ausgebaut.", "angenommen", "mehrheitlich", 11, 0,
+                                 "Wird ausgebaut.", "accepted", "majority", 11, 0,
                                  ["SPD"], None, None, None)
 
     assert melde_ergebnisse(council, store, [4652]) == 1
@@ -451,7 +451,7 @@ def test_ohne_vorherige_meldung_kein_ergebnis(store, tmp_path):
     council.save_session(CouncilSession(4652, "Verkehrsausschuss", "2026-06-08", "17:00", "Fleiwa"))
     with council._conn:
         council._insert_decision(4652, 0, "decision", None, "Ö 6", "Radweg", "x",
-                                 "angenommen", None, None, None, [], None, None, None)
+                                 "accepted", None, None, None, [], None, None, None)
     assert melde_ergebnisse(council, store, [4652]) == 0
     council.close()
 
@@ -521,9 +521,9 @@ def test_wochenueberblick_fasst_die_woche_zusammen(store, tmp_path):
     council.save_session(CouncilSession(88, "Rat", "2026-08-14", "18:00", "Rathaus"))
     with council._conn:
         council._insert_decision(88, 0, "decision", None, "Ö 1", "Radweg A", "x",
-                                 "angenommen", None, None, None, [], None, None, None)
+                                 "accepted", None, None, None, [], None, None, None)
         council._insert_decision(88, 1, "decision", None, "Ö 2", "Radweg B", "x",
-                                 "abgelehnt", None, None, None, [], None, None, None)
+                                 "rejected", None, None, None, [], None, None, None)
     ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
     store.save_topic_decision_matches(thema.id, owner, [(i, 0.9) for i in ids])
 
@@ -545,9 +545,9 @@ def _zwei_beschluesse(council, ksinr: int = 88):
     council.save_session(CouncilSession(ksinr, "Rat", "2026-08-14", "18:00", "Rathaus"))
     with council._conn:
         council._insert_decision(ksinr, 0, "decision", None, "Ö 1", "Radweg A", "x",
-                                 "angenommen", None, None, None, [], None, None, None)
+                                 "accepted", None, None, None, [], None, None, None)
         council._insert_decision(ksinr, 1, "decision", None, "Ö 2", "Radweg B", "x",
-                                 "abgelehnt", None, None, None, [], None, None, None)
+                                 "rejected", None, None, None, [], None, None, None)
     return [r[0] for r in council._conn.execute(
         "SELECT id FROM council_decisions ORDER BY id")]
 

@@ -376,12 +376,12 @@ def test_verpflichtungsermaechtigung_zaehlt_nicht_mit():
         template_number="23/0359", title="…", kind=nb.ART_VERPFLICHTUNG,
         category="ausserplanmaessig", year=2023, amount=840_000.0,
         amount_source="title",
-        beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
+        beschluesse=({"committee": "Rat", "outcome": "accepted"},))
     echt = nb.Bewilligung(
         template_number="23/0617", title="…", kind=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2023, amount=11_716_000.0,
         amount_source="title",
-        beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
+        beschluesse=({"committee": "Rat", "outcome": "accepted"},))
     assert not commitment_authorizations.zaehlt_in_summe
     summen = nb.jahressummen([commitment_authorizations, echt])
     assert summen[2023]["summe"] == pytest.approx(11_716_000.0)
@@ -423,7 +423,7 @@ def test_nur_kenntnis_ist_kein_ratsbeschluss():
         template_number="22/0544", title="…", kind=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2022, amount=180_000.0,
         amount_source="title",
-        beschluesse=({"committee": "Rat", "outcome": "zur_kenntnis"},))
+        beschluesse=({"committee": "Rat", "outcome": "noted"},))
     assert unterrichtung.nur_kenntnis
     assert not unterrichtung.in_plenary
     assert not unterrichtung.zaehlt_in_summe
@@ -455,8 +455,8 @@ def test_aus_vorlagen_zaehlt_je_vorlage_einmal():
                           "Höhe von 11.716.000 Euro für den Teilhaushalt 10"}]
     beschluesse = {"23/0617": [
         {"committee": "Ausschuss für Finanzen und Beteiligungen",
-         "outcome": "angenommen", "session_date": "2023-11-20"},
-        {"committee": "Rat", "outcome": "angenommen",
+         "outcome": "accepted", "session_date": "2023-11-20"},
+        {"committee": "Rat", "outcome": "accepted",
          "session_date": "2023-11-27"}]}
     serie = nb.aus_vorlagen(vorlagen, beschluesse)
     assert len(serie) == 1
@@ -594,7 +594,7 @@ def test_probe_ratsabgleich_meldet_die_abweichung():
         [{"template_number": "23/0617",
           "title": "Überplanmäßige Bewilligung für Mehraufwendungen in Höhe "
                    "von 33.871.800 Euro für den Teilhaushalt 10"}],
-        {"23/0617": [{"committee": "Rat", "outcome": "angenommen",
+        {"23/0617": [{"committee": "Rat", "outcome": "accepted",
                       "session_date": "2023-11-27"}]})
     abgleich = nb.probe_ratsabgleich(serie, nb.kapitel3(RB_2023, 2023))
     assert abgleich.bericht_summe == pytest.approx(33_871_700.00)
@@ -664,7 +664,7 @@ def test_probe_ratsabgleich_nennt_die_fehlenden_nummern():
     serie = nb.aus_vorlagen(
         [{"template_number": "24/0359",
           "title": "Überplanmäßige Bewilligung in Höhe von 100.000 Euro"}],
-        {"24/0359": [{"committee": "Rat", "outcome": "angenommen",
+        {"24/0359": [{"committee": "Rat", "outcome": "accepted",
                       "session_date": "2024-06-17"}]})
     abgleich = nb.probe_ratsabgleich(
         serie, nb.kapitel3(RB_2024, 2024), nb.vorlagen_im_kapitel(RB_2024))
@@ -696,7 +696,7 @@ def test_vorlagen_im_kapitel_2024():
 
 # --- Der Rats-Anteil folgt dem Bericht, nicht dem Gremiennamen -------------
 
-def _bewilligung(nr, amount, committee, outcome="angenommen"):
+def _bewilligung(nr, amount, committee, outcome="accepted"):
     return nb.Bewilligung(
         template_number=nr, title="…", kind=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2024, amount=amount,

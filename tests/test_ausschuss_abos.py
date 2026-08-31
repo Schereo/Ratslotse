@@ -35,7 +35,7 @@ def _beschluss(store: CouncilStore, ksinr: int, position: int, kind: str = "deci
     with store._conn:
         store._conn.execute(
             "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, outcome) "
-            "VALUES (?, ?, ?, ?, ?, 'angenommen')",
+            "VALUES (?, ?, ?, ?, ?, 'accepted')",
             (ksinr, position, kind, str(position), f"Beschluss {position}"),
         )
 

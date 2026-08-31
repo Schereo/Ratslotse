@@ -16,9 +16,9 @@ def _store(tmp_path) -> CouncilStore:
     store.save_session(CouncilSession(1, "Rat", "2026-06-01", "17:00", "Ratssaal"))
     with store._conn:
         store._insert_decision(1, 0, "decision", None, "Ö 1", "Haushaltssatzung 2026", TEXT,
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
         store._insert_decision(1, 1, "decision", None, "Ö 2", "Berufung Mitglied", TEXT,
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
     return store
 
 
@@ -57,7 +57,7 @@ def _fake_resp(payload: dict):
 
 def test_rate_batch_filters_and_signals(monkeypatch):
     decisions = [{"id": 7, "title": "Haushaltssatzung", "official_text": TEXT, "committee": "Rat",
-                  "session_date": "2026-01-01", "outcome": "angenommen", "kind": "decision",
+                  "session_date": "2026-01-01", "outcome": "accepted", "kind": "decision",
                   "amount_eur": 1_000_000.0}]
     seen = {}
     def fake(**kw):
@@ -204,7 +204,7 @@ def test_notify_new_matches_schweigt_ueber_alte_beschluesse(tmp_path):
     with council._conn:                             # zweiter Beschluss, lange her
         council._insert_decision(2, 0, "decision", None, "Ö 10.1",
                                  "Zusätzliche Spätbetreuung", TEXT,
-                                 "zur_kenntnis", None, None, None, [], None, None, None)
+                                 "noted", None, None, None, [], None, None, None)
     ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}
 
     ratslotse = Store(tmp_path / "ratslotse.sqlite")

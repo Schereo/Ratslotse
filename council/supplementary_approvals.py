@@ -338,7 +338,7 @@ class Bewilligung:
         22/0925, 25/0734, 26/0365, 26/0515) — eingebracht, aber im Bestand
         ohne Ergebnis. Sie zu summieren hieße, Beantragtes als Bewilligtes
         auszugeben; allein 22/0925 verschöbe das Jahr 2022 um 1,4 Mio. €."""
-        return any(b.get("outcome") == "angenommen" for b in self.beschluesse)
+        return any(b.get("outcome") == "accepted" for b in self.beschluesse)
 
     @property
     def nur_kenntnis(self) -> bool:
@@ -365,7 +365,7 @@ class Bewilligung:
         sie ist **nicht** das Maß für den Rats-Anteil — dafür siehe
         :attr:`council_decision`."""
         return any(str(b.get("committee", "")).startswith("Rat")
-                   and b.get("outcome") == "angenommen"
+                   and b.get("outcome") == "accepted"
                    for b in self.beschluesse)
 
     @property
@@ -389,7 +389,7 @@ class Bewilligung:
         Deshalb folgt diese Eigenschaft der Definition des Berichts und nicht
         dem Namen des Gremiums."""
         return any(_beschliessendes_gremium(str(b.get("committee") or ""))
-                   and b.get("outcome") == "angenommen"
+                   and b.get("outcome") == "accepted"
                    for b in self.beschluesse)
 
 

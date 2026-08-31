@@ -163,13 +163,13 @@ def test_votum_kommt_aus_dem_kernhaushalts_beschluss(store):
     store._conn.execute(
         "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, "
         "outcome, vote, no_votes) VALUES (4, 5, 'decision', '6.5', "
-        "'Haushaltssatzung und Haushaltsplan 2026 (Kernhaushalt)', 'angenommen', "
-        "'mehrheitlich', 20)")
+        "'Haushaltssatzung und Haushaltsplan 2026 (Kernhaushalt)', 'accepted', "
+        "'majority', 20)")
     store._conn.commit()
 
     [r] = store.haushalt_weg()
     assert r["stationen"][0]["votum"] is None            # die vertagte Sitzung
-    assert r["stationen"][-1]["votum"]["outcome"] == "angenommen"
+    assert r["stationen"][-1]["votum"]["outcome"] == "accepted"
     assert r["stationen"][-1]["votum"]["no_votes"] == 20
 
 
@@ -180,7 +180,7 @@ def test_fremdes_haushaltsjahr_im_votum_zaehlt_nicht(store):
     store._conn.execute(
         "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, outcome) "
         "VALUES (4, 5, 'decision', '6.4', "
-        "'Haushaltssatzung und Haushaltsplan 2025 (Kernhaushalt)', 'angenommen')")
+        "'Haushaltssatzung und Haushaltsplan 2025 (Kernhaushalt)', 'accepted')")
     store._conn.commit()
 
     [r] = store.haushalt_weg()

@@ -17,7 +17,7 @@ import {
   Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
-import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, voteLabel, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { CommitteeName } from "@/components/committee-name";
 import { shortCommittee, hasShortCommittee } from "@/lib/committees";
 import { isLiveNow } from "@/lib/live";
@@ -118,7 +118,7 @@ function CardFooter({ d }: { d: CouncilDecision }) {
   // unbesehen) — nie die ganze Seite in die Error-Boundary reißen.
   const factions = Array.isArray(d.factions) ? d.factions : [];
   const parts: string[] = [];
-  if (d.vote) parts.push(d.vote);
+  if (d.vote) parts.push(voteLabel(d.vote));
   if (d.no_votes) parts.push(`${d.no_votes} dagegen`);
   if (d.abstentions) parts.push(`${d.abstentions} Enth.`);
   const hasAmount = d.kind !== "subvote" && d.amount_eur != null;
@@ -271,9 +271,9 @@ const SORTS: { value: string; label: string; sub?: string; icon?: typeof Sparkle
 
 const OUTCOME_CHIPS: { value: string; label: string }[] = [
   { value: "", label: "Alle" },
-  { value: "angenommen", label: "Angenommen" },
-  { value: "abgelehnt", label: "Abgelehnt" },
-  { value: "vertagt", label: "Vertagt" },
+  { value: "accepted", label: "Angenommen" },
+  { value: "rejected", label: "Abgelehnt" },
+  { value: "postponed", label: "Vertagt" },
 ];
 
 function FilterField({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
