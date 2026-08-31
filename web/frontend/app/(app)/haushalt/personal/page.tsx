@@ -107,7 +107,7 @@ export default function PersonalPage() {
   const skala = useMemo(() => Math.max(
     1, ...(daten?.summen ?? [])
       .filter((z) => z.teil === teil)
-      .flatMap((z) => [z.stellen_plan, z.besetzt])), [daten, teil]);
+      .flatMap((z) => [z.positions_planned, z.besetzt])), [daten, teil]);
 
   if (jahrgaenge.loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">
@@ -146,7 +146,7 @@ export default function PersonalPage() {
     const l = luecke(bis ?? von);
     return von && bis && l ? {
       teil: t,
-      spanne: `${deStellen(von.stellen_plan)} → ${deStellen(bis.stellen_plan)}`,
+      spanne: `${deStellen(von.positions_planned)} → ${deStellen(bis.positions_planned)}`,
       anteil: pct(l.anteil),
     } : null;
   });
@@ -190,8 +190,8 @@ export default function PersonalPage() {
           return (
             <Seitenbuehne
               kicker={`Stellenplan Teil ${teil} · ${TEIL_LABEL[teil]} · Plan ${teilNeu}`}
-              zahl={<><ZaehlZahl wert={kern.stellen_plan}
-                nachkomma={Number.isInteger(kern.stellen_plan) ? 0 : 1} /> Stellen
+              zahl={<><ZaehlZahl wert={kern.positions_planned}
+                nachkomma={Number.isInteger(kern.positions_planned) ? 0 : 1} /> Stellen
                 hält die Stadt vor</>}
               sub={kernLuecke
                 ? <>rund {pct(kernLuecke.anteil)}&nbsp;% davon waren zuletzt unbesetzt
@@ -266,7 +266,7 @@ export default function PersonalPage() {
                     einheit="Stellen"
                     grundLabel="besetzt"
                     markiert={{
-                      count: kernLuecke.nicht_besetzt,
+                      count: kernLuecke.vacant,
                       grund: `unbesetzt · rund ${pct(kernLuecke.anteil)} %`,
                       as_of_date: deDatum(kernLuecke.as_of_date),
                     }}
@@ -409,13 +409,13 @@ export default function PersonalPage() {
               <div className={gruppenOffen ? undefined : "gb-ab-tablet"}>
                 <ul className="mt-3 flex flex-col divide-y divide-border">
                   {luecken.map((z) => (
-                    <li key={`${z.seq_no}-${z.besoldung}`}
+                    <li key={`${z.seq_no}-${z.pay_grade}`}
                       className="flex items-baseline gap-3 py-2 first:pt-0">
                       <span className="min-w-0 flex-1">
                         <span className="text-[13px] font-medium">{z.label}</span>
-                        {z.besoldung && (
+                        {z.pay_grade && (
                           <span className="ml-2 font-mono text-[10.5px] text-muted-foreground">
-                            {z.besoldung}
+                            {z.pay_grade}
                           </span>
                         )}
                       </span>
@@ -423,7 +423,7 @@ export default function PersonalPage() {
                         {deStellen(z.positions_prior_year)} Stellen
                       </span>
                       <span className="w-[5.5rem] flex-none text-right font-display text-[14px] font-bold tabular-nums">
-                        {deStellen(z.nicht_besetzt)}
+                        {deStellen(z.vacant)}
                       </span>
                     </li>
                   ))}

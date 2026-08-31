@@ -144,8 +144,8 @@ def test_save_fts_und_by_ids(store):
     assert store.save_wortbeitraege(100, [BEITRAG]) == 1
     hits = store.search_wortbeitraege_fts("Fliegerhorst Sanierung")
     assert len(hits) == 1
-    wb_id = hits[0][0]
-    rows = store.wortbeitraege_by_ids([wb_id])
+    contribution_id = hits[0][0]
+    rows = store.wortbeitraege_by_ids([contribution_id])
     assert rows[0]["committee"] == "Rat der Stadt"
     assert rows[0]["session_date"] == "2026-05-01"
     assert rows[0]["art"] == "einwohnerfrage"
@@ -202,8 +202,8 @@ def test_by_ids_ohne_session(store):
         "INSERT INTO council_protocols (ksinr, raw_text, extracted_at, status) "
         "VALUES (200, 'Text', '2026-05-02', 'ok')")
     store.save_wortbeitraege(200, [BEITRAG])
-    wb_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
-    rows = store.wortbeitraege_by_ids([wb_id])
+    contribution_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
+    rows = store.wortbeitraege_by_ids([contribution_id])
     assert len(rows) == 1 and rows[0]["committee"] is None
 
 
@@ -215,8 +215,8 @@ def test_protokolle_verlinken_haengt_pdf_url_an(store):
         "UPDATE council_protocols SET document_url = "
         "'https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do' WHERE ksinr = 100")
     store.save_wortbeitraege(100, [BEITRAG])
-    wb_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
-    rows = store.wortbeitraege_by_ids([wb_id])
+    contribution_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
+    rows = store.wortbeitraege_by_ids([contribution_id])
     qa.protokolle_verlinken(store, rows)
     assert rows[0]["protokoll_url"].endswith("getfile.php?id=4711&type=do")
     rows_p = store.wortbeitraege_von_sprecher("Petersen")
@@ -272,8 +272,8 @@ def test_seiten_aufloesen_ankert_am_sprecher(store):
                  "Architektenwettbewerb.", "antwort": None}])
     from council.wortbeitraege import seiten_aufloesen
     assert seiten_aufloesen(store, 100) == 1
-    wb_id = store.search_wortbeitraege_fts("Stadtmuseums")[0][0]
-    assert store.wortbeitraege_by_ids([wb_id])[0]["page"] == 2
+    contribution_id = store.search_wortbeitraege_fts("Stadtmuseums")[0][0]
+    assert store.wortbeitraege_by_ids([contribution_id])[0]["page"] == 2
     # Idempotent: Beiträge mit Seite werden nicht erneut angefasst.
     assert seiten_aufloesen(store, 100) == 0
 
@@ -291,15 +291,15 @@ def test_seiten_aufloesen_bleibt_bei_zweifel_leer(store):
               "Herr Petersen spricht über Radwege und Ampeln."]
     _protokoll_mit_seiten(store, 100, seiten)
     assert seiten_aufloesen(store, 100) == 0
-    wb_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
-    assert store.wortbeitraege_by_ids([wb_id])[0]["page"] is None
+    contribution_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
+    assert store.wortbeitraege_by_ids([contribution_id])[0]["page"] is None
 
 
 def test_embeddings_version_wechselt(store):
     v0 = store.wortbeitraege_embeddings_version()
     store.save_wortbeitraege(100, [BEITRAG])
-    wb_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
-    store.replace_wortbeitrag_embedding(wb_id, "h", b"\x00" * 4)
+    contribution_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
+    store.replace_wortbeitrag_embedding(contribution_id, "h", b"\x00" * 4)
     assert store.wortbeitraege_embeddings_version() != v0
 
 
@@ -335,13 +335,13 @@ def test_cross_encoder_ist_torwaechter(store, monkeypatch):
     np = pytest.importorskip("numpy")
     from council import embeddings as emb
     store.save_wortbeitraege(100, [BEITRAG])
-    wb_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
+    contribution_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
     monkeypatch.setattr(emb, "_wb_matrix",
-                        lambda s: ([wb_id], np.array([[1.0, 0.0]], dtype="float32")))
+                        lambda s: ([contribution_id], np.array([[1.0, 0.0]], dtype="float32")))
     monkeypatch.setattr(emb, "embed",
                         lambda texts: np.array([[1.0, 0.0]], dtype="float32"))
     monkeypatch.setattr(emb, "rerank", lambda q, docs: [(i, -0.2) for i, _ in docs])
-    assert emb.search_wortbeitraege(store, "Frage", "Frage")[0][0] == wb_id
+    assert emb.search_wortbeitraege(store, "Frage", "Frage")[0][0] == contribution_id
     monkeypatch.setattr(emb, "rerank", lambda q, docs: [(i, -2.9) for i, _ in docs])
     assert emb.search_wortbeitraege(store, "Frage", "Frage") == []
     # Reranker nicht verfügbar → lieber leer als Rauschen (Zusatzkanal).

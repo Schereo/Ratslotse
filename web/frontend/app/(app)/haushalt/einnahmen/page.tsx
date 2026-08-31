@@ -99,7 +99,7 @@ export default function EinnahmenPage() {
     if (!art) return null;
     return data.steuern.find((s) => s.year === year && s.art === art)?.amount ?? null;
   };
-  const zuweisungJahr = data.steuerkraft.filter((k) => k.zuweisungen != null).at(-1);
+  const zuweisungJahr = data.steuerkraft.filter((k) => k.allocations != null).at(-1);
   // Der vollständige Ausgleich aus den Tabellen des Landes (Tausend Euro).
   // Optional: Ohne einen Lauf von scripts/ingest_staedtevergleich.py ist das
   // Feld leer, und die Seite zeigt weiter nur die Schlüsselzuweisungen.
@@ -123,7 +123,7 @@ export default function EinnahmenPage() {
     return {
       art: a,
       amount: a.slug === "schluesselzuweisungen"
-        ? zuweisungJahr?.zuweisungen ?? null
+        ? zuweisungJahr?.allocations ?? null
         : entgelt ? entgelt.result : betragFuer(a.datenArt),
       year: a.slug === "schluesselzuweisungen"
         ? zuweisungJahr?.year ?? year
@@ -375,9 +375,9 @@ export default function EinnahmenPage() {
                 + `${ausgleich.year} rund ${deMio(ausgleich.nettobetrag / 1000)} Millionen Euro `
                 + `— Schlüsselzuweisungen für Gemeinde- und Kreisaufgaben plus die `
                 + `Zuweisungen für übertragene staatliche Aufgaben`
-              : zuweisungJahr?.zuweisungen
+              : zuweisungJahr?.allocations
                 ? `. Dazu kommen die Schlüsselzuweisungen des Landes: für das Ausgleichsjahr `
-                  + `${zuweisungJahr.year} rund ${deMio(zuweisungJahr.zuweisungen / 1e6)} Millionen Euro`
+                  + `${zuweisungJahr.year} rund ${deMio(zuweisungJahr.allocations / 1e6)} Millionen Euro`
                 : "")
             + ". Die Karten sind eine Auswahl wiederkehrender Einnahmequellen mit klarer"
             + " Zuständigkeit. Gebühren, Kostenerstattungen und zweckgebundene Zuschüsse"

@@ -112,10 +112,10 @@ function SteuerInner() {
   }
 
   // Schlüsselzuweisungen kommen aus der Steuerkraft-Tabelle, nicht aus den Steuern.
-  const zuw = data.steuerkraft.filter((k) => k.zuweisungen != null);
+  const zuw = data.steuerkraft.filter((k) => k.allocations != null);
   const istZuweisung = art.slug === "schluesselzuweisungen";
   const zuwReihe = istZuweisung
-    ? zuw.map((k) => ({ year: k.year, amount: k.zuweisungen as number }))
+    ? zuw.map((k) => ({ year: k.year, amount: k.allocations as number }))
     : [];
   // Die dritte Herkunft: der Jahresabschluss. `result` ist nullbar — ein
   // Jahrgang, dessen Posten noch nicht gelesen ist, bekommt keinen Punkt auf

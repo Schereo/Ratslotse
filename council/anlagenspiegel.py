@@ -221,10 +221,10 @@ def parse_anlagenspiegel(text: str, year: int) -> list[dict]:
         label = _label(roh)
         zeilen.append({
             "year": year, "nr": nr, "label": label, "spalten": spalten,
-            "ahk_anfang": w[0], "zugaenge": w[1], "abgaenge": w[2],
-            "umbuchungen": w[3], "ahk_ende": w[4],
-            "abschr_anfang": w[5], "abschreibung": w[6], "aufloesungen": w[7],
-            "zuschreibungen": w[8], "abschr_umbuchungen": w[9], "abschr_ende": w[10],
+            "cost_opening": w[0], "additions": w[1], "disposals": w[2],
+            "transfers": w[3], "cost_closing": w[4],
+            "depreciation_opening": w[5], "abschreibung": w[6], "depreciation_releases": w[7],
+            "write_ups": w[8], "depreciation_transfers": w[9], "depreciation_closing": w[10],
             "book_value": w[11], "book_value_prior_year": w[12],
         })
     return zeilen
@@ -247,8 +247,8 @@ def probe(zeile: dict) -> tuple[list[str], list[str]]:
                          f"{ist:,.2f} gegen {soll:,.2f} ({abs(ist - soll):,.2f} €)")
 
     pruefe(PROBE_AHK,
-           zeile["ahk_anfang"] + zeile["zugaenge"] + zeile["abgaenge"] + zeile["umbuchungen"],
-           zeile["ahk_ende"], "Anschaffungswerte")
+           zeile["cost_opening"] + zeile["additions"] + zeile["disposals"] + zeile["transfers"],
+           zeile["cost_closing"], "Anschaffungswerte")
     # Bis 2020 fehlt dem Abschreibungs-Block die Umbuchungs-Spalte. Die Kette
     # KANN dort nicht schließen, wo in dem Jahr etwas zwischen den
     # Vermögensarten verschoben wurde — das ist eine Eigenschaft der Vorlage,
@@ -258,10 +258,10 @@ def probe(zeile: dict) -> tuple[list[str], list[str]]:
     # ausgewiesen und über den Jahrgang geprüft (`umbuchungsprobe`).
     if zeile.get("spalten") == 13:
         pruefe(PROBE_ABSCHREIBUNG,
-               (zeile["abschr_anfang"] + zeile["abschreibung"] + zeile["aufloesungen"]
-                + zeile["zuschreibungen"] + zeile["abschr_umbuchungen"]),
-               zeile["abschr_ende"], "Abschreibungen")
-    pruefe(PROBE_BUCHWERT, zeile["ahk_ende"] + zeile["abschr_ende"],
+               (zeile["depreciation_opening"] + zeile["abschreibung"] + zeile["depreciation_releases"]
+                + zeile["write_ups"] + zeile["depreciation_transfers"]),
+               zeile["depreciation_closing"], "Abschreibungen")
+    pruefe(PROBE_BUCHWERT, zeile["cost_closing"] + zeile["depreciation_closing"],
            zeile["book_value"], "Buchwert")
     return bestanden, risse
 
@@ -346,9 +346,9 @@ def umbuchung_abgeleitet(zeile: dict) -> float:
     Differenz zwischen der Spaltensumme und dem ausgewiesenen Endstand.
     Ab 2021 gibt es die Spalte, und der Rest ist null.
     """
-    kette = (zeile["abschr_anfang"] + zeile["abschreibung"] + zeile["aufloesungen"]
-             + zeile["zuschreibungen"] + zeile["abschr_umbuchungen"])
-    return zeile["abschr_ende"] - kette
+    kette = (zeile["depreciation_opening"] + zeile["abschreibung"] + zeile["depreciation_releases"]
+             + zeile["write_ups"] + zeile["depreciation_transfers"])
+    return zeile["depreciation_closing"] - kette
 
 
 def umbuchungsprobe(zeilen: list[dict]) -> tuple[float, list[str]]:

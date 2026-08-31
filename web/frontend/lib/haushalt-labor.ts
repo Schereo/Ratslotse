@@ -105,15 +105,15 @@ export function staedteHebesaetze(
  *  Landestopf schwankt), heißt ehrlich „es blieb alles übrig“, nicht „es
  *  blieb mehr als alles übrig“. */
 export function daempferSpanne(
-  steuerkraft: { year: number; messzahl: number | null; zuweisungen: number | null }[],
+  steuerkraft: { year: number; messzahl: number | null; allocations: number | null }[],
 ): { verbleibVon: number; verbleibBis: number; paare: number } | null {
   const reihe = steuerkraft
-    .filter((k) => k.messzahl != null && k.zuweisungen != null)
+    .filter((k) => k.messzahl != null && k.allocations != null)
     .sort((a, b) => a.year - b.year);
   const quoten: number[] = [];
   for (let i = 1; i < reihe.length; i++) {
     const dMess = (reihe[i].messzahl as number) - (reihe[i - 1].messzahl as number);
-    const dZuw = (reihe[i].zuweisungen as number) - (reihe[i - 1].zuweisungen as number);
+    const dZuw = (reihe[i].allocations as number) - (reihe[i - 1].allocations as number);
     // Nur Jahre, in denen die Steuerkraft nennenswert gestiegen ist — ein
     // Verhältnis über einer Mini-Änderung wäre Rauschen, keine Beobachtung.
     if (dMess > 1_000_000) quoten.push(Math.min(1, Math.max(0, -dZuw / dMess)));

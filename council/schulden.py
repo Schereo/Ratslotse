@@ -138,10 +138,10 @@ POSTEN_ZINSAUFWAND = 17
 #: Die ersten vier sind die Schuldenarten, die fünfte ihre Summe, die sechste
 #: der Pro-Kopf-Betrag.
 SPALTEN: tuple[tuple[str, str], ...] = (
-    ("kreditmarkt", "Schulden aus Kreditmarktmitteln"),
-    ("sondermittel", "Schulden aus öffentlichen Sondermitteln"),
-    ("gebietskoerperschaften", "Schulden bei Gebietskörperschaften"),
-    ("eigenbetriebe", "Schulden der Eigenbetriebe einschließlich Kliniken "
+    ("credit_market", "Schulden aus Kreditmarktmitteln"),
+    ("special_funds", "Schulden aus öffentlichen Sondermitteln"),
+    ("public_authorities", "Schulden bei Gebietskörperschaften"),
+    ("municipal_enterprises", "Schulden der Eigenbetriebe einschließlich Kliniken "
                       "und innere Darlehen"),
     ("insgesamt", "Schulden insgesamt"),
     ("je_einwohner", "Schulden je Einwohner*in"),
@@ -312,9 +312,9 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
             # Die Summe trägt die Pro-Kopf-Probe, die Aufteilung trägt nichts.
             for art in ARTEN:
                 uebernommen[art] = None
-            uebernommen["aufteilung_verworfen"] = round(deviation)
+            uebernommen["breakdown_rejected"] = round(deviation)
         else:
-            uebernommen["aufteilung_verworfen"] = None
+            uebernommen["breakdown_rejected"] = None
         uebernommen["probes"] = bestanden
         zeilen.append(uebernommen)
 

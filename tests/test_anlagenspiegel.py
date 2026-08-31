@@ -53,7 +53,7 @@ def test_dreizehn_spalten_und_drei_ketten():
     assert len(g) == 1
     z = g[0]
     assert z["spalten"] == 13
-    assert z["zugaenge"] == 13_478_238.51
+    assert z["additions"] == 13_478_238.51
     assert z["abschreibung"] == -6_523_027.43
     assert z["book_value"] == 91_394_171.68
 
@@ -85,7 +85,7 @@ def test_zwoelf_spalten_werden_erkannt_und_gefuellt():
     assert len(g) == 1
     z = g[0]
     assert z["spalten"] == 12
-    assert z["abschr_umbuchungen"] == 0.0    # gibt es in diesem Layout nicht
+    assert z["depreciation_transfers"] == 0.0    # gibt es in diesem Layout nicht
     assert z["book_value"] == 338_832_070.05   # NICHT um eine Spalte verschoben
     assert z["book_value_prior_year"] == 336_559_565.31
 
@@ -123,18 +123,18 @@ def test_umbuchungen_muessen_sich_aufheben():
     Lücken — 2019 waren es 396.635,53 € zwischen zwei Positionen.
     """
     zeilen = [
-        {"nr": "1", "abschr_anfang": -100.0, "abschreibung": -10.0, "aufloesungen": 0.0,
-         "zuschreibungen": 0.0, "abschr_umbuchungen": 0.0, "abschr_ende": -60.0},
-        {"nr": "2", "abschr_anfang": -200.0, "abschreibung": -20.0, "aufloesungen": 0.0,
-         "zuschreibungen": 0.0, "abschr_umbuchungen": 0.0, "abschr_ende": -270.0},
+        {"nr": "1", "depreciation_opening": -100.0, "abschreibung": -10.0, "depreciation_releases": 0.0,
+         "write_ups": 0.0, "depreciation_transfers": 0.0, "depreciation_closing": -60.0},
+        {"nr": "2", "depreciation_opening": -200.0, "abschreibung": -20.0, "depreciation_releases": 0.0,
+         "write_ups": 0.0, "depreciation_transfers": 0.0, "depreciation_closing": -270.0},
         # Untergliederung — darf NICHT mitzählen, sonst wäre alles doppelt.
-        {"nr": "2.1", "abschr_anfang": -50.0, "abschreibung": -5.0, "aufloesungen": 0.0,
-         "zuschreibungen": 0.0, "abschr_umbuchungen": 0.0, "abschr_ende": -105.0},
+        {"nr": "2.1", "depreciation_opening": -50.0, "abschreibung": -5.0, "depreciation_releases": 0.0,
+         "write_ups": 0.0, "depreciation_transfers": 0.0, "depreciation_closing": -105.0},
     ]
     balance, risse = asp.umbuchungsprobe(zeilen)
     assert balance == 0.0 and risse == []
 
-    zeilen[1]["abschr_ende"] = -300.0            # jetzt fehlen 30
+    zeilen[1]["depreciation_closing"] = -300.0            # jetzt fehlen 30
     balance, risse = asp.umbuchungsprobe(zeilen)
     assert abs(balance + 30.0) < 0.01 and len(risse) == 1
 

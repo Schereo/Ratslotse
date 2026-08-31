@@ -104,11 +104,11 @@ def main() -> dict:
         if gelesen:
             print("\nGelesen:", flush=True)
             for satzung, r in sorted(gelesen, key=lambda x: x[0].year):
-                lk = (f"{satzung.liquiditaetskredite / 1e6:,.0f} Mio. €"
-                      if satzung.liquiditaetskredite else "—")
-                kr = ("nicht veranschlagt" if satzung.kredite_investitionen == 0
-                      else (f"{(satzung.kredite_investitionen or 0) / 1e6:,.1f} Mio. €"
-                            if satzung.kredite_investitionen else "—"))
+                lk = (f"{satzung.liquidity_loans / 1e6:,.0f} Mio. €"
+                      if satzung.liquidity_loans else "—")
+                kr = ("nicht veranschlagt" if satzung.investment_loans == 0
+                      else (f"{(satzung.investment_loans or 0) / 1e6:,.1f} Mio. €"
+                            if satzung.investment_loans else "—"))
                 print(f"  {satzung.year}  [{satzung.fassung}]  "
                       f"Dispo {lk:>14}  Investitionskredite: {kr}", flush=True)
 

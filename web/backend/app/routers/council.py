@@ -727,7 +727,7 @@ def haushalt_beteiligungen(
     viel die Betriebe bewegen, diese Seite, was sie damit machen.
 
     - ``gesellschaften``: je Gesellschaft Name, Gliederungsnummer und Seite im
-      jüngsten Bericht, dazu ``konzern_key``, wo der Gesamtabschluss sie als
+      jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als
       eigenen Träger führt,
     - ``texte``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
       Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —
@@ -737,7 +737,7 @@ def haushalt_beteiligungen(
       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
       eindeutig kennt — ``slug`` und ``partei`` für die Personen-Seite.
       ``funktion`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
-      ``funktionen_zuordenbar`` an der Gesellschaft. Zwei der fünf Abschnitte
+      ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
       spaltenweise ausgibt (``council/beteiligungsbericht.py``),
     - ``eigentuemer``: wem die Gesellschaft gehört, mit Betrag und Anteil.
@@ -775,7 +775,7 @@ def haushalt_beteiligungen(
     # wird sie einmal an die Gesellschaft gehängt, damit die Seite sie zeigen
     # kann, ohne die Personen durchzugehen. Wer gar keine Personen hat, hat
     # auch nichts falsch zuzuordnen.
-    gerissen = {p["gesellschaft"] for p in personen if not p["funktionen_zuordenbar"]}
+    gerissen = {p["gesellschaft"] for p in personen if not p["roles_assignable"]}
     verzeichnis = _lexikon_zuordnung(store, personen)
 
     ids = sorted({z["herkunft_id"]
@@ -785,12 +785,12 @@ def haushalt_beteiligungen(
     return {
         "berichtsjahre": berichtsjahre,
         "jahre": sorted({z["year"] for z in kennzahlen}),
-        "gesellschaften": [{**g, "funktionen_zuordenbar":
+        "gesellschaften": [{**g, "roles_assignable":
                             g["gesellschaft"] not in gerissen}
                            for g in gesellschaften],
         "texte": texte,
-        "personen": [{**p, "funktionen_zuordenbar":
-                      bool(p["funktionen_zuordenbar"]),
+        "personen": [{**p, "roles_assignable":
+                      bool(p["roles_assignable"]),
                       **verzeichnis[p["name"]]} for p in personen],
         "eigentuemer": eigentuemer,
         "kennzahlen": kennzahlen,
@@ -1103,7 +1103,7 @@ def haushalt_uebersicht(
         # Die Gebührenbedarfsberechnung — woraus die Abfall- und
         # Straßenreinigungsgebühren entstehen.
         #
-        # `gebuehr` und `bezugsmenge` sind bei der Abfallsammlung NULL, und das
+        # `gebuehr` und `reference_quantity` sind bei der Abfallsammlung NULL, und das
         # ist die Auskunft: Sie erhebt eine Grundgebühr UND eine Gebühr je
         # Liter, dort gibt es keine einzelne Division. Wer die Spalte anzeigt,
         # schreibt die Leerstelle an, statt eine 0 zu zeichnen.
@@ -1161,7 +1161,7 @@ def haushalt_uebersicht(
         # `serie` ist unser Bestand aus dem Ratsinformationssystem, je Vorlage
         # eine Zeile (nicht je Beschlusszeile — Finanzausschuss und Rat
         # entscheiden dieselbe Sache, und 131 der 287 Zeilen sind Dubletten).
-        # `beschluss_id` zeigt auf die vorhandene Beschluss-Seite.
+        # `decision_id` zeigt auf die vorhandene Beschluss-Seite.
         #
         # `jahre` ist Kapitel 3 des Rechenschaftsberichts mit seinen **vier
         # Entscheidungswegen**. Nur dort steht die Gesamtsumme; der Rat ist
@@ -3647,7 +3647,7 @@ def haushalt_vergleich(
     - ``beleg``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
       Antrag der FDP-Fraktion sieben Städte verglichen und im selben Dokument
       festgestellt hat, dass dieser Vergleich nichts aussagt. Aufgelöst wird
-      sie über die Vorlagennummer; ``beschluss_id`` zeigt auf den Eintrag in
+      sie über die Vorlagennummer; ``decision_id`` zeigt auf den Eintrag in
       unserem eigenen Bestand (der Ausschuss hat den Bericht zur Kenntnis
       genommen), ``anlagen`` auf Antrag und Antwort im Original.
 
@@ -3686,10 +3686,10 @@ def haushalt_vergleich(
     beleg: dict = {"template_number": VERGLEICH_BELEG_VORLAGE,
                    "kvonr": VERGLEICH_BELEG_KVONR,
                    "vorlage_url": _vorlage_url(VERGLEICH_BELEG_KVONR),
-                   "beschluss_id": None, "titel": None, "anlagen": []}
+                   "decision_id": None, "titel": None, "anlagen": []}
     try:
         ids = store.find_decision_ids(template_number=VERGLEICH_BELEG_VORLAGE)
-        beleg["beschluss_id"] = ids[0] if ids else None
+        beleg["decision_id"] = ids[0] if ids else None
         vorlage = store.get_vorlage_by_nr(VERGLEICH_BELEG_VORLAGE)
         if vorlage:
             beleg["titel"] = vorlage.get("title")
@@ -3880,7 +3880,7 @@ def haushalt_schulden(
     Datensatz passt, ist die Probe, die den Wert überhaupt hereingelassen hat
     (``herkunft[…].probes``).
 
-    Wo ``aufteilung_verworfen`` gesetzt ist, fehlen die vier Artenspalten:
+    Wo ``breakdown_rejected`` gesetzt ist, fehlen die vier Artenspalten:
     Dort ergeben sie im Dokument selbst nicht die ausgewiesene Summe. Die
     Summe steht trotzdem — sie hängt an der unabhängigen Pro-Kopf-Probe. Die
     Oberfläche kann den fehlenden Balken damit **erklären**, statt ihn als

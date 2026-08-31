@@ -338,7 +338,7 @@ def lies(text: str) -> dict:
         ausgewiesene Summe, vorzeichenbehaftet) — als **Zahl** neben dem
         Fließtext und nicht nur in ihm. Der Grund ist ein Satz für Menschen;
         die Zahl daraus zurückzuparsen wäre eine zweite, stille Schnittstelle.
-        Dieselbe Rolle wie ``aufteilung_verworfen`` bei den Schulden
+        Dieselbe Rolle wie ``breakdown_rejected`` bei den Schulden
         (``council/schulden.py``): Sie hält fest, wie groß die Lücke war,
         damit die Seite die Lücke **beziffern** kann statt sie nur zu
         behaupten. ``None``, wo es nichts zu messen gab — eine Zeile, die

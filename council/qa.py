@@ -1642,7 +1642,7 @@ def _steuerkraft_block(k: dict | None) -> str:
         "höheren Einnahmen gefragt wird; NIE mit [id]):\n"
         f"- Steuerkraftmesszahl {k['year']}: {_eur(k['messzahl'])} "
         f"(davor {k['year_before']}: {_eur(k['messzahl_davor'])})\n"
-        f"- Schlüsselzuweisungen des Landes {k['year']}: {_eur(k['zuweisungen'])} "
+        f"- Schlüsselzuweisungen des Landes {k['year']}: {_eur(k['allocations'])} "
         f"(davor {k['year_before']}: {_eur(k['zuweisungen_davor'])})\n"
         "- REGEL: Steigt die eigene Steuerkraft, sinken die Schlüsselzuweisungen des\n"
         "  Landes. Von einer Steuererhöhung bleibt der Stadt deshalb nur ein Teil —\n"
@@ -2170,15 +2170,15 @@ def _gebuehren_block(g: dict | None) -> str:
             s = (f"- {r['area_name']} {r['year']}: Kostenkalkulation "
                  f"{_eur(r.get('kostenkalkulation'))}, Abzüge "
                  f"{_eur(r.get('deductions'))}, durch Gebühren zu decken "
-                 f"{_eur(r.get('zu_deckende_kosten'))}")
+                 f"{_eur(r.get('costs_to_cover'))}")
             if r.get("gebuehr") is not None:
-                einheit = f" je {r['bezugseinheit']}" if r.get("bezugseinheit") else ""
+                einheit = f" je {r['reference_unit']}" if r.get("reference_unit") else ""
                 s += f"; errechnete Gebühr {geld(r['gebuehr'], 3)}{einheit}"
             else:
                 s += ("; keine einzelne Gebühr ausgewiesen (Grundgebühr und "
                       "volumenabhängige Gebühr werden getrennt berechnet)")
-            if r.get("gebuehrenvorschlag") is not None:
-                s += f"; gerundeter Gebührenvorschlag {geld(r['gebuehrenvorschlag'])}"
+            if r.get("fee_proposed") is not None:
+                s += f"; gerundeter Gebührenvorschlag {geld(r['fee_proposed'])}"
             if r.get("template_number"):
                 s += f"; Vorlage {r['template_number']}"
             s += _beleg_text(r.get("beleg"))
@@ -2227,7 +2227,7 @@ def _gruende_block(gruende: list[dict] | None) -> str:
         return ""
     zeilen = []
     for g in gruende:
-        delta = f" ({g['delta_mio']:+.1f} Mio. €)" if g.get("delta_mio") is not None else ""
+        delta = f" ({g['delta_meur']:+.1f} Mio. €)" if g.get("delta_meur") is not None else ""
         zeilen.append(f"- {g['label']} {g['year']}{delta}: "
                       f"{' '.join((g.get('text') or '').split())[:400]}"
                       + _beleg_text(g.get("beleg")))
@@ -2479,7 +2479,7 @@ def _schulden_block(s: dict | None) -> str:
                       f"{s['hoch']['year']} mit {_eur(s['hoch']['insgesamt'])}")
     for titel, amount in s.get("arten") or []:
         zeilen.append(f"  - davon {titel}: {_eur(amount)}")
-    if s.get("aufteilung_verworfen"):
+    if s.get("breakdown_rejected"):
         zeilen.append("  - Die Aufteilung nach Schuldenarten fehlt für dieses Jahr: "
                       "Sie ging in der Quelle selbst nicht auf und wurde deshalb "
                       "nicht übernommen. Die Gesamtsumme trägt eine eigene Probe.")
@@ -2594,11 +2594,11 @@ def _stellenplan_block(s: dict | None) -> str:
     zeilen = []
     for t in s["teile"]:
         zeilen.append(
-            f"- Teil {t['teil']} ({t['teil_name']}): {_stellen(t.get('stellen_plan'))} "
+            f"- Teil {t['teil']} ({t['teil_name']}): {_stellen(t.get('positions_planned'))} "
             f"Stellen im Haushaltsjahr {s['budget_year']}. Im Vorjahr waren es "
             f"{_stellen(t.get('positions_prior_year'))} Stellen, davon "
             f"{_stellen(t.get('besetzt'))} besetzt und "
-            f"{_stellen(t.get('nicht_besetzt'))} nicht besetzt")
+            f"{_stellen(t.get('vacant'))} nicht besetzt")
     if s.get("fehlend"):
         zeilen.append(f"- NICHT im Bestand: der Teil für {', '.join(s['fehlend'])}. "
                       "Die Zahlen oben sind deshalb nicht der ganze Stellenplan — "

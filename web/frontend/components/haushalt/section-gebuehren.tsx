@@ -177,26 +177,26 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
         <Zeile label="davon getragen von Dritten, Erlösen und Vorjahren"
           wert={letzte.deductions} />
         <Zeile label="Von den Gebühren zu decken"
-          wert={letzte.zu_deckende_kosten} summe />
+          wert={letzte.costs_to_cover} summe />
       </div>
 
-      {letzte.gebuehr != null && letzte.bezugsmenge != null ? (
+      {letzte.gebuehr != null && letzte.reference_quantity != null ? (
         <div className="mt-3 rounded-xl bg-muted/40 px-3 py-2.5">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4">
             <span className="text-[12.5px] text-muted-foreground">
-              geteilt durch {deZahl(letzte.bezugsmenge, 0)}{" "}
-              {letzte.bezugseinheit}
+              geteilt durch {deZahl(letzte.reference_quantity, 0)}{" "}
+              {letzte.reference_unit}
             </span>
             <span className="font-display text-[17px] font-bold tabular-nums">
               <Euro wert={letzte.gebuehr} stellen={3} />
             </span>
           </div>
           <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-            {MASSSTAB[letzte.bezugseinheit ?? ""] ?? "je Bezugseinheit"}
-            {letzte.gebuehrenvorschlag != null && (
+            {MASSSTAB[letzte.reference_unit ?? ""] ?? "je Bezugseinheit"}
+            {letzte.fee_proposed != null && (
               <> · dem Rat vorgeschlagen:{" "}
                 <strong className="text-foreground">
-                  <Euro wert={letzte.gebuehrenvorschlag} stellen={2} />
+                  <Euro wert={letzte.fee_proposed} stellen={2} />
                 </strong>
               </>
             )}
@@ -241,7 +241,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
             // Ohne Jahresspanne: Die Zeitreihe hängt sie selbst an, und
             // zweimal gelesen klingt es wie ein Fehler.
             ariaTitel={`Gebühr ${letzte.area_name}, in Euro `
-              + `${MASSSTAB[letzte.bezugseinheit ?? ""] ?? ""}`}
+              + `${MASSSTAB[letzte.reference_unit ?? ""] ?? ""}`}
           />
         </div>
       )}

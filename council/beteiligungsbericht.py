@@ -205,7 +205,7 @@ def budget_year(kopf: str | None) -> int | None:
 #: „Bäderbetrieb der Stadt Oldenburg (Oldb)" ist derselbe Betrieb wie
 #: „Bäderbetrieb der Stadt Oldenburg".
 #:
-#: ``konzern_key`` verweist auf ``konzernabschluss.TRAEGER`` — damit ist die
+#: ``consolidated_key`` verweist auf ``konzernabschluss.TRAEGER`` — damit ist die
 #: Gegenprobe ein Join und keine Namensraterei. Wo er ``None`` ist, führt der
 #: Gesamtabschluss die Gesellschaft nicht als eigenen Träger; sie steckt dann
 #: in der Konsolidierung oder ist zu klein für eine eigene Zeile.
@@ -264,7 +264,7 @@ def _slug(name: str) -> str:
 
 
 def erkenne_gesellschaft(name: str) -> tuple[str, str, str | None, bool]:
-    """Name aus dem Bericht → ``(key, anzeigename, konzern_key, bekannt)``."""
+    """Name aus dem Bericht → ``(key, anzeigename, consolidated_key, bekannt)``."""
     klein = " ".join((name or "").lower().split())
     for key, muster, anzeige, konzern in GESELLSCHAFTEN:
         if re.match(muster, klein):
@@ -293,7 +293,7 @@ class Gesellschaft:
     page: int
     #: Fußzeilen-Seite — die steht im Inhaltsverzeichnis und im Dokument.
     seite_gedruckt: int
-    konzern_key: str | None = None
+    consolidated_key: str | None = None
     bekannt: bool = True
     abschnitte: dict[str, str] = field(default_factory=dict)
     kennzahlen: dict[str, dict[int, float]] = field(default_factory=dict)
@@ -350,7 +350,7 @@ def classification(seiten: list[str]) -> tuple[list[Gesellschaft], list[str]]:
                              f"beteiligungsbericht.GESELLSCHAFTEN — "
                              f"Notschlüssel {key!r}")
         aus.append(Gesellschaft(key=key, name=anzeige, classification=nr, page=i,
-                                seite_gedruckt=gedruckt, konzern_key=konzern,
+                                seite_gedruckt=gedruckt, consolidated_key=konzern,
                                 bekannt=bekannt))
     for nr, (name, _) in sorted(ivz.items()):
         if nr not in gesehen and not any(w.startswith(nr) for w in warnungen):
@@ -680,7 +680,7 @@ def abschnitte(text: str) -> dict[str, str]:
 # eine Falschaussage über einen Menschen.
 #
 # Deshalb: Zahl der Namen ≠ Zahl der Funktionen → **alle** Funktionen dieser
-# Gesellschaft bleiben ``None`` und ``funktionen_zuordenbar`` ist ``False`` —
+# Gesellschaft bleiben ``None`` und ``roles_assignable`` ist ``False`` —
 # auch in einem zweiten Gremium, das für sich aufgegangen wäre. Kein „best
 # effort", kein Verschieben, kein Auffüllen. Ein Name ohne Amt ist
 # unvollständig; ein Name mit dem falschen Amt ist falsch.
@@ -866,9 +866,9 @@ def _person_zerlegen(zeile: str, gremium: str, sort_order: int) -> Aufsichtspers
 
 
 def aufsichtsorgane(text: str) -> tuple[list[Aufsichtsperson], bool]:
-    """Abschnitt 3 zerlegen — ``(personen, funktionen_zuordenbar)``.
+    """Abschnitt 3 zerlegen — ``(personen, roles_assignable)``.
 
-    ``funktionen_zuordenbar`` gilt für die **ganze** Gesellschaft und ist das
+    ``roles_assignable`` gilt für die **ganze** Gesellschaft und ist das
     Und über ihre Gremien: Eine GSG mit einem sauberen Aufsichtsrat und einer
     verrutschten Gesellschafterversammlung ist nicht „halb zuordenbar".
     Die Oberfläche zeigt dann für alle Gremien nur die Namen — und sagt das.
@@ -1163,7 +1163,7 @@ def konzernvergleich(store, year: int) -> list[dict]:
     """Beitrag im Gesamtabschluss gegen Jahresergebnis im Beteiligungsbericht.
 
     Für jede Gesellschaft, die der Gesamtabschluss als eigenen Träger führt
-    (``Gesellschaft.konzern_key``), beide Zahlen desselben Jahres nebeneinander
+    (``Gesellschaft.consolidated_key``), beide Zahlen desselben Jahres nebeneinander
     — in **Euro**, damit sie vergleichbar sind; der Gesamtabschluss rechnet in
     Tausend.
 
@@ -1183,7 +1183,7 @@ def konzernvergleich(store, year: int) -> list[dict]:
                   if z["indicator"] == "jahresergebnis" and z["year"] == year}
     aus: list[dict] = []
     for g in store.get_gesellschaften():
-        schluessel = g.get("konzern_key")
+        schluessel = g.get("consolidated_key")
         if not schluessel or schluessel not in traeger:
             continue
         if g["gesellschaft"] not in ergebnisse:
@@ -1300,7 +1300,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
             stammdaten.append({
                 "report_year": year, "gesellschaft": g.key, "name": g.name,
                 "classification": g.classification, "page": g.seite_gedruckt,
-                "konzern_key": g.konzern_key,
+                "consolidated_key": g.consolidated_key,
                 "herkunft": _h.Herkunft(
                     probe="beteiligung_seitenprobe",
                     citation=f"Abschnitt {g.classification} — {g.name}",
@@ -1332,7 +1332,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                     "sort_order": person.sort_order, "gremium": person.gremium,
                     "name": person.name, "funktion": person.funktion,
                     "vorsitz": person.vorsitz, "note": person.note,
-                    "funktionen_zuordenbar": zuordenbar,
+                    "roles_assignable": zuordenbar,
                     # Der Name selbst trägt keine Probe — er steht einmal im
                     # Bericht. Geprüft ist die **Zuordnung** des Amtes; wo sie
                     # gerissen ist, steht auch kein Amt da, und die Zeile sagt

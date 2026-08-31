@@ -600,7 +600,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
                 "VALUES (2024,?,?,20,'Summe ordentliche Aufwendungen',?,?,'ansatz',?,0,1,'',1)",
                 (sub_budget, name, a_plan, a_plan, a_ist))
         store._conn.execute(
-            "INSERT INTO council_abweichungsgruende (year, nr, label, delta_mio, "
+            "INSERT INTO council_abweichungsgruende (year, nr, label, delta_meur, "
             " prozent, text, fetched_at, herkunft_id) VALUES "
             "(2024, 1, 'Steuern und ähnliche Abgaben', 21.4, 5.2, "
             " 'Die Mehrerträge beruhen im Wesentlichen auf Nachveranlagungen bei der "
@@ -669,8 +669,8 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # Schulden: Reihenanfang, Höchststand, Vorjahr, jüngstes Jahr. Vier
         # Zeilen reichen — der Baustein zeigt genau diese vier Bezugspunkte.
         store._conn.executemany(
-            "INSERT INTO council_schulden (year, kreditmarkt, sondermittel, "
-            " gebietskoerperschaften, eigenbetriebe, insgesamt, je_einwohner, "
+            "INSERT INTO council_schulden (year, credit_market, special_funds, "
+            " public_authorities, municipal_enterprises, insgesamt, je_einwohner, "
             " revised, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,0,3,'')",
             [(1995, None, None, None, None, 198_000_000.0, 1_420.0),
              (2013, None, None, None, None, 512_400_000.0, 3_180.0),
@@ -693,7 +693,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # nicht_besetzt = stellen_vorjahr (die Besetzungsprobe des Plans).
         store._conn.executemany(
             "INSERT INTO council_stellenplan (budget_year, teil, zeile, art, label, "
-            " stellen_plan, positions_prior_year, besetzt, nicht_besetzt, as_of_date, "
+            " positions_planned, positions_prior_year, besetzt, vacant, as_of_date, "
             " herkunft_id, fetched_at) VALUES (2026,?,0,'gesamt',?,?,?,?,?,'30.06.2025',?,'')",
             [("A", "Gesamt Teil A", 815.50, 802.00, 761.25, 40.75, 5),
              ("B", "Gesamt Teil B", 1_702.25, 1_688.50, 1_579.00, 109.50, 6)])
@@ -744,8 +744,8 @@ def _befuellter_store(tmp_path) -> CouncilStore:
               "gebuehren_kaskade,gebuehren_division", "2026")])
         store._conn.executemany(
             "INSERT INTO council_gebuehren (year, area, area_name, "
-            "kostenkalkulation, deductions, zu_deckende_kosten, bezugsmenge, "
-            "bezugseinheit, gebuehr, gebuehrenvorschlag, template_number, probes, "
+            "kostenkalkulation, deductions, costs_to_cover, reference_quantity, "
+            "reference_unit, gebuehr, fee_proposed, template_number, probes, "
             "herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,7,'')",
             [(2025, "abfallbehandlung", "Abfallbehandlungsanlagen", 18_000_000.0,
               -2_000_000.0, 16_000_000.0, 114_475.0, "Mg", 139.772, 139.70,

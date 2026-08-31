@@ -190,7 +190,7 @@ def test_die_kaskade_geht_auf():
     b = parse_anlage(teile_anlagen(ANLAGE_1_2025)[0])
     assert b.kostenkalkulation == 11_661_361.0
     assert b.deductions == -(3_668_314 + 5_000 + 240_000 + 361_777)
-    assert b.zu_deckende_kosten == 7_386_270.0
+    assert b.costs_to_cover == 7_386_270.0
 
 
 def test_eine_verstellte_zahl_faellt_durch():
@@ -205,7 +205,7 @@ def test_ein_euro_rundung_reisst_nicht():
     Dokument rundet seine Abzüge. Dieselbe Signatur wie beim Erfolgsplan."""
     knapp = ANLAGE_1_2025.replace("7.386.270 €", "7.386.271 €")
     b = parse_anlage(teile_anlagen(knapp)[0])
-    assert b.zu_deckende_kosten == 7_386_271.0
+    assert b.costs_to_cover == 7_386_271.0
 
 
 def test_positive_ueberdeckung_wird_nur_bei_exakter_kaskade_abgezogen():
@@ -231,8 +231,8 @@ def test_positive_ueberdeckung_wird_nur_bei_exakter_kaskade_abgezogen():
     b = parse_anlage(text)
     assert b.year == 2020
     assert b.deductions == -(2_881_800 + 3_000 + 168_200 + 280_500)
-    assert b.zu_deckende_kosten == 6_428_050
-    assert b.gebuehr == 121.974 and b.bezugsmenge == 52_700
+    assert b.costs_to_cover == 6_428_050
+    assert b.gebuehr == 121.974 and b.reference_quantity == 52_700
 
     kaputt = text.replace("280.500 €", "280.400 €")
     with pytest.raises(GebuehrenFehler, match="Rest"):
@@ -245,11 +245,11 @@ def test_positive_ueberdeckung_wird_nur_bei_exakter_kaskade_abgezogen():
 
 def test_die_division_geht_auf():
     b = parse_anlage(teile_anlagen(ANLAGE_1_2025)[0])
-    assert b.bezugsmenge == 52_845
-    assert b.bezugseinheit == "Mg"
+    assert b.reference_quantity == 52_845
+    assert b.reference_unit == "Mg"
     assert b.gebuehr == 139.772
-    assert abs(b.zu_deckende_kosten / b.bezugsmenge - b.gebuehr) < 0.001
-    assert b.gebuehrenvorschlag == 139.70
+    assert abs(b.costs_to_cover / b.reference_quantity - b.gebuehr) < 0.001
+    assert b.fee_proposed == 139.70
 
 
 def test_zerrissene_zahl_mit_leerzeichen_nach_dem_punkt():
@@ -257,7 +257,7 @@ def test_zerrissene_zahl_mit_leerzeichen_nach_dem_punkt():
     vor dem Punkt eine Ziffer, dahinter genau drei."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2026)[0])
     assert b.deductions == -(3_731_300 + 6_500 + 295_000 + 359_470)
-    assert b.zu_deckende_kosten == 8_163_280.0
+    assert b.costs_to_cover == 8_163_280.0
 
 
 def test_zerrissene_menge_wird_an_der_gebuehr_erkannt():
@@ -265,8 +265,8 @@ def test_zerrissene_menge_wird_an_der_gebuehr_erkannt():
     anfängt. Erkannt wird sie daran, dass sie die gedruckte Gebühr ergibt:
     3.114.327 ÷ 771.000 = 4,039."""
     b = parse_anlage(teile_anlagen(ANLAGE_3_2026)[0])
-    assert b.bezugsmenge == 771_000
-    assert b.bezugseinheit == "Meter Quadratwurzel"
+    assert b.reference_quantity == 771_000
+    assert b.reference_unit == "Meter Quadratwurzel"
     assert b.gebuehr == 4.039
 
 
@@ -288,8 +288,8 @@ def test_beschriftungen_und_betraege_getrennt():
     Reihenfolge und gilt nur, weil sie die Kaskade erfüllt."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2024)[0])
     assert b.kostenkalkulation == 10_901_750.0
-    assert b.zu_deckende_kosten == 6_897_117.0
-    assert b.bezugsmenge == 51_200
+    assert b.costs_to_cover == 6_897_117.0
+    assert b.reference_quantity == 51_200
     assert b.gebuehr == 134.709
 
 
@@ -299,7 +299,7 @@ def test_nicht_der_gerundete_vorschlag():
     die die Division nicht erfüllt."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2024)[0])
     assert b.gebuehr == 134.709
-    assert b.gebuehrenvorschlag == 134.70
+    assert b.fee_proposed == 134.70
 
 
 def test_die_einheit_wird_nicht_erfunden():
@@ -307,7 +307,7 @@ def test_die_einheit_wird_nicht_erfunden():
     „Gebührenvorschlag" — ein freier Text als Einheit stünde so in der
     Datenbank."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2024)[0])
-    assert b.bezugseinheit == "Mg"
+    assert b.reference_unit == "Mg"
 
 
 # --------------------------------------------------------------------------
@@ -320,8 +320,8 @@ def test_abfallsammlung_hat_keine_division():
     wäre schlimmer als keine. Die Kaskade ist trotzdem geprüft."""
     b = parse_anlage(teile_anlagen(ANLAGE_2_2026)[0])
     assert b.area == "abfallsammlung"
-    assert b.zu_deckende_kosten == 13_762_012.0
-    assert b.gebuehr is None and b.bezugsmenge is None
+    assert b.costs_to_cover == 13_762_012.0
+    assert b.gebuehr is None and b.reference_quantity is None
 
 
 def test_die_herkunft_nennt_nur_die_gelaufenen_proben():

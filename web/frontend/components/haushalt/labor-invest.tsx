@@ -98,9 +98,9 @@ export function InvestWerkbank({
   // § 2 der Satzung, aus den Daten statt behauptet: In wie vielen Jahrgängen
   // stand „nicht veranschlagt“ (= 0)?
   const satzSelbst = (satzung ?? []).filter((z) => z.supplement === 0);
-  const ohneKredit = satzSelbst.filter((z) => z.kredite_investitionen === 0).length;
+  const ohneKredit = satzSelbst.filter((z) => z.investment_loans === 0).length;
   const dispo = satzSelbst
-    .filter((z) => z.liquiditaetskredite != null)
+    .filter((z) => z.liquidity_loans != null)
     .sort((a, b) => a.year - b.year)
     .at(-1);
 
@@ -263,10 +263,10 @@ export function InvestWerkbank({
                       Zins im Jahr dazu.
                     </>
                   )}
-                  {dispo?.liquiditaetskredite != null && (
+                  {dispo?.liquidity_loans != null && (
                     <>
                       {" "}Für den Alltag erlaubt sich die Stadt daneben bis zu{" "}
-                      {deMio(dispo.liquiditaetskredite / 1e6)}&#8239;Mio.&nbsp;€ Kassenkredit ({dispo.year}).
+                      {deMio(dispo.liquidity_loans / 1e6)}&#8239;Mio.&nbsp;€ Kassenkredit ({dispo.year}).
                     </>
                   )}
                 </p>

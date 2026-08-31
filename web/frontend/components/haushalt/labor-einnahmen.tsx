@@ -112,7 +112,7 @@ export function EinnahmenWerkbank({
   const gebJahr = gebuehren?.length ? Math.max(...gebuehren.map((g) => g.year)) : null;
   const gebSumme = gebJahr != null
     ? (gebuehren ?? []).filter((g) => g.year === gebJahr)
-        .reduce((s, g) => s + g.zu_deckende_kosten, 0) : null;
+        .reduce((s, g) => s + g.costs_to_cover, 0) : null;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">

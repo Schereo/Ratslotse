@@ -56,8 +56,8 @@ export type GebautDaten = {
 
 /** Eine Zeile des Anlagenspiegels: eine Vermögensposition in einem Jahr.
  *
- *  Die Vorzeichen sind die des Dokuments: `abgaenge`, `abschreibung` und
- *  `abschr_ende` stehen negativ. Wer sie beim Anzeigen dreht, muss es überall
+ *  Die Vorzeichen sind die des Dokuments: `disposals`, `abschreibung` und
+ *  `depreciation_closing` stehen negativ. Wer sie beim Anzeigen dreht, muss es überall
  *  tun — eine halb gedrehte Reihe ist schlimmer als eine ungedrehte. */
 export type AnlagePosten = {
   year: number;
@@ -68,10 +68,10 @@ export type AnlagePosten = {
    *  Umbuchungs-Spalte — die Abschreibungskette KANN dort nicht schließen,
    *  und das ist eine Eigenschaft der Vorlage, kein Fehler. */
   spalten: number;
-  ahk_anfang: number; zugaenge: number; abgaenge: number;
-  umbuchungen: number; ahk_ende: number;
-  abschr_anfang: number; abschreibung: number; aufloesungen: number;
-  zuschreibungen: number; abschr_umbuchungen: number; abschr_ende: number;
+  cost_opening: number; additions: number; disposals: number;
+  transfers: number; cost_closing: number;
+  depreciation_opening: number; abschreibung: number; depreciation_releases: number;
+  write_ups: number; depreciation_transfers: number; depreciation_closing: number;
   book_value: number; book_value_prior_year: number;
   probes: string[];
   herkunft_id: number | null;
@@ -116,16 +116,16 @@ export function infrastruktur(anlagen: Anlagen | undefined, year: number): Anlag
  *  desselben Jahres. `null`, wo eine der beiden Zahlen fehlt — dann sagt die
  *  Seite nichts, statt eine Richtung zu raten. */
 export function verzehr(posten: AnlagePosten | null): {
-  zugaenge: number; abschreibung: number; balance: number; faktor: number | null;
+  additions: number; abschreibung: number; balance: number; faktor: number | null;
 } | null {
   if (!posten) return null;
   const abschreibung = Math.abs(posten.abschreibung);
-  if (!posten.zugaenge && !abschreibung) return null;
+  if (!posten.additions && !abschreibung) return null;
   return {
-    zugaenge: posten.zugaenge,
+    additions: posten.additions,
     abschreibung,
-    balance: posten.zugaenge - abschreibung,
-    faktor: posten.zugaenge > 0 ? abschreibung / posten.zugaenge : null,
+    balance: posten.additions - abschreibung,
+    faktor: posten.additions > 0 ? abschreibung / posten.additions : null,
   };
 }
 

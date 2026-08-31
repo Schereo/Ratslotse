@@ -773,7 +773,7 @@ def test_personen_und_eigentuemer_landen_mit_herkunft_im_bestand(tmp_path):
     assert [p["name"] for p in personen] == ["Ruth Regina Drügemöller",
                                              "Ingrid Kruse"]
     assert all(p["funktion"] == "Ratsmitglied" for p in personen)
-    assert all(p["funktionen_zuordenbar"] == 1 for p in personen)
+    assert all(p["roles_assignable"] == 1 for p in personen)
     h = store.get_herkunft([personen[0]["herkunft_id"]])[0]
     assert h["probe"] == "beteiligung_spaltenprobe"
     assert "Betriebsausschuss" in h["citation"]

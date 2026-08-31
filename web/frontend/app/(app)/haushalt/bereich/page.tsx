@@ -694,7 +694,7 @@ function BereichInner() {
                         <span className="text-[12.5px] font-semibold">
                           {g.label}
                           <span className="ml-1.5 font-mono text-[11px] font-normal tabular-nums text-signal">
-                            {(g.delta_mio ?? 0) > 0 ? "+" : ""}{deMio(g.delta_mio)}&#8239;Mio.&nbsp;€
+                            {(g.delta_meur ?? 0) > 0 ? "+" : ""}{deMio(g.delta_meur)}&#8239;Mio.&nbsp;€
                           </span>
                         </span>
                         <Warum grund={g} kompakt />

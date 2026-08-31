@@ -357,7 +357,7 @@ class Bewilligung:
                 and self.beschlossen)
 
     @property
-    def im_rat(self) -> bool:
+    def in_plenary(self) -> bool:
         """Hat das **Plenum** selbst abgestimmt?
 
         Die enge, wörtliche Frage. Sie ist eine Auskunft für Leser*innen
@@ -382,7 +382,7 @@ class Bewilligung:
         Bestand gezeigt: 2024 haben **8 der 21 Fälle keine Plenarsitzung mehr
         gesehen** — der Rat tagte am 16.12.2024 als Haushaltssitzung mit 21
         Punkten, und keiner davon war eine Nachbewilligung. Wer den Rats-Anteil
-        aus :attr:`im_rat` rechnet, veröffentlicht für 2024 **30.896.100 €
+        aus :attr:`in_plenary` rechnet, veröffentlicht für 2024 **30.896.100 €
         statt 43.096.100 €**, also 28 % zu wenig — und zwar ausgerechnet für
         die Kennzahl „der Rats-Anteil sinkt".
 
@@ -597,7 +597,7 @@ class Kapitel3:
     total_operating: float
     total_capital: float
     #: Was der Fließtext darüber behauptet.
-    text_gesamt: float | None
+    total_per_text: float | None
     text_konsumtiv: float | None
     text_investiv: float | None
     #: Verpflichtungsermächtigungen — separat, nie in einer Summe.
@@ -694,7 +694,7 @@ def kapitel3(volltext: str, year: int) -> Kapitel3 | None:
         year=year, kanaele=kanaele,
         total_operating=_zahl(summe.group(1), None),
         total_capital=_zahl(summe.group(2), None),
-        text_gesamt=_zahl(gesamt.group(1), None) if gesamt else None,
+        total_per_text=_zahl(gesamt.group(1), None) if gesamt else None,
         # Reihenfolge im Satz: erst investiv, dann konsumtiv.
         text_investiv=_zahl(auft.group(1), None) if auft else None,
         text_konsumtiv=_zahl(auft.group(2), None) if auft else None,
@@ -766,10 +766,10 @@ def probe_tabelle(kap: Kapitel3, toleranz: float = 0.005) -> Tabellenprobe:
     dort auf der Seite."""
     ak = sum(k.amount_operating for k in kap.kanaele) - kap.total_operating
     ai = sum(k.amount_capital for k in kap.kanaele) - kap.total_capital
-    if kap.text_gesamt is None:
+    if kap.total_per_text is None:
         gesamt_ok, ag = True, 0.0
     else:
-        ag = kap.text_gesamt - kap.gesamt
+        ag = kap.total_per_text - kap.gesamt
         gesamt_ok = abs(ag) < toleranz
     return Tabellenprobe(
         spalten_ok=abs(ak) < toleranz and abs(ai) < toleranz,

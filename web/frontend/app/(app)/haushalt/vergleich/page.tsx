@@ -442,8 +442,8 @@ export default function VergleichSeite() {
 
               {/* Die Verweise: erst der Vorgang bei uns, dann die Originale. */}
               <div className="mt-3 flex flex-col gap-1.5 border-t border-dashed border-border pt-2.5">
-                {data.beleg.beschluss_id != null && (
-                  <Link href={decisionHref(data.beleg.beschluss_id)}
+                {data.beleg.decision_id != null && (
+                  <Link href={decisionHref(data.beleg.decision_id)}
                     className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <FileText className="h-3.5 w-3.5 flex-none" />
                     Der Vorgang bei uns: {data.beleg.titel ?? data.beleg.template_number}

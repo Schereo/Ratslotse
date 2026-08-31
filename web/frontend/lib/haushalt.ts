@@ -127,7 +127,7 @@ export type FinanzZeile = {
  *  passen. */
 export type Abweichungsgrund = {
   year: number; nr: number; label: string;
-  delta_mio: number | null; prozent: number | null;
+  delta_meur: number | null; prozent: number | null;
   text: string;
   source_label: string | null; source_url: string | null;
 };
@@ -285,14 +285,14 @@ export type HaushaltDaten = {
   jahre: Record<string, HaushaltZeile[]>;
   steuern: { year: number; art: string; amount: number | null }[];
   steuerkraft: {
-    year: number; messzahl: number | null; messzahl_je_ew: number | null;
-    zuweisungen: number | null; zuweisungen_je_ew: number | null;
+    year: number; messzahl: number | null; tax_capacity_per_capita: number | null;
+    allocations: number | null; allocations_per_capita: number | null;
   }[];
   /** Die drei Komponenten der Landeszuweisung je Ausgleichsjahr, in **Tausend
    *  Euro** (so führt das Landesamt sie) — Quelle: LSN, Blatt „9a".
    *
    *  Warum das neben `steuerkraft` steht und nicht darin: `steuerkraft.
-   *  zuweisungen` kommt aus dem Open-Data-Datensatz 1106 der Stadt und
+   *  allocations` kommt aus dem Open-Data-Datensatz 1106 der Stadt und
    *  enthält **nur zwei** der drei Komponenten (Gemeinde- plus Kreisaufgaben,
    *  auf den Euro nachgemessen). Die dritte gibt es nur beim Land. Zwei
    *  Quellen, zwei Felder — ein gemeinsames Feld verlöre die Auskunft, wer
@@ -475,16 +475,16 @@ export type Nachbewilligung = {
   /** Hat das **Plenum** selbst abgestimmt? Die wörtliche Auskunft — taugt als
    *  Zeilenhinweis („im Fachausschuss beschlossen"), aber **nie** als Basis
    *  eines Rats-Anteils. */
-  im_rat: 0 | 1;
+  in_plenary: 0 | 1;
   /** Bucht der Rechenschaftsbericht das als „Beschluss des Rates"?
    *
    *  Das ist die Definition, die zählt: Der Bericht rechnet auch das dazu,
    *  was der Ausschuss für Finanzen und Beteiligungen **abschließend**
-   *  entscheidet. 2024 sind das 8 von 21 Fällen — wer stattdessen `im_rat`
+   *  entscheidet. 2024 sind das 8 von 21 Fällen — wer stattdessen `in_plenary`
    *  summiert, zeigt 30,9 statt 43,1 Mio. € und damit 28 % zu wenig. */
   ratsentscheidung: 0 | 1;
   /** Ziel für den Link auf die vorhandene Beschluss-Seite. */
-  beschluss_id: number | null;
+  decision_id: number | null;
   gremien: string[];
   fulltext_probe: 0 | 1;
   herkunft_id: number | null;
@@ -512,7 +512,7 @@ export type NachbewilligungsJahr = {
   /** Was der Fließtext des Kapitels als Gesamtsumme nennt. Steht getrennt von
    *  der Summenzeile, **weil beide 2022 auseinanderfallen** (288.000 €). Wer
    *  nur eine der Zahlen behielte, hätte den Widerspruch weggeräumt. */
-  text_gesamt: number | null;
+  total_per_text: number | null;
   /** Verpflichtungsermächtigungen des Jahres — der Bericht zählt sie
    *  ausdrücklich getrennt, und wir addieren sie nirgends dazu. */
   commitments_amount: number | null;
@@ -629,19 +629,19 @@ export type GewerbesteuerstatistikZeile = {
   /** Betriebe und Betriebsstätten, für die hier Gewerbesteuer erhoben wird. */
   faelle: number;
   /** Davon die, die einen positiven Steuermessbetrag haben — also zahlen. */
-  faelle_positiv: number;
+  cases_positive: number;
   /** Summe der Steuermessbeträge in Euro. `null` heißt **gesperrt**
    *  (Geheimhaltung), nicht „null Euro". */
-  messbetrag_eur: number | null;
+  tax_base_eur: number | null;
   /** Betriebe, die nur hier eine Betriebsstätte haben. */
   festsetzungen: number | null;
-  festsetzungen_positiv: number | null;
-  festsetzung_messbetrag_eur: number | null;
+  assessments_positive: number | null;
+  assessment_tax_base_eur: number | null;
   /** Betriebsstätten, deren Messbetrag nach Arbeitslöhnen auf mehrere
    *  Gemeinden zerlegt wurde (§ 28 GewStG). */
-  zerlegungen: number | null;
-  zerlegungen_positiv: number | null;
-  zerlegung_messbetrag_eur: number | null;
+  apportionments: number | null;
+  apportionments_positive: number | null;
+  apportioned_assessment_eur: number | null;
   /** Der Hebesatz, den das Landesamt nachrichtlich beilegt (Prozentpunkte). */
   hebesatz: number | null;
   /** Ob für diese Stadt ein Betrag der Geheimhaltung unterliegt. */
@@ -655,7 +655,7 @@ export type HebesatzZeile = {
   /** Prozentpunkte. */
   hebesatz: number;
   /** Der Satz, der bis zu diesem Jahr galt — `null` in der ersten Zeile. */
-  vorheriger: number | null;
+  prior_rate: number | null;
 };
 
 /** Die beiden Rechnungswesen, unter denen die Stadt gezählt hat. Der Wechsel
@@ -801,7 +801,7 @@ export function gruendeFuerBereich(
     `(?:Teilhaushalt|THH)\\s?0?${n}(?!\\d)`, "i");
   return (daten.abweichungsgruende ?? [])
     .filter((g) => g.year === year && muster.test(g.text))
-    .sort((a, b) => Math.abs(b.delta_mio ?? 0) - Math.abs(a.delta_mio ?? 0));
+    .sort((a, b) => Math.abs(b.delta_meur ?? 0) - Math.abs(a.delta_meur ?? 0));
 }
 
 // --- Flussbild: Herkunft → ein Topf → Verwendung (Design H-18) -------------
@@ -995,7 +995,7 @@ export function flussbild(
  *  Zahl das Jahresergebnis. Eine 0 an diesen Stellen wäre eine Behauptung. */
 /** Ein Bereich einer Gebührenbedarfsberechnung.
  *
- *  ACHTUNG BEI DER ANZEIGE: `gebuehr` und `bezugsmenge` sind bei der
+ *  ACHTUNG BEI DER ANZEIGE: `gebuehr` und `reference_quantity` sind bei der
  *  **Abfallsammlung** `null`, und das ist die Auskunft und keine Lücke: Sie
  *  erhebt eine Grundgebühr UND eine Gebühr je Liter Behältervolumen, es gibt
  *  dort also keine einzelne Division. Eine 0 wäre eine Behauptung. */
@@ -1009,13 +1009,13 @@ export type GebuehrenZeile = {
   /** Alles, was davon abgeht — negativ. */
   deductions: number;
   /** Was die Gebührenzahler tragen. */
-  zu_deckende_kosten: number;
-  bezugsmenge: number | null;
-  bezugseinheit: string | null;
+  costs_to_cover: number;
+  reference_quantity: number | null;
+  reference_unit: string | null;
   /** Die errechnete Gebühr, drei Nachkommastellen. */
   gebuehr: number | null;
   /** Der gerundete Vorschlag an den Rat — das, was erhoben wird. */
-  gebuehrenvorschlag: number | null;
+  fee_proposed: number | null;
   template_number: string | null;
   probes: string;
   herkunft_id: number | null;
@@ -1071,11 +1071,11 @@ export type HaushaltssatzungZeile = {
 
   /** § 2. `0` heißt „nicht veranschlagt" und ist eine Aussage; `null` hieße
    *  „die Satzung sagt dazu nichts". */
-  kredite_investitionen: number | null;
+  investment_loans: number | null;
   /** § 3. */
-  verpflichtungsermaechtigungen: number | null;
+  commitment_authorizations: number | null;
   /** § 4 — der Dispo der Stadt. */
-  liquiditaetskredite: number | null;
+  liquidity_loans: number | null;
 
   /** § 5. Ab dem Jahrgang 2025 nennt die Satzung nur noch die Gewerbesteuer
    *  und verweist für die Grundsteuer auf eine eigene Satzung — dann sind
@@ -1085,7 +1085,7 @@ export type HaushaltssatzungZeile = {
   hebesatz_gewerbesteuer: number | null;
 
   /** Das im Text genannte Sitzungsdatum, `null` bei „xx.xx.JJJJ". */
-  sitzung_am: string | null;
+  session_date: string | null;
   template_number: string | null;
   probes: string;
   herkunft_id: number | null;

@@ -984,8 +984,8 @@ def parse_abweichungsgruende(text: str, year: int) -> list[dict]:
     """Abschnitt 6.3.1 des Jahresabschlusses: **warum** ein Posten vom Plan
     abweicht, je Posten und in den Worten der Verwaltung.
 
-    Liefert je Posten ``{nr, label, delta_mio, prozent, text}``.
-    ``delta_mio`` und ``prozent`` sind die Werte, die die Überschrift selbst
+    Liefert je Posten ``{nr, label, delta_meur, prozent, text}``.
+    ``delta_meur`` und ``prozent`` sind die Werte, die die Überschrift selbst
     nennt — sie sind die Eintrittskarte: Erst der Abgleich mit der geparsten
     Tabellenzeile (``pruefe_abweichungsgruende``) entscheidet, ob die
     Erläuterung übernommen wird.
@@ -1025,7 +1025,7 @@ def parse_abweichungsgruende(text: str, year: int) -> list[dict]:
         out.append({
             "year": year, "nr": nr,
             "label": " ".join(m.group(2).split()),
-            "delta_mio": _eur_lose(m.group(4)) * vorzeichen,
+            "delta_meur": _eur_lose(m.group(4)) * vorzeichen,
             "prozent": _eur_lose(m.group(6)) * vz_prozent,
             "text": _bis_abschnittsende(_fliesstext(gewaehlt[m.end():ende])),
         })
@@ -1064,9 +1064,9 @@ def pruefe_abweichungsgruende(gruende: list[dict], posten: list[dict],
             abgelehnt.append(f"Posten {g['nr']}: keine passende Tabellenzeile")
             continue
         ist_mio = p["deviation"] / 1e6
-        if abs(ist_mio - g["delta_mio"]) > toleranz_mio:
+        if abs(ist_mio - g["delta_meur"]) > toleranz_mio:
             abgelehnt.append(
-                f"Posten {g['nr']}: Text {g['delta_mio']:+.1f} Mio. ≠ Tabelle {ist_mio:+.2f} Mio.")
+                f"Posten {g['nr']}: Text {g['delta_meur']:+.1f} Mio. ≠ Tabelle {ist_mio:+.2f} Mio.")
             continue
         plan = p.get("plan")
         if plan:

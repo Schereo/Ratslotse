@@ -119,9 +119,9 @@ import re
 #: Arbeitnehmer*innen · nicht besetzt · Vermerke.
 #: Teil B (8 Spalten): dasselbe ohne die Aufteilung der Besetzung.
 LAYOUT: dict[int, tuple[str, ...]] = {
-    9: ("stellen_plan", "positions_prior_year", "besetzt_beamte",
-        "besetzt_arbeitnehmer", "nicht_besetzt"),
-    8: ("stellen_plan", "positions_prior_year", "besetzt", "nicht_besetzt"),
+    9: ("positions_planned", "positions_prior_year", "filled_by_officials",
+        "filled_by_employees", "vacant"),
+    8: ("positions_planned", "positions_prior_year", "besetzt", "vacant"),
 }
 
 #: Welcher Teil welche Spaltenzahl haben muss. Ein Teil A mit acht Spalten ist
@@ -136,8 +136,8 @@ TEIL_SPALTEN: dict[str, int] = {"A": 9, "B": 8}
 #: sie ist es wert, weil sonst jede Auswertung beide Teile verschieden
 #: behandeln müsste.
 ALLE_WERTFELDER: tuple[str, ...] = (
-    "stellen_plan", "positions_prior_year", "besetzt_beamte",
-    "besetzt_arbeitnehmer", "besetzt", "nicht_besetzt")
+    "positions_planned", "positions_prior_year", "filled_by_officials",
+    "filled_by_employees", "besetzt", "vacant")
 
 #: Wie die Teile für Leser*innen heißen. „Tarifbeschäftigte" ist das Wort, das
 #: die Oberfläche benutzt; das Dokument selbst schreibt „Arbeitnehmerinnen und
@@ -226,7 +226,7 @@ def _werte(spalten: int, roh: tuple) -> dict:
     Besetzungsarten, damit beide Teile dieselbe Frage gleich beantworten."""
     feld = dict(zip(LAYOUT[spalten], (_wert(g) for g in roh)))
     if "besetzt" not in feld:
-        feld["besetzt"] = feld["besetzt_beamte"] + feld["besetzt_arbeitnehmer"]
+        feld["besetzt"] = feld["filled_by_officials"] + feld["filled_by_employees"]
     return feld
 
 
@@ -348,7 +348,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
             continue
         bez, gruppe = _bezeichnung(m.group(2), teil)
         t["zeilen"].append({"seq_no": int(m.group(1)), "label": bez,
-                            "besoldung": gruppe,
+                            "pay_grade": gruppe,
                             **_werte(t["spalten"], m.groups()[2:])})
         puffer = ""
 
@@ -357,7 +357,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
 
 def _besetzungsrest(satz: dict) -> float:
     """besetzt + nicht besetzt − Stellen im Vorjahr."""
-    return satz["besetzt"] + satz["nicht_besetzt"] - satz["positions_prior_year"]
+    return satz["besetzt"] + satz["vacant"] - satz["positions_prior_year"]
 
 
 def besetzungstoleranz(zeilen: int) -> float:
@@ -418,7 +418,7 @@ def besetzungsprobe(summen: list[dict]) -> tuple[bool, str]:
         if abs(rest) > toleranz:
             return False, (f"„{s.get('name') or 'Summe'}“: besetzt "
                            f"{s['besetzt']:.2f} + nicht besetzt "
-                           f"{s['nicht_besetzt']:.2f} ergeben nicht die "
+                           f"{s['vacant']:.2f} ergeben nicht die "
                            f"{s['positions_prior_year']:.2f} Stellen des Vorjahres "
                            f"({rest:+.2f}, erlaubt sind {toleranz:.2f} bei "
                            f"{s['zeilen']} Zeilen)")
@@ -543,17 +543,17 @@ def _zeilen_bauen(gruppen: list[dict], gesamt: list[dict],
             aus.append({"art": "posten", "gruppe": g["name"],
                         "consistent": 0 if id(z) in schief else 1, **z})
         aus.append({"art": "gruppe", "gruppe": g["name"], "seq_no": None,
-                    "label": f"Summe {g['name']}", "besoldung": None,
+                    "label": f"Summe {g['name']}", "pay_grade": None,
                     "consistent": 1, **g["summe"]})
     # Führt ein Teil die Gesamtzeile zweimal, wird sie einmal gespeichert:
     # Die zweite ist die Probe, nicht ein zweiter Wert.
     if gesamt:
         aus.append({"art": "gesamt", "gruppe": None, "seq_no": None,
-                    "label": "Summe", "besoldung": None, "consistent": 1,
+                    "label": "Summe", "pay_grade": None, "consistent": 1,
                     **gesamt[0]["werte"]})
     elif len(gruppen) == 1:
         aus.append({"art": "gesamt", "gruppe": None, "seq_no": None,
-                    "label": "Summe", "besoldung": None, "consistent": 1,
+                    "label": "Summe", "pay_grade": None, "consistent": 1,
                     **gruppen[0]["summe"]})
     return aus
 

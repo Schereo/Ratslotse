@@ -200,13 +200,13 @@ def test_besetzung_gehoert_zum_stichtag_nicht_zum_haushaltsjahr():
     796 Stellen des Vorjahres, gezählt am 30.6.2025. 815 − 652,31 wäre
     162,69 und damit eine Zahl, die in keinem Dokument steht."""
     g = _gesamt(_teil(STELLENPLAN_2026_A))
-    assert g["stellen_plan"] == 815.00
+    assert g["positions_planned"] == 815.00
     assert g["positions_prior_year"] == 796.00
-    assert g["nicht_besetzt"] == 143.71
+    assert g["vacant"] == 143.71
     assert g["besetzt"] == pytest.approx(652.31)
     # Die Rechnung geht gegen das Vorjahr auf — und gegen das Planjahr nicht.
-    assert g["besetzt"] + g["nicht_besetzt"] == pytest.approx(796.00, abs=0.05)
-    assert abs(g["besetzt"] + g["nicht_besetzt"] - g["stellen_plan"]) > 18
+    assert g["besetzt"] + g["vacant"] == pytest.approx(796.00, abs=0.05)
+    assert abs(g["besetzt"] + g["vacant"] - g["positions_planned"]) > 18
 
 
 def test_stichtag_steht_an_der_zeile():
@@ -218,8 +218,8 @@ def test_teil_a_trennt_beamte_und_tarifbeschaeftigte():
     """Eine Beamtenstelle darf mit Tarifbeschäftigten besetzt werden — der
     Plan weist das getrennt aus, und beides zusammen ist die Besetzung."""
     g = _gesamt(_teil(STELLENPLAN_2026_A))
-    assert g["besetzt_beamte"] == 455.86
-    assert g["besetzt_arbeitnehmer"] == 196.45
+    assert g["filled_by_officials"] == 455.86
+    assert g["filled_by_employees"] == 196.45
     assert g["besetzt"] == pytest.approx(455.86 + 196.45)
 
 
@@ -239,8 +239,8 @@ def test_ueber_drei_zeilen_umbrochener_name_bleibt_eine_zeile():
     „mit AZ" / „A 09 1,00 …" — drei Zeilen, ein Datensatz."""
     z = next(z for z in _teil(STELLENPLAN_2026_A)["zeilen"] if z["seq_no"] == 35)
     assert z["label"] == "Lebensmittelkontrollamtsinspektor/-in mit AZ"
-    assert z["besoldung"] == "A 09"
-    assert z["stellen_plan"] == 1.00
+    assert z["pay_grade"] == "A 09"
+    assert z["positions_planned"] == 1.00
 
 
 def test_vermerke_erzeugen_keine_phantomzeile():
@@ -249,7 +249,7 @@ def test_vermerke_erzeugen_keine_phantomzeile():
     Zeile, und nichts davon gehört in die Bezeichnung der nächsten."""
     zeilen = {z["seq_no"]: z for z in _teil(STELLENPLAN_2026_A)["zeilen"]}
     assert zeilen[24]["label"] == "Stadtamtsrat/-rätin"
-    assert zeilen[24]["nicht_besetzt"] == 13.97
+    assert zeilen[24]["vacant"] == 13.97
     assert zeilen[25]["label"] == "Archivamtmann/-frau"
 
 
@@ -267,7 +267,7 @@ I. Nachwuchskräfte und informatorisch beschäftigte Kräfte im Stellenplan 2026
     teil = _teil(text)
     assert teil["bestanden"] is True
     assert teil["verworfen"] == 0
-    assert _gesamt(teil)["stellen_plan"] == 815.00
+    assert _gesamt(teil)["positions_planned"] == 815.00
     assert not [z for z in teil["zeilen"] if "Bachelor" in z["label"]]
 
 
@@ -291,16 +291,16 @@ def test_teil_b_traegt_drei_proben_statt_vier():
         "stellenplan_spaltenprobe", "stellenplan_gruppensummen",
         "stellenplan_besetzung"]
     g = _gesamt(teil)
-    assert g["stellen_plan"] == 23.00
+    assert g["positions_planned"] == 23.00
     # Teil B kennt die Aufteilung der Besetzung nicht.
-    assert g.get("besetzt_beamte") is None
+    assert g.get("filled_by_officials") is None
 
 
 def test_ueberbesetzung_bleibt_negativ():
     """„nicht besetzt −0,51" heißt: mehr Menschen als Stellen. Das ist eine
     Angabe des Plans und keine Fehlmessung — sie darf nicht auf 0 fallen."""
     z = next(z for z in _teil(TEIL_B_KLEIN, "B")["zeilen"] if z["seq_no"] == 4)
-    assert z["nicht_besetzt"] == -0.51
+    assert z["vacant"] == -0.51
 
 
 def test_andere_spaltenzahl_wird_gar_nicht_erst_gelesen():
@@ -341,7 +341,7 @@ def test_besetzung_gegen_die_falsche_spalte_reisst_die_probe():
     auf — hier um 19 Stellen daneben, weit jenseits jeder Rundung."""
     ok, warum = sp.besetzungsprobe([{
         "positions_prior_year": 815.00, "besetzt": 652.31,
-        "nicht_besetzt": 143.71, "name": "Stadt Oldenburg", "zeilen": 42}])
+        "vacant": 143.71, "name": "Stadt Oldenburg", "zeilen": 42}])
     assert ok is False
     assert "-19.0" in warum or "-18.9" in warum
 
@@ -440,7 +440,7 @@ def test_die_summen_kommen_aus_dem_dokument_nicht_aus_unserer_addition(tmp_path)
 
     summen = store.get_stellenplan(art="gesamt")
     assert len(summen) == 1
-    assert summen[0]["stellen_plan"] == 815.0
+    assert summen[0]["positions_planned"] == 815.0
     assert [g["gruppe"] for g in store.get_stellenplan(art="gruppe")] == [
         "Beamte auf Zeit", "Laufbahngruppe 2", "Laufbahngruppe 1"]
     store.close()

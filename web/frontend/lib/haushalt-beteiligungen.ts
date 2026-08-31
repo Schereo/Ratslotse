@@ -23,12 +23,12 @@ export type Gesellschaft = {
   name: string;
   classification: string;
   page: number | null;
-  konzern_key: string | null;
+  consolidated_key: string | null;
   herkunft_id: number | null;
   /** Hielt die Rechenprobe „gleich viele Namen wie Funktionen"? Nur dann
    *  trägt eine Person ihr Amt (s. `aufsichtspersonen`). Optional, weil eine
    *  ältere API das Feld nicht kennt — dann gilt „unbekannt", nicht „ja". */
-  funktionen_zuordenbar?: boolean;
+  roles_assignable?: boolean;
 };
 
 /** Ein Mitglied des Aufsichtsorgans — Betriebsausschuss, Aufsichtsrat oder
